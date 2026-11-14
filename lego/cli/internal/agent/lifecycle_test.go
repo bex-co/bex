@@ -272,6 +272,44 @@ func TestSecretValuesNeverComeFromArguments(t *testing.T) {
 	}
 }
 
+// Scopes (ADR098 D9): set sends --scope/--repo with the value, rescope sends
+// only the scope (the value is kept), and list prints each secret's scope.
+func TestSecretScopes(t *testing.T) {
+	f := newRouteFake(t, map[string]http.HandlerFunc{
+		"PUT /v1/agent-secrets/{name}": answer(http.StatusOK, map[string]any{"name": "APP_TOKEN", "scope": "repo", "repo": "bex-co/app"}),
+		"GET /v1/agent-secrets": answer(http.StatusOK, map[string]any{"ownerId": "tea-ws", "secrets": []any{
+			map[string]any{"name": "APP_TOKEN", "scope": "repo", "repo": "bex-co/app"},
+			map[string]any{"name": "OLD", "scope": "explicit"},
+			map[string]any{"name": "ORG", "scope": "workspace"},
+		}}),
+	})
+	d := f.deps()
+	d.stdin = strings.NewReader("v\n")
+	if _, stderr, code := run(t, d, "secrets", "set", "APP_TOKEN", "--scope", "repo", "--repo", "bex-co/app"); code != 0 {
+		t.Fatalf("set --scope: exit %d: %s", code, stderr)
+	}
+	if got := f.only(t); got.body["value"] != "v" || got.body["scope"] != "repo" || got.body["repo"] != "bex-co/app" {
+		t.Fatalf("set body = %+v", got.body)
+	}
+	stdout, stderr, code := run(t, d, "-o", "text", "secrets", "rescope", "APP_TOKEN", "--scope", "repo", "--repo", "bex-co/app")
+	if code != 0 || !strings.Contains(stdout, "Agent secret APP_TOKEN is now repo:bex-co/app.") {
+		t.Fatalf("rescope: exit %d: %s %s", code, stdout, stderr)
+	}
+	puts := f.callsTo(http.MethodPut)
+	if got := puts[len(puts)-1]; got.body["scope"] != "repo" || got.body["repo"] != "bex-co/app" {
+		t.Fatalf("rescope body = %+v", got.body)
+	} else if _, ok := got.body["value"]; ok {
+		t.Fatalf("rescope sent a value: %+v", got.body)
+	}
+	if _, stderr, code := run(t, d, "secrets", "rescope", "APP_TOKEN"); code != exitUsage || !strings.Contains(stderr, "--scope is required") {
+		t.Fatalf("rescope without --scope: exit %d: %s", code, stderr)
+	}
+	stdout, _, code = run(t, d, "-o", "text", "secrets", "list")
+	if code != 0 || stdout != "APP_TOKEN\trepo:bex-co/app\nOLD\texplicit\nORG\tworkspace\n" {
+		t.Fatalf("list: exit %d: %q", code, stdout)
+	}
+}
+
 // TestNoFlagCarriesASecretValue walks every `bex agent` command: a value on
 // the command line lands in shell history and the process list (ADR098).
 func TestNoFlagCarriesASecretValue(t *testing.T) {
@@ -328,14 +366,16 @@ func TestSkillsCommands(t *testing.T) {
 }
 
 func TestEnvSet(t *testing.T) {
-	env := map[string]any{"networkTier": "standard", "modelSource": "platform", "agentModelMonthlySpendCapUsd": 50.0, "agentModelSpendMonthToDateUsd": 3.25}
+	env := map[string]any{"networkTier": "standard", "modelSource": "platform", "agentModelMonthlySpendCapUsd": 50.0, "agentModelSpendMonthToDateUsd": 3.25,
+		"enabledAgents": []any{"claude", "codex"}, "agentDataUse": []any{map[string]any{"agent": "muse", "acknowledgedAt": nil, "acknowledgedBy": nil}}}
 	f := newRouteFake(t, map[string]http.HandlerFunc{
 		"GET /v1/agent-environment":   answer(http.StatusOK, env),
 		"PATCH /v1/agent-environment": answer(http.StatusOK, env),
 	})
 	d := f.deps()
 	stdout, _, code := run(t, d, "-o", "text", "env")
-	if code != 0 || !strings.Contains(stdout, "$50.00 a month, $3.25 used this month") {
+	if code != 0 || !strings.Contains(stdout, "$50.00 a month, $3.25 used this month") || !strings.Contains(stdout, "claude, codex") ||
+		!strings.Contains(stdout, "needs an admin's --acknowledge-data-use to turn on") {
 		t.Fatalf("env:\n%s", stdout)
 	}
 	cases := []struct {
@@ -346,6 +386,8 @@ func TestEnvSet(t *testing.T) {
 		{[]string{"--spend-cap", "120"}, `{"agentModelMonthlySpendCapUsd":120}`},
 		{[]string{"--no-custom-hosts", "--default-model", ""}, `{"customHosts":[],"defaultModel":""}`},
 		{[]string{"--clear-model-key"}, `{"clearModelApiKey":true}`},
+		{[]string{"--agents", "claude,muse", "--acknowledge-data-use", "muse"}, `{"acknowledgeAgentDataUse":["muse"],"enabledAgents":["claude","muse"]}`},
+		{[]string{"--agents", ""}, `{"enabledAgents":[]}`},
 	}
 	for _, tc := range cases {
 		f.calls = nil

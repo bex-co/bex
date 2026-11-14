@@ -699,6 +699,16 @@ if ! grep -Fq 'GITLEAKS_VERSION: 8.30.1' .github/workflows/deploy.yml \
   echo "FAIL: deploy must checksum-pin and execute the reviewed Gitleaks CLI scanner" >&2
   exit 1
 fi
+# Tuning the scan's config must never quietly turn the scan off: only the
+# keys an allowlist needs to narrow named rules by shape are accepted (a list
+# of allowed lines, so a new key, a path or commit skip, an empty or missing
+# targetRules, or a line-wide match fails), and the default rules stay on.
+if [ -e .gitleaks.toml ] && { ! grep -qx 'useDefault = true' .gitleaks.toml \
+  || [ "$(grep -cx '\[\[allowlists\]\]' .gitleaks.toml)" -ne "$(grep -c '^targetRules = \["' .gitleaks.toml)" ] \
+  || grep -Evq '^(#.*|\[extend\]|useDefault = true|\[\[allowlists\]\]|description = ".*"|targetRules = \[".*|regexTarget = "(secret|match)"|regexes = \[.*)?$' .gitleaks.toml; }; then
+  echo "FAIL: .gitleaks.toml may only add allowlists that name their targetRules and match a secret or finding by shape, over the default rules" >&2
+  exit 1
+fi
 if ! grep -Fq 'SHELLCHECK_VERSION=0.11.0' .github/workflows/scripts.yml \
   || ! grep -Fq 'SHELLCHECK_LINUX_ARM64_SHA256=12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588' .github/workflows/scripts.yml \
   || ! grep -Fq 'shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz' .github/workflows/scripts.yml; then
@@ -730,6 +740,12 @@ if ! grep -Eq '^  changes:' .github/workflows/deploy.yml \
   || ! grep -Fq "if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'" .github/workflows/deploy.yml \
   || [ "$(grep -cF 'bash scripts/deploy-superseded.sh "$GITHUB_SHA"' .github/workflows/deploy.yml)" -lt 1 ]; then
   echo "FAIL: deploy.yml lost the w1/m25 scheduled change gate or the w1/m59 write-back guard (scripts/deploy-superseded.sh)" >&2
+  exit 1
+fi
+# actions/checkout points origin/main at the run's own commit; the gate must
+# read main's live tip, or a run queued behind a deploy deploys a second time.
+if ! grep -Fq 'run: git fetch --no-tags --filter=blob:none origin +refs/heads/main:refs/remotes/origin/main' .github/workflows/deploy.yml; then
+  echo "FAIL: deploy.yml's changes gate must fetch main's live tip before deploy_latency.py reads the pin" >&2
   exit 1
 fi
 if [ "$(grep -cF "env.SUPERSEDED != 'true'" .github/workflows/deploy.yml)" -lt 4 ]; then

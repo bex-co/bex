@@ -37,7 +37,7 @@ func TestAFailedPlanNamesWhatCanBeDoneWithoutAConfirmPhrase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	second, err := svc.CreatePlannedBlueprint(ctx, perSourceCreate("second", store.BlueprintExistingAdopt))
@@ -76,10 +76,10 @@ func TestAnApprovalThatMeetsAConflictOffersNoConfirmPhrase(t *testing.T) {
 	if err != nil || second.PlanningOutcome != PlanningPlanned {
 		t.Fatalf("second plan = %q, err %v, want a clean plan while nothing manages api yet", second.PlanningOutcome, err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", "", nil); err != nil {
 		t.Fatal(err)
 	}
-	_, err = svc.ApproveBlueprint(ctx, second.Blueprint.ID, "tea-a", nil)
+	_, err = svc.ApproveBlueprint(ctx, second.Blueprint.ID, "tea-a", "", nil)
 	var conflict *core.CodedError
 	if !errors.As(err, &conflict) || conflict.Code != "BLUEPRINT_RESOURCE_CONFLICT" {
 		t.Fatalf("second approval = %v, want BLUEPRINT_RESOURCE_CONFLICT", err)

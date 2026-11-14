@@ -101,7 +101,7 @@ func transcriptBatchPGFixture(t *testing.T) (*PGStore, string, *transcriptQueryT
 		}
 	})
 	session, err := s.CreateAgentSession(context.Background(), AgentSession{
-		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
+		WorkspaceID: tenant.ID, Repo: "bex-co/example",
 		AgentConfig: []byte(`{"agent":"codex","task":"transcript batching"}`),
 	})
 	if err != nil {
@@ -281,7 +281,7 @@ func TestPGAgentSessionIdempotencyKeyWindow(t *testing.T) {
 	}
 	mk := func(key, hash string) (AgentSession, error) {
 		return s.CreateAgentSession(ctx, AgentSession{
-			WorkspaceID: first.WorkspaceID, Repo: "bex-co/example", Branch: "main",
+			WorkspaceID: first.WorkspaceID, Repo: "bex-co/example",
 			AgentConfig: []byte(`{"agent":"codex","task":"x"}`), IdempotencyKey: key, IdempotencyHash: hash,
 		})
 	}

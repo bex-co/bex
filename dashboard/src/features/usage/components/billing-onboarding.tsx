@@ -25,12 +25,8 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
-import {
-  useBillingOnboarding,
-  type BillingReadiness,
-} from "../hooks/use-billing-onboarding";
+import type { BillingReadiness } from "../hooks/use-billing-onboarding";
 import { BillingStatusAlerts } from "./billing-lifecycle-alert";
 
 interface BillingOnboardingViewProps {
@@ -195,25 +191,5 @@ export function BillingOnboardingView({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-export function BillingOnboardingCard() {
-  const { t } = useTranslations();
-  const state = useBillingOnboarding();
-  const capabilities = useCapabilities();
-  const reasonKey = capabilities.reasonKey("can_manage_billing");
-  return (
-    <BillingOnboardingView
-      readiness={state.readiness}
-      loading={state.loading}
-      error={state.error}
-      checkoutBusy={state.checkoutBusy}
-      portalBusy={state.portalBusy}
-      onCheckout={() => void state.openCheckout()}
-      onPortal={() => void state.openPortal()}
-      canManageBilling={capabilities.canManageBilling}
-      billingReason={reasonKey ? t(reasonKey) : undefined}
-    />
   );
 }

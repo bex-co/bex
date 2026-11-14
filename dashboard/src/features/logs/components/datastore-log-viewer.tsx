@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Loader2, Search } from "lucide-react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { AlertCircle, Loader2, Search } from "lucide-react";
 import { EmptyState } from "@/common/components/empty-state";
 import { classifyRefusal } from "@/common/lib/graphql-error";
 import { Input } from "@/common/components/ui/input.tsx";
@@ -17,6 +24,7 @@ import { LogLineList } from "./log-line-list";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import { StreamDisconnected, StreamStatus } from "./log-viewer";
 import { LiveToggle } from "./log-filter-bar";
+import { useCustomWindow } from "../hooks/use-custom-window";
 import { useLiveLogs, type EventSourceFactory } from "../hooks/use-live-logs";
 import { mergeLogLines } from "../lib/map";
 import { useLogLabelValues } from "../hooks/use-log-label-values";
@@ -212,9 +220,13 @@ export function DatastoreLogViewer({
   const history = useLogHistory(resource, queryFilters, win);
   // Follows the datastore's pods from the window's edge with the same text,
   // instance and level, merged into the history beside it (as the service tab).
+  // A custom window that has already ended takes no tail, as on the service
+  // Logs tab (w21/016, w4/625).
+  const { customEndMs, windowClosed } = useCustomWindow(range);
+  const liveOffReasonId = useId();
   const stream = useLiveLogs({
     resource,
-    enabled: live,
+    enabled: live && !windowClosed,
     type: LOG_TYPE_ALL,
     text: queryText,
     instance,
@@ -228,8 +240,13 @@ export function DatastoreLogViewer({
     () =>
       stream.lines.length === 0
         ? history.lines
-        : mergeLogLines(history.lines, stream.lines, Date.parse(win.startTime)),
-    [history.lines, stream.lines, win.startTime],
+        : mergeLogLines(
+            history.lines,
+            stream.lines,
+            Date.parse(win.startTime),
+            customEndMs ?? Infinity,
+          ),
+    [history.lines, stream.lines, win.startTime, customEndMs],
   );
   const refusal = classifyRefusal(history.error, "LOGS_UNAVAILABLE");
   const discovered = useLogLabelValues(resource, "instance");
@@ -352,11 +369,21 @@ export function DatastoreLogViewer({
 
         <LiveToggle
           id="datastore-logs-live-toggle"
-          checked={live}
-          disabled={!hydrated}
+          checked={live && !windowClosed}
+          disabled={!hydrated || windowClosed}
+          describedBy={windowClosed ? liveOffReasonId : undefined}
           onCheckedChange={setLive}
         />
       </div>
+      {windowClosed ? (
+        <p
+          id={liveOffReasonId}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground"
+        >
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          {t("logs.liveWindowClosed")}
+        </p>
+      ) : null}
       {body}
     </div>
   );

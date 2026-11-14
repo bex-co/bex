@@ -203,6 +203,11 @@ func main() {
 		log.Printf("bex-api: PLATFORM model route %q active for the claude agent profile in %d allowlisted workspace(s): %s",
 			cfg.AgentPlatformModelRoute, len(cfg.AgentPlatformModelWorkspaces), strings.Join(cfg.AgentPlatformModelWorkspaces, ","))
 	}
+	// The muse profile (ADR108) runs only on this bex-owned Meta key, in the
+	// same allowlisted workspaces; the key is never logged.
+	if agentsession.EnablePlatformMetaRoute(cfg.AgentPlatformMetaKey, cfg.AgentPlatformModelWorkspaces) {
+		log.Printf("bex-api: PLATFORM Meta route active for the muse agent profile in %d allowlisted workspace(s)", len(cfg.AgentPlatformModelWorkspaces))
+	}
 	cpDBURI := cfg.CPDBURI
 	dashboardURL := cfg.DashboardURL
 	mobilePush, err := pushtransport.New(pushtransport.Config{
@@ -477,6 +482,11 @@ func main() {
 	// the other registries so ModelAuthFailer on :8091 can observe too (w5/m88).
 	srv.AgentSessionCompleter.Metrics = agentMetrics
 	srv.AgentSessions.Metrics = agentMetrics
+	// The completer records the session branch's head as GitHub has it, not as
+	// the sandbox reports it (w5/m382).
+	if ghClient != nil {
+		srv.AgentSessionCompleter.Heads = agentsession.BranchHeads{GitHub: ghClient, Connections: st}
+	}
 	// The /v1/sandboxes surface reports separately from agent sessions above:
 	// they share a runtime, but only this series answers whether the sandbox API
 	// itself is healthy — the gap ADR088's coverage table left unfiled (w5/m95).
@@ -861,24 +871,25 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
 	// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
 	deps.DeployBuildNamespace = cfg.BuildNamespace
-	deps.GitHubStore = st          // git connections (w2/m8): connect/disconnect/list read+write git_connections
-	deps.EventStore = st           // service events: deploy + audit + typed observed/Git facts
-	deps.EventFacts = st           // typed observed/Git event facts (w3/m19), written outside the operator
-	deps.CronRunHistory = st       // cron runs past the status window, from their facts (w3/m366)
-	deps.NotificationsStore = st   // deploy notifications (w3/m9): settings read/write + the reconciler's recipient fan-out
-	deps.ProjectsStore = st        // project groupings (w1/m31): project CRUD + service-assignment
-	deps.EnvironmentsStore = st    // environment groupings (layered on w1/m31): environment CRUD + service-assignment
-	deps.RegistryCredsStore = st   // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
-	deps.EnvGroupsStore = st       // environment-group metadata (w8/m114); values stay in OpenBao
-	deps.CLITelemetryStore = st    // CLI telemetry ingest (w5/m92): one row per cli-telemetry-events delivery (nil-safe: *store.PGStore stays a comparable nil when the store is off)
-	deps.BlueprintsStore = st      // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
-	deps.WebhookStore = st         // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
-	deps.JobStore = st             // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
-	deps.AgentSessionStore = st    // ADR047 D3: durable agent-session lifecycle
-	deps.AgentAttachmentStore = st // ADR095: attachment metadata
-	deps.AgentSkillStore = st      // ADR099: workspace skills
-	deps.AgentAutomationStore = st // ADR101: agent automations
-	deps.AgentFeedbackStore = st   // ADR047 D11: PR feedback turn origins
+	deps.GitHubStore = st           // git connections (w2/m8): connect/disconnect/list read+write git_connections
+	deps.EventStore = st            // service events: deploy + audit + typed observed/Git facts
+	deps.EventFacts = st            // typed observed/Git event facts (w3/m19), written outside the operator
+	deps.CronRunHistory = st        // cron runs past the status window, from their facts (w3/m366)
+	deps.NotificationsStore = st    // deploy notifications (w3/m9): settings read/write + the reconciler's recipient fan-out
+	deps.ProjectsStore = st         // project groupings (w1/m31): project CRUD + service-assignment
+	deps.EnvironmentsStore = st     // environment groupings (layered on w1/m31): environment CRUD + service-assignment
+	deps.RegistryCredsStore = st    // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
+	deps.EnvGroupsStore = st        // environment-group metadata (w8/m114); values stay in OpenBao
+	deps.CLITelemetryStore = st     // CLI telemetry ingest (w5/m92): one row per cli-telemetry-events delivery (nil-safe: *store.PGStore stays a comparable nil when the store is off)
+	deps.BlueprintsStore = st       // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
+	deps.WebhookStore = st          // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
+	deps.JobStore = st              // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
+	deps.AgentSessionStore = st     // ADR047 D3: durable agent-session lifecycle
+	deps.AgentAttachmentStore = st  // ADR095: attachment metadata
+	deps.AgentSkillStore = st       // ADR099: workspace skills
+	deps.AgentSecretScopeStore = st // ADR098 D9: agent secret scopes
+	deps.AgentAutomationStore = st  // ADR101: agent automations
+	deps.AgentFeedbackStore = st    // ADR047 D11: PR feedback turn origins
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
@@ -1137,7 +1148,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 type thresholdCharger struct{ charger *billing.AgentModelCharger }
 
 func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsession.ThresholdCharge) (agentsession.ThresholdChargeOutcome, error) {
-	result, err := t.charger.ChargeThreshold(ctx, charge.WorkspaceID, charge.At, charge.SeenSeq, charge.UnbilledMicroUSD)
+	result, err := t.charger.ChargeThreshold(ctx, charge)
 	if err != nil {
 		return agentsession.ThresholdChargePending, err
 	}
@@ -1146,6 +1157,8 @@ func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsessi
 		return agentsession.ThresholdChargePaid, nil
 	case billing.ChargeDeclined:
 		return agentsession.ThresholdChargeDeclined, nil
+	case billing.ChargeNotDue:
+		return agentsession.ThresholdChargeNotDue, nil
 	}
 	return agentsession.ThresholdChargePending, nil
 }
@@ -1421,7 +1434,9 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 					// No overall timeout (an exec stream is long-lived); dialing
 					// and the gateway's answer are bounded. The gateway answers an
 					// exec's headers on admission and a file transfer's once it is
-					// written, so 2m never cuts either short.
+					// written or refused (a refused upload destination is checked
+					// before the body is streamed, w8/313), so 2m never cuts either
+					// short.
 					Client: sshgateway.NewUpstreamClient(2 * time.Minute),
 					TTL:    60 * time.Second,
 					// The pinned CLI's run connect-token handshake (w7/m147): the
@@ -1480,6 +1495,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 					importer.Credentials = secretCredentials(cl, key, registrySecretImporterUserKey, registrySecretImporterPasswordKey, time.Now)
 					deps.SandboxImages = sandbox.NewImages(st, importer)
 					deps.SandboxImages.Reaper = &sandbox.RegistryReaper{RegistryConfig: reaper}
+					deps.SandboxImages.PlatformBudgetBytes = int64(cfg.SandboxImportPlatformBudgetGB) * store.BytesPerDecimalGB
 				}
 			}
 			go deps.SandboxMeter.Run(ctx)
@@ -1554,6 +1570,7 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// this fixes). It is the ceiling over the inactivity bound, which one tool
 	// call may pause only so long, and never outlives the sandbox.
 	deps.AgentTurnTimeout = cfg.AgentTurnTimeout
+	deps.AgentMetaRouteMaxSessions = cfg.AgentMetaRouteMaxSessions
 	deps.AgentTurnIdleTimeout = cfg.AgentTurnIdleTimeout
 	deps.AgentToolCallTimeout = cfg.AgentToolCallTimeout
 	// Transient status-read failures fail a session only after this.

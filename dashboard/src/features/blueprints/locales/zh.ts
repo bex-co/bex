@@ -720,6 +720,11 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "无法批准计划同步",
     description: "Toast when approving fails",
   },
+  "blueprints.plannedChanged": {
+    message: "有人重新规划了此 Blueprint。请查看最新的计划后再批准。",
+    description:
+      "Toast when the plan on screen was replaced before it was approved (BLUEPRINT_PLAN_CHANGED)",
+  },
   "blueprints.plannedReplanFailed": {
     message: "无法计划新的同步",
     description: "Toast when re-planning fails",

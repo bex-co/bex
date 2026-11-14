@@ -643,14 +643,6 @@ function ConnectCodeRow({
 }
 
 /**
- * The bex-native facts the retired Overview tab used to list — instances, active
- * revision, age — as one muted, dot-separated line under Render's metadata
- * stack. Phase and suspension aren't repeated: the status badge beside the name
- * already encodes both. A static_site has no runtime instances (it serves from
- * the object store, docs/ADR029-static-sites.md), so its line omits Instances
- * (w5/m48/t001 — Render shows no instance concept for static sites).
- */
-/**
  * What runs now, as the instances API and Metrics count it: none before a
  * first release goes live, and none while suspended or asleep, with the count
  * it returns to (w4/547).
@@ -664,6 +656,16 @@ function instancesFact(service: ServiceView, t: Translate): string {
   return isSleeping(service) ? t("services.instancesSleeping", { n }) : "0";
 }
 
+/**
+ * The bex-native facts the retired Overview tab used to list — instances, active
+ * revision, age — as one muted, dot-separated line under Render's metadata
+ * stack. Phase and suspension aren't repeated: the status badge beside the name
+ * already encodes both. A static_site has no runtime instances (it serves from
+ * the object store, docs/ADR029-static-sites.md), so its line omits Instances
+ * (w5/m48/t001 — Render shows no instance concept for static sites). Nor does
+ * a cron job, which runs nothing between runs: its schedule and runs describe
+ * it, and Render's cron job has no instance count (w4/606).
+ */
 function HeaderFacts({ service }: { service: ServiceView }) {
   const { t } = useTranslations();
 
@@ -688,7 +690,7 @@ function HeaderFacts({ service }: { service: ServiceView }) {
           },
         ]
       : []),
-    ...(isStaticSite(service)
+    ...(isStaticSite(service) || isCron(service)
       ? []
       : [
           {

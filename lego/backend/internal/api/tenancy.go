@@ -180,6 +180,41 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 	// resolution so the two are independent; acceptInvites no-ops without an email.
 	t.acceptInvites(ctx, identityID, email, emailVerified)
 
+	tenant, err := t.personalTenant(ctx, identityID)
+	if errors.Is(err, errOwnerBindingEnded) {
+		// The binding ended while this request granted admin; the grant is taken
+		// back, and this resolves (or mints) the caller's new personal workspace.
+		tenant, err = t.personalTenant(ctx, identityID)
+	}
+	if err != nil {
+		return "", err
+	}
+	t.nameSignupWorkspace(ctx, tenant, email)
+	t.cache.Put(key, tenant.ID, time.Now().Add(core.PositiveTTL))
+	return tenant.ID, nil
+}
+
+// errOwnerBindingEnded reports that the caller's personal-workspace binding
+// ended between its read and the admin grant that followed.
+var errOwnerBindingEnded = errors.New("personal workspace binding ended during onboarding")
+
+// personalTenant resolves (or mints) the caller's personal workspace and makes
+// sure they are its admin.
+//
+// Since w5/m372 another admin may remove or demote a workspace's creator, and
+// the store ends the binding in that transaction. A request that read the
+// binding just before can grant admin just after, which would leave a removed
+// creator an admin tuple, or a demoted one admin on top of their new role. So a
+// grant this call actually wrote is followed by a second read of the binding:
+// if it ended, the admin tuple is revoked and errOwnerBindingEnded returned.
+// The remover covers the other order (a grant that lands before its commit) by
+// revoking the admin tuple again after it commits (members.endMembership; a
+// demotion already revokes after its commit).
+//
+// The revoke cannot tell a creator removed or demoted from one demoted and then
+// promoted back to admin in the same instant; that member is left with no
+// admin tuple (fail closed) until their role is set again.
+func (t *tenantService) personalTenant(ctx context.Context, identityID string) (store.Tenant, error) {
 	tenant, err := t.store.TenantForOwner(ctx, identityID)
 	switch {
 	case err == nil:
@@ -188,20 +223,29 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 		tenant, err = t.store.CreateTenantWithMember(ctx, identityID, store.PlanHobby)
 		if errors.Is(err, store.ErrAccountDeletionPending) {
 			t.cache.Delete(cacheKey(methodSession, identityID))
-			return "", core.NewAccountDeletionPendingError()
+			return store.Tenant{}, core.NewAccountDeletionPendingError()
 		}
 		if err != nil {
-			return "", err
+			return store.Tenant{}, err
 		}
 	default:
-		return "", err
+		return store.Tenant{}, err
 	}
-	if err := t.ensureGranted(ctx, tenant.ID, identityID); err != nil {
-		return "", err
+	granted, err := t.ensureGranted(ctx, tenant.ID, identityID)
+	if err != nil || !granted {
+		return tenant, err
 	}
-	t.nameSignupWorkspace(ctx, tenant, email)
-	t.cache.Put(key, tenant.ID, time.Now().Add(core.PositiveTTL))
-	return tenant.ID, nil
+	again, err := t.store.TenantForOwner(ctx, identityID)
+	switch {
+	case err == nil && again.ID == tenant.ID:
+		return tenant, nil
+	case err != nil && !errors.Is(err, store.ErrNotFound):
+		return store.Tenant{}, err
+	}
+	if err := t.granter.RevokeWorkspaceMember(ctx, tenant.ID, "user:"+identityID, "admin"); err != nil {
+		return store.Tenant{}, fmt.Errorf("revoke admin granted after the owner binding ended: %w", err)
+	}
+	return store.Tenant{}, errOwnerBindingEnded
 }
 
 // acceptInvites redeems every pending invite addressed to the caller's email
@@ -334,21 +378,22 @@ func (t *tenantService) revokeOtherRoles(ctx context.Context, checker core.Check
 // a fresh mint) — OpenFGA errors on a duplicate write, so re-granting blindly
 // would fail every call after the first success. A Check error (e.g. OpenFGA
 // unreachable) falls through to attempting the grant, which fails the same
-// way — fail closed either way, never a silent skip.
-func (t *tenantService) ensureGranted(ctx context.Context, tenantID, identityID string) error {
+// way — fail closed either way, never a silent skip. granted reports whether it
+// wrote the tuple.
+func (t *tenantService) ensureGranted(ctx context.Context, tenantID, identityID string) (granted bool, err error) {
 	if t.granter == nil {
-		return nil
+		return false, nil
 	}
 	subject := "user:" + identityID
 	if checker, ok := t.granter.(core.Checker); ok {
 		if allowed, err := checker.Check(ctx, subject, "admin", "workspace:"+tenantID); err == nil && allowed {
-			return nil
+			return false, nil
 		}
 	}
 	if err := t.granter.GrantWorkspaceAdmin(ctx, tenantID, subject); err != nil {
-		return fmt.Errorf("grant workspace admin: %w", err)
+		return false, fmt.Errorf("grant workspace admin: %w", err)
 	}
-	return nil
+	return true, nil
 }
 
 // Tenant resolves a caller to its tenant id via tenant_members — one lookup

@@ -106,11 +106,6 @@ export function freeInstanceMessage(err: unknown): string | null {
   );
 }
 
-/** True when the refusal is the one-free-instance limit (w4/m241). */
-export function isFreeInstanceLimit(err: unknown): boolean {
-  return freeInstanceMessage(err) !== null;
-}
-
 /** True when any GraphQL error in Apollo's combined response has code. */
 export function hasGraphQLErrorCode(err: unknown, code: string): boolean {
   return graphQLErrorExtensions(err, code) !== null;

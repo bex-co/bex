@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -68,9 +69,12 @@ const (
 	// CodeSandboxBuildLimit is the 429 for a group with its limit of imports
 	// pending or running.
 	CodeSandboxBuildLimit = "SANDBOX_BUILD_LIMIT"
-	// CodeSandboxImageNotReady refuses a create from a build that has not
-	// succeeded.
-	CodeSandboxImageNotReady = "SANDBOX_IMAGE_NOT_READY"
+	// CodeSandboxImportCapacity refuses an import that would take every
+	// workspace's imported images together past the platform budget (w5/m383).
+	CodeSandboxImportCapacity = "SANDBOX_IMPORT_CAPACITY"
+	// CodeBuildNotSucceeded is Render's 409 for a create from a build, or a
+	// name, with no succeeded import.
+	CodeBuildNotSucceeded = "build_not_succeeded"
 	// CodeSandboxImagesUnavailable is the 503 of a deployment with no sandbox
 	// registry or store to keep imported images in.
 	CodeSandboxImagesUnavailable = "SANDBOX_IMAGES_UNAVAILABLE"
@@ -106,6 +110,10 @@ const (
 var linuxAMD64 = v1.Platform{OS: "linux", Architecture: "amd64"}
 
 var buildStatuses = []string{store.SandboxBuildPending, store.SandboxBuildRunning, store.SandboxBuildSucceeded, store.SandboxBuildFailed}
+
+// BuildStatuses is the build list's status filter vocabulary, for refusals
+// the REST gate answers before the Service (w8/312).
+func BuildStatuses() []string { return slices.Clone(buildStatuses) }
 
 // Build is Render's sandbox build, the shape of the pinned OpenAPI schema.
 type Build struct {
@@ -183,6 +191,14 @@ type Images struct {
 	Registry RegistryConfig
 	// MaxBytes caps an image's compressed size (0: defaultMaxImageBytes).
 	MaxBytes int64
+	// PlatformBudgetBytes bounds the imported bytes of every workspace
+	// together, below the shared registry's volume
+	// (BEX_SANDBOX_IMPORT_PLATFORM_BUDGET_GB; 0: none, w5/m383).
+	PlatformBudgetBytes int64
+	// WorkspaceShareBytes bounds one workspace's imported bytes within that
+	// budget (0: a quarter of it), so one workspace cannot hold the whole
+	// budget against everyone else.
+	WorkspaceShareBytes int64
 	// MaxInFlight caps a group's pending and running imports (0:
 	// defaultImportsInFlight).
 	MaxInFlight int
@@ -196,6 +212,7 @@ type Images struct {
 
 	workersOnce sync.Once
 	workers     chan struct{}
+	tenants     workspaceSlots
 }
 
 // slots bounds the copies one replica runs at once.
@@ -204,11 +221,62 @@ func (im *Images) slots() chan struct{} {
 	return im.workers
 }
 
+// workspaceSlots gives each workspace one import slot per replica (w5/m383).
+// An import takes its workspace's slot before a shared one, so a workspace
+// with a slow source queues behind itself and never holds more than one of
+// the replica's shared slots; other workspaces keep the rest.
+type workspaceSlots struct {
+	mu sync.Mutex
+	m  map[string]*workspaceSlot
+}
+
+type workspaceSlot struct {
+	held  chan struct{}
+	users int // imports holding or waiting for it; the entry goes at zero
+}
+
+// acquire waits for workspace's slot until ctx is done, and returns its
+// release.
+func (w *workspaceSlots) acquire(ctx context.Context, workspace string) (func(), bool) {
+	w.mu.Lock()
+	if w.m == nil {
+		w.m = map[string]*workspaceSlot{}
+	}
+	slot := w.m[workspace]
+	if slot == nil {
+		slot = &workspaceSlot{held: make(chan struct{}, 1)}
+		w.m[workspace] = slot
+	}
+	slot.users++
+	w.mu.Unlock()
+	leave := func() {
+		w.mu.Lock()
+		if slot.users--; slot.users == 0 {
+			delete(w.m, workspace)
+		}
+		w.mu.Unlock()
+	}
+	select {
+	case slot.held <- struct{}{}:
+		return func() { <-slot.held; leave() }, true
+	case <-ctx.Done():
+		leave()
+		return nil, false
+	}
+}
+
 func (im *Images) maxBytes() int64 {
 	if im.MaxBytes > 0 {
 		return im.MaxBytes
 	}
 	return defaultMaxImageBytes
+}
+
+func (im *Images) workspaceShare() int64 {
+	if im.WorkspaceShareBytes > 0 {
+		return im.WorkspaceShareBytes
+	}
+	return im.PlatformBudgetBytes / 4
 }
 
 func (im *Images) maxInFlight() int {
@@ -233,6 +301,42 @@ func (im *Images) sourceTransport() http.RoundTripper {
 		return im.SourceTransport
 	}
 	return guardedSourceTransport
+}
+
+// sameRegistryHost reports whether a source registry is the sandbox
+// registry: the same host, ignoring case, on the same port or with either
+// port left implicit.
+func sameRegistryHost(source, sink string) bool {
+	split := func(h string) (host, port string) {
+		if hp, p, err := net.SplitHostPort(h); err == nil {
+			h, port = hp, p
+		}
+		return strings.ToLower(strings.TrimSuffix(h, ".")), port
+	}
+	sourceHost, sourcePort := split(source)
+	sinkHost, sinkPort := split(sink)
+	return sourceHost == sinkHost && (sourcePort == sinkPort || sourcePort == "" || sinkPort == "")
+}
+
+// foreignBlob names the first blob of img the sandbox registry would not hold
+// on its own (w5/m383): one with download URLs, which containerd on the
+// sandbox node tries first, over the host network; or a non-distributable
+// layer, which the write leaves out of the registry while the manifest still
+// names it. "" when there is none.
+func foreignBlob(img v1.Image) (string, error) {
+	manifest, err := img.Manifest()
+	if err != nil {
+		return "", err
+	}
+	if len(manifest.Config.URLs) > 0 {
+		return manifest.Config.Digest.String(), nil
+	}
+	for _, l := range manifest.Layers {
+		if len(l.URLs) > 0 || !l.MediaType.IsDistributable() {
+			return l.Digest.String(), nil
+		}
+	}
+	return "", nil
 }
 
 // registryHost is the sandbox registry's host and whether it speaks plain HTTP.
@@ -343,6 +447,7 @@ func imageBytes(img v1.Image) (int64, error) {
 type resolvedSource struct {
 	source BuildSource
 	ref    name.Digest // repository@digest (an index's digest, when it is one)
+	image  v1.Hash     // the linux/amd64 image checked here, which the copy must write
 	size   int64       // the linux/amd64 image's compressed size, as its manifest declares
 }
 
@@ -353,6 +458,17 @@ func (im *Images) resolveSource(ctx context.Context, ref string, cred *RegistryC
 	if err != nil {
 		return resolvedSource{}, core.NewBadRequestError(CodeSandboxImageInvalid,
 			fmt.Sprintf("sourceImage %q is not an image reference: %v", ref, err), map[string]any{"field": "sourceImage"})
+	}
+	// Never the sandbox registry itself (w5/m383): for a source on the sink's
+	// host the write mounts blobs across repositories with the importer's
+	// credential. The in-cluster registry is also behind the source dial
+	// guard; this names the refusal wherever the registry is reachable.
+	// (Zot's dedupe linking a mounted digest across repositories is closed
+	// by uploadOnly, w5/192.)
+	if sink, _, err := im.registryHost(); err == nil && sameRegistryHost(parsed.Context().RegistryStr(), sink) {
+		return resolvedSource{}, core.NewBadRequestError(CodeSandboxImageInvalid,
+			fmt.Sprintf("sourceImage %s is in the sandbox registry itself; import it from the registry it was published to", parsed),
+			map[string]any{"field": "sourceImage"})
 	}
 	unavailable := func(err error) error {
 		return core.NewBadRequestError(CodeSandboxImageUnavailable,
@@ -386,6 +502,20 @@ func (im *Images) resolveSource(ctx context.Context, ref string, cred *RegistryC
 		return resolvedSource{}, core.NewBadRequestError(CodeSandboxImageInvalid,
 			fmt.Sprintf("%s has an unreadable manifest: %v", parsed, err), map[string]any{"field": "sourceImage"})
 	}
+	blob, err := foreignBlob(img)
+	if err != nil {
+		return resolvedSource{}, core.NewBadRequestError(CodeSandboxImageInvalid,
+			fmt.Sprintf("%s has an unreadable manifest: %v", parsed, err), map[string]any{"field": "sourceImage"})
+	}
+	if blob != "" {
+		return resolvedSource{}, core.NewBadRequestError(CodeSandboxImageInvalid,
+			fmt.Sprintf("%s has a blob bex would not hold (%s carries download URLs or is non-distributable); sandbox images must hold every layer", parsed, blob),
+			map[string]any{"field": "sourceImage", "layer": blob})
+	}
+	checked, err := img.Digest()
+	if err != nil {
+		return resolvedSource{}, unavailable(err)
+	}
 	if size > im.maxBytes() {
 		return resolvedSource{}, core.NewBadRequestError(CodeSandboxImageInvalid,
 			fmt.Sprintf("%s is %s compressed; sandbox images are limited to %s", parsed, formatGB(size), formatGB(im.maxBytes())),
@@ -398,6 +528,7 @@ func (im *Images) resolveSource(ctx context.Context, ref string, cred *RegistryC
 	return resolvedSource{
 		source: BuildSource{Repository: registry, Image: parsed.Context().RepositoryStr(), Reference: parsed.Identifier()},
 		ref:    parsed.Context().Digest(desc.Digest.String()),
+		image:  checked,
 		size:   size,
 	}, nil
 }
@@ -514,11 +645,26 @@ func (s *Service) ImportImage(ctx context.Context, groupID string, req ImportIma
 		WorkspaceID: group.WorkspaceID, SandboxGroupID: group.ID, Name: req.Name,
 		SourceRepository: src.source.Repository, SourceImage: src.source.Image, SourceReference: src.source.Reference,
 		SourceDigest: src.ref.DigestStr(), SizeBytes: src.size, MaxStorageBytes: s.MaxStorageBytes,
+		PlatformBudgetBytes: s.Images.PlatformBudgetBytes, WorkspaceShareBytes: s.Images.workspaceShare(),
 	}, s.Images.maxInFlight())
 	var limit *store.SandboxStorageLimitError
 	switch {
 	case errors.As(err, &limit):
 		return Build{}, s.storageLimitError(limit.UsedBytes, src.size, "import")
+	case errors.Is(err, store.ErrSandboxImportBudget):
+		// Counted: a registry near its platform budget is what operators most
+		// need to see. The platform's used bytes cover other tenants, so the
+		// refusal names only this image's size.
+		s.Metrics.observeRefusal("platform", "import")
+		return Build{}, core.NewTooManyRequestsError(CodeSandboxImportCapacity,
+			"the sandbox registry has no room for this image right now; try again later, or delete images you no longer need",
+			map[string]any{"sizeBytes": src.size})
+	case errors.Is(err, store.ErrSandboxImportShare):
+		s.Metrics.observeRefusal("platform", "import")
+		share := s.Images.workspaceShare()
+		return Build{}, core.NewTooManyRequestsError(CodeSandboxImportCapacity,
+			fmt.Sprintf("this workspace's imported images already hold its %s share of the sandbox registry; delete images you no longer need, then import again", formatGB(share)),
+			map[string]any{"sizeBytes": src.size, "limitBytes": share})
 	case errors.Is(err, store.ErrSandboxBuildLimit):
 		return Build{}, core.NewTooManyRequestsError(CodeSandboxBuildLimit,
 			fmt.Sprintf("this sandbox group already has %d images importing, its limit; wait for one to finish, then import again", s.Images.maxInFlight()),
@@ -531,7 +677,7 @@ func (s *Service) ImportImage(ctx context.Context, groupID string, req ImportIma
 	if created {
 		// The request's context ends with the response, so the copy fetches the
 		// pinned digest again on its own; the credential travels in memory only.
-		go s.Images.run(b, src.ref, req.RegistryCredential)
+		go s.Images.run(b, src.ref, src.image, req.RegistryCredential)
 	}
 	return buildView(b), nil
 }
@@ -707,16 +853,14 @@ func (s *Service) createImage(ctx context.Context, workspace, groupID, buildID, 
 	} else {
 		b, err = s.Images.Store.NewestSucceededSandboxBuild(ctx, workspace, group.ID, buildName)
 		if errors.Is(err, store.ErrNotFound) {
-			return "", core.NewNotFoundError(CodeBuildNotFound,
-				fmt.Sprintf("sandbox group %s has no image named %q that has finished importing", group.ID, buildName),
-				map[string]any{"buildName": buildName, "sandboxGroupId": group.ID})
+			return "", s.noSucceededBuild(ctx, workspace, group.ID, buildName)
 		}
 	}
 	if err != nil {
 		return "", store.MapError(err)
 	}
 	if b.Status != store.SandboxBuildSucceeded || b.ImageDigest == nil {
-		return "", core.NewBadRequestError(CodeSandboxImageNotReady,
+		return "", core.NewConflictError(CodeBuildNotSucceeded,
 			fmt.Sprintf("image %s is %s; a sandbox can start from it once it has succeeded", b.ID, b.Status),
 			map[string]any{"buildId": b.ID, "status": b.Status})
 	}
@@ -725,6 +869,24 @@ func (s *Service) createImage(ctx context.Context, workspace, groupID, buildID, 
 		return "", err
 	}
 	return repo.Digest(*b.ImageDigest).String(), nil
+}
+
+// noSucceededBuild is Render's answer for a buildName with no succeeded build:
+// 409 build_not_succeeded when the group has builds of that name, and 404
+// build_not_found only when it has none (w8/314).
+func (s *Service) noSucceededBuild(ctx context.Context, workspace, groupID, name string) error {
+	builds, err := s.Images.Store.SandboxBuilds(ctx, workspace, groupID, name, nil)
+	if err != nil {
+		return store.MapError(err)
+	}
+	if len(builds) == 0 {
+		return core.NewNotFoundError(CodeBuildNotFound, fmt.Sprintf("sandbox group %s has no image named %q", groupID, name),
+			map[string]any{"buildName": name, "sandboxGroupId": groupID})
+	}
+	newest := builds[0]
+	return core.NewConflictError(CodeBuildNotSucceeded,
+		fmt.Sprintf("no image named %q in sandbox group %s has succeeded; the newest, %s, is %s", name, groupID, newest.ID, newest.Status),
+		map[string]any{"buildName": name, "sandboxGroupId": groupID, "buildId": newest.ID, "status": newest.Status})
 }
 
 // importedImage matches the image a sandbox started from an import runs, so a
@@ -742,13 +904,19 @@ func displayImage(uri string) string {
 }
 
 // run copies one build's image into the sandbox registry and settles it. A
-// burst of imports queues for a worker slot as pending; the heartbeat keeps a
-// queued or running build fresh for the sweeper, and stops the import when the
-// sweeper (or anything else) has settled the build already.
-func (im *Images) run(b store.SandboxBuild, ref name.Digest, cred *RegistryCredential) {
+// burst of imports queues, as pending, for its workspace's slot and then a
+// worker slot; the heartbeat keeps a queued or running build fresh for the
+// sweeper, and stops the import when the sweeper (or anything else) has
+// settled the build already.
+func (im *Images) run(b store.SandboxBuild, ref name.Digest, image v1.Hash, cred *RegistryCredential) {
 	alive, stop := context.WithCancel(context.Background())
 	defer stop()
 	go im.heartbeat(alive, stop, b.ID)
+	release, ok := im.tenants.acquire(alive, b.WorkspaceID)
+	if !ok {
+		return
+	}
+	defer release()
 	select {
 	case im.slots() <- struct{}{}:
 		defer func() { <-im.slots() }()
@@ -763,7 +931,7 @@ func (im *Images) run(b store.SandboxBuild, ref name.Digest, cred *RegistryCrede
 		}
 		return
 	}
-	digest, size, err := im.copy(ctx, b, ref, cred)
+	digest, size, err := im.copy(ctx, b, ref, image, cred)
 	// The settle must land even when the copy used up the import's deadline.
 	settle, done := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer done()
@@ -875,7 +1043,10 @@ func buildFailureCode(err error) string {
 
 // copy writes the linux/amd64 image at ref to the build's repository under
 // imageTag and returns the stored manifest's digest and its compressed size.
-func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Digest, cred *RegistryCredential) (string, int64, error) {
+// It writes only image, the one resolveSource checked: a registry labels a
+// manifest by header, so the same bytes could read as an image then and as an
+// index now and pick another child (w5/m383).
+func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Digest, image v1.Hash, cred *RegistryCredential) (string, int64, error) {
 	repo, err := im.imageRepository(b.WorkspaceID, b.ID)
 	if err != nil {
 		return "", 0, err
@@ -888,6 +1059,9 @@ func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Diges
 	if err != nil {
 		return "", 0, sourceError{err}
 	}
+	if got, err := img.Digest(); err != nil || got != image {
+		return "", 0, sourceError{fmt.Errorf("the source served image %s, not the %s it was checked as", got, image)}
+	}
 	user, password, err := im.Registry.credentials(ctx)
 	if err != nil {
 		return "", 0, fmt.Errorf("the sandbox registry credential is unavailable: %w", err)
@@ -896,7 +1070,7 @@ func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Diges
 	if im.Registry.HTTP != nil && im.Registry.HTTP.Transport != nil {
 		opts = append(opts, remote.WithTransport(im.Registry.HTTP.Transport))
 	}
-	if err := remote.Write(repo.Tag(imageTag), img, opts...); err != nil {
+	if err := remote.Write(repo.Tag(imageTag), uploadOnly{img}, opts...); err != nil {
 		// The source image is lazy: its layers are read during the write, so
 		// a refusal from the source registry surfaces here too.
 		if sink, _, herr := im.registryHost(); herr == nil && fromOtherHost(err, sink) {
@@ -910,6 +1084,33 @@ func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Diges
 	}
 	size, err := imageBytes(img)
 	return digest.String(), size, err
+}
+
+// uploadOnly is an image whose layers the write uploads, never mounts
+// (w5/192). go-containerregistry asks the sink to mount every layer it read
+// from a source (?mount=<digest>&from=…&origin=…), whatever the source
+// registry, and Zot links a mounted digest from any repository the pusher can
+// read, whatever the from (verified against v2.1.22; the importer reads every
+// workspace's). An untrusted source could then name another workspace's layer
+// digest and have it linked into its own image. A plain layer is uploaded
+// from the bytes the source actually served. (A HEAD links nothing while
+// storage.hydrateBlobOnRead stays off, which the operator pins.) The cost: a
+// layer the registry already holds is sent again rather than linked.
+type uploadOnly struct{ v1.Image }
+
+func (i uploadOnly) Layers() ([]v1.Layer, error) {
+	layers, err := i.Image.Layers()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]v1.Layer, len(layers))
+	for n, l := range layers {
+		if mountable, ok := l.(*remote.MountableLayer); ok {
+			l = mountable.Layer
+		}
+		out[n] = l
+	}
+	return out, nil
 }
 
 // RunImageSweeper fails, every minute, the imports whose bex-api replica

@@ -104,14 +104,15 @@ Run the pre-push gates against what is about to be pushed. The backend suite can
 bash scripts/ship-gates.sh origin/main
 ```
 
-They report main's CI status and gate this push's own code:
+They report main's CI status and gate this push's own code. The code gates run in a detached worktree at `HEAD`, so uncommitted or in-progress edits neither break nor rescue the commit being pushed (the first run in a checkout builds that worktree from scratch):
 
-- **Main is red: a warning, never a stop** (user decision 2026-10-21; see `AGENTS.md` Rules). When the latest completed `deploy (bex via Argo)` run on `main` failed, the gate names it and still exits 0. Handle it this way, and never wait:
+- **Main is red: a warning, never a stop** (user decision 2026-10-21; see `AGENTS.md` Rules). When the newest completed run on `main` of `deploy (bex via Argo)` or of a test suite (`test (backend)`, `test (operator)`, `test (dashboard)`, `test (OpenSandbox controller patches)`, each run on every push touching its inputs) failed, the gate names it and still exits 0. Handle it this way, and never wait:
   1. **Fix CI first if you can.** Pause the work in hand, diagnose the red run (`gh run view <id> --log-failed`), and make the smallest correct fix. Commit it alone as `fix(ci): …` saying it fixes red main, push it with `--fixes-red-main`, then resume and ship the paused work.
   2. **If it cannot be fixed now, ship anyway.** That covers a fix that needs credentials, runner or host access, or a user decision; a red signal that is stale (already fixed, later runs cancelled); or an infra flake (rerun the failed jobs in the background, but do not wait for them). Say in the report what was red and what you tried.
   3. **Never wait for CI and never hold commits locally because main is red.**
 - **The real-DB backend suite fails: a stop.** For a push touching `lego/backend/**`, `lego/types/**` or the seeded authz model (markdown excluded), the gate brings up the CI-pinned Postgres + OpenFGA + OpenBao (`scripts/backend-test-deps.sh`) and runs `go test -p 1 ./...` with `BEX_TEST_REQUIRE_DEPS=1`. Locally those tests otherwise skip, and only CI ran them. A failure here is this push's own defect: fix it properly, commit the fix, and run the gate again before pushing. If it cannot be fixed in this session, stop and report it.
 - **The dashboard checks fail: a stop.** For a push touching `dashboard/**` (markdown excluded), the gate runs the dashboard's own CI checks, `yarn lint` (typecheck, eslint, knip) and `yarn test`, in about two minutes. A failure here is this push's own defect, handled like the backend suite (w6/m159).
+- **A suite's trigger paths miss a file its tests read: a stop.** For a push touching a test source, a `*-test.yml` workflow or `scripts/ci_test_inputs.py`, the gate checks that each suite's `paths` (push and pull_request alike) list every file outside its tree that its tests read. Add the missing path to both lists, or to `IGNORED` in `scripts/ci_test_inputs.py` with the reason when the test only names it in a fixture.
 
 ```bash
 git push origin main

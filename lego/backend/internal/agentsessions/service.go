@@ -51,6 +51,9 @@ type Store interface {
 	AbandonAgentDispatch(context.Context, store.AgentDispatch, time.Time, store.AgentSessionFailure) (store.TerminalTurnFact, error)
 	DeferAgentDispatchCleanup(context.Context, store.AgentDispatch, time.Time) error
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
+	// SetAgentSessionAppliedSecrets records the names (and sources) the
+	// latest dispatch applied (ADR098 D9).
+	SetAgentSessionAppliedSecrets(context.Context, string, []store.AppliedSecret) error
 	ListAgentSessions(context.Context, string, store.AgentSessionListQuery) ([]store.AgentSession, error)
 	ListAgentSessionsByPhases(context.Context, []string) ([]store.AgentSession, error)
 	SetAgentSessionLifecycle(context.Context, string, string, string, string, bool) (store.AgentSession, error)
@@ -252,6 +255,10 @@ type Service struct {
 	// nil Spend (store off) ⇒ no tier limit and no spend fields.
 	Spend SpendStore
 	Sheet *pricing.Sheet
+	// MetaRouteMaxSessions caps live sessions of the platform-only profiles
+	// across every workspace, because one bex-owned Meta key carries them all
+	// within Meta's per-key rate limit (ADR108); 0 ⇒ defaultMetaRouteMaxSessions.
+	MetaRouteMaxSessions int
 	// ModelCosts reads a session's platform-route model cost per turn
 	// (ADR091 D6). nil (store off) ⇒ every session reads zero cost.
 	ModelCosts ModelCostStore
@@ -270,6 +277,9 @@ type Service struct {
 	// AttachmentCopier puts a dispatch's input files into its sandbox; nil ⇒
 	// attachments are unavailable too. Skills are copied the same way.
 	AttachmentCopier AttachmentCopier
+	// SecretScopes stores workspace agent secret scopes and each dispatch's
+	// applied secrets (w9/m385, ADR098 D9). nil ⇒ every secret is explicit.
+	SecretScopes SecretScopeStore
 	// Skills is the ADR099 workspace skills table. nil ⇒ every skill verb
 	// answers AGENT_SKILLS_UNAVAILABLE and dispatches deliver none.
 	Skills SkillStore
@@ -414,24 +424,20 @@ func (s *Service) modelAPIKey(ctx context.Context, workspaceID string) (string, 
 	return data[sandbox.ModelAPIKeyEnvVar], nil
 }
 
-// workspaceHasModelKey reports whether the workspace set its own model key:
-// its recorded flag, else (a key stored before the flag existed) the key in
-// OpenBao.
-func (s *Service) workspaceHasModelKey(ctx context.Context, workspaceID string) (bool, error) {
-	env, err := s.workspaceEnvironment(ctx, workspaceID)
-	if err != nil || env.ModelKeySet() {
-		return err == nil, err
-	}
-	key, err := s.modelAPIKey(ctx, workspaceID)
-	return key != "", err
-}
-
 // requireModelCredential refuses a turn whose agent has no model credential:
 // the platform route serves only the claude profile, so any other profile on a
 // workspace without its own key would start, sit in a sandbox and fail minutes
 // later on the model proxy. Devin likewise refuses to start without a usable
 // model. The refusal names the agent and where to set the key.
 func (s *Service) requireModelCredential(ctx context.Context, workspaceID, agent string, env store.AgentEnvironment) error {
+	if profile, _ := agentsession.LookupAgentProfile(agent); profile.PlatformOnly {
+		if agentsession.PlatformRouteServes(workspaceID, agent) {
+			return nil
+		}
+		return core.NewBadRequestError(AgentUnavailableCode,
+			fmt.Sprintf("the %s agent is not available in this workspace", agent),
+			map[string]any{"field": "agentConfig.agent", "agent": agent})
+	}
 	if env.ModelKeySet() || agentsession.PlatformRouteServes(workspaceID, agent) || s.ModelKeys == nil {
 		return nil
 	}
@@ -551,6 +557,11 @@ func (s *Service) resolveCreateModel(ctx context.Context, workspaceID string, re
 	if err != nil {
 		return env, nil, err
 	}
+	if !agentEnabled(env, req.AgentConfig.Agent) {
+		return env, nil, core.NewBadRequestError(AgentDisabledCode,
+			fmt.Sprintf("the %s agent is turned off in this workspace; a workspace admin can turn it on in Settings → Agents", req.AgentConfig.Agent),
+			map[string]any{"field": "agentConfig.agent", "agent": req.AgentConfig.Agent})
+	}
 	if err := s.requireModelCredential(ctx, workspaceID, req.AgentConfig.Agent, env); err != nil {
 		return env, nil, err
 	}
@@ -627,12 +638,15 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
-	ceiling, err := parseSessionCeiling(req.MaxSpendUSD, sessionMetered(workspaceID, req.AgentConfig.Agent, env.ModelKeySet()))
+	ceiling, err := parseSessionCeiling(req.MaxSpendUSD, agentsession.PlatformRouteMeters(workspaceID, req.AgentConfig.Agent, env.ModelKeySet()))
 	if err != nil {
 		return View{}, err
 	}
 	admission, err := s.trustAdmissionFor(ctx, workspaceID, req.AgentConfig.Agent, env.ModelKeySet())
 	if err != nil {
+		return View{}, err
+	}
+	if err := s.enforceMetaRouteCapacity(ctx, req.AgentConfig.Agent, ""); err != nil {
 		return View{}, err
 	}
 	var parent *childContext
@@ -798,13 +812,17 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	}
 	// Secrets are resolved per dispatch (ADR098 D5), so a rotated workspace
 	// secret applies from the next turn and a deleted one fails it.
-	if spec.env, err = s.withSessionSecrets(ctx, record, spec.env); err != nil {
+	// Scoped secrets (ADR098 D9) are listed per dispatch as well, so a new
+	// workspace secret reaches the next turn of every session.
+	var applied []store.AppliedSecret
+	if spec.env, applied, err = s.withSessionSecrets(ctx, record, spec.env); err != nil {
 		failure := store.AgentSessionFailure{Reason: "the session's secrets could not be read"}
 		if errors.Is(err, errSessionSecretUnavailable) {
 			failure = secretUnavailableFailure
 		}
 		return s.failDispatch(ctx, record, spec.turn, failure, err)
 	}
+	s.recordAppliedSecrets(ctx, record, applied)
 	provisionStart := time.Now()
 	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, spec.template, record.ID, record.Repo, record.Branch, spec.modelEndpoint, spec.modelAPIKey, spec.egress, spec.env)
 	if err != nil {
@@ -904,8 +922,6 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if !ok {
 		return Capabilities{}, core.ErrForbidden
 	}
-	caps.Agents = agentProfiles()
-
 	// A workspace on the platform model route (ADR090) is ready through the
 	// platform key or, once it set its own, through that. Any other workspace
 	// is ready through its recorded key flag, else its key in OpenBao, read
@@ -913,12 +929,21 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	// profile, so each profile reports its own readiness: the others need the
 	// workspace's key even on a routed workspace.
 	var ownKey bool
+	var env store.AgentEnvironment
 	var connection github.Connection
 	var group errgroup.Group
 	routed := agentsession.PlatformModelKeyReady(workspaceID, false)
 	group.Go(func() error {
+		// The environment decides which agents are offered (w7/m392), so its
+		// read fails the call. The workspace has its own key per the recorded
+		// flag, else (a key stored before the flag existed) the key in OpenBao.
 		var err error
-		ownKey, err = s.workspaceHasModelKey(ctx, workspaceID)
+		if env, err = s.workspaceEnvironment(ctx, workspaceID); err != nil || env.ModelKeySet() {
+			ownKey = err == nil
+			return err
+		}
+		key, err := s.modelAPIKey(ctx, workspaceID)
+		ownKey = key != ""
 		if err != nil && routed {
 			// The routed profile is ready without the key store; only the
 			// others' readiness is unknown, and reported as not ready.
@@ -940,8 +965,14 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if err := group.Wait(); err != nil {
 		return Capabilities{}, err
 	}
+	// Only the agents the workspace's admins left on that it can also run.
+	caps.Agents = slices.DeleteFunc(agentProfiles(), func(profile AgentProfile) bool {
+		return !agentEnabled(env, profile.ID) || !agentsession.ProfileServed(workspaceID, profile.ID)
+	})
 	caps.ModelKeyReady = ownKey || routed
 	for i := range caps.Agents {
+		// A platform-only agent is listed only where its route serves it, so the
+		// workspace key never decides its readiness.
 		caps.Agents[i].ModelKeyReady = ownKey || agentsession.PlatformRouteServes(workspaceID, caps.Agents[i].ID)
 	}
 	if s.GitHub != nil {
@@ -1407,7 +1438,7 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	// The BYO flag only matters where the trust tier counts platform-route
 	// sessions; read the environment for it there alone.
 	byoKey := false
-	if s.platformCounted(record.WorkspaceID, config.Agent) {
+	if s.platformCounted(record.WorkspaceID, config.Agent, false) {
 		workspaceEnv, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
 		if err != nil {
 			return View{}, err
@@ -1415,6 +1446,9 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 		byoKey = workspaceEnv.ModelKeySet()
 	}
 	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent, byoKey); err != nil {
+		return View{}, err
+	}
+	if err := s.enforceMetaRouteCapacity(ctx, config.Agent, record.ID); err != nil {
 		return View{}, err
 	}
 	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
@@ -1459,18 +1493,7 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 	if record.Phase == PhaseCanceled {
 		return s.toView(record) // idempotent public cancel
 	}
-	record, err = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseCanceling, "canceling", false)
-	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
-	}
-	// ADR102 D6: with the parent canceling it can start no new child, so the
-	// descendants listed now are the whole set. They are canceled before the
-	// parent finishes, so a failure leaves the parent canceling and a retry
-	// of this verb converges the rest.
-	if err := s.cancelDescendants(ctx, record); err != nil {
-		return View{}, err
-	}
-	record, err = s.finishCancel(ctx, record)
+	record, err = s.cancelTree(ctx, record, true)
 	if err != nil {
 		return View{}, err
 	}
@@ -1800,6 +1823,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent, workspaceEnv.ModelKeySet()); err != nil {
 		return View{}, err
 	}
+	if err := s.enforceMetaRouteCapacity(ctx, config.Agent, record.ID); err != nil {
+		return View{}, err
+	}
 	if config.Model, err = sessionModel(record.WorkspaceID, config, workspaceEnv, false); err != nil {
 		return View{}, err
 	}
@@ -2044,12 +2070,20 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
-		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AutomationID: record.AutomationID, CreatedBy: record.CreatedBy,
+		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AppliedSecrets: appliedSecretsOf(record.AppliedSecrets), AutomationID: record.AutomationID, CreatedBy: record.CreatedBy,
 		ParentSessionID: record.ParentSessionID, RootSessionID: record.RootSessionID, Depth: record.Depth}
 	if record.MaxSpendMicroUSD != nil {
 		view.MaxSpendUSD = microUSDDecimal(*record.MaxSpendMicroUSD)
 	}
 	return view, nil
+}
+
+func appliedSecretsOf(rows []store.AppliedSecret) []AppliedSecret {
+	out := make([]AppliedSecret, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, AppliedSecret{Name: row.Name, Source: row.Source})
+	}
+	return out
 }
 
 func mapStoreError(id string, err error) error {
@@ -2061,6 +2095,11 @@ func mapStoreError(id string, err error) error {
 			params = map[string]any{"id": id}
 		}
 		return core.NewConflictError(codePullRequestOwned, "another live session already works on this pull request", params)
+	}
+	if errors.Is(err, store.ErrAgentSessionBranchInUse) {
+		return core.NewConflictError(BranchInUseCode,
+			"another session is already working on this branch; send that session a message, or name another bex-agent/ branch",
+			map[string]any{"field": "branch"})
 	}
 	if errors.Is(err, store.ErrAgentSessionPromptQuota) {
 		return core.NewConflictError("AGENT_SESSION_PROMPT_QUOTA", "agent session prompt history has reached its byte limit", map[string]any{"id": id, "maxBytes": store.MaxAgentSessionPromptBytes})

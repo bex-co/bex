@@ -176,3 +176,28 @@ func TestUsageReporterDropsWhenTheQueueIsFull(t *testing.T) {
 		t.Fatal("a full queue must drop loudly, never block the relay")
 	}
 }
+
+// Meta's Responses API (ADR108) reports usage once, on the terminal event of
+// a stream or as the response's usage; input_tokens includes the cached
+// tokens, which the meter records as cache reads.
+func TestUsageMeterReadsResponsesUsage(t *testing.T) {
+	m := newUsageMeter("text/event-stream")
+	_, _ = m.Write([]byte(`data: {"type":"response.created","response":{"usage":null}}` + "\n\n" +
+		`data: {"type":"response.output_text.delta","delta":"usage is not here"}` + "\n\n" +
+		`data: {"type":"response.completed","response":{"object":"response","usage":{"input_tokens":120,"output_tokens":9,"input_tokens_details":{"cached_tokens":100}}}}` + "\n\n"))
+	tokens, cost, ok, _ := m.result()
+	if !ok || tokens != [4]int64{20, 9, 100, 0} || cost != nil {
+		t.Fatalf("stream tokens = %v cost = %v ok=%v, want [20 9 100 0] with no cost", tokens, cost, ok)
+	}
+	j := newUsageMeter("application/json")
+	_, _ = j.Write([]byte(`{"object":"response","usage":{"input_tokens":5,"output_tokens":2}}`))
+	if tokens, _, ok, _ := j.result(); !ok || tokens != [4]int64{5, 2, 0, 0} {
+		t.Fatalf("json tokens = %v ok=%v, want [5 2 0 0]", tokens, ok)
+	}
+	// A cached count above the input total is clamped, never negative input.
+	c := newUsageMeter("text/event-stream")
+	_, _ = c.Write([]byte(`data: {"type":"response.completed","response":{"usage":{"input_tokens":3,"output_tokens":1,"input_tokens_details":{"cached_tokens":9}}}}` + "\n\n"))
+	if tokens, _, ok, _ := c.result(); !ok || tokens != [4]int64{0, 1, 3, 0} {
+		t.Fatalf("clamped tokens = %v ok=%v, want [0 1 3 0]", tokens, ok)
+	}
+}

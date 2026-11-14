@@ -469,7 +469,7 @@ func violations(err error) []string {
 // pointer) for each violation the Allowlist does not excuse. Other requests
 // pass through untouched. The response streams to the caller as it is
 // written; only a copy is kept for validation.
-func Wrap(t testing.TB, next http.Handler, match Matcher) http.Handler {
+func Wrap(t testing.TB, next http.Handler, match Matcher, unconfigured ...Source) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		route := match(r)
 		if route == nil {
@@ -486,7 +486,7 @@ func Wrap(t testing.TB, next http.Handler, match Matcher) http.Handler {
 			status = http.StatusOK
 		}
 		opID := route.Operation.OperationID
-		if errs := Unallowed(opID, Validate(route, status, tee.Header(), tee.body.Bytes())); len(errs) > 0 {
+		if errs := Unallowed(opID, Validate(route, status, tee.Header(), tee.body.Bytes()), unconfigured...); len(errs) > 0 {
 			t.Errorf("Render response conformance: %s %s => %d (operationId=%s)\n"+
 				"Fix the response to match the pinned Render schema (rendertest.Allowlist only shrinks).\n  %s",
 				r.Method, r.URL.Path, status, opID, strings.Join(errs, "\n  "))

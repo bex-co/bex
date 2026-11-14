@@ -181,7 +181,19 @@
     "modelKeySet": false,
     "agentModelMonthlySpendCapUsd": 50,
     "agentModelSpendMonthToDateUsd": 3.25,
-    "trustTier": "tier-1"
+    "trustTier": "tier-1",
+    "enabledAgents": [
+      "claude",
+      "codex",
+      "gemini"
+    ],
+    "agentDataUse": [
+      {
+        "agent": "muse",
+        "acknowledgedAt": null,
+        "acknowledgedBy": null
+      }
+    ]
   },
   "capabilities": {
     "ready": true,

@@ -615,7 +615,7 @@ func activatePendingProjectionReferences(a *appv1alpha1.App) {
 		a.Spec.EnvFromSecret = name
 	}
 	if name := a.Annotations[appv1alpha1.PendingFilesSecretAnnotation]; name != "" {
-		a.Spec.FilesFromSecrets = core.AppendListValue(a.Spec.FilesFromSecrets, name)
+		a.Spec.FilesFromSecrets = core.AddString(a.Spec.FilesFromSecrets, name)
 	}
 	delete(a.Annotations, appv1alpha1.PendingEnvSecretAnnotation)
 	delete(a.Annotations, appv1alpha1.PendingFilesSecretAnnotation)

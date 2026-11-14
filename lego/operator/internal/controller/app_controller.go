@@ -514,6 +514,9 @@ var traefikHTTPMiddlewareGVK = schema.GroupVersionKind{Group: "traefik.io", Vers
 
 const traefikRouterMiddlewaresAnnotation = "traefik.ingress.kubernetes.io/router.middlewares"
 
+// traefikPluginKey is where a Traefik Middleware's spec names a local plugin.
+const traefikPluginKey = "plugin"
+
 // legacyTraefikRouterMiddlewaresAnnotation is the pre-m30 nonstandard key. It is
 // deleted on every Ingress write: Traefik's Kubernetes Ingress provider only
 // reads the traefik.ingress.kubernetes.io namespace.
@@ -3339,9 +3342,19 @@ func (r *AppReconciler) reconcileIngressWithMiddlewares(ctx context.Context, app
 	if err != nil {
 		return reasonMiddlewareFailed, err
 	}
+	originServer, err := r.reconcileOwnedMiddleware(ctx, app, app.Name+"-origin-server", originServerSpec,
+		len(hosts) > 0 && app.Spec.Type != appv1alpha1.TypeStaticSite)
+	if err != nil {
+		return reasonMiddlewareFailed, err
+	}
 	middlewareNames := append(mwNames, compression...)
 	if wsMeter != "" {
 		middlewareNames = append(middlewareNames, wsMeter)
+	}
+	// Last: a compiled middleware after it would see its interpreted writer
+	// without Flush (originServerSpec).
+	if originServer != "" {
+		middlewareNames = append(middlewareNames, originServer)
 	}
 	if err := r.reconcileIngress(ctx, app, hosts, svc, port, middlewareNames); err != nil {
 		return "IngressFailed", err
@@ -4314,21 +4327,37 @@ func appIDOrName(app *appv1alpha1.App) string {
 }
 
 func (r *AppReconciler) reconcileWebsocketMeterMiddleware(ctx context.Context, app *appv1alpha1.App, enabled bool) (string, error) {
-	middlewareName := app.Name + "-ws-egress"
-	if !enabled {
-		if err := deleteOwned(ctx, r.Client, app, traefikHTTPMiddlewareGVK, middlewareName); err != nil {
-			return "", err
-		}
-		return "", nil
-	}
-	spec := map[string]any{"plugin": map[string]any{
+	return r.reconcileOwnedMiddleware(ctx, app, app.Name+"-ws-egress", websocketMeterSpec(app), enabled)
+}
+
+// websocketMeterSpec is the WebSocket egress plugin's per-App instance.
+func websocketMeterSpec(app *appv1alpha1.App) map[string]any {
+	return map[string]any{traefikPluginKey: map[string]any{
 		"bexWebsocketEgress": map[string]any{"appId": appIDOrName(app), "metricsAddr": ":9101"},
 	}}
-	if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, middlewareName, spec); err != nil {
+}
+
+// reconcileOwnedMiddleware converges one App-owned Traefik Middleware: spec
+// when enabled, absent otherwise. It returns the name to chain, or "".
+func (r *AppReconciler) reconcileOwnedMiddleware(ctx context.Context, app *appv1alpha1.App, name string, spec map[string]any, enabled bool) (string, error) {
+	if !enabled {
+		return "", deleteOwned(ctx, r.Client, app, traefikHTTPMiddlewareGVK, name)
+	}
+	if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, name, spec); err != nil {
 		return "", err
 	}
-	return middlewareName, nil
+	return name, nil
 }
+
+// originServerSpec is the edge plugin's per-web-service instance (w8/321): it
+// moves the app's Server response header to X-Render-Origin-Server, and names
+// "Render" there when the app sent none, as Render's edge does. Static sites
+// and platform hosts never carry it. The plugin runs interpreted, and Yaegi
+// hides Flush from the compiled proxy behind it, so the plugin flushes
+// streams itself (deploy/gitops/charts/traefik-plugins/clientipheaders).
+var originServerSpec = map[string]any{traefikPluginKey: map[string]any{
+	"bexClientIPHeaders": map[string]any{"originServer": true},
+}}
 
 // reconcileIngress applies one networking.k8s.io Ingress fronting the App's
 // hosts, each with a rule + cert-manager TLS certificate, routed to backend

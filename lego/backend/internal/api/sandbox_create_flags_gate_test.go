@@ -82,7 +82,18 @@ func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing
 		{"sandbox-groups update limit absent", http.MethodPatch, "/v1/sandbox-groups/" + group, `{}`, 400, "SANDBOX_GROUP_LIMIT_INVALID"},
 		{"--image by id", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","buildId":"sbb-` + strings.Repeat("c", 20) + `"}`, 503, "SANDBOX_IMAGES_UNAVAILABLE"},
 		{"--image by name", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","buildName":"python"}`, 503, "SANDBOX_IMAGES_UNAVAILABLE"},
-		{"unknown plan", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","plan":"16c-32g"}`, 400, "SANDBOX_PLAN_INVALID"},
+		{"unknown plan", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","plan":"16c-32g"}`, 400, "invalid_sandbox_plan"},
+		// w8/312: the gate refuses these before the Service, with the Service's
+		// own Render code; another operation's name bound keeps its codeless 400.
+		{"--name over 64 characters", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","name":"` + strings.Repeat("q", 65) + `"}`, 400, "invalid_sandbox_name"},
+		// Only the length bound is the Service's name rule; a name of the wrong
+		// type is a malformed body, as on every other operation.
+		{"name of the wrong type", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","name":123}`, 400, ""},
+		{"null name", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","name":null}`, 400, ""},
+		{"--name sbx- prefix", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","name":"sbx-qa"}`, 400, "invalid_sandbox_name"},
+		{"--timeout 30", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","timeoutSeconds":30}`, 400, "invalid_timeout_seconds"},
+		{"sandbox-groups images list bad status", http.MethodGet, "/v1/sandbox-groups/" + group + "/builds?status=bogus", "", 400, "invalid_status"},
+		{"sandbox-groups images import name over 255", http.MethodPost, "/v1/sandbox-groups/" + group + "/builds", `{"name":"` + strings.Repeat("q", 256) + `","sourceImage":"python:3.13"}`, 400, ""},
 		{"list --group", http.MethodGet, "/v1/sandboxes?ownerId=tea-a&sandboxGroupId=" + group, "", 503, "SANDBOX_GROUPS_UNAVAILABLE"},
 		{"sandbox-groups list", http.MethodGet, "/v1/sandbox-groups?ownerId=tea-a", "", 503, "SANDBOX_GROUPS_UNAVAILABLE"},
 		{"sandbox-groups create", http.MethodPost, "/v1/sandbox-groups", `{"ownerId":"tea-a","name":"agents"}`, 503, "SANDBOX_GROUPS_UNAVAILABLE"},
@@ -102,12 +113,16 @@ func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing
 			rec := httptest.NewRecorder()
 			handler.ServeHTTP(rec, req)
 			var got struct {
-				Code    string `json:"code"`
-				Message string `json:"message"`
+				Code    string         `json:"code"`
+				Message string         `json:"message"`
+				Params  map[string]any `json:"params"`
 			}
 			_ = json.Unmarshal(rec.Body.Bytes(), &got)
 			if rec.Code != tc.status || got.Code != tc.code {
 				t.Fatalf("= %d %s, want %d %s", rec.Code, rec.Body.String(), tc.status, tc.code)
+			}
+			if supported, _ := got.Params["supported"].([]any); tc.code == sandbox.CodeInvalidBuildStatus && len(supported) != len(sandbox.BuildStatuses()) {
+				t.Fatalf("params = %v, want the supported statuses the Service names", got.Params)
 			}
 			if strings.Contains(got.Message, "unknown field") {
 				t.Fatalf("message leaks the wire key: %q", got.Message)

@@ -93,6 +93,9 @@ query AgentSessionCapabilities($ownerId: String) {
   agentSessionCapabilities(ownerId: $ownerId) {
     enabled
     modelKeyReady
+    agents {
+      id
+    }
     github {
       connected
     }
@@ -142,6 +145,13 @@ query AgentSession($id: String!) {
       kind
       author
       url
+    }
+    # The secrets the latest turn received and why (w9/m385, ADR098 D9):
+    # inline, explicit (picked), repo or workspace. Names only. Like
+    # turnOrigins it stays off the list fragment.
+    appliedSecrets {
+      name
+      source
     }
   }
 }

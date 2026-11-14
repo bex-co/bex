@@ -431,6 +431,9 @@ type Deps struct {
 	// AgentEnvironmentStore persists each workspace's agent environment
 	// (w10/m17); nil ⇒ defaults only.
 	AgentEnvironmentStore agentsessions.EnvironmentStore
+	// AgentMetaRouteMaxSessions caps live muse sessions across every workspace
+	// on the one Meta key (BEX_AGENT_META_ROUTE_MAX_SESSIONS); 0 ⇒ default.
+	AgentMetaRouteMaxSessions int
 	// AgentSpendStore reads the agent-model spend controls (ADR091 D5,
 	// D10.1): the trust tier's session limit and the environment's spend
 	// fields; nil ⇒ neither.
@@ -451,6 +454,9 @@ type Deps struct {
 	// AgentSkillStore is the ADR099 workspace skills table; nil ⇒ skills
 	// unavailable.
 	AgentSkillStore agentsessions.SkillStore
+	// AgentSecretScopeStore holds workspace agent secret scopes (w9/m385,
+	// ADR098 D9); nil ⇒ every agent secret is explicit.
+	AgentSecretScopeStore agentsessions.SecretScopeStore
 	// AgentAutomationStore is the ADR101 agent automations table; nil =>
 	// automations unavailable.
 	AgentAutomationStore agentsessions.AutomationStore
@@ -1102,7 +1108,6 @@ func NewServer(base *core.Base, d Deps) *Server {
 	accountSvc := &accounts.Service{
 		Base: base, Store: d.AccountStore,
 		Workspaces: workspaces.AccountTeardown{Service: workspaceSvc},
-		Members:    members.AccountOffboarder{Store: d.AccountStore, Revoker: d.MembersRevoker, Workspace: workspaceResolver},
 		APIKeys:    accountKeys,
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
 		Settler: d.WorkspaceSettler, Mailer: d.Mailer, Emails: identityEmailLookup{d.Identities},
@@ -1113,6 +1118,40 @@ func NewServer(base *core.Base, d Deps) *Server {
 	environmentsSvc.Services = appsSvc
 	if envGroupApplier != nil {
 		appsSvc.EnvGroupPlacements = envgroups.GroupPlacements(envGroupsSvc)
+	}
+	agentSessionsSvc := &agentsessions.Service{
+		Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
+		Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
+		GatewayURL: d.AgentSessionGatewayURL, APIPublicURL: d.DeployHookBaseURL,
+		GitProxyURL:    d.AgentGitProxyURL,
+		ModelProxyURL:  d.AgentModelProxyURL,
+		EgressProxyURL: d.AgentEgressProxyURL,
+		SSHHost:        sshHost, ModelKeys: d.Secrets, GitHub: gh,
+		MaxLiveSandboxes: d.AgentMaxLiveSandboxesPerWorkspace,
+		TurnTimeout:      d.AgentTurnTimeout,
+		TurnIdleTimeout:  d.AgentTurnIdleTimeout,
+		ToolCallTimeout:  d.AgentToolCallTimeout,
+		Environments:     d.AgentEnvironmentStore,
+		Spend:            d.AgentSpendStore,
+		ModelCosts:       d.AgentModelCostStore,
+		Compute:          d.AgentComputeStore,
+		ModelKeyChanged:  d.AgentModelKeyChanged,
+		RegistryHosts:    d.AgentRegistryHosts,
+		Attachments:      d.AgentAttachments,
+		AttachmentRows:   d.AgentAttachmentStore,
+		AttachmentCopier: agentCopier,
+		Skills:           d.AgentSkillStore,
+		SecretScopes:     d.AgentSecretScopeStore,
+		Automations:      d.AgentAutomationStore,
+		Feedback:         d.AgentFeedbackStore,
+
+		MetaRouteMaxSessions: d.AgentMetaRouteMaxSessions,
+	}
+	// A membership exit ends the sessions the member started (w5/186).
+	memberExit := agentsessions.MemberExit{Service: agentSessionsSvc}
+	membersSvc.Sessions = memberExit
+	accountSvc.Members = members.AccountOffboarder{
+		Store: d.AccountStore, Revoker: d.MembersRevoker, Workspace: workspaceResolver, Sessions: memberExit,
 	}
 	srv := &Server{
 		Apps: appsSvc,
@@ -1132,36 +1171,12 @@ func NewServer(base *core.Base, d Deps) *Server {
 			KeyValueStats:              d.KeyValueStats,
 			DatastoreResource:          d.DatastoreResource,
 		},
-		APIKeys:  apiKeysSvc,
-		Accounts: accountSvc,
-		Router:   &router.Service{Base: base, URL: d.RouterURL, Secret: d.RouterSecret, Members: d.RouterMembers},
-		SSHKeys:  &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
-		Sandbox:  sandboxSvc,
-		AgentSessions: &agentsessions.Service{
-			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
-			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
-			GatewayURL: d.AgentSessionGatewayURL, APIPublicURL: d.DeployHookBaseURL,
-			GitProxyURL:    d.AgentGitProxyURL,
-			ModelProxyURL:  d.AgentModelProxyURL,
-			EgressProxyURL: d.AgentEgressProxyURL,
-			SSHHost:        sshHost, ModelKeys: d.Secrets, GitHub: gh,
-			MaxLiveSandboxes: d.AgentMaxLiveSandboxesPerWorkspace,
-			TurnTimeout:      d.AgentTurnTimeout,
-			TurnIdleTimeout:  d.AgentTurnIdleTimeout,
-			ToolCallTimeout:  d.AgentToolCallTimeout,
-			Environments:     d.AgentEnvironmentStore,
-			Spend:            d.AgentSpendStore,
-			ModelCosts:       d.AgentModelCostStore,
-			Compute:          d.AgentComputeStore,
-			ModelKeyChanged:  d.AgentModelKeyChanged,
-			RegistryHosts:    d.AgentRegistryHosts,
-			Attachments:      d.AgentAttachments,
-			AttachmentRows:   d.AgentAttachmentStore,
-			AttachmentCopier: agentCopier,
-			Skills:           d.AgentSkillStore,
-			Automations:      d.AgentAutomationStore,
-			Feedback:         d.AgentFeedbackStore,
-		},
+		APIKeys:            apiKeysSvc,
+		Accounts:           accountSvc,
+		Router:             &router.Service{Base: base, URL: d.RouterURL, Secret: d.RouterSecret, Members: d.RouterMembers},
+		SSHKeys:            &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
+		Sandbox:            sandboxSvc,
+		AgentSessions:      agentSessionsSvc,
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
 		FreeHours:          newFreeHours(appsSvc, d, notificationsSvc),

@@ -264,7 +264,8 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description: "Shown when the spend fields could not be read",
   },
   "agentEnvironment.spendTierNextCharge": {
-    message: "信任等级 {tier}：智能体模型支出达到 {amount} 时从你的卡中扣款。",
+    message:
+      "信任等级 {tier}：智能体模型支出先用 billing credits 抵扣；credits 抵扣不了的部分达到 {amount} 时从你的卡中扣款。",
     description: "Trust tier with its mid-month charge point (ADR091 D10.1)",
   },
   "agentEnvironment.spendTierMonthEnd": {
@@ -273,7 +274,7 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.spendTierNew": {
     message:
-      "新工作区的 agent 模型花费到 {amount} 时会当场扣款；扣款成功后会话继续运行，上限提高到套餐上限。",
+      "新工作区的智能体模型支出先用 billing credits 抵扣，超出部分达到 {amount} 时会当场扣款；扣款成功后会话继续运行，上限提高到套餐上限。",
     description:
       "Explains T0: charged at its threshold, working while the charge settles (ADR091 D10.2a)",
   },
@@ -368,11 +369,11 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description: "Agent secrets card: save (create or replace) button",
   },
   "agentEnvironment.secrets.help": {
-    message: "保存已有名称会替换其值。会话从下一轮开始读取新值。",
+    message: "保存已有名称会替换其值。会话从下一轮开始使用更改。",
     description: "Agent secrets card help line for admins",
   },
   "agentEnvironment.secrets.readOnly": {
-    message: "只有工作区管理员可以添加或删除智能体密钥。",
+    message: "只有工作区管理员可以添加、更改或删除智能体密钥。",
     description: "Agent secrets card help line for non-admins",
   },
   "agentEnvironment.secrets.saved": {
@@ -418,6 +419,60 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.secrets.saveFailed": {
     message: "无法保存更改，请重试。",
     description: "Generic secret write failure",
+  },
+  "agentEnvironment.secrets.valueKeepPlaceholder": {
+    message: "保留当前值",
+    description:
+      "Agent secrets card: value placeholder when the name is an existing secret (empty keeps its value)",
+  },
+  "agentEnvironment.secrets.editLabel": {
+    message: "编辑 {name}",
+    description:
+      "Accessible label of a secret's edit button (loads it into the form to rotate or rescope)",
+  },
+  "agentEnvironment.secrets.scopeLabel": {
+    message: "范围",
+    description:
+      "Agent secrets card: accessible label of the scope picker (ADR098 D9)",
+  },
+  "agentEnvironment.secrets.scopeWorkspace": {
+    message: "所有会话",
+    description:
+      "Scope picker option: every session in the workspace receives the secret",
+  },
+  "agentEnvironment.secrets.scopeRepo": {
+    message: "单个仓库",
+    description:
+      "Scope picker option: sessions on one repository receive the secret",
+  },
+  "agentEnvironment.secrets.scopeExplicit": {
+    message: "仅在选中时",
+    description:
+      "Scope picker option: only sessions that pick the secret receive it",
+  },
+  "agentEnvironment.secrets.scopeBadgeRepo": {
+    message: "仓库：{repo}",
+    description:
+      "Secret row badge: repo scope, naming the repository (owner/name)",
+  },
+  "agentEnvironment.secrets.repoLabel": {
+    message: "仓库",
+    description:
+      "Agent secrets card: accessible label of the repo scope's repository field",
+  },
+  "agentEnvironment.secrets.repoPlaceholder": {
+    message: "owner/name",
+    description: "Agent secrets card: repository field placeholder",
+  },
+  "agentEnvironment.secrets.repoEmpty": {
+    message: "没有匹配的已连接仓库。",
+    description:
+      "Agent secrets card: repository picker with no matching connected repository",
+  },
+  "agentEnvironment.secrets.repoInvalid": {
+    message: "请以 owner/name 的形式输入仓库。",
+    description:
+      "Repo scope validation error (also AGENT_SECRET_SCOPE_INVALID)",
   },
   "agentEnvironment.skills.title": {
     message: "智能体技能",
@@ -673,6 +728,42 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.skills.saveFailed": {
     message: "无法保存更改，请重试。",
     description: "Generic skill write failure",
+  },
+  "agentEnvironment.agentsTitle": {
+    message: "可用的智能体",
+    description: "Settings \u2192 Agents: availability section heading",
+  },
+  "agentEnvironment.agentsDescription": {
+    message:
+      "选择成员可以用来启动会话的智能体。关闭某个智能体后，正在运行的会话会继续运行。",
+    description: "Settings \u2192 Agents: availability section description",
+  },
+  "agentEnvironment.agentsDataUseNote": {
+    message: "其模型提供方可能使用会话发送的内容训练模型。",
+    description:
+      "Settings \u2192 Agents: note under an agent whose provider trains on session data (Muse Code)",
+  },
+  "agentEnvironment.agentsDataUseTitle": {
+    message: "开启 {agent}？",
+    description:
+      "Confirm title before turning on an agent whose provider trains on session data",
+  },
+  "agentEnvironment.agentsDataUseBody.muse": {
+    message:
+      "该智能体运行在 Meta 的贡献者层级上。Meta 可能使用其会话发送的提示词、代码、文件和上下文以及返回的回复来训练其模型。开启它即表示你作为管理员代表工作区确认这一点。",
+    description: "Confirm body: Muse Code's data-use acknowledgement (ADR108)",
+  },
+  "agentEnvironment.agentsDataUseConfirm": {
+    message: "确认并开启",
+    description: "Confirm button: acknowledge data use and enable the agent",
+  },
+  "agentEnvironment.agentsSaved": {
+    message: "可用的智能体已更新",
+    description: "Toast after an availability change",
+  },
+  "agentEnvironment.agentsSaveFailed": {
+    message: "无法更新可用的智能体，请重试。",
+    description: "Error after a failed availability change",
   },
 };
 

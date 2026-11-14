@@ -202,6 +202,44 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
     expect(screen.queryByText("tighten hero copy")).not.toBeInTheDocument();
   });
 
+  // m92 t002: titles are prose, so search matches a substring, never the
+  // mention picker's subsequence ("typo" is spread in order through the
+  // second title, but not a substring of it).
+  it("matches a case-insensitive substring, not a subsequence", async () => {
+    sessionsState.sessions = [
+      view({
+        id: "as-a",
+        agentConfig: { ...view().agentConfig, task: "find and fix typo" },
+      }),
+      view({
+        id: "as-b",
+        agentConfig: {
+          ...view().agentConfig,
+          task: "today your project opens",
+        },
+      }),
+    ];
+    renderAt("/agents");
+    expect(await screen.findByText("find and fix typo")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /search sessions/i }),
+    );
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "TYPO" },
+    });
+    expect(screen.getByText("find and fix typo")).toBeInTheDocument();
+    expect(
+      screen.queryByText("today your project opens"),
+    ).not.toBeInTheDocument();
+
+    // A blank query lists everything again.
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "   " },
+    });
+    expect(screen.getByText("today your project opens")).toBeInTheDocument();
+  });
+
   it("omits a redundant view-all action on the combined agents page", async () => {
     sessionsState.sessions = [view()];
     renderAt("/agents");

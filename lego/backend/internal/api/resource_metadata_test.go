@@ -253,8 +253,12 @@ func TestResourceRESTMetadataOmitsUnavailableConfigurationAndLegacyOwner(t *test
 		if _, ok := legacyObject["owner"]; ok {
 			t.Fatalf("legacy owner should be omitted: %s", rec.Body.String())
 		}
-		if _, ok := legacyObject["updatedAt"]; ok {
-			t.Fatalf("legacy updatedAt should be omitted: %s", rec.Body.String())
+		// With no updated-at annotation, updatedAt is the object's
+		// managedFields time, which a real API server always records; here it
+		// is the creation time. resourcemeta's tests cover an object with no
+		// usable source at all, which production never serves.
+		if legacyObject["updatedAt"] != legacyObject["createdAt"] || legacyObject["updatedAt"] == nil {
+			t.Fatalf("legacy updatedAt = %v, want its managedFields time %v: %s", legacyObject["updatedAt"], legacyObject["createdAt"], rec.Body.String())
 		}
 	}
 }

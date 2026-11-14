@@ -20,8 +20,6 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -50,6 +48,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/types/credpw"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -290,17 +289,6 @@ func kvSecretEnv(name, secret string) corev1.EnvVar {
 func valkeyMaxmemory(plan tiers.ValkeyTier) string {
 	q := resource.MustParse(plan.Memory)
 	return strconv.FormatInt(q.Value()*4/5, 10)
-}
-
-// generatePassword returns a URL-safe random password for a Valkey instance.
-// RawURLEncoding keeps it free of +, /, and = so it embeds cleanly in a
-// redis://default:<password>@host connection URI without escaping.
-func generatePassword() (string, error) {
-	b := make([]byte, 24)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func keyValueConnectionSecretData(password, internalHost string, public bool, name, domain string) map[string][]byte {
@@ -547,7 +535,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 			if len(seedPassword) > 0 {
 				auth.Data[kvPasswordKey] = bytes.Clone(seedPassword)
 			} else {
-				password, err := generatePassword()
+				password, err := credpw.Generate()
 				if err != nil {
 					return err
 				}
@@ -608,7 +596,7 @@ func (r *KeyValueReconciler) reconcileKeyValuePlatformCredential(ctx context.Con
 	platform := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-platform", Namespace: kv.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.secretClient(), platform, func() error {
 		if len(platform.Data[kvPasswordKey]) == 0 {
-			password, err := generatePassword()
+			password, err := credpw.Generate()
 			if err != nil {
 				return err
 			}

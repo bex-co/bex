@@ -166,13 +166,19 @@ type DeployView struct {
 	StallReason string
 }
 
-func view(d store.Deploy) DeployView {
+func view(a *appv1alpha1.App, d store.Deploy) DeployView {
+	image, sha := store.PublicImageRef(d.Image), imageSHA(d)
+	// Including a config-change or rollback deploy that reuses a built image;
+	// the stored ref stays, because rollback runs it.
+	if core.GitBacked(a, d.Commit) {
+		image, sha = "", ""
+	}
 	return DeployView{
 		ID:              d.ID,
 		ServiceID:       d.AppID,
 		Status:          d.Status,
-		Image:           store.PublicImageRef(d.Image),
-		ImageSHA:        imageSHA(d),
+		Image:           image,
+		ImageSHA:        sha,
 		Trigger:         d.Trigger,
 		RollbackOf:      d.RollbackOf,
 		CommitID:        d.Commit,
@@ -455,7 +461,7 @@ func (s *Service) listFetched(ctx context.Context, a *appv1alpha1.App, filter Li
 	limited = limited && depthErr == nil
 	out := make([]DeployView, len(deploys))
 	for i, d := range deploys {
-		out[i] = view(d)
+		out[i] = view(a, d)
 		out[i].BuildGone = !BuildStored(a, d) ||
 			(limited && d.Status == store.DeployDeactivated && !slices.Contains(freeIDs, d.ID))
 	}
@@ -495,7 +501,7 @@ func (s *Service) getFetched(ctx context.Context, a *appv1alpha1.App, deployID s
 		}
 		return DeployView{}, err
 	}
-	v := view(d)
+	v := view(a, d)
 	v.BuildGone = !BuildStored(a, d) || s.beyondFreeDepth(ctx, a, d)
 	return v, nil
 }
@@ -956,7 +962,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	if store.IsOpenDeployStatus(d.Status) {
 		s.notifyDeployStarted(ctx, a, service)
 	}
-	return view(d), nil
+	return view(a, d), nil
 }
 
 // patchedGeneration returns the generation the spec patch initiated. A real
@@ -1094,7 +1100,7 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 			if d, err = s.Store.GetDeploy(ctx, appID, deployID); err != nil {
 				return DeployView{}, err
 			}
-			return view(d), nil
+			return view(a, d), nil
 		}
 		if d, err = s.Store.GetDeploy(ctx, appID, deployID); err != nil {
 			return DeployView{}, err
@@ -1143,7 +1149,7 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if err != nil {
 		return DeployView{}, err
 	}
-	return view(d), nil
+	return view(a, d), nil
 }
 
 // cancelSurvivor is the older open deploy a cancel of d leaves running, or nil.
@@ -1298,5 +1304,5 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	if disablesAutoDeploy {
 		s.RecordAutoDeployDisabled(ctx, a, fromTrigger, core.AutoDeployReasonRollback)
 	}
-	return view(d), nil
+	return view(a, d), nil
 }

@@ -173,8 +173,13 @@ func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, runti
 	}
 	// The caller prepends primaryStage before the final base; a Node 14/16
 	// companion's standalone pnpm stages ride with it (w8/226).
+	// A companion Node takes an exact version or range like a primary does
+	// (w8/308), so the legacy-pnpm decision follows the release it pinned.
+	if runtime == nativeNodeRuntime && nativeCommonBase == "" {
+		choice = pinExactVersion(ctx, exact, choice)
+	}
 	legacyPnpm := ""
-	if runtime == nativeNodeRuntime && nativeLegacyPnpmLine(choice.Line) {
+	if runtime == nativeNodeRuntime && nativeLegacyPnpmRelease(choice.Line) {
 		legacyPnpm = nativeLegacyPnpmStages()
 	}
 	if nativeCommonBase != "" {
@@ -192,5 +197,5 @@ func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, runti
 		return choice, nativeRubyToolLines(choice.Image), nil
 	}
 	choice.primaryStage += legacyPnpm
-	return choice, nativeJSToolLines(choice.Image, choice.Line), nil
+	return choice, nativeJSToolLines(cmp.Or(choice.nodeDonor, choice.Image), choice.Line), nil
 }

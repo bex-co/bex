@@ -14,8 +14,10 @@
 # limitations under the License.
 """Tests for deploy_latency.py (w6/m156)."""
 
+import contextlib
 import datetime as dt
 import importlib.util
+import io
 import pathlib
 import subprocess
 import sys
@@ -150,6 +152,13 @@ class Measure(unittest.TestCase):
         self.commit("docs/x.md", "docs: not deployable")
         with mock.patch.object(dl, "gh_json", side_effect=AssertionError("no API call needed")):
             self.assertEqual(dl.measure(self.repo, NOW).state, "deployed")
+
+    def test_pinned_prints_the_producer_commit(self):
+        self.commit("lego/b.go", "fix: waits")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(dl.main(["--pinned", "--repo", str(self.repo)]), 0)
+        self.assertEqual(out.getvalue().strip(), self.deployed)
 
     def test_changed_skips_when_production_runs_every_deployable_commit(self):
         self.commit("lego/cli/x.go", "feat(cli): launcher only")

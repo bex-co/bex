@@ -1116,26 +1116,30 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 	// Logs tab shows, so the chart and the log finally reconcile — which is
 	// what w4/m108 promised and could not deliver from a counter.
 	//
-	// Only the count. http_latency stays on Prometheus (its percentiles come
-	// from a histogram, and rate() is the right primitive there), and bandwidth
-	// has no per-request line to count.
+	// http_latency reads there too, for COMPLETENESS (w4/605): Traefik
+	// creates a router's histogram series on its first request and deletes it
+	// when the router's backend leaves the config, so rate() never counts the
+	// first request of a series, and a Free service's cold-start wake is always
+	// one (its hibernated route points at the activator). Response Times then
+	// hid the slowest request a user waited for, while the access log, the
+	// same lines the Logs tab shows, has it. Bandwidth has no per-request line.
 	//
 	// A quiet service and a stopped log pipeline are indistinguishable from
 	// here — the same limitation the host/path branch above already
 	// dispositions, caught out of band by the scheduled request-logs-liveness
 	// probe rather than by manufacturing an error a genuinely idle service
 	// would also raise.
-	if q.Metric == MetricHTTPRequests && s.RequestLogMetrics != nil {
+	if (q.Metric == MetricHTTPRequests || q.Metric == MetricHTTPLatency) && s.RequestLogMetrics != nil {
 		series, err := s.readRequestSeries(ctx, s.RequestLogMetrics, q, app, nil)
 		if err == nil {
 			return series, nil
 		}
-		// Loki is wired but did not answer. Fall back to the counter rather
-		// than blanking a chart that works today: the approximation IS the
-		// pre-w4/m119 behavior, so the fallback is never worse than what it
-		// replaces, while a 503 here would be strictly worse. Unlike the
-		// host/path branch, Prometheus CAN answer this read.
-		log.Printf("metrics: request-log count for %s/%s failed, falling back to the Traefik counter (approximate for bursty traffic): %v", app.Namespace, app.Name, err)
+		// Loki is wired but did not answer. Fall back to Traefik's counter or
+		// histogram rather than blanking a chart that works today: that is the
+		// behavior before w4/m119 (count) and w4/605 (latency), so the fallback
+		// is never worse than what it replaces, while a 503 here would be
+		// strictly worse. Unlike the host/path branch, Prometheus CAN answer.
+		log.Printf("metrics: request-log %s for %s/%s failed, falling back to Traefik's Prometheus metrics: %v", q.Metric, app.Namespace, app.Name, err)
 	}
 	if s.RequestMetrics == nil {
 		return nil, core.ErrMetricsUnavailable

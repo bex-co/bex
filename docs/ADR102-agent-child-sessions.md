@@ -91,7 +91,7 @@ Cancelling a parent cancels its **unfinished descendants**, children and their c
 
 1. The parent moves to `canceling`. From that moment no child can be inserted under it (D2).
 2. The store lists every descendant (a recursive query on `parent_session_id`) in an active phase **or `canceling`**, ordered by depth descending. Each is moved to `canceling`, its sandbox is torn down, and it is terminalized `canceled`, the same steps as a direct cancel.
-3. Each cascaded session records why: `failureReason` "canceled because its parent session `ags-…` was canceled" and `failureReasonCode` `AGENT_SESSION_PARENT_CANCELED`. A user's own cancel records no cause.
+3. Each cascaded session records why: `failureReason` "canceled because its parent session `ags-…` was canceled" and `failureReasonCode` `AGENT_SESSION_PARENT_CANCELED`. A user's own cancel records no cause. A session canceled because its creator left the workspace or was removed records `AGENT_SESSION_CREATOR_REMOVED` (w5/186, ADR024).
 4. The parent's sandbox is torn down and it becomes `canceled`.
 
 If a sandbox teardown fails, every other descendant is still attempted, then Cancel returns the error and the parent stays `canceling`; a retry converges because the walk includes `canceling` descendants. The public cancel remains idempotent once the parent is `canceled`.

@@ -1,6 +1,6 @@
 # ADR098 — Cloud Agent secrets: workspace agent secrets and inline session secrets
 
-**Status:** Accepted, 2026-11-05. Implemented by w9/m174.
+**Status:** Accepted, 2026-11-05. Implemented by w9/m174. Amended 2026-11-13 by w9/m385: [D9 — Scopes](#d9--scopes-secrets-that-apply-without-being-named).
 
 **Source:** w9/m174, the top Devin gap in ADR094's 2026-11-02 gap list. A customer has to be able to give an agent session the API keys it needs, for example for integration tests or a third-party API, without putting them in the repo or the prompt.
 
@@ -103,6 +103,29 @@ Redaction is best-effort against an agent that transforms a value in some other 
 - **New-session composer.** A Secrets control lets the user pick workspace agent secrets and add inline ones. Inline values go in masked inputs and are never echoed back.
 - **Settings.** The agent settings page has a Workspace secrets section. It lists names, sets values from a masked input and deletes secrets. Only admins see the set and delete actions.
 - **Session details.** The session view lists the attached names.
+
+### D9 — Scopes: secrets that apply without being named
+
+_Added 2026-11-13 by w9/m385._
+
+Devin's organization secrets "apply to the entire organization" and reach every future session; its repository secrets are available "when it works in that repository" ([Secrets](https://docs.devin.ai/product-guides/secrets), checked 2026-11-13). D1 gave bex only the named kind, so a session someone started without listing names (an automation, a `/bex` comment, a PR-feedback steer, a child) received nothing. Each workspace agent secret now has a **scope**:
+
+| Scope | Reaches |
+| --- | --- |
+| `workspace` | every session in the workspace |
+| `repo` | every session whose repository is the scope's `repo` (`owner/name`, lowercased like a session's repository) |
+| `explicit` | only sessions that name it in `secretNames` (D1's behavior) |
+
+- **Every origin.** Scopes are resolved at every dispatch (D5), so they reach API and dashboard sessions, steers, automation runs, the `/bex` takeover, PR-feedback steers and children alike, and a secret added or rescoped now reaches every session's next turn. Scoped names are not written into `secret_names`; that column stays the set a caller attached.
+- **Precedence.** A name is unique in the workspace, so a scope decides only whether a secret applies. A name the session attached keeps its own source, and an inline value still wins over a workspace secret of the same name (D1).
+- **Redaction.** Every applied name, scoped or named, joins `BEX_AGENT_SECRET_NAMES`, so D6 scrubs its value.
+- **A deleted scoped secret** is simply not applied. Only a name a session attached fails its dispatch when it disappears (D7).
+- **Limits.** A scope that would push the secrets one session receives without naming them (every workspace-scoped value plus the largest repository's repo-scoped values) past D3's 128 KiB is refused `AGENT_SECRET_LIMIT_EXCEEDED`. A malformed scope or repository is refused `AGENT_SECRET_SCOPE_INVALID`.
+- **Storage.** Values stay in OpenBao (D2). The scope lives in Postgres `agent_secret_scopes (workspace_id, name, scope, repo)`, so a list reads names and scopes without reading values. A secret with no row is `explicit`.
+- **Defaults.** A new secret without a scope is `workspace` (Devin). Secrets created before this amendment have no row and read `explicit`, so nothing stored under "only sessions that name it" reaches more sessions without an admin acting. That is a divergence from Devin for pre-existing secrets, recorded as the brainstorm's recommendation and open for the user's sign-off; making them `workspace` instead is a one-line data change.
+- **What applied.** Each dispatch records the names it applied with their source (`inline`, `explicit`, `repo`, `workspace`) in `agent_sessions.applied_secrets`; every session read shows them as `appliedSecrets`. Names only.
+- **Surfaces.** REST `PUT /v1/agent-secrets/{name}` takes `{value?, scope?, repo?}` (omit `value` to rescope an existing secret) and reads return `{name, scope, repo?}`; GraphQL `setAgentSecret(…, scope, repo)` and `AgentSecret.scope`/`repo`; MCP `set_agent_secret` and `list_agent_secrets` the same; `bex agent secrets set --scope --repo`; the dashboard's Workspace secrets section sets the scope and the composer shows scoped secrets as included.
+- **Not adopted:** Devin's personal secrets (bex has no per-user secrets, D1).
 
 ## Consequences
 

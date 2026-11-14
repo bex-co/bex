@@ -92,7 +92,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 				return errMetaUnchanged
 			}
 			addedThisAttempt = true
-			cur.ServiceLinks = core.AppendListValue(cur.ServiceLinks, service)
+			cur.ServiceLinks = core.AddString(cur.ServiceLinks, service)
 			cur.UpdatedAt = s.nowTime()
 			return nil
 		})
@@ -100,8 +100,8 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 			return err
 		}
 		group.added = addedThisAttempt
-		a.Spec.EnvFromSecrets = core.AppendListValue(a.Spec.EnvFromSecrets, envSecretName(group.gid))
-		a.Spec.FilesFromSecrets = core.AppendListValue(a.Spec.FilesFromSecrets, filesSecretName(group.gid))
+		a.Spec.EnvFromSecrets = core.AddString(a.Spec.EnvFromSecrets, envSecretName(group.gid))
+		a.Spec.FilesFromSecrets = core.AddString(a.Spec.FilesFromSecrets, filesSecretName(group.gid))
 	}
 	if err = create(); err != nil {
 		return err
@@ -120,7 +120,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 			if slices.Contains(cur.ServiceLinks, service) {
 				return errMetaUnchanged
 			}
-			cur.ServiceLinks = core.AppendListValue(cur.ServiceLinks, service)
+			cur.ServiceLinks = core.AddString(cur.ServiceLinks, service)
 			return nil
 		})
 		if err != nil {

@@ -1,6 +1,6 @@
 # w6 · m354 — Routines finish: a cpx42 sandbox node, a 4 vCPU / 8 GiB routine template, a spread schedule and warm build caches
 
-**Worker:** worker6 **Goal:** the eight scheduled `rt-*` routines complete instead of dying with their sandbox, and run faster, while the AX42-1 (m331) is parked until 2026-12-12. **Status:** blocked — on the user: the bex workspace's agent model spend is capped at trust tier T0's $10 (Scale plan, never paid; $10.01 used in November), so every routine fails at its first model call. A first payment of at least $10 (Settings → Billing) lifts it to T1, where the $100 cap set on 2026-11-13 applies; or the workspace sets its own model key. t001–t006 and t009 done and live; the replay is 2,437 s → 367 s (ADR105). t007 (a routine timed end to end) and t008 remain.
+**Worker:** worker6 **Goal:** the eight scheduled `rt-*` routines complete instead of dying with their sandbox, and run faster, while the AX42-1 (m331) is parked until 2026-12-12. **Status:** blocked — on time: the eight scheduled routines' first full day with the spend cap cleared ends 2026-11-14 08:00 UTC, and t007 records their outcomes in ADR105. The cap cleared at 09:50:32 on 2026-11-13, when bex charged the bex workspace's card $10.50 and it moved to T1 (w6/m362). t001–t006 and t009 done and live; the replay is 2,437 s → 367 s; two routines have completed, `rt-fix-logic-bugs` in 41 min 43 s and `rt-unify-duplicates` in 61 min 56 s (ADR105).
 
 ## Tasks (in order)
 

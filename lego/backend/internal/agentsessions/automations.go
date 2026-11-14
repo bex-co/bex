@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -645,7 +646,7 @@ func (s *Service) validateAutomationTemplate(ctx context.Context, workspaceID st
 	if err != nil {
 		return AutomationTemplate{}, err
 	}
-	metered := sessionMetered(workspaceID, req.AgentConfig.Agent, env.ModelKeySet())
+	metered := agentsession.PlatformRouteMeters(workspaceID, req.AgentConfig.Agent, env.ModelKeySet())
 	if metered && t.MaxSpendUSD == nil {
 		return AutomationTemplate{}, core.NewBadRequestError(CodeAutomationSpendLimitNeeded,
 			"a template on the platform model needs maxSpendUSD: a recurring run with no spend ceiling is refused",

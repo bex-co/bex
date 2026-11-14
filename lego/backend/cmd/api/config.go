@@ -226,6 +226,14 @@ type Config struct {
 	AgentPlatformModel           string
 	AgentPlatformModelWorkspaces []string
 	AgentPlatformModelKey        string
+	// AgentPlatformMetaKey (BEX_AGENT_PLATFORM_META_KEY, a secret: never log
+	// it) runs the platform-only muse profile on Meta's API in the
+	// BEX_AGENT_PLATFORM_MODEL_WORKSPACES workspaces (ADR108); empty ⇒ muse is
+	// offered nowhere. AgentMetaRouteMaxSessions
+	// (BEX_AGENT_META_ROUTE_MAX_SESSIONS) caps live muse sessions across every
+	// workspace on that one key; 0 ⇒ the service default.
+	AgentPlatformMetaKey      string
+	AgentMetaRouteMaxSessions int
 	// Derived from AgentModelProxyURL's origin (ADR062) so egress narrowing and
 	// the agentsessions Service always agree on the port; validated only when
 	// the OpenSandbox leg is on, like the inline parse it replaced.
@@ -282,6 +290,12 @@ type Config struct {
 	// disables). The GC credential, with the delete action on the snapshot
 	// prefix, turns on deleting a gone sandbox's images.
 	SandboxMaxStorageGBPerWorkspace int
+	// SandboxImportPlatformBudgetGB bounds the imported sandbox image bytes of
+	// every workspace together, stored and in flight, in decimal GB (0
+	// disables); one workspace may hold a quarter of it. The default sits
+	// below the shared Zot volume (deploy/gitops/base/zot.yaml, 100Gi), which
+	// suspended sandboxes' snapshots share, uncounted here (w5/m383).
+	SandboxImportPlatformBudgetGB int
 	// SandboxSnapshotRegistrySecret ("<namespace>/<name>") names the Secret the
 	// operator mints with the meter's two Zot users; bex-api reads it instead of
 	// the user and password variables, which stay as an override for a registry
@@ -635,6 +649,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		}
 	}
 	cfg.SandboxMaxStorageGBPerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE", 500)
+	cfg.SandboxImportPlatformBudgetGB = p.zeroableInt("BEX_SANDBOX_IMPORT_PLATFORM_BUDGET_GB", 80)
 	cfg.SandboxSnapshotRegistrySecret = strings.TrimSpace(getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET"))
 	if ref := cfg.SandboxSnapshotRegistrySecret; ref != "" {
 		if _, err := parseSecretRef(ref); err != nil {
@@ -839,6 +854,8 @@ func (p *parser) platformModelRoute(cfg *Config) {
 	cfg.AgentPlatformModelRoute = strings.TrimSpace(p.getenv(routeEnv))
 	cfg.AgentPlatformModel = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_MODEL"))
 	cfg.AgentPlatformModelKey = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_MODEL_KEY"))
+	cfg.AgentPlatformMetaKey = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_META_KEY"))
+	cfg.AgentMetaRouteMaxSessions, _ = p.positiveInt("BEX_AGENT_META_ROUTE_MAX_SESSIONS", agentsessions.DefaultMetaRouteMaxSessions)
 	cfg.AgentPlatformModelWorkspaces = nil
 	for _, v := range strings.Split(p.getenv(workspacesEnv), ",") {
 		if v = strings.TrimSpace(v); v == "" {

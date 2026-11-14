@@ -598,6 +598,16 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "已开具的发票。",
     description: "Invoice-history card description",
   },
+  "usage.invoiceKindAgentModelCharge": {
+    message: "智能体模型扣款",
+    description:
+      "Label on an invoice-history row for a charge made when agent model spend reached its threshold",
+  },
+  "usage.invoiceHistoryChargesNote": {
+    message: "当月产生的智能体模型扣款，会从当月的账单中扣除。",
+    description:
+      "Invoice-history note when the list includes agent model charges",
+  },
   "usage.creditsAppliedLine": {
     message: "已抵扣 −{applied} → 应付 {due}",
     description:

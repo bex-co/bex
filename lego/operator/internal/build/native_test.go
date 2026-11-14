@@ -905,14 +905,13 @@ func TestNativePnpmPinKeysTheCache(t *testing.T) {
 // TestNativeImageRunsAnOptedInBun is w8/m71's execution gate: for sweep306's
 // BUN_VERSION=1.3.4, the resolved Dockerfile builds on a node and a python
 // base (no node on PATH), the authored build runs bun and records the
-// requested version from the env bundle, and the started image runs bun again
-// with the version it resolved. Opt-in: needs Docker and pulls the pinned
-// toolchain and Bun images.
+// requested version from the env bundle, and the started image runs bun again:
+// Bun 1.3.4 itself, the exact release Render installs (w8/315). Opt-in: needs
+// Docker and pulls the pinned toolchain and Bun images.
 func TestNativeImageRunsAnOptedInBun(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
 	}
-	bun13, _ := nativeBun.find("1.3")
 	for _, runtime := range []string{"node", "python"} {
 		t.Run(runtime, func(t *testing.T) {
 			o := nativeOptions()
@@ -932,7 +931,7 @@ func TestNativeImageRunsAnOptedInBun(t *testing.T) {
 				t.Fatalf("build: %v\n%s", err, out)
 			}
 			out, err := exec.Command("docker", "run", "--rm", tag).CombinedOutput()
-			want := "bun runtime=" + bun13.version + " built=" + bun13.version + " requested=1.3.4"
+			want := "bun runtime=1.3.4 built=1.3.4 requested=1.3.4"
 			if err != nil || !strings.Contains(string(out), want) {
 				t.Fatalf("run = %v\n%s; want %q", err, out, want)
 			}

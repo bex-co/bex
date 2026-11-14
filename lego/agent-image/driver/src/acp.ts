@@ -15,7 +15,7 @@
  */
 
 import { spawn, type ChildProcessByStdio } from "node:child_process";
-import { rm } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -39,6 +39,7 @@ import {
 } from "@agentclientprotocol/sdk/unstable";
 import type { AgentDriverConfig } from "./config.js";
 import { describeError } from "./errors.js";
+import { writeJsonAtomic } from "./fs-util.js";
 
 const maximumConnectTimeoutMs = 60_000;
 // How long a request rejected by connection close waits for the child's exit
@@ -63,7 +64,10 @@ type ACPChildProcess = ChildProcessByStdio<Writable, Readable, Readable>;
 // CODEX_CONFIG, or (for any other adapter) a first-prompt preamble that the
 // turn runner prepends and never publishes to the stream.
 export type OverlayChannel =
-  "system-prompt" | "developer-instructions" | "preamble" | "none";
+  | "system-prompt"
+  | "developer-instructions"
+  | "preamble"
+  | "none";
 
 // SessionProvider is the driver's handle on one ACP turn: it owns the agent
 // child process + JSON-RPC connection, and exposes exactly the verbs the turn
@@ -328,6 +332,27 @@ export async function removeStaleCodexRules(
   await rm(path.join(home, "rules", staleCodexRulesFile), { force: true });
 }
 
+// writeMuseModel pins Muse Code's model (ADR108 D4) in its user settings,
+// which the adapter merges into every session host's settings. Other keys a
+// previous turn left there are kept; an unreadable file is replaced.
+export async function writeMuseModel(
+  env: Record<string, string | undefined>,
+  model: string,
+): Promise<void> {
+  const configHome =
+    env.XDG_CONFIG_HOME || path.join(env.HOME || homedir(), ".config");
+  const file = path.join(configHome, "muse", "settings.json");
+  let settings: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+      settings = parsed as Record<string, unknown>;
+  } catch {
+    // Absent or unreadable: start from an empty document.
+  }
+  await writeJsonAtomic(file, { ...settings, schema_version: 1, model });
+}
+
 async function createSessionAttempt(
   config: AgentDriverConfig,
   agentEnv: Record<string, string>,
@@ -340,6 +365,7 @@ async function createSessionAttempt(
   const codexOverlay = overlay !== "" && config.profile === "codex";
   const childEnv = { ...process.env, ...agentEnv };
   if (config.profile === "codex") await removeStaleCodexRules(childEnv);
+  if (config.model) await writeMuseModel(childEnv, config.model);
   const spawnEnv = codexOverlay
     ? { ...childEnv, ...codexOverlayEnv(overlay, childEnv.CODEX_CONFIG) }
     : childEnv;
@@ -514,7 +540,12 @@ async function createSessionAttempt(
   );
   const setupCall = <T>(
     operation: Promise<T>,
-    phase: "connect" | "provider routing" | "session load" | "session create",
+    phase:
+      | "connect"
+      | "provider routing"
+      | "session load"
+      | "session create"
+      | "session config",
   ) =>
     withTimeout(
       raceTerminal(operation),
@@ -617,6 +648,20 @@ async function createSessionAttempt(
         throw overlayRejection(error, sentOverlay);
       });
       sessionId = created.sessionId;
+    }
+    // The profile's session config (ADR108 D3: Muse's own sandbox off and its
+    // approvals settled natively) applies to a created and a loaded session
+    // alike; a refused option fails setup instead of running under the
+    // adapter's defaults.
+    for (const [configId, value] of Object.entries(config.sessionConfig)) {
+      await setupCall(
+        agent.request(methods.agent.session.setConfigOption, {
+          sessionId,
+          configId,
+          value,
+        }),
+        "session config",
+      );
     }
 
     return {

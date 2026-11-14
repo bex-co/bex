@@ -16,12 +16,12 @@
   "rootDir": "",
   "schedule": "*/2 * * * *",
   "serviceDetails": {
+    "buildPlan": "starter",
     "command": "echo QA_CLONE_MARKER",
     "env": "image",
     "envSpecificDetails": {
       "startCommand": "echo QA_CLONE_MARKER"
     },
-    "numInstances": 1,
     "runtime": "image",
     "schedule": "*/2 * * * *",
     "url": "https://qa-image-cron.onbex.co"
@@ -29,5 +29,6 @@
   "slug": "qa-image-cron",
   "suspended": "not_suspended",
   "suspenders": [],
-  "type": "cron_job"
+  "type": "cron_job",
+  "updatedAt": "2023-11-14T22:13:20Z"
 }

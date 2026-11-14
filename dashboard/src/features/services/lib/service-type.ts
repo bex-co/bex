@@ -84,20 +84,6 @@ export function isStaticSiteType(type: string): boolean {
   return type === "static_site";
 }
 
-/** True for a background_worker — no public URL, no health-check path. */
-export function isWorker(s: ServiceView): boolean {
-  return s.type === "background_worker";
-}
-
-/**
- * True for a web_service — the only type maintenance mode applies to
- * (Render parity, w1/m37). Empty spec.type reads back as web_service from
- * bex-api, so a legacy App with no explicit type still matches.
- */
-export function isWebService(s: ServiceView): boolean {
-  return isWebServiceType(s.type);
-}
-
 /** Raw-type form for callers that have not built a ServiceView. */
 export function isWebServiceType(type: string): boolean {
   return type === "web_service";

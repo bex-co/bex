@@ -1,9 +1,16 @@
 name: test (OpenSandbox controller patches)
 
-# Main pushes run once through deploy.yml; avoid duplicate gates competing for
-# runners. deploy.yml includes this workflow and all test inputs.
+# Run on every PR and main push touching the carried patches, and as a
+# reusable workflow called by deploy.yml to gate the build+push+deploy job on
+# the exact commit it deploys.
 on:
   pull_request:
+    paths:
+      - "deploy/opensandbox/controller.Dockerfile"
+      - "deploy/opensandbox/patches/**"
+      - ".github/workflows/opensandbox-controller-test.yml"
+  push:
+    branches: [main]
     paths:
       - "deploy/opensandbox/controller.Dockerfile"
       - "deploy/opensandbox/patches/**"
@@ -13,7 +20,8 @@ on:
 permissions:
   contents: read
 
-# A PR's newer push cancels its superseded run. Inside deploy.yml's
+# A PR's newer push cancels its superseded run; each main push runs to the
+# end, so every code push gets its own verdict. Inside deploy.yml's
 # workflow_call `github.workflow` names the caller, so the group uses a fixed
 # prefix and the caller's run id: deploy runs never cancel each other's gates.
 concurrency:

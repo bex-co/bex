@@ -251,6 +251,23 @@ func (c *Client) FastForwardBranch(ctx context.Context, installationID int64, ow
 	return sha, err
 }
 
+// BranchHead returns branch's head commit on owner/repo, read with a
+// contents:read token. ErrHeadBranchNotFound means the branch does not exist.
+func (c *Client) BranchHead(ctx context.Context, installationID int64, owner, repo, branch string) (string, error) {
+	var out struct {
+		Commit struct {
+			SHA string `json:"sha"`
+		} `json:"commit"`
+	}
+	err := c.repoJSON(ctx, installationID, repo, map[string]string{"contents": "read"}, http.MethodGet,
+		c.repoURL(owner, repo)+"/branches/"+neturl.PathEscape(branch), nil, http.StatusOK, &out)
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
+		return "", ErrHeadBranchNotFound
+	}
+	return out.Commit.SHA, err
+}
+
 // BranchProtected reports whether GitHub marks branch of owner/repo
 // protected.
 func (c *Client) BranchProtected(ctx context.Context, installationID int64, owner, repo, branch string) (bool, error) {

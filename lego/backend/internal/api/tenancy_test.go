@@ -317,6 +317,56 @@ func TestEnsureTenantGrantsAdminOnFreshMintOnly(t *testing.T) {
 	}
 }
 
+// endBindingOnGrant is another admin removing the creator, committing just
+// after onboarding's admin grant lands.
+type endBindingOnGrant struct {
+	*fakeGranter
+	st       *fakeTenantStore
+	identity string
+	tenantID string
+}
+
+func (g endBindingOnGrant) GrantWorkspaceAdmin(ctx context.Context, tenantID, subject string) error {
+	if err := g.fakeGranter.GrantWorkspaceAdmin(ctx, tenantID, subject); err != nil {
+		return err
+	}
+	if tenantID == g.tenantID {
+		g.st.mu.Lock()
+		delete(g.st.ownerOf, g.identity)
+		delete(g.st.members, g.identity)
+		g.st.mu.Unlock()
+	}
+	return nil
+}
+
+// w5/m372: a creator removed while their own request re-grants admin must not
+// keep the grant; the request lands them in a new personal workspace.
+func TestEnsureTenantTakesBackAGrantThatOutlivedTheBinding(t *testing.T) {
+	st := newFakeTenantStore()
+	granter := newFakeGranter()
+	ctx := context.Background()
+	old, err := NewTenantService(st, granter).EnsureTenant(ctx, "creator", "", false)
+	if err != nil {
+		t.Fatalf("mint: %v", err)
+	}
+	oldAdmin := "admin:" + old + ":user:creator"
+	delete(granter.tuples, oldAdmin) // the remover's revoke, before its commit
+
+	got, err := NewTenantService(st, endBindingOnGrant{granter, st, "creator", old}).EnsureTenant(ctx, "creator", "", false)
+	if err != nil {
+		t.Fatalf("EnsureTenant across the removal: %v", err)
+	}
+	if got == old {
+		t.Fatalf("resolved the removed creator back to %q", old)
+	}
+	if granter.tuples[oldAdmin] {
+		t.Error("the admin grant outlived the binding on the old workspace")
+	}
+	if !granter.tuples["admin:"+got+":user:creator"] {
+		t.Errorf("no admin tuple on the new personal workspace %q", got)
+	}
+}
+
 func TestEnsureTenantGrantFailureFailsClosedNotHalfMinted(t *testing.T) {
 	st := newFakeTenantStore()
 	granter := fgWithFail(1)

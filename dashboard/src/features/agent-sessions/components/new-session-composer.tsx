@@ -50,8 +50,8 @@ import {
   type InlineMentionEditorHandle,
 } from "@/features/agent-sessions/components/lazy-mention-editor";
 import {
-  AGENT_OPTIONS,
   deriveBranch,
+  selectableAgents,
   type AgentOption,
   type ComposerValues,
 } from "@/features/agent-sessions/lib/composer";
@@ -371,7 +371,10 @@ export function NewSessionComposer() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {AGENT_OPTIONS.map((agent) => (
+                          {selectableAgents(
+                            capabilities?.agents,
+                            field.value,
+                          ).map((agent) => (
                             <SelectItem key={agent} value={agent}>
                               {t(`agentSessions.agent.${agent}`)}
                             </SelectItem>
@@ -391,6 +394,7 @@ export function NewSessionComposer() {
                 ownerId={currentWorkspaceId}
                 value={secrets}
                 onChange={setSecrets}
+                repo={repo}
                 disabled={isSubmitting}
               />
 

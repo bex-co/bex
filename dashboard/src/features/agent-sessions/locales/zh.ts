@@ -211,6 +211,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "Codex",
     description: "Composer — agent option: codex",
   },
+  "agentSessions.agent.muse": {
+    message: "Muse Code",
+    description: "Composer — agent option: muse (Meta's Muse Code)",
+  },
   "agentSessions.submit": {
     message: "开始会话",
     description: "Composer — submit button label",
@@ -447,6 +451,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_CONFLICT": {
     message: "该会话正在执行其他操作，请稍后重试。",
     description: "Mapped message for AGENT_SESSION_CONFLICT",
+  },
+  "agentSessions.errors.AGENT_SESSION_BRANCH_IN_USE": {
+    message:
+      "已有另一个会话在此分支上工作。请给那个会话发消息，或改用另一个 bex-agent/ 分支。",
+    description: "Mapped message for AGENT_SESSION_BRANCH_IN_USE (w5/m382)",
   },
   "agentSessions.errors.AGENT_SESSION_NOT_STEERABLE": {
     message: "该会话在当前阶段（{phase}）无法引导。",
@@ -992,6 +1001,12 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已使用 {used} / {cap}。达到上限后将停止新的模型请求。",
     description: "Composer warning body",
   },
+  "agentSessions.spendWarningBodyCharge": {
+    message:
+      "已使用 {used} / {cap}。先用 billing credits 抵扣；超出部分达到 {cap} 时会从绑定的卡扣款，会话继续运行。只有扣款失败才会停止新的模型请求。",
+    description:
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+  },
   "agentSessions.spendReachedTitle.cap": {
     message: "已达到每月智能体模型支出上限",
     description: "Composer refusal title: the workspace's own cap",
@@ -1254,6 +1269,40 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.secretsDuplicate": {
     message: "此会话已有同名密钥。",
     description: "Composer Secrets popover: duplicate inline secret name",
+  },
+  "agentSessions.secretsScopeRepo": {
+    message: "此仓库",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to the chosen repository, included",
+  },
+  "agentSessions.secretsScopeOtherRepo": {
+    message: "仅限 {repo}",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to another repository, not available here",
+  },
+  "agentSessions.appliedSecretsTitle": {
+    message: "最近一轮的密钥",
+    description:
+      "Session header: heading of the applied-secrets popover (names and sources, never values)",
+  },
+  "agentSessions.appliedSecretSource.inline": {
+    message: "此会话",
+    description:
+      "Applied secret source: an inline secret given to this session only",
+  },
+  "agentSessions.appliedSecretSource.explicit": {
+    message: "已选择",
+    description: "Applied secret source: a workspace secret the session picked",
+  },
+  "agentSessions.appliedSecretSource.repo": {
+    message: "仓库",
+    description:
+      "Applied secret source: a workspace secret scoped to the session's repository",
+  },
+  "agentSessions.appliedSecretSource.workspace": {
+    message: "工作区",
+    description:
+      "Applied secret source: a workspace secret every session receives",
   },
   "agentSessions.metaSecrets_other": {
     message: "{count} 个密钥",

@@ -2,7 +2,9 @@ import type { LimitSummary } from "@/features/metrics/lib/limit-summary";
 
 /** Why a utilization (percentage-of-limit) chart draws no line. */
 export type UtilizationEmptyReason =
-  "no-usage" | "no-limit" | "percentage-unavailable";
+  | "no-usage"
+  | "no-limit"
+  | "percentage-unavailable";
 
 /**
  * Why a utilization chart has no line, or null when it has one. The Metrics

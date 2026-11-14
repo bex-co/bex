@@ -33,12 +33,12 @@ export interface MemberRowProps {
  * confirmation. The raw subject stays the mutation key but is demoted to a
  * muted secondary line (w6/m10).
  *
- * Two rows carry membership invariants the server enforces (w5/m101): the
- * workspace owner cannot be removed or demoted, and nobody may act on their
- * own membership. Their controls stay rendered but disabled with the reason
- * (the m50 always-rendered-disabled pattern) so the surface never offers an
- * action the API refuses — the inline server error remains the backstop for
- * the race where someone else changes roles mid-session.
+ * The caller's own row carries the self rule the server enforces (w5/m101):
+ * nobody removes themselves or changes their own role here (Leave workspace is
+ * the exit). Its controls stay rendered but disabled with the reason (the m50
+ * always-rendered-disabled pattern); the inline server error remains the
+ * backstop for the last-admin rule and for races. The workspace's creator is
+ * an ordinary Admin, as on Render, and gets no special treatment (w5/m372).
  */
 export function MemberRow({
   member,
@@ -69,15 +69,6 @@ export function MemberRow({
           {member.isSelf ? (
             <Badge variant="secondary" className="shrink-0">
               {t("team.you")}
-            </Badge>
-          ) : null}
-          {member.isOwner ? (
-            <Badge
-              variant="outline"
-              className="shrink-0"
-              title={t("team.ownerTooltip")}
-            >
-              {t("team.owner")}
             </Badge>
           ) : null}
           {!member.identityResolved ? (

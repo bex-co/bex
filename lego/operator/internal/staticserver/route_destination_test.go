@@ -67,8 +67,13 @@ func TestRouteDestinationBudgetRejectsBeforeFallback(t *testing.T) {
 			if response.Code != http.StatusBadRequest || response.Header().Get("Location") != "" {
 				t.Fatalf("oversized expansion status=%d headers=%v", response.Code, response.Header())
 			}
-			if len(origin.gets) != 1 || origin.gets[key(strings.TrimPrefix(requestPath, "/"))] != 1 {
-				t.Fatalf("oversized expansion fetched a destination or fallback: %v", origin.gets)
+			// Only the request path's own object and page lookups (w8/317,
+			// w8/318) run before the rule; never its destination or a fallback.
+			own := strings.TrimPrefix(requestPath, "/")
+			for k := range origin.gets {
+				if k != key(own) && k != key(own+".html") && k != key(own+"/index.html") {
+					t.Fatalf("oversized expansion fetched a destination or fallback: %v", origin.gets)
+				}
 			}
 		})
 	}

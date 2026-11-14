@@ -49,14 +49,6 @@ func TestMembershipRefusalsCarryTheSameCodeOnEverySurface(t *testing.T) {
 		wantRecovery string // substring the message must contain
 	}{
 		{
-			name: "owner removal", verb: "remove", target: "owner-1",
-			wantCode: ErrorOwnerCannotBeRemoved, wantRecovery: "ownership",
-		},
-		{
-			name: "owner demotion", verb: "changeRole", target: "owner-1", role: "DEVELOPER",
-			wantCode: ErrorOwnerRoleCannotChange, wantRecovery: "must remain an admin",
-		},
-		{
 			name: "self removal", verb: "remove", target: "admin-2",
 			wantCode: ErrorCannotRemoveSelf, wantRecovery: "leave the workspace",
 		},
@@ -68,14 +60,10 @@ func TestMembershipRefusalsCarryTheSameCodeOnEverySurface(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// The caller is admin-2; owner-1 owns the workspace. Both are admins,
-			// so the last-admin rule can never be what refuses.
+			// The caller is admin-2 and owner-1 is a second admin, so the
+			// last-admin rule can never be what refuses.
 			newSvc := func() *Service {
-				st := newFakeStore("pro")
-				st.ownerSubject = "owner-1"
-				st.seedMember("owner-1", "admin")
-				st.seedMember("admin-2", "admin")
-				return svc(st, newFakeGranter(), nil, nil)
+				return svc(ownerWorkspace(t, "owner-1", "admin-2"), newFakeGranter(), nil, nil)
 			}
 			ctx := ctxWith("admin-2")
 

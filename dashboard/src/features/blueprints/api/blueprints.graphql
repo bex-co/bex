@@ -337,12 +337,20 @@ mutation PlanBlueprintSync($id: String!, $ownerId: String) {
   }
 }
 
+# syncId binds the approval to the plan the page shows: a plan someone else
+# made meanwhile is refused, not applied (w5/m384).
 mutation ApproveBlueprint(
   $id: String!
   $ownerId: String
   $manualEnvVars: [BlueprintManualEnvVarInput]
+  $syncId: String
 ) {
-  approveBlueprint(id: $id, ownerId: $ownerId, manualEnvVars: $manualEnvVars) {
+  approveBlueprint(
+    id: $id
+    ownerId: $ownerId
+    manualEnvVars: $manualEnvVars
+    syncId: $syncId
+  ) {
     id
     state
   }

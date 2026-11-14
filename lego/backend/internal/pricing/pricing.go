@@ -93,6 +93,32 @@ type Sheet struct {
 	agentModelMaxCapMultiplier float64
 	// trustTiers is the D10.1 ladder, T0 first.
 	trustTiers []Tier
+	// agentModelUpstream is model → list price for models bex calls
+	// directly, whose provider reports no cost (agentModel.upstreamPrices).
+	agentModelUpstream map[string]upstreamPrice
+}
+
+// upstreamPrice is one directly called model's list price, USD per million
+// tokens; cached input is the prompt-cache read rate.
+type upstreamPrice struct {
+	Model       string  `json:"model"`
+	Input       float64 `json:"inputUsdPerMTok"`
+	CachedInput float64 `json:"cachedInputUsdPerMTok"`
+	Output      float64 `json:"outputUsdPerMTok"`
+}
+
+// AgentModelUpstreamCost is the upstream USD cost of one exchange with model
+// from its pricing.yaml list price, and false when the sheet lists no price
+// for it. cacheWrite is not billed separately by the providers listed.
+func (s *Sheet) AgentModelUpstreamCost(model string, in, out, cacheRead, cacheWrite int64) (float64, bool) {
+	if s == nil {
+		return 0, false
+	}
+	p, ok := s.agentModelUpstream[model]
+	if !ok {
+		return 0, false
+	}
+	return (float64(in+cacheWrite)*p.Input + float64(cacheRead)*p.CachedInput + float64(out)*p.Output) / tokensPerMillion, true
 }
 
 // tokensPerMillion is the display basis of the platform-route token meters:
@@ -695,7 +721,8 @@ type sheetFile struct {
 			Plan string  `json:"plan"`
 			USD  float64 `json:"usd"`
 		} `json:"monthlySpendCapUsd"`
-		TrustTiers []tierFile `json:"trustTiers"`
+		TrustTiers     []tierFile      `json:"trustTiers"`
+		UpstreamPrices []upstreamPrice `json:"upstreamPrices"`
 	} `json:"agentModel"`
 }
 
@@ -741,6 +768,18 @@ func parseSheet(raw []byte) (*Sheet, error) {
 	}
 	if err := s.parseSpendControls(f); err != nil {
 		return nil, err
+	}
+	s.agentModelUpstream = make(map[string]upstreamPrice, len(f.AgentModel.UpstreamPrices))
+	for _, p := range f.AgentModel.UpstreamPrices {
+		if _, dup := s.agentModelUpstream[p.Model]; p.Model == "" || dup {
+			return nil, fmt.Errorf("agentModel.upstreamPrices: empty or duplicate model %q", p.Model)
+		}
+		for _, rate := range []float64{p.Input, p.CachedInput, p.Output} {
+			if math.IsNaN(rate) || math.IsInf(rate, 0) || rate < 0 {
+				return nil, fmt.Errorf("agentModel.upstreamPrices: %q has an invalid rate", p.Model)
+			}
+		}
+		s.agentModelUpstream[p.Model] = p
 	}
 	for _, e := range f.Compute {
 		if e.Tier == "" {

@@ -37,6 +37,22 @@ const (
 	AgentModelChargeFailed  = "failed"
 )
 
+// AgentModelCrossing is one spend read that found an agent-model threshold
+// charge due (ADR091 D10.2a): the mint makes it and the charger charges it.
+type AgentModelCrossing struct {
+	WorkspaceID string
+	// At is when the spend was read. SeenSeq is the month's last charge in
+	// that read: a charge numbered past it already covers this crossing, so
+	// the charger joins it.
+	At      time.Time
+	SeenSeq int
+	// UnbilledMicroUSD is what the read left to charge after the billing
+	// credits it counted (CreditMicroUSD). When the charger reads a
+	// different balance, it charges nothing and the spend is read again.
+	UnbilledMicroUSD int64
+	CreditMicroUSD   int64
+}
+
 // AgentModelChargeKey names one charge: the workspace's seq-th crossing in
 // the calendar month (UTC) starting at Month.
 type AgentModelChargeKey struct {
@@ -305,4 +321,40 @@ func (s *PGStore) ListAgentModelCharges(ctx context.Context, workspaceID string,
 		FROM agent_model_threshold_charges
 		WHERE workspace_id = $1 AND created_at >= $2
 		ORDER BY created_at, seq`, workspaceID, since.UTC()))
+}
+
+// RecordAgentModelBilledUntil moves workspaceID's charge window boundary
+// (migration 0249) forward to until: a bex subscription invoice billed the
+// meter through it. It never moves back, and a workspace with no mapping is
+// a no-op. advanced reports that the boundary moved, so a spend read made
+// before it is stale. Moving it clears the recorded credits (migration
+// 0253): that invoice consumed credits the record still counts.
+func (s *PGStore) RecordAgentModelBilledUntil(ctx context.Context, workspaceID string, until time.Time) (advanced bool, err error) {
+	if workspaceID == "" || until.IsZero() {
+		return false, fmt.Errorf("agent-model billed-until needs a workspace and a time")
+	}
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE billing_provider_mappings
+		SET agent_model_billed_until = $2, agent_model_credit_microusd = NULL, agent_model_credit_read_at = NULL
+		WHERE workspace_id = $1 AND (agent_model_billed_until IS NULL OR agent_model_billed_until < $2)`,
+		workspaceID, until.UTC())
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// RecordAgentModelCredits records the billing credits the threshold charger
+// read for workspaceID at at (migration 0253): the charge window's unbilled
+// spend is reduced by them while the read is inside the window. A workspace
+// with no mapping is a no-op.
+func (s *PGStore) RecordAgentModelCredits(ctx context.Context, workspaceID string, microUSD int64, at time.Time) error {
+	if workspaceID == "" || at.IsZero() || microUSD < 0 {
+		return fmt.Errorf("agent-model credits need a workspace, a time and a non-negative amount")
+	}
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE billing_provider_mappings SET agent_model_credit_microusd = $2, agent_model_credit_read_at = $3
+		WHERE workspace_id = $1`,
+		workspaceID, microUSD, at.UTC())
+	return err
 }

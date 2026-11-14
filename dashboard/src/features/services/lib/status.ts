@@ -15,7 +15,6 @@ import type {
 // Render's `suspended` is a string enum, NOT a boolean: "suspended" means the
 // App is parked, "not_suspended" means it's live (backend/internal/api/render.go).
 export const SUSPENDED = "suspended";
-export const NOT_SUSPENDED = "not_suspended";
 
 /** A single service item as it comes off the `services` query (fields nullable). */
 type ServiceNode = NonNullable<NonNullable<ServicesQuery["services"]>[number]>;

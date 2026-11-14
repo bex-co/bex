@@ -6,7 +6,9 @@ import type { ChartSeries } from "@/features/metrics/types";
  * limits. Computed from the per-instance _limit series' latest points.
  */
 export type LimitSummary =
-  { kind: "none" } | { kind: "single"; value: number } | { kind: "vary" };
+  | { kind: "none" }
+  | { kind: "single"; value: number }
+  | { kind: "vary" };
 
 export function summarizeLimits(series: ChartSeries[]): LimitSummary {
   const values = series

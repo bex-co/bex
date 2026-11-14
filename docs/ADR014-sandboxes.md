@@ -123,12 +123,12 @@ Because bex-api is the single funnel (D1), it is the natural **admission-control
 
 A sandbox's lifetime follows Render's `timeoutSeconds` contract. On 2026-11-07 the user chose to match Render (w2/m263 D3=A), which then capped Hobby at 24 h. Render removed that cap on 2026-11-03 (CLI commit `c280b0b6`, INF-7261 "remove the 24-hour sandbox lifetime limit for Hobby", shipped in CLI v2.36.0; [render.com/docs/sandboxes-limits](https://render.com/docs/sandboxes-limits) lists one limit for every workspace), so w3/m303 follows it. The contract is now the same on every plan:
 
-| Request                               | Every workspace               |
-| ------------------------------------- | ----------------------------- |
-| `timeoutSeconds` omitted              | 86400 s (24 h)                |
-| `timeoutSeconds: 0`                   | no timeout; reported as `0`   |
-| `60` … `2592000` (30 days)            | honored                       |
-| `1` … `59`, below 0, or above 2592000 | `400 SANDBOX_TIMEOUT_INVALID` |
+| Request | Every workspace |
+| --- | --- |
+| `timeoutSeconds` omitted | 86400 s (24 h) |
+| `timeoutSeconds: 0` | no timeout; reported as `0` |
+| `60` … `2592000` (30 days) | honored |
+| `1` … `59`, below 0, or above 2592000 | `400 invalid_timeout_seconds` (Render's code; `SANDBOX_TIMEOUT_INVALID` until w8/312) |
 
 The 60 s minimum is the pinned `CreateSandbox` description ("Positive values must be at least 60"); before w3/m303 bex accepted 1–59 and enforced them at the exact deadline. Agent-session sandboxes keep the 86400 s bound on every plan.
 

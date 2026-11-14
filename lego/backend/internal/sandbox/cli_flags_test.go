@@ -177,7 +177,7 @@ func TestOmittedPlanIsRendersDefault(t *testing.T) {
 
 func TestUnknownPlanIsRefusedWithTheAcceptedNames(t *testing.T) {
 	_, err := refusingUpstream(t).Create(callerCtx(), CreateRequest{Template: "node", Plan: "16c-32g"})
-	wantCode(t, err, "SANDBOX_PLAN_INVALID")
+	wantCode(t, err, "invalid_sandbox_plan")
 	for _, name := range []string{"1c-2g", "2c-4g", "4c-8g", "8c-16g", "starter", "standard", "pro"} {
 		if !strings.Contains(err.Error(), name) {
 			t.Errorf("message %q does not list %s", err.Error(), name)

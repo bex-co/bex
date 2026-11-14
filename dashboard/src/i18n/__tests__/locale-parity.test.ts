@@ -168,6 +168,7 @@ const ZH_SAME_AS_EN = new Set<string>([
   "usage.resourceCapsKeyValues",
   "webhooks.group.keyValue",
   "usage.billingMode",
+  "agentSessions.agent.muse",
   // Example commands in input placeholders.
   "services.buildCommandPlaceholder",
   "services.createFieldCommandPlaceholder",

@@ -1,12 +1,20 @@
 {
-  "id": "qa-image-predeploy",
-  "name": "qa-image-predeploy",
-  "immutableName": "qa-image-predeploy",
-  "slug": "qa-image-predeploy",
+  "autoDeploy": "no",
+  "autoDeployTrigger": "off",
   "displayName": "",
-  "type": "web_service",
-  "suspended": "not_suspended",
+  "id": "qa-image-predeploy",
+  "idleTTLSeconds": 0,
+  "imagePath": "docker.io/mendhak/http-https-echo:35",
+  "immutableName": "qa-image-predeploy",
+  "name": "qa-image-predeploy",
+  "notificationsToSend": "default",
+  "notifyOnFail": "default",
+  "phase": "Running",
+  "pushDeliveryMethod": "none",
+  "replicas": 1,
+  "rootDir": "",
   "serviceDetails": {
+    "buildPlan": "starter",
     "cache": {
       "profile": "no-cache"
     },
@@ -14,6 +22,7 @@
     "envSpecificDetails": {
       "preDeployCommand": "echo QA_PREDEPLOY_MARKER"
     },
+    "healthCheckPath": "",
     "internalAddress": "qa-image-predeploy:10000",
     "ipAllowList": [
       {
@@ -40,16 +49,9 @@
     "runtime": "image",
     "url": "https://qa-image-predeploy.onbex.co"
   },
-  "imagePath": "docker.io/mendhak/http-https-echo:35",
+  "slug": "qa-image-predeploy",
+  "suspended": "not_suspended",
   "suspenders": [],
-  "phase": "Running",
-  "replicas": 1,
-  "idleTTLSeconds": 0,
-  "rootDir": "",
-  "autoDeploy": "no",
-  "autoDeployTrigger": "off",
-  "pushDeliveryMethod": "none",
-  "notifyOnFail": "default",
-  "notificationsToSend": "default"
+  "type": "web_service",
+  "updatedAt": "2023-11-14T22:13:20Z"
 }
-

@@ -52,8 +52,12 @@ type fakeForge struct {
 	sessionHead string
 	diverged    bool
 	protected   bool
-	reads       int
-	moved       []string
+	// ruleProtected is GitHub's answer to BranchProtected, and protectErr
+	// fails that read.
+	ruleProtected bool
+	protectErr    error
+	reads         int
+	moved         []string
 }
 
 func (f *fakeForge) GetPullRequest(_ context.Context, _ int64, _, _ string, number int) (github.PullRequestDetail, error) {
@@ -82,6 +86,12 @@ func (f *fakeForge) FastForwardBranch(_ context.Context, _ int64, _, _, branch, 
 	}
 	f.moved = append(f.moved, branch+"<-"+from+"@"+f.sessionHead)
 	return f.sessionHead, nil
+}
+
+func (f *fakeForge) BranchProtected(_ context.Context, _ int64, _, _, _ string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.ruleProtected, f.protectErr
 }
 
 // forgeComment is one comment the comment verb posted.

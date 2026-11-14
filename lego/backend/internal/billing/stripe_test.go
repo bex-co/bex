@@ -43,6 +43,7 @@ type stripeStub struct {
 	hits    []string // request paths, in order
 	bodies  []string // POST bodies, in order
 	headers []http.Header
+	queries []string // raw query strings, in order
 	route   func(method, path string) (status int, body string)
 }
 
@@ -57,6 +58,7 @@ func (s *stripeStub) RoundTrip(req *http.Request) (*http.Response, error) {
 	s.hits = append(s.hits, req.URL.Path)
 	s.bodies = append(s.bodies, body)
 	s.headers = append(s.headers, req.Header.Clone())
+	s.queries = append(s.queries, req.URL.RawQuery)
 	s.mu.Unlock()
 	status, respBody := s.route(req.Method, req.URL.Path)
 	h := make(http.Header)
@@ -80,6 +82,19 @@ func (s *stripeStub) requests(path string) []struct {
 				body   string
 				header http.Header
 			}{body: s.bodies[i], header: s.headers[i]})
+		}
+	}
+	return out
+}
+
+// queriesFor is the raw query string of every request to path, in order.
+func (s *stripeStub) queriesFor(path string) []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []string
+	for i, hit := range s.hits {
+		if hit == path {
+			out = append(out, s.queries[i])
 		}
 	}
 	return out
@@ -537,6 +552,47 @@ func TestStripeBillingForReadsPreviewAndFinalizedInvoices(t *testing.T) {
 	}
 	if len(b.Invoices) != 1 || b.Invoices[0].ID != "in_paid" || b.Invoices[0].Status != "PAID" || b.Invoices[0].AmountUSD != "40.00" {
 		t.Fatalf("invoices = %+v", b.Invoices)
+	}
+}
+
+// A threshold charge (a standalone invoice on the customer) is listed beside
+// the cycle invoices, labelled as an agent-model charge, newest first, and is
+// never listed twice.
+func TestStripeBillingForListsAgentModelChargesBesideCycleInvoices(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/invoices/create_preview":
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","subtotal":0,"total":0,"amount_due":0,"status":"draft"}`
+		case method == http.MethodGet && path == "/v1/invoices":
+			return 200, `{"object":"list","data":[` +
+				`{"id":"in_cycle","object":"invoice","currency":"usd","subtotal":4000,"total":4000,"amount_due":4000,"period_start":1780272000,"period_end":1782864000,"status":"paid"},` +
+				`{"id":"in_charge","object":"invoice","currency":"usd","subtotal":1000,"total":1000,"amount_due":1000,"period_start":1783000000,"period_end":1783000000,"status":"paid",` +
+				`"metadata":{"bex_workspace":"tea-a","bex_agent_model_charge":"true"}}],"has_more":false,"url":"/v1/invoices"}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	b, err := c.BillingFor(context.Background(), "tea-a", time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("BillingFor: %v", err)
+	}
+	if len(b.Invoices) != 2 ||
+		b.Invoices[0].ID != "in_charge" || b.Invoices[0].Kind != InvoiceKindAgentModelCharge || b.Invoices[0].AmountUSD != "10.00" ||
+		b.Invoices[1].ID != "in_cycle" || b.Invoices[1].Kind != InvoiceKindCycle {
+		t.Fatalf("invoices = %+v, want the charge then the cycle invoice", b.Invoices)
+	}
+	// The charge list reads the customer's invoices, not the subscription's.
+	var customerOnly bool
+	for _, q := range stub.queriesFor("/v1/invoices") {
+		if strings.Contains(q, "customer=cus_1") && !strings.Contains(q, "subscription=") {
+			customerOnly = true
+		}
+	}
+	if !customerOnly {
+		t.Fatal("no invoice list without a subscription filter: standalone charges would be missed")
 	}
 }
 

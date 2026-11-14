@@ -39,8 +39,9 @@ var memberGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"createdAt":        gqlutil.StrField(func(m MemberView) any { return m.CreatedAt }),
 		"mfaEnabled":       gqlutil.BoolField(func(m MemberView) any { return m.MFAEnabled }),
 		"identityResolved": gqlutil.ReqBoolField(func(m MemberView) any { return m.IdentityResolved }),
-		// w5/m101: which row is the workspace owner's, and which is the caller's
-		// own — the two rows whose Remove/role controls the server refuses.
+		// isOwner names the workspace's creator while they are bound to it
+		// (information only since w5/m372); isSelf is the caller's own row,
+		// whose Remove/role controls the server refuses (w5/m101).
 		"isOwner": gqlutil.ReqBoolField(func(m MemberView) any { return m.IsOwner }),
 		"isSelf":  gqlutil.ReqBoolField(func(m MemberView) any { return m.IsSelf }),
 	},

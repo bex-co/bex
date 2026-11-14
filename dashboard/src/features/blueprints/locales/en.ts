@@ -762,6 +762,12 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Could not approve the planned sync",
     description: "Toast when approving fails",
   },
+  "blueprints.plannedChanged": {
+    message:
+      "Someone planned this Blueprint again. Review the newest plan, then approve it.",
+    description:
+      "Toast when the plan on screen was replaced before it was approved (BLUEPRINT_PLAN_CHANGED)",
+  },
   "blueprints.plannedReplanFailed": {
     message: "Could not plan a new sync",
     description: "Toast when re-planning fails",

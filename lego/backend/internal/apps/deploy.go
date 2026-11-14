@@ -886,7 +886,7 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 // 5. Preflight env-groups, env-vars and protected placement (w3/m281)
 // 6. Apply groupings (projects, environments) — asserts Blueprint execution first
 // 7. Apply env-groups → datastores → services (each family re-asserts)
-// 8. Patch forward-referenced services (deferred fromService host slugs)
+// 8. Patch the services a fromService reference cycle left unresolved (deferred host slugs)
 // 9. Auto-register Blueprint row (enables subsequent sync operations)
 // 10. Stamp ownership only while the admitted (generation, run) claim still holds
 func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack, snap *workspaceSnapshot) (StackResult, error) {
@@ -989,10 +989,11 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		return res, err
 	}
 	// Sibling slugs for fromService host/hostport refs (ADR041 D3): a target
-	// that already exists (re-sync, or declared earlier in this apply) resolves
-	// before its referrer is written — no spec churn; a ref to a service created
-	// later in this same first apply is deferred to the post-create patch pass
-	// below.
+	// that already exists resolves before its referrer is written — no spec
+	// churn — and the apply creates a new target before its referrer
+	// (referencedFirst, w8/306). A reference cycle's back edge resolves from
+	// the sibling's predicted slug, and the post-create patch pass below
+	// re-applies only a value the created sibling resolves differently (w8/316).
 	// The port half is the target's current serving port (App.ServicePort),
 	// never a parse-time default (w6/m148).
 	serviceApps := make(map[string]*appv1alpha1.App, len(st.services))
@@ -1121,13 +1122,16 @@ func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assi
 }
 
 // deferredService is a service whose host refs pointed at a not-yet-created
-// sibling on this first apply; patched with the resolved env after the
-// first-pass create loop.
+// sibling on this first apply; checked against the created siblings after the
+// first-pass create loop, and patched where a value differs.
 type deferredService struct {
 	req    CreateRequest
 	fields map[string]BlueprintField
 	refs   []hostRef
 	app    *appv1alpha1.App // what the first pass wrote
+	// provisional is each ref's value the first pass wrote from the sibling's
+	// predicted slug (provisionalTarget), by env key.
+	provisional map[string]string
 }
 
 // applyStackServices is the first service pass: each stack service is applied
@@ -1145,7 +1149,8 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 	if err != nil {
 		return nil, err
 	}
-	for _, svc := range st.services {
+	views := make(map[string]AppView, len(st.services))
+	for _, svc := range referencedFirst(st.services, appsByName) {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return nil, err
 		}
@@ -1158,6 +1163,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		if err != nil {
 			return nil, err
 		}
+		provisional := resolveProvisionalRefs(&svc, laterRefs, st, s.BaseDomain)
 		if assignment := assignments[svc.grouping]; assignment.ID != "" {
 			svc.req.EnvironmentID = assignment.ID
 			svc.req.EnvironmentSpecified = true
@@ -1187,7 +1193,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		targets[svc.req.Name] = appliedTarget{ctx: verbCtx, ref: ref}
 		serviceApps[svc.req.Name] = app
 		if len(laterRefs) > 0 {
-			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs, app: app})
+			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs, app: app, provisional: provisional})
 		}
 		// A service the apply created linked its fromGroup groups as it was
 		// written (initialEnvGroups); one that existed links them here, which is
@@ -1212,7 +1218,10 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 				return nil, fmt.Errorf("seeding env for %q: %w", svc.req.Name, err)
 			}
 		}
-		res.Services = append(res.Services, v)
+		views[svc.req.Name] = v
+	}
+	for _, svc := range st.services {
+		res.Services = append(res.Services, views[svc.req.Name])
 	}
 	// Every service now exists and every generateValue is minted, whatever
 	// order the file declared them in: copy each generated source value into
@@ -1243,22 +1252,70 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 	return deferred, nil
 }
 
+// referencedFirst orders services so each comes after the declared siblings
+// this apply creates that its host references name, and otherwise keeps file
+// order. A sibling's slug is minted at its create, so a service written before
+// it took the reference only in the second pass (patchDeferredStackServices),
+// whose re-apply opened a second deploy that canceled the new service's first
+// (w8/306). A target that already exists resolves in any order, so a re-sync
+// keeps file order, which a domain handed between services relies on (the
+// apply's host-claim index). A reference cycle's back edges resolve from the
+// sibling's predicted slug (resolveProvisionalRefs, w8/316).
+func referencedFirst(services []parsedService, existing map[string]*appv1alpha1.App) []parsedService {
+	index := make(map[string]int, len(services))
+	for i, svc := range services {
+		index[svc.req.Name] = i
+	}
+	visited := make([]bool, len(services))
+	ordered := make([]parsedService, 0, len(services))
+	var visit func(i int)
+	visit = func(i int) {
+		if visited[i] {
+			return
+		}
+		visited[i] = true
+		for _, ref := range services[i].hostRefs {
+			if j, ok := index[ref.target]; ok && existing[ref.target] == nil {
+				visit(j)
+			}
+		}
+		ordered = append(ordered, services[i])
+	}
+	for i := range services {
+		visit(i)
+	}
+	return ordered
+}
+
 // patchDeferredStackServices is the second pass: every service now exists,
 // every slug is known — patch the services whose host refs were forward
-// references (first apply only).
+// references (first apply only). A service whose provisional values all match
+// what its created siblings resolve to is left alone, so its first deploy is
+// its only one (w8/316).
 func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []deferredService, lookupTarget func(string) *appv1alpha1.App) error {
 	for _, d := range deferred {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return err
 		}
+		changed := false
 		for _, ref := range d.refs {
 			target := lookupTarget(ref.target)
 			if target == nil { // unreachable: deployParsedStack refused unknown targets before any write
 				return fmt.Errorf("blueprint apply: service %q: fromService target %q has no address after the create pass", d.req.Name, ref.target)
 			}
-			if env, ok := ref.env(target, s.BaseDomain); ok {
-				d.req.Env = append(d.req.Env, env)
+			value, written := d.provisional[ref.key]
+			env, ok := ref.env(target, s.BaseDomain)
+			switch {
+			case !ok && written:
+				d.req.Env = slices.DeleteFunc(slices.Clone(d.req.Env), func(e appv1alpha1.EnvVar) bool { return e.Name == ref.key })
+				changed = true
+			case ok && (!written || value != env.Value):
+				d.req.Env = mergeBlueprintEnv(d.req.Env, []appv1alpha1.EnvVar{env})
+				changed = true
 			}
+		}
+		if !changed {
+			continue
 		}
 		// The first pass wrote this service, so it is re-applied to that App.
 		// The first pass recorded its setting changes, if any.
@@ -1268,6 +1325,51 @@ func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []def
 		}
 	}
 	return nil
+}
+
+// resolveProvisionalRefs writes each forward host ref (a sibling this apply
+// has not created yet) onto svc's env from provisionalTarget, so a reference
+// cycle's back edge reaches the first deploy, and returns the values written
+// by env key. Two wait for the post-create pass: a port, which a created
+// image or Docker service learns only at runtime (never guessed, ADR089 D4),
+// and RENDER_SERVICE_ID, the id the sibling's create mints.
+func resolveProvisionalRefs(svc *parsedService, refs []hostRef, st parsedStack, baseDomain string) map[string]string {
+	var written map[string]string
+	for _, ref := range refs {
+		if ref.carriesPort() || ref.property == platformEnvRefProperty+renderenv.ServiceID {
+			continue
+		}
+		sibling, ok := parsedBlueprintService(st, ref.target)
+		if !ok {
+			continue
+		}
+		target, ok := provisionalTarget(sibling)
+		if !ok {
+			continue
+		}
+		if env, ok := ref.env(target, baseDomain); ok {
+			svc.req.Env = mergeBlueprintEnv(svc.req.Env, []appv1alpha1.EnvVar{env})
+			if written == nil {
+				written = map[string]string{}
+			}
+			written[ref.key] = env.Value
+		}
+	}
+	return written
+}
+
+// provisionalTarget is the App a sibling this apply has not created yet will
+// be, as far as a host reference reads it: its desired spec under the slug its
+// create mints first, the bare name (store.CreateApp). Any other slug (a
+// suffix minted on a collision or beside a deleting predecessor, or a
+// store-less create's CR name) makes the post-create pass correct the value.
+func provisionalTarget(svc parsedService) (*appv1alpha1.App, bool) {
+	spec, err := specFromCreate(svc.req)
+	if err != nil {
+		return nil, false
+	}
+	spec.Subdomain = svc.req.Name
+	return &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: svc.req.Name}, Spec: spec}, true
 }
 
 // resolveServiceRefs is one stack service's reference-resolution prelude: the

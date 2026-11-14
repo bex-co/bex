@@ -53,6 +53,10 @@ func (f trustInvoicesFake) AgentModelInvoiceLines(_ context.Context, invoiceID s
 
 func (f trustInvoicesFake) FinalizeThresholdInvoice(context.Context, string) error { return nil }
 
+func (f trustInvoicesFake) VoidAgentModelChargesBilledBy(context.Context, string, string, time.Time) error {
+	return nil
+}
+
 func (f trustInvoicesFake) WrittenOffCardFingerprint(context.Context, string, string) (string, error) {
 	return "", nil
 }

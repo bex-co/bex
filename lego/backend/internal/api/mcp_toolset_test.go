@@ -75,8 +75,17 @@ func TestCloudAgentsToolsetRefusesToolsOutsideIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.IsError {
-		t.Fatalf("archive_agent_session ran on /mcp/cloud-agents: %+v", res)
+	// The refusal must name the toolset, not merely be "some tool error": a
+	// nonexistent session would fail inside the handler too, so a test that
+	// only checks IsError would pass even with the toolset filter gone.
+	var text strings.Builder
+	for _, c := range res.Content {
+		if tc, ok := c.(*mcp.TextContent); ok {
+			text.WriteString(tc.Text)
+		}
+	}
+	if want := `unknown tool "archive_agent_session" on this endpoint`; !res.IsError || !strings.Contains(text.String(), want) {
+		t.Fatalf("archive_agent_session on /mcp/cloud-agents = %+v, want the toolset refusal %q", res, want)
 	}
 }
 

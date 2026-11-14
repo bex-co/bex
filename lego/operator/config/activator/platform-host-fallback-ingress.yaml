@@ -2,13 +2,19 @@
 # route claims yet goes to the activator, at the lowest router priority. A
 # just-created service answers its first-deploy response while the operator's
 # first reconcile writes its own route, and a host no public App owns answers
-# a bex 404 instead of Traefik's raw "404 page not found". Every App route
-# keeps Traefik's default priority, its rule length, which is always above 1.
+# Render's plain-text 404 (w8/320) instead of Traefik's raw "404 page not
+# found". Every App route keeps Traefik's default priority, its rule length,
+# which is always above 1.
 #
 # A platform manifest, not an operator write: the bex-operator-object-namespaces
 # admission policy (deploy/gitops/base/operator-workload-admission.yaml) lets
 # the operator write Ingresses only in tenant and bootstrap namespaces, and it
 # refused the operator-written version of this route in production.
+#
+# Plain HTTP first redirects to HTTPS (platform-host-fallback-https.yaml,
+# w8/320), as on Render. The annotation names the Middleware as Traefik sees
+# it, "<namespace>-<name>@kubernetescrd", after config/default's namePrefix,
+# which kustomize does not apply inside annotation values.
 #
 # The host is "*." + BEX_BASE_DOMAIN; keep it in sync with the activator,
 # api, manager and static-server deployments' BEX_BASE_DOMAIN. The TLS entry
@@ -21,6 +27,7 @@ metadata:
   namespace: bex-system
   annotations:
     traefik.ingress.kubernetes.io/router.priority: "1"
+    traefik.ingress.kubernetes.io/router.middlewares: bex-system-bex-platform-host-fallback-https@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:

@@ -131,6 +131,19 @@ const LINE_FILTER_KEYS = STRUCTURED_FILTER_KEYS.filter(
 // Only request lines carry a method, status code, path or host.
 const REQUEST_FILTER_KEYS = LINE_FILTER_KEYS.filter((key) => key !== "level");
 
+/**
+ * filters for a service that receives no public requests: a request type
+ * reads as application logs, and the request-line filters are cleared.
+ */
+export function withoutRequestFilters(filters: LogFilters): LogFilters {
+  const out: LogFilters = {
+    ...filters,
+    type: filters.type === LOG_TYPE_REQUEST ? LOG_TYPE_APP : filters.type,
+  };
+  for (const key of REQUEST_FILTER_KEYS) out[key] = "";
+  return out;
+}
+
 // Whether bex-api refuses the live stream for this filter set, mirroring its
 // subscribe routing exactly (w8/m147): as in history, the request filters
 // select request lines (streamed from the log store's poll, w4/m237) and

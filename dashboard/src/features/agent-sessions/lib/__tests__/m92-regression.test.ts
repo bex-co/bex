@@ -103,25 +103,3 @@ describe("m92 t007 — settled status phrase", () => {
     ).toBe("agentSessions.statusPhrase.working");
   });
 });
-
-describe("m92 t002 — substring search vs subsequence", () => {
-  // Replicate the helper from nav-section to ensure substring semantics
-  function sessionSearchMatch(query: string, candidate: string): boolean {
-    const q = query.trim().toLowerCase();
-    if (q === "") return true;
-    return candidate.toLowerCase().includes(q);
-  }
-
-  it("matches substring case-insensitively", () => {
-    expect(sessionSearchMatch("typo", "find and fix typo")).toBe(true);
-    expect(sessionSearchMatch("TYPO", "find and fix typo")).toBe(true);
-  });
-  it("does not match pure subsequence without substring", () => {
-    // "typo" letters appear in order in "today your project opens" but not as substring
-    expect(sessionSearchMatch("typo", "today your project opens")).toBe(false);
-  });
-  it("empty query matches everything", () => {
-    expect(sessionSearchMatch("", "anything")).toBe(true);
-    expect(sessionSearchMatch("   ", "anything")).toBe(true);
-  });
-});

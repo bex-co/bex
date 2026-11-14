@@ -300,7 +300,7 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 	if err := s.prepareProjection(ctx, a, filesProjection, filesPath(service), files); err != nil {
 		return err
 	}
-	a.Spec.FilesFromSecrets = core.AppendListValue(a.Spec.FilesFromSecrets, filesSecretName(a.Name))
+	a.Spec.FilesFromSecrets = core.AddString(a.Spec.FilesFromSecrets, filesSecretName(a.Name))
 	return nil
 }
 
@@ -734,7 +734,7 @@ func (s *Service) projectFiles(ctx context.Context, a *appv1alpha1.App, files ma
 	// (w5/106).
 	switch {
 	case projection.HoldsData:
-		a.Spec.FilesFromSecrets = core.AppendListValue(a.Spec.FilesFromSecrets, name)
+		a.Spec.FilesFromSecrets = core.AddString(a.Spec.FilesFromSecrets, name)
 	case !projection.Superseded:
 		a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, name)
 		// Nor may a save-only write's staged mount bring it back next release.

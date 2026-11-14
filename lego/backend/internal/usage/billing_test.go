@@ -50,7 +50,7 @@ func sampleBilling() *billing.Billing {
 		// (w6/m98), so every surface test carries it.
 		CurrentCost: &billing.Amount{AmountUSD: "12.34", CreditsAppliedUSD: "10.00", AmountDueUSD: "2.34", Currency: "USD", PeriodStart: "2026-07-01T00:00:00Z", PeriodEnd: "2026-07-20T00:00:00Z"},
 		Invoices: []billing.Invoice{
-			{ID: "inv_1", Status: "FINALIZED", AmountUSD: "40.00", CreditsAppliedUSD: "25.00", AmountDueUSD: "15.00", Currency: "USD", PeriodStart: "2026-06-01T00:00:00Z", PeriodEnd: "2026-07-01T00:00:00Z"},
+			{ID: "inv_1", Kind: billing.InvoiceKindAgentModelCharge, Status: "FINALIZED", AmountUSD: "40.00", CreditsAppliedUSD: "25.00", AmountDueUSD: "15.00", Currency: "USD", PeriodStart: "2026-06-01T00:00:00Z", PeriodEnd: "2026-07-01T00:00:00Z"},
 		},
 		Credits: &billing.Credits{
 			AvailableUSD: "25.00", Currency: "USD",
@@ -316,7 +316,7 @@ func TestBillingCrossSurfaceParity(t *testing.T) {
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
 		Context:       ctx,
-		RequestString: `{ usage { billing { currentCost { amountUsd creditsAppliedUsd amountDueUsd currency } invoices { id status amountUsd creditsAppliedUsd amountDueUsd } credits { availableUsd currency grants { name remainingUsd expiresAt } } } } }`,
+		RequestString: `{ usage { billing { currentCost { amountUsd creditsAppliedUsd amountDueUsd currency } invoices { id status kind amountUsd creditsAppliedUsd amountDueUsd } credits { availableUsd currency grants { name remainingUsd expiresAt } } } } }`,
 	})
 	if len(res.Errors) > 0 {
 		t.Fatalf("graphql errors: %v", res.Errors)
@@ -333,7 +333,8 @@ func TestBillingCrossSurfaceParity(t *testing.T) {
 		t.Fatalf("GraphQL invoices %d, REST %d", len(gqlInvoices), len(rest.Billing.Invoices))
 	}
 	gqlInv0 := gqlInvoices[0].(map[string]any)
-	if gqlInv0["status"] != rest.Billing.Invoices[0].Status || gqlInv0["amountUsd"] != rest.Billing.Invoices[0].AmountUSD ||
+	if gqlInv0["status"] != rest.Billing.Invoices[0].Status || gqlInv0["kind"] != rest.Billing.Invoices[0].Kind ||
+		gqlInv0["amountUsd"] != rest.Billing.Invoices[0].AmountUSD ||
 		gqlInv0["creditsAppliedUsd"] != rest.Billing.Invoices[0].CreditsAppliedUSD ||
 		gqlInv0["amountDueUsd"] != rest.Billing.Invoices[0].AmountDueUSD {
 		t.Errorf("GraphQL invoice %v vs REST %+v (surfaces disagree)", gqlInv0, rest.Billing.Invoices[0])

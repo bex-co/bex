@@ -66,10 +66,20 @@ func (l *SessionLimiter) Acquire(subject string) (bool, string) {
 func (l *SessionLimiter) Release(subject string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.global--
-	l.perIdentity[subject]--
-	if l.perIdentity[subject] == 0 {
-		delete(l.perIdentity, subject)
+	releaseSlot(&l.global, l.perIdentity, subject)
+}
+
+// releaseSlot returns one of subject's held slots. A release for a subject
+// holding none is ignored: an unbalanced release must not drive the counts
+// negative, which would lift both caps by one until the process restarts.
+func releaseSlot(global *int, perIdentity map[string]int, subject string) {
+	if perIdentity[subject] == 0 {
+		return
+	}
+	*global--
+	perIdentity[subject]--
+	if perIdentity[subject] == 0 {
+		delete(perIdentity, subject)
 	}
 }
 
@@ -129,11 +139,7 @@ func (l *ChannelLimiter) AcquireChannel(subject string) (bool, string) {
 func (l *ChannelLimiter) ReleaseChannel(subject string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.global--
-	l.perIdentity[subject]--
-	if l.perIdentity[subject] == 0 {
-		delete(l.perIdentity, subject)
-	}
+	releaseSlot(&l.global, l.perIdentity, subject)
 }
 
 // SourceLimiter bounds concurrent in-flight entries per SOURCE address. The

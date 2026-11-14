@@ -18,7 +18,7 @@ Informed by [OpenClaw's test-audit skill](https://github.com/openclaw/openclaw/b
 - Fix everything you find directly in the working tree. If a fix can't be finished safely in this run, revert only your partial work for that fix and list it under **Deferred** in the report — never leave the tree half-refactored.
 - Scope: parse `$ARGUMENTS` per Phase 1. Stay within that scope; do not turn a test audit into a general production refactor.
 - False-positive discipline: if a finding is intentional, load-bearing, or ambiguous, skip it with a one-line reason — don't argue it into a change.
-- Every change must pass the verification gates in Phase 5 before being reported as done.
+- Every change must pass the targeted checks in Phase 5 before being reported as done. Run one heavy command at a time, and leave the module-wide suites to CI: it runs them on the pull request against the real Postgres, OpenFGA and OpenBao a sandbox lacks, and a failed check comes back to the session as its next turn (ADR047 D11).
 - Run `npx prettier@3.4.2 --write` on any markdown touched.
 - Before shipping, summarize results in commentary using: **Fixed** (file:line + one-line rationale) / **Deferred** (item + why) / **Skipped** (finding + reason) / **Gates** (commands run + outcomes).
 
@@ -66,14 +66,12 @@ Reapply the relevant mutation after strengthening: the improved test must fail f
 
 ## Phase 5 — Verify and report
 
-Run focused tests first, then the required gates for touched modules:
+Run the focused tests first, then the targeted checks for what changed:
 
-- Any Go change: `make lint` from `lego/operator/`.
-- Operator: `make test` from `lego/operator/`.
-- Backend: `go test ./...` from `lego/backend/`.
-- CLI: `go test ./...` from `lego/cli/`.
-- Types: `go test ./...` from `lego/types/`, plus operator and backend gates for its consumers.
-- Dashboard: `yarn test` and `yarn typecheck` from `dashboard/`.
+- Go: `gofmt -l` on the touched files, `go vet` of each touched package, and `go test -count=1` of each changed test package and of any package whose helpers you removed.
+- Types: also `go build ./...` and `go vet ./...` in the operator and backend modules, which compiles their tests without running them.
+- Dashboard: `yarn vitest run <each changed test file>`, `yarn eslint <changed files>`, and `yarn typecheck`.
+- Never the module-wide suites (`make lint`, `make test`, `go test ./...`, the whole `yarn test`): CI runs them on the pull request.
 
 Use the scoped guides for integration-test prerequisites. Report skipped environment-dependent tests explicitly; they do not verify changes to those scenarios. Finish with Markdown formatting and `git diff --check`, and confirm no mutation probes remain.
 

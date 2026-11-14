@@ -76,6 +76,9 @@ type settleStripe struct {
 	retired     bool
 	charged     int64 // cents
 	calls       []string
+	// declinedCharge is an open threshold charge invoice (ADR091 D10.2a)
+	// whose usage the settle invoice bills again; "" for none.
+	declinedCharge string
 }
 
 type stubInvoice struct {
@@ -179,6 +182,12 @@ func (s *settleStripe) RoundTrip(req *http.Request) (*http.Response, error) {
 		id := s.addInvoice(s.unbilled / 10_000)
 		s.unbilled = 0
 		body = fmt.Sprintf(`{"id":"sub_1","object":"subscription","status":"past_due","latest_invoice":%s}`, s.invoiceJSON(id))
+	case req.Method == http.MethodGet && path == "/v1/invoices" && query.Get("status") == "open" && query.Get("subscription") == "" && s.declinedCharge != "":
+		body = fmt.Sprintf(`{"object":"list","data":[{"id":%q,"object":"invoice","status":"open","created":%d,`+
+			`"metadata":{"bex_workspace":%q,"bex_agent_model_charge":"true"}}],"has_more":false,"url":"/v1/invoices"}`,
+			s.declinedCharge, time.Now().Add(-time.Hour).Unix(), s.ws)
+	case req.Method == http.MethodPost && s.declinedCharge != "" && path == "/v1/invoices/"+s.declinedCharge+"/void":
+		body = fmt.Sprintf(`{"id":%q,"object":"invoice","status":"void"}`, s.declinedCharge)
 	case req.Method == http.MethodGet && path == "/v1/invoices":
 		var data []string
 		if query.Get("status") == "open" && query.Get("subscription") == "sub_1" {
@@ -324,6 +333,22 @@ func TestDeleteSettlesUnbilledUsageFirst(t *testing.T) {
 	calls := strings.Join(f.stripe.calls, "\n")
 	if strings.Index(calls, "/pay") > strings.Index(calls, "DELETE /v1/subscriptions/sub_1") {
 		t.Fatalf("the subscription was cancelled before the charge:\n%s", calls)
+	}
+}
+
+// A declined agent-model threshold charge's usage is on the meter, so the
+// settle invoice bills it: its open charge invoice is voided before the
+// workspace is deleted, so the usage is never owed twice (ADR091 D10.2a).
+func TestDeleteVoidsADeclinedChargeTheSettleInvoiceBilled(t *testing.T) {
+	f := newSettleFixture(t)
+	f.stripe.declinedCharge = "in_charge_declined"
+	if err := (AccountTeardown{Service: f.svc}).Delete(context.Background(), f.tenant.ID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	calls := strings.Join(f.stripe.calls, "\n")
+	void := strings.Index(calls, "POST /v1/invoices/in_charge_declined/void")
+	if void < 0 || void < strings.Index(calls, "POST /v1/invoices/in_settle_1/pay") || void > strings.Index(calls, "DELETE /v1/subscriptions/sub_1") {
+		t.Fatalf("the declined charge was not voided between the settle charge and the cancel:\n%s", calls)
 	}
 }
 

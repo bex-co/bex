@@ -57,13 +57,15 @@ query usersAndPendingForTeam($ownerId: String!) {
 # parent, = user | team). bex's model type `workspace` is that entity; its
 # five member roles + capability split match Render's exactly (docs/ADR012-auth.md).
 
-# --- Membership-invariant comparison (w5/m101, 2026-09-16) ----------------------
-# bex refuses four member mutations Render's surface also does not offer:
-# removing the workspace owner (OWNER_CANNOT_BE_REMOVED), demoting the owner
-# below admin (OWNER_ROLE_CANNOT_CHANGE), removing yourself
-# (CANNOT_REMOVE_SELF), and changing your own role (CANNOT_CHANGE_OWN_ROLE).
-# All four are 409 + a stable code on REST, GraphQL and MCP alike
-# (internal/members/membership_refusal_parity_test.go).
+# --- Membership-invariant comparison (w5/m101, 2026-09-16; amended w5/m372) -----
+# bex refuses two member mutations Render's surface also does not offer:
+# removing yourself (CANNOT_REMOVE_SELF) and changing your own role
+# (CANNOT_CHANGE_OWN_ROLE). Both are 409 + a stable code on REST, GraphQL and
+# MCP alike (internal/members/membership_refusal_parity_test.go). Until w5/m372
+# (2026-11-13) bex also refused removing or demoting the workspace's creator
+# (OWNER_CANNOT_BE_REMOVED, OWNER_ROLE_CANNOT_CHANGE); Render has no Owner role
+# ("A workspace's creator is automatically assigned this role", Admin:
+# render.com/docs/team-members), so those refusals are retired.
 #
 # EVIDENCE LIMIT — the Render side of this comparison is NOT captured. The
 # capture above is the Team Members *read* query only; Render's remove /
@@ -77,19 +79,20 @@ query usersAndPendingForTeam($ownerId: String!) {
 # team" action rather than by removing themselves from the members list — but
 # that is documentation, not a capture from this workspace's tier.
 #
-# The one place bex has no Render counterpart at all is the OWNER binding:
-# Render's model has no per-team owner identity that onboarding re-resolves on
-# every request, so "the owner cannot be removed" is a bex-specific invariant
-# created by tenants.owner_identity_id, not a parity gap. Should a live capture
-# ever show Render permitting one of the other three, that is drift to file —
-# it has not been observed either way.
+# The OWNER binding (tenants.owner_identity_id, which onboarding re-resolves)
+# has no Render counterpart. Since w5/m372 the store ends it in the same
+# transaction as the creator's removal, demotion or leave, so it no longer
+# constrains who may be removed (docs/ADR024-members.md). Should a live capture
+# ever show Render permitting a self-removal or own-role change, that is drift
+# to file — it has not been observed either way.
 
 # --- Leave workspace (w5/m102, 2026-09-17) --------------------------------------
 # bex ships a dedicated exit verb: REST DELETE /v1/workspaces/{id}/members/me,
 # GraphQL leaveWorkspace(workspaceId:), MCP leave_workspace. None of them takes
 # a subject — the caller's identity is the subject — so the exit cannot be
-# turned into a member removal. Refused for the workspace owner
-# (OWNER_CANNOT_LEAVE) and the last admin.
+# turned into a member removal. Refused for the last admin only; the
+# workspace's creator leaves like any admin since w5/m372 (OWNER_CANNOT_LEAVE
+# retired).
 #
 # EVIDENCE LIMIT — Render's own leave-team mutation is NOT captured here. The
 # capture above is the Team Members read query only. Render's dashboard does

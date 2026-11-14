@@ -234,6 +234,12 @@ func TestFastForwardBranch(t *testing.T) {
 	if protected, err := c.BranchProtected(ctx, 42, "octo", "repo", "feature/fix-login"); err != nil || !protected {
 		t.Fatalf("branch protection = %v %v", protected, err)
 	}
+	if sha, err := c.BranchHead(ctx, 42, "octo", "repo", "bex-agent/ags-1"); err != nil || sha != head {
+		t.Fatalf("branch head = %q %v", sha, err)
+	}
+	if _, err := c.BranchHead(ctx, 42, "octo", "repo", "bex-agent/missing"); !errors.Is(err, ErrHeadBranchNotFound) {
+		t.Fatalf("a missing branch's head = %v, want ErrHeadBranchNotFound", err)
+	}
 }
 
 func TestBexCommandReadsOnlyALeadingBexWord(t *testing.T) {

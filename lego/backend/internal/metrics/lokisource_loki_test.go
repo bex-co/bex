@@ -216,6 +216,20 @@ func TestLokiRequestMetricsClipToWindowOnLoki(t *testing.T) {
 		}
 	})
 
+	// w4/605: the unfiltered read (no host) is what Response Times now asks
+	// for, and a single request in a step must still produce a point.
+	t.Run("unfiltered latency has a point for every populated step", func(t *testing.T) {
+		series := read(t, RequestMetricsRequest{Metric: MetricHTTPLatency, Quantile: 0.99, Start: start, End: end})
+		if len(series) == 0 {
+			t.Fatal("no unfiltered latency series for the populated window")
+		}
+		for _, s := range series {
+			if len(s.Points) == 0 {
+				t.Errorf("unfiltered latency series %v has no points", s.Labels)
+			}
+		}
+	})
+
 	t.Run("latency quantile ignores out-of-window outliers", func(t *testing.T) {
 		series := read(t, RequestMetricsRequest{Metric: MetricHTTPLatency, Quantile: 0.9, Hosts: []string{"web.example.com"}, Start: start, End: end})
 		if len(series) == 0 {

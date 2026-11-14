@@ -24,7 +24,13 @@ describe("AgentModelTermsPage", () => {
         name: "Agent model usage terms",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Effective November 12, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Effective November 14, 2026")).toBeInTheDocument();
+    // ADR108: Muse Code's contributor tier is disclosed as the exception.
+    expect(
+      screen.getByText(
+        /Meta may use the prompts, code, files and context sent/,
+      ),
+    ).toBeInTheDocument();
     expect(headings(container).slice(1)).toEqual([
       "Scope",
       "Your data",
@@ -72,7 +78,7 @@ describe("AgentModelTermsPage", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "智能体模型使用条款" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("生效日期：2026年11月12日")).toBeInTheDocument();
+    expect(screen.getByText("生效日期：2026年11月14日")).toBeInTheDocument();
     expect(screen.getByText(/实际成本加 30%/)).toBeInTheDocument();
   });
 

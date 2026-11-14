@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -232,4 +233,108 @@ func mineCharges(ctx context.Context, t *testing.T, st *PGStore, cutoff time.Tim
 		}
 	}
 	return out
+}
+
+// ADR091 D10.2a: the charge window opens where a subscription invoice last
+// billed the meter. A boundary at 08:39 counts the month's hours
+// that start at or after it (09:00 on) and only the paid charges made since;
+// the month-to-date total the workspace's own cap reads is unchanged. The
+// boundary only moves forward, and a workspace with no mapping ignores it.
+func TestAgentSpendInputsChargeWindow(t *testing.T) {
+	st, _, tenant := agentModelChargeTestStore(t)
+	ctx := context.Background()
+	ws := tenant.ID
+	month := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 11, 13, 10, 30, 0, 0, time.UTC)
+	for i, u := range []struct {
+		at    time.Time
+		price int64
+	}{
+		{month.Add(5 * time.Hour), 3_000_000},
+		{time.Date(2026, 11, 13, 8, 20, 0, 0, time.UTC), 2_000_000},
+		{time.Date(2026, 11, 13, 9, 10, 0, 0, time.UTC), 4_000_000},
+	} {
+		if _, err := st.RecordAgentModelUsage(ctx, AgentModelUsage{
+			RequestID: fmt.Sprintf("amr-window-%d-%s", i, ws), WorkspaceID: ws, SessionID: "ags-window", Model: "deepseek/deepseek-v4.1-flash-1017",
+			At: u.at, InputTokens: 1, UpstreamCostMicroUSD: u.price, CostSource: AgentModelCostReported, PriceMicroUSD: u.price,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if advanced, err := st.RecordAgentModelBilledUntil(ctx, ws, now); err != nil || advanced {
+		t.Fatalf("billed-until with no mapping: advanced=%t, %v; want a no-op", advanced, err)
+	}
+	if err := st.UpsertBillingProviderMapping(ctx, BillingProviderMapping{
+		WorkspaceID: ws, CustomerID: "cus_window_" + strings.ReplaceAll(ws, "-", ""), SubscriptionID: "sub_window_" + strings.ReplaceAll(ws, "-", ""),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	early, _, err := st.BeginAgentModelCharge(ctx, ws, time.Date(2026, 11, 13, 8, 30, 0, 0, time.UTC), 0, 5_000_000, 500)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.SettleAgentModelCharge(ctx, early.AgentModelChargeKey, AgentModelChargeSettlement{Status: AgentModelChargePaid, At: now}); err != nil {
+		t.Fatal(err)
+	}
+	in, err := st.AgentSpendInputs(ctx, ws, now)
+	if err != nil || !in.UnbilledFrom.Equal(month) || in.MonthToDateMicroUSD != 9_000_000 || in.WindowSpendMicroUSD != 9_000_000 || in.ChargedMicroUSD != 5_000_000 {
+		t.Fatalf("no boundary: %+v, %v; want the whole month, $5 charged", in, err)
+	}
+
+	boundary := time.Date(2026, 11, 13, 8, 39, 52, 0, time.UTC)
+	if advanced, err := st.RecordAgentModelBilledUntil(ctx, ws, boundary); err != nil || !advanced {
+		t.Fatalf("billed-until: advanced=%t, %v", advanced, err)
+	}
+	if advanced, err := st.RecordAgentModelBilledUntil(ctx, ws, boundary.Add(-time.Hour)); err != nil || advanced {
+		t.Fatalf("an earlier billed-until moved the boundary back: advanced=%t, %v", advanced, err)
+	}
+	late, ok, err := st.BeginAgentModelCharge(ctx, ws, time.Date(2026, 11, 13, 9, 50, 0, 0, time.UTC), 1, 1_000_000, 100)
+	if err != nil || !ok {
+		t.Fatalf("late charge started=%t, %v", ok, err)
+	}
+	if _, err := st.SettleAgentModelCharge(ctx, late.AgentModelChargeKey, AgentModelChargeSettlement{Status: AgentModelChargePaid, At: now}); err != nil {
+		t.Fatal(err)
+	}
+	in, err = st.AgentSpendInputs(ctx, ws, now)
+	if err != nil || !in.UnbilledFrom.Equal(boundary) || in.MonthToDateMicroUSD != 9_000_000 || in.WindowSpendMicroUSD != 4_000_000 ||
+		in.ChargedMicroUSD != 1_000_000 || in.ChargeSeq != 2 {
+		t.Fatalf("after the 08:39 invoice: %+v, %v; want the 09:00 hour's $4 and the 09:50 charge's $1, month at $9", in, err)
+	}
+
+	// Billing credits count only when read inside the window.
+	if err := st.RecordAgentModelCredits(ctx, ws, 2_500_000, boundary.Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if in, err = st.AgentSpendInputs(ctx, ws, now); err != nil || in.CreditMicroUSD != 0 {
+		t.Fatalf("credits read before the boundary: %+v, %v; want none counted (that invoice consumed them)", in, err)
+	}
+	if err := st.RecordAgentModelCredits(ctx, ws, 2_500_000, now); err != nil {
+		t.Fatal(err)
+	}
+	if in, err = st.AgentSpendInputs(ctx, ws, now); err != nil || in.CreditMicroUSD != 2_500_000 {
+		t.Fatalf("credits read in the window: %+v, %v; want $2.50", in, err)
+	}
+
+	// A boundary in the previous month still opens the window: that month's
+	// hours and charges since it are what the next invoice bills, and the
+	// credits read since it are counted once. December has no charge yet.
+	december := time.Date(2026, 12, 2, 0, 0, 0, 0, time.UTC)
+	if in, err = st.AgentSpendInputs(ctx, ws, december); err != nil || !in.UnbilledFrom.Equal(boundary) || in.MonthToDateMicroUSD != 0 ||
+		in.WindowSpendMicroUSD != 4_000_000 || in.ChargedMicroUSD != 1_000_000 || in.CreditMicroUSD != 2_500_000 || in.ChargeSeq != 0 {
+		t.Fatalf("December: %+v, %v; want the window from November's boundary, nothing spent this month", in, err)
+	}
+	// Never before the previous month's start, whose hours compaction keeps.
+	january := time.Date(2027, 1, 2, 0, 0, 0, 0, time.UTC)
+	if in, err = st.AgentSpendInputs(ctx, ws, january); err != nil || !in.UnbilledFrom.Equal(time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)) ||
+		in.WindowSpendMicroUSD != 0 || in.ChargedMicroUSD != 0 || in.CreditMicroUSD != 0 {
+		t.Fatalf("January: %+v, %v; want the window clamped to December's start, November's credit read not counted", in, err)
+	}
+
+	// A later invoice consumes credits: moving the boundary clears them.
+	if advanced, err := st.RecordAgentModelBilledUntil(ctx, ws, now.Add(-time.Minute)); err != nil || !advanced {
+		t.Fatalf("billed-until: advanced=%t, %v", advanced, err)
+	}
+	if in, err = st.AgentSpendInputs(ctx, ws, now); err != nil || in.CreditMicroUSD != 0 {
+		t.Fatalf("after the boundary moved: %+v, %v; want the credits cleared", in, err)
+	}
 }

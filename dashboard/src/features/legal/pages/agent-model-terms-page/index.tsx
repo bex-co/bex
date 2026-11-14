@@ -3,7 +3,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 
 /** The version in force; bump it (and ADR091 D8) with any wording change. */
-const EFFECTIVE_DATE = Date.UTC(2026, 10, 12);
+const EFFECTIVE_DATE = Date.UTC(2026, 10, 14);
 
 const SECTIONS = [
   ["legal.agentModels.scopeTitle", ["legal.agentModels.scopeBody"]],
@@ -12,6 +12,7 @@ const SECTIONS = [
     [
       "legal.agentModels.dataSend",
       "legal.agentModels.dataRouting",
+      "legal.agentModels.dataMuse",
       "legal.agentModels.dataOwnKey",
     ],
   ],

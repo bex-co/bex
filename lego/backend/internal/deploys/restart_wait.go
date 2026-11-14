@@ -88,7 +88,7 @@ func (s *Service) deferRestart(ctx context.Context, service string, a *appv1alph
 	if err != nil || !deferred {
 		return DeployView{}, false, err
 	}
-	return view(d), true, nil
+	return view(a, d), true, nil
 }
 
 // DeferredRestartWorker runs each waiting Restart once its app has no deploy

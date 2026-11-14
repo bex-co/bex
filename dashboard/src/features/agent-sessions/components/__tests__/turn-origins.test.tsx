@@ -248,6 +248,7 @@ function detail(
       canceledAt: null,
       archivedAt: null,
       turnOrigins,
+      appliedSecrets: [],
       agentConfig: {
         __typename: "AgentSessionConfig",
         agent: "claude",

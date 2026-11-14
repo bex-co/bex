@@ -60,7 +60,9 @@ describe("useAgentSessionMutations list cache invalidation", () => {
     expect(writeQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { id: "ags-1" },
-        data: { agentSession: { ...session, turnOrigins: null } },
+        data: {
+          agentSession: { ...session, turnOrigins: null, appliedSecrets: [] },
+        },
       }),
     );
     expect(evict).toHaveBeenCalledWith({
@@ -69,7 +71,7 @@ describe("useAgentSessionMutations list cache invalidation", () => {
     });
   });
 
-  it("keeps the detail read's turn origins when a lifecycle result lands (w9/m344)", async () => {
+  it("keeps the detail read's turn origins and applied secrets when a lifecycle result lands (w9/m344, w9/m385)", async () => {
     const turnOrigins = [
       {
         __typename: "AgentSessionTurnOrigin",
@@ -79,7 +81,16 @@ describe("useAgentSessionMutations list cache invalidation", () => {
         url: "https://github.com/acme/widgets/pull/7#issuecomment-1",
       },
     ];
-    readQuery.mockReturnValue({ agentSession: { id: "ags-1", turnOrigins } });
+    const appliedSecrets = [
+      {
+        __typename: "AgentAppliedSecret",
+        name: "ORG_TOKEN",
+        source: "workspace",
+      },
+    ];
+    readQuery.mockReturnValue({
+      agentSession: { id: "ags-1", turnOrigins, appliedSecrets },
+    });
     const session = {
       __typename: "AgentSession",
       id: "ags-1",
@@ -93,7 +104,7 @@ describe("useAgentSessionMutations list cache invalidation", () => {
     expect(writeQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { id: "ags-1" },
-        data: { agentSession: { ...session, turnOrigins } },
+        data: { agentSession: { ...session, turnOrigins, appliedSecrets } },
       }),
     );
   });

@@ -81,13 +81,19 @@ export type ShareFileOutcome =
   | { ok: true; result: SharedFile }
   | { ok: false; error: ToolError };
 
-function refuse(code: string, message: string, hint?: string): ShareFileOutcome {
+function refuse(
+  code: string,
+  message: string,
+  hint?: string,
+): ShareFileOutcome {
   return { ok: false, error: { code, message, ...(hint ? { hint } : {}) } };
 }
 
 // within reports whether real lies in one of the resolved roots.
 function within(real: string, roots: string[]): boolean {
-  return roots.some((root) => real === root || real.startsWith(root + path.sep));
+  return roots.some(
+    (root) => real === root || real.startsWith(root + path.sep),
+  );
 }
 
 async function resolvedRoots(roots: string[]): Promise<string[]> {
@@ -104,7 +110,10 @@ async function resolvedRoots(roots: string[]): Promise<string[]> {
 
 function asSharedFile(value: unknown): SharedFile | undefined {
   if (!value || typeof value !== "object") return undefined;
-  const { attachmentId, name, mediaType, size } = value as Record<string, unknown>;
+  const { attachmentId, name, mediaType, size } = value as Record<
+    string,
+    unknown
+  >;
   if (typeof attachmentId !== "string" || !attachmentId) return undefined;
   return {
     attachmentId,
@@ -120,12 +129,18 @@ function asSharedFile(value: unknown): SharedFile | undefined {
 async function readShareable(
   rawPath: string,
   roots: string[],
-): Promise<{ ok: true; real: string; bytes: Buffer } | { ok: false; outcome: ShareFileOutcome }> {
+): Promise<
+  | { ok: true; real: string; bytes: Buffer }
+  | { ok: false; outcome: ShareFileOutcome }
+> {
   let real: string;
   try {
     real = await fs.realpath(path.resolve(process.cwd(), rawPath));
   } catch {
-    return { ok: false, outcome: refuse("invalid_request", `no such file: ${rawPath}`) };
+    return {
+      ok: false,
+      outcome: refuse("invalid_request", `no such file: ${rawPath}`),
+    };
   }
   if (!within(real, await resolvedRoots(roots))) {
     return {
@@ -142,7 +157,10 @@ async function readShareable(
     handle = await fs.open(real, "r");
     const stat = await handle.stat();
     if (!stat.isFile()) {
-      return { ok: false, outcome: refuse("invalid_request", `${rawPath} is not a regular file`) };
+      return {
+        ok: false,
+        outcome: refuse("invalid_request", `${rawPath} is not a regular file`),
+      };
     }
     if (stat.size > maxShareFileBytes) {
       return { ok: false, outcome: tooLarge(rawPath, stat.size) };
@@ -150,14 +168,23 @@ async function readShareable(
     const bytes = await handle.readFile();
     // The file may have grown or shrunk since fstat: judge what was read.
     if (bytes.length === 0) {
-      return { ok: false, outcome: refuse("invalid_request", `${rawPath} is empty`) };
+      return {
+        ok: false,
+        outcome: refuse("invalid_request", `${rawPath} is empty`),
+      };
     }
     if (bytes.length > maxShareFileBytes) {
       return { ok: false, outcome: tooLarge(rawPath, bytes.length) };
     }
     return { ok: true, real, bytes };
   } catch (error) {
-    return { ok: false, outcome: refuse("invalid_request", `${rawPath} could not be read: ${describeError(error)}`) };
+    return {
+      ok: false,
+      outcome: refuse(
+        "invalid_request",
+        `${rawPath} could not be read: ${describeError(error)}`,
+      ),
+    };
   } finally {
     await handle?.close().catch(() => undefined);
   }
@@ -178,7 +205,10 @@ export async function shareFile(
 ): Promise<ShareFileOutcome> {
   const endpoint = env.BEX_SHARE_ENDPOINT || "";
   if (!endpoint) {
-    return refuse("unavailable", "file sharing is not configured for this session");
+    return refuse(
+      "unavailable",
+      "file sharing is not configured for this session",
+    );
   }
   if (!args || typeof args !== "object" || Array.isArray(args)) {
     return refuse("invalid_request", "arguments must be an object with a path");
@@ -194,7 +224,10 @@ export async function shareFile(
   if (!file.ok) return file.outcome;
   const name = (rawName ?? "").trim() || path.basename(file.real);
   if (Buffer.byteLength(name, "utf8") > maxShareFileNameBytes) {
-    return refuse("invalid_request", `name exceeds ${maxShareFileNameBytes} bytes`);
+    return refuse(
+      "invalid_request",
+      `name exceeds ${maxShareFileNameBytes} bytes`,
+    );
   }
 
   // The file is bounded at 25 MiB, so it is read once and hashed in memory:
@@ -210,12 +243,19 @@ export async function shareFile(
       },
       body: file.bytes,
     },
-    { label: "share endpoint", fallbackCode: "unavailable", timeoutMs: requestTimeoutMs },
+    {
+      label: "share endpoint",
+      fallbackCode: "unavailable",
+      timeoutMs: requestTimeoutMs,
+    },
   );
   if (!reply.ok) return reply;
   const result = asSharedFile(reply.payload);
   if (!result) {
-    return refuse("unavailable", "share endpoint returned an unexpected response");
+    return refuse(
+      "unavailable",
+      "share endpoint returned an unexpected response",
+    );
   }
   return { ok: true, result };
 }

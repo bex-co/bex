@@ -37,7 +37,10 @@ import (
 // once, from 106 to 112, without a new divergence: it split the two event
 // details union entries, which excused any mismatch of any type, into one
 // entry per type and missing field, each recorded in ADR018's events row.
-const allowlistSize = 109
+// w10/m373 lowered it from 109 to 40: stamped managedFields and Wrap's
+// metadata Sources retired the fixture-only metadata entries, and serviceDetails
+// gained buildPlan and healthCheckPath.
+const allowlistSize = 40
 
 func TestAllowlistOnlyShrinks(t *testing.T) {
 	n := 0

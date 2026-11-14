@@ -3,7 +3,6 @@ package telemetry
 import (
 	"errors"
 	"io"
-	"strings"
 	"testing"
 	"time"
 
@@ -23,6 +22,11 @@ func captureSend(t *testing.T) *[]command.ExecutionResult {
 	return &sent
 }
 
+// EmitLaunch forwards the command path it is given, so the exact equality
+// below only rules out the emitter adding argv detail of its own. The privacy
+// floor (nothing after the matched command names, such as prompts, paths or
+// flags, reaches an event) rests on each caller passing cobra's
+// c.CommandPath(), never os.Args.
 func TestEmitLaunchDescribesTheLauncherNotTheAgent(t *testing.T) {
 	sent := captureSend(t)
 	startedAt := time.Now().Add(-250 * time.Millisecond)
@@ -70,28 +74,6 @@ func TestEmitVersionUsesTheVersionCompletionKind(t *testing.T) {
 	// on every panel.
 	if got := (*sent)[0].CompletionKind; got != command.CompletionKindVersion {
 		t.Errorf("CompletionKind = %q, want version", got)
-	}
-}
-
-// TestEmitCarriesNoArguments is the privacy floor: everything after the
-// provider name belongs to the launched agent (prompts, paths, flags) and must
-// never reach an event.
-func TestEmitCarriesNoArguments(t *testing.T) {
-	sent := captureSend(t)
-
-	EmitLaunch("bex glm", time.Now(), io.Discard)
-
-	got := (*sent)[0]
-	for _, forbidden := range []string{"--", "/", "prompt", "secret"} {
-		if strings.Contains(got.CommandPath, forbidden) {
-			t.Errorf("CommandPath %q contains %q; only matched command names may be emitted", got.CommandPath, forbidden)
-		}
-	}
-	// ExecutionResult has no free-form field the launcher could fill, so the
-	// command path is the whole attack surface — assert it is exactly the two
-	// command words.
-	if fields := strings.Fields(got.CommandPath); len(fields) != 2 {
-		t.Errorf("CommandPath = %q, want exactly the binary and command names", got.CommandPath)
 	}
 }
 

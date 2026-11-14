@@ -19,6 +19,7 @@ package sandboxfiles
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,6 +84,98 @@ func TestStageUsesLiteralArgumentsAndNeverPublishes(t *testing.T) {
 	for _, forbidden := range []string{name, "injected"} {
 		if _, err := os.Stat(filepath.Join(root, forbidden)); !os.IsNotExist(err) {
 			t.Fatalf("stage published or executed %q", forbidden)
+		}
+	}
+}
+
+// w8/313: a stage that refuses still reads the whole upload before it exits
+// with the refusal's code, because a pods/exec stdin stream the remote stops
+// reading stalls the exec instead of ending it.
+func TestARefusingStageDrainsTheUpload(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "dir"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	// A tar that fails without reading the rest of its input, as on a full
+	// sandbox disk; GNU tar reads a bad archive to its end on its own.
+	failingTar := t.TempDir()
+	if err := os.WriteFile(filepath.Join(failingTar, "tar"), []byte("#!/bin/sh\nexit 2\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	upload := bytes.Repeat([]byte("x"), 3<<20)
+	size := strconv.Itoa(len(upload))
+	for _, tc := range []struct {
+		name, parent, entry, kind, size, path string
+		code                                  int
+	}{
+		{"file onto a directory", root, "dir", "file", size, "", 73},
+		{"directory onto an existing one", root, "dir", "directory", "0", "", 73},
+		{"missing parent", filepath.Join(root, "missing"), "f", "file", size, "", 66},
+		{"short upload", root, "short", "file", strconv.Itoa(len(upload) + 1), "", 65},
+		{"tar fails midway", root, "new", "directory", "0", failingTar + ":", 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stdin := bytes.NewReader(upload)
+			command := shell(stageScript, tc.parent, tc.entry, ".bex-copy-test", tc.kind, tc.size)
+			cmd := exec.Command(command[0], command[1:]...)
+			cmd.Env = []string{"PATH=" + tc.path + os.Getenv("PATH")}
+			cmd.Stdin = stdin
+			err := cmd.Run()
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) || exitErr.ExitCode() != tc.code {
+				t.Fatalf("stage = %v, want exit %d", err, tc.code)
+			}
+			if read := len(upload) - stdin.Len(); read != len(upload) {
+				t.Fatalf("stage read %d of %d upload bytes before refusing", read, len(upload))
+			}
+			if _, err := os.Stat(filepath.Join(root, ".bex-copy-test")); !os.IsNotExist(err) {
+				t.Fatal("a refused stage left its staging directory")
+			}
+		})
+	}
+}
+
+// w8/313: the stdin-less destination check refuses what the stage would.
+func TestCheckRefusesTheStagesDestinations(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "dir"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "file"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "file"), filepath.Join(root, "link")); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		parent, entry, kind string
+		code                int
+	}{
+		{root, "dir", "directory", 73},
+		{root, "dir", "file", 73},
+		{root, "file", "directory", 73},
+		{root, "link", "file", 73},
+		{root, "file", "file", 0},
+		{root, "new", "directory", 0},
+		{root, "new", "file", 0},
+		{filepath.Join(root, "missing"), "new", "file", 66},
+	} {
+		command := shell(checkScript, tc.parent, tc.entry, tc.kind)
+		code := 0
+		var exitErr *exec.ExitError
+		if err := exec.Command(command[0], command[1:]...).Run(); errors.As(err, &exitErr) {
+			code = exitErr.ExitCode()
+		} else if err != nil {
+			t.Fatal(err)
+		}
+		if code != tc.code {
+			t.Errorf("check %s %s as %s = exit %d, want %d", tc.parent, tc.entry, tc.kind, code, tc.code)
 		}
 	}
 }

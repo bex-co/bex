@@ -38,6 +38,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/appwatch"
 	"github.com/bex-co/bex/lego/operator/internal/hostingdomain"
 	"github.com/bex-co/bex/lego/operator/internal/staticserver"
+	"github.com/bex-co/bex/lego/types/env"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -47,9 +48,10 @@ const (
 	// Public-server timeouts bound slow-header/slow-read/idle connections so a
 	// trickle client cannot pin a goroutine + fd open on the shared single-replica
 	// server (finding 12). ReadHeaderTimeout caps slow request headers; ReadTimeout
-	// caps the whole request read (this server only ever answers GET/HEAD, so a
-	// declared-but-withheld body must not pin a goroutine on Go's unread-body
-	// drain — w4/029.md #16); WriteTimeout caps the response phase (generous so a
+	// caps the whole request read (another method is proxied or answered without
+	// reading its body, so a declared-but-withheld body must not pin a goroutine
+	// on Go's unread-body drain — w4/029.md #16, w8/319); WriteTimeout caps the
+	// response phase (generous so a
 	// large-but-legitimate asset over a slow link still completes); IdleTimeout
 	// caps keep-alive idle.
 	readHeaderTimeout = 10 * time.Second
@@ -57,13 +59,6 @@ const (
 	writeTimeout      = 120 * time.Second
 	idleTimeout       = 120 * time.Second
 )
-
-func envOr(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return def
-}
 
 // newServer builds the static-server HTTP server with the bounding timeouts set
 // (finding 12) and its routing, the one construction startup uses. Every path —
@@ -86,7 +81,7 @@ func newServer(addr string, site http.Handler) *http.Server {
 func main() {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
-	addr := envOr("BEX_STATIC_ADDR", ":8080")
+	addr := env.Or("BEX_STATIC_ADDR", ":8080")
 	namespace := os.Getenv("BEX_STATIC_NAMESPACE") // empty => all namespaces
 	baseDomain := os.Getenv("BEX_BASE_DOMAIN")
 	if err := hostingdomain.ValidateSharedSuffix(baseDomain); err != nil {

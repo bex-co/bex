@@ -139,7 +139,7 @@ func TestApprovalModeBlueprintPlansAndAppliesAMoveAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 	bpID := res.Blueprint.ID
-	if _, err := svc.ApproveBlueprint(creator, bpID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(creator, bpID, "tea-a", "", nil); err != nil {
 		t.Fatalf("approve the create: %v", err)
 	}
 	placement := func() string { return labelsAt(getTenantApp(t, svc.Client, "tea-a", "web")) }
@@ -193,7 +193,7 @@ func TestApprovalModeBlueprintPlansAndAppliesAMoveAlone(t *testing.T) {
 		if got := regroupRows(sink); len(got) != 0 || placement() != before {
 			t.Fatalf("%s: planning recorded %v and left the service in %q, want nothing recorded or moved", step.name, got, placement())
 		}
-		if _, err := svc.ApproveBlueprint(approver, bpID, "tea-a", nil); err != nil {
+		if _, err := svc.ApproveBlueprint(approver, bpID, "tea-a", "", nil); err != nil {
 			t.Fatalf("%s: approve: %v", step.name, err)
 		}
 		want := "/"

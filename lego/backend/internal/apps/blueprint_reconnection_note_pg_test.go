@@ -51,7 +51,7 @@ func TestConnectedThreeTimesIsThreeBlueprintsPG(t *testing.T) {
 				t.Fatalf("create %s = %+v, %v; want a planned sync", name, res, err)
 			}
 			bpID = res.Blueprint.ID
-			if _, err := svc.ApproveBlueprint(ctx, bpID, wsID, nil); err != nil {
+			if _, err := svc.ApproveBlueprint(ctx, bpID, wsID, "", nil); err != nil {
 				t.Fatalf("approve %s: %v", name, err)
 			}
 		}

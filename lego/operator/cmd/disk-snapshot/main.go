@@ -51,6 +51,7 @@ import (
 	"filippo.io/age"
 
 	"github.com/bex-co/bex/lego/operator/internal/disksnapshot"
+	"github.com/bex-co/bex/lego/types/env"
 )
 
 const (
@@ -128,7 +129,7 @@ func snapshot(ctx context.Context, store disksnapshot.Store, prefix string) (str
 		// configuration rather than read as an unreadable volume.
 		return disksnapshot.FailureConfig, fmt.Errorf("AGE_PUBLIC_KEY: %w", err)
 	}
-	mount := envOr("BEX_DISK_MOUNT_PATH", defaultMountPath)
+	mount := env.Or("BEX_DISK_MOUNT_PATH", defaultMountPath)
 	if err := requireDirectory(mount); err != nil {
 		return disksnapshot.FailureConfig, err
 	}
@@ -176,7 +177,7 @@ func restore(ctx context.Context) error {
 	if len(key) < len(prefix) || key[:len(prefix)] != prefix {
 		return fmt.Errorf("snapshot %q does not belong to this disk", key)
 	}
-	mount := envOr("BEX_DISK_MOUNT_PATH", defaultMountPath)
+	mount := env.Or("BEX_DISK_MOUNT_PATH", defaultMountPath)
 	if err := requireDirectory(mount); err != nil {
 		return err
 	}
@@ -245,13 +246,6 @@ func requireDirectory(path string) error {
 		return fmt.Errorf("disk mount %s is not a directory", path)
 	}
 	return nil
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
 
 func envInt(key string, fallback int) int {

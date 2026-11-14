@@ -9,6 +9,7 @@ import {
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { pageIdentity } from "@/features/services/lib/page-identity";
 import type { SecretFileName } from "@/features/services/types";
 
 // bex-api's secret-files GraphQL mirrors the env-vars shape (docs/ADR006-bex-api.md):
@@ -41,12 +42,6 @@ function uniqueNames(names: SecretFileName[]): SecretFileName[] {
   return [...new Map(names.map((name) => [name.id, name])).values()];
 }
 
-function pageIdentity(
-  serviceId: string,
-  items: Array<NonNullable<RawPageItem>>,
-) {
-  return `${serviceId}\0${items.map((item) => item.cursor).join("\0")}`;
-}
 
 export interface UseSecretFileNamesResult {
   names: SecretFileName[];

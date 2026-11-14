@@ -90,8 +90,12 @@ type Amount struct {
 // Invoice is one normalized non-draft Stripe invoice. Its money fields carry
 // the same gross/credit/due split as Amount, for the same reason.
 type Invoice struct {
-	ID                string `json:"id"`
-	Status            string `json:"status"`
+	ID     string `json:"id"`
+	Status string `json:"status"`
+	// Kind is InvoiceKindCycle for the subscription's own invoices and
+	// InvoiceKindAgentModelCharge for a charge bex made when agent-model spend
+	// reached its threshold, which the next cycle invoice deducts.
+	Kind              string `json:"kind"`
 	AmountUSD         string `json:"amountUsd"`
 	CreditsAppliedUSD string `json:"creditsAppliedUsd"`
 	AmountDueUSD      string `json:"amountDueUsd"`
@@ -99,6 +103,12 @@ type Invoice struct {
 	PeriodStart       string `json:"periodStart"`
 	PeriodEnd         string `json:"periodEnd"`
 }
+
+// The kinds of invoice a workspace's billing history lists.
+const (
+	InvoiceKindCycle            = "cycle"
+	InvoiceKindAgentModelCharge = "agent_model_charge"
+)
 
 // BillingFor resolves (without creating) the workspace's Customer and bex
 // Subscription, then reads Stripe's current invoice preview plus finalized
@@ -160,20 +170,7 @@ const maxCreditGrants = 10
 // caller omits the block. bex's catalog is USD-only; a non-USD credit is an
 // error, matching the invoice-amount contract.
 func (c *StripeClient) creditsFor(ctx context.Context, customerID string) (*Credits, error) {
-	sum, err := c.sc.BillingCreditBalanceSummary.Get(&stripe.BillingCreditBalanceSummaryParams{
-		Params:   stripe.Params{Context: ctx},
-		Customer: stripe.String(customerID),
-		Filter: &stripe.BillingCreditBalanceSummaryFilterParams{
-			Type: stripe.String("applicability_scope"),
-			ApplicabilityScope: &stripe.BillingCreditBalanceSummaryFilterApplicabilityScopeParams{
-				PriceType: stripe.String("metered"),
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("stripe: credit balance summary for customer %s: %w", customerID, err)
-	}
-	total, err := sumAvailableCreditBalances(sum.Balances)
+	total, err := c.meteredCreditCents(ctx, customerID)
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +186,46 @@ func (c *StripeClient) creditsFor(ctx context.Context, customerID string) (*Cred
 		return nil, err
 	}
 	return &Credits{AvailableUSD: available, Currency: "USD", Grants: grants}, nil
+}
+
+// meteredCreditCents is the customer's available billing-credit balance on
+// metered prices (ADR071's grant scope), in cents. Credits a draft invoice
+// already holds are not available.
+func (c *StripeClient) meteredCreditCents(ctx context.Context, customerID string) (int64, error) {
+	sum, err := c.sc.BillingCreditBalanceSummary.Get(&stripe.BillingCreditBalanceSummaryParams{
+		Params:   stripe.Params{Context: ctx},
+		Customer: stripe.String(customerID),
+		Filter: &stripe.BillingCreditBalanceSummaryFilterParams{
+			Type: stripe.String("applicability_scope"),
+			ApplicabilityScope: &stripe.BillingCreditBalanceSummaryFilterApplicabilityScopeParams{
+				PriceType: stripe.String("metered"),
+			},
+		},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("stripe: credit balance summary for customer %s: %w", customerID, err)
+	}
+	return sumAvailableCreditBalances(sum.Balances)
+}
+
+// grantCreditCents is one credit grant's available balance, in cents.
+func (c *StripeClient) grantCreditCents(ctx context.Context, customerID, grantID string) (int64, error) {
+	sum, err := c.sc.BillingCreditBalanceSummary.Get(&stripe.BillingCreditBalanceSummaryParams{
+		Params:   stripe.Params{Context: ctx},
+		Customer: stripe.String(customerID),
+		Filter: &stripe.BillingCreditBalanceSummaryFilterParams{
+			Type:        stripe.String("credit_grant"),
+			CreditGrant: stripe.String(grantID),
+		},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("stripe: credit grant %s balance: %w", grantID, err)
+	}
+	remaining, err := sumAvailableCreditBalances(sum.Balances)
+	if err != nil {
+		return 0, fmt.Errorf("stripe: credit grant %s: %w", grantID, err)
+	}
+	return remaining, nil
 }
 
 // sumAvailableCreditBalances totals a balance summary's available amounts.
@@ -209,6 +246,12 @@ func sumAvailableCreditBalances(balances []*stripe.BillingCreditBalanceSummaryBa
 	return total, nil
 }
 
+// creditGrantActive reports a grant that is in effect at now: not voided,
+// not expired, and already effective.
+func creditGrantActive(g *stripe.BillingCreditGrant, now int64) bool {
+	return g.VoidedAt == 0 && (g.ExpiresAt == 0 || g.ExpiresAt > now) && g.EffectiveAt <= now
+}
+
 // activeGrantRemainders lists the customer's credit grants and reads each
 // active one's remaining balance (a per-grant balance-summary call). Voided,
 // expired, and not-yet-effective grants are skipped, as are grants with
@@ -226,27 +269,16 @@ func (c *StripeClient) activeGrantRemainders(ctx context.Context, customerID str
 	examined := 0
 	for iter.Next() {
 		g := iter.BillingCreditGrant()
-		if g.VoidedAt > 0 || (g.ExpiresAt > 0 && g.ExpiresAt <= now) || g.EffectiveAt > now {
+		if !creditGrantActive(g, now) {
 			continue
 		}
 		if examined >= maxCreditGrants {
 			break
 		}
 		examined++
-		sum, err := c.sc.BillingCreditBalanceSummary.Get(&stripe.BillingCreditBalanceSummaryParams{
-			Params:   stripe.Params{Context: ctx},
-			Customer: stripe.String(customerID),
-			Filter: &stripe.BillingCreditBalanceSummaryFilterParams{
-				Type:        stripe.String("credit_grant"),
-				CreditGrant: stripe.String(g.ID),
-			},
-		})
+		remaining, err := c.grantCreditCents(ctx, customerID, g.ID)
 		if err != nil {
-			return nil, fmt.Errorf("stripe: credit grant %s balance: %w", g.ID, err)
-		}
-		remaining, err := sumAvailableCreditBalances(sum.Balances)
-		if err != nil {
-			return nil, fmt.Errorf("stripe: credit grant %s: %w", g.ID, err)
+			return nil, err
 		}
 		if remaining <= 0 {
 			continue
@@ -323,17 +355,44 @@ func (c *StripeClient) PaidInvoices(ctx context.Context, customerID string) ([]s
 }
 
 func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscriptionID string) ([]Invoice, error) {
+	cycle, err := c.listInvoices(ctx, customerID, subscriptionID, false)
+	if err != nil {
+		return nil, err
+	}
+	// A threshold charge is a standalone invoice on the customer (it never
+	// names the subscription, so it moves neither the billing anchor nor
+	// proration); it belongs in the history beside the cycle invoices that
+	// deduct it.
+	charges, err := c.listInvoices(ctx, customerID, "", true)
+	if err != nil {
+		return nil, err
+	}
+	out := append(cycle, charges...)
+	sort.SliceStable(out, func(i, j int) bool { return out[i].PeriodStart > out[j].PeriodStart })
+	return out, nil
+}
+
+// listInvoices is customerID's finalized invoices (on subscriptionID when it
+// is set): its agent-model charge invoices when charges, else every other one.
+func (c *StripeClient) listInvoices(ctx context.Context, customerID, subscriptionID string, charges bool) ([]Invoice, error) {
+	kind := InvoiceKindCycle
+	if charges {
+		kind = InvoiceKindAgentModelCharge
+	}
 	params := &stripe.InvoiceListParams{
-		ListParams:   stripe.ListParams{Limit: stripe.Int64(100)},
-		Customer:     stripe.String(customerID),
-		Subscription: stripe.String(subscriptionID),
+		ListParams: stripe.ListParams{Limit: stripe.Int64(100)},
+		Customer:   stripe.String(customerID),
+	}
+	if subscriptionID != "" {
+		params.Subscription = stripe.String(subscriptionID)
 	}
 	params.Context = ctx
 	iter := c.sc.Invoices.List(params)
 	out := make([]Invoice, 0)
 	for iter.Next() {
 		inv := iter.Invoice()
-		if inv.Status == stripe.InvoiceStatusDraft {
+		_, isCharge := agentModelChargeInvoice(inv)
+		if inv.Status == stripe.InvoiceStatusDraft || isCharge != charges {
 			continue
 		}
 		gross, creditsApplied, due, err := invoiceFigures(inv)
@@ -343,6 +402,7 @@ func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscr
 		out = append(out, Invoice{
 			ID:                inv.ID,
 			Status:            strings.ToUpper(string(inv.Status)),
+			Kind:              kind,
 			AmountUSD:         gross,
 			CreditsAppliedUSD: creditsApplied,
 			AmountDueUSD:      due,
@@ -354,7 +414,6 @@ func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscr
 	if err := iter.Err(); err != nil {
 		return nil, fmt.Errorf("stripe: list invoices for customer %s: %w", customerID, err)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].PeriodStart > out[j].PeriodStart })
 	return out, nil
 }
 

@@ -16,7 +16,10 @@ Merge duplicated implementations into one canonical home — or, where duplicati
 - Fix everything you find directly in the working tree. If a fix can't be finished safely in this run, revert only your partial work for that fix and list it under **Deferred** in the report — never leave the tree half-refactored.
 - Scope: parse `$ARGUMENTS` per Phase 1 — an optional path/module scope or skill-specific target. No argument = the skill's stated default (usually the whole repo via parallel agents per module: lego/types, lego/operator, lego/backend, lego/cli, dashboard).
 - False-positive discipline: if a finding is intentional, load-bearing, or ambiguous, skip it with a one-line reason — don't argue it into a change.
-- Every change must pass the verification gates for the modules it touched before being reported as done: operator `make test` + `make lint` (from `lego/operator/`), `cd lego/backend && go test ./...`, `cd lego/cli && go test ./...`, dashboard `yarn test` + typecheck.
+- Verify every change with targeted checks before reporting it done, and leave the full suites to CI. Run only what the change can break, one heavy command at a time: never two in parallel, never the same suite twice.
+  - Go: `gofmt -l` on the touched files; `go build` and `go vet` of the touched packages; `go test` of those packages and of the packages that import them (find importers with `grep -rl '"<import path>"' --include='*.go' lego/`).
+  - Dashboard: `yarn vitest related --run <changed files>`, `yarn eslint <changed files>`, and `yarn typecheck` when TypeScript changed.
+  - Never the module-wide suites: `make lint`, `make test`, `go test ./...`, the whole `yarn test` or `yarn lint`. CI runs them on the pull request, against the real Postgres, OpenFGA and OpenBao a sandbox lacks. A failed check comes back to the session as its next turn (ADR047 D11). A run that ships straight to main gets them from the ship skill's gates and main's CI.
 - Run `npx prettier@3.4.2 --write` on any markdown touched.
 - Before shipping, summarize results in commentary using: **Fixed** (file:line + one-line rationale) / **Deferred** (item + why) / **Skipped** (finding + reason) / **Gates** (commands run + outcomes).
 
@@ -39,11 +42,11 @@ Start from the known candidates, then scan wider:
 
 ## Phase 4 — Unify
 
-Pick the canonical home along the import DAG: code both operator and backend need goes to `lego/types` — the only module both import. `cli` stays standalone; never fold it into a sibling. Respect the depguard-fenced id convention (ids mint only via `lego/backend/internal/id`, `id.New(kind)`). Migrate all callers, delete the duplicate, and confirm nothing dangles via `make lint` (whole-program deadcode is wired in).
+Pick the canonical home along the import DAG: code both operator and backend need goes to `lego/types` — the only module both import. `cli` stays standalone; never fold it into a sibling. Respect the depguard-fenced id convention (ids mint only via `lego/backend/internal/id`, `id.New(kind)`). Migrate all callers, delete the duplicate, and confirm nothing dangles with `go build ./...` and `go vet ./...` in every module that used it. A helper left unused is caught by the deadcode pass in CI's `make lint`.
 
 ## Phase 5 — Verify and report
 
-Types changes ripple everywhere: run all Go gates (operator `make test` + `make lint`, backend and cli `go test ./...`), plus dashboard gates if touched. Report per the standard format.
+Types changes ripple everywhere: `go build ./...` and `go vet ./...` in every module (this compiles their tests without running them), then the targeted tests of the packages that changed and of their importers, plus the targeted dashboard checks if touched. The module-wide suites run in CI. Report per the standard format.
 
 ## Final phase — Ship
 

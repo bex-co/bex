@@ -53,8 +53,8 @@ func TestResolveTimeout(t *testing.T) {
 			got, err := resolveTimeout(tc.requested)
 			if tc.invalid {
 				var coded *core.CodedError
-				if !errors.As(err, &coded) || coded.Code != "SANDBOX_TIMEOUT_INVALID" || coded.Params["minimumNonZero"] != 60 || coded.Params["max"] != 2592000 {
-					t.Fatalf("err = %#v, want SANDBOX_TIMEOUT_INVALID naming minimumNonZero 60 and max 2592000", err)
+				if !errors.As(err, &coded) || coded.Code != "invalid_timeout_seconds" || coded.Params["minimumNonZero"] != 60 || coded.Params["max"] != 2592000 {
+					t.Fatalf("err = %#v, want invalid_timeout_seconds naming minimumNonZero 60 and max 2592000", err)
 				}
 				return
 			}
@@ -202,7 +202,7 @@ func TestCreateRefusesAnInvalidTimeoutBeforeServer(t *testing.T) {
 	for _, timeout := range []int{30, 2592001} {
 		_, err := svc.Create(callerCtx(), CreateRequest{Template: "node", TimeoutSeconds: ptr(timeout)})
 		var coded *core.CodedError
-		if !errors.As(err, &coded) || coded.Code != "SANDBOX_TIMEOUT_INVALID" {
+		if !errors.As(err, &coded) || coded.Code != "invalid_timeout_seconds" {
 			t.Fatalf("timeout %d: err = %v", timeout, err)
 		}
 	}

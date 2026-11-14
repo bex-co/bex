@@ -530,8 +530,8 @@ func TestDeployStackFromServiceHostResolvesToTheSlug(t *testing.T) {
 	// Store-managed path (w4/m19 CR names `<tenant>-<name>`): the injected
 	// hostname must be the sibling's resolvable slug — never the bare bex.yml
 	// name, which matches no Service (ADR041 gap 1 / D3). `web` references
-	// `api` declared AFTER it, so this also exercises the forward-reference
-	// second pass (api's slug exists only after its create).
+	// `api` declared AFTER it; api's slug exists only after its create, so the
+	// apply writes api first (referencedFirst, w8/306).
 	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
 	// api is a prebuilt pserv; pin its configured port so API_PORT resolves at
 	// apply (image-port discovery is covered by the propagator tests).

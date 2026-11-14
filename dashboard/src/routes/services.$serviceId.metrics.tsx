@@ -19,6 +19,7 @@ import { useServiceEvents } from "@/features/events/hooks/use-service-events";
 import { useServer } from "@/features/services/hooks/use-server";
 import {
   isStaticSite,
+  publiclyRoutable,
   supportsScaling,
 } from "@/features/services/lib/service-type";
 import { runsInstances } from "@/features/services/lib/status";
@@ -150,6 +151,9 @@ export function ServiceMetricsPage({
         resource={serviceId}
         window={window}
         markers={markers}
+        // Request views only for a type that can receive public requests
+        // (w4/613). The layout mounts this tab once the service is loaded.
+        servesRequests={service == null || publiclyRoutable(service.type)}
       />
     </>
   );

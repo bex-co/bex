@@ -217,7 +217,7 @@ These are the resources that templates and sessions refer to by name, so a CLI u
 
 | Command | Route | Notes |
 | --- | --- | --- |
-| `secrets list` / `secrets set NAME` / `secrets delete NAME` | `/v1/agent-secrets` | write-only. `set` reads the value from stdin or `--from-env VAR`, never from argv; ADR098 |
+| `secrets list` / `secrets set NAME` / `secrets rescope NAME` / `secrets delete NAME` | `/v1/agent-secrets` | write-only. `set` reads the value from stdin or `--from-env VAR`, never from argv; `--scope`/`--repo` and `rescope` set ADR098 D9's scope (w9/m385); ADR098 |
 | `skills list` / `get` / `create -f SKILL.md` / `update NAME -f SKILL.md` / `delete` / `versions NAME [--show N]` | `/v1/agent-skills` | admin-only writes, enforced by the API; ADR099 |
 | `env` / `env set …` | `/v1/agent-environment` | network tier, custom hosts, default model, monthly spend cap. The BYO model key comes from stdin through `--model-key-stdin`, and `--clear-model-key` removes it |
 | `models` | `GET /v1/agent-sessions/capabilities` | agents, models, GitHub and model-key readiness, attachment limits |
@@ -421,8 +421,9 @@ bex agent automations run nightly-deps --wait --timeout 45m -o json > run.json
 ### `bex agent secrets | skills | env | models`
 
 ```
-bex agent secrets list
-bex agent secrets set NAME [--from-env VAR]        # value from stdin unless --from-env
+bex agent secrets list                              # NAME<TAB>scope (workspace, explicit, repo:owner/name)
+bex agent secrets set NAME [--from-env VAR] [--scope workspace|repo|explicit] [--repo OWNER/NAME]
+bex agent secrets rescope NAME --scope SCOPE [--repo OWNER/NAME]   # keeps the value
 bex agent secrets delete NAME [--confirm]
 bex agent skills list
 bex agent skills get NAME [--version N]

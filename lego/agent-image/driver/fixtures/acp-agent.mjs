@@ -139,7 +139,10 @@ function resultBehavior(promptIndex) {
   const mode = process.env.ACP_FIXTURE_RESULT;
   const record = bexEnv("BEX_RESULT_RECORD_PATH");
   if (!mode || !record) return;
-  if ((mode === "first" && promptIndex === 0) || (mode === "on-reminder" && promptIndex === 1)) {
+  if (
+    (mode === "first" && promptIndex === 0) ||
+    (mode === "on-reminder" && promptIndex === 1)
+  ) {
     writeFileSync(record, JSON.stringify({ final: true }));
   }
 }
@@ -321,6 +324,26 @@ lines.on("line", async (line) => {
         break;
       }
       result(message.id, {});
+      break;
+    }
+    case "session/set_config_option": {
+      if (process.env.ACP_FIXTURE_CONFIG_LOG)
+        appendFileSync(
+          process.env.ACP_FIXTURE_CONFIG_LOG,
+          `${JSON.stringify(message.params)}\n`,
+        );
+      if (process.env.ACP_FIXTURE_REJECT_CONFIG === message.params.configId) {
+        send({
+          jsonrpc: "2.0",
+          id: message.id,
+          error: {
+            code: -32602,
+            message: "Invalid params: unsupported option",
+          },
+        });
+        break;
+      }
+      result(message.id, { configOptions: [] });
       break;
     }
     case "session/cancel":

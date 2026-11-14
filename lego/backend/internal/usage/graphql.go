@@ -151,6 +151,7 @@ var billingInvoiceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Fields: graphql.Fields{
 		"id":                gqlutil.StrField(func(i billing.Invoice) any { return i.ID }),
 		"status":            gqlutil.StrField(func(i billing.Invoice) any { return i.Status }),
+		"kind":              gqlutil.StrField(func(i billing.Invoice) any { return i.Kind }),
 		"amountUsd":         gqlutil.StrField(func(i billing.Invoice) any { return i.AmountUSD }),
 		"creditsAppliedUsd": gqlutil.StrField(func(i billing.Invoice) any { return i.CreditsAppliedUSD }),
 		"amountDueUsd":      gqlutil.StrField(func(i billing.Invoice) any { return i.AmountDueUSD }),

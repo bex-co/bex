@@ -606,6 +606,17 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Your finalized invoices.",
     description: "Invoice-history card description",
   },
+  "usage.invoiceKindAgentModelCharge": {
+    message: "Agent model charge",
+    description:
+      "Label on an invoice-history row for a charge made when agent model spend reached its threshold",
+  },
+  "usage.invoiceHistoryChargesNote": {
+    message:
+      "Agent model charges made during a month are deducted from that month's invoice.",
+    description:
+      "Invoice-history note when the list includes agent model charges",
+  },
   "usage.creditsAppliedLine": {
     message: "Credits applied −{applied} → amount due {due}",
     description:

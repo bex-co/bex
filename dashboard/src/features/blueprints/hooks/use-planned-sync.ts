@@ -7,7 +7,10 @@ import {
   PlanBlueprintSyncDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import { toPlanActions } from "@/features/blueprints/lib/views";
@@ -52,7 +55,7 @@ export function usePlannedSync(
   enabled: boolean,
 ): UsePlannedSyncResult {
   const { t } = useTranslations();
-  const { data, loading } = useQuery(BlueprintPlannedSyncDocument, {
+  const { data, loading, refetch } = useQuery(BlueprintPlannedSyncDocument, {
     variables: { id: blueprintId },
     skip: !enabled,
     fetchPolicy: "cache-and-network",
@@ -99,6 +102,8 @@ export function usePlannedSync(
           approveMutation({
             variables: {
               id: blueprintId,
+              // Approve the plan on screen, never one made since (w5/m384).
+              syncId: planned.id,
               manualEnvVars: planned.requiredManualEnvVars.map((v) => ({
                 ...v,
                 value: values[manualEnvVarKey(v)] ?? "",
@@ -110,6 +115,13 @@ export function usePlannedSync(
         return true;
       } catch (err) {
         if (isPaymentOnboardingCancelled(err)) return false;
+        // Someone planned again meanwhile: show the newest plan to review
+        // instead of refusing every retry of the one on screen (w5/m384).
+        if (hasGraphQLErrorCode(err, "BLUEPRINT_PLAN_CHANGED")) {
+          toast.error(t("blueprints.plannedChanged"));
+          void refetch();
+          return false;
+        }
         toast.error(
           mutationErrorMessage(err, t("blueprints.plannedApproveFailed")),
         );
@@ -118,7 +130,7 @@ export function usePlannedSync(
         setBusy(false);
       }
     },
-    [approveMutation, blueprintId, paymentGate, planned, t],
+    [approveMutation, blueprintId, paymentGate, planned, refetch, t],
   );
 
   const replan = useCallback(async () => {

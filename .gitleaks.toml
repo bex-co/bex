@@ -1,0 +1,30 @@
+# Gitleaks config for deploy.yml's secret scan (w7/002), which reads it from
+# the repository root. Every default rule stays on; each allowlist below names
+# the one rule it narrows and a shape that is never a credential. A finding
+# these do not cover is a real report: rotate the value if it is a secret,
+# or add its shape here with the reason, never a blanket path or rule skip.
+
+[extend]
+useDefault = true
+
+# bex resource ids (the shape of lego/backend/internal/id's wellFormed:
+# "<prefix>-<20-char xid>", e.g.
+# rgc-… for a registry credential) read as keys next to words like
+# "credential" in board notes and fixtures. They are identifiers; the secrets
+# they name never appear in the repository.
+[[allowlists]]
+description = "bex resource ids are identifiers, not credentials"
+targetRules = ["generic-api-key"]
+regexTarget = "secret"
+regexes = ['''^[a-z]{2,4}-[0-9a-v]{20}$''']
+
+# RFC 6455's Sec-WebSocket-Key is a random per-handshake nonce the client
+# sends in the clear; tests build raw upgrade requests and header setters
+# (Header.Set("Sec-WebSocket-Key", …)) with fixed ones. Matched on the
+# finding itself, not the line, so another header's value on the same raw
+# request line is still reported.
+[[allowlists]]
+description = "Sec-WebSocket-Key is a handshake nonce, not a credential"
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+regexes = ['''(?i)Sec-WebSocket-Key["']?\s*[:,]''']

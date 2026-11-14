@@ -24,9 +24,7 @@ package postgres
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"slices"
@@ -39,6 +37,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/types/credpw"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -180,7 +179,7 @@ func (s *Service) createUser(ctx context.Context, name, field, role string, asDe
 			return CreateUserResult{}, nil, fmt.Errorf("%w: user %q already exists", core.ErrBadRequest, role)
 		}
 	}
-	pw, err := generatePassword()
+	pw, err := credpw.Generate()
 	if err != nil {
 		return CreateUserResult{}, nil, err
 	}
@@ -343,14 +342,4 @@ func removePostgresUserTombstone(tombstones []string, role string) []string {
 		}
 	}
 	return kept
-}
-
-// generatePassword returns a URL-safe 24-byte random password (same scheme the
-// operator uses for KeyValue credentials).
-func generatePassword() (string, error) {
-	b := make([]byte, 24)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
 }

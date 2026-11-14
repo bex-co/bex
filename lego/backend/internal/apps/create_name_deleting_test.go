@@ -82,14 +82,18 @@ func TestREST_CreateUnderADeletedNameSucceedsAtOnce(t *testing.T) {
 	svc, cl := deletingService(t)
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
-	for body, want := range map[string]int{
-		`{"name":"web","image":{"imagePath":"nginx"},"dryRun":true}`: http.StatusOK,
-		`{"name":"web","image":{"imagePath":"nginx"}}`:               http.StatusCreated,
+	// The dry run must come first: once the create lands, "web" is taken.
+	for _, step := range []struct {
+		body string
+		want int
+	}{
+		{`{"name":"web","image":{"imagePath":"nginx"},"dryRun":true}`, http.StatusOK},
+		{`{"name":"web","image":{"imagePath":"nginx"}}`, http.StatusCreated},
 	} {
 		rec := httptest.NewRecorder()
-		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
-		if rec.Code != want {
-			t.Fatalf("POST /v1/services %s = %d %s, want %d", body, rec.Code, rec.Body, want)
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(step.body)))
+		if rec.Code != step.want {
+			t.Fatalf("POST /v1/services %s = %d %s, want %d", step.body, rec.Code, rec.Body, step.want)
 		}
 	}
 	deleting, live := liveAndDeleting(t, cl, "web")

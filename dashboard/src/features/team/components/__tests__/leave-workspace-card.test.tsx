@@ -52,7 +52,6 @@ function member(overrides: Partial<MemberView> = {}): MemberView {
     createdAt: null,
     mfaEnabled: false,
     identityResolved: true,
-    isOwner: false,
     isSelf: false,
     ...overrides,
   };
@@ -114,17 +113,14 @@ describe("LeaveWorkspaceCard (w5/m102)", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("disables the action for the workspace owner and says why", () => {
+  it("offers the action to an admin while another admin remains", () => {
     members.value = [
-      member({ subject: "me", isSelf: true, isOwner: true, role: "ADMIN" }),
+      member({ subject: "me", isSelf: true, role: "ADMIN" }),
       member({ subject: "admin", role: "ADMIN" }),
     ];
     renderCard();
 
-    expect(screen.getByRole("button", { name: /Leave/ })).toBeDisabled();
-    expect(
-      document.querySelector('[data-slot="tooltip-trigger"]'),
-    ).not.toBeNull();
+    expect(screen.getByRole("button", { name: /Leave/ })).toBeEnabled();
   });
 
   it("disables the action for the last admin", () => {

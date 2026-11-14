@@ -85,7 +85,7 @@ func TestHostLookupIgnoresLetterCase(t *testing.T) {
 	if rec := serve(http.MethodGet, "OTHER.onbex.co", "/"); rec.Code != http.StatusNotFound || rec.Body.String() != "no static site for host\n" {
 		t.Errorf("unknown host => %d %q, want 404", rec.Code, rec.Body)
 	}
-	if rec := serve(http.MethodPost, "SITE.ONBEX.CO", "/"); rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != "GET, HEAD" {
-		t.Errorf("POST => %d Allow %q, want 405 GET, HEAD", rec.Code, rec.Header().Get("Allow"))
+	if rec := serve(http.MethodPost, "SITE.ONBEX.CO", "/"); rec.Code != http.StatusOK || rec.Body.Len() != 0 {
+		t.Errorf("POST => %d %q, want the site's bare 200", rec.Code, rec.Body)
 	}
 }
