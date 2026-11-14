@@ -430,7 +430,8 @@ func TestHibernatedAppStillWakesWhenReadyReadsTrue(t *testing.T) {
 // response for its host, not the first-deploy page; nothing is patched.
 func TestServedStaticSiteIsProxiedToTheStaticServer(t *testing.T) {
 	app := firstDeployApp()
-	app.Spec.Type, app.Status.Phase, app.Status.ActiveRevision = appv1alpha1.TypeStaticSite, appv1alpha1.PhaseRunning, "rev-1"
+	app.Spec.Type = appv1alpha1.TypeStaticSite
+	app.Status.Phase, app.Status.ActiveRevision = appv1alpha1.PhaseRunning, "rev-1"
 	cl := &countingClient{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()}
 	cache := newHostCache(cl, logr.Discard(), "onbex.co")
 	cache.refreshOnce(context.Background())
@@ -469,7 +470,8 @@ func TestServedStaticSiteIsProxiedToTheStaticServer(t *testing.T) {
 }
 
 func TestStaticServerURL(t *testing.T) {
-	if u := staticServerURL("bex-static-server", "bex-system", ""); u == nil || u.String() != "http://bex-static-server.bex-system.svc:8080" {
+	const wantStatic = "http://bex-static-server.bex-system.svc:8080"
+	if u := staticServerURL("bex-static-server", "bex-system", ""); u == nil || u.String() != wantStatic {
 		t.Fatalf("static-server URL = %v", u)
 	}
 	if staticServerURL("", "bex-system", "8080") != nil {

@@ -137,7 +137,8 @@ func main() {
 	go appwatch.Loop(context.Background(), hostCacheRefresh, changed, func() { cache.refreshOnce(context.Background()) })
 
 	hold := newHolder(c)
-	hold.static = staticServerURL(os.Getenv("BEX_STATIC_SERVER_SERVICE"), os.Getenv("POD_NAMESPACE"), os.Getenv("BEX_STATIC_SERVER_PORT"))
+	hold.static = staticServerURL(
+		os.Getenv("BEX_STATIC_SERVER_SERVICE"), os.Getenv("POD_NAMESPACE"), os.Getenv("BEX_STATIC_SERVER_PORT"))
 	http.Handle("/", newHoldingHandler(c, cache, log, hold))
 
 	log.Info("listening", "addr", addr)
