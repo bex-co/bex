@@ -1,0 +1,101 @@
+# Fail-closed write boundary for the activator (w21/m409), the proxy that wakes a
+# hibernated App when a request arrives for it.
+#
+# The activator's ClusterRole (lego/operator/config/activator/role.yaml) patches
+# Apps and Deployments in every namespace, and RBAC cannot say "these two
+# annotations" or "replicas from zero to one". Whatever the Role grows into, the
+# identity may, by this policy:
+#
+#   - Apps: set app.bex.co/last-active and app.bex.co/wake-started to a UTC
+#     RFC 3339 time, nothing else (no spec, label, finalizer or other
+#     annotation);
+#   - Deployments: raise spec.replicas from none or zero to exactly one, nothing
+#     else.
+#
+# Every other write by it, CREATE and DELETE included, is denied. What the
+# activator really writes is lego/operator/cmd/activator/main.go (wake).
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-activator-writes
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["app.bex.co"]
+        apiVersions: ["*"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["apps"]
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["deployments"]
+  matchConditions:
+    - name: activator-service-account
+      expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-activator'
+  variables:
+    - name: lastActive
+      expression: "'app.bex.co/last-active'"
+    - name: wakeStarted
+      expression: "'app.bex.co/wake-started'"
+    # Variables are evaluated lazily, and every use below sits behind
+    # sameMetadata (UPDATE only) and a resource check, so the ones that read
+    # object or oldObject need no guards of their own.
+    #
+    # Object metadata other than annotations must not move at all.
+    - name: sameMetadata
+      expression: >-
+        request.operation == 'UPDATE' &&
+        object.metadata.?labels.orValue({}) == oldObject.metadata.?labels.orValue({}) &&
+        object.metadata.?finalizers.orValue([]) == oldObject.metadata.?finalizers.orValue([]) &&
+        object.metadata.?ownerReferences.orValue([]) == oldObject.metadata.?ownerReferences.orValue([])
+    - name: annotations
+      expression: object.metadata.?annotations.orValue({})
+    - name: oldAnnotations
+      expression: "request.operation == 'UPDATE' ? oldObject.metadata.?annotations.orValue({}) : {}"
+    # An App may differ only in the two wake annotations, each a UTC time; its
+    # spec and every other annotation stay as they were.
+    - name: appWrite
+      expression: >-
+        request.resource.resource == 'apps' &&
+        variables.sameMetadata &&
+        object.spec == oldObject.spec &&
+        variables.annotations.all(k,
+          k in [variables.lastActive, variables.wakeStarted]
+            ? variables.annotations[k].matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$')
+            : (k in variables.oldAnnotations && variables.oldAnnotations[k] == variables.annotations[k])) &&
+        variables.oldAnnotations.all(k, k in variables.annotations)
+    # A Deployment may differ only in spec.replicas, from none or zero to one;
+    # the pod template, selector, strategy and metadata stay as they were.
+    - name: deploymentWrite
+      expression: >-
+        request.resource.resource == 'deployments' &&
+        variables.sameMetadata &&
+        variables.annotations == variables.oldAnnotations &&
+        object.spec.?replicas.orValue(1) == 1 &&
+        oldObject.spec.?replicas.orValue(0) < 1 &&
+        object.spec.template == oldObject.spec.template &&
+        object.spec.selector == oldObject.spec.selector &&
+        object.spec.strategy == oldObject.spec.strategy &&
+        object.spec.?minReadySeconds.orValue(0) == oldObject.spec.?minReadySeconds.orValue(0) &&
+        object.spec.?paused.orValue(false) == oldObject.spec.?paused.orValue(false) &&
+        object.spec.?progressDeadlineSeconds.orValue(0) == oldObject.spec.?progressDeadlineSeconds.orValue(0) &&
+        object.spec.?revisionHistoryLimit.orValue(0) == oldObject.spec.?revisionHistoryLimit.orValue(0)
+  validations:
+    - expression: variables.appWrite || variables.deploymentWrite
+      reason: Forbidden
+      message: >-
+        the activator may only set app.bex.co/last-active and app.bex.co/wake-started
+        on an App, or raise a Deployment's replicas from zero to one
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-activator-writes
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-activator-writes
+  validationActions: [Deny, Audit]

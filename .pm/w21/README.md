@@ -17,7 +17,7 @@
 - [x] **m395** — [Dashboard accessibility gates: lint, an axe pass over every page fixture, and a contrast test on the colour tokens](done/m395/README.md) (7 tasks, ~5h15m) ← from `/pm-brainstorm for w21` 2026-11-14, filed by `/pmx them all to w21`; absorbs w4/607, w4/612 — DONE 2026-11-14 (axe pass, jsx-a11y lint, contrast test; three defects and one contrast fix)
 - [x] **m396** — [Form checks and server rules share one corpus: the Go validator and the dashboard validator must agree on every input](done/m396/README.md) (9 tasks, ~5h50m) ← from `/pm-brainstorm for w21` 2026-11-14, filed by `/pmx them all to w21`; thirteen w21 notes (015 … 053) were this defect found field by field
 - [x] **m397** — [Docs and board references stay valid: a link gate, repaired links, and no new duplicate milestone numbers](done/m397/README.md) (8 tasks, ~5h) ← from `/pm-brainstorm for w21` 2026-11-14, filed by `/pmx them all to w21`; 71 broken links, 16 duplicate milestone numbers
-- [ ] **m409** — [Admission policies bind every identity the round-25 audit named: the activator, a projected crown Secret, a platform toleration, hostPort, and the drain-guard's pod-template fields](m409/README.md) (8 tasks, ~5h) ← promoted from 068, 2026-11-14
+- [x] **m409** — [Admission policies bind every identity the round-25 audit named: the activator, a projected crown Secret, a platform toleration, hostPort, and the drain-guard's pod-template fields](done/m409/README.md) (8 tasks, ~5h) ← promoted from 068, 2026-11-14
 
 ## Inbox
 
@@ -99,3 +99,4 @@
 - [ ] **076** — bex refuses PORT 18014 where Render documents only 18012, 18013 and 19099 as reserved → [`076.md`](076.md) (~30m) ← from w21/m396 t006 Render parity check, 2026-11-14
 - [ ] **077** — Verify against Render the limits the validation corpus pins and no Render source states → [`077.md`](077.md) (~2h) ← from w21/m396 t006 Render parity check, 2026-11-14
 - [ ] **078** — Repair the broken links in the other workstreams' README.md files and have the link gate read them → [`078.md`](078.md) (~75m) ← from w21/m397 t005 simplify review, 2026-11-14
+- [ ] **079** — Run the tightened admission policies on the local cluster: the sample App deploys and wakes, a node drains, and no policy denial reaches the logs → [`079.md`](079.md) (~45m) ← from w21/m409 t005, 2026-11-14

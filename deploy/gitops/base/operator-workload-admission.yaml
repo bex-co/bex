@@ -206,18 +206,28 @@ spec:
          !variables.pod.?hostIPC.orValue(false) &&
          !has(variables.pod.nodeName) &&
          (!has(variables.pod.volumes) || variables.pod.volumes.all(v,
-           !has(v.hostPath) && (!has(v.secret) || !(v.secret.secretName in variables.crownSecrets)))))
+           !has(v.hostPath) && (!has(v.secret) || !(v.secret.secretName in variables.crownSecrets)) &&
+           (!has(v.projected) || v.projected.?sources.orValue([]).all(s, !has(s.secret) || !(s.secret.name in variables.crownSecrets))))))
       reason: Forbidden
-      message: operator-authored workloads may not join host namespaces, pin a node directly, mount host paths, or mount CAPI administrator Secrets
+      message: operator-authored workloads may not join host namespaces, pin a node directly, mount host paths, or mount CAPI administrator Secrets directly or through a projected volume
     # Placement grammar: tolerations must name a key — an empty-key Exists
     # toleration tolerates every taint (control-plane included), and the
     # control-plane/master keys reach the etcd nodes directly.
     - expression: >-
         request.operation == 'DELETE' ||
         (!has(variables.pod.tolerations) || variables.pod.tolerations.all(t,
-          (has(t.key) && t.key != '' && !t.key.startsWith('node-role.kubernetes.io/control-plane') && t.key != 'node-role.kubernetes.io/master')))
+          (has(t.key) && t.key != '' && !t.key.startsWith('node-role.kubernetes.io/control-plane') && t.key != 'node-role.kubernetes.io/master' && t.key != 'bex.co/platform')))
       reason: Forbidden
-      message: operator-authored workloads may not carry wildcard or control-plane tolerations
+      message: operator-authored workloads may not carry wildcard, control-plane or platform tolerations
+    # A host port publishes a container on its node's address, past every
+    # Service and NetworkPolicy; no operator-authored workload needs one.
+    - expression: >-
+        request.operation == 'DELETE' ||
+        (variables.pod.containers.all(c, c.?ports.orValue([]).all(p, p.?hostPort.orValue(0) == 0)) &&
+         variables.pod.?initContainers.orValue([]).all(c, c.?ports.orValue([]).all(p, p.?hostPort.orValue(0) == 0)) &&
+         variables.pod.?ephemeralContainers.orValue([]).all(c, c.?ports.orValue([]).all(p, p.?hostPort.orValue(0) == 0)))
+      reason: Forbidden
+      message: operator-authored workloads may not publish a container port on the node (hostPort)
     # Pool grammar (ADR060 D8, w2/m250): each tenant pool taint admits exactly
     # the workloads that pool exists for. A dedicated serving pool's taint is
     # tolerated only by an App's own workloads (its Deployment, cron and
@@ -531,14 +541,23 @@ spec:
          !variables.pod.?hostIPC.orValue(false) &&
          !has(variables.pod.nodeName) &&
          (!has(variables.pod.volumes) || variables.pod.volumes.all(v,
-           !has(v.hostPath) && (!has(v.secret) || !(v.secret.secretName in variables.crownSecrets)))))
+           !has(v.hostPath) && (!has(v.secret) || !(v.secret.secretName in variables.crownSecrets)) &&
+           (!has(v.projected) || v.projected.?sources.orValue([]).all(s, !has(s.secret) || !(s.secret.name in variables.crownSecrets))))))
       reason: Forbidden
-      message: day-to-day-authored workloads may not join host namespaces, pin a node directly, mount host paths, or mount CAPI administrator Secrets
+      message: day-to-day-authored workloads may not join host namespaces, pin a node directly, mount host paths, or mount CAPI administrator Secrets directly or through a projected volume
     - expression: >-
         (!has(variables.pod.tolerations) || variables.pod.tolerations.all(t,
-          (has(t.key) && t.key != '' && !t.key.startsWith('node-role.kubernetes.io/control-plane') && t.key != 'node-role.kubernetes.io/master')))
+          (has(t.key) && t.key != '' && !t.key.startsWith('node-role.kubernetes.io/control-plane') && t.key != 'node-role.kubernetes.io/master' && t.key != 'bex.co/platform')))
       reason: Forbidden
-      message: day-to-day-authored workloads may not carry wildcard or control-plane tolerations
+      message: day-to-day-authored workloads may not carry wildcard, control-plane or platform tolerations
+    # A host port publishes a container on its node's address, past every
+    # Service and NetworkPolicy; no operator-authored workload needs one.
+    - expression: >-
+        (variables.pod.containers.all(c, c.?ports.orValue([]).all(p, p.?hostPort.orValue(0) == 0)) &&
+         variables.pod.?initContainers.orValue([]).all(c, c.?ports.orValue([]).all(p, p.?hostPort.orValue(0) == 0)) &&
+         variables.pod.?ephemeralContainers.orValue([]).all(c, c.?ports.orValue([]).all(p, p.?hostPort.orValue(0) == 0)))
+      reason: Forbidden
+      message: day-to-day-authored workloads may not publish a container port on the node (hostPort)
     - expression: >-
         (variables.pod.containers.all(c,
            !c.?securityContext.?privileged.orValue(false) &&
@@ -635,12 +654,20 @@ spec:
         !variables.pod.?hostIPC.orValue(false) &&
         !has(variables.pod.nodeName) &&
         (!has(variables.pod.tolerations) || variables.pod.tolerations.all(t,
-          (has(t.key) && t.key != '' && !t.key.startsWith('node-role.kubernetes.io/control-plane') && t.key != 'node-role.kubernetes.io/master'))) &&
+          (has(t.key) && t.key != '' && !t.key.startsWith('node-role.kubernetes.io/control-plane') && t.key != 'node-role.kubernetes.io/master' && t.key != 'bex.co/platform'))) &&
         has(variables.pod.volumes) && variables.pod.volumes.all(v,
           (has(v.emptyDir) || has(v.secret)) &&
           (!has(v.secret) || !(v.secret.secretName in variables.crownSecrets)))
       reason: Forbidden
-      message: bex-build Jobs may not join host namespaces, pin a node, carry wildcard/control-plane tolerations, or use volumes other than emptyDir/non-crown Secrets
+      message: bex-build Jobs may not join host namespaces, pin a node, carry wildcard/control-plane/platform tolerations, or use volumes other than emptyDir/non-crown Secrets
+    # A host port publishes a container on its node's address, past every
+    # Service and NetworkPolicy; no operator-authored workload needs one.
+    - expression: >-
+        (variables.pod.containers.all(c, c.?ports.orValue([]).all(p, p.?hostPort.orValue(0) == 0)) &&
+         variables.pod.?initContainers.orValue([]).all(c, c.?ports.orValue([]).all(p, p.?hostPort.orValue(0) == 0)) &&
+         variables.pod.?ephemeralContainers.orValue([]).all(c, c.?ports.orValue([]).all(p, p.?hostPort.orValue(0) == 0)))
+      reason: Forbidden
+      message: bex-build Jobs may not publish a container port on the node (hostPort)
     - expression: >-
         (!has(variables.pod.securityContext) ||
          variables.pod.securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault')

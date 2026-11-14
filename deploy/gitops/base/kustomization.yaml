@@ -62,6 +62,7 @@ resources:
   - operator-pod-label-admission.yaml # API-server CEL guard: the operator may relabel a pod's network-isolation and environment-id labels and nothing else (w8/m136, w3/055)
   - operator-alias-admission.yaml # API-server CEL guard: only exact App-owned static/maintenance ExternalName aliases may exist in tenant namespaces (w7/m54)
   - drain-guard-admission.yaml # API-server CEL guard: drain-guard may only set its CAPI pre-drain hook, cordon, and mark an App template for evacuation (w1/m186)
+  - activator-admission.yaml # API-server CEL guard: the activator may only set its two wake annotations on an App and raise a Deployment from zero to one replica (w21/m409)
   - sandbox-pod-admission.yaml # API-server guard: every sandbox Pod must retain gVisor/placement/token invariants (w3/m35)
 
 # The render-v1 seccomp profile (w6/m150), installed by seccomp-profiles.yaml.

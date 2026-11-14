@@ -75,6 +75,12 @@ var _ = Describe("Application container policy admission", func() {
 		}
 
 		const operatorName = "system:serviceaccount:bex-system:bex-controller-manager"
+		// The operator's day-to-day credential has its own policy
+		// (bex-operator-daytoday-workloads) with the same privilege rules.
+		const dayToDayName = "system:serviceaccount:kube-system:bex-operator"
+		// bex-build-job-shape binds every author of Jobs in bex-build, so an
+		// identity the operator policies do not match reaches it alone.
+		const shapeAuthorName = "system:serviceaccount:bex-build:shape-author"
 		role := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "workload-admission-test"}, Rules: []rbacv1.PolicyRule{
 			{APIGroups: []string{"apps"}, Resources: []string{"deployments", "statefulsets"}, Verbs: []string{"get", "create", "update", "delete"}},
 			{APIGroups: []string{"batch"}, Resources: []string{"jobs", "cronjobs"}, Verbs: []string{"get", "create", "update", "delete"}},
@@ -84,7 +90,11 @@ var _ = Describe("Application container policy admission", func() {
 		Expect(admin.Create(ctx, &rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{Name: role.Name},
 			RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: role.Name},
-			Subjects:   []rbacv1.Subject{{Kind: "User", APIGroup: "rbac.authorization.k8s.io", Name: operatorName}},
+			Subjects: []rbacv1.Subject{
+				{Kind: "User", APIGroup: "rbac.authorization.k8s.io", Name: operatorName},
+				{Kind: "User", APIGroup: "rbac.authorization.k8s.io", Name: dayToDayName},
+				{Kind: "User", APIGroup: "rbac.authorization.k8s.io", Name: shapeAuthorName},
+			},
 		})).To(Succeed())
 		asUser := func(name string) client.Client {
 			conf := rest.CopyConfig(config)
@@ -133,10 +143,7 @@ var _ = Describe("Application container policy admission", func() {
 				workload.SetAnnotations(map[string]string{"admission-test": "valid-update"})
 				Expect(operator.Update(ctx, workload)).To(Succeed(), scenario)
 
-				for _, mutation := range []struct {
-					name   string
-					change func(*corev1.PodTemplateSpec)
-				}{
+				for _, mutation := range slices.Concat([]admissionMutation{
 					{"extra-capability", func(p *corev1.PodTemplateSpec) {
 						p.Spec.Containers[0].SecurityContext.Capabilities.Add = append(p.Spec.Containers[0].SecurityContext.Capabilities.Add, "SYS_ADMIN")
 					}},
@@ -170,7 +177,7 @@ var _ = Describe("Application container policy admission", func() {
 						init.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeUnconfined
 						p.Spec.InitContainers = append(p.Spec.InitContainers, init)
 					}},
-				} {
+				}, admissionPrivilegePaths()) {
 					bad := workload.DeepCopyObject().(client.Object)
 					pod := admissionPodTemplate(bad)
 					// Some strict helpers inherit pod-level seccomp and do not
@@ -605,6 +612,44 @@ var _ = Describe("Application container policy admission", func() {
 		relabelled := admissionFreshWorkload(buildJob)
 		admissionPodTemplate(relabelled).Labels[execution.LabelComponent] = "predeploy"
 		expectPoolDenied(operator.Create(ctx, relabelled, client.DryRunAll), "non-build Job with the build-only toleration")
+		// bex-build-job-shape binds only the bex-build namespace.
+		Expect(admin.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "bex-build"}})).To(Succeed())
+		shapeOpts := buildOpts
+		shapeOpts.Namespace = "bex-build"
+		shapeJob := build.BuildJob(shapeOpts, shapeOpts.ImageRef())
+		shapeAuthor := asUser(shapeAuthorName)
+		err = shapeAuthor.Create(ctx, admissionFreshWorkload(shapeJob), client.DryRunAll)
+		Expect(err).NotTo(HaveOccurred(), "the hardened build Job from another author")
+		for _, path := range admissionPrivilegePaths() {
+			// The operator's own write is refused by its workload policy ...
+			bad := admissionFreshWorkload(buildJob)
+			path.change(admissionPodTemplate(bad))
+			Expect(apierrors.IsForbidden(operator.Create(ctx, bad, client.DryRunAll))).To(BeTrue(), "operator build Job "+path.name)
+			// ... and any author's in bex-build by the shape policy alone.
+			bad = admissionFreshWorkload(shapeJob)
+			path.change(admissionPodTemplate(bad))
+			err := shapeAuthor.Create(ctx, bad, client.DryRunAll)
+			Expect(apierrors.IsForbidden(err)).To(BeTrue(), "build Job "+path.name+": %v", err)
+			Expect(err.Error()).To(ContainSubstring("bex-build-job-shape"), "build Job "+path.name)
+		}
+
+		By("holding the day-to-day credential to the same privilege paths")
+		dayToDay := asUser(dayToDayName)
+		// Only restricted workloads (no added capabilities) are its to author.
+		for _, workload := range admissionApplicationWorkloads("default", "") {
+			scenario := fmt.Sprintf("%T %s", workload, workload.GetName())
+			// An existing object answers AlreadyExists, which only happens once
+			// admission has passed.
+			err := dayToDay.Create(ctx, admissionFreshWorkload(workload), client.DryRunAll)
+			Expect(err == nil || apierrors.IsAlreadyExists(err)).To(BeTrue(), "day-to-day %s unmodified: %v", scenario, err)
+			for _, path := range admissionPrivilegePaths() {
+				bad := workload.DeepCopyObject().(client.Object)
+				path.change(admissionPodTemplate(bad))
+				err := dayToDay.Create(ctx, admissionFreshWorkload(bad), client.DryRunAll)
+				Expect(apierrors.IsForbidden(err)).To(BeTrue(), "day-to-day %s/%s: %v", scenario, path.name, err)
+				Expect(err.Error()).To(ContainSubstring("bex-operator-daytoday-workloads"), scenario+"/"+path.name)
+			}
+		}
 
 		By("allowing deletion of legacy invalid bodies while retaining the namespace boundary")
 		for _, workload := range admissionApplicationWorkloads("default", appv1alpha1.ContainerPolicyImageV1) {
@@ -619,6 +664,46 @@ var _ = Describe("Application container policy admission", func() {
 // Collect actual producer output through fake storage, then submit those exact
 // objects to the real API server. This keeps unrelated release/status machinery
 // outside this admission test without replacing any workload constructor.
+// admissionMutation is a change to a pod template an admission policy must refuse.
+type admissionMutation struct {
+	name   string
+	change func(*corev1.PodTemplateSpec)
+}
+
+// admissionPrivilegePaths are the round-25 audit's paths to more privilege than
+// an operator-authored workload is meant to have (w21/m409): a projected volume
+// that sources a crown Secret, a toleration of the platform taint, and a host
+// port. Every operator-authored policy refuses them.
+func admissionPrivilegePaths() []admissionMutation {
+	projected := func(secrets ...string) func(*corev1.PodTemplateSpec) {
+		return func(p *corev1.PodTemplateSpec) {
+			sources := make([]corev1.VolumeProjection, 0, len(secrets))
+			for _, name := range secrets {
+				sources = append(sources, corev1.VolumeProjection{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: name}}})
+			}
+			p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{Name: "proj", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{Sources: sources}}})
+		}
+	}
+	return []admissionMutation{
+		{"projected-crown-secret", projected("bex-kubeconfig")},
+		{"projected-crown-secret-beside-another", projected("not-a-crown-secret", "bex-ca")},
+		{"platform-toleration", func(p *corev1.PodTemplateSpec) {
+			p.Spec.Tolerations = append(p.Spec.Tolerations, corev1.Toleration{Key: "bex.co/platform", Operator: corev1.TolerationOpEqual, Value: "true", Effect: corev1.TaintEffectNoSchedule})
+		}},
+		{"platform-toleration-exists", func(p *corev1.PodTemplateSpec) {
+			p.Spec.Tolerations = append(p.Spec.Tolerations, corev1.Toleration{Key: "bex.co/platform", Operator: corev1.TolerationOpExists})
+		}},
+		{"host-port", func(p *corev1.PodTemplateSpec) {
+			p.Spec.Containers[0].Ports = append(p.Spec.Containers[0].Ports, corev1.ContainerPort{ContainerPort: 8081, HostPort: 8081})
+		}},
+		{"init-host-port", func(p *corev1.PodTemplateSpec) {
+			init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: execution.RestrictedContainerSecurityContext(),
+				Ports: []corev1.ContainerPort{{ContainerPort: 8082, HostPort: 8082}}}
+			p.Spec.InitContainers = append(p.Spec.InitContainers, init)
+		}},
+	}
+}
+
 func admissionApplicationWorkloads(namespace, policy string) []client.Object {
 	return admissionTierWorkloads(namespace, policy, "free")
 }

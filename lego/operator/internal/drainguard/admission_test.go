@@ -81,6 +81,13 @@ func TestAdmissionPolicyConfinesDrainGuard(t *testing.T) {
 	dep.Spec.Template.Labels = map[string]string{appLabel: "web"}
 	dep.Spec.Template.Spec.Containers = []corev1.Container{{Name: "app", Image: "example.invalid/app:1"}}
 	must(t, admin.Create(ctx, dep))
+	// A Deployment that is not an App's: its selector has no app.bex.co/app
+	// label, so drain-guard never evacuates it and the policy must not let it.
+	infra := dep.DeepCopy()
+	infra.ObjectMeta = metav1.ObjectMeta{Namespace: tenantNS, Name: "infra"}
+	infra.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"component": "infra"}}
+	infra.Spec.Template.Labels = map[string]string{"component": "infra"}
+	must(t, admin.Create(ctx, infra))
 
 	impersonated := rest.CopyConfig(cfg)
 	impersonated.Impersonate = rest.ImpersonationConfig{UserName: drainGuardUser}
@@ -95,6 +102,10 @@ func TestAdmissionPolicyConfinesDrainGuard(t *testing.T) {
 	}
 	annotation := func(key, value string) string {
 		return `{"metadata":{"annotations":{"` + key + `":` + value + `}}}`
+	}
+	// templateMetadata patches one field of the pod template's own metadata.
+	templateMetadata := func(field string) string {
+		return `{"spec":{"template":{"metadata":{` + field + `}}}}`
 	}
 	templateAnnotation := func(key, value string) string {
 		return `{"spec":{"template":{"metadata":{"annotations":{"` + key + `":"` + value + `"}}}}}`
@@ -128,6 +139,12 @@ func TestAdmissionPolicyConfinesDrainGuard(t *testing.T) {
 		{"deployment: replicas", false, merge(dep, `{"spec":{"replicas":3}}`)},
 		{"deployment: image", false, merge(dep, `{"spec":{"template":{"spec":{"containers":[{"name":"app","image":"evil:1"}]}}}}`)},
 		{"deployment: an annotation", false, merge(dep, annotation("x", `"y"`))},
+		{"deployment: a template finalizer", false, merge(dep, templateMetadata(`"finalizers":["bex.co/hold"]`))},
+		{"deployment: a template owner reference", false, merge(dep, templateMetadata(`"ownerReferences":[{"apiVersion":"v1","kind":"ConfigMap","name":"x","uid":"11111111-1111-1111-1111-111111111111"}]`))},
+		{"deployment: a template generateName", false, merge(dep, templateMetadata(`"generateName":"web-"`))},
+		{"deployment: a template name", false, merge(dep, templateMetadata(`"name":"web"`))},
+		{"deployment: a template namespace", false, merge(dep, templateMetadata(`"namespace":"`+tenantNS+`"`))},
+		{"deployment: the evacuation annotation on a Deployment that is not an App's", false, merge(infra, templateAnnotation(EvacuatedFromAnnotation, doomed))},
 		{"deployment: create", false, func() error {
 			other := dep.DeepCopy()
 			other.ObjectMeta = metav1.ObjectMeta{Namespace: tenantNS, Name: "other"}
@@ -146,6 +163,21 @@ func TestAdmissionPolicyConfinesDrainGuard(t *testing.T) {
 				t.Fatalf("denied, but not by the drain-guard policy: %v", err)
 			}
 		})
+	}
+
+	// drain-guard's own code, not a hand-written patch, passes the policy: it
+	// evacuates an App's Deployment off the node by setting the template
+	// annotation, with the identity the policy confines.
+	live := &appsv1.Deployment{}
+	must(t, admin.Get(ctx, client.ObjectKeyFromObject(dep), live))
+	live.Status = appsv1.DeploymentStatus{ObservedGeneration: live.Generation, Replicas: 0, UpdatedReplicas: 0}
+	if err := (&Reconciler{Workload: guard}).evacuate(ctx, doomed, []appsv1.Deployment{*live}); err != nil {
+		t.Fatalf("evacuate: %v", err)
+	}
+	evacuated := &appsv1.Deployment{}
+	must(t, admin.Get(ctx, client.ObjectKeyFromObject(dep), evacuated))
+	if got := evacuated.Spec.Template.Annotations[EvacuatedFromAnnotation]; got != doomed {
+		t.Fatalf("after evacuate the template annotation = %q, want %q", got, doomed)
 	}
 
 	// The policy confines only drain-guard: another identity may still label.

@@ -2804,16 +2804,79 @@ for required_operator_workload_guard in \
     fail=1
   }
 done
+# w21/m409: three privilege paths the round-25 audit found are refused by every
+# policy that can author them, so each clause must appear once per policy, not
+# just somewhere in the file: a projected volume may not source a crown Secret
+# (the workload and day-to-day policies; the build Job policy allows only
+# emptyDir and Secret volumes), no policy admits the platform taint, and a
+# host port is refused in containers, init containers and ephemeral containers
+# of all three.
+for required_privilege_clause in \
+  "2|v.projected.?sources.orValue([]).all(s, !has(s.secret) || !(s.secret.name in variables.crownSecrets))" \
+  "3|t.key != 'bex.co/platform'" \
+  "9|p.?hostPort.orValue(0) == 0"; do
+  clause_count="${required_privilege_clause%%|*}"
+  clause_text="${required_privilege_clause#*|}"
+  clause_found="$(grep -Fc "$clause_text" deploy/gitops/base/operator-workload-admission.yaml || true)"
+  if [ "$clause_found" -lt "$clause_count" ]; then
+    echo "FAIL: operator workload admission has '$clause_text' on $clause_found lines, want $clause_count" >&2
+    fail=1
+  fi
+done
 # DELETE is namespace-confined above, but must not re-validate the old Pod
 # against today's CREATE/UPDATE grammar: doing so could make a legacy workload
-# impossible for the operator to clean up. Each of the eight shape validations
+# impossible for the operator to clean up. Each of the nine shape validations
 # (the seventh is the w2/m247 priority grammar, the eighth the w2/m250 pool
-# grammar) explicitly short-circuits on DELETE.
+# grammar, the ninth the w21/m409 host-port rule) explicitly short-circuits on
+# DELETE.
 operator_delete_shape_bypasses="$(grep -Fc "request.operation == 'DELETE' ||" deploy/gitops/base/operator-workload-admission.yaml || true)"
-if [ "$operator_delete_shape_bypasses" -ne 8 ]; then
-  echo "FAIL: operator workload admission has $operator_delete_shape_bypasses DELETE shape bypasses, want 8" >&2
+if [ "$operator_delete_shape_bypasses" -ne 9 ]; then
+  echo "FAIL: operator workload admission has $operator_delete_shape_bypasses DELETE shape bypasses, want 9" >&2
   fail=1
 fi
+# w21/m409: the activator and drain-guard identities hold cluster-wide patch
+# rights that RBAC cannot narrow, so each is confined by its own policy; the
+# envtests (cmd/activator/admission_test.go, internal/drainguard/admission_test.go)
+# prove what they deny, and this pins that the policies stay deployed and keep
+# their clauses.
+confined_write_objects="$(yq -N '
+  select((.kind == "ValidatingAdmissionPolicy" or .kind == "ValidatingAdmissionPolicyBinding") and
+    (.metadata.name == "bex-activator-writes" or .metadata.name == "bex-drain-guard-writes")) |
+  [.kind, .metadata.name,
+   .metadata.annotations."argocd.argoproj.io/sync-wave",
+   (.spec.failurePolicy // ""),
+   ((.spec.validationActions // []) | sort | join(","))] | join(":")' \
+  - <<<"$BASE_RENDER" | sed '/^[[:space:]]*$/d' | sort)"
+expected_confined_write_objects=$'ValidatingAdmissionPolicy:bex-activator-writes:-3:Fail:\nValidatingAdmissionPolicy:bex-drain-guard-writes:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-activator-writes:-2::Audit,Deny\nValidatingAdmissionPolicyBinding:bex-drain-guard-writes:-2::Audit,Deny'
+[ "$confined_write_objects" = "$expected_confined_write_objects" ] || {
+  echo "FAIL: activator/drain-guard write admission policy/binding shape drifted" >&2
+  fail=1
+}
+for required_activator_guard in \
+  "request.userInfo.username == 'system:serviceaccount:bex-system:bex-activator'" \
+  "object.spec == oldObject.spec" \
+  "object.spec.?replicas.orValue(1) == 1" \
+  "oldObject.spec.?replicas.orValue(0) < 1" \
+  "object.spec.template == oldObject.spec.template" \
+  "T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\$')"; do
+  grep -qF "$required_activator_guard" deploy/gitops/base/activator-admission.yaml || {
+    echo "FAIL: activator admission lost '$required_activator_guard'" >&2
+    fail=1
+  }
+done
+for required_drain_guard_clause in \
+  "request.userInfo.username == 'system:serviceaccount:bex-system:bex-drain-guard'" \
+  "object.spec.selector.?matchLabels['app.bex.co/app'].orValue('') == object.metadata.name" \
+  "object.spec.template.metadata.?finalizers.orValue([])" \
+  "object.spec.template.metadata.?ownerReferences.orValue([])" \
+  "object.spec.template.metadata.?generateName.orValue('')" \
+  "object.spec.template.metadata.?name.orValue('')" \
+  "object.spec.template.metadata.?namespace.orValue('')"; do
+  grep -qF "$required_drain_guard_clause" deploy/gitops/base/drain-guard-admission.yaml || {
+    echo "FAIL: drain-guard admission lost '$required_drain_guard_clause'" >&2
+    fail=1
+  }
+done
 # w7/m57: the bex-tenant-api / bex-tenant-operator ClusterRoles grant cluster-wide
 # `secrets` write — safe ONLY because they are bound per-tenant-namespace by
 # RoleBinding (never a ClusterRoleBinding). A ClusterRoleBinding to either would

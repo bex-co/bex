@@ -35,7 +35,7 @@ Every `lego/operator/cmd/*` binary:
 
 | Binary | Reach | Verdict |
 | --- | --- | --- |
-| `activator` | the public internet through Traefik; `bex-system`, `traefik` and `monitoring` pods | R25-01, R25-02, R25-11 fixed. The ServiceAccount has no admission policy (w21/068) |
+| `activator` | the public internet through Traefik; `bex-system`, `traefik` and `monitoring` pods | R25-01, R25-02, R25-11 fixed. The ServiceAccount is bound by `bex-activator-writes`: its two wake annotations on an App and a Deployment's replicas from zero to one, nothing else (w21/m409) |
 | `pg-sni-proxy` | the internet through the load balancer (PROXY protocol); in-cluster pods | R25-13 fixed; R25-12 residual (w21/070). Parsing held under 4.2M fuzz executions: no panic, no untrusted peer ever asserted a source |
 | `kv-sni-proxy` | as `pg-sni-proxy` | R25-12 residual. No unbounded backend read (the SSLRequest window is Postgres's) |
 | `kv-internal-proxy` | same-namespace pods and same-isolation-environment peers | No finding. Switching identity, reading the injected password and escalating ACLs all failed against real Redis 8.10 |
@@ -43,7 +43,7 @@ Every `lego/operator/cmd/*` binary:
 | `edge-cache` | Traefik, same-workspace pods, `bex-system` peers | R25-06, R25-07 fixed. Slow-leader blocking and the missing server timeouts are hardening (w21/073). Cache deception inside one tenant is Render's behaviour (ADR018) and accepted |
 | `egress-meter` | in-cluster; node firewall opens only 22 and ICMP; tenant pods' host egress is denied | No finding |
 | `health-probe` | inside the tenant's own container | No finding |
-| `drain-guard` | in-cluster | No finding in the binary; its admission policy has gaps (w21/068) |
+| `drain-guard` | in-cluster | No finding in the binary; its admission policy now also pins the pod template's own metadata and applies to an App's Deployment only (w21/m409) |
 | `native-init` | PID 1 in the tenant's image | No finding |
 | `native-resolve` | build-pod init container | No finding: 12,080 resolutions with 587 payloads put no marker into a Dockerfile line |
 | `disk-snapshot` | tenant PVC contents and symlinks | No finding: 20 hostile tar streams were all confined by `os.Root`. R25-14 and the notes in w21/073 are hardening |
@@ -94,7 +94,7 @@ Render parity is the top product principle (ADR008), so each fix that changes wh
   - R25-12, the global-cap residual. ADR066 accepts source-rotating floods as "edge/LB rate limiting"; its premise is false: the Hetzner load balancer has no L4 limiter and nothing in the repository provides one, and no alert watches `connections_rejected_total`. The control lives in the pod; ADR066 is amended and the work is w21/070.
   - A squatted pending claim that later verifies (the shared-edge apex proof). Mechanically real, and Render's own apex structure; ADR005 records it.
   - Cache deception inside one tenant (a cookie-authenticated `/account/x.css` cached for anonymous clients on an opted-in service): Render's edge-cache behaviour (ADR018), per pod, no cross-tenant effect.
-- **Filed as hardening:** w21/067 (static cold-start shedding, Render drift risk), w21/068 (admission policies), w21/069 (R25-14, snapshot keys), w21/070 (SNI proxy pre-SNI cap, pre-header deadline, alert), w21/071 (`pods/exec`, six namespaces without a NetworkPolicy), w21/072 (dashboard notes), w21/073 (operator proxy, job and logging notes), w21/074 (the backend's per-source caps in the SSH gateway and auth admission key an IPv6 client on its exact address; `netutil.SourceKey` is the fix).
+- **Filed as hardening:** w21/067 (static cold-start shedding, Render drift risk; closed), w21/068 (admission policies; closed by w21/m409: a projected crown Secret, a `bex.co/platform` toleration and a `hostPort` are refused by the operator, day-to-day and build Job policies, the activator and drain-guard are confined, and `scripts/gitops-validate.sh` pins each clause), w21/069 (R25-14, snapshot keys), w21/070 (SNI proxy pre-SNI cap, pre-header deadline, alert), w21/071 (`pods/exec`, six namespaces without a NetworkPolicy), w21/072 (dashboard notes), w21/073 (operator proxy, job and logging notes), w21/074 (the backend's per-source caps in the SSH gateway and auth admission key an IPv6 client on its exact address; `netutil.SourceKey` is the fix).
 - **What a single run leaves:** the control plane in `lego/backend` was ADR107's scope. The first run on these planes covered every binary and route, unevenly: deepest on the activator, SNI proxies, static server, edge cache, registry client, snapshot jobs and the consent and device flows.
 
 ## Operator actions this round leaves

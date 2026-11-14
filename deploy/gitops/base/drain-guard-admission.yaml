@@ -9,7 +9,7 @@
 #   - Machines: add or remove its own pre-drain hook annotation, nothing else;
 #   - Nodes: cordon (spec.unschedulable true), nothing else; never uncordon;
 #   - Deployments: set the pod-template annotation that rolls an App off a
-#     node, nothing else.
+#     node, on an App's Deployment only, nothing else.
 #
 # Every other write by it, CREATE and DELETE included, is denied.
 apiVersion: admissionregistration.k8s.io/v1
@@ -88,12 +88,16 @@ spec:
       expression: >-
         request.resource.resource == 'deployments' && request.operation == 'UPDATE'
           ? oldObject.spec.template.metadata.?annotations.orValue({}) : {}
-    # A Deployment may differ only in the evacuation annotation on its pod
-    # template, set to a node name; the pod spec, labels, replicas, selector
-    # and strategy stay as they were.
+    # An App's Deployment (its selector names the App, as drain-guard's own
+    # evacuation requires) may differ only in the evacuation annotation on its
+    # pod template, set to a node name; the pod spec, labels, replicas,
+    # selector, strategy and the template's own metadata stay as they were. The
+    # template's finalizers, owner references and names are copied onto every
+    # pod the Deployment makes.
     - name: deploymentWrite
       expression: >-
         request.resource.resource == 'deployments' &&
+        object.spec.selector.?matchLabels['app.bex.co/app'].orValue('') == object.metadata.name &&
         variables.sameMetadata && variables.sameAnnotations &&
         object.spec.replicas == oldObject.spec.replicas &&
         object.spec.selector == oldObject.spec.selector &&
@@ -104,6 +108,11 @@ spec:
         object.spec.?revisionHistoryLimit.orValue(0) == oldObject.spec.?revisionHistoryLimit.orValue(0) &&
         object.spec.template.spec == oldObject.spec.template.spec &&
         object.spec.template.metadata.?labels.orValue({}) == oldObject.spec.template.metadata.?labels.orValue({}) &&
+        object.spec.template.metadata.?finalizers.orValue([]) == oldObject.spec.template.metadata.?finalizers.orValue([]) &&
+        object.spec.template.metadata.?ownerReferences.orValue([]) == oldObject.spec.template.metadata.?ownerReferences.orValue([]) &&
+        object.spec.template.metadata.?generateName.orValue('') == oldObject.spec.template.metadata.?generateName.orValue('') &&
+        object.spec.template.metadata.?name.orValue('') == oldObject.spec.template.metadata.?name.orValue('') &&
+        object.spec.template.metadata.?namespace.orValue('') == oldObject.spec.template.metadata.?namespace.orValue('') &&
         variables.templateAnnotations.all(k, k == variables.evacuation ||
           (k in variables.oldTemplateAnnotations && variables.oldTemplateAnnotations[k] == variables.templateAnnotations[k])) &&
         variables.oldTemplateAnnotations.all(k, k in variables.templateAnnotations) &&
