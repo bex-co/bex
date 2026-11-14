@@ -268,6 +268,12 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
       "信任等级 {tier}：智能体模型支出先用 billing credits 抵扣；credits 抵扣不了的部分达到 {amount} 时从你的卡中扣款。",
     description: "Trust tier with its mid-month charge point (ADR091 D10.1)",
   },
+  "agentEnvironment.spendTierNextChargeCredit": {
+    message:
+      "信任等级 {tier}：本账单周期内，billing credits 先抵扣前 {credit} 的智能体模型支出；超出部分达到 {amount} 时从你的卡中扣款。",
+    description:
+      "Trust tier with its charge point when billing credits cover agent model spend first (ADR091 D10.2a). {credit} is the credit counted in this billing period, {amount} the charge point",
+  },
   "agentEnvironment.spendTierMonthEnd": {
     message: "信任等级 {tier}：智能体模型支出在月底结算。",
     description: "Top trust tier, charged only at month end",

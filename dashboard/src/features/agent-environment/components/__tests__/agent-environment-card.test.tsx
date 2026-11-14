@@ -115,7 +115,7 @@ describe("AgentEnvironmentCard", () => {
     expect(source).toHaveClass("text-transparent");
     const spend = screen.getByTestId("spend-cap-section-skeleton");
     expect(spend).toHaveTextContent(
-      /Trust tier T0: billing credits pay agent model spend first; your card is charged/,
+      /Trust tier T0: billing credits cover the first .* of agent model spend this billing period; your card is charged/,
     );
     // The longer of the T0 and payment-locked explanations.
     expect(spend).toHaveTextContent(
@@ -394,6 +394,13 @@ describe("AgentEnvironmentCard", () => {
       expect(
         screen.getByText("Plan default $20.00. Admins can set up to $200.00."),
       ).toBeInTheDocument();
+    });
+
+    it("says what billing credits cover before the card is charged (w6/m400)", () => {
+      setup({ ...SPEND, agentModelCreditUsd: 25 });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T0: billing credits cover the first $25.00 of agent model spend this billing period; your card is charged when spend beyond them reaches $10.00.",
+      );
     });
 
     it("names a top-tier month-end charge and a payment hold", () => {

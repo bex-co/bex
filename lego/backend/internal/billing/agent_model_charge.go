@@ -502,7 +502,7 @@ func (c *StripeClient) agentModelCreditMicroUSD(ctx context.Context, customerID 
 	now, expiring := time.Now().Unix(), 0
 	for iter.Next() {
 		g := iter.BillingCreditGrant()
-		if !creditGrantActive(g, now) || g.ExpiresAt == 0 || (periodEnd > 0 && g.ExpiresAt > periodEnd) || !meteredGrant(g) {
+		if !creditGrantActive(g, now) || !expiresByPeriodEnd(g, periodEnd) {
 			continue
 		}
 		if expiring++; expiring > maxCreditGrants {
@@ -518,6 +518,13 @@ func (c *StripeClient) agentModelCreditMicroUSD(ctx context.Context, customerID 
 		return 0, fmt.Errorf("stripe: list credit grants for customer %s: %w", customerID, err)
 	}
 	return max(cents, 0) * microUSDPerCent, nil
+}
+
+// expiresByPeriodEnd reports a metered-scope grant that expires by periodEnd
+// (with periodEnd unknown, any grant with an expiry): the invoice ending then
+// cannot apply it, so its balance is not counted against agent-model spend.
+func expiresByPeriodEnd(g *stripe.BillingCreditGrant, periodEnd int64) bool {
+	return g.ExpiresAt > 0 && (periodEnd <= 0 || g.ExpiresAt <= periodEnd) && meteredGrant(g)
 }
 
 // meteredGrant reports a grant scoped to every metered price, the scope the
@@ -583,7 +590,7 @@ type AgentModelChargeStore interface {
 	SetAgentModelChargeNetItem(ctx context.Context, key store.AgentModelChargeKey, itemID string) error
 	AgentModelChargesToRetry(ctx context.Context, pendingOlderThan time.Time, limit int) ([]store.AgentModelCharge, error)
 	RecordAgentModelBilledUntil(ctx context.Context, workspaceID string, until time.Time) (bool, error)
-	RecordAgentModelCredits(ctx context.Context, workspaceID string, microUSD int64, at time.Time) error
+	AgentModelCreditRecorder
 	RunExclusive(ctx context.Context, name string, fn func(context.Context) error) (bool, error)
 }
 

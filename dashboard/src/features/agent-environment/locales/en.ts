@@ -275,6 +275,12 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
       "Trust tier {tier}: billing credits pay agent model spend first; your card is charged when the spend they leave reaches {amount}.",
     description: "Trust tier with its mid-month charge point (ADR091 D10.1)",
   },
+  "agentEnvironment.spendTierNextChargeCredit": {
+    message:
+      "Trust tier {tier}: billing credits cover the first {credit} of agent model spend this billing period; your card is charged when spend beyond them reaches {amount}.",
+    description:
+      "Trust tier with its charge point when billing credits cover agent model spend first (ADR091 D10.2a). {credit} is the credit counted in this billing period, {amount} the charge point",
+  },
   "agentEnvironment.spendTierMonthEnd": {
     message: "Trust tier {tier}: agent model spend is charged at month end.",
     description: "Top trust tier, charged only at month end",

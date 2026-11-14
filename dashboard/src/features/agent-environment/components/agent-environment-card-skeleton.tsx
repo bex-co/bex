@@ -232,6 +232,11 @@ export function AgentEnvironmentCardSkeleton() {
                     tier: "T0",
                     amount: WIDE_USD,
                   }),
+                  t("agentEnvironment.spendTierNextChargeCredit", {
+                    tier: "T0",
+                    amount: WIDE_USD,
+                    credit: WIDE_USD,
+                  }),
                   t("agentEnvironment.spendTierMonthEnd", { tier: "T0" }),
                 )}
               </SkeletonText>

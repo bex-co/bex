@@ -88,9 +88,16 @@ export function SpendCapSection({
 
   const tier = saved.trustTier;
   const next = saved.nextChargeThresholdUsd;
+  const credit = saved.agentModelCreditUsd;
   const tierLine = tier
     ? next != null
-      ? t("agentEnvironment.spendTierNextCharge", { tier, amount: usd(next) })
+      ? credit != null && credit > 0
+        ? t("agentEnvironment.spendTierNextChargeCredit", {
+            tier,
+            amount: usd(next),
+            credit: usd(credit),
+          })
+        : t("agentEnvironment.spendTierNextCharge", { tier, amount: usd(next) })
       : t("agentEnvironment.spendTierMonthEnd", { tier })
     : null;
   const tierNote = saved.trustTierLocked

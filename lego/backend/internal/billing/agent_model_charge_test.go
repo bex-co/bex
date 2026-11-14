@@ -1026,3 +1026,61 @@ func (v *voidRecorder) VoidAgentModelChargesBilledBy(_ context.Context, ws, cust
 	v.voids = append(v.voids, ws+"/"+customerID+"@"+until.UTC().Format(time.RFC3339))
 	return nil
 }
+
+// creditRecordingState is a BillingStateStore that records the agent-model
+// credit a Billing read saw.
+type creditRecordingState struct {
+	billingStateStoreFake
+	credits map[string]int64
+}
+
+func (f *creditRecordingState) RecordAgentModelCredits(_ context.Context, ws string, micro int64, _ time.Time) error {
+	if f.credits == nil {
+		f.credits = map[string]int64{}
+	}
+	f.credits[ws] = micro
+	return nil
+}
+
+// w6/m400: a Billing read records the credit the charger would read (the
+// metered balance less grants expiring by the period end), so the mint and the
+// agent environment count it before the first crossing.
+func TestBillingReadRecordsTheAgentModelCredit(t *testing.T) {
+	start, periodEnd := time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), time.Date(2026, 12, 2, 0, 0, 0, 0, time.UTC)
+	var stub *stripeStub
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch path {
+		case "/v1/subscriptions":
+			return 200, fmt.Sprintf(`{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active",`+
+				`"items":{"object":"list","data":[{"id":"si_1","object":"subscription_item","current_period_end":%d}]},`+
+				`"metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`, periodEnd.Unix())
+		case "/v1/invoices/create_preview":
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","subtotal":1234,"total":1234,"amount_due":1234,"status":"draft"}`
+		case "/v1/invoices":
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/invoices"}`
+		case "/v1/billing/credit_grants":
+			return 200, fmt.Sprintf(`{"object":"list","has_more":false,"url":"/v1/billing/credit_grants","data":[`+
+				`{"id":"cg_soon","object":"billing.credit_grant","effective_at":%d,"expires_at":%d,"applicability_config":{"scope":{"price_type":"metered"}}}]}`,
+				start.Unix(), periodEnd.Add(-time.Hour).Unix())
+		case "/v1/billing/credit_balance_summary":
+			queries := stub.queriesFor(path)
+			q, _ := url.ParseQuery(queries[len(queries)-1])
+			if q.Get("filter[credit_grant]") == "cg_soon" {
+				return 200, creditBalanceJSON(1000)
+			}
+			return 200, creditBalanceJSON(2500)
+		}
+		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+	})
+	state := &creditRecordingState{}
+	c.state = state
+	c.storeCustomer("tea-a", "cus_1")
+	_ = state.UpsertBillingProviderMapping(context.Background(), store.BillingProviderMapping{WorkspaceID: "tea-a", CustomerID: "cus_1"})
+	b, err := c.BillingFor(context.Background(), "tea-a", start, start.Add(24*time.Hour))
+	if err != nil || b == nil || b.Credits == nil {
+		t.Fatalf("billing = %+v, %v; want the credits block", b, err)
+	}
+	if got := state.credits["tea-a"]; got != 15_000_000 {
+		t.Fatalf("recorded credit = %d, want $15 ($25 less cg_soon's $10, which expires before the period ends)", got)
+	}
+}

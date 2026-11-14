@@ -77,6 +77,28 @@ describe("the server's cap verdict", () => {
   });
 });
 
+describe("billing credits at a charge point (w6/m400)", () => {
+  const t0 = (used: number, unbilled: number | null) =>
+    env(used, 10, {
+      agentModelSpendCapTierLimited: true,
+      agentModelSpendCapReached: false,
+      agentModelChargesAtThreshold: true,
+      agentModelUnbilledUsd: unbilled,
+    });
+  it("warns on the spend the credits leave, not month-to-date", () => {
+    // $9 spent, $7 of it covered by credits: $2 toward the $10 charge point.
+    expect(spendPosition(t0(9, 2))?.level).toBe("ok");
+    expect(spendPosition(t0(15, 8))?.level).toBe("warning");
+    // An older API without the unbilled figure falls back to month-to-date.
+    expect(spendPosition(t0(9, null))?.level).toBe("warning");
+  });
+  it("keeps month-to-date for a cap that is the workspace's own", () => {
+    expect(
+      spendPosition(env(16, 20, { agentModelUnbilledUsd: 1 }))?.level,
+    ).toBe("warning");
+  });
+});
+
 describe("composerSpendGate", () => {
   it("gates only the platform route", () => {
     expect(composerSpendGate(null).kind).toBe("none");

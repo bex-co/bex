@@ -40,12 +40,13 @@ type fakeSpend struct {
 	plan       string
 	trust      store.BillingTrust
 	used       int64
+	credit     int64
 	balanceDue bool
 	chargeable bool
 }
 
 func (f *fakeSpend) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
-	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, WindowSpendMicroUSD: f.used, BalanceDue: f.balanceDue, Chargeable: f.chargeable}, nil
+	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, WindowSpendMicroUSD: f.used, CreditMicroUSD: f.credit, BalanceDue: f.balanceDue, Chargeable: f.chargeable}, nil
 }
 
 func spendEnvironmentService(plan string, trust store.BillingTrust) (*Service, *fakeSpend) {
@@ -142,6 +143,39 @@ func TestEnvironmentReportsTheMintsCapVerdict(t *testing.T) {
 		RequestString: `{ agentEnvironment(ownerId: "tea-a") { agentModelSpendCapReached agentModelChargesAtThreshold } }`})
 	data, _ := r.Data.(map[string]any)
 	if env, _ := data["agentEnvironment"].(map[string]any); len(r.Errors) != 0 || env["agentModelSpendCapReached"] != false || env["agentModelChargesAtThreshold"] != true {
+		t.Fatalf("GraphQL = %#v %#v", r.Data, r.Errors)
+	}
+}
+
+// w6/m400: the environment reports the billing credit the mint takes off the
+// window's spend and the spend a charge would collect now, on REST, MCP and
+// GraphQL alike, so no surface re-derives them.
+func TestEnvironmentReportsTheCreditAndUnbilledSpend(t *testing.T) {
+	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
+	spend.used, spend.credit, spend.chargeable = 12_000_000, 5_000_000, true
+	got, err := svc.Environment(caller("viewer"), "tea-a")
+	if err != nil || got.AgentModelCreditUSD == nil || *got.AgentModelCreditUSD != 5 || got.AgentModelUnbilledUSD == nil || *got.AgentModelUnbilledUSD != 7 {
+		t.Fatalf("environment = credit %v unbilled %v (%v), want $5 and $7", got.AgentModelCreditUSD, got.AgentModelUnbilledUSD, err)
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment?ownerId=tea-a", nil).WithContext(caller("viewer")))
+	var view map[string]any
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &view) != nil || view["agentModelCreditUsd"] != 5.0 || view["agentModelUnbilledUsd"] != 7.0 {
+		t.Fatalf("REST = %d %s", rec.Code, rec.Body.String())
+	}
+	res, err := newMCPClient(t, caller("viewer"), svc).CallTool(caller("viewer"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
+	if err != nil || res.IsError {
+		t.Fatalf("MCP = %+v, %v", res, err)
+	}
+	if out, _ := res.StructuredContent.(map[string]any); out["agentModelCreditUsd"] != 5.0 || out["agentModelUnbilledUsd"] != 7.0 {
+		t.Fatalf("MCP = %+v", out)
+	}
+	r := graphql.Do(graphql.Params{Schema: environmentSchema(t, svc), Context: caller("viewer"),
+		RequestString: `{ agentEnvironment(ownerId: "tea-a") { agentModelCreditUsd agentModelUnbilledUsd } }`})
+	data, _ := r.Data.(map[string]any)
+	if env, _ := data["agentEnvironment"].(map[string]any); len(r.Errors) != 0 || env["agentModelCreditUsd"] != 5.0 || env["agentModelUnbilledUsd"] != 7.0 {
 		t.Fatalf("GraphQL = %#v %#v", r.Data, r.Errors)
 	}
 }

@@ -129,13 +129,14 @@ func (c *StripeClient) BillingFor(ctx context.Context, tenantID string, periodSt
 	if !found {
 		return nil, nil
 	}
-	subscriptionID, found, err := c.findSubscription(ctx, tenantID, customerID)
+	sub, err := c.liveSubscription(ctx, tenantID, customerID, false)
 	if err != nil {
 		return nil, err
 	}
-	if !found {
+	if sub == nil {
 		return nil, nil
 	}
+	subscriptionID := sub.ID
 	current, err := c.currentInvoice(ctx, customerID, subscriptionID, periodStart, periodEnd)
 	if err != nil {
 		return nil, err
@@ -147,15 +148,52 @@ func (c *StripeClient) BillingFor(ctx context.Context, tenantID string, periodSt
 	// Credits degrade independently: a failed credit read (missing key
 	// permission, API error) omits the block but never takes the invoice
 	// preview or readiness down with it.
-	credits, creditErr := c.creditsFor(ctx, customerID)
+	readAt := time.Now().UTC()
+	_, subPeriodEnd := subscriptionPeriod(sub)
+	read, creditErr := c.creditsFor(ctx, customerID, subPeriodEnd)
 	if creditErr != nil {
 		c.metrics.Operation("credit_read", "error")
 		log.Printf("billing: credit read for customer %s: %v (credits omitted)", customerID, creditErr)
-		credits = nil
 	} else {
 		c.metrics.Operation("credit_read", "success")
+		c.recordAgentModelCredit(ctx, tenantID, read, readAt)
 	}
-	return &Billing{CurrentCost: current, Invoices: invoices, Credits: credits}, nil
+	return &Billing{CurrentCost: current, Invoices: invoices, Credits: read.credits}, nil
+}
+
+// AgentModelCreditRecorder records the billing credit agent-model spend may
+// draw on (*store.PGStore); a BillingStateStore that implements it gets the
+// credit a Billing read saw.
+type AgentModelCreditRecorder interface {
+	RecordAgentModelCredits(ctx context.Context, workspaceID string, microUSD int64, at time.Time) error
+}
+
+// recordAgentModelCredit records, from a Billing read taken at readAt, the
+// credit the charger would read before a charge (ADR091 D10.2a): the balance
+// less what grants expiring by the period end hold. The mint and the agent
+// environment then count it before the first crossing (w6/m400). A read that
+// stopped at maxCreditGrants may have missed an expiring grant, so it records
+// nothing; a failure leaves the charger to read the credit at the crossing.
+func (c *StripeClient) recordAgentModelCredit(ctx context.Context, workspaceID string, read creditRead, readAt time.Time) {
+	recorder, ok := c.state.(AgentModelCreditRecorder)
+	if !ok || !read.complete {
+		return
+	}
+	micro := max(read.cents-read.expiringCents, 0) * microUSDPerCent
+	if err := recorder.RecordAgentModelCredits(ctx, workspaceID, micro, readAt); err != nil {
+		log.Printf("billing: record the agent-model credit of %s from a Billing read: %v", workspaceID, err)
+	}
+}
+
+// creditRead is one read of a customer's metered billing credit: the Billing
+// page's block (nil when there is none), the available balance and what the
+// metered grants expiring by the period end hold, in cents, and whether every
+// active grant was read.
+type creditRead struct {
+	credits       *Credits
+	cents         int64
+	expiringCents int64
+	complete      bool
 }
 
 // maxCreditGrants bounds the per-grant remainder reads: each active grant
@@ -166,26 +204,27 @@ func (c *StripeClient) BillingFor(ctx context.Context, tenantID string, periodSt
 const maxCreditGrants = 10
 
 // creditsFor reads the customer's available metered-price credit balance and
-// the active grants funding it. (nil, nil) means no credit to show — the
-// caller omits the block. bex's catalog is USD-only; a non-USD credit is an
-// error, matching the invoice-amount contract.
-func (c *StripeClient) creditsFor(ctx context.Context, customerID string) (*Credits, error) {
+// the active grants funding it, noting what those expiring by periodEnd hold.
+// A nil block means no credit to show — the caller omits it. bex's catalog is
+// USD-only; a non-USD credit is an error, matching the invoice-amount contract.
+func (c *StripeClient) creditsFor(ctx context.Context, customerID string, periodEnd int64) (creditRead, error) {
 	total, err := c.meteredCreditCents(ctx, customerID)
 	if err != nil {
-		return nil, err
+		return creditRead{}, err
 	}
 	if total <= 0 {
-		return nil, nil
+		return creditRead{complete: true}, nil
 	}
 	available, err := normalizedStripeUSD(total, stripe.CurrencyUSD)
 	if err != nil {
-		return nil, err
+		return creditRead{}, err
 	}
-	grants, err := c.activeGrantRemainders(ctx, customerID)
+	grants, expiring, complete, err := c.activeGrantRemainders(ctx, customerID, periodEnd)
 	if err != nil {
-		return nil, err
+		return creditRead{}, err
 	}
-	return &Credits{AvailableUSD: available, Currency: "USD", Grants: grants}, nil
+	return creditRead{credits: &Credits{AvailableUSD: available, Currency: "USD", Grants: grants},
+		cents: total, expiringCents: expiring, complete: complete}, nil
 }
 
 // meteredCreditCents is the customer's available billing-credit balance on
@@ -256,13 +295,14 @@ func creditGrantActive(g *stripe.BillingCreditGrant, now int64) bool {
 // active one's remaining balance (a per-grant balance-summary call). Voided,
 // expired, and not-yet-effective grants are skipped, as are grants with
 // nothing left.
-func (c *StripeClient) activeGrantRemainders(ctx context.Context, customerID string) ([]CreditGrant, error) {
+func (c *StripeClient) activeGrantRemainders(ctx context.Context, customerID string, periodEnd int64) (out []CreditGrant, expiringCents int64, complete bool, err error) {
 	lp := &stripe.BillingCreditGrantListParams{Customer: stripe.String(customerID)}
 	lp.Context = ctx
 	lp.Limit = stripe.Int64(25)
 	iter := c.sc.BillingCreditGrants.List(lp)
 	now := time.Now().Unix()
-	out := make([]CreditGrant, 0)
+	out = make([]CreditGrant, 0)
+	complete = true
 	// examined counts every active grant whose balance we read — not just the
 	// ones with a positive remainder — so a pile of depleted grants can't turn
 	// the cap into an unbounded per-grant call loop.
@@ -273,19 +313,23 @@ func (c *StripeClient) activeGrantRemainders(ctx context.Context, customerID str
 			continue
 		}
 		if examined >= maxCreditGrants {
+			complete = false
 			break
 		}
 		examined++
 		remaining, err := c.grantCreditCents(ctx, customerID, g.ID)
 		if err != nil {
-			return nil, err
+			return nil, 0, false, err
 		}
 		if remaining <= 0 {
 			continue
 		}
+		if expiresByPeriodEnd(g, periodEnd) {
+			expiringCents += remaining
+		}
 		amount, err := normalizedStripeUSD(remaining, stripe.CurrencyUSD)
 		if err != nil {
-			return nil, fmt.Errorf("stripe: credit grant %s: %w", g.ID, err)
+			return nil, 0, false, fmt.Errorf("stripe: credit grant %s: %w", g.ID, err)
 		}
 		out = append(out, CreditGrant{
 			Name:         g.Name,
@@ -294,7 +338,7 @@ func (c *StripeClient) activeGrantRemainders(ctx context.Context, customerID str
 		})
 	}
 	if err := iter.Err(); err != nil {
-		return nil, fmt.Errorf("stripe: list credit grants for customer %s: %w", customerID, err)
+		return nil, 0, false, fmt.Errorf("stripe: list credit grants for customer %s: %w", customerID, err)
 	}
 	// Earliest-expiring first so the UI's "expires soonest" note is index 0;
 	// never-expiring grants sort last.
@@ -305,7 +349,7 @@ func (c *StripeClient) activeGrantRemainders(ctx context.Context, customerID str
 		}
 		return a < b
 	})
-	return out, nil
+	return out, expiringCents, complete, nil
 }
 
 func (c *StripeClient) currentInvoice(ctx context.Context, customerID, subscriptionID string, fallbackStart, fallbackEnd time.Time) (*Amount, error) {

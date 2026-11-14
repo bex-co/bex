@@ -1,18 +1,18 @@
 # w6 · m400 — Agent spend surfaces count billing credits
 
-**Worker:** worker6 **Goal:** the agent environment and the composer show what billing credits cover and warn against the spend a charge would collect, matching the mint's credit-first rule (ADR091 D10.2a, w6/m362 t017). **Status:** todo
+**Worker:** worker6 **Goal:** the agent environment and the composer show what billing credits cover and warn against the spend a charge would collect, matching the mint's credit-first rule (ADR091 D10.2a, w6/m362 t017). **Status:** blocked — on time: t004 needs the next batched production deploy (it carries t017 and this milestone), then a Billing page view of the bex workspace. t001–t003 and t005–t007 done.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Agent environment: the credit the spend read counted and the unbilled spend, on REST, GraphQL and MCP | 1h | — |
-| [t002](t002.md) | Record the credit when the Billing page or an invoice webhook reads it | 1h | t001 |
-| [t003](t003.md) | Settings → Agents shows what billing credits cover; the composer warns against the unbilled spend | 1h30 | t001 |
+| [t001](done/t001.md) | Agent environment: the credit the spend read counted and the unbilled spend, on REST, GraphQL and MCP — **DONE** | 1h | — |
+| [t002](done/t002.md) | Record the credit when the Billing page or an invoice webhook reads it — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | Settings → Agents shows what billing credits cover; the composer warns against the unbilled spend — **DONE** | 1h30 | t001 |
 | [t004](t004.md) | Production check on the bex workspace | 30m | t002, t003 |
-| [t005](t005.md) | Render parity (Devin): credit and spend surfaces agree | 20m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 45m | t005, t006 |
+| [t005](done/t005.md) | Render parity (Devin): credit and spend surfaces agree — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 45m | t005, t006 |
 | [t008](t008.md) | Closeout | 10m | t007 |
 
 ## Definition of done

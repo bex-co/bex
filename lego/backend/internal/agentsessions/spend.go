@@ -198,6 +198,8 @@ func withSpend(view Environment, status agentsession.SpendStatus) Environment {
 		view.AgentModelSpendCapOverrideUSD = usd(*status.Override)
 	}
 	view.AgentModelSpendMonthToDateUSD = usd(status.MonthToDate)
+	view.AgentModelCreditUSD = usd(status.CreditMicroUSD)
+	view.AgentModelUnbilledUSD = usd(status.UnbilledMicroUSD())
 	tier := status.Tier.Name
 	view.TrustTier = &tier
 	locked, tierLimited, balanceDue := status.Locked, status.TierLimited, status.BalanceDue

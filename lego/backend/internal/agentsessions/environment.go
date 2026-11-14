@@ -97,6 +97,12 @@ type Environment struct {
 	AgentModelMaxSpendCapUSD      *float64 `json:"agentModelMaxSpendCapUsd"`
 	TrustTier                     *string  `json:"trustTier"`
 	NextChargeThresholdUSD        *float64 `json:"nextChargeThresholdUsd"`
+	// AgentModelCreditUSD is the billing credit the mint takes off the charge
+	// window's spend (credits pay first, D10.2a; 0 until one is read in the
+	// window), and AgentModelUnbilledUSD the spend a charge would collect now:
+	// the window's spend less that credit and the paid charges.
+	AgentModelCreditUSD   *float64 `json:"agentModelCreditUsd"`
+	AgentModelUnbilledUSD *float64 `json:"agentModelUnbilledUsd"`
 	// TrustTierLocked: a failed or disputed payment holds the workspace at
 	// the first tier (ADR091 D10.1). AgentModelSpendCapTierLimited: the trust
 	// tier's ceiling, not the plan or override, sets the effective cap.

@@ -38,6 +38,8 @@ export function agentEnvironment(
     trustTier: null,
     trustTierLocked: null,
     nextChargeThresholdUsd: null,
+    agentModelCreditUsd: null,
+    agentModelUnbilledUsd: null,
     billingBalanceDue: null,
     agentModelSpendCapReached: null,
     agentModelChargesAtThreshold: null,

@@ -255,6 +255,8 @@ export type AgentEnvironment = {
   agentDataUse: Array<AgentDataUse>;
   /** Reaching nextChargeThresholdUsd charges the workspace's card and it keeps working. False where bex cannot charge it (no subscription, excluded or comped), on its own model key, or under a payment hold. */
   agentModelChargesAtThreshold: Maybe<Scalars['Boolean']['output']>;
+  /** The billing credit (USD) taken off this charge window's agent-model spend before the card is charged: credits pay first. 0 until bex has read the balance in this window; null when the store is off. */
+  agentModelCreditUsd: Maybe<Scalars['Float']['output']>;
   /** The highest override an admin may set (10x the plan default). */
   agentModelMaxSpendCapUsd: Maybe<Scalars['Float']['output']>;
   /** Effective monthly agent-model spend cap in USD: min(the admin override or the plan default, the trust tier's ceiling). */
@@ -269,6 +271,8 @@ export type AgentEnvironment = {
   agentModelSpendCapTierLimited: Maybe<Scalars['Boolean']['output']>;
   /** Month-to-date agent-model spend in USD (UTC calendar month). */
   agentModelSpendMonthToDateUsd: Maybe<Scalars['Float']['output']>;
+  /** The agent-model spend (USD) a threshold charge would collect now: this charge window's spend less the billing credit and the charges already paid in it. */
+  agentModelUnbilledUsd: Maybe<Scalars['Float']['output']>;
   /** A failed invoice is unpaid, so platform-model requests are refused with BILLING_BALANCE_DUE until it is paid. */
   billingBalanceDue: Maybe<Scalars['Boolean']['output']>;
   customHosts: Array<Scalars['String']['output']>;

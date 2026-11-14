@@ -41,17 +41,23 @@ export function spendPosition(env: AgentEnvironmentView): SpendPosition | null {
   // The server's verdict is the mint's: a workspace whose next request would
   // charge its card is not reached. An older API sends none.
   const reached = env.agentModelSpendCapReached ?? ratio >= 1;
+  const chargePoint =
+    capCause(env) === "newWorkspace" &&
+    env.agentModelChargesAtThreshold === true;
+  // At a charge point the card is charged on the spend billing credits leave
+  // (ADR091 D10.2a), so that, not month-to-date, is what nears it.
+  const unbilled = env.agentModelUnbilledUsd;
+  const nearing =
+    chargePoint && unbilled != null && cap > 0 ? unbilled / cap : ratio;
   return {
     platform: env.modelSource === AgentModelSource.Platform,
-    chargePoint:
-      capCause(env) === "newWorkspace" &&
-      env.agentModelChargesAtThreshold === true,
+    chargePoint,
     monthToDateUsd: used,
     capUsd: cap,
     fraction: Math.min(1, Math.max(0, ratio)),
     level: reached
       ? "reached"
-      : ratio >= SPEND_WARNING_RATIO
+      : nearing >= SPEND_WARNING_RATIO
         ? "warning"
         : "ok",
   };

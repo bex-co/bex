@@ -36,6 +36,8 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   trustTier
   trustTierLocked
   nextChargeThresholdUsd
+  agentModelCreditUsd
+  agentModelUnbilledUsd
   # An unpaid failed invoice refuses platform-model requests (D10.3).
   billingBalanceDue
   # The mint refuses new platform-model requests at the cap now; false while
