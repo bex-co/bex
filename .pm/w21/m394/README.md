@@ -1,6 +1,6 @@
 # w21 · m394 — Security review round 25: the operator's tenant-facing daemons and the dashboard's server routes
 
-**Worker:** worker21 **Goal:** every operator daemon that parses tenant-controlled input and every dashboard server route has been reviewed with the `security-audit` skill, each confirmed finding is fixed with a regression test that fails on the old code, and ADR109 records scope, findings and accepted residuals. **Status:** todo (t001-t004 and t009-t011 done: the audit ran, every finding has a verdict, R25-08, R25-05, R25-03 and R25-01 are fixed; fixes t012-t017 open)
+**Worker:** worker21 **Goal:** every operator daemon that parses tenant-controlled input and every dashboard server route has been reviewed with the `security-audit` skill, each confirmed finding is fixed with a regression test that fails on the old code, and ADR109 records scope, findings and accepted residuals. **Status:** todo (t001-t004 and t009-t012 done: the audit ran, every finding has a verdict, R25-08, R25-05, R25-03, R25-01, R25-02 and R25-11 are fixed; fixes t013-t017 open)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t009](done/t009.md) | Fix R25-05: one client cannot occupy the static server's origin-fetch slots of other tenants' sites — **DONE** | 60m | t003 |
 | [t010](done/t010.md) | Fix R25-03: the operator accepts a registry bearer realm only if it is https, or http on an exact loopback host — **DONE** | 30m | t003 |
 | [t011](done/t011.md) | Fix R25-01: the activator routes only the hosts an App's spec claims, whatever its phase — **DONE** | 45m | t003 |
-| [t012](t012.md) | Fix R25-02 and R25-11: the activator's hold slot covers only the wait, and a busy maintenance fetch falls back at once | 45m | t003 |
+| [t012](done/t012.md) | Fix R25-02 and R25-11: the activator's hold slot covers only the wait, and a busy maintenance fetch falls back at once — **DONE** | 45m | t003 |
 | [t013](t013.md) | Fix R25-10: an unverified custom-domain claim cannot hold a hostname past 48 hours by deleting and re-adding it | 75m | t003 |
 | [t014](t014.md) | Fix R25-04: a stalling tenant registry cannot occupy the operator's reconcile workers | 60m | t003 |
 | [t015](t015.md) | Fix R25-06 and R25-07: the edge cache charges every entry's real size, and the app behind it keeps the client's forwarding headers | 60m | t003 |

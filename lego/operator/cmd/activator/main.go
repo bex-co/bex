@@ -518,6 +518,11 @@ func serveMaintenance(w http.ResponseWriter, r *http.Request, app *appv1alpha1.A
 
 // maintenancePages is the process-wide custom-page snapshot cache shared by
 // every maintenance request (round-11 #4).
+// errCustomPageFetchBusy means every custom-page fetch slot is taken. The
+// fetcher serves a stale snapshot when it has one; otherwise the responder
+// answers the default maintenance page.
+var errCustomPageFetchBusy = errors.New("custom maintenance page fetch capacity reached")
+
 var maintenancePages = newCustomPageCache()
 
 // customPageEntry is one cached origin snapshot. ok=false marks a fetch
@@ -590,10 +595,13 @@ func (c *customPageCache) fetcher(
 			if e, ok := c.snapshot(key); ok {
 				return e, nil
 			}
+			// Never wait for a slot: while every fetch is busy, a caller falls
+			// back to the stale snapshot below, or to the default page, at once
+			// instead of queueing behind other tenants' slow URLs.
 			select {
 			case c.fetchSem <- struct{}{}:
-			case <-ctx.Done():
-				return customPageEntry{}, ctx.Err()
+			default:
+				return customPageEntry{}, errCustomPageFetchBusy
 			}
 			defer func() { <-c.fetchSem }()
 			resp, err := c.origin(ctx, app, u, platformHost)
@@ -717,6 +725,10 @@ func serveMaintenanceWithFetcher(
 	}
 
 	resp, err := fetch(r.Context(), app, app.Spec.MaintenanceMode.URI)
+	if errors.Is(err, errCustomPageFetchBusy) {
+		writeHTMLPage(w, r, http.StatusServiceUnavailable, maintenancePage)
+		return
+	}
 	if err != nil {
 		http.Error(w, "custom maintenance page unavailable", http.StatusBadGateway)
 		return

@@ -55,6 +55,9 @@ const (
 	// dialRetryInterval spaces the connection attempts while the Service's
 	// endpoint propagates to kube-proxy after the pod turns ready.
 	dialRetryInterval = 250 * time.Millisecond
+	// proxyResponseHeaderTimeout is how long a woken App may take to start
+	// answering a proxied request: Render's 100-second HTTP request timeout.
+	proxyResponseHeaderTimeout = 100 * time.Second
 )
 
 // holder holds requests for sleeping Apps and proxies them once awake.
@@ -76,6 +79,9 @@ type holder struct {
 	gates  map[string]*readyGate
 	waking map[string]time.Time
 	proxy  *httputil.ReverseProxy
+	// responseHeaderTimeout bounds a proxied exchange until the App's response
+	// headers arrive; tests shorten it.
+	responseHeaderTimeout time.Duration
 }
 
 // readyGate is one App's wake in flight: every held request waits on it, and a
@@ -90,7 +96,7 @@ func newHolder(c client.Client) *holder {
 		c: c, bound: holdBound, pollInterval: holdPollInterval,
 		total:  make(chan struct{}, maxHeldRequests),
 		perApp: map[string]int{}, gates: map[string]*readyGate{}, waking: map[string]time.Time{},
-		target: serviceURL,
+		target: serviceURL, responseHeaderTimeout: proxyResponseHeaderTimeout,
 	}
 	h.ready = h.deploymentReady
 	h.proxy = h.newProxy()
@@ -162,9 +168,10 @@ func (h *holder) newProxy() *httputil.ReverseProxy {
 					}
 				}
 			},
-			MaxIdleConns:        64,
-			IdleConnTimeout:     30 * time.Second,
-			TLSHandshakeTimeout: 5 * time.Second,
+			MaxIdleConns:          64,
+			IdleConnTimeout:       30 * time.Second,
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: h.responseHeaderTimeout,
 		},
 		FlushInterval: -1,
 		ErrorHandler: func(w http.ResponseWriter, _ *http.Request, err error) {
@@ -283,6 +290,10 @@ func (h *holder) serve(w http.ResponseWriter, r *http.Request, app *appv1alpha1.
 	if !ok {
 		return false
 	}
+	// The slot covers the wait for the wake, not the exchange that follows: an
+	// App that accepts a request and never answers, or a long upgrade or stream,
+	// must not keep a slot that other Apps' cold starts need (w21/m394 t012).
+	release = sync.OnceFunc(release)
 	defer release()
 	// The held request outlives the server's header/body/write deadlines.
 	rc := http.NewResponseController(w)
@@ -298,6 +309,7 @@ func (h *holder) serve(w http.ResponseWriter, r *http.Request, app *appv1alpha1.
 		}
 		return true
 	}
+	release()
 	ctx := context.WithValue(r.Context(), appKey{}, app)
 	ctx = context.WithValue(ctx, deadlineKey{}, start.Add(h.bound))
 	h.proxy.ServeHTTP(w, r.WithContext(ctx))

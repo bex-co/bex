@@ -613,7 +613,9 @@ func TestCustomPageCacheBoundsOriginFanOut(t *testing.T) {
 // TestCustomPageCacheBoundsConcurrentOriginFetches: the process-wide semaphore
 // caps concurrent origin fetches regardless of request concurrency — 64
 // DISTINCT slow URIs may be requested at once, but at most
-// customPageMaxFetches reach the origin simultaneously.
+// customPageMaxFetches reach the origin simultaneously. A caller that finds
+// every slot taken does not queue: it gets errCustomPageFetchBusy at once
+// (w21/m394 t012), and every other call succeeds.
 func TestCustomPageCacheBoundsConcurrentOriginFetches(t *testing.T) {
 	c := newCustomPageCache()
 	c.ttl = time.Hour // snapshots never expire inside the test
@@ -640,7 +642,8 @@ func TestCustomPageCacheBoundsConcurrentOriginFetches(t *testing.T) {
 	for i := range 64 {
 		app := maintenanceApp("https://status.example.com/page-" + strconv.Itoa(i))
 		wg.Go(func() {
-			if _, err := fetch(context.Background(), app, app.Spec.MaintenanceMode.URI); err != nil {
+			_, err := fetch(context.Background(), app, app.Spec.MaintenanceMode.URI)
+			if err != nil && !errors.Is(err, errCustomPageFetchBusy) {
 				t.Error(err)
 			}
 		})
