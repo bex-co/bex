@@ -317,6 +317,12 @@ type AppReconciler struct {
 	// listener a private service's instances bind (w3/m273); nil disables
 	// detection.
 	PortScanner portscan.Scanner
+	// registryReadGate bounds the tenant-controlled registry reads an App
+	// reconcile makes, and counts each App's consecutive failed reads
+	// (registry_read_gate.go, w21/m394 t014). Built on first use.
+	registryReadsOnce sync.Once
+	registryReadGate  *registryReadGate
+
 	portScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
 	// metricsFailureLogged rate-limits the autoscaler's failed-read log line
 	// (w4/m364).
@@ -621,6 +627,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	var app appv1alpha1.App
 	if err := r.Get(ctx, req.NamespacedName, &app); err != nil {
 		if apierrors.IsNotFound(err) {
+			r.registryReads().appSucceeded(req.Namespace + "/" + req.Name)
 			r.forgetPortScans(req.Namespace + "/" + req.Name)
 			r.forgetMetricsFailures(req.Namespace, req.Name)
 		}
@@ -757,6 +764,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if app.Spec.HasImagePorts() {
 		requested := image
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
+		if err == nil {
+			r.registryReads().appSucceeded(app.Namespace + "/" + app.Name)
+		}
 		if res, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
 			return res, nil
 		}

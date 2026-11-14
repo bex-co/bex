@@ -274,7 +274,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 		if err != nil {
 			return "", 0, err
 		}
-		metadata, err = registry.ReadImageConfig(ctx, r.HTTPClient, host, repo, reference, authorization)
+		metadata, err = r.readExternalImageConfig(ctx, app.Namespace, host, repo, reference, authorization)
 		if err != nil {
 			return "", 0, err
 		}
@@ -621,18 +621,30 @@ func (r *AppReconciler) rolloutQuotaBlocked(ctx context.Context, dep *appsv1.Dep
 // fails a metadata read: a 429, 5xx or network error is transient, and Render
 // retries the pull rather than failing the deploy (w4/m243 t008).
 func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.App, err error) (ctrl.Result, bool) {
+	// A read the gate turned away is neither a failure nor a reason to wait
+	// long: the registry is being read, or backing off (registry_read_gate.go).
+	if busy, ok := errors.AsType[*registryBusyError](err); ok {
+		logf.FromContext(ctx).Info("image registry read deferred", "app", app.Name, "registry", busy.host)
+		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reasonImageRegistryUnavailable, imageRegistryWaitMessage)
+		return ctrl.Result{RequeueAfter: busy.busyRequeue()}, true
+	}
 	var transient *registry.TransientError
 	if !errors.As(err, &transient) {
 		return ctrl.Result{}, false
 	}
 	logf.FromContext(ctx).Info("image registry read failed; retrying", "app", app.Name, "error", err.Error())
-	reason, msg := reasonImageRegistryUnavailable, "Waiting for the image registry to answer the image metadata read; bex retries it automatically"
+	reason, msg := reasonImageRegistryUnavailable, imageRegistryWaitMessage
 	if transient.Status == http.StatusTooManyRequests {
 		reason, msg = reasonImageRegistryRateLimited, "Waiting for the image registry: it rate-limited the image metadata read (HTTP 429); bex retries it automatically"
 	}
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reason, msg)
-	return ctrl.Result{RequeueAfter: min(max(transient.RetryAfter, imageRegistryRetry), imageRegistryRetryMax)}, true
+	// Consecutive failures of one App back off, 30 s doubling to 5 minutes,
+	// whatever the registry's own Retry-After asks for within that range.
+	failures := r.registryReads().appFailed(app.Namespace + "/" + app.Name)
+	return ctrl.Result{RequeueAfter: min(max(transient.RetryAfter, registryRetryDelay(failures)), imageRegistryRetryMax)}, true
 }
+
+const imageRegistryWaitMessage = "Waiting for the image registry to answer the image metadata read; bex retries it automatically"
 
 // imageRegistryRetry and imageRegistryRetryMax bound a throttled read's
 // requeue, whatever Retry-After the registry names.

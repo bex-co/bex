@@ -99,6 +99,12 @@ type TransientError struct {
 	err        error
 }
 
+// NewTransientError wraps err as a transient failure that a caller may retry
+// after retryAfter (zero for no registry-stated delay).
+func NewTransientError(err error, retryAfter time.Duration) *TransientError {
+	return &TransientError{RetryAfter: retryAfter, err: err}
+}
+
 func (e *TransientError) Error() string { return e.err.Error() }
 func (e *TransientError) Unwrap() error { return e.err }
 
