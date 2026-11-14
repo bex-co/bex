@@ -1,6 +1,6 @@
 # w7 · m391 — Muse on bex's Meta API key, contributor tier only
 
-**Worker:** worker7 **Goal:** a workspace whose admin enabled Muse (m392) runs `muse` sessions with no key of its own: bex-api routes them to Meta's official API (`api.meta.ai`) with a bex-owned key, pinned to `muse-spark-1.3-contributor`, metered and billed at cost × 1.3 under the existing spend caps, within Meta's shared rate limit. **Status:** blocked — t001–t004 and t006–t008 done; t005 (live check) waits for a bex Meta Model API key from the user and for w7/m392
+**Worker:** worker7 **Goal:** a workspace whose admin enabled Muse (m392) runs `muse` sessions with no key of its own: bex-api routes them to Meta's official API (`api.meta.ai`) with a bex-owned key, pinned to `muse-spark-1.3-contributor`, metered and billed at cost × 1.3 under the existing spend caps, within Meta's shared rate limit. **Status:** blocked — t001–t004 and t006–t008 done; t005 (live check) waits for a bex Meta Model API key from the user (w7/m392 is done)
 
 ## Tasks (in order)
 
@@ -49,5 +49,5 @@
 ## Blocked (2026-11-14)
 
 - **Gate 1 — user action:** create an API key on bex's Meta Model API account (a team admin manages the payment method), add it to `.env` as `META_MODEL_API_KEY`, and run `KUBECONFIG=… scripts/agent-platform-model-secret.sh` (or ask a worker to run it). Until then `muse` is offered nowhere.
-- **Gate 2 — w7/m392:** install the key only after m392 has shipped, so no workspace gets Muse before its admin acknowledges the contributor data use.
+- **Gate 2 — w7/m392:** install the key only after m392 has shipped, so no workspace gets Muse before its admin acknowledges the contributor data use. **Cleared 2026-11-14:** m392 is live on production (deploy run 43566568833) and verified there ([record](../../done/m392/README.md)).
 - **Release condition:** both gates clear ⇒ `/unblock w7` and run t005 (live check as the QA user; also re-measure requests per turn for the capacity default).

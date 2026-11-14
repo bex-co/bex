@@ -12,7 +12,7 @@
 | t004 | Gateway model proxy admits only `POST /v1/responses` on `api.meta.ai` — **DONE** | 40m | t003 |
 | t005 | Driver bootstrap for `muse`: proxy routing, Muse sandbox off, overlay, `bex` MCP, failure mapping — **DONE** | 75m | t003 |
 | t006 | Composer: a Muse Code agent option (en/zh), hidden where Muse is not offered — **DONE** | 30m | t003 |
-| t007 | Production proof in the gVisor sandbox | 60m | t004, t005, t006 |
+| t007 | Production proof in the gVisor sandbox | 60m | t004, t005, t006, w7/m393/t002 |
 | t008 | Render parity (Devin reference) — **DONE** | 30m | t007 |
 | t009 | Simplify — **DONE** | 30m | t008 |
 | t010 | Test coverage — **DONE** | 45m | t008 |
@@ -44,3 +44,4 @@
 - **t008 (Render parity, Devin reference):** REST `GET /v1/agent-sessions/capabilities`, GraphQL `agentSessionCapabilities` and MCP `get_agent_session_capabilities` all project `Service.Capabilities`, and create on every surface runs `Service.Create`, so the muse filter and the typed refusal are identical across surfaces; no surface carries a fixed agent enum. Devin offers only the agents an admin made available ([docs](https://docs.devin.ai/get-started/first-run.md)); bex offers only the agents a workspace can run, and the admin control itself is w7/m392. No ADR018 row changes (agent sessions are a bex extension).
 - **t009:** `/simplify` (reuse, quality, efficiency reviews) applied: streamed hashing of the binary, a `native-pins` stage so unrelated profile edits keep the download cached, retry only the transfer, `writeJsonAtomic` and `sha256Hex` reused, the dashboard trusts the capabilities list instead of a client-side platform-only set, a `model` on a profile the driver cannot pin it for is refused, and the live verifier drives the real driver instead of a copy.
 - **t010:** Go (manifest contract, invalid cases, Meta scheme, mint refusal with a mutation check, capabilities/create refusal, proxy boundary), driver (model settings merge, session-config order and refusal, release profile load, model scope) and dashboard (agent list from capabilities, Muse create payload) tests.
+- **t007 (2026-11-14):** m390 is live (deploy run 43566568833, 706a389d5). The dispatched isolation matrix (`verify_agent_driver=true`) first failed on a stale `oregon` assertion left by w32/016 (fixed in 430ba206f), then at "agent sandbox never reached Ready": the public `template: agent` sandbox's driver exits 1 because it has required session env (`BEX_AGENT_MODEL_PROXY_URL`) since 7a2303ffc, and the public create refuses `BEX_*` names (diagnostics from 30563ff17, run 43570243129). Real sessions are unaffected. The leg is rebuilt around a chat-only session in w7/m393; t007 records its production run.
