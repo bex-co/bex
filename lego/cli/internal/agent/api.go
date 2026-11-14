@@ -361,12 +361,14 @@ func (a *api) queuedMessages(ctx context.Context, id string) ([]queuedMessage, e
 }
 
 // interrupt ends the session's running turn and nothing else (ADR047 D12);
-// the API answers once the request is delivered, the turn settles after.
-func (a *api) interrupt(ctx context.Context, id string) error {
-	if _, err := a.post(ctx, request{path: []string{"agent-sessions", id, "interrupt"}}, nil); err != nil {
-		return fmt.Errorf("stop agent session %s: %w", id, err)
+// the API answers once the request is delivered, the turn settles after. raw
+// is its answer, the session, verbatim.
+func (a *api) interrupt(ctx context.Context, id string) ([]byte, error) {
+	raw, err := a.post(ctx, request{path: []string{"agent-sessions", id, "interrupt"}}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("stop agent session %s: %w", id, err)
 	}
-	return nil
+	return raw, nil
 }
 
 func (a *api) cancel(ctx context.Context, id string) (session, []byte, error) {

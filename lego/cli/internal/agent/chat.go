@@ -474,15 +474,13 @@ func (ch *chatState) command(words []string) error {
 // stop ends the running turn only. It asks nothing, unlike /cancel: the session
 // stays open and keeps what it had queued.
 func (ch *chatState) stop() {
-	err := ch.a.api.interrupt(ch.a.ctx, ch.id)
+	_, err := ch.a.api.interrupt(ch.a.ctx, ch.id)
 	var apiErr *apiError
 	switch {
 	case err == nil:
-		ch.say("Stopping the current turn. The session stays open and any queued messages run next; /cancel ends it.")
-	case errors.As(err, &apiErr) && apiErr.Code == codeNoTurnRunning:
-		ch.say("stop: no turn is running, so there is nothing to stop")
-	case errors.As(err, &apiErr) && apiErr.Code == codeTurnStarting:
-		ch.say("stop: the turn is still starting; try again once the agent is working")
+		ch.say("%s", stoppingNote("/cancel"))
+	case errors.As(err, &apiErr) && stopRefusals[apiErr.Code].say != "":
+		ch.say("%s", stopRefusals[apiErr.Code].say)
 	case errors.As(err, &apiErr):
 		ch.say("stop: %v", apiErr)
 	default:

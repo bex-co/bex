@@ -51,7 +51,7 @@ bex logout
 
 `bex agent automations apply -f .bex/automations/` keeps Agent Automations in files; see [`bex agent automations`](../../docs/bex-cli.md#agent-automations-bex-agent-automations).
 
-`bex agent chat ags-…` attaches to a session live. A message typed while a turn runs is queued on the server (`queued — sends when this turn ends`, several can wait, and a later `chat` lists them), `/stop` ends only the running turn and leaves the session open, `/cancel` cancels after a confirmation, and Ctrl-C or `/quit` leave the session and its queue running; see [`bex agent chat`](../../docs/bex-cli.md#live-sessions-bex-agent-chat). `bex agent send` against a running session queues the message the same way.
+`bex agent chat ags-…` attaches to a session live. A message typed while a turn runs is queued on the server (`queued — sends when this turn ends`, several can wait, and a later `chat` lists them), `/stop` ends only the running turn and leaves the session open, `/cancel` cancels after a confirmation, and Ctrl-C or `/quit` leave the session and its queue running; see [`bex agent chat`](../../docs/bex-cli.md#live-sessions-bex-agent-chat). `bex agent send` against a running session queues the message the same way, and with `--wait` or `--follow` waits for that message's own turn (exit 1 if the server dropped it); `bex agent stop ags-…` ends only the running turn from a script (exit 7 when none runs, 8 while it is still starting).
 
 The login uses Bex's device-verification flow. It persists the upstream YAML schema under `~/.bex/cli.yaml` with mode `0600`; it does not touch `~/.render/cli.yaml` in normal use.
 

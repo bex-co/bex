@@ -60,7 +60,11 @@ const (
 	exitCanceled   = 4 // the session was canceled
 	exitNeedsInput = 5 // the agent is waiting for a reply (`bex agent send`)
 	exitNotStarted = 6 // an automation run started no session
-	exitTimeout    = 124
+	// `bex agent stop` found no turn to end: none runs, or its sandbox is not
+	// up yet. The session is fine, so a script can tell it from a failure.
+	exitNoTurnRunning = 7
+	exitTurnStarting  = 8
+	exitTimeout       = 124
 	// exitInterrupted is SIGINT or SIGTERM ending a wait, the shell's 128+2.
 	exitInterrupted = 130
 )
@@ -135,6 +139,8 @@ func newCommand(d deps) *cobra.Command {
 			"  4    the session was canceled\n" +
 			"  5    reserved: needs_input, which sessions never enter\n" +
 			"  6    an automation run started no session (automations run)\n" +
+			"  7    stop: no turn is running, so there was nothing to stop\n" +
+			"  8    stop: the turn is still starting; stop it once the agent is working\n" +
 			"  124  --timeout elapsed while the session was still working\n" +
 			"  130  interrupted (Ctrl-C or SIGTERM)\n\n" +
 			"On a terminal, a command whose one argument is a session may leave it\n" +
@@ -154,7 +160,7 @@ func newCommand(d deps) *cobra.Command {
 	completeAll := func(c *cobra.Command) *cobra.Command { return d.withCompletion(sessionsKind, -1, c) }
 	for _, sub := range []*cobra.Command{
 		runCommand(d), completeFirst(sendCommand(d)), completeAll(waitCommand(d)), pick(getCommand(d)), listCommand(d),
-		pick(logsCommand(d)), pick(filesCommand(d)), pick(cancelCommand(d)), pick(openCommand(d)),
+		pick(logsCommand(d)), pick(filesCommand(d)), pick(cancelCommand(d)), pick(stopCommand(d)), pick(openCommand(d)),
 		completeAll(archiveCommand(d, "archive", "Archived", "Archive agent sessions (hidden from the default list, read-only)")),
 		completeAll(archiveCommand(d, "unarchive", "Unarchived", "Unarchive agent sessions")),
 		pick(deleteCommand(d)), completeFirst(tagsCommand(d)), pick(treeCommand(d)), pick(costCommand(d)),
@@ -683,8 +689,12 @@ func sendCommand(d deps) *cobra.Command {
 		Short: "Send a follow-up message to an agent session",
 		Long: "Starts the session's next turn with a message, the way a reply works in\n" +
 			"the dashboard. While a turn is running the server queues the message\n" +
-			"instead (at most 10 per session) and runs it when the turn ends; --wait and\n" +
-			"--follow then return at once, since the message's own turn has not started.",
+			"instead (at most 10 per session) and runs it when the turn ends. --wait and\n" +
+			"--follow then first wait for the message to leave the queue, and after that\n" +
+			"work as they do for a message that starts a turn at once: they wait for (or\n" +
+			"stream) the turn the message started and exit by its state. A message that\n" +
+			"left the queue without a turn (the server dropped it) is a failed send\n" +
+			"(exit 1). --timeout covers the queue wait too; the message stays queued.",
 		Args: sessionArgs(-1),
 		RunE: func(c *cobra.Command, args []string) error {
 			id := args[0]
@@ -717,7 +727,8 @@ func sendCommand(d deps) *cobra.Command {
 			if steered.Queued != nil {
 				note := fmt.Sprintf("Queued (position %d): it runs when the session's running turn ends.", steered.Queued.Position)
 				if waiting.blocking() {
-					note += " Not waiting: a queued message runs as its own turn."
+					_, _ = fmt.Fprintln(inv.errOut, note+" Waiting for it.")
+					return inv.awaitQueued(steered, raw, waiting)
 				}
 				_, _ = fmt.Fprintln(inv.errOut, note)
 				return inv.show(steered, raw)
@@ -990,6 +1001,61 @@ func cancelCommand(d deps) *cobra.Command {
 	}
 }
 
+// stoppingNote is what a stop says, here and in chat's /stop; stopRefusals are
+// the two refusals about where the turn stands, in words and with the exit
+// `bex agent stop` gives each.
+func stoppingNote(cancel string) string {
+	return "Stopping the current turn. The session stays open and any queued messages run next; " + cancel + " ends it."
+}
+
+var stopRefusals = map[string]struct {
+	say  string
+	exit int
+}{
+	codeNoTurnRunning: {"stop: no turn is running, so there is nothing to stop", exitNoTurnRunning},
+	codeTurnStarting:  {"stop: the turn is still starting; try again once the agent is working", exitTurnStarting},
+}
+
+// stopCommand ends the turn and nothing else, so unlike cancel it asks for no
+// confirmation: the session stays open and its queue runs next (ADR047 D12).
+func stopCommand(d deps) *cobra.Command {
+	return &cobra.Command{
+		Use:   "stop <ags-id>",
+		Short: "Stop an agent session's running turn, keeping the session open",
+		Long: "Ends the running turn and nothing else: the session stays open, what the\n" +
+			"agent already streamed and pushed is kept, and queued messages run next\n" +
+			"(`cancel` closes the session instead). It asks for no confirmation, and\n" +
+			"answers once the request is delivered; the turn settles shortly after, and\n" +
+			"`bex agent wait` waits for it.\n\n" +
+			"Exit 7 when no turn is running, 8 when the turn is still starting and has\n" +
+			"no agent to stop yet (try again once it is working).",
+		Example: "  bex agent stop ags-… && bex agent wait ags-…",
+		Args:    sessionArgs(0),
+		RunE: func(c *cobra.Command, args []string) error {
+			inv, cancel, err := d.start(c)
+			if err != nil {
+				return err
+			}
+			defer cancel()
+			raw, err := inv.api.interrupt(inv.ctx, args[0])
+			var apiErr *apiError
+			if errors.As(err, &apiErr) {
+				if refusal, ok := stopRefusals[apiErr.Code]; ok {
+					return command.NewExitError(refusal.exit, errors.New(refusal.say))
+				}
+			}
+			switch {
+			case err != nil:
+				return err
+			case inv.format != formatText:
+				return writeRaw(inv.out, inv.format, raw)
+			}
+			_, _ = fmt.Fprintln(inv.out, stoppingNote("`bex agent cancel`"))
+			return nil
+		},
+	}
+}
+
 func openCommand(d deps) *cobra.Command {
 	var inDashboard bool
 	c := &cobra.Command{
@@ -1041,6 +1107,11 @@ func (inv *invocation) show(s session, raw []byte) error {
 func (inv *invocation) await(s session, fromTurn int, w waitFlags) error {
 	ctx, stop := w.context(inv.ctx)
 	defer stop()
+	return inv.awaitTurn(ctx, s.ID, fromTurn, w)
+}
+
+// awaitTurn is await under a context that already carries the --timeout.
+func (inv *invocation) awaitTurn(ctx context.Context, id string, fromTurn int, w waitFlags) error {
 	var (
 		result waitResult
 		err    error
@@ -1051,20 +1122,64 @@ func (inv *invocation) await(s session, fromTurn int, w waitFlags) error {
 		if inv.format != formatText {
 			stream = inv.errOut
 		}
-		result, err = inv.api.followLive(ctx, s.ID, fromTurn, newPartPrinter(stream, false, w.reasoning))
+		result, err = inv.api.followLive(ctx, id, fromTurn, newPartPrinter(stream, false, w.reasoning))
 		if err == nil {
-			inv.warnTail(s.ID, result)
+			inv.warnTail(id, result)
 			if inv.format == formatText && len(result.sessions) > 0 {
 				_, _ = fmt.Fprintln(inv.out)
 			}
 		}
 	} else {
-		result, err = inv.api.wait(ctx, []string{s.ID}, false)
+		result, err = inv.api.wait(ctx, []string{id}, false)
 	}
 	if err != nil {
 		return err
 	}
 	return inv.report(result, false, w.timeout)
+}
+
+// awaitQueued waits for the turn a queued message starts: s is the server's
+// 202 for the send and raw its bytes. It polls the queue until the message is
+// no longer pending, then waits for (or follows) that turn as a direct send
+// does, with one --timeout over both steps. A message that left the queue
+// without a turn of its own, because the server dropped it or someone removed
+// it, is a failed send (exit 1).
+func (inv *invocation) awaitQueued(s session, raw []byte, w waitFlags) error {
+	ctx, stop := w.context(inv.ctx)
+	defer stop()
+	if err := inv.api.leaveQueue(ctx, s.ID, s.Queued.ID); err != nil {
+		switch {
+		case stopped(ctx):
+			if err := inv.show(s, raw); err != nil {
+				return err
+			}
+			return command.NewExitError(exitTimeout, fmt.Errorf("%s: the message is still queued after %s; it runs when the session's running turn ends, and `bex agent get %s` shows where it stands", s.ID, w.timeout, s.ID))
+		case ctx.Err() != nil:
+			return command.NewExitError(exitInterrupted, fmt.Errorf("interrupted; the message to %s is still queued", s.ID))
+		}
+		return err
+	}
+	now, nowRaw, err := inv.api.session(ctx, s.ID)
+	switch {
+	case ctx.Err() != nil:
+		// The message already left the queue; this wait is over, so it is
+		// the turn that is still working.
+		if stopped(ctx) {
+			return timeoutExit([]session{s}, w.timeout)
+		}
+		return errInterrupted
+	case err != nil:
+		return err
+	case now.Turns <= s.Turns:
+		// A queued message is delivered in the transaction that starts its
+		// turn, so one that left without the session having had a turn
+		// since was dropped or removed.
+		if err := inv.show(now, nowRaw); err != nil {
+			return err
+		}
+		return errors.New("the queued message was not started; see the session")
+	}
+	return inv.awaitTurn(ctx, s.ID, now.Turns, w)
 }
 
 // warnTail says on stderr that a follow could not read the end of id's

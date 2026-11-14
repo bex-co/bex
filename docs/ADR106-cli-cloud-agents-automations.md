@@ -74,6 +74,7 @@ Every new command is a subcommand of the shipped `bex agent` group (alias `agent
 bex agent
 ├── run · send · wait · get · list · logs · files · cancel · open   (shipped; list/run gain flags, logs -f moves to SSE)
 ├── chat (alias attach)                                             D2  live, interactive
+├── stop                                                            D2  end the running turn only (w22/013)
 ├── archive · unarchive · delete · tags · tree · cost               D4  lifecycle
 ├── ssh · forward†                                                  D5  sandbox access († gated on OD1)
 ├── handoff · pickup                                                D6  local ⇄ cloud
@@ -88,7 +89,7 @@ bex agent
   - the active workspace in `X-Bex-Workspace`;
   - `-o text|json|yaml` with the API's own answer on stdout;
   - streamed text on stderr while `-o json` is set;
-  - the exit-code table in [CLI specification § Exit codes](#exit-codes), extended by one code;
+  - the exit-code table in [CLI specification § Exit codes](#exit-codes), extended by one code (6) and, for `stop`, two more (7, 8);
   - telemetry that records only the command path.
 - **Server changes.** D1–D4 and D6–D8 call shipped routes only. D5's `forward` needs one gateway change after OD1, and nothing else changes on the server.
 
@@ -110,7 +111,8 @@ bex agent
   - The server sends each queued message when the turn settles. Typing again adds another message instead of replacing the first, and the prompt shows `queued — sends when this turn ends (position N)`. Every typed line carries its own `Idempotency-Key`, so a send that is still queued is never queued twice. The CLI does not repeat a `steer` on its own: a send that starts a turn records no key, so a retry after a lost reply could run the message twice ([w22/014](../.pm/w22/014.md)). A server from before the queue answers `409 AGENT_SESSION_TURN_IN_FLIGHT` instead: `chat` then holds the lines in order and sends each when the turn ends.
   - A reattached `chat` lists what is still queued (`GET /v1/agent-sessions/{id}/queued-messages`), next first, with the reason a message is waiting when the server blocked it. While messages are queued and no turn runs, `chat` waits for the turn the server starts from them instead of asking for input.
   - A refused message prints why and the chat goes on: `AGENT_SESSION_QUEUE_FULL` (10 messages) asks the user to wait for one to run, and `AGENT_SESSION_QUEUE_INLINE_SECRETS` says an inline secret is never queued, so the user names a workspace secret with `--secret` or sends it once the session is idle. A message typed while no turn runs is sent with `steer` at once.
-  - `/stop` ends the running turn only (`POST /v1/agent-sessions/{id}/interrupt`, ADR047 D12). It asks for no confirmation because it is not `/cancel`: the session stays open and queued messages run next. `AGENT_SESSION_NO_TURN_RUNNING` and `AGENT_SESSION_TURN_STARTING` are explained in words.
+  - `/stop` ends the running turn only (`POST /v1/agent-sessions/{id}/interrupt`, ADR047 D12). It asks for no confirmation because it is not `/cancel`: the session stays open and queued messages run next. `AGENT_SESSION_NO_TURN_RUNNING` and `AGENT_SESSION_TURN_STARTING` are explained in words. `bex agent stop <session>` is the same verb for scripts and CI (w22/013, [below](#bex-agent-stop)).
+  - **`bex agent send` to a running session** queues the message the same way and prints `Queued (position N): it runs when the session's running turn ends.` With `--wait` or `--follow` it then waits for the message's own turn instead of returning at once or reporting the running turn's outcome (w22/013). It polls `GET /v1/agent-sessions/{id}/queued-messages` (2 s rising to 15 s, as `chat`'s wait between turns) until the message's id is no longer listed, reads the session, and does what the flag does for a message that starts a turn at once: `--wait` polls the session until it settles and exits by the state, `--follow` streams the turn. A message that left the queue with no new turn on the session (the server dropped it, or someone removed it) is a failed send: `the queued message was not started; see the session` on stderr, exit 1. `--timeout` covers the queue wait too; a deadline during it exits 124 and says the message is still queued, and the message stays queued (so does Ctrl-C, exit 130). A server from before the queue still answers `409 AGENT_SESSION_TURN_IN_FLIGHT`, which stays a refused send, exit 1.
 - **Detach is not cancel.** Ctrl-D, `/quit` or Ctrl-C detach and leave the session running, with its queue on the server. `/cancel` asks for confirmation and then calls the cancel verb. This is ADR047's "client disconnect ≠ cancel" rule.
 - **New sessions.** `bex agent chat --repo acme/api [task…]` creates the session with the `run` flags and an idempotency key, then attaches. With no task it asks for the first message.
 - **Not for scripts.** With no TTY, `chat` exits 2 and points to `run --follow`. `logs --follow` and `run`/`send --follow` move to the same SSE client with polling as the fallback, so CI sees the agent's output sooner and its exit codes do not change.
@@ -244,12 +246,12 @@ Local skills for the developer's own coding agents stay with the shipped `bex sk
 | Streams | transcript and progress on stderr whenever stdout carries `-o json | yaml` |
 | Secrets | never on argv: stdin, `--from-env`, or `--secret-from-env` (sessions only) |
 | Confirmation | `delete`, `automations delete`, `take-over`, a writing `apply` and `handoff`'s push ask on a TTY; upstream's global `--confirm` ("skip all confirmation prompts", the Render CLI's own flag) skips; without a TTY they need `--confirm` or exit 2 |
-| Waiting | `--wait`, `--follow` and `--timeout D` behave as in the shipped group (SSE first, polling with 2–15 s backoff as fallback, five transient failures tolerated, `Retry-After` honored) |
+| Waiting | `--wait`, `--follow` and `--timeout D` behave as in the shipped group (SSE first, polling with 2–15 s backoff as fallback, five transient failures tolerated, `Retry-After` honored). On `send` to a running session they first wait for the queued message to leave the queue, under the same `--timeout` (D2) |
 | Telemetry | command path only, never arguments, names, prompts or values |
 
 ### Exit codes
 
-The shipped table, plus one code:
+The shipped table, plus three codes:
 
 | Code | Meaning |
 | --- | --- |
@@ -260,6 +262,8 @@ The shipped table, plus one code:
 | `4` | the session was canceled |
 | `5` | reserved for `needs_input`, which sessions never enter (#APPROVAL-MODE) |
 | `6` | **new:** an automation run started no session (`skipped_overlap`, `denied`, `failed_create`) |
+| `7` | **new:** `stop` found no turn running (`AGENT_SESSION_NO_TURN_RUNNING`), so there was nothing to stop |
+| `8` | **new:** `stop` found the turn still starting (`AGENT_SESSION_TURN_STARTING`), with no agent to stop yet |
 | `124` | `--timeout` elapsed while the session was still working |
 | `130` | interrupted (Ctrl-C or SIGTERM) |
 
@@ -277,6 +281,9 @@ bex agent list [flags]
   + --phase <phase>            raw phase filter (state stays the default filter)
   + --since <time> --until <time>   createdAfter / createdBefore (RFC 3339 or 24h, 7d)
 bex agent logs <session> --follow  now streams over SSE; polling remains the fallback
+bex agent send <session> --wait | --follow <message…>
+                                   to a running session: wait for the queued message to leave the queue,
+                                   then for its own turn (w22/013); exit 1 if it left without a turn
 ```
 
 ### `bex agent chat`
@@ -306,6 +313,22 @@ alias: bex agent attach
 - Header line: `ags-… · owner/repo@bex-agent/… · model · state · $spent`.
 - Rendering: the agent's text, one line per tool call (`▸ Bash  go test ./...`), the turn boundary with outcome, the PR link and cost. Reasoning is shown only with `--reasoning`.
 - Without a TTY: exit 2, with `use bex agent run --follow`.
+
+### `bex agent stop`
+
+```
+bex agent stop <session>
+```
+
+| Case | Output | Exit |
+| --- | --- | --- |
+| `POST /v1/agent-sessions/{id}/interrupt` answers `202` | `Stopping the current turn. The session stays open and any queued messages run next; /cancel ends it.` on stdout; with `-o json\|yaml` the API's own answer instead, and no text | `0` |
+| `409 AGENT_SESSION_NO_TURN_RUNNING` | `stop: no turn is running, so there is nothing to stop` on stderr | `7` |
+| `409 AGENT_SESSION_TURN_STARTING` | `stop: the turn is still starting; try again once the agent is working` on stderr | `8` |
+| any other refusal (canceled or archived session, no `can_operate`, unknown session, network) | the API's error on stderr | `1` |
+
+- It ends the running turn only and asks for no confirmation, on a terminal or not, because it is not `cancel`: the session stays open, and queued messages run next. The wording is chat's `/stop` (hence `/cancel` in the first line). The `202` is the request delivered, not the turn ended: the Completer settles it on its 15 s tick, so a script that needs the turn over runs `bex agent wait` next.
+- Session picker, dashboard URLs and shell completion work as for `cancel`.
 
 ### `bex agent archive | unarchive | delete | tags | tree | cost`
 

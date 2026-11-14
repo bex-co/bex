@@ -22,6 +22,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/render-oss/cli/pkg/command"
@@ -96,6 +97,31 @@ func (p *poller) tolerate(ctx context.Context, err error) bool {
 func (p *poller) sleep(ctx context.Context, a *api, d time.Duration) error {
 	d, p.backoff = max(d, p.backoff), 0
 	return a.sleep(ctx, d)
+}
+
+// leaveQueue polls the session's queue until the message is no longer pending:
+// it was delivered, dropped or removed. It paces itself as a wait for a
+// session does and survives the same transient failures. An error with a done
+// ctx is the caller's to tell apart (stopped).
+func (a *api) leaveQueue(ctx context.Context, id, messageID string) error {
+	var p poller
+	delay := pollFirst
+	for {
+		queued, err := a.queuedMessages(ctx, id)
+		switch {
+		case err == nil:
+			p.failures = 0
+			if !slices.ContainsFunc(queued, func(m queuedMessage) bool { return m.ID == messageID }) {
+				return nil
+			}
+		case !p.tolerate(ctx, err):
+			return err
+		}
+		if err := p.sleep(ctx, a, delay); err != nil {
+			return err
+		}
+		delay = nextPoll(delay)
+	}
 }
 
 // readSession is a session read that tolerates transientLimit consecutive
