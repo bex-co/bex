@@ -221,21 +221,33 @@ func (c *Completer) pastStatusDeadline(ctx context.Context, record store.AgentSe
 	if now.Sub(record.CreatedAt) < deadline {
 		return false
 	}
-	turns, err := c.Store.AgentSessionTurns(ctx, record.ID)
+	turn, found, err := c.currentTurn(ctx, record)
 	if err != nil {
 		return false
 	}
 	start := record.UpdatedAt
-	for _, turn := range turns {
-		if turn.Turn != record.Turns {
-			continue
-		}
+	if found {
 		start = turn.CreatedAt
 		if turn.StartedAt != nil {
 			start = *turn.StartedAt
 		}
 	}
 	return now.Sub(start) >= deadline
+}
+
+// currentTurn loads the turn row the session is on (turn number record.Turns).
+// found is false when the session has no row for it.
+func (c *Completer) currentTurn(ctx context.Context, record store.AgentSession) (turn store.AgentSessionTurn, found bool, err error) {
+	turns, err := c.Store.AgentSessionTurns(ctx, record.ID)
+	if err != nil {
+		return store.AgentSessionTurn{}, false, err
+	}
+	for _, t := range turns {
+		if t.Turn == record.Turns {
+			return t, true, nil
+		}
+	}
+	return store.AgentSessionTurn{}, false, nil
 }
 
 func (c *Completer) statusReadFailureTTL() time.Duration {
@@ -600,7 +612,24 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 // run next, the reply the agent streamed is harvested like any turn's, and no
 // failure is recorded. A structured result the turn owed is not required of
 // it: it was stopped before it could submit one.
+//
+// The status file is the sandbox's own word, and the sandbox is untrusted: an
+// agent could write `interrupted` to end its turn without that result. So the
+// status is believed only for a turn bex-api recorded a stop request for
+// (Service.Interrupt, before the sentinel exists). Any other `interrupted` is
+// a claim that the turn finished, and takes the path of a finished turn,
+// where complete()'s checks apply.
 func (c *Completer) interrupted(ctx context.Context, record store.AgentSession, report statusReport) {
+	requested, err := c.interruptRequested(ctx, record)
+	if err != nil {
+		log.Printf("agent-session completer: read turn stop request failed (session=%s): %v", record.ID, err)
+		return // retry next tick; the sandbox stays until the row is finalized
+	}
+	if !requested {
+		log.Printf("agent-session completer: sandbox reported turn %d interrupted but no stop was requested; settling it as a finished turn (session=%s)", record.Turns, record.ID)
+		c.complete(ctx, record, report)
+		return
+	}
 	// The flag first: a failed finalize is retried next tick, and the status
 	// file still reads interrupted, so the pair converges.
 	if err := c.Store.MarkAgentSessionTurnInterrupted(ctx, record.ID, record.Turns); err != nil {
@@ -608,6 +637,17 @@ func (c *Completer) interrupted(ctx context.Context, record store.AgentSession, 
 		return
 	}
 	c.settleCompleted(ctx, record, report, turnOutcomeInterrupted)
+}
+
+// interruptRequested reports whether bex-api recorded a stop request for the
+// session's current turn. A request belongs to its turn: one made for an
+// earlier turn does not cover this one.
+func (c *Completer) interruptRequested(ctx context.Context, record store.AgentSession) (bool, error) {
+	turn, found, err := c.currentTurn(ctx, record)
+	if err != nil || !found {
+		return false, err
+	}
+	return turn.InterruptRequestedAt != nil, nil
 }
 
 // settleCompleted finalizes a session as completed with what the sandbox
@@ -635,16 +675,11 @@ func (c *Completer) settleCompleted(ctx context.Context, record store.AgentSessi
 // status is not believed here: only a result bex-api itself validated and
 // stored counts, so a sandbox cannot claim one it never submitted.
 func (c *Completer) structuredOutputMissing(ctx context.Context, record store.AgentSession) (bool, error) {
-	turns, err := c.Store.AgentSessionTurns(ctx, record.ID)
-	if err != nil {
+	turn, found, err := c.currentTurn(ctx, record)
+	if err != nil || !found {
 		return false, err
 	}
-	for _, turn := range turns {
-		if turn.Turn == record.Turns {
-			return turn.OutputRequired && len(turn.OutputSchema) > 0 && !turn.ResultFinal, nil
-		}
-	}
-	return false, nil
+	return turn.OutputRequired && len(turn.OutputSchema) > 0 && !turn.ResultFinal, nil
 }
 
 // failMissingOutput ends a turn that required a structured result and has none.

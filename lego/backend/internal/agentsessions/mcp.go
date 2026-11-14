@@ -140,7 +140,7 @@ type attachTicketArgs struct {
 type steerArgs struct {
 	ID              string   `json:"id"`
 	Prompt          string   `json:"prompt"`
-	IdempotencyKey  string   `json:"idempotencyKey,omitempty" jsonschema:"makes a retried send harmless when the message is queued: the same key and message return the one already queued. 1-128 printable ASCII characters"`
+	IdempotencyKey  string   `json:"idempotencyKey,omitempty" jsonschema:"makes a retried send harmless: the same key and message return what the first attempt did, the turn it started or the message it queued. 1-128 printable ASCII characters"`
 	EgressAllowlist []string `json:"egressAllowlist,omitempty"`
 	AttachmentIDs   []string `json:"attachmentIds,omitempty"`
 	// OutputSchema and OutputRequired: this turn's structured-output contract (ADR094 D5).

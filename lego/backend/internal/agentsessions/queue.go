@@ -45,6 +45,7 @@ const (
 	codeQueueInlineSecrets    = "AGENT_SESSION_QUEUE_INLINE_SECRETS"
 	codeQueuedMessageNotFound = "AGENT_QUEUED_MESSAGE_NOT_FOUND"
 	codeQueuedMessageGone     = "AGENT_QUEUED_MESSAGE_DISPATCHED"
+	codeQueuedMessageChanged  = "AGENT_QUEUED_MESSAGE_CHANGED" // the dispatcher's begin saw a message edited since its claim; never a client's answer
 	codeNoTurnRunning         = "AGENT_SESSION_NO_TURN_RUNNING"
 	codeTurnStarting          = "AGENT_SESSION_TURN_STARTING"
 )
@@ -66,7 +67,7 @@ type QueuedMessage struct {
 	// HasOutputSchema says the turn will be held to a structured-output contract.
 	HasOutputSchema bool `json:"hasOutputSchema,omitempty"`
 	// BlockedReason is why the last attempt to run it failed (a spend ceiling,
-	// the live-sandbox limit); the next attempt follows within seconds.
+	// the live-sandbox limit); it is retried about every half minute.
 	BlockedReason string `json:"blockedReason,omitempty"`
 	// State is pending, dispatched (Turn started) or dropped (DroppedReason).
 	State         string    `json:"state"`
@@ -97,7 +98,15 @@ type QueueStore interface {
 	EditQueuedAgentMessage(ctx context.Context, sessionID, messageID, prompt, author string) (store.QueuedAgentMessage, error)
 	DeleteQueuedAgentMessage(ctx context.Context, sessionID, messageID string) error
 	MoveQueuedAgentMessage(ctx context.Context, sessionID, messageID string, index int) ([]store.QueuedAgentMessage, error)
-	BeginQueuedAgentSessionTurn(ctx context.Context, messageID, id, prompt, deliveryMode, phase, status string, attachments store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill) (store.AgentSession, error)
+	// BeginQueuedAgentSessionTurn starts the turn that delivers a queued
+	// message, as author and with the prompt the dispatcher claimed; a message
+	// edited since is refused.
+	BeginQueuedAgentSessionTurn(ctx context.Context, messageID, author, id, prompt, deliveryMode, phase, status string, attachments store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill) (store.AgentSession, error)
+	// BeginKeyedAgentSessionTurn starts the turn of a direct send that carries
+	// an idempotency key, recording the key and its digest with the turn;
+	// FindKeyedAgentSessionSend finds what a key was first used for.
+	BeginKeyedAgentSessionTurn(ctx context.Context, key, requestHash, id, prompt, deliveryMode, phase, status string, attachments store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill) (store.AgentSession, error)
+	FindKeyedAgentSessionSend(ctx context.Context, sessionID, key string) (store.KeyedSend, error)
 }
 
 // queuedRequest is the part of a validated steer request a queued message
@@ -190,8 +199,13 @@ func (s *Service) enqueueSteer(ctx context.Context, record store.AgentSession, r
 		return View{}, err
 	}
 	prompt := strings.TrimSpace(req.Prompt)
+	hash := queueRequestHash(prompt, stored)
 	row, _, err := s.Queue.EnqueueAgentSessionMessage(ctx, store.QueuedAgentMessage{SessionID: record.ID, Author: author, Prompt: prompt, Request: request,
-		IdempotencyKey: req.IdempotencyKey, RequestHash: queueRequestHash(prompt, stored)}, maxQueuedMessages)
+		IdempotencyKey: req.IdempotencyKey, RequestHash: hash}, maxQueuedMessages)
+	// A direct send may have started a turn under this key since the caller looked.
+	if view, done, replayErr := s.replayOnKeyUsed(ctx, record, req.IdempotencyKey, hash, err); done {
+		return view, replayErr
+	}
 	if err != nil {
 		return View{}, mapQueueError(record, err)
 	}
@@ -205,6 +219,54 @@ func (s *Service) enqueueSteer(ctx context.Context, record store.AgentSession, r
 	return view, nil
 }
 
+// replayOnKeyUsed answers a send that lost the race for its idempotency key:
+// err is the write's error, and when it is store.ErrAgentSessionKeyUsed the
+// send is the retry of the one that won, so replaySteer's outcome is the
+// answer. done is false for any other err, and when no send used the key
+// after all; the caller then handles err as it would have.
+func (s *Service) replayOnKeyUsed(ctx context.Context, record store.AgentSession, key, hash string, err error) (view View, done bool, replayErr error) {
+	if !errors.Is(err, store.ErrAgentSessionKeyUsed) {
+		return View{}, false, nil
+	}
+	view, replayed, replayErr := s.replaySteer(ctx, record, key, hash)
+	return view, replayed || replayErr != nil, replayErr
+}
+
+// replaySteer returns the earlier outcome of a send under key, for a retry
+// (ADR047 D12): the session as it stands when the first attempt started a turn
+// (what a send that starts one answers, 200), or the message it queued with
+// its place, or, once dispatched or dropped, in that state (202, as a queued
+// send answers). replayed is false when no send used the key. The same key
+// with another request is AGENT_SESSION_IDEMPOTENCY_KEY_REUSED.
+func (s *Service) replaySteer(ctx context.Context, record store.AgentSession, key, hash string) (view View, replayed bool, err error) {
+	found, err := s.Queue.FindKeyedAgentSessionSend(ctx, record.ID, key)
+	if errors.Is(err, store.ErrNotFound) {
+		return View{}, false, nil
+	}
+	if err != nil {
+		return View{}, false, err
+	}
+	if found.RequestHash != hash {
+		return View{}, false, mapQueueError(record, store.ErrQueuedMessageKeyReused)
+	}
+	// The session as it stands now: a retry that raced the first attempt read
+	// it before that attempt started its turn.
+	current, err := s.Store.GetAgentSession(ctx, record.ID)
+	if err != nil {
+		return View{}, false, mapStoreError(record.ID, err)
+	}
+	view, err = s.toView(current)
+	if err != nil {
+		return View{}, false, err
+	}
+	if found.Message != nil {
+		message := queuedMessageOf(*found.Message)
+		view.Queued = &message
+		s.fillQueueCount(ctx, &view)
+	}
+	return view, true, nil
+}
+
 // mapQueueError is a queue refusal as its coded error; the refusals it does
 // not name (the message already dispatched among them) are mapStoreError's.
 func mapQueueError(record store.AgentSession, err error) error {
@@ -213,7 +275,7 @@ func mapQueueError(record store.AgentSession, err error) error {
 		return core.NewConflictError(codeQueueFull, "the session already has the most messages it can queue; wait for one to run or delete one",
 			map[string]any{"id": record.ID, "max": maxQueuedMessages})
 	case errors.Is(err, store.ErrQueuedMessageKeyReused):
-		return core.NewConflictError(codeIdempotencyKeyReused, "this idempotency key was already used for a different queued message", map[string]any{"id": record.ID})
+		return core.NewConflictError(codeIdempotencyKeyReused, "this idempotency key was already used for a different message", map[string]any{"id": record.ID})
 	case errors.Is(err, store.ErrAgentSessionNotSteerable):
 		if record.ArchivedAt != nil {
 			return errArchived(record.Phase)
@@ -351,8 +413,16 @@ func (s *Service) Interrupt(ctx context.Context, sessionID string) (View, error)
 		// The turn is accepted but its sandbox is not up: there is no agent to stop yet.
 		return View{}, core.NewConflictError(codeTurnStarting, "the turn is still starting; stop it once it is running", map[string]any{"phase": record.Phase})
 	}
-	// The sentinel names the turn number the driver was started with (BEX_AGENT_TURN).
-	if err := s.Sandbox.InterruptSessionTurn(ctx, record.WorkspaceID, record.ID, record.SandboxID, driverTurn(record)); err != nil {
+	// The request is recorded first: the Completer believes the sandbox's
+	// `interrupted` status only for a turn with one, and the sandbox cannot
+	// write that status before the sentinel exists. The sentinel names the turn
+	// number the driver was started with (BEX_AGENT_TURN), and so does the
+	// request, so it never covers the next turn.
+	turn := driverTurn(record)
+	if err := s.Store.RequestAgentSessionTurnInterrupt(ctx, record.ID, turn); err != nil {
+		return View{}, mapStoreError(record.ID, err)
+	}
+	if err := s.Sandbox.InterruptSessionTurn(ctx, record.WorkspaceID, record.ID, record.SandboxID, turn); err != nil {
 		return View{}, err
 	}
 	return s.toView(record)

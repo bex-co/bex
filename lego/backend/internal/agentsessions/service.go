@@ -119,6 +119,10 @@ type Store interface {
 	// MarkAgentSessionTurnHarvestFailed records a failed harvest on a turn no
 	// harvest has recorded a verdict on yet.
 	MarkAgentSessionTurnHarvestFailed(ctx context.Context, sessionID string, turn int, reason string) error
+	// RequestAgentSessionTurnInterrupt records, before the stop is sent to the
+	// sandbox, that a person asked to stop the turn; the Completer believes
+	// the sandbox's `interrupted` status only for a turn with one (ADR047 D12).
+	RequestAgentSessionTurnInterrupt(ctx context.Context, sessionID string, turn int) error
 	// MarkAgentSessionTurnInterrupted records that a person stopped the turn
 	// (ADR047 D12).
 	MarkAgentSessionTurnInterrupted(ctx context.Context, sessionID string, turn int) error
@@ -1871,10 +1875,21 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if record.Phase == PhaseCanceled || record.Phase == PhaseCanceling {
 		return View{}, errNotSteerable(record.Phase)
 	}
-	inFlight := liveSandboxPhase(record.Phase)
 	// The dispatcher delivering a queued message (queuedMessageID) is itself
-	// the head of the queue, so it is never queued behind it.
+	// the head of the queue, so it is never queued behind it, and its message
+	// carries any key.
 	canQueue := s.Queue != nil && req.queuedMessageID == ""
+	// A retried keyed send returns what its first attempt did, before anything
+	// decides whether this one queues or starts (ADR047 D12): the turn it
+	// started or the message it queued, in whatever state that is now.
+	keyHash := ""
+	if canQueue && req.IdempotencyKey != "" {
+		keyHash = queueRequestHash(prompt, queuedRequestOf(req))
+		if view, replayed, err := s.replaySteer(ctx, record, req.IdempotencyKey, keyHash); replayed || err != nil {
+			return view, err
+		}
+	}
+	inFlight := liveSandboxPhase(record.Phase)
 	if canQueue {
 		// A message that cannot start a turn now is queued (ADR047 D12): a
 		// turn is running, or earlier messages wait their turn first. While a
@@ -1947,12 +1962,21 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	previousSandboxID := record.SandboxID
 	binding := store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)}
 	var begun store.AgentSession
-	if req.queuedMessageID != "" {
+	switch {
+	case req.queuedMessageID != "":
 		// The same transaction that starts the turn marks the message
-		// delivered, so it starts one turn however often it is attempted.
-		begun, err = s.Queue.BeginQueuedAgentSessionTurn(ctx, req.queuedMessageID, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills)
-	} else {
+		// delivered, so it starts one turn however often it is attempted. It
+		// refuses a message edited since its claim: the author is the claim's.
+		begun, err = s.Queue.BeginQueuedAgentSessionTurn(ctx, req.queuedMessageID, core.SubjectFrom(ctx), record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills)
+	case keyHash != "":
+		// The key and its digest are recorded with the turn, so a retry finds it.
+		begun, err = s.Queue.BeginKeyedAgentSessionTurn(ctx, req.IdempotencyKey, keyHash, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills)
+	default:
 		begun, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills)
+	}
+	// A send under the same key may have won the race: this one is its retry.
+	if view, done, replayErr := s.replayOnKeyUsed(ctx, record, req.IdempotencyKey, keyHash, err); done {
+		return view, replayErr
 	}
 	if errors.Is(err, store.ErrAgentSessionTurnState) && canQueue && req.mode == steerQueues {
 		// A turn started between the read and the write: queue behind it.
@@ -2213,6 +2237,10 @@ func mapStoreError(id string, err error) error {
 	}
 	if errors.Is(err, store.ErrQueuedMessageNotPending) {
 		return core.NewConflictError(codeQueuedMessageGone, "the message was already dispatched, dropped or is being dispatched now, so it can no longer be changed",
+			map[string]any{"sessionId": id})
+	}
+	if errors.Is(err, store.ErrQueuedMessageChanged) {
+		return core.NewConflictError(codeQueuedMessageChanged, "the message was edited after it was claimed for dispatch; it is claimed again and runs as it now reads",
 			map[string]any{"sessionId": id})
 	}
 	if errors.Is(err, store.ErrAgentSessionTurnState) {

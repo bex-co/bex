@@ -227,10 +227,10 @@ type CreateRequest struct {
 type SteerRequest struct {
 	SessionID string `json:"-"`
 	Prompt    string `json:"prompt,omitempty"`
-	// IdempotencyKey makes a retried send harmless when the message is queued
-	// (ADR047 D12): the same key and request return the message already
-	// queued, another request with it is refused. Optional, 1-128 printable
-	// ASCII characters, unique per session.
+	// IdempotencyKey makes a retried send harmless (ADR047 D12): the same key
+	// and request return what the first attempt did, the turn it started or
+	// the message it queued, another request with it is refused. Optional,
+	// 1-128 printable ASCII characters, unique per session.
 	IdempotencyKey string `json:"idempotencyKey,omitempty"`
 	// mode and queuedMessageID are set by this package's own callers, never
 	// by a client. queuedMessageID names the queued message the dispatcher is

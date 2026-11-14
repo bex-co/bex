@@ -9670,7 +9670,7 @@
           "type": "string"
         },
         "idempotencyKey": {
-          "description": "makes a retried send harmless when the message is queued: the same key and message return the one already queued. 1-128 printable ASCII characters",
+          "description": "makes a retried send harmless: the same key and message return what the first attempt did, the turn it started or the message it queued. 1-128 printable ASCII characters",
           "type": "string"
         },
         "outputRequired": {
@@ -11899,7 +11899,7 @@
           "type": "string"
         },
         "idempotencyKey": {
-          "description": "makes a retried send harmless when the message is queued: the same key and message return the one already queued. 1-128 printable ASCII characters",
+          "description": "makes a retried send harmless: the same key and message return what the first attempt did, the turn it started or the message it queued. 1-128 printable ASCII characters",
           "type": "string"
         },
         "outputRequired": {

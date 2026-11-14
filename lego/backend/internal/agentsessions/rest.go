@@ -232,7 +232,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		req.SessionID = r.PathValue("id")
 		// The header is the REST spelling of the body's idempotencyKey, as on
-		// create; it makes a retried send of a queued message harmless.
+		// create; it makes a retried send harmless.
 		if key := r.Header.Get("Idempotency-Key"); key != "" {
 			if req.IdempotencyKey != "" && req.IdempotencyKey != key {
 				core.WriteErrStatus(w, http.StatusBadRequest, "Idempotency-Key header and idempotencyKey body field disagree")

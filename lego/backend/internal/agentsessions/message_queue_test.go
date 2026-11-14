@@ -56,7 +56,7 @@ func newMemQueue() *memQueue {
 
 func (q *memQueue) pending() bool { return !q.delivered && q.dropped == "" }
 
-func (q *memQueue) ClaimQueuedAgentMessages(_ context.Context, _ time.Time, _ time.Duration, _ int, _ []string) ([]store.QueuedMessageClaim, error) {
+func (q *memQueue) ClaimQueuedAgentMessages(_ context.Context, _ time.Time, _ time.Duration, _ int, _ []string, _ time.Duration) ([]store.QueuedMessageClaim, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.claims++

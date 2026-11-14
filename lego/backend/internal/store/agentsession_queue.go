@@ -43,9 +43,18 @@ var (
 	// ErrQueuedMessageNotPending is a message that was dispatched, dropped or
 	// is being dispatched now, so it can no longer be changed.
 	ErrQueuedMessageNotPending = fmt.Errorf("queued message is no longer pending: %w", ErrConflict)
+	// ErrQueuedMessageChanged is a message that was edited after the dispatcher
+	// claimed it, so the claim's copy of its text and author is stale: nothing
+	// starts, and the next claim reads it as it now stands.
+	ErrQueuedMessageChanged = fmt.Errorf("queued message changed after it was claimed: %w", ErrConflict)
 	// ErrQueuedMessageKeyReused is an idempotency key already used for another
-	// message of the session.
-	ErrQueuedMessageKeyReused = fmt.Errorf("idempotency key was used for a different queued message: %w", ErrConflict)
+	// message or turn of the session.
+	ErrQueuedMessageKeyReused = fmt.Errorf("idempotency key was used for a different request: %w", ErrConflict)
+	// ErrAgentSessionKeyUsed is an idempotency key an earlier send of the
+	// session already used, for a turn or a queued message: nothing is
+	// written, and the caller returns that send's outcome
+	// (FindKeyedAgentSessionSend).
+	ErrAgentSessionKeyUsed = fmt.Errorf("idempotency key was already used by an earlier send: %w", ErrConflict)
 	// ErrAgentSessionNotSteerable is a session that took a cancel or an
 	// archive between the caller's read and the write, so nothing is queued.
 	ErrAgentSessionNotSteerable = fmt.Errorf("agent session takes no more messages: %w", ErrConflict)
@@ -114,9 +123,19 @@ func lockSessionForQueue(ctx context.Context, tx pgx.Tx, sessionID string) (phas
 	return phase, archivedAt != nil, nil
 }
 
-func listPendingQueued(ctx context.Context, q interface {
+// queueQuerier is the read surface a pool and a transaction share.
+type queueQuerier interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-}, sessionID string, lock bool) ([]QueuedAgentMessage, error) {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// leased says the dispatcher holds the message's lease at now: it is being
+// started, so nothing may change it or its place.
+func (m QueuedAgentMessage) leased(now time.Time) bool {
+	return m.ClaimedUntil != nil && m.ClaimedUntil.After(now)
+}
+
+func listPendingQueued(ctx context.Context, q queueQuerier, sessionID string, lock bool) ([]QueuedAgentMessage, error) {
 	suffix := ""
 	if lock {
 		suffix = " FOR UPDATE"
@@ -130,12 +149,67 @@ func listPendingQueued(ctx context.Context, q interface {
 	return rows, err
 }
 
+// KeyedSend is what an idempotency key was first used for on a session: the
+// turn a direct send started under it, or the message a send queued.
+type KeyedSend struct {
+	RequestHash string
+	// Turn is the turn the send started; 0 when it queued Message.
+	Turn int
+	// Message is the message the send queued, in whatever state it has reached
+	// (pending, delivered or dropped). Its Index is its place while pending.
+	Message *QueuedAgentMessage
+}
+
+// findKeyedSend reads what key was first used for on the session: its turns
+// first, then its queued messages. ErrNotFound when no send used it.
+func findKeyedSend(ctx context.Context, q queueQuerier, sessionID, key string) (KeyedSend, error) {
+	var found KeyedSend
+	err := q.QueryRow(ctx, `SELECT turn, request_hash FROM agent_session_turns WHERE session_id=$1 AND idempotency_key=$2`,
+		sessionID, key).Scan(&found.Turn, &found.RequestHash)
+	if err == nil || !errors.Is(err, pgx.ErrNoRows) {
+		return found, err
+	}
+	message, err := scanQueuedMessage(q.QueryRow(ctx, `SELECT `+queuedMessageColumns+`
+		FROM agent_session_queued_messages WHERE session_id=$1 AND idempotency_key=$2`, sessionID, key))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return KeyedSend{}, ErrNotFound
+		}
+		return KeyedSend{}, err
+	}
+	if message.DeliveredAt == nil && message.DroppedReason == "" {
+		pending, err := listPendingQueued(ctx, q, sessionID, false)
+		if err != nil {
+			return KeyedSend{}, err
+		}
+		if i := slices.IndexFunc(pending, func(p QueuedAgentMessage) bool { return p.ID == message.ID }); i >= 0 {
+			message.Index = pending[i].Index
+		}
+	}
+	return KeyedSend{RequestHash: message.RequestHash, Message: &message}, nil
+}
+
+// FindKeyedAgentSessionSend returns what an idempotency key was first used for
+// on the session (ADR047 D12): the turn a direct send started, or the message
+// a send queued. ErrNotFound when none used it.
+func (s *PGStore) FindKeyedAgentSessionSend(ctx context.Context, sessionID, key string) (KeyedSend, error) {
+	if !textBindable(sessionID) || !textBindable(key) {
+		return KeyedSend{}, ErrNotFound
+	}
+	found, err := findKeyedSend(ctx, s.Pool, sessionID, key)
+	if err != nil {
+		return KeyedSend{}, classify("agent session send", err)
+	}
+	return found, nil
+}
+
 // EnqueueAgentSessionMessage appends a message to the session's queue and
 // returns it with its place. inserted is false when m's idempotency key was
 // already used for an identical message, which is returned as it stands; the
-// same key with another RequestHash is ErrQueuedMessageKeyReused. A queue
-// already holding limit pending messages is ErrAgentSessionQueueFull, and a
-// session that is canceled, canceling or archived takes none
+// same key with another RequestHash is ErrQueuedMessageKeyReused, and a key a
+// direct send used to start a turn is ErrAgentSessionKeyUsed. A queue already
+// holding limit pending messages is ErrAgentSessionQueueFull, and a session
+// that is canceled, canceling or archived takes none
 // (ErrAgentSessionNotSteerable). The caller fills Author, Prompt, Request,
 // IdempotencyKey and RequestHash.
 func (s *PGStore) EnqueueAgentSessionMessage(ctx context.Context, m QueuedAgentMessage, limit int) (QueuedAgentMessage, bool, error) {
@@ -151,16 +225,20 @@ func (s *PGStore) EnqueueAgentSessionMessage(ctx context.Context, m QueuedAgentM
 			return ErrAgentSessionNotSteerable
 		}
 		if m.IdempotencyKey != "" {
-			existing, err := scanQueuedMessage(tx.QueryRow(ctx, `SELECT `+queuedMessageColumns+`
-				FROM agent_session_queued_messages WHERE session_id=$1 AND idempotency_key=$2`, m.SessionID, m.IdempotencyKey))
+			// Under the session's lock, so a direct send that started a turn
+			// under the key a moment ago is seen, and nothing queues twice.
+			existing, err := findKeyedSend(ctx, tx, m.SessionID, m.IdempotencyKey)
 			switch {
 			case err == nil:
-				if existing.RequestHash != m.RequestHash {
+				switch {
+				case existing.RequestHash != m.RequestHash:
 					return ErrQueuedMessageKeyReused
+				case existing.Message == nil:
+					return ErrAgentSessionKeyUsed
 				}
-				out = existing
+				out = *existing.Message
 				return nil
-			case !errors.Is(err, pgx.ErrNoRows):
+			case !errors.Is(err, ErrNotFound):
 				return err
 			}
 		}
@@ -185,7 +263,7 @@ func (s *PGStore) EnqueueAgentSessionMessage(ctx context.Context, m QueuedAgentM
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, ErrAgentSessionQueueFull) || errors.Is(err, ErrQueuedMessageKeyReused) || errors.Is(err, ErrAgentSessionNotSteerable) {
+		if errors.Is(err, ErrAgentSessionQueueFull) || errors.Is(err, ErrQueuedMessageKeyReused) || errors.Is(err, ErrAgentSessionKeyUsed) || errors.Is(err, ErrAgentSessionNotSteerable) {
 			return QueuedAgentMessage{}, false, err
 		}
 		return QueuedAgentMessage{}, false, classify("agent session queued message", err)
@@ -261,8 +339,7 @@ func lockQueuedMessage(ctx context.Context, tx pgx.Tx, sessionID, messageID stri
 	if err != nil {
 		return QueuedAgentMessage{}, err
 	}
-	leased := m.ClaimedUntil != nil && m.ClaimedUntil.After(time.Now())
-	if m.DeliveredAt != nil || m.DroppedReason != "" || leased {
+	if m.DeliveredAt != nil || m.DroppedReason != "" || m.leased(time.Now()) {
 		return QueuedAgentMessage{}, ErrQueuedMessageNotPending
 	}
 	return m, nil
@@ -335,7 +412,10 @@ func (s *PGStore) DeleteQueuedAgentMessage(ctx context.Context, sessionID, messa
 // MoveQueuedAgentMessage places a pending message at the 1-based index among
 // the session's pending messages (clamped to the queue's length) and returns
 // the queue in its new order. The pending rows keep the set of position values
-// they had and trade them. The same refusals as EditQueuedAgentMessage.
+// they had and trade them. The same refusals as EditQueuedAgentMessage, and a
+// move that would give a message the dispatcher holds a lease on another place
+// (a move ahead of the head being started) is ErrQueuedMessageNotPending too,
+// with no position changed: the message started first must stay first.
 func (s *PGStore) MoveQueuedAgentMessage(ctx context.Context, sessionID, messageID string, index int) ([]QueuedAgentMessage, error) {
 	var out []QueuedAgentMessage
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
@@ -354,6 +434,12 @@ func (s *PGStore) MoveQueuedAgentMessage(ctx context.Context, sessionID, message
 		pending = slices.DeleteFunc(pending, func(p QueuedAgentMessage) bool { return p.ID == target.ID })
 		at := min(max(index, 1), len(pending)+1) - 1
 		pending = slices.Insert(pending, at, target)
+		now := time.Now()
+		for i := range pending {
+			if pending[i].Position != positions[i] && pending[i].leased(now) {
+				return ErrQueuedMessageNotPending
+			}
+		}
 		for i := range pending {
 			if pending[i].Position != positions[i] {
 				if _, err := tx.Exec(ctx, `UPDATE agent_session_queued_messages SET position=$2, updated_at=now() WHERE id=$1`, pending[i].ID, positions[i]); err != nil {
@@ -391,21 +477,25 @@ func (s *PGStore) QueuedAgentMessageState(ctx context.Context, sessionID, messag
 // sessions that can take a turn now: in one of phases, not archived, with a
 // pending head no other caller holds. The lease runs until now+lease. A session
 // whose head a caller holds is skipped whole, so two callers never start the
-// same message and a later message never overtakes the head.
-func (s *PGStore) ClaimQueuedAgentMessages(ctx context.Context, now time.Time, lease time.Duration, limit int, phases []string) ([]QueuedMessageClaim, error) {
+// same message and a later message never overtakes the head. A head that the
+// last attempt left blocked (a blocked reason) is claimed again only once that
+// attempt is blockedBackoff old; a head with no blocked reason is claimed at
+// once.
+func (s *PGStore) ClaimQueuedAgentMessages(ctx context.Context, now time.Time, lease time.Duration, limit int, phases []string, blockedBackoff time.Duration) ([]QueuedMessageClaim, error) {
 	var out []QueuedMessageClaim
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		out = nil
 		sessions, err := collectWith(scanClaimedSession)(tx.Query(ctx, `
 			SELECT agent_sessions.id, workspace_id, updated_at FROM agent_sessions
-			JOIN (SELECT DISTINCT ON (session_id) session_id, claimed_until, last_attempt_at
+			JOIN (SELECT DISTINCT ON (session_id) session_id, claimed_until, last_attempt_at, blocked_reason
 			      FROM agent_session_queued_messages WHERE `+pendingQueuedSQL+`
 			      ORDER BY session_id, position, id) head ON head.session_id = agent_sessions.id
 			WHERE phase = ANY($3) AND archived_at IS NULL
 			  AND (head.claimed_until IS NULL OR head.claimed_until < $1)
+			  AND (head.blocked_reason = '' OR head.last_attempt_at IS NULL OR head.last_attempt_at < $4)
 			ORDER BY head.last_attempt_at NULLS FIRST, updated_at
 			FOR UPDATE OF agent_sessions SKIP LOCKED
-			LIMIT $2`, now, clampLimit(limit), phases))
+			LIMIT $2`, now, clampLimit(limit), phases, now.Add(-blockedBackoff)))
 		if err != nil || len(sessions) == 0 {
 			return err
 		}
@@ -437,7 +527,7 @@ func scanClaimedSession(row pgx.Row) (AgentSession, error) {
 
 // ReleaseQueuedAgentMessage ends a message's lease early so the next pass
 // retries it, recording why this attempt did not start its turn (empty when it
-// only lost a race).
+// only lost a race; a reason holds the retry back by the claim's backoff).
 func (s *PGStore) ReleaseQueuedAgentMessage(ctx context.Context, messageID, blockedReason string) error {
 	_, err := s.Pool.Exec(ctx, `
 		UPDATE agent_session_queued_messages SET claimed_until=NULL, blocked_reason=$2
@@ -466,4 +556,23 @@ func dropSessionQueued(ctx context.Context, tx pgx.Tx, sessionID, reason string)
 func (s *PGStore) MarkAgentSessionTurnInterrupted(ctx context.Context, sessionID string, turn int) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns SET interrupted=true WHERE session_id=$1 AND turn=$2`, sessionID, turn)
 	return err
+}
+
+// RequestAgentSessionTurnInterrupt records that a person asked to stop the
+// turn, before the stop is sent to the sandbox. The Completer finalizes a turn
+// as interrupted only if this was recorded for that turn (ADR047 D12), so the
+// sandbox's own status file cannot end a turn that way; a request for one turn
+// never covers the next. Repeating it keeps the first request's time.
+// ErrNotFound when the session has no such turn.
+func (s *PGStore) RequestAgentSessionTurnInterrupt(ctx context.Context, sessionID string, turn int) error {
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE agent_session_turns SET interrupt_requested_at = COALESCE(interrupt_requested_at, now())
+		WHERE session_id=$1 AND turn=$2`, sessionID, turn)
+	if err != nil {
+		return classify("agent session turn", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("agent session turn: %w", ErrNotFound)
+	}
+	return nil
 }

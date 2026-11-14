@@ -122,8 +122,11 @@ type AgentSessionTurn struct {
 	// Skills are the skills this turn invoked explicitly (ADR099 D4).
 	Skills []TurnSkill
 	// Interrupted says a person stopped the turn before it ended on its own
-	// (ADR047 D12).
-	Interrupted bool
+	// (ADR047 D12). InterruptRequestedAt is when bex-api recorded the request
+	// to stop it: the only thing that lets the Completer believe the
+	// sandbox's `interrupted` status, which the sandbox writes itself.
+	Interrupted          bool
+	InterruptRequestedAt *time.Time
 }
 
 // AgentTurnOutput is the structured-output contract a turn is accepted with
@@ -537,19 +540,40 @@ func (s *PGStore) AgentSessionWorkspace(ctx context.Context, id string) (string,
 // union), so a refused turn attaches none; nil leaves them unchanged. skills
 // are the skills the turn invokes explicitly (ADR099 D4).
 func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
-	return s.beginAgentSessionTurn(ctx, "", id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
+	return s.beginAgentSessionTurn(ctx, turnOrigin{}, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
+}
+
+// BeginKeyedAgentSessionTurn is BeginAgentSessionTurn for a direct send that
+// carries an idempotency key (ADR047 D12): the same transaction records the
+// key and the request's digest on the turn, so a retried send finds the turn
+// it started. A key an earlier send of the session already used, for a turn or
+// a queued message, is ErrAgentSessionKeyUsed and starts nothing.
+func (s *PGStore) BeginKeyedAgentSessionTurn(ctx context.Context, key, requestHash, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
+	return s.beginAgentSessionTurn(ctx, turnOrigin{key: key, requestHash: requestHash}, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
 }
 
 // BeginQueuedAgentSessionTurn is BeginAgentSessionTurn for a turn that
 // delivers a queued message (ADR047 D12): the same transaction records the
 // message as delivered by the turn, so it starts one turn however often it is
 // attempted. A message that is no longer pending, because it was dropped or
-// already delivered, is ErrQueuedMessageNotPending and starts nothing.
-func (s *PGStore) BeginQueuedAgentSessionTurn(ctx context.Context, messageID, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
-	return s.beginAgentSessionTurn(ctx, messageID, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
+// already delivered, is ErrQueuedMessageNotPending and starts nothing. The
+// caller read the message when it claimed it: prompt and author are that
+// copy, and a message edited since is ErrQueuedMessageChanged, so a turn never
+// runs text, or as a member, that is no longer the message's.
+func (s *PGStore) BeginQueuedAgentSessionTurn(ctx context.Context, messageID, author, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
+	return s.beginAgentSessionTurn(ctx, turnOrigin{queuedMessageID: messageID, queuedAuthor: author}, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
 }
 
-func (s *PGStore) beginAgentSessionTurn(ctx context.Context, queuedMessageID, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
+// turnOrigin is what a turn's begin records or checks beyond the session's
+// own state: the queued message it delivers and the author it was claimed as,
+// or the idempotency key a direct send started it under. The zero value is a
+// plain send.
+type turnOrigin struct {
+	queuedMessageID, queuedAuthor string
+	key, requestHash              string
+}
+
+func (s *PGStore) beginAgentSessionTurn(ctx context.Context, origin turnOrigin, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
 	var out AgentSession
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var turns int
@@ -563,24 +587,27 @@ func (s *PGStore) beginAgentSessionTurn(ctx context.Context, queuedMessageID, id
 		if archivedAt != nil || (currentPhase != "completed" && currentPhase != "failed") {
 			return ErrAgentSessionTurnState
 		}
-		if queuedMessageID != "" {
-			tag, err := tx.Exec(ctx, `
-				UPDATE agent_session_queued_messages
-				SET delivered_turn=$3, delivered_at=now(), claimed_until=NULL, blocked_reason=''
-				WHERE id=$1 AND session_id=$2 AND `+pendingQueuedSQL, queuedMessageID, id, turns+1)
-			if err != nil {
+		if origin.key != "" {
+			// Under the session's lock, where every write that carries a key
+			// is serialized: a send that used it since the caller looked wins.
+			if _, err := findKeyedSend(ctx, tx, id, origin.key); err == nil {
+				return ErrAgentSessionKeyUsed
+			} else if !errors.Is(err, ErrNotFound) {
 				return err
 			}
-			if tag.RowsAffected() == 0 {
-				return ErrQueuedMessageNotPending
+		}
+		if origin.queuedMessageID != "" {
+			if err := deliverQueuedMessage(ctx, tx, origin, id, turns+1, prompt); err != nil {
+				return err
 			}
 		}
 		if err := enforceAgentSessionPromptQuota(ctx, tx, id, prompt); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required, skills)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)`, id, turns+1, prompt, deliveryMode, output.nullable(), output.Required, turnSkillsJSON(skills)); err != nil {
+			INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required, skills, idempotency_key, request_hash)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), NULLIF($9, ''))`,
+			id, turns+1, prompt, deliveryMode, output.nullable(), output.Required, turnSkillsJSON(skills), origin.key, origin.requestHash); err != nil {
 			return err
 		}
 		if err := bindAgentAttachments(ctx, tx, workspaceID, id, turns+1, attachments); err != nil {
@@ -603,12 +630,37 @@ func (s *PGStore) beginAgentSessionTurn(ctx context.Context, queuedMessageID, id
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, ErrAgentSessionPromptQuota) || errors.Is(err, ErrAgentSessionTurnState) || errors.Is(err, ErrQueuedMessageNotPending) || isAgentAttachmentRefusal(err) {
+		if errors.Is(err, ErrAgentSessionPromptQuota) || errors.Is(err, ErrAgentSessionTurnState) || errors.Is(err, ErrAgentSessionKeyUsed) || errors.Is(err, ErrQueuedMessageNotPending) || errors.Is(err, ErrQueuedMessageChanged) || isAgentAttachmentRefusal(err) {
 			return AgentSession{}, err
 		}
 		return AgentSession{}, classify("agent session turn", err)
 	}
 	return out, nil
+}
+
+// deliverQueuedMessage records the origin's queued message as delivered by
+// turn, in the begin's transaction, after checking that it is still pending
+// and still reads as the claim saw it. The row lock keeps an edit from landing
+// between the check and the delivery.
+func deliverQueuedMessage(ctx context.Context, tx pgx.Tx, origin turnOrigin, sessionID string, turn int, prompt string) error {
+	var currentPrompt, currentAuthor string
+	err := tx.QueryRow(ctx, `
+		SELECT prompt, author FROM agent_session_queued_messages
+		WHERE id=$1 AND session_id=$2 AND `+pendingQueuedSQL+` FOR UPDATE`, origin.queuedMessageID, sessionID).Scan(&currentPrompt, &currentAuthor)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrQueuedMessageNotPending
+	}
+	if err != nil {
+		return err
+	}
+	if currentPrompt != prompt || currentAuthor != origin.queuedAuthor {
+		return ErrQueuedMessageChanged
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE agent_session_queued_messages
+		SET delivered_turn=$3, delivered_at=now(), claimed_until=NULL, blocked_reason=''
+		WHERE id=$1 AND session_id=$2`, origin.queuedMessageID, sessionID, turn)
+	return err
 }
 
 func enforceAgentSessionPromptQuota(ctx context.Context, tx pgx.Tx, sessionID, prompt string) error {
@@ -632,7 +684,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		SELECT session_id, turn, prompt, delivery_mode,
 		       transcript_complete, transcript_truncated, truncation_reason,
 		       created_at, started_at, completed_at, attachments,
-		       output_schema, output_required, result, result_final, skills, interrupted
+		       output_schema, output_required, result, result_final, skills, interrupted, interrupt_requested_at
 		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`, sessionID)
 	if err != nil {
 		return nil, err
@@ -644,7 +696,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		if err := rows.Scan(&turn.SessionID, &turn.Turn, &turn.Prompt, &turn.DeliveryMode,
 			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
 			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt, &turn.Attachments,
-			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal, &turn.Skills, &turn.Interrupted); err != nil {
+			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal, &turn.Skills, &turn.Interrupted, &turn.InterruptRequestedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, turn)

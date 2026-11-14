@@ -874,7 +874,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":              gqlutil.ReqArg(graphql.String),
 				"prompt":          gqlutil.ReqArg(graphql.String),
-				"idempotencyKey":  &graphql.ArgumentConfig{Type: graphql.String, Description: "Makes a retried send harmless when the message is queued: the same key and message return the one already queued."},
+				"idempotencyKey":  &graphql.ArgumentConfig{Type: graphql.String, Description: "Makes a retried send harmless: the same key and message return what the first attempt did, the turn it started or the message it queued."},
 				"egressAllowlist": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"attachmentIds":   gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"outputSchema":    gqlutil.Arg(graphql.String),

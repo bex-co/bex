@@ -50,11 +50,17 @@ import (
 // requires one (WORKSPACE_2FA_REQUIRED, a 403 but not a lost permission), a
 // skill or secret the message names no longer exists, or a limit that clears on
 // its own (the live-sandbox cap, the trust tier's session limit, billing). The
-// same goes for every refusal not listed as final.
+// same goes for every refusal not listed as final. A blocked message is tried
+// again after queueBlockedBackoff, not on every poll.
 const (
 	queuePollInterval = 5 * time.Second
 	queueLease        = 2 * time.Minute
-	queueBatch        = 20
+	// How long a head the last attempt left blocked (spend ceiling, live-sandbox
+	// cap) waits before the next attempt. It stops up to queueBatch blocked
+	// sessions from each retrying a failing steer on every poll. A head with no
+	// blocked reason is never held back, and an edit clears the reason.
+	queueBlockedBackoff = 30 * time.Second
+	queueBatch          = 20
 	// maxBlockedReason bounds the reason shown on a blocked message.
 	maxBlockedReason = 500
 
@@ -69,7 +75,7 @@ type QueueSessions interface {
 
 // QueueDispatchStore is the dispatcher's durable seam (*store.PGStore).
 type QueueDispatchStore interface {
-	ClaimQueuedAgentMessages(ctx context.Context, now time.Time, lease time.Duration, limit int, phases []string) ([]store.QueuedMessageClaim, error)
+	ClaimQueuedAgentMessages(ctx context.Context, now time.Time, lease time.Duration, limit int, phases []string, blockedBackoff time.Duration) ([]store.QueuedMessageClaim, error)
 	ReleaseQueuedAgentMessage(ctx context.Context, messageID, blockedReason string) error
 	DropQueuedAgentMessage(ctx context.Context, messageID, reason string) error
 	CountAllQueuedAgentMessages(ctx context.Context) (int, error)
@@ -106,7 +112,7 @@ func (q *MessageQueue) RunOnce(ctx context.Context) error {
 			return nil
 		}
 	}
-	claims, err := q.Store.ClaimQueuedAgentMessages(ctx, q.now(), queueLease, queueBatch, []string{PhaseCompleted, PhaseFailed})
+	claims, err := q.Store.ClaimQueuedAgentMessages(ctx, q.now(), queueLease, queueBatch, []string{PhaseCompleted, PhaseFailed}, queueBlockedBackoff)
 	if err != nil {
 		return err
 	}
@@ -141,6 +147,11 @@ func (q *MessageQueue) deliver(ctx context.Context, claim store.QueuedMessageCla
 		// Dropped or delivered since the claim (a cancel, a delete): nothing to do.
 	case hasCode(err, codeTurnInFlight):
 		// A turn started since the claim: the next pass waits for it to settle.
+		q.release(ctx, message, "")
+	case hasCode(err, codeQueuedMessageChanged):
+		// Edited since the claim (the lease lapsed while this steer worked): the
+		// steer ran on the old text and author, so the next pass claims the
+		// message again and runs it as it now reads.
 		q.release(ctx, message, "")
 	case finalQueueRefusal(err):
 		q.drop(ctx, message, truncateReason(err.Error()))

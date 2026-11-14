@@ -52,7 +52,7 @@ func NewQueueMetrics(reg prometheus.Registerer) *QueueMetrics {
 		dispatchLatency: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: "bex_agent_session_queue_dispatch_seconds",
 			Help: "How long a queued message waited from the later of its session settling and its being queued until its turn started.",
-			// The poll is 5 s; a long tail is a message blocked at dispatch.
+			// The poll is 5 s and a blocked head is retried every 30 s; a long tail is a message blocked at dispatch.
 			Buckets: []float64{1, 5, 10, 30, 60, 300, 900, 3600},
 		}),
 		blocked: prometheus.NewCounterVec(prometheus.CounterOpts{

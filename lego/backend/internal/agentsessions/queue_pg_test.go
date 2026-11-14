@@ -523,7 +523,7 @@ func TestDispatcherReclaimsAnExpiredLease(t *testing.T) {
 	ctx := context.Background()
 	// A replica claimed the head and crashed before starting the turn.
 	now := time.Now()
-	claims, err := e.pg.ClaimQueuedAgentMessages(ctx, now, queueLease, 200, []string{PhaseCompleted, PhaseFailed})
+	claims, err := e.pg.ClaimQueuedAgentMessages(ctx, now, queueLease, 200, []string{PhaseCompleted, PhaseFailed}, queueBlockedBackoff)
 	if err != nil || len(claims) == 0 {
 		t.Fatalf("claim = %v, %v", claims, err)
 	}
@@ -687,8 +687,15 @@ func TestAMessageWaitsOutARefusalAPersonCanFix(t *testing.T) {
 
 			d := e.dispatcher()
 			d.Metrics = NewQueueMetrics(prometheus.NewRegistry())
+			// A blocked head is retried after queueBlockedBackoff, so each pass
+			// reads the clock that far on from the last.
+			now := time.Now()
+			d.Now = func() time.Time { return now }
 			ctx := context.Background()
 			for pass := 1; pass <= 2; pass++ {
+				if pass > 1 {
+					now = now.Add(queueBlockedBackoff + time.Second)
+				}
 				if err := d.RunOnce(ctx); err != nil {
 					t.Fatal(err)
 				}
@@ -705,6 +712,7 @@ func TestAMessageWaitsOutARefusalAPersonCanFix(t *testing.T) {
 			}
 
 			tc.fixes(e, gate)
+			now = now.Add(queueBlockedBackoff + time.Second)
 			if err := d.RunOnce(ctx); err != nil {
 				t.Fatal(err)
 			}

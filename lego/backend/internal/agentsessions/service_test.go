@@ -460,6 +460,19 @@ func (f *fakeStore) MarkAgentSessionTurnHarvestFailed(_ context.Context, id stri
 	return nil
 }
 
+func (f *fakeStore) RequestAgentSessionTurnInterrupt(_ context.Context, id string, turn int) error {
+	row, ok := f.turns[id][turn]
+	if !ok {
+		return store.ErrNotFound
+	}
+	if row.InterruptRequestedAt == nil {
+		at := f.now
+		row.InterruptRequestedAt = &at
+		f.turns[id][turn] = row
+	}
+	return nil
+}
+
 func (f *fakeStore) MarkAgentSessionTurnInterrupted(_ context.Context, id string, turn int) error {
 	row, ok := f.turns[id][turn]
 	if !ok {

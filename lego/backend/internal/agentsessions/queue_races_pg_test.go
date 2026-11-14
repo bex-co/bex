@@ -38,7 +38,7 @@ var settledPhases = []string{PhaseCompleted, PhaseFailed}
 // does and returns the claim, as that replica would hold it.
 func (e queueEnv) claimHead(t *testing.T, at time.Time) store.QueuedMessageClaim {
 	t.Helper()
-	claims, err := e.pg.ClaimQueuedAgentMessages(context.Background(), at, queueLease, queueBatch, settledPhases)
+	claims, err := e.pg.ClaimQueuedAgentMessages(context.Background(), at, queueLease, queueBatch, settledPhases, queueBlockedBackoff)
 	if err != nil {
 		t.Fatal(err)
 	}
