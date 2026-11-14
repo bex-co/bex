@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"testing"
 )
@@ -104,6 +105,13 @@ func TestFileConnectNamesAnUnreachableGateway(t *testing.T) {
 // before its first byte (here, an entry name with a newline) answers its cause
 // on a reused upstream connection: never 409 or 503 (w32/m380 t003).
 func TestFileGatewayRefusalBeforeTheFirstByteReachesTheClient(t *testing.T) {
+	// The local executor runs the gateway's shell scripts with the host's
+	// tar. macOS bsdtar archives the directory with AppleDouble and xattr
+	// entries the sandbox's tar never writes, so the stream ends differently
+	// there; the sandbox image (and CI, on Linux) is what this pins.
+	if runtime.GOOS == "darwin" {
+		t.Skip("needs the sandbox's tar; macOS bsdtar adds AppleDouble/xattr entries")
+	}
 	f := newFileRoundtripFixture(t)
 	root := fileRoundtripTempDir(t)
 	if err := os.WriteFile(filepath.Join(root, "plain.txt"), []byte("plain"), 0o600); err != nil {
