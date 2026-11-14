@@ -272,7 +272,7 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.spendTierNextCharge": {
     message:
-      "Trust tier {tier}: your card is charged when agent model spend reaches {amount}.",
+      "Trust tier {tier}: billing credits pay agent model spend first; your card is charged when the spend they leave reaches {amount}.",
     description: "Trust tier with its mid-month charge point (ADR091 D10.1)",
   },
   "agentEnvironment.spendTierMonthEnd": {
@@ -281,7 +281,7 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.spendTierNew": {
     message:
-      "New workspaces are charged when agent model spend reaches {amount}: the card is charged right then, sessions keep running once it succeeds, and the limit rises to your plan's cap.",
+      "New workspaces are charged when agent model spend beyond any billing credits reaches {amount}: the card is charged right then, sessions keep running once it succeeds, and the limit rises to your plan's cap.",
     description:
       "Explains T0: charged at its threshold, working while the charge settles (ADR091 D10.2a)",
   },

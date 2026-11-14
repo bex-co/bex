@@ -1003,7 +1003,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "已使用 {used} / {cap}。达到 {cap} 时会从绑定的卡扣款，会话继续运行；只有扣款失败才会停止新的模型请求。",
+      "已使用 {used} / {cap}。先用 billing credits 抵扣；超出部分达到 {cap} 时会从绑定的卡扣款，会话继续运行。只有扣款失败才会停止新的模型请求。",
     description:
       "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
   },

@@ -1148,7 +1148,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 type thresholdCharger struct{ charger *billing.AgentModelCharger }
 
 func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsession.ThresholdCharge) (agentsession.ThresholdChargeOutcome, error) {
-	result, err := t.charger.ChargeThreshold(ctx, charge.WorkspaceID, charge.At, charge.SeenSeq, charge.UnbilledMicroUSD)
+	result, err := t.charger.ChargeThreshold(ctx, charge)
 	if err != nil {
 		return agentsession.ThresholdChargePending, err
 	}

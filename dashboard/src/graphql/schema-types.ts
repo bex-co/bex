@@ -279,7 +279,7 @@ export type AgentEnvironment = {
   modelPinned: Scalars['Boolean']['output'];
   modelSource: AgentModelSource;
   networkTier: AgentNetworkTier;
-  /** The agent-model spend at which the card is charged mid-cycle; null at the top tier (month-end only). */
+  /** The agent-model spend beyond billing credits (which pay first) at which the card is charged mid-cycle; null at the top tier (month-end only). */
   nextChargeThresholdUsd: Maybe<Scalars['Float']['output']>;
   ownerId: Scalars['String']['output'];
   pinnedModel: Maybe<Scalars['String']['output']>;

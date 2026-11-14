@@ -1067,7 +1067,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "{used} of {cap} used. At {cap} the card on file is charged and sessions keep running; new model requests stop only if the charge fails.",
+      "{used} of {cap} used. Billing credits pay first; once spend beyond them reaches {cap}, the card on file is charged and sessions keep running. New model requests stop only if the charge fails.",
     description:
       "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
   },

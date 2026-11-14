@@ -264,7 +264,8 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description: "Shown when the spend fields could not be read",
   },
   "agentEnvironment.spendTierNextCharge": {
-    message: "信任等级 {tier}：智能体模型支出达到 {amount} 时从你的卡中扣款。",
+    message:
+      "信任等级 {tier}：智能体模型支出先用 billing credits 抵扣；credits 抵扣不了的部分达到 {amount} 时从你的卡中扣款。",
     description: "Trust tier with its mid-month charge point (ADR091 D10.1)",
   },
   "agentEnvironment.spendTierMonthEnd": {
@@ -273,7 +274,7 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.spendTierNew": {
     message:
-      "新工作区的智能体模型支出达到 {amount} 时会当场扣款；扣款成功后会话继续运行，上限提高到套餐上限。",
+      "新工作区的智能体模型支出先用 billing credits 抵扣，超出部分达到 {amount} 时会当场扣款；扣款成功后会话继续运行，上限提高到套餐上限。",
     description:
       "Explains T0: charged at its threshold, working while the charge settles (ADR091 D10.2a)",
   },

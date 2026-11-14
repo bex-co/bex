@@ -1271,7 +1271,7 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
     render(<NewSessionComposer />);
     await typeTask(user);
     expect(banner()).toHaveTextContent(
-      "At $10.00 the card on file is charged and sessions keep running",
+      "Billing credits pay first; once spend beyond them reaches $10.00, the card on file is charged and sessions keep running",
     );
     expect(start()).toBeEnabled();
   });

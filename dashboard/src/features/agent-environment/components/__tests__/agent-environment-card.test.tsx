@@ -114,10 +114,10 @@ describe("AgentEnvironmentCard", () => {
     expect(source).toHaveAttribute("aria-hidden", "true");
     expect(source).toHaveClass("text-transparent");
     const spend = screen.getByTestId("spend-cap-section-skeleton");
-    expect(spend).toHaveTextContent(/Trust tier T0: your card is charged/);
+    expect(spend).toHaveTextContent(/Trust tier T0: billing credits pay agent model spend first; your card is charged/);
     // The longer of the T0 and payment-locked explanations.
     expect(spend).toHaveTextContent(
-      /New workspaces are charged when agent model spend reaches/,
+      /New workspaces are charged when agent model spend beyond any billing credits reaches/,
     );
   });
 
@@ -383,10 +383,10 @@ describe("AgentEnvironmentCard", () => {
         screen.getByText(/Billed at the model provider's cost \+ 30%/),
       ).toBeInTheDocument();
       expect(screen.getByTestId("spend-tier")).toHaveTextContent(
-        "Trust tier T0: your card is charged when agent model spend reaches $10.00.",
+        "Trust tier T0: billing credits pay agent model spend first; your card is charged when the spend they leave reaches $10.00.",
       );
       expect(screen.getByTestId("spend-tier-note")).toHaveTextContent(
-        "New workspaces are charged when agent model spend reaches $10.00: the card is charged right then, sessions keep running once it succeeds, and the limit rises to your plan's cap.",
+        "New workspaces are charged when agent model spend beyond any billing credits reaches $10.00: the card is charged right then, sessions keep running once it succeeds, and the limit rises to your plan's cap.",
       );
       expect(capField()).toHaveValue(20);
       expect(
