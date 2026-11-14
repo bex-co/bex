@@ -64,10 +64,12 @@ export function AutomationsListSkeleton() {
         <div data-skeleton-region="scope-tabs">
           <Tabs value="mine">
             <TabsList>
-              <TabsTrigger value="mine" disabled>
+              {/* No panel is mounted while the list loads, so the tabs name
+                  none (an aria-controls to a missing id is invalid ARIA). */}
+              <TabsTrigger value="mine" disabled aria-controls={undefined}>
                 {t("agentAutomations.tabMine")}
               </TabsTrigger>
-              <TabsTrigger value="all" disabled>
+              <TabsTrigger value="all" disabled aria-controls={undefined}>
                 {t("agentAutomations.tabAll")}
               </TabsTrigger>
             </TabsList>

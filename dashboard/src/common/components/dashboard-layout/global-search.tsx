@@ -91,10 +91,16 @@ export function GlobalSearch() {
         onPointerEnter={prefetchDialog}
         onFocus={prefetchDialog}
         aria-label={t("common.topbarSearch")}
+        // The keys are announced as a shortcut, not as part of the name, which
+        // is the visible word (WCAG 2.5.3).
+        aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}
       >
         <Search />
         <span className="hidden md:inline">{t("common.topbarSearch")}</span>
-        <kbd className="hidden rounded border bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium lg:inline">
+        <kbd
+          aria-hidden="true"
+          className="hidden rounded border bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium lg:inline"
+        >
           {isMac ? "⌘ K" : "Ctrl K"}
         </kbd>
       </Button>

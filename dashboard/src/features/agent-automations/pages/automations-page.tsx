@@ -62,10 +62,14 @@ export function AutomationsPage() {
 
       <Tabs value={scope} onValueChange={(next) => setScope(next as Scope)}>
         <TabsList>
-          <TabsTrigger value="mine">
+          {/* The list below is not a Tabs panel, so the tabs name none (an
+              aria-controls to a missing id is invalid ARIA). */}
+          <TabsTrigger value="mine" aria-controls={undefined}>
             {t("agentAutomations.tabMine")}
           </TabsTrigger>
-          <TabsTrigger value="all">{t("agentAutomations.tabAll")}</TabsTrigger>
+          <TabsTrigger value="all" aria-controls={undefined}>
+            {t("agentAutomations.tabAll")}
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 

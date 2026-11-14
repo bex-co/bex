@@ -49,7 +49,12 @@ export function AutomationDetailSkeleton() {
   const { t } = useTranslations();
   return (
     <AutomationSubPageFrame
-      title={<Skeleton className="h-6 w-48 max-w-[55vw]" />}
+      title={
+        <>
+          <Skeleton className="h-6 w-48 max-w-[55vw]" />
+          <span className="sr-only">{t("common.loading")}</span>
+        </>
+      }
       backLabel={t("agentAutomations.backToList")}
       width="detail"
     >

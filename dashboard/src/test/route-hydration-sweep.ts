@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { cleanup } from "@testing-library/react";
 import { afterEach, expect, vi } from "vitest";
+import { a11yViolations } from "./axe";
 import {
   BROWSER_ENVIRONMENT,
   CHINESE_BROWSER_ENVIRONMENT,
@@ -30,6 +31,10 @@ const EXEMPT: Record<string, string> = {
     "it holds the route's loader pending on purpose; a server render waits for loaders, so that state is never rendered",
 };
 
+// A fixture the accessibility pass cannot judge, with the reason. Empty until
+// the first sweep finds one (w21/m395 t002).
+const A11Y_EXEMPT = new Map<string, string>();
+
 // The two sides differ in zone and clock; the second also in language (the same
 // language on both sides, as in the app, where the server reads the viewer's
 // cookie). One pair per test, by name: a probe mounts the tree again, and a
@@ -51,10 +56,13 @@ function testFile(): string {
   return String(expect.getState().testPath);
 }
 
-function swept(): boolean {
+function testFileName(): string {
   const path = testFile();
-  const name = path.slice(path.lastIndexOf("/") + 1);
-  return SWEPT_FILES.test(path) && !(name in EXEMPT);
+  return path.slice(path.lastIndexOf("/") + 1);
+}
+
+function swept(): boolean {
+  return SWEPT_FILES.test(testFile()) && !(testFileName() in EXEMPT);
 }
 
 vi.mock("@testing-library/react", async (importOriginal) => {
@@ -100,19 +108,45 @@ afterEach(async () => {
   // Only the first render of a test: later ones are the same page moved to
   // another state, and the test's mocks have usually been reset by now.
   const { server, client } = pairFor(expect.getState().currentTestName ?? "");
+  const other = PAIRS.find((pair) => pair.client !== client)!;
   // The test's own tree is still mounted here, and the probe's act() would flush
   // its pending updates against mocks the test has already reset.
   cleanup();
+  // The accessibility pass reads the hydrated page in both languages (w21/m395
+  // t002): the probe's own pair, then the other pair, whose hydration result is
+  // not judged (a fixture with state answers a second mount differently). The
+  // markup is copied while the tree is mounted (the body, so a dialog in a
+  // portal is included) and checked after it is gone: axe yields to the event
+  // loop, and doing that under a mounted Radix modal left its `pointer-events:
+  // none` on the page for the next test.
+  const snapshots: Array<{ language: string | undefined; html: string }> = [];
+  const snapshot = (language: string | undefined) => () => {
+    snapshots.push({ language, html: document.body.innerHTML });
+  };
   let probe;
   try {
     probe = await hydrateAcrossEnvironments(() => elements[0], {
       server,
       client,
+      inspect: A11Y_EXEMPT.has(testFileName())
+        ? undefined
+        : snapshot(client.language),
     });
   } catch {
     return;
   }
   if (probe.serverErrored) return;
+  if (!A11Y_EXEMPT.has(testFileName())) {
+    try {
+      await hydrateAcrossEnvironments(() => elements[0], {
+        server: other.server,
+        client: other.client,
+        inspect: snapshot(other.client.language),
+      });
+    } catch {
+      // The fixture cannot mount a second time; the first language was judged.
+    }
+  }
   const mismatches = probe.recovered.filter(
     (error) =>
       !String((error as Error)?.message ?? error).includes(
@@ -123,6 +157,24 @@ afterEach(async () => {
     throw new Error(
       `hydration mismatch (server ${server.timeZone}/${server.language}, browser ${client.timeZone}/${client.language}):\n` +
         mismatches.map(describeMismatch).join("\n---\n"),
+    );
+  }
+  const accessibility: string[] = [];
+  for (const { language, html } of snapshots) {
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    document.body.appendChild(host);
+    try {
+      for (const found of await a11yViolations(host)) {
+        accessibility.push(`[${language}] ${found}`);
+      }
+    } finally {
+      host.remove();
+    }
+  }
+  if (accessibility.length > 0) {
+    throw new Error(
+      `accessibility violations in the rendered page:\n${[...new Set(accessibility)].join("\n")}`,
     );
   }
 });

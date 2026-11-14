@@ -237,7 +237,19 @@ export async function hydrateAcrossEnvironments(
   {
     server = SERVER_ENVIRONMENT,
     client = BROWSER_ENVIRONMENT,
-  }: { server?: HydrationEnvironment; client?: HydrationEnvironment } = {},
+    inspect,
+  }: {
+    server?: HydrationEnvironment;
+    client?: HydrationEnvironment;
+    /**
+     * Called with the hydrated container, in the browser environment, before it
+     * is torn down: the page as the viewer sees it. Keep it synchronous or very
+     * short: a check that yields to the event loop while a Radix modal is
+     * mounted can leave its `pointer-events: none` behind (take a snapshot
+     * here and check it after the tree is gone, as the accessibility pass does).
+     */
+    inspect?: (container: HTMLElement) => void | Promise<void>;
+  } = {},
 ): Promise<HydrationProbe> {
   const html = await inEnvironment(server, async () =>
     renderToString(await build()),
@@ -266,6 +278,7 @@ export async function hydrateAcrossEnvironments(
           onCaughtError: (error) => failed.push(error),
         });
       });
+      if (inspect && failed.length === 0) await inspect(container);
     } finally {
       act(() => root?.unmount());
       container.remove();

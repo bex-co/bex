@@ -34,13 +34,14 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     Link: ({
       children,
       to,
-      className,
+      ...props
     }: {
       children: ReactNode;
       to: string;
       className?: string;
+      "aria-label"?: string;
     }) => (
-      <a href={to} className={className}>
+      <a href={to} {...props}>
         {children}
       </a>
     ),

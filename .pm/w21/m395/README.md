@@ -1,13 +1,13 @@
 # w21 · m395 — Dashboard accessibility gates: lint, an axe pass over every page fixture, and a contrast test on the colour tokens
 
-**Worker:** worker21 **Goal:** a missing accessible name, a control whose name drops its visible text, or a text and background pair below WCAG AA fails `yarn lint` or `yarn test`, so the class is caught by the suite instead of a QA round. **Status:** todo (t001 done)
+**Worker:** worker21 **Goal:** a missing accessible name, a control whose name drops its visible text, or a text and background pair below WCAG AA fails `yarn lint` or `yarn test`, so the class is caught by the suite instead of a QA round. **Status:** todo (t001, t002 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | Wire an accessibility lint into `yarn lint` and triage the baseline — **DONE** | 60m | — |
-| [t002](t002.md) | Run axe over every page-level fixture, in English and Chinese | 75m | — |
+| [t002](done/t002.md) | Run axe over every page-level fixture, in English and Chinese — **DONE** | 75m | — |
 | [t003](t003.md) | Test the colour tokens' contrast in both themes | 45m | — |
 | [t004](t004.md) | Fix what t001–t003 find, absorbing w4/607 and w4/612 | 90m | t001, t002, t003 |
 | [t005](t005.md) | Simplify | 15m | t004 |
