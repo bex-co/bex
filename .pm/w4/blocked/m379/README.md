@@ -1,6 +1,6 @@
 # w4 · m379 — A datastore event retrieved by ID answers `details: {}`: Postgres created/restarted name no user, `key_value_config_restart` drops Render's required `reason`/`message`, and the pool, disk, HA, replica and upgrade events drop the values Render requires
 
-**Worker:** worker4 **Goal:** `GET /v1/events/{eventId}` for every Postgres and Key Value event bex emits returns the `details` object Render's schema names for that type, filled from what bex records. A webhook consumer that fetches the event learns who acted and what changed, as on Render. **Status:** todo (t001–t005 done; t006, the live replay, waits on deploy)
+**Worker:** worker4 **Goal:** `GET /v1/events/{eventId}` for every Postgres and Key Value event bex emits returns the `details` object Render's schema names for that type, filled from what bex records. A webhook consumer that fetches the event learns who acted and what changed, as on Render. **Status:** blocked — release gate (t001–t005 done, code shipped 2026-11-14 by `/loopx w4`; t006 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 

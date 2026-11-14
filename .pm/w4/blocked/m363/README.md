@@ -1,6 +1,6 @@
 # w4 · m363 — A service's or environment group's secret files hold Render's 1 MB combined, not 512 KiB
 
-**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** todo (t001–t007 done; t008 live replay pending a deployed pin)
+**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** blocked — release gate (t001–t007 done, code shipped 2026-11-14 by `/loopx w4`; t008 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 
