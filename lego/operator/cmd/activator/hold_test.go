@@ -368,3 +368,58 @@ func TestStaleWakeStampIsNotAWakeInFlight(t *testing.T) {
 		t.Error("a request to an awake App restamped the wake")
 	}
 }
+
+// w4/603: right after maintenance turns off, the route still points at the
+// activator for up to a reconcile. A Running App with a ready instance gets its
+// own response at once, for a browser too, and nothing is patched.
+func TestReadyAppBehindALaggingRouteIsServedAtOnce(t *testing.T) {
+	app, dep := sleepingApp()
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	cache, base := primedHostCache(t, app, dep)
+	cl := &countingClient{Client: base}
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "app:"+r.Host)
+	}))
+	t.Cleanup(upstream.Close)
+	h := newHolder(cl)
+	target, _ := url.Parse(upstream.URL)
+	h.target = func(*appv1alpha1.App) *url.URL { return target }
+	h.ready = func(context.Context, *appv1alpha1.App) bool { return true }
+	handler := newHoldingHandler(cl, cache, logr.Discard(), h)
+
+	for _, accept := range []string{"application/json", "text/html"} {
+		req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil)
+		req.Header.Set("Accept", accept)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK || rr.Body.String() != "app:sleeping.onbex.co" {
+			t.Fatalf("Accept %s: response = %d %q, want the app's own 200", accept, rr.Code, rr.Body.String())
+		}
+		if tag := rr.Header().Get(routingHeader); tag != "" {
+			t.Errorf("Accept %s: %s = %q on the app's own response", accept, routingHeader, tag)
+		}
+	}
+	if n := cl.patches.Load(); n != 0 {
+		t.Errorf("serving a ready App patched %d objects, want none", n)
+	}
+}
+
+// A hibernated App still wakes even when a stale Deployment reads ready.
+func TestHibernatedAppStillWakesWhenReadyReadsTrue(t *testing.T) {
+	app, dep := sleepingApp()
+	app.Status.Phase = appv1alpha1.PhaseHibernated
+	cache, base := primedHostCache(t, app, dep)
+	cl := &countingClient{Client: base}
+	h := newHolder(cl)
+	h.ready = func(context.Context, *appv1alpha1.App) bool { return true }
+	handler := newHoldingHandler(cl, cache, logr.Discard(), h)
+
+	req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil)
+	req.Header.Set("Accept", "text/html")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if cl.patches.Load() == 0 {
+		t.Fatal("a hibernated App was not woken")
+	}
+}

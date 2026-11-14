@@ -260,6 +260,14 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		}
 		// A client that is not a browser has no loading page to poll, so its
 		// request is held through the cold start and then served (w8/178).
+		// An awake App that can already serve reaches here only while its
+		// route moves back from the activator: maintenance just turned off, a
+		// resume, a scale-up from zero. Serve it the app's own response now —
+		// no wake, no last-active or replica patch, no not-ready page (w4/603).
+		if hold != nil && !waking && app.Status.Phase != appv1alpha1.PhaseHibernated && hold.ready(ctx, app) {
+			hold.proxyNow(w, r, app)
+			return
+		}
 		holdable := hold != nil && waking && !acceptsHTML(r.Header.Values("Accept"))
 		_, _, _ = wakeGroup.Do(key, func() (any, error) {
 			wakeApp(logf.IntoContext(ctx, log), c, app, host)

@@ -297,6 +297,14 @@ func (h *holder) serve(w http.ResponseWriter, r *http.Request, app *appv1alpha1.
 	return true
 }
 
+// proxyNow proxies r to an App that is already ready, with the same dial
+// retry bound as a held request.
+func (h *holder) proxyNow(w http.ResponseWriter, r *http.Request, app *appv1alpha1.App) {
+	ctx := context.WithValue(r.Context(), appKey{}, app)
+	ctx = context.WithValue(ctx, deadlineKey{}, time.Now().Add(h.bound))
+	h.proxy.ServeHTTP(w, r.WithContext(ctx))
+}
+
 // writeWakeTimeout answers a held request whose App did not wake within the
 // hold bound.
 func writeWakeTimeout(w http.ResponseWriter, r *http.Request) {
