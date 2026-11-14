@@ -1,12 +1,12 @@
 # w9 · m407 — Repository environment phase 2: sessions boot from a snapshot built from the setup steps, as Devin's do
 
-**Worker:** worker9 **Goal:** a repository's setup steps run once in a build, the result is kept as an image, and every session on that repository boots from the newest successful build with the latest code pulled and no setup wait, as Devin's sessions boot from blueprint snapshots. **Status:** todo
+**Worker:** worker9 **Goal:** a repository's setup steps run once in a build, the result is kept as an image, and every session on that repository boots from the newest successful build with the latest code pulled and no setup wait, as Devin's sessions boot from blueprint snapshots. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: ADR for phase 2 — builds, triggers, statuses, secrets, boot and retention; amend ADR109 D2/D3 | 60m | — |
+| [t001](done/t001.md) | Design: ADR for phase 2 — builds, triggers, statuses, secrets, boot and retention; amend ADR109 D2/D3 — **DONE** | 60m | — |
 | [t002](t002.md) | Security review: builds make the privileged commit Job user-triggerable (ADR104 D4) | 45m | t001 |
 | [t003](t003.md) | Store: environment versions and the builds table | 60m | t001 |
 | [t004](t004.md) | Sandbox seams: boot an agent sandbox from a build image, commit a builder, keep its image | 75m | t001 |

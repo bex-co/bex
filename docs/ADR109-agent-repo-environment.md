@@ -1,6 +1,6 @@
 # ADR109 — Repository environments for cloud agent sessions: setup steps and checks (phase 1)
 
-**Status:** Accepted, 2026-11-14. Implemented by w9/m387. Amends [ADR047](ADR047-cloud-coding-agent-sessions.md) D5.
+**Status:** Accepted, 2026-11-14. Implemented by w9/m387. Amends [ADR047](ADR047-cloud-coding-agent-sessions.md) D5. D2 and D3 amended by [ADR111](ADR111-agent-repo-environment-snapshots.md) (phase 2, w9/m407).
 
 **Related decisions:**
 
@@ -44,7 +44,7 @@ A workspace may declare one environment per repository (`owner/name`, normalized
 
 The driver runs the setup steps after the checkout (`ensureRepo`) and before the agent's turn, once per sandbox. Since every turn is a fresh sandbox (ADR059), that is once per turn.
 
-**Divergence from Devin (needs the user's sign-off).** Devin runs setup when it builds a snapshot and boots every session from it. Phase 1 runs it at each turn's start instead. The outcome matches — the agent starts with dependencies installed and knows the checks — but the wait does not: each turn pays the setup's time. Phase 2 builds a per-repository snapshot from the same steps through the sandbox image build path and boots sessions from it; it is filed as its own w9 item. Under ADR008 parity-first, phase 1 ships as the parity-sufficient first step instead of waiting for phase 2.
+**Phase 2 closed the divergence ([ADR111](ADR111-agent-repo-environment-snapshots.md), w9/m407).** Devin runs setup when it builds a snapshot and boots every session from it. Phase 1 ran it at each turn's start instead, so each turn paid the setup's time. ADR111 builds an image from the setup steps and boots sessions from the newest matching build. This per-sandbox setup now runs only when no matching build exists: before the first build succeeds, after the steps change, or when the newest build failed.
 
 ### D3 — Limits
 
@@ -58,7 +58,7 @@ The driver runs the setup steps after the checkout (`ensureRepo`) and before the
 | Time per setup step | 10 minutes |
 | Time for all setup steps | 20 minutes |
 
-The per-turn limits are far below Devin's 3-hour build-time limit because phase 1 runs on the turn's clock (D2). A step past its limit is killed and fails the turn (D5).
+The per-turn limits are far below Devin's 3-hour build-time limit because phase 1 runs on the turn's clock (D2). A step past its limit is killed and fails the turn (D5). Builds (ADR111 D5) have Devin's 3 hours per step and per build; these per-turn limits apply only to phase 1's setup at a turn's start.
 
 ### D4 — Environment and secrets
 
@@ -90,7 +90,7 @@ When the repository has checks, the prompt overlay (ADR090) lists them and asks 
 
 ## Not adopted (phase 1)
 
-- Snapshots built from the setup (phase 2).
+- Snapshots built from the setup: phase 2, [ADR111](ADR111-agent-repo-environment-snapshots.md).
 - An organization-wide blueprint (Devin's org-level steps) and `post-build`.
 - Asking the agent to propose an environment (Devin's suggestion cards).
 - Running checks as a delivery gate.
