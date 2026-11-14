@@ -51,3 +51,7 @@ Fix: `LabelProtectedFromTenantMount`/`ProtectedFromTenantMount` move into `lego/
 - Digest-pinning inventory (finding 7; fourth report) — unchanged deferral.
 - Source-rotating connection floods at the SSH edge (finding 2 residual) — edge/LB rate limiting, matching the SNI-proxy posture.
 - Invite-link confirmation UX (finding 8) — revisit on consequence change only.
+
+## Amendment 2026-11-14 (ADR110, R25-12)
+
+The residual above, and finding 2's, rest on "edge/LB rate limiting" covering source-rotating connection floods at the SNI-proxy posture. That premise is false: the Hetzner load balancer has no L4 connection limiter, nothing else in the repository provides one, and no alert watches `connections_rejected_total`. The SNI proxies take one global slot at accept, before the PROXY header and SNI are read, so a few sources hold every slot for the 10-second handshake deadline (reproduced on the real `pg-sni-proxy`: a legitimate client served 25 of 25 before and 1 of 74 during the hold). The residual stays accepted, with the control in the pod: per-source counting now keys an IPv6 address on its /64 (w21/m394 t017), and a per-source cap before SNI resolution, a 2-second pre-header deadline and a rejected-connections alert are w21/070.

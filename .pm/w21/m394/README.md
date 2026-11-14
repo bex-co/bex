@@ -1,6 +1,6 @@
 # w21 · m394 — Security review round 25: the operator's tenant-facing daemons and the dashboard's server routes
 
-**Worker:** worker21 **Goal:** every operator daemon that parses tenant-controlled input and every dashboard server route has been reviewed with the `security-audit` skill, each confirmed finding is fixed with a regression test that fails on the old code, and ADR109 records scope, findings and accepted residuals. **Status:** todo (t001-t004 and t009-t017 done: the audit ran, every finding has a verdict and every fix is shipped; t005 (ADR109), t018 (Render parity), t006-t008 open)
+**Worker:** worker21 **Goal:** every operator daemon that parses tenant-controlled input and every dashboard server route has been reviewed with the `security-audit` skill, each confirmed finding is fixed with a regression test that fails on the old code, and ADR110 records scope, findings and accepted residuals. **Status:** todo (t001-t004 and t009-t017 done: the audit ran, every finding has a verdict and every fix is shipped; t005 (ADR110) and t018 (Render parity) done; t006-t008 open)
 
 ## Tasks (in order)
 
@@ -19,8 +19,8 @@
 | [t015](done/t015.md) | Fix R25-06 and R25-07: the edge cache charges every entry's real size, and the app behind it keeps the client's forwarding headers — **DONE** | 60m | t003 |
 | [t016](done/t016.md) | Fix R25-09: a link with an embedded tab, newline or leading control character renders as external — **DONE** | 20m | t003 |
 | [t017](done/t017.md) | Fix the small hardening items the audit found: a deadline on the pg SSLRequest reply, `?lang=%`, and an IPv6 /64 per-source key — **DONE** | 45m | t003 |
-| [t005](t005.md) | Write ADR109 and update the review lineage | 45m | t004, t009, t010, t011, t012, t013, t014, t015, t016, t017 |
-| [t018](t018.md) | Render parity | 20m | t004, t009, t010, t011, t012, t013, t014, t015, t016, t017 |
+| [t005](done/t005.md) | Write ADR110 (ADR109 was taken) and update the review lineage — **DONE** | 45m | t004, t009, t010, t011, t012, t013, t014, t015, t016, t017 |
+| [t018](done/t018.md) | Render parity — **DONE** | 20m | t004, t009, t010, t011, t012, t013, t014, t015, t016, t017 |
 | [t006](t006.md) | Simplify | 15m | t005, t018 |
 | [t007](t007.md) | Test coverage | 20m | t006 |
 | [t008](t008.md) | Closeout | 10m | t007 |
