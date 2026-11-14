@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -222,6 +223,29 @@ func TestShellResolvesRelativePathsUnderHome(t *testing.T) {
 		out, err := run(nil, shell(downloadScript, parent, "f.txt"))
 		if err != nil || string(out) != "file\nabc" {
 			t.Fatalf("download of %s/f.txt = %q, %v", parent, out, err)
+		}
+	}
+	// "." is the home directory itself (w32/022): path.Dir and path.Base of
+	// "." are both ".", so a download archives home, and an upload to it is
+	// refused like any existing directory destination.
+	out, err := run(nil, shell(downloadScript, ".", "."))
+	if err != nil || !bytes.HasPrefix(out, []byte("directory\n")) {
+		t.Fatalf("download of home = %q, %v", out, err)
+	}
+	var names []string
+	for tr := tar.NewReader(bytes.NewReader(out[len("directory\n"):])); ; {
+		h, err := tr.Next()
+		if err != nil {
+			break
+		}
+		names = append(names, h.Name)
+	}
+	if !slices.Contains(names, "./f.txt") || !slices.Contains(names, "./rel/f.txt") {
+		t.Fatalf("home archive = %v, want its files", names)
+	}
+	for _, kind := range []string{"directory", "file"} {
+		if _, err := run(nil, shell(checkScript, ".", ".", kind)); err == nil {
+			t.Fatalf("an upload of a %s to home itself was let through", kind)
 		}
 	}
 	if err := os.Symlink(filepath.Join(root, "elsewhere"), filepath.Join(home, "sneaky")); err != nil {

@@ -138,9 +138,9 @@ func pathDepth(value string) int {
 // to the sandbox user's home directory, as Render resolves it ("as scp
 // does", Render SDK v1.8.0 copy_to). Rejecting instead of silently cleaning
 // preserves the byte binding of the public connect token, and a relative path
-// may not climb out of the home directory.
+// may not climb out of the home directory. "." is the home directory itself.
 func ValidatePath(value string) error {
-	if value == "" || value == "/" || value == "." || value == ".." || strings.HasPrefix(value, "../") ||
+	if value == "" || value == "/" || value == ".." || strings.HasPrefix(value, "../") ||
 		len(value) > MaxPathBytes || path.Clean(value) != value ||
 		strings.ContainsRune(value, '\\') || strings.IndexFunc(value, unicode.IsControl) >= 0 ||
 		pathDepth(value) > MaxPathDepth {
