@@ -295,3 +295,82 @@ func TestPGAnInstanceExitIsTheOutagesOnlyServerFailed(t *testing.T) {
 		})
 	}
 }
+
+// w4/608: a new service crashing in its first pass interval, before the
+// sampler ever saw it healthy (availability "", or no checkpoint row yet), still
+// gets one server_available for its exit's server_failed on the first healthy
+// pass. A sleeping service's checkpoint keeps pairing through its wake.
+func TestPGAnExitBeforeTheFirstHealthySightingIsPaired(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+
+	healthy := &appv1alpha1.App{}
+	healthy.Status.Phase = appv1alpha1.PhaseRunning
+	healthy.Status.ActiveRevision = "rev-1"
+	healthy.Status.Conditions = []metav1.Condition{{Type: "Ready", Status: metav1.ConditionTrue, Reason: "Deployed"}}
+
+	for _, tc := range []struct {
+		name string
+		seed func(appID string) error // the checkpoint before the exit
+	}{
+		{"no checkpoint row yet", func(string) error { return nil }},
+		{"a checkpoint not yet seen healthy", func(appID string) error {
+			_, err := pool.Exec(ctx,
+				`INSERT INTO service_event_checkpoints (app_id, service_phase, availability, suspended, updated_at)
+				 VALUES ($1, 'Deploying', '', false, now() - interval '1 minute')`, appID)
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+			tenant, err := st.CreateWorkspace(ctx, "first-exit-"+stamp, PlanHobby, "first-exit-owner-"+stamp)
+			if err != nil {
+				t.Fatalf("create workspace: %v", err)
+			}
+			t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), tenant.ID) })
+			app, err := st.CreateApp(ctx, App{
+				TenantID: tenant.ID, Name: "web-" + stamp, Image: "traefik/whoami",
+				Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+			})
+			if err != nil {
+				t.Fatalf("create app: %v", err)
+			}
+			if err := tc.seed(app.ID); err != nil {
+				t.Fatal(err)
+			}
+			cr := healthy.DeepCopy()
+			cr.Status.InstanceExits = []appv1alpha1.InstanceExit{{
+				Instance: "web-a", RestartCount: 1, ExitCode: 3, FinishedAt: metav1.NewTime(time.Now().Add(-5 * time.Second)),
+			}}
+			for range 3 {
+				if err := st.InsertServiceEventFacts(ctx, instanceExitFacts(app.ID, cr)); err != nil {
+					t.Fatalf("record exits: %v", err)
+				}
+				if _, err := st.RecordObservedServiceState(ctx, observedServiceStateFor(app.ID, cr, false)); err != nil {
+					t.Fatalf("record observed state: %v", err)
+				}
+			}
+			var failed, available int
+			if err := pool.QueryRow(ctx,
+				`SELECT count(*) FILTER (WHERE fact_type = 'server_failed'), count(*) FILTER (WHERE fact_type = 'server_available')
+				   FROM service_event_facts WHERE app_id = $1`, app.ID).Scan(&failed, &available); err != nil {
+				t.Fatal(err)
+			}
+			if failed != 1 || available != 1 {
+				t.Errorf("server_failed = %d, server_available = %d; want one of each", failed, available)
+			}
+		})
+	}
+}

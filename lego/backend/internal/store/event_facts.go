@@ -289,21 +289,39 @@ func (s *PGStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEv
 // and the server_available is recorded at that transition. Otherwise the
 // checkpoint takes the outage from the exit on, and the next healthy pass
 // records the server_available as any outage's. A checkpoint already down has
-// its outage, and its recovery pairs with this exit.
+// its outage, and its recovery pairs with this exit; a sleeping one pairs a
+// waking instance's failure through its wake (w4/m230). A service the sampler
+// has not yet seen healthy (availability "", or no checkpoint row at all: a new
+// service crashing in its first pass interval) is not down either, so it takes
+// the outage too, and its first healthy pass is the recovery (w4/608).
 func (s *PGStore) pairInstanceExit(ctx context.Context, exit ServiceEventFact) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		var availability string
+		var phase, availability string
 		var healthyAt *time.Time
 		err := tx.QueryRow(ctx,
-			`SELECT availability, healthy_transition_at FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
-			exit.AppID).Scan(&availability, &healthyAt)
-		if errors.Is(err, pgx.ErrNoRows) || err == nil && availability != "healthy" {
-			return nil
+			`SELECT service_phase, availability, healthy_transition_at FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
+			exit.AppID).Scan(&phase, &availability, &healthyAt)
+		if errors.Is(err, pgx.ErrNoRows) {
+			// The outage is this service's first checkpoint. What was logged
+			// before it is history it reports nothing for, as for a first
+			// observation's baseline.
+			tag, err := tx.Exec(ctx,
+				`INSERT INTO service_event_checkpoints (app_id, service_phase, availability, suspended, updated_at)
+				 VALUES ($1, '', 'unhealthy', false, $2) ON CONFLICT (app_id) DO NOTHING`,
+				exit.AppID, exit.At)
+			if err != nil || tag.RowsAffected() == 0 {
+				return err
+			}
+			_, err = tx.Exec(ctx, `DELETE FROM service_suspension_changes WHERE app_id = $1`, exit.AppID)
+			return err
 		}
 		if err != nil {
 			return err
 		}
-		if healthyAt != nil && healthyAt.After(exit.At) {
+		if availability == "unhealthy" || phase == string(appv1alpha1.PhaseHibernated) {
+			return nil
+		}
+		if availability == "healthy" && healthyAt != nil && healthyAt.After(exit.At) {
 			recovered := ServiceEventFact{
 				SourceKey: exit.SourceKey + ":recovered",
 				AppID:     exit.AppID,
