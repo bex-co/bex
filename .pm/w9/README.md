@@ -39,7 +39,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [x] **m386** — [Sessions report their PR's state: open, merged or closed (Devin v3 `pr_state`)](done/m386/README.md) (10 tasks) ← from `/pm-brainstorm for w9` 2026-11-13, filed by `/pmx` 2026-11-13 — **DONE** 2026-11-14
 - [x] **m387** — [Repo environment: declared setup and checks run before the agent starts (Devin blueprint, phase 1)](done/m387/README.md) (13 tasks) ← from `/pm-brainstorm for w9` 2026-11-13, filed by `/pmx` 2026-11-13; needs m385 t003 — **DONE** 2026-11-14
 - [x] **m388** — [Workspace-level inbound IP rules, as on Render Scale and Enterprise](done/m388/README.md) (11 tasks) ← from `/pm-brainstorm for w9` 2026-11-13, filed by `/pmx` 2026-11-13 — **DONE** 2026-11-14
-- [ ] **m389** — [Log retention follows the workspace plan: 7, 14 or 30 days, as on Render](m389/README.md) (10 tasks) ← from `/pm-brainstorm for w9` 2026-11-13, filed by `/pmx` 2026-11-13
+- [x] **m389** — [Log retention follows the workspace plan: 7, 14 or 30 days, as on Render](done/m389/README.md) (10 tasks) ← from `/pm-brainstorm for w9` 2026-11-13, filed by `/pmx` 2026-11-13 — **DONE** 2026-11-14
 - [ ] **m407** — [Repository environment phase 2: sessions boot from a snapshot built from the setup steps, as Devin's do](m407/README.md) (13 tasks) ← promoted from w9/096 2026-11-14
 - [x] **096** — [Repository environment phase 2: sessions boot from a snapshot built from the setup steps, as Devin's do](done/096.md) ← w9/m387 t001 follow-up (ADR109 D2) — promoted to m407 2026-11-14
 - [x] **097** — [The Build Pipeline card's skeleton is shorter than the card, so Workspace Settings shifts down when it loads](done/097.md) ← w9/m388 t006 browser check — **DONE** 2026-11-14

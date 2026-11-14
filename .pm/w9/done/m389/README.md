@@ -1,6 +1,6 @@
 # w9 · m389 — Log retention follows the workspace plan: 7, 14 or 30 days, as on Render
 
-**Worker:** worker9 **Goal:** every log read — app, request, build and datastore logs on REST, GraphQL, MCP and the dashboard — reaches back exactly as far as the workspace's plan allows (Hobby 7 days, Pro 14, Scale and Enterprise 30), and an upgrade does not reveal logs older than the old plan kept. **Status:** todo (t001, t002, t003, t004, t005 done)
+**Worker:** worker9 **Goal:** every log read — app, request, build and datastore logs on REST, GraphQL, MCP and the dashboard — reaches back exactly as far as the workspace's plan allows (Hobby 7 days, Pro 14, Scale and Enterprise 30), and an upgrade does not reveal logs older than the old plan kept. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Per-plan read floor on every log read path — **DONE** | 120m | t001 |
 | [t004](done/t004.md) | Plan changes: an upgrade does not reveal logs older than the old plan's window — **DONE** | 60m | t003 |
 | [t005](done/t005.md) | Dashboard: range presets and the custom range bounded by plan — **DONE** | 60m | t003 |
-| [t006](t006.md) | Live check on production: each plan's window holds on every surface | 45m | t002, t004, t005 |
-| [t007](t007.md) | Render parity: every surface this milestone touched agrees, and matches render.com | 20m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t006](done/t006.md) | Live check on production: each plan's window holds on every surface — **DONE** | 45m | t002, t004, t005 |
+| [t007](done/t007.md) | Render parity: every surface this milestone touched agrees, and matches render.com — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 ## Definition of done
 
