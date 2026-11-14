@@ -6013,9 +6013,9 @@ func secretFileSources(app *appv1alpha1.App) []string {
 	// the LAST source wins a duplicate path; there is no duplicate-path error.
 	//
 	// It has to be positional rather than "append if missing", because
-	// spec.filesFromSecrets records the order the refs were ADDED, not
-	// precedence: a service created WITH files has its own Secret first (the
-	// backend's addString at create time) and every later link appends after
+	// spec.filesFromSecrets places the service's own Secret where it was added,
+	// not by precedence: a service created WITH files has its own Secret first (the
+	// backend's addString at create time) and every later link is placed after
 	// it, while a service that links first and adds a file later is already
 	// last. Before w2/m94 the projection took that list verbatim, so the same
 	// two services resolved the same collision differently — and a service

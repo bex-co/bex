@@ -190,8 +190,9 @@ func (s *Snapshot) Stamp(a *appv1alpha1.App) bool {
 		return false
 	}
 	// The release this write mints carries the env-group links staged while the
-	// service had Auto-Deploy off (w4/m239).
-	FoldStagedGroupLinks(a)
+	// service had Auto-Deploy off (w4/m239), its group refs in creation order
+	// (w4/m355).
+	PrepareGroupRefsForRelease(a)
 	a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(s.generation+1, 10)
 	return true
 }

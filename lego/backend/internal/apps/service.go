@@ -673,15 +673,15 @@ type AppView struct {
 	// disk's own id comes from the control-plane row via the /v1/disks surface.
 	Disk *ServiceDiskView `json:"disk,omitempty"`
 	// LinkedEnvGroupIDs are the environment groups linked to this service, in
-	// PRECEDENCE order: spec.envFromSecrets order, which is the order links were
-	// added. The operator emits those Secrets as envFrom sources in this order
-	// and Kubernetes lets the LAST source win a key collision, so the last entry
-	// here is the group whose value the service actually runs. Secret files
-	// follow the same rule (w2/m94/t002).
+	// PRECEDENCE order: spec.envFromSecrets order (with any staged links in the
+	// place their release gives them). The operator emits those Secrets as
+	// envFrom sources in this order and Kubernetes lets the LAST source win a
+	// key collision, so the last entry here is the group whose value the
+	// service runs. Secret files follow the same rule (w2/m94/t002).
 	//
-	// bex keeps last-linked-wins deliberately; Render documents that its own
-	// group-vs-group precedence is not guaranteed and currently uses the most
-	// recently CREATED group (docs/ADR018-render-parity.md).
+	// The link writers keep the groups oldest-created first, so the most
+	// recently CREATED group wins, as Render documents (w4/m355). A service
+	// linked before that rule adopts it at its next release.
 	LinkedEnvGroupIDs []string `json:"linkedEnvGroupIds,omitempty"`
 	// AutoDeploy is whether a signed git push to Branch redeploys this App
 	// (spec.autoDeploy, Render's Auto-Deploy toggle). The Settings → Build &

@@ -158,10 +158,11 @@ export function EnvGroupsPanel({
   const errorKind = classifySecretStoreError(error);
   const initialLoading = loading && groups.length === 0 && !error;
   const gated = errorKind === "unavailable" || errorKind === "forbidden";
-  // Precedence order, not list order. spec.envFromSecrets records the order
-  // links were ADDED, and Kubernetes lets the LAST envFrom source win, so the
-  // most recently linked group is the one whose value the service runs. Show
-  // the winner first. null means the API did not report link order (older
+  // Precedence order, not list order. linkedEnvGroupIds is spec.envFromSecrets
+  // order, which bex-api keeps oldest-created first, and Kubernetes lets the
+  // LAST envFrom source win, so the most recently created group is the one
+  // whose value the service runs, as on Render (w4/m355). Show the winner
+  // first. null means the API did not report link order (older
   // backend) — then we keep the server's order and claim no precedence at all
   // rather than inventing one, which is what the page did before w2/m94 when it
   // listed the LOSING group first purely by accident (w1/091).

@@ -48,7 +48,10 @@ import { EnvGroupsPanel } from "@/features/services/components/env-groups-panel"
  * Server reads that can be held or failed after the write.
  */
 interface FakeServer {
-  linked: string[]; // link order, last wins
+  // linkedEnvGroupIds as bex-api reports it (last wins). bex-api keeps it in
+  // group creation order (w4/m355); this fake appends a link, so a relink can
+  // reorder it, which is what exercises the panel re-reading the order.
+  linked: string[];
   holdServer: boolean;
   failServerReads: number;
   held: Array<() => void>;
@@ -56,8 +59,8 @@ interface FakeServer {
 let server: FakeServer;
 
 const GROUPS = [
-  { id: "evg-z", name: "z-new" },
-  { id: "evg-a", name: "a-old" },
+  { id: "evg-z", name: "zeta" },
+  { id: "evg-a", name: "alpha" },
 ];
 
 function serverData(id: string) {
@@ -194,7 +197,7 @@ function renderPanel() {
 }
 
 const loserTitle = (winner: string) =>
-  `Overridden by ${winner}, which is linked later`;
+  `Overridden by ${winner}, which was created later`;
 
 function linkedSection() {
   return screen
@@ -225,7 +228,7 @@ describe("EnvGroupsPanel link order after a membership write (w4/322)", () => {
       expect(within(linkedSection()).getAllByRole("link")).toHaveLength(2),
     );
     expect(
-      document.querySelectorAll(`[title="${loserTitle("z-new")}"]`),
+      document.querySelectorAll(`[title="${loserTitle("zeta")}"]`),
     ).toHaveLength(0);
     expect(document.querySelectorAll("s")).toHaveLength(0);
     expect(screen.getByRole("status")).toHaveTextContent(
@@ -237,13 +240,13 @@ describe("EnvGroupsPanel link order after a membership write (w4/322)", () => {
     });
     await waitFor(() =>
       expect(
-        document.querySelectorAll(`[title="${loserTitle("a-old")}"]`),
+        document.querySelectorAll(`[title="${loserTitle("alpha")}"]`),
       ).toHaveLength(2),
     );
     const names = within(linkedSection())
       .getAllByRole("link")
       .map((node) => node.textContent?.trim());
-    expect(names).toEqual(["a-old", "z-new"]);
+    expect(names).toEqual(["alpha", "zeta"]);
     expect(screen.queryByText(/Confirming which linked group wins/)).toBeNull();
   });
 
@@ -253,10 +256,10 @@ describe("EnvGroupsPanel link order after a membership write (w4/322)", () => {
     renderPanel();
     await waitFor(() =>
       expect(
-        document.querySelectorAll(`[title="${loserTitle("a-old")}"]`),
+        document.querySelectorAll(`[title="${loserTitle("alpha")}"]`),
       ).toHaveLength(2),
     );
-    // Relinking Z last makes it the winner, with the same two-group membership.
+    // The server now reports Z last, with the same two-group membership.
     await user.click(
       within(linkedSection()).getAllByRole("button", { name: /Unlink/ })[1],
     );
@@ -266,11 +269,11 @@ describe("EnvGroupsPanel link order after a membership write (w4/322)", () => {
     await user.click(screen.getByRole("button", { name: /^Link / }));
     await waitFor(() =>
       expect(
-        document.querySelectorAll(`[title="${loserTitle("z-new")}"]`),
+        document.querySelectorAll(`[title="${loserTitle("zeta")}"]`),
       ).toHaveLength(2),
     );
     expect(
-      document.querySelectorAll(`[title="${loserTitle("a-old")}"]`),
+      document.querySelectorAll(`[title="${loserTitle("alpha")}"]`),
     ).toHaveLength(0);
   });
 
@@ -295,7 +298,7 @@ describe("EnvGroupsPanel link order after a membership write (w4/322)", () => {
     await user.click(within(alert).getByRole("button", { name: /Try again/ }));
     await waitFor(() =>
       expect(
-        document.querySelectorAll(`[title="${loserTitle("a-old")}"]`),
+        document.querySelectorAll(`[title="${loserTitle("alpha")}"]`),
       ).toHaveLength(2),
     );
     expect(screen.queryByRole("alert")).toBeNull();

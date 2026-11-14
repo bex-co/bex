@@ -222,10 +222,10 @@ type renderService struct {
 	// official CLI) fails to unmarshal a bool here.
 	AutoDeploy string `json:"autoDeploy"`
 	// LinkedEnvGroupIDs is a bex extension: the linked environment groups in
-	// PRECEDENCE order (last wins a key or secret-file collision). Render's
-	// service object carries no link order, and documents that its own
-	// group-vs-group precedence is not guaranteed — see
-	// AppView.LinkedEnvGroupIDs and docs/ADR018-render-parity.md.
+	// PRECEDENCE order (last wins a key or secret-file collision): the most
+	// recently created group last, as Render resolves it (w4/m355). Render's
+	// service object carries no such list — see AppView.LinkedEnvGroupIDs and
+	// docs/ADR018-render-parity.md.
 	LinkedEnvGroupIDs []string `json:"linkedEnvGroupIds,omitempty"`
 	// AutoDeployTrigger is Render's newer representation of the same Auto-Deploy
 	// toggle (components.schemas.autoDeployTrigger): "off"|"commit"|"checksPass",

@@ -215,7 +215,7 @@ func TestUnlinkAndGroupDeleteOnARunningGatedServiceAreStaged(t *testing.T) {
 	if mountsGroup(staged, "evg-run") {
 		t.Fatal("a staged removal must read as unmounted")
 	}
-	rollout.FoldStagedGroupLinks(staged)
+	rollout.PrepareGroupRefsForRelease(staged)
 	if len(staged.Spec.EnvFromSecrets)+len(staged.Spec.FilesFromSecrets) != 0 || staged.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != "" {
 		t.Fatalf("the next release must carry the removal: %+v %v", staged.Spec, staged.Annotations)
 	}

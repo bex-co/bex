@@ -585,6 +585,34 @@ func TestTriggerShipsStagedGroupLinks(t *testing.T) {
 	}
 }
 
+// Between two linked groups the most recently created one wins (w4/m355). A
+// service linked before that rule, in link order, adopts creation order at the
+// owner's next deploy. olderGroup was created before newerGroup (xids sort by
+// creation second).
+const (
+	olderGroup = "evg-dbr60a95t55c738j9nmg"
+	newerGroup = "evg-dbr61inoj40s73fktaig"
+)
+
+func TestTriggerPutsLegacyGroupRefsInCreationOrder(t *testing.T) {
+	ds := newFakeStore()
+	app := repoApp("web", "srv-1", "main")
+	app.Spec.EnvFromSecrets = []string{newerGroup + "-env", olderGroup + "-env"}
+	app.Spec.FilesFromSecrets = []string{"web-files", newerGroup + "-files", olderGroup + "-files"}
+	svc, cl := newService(ds, app)
+
+	if _, err := svc.Trigger(context.Background(), "web", TriggerParams{}); err != nil {
+		t.Fatalf("Trigger: %v", err)
+	}
+	got := getApp(t, cl, "web")
+	if want := []string{olderGroup + "-env", newerGroup + "-env"}; !slices.Equal(got.Spec.EnvFromSecrets, want) {
+		t.Fatalf("envFromSecrets = %v, want %v", got.Spec.EnvFromSecrets, want)
+	}
+	if want := []string{"web-files", olderGroup + "-files", newerGroup + "-files"}; !slices.Equal(got.Spec.FilesFromSecrets, want) {
+		t.Fatalf("filesFromSecrets = %v, want %v", got.Spec.FilesFromSecrets, want)
+	}
+}
+
 func TestTriggerResetsCommitIDWhenOmitted(t *testing.T) {
 	ds := newFakeStore()
 	app := sampleApp("web", "srv-1")

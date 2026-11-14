@@ -1191,8 +1191,8 @@ func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp, gid
 	}
 	return false, s.rollLinkedService(ctx, a, store.TriggerConfigChange, func(a *appv1alpha1.App) {
 		if link {
-			a.Spec.EnvFromSecrets = core.AddString(a.Spec.EnvFromSecrets, envSecretName(gid))
-			a.Spec.FilesFromSecrets = core.AddString(a.Spec.FilesFromSecrets, filesSecretName(gid))
+			a.Spec.EnvFromSecrets = rollout.InsertGroupRef(a.Spec.EnvFromSecrets, envSecretName(gid))
+			a.Spec.FilesFromSecrets = rollout.InsertGroupRef(a.Spec.FilesFromSecrets, filesSecretName(gid))
 		} else {
 			a.Spec.EnvFromSecrets = removeString(a.Spec.EnvFromSecrets, envSecretName(gid))
 			a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, filesSecretName(gid))

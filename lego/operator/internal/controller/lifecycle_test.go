@@ -214,8 +214,9 @@ func TestSecretFileMountsProjectsTheServicesOwnSecretLast(t *testing.T) {
 	if got := names(mk("evg-1-files", "web-files")); !slices.Equal(got, []string{"evg-1-files", "web-files"}) {
 		t.Fatalf("own-last projection = %v, want [evg-1-files web-files]", got)
 	}
-	// Groups keep their relative order between themselves, so last linked still
-	// wins a group-vs-group collision; only the service's own Secret moves.
+	// Groups keep their relative order between themselves, so the group bex-api
+	// lists last (the most recently created, w4/m355) still wins a group-vs-group
+	// collision; only the service's own Secret moves.
 	if got := names(mk("web-files", "evg-1-files", "evg-2-files")); !slices.Equal(got, []string{"evg-1-files", "evg-2-files", "web-files"}) {
 		t.Fatalf("group order = %v, want [evg-1-files evg-2-files web-files]", got)
 	}

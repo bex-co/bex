@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EnvGroupView } from "@/features/env-groups/types";
+import i18n from "@/i18n/init";
 
 // Control the data/behavior the panel sees by mocking the feature hooks.
 const mockUseEnvGroups = vi.fn();
@@ -402,11 +403,12 @@ describe("EnvGroupsPanel", () => {
   });
 });
 
-// Group-vs-group precedence (w2/m94/t003, from w1/091). Linking B then A means
-// A wins: the operator emits each linked group's Secret as an envFrom source in
-// spec.envFromSecrets order and Kubernetes lets the LAST source win, so the
-// most recently linked group is what the service actually runs. At filing time
-// the page listed A above B by accident, not by rule, and marked neither key.
+// Group-vs-group precedence (w2/m94/t003, from w1/091). linkedEnvGroupIds
+// [B, A] means A wins: the operator emits each linked group's Secret as an
+// envFrom source in that order and Kubernetes lets the LAST source win. bex-api
+// keeps the list oldest-created first, so A is the more recently created group,
+// which wins as on Render (w4/m355). At filing time the page listed A above B
+// by accident, not by rule, and marked neither key.
 describe("EnvGroupsPanel group-vs-group precedence", () => {
   function twoLinkedGroups() {
     return groupsResult([
@@ -440,7 +442,7 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
   }
 
   it("orders linked groups by precedence and marks the loser's key and file", () => {
-    // B linked first, then A => A wins and is shown first.
+    // A created after B => A wins and is shown first.
     mockLinkedEnvGroupIds = ["egB", "egA"];
     mockUseEnvGroups.mockReturnValue(twoLinkedGroups());
     render(<EnvGroupsPanel serviceId="web" />);
@@ -458,7 +460,7 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
     expect(strikeText).toContain("qa.txt");
     expect(
       document.querySelectorAll(
-        '[title="Overridden by alpha, which is linked later"]',
+        '[title="Overridden by alpha, which was created later"]',
       ),
     ).toHaveLength(2);
     // The winner is not marked.
@@ -467,7 +469,7 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
     // reason is also text a screen reader reads next to the key.
     for (const node of Array.from(struck)) {
       expect(node.parentElement?.textContent).toContain(
-        "(Overridden by alpha, which is linked later)",
+        "(Overridden by alpha, which was created later)",
       );
     }
     for (const badge of Array.from(
@@ -486,6 +488,20 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
     // Marking one at random would be worse than marking neither: before m94 the
     // page implied a winner it had not computed.
     expect(document.querySelectorAll("s")).toHaveLength(0);
+  });
+
+  it("names the creation rule in Chinese too (w4/m355)", async () => {
+    mockLinkedEnvGroupIds = ["egB", "egA"];
+    mockUseEnvGroups.mockReturnValue(twoLinkedGroups());
+    await i18n.changeLanguage("zh");
+    try {
+      render(<EnvGroupsPanel serviceId="web" />);
+      expect(
+        document.querySelectorAll('[title="已被较晚创建的 alpha 覆盖"]'),
+      ).toHaveLength(2);
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   it("lets the service's own secret file beat every linked group's", () => {

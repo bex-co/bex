@@ -1118,14 +1118,14 @@ const zhServices: Record<string, TranslationEntry> = {
       "Tooltip on a linked group's secret-file badge when a service secret file of the same name shadows it at runtime (service wins)",
   },
   "services.envGroupKeyShadowedByGroup": {
-    message: "已被后链接的 {group} 覆盖",
+    message: "已被较晚创建的 {group} 覆盖",
     description:
-      "Tooltip on a linked group's key badge when a MORE recently linked group defines the same key and wins it",
+      "Tooltip on a linked group's key badge when a MORE recently created linked group defines the same key and wins it",
   },
   "services.envGroupFileShadowedByGroup": {
-    message: "已被后链接的 {group} 覆盖",
+    message: "已被较晚创建的 {group} 覆盖",
     description:
-      "Tooltip on a linked group's secret-file badge when a MORE recently linked group defines the same file name and wins it",
+      "Tooltip on a linked group's secret-file badge when a MORE recently created linked group defines the same file name and wins it",
   },
   "services.envGroupOverriddenNote": {
     message: "带删除线的键已被此服务自身的环境变量覆盖。",

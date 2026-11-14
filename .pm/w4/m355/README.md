@@ -1,18 +1,18 @@
 # w4 · m355 — Between two linked environment groups, bex gives the key to the group linked last, while Render gives it to the group created last; relinking an older group silently flips the value a service runs
 
-**Worker:** worker4 **Goal:** when two linked environment groups define the same env var or secret file, a service runs the value from the **most recently created** group, as Render documents. Relinking, or linking in a different order, no longer changes the winner. A service's own value still beats every group. **Status:** todo
+**Worker:** worker4 **Goal:** when two linked environment groups define the same env var or secret file, a service runs the value from the **most recently created** group, as Render documents. Relinking, or linking in a different order, no longer changes the winner. A service's own value still beats every group. **Status:** todo (t001–t007 done; t008 production replay open)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Order a service's group refs by group creation on every link writer | 1h15m | — |
-| [t002](t002.md) | Existing services: put their group refs in creation order at their next release, never by reconcile | 40m | t001 |
-| [t003](t003.md) | Environment page: name the creation rule in the override tooltip (en, zh) | 25m | t001 |
-| [t004](t004.md) | Amend ADR013 § Precedence and the ADR018 environment-groups row | 20m | t001, t002 |
-| [t005](t005.md) | Render parity | 20m | t003, t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 40m | t005 |
+| [t001](done/t001.md) | Order a service's group refs by group creation on every link writer — **DONE** | 1h15m | — |
+| [t002](done/t002.md) | Existing services: put their group refs in creation order at their next release, never by reconcile — **DONE** | 40m | t001 |
+| [t003](done/t003.md) | Environment page: name the creation rule in the override tooltip (en, zh) — **DONE** | 25m | t001 |
+| [t004](done/t004.md) | Amend ADR013 § Precedence and the ADR018 environment-groups row — **DONE** | 20m | t001, t002 |
+| [t005](done/t005.md) | Render parity — **DONE** | 20m | t003, t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005 |
 | [t008](t008.md) | Closeout (live replay on production) | 20m | t006, t007 |
 
 ## Definition of done

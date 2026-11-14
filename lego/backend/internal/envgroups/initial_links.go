@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -100,8 +101,8 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 			return err
 		}
 		group.added = addedThisAttempt
-		a.Spec.EnvFromSecrets = core.AddString(a.Spec.EnvFromSecrets, envSecretName(group.gid))
-		a.Spec.FilesFromSecrets = core.AddString(a.Spec.FilesFromSecrets, filesSecretName(group.gid))
+		a.Spec.EnvFromSecrets = rollout.InsertGroupRef(a.Spec.EnvFromSecrets, envSecretName(group.gid))
+		a.Spec.FilesFromSecrets = rollout.InsertGroupRef(a.Spec.FilesFromSecrets, filesSecretName(group.gid))
 	}
 	if err = create(); err != nil {
 		return err

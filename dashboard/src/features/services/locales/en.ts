@@ -1143,14 +1143,14 @@ const enServices: Record<string, TranslationEntry> = {
       "Tooltip on a linked group's secret-file badge when a service secret file of the same name shadows it at runtime (service wins)",
   },
   "services.envGroupKeyShadowedByGroup": {
-    message: "Overridden by {group}, which is linked later",
+    message: "Overridden by {group}, which was created later",
     description:
-      "Tooltip on a linked group's key badge when a MORE recently linked group defines the same key and wins it",
+      "Tooltip on a linked group's key badge when a MORE recently created linked group defines the same key and wins it",
   },
   "services.envGroupFileShadowedByGroup": {
-    message: "Overridden by {group}, which is linked later",
+    message: "Overridden by {group}, which was created later",
     description:
-      "Tooltip on a linked group's secret-file badge when a MORE recently linked group defines the same file name and wins it",
+      "Tooltip on a linked group's secret-file badge when a MORE recently created linked group defines the same file name and wins it",
   },
   "services.envGroupOverriddenNote": {
     message:

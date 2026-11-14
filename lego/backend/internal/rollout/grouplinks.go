@@ -19,7 +19,9 @@ package rollout
 import (
 	"encoding/json"
 	"slices"
+	"strings"
 
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -111,18 +113,85 @@ func StageGroupLink(a *appv1alpha1.App, envSecret, filesSecret string, link bool
 
 // EffectiveGroupSecrets returns the env and files Secret refs a will carry once
 // its staged links ship: what the owner asked for, not just what is running.
+// With nothing staged that is the running spec, in its own order. A staged
+// change ships in a release, which puts the group refs in creation order
+// (PrepareGroupRefsForRelease), so the result already carries that order.
 func EffectiveGroupSecrets(a *appv1alpha1.App) (env, files []string) {
 	g := readGroupLinks(a)
-	return g.Env.apply(a.Spec.EnvFromSecrets), g.Files.apply(a.Spec.FilesFromSecrets)
+	if g.empty() {
+		return slices.Clone(a.Spec.EnvFromSecrets), slices.Clone(a.Spec.FilesFromSecrets)
+	}
+	return SortGroupRefs(g.Env.apply(a.Spec.EnvFromSecrets)), SortGroupRefs(g.Files.apply(a.Spec.FilesFromSecrets))
 }
 
-// FoldStagedGroupLinks moves a's staged links into its spec and clears them. A
-// writer that is already minting a release calls it, so the release carries the
-// links; it must not be called for a write that does not roll one.
-func FoldStagedGroupLinks(a *appv1alpha1.App) {
-	if a == nil || a.Annotations[appv1alpha1.AnnotationPendingGroupLinks] == "" {
+// PrepareGroupRefsForRelease moves a's staged links into its spec, clears
+// them, and puts its group refs in creation order (w4/m355). A writer that is
+// already minting a release calls it, so the release carries the links. It
+// must not be called for a write that does not roll one, nor by a rollback,
+// which restores the old release as it was. This is how a service linked
+// before w4/m355, in link order, adopts creation order: only at a release its
+// owner started, never by a reconcile or a write that ships nothing.
+func PrepareGroupRefsForRelease(a *appv1alpha1.App) {
+	if a == nil {
 		return
 	}
-	a.Spec.EnvFromSecrets, a.Spec.FilesFromSecrets = EffectiveGroupSecrets(a)
+	g := readGroupLinks(a)
+	a.Spec.EnvFromSecrets = SortGroupRefs(g.Env.apply(a.Spec.EnvFromSecrets))
+	a.Spec.FilesFromSecrets = SortGroupRefs(g.Files.apply(a.Spec.FilesFromSecrets))
 	delete(a.Annotations, appv1alpha1.AnnotationPendingGroupLinks)
+}
+
+// Between two linked environment groups that define the same env var or secret
+// file, a service runs the value of the most recently CREATED group, as Render
+// documents: "Currently, Render uses the value from the most recently created
+// environment group" (render.com/docs/configure-environment-variables, read
+// 2026-11-14). The operator lets the LAST ref win a collision, and puts the
+// service's own Secret after every group, so the writers keep the group refs
+// oldest-created first, whatever order they were linked in (w4/m355).
+
+// InsertGroupRef returns list with ref present once and its group refs in
+// creation order. A link writer calls it in place of an append.
+func InsertGroupRef(list []string, ref string) []string {
+	if !slices.Contains(list, ref) {
+		list = append(slices.Clone(list), ref)
+	}
+	return SortGroupRefs(list)
+}
+
+// SortGroupRefs returns a copy of refs with its env-group refs
+// ("<evg-id>-env", "<evg-id>-files") in group creation order, oldest first.
+// They are sorted within the slots group refs already hold, so every other ref
+// keeps its position.
+//
+// A group id is an xid that id.New mints when the group is created, at the
+// same instant as its CreatedAt, and an xid's string sorts by its embedded
+// creation second first (then machine, process and counter). Ordering by id is
+// therefore creation order with the id as tie-break, and it needs no store
+// read: the release path that applies it (Snapshot.Stamp) is pure, and one
+// rule on every path means a release never reorders what a link wrote.
+func SortGroupRefs(refs []string) []string {
+	out := slices.Clone(refs)
+	var slots []int
+	var groups []string
+	for i, ref := range out {
+		if isGroupRef(ref) {
+			slots = append(slots, i)
+			groups = append(groups, ref)
+		}
+	}
+	slices.Sort(groups)
+	for i, slot := range slots {
+		out[slot] = groups[i]
+	}
+	return out
+}
+
+// isGroupRef reports whether ref names an env group's env or files Secret.
+func isGroupRef(ref string) bool {
+	gid, ok := strings.CutSuffix(ref, "-env")
+	if !ok {
+		gid, ok = strings.CutSuffix(ref, "-files")
+	}
+	kind, isID := id.KindOf(gid)
+	return ok && isID && kind == id.EnvGroup
 }

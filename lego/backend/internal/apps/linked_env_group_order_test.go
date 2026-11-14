@@ -23,6 +23,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -33,17 +34,31 @@ import (
 // rule, and marked neither key).
 //
 // Precedence is spec.envFromSecrets order: the operator emits those Secrets as
-// envFrom sources in order and Kubernetes lets the LAST win, so last linked
-// wins. This is deliberate divergence from Render, which uses the most recently
-// CREATED group (docs/ADR018-render-parity.md).
+// envFrom sources in order and Kubernetes lets the LAST win. The link writers
+// keep the groups oldest-created first, so the most recently CREATED group
+// wins, as on Render (w4/m355, docs/ADR013-secrets.md § Precedence).
 func TestLinkedEnvGroupIDsCarryPrecedenceOrderOnEveryAdapter(t *testing.T) {
-	a := sampleApp("web")
-	// Linked B first, then A — so A wins, and A must come LAST.
-	a.Spec.EnvFromSecrets = []string{"evg-b-env", "evg-a-env"}
-	// The service's own Secret is a different field and must never appear.
-	a.Spec.EnvFromSecret = "web-env"
+	const older, newer = "evg-dbr60a95t55c738j9nmg", "evg-dbr61inoj40s73fktaig"
+	t.Run("running", func(t *testing.T) {
+		a := sampleApp("web")
+		a.Spec.EnvFromSecrets = []string{older + "-env", newer + "-env"}
+		// The service's own Secret is a different field and must never appear.
+		a.Spec.EnvFromSecret = "web-env"
+		assertLinkedEnvGroupIDsOnEveryAdapter(t, a, []string{older, newer})
+	})
+	// An Auto-Deploy-off service that runs B and has A's link staged reports
+	// the order its next release runs: B still last, though A was linked later.
+	t.Run("staged", func(t *testing.T) {
+		a := sampleApp("web")
+		a.Spec.EnvFromSecrets = []string{newer + "-env"}
+		rollout.StageGroupLink(a, older+"-env", older+"-files", true)
+		assertLinkedEnvGroupIDsOnEveryAdapter(t, a, []string{older, newer})
+	})
+}
+
+func assertLinkedEnvGroupIDsOnEveryAdapter(t *testing.T, a *appv1alpha1.App, want []string) {
+	t.Helper()
 	svc, _ := newService(nil, a)
-	want := []string{"evg-b", "evg-a"}
 
 	// REST / MCP: both render the same renderService JSON shape.
 	view, err := svc.Get(context.Background(), "web")

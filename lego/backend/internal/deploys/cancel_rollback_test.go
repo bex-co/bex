@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -430,6 +431,28 @@ func TestRollbackRestoresPreviousLiveImage(t *testing.T) {
 	list, err := svc.List(context.Background(), "web", ListFilter{})
 	if err != nil || len(list) != 3 || list[0].ID != rolled.ID {
 		t.Fatalf("List after rollback (want newest-first, 3 entries) = %+v (err %v)", list, err)
+	}
+}
+
+// A rollback restores an old release as it was: it never re-sorts a legacy
+// service's group refs into creation order (w4/m355), as a deploy does.
+func TestRollbackLeavesGroupRefOrderAlone(t *testing.T) {
+	ds := newFakeStore()
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{}, "")
+	if won, err := ds.CloseDeploy(context.Background(), first.ID, store.DeployLive, "web:v1"); err != nil || !won {
+		t.Fatalf("close first live: won=%v err=%v", won, err)
+	}
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = "web:v2"
+	legacy := []string{newerGroup + "-env", olderGroup + "-env"}
+	app.Spec.EnvFromSecrets = slices.Clone(legacy)
+	svc, cl := newService(ds, app)
+
+	if _, err := svc.Rollback(context.Background(), "web", first.ID); err != nil {
+		t.Fatalf("Rollback: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.EnvFromSecrets; !slices.Equal(got, legacy) {
+		t.Fatalf("rollback reordered group refs: %v, want %v", got, legacy)
 	}
 }
 
