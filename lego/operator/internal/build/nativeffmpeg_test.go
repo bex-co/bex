@@ -61,7 +61,7 @@ func TestNativeDockerfileCarriesFFmpeg(t *testing.T) {
 				files[".ruby-version"] = line.version
 			}
 			bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
-			if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
+			if _, err := resolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
 				t.Fatalf("%s %s: %v", runtime, line.line, err)
 			}
 			df, err := os.ReadFile(dockerfile)
@@ -150,7 +150,7 @@ func TestNativeFFmpegLayerIsShared(t *testing.T) {
 		o := nativeOptions()
 		o.Runtime, o.BuildCommand = runtime, "true"
 		bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
-		if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
+		if _, err := resolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
 			t.Fatal(err)
 		}
 		df, err := os.ReadFile(dockerfile)

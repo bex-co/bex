@@ -17,9 +17,7 @@ limitations under the License.
 package agentcred
 
 import (
-	"context"
 	"errors"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -28,13 +26,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
-
-// ShareFileForwarder is bex-api's internal share verb as the gateway sees it
-// (*agentsession.ShareFileClient). Every error it returns is a
-// *agentsession.ShareFileError safe to relay to the sandbox.
-type ShareFileForwarder interface {
-	Share(context.Context, agentsession.ShareFileEnvelope, io.Reader) (agentsession.ShareFileResponse, error)
-}
 
 // serveShareFile is the share-side twin of servePullRequest (ADR095 D6): the
 // same admit gate, with the session-only Pod rule so repo-less sessions share

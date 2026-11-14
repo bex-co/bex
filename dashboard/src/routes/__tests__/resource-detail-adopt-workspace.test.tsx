@@ -283,8 +283,8 @@ vi.mock("@/features/webhooks/hooks/use-webhook", () => ({
     refetch: vi.fn(),
   }),
 }));
-vi.mock("@/features/webhooks/hooks/use-webhook-creator", () => ({
-  useWebhookCreator: () => null,
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: () => null,
 }));
 vi.mock("@/features/webhooks/components/webhook-detail-header", () => ({
   WebhookDetailHeader: ({ endpoint }: { endpoint: { name: string } }) => (

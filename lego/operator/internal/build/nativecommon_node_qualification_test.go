@@ -224,7 +224,7 @@ func commonNodeQualificationCase(t *testing.T, docker nativeUtilityDocker, commo
 	o.BuildCommand, o.StartCommand = "/usr/bin/python3 check.py build", "/usr/bin/python3 check.py runtime"
 	files := commonNodeQualificationFiles(t, tc)
 	bundle, path, source := writeResolveFixture(t, o, nil, files)
-	choices, err := ResolveNativeBuildAt(time.Time{}, tc.runtime, bundle, path, source)
+	choices, err := resolveNativeBuild(tc.runtime, bundle, path, source)
 	must(t, err)
 	expected, node, err := commonNodeQualificationExpectations(tc, choices)
 	must(t, err)

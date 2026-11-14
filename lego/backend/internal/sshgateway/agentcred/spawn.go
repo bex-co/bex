@@ -17,7 +17,6 @@ limitations under the License.
 package agentcred
 
 import (
-	"context"
 	"errors"
 	"io"
 	"log"
@@ -27,17 +26,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
-
-// SpawnForwarder is bex-api's internal spawn verb as the gateway sees it
-// (*agentsession.SpawnClient). Every error it returns is a
-// *agentsession.SpawnError safe to relay to the sandbox.
-type SpawnForwarder interface {
-	Spawn(context.Context, agentsession.SpawnEnvelope) (agentsession.SpawnResponse, error)
-	ReadChild(context.Context, agentsession.SpawnEnvelope) (agentsession.ChildView, error)
-	MessageChild(context.Context, agentsession.SpawnEnvelope) (agentsession.ChildView, error)
-	CancelChild(context.Context, agentsession.SpawnEnvelope) (agentsession.ChildView, error)
-	WaitChildren(context.Context, agentsession.SpawnEnvelope) (agentsession.SpawnWaitResponse, error)
-}
 
 // spawnRoute is one child-session operation as the sandbox addresses it.
 type spawnRoute int

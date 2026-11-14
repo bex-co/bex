@@ -123,7 +123,7 @@ func TestNativeNodeServiceDrainsUnderNpm(t *testing.T) {
 	o.BuildCommand, o.StartCommand, o.BuildEnv = "node --version", "npm --prefix qa start", nil
 	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
 	native := filepath.Dir(dockerfile)
-	if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
+	if _, err := resolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
 		t.Fatal(err)
 	}
 	must(t, os.MkdirAll(filepath.Join(src, "qa"), 0o755))
@@ -202,7 +202,7 @@ func TestNativePythonServiceStopsOnSIGTERM(t *testing.T) {
 	o.BuildCommand, o.StartCommand, o.BuildEnv = "python3 --version", "./start.sh", nil
 	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
 	native := filepath.Dir(dockerfile)
-	if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
+	if _, err := resolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
 		t.Fatal(err)
 	}
 	must(t, os.WriteFile(filepath.Join(src, "start.sh"), []byte("#!/bin/bash\necho \"script pid=$$\"\npython3 app.py\n"), 0o755))

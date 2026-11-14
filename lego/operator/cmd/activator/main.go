@@ -156,12 +156,6 @@ func main() {
 	}
 }
 
-// newHandler is the activator without request holding: a wake is answered at
-// once with the not-ready response. main serves newHoldingHandler.
-func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler {
-	return newHoldingHandler(c, cache, log, nil)
-}
-
 // newHoldingHandler holds a non-browser request that triggers or joins a wake
 // until the App can serve it (w8/178); hold nil answers every wake at once.
 func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold *holder) http.Handler {

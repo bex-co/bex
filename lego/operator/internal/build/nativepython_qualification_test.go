@@ -48,7 +48,7 @@ func prepareNativePythonQualification(t *testing.T, family, version, output stri
 	bundle, path, source := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": version}, files)
 	q.bundle, q.source = bundle, source
 	var err error
-	q.choices, err = ResolveNativeBuildAt(time.Time{}, o.Runtime, bundle, path, source)
+	q.choices, err = resolveNativeBuild(o.Runtime, bundle, path, source)
 	must(t, err)
 	q.canonical, err = os.ReadFile(path)
 	must(t, err)

@@ -133,7 +133,7 @@ func TestResolveNativeBuildAddsUVToPythonUVProjects(t *testing.T) {
 		" && ln -s /opt/bex/uv/bin/uv /usr/local/bin/uv && ln -s /opt/bex/uv/bin/uvx /usr/local/bin/uvx\n"
 	for _, line := range nativeToolchains["python"].lines {
 		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": line.line, "UV_VERSION": "0.12.10"}, map[string]string{"uv.lock": uvProbeLock})
-		choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
+		choices, err := resolveNativeBuild("python", bundle, dockerfile, src)
 		if err != nil || len(choices) != 4 || choices[0].Line != line.line || choices[1].Label != "Poetry" || choices[2].Label != "uv" || choices[2].Line != "0.12.10" || choices[3].Label != "Node" {
 			t.Fatalf("python %s choices = %+v, %v; want Python, Poetry, uv, Node", line.line, choices, err)
 		}
@@ -150,7 +150,7 @@ func TestResolveNativeBuildAddsUVToPythonUVProjects(t *testing.T) {
 	// and a version change changes only that step, which follows Poetry's.
 	resolved := func(version string) string {
 		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"UV_VERSION": version}, map[string]string{"uv.lock": uvProbeLock})
-		if _, err := ResolveNativeBuild("python", bundle, dockerfile, src); err != nil {
+		if _, err := resolveNativeBuild("python", bundle, dockerfile, src); err != nil {
 			t.Fatal(err)
 		}
 		df, _ := os.ReadFile(dockerfile)
@@ -166,7 +166,7 @@ func TestResolveNativeBuildAddsUVToPythonUVProjects(t *testing.T) {
 
 	// Without the lockfile the Dockerfile is exactly what it was before uv.
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"UV_VERSION": "0.12.10"}, map[string]string{"requirements.txt": "six==1.17.0\n"})
-	choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
+	choices, err := resolveNativeBuild("python", bundle, dockerfile, src)
 	if err != nil || len(choices) != 3 {
 		t.Fatalf("no-lock choices = %+v, %v; want Python, Poetry, Node", choices, err)
 	}
@@ -184,7 +184,7 @@ func TestResolveNativeBuildAddsUVToPythonUVProjects(t *testing.T) {
 		root := filepath.Join(checkout, "apps", "web")
 		must(t, os.MkdirAll(root, 0o755))
 		must(t, os.WriteFile(filepath.Join(checkout, tc.lockAt), []byte(uvProbeLock), 0o644))
-		choices, err := ResolveNativeBuild("python", bundle, dockerfile, root)
+		choices, err := resolveNativeBuild("python", bundle, dockerfile, root)
 		if got := err == nil && len(choices) == 4 && choices[2].Label == "uv"; got != tc.want {
 			t.Errorf("lockfile at %s: choices = %+v, %v; want uv %v", tc.lockAt, choices, err, tc.want)
 		}
@@ -193,7 +193,7 @@ func TestResolveNativeBuildAddsUVToPythonUVProjects(t *testing.T) {
 	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"UV_VERSION": "latest"}, map[string]string{"uv.lock": uvProbeLock})
 	before, _ := os.ReadFile(dockerfile)
 	var unsupported *UnsupportedVersionError
-	if _, err := ResolveNativeBuild("python", bundle, dockerfile, src); !errors.As(err, &unsupported) {
+	if _, err := resolveNativeBuild("python", bundle, dockerfile, src); !errors.As(err, &unsupported) {
 		t.Fatalf("unsupported UV_VERSION = %v, want a tenant UnsupportedVersionError", err)
 	}
 	if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
@@ -203,7 +203,7 @@ func TestResolveNativeBuildAddsUVToPythonUVProjects(t *testing.T) {
 	for _, runtime := range []string{"node", "ruby"} {
 		o.Runtime = runtime
 		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"UV_VERSION": "0.12.10"}, map[string]string{"uv.lock": uvProbeLock})
-		if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
+		if _, err := resolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
 			t.Fatalf("%s: %v", runtime, err)
 		}
 		if df, _ := os.ReadFile(dockerfile); strings.Contains(string(df), "/opt/bex/uv") {
