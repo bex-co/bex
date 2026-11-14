@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/tiers"
 )
 
 func TestInstanceMonthlyUSD(t *testing.T) {
@@ -168,5 +169,36 @@ func TestMonthlyEstimateNoStorageLineWithoutADisk(t *testing.T) {
 	}
 	if got.Lines[0].MonthlyUSD != "4.90" || got.Lines[0].StorageUSD != "" || got.Lines[0].StorageGB != 0 {
 		t.Errorf("a diskless service must carry no storage component: %+v", got.Lines[0])
+	}
+}
+
+// Every tier in the resource catalog is listed on the price sheet. A tier
+// added to types/tiers without its pricing.yaml entry would rate at $0 and be
+// dropped from every estimate and invoice line by the free-tier rule; free is
+// the one rung deliberately rated $0.
+func TestEveryCatalogTierIsListedOnThePriceSheet(t *testing.T) {
+	families := []struct {
+		name         string
+		resourceKind string
+		ids          []string
+	}{
+		{"compute", store.ResourceKindService, tiers.Compute.IDs()},
+		{"postgres", store.ResourceKindPostgres, tiers.Postgres.IDs()},
+		{"key value", store.ResourceKindKeyValue, tiers.Valkey.IDs()},
+	}
+	for _, f := range families {
+		for _, id := range f.ids {
+			usd, listed := Default.InstanceMonthlyUSD(id, f.resourceKind)
+			if !listed {
+				t.Errorf("%s tier %q is missing from pricing.yaml", f.name, id)
+				continue
+			}
+			if id == "free" && usd != "0.00" {
+				t.Errorf("%s free tier prices at %s/mo, want 0.00", f.name, usd)
+			}
+			if id != "free" && usd == "0.00" {
+				t.Errorf("%s tier %q prices at 0.00/mo; a paid catalog tier needs a rate", f.name, id)
+			}
+		}
 	}
 }
