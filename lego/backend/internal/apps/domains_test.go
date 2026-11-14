@@ -1617,6 +1617,9 @@ func TestGraphQLCustomDomainsSiblingConflict(t *testing.T) {
 	if len(res.Errors) == 0 {
 		t.Fatal("addCustomDomain sibling of another service's host: want a GraphQL error, got none")
 	}
+	if code, _ := res.Errors[0].Extensions["code"].(string); code != "CUSTOM_DOMAIN_IN_USE" {
+		t.Fatalf("addCustomDomain sibling conflict code = %q, want CUSTOM_DOMAIN_IN_USE (%v)", code, res.Errors)
+	}
 }
 
 // --- MCP ---
@@ -1695,6 +1698,11 @@ func TestMCPCustomDomainsSiblingConflict(t *testing.T) {
 	}
 	if !res.IsError {
 		t.Errorf("add_custom_domain sibling of another service's host: want a tool error, got %+v", res)
+	}
+	// The claim is the per-host guard's 409 code, not merely "an error":
+	// any lookup or argument failure would satisfy IsError.
+	if text := mcpResultText(res); !strings.HasPrefix(text, "CUSTOM_DOMAIN_IN_USE: ") {
+		t.Errorf("add_custom_domain sibling conflict = %q, want CUSTOM_DOMAIN_IN_USE", text)
 	}
 }
 

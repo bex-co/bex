@@ -143,15 +143,18 @@ func TestRateLimiterRESTShape(t *testing.T) {
 	id := core.Identity{Subject: "u1"}
 	r := reqWith("GET", "/v1/services", id)
 
-	httptest.NewRecorder() // consume burst
-	{
-		w := httptest.NewRecorder()
-		h.ServeHTTP(w, r)
+	// The first request consumes the single burst token; the second must be
+	// refused. A limiter that stopped enforcing would answer 200 here, so a
+	// missing 429 is a failure, never a skip.
+	first := httptest.NewRecorder()
+	h.ServeHTTP(first, r)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first request: want 200, got %d", first.Code)
 	}
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	if w.Code != http.StatusTooManyRequests {
-		t.Skip("need to exhaust burst first")
+		t.Fatalf("second request: want 429, got %d", w.Code)
 	}
 	var body map[string]any
 	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {

@@ -46,8 +46,16 @@ func TestEaObjectsSaysObjectStorageIsNotOffered(t *testing.T) {
 			local.Env = append(local.Env, "RENDER_USE_LOCAL_DEV=true")
 		}
 		local.Dir = t.TempDir()
-		if out, _ := local.CombinedOutput(); strings.Contains(string(out), "does not offer") {
-			t.Fatalf("%v (local mode) was refused: %s", local.Args, out)
+		// Local mode must still succeed: a refusal or any other failure is not
+		// swallowed, and a local call that quietly reached the API would show
+		// up in the request counter below.
+		var stderr bytes.Buffer
+		local.Stderr = &stderr
+		if err := local.Run(); err != nil {
+			t.Fatalf("%v (local mode) failed: %v (stderr %q)", local.Args, err, stderr.String())
 		}
+	}
+	if n := requests.Load(); n != 0 {
+		t.Errorf("sent %d object storage requests in local mode, want none", n)
 	}
 }
