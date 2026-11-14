@@ -181,7 +181,8 @@ func (s *Service) respondPostgres(w http.ResponseWriter, r *http.Request, status
 // using Render's canonical /v1/postgres noun.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// verb maps a lifecycle action to a handler with a Render-accurate status code
-	// (suspend/resume 202, restart 200 — same as services).
+	// (suspend/resume/restart 202, as Render answers all three; a service restart
+	// is 200, w4/m379).
 	verb := func(status int, fn func(context.Context, string) (PostgresView, error)) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
@@ -273,7 +274,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// --- lifecycle (Render: POST /postgres/{id}/{suspend,resume,restart,failover}) ---
 	mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
 	mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
-	mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart))
+	mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusAccepted, s.Restart))
 	// Render: failover => 202 Accepted, no response body.
 	mux.HandleFunc("POST "+base+"/{id}/failover", core.HandleNoBody(http.StatusAccepted, func(r *http.Request) error {
 		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))

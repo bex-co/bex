@@ -18,6 +18,7 @@ package store
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -293,13 +294,10 @@ func upgradeFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras
 		return nil
 	}
 	from, to := obs.CurrentVersion, obs.SpecVersion
-	keyFor := func(edge string) string {
-		return fmt.Sprintf("%s:upgrade:%s-%s:%s", obs.DatastoreID, from, to, edge)
-	}
 
 	var facts []DatastoreEventFact
 	emit := func(edge string, typ DatastoreEventFactType) {
-		key := keyFor(edge)
+		key := fmt.Sprintf("%s:upgrade:%s-%s:%s", obs.DatastoreID, from, to, edge)
 		if previous.UpgradeKey == key || next.UpgradeKey == key {
 			return
 		}
@@ -311,8 +309,8 @@ func upgradeFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras
 			Kind:        obs.Kind,
 			Type:        typ,
 			At:          obs.At,
-			VersionFrom: obs.CurrentVersion,
-			VersionTo:   obs.SpecVersion,
+			VersionFrom: from,
+			VersionTo:   to,
 		})
 	}
 
@@ -326,9 +324,27 @@ func upgradeFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras
 			(obs.AvailabilityObserved && obs.Availability == "healthy")) &&
 		!hasUpgradeTerminal(previous.UpgradeKey) &&
 		containsUpgradeEdge(previous.UpgradeKey, "started"):
+		// By success the running version has caught up with the spec, so the
+		// pair is the started edge's: Render's fromVersion is the version the
+		// upgrade left (w4/m379).
+		if f, t, ok := upgradeKeyVersions(previous.UpgradeKey, obs.DatastoreID); ok {
+			from, to = f, t
+		}
 		emit("succeeded", DatastoreFactPostgresUpgradeSucceeded)
 	}
 	return facts
+}
+
+// upgradeKeyVersions reads the from/to versions back out of an upgrade edge
+// key, "<id>:upgrade:<from>-<to>:<edge>".
+func upgradeKeyVersions(key, datastoreID string) (from, to string, ok bool) {
+	rest, ok := strings.CutPrefix(key, datastoreID+":upgrade:")
+	if !ok {
+		return "", "", false
+	}
+	pair, _, _ := strings.Cut(rest, ":")
+	from, to, ok = strings.Cut(pair, "-")
+	return from, to, ok && from != "" && to != ""
 }
 
 func hasUpgradeTerminal(key string) bool {

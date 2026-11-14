@@ -1,16 +1,16 @@
 # w4 · m379 — A datastore event retrieved by ID answers `details: {}`: Postgres created/restarted name no user, `key_value_config_restart` drops Render's required `reason`/`message`, and the pool, disk, HA, replica and upgrade events drop the values Render requires
 
-**Worker:** worker4 **Goal:** `GET /v1/events/{eventId}` for every Postgres and Key Value event bex emits returns the `details` object Render's schema names for that type, filled from what bex records. A webhook consumer that fetches the event learns who acted and what changed, as on Render. **Status:** todo
+**Worker:** worker4 **Goal:** `GET /v1/events/{eventId}` for every Postgres and Key Value event bex emits returns the `details` object Render's schema names for that type, filled from what bex records. A webhook consumer that fetches the event learns who acted and what changed, as on Render. **Status:** todo (t001–t005 done; t006, the live replay, waits on deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Render the datastore details bex already records: `user` on the user-triggered Postgres events, `enabled` on the pool toggle, `reason`/`message` on `key_value_config_restart`, `fromVersion`/`toVersion` on the upgrade events | 45m | — |
-| [t002](t002.md) | Record and render the from-values Render requires: `fromDiskSize`/`toDiskSize`, `fromStatus`/`toStatus` and `fromReplicas`/`toReplicas` | 45m | t001 |
-| [t003](t003.md) | Render parity | 20m | t002 |
-| [t004](t004.md) | Simplify | 15m | t003 |
-| [t005](t005.md) | Test coverage | 30m | t003 |
+| [t001](done/t001.md) | Render the datastore details bex already records: `user` on the user-triggered Postgres events, `enabled` on the pool toggle, `reason`/`message` on `key_value_config_restart`, `fromVersion`/`toVersion` on the upgrade events — **DONE** | 45m | — |
+| [t002](done/t002.md) | Record and render the from-values Render requires: `fromDiskSize`/`toDiskSize`, `fromStatus`/`toStatus` and `fromReplicas`/`toReplicas` — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Render parity — **DONE** | 20m | t002 |
+| [t004](done/t004.md) | Simplify — **DONE** | 15m | t003 |
+| [t005](done/t005.md) | Test coverage — **DONE** | 30m | t003 |
 | [t006](t006.md) | Closeout (live replay on production) | 20m | t004, t005 |
 
 Total: **6 tasks, about 2h55m**.
@@ -95,3 +95,40 @@ All on production, workspace `bex-canary`. Create a webhook with `eventFilter: [
   - w5/m138 (done) added the replica and autoscaling types "with no value".
   - `grep -rln "fromDiskSize\|fromReplicas\|fromStatus" .pm` finds nothing.
   - Not deploy lag: `git log 5de3d5bcce8e..origin/main -- lego/backend/internal/events lego/backend/internal/core/audit.go` lists one commit, `31b6d1682` (w10/m373). It only drops the image from a Git-backed deploy's details, and leaves `toRenderEvent`'s datastore arms as they were. Line numbers above are at `origin/main` `dae0ccfc7`.
+
+## Render parity walk (t003)
+
+Pinned spec, `GET /events/{eventId}` → `details`. The table lists every variant of "Postgres Event Details" and "Key Value Event Details", and what bex answers since w4/m379.
+
+| type | Render's member | bex |
+| --- | --- | --- |
+| `postgres_available` | empty | `{}` |
+| `postgres_unavailable` | empty | `{reasonCode}` (recorded bex extra, unchanged) |
+| `postgres_backup_started` / `_completed` / `_failed` | empty | `{}` |
+| `postgres_pitr_checkpoint_started` / `_completed` / `_failed` | empty | `{}` |
+| `postgres_cluster_leader_changed` | `leaderId` | `{leaderId}` (unchanged) |
+| `postgres_connection_pool_enabled_changed` | `enabled` (required), `user` | `{user, enabled}` |
+| `postgres_created` | `user` | `{user}`; `{}` for a row with no caller |
+| `postgres_restarted` | `user` | `{user}` |
+| `postgres_disk_size_changed` | `fromDiskSize`, `toDiskSize` (required), `user` | `{user, fromDiskSize, toDiskSize}`. A row recorded before w4/m379 has no `fromDiskSize` |
+| `postgres_ha_status_changed` | `fromStatus`, `toStatus` (required) | `{fromStatus, toStatus}`, `enabled`/`disabled` (bex's words; Render's are unverified) |
+| `postgres_read_replicas_changed` | `fromReplicas`, `toReplicas` (required) | `{fromReplicas, toReplicas}`. A row recorded before w4/m379 is `{}` |
+| `postgres_upgrade_started` | `fromVersion`, `toVersion` (required), `user` | `{fromVersion, toVersion}`. No `user`: the fact is observed and records no caller |
+| `postgres_upgrade_succeeded` / `_failed` | `fromVersion`, `toVersion` (required) | `{fromVersion, toVersion}`. A success recorded before w4/m379 repeats the new version |
+| `key_value_available`, `key_value_unhealthy` | empty | `{}` |
+| `key_value_config_restart` | `reason`, `message` (required) | `{reason: "config_change", message}`, the message naming the persistence mode |
+
+- **Not emitted by bex:**
+  - `postgres_connection_pool_changed` (Render's `from`/`to`): bex's pooler has no mode to change.
+  - `postgres_read_replica_stale`: no producer.
+  - Both stay in webhooks-api.md's "no truthful producer" row.
+- **No details member in Render's union:**
+  - `postgres_credentials_created`/`_deleted` are bex extras, not in Render's type enum.
+  - `postgres_disk_autoscaling_enabled_changed`, `postgres_restore_succeeded`/`_failed` and `postgres_wal_archive_failed` are in the enum but have no member.
+  - All of these answer `{}`.
+- **Postgres restart status:** `202`, as Render answers (t003).
+
+## Test record (t001–t005, 2026-11-14)
+
+- `cd lego/backend && GOWORK=off go test ./...` passes, rebased on `fa496cb64`. Before that rebase, `internal/sandbox`'s `TestFileGatewayRefusalBeforeTheFirstByteReachesTheClient` failed on this macOS host, on the unchanged base as well. `fa496cb64` skips it on macOS.
+- Real Postgres + OpenFGA (`scripts/backend-test-deps.sh`): `GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -count=1 -p 1` over `internal/store`, `internal/events`, `internal/postgres`, `internal/keyvalue`, `internal/core`, `internal/webhooks` and `internal/api` passes. That includes the new `TestPGDatastoreEventFromValuesHydrate` and migration 0260.

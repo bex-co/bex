@@ -138,6 +138,14 @@ func TestDatastoreRestoreAndUpgradeEdges(t *testing.T) {
 	if len(succeeded) != 1 || succeeded[0].Type != DatastoreFactPostgresUpgradeSucceeded {
 		t.Fatalf("want upgrade_succeeded, got %+v", succeeded)
 	}
+	// w4/m379: every edge names the upgrade it reports, Render's
+	// fromVersion/toVersion — success included, once the running version
+	// has caught up with the spec.
+	for _, fact := range []DatastoreEventFact{started[0], succeeded[0]} {
+		if fact.VersionFrom != "16" || fact.VersionTo != "17" {
+			t.Errorf("%s versions = %q -> %q, want 16 -> 17", fact.Type, fact.VersionFrom, fact.VersionTo)
+		}
+	}
 }
 
 // pitrBase is a healthy Postgres checkpoint baseline for the w5/m141 edges.

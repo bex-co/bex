@@ -156,6 +156,18 @@ type renderDetails struct {
 	Reason       any    `json:"reason,omitempty"`
 	// postgres_cluster_leader_changed: Render's leaderId, the new primary.
 	LeaderID string `json:"leaderId,omitempty"`
+	// The Postgres transitions Render names both sides of (w4/m379):
+	// postgres_disk_size_changed's sizes in GB, postgres_ha_status_changed's
+	// status words, postgres_read_replicas_changed's counts and the
+	// postgres_upgrade_* major versions. A side bex did not record is omitted.
+	FromDiskSize *int32 `json:"fromDiskSize,omitempty"`
+	ToDiskSize   *int32 `json:"toDiskSize,omitempty"`
+	FromStatus   string `json:"fromStatus,omitempty"`
+	ToStatus     string `json:"toStatus,omitempty"`
+	FromReplicas *int32 `json:"fromReplicas,omitempty"`
+	ToReplicas   *int32 `json:"toReplicas,omitempty"`
+	FromVersion  string `json:"fromVersion,omitempty"`
+	ToVersion    string `json:"toVersion,omitempty"`
 	// service_disk_usage_high / _recovered (w2/m255): Render's disk details.
 	DiskID           string   `json:"diskId,omitempty"`
 	DiskName         string   `json:"diskName,omitempty"`
@@ -211,6 +223,35 @@ func toFailureReason(d Details) *FailureReason {
 		return &FailureReason{Unhealthy: unhealthyMessage}
 	}
 	return nil
+}
+
+// haStatuses is postgres_ha_status_changed's fromStatus/toStatus: Render's
+// words are unverified, so bex says enabled/disabled (ADR018). A toggle is
+// recorded only when it changed, so the side before is the opposite one; a row
+// with no recorded value has neither.
+func haStatuses(enabled *bool) (from, to string) {
+	if enabled == nil {
+		return "", ""
+	}
+	if *enabled {
+		return "disabled", "enabled"
+	}
+	return "enabled", "disabled"
+}
+
+// keyValueConfigRestartReason is key_value_config_restart's reason: bex's only
+// restarting Key Value change is a configuration write (the persistence mode;
+// an eviction-policy change restarts nothing, w4/m330). Render's own code is
+// unverified (ADR018).
+const keyValueConfigRestartReason = "config_change"
+
+// keyValueConfigRestartMessage is key_value_config_restart's message, naming
+// the persistence mode the instance restarted into when the row recorded it.
+func keyValueConfigRestartMessage(persistenceMode *string) string {
+	if persistenceMode == nil {
+		return "The configuration changed; the instance restarted to apply it."
+	}
+	return "Persistence mode changed to " + *persistenceMode + "; the instance restarted to apply it."
 }
 
 // imagePullFailedMessage is image_pull_failed's message; the event records no
@@ -333,6 +374,7 @@ func toRenderEvent(e Event) renderEvent {
 		SuspendedByUser:  toRenderUser(e.Details.SuspendedByUser),
 		ResumedByUser:    toRenderUser(e.Details.ResumedByUser),
 		TriggeredByUser:  e.Details.TriggeredByUser,
+		User:             toRenderUser(e.Details.User),
 		ReasonCode:       e.Details.ReasonCode,
 		InstanceID:       e.Details.InstanceID,
 	}
@@ -399,7 +441,6 @@ func toRenderEvent(e Event) renderEvent {
 	case TypeCronJobRunEnded:
 		d.CronJobRunID = e.Details.CronJobRunID
 		d.Status = renderCronRunStatus(e.Details.Status)
-		d.User = toRenderUser(e.Details.User)
 		if reason := toFailureReason(e.Details); reason != nil {
 			d.Reason = reason
 		}
@@ -421,6 +462,18 @@ func toRenderEvent(e Event) renderEvent {
 		d.BuildID = e.Details.DeployID
 	case TypePostgresClusterLeaderChanged:
 		d.LeaderID = e.Details.LeaderID
+	case TypePostgresConnectionPoolEnabledChanged:
+		d.Enabled = e.Details.ConnectionPoolEnabled
+	case TypePostgresDiskSizeChanged:
+		d.FromDiskSize, d.ToDiskSize = e.Details.DiskSizeFromGB, e.Details.DiskSizeGB
+	case TypePostgresHAStatusChanged:
+		d.FromStatus, d.ToStatus = haStatuses(e.Details.HighAvailabilityEnabled)
+	case TypePostgresReadReplicasChanged:
+		d.FromReplicas, d.ToReplicas = e.Details.ReadReplicasFrom, e.Details.ReadReplicasTo
+	case TypePostgresUpgradeStarted, TypePostgresUpgradeSucceeded, TypePostgresUpgradeFailed:
+		d.FromVersion, d.ToVersion = e.Details.VersionFrom, e.Details.VersionTo
+	case TypeKeyValueConfigRestart:
+		d.Reason, d.Message = keyValueConfigRestartReason, keyValueConfigRestartMessage(e.Details.PersistenceMode)
 	case TypeDiskSnapshotRestored, TypeDiskDeleted:
 		d.DiskID = e.Details.DiskID
 	case TypeDiskCreated:

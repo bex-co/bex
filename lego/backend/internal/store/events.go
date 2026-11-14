@@ -185,6 +185,10 @@ type ServiceEventRow struct {
 	// w2/m171). Datastore facts have no service-list home, so only the by-id
 	// read (GetServiceEvent) fills it.
 	LeaderID string
+	// VersionFrom / VersionTo are a datastore upgrade fact's PostgreSQL major
+	// versions (postgres_upgrade_*, w4/m379); by-id read only, like LeaderID.
+	VersionFrom string
+	VersionTo   string
 }
 
 // ServiceEventLookup is one globally-addressed event plus the resource identity
@@ -625,6 +629,9 @@ type AuditChanges struct {
 	Domain          *string
 	// What an edge-cache profile save turned caching to (w9/m345).
 	EdgeCacheEnabledTo *bool
+	// A managed-Postgres replica change's counts on each side (w4/m379).
+	ReadReplicasFrom *int32
+	ReadReplicasTo   *int32
 }
 
 // auditChangesColumns are AuditChanges' columns of audit_events aliased a, in
@@ -632,13 +639,15 @@ type AuditChanges struct {
 const auditChangesColumns = `a.maintenance_mode_to, a.disk_size_from_gb, a.maintenance_uri_from, a.maintenance_uri_to,
        a.auto_deploy_reason, a.auto_deploy_trigger, a.env_group_id, a.env_group_name,
        a.autoscaling_cpu_from, a.autoscaling_cpu_to, a.autoscaling_memory_from, a.autoscaling_memory_to,
-       a.display_name_from, a.display_name_to, a.domain, a.autoscaling_enabled_from, a.edge_cache_enabled_to`
+       a.display_name_from, a.display_name_to, a.domain, a.autoscaling_enabled_from, a.edge_cache_enabled_to,
+       a.read_replicas_from, a.read_replicas_to`
 
 func (c *AuditChanges) scanDestinations() []any {
 	return []any{&c.MaintenanceModeTo, &c.DiskSizeFromGB, &c.MaintenanceURIFrom, &c.MaintenanceURITo,
 		&c.AutoDeployReason, &c.AutoDeployTrigger, &c.EnvGroupID, &c.EnvGroupName,
 		&c.AutoscalingCPUFrom, &c.AutoscalingCPUTo, &c.AutoscalingMemoryFrom, &c.AutoscalingMemoryTo,
-		&c.DisplayNameFrom, &c.DisplayNameTo, &c.Domain, &c.AutoscalingEnabledFrom, &c.EdgeCacheEnabledTo}
+		&c.DisplayNameFrom, &c.DisplayNameTo, &c.Domain, &c.AutoscalingEnabledFrom, &c.EdgeCacheEnabledTo,
+		&c.ReadReplicasFrom, &c.ReadReplicasTo}
 }
 
 // auditRowID is an audit row's id from its feed key ("<audit row id>:").
@@ -848,6 +857,8 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.disk_id END AS disk_id,
        COALESCE(h.app_id, h.service_id),
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(df.leader_id, '') ELSE '' END AS leader_id,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(df.version_from, '') ELSE '' END AS version_from,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(df.version_to, '') ELSE '' END AS version_to,
        -- AuditChanges (w3/m317), read off the audit row this query already
        -- joins rather than in attachAuditChanges' second round trip; the join
        -- matches audit hits only, so any other hit reads NULLs.
@@ -877,7 +888,7 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	var out ServiceEventLookup
 	r := &out.Event
 	err := s.Pool.QueryRow(ctx, getServiceEventQuery, workspaceID, eventID).Scan(
-		serviceEventScanDestinations(r, append([]any{&out.ServiceID, &r.LeaderID}, r.AuditChanges.scanDestinations()...)...)...,
+		serviceEventScanDestinations(r, append([]any{&out.ServiceID, &r.LeaderID, &r.VersionFrom, &r.VersionTo}, r.AuditChanges.scanDestinations()...)...)...,
 	)
 	if err != nil {
 		return ServiceEventLookup{}, classify("service event", err)

@@ -875,13 +875,20 @@ type Details struct {
 	// Datastore configuration changes (w3/m82): the value the field was set TO.
 	// postgres_ha_status_changed carries HighAvailabilityEnabled,
 	// postgres_connection_pool_enabled_changed ConnectionPoolEnabled,
-	// postgres_disk_size_changed DiskSizeGB, and key_value_config_restart the
-	// resulting MaxmemoryPolicy/PersistenceMode pair.
+	// postgres_disk_size_changed DiskSizeGB (its before in DiskSizeFromGB),
+	// and key_value_config_restart the resulting MaxmemoryPolicy/PersistenceMode
+	// pair. postgres_read_replicas_changed carries both replica counts and the
+	// postgres_upgrade_* facts both major versions (w4/m379); nil or empty on
+	// rows recorded before them.
 	HighAvailabilityEnabled *bool
 	ConnectionPoolEnabled   *bool
 	DiskSizeGB              *int32
 	MaxmemoryPolicy         *string
 	PersistenceMode         *string
+	ReadReplicasFrom        *int32
+	ReadReplicasTo          *int32
+	VersionFrom             string
+	VersionTo               string
 	// Durable fact details. ReasonCode is a closed public code, never a raw
 	// Kubernetes or Git message.
 	ReasonCode string
@@ -895,9 +902,11 @@ type Details struct {
 	// cronJobRunId) and, with ReasonCode non_zero_exit or oom_killed, the failed
 	// run's container exit status.
 	CronJobRunID string
-	// User is cron_job_run_ended's Render {id, email} user (w4/631): the
-	// canceler of a canceled run, else the user who triggered it; nil for a
-	// scheduled run nobody canceled.
+	// User is Render's {id, email} user. On cron_job_run_ended (w4/631) it is
+	// the canceler of a canceled run, else the user who triggered it; nil for a
+	// scheduled run nobody canceled. On postgres_created, postgres_restarted,
+	// postgres_connection_pool_enabled_changed and postgres_disk_size_changed
+	// (w4/m379) it is the caller whose write the event records.
 	User *UserRef
 	// JobID is job_run_ended's job-… id, read back from its fact key.
 	JobID    string
@@ -1390,12 +1399,16 @@ func view(r store.ServiceEventRow, service string) Event {
 				environmentID := ids.EnvironmentPublicID(*r.EnvironmentTo)
 				ev.Details.EnvironmentTo = &environmentID
 			}
+		case TypePostgresCreated, TypePostgresRestarted:
+			ev.Details.User = callerRef(r.Caller)
 		case TypePostgresHAStatusChanged:
 			ev.Details.HighAvailabilityEnabled = r.HighAvailabilityEnabled
 		case TypePostgresConnectionPoolEnabledChanged:
-			ev.Details.ConnectionPoolEnabled = r.ConnectionPoolEnabled
+			ev.Details.ConnectionPoolEnabled, ev.Details.User = r.ConnectionPoolEnabled, callerRef(r.Caller)
 		case TypePostgresDiskSizeChanged:
-			ev.Details.DiskSizeGB = r.DiskSizeGB
+			ev.Details.DiskSizeFromGB, ev.Details.DiskSizeGB, ev.Details.User = r.DiskSizeFromGB, r.DiskSizeGB, callerRef(r.Caller)
+		case TypePostgresReadReplicasChanged:
+			ev.Details.ReadReplicasFrom, ev.Details.ReadReplicasTo = r.ReadReplicasFrom, r.ReadReplicasTo
 		case TypeDiskCreated, TypeDiskUpdated, TypeDiskDeleted:
 			ev.Details.DiskSizeFromGB, ev.Details.DiskSizeGB = r.DiskSizeFromGB, r.DiskSizeGB
 		case TypeMaintenanceModeEnabled:
@@ -1426,10 +1439,7 @@ func view(r store.ServiceEventRow, service string) Event {
 			if slices.Contains(core.EdgeCacheToggleVerbs, r.Verb) {
 				ev.Type, _ = store.ToggleEvent(r.EdgeCacheEnabledTo, TypeEdgeCacheEnabled, TypeEdgeCacheDisabled)
 			}
-			ev.Details.EdgeCacheTrigger = &EdgeCacheTrigger{System: r.Verb == core.AuditVerbSetPlanEdgeCache}
-			if r.Caller != "" {
-				ev.Details.EdgeCacheTrigger.User = &UserRef{ID: r.Caller}
-			}
+			ev.Details.EdgeCacheTrigger = &EdgeCacheTrigger{System: r.Verb == core.AuditVerbSetPlanEdgeCache, User: callerRef(r.Caller)}
 		case TypeAutoDeployChanged:
 			// Discriminate: new rows carry the boolean; legacy rows keep the bex name.
 			if t, ok := store.ToggleEvent(r.AutoDeployEnabled, TypeAutoDeployEnabled, TypeAutoDeployDisabled); ok {
@@ -1452,8 +1462,8 @@ func view(r store.ServiceEventRow, service string) Event {
 		ev.Details.CommitURL = r.CommitURL
 		ev.Details.Status = r.FactStatus
 		ev.Details.CronJobRunID = r.FactRunID
-		if ev.Type == TypeCronJobRunEnded && r.Caller != "" {
-			ev.Details.User = &UserRef{ID: r.Caller}
+		if ev.Type == TypeCronJobRunEnded {
+			ev.Details.User = callerRef(r.Caller)
 		}
 		if ev.Type == TypeCronJobRunStarted && r.FactRunID == "" {
 			if name, ok := store.CronRunNameFromStartedKey(r.Key); ok {
@@ -1465,6 +1475,7 @@ func view(r store.ServiceEventRow, service string) Event {
 		}
 		ev.Details.ExitCode = r.FactExitCode
 		ev.Details.LeaderID = r.LeaderID
+		ev.Details.VersionFrom, ev.Details.VersionTo = r.VersionFrom, r.VersionTo
 		if u := r.DiskUsage; u != nil {
 			usage, threshold := u.UsagePercent, u.ThresholdPercent
 			ev.Details.DiskID, ev.Details.DiskName, ev.Details.MountPath = u.DiskID, u.DiskName, u.MountPath
@@ -1508,8 +1519,15 @@ func deployTrigger(r store.ServiceEventRow) *Trigger {
 		Rollback:         r.Trigger == store.TriggerRollback,
 		DeployedByRender: r.Trigger == store.TriggerDeployedByRender,
 	}
-	if r.Caller != "" {
-		t.User = &UserRef{ID: r.Caller}
-	}
+	t.User = callerRef(r.Caller)
 	return t
+}
+
+// callerRef is the {id, email} user a row's caller names, nil when the row
+// records none.
+func callerRef(subject string) *UserRef {
+	if subject == "" {
+		return nil
+	}
+	return &UserRef{ID: subject}
 }

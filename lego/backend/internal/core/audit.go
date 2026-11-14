@@ -127,8 +127,14 @@ type AuditEvent struct {
 	// deleted (w3/m317). Empty for every other verb.
 	DiskID string
 	// DiskSizeFromGB is a disk resize's size before it (Render's DiskUpdated
-	// fromSizeGB); DiskSizeGB is the size it was created with or resized to.
+	// fromSizeGB, and postgres_disk_size_changed's fromDiskSize, w4/m379);
+	// DiskSizeGB is the size it was created with or resized to.
 	DiskSizeFromGB *int32
+	// ReadReplicasFrom/ReadReplicasTo are a managed-Postgres replica change's
+	// counts before and after it (Render's postgres_read_replicas_changed,
+	// w4/m379). Nil for every other verb.
+	ReadReplicasFrom *int32
+	ReadReplicasTo   *int32
 	// MaintenanceURIFrom/MaintenanceURITo are a maintenance-page change's
 	// before/after (Render's MaintenanceModeURIUpdated fromURI/toURI): the
 	// service's own maintenanceMode.uri, which any reader of the service sees.
@@ -1072,11 +1078,10 @@ func (b *Base) RecordDatabasePlanChanged(ctx context.Context, d *appv1alpha1.Dat
 }
 
 // RecordDatabaseHighAvailabilityChanged records a successful managed-Postgres
-// high-availability toggle with the value it was set TO. The resulting value
-// rather than a from/to pair, following RecordAutoDeployChanged: Render's
-// postgres_ha_status_changed names the transition and the recorded boolean says
-// which way it went. Recorded only after the CR patch succeeds, and only when
-// the field actually changed, so an idempotent PATCH emits nothing.
+// high-availability toggle with the value it was set TO. Recorded only after
+// the CR patch succeeds, and only when the field actually changed, so an
+// idempotent PATCH emits nothing and the value before is always the opposite:
+// Retrieve event renders Render's fromStatus/toStatus pair from it (w4/m379).
 func (b *Base) RecordDatabaseHighAvailabilityChanged(ctx context.Context, d *appv1alpha1.Database, enabled bool) {
 	ev, ok := b.databaseAuditEvent(ctx, d, AuditVerbPostgresHAChanged)
 	if !ok {
@@ -1099,14 +1104,26 @@ func (b *Base) RecordDatabaseConnectionPoolChanged(ctx context.Context, d *appv1
 }
 
 // RecordDatabaseDiskSizeChanged records a successful managed-Postgres storage
-// resize with the size it grew TO, in GB. Postgres storage is grow-only, so the
-// single resulting value is the whole fact.
-func (b *Base) RecordDatabaseDiskSizeChanged(ctx context.Context, d *appv1alpha1.Database, sizeGB int32) {
+// resize with the size before and after it, in GB — Render's
+// postgres_disk_size_changed fromDiskSize/toDiskSize (w4/m379).
+func (b *Base) RecordDatabaseDiskSizeChanged(ctx context.Context, d *appv1alpha1.Database, fromGB, toGB int32) {
 	ev, ok := b.databaseAuditEvent(ctx, d, AuditVerbPostgresDiskSizeChanged)
 	if !ok {
 		return
 	}
-	ev.DiskSizeGB = &sizeGB
+	ev.DiskSizeFromGB, ev.DiskSizeGB = &fromGB, &toGB
+	b.recordAudit(ctx, ev)
+}
+
+// RecordDatabaseReadReplicasChanged records a successful managed-Postgres
+// read-replica change with the replica count before and after it — Render's
+// postgres_read_replicas_changed fromReplicas/toReplicas (w4/m379).
+func (b *Base) RecordDatabaseReadReplicasChanged(ctx context.Context, d *appv1alpha1.Database, from, to int32) {
+	ev, ok := b.databaseEffectEvent(ctx, d, DatabaseReadReplicasChanged)
+	if !ok {
+		return
+	}
+	ev.ReadReplicasFrom, ev.ReadReplicasTo = &from, &to
 	b.recordAudit(ctx, ev)
 }
 

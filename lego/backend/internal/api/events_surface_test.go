@@ -239,7 +239,7 @@ func TestGetEventSurfaceParity(t *testing.T) {
 		},
 	}
 	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
-	h, srv := serverWith(t, base, Deps{EventStore: fake})
+	h, srv := serverWith(t, base, Deps{EventStore: fake, Identities: metadataIdentities{}})
 
 	tests := []struct {
 		name          string
@@ -303,11 +303,15 @@ func TestGetEventHonorsNamedWorkspace(t *testing.T) {
 		Client: fakeClient(eventsApp()), Namespace: "default",
 		Authz: &fakeChecker{allow: true}, Workspace: twoWorkspaceResolver{},
 	}
-	h, _ := serverWith(t, base, Deps{EventStore: fake})
+	h, _ := serverWith(t, base, Deps{EventStore: fake, Identities: metadataIdentities{}})
 
 	res := do(t, h, http.MethodGet, "/v1/events/"+eventID+"?ownerId=tea-b", testToken, "")
 	if res.Code != http.StatusOK {
 		t.Fatalf("named-workspace event: %d %s", res.Code, res.Body.String())
+	}
+	// w4/m379: postgres_created names its creator as Render's {id, email}.
+	if want := `"details":{"user":{"id":"user-x","email":"user-x@example.com"}}`; !strings.Contains(res.Body.String(), want) {
+		t.Errorf("postgres_created = %s, want %s", res.Body.String(), want)
 	}
 	if fake.gotEventWorkspace != "tea-b" {
 		t.Fatalf("event lookup workspace = %q, want tea-b", fake.gotEventWorkspace)

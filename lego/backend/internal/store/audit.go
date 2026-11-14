@@ -155,8 +155,8 @@ func insertAuditEvent(ctx context.Context, q interface {
 		    env_group_id, env_group_name,
 		    autoscaling_cpu_from, autoscaling_cpu_to, autoscaling_memory_from, autoscaling_memory_to,
 		    display_name_from, display_name_to, domain, autoscaling_enabled_from, edge_cache_enabled_to,
-		    two_factor_required_to)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55)
+		    two_factor_required_to, read_replicas_from, read_replicas_to)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57)
 		ON CONFLICT DO NOTHING`,
 		auditID(ev), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, ev.TargetName, string(ev.Outcome), ev.At,
 		ev.MaintenanceModeTo,
@@ -172,7 +172,7 @@ func insertAuditEvent(ctx context.Context, q interface {
 		nullIfEmpty(ev.EnvGroupID), nullIfEmpty(ev.EnvGroupName),
 		ev.AutoscalingCPUFrom, ev.AutoscalingCPUTo, ev.AutoscalingMemoryFrom, ev.AutoscalingMemoryTo,
 		nullIfEmpty(ev.DisplayNameFrom), nullIfEmpty(ev.DisplayNameTo), nullIfEmpty(ev.Domain), ev.AutoscalingEnabledFrom, ev.EdgeCacheEnabledTo,
-		ev.TwoFactorRequiredTo)
+		ev.TwoFactorRequiredTo, ev.ReadReplicasFrom, ev.ReadReplicasTo)
 	return err
 }
 

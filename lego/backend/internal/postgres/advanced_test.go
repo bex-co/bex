@@ -182,7 +182,7 @@ func TestRESTLifecycleStatusCodes(t *testing.T) {
 	for _, c := range []struct {
 		verb string
 		code int
-	}{{"suspend", 202}, {"resume", 202}, {"restart", 200}} {
+	}{{"suspend", 202}, {"resume", 202}, {"restart", 202}} {
 		if got := serveREST(svc, "POST", "/v1/postgres/rest-life/"+c.verb, "").Code; got != c.code {
 			t.Errorf("%s => %d, want %d", c.verb, got, c.code)
 		}

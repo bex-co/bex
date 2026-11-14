@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -92,6 +93,18 @@ func TestRenderEventDetailsMatchTheirMember(t *testing.T) {
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.UpdateDisk", Caller: "usr-1", DiskID: &disk, DiskSizeGB: &three, AuditChanges: store.AuditChanges{DiskSizeFromGB: &two}}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.DeleteDisk", Caller: "usr-1", DiskID: &disk}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "usr-1", DiskID: &disk}},
+		// w4/m379: the Postgres and Key Value members. The user's email is
+		// resolved at read time, which this projection-only test does not do.
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: core.AuditVerbPostgresCreated, Caller: "usr-1"}, missing: []string{"user/email"}},
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: core.AuditVerbPostgresRestarted}},
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: core.AuditVerbPostgresPoolerChanged, ConnectionPoolEnabled: new(true)}},
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: core.AuditVerbPostgresDiskSizeChanged, DiskSizeGB: &sixty, AuditChanges: store.AuditChanges{DiskSizeFromGB: &three}}},
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: core.AuditVerbPostgresHAChanged, HighAvailabilityEnabled: new(false)}},
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: core.AuditVerbPostgresReadReplicasChanged, AuditChanges: store.AuditChanges{ReadReplicasFrom: &two, ReadReplicasTo: &three}}},
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePostgresUpgradeStarted, VersionFrom: "16", VersionTo: "17"}},
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePostgresUpgradeSucceeded, VersionFrom: "16", VersionTo: "17"}},
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePostgresUpgradeFailed, VersionFrom: "16", VersionTo: "17"}},
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: core.AuditVerbKeyValueConfigChanged, PersistenceMode: new("off")}},
 	} {
 		tc.row.Key, tc.row.At = cmp.Or(tc.row.Key, fmt.Sprintf("k:%s:%s:%s", tc.row.Source, tc.row.FactType, tc.row.Verb)), at
 		event := toRenderEvent(view(tc.row, "srv-0123456789abcdefghij"))

@@ -158,7 +158,13 @@ func TestPostgresConfigurationEffectsProjectRenderNames(t *testing.T) {
 		{
 			name: "read replicas set", patch: PostgresPatch{ReadReplicas: &[]ReadReplicaInput{{Name: "r1"}}},
 			wantVerb: core.AuditVerbPostgresReadReplicasChanged, wantEvent: eventvocab.TypePostgresReadReplicasChanged,
-			check: wantNoDatastoreDetail,
+			// w4/m379: Render's fromReplicas/toReplicas.
+			check: func(e core.AuditEvent) error {
+				if e.ReadReplicasFrom == nil || *e.ReadReplicasFrom != 0 || e.ReadReplicasTo == nil || *e.ReadReplicasTo != 1 {
+					return fmt.Errorf("replicas = %v -> %v, want 0 -> 1", e.ReadReplicasFrom, e.ReadReplicasTo)
+				}
+				return nil
+			},
 		},
 		{
 			name: "disk autoscaling on", patch: PostgresPatch{EnableDiskAutoscaling: &enabled},
@@ -171,6 +177,10 @@ func TestPostgresConfigurationEffectsProjectRenderNames(t *testing.T) {
 			check: func(e core.AuditEvent) error {
 				if e.DiskSizeGB == nil || *e.DiskSizeGB != grown {
 					return fmt.Errorf("diskSizeGB = %v, want %d", e.DiskSizeGB, grown)
+				}
+				// w4/m379: Render's fromDiskSize, the size before the resize.
+				if e.DiskSizeFromGB == nil || *e.DiskSizeFromGB != 20 {
+					return fmt.Errorf("diskSizeFromGB = %v, want 20", e.DiskSizeFromGB)
 				}
 				return nil
 			},
@@ -258,7 +268,7 @@ func TestPostgresConfigurationEffectsProjectRenderNames(t *testing.T) {
 // wantNoDatastoreDetail is the thin-envelope events' check (w5/m138): Render's
 // payload names only the resource, so the row carries no typed value.
 func wantNoDatastoreDetail(e core.AuditEvent) error {
-	if e.HighAvailabilityEnabled != nil || e.ConnectionPoolEnabled != nil || e.DiskSizeGB != nil {
+	if e.HighAvailabilityEnabled != nil || e.ConnectionPoolEnabled != nil || e.DiskSizeGB != nil || e.ReadReplicasTo != nil {
 		return fmt.Errorf("thin event carries a typed detail: %+v", e)
 	}
 	return nil

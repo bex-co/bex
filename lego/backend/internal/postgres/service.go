@@ -1811,11 +1811,12 @@ func (s *Service) recordUpdateEffects(ctx context.Context, d *appv1alpha1.Databa
 	// disk size. A plan change that raises the plan's included storage is a
 	// plan_changed event, not a resize the caller requested.
 	if before.StorageGB != d.Spec.StorageGB {
-		s.RecordDatabaseDiskSizeChanged(ctx, d, DatabaseStorageHighWater(d))
+		fromGB := tiers.Postgres.EffectiveStorageGB(before.Plan, before.StorageGB, d.Status.AllocatedStorageGB)
+		s.RecordDatabaseDiskSizeChanged(ctx, d, fromGB, DatabaseStorageHighWater(d))
 		recorded = true
 	}
 	if !slices.Equal(before.ReadReplicas, d.Spec.ReadReplicas) {
-		s.RecordDatabaseEffect(ctx, d, core.DatabaseReadReplicasChanged)
+		s.RecordDatabaseReadReplicasChanged(ctx, d, int32(len(before.ReadReplicas)), int32(len(d.Spec.ReadReplicas)))
 		recorded = true
 	}
 	if before.DiskAutoscaling != d.Spec.DiskAutoscaling {

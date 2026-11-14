@@ -82,10 +82,12 @@ const TypePostgresClusterLeaderChanged = "postgres_cluster_leader_changed"
 // the value it was set to (see core.AuditEvent's datastore fields).
 //
 // postgres_read_replicas_changed and postgres_disk_autoscaling_enabled_changed
-// (w5/m138) come from the same PATCH and carry no value: Render's envelope for
-// them is the thin one, so the row names only the database. Like their
-// siblings they are PATCH effects; a Blueprint sync writes spec.readReplicas
-// and spec.diskAutoscaling without recording a datastore audit effect.
+// (w5/m138) come from the same PATCH. The replica row carries the replica
+// count before and after (Render requires fromReplicas/toReplicas, w4/m379);
+// the autoscaling row carries no value, as Render has no details variant for
+// it. Like their siblings they are PATCH effects; a Blueprint sync writes
+// spec.readReplicas and spec.diskAutoscaling without recording a datastore
+// audit effect.
 const (
 	TypePostgresHAStatusChanged               = "postgres_ha_status_changed"
 	TypePostgresConnectionPoolEnabledChanged  = "postgres_connection_pool_enabled_changed"

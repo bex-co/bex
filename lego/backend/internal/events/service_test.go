@@ -412,13 +412,13 @@ func TestGetReturnsIndexedDatastoreConfigEvents(t *testing.T) {
 			name:     "connection pool",
 			row:      store.ServiceEventRow{Verb: core.AuditVerbPostgresPoolerChanged, ConnectionPoolEnabled: &enabled},
 			wantType: TypePostgresConnectionPoolEnabledChanged,
-			want:     Details{ConnectionPoolEnabled: &enabled},
+			want:     Details{ConnectionPoolEnabled: &enabled, User: &UserRef{ID: "user-x"}},
 		},
 		{
 			name:     "disk size",
 			row:      store.ServiceEventRow{Verb: core.AuditVerbPostgresDiskSizeChanged, DiskSizeGB: &sizeGB},
 			wantType: TypePostgresDiskSizeChanged,
-			want:     Details{DiskSizeGB: &sizeGB},
+			want:     Details{DiskSizeGB: &sizeGB, User: &UserRef{ID: "user-x"}},
 		},
 		{
 			name:     "key value config restart",
