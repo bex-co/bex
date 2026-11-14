@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { codedGraphQLError } from "@/test/mocks/apollo";
 import {
+  goStringConstant,
+  goStringConstantsWithPrefix,
+} from "@/test/go-source";
+import {
   buildDurationMs,
   buildFailureKey,
   buildInstant,
@@ -163,5 +167,48 @@ describe("repository environment builds (ADR111)", () => {
     expect(key(new Error("Failed to fetch"))).toBe(
       "agentEnvironment.repoEnvs.builds.buildFailed",
     );
+  });
+});
+
+// The dashboard words every status, trigger and failure code bex-api can
+// return (ADR111 D2, D3); reading the Go constants keeps the two in step.
+describe("build vocabulary matches bex-api", () => {
+  const builds =
+    "lego/backend/internal/agentsessions/repo_environment_builds.go";
+  const store = "lego/backend/internal/store/agent_repo_environment_builds.go";
+  const go = (path: string, names: string[]) =>
+    names.map((name) => goStringConstant(path, name));
+
+  it("names every status", () => {
+    const statuses = go(store, [
+      "AgentRepoEnvironmentBuildQueued",
+      "AgentRepoEnvironmentBuildBuilding",
+      "AgentRepoEnvironmentBuildSuccess",
+      "AgentRepoEnvironmentBuildFailed",
+      "AgentRepoEnvironmentBuildCancelled",
+    ]);
+    for (const status of statuses)
+      expect(buildStatusKey(status)).not.toBeNull();
+  });
+
+  it("names every trigger", () => {
+    const triggers = goStringConstantsWithPrefix(builds, "buildTrigger");
+    expect(triggers.length).toBeGreaterThan(0);
+    for (const trigger of triggers)
+      expect(buildTriggerKey(trigger)).not.toBeNull();
+  });
+
+  it("words every failure code", () => {
+    const codes = [
+      ...goStringConstantsWithPrefix(builds, "buildFailed"),
+      ...go(store, [
+        "AgentRepoEnvironmentBuildTimeout",
+        "AgentRepoEnvironmentBuildInternalError",
+      ]),
+    ];
+    for (const code of codes)
+      expect(buildFailureKey(code)).not.toBe(
+        "agentEnvironment.repoEnvs.builds.failure.unknown",
+      );
   });
 });

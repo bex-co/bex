@@ -29,6 +29,19 @@ export function goStringConstant(path: string, name: string): string {
   return value;
 }
 
+/** The values of every Go string constant in the file at path whose name starts with prefix. */
+export function goStringConstantsWithPrefix(
+  path: string,
+  prefix: string,
+): string[] {
+  const source = readFileSync(`${REPO_ROOT}/${path}`, "utf8");
+  return [
+    ...source.matchAll(
+      new RegExp(`^\\s*${prefix}\\w*\\s*=\\s*"([^"]*)"`, "gm"),
+    ),
+  ].map((match) => match[1]);
+}
+
 /**
  * A Go `var <name> = map[string]string{appv1alpha1.ReasonFoo: "…"}` in the
  * file at path: reason constant name → sentence.
