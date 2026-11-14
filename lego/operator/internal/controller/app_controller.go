@@ -4202,10 +4202,10 @@ func (r *AppReconciler) recordRolloutExit(ctx context.Context, app *appv1alpha1.
 			if t == nil {
 				t = cs.State.Terminated
 			}
-			if t != nil && (t.ExitCode != 0 || t.Reason == "OOMKilled") {
+			if t != nil && (t.ExitCode != 0 || t.Reason == containerReasonOOMKilled) {
 				failure := rolloutFailureFor(app)
 				exit := t.ExitCode
-				failure.ExitCode, failure.OOMKilled = &exit, t.Reason == "OOMKilled"
+				failure.ExitCode, failure.OOMKilled = &exit, t.Reason == containerReasonOOMKilled
 				return
 			}
 		}
@@ -6418,7 +6418,7 @@ func crashLoopMessage(pod *corev1.Pod, cs corev1.ContainerStatus, port int) stri
 		if t.Reason == runtimeStartError {
 			return startErrorMessage(t.Message)
 		}
-		if memory := containerMemoryLimit(pod, cs.Name); t.Reason == "OOMKilled" && memory != "" {
+		if memory := containerMemoryLimit(pod, cs.Name); t.Reason == containerReasonOOMKilled && memory != "" {
 			return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonStartupOutOfMemory,
 				appv1alpha1.DeployReasonParam{Name: "memory", Value: memory},
 				appv1alpha1.DeployReasonParam{Name: "code", Value: strconv.Itoa(int(t.ExitCode))})

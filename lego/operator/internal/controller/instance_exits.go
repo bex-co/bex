@@ -29,6 +29,10 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// containerReasonOOMKilled is the reason a container's terminated state carries
+// when the kernel killed it for exceeding its memory limit.
+const containerReasonOOMKilled = "OOMKilled"
+
 // Exit statuses a container gets when it is stopped from outside: SIGKILL and
 // SIGTERM. The kubelet ends a container that way for a failed liveness check,
 // a rollout or a drain, none of which is the application exiting, so they are
@@ -162,7 +166,7 @@ func withInstanceExits(recorded []appv1alpha1.InstanceExit, pods []corev1.Pod, r
 			if t == nil || restarts <= 0 || t.FinishedAt.Time.Before(since) || now.Sub(t.FinishedAt.Time) > instanceExitMaxAge {
 				continue
 			}
-			oom := t.Reason == "OOMKilled"
+			oom := t.Reason == containerReasonOOMKilled
 			if !oom && (t.ExitCode == exitStatusSIGKILL || t.ExitCode == exitStatusSIGTERM) {
 				continue
 			}

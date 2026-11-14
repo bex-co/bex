@@ -66,7 +66,7 @@ func cronPodFailure(pod *corev1.Pod) (string, *int32) {
 			continue
 		}
 		exit := t.ExitCode
-		if t.Reason == "OOMKilled" {
+		if t.Reason == containerReasonOOMKilled {
 			return appv1alpha1.CronRunReasonOOMKilled, &exit
 		}
 		if exit != 0 {
