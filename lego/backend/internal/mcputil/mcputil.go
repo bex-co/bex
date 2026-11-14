@@ -30,7 +30,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -72,45 +71,49 @@ func AddTool[In, Out any](s *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, O
 	})
 }
 
-// AddExactJSONTool registers a tool whose successful output must reach the
-// client byte-for-byte as encoding/json writes it. A typed AddTool output is
-// marshaled, then decoded into map[string]any by the SDK's output-schema step
-// and re-encoded: every JSON number passes through float64 on the way, so an
-// int64 above 2^53 or an exact pgtype.Numeric loses digits in BOTH
-// structuredContent and the generated text block (w4/m158). This seam marshals
-// Out once, puts that RawMessage in structuredContent and the same bytes in the
-// text block, and returns a nil output so the SDK skips its re-encoding.
-//
-// Everything else is the AddTool contract: the SDK still validates the typed In
-// arguments, errors keep their code and redaction, a panic is isolated, and
-// tools/list advertises the output schema derived from Out exactly as a typed
-// registration would. The shape guarantee comes from Out being a concrete Go
-// type, not from re-validating the bytes (which would reintroduce the float64
-// decode). Opt in only where exact numbers matter; ordinary tools stay typed.
-func AddExactJSONTool[In, Out any](s *mcp.Server, t *mcp.Tool, h func(context.Context, *mcp.CallToolRequest, In) (Out, error)) {
-	annotate(t)
-	tool := *t
-	if tool.OutputSchema == nil {
-		schema, err := jsonschema.For[Out](&jsonschema.ForOptions{})
-		if err != nil {
-			panic(fmt.Errorf("AddExactJSONTool %q: output schema: %w", t.Name, err))
-		}
-		tool.OutputSchema = schema
+// RenderText is the result of a tool whose answer must be the text Render's
+// MCP server sends (w4/m378): json.Marshal of the value as the one text
+// content, then any extra text items (a truncation notice), and no
+// structuredContent, which Render's server never sends. Handlers registered
+// with Out = any return it directly, so the SDK adds neither an output schema
+// nor a second copy of the JSON. A list is a bare JSON array, never an
+// object wrapping one: an agent or skill written against Render reads it
+// unchanged. encoding/json writes the value once, so a number float64 cannot
+// hold keeps every digit, where the SDK's typed output path re-encodes
+// through float64 (w4/m158).
+func RenderText(v any, extra ...string) (*mcp.CallToolResult, any, error) {
+	body, err := json.Marshal(v)
+	if err != nil {
+		return nil, nil, err // unclassified: AddTool redacts it to "internal error"
 	}
-	AddTool(s, &tool, func(ctx context.Context, req *mcp.CallToolRequest, in In) (*mcp.CallToolResult, any, error) {
-		out, err := h(ctx, req, in)
-		if err != nil {
-			return nil, nil, err
-		}
-		body, err := json.Marshal(out)
-		if err != nil {
-			return nil, nil, err // unclassified: AddTool redacts it to "internal error"
-		}
-		return &mcp.CallToolResult{
-			StructuredContent: json.RawMessage(body),
-			Content:           []mcp.Content{&mcp.TextContent{Text: string(body)}},
-		}, nil, nil
-	})
+	content := []mcp.Content{&mcp.TextContent{Text: string(body)}}
+	for _, text := range extra {
+		content = append(content, &mcp.TextContent{Text: text})
+	}
+	return &mcp.CallToolResult{Content: content}, nil, nil
+}
+
+// RenderPlainText is a result whose one text content is a sentence, not JSON:
+// Render's answer for an empty list_postgres_instances or list_key_value.
+func RenderPlainText(text string) (*mcp.CallToolResult, any, error) {
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}, nil, nil
+}
+
+// RenderListWithCursor is Render's paged list text (list_deploys,
+// list_events): the bare JSON array, then "\n\n cursor: " and the last
+// item's cursor, or a quoted empty string ("") when the page is empty.
+// items must be non-nil so an empty page reads [] rather than null.
+func RenderListWithCursor[T any](items []T, cursor string) (*mcp.CallToolResult, any, error) {
+	body, err := json.Marshal(items)
+	if err != nil {
+		return nil, nil, err
+	}
+	if cursor == "" {
+		cursor = `""`
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{
+		Text: string(body) + "\n\n cursor: " + cursor,
+	}}}, nil, nil
 }
 
 // WithWarning is the CallToolResult a typed handler returns when a successful

@@ -48,6 +48,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -883,8 +884,14 @@ func TestMCPPostgres(t *testing.T) {
 	}
 
 	// Render's tool names + arg (postgresId), delegating to the same Core verbs.
-	if list, ok := call("list_postgres_instances", nil)["postgres"].([]any); !ok || len(list) != 1 {
-		t.Fatalf("list_postgres_instances want 1, got %v", call("list_postgres_instances", nil))
+	// list_postgres_instances is Render's text: a bare array (w4/m378).
+	listed, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_postgres_instances"})
+	if err != nil || listed.IsError {
+		t.Fatalf("list_postgres_instances: err=%v result=%+v", err, listed)
+	}
+	var list []renderPostgres
+	if rendertest.DecodeMCPText(t, listed, &list); len(list) != 1 || list[0].ID != "mcp-db" {
+		t.Fatalf("list_postgres_instances want [mcp-db], got %s", rendertest.MCPText(t, listed))
 	}
 	if got := call("get_postgres", map[string]any{"postgresId": "mcp-db"}); got["id"] != "mcp-db" {
 		t.Fatalf("get_postgres id = %v", got["id"])

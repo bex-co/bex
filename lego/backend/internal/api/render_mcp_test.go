@@ -19,8 +19,12 @@ package api
 import (
 	"crypto/sha256"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 )
 
 // sha256Hex builds fixture digests for the corruption cases below.
@@ -130,5 +134,34 @@ func TestRenderMCPPinMismatchNamesTheFix(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("integrity error does not mention %q: %v", want, err)
 		}
+	}
+}
+
+// TestRenderMCPResultsCoverEverySharedTool keeps the result-shape capture
+// (openapi/render-mcp-results.json, w4/m378) in step with the tools pin: it
+// records exactly the upstream tools bex ships, at the same upstream commit,
+// so a new shared tool cannot land without its result shape.
+func TestRenderMCPResultsCoverEverySharedTool(t *testing.T) {
+	c, err := loadRenderMCPContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	results, err := rendertest.LoadMCPResults()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if results.Source.Commit != c.Source.Commit {
+		t.Errorf("results captured at %s, tools pin at %s: refresh with scripts/render-mcp-capture.py --ref %s --results",
+			results.Source.Commit, c.Source.Commit, c.Source.Commit)
+	}
+	var shared []string
+	for _, name := range c.Names() {
+		if _, skipped := mcpKnownUpstreamOnly[name]; !skipped {
+			shared = append(shared, name)
+		}
+	}
+	recorded := slices.Sorted(maps.Keys(results.Tools))
+	if !slices.Equal(recorded, shared) {
+		t.Errorf("results record %v,\nbex shares %v", recorded, shared)
 	}
 }

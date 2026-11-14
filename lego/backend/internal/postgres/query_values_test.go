@@ -454,10 +454,28 @@ func assertQueryAcrossSurfaces(t *testing.T, svc *Service, id, sql, wantRows, wa
 		t.Fatalf("REST => %d %s", rec.Code, rec.Body)
 	}
 
+	// MCP answers Render's row objects (w4/m378): the same JSON values keyed
+	// by column name, every value byte-identical to REST's cell.
+	var console struct {
+		Columns []string            `json:"columns"`
+		Rows    [][]json.RawMessage `json:"rows"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &console); err != nil {
+		t.Fatal(err)
+	}
+	objects := make([]map[string]json.RawMessage, 0, len(console.Rows))
+	for _, row := range console.Rows {
+		object := map[string]json.RawMessage{}
+		for i, col := range console.Columns {
+			object[col] = row[i]
+		}
+		objects = append(objects, object)
+	}
+	wantMCP, _ := json.Marshal(objects)
 	args, _ := json.Marshal(map[string]string{"postgresId": id, "sql": sql})
 	res := mcpQueryWire(t, svc, string(args))
-	if got := mcpQueryText(t, res); !strings.Contains(got, `"rows":`+wantRows) {
-		t.Fatalf("MCP => %s", got)
+	if got := mcpQueryText(t, res); got != string(wantMCP) {
+		t.Fatalf("MCP => %s\nwant %s", got, wantMCP)
 	}
 
 	schema, err := pgGQLSchema(svc)

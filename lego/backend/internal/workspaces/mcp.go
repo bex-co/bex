@@ -29,45 +29,23 @@ import (
 // Resource tools take Render's optional per-call workspaceId at the API
 // composition root; there is deliberately no transport-session selection.
 
-// mcpWorkspace is the workspace shape an agent needs to discover a workspaceId.
-// IPAllowList is the workspace's inbound IP rules (w9/m388), Render's
-// owner.ipAllowList: read-only here, as Render's MCP has no workspace
-// mutations.
-type mcpWorkspace struct {
-	ID          string                  `json:"id"`
-	Name        string                  `json:"name"`
-	Slug        string                  `json:"slug"`
-	Plan        string                  `json:"plan,omitempty"`
-	Role        string                  `json:"role,omitempty"`
-	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
-}
-
-func toMCPWorkspace(w WorkspaceView) mcpWorkspace {
-	return mcpWorkspace{ID: w.ID, Name: w.Name, Slug: w.Slug, Plan: w.Plan, Role: w.Role, IPAllowList: w.IPAllowList}
-}
-
-type listWorkspacesResult struct {
-	Workspaces []mcpWorkspace `json:"workspaces"`
-}
-
 // RegisterMCP adds workspace discovery and limits to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_workspaces",
-		Description: "List the workspaces the caller has access to, each with its inbound IP rules (ipAllowList; the seeded allow-all when none were set). Pass a returned id as workspaceId on each resource-tool call.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listWorkspacesResult, error) {
-		ws, err := s.List(ctx)
-		if err == nil {
-			ws, err = s.withIPAllowLists(ctx, ws)
-		}
+		Description: "List the workspaces the caller has access to, as Render's owner objects (id, name, email, type), each with its inbound IP rules (ipAllowList; the seeded allow-all when none were set). Pass a returned id as workspaceId on each resource-tool call.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
+		owners, err := s.ListOwners(ctx, OwnerFilter{})
 		if err != nil {
-			return nil, listWorkspacesResult{}, err
+			return nil, nil, err
 		}
-		out := make([]mcpWorkspace, 0, len(ws))
-		for _, w := range ws {
-			out = append(out, toMCPWorkspace(w))
+		// Render's text (pkg/owner/tools.go): the bare array of REST owner
+		// objects, as GET /v1/owners carries them (w4/m378).
+		out := make([]renderOwner, 0, len(owners))
+		for _, o := range owners {
+			out = append(out, toRenderOwner(o))
 		}
-		return nil, listWorkspacesResult{Workspaces: out}, nil
+		return mcputil.RenderText(out)
 	})
 
 	// get_workspace_limits — bex extension (w7/m9): surfaces per-workspace

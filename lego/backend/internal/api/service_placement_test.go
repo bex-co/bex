@@ -31,6 +31,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -142,7 +143,7 @@ func TestServicePlacementAcrossComposedSurfaces(t *testing.T) {
 			}
 			assertPlacement("MCP get", callTool[map[string]any](t, cs, "get_service", map[string]any{"serviceId": services[0].Name}))
 			reader.calls = nil
-			mcpList := callTool[map[string][]map[string]any](t, cs, "list_services", map[string]any{"workspaceId": owner.ID})["services"]
+			mcpList := callTool[[]map[string]any](t, cs, "list_services", map[string]any{"workspaceId": owner.ID})
 			if len(mcpList) != 2 {
 				t.Fatalf("MCP list: %v", mcpList)
 			}
@@ -334,8 +335,8 @@ func TestServicePlacementLegacyFallbackAndAuthorization(t *testing.T) {
 						t.Fatalf("MCP %s denied request succeeded", tool)
 					}
 				} else {
-					encoded, _ := json.Marshal(result.StructuredContent)
-					if result.IsError || !strings.Contains(string(encoded), project) || !strings.Contains(string(encoded), environment) {
+					encoded := rendertest.MCPText(t, result)
+					if result.IsError || !strings.Contains(encoded, project) || !strings.Contains(encoded, environment) {
 						t.Fatalf("MCP %s fallback: %s", tool, encoded)
 					}
 				}

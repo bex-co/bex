@@ -20,16 +20,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -304,6 +309,59 @@ func TestREST_CreateResponseContainsDeployIDWhenStoreActive(t *testing.T) {
 	}
 	if out.Service.ID == "" {
 		t.Errorf("service.id missing")
+	}
+}
+
+// TestMCPCreatesReturnServiceAndDeploy pins w4/m378 t009: the three MCP
+// service creates answer Render's ServiceAndDeploy ({service, deployId}), the
+// envelope Render's MCP server and bex's REST create return, never the bare
+// service, so the first deploy's id needs no list_deploys.
+func TestMCPCreatesReturnServiceAndDeploy(t *testing.T) {
+	for tool, args := range map[string]map[string]any{
+		"create_web_service": {"name": "web", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": ""},
+		"create_cron_job":    {"name": "cron", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": "", "schedule": "* * * * *", "command": "echo ok"},
+		"create_static_site": {"name": "site", "repo": "https://github.com/acme/site", "publishPath": "dist", "buildCommand": "npm run build"},
+	} {
+		t.Run(tool, func(t *testing.T) {
+			svc, _ := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, &recordingStore{})
+			svc.Metadata = resourcemeta.Config{Region: "fsn1", DashboardBaseURL: "https://dashboard.bex.co"}
+			srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+			svc.RegisterMCP(srv)
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+			serverT, clientT := mcp.NewInMemoryTransports()
+			if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+				t.Fatal(err)
+			}
+			cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer cs.Close()
+			res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
+			if err != nil || res.IsError {
+				t.Fatalf("%s: err=%v result=%+v", tool, err, res)
+			}
+			var top map[string]json.RawMessage
+			rendertest.DecodeMCPText(t, res, &top)
+			if len(top) != 2 || top["service"] == nil || top["deployId"] == nil {
+				t.Fatalf("%s text keys = %v, want exactly service and deployId", tool, slices.Sorted(maps.Keys(top)))
+			}
+			var out serviceAndDeploy
+			rendertest.DecodeMCPText(t, res, &out)
+			if out.DeployID != "dep-test" || out.Service.ID != "srv-test" {
+				t.Errorf("%s = {service.id %q, deployId %q}, want srv-test and its first deploy dep-test", tool, out.Service.ID, out.DeployID)
+			}
+			rendertest.AssertRenderMCPResult(t, tool, res)
+
+			// list_services and get_service carry the same Render service.
+			for name, args := range map[string]map[string]any{"list_services": nil, "get_service": {"serviceId": out.Service.Name}} {
+				read, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+				if err != nil || read.IsError {
+					t.Fatalf("%s: err=%v result=%+v", name, err, read)
+				}
+				rendertest.AssertRenderMCPResult(t, name, read)
+			}
+		})
 	}
 }
 

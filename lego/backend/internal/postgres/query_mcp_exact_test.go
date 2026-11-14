@@ -71,16 +71,16 @@ func mcpQueryWire(t *testing.T, svc *Service, args string) map[string]json.RawMe
 	return env.Result
 }
 
-// mcpQueryText returns the single text block and asserts it is byte-identical
-// to structuredContent on success.
+// mcpQueryText returns the single text block. A success carries no
+// structuredContent: Render's tool answers text only (w4/m378).
 func mcpQueryText(t *testing.T, res map[string]json.RawMessage) string {
 	t.Helper()
 	var content []struct{ Text string }
 	if err := json.Unmarshal(res["content"], &content); err != nil || len(content) != 1 {
 		t.Fatalf("content %s: %v", res["content"], err)
 	}
-	if string(res["isError"]) != "true" && content[0].Text != string(res["structuredContent"]) {
-		t.Fatalf("text %s differs from structuredContent %s", content[0].Text, res["structuredContent"])
+	if len(res["structuredContent"]) != 0 {
+		t.Fatalf("structuredContent %s, want none", res["structuredContent"])
 	}
 	return content[0].Text
 }
@@ -96,9 +96,11 @@ func exactNumeric(t *testing.T, s string) pgtype.Numeric {
 
 // TestMCPQueryKeepsExactNumbers is the w4/m158 regression for the composed
 // tool: the captured live values — 2^53+1, an exact numeric, a signed bigint
-// array and a long fraction — reach both MCP result forms with every digit,
-// and the small/null/bool/bytea/text controls keep their existing encoding.
-// Under the previous typed registration both forms carried 9007199254740992.
+// array and a long fraction — reach the text with every digit, and the
+// small/null/bool/bytea/text controls keep their existing encoding. Under the
+// earlier typed registration the text carried 9007199254740992. The text is
+// Render's since w4/m378: one object per row, keys sorted as Go's map
+// encoding writes them.
 func TestMCPQueryKeepsExactNumbers(t *testing.T) {
 	svc, _ := newService()
 	seedDatabaseAt(t, svc, "exact-db", "postgres://resolved/uri")
@@ -125,12 +127,9 @@ func TestMCPQueryKeepsExactNumbers(t *testing.T) {
 	}
 
 	res := mcpQueryWire(t, svc, `{"postgresId":"exact-db","sql":"SELECT 1"}`)
-	want := `{"columns":["exact_int","exact_decimal","exact_array","fraction","small_int","simple_decimal","absent","flag","binary_control","exact_text"],` +
-		`"rows":[[9007199254740993,12345678901234567890.123456789,[9007199254740993,-9007199254740993],0.12345678901234567890123456789,42,1.25,null,true,"AAH/","9007199254740993"]],` +
-		`"rowCount":1,"truncated":false}`
-	if got := string(res["structuredContent"]); got != want {
-		t.Fatalf("structuredContent\n got %s\nwant %s", got, want)
-	}
+	want := `[{"absent":null,"binary_control":"AAH/","exact_array":[9007199254740993,-9007199254740993],` +
+		`"exact_decimal":12345678901234567890.123456789,"exact_int":9007199254740993,"exact_text":"9007199254740993",` +
+		`"flag":true,"fraction":0.12345678901234567890123456789,"simple_decimal":1.25,"small_int":42}]`
 	if got := mcpQueryText(t, res); got != want {
 		t.Fatalf("text block\n got %s\nwant %s", got, want)
 	}

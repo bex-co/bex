@@ -40,6 +40,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -1062,8 +1063,14 @@ func TestMCPKeyValue(t *testing.T) {
 	}
 
 	// Render's tool names + arg (keyValueId), delegating to the same Core verbs.
-	if list, ok := call("list_key_value", nil)["keyValues"].([]any); !ok || len(list) != 1 {
-		t.Fatalf("list_key_value want 1, got %v", call("list_key_value", nil))
+	// list_key_value is Render's text: a bare array (w4/m378).
+	listed, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_key_value"})
+	if err != nil || listed.IsError {
+		t.Fatalf("list_key_value: err=%v result=%+v", err, listed)
+	}
+	var list []renderKeyValue
+	if rendertest.DecodeMCPText(t, listed, &list); len(list) != 1 || list[0].ID != "mcp-kv" {
+		t.Fatalf("list_key_value want [mcp-kv], got %s", rendertest.MCPText(t, listed))
 	}
 	if got := call("get_key_value", map[string]any{"keyValueId": "mcp-kv"}); got["id"] != "mcp-kv" {
 		t.Fatalf("get_key_value id = %v", got["id"])

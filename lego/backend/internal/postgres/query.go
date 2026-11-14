@@ -17,11 +17,12 @@ limitations under the License.
 // query.go is the shared SQL execution path behind Render-compatible MCP reads
 // and the dashboard SQL console. The safety rails are enforced by the database
 // session, not by parsing the caller's SQL: every statement has a server-side
-// timeout and bounded result set. MCP and ordinary dashboard reads additionally
-// run inside an explicit read-only transaction; the dashboard can explicitly
-// opt into a write transaction after its confirmation step. Schema/syntax
-// errors may return the Postgres message to the caller (their own SQL);
-// integrity errors stay SQLSTATE-only. SQL text and result values never reach
+// timeout and bounded result set (the console's row and byte caps; for MCP,
+// Render's 5 MB of encoded JSON, query_render.go). MCP and ordinary dashboard
+// reads additionally run inside an explicit read-only transaction; the
+// dashboard can explicitly opt into a write transaction after its
+// confirmation step. Schema/syntax errors may return the Postgres message to
+// the caller (their own SQL); integrity errors stay SQLSTATE-only. SQL text and result values never reach
 // logs or audit events (the env-var-values rule; w4/071).
 package postgres
 
@@ -39,6 +40,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/jackc/pgx/v5/pgtype"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,7 +65,10 @@ const (
 	// The frontend checks this limit before allocating a PostgreSQL protocol
 	// message body. It is the first line of defense against one giant DataRow;
 	// the tighter decoded cell/row/result budgets below then bound retained data.
-	queryWireMessageBodyCap = queryRowByteCap + 64<<10
+	queryWireMessageBodyCap = queryRowByteCap + queryWireMessageSlack
+	// queryWireMessageSlack is what a protocol message may carry beyond its
+	// row's data: the field lengths and the message header.
+	queryWireMessageSlack = 64 << 10
 )
 
 // The value-free error vocabulary the query path surfaces. None of these ever
@@ -81,10 +86,11 @@ var (
 	errQueryFailed         = core.Err("query failed")
 )
 
-// QueryResult is the columns/rows shape the query_render_postgres tool serializes.
-// Rows carry pgx's decoded Go values, encoded once by encoding/json on REST and
-// MCP (mcputil.AddExactJSONTool keeps that exact on MCP); Truncated
-// signals the row cap was hit and more rows exist.
+// QueryResult is the columns/rows shape the SQL console serializes, and the
+// rows query_render_postgres renders. Rows carry pgx's decoded Go values,
+// encoded once by encoding/json on REST and GraphQL, and as Render's row
+// objects on MCP (query_render.go); Truncated signals a cap was hit and more
+// rows exist.
 type QueryResult struct {
 	Columns   []string `json:"columns"`
 	Rows      [][]any  `json:"rows"`
@@ -97,6 +103,14 @@ type QueryResult struct {
 type queryLimits struct {
 	statementTimeout time.Duration
 	rowCap           int
+	// renderJSONBytes > 0 selects query_render_postgres' Render limits
+	// (w4/m378) in place of the console's: no row cap and no per-cell, per-row
+	// or raw-total refusal. Reading stops, and the result is marked truncated,
+	// before the rows' Render JSON (renderQueryRows) would pass this many
+	// bytes, or at a DataRow larger than the wire cap sized to it, which no
+	// budget could hold. The column cap, statement timeout and read-only
+	// envelope stay.
+	renderJSONBytes int
 	// serverSettings dials without the session startup rails, for the one
 	// fixed pg_settings read: pinned as client parameters they are what that
 	// session's pg_settings reports (statement_timeout 10000 ms, source
@@ -108,7 +122,8 @@ type queryLimits struct {
 type queryExecutor func(context.Context, string, string, queryLimits, bool) (QueryResult, error)
 
 // Query runs a single read-only SQL statement against a managed database and
-// returns its columns and rows. It connects over CNPG's internal URI (bex-api runs
+// returns its columns and rows, under Render's limits (query_render_postgres,
+// its one caller). It connects over CNPG's internal URI (bex-api runs
 // in-cluster next to the databases) inside a hard read-only envelope; writes, DDL,
 // multi-statement escapes and over-long queries are rejected by Postgres itself.
 func (s *Service) Query(ctx context.Context, dbID, sql string) (QueryResult, error) {
@@ -116,7 +131,7 @@ func (s *Service) Query(ctx context.Context, dbID, sql string) (QueryResult, err
 	if err != nil {
 		return QueryResult{}, err // core.ErrNotFound for an unknown/unprovisioned db
 	}
-	return s.executeAuthorizedQuery(ctx, db, sql, true)
+	return s.executeAuthorizedQuery(ctx, db, sql, true, renderQueryLimits)
 }
 
 // ExecuteQuery powers the dashboard/REST SQL console. Reads use the exact
@@ -172,7 +187,7 @@ func (s *Service) ExecuteQuery(ctx context.Context, dbID, sql string, allowWrite
 			return QueryResult{}, err
 		}
 	}
-	return s.executeAuthorizedQuery(ctx, db, sql, !allowWrites)
+	return s.executeAuthorizedQuery(ctx, db, sql, !allowWrites, consoleQueryLimits)
 }
 
 // executeAuthorizedQuery resolves the connection credential and runs one
@@ -183,7 +198,7 @@ func (s *Service) ExecuteQuery(ctx context.Context, dbID, sql string, allowWrite
 // writable mode re-asserts BOTH can_create and can_view_sensitive uncached
 // (codex round 18): a read-write transaction can return rows, so both halves
 // of the capability union are re-checked at the sink.
-func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Database, sql string, readOnly bool) (QueryResult, error) {
+func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Database, sql string, readOnly bool, lim queryLimits) (QueryResult, error) {
 	relation := core.RelCanViewSensitive
 	if !readOnly {
 		relation = core.RelCanCreate
@@ -214,8 +229,15 @@ func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Da
 	if executor == nil {
 		executor = runSQLQuery
 	}
-	return executor(ctx, uri, sql, queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap}, readOnly)
+	return executor(ctx, uri, sql, lim, readOnly)
 }
+
+// The two limit sets executeAuthorizedQuery runs under: the console's (REST,
+// GraphQL) and Render's for query_render_postgres.
+var (
+	consoleQueryLimits = queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap}
+	renderQueryLimits  = queryLimits{statementTimeout: queryStatementTimeout, renderJSONBytes: renderQueryResultBytes}
+)
 
 // databaseSecret resolves a previously-authorized Database's CNPG application
 // Secret without performing a second, potentially drifting authorization check.
@@ -265,6 +287,9 @@ func runReadOnlyQuery(ctx context.Context, connString, sql string, lim queryLimi
 // (query_values.go) after its raw budget and before the encoded one, so the
 // encoded cap measures exactly what the surfaces will emit.
 func collectQueryRows(rows pgx.Rows, lim queryLimits, out *QueryResult) error {
+	if lim.renderJSONBytes > 0 {
+		return collectRenderRows(rows, lim, out)
+	}
 	rawResult := budget{cap: queryRawResultByteCap}
 	jsonResult := budget{cap: queryJSONResultCap}
 	typeMap := rows.Conn().TypeMap()
@@ -287,22 +312,9 @@ func collectQueryRows(rows pgx.Rows, lim queryLimits, out *QueryResult) error {
 		if err := rawResult.add(row.used); err != nil {
 			return err
 		}
-
-		vals, err := rows.Values()
+		vals, err := queryRowValues(rows, typeMap, fields, arrays)
 		if err != nil {
-			return mapPGError(err)
-		}
-		for i, raw := range rows.RawValues() {
-			if arrays[i] && raw != nil {
-				// Values flattened this array; decode it again from the raw
-				// bytes, keeping its dimensions.
-				if vals[i], err = decodeQueryArray(typeMap, fields[i], raw); err != nil {
-					return err
-				}
-			}
-			if vals[i], err = normalizeQueryValue(vals[i]); err != nil {
-				return err
-			}
+			return err
 		}
 		out.Rows = append(out.Rows, vals)
 	}
@@ -317,6 +329,28 @@ func collectQueryRows(rows pgx.Rows, lim queryLimits, out *QueryResult) error {
 		return errQueryFailed
 	}
 	return jsonResult.add(len(encoded))
+}
+
+// queryRowValues decodes the current row through the shared value policy
+// (query_values.go).
+func queryRowValues(rows pgx.Rows, typeMap *pgtype.Map, fields []pgconn.FieldDescription, arrays []bool) ([]any, error) {
+	vals, err := rows.Values()
+	if err != nil {
+		return nil, mapPGError(err)
+	}
+	for i, raw := range rows.RawValues() {
+		if arrays[i] && raw != nil {
+			// Values flattened this array; decode it again from the raw
+			// bytes, keeping its dimensions.
+			if vals[i], err = decodeQueryArray(typeMap, fields[i], raw); err != nil {
+				return nil, err
+			}
+		}
+		if vals[i], err = normalizeQueryValue(vals[i]); err != nil {
+			return nil, err
+		}
+	}
+	return vals, nil
 }
 
 // buildQueryConnConfig pins the session's safety rails onto the connection
@@ -336,8 +370,22 @@ func buildQueryConnConfig(connString string, lim queryLimits, readOnly bool) (*p
 		}
 		cfg.RuntimeParams["statement_timeout"] = strconv.FormatInt(lim.statementTimeout.Milliseconds(), 10)
 	}
-	cfg.BuildFrontend = newQueryFrontend
+	wireCap := queryWireMessageBodyCap
+	if lim.renderJSONBytes > 0 {
+		wireCap = lim.renderJSONBytes + queryWireMessageSlack
+	}
+	cfg.BuildFrontend = queryFrontend(wireCap)
 	return cfg, nil
+}
+
+// queryFrontend builds the protocol reader that refuses any message body over
+// maxBodyLen before allocating it.
+func queryFrontend(maxBodyLen int) pgconn.BuildFrontendFunc {
+	return func(r io.Reader, w io.Writer) *pgproto3.Frontend {
+		frontend := pgproto3.NewFrontend(r, w)
+		frontend.SetMaxBodyLen(maxBodyLen)
+		return frontend
+	}
 }
 
 func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, readOnly bool) (QueryResult, error) {
@@ -390,6 +438,11 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 	if err := collectQueryRows(rows, lim, &out); err != nil {
 		return QueryResult{}, err
 	}
+	if out.Truncated && readOnly {
+		// Rows past the cut are never read: canceling drops the connection
+		// instead of draining the rest of the result, as Render's tool does.
+		cancel()
+	}
 	rows.Close()
 	out.RowCount = len(out.Rows)
 	if !readOnly && len(cols) == 0 {
@@ -401,12 +454,6 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 		}
 	}
 	return out, nil
-}
-
-func newQueryFrontend(r io.Reader, w io.Writer) *pgproto3.Frontend {
-	frontend := pgproto3.NewFrontend(r, w)
-	frontend.SetMaxBodyLen(queryWireMessageBodyCap)
-	return frontend
 }
 
 // mapPGError maps a Postgres/driver error onto a caller-facing sentinel.

@@ -37,7 +37,9 @@ import (
 // against a real Postgres through the composed /mcp handler — workspace
 // middleware, scope gate, exact query registration and the SDK's
 // streamable-HTTP transport — and reads the numbers from the raw response
-// bytes. Needs BEX_TEST_DB_URI (a throwaway database); skipped otherwise.
+// bytes. Since w4/m378 the answer is Render's text alone: row objects keyed
+// by column name, no structuredContent. Needs BEX_TEST_DB_URI (a throwaway
+// database); skipped otherwise.
 func TestComposedMCPQueryKeepsExactNumbers(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -60,7 +62,7 @@ func TestComposedMCPQueryKeepsExactNumbers(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	call := func(sql string) map[string]json.RawMessage {
+	call := func(sql string) string {
 		t.Helper()
 		args, _ := json.Marshal(map[string]string{"workspaceId": ws.ID, "postgresId": "exact-db", "sql": sql})
 		body := `{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"query_render_postgres","arguments":` + string(args) + `}}`
@@ -90,18 +92,19 @@ func TestComposedMCPQueryKeepsExactNumbers(t *testing.T) {
 			t.Fatalf("%s => tool error %s", sql, env.Result["content"])
 		}
 		var content []struct{ Text string }
-		if err := json.Unmarshal(env.Result["content"], &content); err != nil || len(content) != 1 || content[0].Text != string(env.Result["structuredContent"]) {
-			t.Fatalf("text block %s differs from structuredContent %s", env.Result["content"], env.Result["structuredContent"])
+		if err := json.Unmarshal(env.Result["content"], &content); err != nil || len(content) != 1 || len(env.Result["structuredContent"]) != 0 {
+			t.Fatalf("content %s structuredContent %s, want one text block and no structuredContent", env.Result["content"], env.Result["structuredContent"])
 		}
-		return env.Result
+		return content[0].Text
 	}
 
 	scalar := call(`SELECT 9007199254740993::bigint AS exact_int, 12345678901234567890.123456789::numeric AS exact_decimal`)
-	if got, want := string(scalar["structuredContent"]), `"rows":[[9007199254740993,12345678901234567890.123456789]]`; !strings.Contains(got, want) {
-		t.Fatalf("scalar structuredContent %s, want %s", got, want)
+	if want := `[{"exact_decimal":12345678901234567890.123456789,"exact_int":9007199254740993}]`; scalar != want {
+		t.Fatalf("scalar text %s, want %s", scalar, want)
 	}
 	arrays := call(`SELECT ARRAY[9007199254740993::bigint,-9007199254740993::bigint] AS exact_array, 0.12345678901234567890123456789::numeric AS fraction, 42::bigint AS small_int, 1.25::numeric AS simple_decimal, NULL::numeric AS absent, true AS flag, decode('0001ff','hex') AS binary_control, 9007199254740993::bigint::text AS exact_text`)
-	if got, want := string(arrays["structuredContent"]), `"rows":[[[9007199254740993,-9007199254740993],0.12345678901234567890123456789,42,1.25,null,true,"AAH/","9007199254740993"]]`; !strings.Contains(got, want) {
-		t.Fatalf("array structuredContent %s, want %s", got, want)
+	if want := `[{"absent":null,"binary_control":"AAH/","exact_array":[9007199254740993,-9007199254740993],"exact_text":"9007199254740993",` +
+		`"flag":true,"fraction":0.12345678901234567890123456789,"simple_decimal":1.25,"small_int":42}]`; arrays != want {
+		t.Fatalf("array text %s, want %s", arrays, want)
 	}
 }

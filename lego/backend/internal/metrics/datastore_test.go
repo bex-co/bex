@@ -673,7 +673,7 @@ func TestDiskCapacityIdenticalAcrossRESTGraphQLMCP(t *testing.T) {
 			if err != nil || result.IsError {
 				t.Fatalf("MCP get_datastore_metrics: err %v isError %v", err, result != nil && result.IsError)
 			}
-			var mcpOut getMetricsResult
+			var mcpOut datastoreMetricsResult
 			b, _ := json.Marshal(result.StructuredContent)
 			if err := json.Unmarshal(b, &mcpOut); err != nil {
 				t.Fatalf("MCP structured content: %v", err)

@@ -84,17 +84,6 @@ type serviceArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
 }
 
-// listDeploysResult wraps the array — MCP tool outputs must be JSON objects.
-// Cursor (w2/m31) is the bex-shaped equivalent of Render's trailing
-// `cursor: <value>` text marker (its tool appends it after the deploys JSON;
-// bex's outputs are JSON objects, so the cursor is a field instead): the last
-// deploy's id, to echo back as `cursor` for the next page, or "" when this
-// page is empty (the end of the history).
-type listDeploysResult struct {
-	Deploys []renderDeploy `json:"deploys"`
-	Cursor  string         `json:"cursor"`
-}
-
 // RegisterMCP adds the deploy-history tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -115,8 +104,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_deploys",
-		Description: "List a service's deploy history, newest first, with Render lifecycle status and created/updated/finished timestamp filters. Returns up to `limit` deploys (default 10) plus a `cursor`: pass it back to fetch the next page; an empty page means the end.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listDeploysArgs) (*mcp.CallToolResult, listDeploysResult, error) {
+		Description: "List a service's deploy history, newest first, with Render lifecycle status and created/updated/finished timestamp filters. Returns Render's text: a JSON array of up to `limit` deploys (default 10), then `cursor: <id>` — pass it back as cursor to fetch the next page; an empty page (`[]`, cursor \"\") means the end.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listDeploysArgs) (*mcp.CallToolResult, any, error) {
 		// Render's own tool's bounds: default 10 when unset, clamped to [1,100].
 		// The default is an intentional w2/m31 behavior change from bex's prior
 		// always-the-full-history tool — an agent polling a long-lived service
@@ -139,21 +128,22 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			in.Cursor, limit,
 		)
 		if err != nil {
-			return nil, listDeploysResult{}, err
+			return nil, nil, err
 		}
 		deploys, err := s.List(ctx, in.ServiceID, filter)
 		if err != nil {
-			return nil, listDeploysResult{}, err
+			return nil, nil, err
 		}
+		// Render's text (pkg/deploy/tools.go): the bare deploy array, then
+		// "\n\n cursor: " and the last deploy's id to echo back as cursor, or
+		// "" when this page is empty (the end of the history).
 		out := make([]renderDeploy, len(deploys))
+		cursor := ""
 		for i, d := range deploys {
 			out[i] = toRenderDeploy(d)
+			cursor = d.ID
 		}
-		res := listDeploysResult{Deploys: out}
-		if len(deploys) > 0 {
-			res.Cursor = deploys[len(deploys)-1].ID
-		}
-		return nil, res, nil
+		return mcputil.RenderListWithCursor(out, cursor)
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{

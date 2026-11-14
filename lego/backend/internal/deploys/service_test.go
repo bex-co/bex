@@ -38,6 +38,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -1105,10 +1106,8 @@ func TestMCPMatchesREST(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("list_deploys: %v isErr=%v", err, res.IsError)
 	}
-	var got listDeploysResult
-	if err := decodeStructured(res.StructuredContent, &got); err != nil {
-		t.Fatalf("decode list_deploys result: %v", err)
-	}
+	var got listDeploysPage
+	got.Cursor = rendertest.DecodeMCPListWithCursor(t, res, &got.Deploys)
 	restList, err := svc.List(ctx, "web", ListFilter{})
 	if err != nil || len(got.Deploys) != len(restList) || got.Deploys[0].ID != first.ID {
 		t.Fatalf("list_deploys = %+v, want to match List() = %+v (err %v)", got, restList, err)
@@ -1118,6 +1117,7 @@ func TestMCPMatchesREST(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("get_deploy: %v isErr=%v", err, res.IsError)
 	}
+	rendertest.AssertRenderMCPResult(t, "get_deploy", res)
 	var oneGot renderDeploy
 	if err := decodeStructured(res.StructuredContent, &oneGot); err != nil {
 		t.Fatalf("decode get_deploy result: %v", err)
@@ -1171,6 +1171,8 @@ func TestMCPTriggerClearCacheAcceptsRendersBoolean(t *testing.T) {
 	}
 	if res := call(true); res.IsError {
 		t.Fatalf("clearCache:true refused: %+v", res.Content)
+	} else {
+		rendertest.AssertRenderMCPResult(t, "trigger_deploy", res)
 	}
 	if _, ok := marker(); !ok {
 		t.Fatal("clearCache:true did not stamp the cache reset")

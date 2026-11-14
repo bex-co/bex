@@ -29,8 +29,9 @@ import (
 )
 
 // render.go maps LogEntry onto Render's public-API log object: a required id,
-// and labels as a [{name,value}] array. The MCP list_logs tool returns LogEntry
-// verbatim (matching Render's MCP server); the REST logs API uses this shape.
+// and labels as a [{name,value}] array. The REST logs API and MCP list_logs
+// both return this shape: Render's MCP server marshals the REST response
+// (w4/m378).
 
 // renderLabels is the order labels appear on a REST log line (Render's `name`) and
 // the LogEntry key each reads from — they differ only for `resource`, which Core

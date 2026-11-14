@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -68,6 +69,12 @@ func callTool[T any](t *testing.T, cs *mcp.ClientSession, name string, args map[
 		t.Fatalf("%s: tool error: %+v", name, res.Content)
 	}
 	var out T
+	// A tool answering in Render's text (w4/m378) has no structuredContent:
+	// its first text content is the JSON.
+	if res.StructuredContent == nil {
+		rendertest.DecodeMCPText(t, res, &out)
+		return out
+	}
 	b, err := json.Marshal(res.StructuredContent)
 	if err != nil {
 		t.Fatalf("%s: marshal structured content: %v", name, err)
@@ -100,22 +107,20 @@ func TestMCP_ExplicitWorkspaceScopesListServices(t *testing.T) {
 	cs := mcpSessionAs(t, srv, "client-1")
 
 	// list_workspaces is caller-scoped discovery and carries no selection state.
-	lw := callTool[struct {
-		Workspaces []struct{ ID, Name string }
-	}](t, cs, "list_workspaces", nil)
-	if len(lw.Workspaces) != 2 {
+	lw := callTool[[]struct{ ID, Name string }](t, cs, "list_workspaces", nil)
+	if len(lw) != 2 {
 		t.Fatalf("list_workspaces = %+v, want 2 workspaces", lw)
 	}
 
 	// Omitting workspaceId uses the caller's deterministic default workspace.
-	defaulted := callTool[struct{ Services []struct{ Name string } }](t, cs, "list_services", nil)
-	if len(defaulted.Services) != 1 || defaulted.Services[0].Name != "first-web" {
+	defaulted := callTool[[]struct{ Name string }](t, cs, "list_services", nil)
+	if len(defaulted) != 1 || defaulted[0].Name != "first-web" {
 		t.Fatalf("default list_services = %+v, want only first-web", defaulted)
 	}
 
 	// The explicit workspace applies to this call only.
-	scoped := callTool[struct{ Services []struct{ Name string } }](t, cs, "list_services", map[string]any{"workspaceId": second.ID})
-	if len(scoped.Services) != 1 || scoped.Services[0].Name != "second-web" {
+	scoped := callTool[[]struct{ Name string }](t, cs, "list_services", map[string]any{"workspaceId": second.ID})
+	if len(scoped) != 1 || scoped[0].Name != "second-web" {
 		t.Fatalf("scoped list_services = %+v, want only second-web", scoped)
 	}
 	callToolError(t, cs, "list_services", map[string]any{"workspaceId": "tea-does-not-exist"})

@@ -18,7 +18,6 @@ package logs
 
 import (
 	"context"
-	"maps"
 	"slices"
 	"time"
 
@@ -80,19 +79,6 @@ type listLogLabelValuesArgs struct {
 	Label string `json:"label" jsonschema:"the label to list values for: host|instance|level|method|statusCode|type"`
 }
 
-type listLogsResult struct {
-	HasMore       bool       `json:"hasMore"`
-	NextStartTime string     `json:"nextStartTime"`
-	NextEndTime   string     `json:"nextEndTime"`
-	Logs          []LogEntry `json:"logs"`
-}
-
-// listLogLabelValuesResult carries the discovered values. Render's tool returns a
-// bare array; MCP tool results are objects, so bex names the field.
-type listLogLabelValuesResult struct {
-	Values []string `json:"values"`
-}
-
 // query resolves the shared filters into a LogQuery (App unset — the caller loops
 // over Resource). Time bounds and the type vocabulary are validated here, so a
 // malformed filter is an error naming it rather than a silently ignored argument.
@@ -141,33 +127,31 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			"When hasMore is true, call again with startTime=nextStartTime and endTime=nextEndTime (same direction) to fetch the next page — the result is capped at 100 lines. " +
 			"Logs reach back as far as the workspace plan keeps them; an earlier startTime reads from that limit. " +
 			"Use list_log_label_values to discover which filter values exist for a resource.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogsArgs) (*mcp.CallToolResult, listLogsResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogsArgs) (*mcp.CallToolResult, renderLogList, error) {
 		resources, err := boundedResources(in.Resource)
 		if err != nil {
-			return nil, listLogsResult{}, err
+			return nil, renderLogList{}, err
 		}
 		q, err := in.query()
 		if err != nil {
-			return nil, listLogsResult{}, err
+			return nil, renderLogList{}, err
 		}
 		// BEX_MAX_QUERY_HOURS bounds this surface too (w9/004) — the same
 		// checkWindow REST's logsQuery/logsValues and GraphQL's resolvers call,
 		// so no adapter lets a caller scan the store unbounded.
 		if err := s.checkWindow(q); err != nil {
-			return nil, listLogsResult{}, err
+			return nil, renderLogList{}, err
 		}
 		q.Limit = in.Limit
 
 		page, err := s.queryLogPage(ctx, resources, q)
 		if err != nil {
-			return nil, listLogsResult{}, err
+			return nil, renderLogList{}, err
 		}
-		return nil, listLogsResult{
-			HasMore:       page.HasMore,
-			NextStartTime: page.NextStartTime,
-			NextEndTime:   page.NextEndTime,
-			Logs:          mcpLogEntries(page.Entries),
-		}, nil
+		// Render's server marshals the REST response (pkg/logs/tools.go), so
+		// the lines are REST's: an id, and labels as the ordered [{name, value}]
+		// array with resource, never bex's internal map (w4/m378).
+		return nil, toRenderLogList(page), nil
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -175,17 +159,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "List all values a given log label (host | instance | level | method | statusCode | type) takes in the logs matching the provided filters. " +
 			"Use it to discover what values are available for filtering with list_logs, instead of guessing. " +
 			"The label filters (type/level/instance/statusCode/method) and the time range narrow the search; the line filters (text/path/host) do not affect which values are returned.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogLabelValuesArgs) (*mcp.CallToolResult, listLogLabelValuesResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogLabelValuesArgs) (*mcp.CallToolResult, any, error) {
 		resources, err := boundedResources(in.Resource)
 		if err != nil {
-			return nil, listLogLabelValuesResult{}, err
+			return nil, nil, err
 		}
 		q, err := in.query()
 		if err != nil {
-			return nil, listLogLabelValuesResult{}, err
+			return nil, nil, err
 		}
 		if err := s.checkWindow(q); err != nil {
-			return nil, listLogLabelValuesResult{}, err
+			return nil, nil, err
 		}
 		all := []string{}
 		ctx = core.WithRequestMemo(ctx)
@@ -193,44 +177,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			q.App = id
 			values, err := s.LogLabelValues(ctx, in.Label, q)
 			if err != nil {
-				return nil, listLogLabelValuesResult{}, err
+				return nil, nil, err
 			}
 			all = append(all, values...)
 		}
 		slices.Sort(all)
-		return nil, listLogLabelValuesResult{Values: slices.Compact(all)}, nil
+		// Render's text: the bare string array (pkg/logs/tools.go).
+		return mcputil.RenderText(slices.Compact(all))
 	})
-}
-
-// mcpLogEntries keeps only the labels the REST line carries (renderLabels):
-// Render's label vocabulary is closed, so Core's container and requestID stay
-// off MCP too (w3/053, w4/m325).
-func mcpLogEntries(entries []LogEntry) []LogEntry {
-	out := make([]LogEntry, len(entries))
-	for i, e := range entries {
-		out[i] = e
-		if hasCoreOnlyLabel(e.Labels) {
-			out[i].Labels = maps.Clone(e.Labels)
-			maps.DeleteFunc(out[i].Labels, func(k, _ string) bool { return !renderLabelKeys[k] })
-		}
-	}
-	return out
-}
-
-// renderLabelKeys is the set of LogEntry label keys a REST line carries.
-var renderLabelKeys = func() map[string]bool {
-	keys := map[string]bool{}
-	for _, l := range renderLabels {
-		keys[l.key] = true
-	}
-	return keys
-}()
-
-func hasCoreOnlyLabel(labels map[string]string) bool {
-	for k := range labels {
-		if !renderLabelKeys[k] {
-			return true
-		}
-	}
-	return false
 }

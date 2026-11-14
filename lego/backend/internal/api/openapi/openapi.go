@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package openapi holds the pinned Render public OpenAPI document as bytes and
-// nothing else. internal/api verifies its digest and serves the request gate
-// from it; internal/rendertest validates test responses against the same
-// bytes, which is why the asset lives in a leaf package both can import.
+// Package openapi holds pinned Render contracts as bytes and nothing else: the
+// public OpenAPI document and the MCP result shapes. internal/api verifies the
+// OpenAPI digest and serves the request gate from it; internal/rendertest
+// validates test responses against the same bytes, which is why the assets
+// live in a leaf package both can import.
 package openapi
 
 import _ "embed"
@@ -30,3 +31,12 @@ import _ "embed"
 //
 //go:embed render-public-api-1.json
 var RenderPublicAPI []byte
+
+// RenderMCPResults is the result shape of every MCP tool bex shares with
+// render-oss/render-mcp-server, captured at the commit the tools pin
+// (render-mcp-tools.json) names by scripts/render-mcp-capture.py --results
+// (w4/m378): each tool's text form and the JSON keys of the type it marshals.
+// internal/rendertest checks bex's MCP answers against it.
+//
+//go:embed render-mcp-results.json
+var RenderMCPResults []byte

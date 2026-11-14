@@ -70,21 +70,37 @@ type getMetricsArgs struct {
 	AggregateAllMethod string `json:"aggregateAllMethod,omitempty" jsonschema:"MIN|MAX|AVG across selected replicas at each timestamp (distinct from cpuUsageAggregationMethod interval aggregation)"`
 }
 
-type getMetricsResult struct {
-	// Series is nil-coalesced at every success return: a nil slice marshals to
-	// `null`, while REST's toRenderMetrics always emits `[]`, so a resource with
-	// no series in the window would answer differently depending on the surface
-	// the caller happened to use (w6/m110/t005 — the same required-shape class
-	// w6/m109 fixed on the datastore views).
-	Series []MetricSeries `json:"series"`
+// renderMetricsResponse is Render's MCP get_metrics answer
+// (render-mcp-server pkg/metrics/repo.go MetricsResponse): the resource, the
+// window the caller asked for, and one entry per requested metric type whose
+// data is the REST time-series array for it (w4/m378).
+type renderMetricsResponse struct {
+	ResourceID string             `json:"resourceId"`
+	TimeRange  renderTimeRange    `json:"timeRange"`
+	Metrics    []renderMetricData `json:"metrics"`
 }
 
-// metricSeriesOrEmpty keeps MCP's empty case shaped like REST's `[]`.
-func metricSeriesOrEmpty(series []MetricSeries) []MetricSeries {
-	if series == nil {
-		return []MetricSeries{}
+// renderTimeRange echoes the caller's startTime/endTime; Render omits a bound
+// the call left out.
+type renderTimeRange struct {
+	Start string `json:"start,omitempty"`
+	End   string `json:"end,omitempty"`
+}
+
+// renderMetricData is Render's MetricData: the metric type as requested, and
+// REST's series for it.
+type renderMetricData struct {
+	Type string               `json:"type"`
+	Data []renderMetricSeries `json:"data"`
+}
+
+// renderTimeBound formats a parsed bound as Go's time.Time JSON does
+// (RFC3339Nano), the way Render's server marshals its StartTimeParam.
+func renderTimeBound(t time.Time) string {
+	if t.IsZero() {
+		return ""
 	}
-	return series
+	return t.Format(time.RFC3339Nano)
 }
 
 // resources applies the w2/m91 alias policy for resourceId vs resource.
@@ -169,19 +185,19 @@ func metricIDFor(metricType string) string {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_metrics",
-		Description: "Get resource (cpu/memory/instance_count) and request (http_requests/http_latency/bandwidth) metrics for one or more services, as Render-shaped time-series. Prefer Render's resourceId/resolution/httpLatencyQuantile/httpHost/httpPath; legacy resource/resolutionSeconds/quantile/host/path aliases still work (Render spelling wins when both are set).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getMetricsArgs) (*mcp.CallToolResult, getMetricsResult, error) {
+		Description: "Get resource (cpu/memory/instance_count) and request (http_requests/http_latency/bandwidth) metrics for a service, Postgres or Key Value resource. Returns Render's answer: {resourceId, timeRange, metrics: [{type, data}]}, one metrics entry per requested type, each data being the REST time-series array (labels [{field, value}], unit, values). With the legacy multi-id resource array, a JSON array of those objects, one per resource. Prefer Render's resourceId/resolution/httpLatencyQuantile/httpHost/httpPath; legacy resource/resolutionSeconds/quantile/host/path aliases still work (Render spelling wins when both are set).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getMetricsArgs) (*mcp.CallToolResult, any, error) {
 		resources, err := in.resources()
 		if err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, nil, err
 		}
 		cpuAgg, err := parseCPUAggregation("cpuUsageAggregationMethod", in.CPUUsageAggregationMethod)
 		if err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, nil, err
 		}
 		groupBy, err := requestGroupBy("aggregateHttpRequestCountsBy", in.AggregateHTTPRequestCountsBy)
 		if err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, nil, err
 		}
 		q := MetricQuery{
 			Quantile:   in.quantile(),
@@ -196,15 +212,15 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if in.AggregateAllMethod != "" {
 			replica, aggMax, parseErr := parseReplicaAggregate(in.AggregateAllMethod)
 			if parseErr != nil {
-				return nil, getMetricsResult{}, parseErr
+				return nil, nil, parseErr
 			}
 			q.ReplicaAggregate, q.AggregateMax = replica, aggMax
 		}
 		if q.Start, err = core.ParseTime("startTime", in.StartTime); err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, nil, err
 		}
 		if q.End, err = core.ParseTime("endTime", in.EndTime); err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, nil, err
 		}
 		// The percentile dimension applies whenever the metric list includes
 		// http_latency; a mixed list over-approximates the product, which only
@@ -216,10 +232,15 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			}
 		}
 		if err := checkFanOut(len(resources), len(in.MetricTypes), quantileFan); err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, nil, err
 		}
-		var all []MetricSeries
+		responses := make([]renderMetricsResponse, 0, len(resources))
 		for _, id := range resources {
+			resp := renderMetricsResponse{
+				ResourceID: id,
+				TimeRange:  renderTimeRange{Start: renderTimeBound(q.Start), End: renderTimeBound(q.End)},
+				Metrics:    make([]renderMetricData, 0, len(in.MetricTypes)),
+			}
 			for _, metricType := range in.MetricTypes {
 				var series []MetricSeries
 				if metricType == renderActiveConnections {
@@ -238,23 +259,40 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 					var withQuantiles []QuantileSeries
 					withQuantiles, err = s.MetricsWithQuantiles(ctx, q)
 					for i := range withQuantiles {
-						series = append(series, withQuantiles[i].MetricSeries)
+						series = append(series, renderStatusCodeLabel(withQuantiles[i].MetricSeries, q.GroupBy))
 					}
 				}
 				if err != nil {
-					return nil, getMetricsResult{}, err
+					return nil, nil, err
 				}
-				// Tag each series with the metric type the caller asked for, so
-				// multi-metric results stay distinct in the caller's own vocabulary.
-				for _, ser := range series {
-					ser.SetLabel(LabelMetric, metricType)
-					all = append(all, ser)
-				}
+				// The entry's type is the caller's own spelling, as Render echoes it.
+				resp.Metrics = append(resp.Metrics, renderMetricData{Type: metricType, Data: toRenderMetrics(series)})
 			}
+			responses = append(responses, resp)
 		}
-		return nil, getMetricsResult{Series: metricSeriesOrEmpty(all)}, nil
+		// Render's call names one resourceId and gets one object back; only
+		// bex's legacy resource array asks for several.
+		if len(responses) == 1 {
+			return mcputil.RenderText(responses[0])
+		}
+		return mcputil.RenderText(responses)
 	})
 	RegisterDatastoreMetricsMCP(s, srv)
+}
+
+// datastoreMetricsResult is get_datastore_metrics' answer (a bex extension,
+// so bex's own series shape). Series is nil-coalesced: a nil slice marshals to
+// null, while REST always emits [] (w6/m110/t005).
+type datastoreMetricsResult struct {
+	Series []MetricSeries `json:"series"`
+}
+
+// metricSeriesOrEmpty keeps the empty case shaped like REST's [].
+func metricSeriesOrEmpty(series []MetricSeries) []MetricSeries {
+	if series == nil {
+		return []MetricSeries{}
+	}
+	return series
 }
 
 // getDatastoreMetricsArgs is get_datastore_metrics' input — the Database/
@@ -289,10 +327,10 @@ func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_datastore_metrics",
 		Description: "Get disk usage, cpu/memory and their limits, active-connections, replication-lag (Postgres), and connections (Key Value) metrics for one managed Postgres or Key Value instance — or, with kind=service, the used/capacity bytes of the persistent disk attached to a service (ADR082) — as Render-shaped time-series. bex extension (no Render equivalent).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDatastoreMetricsArgs) (*mcp.CallToolResult, getMetricsResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDatastoreMetricsArgs) (*mcp.CallToolResult, datastoreMetricsResult, error) {
 		resource, err := in.resource()
 		if err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, datastoreMetricsResult{}, err
 		}
 		kind := in.Kind
 		if kind == "" {
@@ -306,24 +344,24 @@ func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 			Resolution: time.Duration(in.resolutionSeconds()) * time.Second,
 		}
 		if q.Start, err = core.ParseTime("startTime", in.StartTime); err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, datastoreMetricsResult{}, err
 		}
 		if q.End, err = core.ParseTime("endTime", in.EndTime); err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, datastoreMetricsResult{}, err
 		}
 		if err := checkFanOut(1, len(in.MetricTypes), 1); err != nil {
-			return nil, getMetricsResult{}, err
+			return nil, datastoreMetricsResult{}, err
 		}
 		var all []MetricSeries
 		for _, metric := range in.MetricTypes {
 			q.Metric = metric
 			series, err := s.DatastoreMetrics(ctx, q)
 			if err != nil {
-				return nil, getMetricsResult{}, err
+				return nil, datastoreMetricsResult{}, err
 			}
 			setLabelOnEach(series, LabelMetric, metric)
 			all = append(all, series...)
 		}
-		return nil, getMetricsResult{Series: metricSeriesOrEmpty(all)}, nil
+		return nil, datastoreMetricsResult{Series: metricSeriesOrEmpty(all)}, nil
 	})
 }

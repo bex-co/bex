@@ -255,7 +255,7 @@ func TestMCPDryRunCreatePostgres(t *testing.T) {
 		"plan":   "basic-1gb",
 		"dryRun": true,
 	})
-	if !strings.HasPrefix(got["id"].(string), "dpg-") || got["name"] != "mcp-preview" || got["plan"] != "basic-1gb" {
+	if !strings.HasPrefix(got["id"].(string), "dpg-") || got["name"] != "mcp-preview" || got["plan"] != "basic_1gb" { // REST's plan spelling (w4/m378)
 		t.Fatalf("preview wrong: %+v", got)
 	}
 	if n := countDatabases(t, cl); n != 0 {

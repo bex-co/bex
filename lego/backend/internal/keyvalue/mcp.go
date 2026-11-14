@@ -94,11 +94,6 @@ type updateKeyValueArgs struct {
 	DryRun  bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview without any writes"`
 }
 
-// listKeyValueResult wraps the array — MCP tool outputs must be JSON objects.
-type listKeyValueResult struct {
-	KeyValues []KeyValueView `json:"keyValues"`
-}
-
 // listKeyValueArgs contains only feature arguments; the composition root adds
 // Render's shared optional workspaceId parameter.
 type listKeyValueArgs struct{}
@@ -108,29 +103,35 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_key_value",
 		Description: "List all managed key-value (Valkey/Redis) stores in a workspace with their status.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listKeyValueArgs) (*mcp.CallToolResult, listKeyValueResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listKeyValueArgs) (*mcp.CallToolResult, any, error) {
 		list, err := s.ListKeyValues(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
-			return nil, listKeyValueResult{}, err
+			return nil, nil, err
 		}
-		return nil, listKeyValueResult{KeyValues: list}, nil
+		// Render's text (pkg/keyvalue/tools.go): this sentence for an empty
+		// workspace, else the bare array of the REST detail objects (owner,
+		// options), never bex's flat KeyValueView (w4/m378).
+		if len(list) == 0 {
+			return mcputil.RenderPlainText("No Key Value instances found")
+		}
+		return mcputil.RenderText(s.renderKeyValues(ctx, list))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_key_value",
 		Description: "Get details about a specific managed key-value store by id.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in keyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in keyValueArgs) (*mcp.CallToolResult, renderKeyValue, error) {
 		v, err := s.GetKeyValue(ctx, in.KeyValueID)
 		if err != nil {
-			return nil, KeyValueView{}, err
+			return nil, renderKeyValue{}, err
 		}
-		return nil, v, nil
+		return nil, s.renderOneKeyValue(ctx, v), nil
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
 		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, region, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, renderKeyValue, error) {
 		allowList := core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList)
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{
 			OwnerID:         core.NamedWorkspace(ctx),
@@ -147,9 +148,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			DryRun:          in.DryRun,
 		})
 		if err != nil {
-			return nil, KeyValueView{}, err
+			return nil, renderKeyValue{}, err
 		}
-		return nil, v, nil
+		return nil, s.renderOneKeyValue(ctx, v), nil
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{

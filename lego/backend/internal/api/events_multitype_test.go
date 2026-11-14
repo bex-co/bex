@@ -30,6 +30,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/events"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -208,6 +209,7 @@ func callRenderEvents(t *testing.T, cs *mcp.ClientSession, args map[string]any) 
 	if result.IsError {
 		t.Fatalf("list_events error: %s", content.Text)
 	}
+	rendertest.AssertRenderMCPResult(t, "list_events", result)
 	array, cursor, ok := strings.Cut(content.Text, "\n\n cursor: ")
 	if !ok {
 		t.Fatalf("list_events text lacks Render's cursor suffix: %s", content.Text)

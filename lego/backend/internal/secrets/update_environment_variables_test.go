@@ -26,6 +26,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 )
 
 // renderEnvService wires the rebuild hook the composition root provides:
@@ -119,6 +120,7 @@ func TestUpdateEnvironmentVariablesMatchesRender(t *testing.T) {
 			if want := triggered + string(r.deploy); toolText(res) != want {
 				t.Fatalf("text = %q, want %q", toolText(res), want)
 			}
+			rendertest.AssertRenderMCPResult(t, "update_environment_variables", res)
 			// A Blueprint manifest's literal is not bex's to write, even on replace.
 			for _, v := range getApp(t, r.Client, "web").Spec.Env {
 				if v.Name == "MESSAGE" && v.Value != "hello from bex" {

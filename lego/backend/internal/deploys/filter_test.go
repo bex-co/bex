@@ -31,6 +31,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -516,16 +517,22 @@ func newMCPSession(t *testing.T, svc *Service) *mcp.ClientSession {
 	return cs
 }
 
-func callListDeploys(t *testing.T, cs *mcp.ClientSession, args map[string]any) listDeploysResult {
+// listDeploysPage is list_deploys' Render text, parsed: the deploy array and
+// the trailing cursor.
+type listDeploysPage struct {
+	Deploys []renderDeploy
+	Cursor  string
+}
+
+func callListDeploys(t *testing.T, cs *mcp.ClientSession, args map[string]any) listDeploysPage {
 	t.Helper()
 	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "list_deploys", Arguments: args})
 	if err != nil || res.IsError {
 		t.Fatalf("list_deploys(%v): %v isErr=%v", args, err, res.IsError)
 	}
-	var out listDeploysResult
-	if err := decodeStructured(res.StructuredContent, &out); err != nil {
-		t.Fatalf("decode list_deploys result: %v", err)
-	}
+	rendertest.AssertRenderMCPResult(t, "list_deploys", res)
+	var out listDeploysPage
+	out.Cursor = rendertest.DecodeMCPListWithCursor(t, res, &out.Deploys)
 	return out
 }
 

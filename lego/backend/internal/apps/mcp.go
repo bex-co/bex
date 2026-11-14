@@ -43,11 +43,6 @@ type serviceArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 }
 
-// listServicesResult wraps the array — MCP tool outputs must be JSON objects.
-type listServicesResult struct {
-	Services []renderService `json:"services"`
-}
-
 type listServicesArgs struct{}
 
 // scaleArgs is scale_service's input — the desired running instance count,
@@ -664,12 +659,13 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_services",
 		Description: "List all services (bex Apps) in a workspace with their status.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listServicesArgs) (*mcp.CallToolResult, listServicesResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listServicesArgs) (*mcp.CallToolResult, any, error) {
 		apps, err := s.List(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
-			return nil, listServicesResult{}, err
+			return nil, nil, err
 		}
-		return nil, listServicesResult{Services: toRenderServices(apps)}, nil
+		// Render's text: the bare service array (pkg/service/tools.go).
+		return mcputil.RenderText(toRenderServices(apps))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -690,35 +686,35 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_web_service",
-		Description: "Create a web service from a repo or a prebuilt image and get back the service to poll until its url is live. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
+		Description: "Create a web service from a repo or a prebuilt image and get back Render's {service, deployId}: poll the service until its url is live, or get_deploy the deploy. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, serviceAndDeploy, error) {
 		req, err := in.createRequest(ctx)
 		if err != nil {
-			return nil, renderService{}, err
+			return nil, serviceAndDeploy{}, err
 		}
-		return renderServiceResult(s.Create(ctx, req))
+		return createdServiceResult(s.Create(ctx, req))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_cron_job",
-		Description: "Create a cron job that runs a repo/image's command on a schedule, and get back the service. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
+		Description: "Create a cron job that runs a repo/image's command on a schedule, and get back Render's {service, deployId}. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, serviceAndDeploy, error) {
 		req, err := in.createRequest(ctx)
 		if err != nil {
-			return nil, renderService{}, err
+			return nil, serviceAndDeploy{}, err
 		}
-		return renderServiceResult(s.Create(ctx, req))
+		return createdServiceResult(s.Create(ctx, req))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_static_site",
 		Description: "Create a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. A name already used in the target workspace is rejected (name already in use) rather than republished — use restart_service to republish an existing one. Tracks Render's MCP tool.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, serviceAndDeploy, error) {
 		req, err := in.createRequest(ctx)
 		if err != nil {
-			return nil, renderService{}, err
+			return nil, serviceAndDeploy{}, err
 		}
-		return renderServiceResult(s.Create(ctx, req))
+		return createdServiceResult(s.Create(ctx, req))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -1110,6 +1106,18 @@ func renderServiceResult(app AppView, err error) (*mcp.CallToolResult, renderSer
 		return nil, renderService{}, err
 	}
 	out := toRenderService(app)
+	return mcputil.WithWarning(out, core.ProxiedAllowListWarning(app.IPAllowListProxiedDomains)), out, nil
+}
+
+// createdServiceResult is the create tools' result: Render's ServiceAndDeploy
+// ({service, deployId}), the envelope its MCP server and bex's REST create both
+// return (w4/m378), so an agent learns the first deploy without list_deploys.
+// A dry run mints no deploy, so its deployId is omitted.
+func createdServiceResult(app AppView, err error) (*mcp.CallToolResult, serviceAndDeploy, error) {
+	if err != nil {
+		return nil, serviceAndDeploy{}, err
+	}
+	out := serviceAndDeploy{Service: toRenderService(app), DeployID: app.LatestDeployID}
 	return mcputil.WithWarning(out, core.ProxiedAllowListWarning(app.IPAllowListProxiedDomains)), out, nil
 }
 

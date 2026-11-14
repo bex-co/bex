@@ -466,15 +466,11 @@ func TestManagedServiceIDMetricsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	if err != nil || result.IsError {
 		t.Fatalf("MCP get_metrics: err=%v result=%+v", err, result)
 	}
-	raw, err := json.Marshal(result.StructuredContent)
-	if err != nil {
-		t.Fatalf("MCP marshal: %v", err)
+	mcpSeries := decodeGetMetrics(t, result).series()
+	if len(mcpSeries) != 1 {
+		t.Fatalf("MCP series = %+v, want one", mcpSeries)
 	}
-	var mcpMetrics getMetricsResult
-	if err := json.Unmarshal(raw, &mcpMetrics); err != nil || len(mcpMetrics.Series) != 1 {
-		t.Fatalf("MCP decode: err=%v series=%+v raw=%s", err, mcpMetrics.Series, raw)
-	}
-	if got := mcpMetrics.Series[0].Labels["resource"]; got != managedAppID {
+	if got := mcpSeries[0].label("resource"); got != managedAppID {
 		t.Errorf("MCP resource label = %q, want %q", got, managedAppID)
 	}
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -48,6 +49,9 @@ func TestRenderBlueprintMCPTools(t *testing.T) {
 		res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
 		if err != nil {
 			t.Fatal(err)
+		}
+		if !res.IsError {
+			rendertest.AssertRenderMCPResult(t, tool, res)
 		}
 		var out map[string]any
 		raw, _ := json.Marshal(res.StructuredContent)

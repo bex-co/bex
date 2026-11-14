@@ -127,7 +127,7 @@ func TestQueryFrontendRejectsOversizedMessageBeforeBodyRead(t *testing.T) {
 	header := make([]byte, 5)
 	header[0] = 'D' // DataRow
 	binary.BigEndian.PutUint32(header[1:], uint32(queryWireMessageBodyCap+5))
-	_, err := newQueryFrontend(bytes.NewReader(header), io.Discard).Receive()
+	_, err := queryFrontend(queryWireMessageBodyCap)(bytes.NewReader(header), io.Discard).Receive()
 	var tooLarge *pgproto3.ExceededMaxBodyLenErr
 	if !errors.As(err, &tooLarge) {
 		t.Fatalf("Receive oversized DataRow = %v, want ExceededMaxBodyLenErr", err)

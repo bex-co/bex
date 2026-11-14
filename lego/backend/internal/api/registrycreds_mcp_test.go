@@ -203,12 +203,14 @@ func TestMCP_ServiceRegistryCredentialCreateAndClear(t *testing.T) {
 		"host": "ghcr.io", "username": "alice", "authToken": "hunter2",
 	})
 	created := callTool[struct {
-		ID                   string `json:"id"`
-		RegistryCredentialID string `json:"registryCredentialId"`
+		Service struct {
+			ID                   string `json:"id"`
+			RegistryCredentialID string `json:"registryCredentialId"`
+		} `json:"service"`
 	}](t, cs, "create_web_service", map[string]any{
 		"name": "web", "image": "ghcr.io/acme/private:1", "runtime": "image",
 		"buildCommand": "", "startCommand": "", "registryCredentialId": credential.ID,
-	})
+	}).Service
 	if created.RegistryCredentialID != credential.ID {
 		t.Fatalf("create_web_service binding = %+v, want %s", created, credential.ID)
 	}

@@ -101,12 +101,12 @@ func TestPersistenceTransitionStatusAcrossAdapters(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var view KeyValueView
+			var view renderKeyValue
 			if err := json.Unmarshal(data, &view); err != nil {
 				t.Fatal(err)
 			}
-			if view.Status != tc.want || view.PersistenceMode != "journal_snapshot" {
-				t.Fatalf("MCP status/mode = %s/%s", view.Status, view.PersistenceMode)
+			if view.Status != tc.want || view.Options.PersistenceMode != "journal_snapshot" {
+				t.Fatalf("MCP status/mode = %s/%s", view.Status, view.Options.PersistenceMode)
 			}
 		})
 	}

@@ -1,21 +1,21 @@
 # w4 · m378 — Sixteen of Render's shared MCP tools answer in bex's own shapes, not what Render's server returns: list envelopes, `list_logs`/`get_metrics` series, service creates without `deployId`, datastores without `owner`/`options`, and `query_render_postgres` rows without column names
 
-**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** todo
+**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** in progress (t001–t006, t008–t011 done; t007 live production replay pending)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | List tools answer in Render's text: `list_services`, `list_postgres_instances`, `list_key_value`, `list_workspaces` and `list_log_label_values` as a bare JSON array, and `list_deploys` as an array plus `\n\n cursor: <cursor>` | 45m | — |
-| [t002](t002.md) | `list_logs` returns Render's (REST's) line shape: `id`, `labels` as `[{name, value}]` with `resource`, `message`, `timestamp` | 30m | — |
-| [t008](t008.md) | `get_metrics` returns Render's `MetricsResponse` (`resourceId`, `timeRange`, `metrics[{type, data}]`, with REST's `labels[{field, value}]` and `values`), not bex's `{series:[{labels:{…}, points}]}` | 30m | — |
-| [t009](t009.md) | `create_web_service`, `create_static_site` and `create_cron_job` return Render's `{service, deployId}` (`ServiceAndDeploy`), as REST already does, not the bare service | 20m | — |
-| [t010](t010.md) | Key Value and Postgres tools (`list_key_value`, `get_key_value`, `create_key_value`, `list_postgres_instances`, `get_postgres`, `create_postgres`) return REST's Render-shaped detail: an `owner` object, and Key Value's `options`, not bex's flat view | 40m | — |
-| [t011](t011.md) | `query_render_postgres` returns Render's text: a JSON array of row objects keyed by column name, bounded by 5 MB of JSON with Render's truncation notice, not bex's `{columns, rows, rowCount, truncated}` with a 500-row cap and whole-query refusals | 45m | — |
-| [t003](t003.md) | Pin each shared tool's result shape against Render's server, so a wrapped or re-keyed answer fails CI | 45m | t001, t002, t008, t009, t010, t011 |
-| [t004](t004.md) | Render parity | 20m | t003 |
-| [t005](t005.md) | Simplify | 15m | t004 |
-| [t006](t006.md) | Test coverage | 30m | t004 |
+| [t001](done/t001.md) — **DONE** | List tools answer in Render's text: `list_services`, `list_postgres_instances`, `list_key_value`, `list_workspaces` and `list_log_label_values` as a bare JSON array, and `list_deploys` as an array plus `\n\n cursor: <cursor>` | 45m | — |
+| [t002](done/t002.md) — **DONE** | `list_logs` returns Render's (REST's) line shape: `id`, `labels` as `[{name, value}]` with `resource`, `message`, `timestamp` | 30m | — |
+| [t008](done/t008.md) — **DONE** | `get_metrics` returns Render's `MetricsResponse` (`resourceId`, `timeRange`, `metrics[{type, data}]`, with REST's `labels[{field, value}]` and `values`), not bex's `{series:[{labels:{…}, points}]}` | 30m | — |
+| [t009](done/t009.md) — **DONE** | `create_web_service`, `create_static_site` and `create_cron_job` return Render's `{service, deployId}` (`ServiceAndDeploy`), as REST already does, not the bare service | 20m | — |
+| [t010](done/t010.md) — **DONE** | Key Value and Postgres tools (`list_key_value`, `get_key_value`, `create_key_value`, `list_postgres_instances`, `get_postgres`, `create_postgres`) return REST's Render-shaped detail: an `owner` object, and Key Value's `options`, not bex's flat view | 40m | — |
+| [t011](done/t011.md) — **DONE** | `query_render_postgres` returns Render's text: a JSON array of row objects keyed by column name, bounded by 5 MB of JSON with Render's truncation notice, not bex's `{columns, rows, rowCount, truncated}` with a 500-row cap and whole-query refusals | 45m | — |
+| [t003](done/t003.md) — **DONE** | Pin each shared tool's result shape against Render's server, so a wrapped or re-keyed answer fails CI | 45m | t001, t002, t008, t009, t010, t011 |
+| [t004](done/t004.md) — **DONE** | Render parity | 20m | t003 |
+| [t005](done/t005.md) — **DONE** | Simplify | 15m | t004 |
+| [t006](done/t006.md) — **DONE** | Test coverage | 30m | t004 |
 | [t007](t007.md) | Closeout (live replay on production) | 20m | t005, t006 |
 
 ## Definition of done
@@ -189,3 +189,31 @@ All on production, workspace `bex-canary`. Use streamable HTTP to `https://api.b
 - **Whether a client reads `structuredContent` rather than the text.** Render's server sends no structured content, so the text is the contract. t001 decides whether bex keeps a structured object beside Render's text.
 - **The other shared tools** (`get_postgres`, `get_key_value`, `get_metrics`, `list_logs`' `hasMore` paging, the create tools) were not compared field by field this round. t003 covers them.
 - **Render's value encodings for `query_render_postgres`.** Render's encoding of `bytea`, `uuid` and exact numerics was read from source, not measured. Render's raw `string([]byte)` and pgx's `[16]byte` uuid are lossy or odd, and bex's value policy (w4/m157, w4/m158) stays.
+
+## Render parity comparison (t004, 2026-11-14)
+
+Read in `render-oss/render-mcp-server` at the pinned `23fb336` (the same commit as `render-mcp-tools.json`; the formatting matched what § Finding read on `main`). Each row is now pinned by `render-mcp-results.json` and `rendertest.AssertRenderMCPResult`.
+
+| tool | Render at `23fb336` | bex after m378 |
+| --- | --- | --- |
+| `list_services` | `json.Marshal([]*client.Service)` (`pkg/service/tools.go:62-67`) | bare array of `toRenderService` items (same object as `get_service`) |
+| `list_deploys` | array + `"\n\n cursor: "` + cursor or `""` (`pkg/deploy/tools.go:78-90`) | the same; cursor is the last deploy id |
+| `list_events` (control) | the same form (`pkg/event/tools.go:110-122`) | unchanged, now through the shared `RenderListWithCursor` |
+| `list_postgres_instances` | `No Postgres instances found` when empty, else `json.Marshal([]*client.Postgres)` (`pkg/postgres/tools.go:48-57`) | the same; items are REST's postgres objects (owner) |
+| `list_key_value` | `No Key Value instances found` when empty, else `json.Marshal([]*client.KeyValue)` (`pkg/keyvalue/tools.go:44-53`) | the same; items are REST's key value objects (owner, options) |
+| `list_workspaces` | `json.Marshal([]*client.Owner)` (`pkg/owner/tools.go:44-56`) | bare array of REST owner objects (`GET /v1/owners` items) |
+| `list_log_label_values` | `json.Marshal([]string)` (`pkg/logs/tools.go:452-457`) | bare sorted, de-duplicated string array |
+| `list_logs` | `json.Marshal(*client.Logs200Response)` (`pkg/logs/tools.go:248-253`) | REST's `GET /v1/logs` envelope, equal value for value |
+| `get_metrics` | `json.Marshal(MetricsResponse)`: `resourceId`, `timeRange{start?,end?}`, `metrics[{type, data}]` (`pkg/metrics/tools.go:233-238`, `repo.go:64-100`) | the same; `data` = REST series, `statusCode` label; legacy multi-id `resource` → array of objects |
+| `create_web_service` / `create_static_site` / `create_cron_job` | `json.Marshal(*client.ServiceAndDeploy)` (`pkg/service/tools.go:205-210`, `:458-463`, `:596-601`) | `{service, deployId}` (no `deployId` on a dry run) |
+| `get_key_value` / `create_key_value` | `json.Marshal(*client.KeyValueDetail)` (`pkg/keyvalue/tools.go:85`, `:182`) | REST's key value object |
+| `get_postgres` / `create_postgres` | `json.Marshal(*client.PostgresDetail)` (`pkg/postgres/tools.go:89`, `:193`) | REST's postgres object |
+| `query_render_postgres` | `collectRows`: row objects, 5 MB bound, `truncatedResultMessage` as a 2nd item, no `isError` (`pkg/postgres/tools.go:281-360`) | the same bound and notice; values through bex's exact value policy; bex keeps its 10 s statement timeout |
+| `get_service`, `get_deploy`, `trigger_deploy`, `update_environment_variables`, blueprint tools (controls) | object / Render's sentence | unchanged; now pinned |
+
+Remaining known differences, all deliberate: an empty `list_services`/`list_deploys` is `[]` where upstream's nil slice would marshal `null` (upstream's own `list_events` writes `[]`); bex's additive keys on the shared objects (ADR018 § MCP result shapes); error prose (§ Round 299, not filed).
+
+## Simplify (t005)
+
+- Applied: `mcputil.RenderListWithCursor` shared by `list_events` and `list_deploys`; `mcputil.RenderText` for every array/text answer; MCP `list_logs` uses REST's `toRenderLogList` (`mcpLogEntries` deleted); one `renderStatusCodeLabel` for REST and MCP metrics; `queryRowValues` shared by both row collectors; one `queryFrontend(maxBodyLen)`; `mcputil.AddExactJSONTool` deleted (no caller left).
+- Declined: encoding query rows once. The collector measures each row to stop reading at 5 MB and the tool re-encodes at most 5 MB for its text; keeping the cut in the renderer too lets the text be tested with a fake executor.

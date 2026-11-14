@@ -182,6 +182,9 @@ func TestGraphQLDryRunUpdateServicePlan(t *testing.T) {
 
 // ---- MCP -----------------------------------------------------------------
 
+// createsService names the MCP tools that answer Render's ServiceAndDeploy.
+var createsService = map[string]bool{"create_web_service": true, "create_cron_job": true, "create_static_site": true}
+
 func appsMCPClient(t *testing.T, svc *Service) (func(string, map[string]any) map[string]any, func()) {
 	t.Helper()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
@@ -204,6 +207,11 @@ func appsMCPClient(t *testing.T, svc *Service) (func(string, map[string]any) map
 		if res.StructuredContent != nil {
 			b, _ := json.Marshal(res.StructuredContent)
 			_ = json.Unmarshal(b, &out)
+		}
+		// The three creates answer Render's {service, deployId} (w4/m378,
+		// TestMCPCreatesReturnServiceAndDeploy); these tests read the service.
+		if createsService[name] {
+			out, _ = out["service"].(map[string]any)
 		}
 		return out
 	}

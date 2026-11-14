@@ -294,27 +294,18 @@ func TestMCPGetMetricsAcceptsRenderMetricTypes(t *testing.T) {
 		}
 		return result
 	}
-	decode := func(result *mcp.CallToolResult) getMetricsResult {
-		t.Helper()
-		var out getMetricsResult
-		raw, _ := json.Marshal(result.StructuredContent)
-		if err := json.Unmarshal(raw, &out); err != nil {
-			t.Fatalf("decode %s: %v", raw, err)
-		}
-		return out
-	}
-
 	for render, bex := range map[string]string{"cpu_usage": MetricCPU, "memory_usage": MetricMemory, "cpu_limit": MetricCPULimit} {
 		renderResult, bexResult := call(render), call(bex)
 		if renderResult.IsError || bexResult.IsError {
 			t.Fatalf("%s/%s: isError render=%v bex=%v", render, bex, renderResult.IsError, bexResult.IsError)
 		}
-		got, want := decode(renderResult).Series, decode(bexResult).Series
-		if len(got) == 0 || len(got) != len(want) || got[0].Points[0].Value != want[0].Points[0].Value {
+		gotResp := decodeGetMetrics(t, renderResult)
+		got, want := gotResp.series(), decodeGetMetrics(t, bexResult).series()
+		if len(got) == 0 || len(got) != len(want) || got[0].Values[0].Value != want[0].Values[0].Value {
 			t.Errorf("%s = %+v, want the same series as %s %+v", render, got, bex, want)
 		}
-		if got[0].Labels[LabelMetric] != render {
-			t.Errorf("%s series labelled metric=%q, want the requested name", render, got[0].Labels[LabelMetric])
+		if gotResp.Metrics[0].Type != render {
+			t.Errorf("%s answered as type %q, want the requested name", render, gotResp.Metrics[0].Type)
 		}
 	}
 

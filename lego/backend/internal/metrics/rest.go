@@ -302,15 +302,7 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 			return
 		}
 		for _, ser := range series {
-			// Render's REST vocabulary for the breakdown is statusCode (its
-			// aggregateBy value and filters/http field); the sources label it code.
-			if q.GroupBy == groupByStatus {
-				if code, ok := ser.Labels["code"]; ok {
-					delete(ser.Labels, "code")
-					ser.SetLabel("statusCode", code)
-				}
-			}
-			all = append(all, ser.MetricSeries)
+			all = append(all, renderStatusCodeLabel(ser.MetricSeries, q.GroupBy))
 		}
 	}
 	core.WriteJSON(w, http.StatusOK, toRenderMetrics(all))

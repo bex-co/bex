@@ -60,6 +60,20 @@ func toRenderMetricSeries(s MetricSeries) renderMetricSeries {
 	return renderMetricSeries{Labels: labels, Unit: s.Unit, Values: values}
 }
 
+// renderStatusCodeLabel renames a per-status breakdown's label to Render's
+// vocabulary: statusCode (its aggregateBy value and filters/http field), where
+// the sources label it code. REST and MCP get_metrics both apply it.
+func renderStatusCodeLabel(s MetricSeries, groupBy string) MetricSeries {
+	if groupBy != groupByStatus {
+		return s
+	}
+	if code, ok := s.Labels["code"]; ok {
+		delete(s.Labels, "code")
+		s.SetLabel("statusCode", code)
+	}
+	return s
+}
+
 // toRenderMetrics maps series onto Render's metrics response array. Always a
 // non-nil slice so an empty result serializes as [] (Render's shape), not null.
 func toRenderMetrics(series []MetricSeries) []renderMetricSeries {

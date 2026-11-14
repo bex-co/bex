@@ -36,7 +36,9 @@ import (
 // builds render-oss/render-mcp-server and drives it through the MCP stdio
 // handshake to read its own tools/list. Tool names and argument names are the
 // contractual surface; descriptions and annotations are excluded because they
-// drift editorially.
+// drift editorially. What each shared tool ANSWERS is pinned beside it in
+// openapi/render-mcp-results.json (w4/m378, TestRenderMCPResultsCoverEverySharedTool
+// and rendertest.AssertRenderMCPResult).
 
 //go:embed openapi/render-mcp-tools.json
 var renderMCPToolsSource []byte

@@ -27,12 +27,12 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// TestMCPCallReturnsStructuredContent pins the w4/377 contract at the
-// transport: a tools/call for a typed tool returns BOTH structuredContent and
-// a text block carrying the same JSON — an MCP client must never have to
-// scrape text (or find it empty). This probe is exactly what the filed bug
-// lacked on the deployed build.
-func TestMCPCallReturnsStructuredContent(t *testing.T) {
+// TestMCPGetMetricsWireIsRendersText pins get_metrics at the transport. It
+// used to pin w4/377's typed contract (structuredContent plus the same JSON as
+// text); w4/m378 made the answer Render's instead: one non-empty text block
+// carrying Render's MetricsResponse JSON and no structuredContent, which
+// Render's server never sends.
+func TestMCPGetMetricsWireIsRendersText(t *testing.T) {
 	svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
 		webInst: {CPUCores: 0.5, MemoryBytes: 512 << 20},
 	}), nil, sampleApp("web"), podWithLimits(webInst))
@@ -78,14 +78,15 @@ func TestMCPCallReturnsStructuredContent(t *testing.T) {
 	if env.Result.IsError {
 		t.Fatalf("tool error: %s", raw)
 	}
-	if len(env.Result.StructuredContent) == 0 ||
-		!strings.Contains(string(env.Result.StructuredContent), `"series"`) ||
-		!strings.Contains(string(env.Result.StructuredContent), `"value":0.5`) {
-		t.Fatalf("structuredContent missing or wrong: %s", env.Result.StructuredContent)
+	if len(env.Result.StructuredContent) != 0 {
+		t.Fatalf("structuredContent = %s, want none (Render sends text only)", env.Result.StructuredContent)
 	}
-	if len(env.Result.Content) != 1 || env.Result.Content[0].Type != "text" ||
-		env.Result.Content[0].Text == "" ||
-		env.Result.Content[0].Text != string(env.Result.StructuredContent) {
-		t.Fatalf("text block must carry the same JSON, got %+v", env.Result.Content)
+	if len(env.Result.Content) != 1 || env.Result.Content[0].Type != "text" {
+		t.Fatalf("content = %+v, want one text block", env.Result.Content)
+	}
+	text := env.Result.Content[0].Text
+	if !strings.HasPrefix(text, `{"resourceId":"web","timeRange":{},"metrics":[{"type":"cpu_usage","data":[`) ||
+		!strings.Contains(text, `"value":0.5`) {
+		t.Fatalf("text = %s, want Render's MetricsResponse carrying the 0.5 cpu point", text)
 	}
 }

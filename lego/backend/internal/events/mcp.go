@@ -18,7 +18,6 @@ package events
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -140,20 +139,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, nil, err
 		}
 		out := make([]renderEvent, 0, len(events))
-		cursor := `""`
+		cursor := ""
 		for _, event := range events {
 			out = append(out, toRenderEvent(event))
 			cursor = event.Cursor
 		}
-		body, err := json.Marshal(out)
-		if err != nil {
-			return nil, nil, err
-		}
 		// Render returns text, not structured output: a bare event array followed
 		// by the last item's cursor (or a quoted empty string for an empty page).
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{
-			Text: string(body) + "\n\n cursor: " + cursor,
-		}}}, nil, nil
+		return mcputil.RenderListWithCursor(out, cursor)
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_service_events",

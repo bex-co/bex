@@ -111,11 +111,8 @@ func TestRequestLinesReadLikeRenders(t *testing.T) {
 		}
 	}
 
-	for _, e := range mcpLogEntries(entries) {
-		if _, ok := e.Labels[LabelRequestID]; ok {
-			t.Errorf("MCP labels carry requestID: %v", e.Labels)
-		}
-	}
+	// MCP list_logs answers these same REST lines (toRenderLogList, w4/m378),
+	// so the label check above covers it too.
 
 	schema, err := gqlSchema(svc)
 	if err != nil {

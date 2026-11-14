@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"slices"
 	"sync"
 	"testing"
@@ -35,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -587,17 +589,19 @@ func TestMCPListWorkspacesCarriesIPAllowList(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("list_workspaces: %+v %v", res, err)
 	}
-	b, _ := json.Marshal(res.StructuredContent)
-	var out struct {
-		Workspaces []struct {
-			ID          string                  `json:"id"`
-			IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
-		} `json:"workspaces"`
+	// Render's text (w4/m378): a bare array of REST owner objects.
+	rendertest.AssertRenderMCPResult(t, "list_workspaces", res)
+	var out []renderOwner
+	rendertest.DecodeMCPText(t, res, &out)
+	if len(out) != 1 || out[0].ID != f.ws || out[0].Type != renderOwnerType || !slices.Equal(out[0].IPAllowList, office) {
+		t.Fatalf("list_workspaces = %s", rendertest.MCPText(t, res))
 	}
-	if err := json.Unmarshal(b, &out); err != nil {
-		t.Fatal(err)
-	}
-	if len(out.Workspaces) != 1 || !slices.Equal(out.Workspaces[0].IPAllowList, office) {
-		t.Fatalf("list_workspaces = %s", b)
+	rest := httptest.NewRecorder()
+	mux := http.NewServeMux()
+	f.svc.RegisterREST(mux)
+	mux.ServeHTTP(rest, httptest.NewRequest(http.MethodGet, "/v1/owners", nil).WithContext(ctx))
+	var restList []ownerWithCursor
+	if err := json.Unmarshal(rest.Body.Bytes(), &restList); err != nil || len(restList) != 1 || !reflect.DeepEqual(restList[0].Owner, out[0]) {
+		t.Fatalf("list_workspaces item = %+v, want REST's GET /v1/owners item %s", out[0], rest.Body)
 	}
 }

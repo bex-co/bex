@@ -43,9 +43,10 @@ type keyValueOptionsView struct {
 }
 
 // renderKeyValue is the Render-shaped wire response for a single KeyValue —
-// every REST handler below returns this, not a bare KeyValueView. Verified
-// against the render-oss/cli generated KeyValueDetail type: bex's flat
-// ownerId/maxmemoryPolicy/persistenceMode (the shape GraphQL/MCP read directly
+// every REST handler below returns this, not a bare KeyValueView, and so do
+// the MCP tools Render's MCP server shares (w4/m378). Verified against the
+// render-oss/cli generated KeyValueDetail type: bex's flat
+// ownerId/maxmemoryPolicy/persistenceMode (the shape GraphQL reads directly
 // off KeyValueView) silently zero-valued or failed to decode client-side
 // because Render's real contract nests owner/options. The allow list is
 // core.IPAllowListEntry — already Render's {cidrBlock, description} shape.

@@ -137,11 +137,18 @@ func TestPreDeployInstanceFiltersAcrossSurfaces(t *testing.T) {
 						if result.IsError {
 							t.Fatalf("MCP: %+v", result)
 						}
-						var page listLogsResult
+						var page renderLogList
 						if err := json.Unmarshal([]byte(result.Content[0].(*mcp.TextContent).Text), &page); err != nil {
 							t.Fatal(err)
 						}
-						entries = page.Logs
+						for _, row := range page.Logs {
+							entry := LogEntry{Message: row.Message, Labels: map[string]string{}}
+							for _, label := range row.Labels {
+								entry.Labels[label.Name] = label.Value
+							}
+							entries = append(entries, entry)
+						}
+						resourceLabel = "resource"
 					}
 					var messages []string
 					for _, entry := range entries {

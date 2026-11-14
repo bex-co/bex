@@ -168,9 +168,9 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 							t.Errorf("%s placement = id:%v project:%q environment:%q, want %s %q %q", source, object["id"], projectID, environmentID, resourceID, wantProject, wantEnvironment)
 						}
 					}
-					for _, resource := range []struct{ path, envelope, gql, gqlList, tool, toolList, listKey, arg, resourceID string }{
-						{"postgres", "postgres", "database", "databases", "get_postgres", "list_postgres_instances", "postgres", "postgresId", db.Name},
-						{"key-value", "keyValue", "keyValue", "keyValues", "get_key_value", "list_key_value", "keyValues", "keyValueId", kv.Name},
+					for _, resource := range []struct{ path, envelope, gql, gqlList, tool, toolList, arg, resourceID string }{
+						{"postgres", "postgres", "database", "databases", "get_postgres", "list_postgres_instances", "postgresId", db.Name},
+						{"key-value", "keyValue", "keyValue", "keyValues", "get_key_value", "list_key_value", "keyValueId", kv.Name},
 					} {
 						body := request(http.MethodGet, "/v1/"+resource.path+"/"+resource.resourceID, "", http.StatusOK)
 						assertResource("REST get", decodeObject(t, body), resource.resourceID)
@@ -189,11 +189,11 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 						assertResource("GraphQL list", gqlList[0].(map[string]any), resource.resourceID)
 						object := callTool[map[string]any](t, cs, resource.tool, map[string]any{resource.arg: resource.resourceID})
 						assertResource("MCP get", object, resource.resourceID)
-						listed := callTool[map[string][]map[string]any](t, cs, resource.toolList, map[string]any{"workspaceId": owner.ID})
-						if len(listed[resource.listKey]) != 1 {
+						listed := callTool[[]map[string]any](t, cs, resource.toolList, map[string]any{"workspaceId": owner.ID})
+						if len(listed) != 1 {
 							t.Fatalf("MCP list = %v, want one datastore", listed)
 						}
-						assertResource("MCP list", listed[resource.listKey][0], resource.resourceID)
+						assertResource("MCP list", listed[0], resource.resourceID)
 					}
 					assertMembers := func(source string, object map[string]any, member bool) {
 						t.Helper()

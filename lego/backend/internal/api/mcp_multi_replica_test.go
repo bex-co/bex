@@ -63,8 +63,8 @@ func TestMCPStreamableHTTPAlternatesReplicas(t *testing.T) {
 	}
 	defer cs.Close()
 
-	services := callTool[struct{ Services []struct{ Name string } }](t, cs, "list_services", map[string]any{"workspaceId": second.ID})
-	if len(services.Services) != 1 || services.Services[0].Name != "second-web" {
+	services := callTool[[]struct{ Name string }](t, cs, "list_services", map[string]any{"workspaceId": second.ID})
+	if len(services) != 1 || services[0].Name != "second-web" {
 		t.Fatalf("scoped list_services = %+v, want only second-web", services)
 	}
 	if hits[0].Load() == 0 || hits[1].Load() == 0 {

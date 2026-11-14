@@ -430,7 +430,14 @@ func TestMCPDockerBuildRegistryCredentialCreateUpdateAndEcho(t *testing.T) {
 		}
 		raw, _ := json.Marshal(res.StructuredContent)
 		var got renderService
-		if err := json.Unmarshal(raw, &got); err != nil {
+		if createsService[name] {
+			var created serviceAndDeploy
+			err = json.Unmarshal(raw, &created)
+			got = created.Service
+		} else {
+			err = json.Unmarshal(raw, &got)
+		}
+		if err != nil {
 			t.Fatal(err)
 		}
 		return got

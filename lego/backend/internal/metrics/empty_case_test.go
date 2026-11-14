@@ -42,12 +42,19 @@ func TestEmptySeriesShapeMatchesAcrossSurfaces(t *testing.T) {
 		t.Errorf("REST empty series = %s, want []", got)
 	}
 
-	mcpJSON, err := json.Marshal(getMetricsResult{Series: metricSeriesOrEmpty(none)})
+	mcpJSON, err := json.Marshal(renderMetricData{Type: "cpu_usage", Data: toRenderMetrics(none)})
 	if err != nil {
 		t.Fatalf("marshal MCP: %v", err)
 	}
-	if got := string(mcpJSON); got != `{"series":[]}` {
-		t.Errorf(`MCP empty series = %s, want {"series":[]} — a nil slice marshals to null and diverges from REST (w6/m110/t005)`, got)
+	if got := string(mcpJSON); got != `{"type":"cpu_usage","data":[]}` {
+		t.Errorf(`MCP get_metrics empty entry = %s, want data [] — a nil slice marshals to null and diverges from REST (w6/m110/t005)`, got)
+	}
+	dsJSON, err := json.Marshal(datastoreMetricsResult{Series: metricSeriesOrEmpty(none)})
+	if err != nil {
+		t.Fatalf("marshal MCP get_datastore_metrics: %v", err)
+	}
+	if got := string(dsJSON); got != `{"series":[]}` {
+		t.Errorf(`MCP get_datastore_metrics empty series = %s, want {"series":[]}`, got)
 	}
 }
 

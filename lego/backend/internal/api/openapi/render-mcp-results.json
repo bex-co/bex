@@ -1,0 +1,386 @@
+{
+  "source": {
+    "repo": "github.com/render-oss/render-mcp-server",
+    "ref": "23fb336069482a3844dbbf76215de815f1b04e7f",
+    "commit": "23fb336069482a3844dbbf76215de815f1b04e7f",
+    "commitDate": "2026-11-12T23:21:19Z"
+  },
+  "tools": {
+    "approve_blueprint": {
+      "form": "object"
+    },
+    "create_blueprint": {
+      "form": "object"
+    },
+    "create_cron_job": {
+      "form": "object",
+      "type": "ServiceAndDeploy"
+    },
+    "create_key_value": {
+      "form": "object",
+      "type": "KeyValueDetail"
+    },
+    "create_postgres": {
+      "form": "object",
+      "type": "PostgresDetail"
+    },
+    "create_static_site": {
+      "form": "object",
+      "type": "ServiceAndDeploy"
+    },
+    "create_web_service": {
+      "form": "object",
+      "type": "ServiceAndDeploy"
+    },
+    "get_blueprint": {
+      "form": "object"
+    },
+    "get_deploy": {
+      "form": "object",
+      "type": "Deploy"
+    },
+    "get_key_value": {
+      "form": "object",
+      "type": "KeyValueDetail"
+    },
+    "get_metrics": {
+      "form": "object",
+      "type": "MetricsResponse"
+    },
+    "get_postgres": {
+      "form": "object",
+      "type": "PostgresDetail"
+    },
+    "get_service": {
+      "form": "object",
+      "type": "Service"
+    },
+    "list_deploys": {
+      "form": "arrayCursor",
+      "type": "Deploy"
+    },
+    "list_events": {
+      "form": "arrayCursor",
+      "type": "ServiceEvent"
+    },
+    "list_key_value": {
+      "form": "array",
+      "type": "KeyValue",
+      "emptyText": "No Key Value instances found"
+    },
+    "list_log_label_values": {
+      "form": "array",
+      "type": "string"
+    },
+    "list_logs": {
+      "form": "object",
+      "type": "Logs200Response"
+    },
+    "list_postgres_instances": {
+      "form": "array",
+      "type": "Postgres",
+      "emptyText": "No Postgres instances found"
+    },
+    "list_services": {
+      "form": "array",
+      "type": "Service"
+    },
+    "list_workspaces": {
+      "form": "array",
+      "type": "Owner"
+    },
+    "plan_blueprint": {
+      "form": "object"
+    },
+    "query_render_postgres": {
+      "form": "array"
+    },
+    "trigger_deploy": {
+      "form": "object",
+      "type": "Deploy"
+    },
+    "update_blueprint": {
+      "form": "object"
+    },
+    "update_environment_variables": {
+      "form": "text"
+    }
+  },
+  "types": {
+    "Deploy": {
+      "required": [
+        "id"
+      ],
+      "optional": [
+        "buildId",
+        "commit",
+        "createdAt",
+        "finishedAt",
+        "image",
+        "startedAt",
+        "status",
+        "trigger",
+        "updatedAt"
+      ]
+    },
+    "KeyValue": {
+      "required": [
+        "createdAt",
+        "dashboardUrl",
+        "id",
+        "ipAllowList",
+        "name",
+        "options",
+        "owner",
+        "plan",
+        "region",
+        "status",
+        "updatedAt",
+        "version"
+      ],
+      "optional": [
+        "environmentId"
+      ],
+      "fields": {
+        "options": "KeyValueOptions",
+        "owner": "Owner"
+      }
+    },
+    "KeyValueDetail": {
+      "required": [
+        "createdAt",
+        "id",
+        "ipAllowList",
+        "name",
+        "options",
+        "owner",
+        "plan",
+        "region",
+        "status",
+        "updatedAt",
+        "version"
+      ],
+      "optional": [
+        "environmentId",
+        "maintenance"
+      ],
+      "fields": {
+        "options": "KeyValueOptions",
+        "owner": "Owner"
+      }
+    },
+    "KeyValueOptions": {
+      "required": [],
+      "optional": [
+        "maxmemoryPolicy",
+        "persistenceMode"
+      ]
+    },
+    "Log": {
+      "required": [
+        "id",
+        "labels",
+        "message",
+        "timestamp"
+      ],
+      "optional": [],
+      "fields": {
+        "labels": "LogLabel"
+      }
+    },
+    "LogLabel": {
+      "required": [
+        "name",
+        "value"
+      ],
+      "optional": []
+    },
+    "Logs200Response": {
+      "required": [
+        "hasMore",
+        "logs",
+        "nextEndTime",
+        "nextStartTime"
+      ],
+      "optional": [],
+      "fields": {
+        "logs": "Log"
+      }
+    },
+    "MetricData": {
+      "required": [
+        "data",
+        "type"
+      ],
+      "optional": [],
+      "fields": {
+        "data": "TimeSeries"
+      }
+    },
+    "MetricsResponse": {
+      "required": [
+        "metrics",
+        "resourceId",
+        "timeRange"
+      ],
+      "optional": [],
+      "fields": {
+        "metrics": "MetricData"
+      }
+    },
+    "Owner": {
+      "required": [
+        "email",
+        "id",
+        "name",
+        "type"
+      ],
+      "optional": [
+        "ipAllowList",
+        "twoFactorAuthEnabled"
+      ]
+    },
+    "Postgres": {
+      "required": [
+        "connectionPool",
+        "createdAt",
+        "dashboardUrl",
+        "databaseName",
+        "databaseUser",
+        "diskAutoscalingEnabled",
+        "highAvailabilityEnabled",
+        "id",
+        "ipAllowList",
+        "name",
+        "owner",
+        "plan",
+        "readReplicas",
+        "region",
+        "role",
+        "status",
+        "suspended",
+        "suspenders",
+        "updatedAt",
+        "version"
+      ],
+      "optional": [
+        "diskSizeGB",
+        "environmentId",
+        "expiresAt",
+        "primaryPostgresID"
+      ],
+      "fields": {
+        "owner": "Owner"
+      }
+    },
+    "PostgresDetail": {
+      "required": [
+        "connectionPool",
+        "createdAt",
+        "dashboardUrl",
+        "databaseName",
+        "databaseUser",
+        "diskAutoscalingEnabled",
+        "highAvailabilityEnabled",
+        "id",
+        "ipAllowList",
+        "name",
+        "owner",
+        "plan",
+        "readReplicas",
+        "region",
+        "role",
+        "status",
+        "suspended",
+        "suspenders",
+        "updatedAt",
+        "version"
+      ],
+      "optional": [
+        "diskSizeGB",
+        "environmentId",
+        "expiresAt",
+        "maintenance",
+        "parameterOverrides",
+        "primaryPostgresID"
+      ],
+      "fields": {
+        "owner": "Owner"
+      }
+    },
+    "Service": {
+      "required": [
+        "autoDeploy",
+        "createdAt",
+        "dashboardUrl",
+        "id",
+        "name",
+        "notifyOnFail",
+        "ownerId",
+        "rootDir",
+        "serviceDetails",
+        "slug",
+        "suspended",
+        "suspenders",
+        "type",
+        "updatedAt"
+      ],
+      "optional": [
+        "autoDeployTrigger",
+        "branch",
+        "buildFilter",
+        "buildSourceId",
+        "environmentId",
+        "imagePath",
+        "registryCredential",
+        "repo"
+      ]
+    },
+    "ServiceAndDeploy": {
+      "required": [],
+      "optional": [
+        "deployId",
+        "service"
+      ],
+      "fields": {
+        "service": "Service"
+      }
+    },
+    "ServiceEvent": {
+      "required": [
+        "details",
+        "id",
+        "serviceId",
+        "timestamp",
+        "type"
+      ],
+      "optional": []
+    },
+    "TimeSeries": {
+      "required": [
+        "labels",
+        "unit",
+        "values"
+      ],
+      "optional": [],
+      "fields": {
+        "labels": "TimeSeriesLabel",
+        "values": "TimeSeriesValue"
+      }
+    },
+    "TimeSeriesLabel": {
+      "required": [
+        "field",
+        "value"
+      ],
+      "optional": []
+    },
+    "TimeSeriesValue": {
+      "required": [
+        "timestamp",
+        "value"
+      ],
+      "optional": []
+    }
+  }
+}

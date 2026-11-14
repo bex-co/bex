@@ -85,11 +85,6 @@ func (a createPostgresArgs) diskSizeGBValue() int32 {
 	return mcputil.PreferPtrOrZero(a.DiskSizeGb, a.DiskSizeGB)
 }
 
-// listPostgresResult wraps the array — MCP tool outputs must be JSON objects.
-type listPostgresResult struct {
-	Postgres []PostgresView `json:"postgres"`
-}
-
 // listPostgresArgs contains only feature arguments; the composition root adds
 // Render's shared optional workspaceId parameter.
 type listPostgresArgs struct{}
@@ -107,32 +102,38 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_instances",
 		Description: "List all managed Postgres databases in a workspace with their status.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPostgresArgs) (*mcp.CallToolResult, listPostgresResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPostgresArgs) (*mcp.CallToolResult, any, error) {
 		list, err := s.ListPostgres(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
-			return nil, listPostgresResult{}, err
+			return nil, nil, err
 		}
-		return nil, listPostgresResult{Postgres: list}, nil
+		// Render's text (pkg/postgres/tools.go): this sentence for an empty
+		// workspace, else the bare array of the REST objects, owner included
+		// (w4/m378).
+		if len(list) == 0 {
+			return mcputil.RenderPlainText("No Postgres instances found")
+		}
+		return mcputil.RenderText(s.renderPostgres(ctx, list))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres",
 		Description: "Get details about a specific managed Postgres database by id.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, renderPostgres, error) {
 		v, err := s.GetPostgres(ctx, in.PostgresID)
 		if err != nil {
-			return nil, PostgresView{}, err
+			return nil, renderPostgres{}, err
 		}
-		return nil, v, nil
+		return nil, s.renderOnePostgres(ctx, v), nil
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
 		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, region, version, diskSizeGb (legacy alias diskSizeGB), public, ipAllowList/ipAllowListEntries, enableHighAvailability, readReplicas and connectionPool are optional. Free storage is fixed at 1 GB; autoscaling and connection pooling require paid plans. Pass dryRun:true to preview the resolved spec without any writes.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, renderPostgres, error) {
 		version, err := mcputil.NumberOrString("version", in.Version)
 		if err != nil {
-			return nil, PostgresView{}, err
+			return nil, renderPostgres{}, err
 		}
 		public, allowList := CreateExposure(in.Public, core.ProvidedAllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList))
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
@@ -154,19 +155,34 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			DryRun:                 in.DryRun,
 		})
 		if err != nil {
-			return nil, PostgresView{}, err
+			return nil, renderPostgres{}, err
 		}
-		return nil, v, nil
+		return nil, s.renderOnePostgres(ctx, v), nil
 	})
 
-	// Exact-JSON registration: a typed output would round bigints above 2^53
-	// and exact numerics through the SDK's float64 re-encoding, so an agent
-	// would read different values than REST and the console (w4/m158).
-	mcputil.AddExactJSONTool(srv, &mcp.Tool{
+	// Render's text, not structured output (w4/m378): a JSON array of row
+	// objects keyed by column name, at most 5 MB of it, then Render's
+	// truncation notice as a second text item. encoding/json writes the value
+	// policy's exact values once, so a bigint above 2^53 or an exact numeric
+	// keeps every digit (w4/m158); the SDK's typed output path would round it
+	// through float64.
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "query_render_postgres",
-		Description: "Run a read-only SQL query against a managed Postgres database and return the resulting columns and rows. The statement runs inside a read-only transaction with a server-side timeout; writes, DDL and long-running queries are rejected, and large result sets are truncated.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in queryPostgresArgs) (QueryResult, error) {
-		return s.Query(ctx, in.PostgresID, in.SQL)
+		Description: "Run a read-only SQL query against a managed Postgres database and return its rows as a JSON array of objects keyed by column name. The statement runs inside a read-only transaction with a 10-second server-side timeout; writes, DDL and multi-statement input are rejected. At most 5 MB of JSON is returned: past it, the rows that fit come back followed by a notice saying how many.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in queryPostgresArgs) (*mcp.CallToolResult, any, error) {
+		res, err := s.Query(ctx, in.PostgresID, in.SQL)
+		if err != nil {
+			return nil, nil, err
+		}
+		body, kept, cut, err := renderQueryRows(res.Columns, res.Rows)
+		if err != nil {
+			return nil, nil, err
+		}
+		content := []mcp.Content{&mcp.TextContent{Text: string(body)}}
+		if cut || res.Truncated {
+			content = append(content, &mcp.TextContent{Text: renderTruncatedMessage(kept)})
+		}
+		return &mcp.CallToolResult{Content: content}, nil, nil
 	})
 
 	s.registerLifecycleMCP(srv)

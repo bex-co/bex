@@ -328,17 +328,9 @@ func TestPercentageCrossSurfaceParity(t *testing.T) {
 	if err != nil || mcpRes.IsError {
 		t.Fatalf("MCP get_metrics: err=%v result=%+v", err, mcpRes)
 	}
-	raw, err := json.Marshal(mcpRes.StructuredContent)
-	if err != nil {
-		t.Fatalf("MCP marshal: %v", err)
-	}
-	var mcpMetrics getMetricsResult
-	if err := json.Unmarshal(raw, &mcpMetrics); err != nil {
-		t.Fatalf("MCP decode: %v raw=%s", err, raw)
-	}
 	var mcpVals []float64
-	for _, s := range mcpMetrics.Series {
-		for _, p := range s.Points {
+	for _, s := range decodeGetMetrics(t, mcpRes).series() {
+		for _, p := range s.Values {
 			mcpVals = append(mcpVals, p.Value)
 		}
 	}

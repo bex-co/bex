@@ -344,7 +344,7 @@ if grep -q '^data: ' <<<"$blocked_mcp"; then
   blocked_mcp="$(sed -n 's/^data: //p' <<<"$blocked_mcp" | tail -1)"
 fi
 jq -e '.error == null and .result.isError != true and
-  (.result.structuredContent.logs | length == 2 and all(.[]; .labels.type == "request" and .labels.statusCode == "403"))' \
+  (.result.structuredContent.logs | length == 2 and all(.[]; any(.labels[]; .name == "type" and .value == "request") and any(.labels[]; .name == "statusCode" and .value == "403")))' \
   <<<"$blocked_mcp" >/dev/null || fail "MCP list_logs did not return both refusals"
 [[ "$(jq -c '[.result.structuredContent.logs[] | {timestamp,message}] | sort_by(.timestamp,.message)' <<<"$blocked_mcp")" == \
    "$(jq -c '[.[] | {timestamp,message}] | sort_by(.timestamp,.message)' <<<"$blocked_rest")" ]] \
