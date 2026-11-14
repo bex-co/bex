@@ -19,9 +19,12 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,13 +60,16 @@ func (s *environmentsStore) ListWorkspaceEnvironments(_ context.Context, tenantI
 	return out, s.err
 }
 
-// isolationHarness records every NetworkPolicy write, in order.
+// isolationHarness records every NetworkPolicy write, in order, and every
+// other write by kind. converge is the isolation converge under test.
 type isolationHarness struct {
-	r      *NamespaceReconciler
-	st     *environmentsStore
-	cl     client.Client
-	tenant Tenant
-	writes []string
+	r        *NamespaceReconciler
+	st       *environmentsStore
+	cl       client.Client
+	tenant   Tenant
+	writes   []string
+	others   []string
+	converge func(context.Context, string) error
 }
 
 func newIsolationHarness(t *testing.T) *isolationHarness {
@@ -76,6 +82,8 @@ func newIsolationHarness(t *testing.T) *isolationHarness {
 	record := func(verb string, obj client.Object) {
 		if _, ok := obj.(*networkingv1.NetworkPolicy); ok {
 			h.writes = append(h.writes, verb+" "+obj.GetName())
+		} else {
+			h.others = append(h.others, fmt.Sprintf("%s %T %s", verb, obj, obj.GetName()))
 		}
 	}
 	h.cl = fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
@@ -96,6 +104,7 @@ func newIsolationHarness(t *testing.T) *isolationHarness {
 		},
 	}).Build()
 	h.r = NewNamespaceReconciler(h.cl, h.st)
+	h.converge = h.r.EnsureWorkspace
 	tenant, err := h.st.CreateTenant(context.Background(), "acme", "pro")
 	if err != nil {
 		t.Fatal(err)
@@ -116,10 +125,23 @@ func (h *isolationHarness) setIsolation(id string, isolated bool) {
 
 func (h *isolationHarness) ensure(t *testing.T) {
 	t.Helper()
-	h.writes = nil
-	if err := h.r.EnsureWorkspace(context.Background(), h.tenant.ID); err != nil {
-		t.Fatalf("EnsureWorkspace: %v", err)
+	h.writes, h.others = nil, nil
+	if err := h.converge(context.Background(), h.tenant.ID); err != nil {
+		t.Fatalf("converge: %v", err)
 	}
+}
+
+// bothConverges runs an isolation test through the full workspace converge
+// and through the policies-only one a toggle uses (w4/648); the latter starts
+// from a namespace the full converge already provisioned.
+func bothConverges(t *testing.T, test func(t *testing.T, h *isolationHarness)) {
+	t.Run("EnsureWorkspace", func(t *testing.T) { test(t, newIsolationHarness(t)) })
+	t.Run("EnsureEnvironmentIsolation", func(t *testing.T) {
+		h := newIsolationHarness(t)
+		h.ensure(t)
+		h.converge = h.r.EnsureEnvironmentIsolation
+		test(t, h)
+	})
 }
 
 func (h *isolationHarness) policy(t *testing.T, name string) *networkingv1.NetworkPolicy {
@@ -206,7 +228,10 @@ func TestSameNamespaceAllowWithNothingIsolatedSelectsEveryPod(t *testing.T) {
 }
 
 func TestIsolationToggleRewritesPoliciesOnly(t *testing.T) {
-	h := newIsolationHarness(t)
+	bothConverges(t, testIsolationToggleRewritesPoliciesOnly)
+}
+
+func testIsolationToggleRewritesPoliciesOnly(t *testing.T, h *isolationHarness) {
 	h.setIsolation("evm-open", false)
 	h.ensure(t)
 	inA := map[string]string{core.LabelEnvironment: "evm-iso"}
@@ -268,7 +293,10 @@ func TestIsolationToggleRewritesPoliciesOnly(t *testing.T) {
 }
 
 func TestDeletedIsolatedEnvironmentLeavesTheBoundaryList(t *testing.T) {
-	h := newIsolationHarness(t)
+	bothConverges(t, testDeletedIsolatedEnvironmentLeavesTheBoundaryList)
+}
+
+func testDeletedIsolatedEnvironmentLeavesTheBoundaryList(t *testing.T, h *isolationHarness) {
 	h.setIsolation("evm-a", true)
 	h.setIsolation("evm-b", true)
 	h.ensure(t)
@@ -298,14 +326,93 @@ func TestBoundaryPolicyIsWorkspaceScoped(t *testing.T) {
 }
 
 func TestEnvironmentReadFailureFailsTheConverge(t *testing.T) {
-	h := newIsolationHarness(t)
+	bothConverges(t, testEnvironmentReadFailureFailsTheConverge)
+}
+
+func testEnvironmentReadFailureFailsTheConverge(t *testing.T, h *isolationHarness) {
 	h.setIsolation("evm-a", true)
 	h.ensure(t)
 	h.st.err = errors.New("db down")
-	if err := h.r.EnsureWorkspace(context.Background(), h.tenant.ID); err == nil {
+	if err := h.converge(context.Background(), h.tenant.ID); err == nil {
 		t.Fatal("a failed environment read must fail the converge")
 	}
 	if got := h.policy(t, "allow-same-namespace").Spec.PodSelector.MatchExpressions; len(got) == 0 {
 		t.Error("a failed read must not widen allow-same-namespace over an isolated environment")
+	}
+}
+
+// w4/648: a toggle converges the isolation policies alone — no namespace,
+// quota, LimitRange or RoleBinding write, and no write to another allow.
+func TestEnvironmentIsolationWritesOnlyTheIsolationPolicies(t *testing.T) {
+	h := newIsolationHarness(t)
+	h.ensure(t)
+	h.converge = h.r.EnsureEnvironmentIsolation
+	for _, on := range []bool{true, false} {
+		h.setIsolation("evm-a", on)
+		h.ensure(t)
+		if len(h.others) != 0 {
+			t.Errorf("isolation %v: a toggle must write only NetworkPolicies, got %v", on, h.others)
+		}
+		for _, w := range h.writes {
+			if !strings.HasSuffix(w, " allow-same-namespace") && !strings.Contains(w, " isolate-evm-a") {
+				t.Errorf("isolation %v: a toggle must touch only the isolation policies, wrote %q", on, w)
+			}
+		}
+	}
+}
+
+// A workspace whose namespace is missing gets the whole namespace, not
+// policies in a namespace that does not exist.
+func TestEnvironmentIsolationProvisionsAMissingNamespace(t *testing.T) {
+	h := newIsolationHarness(t)
+	h.setIsolation("evm-a", true)
+	h.converge = h.r.EnsureEnvironmentIsolation
+	h.ensure(t)
+	if h.policy(t, "isolate-evm-a") == nil || h.policy(t, "allow-dns-egress") == nil {
+		t.Errorf("a missing namespace must be provisioned in full, writes: %v", h.writes)
+	}
+}
+
+// w4/648: a converge over objects already in their desired shape issues no
+// Update, so the periodic resync stops rewriting every object.
+func TestUnchangedObjectsGetNoUpdate(t *testing.T) {
+	h := newIsolationHarness(t)
+	h.setIsolation("evm-a", true)
+	h.ensure(t)
+	h.ensure(t)
+	for _, w := range slices.Concat(h.writes, h.others) {
+		if strings.HasPrefix(w, "update ") {
+			t.Errorf("an unchanged object must not be updated, got %q", w)
+		}
+	}
+	// A drifted object still converges.
+	np := h.policy(t, "allow-same-namespace")
+	np.Spec.PodSelector = metav1.LabelSelector{}
+	if err := h.cl.Update(context.Background(), np); err != nil {
+		t.Fatal(err)
+	}
+	h.ensure(t)
+	if !slices.Contains(h.writes, "update allow-same-namespace") {
+		t.Errorf("a drifted policy must be updated, writes: %v", h.writes)
+	}
+}
+
+func TestUnchangedIgnoresOnlyTheServerStampedNamespaceLabel(t *testing.T) {
+	desired := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "tea-x", Labels: map[string]string{"a": "1"}}}
+	stamped := desired.DeepCopy()
+	stamped.Labels[corev1.LabelMetadataName] = "tea-x"
+	stamped.Spec.Finalizers = []corev1.FinalizerName{corev1.FinalizerKubernetes}
+	if !unchanged(stamped, desired) {
+		t.Error("the API server's name label and finalizer must not count as drift")
+	}
+	extra := stamped.DeepCopy()
+	extra.Labels["stale"] = "x"
+	if unchanged(extra, desired) {
+		t.Error("a label the desired shape drops is drift")
+	}
+	changed := stamped.DeepCopy()
+	changed.Labels["a"] = "2"
+	if unchanged(changed, desired) {
+		t.Error("a changed managed label is drift")
 	}
 }

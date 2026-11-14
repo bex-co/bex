@@ -1652,6 +1652,7 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 		// that window used to 500 on a namespace NotFound. The create paths now
 		// ensure the workspace's namespaces synchronously when they are missing.
 		base.EnsureNamespaces = nsRec.EnsureWorkspace
+		base.EnforceIsolation = nsRec.EnsureEnvironmentIsolation
 		// Kick BOTH reconcilers on workspace create/delete for the same
 		// low-latency reason the projector is kicked on app writes: the
 		// projector prunes the deleted workspace's orphaned App CRs, the

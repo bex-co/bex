@@ -175,8 +175,14 @@ func TestIsolationIsEnforcedThroughPoliciesAndEnvironmentLabel(t *testing.T) {
 	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
 	svc, cl := newServiceWithClient(st, sampleApp("web"))
 	var ensured []string
-	svc.EnsureNamespaces = func(_ context.Context, workspaceID string) error {
+	svc.EnforceIsolation = func(_ context.Context, workspaceID string) error {
 		ensured = append(ensured, workspaceID)
+		return nil
+	}
+	// w4/648: a toggle converges the isolation policies alone, never the
+	// whole namespace.
+	svc.EnsureNamespaces = func(context.Context, string) error {
+		t.Error("an isolation change must not converge the whole workspace namespace")
 		return nil
 	}
 

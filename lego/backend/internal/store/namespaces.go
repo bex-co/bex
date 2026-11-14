@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -257,17 +258,8 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 	if err := r.pruneManagedNetworkPolicies(ctx, name, desiredPolicies, false); err != nil {
 		return fmt.Errorf("networkpolicy prune: %w", err)
 	}
-	// An isolated environment's boundary lands before allow-same-namespace
-	// narrows to exclude it, and a lifted boundary goes only after
-	// allow-same-namespace widened to readmit its pods, so the environment's
-	// own pods keep a path to each other through either toggle (w4/m342).
-	for _, np := range slices.Concat(boundaries, allows) {
-		if err := r.applyObject(ctx, np); err != nil {
-			return fmt.Errorf("networkpolicy %s: %w", np.Name, err)
-		}
-	}
-	if err := r.pruneManagedNetworkPolicies(ctx, name, desiredPolicies, true); err != nil {
-		return fmt.Errorf("networkpolicy prune: %w", err)
+	if err := r.applyIsolationOrdered(ctx, name, boundaries, allows); err != nil {
+		return err
 	}
 	desiredBindings := tenantRoleBindings(name, regime)
 	if err := r.pruneManagedRoleBindings(ctx, name, desiredBindings); err != nil {
@@ -277,6 +269,55 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 		if err := r.applyObject(ctx, rb); err != nil {
 			return fmt.Errorf("rolebinding %s: %w", rb.Name, err)
 		}
+	}
+	return nil
+}
+
+// EnsureEnvironmentIsolation synchronously converges only the policies an
+// environment's network isolation consists of — allow-same-namespace and the
+// isolate-<env> boundaries in the workspace's hosting namespace. An isolation
+// toggle (and an isolated environment's create or delete) changes nothing
+// else, so it no longer pays for EnsureWorkspace's quotas, LimitRange, other
+// allows and RoleBindings inside the request (w4/648); the periodic resync
+// still converges the rest. A workspace whose namespace does not exist yet
+// gets the full EnsureWorkspace instead, which provisions the same policies.
+func (r *NamespaceReconciler) EnsureEnvironmentIsolation(ctx context.Context, workspaceID string) error {
+	name := WorkspaceNamespace(workspaceID)
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: name}, &corev1.Namespace{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return r.EnsureWorkspace(ctx, workspaceID)
+		}
+		return fmt.Errorf("workspace %s hosting namespace: %w", workspaceID, err)
+	}
+	isolated, err := r.isolatedEnvironments(ctx, workspaceID)
+	if err != nil {
+		return fmt.Errorf("workspace %s: %w", workspaceID, err)
+	}
+	allows := []*networkingv1.NetworkPolicy{sameNamespaceNetworkPolicy(name, isolated)}
+	if err := r.applyIsolationOrdered(ctx, name, environmentIsolationPolicies(name, isolated), allows); err != nil {
+		return fmt.Errorf("workspace %s: %w", workspaceID, err)
+	}
+	return nil
+}
+
+// applyIsolationOrdered applies the environment boundaries, then the allows,
+// then prunes the boundaries no longer desired. An isolated environment's
+// boundary lands before allow-same-namespace narrows to exclude it, and a
+// lifted boundary goes only after allow-same-namespace widened to readmit its
+// pods, so the environment's own pods keep a path to each other through
+// either toggle (w4/m342).
+func (r *NamespaceReconciler) applyIsolationOrdered(ctx context.Context, namespace string, boundaries, allows []*networkingv1.NetworkPolicy) error {
+	desired := make(map[string]bool, len(boundaries))
+	for _, np := range boundaries {
+		desired[np.Name] = true
+	}
+	for _, np := range slices.Concat(boundaries, allows) {
+		if err := r.applyObject(ctx, np); err != nil {
+			return fmt.Errorf("networkpolicy %s: %w", np.Name, err)
+		}
+	}
+	if err := r.pruneManagedNetworkPolicies(ctx, namespace, desired, true); err != nil {
+		return fmt.Errorf("networkpolicy prune: %w", err)
 	}
 	return nil
 }
@@ -367,8 +408,57 @@ func (r *NamespaceReconciler) applyObject(ctx context.Context, obj client.Object
 		return fmt.Errorf("object %s belongs to control plane %q, not %q",
 			client.ObjectKeyFromObject(obj), owner, r.identity())
 	}
+	if unchanged(existing, obj) {
+		return nil
+	}
 	obj.SetResourceVersion(existing.GetResourceVersion())
 	return r.Client.Update(ctx, obj)
+}
+
+// unchanged reports whether updating existing to desired would write nothing,
+// so applyObject skips the Update and a resync stops rewriting every object
+// every period (w4/648). Labels and annotations must match exactly, except the
+// name label the API server stamps on every Namespace; the payload compares
+// semantically (a Quantity's "1Gi" equals its canonical form). A kind not
+// listed here is always updated.
+func unchanged(existing, desired client.Object) bool {
+	if !sameMetadataMap(existing.GetLabels(), desired.GetLabels()) ||
+		!sameMetadataMap(existing.GetAnnotations(), desired.GetAnnotations()) {
+		return false
+	}
+	switch want := desired.(type) {
+	case *corev1.Namespace:
+		// Desired sets no spec, and an update cannot change spec.finalizers.
+		return true
+	case *corev1.ResourceQuota:
+		return equality.Semantic.DeepEqual(existing.(*corev1.ResourceQuota).Spec, want.Spec)
+	case *corev1.LimitRange:
+		return equality.Semantic.DeepEqual(existing.(*corev1.LimitRange).Spec, want.Spec)
+	case *networkingv1.NetworkPolicy:
+		return equality.Semantic.DeepEqual(existing.(*networkingv1.NetworkPolicy).Spec, want.Spec)
+	case *rbacv1.RoleBinding:
+		have := existing.(*rbacv1.RoleBinding)
+		return equality.Semantic.DeepEqual(have.RoleRef, want.RoleRef) &&
+			equality.Semantic.DeepEqual(have.Subjects, want.Subjects)
+	}
+	return false
+}
+
+// sameMetadataMap reports whether an update writing want over have leaves
+// have as it is: every wanted key holds its value, and have's only extra key
+// is the Namespace name label the API server re-stamps.
+func sameMetadataMap(have, want map[string]string) bool {
+	for k, v := range want {
+		if got, ok := have[k]; !ok || got != v {
+			return false
+		}
+	}
+	for k := range have {
+		if _, ok := want[k]; !ok && k != corev1.LabelMetadataName {
+			return false
+		}
+	}
+	return true
 }
 
 // pruneOrphans deletes managed tenant namespaces whose workspace is gone.

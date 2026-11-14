@@ -432,6 +432,12 @@ type Base struct {
 	// EnsureWorkspaceNamespace; nil => creates race the async reconciler
 	// (pre-w2/026 behavior).
 	EnsureNamespaces NamespaceEnsurer
+	// EnforceIsolation synchronously converges only one workspace's
+	// environment-isolation NetworkPolicies (w4/648); the composition root
+	// wires it to store.NamespaceReconciler.EnsureEnvironmentIsolation.
+	// Consumed by EnforceEnvironmentIsolation; nil => a toggle waits for the
+	// namespace resync.
+	EnforceIsolation NamespaceEnsurer
 }
 
 // NamespaceEnsurer provisions one workspace's per-tenant namespaces
@@ -463,13 +469,14 @@ func (b *Base) EnsureWorkspaceNamespace(ctx context.Context, tenantID string) er
 // turned on or off, or an isolated environment created or deleted. The
 // boundary is those policies alone (store.environmentIsolationPolicies), so
 // converging them synchronously is what makes a toggle hold the moment the
-// request returns, rather than one namespace resync later (w4/m342). A nil
-// ensurer or an empty/default tenant is a no-op.
+// request returns, rather than one namespace resync later (w4/m342). Only
+// those policies are converged, not the whole namespace (w4/648). A nil
+// EnforceIsolation or an empty/default tenant is a no-op.
 func (b *Base) EnforceEnvironmentIsolation(ctx context.Context, tenantID string) error {
-	if b == nil || !b.ensuresNamespacesFor(tenantID) {
+	if b == nil || b.EnforceIsolation == nil || tenantID == "" || tenantID == DefaultTenant {
 		return nil
 	}
-	if err := b.EnsureNamespaces(ctx, tenantID); err != nil {
+	if err := b.EnforceIsolation(ctx, tenantID); err != nil {
 		return fmt.Errorf("enforcing environment network isolation: %w", err)
 	}
 	return nil
