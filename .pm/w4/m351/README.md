@@ -1,15 +1,15 @@
 # w4 · m351 — A first deploy whose start command crashes is marked failed in about 40 s but keeps restarting for 15 minutes, so a crash that clears serves traffic under a deploy that reads Failed
 
-**Worker:** worker4 **Goal:** once a never-served release settles failed, it stops, whichever path settled it. A crash-settled first deploy has no running or restarting instance and comes back only through a new deploy, restart or resume, as w1/m179 promised and as Render cancels a failed deploy. **Status:** todo
+**Worker:** worker4 **Goal:** once a never-served release settles failed, it stops, whichever path settled it. A crash-settled first deploy has no running or restarting instance and comes back only through a new deploy, restart or resume, as w1/m179 promised and as Render cancels a failed deploy. **Status:** todo (t001–t004 done 2026-11-14; t005 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Stop a never-served release when the startup-crash settle fails it, not only at the progress deadline | 45m | — |
-| [t002](t002.md) | Decide and align the pull-failure early settle: stop it too, or keep its deploy open | 30m | t001 |
-| [t003](t003.md) | Simplify | 15m | t002 |
-| [t004](t004.md) | Test coverage | 30m | t002 |
+| [t001](done/t001.md) | Stop a never-served release when the startup-crash settle fails it, not only at the progress deadline — **DONE** | 45m | — |
+| [t002](done/t002.md) | Decide and align the pull-failure early settle: stop it too, or keep its deploy open — **DONE** | 30m | t001 |
+| [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
+| [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
 | [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004 |
 
 ## Definition of done

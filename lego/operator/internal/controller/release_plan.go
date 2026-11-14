@@ -380,8 +380,10 @@ func currentRolloutVerdict(app *appv1alpha1.App, gen int64) rolloutVerdict {
 }
 
 // failedFirstRelease reports a current release that nothing served before and
-// whose rollout passed its deadline: settleFailedRollout recorded
-// ConditionRollout for this release generation (stopsFirstRelease, w1/m179).
+// whose rollout settled failed — at its deadline, or early on a startup crash
+// or a permanent pull failure: settleFailedRolloutMessage recorded
+// ConditionRollout for this release generation (stopsFirstRelease, w1/m179,
+// w4/m351).
 // A newer release moves the generation past it.
 func failedFirstRelease(app *appv1alpha1.App) bool {
 	if releaseHasServed(app) {

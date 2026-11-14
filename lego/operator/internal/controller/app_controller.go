@@ -4087,23 +4087,17 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 	}
 	msg = terminalStallMessage(reason, msg)
 	rolloutFailureFor(app).TimedOutSeconds = rolloutBudgetSeconds
-	if stopsFirstRelease(app, dep) {
-		// The release-scoped verdict stops the release (failedFirstRelease); the
-		// settle below writes it with Ready in one status update.
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reason,
-			Message: msg, ObservedGeneration: releaseGeneration(app),
-		})
-	}
 	return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
 }
 
-// stopsFirstRelease reports that a rollout past its progress deadline stops
-// its release (w1/m179): nothing has served, dep carries the current release
-// (a cached read can still hold the previous template and its verdict), and
-// no pod of it is ready, so stopping takes nothing away that serves. Only the
-// deadline stops — Render's 15-minute window — not the early pull-failure
-// settle, whose registry errors can still clear within it.
+// stopsFirstRelease reports that a failed rollout stops its release (w1/m179):
+// nothing has served, dep carries the current release (a cached read can still
+// hold the previous template and its verdict), and no pod of it is ready, so
+// stopping takes nothing away that serves. Every settle stops — the progress
+// deadline, the startup-crash settle and the permanent-pull settle (w4/m351) —
+// because a deploy row that reads failed must never be the release that goes
+// on to serve: on Render a failed deploy is final, and only a new deploy,
+// restart or resume runs the service again.
 func stopsFirstRelease(app *appv1alpha1.App, dep *appsv1.Deployment) bool {
 	return !releaseHasServed(app) && dep.Spec.Template.Labels[labelRevision] == releaseRevision(app) &&
 		dep.Status.ReadyReplicas == 0
@@ -4137,14 +4131,18 @@ func lastStallDiagnosis(app *appv1alpha1.App) (string, string) {
 func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, reason, msg string) (ctrl.Result, error) {
 	// Read before a restore puts the Deployment back on the served release.
 	r.recordRolloutExit(ctx, app, dep)
-	if releaseHasServed(app) {
-		// The diagnosis outlives the Ready condition, which now describes the
-		// serving release: ConditionRollout carries it to the failed deploy
-		// row (w8/m44), in the same status write.
+	// Over a served release the diagnosis outlives the Ready condition, which
+	// now describes the serving release: ConditionRollout carries it to the
+	// failed deploy row (w8/m44). Over nothing served, the same release-scoped
+	// verdict stops the release (failedFirstRelease, w1/m179, w4/m351). Either
+	// way it rides the status write below.
+	if releaseHasServed(app) || stopsFirstRelease(app, dep) {
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 			Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reason,
 			Message: msg, ObservedGeneration: releaseGeneration(app),
 		})
+	}
+	if releaseHasServed(app) {
 		if !failedRolloutOverServed(app) {
 			r.settleFailureOverPriorRelease(ctx, app, failedRolloutSummary(msg))
 			res, _ := owedReleaseRequeue(app)

@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -189,32 +190,173 @@ func TestStopsFirstReleaseOnlyForTheCurrentUnreadyRelease(t *testing.T) {
 	}
 }
 
-// The early permanent-pull settle reports Failed fast but does not stop the
-// release: an auth error can still clear before the progress deadline.
-func TestEarlyPullFailureSettleDoesNotStopAFirstRelease(t *testing.T) {
+// w4/m351: every early settle of a first release records the release-scoped
+// verdict that stops it, as the deadline does: a startup crash, and a
+// permanent pull failure (t002 decision (a): on Render a failed deploy is
+// final, so a pull that clears later must not serve under the failed row).
+func TestEarlySettleStopsAFirstRelease(t *testing.T) {
+	sched := metav1.NewTime(time.Now().Add(-3 * time.Minute))
+	for _, tc := range []struct {
+		name, reason string
+		pod          corev1.PodStatus
+	}{
+		{"permanent pull failure", imagePullBackOff, corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{Name: "app", Image: "example.org/web:1",
+			State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ErrImagePull", Message: "manifest unknown"}}}}}},
+		{"startup crash", crashLoopBackOff, crashLoopPodStatus(sched, crashSettleRestarts)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 1},
+				Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ReleaseGeneration: 1}}
+			dep := progressDeadlineDep("web")
+			dep.Status.Conditions = nil
+			pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-new", Namespace: "default",
+				Labels: map[string]string{"app": "web", labelRevision: "rev-1"}, CreationTimestamp: sched}, Status: tc.pod}
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+			if _, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting"); err != nil {
+				t.Fatal(err)
+			}
+			var stored appv1alpha1.App
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+				t.Fatal(err)
+			}
+			if stored.Status.Phase != appv1alpha1.PhaseFailed {
+				t.Fatalf("phase = %q, want the early settle reported", stored.Status.Phase)
+			}
+			if !failedFirstRelease(&stored) {
+				t.Fatalf("the early settle left the release running: Rollout = %+v", meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout))
+			}
+			if rollout := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout); rollout.Reason != tc.reason {
+				t.Fatalf("Rollout reason = %q, want %q", rollout.Reason, tc.reason)
+			}
+		})
+	}
+}
+
+// crashLoopPodStatus is a never-Ready pod scheduled at sched whose app
+// container is in CrashLoopBackOff after restarts restarts (exit code 3).
+func crashLoopPodStatus(sched metav1.Time, restarts int32) corev1.PodStatus {
+	return corev1.PodStatus{
+		Conditions: []corev1.PodCondition{
+			{Type: corev1.PodScheduled, Status: corev1.ConditionTrue, LastTransitionTime: sched},
+			{Type: corev1.PodReady, Status: corev1.ConditionFalse, LastTransitionTime: metav1.NewTime(sched.Add(2 * time.Second))},
+		},
+		ContainerStatuses: []corev1.ContainerStatus{{Name: "app", RestartCount: restarts,
+			State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: crashLoopBackOff}},
+			LastTerminationState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 3}}}},
+	}
+}
+
+// putReleasePod stores (or replaces) the one pod of nn's current template,
+// scheduled three minutes ago, with status.
+func putReleasePod(t *testing.T, cl client.Client, nn types.NamespacedName, status corev1.PodStatus) {
+	t.Helper()
 	ctx := context.Background()
-	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 1},
-		Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ReleaseGeneration: 1}}
-	dep := progressDeadlineDep("web")
-	dep.Status.Conditions = nil
-	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-new", Namespace: "default",
-		Labels: map[string]string{"app": "web", labelRevision: "rev-1"}, CreationTimestamp: metav1.NewTime(time.Now().Add(-2 * time.Minute))},
-		Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{Name: "app", Image: "example.org/web:1",
-			State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ErrImagePull", Message: "unauthorized: authentication required"}}}}}}
-	cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
-	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
-	if _, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting"); err != nil {
+	dep := liveDeployment(t, cl, nn)
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: nn.Name + "-pod", Namespace: nn.Namespace,
+		Labels: dep.Spec.Template.Labels, CreationTimestamp: metav1.NewTime(time.Now().Add(-3 * time.Minute))}}
+	_ = cl.Delete(ctx, pod)
+	pod.Status = status
+	if err := cl.Create(ctx, pod); err != nil {
 		t.Fatal(err)
 	}
-	var stored appv1alpha1.App
-	if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
-		t.Fatal(err)
+}
+
+// w4/m351: a first release whose start command crash-loops is stopped in the
+// pass after the startup-crash settle fails it, well before the progress
+// deadline, and a restart that would have succeeded never serves under the
+// failed deploy. Web, private and worker services share the path (w4/454).
+func TestStartupCrashStopsAFirstReleaseBeforeTheDeadline(t *testing.T) {
+	sched := metav1.NewTime(time.Now().Add(-3 * time.Minute))
+	for _, tc := range []struct{ name, serviceType, tier string }{
+		{"private service", appv1alpha1.TypePrivateService, ""},
+		{"background worker", appv1alpha1.TypeBackgroundWorker, ""},
+		{"paid web service", appv1alpha1.TypeWebService, "starter"},
+		{"free web service", appv1alpha1.TypeWebService, "free"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r, cl, nn := lifecycleFixture(t, firstReleaseApp(tc.serviceType, tc.tier))
+			reconcileTwice(t, r, nn)
+			putReleasePod(t, cl, nn, crashLoopPodStatus(sched, crashSettleRestarts))
+			setDeploymentStatus(t, cl, nn, statusUnavailableSince(time.Now().Add(-time.Minute), ""))
+			reconcileOnce(t, r, nn)
+			live := liveApp(t, cl, nn)
+			if live.Status.Phase != appv1alpha1.PhaseFailed || !failedFirstRelease(&live) {
+				t.Fatalf("phase %q Rollout %+v, want the crash settled and the release stopped", live.Status.Phase,
+					meta.FindStatusCondition(live.Status.Conditions, appv1alpha1.ConditionRollout))
+			}
+			reconcileOnce(t, r, nn)
+			if got := deploymentReplicas(t, cl, nn); got != 0 {
+				t.Fatalf("replicas = %d after the crash settle, want 0: the failed release must not keep restarting", got)
+			}
+
+			// The crash clears on a later restart: the pod turns Ready before the
+			// drain lands. The failed release still never serves.
+			putReleasePod(t, cl, nn, corev1.PodStatus{Phase: corev1.PodRunning,
+				Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}})
+			setDeploymentStatus(t, cl, nn, statusRolledOut)
+			reconcileTwice(t, r, nn)
+			live = liveApp(t, cl, nn)
+			if got := deploymentReplicas(t, cl, nn); got != 0 || live.Status.Phase != appv1alpha1.PhaseFailed || live.Status.ActiveRevision != "" {
+				t.Fatalf("replicas %d phase %q activeRevision %q, want the failed release stopped and never served",
+					got, live.Status.Phase, live.Status.ActiveRevision)
+			}
+			ready := meta.FindStatusCondition(live.Status.Conditions, appv1alpha1.ConditionReady)
+			if ready == nil || ready.Reason != crashLoopBackOff || !strings.Contains(ready.Message, "last exit code 3") {
+				t.Fatalf("Ready = %+v, want the crash diagnosis kept", ready)
+			}
+		})
 	}
-	if stored.Status.Phase != appv1alpha1.PhaseFailed {
-		t.Fatalf("phase = %q, want the early pull failure reported", stored.Status.Phase)
+}
+
+// The settle's own floor still holds for a first release: a crash with fewer
+// than crashSettleRestarts restarts, and a pod that was once Ready before it
+// crashed, keep their deadline budget and keep running.
+func TestUnsettledCrashKeepsAFirstReleaseRolling(t *testing.T) {
+	sched := metav1.NewTime(time.Now().Add(-3 * time.Minute))
+	wasReady := crashLoopPodStatus(sched, 5)
+	wasReady.Conditions[1].LastTransitionTime = metav1.NewTime(sched.Add(90 * time.Second))
+	for _, tc := range []struct {
+		name   string
+		status corev1.PodStatus
+	}{
+		{"too few restarts", crashLoopPodStatus(sched, crashSettleRestarts-1)},
+		{"was ready once", wasReady},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r, cl, nn := lifecycleFixture(t, firstReleaseApp(appv1alpha1.TypePrivateService, ""))
+			reconcileTwice(t, r, nn)
+			putReleasePod(t, cl, nn, tc.status)
+			setDeploymentStatus(t, cl, nn, statusUnavailableSince(time.Now().Add(-time.Minute), ""))
+			reconcileTwice(t, r, nn)
+			live := liveApp(t, cl, nn)
+			if got := deploymentReplicas(t, cl, nn); got != 1 || live.Status.Phase != appv1alpha1.PhaseDeploying || failedFirstRelease(&live) {
+				t.Fatalf("replicas %d phase %q, want the rollout still in progress", got, live.Status.Phase)
+			}
+		})
 	}
-	if failedFirstRelease(&stored) {
-		t.Fatalf("the early pull settle stopped the release: %+v", meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout))
+}
+
+// A newer release rolls a crash-stopped first release, as it does a
+// deadline-stopped one.
+func TestNewerReleaseRollsACrashStoppedFirstRelease(t *testing.T) {
+	r, cl, nn := lifecycleFixture(t, firstReleaseApp(appv1alpha1.TypePrivateService, ""))
+	reconcileTwice(t, r, nn)
+	putReleasePod(t, cl, nn, crashLoopPodStatus(metav1.NewTime(time.Now().Add(-3*time.Minute)), crashSettleRestarts))
+	setDeploymentStatus(t, cl, nn, statusUnavailableSince(time.Now().Add(-time.Minute), ""))
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("setup: replicas = %d, want the crash-settled release stopped", got)
+	}
+
+	deployImageAt(t, cl, nn, "nginx:2", 2)
+	reconcileOnce(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 1 {
+		t.Fatalf("replicas = %d after a new deploy, want 1", got)
+	}
+	if got := appPhase(t, cl, nn); got == appv1alpha1.PhaseFailed {
+		t.Fatalf("phase stayed Failed after a new deploy rolled")
 	}
 }
 
