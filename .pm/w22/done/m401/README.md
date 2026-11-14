@@ -1,18 +1,18 @@
 # w22 · m401 — A registry outage pages within minutes: Zot's availability and the tenant image-pull path get alerts, panels and a drill
 
-**Worker:** worker22 **Goal:** when the platform registry (Zot, `bex-registry`) is down or a tenant pod cannot pull its image from it, an alert fires within minutes instead of a tenant reporting it. Both alerts have a panel, a row in the ADR088 §6 coverage table, promtool tests that fail when the rule is broken, and a recorded drill. **Status:** todo
+**Worker:** worker22 **Goal:** when the platform registry (Zot, `bex-registry`) is down or a tenant pod cannot pull its image from it, an alert fires within minutes instead of a tenant reporting it. Both alerts have a panel, a row in the ADR088 §6 coverage table, promtool tests that fail when the rule is broken, and a recorded drill. **Status:** done (2026-11-14)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                              | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | `ZotRegistryNotReady`: the `zot` StatefulSet has fewer ready replicas than desired for 5 minutes, with promtool tests | 45m | —          |
-| t002 | `TenantRegistryImagePullFailing`: a tenant pod whose image comes from the platform registry sits in `ImagePullBackOff`/`ErrImagePull`, with promtool tests | 45m | —          |
-| t003 | Panels for both alerts, the ADR088 §6 "registry pull path" row, `obs-coverage-check.sh` green, the stale "zot is empty" comment corrected | 40m | t001, t002 |
-| t004 | Drill on the local cluster: Zot at 0 replicas, a restarted tenant pod fails to pull; record what kubelet and the metrics showed in `docs/drills/` | 45m | t003       |
-| t005 | Simplify                                                                                                           | 15m | t004       |
-| t006 | Test coverage                                                                                                      | 20m | t004       |
-| t007 | Closeout                                                                                                           | 10m | t005, t006 |
+| t001 | `ZotRegistryNotReady`: the `zot` StatefulSet has fewer ready replicas than desired for 5 minutes, with promtool tests — **DONE** | 45m | —          |
+| t002 | `TenantRegistryImagePullFailing`: a tenant pod whose image comes from the platform registry sits in `ImagePullBackOff`/`ErrImagePull`, with promtool tests — **DONE** | 45m | —          |
+| t003 | Panels for both alerts, the ADR088 §6 "registry pull path" row, `obs-coverage-check.sh` green, the stale "zot is empty" comment corrected — **DONE** | 40m | t001, t002 |
+| t004 | Drill on the local cluster: Zot at 0 replicas, a restarted tenant pod fails to pull; record what kubelet and the metrics showed in `docs/drills/` — **DONE** | 45m | t003       |
+| t005 | Simplify — **DONE** | 15m | t004       |
+| t006 | Test coverage — **DONE** | 20m | t004       |
+| t007 | Closeout — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 
@@ -34,3 +34,11 @@
 - **Expected outcome:** a Zot outage or a blocked tenant pull alerts the operator within minutes, with a panel that shows how bad and since when.
 - **Why now:** the `PullAlways` decision (2026-10-27) turned a Zot outage from "new builds fail" into "every Git-built service that wakes, scales or restarts fails". Until `w4/m347` lands, each new service credential also restarts Zot on purpose, so the window exists today.
 - **Render parity omitted:** pure platform GitOps alerting. No REST, GraphQL, MCP or tenant UI surface changes, and Render documents no equivalent.
+
+## Outcome (2026-11-14)
+
+- **Shipped:** `ZotRegistryNotReady` (critical, 5m) and `TenantRegistryImagePullFailing` (warning, 10m) in `deploy/gitops/base/rules/alerting_rules.yml`; promtool tests in `registry_availability_alerts_test.yml` and `registry_pull_alerts_test.yml`; panels 30 and 31 on Platform availability; the ADR088 §6 "Registry pull path" row; the corrected `StrandedNodeLocalImages` comment; [the drill record](../../../../docs/drills/2026-11-14-registry-outage.md).
+- **The drill changed two things the tasks had planned** (it ran on a real kubelet and kube-state-metrics): t002's matcher reads `image_spec`, not `image` (the runtime-reported `image` was a node-local alias), and t001's rule gained a second branch, `ready < 1`, because a StatefulSet scaled to 0 has desired = ready = 0 and the shortfall alone stayed silent. Each has a promtool case that fails on the old form.
+- **t004 deviation:** the drill ran on a throwaway single-node kind cluster, not `scripts/mock-cluster.sh` (the machine had neither `kind` nor `clusterctl`, and the full CAPD stack is too heavy for an 8 GiB Docker VM). Both alerts reached `firing` from the repository's own rule file in a real Prometheus 3.13.5.
+- **Checks:** all 12 `*_test.yml` files and `promtool check rules` pass; `scripts/obs-coverage-check.sh` passes; 12 mutations (5 on the Zot rule, 7 on the pull rule) are each caught by a test. `scripts/gitops-validate.sh` stops on an unrelated self-test in this environment (a ghcr download returns 504 and the Homebrew bash is needed for its array handling), so its promtool step was reproduced by hand with the same commands.
+- **Still an assumption:** the 5-minute `for` on `ZotRegistryNotReady`. Production Prometheus history of Zot restarts was not read; if it ever pages on a credential activation, read `kube_statefulset_status_replicas_ready{namespace="bex-registry"}` and move the window.

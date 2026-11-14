@@ -63,8 +63,9 @@ groups:
           description: "The Argo application metrics scrape is absent or failing for 5m. Application health is unknown. Check the argocd-metrics Service/endpoints and Prometheus target argocd-applications. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
 
       # NB: the platform-namespace allowlist is repeated verbatim in the
-      # next rule (PromQL has no variables) — keep both `namespace=~`
-      # lists in sync when a platform namespace is added.
+      # next rule (PromQL has no variables) and, negated, in
+      # TenantRegistryImagePullFailing — keep the `namespace` lists in
+      # sync when a platform namespace is added.
       - alert: PlatformPodCrashLooping
         expr: |
           max by (namespace, pod, container) (
@@ -80,6 +81,9 @@ groups:
           summary: "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is CrashLoopBackOff"
           description: "Platform container has been CrashLoopBackOff for >10m. Debug: kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}; kubectl -n {{ $labels.namespace }} logs {{ $labels.pod }} -c {{ $labels.container }} --previous"
 
+      # Deployments only: `bex-registry` is in this list for completeness, but
+      # Zot is a StatefulSet (chart workload `statefulset/zot`), so this rule
+      # never matches it. ZotRegistryNotReady below is its availability alert.
       - alert: PlatformDeploymentNotReady
         expr: |
           (
@@ -425,6 +429,43 @@ groups:
         annotations:
           summary: "Zot registry PVC {{ $labels.persistentvolumeclaim }} is almost full"
           description: "The Zot OCI registry PVC is >85% full or has <10 GiB available; new image pushes can fail with HTTP 500. Grow the PVC immediately and verify retention/GC is reclaiming old layers."
+
+      # Zot is a StatefulSet, so PlatformDeploymentNotReady (kube_deployment_*)
+      # never covers it, and PlatformPodCrashLooping needs 10m of
+      # CrashLoopBackOff, so it misses Pending, a failed volume mount and plain
+      # NotReady. Since imagePullPolicy Always (ADR022 § Node image cache) every
+      # tenant container start confirms its manifest here, so an outage fails
+      # every wake, scale-out and restart of a Git-built service: the blast
+      # radius of ZotRegistryAlmostFull, hence critical.
+      #
+      # for: 5m. The one planned restart is the operator's credential-activation
+      # bounce (registry.EnsureActive deletes the zot pod, at most once per 2m,
+      # ADR022 § Credential activation, until w4/m347 removes it); the replica
+      # returns well inside 5m and the ready series resets the window.
+      #
+      # Two branches. Fewer ready than desired catches a replica that is Pending,
+      # NotReady or failing its volume mount (the KratosCourierNotReady shape).
+      # None ready catches a StatefulSet scaled to 0: desired and ready are both
+      # 0, so the shortfall is 0 (a real scale-to-0 left the first branch silent).
+      - alert: ZotRegistryNotReady
+        expr: |
+          (
+            (
+              kube_statefulset_replicas{namespace="bex-registry", statefulset="zot"}
+              - on (namespace, statefulset)
+              kube_statefulset_status_replicas_ready{namespace="bex-registry", statefulset="zot"}
+            ) > 0
+          )
+          or
+          (
+            kube_statefulset_status_replicas_ready{namespace="bex-registry", statefulset="zot"} < 1
+          )
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Zot registry is not ready — Git-built services cannot start or scale"
+          description: "statefulset/zot in bex-registry has had fewer ready replicas than desired, or none ready, for >5m. Tenant containers pull with imagePullPolicy Always (ADR022), so every wake, scale-out and restart of a Git-built service fails while it is down, and builds cannot push. Rule out a credential-activation bounce first (the operator deletes the pod on purpose, and the replica returns once the pod is recreated). Debug: kubectl -n bex-registry get pods,pvc; kubectl -n bex-registry describe pod zot-0; kubectl -n bex-registry logs zot-0 --tail=100."
 
       # w7/036: a managed datastore that never provisions is the
       # platform's quietest failure. CNPG's metrics come from instance
@@ -1632,11 +1673,14 @@ groups:
           summary: "Stripe Customer or Subscription provisioning is repeatedly failing"
           description: "Usage cannot export until the workspace's unique Customer and metered Subscription converge. Inspect catalog/key permissions and duplicate-object alerts. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
-      # Stranded node-local images: App images are node-local ctr imports
-      # (no registry — zot is empty), so a tenant-node replacement or an
-      # autoscaler scale-down strands them and App pods sit in
-      # ImagePullBackOff/ErrImageNeverPull. A PLATFORM defect of the
-      # node-local-image design, not tenant paging — hence severity warn.
+      # Stranded node-local images: Apps deployed with the /deploy-app-from-local
+      # runbook run node-local ctr imports (no registry to re-pull from), so a
+      # tenant-node replacement or an autoscaler scale-down strands them and
+      # their pods sit in ImagePullBackOff/ErrImageNeverPull. Scoped to the
+      # shared `default` namespace. Git-built tenant images are NOT node-local:
+      # Zot serves them (imagePullPolicy Always, ADR022), and their pull
+      # failures are TenantRegistryImagePullFailing below. A PLATFORM defect of
+      # the node-local-image design, not tenant paging — hence severity warn.
       - alert: StrandedNodeLocalImages
         expr: |
           max by (namespace, pod, container) (
@@ -1651,6 +1695,40 @@ groups:
         annotations:
           summary: "App {{ $labels.namespace }}/{{ $labels.pod }} can't pull its node-local image"
           description: "An App pod has been ImagePullBackOff/ErrImageNeverPull for >10m — a node-local image was stranded by node replacement or scale-down (no registry to re-pull from). Re-import: the /deploy-app-from-local runbook. Debug: kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}"
+
+      # The registry-served counterpart of StrandedNodeLocalImages, which only
+      # sees namespace="default". A tenant namespace is the workspace id
+      # (`tea-…`, or `<ws>-sandbox`), so this takes every namespace NOT in the
+      # platform list (repeated verbatim from PlatformPodCrashLooping, negated)
+      # and keeps only containers whose image the platform registry serves:
+      # tenant images are `zot.bex-registry.svc:5000/<repo>:<tag>` (BEX_REGISTRY;
+      # pod_admit.go holds the prefix), reached through containerd's mirror to
+      # 127.0.0.1:30500. An image on another registry (a tenant's typo on
+      # docker.io) is the tenant's defect and is not matched. `max by` folds the
+      # ErrImagePull <-> ImagePullBackOff alternation into one continuous series
+      # so `for` can elapse.
+      # The matcher reads `image_spec` (the pod spec's string, written by the
+      # operator), not `image` (the runtime-reported name, an alias whenever the
+      # node holds the image under another tag, e.g. `127.0.0.1:30500/...` for a
+      # spec of `zot.bex-registry.svc:5000/...`). Needs kube-state-metrics >= 2.4.
+      - alert: TenantRegistryImagePullFailing
+        expr: |
+          (
+            max by (namespace, pod, container) (
+              kube_pod_container_status_waiting_reason{
+                reason=~"ImagePullBackOff|ErrImagePull",
+                namespace!~"bex-system|argocd|traefik|auth|secrets|monitoring|cert-manager|cnpg-system|kube-system|bex-registry|opensandbox-system|dashboard"
+              }
+            ) > 0
+          )
+          and on (namespace, pod, container)
+          kube_pod_container_info{image_spec=~"zot\\.bex-registry\\.svc:5000/.+"}
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tenant pod {{ $labels.namespace }}/{{ $labels.pod }} cannot pull its image from the platform registry"
+          description: "Container {{ $labels.container }} has been ErrImagePull/ImagePullBackOff for >10m on an image served by the platform registry (zot.bex-registry.svc:5000). One pod with the rest healthy points at a garbage-collected or never-pushed tag; many pods point at the registry itself (see ZotRegistryNotReady). Debug: kubectl -n bex-registry get pods; kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}"
 
       - alert: TraefikHigh5xxRate
         expr: |

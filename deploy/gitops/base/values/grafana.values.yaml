@@ -3155,7 +3155,7 @@ dashboards:
              "id": 14,
              "type": "stat",
              "title": "Scrape health (sources)",
-             "description": "up for this dashboard's exporters. kube-state-metrics down blinds the deployment-readiness, crashloop, stranded-images, and courier panels (and the node/PVC panels on Cluster capacity); cert-manager down blinds all three certificate panels; openbao down blinds the seal tile. Per-target sentinel: a vanished target reads -1 → MISSING/red on its own tile, never silently dropping while siblings stay green.",
+             "description": "up for this dashboard's exporters. kube-state-metrics down blinds the deployment-readiness, crashloop, stranded-images, courier, Zot-registry and registry-pull panels (and the node/PVC panels on Cluster capacity); cert-manager down blinds all three certificate panels; openbao down blinds the seal tile. Per-target sentinel: a vanished target reads -1 → MISSING/red on its own tile, never silently dropping while siblings stay green.",
              "gridPos": { "h": 5, "w": 24, "x": 0, "y": 63 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
@@ -4090,6 +4090,66 @@ dashboards:
               }
              ],
              "id": 29
+            },
+            {
+             "id": 30,
+             "type": "timeseries",
+             "title": "Zot registry: missing replicas",
+             "description": "max(desired, 1) minus ready replicas of the zot StatefulSet in bex-registry — the ZotRegistryNotReady condition (red line; critical at >0 for 5m). The max(…, 1) is deliberate: a StatefulSet scaled to 0 has desired = ready = 0, and a plain desired−ready would read a dead registry as 0. Zot is a StatefulSet, so the Deployment-readiness panel above never shows it. Tenant containers pull with imagePullPolicy Always (ADR022), so while this is above zero every wake, scale-out and restart of a Git-built service fails and builds cannot push. A short spike is the operator's credential-activation bounce (registry.EnsureActive deletes the pod, at most once per 2m); a plateau is an outage. Disk fill and headroom are on Cluster capacity.",
+             "gridPos": { "h": 8, "w": 12, "x": 0, "y": 148 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "clamp_min(kube_statefulset_replicas{namespace=\"bex-registry\", statefulset=\"zot\"}, 1) - on (namespace, statefulset) kube_statefulset_status_replicas_ready{namespace=\"bex-registry\", statefulset=\"zot\"}",
+                 "legendFormat": "missing replicas"
+                }
+              ]
+            },
+            {
+             "id": 31,
+             "type": "timeseries",
+             "title": "Tenant pods failing to pull from the platform registry",
+             "description": "Tenant-namespace containers on a zot.bex-registry.svc:5000 image waiting on ErrImagePull/ImagePullBackOff — the TenantRegistryImagePullFailing expression (fires at >0 for 10m; red line). Many pods at once point at the registry (ZotRegistryNotReady fires alongside); one pod with the rest healthy points at a garbage-collected or never-pushed tag. An image on another registry is the tenant's own defect and is not counted. The shared default namespace's node-local images are the Stranded node-local images panel. Reads 0 only while kube-state-metrics is up; No data when it is not.",
+             "gridPos": { "h": 8, "w": 12, "x": 12, "y": 148 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum((max by (namespace, pod, container) (kube_pod_container_status_waiting_reason{reason=~\"ImagePullBackOff|ErrImagePull\", namespace!~\"bex-system|argocd|traefik|auth|secrets|monitoring|cert-manager|cnpg-system|kube-system|bex-registry|opensandbox-system|dashboard\"}) > 0) and on (namespace, pod, container) kube_pod_container_info{image_spec=~\"zot\\\\.bex-registry\\\\.svc:5000/.+\"}) or (count(up{job=\"kube-state-metrics\"} == 1) * 0)",
+                 "legendFormat": "pods failing to pull"
+                }
+              ]
             }
           ]
         }

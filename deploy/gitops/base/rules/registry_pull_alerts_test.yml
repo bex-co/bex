@@ -1,0 +1,146 @@
+# TenantRegistryImagePullFailing. A tenant-namespace container whose
+# image the platform registry serves (zot.bex-registry.svc:5000/...) sits in
+# ErrImagePull/ImagePullBackOff for 10m. An image on another registry, a pod in
+# a platform namespace and a shorter wait must not fire.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: a platform-registry image in ImagePullBackOff fires after the window, not a minute earlier
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc", pod="web-1", container="web", reason="ImagePullBackOff"}'
+        values: "1x30"
+      - series: 'kube_pod_container_info{namespace="tea-abc", pod="web-1", container="web", image_spec="zot.bex-registry.svc:5000/web-xyz:rev-1"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: TenantRegistryImagePullFailing
+        exp_alerts: [] # 9m in: inside for: 10m
+      - eval_time: 11m
+        alertname: TenantRegistryImagePullFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: tea-abc
+              pod: web-1
+              container: web
+            exp_annotations:
+              summary: "Tenant pod tea-abc/web-1 cannot pull its image from the platform registry"
+              description: "Container web has been ErrImagePull/ImagePullBackOff for >10m on an image served by the platform registry (zot.bex-registry.svc:5000). One pod with the rest healthy points at a garbage-collected or never-pushed tag; many pods point at the registry itself (see ZotRegistryNotReady). Debug: kubectl -n bex-registry get pods; kubectl -n tea-abc describe pod web-1"
+
+  - name: kubelet alternating ErrImagePull and ImagePullBackOff is one continuous failure
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc", pod="web-1", container="web", reason="ErrImagePull"}'
+        values: "1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0"
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc", pod="web-1", container="web", reason="ImagePullBackOff"}'
+        values: "0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1"
+      - series: 'kube_pod_container_info{namespace="tea-abc", pod="web-1", container="web", image_spec="zot.bex-registry.svc:5000/web-xyz:rev-1"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: TenantRegistryImagePullFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: tea-abc
+              pod: web-1
+              container: web
+            exp_annotations:
+              summary: "Tenant pod tea-abc/web-1 cannot pull its image from the platform registry"
+              description: "Container web has been ErrImagePull/ImagePullBackOff for >10m on an image served by the platform registry (zot.bex-registry.svc:5000). One pod with the rest healthy points at a garbage-collected or never-pushed tag; many pods point at the registry itself (see ZotRegistryNotReady). Debug: kubectl -n bex-registry get pods; kubectl -n tea-abc describe pod web-1"
+
+  - name: a sandbox namespace pod on a registry image fires too, and the alert resolves when the pull succeeds
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc-sandbox", pod="sbx-1", container="sandbox", reason="ErrImagePull"}'
+        values: "1x15 0x15"
+      - series: 'kube_pod_container_info{namespace="tea-abc-sandbox", pod="sbx-1", container="sandbox", image_spec="zot.bex-registry.svc:5000/snapshots/tea-abc-sandbox/sbx:1"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: TenantRegistryImagePullFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: tea-abc-sandbox
+              pod: sbx-1
+              container: sandbox
+            exp_annotations:
+              summary: "Tenant pod tea-abc-sandbox/sbx-1 cannot pull its image from the platform registry"
+              description: "Container sandbox has been ErrImagePull/ImagePullBackOff for >10m on an image served by the platform registry (zot.bex-registry.svc:5000). One pod with the rest healthy points at a garbage-collected or never-pushed tag; many pods point at the registry itself (see ZotRegistryNotReady). Debug: kubectl -n bex-registry get pods; kubectl -n tea-abc-sandbox describe pod sbx-1"
+      - eval_time: 20m
+        alertname: TenantRegistryImagePullFailing
+        exp_alerts: []
+
+  - name: an image on another registry is the tenant's defect and does not fire
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc", pod="web-1", container="web", reason="ImagePullBackOff"}'
+        values: "1x30"
+      - series: 'kube_pod_container_info{namespace="tea-abc", pod="web-1", container="web", image_spec="docker.io/library/typo-image:latest"}'
+        values: "1x30"
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc", pod="web-2", container="web", reason="ImagePullBackOff"}'
+        values: "1x30"
+      # a registry host that only starts with the platform host must not match
+      - series: 'kube_pod_container_info{namespace="tea-abc", pod="web-2", container="web", image_spec="zot.bex-registry.svc:5000.attacker.example/x:1"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 29m
+        alertname: TenantRegistryImagePullFailing
+        exp_alerts: []
+
+  - name: a platform namespace pod does not fire even on a registry image
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="bex-system", pod="op-1", container="manager", reason="ImagePullBackOff"}'
+        values: "1x30"
+      - series: 'kube_pod_container_info{namespace="bex-system", pod="op-1", container="manager", image_spec="zot.bex-registry.svc:5000/op:1"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 29m
+        alertname: TenantRegistryImagePullFailing
+        exp_alerts: []
+
+  - name: a short wait and a healthy container do not fire
+    interval: 1m
+    input_series:
+      # pulling for 6m, then the image arrives
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc", pod="web-1", container="web", reason="ImagePullBackOff"}'
+        values: "1x6 0x24"
+      - series: 'kube_pod_container_info{namespace="tea-abc", pod="web-1", container="web", image_spec="zot.bex-registry.svc:5000/web-xyz:rev-1"}'
+        values: "1x30"
+      # never waiting on a pull
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc", pod="web-2", container="web", reason="ImagePullBackOff"}'
+        values: "0x30"
+      - series: 'kube_pod_container_info{namespace="tea-abc", pod="web-2", container="web", image_spec="zot.bex-registry.svc:5000/web-xyz:rev-1"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 29m
+        alertname: TenantRegistryImagePullFailing
+        exp_alerts: []
+
+  # Found by the registry-outage drill (docs/drills/2026-11-14-registry-outage.md) on a real kubelet and kube-state-metrics: `image`
+  # is the runtime-reported name and is an alias when the node holds the image
+  # under another tag, while `image_spec` is the string the operator wrote in the
+  # pod spec. The rule must follow image_spec.
+  - name: the runtime-reported image alias does not hide a registry-served spec
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc", pod="web-1", container="web", reason="ErrImagePull"}'
+        values: "1x30"
+      - series: 'kube_pod_container_info{namespace="tea-abc", pod="web-1", container="web", image="127.0.0.1:30500/web-xyz:rev-1", image_spec="zot.bex-registry.svc:5000/web-xyz:rev-1", image_id="docker.io/library/busybox@sha256:bd44eb136a95dcc8dc58995e43abc40a413f2e8e3d4a2aae6bccbe94686acb05"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: TenantRegistryImagePullFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: tea-abc
+              pod: web-1
+              container: web
+            exp_annotations:
+              summary: "Tenant pod tea-abc/web-1 cannot pull its image from the platform registry"
+              description: "Container web has been ErrImagePull/ImagePullBackOff for >10m on an image served by the platform registry (zot.bex-registry.svc:5000). One pod with the rest healthy points at a garbage-collected or never-pushed tag; many pods point at the registry itself (see ZotRegistryNotReady). Debug: kubectl -n bex-registry get pods; kubectl -n tea-abc describe pod web-1"

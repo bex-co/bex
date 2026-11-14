@@ -1,0 +1,113 @@
+# ZotRegistryNotReady. Zot is a StatefulSet, so the Deployment-based
+# PlatformDeploymentNotReady never covers it; the rule reads the StatefulSet
+# series for bex-registry/zot only and waits 5m (a credential-activation
+# bounce is a pod delete and recreate, far inside that window).
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: a zot replica that stays not ready fires after the window, not a minute earlier, and resolves on recovery
+    interval: 1m
+    input_series:
+      - series: 'kube_statefulset_replicas{namespace="bex-registry", statefulset="zot"}'
+        values: "1x30"
+      # ready for 5m, then 15m not ready (minutes 5-19), then recovered
+      - series: 'kube_statefulset_status_replicas_ready{namespace="bex-registry", statefulset="zot"}'
+        values: "1x5 0x15 1x10"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ZotRegistryNotReady
+        exp_alerts: [] # healthy
+      - eval_time: 9m
+        alertname: ZotRegistryNotReady
+        exp_alerts: [] # not ready since minute 5: 4m in, one minute short of for: 5m
+      - eval_time: 11m
+        alertname: ZotRegistryNotReady
+        exp_alerts: &zot_not_ready
+          - exp_labels:
+              severity: critical
+              namespace: bex-registry
+              statefulset: zot
+            exp_annotations:
+              summary: "Zot registry is not ready — Git-built services cannot start or scale"
+              description: "statefulset/zot in bex-registry has had fewer ready replicas than desired, or none ready, for >5m. Tenant containers pull with imagePullPolicy Always (ADR022), so every wake, scale-out and restart of a Git-built service fails while it is down, and builds cannot push. Rule out a credential-activation bounce first (the operator deletes the pod on purpose, and the replica returns once the pod is recreated). Debug: kubectl -n bex-registry get pods,pvc; kubectl -n bex-registry describe pod zot-0; kubectl -n bex-registry logs zot-0 --tail=100."
+      - eval_time: 22m
+        alertname: ZotRegistryNotReady
+        exp_alerts: [] # ready again since minute 20
+
+  - name: a bounce shorter than the window never fires, even when it repeats
+    interval: 1m
+    input_series:
+      - series: 'kube_statefulset_replicas{namespace="bex-registry", statefulset="zot"}'
+        values: "1x30"
+      # two 2-minute bounces (the operator's cooldown is 2m between bounces)
+      - series: 'kube_statefulset_status_replicas_ready{namespace="bex-registry", statefulset="zot"}'
+        values: "1x5 0x2 1x4 0x2 1x17"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: ZotRegistryNotReady
+        exp_alerts: []
+      - eval_time: 14m
+        alertname: ZotRegistryNotReady
+        exp_alerts: []
+      - eval_time: 29m
+        alertname: ZotRegistryNotReady
+        exp_alerts: []
+
+  - name: a healthy registry does not fire
+    interval: 1m
+    input_series:
+      - series: 'kube_statefulset_replicas{namespace="bex-registry", statefulset="zot"}'
+        values: "1x30"
+      - series: 'kube_statefulset_status_replicas_ready{namespace="bex-registry", statefulset="zot"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 29m
+        alertname: ZotRegistryNotReady
+        exp_alerts: []
+
+  - name: a shortfall of one replica out of two still fires (the rule compares ready with desired)
+    interval: 1m
+    input_series:
+      - series: 'kube_statefulset_replicas{namespace="bex-registry", statefulset="zot"}'
+        values: "2x30"
+      - series: 'kube_statefulset_status_replicas_ready{namespace="bex-registry", statefulset="zot"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: ZotRegistryNotReady
+        exp_alerts: *zot_not_ready
+
+  - name: another StatefulSet in bex-registry, or a statefulset named zot elsewhere, does not match
+    interval: 1m
+    input_series:
+      - series: 'kube_statefulset_replicas{namespace="bex-registry", statefulset="other"}'
+        values: "1x30"
+      - series: 'kube_statefulset_status_replicas_ready{namespace="bex-registry", statefulset="other"}'
+        values: "0x30"
+      - series: 'kube_statefulset_replicas{namespace="auth", statefulset="zot"}'
+        values: "1x30"
+      - series: 'kube_statefulset_status_replicas_ready{namespace="auth", statefulset="zot"}'
+        values: "0x30"
+    alert_rule_test:
+      - eval_time: 29m
+        alertname: ZotRegistryNotReady
+        exp_alerts: []
+
+  # Found by the registry-outage drill (docs/drills/2026-11-14-registry-outage.md): `kubectl scale statefulset/zot --replicas=0` on a
+  # real cluster leaves desired = ready = 0, so the shortfall (desired - ready) is
+  # 0 and the shortfall branch alone never fired. The "none ready" branch does.
+  - name: a registry scaled to zero fires, because none ready is an outage whatever is desired
+    interval: 1m
+    input_series:
+      - series: 'kube_statefulset_replicas{namespace="bex-registry", statefulset="zot"}'
+        values: "1x5 0x25"
+      - series: 'kube_statefulset_status_replicas_ready{namespace="bex-registry", statefulset="zot"}'
+        values: "1x5 0x25"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: ZotRegistryNotReady
+        exp_alerts: [] # scaled to zero 4m ago: inside for: 5m
+      - eval_time: 11m
+        alertname: ZotRegistryNotReady
+        exp_alerts: *zot_not_ready
