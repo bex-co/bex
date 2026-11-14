@@ -526,7 +526,8 @@ func OwnerScoped(p graphql.ResolveParams) context.Context {
 	return core.WithWorkspace(p.Context, Str(p.Args, "ownerId"))
 }
 
-// StringList coerces a `[String]` argument value ([]any from graphql-go) into// []string, skipping non-string entries. Nil or absent => nil. Shared by the
+// StringList coerces a `[String]` argument value ([]any from graphql-go) into
+// []string, skipping non-string entries. Nil or absent => nil. Shared by the
 // CIDR-allowlist arguments (setDatabaseIpAllowList, setKeyValueIpAllowList,
 // create seeds).
 func StringList(arg any) []string {
