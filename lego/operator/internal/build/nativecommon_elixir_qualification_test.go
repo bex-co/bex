@@ -209,7 +209,7 @@ func TestCommonElixirOfflineQualification(t *testing.T) {
 			o.Runtime = nativeElixirRuntime
 			o.BuildCommand, o.StartCommand = "/usr/bin/python3 check.py build", "/usr/bin/python3 check.py runtime"
 			bundle, path, source := writeResolveFixture(t, o, commonElixirEnvironment(tc), commonElixirFixtureFiles(t))
-			choices, err := ResolveNativeBuildAt(time.Time{}, o.Runtime, bundle, path, source)
+			choices, err := resolveNativeBuildAt(time.Time{}, o.Runtime, bundle, path, source)
 			must(t, err)
 			expected, err := commonElixirExpectations(choices, tc)
 			must(t, err)

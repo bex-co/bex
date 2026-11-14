@@ -254,7 +254,7 @@ func nativeLineSignal(runtime, line string) (env, files map[string]string) {
 func resolveFixture(t *testing.T, o Options, env, files map[string]string) (string, []NativeChoice) {
 	t.Helper()
 	bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
-	choices, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src)
+	choices, err := resolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	// Node reads its files from the service's root directory.
 	o.Runtime = "node"
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n"})
-	if choices, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 || choices[0].Source != ".nvmrc" || choices[0].Line != "22" {
+	if choices, err := resolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 || choices[0].Source != ".nvmrc" || choices[0].Line != "22" {
 		t.Fatalf("node resolve = %+v, %v", choices, err)
 	}
 }
@@ -314,7 +314,7 @@ func TestResolveNativeBuildKeepsPnpmOnEveryNodeLine(t *testing.T) {
 		}
 		bundle, dockerfile, src := writeResolveFixture(t, nativeOptions(), env, nil)
 		before, _ := os.ReadFile(dockerfile)
-		if _, err := ResolveNativeBuild(nativeNodeRuntime, bundle, dockerfile, src); err != nil {
+		if _, err := resolveNativeBuild(nativeNodeRuntime, bundle, dockerfile, src); err != nil {
 			t.Fatal(err)
 		}
 		after, _ := os.ReadFile(dockerfile)
@@ -341,7 +341,7 @@ func TestResolveNativeBuildIgnoresSymlinkedVersionFiles(t *testing.T) {
 	o.Runtime = "python"
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"SECRET": "s3cr3t"}, nil)
 	must(t, os.Symlink(bundle, filepath.Join(src, ".python-version")))
-	choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
+	choices, err := resolveNativeBuild("python", bundle, dockerfile, src)
 	if err != nil || len(choices) != 3 || choices[0].Source != "" {
 		t.Fatalf("symlinked .python-version: %+v, %v; want the default, unread", choices, err)
 	}
@@ -352,7 +352,7 @@ func TestResolveNativeBuildRefusesAForeignDockerfile(t *testing.T) {
 	o.Runtime = "python"
 	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
 	must(t, os.WriteFile(dockerfile, []byte("FROM evil:latest\nRUN true\n"), 0o600))
-	if _, err := ResolveNativeBuild("python", bundle, dockerfile, src); err == nil {
+	if _, err := resolveNativeBuild("python", bundle, dockerfile, src); err == nil {
 		t.Fatal("rewrote a Dockerfile the preparer did not generate")
 	}
 }
@@ -468,7 +468,7 @@ func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
 	o := nativeOptions()
 	o.Runtime = "node"
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3"}, map[string]string{".nvmrc": "22\n"})
-	choices, err := ResolveNativeBuild("node", bundle, dockerfile, src)
+	choices, err := resolveNativeBuild("node", bundle, dockerfile, src)
 	if err != nil || len(choices) != 2 || choices[0].Label != "Node" || choices[0].Line != "22" || choices[1].Label != "Bun" || choices[1].Line != "1.3" {
 		t.Fatalf("choices = %+v, %v; want Node 22 then Bun 1.3", choices, err)
 	}
@@ -485,7 +485,7 @@ func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
 	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "0.8"}, nil)
 	before, _ := os.ReadFile(dockerfile)
 	var unsupported *UnsupportedVersionError
-	if _, err := ResolveNativeBuild("node", bundle, dockerfile, src); !errors.As(err, &unsupported) {
+	if _, err := resolveNativeBuild("node", bundle, dockerfile, src); !errors.As(err, &unsupported) {
 		t.Fatalf("unsupported BUN_VERSION = %v, want a tenant UnsupportedVersionError", err)
 	}
 	if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
@@ -495,7 +495,7 @@ func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
 	// No opt-in: exactly one choice and only the supplied FROM may change.
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, nil)
 	before, _ = os.ReadFile(dockerfile)
-	if choices, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 {
+	if choices, err := resolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 {
 		t.Fatalf("no opt-in choices = %+v, %v", choices, err)
 	}
 	defaultImage := nativeToolchains[nativeNodeRuntime].defaultImage()
@@ -613,7 +613,7 @@ func TestResolveNativeBuildAddsPoetryToPython(t *testing.T) {
 	o.Runtime = "python"
 	for _, line := range nativeToolchains["python"].lines {
 		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": line.line, "POETRY_VERSION": "2.1.3"}, nil)
-		choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
+		choices, err := resolveNativeBuild("python", bundle, dockerfile, src)
 		if err != nil || len(choices) != 3 || choices[0].Line != line.line || choices[1].Line != "2.1.3" {
 			t.Fatalf("python %s choices = %+v, %v", line.line, choices, err)
 		}
@@ -629,7 +629,7 @@ func TestResolveNativeBuildAddsPoetryToPython(t *testing.T) {
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"POETRY_VERSION": "latest"}, nil)
 	before, _ := os.ReadFile(dockerfile)
 	var unsupported *UnsupportedVersionError
-	if _, err := ResolveNativeBuild("python", bundle, dockerfile, src); !errors.As(err, &unsupported) {
+	if _, err := resolveNativeBuild("python", bundle, dockerfile, src); !errors.As(err, &unsupported) {
 		t.Fatalf("unsupported POETRY_VERSION = %v, want a tenant UnsupportedVersionError", err)
 	}
 	if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
@@ -638,7 +638,7 @@ func TestResolveNativeBuildAddsPoetryToPython(t *testing.T) {
 
 	o.Runtime = "node"
 	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"POETRY_VERSION": "2.1.3"}, nil)
-	if choices, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 {
+	if choices, err := resolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 {
 		t.Fatalf("node choices = %+v, %v; Poetry is Python's", choices, err)
 	}
 	if df, _ := os.ReadFile(dockerfile); strings.Contains(string(df), "poetry") {
@@ -667,7 +667,7 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 				files[".ruby-version"] = line.version + "\n"
 			} // Go and Rust each have one reviewed line: no signal selects it
 			bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
-			choices, err := ResolveNativeBuild(runtime, bundle, dockerfile, src)
+			choices, err := resolveNativeBuild(runtime, bundle, dockerfile, src)
 			if err != nil || choices[0].Line != line.line || choices[len(choices)-1].Label != "Node" || choices[len(choices)-1].Line != "24" {
 				t.Fatalf("%s %s choices = %+v, %v", runtime, line.line, choices, err)
 			}
@@ -681,7 +681,7 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 		}
 
 		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "22"}, nil)
-		choices, err := ResolveNativeBuild(runtime, bundle, dockerfile, src)
+		choices, err := resolveNativeBuild(runtime, bundle, dockerfile, src)
 		node22, _ := nativeToolchains["node"].find("22")
 		if df, _ := os.ReadFile(dockerfile); err != nil || choices[len(choices)-1].Source != "NODE_VERSION=22" ||
 			!strings.Contains(string(df), "COPY --link --from="+node22.image+" /usr/local/bin/node /usr/local/bin/node\n") {
@@ -691,7 +691,7 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 		bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "12"}, nil)
 		before, _ := os.ReadFile(dockerfile)
 		var unsupported *UnsupportedVersionError
-		if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); !errors.As(err, &unsupported) {
+		if _, err := resolveNativeBuild(runtime, bundle, dockerfile, src); !errors.As(err, &unsupported) {
 			t.Fatalf("%s unsupported NODE_VERSION = %v", runtime, err)
 		}
 		if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
@@ -701,7 +701,7 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 	o := nativeOptions()
 	o.Runtime = "node"
 	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
-	if _, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil {
+	if _, err := resolveNativeBuild("node", bundle, dockerfile, src); err != nil {
 		t.Fatal(err)
 	}
 	if df, _ := os.ReadFile(dockerfile); strings.Contains(string(df), " /usr/local/bin/node /usr/local/bin/node\n") {

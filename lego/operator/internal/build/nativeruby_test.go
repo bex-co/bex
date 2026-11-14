@@ -37,7 +37,7 @@ func TestResolveNativeBuildReadsTheServiceRootLockfile(t *testing.T) {
 		must(t, os.MkdirAll(root, 0o755))
 		lock := strings.Replace(discourseLock, "3.4.7p58", "3.3.6p108", 1)
 		must(t, os.WriteFile(filepath.Join(checkout, tc.lockAt), []byte(lock), 0o644))
-		choices, err := ResolveNativeBuild("ruby", bundle, dockerfile, root)
+		choices, err := resolveNativeBuild("ruby", bundle, dockerfile, root)
 		if err != nil {
 			t.Fatal(err)
 		}

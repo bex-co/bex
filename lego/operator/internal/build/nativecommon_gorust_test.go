@@ -159,7 +159,7 @@ func nativeGoRustGeneratedCase(t *testing.T, docker nativeUtilityDocker, common,
 	o.BuildCommand, o.StartCommand = "/usr/bin/python3 check.py build "+runtime, "/usr/bin/python3 check.py runtime "+runtime
 	files := nativeGoRustFiles(t)
 	bundle, path, source := writeResolveFixture(t, o, nil, files)
-	choices, err := ResolveNativeBuildAt(time.Time{}, runtime, bundle, path, source)
+	choices, err := resolveNativeBuildAt(time.Time{}, runtime, bundle, path, source)
 	must(t, err)
 	primary, err := nativeGoRustPrimaryContract(runtime, choices[0])
 	must(t, err)
