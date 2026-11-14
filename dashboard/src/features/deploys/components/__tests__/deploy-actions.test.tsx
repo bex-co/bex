@@ -263,7 +263,8 @@ describe("DeployActions", () => {
     let router: ReturnType<typeof renderListRow> | null = null;
     router = renderListRow((hide) => {
       act(() => hide());
-      void router?.navigate({ to: "/elsewhere" });
+      // The test router is untyped against the app route tree.
+      void router?.history.push("/elsewhere");
     });
 
     await user.click(
