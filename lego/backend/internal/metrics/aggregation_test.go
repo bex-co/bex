@@ -60,7 +60,9 @@ func TestCPUUsageQueryAggregatesWithinEachStep(t *testing.T) {
 	if got := resourceUsageQuery(MetricCPU, m, 10*time.Second, cpuAggregationMax); !strings.HasSuffix(got, "[15s:15s])") {
 		t.Errorf("sub-scrape step = %s, want a 15s range", got)
 	}
-	if got := resourceUsageQuery(MetricMemory, m, time.Minute, cpuAggregationMax); strings.Contains(got, "_over_time") {
+	// Memory takes no CPU aggregation: its only range function is the
+	// liveness window's last_over_time (w4/644).
+	if got := resourceUsageQuery(MetricMemory, m, time.Minute, cpuAggregationMax); strings.Contains(got, "max_over_time") || strings.Contains(got, "min_over_time") {
 		t.Errorf("memory must never aggregate: %s", got)
 	}
 }

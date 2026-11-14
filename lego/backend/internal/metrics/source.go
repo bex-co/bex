@@ -122,6 +122,14 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 	}
 }
 
+// earlierTime is the earlier of a and b.
+func earlierTime(a, b time.Time) time.Time {
+	if b.Before(a) {
+		return b
+	}
+	return a
+}
+
 // promQueryRange runs one Prometheus query_range and parses the matrix reply —
 // the shared transport under the request- and resource-metric sources.
 func promQueryRange(ctx context.Context, hc *http.Client, base, query string, start, end time.Time, step int64) ([]MetricSeries, error) {
@@ -193,7 +201,13 @@ func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRa
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req ResourceMetricsRangeRequest) ([]MetricSeries, error) {
-		series, err := promQueryRange(ctx, hc, base, promResourceQueryFor(req), req.Start, req.End, stepSeconds(req.Resolution))
+		// No point after now: a range ending in the future read invented
+		// points from the lookback (w4/644).
+		end := earlierTime(req.End, time.Now())
+		if end.Before(req.Start) {
+			return nil, nil
+		}
+		series, err := promQueryRange(ctx, hc, base, promResourceQueryFor(req), req.Start, end, stepSeconds(req.Resolution))
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +317,15 @@ func resourceUsageQuery(metric, matchers string, resolution time.Duration, cpuAg
 		// double-counted 743 MiB, and per-pod instance count reaching 2). Taking
 		// the per-container max first yields one truthful value per running
 		// container; the outer sum still adds genuinely distinct containers.
-		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (container_memory_working_set_bytes{%s}))`, matchers)
+		//
+		// `last_over_time` over the liveness window, not an instant selector:
+		// cAdvisor's samples carry their own timestamps, so a stopped pod gets
+		// no staleness marker and an instant selector kept drawing its last
+		// value for Prometheus's five-minute lookback after every rollout
+		// (w4/644). A range selector has no lookback, and sharing the instance
+		// count's window keeps the memory lines and Total Instances in step.
+		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (last_over_time(container_memory_working_set_bytes{%s}[%s])))`,
+			matchers, instanceLivenessWindow)
 	default: // cpu
 		// Same cAdvisor restart double-count guard as memory: dedupe a container's
 		// overlapping instances before summing across containers (w4/050).

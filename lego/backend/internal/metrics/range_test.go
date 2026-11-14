@@ -23,6 +23,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -182,7 +183,7 @@ func TestPromResourceQueryFor(t *testing.T) {
 		t.Errorf("cpu query:\n got %q\nwant %q", got, want)
 	}
 	req.Metric = MetricMemory
-	if got, want := promResourceQueryFor(req), `sum by (pod) (max by (pod, container) (container_memory_working_set_bytes{`+matchers+`}))`; got != want {
+	if got, want := promResourceQueryFor(req), `sum by (pod) (max by (pod, container) (last_over_time(container_memory_working_set_bytes{`+matchers+`}[90s])))`; got != want {
 		t.Errorf("memory query:\n got %q\nwant %q", got, want)
 	}
 	// Instance count keeps the inner `sum by (pod)` (which already collapses a
@@ -319,5 +320,40 @@ func TestNewPrometheusResourceSourceErrorStatus(t *testing.T) {
 	down := NewPrometheusResourceSource("http://127.0.0.1:1", http.DefaultClient)
 	if _, err := down(context.Background(), ResourceMetricsRangeRequest{Namespace: "default", App: "web", Metric: MetricMemory}); err == nil {
 		t.Error("unreachable prometheus should error")
+	}
+}
+
+// w4/644: a range ending in the future is read only up to now, so no point is
+// invented after the request; a range wholly in the future reads nothing.
+func TestNewPrometheusResourceSourceEndsAtNow(t *testing.T) {
+	var gotEnd string
+	calls := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		gotEnd = r.URL.Query().Get("end")
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[]}}`))
+	}))
+	defer ts.Close()
+	src := NewPrometheusResourceSource(ts.URL, ts.Client())
+
+	before := time.Now()
+	if _, err := src(context.Background(), ResourceMetricsRangeRequest{
+		Namespace: "default", App: "web", Metric: MetricMemory,
+		Start: before.Add(-time.Hour), End: before.Add(time.Hour), Resolution: time.Minute,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	end, err := strconv.ParseInt(gotEnd, 10, 64)
+	if err != nil || end > time.Now().Unix() || end < before.Unix() {
+		t.Fatalf("end = %q, want now (%d)", gotEnd, before.Unix())
+	}
+
+	calls = 0
+	series, err := src(context.Background(), ResourceMetricsRangeRequest{
+		Namespace: "default", App: "web", Metric: MetricMemory,
+		Start: before.Add(time.Hour), End: before.Add(2 * time.Hour), Resolution: time.Minute,
+	})
+	if err != nil || len(series) != 0 || calls != 0 {
+		t.Fatalf("future range = %v, %v after %d queries; want nothing and no query", series, err, calls)
 	}
 }
