@@ -189,7 +189,7 @@ func dockerContextFilesStep(o Options, image string) corev1.Container {
 			{Name: sourceVolume, MountPath: sourceMount},
 			{Name: secretFilesVolume, MountPath: dockerBuildFilesMount, ReadOnly: true},
 		},
-		SecurityContext: restrictedContainerSecurityContext(),
+		SecurityContext: execution.RestrictedContainerSecurityContext(),
 		Resources:       sourceStepResources(),
 	}
 }

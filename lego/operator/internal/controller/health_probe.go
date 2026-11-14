@@ -22,6 +22,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 // The no-redirect health probe (w8/m133). Render counts a "2xx or 3xx status
@@ -84,7 +86,7 @@ func healthProbeInstallContainer(image string) corev1.Container {
 		corev1.ResourceCPU:    resource.MustParse("20m"),
 		corev1.ResourceMemory: resource.MustParse("32Mi"),
 	}
-	sec := tenantSecCtx()
+	sec := execution.RestrictedContainerSecurityContext()
 	sec.RunAsNonRoot, sec.RunAsUser, sec.ReadOnlyRootFilesystem = new(true), new(int64(65532)), new(true)
 	return corev1.Container{
 		Name:            healthProbeInitName,

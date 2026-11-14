@@ -396,7 +396,7 @@ func validSkillName(s string) bool {
 	return len(s) <= maxSkillNameLen && skillNamePattern.MatchString(s)
 }
 
-func validSkillText(s string) bool { return utf8.ValidString(s) && !strings.ContainsRune(s, 0) }
+func validSkillText(s string) bool { return core.ValidText(s) }
 
 // validSkillLine is validSkillText without control characters or Unicode
 // line and paragraph separators: a description is one line of the overlay

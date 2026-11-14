@@ -202,7 +202,8 @@ func TestDatabaseDeletionRetainsFinalizerAndRetriesCleanupError(t *testing.T) {
 // codex round-9 #13: the backup-purge Job runs in a tenant hosting namespace,
 // where the extended workload-admission grammar now denies added capabilities,
 // privilege escalation, and non-RuntimeDefault seccomp — the generated Job must
-// carry the same tenantSecCtx the export Jobs already stamp.
+// carry the same execution.RestrictedContainerSecurityContext the export Jobs
+// already stamp.
 func TestDatabaseBackupPurgeJobCarriesTenantHardening(t *testing.T) {
 	r := &DatabaseReconciler{Backup: BackupStore{
 		DestinationPath: "s3://backups/postgres", EndpointURL: "https://s3.example", S3Secret: "backup-creds",

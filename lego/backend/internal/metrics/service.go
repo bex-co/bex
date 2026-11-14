@@ -36,6 +36,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/types/podmetrics"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -218,13 +219,10 @@ func checkQuantileRange(q MetricQuery) error {
 }
 
 // PodResourceUsage is one pod's current CPU/memory usage — a metrics-server
-// snapshot. CPUCores is fractional vCPU, MemoryBytes is bytes.
-type PodResourceUsage struct {
-	Pod         string
-	Timestamp   string
-	CPUCores    float64
-	MemoryBytes float64
-}
+// snapshot. CPUCores is fractional vCPU, MemoryBytes is bytes. It is the shared
+// decoder's record so the operator autoscaler and these metrics surfaces read
+// the same payload identically.
+type PodResourceUsage = podmetrics.Usage
 
 // ResourceMetricsSource returns the current per-pod usage for an App's pods. nil
 // => cpu/memory metrics report core.ErrMetricsUnavailable (unless

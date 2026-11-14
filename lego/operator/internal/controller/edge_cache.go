@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -65,7 +66,7 @@ func edgeCacheContainer(app *appv1alpha1.App, image string, appPort int, drain i
 		corev1.ResourceCPU:    resource.MustParse("100m"),
 		corev1.ResourceMemory: resource.MustParse("160Mi"),
 	}
-	sec := tenantSecCtx()
+	sec := execution.RestrictedContainerSecurityContext()
 	sec.RunAsNonRoot, sec.RunAsUser, sec.ReadOnlyRootFilesystem = new(true), new(int64(65532)), new(true)
 	return corev1.Container{
 		Name:  edgeCacheContainerName,

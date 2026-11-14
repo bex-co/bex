@@ -160,13 +160,13 @@ var _ = Describe("Application container policy admission", func() {
 					{"token-automount", func(p *corev1.PodTemplateSpec) { p.Spec.AutomountServiceAccountToken = new(true) }},
 					{"privileged-service-account", func(p *corev1.PodTemplateSpec) { p.Spec.ServiceAccountName = "bex-controller-manager" }},
 					{"init-capability", func(p *corev1.PodTemplateSpec) {
-						init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: tenantSecCtx()}
+						init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: execution.RestrictedContainerSecurityContext()}
 						init.SecurityContext.Capabilities.Add = []corev1.Capability{"CHOWN"}
 						p.Spec.InitContainers = append(p.Spec.InitContainers, init)
 					}},
 					{"init-seccomp-override", func(p *corev1.PodTemplateSpec) {
 						p.Spec.SecurityContext = &corev1.PodSecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}}
-						init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: tenantSecCtx()}
+						init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: execution.RestrictedContainerSecurityContext()}
 						init.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeUnconfined
 						p.Spec.InitContainers = append(p.Spec.InitContainers, init)
 					}},
@@ -259,7 +259,7 @@ var _ = Describe("Application container policy admission", func() {
 						// pod-level Localhost profile is never the effective one admitted.
 						{"init-localhost-profile", false, func(_ client.Object, p *corev1.PodTemplateSpec) {
 							profile := "profiles/bex-render-v1.json"
-							init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: tenantSecCtx()}
+							init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: execution.RestrictedContainerSecurityContext()}
 							init.SecurityContext.Capabilities.Drop = []corev1.Capability{"ALL"}
 							init.SecurityContext.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost, LocalhostProfile: &profile}
 							p.Spec.InitContainers = append(p.Spec.InitContainers, init)
@@ -295,12 +295,12 @@ var _ = Describe("Application container policy admission", func() {
 							p.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = nil
 						}},
 						{"init-missing-drop-all", false, func(_ client.Object, p *corev1.PodTemplateSpec) {
-							init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: tenantSecCtx()}
+							init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: execution.RestrictedContainerSecurityContext()}
 							init.SecurityContext.Capabilities.Drop = nil
 							p.Spec.InitContainers = append(p.Spec.InitContainers, init)
 						}},
 						{"init-missing-no-escalation", false, func(_ client.Object, p *corev1.PodTemplateSpec) {
-							init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: tenantSecCtx()}
+							init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: execution.RestrictedContainerSecurityContext()}
 							init.SecurityContext.AllowPrivilegeEscalation = nil
 							p.Spec.InitContainers = append(p.Spec.InitContainers, init)
 						}},
@@ -335,7 +335,7 @@ var _ = Describe("Application container policy admission", func() {
 					pod := &admissionPodTemplate(inherited).Spec
 					pod.SecurityContext = &corev1.PodSecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}}
 					pod.Containers[0].SecurityContext.SeccompProfile = nil
-					pod.InitContainers = []corev1.Container{{Name: "strict-init", Image: "busybox:latest", SecurityContext: tenantSecCtx()}}
+					pod.InitContainers = []corev1.Container{{Name: "strict-init", Image: "busybox:latest", SecurityContext: execution.RestrictedContainerSecurityContext()}}
 					Expect(operator.Create(ctx, inherited, client.DryRunAll)).To(Succeed(), scenario+" inherited seccomp")
 				}
 				// The edge-cache sidecar of a caching web service (w9/087) is bex's

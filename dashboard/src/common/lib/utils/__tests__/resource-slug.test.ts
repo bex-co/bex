@@ -23,6 +23,10 @@ describe("resourceSlug (w5/m153, blueprintResourceSlug's rule)", () => {
     ["-invalid", "invalid"],
     ["web-", "web"],
     ["a  -  b", "a-b"],
+    // The backend slugifies a hyphen run instead of keeping the label
+    // (slugKeepsName, w8/230): these must match blueprint_names_test.go.
+    ["my--app", "my-app"],
+    ["a---b--c", "a-b-c"],
     ["Café Ünïcode", "cafe-unicode"],
     ["QA 20261021 Ünï Form!", "qa-20261021-uni-form"],
     ["İstanbul", "istanbul"],

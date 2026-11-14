@@ -53,6 +53,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/shellticket"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/netutil"
+	"github.com/bex-co/bex/lego/types/routepattern"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -1173,7 +1174,7 @@ func view(a *appv1alpha1.App) AppView {
 		InternalAddress:      a.InternalAddress(),
 		Port:                 addressablePort(a),
 		ConfiguredPort:       settingsPort(a),
-		PortConfigured:       configuredPortModeOf(a.Spec.PortMode),
+		PortConfigured:       appv1alpha1.IsConfiguredPortMode(a.Spec.PortMode),
 		OpenPorts:            serverPorts(a.OpenPorts()),
 		ImagePorts:           a.Spec.HasImagePorts(),
 		URLs:                 urls,
@@ -5293,7 +5294,7 @@ func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView
 		return AppView{}, err
 	}
 	// Clearing a port that is not set changes nothing, so it deploys nothing.
-	if mode == a.Spec.PortMode && port == appv1alpha1.DefaultPort && !configuredPortModeOf(mode) {
+	if mode == a.Spec.PortMode && port == appv1alpha1.DefaultPort && !appv1alpha1.IsConfiguredPortMode(mode) {
 		return s.view(a), nil
 	}
 	result, err := s.writeThroughStoreFetched(ctx, a, func(ctx context.Context, id string) error {
@@ -6009,28 +6010,10 @@ func validatePublicRewriteHost(i int, dest string) error {
 	return nil
 }
 
-// routePlaceholderName mirrors the operator static-server grammar
-// (lego/operator/internal/staticserver placeholderName): a whole segment
-// ":name", [A-Za-z_][A-Za-z0-9_]*. The module DAG forbids importing the
-// operator, so both sides pin the same vectors in their tests.
-func routePlaceholderName(segment string) (string, bool) {
-	if len(segment) < 2 || segment[0] != ':' {
-		return "", false
-	}
-	name := segment[1:]
-	for i, c := range name {
-		if c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || i > 0 && c >= '0' && c <= '9' {
-			continue
-		}
-		return "", false
-	}
-	return name, true
-}
-
 func validateRoutePlaceholders(i int, source, dest string) error {
 	declared := map[string]bool{}
 	for _, seg := range strings.Split(source, "/") {
-		name, ok := routePlaceholderName(seg)
+		name, ok := routepattern.PlaceholderName(seg)
 		if !ok {
 			continue
 		}
@@ -6055,7 +6038,7 @@ func validateRoutePlaceholders(i int, source, dest string) error {
 			k++
 		}
 		name := path[j+1 : k]
-		if _, ok := routePlaceholderName(":" + name); ok && name != "splat" && !declared[name] {
+		if _, ok := routepattern.PlaceholderName(":" + name); ok && name != "splat" && !declared[name] {
 			return fmt.Errorf("%w: routes[%d].destination references :%s, which the rule's source does not declare", core.ErrBadRequest, i, name)
 		}
 		if k == j {

@@ -18,22 +18,20 @@ package metrics
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"maps"
 	"math"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/egressquery"
+	"github.com/bex-co/bex/lego/types/podmetrics"
 )
 
 // source.go holds the production metrics backends — the domain depends only on
@@ -61,48 +59,8 @@ func NewResourceMetricsSource(cs kubernetes.Interface) ResourceMetricsSource {
 		if err != nil {
 			return nil, err
 		}
-		return parsePodMetrics(raw)
+		return podmetrics.Parse(raw)
 	}
-}
-
-// podMetricsList is the subset of metrics.k8s.io/v1beta1 PodMetricsList bex reads.
-type podMetricsList struct {
-	Items []struct {
-		Metadata struct {
-			Name string `json:"name"`
-		} `json:"metadata"`
-		Timestamp  string `json:"timestamp"`
-		Containers []struct {
-			Usage struct {
-				CPU    string `json:"cpu"`
-				Memory string `json:"memory"`
-			} `json:"usage"`
-		} `json:"containers"`
-	} `json:"items"`
-}
-
-// parsePodMetrics decodes a metrics-server PodMetricsList and sums each pod's
-// container usage into cores + bytes. Unparseable quantities are treated as zero.
-func parsePodMetrics(raw []byte) ([]PodResourceUsage, error) {
-	var list podMetricsList
-	if err := json.Unmarshal(raw, &list); err != nil {
-		return nil, fmt.Errorf("decode pod metrics: %w", err)
-	}
-	out := make([]PodResourceUsage, 0, len(list.Items))
-	for _, it := range list.Items {
-		u := PodResourceUsage{Pod: it.Metadata.Name, Timestamp: it.Timestamp}
-		for _, ctr := range it.Containers {
-			if q, err := resource.ParseQuantity(ctr.Usage.CPU); err == nil {
-				u.CPUCores += q.AsApproximateFloat64()
-			}
-			if q, err := resource.ParseQuantity(ctr.Usage.Memory); err == nil {
-				u.MemoryBytes += float64(q.Value())
-			}
-		}
-		out = append(out, u)
-	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Pod < out[j].Pod })
-	return out, nil
 }
 
 // --- Request metrics: Traefik scraped by Prometheus ---

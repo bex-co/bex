@@ -62,9 +62,10 @@ func appPolicyLabels(app *appv1alpha1.App, labels map[string]string) map[string]
 
 // appSecCtx applies a service's durable policy to every path executing its
 // image: Deployment, CronJob, one-off cron run and pre-deploy Job. Platform
-// containers and managed datastores continue to use tenantSecCtx directly.
+// containers and managed datastores continue to use
+// execution.RestrictedContainerSecurityContext directly.
 func appSecCtx(spec appv1alpha1.AppSpec) *corev1.SecurityContext {
-	security := tenantSecCtx()
+	security := execution.RestrictedContainerSecurityContext()
 	for _, capability := range appv1alpha1.ContainerPolicyCapabilities(spec.ContainerPolicy) {
 		security.Capabilities.Add = append(security.Capabilities.Add, corev1.Capability(capability))
 	}

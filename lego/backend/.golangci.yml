@@ -13,6 +13,19 @@ linters:
   settings:
     depguard:
       rules:
+        # The workspace import DAG is operator → types ← backend (lego/AGENTS.md):
+        # the operator converges App intent into runtime objects and the backend
+        # writes that intent, so they meet only in the types/ CRD contract. An
+        # import of operator/ from here would let API business logic reach
+        # straight into k8s mechanism — the operator's DB-free, business-free
+        # rule and the CRD seam both assume it can't. Deny the prefix so the
+        # guard covers every subpackage without listing them.
+        module-dag:
+          files:
+            - "$all"
+          deny:
+            - pkg: github.com/bex-co/bex/lego/operator
+              desc: "backend must not import operator; cross through lego/types and the App CR instead — see lego/AGENTS.md"
         # Only internal/id may import xid — the one legitimate way to mint the
         # random id suffix. Anywhere else, importing xid means someone is
         # hand-rolling an id (bypassing id.New), which the compiler and the

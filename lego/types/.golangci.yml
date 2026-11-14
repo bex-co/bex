@@ -1,0 +1,24 @@
+# golangci-lint config for the types module — the CRD contract and the leaf of
+# the workspace import DAG (operator → types ← backend; cli imports none of
+# them). It is the seam both platform modules meet at, so an import of either
+# would turn the seam back into a direct coupling neither module's rules allow.
+# `default: standard` is golangci-lint's implicit default; it is spelled out so
+# adding depguard takes nothing else away.
+version: "2"
+linters:
+  default: standard
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        module-dag:
+          files:
+            - "$all"
+          deny:
+            - pkg: github.com/bex-co/bex/lego/operator
+              desc: "types is the leaf CRD contract; it must not import operator — see lego/AGENTS.md"
+            - pkg: github.com/bex-co/bex/lego/backend
+              desc: "types is the leaf CRD contract; it must not import backend — see lego/AGENTS.md"
+            - pkg: github.com/bex-co/bex/lego/cli
+              desc: "types is the leaf CRD contract; it must not import cli — see lego/AGENTS.md"

@@ -78,7 +78,7 @@ func TestFailurePolicyDecidesWhoIsMailed(t *testing.T) {
 		{appv1alpha1.NotificationsToSendNone, "notify", false, false},
 	} {
 		// Under Render's default workspace policy (email on, failure only).
-		policy := emailPolicy{owner: defaultOwnerPolicy, service: failureNotificationPolicy(tc.toSend, tc.notifyOnFail)}
+		policy := emailPolicy{owner: defaultOwnerPolicy, service: appv1alpha1.EffectiveNotificationsToSendFor(tc.toSend, tc.notifyOnFail)}
 		if got := policy.wants(levelFailure, toggleFailed, alertPrefs(on)); got != tc.wantOn {
 			t.Errorf("%q/%q opted-in member = %v, want %v", tc.toSend, tc.notifyOnFail, got, tc.wantOn)
 		}

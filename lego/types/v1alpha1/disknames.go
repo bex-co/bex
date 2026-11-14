@@ -16,10 +16,7 @@ limitations under the License.
 
 package v1alpha1
 
-import (
-	"crypto/sha256"
-	"fmt"
-)
+import "github.com/bex-co/bex/lego/types/k8sname"
 
 // DiskPVCPrefix names the per-App claim backing spec.disk. A service has at
 // most one disk, so the App's own name is enough to identify it.
@@ -64,10 +61,5 @@ func DiskLUKSSecretName(appName string) string {
 // stay recognizably siblings. (The LUKS Secret deliberately does NOT use this
 // rule — see DiskLUKSSecretName.)
 func DiskChildName(prefix, appName string) string {
-	if len(prefix)+len(appName) <= 63 {
-		return prefix + appName
-	}
-	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
-	keep := 63 - len(prefix) - len(sum) - 1
-	return prefix + appName[:keep] + "-" + sum
+	return k8sname.Prefixed(prefix, appName)
 }

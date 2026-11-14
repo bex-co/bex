@@ -73,7 +73,8 @@ type AlertEmailStore interface {
 }
 
 // ServiceNotificationPolicy resolves a service's notificationsToSend for a
-// failure, folding the legacy notifyOnFail in (see failureNotificationPolicy).
+// failure, folding the legacy notifyOnFail in (see
+// appv1alpha1.EffectiveNotificationsToSendFor).
 // An unknown service answers "" (default).
 type ServiceNotificationPolicy func(ctx context.Context, tenantID, serviceID string) (string, error)
 
@@ -276,25 +277,6 @@ func (c *ownerPolicyCache) get(ctx context.Context, tenantID string) (OwnerPolic
 
 // alertPrefs is the failure preference an alert recipient carries.
 func alertPrefs(r store.AlertEmailRecipient) memberPrefs { return memberPrefs{failed: r.DeployFailed} }
-
-// failureNotificationPolicy is the policy a service applies to its failure
-// notifications: notificationsToSend when set, otherwise the legacy
-// notifyOnFail (notify => failure, ignore => none), otherwise default. The
-// legacy field only ever spoke about failures, so "notify" is "failure", not
-// "all": the two send the same failure mail, but only "all" opts into
-// non-failure mail such as a disk back below its threshold.
-func failureNotificationPolicy(notificationsToSend, notifyOnFail string) string {
-	if notificationsToSend != "" {
-		return notificationsToSend
-	}
-	switch notifyOnFail {
-	case "notify":
-		return appv1alpha1.NotificationsToSendFailure
-	case "ignore":
-		return appv1alpha1.NotificationsToSendNone
-	}
-	return appv1alpha1.NotificationsToSendDefault
-}
 
 // dispatchBlueprints projects failed Blueprint syncs. A Blueprint has no
 // service override, so the workspace policy and each member's failure
@@ -523,7 +505,7 @@ func AppNotificationPolicy(c client.Client) ServiceNotificationPolicy {
 			return appv1alpha1.NotificationsToSendDefault, nil
 		}
 		spec := apps.Items[0].Spec
-		return failureNotificationPolicy(spec.NotificationsToSend, spec.NotifyOnFail), nil
+		return appv1alpha1.EffectiveNotificationsToSendFor(spec.NotificationsToSend, spec.NotifyOnFail), nil
 	}
 }
 

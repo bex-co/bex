@@ -26,7 +26,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -3245,9 +3244,10 @@ func classify(entity string, err error) error {
 // textBindable reports whether s can be bound as a PostgreSQL text parameter:
 // text holds neither NUL nor invalid UTF-8, and binding either raises a data
 // exception (SQLSTATE 22021) rather than matching no row. A by-id read of such
-// an id is a plain not-found (w4/482).
+// an id is a plain not-found (w4/482). The predicate is core.ValidText, the one
+// definition every store and API boundary shares.
 func textBindable(s string) bool {
-	return utf8.ValidString(s) && !strings.ContainsRune(s, 0)
+	return core.ValidText(s)
 }
 
 func sqlState(err error) string {

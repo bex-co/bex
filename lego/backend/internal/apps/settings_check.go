@@ -333,11 +333,6 @@ func portChange(a *appv1alpha1.App, port int32) (int32, string, error) {
 	return port, configuredPortMode(a.Spec), nil
 }
 
-// configuredPortModeOf reports a mode whose port the owner set.
-func configuredPortModeOf(mode string) bool {
-	return mode == appv1alpha1.PortModeImageConfiguredV1 || mode == appv1alpha1.PortModeWebImageConfiguredV1
-}
-
 // imagePortMode is the unconfigured port mode of a service whose image
 // supplies its ports, whether or not a port is configured now.
 func imagePortMode(spec appv1alpha1.AppSpec) (string, bool) {

@@ -40,9 +40,14 @@ export function uncappedSlug(name: string): string {
  * The derived resource name when it needs no hash, synchronously; `null` when
  * the slug is empty or longer than 30 characters and so takes a sha256 suffix
  * (use {@link resourceSlug}).
+ *
+ * A valid label is kept only when it has no hyphen run: the resource name is
+ * the platform hostname's label, and a label with `--` never routed in
+ * production (backend `slugKeepsName`, w8/230), so bex slugifies `my--app` to
+ * `my-app` like any other free-form name.
  */
 export function shortResourceSlug(name: string): string | null {
-  if (isValidDnsLabel(name)) return name;
+  if (isValidDnsLabel(name) && !name.includes("--")) return name;
   const slug = uncappedSlug(name);
   return slug === "" || slug.length > MAX_RESOURCE_NAME_LENGTH ? null : slug;
 }

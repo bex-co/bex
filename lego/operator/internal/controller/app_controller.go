@@ -72,6 +72,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
+	"github.com/bex-co/bex/lego/types/k8sname"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -2702,7 +2703,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Workspace Secrets bypass the manager's cache. Bound the next observation
 	// even for direct-published static sites and sleeping services without pod
 	// events, so issuance/deletion updates the certificate order within 30s.
-	if err == nil && len(effectiveHosts(app, r.BaseDomain)) > 1 {
+	if err == nil && len(app.Spec.EffectiveHosts(app.Name, r.BaseDomain)) > 1 {
 		result.RequeueAfter = soonerRequeue(result.RequeueAfter, childHealthRequeue)
 	}
 	return result, err
@@ -2833,7 +2834,7 @@ func (r *AppReconciler) reconcileKubernetesRuntime(ctx context.Context, app *app
 	// Ingress carrying a rule + TLS certificate per host. No hosts => in-cluster
 	// only, exactly as before. The operator emits a standard networking.k8s.io
 	// Ingress, so the ingress controller (traefik today) stays swappable.
-	hosts := effectiveHosts(app, r.BaseDomain)
+	hosts := app.Spec.EffectiveHosts(app.Name, r.BaseDomain)
 
 	// Belt and braces (w6/m46 t002): EffectiveHosts already drops these, repeated
 	// here at the one place that actually creates the Ingress. A private service
@@ -3282,7 +3283,7 @@ func (r *AppReconciler) writeFirstRoute(ctx context.Context, app *appv1alpha1.Ap
 	if r.ActivatorService == "" || r.Mode != ModeKubernetes || !app.Spec.PubliclyRoutable() {
 		return nil
 	}
-	hosts := effectiveHosts(app, r.BaseDomain)
+	hosts := app.Spec.EffectiveHosts(app.Name, r.BaseDomain)
 	if len(hosts) == 0 {
 		return nil
 	}
@@ -4785,7 +4786,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 
 	// A static_site must be reachable at a host (there is no in-cluster-only mode
 	// for served content — the static-server dispatches by Host).
-	hosts := effectiveHosts(app, r.BaseDomain)
+	hosts := app.Spec.EffectiveHosts(app.Name, r.BaseDomain)
 	if len(hosts) == 0 {
 		// A static site fails loudly here, and always has. That asymmetry is
 		// what w7/m79 closes for web services, which produced the identical
@@ -4937,15 +4938,12 @@ func staticServerAliasName(appName string) string {
 }
 
 // platformAliasName derives the ≤63-char Service name for an App's platform
-// ExternalName alias: prefix + app name, truncated with a sha256 suffix when
-// the combination would exceed the DNS-label cap.
+// ExternalName alias: prefix + app name, truncated with a digest when the
+// combination would exceed the DNS-label cap. It shares the child-name rule
+// with the disk plane (types.DiskChildName) so one App's derived names cut at
+// the same point.
 func platformAliasName(prefix, appName string) string {
-	if len(prefix)+len(appName) <= 63 {
-		return prefix + appName
-	}
-	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
-	keep := 63 - len(prefix) - 1 - len(sum)
-	return prefix + appName[:keep] + "-" + sum
+	return k8sname.Prefixed(prefix, appName)
 }
 
 // defaultMaintenanceService is the wake-activator Service name assumed when
@@ -5866,26 +5864,6 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 	return ctrl.Result{}, nil
 }
 
-// effectiveHosts resolves every external FQDN an App serves, in canonical order:
-// spec.host first (the legacy single host — first position keeps existing Apps'
-// TLS secret name stable), then the platform hostname
-// "<subdomain-or-name>.<BaseDomain>" when exposed, then spec.hosts (custom
-// domains). Deduplicated, empties dropped.
-//
-// The platform hostname prefers spec.subdomain (w4/m19): the control plane
-// mints it as a globally-unique slug, so two Apps sharing a workspace-scoped
-// name (bex.co/m19's whole point) never claim the same host. spec.subdomain
-// is empty on any App the control plane hasn't stamped — a pre-migration
-// store-managed App, or one applied directly (examples/whoami-app.yaml) — so
-// falling back to app.Name keeps those byte-identical to before this field
-// existed.
-func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
-	// The precedence rule lives on the CRD contract (types.AppSpec.EffectiveHosts,
-	// w5/m48) so the static-server resolver and bex-api's pending-URL projection
-	// cannot drift from the Ingress/status derivation.
-	return app.Spec.EffectiveHosts(app.Name, baseDomain)
-}
-
 // portEnvName is the operator-owned environment variable carrying the injected
 // port — the one env invariant the CRD contract promises (see appEnv).
 const portEnvName = "PORT"
@@ -6107,18 +6085,6 @@ func clampReplicas(app *appv1alpha1.App, n int32) int32 {
 	return n
 }
 
-// tenantSecCtx returns the hardening SecurityContext stamped on every tenant
-// container: no privilege escalation, all capabilities dropped, RuntimeDefault
-// seccomp. runAsNonRoot is deliberately absent — tenant images may run as root
-// (PSS baseline only, not restricted; see docs/ADR022-tenant-isolation.md).
-func tenantSecCtx() *corev1.SecurityContext {
-	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: new(false),
-		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
-	}
-}
-
 // rolloutStallDiagnosis is stuckPodMessage plus, for an image-port private
 // service whose TCP check never connects, the ports bex expected the process to
 // listen on (w6/m148) — Render's "no open ports detected", in bex's terms.
@@ -6159,7 +6125,7 @@ func imagePortStallHint(app *appv1alpha1.App, port int) string {
 		return ""
 	}
 	env := app.Status.EnvPort > 0
-	configured := env || configuredPortMode(app.Spec.PortMode)
+	configured := env || appv1alpha1.IsConfiguredPortMode(app.Spec.PortMode)
 	declared := make([]string, 0, len(network.Ports))
 	for _, p := range network.Ports {
 		if !configured || int(p) != port {
@@ -7468,7 +7434,7 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 // pending or failed (w32/003). The active revision keeps serving unpublished-
 // over; status is the build's to write, so it is left as the halt left it.
 func (r *AppReconciler) holdPendingStaticArtifact(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result) (bool, ctrl.Result, error) {
-	hosts := effectiveHosts(app, r.BaseDomain)
+	hosts := app.Spec.EffectiveHosts(app.Name, r.BaseDomain)
 	if !releaseHasServed(app) || len(hosts) == 0 {
 		return false, ctrl.Result{}, nil
 	}
@@ -7569,7 +7535,7 @@ func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alph
 	if !app.Spec.InternallyAddressable() {
 		return nil, serving, nil // a worker has no Service, Ingress or URL to route (w1/m158)
 	}
-	hosts := effectiveHosts(app, r.BaseDomain)
+	hosts := app.Spec.EffectiveHosts(app.Name, r.BaseDomain)
 	if !app.Spec.PubliclyRoutable() {
 		hosts = nil
 	}
@@ -7773,12 +7739,13 @@ func appPodRequests(_ context.Context, object client.Object) []reconcile.Request
 	return []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: object.GetNamespace(), Name: name}}}
 }
 
-// finalizerOverrunWindow returns the window past which a still-running App
-// finalization is surfaced as stalled. FinalizerOverrunAfter is a test seam so
-// the overrun path can be exercised without a multi-minute wall-clock wait.
-func (r *AppReconciler) finalizerOverrunWindow() time.Duration {
-	if r.FinalizerOverrunAfter > 0 {
-		return r.FinalizerOverrunAfter
+// finalizerOverrunWindow returns the window past which a still-running
+// finalization (App, Database or KeyValue) is surfaced as stalled. override is
+// that reconciler's FinalizerOverrunAfter: a test seam so the overrun path can
+// be exercised without a multi-minute wall-clock wait.
+func finalizerOverrunWindow(override time.Duration) time.Duration {
+	if override > 0 {
+		return override
 	}
 	return finalizerOverrunAfter
 }
@@ -7792,7 +7759,7 @@ func (r *AppReconciler) deletionOverran(app *appv1alpha1.App) bool {
 	if app.DeletionTimestamp.IsZero() {
 		return false
 	}
-	return time.Since(app.DeletionTimestamp.Time) >= r.finalizerOverrunWindow()
+	return time.Since(app.DeletionTimestamp.Time) >= finalizerOverrunWindow(r.FinalizerOverrunAfter)
 }
 
 // recordDeletionStalled stamps the DeletionStalled condition so a wedged
@@ -7813,13 +7780,13 @@ func (r *AppReconciler) recordDeletionStalled(ctx context.Context, app *appv1alp
 		Reason:             reasonCleanupExceededDeadline,
 		ObservedGeneration: app.Generation,
 		Message: fmt.Sprintf("app finalization has not completed within %s of deletion (%s); the finalizer is retained so no data is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
-			r.finalizerOverrunWindow(), blockedStep),
+			finalizerOverrunWindow(r.FinalizerOverrunAfter), blockedStep),
 	})
 	if !changed {
 		return
 	}
 	logf.FromContext(ctx).Error(nil, "App finalization stalled past its bound; surfaced as DeletionStalled",
-		"app", app.Name, "window", r.finalizerOverrunWindow(), "step", blockedStep)
+		"app", app.Name, "window", finalizerOverrunWindow(r.FinalizerOverrunAfter), "step", blockedStep)
 	r.updateStatusRetrying(ctx, app, "recordDeletionStalled")
 }
 
@@ -8161,7 +8128,7 @@ func (r *AppReconciler) recordTLSSecretHistory(ctx context.Context, app *appv1al
 	}
 	live := make(map[string]struct{})
 	changed := false
-	for idx, host := range effectiveHosts(app, r.BaseDomain) {
+	for idx, host := range app.Spec.EffectiveHosts(app.Name, r.BaseDomain) {
 		name := appv1alpha1.TLSSecretName(app.Name, idx == 0, host)
 		live[name] = struct{}{}
 		if _, ok := seen[name]; !ok {
@@ -8215,7 +8182,7 @@ func (r *AppReconciler) tlsSecretNameSet(app *appv1alpha1.App) map[string]struct
 	for _, name := range tlsSecretHistory(app) {
 		names[name] = struct{}{}
 	}
-	for idx, host := range effectiveHosts(app, r.BaseDomain) {
+	for idx, host := range app.Spec.EffectiveHosts(app.Name, r.BaseDomain) {
 		names[appv1alpha1.TLSSecretName(app.Name, idx == 0, host)] = struct{}{}
 	}
 	return names

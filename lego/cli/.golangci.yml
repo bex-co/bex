@@ -1,0 +1,25 @@
+# golangci-lint config for the cli module. The launcher stands outside the
+# platform DAG (operator → types ← backend): it pins and runs upstream
+# render-oss/cli against the public API, so importing any lego module would both
+# couple it to a platform train it does not ship with (bex-cli/v*) and let it
+# reimplement behaviour it must get from the API. `default: standard` is
+# golangci-lint's implicit default; it is spelled out so adding depguard takes
+# nothing else away.
+version: "2"
+linters:
+  default: standard
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        module-dag:
+          files:
+            - "$all"
+          deny:
+            - pkg: github.com/bex-co/bex/lego/types
+              desc: "cli must not import lego siblings; it ships on its own train — see lego/AGENTS.md"
+            - pkg: github.com/bex-co/bex/lego/operator
+              desc: "cli must not import lego siblings; it ships on its own train — see lego/AGENTS.md"
+            - pkg: github.com/bex-co/bex/lego/backend
+              desc: "cli must not import lego siblings; it ships on its own train — see lego/AGENTS.md"

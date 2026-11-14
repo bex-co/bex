@@ -180,31 +180,63 @@ func validateKeyValueTLSSecret(kv *appv1alpha1.KeyValue, secret *corev1.Secret, 
 	if secret.Name != keyValueTLSName(kv) || secret.Namespace != kv.Namespace || secret.Type != corev1.SecretTypeTLS {
 		return refuse()
 	}
-	for _, owner := range secret.OwnerReferences {
-		ownKV := owner.APIVersion == appv1alpha1.SchemeGroupVersion.String() && owner.Kind == "KeyValue" && owner.Name == kv.Name && owner.UID == kv.UID
-		ownCert := owner.APIVersion == "cert-manager.io/v1" && owner.Kind == "Certificate" && owner.Name == secret.Name && string(owner.UID) == identity.CertificateUID && identity.CertificateUID != ""
-		if !ownKV && !ownCert {
-			return refuse()
-		}
+	if !ownedByThisKeyValueLifetime(kv, secret, identity) {
+		return refuse()
 	}
-	if uid, exists := secret.Labels[execution.LabelKeyValueUID]; exists {
+	if uid, labelled := secret.Labels[execution.LabelKeyValueUID]; labelled {
 		if uid != string(kv.UID) || uid == "" {
 			return refuse()
 		}
 		return nil
 	}
-	// Legacy cert-manager outputs have no ownerReference by default. Exact
-	// issuance metadata plus creation within this KeyValue lifetime is required;
-	// a name alone cannot authorize deleting a previous lifetime's private key.
-	annotations := secret.Annotations
-	if identity.Host == "" || identity.Issuer == "" || kv.CreationTimestamp.IsZero() || secret.CreationTimestamp.IsZero() || secret.CreationTimestamp.Before(&kv.CreationTimestamp) {
-		return refuse()
-	}
-	if annotations["cert-manager.io/certificate-name"] != secret.Name || annotations["cert-manager.io/alt-names"] != identity.Host || annotations["cert-manager.io/issuer-name"] != identity.Issuer || annotations["cert-manager.io/issuer-kind"] != "ClusterIssuer" {
-		return refuse()
-	}
-	if group := annotations["cert-manager.io/issuer-group"]; group != "" && group != "cert-manager.io" {
+	if !issuedForThisKeyValueLifetime(kv, secret, identity) {
 		return refuse()
 	}
 	return nil
+}
+
+// ownedByThisKeyValueLifetime reports whether every owner reference names
+// either this KeyValue's lifetime or the Certificate that issued the Secret.
+// Legacy cert-manager outputs carry no owner reference at all, which passes.
+func ownedByThisKeyValueLifetime(kv *appv1alpha1.KeyValue, secret *corev1.Secret, identity keyValueTLSIdentity) bool {
+	for _, owner := range secret.OwnerReferences {
+		if !ownerIsKeyValueLifetime(owner, kv) && !ownerIsIssuingCertificate(owner, secret.Name, identity) {
+			return false
+		}
+	}
+	return true
+}
+
+func ownerIsKeyValueLifetime(owner metav1.OwnerReference, kv *appv1alpha1.KeyValue) bool {
+	return owner.APIVersion == appv1alpha1.SchemeGroupVersion.String() && owner.Kind == "KeyValue" && owner.Name == kv.Name && owner.UID == kv.UID
+}
+
+func ownerIsIssuingCertificate(owner metav1.OwnerReference, secretName string, identity keyValueTLSIdentity) bool {
+	return owner.APIVersion == "cert-manager.io/v1" && owner.Kind == "Certificate" && owner.Name == secretName &&
+		identity.CertificateUID != "" && string(owner.UID) == identity.CertificateUID
+}
+
+// issuedForThisKeyValueLifetime requires exact issuance metadata plus creation
+// within this KeyValue lifetime; a name alone cannot authorize deleting a
+// previous lifetime's private key.
+func issuedForThisKeyValueLifetime(kv *appv1alpha1.KeyValue, secret *corev1.Secret, identity keyValueTLSIdentity) bool {
+	if identity.Host == "" || identity.Issuer == "" || kv.CreationTimestamp.IsZero() || secret.CreationTimestamp.IsZero() ||
+		secret.CreationTimestamp.Before(&kv.CreationTimestamp) {
+		return false
+	}
+	required := map[string]string{
+		"cert-manager.io/certificate-name": secret.Name,
+		"cert-manager.io/alt-names":        identity.Host,
+		"cert-manager.io/issuer-name":      identity.Issuer,
+		"cert-manager.io/issuer-kind":      "ClusterIssuer",
+	}
+	for annotation, want := range required {
+		if secret.Annotations[annotation] != want {
+			return false
+		}
+	}
+	if group := secret.Annotations["cert-manager.io/issuer-group"]; group != "" && group != "cert-manager.io" {
+		return false
+	}
+	return true
 }

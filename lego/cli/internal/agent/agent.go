@@ -1093,41 +1093,56 @@ func (inv *invocation) report(result waitResult, many bool, timeout time.Duratio
 // one-line reason on stderr through the returned error.
 func stateExit(result waitResult, timeout time.Duration) error {
 	if result.timedOut {
-		ids := make([]string, 0, len(result.sessions))
-		for _, s := range result.sessions {
-			if !settled(s) {
-				ids = append(ids, s.ID)
-			}
-		}
-		what := "the session is"
-		if len(ids) > 0 {
-			what = strings.Join(ids, ", ") + " still"
-		}
-		return command.NewExitError(exitTimeout, fmt.Errorf("%s working after %s; `bex agent wait` resumes waiting", what, timeout))
+		return timeoutExit(result.sessions, timeout)
 	}
-	var worst *session
-	rank := map[string]int{stateFailed: 3, stateCanceled: 2, stateNeedsInput: 1}
-	for i := range result.sessions {
-		s := &result.sessions[i]
-		if rank[s.State] > 0 && (worst == nil || rank[s.State] > rank[worst.State]) {
-			worst = s
-		}
-	}
-	if worst == nil {
+	worst := worstSession(result.sessions)
+	switch {
+	case worst == nil:
 		return nil
-	}
-	switch worst.State {
-	case stateFailed:
-		reason := firstNonEmpty(worst.FailureReasonCode, "failed")
-		if worst.FailureReason != "" {
-			reason += ": " + worst.FailureReason
-		}
-		return command.NewExitError(exitFailed, fmt.Errorf("agent session %s failed: %s", worst.ID, reason))
-	case stateCanceled:
+	case worst.State == stateFailed:
+		return failedSessionExit(worst)
+	case worst.State == stateCanceled:
 		return command.NewExitError(exitCanceled, fmt.Errorf("agent session %s was canceled", worst.ID))
 	default:
 		return command.NewExitError(exitNeedsInput, fmt.Errorf("agent session %s needs input: reply with `bex agent send %s …`", worst.ID, worst.ID))
 	}
+}
+
+// worstSession is the highest-severity unsettled outcome among the sessions,
+// or nil when every one ended cleanly. A failed turn outranks a canceled one,
+// which outranks one waiting for input; ties keep the first session seen.
+func worstSession(sessions []session) *session {
+	rank := map[string]int{stateFailed: 3, stateCanceled: 2, stateNeedsInput: 1}
+	var worst *session
+	for i := range sessions {
+		s := &sessions[i]
+		if rank[s.State] > 0 && (worst == nil || rank[s.State] > rank[worst.State]) {
+			worst = s
+		}
+	}
+	return worst
+}
+
+func timeoutExit(sessions []session, timeout time.Duration) error {
+	ids := make([]string, 0, len(sessions))
+	for _, s := range sessions {
+		if !settled(s) {
+			ids = append(ids, s.ID)
+		}
+	}
+	what := "the session is"
+	if len(ids) > 0 {
+		what = strings.Join(ids, ", ") + " still"
+	}
+	return command.NewExitError(exitTimeout, fmt.Errorf("%s working after %s; `bex agent wait` resumes waiting", what, timeout))
+}
+
+func failedSessionExit(s *session) error {
+	reason := firstNonEmpty(s.FailureReasonCode, "failed")
+	if s.FailureReason != "" {
+		reason += ": " + s.FailureReason
+	}
+	return command.NewExitError(exitFailed, fmt.Errorf("agent session %s failed: %s", s.ID, reason))
 }
 
 // newIdempotencyKey is one key per `bex agent run` (ADR094 D4: 1-128

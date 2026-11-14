@@ -82,6 +82,37 @@ func TestNormalizeOAuthGrantCanonicalizesAndBounds(t *testing.T) {
 	}
 }
 
+// TestNormalizeOAuthGrantBoundsEveryAudience pins the contract its doc states:
+// every audience is bounded, not just the entries scanned before a resource
+// match — including when this API accepted no resource at all.
+func TestNormalizeOAuthGrantBoundsEveryAudience(t *testing.T) {
+	atLimit := strings.Repeat("a", MaxOAuthAudienceLen)
+	over := strings.Repeat("a", MaxOAuthAudienceLen+1)
+	resource := "https://api.bex.co/mcp"
+	cases := []struct {
+		name      string
+		audiences []string
+		resource  string
+		wantErr   bool
+	}{
+		{name: "limit is accepted", audiences: []string{atLimit}, wantErr: false},
+		{name: "oversized without a resource", audiences: []string{over}, wantErr: true},
+		{name: "oversized after the match", audiences: []string{resource, over}, resource: resource, wantErr: true},
+		{name: "oversized before the match", audiences: []string{over, resource}, resource: resource, wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g, err := NormalizeOAuthGrant(ScopeRead, tc.audiences, "c", tc.resource)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr = %t", err, tc.wantErr)
+			}
+			if err == nil && g.Scopes != ScopeRead {
+				t.Errorf("scopes = %q, want %q", g.Scopes, ScopeRead)
+			}
+		})
+	}
+}
+
 func TestHasGranularCapabilityExactMatchOnly(t *testing.T) {
 	if HasGranularCapability("bex.read-only") || ContainsScope("bex.read-only", ScopeRead) {
 		t.Error("prefix near-match must not count")
@@ -312,5 +343,60 @@ func TestOpenFGAStillRequiredAfterPassingScope(t *testing.T) {
 	var coded *CodedError
 	if !errors.As(err, &coded) || coded.Code != "FORBIDDEN" {
 		t.Errorf("OpenFGA denial = %v, want the plain FORBIDDEN code, not rewritten as insufficient_scope", err)
+	}
+}
+
+// TestCloudAgentsToolsetMarkerStandsInForReadWriteOnly pins the relation-gate
+// half of ADR094 D9. The MCP seam may mark a cloud-agents toolset call so the
+// bex.read/bex.write requirement of the relation its verb maps to is satisfied
+// by bex.cloud_agents. bex.sensitive is never satisfied that way, an unmarked
+// token holding the scope gains nothing, and the marker alone (without the
+// scope on the token) is not a grant.
+func TestCloudAgentsToolsetMarkerStandsInForReadWriteOnly(t *testing.T) {
+	cloud := scopedHuman(ScopeCloudAgents, false)
+	marked := cloud
+	marked.CloudAgentsToolset = true
+
+	for _, rel := range RelCanRelations() {
+		want, _ := RequiredCapability(rel)
+		if err := cloud.RequireCapability(rel); err == nil {
+			t.Errorf("%s: unmarked bex.cloud_agents passed the relation gate", rel)
+		}
+		err := marked.RequireCapability(rel)
+		switch want {
+		case ScopeRead, ScopeWrite:
+			if err != nil {
+				t.Errorf("%s: marked cloud-agents call denied (%v), want allowed", rel, err)
+			}
+		default:
+			if err == nil {
+				t.Errorf("%s: marked cloud-agents call satisfied %s", rel, want)
+			}
+		}
+	}
+
+	forged := scopedHuman(ScopeRead, false)
+	forged.CloudAgentsToolset = true
+	if err := forged.RequireCapability(RelCanOperate); err == nil {
+		t.Error("marker without bex.cloud_agents must not satisfy bex.write")
+	}
+	if err := forged.RequireCapability(RelCanViewSensitive); err == nil {
+		t.Error("marker must not satisfy bex.sensitive")
+	}
+}
+
+// TestCloudAgentsToolsetMarkerStillNeedsOpenFGA pins that the marker only lifts
+// the OAuth half: the relationship model remains the authority for every verb.
+func TestCloudAgentsToolsetMarkerStillNeedsOpenFGA(t *testing.T) {
+	b := &Base{Authz: &fakeDenyChecker{}, Workspace: fakeWorkspace{"user-a": "tea-a"}}
+	id := scopedHuman(ScopeCloudAgents, false)
+	id.CloudAgentsToolset = true
+	err := b.Authorize(WithIdentity(context.Background(), id), RelCanCreate)
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("Authorize = %v, want OpenFGA ErrForbidden", err)
+	}
+	var coded *CodedError
+	if !errors.As(err, &coded) || coded.Code != "FORBIDDEN" {
+		t.Errorf("denial = %v, want the plain FORBIDDEN code", err)
 	}
 }

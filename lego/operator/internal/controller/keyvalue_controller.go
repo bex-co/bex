@@ -171,7 +171,7 @@ func kvResources(plan tiers.ValkeyTier) corev1.ResourceRequirements {
 }
 
 func valkeySecCtx() *corev1.SecurityContext {
-	security := tenantSecCtx()
+	security := execution.RestrictedContainerSecurityContext()
 	security.RunAsNonRoot = new(true)
 	security.RunAsUser = new(valkeyRunAsUser)
 	security.RunAsGroup = new(valkeyRunAsGroup)
@@ -964,7 +964,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		Env:             kvExporterEnv(platformPasswordEnv),
 		Ports:           []corev1.ContainerPort{{ContainerPort: kvExporterPort, Name: "metrics"}},
 		Resources:       kvExporterResources(),
-		SecurityContext: tenantSecCtx(),
+		SecurityContext: execution.RestrictedContainerSecurityContext(),
 	}}
 	// Last, always — both containers are rebuilt whole above. Fill-if-empty, so
 	// the pod-level fields this function leaves to the fetched object stay put.

@@ -2132,18 +2132,11 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 	return ctrl.Result{}, nil
 }
 
-func (r *DatabaseReconciler) dbFinalizerOverrunWindow() time.Duration {
-	if r.FinalizerOverrunAfter > 0 {
-		return r.FinalizerOverrunAfter
-	}
-	return finalizerOverrunAfter
-}
-
 func (r *DatabaseReconciler) dbDeletionOverran(db *appv1alpha1.Database) bool {
 	if db.DeletionTimestamp.IsZero() {
 		return false
 	}
-	return time.Since(db.DeletionTimestamp.Time) >= r.dbFinalizerOverrunWindow()
+	return time.Since(db.DeletionTimestamp.Time) >= finalizerOverrunWindow(r.FinalizerOverrunAfter)
 }
 
 func (r *DatabaseReconciler) recordDBDeletionStalled(ctx context.Context, db *appv1alpha1.Database, blockedStep string) {
@@ -2153,13 +2146,13 @@ func (r *DatabaseReconciler) recordDBDeletionStalled(ctx context.Context, db *ap
 		Reason:             reasonCleanupExceededDeadline,
 		ObservedGeneration: db.Generation,
 		Message: fmt.Sprintf("database finalization has not completed within %s of deletion (%s); the finalizer is retained so no backup data is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
-			r.dbFinalizerOverrunWindow(), blockedStep),
+			finalizerOverrunWindow(r.FinalizerOverrunAfter), blockedStep),
 	})
 	if !changed {
 		return
 	}
 	logf.FromContext(ctx).Error(nil, "Database finalization stalled past its bound; surfaced as DeletionStalled",
-		"database", db.Name, "window", r.dbFinalizerOverrunWindow(), "step", blockedStep)
+		"database", db.Name, "window", finalizerOverrunWindow(r.FinalizerOverrunAfter), "step", blockedStep)
 	_ = updateStatusIfChanged(ctx, r.Client, db)
 }
 
@@ -2216,7 +2209,7 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 						// #13): the extended workload-admission grammar denies
 						// added capabilities, privilege escalation, and non-
 						// RuntimeDefault seccomp outside the build boundary.
-						SecurityContext: tenantSecCtx(),
+						SecurityContext: execution.RestrictedContainerSecurityContext(),
 						Command:         []string{shellBinary, "-ec"},
 						Args: []string{
 							`for prefix in ${PREFIXES}; do
