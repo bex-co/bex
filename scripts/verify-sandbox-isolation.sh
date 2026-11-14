@@ -398,9 +398,13 @@ want_default=false
 [ "$groups_before" = 0 ] && want_default=true
 jq -e --arg owner "$BEX_WORKSPACE_A" --arg name "$group_first_name" --argjson isdefault "$want_default" '
   (.id | test("^sbg-[0-9a-v]{20}$")) and .ownerId == $owner and .name == $name
-  and .region == "oregon" and .concurrencyLimit == 1000 and .isDefault == $isdefault and .environmentId == null
+  and (.region | IN("oregon", "ohio", "virginia", "frankfurt", "singapore")) and .concurrencyLimit == 1000
+  and .isDefault == $isdefault and .environmentId == null
   and (.createdAt | type == "string") and (.updatedAt | type == "string")' "$fixture_dir/group-first.json" >/dev/null \
-  || fail "the first group is not Render's (oregon, limit 1000, default=$want_default, no environment): $(head -c 400 "$fixture_dir/group-first.json")"
+  || fail "the first group is not Render's (a Render region, limit 1000, default=$want_default, no environment): $(head -c 400 "$fixture_dir/group-first.json")"
+# The platform's region, not Render's fixed oregon (w32/016): every group and
+# sandbox reads it, so sandbox A must read the same one below.
+group_region="$(jq -er '.region' "$fixture_dir/group-first.json")"
 expect_status 409 "$fixture_dir/owner-a.curl" POST "/v1/sandbox-groups" "$fixture_dir/group-duplicate.json" \
   --header 'Content-Type: application/json' \
   --data "$(jq -cn --arg owner "$BEX_WORKSPACE_A" --arg name "$group_first_name" '{ownerId: $owner, name: $name}')"
@@ -456,6 +460,8 @@ if [ "$verify_agent_driver" = 1 ]; then
   [ "$(jq -r '.image' "$fixture_dir/sandbox-agent.json")" != "" ] \
     || fail "agent template create returned no resolved image"
 fi
+[ "$(jq -r '.region' "$fixture_dir/sandbox-a.json")" = "$group_region" ] \
+  || fail "sandbox A reads a region other than its group's ($group_region): $(head -c 300 "$fixture_dir/sandbox-a.json")"
 owner_a="$(jq -er '.owner' "$fixture_dir/sandbox-a.json")"
 owner_b="$(jq -er '.owner' "$fixture_dir/sandbox-b.json")"
 [ "$owner_a" != "$owner_b" ] || fail "the two workspace-A identities resolved to the same sandbox owner"
