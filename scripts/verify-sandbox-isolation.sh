@@ -556,13 +556,40 @@ find_ready_pod() {
   return 1
 }
 
-pod_a="$(find_ready_pod "$namespace_a" "$cr_a")" || fail "sandbox A never reached Ready"
-pod_b="$(find_ready_pod "$namespace_a" "$cr_b")" || fail "sandbox B never reached Ready"
-pod_c="$(find_ready_pod "$namespace_b" "$cr_c")" || fail "sandbox C never reached Ready"
-pod_d="$(find_ready_pod "$namespace_a" "$cr_d")" || fail "sandbox D never reached Ready"
+# explain_unready <namespace> <cr>: say why a sandbox's pod is not Ready — the
+# BatchSandbox's conditions, each owned pod's phase, conditions and container
+# wait/exit reasons, and the events naming any of them. Status and events
+# only: no spec, so no env value reaches the log.
+explain_unready() {
+  local namespace="$1" cr="$2" pods
+  echo "--- why $cr is not Ready" >&2
+  kubectl -n "$namespace" get batchsandbox "$cr" -o json 2>/dev/null \
+    | jq -c '.status | {conditions, replicas, ready}' >&2 || true
+  pods="$(kubectl -n "$namespace" get pods -o json 2>/dev/null | jq -c --arg cr "$cr" '
+    [.items[] | select(any(.metadata.ownerReferences[]?; .kind == "BatchSandbox" and .name == $cr))]')"
+  printf '%s' "${pods:-[]}" | jq -c '.[] | {pod: .metadata.name, phase: .status.phase,
+    conditions: [.status.conditions[]? | select(.status != "True") | {type, reason, message}],
+    containers: [(.status.initContainerStatuses // [])[], (.status.containerStatuses // [])[] |
+      {name, ready, restartCount, waiting: .state.waiting, terminated: (.state.terminated // .lastState.terminated | if . then {reason, exitCode, message} else null end)}]}' >&2 || true
+  kubectl -n "$namespace" get events -o json 2>/dev/null | jq -r --arg cr "$cr" --argjson pods "${pods:-[]}" '
+    ([$pods[].metadata.name] + [$cr]) as $names |
+    .items[] | select(.involvedObject.name as $n | $names | index($n)) |
+    "\(.lastTimestamp // .eventTime) \(.involvedObject.kind)/\(.involvedObject.name) \(.reason): \(.message | .[0:300])"' >&2 || true
+}
+
+wait_ready_pod() {
+  local namespace="$1" cr="$2" label="$3" pod
+  pod="$(find_ready_pod "$namespace" "$cr")" && { printf '%s\n' "$pod"; return; }
+  explain_unready "$namespace" "$cr"
+  fail "$label never reached Ready"
+}
+
+pod_a="$(wait_ready_pod "$namespace_a" "$cr_a" "sandbox A")"
+pod_b="$(wait_ready_pod "$namespace_a" "$cr_b" "sandbox B")"
+pod_c="$(wait_ready_pod "$namespace_b" "$cr_c" "sandbox C")"
+pod_d="$(wait_ready_pod "$namespace_a" "$cr_d" "sandbox D")"
 if [ "$verify_agent_driver" = 1 ]; then
-  pod_agent="$(find_ready_pod "$namespace_a" "$cr_agent")" \
-    || fail "agent sandbox never reached Ready"
+  pod_agent="$(wait_ready_pod "$namespace_a" "$cr_agent" "agent sandbox")"
 fi
 
 workload_container() {
