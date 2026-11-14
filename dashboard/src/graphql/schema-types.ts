@@ -343,6 +343,34 @@ export enum AgentNetworkTier {
   Registries = 'REGISTRIES'
 }
 
+/** A repository's environment for agent sessions (ADR109): setup steps run before the agent, checks it runs before delivering. */
+export type AgentRepoEnvironment = {
+  __typename: 'AgentRepoEnvironment';
+  checks: Array<AgentRepoStep>;
+  ownerId: Scalars['String']['output'];
+  repo: Scalars['String']['output'];
+  setup: Array<AgentRepoStep>;
+  updatedAt: Maybe<Scalars['String']['output']>;
+};
+
+export type AgentRepoEnvironmentList = {
+  __typename: 'AgentRepoEnvironmentList';
+  environments: Array<AgentRepoEnvironment>;
+  ownerId: Scalars['String']['output'];
+};
+
+/** A repository environment's setup step or check: a name and a shell command. */
+export type AgentRepoStep = {
+  __typename: 'AgentRepoStep';
+  name: Scalars['String']['output'];
+  run: Scalars['String']['output'];
+};
+
+export type AgentRepoStepInput = {
+  name: Scalars['String']['input'];
+  run: Scalars['String']['input'];
+};
+
 /** A workspace agent secret: its name and scope. The value is never readable. */
 export type AgentSecret = {
   __typename: 'AgentSecret';
@@ -1926,6 +1954,8 @@ export type Mutation = {
   deleteAgentAttachment: Maybe<Scalars['Boolean']['output']>;
   /** Delete an automation and its run history (its creator or a workspace admin). */
   deleteAgentAutomation: Maybe<Scalars['Boolean']['output']>;
+  /** Delete a repository's environment (admins only). */
+  deleteAgentRepoEnvironment: Maybe<Scalars['Boolean']['output']>;
   /** Delete a workspace agent secret (admins only). */
   deleteAgentSecret: Maybe<Scalars['Boolean']['output']>;
   deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
@@ -2007,6 +2037,8 @@ export type Mutation = {
   runCronJob: Maybe<CronRun>;
   scaleService: Maybe<Service>;
   selectGitClaim: Maybe<GitConnection>;
+  /** Create or replace a repository's environment (admins only). */
+  setAgentRepoEnvironment: AgentRepoEnvironment;
   /** Create, rotate or rescope a workspace agent secret (admins only). The value is write-only; omit it to change only the scope of an existing secret. A new secret without a scope is workspace-wide. */
   setAgentSecret: AgentSecret;
   /** Replaces all of a session's tags; [] clears them. Refused on an archived session. */
@@ -2509,6 +2541,12 @@ export type MutationDeleteAgentAutomationArgs = {
 };
 
 
+export type MutationDeleteAgentRepoEnvironmentArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
+};
+
+
 export type MutationDeleteAgentSecretArgs = {
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -2972,6 +3010,14 @@ export type MutationSelectGitClaimArgs = {
   installationId: Scalars['Float']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
   selectionId: Scalars['String']['input'];
+};
+
+
+export type MutationSetAgentRepoEnvironmentArgs = {
+  checks: Array<AgentRepoStepInput>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
+  setup: Array<AgentRepoStepInput>;
 };
 
 
@@ -3859,6 +3905,8 @@ export type Query = {
   /** The workspace's agent automations, newest first. mine keeps the caller's own. */
   agentAutomations: AgentAutomationList;
   agentEnvironment: AgentEnvironment;
+  /** The workspace's repository environments (setup steps and checks). */
+  agentRepoEnvironments: AgentRepoEnvironmentList;
   /** The workspace's agent secrets, names only. */
   agentSecrets: AgentSecretList;
   agentSession: Maybe<AgentSession>;
@@ -4037,6 +4085,11 @@ export type QueryAgentAutomationsArgs = {
 
 
 export type QueryAgentEnvironmentArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAgentRepoEnvironmentsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 

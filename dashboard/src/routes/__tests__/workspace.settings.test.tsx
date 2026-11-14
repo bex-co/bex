@@ -58,6 +58,15 @@ vi.mock("@/features/agent-environment/components/agent-secrets-card", () => ({
   ),
 }));
 
+vi.mock(
+  "@/features/agent-environment/components/agent-repo-environments-card",
+  () => ({
+    AgentRepoEnvironmentsCard: ({ ownerId }: { ownerId: string }) => (
+      <div>Repository environments card {ownerId}</div>
+    ),
+  }),
+);
+
 vi.mock("@/features/agent-environment/components/agent-skills-card", () => ({
   AgentSkillsCard: ({ ownerId }: { ownerId: string }) => (
     <div>Agent skills card {ownerId}</div>
@@ -183,6 +192,16 @@ describe("WorkspaceSettingsPage", () => {
     expect(
       screen.getByText("Agent secrets card tea-primary"),
     ).toBeInTheDocument();
+    // ADR109: the repository environments sit beside the secrets their
+    // setup steps run with.
+    const secrets = screen.getByText("Agent secrets card tea-primary");
+    const environments = screen.getByText(
+      "Repository environments card tea-primary",
+    );
+    expect(
+      secrets.compareDocumentPosition(environments) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     // ADR099 D6: and the workspace skills.
     expect(
       screen.getByText("Agent skills card tea-primary"),

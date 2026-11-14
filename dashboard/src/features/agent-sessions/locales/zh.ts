@@ -1180,6 +1180,22 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "此工作区的一笔付款失败。请在账单页面支付未结发票，然后启动新会话。",
     description: "Failure callout for BILLING_BALANCE_DUE",
   },
+  "agentSessions.failureSetupTitle": {
+    message: "仓库设置失败",
+    description:
+      "Failure callout heading when a repository setup step failed (AGENT_SESSION_SETUP_FAILED)",
+  },
+  "agentSessions.failureSetupHint": {
+    message:
+      "此仓库环境中的一个设置步骤失败，因此智能体没有启动，也没有产生模型费用。请在“设置 → 智能体 → 仓库环境”中修复该步骤，然后重试。",
+    description:
+      "Failure callout guidance under the recorded reason (which names the step and its exit code) for AGENT_SESSION_SETUP_FAILED",
+  },
+  "agentSessions.failureSetupAction": {
+    message: "编辑仓库环境",
+    description:
+      "Failure callout button opening Settings → Repository environments",
+  },
   "agentSessions.costTotal": {
     message: "模型费用 {amount}",
     description: "Session header: the session's model cost (ADR091 D6)",

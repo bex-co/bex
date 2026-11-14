@@ -295,6 +295,19 @@ export function agentSessionFailureReason(
 /** bex-api's `sandbox.CodeSandboxCapacityLimit`, a session failure's code. */
 export const SANDBOX_CAPACITY_LIMIT = "SANDBOX_CAPACITY_LIMIT";
 
+/** The failure code of a turn whose repository setup step failed (ADR109 D5). */
+export const AGENT_SESSION_SETUP_FAILED = "AGENT_SESSION_SETUP_FAILED";
+
+/** True when a failed session's repository setup step failed. */
+export function isRepoSetupFailure(
+  view: Pick<AgentSessionView, "phase" | "failureReasonCode">,
+): boolean {
+  return (
+    view.phase === "failed" &&
+    view.failureReasonCode === AGENT_SESSION_SETUP_FAILED
+  );
+}
+
 /**
  * True when a failed session's cause is a sandbox capacity / plan-limit refusal,
  * which bex-api records as the `SANDBOX_CAPACITY_LIMIT` failure code (w5/m132).

@@ -2337,6 +2337,44 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
+    "description": "Delete a repository's environment (workspace admins only); its sessions then run without setup steps or checks.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "description": "the repository as owner/name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo"
+      ],
+      "type": "object"
+    },
+    "name": "delete_agent_repo_environment",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "deleted"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
     "description": "Delete a workspace agent secret (workspace admins only). A session that still references it fails its next turn with failureReasonCode AGENT_SESSION_SECRET_UNAVAILABLE.",
     "inputSchema": {
       "additionalProperties": false,
@@ -4833,6 +4871,114 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
+    "description": "List a workspace's repository environments: per repository, the setup steps bex runs from the repository root before the agent starts, and the checks (lint, test, build) the agent runs before it delivers.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_agent_repo_environments",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "environments": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "checks": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "description": "a name unique in its list: a letter or digit, then letters, digits, spaces, '.', '_' or '-' (at most 64)",
+                      "type": "string"
+                    },
+                    "run": {
+                      "description": "the shell command, run with bash from the repository root",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "run"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "ownerId": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "setup": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "description": "a name unique in its list: a letter or digit, then letters, digits, spaces, '.', '_' or '-' (at most 64)",
+                      "type": "string"
+                    },
+                    "run": {
+                      "description": "the shell command, run with bash from the repository root",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "run"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ownerId",
+              "repo",
+              "setup",
+              "checks",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ownerId",
+        "environments"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
     "description": "List a workspace's agent secrets with their scopes (values are never returned). A workspace-scoped secret reaches every session and a repo-scoped one every session on its repository, as env vars of the same name; pass an explicit secret's name in secretNames to create_agent_session or send_agent_session_message to expose it.",
     "inputSchema": {
       "additionalProperties": false,
@@ -7117,6 +7263,154 @@
         "appliedSecrets",
         "status",
         "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Create or replace a repository's environment (workspace admins only): setup steps run with bash from the repository root before every session's agent starts, with the session's secrets, at most 10 minutes each and 20 minutes in all; a failing step fails the turn AGENT_SESSION_SETUP_FAILED. Checks are listed to the agent to run before it delivers. Sessions use it from their next turn.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "description": "checks the agent runs before it delivers (by convention lint, test, build), at most 10, each at most 2 KiB",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "a name unique in its list: a letter or digit, then letters, digits, spaces, '.', '_' or '-' (at most 64)",
+                "type": "string"
+              },
+              "run": {
+                "description": "the shell command, run with bash from the repository root",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "run"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "description": "the repository as owner/name",
+          "type": "string"
+        },
+        "setup": {
+          "description": "ordered setup steps run before the agent, at most 10, each at most 8 KiB",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "a name unique in its list: a letter or digit, then letters, digits, spaces, '.', '_' or '-' (at most 64)",
+                "type": "string"
+              },
+              "run": {
+                "description": "the shell command, run with bash from the repository root",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "run"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "repo",
+        "setup",
+        "checks"
+      ],
+      "type": "object"
+    },
+    "name": "set_agent_repo_environment",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "a name unique in its list: a letter or digit, then letters, digits, spaces, '.', '_' or '-' (at most 64)",
+                "type": "string"
+              },
+              "run": {
+                "description": "the shell command, run with bash from the repository root",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "run"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "setup": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "a name unique in its list: a letter or digit, then letters, digits, spaces, '.', '_' or '-' (at most 64)",
+                "type": "string"
+              },
+              "run": {
+                "description": "the shell command, run with bash from the repository root",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "run"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ownerId",
+        "repo",
+        "setup",
+        "checks",
         "updatedAt"
       ],
       "type": "object"

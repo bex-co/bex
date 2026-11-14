@@ -1247,6 +1247,22 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "A payment for this workspace failed. Pay the outstanding invoice in Billing, then start a new session.",
     description: "Failure callout for BILLING_BALANCE_DUE",
   },
+  "agentSessions.failureSetupTitle": {
+    message: "Repository setup failed",
+    description:
+      "Failure callout heading when a repository setup step failed (AGENT_SESSION_SETUP_FAILED)",
+  },
+  "agentSessions.failureSetupHint": {
+    message:
+      "A setup step in this repository's environment failed, so the agent didn't start and no model spend accrued. Fix the step in Settings → Agents → Repository environments, then retry.",
+    description:
+      "Failure callout guidance under the recorded reason (which names the step and its exit code) for AGENT_SESSION_SETUP_FAILED",
+  },
+  "agentSessions.failureSetupAction": {
+    message: "Edit repository environment",
+    description:
+      "Failure callout button opening Settings → Repository environments",
+  },
   "agentSessions.costTotal": {
     message: "{amount} model cost",
     description: "Session header: the session's model cost (ADR091 D6)",

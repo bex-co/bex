@@ -2,6 +2,7 @@
 // server's skill rules, so a bad name or an oversized body is caught while
 // typing. The server stays the authority.
 
+import { utf8ByteLength } from "@/common/lib/utils/encode";
 import {
   graphQLErrorCodes,
   isForbiddenError,
@@ -45,10 +46,6 @@ function breaksLine(text: string): boolean {
   return false;
 }
 
-function byteLength(text: string): number {
-  return new TextEncoder().encode(text).length;
-}
-
 /** The locale key of what is wrong with a typed name, or null when valid. */
 export function skillNameProblem(name: string): string | null {
   if (name === "") return "agentEnvironment.skills.nameRequired";
@@ -70,14 +67,14 @@ export function skillDescriptionProblem(description: string): string | null {
 }
 
 export function skillBodyProblem(body: string): string | null {
-  if (body.includes("\0") || byteLength(body) > MAX_SKILL_BODY_BYTES)
+  if (body.includes("\0") || utf8ByteLength(body) > MAX_SKILL_BODY_BYTES)
     return "agentEnvironment.skills.bodyInvalid";
   return null;
 }
 
 /** An invocation's arguments: one line, at most 4 KiB. */
 export function skillArgumentsProblem(args: string): string | null {
-  if (breaksLine(args) || byteLength(args) > MAX_SKILL_ARGUMENT_BYTES)
+  if (breaksLine(args) || utf8ByteLength(args) > MAX_SKILL_ARGUMENT_BYTES)
     return "agentSessions.skillsArgumentsInvalid";
   return null;
 }

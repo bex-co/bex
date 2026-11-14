@@ -214,6 +214,54 @@ describe("FailureCallout", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
+  // ADR109 D5: a failed setup step keeps the reason naming the step, and
+  // leads to the repository environment where it is fixed.
+  it("sends a failed setup step to the repository environment settings", async () => {
+    const user = userEvent.setup();
+    render(
+      <FailureCallout
+        session={view("failed", {
+          failureReason: 'setup step "deps" exited with code 7',
+          failureReasonCode: "AGENT_SESSION_SETUP_FAILED",
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Repository setup failed")).toBeInTheDocument();
+    expect(
+      screen.getByText('setup step "deps" exited with code 7'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/the agent didn't start and no model spend accrued/),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Edit repository environment" }),
+    );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/workspace/settings",
+      hash: "repository-environments",
+    });
+    // Retry stays: it re-runs setup once the step is fixed.
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Upgrade plan" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers the environment link only for a setup failure", () => {
+    render(
+      <FailureCallout
+        session={view("failed", {
+          failureReason: 'setup step "deps" exited with code 7',
+        })}
+      />,
+    );
+    expect(screen.getByText("Session failed")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit repository environment" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows no Upgrade CTA for a non-capacity failure", () => {
     render(
       <FailureCallout

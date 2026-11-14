@@ -474,6 +474,295 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Repo scope validation error (also AGENT_SECRET_SCOPE_INVALID)",
   },
+  "agentEnvironment.repoEnvs.title": {
+    message: "仓库环境",
+    description: "Settings → Repository environments card title (ADR109)",
+  },
+  "agentEnvironment.repoEnvs.description": {
+    message:
+      "智能体会话如何准备每个仓库。设置步骤会在每个会话的智能体启动前，从仓库根目录按顺序运行，并带有该会话的密钥。检查是智能体在交付前运行的命令，例如 lint 和 test。",
+    description:
+      "Repository environments card description: what setup steps and checks are",
+  },
+  "agentEnvironment.repoEnvs.loadFailed": {
+    message: "无法加载仓库环境。",
+    description: "Repository environments card error when the list query fails",
+  },
+  "agentEnvironment.repoEnvs.emptyList": {
+    message: "还没有仓库环境。",
+    description: "Repository environments card empty state",
+  },
+  "agentEnvironment.repoEnvs.setupSummary": {
+    message: "设置：{names}",
+    description:
+      "Repository row summary: the setup step names, comma-separated",
+  },
+  "agentEnvironment.repoEnvs.checksSummary": {
+    message: "检查：{names}",
+    description: "Repository row summary: the check names, comma-separated",
+  },
+  "agentEnvironment.repoEnvs.noSetup": {
+    message: "没有设置步骤",
+    description:
+      "Repository row summary (and the read-only dialog) when the environment has no setup steps",
+  },
+  "agentEnvironment.repoEnvs.noChecks": {
+    message: "没有检查",
+    description:
+      "Repository row summary (and the read-only dialog) when the environment has no checks",
+  },
+  "agentEnvironment.repoEnvs.editLabel": {
+    message: "编辑 {repo}",
+    description:
+      "Accessible label of a repository environment's edit button (repo is owner/name)",
+  },
+  "agentEnvironment.repoEnvs.viewLabel": {
+    message: "查看 {repo}",
+    description:
+      "Accessible label of a repository environment's view button, for non-admins",
+  },
+  "agentEnvironment.repoEnvs.deleteLabel": {
+    message: "删除 {repo} 的环境",
+    description: "Accessible label of a repository environment's delete button",
+  },
+  "agentEnvironment.repoEnvs.deleteTitle": {
+    message: "删除 {repo} 的环境？",
+    description: "Delete-environment confirmation title",
+  },
+  "agentEnvironment.repoEnvs.deleteBody": {
+    message:
+      "从下一轮开始，此仓库上的会话将不再运行其设置步骤，也不再知道其检查。",
+    description: "Delete-environment confirmation body",
+  },
+  "agentEnvironment.repoEnvs.deleteConfirm": {
+    message: "删除环境",
+    description: "Delete-environment confirmation button",
+  },
+  "agentEnvironment.repoEnvs.add": {
+    message: "添加环境",
+    description:
+      "Repository environments card: button that opens the add-environment dialog",
+  },
+  "agentEnvironment.repoEnvs.help": {
+    message: "保存会替换该仓库的整个环境。会话从下一轮开始使用更改。",
+    description: "Repository environments card help line for admins",
+  },
+  "agentEnvironment.repoEnvs.readOnly": {
+    message: "只有工作区管理员可以添加、更改或删除仓库环境。",
+    description: "Repository environments card help line for non-admins",
+  },
+  "agentEnvironment.repoEnvs.saved": {
+    message: "已保存 {repo} 的环境",
+    description: "Toast after an environment is saved",
+  },
+  "agentEnvironment.repoEnvs.deleted": {
+    message: "已删除 {repo} 的环境",
+    description: "Toast after an environment is deleted",
+  },
+  "agentEnvironment.repoEnvs.createTitle": {
+    message: "添加仓库环境",
+    description: "Add-environment dialog title",
+  },
+  "agentEnvironment.repoEnvs.editTitle": {
+    message: "编辑 {repo}",
+    description: "Edit-environment dialog title (repo is owner/name)",
+  },
+  "agentEnvironment.repoEnvs.dialogDescription": {
+    message:
+      "设置步骤会在每个会话的智能体启动前，从仓库根目录按顺序运行，并带有该会话的密钥。任何一步失败都会在智能体启动前结束本轮。检查是智能体在交付前运行的命令。",
+    description: "Environment dialog description",
+  },
+  "agentEnvironment.repoEnvs.repoLabel": {
+    message: "仓库",
+    description: "Environment dialog: repository field label",
+  },
+  "agentEnvironment.repoEnvs.repoPlaceholder": {
+    message: "owner/name",
+    description: "Environment dialog: repository field placeholder",
+  },
+  "agentEnvironment.repoEnvs.repoEmpty": {
+    message: "没有匹配的已连接仓库。",
+    description:
+      "Environment dialog: repository picker with no matching connected repository",
+  },
+  "agentEnvironment.repoEnvs.setupTitle": {
+    message: "设置步骤",
+    description: "Environment dialog: setup steps section heading",
+  },
+  "agentEnvironment.repoEnvs.setupHint": {
+    message:
+      "安装工具和依赖。每一步用 bash 按顺序运行；最多 10 步，每步最多 10 分钟。",
+    description: "Environment dialog: setup steps section hint",
+  },
+  "agentEnvironment.repoEnvs.checksTitle": {
+    message: "检查",
+    description: "Environment dialog: checks section heading",
+  },
+  "agentEnvironment.repoEnvs.checksHint": {
+    message:
+      "例如 lint、test 和 build 等命令。智能体会在交付前从仓库根目录运行每一项并报告结果；bex 本身不会运行它们。最多 10 项。",
+    description: "Environment dialog: checks section hint",
+  },
+  "agentEnvironment.repoEnvs.addSetup": {
+    message: "添加设置步骤",
+    description: "Environment dialog: add a setup step row",
+  },
+  "agentEnvironment.repoEnvs.addCheck": {
+    message: "添加检查",
+    description: "Environment dialog: add a check row",
+  },
+  "agentEnvironment.repoEnvs.setupNameLabel": {
+    message: "设置步骤 {position} 的名称",
+    description:
+      "Accessible label of a setup step's name field (position is its 1-based place in the list)",
+  },
+  "agentEnvironment.repoEnvs.setupRunLabel": {
+    message: "设置步骤 {position} 的命令",
+    description: "Accessible label of a setup step's command field",
+  },
+  "agentEnvironment.repoEnvs.setupMoveUp": {
+    message: "上移设置步骤 {position}",
+    description: "Accessible label: move a setup step one place earlier",
+  },
+  "agentEnvironment.repoEnvs.setupMoveDown": {
+    message: "下移设置步骤 {position}",
+    description: "Accessible label: move a setup step one place later",
+  },
+  "agentEnvironment.repoEnvs.setupRemove": {
+    message: "移除设置步骤 {position}",
+    description: "Accessible label: remove a setup step row",
+  },
+  "agentEnvironment.repoEnvs.checkNameLabel": {
+    message: "检查 {position} 的名称",
+    description:
+      "Accessible label of a check's name field (position is its 1-based place in the list)",
+  },
+  "agentEnvironment.repoEnvs.checkRunLabel": {
+    message: "检查 {position} 的命令",
+    description: "Accessible label of a check's command field",
+  },
+  "agentEnvironment.repoEnvs.checkMoveUp": {
+    message: "上移检查 {position}",
+    description: "Accessible label: move a check one place earlier",
+  },
+  "agentEnvironment.repoEnvs.checkMoveDown": {
+    message: "下移检查 {position}",
+    description: "Accessible label: move a check one place later",
+  },
+  "agentEnvironment.repoEnvs.checkRemove": {
+    message: "移除检查 {position}",
+    description: "Accessible label: remove a check row",
+  },
+  "agentEnvironment.repoEnvs.setupNamePlaceholder": {
+    message: "deps",
+    description: "Setup step name placeholder (an example step name)",
+  },
+  "agentEnvironment.repoEnvs.setupRunPlaceholder": {
+    message: "例如 npm ci",
+    description: "Setup step command placeholder (an example shell command)",
+  },
+  "agentEnvironment.repoEnvs.checkNamePlaceholder": {
+    message: "test",
+    description: "Check name placeholder (an example check name)",
+  },
+  "agentEnvironment.repoEnvs.checkRunPlaceholder": {
+    message: "例如 npm test",
+    description: "Check command placeholder (an example shell command)",
+  },
+  "agentEnvironment.repoEnvs.close": {
+    message: "关闭",
+    description: "Read-only environment dialog: close button",
+  },
+  "agentEnvironment.repoEnvs.cancel": {
+    message: "取消",
+    description: "Environment dialog: cancel button",
+  },
+  "agentEnvironment.repoEnvs.save": {
+    message: "保存",
+    description: "Environment dialog: save (create or replace) button",
+  },
+  "agentEnvironment.repoEnvs.nameRequired": {
+    message: "请输入名称。",
+    description: "Step or check name required error",
+  },
+  "agentEnvironment.repoEnvs.nameInvalid": {
+    message:
+      "名称须以字母或数字开头，只能包含字母、数字、空格、“.”、“_” 或 “-”（最多 64 个字符）。",
+    description: "Step or check name format error",
+  },
+  "agentEnvironment.repoEnvs.nameDuplicate": {
+    message: "此列表中已有其他行使用这个名称。",
+    description: "Step or check name repeated within its list",
+  },
+  "agentEnvironment.repoEnvs.runRequired": {
+    message: "请输入命令。",
+    description: "Step or check command required error",
+  },
+  "agentEnvironment.repoEnvs.setupRunTooLong": {
+    message: "设置命令最多 8 KiB。",
+    description: "Setup step command too long (or contains a NUL byte)",
+  },
+  "agentEnvironment.repoEnvs.checkRunTooLong": {
+    message: "检查命令最多 2 KiB。",
+    description: "Check command too long (or contains a NUL byte)",
+  },
+  "agentEnvironment.repoEnvs.setupTooMany": {
+    message: "一个环境最多有 10 个设置步骤。",
+    description: "Too many setup steps",
+  },
+  "agentEnvironment.repoEnvs.checksTooMany": {
+    message: "一个环境最多有 10 项检查。",
+    description: "Too many checks",
+  },
+  "agentEnvironment.repoEnvs.environmentEmpty": {
+    message: "请至少添加一个设置步骤或检查。如需全部移除，请改为删除该环境。",
+    description: "Environment with neither setup steps nor checks",
+  },
+  "agentEnvironment.repoEnvs.repoInvalid": {
+    message: "请以 owner/name 的形式输入仓库。",
+    description:
+      "Repository validation error (also AGENT_REPO_ENVIRONMENT_INVALID on the repository)",
+  },
+  "agentEnvironment.repoEnvs.repoExists": {
+    message: "此仓库已有环境。请改为在列表中编辑它。",
+    description: "Adding an environment for a repository that already has one",
+  },
+  "agentEnvironment.repoEnvs.setupRefused": {
+    message:
+      "有设置步骤被拒绝。请检查每个名称是否有效且不重复，每条命令是否不超过 8 KiB。",
+    description: "AGENT_REPO_ENVIRONMENT_INVALID on the setup steps",
+  },
+  "agentEnvironment.repoEnvs.checksRefused": {
+    message:
+      "有检查被拒绝。请检查每个名称是否有效且不重复，每条命令是否不超过 2 KiB。",
+    description: "AGENT_REPO_ENVIRONMENT_INVALID on the checks",
+  },
+  "agentEnvironment.repoEnvs.invalid": {
+    message: "此环境被拒绝。请检查其仓库、设置步骤和检查。",
+    description: "AGENT_REPO_ENVIRONMENT_INVALID without a recognized field",
+  },
+  "agentEnvironment.repoEnvs.limitExceeded": {
+    message: "此工作区已达到 50 个仓库环境的上限。请先删除一个再添加。",
+    description:
+      "AGENT_REPO_ENVIRONMENT_LIMIT_EXCEEDED (also checked before saving)",
+  },
+  "agentEnvironment.repoEnvs.notFound": {
+    message: "此仓库已没有环境；可能有人刚刚删除了它。",
+    description:
+      "AGENT_REPO_ENVIRONMENT_NOT_FOUND error (deleted concurrently)",
+  },
+  "agentEnvironment.repoEnvs.unavailable": {
+    message: "此部署不支持仓库环境。",
+    description: "AGENT_REPO_ENVIRONMENTS_UNAVAILABLE error",
+  },
+  "agentEnvironment.repoEnvs.forbidden": {
+    message: "只有工作区管理员可以更改仓库环境。",
+    description: "Environment write refused for a non-admin",
+  },
+  "agentEnvironment.repoEnvs.saveFailed": {
+    message: "无法保存更改，请重试。",
+    description: "Generic environment write failure",
+  },
   "agentEnvironment.skills.title": {
     message: "智能体技能",
     description: "Settings → Agent skills card title (ADR099)",

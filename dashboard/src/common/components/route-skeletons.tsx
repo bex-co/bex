@@ -56,6 +56,7 @@ import {
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
+import { AgentRepoEnvironmentsCardSkeleton } from "@/features/agent-environment/components/agent-repo-environments-card-skeleton";
 import { AgentSkillsCardSkeleton } from "@/features/agent-environment/components/agent-skills-card-skeleton";
 import {
   LeaveWorkspaceCardSkeleton,
@@ -1305,6 +1306,7 @@ export function WorkspaceSettingsPageSkeleton() {
           <Region name="agents" className="space-y-6">
             <AgentEnvironmentCardSkeleton />
             <AgentSecretsCardSkeleton />
+            <AgentRepoEnvironmentsCardSkeleton />
             <AgentSkillsCardSkeleton />
           </Region>
           <Region name="registry-credentials">

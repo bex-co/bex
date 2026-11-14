@@ -1,18 +1,18 @@
 # w9 · m387 — Repo environment: declared setup and checks run before the agent starts (Devin blueprint, phase 1)
 
-**Worker:** worker9 **Goal:** a workspace declares, per repository, setup steps and lint/test/build checks; every turn runs the setup before the agent starts and tells the agent the checks, as Devin's blueprint `initialize`/`maintenance` steps and `knowledge` lint/test/build entries do. Phase 1 runs the setup at turn start; prebuilt snapshots are phase 2. **Status:** todo
+**Worker:** worker9 **Goal:** a workspace declares, per repository, setup steps and lint/test/build checks; every turn runs the setup before the agent starts and tells the agent the checks, as Devin's blueprint `initialize`/`maintenance` steps and `knowledge` lint/test/build entries do. Phase 1 runs the setup at turn start; prebuilt snapshots are phase 2. **Status:** todo (t001, t002, t003, t004, t005, t006, t007 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | ADR: per-repository setup steps and checks (amends ADR047 D5); phase 2 snapshots filed | 90m | — |
-| [t002](t002.md) | Store and core: per-repository environment rows and validation | 90m | t001 |
-| [t003](t003.md) | REST, GraphQL and MCP: read, set and delete a repository's environment | 120m | t002 |
-| [t004](t004.md) | Driver: run the setup before the agent each turn, with secrets, a time limit and redacted output | 150m | t003, w9/m385/t003 |
-| [t005](t005.md) | Setup failure: `AGENT_SESSION_SETUP_FAILED` names the step, exit code and output tail; the agent does not start | 60m | t004 |
-| [t006](t006.md) | Overlay: list the declared checks so the agent runs them before delivering | 45m | t004 |
-| [t007](t007.md) | Dashboard: Agent settings → Environment, per repository | 120m | t003 |
+| [t001](done/t001.md) | ADR: per-repository setup steps and checks (amends ADR047 D5); phase 2 snapshots filed — **DONE** | 90m | — |
+| [t002](done/t002.md) | Store and core: per-repository environment rows and validation — **DONE** | 90m | t001 |
+| [t003](done/t003.md) | REST, GraphQL and MCP: read, set and delete a repository's environment — **DONE** | 120m | t002 |
+| [t004](done/t004.md) | Driver: run the setup before the agent each turn, with secrets, a time limit and redacted output — **DONE** | 150m | t003, w9/m385/t003 |
+| [t005](done/t005.md) | Setup failure: `AGENT_SESSION_SETUP_FAILED` names the step, exit code and output tail; the agent does not start — **DONE** | 60m | t004 |
+| [t006](done/t006.md) | Overlay: list the declared checks so the agent runs them before delivering — **DONE** | 45m | t004 |
+| [t007](done/t007.md) | Dashboard: Agent settings → Environment, per repository — **DONE** | 120m | t003 |
 | [t008](t008.md) | Live check on production: setup installs dependencies before the agent and the agent runs the declared checks | 60m | t005, t006, t007 |
 | [t009](t009.md) | Render parity (Devin): every surface this milestone touched agrees, and matches Devin | 20m | t008 |
 | [t010](t010.md) | Simplify | 15m | t009 |

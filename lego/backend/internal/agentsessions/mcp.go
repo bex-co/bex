@@ -144,6 +144,16 @@ type steerArgs struct {
 	Skills []SkillInvocation `json:"skills,omitempty" jsonschema:"workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS"`
 }
 
+type repoEnvironmentArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
+	Repo    string `json:"repo" jsonschema:"the repository as owner/name"`
+}
+
+type setRepoEnvironmentArgs struct {
+	repoEnvironmentArgs
+	RepoEnvironmentInput
+}
+
 type agentSecretArgs struct {
 	OwnerID string `json:"ownerId,omitempty"`
 	Name    string `json:"name" jsonschema:"the secret's env var name"`
@@ -338,6 +348,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."}, sendMessage)
 	s.registerAttachmentMCP(server)
 	s.registerSecretMCP(server)
+	s.registerRepoEnvironmentMCP(server)
 	s.registerSkillMCP(server)
 	s.registerAutomationMCP(server)
 }
@@ -377,6 +388,27 @@ func (s *Service) registerSkillMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{Name: "delete_agent_skill", Description: "Delete a workspace skill (workspace admins only)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in agentSkillArgs) (*mcp.CallToolResult, deleteResult, error) {
 			if err := s.DeleteAgentSkill(ctx, in.OwnerID, in.Skill); err != nil {
+				return nil, deleteResult{}, err
+			}
+			return nil, deleteResult{Deleted: true}, nil
+		})
+}
+
+// registerRepoEnvironmentMCP adds the ADR109 repository environment tools.
+func (s *Service) registerRepoEnvironmentMCP(server *mcp.Server) {
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_repo_environments", Description: "List a workspace's repository environments: per repository, the setup steps bex runs from the repository root before the agent starts, and the checks (lint, test, build) the agent runs before it delivers."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in environmentArgs) (*mcp.CallToolResult, RepoEnvironmentList, error) {
+			out, err := s.RepoEnvironments(ctx, in.OwnerID)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_repo_environment", Description: "Create or replace a repository's environment (workspace admins only): setup steps run with bash from the repository root before every session's agent starts, with the session's secrets, at most 10 minutes each and 20 minutes in all; a failing step fails the turn AGENT_SESSION_SETUP_FAILED. Checks are listed to the agent to run before it delivers. Sessions use it from their next turn."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in setRepoEnvironmentArgs) (*mcp.CallToolResult, RepoEnvironment, error) {
+			out, err := s.SetRepoEnvironment(ctx, in.OwnerID, in.Repo, in.RepoEnvironmentInput)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "delete_agent_repo_environment", Description: "Delete a repository's environment (workspace admins only); its sessions then run without setup steps or checks."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in repoEnvironmentArgs) (*mcp.CallToolResult, deleteResult, error) {
+			if err := s.DeleteRepoEnvironment(ctx, in.OwnerID, in.Repo); err != nil {
 				return nil, deleteResult{}, err
 			}
 			return nil, deleteResult{Deleted: true}, nil

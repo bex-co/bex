@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -11,7 +11,6 @@ import {
 import { Alert, AlertDescription } from "@/common/components/ui/alert";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
-import { Combobox } from "@/common/components/ui/combobox";
 import { Input } from "@/common/components/ui/input";
 import {
   Select,
@@ -23,7 +22,7 @@ import {
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { useRepos } from "@/features/services/hooks/use-repos";
+import { ConnectedRepoCombobox } from "@/features/services/components/connected-repo-combobox";
 import { useAgentSecrets } from "@/features/agent-environment/hooks/use-agent-secrets";
 import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
 import {
@@ -375,16 +374,10 @@ function SecretRepoField({
   disabled: boolean;
 }) {
   const { t } = useTranslations();
-  const { repos } = useRepos();
-  const options = useMemo(
-    () => repos.map((r) => ({ value: r.fullName, label: r.fullName })),
-    [repos],
-  );
   return (
-    <Combobox
-      options={options}
+    <ConnectedRepoCombobox
       value={value}
-      onValueChange={onChange}
+      onChange={onChange}
       placeholder={t("agentEnvironment.secrets.repoPlaceholder")}
       emptyText={t("agentEnvironment.secrets.repoEmpty")}
       ariaLabel={t("agentEnvironment.secrets.repoLabel")}

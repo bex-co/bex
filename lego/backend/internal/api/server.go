@@ -460,6 +460,9 @@ type Deps struct {
 	// AgentSecretScopeStore holds workspace agent secret scopes (w9/m385,
 	// ADR098 D9); nil ⇒ every agent secret is explicit.
 	AgentSecretScopeStore agentsessions.SecretScopeStore
+	// AgentRepoEnvironmentStore holds repository environments (ADR109); nil ⇒
+	// none, and the verbs answer unavailable.
+	AgentRepoEnvironmentStore agentsessions.RepoEnvironmentStore
 	// AgentAutomationStore is the ADR101 agent automations table; nil =>
 	// automations unavailable.
 	AgentAutomationStore agentsessions.AutomationStore
@@ -1145,6 +1148,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		AttachmentCopier: agentCopier,
 		Skills:           d.AgentSkillStore,
 		SecretScopes:     d.AgentSecretScopeStore,
+		RepoEnvs:         d.AgentRepoEnvironmentStore,
 		Automations:      d.AgentAutomationStore,
 		Feedback:         d.AgentFeedbackStore,
 

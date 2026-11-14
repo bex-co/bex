@@ -27,6 +27,8 @@ import { UIMessageStreamHub } from "./stream-hub.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
+  // Parsed into config; the agent and its tools have no use for the raw value.
+  delete process.env.BEX_REPO_ENVIRONMENT;
   const agentEnv = agentEnvironment(config);
   const hub = new UIMessageStreamHub();
   let terminalized = false;

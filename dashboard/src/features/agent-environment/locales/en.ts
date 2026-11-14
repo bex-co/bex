@@ -485,6 +485,302 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     description:
       "Repo scope validation error (also AGENT_SECRET_SCOPE_INVALID)",
   },
+  "agentEnvironment.repoEnvs.title": {
+    message: "Repository environments",
+    description: "Settings → Repository environments card title (ADR109)",
+  },
+  "agentEnvironment.repoEnvs.description": {
+    message:
+      "How agent sessions prepare each repository. Setup steps run in order from the repository root before each session's agent starts, with the session's secrets. Checks are the commands the agent runs before it delivers, such as lint and test.",
+    description:
+      "Repository environments card description: what setup steps and checks are",
+  },
+  "agentEnvironment.repoEnvs.loadFailed": {
+    message: "Couldn't load the repository environments.",
+    description: "Repository environments card error when the list query fails",
+  },
+  "agentEnvironment.repoEnvs.emptyList": {
+    message: "No repository environments yet.",
+    description: "Repository environments card empty state",
+  },
+  "agentEnvironment.repoEnvs.setupSummary": {
+    message: "Setup: {names}",
+    description:
+      "Repository row summary: the setup step names, comma-separated",
+  },
+  "agentEnvironment.repoEnvs.checksSummary": {
+    message: "Checks: {names}",
+    description: "Repository row summary: the check names, comma-separated",
+  },
+  "agentEnvironment.repoEnvs.noSetup": {
+    message: "No setup steps",
+    description:
+      "Repository row summary (and the read-only dialog) when the environment has no setup steps",
+  },
+  "agentEnvironment.repoEnvs.noChecks": {
+    message: "No checks",
+    description:
+      "Repository row summary (and the read-only dialog) when the environment has no checks",
+  },
+  "agentEnvironment.repoEnvs.editLabel": {
+    message: "Edit {repo}",
+    description:
+      "Accessible label of a repository environment's edit button (repo is owner/name)",
+  },
+  "agentEnvironment.repoEnvs.viewLabel": {
+    message: "View {repo}",
+    description:
+      "Accessible label of a repository environment's view button, for non-admins",
+  },
+  "agentEnvironment.repoEnvs.deleteLabel": {
+    message: "Delete the environment for {repo}",
+    description: "Accessible label of a repository environment's delete button",
+  },
+  "agentEnvironment.repoEnvs.deleteTitle": {
+    message: "Delete the environment for {repo}?",
+    description: "Delete-environment confirmation title",
+  },
+  "agentEnvironment.repoEnvs.deleteBody": {
+    message:
+      "From their next turn, sessions on this repository start without its setup steps and checks.",
+    description: "Delete-environment confirmation body",
+  },
+  "agentEnvironment.repoEnvs.deleteConfirm": {
+    message: "Delete environment",
+    description: "Delete-environment confirmation button",
+  },
+  "agentEnvironment.repoEnvs.add": {
+    message: "Add environment",
+    description:
+      "Repository environments card: button that opens the add-environment dialog",
+  },
+  "agentEnvironment.repoEnvs.help": {
+    message:
+      "Saving replaces the repository's whole environment. Sessions pick up changes from their next turn.",
+    description: "Repository environments card help line for admins",
+  },
+  "agentEnvironment.repoEnvs.readOnly": {
+    message:
+      "Only workspace admins can add, change or delete repository environments.",
+    description: "Repository environments card help line for non-admins",
+  },
+  "agentEnvironment.repoEnvs.saved": {
+    message: "Saved the environment for {repo}",
+    description: "Toast after an environment is saved",
+  },
+  "agentEnvironment.repoEnvs.deleted": {
+    message: "Deleted the environment for {repo}",
+    description: "Toast after an environment is deleted",
+  },
+  "agentEnvironment.repoEnvs.createTitle": {
+    message: "Add repository environment",
+    description: "Add-environment dialog title",
+  },
+  "agentEnvironment.repoEnvs.editTitle": {
+    message: "Edit {repo}",
+    description: "Edit-environment dialog title (repo is owner/name)",
+  },
+  "agentEnvironment.repoEnvs.dialogDescription": {
+    message:
+      "Setup steps run in order from the repository root before each session's agent starts, with the session's secrets. A failing step ends the turn before the agent starts. Checks are what the agent runs before it delivers.",
+    description: "Environment dialog description",
+  },
+  "agentEnvironment.repoEnvs.repoLabel": {
+    message: "Repository",
+    description: "Environment dialog: repository field label",
+  },
+  "agentEnvironment.repoEnvs.repoPlaceholder": {
+    message: "owner/name",
+    description: "Environment dialog: repository field placeholder",
+  },
+  "agentEnvironment.repoEnvs.repoEmpty": {
+    message: "No connected repository matches.",
+    description:
+      "Environment dialog: repository picker with no matching connected repository",
+  },
+  "agentEnvironment.repoEnvs.setupTitle": {
+    message: "Setup steps",
+    description: "Environment dialog: setup steps section heading",
+  },
+  "agentEnvironment.repoEnvs.setupHint": {
+    message:
+      "Install tools and dependencies. Each step runs with bash, in order; at most 10 steps, 10 minutes each.",
+    description: "Environment dialog: setup steps section hint",
+  },
+  "agentEnvironment.repoEnvs.checksTitle": {
+    message: "Checks",
+    description: "Environment dialog: checks section heading",
+  },
+  "agentEnvironment.repoEnvs.checksHint": {
+    message:
+      "Commands such as lint, test and build. The agent runs each from the repository root before it delivers and reports the results; bex doesn't run them itself. At most 10.",
+    description: "Environment dialog: checks section hint",
+  },
+  "agentEnvironment.repoEnvs.addSetup": {
+    message: "Add setup step",
+    description: "Environment dialog: add a setup step row",
+  },
+  "agentEnvironment.repoEnvs.addCheck": {
+    message: "Add check",
+    description: "Environment dialog: add a check row",
+  },
+  "agentEnvironment.repoEnvs.setupNameLabel": {
+    message: "Setup step {position} name",
+    description:
+      "Accessible label of a setup step's name field (position is its 1-based place in the list)",
+  },
+  "agentEnvironment.repoEnvs.setupRunLabel": {
+    message: "Setup step {position} command",
+    description: "Accessible label of a setup step's command field",
+  },
+  "agentEnvironment.repoEnvs.setupMoveUp": {
+    message: "Move setup step {position} up",
+    description: "Accessible label: move a setup step one place earlier",
+  },
+  "agentEnvironment.repoEnvs.setupMoveDown": {
+    message: "Move setup step {position} down",
+    description: "Accessible label: move a setup step one place later",
+  },
+  "agentEnvironment.repoEnvs.setupRemove": {
+    message: "Remove setup step {position}",
+    description: "Accessible label: remove a setup step row",
+  },
+  "agentEnvironment.repoEnvs.checkNameLabel": {
+    message: "Check {position} name",
+    description:
+      "Accessible label of a check's name field (position is its 1-based place in the list)",
+  },
+  "agentEnvironment.repoEnvs.checkRunLabel": {
+    message: "Check {position} command",
+    description: "Accessible label of a check's command field",
+  },
+  "agentEnvironment.repoEnvs.checkMoveUp": {
+    message: "Move check {position} up",
+    description: "Accessible label: move a check one place earlier",
+  },
+  "agentEnvironment.repoEnvs.checkMoveDown": {
+    message: "Move check {position} down",
+    description: "Accessible label: move a check one place later",
+  },
+  "agentEnvironment.repoEnvs.checkRemove": {
+    message: "Remove check {position}",
+    description: "Accessible label: remove a check row",
+  },
+  "agentEnvironment.repoEnvs.setupNamePlaceholder": {
+    message: "deps",
+    description: "Setup step name placeholder (an example step name)",
+  },
+  "agentEnvironment.repoEnvs.setupRunPlaceholder": {
+    message: "npm ci",
+    description: "Setup step command placeholder (an example shell command)",
+  },
+  "agentEnvironment.repoEnvs.checkNamePlaceholder": {
+    message: "test",
+    description: "Check name placeholder (an example check name)",
+  },
+  "agentEnvironment.repoEnvs.checkRunPlaceholder": {
+    message: "npm test",
+    description: "Check command placeholder (an example shell command)",
+  },
+  "agentEnvironment.repoEnvs.close": {
+    message: "Close",
+    description: "Read-only environment dialog: close button",
+  },
+  "agentEnvironment.repoEnvs.cancel": {
+    message: "Cancel",
+    description: "Environment dialog: cancel button",
+  },
+  "agentEnvironment.repoEnvs.save": {
+    message: "Save",
+    description: "Environment dialog: save (create or replace) button",
+  },
+  "agentEnvironment.repoEnvs.nameRequired": {
+    message: "Enter a name.",
+    description: "Step or check name required error",
+  },
+  "agentEnvironment.repoEnvs.nameInvalid": {
+    message:
+      "A name starts with a letter or digit and uses letters, digits, spaces, '.', '_' or '-' (at most 64).",
+    description: "Step or check name format error",
+  },
+  "agentEnvironment.repoEnvs.nameDuplicate": {
+    message: "Another row in this list already uses this name.",
+    description: "Step or check name repeated within its list",
+  },
+  "agentEnvironment.repoEnvs.runRequired": {
+    message: "Enter a command.",
+    description: "Step or check command required error",
+  },
+  "agentEnvironment.repoEnvs.setupRunTooLong": {
+    message: "A setup command can be at most 8 KiB.",
+    description: "Setup step command too long (or contains a NUL byte)",
+  },
+  "agentEnvironment.repoEnvs.checkRunTooLong": {
+    message: "A check command can be at most 2 KiB.",
+    description: "Check command too long (or contains a NUL byte)",
+  },
+  "agentEnvironment.repoEnvs.setupTooMany": {
+    message: "An environment can have at most 10 setup steps.",
+    description: "Too many setup steps",
+  },
+  "agentEnvironment.repoEnvs.checksTooMany": {
+    message: "An environment can have at most 10 checks.",
+    description: "Too many checks",
+  },
+  "agentEnvironment.repoEnvs.environmentEmpty": {
+    message:
+      "Add at least one setup step or check. To remove them all, delete the environment instead.",
+    description: "Environment with neither setup steps nor checks",
+  },
+  "agentEnvironment.repoEnvs.repoInvalid": {
+    message: "Enter the repository as owner/name.",
+    description:
+      "Repository validation error (also AGENT_REPO_ENVIRONMENT_INVALID on the repository)",
+  },
+  "agentEnvironment.repoEnvs.repoExists": {
+    message:
+      "This repository already has an environment. Edit it from the list instead.",
+    description: "Adding an environment for a repository that already has one",
+  },
+  "agentEnvironment.repoEnvs.setupRefused": {
+    message:
+      "A setup step was refused. Check that each name is valid and unique and each command is at most 8 KiB.",
+    description: "AGENT_REPO_ENVIRONMENT_INVALID on the setup steps",
+  },
+  "agentEnvironment.repoEnvs.checksRefused": {
+    message:
+      "A check was refused. Check that each name is valid and unique and each command is at most 2 KiB.",
+    description: "AGENT_REPO_ENVIRONMENT_INVALID on the checks",
+  },
+  "agentEnvironment.repoEnvs.invalid": {
+    message:
+      "This environment was refused. Check its repository, setup steps and checks.",
+    description: "AGENT_REPO_ENVIRONMENT_INVALID without a recognized field",
+  },
+  "agentEnvironment.repoEnvs.limitExceeded": {
+    message:
+      "This workspace reached its limit of 50 repository environments. Delete one to add another.",
+    description:
+      "AGENT_REPO_ENVIRONMENT_LIMIT_EXCEEDED (also checked before saving)",
+  },
+  "agentEnvironment.repoEnvs.notFound": {
+    message:
+      "This repository no longer has an environment; someone may have just deleted it.",
+    description:
+      "AGENT_REPO_ENVIRONMENT_NOT_FOUND error (deleted concurrently)",
+  },
+  "agentEnvironment.repoEnvs.unavailable": {
+    message: "Repository environments aren't available on this deployment.",
+    description: "AGENT_REPO_ENVIRONMENTS_UNAVAILABLE error",
+  },
+  "agentEnvironment.repoEnvs.forbidden": {
+    message: "Only workspace admins can change repository environments.",
+    description: "Environment write refused for a non-admin",
+  },
+  "agentEnvironment.repoEnvs.saveFailed": {
+    message: "Couldn't save the change. Try again.",
+    description: "Generic environment write failure",
+  },
   "agentEnvironment.skills.title": {
     message: "Agent skills",
     description: "Settings → Agent skills card title (ADR099)",

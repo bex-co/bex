@@ -14,7 +14,12 @@
  * limitations under the License.
  */
 
-import { spawn, type ChildProcessByStdio } from "node:child_process";
+import { appendTail, killProcessTree } from "./proc.js";
+import {
+  spawn,
+  type ChildProcess,
+  type ChildProcessByStdio,
+} from "node:child_process";
 import { readFile, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -379,12 +384,9 @@ async function createSessionAttempt(
     detached: process.platform !== "win32",
   });
   const maxStderrBytes = 64 << 10;
-  let stderr = Buffer.alloc(0);
+  let stderr: Buffer = Buffer.alloc(0);
   child.stderr.on("data", (chunk: Buffer) => {
-    stderr = Buffer.concat([stderr, chunk]);
-    if (stderr.length > maxStderrBytes) {
-      stderr = stderr.subarray(stderr.length - maxStderrBytes);
-    }
+    stderr = appendTail(stderr, chunk, maxStderrBytes);
   });
 
   // Install one terminal signal before constructing the protocol stream and
@@ -431,24 +433,12 @@ async function createSessionAttempt(
     if (child.exitCode !== null || child.signalCode !== null) resolve();
     else child.once("close", () => resolve());
   });
-  const killProcessTree = () => {
-    // The group can outlive its leader and keep inherited ACP pipes open.
-    if (process.platform !== "win32" && child.pid !== undefined) {
-      try {
-        process.kill(-child.pid, "SIGKILL");
-        return;
-      } catch {
-        // A spawn failure has no process group; fall back to the child handle.
-      }
-    }
-    if (child.exitCode === null && child.signalCode === null)
-      child.kill("SIGKILL");
-  };
+  const killTree = () => killProcessTree(child as ChildProcess);
   let cleanupPromise: Promise<void> | undefined;
   const cleanup = () => {
     cleanupPromise ??= (async () => {
       options.abortSignal?.removeEventListener("abort", onAbort);
-      killProcessTree();
+      killTree();
       await stopped;
     })();
     return cleanupPromise;

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { RepoSetupError, runRepoSetup } from "./repo-setup.js";
 import { readFile, rm, stat } from "node:fs/promises";
 import { createUIMessageStream } from "ai";
 import { createSessionProvider, type SessionProvider } from "./acp.js";
@@ -52,6 +53,10 @@ interface StatusRecord {
 }
 
 const maxSessionLogBytes = 16 << 20;
+
+// The repository's setup runs once per sandbox: one driver process, one
+// config, so later live turns in the same sandbox skip it.
+const repoSetupDone = new WeakSet<AgentDriverConfig>();
 
 export interface TurnResult extends StatusRecord {
   state: "succeeded";
@@ -261,6 +266,24 @@ export async function runHeadlessTurn(
           };
           try {
             writer.write({ type: "start" });
+            // The repository's setup steps (ADR109) run once per sandbox,
+            // before the agent, through this stream so their output is
+            // redacted and recorded like any tool call.
+            if (
+              config.repoEnvironment?.setup.length &&
+              !repoSetupDone.has(config)
+            ) {
+              await runRepoSetup(config.repoEnvironment, {
+                cwd: config.cwd,
+                // The agent's own process environment (acp.ts), so steps see
+                // PATH, HOME and the session's secrets.
+                env: { ...process.env, ...agentEnv } as Record<string, string>,
+                write: (chunk) => writer.write(chunk),
+                heartbeat: () => bound.progress(),
+                abortSignal: turnAbort.signal,
+              });
+              repoSetupDone.add(config);
+            }
             provider = await createSessionProvider(config, agentEnv, {
               onUpdate: (update) => {
                 bound.update(update);
@@ -393,6 +416,7 @@ export async function runHeadlessTurn(
     await writeStatus(config.statusPath, {
       state: "failed",
       error: redactor.redactString(describeError(terminalError)),
+      ...(error instanceof RepoSetupError ? { code: error.code } : {}),
     });
     throw terminalError;
   } finally {

@@ -23,6 +23,7 @@ import { describeError } from "./errors.js";
 import { loadAgentProfiles, lookupAgentProfile } from "./profiles.js";
 import { isDeepStrictEqual } from "node:util";
 import { secretValuesFromEnv } from "./redact.js";
+import { parseRepoEnvironment, type RepoEnvironment } from "./repo-setup.js";
 import { parseSkillManifest, type SkillManifest } from "./skills.js";
 
 export interface AgentDriverConfig {
@@ -32,6 +33,9 @@ export interface AgentDriverConfig {
   // The workspace's skills (ADR099): what setup waits for, links into the
   // engines' skills folders and lists in the overlay. Undefined when none.
   skills?: SkillManifest;
+  // The session repository's environment (ADR109): setup steps run before
+  // the first turn in this sandbox, checks named in the overlay.
+  repoEnvironment?: RepoEnvironment;
   command: string;
   args: string[];
   // Release-profile id (agent-profiles.json): selects the overlay channel for
@@ -430,6 +434,7 @@ export function loadConfig(
     networkTier: networkTier(env.BEX_AGENT_NETWORK_TIER),
     attachments: parseAttachmentManifest(env.BEX_AGENT_ATTACHMENTS),
     skills: parseSkillManifest(env.BEX_AGENT_SKILLS),
+    repoEnvironment: parseRepoEnvironment(env.BEX_REPO_ENVIRONMENT),
     secretValues: secretValuesFromEnv(env),
   };
 }

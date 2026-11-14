@@ -40,9 +40,11 @@ import (
 // working tree: the PR the session finalizes with is the one bex-api itself
 // recorded when the agent opened it (ADR090).
 type statusReport struct {
-	State string    `json:"state"` // one of the driverState* constants
-	Error string    `json:"error"`
-	Git   statusGit `json:"git"`
+	State string `json:"state"` // one of the driverState* constants
+	Error string `json:"error"`
+	// Code is believed only when it is FailureCodeSetupFailed (ADR109 D5).
+	Code string    `json:"code"`
+	Git  statusGit `json:"git"`
 }
 
 // statusGit is the driver's post-turn view of the session's Git checkout.
@@ -510,7 +512,11 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 		if reason == "" {
 			reason = "agent turn failed"
 		}
-		c.fail(ctx, record, reason)
+		code := ""
+		if report.Code == FailureCodeSetupFailed {
+			code = FailureCodeSetupFailed
+		}
+		c.fail(ctx, record, reason, code)
 	}
 }
 
@@ -595,16 +601,7 @@ func (c *Completer) structuredOutputMissing(ctx context.Context, record store.Ag
 // A pull request the agent opened stays on the session: the row keeps its PR
 // fields and the code says why the turn failed, not that the work was lost.
 func (c *Completer) failMissingOutput(ctx context.Context, record store.AgentSession) {
-	final, fact, ok := c.finalizeFailure(ctx, record, structuredOutputMissingReason)
-	if !ok {
-		return
-	}
-	if err := c.Store.StampAgentSessionFailureCode(ctx, record.ID, structuredOutputMissingReason, FailureCodeStructuredOutputMissing); err != nil {
-		log.Printf("agent-session completer: stamp failure code failed (session=%s): %v", record.ID, err)
-	}
-	c.Metrics.observeTerminalTurn(turnOutcomeFailed, fact)
-	log.Printf("agent-session completer: failed session=%s code=%s", record.ID, FailureCodeStructuredOutputMissing)
-	c.teardown(ctx, final)
+	c.fail(ctx, record, structuredOutputMissingReason, FailureCodeStructuredOutputMissing)
 }
 
 // Bounds on the driver-supplied delivery reasons: the sandbox is untrusted, so
@@ -639,13 +636,18 @@ func deliveryNote(git statusGit) string {
 	return strings.Join(reasons, " ")
 }
 
-func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason string) {
+func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason, code string) {
 	final, fact, ok := c.finalizeFailure(ctx, record, reason)
 	if !ok {
 		return
 	}
+	if code != "" {
+		if err := c.Store.StampAgentSessionFailureCode(ctx, record.ID, reason, code); err != nil {
+			log.Printf("agent-session completer: stamp failure code failed (session=%s): %v", record.ID, err)
+		}
+	}
 	c.Metrics.observeTerminalTurn(turnOutcomeFailed, fact)
-	log.Printf("agent-session completer: failed session=%s reason=%q", record.ID, reason)
+	log.Printf("agent-session completer: failed session=%s code=%q reason=%q", record.ID, code, reason)
 	c.teardown(ctx, final)
 }
 

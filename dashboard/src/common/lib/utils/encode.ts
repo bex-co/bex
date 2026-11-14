@@ -64,3 +64,8 @@ export function base64Decode(base64: string): string {
   // Decode byte array to UTF-8 string using TextDecoder
   return new TextDecoder().decode(bytes);
 }
+
+/** The UTF-8 length of text in bytes: what the server's byte limits count. */
+export function utf8ByteLength(text: string): number {
+  return new TextEncoder().encode(text).length;
+}

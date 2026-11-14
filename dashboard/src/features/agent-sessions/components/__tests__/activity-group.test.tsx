@@ -212,3 +212,51 @@ describe("signal-first summary line (w10/m16 t005)", () => {
     expect(screen.getByText("1,234 characters clipped")).toBeInTheDocument();
   });
 });
+
+// ADR109 D5: the driver reports each repository setup step as a tool call
+// named and titled `setup: <name>` (input {step, command}, a plain-text
+// output), drawn by the stock tool-call row.
+describe("repository setup steps", () => {
+  it("shows a step's command and its exit code and output", async () => {
+    render(
+      <ActivityGroup
+        steps={[
+          {
+            kind: "tool",
+            name: "setup: deps",
+            title: "setup: deps",
+            state: "output-available",
+            input: { step: "deps", command: "npm ci" },
+            output: "exited 0 after 4.2s\nadded 1 package",
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("button")).toHaveTextContent("Ran 1 command");
+    await userEvent.click(screen.getByRole("button"));
+    expect(screen.getByText("setup: deps")).toBeInTheDocument();
+    expect(screen.getByText("npm ci")).toBeInTheDocument();
+    expect(screen.getByText("Done")).toBeInTheDocument();
+    expect(screen.getByText(/exited 0 after 4\.2s/)).toBeInTheDocument();
+    expect(screen.getByText(/added 1 package/)).toBeInTheDocument();
+  });
+
+  it("names a failed step without expanding the group", () => {
+    render(
+      <ActivityGroup
+        steps={[
+          {
+            kind: "tool",
+            name: "setup: deps",
+            title: "setup: deps",
+            state: "output-error",
+            input: { step: "deps", command: "npm ci" },
+            errorText: "exited with code 7\nnpm ERR! missing script",
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText("setup: deps")).toBeInTheDocument();
+    expect(screen.getByText(/exited with code 7/)).toBeInTheDocument();
+  });
+});

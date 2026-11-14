@@ -239,6 +239,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	s.registerAttachmentREST(mux)
 	s.registerSecretREST(mux)
+	s.registerRepoEnvironmentREST(mux)
 	s.registerSkillREST(mux)
 	s.registerAutomationREST(mux)
 }
@@ -346,6 +347,32 @@ func (s *Service) registerSecretREST(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("DELETE /v1/agent-secrets/{name}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteAgentSecret(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("name"))
+	}))
+}
+
+// registerRepoEnvironmentREST mounts the ADR109 repository environments,
+// addressed by owner/name.
+func (s *Service) registerRepoEnvironmentREST(mux *http.ServeMux) {
+	repoOf := func(r *http.Request) string { return r.PathValue("owner") + "/" + r.PathValue("repo") }
+	mux.HandleFunc("GET /v1/agent-repo-environments", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.RepoEnvironments(r.Context(), r.URL.Query().Get("ownerId"))
+	}))
+	mux.HandleFunc("PUT /v1/agent-repo-environments/{owner}/{repo}", func(w http.ResponseWriter, r *http.Request) {
+		var body RepoEnvironmentInput
+		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		if err := core.DecodeJSON(r, &body); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		out, err := s.SetRepoEnvironment(r.Context(), r.URL.Query().Get("ownerId"), repoOf(r), body)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("DELETE /v1/agent-repo-environments/{owner}/{repo}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteRepoEnvironment(r.Context(), r.URL.Query().Get("ownerId"), repoOf(r))
 	}))
 }
 

@@ -67,3 +67,17 @@ export function goRegexp(path: string, name: string): string {
   if (!match) throw new Error(`${name} not found in ${path}`);
   return match[1]!;
 }
+
+/**
+ * The value of a Go integer constant `name = N` or `name = N << M` declared in
+ * the file at path.
+ */
+export function goIntConstant(path: string, name: string): number {
+  const source = readFileSync(`${REPO_ROOT}/${path}`, "utf8");
+  const match = new RegExp(
+    `^\\s*${name}\\s*=\\s*(\\d+)(?:\\s*<<\\s*(\\d+))?\\s*$`,
+    "m",
+  ).exec(source);
+  if (!match) throw new Error(`${path} declares no integer ${name}`);
+  return Number(match[1]) * 2 ** Number(match[2] ?? 0);
+}

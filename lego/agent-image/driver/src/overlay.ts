@@ -20,6 +20,7 @@
 // lives in this one versioned template so every engine receives the same
 // environment contract, whichever channel carries it (acp.ts).
 
+import type { RepoEnvironment } from "./repo-setup.js";
 import type { AttachmentManifest } from "./attachments.js";
 import { skillsSection, type SkillManifest } from "./skills.js";
 import { toolName } from "./mcp-bex.js";
@@ -53,6 +54,8 @@ export interface OverlayContext {
   networkTier?: string;
   attachments?: AttachmentManifest;
   skills?: SkillManifest;
+  // The repository's declared checks (ADR109 D6).
+  repoEnvironment?: RepoEnvironment;
   // profile is the engine's release-profile id; engines with a native skill
   // loader get a shorter skills index.
   profile?: string;
@@ -238,6 +241,24 @@ function compactSchema(schema: string): string {
   }
 }
 
+// checksSection names the repository's declared checks (ADR109 D6); only a
+// repository whose environment declares some has it. Each command is fenced,
+// so a multi-line one stays intact.
+function checksSection(context: OverlayContext): string {
+  const checks = context.repoEnvironment?.checks ?? [];
+  if (checks.length === 0) return "";
+  const blocks = checks.map(
+    (check) => `### ${check.name}\n\n\`\`\`sh\n${check.run}\n\`\`\``,
+  );
+  return `
+
+## Repository checks
+
+This repository declares these checks. Before you commit, run each one from the repository root, and name each result (passed, or what failed) in the pull request body or your final message. A failing check does not stop you from delivering; report it.
+
+${blocks.join("\n\n")}`;
+}
+
 // resultSection tells the agent this turn's answer is a structured result and
 // what it must satisfy (ADR094 D5); only turns that carry an outputSchema have it.
 function resultSection(context: OverlayContext): string {
@@ -268,6 +289,6 @@ export function platformOverlay(context: OverlayContext): string {
 
 This section comes from bex, the platform hosting this session. It adds to your existing instructions and does not replace them.
 
-${body}${attachmentsSection(context)}${skillsSection(context.skills, context.profile)}${sharingSection(context)}${childSessionsSection(context)}${resultSection(context)}
+${body}${checksSection(context)}${attachmentsSection(context)}${skillsSection(context.skills, context.profile)}${sharingSection(context)}${childSessionsSection(context)}${resultSection(context)}
 `;
 }

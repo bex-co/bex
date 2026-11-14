@@ -277,6 +277,10 @@ type Service struct {
 	// AttachmentCopier puts a dispatch's input files into its sandbox; nil ⇒
 	// attachments are unavailable too. Skills are copied the same way.
 	AttachmentCopier AttachmentCopier
+	// RepoEnvs is the ADR109 repository environments table. nil ⇒ every
+	// environment verb answers AGENT_REPO_ENVIRONMENTS_UNAVAILABLE and
+	// dispatches carry none.
+	RepoEnvs RepoEnvironmentStore
 	// SecretScopes stores workspace agent secret scopes and each dispatch's
 	// applied secrets (w9/m385, ADR098 D9). nil ⇒ every secret is explicit.
 	SecretScopes SecretScopeStore
@@ -821,6 +825,10 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 			failure = secretUnavailableFailure
 		}
 		return s.failDispatch(ctx, record, spec.turn, failure, err)
+	}
+	if spec.env, err = s.withRepoEnvironment(ctx, record, spec.env); err != nil {
+		log.Printf("agent-session dispatch: read repository environment failed (session=%s): %v", record.ID, err)
+		return s.failDispatch(ctx, record, spec.turn, repoEnvironmentReadFailure, err)
 	}
 	s.recordAppliedSecrets(ctx, record, applied)
 	provisionStart := time.Now()

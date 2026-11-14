@@ -575,6 +575,54 @@ var agentSecretGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var repoStepGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentRepoStep",
+	Description: "A repository environment's setup step or check: a name and a shell command.",
+	Fields: graphql.Fields{
+		"name": gqlutil.ReqStrField(func(v RepoStep) any { return v.Name }),
+		"run":  gqlutil.ReqStrField(func(v RepoStep) any { return v.Run }),
+	},
+})
+
+var repoEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentRepoEnvironment",
+	Description: "A repository's environment for agent sessions (ADR109): setup steps run before the agent, checks it runs before delivering.",
+	Fields: graphql.Fields{
+		"ownerId":   gqlutil.ReqStrField(func(v RepoEnvironment) any { return v.OwnerID }),
+		"repo":      gqlutil.ReqStrField(func(v RepoEnvironment) any { return v.Repo }),
+		"setup":     gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(repoStepGQLType))), func(v RepoEnvironment) any { return v.Setup }),
+		"checks":    gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(repoStepGQLType))), func(v RepoEnvironment) any { return v.Checks }),
+		"updatedAt": gqlutil.TimeField(func(v RepoEnvironment) any { return v.UpdatedAt }),
+	},
+})
+
+var repoEnvironmentListGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentRepoEnvironmentList",
+	Fields: graphql.Fields{
+		"ownerId":      gqlutil.ReqStrField(func(v RepoEnvironmentList) any { return v.OwnerID }),
+		"environments": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(repoEnvironmentGQLType))), func(v RepoEnvironmentList) any { return v.Environments }),
+	},
+})
+
+var repoStepGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "AgentRepoStepInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"run":  &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
+// repoStepsArg reads a list of AgentRepoStepInput.
+func repoStepsArg(arg any) []RepoStep {
+	raw, _ := arg.([]any)
+	out := make([]RepoStep, 0, len(raw))
+	for _, item := range raw {
+		m, _ := item.(map[string]any)
+		out = append(out, RepoStep{Name: gqlutil.Str(m, "name"), Run: gqlutil.Str(m, "run")})
+	}
+	return out
+}
+
 var appliedSecretGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "AgentAppliedSecret",
 	Description: "A secret a session's latest turn received: its name and why.",
@@ -737,6 +785,14 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.Environment(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
+		"agentRepoEnvironments": &graphql.Field{
+			Type:        graphql.NewNonNull(repoEnvironmentListGQLType),
+			Description: "The workspace's repository environments (setup steps and checks).",
+			Args:        graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.RepoEnvironments(p.Context, gqlutil.Str(p.Args, "ownerId"))
+			},
+		},
 		"agentSecrets": &graphql.Field{
 			Type:        graphql.NewNonNull(agentSecretListGQLType),
 			Description: "The workspace's agent secrets, names only.",
@@ -807,6 +863,34 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					return nil, err
 				}
 				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args)})
+			},
+		},
+		"setAgentRepoEnvironment": &graphql.Field{
+			Type:        graphql.NewNonNull(repoEnvironmentGQLType),
+			Description: "Create or replace a repository's environment (admins only).",
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				"repo":    gqlutil.ReqArg(graphql.String),
+				"setup":   gqlutil.ReqArg(graphql.NewList(graphql.NewNonNull(repoStepGQLInput))),
+				"checks":  gqlutil.ReqArg(graphql.NewList(graphql.NewNonNull(repoStepGQLInput))),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetRepoEnvironment(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "repo"),
+					RepoEnvironmentInput{Setup: repoStepsArg(p.Args["setup"]), Checks: repoStepsArg(p.Args["checks"])})
+			},
+		},
+		"deleteAgentRepoEnvironment": &graphql.Field{
+			Type:        graphql.Boolean,
+			Description: "Delete a repository's environment (admins only).",
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				"repo":    gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				if err := s.DeleteRepoEnvironment(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "repo")); err != nil {
+					return nil, err
+				}
+				return true, nil
 			},
 		},
 		"setAgentSecret": &graphql.Field{

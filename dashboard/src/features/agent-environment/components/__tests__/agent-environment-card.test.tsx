@@ -114,7 +114,9 @@ describe("AgentEnvironmentCard", () => {
     expect(source).toHaveAttribute("aria-hidden", "true");
     expect(source).toHaveClass("text-transparent");
     const spend = screen.getByTestId("spend-cap-section-skeleton");
-    expect(spend).toHaveTextContent(/Trust tier T0: billing credits pay agent model spend first; your card is charged/);
+    expect(spend).toHaveTextContent(
+      /Trust tier T0: billing credits pay agent model spend first; your card is charged/,
+    );
     // The longer of the T0 and payment-locked explanations.
     expect(spend).toHaveTextContent(
       /New workspaces are charged when agent model spend beyond any billing credits reaches/,

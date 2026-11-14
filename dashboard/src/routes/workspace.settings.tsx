@@ -21,6 +21,8 @@ import { AgentEnvironmentCard } from "@/features/agent-environment/components/ag
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { AgentSecretsCard } from "@/features/agent-environment/components/agent-secrets-card";
 import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
+import { AgentRepoEnvironmentsCard } from "@/features/agent-environment/components/agent-repo-environments-card";
+import { AgentRepoEnvironmentsCardSkeleton } from "@/features/agent-environment/components/agent-repo-environments-card-skeleton";
 import { AgentSkillsCard } from "@/features/agent-environment/components/agent-skills-card";
 import { AgentSkillsCardSkeleton } from "@/features/agent-environment/components/agent-skills-card-skeleton";
 import { WorkspaceNotificationsCard } from "@/features/notifications/components/workspace-notifications-card";
@@ -136,6 +138,7 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="agents" className="space-y-6">
                   <AgentEnvironmentCardSkeleton />
                   <AgentSecretsCardSkeleton />
+                  <AgentRepoEnvironmentsCardSkeleton />
                   <AgentSkillsCardSkeleton />
                 </section>
                 <section data-skeleton-region="registry-credentials">
@@ -204,6 +207,10 @@ function WorkspaceSettingsPage() {
                   <AgentEnvironmentCard ownerId={currentWorkspace.id} />
                   {/* Workspace agent secrets (ADR098 D8): names only. */}
                   <AgentSecretsCard ownerId={currentWorkspace.id} />
+                  {/* Repository environments (ADR109): per repository, the
+                      setup steps run before the agent and the checks it runs
+                      before delivering. */}
+                  <AgentRepoEnvironmentsCard ownerId={currentWorkspace.id} />
                   {/* Workspace skills (ADR099 D6): SKILL.md documents every
                       agent session receives. */}
                   <AgentSkillsCard ownerId={currentWorkspace.id} />

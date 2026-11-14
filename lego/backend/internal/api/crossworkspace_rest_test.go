@@ -172,7 +172,8 @@ var callerScopedRoutes = map[string]bool{
 	"PATCH /v1/agent-environment": true,
 	// Workspace agent secrets (ADR098): addressed by ownerId like the
 	// environment; the list gates on can_create of that exact workspace.
-	"GET /v1/agent-secrets": true,
+	"GET /v1/agent-secrets":           true,
+	"GET /v1/agent-repo-environments": true,
 	// Workspace skills (ADR099): the list and create are addressed by
 	// ownerId; the by-ref routes route a skl- id by its row.
 	"GET /v1/agent-skills":  true,

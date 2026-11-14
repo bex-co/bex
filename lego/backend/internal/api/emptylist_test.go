@@ -145,6 +145,7 @@ var unreachableArrayRoutes = map[string]string{
 	"GET /v1/agent-automations/{id}/runs":                "the agent_automation_runs table (Service.Automations); the runs page is made non-nil (agentsessions/automation_run.go AgentAutomationRuns)",
 	"GET /v1/agent-skills/{ref}/versions":                "the agent_skill_versions table (Service.Skills); make([]AgentSkillVersion, 0, …) (agentsessions/skills_versions.go AgentSkillVersions)",
 	"GET /v1/agent-skills":                               "the agent_skills table (Service.Skills); make([]AgentSkill, 0, …) (agentsessions/skills.go AgentSkills)",
+	"GET /v1/agent-repo-environments":                    "the agent_repo_environments table (Service.RepoEnvs); make([]RepoEnvironment, 0, …) (agentsessions/repo_environment.go RepoEnvironments)",
 	"GET /v1/postgres/{id}/top-queries":                  "live datastore connection; topQueryViews make (postgres/insights.go)",
 	"GET /v1/postgres/{id}/query/top-queries":            "live datastore connection; topQueryViews make (postgres/insights.go)",
 	"GET /v1/blueprints":                                 "BEX_CP_DB_URI; make([]BlueprintView, len(bs)) (apps/blueprint.go)",

@@ -1,0 +1,42 @@
+# Repository environments for agent sessions (ADR109): per repository, the
+# setup steps the driver runs from the repository root before the agent
+# starts, and the checks the agent runs before it delivers. Members who can
+# start sessions read them; only admins (can_manage) set or delete them.
+query AgentRepoEnvironments($ownerId: String!) {
+  agentRepoEnvironments(ownerId: $ownerId) {
+    ownerId
+    environments {
+      repo
+      setup {
+        name
+        run
+      }
+      checks {
+        name
+        run
+      }
+    }
+  }
+}
+
+# Create or replace a repository's whole environment: the lists sent are the
+# lists stored, in order. `repo` is owner/name; the server stores it lowercased.
+mutation SetAgentRepoEnvironment(
+  $ownerId: String!
+  $repo: String!
+  $setup: [AgentRepoStepInput!]!
+  $checks: [AgentRepoStepInput!]!
+) {
+  setAgentRepoEnvironment(
+    ownerId: $ownerId
+    repo: $repo
+    setup: $setup
+    checks: $checks
+  ) {
+    repo
+  }
+}
+
+mutation DeleteAgentRepoEnvironment($ownerId: String!, $repo: String!) {
+  deleteAgentRepoEnvironment(ownerId: $ownerId, repo: $repo)
+}
