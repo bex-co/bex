@@ -10,12 +10,18 @@ That inertness is deliberate — a disk snapshot is a full copy of a tenant file
 | --- | --- |
 | Bucket `bex-disk-snapshots` | **Dedicated.** Never `bex-tfstate` — that would put every tenant's filesystem beside the credentials that rebuild the platform. |
 | IAM user `bex-disk-snapshot` | The **operator**: PUT/GET/DELETE, for backup, 7-day retention, and purge-on-detach. |
-| IAM user `bex-disk-snapshot-read` | **bex-api**: LIST/GET only. bex-api must never write or delete a tenant's backups, and never holds the age key at all. |
+| IAM user `bex-disk-snapshot-read` | **bex-api**: LIST/GET only. bex-api's S3 credential can never write or delete a tenant's backups. Its Kubernetes token is a different matter: see _What a stolen bex-api token can read_ below. |
 | Secret `bex-system/bex-disk-snapshot` | Operator's credential + the age **recipient** (public) key it encrypts to. |
 | Secret `bex-system/bex-disk-snapshot-read` | bex-api's read-only credential. |
-| Secret `bex-system/bex-disk-snapshot-age` | The age **private** key, mounted only by the restore Job. |
+| Secret `bex-system/bex-disk-snapshot-age` | The age **private** key, which only the restore Job mounts. The seeding script installs it in `bex-system`, the apps namespace and every `tea-*` namespace, and the operator copies it into each disk-bearing App's namespace, since a Job can mount only a Secret of its own namespace. |
 
 The age keypair is **dedicated to disks**, deliberately not ADR050's `AGE_BACKUP_*` platform key: a restore has to decrypt _inside_ the cluster, and ADR050 exists precisely to keep the platform key out of it.
+
+## What a stolen bex-api token can read
+
+The age private key and the operator's write credential pair stay out of bex-api's _S3 and process environment_, not out of its _Kubernetes token_. bex-api's ServiceAccount is bound to the ClusterRole `bex-tenant-api` (`deploy/gitops/base/tenant-namespace-clusterroles.yaml`) by a RoleBinding in each tenant namespace, which grants `secrets` get and list there, and the key, the pair and the recipient are present in every tenant namespace that has a disk. One stolen bex-api token therefore reads the decryption key for every tenant's snapshots and credentials that can PUT, GET and DELETE the whole bucket, and can copy them off the cluster. What it already could do, read tenant Secrets and rewrite any App, is unchanged; the new property is that the copies outlive the token's revocation.
+
+This is a known residual of the round-25 security review (ADR110, R25-14), not an intended property, and closing it is a redesign of how backups and restores are scheduled rather than a runbook change: [w21/069](../../.pm/w21/blocked/069.md).
 
 ## Prerequisites
 
