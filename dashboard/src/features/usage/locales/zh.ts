@@ -368,7 +368,7 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.paymentRequiredDescription": {
     message:
-      "此付费方案需要付款方式。请在新标签页中完成 Stripe Checkout；准备就绪后，此操作将自动继续。",
+      "此付费套餐需要付款方式。请在新标签页中完成 Stripe Checkout；准备就绪后，此操作将自动继续。",
     description: "Just-in-time paid-intent onboarding explanation",
   },
   "usage.paymentRequiredRetrying": {
@@ -380,11 +380,11 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Cancel just-in-time payment onboarding",
   },
   "usage.planTitle": {
-    message: "计划",
+    message: "套餐",
     description: "Plan card title on the billing page",
   },
   "usage.planChange": {
-    message: "更改计划",
+    message: "更改套餐",
     description:
       "Link from the billing page's plan card to the workspace-settings plan dialog",
   },
@@ -411,7 +411,7 @@ const zhUsage: Record<string, TranslationEntry> = {
       "Plan-allowance card title on the billing page (was 'Resource limits')",
   },
   "usage.includedUsageDescription": {
-    message: "该工作区计划包含的额度，以及已使用的部分。",
+    message: "该工作区套餐包含的额度，以及已使用的部分。",
     description: "Included-usage card description",
   },
   "usage.chargesTitle": {
@@ -515,7 +515,7 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Charge-tree category for managed Postgres instances",
   },
   "usage.categoryKeyValue": {
-    message: "键值存储",
+    message: "Key Value",
     description: "Charge-tree category for managed Key Value instances",
   },
   "usage.categoryAgentSessions": {

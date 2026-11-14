@@ -876,7 +876,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast on a failed env-var delete",
   },
   "services.secretFilesTitle": {
-    message: "密钥文件",
+    message: "机密文件",
     description: "Environment tab secret-files section title",
   },
   "services.secretFilesDescription": {
@@ -892,12 +892,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Secret-files table column header (file body)",
   },
   "services.secretFileRevealError": {
-    message: "无法加载此密钥文件的内容。请关闭对话框后重试。",
+    message: "无法加载此机密文件的内容。请关闭对话框后重试。",
     description:
       "Shown in the secret-file dialog when reading the stored contents fails.",
   },
   "services.secretFilesEmptyTitle": {
-    message: "暂无密钥文件",
+    message: "暂无机密文件",
     description: "Secret-files empty-state title",
   },
   "services.secretFilesEmptyBody": {
@@ -905,7 +905,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Secret-files empty-state body",
   },
   "services.secretFilesUnavailableTitle": {
-    message: "密钥文件不可用",
+    message: "机密文件不可用",
     description:
       "Secret-files state when the secret store is unconfigured (503)",
   },
@@ -918,11 +918,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Secret-files state when the caller lacks permission (403)",
   },
   "services.secretFilesForbiddenBody": {
-    message: "你没有查看此服务密钥文件的权限。",
+    message: "你没有查看此服务机密文件的权限。",
     description: "Secret-files forbidden-state body",
   },
   "services.secretFilesErrorTitle": {
-    message: "无法加载密钥文件",
+    message: "无法加载机密文件",
     description: "Secret-files generic error title",
   },
   "services.secretFilesErrorBody": {
@@ -930,7 +930,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Secret-files generic error body",
   },
   "services.secretFileAdd": {
-    message: "添加密钥文件",
+    message: "添加机密文件",
     description: "Secret-files button to open the add-file form",
   },
   "services.secretFileNamePlaceholder": {
@@ -977,15 +977,15 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast on a failed secret-file delete",
   },
   "services.envGroupsTitle": {
-    message: "环境变量组",
+    message: "环境组",
     description: "Environment tab env-groups section title",
   },
   "services.envGroupsDescription": {
-    message: "可复用的环境变量与密钥文件集合，可链接到此服务及其他服务。",
+    message: "可复用的环境变量与机密文件集合，可链接到此服务及其他服务。",
     description: "Environment tab env-groups section description",
   },
   "services.envGroupsEmptyTitle": {
-    message: "暂无环境变量组",
+    message: "暂无环境组",
     description: "Env-groups empty-state title",
   },
   "services.envGroupsEmptyBody": {
@@ -993,7 +993,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Env-groups empty-state body",
   },
   "services.envGroupsUnavailableTitle": {
-    message: "环境变量组不可用",
+    message: "环境组不可用",
     description: "Env-groups state when the secret store is unconfigured (503)",
   },
   "services.envGroupsUnavailableBody": {
@@ -1005,11 +1005,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Env-groups state when the caller lacks permission (403)",
   },
   "services.envGroupsForbiddenBody": {
-    message: "你没有查看环境变量组的权限。",
+    message: "你没有查看环境组的权限。",
     description: "Env-groups forbidden-state body",
   },
   "services.envGroupsErrorTitle": {
-    message: "无法加载环境变量组",
+    message: "无法加载环境组",
     description: "Env-groups generic error title",
   },
   "services.envGroupsErrorBody": {
@@ -1092,7 +1092,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Env-groups button: attach this group to the current service",
   },
   "services.envGroupUnlink": {
-    message: "取消链接",
+    message: "取消关联",
     description:
       "Env-groups button: detach this group from the current service",
   },
@@ -1102,7 +1102,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Accessible name of an env-group row's Link button on the service Environment tab, naming the group (w4/537)",
   },
   "services.envGroupUnlinkAria": {
-    message: "取消链接 {name}",
+    message: "取消关联 {name}",
     description:
       "Accessible name of an env-group row's Unlink button on the service Environment tab, naming the group (w4/537)",
   },
@@ -1143,11 +1143,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast on a failed env-group link",
   },
   "services.envGroupUnlinkSuccess": {
-    message: "组已取消链接",
+    message: "组已取消关联",
     description: "Toast on a successful env-group unlink",
   },
   "services.envGroupUnlinkError": {
-    message: "无法取消链接该组",
+    message: "无法取消关联该组",
     description: "Toast on a failed env-group unlink",
   },
   "services.navSettings": {
@@ -3984,17 +3984,17 @@ const zhServices: Record<string, TranslationEntry> = {
       "A create-flow variable row's Remove button (aria-label), named by its row (w4/544)",
   },
   "services.fileRowName": {
-    message: "密钥文件 {n} 的文件名",
+    message: "机密文件 {n} 的文件名",
     description:
       "A create-flow secret file row's name field (aria-label), named by its row (w4/544)",
   },
   "services.fileRowContent": {
-    message: "密钥文件 {n} 内容",
+    message: "机密文件 {n} 内容",
     description:
       "A create-flow secret file row's contents field (aria-label), named by its row (w4/544)",
   },
   "services.fileRowRemove": {
-    message: "删除密钥文件 {n}",
+    message: "删除机密文件 {n}",
     description:
       "A create-flow secret file row's Remove button (aria-label), named by its row (w4/544)",
   },
@@ -5218,7 +5218,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Alert title when the workspace's service creation cap is hit (w7/m9)",
   },
   "services.capLimitUpgrade": {
-    message: "升级方案",
+    message: "升级套餐",
     description: "Upgrade CTA button inside the cap-limit Alert (w7/m9)",
   },
   "services.networkingTitle": {
@@ -5366,13 +5366,13 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.environmentValueNul": {
     message:
-      "值不能包含 NUL 字节，进程环境无法携带它。二进制内容请使用密钥文件。",
+      "值不能包含 NUL 字节，进程环境无法携带它。二进制内容请使用机密文件。",
     description:
       "Draft validation under an environment variable value with a NUL byte (w21/047)",
   },
   "services.environmentValueTooLarge": {
     message:
-      "单个 KEY=value 条目最多 131,071 字节，超过后进程无法启动。大内容请使用密钥文件。",
+      "单个 KEY=value 条目最多 131,071 字节，超过后进程无法启动。大内容请使用机密文件。",
     description:
       "Draft validation under an environment variable whose KEY=value entry is over the process limit; the server counts UTF-8 bytes, so a Chinese character is 3 (w21/047)",
   },

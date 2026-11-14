@@ -167,6 +167,13 @@ const ZH_SAME_AS_EN = new Set<string>([
   "blueprints.previewKindKeyValue",
   "usage.resourceCapsKeyValues",
   "webhooks.group.keyValue",
+  // Key Value stays the product's English name in zh (w4/646 glossary).
+  "blueprints.previewKeyValue",
+  "environments.tabKeyValues",
+  "keyvalue.cardTitle",
+  "keyvalue.resourceType",
+  "projects.typeKeyValue",
+  "usage.categoryKeyValue",
   "usage.billingMode",
   "agentSessions.agent.muse",
   // Example commands in input placeholders.
@@ -215,6 +222,87 @@ describe("zh names each product term one way", () => {
     const variant = Object.entries(zh ?? {})
       .filter(([, entry]) => entry.message.includes("部署前命令"))
       .map(([key, entry]) => `${key}: ${entry.message}`);
+    expect(variant).toEqual([]);
+  });
+});
+
+// The zh glossary (w4/646): one rendering per product term. A zh message whose
+// en message names the term must not use another rendering of it. Keep 密钥
+// where the English is a cryptographic key or a generated secret value, and 计划
+// where it is a schedule: the rules below match only the file feature, a
+// billing plan, env groups, unlinking and the Key Value product.
+const GLOSSARY: {
+  term: string;
+  en: RegExp;
+  zh: string;
+  variants: string[];
+}[] = [
+  {
+    term: "Secret File",
+    en: /secret[- ]files?/i,
+    zh: "机密文件",
+    variants: ["密钥文件"],
+  },
+  {
+    // A billing or instance plan. A Blueprint's sync plan and an agent's
+    // plan are other words (SKIP_PLAN).
+    term: "Plan",
+    en: /\bplans?\b/i,
+    zh: "套餐",
+    variants: ["计划", "方案"],
+  },
+  {
+    term: "Env Group",
+    en: /\b(env|environment) groups?\b/i,
+    zh: "环境组",
+    variants: ["环境变量组"],
+  },
+  {
+    term: "Unlink",
+    en: /\bunlink/i,
+    zh: "取消关联",
+    variants: ["取消链接"],
+  },
+  {
+    // The product's name, kept in English as on most of its pages.
+    term: "Key Value",
+    en: /\bkey ?values?\b/i,
+    zh: "Key Value",
+    variants: ["键值存储"],
+  },
+];
+
+const SKIP_PLAN = new Set([
+  "blueprints",
+  "agentSessions",
+  "agentAutomations",
+  "agent-sessions",
+  "agent-automations",
+]);
+
+describe("zh renders each glossary term one way (w4/646)", () => {
+  it.each(NAMESPACES)("$name", ({ name, en, zh }) => {
+    const misses: string[] = [];
+    for (const [key, entry] of Object.entries(zh ?? {})) {
+      const english = en?.[key]?.message ?? "";
+      for (const rule of GLOSSARY) {
+        if (!rule.en.test(english)) continue;
+        if (rule.term === "Plan" && SKIP_PLAN.has(name)) continue;
+        const variant = rule.variants.find((v) => entry.message.includes(v));
+        if (variant) {
+          misses.push(`${key} (${rule.term} → ${rule.zh}): ${entry.message}`);
+        }
+      }
+    }
+    expect(misses).toEqual([]);
+  });
+
+  it("forbids 密钥文件 in every zh message", () => {
+    const variant = NAMESPACES.flatMap(({ name, zh }) =>
+      Object.entries(zh ?? {})
+        .filter(([, entry]) => entry.message.includes("密钥文件"))
+        .map(([key]) => `${name}/${key}`),
+    );
     expect(variant).toEqual([]);
   });
 });

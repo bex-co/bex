@@ -346,12 +346,12 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Review section plan group label — databases in the manifest",
   },
   "blueprints.previewKeyValue": {
-    message: "键值存储",
+    message: "Key Value",
     description:
       "Review section plan group label — key-value instances in the manifest",
   },
   "blueprints.previewEnvGroups": {
-    message: "环境变量组",
+    message: "环境组",
     description: "Review section plan group label — env groups in the manifest",
   },
   "blueprints.previewManualSyncNote": {

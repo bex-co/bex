@@ -2,27 +2,27 @@ import type { TranslationEntry } from "@/i18n";
 
 const zhEnvGroups: Record<string, TranslationEntry> = {
   "envGroups.resourceType": {
-    message: "环境变量组",
+    message: "环境组",
     description: "Environment Group resource type used in document titles",
   },
   "envGroups.pageTitle": {
-    message: "环境变量组",
+    message: "环境组",
     description: "Workspace env-groups page title",
   },
   "envGroups.pageDescription": {
-    message: "在多个服务之间共享环境变量和密钥文件。",
+    message: "在多个服务之间共享环境变量和机密文件。",
     description: "Workspace env-groups page subtitle",
   },
   "envGroups.newButton": {
-    message: "新建环境变量组",
+    message: "新建环境组",
     description: "Open the create env-group dialog",
   },
   "envGroups.createTitle": {
-    message: "创建环境变量组",
+    message: "创建环境组",
     description: "Create env-group dialog title",
   },
   "envGroups.createDescription": {
-    message: "现在添加变量、密钥文件和服务关联，或将它们留空。",
+    message: "现在添加变量、机密文件和服务关联，或将它们留空。",
     description: "Create env-group dialog description",
   },
   "envGroups.createVarsTitle": {
@@ -63,7 +63,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
       "Import initial environment variables from dotenv text or file",
   },
   "envGroups.createFilesTitle": {
-    message: "密钥文件",
+    message: "机密文件",
     description: "Initial secret files section title",
   },
   "envGroups.createFilesDescription": {
@@ -87,7 +87,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Initial secret file contents placeholder",
   },
   "envGroups.addInitialFile": {
-    message: "添加密钥文件",
+    message: "添加机密文件",
     description: "Add an initial secret file row",
   },
   "envGroups.createServicesTitle": {
@@ -108,7 +108,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
       "Create dialog waits for a confirmed scope and link candidates",
   },
   "envGroups.createScopeError": {
-    message: "无法加载环境或服务。请重试后再创建环境变量组。",
+    message: "无法加载环境或服务。请重试后再创建环境组。",
     description:
       "Create dialog blocks submission when scope or service lookup fails",
   },
@@ -117,7 +117,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Initial service links empty state",
   },
   "envGroups.noServicesInScope": {
-    message: "该环境中没有服务。服务只能关联到其所在环境中的环境变量组。",
+    message: "该环境中没有服务。服务只能关联到其所在环境中的环境组。",
     description: "Initial service links empty state for the picked scope",
   },
   "envGroups.invalidInitialContents": {
@@ -141,11 +141,11 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Cancel an env-group dialog",
   },
   "envGroups.createSubmit": {
-    message: "创建环境变量组",
+    message: "创建环境组",
     description: "Create env-group submit button",
   },
   "envGroups.emptyTitle": {
-    message: "暂无环境变量组",
+    message: "暂无环境组",
     description: "Workspace env-groups empty-state title",
   },
   "envGroups.emptyBody": {
@@ -211,7 +211,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Repair-required environment-group availability message",
   },
   "envGroups.unavailableTitle": {
-    message: "环境变量组不可用",
+    message: "环境组不可用",
     description: "Secret store unavailable state title",
   },
   "envGroups.unavailableBody": {
@@ -223,11 +223,11 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group forbidden state title",
   },
   "envGroups.forbiddenBody": {
-    message: "你没有查看或管理环境变量组的权限。",
+    message: "你没有查看或管理环境组的权限。",
     description: "Env-group forbidden state body",
   },
   "envGroups.genericTitle": {
-    message: "无法加载环境变量组",
+    message: "无法加载环境组",
     description: "Env-group generic query error title",
   },
   "envGroups.genericBody": {
@@ -243,7 +243,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group editor error body",
   },
   "envGroups.backToList": {
-    message: "返回环境变量组",
+    message: "返回环境组",
     description: "Detail-page back button label",
   },
   "envGroups.renameButton": {
@@ -259,7 +259,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Open Environment Group move dialog",
   },
   "envGroups.moveTitle": {
-    message: "移动环境变量组",
+    message: "移动环境组",
     description: "Environment Group move dialog title",
   },
   "envGroups.moveDescription": {
@@ -271,7 +271,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Submit Environment Group move",
   },
   "envGroups.moveSuccess": {
-    message: "环境变量组已移动",
+    message: "环境组已移动",
     description: "Environment Group move success toast",
   },
   "envGroups.moveError": {
@@ -283,7 +283,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Open Environment Group clone dialog",
   },
   "envGroups.cloneTitle": {
-    message: "克隆环境变量组",
+    message: "克隆环境组",
     description: "Environment Group clone dialog title",
   },
   "envGroups.cloneDescription": {
@@ -307,7 +307,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Environment scope selector placeholder",
   },
   "envGroups.renameTitle": {
-    message: "重命名环境变量组",
+    message: "重命名环境组",
     description: "Rename env-group dialog title",
   },
   "envGroups.renameDescription": {
@@ -327,8 +327,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Delete env-group dialog title",
   },
   "envGroups.deleteDescription": {
-    message:
-      "此操作无法撤销。确定要删除此环境变量组吗？它将从所有服务取消关联。",
+    message: "此操作无法撤销。确定要删除此环境组吗？它将从所有服务取消关联。",
     description: "Delete env-group dialog warning (Render-style copy)",
   },
   "envGroups.deletePrompt": {
@@ -337,7 +336,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
       "Body prompt naming the exact 'sudo delete env group <name>' phrase (rendered bold by SudoCommandField)",
   },
   "envGroups.deleteConfirm": {
-    message: "删除环境变量组",
+    message: "删除环境组",
     description: "Delete env-group confirm button",
   },
   "envGroups.varsTitle": {
@@ -362,7 +361,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Delete env-group variable warning",
   },
   "envGroups.filesTitle": {
-    message: "密钥文件",
+    message: "机密文件",
     description: "Env-group secret-file editor title",
   },
   "envGroups.filesDescription": {
@@ -370,7 +369,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group secret-file editor description",
   },
   "envGroups.filesEmptyTitle": {
-    message: "暂无密钥文件",
+    message: "暂无机密文件",
     description: "Env-group secret-file editor empty title",
   },
   "envGroups.filesEmptyBody": {
@@ -421,11 +420,11 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Warning on an existing incompatible Environment Group link",
   },
   "envGroups.searchPlaceholder": {
-    message: "搜索环境变量组",
+    message: "搜索环境组",
     description: "Environment Group list search placeholder",
   },
   "envGroups.searchLabel": {
-    message: "按名称搜索环境变量组",
+    message: "按名称搜索环境组",
     description: "Accessible Environment Group search label",
   },
   "envGroups.resetSearch": {
@@ -433,7 +432,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Clear Environment Group search",
   },
   "envGroups.noMatchesTitle": {
-    message: "没有匹配的环境变量组",
+    message: "没有匹配的环境组",
     description: "Environment Group search empty-state title",
   },
   "envGroups.noMatchesBody": {
@@ -441,7 +440,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Environment Group search empty-state body",
   },
   "envGroups.colName": {
-    message: "环境变量组名称",
+    message: "环境组名称",
     description: "Environment Group table name column",
   },
   "envGroups.colEnvironment": {
@@ -453,7 +452,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Environment Group table variable-count column",
   },
   "envGroups.colSecretFiles": {
-    message: "密钥文件",
+    message: "机密文件",
     description: "Environment Group table secret-file-count column",
   },
   "envGroups.colUpdated": {
@@ -487,7 +486,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group rename error toast",
   },
   "envGroups.deleteSuccess": {
-    message: "环境变量组已删除",
+    message: "环境组已删除",
     description: "Env-group delete success toast",
   },
   "envGroups.deleteError": {

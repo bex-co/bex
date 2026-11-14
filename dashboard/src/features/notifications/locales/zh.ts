@@ -219,11 +219,11 @@ const zhNotifications: Record<string, TranslationEntry> = {
     description: "Push event",
   },
   "notifications.pushEventKeyValueUnhealthy": {
-    message: "键值存储异常",
+    message: "Key Value 异常",
     description: "Push event",
   },
   "notifications.pushEventKeyValueAvailable": {
-    message: "键值存储已恢复",
+    message: "Key Value 已恢复",
     description: "Push event",
   },
   "notifications.pushEventPostgresBackupFailed": {

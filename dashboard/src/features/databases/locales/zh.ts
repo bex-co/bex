@@ -277,7 +277,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
       "Alert title when the workspace's Postgres creation cap is hit (w7/m9)",
   },
   "databases.capLimitUpgrade": {
-    message: "升级方案",
+    message: "升级套餐",
     description:
       "Upgrade CTA button inside the Postgres cap-limit Alert (w7/m9)",
   },
@@ -1340,7 +1340,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {
-    message: "新方案每月 ${price}。",
+    message: "新套餐每月 ${price}。",
     description:
       "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
   },

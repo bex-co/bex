@@ -138,7 +138,7 @@ const staticRouteCases: Array<
     EnvGroupsRoute,
     { search: {} },
     "Environment Groups",
-    "环境变量组",
+    "环境组",
   ],
   ["Overview", IndexRoute, { search: {} }, "Overview", "概览"],
   [
@@ -167,7 +167,7 @@ const staticRouteCases: Array<
     NewKeyValueRoute,
     { search: {} },
     "New Key Value",
-    "新建键值存储",
+    "新建 Key Value",
   ],
   [
     "new workspace",
@@ -339,10 +339,10 @@ describe("production route heads", () => {
       "orders ・ 数据库 ・ bex Dashboard",
     );
     expect(routeTitle(KeyValueRoute, ready({ name: "cache" }))).toBe(
-      "cache ・ 键值存储 ・ bex Dashboard",
+      "cache ・ Key Value ・ bex Dashboard",
     );
     expect(routeTitle(EnvGroupRoute, ready({ name: "production" }))).toBe(
-      "production ・ 环境变量组 ・ bex Dashboard",
+      "production ・ 环境组 ・ bex Dashboard",
     );
     expect(routeTitle(BlueprintRoute, ready({ name: "platform" }))).toBe(
       "platform ・ 蓝图 ・ bex Dashboard",

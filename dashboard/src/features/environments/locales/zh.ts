@@ -124,12 +124,12 @@ const zhEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.deleteConfirmBody": {
     message:
-      "其环境组会保留但变为未分配：不再属于此环境或项目，仍可在“环境变量组”中找到。此操作无法撤销。",
+      "其环境组会保留但变为未分配：不再属于此环境或项目，仍可在“环境组”中找到。此操作无法撤销。",
     description: "Delete-environment confirmation dialog body",
   },
   "environments.deleteConfirmBodyResources": {
     message:
-      "删除此环境会同时删除其所有服务、数据库和键值存储：{resources}。其环境组会保留但变为未分配：不再属于此环境或项目，仍可在“环境变量组”中找到。此操作无法撤销。",
+      "删除此环境会同时删除其所有服务、数据库和 Key Value：{resources}。其环境组会保留但变为未分配：不再属于此环境或项目，仍可在“环境组”中找到。此操作无法撤销。",
     description:
       "Delete-environment confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
   },
@@ -164,7 +164,7 @@ const zhEnvironments: Record<string, TranslationEntry> = {
       "Manage-resources dialog tab label for the databases checklist",
   },
   "environments.tabKeyValues": {
-    message: "键值存储",
+    message: "Key Value",
     description:
       "Manage-resources dialog tab label for the key-value checklist",
   },
@@ -179,7 +179,7 @@ const zhEnvironments: Record<string, TranslationEntry> = {
       "Manage-resources dialog empty state when the workspace has no databases",
   },
   "environments.manageNoKeyValues": {
-    message: "此工作区暂无可分配的键值存储实例。",
+    message: "此工作区暂无可分配的 Key Value 实例。",
     description:
       "Manage-resources dialog empty state when the workspace has no key-value instances",
   },
@@ -269,18 +269,18 @@ const zhEnvironments: Record<string, TranslationEntry> = {
       "Warning after the database membership was saved but re-reading the environments list failed; the write must not be retried or reported as failed (w4/325)",
   },
   "environments.assignKeyValuesSuccess": {
-    message: "已更新“{name}”的键值存储实例。",
+    message: "已更新“{name}”的 Key Value 实例。",
     description:
       "Toast shown after an environment's key-value instances are updated",
   },
   "environments.assignKeyValuesRefreshFailed": {
     message:
-      "已更新“{name}”的键值存储实例，但列表刷新失败。请重试或重新加载以查看。",
+      "已更新“{name}”的 Key Value 实例，但列表刷新失败。请重试或重新加载以查看。",
     description:
       "Warning after the key-value membership was saved but re-reading the environments list failed; the write must not be retried or reported as failed (w4/263)",
   },
   "environments.assignKeyValuesError": {
-    message: "更新“{name}”的键值存储实例失败。",
+    message: "更新“{name}”的 Key Value 实例失败。",
     description:
       "Toast shown when updating an environment's key-value instances fails",
   },

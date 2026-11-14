@@ -36,11 +36,11 @@ const zhProjects: Record<string, TranslationEntry> = {
     description: "Database resource filter",
   },
   "projects.filterKeyValues": {
-    message: "键值存储",
+    message: "Key Value",
     description: "Key-value resource filter",
   },
   "projects.filterEnvGroups": {
-    message: "环境变量组",
+    message: "环境组",
     description: "Environment-group resource filter",
   },
   "projects.searchLabel": {
@@ -99,7 +99,7 @@ const zhProjects: Record<string, TranslationEntry> = {
     description: "Empty state heading on the unified Projects page",
   },
   "projects.emptyBody": {
-    message: "创建一个服务、数据库或键值存储以开始使用。",
+    message: "创建一个服务、数据库或 Key Value 以开始使用。",
     description: "Empty state body on the unified Projects page",
   },
   "projects.emptyCreateService": {
@@ -119,7 +119,7 @@ const zhProjects: Record<string, TranslationEntry> = {
     description: "New-resource menu item that opens the database create dialog",
   },
   "projects.newKeyValue": {
-    message: "新建键值存储",
+    message: "新建 Key Value",
     description: "New-resource menu item that starts the key value create form",
   },
   "projects.colName": {
@@ -166,11 +166,11 @@ const zhProjects: Record<string, TranslationEntry> = {
     description: "Type badge for a database row in the merged resource table",
   },
   "projects.typeKeyValue": {
-    message: "键值存储",
+    message: "Key Value",
     description: "Type badge for a key value row in the merged resource table",
   },
   "projects.typeEnvGroup": {
-    message: "环境变量组",
+    message: "环境组",
     description: "Type badge for an environment-group row",
   },
   "projects.metadataNotApplicable": {
@@ -217,7 +217,8 @@ const zhProjects: Record<string, TranslationEntry> = {
     description: "New-project dialog title",
   },
   "projects.createDescription": {
-    message: "将服务、数据库和键值存储归类到一起。每个项目都从一个环境开始。",
+    message:
+      "将服务、数据库和 Key Value 归类到一起。每个项目都从一个环境开始。",
     description: "New-project dialog description",
   },
   "projects.fieldName": {
@@ -299,7 +300,7 @@ const zhProjects: Record<string, TranslationEntry> = {
   },
   "projects.deleteCardDescription": {
     message:
-      "项目下的环境及其中的服务、数据库和键值存储将一并删除。其环境组将变为未分组状态。此操作无法撤销。",
+      "项目下的环境及其中的服务、数据库和 Key Value 将一并删除。其环境组将变为未分组状态。此操作无法撤销。",
     description: "Project settings page's danger-zone card description",
   },
   "projects.deleteCardButton": {
@@ -318,7 +319,7 @@ const zhProjects: Record<string, TranslationEntry> = {
   },
   "projects.deleteConfirmBodyResources": {
     message:
-      "删除此项目会同时删除其所有环境及其中的服务、数据库和键值存储：{resources}。其环境组将变为未分组状态，不会被删除。此操作无法撤销。",
+      "删除此项目会同时删除其所有环境及其中的服务、数据库和 Key Value：{resources}。其环境组将变为未分组状态，不会被删除。此操作无法撤销。",
     description:
       "Delete-project confirmation body naming every service, database and key value store it deletes, as the environment delete does (w4/m264, w6/m290, w4/542)",
   },

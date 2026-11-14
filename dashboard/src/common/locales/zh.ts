@@ -116,7 +116,7 @@ const zhCommon: Record<string, TranslationEntry> = {
       "Cancel button in the protected environment confirmation dialog",
   },
   "common.navEnvGroups": {
-    message: "环境变量组",
+    message: "环境组",
     description: "Workspace sidebar link to environment groups",
   },
   "common.appName": {

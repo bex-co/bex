@@ -2,12 +2,12 @@ import type { TranslationEntry } from "@/i18n";
 
 const zhKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.resourceType": {
-    message: "键值存储",
+    message: "Key Value",
     description: "Key Value resource type used in document titles",
   },
   // --- List page stat tiles ---
   "keyvalue.statTotal": {
-    message: "键值存储总数",
+    message: "Key Value 总数",
     description: "Key Value page stat card label",
   },
   "keyvalue.statAvailable": {
@@ -20,7 +20,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   // --- List table ---
   "keyvalue.cardTitle": {
-    message: "键值存储",
+    message: "Key Value",
     description: "Key Value table card title",
   },
   "keyvalue.colName": {
@@ -182,7 +182,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   // --- List states ---
   "keyvalue.errorTitle": {
-    message: "无法加载键值存储",
+    message: "无法加载 Key Value",
     description: "Key Value list error card title",
   },
   "keyvalue.errorBody": {
@@ -190,11 +190,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value list error card body",
   },
   "keyvalue.emptyTitle": {
-    message: "还没有键值存储",
+    message: "还没有 Key Value",
     description: "Key Value list empty state title",
   },
   "keyvalue.emptyBody": {
-    message: "创建你的第一个托管键值存储，它会显示在这里。",
+    message: "创建你的第一个托管 Key Value，它会显示在这里。",
     description: "Key Value list empty state body",
   },
   // --- Row actions / delete ---
@@ -207,11 +207,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Row action: permanently delete the Key Value store",
   },
   "keyvalue.deleteConfirmTitle": {
-    message: "删除键值存储实例",
+    message: "删除 Key Value 实例",
     description: "Delete-confirmation dialog title",
   },
   "keyvalue.deleteConfirmBody": {
-    message: "此操作无法撤销。确定要删除此键值存储实例吗？",
+    message: "此操作无法撤销。确定要删除此 Key Value 实例吗？",
     description:
       "Delete-confirmation dialog body (verbatim Render copy, docs/render-artifacts/key-value.md)",
   },
@@ -225,7 +225,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Delete-confirmation dialog cancel button",
   },
   "keyvalue.deleteConfirm": {
-    message: "删除键值存储实例",
+    message: "删除 Key Value 实例",
     description: "Delete-confirmation dialog confirm button",
   },
   "keyvalue.deleteSuccess": {
@@ -238,11 +238,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   // --- Create form ---
   "keyvalue.createButton": {
-    message: "新建键值存储",
+    message: "新建 Key Value",
     description: "Button that navigates to the create-Key-Value page",
   },
   "keyvalue.createTitle": {
-    message: "新建键值存储",
+    message: "新建 Key Value",
     description: "Create-Key-Value page title",
   },
   "keyvalue.createDescription": {
@@ -319,7 +319,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value page cancel button",
   },
   "keyvalue.createSubmit": {
-    message: "创建键值存储实例",
+    message: "创建 Key Value 实例",
     description: "Create-Key-Value page submit button",
   },
   "keyvalue.createSuccess": {
@@ -332,12 +332,12 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when a create request fails",
   },
   "keyvalue.capLimitTitle": {
-    message: "已达到键值存储上限",
+    message: "已达到 Key Value 上限",
     description:
       "Alert title when the workspace's KV creation cap is hit (w7/m9)",
   },
   "keyvalue.capLimitUpgrade": {
-    message: "升级方案",
+    message: "升级套餐",
     description: "Upgrade CTA button inside the KV cap-limit Alert (w7/m9)",
   },
   // --- Detail metadata ---
@@ -391,7 +391,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Connection-info panel card title",
   },
   "keyvalue.connDescription": {
-    message: "该键值存储的连接字符串。仅在你请求时才会显示——绝不会自动展示。",
+    message:
+      "该 Key Value 的连接字符串。仅在你请求时才会显示——绝不会自动展示。",
     description: "Connection-info panel card description",
   },
   "keyvalue.internalAuthOff": {
@@ -432,11 +433,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Button that clears the revealed connection info",
   },
   "keyvalue.connInternal": {
-    message: "内部键值存储 URL",
+    message: "内部 Key Value URL",
     description: "Connection-info field label (in-cluster redis:// URL)",
   },
   "keyvalue.connExternal": {
-    message: "外部键值存储 URL",
+    message: "外部 Key Value URL",
     description: "Connection-info field label (public rediss:// URL)",
   },
   "keyvalue.connExternalPending": {
@@ -472,23 +473,23 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   // --- Suspend / resume ---
   "keyvalue.dangerDelete": {
-    message: "删除键值存储实例",
+    message: "删除 Key Value 实例",
     description: "Discoverable delete action at the bottom of Key Value Info",
   },
   "keyvalue.actionSuspend": {
-    message: "暂停键值存储实例",
+    message: "暂停 Key Value 实例",
     description: "Suspend action button label",
   },
   "keyvalue.actionResume": {
-    message: "恢复键值存储实例",
+    message: "恢复 Key Value 实例",
     description: "Resume action button label",
   },
   "keyvalue.confirmSuspendTitle": {
-    message: "暂停键值存储实例",
+    message: "暂停 Key Value 实例",
     description: "Suspend-confirmation dialog title",
   },
   "keyvalue.confirmSuspendBody": {
-    message: "确定要暂停此键值存储实例吗？",
+    message: "确定要暂停此 Key Value 实例吗？",
     description: "Suspend-confirmation dialog description",
   },
   "keyvalue.confirmSuspendDetail": {
@@ -572,7 +573,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
       "Restart confirm when the persistence mode could not be read: the typed phrase is still required",
   },
   "keyvalue.planPickerConfirmPrice": {
-    message: "新方案每月 ${price}。",
+    message: "新套餐每月 ${price}。",
     description:
       "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
   },
