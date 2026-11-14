@@ -167,24 +167,49 @@ func TestValidateKeyValueTLSSecret(t *testing.T) {
 }
 
 func TestValidateKeyValueTLSSecretNeedsIssuanceIdentity(t *testing.T) {
+	created := metav1.NewTime(time.Now().Add(-time.Hour))
 	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{
-		Name: "cache", Namespace: "ws", UID: "kv-uid", CreationTimestamp: metav1.NewTime(time.Now()),
+		Name: "cache", Namespace: "ws", UID: "kv-uid", CreationTimestamp: created,
 	}}
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "cache-kv-tls", Namespace: "ws", CreationTimestamp: metav1.NewTime(time.Now())},
-		Type:       corev1.SecretTypeTLS,
+	// issuedSecret carries exactly the cert-manager annotations identity
+	// implies: an empty Host or Issuer leaves that annotation absent, which
+	// reads back as "" and so matches the empty field. Only the empty-identity
+	// guard can refuse such a pair; the annotation comparison cannot.
+	issuedSecret := func(identity keyValueTLSIdentity) *corev1.Secret {
+		annotations := map[string]string{
+			"cert-manager.io/certificate-name": "cache-kv-tls",
+			"cert-manager.io/issuer-kind":      "ClusterIssuer",
+		}
+		if identity.Host != "" {
+			annotations["cert-manager.io/alt-names"] = identity.Host
+		}
+		if identity.Issuer != "" {
+			annotations["cert-manager.io/issuer-name"] = identity.Issuer
+		}
+		return &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "cache-kv-tls", Namespace: "ws", Annotations: annotations,
+				CreationTimestamp: metav1.NewTime(created.Add(time.Minute)),
+			},
+			Type: corev1.SecretTypeTLS,
+		}
+	}
+	complete := keyValueTLSIdentity{Host: "cache.kv.example", Issuer: "letsencrypt"}
+	if err := validateKeyValueTLSSecret(kv, issuedSecret(complete), complete); err != nil {
+		t.Fatalf("control: a Secret issued for a complete identity must be accepted: %v", err)
 	}
 	for _, identity := range []keyValueTLSIdentity{
 		{Issuer: "letsencrypt"},
 		{Host: "cache.kv.example"},
+		{},
 	} {
-		if err := validateKeyValueTLSSecret(kv, secret, identity); err == nil {
+		if err := validateKeyValueTLSSecret(kv, issuedSecret(identity), identity); err == nil {
 			t.Fatalf("want refusal for incomplete identity %+v", identity)
 		}
 	}
 	noLifetime := kv.DeepCopy()
 	noLifetime.CreationTimestamp = metav1.Time{}
-	if err := validateKeyValueTLSSecret(noLifetime, secret, keyValueTLSIdentity{Host: "cache.kv.example", Issuer: "letsencrypt"}); err == nil {
+	if err := validateKeyValueTLSSecret(noLifetime, issuedSecret(complete), complete); err == nil {
 		t.Fatal("want refusal for a KeyValue with no lifetime start")
 	}
 }
