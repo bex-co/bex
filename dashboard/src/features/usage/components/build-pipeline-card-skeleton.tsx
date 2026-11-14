@@ -17,25 +17,33 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  CardTitle,
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useTranslations } from "@/common/hooks/use-translations";
+
+/** The card's static header, shared by the ready card and its skeleton. */
+export function BuildPipelineCardHeader() {
+  const { t } = useTranslations();
+  return (
+    <CardHeader>
+      <CardTitle>{t("usage.pipelineTitle")}</CardTitle>
+      <CardDescription>{t("usage.pipelineDescription")}</CardDescription>
+    </CardHeader>
+  );
+}
 
 /**
- * BuildPipelineCard's pending shape (w6/m309): title, a two-line description,
- * then the limit line beside its action buttons.
+ * BuildPipelineCard's pending shape (w6/m309). The header is static copy, so
+ * it renders as the ready card's text and wraps alike at every width; below
+ * it, the limit line (one text-sm line) and the action buttons (size sm).
  */
 export function BuildPipelineCardSkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-32" />
-        <CardDescription className="space-y-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3" />
-        </CardDescription>
-      </CardHeader>
+    <Card data-testid="build-pipeline-skeleton">
+      <BuildPipelineCardHeader />
       <CardContent className="flex flex-wrap items-center justify-between gap-3">
-        <Skeleton className="h-4 w-44" />
+        <Skeleton className="h-5 w-44" />
         <Skeleton className="h-8 w-28" />
       </CardContent>
     </Card>

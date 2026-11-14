@@ -66,3 +66,35 @@ describe("BuildPipelineCard read failures", () => {
     ).toBeDisabled();
   });
 });
+
+// The pending card renders the same static header copy as the ready one, so
+// both wrap alike at every width and the cards below it do not jump when it
+// loads (w9/097).
+describe("BuildPipelineCard skeleton", () => {
+  it("keeps the ready card's header text and its row of limit and action", () => {
+    mocked.mockReturnValue({
+      spendLimitUsd: null,
+      loading: true,
+      error: undefined,
+      saving: false,
+      save: vi.fn(),
+    });
+    const { unmount } = render(<BuildPipelineCard workspaceId="tea-a" />);
+    const skeleton = screen.getByTestId("build-pipeline-skeleton");
+    const pendingHeader = skeleton.querySelector(
+      '[data-slot="card-header"]',
+    )?.textContent;
+    unmount();
+
+    settings(null);
+    const { container } = render(<BuildPipelineCard workspaceId="tea-a" />);
+    const readyHeader = container.querySelector(
+      '[data-slot="card-header"]',
+    )?.textContent;
+    expect(pendingHeader).toBeTruthy();
+    expect(pendingHeader).toBe(readyHeader);
+    expect(
+      skeleton.querySelector('[data-slot="card-content"]')?.className,
+    ).toBe(container.querySelector('[data-slot="card-content"]')?.className);
+  });
+});

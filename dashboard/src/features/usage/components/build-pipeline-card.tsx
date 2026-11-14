@@ -14,13 +14,7 @@
 
 import { useState } from "react";
 import { Button } from "@/common/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
+import { Card, CardContent } from "@/common/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +29,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { isForbiddenError } from "@/common/lib/graphql-error";
 import { usePipelineSettings } from "@/features/usage/hooks/use-pipeline-settings";
 import { money } from "@/features/usage/lib/charges";
-import { BuildPipelineCardSkeleton } from "./build-pipeline-card-skeleton";
+import {
+  BuildPipelineCardHeader,
+  BuildPipelineCardSkeleton,
+} from "./build-pipeline-card-skeleton";
 
 /** A dollar amount with at most two decimals, as the API accepts it. */
 const DOLLARS = /^\d+(\.\d{1,2})?$/;
@@ -68,10 +65,7 @@ export function BuildPipelineCard({ workspaceId }: { workspaceId: string }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t("usage.pipelineTitle")}</CardTitle>
-        <CardDescription>{t("usage.pipelineDescription")}</CardDescription>
-      </CardHeader>
+      <BuildPipelineCardHeader />
       <CardContent className="flex flex-wrap items-center justify-between gap-3">
         <p className={unreadable ? "text-sm text-destructive" : "text-sm"}>
           {unreadable
