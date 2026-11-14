@@ -439,6 +439,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **320** — [An unknown or deleted service's `*.onbex.co` host answers a bex-styled negotiated 404 page and skips the HTTPS redirect, where Render answers a plain-text `404 Not Found` after redirecting to HTTPS](320.md) (~30m) ← `/qa-find-bugs-cli` sweep 83e1 2026-11-13, minor.
+  - **Render:** a nonexistent host 301s `http`→`https`, then answers `404 text/plain` `Not Found` with `nosniff` and `x-render-routing: no-server` for every `Accept`.
+  - **bex:**
+    - the activator (`writeUnknownHostResponse`, `main.go:411`) negotiates an HTML page, JSON or "There is no service at this address.", sends `no-store` and no `nosniff`;
+    - the `platform-host-fallback` Ingress has no HTTPS redirect.
+  - **Fix:** Render's text 404 for every `Accept`, plus a redirect middleware on the fallback route.
+
 - [ ] **319** — [A static site answers `POST`, `PUT`, `DELETE`, `PATCH` and `OPTIONS` with `405 method not allowed`, where Render answers `200` with an empty body](319.md) (~20m) ← `/qa-find-bugs-cli` sweep bc16 2026-11-13 (bex v0.6.0), minor. Four Render static sites answer all 24 `POST`/`OPTIONS` probes on `/`, a file and a missing path with a bare `200`, `content-length: 0` and no headers. bex answers `405` with `Allow: GET, HEAD` (`serveOtherMethod`, `staticserver.go:402`). Answer 200 with an empty body when no external rewrite claims the request; unknown hosts and w8/184 proxying are unchanged.
 
 - [x] **318** — [A static site answers `/docs/about` with a 301 to `/docs/about/` when it publishes `docs/about/index.html`, where Render serves the page in place with 200](done/318.md) (~30m) ← `/qa-find-bugs-cli` sweep 617f 2026-11-13 (bex v0.6.0), minor. Two Render-hosted Docusaurus sites answer `/docs/about` and `/blog/bun` with 200 and the index's ETag, no `Location`. That is the capture w4/384 left unverified when it chose the 301 (`redirectToDirectory`, `staticserver.go:410`). Serve the index in place, keep w4/384's ordering, and amend ADR029 and ADR018. Ship with 317. **DONE 2026-11-13** with 317: the index is served in place with 200 (no `Location`) ahead of the rules and SPA fallback; ADR029/ADR018 amended. Production check owed after the static-server rolls.
