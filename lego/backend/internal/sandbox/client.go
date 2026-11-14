@@ -146,6 +146,20 @@ type osSandbox struct {
 	} `json:"status"`
 }
 
+// UnmarshalJSON reads a sandbox with one creation time: bex's own stamp where
+// it has one (metadataCreatedAt, w32/020), so every read of it, its views,
+// its record, its lifetime deadline and the idle sweeper agree.
+func (s *osSandbox) UnmarshalJSON(data []byte) error {
+	type plain osSandbox
+	if err := json.Unmarshal(data, (*plain)(s)); err != nil {
+		return err
+	}
+	if at := metadataMicroTime(s.Metadata[metadataCreatedAt]); at != nil {
+		s.Created = at
+	}
+	return nil
+}
+
 // createRequest is the OpenSandbox server's create body (validated against the
 // live API, 2026-07-28): image is an object with a `uri`, `entrypoint` is
 // required when an image is given, and `resourceLimits` is required when no

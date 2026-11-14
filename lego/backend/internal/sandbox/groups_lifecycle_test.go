@@ -275,10 +275,11 @@ func TestIdleSuspensionFreesTheSlot(t *testing.T) {
 	if code, _ := f.create(t, g.ID); code != http.StatusTooManyRequests {
 		t.Fatal("fixture: the group is not full")
 	}
-	// Past its idle window, with the create's lease still running.
+	// Past its idle window, with the create's lease still running. Its age is
+	// bex's own creation stamp (w32/020), which every read reports.
 	f.os.set(id, func(b *fakeBox) {
 		b.metadata[metadataIdleTimeout] = "60"
-		b.created = f.now.Add(-time.Hour)
+		b.metadata[metadataCreatedAt] = stampCreatedAt(f.now.Add(-time.Hour))
 	})
 	if n := f.sweeper.Sweep(context.Background()); n != 1 {
 		t.Fatalf("the sweeper suspended %d sandboxes, want 1", n)

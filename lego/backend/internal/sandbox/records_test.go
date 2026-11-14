@@ -296,3 +296,33 @@ func TestSweeperEndsAbsentSandboxesAndExpiresOldRecords(t *testing.T) {
 		t.Fatalf("GET 31 days after its end = %d %s, want 404", code, body)
 	}
 }
+
+// w32/020: one sandbox has one createdAt. It read OpenSandbox's whole-second
+// Kubernetes time while it ran and bex-api's microsecond clock in its create
+// echo and once it ended. Every read now reports bex's stamp, to the
+// microsecond.
+func TestASandboxReadsOneCreatedAtFromCreateToEnd(t *testing.T) {
+	f := recordsFixture(t)
+	f.now = f.now.Add(762686123 * time.Nanosecond)
+	want := f.now.Truncate(time.Microsecond)
+	sb := f.mustCreate(t, "")
+	reads := map[string]*time.Time{"create echo": sb.CreatedAt}
+	_, running, _ := f.getSandbox(t, "id-a", sb.ID)
+	reads["get while running"] = running.CreatedAt
+	code, body := f.do(t, http.MethodGet, "/v1/sandboxes?ownerId="+f.ws, "")
+	var items []SandboxEnvelope
+	if err := json.Unmarshal([]byte(body), &items); code != http.StatusOK || err != nil || len(items) != 1 {
+		t.Fatalf("list = %d %s", code, body)
+	}
+	reads["list while running"] = items[0].Sandbox.CreatedAt
+	if code, body := f.do(t, http.MethodPost, "/v1/sandboxes/"+sb.ID+"/terminate?ownerId="+f.ws, ""); code != http.StatusNoContent {
+		t.Fatalf("terminate = %d %s", code, body)
+	}
+	_, ended, _ := f.getSandbox(t, "id-a", sb.ID)
+	reads["get once ended"] = ended.CreatedAt
+	for read, got := range reads {
+		if got == nil || !got.Equal(want) {
+			t.Errorf("%s: createdAt = %v, want %v", read, got, want)
+		}
+	}
+}

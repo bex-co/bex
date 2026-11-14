@@ -983,6 +983,7 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	for k, v := range extraMetadata {
 		metadata[k] = v
 	}
+	metadata[metadataCreatedAt] = stampCreatedAt(s.Now())
 	if len(tmpl.Env) > 0 {
 		merged := maps.Clone(tmpl.Env)
 		maps.Copy(merged, env)
@@ -1008,11 +1009,7 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	if raw.Image.URI == "" {
 		raw.Image.URI = tmpl.Image
 	}
-	if raw.Created == nil {
-		// Render requires createdAt; an OpenSandbox create echo may omit it.
-		now := s.Now()
-		raw.Created = &now
-	}
+	raw.Created = metadataMicroTime(metadata[metadataCreatedAt])
 	s.Meter.Observe(ctx, raw)
 	s.Meter.Label(ctx, raw)
 	return s.sandboxView(raw, workspace), nil

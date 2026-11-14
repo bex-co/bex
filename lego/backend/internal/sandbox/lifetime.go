@@ -118,7 +118,28 @@ const (
 	metadataSuspendedAt = "bex.co/suspended-at"
 	// suspendedRetention is how long a suspended sandbox stays resumable.
 	suspendedRetention = 30 * 24 * time.Hour
+	// metadataCreatedAt is the sandbox's creation instant in Unix
+	// microseconds, stamped by bex at create (w32/020). Without it a live read
+	// took OpenSandbox's whole-second Kubernetes time and the create echo and
+	// the ended record bex-api's own clock, so one sandbox read two createdAt
+	// values. Digits only: OpenSandbox keeps metadata as Kubernetes labels.
+	metadataCreatedAt = "bex.co/created-at"
 )
+
+// stampCreatedAt is t as metadataCreatedAt holds it, and the instant every
+// read then reports: whole microseconds, the store's precision.
+func stampCreatedAt(t time.Time) string { return strconv.FormatInt(t.UnixMicro(), 10) }
+
+// metadataMicroTime reads a stamp written by stampCreatedAt; a sandbox
+// created before w32/020 has none, and reads nil.
+func metadataMicroTime(v string) *time.Time {
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n <= 0 {
+		return nil
+	}
+	t := time.UnixMicro(n).UTC()
+	return &t
+}
 
 func stampMetadataTime(t time.Time) string { return strconv.FormatInt(t.Unix(), 10) }
 
