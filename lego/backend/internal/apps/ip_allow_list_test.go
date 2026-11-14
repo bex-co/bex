@@ -503,7 +503,7 @@ func TestMCPSetIPAllowListRejectsConflictingForms(t *testing.T) {
 	}
 	// Any tool error would satisfy IsError above — an unknown argument or a
 	// lookup failure included — so pin the shared guard's message.
-	if text := mcpResultText(result); !strings.Contains(text, "conflicting values") {
+	if text := mcpResultText(result); !strings.Contains(text, "ipAllowList and ipAllowListEntries are set to conflicting values") {
 		t.Fatalf("conflict refusal = %q, want the shared conflicting-forms message", text)
 	}
 }

@@ -22,9 +22,11 @@ func captureSend(t *testing.T) *[]command.ExecutionResult {
 	return &sent
 }
 
-// The exact command path is also the privacy floor: everything after the
-// matched command names belongs to the launched agent (prompts, paths, flags)
-// and must never reach an event, so equality here forbids any argv detail.
+// EmitLaunch forwards the command path it is given, so the exact equality
+// below only rules out the emitter adding argv detail of its own. The privacy
+// floor (nothing after the matched command names, such as prompts, paths or
+// flags, reaches an event) rests on each caller passing cobra's
+// c.CommandPath(), never os.Args.
 func TestEmitLaunchDescribesTheLauncherNotTheAgent(t *testing.T) {
 	sent := captureSend(t)
 	startedAt := time.Now().Add(-250 * time.Millisecond)

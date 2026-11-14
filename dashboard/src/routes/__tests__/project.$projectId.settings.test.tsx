@@ -82,7 +82,7 @@ function renderSettingsPage(projectId = "prj-1") {
     }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 beforeEach(() => {
@@ -119,11 +119,19 @@ describe("ProjectSettingsPage", () => {
   });
 
   it("renders nothing for an unknown project id — the layout's redirect home is in flight (w9/m55)", async () => {
-    renderSettingsPage("prj-missing");
+    const { container, router } = renderSettingsPage("prj-missing");
 
-    await waitFor(() =>
-      expect(screen.queryByText("Project Name")).not.toBeInTheDocument(),
-    );
+    // An absence check passes before the route has rendered at all, so first
+    // wait until the settings match has loaded and the router is idle.
+    await waitFor(() => {
+      expect(router.state.status).toBe("idle");
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: "/project/$projectId/settings",
+        status: "success",
+      });
+    });
+    // Neither the settings cards nor the query-error message.
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("renames the project through the inline Edit control", async () => {

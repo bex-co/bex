@@ -119,6 +119,13 @@ describe("Encode Utility", () => {
         "bGluZTEKbGluZTIJY29sdW1u",
       );
     });
+
+    it("should encode multibyte characters as their UTF-8 bytes", () => {
+      // Also pinned with Node's Buffer: a symmetric bug (say, encoding UTF-16
+      // code units) would still round-trip through base64Decode.
+      expect(base64Encode("你好世界")).toBe("5L2g5aW95LiW55WM");
+      expect(base64Encode("Hello 🍕 World")).toBe("SGVsbG8g8J+NlSBXb3JsZA==");
+    });
   });
 
   describe("base64Decode (UTF-8 safe)", () => {

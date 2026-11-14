@@ -72,13 +72,11 @@ func TestScanExcludesNothingListeningOnTheScannedAddress(t *testing.T) {
 }
 
 // An address nothing answers on is reported as unreachable, not as "no ports".
-// A dial that never gets a refusal is the same evidence a dropping path gives,
-// and it does not depend on the test host's routing to TEST-NET-1.
+// Every probe runs into its own dial timeout, as on a path that drops packets:
+// a timeout is no refusal, so it must not read as "nothing listening". The
+// injected dialer does not depend on the test host's routing to TEST-NET-1.
 func TestScanReportsAnUnreachableAddress(t *testing.T) {
-	dial := func(context.Context, string) (net.Conn, error) {
-		return nil, syscall.EHOSTUNREACH
-	}
-	got, err := Dialer{Low: 1, High: 40, dial: dial}.Scan(context.Background(), "192.0.2.1")
+	got, err := Dialer{Low: 1, High: 40, dial: droppingDial()}.Scan(context.Background(), "192.0.2.1")
 	if !errors.Is(err, ErrUnreachable) {
 		t.Fatalf("err = %v, want ErrUnreachable", err)
 	}

@@ -18,11 +18,16 @@ package store
 
 import "testing"
 
+// tokLateSHA256 is the sha256 hex of "tok-late", computed outside the subject
+// so it can pin hashInviteToken here and the stored digest in the Postgres
+// suite (TestInviteResendAndTokenAcceptance).
+const tokLateSHA256 = "b2e1ba9e7d363901dda8850fc26ae7a9355f633495edc6e5926d50c5d14f8cff"
+
 // The invite at-rest contract is sha256(token) (w1/041), not merely "some
 // hash the lookups agree with": a pinned known vector fails an identity,
 // truncated or weakened hash that would keep every invite path working.
 func TestHashInviteTokenIsSHA256(t *testing.T) {
-	if got, want := hashInviteToken("tok-late"), "b2e1ba9e7d363901dda8850fc26ae7a9355f633495edc6e5926d50c5d14f8cff"; got != want {
-		t.Fatalf("hashInviteToken(%q) = %q, want sha256 hex %q", "tok-late", got, want)
+	if got := hashInviteToken("tok-late"); got != tokLateSHA256 {
+		t.Fatalf("hashInviteToken(%q) = %q, want sha256 hex %q", "tok-late", got, tokLateSHA256)
 	}
 }
