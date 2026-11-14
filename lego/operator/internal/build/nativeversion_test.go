@@ -162,11 +162,13 @@ func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 
 func TestNativeChoiceNarration(t *testing.T) {
 	c, _ := ResolveNativeVersion("python", map[string]string{"PYTHON_VERSION": "3.11.9"}, files(nil))
-	if got := c.Narration(); got != "==> Using Python 3.11 (from PYTHON_VERSION=3.11.9)" {
+	// Before the resolve phase swaps in an exact image, the narration names
+	// the line's reviewed patch (w4/668).
+	if got := c.Narration(); got != "==> Using Python 3.11.18 (from PYTHON_VERSION=3.11.9)" {
 		t.Errorf("narration = %q", got)
 	}
 	d, _ := ResolveNativeVersion("node", nil, files(nil))
-	if got := d.Narration(); got != "==> Using Node 24 (default)" {
+	if got := d.Narration(); got != "==> Using Node 24.22.1 (default)" {
 		t.Errorf("default narration = %q", got)
 	}
 }

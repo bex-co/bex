@@ -81,6 +81,9 @@ type NativeChoice struct {
 	// narratedVersion is the version the log names when it is not the line: the
 	// Rust toolchain rustup applies inside the line's one image (w8/327).
 	narratedVersion string
+	// lineVersion is the chosen line's reviewed patch: what the build runs
+	// when no exact version replaces it, so the log names it (w4/668).
+	lineVersion string
 }
 
 // Narration is the build-log line that names the choice and its source.
@@ -95,6 +98,10 @@ func (c NativeChoice) Narration() string {
 	version := c.Line
 	if c.narratedVersion != "" {
 		version = c.narratedVersion
+	} else if strings.HasPrefix(c.lineVersion, c.Line+".") {
+		// The line's reviewed patch, not the bare line: Render's log names
+		// the exact interpreter (w4/668).
+		version = c.lineVersion
 	}
 	if c.otp != "" {
 		version += " on Erlang/OTP " + c.otp
@@ -175,6 +182,9 @@ var renderDefaults20261103 = time.Date(2026, time.November, 3, 0, 0, 0, 0, time.
 func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
 	choice, err := resolveNativeLine(created, runtime, env, readFile)
 	if err == nil {
+		if line, ok := nativeToolchains[runtime].find(choice.Line); ok {
+			choice.lineVersion = line.version
+		}
 		choice.Exact = exactRequest(nativeToolchains[runtime], choice, readFile)
 		if choice.Exact == "" {
 			choice.Exact = defaultExact(created, runtime, choice)

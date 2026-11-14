@@ -198,7 +198,7 @@ func TestExactVersionFallsBackToTheReviewedPatch(t *testing.T) {
 				t.Errorf("Dockerfile left the reviewed image:\n%s", dockerfile)
 			}
 			narration := choices[0].Narration()
-			if !strings.Contains(narration, "Using Python 3.11 ") || !strings.Contains(narration, "python:3.11.9-bookworm") {
+			if !strings.Contains(narration, "Using Python "+line.version+" ") || !strings.Contains(narration, "python:3.11.9-bookworm") {
 				t.Errorf("narration %q does not explain the fallback", narration)
 			}
 		})
@@ -328,6 +328,10 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 	// services created since 2026-11-03; one created before keeps 3.14.8.
 	if c := run(renderDefaults20261103.Add(time.Hour), nil); c.Line != "3.14" || c.Image != reviewed.image || reviewed.version != "3.14.10" {
 		t.Errorf("service created after 2026-11-03 must build on the reviewed 3.14.10: %+v (reviewed %s)", c, reviewed.version)
+	}
+	// …and its log names that exact patch, not the bare line (w4/668).
+	if c := run(renderDefaults20261103.Add(time.Hour), nil); c.Narration() != "==> Using Python 3.14.10 (default)" {
+		t.Errorf("narration = %q, want the exact 3.14.10", c.Narration())
 	}
 	if c := run(renderDefaults20261103.Add(-time.Hour), nil); c.Line != "3.14.8" {
 		t.Errorf("service created just before 2026-11-03 must keep 3.14.8: %+v", c)
