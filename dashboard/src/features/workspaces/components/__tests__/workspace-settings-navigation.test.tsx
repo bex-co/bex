@@ -13,6 +13,8 @@ describe("WorkspaceSettingsNavigation", () => {
 
     const expected: [string, string][] = [
       ["General", "#general"],
+      // w9/m388: every member's page has the workspace's inbound IP rules.
+      ["Inbound IP Rules", "#inbound-ip-rules"],
       ["Team", "#team"],
       ["Notifications", "#notifications"],
       ["Agents", "#agents"],

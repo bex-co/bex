@@ -6,6 +6,8 @@ import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace-details-card";
+import { WorkspaceIPRulesCard } from "@/features/workspaces/components/workspace-ip-rules-card";
+import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/workspace-ip-rules-card-skeleton";
 import { BuildPipelineCard } from "@/features/usage/components/build-pipeline-card";
 import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -125,6 +127,9 @@ function WorkspaceSettingsPage() {
                     <BuildPipelineCardSkeleton />
                   </section>
                 ) : null}
+                <section data-skeleton-region="inbound-ip-rules">
+                  <WorkspaceIPRulesCardSkeleton />
+                </section>
                 <section data-skeleton-region="team">
                   <TeamPanelSkeleton />
                 </section>
@@ -181,6 +186,18 @@ function WorkspaceSettingsPage() {
                     <BuildPipelineCard workspaceId={currentWorkspace.id} />
                   </section>
                 ) : null}
+                {/* Workspace Settings → Inbound IP Rules (w9/m388): Render's
+                    workspace-level rules (Scale and Enterprise), every member
+                    reads them and Admins edit them. */}
+                <section
+                  id="inbound-ip-rules"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
+                  <WorkspaceIPRulesCard
+                    workspace={currentWorkspace}
+                    onChangePlan={() => setChangePlanOpen(true)}
+                  />
+                </section>
                 {/* Team management lives here (w1/m33/t006) — members are
                     workspace-scoped objects, and this is where Render puts them;
                     it lived on account /settings from w4/m12 until now. */}

@@ -19,6 +19,7 @@ package workspaces
 import (
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -29,21 +30,47 @@ import (
 // REST owners read endpoints + MCP tools are w6/m2, not a REST mutation surface
 // here. Every resolver delegates to the Service; the schema is presentation.
 
-// workspaceGQLType renders WorkspaceView. Fields follow Render's owner/workspace
+// workspaceType renders WorkspaceView. Fields follow Render's owner/workspace
 // vocabulary (id, name — the freeform display name — plan) plus the caller's
 // role and bex's slug (the unique typable key, w3/m246); the REST owner shape
-// in w6/m2 maps the same view.
-var workspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
-	Name: "Workspace",
-	Fields: graphql.Fields{
-		"id":        gqlutil.StrField(func(w WorkspaceView) any { return w.ID }),
-		"name":      gqlutil.StrField(func(w WorkspaceView) any { return w.Name }),
-		"slug":      gqlutil.StrField(func(w WorkspaceView) any { return w.Slug }),
-		"plan":      gqlutil.StrField(func(w WorkspaceView) any { return w.Plan }),
-		"role":      gqlutil.StrField(func(w WorkspaceView) any { return w.Role }),
-		"createdAt": gqlutil.StrField(func(w WorkspaceView) any { return w.CreatedAt }),
-	},
-})
+// in w6/m2 maps the same view. Built once per Service, so the one schema the
+// query and mutation fragments both contribute to holds one Workspace type.
+func (s *Service) workspaceType() *graphql.Object {
+	s.gqlWorkspaceOnce.Do(func() {
+		s.gqlWorkspace = graphql.NewObject(graphql.ObjectConfig{
+			Name: "Workspace",
+			Fields: graphql.Fields{
+				"id":        gqlutil.StrField(func(w WorkspaceView) any { return w.ID }),
+				"name":      gqlutil.StrField(func(w WorkspaceView) any { return w.Name }),
+				"slug":      gqlutil.StrField(func(w WorkspaceView) any { return w.Slug }),
+				"plan":      gqlutil.StrField(func(w WorkspaceView) any { return w.Plan }),
+				"role":      gqlutil.StrField(func(w WorkspaceView) any { return w.Role }),
+				"createdAt": gqlutil.StrField(func(w WorkspaceView) any { return w.CreatedAt }),
+				// ipAllowList is the workspace's inbound IP rules (w9/m388),
+				// Render's owner.ipAllowList: what an Admin saved, or the seeded
+				// allow-all for a workspace that never saved any; an empty list
+				// is deny-all. Read only when selected, so the polled workspaces
+				// list never pays for it. Every resolver returning a Workspace
+				// authorized the caller on it first.
+				"ipAllowList": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryType))),
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						w, _ := p.Source.(WorkspaceView)
+						if w.IPAllowList != nil {
+							return w.IPAllowList, nil
+						}
+						views, err := s.withIPAllowLists(p.Context, []WorkspaceView{w})
+						if err != nil {
+							return nil, err
+						}
+						return views[0].IPAllowList, nil
+					},
+				},
+			},
+		})
+	})
+	return s.gqlWorkspace
+}
 
 var pipelineSettingsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "PipelineSettings",
@@ -109,8 +136,18 @@ var resourceLimitsGQLType = graphql.NewObject(graphql.ObjectConfig{
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"workspaces": &graphql.Field{
-			Type:    graphql.NewList(workspaceGQLType),
+			Type:    graphql.NewList(s.workspaceType()),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context) },
+		},
+		// workspace is one workspace the caller belongs to (can_view), Render's
+		// GET /v1/owners/{ownerId}: what Workspace Settings reads the inbound IP
+		// rules through (w9/m388), so the polled workspaces list stays lean.
+		"workspace": &graphql.Field{
+			Type: s.workspaceType(),
+			Args: graphql.FieldConfigArgument{"id": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetWorkspace(p.Context, p.Args["id"].(string))
+			},
 		},
 		"workspaceCreationPolicy": &graphql.Field{
 			Type: workspaceCreationPolicyGQLType,
@@ -168,7 +205,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		"finalizeWorkspaceCreation": &graphql.Field{
-			Type: workspaceGQLType,
+			Type: s.workspaceType(),
 			Args: graphql.FieldConfigArgument{"attemptId": gqlutil.ReqArg(graphql.String)},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.FinalizeWorkspaceCreation(p.Context, p.Args["attemptId"].(string))
@@ -185,7 +222,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		"createWorkspace": &graphql.Field{
-			Type: workspaceGQLType,
+			Type: s.workspaceType(),
 			Args: graphql.FieldConfigArgument{
 				"name": gqlutil.ReqArg(graphql.String),
 				"plan": gqlutil.Arg(graphql.String),
@@ -195,7 +232,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.Create(p.Context, p.Args["name"].(string), plan)
 			},
 		},
-		"renameWorkspace": gqlutil.ArgMutation(workspaceGQLType, "name", s.Rename),
+		"renameWorkspace": gqlutil.ArgMutation(s.workspaceType(), "name", s.Rename),
+		// setWorkspaceIPAllowList replaces the workspace's inbound IP rules
+		// (w9/m388): Admin only, Scale and Enterprise (PLAN_FEATURE_REQUIRED
+		// below), an empty list is deny-all. GraphQL-only: Render's REST owners
+		// surface is read-only and its MCP has no workspace mutations.
+		"setWorkspaceIPAllowList": &graphql.Field{
+			Type: s.workspaceType(),
+			Args: graphql.FieldConfigArgument{
+				"id":          gqlutil.ReqArg(graphql.String),
+				"ipAllowList": gqlutil.ReqArg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetIPAllowList(p.Context, p.Args["id"].(string), core.ProvidedAllowList(gqlutil.AllowList(p.Args["ipAllowList"])))
+			},
+		},
 		// setPipelineSpendLimit sets the workspace's monthly pipeline spend
 		// limit, or removes it when spendLimitUsd is null or left out (w6/m309).
 		"setPipelineSpendLimit": &graphql.Field{
@@ -218,7 +269,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			// Render's REST owners surface has no plan-mutation endpoint and its
 			// MCP has no workspace mutations, so REST/MCP deliberately gain
 			// nothing here (parity by absence).
-			Type: workspaceGQLType,
+			Type: s.workspaceType(),
 			Args: graphql.FieldConfigArgument{
 				"id":   gqlutil.ReqArg(graphql.String),
 				"plan": gqlutil.ReqArg(graphql.String),

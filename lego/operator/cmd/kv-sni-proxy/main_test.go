@@ -124,6 +124,48 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	}
 }
 
+// TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow pins w9/m388:
+// the workspace layer is a third AND on the Key Value front door.
+func TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow(t *testing.T) {
+	router := newRouter("kv.bex.co")
+	kv := &appv1alpha1.KeyValue{}
+	kv.Name = "kv-ws"
+	kv.Namespace = "tea-one"
+	kv.Labels = map[string]string{labelWorkspace: "tea-one"}
+	kv.Spec.Public = true
+	kv.Status.ExternalHost = "kv-ws.kv.bex.co"
+	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
+	kv.Spec.EnvironmentIPAllowList = []string{"203.0.113.0/28"}
+	source := netip.MustParseAddr("203.0.113.9")
+	for _, tc := range []struct {
+		name string
+		ws   []string
+		want bool
+	}{
+		{"absent workspace layer changes nothing", nil, true},
+		{"workspace refuses what service and environment allow", []string{"198.51.100.0/24"}, false},
+		{"workspace admits too", []string{"203.0.113.8/29"}, true},
+		{"deny-all placeholder", []string{"255.255.255.255/32"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			kv.Spec.WorkspaceIPAllowList = tc.ws
+			if err := router.set(kv); err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := router.resolve(kv.Status.ExternalHost, source); ok != tc.want {
+				t.Errorf("resolve(%s) = %v, want %v", source, ok, tc.want)
+			}
+		})
+	}
+	kv.Spec.WorkspaceIPAllowList = []string{"10.0.0.0/99"}
+	if err := router.set(kv); err == nil || router.healthy() {
+		t.Fatalf("an invalid workspace CIDR must fail closed: err=%v healthy=%v", err, router.healthy())
+	}
+	if _, ok := router.resolve(kv.Status.ExternalHost, source); ok {
+		t.Fatal("a store with an invalid workspace layer still routes")
+	}
+}
+
 func TestRouterPrivateAndInvalidCIDRFailClosed(t *testing.T) {
 	router := newRouter("kv.bex.co")
 	pending := &appv1alpha1.KeyValue{}
@@ -199,8 +241,11 @@ func TestPublicProxyPreservesEndToEndTLSAndMetersOnlyBackendWrites(t *testing.T)
 	router.table["kv-one"] = kvRoute{
 		ResourceID: "kv-one",
 		Backend:    backendListener.Addr().String(),
-		Allow:      []netip.Prefix{netip.MustParsePrefix("203.0.113.9/32")},
-		EnvAllow:   []netip.Prefix{netip.MustParsePrefix("203.0.113.0/24")},
+		Allow: sniproxy.AllowLayers{
+			Own:         []netip.Prefix{netip.MustParsePrefix("203.0.113.9/32")},
+			Environment: []netip.Prefix{netip.MustParsePrefix("203.0.113.0/24")},
+			Workspace:   []netip.Prefix{netip.MustParsePrefix("203.0.113.0/28")},
+		},
 	}
 	proxyListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

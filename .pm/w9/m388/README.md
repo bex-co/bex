@@ -1,17 +1,17 @@
 # w9 · m388 — Workspace-level inbound IP rules, as on Render Scale and Enterprise
 
-**Worker:** worker9 **Goal:** a Scale or Enterprise workspace's Admin sets inbound IP rules for the whole workspace; they apply to every web service, static site, Postgres and Key Value in it, on top of environment and service rules (a source must pass every layer), and `GET /v1/owners` returns them as Render's `ipAllowList`. **Status:** todo
+**Worker:** worker9 **Goal:** a Scale or Enterprise workspace's Admin sets inbound IP rules for the whole workspace; they apply to every web service, static site, Postgres and Key Value in it, on top of environment and service rules (a source must pass every layer), and `GET /v1/owners` returns them as Render's `ipAllowList`. **Status:** todo (t001, t002, t003, t004, t005, t006 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | ADR032: the workspace layer replaces the deferral; ADR018 gains the row | 45m | — |
-| [t002](t002.md) | Store and core: workspace rules, Admin-only, Scale-gated, seeded allow-all | 60m | t001 |
-| [t003](t003.md) | Types and operator: a workspace-layer field on App, Database and KeyValue, chained as a third HTTP and SNI middleware | 150m | t002 |
-| [t004](t004.md) | Fan-out: a rule change reaches every eligible resource; new resources inherit it | 90m | t003 |
-| [t005](t005.md) | REST, GraphQL and MCP: `ipAllowList` on owners, a GraphQL setter, and an audit event | 90m | t004 |
-| [t006](t006.md) | Dashboard: Workspace Settings → Inbound IP Rules | 90m | t005 |
+| [t001](done/t001.md) | ADR032: the workspace layer replaces the deferral; ADR018 gains the row — **DONE** | 45m | — |
+| [t002](done/t002.md) | Store and core: workspace rules, Admin-only, Scale-gated, seeded allow-all — **DONE** | 60m | t001 |
+| [t003](done/t003.md) | Types and operator: a workspace-layer field on App, Database and KeyValue, chained as a third HTTP and SNI middleware — **DONE** | 150m | t002 |
+| [t004](done/t004.md) | Fan-out: a rule change reaches every eligible resource; new resources inherit it — **DONE** | 90m | t003 |
+| [t005](done/t005.md) | REST, GraphQL and MCP: `ipAllowList` on owners, a GraphQL setter, and an audit event — **DONE** | 90m | t004 |
+| [t006](done/t006.md) | Dashboard: Workspace Settings → Inbound IP Rules — **DONE** | 90m | t005 |
 | [t007](t007.md) | Live check on production: a workspace rule refuses a source that environment and service rules allow | 60m | t006 |
 | [t008](t008.md) | Render parity: every surface this milestone touched agrees, and matches render.com | 20m | t007 |
 | [t009](t009.md) | Simplify | 15m | t008 |

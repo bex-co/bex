@@ -120,6 +120,62 @@ func TestExtractSNI_InvalidInputs(t *testing.T) {
 	}
 }
 
+// TestRouterResolveWorkspaceLayer pins w9/m388: the workspace layer is a third
+// AND. A source the database's own rules and its environment admit is refused
+// once the workspace's rules leave it out, on every hostname variant; the
+// deny-all placeholder an empty workspace rule list projects refuses
+// everyone; clearing the layer restores the route.
+func TestRouterResolveWorkspaceLayer(t *testing.T) {
+	r := newRouter("db.bex.co")
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mydb", Namespace: "tenant-ns", Labels: map[string]string{labelWorkspace: "tea-one"},
+		},
+		Spec: appv1alpha1.DatabaseSpec{
+			Public: true, Pooler: true,
+			ReadReplicas:           []appv1alpha1.DatabaseReadReplica{{Name: "east"}},
+			IPAllowList:            []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}},
+			EnvironmentIPAllowList: []string{"203.0.113.0/28"},
+			WorkspaceIPAllowList:   []string{"198.51.100.0/24"},
+		},
+	}
+	source := netip.MustParseAddr("203.0.113.9")
+	set := func() {
+		t.Helper()
+		if err := r.set(db); err != nil {
+			t.Fatal(err)
+		}
+	}
+	set()
+	for _, sni := range []string{"mydb.db.bex.co", "mydb-pool.db.bex.co", "mydb-ro-east.db.bex.co"} {
+		if _, ok := r.resolve(sni, source); ok {
+			t.Errorf("resolve(%s) admitted a source the workspace layer refuses", sni)
+		}
+	}
+	db.Spec.WorkspaceIPAllowList = []string{"203.0.113.8/29"}
+	set()
+	if _, ok := r.resolve("mydb.db.bex.co", source); !ok {
+		t.Error("a source every layer admits did not resolve")
+	}
+	db.Spec.WorkspaceIPAllowList = []string{"255.255.255.255/32"}
+	set()
+	if _, ok := r.resolve("mydb.db.bex.co", source); ok {
+		t.Error("the workspace deny-all placeholder admitted a source")
+	}
+	db.Spec.WorkspaceIPAllowList = nil
+	set()
+	if _, ok := r.resolve("mydb.db.bex.co", source); !ok {
+		t.Error("clearing the workspace layer did not restore the route")
+	}
+	db.Spec.WorkspaceIPAllowList = []string{"broken"}
+	if err := r.set(db); err == nil || r.healthy() {
+		t.Error("an invalid workspace allowlist must fail source health")
+	}
+	if _, ok := r.resolve("mydb.db.bex.co", source); ok {
+		t.Error("a database with an invalid workspace layer still routes")
+	}
+}
+
 func TestRouterResolve(t *testing.T) {
 	r := newRouter("db.bex.co")
 	db := &appv1alpha1.Database{
@@ -217,6 +273,17 @@ func TestRouterResolve(t *testing.T) {
 	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("198.51.100.9")); !ok {
 		t.Error("legacy public/empty resource lost its unrestricted route")
 	}
+	if err := r.set(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("203.0.113.9")); !ok {
+		t.Error("clearing the workspace layer did not restore the route")
+	}
+	db.Spec.WorkspaceIPAllowList = []string{"broken"}
+	if err := r.set(db); err == nil {
+		t.Error("an invalid workspace allowlist must fail source health")
+	}
+	db.Spec.WorkspaceIPAllowList = nil
 	db.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "broken"}}
 	if err := r.set(db); err == nil {
 		t.Error("invalid allowlist must fail source health")

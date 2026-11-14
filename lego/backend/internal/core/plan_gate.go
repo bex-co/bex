@@ -214,11 +214,31 @@ func (b *Base) WorkspacePlanOf(ctx context.Context, workspaceID string) (plan st
 
 // RequirePlanFeature refuses a workspace whose plan does not include feature.
 func (b *Base) RequirePlanFeature(ctx context.Context, workspaceID string, feature PlanFeature) error {
+	return b.requirePlanFeature(ctx, workspaceID, "", feature)
+}
+
+// requirePlanFeature is RequirePlanFeature with the refusal naming field.
+func (b *Base) requirePlanFeature(ctx context.Context, workspaceID, field string, feature PlanFeature) error {
 	plan, ok, err := b.WorkspacePlanOf(ctx, workspaceID)
 	if err != nil || !ok || PlanAllows(plan, feature) {
 		return err
 	}
-	return NewPlanFeatureError("", plan, feature)
+	return NewPlanFeatureError(field, plan, feature)
+}
+
+// RequireWorkspaceInboundIPRules refuses a workspace inbound IP rule change
+// below the Scale plan (w9/m388; Render: Scale and Enterprise only) with the
+// coded refusal every plan-gated feature uses: PLAN_FEATURE_REQUIRED,
+// params.feature "inboundIPRules". As for environment rules (w8/m137), a
+// change that restricts nothing — the allow-all pair — and re-sending the
+// stored list are always accepted, so a downgraded workspace keeps enforcing
+// what it saved and can always reset to allow-all, but cannot set new
+// restrictions.
+func (b *Base) RequireWorkspaceInboundIPRules(ctx context.Context, workspaceID string, next, current []IPAllowListEntry) error {
+	if !RestrictsInbound(next) || slices.Equal(next, current) {
+		return nil
+	}
+	return b.requirePlanFeature(ctx, workspaceID, "ipAllowList", FeatureInboundIPRules)
 }
 
 // RequireNetworkIsolation refuses turning environment network isolation on

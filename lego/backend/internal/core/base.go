@@ -408,6 +408,10 @@ type Base struct {
 	// Plans reads a workspace's plan for plan-gated features (w8/m137). nil
 	// leaves them open, the store-off degrade.
 	Plans WorkspacePlanReader
+	// WorkspaceIPRules reads a workspace's stored inbound-IP rules, the layer
+	// every create path stamps (w9/m388, WorkspaceIPLayer). nil means no
+	// workspace has a layer, the store-off degrade.
+	WorkspaceIPRules WorkspaceIPRulesReader
 	// Payment gates only mutations whose target tier is non-free. nil preserves
 	// the pre-ADR046 behavior exactly (BEX_REQUIRE_PAYMENT_METHOD unset).
 	Payment PaymentGate

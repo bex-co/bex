@@ -990,6 +990,21 @@ spec:
                 - static_site
                 - build_source
                 type: string
+              workspaceIPAllowList:
+                description: |-
+                  WorkspaceIPAllowList is the workspace-layer inbound-IP rule set
+                  (w9/m388) — written only by the workspace fan-out and stamped at create,
+                  rendered as a THIRD Traefik Middleware chained with the service and
+                  environment layers on the same Ingress, so a source must pass every
+                  layer (Render: "an inbound IP must be allowed by each level's rules").
+                  Empty means no workspace layer (the workspace never set rules); a
+                  workspace with an explicitly empty rule list projects the unmatchable
+                  deny-all placeholder instead (the backend projects policy; this field is
+                  mechanism). Same eligibility as IPAllowList: web_service and static_site
+                  only.
+                items:
+                  type: string
+                type: array
             type: object
             x-kubernetes-validations:
             - message: spec.type is immutable; delete and recreate the service to

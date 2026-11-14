@@ -3,6 +3,7 @@ import {
   Bot,
   Hammer,
   KeyRound,
+  Network,
   ScrollText,
   Settings2,
   TriangleAlert,
@@ -44,6 +45,11 @@ export function WorkspaceSettingsNavigation({
           },
         ]
       : []),
+    {
+      href: "#inbound-ip-rules",
+      label: t("workspaces.ipRulesTitle"),
+      icon: Network,
+    },
     { href: "#team", label: t("team.title"), icon: Users },
     {
       href: "#notifications",

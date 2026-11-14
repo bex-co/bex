@@ -290,6 +290,10 @@ const (
 	// enclosing SetServices verbs' own fan-out rows remain non-events.
 	AuditVerbProjectServiceMoved     = "projects.MoveService"
 	AuditVerbEnvironmentServiceMoved = "environments.MoveService"
+	// AuditVerbSetWorkspaceIPAllowList is a workspace's inbound IP rules
+	// change (w9/m388), recorded once after the rules are saved — Render's
+	// UpdateIPAllowListEvent.
+	AuditVerbSetWorkspaceIPAllowList = "workspaces.SetIPAllowList"
 	// AuditVerbSetPlanEdgeCache is apps.SetPlan's edge-cache effect (w9/088),
 	// and that of a Blueprint sync or deploy that changes the plan (w9/091).
 	// Edge caching needs a paid plan, so a plan change to Free turns a saved

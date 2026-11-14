@@ -809,6 +809,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 
 	var errs []error
 	seen := make(map[string]bool, len(desired))
+	workspaceLayers := map[string][]string{}
 	for _, d := range desired {
 		d.ReadAt = specReadAt
 		seen[d.ID] = true
@@ -819,7 +820,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		open := openByApp[d.ID]
 		cur, ok := byID[d.ID]
 		if !ok {
-			if err := r.Client.Create(ctx, r.projectApp(ctx, d)); err != nil {
+			if err := r.createApp(ctx, d, workspaceLayers); err != nil {
 				errs = append(errs, fmt.Errorf("create App %s/%s: %w", d.TenantName, d.Name, err))
 			}
 			r.settleAbandonedDeploys(ctx, d, open)
@@ -2674,6 +2675,28 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp, identity string) bool {
 // and the row has a Repo, it mints the clone Secret so the first build from a
 // private repo authenticates without a separate API trigger. Minting errors are
 // soft (logged, CR still created) so a GitHub outage never blocks projection.
+// createApp creates the CR of a row that has none. A web service or static
+// site is born with its workspace's inbound-IP layer (w9/m388), read once per
+// workspace per pass (layers) and only on this path: like the environment
+// layer, later changes belong to the workspace fan-out, not the resync. A
+// failed read creates nothing this pass rather than a CR outside the rules.
+func (r *Reconciler) createApp(ctx context.Context, d DesiredApp, layers map[string][]string) error {
+	app := r.projectApp(ctx, d)
+	if app.Spec.PubliclyRoutable() {
+		layer, ok := layers[d.TenantID]
+		if !ok {
+			rules, _ := r.Store.(core.WorkspaceIPRulesReader)
+			var err error
+			if layer, err = core.ReadWorkspaceIPLayer(ctx, rules, d.TenantID); err != nil {
+				return err
+			}
+			layers[d.TenantID] = layer
+		}
+		app.Spec.WorkspaceIPAllowList = slices.Clone(layer)
+	}
+	return r.Client.Create(ctx, app)
+}
+
 func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.App {
 	ns := namespaceFor(d)
 	a := &appv1alpha1.App{

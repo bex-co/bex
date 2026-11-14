@@ -281,13 +281,15 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 				Image: "ghcr.io/example/tcp:v1", Port: 3000,
 			}},
 			{name: "converge-routed", owns: []string{"Deployment", "Service", "Ingress", "Middleware"}, spec: appv1alpha1.AppSpec{
-				// Ingress + both ipAllowList middlewares + the websocket meter
-				// middleware + a projected secret-files volume, so the Traefik
-				// middleware projection and the volume defaults are covered too.
+				// Ingress + all three ipAllowList middlewares (service,
+				// environment, workspace) + the websocket meter middleware + a
+				// projected secret-files volume, so the Traefik middleware
+				// projection and the volume defaults are covered too.
 				Image: "ghcr.io/example/routed:v1", Port: 8080, Expose: true,
 				Hosts:                  []string{"routed.example.test"},
 				IPAllowList:            []string{"10.0.0.0/8"},
 				EnvironmentIPAllowList: []string{"192.168.0.0/16"},
+				WorkspaceIPAllowList:   []string{"198.51.100.0/24"},
 				FilesFromSecrets:       []string{"routed-files"},
 			}},
 			{name: "converge-worker", owns: []string{"Deployment"}, spec: appv1alpha1.AppSpec{

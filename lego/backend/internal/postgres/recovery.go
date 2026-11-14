@@ -350,6 +350,13 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		newDB.Labels = core.TenantLabels(tenantID)
 	}
 	inheritBoundary(src, newDB, environment)
+	// The recovery is a new resource in the source's workspace, born inside
+	// its inbound-IP rules as every create is (w9/m388).
+	workspaceLayer, err := s.WorkspaceIPLayer(ctx, tenantID)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	newDB.Spec.WorkspaceIPAllowList = workspaceLayer
 	// The shared create invariants, before the billing gate as on create, so a
 	// plan too small for the source's data is refused here instead of failing
 	// mid-restore (w4/360). An inherited plan since retired from the catalog

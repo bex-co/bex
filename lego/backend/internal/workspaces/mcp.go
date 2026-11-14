@@ -30,16 +30,20 @@ import (
 // composition root; there is deliberately no transport-session selection.
 
 // mcpWorkspace is the workspace shape an agent needs to discover a workspaceId.
+// IPAllowList is the workspace's inbound IP rules (w9/m388), Render's
+// owner.ipAllowList: read-only here, as Render's MCP has no workspace
+// mutations.
 type mcpWorkspace struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Slug string `json:"slug"`
-	Plan string `json:"plan,omitempty"`
-	Role string `json:"role,omitempty"`
+	ID          string                  `json:"id"`
+	Name        string                  `json:"name"`
+	Slug        string                  `json:"slug"`
+	Plan        string                  `json:"plan,omitempty"`
+	Role        string                  `json:"role,omitempty"`
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
 }
 
 func toMCPWorkspace(w WorkspaceView) mcpWorkspace {
-	return mcpWorkspace{ID: w.ID, Name: w.Name, Slug: w.Slug, Plan: w.Plan, Role: w.Role}
+	return mcpWorkspace{ID: w.ID, Name: w.Name, Slug: w.Slug, Plan: w.Plan, Role: w.Role, IPAllowList: w.IPAllowList}
 }
 
 type listWorkspacesResult struct {
@@ -50,9 +54,12 @@ type listWorkspacesResult struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_workspaces",
-		Description: "List the workspaces the caller has access to. Pass a returned id as workspaceId on each resource-tool call.",
+		Description: "List the workspaces the caller has access to, each with its inbound IP rules (ipAllowList; the seeded allow-all when none were set). Pass a returned id as workspaceId on each resource-tool call.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listWorkspacesResult, error) {
 		ws, err := s.List(ctx)
+		if err == nil {
+			ws, err = s.withIPAllowLists(ctx, ws)
+		}
 		if err != nil {
 			return nil, listWorkspacesResult{}, err
 		}

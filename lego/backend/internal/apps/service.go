@@ -2110,6 +2110,22 @@ func stampEnvironmentMembership(a *appv1alpha1.App, environment core.Environment
 	}
 }
 
+// stampWorkspaceLayer gives a newborn web service or static site its
+// workspace's inbound-IP layer (w9/m388), on every create path that stamps the
+// environment layer. Render's rules do not cover private services, background
+// workers or cron jobs, which have no public entry point, so they carry none.
+func (s *Service) stampWorkspaceLayer(ctx context.Context, a *appv1alpha1.App, tenantID string) error {
+	if !a.Spec.PubliclyRoutable() {
+		return nil
+	}
+	layer, err := s.WorkspaceIPLayer(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	a.Spec.WorkspaceIPAllowList = layer
+	return nil
+}
+
 // Create writes the App CR for a new service, or updates it in place when one
 // of the same name already exists — the same verb "deploy this" rides (Deploy
 // maps a repo + render.yaml onto a CreateRequest, docs/ADR006-bex-api.md). Repeating the
@@ -2329,6 +2345,9 @@ func (s *Service) createNamed(ctx context.Context, req CreateRequest, desired ap
 	a.Namespace = s.AppNamespace(tenantID)
 	a.Spec = *desired.DeepCopy()
 	stampEnvironmentMembership(a, environment)
+	if err := s.stampWorkspaceLayer(ctx, a, tenantID); err != nil {
+		return AppView{}, err
+	}
 	seed := createSeed{files: req.SecretFiles}
 	// A nil seeder (OpenBao off) keeps the pre-w6/m45 spec-only behavior.
 	if s.CreateSecrets != nil {
@@ -2654,6 +2673,9 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 		return stackAppPlan{}, err
 	}
 	stampEnvironmentMembership(a, environment)
+	if err := s.stampWorkspaceLayer(ctx, a, tenantID); err != nil {
+		return stackAppPlan{}, err
+	}
 	// A Blueprint service's buildSource, resolved by the apply before any
 	// write; a preview leaves a link to a build source the apply has yet to
 	// create unresolved (its rules were checked at parse).

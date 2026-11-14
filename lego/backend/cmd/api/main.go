@@ -918,6 +918,8 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 		tenant, err := st.GetTenant(ctx, workspaceID)
 		return tenant.Plan, err
 	})
+	// The workspace inbound-IP layer every create path stamps (w9/m388).
+	base.WorkspaceIPRules = st
 
 	// Workspace lifecycle (w6/m1): the workspaces feature writes through the
 	// same store and nudges the same projector to prune a deleted workspace's

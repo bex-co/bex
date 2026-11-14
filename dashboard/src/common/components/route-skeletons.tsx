@@ -63,6 +63,7 @@ import {
   TeamPanelSkeleton,
 } from "@/features/team/components/team-panel-skeleton";
 import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
+import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/workspace-ip-rules-card-skeleton";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
 import {
   AgentModelTermsHeader,
@@ -1283,7 +1284,7 @@ export function WorkspaceSettingsPageSkeleton() {
       className="flex-1 overflow-auto p-4 sm:p-6"
     >
       <div className="mx-auto grid w-full max-w-4xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-        <ResponsiveSectionNavigationSkeleton count={8} />
+        <ResponsiveSectionNavigationSkeleton count={9} />
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
           <Region name="page-header" className="space-y-2">
             <Skeleton className="h-6 w-48" />
@@ -1295,6 +1296,10 @@ export function WorkspaceSettingsPageSkeleton() {
           {/* Build Pipeline (w6/m309): billing managers only, like Audit Logs below. */}
           <Region name="build-pipeline">
             <BuildPipelineCardSkeleton />
+          </Region>
+          {/* Inbound IP Rules (w9/m388): every member reads them. */}
+          <Region name="inbound-ip-rules">
+            <WorkspaceIPRulesCardSkeleton />
           </Region>
           <Region name="team">
             <TeamPanelSkeleton />

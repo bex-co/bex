@@ -110,6 +110,7 @@ var AppSpecIdentityClasses = map[string]SpecIdentityClass{
 	"IPAllowList":            IdentityOperational,
 	"IPAllowListEntries":     IdentityOperational,
 	"EnvironmentIPAllowList": IdentityOperational,
+	"WorkspaceIPAllowList":   IdentityOperational,
 	"MaintenanceMode":        IdentityOperational,
 }
 

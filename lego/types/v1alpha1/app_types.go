@@ -1008,6 +1008,19 @@ type AppSpec struct {
 	// +optional
 	EnvironmentIPAllowList []string `json:"environmentIPAllowList,omitempty"`
 
+	// WorkspaceIPAllowList is the workspace-layer inbound-IP rule set
+	// (w9/m388) — written only by the workspace fan-out and stamped at create,
+	// rendered as a THIRD Traefik Middleware chained with the service and
+	// environment layers on the same Ingress, so a source must pass every
+	// layer (Render: "an inbound IP must be allowed by each level's rules").
+	// Empty means no workspace layer (the workspace never set rules); a
+	// workspace with an explicitly empty rule list projects the unmatchable
+	// deny-all placeholder instead (the backend projects policy; this field is
+	// mechanism). Same eligibility as IPAllowList: web_service and static_site
+	// only.
+	// +optional
+	WorkspaceIPAllowList []string `json:"workspaceIPAllowList,omitempty"`
+
 	// MaintenanceMode takes the service intentionally offline behind an
 	// interstitial page without suspending it — pods keep running, only the
 	// Ingress routing changes. Render's maintenanceMode (web_service only;

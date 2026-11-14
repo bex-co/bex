@@ -57,7 +57,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderOwner(OwnerView{WorkspaceView: ws, Email: s.ownerEmail(r.Context(), ws.ID)}))
+		// Render's owner carries the workspace's inbound IP rules (w9/m388).
+		filled, err := s.withIPAllowLists(r.Context(), []WorkspaceView{ws})
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderOwner(OwnerView{WorkspaceView: filled[0], Email: s.ownerEmail(r.Context(), ws.ID)}))
 	})
 	mux.HandleFunc("GET /v1/owners/{ownerId}/members", func(w http.ResponseWriter, r *http.Request) {
 		members, err := s.ListMembers(r.Context(), r.PathValue("ownerId"))

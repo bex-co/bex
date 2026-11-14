@@ -15,6 +15,7 @@ import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { isValidCIDR } from "@/common/lib/cidr";
+import { ALLOW_ALL_PAIR_ENTRIES } from "@/common/lib/ip-allow-list";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { useSetEnvironmentACL } from "@/features/environments/hooks/use-set-environment-acl";
 import { useWorkspace } from "@/features/workspaces/context";
@@ -28,11 +29,6 @@ export interface EnvironmentSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const ALLOW_ALL_ENTRIES = [
-  { cidrBlock: "0.0.0.0/0", description: "Allow all (default)" },
-  { cidrBlock: "::/0", description: "Allow all (default)" },
-];
 
 /** Anything but the seeded allow-all pair restricts who may connect. */
 function restrictsInbound(entries: Array<{ cidrBlock: string }>): boolean {
@@ -234,7 +230,7 @@ function EnvironmentSettingsForm({
                   size="sm"
                   onClick={() =>
                     setIPAllowListEntries(
-                      ALLOW_ALL_ENTRIES.map((entry) => ({ ...entry })),
+                      ALLOW_ALL_PAIR_ENTRIES.map((entry) => ({ ...entry })),
                     )
                   }
                   disabled={saving}

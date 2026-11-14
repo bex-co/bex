@@ -112,9 +112,10 @@ export function proFeaturesPlan(plan: string | null | undefined): boolean {
 }
 
 /**
- * Whether a workspace plan may set inbound IP rules on services, static sites
- * and environments (Render: Scale and Enterprise). An unknown plan (still
- * loading) is treated as allowed; the API enforces the rule either way.
+ * Whether a workspace plan may set inbound IP rules on services, static sites,
+ * environments and the workspace itself (Render: Scale and Enterprise). An
+ * unknown plan (still loading) is treated as allowed; the API enforces the
+ * rule either way.
  */
 export function inboundIpRulesPlan(plan: string | null | undefined): boolean {
   return !plan || plan === "scale" || plan === "enterprise";

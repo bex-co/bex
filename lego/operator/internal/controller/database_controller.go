@@ -698,8 +698,10 @@ func poolerSpec(clusterName string) map[string]any {
 	}
 }
 
-// cidrMiddlewareSpec is the flat-CIDR variant shared by the environment layer
-// (spec.environmentIPAllowList, w4/m28) on App HTTP ingress.
+// cidrMiddlewareSpec is the flat-CIDR variant every inbound-IP layer renders
+// on App HTTP ingress: the service's own rules, the environment layer
+// (spec.environmentIPAllowList, w4/m28) and the workspace layer
+// (spec.workspaceIPAllowList, w9/m388).
 func cidrMiddlewareSpec(cidrs []string) map[string]any {
 	return map[string]any{"ipAllowList": map[string]any{"sourceRange": stringsAsAny(cidrs)}}
 }

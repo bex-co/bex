@@ -126,6 +126,16 @@ type KeyValueSpec struct {
 	// empty environment rule list projects the deny-all placeholder instead.
 	// +optional
 	EnvironmentIPAllowList []string `json:"environmentIPAllowList,omitempty"`
+
+	// WorkspaceIPAllowList is the workspace-layer inbound-IP rule set
+	// (w9/m388) — written only by the workspace fan-out and stamped at create,
+	// enforced as a THIRD layer on the external SNI route beside IPAllowList
+	// and EnvironmentIPAllowList, so a source must pass every layer. CIDRs
+	// only — descriptions live on the workspace's row. Empty means no
+	// workspace layer; an explicitly empty workspace rule list projects the
+	// deny-all placeholder instead.
+	// +optional
+	WorkspaceIPAllowList []string `json:"workspaceIPAllowList,omitempty"`
 }
 
 // DefaultKeyValueVersion is the major Valkey version used when a KeyValue does

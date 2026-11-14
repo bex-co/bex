@@ -52,6 +52,24 @@ function ownerNotificationSettingsFor(ownerId = WORKSPACE_DEFAULT) {
     }
   );
 }
+// Saved workspace inbound IP rules (w9/m388), by workspace id, read only by
+// the settings card's `workspace(id)` query. A workspace with no entry reads
+// Render's seeded allow-all pair; an empty list is deny-all.
+const WORKSPACE_IP_ALLOW_LISTS = new Map();
+function seededWorkspaceIPAllowList() {
+  return [
+    {
+      __typename: "IPAllowListEntry",
+      cidrBlock: "0.0.0.0/0",
+      description: "Allow all (default)",
+    },
+    {
+      __typename: "IPAllowListEntry",
+      cidrBlock: "::/0",
+      description: "Allow all (default)",
+    },
+  ];
+}
 const WORKSPACES = [
   {
     __typename: "Workspace",
@@ -2188,6 +2206,54 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (!w) throw new Error("not found");
       w.name = variables.name;
       return { renameWorkspace: w };
+    }
+    // Workspace inbound IP rules (w9/m388): Render's owner read, and a full
+    // replace. Below Scale only a list that restricts nothing (or the stored
+    // one) is accepted, as bex-api's RequireWorkspaceInboundIPRules decides.
+    case "WorkspaceIPAllowList": {
+      const w = WORKSPACES.find((ws) => ws.id === variables.id);
+      if (!w) throw new Error("not found");
+      return {
+        workspace: {
+          __typename: "Workspace",
+          id: w.id,
+          ipAllowList:
+            WORKSPACE_IP_ALLOW_LISTS.get(w.id) ?? seededWorkspaceIPAllowList(),
+        },
+      };
+    }
+    case "SetWorkspaceIPAllowList": {
+      const w = WORKSPACES.find((ws) => ws.id === variables.id);
+      if (!w) throw new Error("not found");
+      const current =
+        WORKSPACE_IP_ALLOW_LISTS.get(w.id) ?? seededWorkspaceIPAllowList();
+      const next = variables.ipAllowList.map((entry) => ({
+        __typename: "IPAllowListEntry",
+        cidrBlock: entry.cidrBlock,
+        description: entry.description ?? null,
+      }));
+      const restricts =
+        next.length === 0 ||
+        next.some((e) => e.cidrBlock !== "0.0.0.0/0" && e.cidrBlock !== "::/0");
+      const unchanged = JSON.stringify(next) === JSON.stringify(current);
+      if (
+        restricts &&
+        !unchanged &&
+        w.plan !== "scale" &&
+        w.plan !== "enterprise"
+      ) {
+        throw new Error(
+          "bad request: ipAllowList: inbound IP rules require the Scale plan or higher",
+        );
+      }
+      WORKSPACE_IP_ALLOW_LISTS.set(w.id, next);
+      return {
+        setWorkspaceIPAllowList: {
+          __typename: "Workspace",
+          id: w.id,
+          ipAllowList: next,
+        },
+      };
     }
     case "DeleteWorkspace": {
       const w = WORKSPACES.find((ws) => ws.id === variables.id);

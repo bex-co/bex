@@ -19,6 +19,7 @@ package workspaces
 import (
 	"strings"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -35,12 +36,16 @@ import (
 const renderOwnerType = "team"
 
 // renderOwner mirrors components.schemas.owner (the fields bex has a real
-// equivalent for). ipAllowList has no bex equivalent (omitted, not faked).
+// equivalent for). ipAllowList is the workspace's inbound IP rules (w9/m388)
+// in Render's cidrBlockAndDescription shape: what an Admin saved, or the
+// seeded allow-all for a workspace that never saved any — always present on
+// an owner read, as Render's own reads carry it.
 type renderOwner struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Type  string `json:"type"`
+	ID          string                  `json:"id"`
+	Name        string                  `json:"name"`
+	Email       string                  `json:"email"`
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
+	Type        string                  `json:"type"`
 }
 
 // ownerWithCursor mirrors components.schemas.ownerWithCursor — the list-item
@@ -66,7 +71,7 @@ func toRenderUser(u UserView) renderUser {
 }
 
 func toRenderOwner(o OwnerView) renderOwner {
-	return renderOwner{ID: o.ID, Name: o.Name, Email: o.Email, Type: renderOwnerType}
+	return renderOwner{ID: o.ID, Name: o.Name, Email: o.Email, IPAllowList: o.IPAllowList, Type: renderOwnerType}
 }
 
 func toOwnerList(os []OwnerView) []ownerWithCursor {

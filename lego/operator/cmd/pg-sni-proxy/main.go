@@ -110,8 +110,7 @@ type dbRoutingEntry struct {
 	namespace string
 	pooler    bool
 	replicas  map[string]bool
-	allow     []netip.Prefix
-	envAllow  []netip.Prefix
+	allow     sniproxy.AllowLayers
 }
 
 // hostRoute is one precomputed resolution of a public hostname label.
@@ -150,7 +149,8 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 	for _, replica := range db.Spec.ReadReplicas {
 		entry.replicas[replica.Name] = true
 	}
-	allow, envAllow, err := sniproxy.ParseAllowList(db.Spec.IPAllowList, db.Spec.EnvironmentIPAllowList)
+	allow, err := sniproxy.ParseAllowList(
+		db.Spec.IPAllowList, db.Spec.EnvironmentIPAllowList, db.Spec.WorkspaceIPAllowList)
 	if err != nil {
 		r.mu.Lock()
 		r.deleteLocked(db.Name)
@@ -158,7 +158,7 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 		r.mu.Unlock()
 		return err
 	}
-	entry.allow, entry.envAllow = allow, envAllow
+	entry.allow = allow
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.table[db.Name] = entry
@@ -247,7 +247,7 @@ func (r *dbRouter) resolve(sni string, source netip.Addr) (dbRoute, bool) {
 		if !ok {
 			continue
 		}
-		if !sniproxy.AllowedBy(source, entry.allow) || !sniproxy.AllowedBy(source, entry.envAllow) {
+		if !entry.allow.Admits(source) {
 			continue
 		}
 		return dbRoute{Database: rt.db, Workspace: entry.workspace, Backend: rt.backend}, true

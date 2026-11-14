@@ -181,6 +181,11 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.WorkspaceIPAllowList != nil {
+		in, out := &in.WorkspaceIPAllowList, &out.WorkspaceIPAllowList
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.MaintenanceMode != nil {
 		in, out := &in.MaintenanceMode, &out.MaintenanceMode
 		*out = new(MaintenanceModeSpec)
@@ -647,6 +652,11 @@ func (in *DatabaseSpec) DeepCopyInto(out *DatabaseSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.WorkspaceIPAllowList != nil {
+		in, out := &in.WorkspaceIPAllowList, &out.WorkspaceIPAllowList
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Users != nil {
 		in, out := &in.Users, &out.Users
 		*out = make([]DatabaseUser, len(*in))
@@ -978,6 +988,11 @@ func (in *KeyValueSpec) DeepCopyInto(out *KeyValueSpec) {
 	}
 	if in.EnvironmentIPAllowList != nil {
 		in, out := &in.EnvironmentIPAllowList, &out.EnvironmentIPAllowList
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.WorkspaceIPAllowList != nil {
+		in, out := &in.WorkspaceIPAllowList, &out.WorkspaceIPAllowList
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}

@@ -28,6 +28,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // previewStackCreates runs, for each resource the apply would create, the plan
@@ -38,6 +39,10 @@ import (
 // are the resources the apply creates. A refusal comes back located at its
 // resource; any other failure (a store or cluster read) is returned.
 func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan BlueprintPlan, snap *workspaceSnapshot) (blueprintResourceErrors, error) {
+	ctx, err := s.withStackWorkspaceIPLayer(ctx)
+	if err != nil {
+		return nil, err
+	}
 	creates := map[BlueprintResourceKind]map[string]bool{}
 	for _, action := range plan.Actions {
 		if action.Operation != BlueprintPlanCreate {
@@ -141,7 +146,10 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 			plannedFreeKV++
 		}
 		if err == nil {
-			err = keyvalue.CountCap.CreateError(s.DryRunCreate(ctx, s.planStackKeyValue(ctx, kv, core.EnvironmentAssignment{})))
+			var resource *appv1alpha1.KeyValue
+			if resource, err = s.planStackKeyValue(ctx, kv, core.EnvironmentAssignment{}); err == nil {
+				err = keyvalue.CountCap.CreateError(s.DryRunCreate(ctx, resource))
+			}
 		}
 		if fatal := record(BlueprintResourceKeyValue, kv.name, err); fatal != nil {
 			return nil, fatal

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -32,7 +33,31 @@ vi.mock("@/common/components/dashboard-layout", () => ({
 }));
 
 vi.mock("@/features/workspaces/components/workspace-details-card", () => ({
-  WorkspaceDetailsCard: () => <div>Workspace details card</div>,
+  WorkspaceDetailsCard: ({ changePlanOpen }: { changePlanOpen: boolean }) => (
+    <div>
+      Workspace details card
+      {changePlanOpen ? <span>Change plan dialog open</span> : null}
+    </div>
+  ),
+}));
+
+// Inbound IP Rules (w9/m388): the card's own behavior is pinned in its test;
+// here only its placement and the change-plan wiring.
+vi.mock("@/features/workspaces/components/workspace-ip-rules-card", () => ({
+  WorkspaceIPRulesCard: ({
+    workspace,
+    onChangePlan,
+  }: {
+    workspace: WorkspaceView;
+    onChangePlan: () => void;
+  }) => (
+    <div>
+      Inbound IP rules card {workspace.id}
+      <button type="button" onClick={onChangePlan}>
+        Upgrade from IP rules
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("@/features/workspaces/components/delete-workspace-card", () => ({
@@ -271,6 +296,68 @@ describe("WorkspaceSettingsPage", () => {
     expect(
       screen.queryByRole("link", { name: "Build Pipeline" }),
     ).not.toBeInTheDocument();
+  });
+
+  // w9/m388: Render's workspace-level inbound IP rules sit in Workspace
+  // Settings for every member (Admins edit, others read), after General and
+  // Build Pipeline and before Team.
+  it("renders Inbound IP Rules between Build Pipeline and Team, with its link", async () => {
+    await renderPage();
+
+    const card = screen.getByText(/Inbound IP rules card tea-primary/);
+    expect(card.closest("section")).toHaveAttribute("id", "inbound-ip-rules");
+    const pipeline = screen.getByText("Build pipeline card");
+    const team = screen.getByText("Team panel");
+    expect(
+      pipeline.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      card.compareDocumentPosition(team) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Inbound IP Rules" }),
+    ).toHaveAttribute("href", "#inbound-ip-rules");
+  });
+
+  it("opens the change-plan dialog from the Inbound IP Rules upgrade prompt", async () => {
+    const user = userEvent.setup();
+    await renderPage();
+    expect(
+      screen.queryByText("Change plan dialog open"),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Upgrade from IP rules" }),
+    );
+
+    expect(
+      await screen.findByText("Change plan dialog open"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps an Inbound IP Rules skeleton region in the loading branch", async () => {
+    workspaceState.currentWorkspace = null;
+    workspaceState.loading = true;
+    const { container } = await renderPage();
+
+    const regions = [
+      ...container.querySelectorAll<HTMLElement>("[data-skeleton-region]"),
+    ]
+      .map((element) => element.dataset.skeletonRegion)
+      .filter((name) =>
+        ["general", "build-pipeline", "inbound-ip-rules", "team"].includes(
+          name ?? "",
+        ),
+      );
+    expect(regions).toEqual([
+      "general",
+      "build-pipeline",
+      "inbound-ip-rules",
+      "team",
+    ]);
+    expect(
+      screen.getByTestId("workspace-ip-rules-skeleton"),
+    ).toBeInTheDocument();
   });
 
   it("hides Audit Logs when the audit log answers forbidden", async () => {

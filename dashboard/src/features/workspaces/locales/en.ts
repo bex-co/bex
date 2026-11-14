@@ -371,6 +371,130 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "General",
     description: "Title of the general card on the workspace settings page",
   },
+  "workspaces.ipRulesTitle": {
+    message: "Inbound IP Rules",
+    description:
+      "Workspace Settings → Inbound IP Rules card title and section link (w9/m388)",
+  },
+  "workspaces.ipRulesDescription": {
+    message:
+      "Choose which IP addresses can reach every web service, static site, Postgres database and Key Value instance in this workspace. These rules apply on top of environment and service rules, so a source must be allowed at each level. Private services, background workers and cron jobs are not affected.",
+    description:
+      "Inbound IP Rules card description: scope and layering of workspace rules (Render's workspace-level inbound IP rules, w9/m388)",
+  },
+  "workspaces.ipRulesHint": {
+    message:
+      "Enter a CIDR block (e.g. 203.0.113.0/24) and press Add source. With no rules, all inbound traffic is blocked; 0.0.0.0/0 and ::/0 allow every IPv4 and IPv6 source.",
+    description: "Hint above the editable workspace inbound IP rules (w9/m388)",
+  },
+  "workspaces.ipRulesBlocked": {
+    message:
+      "No rules: all inbound traffic to this workspace's services and datastores is blocked. Add 0.0.0.0/0 and ::/0 to allow all sources.",
+    description:
+      "Warning shown when the workspace rule list is empty (deny-all), saved or about to be saved (w9/m388)",
+  },
+  "workspaces.ipRulesOpen": {
+    message: "Open to all source IPs",
+    description:
+      "Shown in the read-only view when the workspace rules restrict nothing (Render's allow-all default, w9/m388)",
+  },
+  "workspaces.ipRulesScalePlanOnly": {
+    message:
+      "Inbound IP rules for a workspace require the Scale plan or higher. Rules already set stay enforced and can be reset to allow all.",
+    description:
+      "Notice replacing the editable workspace rules below the Scale plan (w9/m388)",
+  },
+  "workspaces.ipRulesAdminOnly": {
+    message: "Only workspace Admins can change these rules.",
+    description:
+      "Notice for a member who cannot edit the workspace inbound IP rules, and the forbidden-save explanation (w9/m388)",
+  },
+  "workspaces.ipRulesPlanRefused": {
+    message:
+      "This workspace's plan doesn't include inbound IP rules. Upgrade to Scale or higher to restrict traffic; you can always reset the rules to allow all.",
+    description:
+      "Inline explanation when bex-api refuses a workspace rule change with PLAN_FEATURE_REQUIRED (w9/m388)",
+  },
+  "workspaces.ipRulesUnreadable": {
+    message: "Couldn't load this workspace's inbound IP rules.",
+    description:
+      "Shown in place of the rules when the workspace inbound IP rules read fails (w9/m388)",
+  },
+  "workspaces.ipRulesResetAllowAll": {
+    message: "Reset to allow all",
+    description:
+      "Button replacing the workspace inbound IP rules with the allow-all pair below the Scale plan (w9/m388)",
+  },
+  "workspaces.ipRulesCIDR": {
+    message: "New CIDR block",
+    description:
+      "Accessible label for the add-row CIDR input of the workspace inbound IP rules",
+  },
+  "workspaces.ipRulesCIDRRule": {
+    message: "CIDR block for rule {number}",
+    description:
+      "Accessible label for an existing workspace inbound IP rule CIDR",
+  },
+  "workspaces.ipRulesDescriptionLabel": {
+    message: "New rule description",
+    description:
+      "Accessible label for the add-row description input of the workspace inbound IP rules",
+  },
+  "workspaces.ipRulesDescriptionRule": {
+    message: "Description for rule {number}",
+    description:
+      "Accessible label for an existing workspace inbound IP rule description",
+  },
+  "workspaces.ipRulesDescriptionPlaceholder": {
+    message: "Description (optional)",
+    description: "Placeholder for a workspace inbound IP rule description",
+  },
+  "workspaces.ipRulesAdd": {
+    message: "Add source",
+    description: "Button adding a CIDR to the draft workspace inbound IP rules",
+  },
+  "workspaces.ipRulesCancel": {
+    message: "Cancel",
+    description:
+      "Button discarding unsaved changes to the workspace inbound IP rules",
+  },
+  "workspaces.ipRulesSave": {
+    message: "Save rules",
+    description:
+      "Button saving the workspace inbound IP rules (setWorkspaceIPAllowList)",
+  },
+  "workspaces.ipRulesInvalid": {
+    message: "Enter unique, valid IPv4 or IPv6 CIDR blocks.",
+    description:
+      "Inline validation when a workspace rule block is not a unique, valid CIDR",
+  },
+  "workspaces.ipRulesRemove": {
+    message: "Remove {cidr}",
+    description:
+      "Accessible label for a workspace inbound IP rule remove button",
+  },
+  "workspaces.ipRulesMoveUp": {
+    message: "Move {cidr} up",
+    description: "Accessible label to move a workspace inbound IP rule earlier",
+  },
+  "workspaces.ipRulesMoveDown": {
+    message: "Move {cidr} down",
+    description: "Accessible label to move a workspace inbound IP rule later",
+  },
+  "workspaces.ipRulesSaved": {
+    message: "Inbound IP rules saved",
+    description: "Toast after setWorkspaceIPAllowList succeeds (w9/m388)",
+  },
+  "workspaces.ipRulesSaveErrorTitle": {
+    message: "Couldn't save inbound IP rules",
+    description:
+      "Title of the inline alert when a workspace rule change is refused (w9/m388)",
+  },
+  "workspaces.ipRulesSaveError": {
+    message: "Couldn't save the inbound IP rules. Please try again.",
+    description:
+      "Fallback inline message when a workspace rule change fails without a server reason (w9/m388)",
+  },
 };
 
 export default enWorkspaces;

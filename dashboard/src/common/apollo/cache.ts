@@ -21,6 +21,9 @@ export const apolloCacheConfig: InMemoryCacheConfig = {
     // setPipelineSpendLimit's result refreshes the settings query in place
     // (w6/m309).
     PipelineSettings: { keyFields: ["workspaceId"] },
+    // setWorkspaceIPAllowList full-replaces the workspace's inbound IP rules
+    // (w9/m388), so its result replaces the cached list outright.
+    Workspace: { fields: { ipAllowList: { merge: false } } },
     AgentSession: {
       fields: { outcome: { merge: mergeAgentSessionOutcome } },
     },

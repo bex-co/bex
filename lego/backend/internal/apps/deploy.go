@@ -902,6 +902,12 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// One index of the platform's host claims serves the preflight and every
 	// service the apply writes, each of which records its claims in it.
 	ctx = withHostClaimScope(ctx)
+	// Every resource the apply creates is born inside the workspace's inbound
+	// IP rules (w9/m388): read them once for the whole stack.
+	ctx, err := s.withStackWorkspaceIPLayer(ctx)
+	if err != nil {
+		return StackResult{}, err
+	}
 	if err := s.resolveBlueprintRegistryCredentials(ctx, &st); err != nil {
 		return StackResult{}, err
 	}
@@ -4601,7 +4607,10 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		}
 		return stackKeyValueView(existing), nil
 	}
-	resource := s.planStackKeyValue(ctx, kv, assignment)
+	resource, err := s.planStackKeyValue(ctx, kv, assignment)
+	if err != nil {
+		return StackKeyValueView{}, err
+	}
 	if err := keyvalue.CreateResource(ctx, s.Base, tenantID, resource); err != nil {
 		return StackKeyValueView{}, err
 	}
@@ -4609,6 +4618,14 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 	// Blueprint-provisioned Key Value lands in product_activity_events (w5/056).
 	s.RecordKeyValueEffect(ctx, resource, core.KeyValueCreated)
 	return stackKeyValueView(resource), nil
+}
+
+// withStackWorkspaceIPLayer carries the acting workspace's inbound-IP layer on
+// ctx for a Blueprint apply or preview, so its creates read the rules once
+// rather than once each (w9/m388).
+func (s *Service) withStackWorkspaceIPLayer(ctx context.Context) (context.Context, error) {
+	tenantID, _ := s.Tenant(ctx)
+	return s.WithWorkspaceIPLayer(ctx, tenantID)
 }
 
 // planStackDatabase is a stack Postgres create up to its first write: the
@@ -4630,12 +4647,18 @@ func (s *Service) planStackDatabase(ctx context.Context, db parsedDatabase, assi
 	if assignment.ID != "" {
 		d.Spec.EnvironmentIPAllowList = core.ApplyGrouping(d, assignment)
 	}
+	// Born inside its workspace's inbound-IP rules, as every create is (w9/m388).
+	workspaceLayer, err := s.WorkspaceIPLayer(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	d.Spec.WorkspaceIPAllowList = workspaceLayer
 	resourcemeta.Touch(d, s.Now())
 	return d, nil
 }
 
 // planStackKeyValue is planStackDatabase for a stack Key Value create.
-func (s *Service) planStackKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment) *appv1alpha1.KeyValue {
+func (s *Service) planStackKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment) (*appv1alpha1.KeyValue, error) {
 	tenantID, scoped := s.Tenant(ctx)
 	resource := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.TenantNamespace(tenantID)},
@@ -4647,8 +4670,13 @@ func (s *Service) planStackKeyValue(ctx context.Context, kv parsedKeyValue, assi
 	if assignment.ID != "" {
 		resource.Spec.EnvironmentIPAllowList = core.ApplyGrouping(resource, assignment)
 	}
+	workspaceLayer, err := s.WorkspaceIPLayer(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	resource.Spec.WorkspaceIPAllowList = workspaceLayer
 	resourcemeta.Touch(resource, s.Now())
-	return resource
+	return resource, nil
 }
 
 func stackKeyValueView(kv *appv1alpha1.KeyValue) StackKeyValueView {

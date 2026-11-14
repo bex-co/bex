@@ -318,6 +318,61 @@ func TestNonIngressTypesGetNoIPAllowListMiddleware(t *testing.T) {
 	}
 }
 
+// TestIneligibleTypesOwnNoLayerMiddleware pins w9/m388's eligibility rule
+// (Render: inbound IP rules cover web services, static sites and datastores,
+// not private services, background workers or cron jobs). A projected
+// environment or workspace layer on an ineligible App — the fan-outs may carry
+// one — creates no Middleware, through the full reconcile and through the
+// primitive, and a Middleware left behind from before is removed.
+func TestIneligibleTypesOwnNoLayerMiddleware(t *testing.T) {
+	for _, typ := range []string{
+		appv1alpha1.TypePrivateService,
+		appv1alpha1.TypeBackgroundWorker,
+		appv1alpha1.TypeCronJob,
+	} {
+		t.Run(typ, func(t *testing.T) {
+			scheme := newIPAllowListScheme()
+			app := appWithAllowList("ineligible", []string{"203.0.113.0/24"}, typ)
+			app.Spec.EnvironmentIPAllowList = []string{"198.51.100.0/24"}
+			app.Spec.WorkspaceIPAllowList = []string{"192.0.2.0/24"}
+			if typ == appv1alpha1.TypeCronJob {
+				app.Spec.Schedule = "0 * * * *"
+			}
+			stale := &unstructured.Unstructured{}
+			stale.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+			stale.SetName("ineligible-ws-ip-allow")
+			stale.SetNamespace("default")
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, stale).
+				WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{
+				Client: cl, Scheme: scheme, Mode: ModeKubernetes,
+				BaseDomain: "onbex.co", ClusterIssuer: "letsencrypt-prod",
+			}
+			ctx := context.Background()
+			// Pass 1 adds the finalizer; pass 2 reconciles the workloads.
+			for range 2 {
+				if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "ineligible", Namespace: "default"}}); err != nil {
+					t.Fatalf("Reconcile: %v", err)
+				}
+			}
+			names, err := r.reconcileIPAllowListMiddleware(ctx, app)
+			if err != nil {
+				t.Fatalf("reconcileIPAllowListMiddleware: %v", err)
+			}
+			if len(names) != 0 {
+				t.Fatalf("%s chains middlewares %v; it has no Ingress to guard", typ, names)
+			}
+			for _, suffix := range []string{"-ip-allow", "-env-ip-allow", "-ws-ip-allow"} {
+				o := &unstructured.Unstructured{}
+				o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+				if err := cl.Get(ctx, types.NamespacedName{Name: "ineligible" + suffix, Namespace: "default"}, o); !apierrors.IsNotFound(err) {
+					t.Errorf("%s owns Middleware ineligible%s (err %v); want none", typ, suffix, err)
+				}
+			}
+		})
+	}
+}
+
 // TestEnvironmentIPAllowListChaining pins w4/m28's layered composition: an App
 // carrying BOTH its own ipAllowList and an environment-projected
 // environmentIPAllowList renders two middlewares, and the Ingress annotation
@@ -325,28 +380,40 @@ func TestNonIngressTypesGetNoIPAllowListMiddleware(t *testing.T) {
 // every layer: Render's every-applicable-rule intersection). Table-driven over
 // the layer combinations.
 func TestEnvironmentIPAllowListChaining(t *testing.T) {
+	const tail = "default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd"
 	cases := []struct {
-		name      string
-		own, env  []string
-		wantAnnot string
-		wantOwnMW bool
-		wantEnvMW bool
+		name         string
+		own, env, ws []string
+		wantAnnot    string
+		wantOwnMW    bool
+		wantEnvMW    bool
+		wantWsMW     bool
 	}{
-		{"both layers chain", []string{"10.0.0.0/8"}, []string{"203.0.113.0/24"},
-			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", true, true},
-		{"own only", []string{"10.0.0.0/8"}, nil,
-			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", true, false},
-		{"env only", nil, []string{"203.0.113.0/24"},
-			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", false, true},
-		{"env deny-all placeholder", nil, []string{"255.255.255.255/32"},
-			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", false, true},
-		{"no layers", nil, nil, "default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", false, false},
+		{"both layers chain", []string{"10.0.0.0/8"}, []string{"203.0.113.0/24"}, nil,
+			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd," + tail, true, true, false},
+		{"own only", []string{"10.0.0.0/8"}, nil, nil,
+			"default-chain-acl-ip-allow@kubernetescrd," + tail, true, false, false},
+		{"env only", nil, []string{"203.0.113.0/24"}, nil,
+			"default-chain-acl-env-ip-allow@kubernetescrd," + tail, false, true, false},
+		{"env deny-all placeholder", nil, []string{"255.255.255.255/32"}, nil,
+			"default-chain-acl-env-ip-allow@kubernetescrd," + tail, false, true, false},
+		{"no layers", nil, nil, nil, tail, false, false, false},
+		// w9/m388: the workspace layer is a third chained middleware, after
+		// the service and environment layers, so a source the other two admit
+		// is still refused when the workspace's rules leave it out.
+		{"all three layers chain", []string{"10.0.0.0/8"}, []string{"203.0.113.0/24"}, []string{"198.51.100.0/24"},
+			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-ws-ip-allow@kubernetescrd," + tail, true, true, true},
+		{"workspace only", nil, nil, []string{"198.51.100.0/24"},
+			"default-chain-acl-ws-ip-allow@kubernetescrd," + tail, false, false, true},
+		{"workspace deny-all placeholder", nil, []string{"203.0.113.0/24"}, []string{"255.255.255.255/32"},
+			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-ws-ip-allow@kubernetescrd," + tail, false, true, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			scheme := newIPAllowListScheme()
 			app := appWithAllowList("chain-acl", tc.own, appv1alpha1.TypeWebService)
 			app.Spec.EnvironmentIPAllowList = tc.env
+			app.Spec.WorkspaceIPAllowList = tc.ws
 			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
 				WithStatusSubresource(&appv1alpha1.App{}).Build()
 			r := &AppReconciler{
@@ -371,6 +438,9 @@ func TestEnvironmentIPAllowListChaining(t *testing.T) {
 			}
 			if err := getMW("chain-acl-env-ip-allow"); (err == nil) != tc.wantEnvMW {
 				t.Errorf("env middleware present=%v, want %v (err %v)", err == nil, tc.wantEnvMW, err)
+			}
+			if err := getMW("chain-acl-ws-ip-allow"); (err == nil) != tc.wantWsMW {
+				t.Errorf("workspace middleware present=%v, want %v (err %v)", err == nil, tc.wantWsMW, err)
 			}
 			ing := &networkingv1.Ingress{}
 			if err := cl.Get(ctx, types.NamespacedName{Name: "chain-acl", Namespace: "default"}, ing); err != nil {
@@ -398,6 +468,7 @@ func TestIPAllowListMiddlewareMatchesTCPPeerOnly(t *testing.T) {
 			scheme := newIPAllowListScheme()
 			app := appWithAllowList("peer-acl", []string{"203.0.113.0/24"}, typ)
 			app.Spec.EnvironmentIPAllowList = []string{"198.51.100.0/24"}
+			app.Spec.WorkspaceIPAllowList = []string{"192.0.2.0/24"}
 			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
 				WithStatusSubresource(&appv1alpha1.App{}).Build()
 			r := &AppReconciler{
@@ -424,6 +495,7 @@ func TestIPAllowListMiddlewareMatchesTCPPeerOnly(t *testing.T) {
 			for name, want := range map[string]string{
 				"peer-acl-ip-allow":     "203.0.113.0/24",
 				"peer-acl-env-ip-allow": "198.51.100.0/24",
+				"peer-acl-ws-ip-allow":  "192.0.2.0/24",
 			} {
 				o := &unstructured.Unstructured{}
 				o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)

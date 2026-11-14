@@ -102,6 +102,99 @@ describe("IPAllowListEditor", () => {
     ).toBeInTheDocument();
   });
 
+  // w9/m388: a workspace list opens with Render's seeded pair, so its
+  // clear-only button writes that pair rather than a service's single rule.
+  it("writes the caller's allow-all entries from clearOnly when given", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => true);
+    const pair = [
+      { cidrBlock: "0.0.0.0/0", description: "Allow all (default)" },
+      { cidrBlock: "::/0", description: "Allow all (default)" },
+    ];
+    render(
+      <IPAllowListEditor
+        entries={[{ cidrBlock: "10.0.0.0/8", description: "corp" }]}
+        labels={labels}
+        saving={false}
+        onSave={onSave}
+        clearOnly={{ hint: "Needs Scale.", clearAll: "Reset to allow all" }}
+        emptyBlocks={{ open: "Open to everyone.", allowAll: pair }}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Reset to allow all" }),
+    );
+    expect(onSave).toHaveBeenCalledWith(pair);
+  });
+
+  // w9/m388: a caller who may not edit at all (a non-Admin) gets the list and
+  // the hint, with no write offered, even where clear-only would offer one.
+  it("lists the rules with no write in readOnly mode", () => {
+    render(
+      <IPAllowListEditor
+        entries={[{ cidrBlock: "10.0.0.0/8", description: "corp" }]}
+        labels={labels}
+        saving={false}
+        onSave={vi.fn(async () => true)}
+        readOnly={{ hint: <strong>Admins only.</strong> }}
+        clearOnly={{ hint: "Needs Scale.", clearAll: "Reset to allow all" }}
+        emptyBlocks={{ open: "Open to everyone." }}
+      />,
+    );
+    expect(screen.queryByText("Needs Scale.")).not.toBeInTheDocument();
+    expect(screen.getByText("Admins only.")).toBeInTheDocument();
+    expect(screen.getByText("10.0.0.0/8")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  // w9/m388: Cancel discards edited rows and the half-typed add row.
+  it("restores the saved list and clears the add row on Cancel", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => true);
+    render(
+      <IPAllowListEditor
+        entries={[{ cidrBlock: "10.0.0.0/8", description: "corp" }]}
+        labels={{ ...labels, cancel: "Cancel" }}
+        saving={false}
+        onSave={onSave}
+      />,
+    );
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel).toBeDisabled();
+
+    await user.type(
+      screen.getByRole("textbox", { name: "New CIDR block" }),
+      "192.0.2.0/24",
+    );
+    expect(cancel).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Description for rule 1" }),
+      "-hq",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "New CIDR block" }),
+      "198.51",
+    );
+    await user.click(cancel);
+
+    expect(
+      screen.getByRole("textbox", { name: "Description for rule 1" }),
+    ).toHaveValue("corp");
+    expect(
+      screen.queryByRole("textbox", { name: "CIDR block for rule 2" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "New CIDR block" })).toHaveValue(
+      "",
+    );
+    expect(cancel).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save allowlist" }),
+    ).toBeDisabled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it("names add-row and existing-row inputs (not by placeholder example) (m101/t010)", () => {
     render(
       <IPAllowListEditor

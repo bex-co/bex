@@ -216,11 +216,39 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     unmount();
   });
 
+  // w9/m388: the Inbound IP Rules region sits where the ready section does
+  // (after Build Pipeline, before Team) and holds the card's own skeleton: its
+  // static header, the seeded allow-all pair's two rule rows and the add row.
+  it("draws the Settings Inbound IP Rules card in its loaded place and shape", () => {
+    const { container, unmount } = render(<WorkspaceSettingsPageSkeleton />);
+    const order = regions(container).filter((name) =>
+      ["build-pipeline", "inbound-ip-rules", "team"].includes(name),
+    );
+    expect(order).toEqual(["build-pipeline", "inbound-ip-rules", "team"]);
+    const region = container.querySelector(
+      '[data-skeleton-region="inbound-ip-rules"]',
+    )!;
+    const card = region.querySelector(
+      '[data-testid="workspace-ip-rules-skeleton"]',
+    )!;
+    expect(card.querySelector("[data-slot=card-title]")).toHaveTextContent(
+      "Inbound IP Rules",
+    );
+    expect(
+      card.querySelector('[data-skeleton-region="ip-rule-rows"]')?.children,
+    ).toHaveLength(2);
+    expect(
+      card.querySelector('[data-skeleton-region="ip-rule-actions"]')?.children,
+    ).toHaveLength(5);
+    unmount();
+  });
+
   it.each([
     [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 7],
-    // 8: Build Pipeline (w6/m309) joined the billing manager's rail.
-    [<WorkspaceSettingsPageSkeleton key="workspace" />, 8],
+    // 8: Build Pipeline (w6/m309) joined the billing manager's rail; 9:
+    // Inbound IP Rules (w9/m388) joined every member's.
+    [<WorkspaceSettingsPageSkeleton key="workspace" />, 9],
     [<ServiceSettingsSkeleton key="service" />, 13],
   ])(
     "keeps long-page section navigation at narrow and wide breakpoints",

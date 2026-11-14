@@ -73,8 +73,7 @@ type kvRoute struct {
 	ResourceID string
 	Workspace  string
 	Backend    string
-	Allow      []netip.Prefix
-	EnvAllow   []netip.Prefix
+	Allow      sniproxy.AllowLayers
 }
 
 type kvRouter struct {
@@ -106,7 +105,8 @@ func (r *kvRouter) set(kv *appv1alpha1.KeyValue) error {
 		Workspace:  workspace,
 		Backend:    fmt.Sprintf("%s.%s.svc.cluster.local:6380", kv.Name, kv.Namespace),
 	}
-	allow, envAllow, err := sniproxy.ParseAllowList(kv.Spec.IPAllowList, kv.Spec.EnvironmentIPAllowList)
+	allow, err := sniproxy.ParseAllowList(
+		kv.Spec.IPAllowList, kv.Spec.EnvironmentIPAllowList, kv.Spec.WorkspaceIPAllowList)
 	if err != nil {
 		r.mu.Lock()
 		delete(r.table, kv.Name)
@@ -114,7 +114,7 @@ func (r *kvRouter) set(kv *appv1alpha1.KeyValue) error {
 		r.mu.Unlock()
 		return err
 	}
-	route.Allow, route.EnvAllow = allow, envAllow
+	route.Allow = allow
 	r.mu.Lock()
 	r.table[kv.Name] = route
 	delete(r.invalid, kv.Name)
@@ -146,7 +146,7 @@ func (r *kvRouter) resolve(sni string, source netip.Addr) (kvRoute, bool) {
 	if !ok {
 		return kvRoute{}, false
 	}
-	if !sniproxy.AllowedBy(source, route.Allow) || !sniproxy.AllowedBy(source, route.EnvAllow) {
+	if !route.Allow.Admits(source) {
 		return kvRoute{}, false
 	}
 	return route, true

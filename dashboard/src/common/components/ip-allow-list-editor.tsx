@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
@@ -24,6 +24,11 @@ interface IPAllowListEditorLabels {
   descriptionRule: (number: number) => string;
   add: string;
   save: string;
+  /**
+   * When set, a Cancel button beside Save discards the unsaved draft (rows and
+   * the add-row inputs) back to `entries`.
+   */
+  cancel?: string;
   invalid: string;
   remove: (cidr: string) => string;
   moveUp: (cidr: string) => string;
@@ -52,6 +57,7 @@ export function IPAllowListEditor({
   saving,
   onSave,
   clearOnly,
+  readOnly,
   emptyBlocks,
 }: {
   entries: IPAllowListEntryDraft[];
@@ -62,15 +68,22 @@ export function IPAllowListEditor({
    * The workspace plan cannot set inbound rules (below Scale). Existing rules
    * stay listed and enforced; the only write offered is clearing them all.
    */
-  clearOnly?: { hint: string; clearAll: string };
+  clearOnly?: { hint: ReactNode; clearAll: string };
   /**
-   * The list belongs to a service (w8/m157): with no rule every public
-   * request is refused, and the allow-all rule is what opens it. `labels.empty`
-   * is then the blocked sentence and is shown as a warning, the clear-only
-   * view shows `open` for a service nobody restricted, and its button writes
-   * the allow-all rule instead of an empty list.
+   * The caller may not change the list at all (a non-Admin on the workspace
+   * rules, w9/m388): it is listed as in `clearOnly`, with no write offered.
+   * Takes precedence over `clearOnly`.
    */
-  emptyBlocks?: { open: string };
+  readOnly?: { hint: ReactNode };
+  /**
+   * The list belongs to a service (w8/m157) or a workspace (w9/m388): with no
+   * rule every public request is refused, and the allow-all rule is what
+   * opens it. `labels.empty` is then the blocked sentence and is shown as a
+   * warning, the clear-only view shows `open` for a list nobody restricted,
+   * and its button writes `allowAll` (default: a service's single IPv4
+   * allow-all rule) instead of an empty list.
+   */
+  emptyBlocks?: { open: string; allowAll?: IPAllowListEntryDraft[] };
 }) {
   // Keep keys independent of editable values and positions so typing, moving
   // and removing rows preserve the surviving inputs' focus and caret.
@@ -125,6 +138,15 @@ export function IPAllowListEditor({
     );
   }
 
+  function cancel() {
+    const first = nextRowID.current;
+    nextRowID.current += entries.length;
+    setDraft(entries.map((entry, offset) => ({ id: first + offset, entry })));
+    setCIDR("");
+    setDescription("");
+    setInvalid(false);
+  }
+
   function move(index: number, delta: -1 | 1) {
     const destination = index + delta;
     if (destination < 0 || destination >= draft.length) return;
@@ -145,22 +167,27 @@ export function IPAllowListEditor({
     </span>
   );
 
-  if (clearOnly) {
-    const clear = (
+  const locked = readOnly ?? clearOnly;
+  if (locked) {
+    const clear = readOnly ? null : (
       <Button
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => void onSave(emptyBlocks ? ALLOW_ALL_ENTRIES : [])}
+        onClick={() =>
+          void onSave(
+            emptyBlocks ? (emptyBlocks.allowAll ?? ALLOW_ALL_ENTRIES) : [],
+          )
+        }
         disabled={saving}
       >
         {saving ? <Loader2 className="animate-spin" /> : <Trash2 />}
-        {clearOnly.clearAll}
+        {clearOnly?.clearAll}
       </Button>
     );
     return (
       <section className="space-y-2">
-        <p className="text-xs text-muted-foreground">{clearOnly.hint}</p>
+        <p className="text-xs text-muted-foreground">{locked.hint}</p>
         {emptyBlocks && isAllowAllRule(entries) ? (
           <span className="text-sm text-muted-foreground">
             {emptyBlocks.open}
@@ -294,6 +321,17 @@ export function IPAllowListEditor({
           <Plus />
           {labels.add}
         </Button>
+        {labels.cancel ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={cancel}
+            disabled={saving || (!dirty && !cidr && !description)}
+          >
+            {labels.cancel}
+          </Button>
+        ) : null}
         <Button
           type="button"
           size="sm"

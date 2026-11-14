@@ -175,6 +175,7 @@ var renderEvents = map[string]string{
 	"environments.DeleteIfEmpty":          "DeleteEnvironmentEvent",
 	core.AuditVerbProjectServiceMoved:     "MoveEnvironmentResourceEvent",
 	core.AuditVerbEnvironmentServiceMoved: "MoveEnvironmentResourceEvent",
+	core.AuditVerbSetWorkspaceIPAllowList: "UpdateIPAllowListEvent",
 	"webhooks.Create":                     "CreateWebhookEvent",
 	"webhooks.Update":                     "UpdateWebhookEvent",
 	"webhooks.Delete":                     "DeleteWebhookEvent",

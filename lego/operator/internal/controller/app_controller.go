@@ -4301,12 +4301,18 @@ func (r *AppReconciler) currentRevisionFullyReady(ctx context.Context, dep *apps
 
 // reconcileIPAllowListMiddleware creates or removes the Traefik HTTP
 // Middlewares for the App's inbound-IP layers: its own ipAllowList
-// ("<app>-ip-allow") and the environment-projected environmentIPAllowList
-// ("<app>-env-ip-allow", w4/m28). Returns the middleware names to CHAIN on
-// the Ingress annotation — Traefik ANDs chained middlewares, so a source must
-// pass every present layer (Render's every-applicable-rule intersection) —
-// or nil when no layer is set.
+// ("<app>-ip-allow"), the environment-projected environmentIPAllowList
+// ("<app>-env-ip-allow", w4/m28) and the workspace-projected
+// workspaceIPAllowList ("<app>-ws-ip-allow", w9/m388). Returns the middleware
+// names to CHAIN on the Ingress annotation — Traefik ANDs chained
+// middlewares, so a source must pass every present layer (Render's
+// every-applicable-rule intersection) — or nil when no layer is set.
+//
+// Only a publicly routable type (web_service, static_site) has an Ingress to
+// guard: for any other type every layer's Middleware is removed, so a private
+// service, worker or cron job carrying a projected layer owns none.
 func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app *appv1alpha1.App) ([]string, error) {
+	routable := app.Spec.PubliclyRoutable()
 	var names []string
 	for _, layer := range []struct {
 		suffix string
@@ -4314,9 +4320,10 @@ func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app 
 	}{
 		{"-ip-allow", app.Spec.EffectiveIPAllowListCIDRs()},
 		{"-env-ip-allow", app.Spec.EnvironmentIPAllowList},
+		{"-ws-ip-allow", app.Spec.WorkspaceIPAllowList},
 	} {
 		mwName := app.Name + layer.suffix
-		if len(layer.cidrs) > 0 {
+		if routable && len(layer.cidrs) > 0 {
 			if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, mwName, cidrMiddlewareSpec(layer.cidrs)); err != nil {
 				return nil, err
 			}

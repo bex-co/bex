@@ -112,3 +112,34 @@ mutation ChangeWorkspacePlan($id: String!, $plan: String!) {
 mutation DeleteWorkspace($id: String!, $confirmation: String!) {
   deleteWorkspace(id: $id, confirmation: $confirmation)
 }
+
+# The workspace's inbound IP rules (w9/m388, Render's owner.ipAllowList): what
+# an Admin saved, or Render's seeded allow-all pair when nobody did; an empty
+# list is deny-all. Read only by the Workspace Settings card, never by the
+# polled `Workspaces` list (bex-api resolves the field only when selected).
+query WorkspaceIPAllowList($id: String!) {
+  workspace(id: $id) {
+    id
+    ipAllowList {
+      cidrBlock
+      description
+    }
+  }
+}
+
+# Full-replaces the workspace's inbound IP rules (w9/m388): Admin only, and
+# below Scale only the stored list or the allow-all pair is accepted
+# (PLAN_FEATURE_REQUIRED, feature inboundIPRules). The returned list is what
+# bex-api saved, which the normalized Workspace entity picks up.
+mutation SetWorkspaceIPAllowList(
+  $id: String!
+  $ipAllowList: [IPAllowListEntryInput!]!
+) {
+  setWorkspaceIPAllowList(id: $id, ipAllowList: $ipAllowList) {
+    id
+    ipAllowList {
+      cidrBlock
+      description
+    }
+  }
+}

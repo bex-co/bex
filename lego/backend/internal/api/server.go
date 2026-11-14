@@ -938,6 +938,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	kv := &keyvalue.Service{Base: base, Retirements: retirements, Protection: protectionStore, Owners: workspaceSvc, Metadata: resourceMetadata}
 	kv.PodLogs = d.PodLogs
 	kv.KeyValueLogs = datastoreLogsAdapter(logSvc)
+	workspaceSvc.IPLayerTargets = []workspaces.IPLayerTarget{pg, kv}
 	// secrets + env-groups are also the blueprint apply path's seams (w1/m35:
 	// apps.EnvSeeder / apps.EnvGroupApplier) — built once and shared. They are
 	// wired onto Apps ONLY when OpenBao (d.Secrets) is on, so a nil seam is the

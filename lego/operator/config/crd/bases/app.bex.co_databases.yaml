@@ -360,6 +360,18 @@ spec:
                 - "17"
                 - "18"
                 type: string
+              workspaceIPAllowList:
+                description: |-
+                  WorkspaceIPAllowList is the workspace-layer inbound-IP rule set
+                  (w9/m388) — written only by the workspace fan-out and stamped at create,
+                  enforced as a THIRD layer on the external SNI route beside IPAllowList
+                  and EnvironmentIPAllowList, so a source must pass every layer. CIDRs
+                  only — descriptions live on the workspace's row. Empty means no
+                  workspace layer; an explicitly empty workspace rule list projects the
+                  deny-all placeholder instead.
+                items:
+                  type: string
+                type: array
             required:
             - name
             type: object

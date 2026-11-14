@@ -457,6 +457,7 @@ export const ROUTE_SKELETON_MANIFEST = {
     regions: [
       "page-header",
       "general",
+      "inbound-ip-rules",
       "team",
       "danger-zone",
       "section-navigation",

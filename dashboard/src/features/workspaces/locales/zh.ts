@@ -367,6 +367,130 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "常规",
     description: "Title of the general card on the workspace settings page",
   },
+  "workspaces.ipRulesTitle": {
+    message: "入站 IP 规则",
+    description:
+      "Workspace Settings → Inbound IP Rules card title and section link (w9/m388)",
+  },
+  "workspaces.ipRulesDescription": {
+    message:
+      "选择哪些 IP 地址可以访问此工作区中的所有 Web 服务、静态站点、Postgres 数据库和 Key Value 实例。这些规则叠加在环境和服务规则之上，来源必须在每一层都被允许。私有服务、后台 Worker 和 Cron 任务不受影响。",
+    description:
+      "Inbound IP Rules card description: scope and layering of workspace rules (Render's workspace-level inbound IP rules, w9/m388)",
+  },
+  "workspaces.ipRulesHint": {
+    message:
+      "输入 CIDR（例如 203.0.113.0/24）并点击添加来源。没有任何规则时，所有入站流量都会被拦截；0.0.0.0/0 和 ::/0 允许所有 IPv4 和 IPv6 来源。",
+    description: "Hint above the editable workspace inbound IP rules (w9/m388)",
+  },
+  "workspaces.ipRulesBlocked": {
+    message:
+      "没有规则：此工作区服务和数据存储的所有入站流量都会被拦截。添加 0.0.0.0/0 和 ::/0 可允许所有来源。",
+    description:
+      "Warning shown when the workspace rule list is empty (deny-all), saved or about to be saved (w9/m388)",
+  },
+  "workspaces.ipRulesOpen": {
+    message: "向所有源 IP 开放",
+    description:
+      "Shown in the read-only view when the workspace rules restrict nothing (Render's allow-all default, w9/m388)",
+  },
+  "workspaces.ipRulesScalePlanOnly": {
+    message:
+      "工作区的入站 IP 规则需要 Scale 或更高套餐。已设置的规则继续生效，可以重置为允许全部。",
+    description:
+      "Notice replacing the editable workspace rules below the Scale plan (w9/m388)",
+  },
+  "workspaces.ipRulesAdminOnly": {
+    message: "只有工作区管理员可以更改这些规则。",
+    description:
+      "Notice for a member who cannot edit the workspace inbound IP rules, and the forbidden-save explanation (w9/m388)",
+  },
+  "workspaces.ipRulesPlanRefused": {
+    message:
+      "此工作区的套餐不包含入站 IP 规则。升级到 Scale 或更高套餐即可限制流量；你随时可以将规则重置为允许全部。",
+    description:
+      "Inline explanation when bex-api refuses a workspace rule change with PLAN_FEATURE_REQUIRED (w9/m388)",
+  },
+  "workspaces.ipRulesUnreadable": {
+    message: "无法加载此工作区的入站 IP 规则。",
+    description:
+      "Shown in place of the rules when the workspace inbound IP rules read fails (w9/m388)",
+  },
+  "workspaces.ipRulesResetAllowAll": {
+    message: "重置为允许全部",
+    description:
+      "Button replacing the workspace inbound IP rules with the allow-all pair below the Scale plan (w9/m388)",
+  },
+  "workspaces.ipRulesCIDR": {
+    message: "新 CIDR 网段",
+    description:
+      "Accessible label for the add-row CIDR input of the workspace inbound IP rules",
+  },
+  "workspaces.ipRulesCIDRRule": {
+    message: "规则 {number} 的 CIDR 网段",
+    description:
+      "Accessible label for an existing workspace inbound IP rule CIDR",
+  },
+  "workspaces.ipRulesDescriptionLabel": {
+    message: "新规则描述",
+    description:
+      "Accessible label for the add-row description input of the workspace inbound IP rules",
+  },
+  "workspaces.ipRulesDescriptionRule": {
+    message: "规则 {number} 的描述",
+    description:
+      "Accessible label for an existing workspace inbound IP rule description",
+  },
+  "workspaces.ipRulesDescriptionPlaceholder": {
+    message: "描述（可选）",
+    description: "Placeholder for a workspace inbound IP rule description",
+  },
+  "workspaces.ipRulesAdd": {
+    message: "添加来源",
+    description: "Button adding a CIDR to the draft workspace inbound IP rules",
+  },
+  "workspaces.ipRulesCancel": {
+    message: "取消",
+    description:
+      "Button discarding unsaved changes to the workspace inbound IP rules",
+  },
+  "workspaces.ipRulesSave": {
+    message: "保存规则",
+    description:
+      "Button saving the workspace inbound IP rules (setWorkspaceIPAllowList)",
+  },
+  "workspaces.ipRulesInvalid": {
+    message: "请输入唯一且有效的 IPv4 或 IPv6 CIDR。",
+    description:
+      "Inline validation when a workspace rule block is not a unique, valid CIDR",
+  },
+  "workspaces.ipRulesRemove": {
+    message: "移除 {cidr}",
+    description:
+      "Accessible label for a workspace inbound IP rule remove button",
+  },
+  "workspaces.ipRulesMoveUp": {
+    message: "上移 {cidr}",
+    description: "Accessible label to move a workspace inbound IP rule earlier",
+  },
+  "workspaces.ipRulesMoveDown": {
+    message: "下移 {cidr}",
+    description: "Accessible label to move a workspace inbound IP rule later",
+  },
+  "workspaces.ipRulesSaved": {
+    message: "入站 IP 规则已保存",
+    description: "Toast after setWorkspaceIPAllowList succeeds (w9/m388)",
+  },
+  "workspaces.ipRulesSaveErrorTitle": {
+    message: "无法保存入站 IP 规则",
+    description:
+      "Title of the inline alert when a workspace rule change is refused (w9/m388)",
+  },
+  "workspaces.ipRulesSaveError": {
+    message: "无法保存入站 IP 规则，请重试。",
+    description:
+      "Fallback inline message when a workspace rule change fails without a server reason (w9/m388)",
+  },
 };
 
 export default zhWorkspaces;

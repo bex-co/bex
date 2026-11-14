@@ -505,11 +505,11 @@ func restartFreePending(d *appv1alpha1.Database) bool {
 }
 
 // markRestartFree records, on the write itself, whether the generation it
-// lands at restarts nothing: only the display name, the two allow-list
-// layers or external access change. Anything else — plan, version, storage,
-// parameters, HA, pooler, users, suspend, a restart stamp — keeps
-// config_restart until served (w4/m137). A write that leaves the spec alone
-// bumps no generation, so it marks nothing.
+// lands at restarts nothing: only the display name, the three allow-list
+// layers (own, environment, workspace) or external access change. Anything
+// else — plan, version, storage, parameters, HA, pooler, users, suspend, a
+// restart stamp — keeps config_restart until served (w4/m137). A write that
+// leaves the spec alone bumps no generation, so it marks nothing.
 func markRestartFree(before, after *appv1alpha1.Database) {
 	if apiequality.Semantic.DeepEqual(after.Spec, before.Spec) {
 		return
@@ -518,6 +518,7 @@ func markRestartFree(before, after *appv1alpha1.Database) {
 	spec.Name, prior.Name = "", ""
 	spec.IPAllowList, prior.IPAllowList = nil, nil
 	spec.EnvironmentIPAllowList, prior.EnvironmentIPAllowList = nil, nil
+	spec.WorkspaceIPAllowList, prior.WorkspaceIPAllowList = nil, nil
 	spec.Public, prior.Public = false, false
 	if !apiequality.Semantic.DeepEqual(spec, prior) {
 		delete(after.Annotations, annotationRestartFreeGeneration)
@@ -951,6 +952,10 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		if err := s.refuseSecondFreeDatabase(ctx, tenantID, ""); err != nil {
 			return PostgresView{}, err
 		}
+	}
+	// Every newborn inherits its workspace's inbound-IP layer (w9/m388).
+	if d.Spec.WorkspaceIPAllowList, err = s.WorkspaceIPLayer(ctx, tenantID); err != nil {
+		return PostgresView{}, err
 	}
 	resourcemeta.Touch(d, s.Now())
 	// Dry-run: the exact object the real create writes, through admission
@@ -2033,6 +2038,39 @@ func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name, expectedE
 	d.Spec.EnvironmentIPAllowList = cidrs
 	resourcemeta.Touch(d, s.Now())
 	return s.Client.Patch(ctx, d, patch)
+}
+
+// SetWorkspaceIPAllowList projects (or, with nil, clears) the workspace
+// inbound-IP layer onto every Database in workspaceID (w9/m388) — the
+// internal/workspaces fan-out's write path, authorized once for the workspace
+// with the rules' own relation (can_manage). Each database's own IPAllowList
+// and environment layer are never touched: the SNI proxy enforces each layer,
+// so a source must pass all three. Mid-cutover twins are both written, since
+// the proxy routes whichever it saw last. A database already carrying cidrs
+// is not written, and the change restarts nothing.
+func (s *Service) SetWorkspaceIPAllowList(ctx context.Context, workspaceID string, cidrs []string) error {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, workspaceID)
+	if err != nil {
+		return err
+	}
+	var list appv1alpha1.DatabaseList
+	if err := s.ListByTenant(ctx, &list, workspaceID); err != nil {
+		return fmt.Errorf("listing Postgres for the workspace inbound IP rules: %w", err)
+	}
+	err = core.PatchEach(ctx, s.Client, core.Pointers(list.Items), func(d *appv1alpha1.Database) bool {
+		if slices.Equal(d.Spec.WorkspaceIPAllowList, cidrs) {
+			return false
+		}
+		before := d.DeepCopy()
+		d.Spec.WorkspaceIPAllowList = slices.Clone(cidrs)
+		markRestartFree(before, d)
+		resourcemeta.Touch(d, s.Now())
+		return true
+	})
+	if err != nil {
+		return fmt.Errorf("applying the workspace inbound IP rules to its Postgres: %w", err)
+	}
+	return nil
 }
 
 // SetEnvironmentIsolation stamps (or, with isolated=false, clears)

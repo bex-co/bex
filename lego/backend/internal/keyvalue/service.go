@@ -271,10 +271,10 @@ func restartFreePending(kv *appv1alpha1.KeyValue) bool {
 
 // markRestartFree records, on the write itself, whether the generation it
 // lands at restarts nothing: only the name, the allow-list, the environment's
-// allow-list layer (the SNI proxy's, w4/451), the eviction policy (applied at
-// runtime, w4/m330) or external access change, and turning access on does not
-// add the listener. A write that leaves the spec alone bumps no generation, so
-// it marks nothing.
+// and the workspace's allow-list layers (the SNI proxy's, w4/451, w9/m388),
+// the eviction policy (applied at runtime, w4/m330) or external access
+// change, and turning access on does not add the listener. A write that
+// leaves the spec alone bumps no generation, so it marks nothing.
 func markRestartFree(before, after *appv1alpha1.KeyValue) {
 	if apiequality.Semantic.DeepEqual(after.Spec, before.Spec) {
 		return
@@ -283,6 +283,7 @@ func markRestartFree(before, after *appv1alpha1.KeyValue) {
 	spec.Name, prior.Name = "", ""
 	spec.IPAllowList, prior.IPAllowList = nil, nil
 	spec.EnvironmentIPAllowList, prior.EnvironmentIPAllowList = nil, nil
+	spec.WorkspaceIPAllowList, prior.WorkspaceIPAllowList = nil, nil
 	spec.MaxmemoryPolicy, prior.MaxmemoryPolicy = "", ""
 	spec.Public, prior.Public = false, false
 	if !apiequality.Semantic.DeepEqual(spec, prior) || (after.Spec.Public && externalAccessRestarts(before)) {
@@ -647,6 +648,10 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 			return KeyValueView{}, err
 		}
 	}
+	// Every newborn inherits its workspace's inbound-IP layer (w9/m388).
+	if kv.Spec.WorkspaceIPAllowList, err = s.WorkspaceIPLayer(ctx, tenantID); err != nil {
+		return KeyValueView{}, err
+	}
 	resourcemeta.Touch(kv, s.Now())
 	// Dry-run: the exact object the real create writes, through admission
 	// without persisting it (w5/m116), so the plan's count cap and the CRD's
@@ -859,6 +864,36 @@ func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name, expectedE
 	markRestartFree(before, kv)
 	resourcemeta.Touch(kv, s.Now())
 	return s.Client.Patch(ctx, kv, patch)
+}
+
+// SetWorkspaceIPAllowList projects (or, with nil, clears) the workspace
+// inbound-IP layer onto every KeyValue in workspaceID (w9/m388), mirroring
+// postgres.Service.SetWorkspaceIPAllowList: authorized once for the
+// workspace, the store's own IPAllowList and environment layer untouched, a
+// store already carrying cidrs not written, and nothing restarted.
+func (s *Service) SetWorkspaceIPAllowList(ctx context.Context, workspaceID string, cidrs []string) error {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, workspaceID)
+	if err != nil {
+		return err
+	}
+	var list appv1alpha1.KeyValueList
+	if err := s.ListByTenant(ctx, &list, workspaceID); err != nil {
+		return fmt.Errorf("listing Key Value for the workspace inbound IP rules: %w", err)
+	}
+	err = core.PatchEach(ctx, s.Client, core.Pointers(list.Items), func(kv *appv1alpha1.KeyValue) bool {
+		if slices.Equal(kv.Spec.WorkspaceIPAllowList, cidrs) {
+			return false
+		}
+		before := kv.DeepCopy()
+		kv.Spec.WorkspaceIPAllowList = slices.Clone(cidrs)
+		markRestartFree(before, kv)
+		resourcemeta.Touch(kv, s.Now())
+		return true
+	})
+	if err != nil {
+		return fmt.Errorf("applying the workspace inbound IP rules to its Key Value: %w", err)
+	}
+	return nil
 }
 
 // SetEnvironmentIsolation stamps (or, with isolated=false, clears)

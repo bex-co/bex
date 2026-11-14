@@ -31,8 +31,10 @@ import (
 	"net/mail"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/graphql-go/graphql"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/billing"
@@ -124,6 +126,14 @@ type Service struct {
 	// Members runs Render's member mutations through the members service
 	// (authorization, self and last-admin safeguards, audit); nil → ErrWorkspacesUnavailable.
 	Members MemberMutator
+	// IPLayerTargets project the workspace inbound-IP layer onto the
+	// workspace's datastores (w9/m388): the Postgres and Key Value services.
+	// Its web services and static sites are patched here. Empty leaves
+	// datastores untouched (test fakes).
+	IPLayerTargets []IPLayerTarget
+
+	gqlWorkspaceOnce sync.Once
+	gqlWorkspace     *graphql.Object
 }
 
 // MemberMutator is the members service's role change and removal, keyed by
@@ -319,6 +329,12 @@ type WorkspaceView struct {
 	Plan      string `json:"plan"`
 	Role      string `json:"role,omitempty"`
 	CreatedAt string `json:"createdAt"`
+	// IPAllowList is the workspace's inbound IP rules (w9/m388), Render's
+	// owner.ipAllowList: what it saved, or the seeded allow-all when it never
+	// saved any. Only the surfaces that return it read it (withIPAllowLists:
+	// the owners REST reads, MCP list_workspaces, SetIPAllowList); GraphQL
+	// reads it when the field is selected.
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 }
 
 func view(t store.Tenant, role string) WorkspaceView {
@@ -763,7 +779,8 @@ type OwnerView struct {
 }
 
 // ListOwners is List (the caller's workspaces) plus t001's REST-only name/email
-// filters and the per-workspace contact email — GET /v1/owners.
+// filters, the per-workspace contact email and inbound IP rules (w9/m388) —
+// GET /v1/owners.
 func (s *Service) ListOwners(ctx context.Context, f OwnerFilter) ([]OwnerView, error) {
 	ws, err := s.List(ctx)
 	if err != nil {
@@ -772,19 +789,20 @@ func (s *Service) ListOwners(ctx context.Context, f OwnerFilter) ([]OwnerView, e
 	if len(f.Names) > 0 {
 		ws = matchNames(ws, f.Names)
 	}
-	named := ws
 	ids := make([]string, 0, len(ws))
 	for _, w := range ws {
 		ids = append(ids, w.ID)
 	}
 	emails := s.ownerEmails(ctx, ids)
-	out := make([]OwnerView, 0, len(named))
-	for _, w := range named {
-		email := emails[w.ID]
-		if len(f.Emails) > 0 && !slices.Contains(f.Emails, email) {
-			continue
-		}
-		out = append(out, OwnerView{WorkspaceView: w, Email: email})
+	matched := slices.DeleteFunc(ws, func(w WorkspaceView) bool {
+		return len(f.Emails) > 0 && !slices.Contains(f.Emails, emails[w.ID])
+	})
+	if matched, err = s.withIPAllowLists(ctx, matched); err != nil {
+		return nil, err
+	}
+	out := make([]OwnerView, 0, len(matched))
+	for _, w := range matched {
+		out = append(out, OwnerView{WorkspaceView: w, Email: emails[w.ID]})
 	}
 	return out, nil
 }

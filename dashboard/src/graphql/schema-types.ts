@@ -2105,6 +2105,7 @@ export type Mutation = {
   setStaticRoutes: Maybe<Service>;
   setSubdomainPolicy: Maybe<Service>;
   setWebhookEndpointEnabled: Maybe<WebhookEndpoint>;
+  setWorkspaceIPAllowList: Maybe<Workspace>;
   steerAgentSession: Maybe<AgentSession>;
   suspendDatabase: Maybe<Database>;
   suspendKeyValue: Maybe<KeyValue>;
@@ -3406,6 +3407,12 @@ export type MutationSetWebhookEndpointEnabledArgs = {
 };
 
 
+export type MutationSetWorkspaceIpAllowListArgs = {
+  id: Scalars['String']['input'];
+  ipAllowList: Array<IpAllowListEntryInput>;
+};
+
+
 export type MutationSteerAgentSessionArgs = {
   attachmentIds?: InputMaybe<Array<Scalars['String']['input']>>;
   egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -4051,6 +4058,7 @@ export type Query = {
   webhookEndpoint: Maybe<WebhookEndpoint>;
   webhookEndpoints: Maybe<Array<Maybe<WebhookEndpoint>>>;
   webhookEventTypes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  workspace: Maybe<Workspace>;
   workspaceBillingReadiness: Maybe<WorkspaceBillingReadiness>;
   workspaceCreationAttempt: Maybe<WorkspaceCreationAttempt>;
   workspaceCreationPolicy: Maybe<WorkspaceCreationPolicy>;
@@ -4890,6 +4898,11 @@ export type QueryWebhookEndpointsArgs = {
 };
 
 
+export type QueryWorkspaceArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type QueryWorkspaceBillingReadinessArgs = {
   workspaceId: Scalars['String']['input'];
 };
@@ -5509,6 +5522,7 @@ export type Workspace = {
   __typename: 'Workspace';
   createdAt: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  ipAllowList: Array<IpAllowListEntry>;
   name: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
   role: Maybe<Scalars['String']['output']>;
