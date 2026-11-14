@@ -23,6 +23,15 @@ name: Isolation matrix (weekly)
 
 on:
   workflow_dispatch:
+    inputs:
+      verify_agent_driver:
+        # The agent image leg (driver listeners, standalone real-key refusal,
+        # the muse profile under gVisor, ADR108). Opt-in on a dispatch, e.g.
+        # right after a deploy that changed the agent image; the weekly
+        # schedule keeps the boundary matrix alone.
+        description: "Also verify the agent image and driver leg"
+        type: boolean
+        default: false
   schedule:
     # Tuesday 03:41 UTC. Deliberately a different day from deploy-canary.yml:
     # these probes and that one both touch the production substrate, and a
@@ -158,6 +167,7 @@ jobs:
         if: always()
         env:
           BEX_LIVE_VERIFY: "1"
+          BEX_VERIFY_AGENT_DRIVER: ${{ inputs.verify_agent_driver && '1' || '0' }}
         run: |
           code=0
           bash scripts/verify-sandbox-isolation-live.sh > sandbox-isolation.txt 2>&1 || code=$?
