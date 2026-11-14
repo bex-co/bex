@@ -91,7 +91,7 @@ func TestFailureMessageDeadlineNamesTheWindow(t *testing.T) {
 	cl := fakeClient(job, jobPod(jobUID, job.Namespace, terminated(137, "Error")))
 
 	if got, want := FailureMessage(context.Background(), cl, job),
-		"the pre-deploy command did not finish within its 10-minute window; check the pre-deploy logs"; got != want {
+		"the pre-deploy command did not finish within its 30-minute window; check the pre-deploy logs"; got != want {
 		t.Fatalf("message = %q, want %q", got, want)
 	}
 }
@@ -121,7 +121,7 @@ func pullWaiting(reason string) corev1.ContainerState {
 }
 
 // w8/m44: a pre-deploy Job whose image cannot be pulled failed only when its
-// 10-minute deadline ran out, as "did not finish … check the pre-deploy logs"
+// 30-minute deadline ran out, as "did not finish … check the pre-deploy logs"
 // for a command that never started. A failed Job whose pod is stuck on the
 // pull names the pull instead, whatever the Job's own reason.
 func TestFailureMessageNamesAFailingImagePull(t *testing.T) {
@@ -277,8 +277,8 @@ func TestFailureMessageParsesAsItsTemplate(t *testing.T) {
 	}{
 		"window": {
 			job:  failedJob(batchv1.JobReasonDeadlineExceeded),
-			want: "the pre-deploy command did not finish within its 10-minute window; check the pre-deploy logs",
-			code: appv1alpha1.DeployReasonPreDeployWindowExceeded, params: []appv1alpha1.DeployReasonParam{{Name: "minutes", Value: "10"}},
+			want: "the pre-deploy command did not finish within its 30-minute window; check the pre-deploy logs",
+			code: appv1alpha1.DeployReasonPreDeployWindowExceeded, params: []appv1alpha1.DeployReasonParam{{Name: "minutes", Value: "30"}},
 		},
 		"out of memory": {
 			job: failedJob("BackoffLimitExceeded"), state: new(terminated(137, "OOMKilled")),

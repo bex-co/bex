@@ -114,7 +114,7 @@ func newQueuedBehindFailureFixture(
 ) (*Reconciler, *memStore, DesiredApp, Deploy, Deploy) {
 	t.Helper()
 	ctx := context.Background()
-	// The default gate timeouts (35m build / 12m pre-deploy / 18m deploy) keep
+	// The default gate timeouts (125m build / 35m pre-deploy / 18m deploy) keep
 	// every gate closed for rows this fixture opened microseconds ago, so no row
 	// here is ever evaluated as timed out.
 	rec, st, _ := newTestReconciler(t)

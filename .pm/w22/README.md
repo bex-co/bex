@@ -25,5 +25,5 @@
 - [x] [006](done/006.md) — Provision the storage meter's registry users as operator-managed Zot credentials — promoted to **m321**
 - [x] [007](done/007.md) — Unparameterized lists return the full set where Render returns 20 — **decided 2026-11-13 by the user: Render's 20; filed as [w10/m377](../w10/blocked/m377/README.md)**
 - [ ] [008](blocked/008.md) — Enforce the 40 GB writable filesystem on sandbox pods, after checking kubelet's accounting under gVisor — **BLOCKED (a live gVisor sandbox node to read kubelet's ephemeral-storage accounting for a runsc pod (infra or the user))**
-- [ ] [009](009.md) — Widen the dashboard's `/agents` gate to every workspace, the day the platform model route widens (w10/m14 t007) ← from `/pm-brainstorm for w22` 2026-11-14
-- [ ] [010](010.md) — Pre-deploy commands get Render's 30 minutes, not 10 ← from `/pm-brainstorm for w22` 2026-11-14; render.com/docs/deploys
+- [ ] [009](blocked/009.md) — Widen the dashboard's `/agents` gate to every workspace, the day the platform model route widens (w10/m14 t007) ← from `/pm-brainstorm for w22` 2026-11-14 — **BLOCKED (w10/m14 t007 must widen the backend route first: it waits on `w6/m362` and an OpenRouter top-up from the user, and the user decision of 2026-11-05 is to ship all of ADR091 before widening; then run the note's steps unchanged)**
+- [x] [010](done/010.md) — Pre-deploy commands get Render's 30 minutes, not 10 ← from `/pm-brainstorm for w22` 2026-11-14; render.com/docs/deploys — **DONE 2026-11-14** (Job deadline 30m, gate 35m, ADR004 and ADR018 updated)

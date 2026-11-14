@@ -2007,7 +2007,7 @@ func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
 //
 // The rule is the same one the build and pre-deploy gates already follow: a
 // control-plane budget must be strictly longer than the mechanism it watches
-// (build Jobs 30m → gate 35m, pre-deploy Jobs 10m → gate 12m). Equal would be
+// (build Jobs 120m → gate 125m, pre-deploy Jobs 30m → gate 35m). Equal would be
 // a race — the generic "did not become healthy within the health-gate window"
 // could beat the Deployment's own specific ProgressDeadlineExceeded and report
 // the vague message w7/m79 worked to eliminate.
@@ -2024,6 +2024,23 @@ func TestDeployGateOutlastsTheRolloutBudgetItObserves(t *testing.T) {
 	if rec.DeployGateTimeout != 18*time.Minute {
 		t.Errorf("DeployGateTimeout = %v, want 18m (15m rollout budget + the same margin the "+
 			"build and pre-deploy gates carry)", rec.DeployGateTimeout)
+	}
+}
+
+// The pre-deploy gate observes the operator's pre-deploy Job, whose deadline is
+// Render's 30-minute pre-deploy limit (predeployTimeout in the operator's
+// predeploy package, which backend cannot import). A gate at or below it would
+// close a long migration as timed out while its Job is still within its window.
+func TestPreDeployGateOutlastsRendersThirtyMinuteLimit(t *testing.T) {
+	rec, _, _ := newTestReconciler(t)
+	const preDeployLimit = 30 * time.Minute // mirrors predeployTimeout in the operator
+
+	if rec.PreDeployGateTimeout <= preDeployLimit {
+		t.Fatalf("PreDeployGateTimeout = %v must be strictly longer than the %v pre-deploy Job deadline it observes",
+			rec.PreDeployGateTimeout, preDeployLimit)
+	}
+	if rec.PreDeployGateTimeout != 35*time.Minute {
+		t.Errorf("PreDeployGateTimeout = %v, want 35m (30m Job deadline + the 5m margin the build gate carries)", rec.PreDeployGateTimeout)
 	}
 }
 

@@ -84,8 +84,9 @@ const (
 	defaultResyncPeriod = 30 * time.Second
 	// Phase-specific gate timeouts bound how long a deploy may sit open before
 	// recordDeploy gives up on it and calls it failed. BuildKit Jobs have a
-	// 120-minute active deadline (Render's build timeout) and pre-deploy Jobs have a 10-minute deadline,
-	// so their control-plane budgets must be longer than the mechanism they
+	// 120-minute active deadline (Render's build timeout) and pre-deploy Jobs have a 30-minute deadline
+	// (Render's pre-deploy limit; predeployTimeout in
+	// lego/operator/internal/predeploy/predeploy.go), so their control-plane budgets must be longer than the mechanism they
 	// observe. Each budget starts from the deploy row's last phase transition.
 	// The shorter rollout budget is needed because a bad image
 	// (ImagePullBackOff) historically left the App CR polling PhaseDeploying
@@ -94,7 +95,7 @@ const (
 	// prior ActiveRevision, so the row can close from the phase; the gate remains
 	// the backstop when the CR has not yet observed that verdict.
 	defaultBuildGateTimeout     = 125 * time.Minute
-	defaultPreDeployGateTimeout = 12 * time.Minute
+	defaultPreDeployGateTimeout = 35 * time.Minute
 	// defaultDeployGateTimeout observes the rollout the same way the two gates
 	// above observe their Jobs, so it follows the same rule: a control-plane
 	// budget must be strictly LONGER than the mechanism it watches, or the
@@ -110,7 +111,7 @@ const (
 	// the startupProbe budget and Deployment.spec.progressDeadlineSeconds are
 	// derived from it, so the Deployment reports ProgressDeadlineExceeded at
 	// 15m and this gate closes the row at 18m. The margin matches the existing
-	// pattern (build 30m→35m, pre-deploy 10m→12m).
+	// pattern (build 120m→125m, pre-deploy 30m→35m).
 	//
 	// The constant cannot be shared — separate Go module, and backend must
 	// never import operator — so the invariant is held by a test on each side.

@@ -73,8 +73,12 @@ const (
 // predeployTimeout bounds a single pre-deploy Job's wall-clock (its Job
 // activeDeadlineSeconds). A hung migration is reaped as failed rather than
 // blocking the rollout forever, matching the build Job's bounded-deadline
-// pattern (docs/ADR004-app-deployment.md, w1/m33/t002).
-const predeployTimeout = 10 * time.Minute
+// pattern (docs/ADR004-app-deployment.md, w1/m33/t002). 30 minutes is
+// Render's pre-deploy limit (render.com/docs/deploys, deploy steps:
+// build 120, pre-deploy 30, start 15). The backend's control-plane fallback,
+// defaultPreDeployGateTimeout in lego/backend/internal/store/reconciler.go,
+// must stay longer than this.
+const predeployTimeout = 30 * time.Minute
 
 // jobTTL reaps a finished pre-deploy Job (and its pod's logs) after an hour,
 // same as build. The step's outcome survives on the App CR status / deploy

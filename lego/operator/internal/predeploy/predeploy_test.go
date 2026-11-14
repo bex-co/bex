@@ -67,6 +67,11 @@ func TestJobShape(t *testing.T) {
 	if j.Spec.ActiveDeadlineSeconds == nil || j.Spec.TTLSecondsAfterFinished == nil {
 		t.Error("deadline + TTL must be set")
 	}
+	// Render's pre-deploy limit is 30 minutes (render.com/docs/deploys); the
+	// backend's PreDeployGateTimeout must stay longer than this.
+	if j.Spec.ActiveDeadlineSeconds != nil && *j.Spec.ActiveDeadlineSeconds != 30*60 {
+		t.Errorf("activeDeadlineSeconds = %d, want 1800 (Render's 30-minute pre-deploy limit)", *j.Spec.ActiveDeadlineSeconds)
+	}
 	// Labels: service + component (for the backend's log selector) + workspace.
 	if j.Labels[LabelService] != "api" || j.Labels[LabelComponent] != ComponentValue || j.Labels[labelWorkspace] != "tea-1" {
 		t.Errorf("job labels = %v", j.Labels)
