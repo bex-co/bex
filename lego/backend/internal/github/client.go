@@ -614,6 +614,7 @@ func (c *Client) MintChecksToken(ctx context.Context, installationID int64) (Ins
 // neutral, skipped, failure, cancelled, timed_out, action_required, stale).
 type CheckRun struct {
 	Name       string `json:"name"`
+	HeadSHA    string `json:"head_sha"`
 	Status     string `json:"status"`
 	Conclusion string `json:"conclusion"`
 	URL        string `json:"html_url"`

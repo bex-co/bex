@@ -61,6 +61,26 @@ describe("TurnOrigins (w9/m344)", () => {
     ).toHaveAttribute("href", RUN_URL);
   });
 
+  it("says when a failed check also fails on the base branch (w6/m399)", () => {
+    render(
+      <TurnOrigins
+        origins={[
+          {
+            kind: "ci_failure",
+            author: null,
+            url: RUN_URL,
+            baseFailingRef: "main",
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("link", {
+        name: "Steered by a failed CI run; some checks also fail on main, not because of this change",
+      }),
+    ).toHaveAttribute("href", RUN_URL);
+  });
+
   it("drops the @ when GitHub sent no author", () => {
     render(
       <TurnOrigins
@@ -270,6 +290,7 @@ function origin(turn: number, kind: string, author: string | null) {
     kind,
     author,
     url: RUN_URL,
+    baseFailingRef: null,
   };
 }
 

@@ -1437,6 +1437,12 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "A turn started by a failed CI run on the pull request. Links to the failed checks",
   },
+  "agentSessions.turnOriginCiFailureOnBase": {
+    message:
+      "由一次失败的 CI 运行引导；其中有检查在 {base} 上同样失败，并非本次改动导致",
+    description:
+      "A turn started by a failed CI run on the pull request where at least one failing check also fails on the base branch ({base}, a branch name), so the pull request did not cause it. Links to the failed checks",
+  },
   "agentSessions.turnOriginsStart": {
     message: "发起本会话的来源",
     description:

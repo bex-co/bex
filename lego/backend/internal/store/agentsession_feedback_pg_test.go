@@ -100,7 +100,9 @@ func TestPGAgentSessionFeedbackQueueAndDelivery(t *testing.T) {
 	if err := s.MarkFeedbackDelivered(ctx, session.ID, []string{"comment:1", "suite:2"}, 2); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.QueueAgentSessionFeedback(ctx, item("suite:3", FeedbackCIFailure)); err != nil {
+	onMain := item("suite:3", FeedbackCIFailure)
+	onMain.BaseFailingRef = "main"
+	if _, err := s.QueueAgentSessionFeedback(ctx, onMain); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.MarkFeedbackDelivered(ctx, session.ID, []string{"suite:3"}, 3); err != nil {
@@ -112,8 +114,8 @@ func TestPGAgentSessionFeedbackQueueAndDelivery(t *testing.T) {
 	}
 	delivered, err := s.ListDeliveredFeedback(ctx, session.ID)
 	if err != nil || len(delivered) != 3 || *delivered[0].DeliveredTurn != 2 || *delivered[2].DeliveredTurn != 3 ||
-		delivered[0].URL == "" || delivered[0].Body != "" {
-		t.Fatalf("delivered = %+v err=%v (origins carry no body)", delivered, err)
+		delivered[0].URL == "" || delivered[0].Body != "" || delivered[0].BaseFailingRef != "" || delivered[2].BaseFailingRef != "main" {
+		t.Fatalf("delivered = %+v err=%v (origins carry no body, and the CI failure its base branch)", delivered, err)
 	}
 	if left := claimMine(now.Add(time.Hour)); len(left) != 0 {
 		t.Fatalf("delivered feedback was claimed again: %+v", left)

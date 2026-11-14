@@ -634,6 +634,18 @@ func TestTakeoverOriginIsTurnOne(t *testing.T) {
 	}
 }
 
+// A CI-failure origin carries the base branch its checks also failed on
+// (w6/m399).
+func TestCIFailureOriginCarriesTheBaseBranch(t *testing.T) {
+	svc, _, _, _ := fixture()
+	turn := 3
+	svc.Feedback = fakeDeliveredFeedback{{Kind: store.FeedbackCIFailure, URL: "https://github.com/run/1", BaseFailingRef: "main", DeliveredTurn: &turn}}
+	got := svc.turnOrigins(context.Background(), "ags-x")
+	if len(got) != 1 || got[0] != (TurnOrigin{Turn: 3, Kind: store.FeedbackCIFailure, URL: "https://github.com/run/1", BaseFailingRef: "main"}) {
+		t.Fatalf("turn origins = %+v", got)
+	}
+}
+
 type fakeDeliveredFeedback []store.AgentSessionFeedback
 
 func (f fakeDeliveredFeedback) ListDeliveredFeedback(context.Context, string) ([]store.AgentSessionFeedback, error) {

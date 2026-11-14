@@ -15,7 +15,10 @@ const ICONS = {
 // The line for one origin, or null for a kind this build does not know: a
 // wrong claim about why a turn started is worse than none. A turn-1 comment
 // is the `/bex` comment that started the session (w9/m348), not a steer.
-function originLabel(t: Translate, { kind, author, turn }: TurnOrigin) {
+function originLabel(
+  t: Translate,
+  { kind, author, turn, baseFailingRef }: TurnOrigin,
+) {
   if (turn === 1 && kind === "pr_comment") {
     return author
       ? t("agentSessions.turnOriginStartComment", { author })
@@ -31,7 +34,9 @@ function originLabel(t: Translate, { kind, author, turn }: TurnOrigin) {
         ? t("agentSessions.turnOriginComment", { author })
         : t("agentSessions.turnOriginCommentAnonymous");
     case "ci_failure":
-      return t("agentSessions.turnOriginCiFailure");
+      return baseFailingRef
+        ? t("agentSessions.turnOriginCiFailureOnBase", { base: baseFailingRef })
+        : t("agentSessions.turnOriginCiFailure");
     default:
       return null;
   }

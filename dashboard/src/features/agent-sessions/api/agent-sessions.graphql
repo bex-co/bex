@@ -153,6 +153,7 @@ query AgentSession($id: String!) {
       kind
       author
       url
+      baseFailingRef
     }
     # The secrets the latest turn received and why (w9/m385, ADR098 D9):
     # inline, explicit (picked), repo or workspace. Names only. Like

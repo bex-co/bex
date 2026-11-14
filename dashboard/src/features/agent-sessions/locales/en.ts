@@ -1520,6 +1520,12 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "A turn started by a failed CI run on the pull request. Links to the failed checks",
   },
+  "agentSessions.turnOriginCiFailureOnBase": {
+    message:
+      "Steered by a failed CI run; some checks also fail on {base}, not because of this change",
+    description:
+      "A turn started by a failed CI run on the pull request where at least one failing check also fails on the base branch ({base}, a branch name), so the pull request did not cause it. Links to the failed checks",
+  },
   "agentSessions.turnOriginsStart": {
     message: "What started this session",
     description:

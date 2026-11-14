@@ -149,6 +149,33 @@ func (c *Client) SuiteCheckRuns(ctx context.Context, installationID int64, owner
 	return out.CheckRuns, err
 }
 
+// BranchCheckRuns lists the latest check runs on branch's head commit, up to
+// maxCheckRunPages pages of 100. The branch is addressed as heads/<branch>,
+// each segment escaped, so a name such as release/1.0 keeps its slash.
+func (c *Client) BranchCheckRuns(ctx context.Context, installationID int64, owner, repo, branch string) ([]CheckRun, error) {
+	segments := strings.Split(branch, "/")
+	for i, seg := range segments {
+		segments[i] = neturl.PathEscape(seg)
+	}
+	var runs []CheckRun
+	for page := 1; page <= maxCheckRunPages; page++ {
+		var out struct {
+			CheckRuns []CheckRun `json:"check_runs"`
+		}
+		err := c.repoJSON(ctx, installationID, repo, map[string]string{"checks": "read"}, http.MethodGet,
+			c.repoURL(owner, repo)+"/commits/heads/"+strings.Join(segments, "/")+"/check-runs?filter=latest&per_page=100&page="+strconv.Itoa(page),
+			nil, http.StatusOK, &out)
+		if err != nil {
+			return nil, err
+		}
+		runs = append(runs, out.CheckRuns...)
+		if len(out.CheckRuns) < 100 {
+			break
+		}
+	}
+	return runs, nil
+}
+
 // PullRequestDetail is what a `/bex` takeover and a takeover
 // session's PR verb read of one pull request: its state, head and base.
 type PullRequestDetail struct {

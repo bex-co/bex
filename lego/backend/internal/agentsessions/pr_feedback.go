@@ -64,6 +64,10 @@ type TurnOrigin struct {
 	// Author is the GitHub login of a comment or review; empty for CI.
 	Author string `json:"author,omitempty"`
 	URL    string `json:"url,omitempty"`
+	// BaseFailingRef is the pull request's base branch when at least one of
+	// a CI failure's checks also failed on its latest commit, so the change
+	// did not cause it; empty otherwise.
+	BaseFailingRef string `json:"baseFailingRef,omitempty" jsonschema:"for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure"`
 }
 
 // FeedbackReader lists a session's delivered feedback (*store.PGStore).
@@ -85,7 +89,7 @@ func (s *Service) turnOrigins(ctx context.Context, sessionID string) []TurnOrigi
 	out := make([]TurnOrigin, 0, len(items))
 	for _, item := range items {
 		if item.DeliveredTurn != nil {
-			out = append(out, TurnOrigin{Turn: *item.DeliveredTurn, Kind: item.Kind, Author: item.Author, URL: item.URL})
+			out = append(out, TurnOrigin{Turn: *item.DeliveredTurn, Kind: item.Kind, Author: item.Author, URL: item.URL, BaseFailingRef: item.BaseFailingRef})
 		}
 	}
 	return out
@@ -138,6 +142,7 @@ type PRFeedbackGitHub interface {
 	GetReview(ctx context.Context, installationID int64, owner, repo string, number int, reviewID int64) (github.Review, error)
 	ReviewComments(ctx context.Context, installationID int64, owner, repo string, number int, reviewID int64) ([]github.ReviewComment, error)
 	SuiteCheckRuns(ctx context.Context, installationID int64, owner, repo string, suiteID int64) ([]github.CheckRun, error)
+	BranchCheckRuns(ctx context.Context, installationID int64, owner, repo, ref string) ([]github.CheckRun, error)
 	GetPullRequest(ctx context.Context, installationID int64, owner, repo string, number int) (github.PullRequestDetail, error)
 	BranchProtected(ctx context.Context, installationID int64, owner, repo, branch string) (bool, error)
 	AddCommentReaction(ctx context.Context, installationID int64, owner, repo string, commentID int64, inline bool, content string) error
@@ -176,6 +181,9 @@ type ghUser struct {
 
 type suitePullRequest struct {
 	Number int `json:"number"`
+	Base   struct {
+		Ref string `json:"ref"`
+	} `json:"base"`
 }
 
 type feedbackEvent struct {
@@ -501,34 +509,32 @@ func (f *PRFeedback) queueCIFailure(ctx context.Context, ev feedbackEvent, works
 	if err != nil {
 		return 0, err
 	}
-	var b strings.Builder
-	short := ev.CheckSuite.HeadSHA
-	if len(short) > 12 {
-		short = short[:12]
-	}
-	fmt.Fprintf(&b, "CI failed on your head commit %s:", short)
+	failed := slices.DeleteFunc(runs, func(run github.CheckRun) bool { return !CIFailed(run.Conclusion) })
 	url := ""
-	for _, run := range runs {
-		if !CIFailed(run.Conclusion) {
-			continue
-		}
-		if url == "" {
-			url = run.URL
-		}
-		fmt.Fprintf(&b, "\n\n- %q (%s) %s", run.Name, run.Conclusion, run.URL)
-		if summary := strings.TrimSpace(run.Output.Title + "\n" + run.Output.Summary); summary != "" {
-			b.WriteString("\n" + quoteFeedback(summary))
-		}
+	if len(failed) > 0 {
+		url = failed[0].URL
 	}
+	onBase := map[string]map[string]string{} // base branch → failing check → its commit there
 	queued := 0
 	for _, s := range sessions {
+		base := suiteBaseRef(ev.CheckSuite.PullRequests, s.PRNumber)
+		failing, read := onBase[base]
+		if !read {
+			failing = f.failingOnBase(ctx, ev.Installation.ID, owner, repo, base, failed)
+			onBase[base] = failing
+		}
+		baseFailingRef := ""
+		if len(failing) > 0 {
+			baseFailingRef = base
+		}
 		link := url
 		if link == "" && s.PRURL != "" {
 			link = s.PRURL + "/checks"
 		}
 		n, err := f.queue(ctx, store.AgentSessionFeedback{
 			SessionID: s.ID, SourceKey: keySuite + strconv.FormatInt(ev.CheckSuite.ID, 10), Kind: store.FeedbackCIFailure,
-			Actor: s.CreatedBy, URL: link, Body: truncateFeedback(b.String()), HeadSHA: ev.CheckSuite.HeadSHA,
+			Actor: s.CreatedBy, URL: link, Body: truncateFeedback(ciFailureBody(ev.CheckSuite.HeadSHA, failed, base, failing)),
+			HeadSHA: ev.CheckSuite.HeadSHA, BaseFailingRef: baseFailingRef,
 		})
 		if err != nil {
 			return queued, err
@@ -538,9 +544,74 @@ func (f *PRFeedback) queueCIFailure(ctx context.Context, ev feedbackEvent, works
 	return queued, nil
 }
 
+// failingOnBase reads which of the failed checks also failed on the latest
+// commit of base (a check named the same), mapped to that commit: those are
+// not the pull request's doing (w6/m399). A base the suite does not name, or
+// one that cannot be read, notes nothing.
+func (f *PRFeedback) failingOnBase(ctx context.Context, installationID int64, owner, repo, base string, failed []github.CheckRun) map[string]string {
+	if base == "" || len(failed) == 0 {
+		return nil
+	}
+	runs, err := f.GitHub.BranchCheckRuns(ctx, installationID, owner, repo, base)
+	if err != nil {
+		log.Printf("agent-session CI feedback: read the checks of %s/%s@%s: %v; the failure is not compared with its base", owner, repo, base, err)
+		return nil
+	}
+	names := make(map[string]bool, len(failed))
+	for _, run := range failed {
+		names[run.Name] = true
+	}
+	var out map[string]string
+	for _, run := range runs {
+		if names[run.Name] && CIFailed(run.Conclusion) {
+			if out == nil {
+				out = map[string]string{}
+			}
+			out[run.Name] = run.HeadSHA
+		}
+	}
+	return out
+}
+
+// ciFailureBody is a CI-failure steer's text: each failed check with its
+// summary, and for one that also fails on base, that this change did not
+// cause it.
+func ciFailureBody(headSHA string, failed []github.CheckRun, base string, onBase map[string]string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "CI failed on your head commit %s:", shortSHA(headSHA))
+	for _, run := range failed {
+		fmt.Fprintf(&b, "\n\n- %q (%s) %s", run.Name, run.Conclusion, run.URL)
+		if sha, ok := onBase[run.Name]; ok {
+			fmt.Fprintf(&b, "\n  It also fails on %s at %s, so your change did not cause it: leave it unless your task covers it.", base, shortSHA(sha))
+		}
+		if summary := strings.TrimSpace(run.Output.Title + "\n" + run.Output.Summary); summary != "" {
+			b.WriteString("\n" + quoteFeedback(summary))
+		}
+	}
+	return b.String()
+}
+
+func shortSHA(sha string) string {
+	if len(sha) > 12 {
+		return sha[:12]
+	}
+	return sha
+}
+
 // suiteCoversPR: a suite that names its pull requests must name the session's.
 func suiteCoversPR(prs []suitePullRequest, number int) bool {
-	return len(prs) == 0 || slices.Contains(prs, suitePullRequest{Number: number})
+	return len(prs) == 0 || slices.ContainsFunc(prs, func(pr suitePullRequest) bool { return pr.Number == number })
+}
+
+// suiteBaseRef is the base branch of the suite's pull request number, ""
+// when the suite does not name it.
+func suiteBaseRef(prs []suitePullRequest, number int) string {
+	for _, pr := range prs {
+		if pr.Number == number {
+			return pr.Base.Ref
+		}
+	}
+	return ""
 }
 
 func (f *PRFeedback) queue(ctx context.Context, item store.AgentSessionFeedback) (int, error) {

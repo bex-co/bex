@@ -319,6 +319,10 @@
               "author": {
                 "type": "string"
               },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "type": "string"
+              },
               "kind": {
                 "description": "pr_comment, pr_review or ci_failure",
                 "type": "string"
@@ -691,6 +695,10 @@
               "author": {
                 "type": "string"
               },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "type": "string"
+              },
               "kind": {
                 "description": "pr_comment, pr_review or ci_failure",
                 "type": "string"
@@ -1058,6 +1066,10 @@
             "additionalProperties": false,
             "properties": {
               "author": {
+                "type": "string"
+              },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -2077,6 +2089,10 @@
             "additionalProperties": false,
             "properties": {
               "author": {
+                "type": "string"
+              },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -3375,6 +3391,10 @@
               "author": {
                 "type": "string"
               },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "type": "string"
+              },
               "kind": {
                 "description": "pr_comment, pr_review or ci_failure",
                 "type": "string"
@@ -4227,6 +4247,10 @@
                   "additionalProperties": false,
                   "properties": {
                     "author": {
+                      "type": "string"
+                    },
+                    "baseFailingRef": {
+                      "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
                       "type": "string"
                     },
                     "kind": {
@@ -5528,6 +5552,10 @@
                     "author": {
                       "type": "string"
                     },
+                    "baseFailingRef": {
+                      "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                      "type": "string"
+                    },
                     "kind": {
                       "description": "pr_comment, pr_review or ci_failure",
                       "type": "string"
@@ -6691,6 +6719,10 @@
               "author": {
                 "type": "string"
               },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "type": "string"
+              },
               "kind": {
                 "description": "pr_comment, pr_review or ci_failure",
                 "type": "string"
@@ -7217,6 +7249,10 @@
             "additionalProperties": false,
             "properties": {
               "author": {
+                "type": "string"
+              },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -7807,6 +7843,10 @@
               "author": {
                 "type": "string"
               },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "type": "string"
+              },
               "kind": {
                 "description": "pr_comment, pr_review or ci_failure",
                 "type": "string"
@@ -8322,6 +8362,10 @@
               "author": {
                 "type": "string"
               },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "type": "string"
+              },
               "kind": {
                 "description": "pr_comment, pr_review or ci_failure",
                 "type": "string"
@@ -8782,6 +8826,10 @@
             "additionalProperties": false,
             "properties": {
               "author": {
+                "type": "string"
+              },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -9440,6 +9488,10 @@
             "additionalProperties": false,
             "properties": {
               "author": {
+                "type": "string"
+              },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {

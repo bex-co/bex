@@ -143,6 +143,16 @@ type fakeFeedbackGitHub struct {
 	protected bool
 	reactions []string
 	replies   []string
+	// baseRuns is what BranchCheckRuns returns for a base branch (baseErr fails
+	// it), and baseReads names the refs it read.
+	baseRuns  []github.CheckRun
+	baseErr   error
+	baseReads []string
+}
+
+func (g *fakeFeedbackGitHub) BranchCheckRuns(_ context.Context, _ int64, _, _, ref string) ([]github.CheckRun, error) {
+	g.baseReads = append(g.baseReads, ref)
+	return g.baseRuns, g.baseErr
 }
 
 func (g *fakeFeedbackGitHub) BranchProtected(context.Context, int64, string, string, string) (bool, error) {
@@ -412,6 +422,51 @@ func TestPRFeedbackCIFailureQueuesForTheHeadsSession(t *testing.T) {
 	passed := strings.Replace(string(ev), `"failure"`, `"success"`, 1)
 	if n, _ := f.HandlePRFeedback(context.Background(), "check_suite", []byte(passed), []string{"tea-a"}); n != 0 {
 		t.Fatal("a passing suite steered the session")
+	}
+}
+
+// w6/m399: a failed check that also fails on the latest commit of the pull
+// request's base branch is noted in the steer as not caused by the change,
+// and the row records the base branch for the turn origin. A check that
+// fails only on the head is not noted; an unreadable base notes nothing.
+func TestPRFeedbackCIFailureNotesAChecksFailureOnTheBaseBranch(t *testing.T) {
+	f, st, gh, _ := feedbackFixture()
+	st.headHits = []store.AgentSession{st.session}
+	gh.runs = []github.CheckRun{
+		{Name: "scripts (test)", Conclusion: "failure", URL: "https://github.com/run/1"},
+		{Name: "lint", Conclusion: "failure", URL: "https://github.com/run/2"},
+		{Name: "backend", Conclusion: "success"},
+	}
+	gh.baseRuns = []github.CheckRun{
+		{Name: "scripts (test)", Conclusion: "failure", HeadSHA: "fedcba9876543210fedcba98"},
+		{Name: "lint", Conclusion: "success", HeadSHA: "fedcba9876543210fedcba98"},
+	}
+	ev, _ := json.Marshal(map[string]any{
+		"action": "completed", "installation": map[string]any{"id": 42},
+		"repository": map[string]any{"full_name": "bex-co/app"},
+		"check_suite": map[string]any{"id": 78, "head_sha": "0123456789abcdef0123", "conclusion": "failure",
+			"pull_requests": []any{map[string]any{"number": 7, "base": map[string]any{"ref": "main"}}}},
+	})
+	if n, err := f.HandlePRFeedback(context.Background(), "check_suite", ev, []string{"tea-a"}); n != 1 || err != nil {
+		t.Fatalf("queued=%d err=%v", n, err)
+	}
+	item := st.queued[0]
+	if !slices.Equal(gh.baseReads, []string{"main"}) || item.BaseFailingRef != "main" {
+		t.Fatalf("base reads = %v, row base = %q; want main read and recorded", gh.baseReads, item.BaseFailingRef)
+	}
+	scripts, lint, _ := strings.Cut(item.Body, `- "lint"`)
+	if !strings.Contains(scripts, `- "scripts (test)" (failure)`) || !strings.Contains(scripts, "It also fails on main at fedcba987654, so your change did not cause it") ||
+		strings.Contains(lint, "also fails on") {
+		t.Fatalf("body = %s; want only scripts (test) noted as failing on main", item.Body)
+	}
+
+	st.queued, gh.baseErr = nil, errors.New("rate limited")
+	again := strings.Replace(string(ev), `"id":78`, `"id":79`, 1)
+	if n, err := f.HandlePRFeedback(context.Background(), "check_suite", []byte(again), []string{"tea-a"}); n != 1 || err != nil {
+		t.Fatalf("queued=%d err=%v with an unreadable base", n, err)
+	}
+	if item := st.queued[0]; item.BaseFailingRef != "" || strings.Contains(item.Body, "also fails on") {
+		t.Fatalf("unreadable base noted something: %+v", item)
 	}
 }
 

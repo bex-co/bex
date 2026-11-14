@@ -6,7 +6,7 @@ export type TurnOrigin = Pick<
   AgentSessionTurnOrigin,
   "kind" | "author" | "url"
 > &
-  Partial<Pick<AgentSessionTurnOrigin, "turn">>;
+  Partial<Pick<AgentSessionTurnOrigin, "turn" | "baseFailingRef">>;
 
 const NO_ORIGINS: TurnOrigin[] = [];
 

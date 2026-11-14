@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -259,5 +260,40 @@ func TestBexCommandReadsOnlyALeadingBexWord(t *testing.T) {
 		if _, ok := BexCommand(body); ok {
 			t.Errorf("BexCommand(%q) read as the command", body)
 		}
+	}
+}
+
+// A base branch is read as heads/<branch> with its slashes kept, page by page
+// until a short page (w6/m399).
+func TestBranchCheckRunsAddressesTheBranchAndPages(t *testing.T) {
+	var pages []string
+	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/app/installations/42/access_tokens":
+			w.WriteHeader(http.StatusCreated)
+			fmt.Fprint(w, `{"token":"ghs_fb","expires_at":"2026-11-12T13:00:00Z"}`)
+		case r.URL.EscapedPath() == "/repos/octo/repo/commits/heads/release/1.0/check-runs" && r.URL.Query().Get("filter") == "latest":
+			page := r.URL.Query().Get("page")
+			pages = append(pages, page)
+			n := 1
+			if page == "1" {
+				n = 100
+			}
+			runs := make([]string, n)
+			for i := range runs {
+				runs[i] = fmt.Sprintf(`{"name":"check-%s-%d","conclusion":"failure","head_sha":"abc"}`, page, i)
+			}
+			fmt.Fprintf(w, `{"check_runs":[%s]}`, strings.Join(runs, ","))
+		default:
+			http.Error(w, "unexpected "+r.Method+" "+r.URL.String(), http.StatusTeapot)
+		}
+	})
+	c := pullsClient(t, api)
+	runs, err := c.BranchCheckRuns(context.Background(), 42, "octo", "repo", "release/1.0")
+	if err != nil || len(runs) != 101 || runs[100].Name != "check-2-0" || runs[0].HeadSHA != "abc" {
+		t.Fatalf("runs = %d %v", len(runs), err)
+	}
+	if fmt.Sprint(pages) != "[1 2]" {
+		t.Fatalf("pages = %v, want 1 then 2", pages)
 	}
 }

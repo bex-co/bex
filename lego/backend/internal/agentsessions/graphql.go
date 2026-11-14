@@ -429,6 +429,8 @@ var agentSessionTurnOriginGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"kind":   gqlutil.ReqStrField(func(v TurnOrigin) any { return v.Kind }),
 		"author": gqlutil.OptionalStrField(func(v TurnOrigin) any { return v.Author }),
 		"url":    gqlutil.OptionalStrField(func(v TurnOrigin) any { return v.URL }),
+		// ci_failure: the base branch on whose latest commit a failing check also failed.
+		"baseFailingRef": gqlutil.OptionalStrField(func(v TurnOrigin) any { return v.BaseFailingRef }),
 	},
 })
 

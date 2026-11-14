@@ -49,9 +49,12 @@ type AgentSessionFeedback struct {
 	URL    string
 	Body   string
 	// HeadSHA is the commit a CI failure ran on; empty otherwise.
-	HeadSHA       string
-	CreatedAt     time.Time
-	DeliveredTurn *int
+	HeadSHA string
+	// BaseFailingRef is the pull request's base branch when at least one of
+	// a CI failure's checks also failed on its latest commit; empty otherwise.
+	BaseFailingRef string
+	CreatedAt      time.Time
+	DeliveredTurn  *int
 }
 
 // FeedbackBatch is one session's pending feedback, leased to one caller.
@@ -115,10 +118,10 @@ func insertAgentSessionFeedback(ctx context.Context, q interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }, f AgentSessionFeedback, deliveredTurn int) (bool, error) {
 	tag, err := q.Exec(ctx, `
-		INSERT INTO agent_session_feedback (session_id, source_key, kind, actor, author, url, body, head_sha, delivered_turn, delivered_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, 0), CASE WHEN $9 > 0 THEN now() END)
+		INSERT INTO agent_session_feedback (session_id, source_key, kind, actor, author, url, body, head_sha, base_failing_ref, delivered_turn, delivered_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, 0), CASE WHEN $10 > 0 THEN now() END)
 		ON CONFLICT (session_id, source_key) DO NOTHING`,
-		f.SessionID, f.SourceKey, f.Kind, f.Actor, f.Author, f.URL, f.Body, f.HeadSHA, deliveredTurn)
+		f.SessionID, f.SourceKey, f.Kind, f.Actor, f.Author, f.URL, f.Body, f.HeadSHA, f.BaseFailingRef, deliveredTurn)
 	if err != nil {
 		return false, err
 	}
@@ -188,11 +191,11 @@ func (s *PGStore) ClaimDeliverableFeedback(ctx context.Context, now time.Time, l
 	return out, nil
 }
 
-const agentSessionFeedbackColumns = `session_id, source_key, kind, actor, author, url, body, head_sha, created_at, delivered_turn`
+const agentSessionFeedbackColumns = `session_id, source_key, kind, actor, author, url, body, head_sha, base_failing_ref, created_at, delivered_turn`
 
 func scanAgentSessionFeedback(row pgx.Row) (AgentSessionFeedback, error) {
 	var f AgentSessionFeedback
-	err := row.Scan(&f.SessionID, &f.SourceKey, &f.Kind, &f.Actor, &f.Author, &f.URL, &f.Body, &f.HeadSHA, &f.CreatedAt, &f.DeliveredTurn)
+	err := row.Scan(&f.SessionID, &f.SourceKey, &f.Kind, &f.Actor, &f.Author, &f.URL, &f.Body, &f.HeadSHA, &f.BaseFailingRef, &f.CreatedAt, &f.DeliveredTurn)
 	return f, err
 }
 
@@ -253,9 +256,9 @@ func (s *PGStore) ListDeliveredFeedback(ctx context.Context, sessionID string) (
 	}
 	return collectWith(func(row pgx.Row) (AgentSessionFeedback, error) {
 		var f AgentSessionFeedback
-		return f, row.Scan(&f.Kind, &f.Author, &f.URL, &f.DeliveredTurn)
+		return f, row.Scan(&f.Kind, &f.Author, &f.URL, &f.BaseFailingRef, &f.DeliveredTurn)
 	})(s.Pool.Query(ctx, `
-		SELECT kind, author, url, delivered_turn FROM agent_session_feedback
+		SELECT kind, author, url, base_failing_ref, delivered_turn FROM agent_session_feedback
 		WHERE session_id=$1 AND delivered_turn IS NOT NULL
 		ORDER BY delivered_turn, created_at, source_key`, sessionID))
 }

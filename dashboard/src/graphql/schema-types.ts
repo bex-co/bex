@@ -416,6 +416,7 @@ export type AgentSession = {
   parentSessionId: Maybe<Scalars['String']['output']>;
   phase: Scalars['String']['output'];
   prNumber: Maybe<Scalars['Int']['output']>;
+  /** The pull request's state as bex last read it from GitHub: open (a draft too), merged or closed; null until first read. */
   prState: Maybe<Scalars['String']['output']>;
   prStateAt: Maybe<Scalars['String']['output']>;
   prUrl: Maybe<Scalars['String']['output']>;
@@ -634,6 +635,7 @@ export type AgentSessionTurnModelCost = {
 export type AgentSessionTurnOrigin = {
   __typename: 'AgentSessionTurnOrigin';
   author: Maybe<Scalars['String']['output']>;
+  baseFailingRef: Maybe<Scalars['String']['output']>;
   kind: Scalars['String']['output'];
   turn: Scalars['Int']['output'];
   url: Maybe<Scalars['String']['output']>;
