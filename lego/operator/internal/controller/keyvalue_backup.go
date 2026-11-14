@@ -232,7 +232,7 @@ test -s /backup/dump.rdb`},
 				kvSecretEnv("REDISCLI_AUTH", platformSecretName),
 			},
 			Resources:       backupResources("100m", "128Mi", workBudget),
-			SecurityContext: tenantSecCtx(),
+			SecurityContext: execution.RestrictedContainerSecurityContext(),
 			VolumeMounts:    []corev1.VolumeMount{volumeMount},
 		},
 		{
@@ -240,7 +240,7 @@ test -s /backup/dump.rdb`},
 			Image:           keyValueBackupBusyboxImage,
 			Command:         []string{"gzip", "-9", "/backup/dump.rdb"},
 			Resources:       backupResources("10m", "32Mi", workBudget),
-			SecurityContext: tenantSecCtx(),
+			SecurityContext: execution.RestrictedContainerSecurityContext(),
 			VolumeMounts:    []corev1.VolumeMount{volumeMount},
 		},
 	}
@@ -261,7 +261,7 @@ test -s /backup/dump.rdb`},
 				{Name: "AGE_PUBLIC_KEY", Value: r.Backup.AgePublicKey},
 			},
 			Resources:       backupResources("50m", "64Mi", workBudget),
-			SecurityContext: tenantSecCtx(),
+			SecurityContext: execution.RestrictedContainerSecurityContext(),
 			VolumeMounts:    []corev1.VolumeMount{volumeMount},
 		})
 	}
@@ -317,7 +317,7 @@ aws --endpoint-url "${ENDPOINT}" s3 ls "${prefix}" \
 								LocalObjectReference: corev1.LocalObjectReference{Name: r.Backup.S3Secret},
 							}}},
 							Resources:       backupResources("50m", "128Mi", workBudget),
-							SecurityContext: tenantSecCtx(),
+							SecurityContext: execution.RestrictedContainerSecurityContext(),
 							VolumeMounts:    []corev1.VolumeMount{volumeMount},
 						}},
 						Volumes: []corev1.Volume{{Name: "backup", VolumeSource: corev1.VolumeSource{
@@ -399,18 +399,11 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 	return result, nil
 }
 
-func (r *KeyValueReconciler) kvFinalizerOverrunWindow() time.Duration {
-	if r.FinalizerOverrunAfter > 0 {
-		return r.FinalizerOverrunAfter
-	}
-	return finalizerOverrunAfter
-}
-
 func (r *KeyValueReconciler) kvDeletionOverran(kv *appv1alpha1.KeyValue) bool {
 	if kv.DeletionTimestamp.IsZero() {
 		return false
 	}
-	return time.Since(kv.DeletionTimestamp.Time) >= r.kvFinalizerOverrunWindow()
+	return time.Since(kv.DeletionTimestamp.Time) >= finalizerOverrunWindow(r.FinalizerOverrunAfter)
 }
 
 func (r *KeyValueReconciler) recordKVDeletionStalled(ctx context.Context, kv *appv1alpha1.KeyValue, blockedStep string) {
@@ -420,13 +413,13 @@ func (r *KeyValueReconciler) recordKVDeletionStalled(ctx context.Context, kv *ap
 		Reason:             reasonCleanupExceededDeadline,
 		ObservedGeneration: kv.Generation,
 		Message: fmt.Sprintf("key value finalization has not completed within %s of deletion (%s); the finalizer is retained so no backup data or TLS material is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
-			r.kvFinalizerOverrunWindow(), blockedStep),
+			finalizerOverrunWindow(r.FinalizerOverrunAfter), blockedStep),
 	})
 	if !changed {
 		return
 	}
 	logf.FromContext(ctx).Error(nil, "KeyValue finalization stalled past its bound; surfaced as DeletionStalled",
-		"keyvalue", kv.Name, "window", r.kvFinalizerOverrunWindow(), "step", blockedStep)
+		"keyvalue", kv.Name, "window", finalizerOverrunWindow(r.FinalizerOverrunAfter), "step", blockedStep)
 	_ = updateStatusIfChanged(ctx, r.Client, kv)
 }
 
@@ -494,7 +487,7 @@ aws --endpoint-url "${ENDPOINT}" s3 rm "${DESTINATION%/}/${KEYVALUE}/" --recursi
 						// The purge Job only issues S3 deletes — it mounts no work
 						// volume, so it needs no ephemeral-storage budget.
 						Resources:       guaranteedResources("50m", "128Mi"),
-						SecurityContext: tenantSecCtx(),
+						SecurityContext: execution.RestrictedContainerSecurityContext(),
 					}},
 				},
 			},

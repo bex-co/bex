@@ -431,7 +431,7 @@ const probeHostHeader = "Host"
 // and so is a wildcard, which names no host a request could carry (w4/m326).
 // Types with no public route (private service, worker) keep the pod-IP Host.
 func healthProbeHost(app *appv1alpha1.App, baseDomain string) string {
-	hosts := effectiveHosts(app, baseDomain)
+	hosts := app.Spec.EffectiveHosts(app.Name, baseDomain)
 	if len(hosts) == 0 {
 		return "" // not publicly routable, so a stray spec.host is not served
 	}

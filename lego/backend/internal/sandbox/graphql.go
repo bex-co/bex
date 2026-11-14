@@ -17,7 +17,6 @@ limitations under the License.
 package sandbox
 
 import (
-	"context"
 	"fmt"
 	"maps"
 
@@ -167,11 +166,6 @@ func envFromArgs(raw any) (map[string]string, error) {
 	return env, nil
 }
 
-// ownerScoped selects the requested workspace while preserving the default when omitted.
-func ownerScoped(p graphql.ResolveParams) context.Context {
-	return core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId"))
-}
-
 func (s *Service) GraphQLQuery() graphql.Fields {
 	fields := graphql.Fields{
 		"sandboxes": &graphql.Field{
@@ -186,7 +180,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"sandboxGroupId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.listFiltered(ownerScoped(p), gqlutil.StringList(p.Args["status"]), gqlutil.Str(p.Args, "name"), gqlutil.Str(p.Args, "sandboxGroupId"))
+				return s.listFiltered(gqlutil.OwnerScoped(p), gqlutil.StringList(p.Args["status"]), gqlutil.Str(p.Args, "name"), gqlutil.Str(p.Args, "sandboxGroupId"))
 			},
 		},
 		// Render's execution history, newest first (w32/m298).
@@ -199,7 +193,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"limit":   gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.listExecutionViews(ownerScoped(p), p.Args["id"].(string), gqlutil.Str(p.Args, "cursor"), core.PageLimitOrDefault(gqlutil.Int(p.Args, "limit")))
+				return s.listExecutionViews(gqlutil.OwnerScoped(p), p.Args["id"].(string), gqlutil.Str(p.Args, "cursor"), core.PageLimitOrDefault(gqlutil.Int(p.Args, "limit")))
 			},
 		},
 		"sandboxExecution": &graphql.Field{
@@ -210,7 +204,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId":     gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetExecution(ownerScoped(p), p.Args["id"].(string), p.Args["executionId"].(string))
+				return s.GetExecution(gqlutil.OwnerScoped(p), p.Args["id"].(string), p.Args["executionId"].(string))
 			},
 		},
 		"sandbox": &graphql.Field{
@@ -220,7 +214,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Get(ownerScoped(p), p.Args["id"].(string))
+				return s.Get(gqlutil.OwnerScoped(p), p.Args["id"].(string))
 			},
 		},
 	}
@@ -285,7 +279,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				if err := s.Terminate(ownerScoped(p), p.Args["id"].(string)); err != nil {
+				if err := s.Terminate(gqlutil.OwnerScoped(p), p.Args["id"].(string)); err != nil {
 					return false, err
 				}
 				return true, nil

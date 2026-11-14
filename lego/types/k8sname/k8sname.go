@@ -61,6 +61,19 @@ func Fit(raw string) string {
 	return fit(MaxLabel, raw)
 }
 
+// Prefixed returns "<prefix><raw>" when it fits a DNS-1123 label, and a
+// digest-truncated spelling otherwise. The digest binds the truncation to the
+// raw name alone, so every prefixed child-object family of one App keeps the
+// same cut point and long names cannot collide onto one object.
+func Prefixed(prefix, raw string) string {
+	if len(prefix)+len(raw) <= MaxLabel {
+		return prefix + raw
+	}
+	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(raw)))[:8]
+	keep := MaxLabel - len(prefix) - len(sum) - 1
+	return prefix + raw[:keep] + "-" + sum
+}
+
 // FitCronJob is Fit bounded by MaxCronJob. Names that already fit keep their
 // identity, so existing CronJobs are never renamed.
 func FitCronJob(raw string) string {

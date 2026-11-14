@@ -122,6 +122,21 @@ func HardenPod(spec *corev1.PodSpec) {
 	}
 }
 
+// RestrictedContainerSecurityContext is the container hardening every tenant
+// container and build/publish step shares: no privilege escalation, all
+// capabilities dropped, RuntimeDefault seccomp. runAsNonRoot is deliberately
+// absent — tenant images may run as root (PSS baseline, not restricted; see
+// docs/ADR022-tenant-isolation.md). A mechanism that needs a narrower context
+// (a fixed non-root UID, restored file ownership) layers extra fields on top
+// of it; it must not relax these three.
+func RestrictedContainerSecurityContext() *corev1.SecurityContext {
+	return &corev1.SecurityContext{
+		AllowPrivilegeEscalation: new(false),
+		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+	}
+}
+
 // PlaceOnServingPool sets a tenant pod's serving-pool placement from its
 // tier's pool (a compute or Key Value tier's servingPool): for a named pool, a toleration of
 // exactly that pool's taint and a REQUIRED node affinity to its label, so the

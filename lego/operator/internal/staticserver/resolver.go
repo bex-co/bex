@@ -106,7 +106,7 @@ func (c *CachedResolver) Refresh(ctx context.Context) error {
 			// Render's miss handling for sites created after the cutoff (w8/183).
 			NoSPAFallback: !app.CreationTimestamp.Time.Before(SPAFallbackCutoff),
 		}
-		for _, h := range effectiveHosts(app, c.baseDomain) {
+		for _, h := range app.Spec.EffectiveHosts(app.Name, c.baseDomain) {
 			next[strings.ToLower(h)] = site
 		}
 	}
@@ -138,19 +138,6 @@ func (c *CachedResolver) Run(ctx context.Context, interval time.Duration, change
 			onErr(err)
 		}
 	})
-}
-
-// effectiveHosts mirrors the controller's host resolution for static sites so
-// the resolver and the Ingress agree on which hosts route here: spec.host, the
-// computed platform hostname when Expose is set, then spec.hosts (deduped,
-// order preserved). The platform hostname prefers spec.subdomain — the
-// control plane's globally-unique slug (w4/m19) — falling back to app.Name
-// when unset (pre-migration or hand-applied Apps), same as
-// controller.effectiveHosts.
-func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
-	// Delegates to the CRD contract (types.AppSpec.EffectiveHosts, w5/m48) —
-	// the one precedence rule this comment used to promise by hand.
-	return app.Spec.EffectiveHosts(app.Name, baseDomain)
 }
 
 // staticServePrefix is the object-key prefix the current published revision

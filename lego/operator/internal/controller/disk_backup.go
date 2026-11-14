@@ -286,7 +286,7 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		// not a budget derived from the volume's size the way the KeyValue
 		// pipeline's EmptyDir must be.
 		Resources:       diskSnapshotResources(),
-		SecurityContext: tenantSecCtx(),
+		SecurityContext: execution.RestrictedContainerSecurityContext(),
 	}
 	podSpec := corev1.PodSpec{
 		// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.

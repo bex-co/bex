@@ -94,7 +94,7 @@ func TestApplicationContainerPolicies(t *testing.T) {
 		})
 	}
 	// Platform helpers must not inherit application-image compatibility.
-	if len(tenantSecCtx().Capabilities.Add) != 0 {
+	if len(execution.RestrictedContainerSecurityContext().Capabilities.Add) != 0 {
 		t.Fatal("platform security policy widened")
 	}
 }

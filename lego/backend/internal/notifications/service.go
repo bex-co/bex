@@ -47,6 +47,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // NotificationsStore is the slice of the control-plane store this feature
@@ -810,7 +811,7 @@ func (s *Service) NotifyDeploy(ctx context.Context, n store.DeployNotification) 
 	if kind == deployMailFailed {
 		notifyOnFail = n.NotifyOnFail
 	}
-	policy := failureNotificationPolicy(n.NotificationsToSend, notifyOnFail)
+	policy := appv1alpha1.EffectiveNotificationsToSendFor(n.NotificationsToSend, notifyOnFail)
 	s.notifyDeploy(ctx, n.TenantID, n.AppName, kind, policy, deployDetails{
 		deployID:      n.DeployID,
 		commitMessage: n.CommitMessage,

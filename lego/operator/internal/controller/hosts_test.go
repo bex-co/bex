@@ -90,7 +90,7 @@ func TestEffectiveHosts(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := effectiveHosts(tc.app, tc.baseDomain)
+			got := tc.app.Spec.EffectiveHosts(tc.app.Name, tc.baseDomain)
 			if len(got) != len(tc.want) {
 				t.Fatalf("got %v, want %v", got, tc.want)
 			}

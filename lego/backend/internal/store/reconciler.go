@@ -436,15 +436,18 @@ func (r *Reconciler) rejectStaleUnhealthy(ctx context.Context, obs ObservedServi
 	return suppressAvailability(obs)
 }
 
-// identity is the control-plane identity this projector stamps and prunes
-// under. Exported Identity may be set after construction, so normalize here —
-// this is the single defaulting site.
-func (r *Reconciler) identity() string {
-	if r.Identity == "" {
+// controlPlaneIdentity normalizes the control-plane identity a reconciler
+// stamps and prunes under. Exported Identity may be set after construction, so
+// both projectors normalize through here — the one defaulting site.
+func controlPlaneIdentity(identity string) string {
+	if identity == "" {
 		return DefaultControlPlaneIdentity
 	}
-	return r.Identity
+	return identity
 }
+
+// identity is the control-plane identity this projector stamps and prunes under.
+func (r *Reconciler) identity() string { return controlPlaneIdentity(r.Identity) }
 
 func NewReconciler(cl client.Client, store Store) *Reconciler {
 	return &Reconciler{

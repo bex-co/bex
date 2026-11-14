@@ -517,6 +517,15 @@ func Page[T any](p graphql.ResolveParams, items []T, cursorOf func(T) string) []
 	return core.StablePage(items, cursor, limit, cursorSet || limitSet, cursorOf)
 }
 
+// OwnerScoped selects the requested workspace from a resolver's optional
+// `ownerId` argument, preserving the caller's default context when it is
+// omitted. Every by-id verb binds it: a resource created under `ownerId: B`
+// must be readable, updatable and deletable under `ownerId: B`, or it consumes
+// B's quota with no product path to free it (w4/122, w4/128).
+func OwnerScoped(p graphql.ResolveParams) context.Context {
+	return core.WithWorkspace(p.Context, Str(p.Args, "ownerId"))
+}
+
 // StringList coerces a `[String]` argument value ([]any from graphql-go) into
 // []string, skipping non-string entries. Nil or absent => nil. Shared by the
 // CIDR-allowlist arguments (setDatabaseIpAllowList, setKeyValueIpAllowList,

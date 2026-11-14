@@ -797,11 +797,7 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "aws-home", MountPath: "/root/.aws"},
 						},
-						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: new(false),
-							Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-							SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
-						},
+						SecurityContext: execution.RestrictedContainerSecurityContext(),
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceCPU:    resource.MustParse("50m"),

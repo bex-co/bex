@@ -1438,7 +1438,7 @@ fi
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "output", MountPath: outputMount, ReadOnly: true},
 		},
-		SecurityContext: restrictedContainerSecurityContext(),
+		SecurityContext: execution.RestrictedContainerSecurityContext(),
 		Resources:       pushPhaseResources(),
 	}
 	if o.Builder == BuilderNative {
@@ -1507,7 +1507,7 @@ fi
 				}},
 			}},
 			VolumeMounts:    []corev1.VolumeMount{{Name: "cosign-key", ReadOnly: true, MountPath: "/keys"}},
-			SecurityContext: restrictedContainerSecurityContext(),
+			SecurityContext: execution.RestrictedContainerSecurityContext(),
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:              resource.MustParse("100m"),
@@ -1707,7 +1707,7 @@ func cachePhase(o Options, name, image, script string, args []string, mounts ...
 		// The timeout is a skopeo GLOBAL flag, so it precedes the subcommand.
 		Args:            append([]string{"--command-timeout", cacheCommandTimeout}, args...),
 		VolumeMounts:    mounts,
-		SecurityContext: restrictedContainerSecurityContext(),
+		SecurityContext: execution.RestrictedContainerSecurityContext(),
 		// NOT pushPhaseResources: see cacheEphemeralLimit. The pod's ceiling is
 		// the sum of its regular containers' limits, so reusing the push phase's
 		// 16G here would double the disk a build can fill before eviction.
@@ -1834,7 +1834,7 @@ if [ -d ` + outputMount + ` ]; then printf '%s' "$commit" > ` + revisionFile + `
 			// layer; BuildKit reads it to stamp the image (w5/m148).
 			{Name: "output", MountPath: outputMount},
 		},
-		SecurityContext: restrictedContainerSecurityContext(),
+		SecurityContext: execution.RestrictedContainerSecurityContext(),
 		Resources:       sourceStepResources(),
 	}
 }
@@ -1892,14 +1892,6 @@ func captureFailureTail(spec *corev1.PodSpec) {
 	for i := range spec.Containers {
 		spec.Containers[i].TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
 		spec.Containers[i].Env = append(spec.Containers[i].Env, budget)
-	}
-}
-
-func restrictedContainerSecurityContext() *corev1.SecurityContext {
-	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: new(false),
-		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 	}
 }
 

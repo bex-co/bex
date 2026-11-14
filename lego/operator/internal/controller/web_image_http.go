@@ -44,7 +44,7 @@ const (
 // discoversWebImagePort reports a web service whose image chooses its own
 // HTTP port: no configured port and no PORT of its own (w8/m141).
 func discoversWebImagePort(app *appv1alpha1.App) bool {
-	return app.Spec.UsesWebImagePorts() && !configuredPortMode(app.Spec.PortMode) && app.Status.EnvPort == 0
+	return app.Spec.UsesWebImagePorts() && !appv1alpha1.IsConfiguredPortMode(app.Spec.PortMode) && app.Status.EnvPort == 0
 }
 
 func webImageHTTPSelectionPending(app *appv1alpha1.App) bool {
