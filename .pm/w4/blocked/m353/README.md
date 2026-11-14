@@ -1,6 +1,6 @@
 # w4 · m353 — An instance that fails its health check is restarted after about 2 minutes, not Render's 60 seconds: the 60-second rollout drain also runs before every liveness restart, while the instance is already out of rotation
 
-**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** todo (t001–t004 done 2026-11-14; t005 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** blocked — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 

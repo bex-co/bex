@@ -1,6 +1,6 @@
 # w4 · m378 — Sixteen of Render's shared MCP tools answer in bex's own shapes, not what Render's server returns: list envelopes, `list_logs`/`get_metrics` series, service creates without `deployId`, datastores without `owner`/`options`, and `query_render_postgres` rows without column names
 
-**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** in progress (t001–t006, t008–t011 done; t007 live production replay pending)
+**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** blocked — release gate (t001–t010 done, code shipped 2026-11-14 by `/loopx w4`; t007 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 
