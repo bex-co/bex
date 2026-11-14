@@ -1118,16 +1118,20 @@ func hostOnly(host string) string {
 	return h
 }
 
-// contentType prefers the origin's content type, else infers from the
+// contentType serves Render's type for the extensions renderExtensionTypes
+// names, else prefers the origin's content type, else infers from the
 // extension, else falls back to octet-stream. An unknown origin type in either
 // spelling counts as none: the publish upload sets no type for an extension
 // the AWS CLI doesn't know, and the store then reports binary/octet-stream
 // (w4/581).
 func contentType(servedPath, originType string) string {
+	ext := strings.ToLower(path.Ext(servedPath))
+	if ct := renderExtensionTypes[ext]; ct != "" {
+		return ct
+	}
 	if originType != "" && originType != "application/octet-stream" && originType != "binary/octet-stream" {
 		return originType
 	}
-	ext := strings.ToLower(path.Ext(servedPath))
 	if ct := staticExtensionTypes[ext]; ct != "" {
 		return ct
 	}
@@ -1144,11 +1148,24 @@ var staticExtensionTypes = map[string]string{
 	".woff2": "font/woff2",
 	".ttf":   "font/ttf",
 	".otf":   "font/otf",
-	".cjs":   "text/javascript; charset=utf-8",
 	".map":   "application/json",
 	".yaml":  "application/yaml",
 	".yml":   "application/yaml",
 	".ogg":   "audio/ogg",
+}
+
+// renderExtensionTypes are the types Render's static sites serve for these
+// extensions whatever the upload guessed (w8/326, captured 2026-11-14 on five
+// Render sites). The publish uploader's Python 3.12 table stores text/javascript,
+// text/xml and application/manifest+json instead. Render sends no charset on
+// any of the three and leaves a manifest uncompressed. .mjs and .cjs were not
+// captured, so they follow .js.
+var renderExtensionTypes = map[string]string{
+	".js":          "application/javascript",
+	".mjs":         "application/javascript",
+	".cjs":         "application/javascript",
+	".xml":         "application/xml",
+	".webmanifest": "binary/octet-stream",
 }
 
 // defaultCacheControl is the browser/CDN policy for every successful response

@@ -807,11 +807,12 @@ func TestUnresolvedHostStaysHeaderless(t *testing.T) {
 // or the store's binary/octet-stream for an upload with no type) gives way to
 // the extension's IANA type, including the web types Go's table lacks; a
 // specific origin type still wins, and an unknown extension stays
-// application/octet-stream. binary/octet-stream is never served.
+// application/octet-stream. binary/octet-stream is served only where Render
+// serves it (w8/326, TestRenderExtensionTypes).
 func TestContentTypeForUntypedObjects(t *testing.T) {
 	for ext, want := range map[string]string{
 		".webp": "image/webp", ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf", ".otf": "font/otf",
-		".map": "application/json", ".cjs": "text/javascript; charset=utf-8", ".yaml": "application/yaml", ".yml": "application/yaml",
+		".map": "application/json", ".yaml": "application/yaml", ".yml": "application/yaml",
 		".ogg": "audio/ogg", ".TTF": "font/ttf", ".unknownext": "application/octet-stream",
 	} {
 		for _, origin := range []string{"", "application/octet-stream", "binary/octet-stream"} {
