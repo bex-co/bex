@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -128,7 +129,27 @@ type Completer struct {
 	statusFailures    map[string]time.Time
 	idleMu            sync.Mutex
 	idle              map[string]idleSandbox
+	// LiveTranscriptInterval overrides liveTranscriptInterval (tests).
+	LiveTranscriptInterval time.Duration
+	liveMu                 sync.Mutex
+	live                   map[string]liveHarvest
+	liveWG                 sync.WaitGroup
 }
+
+// liveHarvest is one running turn's periodic harvest on this replica: when it
+// last started, and whether one is still in flight.
+type liveHarvest struct {
+	turn     int
+	started  time.Time
+	inFlight bool
+}
+
+// liveTranscriptInterval is how often a replica harvests a running turn's
+// driver log (w6/m398). A headless turn has no live tee (the gateway tees
+// only an attached stream), so without it a sandbox that dies mid-turn leaves
+// no transcript at all. Every replica runs the Completer, so with two the
+// effective spacing is about half this.
+const liveTranscriptInterval = time.Minute
 
 // idleSandbox is what the Completer remembers about one finished turn whose
 // sandbox is waiting out its idle grace, so the reaper does not repeat work
@@ -244,11 +265,17 @@ func (c *Completer) clearStatusFailure(id string) {
 	c.statusFailuresMu.Unlock()
 }
 
-func (c *Completer) pruneStatusFailures(rows []store.AgentSession) {
-	active := make(map[string]struct{}, len(rows))
+// sessionIDs is the set of rows' session ids.
+func sessionIDs(rows []store.AgentSession) map[string]struct{} {
+	ids := make(map[string]struct{}, len(rows))
 	for _, row := range rows {
-		active[row.ID] = struct{}{}
+		ids[row.ID] = struct{}{}
 	}
+	return ids
+}
+
+func (c *Completer) pruneStatusFailures(rows []store.AgentSession) {
+	active := sessionIDs(rows)
 	c.statusFailuresMu.Lock()
 	for id := range c.statusFailures {
 		if _, ok := active[id]; !ok {
@@ -291,10 +318,7 @@ func (c *Completer) logDeferral(record store.AgentSession, reason string) {
 // steered, or deleted). One that is only backing off simply harvests
 // once more on its next attempt.
 func (c *Completer) pruneIdle(rows []store.AgentSession) {
-	waiting := make(map[string]struct{}, len(rows))
-	for _, row := range rows {
-		waiting[row.ID] = struct{}{}
-	}
+	waiting := sessionIDs(rows)
 	c.idleMu.Lock()
 	for id := range c.idle {
 		if _, ok := waiting[id]; !ok {
@@ -380,6 +404,7 @@ func (c *Completer) Reconcile(ctx context.Context) {
 		return
 	}
 	c.pruneStatusFailures(rows)
+	c.pruneLive(rows)
 	for _, row := range rows {
 		c.finalize(ctx, row)
 	}
@@ -505,6 +530,8 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 		return // a partial/torn read; try again next tick
 	}
 	switch report.State {
+	case driverStateRunning:
+		c.harvestRunningTurn(ctx, record)
 	case driverStateSucceeded:
 		c.complete(ctx, record, report)
 	case driverStateFailed:
@@ -690,6 +717,13 @@ func (c *Completer) statusReadFailed(ctx context.Context, record store.AgentSess
 // immediately instead of entering the idle grace.
 func (c *Completer) failLostSandbox(ctx context.Context, record store.AgentSession, reason string, metricReason terminalConvergenceReason) {
 	c.clearStatusFailure(record.ID)
+	if metricReason != convergenceTargetTerminated {
+		// The Pod may still hold the log: keep what it says before giving the
+		// turn up, bounded like a status read so the loop is not held.
+		readCtx, cancel := context.WithTimeout(ctx, statusReadTimeout)
+		c.harvestTranscript(readCtx, record, false)
+		cancel()
+	}
 	final, fact, ok := c.finalizeFailure(ctx, record, reason)
 	if !ok {
 		return
@@ -825,6 +859,22 @@ const (
 // suppress the rest. It reports whether the log was read and stored, so a
 // failed harvest is retried on the next tick.
 func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSession) bool {
+	reason, ok := c.harvestTranscript(ctx, record, false)
+	if !ok {
+		c.markTurnTranscript(ctx, record, false, true, reason)
+		return false
+	}
+	c.markTurnTranscript(ctx, record, reason == "", reason != "", reason)
+	return true
+}
+
+// harvestTranscript reads the driver's log and merges the current turn's items.
+// It reports whether the log was read and stored, and the truncation reason
+// (or why the harvest failed). With completedOnly it leaves out the items still
+// being written: a running turn's harvest stores what is final, and the merge
+// never lets a later, longer partial copy replace an earlier one. It never
+// marks the turn's transcript: a running turn is not complete.
+func (c *Completer) harvestTranscript(ctx context.Context, record store.AgentSession, completedOnly bool) (string, bool) {
 	readCtx, cancel := context.WithTimeout(ctx, transcriptReadTimeout)
 	raw, err := c.Sandbox.ReadSessionTranscript(readCtx, record.WorkspaceID, record.ID, record.SandboxID)
 	cancel()
@@ -832,12 +882,14 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		if !errors.Is(err, core.ErrNotFound) {
 			log.Printf("agent-session completer: transcript read failed (session=%s): %v", record.ID, err)
 		}
-		c.markTurnTranscript(ctx, record, false, true, reasonTranscriptReadFailed)
-		return false
+		return reasonTranscriptReadFailed, false
 	}
 	chunks, parseTruncated := parseTranscriptLog(raw, record.Turns)
 	driverTruncated := driverLogTruncated(raw, chunks)
 	items := agenttranscript.Coalesce(chunks)
+	if completedOnly {
+		items = slices.DeleteFunc(items, func(it agenttranscript.Item) bool { return it.Partial })
+	}
 	itemCapped := len(items) > maxTranscriptItems
 	if itemCapped {
 		items = items[:maxTranscriptItems]
@@ -850,6 +902,10 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 			merge.FirstChunk = min(merge.FirstChunk, ch.Index)
 			merge.LastChunk = max(merge.LastChunk, ch.Index)
 		}
+		if completedOnly {
+			// Never swap a legacy raw-chunk turn for a fold that left items out.
+			merge.FirstChunk, merge.LastChunk = -1, -1
+		}
 		merge.Items = make([]store.AgentSessionTranscriptPart, len(items))
 		for i, it := range items {
 			merge.Items[i] = store.AgentSessionTranscriptPart{Turn: record.Turns, PartIndex: it.Index, Part: it.Part, Item: true, Partial: it.Partial,
@@ -858,8 +914,7 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		res, err = c.Store.MergeAgentSessionTranscriptItems(ctx, record.ID, merge)
 		if err != nil {
 			log.Printf("agent-session completer: transcript merge failed (session=%s items=%d): %v", record.ID, len(items), err)
-			c.markTurnTranscript(ctx, record, false, true, reasonTranscriptStoreFailed)
-			return false
+			return reasonTranscriptStoreFailed, false
 		}
 		if res.QuotaReached {
 			log.Printf("agent-session completer: transcript quota reached, truncating harvest (session=%s)", record.ID)
@@ -876,12 +931,59 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 	case driverTruncated:
 		reason = reasonDriverTruncated
 	}
-	c.markTurnTranscript(ctx, record, reason == "", reason != "", reason)
 	if res.Inserted+res.Upgraded > 0 {
-		log.Printf("agent-session completer: captured transcript (session=%s turn=%d chunks=%d items=%d inserted=%d upgraded=%d replaced_legacy=%d)",
-			record.ID, record.Turns, len(chunks), len(items), res.Inserted, res.Upgraded, res.Replaced)
+		log.Printf("agent-session completer: captured transcript (session=%s turn=%d running=%t chunks=%d items=%d inserted=%d upgraded=%d replaced_legacy=%d)",
+			record.ID, record.Turns, completedOnly, len(chunks), len(items), res.Inserted, res.Upgraded, res.Replaced)
 	}
-	return true
+	return reason, true
+}
+
+// harvestRunningTurn starts a background harvest of a running turn's
+// completed items at most once per liveTranscriptInterval, one at a time per
+// session, so the serial status loop never waits on a log read.
+func (c *Completer) harvestRunningTurn(ctx context.Context, record store.AgentSession) {
+	interval := c.LiveTranscriptInterval
+	if interval <= 0 {
+		interval = liveTranscriptInterval
+	}
+	now := c.now()
+	c.liveMu.Lock()
+	if c.live == nil {
+		c.live = map[string]liveHarvest{}
+	}
+	prev, seen := c.live[record.ID]
+	if seen && (prev.inFlight || (prev.turn == record.Turns && now.Sub(prev.started) < interval)) {
+		c.liveMu.Unlock()
+		return
+	}
+	c.live[record.ID] = liveHarvest{turn: record.Turns, started: now, inFlight: true}
+	c.liveMu.Unlock()
+	c.liveWG.Add(1)
+	go func() {
+		defer c.liveWG.Done()
+		c.harvestTranscript(ctx, record, true)
+		c.liveMu.Lock()
+		defer c.liveMu.Unlock()
+		if h, ok := c.live[record.ID]; ok {
+			h.inFlight = false
+			c.live[record.ID] = h
+		}
+	}()
+}
+
+// pruneLive forgets the periodic-harvest state of sessions no longer running.
+func (c *Completer) pruneLive(rows []store.AgentSession) {
+	c.liveMu.Lock()
+	defer c.liveMu.Unlock()
+	if len(c.live) == 0 {
+		return
+	}
+	running := sessionIDs(rows)
+	for id, h := range c.live {
+		if _, ok := running[id]; !ok && !h.inFlight {
+			delete(c.live, id)
+		}
+	}
 }
 
 func (c *Completer) markTurnTranscript(ctx context.Context, record store.AgentSession, complete, truncated bool, reason string) {

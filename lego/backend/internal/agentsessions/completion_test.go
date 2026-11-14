@@ -1174,3 +1174,91 @@ func TestCompleterRetriesPreviousSandboxTeardown(t *testing.T) {
 		t.Fatal("successful teardown must clear the intent")
 	}
 }
+
+// w6/m398: a headless turn has no live tee, so the Completer harvests a
+// running turn's driver log itself, at most once per interval. It stores the
+// items that are complete, leaves out the one still being written, and never
+// marks the turn's transcript: the turn is still running. The turn's final
+// harvest then adds the rest and marks it.
+func TestCompleterHarvestsARunningTurnsCompletedItems(t *testing.T) {
+	c, st, lc, id := completerFixture(`{"state":"running"}`, nil)
+	c.LiveTranscriptInterval = time.Hour
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"start"}}
+{"turn":1,"partIndex":1,"part":{"type":"text","text":"read the tests"}}
+{"turn":1,"partIndex":2,"part":{"type":"tool-input-available","toolCallId":"c","toolName":"Terminal","input":{"command":"go test ./..."},"dynamic":true}}
+{"turn":1,"partIndex":3,"part":{"type":"tool-output-available","toolCallId":"c","output":"ok","dynamic":true}}
+{"turn":1,"partIndex":4,"part":{"type":"text-start","id":"w"}}
+{"turn":1,"partIndex":5,"part":{"type":"text-delta","id":"w","delta":"still wri"}}`
+
+	c.Reconcile(context.Background())
+	c.liveWG.Wait()
+	if lc.readTranscript != 1 {
+		t.Fatalf("running turn read %d times, want 1", lc.readTranscript)
+	}
+	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30, 0)
+	var stored []string
+	for _, p := range parts {
+		stored = append(stored, string(p.Part))
+		if p.Partial {
+			t.Fatalf("a running turn's harvest stored a partial item: %s", p.Part)
+		}
+	}
+	if len(parts) == 0 || !strings.Contains(strings.Join(stored, "\n"), "go test ./...") || strings.Contains(strings.Join(stored, "\n"), "still wri") {
+		t.Fatalf("stored = %v, want the completed text and tool call without the item still being written", stored)
+	}
+	if turn := st.turns[id][1]; turn.TranscriptComplete || turn.TranscriptTruncated || turn.CompletedAt != nil {
+		t.Fatalf("a running turn was marked: %+v", turn)
+	}
+
+	// Within the interval, no second read.
+	c.Reconcile(context.Background())
+	c.liveWG.Wait()
+	if lc.readTranscript != 1 {
+		t.Fatalf("read %d times within the interval, want 1", lc.readTranscript)
+	}
+
+	// The turn ends: its final harvest stores the finished item and marks it.
+	lc.status = succeededStatus(true)
+	lc.transcriptLog += `
+{"turn":1,"partIndex":6,"part":{"type":"text-end","id":"w"}}
+{"turn":1,"partIndex":7,"part":{"type":"finish"}}`
+	c.Reconcile(context.Background())
+	c.liveWG.Wait()
+	parts, _ = st.AgentSessionTranscript(context.Background(), id, -1, 1<<30, 0)
+	stored = stored[:0]
+	for _, p := range parts {
+		stored = append(stored, string(p.Part))
+	}
+	if !strings.Contains(strings.Join(stored, "\n"), "still wri") {
+		t.Fatalf("final harvest stored %v, want the finished item too", stored)
+	}
+	if turn := st.turns[id][1]; !turn.TranscriptComplete {
+		t.Fatalf("finished turn not marked complete: %+v", turn)
+	}
+}
+
+// A sandbox that dies mid-turn keeps what the running turn's harvests stored:
+// the turn fails with the transcript up to the last harvest, marked truncated
+// with the reason (w6/m398).
+func TestCompleterKeepsALostTurnsHarvestedTranscript(t *testing.T) {
+	c, st, lc, id := completerFixture(`{"state":"running"}`, nil)
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text","text":"before the kill"}}`
+	c.Reconcile(context.Background())
+	c.liveWG.Wait()
+
+	lc.statusErr = fmt.Errorf("sandbox gone: %w", core.ErrNotFound)
+	lc.transcriptErr = core.ErrNotFound
+	c.Reconcile(context.Background())
+	c.liveWG.Wait()
+
+	if row := st.rows[id]; row.Phase != PhaseFailed {
+		t.Fatalf("phase = %q, want failed", row.Phase)
+	}
+	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30, 0)
+	if len(parts) != 1 || !strings.Contains(string(parts[0].Part), "before the kill") {
+		t.Fatalf("lost turn's transcript = %+v, want the item harvested while it ran", parts)
+	}
+	if turn := st.turns[id][1]; !turn.TranscriptTruncated || turn.TruncationReason == "" {
+		t.Fatalf("lost turn = %+v, want truncated with the reason", turn)
+	}
+}

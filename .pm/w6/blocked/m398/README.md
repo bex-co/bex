@@ -1,18 +1,18 @@
 # w6 · m398 — A turn's transcript survives a sandbox that dies mid-turn
 
-**Worker:** worker6 **Goal:** a session whose sandbox dies mid-turn keeps its conversation and commands up to about 30 seconds before the death, on every surface, so the failure can be investigated. **Status:** todo
+**Worker:** worker6 **Goal:** a session whose sandbox dies mid-turn keeps its conversation and commands up to about 30 seconds before the death, on every surface, so the failure can be investigated. **Status:** blocked — on time: t004 needs the next batched production deploy (it carries the running-turn harvest), then a QA session whose sandbox is killed mid-turn. t001–t003 and t005–t007 done.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Driver: flush a running turn's completed transcript parts to bex-api | 2h | — |
-| [t002](t002.md) | Completer: a failed turn keeps its flushed parts and says why the rest is missing | 1h | t001 |
-| [t003](t003.md) | REST, GraphQL, MCP and the session page show a failed turn's saved transcript | 45m | t002 |
+| [t001](done/t001.md) | Driver: flush a running turn's completed transcript parts to bex-api — **DONE** | 2h | — |
+| [t002](done/t002.md) | Completer: a failed turn keeps its flushed parts and says why the rest is missing — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | REST, GraphQL, MCP and the session page show a failed turn's saved transcript — **DONE** | 45m | t002 |
 | [t004](t004.md) | Production check: a QA session whose sandbox is killed mid-turn keeps its transcript | 45m | t003 |
-| [t005](t005.md) | Render parity (Devin): a failed session's history reads alike everywhere | 20m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 45m | t005, t006 |
+| [t005](done/t005.md) | Render parity (Devin): a failed session's history reads alike everywhere — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 45m | t005, t006 |
 | [t008](t008.md) | Closeout | 10m | t007 |
 
 ## Definition of done
