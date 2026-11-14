@@ -402,8 +402,6 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
   );
 }
 
-type EventDetails = ServiceEventView["details"];
-
 /**
  * Who acted on an event: the first user object the event names, with that
  * user's own email (w4/602), else a stored subject the roster resolves.

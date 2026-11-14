@@ -40,7 +40,8 @@ export function useWorkspaceSubjectLabel(
       (candidate) =>
         candidate?.subject === subject || candidate?.userId === subject,
     );
-    if (member?.email || member?.userId) return member.email || member.userId;
+    const label = member?.email || member?.userId;
+    if (label) return label;
     return loading ? SUBJECT_LABEL_PENDING : subject;
   }, [data, loading, subject, known]);
 }
