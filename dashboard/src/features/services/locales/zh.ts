@@ -1987,6 +1987,14 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "维护模式已禁用。",
     description: "Toast on successfully disabling maintenance mode",
   },
+  "services.maintenancePageSavedSuccess": {
+    message: "维护页面已保存。",
+    description: "Toast on saving only the custom maintenance page URL",
+  },
+  "services.maintenancePageClearedSuccess": {
+    message: "已恢复默认维护页面。",
+    description: "Toast on clearing the custom maintenance page URL",
+  },
   "services.maintenanceModeError": {
     message: "无法更新维护模式，请重试。",
     description: "Toast on failed setMaintenanceMode mutation",
@@ -3193,7 +3201,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.cronRunsTitle": {
     message: "运行",
-    description: "Cron job Runs page: card title over the run history (w2/m360)",
+    description:
+      "Cron job Runs page: card title over the run history (w2/m360)",
   },
   "services.cronRunViewLogs": {
     message: "查看日志",

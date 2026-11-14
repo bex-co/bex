@@ -94,7 +94,9 @@ export function MaintenanceModeSection({
           disabled={!eligible}
           // Changing the URL re-applies with the current on/off state; the URL
           // edit never itself flips maintenance mode.
-          onSave={(value) => setMaintenanceMode(serviceId, enabled, value)}
+          onSave={(value) =>
+            setMaintenanceMode(serviceId, enabled, value, "uri")
+          }
         />
       </CardContent>
 

@@ -2032,6 +2032,14 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Maintenance mode disabled.",
     description: "Toast on successfully disabling maintenance mode",
   },
+  "services.maintenancePageSavedSuccess": {
+    message: "Maintenance page saved.",
+    description: "Toast on saving only the custom maintenance page URL",
+  },
+  "services.maintenancePageClearedSuccess": {
+    message: "Default maintenance page restored.",
+    description: "Toast on clearing the custom maintenance page URL",
+  },
   "services.maintenanceModeError": {
     message: "Could not update maintenance mode. Try again.",
     description: "Toast on failed setMaintenanceMode mutation",
@@ -3261,7 +3269,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.cronRunsTitle": {
     message: "Runs",
-    description: "Cron job Runs page: card title over the run history (w2/m360)",
+    description:
+      "Cron job Runs page: card title over the run history (w2/m360)",
   },
   "services.cronRunViewLogs": {
     message: "View logs",

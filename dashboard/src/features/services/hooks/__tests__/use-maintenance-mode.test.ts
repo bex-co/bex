@@ -73,4 +73,43 @@ describe("useMaintenanceMode", () => {
     );
     expect(toastSuccess).not.toHaveBeenCalled();
   });
+
+  it.each([
+    [
+      "a URL saved while on",
+      true,
+      "https://status.example.com/m",
+      "Maintenance page saved.",
+    ],
+    [
+      "a URL saved while off",
+      false,
+      "https://status.example.com/m",
+      "Maintenance page saved.",
+    ],
+    ["a cleared URL", true, "", "Default maintenance page restored."],
+  ])(
+    "names %s by the page, not the mode it kept (w4/611)",
+    async (_, enabled, uri, message) => {
+      mockUseMutation.mockReturnValue([vi.fn().mockResolvedValue({})]);
+      const { result } = renderHook(() => useMaintenanceMode());
+
+      await act(async () => {
+        await result.current.setMaintenanceMode("srv-web", enabled, uri, "uri");
+      });
+
+      expect(toastSuccess).toHaveBeenCalledWith(message);
+    },
+  );
+
+  it("keeps the toggle's disabled message", async () => {
+    mockUseMutation.mockReturnValue([vi.fn().mockResolvedValue({})]);
+    const { result } = renderHook(() => useMaintenanceMode());
+
+    await act(async () => {
+      await result.current.setMaintenanceMode("srv-web", false, "");
+    });
+
+    expect(toastSuccess).toHaveBeenCalledWith("Maintenance mode disabled.");
+  });
 });

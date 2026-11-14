@@ -126,6 +126,7 @@ describe("MaintenanceModeSection", () => {
       "web",
       true,
       "https://status.example.com/m",
+      "uri",
     );
   });
 

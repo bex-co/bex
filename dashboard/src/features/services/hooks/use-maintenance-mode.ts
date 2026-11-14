@@ -10,11 +10,19 @@ import {
   withProtectedRetry,
 } from "@/features/services/lib/protected-confirmation";
 
+/**
+ * What the save changed: the on/off toggle, or only the custom page URL
+ * (which re-sends the current on/off state, so its toast must not name it;
+ * w4/611).
+ */
+export type MaintenanceChange = "toggle" | "uri";
+
 export interface UseMaintenanceModeResult {
   setMaintenanceMode: (
     id: string,
     enabled: boolean,
     uri: string,
+    change?: MaintenanceChange,
   ) => Promise<boolean>;
   busy: boolean;
 }
@@ -30,7 +38,12 @@ export function useMaintenanceMode(): UseMaintenanceModeResult {
   const askForConfirmation = useAskForProtectedConfirmation();
 
   const setMaintenanceMode = useCallback(
-    async (id: string, enabled: boolean, uri: string) => {
+    async (
+      id: string,
+      enabled: boolean,
+      uri: string,
+      change: MaintenanceChange = "toggle",
+    ) => {
       setBusy(true);
       try {
         // Turning maintenance mode ON takes the service offline, which a
@@ -41,11 +54,7 @@ export function useMaintenanceMode(): UseMaintenanceModeResult {
             variables: { id, maintenanceMode: { enabled, uri }, confirm },
           }),
         );
-        toast.success(
-          enabled
-            ? t("services.maintenanceModeEnabledSuccess")
-            : t("services.maintenanceModeDisabledSuccess"),
-        );
+        toast.success(t(successKey(change, enabled, uri)));
         return true;
       } catch (err) {
         if (err instanceof ProtectedConfirmationDismissed) return false;
@@ -61,4 +70,15 @@ export function useMaintenanceMode(): UseMaintenanceModeResult {
   );
 
   return { setMaintenanceMode, busy };
+}
+
+function successKey(change: MaintenanceChange, enabled: boolean, uri: string) {
+  if (change === "uri") {
+    return uri.trim()
+      ? "services.maintenancePageSavedSuccess"
+      : "services.maintenancePageClearedSuccess";
+  }
+  return enabled
+    ? "services.maintenanceModeEnabledSuccess"
+    : "services.maintenanceModeDisabledSuccess";
 }
