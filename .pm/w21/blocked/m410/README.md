@@ -21,7 +21,7 @@
 2. `isSameOrigin` does not trust a client-sent `X-Forwarded-Host`, and the JSON routes require `Content-Type: application/json`.
 3. The CSP names `base-uri`, `unsafe-inline` is recorded as accepted with what removing it takes, and error responses keep the route-rule headers. **`form-action` and a narrower `connect-src` did not ship** (2026-11-14): the first breaks the OAuth callback redirects, the second needs a browser sweep ([w21/081](../../081.md)); both reasons are in `dashboard/AGENTS.md`.
 4. Production lists no localhost return URL.
-5. The consent token is fixed (keyed by `CONSENT_CSRF_SECRET`; creating the Secret is an operator step) and the device page's enrichment is filed as [w21/080](../../080.md). The premise that the screens might not exist was wrong: they are the Render CLI's device login.
+5. The consent token is fixed (keyed by `CONSENT_CSRF_SECRET`; creating the Secret is an operator step) and the device page's enrichment was closed as not possible ([w21/080](../../done/080.md): Hydra exposes no device request before the accept). The premise that the screens might not exist was wrong: they are the Render CLI's device login.
 6. Each is a test that fails first, and `cd dashboard && yarn lint && yarn test` pass.
 
 ## Source + Goal linkage
