@@ -416,14 +416,10 @@ func (s *Service) checkBuildSourceCeiling(ctx context.Context, tenantID string) 
 }
 
 // buildSourceApp authorizes relation on build source id. Unexported so the
-// audit verb walk names the exported verb calling it.
+// audit verb walk names the exported verb calling it; the composition itself
+// is core.Base.BuildSourceApp, shared with the apps surface.
 func (s *Service) buildSourceApp(ctx context.Context, relation, id string) (context.Context, *appv1alpha1.App, error) {
-	ctx = core.WithBuildSources(ctx)
-	a, err := s.AuthorizeApp(ctx, relation, id)
-	if err != nil {
-		return ctx, nil, err
-	}
-	return ctx, a, core.BuildSourceOrNotFound(a)
+	return s.BuildSourceApp(ctx, relation, id)
 }
 
 // GetBuildSource returns one build source.
