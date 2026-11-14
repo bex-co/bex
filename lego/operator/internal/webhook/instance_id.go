@@ -24,6 +24,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -63,13 +64,21 @@ func (InstanceIDStamper) Handle(_ context.Context, req admission.Request) admiss
 		pod.Name = pod.GenerateName + utilrand.String(5)
 	}
 	want := renderenv.PublicInstanceID(serviceID, pod.Name)
-	if pod.Annotations[renderenv.InstanceIDAnnotation] == want {
+	// The process sees the same id as its hostname, as a Render instance's
+	// hostname is named after its service (w4/629): frameworks name an
+	// instance by it. A hostname the pod already sets is kept, and so is the
+	// pod name's when the id is no DNS label.
+	nameHost := pod.Spec.Hostname == "" && len(validation.IsDNS1123Label(want)) == 0
+	if pod.Annotations[renderenv.InstanceIDAnnotation] == want && !nameHost {
 		return admission.Allowed("instance id already stamped")
 	}
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
 	pod.Annotations[renderenv.InstanceIDAnnotation] = want
+	if nameHost {
+		pod.Spec.Hostname = want
+	}
 	stamped, err := json.Marshal(&pod)
 	if err != nil {
 		return admission.Errored(http.StatusInternalServerError, fmt.Errorf("encode pod: %w", err))

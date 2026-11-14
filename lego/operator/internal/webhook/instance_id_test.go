@@ -112,10 +112,36 @@ func TestInstanceIDStamperLeavesOtherPodsAlone(t *testing.T) {
 			t.Errorf("%s: want allowed with no patch, got %+v", name, resp)
 		}
 	}
-	// Already stamped with the right id: nothing to change.
+	// Already stamped with the right id and hostname: nothing to change.
 	pod := tenantPod("web-1", "", "srv-abc")
 	pod.Annotations = map[string]string{renderenv.InstanceIDAnnotation: renderenv.PublicInstanceID("srv-abc", "web-1")}
+	pod.Spec.Hostname = renderenv.PublicInstanceID("srv-abc", "web-1")
 	if resp := admitPod(t, pod); !resp.Allowed || len(resp.Patches) != 0 {
 		t.Errorf("stamped pod: want no patch, got %+v", resp)
+	}
+}
+
+// w4/629: the instance's hostname is its public id, the same string as
+// RENDER_INSTANCE_ID, the instances API and the logs' instance label; a
+// hostname the pod sets itself is kept.
+func TestInstanceIDStamperNamesTheHostAfterTheInstance(t *testing.T) {
+	pod := tenantPod("", "tea-x-web-5ff6c9466c-", "srv-dbcad3603oos73cqipm0")
+	out := patched(t, pod, admitPod(t, pod))
+	id := out.Annotations[renderenv.InstanceIDAnnotation]
+	if out.Spec.Hostname != id || !strings.HasPrefix(id, "srv-dbcad3603oos73cqipm0-") {
+		t.Fatalf("hostname = %q, want the instance id %q", out.Spec.Hostname, id)
+	}
+
+	own := tenantPod("web-1", "", "srv-dbcad3603oos73cqipm0")
+	own.Spec.Hostname = "custom"
+	if out := patched(t, own, admitPod(t, own)); out.Spec.Hostname != "custom" {
+		t.Fatalf("an explicit hostname became %q", out.Spec.Hostname)
+	}
+
+	// A pod stamped before this change still gets its hostname.
+	old := tenantPod("web-2", "", "srv-dbcad3603oos73cqipm0")
+	old.Annotations = map[string]string{renderenv.InstanceIDAnnotation: renderenv.PublicInstanceID("srv-dbcad3603oos73cqipm0", "web-2")}
+	if out := patched(t, old, admitPod(t, old)); out.Spec.Hostname != old.Annotations[renderenv.InstanceIDAnnotation] {
+		t.Fatalf("hostname = %q on a pod stamped before", out.Spec.Hostname)
 	}
 }
