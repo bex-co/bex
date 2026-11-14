@@ -1390,10 +1390,17 @@ func TestKVTierDisplayName(t *testing.T) {
 		{"free", "Free"},
 		{"starter", "Starter"},
 		{"standard", "Standard"},
+		// Render's size and underscore spellings, which the compute
+		// title-caser cannot produce: a Blueprint estimate must name a Key
+		// Value plan exactly as the plan picker does.
+		{"3g", "3 GB"},
+		{"50g", "50 GB"},
+		{"pro_plus", "Pro Plus"},
+		{"pro_max", "Pro Max"},
 		{"", ""},
 	} {
-		if got := kvTierDisplayName(c.id); got != c.want {
-			t.Errorf("kvTierDisplayName(%q) = %q, want %q", c.id, got, c.want)
+		if got := TierDisplayName(c.id); got != c.want {
+			t.Errorf("TierDisplayName(%q) = %q, want %q", c.id, got, c.want)
 		}
 	}
 }

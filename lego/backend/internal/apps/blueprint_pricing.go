@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -28,11 +29,12 @@ import (
 // monthly cost (the Render blueprint "Estimated pricing" panel, on bex's
 // price sheet). It prices what bex would actually provision: plans resolve
 // through the same defaults the create path applies (omitted service plan ⇒
-// the catalog default, omitted database storage ⇒ the plan's volume floor).
-// Static sites run no instance, so they carry no line; persistent service
-// disks are a platform non-goal and are never priced. Free tiers and
-// runtime-dependent costs (cron, autoscaling, multi-instance) are handled by
-// the estimator itself.
+// the paid default, omitted database plan ⇒ basic-256mb, omitted database
+// storage ⇒ the plan's volume floor). Static sites run no instance, so they
+// carry no line; a persistent service disk rides its service's line as a
+// provisioned-storage figure (ADR082 D8). Free tiers and runtime-dependent
+// costs (cron, autoscaling, multi-instance) are handled by the estimator
+// itself.
 func blueprintEstimatedPricing(st parsedStack) *pricing.MonthlyEstimate {
 	resources := make([]pricing.MonthlyResource, 0, len(st.services)+len(st.databases)+len(st.keyValues))
 	for _, svc := range st.services {
@@ -85,8 +87,11 @@ func blueprintEstimatedPricing(st parsedStack) *pricing.MonthlyEstimate {
 			Name:         kv.name,
 			ResourceKind: store.ResourceKindKeyValue,
 			Tier:         plan,
-			TierLabel:    tierDisplayName(plan),
-			StorageGB:    storage,
+			// The Key Value family's own spelling (3g → "3 GB",
+			// pro_plus → "Pro Plus"), as its plan picker shows it — the
+			// compute title-caser would render "3g" and "Pro_plus".
+			TierLabel: keyvalue.TierDisplayName(plan),
+			StorageGB: storage,
 		})
 	}
 	est := pricing.Default.MonthlyEstimate(resources)
