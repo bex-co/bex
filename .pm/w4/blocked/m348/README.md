@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](done/t001.md) | A missing `/assets/*` file answers 404 with `Cache-Control: no-store`, never the HTML shell or the immutable header — **DONE** (shipped by 9484c8339 with [w21/m394 t004](../../w21/m394/done/t004.md), 2026-11-14; its built-bundle check covers the missing-file, real-chunk, page and association-document criteria. This milestone extended it to `/_assets/`) | 45m | — |
+| [t001](done/t001.md) | A missing `/assets/*` file answers 404 with `Cache-Control: no-store`, never the HTML shell or the immutable header — **DONE** (shipped by 9484c8339 with [w21/m394 t004](../../../w21/done/m394/done/t004.md), 2026-11-14; its built-bundle check covers the missing-file, real-chunk, page and association-document criteria. This milestone extended it to `/_assets/`) | 45m | — |
 | [t002](done/t002.md) | A rollout's overlap serves both builds' assets, or fails only once and recovers — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | Move every asset URL once, so browsers that already cached HTML under a chunk URL stop using it — **DONE** | 20m | t001 |
 | [t004](done/t004.md) | Simplify — **DONE** | 15m | t002, t003 |

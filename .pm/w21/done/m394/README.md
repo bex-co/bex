@@ -1,6 +1,6 @@
 # w21 · m394 — Security review round 25: the operator's tenant-facing daemons and the dashboard's server routes
 
-**Worker:** worker21 **Goal:** every operator daemon that parses tenant-controlled input and every dashboard server route has been reviewed with the `security-audit` skill, each confirmed finding is fixed with a regression test that fails on the old code, and ADR110 records scope, findings and accepted residuals. **Status:** todo (t001-t004 and t009-t017 done: the audit ran, every finding has a verdict and every fix is shipped; t005 (ADR110) and t018 (Render parity) done; t006-t008 open)
+**Worker:** worker21 **Goal:** every operator daemon that parses tenant-controlled input and every dashboard server route has been reviewed with the `security-audit` skill, each confirmed finding is fixed with a regression test that fails on the old code, and ADR110 records scope, findings and accepted residuals. **Status:** done (2026-11-14: all findings fixed and shipped, ADR110 written, seven follow-ups filed as w21/067-074)
 
 ## Tasks (in order)
 
@@ -23,7 +23,7 @@
 | [t018](done/t018.md) | Render parity — **DONE** | 20m | t004, t009, t010, t011, t012, t013, t014, t015, t016, t017 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005, t018 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 20m | t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 ## Findings
 

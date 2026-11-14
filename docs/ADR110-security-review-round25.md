@@ -3,7 +3,7 @@
 - **Status**: Accepted (2026-11-14)
 - **Review**: the repository's `security-audit` skill, run 1 (`~/security-audit-skill/bex-w21/run-1`, outside the repository), at repository revision `cc671cbfd`. Nine hunters, seven adversarial validators and ten independent verifiers, each finding reproduced on the real binary, handler, bundle or Postgres where it could be. Ten findings confirmed (one Medium, nine Low); nine of the ten needed line or wording corrections, none was fabricated, and two remediation designs were corrected.
 - **Lineage**: twenty-fifth pass in the ADR028 → … → ADR085 lineage (with the focused ADR103 and ADR107). ADR107's coverage note asked this round to weight the operator and the dashboard's server-side routes.
-- **Work item**: `.pm/w21/m394`
+- **Work item**: `.pm/w21/done/m394`
 
 ## Summary
 
