@@ -22,7 +22,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	mathrand "math/rand/v2"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -1429,6 +1431,12 @@ func (s *PGStore) CreateDomain(ctx context.Context, appID, host string, primary 
 	return d, nil
 }
 
+// expiredPendingClaim selects a domain row that is unverified and past the 48
+// hours that bound a reservation. created_at is the first claim's time even
+// across a delete and re-add (migration 0260), so deleting and adding a claim
+// again does not restart the bound. Verified rows never match.
+const expiredPendingClaim = `claim_state = 'pending' AND created_at < now() - interval '48 hours'`
+
 const domainClaimColumns = `id, app_id, host, is_primary, COALESCE(redirect_for_name, ''),
 	claim_state, verification_attempts,
 	last_verification_at, verified_at, created_at`
@@ -1458,7 +1466,7 @@ func (s *PGStore) AddDomainClaim(ctx context.Context, appID, host, redirectForNa
 		// DNS here. 48h bounds the reservation while keeping a fresh pending
 		// claim conflicting during its setup window. Verified rows are never
 		// reclaimed.
-		if _, err := tx.Exec(ctx, `DELETE FROM domains WHERE host = $1 AND claim_state = 'pending' AND created_at < now() - interval '48 hours'`, host); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM domains WHERE host = $1 AND `+expiredPendingClaim, host); err != nil {
 			return err
 		}
 		var insertErr error
@@ -1626,6 +1634,14 @@ func (s *PGStore) ReplaceDomainClaims(ctx context.Context, appID string, declara
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var locked string
 		if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&locked); err != nil {
+			return err
+		}
+		// Reclaim the declared hosts whose pending claim by another app is past
+		// its 48 hours, as AddDomainClaim does, so the Blueprint and
+		// service-create paths honour the same bound (w21/m394 t013).
+		if _, err := tx.Exec(ctx,
+			`DELETE FROM domains WHERE host = ANY($1::text[]) AND app_id <> $2 AND `+expiredPendingClaim,
+			slices.Collect(maps.Keys(seen)), appID); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE domains SET is_primary = false WHERE app_id = $1`, appID); err != nil {
@@ -2251,13 +2267,15 @@ func (s *PGStore) ServiceNameTaken(ctx context.Context, tenantID, selfID, name s
 }
 
 // DomainHostsClaimed returns which of hosts some service already claims,
-// verified or still pending verification — exactly the hosts the unique
-// domains.host constraint refuses a new service (w5/m116).
+// verified or still pending verification — the hosts the unique domains.host
+// constraint refuses a new service (w5/m116) — except a pending claim past its
+// 48 hours, which the new service's own claim reclaims (w21/m394 t013).
 func (s *PGStore) DomainHostsClaimed(ctx context.Context, hosts []string) ([]string, error) {
 	if len(hosts) == 0 {
 		return nil, nil
 	}
-	rows, err := s.Pool.Query(ctx, `SELECT host FROM domains WHERE host = ANY($1) ORDER BY host`, hosts)
+	rows, err := s.Pool.Query(ctx,
+		`SELECT host FROM domains WHERE host = ANY($1) AND NOT (`+expiredPendingClaim+`) ORDER BY host`, hosts)
 	if err != nil {
 		return nil, classify("domain", err)
 	}
