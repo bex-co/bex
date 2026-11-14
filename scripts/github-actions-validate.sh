@@ -670,21 +670,26 @@ fi
 
 # 2. Reviewed inventory (SHA-pinned; sorted to match third_party_refs). Keep in
 # lockstep with the workflow tree — a Dependabot actions bump updates both.
+# native-base-image.yml is byte-pinned by w8/m91's D3 custody transition
+# (native-common-qualify.py D3_LEGACY_0941 "after"), so a bump must leave that
+# file alone and its older refs stay listed here until w8 re-pins it.
 expected_actions='actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
 actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
-actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
 actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
 anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
-aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514
+aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
 aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
 azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310
-azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d
+azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e
 docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
+docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
 docker/login-action@dbcb813823bdd20940b903addbd779551569679f
 docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
+docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
 docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1
-oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d
+oras-project/setup-oras@005458ad77f1c8facd38a094e4af2e69e5607ff4
 sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6'
 
 if ! diff -u <(printf '%s\n' "$expected_actions") <(third_party_refs); then
