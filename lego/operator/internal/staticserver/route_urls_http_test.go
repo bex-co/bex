@@ -68,8 +68,8 @@ func TestRouteURLRedirectPreservesCapturedFilename(t *testing.T) {
 						if response.StatusCode != 301 || response.Header.Get("Location") != want {
 							t.Fatalf("redirect=%d Location=%q want%q", response.StatusCode, response.Header.Get("Location"), want)
 						}
-						if response.Header.Get("X-Original") != "yes" {
-							t.Fatal("redirect lost request headers")
+						if response.Header.Get("X-Original") != "" {
+							t.Fatal("the 301 carries a site rule; Render's carries none (w8/324)")
 						}
 						target, err := url.Parse(response.Header.Get("Location"))
 						if err != nil {

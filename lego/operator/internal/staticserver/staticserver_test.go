@@ -315,11 +315,9 @@ func TestUnknownHost404(t *testing.T) {
 // 200 (no body, no content type, none of the site's headers), on every path,
 // whether a file is there or not (four Render sites, 24 probes, 2026-11-13).
 func TestOtherMethodsGetABareOK(t *testing.T) {
-	// Redirects and local rewrites serve GET only: another method is never
-	// redirected or rewritten, even under a rule whose target fails to expand.
+	// A local rewrite serves GET only: another method is never rewritten.
+	// Redirects answer every method (TestRedirectAnswersEveryMethod).
 	h, _ := newTestHandler(t, Site{Headers: markerHeaders(), NoSPAFallback: true, Routes: []appv1alpha1.StaticRoute{
-		{Type: "redirect", Source: "/old", Destination: "/new"},
-		{Type: "redirect", Source: "/broken/*", Destination: "/" + strings.Repeat(":splat/", 250)},
 		{Type: "rewrite", Source: "/*", Destination: "/index.html"},
 	}}, map[string]Object{
 		key("index.html"): {Body: []byte("HOME"), ContentType: "text/html"},
@@ -327,7 +325,7 @@ func TestOtherMethodsGetABareOK(t *testing.T) {
 		key("404.html"):   {Body: []byte("CUSTOM-404"), ContentType: "text/html"},
 	})
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodOptions} {
-		for _, p := range []string{"/", "/app.js", "/missing", "/old", "/spa/x", "/broken/" + strings.Repeat("a", 100)} {
+		for _, p := range []string{"/", "/app.js", "/missing", "/spa/x"} {
 			rec := do(h, method, p)
 			if rec.Code != http.StatusOK || rec.Body.Len() != 0 || rec.Header().Get("Content-Length") != "0" {
 				t.Fatalf("%s %s => %d len %q body %q, want a bare 200", method, p, rec.Code, rec.Header().Get("Content-Length"), rec.Body)

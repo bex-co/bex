@@ -116,7 +116,7 @@ func TestHeaderPatternsPreserveRouteContract(t *testing.T) {
 		{"/render.yaml", "original", "global", "yes", "", 200},
 		{"/missing.yaml", "rewritten", "global", "yes", "", 200},
 		{"/nested/missing.yaml", "rewritten", "nested", "", "", 200},
-		{"/old/deep/file.yaml", "", "nested", "", "/archive/deep/file.yaml", 301},
+		{"/old/deep/file.yaml", "", "", "", "/archive/deep/file.yaml", 301}, // a 301 carries no rule (w8/324)
 	} {
 		for _, method := range []string{http.MethodGet, http.MethodHead} {
 			t.Run(method+tc.path, func(t *testing.T) {

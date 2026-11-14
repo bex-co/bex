@@ -309,22 +309,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Miss: edge rules run in order, first match wins.
 	act, target, routeErr := matchRoutes(site.Routes, requestPath)
-	if routeErr != nil {
-		message := "invalid rewrite target"
-		if act == actRedirect {
-			message = "invalid redirect target"
-		}
-		serveSiteError(w, site, requestPath, http.StatusBadRequest, message)
+	if act == actRedirect {
+		serveRedirect(w, r, site, requestPath, target, routeErr)
 		return
 	}
-	if act == actRedirect {
-		location := target.String()
-		if !safeRedirectLocation(location, target) {
-			serveSiteError(w, site, requestPath, http.StatusBadRequest, "invalid redirect target")
-			return
-		}
-		applyHeaders(w.Header(), site.Headers, requestPath)
-		http.Redirect(w, r, location, http.StatusMovedPermanently)
+	if routeErr != nil {
+		serveSiteError(w, site, requestPath, http.StatusBadRequest, "invalid rewrite target")
 		return
 	}
 
@@ -380,18 +370,53 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // serveOtherMethod answers a method other than GET and HEAD on a live site. A
 // site's objects are read with those two; any other method reaches content
 // only through an external rewrite, Render's way to reach an API from a
-// static site (w8/184). Anything else gets Render's edge answer: a bare 200
-// with no body and none of the site's headers, on any path (w8/319, captured
-// on four Render static sites 2026-11-13).
+// static site (w8/184). A matched redirect rule answers with GET's 301
+// (w8/324), file or not: no lookup runs, as for an external rewrite, and
+// Render's answer for a file under a redirect rule is uncaptured. Anything
+// else gets Render's edge answer: a bare 200 with no body and none of the
+// site's headers, on any path (w8/319, captured on four Render static sites
+// 2026-11-13).
 func (h *Handler) serveOtherMethod(w http.ResponseWriter, r *http.Request, site Site, requestPath string) {
-	// The root path is never rewritten, as on the GET path.
 	act, target, err := matchRoutes(site.Routes, requestPath)
-	if err == nil && isExternalRewrite(act, target) && requestPath != "/" {
+	switch {
+	case act == actRedirect && !hasGitSegment(requestPath):
+		serveRedirect(w, r, site, requestPath, target, err)
+		return
+	case err == nil && isExternalRewrite(act, target) && requestPath != "/":
+		// The root path is never rewritten, as on the GET path.
 		h.serveExternalRewrite(w, r, site, requestPath, target)
 		return
 	}
 	w.Header().Set("Content-Length", "0")
 	w.WriteHeader(http.StatusOK)
+}
+
+// serveRedirect answers a matched redirect rule as Render does (w8/324,
+// captured on wc3v.onrender.com 2026-11-14): a 301 to the expanded destination
+// carrying the request's query, for every method, with only Content-Type and
+// Location — none of the site's rules, HSTS or the cache policy. A target that
+// failed to expand (expandErr) is a 400 instead. The request's query is
+// checked apart from the destination: past the "?" a reverse solidus cannot
+// move the Location's host or path. A raw "#" in it is escaped, so the
+// visitor's text never becomes the Location's fragment.
+func serveRedirect(w http.ResponseWriter, r *http.Request, site Site, requestPath string, target *url.URL, expandErr error) {
+	query := r.URL.RawQuery
+	var location string
+	if expandErr == nil {
+		location = target.String()
+	}
+	if expandErr != nil || !safeRedirectLocation(location, target) || hasControlByte(query) {
+		serveSiteError(w, site, requestPath, http.StatusBadRequest, "invalid redirect target")
+		return
+	}
+	if query != "" {
+		location = withVisitorQuery(target, strings.ReplaceAll(query, "#", "%23")).String()
+	}
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		// http.Redirect types only a GET or HEAD answer; Render types them all.
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	}
+	http.Redirect(w, r, location, http.StatusMovedPermanently)
 }
 
 // isExternalRewrite reports whether a matched rule rewrites to a full URL,

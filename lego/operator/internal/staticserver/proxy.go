@@ -124,7 +124,7 @@ func (h *Handler) serveExternalRewrite(w http.ResponseWriter, r *http.Request, s
 	if r.Body != nil && r.Body != http.NoBody {
 		body = http.MaxBytesReader(w, r.Body, maxProxyBodyBytes)
 	}
-	out, err := http.NewRequestWithContext(ctx, r.Method, proxyURL(target, r.URL.RawQuery).String(), body)
+	out, err := http.NewRequestWithContext(ctx, r.Method, withVisitorQuery(target, r.URL.RawQuery).String(), body)
 	if err != nil {
 		serveSiteError(w, site, requestPath, http.StatusBadGateway, "bad gateway")
 		return
@@ -176,8 +176,9 @@ func (h *Handler) serveExternalRewrite(w http.ResponseWriter, r *http.Request, s
 	}
 }
 
-// proxyURL joins the destination's own query with the visitor's.
-func proxyURL(target *url.URL, visitorQuery string) *url.URL {
+// withVisitorQuery joins the destination's own query with the visitor's, for
+// an external rewrite's upstream request and a redirect's Location.
+func withVisitorQuery(target *url.URL, visitorQuery string) *url.URL {
 	u := *target
 	switch {
 	case u.RawQuery == "":
