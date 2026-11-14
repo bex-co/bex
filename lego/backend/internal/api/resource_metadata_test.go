@@ -46,6 +46,10 @@ func (m metadataIdentities) LookupEmails(ctx context.Context, subjects []string)
 	return out, nil
 }
 
+func (metadataIdentities) MFAEnrolled(context.Context, string) (bool, bool, error) {
+	return true, true, nil
+}
+
 func (m metadataIdentities) LookupMany(ctx context.Context, subjects []string) map[string]workspaces.IdentityAttrs {
 	out := map[string]workspaces.IdentityAttrs{}
 	for _, subject := range subjects {

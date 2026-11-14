@@ -198,3 +198,99 @@ func (f *FakeExecutor) Execute(ctx context.Context, target apps.SSHInstanceTarge
 	}
 	return f.Code, f.Err
 }
+
+// FakeTwoFactor plays bex-api's two-factor verb (agentsession.TwoFactorHandler
+// over the real twofactor.Gate) for the gateway's TwoFactorGate: workspaces
+// that Require 2FA admit only Enrolled subjects. It counts every question and
+// remembers the last one's method. Safe to flip while server goroutines run.
+type FakeTwoFactor struct {
+	mu       sync.Mutex
+	required map[string]bool
+	enrolled map[string]bool
+	err      error
+	asked    int
+	methods  []string
+}
+
+// Require sets whether a workspace requires 2FA.
+func (f *FakeTwoFactor) Require(workspaceID string, on bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.required == nil {
+		f.required = map[string]bool{}
+	}
+	f.required[workspaceID] = on
+}
+
+// Enroll sets whether a subject has a second factor.
+func (f *FakeTwoFactor) Enroll(subject string, enrolled bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.enrolled == nil {
+		f.enrolled = map[string]bool{}
+	}
+	f.enrolled[subject] = enrolled
+}
+
+// Fail makes every later question fail like an unreachable bex-api (nil heals).
+func (f *FakeTwoFactor) Fail(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.err = err
+}
+
+// Ask answers like the verb: not required => (false, true), else the subject's
+// enrollment.
+func (f *FakeTwoFactor) Ask(_ context.Context, workspaceID, subject, method string) (required, allowed bool, err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.asked++
+	f.methods = append(f.methods, method)
+	if f.err != nil {
+		return false, false, f.err
+	}
+	if !f.required[workspaceID] {
+		return false, true, nil
+	}
+	return true, f.enrolled[subject], nil
+}
+
+// Questions is how many times the gateway asked.
+func (f *FakeTwoFactor) Questions() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.asked
+}
+
+// Methods returns the method of every question, in order.
+func (f *FakeTwoFactor) Methods() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.methods...)
+}
+
+// FakeClock is a settable clock safe for concurrent use, for caches the
+// gateway tests need to age past a TTL without sleeping.
+type FakeClock struct {
+	mu sync.Mutex
+	t  time.Time
+}
+
+// NewFakeClock starts a clock at a fixed instant.
+func NewFakeClock() *FakeClock {
+	return &FakeClock{t: time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)}
+}
+
+// Now is the current fake time.
+func (c *FakeClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.t
+}
+
+// Advance moves the clock forward.
+func (c *FakeClock) Advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.t = c.t.Add(d)
+}

@@ -64,6 +64,21 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// newTwoFactorGate builds the gateway's workspace two-factor gate (docs/ADR012-auth.md
+// §9a) over bex-api's internal verb, authenticated with the same BEX_SANDBOX_EXEC_SECRET HMAC as the
+// email-verification verb. Without the secret there is no way to ask bex-api
+// whether a workspace requires 2FA, so the gate is left unable to ask and every
+// authorization it guards fails closed, as native SSH's email check does.
+func newTwoFactorGate(secret, apiURL string, sessions sshgateway.TwoFactorSessions, metrics *sshgateway.Metrics) *sshgateway.TwoFactorGate {
+	gate := &sshgateway.TwoFactorGate{Sessions: sessions, Metrics: metrics}
+	if secret == "" {
+		log.Printf("ssh gateway: BEX_SANDBOX_EXEC_SECRET is unset, so workspace two-factor requirements cannot be checked; every native SSH key and ticket redemption is refused")
+		return gate
+	}
+	gate.Asker = &agentsession.TwoFactorClient{URL: apiURL, Secret: []byte(secret), HTTP: &http.Client{Timeout: 5 * time.Second}}
+	return gate
+}
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -140,6 +155,12 @@ func main() {
 	// and shared by every transport: the caps bound the whole process (not each
 	// feature), and an exec-ticket nonce cannot be redeemed once per feature.
 	metrics := sshgateway.NewMetrics(registry)
+	// The gateway's own Base carries the gate, so the one funnel hook covers
+	// native SSH (admission, every channel, every revalidation tick), the web
+	// shell, agent attach and sandbox exec/files, whose tickets bex-api mints
+	// through its own gated Base.
+	base.TwoFactor = newTwoFactorGate(os.Getenv("BEX_SANDBOX_EXEC_SECRET"),
+		env.Or("BEX_WORKSPACE_TWO_FACTOR_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalTwoFactorPath), st, metrics)
 	limits := sshgateway.NewSessionLimiter(
 		intEnv("BEX_SSH_MAX_SESSIONS", 100),
 		intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),

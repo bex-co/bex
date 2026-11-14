@@ -659,6 +659,11 @@ type Deps struct {
 	// API (w6/m2) — Kratos' admin API (BEX_KRATOS_ADMIN_URL). Nil omits those
 	// fields (honest subset) rather than failing the request.
 	Identities workspaces.IdentityReader
+	// TwoFactorChanged drops the enforcement gate's cached copy of a
+	// workspace's "require two-factor" setting the moment an admin changes it
+	// (w22/m402). cmd/api wires it to twofactor.Gate.Invalidate; nil when
+	// nothing enforces.
+	TwoFactorChanged func(workspaceID string)
 	// Audit backs the audit-log read verb (w4/m10). cmd/api/main.go builds it
 	// and starts its retention loop when BEX_CP_DB_URI is set. nil => NewServer
 	// mounts it store-less, answering core.ErrAuditUnavailable (503).
@@ -833,6 +838,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		PostCascadePurgers:    d.WorkspacePostCascadePurgers,
 		Settler:               d.WorkspaceSettler,
 		Identities:            d.Identities,
+		TwoFactorChanged:      d.TwoFactorChanged,
 		// APIKeys satisfies workspaces.KeyOwnerReader structurally (KeyOwner has
 		// the identical signature) — no adapter, and no cache: the lookup runs at
 		// most once per GET /v1/users (cold path), only for API-key callers.

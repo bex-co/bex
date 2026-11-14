@@ -35,6 +35,7 @@ type Metrics struct {
 	channels        prometheus.Counter
 	activeChannels  prometheus.Gauge
 	reauths         *prometheus.CounterVec
+	twoFactor       *prometheus.CounterVec
 	gitUpstream     *prometheus.CounterVec
 	modelUsage      *prometheus.CounterVec
 	egressConns     *prometheus.CounterVec
@@ -92,6 +93,10 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "channel_reauthorizations_total",
 			Help: "Per-channel reassertions of the transport-auth-time key + target authorization (codex round-8 #5) by bounded result.",
 		}, []string{"result"}),
+		twoFactor: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "two_factor_refusals_total",
+			Help: "Gateway authorizations (native SSH, web shell, agent attach, sandbox exec and files) refused by a workspace's two-factor requirement, by bounded result: not_enrolled, or unavailable (bex-api could not answer, failed closed). No workspace or subject label.",
+		}, []string{"result"}),
 		gitUpstream: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "git_proxy_upstream_failures_total",
 			Help: "Agent-session Git smart-HTTP exchanges that were admitted and authorized but failed on the gateway->forge hop, by bounded cause.",
@@ -121,7 +126,7 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Help: "Exec output writes forwarded unbuffered because the process-wide drain budget was spent.",
 		}),
 	}
-	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.drainBuffered, m.drainFallbacks)
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.twoFactor, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.drainBuffered, m.drainFallbacks)
 	return m
 }
 
@@ -182,6 +187,23 @@ func (m *Metrics) ChannelClosed() {
 func (m *Metrics) Reauthorization(result string) {
 	if m != nil {
 		m.reauths.WithLabelValues(result).Inc()
+	}
+}
+
+// The two refusal results of the gateway's workspace two-factor check, the
+// whole vocabulary of the two_factor_refusals_total result label.
+const (
+	twoFactorNotEnrolled = "not_enrolled"
+	twoFactorUnavailable = "unavailable"
+)
+
+// TwoFactorRefusal records one authorization the gateway refused because of a
+// workspace's two-factor requirement: twoFactorNotEnrolled for a member with no
+// second factor, twoFactorUnavailable when bex-api could not answer (failed
+// closed).
+func (m *Metrics) TwoFactorRefusal(result string) {
+	if m != nil {
+		m.twoFactor.WithLabelValues(result).Inc()
 	}
 }
 

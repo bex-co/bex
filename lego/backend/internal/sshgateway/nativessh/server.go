@@ -132,6 +132,35 @@ type Server struct {
 
 var errUnverifiedOwner = errors.New("public key rejected: verify your bex account email first")
 
+// The two-factor refusal (w22/m402, docs/ADR012-auth.md §9a) is the one cause
+// the gateway does tell the client, because it only arises after the member was
+// authorized: the funnel asks the 2FA gate once OpenFGA has said yes, so the
+// message reveals nothing to a key that is not a member with access. The SSH
+// client prints the banner while authenticating; a channel refused later
+// carries the reason in its open-failure description.
+const (
+	twoFactorBanner        = "bex: this workspace requires two-factor authentication. Enable it in your account settings, then connect again.\n"
+	twoFactorChannelReason = "this workspace requires two-factor authentication"
+	reauthorizeFailed      = "authorization no longer valid"
+)
+
+var errTwoFactorRequired = errors.New("public key rejected: this workspace requires two-factor authentication")
+
+// isTwoFactorRefusal reports whether err is the funnel's coded
+// WORKSPACE_2FA_REQUIRED refusal, however a resolver wrapped it.
+func isTwoFactorRefusal(err error) bool {
+	var coded *core.CodedError
+	return errors.As(err, &coded) && coded.Code == core.CodeWorkspaceTwoFactorRequired
+}
+
+// channelRefusal is the description a refused channel open carries.
+func channelRefusal(err error) string {
+	if isTwoFactorRefusal(err) {
+		return twoFactorChannelReason
+	}
+	return reauthorizeFailed
+}
+
 // verifiedOwner applies EmailVerified under the handshake deadline.
 func (s *Server) verifiedOwner(ctx context.Context, subject string) error {
 	if s.EmailVerified == nil {
@@ -213,11 +242,18 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 			s.Metrics.Authentication("rejected_unverified")
 			return nil, errUnverifiedOwner
 		}
-		authCtx := core.WithIdentity(ctx, core.Identity{Subject: subject, Method: "ssh"})
+		authCtx := core.WithIdentity(ctx, core.Identity{Subject: subject, Method: core.MethodSSH})
 		authCtx, cancel := context.WithTimeout(authCtx, s.HandshakeTimeout)
 		defer cancel()
 		target, err := s.Apps.ResolveSSHSession(authCtx, conn.User())
 		if err != nil {
+			if isTwoFactorRefusal(err) {
+				s.Metrics.Authentication("rejected_two_factor")
+				if pre, ok := conn.(ssh.ServerPreAuthConn); ok {
+					_ = pre.SendAuthBanner(twoFactorBanner)
+				}
+				return nil, errTwoFactorRequired
+			}
 			s.Metrics.Authentication("rejected_target")
 			return nil, errors.New("public key rejected")
 		}
@@ -420,7 +456,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// NEW exec may start against a decision that is hours stale.
 		resolved, err := s.reauthorize(ctx, subject, fingerprint, connUser, sticky)
 		if err != nil {
-			_ = newChannel.Reject(ssh.Prohibited, "authorization no longer valid")
+			_ = newChannel.Reject(ssh.Prohibited, channelRefusal(err))
 			result = "revoked"
 			return nil
 		}
@@ -544,7 +580,7 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 		resolved, err := s.reauthorize(mctx, subject, fingerprint, connUser, sticky)
 		if err != nil {
 			<-sem
-			_ = newChannel.Reject(ssh.Prohibited, "authorization no longer valid")
+			_ = newChannel.Reject(ssh.Prohibited, channelRefusal(err))
 			return "revoked"
 		}
 		if ok, scope := s.ChannelLimits.AcquireChannel(subject); !ok {
@@ -592,7 +628,7 @@ func (s *Server) reauthorize(ctx context.Context, subject, fingerprint, connUser
 		s.Metrics.Reauthorization("rejected")
 		return apps.SSHInstanceTarget{}, errUnverifiedOwner
 	}
-	authCtx := core.WithIdentity(lookupCtx, core.Identity{Subject: subject, Method: "ssh"})
+	authCtx := core.WithIdentity(lookupCtx, core.Identity{Subject: subject, Method: core.MethodSSH})
 	target, err := s.Apps.ResolveSSHSession(authCtx, sticky.Get().ID)
 	if errors.Is(err, core.ErrNotFound) {
 		target, err = s.Apps.ResolveSSHSession(authCtx, connUser)

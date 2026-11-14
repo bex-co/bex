@@ -168,6 +168,42 @@ func (s *PGStore) SetTenantDisplayName(ctx context.Context, id, name string) (Te
 	return t, nil
 }
 
+// SetTenantRequireTwoFactor turns a workspace's "require two-factor
+// authentication" setting on or off and returns the row (ErrNotFound when the
+// id doesn't exist). Enforcement reads it through RequireTwoFactor; this write
+// is the admin mutation's. changed is false when the row already held enabled:
+// the write is conditional, so of two admins toggling at once exactly one gets
+// changed=true and the other must not audit or announce a change it did not make.
+func (s *PGStore) SetTenantRequireTwoFactor(ctx context.Context, id string, enabled bool) (t Tenant, changed bool, err error) {
+	t, err = scanTenant(s.Pool.QueryRow(ctx,
+		`UPDATE tenants SET require_two_factor = $2, updated_at = now()
+		 WHERE id = $1 AND require_two_factor <> $2
+		 RETURNING `+tenantColumns, id, enabled))
+	if errors.Is(err, pgx.ErrNoRows) {
+		t, err = s.GetTenant(ctx, id) // already there, or no such workspace (ErrNotFound)
+		return t, false, err
+	}
+	if err != nil {
+		return Tenant{}, false, classify("workspace", err)
+	}
+	return t, true, nil
+}
+
+// RequireTwoFactor reads only the setting — the enforcement point's question,
+// asked at most once a minute per workspace (internal/twofactor). A workspace
+// that does not exist requires nothing: false, no error.
+func (s *PGStore) RequireTwoFactor(ctx context.Context, id string) (bool, error) {
+	var required bool
+	err := s.Pool.QueryRow(ctx, `SELECT require_two_factor FROM tenants WHERE id = $1`, id).Scan(&required)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, classify("workspace", err)
+	}
+	return required, nil
+}
+
 // SetTenantDisplayNameIfUnset gives a workspace its first display name and
 // leaves one already set alone, so a signup workspace is named once (w3/m246)
 // and a user's later rename is never overwritten.
@@ -230,7 +266,7 @@ func (s *PGStore) DeleteTenant(ctx context.Context, id string) error {
 // first — the caller's workspace list (the dashboard switcher / owners list).
 func (s *PGStore) ListTenantsForSubject(ctx context.Context, subject string) ([]Tenant, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT t.id, t.name, t.plan, t.created_at, t.display_name
+		`SELECT t.id, t.name, t.plan, t.created_at, t.display_name, t.require_two_factor
 		 FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id
 		 WHERE m.subject = $1 ORDER BY t.created_at`, subject)
 	if err != nil {

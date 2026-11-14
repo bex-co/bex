@@ -154,7 +154,15 @@ const (
 
 // WorkspaceObject is the OpenFGA object for a workspace (tenant) id — the target
 // the workspace lifecycle verbs authorize against, e.g. workspace:tea-abc.
-func WorkspaceObject(tenantID string) string { return "workspace:" + tenantID }
+func WorkspaceObject(tenantID string) string { return WorkspaceObjectPrefix + tenantID }
+
+// The OpenFGA object prefixes the two-factor funnel branches on: a workspace
+// object names its workspace, an agent-session object (agentsession.SessionObject)
+// names none and is resolved.
+const (
+	WorkspaceObjectPrefix    = "workspace:"
+	AgentSessionObjectPrefix = "agent_session:"
+)
 
 // LifecycleOrCreate picks a verb's relation when the SAME verb is lifecycle for
 // some calls and create-like for others — a deploy trigger that may or may not
@@ -438,6 +446,11 @@ type Base struct {
 	// Consumed by EnforceEnvironmentIsolation; nil => a toggle waits for the
 	// namespace resync.
 	EnforceIsolation NamespaceEnsurer
+	// TwoFactor enforces a workspace's "require two-factor authentication"
+	// setting: the authorization funnel asks it after every positive decision.
+	// nil => no workspace can enforce 2FA (the store-off mode). The SSH gateway
+	// wires a gate that asks bex-api over an HMAC verb.
+	TwoFactor TwoFactorGate
 }
 
 // NamespaceEnsurer provisions one workspace's per-tenant namespaces
@@ -924,6 +937,12 @@ func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target,
 		} else {
 			err = b.checkAuthz(ctx, relation, object)
 		}
+		if err == nil {
+			// A positive decision is not yet access when the workspace requires
+			// 2FA and the principal has none: a refusal here is audited as the
+			// denial it is, never as an allowed write.
+			err = b.requireTwoFactor(ctx, object)
+		}
 	}
 	switch {
 	case err == nil:
@@ -1023,7 +1042,10 @@ func (b *Base) checkAuthzFresh(ctx context.Context, relation, object string) err
 func (b *Base) AuthorizeFreshOn(ctx context.Context, relation, object string) error {
 	// checkAuthzFresh already allows a nil checker (its FreshChecker assertion
 	// fails and it falls back to checkAuthz, which returns nil) — no guard here.
-	return b.checkAuthzFresh(ctx, relation, object)
+	if err := b.checkAuthzFresh(ctx, relation, object); err != nil {
+		return err
+	}
+	return b.requireTwoFactor(ctx, object)
 }
 
 // AuthorizeFresh is AuthorizeFreshOn against the caller's own workspace — the
@@ -1034,7 +1056,7 @@ func (b *Base) AuthorizeFresh(ctx context.Context, relation string) error {
 	if err != nil {
 		return err
 	}
-	return b.checkAuthzFresh(ctx, relation, object)
+	return b.AuthorizeFreshOn(ctx, relation, object)
 }
 
 // AuthorizeAppFresh reasserts a relation against an already-authorized App's
@@ -1059,7 +1081,7 @@ func (b *Base) authorizeLabeledFresh(ctx context.Context, relation string, label
 	if err != nil {
 		return err
 	}
-	return b.checkAuthzFresh(ctx, relation, object)
+	return b.AuthorizeFreshOn(ctx, relation, object)
 }
 
 // AuthorizeDatabaseFresh is AuthorizeAppFresh for a managed Database — the
@@ -2160,7 +2182,12 @@ func (b *Base) checkWorkspaceAccess(ctx context.Context, relation, tenantID stri
 	if err := b.requireMember(ctx, id, tenantID); err != nil {
 		return err
 	}
-	return b.checkAuthz(ctx, relation, WorkspaceObject(tenantID))
+	object := WorkspaceObject(tenantID)
+	if err := b.checkAuthz(ctx, relation, object); err != nil {
+		return err
+	}
+	// Reaching another workspace is acting in it: its 2FA setting applies.
+	return b.requireTwoFactor(ctx, object)
 }
 
 // requireMember is the membership gate, and the ONE place its fail-closed

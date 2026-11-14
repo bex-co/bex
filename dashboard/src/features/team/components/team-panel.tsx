@@ -49,7 +49,7 @@ import { TeamMembersSkeleton } from "@/features/team/components/team-panel-skele
  */
 export function TeamPanel() {
   const { t } = useTranslations();
-  const { currentWorkspaceId: workspaceId } = useWorkspace();
+  const { currentWorkspaceId: workspaceId, currentWorkspace } = useWorkspace();
   const { members, invites, seats, loading, error, canManage, refetch } =
     useTeam(workspaceId);
   const { changeRole, changing } = useChangeRole(workspaceId ?? "");
@@ -169,6 +169,7 @@ export function TeamPanel() {
                       key={member.subject}
                       member={member}
                       canManage={canManage}
+                      requireTwoFactor={currentWorkspace?.requireTwoFactor}
                       changing={changing === member.subject}
                       removing={removing === member.subject}
                       onChangeRole={(subject, role) =>

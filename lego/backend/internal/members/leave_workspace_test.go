@@ -350,3 +350,69 @@ func TestAccountOffboarderStopsTheMembersAgentSessions(t *testing.T) {
 		t.Error("a failed session stop still deleted the row")
 	}
 }
+
+// refusingTwoFactorGate stands in for a workspace that requires 2FA and a
+// member who has none: it refuses every workspace.
+type refusingTwoFactorGate struct{}
+
+func (refusingTwoFactorGate) Check(_ context.Context, workspaceID string, _ core.Identity) error {
+	return core.NewWorkspaceTwoFactorRequiredError(workspaceID)
+}
+
+// w22/m402: leaving is one of the operations a blocked member can still do
+// (docs/ADR012-auth.md §9a), so a workspace that requires two-factor
+// authentication does not trap the members it blocks. Removing someone else is
+// a workspace operation like any other and stays blocked.
+func TestLeaveWorkspaceIsExemptFromTheTwoFactorRequirement(t *testing.T) {
+	st := leaveFixture(t)
+	s := svc(st, newFakeGranter(), nil, nil)
+	s.Base.TwoFactor = refusingTwoFactorGate{}
+
+	if err := s.LeaveWorkspace(ctxWith("dev-1"), "tea-1"); err != nil {
+		t.Fatalf("a blocked member leaving = %v, want allowed", err)
+	}
+	if _, ok := st.members["dev-1"]; ok {
+		t.Error("membership row survived the leave")
+	}
+
+	var coded *core.CodedError
+	err := s.Remove(ctxWith("admin-2"), "tea-1", "owner-1")
+	if !errors.As(err, &coded) || coded.Code != core.CodeWorkspaceTwoFactorRequired {
+		t.Fatalf("a blocked admin removing a member = %v, want the coded 403", err)
+	}
+}
+
+// The exemption belongs to the leave verb alone. It covers only the caller's
+// own membership, never someone who is not a member, and it does not outlive the
+// call: the context a blocked member reuses afterwards is still refused.
+func TestTheLeaveExemptionDoesNotLeakToOtherOperations(t *testing.T) {
+	st := leaveFixture(t)
+	s := svc(st, newFakeGranter(), nil, nil)
+	s.Base.TwoFactor = refusingTwoFactorGate{}
+	wantCoded403 := func(what string, err error) {
+		t.Helper()
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != core.CodeWorkspaceTwoFactorRequired {
+			t.Fatalf("%s = %v, want the coded WORKSPACE_2FA_REQUIRED 403", what, err)
+		}
+	}
+
+	// Someone who is not a member gets nothing out of the exempt route.
+	if err := s.LeaveWorkspace(ctxWith("stranger"), "tea-1"); err == nil {
+		t.Fatal("a non-member leaving = nil, want a refusal")
+	}
+	if len(st.members) != 3 {
+		t.Fatalf("members after a stranger's leave = %v, want all three untouched", st.members)
+	}
+
+	// After a blocked admin leaves, the same context is not an exempt one.
+	ctx := ctxWith("admin-2")
+	if err := s.LeaveWorkspace(ctx, "tea-1"); err != nil {
+		t.Fatalf("a blocked admin leaving = %v", err)
+	}
+	wantCoded403("Remove on the context that just left", s.Remove(ctx, "tea-1", "dev-1"))
+	if _, ok := st.members["dev-1"]; !ok {
+		t.Fatal("a blocked caller removed another member through the context of an exempt call")
+	}
+	wantCoded403("List members on the same context", func() error { _, err := s.List(ctx, "tea-1"); return err }())
+}

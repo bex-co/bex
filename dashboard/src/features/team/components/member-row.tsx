@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, ShieldCheck, Trash2 } from "lucide-react";
+import { Loader2, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import { TableCell, TableRow } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
@@ -20,6 +20,9 @@ export interface MemberRowProps {
   member: MemberView;
   /** Whether the caller may manage members (admin) — read-only rows otherwise. */
   canManage: boolean;
+  /** The workspace requires two-factor authentication (w22/m402): a member
+   *  without it is flagged, since they cannot use the workspace until then. */
+  requireTwoFactor?: boolean;
   changing: boolean;
   removing: boolean;
   onChangeRole: (subject: string, role: Role) => void;
@@ -39,10 +42,16 @@ export interface MemberRowProps {
  * always-rendered-disabled pattern); the inline server error remains the
  * backstop for the last-admin rule and for races. The workspace's creator is
  * an ordinary Admin, as on Render, and gets no special treatment (w5/m372).
+ *
+ * While the workspace requires two-factor authentication (w22/m402), a member
+ * with no second factor carries "2FA required, not enabled" in place of the
+ * enrolled badge. An unresolved identity is not flagged: its `mfaEnabled` is an
+ * honest false from a lookup miss, not a known absence of a factor.
  */
 export function MemberRow({
   member,
   canManage,
+  requireTwoFactor = false,
   changing,
   removing,
   onChangeRole,
@@ -56,6 +65,8 @@ export function MemberRow({
     ? t(reasonKeys.removeReason)
     : null;
   const roleReason = reasonKeys.roleReason ? t(reasonKeys.roleReason) : null;
+  const twoFactorMissing =
+    requireTwoFactor && member.identityResolved && !member.mfaEnabled;
 
   return (
     <TableRow>
@@ -88,6 +99,16 @@ export function MemberRow({
             >
               <ShieldCheck className="size-3" aria-hidden />
               {t("team.mfaEnabled")}
+            </Badge>
+          ) : null}
+          {twoFactorMissing ? (
+            <Badge
+              variant="outline"
+              className="shrink-0 gap-1 border-destructive/50 text-destructive"
+              title={t("team.twoFactorRequiredNotEnabledTooltip")}
+            >
+              <ShieldAlert className="size-3" aria-hidden />
+              {t("team.twoFactorRequiredNotEnabled")}
             </Badge>
           ) : null}
         </div>

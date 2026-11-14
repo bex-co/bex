@@ -112,7 +112,7 @@ func (r *ExecRevalidator) RevalidateExec(ctx context.Context, claims sandboxexec
 	if claims.Workspace == "" {
 		return core.ErrForbidden // a caller ticket always carries its workspace
 	}
-	ctx = core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: "sandbox-exec"})
+	ctx = core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: core.MethodSandboxExec})
 	if err := r.AuthorizeFreshOn(ctx, core.RelCanCreate, core.WorkspaceObject(claims.Workspace)); err != nil {
 		return err
 	}

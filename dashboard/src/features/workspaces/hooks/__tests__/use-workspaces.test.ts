@@ -54,7 +54,46 @@ describe("useWorkspaces", () => {
         plan: "hobby",
         role: "admin",
         createdAt: "2026-06-01T00:00:00Z",
+        requireTwoFactor: false,
       },
+    ]);
+  });
+
+  // w22/m402: the setting rides the workspaces list, which the server exempts
+  // from enforcement so a blocked member can still read why.
+  it("carries requireTwoFactor, and reads a missing value as not required", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        workspaces: [
+          {
+            __typename: "Workspace",
+            id: "tea-on",
+            name: "on",
+            plan: "pro",
+            role: "admin",
+            createdAt: null,
+            requireTwoFactor: true,
+          },
+          {
+            __typename: "Workspace",
+            id: "tea-unknown",
+            name: "unknown",
+            plan: "pro",
+            role: "admin",
+            createdAt: null,
+            requireTwoFactor: null,
+          },
+        ],
+      },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useWorkspaces());
+    expect(result.current.workspaces.map((w) => w.requireTwoFactor)).toEqual([
+      true,
+      false,
     ]);
   });
 

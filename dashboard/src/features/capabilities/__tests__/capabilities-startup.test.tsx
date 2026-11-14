@@ -43,6 +43,7 @@ const workspaces = ["tea-first", "tea-second"].map((id) => ({
   plan: "hobby",
   role: "admin",
   createdAt: null,
+  requireTwoFactor: false,
 }));
 
 interface Operation {

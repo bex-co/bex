@@ -30,8 +30,8 @@ import (
 // Resolves through the same List verb as REST, so the two surfaces can't
 // diverge (t007 asserts this).
 
-// auditMetadataGQLType stays deliberately closed to the maintenance `to`
-// flag: REST's richer kind-keyed target metadata (w4/m26) is not mirrored
+// auditMetadataGQLType stays deliberately closed to the `to` flag a toggle
+// records (maintenance mode, a workspace's two-factor requirement): REST's richer kind-keyed target metadata (w4/m26) is not mirrored
 // here — the dashboard's one target need, the display name, ships as the
 // flat `targetName` field on AuditLog below (w10/m5, the consumer the
 // original scope cut waited for).
@@ -39,10 +39,13 @@ var auditMetadataGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AuditLogMetadata",
 	Fields: graphql.Fields{
 		"to": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(e Event) any {
-			if e.MaintenanceModeTo == nil {
-				return nil
+			switch {
+			case e.MaintenanceModeTo != nil:
+				return *e.MaintenanceModeTo
+			case e.TwoFactorRequiredTo != nil:
+				return *e.TwoFactorRequiredTo
 			}
-			return *e.MaintenanceModeTo
+			return nil
 		})},
 	},
 })
@@ -92,7 +95,7 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return e.OAuthScopes
 		})},
 		"metadata": &graphql.Field{Type: auditMetadataGQLType, Resolve: gqlutil.Field(func(e Event) any {
-			if e.MaintenanceModeTo == nil && e.Verb != core.AuditVerbMaintenanceModeURIUpdated {
+			if e.MaintenanceModeTo == nil && e.TwoFactorRequiredTo == nil && e.Verb != core.AuditVerbMaintenanceModeURIUpdated {
 				return nil
 			}
 			return e

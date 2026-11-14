@@ -18,6 +18,7 @@ const WORKSPACE: WorkspaceView = {
   plan: "pro",
   role: "admin",
   createdAt: null,
+  requireTwoFactor: false,
 };
 
 beforeEach(() => {

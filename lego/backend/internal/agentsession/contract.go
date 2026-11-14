@@ -77,7 +77,7 @@ const (
 // sandbox-exec seam (round-13 #1) and the gateway's exec revalidator so both
 // sides check the identical object; the agentsessions feature's own
 // sessionObject helper is this same string.
-func SessionObject(sessionID string) string { return "agent_session:" + sessionID }
+func SessionObject(sessionID string) string { return core.AgentSessionObjectPrefix + sessionID }
 
 // ProxyRepositoryURL binds a Git smart-HTTP remote to the exact immutable
 // session identity the gateway verifies against the direct source Pod. It

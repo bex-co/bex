@@ -495,6 +495,102 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Fallback inline message when a workspace rule change fails without a server reason (w9/m388)",
   },
+  "workspaces.twoFactorTitle": {
+    message: "Two-factor authentication",
+    description:
+      "Title of the two-factor card on the workspace settings page, and its quick-nav label (w22/m402)",
+  },
+  "workspaces.twoFactorDescription": {
+    message:
+      "Members without two-factor authentication (2FA) can't access this workspace's resources or settings until they enable it. Their API keys and SSH keys are blocked until then too.",
+    description:
+      "Description under the two-factor card title; follows Render's login-settings wording",
+  },
+  "workspaces.twoFactorSwitchLabel": {
+    message: "Enforce two-factor authentication (2FA)",
+    description:
+      "Label of the switch that requires 2FA of every member (Render's control name)",
+  },
+  "workspaces.twoFactorStatusRequired": {
+    message: "Required",
+    description:
+      "Read-only status shown to a non-admin when the workspace requires 2FA",
+  },
+  "workspaces.twoFactorStatusNotRequired": {
+    message: "Not required",
+    description:
+      "Read-only status shown to a non-admin when the workspace does not require 2FA",
+  },
+  "workspaces.twoFactorAdminOnly": {
+    message: "Only workspace admins can change this setting.",
+    description: "Hint shown to a non-admin in place of the switch",
+  },
+  "workspaces.twoFactorEnabledToast": {
+    message: "Two-factor authentication is now required in {name}",
+    description: "Toast after an admin turns the 2FA requirement on",
+  },
+  "workspaces.twoFactorDisabledToast": {
+    message: "Two-factor authentication is no longer required in {name}",
+    description: "Toast after an admin turns the 2FA requirement off",
+  },
+  "workspaces.twoFactorErrorTitle": {
+    message: "Couldn't change the two-factor setting",
+    description: "Title of the inline error when the 2FA switch is refused",
+  },
+  "workspaces.twoFactorError": {
+    message: "Couldn't change the two-factor setting. Try again.",
+    description:
+      "Generic message when the 2FA switch fails without a recognised code",
+  },
+  "workspaces.twoFactorErrorAdminNotEnrolled": {
+    message:
+      "Turn on two-factor authentication for your own account before requiring it in this workspace, or you would lock yourself out.",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED: the acting admin has no second factor",
+  },
+  "workspaces.twoFactorErrorUnavailable": {
+    message:
+      "Two-factor enforcement is unavailable on this installation, so it can't be turned on.",
+    description:
+      "Refusal for code WORKSPACE_2FA_UNAVAILABLE: the deployment has no identity lookup",
+  },
+  "workspaces.twoFactorEnrollLink": {
+    message: "Set up two-factor authentication",
+    description:
+      "Link to account security, in the admin-not-enrolled refusal and on the blocked page",
+  },
+  "workspaces.twoFactorBlockedTitle": {
+    message: "{workspace} requires two-factor authentication",
+    description: "Heading of the page a blocked member sees (w22/m402)",
+  },
+  "workspaces.twoFactorBlockedBody": {
+    message:
+      "An admin of this workspace requires every member to use two-factor authentication (2FA). Until you turn it on, you can't access this workspace's resources or settings, and your API keys and SSH keys can't be used with it.",
+    description: "Why the blocked page is shown",
+  },
+  "workspaces.twoFactorBlockedRecheck": {
+    message: "I've turned it on, check again",
+    description:
+      "Button on the blocked page that retries the workspace after enrolling",
+  },
+  "workspaces.twoFactorBlockedRecheckHint": {
+    message:
+      "After you turn on 2FA, it can take up to a minute for access to return.",
+    description: "Hint under the blocked page's check-again button",
+  },
+  "workspaces.twoFactorBlockedSwitchLabel": {
+    message: "Switch to another workspace",
+    description: "Label of the workspace picker on the blocked page",
+  },
+  "workspaces.twoFactorBlockedSwitchPlaceholder": {
+    message: "Choose a workspace",
+    description: "Placeholder of the workspace picker on the blocked page",
+  },
+  "workspaces.twoFactorBlockedNoOtherWorkspaces": {
+    message: "No other workspaces",
+    description:
+      "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
+  },
 };
 
 export default enWorkspaces;

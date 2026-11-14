@@ -16,14 +16,36 @@ limitations under the License.
 
 package core
 
-import "context"
+import (
+	"cmp"
+	"context"
+)
+
+// The Identity.Method values the workspace two-factor check reads
+// (docs/ADR012-auth.md §9a). Producers of the gateway's four methods and the
+// two-factor consumers use these; other literals in the tree still spell them.
+const (
+	// MethodSession is a Kratos session, and the identity background work builds
+	// to run as the member who started it.
+	MethodSession = "session"
+	// MethodOAuth2 is an OAuth2 access token: an API key (client_credentials,
+	// not Human) or a human's token.
+	MethodOAuth2 = "oauth2"
+	// The identities the SSH gateway and bex-api authenticate themselves and
+	// whose Subject is the user the key or ticket belongs to: a native SSH key
+	// (nativessh), and a web shell, agent attach or sandbox exec ticket.
+	MethodSSH         = "ssh"
+	MethodShell       = "shell"
+	MethodAgentAttach = "agent-attach"
+	MethodSandboxExec = "sandbox-exec"
+)
 
 // Identity is the authenticated caller: an OAuth2 client (API key) validated by
 // Hydra introspection or a Kratos identity validated by its session. Subject is
 // Hydra's client_id/sub or the Kratos identity id — the tenant-scoping hook.
 type Identity struct {
 	Subject string
-	Method  string // "oauth2" | "session"
+	Method  string // MethodOAuth2 | MethodSession, or a gateway ticket method (MethodSSH ...)
 	// ClientID is Hydra's OAuth2 client_id. It stays empty for Kratos-session
 	// callers. Human OAuth tokens keep Subject as their Kratos identity while
 	// ClientID identifies the public app that minted the token; machine tokens
@@ -78,6 +100,15 @@ type Identity struct {
 	// the caller's OpenFGA relations — the scope is a narrowing, not a grant.
 	CloudAgentsToolset bool
 }
+
+// IsAPIKey reports whether the caller is a machine API key: an OAuth2 token
+// with no end user behind it. Its Subject is not a person, so anything that
+// needs one must look up the key's creator.
+func (i Identity) IsAPIKey() bool { return i.Method == MethodOAuth2 && !i.Human }
+
+// KeyClientID is the OAuth client id of an API key caller: ClientID, or the
+// Subject when only that is set (a machine token's sub is its client id).
+func (i Identity) KeyClientID() string { return cmp.Or(i.ClientID, i.Subject) }
 
 type identityCtxKey struct{}
 

@@ -6,6 +6,7 @@ import {
   Network,
   ScrollText,
   Settings2,
+  ShieldCheck,
   TriangleAlert,
   Users,
 } from "lucide-react";
@@ -49,6 +50,11 @@ export function WorkspaceSettingsNavigation({
       href: "#inbound-ip-rules",
       label: t("workspaces.ipRulesTitle"),
       icon: Network,
+    },
+    {
+      href: "#two-factor",
+      label: t("workspaces.twoFactorTitle"),
+      icon: ShieldCheck,
     },
     { href: "#team", label: t("team.title"), icon: Users },
     {

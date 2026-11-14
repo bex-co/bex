@@ -107,6 +107,8 @@ The audit type and schema have no command, argv, environment, stdin, stdout, std
 
 Authentication fails without revealing whether the cause was an unknown/deleted key, malformed username, missing/foreign service, insufficient role, unsupported/free/suspended service, missing live revision, or missing/non-Ready/stale instance. No session channel opens and no `pods/exec` request occurs.
 
+One refusal is told to the client, because it can only follow a positive authorization decision (w22/m402, [ADR012 §9a](ADR012-auth.md#9a-workspace-enforced-two-factor-authentication-w22m402)): a member of a workspace that requires two-factor authentication who has no second factor. The funnel asks the gateway's two-factor gate (an HMAC question to bex-api, cached 30 s, failing closed) after OpenFGA allows, so a key that is not a member with access never reaches it. The SSH client prints an authentication banner saying the workspace requires two-factor authentication; a channel refused on a live connection carries the same reason in its open-failure description. An outage of that check is refused without the message.
+
 After authorization, Kubernetes errors remain bounded. A pod disappearing during restart/redeploy closes the stream. The gateway never retries against another replica, because silently switching a specific session target would violate instance selection and could cross a deploy boundary.
 
 ### Sessions across a deploy (w4/m352)

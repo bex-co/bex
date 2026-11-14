@@ -66,6 +66,31 @@ function resultHasVerificationCode(result: {
   );
 }
 
+/** bex-api's refusal of a member with no second factor in a workspace that
+ * requires one. Raised by the authorization
+ * funnel inside a resolver, so on `/graphql` it is a GraphQL error whose
+ * `extensions` carry `{code, workspaceId}`, never a transport status. */
+const WORKSPACE_TWO_FACTOR_REQUIRED = "WORKSPACE_2FA_REQUIRED";
+
+/**
+ * The workspace of every `WORKSPACE_2FA_REQUIRED` error in a GraphQL result.
+ * Keyed on the stable code, never the message. An error without a usable
+ * `workspaceId` is skipped: a block that names no workspace cannot be scoped
+ * to the selected one, and wrongly walling another workspace is worse.
+ */
+export function workspaceTwoFactorRequiredIds(result: {
+  errors?: ReadonlyArray<{ extensions?: Record<string, unknown> }>;
+}): string[] {
+  return (result.errors ?? []).flatMap((item) => {
+    const workspaceId = item.extensions?.["workspaceId"];
+    return item.extensions?.["code"] === WORKSPACE_TWO_FACTOR_REQUIRED &&
+      typeof workspaceId === "string" &&
+      workspaceId !== ""
+      ? [workspaceId]
+      : [];
+  });
+}
+
 /**
  * Front-of-chain link that reacts to a 401 on an already-mounted page (w3/m80
  * t001). The only redirect-to-login path used to live in the root route's
@@ -85,16 +110,25 @@ function resultHasVerificationCode(result: {
  * backstop behind `EmailVerificationGate` for the cases the session check
  * cannot see: a bare route's queries, or a session that turned unverified
  * after it was memoized. As with 401, the error still surfaces.
+ *
+ * It also reports each `WORKSPACE_2FA_REQUIRED` GraphQL error's workspace to
+ * `onWorkspaceTwoFactorRequired`: the one place that error is read,
+ * so a page whose queries all fail the same way raises one blocked page, not a
+ * toast per query. The error still surfaces, and other 403s are not touched.
  */
 export function createAuthErrorLink(
   onUnauthorized: () => void,
   onEmailVerificationRequired: () => void = () => {},
+  onWorkspaceTwoFactorRequired: (workspaceId: string) => void = () => {},
 ): ApolloLink {
   return new ApolloLink((operation, forward) => {
     return new Observable((observer) => {
       const sub = forward(operation).subscribe({
         next: (result) => {
           if (resultHasVerificationCode(result)) onEmailVerificationRequired();
+          for (const workspaceId of workspaceTwoFactorRequiredIds(result)) {
+            onWorkspaceTwoFactorRequired(workspaceId);
+          }
           observer.next(result);
         },
         error: (error: ErrorLike) => {

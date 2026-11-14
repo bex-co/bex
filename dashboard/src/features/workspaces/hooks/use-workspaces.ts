@@ -25,6 +25,7 @@ function toWorkspaceViews(
       plan: w.plan ?? "hobby",
       role: w.role ?? "",
       createdAt: w.createdAt,
+      requireTwoFactor: w.requireTwoFactor ?? false,
     }));
 }
 

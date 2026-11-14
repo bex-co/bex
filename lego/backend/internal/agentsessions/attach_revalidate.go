@@ -43,7 +43,7 @@ type AttachRevalidator struct {
 // sessionID come from the verified claims, never the request. Any error means
 // refuse the attach.
 func (r *AttachRevalidator) RevalidateAttach(ctx context.Context, subject, sessionID, action string) error {
-	ctx = core.WithIdentity(ctx, core.Identity{Subject: subject, Method: "agent-attach"})
+	ctx = core.WithIdentity(ctx, core.Identity{Subject: subject, Method: core.MethodAgentAttach})
 	relation := core.RelCanOperate
 	if action == agentsessionticket.ActionTurn {
 		relation = core.RelCanCreate

@@ -510,6 +510,22 @@ func (s *PGStore) GetAgentSession(ctx context.Context, id string) (AgentSession,
 	return out, nil
 }
 
+// AgentSessionWorkspace names the workspace an agent session belongs to, or ""
+// when no such session exists. It is the two-factor gate's resolution of an
+// agent_session:<id> authorization object (a session's name carries no
+// workspace, w22/m402), so it reads one column and never loads the session.
+func (s *PGStore) AgentSessionWorkspace(ctx context.Context, id string) (string, error) {
+	var workspaceID string
+	err := s.Pool.QueryRow(ctx, `SELECT workspace_id FROM agent_sessions WHERE id=$1`, id).Scan(&workspaceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", classify("agent session", err)
+	}
+	return workspaceID, nil
+}
+
 // BeginAgentSessionTurn atomically records an accepted follow-up prompt and
 // moves the session into its asynchronous dispatch phase. The public turn count
 // advances here, with prompt acceptance, so provisioning failure cannot erase

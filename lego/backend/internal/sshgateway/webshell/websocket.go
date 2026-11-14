@@ -259,7 +259,7 @@ func (s *Server) serveWebSocket(w http.ResponseWriter, r *http.Request) {
 // browser to one pods/exec stream. Post-upgrade failures are delivered as an
 // {type:"error"} control frame so the terminal can display them.
 func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims shellticket.Claims, remoteAddress string) {
-	resolveCtx := core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: "shell"})
+	resolveCtx := core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: core.MethodShell})
 	resolveCtx, cancelResolve := context.WithTimeout(resolveCtx, s.HandshakeTimeout)
 	target, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username())
 	cancelResolve()
@@ -317,7 +317,7 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	timedCtx, cancelTimeout := context.WithTimeout(ctx, s.SessionTimeout)
 	defer cancelTimeout()
 	execCtx, cancelExec := sshgateway.WithRevalidation(timedCtx, s.RevalidateInterval, func(c context.Context) error {
-		resolveCtx := core.WithIdentity(c, core.Identity{Subject: claims.Subject, Method: "shell"})
+		resolveCtx := core.WithIdentity(c, core.Identity{Subject: claims.Subject, Method: core.MethodShell})
 		_, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username())
 		return err
 	})

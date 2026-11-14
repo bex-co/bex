@@ -63,6 +63,69 @@ describe("MemberRow — unresolved identity (w4/070)", () => {
   });
 });
 
+// while the workspace requires two-factor authentication, a member
+// with no second factor cannot use it, and the Team list says so.
+describe("MemberRow — workspace-required two-factor (w22/m402)", () => {
+  function renderRow(
+    overrides: Partial<MemberView>,
+    requireTwoFactor?: boolean,
+  ) {
+    render(
+      <table>
+        <tbody>
+          <MemberRow
+            member={member(overrides)}
+            canManage={false}
+            requireTwoFactor={requireTwoFactor}
+            changing={false}
+            removing={false}
+            onChangeRole={vi.fn()}
+            onRemove={vi.fn()}
+          />
+        </tbody>
+      </table>,
+    );
+  }
+
+  it("flags a member with no second factor as required but not enabled", () => {
+    renderRow({ mfaEnabled: false }, true);
+
+    const badge = screen.getByText("2FA required, not enabled");
+    expect(badge.closest("[title]")).toHaveAttribute(
+      "title",
+      "This workspace requires two-factor authentication. This member can't access it until they enable 2FA.",
+    );
+    expect(screen.queryByText("2FA")).toBeNull();
+  });
+
+  it("keeps the enrolled badge for a member who has a second factor", () => {
+    renderRow({ mfaEnabled: true }, true);
+
+    expect(screen.getByText("2FA")).toBeInTheDocument();
+    expect(screen.queryByText("2FA required, not enabled")).toBeNull();
+  });
+
+  it("shows neither badge to a member without one when nothing is required", () => {
+    renderRow({ mfaEnabled: false }, false);
+    expect(screen.queryByText("2FA required, not enabled")).toBeNull();
+    expect(screen.queryByText("2FA")).toBeNull();
+  });
+
+  it("shows no state at all when the setting is not passed", () => {
+    renderRow({ mfaEnabled: false });
+    expect(screen.queryByText("2FA required, not enabled")).toBeNull();
+  });
+
+  // An unresolved identity's mfaEnabled is an honest false from a lookup miss,
+  // not a known absence of a factor: claiming "not enabled" would be a guess.
+  it("does not flag a member whose identity could not be resolved", () => {
+    renderRow({ mfaEnabled: false, email: "", identityResolved: false }, true);
+
+    expect(screen.getByText("Unresolved")).toBeInTheDocument();
+    expect(screen.queryByText("2FA required, not enabled")).toBeNull();
+  });
+});
+
 describe("MemberRow — membership invariants (w5/m101)", () => {
   function renderRow(overrides: Partial<MemberView>) {
     const onRemove = vi.fn();

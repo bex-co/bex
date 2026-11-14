@@ -167,6 +167,10 @@ type AuditEvent struct {
 	// save left caching on or off, which Render has no event for, and for
 	// every other verb.
 	EdgeCacheEnabledTo *bool
+	// TwoFactorRequiredTo is the value a workspace admin set the two-factor
+	// requirement TO (w22/m402): true = required, false = no longer required.
+	// Nil for every other verb.
+	TwoFactorRequiredTo *bool
 }
 
 type deferAllowedWriteAuditKey struct{}
@@ -257,6 +261,13 @@ const (
 
 	AuditVerbJobCreate = "jobs.Create"
 	AuditVerbJobCancel = "jobs.Cancel"
+
+	// AuditVerbSetRequireTwoFactor is a workspace admin turning the two-factor
+	// requirement on or off (w22/m402), Render's ChangeTeam2FAEnforcementEvent.
+	// It names the real workspaces.Service method, so the denied rows
+	// authorizeAndAudit derives from the call stack carry the same verb as the
+	// allowed row RecordTwoFactorEnforcement writes.
+	AuditVerbSetRequireTwoFactor = "workspaces.SetRequireTwoFactor"
 
 	// AuditVerbViewEnvVarValues and AuditVerbViewConnectionInfo are the reads
 	// Render audits (w4/m321): ViewEnvVarValuesEvent "logs when environment

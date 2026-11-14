@@ -247,8 +247,9 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 7],
     // 8: Build Pipeline (w6/m309) joined the billing manager's rail; 9:
-    // Inbound IP Rules (w9/m388) joined every member's.
-    [<WorkspaceSettingsPageSkeleton key="workspace" />, 9],
+    // Inbound IP Rules (w9/m388) and 10: Two-factor authentication (w22/m402) joined
+    // every member's.
+    [<WorkspaceSettingsPageSkeleton key="workspace" />, 10],
     [<ServiceSettingsSkeleton key="service" />, 13],
   ])(
     "keeps long-page section navigation at narrow and wide breakpoints",

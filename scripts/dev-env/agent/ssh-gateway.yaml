@@ -159,6 +159,11 @@ spec:
               value: ":8085"
             - name: BEX_AGENT_EGRESS_GRANT_API_URL
               value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-egress-grants
+            # w22/m402: the gateway's workspace two-factor check asks bex-api's
+            # internal verb on the same host control-plane listener. Without it
+            # every ticket redemption and native SSH key is refused (fail closed).
+            - name: BEX_WORKSPACE_TWO_FACTOR_API_URL
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/workspace-two-factor
             # Agent-session conversation transport (ADR047 D9). dev-env.sh
             # port-forwards this listener to the host so the dashboard's
             # useChat can reach it; the CORS origin is the dev-N dashboard.

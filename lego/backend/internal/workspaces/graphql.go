@@ -46,6 +46,10 @@ func (s *Service) workspaceType() *graphql.Object {
 				"plan":      gqlutil.StrField(func(w WorkspaceView) any { return w.Plan }),
 				"role":      gqlutil.StrField(func(w WorkspaceView) any { return w.Role }),
 				"createdAt": gqlutil.StrField(func(w WorkspaceView) any { return w.CreatedAt }),
+				// requireTwoFactor is the workspace's "require two-factor
+				// authentication" setting, readable by every member so a blocked
+				// member can see why.
+				"requireTwoFactor": gqlutil.BoolField(func(w WorkspaceView) any { return w.RequireTwoFactor }),
 				// ipAllowList is the workspace's inbound IP rules (w9/m388),
 				// Render's owner.ipAllowList: what an Admin saved, or the seeded
 				// allow-all for a workspace that never saved any; an empty list
@@ -245,6 +249,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetIPAllowList(p.Context, p.Args["id"].(string), core.ProvidedAllowList(gqlutil.AllowList(p.Args["ipAllowList"])))
+			},
+		},
+		// setWorkspaceRequireTwoFactor turns "require two-factor
+		// authentication" on or off for a workspace; admin-only. GraphQL-only:
+		// Render has no REST workspace-mutation API.
+		"setWorkspaceRequireTwoFactor": &graphql.Field{
+			Type: s.workspaceType(),
+			Args: graphql.FieldConfigArgument{
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"enabled":     gqlutil.ReqArg(graphql.Boolean),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetRequireTwoFactor(p.Context, p.Args["workspaceId"].(string), p.Args["enabled"].(bool))
 			},
 		},
 		// setPipelineSpendLimit sets the workspace's monthly pipeline spend

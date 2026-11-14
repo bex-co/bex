@@ -193,6 +193,7 @@ export function useWorkspaceCreationBilling(
           plan: workspace.plan ?? value.plan,
           role: workspace.role ?? "admin",
           createdAt: workspace.createdAt,
+          requireTwoFactor: workspace.requireTwoFactor ?? false,
         } satisfies WorkspaceView;
       } catch (error) {
         // ADR091 D10.5–D10.6: a refused card (prepaid, or linked to an

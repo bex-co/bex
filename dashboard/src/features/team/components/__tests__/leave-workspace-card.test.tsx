@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LeaveWorkspaceCard } from "@/features/team/components/leave-workspace-card";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import type { MemberView } from "@/features/team/types";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
@@ -14,17 +15,11 @@ vi.mock("@/features/team/hooks/use-team", () => ({
   }),
 }));
 
-const leave = vi.fn();
-const leaveState: { busy: boolean; error: string | null } = {
-  busy: false,
-  error: null,
-};
-vi.mock("@/features/team/hooks/use-leave-workspace", () => ({
-  useLeaveWorkspace: () => ({
-    leave,
-    busy: leaveState.busy,
-    error: leaveState.error,
-  }),
+// The real useLeaveWorkspace runs (it owns the post-leave switch and
+// navigation); only the transport underneath it is faked.
+const leave = vi.hoisted(() => vi.fn());
+vi.mock("@apollo/client/react", () => ({
+  useMutation: () => [leave],
 }));
 
 const setCurrentWorkspaceId = vi.fn();
@@ -69,8 +64,6 @@ function renderCard() {
 describe("LeaveWorkspaceCard (w5/m102)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    leaveState.busy = false;
-    leaveState.error = null;
     workspaceState.workspaces = [
       workspace,
       { id: "tea-2", name: "other" } as unknown as WorkspaceView,
@@ -82,7 +75,7 @@ describe("LeaveWorkspaceCard (w5/m102)", () => {
   });
 
   it("leaves after confirmation and lands the caller in a workspace they kept", async () => {
-    leave.mockResolvedValue(true);
+    leave.mockResolvedValue({ data: { leaveWorkspace: true } });
     renderCard();
 
     await userEvent.click(screen.getByRole("button", { name: /Leave/ }));
@@ -101,7 +94,7 @@ describe("LeaveWorkspaceCard (w5/m102)", () => {
   });
 
   it("does not switch workspaces when the server refuses", async () => {
-    leave.mockResolvedValue(false);
+    leave.mockRejectedValue(new Error("forbidden"));
     renderCard();
 
     await userEvent.click(screen.getByRole("button", { name: /Leave/ }));
@@ -151,11 +144,28 @@ describe("LeaveWorkspaceCard (w5/m102)", () => {
     members.loading = false;
   });
 
-  it("renders the server's refusal inline", () => {
-    leaveState.error = "you own this workspace and cannot leave it";
+  it("renders the server's refusal inline", async () => {
+    leave.mockRejectedValue(
+      codedGraphQLError(
+        "CANNOT_LEAVE_OWNED_WORKSPACE",
+        {},
+        "you own this workspace and cannot leave it",
+      ),
+    );
     renderCard();
+
+    await userEvent.click(screen.getByRole("button", { name: /Leave/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Leave workspace" }),
+    );
+
+    // The server's own reason is relayed (first letter capitalized), under the
+    // alert's title.
     expect(
-      screen.getByText(/you own this workspace and cannot leave it/),
+      await screen.findByText("You own this workspace and cannot leave it"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Could not leave the workspace"),
     ).toBeInTheDocument();
   });
 });

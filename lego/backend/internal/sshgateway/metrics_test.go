@@ -35,6 +35,7 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 	metrics.ChannelOpened()
 	metrics.ChannelClosed()
 	metrics.Reauthorization("accepted")
+	metrics.TwoFactorRefusal("not_enrolled")
 	metrics.GitProxyUpstreamFailure("refused")
 
 	families, err := registry.Gather()
@@ -54,6 +55,7 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 		"bex_ssh_gateway_limit_rejections_total",
 		"bex_ssh_gateway_session_duration_seconds",
 		"bex_ssh_gateway_sessions_total",
+		"bex_ssh_gateway_two_factor_refusals_total",
 	}
 	got := make([]string, 0, len(families))
 	for _, family := range families {

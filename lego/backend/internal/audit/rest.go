@@ -105,6 +105,10 @@ func renderMetadata(e Event) map[string]string {
 	if e.MaintenanceModeTo != nil {
 		md["to"] = strconv.FormatBool(*e.MaintenanceModeTo)
 	}
+	// What a workspace's two-factor requirement was set to (w22/m402).
+	if e.TwoFactorRequiredTo != nil {
+		md["to"] = strconv.FormatBool(*e.TwoFactorRequiredTo)
+	}
 	// The invited/changed role pair (w1/m33).
 	if e.RoleFrom != nil {
 		md["roleFrom"] = *e.RoleFrom

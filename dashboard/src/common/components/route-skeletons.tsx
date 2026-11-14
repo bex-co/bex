@@ -64,6 +64,7 @@ import {
 } from "@/features/team/components/team-panel-skeleton";
 import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
 import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/workspace-ip-rules-card-skeleton";
+import { WorkspaceTwoFactorCardSkeleton } from "@/features/workspaces/components/workspace-two-factor-card-skeleton";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
 import {
   AgentModelTermsHeader,
@@ -1300,6 +1301,10 @@ export function WorkspaceSettingsPageSkeleton() {
           {/* Inbound IP Rules (w9/m388): every member reads them. */}
           <Region name="inbound-ip-rules">
             <WorkspaceIPRulesCardSkeleton />
+          </Region>
+          {/* Two-factor authentication (w22/m402): every member sees the card. */}
+          <Region name="two-factor">
+            <WorkspaceTwoFactorCardSkeleton />
           </Region>
           <Region name="team">
             <TeamPanelSkeleton />

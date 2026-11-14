@@ -31,6 +31,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 type strictJSONDecodingKey struct{}
@@ -703,10 +705,16 @@ func DoJSON(ctx context.Context, client *http.Client, method, endpoint, bearer s
 
 // TTLCache is the positive-result cache the auth gate and OpenFGA checker share:
 // entries expire after their expiry, expired entries are dropped on lookup, and
-// at CacheMax the expired are swept before a wholesale reset.
+// at CacheMax the expired are swept before a wholesale reset. The zero value is
+// ready to use; set Now before first use to inject a clock.
 type TTLCache[V any] struct {
-	mu sync.Mutex
-	m  map[string]ttlEntry[V]
+	// Now supplies the current time for Get and Put; nil => time.Now. Injectable
+	// so a test can cross an expiry without sleeping.
+	Now func() time.Time
+
+	mu     sync.Mutex
+	m      map[string]ttlEntry[V]
+	flight singleflight.Group
 }
 
 type ttlEntry[V any] struct {
@@ -717,6 +725,13 @@ type ttlEntry[V any] struct {
 // NewTTLCache returns an empty TTLCache.
 func NewTTLCache[V any]() *TTLCache[V] { return &TTLCache[V]{m: map[string]ttlEntry[V]{}} }
 
+func (c *TTLCache[V]) now() time.Time {
+	if c.Now != nil {
+		return c.Now()
+	}
+	return time.Now()
+}
+
 // Get returns the live value for key, or false if absent/expired.
 func (c *TTLCache[V]) Get(key string) (V, bool) {
 	c.mu.Lock()
@@ -726,12 +741,58 @@ func (c *TTLCache[V]) Get(key string) (V, bool) {
 		var zero V
 		return zero, false
 	}
-	if !time.Now().Before(e.expires) {
+	if !c.now().Before(e.expires) {
 		delete(c.m, key) // dead entry — don't let it linger until CacheMax
 		var zero V
 		return zero, false
 	}
 	return e.v, true
+}
+
+// LoadTimeout bounds one collapsed load (Load, SingleFlight): the loader runs
+// detached from its callers' contexts, so without it a hung upstream would hold
+// its key's flight open indefinitely.
+const LoadTimeout = 15 * time.Second
+
+// SingleFlight runs load once for every concurrent caller of key in g and hands
+// each the one result. The load runs under context.WithoutCancel (bounded by
+// LoadTimeout), so one caller's cancellation or deadline cannot fail the others;
+// a caller whose own ctx ends first returns ctx.Err() and leaves the flight to
+// the rest. Errors are shared with the callers waiting on that flight, never
+// remembered after it.
+func SingleFlight[V any](ctx context.Context, g *singleflight.Group, key string, load func(context.Context) (V, error)) (V, error) {
+	var zero V
+	ch := g.DoChan(key, func() (any, error) {
+		loadCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), LoadTimeout)
+		defer cancel()
+		return load(loadCtx)
+	})
+	select {
+	case r := <-ch:
+		if r.Err != nil {
+			return zero, r.Err
+		}
+		v, _ := r.Val.(V)
+		return v, nil
+	case <-ctx.Done():
+		return zero, ctx.Err()
+	}
+}
+
+// Load returns the live value for key or, on a miss, runs load once for all
+// concurrent callers of the key (SingleFlight) and caches a success for ttl.
+// An error is returned and never cached, so the next call asks again.
+func (c *TTLCache[V]) Load(ctx context.Context, key string, ttl time.Duration, load func(context.Context) (V, error)) (V, error) {
+	if v, ok := c.Get(key); ok {
+		return v, nil
+	}
+	return SingleFlight(ctx, &c.flight, key, func(ctx context.Context) (V, error) {
+		v, err := load(ctx)
+		if err == nil {
+			c.Put(key, v, c.now().Add(ttl))
+		}
+		return v, err
+	})
 }
 
 // Delete evicts key immediately, regardless of its expiry — the counterpart to
@@ -777,7 +838,7 @@ func (c *TTLCache[V]) Put(key string, v V, expires time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(c.m) >= CacheMax {
-		now := time.Now()
+		now := c.now()
 		for k, e := range c.m { // sweep the expired before nuking the live
 			if !now.Before(e.expires) {
 				delete(c.m, k)
@@ -786,6 +847,9 @@ func (c *TTLCache[V]) Put(key string, v V, expires time.Time) {
 		if len(c.m) >= CacheMax {
 			c.m = map[string]ttlEntry[V]{}
 		}
+	}
+	if c.m == nil {
+		c.m = map[string]ttlEntry[V]{}
 	}
 	c.m[key] = ttlEntry[V]{v: v, expires: expires}
 }

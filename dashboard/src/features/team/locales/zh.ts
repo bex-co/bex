@@ -319,6 +319,15 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "账单",
     description: "Role label — billing only",
   },
+  "team.twoFactorRequiredNotEnabled": {
+    message: "需要两步验证，尚未启用",
+    description:
+      "Badge on a member row while the workspace requires 2FA and the member has none (w22/m402)",
+  },
+  "team.twoFactorRequiredNotEnabledTooltip": {
+    message: "此工作区要求使用两步验证。该成员启用之前无法访问此工作区。",
+    description: "Tooltip for the required-but-not-enabled member badge",
+  },
 };
 
 export default zhTeam;

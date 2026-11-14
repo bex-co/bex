@@ -1268,3 +1268,47 @@ func TestCleanupSubjectStaysGlobal(t *testing.T) {
 		t.Error("another subject's key was deleted")
 	}
 }
+
+// w22/m402: the workspace two-factor gate needs to tell a bex API key (whose
+// creator's second factor it borrows) from a platform client (exempt) and from
+// a key minted before the created-by stamp (refused where 2FA is required).
+func TestHydraKeyCreatorDistinguishesKeysPlatformClientsAndUnstampedKeys(t *testing.T) {
+	var clients = map[string]hydraClient{
+		"platform-client": {ClientID: "platform-client"},
+		"stamped":         {ClientID: "stamped", Metadata: map[string]any{apiKeyMarker: true, createdByKey: "user-7"}},
+		"unstamped":       {ClientID: "unstamped", Metadata: map[string]any{apiKeyMarker: true}},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/admin/clients/broken" {
+			http.Error(w, "boom", http.StatusInternalServerError)
+			return
+		}
+		c, ok := clients[strings.TrimPrefix(r.URL.Path, "/admin/clients/")]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(c)
+	}))
+	t.Cleanup(srv.Close)
+	store := NewHydraAPIKeys(srv.URL).(interface {
+		KeyCreator(context.Context, string) (string, bool, error)
+	})
+
+	for name, want := range map[string]struct {
+		creator string
+		isKey   bool
+		err     bool
+	}{
+		"stamped":         {creator: "user-7", isKey: true},
+		"unstamped":       {isKey: true},
+		"platform-client": {}, // not a bex API key
+		"unknown":         {}, // not a client at all: nothing to attribute
+		"broken":          {err: true},
+	} {
+		creator, isKey, err := store.KeyCreator(context.Background(), name)
+		if (err != nil) != want.err || creator != want.creator || isKey != want.isKey {
+			t.Errorf("%s: got (%q, %v, %v), want %+v", name, creator, isKey, err, want)
+		}
+	}
+}

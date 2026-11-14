@@ -60,6 +60,14 @@ vi.mock("@/features/workspaces/components/workspace-ip-rules-card", () => ({
   ),
 }));
 
+// Two-factor authentication (w22/m402): the card is every member's; its own
+// admin/non-admin behavior is tested beside it.
+vi.mock("@/features/workspaces/components/workspace-two-factor-card", () => ({
+  WorkspaceTwoFactorCard: ({ workspace }: { workspace: WorkspaceView }) => (
+    <div>Two-factor card {workspace.id}</div>
+  ),
+}));
+
 vi.mock("@/features/workspaces/components/delete-workspace-card", () => ({
   DeleteWorkspaceCard: () => <div>Delete workspace card</div>,
 }));
@@ -155,6 +163,7 @@ const primaryWorkspace: WorkspaceView = {
   plan: "hobby",
   role: "admin",
   createdAt: null,
+  requireTwoFactor: false,
 };
 
 async function renderPage() {
@@ -235,6 +244,25 @@ describe("WorkspaceSettingsPage", () => {
       "href",
       "#agents",
     );
+  });
+
+  it("renders the Two-factor authentication card before Team, for every role (w22/m402)", async () => {
+    workspaceState.currentWorkspace = {
+      ...primaryWorkspace,
+      role: "developer",
+    };
+    await renderPage();
+
+    const card = screen.getByText("Two-factor card tea-primary");
+    expect(card).toBeInTheDocument();
+    expect(card.closest("section")).toHaveAttribute("id", "two-factor");
+    expect(
+      card.compareDocumentPosition(screen.getByText("Team panel")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Two-factor authentication" }),
+    ).toHaveAttribute("href", "#two-factor");
   });
 
   it("renders the Notifications section for the current workspace (w3/m271)", async () => {

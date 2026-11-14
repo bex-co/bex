@@ -27,6 +27,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"maps"
 	"net/mail"
 	"slices"
@@ -134,6 +135,11 @@ type Service struct {
 
 	gqlWorkspaceOnce sync.Once
 	gqlWorkspace     *graphql.Object
+	// TwoFactorChanged is told which workspace's "require two-factor" setting
+	// just changed, so the enforcement point (internal/twofactor) drops this
+	// replica's cached copy at once instead of within its TTL. Nil when nothing
+	// enforces.
+	TwoFactorChanged func(workspaceID string)
 }
 
 // MemberMutator is the members service's role change and removal, keyed by
@@ -191,6 +197,10 @@ type WorkspaceStore interface {
 	CreateWorkspace(ctx context.Context, name, plan, ownerSubject string) (store.Tenant, error)
 	GetTenant(ctx context.Context, id string) (store.Tenant, error)
 	SetTenantDisplayName(ctx context.Context, id, name string) (store.Tenant, error)
+	// SetTenantRequireTwoFactor turns the workspace's "require two-factor
+	// authentication" setting on or off. changed=false means it already held
+	// enabled, so of two admins toggling at once only one changes it.
+	SetTenantRequireTwoFactor(ctx context.Context, id string, enabled bool) (t store.Tenant, changed bool, err error)
 	UpdateTenantPlan(ctx context.Context, id, plan string) (store.Tenant, error)
 	DeleteTenant(ctx context.Context, id string) error
 	ListTenantsForSubject(ctx context.Context, subject string) ([]store.Tenant, error)
@@ -286,6 +296,13 @@ type IdentityReader interface {
 	// (w5/133). Its error, core.ErrIdentityLookupFailed, says some subjects
 	// could not be read; the map still holds every email that resolved.
 	LookupEmails(ctx context.Context, subjects []string) (map[string]string, error)
+	// MFAEnrolled reports whether a Kratos identity has an enrolled second
+	// factor (a TOTP credential, or a WebAuthn one with a registered key) —
+	// the fact a workspace's "require two-factor" setting turns on
+	// (docs/ADR012-auth.md §9a). human=false means the subject is
+	// not a Kratos identity (a platform principal that can never enroll); an
+	// error means the IdP could not answer and the caller fails closed.
+	MFAEnrolled(ctx context.Context, subject string) (enrolled, human bool, err error)
 }
 
 // IdentityAttrs are the IdP attributes a Render owner/member object needs that the
@@ -335,6 +352,11 @@ type WorkspaceView struct {
 	// the owners REST reads, MCP list_workspaces, SetIPAllowList); GraphQL
 	// reads it when the field is selected.
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+	// RequireTwoFactor is the workspace's "require two-factor authentication"
+	// setting, readable by every member: a member the setting blocks
+	// must be able to see why. A bex extension (Render has no workspace
+	// settings API), so the Render owner shape does not carry it.
+	RequireTwoFactor bool `json:"requireTwoFactor"`
 }
 
 func view(t store.Tenant, role string) WorkspaceView {
@@ -342,7 +364,7 @@ func view(t store.Tenant, role string) WorkspaceView {
 	if !t.CreatedAt.IsZero() {
 		created = t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
 	}
-	return WorkspaceView{ID: t.ID, Name: t.Label(), Slug: t.Name, Plan: t.Plan, Role: role, CreatedAt: created}
+	return WorkspaceView{ID: t.ID, Name: t.Label(), Slug: t.Name, Plan: t.Plan, Role: role, CreatedAt: created, RequireTwoFactor: t.RequireTwoFactor}
 }
 
 func (s *Service) WorkspaceCreationPolicy(ctx context.Context, plan string) (WorkspaceCreationPolicy, error) {
@@ -628,6 +650,10 @@ func mapWorkspaceCreationStoreErr(err error) error {
 // The query is membership-scoped to the caller's subject, so this returns only
 // workspaces they belong to regardless of the coarse can_view gate.
 func (s *Service) List(ctx context.Context) ([]WorkspaceView, error) {
+	// Exempt from the two-factor requirement: a blocked member lists
+	// their workspaces to learn which one requires 2FA, from the list's
+	// requireTwoFactor.
+	ctx = core.WithTwoFactorExempt(ctx)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
@@ -727,6 +753,9 @@ type UserView struct {
 // GraphQL/MCP equivalent: the dashboard authenticates with its Kratos session
 // directly rather than this REST-only endpoint, and no MCP tool needs "who am I".
 func (s *Service) CurrentUser(ctx context.Context) (UserView, error) {
+	// Exempt from the two-factor requirement: a blocked member can
+	// still ask who they are.
+	ctx = core.WithTwoFactorExempt(ctx)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return UserView{}, err
 	}
@@ -1113,6 +1142,90 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 		return WorkspaceView{}, mapStoreErr(err)
 	}
 	return view(t, "admin"), nil
+}
+
+// SetRequireTwoFactor turns a workspace's "require two-factor authentication"
+// setting on or off (docs/ADR012-auth.md §9a; Render's
+// ChangeTeam2FAEnforcementEvent). Admin-only (can_manage on the exact
+// workspace). While it is on, a member with no enrolled second factor — and
+// any API key or SSH key that member created — cannot use the workspace's
+// resources: core.Base's funnel asks the enforcement gate after every positive
+// authorization decision.
+//
+// A change that changes nothing writes nothing and records nothing. Enabling
+// is refused while the acting admin has no second factor themselves (409
+// WORKSPACE_2FA_ADMIN_NOT_ENROLLED, so the setting cannot lock out its only
+// actor), when the deployment has no identity lookup to enforce it with, and for
+// the default workspace, which the gate never enforces (both 409
+// WORKSPACE_2FA_UNAVAILABLE); disabling is never refused for either.
+func (s *Service) SetRequireTwoFactor(ctx context.Context, id string, enabled bool) (WorkspaceView, error) {
+	// Denials stay on the record; the allowed row waits for the write, so a
+	// no-op leaves none.
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	id, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, id)
+	if err != nil {
+		return WorkspaceView{}, err
+	}
+	if s.Store == nil {
+		return WorkspaceView{}, core.ErrWorkspacesUnavailable
+	}
+	if enabled && id == core.DefaultTenant {
+		return WorkspaceView{}, core.NewWorkspaceTwoFactorDefaultWorkspaceError()
+	}
+	t, err := s.Store.GetTenant(ctx, id)
+	if err != nil {
+		return WorkspaceView{}, mapStoreErr(err)
+	}
+	if t.RequireTwoFactor == enabled {
+		return view(t, "admin"), nil // already there — nothing to write
+	}
+	if enabled {
+		if err := s.requireEnrolledActor(ctx); err != nil {
+			return WorkspaceView{}, err
+		}
+	}
+	t, changed, err := s.Store.SetTenantRequireTwoFactor(ctx, id, enabled)
+	if err != nil {
+		return WorkspaceView{}, mapStoreErr(err)
+	}
+	if !changed {
+		return view(t, "admin"), nil // another admin made this same change first
+	}
+	if s.TwoFactorChanged != nil {
+		s.TwoFactorChanged(id)
+	}
+	s.RecordTwoFactorEnforcement(ctx, id, enabled)
+	return view(t, "admin"), nil
+}
+
+// requireEnrolledActor is the lock-out guard: the admin turning the setting on
+// must have a second factor of their own. An API key stands for the member who
+// created it; a caller that cannot enroll at all (a key with no recorded
+// creator, a platform principal) does not count as enrolled.
+func (s *Service) requireEnrolledActor(ctx context.Context) error {
+	if s.Identities == nil {
+		return core.NewWorkspaceTwoFactorUnavailableError()
+	}
+	id, _ := core.IdentityFrom(ctx)
+	subject := id.Subject
+	if id.IsAPIKey() {
+		subject = ""
+		if s.KeyOwners != nil {
+			subject, _ = s.KeyOwners.KeyOwner(ctx, id.KeyClientID())
+		}
+	}
+	if subject == "" {
+		return core.NewWorkspaceTwoFactorAdminNotEnrolledError()
+	}
+	enrolled, human, err := s.Identities.MFAEnrolled(ctx, subject)
+	if err != nil {
+		log.Printf("workspaces: two-factor guard could not read the acting admin's enrollment: %v", err)
+		return core.ErrAuthzUnavailable
+	}
+	if !human || !enrolled {
+		return core.NewWorkspaceTwoFactorAdminNotEnrolledError()
+	}
+	return nil
 }
 
 // ChangePlan upgrades or downgrades a workspace's plan (w6/m12,

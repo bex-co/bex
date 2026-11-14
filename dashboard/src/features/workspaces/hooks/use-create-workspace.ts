@@ -64,6 +64,7 @@ export function useCreateWorkspace(): UseCreateWorkspaceResult {
           plan: w.plan ?? plan,
           role: w.role ?? "admin",
           createdAt: w.createdAt,
+          requireTwoFactor: w.requireTwoFactor ?? false,
         };
       } catch (err) {
         setError(mutationErrorMessage(err, t("workspaces.createError")));

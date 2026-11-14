@@ -34,6 +34,7 @@ function membership(ids: string[]): WorkspacesQuery["workspaces"] {
     role: "admin",
     plan: "hobby",
     createdAt: null,
+    requireTwoFactor: false,
   }));
 }
 

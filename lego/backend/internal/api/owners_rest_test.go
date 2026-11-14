@@ -80,6 +80,9 @@ func (f *fakeWSStore) GetTenant(_ context.Context, id string) (store.Tenant, err
 func (f *fakeWSStore) SetTenantDisplayName(context.Context, string, string) (store.Tenant, error) {
 	return store.Tenant{}, fmt.Errorf("unused: %w", store.ErrNotFound)
 }
+func (f *fakeWSStore) SetTenantRequireTwoFactor(context.Context, string, bool) (store.Tenant, bool, error) {
+	return store.Tenant{}, false, fmt.Errorf("unused: %w", store.ErrNotFound)
+}
 func (f *fakeWSStore) UpdateTenantPlan(context.Context, string, string) (store.Tenant, error) {
 	return store.Tenant{}, fmt.Errorf("unused: %w", store.ErrNotFound)
 }

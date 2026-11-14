@@ -14,6 +14,7 @@ import {
   handleEmailVerificationRequired,
   handleUnauthenticated,
 } from "./auth-redirect";
+import { reportWorkspaceTwoFactorRequired } from "@/features/workspaces/lib/two-factor-block";
 
 let clientInstance: ReturnType<typeof createApolloCsrClientImpl> | null = null;
 
@@ -54,9 +55,12 @@ function createApolloCsrClientImpl() {
       // say (w3/m80 t001): a 401 on an already-mounted page re-checks the
       // session and, if it's gone, redirects to login instead of leaving a
       // dead-end error card. It never retries — a 401 is an answer, not a blip.
+      // The same link reports a workspace's WORKSPACE_2FA_REQUIRED refusal
+      //, which WorkspaceTwoFactorGate turns into one blocked page.
       createAuthErrorLink(
         () => void handleUnauthenticated(),
         handleEmailVerificationRequired,
+        reportWorkspaceTwoFactorRequired,
       ),
       // Retry transient read failures (w1/m52 t003) so a roll window's 502 or
       // connection reset self-heals instead of stranding an error state.

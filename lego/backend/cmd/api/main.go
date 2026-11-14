@@ -81,6 +81,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/twofactor"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
@@ -384,6 +385,7 @@ func main() {
 		// rec.Run is started after NewServer below, so CloneSecrets is set before
 		// the first reconcile pass (w2/m11).
 		granter := wireControlPlaneFeatures(cfg, &deps, base, st, rec, authzChecker)
+		twoFactorGate := wireTwoFactor(&deps, base, st, metricRegistry)
 
 		// Usage metering (w8/m1) + retention (m4): the loop rolls usage_hourly
 		// rows up every hour (needs Prometheus; skipped without it) and compacts
@@ -434,7 +436,7 @@ func main() {
 
 		go backfillSkillVersionContent(ctx, st)
 
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, opsRole, identityClaims, platformRebuild, shareFiles, agentResults, agentSpawns, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, twoFactorGate, opsRole, identityClaims, platformRebuild, shareFiles, agentResults, agentSpawns, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -862,6 +864,25 @@ func wireGitHubApp(deps *api.Deps, cfg *Config) *github.Client {
 	return ghClient
 }
 
+// Wires the gate onto core.Base and returns it so :8091 can serve the gateway
+// verb. A nil Enrollment fails a requiring workspace closed.
+func wireTwoFactor(deps *api.Deps, base *core.Base, st *store.PGStore, registerer prometheus.Registerer) *twofactor.Gate {
+	cfg := twofactor.Config{Settings: st, Sessions: st, Metrics: twofactor.NewMetrics(registerer)}
+	if deps.Identities != nil {
+		cfg.Enrollment = deps.Identities
+	}
+	if keys, ok := deps.APIKeys.(twofactor.KeyCreators); ok {
+		cfg.Keys = keys
+	} else if deps.APIKeys != nil {
+		// Without it every API-key call on a workspace that requires 2FA is a 503.
+		log.Printf("WARNING: the API key store (%T) has no KeyCreator, so API keys cannot be checked against a workspace's two-factor requirement and fail closed there", deps.APIKeys)
+	}
+	gate := twofactor.New(cfg)
+	base.TwoFactor = gate
+	deps.TwoFactorChanged = gate.Invalidate
+	return gate
+}
+
 // wireControlPlaneFeatures wires the control-plane store into the feature deps
 // and adapts the authz checker's role grant/revoke sides, returning the
 // membership granter shared by the tenant service and the internal CP API.
@@ -1177,7 +1198,7 @@ func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsessi
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles, agentResults, agentSpawns http.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, twoFactor *twofactor.Gate, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles, agentResults, agentSpawns http.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -1225,6 +1246,17 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			verification.Resolve = workspaces.NewKratosIdentities(cfg.KratosAdminURL).EmailVerification
 		}
 		internalRoot.Handle(agentsession.InternalEmailVerificationPath, verification)
+		// The same door for a workspace's two-factor requirement. The gateway
+		// cannot read the setting or Kratos, so native SSH and every ticket it
+		// redeems or revalidates ask here, and the real gate decides. It answers
+		// only for the identity classes the gateway authenticates
+		// (agentsession.TwoFactorHandler); an unwired gate leaves the verb 503, so
+		// the gateway refuses.
+		twoFactorVerb := &agentsession.TwoFactorHandler{Secret: []byte(cfg.SandboxExecSecret), Nonce: st}
+		if twoFactor != nil {
+			twoFactorVerb.Policy = twoFactor
+		}
+		internalRoot.Handle(agentsession.InternalTwoFactorPath, twoFactorVerb)
 		// w10/m19: the gateway egress proxy asks here whether a Pod-bound
 		// session's workspace runs the `full` network tier. Same gateway-only
 		// HMAC + internal-only listener; it releases no credential.

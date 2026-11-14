@@ -19,6 +19,7 @@ package audit
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -559,5 +560,53 @@ func TestAuditMetadataNamesWhatChanged(t *testing.T) {
 	}
 	if bare := toRenderAuditLog(Event{Verb: core.AuditVerbSetDisplayName, Target: "service:srv-1"}); len(bare.Metadata) != 1 {
 		t.Errorf("a row recorded before the names = %v, want only the service", bare.Metadata)
+	}
+}
+
+// w22/m402: a workspace admin turning "require two-factor authentication" on or
+// off is Render's ChangeTeam2FAEnforcementEvent, and the entry carries the value
+// it was set to on REST (metadata.to) and GraphQL (metadata.to), like the
+// maintenance toggle.
+func TestRenderTwoFactorEnforcementAuditTypeAndMetadata(t *testing.T) {
+	for _, enabled := range []bool{true, false} {
+		log := toRenderAuditLog(Event{Verb: core.AuditVerbSetRequireTwoFactor, TwoFactorRequiredTo: &enabled, Outcome: "allowed"})
+		if log.Event != "ChangeTeam2FAEnforcementEvent" || log.Metadata["to"] != strconv.FormatBool(enabled) {
+			t.Fatalf("enabled=%v audit = %+v, want ChangeTeam2FAEnforcementEvent metadata.to=%v", enabled, log, enabled)
+		}
+	}
+	// The denied attempt of a non-admin names the same event, without a value.
+	denied := toRenderAuditLog(Event{Verb: core.AuditVerbSetRequireTwoFactor, Outcome: string(core.AuditDenied)})
+	if denied.Event != "ChangeTeam2FAEnforcementEvent" || denied.Status != "error" {
+		t.Fatalf("denied attempt = %+v", denied)
+	}
+	if _, has := denied.Metadata["to"]; has {
+		t.Errorf("a denied attempt changed nothing and must not claim a value: %v", denied.Metadata)
+	}
+}
+
+func TestGraphQLExposesTheTwoFactorEnforcementValue(t *testing.T) {
+	on := true
+	fs := &fakeStore{listRows: []store.AuditRow{
+		{ID: "aud-2fa", WorkspaceID: "tea-owner", Verb: core.AuditVerbSetRequireTwoFactor, TwoFactorRequiredTo: &on},
+	}}
+	svc := &Service{Base: &core.Base{Authz: fakeAllowChecker{}}, Store: fs}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "admin-1", Method: "session"})
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ auditLogs(ownerId:"tea-owner") { action metadata { to } } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	row := res.Data.(map[string]any)["auditLogs"].([]any)[0].(map[string]any)
+	if row["action"] != "ChangeTeam2FAEnforcementEvent" {
+		t.Errorf("action = %v, want ChangeTeam2FAEnforcementEvent", row["action"])
+	}
+	if md, _ := row["metadata"].(map[string]any); md["to"] != true {
+		t.Errorf("metadata = %v, want to=true", row["metadata"])
 	}
 }

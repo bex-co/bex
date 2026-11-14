@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/twofactor"
 )
 
 // APIKey is a machine credential: an OAuth2 client in the platform's Hydra
@@ -521,11 +522,15 @@ func (s *Service) revokeScope(ctx context.Context, ownerID, id string) (context.
 	return s.ScopeByID(ctx, ownerID, owner)
 }
 
-// hydraAPIKeys implements APIKeyStore over Hydra's admin API.
+// hydraAPIKeys implements APIKeyStore over Hydra's admin API, and
+// twofactor.KeyCreators: cmd/api wires the gate through a runtime assertion on
+// the store, so dropping or hiding KeyCreator must not compile quietly.
 type hydraAPIKeys struct {
 	adminURL string
 	client   *http.Client
 }
+
+var _ twofactor.KeyCreators = (*hydraAPIKeys)(nil)
 
 // NewHydraAPIKeys returns the production APIKeyStore talking to Hydra's
 // cluster-internal admin API.
@@ -777,6 +782,24 @@ func (h *hydraAPIKeys) KeyOwner(ctx context.Context, id string) (string, bool) {
 	}
 	k := apiKeyFromHydra(c)
 	return k.CreatedBy, k.CreatedBy != ""
+}
+
+// KeyCreator is KeyOwner for the workspace two-factor gate (docs/ADR012-auth.md
+// §9a), which must tell three cases apart that KeyOwner
+// flattens into ok=false: a client that is not a bex API key (a platform
+// client: isKey=false, exempt), a bex key with no created-by stamp (minted
+// before it existed: isKey with an empty creator, refused where 2FA is
+// required) and Hydra being unable to answer (an error, which the gate fails
+// closed on). One uncached admin GET, cached by the gate.
+func (h *hydraAPIKeys) KeyCreator(ctx context.Context, id string) (creator string, isKey bool, err error) {
+	c, err := h.getAPIKey(ctx, id)
+	if errors.Is(err, core.ErrNotFound) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return apiKeyFromHydra(c).CreatedBy, true, nil
 }
 
 // jsonPointerEscape escapes a metadata key for use as a JSON Pointer path segment

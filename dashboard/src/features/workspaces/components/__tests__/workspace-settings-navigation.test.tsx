@@ -15,6 +15,8 @@ describe("WorkspaceSettingsNavigation", () => {
       ["General", "#general"],
       // w9/m388: every member's page has the workspace's inbound IP rules.
       ["Inbound IP Rules", "#inbound-ip-rules"],
+      // w22/m402: every member sees the two-factor card, so every rail has it.
+      ["Two-factor authentication", "#two-factor"],
       ["Team", "#team"],
       ["Notifications", "#notifications"],
       ["Agents", "#agents"],

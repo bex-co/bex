@@ -8,6 +8,8 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace-details-card";
 import { WorkspaceIPRulesCard } from "@/features/workspaces/components/workspace-ip-rules-card";
 import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/workspace-ip-rules-card-skeleton";
+import { WorkspaceTwoFactorCard } from "@/features/workspaces/components/workspace-two-factor-card";
+import { WorkspaceTwoFactorCardSkeleton } from "@/features/workspaces/components/workspace-two-factor-card-skeleton";
 import { BuildPipelineCard } from "@/features/usage/components/build-pipeline-card";
 import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -130,6 +132,9 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="inbound-ip-rules">
                   <WorkspaceIPRulesCardSkeleton />
                 </section>
+                <section data-skeleton-region="two-factor">
+                  <WorkspaceTwoFactorCardSkeleton />
+                </section>
                 <section data-skeleton-region="team">
                   <TeamPanelSkeleton />
                 </section>
@@ -197,6 +202,12 @@ function WorkspaceSettingsPage() {
                     workspace={currentWorkspace}
                     onChangePlan={() => setChangePlanOpen(true)}
                   />
+                </section>
+                <section
+                  id="two-factor"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
+                  <WorkspaceTwoFactorCard workspace={currentWorkspace} />
                 </section>
                 {/* Team management lives here (w1/m33/t006) — members are
                     workspace-scoped objects, and this is where Render puts them;

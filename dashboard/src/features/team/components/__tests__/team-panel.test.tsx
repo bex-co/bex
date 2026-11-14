@@ -24,8 +24,14 @@ const refetch = vi.fn();
 // The panel manages the *switcher's* workspace (WorkspaceProvider), not a
 // workspace it resolves itself — see the workspace-scoping cases below.
 let currentWorkspaceId: string | null = "tea-1";
+// The workspace's "require two-factor authentication" setting.
+let requireTwoFactor = false;
 vi.mock("@/features/workspaces/context/hooks", () => ({
-  useWorkspace: () => ({ currentWorkspaceId, loading: false }),
+  useWorkspace: () => ({
+    currentWorkspaceId,
+    currentWorkspace: currentWorkspaceId ? { requireTwoFactor } : null,
+    loading: false,
+  }),
 }));
 
 const useTeamSpy = vi.fn();
@@ -72,6 +78,7 @@ beforeEach(() => {
   teamState.error = undefined;
   teamState.canManage = true;
   currentWorkspaceId = "tea-1";
+  requireTwoFactor = false;
   refetch.mockReset();
   changeRole.mockReset();
   removeMember.mockReset();
@@ -109,6 +116,44 @@ describe("TeamPanel", () => {
     expect(rows[0]).not.toHaveTextContent("Owner");
     expect(rows[0].querySelector(".font-mono.text-xs")).not.toBeNull();
     teamState.loading = false;
+  });
+
+  // the Team card is where an admin sees who the requirement locks
+  // out, so the panel hands the workspace's setting to every row.
+  it("flags a member without 2FA only while the workspace requires it", () => {
+    teamState.members = [
+      {
+        subject: "id-enrolled",
+        userId: "own-1",
+        email: "enrolled@example.com",
+        role: "ADMIN",
+        createdAt: null,
+        mfaEnabled: true,
+        identityResolved: true,
+        isSelf: true,
+      },
+      {
+        subject: "id-bare",
+        userId: "own-2",
+        email: "bare@example.com",
+        role: "DEVELOPER",
+        createdAt: null,
+        mfaEnabled: false,
+        identityResolved: true,
+        isSelf: false,
+      },
+    ];
+    const { rerender } = render(<TeamPanel />);
+    expect(screen.queryByText("2FA required, not enabled")).toBeNull();
+
+    requireTwoFactor = true;
+    rerender(<TeamPanel />);
+    const flagged = screen.getAllByText("2FA required, not enabled");
+    expect(flagged).toHaveLength(1);
+    expect(flagged[0].closest("tr")).toHaveTextContent("bare@example.com");
+    // The enrolled member keeps the existing badge.
+    const enrolledRow = screen.getByText("enrolled@example.com").closest("tr")!;
+    expect(within(enrolledRow).getByText("2FA")).toBeInTheDocument();
   });
 
   it("lists members with their roles (w4/m12/t004)", () => {

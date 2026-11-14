@@ -95,6 +95,9 @@ type Event struct {
 	Domain          string
 	EnvGroupID      string
 	EnvGroupName    string
+	// TwoFactorRequiredTo is the value a workspace admin set the two-factor
+	// requirement TO (w22/m402, migration 0260); nil for every other verb.
+	TwoFactorRequiredTo *bool
 }
 
 func view(r store.AuditRow) Event {
@@ -121,6 +124,8 @@ func view(r store.AuditRow) Event {
 		Domain:            r.Domain,
 		EnvGroupID:        r.EnvGroupID,
 		EnvGroupName:      r.EnvGroupName,
+
+		TwoFactorRequiredTo: r.TwoFactorRequiredTo,
 	}
 }
 
@@ -162,8 +167,11 @@ var renderEvents = map[string]string{
 	"projects.Delete":             "DeleteProjectEvent",
 	"workspaces.Create":           "CreateWorkspaceEvent",
 	"workspaces.Delete":           "DeleteWorkspaceEvent",
-	"environments.Create":         "CreateEnvironmentEvent",
-	"environments.Delete":         "DeleteEnvironmentEvent",
+	// Render's workspace "require two-factor authentication" enforcement
+	// (w22/m402); the entry carries the value it was set to.
+	core.AuditVerbSetRequireTwoFactor: "ChangeTeam2FAEnforcementEvent",
+	"environments.Create":             "CreateEnvironmentEvent",
+	"environments.Delete":             "DeleteEnvironmentEvent",
 
 	// The verbs every surface actually calls, and the rest of Render's 1:1
 	// actions (w4/m321). A project or environment delete and a service move

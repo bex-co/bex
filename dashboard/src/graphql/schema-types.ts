@@ -2120,6 +2120,7 @@ export type Mutation = {
   setSubdomainPolicy: Maybe<Service>;
   setWebhookEndpointEnabled: Maybe<WebhookEndpoint>;
   setWorkspaceIPAllowList: Maybe<Workspace>;
+  setWorkspaceRequireTwoFactor: Maybe<Workspace>;
   steerAgentSession: Maybe<AgentSession>;
   suspendDatabase: Maybe<Database>;
   suspendKeyValue: Maybe<KeyValue>;
@@ -3424,6 +3425,12 @@ export type MutationSetWebhookEndpointEnabledArgs = {
 export type MutationSetWorkspaceIpAllowListArgs = {
   id: Scalars['String']['input'];
   ipAllowList: Array<IpAllowListEntryInput>;
+};
+
+
+export type MutationSetWorkspaceRequireTwoFactorArgs = {
+  enabled: Scalars['Boolean']['input'];
+  workspaceId: Scalars['String']['input'];
 };
 
 
@@ -5540,6 +5547,7 @@ export type Workspace = {
   ipAllowList: Array<IpAllowListEntry>;
   name: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
+  requireTwoFactor: Maybe<Scalars['Boolean']['output']>;
   role: Maybe<Scalars['String']['output']>;
   slug: Maybe<Scalars['String']['output']>;
 };

@@ -330,6 +330,16 @@ const enTeam: Record<string, TranslationEntry> = {
     message: "Billing",
     description: "Role label — billing only",
   },
+  "team.twoFactorRequiredNotEnabled": {
+    message: "2FA required, not enabled",
+    description:
+      "Badge on a member row while the workspace requires 2FA and the member has none (w22/m402)",
+  },
+  "team.twoFactorRequiredNotEnabledTooltip": {
+    message:
+      "This workspace requires two-factor authentication. This member can't access it until they enable 2FA.",
+    description: "Tooltip for the required-but-not-enabled member badge",
+  },
 };
 
 export default enTeam;

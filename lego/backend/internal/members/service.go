@@ -1217,6 +1217,9 @@ func (s *Service) LeaveWorkspace(ctx context.Context, workspaceID string) error 
 	// Deferred allowed-write recording, like Remove: the success row carries the
 	// revoked-key count, which is not known until the disposal has run.
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	// Exempt from the workspace's two-factor requirement (w22/m402): a member
+	// it blocks can still leave rather than enroll.
+	ctx = core.WithTwoFactorExempt(ctx)
 	id, ok := core.IdentityFrom(ctx)
 	if !ok || id.Subject == "" {
 		return core.ErrForbidden

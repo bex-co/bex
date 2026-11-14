@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { Loader2, LogOut } from "lucide-react";
 import {
   Card,
@@ -16,7 +15,6 @@ import {
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useTeam } from "@/features/team/hooks/use-team";
 import { LeaveWorkspaceCardSkeleton } from "@/features/team/components/team-panel-skeleton";
 import { useLeaveWorkspace } from "@/features/team/hooks/use-leave-workspace";
@@ -40,16 +38,11 @@ export interface LeaveWorkspaceCardProps {
  * and a genuine server refusal still renders inline, for the race where
  * somebody else's role changes while this page is open.
  *
- * On success the caller lands in a workspace they still belong to, chosen from
- * the PRE-leave list (the left workspace is already gone from anything a
- * refetch would return) — the DeleteWorkspaceCard ordering, for the same m13
- * reason: selecting from a list that has not caught up yet is what blanks the
- * switcher.
+ * On success `useLeaveWorkspace` lands the caller in a workspace they still
+ * belong to (the DeleteWorkspaceCard ordering, for the same m13 reason).
  */
 export function LeaveWorkspaceCard({ workspace }: LeaveWorkspaceCardProps) {
   const { t } = useTranslations();
-  const navigate = useNavigate();
-  const { workspaces, setCurrentWorkspaceId, refetch } = useWorkspace();
   const { members, loading } = useTeam(workspace.id);
   const { leave, busy, error } = useLeaveWorkspace(workspace.id);
 
@@ -60,22 +53,6 @@ export function LeaveWorkspaceCard({ workspace }: LeaveWorkspaceCardProps) {
     return <LeaveWorkspaceCardSkeleton workspaceName={workspace.name} />;
   }
   if (!isMember) return null;
-
-  async function handleLeave() {
-    if (busy) return;
-    const fallback = workspaces.find((w) => w.id !== workspace.id);
-    if (!(await leave())) return;
-    void refetch();
-    if (fallback) {
-      setCurrentWorkspaceId(fallback.id);
-      void navigate({ to: "/", replace: true });
-    } else {
-      // No workspace left to land in. Onboarding mints a personal one on the
-      // next authenticated request, so send them to the overview rather than to
-      // a create form they may not need.
-      void navigate({ to: "/", replace: true });
-    }
-  }
 
   // No onClick: when the action is available this button is the confirm
   // dialog's trigger (the dialog's confirm runs the leave), and when it is
@@ -119,7 +96,7 @@ export function LeaveWorkspaceCard({ workspace }: LeaveWorkspaceCardProps) {
             description={t("team.leaveConfirm", { workspace: workspace.name })}
             cancelLabel={t("team.leaveCancel")}
             confirmLabel={t("team.leaveAction")}
-            onConfirm={() => void handleLeave()}
+            onConfirm={() => void leave()}
           />
         )}
       </CardContent>

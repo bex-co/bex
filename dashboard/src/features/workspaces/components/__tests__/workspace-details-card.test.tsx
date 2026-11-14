@@ -26,6 +26,7 @@ const workspace: WorkspaceView = {
   plan: "hobby",
   role: "admin",
   createdAt: null,
+  requireTwoFactor: false,
 };
 
 describe("WorkspaceDetailsCard", () => {
@@ -107,6 +108,7 @@ describe("WorkspaceDetailsCard — switching workspaces (w5/059)", () => {
     plan: "pro",
     role: "admin",
     createdAt: null,
+    requireTwoFactor: false,
   };
 
   it("re-seeds the name input when pointed at a different workspace", () => {

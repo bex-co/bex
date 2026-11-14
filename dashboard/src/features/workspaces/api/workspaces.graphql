@@ -13,6 +13,10 @@ query Workspaces {
     plan
     role
     createdAt
+    # Workspace Settings -> Two-factor authentication (w22/m402). Readable by
+    # every member, and the list is exempt from enforcement, so a blocked member
+    # can still read it.
+    requireTwoFactor
   }
 }
 
@@ -24,6 +28,7 @@ mutation CreateWorkspace($name: String!, $plan: String) {
     plan
     role
     createdAt
+    requireTwoFactor
   }
 }
 
@@ -81,6 +86,7 @@ mutation FinalizeWorkspaceCreation($attemptId: String!) {
     plan
     role
     createdAt
+    requireTwoFactor
   }
 }
 
@@ -96,6 +102,7 @@ mutation RenameWorkspace($id: String!, $name: String!) {
     plan
     role
     createdAt
+    requireTwoFactor
   }
 }
 
@@ -141,5 +148,19 @@ mutation SetWorkspaceIPAllowList(
       cidrBlock
       description
     }
+  }
+}
+
+# Workspace Settings -> Two-factor authentication (w22/m402, docs/ADR012-auth.md
+# 9a). Admin-only; the argument is a String!, not an ID!. The mutation can refuse
+# with the coded 409s WORKSPACE_2FA_ADMIN_NOT_ENROLLED and
+# WORKSPACE_2FA_UNAVAILABLE.
+mutation SetWorkspaceRequireTwoFactor(
+  $workspaceId: String!
+  $enabled: Boolean!
+) {
+  setWorkspaceRequireTwoFactor(workspaceId: $workspaceId, enabled: $enabled) {
+    id
+    requireTwoFactor
   }
 }

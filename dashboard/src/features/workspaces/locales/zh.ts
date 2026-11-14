@@ -491,6 +491,100 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Fallback inline message when a workspace rule change fails without a server reason (w9/m388)",
   },
+  "workspaces.twoFactorTitle": {
+    message: "两步验证",
+    description:
+      "Title of the two-factor card on the workspace settings page, and its quick-nav label (w22/m402)",
+  },
+  "workspaces.twoFactorDescription": {
+    message:
+      "未启用两步验证（2FA）的成员在启用之前无法访问此工作区的资源或设置，其 API 密钥和 SSH 密钥在此之前也会被阻止。",
+    description:
+      "Description under the two-factor card title; follows Render's login-settings wording",
+  },
+  "workspaces.twoFactorSwitchLabel": {
+    message: "强制启用两步验证（2FA）",
+    description:
+      "Label of the switch that requires 2FA of every member (Render's control name)",
+  },
+  "workspaces.twoFactorStatusRequired": {
+    message: "已要求",
+    description:
+      "Read-only status shown to a non-admin when the workspace requires 2FA",
+  },
+  "workspaces.twoFactorStatusNotRequired": {
+    message: "未要求",
+    description:
+      "Read-only status shown to a non-admin when the workspace does not require 2FA",
+  },
+  "workspaces.twoFactorAdminOnly": {
+    message: "只有工作区管理员可以更改此设置。",
+    description: "Hint shown to a non-admin in place of the switch",
+  },
+  "workspaces.twoFactorEnabledToast": {
+    message: "{name} 现已要求使用两步验证",
+    description: "Toast after an admin turns the 2FA requirement on",
+  },
+  "workspaces.twoFactorDisabledToast": {
+    message: "{name} 不再要求使用两步验证",
+    description: "Toast after an admin turns the 2FA requirement off",
+  },
+  "workspaces.twoFactorErrorTitle": {
+    message: "无法更改两步验证设置",
+    description: "Title of the inline error when the 2FA switch is refused",
+  },
+  "workspaces.twoFactorError": {
+    message: "无法更改两步验证设置，请重试。",
+    description:
+      "Generic message when the 2FA switch fails without a recognised code",
+  },
+  "workspaces.twoFactorErrorAdminNotEnrolled": {
+    message:
+      "请先为你自己的账号启用两步验证，再在此工作区中要求使用，否则你会把自己锁在门外。",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED: the acting admin has no second factor",
+  },
+  "workspaces.twoFactorErrorUnavailable": {
+    message: "此部署不支持强制两步验证，因此无法开启。",
+    description:
+      "Refusal for code WORKSPACE_2FA_UNAVAILABLE: the deployment has no identity lookup",
+  },
+  "workspaces.twoFactorEnrollLink": {
+    message: "设置两步验证",
+    description:
+      "Link to account security, in the admin-not-enrolled refusal and on the blocked page",
+  },
+  "workspaces.twoFactorBlockedTitle": {
+    message: "{workspace} 要求使用两步验证",
+    description: "Heading of the page a blocked member sees (w22/m402)",
+  },
+  "workspaces.twoFactorBlockedBody": {
+    message:
+      "此工作区的管理员要求每位成员使用两步验证（2FA）。在你启用之前，你无法访问此工作区的资源或设置，你的 API 密钥和 SSH 密钥也无法在其中使用。",
+    description: "Why the blocked page is shown",
+  },
+  "workspaces.twoFactorBlockedRecheck": {
+    message: "我已启用，重新检查",
+    description:
+      "Button on the blocked page that retries the workspace after enrolling",
+  },
+  "workspaces.twoFactorBlockedRecheckHint": {
+    message: "启用两步验证后，最多需要一分钟才能恢复访问。",
+    description: "Hint under the blocked page's check-again button",
+  },
+  "workspaces.twoFactorBlockedSwitchLabel": {
+    message: "切换到其他工作区",
+    description: "Label of the workspace picker on the blocked page",
+  },
+  "workspaces.twoFactorBlockedSwitchPlaceholder": {
+    message: "选择工作区",
+    description: "Placeholder of the workspace picker on the blocked page",
+  },
+  "workspaces.twoFactorBlockedNoOtherWorkspaces": {
+    message: "没有其他工作区",
+    description:
+      "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
+  },
 };
 
 export default zhWorkspaces;

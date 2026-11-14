@@ -46,6 +46,13 @@ func (f fakeIdentities) LookupEmails(ctx context.Context, subjects []string) (ma
 	return emailsEach(ctx, f, subjects), nil
 }
 
+// MFAEnrolled: a subject in the map is a Kratos identity, enrolled when its
+// attributes say MFAEnabled; one absent from it is not human.
+func (f fakeIdentities) MFAEnrolled(_ context.Context, subject string) (enrolled, human bool, err error) {
+	a, ok := f[subject]
+	return a.MFAEnabled, ok, nil
+}
+
 // emailsEach is LookupEmails for a fake reader: one Lookup per subject.
 func emailsEach(ctx context.Context, r IdentityReader, subjects []string) map[string]string {
 	return emailsOf(lookupEach(ctx, r, subjects))

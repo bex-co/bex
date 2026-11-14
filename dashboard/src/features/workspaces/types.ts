@@ -13,6 +13,12 @@ export interface WorkspaceView {
   /** The caller's role in this workspace ("admin" for every m1 membership). */
   role: string;
   createdAt: string | null;
+  /**
+   * Whether an admin requires every member to use two-factor authentication
+   * (w22/m402, docs/ADR012-auth.md 9a). Readable by every member, and the list
+   * it rides on is exempt from enforcement, so a blocked member can read it.
+   */
+  requireTwoFactor: boolean;
 }
 
 /**
