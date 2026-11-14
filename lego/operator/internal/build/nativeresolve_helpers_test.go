@@ -23,13 +23,9 @@ import (
 
 // resolveNativeBuild runs the resolve phase with no service creation date and
 // the live Docker Hub resolver, the shape most native-version fixtures use.
+// The default Python line (w8/174) and uv's default (w8/328) still vary by
+// creation date; the exact-created tests drive those through
+// ResolveNativeBuildExact with a fake resolver.
 func resolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
-	return resolveNativeBuildAt(time.Time{}, runtime, bundlePath, dockerfilePath, sourceDir)
-}
-
-// resolveNativeBuildAt is resolveNativeBuild for a service created at created,
-// whose creation date picks the default Python line (w8/174) and uv's default
-// (w8/328).
-func resolveNativeBuildAt(created time.Time, runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
-	return ResolveNativeBuildExact(context.Background(), NewDockerHubResolver(), created, runtime, bundlePath, dockerfilePath, sourceDir)
+	return ResolveNativeBuildExact(context.Background(), NewDockerHubResolver(), time.Time{}, runtime, bundlePath, dockerfilePath, sourceDir)
 }
