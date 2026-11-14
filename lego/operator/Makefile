@@ -43,6 +43,14 @@ help: ## Display this help.
 
 ##@ Development
 
+# The codegen and the tests run with the workspace off, as CI does
+# (operator-test.yml: GOWORK=off) and as the release image compiles the module
+# (lego/Dockerfile has no go.work): the operator resolves standalone through its
+# `replace …/lego/types => ../types`. With go.work on, controller-gen's ./...
+# pattern fails on a Go 1.27 toolchain ("directory prefix . does not contain
+# modules listed in go.work"), so `make test` stopped before testing anything.
+manifests generate test: export GOWORK = off
+
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="./..." paths="../types/..." output:crd:artifacts:config=config/crd/bases

@@ -104,4 +104,4 @@
 - [ ] **079** — Run the tightened admission policies on the local cluster: the sample App deploys and wakes, a node drains, and no policy denial reaches the logs → [`079.md`](079.md) (~45m) ← from w21/m409 t005, 2026-11-14
 - [ ] **080** — The device confirm page shows only the user code: add the client, scopes and request time if Hydra's admin API can say them before the accept → [`080.md`](080.md) (~1h) ← from w21/m410 t005, 2026-11-14
 - [ ] **081** — Narrow the dashboard CSP's `connect-src` from `https: wss:` to the origins the app actually reaches, with a browser sweep → [`081.md`](081.md) (~1h30) ← from w21/m410 t003, 2026-11-14
-- [ ] **082** — `make test` cannot run its codegen step on a machine with Go 1.27.3: controller-gen answers "directory prefix . does not contain modules listed in go.work" → [`082.md`](082.md) (~30m) ← from w21/m411 t008, 2026-11-14
+- [x] **082** — `make test` cannot run its codegen step on a machine with Go 1.27.3: controller-gen answers "directory prefix . does not contain modules listed in go.work" → [`082.md`](done/082.md) (~30m) ← from w21/m411 t008, 2026-11-14 — DONE 2026-11-14

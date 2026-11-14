@@ -26,7 +26,7 @@
 5. The manager and the static server log production JSON by default.
 6. A disk of up to 10,000 GB snapshots within the job's memory, a restore key with `..` is refused, and the symlink comment is true.
 7. A Docker build refuses a context or Dockerfile directory that is a link out of the source mount, with or without secret files.
-8. Each is a test that fails first, and `make lint` and the operator `go test` line that `make test` runs pass (`make test`'s codegen step cannot run on this machine, see [w21/082](../../082.md)).
+8. Each is a test that fails first, and `make lint` and the operator `go test` line that `make test` runs pass (`make test`'s codegen step cannot run on this machine, was w21/082, fixed).
 
 ## Source + Goal linkage
 
