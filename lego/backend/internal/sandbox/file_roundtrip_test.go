@@ -297,7 +297,7 @@ func TestPinnedCLISandboxFileRoundtrip(t *testing.T) {
 	run := func(src, dst string) ([]byte, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, binary, "ea", "sandboxes", "copy", src, dst, "--output", "json")
+		cmd := exec.CommandContext(ctx, binary, "sandboxes", "copy", src, dst, "--output", "json")
 		for _, item := range os.Environ() {
 			if !strings.HasPrefix(item, "RENDER_") && !strings.HasPrefix(item, "BEX_") {
 				cmd.Env = append(cmd.Env, item)
@@ -366,4 +366,59 @@ func TestPinnedCLISandboxFileRoundtrip(t *testing.T) {
 	if output, err := run(f.boxID+":"+filepath.Join(fileRoundtripTempDir(t), "missing"), filepath.Join(fileRoundtripTempDir(t), "dest")); err == nil {
 		t.Fatalf("missing source reported success: %s", output)
 	}
+	// w32/m380: links arrive as links in both directions, and a FIFO is skipped.
+	t.Run("links", func(t *testing.T) {
+		readlinks := func(dir string, want map[string]string) {
+			t.Helper()
+			for name, target := range want {
+				if got, err := os.Readlink(filepath.Join(dir, name)); err != nil || got != target {
+					t.Errorf("%s -> %q (%v), want a symlink to %q", name, got, err, target)
+				}
+			}
+		}
+		links := map[string]string{"link": "with space.txt", "abs-link": "/etc/hostname", "dangling": "missing", "dirlink": "sub"}
+		tree := func(dir string) {
+			t.Helper()
+			if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "with space.txt"), []byte("top\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			for name, target := range links {
+				if err := os.Symlink(target, filepath.Join(dir, name)); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		source := filepath.Join(fileRoundtripTempDir(t), "src")
+		tree(source)
+		uploaded := filepath.Join(fileRoundtripTempDir(t), "up")
+		if output, err := run(source, f.boxID+":"+uploaded); err != nil {
+			t.Fatalf("CLI upload of a tree with symlinks: %v\n%s", err, output)
+		}
+		readlinks(uploaded, links)
+
+		sandboxTree := filepath.Join(fileRoundtripTempDir(t), "dl")
+		tree(sandboxTree)
+		if err := os.Link(filepath.Join(sandboxTree, "with space.txt"), filepath.Join(sandboxTree, "hard.txt")); err != nil {
+			t.Fatal(err)
+		}
+		if output, err := exec.Command("mkfifo", filepath.Join(sandboxTree, "pipe")).CombinedOutput(); err != nil {
+			t.Fatalf("mkfifo: %v %s", err, output)
+		}
+		dest := filepath.Join(fileRoundtripTempDir(t), "downloaded")
+		if output, err := run(f.boxID+":"+sandboxTree, dest); err != nil {
+			t.Fatalf("CLI download of a tree with links and a FIFO: %v\n%s", err, output)
+		}
+		readlinks(dest, links)
+		original, errA := os.Lstat(filepath.Join(dest, "with space.txt"))
+		hard, errB := os.Lstat(filepath.Join(dest, "hard.txt"))
+		if errA != nil || errB != nil || !os.SameFile(original, hard) {
+			t.Errorf("hard.txt is not a second link to with space.txt (%v, %v)", errA, errB)
+		}
+		if _, err := os.Lstat(filepath.Join(dest, "pipe")); !os.IsNotExist(err) {
+			t.Errorf("the FIFO was downloaded: %v", err)
+		}
+	})
 }

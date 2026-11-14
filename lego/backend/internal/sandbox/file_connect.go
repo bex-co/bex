@@ -21,6 +21,8 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -277,15 +279,37 @@ func (s *Service) ConnectFileHandler() http.Handler {
 						p.Out.Header.Set(name, value)
 					}
 				}
+				// Go's transport replays a GET with no body (or http.NoBody) when
+				// a reused connection closes before any response, and by then the
+				// gateway has spent the ticket's nonce: a replayed download
+				// answered "409 file ticket already used" (w32/m380). A body
+				// without GetBody is never replayed, and an empty one leaves the
+				// GET as it was on the wire. A PUT is never replayed.
+				if p.Out.Method == http.MethodGet {
+					p.Out.Body = io.NopCloser(strings.NewReader(""))
+				}
 			},
-			ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) {
-				core.WriteErrStatus(w, http.StatusServiceUnavailable, "sandbox file gateway unavailable")
+			ErrorHandler: func(w http.ResponseWriter, _ *http.Request, err error) {
+				core.WriteErrStatus(w, http.StatusServiceUnavailable, fileGatewayFailure(err))
 			},
 			FlushInterval: -1,
 		}
 		proxy.Transport = s.gatewayClient().Transport
 		proxy.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// fileGatewayFailure says why a transfer got no response from the gateway: it
+// could not be reached or did not answer in time, or it dropped the
+// connection before answering (w32/m380). Both stay 503; the client mints a
+// new ticket either way.
+func fileGatewayFailure(err error) string {
+	var op *net.OpError
+	var timeout net.Error
+	if (errors.As(err, &op) && op.Op == "dial") || (errors.As(err, &timeout) && timeout.Timeout()) {
+		return "sandbox file gateway unavailable"
+	}
+	return "the sandbox file transfer ended before a response"
 }
 
 // gatewayFileTicket signs the gateway half of one file transfer and resolves

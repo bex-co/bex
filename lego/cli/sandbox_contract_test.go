@@ -424,6 +424,55 @@ func TestPinnedSandboxDirectoryTransferContract(t *testing.T) {
 	}
 }
 
+// TestPinnedSandboxDownloadRestoresLinks extracts, with the pinned client, the
+// archive bex's gateway sends for a sandbox directory holding symlinks, hard
+// links and a FIFO (w32/m380). The archive is the gateway's own output for a
+// real BusyBox `tar -cf -` of that tree; lego/backend's
+// TestABusyBoxTreeOfLinksDownloadsWithItsLinks writes and pins it.
+func TestPinnedSandboxDownloadRestoresLinks(t *testing.T) {
+	c := loadSandboxFileContract(t)
+	t.Setenv("RENDER_WORKSPACE", c.Workspace)
+	archive, err := os.ReadFile(filepath.Join("testdata", "sandbox-download-links.tar"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	download, _ := fileContractServerWithTransfer(t, c, "download", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", c.Upload.DirectoryContentType)
+		w.Header().Set("Content-Encoding", c.Upload.DirectoryContentEncoding)
+		gz := gzip.NewWriter(w)
+		_, _ = gz.Write(archive)
+		_ = gz.Close()
+	})
+	api, err := client.NewClientWithResponses(download.URL + "/v1/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(t.TempDir(), "dl")
+	if _, err := sandbox.NewService(sandbox.NewRepo(api)).Download(context.Background(), c.SandboxID, "/workspace/dl", dest); err != nil {
+		t.Fatal(err)
+	}
+	for name, target := range map[string]string{"rel-link": "top.txt", "rel-link-2": "top.txt", "abs-link": "/etc/hostname", "dirlink": "sub", "dangling": "missing-target"} {
+		if got, err := os.Readlink(filepath.Join(dest, name)); err != nil || got != target {
+			t.Errorf("%s -> %q (%v), want a symlink to %q", name, got, err, target)
+		}
+	}
+	for link, original := range map[string]string{"top.txt": "hard.txt", "sub/hard-inner.txt": "sub/inner.txt"} {
+		a, errA := os.Lstat(filepath.Join(dest, original))
+		b, errB := os.Lstat(filepath.Join(dest, link))
+		if errA != nil || errB != nil || !os.SameFile(a, b) {
+			t.Errorf("%s is not a hard link to %s (%v, %v)", link, original, errA, errB)
+		}
+	}
+	if got, err := os.ReadFile(filepath.Join(dest, "top.txt")); err != nil || string(got) != "top\n" {
+		t.Errorf("top.txt = %q (%v)", got, err)
+	}
+	for _, skipped := range []string{"pipe", "pipe-hard"} {
+		if _, err := os.Lstat(filepath.Join(dest, skipped)); !os.IsNotExist(err) {
+			t.Errorf("the FIFO %s was extracted: %v", skipped, err)
+		}
+	}
+}
+
 func TestPinnedSandboxDownloadRejectsIncompleteSuccessBodies(t *testing.T) {
 	c := loadSandboxFileContract(t)
 	t.Setenv("RENDER_WORKSPACE", c.Workspace)

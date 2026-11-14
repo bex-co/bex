@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"mime"
 	"net/http"
 	"path"
@@ -537,14 +538,17 @@ func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, so
 		writeError(w, target.ServiceID, revoked(err))
 		return
 	}
-	w.Header().Set("Content-Type", "application/octet-stream")
+	contentType := "application/octet-stream"
 	if kind == "directory\n" {
-		w.Header().Set("Content-Type", "application/x-tar")
+		contentType = "application/x-tar"
 	}
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": path.Base(source)}))
-	w.Header().Set("Content-Encoding", "gzip")
-	w.Header().Set("Cache-Control", "no-store")
-	gz := gzip.NewWriter(&boundedWriter{writer: w, remaining: files.MaxTransferBytes})
+	sent := &startWriter{writer: w, header: http.Header{
+		"Content-Type":        {contentType},
+		"Content-Disposition": {mime.FormatMediaType("attachment", map[string]string{"filename": path.Base(source)})},
+		"Content-Encoding":    {"gzip"},
+		"Cache-Control":       {"no-store"},
+	}}
+	gz := gzip.NewWriter(&boundedWriter{writer: sent, remaining: files.MaxTransferBytes})
 	bounded := &boundedReader{reader: input, remaining: files.MaxTransferBytes}
 	if kind == "directory\n" {
 		_, err = copyArchive(gz, bounded)
@@ -565,13 +569,36 @@ func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, so
 	if err == nil {
 		err = gz.Close()
 	}
-	if err != nil {
-		_ = revoked(err) // a revocation is still logged and counted; the response is already streaming
-		// Never close gzip after failure: its trailer is the pinned client's
-		// proof that even a zero-byte file completed. Abort HTTP too; returning
-		// normally would turn a partial raw stream into a success-shaped EOF.
-		panic(http.ErrAbortHandler)
+	if err == nil {
+		return
 	}
+	err = revoked(err) // a revocation is logged and counted either way
+	if !sent.started {
+		// Nothing has reached the client, so it gets the cause; an abort reaches
+		// it only as bex-api's generic 503 (w32/m380).
+		writeError(w, target.ServiceID, err)
+		return
+	}
+	// Never close gzip after failure: its trailer is the pinned client's proof
+	// that even a zero-byte file completed. Abort HTTP too; returning normally
+	// would turn a partial raw stream into a success-shaped EOF.
+	panic(http.ErrAbortHandler)
+}
+
+// startWriter sets the download's headers at its first write, which commits
+// them with the 200. Until then a failure can still answer its own status.
+type startWriter struct {
+	writer  http.ResponseWriter
+	header  http.Header
+	started bool
+}
+
+func (w *startWriter) Write(p []byte) (int, error) {
+	if !w.started {
+		w.started = true
+		maps.Copy(w.writer.Header(), w.header)
+	}
+	return w.writer.Write(p)
 }
 
 type boundedReader struct {
@@ -660,15 +687,33 @@ func entryMode(h *tar.Header) int64 {
 	return h.Mode&0777 | 0600
 }
 
+// entryName is an archive member's name relative to its root, as BusyBox's
+// `tar -cf - -C dir .` writes it (`./sub/f`) and as a hard link names its
+// target (`./f`).
+func entryName(name string) string {
+	return strings.TrimSuffix(strings.TrimPrefix(name, "./"), "/")
+}
+
 // copyArchive validates before forwarding each member, keeps only its
 // permission bits and modification time, and supplies end markers only after
 // the complete source (including its gzip checksum, when present) has been
 // verified. It returns the mode the archive gives its root (its `.` entry,
 // plainDirMode when it has none), for the published directory.
+//
+// The same rule holds in both directions (w32/m380), as on Render
+// (render.com/docs/sandboxes-files, read 2026-11-13: "Symlinks are preserved,
+// and sockets, FIFOs, and other special files are skipped"). A symlink keeps
+// its target byte for byte, relative, absolute or dangling: the tenant is root
+// in its own sandbox. It can never be a parent, so nothing is written through
+// it. A hard link is another name for an entry earlier in the same archive, so
+// it stays inside the tree: tar archives the first name it reads for an inode
+// and each later one as a link to it. It counts as what it names: a file stays
+// a hard link, a symlink is copied, and a special entry is skipped too.
 func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 	tr := tar.NewReader(terminatedReader{src})
 	tw := tar.NewWriter(&boundedWriter{writer: dst, remaining: files.MaxTransferBytes})
-	seen := map[string]byte{}
+	seen := map[string]byte{}       // each name's type, as a later entry sees it
+	symlinks := map[string]string{} // each symlink's target
 	entries := 0
 	root := int64(plainDirMode)
 	for {
@@ -687,10 +732,7 @@ func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 			root = entryMode(h)
 			continue
 		}
-		name := strings.TrimSuffix(strings.TrimPrefix(h.Name, "./"), "/")
-		if h.Typeflag != tar.TypeReg && h.Typeflag != tar.TypeDir {
-			return 0, fmt.Errorf("%w: links and special entries are unsupported", errBadArchive)
-		}
+		name := entryName(h.Name)
 		if h.Size > files.MaxTransferBytes {
 			return 0, errTooLarge
 		}
@@ -706,10 +748,35 @@ func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 		if parent := path.Dir(name); parent != "." && seen[parent] != tar.TypeDir {
 			return 0, fmt.Errorf("%w: parent directory must precede its children", errBadArchive)
 		}
-		seen[name] = h.Typeflag
-		clean := &tar.Header{Name: name, Typeflag: h.Typeflag, Size: h.Size, Mode: entryMode(h), ModTime: archiveModTime(h.ModTime)}
-		if h.Typeflag == tar.TypeDir {
-			clean.Size = 0
+		clean := &tar.Header{Name: name, Typeflag: h.Typeflag, Mode: entryMode(h), ModTime: archiveModTime(h.ModTime)}
+		kind := h.Typeflag
+		switch h.Typeflag {
+		case tar.TypeReg:
+			clean.Size = h.Size
+		case tar.TypeSymlink:
+			if h.Linkname == "" || len(h.Linkname) > files.MaxPathBytes || strings.IndexFunc(h.Linkname, unicode.IsControl) >= 0 {
+				return 0, fmt.Errorf("%w: unsafe symlink target", errBadArchive)
+			}
+			clean.Linkname = h.Linkname
+			symlinks[name] = h.Linkname
+		case tar.TypeLink:
+			target := entryName(h.Linkname)
+			var ok bool
+			if kind, ok = seen[target]; !ok || kind == tar.TypeDir {
+				return 0, fmt.Errorf("%w: a hard link must name a file earlier in the archive", errBadArchive)
+			}
+			switch kind {
+			case tar.TypeReg:
+				clean.Linkname = target
+			case tar.TypeSymlink: // BusyBox archives a second name for a symlink this way
+				clean.Typeflag, clean.Linkname = tar.TypeSymlink, symlinks[target]
+				symlinks[name] = clean.Linkname
+			}
+		}
+		// Recorded even when skipped, so a child under it is refused.
+		seen[name] = kind
+		if kind != tar.TypeReg && kind != tar.TypeDir && kind != tar.TypeSymlink {
+			continue
 		}
 		if err := tw.WriteHeader(clean); err != nil {
 			return 0, err

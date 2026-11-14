@@ -133,9 +133,14 @@ func TestUploadPublishesOnlyAfterCompleteValidation(t *testing.T) {
 		{"truncated gzip footer", badGzip, "application/x-tar", "gzip", 400},
 		{"corrupt gzip checksum", badChecksum, "application/x-tar", "gzip", 400},
 		{"traversal", archive(t, &tar.Header{Name: "../escape", Typeflag: tar.TypeReg}), "application/x-tar", "", 400},
-		{"symlink", archive(t, &tar.Header{Name: "escape", Typeflag: tar.TypeSymlink, Linkname: "../outside"}), "application/x-tar", "", 400},
-		{"hardlink", archive(t, &tar.Header{Name: "link", Typeflag: tar.TypeLink, Linkname: "file"}), "application/x-tar", "", 400},
-		{"fifo", archive(t, &tar.Header{Name: "fifo", Typeflag: tar.TypeFifo}), "application/x-tar", "", 400},
+		// A symlink is kept with its target, as on Render (w32/m380); nothing
+		// can be written through it.
+		{"symlink", archive(t, &tar.Header{Name: "escape", Typeflag: tar.TypeSymlink, Linkname: "../outside"}), "application/x-tar", "", 204},
+		{"child under a symlink", archive(t,
+			&tar.Header{Name: "escape", Typeflag: tar.TypeSymlink, Linkname: "/etc"},
+			&tar.Header{Name: "escape/passwd", Typeflag: tar.TypeReg}), "application/x-tar", "", 400},
+		{"hardlink to an unseen name", archive(t, &tar.Header{Name: "link", Typeflag: tar.TypeLink, Linkname: "file"}), "application/x-tar", "", 400},
+		{"fifo", archive(t, &tar.Header{Name: "fifo", Typeflag: tar.TypeFifo}), "application/x-tar", "", 204},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			checks, publishes, cleanups := 0, 0, 0
@@ -310,6 +315,15 @@ func TestArchiveEntryPolicyAndBudgets(t *testing.T) {
 	}
 	if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, entries...))); err == nil {
 		t.Fatal("entry count bypass through root directories")
+	}
+	// Links and skipped entries carry no body but still count (w32/m380).
+	for _, flag := range []byte{tar.TypeSymlink, tar.TypeFifo} {
+		for i := range entries {
+			entries[i] = &tar.Header{Name: fmt.Sprintf("e%d", i), Typeflag: flag, Linkname: "target"}
+		}
+		if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, entries...))); err == nil {
+			t.Fatalf("entry count bypass through %c entries", flag)
+		}
 	}
 	if _, err := io.Copy(io.Discard, &boundedReader{reader: strings.NewReader("123456789"), remaining: 8}); !errors.Is(err, errTooLarge) {
 		t.Fatalf("byte cap = %v", err)
