@@ -25,6 +25,8 @@ import (
 
 	"github.com/graphql-go/graphql"
 	corev1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -206,5 +208,92 @@ func TestExternalURLFollowsTheServedCertificateBackToPrivateCA(t *testing.T) {
 	setCertificate(appv1alpha1.DBExternalCertificatePending)
 	if code, _ := read(); code != http.StatusServiceUnavailable {
 		t.Fatalf("private certificate served with no CA: connection-info => %d, want 503", code)
+	}
+}
+
+// w4/m357: the read and connection info say which certificate the external
+// endpoint presents, the same on REST and GraphQL, so a user handed the
+// private-CA contract is told the trusted certificate is pending or failed.
+// The condition's raw ACME message never leaves the cluster.
+func TestExternalCertificateStateOnEverySurface(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		cert       appv1alpha1.DatabaseExternalCertificate
+		condition  *metav1.Condition
+		public     bool
+		want       string
+		wantReason string
+	}{
+		{"trusted", appv1alpha1.DBExternalCertificatePubliclyTrusted, nil, true, "publiclyTrusted", ""},
+		{"issuing", appv1alpha1.DBExternalCertificatePending, &metav1.Condition{Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonPublicCertificateIssuing}, true, "pending", ""},
+		{"rate limited", appv1alpha1.DBExternalCertificatePending, &metav1.Condition{Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonPublicCertificateRateLimited, Message: "429 urn:ietf:params:acme:error:rateLimited bex.co"}, true, "failed", "rate limit"},
+		{"untrusted secret", appv1alpha1.DBExternalCertificatePending, &metav1.Condition{Status: metav1.ConditionFalse, Reason: "CertificateUntrusted"}, true, "failed", "failed"},
+		{"issued, not served yet", appv1alpha1.DBExternalCertificatePending, &metav1.Condition{Status: metav1.ConditionTrue, Reason: appv1alpha1.ReasonPublicCertificateIssued}, true, "pending", ""},
+		{"no public issuer", "", nil, true, "", ""},
+		{"private", appv1alpha1.DBExternalCertificatePending, nil, false, "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl := newService()
+			seedPublicDatabase(t, cl, "cert-db", tc.cert)
+			var db appv1alpha1.Database
+			if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cert-db"}, &db); err != nil {
+				t.Fatal(err)
+			}
+			db.Spec.Public = tc.public
+			if err := cl.Update(context.Background(), &db); err != nil {
+				t.Fatal(err)
+			}
+			if tc.condition != nil {
+				tc.condition.Type = appv1alpha1.ConditionPublicCertificateReady
+				apimeta.SetStatusCondition(&db.Status.Conditions, *tc.condition)
+				if err := cl.Update(context.Background(), &db); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			var view PostgresView
+			rec := serveREST(svc, http.MethodGet, "/v1/postgres/cert-db", "")
+			if err := json.Unmarshal(rec.Body.Bytes(), &view); err != nil {
+				t.Fatalf("read => %d %s", rec.Code, rec.Body.String())
+			}
+			if view.ExternalCertificate != tc.want || !strings.Contains(view.ExternalCertificateReason, tc.wantReason) ||
+				(tc.wantReason == "" && view.ExternalCertificateReason != "") {
+				t.Fatalf("REST read = %q / %q, want %q / …%q…", view.ExternalCertificate, view.ExternalCertificateReason, tc.want, tc.wantReason)
+			}
+			if strings.Contains(rec.Body.String(), "acme") {
+				t.Fatalf("the raw ACME error leaked: %s", rec.Body.String())
+			}
+			if tc.public {
+				var ci PostgresConnectionInfo
+				rec = serveREST(svc, http.MethodGet, "/v1/postgres/cert-db/connection-info", "")
+				if err := json.Unmarshal(rec.Body.Bytes(), &ci); err != nil {
+					t.Fatalf("connection-info => %d %s", rec.Code, rec.Body.String())
+				}
+				if ci.ExternalCertificate != view.ExternalCertificate || ci.ExternalCertificateReason != view.ExternalCertificateReason {
+					t.Fatalf("connection-info = %q / %q, read = %q / %q", ci.ExternalCertificate, ci.ExternalCertificateReason, view.ExternalCertificate, view.ExternalCertificateReason)
+				}
+			}
+
+			schema, err := graphql.NewSchema(graphql.SchemaConfig{
+				Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			res := graphql.Do(graphql.Params{
+				Schema:        schema,
+				RequestString: `{ database(id:"cert-db") { externalCertificate externalCertificateReason } }`,
+				Context:       ctxAs("user-a"),
+			})
+			if len(res.Errors) > 0 {
+				t.Fatalf("gql: %v", res.Errors)
+			}
+			gql := res.Data.(map[string]any)["database"].(map[string]any)
+			gotState, _ := gql["externalCertificate"].(string)
+			gotReason, _ := gql["externalCertificateReason"].(string)
+			if gotState != view.ExternalCertificate || gotReason != view.ExternalCertificateReason {
+				t.Fatalf("GraphQL = %v, REST = %q / %q", gql, view.ExternalCertificate, view.ExternalCertificateReason)
+			}
+		})
 	}
 }

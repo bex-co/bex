@@ -24,6 +24,7 @@ async function fetchConnectionInfo(
     internalConnectionString: ci?.internalConnectionString ?? "",
     externalConnectionString: ci?.externalConnectionString ?? "",
     cliCommand: ci?.cliCommand ?? "",
+    externalCertificate: ci?.externalCertificate ?? "",
   };
 }
 

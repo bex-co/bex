@@ -237,4 +237,59 @@ describe("ConnectionInfoPanel", () => {
     expect(screen.queryByText("Server CA certificate")).toBeNull();
     expect(screen.getByText("psql command")).toBeInTheDocument();
   });
+
+  // w4/m357: a new public database whose publicly trusted certificate is
+  // still issuing (or failed) said nothing, so a copied verify-full URL just
+  // failed on a stock client. The card now says why, and how to connect.
+  describe("publicly trusted certificate note", () => {
+    const privateCA = (externalCertificate: string): ConnectionInfoView => ({
+      password: "pw",
+      internalConnectionString: "postgresql://u:pw@db-rw.default:5432/db",
+      externalConnectionString:
+        "postgresql://u:pw@dpg-x.db.bex.co:5432/db?sslmode=verify-full",
+      psqlCommand:
+        "PGPASSWORD=pw psql 'host=dpg-x.db.bex.co sslmode=verify-full'",
+      serverCaCertificate:
+        "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n",
+      externalCertificate,
+      readReplicaConnectionStrings: [],
+    });
+
+    it("says the certificate is being issued while pending", () => {
+      state.info = privateCA("pending");
+      render(<ConnectionInfoPanel id="dpg-x" />);
+      expect(
+        screen.getByText("Publicly trusted certificate is being issued"),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/sslmode=require/)).toBeInTheDocument();
+      expect(screen.getByText("Server CA certificate")).toBeInTheDocument();
+    });
+
+    it("says issuance failed and the CA path works", () => {
+      state.info = privateCA("failed");
+      render(<ConnectionInfoPanel id="dpg-x" />);
+      expect(
+        screen.getByText("Publicly trusted certificate not issued yet"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/The CA path works meanwhile/),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Publicly trusted certificate is being issued"),
+      ).toBeNull();
+    });
+
+    it("says nothing once trusted, or without a managed certificate", () => {
+      for (const externalCertificate of ["publiclyTrusted", ""]) {
+        state.info = {
+          ...privateCA(externalCertificate),
+          externalConnectionString: "postgresql://u:pw@dpg-x.db.bex.co:5432/db",
+          serverCaCertificate: "",
+        };
+        const { unmount } = render(<ConnectionInfoPanel id="dpg-x" />);
+        expect(screen.queryByText(/Publicly trusted certificate/)).toBeNull();
+        unmount();
+      }
+    });
+  });
 });

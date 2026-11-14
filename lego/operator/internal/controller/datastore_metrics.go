@@ -22,6 +22,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -44,6 +45,10 @@ import (
 const (
 	datastoreObserveFor = 5 * time.Second
 
+	// The per-datastore series' identifying labels.
+	metricLabelKind      = "kind"
+	metricLabelNamespace = "namespace"
+
 	datastoreKindDatabase = "database"
 	datastoreKindKeyValue = "keyvalue"
 )
@@ -52,12 +57,12 @@ var (
 	datastoreReadyDesc = prometheus.NewDesc(
 		"bex_datastore_ready",
 		"Managed datastore readiness: 1 when the CR reports its ready phase, 0 otherwise.",
-		[]string{"kind", "namespace", "name", "phase"}, nil,
+		[]string{metricLabelKind, metricLabelNamespace, "name", "phase"}, nil,
 	)
 	datastoreAgeDesc = prometheus.NewDesc(
 		"bex_datastore_age_seconds",
 		"Seconds since the managed datastore CR was created. Paired with bex_datastore_ready to alert on one that never provisions.",
-		[]string{"kind", "namespace", "name"}, nil,
+		[]string{metricLabelKind, metricLabelNamespace, "name"}, nil,
 	)
 	// Readiness is provisioning state, not backup state. A Database can be Ready,
 	// serving, and archiving nothing at all — which is what w7/040 was: three
@@ -67,7 +72,15 @@ var (
 	datastoreArchivingDesc = prometheus.NewDesc(
 		"bex_datastore_wal_archiving",
 		"1 when a backup-enabled Database's CNPG cluster reports ContinuousArchiving=True and the operator has not detected a stalled archive, 0 otherwise. Absent when the cluster does not exist yet.",
-		[]string{"namespace", "name"}, nil,
+		[]string{metricLabelNamespace, "name"}, nil,
+	)
+	// A public datastore's publicly trusted certificate is not readiness
+	// either: the store is Ready and serving while it waits, so only this
+	// series sees a Let's Encrypt budget running dry (w4/m357).
+	datastorePublicCertificatePendingDesc = prometheus.NewDesc(
+		"bex_datastore_public_certificate_pending_seconds",
+		"Seconds a public Database or Key Value has waited for its publicly trusted certificate (PublicCertificateReady=False), by reason. A new public datastore normally gets one within two minutes.",
+		[]string{metricLabelKind, metricLabelNamespace, "name", "reason"}, nil,
 	)
 	datastoreObserveErrorsDesc = prometheus.NewDesc(
 		"bex_datastore_observe_errors_total",
@@ -100,6 +113,7 @@ func (c *datastoreCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- datastoreReadyDesc
 	ch <- datastoreAgeDesc
 	ch <- datastoreArchivingDesc
+	ch <- datastorePublicCertificatePendingDesc
 	ch <- datastoreObserveErrorsDesc
 }
 
@@ -149,6 +163,7 @@ func (c *datastoreCollector) Collect(ch chan<- prometheus.Metric) {
 			c.emit(ch, datastoreKindDatabase, db.Namespace, db.Name,
 				string(db.Status.Phase), db.Status.Phase == appv1alpha1.DBPhaseReady,
 				db.CreationTimestamp.Time)
+			emitPublicCertificatePending(ch, datastoreKindDatabase, db.Namespace, db.Name, db.Status.Conditions)
 			if !db.Status.BackupsEnabled {
 				continue
 			}
@@ -176,6 +191,7 @@ func (c *datastoreCollector) Collect(ch chan<- prometheus.Metric) {
 			c.emit(ch, datastoreKindKeyValue, kv.Namespace, kv.Name,
 				string(kv.Status.Phase), kv.Status.Phase == appv1alpha1.KVPhaseReady,
 				kv.CreationTimestamp.Time)
+			emitPublicCertificatePending(ch, datastoreKindKeyValue, kv.Namespace, kv.Name, kv.Status.Conditions)
 		}
 	}
 
@@ -210,4 +226,16 @@ func (c *datastoreCollector) emit(
 // metrics registry.
 func RegisterDatastoreMetrics(list datastoreLister) {
 	ctrlmetrics.Registry.MustRegister(NewDatastoreCollector(list))
+}
+
+// emitPublicCertificatePending exports how long a public datastore has waited
+// for its publicly trusted certificate: since PublicCertificateReady last
+// turned False, which a change of reason (Issuing to RateLimited) keeps.
+func emitPublicCertificatePending(ch chan<- prometheus.Metric, kind, namespace, name string, conditions []metav1.Condition) {
+	cond := meta.FindStatusCondition(conditions, appv1alpha1.ConditionPublicCertificateReady)
+	if cond == nil || cond.Status != metav1.ConditionFalse {
+		return
+	}
+	ch <- prometheus.MustNewConstMetric(datastorePublicCertificatePendingDesc, prometheus.GaugeValue,
+		time.Since(cond.LastTransitionTime.Time).Seconds(), kind, namespace, name, cond.Reason)
 }

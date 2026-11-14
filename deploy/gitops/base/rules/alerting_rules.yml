@@ -503,6 +503,21 @@ groups:
         annotations:
           summary: "Datastore readiness observation is failing"
           description: "bex_datastore_ready is incomplete, so DatastoreStuckProvisioning cannot be trusted. Check the operator's RBAC for databases/keyvalues and its API connectivity."
+      # w4/m357: a public datastore is Ready and serving while it waits
+      # for its publicly trusted certificate, so readiness never sees a
+      # stall. A Postgres keeps its private CA (the copied URL carries
+      # sslmode=verify-full and fails on a stock client) and a Key Value
+      # has no external TLS listener at all. Issuance normally takes
+      # under two minutes; 2026-11-13's stall (the bex.co Let's Encrypt
+      # budget) lasted hours and was found by a QA round, not an alert.
+      - alert: PublicCertificatePendingTooLong
+        expr: bex_datastore_public_certificate_pending_seconds > 600
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.kind }} {{ $labels.namespace }}/{{ $labels.name }} has waited over 10 minutes for its publicly trusted certificate ({{ $labels.reason }})"
+          description: "The datastore's PublicCertificateReady condition has been False for over 10 minutes. Reason RateLimited means Let's Encrypt refused the order with its new-certificates-per-registered-domain limit for bex.co (50 per rolling week, refilled about one per 202 minutes); cert-manager then backs the Certificate off 1h, 2h, 4h up to 32h. Debug: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}-public-tls (Database) or {{ $labels.name }}-kv-tls (Key Value). The lasting fix is the *.db.bex.co / *.kv.bex.co DNS-01 wildcard in docs/ADR009-postgresql-management.md § Publicly trusted server certificates."
 
       # cert-manager Certificate readiness, split by RESPONSIBILITY.
       # This rule pages the operator (warning) for PLATFORM certs —

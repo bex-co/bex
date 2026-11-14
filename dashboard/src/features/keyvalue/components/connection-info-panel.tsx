@@ -175,9 +175,11 @@ function RevealedInfo({
       ) : (
         <p className="text-sm text-muted-foreground">
           {t(
-            isPublic
-              ? "keyvalue.connExternalPending"
-              : "keyvalue.connExternalUnavailable",
+            !isPublic
+              ? "keyvalue.connExternalUnavailable"
+              : info.externalCertificate === "failed"
+                ? "keyvalue.connExternalFailed"
+                : "keyvalue.connExternalPending",
           )}
         </p>
       )}

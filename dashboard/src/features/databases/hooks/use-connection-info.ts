@@ -29,6 +29,7 @@ async function fetchConnectionInfo(
     externalConnectionString: ci?.externalConnectionString ?? "",
     psqlCommand: ci?.psqlCommand ?? "",
     serverCaCertificate: ci?.serverCaCertificate ?? "",
+    externalCertificate: ci?.externalCertificate ?? "",
     readReplicaConnectionStrings: [],
   };
 }

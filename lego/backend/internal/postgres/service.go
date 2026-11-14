@@ -169,6 +169,12 @@ type PostgresView struct {
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
 	Public       bool   `json:"public"`
+	// ExternalCertificate is the certificate the external endpoint presents:
+	// publiclyTrusted, pending or failed (core.ExternalCertificate*, w4/m357).
+	// Omitted without an external endpoint or a managed public certificate.
+	// ExternalCertificateReason says why it failed.
+	ExternalCertificate       string `json:"externalCertificate,omitempty"`
+	ExternalCertificateReason string `json:"externalCertificateReason,omitempty"`
 
 	// IPAllowList is the external endpoint's effective rules, [] when external
 	// access is off (core.EffectiveAllowList, w4/m315).
@@ -260,6 +266,12 @@ type PostgresConnectionInfo struct {
 	// roots then verify it, exactly as on Render, whose connection info has no
 	// such field. Strictly certificate material — never a private key.
 	ServerCACertificate string `json:"serverCaCertificate,omitempty"`
+	// ExternalCertificate / ExternalCertificateReason repeat the read's state
+	// (bex extension, w4/m357), so a client revealing these strings can say
+	// why they carry sslmode=verify-full and a CA: the publicly trusted
+	// certificate is still pending, or its issuance failed.
+	ExternalCertificate       string `json:"externalCertificate,omitempty"`
+	ExternalCertificateReason string `json:"externalCertificateReason,omitempty"`
 	// ReadReplicaConnectionStrings has one entry per spec.readReplicas, keyed by
 	// replica name. Each is the full internal (and optionally external) connection
 	// string including the password, for callers that need to query standbys.
@@ -617,6 +629,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 			reason, reasonCode = freeExpiredReason(expiresAt), reasonCodeFreeExpired
 		}
 	}
+	certificate, certificateReason := externalCertificateState(d)
 	// ipAllowList is required in Render's schema, and reads as the database's
 	// effective external access (core.EffectiveAllowList, w4/m315).
 	return PostgresView{
@@ -644,6 +657,8 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		UpdatedAt:                 resourcemeta.UpdatedAt(d),
 		ExternalHost:              d.Status.ExternalHost,
 		Public:                    d.Spec.Public,
+		ExternalCertificate:       certificate,
+		ExternalCertificateReason: certificateReason,
 		IPAllowList:               core.EffectiveAllowList(d.Spec.Public, d.Spec.IPAllowList),
 		PoolerEnabled:             d.Spec.Pooler,
 		ConnectionPool:            connectionPoolEnum(d.Spec.Pooler),
@@ -1133,6 +1148,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 				pass, d.Status.ExternalHost, dbn, user)
 		}
 		info.ServerCACertificate = serverCA
+		info.ExternalCertificate, info.ExternalCertificateReason = externalCertificateState(d)
 	}
 	// Pooled strings: same credentials, routed through the PgBouncer pooler.
 	// The hosts come straight from status (the operator's contract) — the backend
@@ -1193,6 +1209,17 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 // sslmode=verify-full, verified against the serverCaCertificate this read
 // serves (w4/m95). Its private CA authenticates nothing a stock client trusts,
 // so dropping verification there would only hide an interception.
+// externalCertificateState is d's externalCertificate and its reason: absent
+// for a private database, before its external host is reconciled, and where
+// no public issuer manages a certificate (status.externalCertificate empty).
+func externalCertificateState(d *appv1alpha1.Database) (state, reason string) {
+	if !d.Spec.Public || d.Status.ExternalHost == "" || d.Status.ExternalCertificate == "" {
+		return "", ""
+	}
+	return core.PublicCertificateState(d.Status.Conditions,
+		d.Status.ExternalCertificate == appv1alpha1.DBExternalCertificatePubliclyTrusted)
+}
+
 func externalURLQuery(d *appv1alpha1.Database) string {
 	if d.Status.ExternalCertificate == appv1alpha1.DBExternalCertificatePubliclyTrusted {
 		return ""

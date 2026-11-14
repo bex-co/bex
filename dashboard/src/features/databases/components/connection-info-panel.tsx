@@ -88,6 +88,7 @@ function RevealedInfo({ id, info }: { id: string; info: ConnectionInfoView }) {
     shown ? value : maskSecret(value, info.password);
   return (
     <div className="space-y-4">
+      <CertificateNote state={info.externalCertificate} />
       <PasswordField
         value={info.password}
         shown={shown}
@@ -120,6 +121,35 @@ function RevealedInfo({ id, info }: { id: string; info: ConnectionInfoView }) {
         <ServerCAField id={id} pem={info.serverCaCertificate} />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Why the external strings carry sslmode=verify-full and a CA (w4/m357): the
+ * publicly trusted certificate is still being issued, or its issuance failed.
+ * Nothing once it is trusted, exactly as on Render.
+ */
+function CertificateNote({ state }: { state?: string }) {
+  const { t } = useTranslations();
+  if (state !== "pending" && state !== "failed") return null;
+  const failed = state === "failed";
+  return (
+    <Alert>
+      <AlertTitle>
+        {t(
+          failed
+            ? "databases.connCertFailedTitle"
+            : "databases.connCertPendingTitle",
+        )}
+      </AlertTitle>
+      <AlertDescription>
+        {t(
+          failed
+            ? "databases.connCertFailedBody"
+            : "databases.connCertPendingBody",
+        )}
+      </AlertDescription>
+    </Alert>
   );
 }
 

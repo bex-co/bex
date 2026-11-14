@@ -66,7 +66,7 @@ export function KeyValueMetadataCard({
         },
         {
           label: t("keyvalue.metaPublic"),
-          value: keyValue.public ? t("keyvalue.yes") : t("keyvalue.no"),
+          value: t(publicAccessLabel(keyValue)),
         },
         // Render shows external connection details only when public access is
         // on; the backend sends "" (not null) for a private store (w6/052), so
@@ -95,4 +95,17 @@ export function KeyValueMetadataCard({
       ]}
     />
   );
+}
+
+/**
+ * Public access is "Yes" only once the external endpoint is open: a public
+ * store has no external TLS listener until its publicly trusted certificate
+ * is issued (ADR021), so a pending or failed one is qualified (w4/m357).
+ */
+function publicAccessLabel(keyValue: KeyValueView) {
+  if (!keyValue.public) return "keyvalue.no";
+  if (keyValue.externalCertificate === "pending")
+    return "keyvalue.publicPending";
+  if (keyValue.externalCertificate === "failed") return "keyvalue.publicFailed";
+  return "keyvalue.yes";
 }

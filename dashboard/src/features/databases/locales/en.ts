@@ -602,6 +602,28 @@ const enDatabases: Record<string, TranslationEntry> = {
     description:
       "Accessible label for the copyable PGSSLROOTCERT example snippet",
   },
+  "databases.connCertPendingTitle": {
+    message: "Publicly trusted certificate is being issued",
+    description:
+      "Connections card note title while a public database's Let's Encrypt certificate is still pending (w4/m357)",
+  },
+  "databases.connCertPendingBody": {
+    message:
+      "A publicly trusted certificate is being issued (usually a few minutes). Until then, connect with the CA below or sslmode=require. Once it is issued, the external URL needs no CA, as on Render; hide and reveal again to refresh.",
+    description:
+      "Connections card note body while the public database certificate is pending",
+  },
+  "databases.connCertFailedTitle": {
+    message: "Publicly trusted certificate not issued yet",
+    description:
+      "Connections card note title when issuing a public database's certificate failed (w4/m357)",
+  },
+  "databases.connCertFailedBody": {
+    message:
+      "Issuing this database's publicly trusted certificate failed, and bex retries it automatically. The CA path works meanwhile: connect with the CA below or sslmode=require.",
+    description:
+      "Connections card note body when the public database certificate failed to issue",
+  },
   "databases.connErrorTitle": {
     message: "Couldn't load connection info",
     description: "Connection-info panel error title",

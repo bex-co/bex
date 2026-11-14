@@ -527,6 +527,37 @@ const (
 	DBExternalCertificatePubliclyTrusted DatabaseExternalCertificate = "PubliclyTrusted"
 )
 
+// ConditionPublicCertificateReady reports the publicly trusted certificate of
+// a public Database or Key Value (w2/m245, w4/m357). It never affects Ready:
+// a Database serves CNPG's own certificate meanwhile, and a Key Value serves
+// internally while its external TLS listener waits for the certificate.
+const ConditionPublicCertificateReady = "PublicCertificateReady"
+
+// PublicCertificateReady reasons. Issued is the True reason. bex-api reads a
+// reason in PublicCertificateFailedReasons as failed (issuance stopped until
+// cert-manager's next retry, or the issued Secret cannot be served) and any
+// other False reason as pending.
+const (
+	ReasonPublicCertificateIssued  = "Issued"
+	ReasonPublicCertificateIssuing = "Issuing"
+	// ReasonPublicCertificateRateLimited: the CA refused the order with its
+	// rate limit (Let's Encrypt's new-certificates-per-registered-domain
+	// budget for bex.co, w4/m357). cert-manager retries with backoff.
+	ReasonPublicCertificateRateLimited = "RateLimited"
+	// ReasonPublicCertificateIssuanceFailed: cert-manager's last issuance
+	// attempt failed for any other reason. It retries with backoff.
+	ReasonPublicCertificateIssuanceFailed = "IssuanceFailed"
+)
+
+// PublicCertificateFailedReasons is every PublicCertificateReady reason that
+// means issuance failed rather than is still in progress: the two cert-manager
+// failures above plus the Database reconciler's own (Certificate write, issued
+// Secret unreadable or untrusted, CA bundle write).
+var PublicCertificateFailedReasons = []string{
+	ReasonPublicCertificateRateLimited, ReasonPublicCertificateIssuanceFailed,
+	"CertificateFailed", "CertificateSecretUnavailable", "CertificateUntrusted", "CASecretFailed",
+}
+
 // Ready-condition reasons the operator sets on a Database. A failed one is
 // what bex-api publishes as an unavailable database's statusReasonCode, which
 // clients translate (w5/079), so renaming one is an API change. A Key Value

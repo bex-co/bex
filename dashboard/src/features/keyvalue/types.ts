@@ -36,6 +36,8 @@ export interface KeyValueView {
   statusReasonCode?: string | null;
   /** Whether internal connections require the password; detail query only. */
   internalAuth?: boolean;
+  /** The external endpoint's certificate state (w4/m357); detail query only. */
+  externalCertificate?: string | null;
 }
 
 /** The connection strings, fetched on demand (never in the list). The
@@ -45,6 +47,11 @@ export interface KeyValueConnectionInfoView {
   internalConnectionString: string;
   externalConnectionString: string;
   cliCommand: string;
+  /**
+   * Whether the external endpoint is open (bex-api externalCertificate,
+   * w4/m357): "publiclyTrusted", "pending", "failed", or "" for a private store.
+   */
+  externalCertificate?: string;
 }
 
 /** One catalog plan as the create form's picker consumes it. */

@@ -381,6 +381,16 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "是",
     description: "Metadata value for a true boolean field",
   },
+  "keyvalue.publicPending": {
+    message: "是（外部端点开启中：证书签发中）",
+    description:
+      "Details value for Public access while the store's certificate is pending, so it does not read as reachable (w4/m357)",
+  },
+  "keyvalue.publicFailed": {
+    message: "是（暂不可访问：证书签发失败）",
+    description:
+      "Details value for Public access when the store's certificate failed to issue (w4/m357)",
+  },
   "keyvalue.no": {
     message: "否",
     description: "Metadata value for a false boolean field",
@@ -442,9 +452,15 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalPending": {
     message:
-      "正在开启外部访问。存储开始接受 TLS 连接后（通常在一分钟内）会显示外部 URL；可隐藏后重新显示以刷新。",
+      "正在开启外部访问：正在签发公共受信任证书（通常需要几分钟）。存储开始接受 TLS 连接后会显示外部 URL；在此之前只能从你的服务通过下方的内部 URL 和命令访问。可隐藏后重新显示以刷新。",
     description:
       "Shown instead of the external URL while a public store's TLS listener is still opening",
+  },
+  "keyvalue.connExternalFailed": {
+    message:
+      "外部 URL 暂不可用：此存储的公共受信任证书签发失败，bex 会自动重试。成功之前只能从你的服务通过下方的内部 URL 和命令访问。",
+    description:
+      "Shown instead of the external URL when a public store's certificate failed to issue (w4/m357)",
   },
   "keyvalue.connExternalUnavailable": {
     message: "未公开。在「网络」中添加入站 IP 规则即可启用外部访问。",

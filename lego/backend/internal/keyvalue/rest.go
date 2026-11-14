@@ -74,6 +74,10 @@ type renderKeyValue struct {
 	Public           bool                    `json:"public"`
 	InternalAuth     bool                    `json:"internalAuth"`
 	ProjectID        string                  `json:"projectId,omitempty"`
+	// ExternalCertificate / ExternalCertificateReason: whether the external
+	// endpoint is open yet (bex extensions, w4/m357; see KeyValueView).
+	ExternalCertificate       string `json:"externalCertificate,omitempty"`
+	ExternalCertificateReason string `json:"externalCertificateReason,omitempty"`
 	// BlueprintID names the Blueprint managing this instance (w4/m125); a bex
 	// extension, since Render does not enforce Blueprint ownership.
 	BlueprintID string `json:"blueprintId,omitempty"`
@@ -97,13 +101,15 @@ func toRenderKeyValue(kv KeyValueView) renderKeyValue {
 			MaxmemoryPolicy: kv.MaxmemoryPolicy,
 			PersistenceMode: kv.PersistenceMode,
 		},
-		IPAllowList:   kv.IPAllowList,
-		EnvironmentID: kv.EnvironmentID,
-		ExternalHost:  kv.ExternalHost,
-		Public:        kv.Public,
-		InternalAuth:  kv.InternalAuth,
-		ProjectID:     kv.ProjectID,
-		BlueprintID:   kv.BlueprintID,
+		IPAllowList:               kv.IPAllowList,
+		EnvironmentID:             kv.EnvironmentID,
+		ExternalHost:              kv.ExternalHost,
+		Public:                    kv.Public,
+		InternalAuth:              kv.InternalAuth,
+		ProjectID:                 kv.ProjectID,
+		ExternalCertificate:       kv.ExternalCertificate,
+		ExternalCertificateReason: kv.ExternalCertificateReason,
+		BlueprintID:               kv.BlueprintID,
 	}
 }
 

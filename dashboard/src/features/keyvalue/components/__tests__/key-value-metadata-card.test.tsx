@@ -120,4 +120,25 @@ describe("KeyValueMetadataCard", () => {
 
     expect(screen.getByText("Available")).toBeInTheDocument();
   });
+
+  // w4/m357: a public store has no external endpoint until its certificate
+  // issues, so "Public access: Yes" alone read as reachable.
+  it("qualifies Public access until the external endpoint is open", () => {
+    const cases: [string | null | undefined, string][] = [
+      ["pending", "Yes (external endpoint opening: certificate pending)"],
+      ["failed", "Yes (not reachable yet: certificate issuance failed)"],
+      ["publiclyTrusted", "Yes"],
+      [undefined, "Yes"],
+    ];
+    for (const [externalCertificate, label] of cases) {
+      const { unmount } = render(
+        <KeyValueMetadataCard
+          keyValue={kv({ public: true, externalCertificate })}
+          onRenamed={vi.fn()}
+        />,
+      );
+      expect(screen.getByText(label)).toBeInTheDocument();
+      unmount();
+    }
+  });
 });

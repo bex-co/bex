@@ -390,6 +390,16 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Yes",
     description: "Metadata value for a true boolean field",
   },
+  "keyvalue.publicPending": {
+    message: "Yes (external endpoint opening: certificate pending)",
+    description:
+      "Details value for Public access while the store's certificate is pending, so it does not read as reachable (w4/m357)",
+  },
+  "keyvalue.publicFailed": {
+    message: "Yes (not reachable yet: certificate issuance failed)",
+    description:
+      "Details value for Public access when the store's certificate failed to issue (w4/m357)",
+  },
   "keyvalue.no": {
     message: "No",
     description: "Metadata value for a false boolean field",
@@ -451,9 +461,15 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalPending": {
     message:
-      "External access is being enabled. The external URL appears once the store accepts TLS connections, usually within a minute; hide and reveal again to refresh.",
+      "External access is being enabled: a publicly trusted certificate is being issued (usually a few minutes). The external URL appears once the store accepts TLS connections; until then it is reachable only from your services, with the internal URL and command below. Hide and reveal again to refresh.",
     description:
       "Shown instead of the external URL while a public store's TLS listener is still opening",
+  },
+  "keyvalue.connExternalFailed": {
+    message:
+      "The external URL is not reachable yet: issuing this store's publicly trusted certificate failed, and bex retries it automatically. Until it succeeds the store is reachable only from your services, with the internal URL and command below.",
+    description:
+      "Shown instead of the external URL when a public store's certificate failed to issue (w4/m357)",
   },
   "keyvalue.connExternalUnavailable": {
     message:

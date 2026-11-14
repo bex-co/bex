@@ -1208,6 +1208,8 @@ export type Database = {
   diskSizeGB: Maybe<Scalars['Int']['output']>;
   environmentId: Maybe<Scalars['String']['output']>;
   expiresAt: Maybe<Scalars['String']['output']>;
+  externalCertificate: Maybe<Scalars['String']['output']>;
+  externalCertificateReason: Maybe<Scalars['String']['output']>;
   externalHost: Maybe<Scalars['String']['output']>;
   highAvailabilityEnabled: Maybe<Scalars['Boolean']['output']>;
   highAvailabilityReady: Maybe<Scalars['Boolean']['output']>;
@@ -1744,6 +1746,8 @@ export type KeyValue = {
   dashboardUrl: Maybe<Scalars['String']['output']>;
   environmentId: Maybe<Scalars['String']['output']>;
   externalAccessRestarts: Maybe<Scalars['Boolean']['output']>;
+  externalCertificate: Maybe<Scalars['String']['output']>;
+  externalCertificateReason: Maybe<Scalars['String']['output']>;
   externalHost: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   internalAuth: Maybe<Scalars['Boolean']['output']>;
@@ -1768,6 +1772,8 @@ export type KeyValue = {
 export type KeyValueConnectionInfo = {
   __typename: 'KeyValueConnectionInfo';
   cliCommand: Maybe<Scalars['String']['output']>;
+  externalCertificate: Maybe<Scalars['String']['output']>;
+  externalCertificateReason: Maybe<Scalars['String']['output']>;
   externalConnectionString: Maybe<Scalars['String']['output']>;
   internalConnectionString: Maybe<Scalars['String']['output']>;
 };
@@ -3800,6 +3806,8 @@ export type PipelineSettings = {
 
 export type PostgresConnectionInfo = {
   __typename: 'PostgresConnectionInfo';
+  externalCertificate: Maybe<Scalars['String']['output']>;
+  externalCertificateReason: Maybe<Scalars['String']['output']>;
   externalConnectionPoolString: Maybe<Scalars['String']['output']>;
   externalConnectionString: Maybe<Scalars['String']['output']>;
   internalConnectionPoolString: Maybe<Scalars['String']['output']>;

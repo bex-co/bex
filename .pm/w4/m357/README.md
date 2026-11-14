@@ -1,17 +1,17 @@
 # w4 · m357 — A new public Postgres keeps its private-CA certificate: the copied external URL carries `sslmode=verify-full` and fails on a stock client ("root certificate file … does not exist"), a regression of w2/m245's publicly trusted URL
 
-**Worker:** worker4 **Goal:** a new public Postgres serves a publicly trusted certificate within minutes of becoming Available, and its connection info is again Render's `postgresql://user:pass@<id>.db.bex.co:5432/db` with no `sslmode` and no CA, so a copied URL connects from any stock client. While issuance is pending, the user is told so. A new public Key Value gets its TLS listener (and so any external access) within the same window; round 254 showed it has none at all while issuance stalls. **Status:** todo
+**Worker:** worker4 **Goal:** a new public Postgres serves a publicly trusted certificate within minutes of becoming Available, and its connection info is again Render's `postgresql://user:pass@<id>.db.bex.co:5432/db` with no `sslmode` and no CA, so a copied URL connects from any stock client. While issuance is pending, the user is told so. A new public Key Value gets its TLS listener (and so any external access) within the same window; round 254 showed it has none at all while issuance stalls. **Status:** in progress (t001, t003, t004, t005, t006 done; t002 shipped everything but the wildcard, which is gated on a bex.co Cloudflare DNS token; t007 waits for the deploy and the token)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Diagnose on production why a new Database's public certificate never issues | 30m | — |
-| [t002](t002.md) | Restore issuance for new public databases, with a guard so QA churn cannot exhaust it again | 1h30m | t001 |
-| [t003](t003.md) | Say on the Connections card, REST and GraphQL when the publicly trusted certificate is pending or failed | 45m | t001 |
-| [t004](t004.md) | Render parity | 20m | t002, t003 |
-| [t005](t005.md) | Simplify | 15m | t004 |
-| [t006](t006.md) | Test coverage | 30m | t004 |
+| [t001](done/t001.md) | Diagnose on production why a new Database's public certificate never issues — **DONE** | 30m | — |
+| [t002](t002.md) | Restore issuance for new public databases, with a guard so QA churn cannot exhaust it again — **GATED** (wildcard needs a bex.co DNS token) | 1h30m | t001 |
+| [t003](done/t003.md) | Say on the Connections card, REST and GraphQL when the publicly trusted certificate is pending or failed — **DONE** | 45m | t001 |
+| [t004](done/t004.md) | Render parity — **DONE** | 20m | t002, t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
 | [t007](t007.md) | Closeout (live replay on production) | 20m | t005, t006 |
 
 ## Definition of done
@@ -134,3 +134,30 @@ Both read `available` at 10:44:42 and were deleted afterwards (`DELETE` 204, the
   - While the listener waits, a public store's `cliCommand` falls back to the internal URL (`KeyValueConnectionInfo`, `lego/backend/internal/keyvalue/service.go:1356-1371`). That command cannot reach the store from outside the cluster, and nothing in the response says the external endpoint is pending.
   - GraphQL `KeyValueConnectionInfo` has the same three fields only (`cliCommand`, `externalConnectionString`, `internalConnectionString`), so the dashboard cannot tell pending from private either.
 - **Reading:** the round-286 stall had lasted at least 4.5 h by this check, or it recurred. No certificate request result was read. t001 still owns the ACME errors.
+
+## t001 diagnosis — the bex.co Let's Encrypt budget (2026-11-14 12:26–12:50 UTC)
+
+**Cause: Let's Encrypt's new-certificates-per-registered-domain limit for `bex.co`, exhausted by QA churn of public datastores; cert-manager's failure backoff then stretched each stall past the refill.** Not a solver, routing or operator fault.
+
+- **Issuance works when the bucket has room.** Fixture `qa-20261114-m357-pg` (`dpg-dbs571lgihjc73apv4j0`, Free Postgres 18, public, `0.0.0.0/0`) was created by REST at 12:26:46. In `tea-daif693dqjvc73e7as3g`:
+  - Order `dpg-dbs571lgihjc73apv4j0-public-tls-1-42715742` went `pending` (Challenge `pending` for `dpg-dbs571lgihjc73apv4j0.db.bex.co`, HTTP-01) to `valid`; Certificate `dpg-dbs571lgihjc73apv4j0-public-tls` `True` at 45 s, CertificateRequest `True … letsencrypt-prod`.
+  - The Database read `status.externalCertificate: PubliclyTrusted`, `PublicCertificateReady=True Issued: the external endpoints serve a publicly trusted certificate`.
+  - `openssl s_client -starttls postgres` → `subject=CN=dpg-dbs571lgihjc73apv4j0.db.bex.co`, `issuer=C=US, O=Let's Encrypt, CN=YR1`, `Verify return code: 0 (ok)`. `connection-info` returned `postgresql://dpg_dbs571lgihjc73apv4j0_user:***@dpg-dbs571lgihjc73apv4j0.db.bex.co:5432/dpg_dbs571lgihjc73apv4j0` and `PGPASSWORD=*** psql -h dpg-dbs571lgihjc73apv4j0.db.bex.co -U dpg_dbs571lgihjc73apv4j0_user dpg_dbs571lgihjc73apv4j0`; `psql "<copied URL>"` with no `~/.postgresql/root.crt` → `connected|on`.
+  - Deleted at 12:32:34 (`DELETE` 204, `GET` 404). Only one fixture was created, to spend one certificate of the scarce budget.
+- **The failed window is out of the cluster's logs.** cert-manager's controller log starts at 2026-11-14 02:32 (pod `cert-manager-7cfc8875f5-kgqzc`, 2d2h old, log rotated); the failed fixtures' Certificates and Orders were deleted with their databases; Loki and Prometheus are not reachable through the API-server service proxy (`dial tcp …:3100: i/o timeout`). Every rate-limit error the retained log holds is for the other registered domain, e.g. `E1114 02:37:56 … "failed to create Order resource due to bad request, marking Order as failed" err="429 urn:ietf:params:acme:error:rateLimited: too many certificates (50) already issued for \"onbex.co\" in the last 168h0m0s, retry after 2026-11-14 03:12:04 UTC"` (37 such lines, all `onbex.co`, w4/650).
+- **Certificate Transparency shows the `bex.co` bucket saturated** (certspotter `issuances?domain=bex.co&include_subdomains=true`, 314 issuances; issue time = `not_before` + 1 h):
+  - 95 Let's Encrypt `bex.co` certificates in the 168 h before 2026-11-13 02:23 (round 253), 98 before 11:23 (round 286), 99 before 15:52 (round 304). Since 2025 the limit is 50 per 7 days refilled at one per ~202 minutes, so a rolling week tops out near 100: the bucket was empty.
+  - Almost all are QA datastores: 21 on 11-10, 26 on 11-11, 25 on 11-12 (`dpg-*.db.bex.co`, `red-*.kv.bex.co`), plus platform hosts (`api`, `dashboard`, `auth`, `oauth`, `router`, `status`).
+  - After round 251's store (`red-dbr6t1p7ka5c7395bne0.kv.bex.co`, issued ~01:59) issuance falls to one per refill: 04:33, 08:09, 10:43 (×2, round 283's pair), 13:58, 17:23, then `status.bex.co` at 20:18. Gaps 154–215 min ≈ the 202-minute refill. Round 253 (02:23), 254 (02:47), 286 (11:23) and 304 (15:52) each landed in an empty bucket.
+- **Why the stall outlasted the refill.** cert-manager marks the Order failed on the 429 and backs the Certificate off exponentially. Production's errored `onbex.co` Certificate `tea-dbq2tg234ugc73cu1bjg-hgzyapi-tls` shows the shape: `Issuing=False reason=Failed "The certificate request has failed to complete and will be retried: … order is in \"errored\" state: Failed to create Order: 429 urn:ietf:params:acme:error:rateLimited: too many certificates (50) already issued …"`, `failedIssuanceAttempts: 7`, `lastFailureTime: 2026-11-14T00:07:08Z`. A refilled token goes to whichever Certificate retries first, often a newer one.
+- **Why it was silent.** The operator wrote `PublicCertificateReady=False Issuing: waiting for the publicly trusted certificate to be issued` whatever cert-manager reported, and neither REST nor GraphQL exposed the state.
+- **What t002 follows from it.** A per-database certificate cannot fit QA churn in a 50-per-week bucket shared with the platform's own hosts. Render itself serves one wildcard per region (`frankfurt-postgres.render.com`: `DNS:*.frankfurt-postgres.render.com`, issuer `Let's Encrypt YR2`, verify 0, checked 2026-11-14 12:50 UTC). The fix is the `*.db.bex.co` + `*.kv.bex.co` DNS-01 wildcard, which needs a credential bex does not hold: the cluster's only DNS-01 Issuer is `traefik/onbex-dns01`, whose `cloudflare-dns-token` is scoped to `onbex.co` (ADR019), and both zones are on Cloudflare (`rita/ajay.ns.cloudflare.com`).
+
+## What shipped (2026-11-14)
+
+- **t002 (all but the gated wildcard).** The operator names a failed attempt: `PublicCertificateReady` reason `RateLimited` (ACME `rateLimited`) or `IssuanceFailed`, from cert-manager's `Issuing=False/Failed` for the Certificate's current generation (`lego/operator/internal/controller/public_certificate.go`). A public Key Value carries the same condition (`Issued`, `Issuing`, `ListenerStarting`, `RateLimited`, `IssuanceFailed`). The datastore collector exports `bex_datastore_public_certificate_pending_seconds{kind,namespace,name,reason}` (inside the existing `bex_datastore.*` scrape keep), and `PublicCertificatePendingTooLong` fires past 10 minutes (promtool test in `alerts_test.yml`). ADR009 § Publicly trusted server certificates and ADR021 record the budget, the diagnosis, the alert and the gated wildcard design.
+- **t003.** `externalCertificate` (`publiclyTrusted` | `pending` | `failed`) and `externalCertificateReason` (a fixed sentence, never the ACME text) on the Postgres and Key Value REST reads, GraphQL `Database`/`KeyValue`, MCP `get_postgres`/`get_key_value`, and both connection-info responses (REST + GraphQL). Postgres Connections card: a pending or failed note saying to connect with the CA below or `sslmode=require` meanwhile, none when trusted. Key Value: the card says the external URL is not reachable yet (pending, or failed and retried), and Details read "Yes (external endpoint opening: certificate pending)" / "Yes (not reachable yet: certificate issuance failed)". en + zh.
+
+## Gate — t002's wildcard (user action)
+
+Create a Cloudflare API token, **Zone → DNS → Edit** and **Zone → Zone → Read**, **Zone Resources: Include → Specific zone → `bex.co`** only, no expiry or a long one. Store it as `BEX_DATASTORE_DNS_TOKEN` in `.env` (name added to `.env.example` with the wildcard work) and in the GitHub `production-deploy` environment. Then the remaining t002 work is: a namespaced DNS-01 Issuer plus `*.db.bex.co` and `*.kv.bex.co` Certificates (the ADR093 pattern), the deploy step installing the token Secret, and the operator copying the wildcard Secret into each public datastore's namespace instead of ordering a certificate. Widening the existing `onbex.co` token to `bex.co` would also work but couples the two zones' blast radius.

@@ -74,16 +74,21 @@ import (
 // still trusts only the issuer that actually signed this database.
 //
 // Let's Encrypt budget: 50 NEW certificates per registered domain (bex.co) per
-// week, shared with every other *.bex.co certificate (App custom domains are
-// their own domains; *.onbex.co is a separate registered domain). Renewals are
-// exempt. Each public database is ONE certificate whatever its SAN count, but
-// any change to its name set — enabling the pooler, adding or removing a read
-// replica, or turning public access off and on — orders a new one, and an
-// identical name set is further capped at 5 per week. That bounds bex at about
-// 50 new public databases (or name-set changes) per week. A *.db.bex.co wildcard
-// would lift it but needs a DNS-01 (Cloudflare) token bex does not hold; file it
-// as a follow-up with that token's scope (Zone:DNS:Edit on bex.co) if the
-// budget ever binds.
+// rolling week, refilled at one per ~202 minutes, shared with every other
+// *.bex.co certificate (App custom domains are their own domains; *.onbex.co is
+// a separate registered domain). Each public database is ONE certificate
+// whatever its SAN count, but any change to its name set — enabling the pooler,
+// adding or removing a read replica, or turning public access off and on —
+// orders a new one. QA churn exhausted it on 2026-11-13 (w4/m357 t001: 95 bex.co
+// certificates in the 168h before 02:23, then one per refill), and every
+// database created into the empty bucket kept CNPG's private CA for hours,
+// because cert-manager backs a failed Certificate off 1h, 2h, 4h … up to 32h.
+// The lasting fix is one *.db.bex.co wildcard over DNS-01, which needs a
+// Cloudflare token with DNS edit on the bex.co zone (ADR009 § Publicly trusted
+// server certificates). Meanwhile the PublicCertificateReady condition names a
+// rate-limited or failed issuance, bex-api reports it as externalCertificate
+// "failed", and bex_datastore_public_certificate_pending_seconds feeds the
+// PublicCertificatePendingTooLong alert.
 const (
 	dbPublicTLSSuffix = "-public-tls"
 	dbPublicCASuffix  = "-public-ca"
@@ -93,13 +98,9 @@ const (
 	cnpgReloadLabel = "cnpg.io/reload"
 	// labelDatabaseUID binds the cert-manager-written Secret to this Database's
 	// lifetime: only a Secret carrying this Database's UID is ever deleted.
-	labelDatabaseUID = "app.bex.co/database-uid"
-	// conditionPublicCertificateReady reports the publicly trusted certificate's
-	// progress; it never affects the Database's Ready condition, because the
-	// database serves with CNPG's own certificate meanwhile.
-	conditionPublicCertificateReady = "PublicCertificateReady"
-	publicTLSPendingRequeue         = 30 * time.Second
-	publicTLSSettleRequeue          = 5 * time.Second
+	labelDatabaseUID        = "app.bex.co/database-uid"
+	publicTLSPendingRequeue = 30 * time.Second
+	publicTLSSettleRequeue  = 5 * time.Second
 )
 
 func databasePublicTLSName(db *appv1alpha1.Database) string { return db.Name + dbPublicTLSSuffix }
@@ -183,8 +184,8 @@ func (r *DatabaseReconciler) preparePublicTLS(ctx context.Context, db *appv1alph
 		return keep("CertificateFailed", err)
 	}
 	if !certificateReady(cert) && !liveWired {
-		setPublicCertificateCondition(db, metav1.ConditionFalse, "Issuing",
-			"waiting for the publicly trusted certificate to be issued")
+		reason, message := certificateIssuance(cert)
+		setPublicCertificateCondition(db, metav1.ConditionFalse, reason, message)
 		return state
 	}
 
@@ -203,13 +204,13 @@ func (r *DatabaseReconciler) preparePublicTLS(ctx context.Context, db *appv1alph
 	}
 	state.wired = true
 	state.requeue = 0
-	setPublicCertificateCondition(db, metav1.ConditionTrue, "Issued", "the external endpoints serve a publicly trusted certificate")
+	setPublicCertificateCondition(db, metav1.ConditionTrue, appv1alpha1.ReasonPublicCertificateIssued, "the external endpoints serve a publicly trusted certificate")
 	return state
 }
 
 func setPublicCertificateCondition(db *appv1alpha1.Database, status metav1.ConditionStatus, reason, message string) {
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-		Type: conditionPublicCertificateReady, Status: status, Reason: reason,
+		Type: appv1alpha1.ConditionPublicCertificateReady, Status: status, Reason: reason,
 		Message: message, ObservedGeneration: db.Generation,
 	})
 }
@@ -328,7 +329,7 @@ func (r *DatabaseReconciler) settlePublicTLS(ctx context.Context, db *appv1alpha
 	// Withdrawing: the endpoints may still serve the public certificate, so
 	// clients are pointed back at CNPG's own CA from now on.
 	db.Status.ExternalCertificate = appv1alpha1.DBExternalCertificatePending
-	meta.RemoveStatusCondition(&db.Status.Conditions, conditionPublicCertificateReady)
+	meta.RemoveStatusCondition(&db.Status.Conditions, appv1alpha1.ConditionPublicCertificateReady)
 	if err := r.deletePublicCertificate(ctx, db); err != nil {
 		return 0, err
 	}

@@ -31,6 +31,7 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -1937,14 +1938,41 @@ func TestConnectionInfoWaitsForTheTLSListener(t *testing.T) {
 		}
 		return ci
 	}
-	if ci := read(); ci.ExternalConnectionString != "" || strings.Contains(ci.CLICommand, "--sni") || ci.InternalConnectionString == "" {
-		t.Fatalf("listener not open yet: connection-info = %+v, want the internal URL only", ci)
+	readView := func() KeyValueView {
+		t.Helper()
+		var v KeyValueView
+		if err := json.Unmarshal(serveREST(svc, "GET", "/v1/key-value/opening-kv", "").Body.Bytes(), &v); err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	// w4/m357: the pending endpoint is named on the read and the connection
+	// info, so a public store without a listener never reads as reachable.
+	if ci := read(); ci.ExternalConnectionString != "" || strings.Contains(ci.CLICommand, "--sni") || ci.InternalConnectionString == "" ||
+		ci.ExternalCertificate != core.ExternalCertificatePending {
+		t.Fatalf("listener not open yet: connection-info = %+v, want the internal URL only and a pending certificate", ci)
+	}
+	if v := readView(); v.ExternalCertificate != core.ExternalCertificatePending {
+		t.Fatalf("listener not open yet: read externalCertificate = %q, want pending", v.ExternalCertificate)
+	}
+	// Round 254/304: Let's Encrypt refused the order for hours.
+	apimeta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionPublicCertificateReady, Status: metav1.ConditionFalse,
+		Reason: appv1alpha1.ReasonPublicCertificateRateLimited, Message: "429 urn:ietf:params:acme:error:rateLimited",
+	})
+	if err := cl.Update(context.Background(), &kv); err != nil {
+		t.Fatal(err)
+	}
+	if ci, v := read(), readView(); ci.ExternalCertificate != core.ExternalCertificateFailed || v.ExternalCertificate != core.ExternalCertificateFailed ||
+		!strings.Contains(v.ExternalCertificateReason, "rate limit") || ci.ExternalCertificateReason != v.ExternalCertificateReason {
+		t.Fatalf("rate-limited: connection-info = %+v, read = %q / %q", ci, v.ExternalCertificate, v.ExternalCertificateReason)
 	}
 	kv.Status.TLSListener = true
 	if err := cl.Update(context.Background(), &kv); err != nil {
 		t.Fatal(err)
 	}
-	if ci := read(); ci.ExternalConnectionString != "rediss://default:s3cret@opening-kv.kv.bex.co:6379" || !strings.Contains(ci.CLICommand, "--sni opening-kv.kv.bex.co") {
-		t.Fatalf("listener open: connection-info = %+v, want the external URL and --sni command", ci)
+	if ci := read(); ci.ExternalConnectionString != "rediss://default:s3cret@opening-kv.kv.bex.co:6379" || !strings.Contains(ci.CLICommand, "--sni opening-kv.kv.bex.co") ||
+		ci.ExternalCertificate != core.ExternalCertificatePubliclyTrusted || ci.ExternalCertificateReason != "" {
+		t.Fatalf("listener open: connection-info = %+v, want the external URL, --sni command and a trusted certificate", ci)
 	}
 }

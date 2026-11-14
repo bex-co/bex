@@ -53,6 +53,9 @@ query KeyValue($id: String!) {
     persistenceMode
     # Whether internal connections require the password (w5/m268).
     internalAuth
+    # Whether the external endpoint is open yet: a public store waits for its
+    # publicly trusted certificate (w4/m357).
+    externalCertificate
   }
 }
 
@@ -66,6 +69,8 @@ query KeyValueConnectionInfo($id: String!) {
     internalConnectionString
     externalConnectionString
     cliCommand
+    externalCertificate
+    externalCertificateReason
   }
 }
 

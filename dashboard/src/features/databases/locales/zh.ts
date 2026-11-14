@@ -585,6 +585,28 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description:
       "Accessible label for the copyable PGSSLROOTCERT example snippet",
   },
+  "databases.connCertPendingTitle": {
+    message: "正在签发公共受信任证书",
+    description:
+      "Connections card note title while a public database's Let's Encrypt certificate is still pending (w4/m357)",
+  },
+  "databases.connCertPendingBody": {
+    message:
+      "正在签发公共受信任证书（通常需要几分钟）。在此之前，请使用下方的 CA 或 sslmode=require 连接。签发完成后，外部 URL 无需 CA，与 Render 一致；可隐藏后重新显示以刷新。",
+    description:
+      "Connections card note body while the public database certificate is pending",
+  },
+  "databases.connCertFailedTitle": {
+    message: "公共受信任证书尚未签发",
+    description:
+      "Connections card note title when issuing a public database's certificate failed (w4/m357)",
+  },
+  "databases.connCertFailedBody": {
+    message:
+      "此数据库的公共受信任证书签发失败，bex 会自动重试。在此期间 CA 方式仍可使用：请使用下方的 CA 或 sslmode=require 连接。",
+    description:
+      "Connections card note body when the public database certificate failed to issue",
+  },
   "databases.connErrorTitle": {
     message: "无法加载连接信息",
     description: "Connection-info panel error title",

@@ -1087,6 +1087,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	var tlsPending, policyPending bool
 	kv.Status.TLSListener, tlsPending = r.reconcileKeyValueTLSListener(ctx, &kv, sts, platform, intent)
+	r.setKeyValuePublicCertificate(ctx, &kv, intent.public, kv.Status.TLSListener)
 	kv.Status.TLSRuntimeSwitch = intent.tlsRuntime
 	kv.Status.MaxmemoryPolicy, policyPending = r.reconcileKeyValueMaxmemory(ctx, &kv, sts, platform, intent)
 	runtimePending := tlsPending || policyPending

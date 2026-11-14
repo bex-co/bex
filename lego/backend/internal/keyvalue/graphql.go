@@ -45,7 +45,11 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"dashboardUrl":     gqlutil.StrField(func(v KeyValueView) any { return v.DashboardURL }),
 		"externalHost":     gqlutil.StrField(func(v KeyValueView) any { return v.ExternalHost }),
 		"public":           gqlutil.BoolField(func(v KeyValueView) any { return v.Public }),
-		"internalAuth":     gqlutil.BoolField(func(v KeyValueView) any { return v.InternalAuth }),
+		// externalCertificate: publiclyTrusted once the external endpoint is
+		// open, pending or failed before, null for a private store (w4/m357).
+		"externalCertificate":       gqlutil.OptionalStrField(func(v KeyValueView) any { return v.ExternalCertificate }),
+		"externalCertificateReason": gqlutil.OptionalStrField(func(v KeyValueView) any { return v.ExternalCertificateReason }),
+		"internalAuth":              gqlutil.BoolField(func(v KeyValueView) any { return v.InternalAuth }),
 		// externalAccessRestarts: turning external access on would restart the
 		// store (an older store's first enable, w4/m233; a store that switches TLS
 		// at runtime never restarts for it, w8/m134). bex extension.
@@ -85,9 +89,11 @@ var keyValueInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 var keyValueConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "KeyValueConnectionInfo",
 	Fields: graphql.Fields{
-		"internalConnectionString": gqlutil.StrField(func(v KeyValueConnectionInfo) any { return v.InternalConnectionString }),
-		"externalConnectionString": gqlutil.StrField(func(v KeyValueConnectionInfo) any { return v.ExternalConnectionString }),
-		"cliCommand":               gqlutil.StrField(func(v KeyValueConnectionInfo) any { return v.CLICommand }),
+		"internalConnectionString":  gqlutil.StrField(func(v KeyValueConnectionInfo) any { return v.InternalConnectionString }),
+		"externalConnectionString":  gqlutil.StrField(func(v KeyValueConnectionInfo) any { return v.ExternalConnectionString }),
+		"cliCommand":                gqlutil.StrField(func(v KeyValueConnectionInfo) any { return v.CLICommand }),
+		"externalCertificate":       gqlutil.OptionalStrField(func(v KeyValueConnectionInfo) any { return v.ExternalCertificate }),
+		"externalCertificateReason": gqlutil.OptionalStrField(func(v KeyValueConnectionInfo) any { return v.ExternalCertificateReason }),
 	},
 })
 

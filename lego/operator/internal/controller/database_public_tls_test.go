@@ -386,7 +386,7 @@ func (h *publicTLSHarness) requireWithdrawn() {
 	h.reconcile()
 	h.requireSecrets(false)
 	db = h.database()
-	if db.Status.ExternalCertificate != "" || apimeta.FindStatusCondition(db.Status.Conditions, conditionPublicCertificateReady) != nil {
+	if db.Status.ExternalCertificate != "" || apimeta.FindStatusCondition(db.Status.Conditions, appv1alpha1.ConditionPublicCertificateReady) != nil {
 		t.Fatalf("withdrawn status = %q / %v", db.Status.ExternalCertificate, db.Status.Conditions)
 	}
 }
@@ -397,7 +397,7 @@ func (h *publicTLSHarness) requireStatus(want appv1alpha1.DatabaseExternalCertif
 	if db.Status.ExternalCertificate != want {
 		h.t.Fatalf("externalCertificate = %q, want %q", db.Status.ExternalCertificate, want)
 	}
-	if c := apimeta.FindStatusCondition(db.Status.Conditions, conditionPublicCertificateReady); c == nil || c.Reason != reason {
+	if c := apimeta.FindStatusCondition(db.Status.Conditions, appv1alpha1.ConditionPublicCertificateReady); c == nil || c.Reason != reason {
 		h.t.Fatalf("condition = %+v, want reason %s", c, reason)
 	}
 }
@@ -430,7 +430,7 @@ func TestUntrustedPublicCertificateIsNotWired(t *testing.T) {
 		t.Fatalf("untrusted certificate wired into CNPG: %v", certs)
 	}
 	db := h.database()
-	if c := apimeta.FindStatusCondition(db.Status.Conditions, conditionPublicCertificateReady); c == nil || c.Reason != "CertificateUntrusted" {
+	if c := apimeta.FindStatusCondition(db.Status.Conditions, appv1alpha1.ConditionPublicCertificateReady); c == nil || c.Reason != "CertificateUntrusted" {
 		t.Fatalf("condition = %+v, want CertificateUntrusted", c)
 	}
 	if db.Status.ExternalCertificate != appv1alpha1.DBExternalCertificatePending {

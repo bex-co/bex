@@ -18,6 +18,7 @@ package core
 
 import (
 	"fmt"
+	"slices"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -82,4 +83,42 @@ func DatastoreStatusReason(conditions []metav1.Condition, noun string, sentences
 		return sentence, c.Reason
 	}
 	return fmt.Sprintf("The %s failed to reconcile (%s).", noun, c.Reason), c.Reason
+}
+
+// externalCertificate values (bex extension, w4/m357): the certificate a
+// public Postgres or Key Value's external endpoint presents, on the REST,
+// GraphQL and MCP reads and on connection info. Absent when there is no
+// external endpoint, or no publicly trusted certificate is managed for it
+// (a local or dev cluster without a public issuer).
+const (
+	// ExternalCertificatePubliclyTrusted: system roots verify it; a copied
+	// external URL connects from any stock client, as on Render.
+	ExternalCertificatePubliclyTrusted = "publiclyTrusted"
+	// ExternalCertificatePending: still being issued. A Postgres serves its
+	// private CA meanwhile; a Key Value's external endpoint is not open yet.
+	ExternalCertificatePending = "pending"
+	// ExternalCertificateFailed: the last issuance attempt failed; cert-manager
+	// retries it with backoff. externalCertificateReason says why.
+	ExternalCertificateFailed = "failed"
+)
+
+// PublicCertificateState reads a public datastore's externalCertificate from
+// its PublicCertificateReady condition. trusted is the operator's own proof
+// that the endpoint serves the certificate (a Database's
+// status.externalCertificate, a Key Value's open TLS listener), which wins over
+// the condition: Issued alone is not yet served. reason is a fixed sentence,
+// never the condition's message, which carries the raw ACME error.
+func PublicCertificateState(conditions []metav1.Condition, trusted bool) (state, reason string) {
+	if trusted {
+		return ExternalCertificatePubliclyTrusted, ""
+	}
+	c := meta.FindStatusCondition(conditions, appv1alpha1.ConditionPublicCertificateReady)
+	switch {
+	case c == nil || !slices.Contains(appv1alpha1.PublicCertificateFailedReasons, c.Reason):
+		return ExternalCertificatePending, ""
+	case c.Reason == appv1alpha1.ReasonPublicCertificateRateLimited:
+		return ExternalCertificateFailed, "The certificate authority's issuance rate limit was reached. Issuance is retried automatically."
+	default:
+		return ExternalCertificateFailed, "Issuing the certificate failed. Issuance is retried automatically."
+	}
 }

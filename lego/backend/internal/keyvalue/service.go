@@ -117,6 +117,14 @@ type KeyValueView struct {
 	// (Render's "Enable Internal Authentication", w5/m268).
 	InternalAuth bool `json:"internalAuth"`
 	Public       bool `json:"public"`
+	// ExternalCertificate is publiclyTrusted once the external TLS endpoint
+	// accepts connections, pending or failed before (core.ExternalCertificate*,
+	// w4/m357). A store's external endpoint opens only with its publicly
+	// trusted certificate, so until then a public store is not reachable from
+	// outside. Omitted for a private store. ExternalCertificateReason says why
+	// it failed.
+	ExternalCertificate       string `json:"externalCertificate,omitempty"`
+	ExternalCertificateReason string `json:"externalCertificateReason,omitempty"`
 	// ExternalAccessRestarts is true while turning external access on would
 	// restart the store (externalAccessRestarts).
 	ExternalAccessRestarts bool `json:"externalAccessRestarts,omitempty"`
@@ -162,6 +170,11 @@ type KeyValueConnectionInfo struct {
 	InternalConnectionString string `json:"internalConnectionString"`
 	ExternalConnectionString string `json:"externalConnectionString"`
 	CLICommand               string `json:"cliCommand"`
+	// ExternalCertificate / ExternalCertificateReason repeat the read's state
+	// (bex extension, w4/m357): while it is pending or failed a public store
+	// has no external string, and cliCommand is the internal one.
+	ExternalCertificate       string `json:"externalCertificate,omitempty"`
+	ExternalCertificateReason string `json:"externalCertificateReason,omitempty"`
 }
 
 // CreateKeyValueRequest is the POST /v1/key-value body (bex subset of Render's).
@@ -312,30 +325,33 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	if status == "unavailable" {
 		reason, reasonCode = core.DatastoreStatusReason(kv.Status.Conditions, "Key Value", unavailableReasons)
 	}
+	certificate, certificateReason := externalCertificateState(kv)
 	// ipAllowList is required in Render's schema, and reads as the store's
 	// effective external access (core.EffectiveAllowList, w4/m315).
 	return KeyValueView{
-		InternalAuth:           kv.Spec.InternalAuth,
-		ID:                     kv.Name,
-		Name:                   kv.Spec.Name,
-		Plan:                   kv.Spec.Plan,
-		Version:                kv.Spec.EffectiveVersion(),
-		Status:                 status,
-		StatusReason:           reason,
-		StatusReasonCode:       reasonCode,
-		Suspended:              core.SuspendedEnum(kv.Spec.Suspended),
-		CreatedAt:              created,
-		UpdatedAt:              resourcemeta.UpdatedAt(kv),
-		IPAllowList:            core.EffectiveAllowList(kv.Spec.Public, kv.Spec.IPAllowList),
-		MaxmemoryPolicy:        crdToRender(kv.Spec.MaxmemoryPolicy),
-		PersistenceMode:        crdToRender(kv.Spec.PersistenceMode),
-		ExternalHost:           kv.Status.ExternalHost,
-		Public:                 kv.Spec.Public,
-		ExternalAccessRestarts: externalAccessRestarts(kv),
-		OwnerID:                kv.Labels[core.LabelTenant],
-		ProjectID:              kv.Labels[core.LabelProject],
-		EnvironmentID:          id.EnvironmentPublicID(kv.Labels[core.LabelEnvironment]),
-		BlueprintID:            id.BlueprintPublicID(kv.Labels[core.LabelBlueprint]),
+		InternalAuth:              kv.Spec.InternalAuth,
+		ID:                        kv.Name,
+		Name:                      kv.Spec.Name,
+		Plan:                      kv.Spec.Plan,
+		Version:                   kv.Spec.EffectiveVersion(),
+		Status:                    status,
+		StatusReason:              reason,
+		StatusReasonCode:          reasonCode,
+		Suspended:                 core.SuspendedEnum(kv.Spec.Suspended),
+		CreatedAt:                 created,
+		UpdatedAt:                 resourcemeta.UpdatedAt(kv),
+		IPAllowList:               core.EffectiveAllowList(kv.Spec.Public, kv.Spec.IPAllowList),
+		MaxmemoryPolicy:           crdToRender(kv.Spec.MaxmemoryPolicy),
+		PersistenceMode:           crdToRender(kv.Spec.PersistenceMode),
+		ExternalHost:              kv.Status.ExternalHost,
+		Public:                    kv.Spec.Public,
+		ExternalCertificate:       certificate,
+		ExternalCertificateReason: certificateReason,
+		ExternalAccessRestarts:    externalAccessRestarts(kv),
+		OwnerID:                   kv.Labels[core.LabelTenant],
+		ProjectID:                 kv.Labels[core.LabelProject],
+		EnvironmentID:             id.EnvironmentPublicID(kv.Labels[core.LabelEnvironment]),
+		BlueprintID:               id.BlueprintPublicID(kv.Labels[core.LabelBlueprint]),
 	}
 }
 
@@ -1405,11 +1421,24 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 		cliCommand = fmt.Sprintf("redis-cli --sni %s -u %s", externalHost, conn)
 	}
 	s.RecordSecretsViewed(ctx, core.AuditVerbViewConnectionInfo, kv.Labels[core.LabelTenant], core.KeyValueTarget(kv.Name), kv.Spec.Name)
+	certificate, certificateReason := externalCertificateState(kv)
 	return KeyValueConnectionInfo{
-		InternalConnectionString: internal,
-		ExternalConnectionString: external,
-		CLICommand:               cliCommand,
+		InternalConnectionString:  internal,
+		ExternalConnectionString:  external,
+		CLICommand:                cliCommand,
+		ExternalCertificate:       certificate,
+		ExternalCertificateReason: certificateReason,
 	}, nil
+}
+
+// externalCertificateState is kv's externalCertificate and its reason, absent
+// for a private store or before its external host is reconciled. The open TLS
+// listener is the proof of trust: it opens only on the issued certificate.
+func externalCertificateState(kv *appv1alpha1.KeyValue) (state, reason string) {
+	if !kv.Spec.Public || kv.Status.ExternalHost == "" {
+		return "", ""
+	}
+	return core.PublicCertificateState(kv.Status.Conditions, kv.Status.TLSListener)
 }
 
 func keyValueURI(scheme, password, host string, port int32) string {

@@ -2312,3 +2312,29 @@ tests:
       - eval_time: 30m
         alertname: PlatformModelCreditStale
         exp_alerts: []
+
+  # w4/m357: a public datastore waiting past 10 minutes for its publicly
+  # trusted certificate fires; one issued in two minutes never does.
+  - name: public certificate pending past 10 minutes fires, a quick issuance stays quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_datastore_public_certificate_pending_seconds{kind="database",namespace="tea-a",name="dpg-slow",reason="RateLimited"}'
+        values: "0+60x20"
+      - series: 'bex_datastore_public_certificate_pending_seconds{kind="keyvalue",namespace="tea-a",name="red-fast",reason="Issuing"}'
+        values: "0+60x2"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PublicCertificatePendingTooLong
+        exp_alerts: []
+      - eval_time: 13m
+        alertname: PublicCertificatePendingTooLong
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              kind: database
+              namespace: tea-a
+              name: dpg-slow
+              reason: RateLimited
+            exp_annotations:
+              summary: "database tea-a/dpg-slow has waited over 10 minutes for its publicly trusted certificate (RateLimited)"
+              description: "The datastore's PublicCertificateReady condition has been False for over 10 minutes. Reason RateLimited means Let's Encrypt refused the order with its new-certificates-per-registered-domain limit for bex.co (50 per rolling week, refilled about one per 202 minutes); cert-manager then backs the Certificate off 1h, 2h, 4h up to 32h. Debug: kubectl -n tea-a describe certificate dpg-slow-public-tls (Database) or dpg-slow-kv-tls (Key Value). The lasting fix is the *.db.bex.co / *.kv.bex.co DNS-01 wildcard in docs/ADR009-postgresql-management.md § Publicly trusted server certificates."

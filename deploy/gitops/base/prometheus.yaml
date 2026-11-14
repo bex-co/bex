@@ -566,7 +566,8 @@ spec:
                   - source_labels: [__name__]
                     # build => ADR060 D5 build-plane SLIs; datastore => the
                     # DatastoreStuckProvisioning / DatabaseNotArchivingWAL /
-                    # DatastoreObservationFailing alerts and the ADR088 §6
+                    # DatastoreObservationFailing / PublicCertificatePendingTooLong
+                    # (w4/m357) alerts and the ADR088 §6
                     # data-plane dashboard — all were evaluating absent series
                     # while the keep was build-only, exactly the w2/m72
                     # failure this comment block warns about. The App

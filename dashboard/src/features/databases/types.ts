@@ -99,6 +99,12 @@ export interface ConnectionInfoView {
    * whose Render-shaped external string verifies against system roots.
    */
   serverCaCertificate: string;
+  /**
+   * The certificate the external endpoint presents (bex-api
+   * externalCertificate, w4/m357): "publiclyTrusted", "pending", "failed", or
+   * "" when there is no external endpoint or managed public certificate.
+   */
+  externalCertificate?: string;
   /** Per-replica full connection strings (populated when readReplicas exist). */
   readReplicaConnectionStrings: ReplicaConnectionStrings[];
 }

@@ -37,7 +37,14 @@ beforeEach(() => {
 
 describe("ConnectionInfoPanel", () => {
   it("shows only the Reveal button until asked — nothing password-bearing on screen", () => {
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic={false}
+      />,
+    );
     expect(
       screen.getByRole("button", { name: /reveal connection info/i }),
     ).toBeInTheDocument();
@@ -47,7 +54,14 @@ describe("ConnectionInfoPanel", () => {
 
   it("calls reveal on click", async () => {
     const user = userEvent.setup();
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic={false}
+      />,
+    );
     await user.click(
       screen.getByRole("button", { name: /reveal connection info/i }),
     );
@@ -61,7 +75,14 @@ describe("ConnectionInfoPanel", () => {
       canViewSensitive: false,
     });
     const user = userEvent.setup();
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic={false}
+      />,
+    );
 
     const revealButton = screen.getByRole("button", {
       name: /reveal connection info/i,
@@ -75,7 +96,14 @@ describe("ConnectionInfoPanel", () => {
   });
 
   it("keeps Reveal enabled with can_view_sensitive, matching the databases panel", () => {
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic={false}
+      />,
+    );
     expect(
       screen.getByRole("button", { name: /reveal connection info/i }),
     ).toBeEnabled();
@@ -87,7 +115,14 @@ describe("ConnectionInfoPanel", () => {
       externalConnectionString: "",
       cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
     };
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic={false}
+      />,
+    );
 
     expect(screen.getByText("Internal Key Value URL")).toBeInTheDocument();
     expect(
@@ -113,7 +148,12 @@ describe("ConnectionInfoPanel", () => {
       cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
     };
     render(
-      <ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic />,
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic
+      />,
     );
     expect(
       screen.queryByText("External Key Value URL"),
@@ -126,13 +166,46 @@ describe("ConnectionInfoPanel", () => {
     ).not.toBeInTheDocument();
   });
 
+  // w4/m357 (rounds 254/304): issuance failed for hours and the card kept
+  // promising "usually within a minute". It now says the store is not
+  // reachable from outside yet, and why.
+  it("says a public store's external URL is not reachable when its certificate failed", () => {
+    state.info = {
+      internalConnectionString: "redis://kv:6379",
+      externalConnectionString: "",
+      cliCommand: "redis-cli -u redis://kv:6379",
+      externalCertificate: "failed",
+    };
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic
+      />,
+    );
+    expect(
+      screen.getByText(/certificate failed, and bex retries it automatically/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/External access is being enabled/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the external field only when the store is public", () => {
     state.info = {
       internalConnectionString: "redis://default:s3cr3t@kv.default.svc:6379",
       externalConnectionString: "rediss://default:s3cr3t@kv.kv.bex.co:6379",
       cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
     };
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic={false}
+      />,
+    );
 
     expect(screen.getByText("External Key Value URL")).toBeInTheDocument();
     expect(
@@ -142,7 +215,14 @@ describe("ConnectionInfoPanel", () => {
 
   it("renders an error state when the reveal failed", () => {
     state.error = new Error("forbidden");
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic={false}
+      />,
+    );
     expect(
       screen.getByText("Couldn't load connection info"),
     ).toBeInTheDocument();
@@ -152,7 +232,14 @@ describe("ConnectionInfoPanel", () => {
   // behind a confirmation that names what breaks; enable-only.
   it("enables internal authentication only after the confirmation", async () => {
     const user = userEvent.setup();
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic={false}
+      />,
+    );
     expect(
       screen.getByText("Internal connections don't require a password."),
     ).toBeInTheDocument();
@@ -171,7 +258,14 @@ describe("ConnectionInfoPanel", () => {
   });
 
   it("offers no control once internal authentication is on", () => {
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth
+        isPublic={false}
+      />,
+    );
     expect(
       screen.getByText("Internal connections require the password."),
     ).toBeInTheDocument();
@@ -184,7 +278,14 @@ describe("ConnectionInfoPanel", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ canCreate: false }),
     );
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} isPublic={false} />);
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic={false}
+      />,
+    );
     expect(
       screen.getByRole("button", { name: "Enable Internal Authentication" }),
     ).toBeDisabled();
