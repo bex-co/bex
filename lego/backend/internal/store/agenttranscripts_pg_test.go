@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	"github.com/bex-co/bex/lego/backend/internal/agenttranscript/uimessagetest"
@@ -105,6 +106,104 @@ func storedFullOutputs(t *testing.T, s *PGStore, sessionID string, turn int) map
 		out[uimessagetest.FullKey(id, field)] = text
 	}
 	return out
+}
+
+// A turn keeps its first completion time when its transcript is marked again:
+// the Completer harvests once when the turn ends and again when it reaps the
+// idle sandbox, two hours later by default, and the second mark must not move
+// the turn's end (w6/126).
+func TestPGCompleteAgentSessionTurnKeepsTheFirstCompletion(t *testing.T) {
+	s, _, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	tenant, err := s.CreateTenant(ctx, "turn-completion-test", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteTenant(context.Background(), tenant.ID) })
+	id := legacySession(t, s, tenant.ID, []json.RawMessage{json.RawMessage(`{"type":"text","text":"done"}`)}, true, "")
+	ended := time.Date(2026, 11, 14, 2, 12, 6, 0, time.UTC)
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns SET completed_at=$2 WHERE session_id=$1 AND turn=1`, id, ended); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CompleteAgentSessionTurn(ctx, id, 1, false, true, "late harvest"); err != nil {
+		t.Fatal(err)
+	}
+	var completed time.Time
+	var reason string
+	if err := s.Pool.QueryRow(ctx, `SELECT completed_at, truncation_reason FROM agent_session_turns WHERE session_id=$1 AND turn=1`, id).Scan(&completed, &reason); err != nil {
+		t.Fatal(err)
+	}
+	if !completed.Equal(ended) || reason != "late harvest" {
+		t.Fatalf("after a second mark: completed_at=%s reason=%q; want %s kept and the new reason", completed.UTC(), reason, ended)
+	}
+}
+
+// Migration 0256 moves a reaped session's last turn back to its harvest, the
+// turn's end, and leaves every turn whose end is not evident: one with rows
+// stored at different times (a live tee) and one completed soon after its
+// harvest (w6/126).
+func TestPGTurnCompletionRepairMigration(t *testing.T) {
+	s, _, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	tenant, err := s.CreateTenant(ctx, "turn-completion-repair-test", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteTenant(context.Background(), tenant.ID) })
+	chunks := []json.RawMessage{json.RawMessage(`{"type":"text","text":"a"}`), json.RawMessage(`{"type":"text","text":"b"}`)}
+	harvest := time.Date(2026, 11, 14, 2, 12, 6, 0, time.UTC)
+	seed := func(completedAfter time.Duration, liveTee bool) string {
+		t.Helper()
+		id := legacySession(t, s, tenant.ID, chunks, true, "")
+		if _, err := s.Pool.Exec(ctx, `UPDATE agent_session_transcripts SET created_at=$2 WHERE session_id=$1`, id, harvest); err != nil {
+			t.Fatal(err)
+		}
+		if liveTee {
+			if _, err := s.Pool.Exec(ctx, `UPDATE agent_session_transcripts SET created_at=$2 WHERE session_id=$1 AND seq=0`, id, harvest.Add(-time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns SET completed_at=$2 WHERE session_id=$1 AND turn=1`, id, harvest.Add(completedAfter)); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	reaped := seed(2*time.Hour, false)
+	teed := seed(2*time.Hour, true)
+	recent := seed(30*time.Minute, false)
+
+	up, err := migrationsFS.ReadFile("migrations/0256_agent_session_turn_completion_repair.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("re-run 0256: %v", err)
+	}
+	completed := func(id string) time.Time {
+		t.Helper()
+		var at time.Time
+		if err := tx.QueryRow(ctx, `SELECT completed_at FROM agent_session_turns WHERE session_id=$1 AND turn=1`, id).Scan(&at); err != nil {
+			t.Fatal(err)
+		}
+		return at.UTC()
+	}
+	for _, c := range []struct {
+		name, id string
+		want     time.Time
+	}{
+		{"reaped", reaped, harvest},
+		{"live tee", teed, harvest.Add(2 * time.Hour)},
+		{"recent", recent, harvest.Add(30 * time.Minute)},
+	} {
+		if got := completed(c.id); !got.Equal(c.want) {
+			t.Errorf("%s: completed_at = %s, want %s", c.name, got, c.want)
+		}
+	}
 }
 
 // w10/m18: both writers store a clipped output's full copy idempotently (the

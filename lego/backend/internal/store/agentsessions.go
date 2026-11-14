@@ -611,11 +611,13 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 // CompleteAgentSessionTurn records whether the persisted assistant transcript
 // is complete. A false complete value is intentional: the row still preserves
 // the accepted user prompt while making loss/truncation visible to consumers.
+// The turn keeps its first completion time: the Completer harvests again when
+// it reaps the idle sandbox, hours after the turn ended.
 func (s *PGStore) CompleteAgentSessionTurn(ctx context.Context, sessionID string, turn int, complete, truncated bool, reason string) error {
 	tag, err := s.Pool.Exec(ctx, `
 		UPDATE agent_session_turns
 		SET transcript_complete=$3, transcript_truncated=$4,
-		    truncation_reason=$5, completed_at=now()
+		    truncation_reason=$5, completed_at=COALESCE(completed_at, now())
 		WHERE session_id=$1 AND turn=$2`, sessionID, turn, complete, truncated, reason)
 	if err != nil {
 		return err

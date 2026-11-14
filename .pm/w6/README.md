@@ -256,7 +256,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **126** — [A turn's `completed_at` is re-stamped when its idle sandbox is reaped two hours later](126.md) (~1h) ← from `/pm-brainstorm more for w6` 2026-11-14, filed by `/pmx`
+- [x] **126** — [A turn's `completed_at` is re-stamped when its idle sandbox is reaped two hours later](done/126.md) (~1h) ← from `/pm-brainstorm more for w6` 2026-11-14, filed by `/pmx` — **done 2026-11-14**
 - [ ] **127** — [The agent sandbox's TMPDIR moves off gVisor's memory-backed /tmp](127.md) (~45m) ← from `/pm-brainstorm more for w6` 2026-11-14, filed by `/pmx`
 - [x] **125** — [A declined agent-model threshold charge stays open while its usage is billed again by the cycle (or settle) invoice](done/125.md) (~1h) ← w6/m362 t015, 2026-11-13 — **done 2026-11-13**
 - [x] **124** — [An agent session's Go build temp files live in gVisor's memory-backed /tmp, so a routine was OOM-killed at its 8 GiB limit](done/124.md) (~30m) ← w6/m354, 2026-11-13 — **done 2026-11-13**
