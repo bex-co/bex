@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -38,7 +39,8 @@ import (
 // resolved by name once (deduplicated across concurrent cold-start checks);
 // positive checks are cached briefly (revocation takes effect within the TTL),
 // negatives never are (a fresh grant applies immediately); concurrent identical
-// checks coalesce into one upstream call, which also writes the cache once.
+// checks within one revoke epoch coalesce into one upstream call, which also
+// writes the cache once.
 type openfgaChecker struct {
 	baseURL string
 	token   string // preshared API key
@@ -71,8 +73,11 @@ func (o *openfgaChecker) Check(ctx context.Context, subject, relation, object st
 	if allowed, ok := o.cache.Get(key); ok {
 		return allowed, nil // only positives are ever put
 	}
-	v, err, _ := o.group.Do(key, func() (any, error) {
-		epoch := o.revokeGeneration()
+	// The epoch is part of the coalescing key: a Check that starts after a
+	// revoke completed must not join a call issued before it, whose answer
+	// predates the revoke and would be handed back as this caller's decision.
+	epoch := o.revokeGeneration()
+	v, err, _ := o.group.Do(strconv.FormatUint(epoch, 10)+"\x00"+key, func() (any, error) {
 		allowed, err := o.checkUpstream(ctx, subject, relation, object)
 		if err == nil && allowed {
 			o.cachePositive(key, epoch)
