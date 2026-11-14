@@ -11,6 +11,26 @@ const enLogs: Record<string, TranslationEntry> = {
     description:
       "Explains how the bounded history window interacts with live tail",
   },
+  "logs.retentionWindow_one": {
+    message: "Logs are kept for {count} day on the {plan} plan.",
+    description:
+      "Log range picker hint: how many days the workspace plan keeps logs (w9/m389, from bex-api logRetention)",
+  },
+  "logs.retentionWindow_other": {
+    message: "Logs are kept for {count} days on the {plan} plan.",
+    description:
+      "Log range picker hint: how many days the workspace plan keeps logs (w9/m389, from bex-api logRetention)",
+  },
+  "logs.retentionUpgrade_one": {
+    message: "Upgrade to {plan} to keep {count} day.",
+    description:
+      "Log range picker hint: the cheapest plan that keeps logs longer, and its days (w9/m389)",
+  },
+  "logs.retentionUpgrade_other": {
+    message: "Upgrade to {plan} to keep {count} days.",
+    description:
+      "Log range picker hint: the cheapest plan that keeps logs longer, and its days (w9/m389)",
+  },
   "logs.typeLabel": {
     message: "Log type",
     description: "Accessible label for the log-type filter dropdown",

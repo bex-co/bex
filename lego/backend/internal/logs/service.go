@@ -310,6 +310,10 @@ type LogQuery struct {
 	// it owns predates its App. Set by scopeToApp, never by a caller.
 	appID     string
 	notBefore time.Time
+	// retentionFloor is the workspace plan's log floor (w9/m389): no read
+	// returns a line stamped before it. Set by floorAt, never by a caller;
+	// zero where no plan applies or the read cannot reach it.
+	retentionFloor time.Time
 
 	// excludeJobs are the Job names of the OTHER deploys' builds (or pre-deploy
 	// steps) a Deploy-scoped read drops; set by scopeToDeploy, never by a
@@ -422,10 +426,16 @@ func normalizeLogText(values []string) []string {
 	return slices.Compact(terms)
 }
 
-// hasFilters reports whether any line-level filter (search/time/level) is set — the
-// ones the pod-log path applies in Go.
+// hasFilters reports whether any line-level filter (search/time/level, or the
+// plan's retention floor) is set — the ones the pod-log path applies in Go.
 func (q LogQuery) hasFilters() bool {
-	return len(q.Search) > 0 || !q.Since.IsZero() || !q.End.IsZero() || q.levelFilter != nil
+	return len(q.Search) > 0 || !q.Since.IsZero() || !q.End.IsZero() || q.levelFilter != nil || !q.retentionFloor.IsZero()
+}
+
+// readFrom is the earliest instant a read of q reaches: its own start, or the
+// plan's retention floor when that is later (w9/m389). Zero means unbounded.
+func (q LogQuery) readFrom() time.Time {
+	return later(q.Since, q.retentionFloor)
 }
 
 // wants reports whether the query asks for a log type. An empty Types means "all
@@ -530,17 +540,138 @@ func dropStaticSiteRequests(app *appv1alpha1.App, q *LogQuery) bool {
 	return true
 }
 
-// keepPod reports whether a pod satisfies the `instance` filter.
-// scopeToApp points q at app's own streams and pods: its CR name (the label
-// the shipper and the pods carry), its id, and nothing before it existed.
+// workspacePlan is a workspace's plan and the log floor its last plan change
+// kept, from one tenant read (core.WorkspaceLogPlanOf). ok is false where no
+// plan applies.
+type workspacePlan struct {
+	plan        string
+	visibleFrom time.Time
+	ok          bool
+}
+
+// workspacePlanOf reads workspaceID's plan once per request: the resources of
+// one workspace in a multi-resource read share it (core.Memoized).
+func (s *Service) workspacePlanOf(ctx context.Context, workspaceID string) (workspacePlan, error) {
+	return core.Memoized(ctx, "logs.workspacePlan:"+workspaceID, func() (workspacePlan, error) {
+		plan, visibleFrom, ok, err := s.WorkspaceLogPlanOf(ctx, workspaceID)
+		return workspacePlan{plan: plan, visibleFrom: visibleFrom, ok: ok}, err
+	})
+}
+
+// mayReachPastFloor reports whether a read of q can return a line older than
+// now − core.ShortestLogRetention(), the latest any retention floor can lie.
+// Only such a read needs the plan's floor. fromStore says the lines come from
+// the store, whose window without a start begins lokiLookback before its end
+// (lokiRange); a pod read without one reaches the container's whole log.
+func (q LogQuery) mayReachPastFloor(now time.Time, fromStore bool) bool {
+	start := q.Since
+	if start.IsZero() && fromStore {
+		start, _ = lokiRange(q, now)
+	}
+	return start.IsZero() || start.Before(now.Add(-core.ShortestLogRetention()))
+}
+
+// floorAt floors q at plan's log retention (w9/m389, core.LogFloor): the one
+// place every read takes its floor from, App and datastore alike. A start
+// before it is clamped, never refused.
+func (q *LogQuery) floorAt(wp workspacePlan, now time.Time) {
+	if wp.ok {
+		q.retentionFloor = core.LogFloor(wp.plan, wp.visibleFrom, now)
+	}
+}
+
+// applyWorkspacePlan applies app's workspace plan to q from one tenant read:
+// its log retention floor where the read can reach past it (w9/m389) and its
+// HTTP-request-log rule (w8/m138). fromStore is as for mayReachPastFloor.
+func (s *Service) applyWorkspacePlan(ctx context.Context, app *appv1alpha1.App, q *LogQuery, fromStore bool) error {
+	wp, err := s.workspacePlanOf(ctx, app.Labels[core.LabelTenant])
+	if err != nil || !wp.ok {
+		return err
+	}
+	if now := time.Now(); q.mayReachPastFloor(now, fromStore) {
+		q.floorAt(wp, now)
+	}
+	return requireRequestLogsPlan(wp.plan, q)
+}
+
+// scopeToRetention is applyWorkspacePlan's retention half for a datastore
+// read, which has no request-log rule: a read that cannot reach past any
+// floor reads no plan at all.
+func (s *Service) scopeToRetention(ctx context.Context, workspaceID string, q *LogQuery, fromStore bool) error {
+	now := time.Now()
+	if !q.mayReachPastFloor(now, fromStore) {
+		return nil
+	}
+	wp, err := s.workspacePlanOf(ctx, workspaceID)
+	q.floorAt(wp, now)
+	return err
+}
+
+// RetentionWindow is how far back one resource's logs reach (w9/m389), as the
+// dashboard bounds its range picker by it: the workspace plan, the days it
+// keeps (core.LogRetention), the floor an upgrade kept while it is later than
+// that window (zero otherwise), and the cheapest plan that keeps logs longer,
+// with its days (empty and 0 on the longest window). It holds still between
+// reads: the client slides the window's own floor forward with its clock.
+type RetentionWindow struct {
+	Plan        string
+	Days        int
+	VisibleFrom time.Time
+	UpgradePlan string
+	UpgradeDays int
+}
+
+// LogRetention is resource's log window — the floor every read of it applies
+// — for an App, managed Postgres or Key Value the caller may read the logs
+// of. nil, with no error, where no plan applies: logs then reach as far back
+// as the log store keeps them.
+func (s *Service) LogRetention(ctx context.Context, resource string) (*RetentionWindow, error) {
+	owner, err := s.authorizeLogOwner(ctx, resource)
+	if err != nil {
+		return nil, err
+	}
+	wp, err := s.workspacePlanOf(ctx, owner.GetLabels()[core.LabelTenant])
+	if err != nil || !wp.ok {
+		return nil, err
+	}
+	const day = 24 * time.Hour
+	retention := core.LogRetention(wp.plan)
+	window := &RetentionWindow{Plan: wp.plan, Days: int(retention / day)}
+	if wp.visibleFrom.After(time.Now().Add(-retention)) {
+		window.VisibleFrom = wp.visibleFrom
+	}
+	if next, longer, ok := core.LogRetentionUpgrade(wp.plan); ok {
+		window.UpgradePlan, window.UpgradeDays = next, int(longer/day)
+	}
+	return window, nil
+}
+
+// authorizeLogOwner authorizes the caller to read resource's logs and answers
+// the App, managed Postgres or Key Value that owns them.
+func (s *Service) authorizeLogOwner(ctx context.Context, resource string) (client.Object, error) {
+	var owner client.Object
+	var err error
+	switch {
+	case isPostgresResource(resource):
+		owner, err = s.AuthorizeDatabase(ctx, core.RelCanViewLogs, resource)
+	case isKeyValueResource(resource):
+		owner, err = s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, resource)
+	default:
+		owner, err = s.AuthorizeApp(ctx, core.RelCanViewLogs, resource)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return owner, nil
+}
+
 // requireRequestLogsPlan applies the workspace plan's HTTP-request-log rule
 // (w8/m138, Render: Pro and higher) to q: an explicit request type is refused,
 // an all-types query silently loses its request lines. Render's exact Hobby
 // behavior is unverified, so this takes the documented plan error.
-func (s *Service) requireRequestLogsPlan(ctx context.Context, app *appv1alpha1.App, q *LogQuery) error {
-	plan, ok, err := s.WorkspacePlanOf(ctx, app.Labels[core.LabelTenant])
-	if err != nil || !ok || core.PlanAllows(plan, core.FeatureRequestLogs) {
-		return err
+func requireRequestLogsPlan(plan string, q *LogQuery) error {
+	if core.PlanAllows(plan, core.FeatureRequestLogs) {
+		return nil
 	}
 	if slices.Contains(q.Types, LogTypeRequest) {
 		return core.NewPlanFeatureError("type", plan, core.FeatureRequestLogs)
@@ -549,6 +680,8 @@ func (s *Service) requireRequestLogsPlan(ctx context.Context, app *appv1alpha1.A
 	return nil
 }
 
+// scopeToApp points q at app's own streams and pods: its CR name (the label
+// the shipper and the pods carry), its id, and nothing before it existed.
 func (q *LogQuery) scopeToApp(app *appv1alpha1.App) {
 	q.App = app.Name
 	q.appID = core.AppIncarnationID(app)
@@ -708,9 +841,9 @@ func (q LogQuery) keep(e LogEntry) bool {
 	if !q.matchesText(e.Message) {
 		return false
 	}
-	if !q.Since.IsZero() || !q.End.IsZero() {
+	if from := q.readFrom(); !from.IsZero() || !q.End.IsZero() {
 		if t, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil {
-			if !q.Since.IsZero() && t.Before(q.Since) {
+			if !from.IsZero() && t.Before(from) {
 				return false
 			}
 			if !q.End.IsZero() && t.After(q.End) {
@@ -738,13 +871,14 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	if tail <= 0 {
 		tail = defaultLogTail
 	}
+	var q LogQuery
+	q.scopeToApp(app)
+	if err := s.applyWorkspacePlan(ctx, app, &q, s.History != nil); err != nil {
+		return nil, err
+	}
 	if s.History != nil {
 		// Durable history: the unfiltered tail-N read is a limit-only query.
-		q := LogQuery{Limit: tail}
-		q.scopeToApp(app)
-		if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
-			return nil, err
-		}
+		q.Limit = tail
 		entries, err := s.History(ctx, app.Namespace, q.normalized())
 		// A tail is best-effort: the newest lines a budget-limited scan found
 		// are the answer, not a failure.
@@ -754,8 +888,6 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 		}
 		return setLogResource(entries, resource), err
 	}
-	var q LogQuery
-	q.scopeToApp(app)
 	entries, err := s.collectPodLogs(ctx, app.Namespace, q, tail)
 	return setLogResource(entries, resource), err
 }
@@ -780,7 +912,8 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	// which may be tenant-prefixed. The public name/srv-id is only an API
 	// address and must not leak into the Kubernetes label selector.
 	q.scopeToApp(app)
-	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
+	fromStore := s.History != nil && !slices.Contains(q.Types, LogTypePreDeploy)
+	if err := s.applyWorkspacePlan(ctx, app, &q, fromStore); err != nil {
 		return nil, err
 	}
 	if dropStaticSiteRequests(app, &q) && len(q.Types) > 0 && !slices.ContainsFunc(q.Types, q.wants) {
@@ -837,7 +970,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		out = append(out, entries...)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
-	return setLogResource(q.filterAndCap(out), resource), nil
+	return setLogResource(q.capToLimit(q.filter(out)), resource), nil
 }
 
 // mixesBuild reports whether q asks for build lines beside app or request
@@ -944,7 +1077,7 @@ func (s *Service) queryHistory(ctx context.Context, ns string, q LogQuery, resou
 // filter, so no parallel public API is needed. The datastore's authorization
 // gate runs before either a Loki selector or a pod selector is constructed.
 func (s *Service) queryDatastoreLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	target, err := s.datastoreTarget(ctx, &q)
+	target, err := s.datastoreTarget(ctx, &q, s.History != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -968,7 +1101,7 @@ func (s *Service) queryDatastoreLogs(ctx context.Context, q LogQuery) ([]LogEntr
 	if err != nil {
 		return nil, err
 	}
-	return setLogResource(q.filterAndCap(entries), target.resource), nil
+	return setLogResource(q.capToLimit(q.filter(entries)), target.resource), nil
 }
 
 // datastoreTarget is the opening every managed-datastore read shares —
@@ -976,7 +1109,7 @@ func (s *Service) queryDatastoreLogs(ctx context.Context, q LogQuery) ([]LogEntr
 // `red-` resource for can_view_logs, point q at the datastore's own streams,
 // and validate q against the datastore contract. The target it answers says
 // where the datastore's process log lives and how to follow it.
-func (s *Service) datastoreTarget(ctx context.Context, q *LogQuery) (tailTarget, error) {
+func (s *Service) datastoreTarget(ctx context.Context, q *LogQuery, fromStore bool) (tailTarget, error) {
 	requested := q.App
 	var target tailTarget
 	if isPostgresResource(requested) {
@@ -986,6 +1119,7 @@ func (s *Service) datastoreTarget(ctx context.Context, q *LogQuery) (tailTarget,
 		}
 		q.App, q.Database = "", database.Name
 		target = tailTarget{
+			workspace: database.Labels[core.LabelTenant],
 			namespace: database.Namespace, name: database.Name,
 			container: core.CNPGPostgresContainer, logType: datastorelogs.KindPostgres,
 			list: func(ctx context.Context) ([]corev1.Pod, error) {
@@ -1006,6 +1140,7 @@ func (s *Service) datastoreTarget(ctx context.Context, q *LogQuery) (tailTarget,
 		}
 		q.App, q.KeyValue = "", kv.Name
 		target = tailTarget{
+			workspace: kv.Labels[core.LabelTenant],
 			namespace: kv.Namespace, name: kv.Name,
 			container: core.ValkeyContainer, logType: datastorelogs.KindKeyValue,
 			list: func(ctx context.Context) ([]corev1.Pod, error) {
@@ -1025,6 +1160,9 @@ func (s *Service) datastoreTarget(ctx context.Context, q *LogQuery) (tailTarget,
 	// re-attaching to a restarted container; each is an uncached pod LIST.
 	target.relist = 5 * s.tailRelistInterval()
 	if err := q.validate(); err != nil {
+		return tailTarget{}, err
+	}
+	if err := s.scopeToRetention(ctx, target.workspace, q, fromStore); err != nil {
 		return tailTarget{}, err
 	}
 	return target, q.datastoreFilters(requested)
@@ -1088,20 +1226,13 @@ func (q *LogQuery) compileLevelFilter() error {
 	return nil
 }
 
-// filterAndCap applies the line-level search/time/level filters (in place — skipping
-// the pass entirely on the common no-filter query) and clamps to q.Limit. The
-// pod-log path's shared tail, used by both the app and pre-deploy reads.
-func (q LogQuery) filterAndCap(entries []LogEntry) []LogEntry {
-	if q.hasFilters() {
-		kept := entries[:0]
-		for _, e := range entries {
-			if q.keep(e) {
-				kept = append(kept, e)
-			}
-		}
-		entries = kept
+// filter keeps the entries that pass the line-level filters (keep), in place,
+// and skips the pass when the query sets none: the pod-log paths' common case.
+func (q LogQuery) filter(entries []LogEntry) []LogEntry {
+	if !q.hasFilters() {
+		return entries
 	}
-	return q.capToLimit(entries)
+	return slices.DeleteFunc(entries, func(e LogEntry) bool { return !q.keep(e) })
 }
 
 // LogLabelValues lists the values a log label takes for one App — Render's
@@ -1125,12 +1256,6 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 		return nil, err
 	}
 	q.scopeToApp(app)
-	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
-		return nil, err
-	}
-	if dropStaticSiteRequests(app, &q) && len(q.Types) > 0 && !slices.ContainsFunc(q.Types, q.wants) {
-		return []string{}, nil
-	}
 	if !slices.Contains(DiscoverableLabels, label) {
 		// Naming the offending label beats an empty list, which a client would read
 		// as "this service has no such values".
@@ -1141,6 +1266,12 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 		// so its values come from the App itself — which is why it resolves even with
 		// no store wired.
 		return core.HostsFromURLs(app.Status.URLs), nil
+	}
+	if err := s.applyWorkspacePlan(ctx, app, &q, true); err != nil {
+		return nil, err
+	}
+	if dropStaticSiteRequests(app, &q) && len(q.Types) > 0 && !slices.ContainsFunc(q.Types, q.wants) {
+		return []string{}, nil
 	}
 	if s.LabelValues == nil {
 		return nil, core.ErrLogStoreUnavailable
@@ -1173,7 +1304,8 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 // values: both datastores' lines carry a level (a Postgres record's severity,
 // a Valkey line's marker — w5/m139), which only the store indexes.
 func (s *Service) datastoreLogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
-	target, err := s.datastoreTarget(ctx, &q)
+	// Store-read values, or pod names, which carry no time.
+	target, err := s.datastoreTarget(ctx, &q, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1262,7 +1394,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if q, err = q.liveSubscribable(); err != nil {
 		return err
 	}
-	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
+	if err := s.applyWorkspacePlan(ctx, app, &q, false); err != nil {
 		return err
 	}
 	// A static site's tail without type=build stays open on keepalives, as a
@@ -1525,7 +1657,7 @@ func (s *Service) followPodsAndBuilds(ctx context.Context, q LogQuery, selectors
 // app tail. Render's /logs/subscribe takes a postgres or redis resource as it
 // takes a service.
 func (s *Service) followDatastore(ctx context.Context, q LogQuery, emit func(LogEntry) error, heartbeat func() error) error {
-	target, err := s.datastoreTarget(ctx, &q)
+	target, err := s.datastoreTarget(ctx, &q, false)
 	if err != nil {
 		return err
 	}
@@ -1571,6 +1703,7 @@ func podFollowKey(pod *corev1.Pod) string {
 // managed datastore's process container (w5/m139).
 type tailTarget struct {
 	resource  string // the requested id, stamped on every emitted entry
+	workspace string // the datastore's own workspace, whose plan floors its reads
 	namespace string
 	name      string // the CR name: the entries' service label
 	container string
@@ -1625,7 +1758,7 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 			follows[key] = &podFollow{active: true, restarts: restarts}
 			go func(name, key string) {
 				var opened atomic.Bool
-				s.streamContainerLogs(ctx, target.namespace, target.name, name, target.container, target.logType, q.Since, ch, &opened)
+				s.streamContainerLogs(ctx, target.namespace, target.name, name, target.container, target.logType, q.readFrom(), ch, &opened)
 				select {
 				case ended <- followEnd{key: key, opened: opened.Load()}:
 				case <-ctx.Done():
@@ -1907,7 +2040,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 	// other is followed once seen, ended or not, from that bound. A fast phase
 	// (the clone) can start and end between two polls after the tail opened,
 	// and its lines are the tail's (w8/m159 t008).
-	before := terminatedBefore(pod, q.Since)
+	before := terminatedBefore(pod, q.readFrom())
 
 	ns := s.BuildNamespace
 	if ns == "" {
@@ -1922,7 +2055,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.Since, ch, &opened)
+			s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.readFrom(), ch, &opened)
 		}()
 	}
 	// Phases are attached in the pod's own order: those that ended (after
@@ -1938,7 +2071,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 		go func() {
 			defer wg.Done()
 			for _, container := range ended {
-				s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.Since, ch, &opened)
+				s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.readFrom(), ch, &opened)
 			}
 			for _, container := range running {
 				startStream(container)
@@ -2278,7 +2411,7 @@ func (s *Service) collectPodLogs(ctx context.Context, namespace string, q LogQue
 		out = append(out, entries...)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
-	return out, nil
+	return q.filter(out), nil
 }
 
 // datastore names everything the managed Postgres and Key Value pod-log reads
@@ -2412,7 +2545,7 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, appNS, resource stri
 		out = append(out, entries...)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
-	return q.filterAndCap(out), nil
+	return q.capToLimit(q.filter(out)), nil
 }
 
 func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, pod, container, logType string, since time.Time, ch chan<- LogEntry, opened *atomic.Bool) {

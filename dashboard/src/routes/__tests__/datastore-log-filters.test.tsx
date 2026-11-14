@@ -47,6 +47,11 @@ vi.mock("@/features/logs/hooks/use-log-history", () => ({
     };
   },
 }));
+// The plan's log window (w9/m389) is its own query; this route test has no
+// ApolloProvider, so the range picker stays unbounded.
+vi.mock("@/features/logs/hooks/use-log-retention", () => ({
+  useLogRetentionBound: () => undefined,
+}));
 vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
   useLogLabelValues: () => labels.values,
 }));

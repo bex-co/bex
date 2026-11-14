@@ -25,6 +25,7 @@ import { LogTruncationNotice } from "./log-truncation-notice";
 import { StreamDisconnected, StreamStatus } from "./log-viewer";
 import { LiveToggle } from "./log-filter-bar";
 import { useCustomWindow } from "../hooks/use-custom-window";
+import { useLogRetentionBound } from "../hooks/use-log-retention";
 import { useLiveLogs, type EventSourceFactory } from "../hooks/use-live-logs";
 import { mergeLogLines } from "../lib/map";
 import { useLogLabelValues } from "../hooks/use-log-label-values";
@@ -223,6 +224,7 @@ export function DatastoreLogViewer({
   // A custom window that has already ended takes no tail, as on the service
   // Logs tab (w21/016, w4/625).
   const { customEndMs, windowClosed } = useCustomWindow(range);
+  const rangeBound = useLogRetentionBound(resource);
   const liveOffReasonId = useId();
   const stream = useLiveLogs({
     resource,
@@ -333,6 +335,7 @@ export function DatastoreLogViewer({
           range={range}
           onRangeChange={setRange}
           ariaLabel={copy.rangeLabel}
+          bound={rangeBound}
         />
 
         <PickSelect

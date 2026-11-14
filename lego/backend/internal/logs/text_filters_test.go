@@ -146,12 +146,12 @@ func TestTextFilterUnionAndsLevelAndTimeBeforeCapping(t *testing.T) {
 	} {
 		entries = append(entries, LogEntry{Timestamp: start.Add(time.Duration(row.second-1) * time.Second).Format(time.RFC3339Nano), Message: row.msg, Labels: map[string]string{LabelLevel: row.level}})
 	}
-	got := q.filterAndCap(slices.Clone(entries))
+	got := q.capToLimit(q.filter(slices.Clone(entries)))
 	if len(got) != 2 || got[0].Message != "A accepted" || got[1].Message != "B accepted" {
 		t.Fatalf("filtered page = %+v", got)
 	}
 	q.Limit = 1
-	got = q.filterAndCap(entries)
+	got = q.capToLimit(q.filter(entries))
 	if len(got) != 1 || got[0].Message != "A accepted" {
 		t.Fatalf("capped page = %+v", got)
 	}

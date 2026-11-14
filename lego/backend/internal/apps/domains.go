@@ -1347,7 +1347,7 @@ func (s *Service) hostClaimIndex(ctx context.Context) (hostClaims, error) {
 		}
 		return scope.claims, nil
 	}
-	return memoized(ctx, "apps:host-claims", func() (hostClaims, error) {
+	return core.Memoized(ctx, "apps:host-claims", func() (hostClaims, error) {
 		return s.listHostClaims(ctx)
 	})
 }
@@ -1648,7 +1648,7 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 func (s *Service) addDomainPair(ctx context.Context, appName, hostname string) (DomainView, *DomainView, error) {
 	// One index of the platform's host claims serves both adds: the sibling
 	// add's check can only differ by this App's own claims, which are exempt.
-	ctx = withRequestMemo(ctx)
+	ctx = core.WithRequestMemo(ctx)
 	// The raw input goes straight to addOne, which authorizes FIRST (the
 	// authz-before-validation verb contract) and then canonicalizes; the
 	// canonical value comes back as view.Name for the sibling pairing below.

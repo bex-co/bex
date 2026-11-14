@@ -41,9 +41,9 @@ import (
 
 // lokiLookback is the default lower time bound for a query that carries none:
 // the point of durable history is a real window, so an unbounded "recent logs"
-// read still reaches back across restarts. Matches the shipped retention
-// (docs/ADR010-observability.md) so a bare query can surface anything still stored.
-const lokiLookback = 7 * 24 * time.Hour
+// read still reaches back across restarts. It is the shortest plan window, so
+// a bare query never reaches past any workspace's retention floor (w9/m389).
+var lokiLookback = core.ShortestLogRetention()
 
 // NewLokiSource returns the production LogHistorySource, backed by a Loki
 // query_range over the streams the log-shipper DaemonSet labels with
@@ -356,8 +356,9 @@ func lokiLabelFor(label string) string {
 // defaults (end=now, start=lokiLookback before end). A caller's end later than
 // lokiFutureGrace past now reads only that far: no line is stamped later, and
 // sending a far-future end made Loki refuse the window as too long or walk
-// weeks of empty future (w8/123). now is passed in so the source stays
-// testable.
+// weeks of empty future (w8/123). A start before the workspace plan's
+// retention floor is clamped to it, never refused (w9/m389). now is passed in
+// so the source stays testable.
 func lokiRange(q LogQuery, now time.Time) (start, end time.Time) {
 	end = now
 	if !q.End.IsZero() {
@@ -367,10 +368,9 @@ func lokiRange(q LogQuery, now time.Time) (start, end time.Time) {
 	if start.IsZero() {
 		start = end.Add(-lokiLookback)
 	}
-	// Nothing an App owns predates it (w8/m124). This only ever narrows.
-	if start.Before(q.notBefore) {
-		start = q.notBefore
-	}
+	// Nothing an App owns predates it (w8/m124), and nothing older than the
+	// plan keeps is read (w9/m389). Both only ever narrow.
+	start = later(start, later(q.notBefore, q.retentionFloor))
 	return start, end
 }
 
@@ -383,6 +383,13 @@ const lokiFutureGrace = 10 * time.Minute
 // instants that can hold a line (w8/120, w8/123).
 func earlier(a, b time.Time) time.Time {
 	if b.Before(a) {
+		return b
+	}
+	return a
+}
+
+func later(a, b time.Time) time.Time {
+	if b.After(a) {
 		return b
 	}
 	return a

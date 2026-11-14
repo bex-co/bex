@@ -21,15 +21,18 @@ import { Input } from "@/common/components/ui/input.tsx";
 import { Label } from "@/common/components/ui/label.tsx";
 import {
   RANGE_PRESETS,
+  boundFloorMs,
   isCustomRange,
   makeCustomRange,
   parseRangePreset,
+  presetWithinBound,
+  type RangeBound,
   type RangePreset,
   type RangeSelection,
 } from "@/features/metrics/lib/range";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatTimeWindow } from "@/common/lib/format";
+import { formatMediumDateTime, formatTimeWindow } from "@/common/lib/format";
 import type { en } from "@/i18n";
 
 const RANGE_LABEL_KEYS: Record<RangePreset["id"], keyof typeof en> = {
@@ -53,6 +56,12 @@ interface RangeSelectProps {
   onRangeChange: (range: RangeSelection) => void;
   /** Overrides the default "Time range" accessible label (e.g. the Logs bar). */
   ariaLabel?: string;
+  /**
+   * How far back the range may reach: wider presets are disabled, a custom
+   * start before the floor is refused, and the hint is shown under the
+   * presets and in the picker.
+   */
+  bound?: RangeBound;
 }
 
 /**
@@ -68,6 +77,7 @@ export function RangeSelect({
   range,
   onRangeChange,
   ariaLabel,
+  bound,
 }: RangeSelectProps) {
   const { t, i18n } = useTranslations();
   // The window reads the viewer's clock, which the SSR pass doesn't have, so
@@ -130,12 +140,24 @@ export function RangeSelect({
         </SelectTrigger>
         <SelectContent>
           {RANGE_PRESETS.map((preset) => (
-            <SelectItem key={preset.id} value={preset.id}>
+            <SelectItem
+              key={preset.id}
+              value={preset.id}
+              disabled={!presetWithinBound(preset, bound)}
+            >
               {t(RANGE_LABEL_KEYS[preset.id])}
             </SelectItem>
           ))}
           <SelectSeparator />
           <SelectItem value={CUSTOM}>{t("metrics.rangeCustom")}</SelectItem>
+          {bound?.hint ? (
+            <>
+              <SelectSeparator />
+              <p className="max-w-64 px-2 py-1.5 text-xs text-muted-foreground">
+                {bound.hint}
+              </p>
+            </>
+          ) : null}
         </SelectContent>
       </Select>
 
@@ -151,6 +173,7 @@ export function RangeSelect({
         onOpenChange={setPickerOpen}
         draft={draft}
         onDraftChange={setDraft}
+        bound={bound}
         onApply={(custom) => {
           onRangeChange(custom);
           setPickerOpen(false);
@@ -177,15 +200,17 @@ function CustomRangeDialog({
   onOpenChange,
   draft,
   onDraftChange,
+  bound,
   onApply,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   draft: RangeDraft;
   onDraftChange: (draft: RangeDraft) => void;
+  bound?: RangeBound;
   onApply: (custom: RangeSelection) => void;
 }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const [error, setError] = useState<string | null>(null);
 
   function apply() {
@@ -201,6 +226,15 @@ function CustomRangeDialog({
         made === "order"
           ? t("metrics.rangeCustomErrorOrder")
           : t("metrics.rangeCustomErrorTooLong"),
+      );
+      return;
+    }
+    const floor = bound ? boundFloorMs(bound, Date.now()) : undefined;
+    if (floor !== undefined && Date.parse(made.startTime) < floor) {
+      setError(
+        t("metrics.rangeCustomErrorTooEarly", {
+          date: formatMediumDateTime(floor, i18n.language),
+        }),
       );
       return;
     }
@@ -233,6 +267,12 @@ function CustomRangeDialog({
               id="range-custom-start"
               type="datetime-local"
               step={inputStep(draft.start)}
+              // Apply checks the sliding floor as it stands then.
+              min={
+                bound?.notBeforeMs
+                  ? toLocalInput(new Date(bound.notBeforeMs))
+                  : undefined
+              }
               value={draft.start}
               onChange={(e) =>
                 onDraftChange({ ...draft, start: e.target.value })
@@ -251,6 +291,9 @@ function CustomRangeDialog({
               onChange={(e) => onDraftChange({ ...draft, end: e.target.value })}
             />
           </div>
+          {bound?.hint ? (
+            <p className="text-muted-foreground text-xs">{bound.hint}</p>
+          ) : null}
           {error !== null && (
             // Form-level span over start+end (not a single-field validation) —
             // announce once; aria-describedby on one input would mis-associate

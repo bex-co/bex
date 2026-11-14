@@ -748,7 +748,7 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 	// — and, within the preflight alone, asking some of them once per guarded
 	// row. Memoize them for this request so the guarantee costs round trips
 	// proportional to the patch, not to the number of rows in it.
-	ctx = withRequestMemo(ctx)
+	ctx = core.WithRequestMemo(ctx)
 	ctx, read, _, err := s.preflightServicePatch(ctx, id, p, false)
 	if err != nil {
 		return AppView{}, err
@@ -822,7 +822,7 @@ func (s *Service) ApplyServicePatchDryRun(ctx context.Context, id string, p Serv
 // applyServicePatchDryRun is unexported so the verb a dry-run's audit row
 // names is the one the caller made (ApplyServicePatchDryRun or SetPlanDryRun).
 func (s *Service) applyServicePatchDryRun(ctx context.Context, id string, p ServicePatch) (AppView, error) {
-	ctx = withRequestMemo(ctx)
+	ctx = core.WithRequestMemo(ctx)
 	_, _, probe, err := s.preflightServicePatch(ctx, id, p, true)
 	if err != nil {
 		return AppView{}, err

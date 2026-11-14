@@ -936,10 +936,8 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	base.Audit = st
 	base.ProductActivity = st.RecordProductActivity
 	base.Billing = st
-	base.Plans = core.WorkspacePlanFunc(func(ctx context.Context, workspaceID string) (string, error) {
-		tenant, err := st.GetTenant(ctx, workspaceID)
-		return tenant.Plan, err
-	})
+	// The plan, with the log floor an upgrade kept in the same read (w9/m389).
+	base.Plans = st
 	// The workspace inbound-IP layer every create path stamps (w9/m388).
 	base.WorkspaceIPRules = st
 

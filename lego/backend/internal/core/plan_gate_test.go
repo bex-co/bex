@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func planIs(plan string) WorkspacePlanReader {
@@ -191,5 +192,140 @@ func TestPlanRefusalsCarryCodes(t *testing.T) {
 		if got := MCPError(tc.err).Error(); got != tc.code+": "+tc.message {
 			t.Errorf("MCP = %q", got)
 		}
+	}
+}
+
+// w9/m389: each plan's log window is Render's (render.com/docs/logging), an
+// unknown plan gets the shortest, and the upgrade hint names the cheapest plan
+// that keeps logs longer.
+func TestLogRetentionFollowsThePlan(t *testing.T) {
+	const day = 24 * time.Hour
+	if ShortestLogRetention() != 7*day {
+		t.Fatalf("ShortestLogRetention = %s, want Hobby's 7 days", ShortestLogRetention())
+	}
+	for _, tc := range []struct {
+		plan, next     string
+		window, nextIn time.Duration
+	}{
+		{"hobby", "pro", 7 * day, 14 * day},
+		{"pro", "scale", 14 * day, 30 * day},
+		{"scale", "", 30 * day, 0},
+		{"enterprise", "", 30 * day, 0},
+		{"platinum", "pro", 7 * day, 14 * day},
+		{"", "pro", 7 * day, 14 * day},
+	} {
+		if got := LogRetention(tc.plan); got != tc.window {
+			t.Errorf("LogRetention(%q) = %s, want %s", tc.plan, got, tc.window)
+		}
+		next, window, ok := LogRetentionUpgrade(tc.plan)
+		if next != tc.next || window != tc.nextIn || ok != (tc.next != "") {
+			t.Errorf("LogRetentionUpgrade(%q) = %q, %s, %v; want %q, %s", tc.plan, next, window, ok, tc.next, tc.nextIn)
+		}
+	}
+}
+
+// w9/m389 t004: an upgrade keeps the old plan's floor until the new window
+// overtakes it; a downgrade narrows at once.
+func TestLogFloorAcrossPlanChanges(t *testing.T) {
+	const day = 24 * time.Hour
+	upgradeAt := time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
+
+	// Hobby -> Pro at T: nothing older than T-7d until T+7d, then Pro's 14 days.
+	kept := LogsVisibleFromAfterPlanChange("hobby", "pro", time.Time{}, upgradeAt)
+	if !kept.Equal(upgradeAt.Add(-7 * day)) {
+		t.Fatalf("hobby->pro keeps %s, want T-7d", kept)
+	}
+	for _, tc := range []struct {
+		after time.Duration
+		want  time.Time
+	}{
+		{0, upgradeAt.Add(-7 * day)},
+		{3 * day, upgradeAt.Add(-7 * day)},
+		{7 * day, upgradeAt.Add(-7 * day)},
+		{10 * day, upgradeAt.Add(10*day - 14*day)},
+	} {
+		if got := LogFloor("pro", kept, upgradeAt.Add(tc.after)); !got.Equal(tc.want) {
+			t.Errorf("pro floor at T+%s = %s, want %s", tc.after, got, tc.want)
+		}
+	}
+
+	// Pro -> Scale three days after the Hobby upgrade keeps the same floor:
+	// lines that aged out under Hobby stay hidden under Scale too.
+	at := upgradeAt.Add(3 * day)
+	if got := LogsVisibleFromAfterPlanChange("pro", "scale", kept, at); !got.Equal(kept) {
+		t.Errorf("pro->scale keeps %s, want the hobby floor %s", got, kept)
+	}
+	// A plain Pro -> Scale keeps Pro's floor at that moment.
+	if got := LogsVisibleFromAfterPlanChange("pro", "scale", time.Time{}, at); !got.Equal(at.Add(-14 * day)) {
+		t.Errorf("pro->scale keeps %s, want T-14d", got)
+	}
+
+	// A downgrade narrows at once and keeps nothing the shorter window
+	// already covers.
+	if got := LogsVisibleFromAfterPlanChange("scale", "hobby", time.Time{}, at); !got.IsZero() {
+		t.Errorf("scale->hobby keeps %s, want nothing", got)
+	}
+	if got := LogFloor("hobby", time.Time{}, at); !got.Equal(at.Add(-7 * day)) {
+		t.Errorf("hobby floor after the downgrade = %s, want now-7d", got)
+	}
+	// Scale -> Pro while a Hobby upgrade's floor still bites keeps it.
+	if got := LogsVisibleFromAfterPlanChange("scale", "pro", kept, at); !got.Equal(kept) {
+		t.Errorf("scale->pro keeps %s, want the still-binding %s", got, kept)
+	}
+	// Equal windows (Scale <-> Enterprise) keep only a binding floor.
+	if got := LogsVisibleFromAfterPlanChange("scale", "enterprise", time.Time{}, at); !got.IsZero() {
+		t.Errorf("scale->enterprise keeps %s, want nothing", got)
+	}
+	// A kept floor that has lapsed is dropped at the next change.
+	if got := LogsVisibleFromAfterPlanChange("pro", "scale", kept, upgradeAt.Add(20*day)); !got.Equal(upgradeAt.Add(20*day - 14*day)) {
+		t.Errorf("pro->scale after the hobby floor lapsed keeps %s, want Pro's own floor", got)
+	}
+	// An unknown old plan is the strictest: an upgrade from it keeps 7 days.
+	if got := LogsVisibleFromAfterPlanChange("platinum", "scale", time.Time{}, at); !got.Equal(at.Add(-7 * day)) {
+		t.Errorf("unknown->scale keeps %s, want T-7d", got)
+	}
+}
+
+// logPlanIs is the tenants store's shape: the plan and the kept floor in one
+// read, counting its reads.
+type logPlanIs struct {
+	plan        string
+	visibleFrom time.Time
+	reads       *int
+}
+
+func (l logPlanIs) WorkspacePlan(context.Context, string) (string, error) {
+	*l.reads++
+	return l.plan, nil
+}
+
+func (l logPlanIs) WorkspaceLogPlan(context.Context, string) (string, time.Time, error) {
+	*l.reads++
+	return l.plan, l.visibleFrom, nil
+}
+
+// WorkspaceLogPlanOf reads the plan and the kept floor in one read where the
+// reader offers both, the plan alone from a plain reader, nothing where no
+// plan applies (the store-off degrade), and a read failure is an error.
+func TestWorkspaceLogPlanOf(t *testing.T) {
+	ctx := context.Background()
+	if plan, from, ok, err := (&Base{}).WorkspaceLogPlanOf(ctx, "tea-a"); err != nil || ok || plan != "" || !from.IsZero() {
+		t.Fatalf("no plan reader = %q, %s, %v, %v; want no plan", plan, from, ok, err)
+	}
+	if plan, from, ok, err := (&Base{Plans: planIs("pro")}).WorkspaceLogPlanOf(ctx, "tea-a"); err != nil || !ok || plan != "pro" || !from.IsZero() {
+		t.Fatalf("plain reader = %q, %s, %v, %v; want pro with no kept floor", plan, from, ok, err)
+	}
+	kept := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+	reads := 0
+	b := &Base{Plans: logPlanIs{"pro", kept, &reads}}
+	if plan, from, ok, err := b.WorkspaceLogPlanOf(ctx, "tea-a"); err != nil || !ok || plan != "pro" || !from.Equal(kept) || reads != 1 {
+		t.Fatalf("store reader = %q, %s, %v, %v after %d reads; want pro and the kept floor in one read", plan, from, ok, err, reads)
+	}
+	if _, _, ok, err := b.WorkspaceLogPlanOf(ctx, DefaultTenant); err != nil || ok || reads != 1 {
+		t.Fatalf("default tenant = %v, %v after %d reads; want no plan and no read", ok, err, reads)
+	}
+	b.Plans = WorkspacePlanFunc(func(context.Context, string) (string, error) { return "", errors.New("store down") })
+	if _, _, _, err := b.WorkspaceLogPlanOf(ctx, "tea-a"); err == nil {
+		t.Fatal("a failed plan read must fail the read")
 	}
 }

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { LogFilterBar } from "../log-filter-bar";
 import { serverRendered } from "@/test/hydration";
+import type { RangeBound } from "@/features/metrics/lib/range";
 import {
   EMPTY_LOG_FILTERS,
   LOG_TYPE_APP,
@@ -37,6 +38,12 @@ vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelValues: (_resource: string, label: string) => discovered(label),
 }));
 
+// The plan's log window (w9/m389) is its own query; the bar asks for it.
+const retention: { bound: RangeBound | undefined } = { bound: undefined };
+vi.mock("../../hooks/use-log-retention", () => ({
+  useLogRetentionBound: () => retention.bound,
+}));
+
 function renderBar(
   over: {
     filters?: Partial<LogFilters>;
@@ -64,6 +71,7 @@ function renderBar(
 beforeEach(() => {
   discovered.mockReturnValue([]);
   discoveryResolved = false;
+  retention.bound = undefined;
 });
 
 describe("LogFilterBar (w5/008, simplified w7/m42)", () => {

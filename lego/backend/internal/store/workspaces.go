@@ -24,6 +24,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -226,14 +227,62 @@ func (s *PGStore) SetTenantDisplayNameIfUnset(ctx context.Context, id, displayNa
 // exist). The plan is validated by the caller (workspaces.Service.ChangePlan
 // via store.NormalizePlan) before this write; the `tenants.plan` CHECK
 // constraint is the last-resort backstop, surfaced as ErrInvalid via classify.
+//
+// It is every plan change's one write, so it also keeps the workspace's log
+// floor in step (w9/m389 t004): an upgrade stores the old plan's floor, so
+// logs that had already aged out stay hidden, and a downgrade drops a kept
+// floor its shorter window already covers (core.LogsVisibleFromAfterPlanChange).
+// The row is locked first, so two changes at once cannot both read the old
+// plan.
 func (s *PGStore) UpdateTenantPlan(ctx context.Context, id, plan string) (Tenant, error) {
-	t, err := scanTenant(s.Pool.QueryRow(ctx,
-		`UPDATE tenants SET plan = $2, updated_at = now() WHERE id = $1
-		 RETURNING `+tenantColumns, id, plan))
+	var t Tenant
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var old string
+		var visibleFrom *time.Time
+		if err := tx.QueryRow(ctx, `SELECT plan, logs_visible_from FROM tenants WHERE id = $1 FOR UPDATE`, id).Scan(&old, &visibleFrom); err != nil {
+			return err
+		}
+		var kept *time.Time
+		if next := core.LogsVisibleFromAfterPlanChange(old, plan, timeOrZero(visibleFrom), time.Now()); !next.IsZero() {
+			kept = &next
+		}
+		var err error
+		t, err = scanTenant(tx.QueryRow(ctx,
+			`UPDATE tenants SET plan = $2, logs_visible_from = $3, updated_at = now() WHERE id = $1
+			 RETURNING `+tenantColumns, id, plan, kept))
+		return err
+	})
 	if err != nil {
 		return Tenant{}, classify("workspace", err)
 	}
 	return t, nil
+}
+
+// WorkspacePlan is a workspace's plan (core.WorkspacePlanReader). ErrNotFound
+// when the workspace doesn't exist.
+func (s *PGStore) WorkspacePlan(ctx context.Context, workspaceID string) (string, error) {
+	plan, _, err := s.WorkspaceLogPlan(ctx, workspaceID)
+	return plan, err
+}
+
+// WorkspaceLogPlan is a workspace's plan and the log floor its last plan
+// change kept, in one read (core.WorkspaceLogPlanReader, w9/m389): the floor
+// is zero when it kept none. ErrNotFound when the workspace doesn't exist.
+func (s *PGStore) WorkspaceLogPlan(ctx context.Context, workspaceID string) (string, time.Time, error) {
+	var plan string
+	var visibleFrom *time.Time
+	if err := s.Pool.QueryRow(ctx, `SELECT plan, logs_visible_from FROM tenants WHERE id = $1`, workspaceID).Scan(&plan, &visibleFrom); err != nil {
+		return "", time.Time{}, classify("workspace", err)
+	}
+	return plan, timeOrZero(visibleFrom), nil
+}
+
+// timeOrZero reads a nullable timestamp: NULL is the zero time.
+func timeOrZero(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return *t
 }
 
 // DeleteTenant removes a workspace row. The FK cascades (ON DELETE CASCADE) drop

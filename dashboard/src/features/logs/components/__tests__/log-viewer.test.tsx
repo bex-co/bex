@@ -1,4 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   act,
   render,
@@ -8,9 +16,10 @@ import {
 } from "@testing-library/react";
 import { useState, type ReactNode } from "react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
+import userEvent from "@testing-library/user-event";
 import { LogViewer } from "../log-viewer";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
-import { RANGE_PRESETS } from "@/features/metrics/lib/range";
+import { RANGE_PRESETS, type RangeBound } from "@/features/metrics/lib/range";
 import { EMPTY_LOG_FILTERS, type LogLine } from "../../types";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
@@ -57,6 +66,12 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
       {children}
     </a>
   ),
+}));
+// The plan's log window (w9/m389) is its own query; the reader tests keep the
+// picker unbounded, and the bound test sets one.
+const retention: { bound: RangeBound | undefined } = { bound: undefined };
+vi.mock("../../hooks/use-log-retention", () => ({
+  useLogRetentionBound: () => retention.bound,
 }));
 vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelDiscovery: () => ({ values: [], resolved: false }),
@@ -991,5 +1006,37 @@ describe("LogViewer search committed while paused (w4/306)", () => {
       startTime: custom.startTime,
       endTime: custom.endTime,
     });
+  });
+});
+
+// w9/m389: the viewer bounds its range picker by the workspace plan's log
+// window the retention hook reads from bex-api.
+describe("the range picker follows the plan's log window", () => {
+  beforeAll(() => {
+    Element.prototype.hasPointerCapture ??= () => false;
+    Element.prototype.releasePointerCapture ??= () => {};
+    Element.prototype.scrollIntoView ??= () => {};
+  });
+  afterEach(() => {
+    retention.bound = undefined;
+  });
+
+  it("disables the presets past the window and shows the plan's hint", async () => {
+    retention.bound = {
+      maxSpanSeconds: 7 * 24 * 60 * 60,
+      hint: "Logs are kept for 7 days on the Hobby plan.",
+    };
+    const user = userEvent.setup();
+    render(<LogViewer resource="web" />);
+    await user.click(screen.getByLabelText("Log history range"));
+    expect(
+      screen.getByRole("option", { name: "Last 30 days" }),
+    ).toHaveAttribute("aria-disabled", "true");
+    expect(
+      screen.getByRole("option", { name: "Last 7 days" }),
+    ).not.toHaveAttribute("aria-disabled");
+    expect(
+      screen.getByText("Logs are kept for 7 days on the Hobby plan."),
+    ).toBeInTheDocument();
   });
 });

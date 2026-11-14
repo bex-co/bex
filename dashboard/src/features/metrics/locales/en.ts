@@ -544,6 +544,11 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Choose a window of 30 days or less.",
     description: "Custom range validation: window exceeds the max query window",
   },
+  "metrics.rangeCustomErrorTooEarly": {
+    message: "The range must start on or after {date}.",
+    description:
+      "Custom range validation: the start is before the oldest instant the range may reach (e.g. a log plan's retention)",
+  },
   "metrics.rangeLabel": {
     message: "Time range",
     description: "Accessible label for the time-range dropdown",

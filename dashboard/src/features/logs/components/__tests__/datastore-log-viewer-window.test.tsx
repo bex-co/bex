@@ -19,6 +19,11 @@ import { setupVirtualGeometry } from "@/test/virtual-geometry";
 import { DatastoreLogViewer } from "../datastore-log-viewer";
 
 // Instance discovery is its own query; keep the transport to the Logs reader.
+// The plan's log window (w9/m389) is its own query; these tests are about
+// the reader, so the picker stays unbounded.
+vi.mock("../../hooks/use-log-retention", () => ({
+  useLogRetentionBound: () => undefined,
+}));
 vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelValues: () => ["dpg-x-1"],
 }));

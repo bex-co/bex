@@ -170,6 +170,11 @@ vi.mock("@/features/logs/hooks/use-log-history", () => ({
 vi.mock("@/features/logs/hooks/use-live-logs", () => ({
   useLiveLogs: () => ({ lines: [], status: "idle" }),
 }));
+// The plan's log window (w9/m389) is its own query; this route test has no
+// ApolloProvider, so the range picker stays unbounded.
+vi.mock("@/features/logs/hooks/use-log-retention", () => ({
+  useLogRetentionBound: () => undefined,
+}));
 // The filter bar's dropdowns discover values over Apollo — stub so this routing
 // test needs no ApolloProvider.
 vi.mock("@/features/logs/hooks/use-log-label-values", () => ({

@@ -321,6 +321,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.keyValueLogs":                                 core.OpClassRead,
 	"GQL Query.keyValues":                                    core.OpClassRead,
 	"GQL Query.logLabelValues":                               core.OpClassRead,
+	"GQL Query.logRetention":                                 core.OpClassRead,
 	"GQL Query.logs":                                         core.OpClassRead,
 	"GQL Query.metrics":                                      core.OpClassRead,
 	"GQL Query.metricsFilters":                               core.OpClassRead,

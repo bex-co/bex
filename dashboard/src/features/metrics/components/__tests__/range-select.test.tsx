@@ -389,3 +389,131 @@ describe("RangeSelect names the custom window it covers", () => {
     }
   });
 });
+
+// w9/m389: a log viewer bounds the picker by its workspace plan's retention
+// window, read from bex-api: presets wider than it are disabled, the hint
+// names the plan's window, and a custom start before the floor is refused.
+describe("RangeSelect with a bound (a log plan's retention, w9/m389)", () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const bound = {
+    maxSpanSeconds: 7 * 24 * 60 * 60,
+    hint: "Logs are kept for 7 days on the Hobby plan. Upgrade to Pro to keep 14 days.",
+  };
+  const localInput = (ms: number) => {
+    const d = new Date(ms);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  it("disables the presets wider than the window and shows the hint", async () => {
+    const user = userEvent.setup();
+    const onRangeChange = vi.fn();
+    render(
+      <RangeSelect
+        range={DEFAULT_RANGE_PRESET}
+        onRangeChange={onRangeChange}
+        bound={bound}
+      />,
+    );
+
+    await user.click(screen.getByLabelText("Time range"));
+    for (const name of ["Last 14 days", "Last 30 days"]) {
+      expect(screen.getByRole("option", { name })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    }
+    expect(
+      screen.getByRole("option", { name: "Last 7 days" }),
+    ).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByText(bound.hint)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("option", { name: "Last 7 days" }));
+    expect(onRangeChange).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "7d" }),
+    );
+  });
+
+  it("refuses a custom start before the floor and applies one inside it", async () => {
+    const user = userEvent.setup();
+    const onRangeChange = vi.fn();
+    render(
+      <RangeSelect
+        range={DEFAULT_RANGE_PRESET}
+        onRangeChange={onRangeChange}
+        bound={bound}
+      />,
+    );
+
+    await user.click(screen.getByLabelText("Time range"));
+    await user.click(screen.getByRole("option", { name: /Custom/ }));
+    expect(screen.getByRole("dialog")).toHaveTextContent(bound.hint);
+
+    const now = Date.now();
+    fireEvent.change(screen.getByLabelText("Start"), {
+      target: { value: localInput(now - 10 * DAY_MS) },
+    });
+    fireEvent.change(screen.getByLabelText("End"), {
+      target: { value: localInput(now - 9 * DAY_MS) },
+    });
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /^The range must start on or after .+\.$/,
+    );
+    expect(onRangeChange).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Start"), {
+      target: { value: localInput(now - 6 * DAY_MS) },
+    });
+    fireEvent.change(screen.getByLabelText("End"), {
+      target: { value: localInput(now - 5 * DAY_MS) },
+    });
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onRangeChange).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "custom" }),
+    );
+  });
+
+  it("floors a custom start at notBeforeMs while it is later than the span", async () => {
+    const user = userEvent.setup();
+    const onRangeChange = vi.fn();
+    const now = Date.now();
+    render(
+      <RangeSelect
+        range={DEFAULT_RANGE_PRESET}
+        onRangeChange={onRangeChange}
+        bound={{
+          maxSpanSeconds: 14 * 24 * 60 * 60,
+          notBeforeMs: now - 3 * DAY_MS,
+        }}
+      />,
+    );
+    await user.click(screen.getByLabelText("Time range"));
+    await user.click(screen.getByRole("option", { name: /Custom/ }));
+    expect(screen.getByLabelText("Start").getAttribute("min")).toMatch(
+      new RegExp(`^${localInput(now - 3 * DAY_MS)}`),
+    );
+    fireEvent.change(screen.getByLabelText("Start"), {
+      target: { value: localInput(now - 5 * DAY_MS) },
+    });
+    fireEvent.change(screen.getByLabelText("End"), {
+      target: { value: localInput(now - 4 * DAY_MS) },
+    });
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /must start on or after/,
+    );
+    expect(onRangeChange).not.toHaveBeenCalled();
+  });
+
+  it("leaves every preset open without a bound", async () => {
+    const user = userEvent.setup();
+    render(
+      <RangeSelect range={DEFAULT_RANGE_PRESET} onRangeChange={vi.fn()} />,
+    );
+    await user.click(screen.getByLabelText("Time range"));
+    expect(
+      screen.getByRole("option", { name: "Last 30 days" }),
+    ).not.toHaveAttribute("aria-disabled");
+  });
+});

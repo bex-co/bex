@@ -32,7 +32,7 @@ import (
 func TestRequestLogsFollowThePlan(t *testing.T) {
 	app := sampleApp("web")
 	app.Labels = map[string]string{core.LabelTenant: "tea-a"}
-	lines := map[string][]string{webInst: {"2026-07-05T00:00:01Z hello"}}
+	lines := recentLines(map[string][]string{webInst: {"2026-07-05T00:00:01Z hello"}})
 
 	for plan, refused := range map[string]bool{"hobby": true, "pro": false} {
 		t.Run(plan, func(t *testing.T) {

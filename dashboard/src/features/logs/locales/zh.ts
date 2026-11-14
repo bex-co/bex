@@ -10,6 +10,16 @@ const zhLogs: Record<string, TranslationEntry> = {
     description:
       "Explains how the bounded history window interacts with live tail",
   },
+  "logs.retentionWindow_other": {
+    message: "{plan} 套餐保留 {count} 天的日志。",
+    description:
+      "Log range picker hint: how many days the workspace plan keeps logs (w9/m389, from bex-api logRetention)",
+  },
+  "logs.retentionUpgrade_other": {
+    message: "升级到 {plan} 可保留 {count} 天。",
+    description:
+      "Log range picker hint: the cheapest plan that keeps logs longer, and its days (w9/m389)",
+  },
   "logs.typeLabel": {
     message: "日志类型",
     description: "Accessible label for the log-type filter dropdown",

@@ -931,7 +931,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.resolveBlueprintRegistryCredentials(ctx, &st); err != nil {
 		return StackResult{}, err
 	}
-	if err := s.validateBlueprintServices(withRequestMemo(ctx), st, snap); err != nil {
+	if err := s.validateBlueprintServices(core.WithRequestMemo(ctx), st, snap); err != nil {
 		return StackResult{}, err
 	}
 	if err := s.preflightBlueprintOwnership(ctx, req, st, snap); err != nil {
@@ -3795,7 +3795,7 @@ func (s *Service) resolveBlueprintBranch(ctx context.Context, tenantID string, r
 	}
 	// One validation or preview asks once per repository, however many of
 	// its services build it.
-	reported, err := memoized(ctx, "repoDefaultBranch:"+tenantID+"\x00"+core.CanonicalRepo(spec.Repo), func() (string, error) {
+	reported, err := core.Memoized(ctx, "repoDefaultBranch:"+tenantID+"\x00"+core.CanonicalRepo(spec.Repo), func() (string, error) {
 		return s.GitHub.ValidateRepo(ctx, tenantID, spec.Repo)
 	})
 	if err != nil {
@@ -3823,7 +3823,7 @@ func (s *Service) resolveBlueprintSwitchBranch(ctx context.Context, req CreateRe
 func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fields map[string]BlueprintField, desired appv1alpha1.AppSpec, existing *appv1alpha1.App) (AppView, error) {
 	// Per update, not per stack: a protection answer must not outlive a move
 	// this apply makes. The host index is the apply's (withHostClaimScope).
-	ctx = withRequestMemo(ctx)
+	ctx = core.WithRequestMemo(ctx)
 	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
 		// Render's Blueprint spec: an existing resource's type cannot be
 		// modified. Said in product words, not the App rule's (w8/279).
@@ -3926,7 +3926,7 @@ func (s *Service) currentStackService(ctx context.Context, listed *appv1alpha1.A
 func (s *Service) createFromStack(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, *appv1alpha1.App, error) {
 	// Per create, as an interactive create's: the host index is the apply's
 	// (withHostClaimScope).
-	ctx = withRequestMemo(ctx)
+	ctx = core.WithRequestMemo(ctx)
 	plan, err := s.planStackApp(ctx, req, desired)
 	if err != nil {
 		return AppView{}, nil, err

@@ -350,7 +350,7 @@ func TestSubscribeRoutesStructuredFiltersBeforeStreaming(t *testing.T) {
 func TestRequestFilterTailFollowsThePlan(t *testing.T) {
 	app := sampleApp("web")
 	app.Labels = map[string]string{core.LabelTenant: "tea-a"}
-	svc := newService(liveFilterLines, app, podFor("web", webInst))
+	svc := newService(recentLines(liveFilterLines), app, podFor("web", webInst))
 	svc.History = newRequestStore().history
 	svc.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return "hobby", nil })
 

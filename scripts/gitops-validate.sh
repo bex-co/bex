@@ -1758,10 +1758,10 @@ fi
 # PVC sized for the extra Zot/static-server platform streams.
 LOKI_APP="deploy/gitops/base/loki.yaml"
 if [ -f "$LOKI_APP" ]; then
-  echo "==> $LOKI_APP migration clean-window retention (w2/m93)"
+  echo "==> $LOKI_APP retention holds Render's longest plan window (w9/m389)"
   loki_vals="$(yq '.spec.source.helm.values' "$LOKI_APP")"
-  grep -qF 'retention_period: 504h' <<<"$loki_vals" \
-    || { echo "FAIL: loki.yaml must retain >=21d (504h) for the ADR055 Phase-4 clean window" >&2; fail=1; }
+  grep -qF 'retention_period: 720h' <<<"$loki_vals" \
+    || { echo "FAIL: loki.yaml must retain 30d (720h), Render's Scale/Enterprise log window; bex-api floors reads per plan (ADR010)" >&2; fail=1; }
   grep -qE 'size: 60Gi' <<<"$loki_vals" \
     || { echo "FAIL: loki.yaml PVC must be sized for 21d + zot/static-server evidence (60Gi)" >&2; fail=1; }
 fi

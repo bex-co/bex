@@ -19,8 +19,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
+	"time"
 )
 
 // Workspace plan ids, ladder order. Mirrors store.PlanHobby…PlanEnterprise
@@ -126,6 +128,111 @@ func WebhookDestinationLimit(plan string) int {
 	default:
 		return 100
 	}
+}
+
+// logRetention is how far back each plan's logs reach (w9/m389;
+// render.com/docs/logging, checked 2026-11-14): Hobby 7 days, Pro 14, Scale
+// and Enterprise 30. Every log read is floored at it, on every surface.
+var logRetention = map[string]time.Duration{
+	planHobby:      7 * 24 * time.Hour,
+	planPro:        14 * 24 * time.Hour,
+	planScale:      30 * 24 * time.Hour,
+	planEnterprise: 30 * 24 * time.Hour,
+}
+
+// LogRetention is how far back plan's logs reach. An unknown plan gets the
+// shortest window (ShortestLogRetention). That is the opposite of PlanAllows, which opens a
+// gate for an unknown plan: a retention window only ever hides lines, so the
+// safe default is to hide the most (validation and tenants.plan's CHECK keep
+// unknown plans out anyway).
+func LogRetention(plan string) time.Duration {
+	if window, ok := logRetention[plan]; ok {
+		return window
+	}
+	return ShortestLogRetention()
+}
+
+// ShortestLogRetention is the shortest plan window. No workspace's log floor
+// is ever later than now minus it: LogFloor subtracts at least this much, and
+// a floor a plan change kept lies at least this far before the change.
+func ShortestLogRetention() time.Duration {
+	return slices.Min(slices.Collect(maps.Values(logRetention)))
+}
+
+// LogRetentionUpgrade is the cheapest plan that keeps logs longer than plan,
+// and its window: the plan the dashboard's retention hint names. ok is false
+// on the longest window.
+func LogRetentionUpgrade(plan string) (next string, window time.Duration, ok bool) {
+	have := LogRetention(plan)
+	for _, p := range planLadder {
+		if w := LogRetention(p); w > have {
+			return p, w, true
+		}
+	}
+	return "", 0, false
+}
+
+// LogFloor is the earliest instant a workspace on plan sees logs from at now:
+// its plan's window back from now, or visibleFrom while that is later.
+// visibleFrom is the floor a plan change kept (LogsVisibleFromAfterPlanChange);
+// zero means none.
+func LogFloor(plan string, visibleFrom, now time.Time) time.Time {
+	floor := now.Add(-LogRetention(plan))
+	if visibleFrom.After(floor) {
+		return visibleFrom
+	}
+	return floor
+}
+
+// LogsVisibleFromAfterPlanChange is the floor a workspace keeps when its plan
+// changes from oldPlan to newPlan at `at` (w9/m389 t004). Render: "Logs older
+// than your current retention period are no longer available, even if you
+// upgrade your plan to extend the period." So an upgrade keeps the old plan's
+// floor at `at`: the longer window reaches back over it only as time passes,
+// and the kept floor lapses on its own once the new window's floor overtakes
+// it. A downgrade narrows at once, its window being shorter, and keeps an
+// earlier upgrade's floor only while that still bites. Zero means the new
+// plan's window alone applies.
+func LogsVisibleFromAfterPlanChange(oldPlan, newPlan string, visibleFrom, at time.Time) time.Time {
+	floor := LogFloor(oldPlan, visibleFrom, at)
+	if !floor.After(at.Add(-LogRetention(newPlan))) {
+		return time.Time{}
+	}
+	return floor
+}
+
+// WorkspaceLogPlanReader is a WorkspacePlanReader that also reads, in the
+// same read, the log floor the workspace's last plan change kept
+// (LogsVisibleFromAfterPlanChange; zero when none). The tenants store is one;
+// a plain WorkspacePlanReader keeps no floor, so the plan's window alone
+// applies.
+type WorkspaceLogPlanReader interface {
+	WorkspaceLogPlan(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, err error)
+}
+
+// WorkspaceLogPlanOf is WorkspacePlanOf plus the log floor the workspace's
+// last plan change kept, in one read where the reader offers both
+// (WorkspaceLogPlanReader). ok is false where no plan applies, as for
+// WorkspacePlanOf.
+func (b *Base) WorkspaceLogPlanOf(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, ok bool, err error) {
+	both, isBoth := b.planReader().(WorkspaceLogPlanReader)
+	if !isBoth || workspaceID == "" || workspaceID == DefaultTenant {
+		plan, ok, err = b.WorkspacePlanOf(ctx, workspaceID)
+		return plan, time.Time{}, ok, err
+	}
+	plan, visibleFrom, err = both.WorkspaceLogPlan(ctx, workspaceID)
+	if err != nil {
+		return "", time.Time{}, false, fmt.Errorf("reading workspace plan: %w", err)
+	}
+	return plan, visibleFrom, true, nil
+}
+
+// planReader is b's plan reader, nil-safe on a nil Base.
+func (b *Base) planReader() WorkspacePlanReader {
+	if b == nil {
+		return nil
+	}
+	return b.Plans
 }
 
 // WorkspacePlanReader reads a workspace's plan (hobby, pro, scale, enterprise).

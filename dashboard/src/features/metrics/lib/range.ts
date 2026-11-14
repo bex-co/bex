@@ -60,6 +60,31 @@ export function isCustomRange(range: RangeSelection): range is CustomRange {
 // just keeps the common case from round-tripping a doomed query.
 export const MAX_CUSTOM_RANGE_HOURS = 720;
 
+/**
+ * How far back a range may reach. Presets wider than `maxSpanSeconds` are
+ * disabled, and a custom range may not start before the floor
+ * (`boundFloorMs`): `maxSpanSeconds` back from now, or `notBeforeMs` while
+ * that is later. `hint` is one line the picker shows about the bound.
+ */
+export interface RangeBound {
+  maxSpanSeconds: number;
+  notBeforeMs?: number;
+  hint?: string;
+}
+
+/** Whether a preset fits inside the bound (no bound: every preset does). */
+export function presetWithinBound(
+  preset: RangePreset,
+  bound: RangeBound | undefined,
+): boolean {
+  return !bound || preset.spanSeconds <= bound.maxSpanSeconds;
+}
+
+/** The earliest instant a range may start at, at `nowMs`. */
+export function boundFloorMs(bound: RangeBound, nowMs: number): number {
+  return Math.max(bound.notBeforeMs ?? 0, nowMs - bound.maxSpanSeconds * 1000);
+}
+
 /** ~120 buckets for any span, floored at 1s so a tiny window still steps. */
 export function resolutionForSpan(spanSeconds: number): number {
   return Math.max(1, Math.round(spanSeconds / 120));

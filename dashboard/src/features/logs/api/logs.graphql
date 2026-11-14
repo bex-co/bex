@@ -82,3 +82,21 @@ query Logs(
 query LogLabelValues($label: String!, $resource: String!) {
   logLabelValues(label: $label, resource: $resource)
 }
+
+# How far back one resource's logs reach on its workspace plan (w9/m389, a Bex
+# extension): bex-api floors every log read at the plan's window (Hobby 7 days, Pro
+# 14, Scale and Enterprise 30, as on Render). `visibleFrom` is the floor an upgrade
+# kept while it is later than `days` back from now, null otherwise, so the answer
+# holds still between reads and the client slides the window's floor forward on its
+# own clock. `upgradePlan`/`upgradeDays` name the cheapest plan that keeps logs
+# longer, null on the longest. The whole field is null where no plan applies (local
+# dev, no store).
+query LogRetention($resource: String!) {
+  logRetention(resource: $resource) {
+    plan
+    days
+    visibleFrom
+    upgradePlan
+    upgradeDays
+  }
+}

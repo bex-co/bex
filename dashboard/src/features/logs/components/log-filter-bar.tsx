@@ -28,6 +28,7 @@ import {
   useLogLabelDiscovery,
   type LogLabelDiscovery,
 } from "../hooks/use-log-label-values";
+import { useLogRetentionBound } from "../hooks/use-log-retention";
 import {
   LOG_LABEL_INSTANCE,
   LOG_LABEL_LEVEL,
@@ -177,6 +178,8 @@ export function LogFilterBar({
     useLogLabelDiscovery(resource, LOG_LABEL_INSTANCE),
   );
 
+  const rangeBound = useLogRetentionBound(resource);
+
   const active = STRUCTURED_FILTER_KEYS.filter((key) => filters[key] !== "");
 
   return (
@@ -221,6 +224,7 @@ export function LogFilterBar({
         range={range}
         onRangeChange={onRangeChange}
         ariaLabel={t("logs.rangeLabel")}
+        bound={rangeBound}
       />
 
       <Popover>

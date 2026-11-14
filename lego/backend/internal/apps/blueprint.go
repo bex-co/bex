@@ -752,7 +752,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 func (s *Service) blueprintValidationWithSuffix(ctx context.Context, repo, branch, bexYAML, blueprintID, suffix string, snap *workspaceSnapshot) (BlueprintValidation, error) {
 	// One memo for the whole validation: it writes nothing, so every check of
 	// the platform's host claims (domains, maintenance URIs) reads one index.
-	ctx = withRequestMemo(ctx)
+	ctx = core.WithRequestMemo(ctx)
 	if repo == "" {
 		ctx = context.WithValue(ctx, unresolvedRepoKey{}, true)
 	}
@@ -1378,7 +1378,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if err := s.resolveBlueprintRegistryCredentials(ctx, &checked); err != nil {
 		return BlueprintView{}, err
 	}
-	if err := s.validateBlueprintServices(withRequestMemo(ctx), checked, preflight); err != nil {
+	if err := s.validateBlueprintServices(core.WithRequestMemo(ctx), checked, preflight); err != nil {
 		return BlueprintView{}, err
 	}
 	// One manager per resource, asked before anything is recorded: the apply

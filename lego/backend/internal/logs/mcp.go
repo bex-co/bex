@@ -139,6 +139,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "List log lines for one or more services, managed Postgres databases, or Key Value stores (Render's `resource` array), filtered by text, time range, and instance; service and Postgres logs also support level; service logs additionally support type, host, statusCode, method, and path. " +
 			"Timestamp-sorted and aggregated across instances. Returns Render's paging envelope: hasMore, nextStartTime, nextEndTime, and logs. " +
 			"When hasMore is true, call again with startTime=nextStartTime and endTime=nextEndTime (same direction) to fetch the next page — the result is capped at 100 lines. " +
+			"Logs reach back as far as the workspace plan keeps them; an earlier startTime reads from that limit. " +
 			"Use list_log_label_values to discover which filter values exist for a resource.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogsArgs) (*mcp.CallToolResult, listLogsResult, error) {
 		resources, err := boundedResources(in.Resource)
@@ -187,6 +188,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, listLogLabelValuesResult{}, err
 		}
 		all := []string{}
+		ctx = core.WithRequestMemo(ctx)
 		for _, id := range resources {
 			q.App = id
 			values, err := s.LogLabelValues(ctx, in.Label, q)

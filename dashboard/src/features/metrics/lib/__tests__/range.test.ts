@@ -4,10 +4,12 @@ import {
   RANGE_PRESETS,
   DEFAULT_RANGE_PRESET,
   MAX_CUSTOM_RANGE_HOURS,
+  boundFloorMs,
   makeCustomRange,
   parseCustomRange,
   parseRangePreset,
   parseRangeSearch,
+  presetWithinBound,
   rangeFromSearch,
   rangeToSearch,
   resolutionForSpan,
@@ -191,5 +193,36 @@ describe("resolveRange", () => {
     expect(new Date(later.endTime).getTime()).toBeGreaterThan(
       new Date(earlier.endTime).getTime(),
     );
+  });
+});
+
+// A bound (a log plan's retention, w9/m389) admits the presets inside its
+// span, and its floor slides forward with the clock but never lies before
+// notBeforeMs (an upgrade's kept floor).
+describe("RangeBound", () => {
+  const DAY = 24 * 60 * 60;
+  const preset = (id: string) => RANGE_PRESETS.find((p) => p.id === id)!;
+
+  it("admits presets up to the window", () => {
+    const bound = { maxSpanSeconds: 14 * DAY };
+    expect(presetWithinBound(preset("14d"), bound)).toBe(true);
+    expect(presetWithinBound(preset("30d"), bound)).toBe(false);
+    expect(presetWithinBound(preset("30d"), undefined)).toBe(true);
+  });
+
+  it("floors at the later of now minus the span and notBeforeMs", () => {
+    const now = Date.parse("2026-11-14T12:00:00Z");
+    const sliding = { maxSpanSeconds: 7 * DAY };
+    expect(boundFloorMs(sliding, now)).toBe(now - 7 * DAY * 1000);
+    const lapsed = {
+      maxSpanSeconds: 7 * DAY,
+      notBeforeMs: now - 8 * DAY * 1000,
+    };
+    expect(boundFloorMs(lapsed, now)).toBe(now - 7 * DAY * 1000);
+    const kept = {
+      maxSpanSeconds: 14 * DAY,
+      notBeforeMs: now - 9 * DAY * 1000,
+    };
+    expect(boundFloorMs(kept, now)).toBe(now - 9 * DAY * 1000);
   });
 });

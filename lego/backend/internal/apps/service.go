@@ -2262,7 +2262,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error) {
 	// One index of the platform's host claims serves the plan's host check and
 	// the write's (hostClaimIndex).
-	ctx = withRequestMemo(ctx)
+	ctx = core.WithRequestMemo(ctx)
 	desired, err := specFromCreate(req)
 	if err != nil {
 		return AppView{}, err

@@ -95,7 +95,7 @@ func (s *Service) appProtected(ctx context.Context, a *appv1alpha1.App) (bool, e
 	}
 	// Memoized: a multi-field patch asks this once per guarded row, in each of
 	// its two passes, and the answer cannot change mid-request.
-	protectedStatus, err := memoized(ctx, "appProtected:"+id, func() (string, error) {
+	protectedStatus, err := core.Memoized(ctx, "appProtected:"+id, func() (string, error) {
 		return s.Store.GetAppProtectedStatus(ctx, id)
 	})
 	if err != nil {

@@ -53,11 +53,13 @@ spec:
                 object_store: filesystem
                 schema: v13
                 index: { prefix: index_, period: 24h }
-          # Retention: 21 days, enforced by the compactor. Covers the 14-day
-          # migration clean window + evaluation buffer (w2/m93); still within
-          # Render's Pro/Scale searchable range (ADR010).
+          # Retention: 30 days, enforced by the compactor — Render's longest
+          # plan window (Scale/Enterprise). bex-api floors every read at the
+          # workspace plan's window (Hobby 7 d, Pro 14 d; ADR010, w9/m389), so
+          # storage holds the longest one. ≈31 MB/day raw (2026-09-28) puts
+          # 30 days near 3 GB, far inside the claim below.
           limits_config:
-            retention_period: 504h
+            retention_period: 720h
           compactor:
             retention_enabled: true
             delete_request_store: filesystem

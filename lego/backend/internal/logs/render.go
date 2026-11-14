@@ -170,6 +170,9 @@ type logPage struct {
 // Across several resources, the least-covered one bounds the page, and lines
 // beyond that edge are dropped so the next page does not repeat them.
 func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQuery) (logPage, error) {
+	// The resources' workspace plans are read once for the whole page, the
+	// line-beyond probe included.
+	ctx = core.WithRequestMemo(ctx)
 	n := q.normalized()
 	forward := n.Direction == DirectionForward
 	// Each resource is read one line past the page, so the page can say

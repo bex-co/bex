@@ -1815,6 +1815,15 @@ export type LogList = {
   nextStartTime: Scalars['String']['output'];
 };
 
+export type LogRetention = {
+  __typename: 'LogRetention';
+  days: Scalars['Int']['output'];
+  plan: Scalars['String']['output'];
+  upgradeDays: Maybe<Scalars['Int']['output']>;
+  upgradePlan: Maybe<Scalars['String']['output']>;
+  visibleFrom: Maybe<Scalars['String']['output']>;
+};
+
 export type MaintenanceMode = {
   __typename: 'MaintenanceMode';
   enabled: Scalars['Boolean']['output'];
@@ -4027,6 +4036,7 @@ export type Query = {
   keyValueLogs: Maybe<Array<Maybe<KeyValueLogEntry>>>;
   keyValues: Maybe<Array<Maybe<KeyValue>>>;
   logLabelValues: Maybe<Array<Scalars['String']['output']>>;
+  logRetention: Maybe<LogRetention>;
   logs: Maybe<LogList>;
   metrics: Maybe<Array<Maybe<MetricSeries>>>;
   metricsFilters: Maybe<MetricsFiltersResult>;
@@ -4623,6 +4633,11 @@ export type QueryLogLabelValuesArgs = {
   text?: InputMaybe<Scalars['String']['input']>;
   textMode?: InputMaybe<Scalars['String']['input']>;
   type?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryLogRetentionArgs = {
+  resource: Scalars['String']['input'];
 };
 
 

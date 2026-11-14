@@ -1,7 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { DatastoreLogViewer } from "../datastore-log-viewer";
+import type { RangeBound } from "@/features/metrics/lib/range";
 import userEvent from "@testing-library/user-event";
 import { serverRendered } from "@/test/hydration";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
@@ -30,6 +39,12 @@ vi.mock("../../hooks/use-log-history", () => ({
     useHistorySpy(...args);
     return state;
   },
+}));
+// The plan's log window (w9/m389) is its own query; the reader tests keep the
+// picker unbounded, and the bound test sets one.
+const retention: { bound: RangeBound | undefined } = { bound: undefined };
+vi.mock("../../hooks/use-log-retention", () => ({
+  useLogRetentionBound: () => retention.bound,
 }));
 vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelValues: () => ["dpg-example-1"],
@@ -379,5 +394,37 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
     ).toBeInTheDocument();
     // History stays beside the tail.
     expect(screen.getByText("checkpoint complete")).toBeInTheDocument();
+  });
+});
+
+// w9/m389: the viewer bounds its range picker by the workspace plan's log
+// window the retention hook reads from bex-api.
+describe("the range picker follows the plan's log window", () => {
+  beforeAll(() => {
+    Element.prototype.hasPointerCapture ??= () => false;
+    Element.prototype.releasePointerCapture ??= () => {};
+    Element.prototype.scrollIntoView ??= () => {};
+  });
+  afterEach(() => {
+    retention.bound = undefined;
+  });
+
+  it("disables the presets past the window and shows the plan's hint", async () => {
+    retention.bound = {
+      maxSpanSeconds: 7 * 24 * 60 * 60,
+      hint: "Logs are kept for 7 days on the Hobby plan.",
+    };
+    const user = userEvent.setup();
+    render(<DatastoreLogViewer kind="databases" resource="dpg-example" />);
+    await user.click(screen.getByRole("combobox", { name: /range/i }));
+    expect(
+      screen.getByRole("option", { name: "Last 30 days" }),
+    ).toHaveAttribute("aria-disabled", "true");
+    expect(
+      screen.getByRole("option", { name: "Last 7 days" }),
+    ).not.toHaveAttribute("aria-disabled");
+    expect(
+      screen.getByText("Logs are kept for 7 days on the Hobby plan."),
+    ).toBeInTheDocument();
   });
 });

@@ -517,6 +517,11 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "请选择 30 天以内的时间窗口。",
     description: "Custom range validation: window exceeds the max query window",
   },
+  "metrics.rangeCustomErrorTooEarly": {
+    message: "时间范围的开始不能早于 {date}。",
+    description:
+      "Custom range validation: the start is before the oldest instant the range may reach (e.g. a log plan's retention)",
+  },
   "metrics.rangeLabel": {
     message: "时间范围",
     description: "Accessible label for the time-range dropdown",

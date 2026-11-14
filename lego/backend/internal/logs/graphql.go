@@ -63,6 +63,32 @@ var logListGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// logRetentionGQLType is one resource's log window (w9/m389, a Bex extension
+// the dashboard bounds its range presets and custom picker by): the workspace
+// plan's core.LogRetention, at which every REST, GraphQL and MCP read is
+// floored.
+var logRetentionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "LogRetention",
+	Fields: graphql.Fields{
+		// plan is the resource's workspace plan; days how far back it keeps logs.
+		"plan": gqlutil.ReqStrField(func(r *RetentionWindow) any { return r.Plan }),
+		"days": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(r *RetentionWindow) any { return r.Days }),
+		// visibleFrom is the floor an upgrade kept while it is later than days
+		// back from now (RFC3339); null otherwise. The answer holds still between
+		// reads: a client slides the days-back floor forward on its own clock.
+		"visibleFrom": gqlutil.TimeField(func(r *RetentionWindow) any { return r.VisibleFrom }),
+		// upgradePlan/upgradeDays name the cheapest plan that keeps logs longer;
+		// null on the longest window.
+		"upgradePlan": gqlutil.OptionalStrField(func(r *RetentionWindow) any { return r.UpgradePlan }),
+		"upgradeDays": gqlutil.IntField(func(r *RetentionWindow) any {
+			if r.UpgradeDays == 0 {
+				return nil
+			}
+			return r.UpgradeDays
+		}),
+	},
+})
+
 // logFilterArgs are the filter arguments logs() and logLabelValues() share — the
 // same vocabulary as REST/MCP. `resource` may name an App, managed Postgres, or Key Value;
 // datastore logs support range/text/instance and Postgres also supports level;
@@ -136,6 +162,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				}, nil
 			},
 		},
+		// How far back the resource's logs reach on its workspace plan (w9/m389);
+		// null where no plan applies.
+		"logRetention": gqlutil.KeyVerb(logRetentionGQLType, "resource", s.LogRetention),
 		// The dashboard's filter dropdowns (and any GraphQL client) discover real
 		// values here — the logs sibling of metricsFilters.
 		"logLabelValues": &graphql.Field{

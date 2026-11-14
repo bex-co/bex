@@ -92,9 +92,10 @@ func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	all := []string{}
+	ctx := core.WithRequestMemo(r.Context())
 	for _, res := range resources {
 		q.App = res
-		values, err := s.LogLabelValues(r.Context(), label, q)
+		values, err := s.LogLabelValues(ctx, label, q)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -356,32 +357,14 @@ func (s *Service) acquireSubscription(ctx context.Context, q LogQuery) (func(), 
 }
 
 func (s *Service) subscriptionWorkspace(ctx context.Context, resource string) (string, error) {
-	var labels map[string]string
-	var namespace string
-	switch {
-	case isPostgresResource(resource):
-		database, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, resource)
-		if err != nil {
-			return "", err
-		}
-		labels, namespace = database.Labels, database.Namespace
-	case isKeyValueResource(resource):
-		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, resource)
-		if err != nil {
-			return "", err
-		}
-		labels, namespace = kv.Labels, kv.Namespace
-	default:
-		app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, resource)
-		if err != nil {
-			return "", err
-		}
-		labels, namespace = app.Labels, app.Namespace
+	owner, err := s.authorizeLogOwner(ctx, resource)
+	if err != nil {
+		return "", err
 	}
-	if workspace := labels[core.LabelTenant]; workspace != "" {
+	if workspace := owner.GetLabels()[core.LabelTenant]; workspace != "" {
 		return workspace, nil
 	}
-	if namespace != "" {
+	if namespace := owner.GetNamespace(); namespace != "" {
 		return namespace, nil
 	}
 	return core.DefaultTenant, nil
