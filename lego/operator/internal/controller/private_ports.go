@@ -28,8 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/operator/internal/portscan"
@@ -85,16 +87,48 @@ func (r *AppReconciler) discoverPrivatePorts(ctx context.Context, app *appv1alph
 	return nil
 }
 
-// scanPrivatePorts returns the new runtime-port record, or nil when no scan
-// was due, no instance was Ready, or the scan failed (the last record stands).
+// privatePortSweep is one listener sweep of a service's revision, run off the
+// reconcile worker. next is set before done closes; nil means the sweep proved
+// nothing and the last record stands.
+type privatePortSweep struct {
+	uid      types.UID
+	revision string
+	done     chan struct{}
+	next     *appv1alpha1.RuntimePortsStatus
+}
+
+// scanPrivatePorts returns the new runtime-port record, or nil when no sweep
+// finished since the last pass: none was due, no instance was Ready, the sweep
+// is still running, or it failed (the last record stands).
+//
+// The sweep runs in the background (w4/665). Tenant pods drop probes to
+// closed ports, so a full sweep never finishes and always lasts the whole
+// portDetectTimeout. Run inside the pass, every Running web and private
+// service held one of the App controller's two workers for 15 s every two
+// minutes: the workers stayed saturated, and every other App's deploy waited
+// 20–90 s in the queue behind those sweeps. A pass now starts the sweep, and
+// the pass its end wakes takes the record.
 func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) *appv1alpha1.RuntimePortsStatus {
 	revision := dep.Spec.Template.Labels[labelRevision]
 	if r.PortScanner == nil || revision == "" {
 		return nil
 	}
+	key := app.Namespace + "/" + app.Name
+	if v, ok := r.privatePortSweeps.Load(key); ok {
+		sweep := v.(*privatePortSweep)
+		select {
+		case <-sweep.done:
+		default:
+			return nil // still sweeping
+		}
+		r.privatePortSweeps.Delete(key)
+		if sweep.uid == app.UID && sweep.revision == revision {
+			return sweep.next
+		}
+		// A revision this App no longer runs: its new one is due at once below.
+	}
 	prev := app.Status.RuntimePorts
 	sameRevision := prev != nil && prev.Revision == revision
-	key := app.Namespace + "/" + app.Name
 	every := privatePortScanInterval
 	if r.portDetectEvery > 0 {
 		every = r.portDetectEvery
@@ -114,7 +148,29 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 		return nil
 	}
 	r.privatePortScanned.Store(key, time.Now())
+	sweep := &privatePortSweep{uid: app.UID, revision: revision, done: make(chan struct{})}
+	r.privatePortSweeps.Store(key, sweep)
+	snapshot := app.DeepCopy()
+	go func() {
+		sweep.next = r.sweepPrivatePorts(context.WithoutCancel(ctx), snapshot, revision, ip)
+		close(sweep.done) // before the wake, so the woken pass finds the record
+		if r.privatePortSwept == nil {
+			return
+		}
+		wake := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: snapshot.Name, Namespace: snapshot.Namespace}}
+		select {
+		case r.privatePortSwept <- event.GenericEvent{Object: wake}:
+		default: // the channel is full: the App's own requeue takes the record
+		}
+	}()
+	return nil
+}
 
+// sweepPrivatePorts scans ip, a Ready instance of app's revision, and returns
+// the runtime-port record the scan proves; nil when the scan failed.
+func (r *AppReconciler) sweepPrivatePorts(ctx context.Context, app *appv1alpha1.App, revision, ip string) *appv1alpha1.RuntimePortsStatus {
+	prev := app.Status.RuntimePorts
+	sameRevision := prev != nil && prev.Revision == revision
 	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 	defer cancel()
 	open, err := r.PortScanner.Scan(scanCtx, ip)

@@ -815,6 +815,26 @@ groups:
           summary: "App changes wait {{ $value | humanizeDuration }} (p95) in the operator's queue"
           description: "A settings change, a resume or a route repoint reaches the cluster only when the operator reconciles that App, and its queue p95 wait has been over 15 s for 10 minutes. Tenants see settings apply late and maintenance mode or resume answer from the old route. Read the Builds dashboard's operator panels: high queue depth with workers saturated means too few BEX_APP_RECONCILE_WORKERS (lego/operator/config/manager/manager.yaml) for the fleet; long reconcile times mean a slow pass. Context: .pm/w5/m370, w21/012."
 
+      # The cause class behind most of that wait (w4/665): a pass that blocks
+      # on the network. The private-network listener sweep ran inside the pass
+      # and always lasted its full 15 s, so 30–47% of App reconciles took
+      # 15–20 s, the two workers stayed saturated for at least 30 hours, and
+      # new deploys queued 20–90 s. A healthy pass takes well under a second.
+      - alert: BexOperatorAppReconcileSlowPasses
+        expr: |
+          (
+            sum(rate(controller_runtime_reconcile_time_seconds_count{job="bex-operator",controller="app"}[15m]))
+            - sum(rate(controller_runtime_reconcile_time_seconds_bucket{job="bex-operator",controller="app",le=~"10|10\\.0"}[15m]))
+          )
+          / sum(rate(controller_runtime_reconcile_time_seconds_count{job="bex-operator",controller="app"}[15m]))
+          > 0.1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of App reconciles take over 10 s"
+          description: "Over a tenth of the operator's App reconcile passes have taken longer than 10 s for 15 minutes. Each such pass holds one of the few App workers, so every other App's deploy, resume and settings change queues behind it (BexOperatorReconcileQueueSlow follows). A pass that long is waiting on something: a port scan, a registry or metrics read, or a Job it should observe instead. Find the step in the operator log around the slow Apps' reconciles and move it off the pass; raising BEX_APP_RECONCILE_WORKERS only spreads the wait. Context: .pm/w4/done/665.md."
+
       # The held half of the same wait (w6/m306, ADR060 D5). A release the
       # cluster ceiling holds, or one waiting on a datastore that is still
       # being created, has no build Job yet, so bex_build_queue_oldest_seconds

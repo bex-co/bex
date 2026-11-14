@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -62,6 +63,106 @@ func privateScanFixture(scanner portscan.Scanner, ready bool, every time.Duratio
 	scheme := wakeScheme()
 	r := &AppReconciler{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(pod).Build(), Scheme: scheme, PortScanner: scanner, portDetectEvery: every}
 	return r, app, dep
+}
+
+// awaitPrivateSweep waits for app's background sweep to end, if one runs, and
+// reports whether there was one.
+func awaitPrivateSweep(r *AppReconciler, app *appv1alpha1.App) bool {
+	v, ok := r.privatePortSweeps.Load(app.Namespace + "/" + app.Name)
+	if ok {
+		<-v.(*privatePortSweep).done
+	}
+	return ok
+}
+
+// sweptPrivatePorts is scanPrivatePorts over the passes a sweep spans: the one
+// that starts it and, once it ends, the one that takes its record.
+func sweptPrivatePorts(r *AppReconciler, app *appv1alpha1.App, dep *appsv1.Deployment) *appv1alpha1.RuntimePortsStatus {
+	if got := r.scanPrivatePorts(context.Background(), app, dep); got != nil || !awaitPrivateSweep(r, app) {
+		return got
+	}
+	return r.scanPrivatePorts(context.Background(), app, dep)
+}
+
+// blockingScanner's sweep lasts until release closes, as a production sweep of
+// a pod that drops probes to closed ports lasts the whole portDetectTimeout.
+type blockingScanner struct {
+	open    []int
+	started chan struct{}
+	release chan struct{}
+}
+
+func (s *blockingScanner) Scan(context.Context, string) ([]int, error) {
+	s.started <- struct{}{}
+	<-s.release
+	return s.open, nil
+}
+
+// w4/665: a listener sweep never holds the reconcile worker. Production sweeps
+// run their full 15 s, and run inside the pass they kept the App controller's
+// two workers saturated, so a new service's deploy waited 20–90 s in the queue.
+// The pass that starts a sweep returns at once, a pass during it starts no
+// second one, its end wakes the App, and the next pass takes its record.
+func TestScanPrivatePortsNeverBlocksThePass(t *testing.T) {
+	scanner := &blockingScanner{open: []int{5432, 9187}, started: make(chan struct{}, 2), release: make(chan struct{})}
+	r, app, dep := privateScanFixture(scanner, true, time.Nanosecond)
+	r.privatePortSwept = make(chan event.GenericEvent, 1)
+	app.UID = "uid-1"
+
+	returned := make(chan *appv1alpha1.RuntimePortsStatus, 1)
+	go func() { returned <- r.scanPrivatePorts(context.Background(), app, dep) }()
+	select {
+	case got := <-returned:
+		if got != nil {
+			t.Fatalf("the starting pass returned %+v, want no record yet", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the pass waited for the sweep")
+	}
+	<-scanner.started
+	if got := r.scanPrivatePorts(context.Background(), app, dep); got != nil {
+		t.Fatalf("a pass during the sweep returned %+v, want none", got)
+	}
+	close(scanner.release)
+	select {
+	case wake := <-r.privatePortSwept:
+		if wake.Object.GetName() != app.Name || wake.Object.GetNamespace() != app.Namespace {
+			t.Fatalf("woke %s/%s, want %s/%s", wake.Object.GetNamespace(), wake.Object.GetName(), app.Namespace, app.Name)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the finished sweep never woke its App")
+	}
+	if got := r.scanPrivatePorts(context.Background(), app, dep); got == nil || !slices.Equal(got.Ports, []int32{5432, 9187}) {
+		t.Fatalf("the woken pass took %+v, want ports 5432 9187", got)
+	}
+	if len(scanner.started) != 0 {
+		t.Fatal("a pass during the sweep started a second one")
+	}
+}
+
+// A finished sweep of a revision the App no longer runs is not published: the
+// pass that finds it starts the new revision's sweep instead.
+func TestScanPrivatePortsDropsAnOutrunSweep(t *testing.T) {
+	scanner := &cannedScanner{open: []int{5432}}
+	r, app, dep := privateScanFixture(scanner, true, time.Hour)
+	if got := r.scanPrivatePorts(context.Background(), app, dep); got != nil || !awaitPrivateSweep(r, app) {
+		t.Fatalf("scan = %+v, want a sweep started", got)
+	}
+	dep.Spec.Template.Labels[labelRevision] = "rev-3"
+	r.Client = fake.NewClientBuilder().WithObjects(&corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "db-3", Namespace: "tea-a", Labels: dep.Spec.Template.Labels},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIP: "10.0.0.10",
+			Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
+	}).Build()
+	if got := r.scanPrivatePorts(context.Background(), app, dep); got != nil {
+		t.Fatalf("published %+v from rev-2's sweep, want nothing", got)
+	}
+	if !awaitPrivateSweep(r, app) || scanner.calls != 2 {
+		t.Fatalf("calls = %d, want rev-3 swept at once", scanner.calls)
+	}
+	if got := r.scanPrivatePorts(context.Background(), app, dep); got == nil || got.Revision != "rev-3" {
+		t.Fatalf("scan = %+v, want rev-3's record", got)
+	}
 }
 
 func TestScanPrivatePorts(t *testing.T) {
@@ -111,7 +212,7 @@ func TestScanPrivatePorts(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			r, app, dep := privateScanFixture(tc.scanner, tc.ready, time.Nanosecond)
 			app.Status.RuntimePorts, app.Status.ImageNetwork = tc.prev, tc.network
-			got := r.scanPrivatePorts(context.Background(), app, dep)
+			got := sweptPrivatePorts(r, app, dep)
 			if tc.want == nil {
 				if got != nil {
 					t.Fatalf("scan = %+v, want no new record", got)
@@ -205,7 +306,7 @@ func TestScanPrivatePortsDirectCheck(t *testing.T) {
 			} else {
 				app.Status.ImageNetwork = network
 			}
-			got := r.scanPrivatePorts(context.Background(), app, dep)
+			got := sweptPrivatePorts(r, app, dep)
 			if got == nil || !slices.Equal(got.Ports, tc.want) {
 				t.Fatalf("scan = %+v, want ports %v", got, tc.want)
 			}
@@ -225,7 +326,7 @@ func TestScanPrivatePortsDirectCheck(t *testing.T) {
 func TestScanPrivatePortsSpacing(t *testing.T) {
 	scanner := &cannedScanner{open: []int{5432}}
 	r, app, dep := privateScanFixture(scanner, true, time.Hour)
-	app.Status.RuntimePorts = r.scanPrivatePorts(context.Background(), app, dep)
+	app.Status.RuntimePorts = sweptPrivatePorts(r, app, dep)
 	if app.Status.RuntimePorts == nil || r.scanPrivatePorts(context.Background(), app, dep) != nil || scanner.calls != 1 {
 		t.Fatalf("calls = %d, want one scan inside the interval", scanner.calls)
 	}
@@ -235,7 +336,7 @@ func TestScanPrivatePortsSpacing(t *testing.T) {
 		Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIP: "10.0.0.10",
 			Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
 	}).Build()
-	if got := r.scanPrivatePorts(context.Background(), app, dep); got == nil || got.Revision != "rev-3" || scanner.calls != 2 {
+	if got := sweptPrivatePorts(r, app, dep); got == nil || got.Revision != "rev-3" || scanner.calls != 2 {
 		t.Fatalf("new revision: %+v after %d calls, want an immediate scan", got, scanner.calls)
 	}
 }
@@ -255,12 +356,12 @@ func TestScanPrivatePortsWaitsForRunningOnAKnownRevision(t *testing.T) {
 		}
 	}
 	app.Status.Phase = appv1alpha1.PhaseRunning
-	if got := r.scanPrivatePorts(context.Background(), app, dep); got == nil || scanner.calls != 1 {
+	if got := sweptPrivatePorts(r, app, dep); got == nil || scanner.calls != 1 {
 		t.Fatalf("Running: scan = %+v after %d calls, want one", got, scanner.calls)
 	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	app.Status.RuntimePorts.Revision = "rev-1"
-	if got := r.scanPrivatePorts(context.Background(), app, dep); got == nil || got.Revision != "rev-2" || scanner.calls != 2 {
+	if got := sweptPrivatePorts(r, app, dep); got == nil || got.Revision != "rev-2" || scanner.calls != 2 {
 		t.Fatalf("new revision while Deploying: scan = %+v after %d calls, want one", got, scanner.calls)
 	}
 }
@@ -296,8 +397,11 @@ func TestDiscoverPrivatePortsSettles(t *testing.T) {
 func TestDiscoverWebServiceListeners(t *testing.T) {
 	r, app, dep := privateScanFixture(&cannedScanner{open: []int{8080, 9000, 10000, 18014}}, true, time.Nanosecond)
 	app.Spec.Type, app.Spec.Port = appv1alpha1.TypeWebService, 8080
-	if err := r.discoverPrivatePorts(context.Background(), app, dep, 8080, true); err != nil {
-		t.Fatal(err)
+	for range 2 { // the pass that starts the sweep, then the one that takes its record
+		if err := r.discoverPrivatePorts(context.Background(), app, dep, 8080, true); err != nil {
+			t.Fatal(err)
+		}
+		awaitPrivateSweep(r, app)
 	}
 	if got := app.Status.RuntimePorts; got == nil || !slices.Equal(got.Ports, []int32{8080, 9000, 10000}) {
 		t.Fatalf("runtime ports = %+v, want the scanned 8080 9000 10000", got)

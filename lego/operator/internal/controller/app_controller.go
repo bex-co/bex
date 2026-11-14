@@ -332,6 +332,12 @@ type AppReconciler struct {
 	storedImagesRead sync.Map
 	// privatePortScanned spaces a web or private service's listener scans the same way.
 	privatePortScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
+	// privatePortSweeps holds each service's listener sweep, running or
+	// finished, until a pass takes its record (w4/665).
+	privatePortSweeps sync.Map // "<ns>/<name>" -> *privatePortSweep
+	// privatePortSwept wakes an App whose sweep finished. Made by
+	// SetupWithManager; nil in tests that drive Reconcile directly.
+	privatePortSwept chan event.GenericEvent
 	// portCandidate remembers the lone port a scan found until a second scan agrees.
 	portCandidate sync.Map // "<ns>/<name>" -> int
 	// portHint keeps the last scan's stall hint for the passes between scans.
@@ -7846,10 +7852,13 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	workers := max(r.MaxConcurrentReconciles, 1)
 	r.buildSlotFreed = make(chan event.GenericEvent, buildSlotWakeBuffer)
+	r.privatePortSwept = make(chan event.GenericEvent, buildSlotWakeBuffer)
 	return ctrl.NewControllerManagedBy(mgr).
 		// A build ending frees a slot for the releases the cluster ceiling holds
 		// (wakeHeldBuilds, docs/ADR060 §D6).
 		WatchesRawSource(crsource.Channel(r.buildSlotFreed, &handler.EnqueueRequestForObject{})).
+		// A listener sweep finished off the worker (scanPrivatePorts, w4/665).
+		WatchesRawSource(crsource.Channel(r.privatePortSwept, &handler.EnqueueRequestForObject{})).
 		For(&appv1alpha1.App{}, crbuilder.WithPredicates(generationOrDeletionPredicate{})).
 		// Deployment readiness and rollout revisions live entirely in status, so
 		// child resourceVersion updates must not inherit the App's generation-only

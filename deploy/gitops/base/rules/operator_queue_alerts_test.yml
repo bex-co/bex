@@ -50,3 +50,36 @@ tests:
       - eval_time: 40m
         alertname: BexOperatorReconcileQueueSlow
         exp_alerts: []
+  # w4/665: passes that block on the network fire; a rare long pass does not.
+  - name: App reconciles that keep taking 15 s fire after 15 minutes
+    interval: 1m
+    input_series:
+      # 20 passes a minute, 8 of them 15–20 s (the in-pass port sweep).
+      - series: controller_runtime_reconcile_time_seconds_bucket{job="bex-operator",controller="app",le="10.0"}
+        values: 0+12x60
+      - series: controller_runtime_reconcile_time_seconds_count{job="bex-operator",controller="app"}
+        values: 0+20x60
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: BexOperatorAppReconcileSlowPasses
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: BexOperatorAppReconcileSlowPasses
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "40% of App reconciles take over 10 s"
+              description: "Over a tenth of the operator's App reconcile passes have taken longer than 10 s for 15 minutes. Each such pass holds one of the few App workers, so every other App's deploy, resume and settings change queues behind it (BexOperatorReconcileQueueSlow follows). A pass that long is waiting on something: a port scan, a registry or metrics read, or a Job it should observe instead. Find the step in the operator log around the slow Apps' reconciles and move it off the pass; raising BEX_APP_RECONCILE_WORKERS only spreads the wait. Context: .pm/w4/done/665.md."
+  - name: an occasional long pass stays quiet
+    interval: 1m
+    input_series:
+      # 20 passes a minute, one of them long (5%).
+      - series: controller_runtime_reconcile_time_seconds_bucket{job="bex-operator",controller="app",le="10"}
+        values: 0+19x60
+      - series: controller_runtime_reconcile_time_seconds_count{job="bex-operator",controller="app"}
+        values: 0+20x60
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: BexOperatorAppReconcileSlowPasses
+        exp_alerts: []
