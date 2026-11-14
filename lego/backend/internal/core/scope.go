@@ -49,7 +49,7 @@ const (
 	MaxOAuthClientIDLen = 128
 )
 
-// ClosedOAuthScopes is every scope the audit_events CHECK admits: the three
+// ClosedOAuthScopes is every scope the audit_events CHECK admits: the four
 // granular capabilities plus the platform-client compatibility alias. Adding
 // a scope requires a follow-on CHECK migration (0089's ARRAY; do not rewrite
 // 0089 after it has shipped). TestAuditRelationCheckMatchesRelCan pins this.
@@ -121,15 +121,15 @@ type OAuthGrant struct {
 	AcceptedAudience string
 }
 
-// HasGranular reports whether the grant carries at least one of the three
+// HasGranular reports whether the grant carries at least one of the four
 // least-privilege capabilities.
 func (g OAuthGrant) HasGranular() bool {
 	return HasGranularCapability(g.Scopes)
 }
 
 // HasGranularCapability reports whether a canonical scope string includes at
-// least one of bex.read / bex.write / bex.sensitive. Near-matches (prefix,
-// substring) do not count.
+// least one of bex.read / bex.write / bex.sensitive / bex.cloud_agents.
+// Near-matches (prefix, substring) do not count.
 func HasGranularCapability(canonical string) bool {
 	for _, s := range strings.Fields(canonical) {
 		if slices.Contains(granularScopes, s) {
