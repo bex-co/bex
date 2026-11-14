@@ -59,6 +59,7 @@ func TestHeaderPatternsServedResponses(t *testing.T) {
 		{"/nested/missing.yaml", "", "X-All X-Subtree X-Nested-Yaml X-Nested-All", 404},
 		{"/nested/deep/missing.css", "", "X-All X-Subtree X-Nested-Css X-Nested-All", 404},
 		{"/nested/", "directory", "X-All X-Subtree X-Nested-All", 200},
+		{"/nested", "directory", "X-All", 200}, // the bare path is outside /nested/* (w8/325)
 		{"/other/deep/", "", "X-All X-Nested-All", 404},
 		{"/nestedness/file.yaml", "", "X-All X-Nested-Yaml X-Nested-All", 404},
 		{"/", "", "X-All", 404},

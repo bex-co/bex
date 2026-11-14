@@ -809,16 +809,14 @@ func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction,
 
 // matchPattern reports whether reqPath matches pattern and returns the splat (the
 // text captured by a trailing "/*"). "/*" matches everything (splat = the path
-// minus its leading slash); "/foo/*" matches "/foo" and "/foo/..."; any other
-// pattern is an exact match (splat empty).
+// minus its leading slash); "/foo/*" matches "/foo/" and "/foo/...", never the
+// bare "/foo", as on Render (w8/325); any other pattern is an exact match
+// (splat empty).
 func matchPattern(pattern, reqPath string) (string, bool) {
 	if pattern == "/*" {
 		return strings.TrimPrefix(reqPath, "/"), true
 	}
 	if prefix, ok := strings.CutSuffix(pattern, "/*"); ok { // "/foo/*" -> "/foo"
-		if reqPath == prefix {
-			return "", true
-		}
 		if rest, ok := strings.CutPrefix(reqPath, prefix+"/"); ok {
 			return rest, true
 		}
@@ -843,7 +841,9 @@ func placeholderName(segment string) (string, bool) {
 
 // matchRoutePattern is matchPattern plus whole-segment ":name" captures. A
 // placeholder matches exactly one non-empty segment and may precede a
-// trailing "/*". Patterns without placeholders keep matchPattern semantics.
+// trailing "/*", which, as in matchPattern, needs the slash after the last
+// segment: "/:lang/*" matches "/en/" but not "/en". Patterns without
+// placeholders keep matchPattern semantics.
 func matchRoutePattern(pattern, reqPath string) (string, map[string]string, bool) {
 	base, hasSplat := strings.CutSuffix(pattern, "/*")
 	hasPlaceholder := false
@@ -859,7 +859,7 @@ func matchRoutePattern(pattern, reqPath string) (string, map[string]string, bool
 	}
 	patSegs := strings.Split(base, "/")
 	reqSegs := strings.Split(reqPath, "/")
-	if len(reqSegs) < len(patSegs) || !hasSplat && len(reqSegs) != len(patSegs) {
+	if hasSplat && len(reqSegs) <= len(patSegs) || !hasSplat && len(reqSegs) != len(patSegs) {
 		return "", nil, false
 	}
 	captures := map[string]string{}
