@@ -241,9 +241,9 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseCanceled))
 		Expect(app.Status.ActiveRevision).To(BeEmpty(), "neither release served")
 	})
-	// A saved-image service has no build to pin: the newer request replaces the
-	// first deploy's release as soon as it is made, so the cancel naming the
-	// first deploy must roll it again (the 2026-10-28 hosted replay, 4/4).
+	// A saved-image service's deploy that is rolling out holds the newer request
+	// in the latest-pending slot, as a source build does (Render's Wait overlap
+	// policy, w4/635): the cancel naming the first deploy leaves it rolling.
 	createImageApp := func() {
 		GinkgoHelper()
 		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
@@ -253,19 +253,26 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 		})).To(Succeed())
 		pass(3)
 	}
+	templateRevision := func() string {
+		GinkgoHelper()
+		return envtestDeployment(nn).Spec.Template.Labels[labelRevision]
+	}
 
 	It("a new image service's first deploy rolls out and serves after its duplicate is canceled", func() {
 		createImageApp()
 		Expect(getApp().Status.ReleaseGeneration).To(Equal(int64(1)))
 		trigger(30)
 		pass(1)
-		Expect(getApp().Status.ReleaseGeneration).To(Equal(int64(2)), "precondition: the duplicate replaced the first release")
+		app := getApp()
+		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)), "precondition: the duplicate waits behind the first release")
+		Expect(app.Status.PendingReleaseGeneration).To(Equal(int64(2)))
 		cancelLatest(1)
 		pass(2)
 
-		app := getApp()
+		app = getApp()
 		Expect(app.Status.Phase).NotTo(Equal(appv1alpha1.PhaseCanceled), "the first deploy is not canceled with its duplicate")
-		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)), "the first deploy's release is in flight again")
+		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)), "the first deploy's release is still in flight")
+		Expect(templateRevision()).To(Equal("rev-1"))
 		Expect(envtestDeployment(nn).Spec.Template.Spec.Containers[0].Image).To(Equal("python:3.12-alpine"))
 		markEnvtestDeploymentReady(nn)
 		pass(3)
@@ -274,6 +281,48 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 		Expect(app.Status.ActiveRevision).To(Equal("rev-1"), "the first deploy serves under its own generation")
 		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
 		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)))
+	})
+
+	// w4/635: the live probe triggered a busybox service a second time while
+	// its first deploy read update_in_progress. The first was replaced and its
+	// row canceled; under Render's Wait it serves first, then the second runs.
+	It("an image deploy rolling out serves before the newer trigger rolls out", func() {
+		createImageApp()
+		Expect(templateRevision()).To(Equal("rev-1"), "precondition: the first deploy is rolling out")
+		trigger(30)
+		pass(2)
+		app := getApp()
+		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)), "the rollout in progress is not abandoned")
+		Expect(app.Status.PendingReleaseGeneration).To(Equal(int64(2)))
+		Expect(templateRevision()).To(Equal("rev-1"), "the Deployment keeps rolling the first release")
+		Expect(envtestDeployment(nn).Spec.Template.Annotations).NotTo(HaveKey("app.bex.co/restarted-at"),
+			"with its own settings, not the newer trigger's")
+
+		markEnvtestDeploymentReady(nn)
+		var served []string
+		for range 4 {
+			pass(1)
+			served = append(served, getApp().Status.ActiveRevision)
+		}
+		Expect(served).To(ContainElement("rev-1"), "the first deploy served before the second was adopted")
+		app = getApp()
+		Expect(app.Status.ReleaseGeneration).To(Equal(int64(2)), "the latest-pending deploy runs once the first serves")
+		Expect(app.Status.PendingReleaseGeneration).To(BeZero())
+		Expect(templateRevision()).To(Equal("rev-2"))
+	})
+
+	It("two image triggers before the first deploy starts still leave one deploy", func() {
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default",
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
+			Spec: appv1alpha1.AppSpec{Image: "python:3.12-alpine", Port: 8000, Replicas: 1},
+		})).To(Succeed())
+		trigger(32)
+		pass(3)
+		app := getApp()
+		Expect(app.Status.ReleaseGeneration).To(Equal(int64(2)), "the never-adopted first release is replaced")
+		Expect(app.Status.PendingReleaseGeneration).To(BeZero())
+		Expect(templateRevision()).To(Equal("rev-2"))
 	})
 
 	It("an image service's cancel that names no survivor still settles below both releases", func() {
@@ -365,7 +414,7 @@ var _ = Describe("Canceling the pending deploy of an image-ports service (w8/m11
 		By("requesting B, then canceling it naming A as the survivor")
 		trigger("2026-10-29T09:01:00Z")
 		reconcileToFixedPoint(run)
-		Expect(envtestApp(nn).Status.ReleaseGeneration).To(BeNumerically(">", survivor), "precondition: B replaced A")
+		Expect(envtestApp(nn).Status.ReleaseGeneration).To(Equal(survivor), "precondition: B waits behind A (w4/635)")
 		update(func(a *appv1alpha1.App) {
 			a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = strconv.FormatInt(a.Generation, 10)
 			a.Annotations[appv1alpha1.AnnotationSurvivingReleaseGeneration] = strconv.FormatInt(survivor, 10)
@@ -374,7 +423,7 @@ var _ = Describe("Canceling the pending deploy of an image-ports service (w8/m11
 		detected()
 		reconcileToFixedPoint(run)
 		rev := fmt.Sprintf("rev-%d", survivor)
-		Expect(envtestDeployment(nn).Spec.Template.Labels[labelRevision]).To(Equal(rev), "A rolls again under its own generation")
+		Expect(envtestDeployment(nn).Spec.Template.Labels[labelRevision]).To(Equal(rev), "A keeps rolling under its own generation")
 
 		By("every pod of A's release becomes Ready before the Deployment status converges")
 		simulateTemplatePod(nn, fmt.Sprintf("survivor-%d", survivor), true)

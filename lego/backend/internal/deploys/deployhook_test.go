@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -207,6 +208,10 @@ func TestDeployHookHandlerTriggersGETAndPOSTWithoutAuth(t *testing.T) {
 		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || body.Deploy.ID == "" {
 			t.Fatalf("%s response = %s (err %v)", method, w.Body.String(), err)
 		}
+		// Settle it, so the next call starts a deploy rather than waiting.
+		if _, err := ds.CloseDeploy(context.Background(), body.Deploy.ID, store.DeployLive, ""); err != nil {
+			t.Fatal(err)
+		}
 	}
 	app := getApp(t, cl, "web")
 	if app.Spec.RestartedAt == "" || app.Spec.BuildCommit != "deadbeef" {
@@ -220,6 +225,61 @@ func TestDeployHookHandlerTriggersGETAndPOSTWithoutAuth(t *testing.T) {
 		if d.Trigger != store.TriggerDeployHook {
 			t.Errorf("deploy trigger = %q, want %q", d.Trigger, store.TriggerDeployHook)
 		}
+	}
+}
+
+// Render's deploy hook under the Wait overlap policy (render.com/docs/deploy-hooks):
+// 200 with the new deploy's id when "The deploy has started", 202 with no
+// deploy id when "A different deploy is already in progress for this service.
+// Render will start a new deploy after the current one completes" (w4/635).
+// Later calls coalesce into the one pending deploy.
+func TestDeployHookAnswers202WithNoIDWhenItsDeployWaits(t *testing.T) {
+	ds := newFakeStore()
+	svc := &Service{Base: &core.Base{Client: generationBumpingClient(sampleApp("web", "srv-1")), Namespace: "default", Clock: time.Now}, Store: ds}
+	svc.DeployHookLimiter = NewDeployHookRateLimiter(6000, 10)
+	hook, err := svc.GetDeployHook(context.Background(), "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := svc.DeployHookHandler()
+	call := func() *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/v1/deploy-hooks?key="+url.QueryEscape(deployHookTokenFromURL(t, hook.URL)), nil))
+		return w
+	}
+
+	first := call()
+	var started struct {
+		Deploy struct {
+			ID string `json:"id"`
+		} `json:"deploy"`
+	}
+	if first.Code != http.StatusOK || json.Unmarshal(first.Body.Bytes(), &started) != nil || started.Deploy.ID == "" {
+		t.Fatalf("first call: code=%d body=%s, want 200 with the started deploy's id", first.Code, first.Body.String())
+	}
+	for i := range 2 {
+		w := call()
+		if w.Code != http.StatusAccepted {
+			t.Fatalf("call %d behind a deploy in progress: code=%d body=%s, want 202", i+2, w.Code, w.Body.String())
+		}
+		if strings.Contains(w.Body.String(), "dep-") {
+			t.Fatalf("call %d: 202 body %q carries a deploy id", i+2, w.Body.String())
+		}
+	}
+
+	list, err := ds.ListDeploys(context.Background(), "srv-1", store.DeployFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	statuses := map[string]int{}
+	for _, d := range list {
+		statuses[d.Status]++
+		if d.ID == started.Deploy.ID && d.Status == store.DeployCanceled {
+			t.Fatalf("the deploy in progress was canceled: %+v", d)
+		}
+	}
+	if statuses[store.DeployQueued] != 1 || statuses[store.DeployCanceled] != 1 || len(list) != 3 {
+		t.Fatalf("deploy rows = %+v, want the one in progress, one queued and one replaced", list)
 	}
 }
 

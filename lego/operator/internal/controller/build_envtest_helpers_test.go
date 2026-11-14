@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -122,4 +123,16 @@ func markEnvtestDeploymentReady(nn types.NamespacedName) {
 	dep.Status.Replicas, dep.Status.UpdatedReplicas = replicas, replicas
 	dep.Status.ReadyReplicas, dep.Status.AvailableReplicas = replicas, replicas
 	Expect(k8sClient.Status().Update(ctx, dep)).To(Succeed())
+}
+
+// serveEnvtestRelease lets the App's release in flight serve: its rollout
+// turns Ready and reconcile records it active. Envtest runs no kubelet, so
+// without it a later release-changing write waits behind the rollout in the
+// latest-pending slot, as Render's Wait overlap policy has it (w4/635).
+func serveEnvtestRelease(nn types.NamespacedName, reconcile func()) {
+	GinkgoHelper()
+	markEnvtestDeploymentReady(nn)
+	reconcile()
+	app := envtestApp(nn)
+	Expect(app.Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", app.Status.ReleaseGeneration)), "the release in flight serves")
 }

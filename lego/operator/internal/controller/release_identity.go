@@ -371,17 +371,18 @@ type appReleaseDecision struct {
 	pinned bool
 }
 
-// releaseInFlight reports whether a repo-backed source release is still on its
-// way to serving (ADR060 §D1a, Render's Wait overlap policy): it builds, or runs
-// its pre-deploy step and rollout without having served yet. While true,
-// prepareAppReleaseDecision pins the release identity so a newer push cannot
+// releaseInFlight reports whether a source or saved-image release is still on
+// its way to serving (ADR060 §D1a, Render's Wait overlap policy): it builds, or
+// runs its pre-deploy step and rollout without having served yet. While true,
+// prepareAppReleaseDecision pins the release identity so a newer trigger cannot
 // abandon it, and its rollout is recorded in status.activeRevision before the
-// newer release counts (w8/m119). A release that settles failed, parks asleep,
-// or whose own deploy is canceled leaves this state. Prebuilt-image, suspended,
-// direct-static-publish and selected (Rollback, Restart) releases have no build
-// to protect and never pin.
+// newer release counts (w8/m119; a prebuilt image since w4/635). A release that
+// settles failed, parks asleep, or whose own deploy is canceled leaves this
+// state; one a newer trigger reaches before it was adopted never entered it.
+// Suspended, direct-static-publish and selected (Rollback, Restart, an image
+// override) releases never pin: a newer trigger replaces them.
 func releaseInFlight(app *appv1alpha1.App) bool {
-	if selected := app.Status.SelectedReleaseGeneration; !pinnableSourceRelease(app) || (selected != 0 && selected == app.Status.ReleaseGeneration) {
+	if selected := app.Status.SelectedReleaseGeneration; !pinnableRelease(app) || (selected != 0 && selected == app.Status.ReleaseGeneration) {
 		return false
 	}
 	if canceled, ok := canceledReleaseGeneration(app); ok && canceled == app.Status.ReleaseGeneration {
@@ -421,9 +422,15 @@ func releaseSourceFixed(app *appv1alpha1.App) bool {
 	return run != nil && run.Generation == app.Status.ReleaseGeneration && run.StartedAt != ""
 }
 
+// pinnableRelease reports whether the App's release is one a pin can carry
+// through: a source build or a saved prebuilt image, whose build and runtime
+// come from its adopted spec and the pinned fingerprints alone.
+func pinnableRelease(app *appv1alpha1.App) bool {
+	return pinnableSourceRelease(app) || savedImageRelease(app)
+}
+
 // pinnableSourceRelease reports whether the App's release is a source build a
-// pin can carry through: what it builds and runs comes from the saved spec and
-// the pinned fingerprints alone.
+// pin can carry through.
 func pinnableSourceRelease(app *appv1alpha1.App) bool {
 	if app.ActiveReleaseConfig() != nil {
 		return false
@@ -462,7 +469,9 @@ func prepareAppReleaseDecision(app *appv1alpha1.App, view *appv1alpha1.AppSpec) 
 	}
 	if survivorInFlight(held) {
 		app.Status.PendingReleaseGeneration = 0
-		if savedImageRelease(held) {
+		// A saved-image survivor still rolling out keeps its pin (w4/635); one
+		// the canceled request replaced before it was adopted rolls again.
+		if savedImageRelease(held) && !releaseInFlight(held) {
 			return redispatchSurvivor(app)
 		}
 		return pinnedReleaseDecision(app)
@@ -590,15 +599,15 @@ func latestRequestCanceled(app *appv1alpha1.App) bool {
 // survivorInFlight reports that the canceled latest release was only the
 // pending slot behind an older release still in flight, the one bex-api named
 // when it stamped the cancel (w8/m117). A cancel ends one deploy, so that
-// release runs to completion — a source build on its pinned identity (ADR060
-// §D1a), a saved image rolled again (below) — or
+// release runs to completion — on its pinned identity (ADR060 §D1a), or, a
+// saved image replaced before it was adopted, rolled again (below) — or
 // stays settled as a failed generation; once it serves, the cancel settles on
 // it. bex-api removes the name when that release is ended too (a suspend, or a
 // cancel of its own deploy), and a release the pin could not carry ends with
 // the cancel as before.
 //
-// A saved-image release has no build to pin, so the newer request replaced it
-// when it was made; for one the cancel names, the survivor is still in flight
+// A saved-image release the newer request reached before it was adopted was
+// replaced then; for one the cancel names, the survivor is still in flight
 // until it serves, and prepareAppReleaseDecision rolls it again
 // (redispatchSurvivor).
 func survivorInFlight(app *appv1alpha1.App) bool {

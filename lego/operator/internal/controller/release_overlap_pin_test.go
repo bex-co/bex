@@ -85,11 +85,6 @@ func TestPendingReleaseWaitsUntilTheReleaseInFlightServes(t *testing.T) {
 			app.Status.SelectedReleaseGeneration = 2
 			return app
 		}, false},
-		{"prebuilt image", func() *appv1alpha1.App {
-			app := overlapApp(appv1alpha1.PhaseDeploying, "rev-1")
-			app.Spec.Repo, app.Spec.Image = "", "registry.example/app:v3"
-			return app
-		}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := tc.app()
@@ -98,6 +93,93 @@ func TestPendingReleaseWaitsUntilTheReleaseInFlightServes(t *testing.T) {
 				if app.Status.ReleaseGeneration != 2 || app.Status.PendingReleaseGeneration != 3 || decision.releaseChanged {
 					t.Fatalf("release=%d pending=%d changed=%v, want release 2 pinned with 3 pending",
 						app.Status.ReleaseGeneration, app.Status.PendingReleaseGeneration, decision.releaseChanged)
+				}
+				return
+			}
+			if app.Status.ReleaseGeneration != 3 || app.Status.PendingReleaseGeneration != 0 || !decision.releaseChanged {
+				t.Fatalf("release=%d pending=%d changed=%v, want release 3 adopted",
+					app.Status.ReleaseGeneration, app.Status.PendingReleaseGeneration, decision.releaseChanged)
+			}
+		})
+	}
+}
+
+// imageOverlapApp is a saved-image App whose generation-2 deploy is in flight
+// in phase, with a redeploy of the same image (generation 3) requested behind
+// it: only spec.restartedAt differs, as on every API, hook or dashboard
+// trigger of an image-backed service.
+func imageOverlapApp(phase appv1alpha1.AppPhase, activeRevision string) *appv1alpha1.App {
+	executing := appv1alpha1.AppSpec{Image: "docker.io/library/busybox:1.37", Port: 8080, RestartedAt: "2026-11-13T11:47:30Z"}
+	pinned := desiredAppReleaseIdentity(executing)
+	newer := executing
+	newer.RestartedAt = "2026-11-13T11:47:40Z"
+	return &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation:  3,
+			Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "3"},
+		},
+		Spec: newer,
+		Status: appv1alpha1.AppStatus{
+			Phase:                      phase,
+			ArtifactFingerprint:        pinned.artifact,
+			ReleaseArtifactFingerprint: pinned.artifact,
+			ReleaseFingerprint:         pinned.release,
+			ReleaseGeneration:          2,
+			ActiveRevision:             activeRevision,
+			Image:                      executing.Image,
+		},
+	}
+}
+
+// Render's Wait overlap policy covers every runtime (w4/635): a prebuilt
+// image's deploy that is already rolling out finishes before the newer one
+// starts, where it used to be replaced and its row canceled. A deploy the newer
+// trigger reaches before the operator adopted it never started, so it is still
+// replaced, and a selected release (Rollback, Restart, an image override) still
+// replaces or is replaced as before.
+func TestImageReleaseRollingOutWaitsForTheNewerTrigger(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		app    func() *appv1alpha1.App
+		pinned bool
+	}{
+		{"rolling out over a served release", func() *appv1alpha1.App { return imageOverlapApp(appv1alpha1.PhaseDeploying, "rev-1") }, true},
+		{"rolling out a first release", func() *appv1alpha1.App { return imageOverlapApp(appv1alpha1.PhaseDeploying, "") }, true},
+		{"served", func() *appv1alpha1.App { return imageOverlapApp(appv1alpha1.PhaseRunning, "rev-2") }, false},
+		{"rollout failed", func() *appv1alpha1.App { return imageOverlapApp(appv1alpha1.PhaseFailed, "rev-1") }, false},
+		{"not adopted before the newer trigger", func() *appv1alpha1.App {
+			app := imageOverlapApp(appv1alpha1.PhaseRunning, "rev-1")
+			app.Status.ReleaseGeneration = 1
+			return app
+		}, false},
+		{"its own deploy canceled", func() *appv1alpha1.App {
+			app := imageOverlapApp(appv1alpha1.PhaseDeploying, "rev-1")
+			app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "2"
+			return app
+		}, false},
+		{"rolling out a selected release", func() *appv1alpha1.App {
+			app := imageOverlapApp(appv1alpha1.PhaseDeploying, "rev-1")
+			app.Status.SelectedReleaseGeneration = 2
+			return app
+		}, false},
+		{"the newer trigger overrides the image", func() *appv1alpha1.App {
+			app := imageOverlapApp(appv1alpha1.PhaseDeploying, "rev-1")
+			app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 3, Image: "docker.io/library/busybox:1.36"}
+			return app
+		}, false},
+		{"suspended", func() *appv1alpha1.App {
+			app := imageOverlapApp(appv1alpha1.PhaseDeploying, "rev-1")
+			app.Spec.Suspended = true
+			return app
+		}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := tc.app()
+			decision := prepareAppReleaseDecision(app, nil)
+			if tc.pinned {
+				if app.Status.ReleaseGeneration != 2 || app.Status.PendingReleaseGeneration != 3 || decision.releaseChanged || !decision.pinned {
+					t.Fatalf("release=%d pending=%d changed=%v pinned=%v, want release 2 pinned with 3 pending",
+						app.Status.ReleaseGeneration, app.Status.PendingReleaseGeneration, decision.releaseChanged, decision.pinned)
 				}
 				return
 			}

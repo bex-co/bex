@@ -147,6 +147,7 @@ var _ = Describe("WEB_CONCURRENCY default (w5/m147)", func() {
 		nn := create("webconc-plan", nil)
 		Expect(envOf(nn)).To(HaveKeyWithValue(webConcurrencyEnvName, "2"))
 
+		serveEnvtestRelease(nn, func() { reconcileN(nn) })
 		app := &appv1alpha1.App{}
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 		app.Spec.Tier = "pro-ultra"

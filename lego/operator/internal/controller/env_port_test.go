@@ -102,6 +102,7 @@ var _ = Describe("A service's own PORT (w5/m149)", func() {
 		Expect(envPort).To(BeZero())
 		Expect(svcPort).To(Equal(int32(3000)), "an unusable PORT never takes the service off the network")
 
+		serveEnvtestRelease(nn, func() { reconcileN(nn) })
 		app := &appv1alpha1.App{}
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 		app.Spec.Env = []appv1alpha1.EnvVar{{Name: "PORT", Value: "9090"}}
@@ -110,6 +111,7 @@ var _ = Describe("A service's own PORT (w5/m149)", func() {
 		_, svcPort, envPort = serving(nn)
 		Expect([]int32{svcPort, envPort}).To(Equal([]int32{9090, 9090}))
 
+		serveEnvtestRelease(nn, func() { reconcileN(nn) })
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 		app.Spec.Env = nil
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())

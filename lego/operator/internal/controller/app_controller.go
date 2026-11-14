@@ -689,7 +689,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			ctx = withPendingReleaseView(ctx, &app, *pending)
 		}
 	}
-	if releaseDecision.releaseChanged && pinnableSourceRelease(&app) {
+	if releaseDecision.releaseChanged && pinnableRelease(&app) {
 		if err := r.recordAdoptedRelease(ctx, &app); err != nil {
 			return r.fail(ctx, &app, "DeployFailed", err)
 		}

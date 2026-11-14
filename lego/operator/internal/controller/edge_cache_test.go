@@ -95,6 +95,7 @@ var _ = Describe("Edge caching (w5/m151)", func() {
 		Expect(dep.Spec.Template.Annotations).To(HaveKeyWithValue(appv1alpha1.CachePurgedAtAnnotation, "2026-10-21T00:00:00Z"))
 
 		By("turning caching off removes the proxy and targets the app again")
+		serveEnvtestRelease(nn, func() { reconcileN(nn) })
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 		app.Spec.CacheProfile = appv1alpha1.CacheProfileNone
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())

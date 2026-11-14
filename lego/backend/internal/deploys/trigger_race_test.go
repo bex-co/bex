@@ -172,12 +172,23 @@ func TestConcurrentHookAndRestartTriggers(t *testing.T) {
 							req := httptest.NewRequest("GET", hook.URL+"&imgURL="+url.QueryEscape(wanted[i]), nil)
 							rec := httptest.NewRecorder()
 							svc.DeployHookHandler().ServeHTTP(rec, req)
-							if rec.Code != 200 {
-								errs[i] = fmt.Errorf("hook HTTP %d: %s", rec.Code, rec.Body)
-								return
-							}
 							var response struct{ Deploy struct{ ID string } }
-							if errs[i] = json.Unmarshal(rec.Body.Bytes(), &response); errs[i] != nil {
+							switch rec.Code {
+							case 200:
+								if errs[i] = json.Unmarshal(rec.Body.Bytes(), &response); errs[i] != nil {
+									return
+								}
+							case 202:
+								// Waits behind the other call's deploy with no id
+								// (w4/635): its row is the queued one.
+								queued, err := ds.ListDeploys(ctx, "srv-11", store.DeployFilter{Statuses: []string{store.DeployQueued}})
+								if err != nil || len(queued) != 1 {
+									errs[i] = fmt.Errorf("hook 202 with queued rows %+v (err %v)", queued, err)
+									return
+								}
+								response.Deploy.ID = queued[0].ID
+							default:
+								errs[i] = fmt.Errorf("hook HTTP %d: %s", rec.Code, rec.Body)
 								return
 							}
 							rows[i], errs[i] = svc.Get(ctx, "svc", response.Deploy.ID)

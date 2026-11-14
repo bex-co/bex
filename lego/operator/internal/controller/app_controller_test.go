@@ -508,6 +508,7 @@ var _ = Describe("App Controller", func() {
 			Expect(dep.Spec.Template.Annotations).NotTo(HaveKey("app.bex.co/restarted-at"))
 
 			By("restart: setting spec.restartedAt stamps the pod template")
+			serveEnvtestRelease(nn, reconcileN)
 			app = getApp()
 			app.Spec.RestartedAt = "2026-07-05T00:00:00Z"
 			Expect(k8sClient.Update(ctx, app)).To(Succeed())

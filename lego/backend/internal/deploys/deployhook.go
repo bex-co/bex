@@ -328,7 +328,8 @@ func (rl *DeployHookRateLimiter) reserve(h http.Header, token string) (bool, tim
 
 // DeployHookHandler serves the open credential-gated endpoint. It accepts GET
 // and POST like Render, supports Render's `ref` commit query parameter and
-// `imgURL` image override, and returns Render's {deploy:{id}} success envelope.
+// `imgURL` image override, and returns Render's {deploy:{id}} success envelope
+// when the deploy starts at once, or Render's bare 202 when it waits.
 func (s *Service) DeployHookHandler() http.Handler {
 	limiter := s.DeployHookLimiter
 	if limiter == nil {
@@ -380,6 +381,14 @@ func (s *Service) DeployHookHandler() http.Handler {
 		}, store.TriggerDeployHook)
 		if err != nil {
 			core.WriteErr(w, inHookVocabulary(err))
+			return
+		}
+		// Render's Wait overlap policy (w4/635): a call that lands in the
+		// latest-pending slot behind a deploy in progress answers 202 with no
+		// deploy id, "Render will start a new deploy after the current one
+		// completes"; a later call replaces it there.
+		if d.Status == store.DeployQueued {
+			w.WriteHeader(http.StatusAccepted)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, map[string]any{

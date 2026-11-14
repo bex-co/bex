@@ -304,7 +304,12 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 			Expect(podLabelsNow()).To(HaveKeyWithValue(labelEnvironment, "env-testenv0002"))
 			Expect(podLabelsNow()).NotTo(HaveKey(labelNetworkIsolation))
 
-			// The template adopts the current environment on its next real change.
+			// The template adopts the current environment on its next real change,
+			// once the release in flight serves (w4/635).
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: envNS}, pod)).To(Succeed())
+			pod.Status = corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}}
+			Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
+			serveEnvtestRelease(nn, func() { reconcileEnv(r, name) })
 			app := &appv1alpha1.App{}
 			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 			app.Spec.RestartedAt = "2026-11-14T00:00:00Z"

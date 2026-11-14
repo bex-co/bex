@@ -257,6 +257,7 @@ var _ = Describe("Server pod-template defaults (w7/m84)", func() {
 		}
 		reconcileToFixedPoint(run)
 		DeferCleanup(func() { deleteOwner(ctx, app, run) })
+		serveEnvtestRelease(nn, func() { reconcileToFixedPoint(run) })
 
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 		app.Spec.Image = "ghcr.io/example/app:v2"
@@ -265,14 +266,17 @@ var _ = Describe("Server pod-template defaults (w7/m84)", func() {
 		rec.reset()
 		_, err := run()
 		Expect(err).NotTo(HaveOccurred())
-		// The one write besides the Deployment is recording the pod template this new
-		// release generation runs, so a later cancel can restore it verbatim instead of
-		// re-projecting the saved spec (w1/m152 t002). It is one Secret per release —
-		// never per reconcile, which the steady-state check below pins.
+		// The writes besides the Deployment are this release generation's record: the
+		// spec it was adopted with, which keeps it running its own settings if a newer
+		// trigger waits behind its rollout (w4/635), then the pod template it runs, so a
+		// later cancel can restore it verbatim instead of re-projecting the saved spec
+		// (w1/m152 t002). It is one Secret per release — never per reconcile, which the
+		// steady-state check below pins.
 		Expect(rec.sorted()).To(Equal([]string{
 			"create Secret/" + name + "-podtemplate-r2",
 			"update Deployment/" + name,
-		}), "a real image change must produce one Deployment write, plus that release's template record, and nothing else")
+			"update Secret/" + name + "-podtemplate-r2",
+		}), "a real image change must produce one Deployment write, plus that release's record, and nothing else")
 
 		rec.reset()
 		_, err = run()

@@ -67,6 +67,18 @@ var _ = Describe("App free-plan SMTP label", func() {
 			return dep.Spec.Template.Labels
 		}
 		setTier := func(tier string) {
+			// The release in flight serves first; otherwise the plan change waits
+			// behind its rollout (Render's Wait overlap policy, w4/635).
+			Eventually(func(g Gomega) {
+				dep := &appsv1.Deployment{}
+				g.Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+				dep.Status.ObservedGeneration = dep.Generation
+				dep.Status.Replicas, dep.Status.UpdatedReplicas, dep.Status.ReadyReplicas, dep.Status.AvailableReplicas = 1, 1, 1, 1
+				g.Expect(k8sClient.Status().Update(ctx, dep)).To(Succeed())
+				served := &appv1alpha1.App{}
+				g.Expect(k8sClient.Get(ctx, nn, served)).To(Succeed())
+				g.Expect(served.Status.ActiveRevision).To(Equal(releaseRevision(served)))
+			}, 10*time.Second, 200*time.Millisecond).Should(Succeed())
 			current := &appv1alpha1.App{}
 			Expect(k8sClient.Get(ctx, nn, current)).To(Succeed())
 			base := current.DeepCopy()

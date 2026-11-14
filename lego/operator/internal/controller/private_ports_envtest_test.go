@@ -380,6 +380,7 @@ var _ = Describe("Private network ports (w3/m273)", func() {
 		Expect(envtestApp(nn).OpenPorts()).To(Equal([]int32{8080}), "the alias is not a listener")
 
 		By("adding nothing when the primary is already 10000")
+		serveEnvtestRelease(nn, func() { reconcileToFixedPoint(run) })
 		app := envtestApp(nn)
 		app.Spec.Port = appv1alpha1.PrivateHTTPPort
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())
