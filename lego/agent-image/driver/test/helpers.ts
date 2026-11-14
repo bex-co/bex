@@ -63,6 +63,8 @@ export async function tempConfig(
     command: process.execPath,
     args: [fixture],
     profile: "test",
+    model: "",
+    sessionConfig: {},
     cwd: workspace,
     prompt: "Make the requested change and commit it.",
     branch: "",

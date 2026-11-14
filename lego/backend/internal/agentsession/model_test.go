@@ -286,3 +286,20 @@ func TestParseModelProxyPath(t *testing.T) {
 		}
 	}
 }
+
+// A platform-only profile (ADR108 D5) never runs on the workspace's own key:
+// with no route serving it, the mint refuses even though a key is stored.
+func TestModelMinterRefusesPlatformOnlyProfileOnWorkspaceKey(t *testing.T) {
+	session := store.AgentSession{
+		ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running",
+		AgentConfig: json.RawMessage(`{"agent":"muse","modelEndpoint":"https://api.meta.ai/v1"}`),
+	}
+	m := &ModelMinter{Keys: modelKeysFor("byo-meta-key"), Sessions: fakeSessions{session: session}, Audit: &auditRecorder{}}
+	got, err := m.Mint(context.Background(), validModelRequest())
+	if !errors.Is(err, ErrForbidden) || errors.Is(err, ErrModelKeyMissing) {
+		t.Fatalf("Mint = %+v, %v; want a plain forbidden refusal", got, err)
+	}
+	if got.Credential != "" {
+		t.Fatal("the workspace key was handed out for a platform-only profile")
+	}
+}

@@ -57,7 +57,7 @@ var secretNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 // The platform owns these: a secret with one of them would reroute the
 // model, override the driver's run env or break the sandbox (ADR098 D3).
 var (
-	reservedSecretPrefixes = []string{"BEX_", "ANTHROPIC_", "OPENAI_", "CLAUDE_", "CODEX_", "GEMINI_", "OPENSANDBOX_", "GIT_"}
+	reservedSecretPrefixes = []string{"BEX_", "ANTHROPIC_", "OPENAI_", "CLAUDE_", "CODEX_", "GEMINI_", "MUSE_", "META_", "OPENSANDBOX_", "GIT_"}
 	reservedSecretNames    = []string{
 		"GOOGLE_API_KEY", "GOOGLE_GEMINI_BASE_URL", "PATH", "HOME", "USER", "SHELL", "PWD", "TERM", "LANG", "HOSTNAME",
 		"NODE_OPTIONS", "LD_PRELOAD", "LD_LIBRARY_PATH", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY", "SSL_CERT_FILE",

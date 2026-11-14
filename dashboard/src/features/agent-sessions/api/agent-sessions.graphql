@@ -93,6 +93,9 @@ query AgentSessionCapabilities($ownerId: String) {
   agentSessionCapabilities(ownerId: $ownerId) {
     enabled
     modelKeyReady
+    agents {
+      id
+    }
     github {
       connected
     }

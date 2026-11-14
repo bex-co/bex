@@ -91,6 +91,8 @@ export type AgentSessionDeliveryMode = "resume" | "redispatch";
 export interface AgentSessionCapabilitiesView {
   enabled: boolean;
   modelKeyReady: boolean;
+  /** Profile ids this workspace can run (a platform-only one appears only where served). */
+  agents: string[];
   github: {
     connected: boolean;
   };

@@ -73,6 +73,9 @@ const (
 	// OpenRouterHost is the upstream host a route mints; the gateway model
 	// proxy admits it alongside api.anthropic.com.
 	OpenRouterHost = "openrouter.ai"
+	// MetaModelHost is Meta's official model API, the muse profile's only
+	// upstream (ADR108 D6).
+	MetaModelHost = "api.meta.ai"
 )
 
 // modelRoute is one active route. The agent, endpoint, host and path prefix
@@ -225,6 +228,14 @@ func platformRouteCovers(workspaceID, agent string) bool {
 // workspace's key (ModelKeySecretPath) to run at all.
 func PlatformRouteServes(workspaceID, agent string) bool {
 	return platformRouteCovers(workspaceID, agent)
+}
+
+// ProfileServed reports whether workspaceID can run agent at all. A
+// platform-only profile (ADR108 D5) runs only where a bex-owned route serves
+// it; every other profile can also run on the workspace's own key.
+func ProfileServed(workspaceID, agent string) bool {
+	profile, ok := LookupAgentProfile(agent)
+	return ok && (!profile.PlatformOnly || PlatformRouteServes(workspaceID, profile.ID))
 }
 
 // PlatformModelKeyReady reports whether workspaceID's model credential is the

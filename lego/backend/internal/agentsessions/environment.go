@@ -159,6 +159,11 @@ const ModelKeyInvalidCode = "AGENT_ENVIRONMENT_MODEL_KEY_INVALID"
 // not served by the platform model route and no model key of its own.
 const ModelKeyRequiredCode = "AGENT_SESSION_MODEL_KEY_REQUIRED"
 
+// AgentUnavailableCode refuses a platform-only agent (ADR108 D5) in a
+// workspace no bex-owned model route serves it in: a workspace key never runs
+// it.
+const AgentUnavailableCode = "AGENT_SESSION_AGENT_UNAVAILABLE"
+
 // maxModelKeyBytes bounds a model key (provider keys and OAuth tokens are
 // well under 1 KB).
 const maxModelKeyBytes = 4096

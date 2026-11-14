@@ -17,6 +17,8 @@ export const RESERVED_PREFIXES = [
   "CLAUDE_",
   "CODEX_",
   "GEMINI_",
+  "MUSE_",
+  "META_",
   "OPENSANDBOX_",
   "GIT_",
 ];

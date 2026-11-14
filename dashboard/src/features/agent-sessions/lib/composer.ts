@@ -9,8 +9,23 @@ const BRANCH_PREFIX = "bex-agent/";
 
 const BRANCH_SLUG_MAX = 40;
 
-export const AGENT_OPTIONS = ["claude", "gemini", "codex"] as const;
+export const AGENT_OPTIONS = ["claude", "gemini", "codex", "muse"] as const;
 export type AgentOption = (typeof AGENT_OPTIONS)[number];
+
+/**
+ * The agents to offer: exactly the ones the workspace's capabilities list (the
+ * server decides, e.g. a platform-only agent only where its route serves it).
+ * `keep` stays listed so a current value (an automation saved with it) still
+ * renders; until capabilities load, it is the only option.
+ */
+export function selectableAgents(
+  available: readonly string[] | undefined,
+  keep: AgentOption = "claude",
+): AgentOption[] {
+  return AGENT_OPTIONS.filter(
+    (agent) => agent === keep || available?.includes(agent),
+  );
+}
 
 /** The composer's form fields; the task text is plain component state. */
 export interface ComposerValues {

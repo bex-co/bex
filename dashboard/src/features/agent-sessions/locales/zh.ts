@@ -211,6 +211,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "Codex",
     description: "Composer — agent option: codex",
   },
+  "agentSessions.agent.muse": {
+    message: "Muse Code",
+    description: "Composer — agent option: muse (Meta's Muse Code)",
+  },
   "agentSessions.submit": {
     message: "开始会话",
     description: "Composer — submit button label",

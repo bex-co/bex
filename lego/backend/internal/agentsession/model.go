@@ -397,6 +397,11 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 			PathPrefix: pathPrefix, PinnedModel: route.model,
 		}, nil
 	}
+	// A platform-only profile (ADR108 D5) never runs on the workspace's own
+	// key, whatever the workspace stored.
+	if profile, _ := LookupAgentProfile(agent); profile.PlatformOnly {
+		return ModelMintResponse{}, ErrForbidden
+	}
 	if m.Keys == nil {
 		return ModelMintResponse{}, fmt.Errorf("agent model credentials unavailable")
 	}
@@ -600,6 +605,10 @@ func modelEndpointHost(workspaceID, agent, stored string, byoKey bool) (string, 
 // token is unmistakable by prefix, and the remaining providers are keyed by host.
 func ResolveAuthScheme(host, credential string) string {
 	switch {
+	// bex's own Meta key is always Bearer, even if its shape ever resembled an
+	// Anthropic OAuth token.
+	case host == MetaModelHost:
+		return AuthSchemeBearer
 	case strings.HasPrefix(credential, "sk-ant-oat"):
 		return AuthSchemeAnthropicOAuth
 	case strings.HasSuffix(host, "anthropic.com"):

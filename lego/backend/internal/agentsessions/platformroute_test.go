@@ -191,3 +191,33 @@ func TestCapabilitiesReportModelReadinessPerAgent(t *testing.T) {
 		t.Fatalf("workspace with its own key: %v, want every profile ready", got)
 	}
 }
+
+// A platform-only agent (ADR108 D5, muse) is offered and created only where a
+// bex-owned route serves it. No route serves it yet, so even a workspace with
+// its own model key neither sees it nor can start it, and the refusal is the
+// agent-unavailable code, not a model-key prompt the key could never satisfy.
+func TestPlatformOnlyAgentIsHiddenAndRefusedUntilARouteServesIt(t *testing.T) {
+	svc, st, _, lifecycle := fixture()
+	svc.ModelKeys = fixtureModelKeys("tea-a")
+	caps, err := svc.Capabilities(caller("alice"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, profile := range caps.Agents {
+		if profile.ID == "muse" {
+			t.Fatalf("capabilities offered muse without a route: %+v", caps.Agents)
+		}
+	}
+	if len(caps.Agents) != 3 {
+		t.Fatalf("capabilities agents = %+v, want claude, codex and gemini", caps.Agents)
+	}
+	input := createInput()
+	input.AgentConfig = AgentConfig{Agent: "muse", Task: "fix the tests"}
+	_, err = svc.Create(caller("alice"), input)
+	if !isCode(err, AgentUnavailableCode) {
+		t.Fatalf("create muse without a route = %v, want %s", err, AgentUnavailableCode)
+	}
+	if len(st.rows) != 0 || lifecycle.created != 0 {
+		t.Fatalf("a refused create still created a session (rows=%d sandboxes=%d)", len(st.rows), lifecycle.created)
+	}
+}

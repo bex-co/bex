@@ -816,6 +816,19 @@ printf "%s" "$out" | grep -q "must be the session.s model-proxy placeholder" || 
   fi
   pass "agent driver refuses a standalone real-key launch"
   pass "agent driver exposes no raw ACP launcher; gateway SSE ingress is identity-scoped"
+
+  echo "==> run the muse profile (ADR108) under the real sandbox runtime"
+  # Muse Code against a loopback stand-in for the model proxy: no credential
+  # and no model. Proves the adapter and pinned binary start, Muse's own
+  # sandbox can be switched off, a shell tool runs, and model traffic is only
+  # POST /v1/responses with the placeholder and the pinned model.
+  if ! kubectl -n "$namespace_a" exec -i "$pod_agent" -c "$container_agent" -- \
+    node --input-type=module - <scripts/lib/verify-muse-profile.mjs \
+    >"$fixture_dir/agent-muse-profile.log" 2>&1; then
+    cat "$fixture_dir/agent-muse-profile.log" >&2
+    fail "muse profile runs in the agent sandbox with model traffic on the proxy only"
+  fi
+  pass "muse profile runs in the agent sandbox with model traffic on the proxy only"
 fi
 
 kubectl -n "$BEX_WORKSPACE_A" run "$hosting_pod" --image "$python_image" --restart Never \

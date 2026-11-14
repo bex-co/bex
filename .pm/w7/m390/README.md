@@ -1,21 +1,21 @@
 # w7 · m390 — Muse Code runs as a fourth Cloud Agent profile (`muse`) in the agent sandbox
 
-**Worker:** worker7 **Goal:** Meta's Muse Code, driven by the bex-maintained ACP adapter `@bex-co/muse-code-acp`, runs inside the production gVisor agent sandbox as the `muse` profile, with its model traffic going only to the gateway model proxy and no real key in the pod. It is not offered to any workspace until m391 gives it a model route and m392 lets an admin enable it. **Status:** todo
+**Worker:** worker7 **Goal:** Meta's Muse Code, driven by the bex-maintained ACP adapter `@bex-co/muse-code-acp`, runs inside the production gVisor agent sandbox as the `muse` profile, with its model traffic going only to the gateway model proxy and no real key in the pod. It is not offered to any workspace until m391 gives it a model route and m392 lets an admin enable it. **Status:** in progress (t001–t006, t008–t010 done; t007 waits for the production deploy, then t011)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Probe Muse Code in the production agent sandbox and write the decision record (new ADR) | 75m | — |
-| t002 | Agent image: pinned native `muse` binary and a `nativeBinary` profile-manifest field | 60m | t001 |
-| t003 | `muse` profile and backend contract, hidden until a route serves it | 45m | t002 |
-| t004 | Gateway model proxy admits only `POST /v1/responses` on `api.meta.ai` | 40m | t003 |
-| t005 | Driver bootstrap for `muse`: proxy routing, Muse sandbox off, overlay, `bex` MCP, failure mapping | 75m | t003 |
-| t006 | Composer: a Muse Code agent option (en/zh), hidden where Muse is not offered | 30m | t003 |
+| t001 | Probe Muse Code in the production agent sandbox and write the decision record (new ADR) — **DONE** | 75m | — |
+| t002 | Agent image: pinned native `muse` binary and a `nativeBinary` profile-manifest field — **DONE** | 60m | t001 |
+| t003 | `muse` profile and backend contract, hidden until a route serves it — **DONE** | 45m | t002 |
+| t004 | Gateway model proxy admits only `POST /v1/responses` on `api.meta.ai` — **DONE** | 40m | t003 |
+| t005 | Driver bootstrap for `muse`: proxy routing, Muse sandbox off, overlay, `bex` MCP, failure mapping — **DONE** | 75m | t003 |
+| t006 | Composer: a Muse Code agent option (en/zh), hidden where Muse is not offered — **DONE** | 30m | t003 |
 | t007 | Production proof in the gVisor sandbox | 60m | t004, t005, t006 |
-| t008 | Render parity (Devin reference) | 30m | t007 |
-| t009 | Simplify | 30m | t008 |
-| t010 | Test coverage | 45m | t008 |
+| t008 | Render parity (Devin reference) — **DONE** | 30m | t007 |
+| t009 | Simplify — **DONE** | 30m | t008 |
+| t010 | Test coverage — **DONE** | 45m | t008 |
 | t011 | Closeout | 10m | t009, t010 |
 
 ## Definition of done
@@ -36,3 +36,11 @@
 - **Render parity included** (Devin reference): Devin's web app has an agent selector next to the message box ([docs](https://docs.devin.ai/get-started/first-run.md)); the profile list is exposed through REST, GraphQL, MCP and the dashboard.
 - **Recommendations recorded, not user sign-offs:** (1) use the bex-co adapter rather than another community adapter (e.g. `BrokkAi/muse-acp`); (2) turn Muse's own bwrap sandbox off inside bex's gVisor sandbox and auto-approve its permission requests, as the `sandbox-auto-approve` policy already does for every profile (DO_NOT_DO `#APPROVAL-MODE`); (3) the published Meta terms for running Muse Code on tenants' behalf in a hosted service were not found — the new ADR records this as open.
 - **Interpretation recorded:** "contributor only" is read as: Muse never runs on a workspace's own model key, so no BYO path is added for `muse`.
+
+## Progress (2026-11-14)
+
+- **t001:** probe recorded in [ADR108](../../../docs/ADR108-muse-code-agent.md): Muse 1.4.14 + adapter 0.11.0 in the agent image's base as uid 10001; only `POST /v1/responses` with the placeholder Bearer reaches the configured proxy URL; the `muse-spark-1.3-contributor` pin is honored from Muse's settings; Muse's bwrap sandbox fails in a container and runs with `sandbox=disabled`; the direct `api.meta.ai` connection Muse makes on its own is not needed for a turn. No Meta key was available, so requests and tokens per real turn move to w7/m391 t005.
+- **t002–t006:** `nativeBinary` (per-architecture URL + SHA-256), `model`, `platformOnly` and `sessionConfig` in the profile manifest (Go + TS validators share `profiles-invalid-cases.json`); `native-pins` → `native-binaries` image stages and build-time checks in `install-profiles`; `muse` profile; capabilities hide and create refuses a platform-only profile with `AGENT_SESSION_AGENT_UNAVAILABLE` until a route serves it, and the mint never reads the workspace key for it; proxy admits only `POST /v1/responses` on `api.meta.ai`; driver writes the model to Muse's settings and sets the session config after `session/new`/`session/load`; composer and automation form list exactly the capabilities' agents. A local arm64 image build passed the fetch and build-time checks, and a headless muse turn through the real `bex-agent-driver` in that image succeeded against a stub proxy (`scripts/lib/verify-muse-profile.mjs`).
+- **t008 (Render parity, Devin reference):** REST `GET /v1/agent-sessions/capabilities`, GraphQL `agentSessionCapabilities` and MCP `get_agent_session_capabilities` all project `Service.Capabilities`, and create on every surface runs `Service.Create`, so the muse filter and the typed refusal are identical across surfaces; no surface carries a fixed agent enum. Devin offers only the agents an admin made available ([docs](https://docs.devin.ai/get-started/first-run.md)); bex offers only the agents a workspace can run, and the admin control itself is w7/m392. No ADR018 row changes (agent sessions are a bex extension).
+- **t009:** `/simplify` (reuse, quality, efficiency reviews) applied: streamed hashing of the binary, a `native-pins` stage so unrelated profile edits keep the download cached, retry only the transfer, `writeJsonAtomic` and `sha256Hex` reused, the dashboard trusts the capabilities list instead of a client-side platform-only set, a `model` on a profile the driver cannot pin it for is refused, and the live verifier drives the real driver instead of a copy.
+- **t010:** Go (manifest contract, invalid cases, Meta scheme, mint refusal with a mutation check, capabilities/create refusal, proxy boundary), driver (model settings merge, session-config order and refusal, release profile load, model scope) and dashboard (agent list from capabilities, Muse create payload) tests.

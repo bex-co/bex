@@ -38,6 +38,12 @@ export interface AgentDriverConfig {
   // adapters without the ACP systemPrompt capability (Codex reads
   // developer_instructions from CODEX_CONFIG).
   profile: string;
+  // The profile's release-locked model, "" when it keeps its adapter default
+  // (ADR108 D4).
+  model: string;
+  // ACP session config options set after session/new and session/load
+  // (ADR108 D3).
+  sessionConfig: Record<string, string>;
   cwd: string;
   prompt: string;
   // Repo session (ADR090): the bound bex-agent/* branch the agent pushes, the
@@ -251,7 +257,10 @@ function turnBounds(env: NodeJS.ProcessEnv): {
   toolCallTimeoutMs: number;
 } {
   const turnTimeoutMs = Math.min(
-    positiveMilliseconds(env.BEX_AGENT_TURN_TIMEOUT_MS, "BEX_AGENT_TURN_TIMEOUT_MS"),
+    positiveMilliseconds(
+      env.BEX_AGENT_TURN_TIMEOUT_MS,
+      "BEX_AGENT_TURN_TIMEOUT_MS",
+    ),
     maxTurnTimeoutMs,
   );
   return {
@@ -378,6 +387,8 @@ export function loadConfig(
     command,
     args,
     profile: profile.id,
+    model: profile.model ?? "",
+    sessionConfig: { ...profile.sessionConfig },
     cwd,
     prompt: env.BEX_AGENT_PROMPT || "",
     branch: env.BEX_AGENT_BRANCH || "",
@@ -404,7 +415,8 @@ export function loadConfig(
     existingPrNumber:
       optionalNonNegativeInt(env.BEX_AGENT_PR_NUMBER, "BEX_AGENT_PR_NUMBER") ||
       null,
-    prTakeover: env.BEX_AGENT_PR_TAKEOVER === "1" && Boolean(env.BEX_AGENT_PR_URL),
+    prTakeover:
+      env.BEX_AGENT_PR_TAKEOVER === "1" && Boolean(env.BEX_AGENT_PR_URL),
     exitAfterTurn: env.BEX_AGENT_EXIT_AFTER_TURN === "1",
     ...turnBounds(env),
     credentialEnvName,

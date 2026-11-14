@@ -438,6 +438,14 @@ func (s *Service) workspaceHasModelKey(ctx context.Context, workspaceID string) 
 // later on the model proxy. Devin likewise refuses to start without a usable
 // model. The refusal names the agent and where to set the key.
 func (s *Service) requireModelCredential(ctx context.Context, workspaceID, agent string, env store.AgentEnvironment) error {
+	if profile, _ := agentsession.LookupAgentProfile(agent); profile.PlatformOnly {
+		if agentsession.PlatformRouteServes(workspaceID, agent) {
+			return nil
+		}
+		return core.NewBadRequestError(AgentUnavailableCode,
+			fmt.Sprintf("the %s agent is not available in this workspace", agent),
+			map[string]any{"field": "agentConfig.agent", "agent": agent})
+	}
 	if env.ModelKeySet() || agentsession.PlatformRouteServes(workspaceID, agent) || s.ModelKeys == nil {
 		return nil
 	}
@@ -914,7 +922,9 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if !ok {
 		return Capabilities{}, core.ErrForbidden
 	}
-	caps.Agents = agentProfiles()
+	caps.Agents = slices.DeleteFunc(agentProfiles(), func(profile AgentProfile) bool {
+		return !agentsession.ProfileServed(workspaceID, profile.ID)
+	})
 
 	// A workspace on the platform model route (ADR090) is ready through the
 	// platform key or, once it set its own, through that. Any other workspace
@@ -952,6 +962,8 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	}
 	caps.ModelKeyReady = ownKey || routed
 	for i := range caps.Agents {
+		// A platform-only agent is listed only where its route serves it, so the
+		// workspace key never decides its readiness.
 		caps.Agents[i].ModelKeyReady = ownKey || agentsession.PlatformRouteServes(workspaceID, caps.Agents[i].ID)
 	}
 	if s.GitHub != nil {

@@ -21,6 +21,13 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
 }));
+const capabilitiesState: { capabilities: { agents: string[] } | null } = {
+  capabilities: null,
+};
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-capabilities",
+  () => ({ useAgentSessionCapabilities: () => capabilitiesState }),
+);
 vi.mock("@/features/services/hooks/use-repos", () => ({
   useRepos: () => ({
     repos: [{ fullName: "acme/widgets" }],

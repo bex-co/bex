@@ -583,7 +583,7 @@ var pathPrefixPattern = regexp.MustCompile(`^(?:/[A-Za-z0-9_-]+)*$`)
 var googleInferencePath = regexp.MustCompile(`^/v1beta/models/[A-Za-z0-9._:-]+:(generateContent|streamGenerateContent|countTokens)$`)
 
 // allowedProviderOperation is the confused-deputy boundary: the sandbox can
-// invoke only inference operations needed by the three installed adapters, not
+// invoke only inference operations needed by the installed adapters, not
 // account, file, batch, fine-tune, key-management, or deletion APIs that happen
 // to share the credential's origin.
 func allowedProviderOperation(host, method, path, rawQuery, contentType string) bool {
@@ -593,6 +593,9 @@ func allowedProviderOperation(host, method, path, rawQuery, contentType string) 
 	switch strings.ToLower(host) {
 	case "api.openai.com":
 		return rawQuery == "" && (path == "/v1/responses" || path == "/v1/responses/compact" || path == "/v1/chat/completions")
+	// Muse Code (ADR108 D6) speaks only the Responses API to Meta.
+	case agentsession.MetaModelHost:
+		return rawQuery == "" && path == "/v1/responses"
 	// OpenRouter is reachable only through a bex-api model route (the dev
 	// route, refused in production, or the workspace-allowlisted platform
 	// route, ADR090): the mint alone decides the host, and Claude Code speaks

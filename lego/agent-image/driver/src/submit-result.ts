@@ -111,7 +111,10 @@ export async function submitResult(
     );
   }
   if (!args || typeof args !== "object" || Array.isArray(args)) {
-    return refuse("invalid_request", "arguments must be an object with result and final");
+    return refuse(
+      "invalid_request",
+      "arguments must be an object with result and final",
+    );
   }
   const { result, final } = args as Record<string, unknown>;
   if (result === undefined) {
@@ -148,12 +151,19 @@ export async function submitResult(
   const reply = await postToGateway(
     endpoint,
     { headers: { "content-type": "application/json" }, body },
-    { label: "result endpoint", fallbackCode: "unavailable", timeoutMs: requestTimeoutMs },
+    {
+      label: "result endpoint",
+      fallbackCode: "unavailable",
+      timeoutMs: requestTimeoutMs,
+    },
   );
   if (!reply.ok) return reply;
   const payload = reply.payload as Record<string, unknown> | undefined;
   if (!payload || payload.accepted !== true) {
-    return refuse("unavailable", "result endpoint returned an unexpected response");
+    return refuse(
+      "unavailable",
+      "result endpoint returned an unexpected response",
+    );
   }
   try {
     await recordSubmission(env.BEX_RESULT_RECORD_PATH || "", final);
@@ -167,7 +177,10 @@ export async function submitResult(
   return { ok: true, result: { accepted: true, final } };
 }
 
-async function recordSubmission(recordPath: string, final: boolean): Promise<void> {
+async function recordSubmission(
+  recordPath: string,
+  final: boolean,
+): Promise<void> {
   if (!recordPath) return;
   // A partial submission never downgrades a final one the agent already made.
   if (!final && (await readResultRecord(recordPath)).final) return;

@@ -101,6 +101,7 @@ const capabilitiesState = {
   capabilities: {
     enabled: true,
     modelKeyReady: true,
+    agents: ["claude", "gemini", "codex"] as string[] | undefined,
     github: {
       connected: true,
     },
@@ -206,6 +207,7 @@ beforeEach(() => {
   reposState.loading = false;
   capabilitiesState.capabilities.enabled = true;
   capabilitiesState.capabilities.modelKeyReady = true;
+  capabilitiesState.capabilities.agents = ["claude", "gemini", "codex"];
   capabilitiesState.capabilities.github.connected = true;
   capabilitiesState.loading = false;
   capabilitiesState.error = undefined;
@@ -974,6 +976,28 @@ describe("NewSessionComposer", () => {
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     expect(create.mock.calls[0][0].agent).toBe("gemini");
+  });
+
+  it("offers Muse Code only when the workspace's capabilities list it", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<NewSessionComposer />);
+    await user.click(await screen.findByLabelText("Agent"));
+    expect(
+      await screen.findByRole("option", { name: "Gemini" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Muse Code" })).toBeNull();
+    unmount();
+
+    capabilitiesState.capabilities.agents = ["claude", "codex", "muse"];
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await pickRepo(user);
+    await user.click(screen.getByLabelText("Agent"));
+    expect(screen.queryByRole("option", { name: "Gemini" })).toBeNull();
+    await user.click(await screen.findByRole("option", { name: "Muse Code" }));
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].agent).toBe("muse");
   });
 
   it("shows the selected repo on the toolbar chip", async () => {
