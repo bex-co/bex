@@ -49,6 +49,7 @@ import (
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
 	"github.com/bex-co/bex/lego/operator/internal/selfimage"
 	bexwebhook "github.com/bex-co/bex/lego/operator/internal/webhook"
+	"github.com/bex-co/bex/lego/types/env"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
@@ -71,21 +72,13 @@ func appActivityReader() controller.AppActivityReader {
 	return nil
 }
 
-// envOr returns the env var k or a default.
-func envOr(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return def
-}
-
 // runtimeMode resolves the workload runtime. Kubernetes is the default because
 // it is the only runtime production deploys and the only one under test: an
 // unset BEX_RUNTIME used to select the opensandbox host path, which also
 // early-returns out of registry-credential convergence, so a forgotten variable
 // degraded the operator silently rather than loudly.
 func runtimeMode() string {
-	return envOr("BEX_RUNTIME", controller.ModeKubernetes)
+	return env.Or("BEX_RUNTIME", controller.ModeKubernetes)
 }
 
 // positiveEnvInt returns a strictly positive integer from k, or def when k is
@@ -274,7 +267,7 @@ func main() {
 
 	webhookServer, metricsServerOptions := buildServerOptions(cfg)
 
-	appsNamespace := envOr("BEX_APPS_NAMESPACE", "default")
+	appsNamespace := env.Or("BEX_APPS_NAMESPACE", "default")
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Cache:                  controller.NamespacedSecretCacheOptions(appsNamespace),
@@ -329,8 +322,8 @@ func main() {
 	if signKey := os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"); signKey != "" {
 		if err := bexwebhook.SetupWithManager(mgr,
 			signKey,
-			envOr("BEX_BUILD_NAMESPACE", "bex-system"),
-			envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+			env.Or("BEX_BUILD_NAMESPACE", "bex-system"),
+			env.Or("BEX_REGISTRY", "127.0.0.1:5050"),
 			os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
 		); err != nil {
 			setupLog.Error(err, "Failed to set up image signature admission webhook")
@@ -368,21 +361,21 @@ func setupAppReconciler(
 		Scheme:                mgr.GetScheme(),
 		AppsNamespace:         appsNamespace,
 		Mode:                  runtimeMode(),
-		Registry:              envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+		Registry:              env.Or("BEX_REGISTRY", "127.0.0.1:5050"),
 		KpackRegistry:         os.Getenv("BEX_KPACK_REGISTRY"),
-		CNBBuilder:            envOr("BEX_CNB_BUILDER", defaultCNBBuilder),
+		CNBBuilder:            env.Or("BEX_CNB_BUILDER", defaultCNBBuilder),
 		BuildNamespace:        os.Getenv("BEX_BUILD_NAMESPACE"),
-		Runtime:               bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
+		Runtime:               bexruntime.New(env.Or("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
 		BaseDomain:            baseDomain,
-		ClusterIssuer:         envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
-		WildcardClusterIssuer: envOr("BEX_WILDCARD_CLUSTER_ISSUER", ""),
+		ClusterIssuer:         env.Or("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
+		WildcardClusterIssuer: env.Or("BEX_WILDCARD_CLUSTER_ISSUER", ""),
 		HTTPSRedirect:         os.Getenv("BEX_HTTPS_REDIRECT") != "false",
-		ActivatorService:      envOr("BEX_ACTIVATOR_SERVICE", ""),
-		ActivatorNamespace:    envOr("POD_NAMESPACE", "bex-system"),
+		ActivatorService:      env.Or("BEX_ACTIVATOR_SERVICE", ""),
+		ActivatorNamespace:    env.Or("POD_NAMESPACE", "bex-system"),
 		ActivatorPort:         activatorPort,
 		ActivityReader:        appActivityReader(),
-		MaintenanceService:    envOr("BEX_ACTIVATOR_SERVICE", "bex-activator"),
-		MaintenanceNamespace:  envOr("POD_NAMESPACE", "bex-system"),
+		MaintenanceService:    env.Or("BEX_ACTIVATOR_SERVICE", "bex-activator"),
+		MaintenanceNamespace:  env.Or("POD_NAMESPACE", "bex-system"),
 		MaintenancePort:       activatorPort,
 		DiskStorageClass:      os.Getenv("BEX_DISK_STORAGE_CLASS"),
 		BackupHelperImage:     backupHelperImage(uncachedClient),
@@ -408,16 +401,16 @@ func setupAppReconciler(
 		MaxActiveBuilds:         envInt("BEX_MAX_ACTIVE_BUILDS", 0),
 		MaxConcurrentReconciles: positiveEnvInt("BEX_APP_RECONCILE_WORKERS", 1),
 		StaticStore: publish.Store{
-			Bucket:   envOr("BEX_STATIC_S3_BUCKET", ""),
-			Endpoint: envOr("BEX_STATIC_S3_ENDPOINT", ""),
-			Region:   envOr("BEX_STATIC_S3_REGION", ""),
-			Secret:   envOr("BEX_STATIC_PUBLISH_S3_SECRET", ""),
+			Bucket:   env.Or("BEX_STATIC_S3_BUCKET", ""),
+			Endpoint: env.Or("BEX_STATIC_S3_ENDPOINT", ""),
+			Region:   env.Or("BEX_STATIC_S3_REGION", ""),
+			Secret:   env.Or("BEX_STATIC_PUBLISH_S3_SECRET", ""),
 		},
-		StaticServerService:     envOr("BEX_STATIC_SERVER_SERVICE", ""),
-		StaticServerNamespace:   envOr("POD_NAMESPACE", "bex-system"),
+		StaticServerService:     env.Or("BEX_STATIC_SERVER_SERVICE", ""),
+		StaticServerNamespace:   env.Or("POD_NAMESPACE", "bex-system"),
 		StaticServerPort:        envInt("BEX_STATIC_SERVER_PORT", 8080),
 		TenantSignKeySecret:     os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"),
-		TenantSignImage:         envOr("BEX_TENANT_SIGNING_IMAGE", ""),
+		TenantSignImage:         env.Or("BEX_TENANT_SIGNING_IMAGE", ""),
 		RegistryPushSecret:      os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
 		RegistryPullSecret:      os.Getenv("BEX_REGISTRY_PULL_SECRET"),
 		RegistryBuildPullSecret: os.Getenv("BEX_REGISTRY_BUILD_PULL_SECRET"),
@@ -482,9 +475,9 @@ func setupAppReconciler(
 			// cache" before any build can start.
 			Client:         uncachedClient,
 			ZotNamespace:   zotNS,
-			HTPasswdName:   envOr("BEX_ZOT_HTPASSWD_SECRET", "zot-htpasswd"),
-			ConfigName:     envOr("BEX_ZOT_CONFIG_SECRET", "zot-config"),
-			Registry:       envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+			HTPasswdName:   env.Or("BEX_ZOT_HTPASSWD_SECRET", "zot-htpasswd"),
+			ConfigName:     env.Or("BEX_ZOT_CONFIG_SECRET", "zot-config"),
+			Registry:       env.Or("BEX_REGISTRY", "127.0.0.1:5050"),
 			KpackRegistry:  os.Getenv("BEX_KPACK_REGISTRY"),
 			RetentionCount: positiveEnvInt("BEX_ZOT_RETENTION_COUNT", 0),
 			// Legacy-repository dual-read is off unless an operator opts in for a
@@ -549,13 +542,13 @@ func setupAppReconciler(
 // unaffected, and the encryption path fails closed in the reconciler with a
 // message naming both remedies.
 func backupHelperImage(c client.Client) string {
-	if explicit := envOr("BEX_BACKUP_HELPER_IMAGE", ""); explicit != "" {
+	if explicit := env.Or("BEX_BACKUP_HELPER_IMAGE", ""); explicit != "" {
 		return explicit
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	image, err := selfimage.Resolve(ctx, c,
-		envOr("POD_NAMESPACE", ""), envOr("POD_NAME", ""), selfimage.ManagerContainer)
+		env.Or("POD_NAMESPACE", ""), env.Or("POD_NAME", ""), selfimage.ManagerContainer)
 	if err != nil {
 		setupLog.Info("backup helper image unresolved; KeyValue backup ENCRYPTION will fail closed "+
 			"(unencrypted backups are unaffected)", "reason", err.Error())
@@ -578,17 +571,17 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 		// DatabaseReconciler still consumes client-go's record.EventRecorder;
 		// controller-runtime's replacement uses the incompatible events API.
 		Recorder: mgr.GetEventRecorderFor("database-controller"), //nolint:staticcheck
-		DBDomain: envOr("BEX_DB_DOMAIN", ""),
+		DBDomain: env.Or("BEX_DB_DOMAIN", ""),
 		// Publicly trusted server certificates for public databases (w2/m245).
 		// Deliberately not BEX_CLUSTER_ISSUER: that one is set on every
 		// cluster, and a local/dev cluster ordering Let's Encrypt certificates
 		// for production *.db.bex.co names would only fail validation and
 		// spend the shared rate limit.
-		PublicCertIssuer: envOr("BEX_DB_CLUSTER_ISSUER", ""),
+		PublicCertIssuer: env.Or("BEX_DB_CLUSTER_ISSUER", ""),
 		Backup: controller.BackupStore{
-			DestinationPath: envOr("BEX_DB_BACKUP_DESTINATION", ""),
-			EndpointURL:     envOr("BEX_DB_BACKUP_ENDPOINT", ""),
-			S3Secret:        envOr("BEX_DB_BACKUP_S3_SECRET", ""),
+			DestinationPath: env.Or("BEX_DB_BACKUP_DESTINATION", ""),
+			EndpointURL:     env.Or("BEX_DB_BACKUP_ENDPOINT", ""),
+			S3Secret:        env.Or("BEX_DB_BACKUP_S3_SECRET", ""),
 		},
 	}
 	if promURL := os.Getenv("BEX_PROM_URL"); promURL != "" {
@@ -600,9 +593,9 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 		os.Exit(1)
 	}
 
-	kvBackupDestination := envOr("BEX_KV_BACKUP_DESTINATION", "")
-	kvBackupEndpoint := envOr("BEX_KV_BACKUP_ENDPOINT", "")
-	kvBackupSecret := envOr("BEX_KV_BACKUP_S3_SECRET", "")
+	kvBackupDestination := env.Or("BEX_KV_BACKUP_DESTINATION", "")
+	kvBackupEndpoint := env.Or("BEX_KV_BACKUP_ENDPOINT", "")
+	kvBackupSecret := env.Or("BEX_KV_BACKUP_S3_SECRET", "")
 	configuredKVBackupFields := 0
 	for _, value := range []string{kvBackupDestination, kvBackupEndpoint, kvBackupSecret} {
 		if value != "" {
@@ -629,15 +622,15 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 		BackupSourceNamespace: appsNamespace,
 		InternalProxyImage:    internalProxyImage,
 		BackupHelperImage:     internalProxyImage,
-		KvDomain:              envOr("BEX_KV_DOMAIN", ""),
-		ClusterIssuer:         envOr("BEX_CLUSTER_ISSUER", ""),
+		KvDomain:              env.Or("BEX_KV_DOMAIN", ""),
+		ClusterIssuer:         env.Or("BEX_CLUSTER_ISSUER", ""),
 		Backup: controller.BackupStore{
 			DestinationPath: kvBackupDestination,
 			EndpointURL:     kvBackupEndpoint,
 			S3Secret:        kvBackupSecret,
 			// ADR050 Tier A opt-in: recipient public key for client-side age
 			// encryption of KeyValue RDB snapshots. Empty ⇒ plain upload.
-			AgePublicKey: envOr("BEX_BACKUP_AGE_PUBLIC_KEY", ""),
+			AgePublicKey: env.Or("BEX_BACKUP_AGE_PUBLIC_KEY", ""),
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "keyvalue")

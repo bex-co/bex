@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/identity"
 	"github.com/bex-co/bex/lego/operator/internal/migrate"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
+	"github.com/bex-co/bex/lego/types/env"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -56,8 +57,8 @@ func run() error {
 	workspace := flag.String("workspace", "", "workspace id (tea-…); required if the App has no label")
 	all := flag.Bool("all", false, "migrate every App in --namespace")
 	apply := flag.Bool("apply", false, "execute the plan (default is dry-run)")
-	registryHost := flag.String("registry", envOr("BEX_REGISTRY", "zot.bex-registry.svc:5000"), "Zot host")
-	regUser := flag.String("registry-user", envOr("BEX_REGISTRY_USER", "bex-builder"), "registry username for list/digest")
+	registryHost := flag.String("registry", env.Or("BEX_REGISTRY", "zot.bex-registry.svc:5000"), "Zot host")
+	regUser := flag.String("registry-user", env.Or("BEX_REGISTRY_USER", "bex-builder"), "registry username for list/digest")
 	regPass := flag.String("registry-password", os.Getenv("BEX_REGISTRY_BUILDER_PASSWORD"),
 		"registry password (never logged)")
 	bucket := flag.String("bucket", os.Getenv("BEX_STATIC_S3_BUCKET"), "static bucket (empty skips S3)")
@@ -167,13 +168,6 @@ func run() error {
 		fmt.Printf("migrated %s/%s\n", app.Namespace, app.Name)
 	}
 	return nil
-}
-
-func envOr(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return def
 }
 
 // skopeoRegistry copies by digest-preserving skopeo copy. List/Digest use the

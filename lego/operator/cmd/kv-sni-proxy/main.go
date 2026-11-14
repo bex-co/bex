@@ -44,6 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
+	"github.com/bex-co/bex/lego/types/env"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -227,7 +228,7 @@ func main() {
 	}
 	meter.SetHealthy(true)
 
-	metricsAddr := sniproxy.EnvOr("BEX_KV_PROXY_METRICS_ADDR", defaultMetricsAddr)
+	metricsAddr := env.Or("BEX_KV_PROXY_METRICS_ADDR", defaultMetricsAddr)
 	metricsServer := &http.Server{
 		Addr: metricsAddr, Handler: promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 		ReadHeaderTimeout: 5 * time.Second,
@@ -240,7 +241,7 @@ func main() {
 	}()
 	defer func() { _ = metricsServer.Close() }()
 
-	listener, err := net.Listen("tcp", sniproxy.EnvOr("BEX_KV_PROXY_ADDR", defaultAddr))
+	listener, err := net.Listen("tcp", env.Or("BEX_KV_PROXY_ADDR", defaultAddr))
 	if err != nil {
 		logger.Error(err, "listen")
 		os.Exit(1)
