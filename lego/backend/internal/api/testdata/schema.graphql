@@ -269,10 +269,43 @@ enum AgentNetworkTier {
 
 type AgentRepoEnvironment {
   checks: [AgentRepoStep!]!
+  latestBuild: AgentRepoEnvironmentBuild
   ownerId: String!
   repo: String!
   setup: [AgentRepoStep!]!
   updatedAt: String
+  version: String!
+}
+
+type AgentRepoEnvironmentBuild {
+  createdAt: String
+  failureCode: String
+  failureReason: String
+  finishedAt: String
+  headSha: String
+  id: String!
+  imageAvailable: Boolean!
+  ownerId: String!
+  repo: String!
+  sizeBytes: Float
+  startedAt: String
+  status: String!
+  steps: [AgentRepoEnvironmentBuildStep!]
+  trigger: String!
+  version: String!
+}
+
+type AgentRepoEnvironmentBuildList {
+  builds: [AgentRepoEnvironmentBuild!]!
+  ownerId: String!
+  repo: String!
+}
+
+type AgentRepoEnvironmentBuildStep {
+  durationMs: Float!
+  exitCode: Int
+  name: String!
+  output: String!
 }
 
 type AgentRepoEnvironmentList {
@@ -314,6 +347,7 @@ type AgentSession {
   deliveryMode: String
   deliveryNote: String
   depth: Int!
+  environmentBuildId: String
   expiresAt: String
   failureReason: String
   failureReasonCode: String
@@ -1701,6 +1735,7 @@ type Mutation {
   approveBlueprint(id: String!, manualEnvVars: [BlueprintManualEnvVarInput], ownerId: String, syncId: String): BlueprintApprovedSync
   archiveAgentSession(id: String!): AgentSession
   attachAgentSession(action: String, id: String!): AgentSession
+  buildAgentRepoEnvironment(ownerId: String, repo: String!): AgentRepoEnvironmentBuild!
   cancelAgentSession(id: String!): AgentSession
   cancelCronJobRun(runId: String!, serviceId: String!): CronRun
   cancelDeploy(deployId: String!, serviceId: String!): Deploy
@@ -2121,6 +2156,8 @@ type Query {
   agentAutomationRuns(cursor: String, id: String!, limit: Int, ownerId: String): AgentAutomationRunList!
   agentAutomations(cursor: String, limit: Int, mine: Boolean, ownerId: String): AgentAutomationList!
   agentEnvironment(ownerId: String): AgentEnvironment!
+  agentRepoEnvironmentBuild(id: String!, ownerId: String): AgentRepoEnvironmentBuild!
+  agentRepoEnvironmentBuilds(ownerId: String, repo: String!): AgentRepoEnvironmentBuildList!
   agentRepoEnvironments(ownerId: String): AgentRepoEnvironmentList!
   agentSecrets(ownerId: String): AgentSecretList!
   agentSession(id: String!): AgentSession
