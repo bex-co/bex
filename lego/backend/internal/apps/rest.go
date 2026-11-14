@@ -2092,4 +2092,3 @@ func renderSyncsWithCursor(runs []BlueprintSyncView) []syncWithCursor {
 func matchesAny(filter []string, value string) bool {
 	return len(filter) == 0 || slices.Contains(filter, value)
 }
-
