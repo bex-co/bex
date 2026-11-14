@@ -116,3 +116,16 @@ The same sandbox's exit codes, stderr, the env marker (`--env-var`), a directory
   - Bash syntax there fails with exit 127 (`/bin/sh: bash: not found`), as expected for an image that ships no bash.
   - The sandbox was stopped and the image deleted (REST `DELETE …/builds/{id}` returned `204`).
 - **New, filed separately:** a sandbox's `createdAt` reads whole seconds while it runs and microseconds in the create echo and once it ends ([w32/020](../../020.md)).
+
+## Isolation matrix — 2026-11-14 (`/qa-find-bugs-cli` loop): t005's acceptance is met
+
+- **The two checks already exist.** t005 step 2 asks for a REST exec of `pwd` that returns `$HOME` and a REST exec of an array expression that bash interprets. `60879160d` added both to `scripts/verify-sandbox-isolation.sh` (lines 691–703 at `ba923e4e9`). The live check above was wrong to list them as unwritten.
+- **The matrix passes with them.** `isolation-matrix.yml` run `43580573152` (2026-11-14 09:26 UTC, `7af7ed382`, against production pin `706a389d5924`, which carries `60879160d`) passed. Its sandbox leg printed:
+
+  ```text
+  PASS: a command starts in Render's home, /home/render, where a relative upload is readable by its relative path
+  PASS: a command is interpreted by bash, and /bin/bash exists for #!/bin/bash scripts
+  ```
+
+- **Why only now:** every run from `60879160d` until 2026-11-14 08:53 UTC failed before this step. First the verifier asserted `oregon` after w32/016 moved groups to the platform region (fixed in `430ba206f`). Then the agent leg could not start an agent sandbox (w7/m393, w7/063).
+- **What remains:** with the 2026-11-13 walk (steps 1–5 above), both t005 acceptance criteria hold. t005 can be marked done and m348 unblocked for t006 (Render parity) and t009 (Closeout).

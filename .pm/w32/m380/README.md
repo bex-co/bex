@@ -72,6 +72,8 @@ Downloaded sbx-dbrh980k58is73auo4s0:up-plain to ./x
 
 Rechecked on pin `1c4d721bc8dc` (2026-11-13 16:45 UTC, `sbx-dbrjt7tgh3vs73b14cmg`): a symlink upload still answers the same `400`, and a symlink download answers `503 sandbox file gateway unavailable`.
 
+Rechecked on pin `3e30e291ed3c` (2026-11-13 23:15 UTC, `sbx-dbrpjtruoa8c73enef20`). That pin carries w8/313's change to the gateway's upload path. Both bugs are unchanged: a symlink upload answers the same `400`. A symlink download answers `409 file ticket already used` twice through the CLI, and once each over HTTP/2 and HTTP/1.1 through the single-request probe.
+
 One request per ticket, using a download ticket minted as the pinned client does. The probe was private and printed neither the token nor the URI query. curl made no retry:
 
 ```text
