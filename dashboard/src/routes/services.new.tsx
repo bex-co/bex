@@ -550,7 +550,11 @@ export function NewServicePage() {
                       }
                       hint={
                         shape.imagePorts
-                          ? t("services.createFieldPortImageHint")
+                          ? t(
+                              form.serviceType === "web_service"
+                                ? "services.createFieldPortImageHintWeb"
+                                : "services.createFieldPortImageHint",
+                            )
                           : t("services.createFieldPortHint", {
                               port: port.trim() || String(DEFAULT_SERVICE_PORT),
                             })

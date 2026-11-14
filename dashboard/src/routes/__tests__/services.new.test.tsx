@@ -1344,6 +1344,24 @@ describe("NewServicePage", () => {
       await selectTypeThenImageTab(/Cron Job/i);
       expect(screen.queryByText(PORT_HINT)).not.toBeInTheDocument();
     });
+
+    // w4/615: a web service's $PORT stays Render's 10000 whatever port the
+    // image declares; a private service's primary is still its $PORT.
+    it("words the port field's hint for a web service's 10000 $PORT", async () => {
+      await selectTypeThenImageTab(/Web Service/i);
+      expect(
+        screen.getByText(/\$PORT stays 10000 unless you set it/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/becomes \$PORT/)).not.toBeInTheDocument();
+    });
+
+    it("keeps a private service's declared primary as its $PORT", async () => {
+      await selectTypeThenImageTab(/Private Service/i);
+      expect(screen.getByText(/becomes \$PORT/)).toBeInTheDocument();
+      expect(
+        screen.queryByText(/\$PORT stays 10000/),
+      ).not.toBeInTheDocument();
+    });
   });
 
   // w4/m121/t003: the wizard sent no port at all, so an existing image that

@@ -216,6 +216,48 @@ func TestADetectedPortRoutesButIsNotGivenBackAsPort(t *testing.T) {
 	}
 }
 
+// w4/615: a web image service whose image chooses its own HTTP port gets
+// Render's PORT=10000 whatever port its image declares or HTTP discovery
+// selects; only the routing and probes follow that port, and a crash hint
+// never names it as $PORT. A configured port, the service's own PORT, a
+// private image service and a web network resolved before w4/615 keep PORT on
+// the primary.
+func TestAWebImagePortIsRoutedButPORTStaysTheDefault(t *testing.T) {
+	webImage := func(mode string, network appv1alpha1.ImageNetworkStatus, envPort int32) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			Spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, PortMode: mode},
+			Status: appv1alpha1.AppStatus{EnvPort: envPort, ImageNetwork: &network},
+		}
+	}
+	scanned := func(primary int32, selection string, ports ...int32) appv1alpha1.ImageNetworkStatus {
+		return appv1alpha1.ImageNetworkStatus{PrimaryPort: primary, Ports: ports, HTTPSelection: selection, ProcessPort: appv1alpha1.DefaultPort}
+	}
+	for name, tc := range map[string]struct {
+		app             *appv1alpha1.App
+		serving         int
+		wantPORT, wantH int
+	}{
+		"an HTTP port discovery selected": {webImage(appv1alpha1.PortModeWebImageV1, scanned(8080, appv1alpha1.HTTPSelectionDetected, 8080), 0), 8080, 10000, 0},
+		"an EXPOSE-declared primary":      {webImage(appv1alpha1.PortModeWebImageV1, scanned(80, "", 80), 0), 80, 10000, 0},
+		"no EXPOSE, still the default":    {webImage(appv1alpha1.PortModeWebImageV1, scanned(10000, "", 10000), 0), 10000, 10000, 10000},
+		"a configured port":               {webImage(appv1alpha1.PortModeWebImageConfiguredV1, appv1alpha1.ImageNetworkStatus{PrimaryPort: 3000, Ports: []int32{3000}}, 0), 3000, 3000, 3000},
+		"the service's own PORT":          {webImage(appv1alpha1.PortModeWebImageV1, scanned(4000, appv1alpha1.HTTPSelectionConfigured, 4000), 4000), 4000, 4000, 4000},
+		"a private image-v1 service": {&appv1alpha1.App{
+			Spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, PortMode: appv1alpha1.PortModeImageV1},
+			Status: appv1alpha1.AppStatus{ImageNetwork: &appv1alpha1.ImageNetworkStatus{PrimaryPort: 3000, Ports: []int32{3000}}},
+		}, 3000, 3000, 3000},
+		"a web network from before w4/615": {webImage(appv1alpha1.PortModeWebImageV1, appv1alpha1.ImageNetworkStatus{PrimaryPort: 80, Ports: []int32{80}, HTTPSelection: appv1alpha1.HTTPSelectionDetected}, 0), 80, 80, 80},
+	} {
+		env := appEnv(tc.app, tc.serving)
+		if last := env[len(env)-1]; last.Name != portEnvName || last.Value != strconv.Itoa(tc.wantPORT) {
+			t.Errorf("%s: PORT = %+v, want %d", name, last, tc.wantPORT)
+		}
+		if hint := crashHintPort(tc.app, tc.serving); hint != tc.wantH {
+			t.Errorf("%s: crash hint port = %d, want %d", name, hint, tc.wantH)
+		}
+	}
+}
+
 // On a service whose serving port was detected (3000), PORT stays 10000
 // (w8/267), so a later deploy that binds nothing reachable is told to bind
 // PORT (10000), and the detected port is named as where it listened before.

@@ -1351,6 +1351,17 @@ spec:
                     maximum: 65535
                     minimum: 1
                     type: integer
+                  processPort:
+                    description: |-
+                      ProcessPort is the PORT this network's release gives its process:
+                      Render's 10000 for a web service whose image chooses its own HTTP port,
+                      whatever port it declares or discovery selects (w4/615). Zero means the
+                      primary: a configured or private network, or a web network resolved
+                      before w4/615 (ProcessPORT).
+                    format: int32
+                    maximum: 65535
+                    minimum: 0
+                    type: integer
                   revision:
                     type: string
                   source:
@@ -1565,6 +1576,17 @@ spec:
                     format: int32
                     maximum: 65535
                     minimum: 1
+                    type: integer
+                  processPort:
+                    description: |-
+                      ProcessPort is the PORT this network's release gives its process:
+                      Render's 10000 for a web service whose image chooses its own HTTP port,
+                      whatever port it declares or discovery selects (w4/615). Zero means the
+                      primary: a configured or private network, or a web network resolved
+                      before w4/615 (ProcessPORT).
+                    format: int32
+                    maximum: 65535
+                    minimum: 0
                     type: integer
                   revision:
                     type: string
@@ -1798,6 +1820,17 @@ spec:
                     format: int32
                     maximum: 65535
                     minimum: 1
+                    type: integer
+                  processPort:
+                    description: |-
+                      ProcessPort is the PORT this network's release gives its process:
+                      Render's 10000 for a web service whose image chooses its own HTTP port,
+                      whatever port it declares or discovery selects (w4/615). Zero means the
+                      primary: a configured or private network, or a web network resolved
+                      before w4/615 (ProcessPORT).
+                    format: int32
+                    maximum: 65535
+                    minimum: 0
                     type: integer
                   revision:
                     type: string

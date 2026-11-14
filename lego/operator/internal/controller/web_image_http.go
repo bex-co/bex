@@ -111,8 +111,11 @@ func retainWebHTTPSelection(app *appv1alpha1.App, network *appv1alpha1.ImageNetw
 // Legacy HTTP markers can also carry a stale configured primary, so only a
 // known-unconfigured network may replace fresh ports. Exact metadata equality
 // preserves ordinary legacy upgrades without importing an ambiguous listener.
+// A choice made while the process had another PORT is not kept either: a
+// process that listens on $PORT has moved (w4/615).
 func retainableWebHTTPSelection(previous, network *appv1alpha1.ImageNetworkStatus) bool {
-	if previous == nil || previous.Image != network.Image || previous.HTTPSelection == appv1alpha1.HTTPSelectionConfigured {
+	if previous == nil || previous.Image != network.Image || previous.HTTPSelection == appv1alpha1.HTTPSelectionConfigured ||
+		previous.ProcessPORT() != network.ProcessPORT() {
 		return false
 	}
 	if previous.ConfiguredPort != nil {
@@ -235,7 +238,7 @@ func (r *AppReconciler) reportWebHTTPSelection(ctx context.Context, app *appv1al
 	if reason, pullMessage := r.permanentRolloutPullFailure(ctx, dep, time.Now()); pullMessage != "" {
 		return r.settleFailedRolloutMessage(ctx, app, dep, reason, pullMessage)
 	}
-	if reason, crashMessage := r.permanentRolloutCrash(ctx, dep, port); crashMessage != "" {
+	if reason, crashMessage := r.permanentRolloutCrash(ctx, dep, crashHintPort(app, port)); crashMessage != "" {
 		return r.settleFailedRolloutMessage(ctx, app, dep, reason, crashMessage)
 	}
 	app.Status.Image = image
@@ -253,7 +256,7 @@ func (r *AppReconciler) reportWebHTTPSelection(ctx context.Context, app *appv1al
 	// before a port is chosen, so it keeps the discovery hint.
 	if quotaReason, quotaMessage := r.rolloutQuotaBlockMessage(ctx, dep); quotaMessage != "" {
 		reason, message = quotaReason, quotaMessage
-	} else if stallReason, stallMessage := r.stuckPodMessage(ctx, dep, port); stallMessage != "" && stallReason != reasonHealthCheckFailing {
+	} else if stallReason, stallMessage := r.stuckPodMessage(ctx, dep, crashHintPort(app, port)); stallMessage != "" && stallReason != reasonHealthCheckFailing {
 		reason, message = stallReason, stallMessage
 	}
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: message, ObservedGeneration: app.Generation})

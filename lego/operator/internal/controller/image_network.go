@@ -197,6 +197,35 @@ func (r *AppReconciler) withLinkedSourcePullSecret(ctx context.Context, app *app
 	return append(append([]corev1.LocalObjectReference(nil), base...), corev1.LocalObjectReference{Name: name})
 }
 
+// reusableImageNetwork reports whether cached, the App's last resolved
+// network, answers image for its current release without a registry read.
+// A prebuilt image arrives as its tag, which the cache records as Source: the
+// tag is re-resolved once per release, as Render re-pulls it on each deploy,
+// never once per reconcile (w4/m243 t008). A network resolved from a PORT that
+// is now removed is never reused: a rollback or redeploy returns to the
+// image's own port (w8/210). A web network resolved before w4/615 gave its
+// process the primary as PORT: its own release keeps it, but the next one
+// resolves afresh with Render's 10000 and discovers its HTTP port again under
+// that PORT.
+func reusableImageNetwork(app *appv1alpha1.App, cached *appv1alpha1.ImageNetworkStatus, image string, configuredPort int32, configured bool) bool {
+	if cached == nil || cached.ConfiguredPort == nil || *cached.ConfiguredPort != configuredPort ||
+		configured && cached.PrimaryPort != configuredPort {
+		return false
+	}
+	current := cached.Revision == releaseRevision(app)
+	return (cached.Image == image || cached.Source == image && current) &&
+		(current || cached.ProcessPort == imageNetworkProcessPort(app, configured))
+}
+
+// imageNetworkProcessPort is the ProcessPort a network resolved now records:
+// Render's 10000 for a web service whose image chooses its port (w4/615).
+func imageNetworkProcessPort(app *appv1alpha1.App, configured bool) int32 {
+	if app.Spec.UsesWebImagePorts() && !configured {
+		return appv1alpha1.DefaultPort
+	}
+	return 0
+}
+
 // resolveImageNetwork is deliberately scoped to the App's own built repository.
 // An arbitrary image host can never receive platform registry credentials; a
 // prebuilt image (web, w4/m243; private, w6/095) is read anonymously, or with
@@ -212,15 +241,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	if configured {
 		configuredPort = configuredPrimary
 	}
-	// A prebuilt image arrives as its tag, which the cache records as Source:
-	// the tag is re-resolved once per release, as Render re-pulls it on each
-	// deploy, never once per reconcile (w4/m243 t008).
-	// A network resolved from a PORT that is now removed is never reused: a
-	// rollback or redeploy returns to the image's own port (w8/210).
-	if cached := app.Status.ImageNetwork; cached != nil &&
-		(cached.Image == image || cached.Source == image && cached.Revision == releaseRevision(app)) &&
-		cached.ConfiguredPort != nil && *cached.ConfiguredPort == configuredPort &&
-		(!configured || cached.PrimaryPort == configuredPrimary) {
+	if cached := app.Status.ImageNetwork; reusableImageNetwork(app, cached, image, configuredPort, configured) {
 		cached.Revision = releaseRevision(app)
 		retainWebHTTPSelection(app, cached, configured)
 		return cached.Image, int(cached.PrimaryPort), nil
@@ -290,7 +311,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	image = prefix + "@" + metadata.Digest
 	network := &appv1alpha1.ImageNetworkStatus{
 		Image: image, Source: source, Revision: releaseRevision(app), PrimaryPort: primary, Ports: ports,
-		NoDeclaredPorts: len(metadata.TCPPorts) == 0, ConfiguredPort: new(configuredPort),
+		NoDeclaredPorts: len(metadata.TCPPorts) == 0, ConfiguredPort: new(configuredPort), ProcessPort: imageNetworkProcessPort(app, configured),
 	}
 	retainWebHTTPSelection(app, network, configured)
 	app.Status.ImageNetwork = network

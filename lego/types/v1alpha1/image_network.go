@@ -83,6 +83,15 @@ type ImageNetworkStatus struct {
 	// NoDeclaredPorts distinguishes a runtime/default fallback from OCI EXPOSE.
 	// +optional
 	NoDeclaredPorts bool `json:"noDeclaredPorts,omitempty"`
+	// ProcessPort is the PORT this network's release gives its process:
+	// Render's 10000 for a web service whose image chooses its own HTTP port,
+	// whatever port it declares or discovery selects (w4/615). Zero means the
+	// primary: a configured or private network, or a web network resolved
+	// before w4/615 (ProcessPORT).
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	ProcessPort int32 `json:"processPort,omitempty"`
 
 	// Source is the reference Image was resolved from, such as a prebuilt
 	// image's tag, so one release reads the registry once (w4/m243 t008).
@@ -95,6 +104,15 @@ type ImageNetworkStatus struct {
 	// +kubebuilder:validation:MaxItems=75
 	// +kubebuilder:validation:MinItems=1
 	Ports []int32 `json:"ports"`
+}
+
+// ProcessPORT is the PORT the network's release gives its process:
+// ProcessPort, else the primary.
+func (n *ImageNetworkStatus) ProcessPORT() int32 {
+	if n.ProcessPort > 0 {
+		return n.ProcessPort
+	}
+	return n.PrimaryPort
 }
 
 // PrivateHTTPPort is the private-network port on which every web service

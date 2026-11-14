@@ -92,24 +92,30 @@ func servingPortDetected(app *appv1alpha1.App, port int) bool {
 }
 
 // processPort is the PORT the process is given. It is the serving port, the
-// one the platform routes to and probes, except when that port was detected:
-// Render leaves PORT at its default and routes to the port it found, and so
-// does bex (w8/267). Handing the detected port back as PORT restarted the
-// process with a different environment than the one it was found in, and an
-// app with a public listener on one port and an internal one on $PORT then
-// bound the same port twice and never went live.
+// one the platform routes to and probes, except when that port was found
+// rather than named: Render leaves PORT at its default and routes to the port
+// it found, and so does bex. That covers a detected listener (w8/267) and a
+// web image service whose image chooses its own HTTP port, whether by EXPOSE
+// or by HTTP discovery (w4/615; ImageNetworkStatus.ProcessPort). Handing the
+// found port back as PORT restarted the process with a different environment
+// than the one it was found in, and an app with a public listener on one port
+// and an internal one on $PORT then bound the same port twice and never went
+// live.
 func processPort(app *appv1alpha1.App, port int) int {
 	if servingPortDetected(app, port) {
 		return appv1alpha1.DefaultPort
+	}
+	if network := app.Status.ImageNetwork; network != nil && network.ProcessPort > 0 && discoversWebImagePort(app) {
+		return int(network.ProcessPort)
 	}
 	return port
 }
 
 // crashHintPort is the port a crash diagnosis may name as $PORT: none when the
-// serving port was detected, because the process is then not expected to
-// listen on $PORT at all.
+// process is given another PORT than the serving port, because it is then not
+// expected to listen on $PORT at all.
 func crashHintPort(app *appv1alpha1.App, port int) int {
-	if servingPortDetected(app, port) {
+	if processPort(app, port) != port {
 		return 0
 	}
 	return port

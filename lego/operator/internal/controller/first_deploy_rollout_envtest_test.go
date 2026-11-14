@@ -96,6 +96,9 @@ var _ = Describe("A first web image deploy (w2/078)", func() {
 		for _, probe := range probesOf(second.Spec.Containers[0]) {
 			Expect(probe.TCPSocket).NotTo(BeNil(), "the retained HTTP choice needs no discovery probe")
 		}
-		Expect(second.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{Name: "PORT", Value: "80"}))
+		// The process keeps Render's PORT through discovery and the next
+		// release, whatever port it is served on (w4/615).
+		Expect(first.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{Name: "PORT", Value: "10000"}))
+		Expect(second.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{Name: "PORT", Value: "10000"}))
 	})
 })

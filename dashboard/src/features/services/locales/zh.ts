@@ -3657,7 +3657,13 @@ const zhServices: Record<string, TranslationEntry> = {
     message:
       "可选。bex 会发布镜像声明（EXPOSE）的每个 TCP 端口；若声明了 3000 则以它为主端口，否则取声明的最小端口，未声明时为 10000，作为 $PORT 并用于健康检查。填写端口即可自行指定主端口。",
     description:
-      "Create wizard: port hint for an image-port service (a Docker-built or prebuilt-image web or private service) — blank takes the image's declared ports (w6/m148, w4/m243, w4/m323)",
+      "Create wizard: port hint for an image-port private service (Docker-built or prebuilt image), whose primary is also its $PORT — blank takes the image's declared ports (w6/m148, w4/m323, w4/615)",
+  },
+  "services.createFieldPortImageHintWeb": {
+    message:
+      "可选。bex 会发布镜像声明（EXPOSE）的每个 TCP 端口；若声明了 3000 则以它为主端口，否则取声明的最小端口，未声明时为 10000，主端口接收流量并用于健康检查，直到 bex 找到服务器响应 HTTP 的端口。除非你自行设置，$PORT 始终为 10000。填写端口即可自行指定主端口。",
+    description:
+      "Create wizard: port hint for an image-port web service (Docker-built or prebuilt image) — the selected port gets the traffic, while $PORT stays Render's 10000 unless set (w4/m243, w4/615)",
   },
   "services.createFieldPortHint": {
     message:

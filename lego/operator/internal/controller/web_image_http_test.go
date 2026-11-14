@@ -116,8 +116,8 @@ func TestWebHTTPFallbackWaitsForStartupAndDoesNotChangePrivateOrExplicit(t *test
 }
 
 func TestWebHTTPRetainsServingDigestButNotNewImageOrRemovedPORT(t *testing.T) {
-	app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, PortMode: appv1alpha1.PortModeWebImageV1}, Status: appv1alpha1.AppStatus{ServingNetwork: &appv1alpha1.ImageNetworkStatus{Image: "image-a", ConfiguredPort: new(int32(0)), PrimaryPort: 15672, Ports: []int32{4369, 15672}}}}
-	candidate := &appv1alpha1.ImageNetworkStatus{Image: "image-a", PrimaryPort: 4369, Ports: []int32{4369, 15672}}
+	app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, PortMode: appv1alpha1.PortModeWebImageV1}, Status: appv1alpha1.AppStatus{ServingNetwork: &appv1alpha1.ImageNetworkStatus{Image: "image-a", ConfiguredPort: new(int32(0)), PrimaryPort: 15672, Ports: []int32{4369, 15672}, ProcessPort: 10000}}}
+	candidate := &appv1alpha1.ImageNetworkStatus{Image: "image-a", PrimaryPort: 4369, Ports: []int32{4369, 15672}, ProcessPort: 10000}
 	retainWebHTTPSelection(app, candidate, false)
 	if candidate.PrimaryPort != 15672 || candidate.HTTPSelection != "retained" {
 		t.Fatalf("known-unconfigured serving choice changed: %+v", candidate)
@@ -132,6 +132,52 @@ func TestWebHTTPRetainsServingDigestButNotNewImageOrRemovedPORT(t *testing.T) {
 	retainWebHTTPSelection(app, candidate, false)
 	if candidate.HTTPSelection != "" {
 		t.Fatal("removed PORT retained configured choice")
+	}
+}
+
+// w4/615: a listener chosen while the process had another PORT (a network
+// resolved before w4/615 gave it the primary) is not carried into a release
+// that gives it Render's 10000: a process listening on $PORT has moved, so the
+// release discovers its HTTP port again. Its own release keeps it, and a
+// legacy choice already on 10000 is still kept.
+func TestWebHTTPChoiceMadeUnderAnotherPORTIsDiscoveredAgain(t *testing.T) {
+	registry := imageConfigRegistry(t, `"3000/tcp":{}`)
+	r := &AppReconciler{HTTPClient: registry}
+	app := webImageApp(1)
+	image, _, err := r.resolveImageNetwork(t.Context(), app, app.Spec.Image)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := app.Status.ImageNetwork.ProcessPort; got != appv1alpha1.DefaultPort {
+		t.Fatalf("a fresh web network's ProcessPort = %d, want 10000", got)
+	}
+	for name, tc := range map[string]struct {
+		primary int32
+		keep    bool
+	}{"a legacy choice on 3000": {3000, false}, "a legacy choice on 10000": {10000, true}} {
+		legacy := app.Status.ImageNetwork.DeepCopy()
+		legacy.ProcessPort, legacy.HTTPSelection, legacy.PrimaryPort, legacy.Ports = 0, appv1alpha1.HTTPSelectionDetected, tc.primary, []int32{3000, tc.primary}
+		app.Status.ImageNetwork, app.Status.ServingNetwork = legacy, legacy.DeepCopy()
+		if got := processPort(app, int(tc.primary)); got != int(tc.primary) {
+			t.Errorf("%s: its own release's PORT = %d, want the primary it started with", name, got)
+		}
+		if _, _, err := r.resolveImageNetwork(t.Context(), app, image); err != nil {
+			t.Fatal(err)
+		}
+		if network := app.Status.ImageNetwork; network != legacy || network.HTTPSelection != appv1alpha1.HTTPSelectionDetected {
+			t.Errorf("%s: its own release re-resolved: %+v", name, network)
+		}
+		app.Status.ReleaseGeneration++ // a new release of the same image
+		if _, _, err := r.resolveImageNetwork(t.Context(), app, image); err != nil {
+			t.Fatal(err)
+		}
+		network := app.Status.ImageNetwork
+		if network.ProcessPort != appv1alpha1.DefaultPort {
+			t.Errorf("%s: the next release's ProcessPort = %d, want 10000", name, network.ProcessPort)
+		}
+		if kept := network.HTTPSelection != ""; kept != tc.keep {
+			t.Errorf("%s: next release kept the choice = %v, want %v: %+v", name, kept, tc.keep, network)
+		}
 	}
 }
 
@@ -150,9 +196,9 @@ func (s *httpDiscoveryScanner) ScanPorts(context.Context, string, []int) ([]int,
 }
 
 func TestWebHTTPDecisionSurvivesSameDigestMetadataRefresh(t *testing.T) {
-	previous := &appv1alpha1.ImageNetworkStatus{Image: "image-a", ConfiguredPort: new(int32(0)), HTTPSelection: "http", PrimaryPort: 15672, Ports: []int32{4369, 15672}}
+	previous := &appv1alpha1.ImageNetworkStatus{Image: "image-a", ConfiguredPort: new(int32(0)), HTTPSelection: "http", PrimaryPort: 15672, Ports: []int32{4369, 15672}, ProcessPort: 10000}
 	app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, PortMode: appv1alpha1.PortModeWebImageV1}, Status: appv1alpha1.AppStatus{ImageNetwork: previous}}
-	candidate := &appv1alpha1.ImageNetworkStatus{Image: "image-a", PrimaryPort: 4369, Ports: []int32{4369, 15672}, Revision: "next"}
+	candidate := &appv1alpha1.ImageNetworkStatus{Image: "image-a", PrimaryPort: 4369, Ports: []int32{4369, 15672}, Revision: "next", ProcessPort: 10000}
 	retainWebHTTPSelection(app, candidate, false)
 	if candidate.PrimaryPort != 15672 || candidate.HTTPSelection != "http" {
 		t.Fatalf("same digest reselected its listener: %+v", candidate)

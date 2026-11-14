@@ -3733,7 +3733,13 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "Optional. bex publishes every TCP port the image declares (EXPOSE); 3000 if declared, else the lowest declared, else 10000, becomes $PORT and the health-checked primary. Set a port to choose the primary yourself.",
     description:
-      "Create wizard: port hint for an image-port service (a Docker-built or prebuilt-image web or private service) — blank takes the image's declared ports (w6/m148, w4/m243, w4/m323)",
+      "Create wizard: port hint for an image-port private service (Docker-built or prebuilt image), whose primary is also its $PORT — blank takes the image's declared ports (w6/m148, w4/m323, w4/615)",
+  },
+  "services.createFieldPortImageHintWeb": {
+    message:
+      "Optional. bex publishes every TCP port the image declares (EXPOSE); 3000 if declared, else the lowest declared, else 10000, is the primary that receives traffic and health checks, until bex finds the port your server answers HTTP on. $PORT stays 10000 unless you set it. Set a port to choose the primary yourself.",
+    description:
+      "Create wizard: port hint for an image-port web service (Docker-built or prebuilt image) — the selected port gets the traffic, while $PORT stays Render's 10000 unless set (w4/m243, w4/615)",
   },
   "services.createFieldPortHint": {
     message:

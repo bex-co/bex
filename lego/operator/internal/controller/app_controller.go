@@ -5903,8 +5903,9 @@ const portEnvName = "PORT"
 // the service's own PORT when it set one (envPort, w5/m149), so the container
 // entry restates the user's value rather than overriding it, and the port the
 // process reads equals the port the platform routes to. The one exception is
-// a port found by detection: PORT stays the default, as on Render, and only
-// the routing follows the port the process listens on (processPort, w8/267). Secret-backed
+// a port bex found rather than was told, by detection or from a web image:
+// PORT stays the default, as on Render, and only the routing follows the port
+// the process listens on (processPort, w8/267, w4/615). Secret-backed
 // variables arrive separately through envFrom (envFromSources); a container-level
 // Env entry overrides an envFrom key of the same name, so PORT wins over both.
 // A ValueFrom.SecretKeyRef entry (a bex.yml fromDatabase reference, w1/m24)

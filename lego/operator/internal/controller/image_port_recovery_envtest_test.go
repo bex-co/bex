@@ -314,7 +314,13 @@ func assertImagePortRuntime(nn types.NamespacedName, port int32) {
 		Expect(probe.TCPSocket).NotTo(BeNil())
 		Expect(probe.TCPSocket.Port.IntVal).To(Equal(port))
 	}
-	Expect(c.Env).To(ContainElement(corev1.EnvVar{Name: "PORT", Value: fmt.Sprint(port)}))
+	// A web service whose image chooses its port keeps Render's PORT=10000
+	// whatever port it serves on (w4/615).
+	env := port
+	if discoversWebImagePort(envtestApp(nn)) {
+		env = appv1alpha1.DefaultPort
+	}
+	Expect(c.Env).To(ContainElement(corev1.EnvVar{Name: "PORT", Value: fmt.Sprint(env)}))
 }
 
 func assertImagePortService(nn types.NamespacedName, port int32) {
