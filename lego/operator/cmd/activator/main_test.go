@@ -42,6 +42,13 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// newHandler is the activator without request holding: a wake is answered at
+// once with the not-ready response. Production serves newHoldingHandler with a
+// holder; this test helper keeps the holder out of the fixtures.
+func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler {
+	return newHoldingHandler(c, cache, log, nil)
+}
+
 func maintenanceApp(uri string) *appv1alpha1.App {
 	return &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "bex-system"},

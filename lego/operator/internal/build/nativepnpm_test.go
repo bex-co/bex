@@ -31,7 +31,7 @@ func TestNativePnpmFollowsTheSelectedNodeLine(t *testing.T) {
 			o := nativeOptions()
 			o.Runtime = runtime
 			bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"NODE_VERSION": line}, nil)
-			if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
+			if _, err := resolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
 				t.Fatalf("%s NODE_VERSION=%s: %v", runtime, line, err)
 			}
 			df, _ := os.ReadFile(dockerfile)

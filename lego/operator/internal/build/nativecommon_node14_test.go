@@ -135,7 +135,7 @@ func TestCommonNode14OfflineAddon(t *testing.T) {
 	o := nativeOptions()
 	o.BuildCommand, o.StartCommand = "/usr/bin/python3 check-build.py "+line.version, "node check.js "+line.version
 	bundle, path, source := writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "14"}, files)
-	_, err := ResolveNativeBuildAt(time.Time{}, o.Runtime, bundle, path, source)
+	_, err := resolveNativeBuildAt(time.Time{}, o.Runtime, bundle, path, source)
 	must(t, err)
 	recipe, err := os.ReadFile(path)
 	must(t, err)

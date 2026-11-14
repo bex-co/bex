@@ -922,7 +922,7 @@ func TestNativeImageRunsAnOptedInBun(t *testing.T) {
 			o.BuildCommand = `bun -e 'require("node:fs").writeFileSync("built.txt", Bun.version + " requested=" + process.env.BUN_VERSION)' && bunx --version`
 			o.StartCommand = `bun -e 'console.log("bun runtime=" + Bun.version + " built=" + require("node:fs").readFileSync("built.txt", "utf8"))'`
 			bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3.4"}, nil)
-			if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
+			if _, err := resolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
 				t.Fatal(err)
 			}
 			must(t, os.Rename(dockerfile, filepath.Join(src, "Dockerfile")))
@@ -967,7 +967,7 @@ func TestNativeImageRunsPoetry(t *testing.T) {
 				env["POETRY_VERSION"] = tc.request
 			}
 			bundle, dockerfile, src := writeResolveFixture(t, o, env, nil)
-			if _, err := ResolveNativeBuild("python", bundle, dockerfile, src); err != nil {
+			if _, err := resolveNativeBuild("python", bundle, dockerfile, src); err != nil {
 				t.Fatal(err)
 			}
 			must(t, os.Rename(dockerfile, filepath.Join(src, "Dockerfile")))
@@ -1106,7 +1106,7 @@ func TestNativeImageRunsJSToolsBesidePrimaries(t *testing.T) {
 			files := map[string]string{"package.json": pkg}
 			maps.Copy(files, c.files)
 			bundle, dockerfile, src := writeResolveFixture(t, o, c.env, files)
-			if _, err := ResolveNativeBuild(c.runtime, bundle, dockerfile, src); err != nil {
+			if _, err := resolveNativeBuild(c.runtime, bundle, dockerfile, src); err != nil {
 				t.Fatal(err)
 			}
 			must(t, os.Rename(dockerfile, filepath.Join(src, "Dockerfile")))
@@ -1175,7 +1175,7 @@ func buildResolvedImage(t *testing.T, o Options, env, src map[string]string, tag
 func dockerBuildResolved(t *testing.T, o Options, env, src map[string]string, tag string) ([]byte, error) {
 	t.Helper()
 	bundle, dockerfile, dir := writeResolveFixture(t, o, env, src)
-	if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, dir); err != nil {
+	if _, err := resolveNativeBuild(nativeRuntime(o), bundle, dockerfile, dir); err != nil {
 		t.Fatal(err)
 	}
 	must(t, os.Rename(dockerfile, filepath.Join(dir, "Dockerfile")))

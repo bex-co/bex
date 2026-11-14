@@ -55,25 +55,13 @@ const (
 	maxVersionFileBytes = 1 << 20
 )
 
-// ResolveNativeBuild is the resolve phase: env bundle and Dockerfile paths,
-// the service's root directory in the checkout, and the runtime. It returns
+// ResolveNativeBuildExact is the resolve phase: env bundle and Dockerfile
+// paths, the service's root directory in the checkout, the runtime, and the
+// registry that resolves a service's exact pinned version (w8/175). It returns
 // the choices it applied, the primary toolchain first, then Python's Poetry
 // (w8/m72) and, for a uv project, uv (w8/m81), Ruby's and Python's Node
 // (w8/m77), a Gemfile static site's Ruby (w8/m105) and any opted-in companion
 // (Bun); an *UnsupportedVersionError is tenant input.
-func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
-	return ResolveNativeBuildAt(time.Time{}, runtime, bundlePath, dockerfilePath, sourceDir)
-}
-
-// ResolveNativeBuildAt is ResolveNativeBuild for a service created at created,
-// whose creation date picks the default Python line (w8/174) and uv's default
-// (w8/328).
-func ResolveNativeBuildAt(created time.Time, runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
-	return ResolveNativeBuildExact(context.Background(), NewDockerHubResolver(), created, runtime, bundlePath, dockerfilePath, sourceDir)
-}
-
-// ResolveNativeBuildExact is ResolveNativeBuildAt with the registry that
-// resolves a service's exact pinned version (w8/175).
 func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, created time.Time, runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
 	env, err := readEnvBundle(bundlePath)
 	if err != nil {
