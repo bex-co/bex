@@ -161,8 +161,17 @@ const (
 // the workspace lifecycle verbs authorize against, e.g. workspace:tea-abc.
 func WorkspaceObject(tenantID string) string { return WorkspaceObjectPrefix + tenantID }
 
+// AgentSessionObject is the OpenFGA object for one durable agent session
+// (deploy/gitops/authz/model.fga's agent_session type), e.g.
+// agent_session:ags-abc. It lives on the leaf so the checker (internal/authz)
+// and the gateway's exec revalidator reach the identical string without a
+// feature package; agentsession.SessionObject delegates to it.
+func AgentSessionObject(sessionID string) string {
+	return AgentSessionObjectPrefix + sessionID
+}
+
 // The OpenFGA object prefixes the two-factor funnel branches on: a workspace
-// object names its workspace, an agent-session object (agentsession.SessionObject)
+// object names its workspace, an agent-session object (core.AgentSessionObject)
 // names none and is resolved.
 const (
 	WorkspaceObjectPrefix    = "workspace:"

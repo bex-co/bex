@@ -26,6 +26,19 @@ linters:
           deny:
             - pkg: github.com/bex-co/bex/lego/operator
               desc: "backend must not import operator; cross through lego/types and the App CR instead — see lego/AGENTS.md"
+        # internal/authz is the production core.Checker: it answers authorization
+        # questions and must lean on the leaf kernel, never on a feature package.
+        # A sideways import here (it once reached into agentsession for a
+        # one-line object helper) drags a feature's store/github dependencies
+        # into every authorization check. Allow-list the leaf, the stdlib and the
+        # one external concurrency helper instead of enumerating features.
+        checker-leans-on-core:
+          files:
+            - "**/internal/authz/**"
+          allow:
+            - $gostd
+            - github.com/bex-co/bex/lego/backend/internal/core
+            - golang.org/x/sync/singleflight
         # Only internal/id may import xid — the one legitimate way to mint the
         # random id suffix. Anywhere else, importing xid means someone is
         # hand-rolling an id (bypassing id.New), which the compiler and the

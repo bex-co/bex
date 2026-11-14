@@ -18,6 +18,9 @@ limitations under the License.
 // API, satisfying core.Checker. It is a peer feature package — the feature
 // services gate on core.Checker (fake in tests, this in production); the
 // composition root wires NewOpenFGAChecker onto each service's Base.Authz.
+// It leans on the core leaf only, never on a feature package, so an
+// authorization check cannot drag a feature's store/github dependencies
+// (depguard checker-leans-on-core, lego/backend/.golangci.yml).
 package authz
 
 import (
@@ -31,7 +34,6 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -220,7 +222,7 @@ func (o *openfgaChecker) GrantAgentSessionWorkspace(ctx context.Context, session
 	return o.writeTuple(ctx, false, tupleKey{
 		User:     "workspace:" + workspaceID,
 		Relation: "workspace",
-		Object:   agentsession.SessionObject(sessionID),
+		Object:   core.AgentSessionObject(sessionID),
 	})
 }
 
