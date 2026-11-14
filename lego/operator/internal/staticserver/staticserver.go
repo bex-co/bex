@@ -226,6 +226,9 @@ type Handler struct {
 	// clients bounds the origin fetches one client holds at once, so it cannot
 	// take the gate's slots from other tenants' sites.
 	clients *keyedLimiter
+	// admission lets a miss over the client, site or replica cap wait briefly
+	// for a slot before it is shed.
+	admission *admission
 	// liveBodies bounds the total bytes of response bodies held live while being
 	// written to clients, extending memory accounting from fetch until the
 	// response write completes (the fetch gate alone releases at read time).
@@ -246,6 +249,7 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 		cache:      newCache(cacheBytes),
 		gate:       newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes, defaultMaxSiteFetches),
 		clients:    newKeyedLimiter(defaultMaxClientFetches),
+		admission:  newAdmission(),
 		liveBodies: semaphore.NewWeighted(defaultMaxLiveBodyBytes),
 		encodes:    newFetchGate(defaultMaxConcurrentEncodes, 0, defaultMaxSiteEncodes),
 		external:   newExternalProxy(netutil.UnsafeOriginIP),
@@ -724,16 +728,11 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 		if obj, ok := h.cache.get(ck); ok {
 			return obj, nil
 		}
-		if client != "" {
-			if !h.clients.acquire(client) {
-				return Object{}, ErrOverloaded
-			}
-			defer h.clients.release(client)
-		}
-		if !h.gate.acquire(site.AppID) {
+		release, ok := h.admit(ctx, site.AppID, client)
+		if !ok {
 			return Object{}, ErrOverloaded
 		}
-		defer h.gate.release(site.AppID)
+		defer release()
 		obj, gerr := h.origin.Get(ctx, key)
 		if errors.Is(gerr, ErrNotFound) {
 			// A confirmed miss is immutable within the revision too; cache it
@@ -756,6 +755,39 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 	}
 	obj := v.(Object)
 	return obj, negativeErr(obj)
+}
+
+// admit reserves what one origin fetch needs: a slot of its client's cap (when
+// the client is known) and a fetch-gate slot. A request that finds either at
+// capacity waits briefly for one to free (admission.go) before it is shed.
+func (h *Handler) admit(ctx context.Context, appID, client string) (release func(), ok bool) {
+	if release, ok := h.tryAdmit(appID, client); ok {
+		return release, true
+	}
+	return h.admission.await(ctx, client, func() (func(), bool) { return h.tryAdmit(appID, client) })
+}
+
+// tryAdmit is admit without waiting: the client cap first, then the gate. When
+// the gate refuses, the client slot taken a moment ago is given back and the
+// waiters are woken, since one of them may have been refused by that very slot.
+func (h *Handler) tryAdmit(appID, client string) (release func(), ok bool) {
+	if client != "" && !h.clients.acquire(client) {
+		return nil, false
+	}
+	if !h.gate.acquire(appID) {
+		if client != "" {
+			h.clients.release(client)
+			h.admission.notify()
+		}
+		return nil, false
+	}
+	return func() {
+		h.gate.release(appID)
+		if client != "" {
+			h.clients.release(client)
+		}
+		h.admission.notify()
+	}, true
 }
 
 // contentETag is the strong entity tag for an object's bytes and served type:

@@ -37,7 +37,8 @@ var trueClientIPHeader = textproto.CanonicalMIMEHeaderKey("True-Client-IP")
 // slot with unique missing paths on four sites. 3 keeps a single visitor's cold
 // page working (its HTML, stylesheet and script are fetched at once, the rest
 // follow as those finish) while leaving 13 of 16 slots, and one of any site's 4,
-// to others. An over-cap request is shed like any overload: 503 + Retry-After.
+// to others. An over-cap request waits briefly for a slot (admission.go) and
+// is then shed like any overload: 503 + Retry-After.
 const defaultMaxClientFetches = 3
 
 // keyedLimiter counts in-flight work per key: per client here, per site in
