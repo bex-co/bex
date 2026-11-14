@@ -385,6 +385,9 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **664** — [Scaling a healthy web service up records `server_failed` ("The instance failed its health check") and later `server_available`, though every existing instance kept serving](664.md) (~1h; minor to major) ← live `/qa-find-bugs w4` loop round 361, 2026-11-14 UTC (pin `c99e7815ebec`)
+- [ ] **663** — [While a pre-deploy command runs, the service's instance list includes the pre-deploy Job's pod: a first deploy lists an instance before anything serves, and the Web Shell picker offers it](663.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 361, 2026-11-14 UTC (pin `c99e7815ebec`)
+- [ ] **662** — [The zh env-group card still says 链接/已链接 for Link and Linked, under headings and an Unlink button that say 关联](662.md) (~20m; minor) ← live `/qa-find-bugs w4` loop round 361, 2026-11-14 UTC (pin `c99e7815ebec`), residual of w4/646
 - [ ] **660** — [Render's MCP `list_services` accepts `includePreviews`; bex's takes no arguments](660.md) (~20m; minor, parity) ← follow-up from w4/m378, 2026-11-14
 - [ ] **659** — [bex-only MCP tools keep a false comment that "MCP tool outputs must be JSON objects"](659.md) (~10m; minor) ← follow-up from w4/m378, 2026-11-14
 - [ ] **658** — [The create-service form checks secret-file names but not the 1 MiB total, and relies on the server's 400](658.md) (~25m; minor) ← follow-up from w4/m363, 2026-11-14

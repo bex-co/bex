@@ -134,3 +134,24 @@ Live `/qa-find-bugs w4` loop, round 235, during the rollout of pin `764072bb8e8a
 - **How far it reached.** By 21:55:51 the edge served JavaScript for these URLs, with and without `Accept-Encoding: gzip, deflate, br, zstd` (`cf-cache-status: HIT`, colo SJC). So this round's poisoning stayed in the browser.
   - The browser still loaded the HTML after DevTools `Network.clearBrowserCache` and a fresh `page.goto` (21:55:42). Its responses read `cf=HIT age=134`, which places the store at about 21:53:28, during the rollout.
   - Only an in-page `fetch('/assets/<chunk>', {cache: 'reload'})` of each of the seven URLs recovered the page. A user has no equivalent short of clearing site data.
+
+## Live replay — QA loop round 361 (2026-11-14 13:09–13:16 UTC, pin `c99e7815ebec`)
+
+Argo served the new build from 13:09:20 UTC: `GET /auth/login` began naming `/_assets/…` chunks. Requests were sent with `curl -s -A "Mozilla/5.0 … Chrome/130…" -D -` from outside the cluster.
+
+1. **A missing asset — holds.** Each of these answered `HTTP/2 404`, `content-type: text/plain; charset=utf-8`, `cache-control: no-store`, `cf-cache-status: BYPASS`, body `Not found`:
+   - `/assets/qa-missing-1794661773.js`, twice;
+   - `/assets/qa-missing-1794661773.css`;
+   - `/assets/nope/qa-1794661773.js`;
+   - `/_assets/qa-missing-1794661773.js`, twice.
+
+   No answer was a Cloudflare `HIT`.
+2. **A real asset — holds.** `/_assets/index-DWvhUw5T.js` (named by the live login page) and `/_assets/resources-zh-DuuVN-Pv.js` (named by that index) each answered `200`, `text/javascript; charset=utf-8`, `public, max-age=31536000, immutable`.
+3. **Pages unchanged — holds.** `/auth/login` → `200`, `private, no-cache`. `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` → `200`, `application/json`, `public, max-age=300`.
+4. **Through a rollout — partial.** An isolated headless Chromium with a persistent profile, signed in, loaded `/services/srv-dbkq3hdhhjfs73eiahe0/settings` every 5 s: 47 loads from 13:09:27 to 13:15:34.
+   - Every load reached the Settings page, with no "Something went wrong", and every load used `/_assets/` only.
+   - At the end, `fetch(url)` with the default cache answered `200 text/javascript` for all 19 scripts and modulepreloads on the page.
+   - **Not covered:** the poll started 7 s after the edge first served the new build. So no load happened before the new pod was Ready, and the run cannot say when the old pod left.
+5. **Fixtures — holds.** No fixture service was needed.
+
+**Verdict:** DoD 1–3 and 5 hold. DoD 4 holds for every load from 7 s after the switch; the next dashboard rollout should start the poll before the pin lands.
