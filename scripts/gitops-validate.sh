@@ -2568,7 +2568,7 @@ for required_probe in \
 done
 for required_agent_probe in \
   'BEX_VERIFY_AGENT_DRIVER' \
-  '\"template\":\"agent\"' \
+  'POST "/v1/agent-sessions?ownerId=$BEX_WORKSPACE_A"' \
   'peer sandbox to agent driver' \
   'gateway label spoof on the default ServiceAccount to agent driver' \
   'gateway workload identity to agent driver health endpoint' \
