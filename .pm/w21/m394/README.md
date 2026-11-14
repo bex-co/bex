@@ -17,7 +17,7 @@
 
 ## Definition of done
 
-1. `docs/ADR109-security-review-round25.md` exists with a scope table that gives a verdict for each `lego/operator/cmd/*` binary and each dashboard server route named in t001 and t002, and `bash scripts/adr-registry-validate.sh` passes.
+1. `docs/ADR<next>-security-review-round25.md` exists with a scope table that gives a verdict for each `lego/operator/cmd/*` binary and each dashboard server route named in t001 and t002, and `bash scripts/adr-registry-validate.sh` passes.
 2. Every confirmed finding has a regression test that fails on the pre-fix code and passes after the fix.
 3. `make test` and `make lint` (from `lego/operator/`), `cd lego/backend && go test ./...` and `cd dashboard && yarn lint && yarn test` pass.
 4. The accepted residuals (`#PSL`, `#CI-RUNNERS`, `#RUNNER-HOSTS`, `#ENV-REVIEWERS`, `#APPROVAL-MODE`) are reported as accepted, not refiled; anything provable only on a live deployment is listed with the check that settles it.
