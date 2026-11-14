@@ -950,6 +950,10 @@ type Details struct {
 	// Trigger, and DeployID is Render's buildId there (bex's build is its
 	// deploy's own, as on deploy_ended's reason).
 	EdgeCacheTrigger *EdgeCacheTrigger
+	// render is the Render details REST and MCP send for the event's type. Only
+	// the copy GraphQL's ServiceEventDetails resolves over carries it, so the
+	// members REST derives per type read the same values there (w4/655).
+	render *renderDetails
 }
 
 // userRefs are the {id, email} user objects an event's details name — the

@@ -17,10 +17,14 @@ limitations under the License.
 package events
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -102,6 +106,32 @@ func TestDatastoreEventDetailsOnRetrieve(t *testing.T) {
 			}
 			if body := rec.Body.String(); !strings.HasSuffix(strings.TrimSpace(body), `"details":`+tc.want+`}`) {
 				t.Errorf("event = %s, want details %s", body, tc.want)
+			}
+
+			// w4/655: GraphQL serviceEvent.details carries every member REST
+			// sent, with the same value (reason is restartReason there).
+			var rest map[string]any
+			if err := json.Unmarshal([]byte(tc.want), &rest); err != nil {
+				t.Fatal(err)
+			}
+			schema, err := graphql.NewSchema(graphql.SchemaConfig{Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()})})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: fmt.Sprintf(
+				`{serviceEvent(id:%q){details{user{id email} enabled fromDiskSize toDiskSize fromStatus toStatus fromReplicas toReplicas fromVersion toVersion restartReason message leaderId reasonCode}}}`, eventID)})
+			if len(result.Errors) > 0 {
+				t.Fatal(result.Errors)
+			}
+			gql := result.Data.(map[string]any)["serviceEvent"].(map[string]any)["details"].(map[string]any)
+			for key, want := range rest {
+				gqlKey := key
+				if key == "reason" {
+					gqlKey = "restartReason"
+				}
+				if got := gql[gqlKey]; fmt.Sprint(got) != fmt.Sprint(want) {
+					t.Errorf("graphql details.%s = %v, want REST's %v", gqlKey, got, want)
+				}
 			}
 		})
 	}

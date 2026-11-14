@@ -223,6 +223,26 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		})},
 		// postgres_cluster_leader_changed (w2/m171): the new primary, Render's leaderId.
 		"leaderId": gqlutil.StrField(func(d Details) any { return d.LeaderID }),
+		// The datastore members REST and MCP send since w4/m379 (w4/655), in
+		// Render's names and from the same view: the pool toggle's enabled, the
+		// disk resize's sizes in GB, the HA status words, the replica counts,
+		// the upgrade's major versions, and key_value_config_restart's reason
+		// (restartReason: the end reason object owns "reason") and message.
+		// enabled is also maintenance_mode_enabled's, message image_pull_failed's.
+		"enabled":      gqlutil.BoolField(func(d Details) any { return d.render.Enabled }),
+		"fromDiskSize": gqlutil.IntField(func(d Details) any { return d.render.FromDiskSize }),
+		"toDiskSize":   gqlutil.IntField(func(d Details) any { return d.render.ToDiskSize }),
+		"fromStatus":   gqlutil.StrField(func(d Details) any { return d.render.FromStatus }),
+		"toStatus":     gqlutil.StrField(func(d Details) any { return d.render.ToStatus }),
+		"fromReplicas": gqlutil.IntField(func(d Details) any { return d.render.FromReplicas }),
+		"toReplicas":   gqlutil.IntField(func(d Details) any { return d.render.ToReplicas }),
+		"fromVersion":  gqlutil.StrField(func(d Details) any { return d.render.FromVersion }),
+		"toVersion":    gqlutil.StrField(func(d Details) any { return d.render.ToVersion }),
+		"restartReason": gqlutil.StrField(func(d Details) any {
+			reason, _ := d.render.Reason.(string)
+			return reason
+		}),
+		"message": gqlutil.StrField(func(d Details) any { return d.render.Message }),
 		// service_disk_usage_high / _recovered (w2/m255): Render's disk details.
 		"diskId":           gqlutil.StrField(func(d Details) any { return d.DiskID }),
 		"diskName":         gqlutil.StrField(func(d Details) any { return d.DiskName }),
@@ -308,7 +328,11 @@ var eventGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"serviceId": gqlutil.StrField(func(e Event) any { return e.ServiceID }),
 		"timestamp": gqlutil.StrField(func(e Event) any { return e.At.UTC().Format(time.RFC3339) }),
 		"cursor":    gqlutil.StrField(func(e Event) any { return e.Cursor }),
-		"details":   gqlutil.Typed(eventDetailsGQLType, func(e Event) any { return e.Details }),
+		"details": gqlutil.Typed(eventDetailsGQLType, func(e Event) any {
+			d, render := e.Details, toRenderEvent(e).Details
+			d.render = &render
+			return d
+		}),
 	},
 })
 
