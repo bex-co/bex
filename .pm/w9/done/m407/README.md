@@ -1,6 +1,6 @@
 # w9 · m407 — Repository environment phase 2: sessions boot from a snapshot built from the setup steps, as Devin's do
 
-**Worker:** worker9 **Goal:** a repository's setup steps run once in a build, the result is kept as an image, and every session on that repository boots from the newest successful build with the latest code pulled and no setup wait, as Devin's sessions boot from blueprint snapshots. **Status:** todo (t001, t002, t003, t004, t005, t006, t007, t008, t011, t012 done)
+**Worker:** worker9 **Goal:** a repository's setup steps run once in a build, the result is kept as an image, and every session on that repository boots from the newest successful build with the latest code pulled and no setup wait, as Devin's sessions boot from blueprint snapshots. **Status:** done
 
 ## Tasks (in order)
 
@@ -14,11 +14,11 @@
 | [t006](done/t006.md) | Build orchestration: triggers, queue, worker and failure handling — **DONE** | 90m | t002, t003, t004, t005 |
 | [t007](done/t007.md) | Dispatch: sessions boot from the newest matching build; phase 1 is the fallback — **DONE** | 45m | t006 |
 | [t008](done/t008.md) | Surfaces: builds on REST, GraphQL, MCP and the dashboard — **DONE** | 75m | t006, t007 |
-| [t009](t009.md) | Live check on production: a build runs, the next session boots from it, and a change rebuilds | 45m | t008 |
-| [t010](t010.md) | Devin parity: every surface this milestone touched agrees, and matches Devin's builds | 20m | t009 |
+| [t009](done/t009.md) | Live check on production: a build runs, the next session boots from it, and a change rebuilds — **DONE** | 45m | t008 |
+| [t010](done/t010.md) | Devin parity: every surface this milestone touched agrees, and matches Devin's builds — **DONE** | 20m | t009 |
 | [t011](done/t011.md) | Simplify — **DONE** | 15m | t010 |
 | [t012](done/t012.md) | Test coverage — **DONE** | 45m | t010, t011 |
-| [t013](t013.md) | Closeout | 10m | t012 |
+| [t013](done/t013.md) | Closeout — **DONE** | 10m | t012 |
 
 ## Definition of done
 

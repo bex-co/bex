@@ -1,6 +1,6 @@
 # ADR111 — Repository environment snapshots: sessions boot from a build of the setup steps (phase 2)
 
-**Status:** Accepted, 2026-11-14. Implemented by w9/m407. Closes [ADR109](ADR109-agent-repo-environment.md) D2's divergence and amends its D3.
+**Status:** Accepted, 2026-11-14. Implemented by w9/m407 and verified on production the same day (builds, snapshot boots with the latest code, rebuild on change, phase 1 fallback). Closes [ADR109](ADR109-agent-repo-environment.md) D2's divergence and amends its D3.
 
 **Related decisions:**
 
