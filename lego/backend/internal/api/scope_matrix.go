@@ -67,6 +67,15 @@ func defaultScopeClass(op string) string {
 	}
 }
 
+// gateScopeClass is the class the dispatch gate enforces for op: its
+// classified entry, or write when op is missing from the table (fail closed).
+func gateScopeClass(op string) string {
+	if class, ok := lookupScopeClass(op); ok {
+		return class
+	}
+	return core.OpClassWrite
+}
+
 func classifiedClass(op string) string {
 	if class, ok := scopeClassOverrides[op]; ok {
 		return class
@@ -85,12 +94,9 @@ func (s *Server) requireScopeClass(ctx context.Context, op string) error {
 	if !ok || id.CapabilityExempt() {
 		return nil
 	}
-	class, found := lookupScopeClass(op)
-	if !found {
-		class = core.OpClassWrite
-	}
+	class := gateScopeClass(op)
 	err := id.RequireOpClass(class)
-	if err != nil && cloudAgentsScopeCovers(id, op, class) {
+	if err != nil && cloudAgentsScopeCovers(id, op) {
 		err = nil
 	}
 	if err != nil {
@@ -402,8 +408,8 @@ func (s *Server) requireMCPScope(ctx context.Context, tool string) error {
 // op: only a read or write operation of the cloud-agents MCP toolset. It is a
 // capability narrowing, not a grant: OpenFGA still decides every verb, and a
 // sensitive or mint operation never rides this scope.
-func cloudAgentsScopeCovers(id core.Identity, op, class string) bool {
-	if class != core.OpClassRead && class != core.OpClassWrite {
+func cloudAgentsScopeCovers(id core.Identity, op string) bool {
+	if class := gateScopeClass(op); class != core.OpClassRead && class != core.OpClassWrite {
 		return false
 	}
 	if !core.ContainsScope(id.CanonicalScopes, core.ScopeCloudAgents) {

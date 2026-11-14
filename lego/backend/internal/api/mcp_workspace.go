@@ -146,7 +146,7 @@ func mcpMarkCloudAgentsToolset(ctx context.Context, tool string) context.Context
 		return ctx
 	}
 	op := "MCP " + tool
-	if !cloudAgentsScopeCovers(id, op, classifiedClass(op)) {
+	if !cloudAgentsScopeCovers(id, op) {
 		return ctx
 	}
 	id.CloudAgentsToolset = true
