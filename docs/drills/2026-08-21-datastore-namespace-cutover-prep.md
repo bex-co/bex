@@ -185,7 +185,7 @@ An attempt to free capacity by hibernating the two idle old clusters (`cnpg.io/h
 
 ### The finding this cutover produced: silent backup loss on a same-name migration
 
-Verifying the archive after cutover — not merely that the CR was `Ready` — surfaced the defect written up as [`.pm/w7/040.md`](../../.pm/w7/040.md): all three migrated Postgres clusters read `ContinuousArchiving=False` with `WAL archive check failed … Expected empty archive`. Because bex derived the barman `serverName` from the CR name alone, each new cluster collided with its old same-named twin's archive prefix, and barman fails closed. Three production databases had been serving with **no archived WAL and no base backup**, WAL piling up at 1.3 GB / 913 MB / 353 MB against 9.8 GB volumes.
+Verifying the archive after cutover — not merely that the CR was `Ready` — surfaced the defect written up as [`.pm/w7/040.md`](../../.pm/w7/done/040.md): all three migrated Postgres clusters read `ContinuousArchiving=False` with `WAL archive check failed … Expected empty archive`. Because bex derived the barman `serverName` from the CR name alone, each new cluster collided with its old same-named twin's archive prefix, and barman fails closed. Three production databases had been serving with **no archived WAL and no base backup**, WAL piling up at 1.3 GB / 913 MB / 353 MB against 9.8 GB volumes.
 
 Worse, the _next_ step of this runbook would have compounded it: the delete-time purge Job removes S3 prefixes recursively keyed on the same bare name, so retiring the old instance would have erased the live one's archive too. Defect 1 masked defect 2 — the collision that broke archiving is the only reason the purge would have found nothing to destroy.
 

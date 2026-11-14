@@ -1,0 +1,61 @@
+name: references (docs links, .pm board)
+
+# The documents an agent starts from link to each other and to the .pm board by
+# relative path, and the board's numbering is handed out by workers who cannot
+# see each other's checkouts. This runs the two cheap checks that keep both
+# honest: scripts/docs-links-validate.sh (no relative Markdown link points at a
+# file that is gone) and scripts/pm-board-validate.py (no newly added duplicate
+# milestone number, open tasks carry the id their path names).
+#
+# It is its own workflow because docs.yml excludes `.pm/**` (prettier ignores
+# it), and a milestone closeout moves files in `.pm` and breaks inbound links
+# without touching a file that workflow watches. A push to main runs it whole,
+# with no path filter: a link breaks as readily when a source file, a script or a
+# fixture a document points at is deleted, and the job takes seconds. A pull
+# request runs it for the paths that can change what it reads.
+on:
+  pull_request:
+    paths:
+      - "**/*.md"
+      - ".pm/**"
+      - "docs/**"
+      - "scripts/docs-links-validate.sh"
+      - "scripts/docs-links-validate.test.sh"
+      - "scripts/pm-board-validate.py"
+      - "scripts/test_pm_board_validate.py"
+      - ".github/workflows/references.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# One running + one pending run per branch; only PRs cancel a running check.
+concurrency:
+  group: references-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  references:
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    steps:
+      # full-checkout: both checks read the .pm board; fetch-depth 0 because the board check measures the change against the base branch
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Docs links resolve
+        run: bash scripts/docs-links-validate.sh
+      - name: Docs link gate self-test
+        run: bash scripts/docs-links-validate.test.sh
+      - name: Board numbering and task ids
+        env:
+          # A PR is measured against its base branch; a push against what the
+          # branch held before it (an unresolvable value, a new branch, checks
+          # the working tree only and says so).
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: python3 scripts/pm-board-validate.py --base "$BASE"
+      - name: Board validator self-test
+        run: python3 -m unittest scripts/test_pm_board_validate.py -v

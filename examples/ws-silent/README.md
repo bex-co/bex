@@ -1,6 +1,6 @@
 # ws-silent — a WebSocket server that only listens
 
-Acceptance fixture for [w1/m161](../../.pm/w1/blocked/m161/README.md): does client→server WebSocket traffic alone keep a free service awake?
+Acceptance fixture for [w1/m161](../../.pm/w1/done/m161/README.md): does client→server WebSocket traffic alone keep a free service awake?
 
 An echo server cannot answer that. Every client frame produces a server frame, so the old behavior (only server→client traffic counted) and the fixed one look identical. This server keeps the directions apart:
 

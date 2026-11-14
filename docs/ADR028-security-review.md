@@ -10,19 +10,19 @@ This is one finding-by-finding writeup across the six audit areas of w6/m6. Each
 | --- | --- | --- | --- |
 | RBAC | `verbs: ['*']` wildcard on a phantom `app.bex.co services` CRD (stale scaffold) | LOW (latent) | **fixed** — scaffold deleted |
 | RBAC | Unused `metrics-auth-role` (tokenreview/subjectaccessreview) + unbound `metrics-reader` | LOW | **fixed** — scaffold deleted |
-| RBAC | bex-api ClusterRole grants cluster-wide `secrets`/`pods`/`pods/log` read | MEDIUM-HIGH | follow-up-filed ([w6/002](../.pm/w6/002.md)) |
+| RBAC | bex-api ClusterRole grants cluster-wide `secrets`/`pods`/`pods/log` read | MEDIUM-HIGH | follow-up-filed ([w6/002](../.pm/w6/done/002.md)) |
 | Supply chain | No image signing or SBOM anywhere in the repo | HIGH (gap) | **fixed** — cosign + SBOM in CI |
-| Supply chain | CNB tenant images (in-cluster build → Zot) unsigned | MEDIUM (gap) | follow-up-filed ([w6/006](../.pm/w6/006.md)) |
-| Registry authz | In-cluster Zot accepts unauthenticated push/pull/catalog from tenant build pods | HIGH (gap) | **fixed** — htpasswd + `accessControl` (anonymous denied), build-push & pull authenticated ([w7/m8](../.pm/w7/m8/README.md), [ADR022 § Registry access control](ADR022-tenant-isolation.md#registry-access-control-w7m8)) |
+| Supply chain | CNB tenant images (in-cluster build → Zot) unsigned | MEDIUM (gap) | follow-up-filed ([w6/006](../.pm/w6/done/006.md)) |
+| Registry authz | In-cluster Zot accepts unauthenticated push/pull/catalog from tenant build pods | HIGH (gap) | **fixed** — htpasswd + `accessControl` (anonymous denied), build-push & pull authenticated ([w7/m8](../.pm/w7/done/m8/README.md), [ADR022 § Registry access control](ADR022-tenant-isolation.md#registry-access-control-w7m8)) |
 | Injection | SQL construction (control-plane Postgres) | — | **clean** — all parameterized |
 | Injection | Webhook HMAC verification | — | **clean** — constant-time, full-body, fail-closed |
 | Injection | No input validation on build `repo`/`branch`/`rootDir` | LOW (defense-in-depth) | **fixed** — validators at the API boundary |
 | Network isolation | Reachability matrix declared but not live-verified | MEDIUM (gap) | **fixed** — live test + structural CI guard |
 | Secrets hygiene | Plaintext credentials in logs/error paths | — | **clean** — no leaks found |
-| Secrets hygiene | GitHub `APIError` echoes upstream 5xx body to callers | LOW | follow-up-filed ([w6/005](../.pm/w6/005.md)) |
+| Secrets hygiene | GitHub `APIError` echoes upstream 5xx body to callers | LOW | follow-up-filed ([w6/005](../.pm/w6/done/005.md)) |
 | OAuth/OIDC | Token `aud` enforced, `iss` not validated | LOW-MEDIUM | **fixed** — issuer check added |
-| OAuth/OIDC | PKCE not enforced bex-side (Hydra enforces for public clients) | LOW | follow-up-filed ([w6/003](../.pm/w6/003.md)) |
-| OAuth/OIDC | Constant-time comparison (webhook either-key, internal CP token) | LOW | follow-up-filed ([w6/004](../.pm/w6/004.md)) |
+| OAuth/OIDC | PKCE not enforced bex-side (Hydra enforces for public clients) | LOW | follow-up-filed ([w6/003](../.pm/w6/done/003.md)) |
+| OAuth/OIDC | Constant-time comparison (webhook either-key, internal CP token) | LOW | follow-up-filed ([w6/004](../.pm/w6/done/004.md)) |
 
 No CRITICAL or HIGH vulnerabilities were found. The two HIGH-severity **rows** above are gaps (absent controls), now closed by CI signing and the live network test — not exploitable defects.
 
@@ -37,7 +37,7 @@ No CRITICAL or HIGH vulnerabilities were found. The two HIGH-severity **rows** a
 - **Dynamic NamespaceReconciler escalation path found and closed (w3/m35, 2026-07-28; strengthened 2026-07-29).** ADR043 necessarily gave the externally reachable bex-api ServiceAccount cluster-wide namespace-object mutation, RoleBinding mutation, and `bind` on five per-tenant ClusterRoles because RBAC cannot express future dynamic namespace names. Normal code wrote only managed tenant namespaces, but a compromised Pod could call the API directly: delete/relabel a platform namespace, downgrade a sandbox namespace's Pod Security labels, install an arbitrary sandbox allow policy, or bind a Secret-bearing tenant role there. `deploy/gitops/base/bex-api-namespace-admission.yaml` now adds fail-closed native CEL admission keyed to the exact ServiceAccount, canonical `tea-<xid>`/`<ws>-sandbox` names, fixed managed/PSS labels, exact sandbox `default-deny`, migration-only deletion of known legacy allows, and exact regime-specific role/subject mappings. RoleBinding deletion is deliberately checked separately from create/update: any known reconciler-owned binding name may be revoked, so malformed or stale pre-m35 authority cannot make admission preserve itself, but only the exact current mapping can be created or updated. The RBAC rules contain only the direct client's create/get/list/update/delete calls; patch/watch are absent, and ResourceQuota/LimitRange cannot be deleted. The live m35 adversarial matrix demonstrated all of this on production 2026-07-30: an impersonated bex-api attempt to bind a Secret role into a platform namespace, delete/relabel a platform namespace, downgrade a sandbox namespace's Pod Security labels, or install an arbitrary sandbox allow policy is denied, while the exact canonical tenant projection is admitted.
 - **Template-only gVisor bypass found and closed (w3/m35, 2026-07-28).** Namespace-scoped RBAC confines a compromised OpenSandbox server/controller's Pod/Job writes but cannot constrain the submitted Pod spec. The checked-in BatchSandbox template alone therefore did not stop that component from creating a runc Pod and bypassing the claimed host boundary. `deploy/gitops/base/sandbox-pod-admission.yaml` now fail-closes every Pod create/update in a trusted `regime=sandbox` namespace unless the Pod retains `runtimeClassName: gvisor`, scheduler-enforced sandbox-node placement (no create-time `nodeName` bypass), the sandbox identity label, and `automountServiceAccountToken: false`. The policy covers indirect Job-controller Pod creation as well as direct OpenSandbox writes; the live matrix verified on production (2026-07-30) that an impersonated lifecycle component's runc/no-gVisor Pod (and a `nodeName` pool jump) is denied while the exact gVisor Pod shape is admitted.
 - **Outbound accounting agents (w8/m15).** The node egress meter has its own ServiceAccount and read-only `get/list/watch` on Pods and Nodes; Kubernetes cannot field-scope RBAC by node, so the process applies `spec.nodeName` and namespace selectors itself. It mounts only bpffs and its node checkpoint directory, runs with a read-only root filesystem, drops all capabilities, then adds `BPF`, `NET_ADMIN`, `PERFMON`, `SYS_ADMIN`, and `SYS_RESOURCE`: respectively load/maps, netfilter link attach, the read-only skb helper contract, production-kernel bpffs pin-directory creation, and memlock compatibility. The broad `SYS_ADMIN` capability is required because the production kernel rejects directory creation on Cilium's bpffs without it. Ubuntu's runtime-default AppArmor profile separately denies `BPF_OBJ_PIN`, so AppArmor is unconfined for this container while seccomp remains `RuntimeDefault`; the pod remains non-privileged and has no host PID/IPC/root mount. The Postgres and Key Value SNI proxies only read their corresponding CRs, drop all capabilities, and never read credential Secrets or terminate tenant TLS. Prometheus listeners stay ClusterIP-only.
-- **Follow-up-filed ([w6/002](../.pm/w6/002.md)):** bex-api (the externally-reachable service) holds a ClusterRole with cluster-wide `secrets`/`pods`/`pods/log` read — the largest blast-radius grant on the product surface. Scoping it to the served namespace(s) needs care (dynamic tenant namespaces) and is filed rather than risked mid-milestone. The operator's own cluster-wide `secrets` CRUD is justified by the multi-tenant dynamic-namespace design (ClusterRole is architecturally required); defense-in-depth follow-up is in the same note.
+- **Follow-up-filed ([w6/002](../.pm/w6/done/002.md)):** bex-api (the externally-reachable service) holds a ClusterRole with cluster-wide `secrets`/`pods`/`pods/log` read — the largest blast-radius grant on the product surface. Scoping it to the served namespace(s) needs care (dynamic tenant namespaces) and is filed rather than risked mid-milestone. The operator's own cluster-wide `secrets` CRUD is justified by the multi-tenant dynamic-namespace design (ClusterRole is architecturally required); defense-in-depth follow-up is in the same note.
 
 ## 2. Supply chain — image signing + SBOM
 
@@ -62,7 +62,7 @@ cosign verify-attestation \
   ghcr.io/bex-co/bex-operator@sha256:<digest>   # the in-toto SBOM attestation
 ```
 
-**Follow-up-filed ([w6/006](../.pm/w6/006.md)):** CNB tenant images built in-cluster via BuildKit and pushed to the internal Zot registry are not signed. The build Job has no OIDC identity (Zot is internal, not a public registry), and admission-time verification is explicitly out of scope for this task. The note records the deferral and the path to closing it (a signing key injected into the build Job + verification at admission).
+**Follow-up-filed ([w6/006](../.pm/w6/done/006.md)):** CNB tenant images built in-cluster via BuildKit and pushed to the internal Zot registry are not signed. The build Job has no OIDC identity (Zot is internal, not a public registry), and admission-time verification is explicitly out of scope for this task. The note records the deferral and the path to closing it (a signing key injected into the build Job + verification at admission).
 
 ## 3. Injection / input-validation surface
 
@@ -105,7 +105,7 @@ The datastore rows of the matrix (workspace-A → workspace-B Postgres/Valkey) a
 
 No `%+v` whole-struct dump of a config/server/secret struct exists anywhere; no secret-bearing struct has a `String()`/`MarshalLogObject`.
 
-**Follow-up-filed ([w6/005](../.pm/w6/005.md)):** GitHub `APIError.Error()` (`lego/backend/internal/github/client.go:123`) echoes the upstream response body into the error string; 5xx bodies pass through to the API caller via `core.WriteErr`. No bex credential is in that body (tokens appear only on 2xx), but it is upstream-error-text disclosure worth collapsing to a fixed message.
+**Follow-up-filed ([w6/005](../.pm/w6/done/005.md)):** GitHub `APIError.Error()` (`lego/backend/internal/github/client.go:123`) echoes the upstream response body into the error string; 5xx bodies pass through to the API caller via `core.WriteErr`. No bex credential is in that body (tokens appear only on 2xx), but it is upstream-error-text disclosure worth collapsing to a fixed message.
 
 ## 6. OAuth / OIDC correctness
 
@@ -117,7 +117,7 @@ No `%+v` whole-struct dump of a config/server/secret struct exists anywhere; no 
 
 **Authorization boundary (matches docs).** OAuth scope is intentionally **not** consulted for authorization — authorization is delegated to OpenFGA (`core.Base.Authorize` on every verb, swept by `TestAuthzGuardsEveryVerb`). OAuth = authentication (who is the bearer?); OpenFGA = authorization (what may this subject do to this workspace object?). Any valid token (OAuth user token, client_credentials API key, Kratos session) resolves to the same `core.Identity` and hits the same per-verb gate. The only sharp edge — allow-all when `BEX_OPENFGA_URL` is unset — is the documented pre-authorization mode.
 
-**Follow-up-filed ([w6/003](../.pm/w6/003.md)):** PKCE is not enforced bex-side. The only authorization_code clients are agent DCR clients (public), for which Hydra mandates PKCE per OAuth 2.1 conformance — so the actual MCP-agent surface is covered — but nothing in bex or the committed Hydra values requires PKCE for **all** authorization_code clients. The note records the Hydra-side `oauth2.pkce` knob that would close it.
+**Follow-up-filed ([w6/003](../.pm/w6/done/003.md)):** PKCE is not enforced bex-side. The only authorization_code clients are agent DCR clients (public), for which Hydra mandates PKCE per OAuth 2.1 conformance — so the actual MCP-agent surface is covered — but nothing in bex or the committed Hydra values requires PKCE for **all** authorization_code clients. The note records the Hydra-side `oauth2.pkce` knob that would close it.
 
 ## Follow-up register
 

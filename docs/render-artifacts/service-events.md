@@ -149,7 +149,7 @@ One standing property is worth stating because the probe made it concrete: `?typ
 
 A successful service move between projects or environments (`projects.SetServices` / `environments.SetServices`) previously left durable workspace audit rows but **no service-scoped event** — live-reproduced 2026-08-27 (`.pm/w6/done/054.md`): `environments.SetServices` appeared in the workspace audit log while the service feed stayed byte-identical.
 
-**Render evidence limit:** Render's pinned 39-value events enum (`render-public-api-1.json` `eventTypeParam`), its 65-value webhook enum, and the 2026-08-17 authenticated dashboard capture ([fixture](fixtures/render-webhook-vocabulary-2026-08-17.json)) name **no** project/environment membership event, and a fresh live Render move was not available to this change — so the wire spelling is a bex extension, not a mirrored name.
+**Render evidence limit:** Render's pinned 39-value events enum (`render-public-api-1.json` `eventTypeParam`), its 65-value webhook enum, and the 2026-08-17 authenticated dashboard capture ([fixture](fixtures/render-webhook-vocabulary-2026-11-02.json)) name **no** project/environment membership event, and a fresh live Render move was not available to this change — so the wire spelling is a bex extension, not a mirrored name.
 
 bex adds **`service_moved`** (deliberately not `service_environment_changed`, which despite its name is the env-var/config-rollout fact):
 

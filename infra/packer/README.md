@@ -54,7 +54,7 @@ The overlay's `HCloudMachineTemplate`s point at the versioned `IMAGE_NAME` in `r
 3. **Roll workers, then control plane** — merge/apply the overlay. MachineDeployments roll workers using their versioned templates. After those prove the snapshot, KCP rolls one stacked-etcd member at a time onto its new immutable template; watch quorum and `kubectl get machines,nodes -w` throughout.
    - A kernel-only rebake keeps the same `imageName`. New machines use the new snapshot straight away. Bump `rolloutAfter` on every `MachineDeployment` and the `KubeadmControlPlane` to replace existing ones; the sandbox pool is applied out of band, so patch it live as well.
    - **The platform roll stalls on OpenBao.** Each rescheduled member starts sealed, and its PDB blocks the next drain until that member is unsealed. Follow [ADR015 § Node drain and rolling-maintenance unseal](../../docs/ADR015-openbao-backup-restore.md#node-drain-and-rolling-maintenance-unseal) after every platform node (`scripts/bao-init.sh`).
-4. **Measure** — record machine-created → node-`Ready` before/after in [`.pm/w1/m36/README.md`](../../.pm/w1/m36/README.md) (Measurements).
+4. **Measure** — record machine-created → node-`Ready` before/after in [`.pm/w1/m36/README.md`](../../.pm/w1/done/m36/README.md) (Measurements).
 5. **Clean up the rotated-away templates** once the roll has settled and the old machines are gone:
    ```sh
    kubectl delete hcloudmachinetemplate bex-tenant-0 bex-platform -n default

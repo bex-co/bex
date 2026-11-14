@@ -5,7 +5,7 @@ Captured **2026-07-11** live from `dashboard.render.com` against a real authenti
 - **`tea-c185th5c2rvvnhbfiltg`** — "stargately", **Professional** (paid) plan.
 - **`tea-cspvkdogph6c73ft15b0`** — "Tian Pan's Workspace", **Hobby (legacy)** (free) plan.
 
-This closes the gap `w6/m1/t001` left open (it was marked done without producing this file) and is the verbatim source `w6/m3`'s danger-zone/rename UX is reconciled against in `w6/m5/t002`. Screenshots: `.playwright-mcp/render-workspace-settings-general.png` (General settings), `.playwright-mcp/render-workspace-delete-modal.png` (delete confirmation modal). Supersedes the earlier docs-only guesses in [`../../.pm/w6/RESEARCH-workspaces.md`](../../.pm/w6/RESEARCH-workspaces.md) open question 1 ("delete/rename semantics unverified").
+This closes the gap `w6/m1/t001` left open (it was marked done without producing this file) and is the verbatim source `w6/m3`'s danger-zone/rename UX is reconciled against in `w6/m5/t002`. Screenshots: `.playwright-mcp/render-workspace-settings-general.png` (General settings), `.playwright-mcp/render-workspace-delete-modal.png` (delete confirmation modal). Supersedes the earlier docs-only guesses in [`../../.pm/w6/RESEARCH-workspaces.md`](../../.pm/w6/done/RESEARCH-workspaces.md) open question 1 ("delete/rename semantics unverified").
 
 > **Vocabulary.** Render says **workspace** in the UI; the id prefix is `tea-` (team). Same entity bex models as `workspace`. See [`owners-api.md`](owners-api.md).
 
