@@ -223,6 +223,9 @@ type Handler struct {
 	// gate bounds concurrent origin fetches (count + in-flight bytes) so a burst
 	// of distinct misses can't buffer an unbounded amount of memory (finding 12).
 	gate *fetchGate
+	// clients bounds the origin fetches one client holds at once, so it cannot
+	// take the gate's slots from other tenants' sites.
+	clients *clientLimiter
 	// liveBodies bounds the total bytes of response bodies held live while being
 	// written to clients, extending memory accounting from fetch until the
 	// response write completes (the fetch gate alone releases at read time).
@@ -242,6 +245,7 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 		origin:     origin,
 		cache:      newCache(cacheBytes),
 		gate:       newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes, defaultMaxSiteFetches),
+		clients:    newClientLimiter(defaultMaxClientFetches),
 		liveBodies: semaphore.NewWeighted(defaultMaxLiveBodyBytes),
 		encodes:    newFetchGate(defaultMaxConcurrentEncodes, 0, defaultMaxSiteEncodes),
 		external:   newExternalProxy(netutil.UnsafeOriginIP),
@@ -254,6 +258,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no static site for host", http.StatusNotFound)
 		return
 	}
+	r = r.WithContext(withClient(r.Context(), clientKey(r)))
 
 	// requestPath is the visitor's normalized path and stays immutable: custom
 	// headers match against it on every response (Render's request-path
@@ -710,6 +715,7 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 		return Object{}, ErrNotFound
 	}
 	key, ck := site.keyFor(reqPath), site.cacheKey(reqPath)
+	client := clientFrom(ctx)
 	if obj, ok := h.cache.get(ck); ok {
 		return obj, negativeErr(obj)
 	}
@@ -717,6 +723,12 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 		// A prior leader for this key may have just populated the cache.
 		if obj, ok := h.cache.get(ck); ok {
 			return obj, nil
+		}
+		if client != "" {
+			if !h.clients.acquire(client) {
+				return Object{}, ErrOverloaded
+			}
+			defer h.clients.release(client)
 		}
 		if !h.gate.acquire(site.AppID) {
 			return Object{}, ErrOverloaded

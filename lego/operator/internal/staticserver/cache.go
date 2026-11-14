@@ -27,14 +27,21 @@ import "sync"
 // When an insert would exceed the budget, entries are evicted (in map order,
 // which Go randomizes) until it fits, then the object is stored if it fits at
 // all. A single object larger than the whole budget is served but not cached.
+//
+// Negative entries (Object.negative: a confirmed miss, or encoding.go's
+// "incompressible" marker) have their own small per-site budget and only ever
+// displace other negative entries; a real object may displace them to fit. A
+// flood of unique missing paths therefore cannot push real objects out.
 type cache struct {
-	mu            sync.Mutex
-	budget        int64
-	perSiteBudget int64
-	used          int64
-	siteUsed      map[string]int64
-	entrySites    map[string]string
-	entries       map[string]Object
+	mu             sync.Mutex
+	budget         int64
+	perSiteBudget  int64
+	negativeBudget int64 // per-site share for negative entries, inside perSiteBudget
+	used           int64
+	siteUsed       map[string]int64
+	siteNegUsed    map[string]int64
+	entrySites     map[string]string
+	entries        map[string]Object
 }
 
 // entryOverhead is the fixed per-entry allocation charged on top of the body:
@@ -61,9 +68,12 @@ func newCache(budget int64) *cache {
 	return &cache{
 		budget:        budget,
 		perSiteBudget: perSiteBudget,
-		siteUsed:      map[string]int64{},
-		entrySites:    map[string]string{},
-		entries:       map[string]Object{},
+		// About 3000 entries per site.
+		negativeBudget: min(perSiteBudget/8, 1<<20),
+		siteUsed:       map[string]int64{},
+		siteNegUsed:    map[string]int64{},
+		entrySites:     map[string]string{},
+		entries:        map[string]Object{},
 	}
 }
 
@@ -90,25 +100,48 @@ func (c *cache) put(site, key string, obj Object) {
 	if _, exists := c.entries[key]; exists {
 		return
 	}
-	for c.siteUsed[site]+size > c.perSiteBudget {
-		if !c.evictOne(site) {
+	if obj.negative {
+		if size > c.negativeBudget {
 			return
 		}
-	}
-	for c.used+size > c.budget {
-		if !c.evictOne("") {
+		// Only this site's negative entries may make room, and only up to its
+		// negative share; past the site or global budget the miss is not cached.
+		for c.siteNegUsed[site]+size > c.negativeBudget {
+			if !c.evictOne(site, true) {
+				return
+			}
+		}
+		if c.siteUsed[site]+size > c.perSiteBudget || c.used+size > c.budget {
 			return
+		}
+	} else {
+		for c.siteUsed[site]+size > c.perSiteBudget {
+			if !c.evictOne(site, false) {
+				return
+			}
+		}
+		for c.used+size > c.budget {
+			if !c.evictOne("", false) {
+				return
+			}
 		}
 	}
 	c.entries[key] = obj
 	c.used += size
 	c.siteUsed[site] += size
+	if obj.negative {
+		c.siteNegUsed[site] += size
+	}
 	c.entrySites[key] = site
 }
 
-// evictOne removes one entry, restricted to site when non-empty.
-func (c *cache) evictOne(site string) bool {
+// evictOne removes one entry, restricted to site when non-empty and to negative
+// entries when negativeOnly (the caller knows one exists, so the scan ends).
+func (c *cache) evictOne(site string, negativeOnly bool) bool {
 	for key, obj := range c.entries {
+		if negativeOnly && !obj.negative {
+			continue
+		}
 		entrySite := c.entrySites[key]
 		if site != "" && entrySite != site {
 			continue
@@ -117,12 +150,20 @@ func (c *cache) evictOne(site string) bool {
 		delete(c.entries, key)
 		delete(c.entrySites, key)
 		c.used -= size
-		if c.siteUsed[entrySite] <= size {
-			delete(c.siteUsed, entrySite)
-		} else {
-			c.siteUsed[entrySite] -= size
+		release(c.siteUsed, entrySite, size)
+		if obj.negative {
+			release(c.siteNegUsed, entrySite, size)
 		}
 		return true
 	}
 	return false
+}
+
+// release subtracts size from m[site], dropping the key at zero.
+func release(m map[string]int64, site string, size int64) {
+	if m[site] <= size {
+		delete(m, site)
+		return
+	}
+	m[site] -= size
 }

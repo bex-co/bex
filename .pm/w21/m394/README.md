@@ -1,6 +1,6 @@
 # w21 · m394 — Security review round 25: the operator's tenant-facing daemons and the dashboard's server routes
 
-**Worker:** worker21 **Goal:** every operator daemon that parses tenant-controlled input and every dashboard server route has been reviewed with the `security-audit` skill, each confirmed finding is fixed with a regression test that fails on the old code, and ADR109 records scope, findings and accepted residuals. **Status:** todo (t001-t004 done: the audit ran, every finding has a verdict, R25-08 is fixed; fixes t009-t017 open)
+**Worker:** worker21 **Goal:** every operator daemon that parses tenant-controlled input and every dashboard server route has been reviewed with the `security-audit` skill, each confirmed finding is fixed with a regression test that fails on the old code, and ADR109 records scope, findings and accepted residuals. **Status:** todo (t001-t004 and t009 done: the audit ran, every finding has a verdict, R25-08 and R25-05 are fixed; fixes t010-t017 open)
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | [t002](done/t002.md) | Run the audit on the dashboard's server routes and its OAuth consent and device flows — **DONE** | 60m | — |
 | [t003](done/t003.md) | Reproduce each finding and reject what does not hold — **DONE** | 60m | t001, t002 |
 | [t004](done/t004.md) | Fix R25-08: an unmatched `/assets/**` path answers 404, never the visitor's page with a public immutable header — **DONE** | 45m | t003 |
-| [t009](t009.md) | Fix R25-05: one client cannot occupy the static server's origin-fetch slots of other tenants' sites | 60m | t003 |
+| [t009](done/t009.md) | Fix R25-05: one client cannot occupy the static server's origin-fetch slots of other tenants' sites — **DONE** | 60m | t003 |
 | [t010](t010.md) | Fix R25-03: the operator accepts a registry bearer realm only if it is https, or http on an exact loopback host | 30m | t003 |
 | [t011](t011.md) | Fix R25-01: the activator routes only the hosts an App's spec claims, whatever its phase | 45m | t003 |
 | [t012](t012.md) | Fix R25-02 and R25-11: the activator's hold slot covers only the wait, and a busy maintenance fetch falls back at once | 45m | t003 |
