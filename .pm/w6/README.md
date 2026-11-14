@@ -302,7 +302,7 @@ _(`070.md` promoted to [m141](done/m141/README.md) on 2026-09-07; original sourc
 
 - [026 — Suspend confirmation product decision](done/026.md) — closed; retained as a historical source, not an open inbox item.
 
-> `068.md` promoted to **[`w8/m34`](../w8/m34/README.md)** 2026-09-07 after the product call ratified option 1 (rename to Render's `disk_created`/`disk_deleted` spellings; `/pm-brainstorm for w8` #2) — moved to `done/068.md`.
+> `068.md` promoted to **[`w8/m34`](../w8/done/m34/README.md)** 2026-09-07 after the product call ratified option 1 (rename to Render's `disk_created`/`disk_deleted` spellings; `/pm-brainstorm for w8` #2) — moved to `done/068.md`.
 
 _(`025.md` closed 2026-09-06 — the paid-only Background Worker decision (user call 2026-09-06, superseding the 2026-09-03 keep-Free recommendation) implemented and verified the same day: backend `normalizeTierForType` defaults a plan-less worker to `starter` and refuses explicit free at create (`specFromCreate` — REST/GraphQL/MCP/Blueprint) and plan change (`SetPlan`/`PreviewSetPlan`); the Blueprint payment gate and pricing estimate resolve plans type-aware; the dashboard's create grid and instance-type picker never offer Free to a worker and a Free selection never survives a type switch into a worker submission; policy + existing-free-worker transition recorded in ADR030 §7 and the ADR018 worker row. Regression tests on both sides; backend `go test ./...` + lint, dashboard `yarn test`/`lint`/typecheck all green. Moved to `done/025.md`.)_
 

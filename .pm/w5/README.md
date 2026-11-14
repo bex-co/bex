@@ -260,7 +260,7 @@ User approved all five brainstorm proposals, with Render behavior research first
 1. [067 — Structured REST routing errors](done/067.md) (~55m; transferred w4/169).
 2. [068 — Empty GraphQL operations are client errors](done/068.md) (~55m; transferred w4/170).
 3. [m104 — Correct cold-link initialization](done/m104/README.md) (9 tasks; transferred w7/m149 execution, evidence retained there).
-4. [m105 — Settings command edits take effect in the deployed artifact](blocked/m105/README.md) (9 tasks; transfers only w4/m110/t001).
+4. m105 — Settings command edits take effect in the deployed artifact (9 tasks; transfers only w4/m110/t001).
 5. [m106 — Prevent cron overlap during manual preemption](done/m106/README.md) (8 tasks; narrowed w4/m114 residual, credits w8/028).
 
 Each milestone starts with research into render.com's behavior before diagnosis or implementation, then ends with Render parity, Simplify, Test coverage and Closeout. Each inbox note also starts with a Render research step. Exact REST fallback parity and Render retry policy remain unverified; GraphQL input handling and agent/capability initialization are bex correctness work where no equivalent is established. A changed image digest is diagnostic evidence, not a Render requirement. Research is actionable now; live tasks require healthy isolated dev-5 and retain real capacity/evidence gates.
@@ -454,4 +454,4 @@ _(`012.md` applied 2026-07-13 — flipped the 5 stale UI cells in `docs/ADR018-r
 
 > `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (ADR008-vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`. `006.md` (post-add DNS/CNAME instructions) shipped in m10 — moved to `done/` 2026-07-09. `004.md` promoted to **m16** (manual-scaling settings) 2026-07-11 — moved to `done/`. `007.md` promoted to **m21** (Events tab dashboard) 2026-07-13 — moved to `done/`. `009.md` promoted to `w2/m13` (health check path full-surface parity) 2026-07-12 — moved to `done/`; dashboard Settings form shipped as **m22** 2026-07-13. `008.md` promoted to **m23** 2026-07-13 — moved to `done/`; **m23** implemented directly + done 2026-07-13, moved to `done/m23/`. `010.md` (cron Auto Deploy toggle) implemented directly 2026-07-13 (sub-hour, no milestone per DO_NOT_DO) — moved to `done/`: `services.$serviceId.settings.tsx` renders Build & Deploy alongside the cron Deploy section for a git-sourced cron. `011.md` (Key Value follow-ups) shipped as **m24** 2026-07-13 — moved to `done/`.
 
-> Inbox `052` transferred to [w9/060](../w9/060.md) on 2026-09-07 by user approval; implementation remains pending in w9.
+> Inbox `052` transferred to [w9/060](../w9/done/060.md) on 2026-09-07 by user approval; implementation remains pending in w9.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Docs link gate. The documents an agent starts from (docs/, every AGENTS.md
-# and README.md, and the .pm conventions at the top of the board) link to each
-# other and to the board with relative paths, and nothing checked that those
+# and README.md, the .pm conventions at the top of the board and each
+# workstream's README.md) link to each other and to the board with relative paths, and nothing checked that those
 # paths still exist: a purge of build artifacts, a `/pm` move and a renamed ADR
 # each left links pointing at nothing.
 #
@@ -9,8 +9,9 @@
 # a file or directory that does not exist, and names each as file:line -> target.
 #
 # Checked: docs/**/*.md, every AGENTS.md and README.md, .pm/*.md at the top
-# level. Not checked: the workstream history under .pm/wN/ (including each
-# workstream's own README), the vendored and generated trees .prettierignore
+# level, and .pm/wN/README.md (the board's own index, which a `/pm` move breaks
+# first). Not checked: the rest of the workstream history under .pm/wN/
+# (milestone READMEs, tasks, notes, done/ and blocked/), the vendored and generated trees .prettierignore
 # lists, fenced code and inline code, external URLs (any scheme), absolute
 # paths, and #anchors (a heading slug needs GitHub's rules: the file must exist,
 # the heading is not checked). A target must exist with exactly the case
@@ -67,8 +68,9 @@ def in_scope(rel: str) -> bool:
         return False
     base = os.path.basename(rel)
     if rel.startswith(".pm/"):
-        # The conventions at the top of the board, not the wN history.
-        return rel.count("/") == 1 and base.endswith(".md")
+        # The conventions at the top of the board and each workstream's own
+        # README, not the rest of the wN history.
+        return (rel.count("/") == 1 and base.endswith(".md")) or re.fullmatch(r"\.pm/w\d+/README\.md", rel) is not None
     return rel.startswith("docs/") or base in ("AGENTS.md", "README.md")
 
 

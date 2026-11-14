@@ -136,14 +136,23 @@ refuse "a link inside a longer fence is not reported" "$nested" "nowhere/nested.
 # --- ignored: the workstream history and vendored trees ----------------------
 history="$tmp/history"
 fixture "$history"
-printf '# w9\n\n[evidence](evidence/gone.log)\n' >"$history/.pm/w9/README.md"
+mkdir -p "$history/.pm/w9/m5" "$history/.pm/w9/done"
+printf '# m5\n\n[evidence](evidence/gone.log)\n' >"$history/.pm/w9/m5/README.md"
+printf '# note\n\n[evidence](evidence/gone.log)\n' >"$history/.pm/w9/done/001.md"
 mkdir -p "$history/external/dep" "$history/node_modules/pkg"
 printf '[x](nowhere.md)\n' >"$history/external/dep/README.md"
 printf '[x](nowhere.md)\n' >"$history/node_modules/pkg/README.md"
 mkdir -p "$history/vendor/pinned" "$history/deep/external/dep"
 printf '[x](nowhere.md)\n' >"$history/vendor/pinned/README.md"
 printf '[x](nowhere.md)\n' >"$history/deep/external/dep/README.md"
-assert ".pm/wN history and the .prettierignore trees are not checked" 0 "$history"
+assert "the .pm/wN history below the workstream README and the .prettierignore trees are not checked" 0 "$history"
+
+# A workstream's own README is the board's index, so it is checked.
+workstream="$tmp/workstream"
+fixture "$workstream"
+printf '# w9\n\n- [x] [m5](done/m5/README.md)\n[evidence](evidence/gone.log)\n' >"$workstream/.pm/w9/README.md"
+assert "a workstream README link to a moved item is red" 1 "$workstream" ".pm/w9/README.md:3 -> done/m5/README.md"
+assert "a workstream README link to purged evidence is red" 1 "$workstream" ".pm/w9/README.md:4 -> evidence/gone.log"
 
 # A tree .prettierignore does not list is checked, so the list is the only source.
 unlisted="$tmp/unlisted"

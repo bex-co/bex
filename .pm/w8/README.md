@@ -73,7 +73,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m133** — [A health check that answers 3xx passes, as on Render, instead of following the redirect](done/m133/README.md) (7 tasks;235m) ← `/qa-find-bugs-cli` loop sweep 9c1e 2026-10-23: a health path answering `302` to a `500` page never goes live; the kubelet follows the relative redirect. t001–t006 done: kind spike (exec probe passes 302→500 with no follow; HTTPGet followed it), static `health-probe` binary + `internal/healthprobe`, init-container install into a bounded emptyDir, exec probes on startup/readiness/liveness with the Render Host, lazy adoption (a running release keeps its probe and installed image), readers (retained Host, probed path, stall text) taught the exec form, Dockerfile, ADR004/ADR018. — **DONE 2026-10-29** (2xx/3xx health checks without following redirects, on production)
 
-- [x] **m132** — [Static sites answer gzip-only clients with gzip, as on Render](done/m132/README.md) (6 tasks;170m) ← `/qa-find-bugs-cli` loop sweep 64af 2026-10-23: a gzip-only `Accept-Encoding` gets a 300 kB identity body where Render's static sites send gzip — **DONE (2026-10-26):** live DoD passed on platform pin `b4726243e74f` (`/qa-find-bugs-cli` sweep f446): gzip for `gzip`/`gzip, deflate` decodes byte-exact, br still preferred, identity for `gzip;q=0`/`identity`/`deflate`/`zstd`, gzip ETag → 304, Range 206 over encoded bytes ([evidence](evidence/static-gzip-m132-sweepf446/README.md)).
+- [x] **m132** — [Static sites answer gzip-only clients with gzip, as on Render](done/m132/README.md) (6 tasks;170m) ← `/qa-find-bugs-cli` loop sweep 64af 2026-10-23: a gzip-only `Accept-Encoding` gets a 300 kB identity body where Render's static sites send gzip — **DONE (2026-10-26):** live DoD passed on platform pin `b4726243e74f` (`/qa-find-bugs-cli` sweep f446): gzip for `gzip`/`gzip, deflate` decodes byte-exact, br still preferred, identity for `gzip;q=0`/`identity`/`deflate`/`zstd`, gzip ETag → 304, Range 206 over encoded bytes (evidence (evidence, purged 2026-11-04)).
 
 - [x] **m131** — [The pre-deploy command is a paid-plan feature, as on Render](done/m131/README.md) (9 tasks;260m) ← `/qa-find-bugs-cli` loop sweep 8004 2026-10-22: a free web service accepts and runs a pre-deploy command; Render: "available for paid web services, private services, and background workers". t001–t008 done: one `checkPreDeployPlan` predicate used by create, update/PATCH, GraphQL, MCP and Blueprint (error located at the field); `PreDeployBeforeFreeDowngrade` early patch row; downgrade-with-command refusal; legacy free commands keep running; dashboard field disabled on Free; ADR018 row. — **DONE 2026-10-29** (free pre-deploy refused on every surface on production)
 
@@ -87,11 +87,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m126** — [Free Postgres expires after 30 days and reports `expiresAt`, as on Render](done/m126/README.md) (9 tasks;380m) — **DONE 2026-10-31** (fresh free fixture: `expiresAt` = creation + 30 d on REST/GraphQL/MCP/dashboard, cleared by a paid upgrade; sweeper on the test clock)
 
-- [x] **m125** — [Give every tenant request Render's `Rndr-Id` and a `requestID` in request logs](done/m125/README.md) (7 tasks;195m) ← promoted from `148` on 2026-10-20. t001–t006 done: the edge plugin mints `Rndr-Id`, the access log keeps it, request entries expose `requestID` (REST/GraphQL/MCP); verified on the pinned Traefik ([evidence](done/m125/evidence/README.md)); ADR010/ADR018. — **DONE 2026-10-29** (edge-minted Rndr-Id end to end on production)
+- [x] **m125** — [Give every tenant request Render's `Rndr-Id` and a `requestID` in request logs](done/m125/README.md) (7 tasks;195m) ← promoted from `148` on 2026-10-20. t001–t006 done: the edge plugin mints `Rndr-Id`, the access log keeps it, request entries expose `requestID` (REST/GraphQL/MCP); verified on the pinned Traefik (evidence (evidence, purged 2026-11-04)); ADR010/ADR018. — **DONE 2026-10-29** (edge-minted Rndr-Id end to end on production)
 
 - [x] **m124** — [Scope a service's logs and metrics to its own incarnation](done/m124/README.md) (7 tasks;250m) ← promoted from `144` on 2026-10-20. t001–t006 done: an `app_id` stream label from `bex.co/app-id`, every App log/metric read starting at `core.AppNotBefore` and selecting `app_id=~"<id>|"`, pod lists dropping other incarnations (`core.OwnAppPods`, also the instance list and SSH targets), and cAdvisor PromQL `unless on(pod) (kube_pod_created < floor)`; ADR010/ADR018. — **DONE 2026-10-29** (a recreated namesake shows none of its predecessor's data, on production)
 
-- [x] **m123** — [Sanitize client-identity headers at the tenant edge](done/m123/README.md) (7 tasks;220m) ← promoted from `143` on 2026-10-20. t001–t006 done: a Cloudflare-aware `bex-client-ip-headers` local plugin on the `web`/`websecure` entrypoints (forged and underscore spellings stripped, `True-Client-IP` = the real client, `CF-*` kept only from a Cloudflare edge), its Middleware in the Traefik release, gitops-validate guards (mounted ConfigMaps, entrypoint wiring, Cloudflare range drift), plugin tests in CI, and a load check on the pinned Traefik v3.7.5 ([evidence](done/m123/evidence/README.md)); ADR018/ADR022. — **DONE 2026-10-29** (forged client-IP headers stripped on production)
+- [x] **m123** — [Sanitize client-identity headers at the tenant edge](done/m123/README.md) (7 tasks;220m) ← promoted from `143` on 2026-10-20. t001–t006 done: a Cloudflare-aware `bex-client-ip-headers` local plugin on the `web`/`websecure` entrypoints (forged and underscore spellings stripped, `True-Client-IP` = the real client, `CF-*` kept only from a Cloudflare edge), its Middleware in the Traefik release, gitops-validate guards (mounted ConfigMaps, entrypoint wiring, Cloudflare range drift), plugin tests in CI, and a load check on the pinned Traefik v3.7.5 (evidence (evidence, purged 2026-11-04)); ADR018/ADR022. — **DONE 2026-10-29** (forged client-IP headers stripped on production)
 
 - [x] **m122** — [Report the image digest each prebuilt-image deploy ran](done/m122/README.md) (7 tasks;225m) ← `/qa-find-bugs-cli` sweep 1228 2026-10-20. t001–t006 done: the operator records `status.imageDigest {generation, digest}` when a release first serves (digest-pinned ref, else the Ready current-revision pod's `imageID`); bex-api stamps `deploys.image_sha` only on that release's own live close; REST/MCP `image.sha`, GraphQL `imageSha`, dashboard short digest with copy; ADR004/006/018. — **DONE 2026-10-29** (every surface reports the index digest on production)
 
@@ -101,7 +101,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m120** — [A release held through rollout keeps its own settings](done/m120/README.md) (8 tasks;350m) ← w8/m119 live DoD 2026-10-19 — **DONE (2026-10-19):** shipped `608f76011`. Live: a held Docker release runs and records its own start command and env, Rollback restores them, and Restart keeps `undeployedChanges` true until a standard deploy applies the saved change.
 
-- [x] **m118** — [Redirect tenant HTTP to HTTPS](done/m118/README.md) (6 tasks; 270m) ← promoted from `121` on 2026-10-18. t001, t006, t002, t003, t004 done: ready certificates load before missing references; full operator suite, all-module lint/deadcode and the real pinned-Traefik regression pass. DNS access is available; all prior Cloudflare fixtures and this turn's disposable cluster were cleaned. [Verification](done/m118/evidence/provider-20261028/README.md). — **DONE 2026-10-29** (custom-domain + platform redirect/TLS accepted on production)
+- [x] **m118** — [Redirect tenant HTTP to HTTPS](done/m118/README.md) (6 tasks; 270m) ← promoted from `121` on 2026-10-18. t001, t006, t002, t003, t004 done: ready certificates load before missing references; full operator suite, all-module lint/deadcode and the real pinned-Traefik regression pass. DNS access is available; all prior Cloudflare fixtures and this turn's disposable cluster were cleaned. Verification (evidence, purged 2026-11-04). — **DONE 2026-10-29** (custom-domain + platform redirect/TLS accepted on production)
 
 - [x] **m117** — [Canceling the newer of two open deploys strands the older](done/m117/README.md) (6 tasks;245m). t001–t005 done: Cancel of the latest-pending deploy names the older in-flight deploy (`app.bex.co/surviving-release-generation`, saved commit restored to its row's); the operator carries that release through build and rollout and settles the cancel on it; every later cancel restates the survivor (suspend / cancel of the older one ends it, no resurrection); a cancel that leaves nothing running stops the older build and closes its row "Canceled along with dep-…" at once instead of at the ~35m gate timeout. — **DONE 2026-10-29** (canceling the newer deploy leaves the older one to finish, on production)
 
@@ -113,23 +113,23 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m113** — [Services list times out (524/502) for the bex workspace](done/m113/README.md) (6 tasks) ← from `/qa-find-bugs-cli` sweep 2026-10-18: `bex services` in workspace bex exceeds the edge timeout (110s→502, 125s→524) while small workspaces and sibling lists answer in ~1s — **DONE (2026-10-18: two human-device-login CLI runs 0.811/0.875 s; REST/GraphQL/MCP return the same 5 service IDs)**
 
-- [ ] **m112** — [Make documented time-series tables usable in managed Postgres](blocked/m112/README.md) (8 tasks;300m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
+- [ ] **m112** — [Make documented time-series tables usable in managed Postgres](blocked/m112/README.md) (8 tasks;300m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](blocked/m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
-- [ ] **m111** — [Make documented text similarity usable in managed Postgres](blocked/m111/README.md) (7 tasks;220m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
+- [ ] **m111** — [Make documented text similarity usable in managed Postgres](blocked/m111/README.md) (7 tasks;220m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](blocked/m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
-- [ ] **m110** — [Make incremental views usable in managed Postgres](blocked/m110/README.md) (7 tasks;285m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
+- [ ] **m110** — [Make incremental views usable in managed Postgres](blocked/m110/README.md) (7 tasks;285m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](blocked/m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
-- [ ] **m109** — [Make documented DuckDB analytics usable in managed Postgres](blocked/m109/README.md) (7 tasks;290m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
+- [ ] **m109** — [Make documented DuckDB analytics usable in managed Postgres](blocked/m109/README.md) (7 tasks;290m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](blocked/m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
 - [x] **m108** — [Preserve ordinary uploads beyond the ingress body-read deadline](done/m108/README.md) (6 tasks;210m) — **SUPERSEDED 2026-10-29（被 w8/207 的 `readTimeout: 6000s` 取代）**
 
 - [ ] **m107** — [Supply ZIP creation in native builds and runtimes](blocked/m107/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [x] **m106** — [Supply Hugo for the documented static quickstart](done/m106/README.md) (6 tasks;195m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built Render's Hugo quickstart unchanged; exact cleanup ([evidence](done/m106/evidence/hosted-2026-10-18/README.md)).
+- [x] **m106** — [Supply Hugo for the documented static quickstart](done/m106/README.md) (6 tasks;195m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built Render's Hugo quickstart unchanged; exact cleanup (evidence (evidence, purged 2026-11-04)).
 
-- [x] **m105** — [Make the Jekyll static quickstart build normally](done/m105/README.md) (7 tasks;260m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built Render's Jekyll quickstart unchanged; exact cleanup ([evidence](done/m105/evidence/hosted-2026-10-18/README.md)).
+- [x] **m105** — [Make the Jekyll static quickstart build normally](done/m105/README.md) (7 tasks;260m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built Render's Jekyll quickstart unchanged; exact cleanup (evidence (evidence, purged 2026-11-04)).
 
-- [ ] **m104** — [Supply pg_partman for ordinary partition migrations](blocked/m104/README.md) (6 tasks;200m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
+- [ ] **m104** — [Supply pg_partman for ordinary partition migrations](blocked/m104/README.md) (6 tasks;200m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](blocked/m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
 - [ ] **m103** — [Supply native Python packaging and development tools](blocked/m103/README.md) (8 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
@@ -157,7 +157,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](blocked/m91/README.md) (7 tasks;445m) — **BLOCKED (w6/100 remaining-work item 2: `.pm` evidence object store + CI read access; the reviewed-candidate custody chain lost its purged in-repo evidence on the 2026-11-04 rewrite and cannot admit family cases).** Run-100 baseline bound, 7 family cases passed, Node donor route chosen; 27 family cases, adoption and original hosted acceptance remain.
 
-- [x] **m90** — [Install Yarn dependencies before static builds](done/m90/README.md) (6 tasks;140m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built with the bare dependency-using command and no installer prefix; exact cleanup ([evidence](done/m90/evidence/hosted-2026-10-18/README.md)).
+- [x] **m90** — [Install Yarn dependencies before static builds](done/m90/README.md) (6 tasks;140m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built with the bare dependency-using command and no installer prefix; exact cleanup (evidence (evidence, purged 2026-11-04)).
 
 - [x] **m89** — [Materialize pinned Git submodules before source builds](done/m89/README.md) (7 tasks) — **DONE 2026-10-17:** both original native first deployments Live, exact pinned file/source proofs and six HTTP200 responses without authored fetch; exact cleanup in sweep412.
 
@@ -169,9 +169,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m85** — [Honor committed Ruby lockfile and tool-version pins](done/m85/README.md) (6 tasks) — **DONE 2026-10-16:** sweep383 accepts both first original lock assertions on reviewed Ruby3.4.11 with refreshed Discourse source/lock hashes, Node24, six shared reads and exact two-parent/child cleanup.
 
-- [x] **m84** — [Make packaged pgvector usable in managed Postgres](done/m84/README.md) (6 tasks)（原记录：） t001–t005 done; fresh PG13/14/15/16/17/18 paths pass with both native migrations and real vector/HNSW/data controls, most recently [sweep378](evidence/postgres-native-cursors-sweep378/README.md). Exact fixture/credential cleanup passes. t006 still needs hosted pre-fix existing-parent backfill; actual serving revision is unverified. — **DONE 2026-10-29** (pre-fix parents backfilled, read-only verified on production)
+- [x] **m84** — [Make packaged pgvector usable in managed Postgres](done/m84/README.md) (6 tasks)（原记录：） t001–t005 done; fresh PG13/14/15/16/17/18 paths pass with both native migrations and real vector/HNSW/data controls, most recently sweep378 (evidence, purged 2026-11-04). Exact fixture/credential cleanup passes. t006 still needs hosted pre-fix existing-parent backfill; actual serving revision is unverified. — **DONE 2026-10-29** (pre-fix parents backfilled, read-only verified on production)
 
-- [x] **m83** — [Supply automatic compression for web responses](done/m83/README.md) (6 tasks) — **DONE 2026-11-01:** both unchanged native Free first deployments and all76 HTTP/12 stream/two upgrade/shared-settings checks pass; exact parent/child/URL, baseline/quota and session cleanup passes ([evidence](done/m83/evidence/native-acceptance-20261101/README.md)).
+- [x] **m83** — [Supply automatic compression for web responses](done/m83/README.md) (6 tasks) — **DONE 2026-11-01:** both unchanged native Free first deployments and all76 HTTP/12 stream/two upgrade/shared-settings checks pass; exact parent/child/URL, baseline/quota and session cleanup passes (evidence (evidence, purged 2026-11-04)).
 
 - [x] **m82** — [Supply FFmpeg in native Python builds and runtime](done/m82/README.md) (6 tasks) — **DONE 2026-10-16:** sweep382 accepts both first original MP3 builds and real runtime/probe/exact decode, live x86_64 plus local pinned aarch64, six shared reads and exact two-parent/child cleanup.
 
@@ -295,147 +295,147 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## QA evidence for existing work
 
-- [Native chunked/gzip uploads](evidence/native-chunked-gzip-uploads-sweep400/README.md) — sweep400:ten exact small-body uploads across both first native apps, paced/chunked/fixed-gzip/public-H2 controls and ten native log correlations pass. Two parents/children/URLs cleaned; larger396 candidate remains inconclusive. No new issue.
+- Native chunked/gzip uploads (evidence, purged 2026-11-04) — sweep400:ten exact small-body uploads across both first native apps, paced/chunked/fixed-gzip/public-H2 controls and ten native log correlations pass. Two parents/children/URLs cleaned; larger396 candidate remains inconclusive. No new issue.
 
-- [Native large Key Value pipe imports](evidence/native-keyvalue-large-pipe-sweep398/README.md) — sweep398:four accepted1MiB imports, success/type-error counts and later writes,12 exact values verified by the opposite client. Original short-wait partial attempt and prelaunch setup retained;15 exact key names/cache/credentials cleaned, history metadata unchanged. No new issue or085 closeout.
+- Native large Key Value pipe imports (evidence, purged 2026-11-04) — sweep398:four accepted1MiB imports, success/type-error counts and later writes,12 exact values verified by the opposite client. Original short-wait partial attempt and prelaunch setup retained;15 exact key names/cache/credentials cleaned, history metadata unchanged. No new issue or085 closeout.
 
-- [Native5MiB downloads and bounded upload observations](evidence/native-file-transfers-sweep396/README.md) — sweep396:both first native fixtures serve exact full/range/header/conditional controls (16 passes); three smaller uploads match native logs. Five5MiB upload attempts time out or499near61s, with variable observed progress; cause/compatibility unconfirmed, no new issue. Exact cleanup passes.
+- Native5MiB downloads and bounded upload observations (evidence, purged 2026-11-04) — sweep396:both first native fixtures serve exact full/range/header/conditional controls (16 passes); three smaller uploads match native logs. Five5MiB upload attempts time out or499near61s, with variable observed progress; cause/compatibility unconfirmed, no new issue. Exact cleanup passes.
 
-- **New major [117](done/117.md)** — native Ruby silently rewrites stale dependency locks; both first deployments serve the changed gem, build-only deployment-mode controls correctly refuse, prior boots remain serving and exact cleanup passes ([sweep394 evidence](evidence/117/README.md)).
+- **New major [117](done/117.md)** — native Ruby silently rewrites stale dependency locks; both first deployments serve the changed gem, build-only deployment-mode controls correctly refuse, prior boots remain serving and exact cleanup passes (sweep394 evidence (evidence, purged 2026-11-04)).
 
-- [Native Poetry installed application environments](evidence/native-poetry-project-sweep392/README.md) — sweep392:default2.1.3/explicit1.8.5 real dependency installs, generated lock and isolated project interpreter persist through build/pre-deploy/runtime; both first children serve original Flask HTTP200,8 shared/env reads and exact cleanup pass. No new issue.
+- Native Poetry installed application environments (evidence, purged 2026-11-04) — sweep392:default2.1.3/explicit1.8.5 real dependency installs, generated lock and isolated project interpreter persist through build/pre-deploy/runtime; both first children serve original Flask HTTP200,8 shared/env reads and exact cleanup pass. No new issue.
 
-- [Native PostgreSQL18 locking and deadlock recovery](evidence/postgres-native-locking-sweep391/README.md) — sweep391:45 native stages pass for NOWAIT/SKIP LOCKED, observed two-client deadlock with different local/live victims, session/transaction/shared advisory semantics and natural-exit release; exact owned cleanup, no new issue.
+- Native PostgreSQL18 locking and deadlock recovery (evidence, purged 2026-11-04) — sweep391:45 native stages pass for NOWAIT/SKIP LOCKED, observed two-client deadlock with different local/live victims, session/transaction/shared advisory semantics and natural-exit release; exact owned cleanup, no new issue.
 
-- [Native Gunicorn custom/empty and CLI precedence](evidence/native-python-gunicorn-overrides-sweep390/README.md) — sweep390:both first three-phase values and start-only CLI controls pass with original HTTP/log proof,16 shared/env reads and exact cleanup; updates113, which stays blocked on remaining variants.
+- Native Gunicorn custom/empty and CLI precedence (evidence, purged 2026-11-04) — sweep390:both first three-phase values and start-only CLI controls pass with original HTTP/log proof,16 shared/env reads and exact cleanup; updates113, which stays blocked on remaining variants.
 
-- [Native Key Value RESP3 and cache invalidation](evidence/native-keyvalue-resp3-sweep389/README.md) — sweep389:74 command checks and20 push/quiet assertions pass across both clients, with typed replies, NOLOOP/OPTIN/own-prefix tracking, exact own cleanup and unchanged history; no new issue.
+- Native Key Value RESP3 and cache invalidation (evidence, purged 2026-11-04) — sweep389:74 command checks and20 push/quiet assertions pass across both clients, with typed replies, NOLOOP/OPTIN/own-prefix tracking, exact own cleanup and unchanged history; no new issue.
 
-- [Blueprint omitted independent default branch](evidence/blueprint-default-branch-sweep388/README.md) — sweep388:both first Git children select independent master/current commit with exact artifacts, delayed no-op/canonical/shared proof and cleanup. Closes m80; API sync stays labeled separately from14 native validations.
+- Blueprint omitted independent default branch (evidence, purged 2026-11-04) — sweep388:both first Git children select independent master/current commit with exact artifacts, delayed no-op/canonical/shared proof and cleanup. Closes m80; API sync stays labeled separately from14 native validations.
 
-- [Native PostgreSQL18 extended-query pipelines](evidence/postgres-native-pipelines-sweep387/README.md) — sweep387:both native sessions pass17 exact frames each, typed/empty bound values, named Parse/Bind/Close, partial reads/Sync, expected errors and rollback/recovery on stable distinct backends. Exact parent/endpoint/credential cleanup passes; no new issue.
+- Native PostgreSQL18 extended-query pipelines (evidence, purged 2026-11-04) — sweep387:both native sessions pass17 exact frames each, typed/empty bound values, named Parse/Bind/Close, partial reads/Sync, expected errors and rollback/recovery on stable distinct backends. Exact parent/endpoint/credential cleanup passes; no new issue.
 
-- [Native Elixir original production pipeline](evidence/native-elixir-production-sweep385/README.md) — sweep385:both first unprefixed production-dependency/compiler builds and runtime Mix/prod artifacts pass on exact original source. Eight native logs,6 shared reads and cleanup pass; closes112, no new issue.
+- Native Elixir original production pipeline (evidence, purged 2026-11-04) — sweep385:both first unprefixed production-dependency/compiler builds and runtime Mix/prod artifacts pass on exact original source. Eight native logs,6 shared reads and cleanup pass; closes112, no new issue.
 
-- [Native Node environment phases and explicit values](evidence/native-node-environment-phases-sweep384/README.md) — sweep384:both first native defaults, pre-deploy and staging/empty redeploys pass with exact source/render/cache proof and cleanup. Updates111; paid cron stays untested, no new issue.
+- Native Node environment phases and explicit values (evidence, purged 2026-11-04) — sweep384:both first native defaults, pre-deploy and staging/empty redeploys pass with exact source/render/cache proof and cleanup. Updates111; paid cron stays untested, no new issue.
 
-- [Native Ruby committed-lock first deployments](evidence/native-ruby-lock-selection-sweep383/README.md) — sweep383:both first original assertions select reviewed Ruby3.4.11 over the broader Gemfile range; exact source/markers/Node24,6 shared reads and cleanup pass. Closes m85; no new issue.
+- Native Ruby committed-lock first deployments (evidence, purged 2026-11-04) — sweep383:both first original assertions select reviewed Ruby3.4.11 over the broader Gemfile range; exact source/markers/Node24,6 shared reads and cleanup pass. Closes m85; no new issue.
 
-- [Native Pydub MP3 build/runtime conversion](evidence/native-media-conversion-sweep382/README.md) — sweep382:both first native builds and runtime conversions pass six ffprobe/twelve exact PCM checks, source/artifact retention and6 shared reads; live x86_64/local aarch64 and all cleanup pass. Closes m82; setup qualifications retained.
+- Native Pydub MP3 build/runtime conversion (evidence, purged 2026-11-04) — sweep382:both first native builds and runtime conversions pass six ffprobe/twelve exact PCM checks, source/artifact retention and6 shared reads; live x86_64/local aarch64 and all cleanup pass. Closes m82; setup qualifications retained.
 
-- [Native uv locked-project first deployments](evidence/native-uv-project-sweep381/README.md) — sweep381:both native first default/explicit versions pass actual locked sync, installed project console, project .venv and upstream FastAPI HTTP200;6 shared reads and exact cleanup pass. Closes m81; no new issue.
+- Native uv locked-project first deployments (evidence, purged 2026-11-04) — sweep381:both native first default/explicit versions pass actual locked sync, installed project console, project .venv and upstream FastAPI HTTP200;6 shared reads and exact cleanup pass. Closes m81; no new issue.
 
-- [Static npm automatic dependencies](evidence/static-auto-deps-sweep379/README.md) — sweep379:both native original first builds and an explicit-skip/manual control reach Live/HTTP200 with exact source/dependency/page hashes;9 shared reads and complete cleanup pass. Closes m86; no new issue.
+- Static npm automatic dependencies (evidence, purged 2026-11-04) — sweep379:both native original first builds and an explicit-skip/manual control reach Live/HTTP200 with exact source/dependency/page hashes;9 shared reads and complete cleanup pass. Closes m86; no new issue.
 
-- [Native PostgreSQL17 cursors and prepared statements](evidence/postgres-native-cursors-sweep378/README.md) — sweep378:32 stages pass across two stable native backend PIDs, held snapshots/positions, portal lifecycle, expected errors and prepared execution;15 vector controls and exact cleanup pass. Fresh m84 majors13–18 accepted; existing-parent backfill stays blocked.
+- Native PostgreSQL17 cursors and prepared statements (evidence, purged 2026-11-04) — sweep378:32 stages pass across two stable native backend PIDs, held snapshots/positions, portal lifecycle, expected errors and prepared execution;15 vector controls and exact cleanup pass. Fresh m84 majors13–18 accepted; existing-parent backfill stays blocked.
 
-- [Native PostgreSQL16 binary COPY](evidence/postgres-native-binary-copy-sweep377/README.md) — sweep377:fifteen data commands/27 controls pass for64 exact typed rows, duplicate-key atomicity and two byte-identical binary exports;15 vector neighbor controls and exact cleanup also pass. No new issue; m84 backfill gate remains blocked.
+- Native PostgreSQL16 binary COPY (evidence, purged 2026-11-04) — sweep377:fifteen data commands/27 controls pass for64 exact typed rows, duplicate-key atomicity and two byte-identical binary exports;15 vector neighbor controls and exact cleanup also pass. No new issue; m84 backfill gate remains blocked.
 
-- [Native PostgreSQL15 isolation and error recovery](evidence/postgres-native-isolation-sweep376/README.md) — sweep376:27 stages pass across stable native backend PIDs, real snapshot/lock/savepoint/serialization outcomes and independent data reads;15 vector neighbor controls and exact endpoint/credential cleanup also pass. No new issue; m84 backfill gate remains blocked.
+- Native PostgreSQL15 isolation and error recovery (evidence, purged 2026-11-04) — sweep376:27 stages pass across stable native backend PIDs, real snapshot/lock/savepoint/serialization outcomes and independent data reads;15 vector neighbor controls and exact endpoint/credential cleanup also pass. No new issue; m84 backfill gate remains blocked.
 
-- [Native two-client Key Value WATCH transactions](evidence/native-keyvalue-watch-sweep375/README.md) — sweep375:30 native stages pass with distinct stable client IDs, conflict/expiry aborts, ordered commit, UNWATCH/DISCARD, exact key deletion and native exits; full resource/credential cleanup, no new issue. Local history setup mistake is corrected and documented.
+- Native two-client Key Value WATCH transactions (evidence, purged 2026-11-04) — sweep375:30 native stages pass with distinct stable client IDs, conflict/expiry aborts, ordered commit, UNWATCH/DISCARD, exact key deletion and native exits; full resource/credential cleanup, no new issue. Local history setup mistake is corrected and documented.
 
-- [Native static encoded asset names](evidence/static-encoded-assets-sweep374/README.md) — sweep374:twelve exact named files and30 HTTP2/HTTP1.1 data, HEAD, conditional/range/negative controls pass; own first deployment/parent/public route cleanup verified. No new issue.
+- Native static encoded asset names (evidence, purged 2026-11-04) — sweep374:twelve exact named files and30 HTTP2/HTTP1.1 data, HEAD, conditional/range/negative controls pass; own first deployment/parent/public route cleanup verified. No new issue.
 
-- [Native PostgreSQL14 large-object files](evidence/postgres-large-objects-sweep373/README.md) — sweep373:both native imports, five exact exports including empty, committed byte patches, atomic rollback and four expected errors pass;28 native commands/58 controls, exact object/file/database/credential cleanup. Earlier harness deadlines and read-only prelaunch recovery are retained, no new issue.
+- Native PostgreSQL14 large-object files (evidence, purged 2026-11-04) — sweep373:both native imports, five exact exports including empty, committed byte patches, atomic rollback and four expected errors pass;28 native commands/58 controls, exact object/file/database/credential cleanup. Earlier harness deadlines and read-only prelaunch recovery are retained, no new issue.
 
-- [Incoming-only WebSocket activity, idle and wake](evidence/115/README.md) — sweep372:18 exact messages over180seconds with no received application data/pings, native log match, eventual quiet hibernation and normal HTTP wake; exact cleanup. Minor descriptor drift is115, no new idle algorithm defect.
+- Incoming-only WebSocket activity, idle and wake (evidence, purged 2026-11-04) — sweep372:18 exact messages over180seconds with no received application data/pings, native log match, eventual quiet hibernation and normal HTTP wake; exact cleanup. Minor descriptor drift is115, no new idle algorithm defect.
 
-- [Native web-service uploads](evidence/native-request-uploads-sweep370/README.md) — sweep370:nine HTTP1/HTTP2 data/method checks and eight matching native Render log events pass for multipart UTF8/empty/binary data, valid chunked and gzip requests; exact parent/child/runtime cleanup, no new issue.
+- Native web-service uploads (evidence, purged 2026-11-04) — sweep370:nine HTTP1/HTTP2 data/method checks and eight matching native Render log events pass for multipart UTF8/empty/binary data, valid chunked and gzip requests; exact parent/child/runtime cleanup, no new issue.
 
-- [Native hosted WebSocket traffic](evidence/websocket-native-sweep369/README.md) — sweep369:two native Free creates/first deployments, six wss sessions,20 exact echoes,10 pongs, fragmentation/compression/normal closes and42 matching native log events pass; both former routes404, full exact cleanup, no new issue.
+- Native hosted WebSocket traffic (evidence, purged 2026-11-04) — sweep369:two native Free creates/first deployments, six wss sessions,20 exact echoes,10 pongs, fragmentation/compression/normal closes and42 matching native log events pass; both former routes404, full exact cleanup, no new issue.
 
-- [Native PostgreSQL notifications](evidence/postgres-native-notifications-sweep368/README.md) — sweep368:both listener directions pass ordered UTF8/empty payloads, sender-PID correlation, duplicate handling, rollback/unsubscribe suppression and natural exits; default-name vector replay also passes, full exact cleanup, no new issue.
+- Native PostgreSQL notifications (evidence, purged 2026-11-04) — sweep368:both listener directions pass ordered UTF8/empty payloads, sender-PID correlation, duplicate handling, rollback/unsubscribe suppression and natural exits; default-name vector replay also passes, full exact cleanup, no new issue.
 
-- [Native queue consumer handoff](evidence/keyvalue-streams-sweep366/README.md) — sweep366:20 completed native checks pass for blocked delivery, exact payloads, pending ownership transfer, acknowledgment, empty timeout and type-error preservation; full own cleanup, no new issue.
+- Native queue consumer handoff (evidence, purged 2026-11-04) — sweep366:20 completed native checks pass for blocked delivery, exact payloads, pending ownership transfer, acknowledgment, empty timeout and type-error preservation; full own cleanup, no new issue.
 
-- [Native PostgreSQL CSV files — sweep360](evidence/postgres-native-csv-sweep360/README.md):both clients preserve37 rows through three tables, NULL/empty/literal-marker values and identical ordered exports; invalid final row leaves0 rows.14 native SQL checks behave as expected; own database/files cleaned. No new issue.
+- Native PostgreSQL CSV files — sweep360 (evidence, purged 2026-11-04):both clients preserve37 rows through three tables, NULL/empty/literal-marker values and identical ordered exports; invalid final row leaves0 rows.14 native SQL checks behave as expected; own database/files cleaned. No new issue.
 
-- [Key Value logical databases and conditional writes — sweep359](evidence/keyvalue-database-selection-sweep359/README.md):18 native checks pass across both clients;40 values stay separate in databases1/2, matched/stale writes and default-db0/scan controls pass; own cache/endpoint cleaned. No new issue.
+- Key Value logical databases and conditional writes — sweep359 (evidence, purged 2026-11-04):18 native checks pass across both clients;40 values stay separate in databases1/2, matched/stale writes and default-db0/scan controls pass; own cache/endpoint cleaned. No new issue.
 
-- [Native Key Value Pub/Sub — sweep356](evidence/native-pubsub-sweep356/README.md): both clients pass exact/pattern subscriptions,12 publishers and12 exact Unicode/CRLF/NUL/empty messages; own Free cache and endpoint cleaned. No new issue.
+- Native Key Value Pub/Sub — sweep356 (evidence, purged 2026-11-04): both clients pass exact/pattern subscriptions,12 publishers and12 exact Unicode/CRLF/NUL/empty messages; own Free cache and endpoint cleaned. No new issue.
 
-- [PostgreSQL logical schema round trip — sweep355](evidence/postgres-schema-roundtrip-sweep355/README.md): native Free18 create,9 native SQL checks, external custom dump/atomic restore and both restored fingerprints pass;64 rows/384KiB bytea and exact metadata/sequence preserved, own fixture/files cleaned. No new issue.
+- PostgreSQL logical schema round trip — sweep355 (evidence, purged 2026-11-04): native Free18 create,9 native SQL checks, external custom dump/atomic restore and both restored fingerprints pass;64 rows/384KiB bytea and exact metadata/sequence preserved, own fixture/files cleaned. No new issue.
 
-- [Native Redis pipe imports and exact bytes — sweep349](evidence/native-redis-pipe-sweep349/README.md): both clients complete50-command imports with0 errors/50 replies; opposite-client GET/hash checks verify all100 empty/CRLF/NUL/Unicode values. PTY byte preflight and cached teardown pass; own Free cache cleaned. No new issue.
+- Native Redis pipe imports and exact bytes — sweep349 (evidence, purged 2026-11-04): both clients complete50-command imports with0 errors/50 replies; opposite-client GET/hash checks verify all100 empty/CRLF/NUL/Unicode values. PTY byte preflight and cached teardown pass; own Free cache cleaned. No new issue.
 
-- [Native psql file forwarding and atomic transactions — sweep348](evidence/psql-file-transactions-sweep348/README.md): both clients forward two spaced file paths, fail/roll back the whole transaction, and commit/read exact five-row empty/null/multiline/Unicode controls.9 native SQL comparisons pass; own Free PG18, cached endpoint and private inputs cleaned. No new issue.
+- Native psql file forwarding and atomic transactions — sweep348 (evidence, purged 2026-11-04): both clients forward two spaced file paths, fail/roll back the whole transaction, and commit/read exact five-row empty/null/multiline/Unicode controls.9 native SQL comparisons pass; own Free PG18, cached endpoint and private inputs cleaned. No new issue.
 
-- [Initial group precedence and empty values — sweep347](evidence/initial-group-precedence-sweep347/README.md): both native validators accept; one API-only Free Node/group create reaches its first Live deploy with exact build/runtime group and service precedence/empty/absence values; delayed same-boot/child, two native/three shared deploy reads and5 tests/19 named events pass. All owned resources cleaned; no new issue.
+- Initial group precedence and empty values — sweep347 (evidence, purged 2026-11-04): both native validators accept; one API-only Free Node/group create reaches its first Live deploy with exact build/runtime group and service precedence/empty/absence values; delayed same-boot/child, two native/three shared deploy reads and5 tests/19 named events pass. All owned resources cleaned; no new issue.
 
-- [Large authored gzip and automatic Brotli — sweep346](evidence/static-large-precompressed-sweep346/README.md): captured native Free create201, two native inventory controls and13 actual HTTP representation/validator/range/no-transform comparisons pass; saved gzip79687bytes is preserved,3 source tests pass, own parent/child cleaned. No new issue.
+- Large authored gzip and automatic Brotli — sweep346 (evidence, purged 2026-11-04): captured native Free create201, two native inventory controls and13 actual HTTP representation/validator/range/no-transform comparisons pass; saved gzip79687bytes is preserved,3 source tests pass, own parent/child cleaned. No new issue.
 
-- [Native Key Value persistence resets and identical saves — sweep345](evidence/keyvalue-persistence-reset-sweep345/README.md): journal→off→snapshot clears the expected old markers; cross-client data checks, actual runtime modes/process identities, delayed identical saves,3 shared API reads and4 pinned-engine transitions pass. Own store cleaned; no new issue.
+- Native Key Value persistence resets and identical saves — sweep345 (evidence, purged 2026-11-04): journal→off→snapshot clears the expected old markers; cross-client data checks, actual runtime modes/process identities, delayed identical saves,3 shared API reads and4 pinned-engine transitions pass. Own store cleaned; no new issue.
 
-- [Elixir dependency bootstrap and runtime tools — sweep336](evidence/elixir-dependency-bootstrap-sweep336/README.md): current generated default image installs Hex/Rebar through the documented dependency command; fresh Docker build and both runtime checks pass. Source-only, no hosted resources or new issue.
+- Elixir dependency bootstrap and runtime tools — sweep336 (evidence, purged 2026-11-04): current generated default image installs Hex/Rebar through the documented dependency command; fresh Docker build and both runtime checks pass. Source-only, no hosted resources or new issue.
 
-- [Custom PostgreSQL identity and display-name continuity — sweep335](evidence/postgres-custom-identity-sweep335/README.md): one Free13/custom-name fixture, seven actual SQL identity/data comparisons and two native renames pass with one process; comparison-client setup exclusions retained, cleaned. No new issue.
+- Custom PostgreSQL identity and display-name continuity — sweep335 (evidence, purged 2026-11-04): one Free13/custom-name fixture, seven actual SQL identity/data comparisons and two native renames pass with one process; comparison-client setup exclusions retained, cleaned. No new issue.
 
-- [Blueprint service-type field applicability — sweep334](evidence/service-type-validation-sweep334/README.md): five service types/eight fields,90 native validity/exit comparisons and three maintained source tests pass; no resources created or new issue.
+- Blueprint service-type field applicability — sweep334 (evidence, purged 2026-11-04): five service types/eight fields,90 native validity/exit comparisons and three maintained source tests pass; no resources created or new issue.
 
-- [Native cron schedule validation — sweep333](evidence/cron-schedule-validation-sweep333/README.md):24 calendar/format vectors through both native clients,48 validity/exit comparisons and three maintained source tests pass; no resources created or new issue.
+- Native cron schedule validation — sweep333 (evidence, purged 2026-11-04):24 calendar/format vectors through both native clients,48 validity/exit comparisons and three maintained source tests pass; no resources created or new issue.
 
-- [Native commit selection — sweep332, partial](evidence/commit-selection-sweep332/README.md): three exact artifact/commit comparisons and two native waits pass; later full-SHA deploy stays queued to the harness bound, is canceled and all four children cleaned. Remaining rollback/cache cases untested; no new confirmed issue.
+- Native commit selection — sweep332, partial (evidence, purged 2026-11-04): three exact artifact/commit comparisons and two native waits pass; later full-SHA deploy stays queued to the harness bound, is canceled and all four children cleaned. Remaining rollback/cache cases untested; no new confirmed issue.
 
-- [Native Key Value policies and name-only continuity — sweep329](evidence/keyvalue-policy-sweep329/README.md): Free/off fixture, both native clients execute real redis-cli; cache/queue/raw-policy runtime checks and delayed rename data/process continuity pass, expected refusals retained; cleaned. No new issue.
+- Native Key Value policies and name-only continuity — sweep329 (evidence, purged 2026-11-04): Free/off fixture, both native clients execute real redis-cli; cache/queue/raw-policy runtime checks and delayed rename data/process continuity pass, expected refusals retained; cleaned. No new issue.
 
-- [PostgreSQL settings, native renames and clearing — sweep325](evidence/postgres-settings-sweep325/README.md): one Free18 fixture; both rename clients preserve settings, API replacement and clearing converge in real native SQL, two focused source tests pass; cleaned. No new issue.
+- PostgreSQL settings, native renames and clearing — sweep325 (evidence, purged 2026-11-04): one Free18 fixture; both rename clients preserve settings, API replacement and clearing converge in real native SQL, two focused source tests pass; cleaned. No new issue.
 
-- [PostgreSQL data across two suspend/resume cycles — sweep320](evidence/postgres-data-sweep320/README.md): one Free18 fixture, Bex/Render lifecycle by ID/name, real Bex psql, all committed/rollback/sequence snapshots and both process-change checks pass; cleaned. No new issue.
+- PostgreSQL data across two suspend/resume cycles — sweep320 (evidence, purged 2026-11-04): one Free18 fixture, Bex/Render lifecycle by ID/name, real Bex psql, all committed/rollback/sequence snapshots and both process-change checks pass; cleaned. No new issue.
 
-- [First saved variable through manual lifecycle](evidence/suspend-pending-first-sweep278/README.md) — sweep278: both clients preserve unset build/runtime through API-only suspend/resume and native Restart, four suspended native409 refusals allocate no rows, then standard deploy consumes V2; four distinct processes per fixture, both cleaned. No new finding.
+- First saved variable through manual lifecycle (evidence, purged 2026-11-04) — sweep278: both clients preserve unset build/runtime through API-only suspend/resume and native Restart, four suspended native409 refusals allocate no rows, then standard deploy consumes V2; four distinct processes per fixture, both cleaned. No new finding.
 
-- [Native request-log selector acceptance](evidence/request-log-selectors-sweep269/README.md) — sweep269: both clients pass32 exact row-ID comparisons for comma/encoded paths, methods, status classes, host/text and AND/OR/empty controls; six HTTP requests independently recorded, fixture cleaned. No new finding; interactive upstream defects remain separate.
+- Native request-log selector acceptance (evidence, purged 2026-11-04) — sweep269: both clients pass32 exact row-ID comparisons for comma/encoded paths, methods, status classes, host/text and AND/OR/empty controls; six HTTP requests independently recorded, fixture cleaned. No new finding; interactive upstream defects remain separate.
 
-- [Native Dashboard menu routing acceptance](evidence/089/live-native-menu-sweep267/README.md) — sweep267: all four Bex/Render Services/deploy Dashboard actions exit0 with unchanged OAuth-origin configs; exact captured cron URLs302, aliases307 and issuer200 pass. No hosted mutation;089 remains blocked for full login/browser/prefix acceptance.
+- Native Dashboard menu routing acceptance (evidence, purged 2026-11-04) — sweep267: all four Bex/Render Services/deploy Dashboard actions exit0 with unchanged OAuth-origin configs; exact captured cron URLs302, aliases307 and issuer200 pass. No hosted mutation;089 remains blocked for full login/browser/prefix acceptance.
 
-- [Saved environment through sleep/wake and deploy-history settlement](evidence/sleep-pending-env-sweep266/README.md) — sweep266: saved/deployed markers survive sleep and restart; later standard deploy consumes V2. New106 owns served-then-parked history settlement; queued native wait excluded, all three fixtures cleaned.
+- Saved environment through sleep/wake and deploy-history settlement (evidence, purged 2026-11-04) — sweep266: saved/deployed markers survive sleep and restart; later standard deploy consumes V2. New106 owns served-then-parked history settlement; queued native wait excluded, all three fixtures cleaned.
 
-- [Blueprint empty-variable reapply acceptance](evidence/095/live-empty-reapply-sweep263/README.md) — sweep263: actual group-only first/reapply retains new empty keys and preserves no-op/generated/omitted controls;36 decisive native validations, fixture cleaned. Existing095 moved to done; one relay timeout retained as inconclusive.
+- Blueprint empty-variable reapply acceptance (evidence, purged 2026-11-04) — sweep263: actual group-only first/reapply retains new empty keys and preserves no-op/generated/omitted controls;36 decisive native validations, fixture cleaned. Existing095 moved to done; one relay timeout retained as inconclusive.
 
-- [OAuth dashboard routing partial acceptance](evidence/089/live-routing-sweep262/README.md) — sweep262: owned/deleted web resource and deploy URLs now redirect302 with exact path/query, dashboard aliases307 and issuer metadata200. Read-only;089 remains blocked for complete native/browser/login acceptance.
+- OAuth dashboard routing partial acceptance (evidence, purged 2026-11-04) — sweep262: owned/deleted web resource and deploy URLs now redirect302 with exact path/query, dashboard aliases307 and issuer metadata200. Read-only;089 remains blocked for complete native/browser/login acceptance.
 
-- [Existing environment-group name acceptance](evidence/094/live-existing-group-sweep261/README.md) — sweep261: all48 native/captured plan cases pass across three locations, including padded/exact existing names and create/refusal controls; the empty owned group is unchanged then cleaned. Existing094 moved to done.
+- Existing environment-group name acceptance (evidence, purged 2026-11-04) — sweep261: all48 native/captured plan cases pass across three locations, including padded/exact existing names and create/refusal controls; the empty owned group is unchanged then cleaned. Existing094 moved to done.
 
-- [Managed-data live-tail refusal acceptance](evidence/083/live-refusal-sweep259/README.md) — sweep259: both clients now exit1/named400 before upgrade for Postgres/Key Value; twelve transport cases, historical and supported App tails pass; all three fixtures cleaned. Existing083 moved to done.
+- Managed-data live-tail refusal acceptance (evidence, purged 2026-11-04) — sweep259: both clients now exit1/named400 before upgrade for Postgres/Key Value; twelve transport cases, historical and supported App tails pass; all three fixtures cleaned. Existing083 moved to done.
 
-- [Static rewrite/SPA conditional requests](evidence/static-conditional-sweep258/README.md) — sweep258: all46 HTTP checks pass on one CLI-created site, including ETag conditions, HEAD metadata, exact prefix/suffix ranges and If-Range controls; API-only header/route setup, fixture cleaned. Extends done w4/272 without a new issue.
+- Static rewrite/SPA conditional requests (evidence, purged 2026-11-04) — sweep258: all46 HTTP checks pass on one CLI-created site, including ETag conditions, HEAD metadata, exact prefix/suffix ranges and If-Range controls; API-only header/route setup, fixture cleaned. Extends done w4/272 without a new issue.
 
-- [Static command-clear GraphQL/MCP acceptance](done/m59/evidence/live-static-adapters-sweep257/README.md) — sweep257: API-only clears on two CLI-created static sites publish exact recorded-commit source bytes and survive later native waited deploys; both fixtures cleaned. m59 remains blocked for dashboard and full t005 acceptance.
+- Static command-clear GraphQL/MCP acceptance (evidence, purged 2026-11-04) — sweep257: API-only clears on two CLI-created static sites publish exact recorded-commit source bytes and survive later native waited deploys; both fixtures cleaned. m59 remains blocked for dashboard and full t005 acceptance.
 
-- [Failed-version native deploy waits and recovery](evidence/version-failure-wait-sweep255/README.md) — sweep255: both clients return1 for exact failed18 targets while old22 snapshots/instance IDs stay unchanged, then return0 for new Live24 targets; four save-only patches open no deploys, both fixtures cleaned. No new finding.
+- Failed-version native deploy waits and recovery (evidence, purged 2026-11-04) — sweep255: both clients return1 for exact failed18 targets while old22 snapshots/instance IDs stay unchanged, then return0 for new Live24 targets; four save-only patches open no deploys, both fixtures cleaned. No new finding.
 
-- [Cron capped-history CLI replay](evidence/cron-history-sweep254/README.md) — sweep254: native Go cron still reproduces existing w4/m210 at run11 and recovery; REST/GraphQL/MCP agree, both CLIs preserve all12 execution messages; source fix present/deployed revision unknown, fixture cleaned. Existing milestone remains blocked.
+- Cron capped-history CLI replay (evidence, purged 2026-11-04) — sweep254: native Go cron still reproduces existing w4/m210 at run11 and recovery; REST/GraphQL/MCP agree, both CLIs preserve all12 execution messages; source fix present/deployed revision unknown, fixture cleaned. Existing milestone remains blocked.
 
-- [Native Node version precedence](evidence/runtime-precedence-sweep253/README.md) — sweep253: both clients honor .nvmrc22, explicit24/bounded-range overrides run24, unsupported18 fails by name; build/runtime markers and file bytes match; all five fixtures cleaned. Extends m51; no new finding.
+- Native Node version precedence (evidence, purged 2026-11-04) — sweep253: both clients honor .nvmrc22, explicit24/bounded-range overrides run24, unsupported18 fails by name; build/runtime markers and file bytes match; all five fixtures cleaned. Extends m51; no new finding.
 
-- [w4/m199 native CLI timestamp replay](evidence/m199-native-cli/README.md) — sweeps128/132: both clients preserve quiet web and scheduled-cron records, timestamps and IDs in history/Live; cron tails remain open through idle metadata and changing instances. Both fixtures cleaned; existing milestones retain full verification scope.
+- w4/m199 native CLI timestamp replay (evidence, purged 2026-11-04) — sweeps128/132: both clients preserve quiet web and scheduled-cron records, timestamps and IDs in history/Live; cron tails remain open through idle metadata and changing instances. Both fixtures cleaned; existing milestones retain full verification scope.
 
-- [w4/m200 native CLI corroboration](evidence/m200-native-cli/README.md) — sweep111: both clients corrupt the mixed stdout/stderr pair in Live while all five historical messages remain exact; complete native evidence and cleanup retained. Implementation stays with w4/m200.
+- w4/m200 native CLI corroboration (evidence, purged 2026-11-04) — sweep111: both clients corrupt the mixed stdout/stderr pair in Live while all five historical messages remain exact; complete native evidence and cleanup retained. Implementation stays with w4/m200.
 
-- [Static filename publication acceptance](evidence/static-filenames-sweep301/README.md) — sweep301: installed Bex and pinned Render each publish13 marker files;58 exact GET/HEAD/control passes cover spaces, Unicode, percent and URL punctuation. Both own Free sites/two deploys cleaned; no new finding.
+- Static filename publication acceptance (evidence, purged 2026-11-04) — sweep301: installed Bex and pinned Render each publish13 marker files;58 exact GET/HEAD/control passes cover spaces, Unicode, percent and URL punctuation. Both own Free sites/two deploys cleaned; no new finding.
 
-- [Generated-copy native validation](evidence/generated-copy-validation-sweep303/README.md) — sweep303:16 native calls expose existing w1/m175 source/live difference;8 qualified controls,4 masked negative outcomes,4 generated-copy refusals. Current exact source cases pass9 named events. No new issue or hosted mutation.
+- Generated-copy native validation (evidence, purged 2026-11-04) — sweep303:16 native calls expose existing w1/m175 source/live difference;8 qualified controls,4 masked negative outcomes,4 generated-copy refusals. Current exact source cases pass9 named events. No new issue or hosted mutation.
 
-- [Cron preemption and existing startup-log loss](evidence/cron-preemption-sweep304/README.md) — sweep304: one complete graceful handoff with5,838ms gap; second interval remains unverified because existing w4/m174 loses the replacement start record (native/REST agree). Two parents/two deploys/seven runs cleaned; no duplicate issue.
+- Cron preemption and existing startup-log loss (evidence, purged 2026-11-04) — sweep304: one complete graceful handoff with5,838ms gap; second interval remains unverified because existing w4/m174 loses the replacement start record (native/REST agree). Two parents/two deploys/seven runs cleaned; no duplicate issue.
 
-- [Native Blueprint file encodings](evidence/file-encoding-sweep305/README.md) — sweep305: installed/published Bex and pinned Render pass30 LF/CRLF/BOM/UTF-16 validations, including15 identical located plan refusals; no hosted mutation or new issue.
+- Native Blueprint file encodings (evidence, purged 2026-11-04) — sweep305: installed/published Bex and pinned Render pass30 LF/CRLF/BOM/UTF-16 validations, including15 identical located plan refusals; no hosted mutation or new issue.
 
-- [Static hostname case and resume recheck](evidence/static-resume-hostcase-sweep308/README.md) — sweep308:24 case-preserving HTTP reads retain w4/309; four API-only resume cycles/56 samples retain w4/307 with2 absent-host404 samples. Four focused source checks pass. Both own Free sites/two deploys cleaned; no duplicate issue.
+- Static hostname case and resume recheck (evidence, purged 2026-11-04) — sweep308:24 case-preserving HTTP reads retain w4/309; four API-only resume cycles/56 samples retain w4/307 with2 absent-host404 samples. Four focused source checks pass. Both own Free sites/two deploys cleaned; no duplicate issue.
 
-- [PostgreSQL target-floor dry-run recheck](evidence/postgres-upgrade-floor-sweep309/README.md) — sweep309: REST/MCP still accept14/15 previews (existing w4/308); ten other preview controls and both native omitted-version renames pass.24 focused source checks pass. Own Free database cleaned; no duplicate issue.
+- PostgreSQL target-floor dry-run recheck (evidence, purged 2026-11-04) — sweep309: REST/MCP still accept14/15 previews (existing w4/308); ten other preview controls and both native omitted-version renames pass.24 focused source checks pass. Own Free database cleaned; no duplicate issue.
 
-- [Key Value deadline and data retention acceptance](evidence/keyvalue-deadlines-sweep310/README.md) — sweep310: both native clients complete preview/suspend/resume; independent TLS checks pass30 times across two new processes, preserving exact expiry deadlines and structured data. Own Free instance/credentials cleaned; no new issue.
+- Key Value deadline and data retention acceptance (evidence, purged 2026-11-04) — sweep310: both native clients complete preview/suspend/resume; independent TLS checks pass30 times across two new processes, preserving exact expiry deadlines and structured data. Own Free instance/credentials cleaned; no new issue.
 
-- [Mixed-family historical log acceptance](evidence/mixed-family-logs-sweep311/README.md) — sweep311:30 native query passes across both clients; two API cursor chains each recover the same33 records from own App/Postgres/Key Value.13 focused source checks pass; three parents/one deploy cleaned. No new issue.
+- Mixed-family historical log acceptance (evidence, purged 2026-11-04) — sweep311:30 native query passes across both clients; two API cursor chains each recover the same33 records from own App/Postgres/Key Value.13 focused source checks pass; three parents/one deploy cleaned. No new issue.
 
-- [Cron plan policy validation recheck](evidence/cron-plan-validation-sweep312/README.md) — sweep312: all three native clients still accept Free cron (existing048);42 neighboring controls and32 final focused/diagnostic source checks pass. Validation only; no hosted mutations.
+- Cron plan policy validation recheck (evidence, purged 2026-11-04) — sweep312: all three native clients still accept Free cron (existing048);42 neighboring controls and32 final focused/diagnostic source checks pass. Validation only; no hosted mutations.
 
-- [Blueprint per-kind name recheck](evidence/blueprint-name-kinds-sweep313/README.md) — sweep313:42 actual native validations/36 final comparisons; four valid cross-kind cases remain refused per client (existing w1/126),24 validity/exit controls and20 final source checks pass. No resources or new issue.
+- Blueprint per-kind name recheck (evidence, purged 2026-11-04) — sweep313:42 actual native validations/36 final comparisons; four valid cross-kind cases remain refused per client (existing w1/126),24 validity/exit controls and20 final source checks pass. No resources or new issue.
 
-- [Existing workspace host-target checks](done/m74/evidence/cli-sweep316/README.md) — sweep316:28 native validations expose14 false accepts/14 controls; four source failures and two invalid fake-client applies,33 existing checks pass. Scheduled with314 origin loss in m74; two Free fixtures cleaned.
+- Existing workspace host-target checks (evidence, purged 2026-11-04) — sweep316:28 native validations expose14 false accepts/14 controls; four source failures and two invalid fake-client applies,33 existing checks pass. Scheduled with314 origin loss in m74; two Free fixtures cleaned.
 
-- [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
+- Static byte-range acceptance and scoped rollout recheck (evidence, purged 2026-11-04) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
 
@@ -793,7 +793,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **159** — [Render's official Django example cannot build on bex because bex sets no `RENDER` variable, and would run with `DEBUG=True` if it did](done/159.md) — **DONE (2026-10-21)**: Resolved by w5/m148: every service now carries Render's default variables (`RENDER`, `RENDER_EXTERNAL_HOSTNAME`, … at build and runtime), live on pin `a3f66521f93d` per w4/386's probe. The `RENDER_INSTANCE_ID` format follow-up is w4/386.
 
-- [x] **158** — [Render's free-plan "migrate in the build command" recipe cannot work on bex: no `fromDatabase` variable in the build and no route to the database](done/158.md) — **PROMOTED (2026-10-21)** to [m129](blocked/m129/README.md). ← `/qa-find-bugs-cli` sweep 1274 2026-10-21: decision needed (open a scoped build→datastore path, or keep the boundary and point to pre-deploy); major.
+- [x] **158** — [Render's free-plan "migrate in the build command" recipe cannot work on bex: no `fromDatabase` variable in the build and no route to the database](done/158.md) — **PROMOTED (2026-10-21)** to m129. ← `/qa-find-bugs-cli` sweep 1274 2026-10-21: decision needed (open a scoped build→datastore path, or keep the boundary and point to pre-deploy); major.
 
 - [x] **157** — [A Blueprint database with no `ipAllowList` is private on bex, but Render documents it as open to all IPs](done/157.md) — **DONE (2026-10-21)**: omitted Blueprint Postgres `ipAllowList` creates public, as Render; ← `/qa-find-bugs-cli` sweep 1273 2026-10-21: a real Blueprint's documented migrate-from-outside flow fails on import; major, ~45m (confirm against ADR009:238/261 first).
 
@@ -879,7 +879,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **116** — [Native Python preserves HTTPS URLs and redirect completion](done/116.md) (55m, major) — **DONE 2026-10-17:** both original first native deployments Live, twelve ordinary HTTPS requests with correct URLs/redirects and build/runtime defaults; exact cleanup/shared reads in sweep415.
 
-- [x] **115** — [Correct MCP idle field omission and WebSocket-direction instructions](done/115.md) (30m, minor) — **DONE 2026-10-18:** live MCP tools/list carries the corrected omission/0/both-directions description; an owned Free fixture previews omitted as the stored 60 and explicit 0 as 0, and was deleted ([evidence](evidence/115/hosted-2026-10-18/README.md)).
+- [x] **115** — [Correct MCP idle field omission and WebSocket-direction instructions](done/115.md) (30m, minor) — **DONE 2026-10-18:** live MCP tools/list carries the corrected omission/0/both-directions description; an owned Free fixture previews omitted as the stored 60 and explicit 0 as 0, and was deleted (evidence (evidence, purged 2026-11-04)).
 
 - [x] **114** — [Native Ruby defaults Rails to production](done/114.md) (55m, major) — **DONE 2026-10-17:** both original native first deployments Live, real production build/runtime and six HTTP200 responses without authored override; exact cleanup and shared reads in sweep413.
 
@@ -1050,7 +1050,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 | 共同卡点 | 涉及全部 ID | 本轮结论 / 下一步 |
 | --- | --- | --- |
 | 共享原生基础镜像与精确 Python 安全修补 | w8/m91, w8/m93, w8/m94, w8/m95, w8/m96, w8/m97, w8/m98, w8/m99, w8/m100, w8/m101, w8/m102, w8/m103, w8/m107, w8/222 | 14 项恢复；按现有 parity 规则选共享 CI 镜像，逐项功能验收，不等可选偏离决定 |
-| 准备好的 CLI 上游补丁 | w8/m57, w8/m60, w8/m68, w8/072, w8/075, w8/076, w8/077, w8/079, w8/082, w8/084, w8/085, w8/086, w8/087, w8/091, w8/093, w8/103, w8/107, w8/108, w8/118 | D2 已批准并实际提交 17 个 PR，覆盖全部 19 项；[清单/证据](evidence/upstream-d2-20261029/README.md)。继续等 upstream merge/release、Bex pin/release 和原验收。 |
+| 准备好的 CLI 上游补丁 | w8/m57, w8/m60, w8/m68, w8/072, w8/075, w8/076, w8/077, w8/079, w8/082, w8/084, w8/085, w8/086, w8/087, w8/091, w8/093, w8/103, w8/107, w8/108, w8/118 | D2 已批准并实际提交 17 个 PR，覆盖全部 19 项；清单/证据 (evidence, purged 2026-11-04)。继续等 upstream merge/release、Bex pin/release 和原验收。 |
 | 已提交、待上游交付 | w8/066, w8/067, w8/068, w8/070 | #54–#57 本次均 open / merged=false；无需重复请求提交许可 |
 | CLI 发布与验收 | w8/090, w8/m67, w8/m143 | 090 的修复在 v0.3.3，已恢复验收；m67/m143 新变更仍等用户明确 release |
 | 数据库扩展 rollout | w8/m92, w8/m104, w8/m109, w8/m110, w8/m111, w8/m112 | 6 项仍 blocked；供应镜像 + owner 按需 allowlist 由 parity 确定，只需专题决定既有库 operand/preload 重启的影响/窗口 |
@@ -1087,6 +1087,6 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## D2 已提交完成（2026-10-29）
 
-- 用户明确批准的 19 个 ID 已全部审阅并提交为 17 个公开 PR（两组共享实现合并）。全部 remote head 与文件清单匹配已测试提交，均 open；[完整清单、补丁和验证](evidence/upstream-d2-20261029/README.md)。
+- 用户明确批准的 19 个 ID 已全部审阅并提交为 17 个公开 PR（两组共享实现合并）。全部 remote head 与文件清单匹配已测试提交，均 open；完整清单、补丁和验证 (evidence, purged 2026-11-04)。
 - 57 个开发包通过，新增 lint 为 0；上游原版完整 lint 的 92 项既有告警已在公开 PR 中注明。上游交付门槛仍然存在，本批卡片不标 done。
 - D3：已再次用白话说明，只需确认是否把临时测试库放到 tian-personal 的空名额。资源/短时最低付费升级/彻底清理许可早已记录，不重复询问；尚未建库、未改任何现有服务、数据库、workspace 或付款设置。本轮等待这个范围答案，未启动 D3 验收。
