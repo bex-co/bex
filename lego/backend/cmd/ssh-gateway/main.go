@@ -60,6 +60,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/webshell"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/env"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -120,7 +121,7 @@ func main() {
 	}
 
 	base := &core.Base{
-		Client: kubeClient, Namespace: envOr("BEX_API_NAMESPACE", "default"),
+		Client: kubeClient, Namespace: env.Or("BEX_API_NAMESPACE", "default"),
 		Authz: authz.NewOpenFGAChecker(fgaURL, os.Getenv("BEX_OPENFGA_TOKEN")),
 		Audit: st,
 	}
@@ -242,7 +243,7 @@ func main() {
 	if v := os.Getenv("BEX_REQUIRE_VERIFIED_EMAIL"); v != "0" && !strings.EqualFold(v, "false") {
 		if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
 			gateway.EmailVerified = (&agentsession.EmailVerificationClient{
-				URL:    envOr("BEX_IDENTITY_VERIFICATION_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalEmailVerificationPath),
+				URL:    env.Or("BEX_IDENTITY_VERIFICATION_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalEmailVerificationPath),
 				Secret: []byte(secret),
 				HTTP:   &http.Client{Timeout: 5 * time.Second},
 			}).Check
@@ -262,7 +263,7 @@ func main() {
 	// refuses the model providers and private ranges itself.
 	egress := &egressproxy.Broker{Metrics: metrics}
 	if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
-		apiURL := envOr("BEX_AGENT_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalMintPath)
+		apiURL := env.Or("BEX_AGENT_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalMintPath)
 		credentials.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
 		credentials.API = &agentsession.Client{URL: apiURL, Secret: []byte(secret)}
 		credentials.Audit = st
@@ -280,38 +281,38 @@ func main() {
 		// `pull-request` segment of its Git proxy URL; bex-api resolves every
 		// target from the durable session and holds the GitHub token.
 		credentials.PullRequests = &agentsession.PullRequestClient{
-			URL:    envOr("BEX_AGENT_PULL_REQUEST_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestPath),
+			URL:    env.Or("BEX_AGENT_PULL_REQUEST_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestPath),
 			Secret: []byte(secret),
 		}
 		// ADR047 D11: the agent replies on its own PR through the
 		// `pull-request/comment` tail of the same URL; bex-api fixes the
 		// repository and PR number from the durable session.
 		credentials.PullRequestComments = &agentsession.PullRequestCommentClient{
-			URL:    envOr("BEX_AGENT_PULL_REQUEST_COMMENT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestCommentPath),
+			URL:    env.Or("BEX_AGENT_PULL_REQUEST_COMMENT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestCommentPath),
 			Secret: []byte(secret),
 		}
 		// ADR095 D6: the agent shares output files through its Pod-bound share
 		// URL; bex-api stores them as the session's output attachments.
 		credentials.Files = &agentsession.ShareFileClient{
-			URL:    envOr("BEX_AGENT_SHARE_FILE_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalShareFilePath),
+			URL:    env.Or("BEX_AGENT_SHARE_FILE_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalShareFilePath),
 			Secret: []byte(secret),
 		}
 
 		// ADR094 D5: the agent submits a turn's structured result through its
 		// Pod-bound result URL; bex-api validates it against the turn's schema.
 		credentials.Results = &agentsession.ResultClient{
-			URL:    envOr("BEX_AGENT_RESULT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalResultPath),
+			URL:    env.Or("BEX_AGENT_RESULT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalResultPath),
 			Secret: []byte(secret),
 		}
 
 		// ADR102 D9: a running agent starts and reads child sessions through its
 		// Pod-bound spawn URL; the sandbox holds no bex credential.
 		credentials.Spawns = &agentsession.SpawnClient{
-			URL:    envOr("BEX_AGENT_SPAWN_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalSpawnPath),
+			URL:    env.Or("BEX_AGENT_SPAWN_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalSpawnPath),
 			Secret: []byte(secret),
 		}
 
-		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
+		modelAPIURL := env.Or("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
 		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
 		model.API = &agentsession.ModelClient{URL: modelAPIURL, Secret: []byte(secret)}
 		model.Limits = sshgateway.NewSessionLimiter(
@@ -328,7 +329,7 @@ func main() {
 
 		egress.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
 		egress.API = &agentsession.EgressGrantClient{
-			URL:    envOr("BEX_AGENT_EGRESS_GRANT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalEgressGrantPath),
+			URL:    env.Or("BEX_AGENT_EGRESS_GRANT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalEgressGrantPath),
 			Secret: []byte(secret),
 			HTTP:   &http.Client{Timeout: 10 * time.Second},
 		}
@@ -374,13 +375,13 @@ func main() {
 		// Live-stream revalidation cadence for read/turn streams (round-9 #6).
 		RevalidateInterval: revalidateInterval,
 	}
-	addr := envOr("BEX_SSH_ADDR", ":2222")
+	addr := env.Or("BEX_SSH_ADDR", ":2222")
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("ssh gateway: listen %s: %v", addr, err)
 	}
 	metricsServer := &http.Server{Handler: metricsHandler(registry), ReadHeaderTimeout: 5 * time.Second}
-	metricsAddr := envOr("BEX_SSH_METRICS_ADDR", ":9090")
+	metricsAddr := env.Or("BEX_SSH_METRICS_ADDR", ":9090")
 	metricsListener, err := net.Listen("tcp", metricsAddr)
 	if err != nil {
 		log.Fatalf("ssh gateway: metrics listen %s: %v", metricsAddr, err)
@@ -406,7 +407,7 @@ func main() {
 	if shell.Enabled() {
 		shellMux := http.NewServeMux()
 		shellMux.Handle("GET /shell", shell.Handler())
-		defer startAuxListener("web shell", "web shell", envOr("BEX_SHELL_WS_ADDR", ":8080"), shellMux, stop, metrics)()
+		defer startAuxListener("web shell", "web shell", env.Or("BEX_SHELL_WS_ADDR", ":8080"), shellMux, stop, metrics)()
 	}
 
 	// Sandbox-exec SSE listener (w3/m33, `render ea sandbox exec`). Internal-only
@@ -428,7 +429,7 @@ func main() {
 		fileHandler := files.Handler()
 		execMux.Handle("PUT "+sandboxfiles.GatewayPath, fileHandler)
 		execMux.Handle("GET "+sandboxfiles.GatewayPath, fileHandler)
-		defer startAuxListener("sandbox-exec", "sandbox exec", envOr("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, stop, metrics)()
+		defer startAuxListener("sandbox-exec", "sandbox exec", env.Or("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, stop, metrics)()
 	}
 
 	// Agent-session Git smart-HTTP proxy (ADR047 D2). Sandboxes can clone/push
@@ -443,7 +444,7 @@ func main() {
 	// (the clone direction) is a write and stays unbounded.
 	if credentials.Enabled() {
 		credentialMux := newCredentialMux(credentials)
-		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop, metrics,
+		defer startAuxListener("agent git proxy", "agent git proxy", env.Or("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_GIT_READ_TIMEOUT", 10*time.Minute)
 				server.IdleTimeout = 2 * time.Minute
@@ -456,7 +457,7 @@ func main() {
 	if model.Enabled() {
 		modelMux := http.NewServeMux()
 		modelMux.Handle("POST "+agentsession.ModelProxyPath, model.Handler())
-		defer startAuxListener("agent model proxy", "agent model proxy", envOr("BEX_AGENT_MODEL_PROXY_ADDR", ":8084"), modelMux, stop, metrics,
+		defer startAuxListener("agent model proxy", "agent model proxy", env.Or("BEX_AGENT_MODEL_PROXY_ADDR", ":8084"), modelMux, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_MODEL_READ_TIMEOUT", 2*time.Minute)
 				server.IdleTimeout = 2 * time.Minute
@@ -467,7 +468,7 @@ func main() {
 	// this hop. Serves CONNECT and absolute-form HTTP, so it takes the broker
 	// handler directly rather than a path mux. Same start gate as the others.
 	if egress.Enabled() {
-		defer startAuxListener("agent egress proxy", "agent egress proxy", envOr("BEX_AGENT_EGRESS_PROXY_ADDR", ":8085"), egress.Handler(), stop, metrics,
+		defer startAuxListener("agent egress proxy", "agent egress proxy", env.Or("BEX_AGENT_EGRESS_PROXY_ADDR", ":8085"), egress.Handler(), stop, metrics,
 			func(server *http.Server) {
 				// Bounds a plain-HTTP request body; CONNECT tunnels clear the
 				// deadline after the hijack and run under their own idle and
@@ -487,7 +488,7 @@ func main() {
 		// OPTIONS reaches the same handler so the CORS preflight is answered (the
 		// cross-origin dashboard sends one before the ticketed GET/POST).
 		attachMux.Handle("OPTIONS /v1/agent-sessions/{id}/stream", attach.Handler())
-		defer startAuxListener("agent attach", "agent session attach", envOr("BEX_AGENT_ATTACH_ADDR", ":8083"), attachMux, stop, metrics)()
+		defer startAuxListener("agent attach", "agent session attach", env.Or("BEX_AGENT_ATTACH_ADDR", ":8083"), attachMux, stop, metrics)()
 	}
 	log.Printf("ssh gateway listening on %s", addr)
 	if err := gateway.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {
@@ -655,13 +656,6 @@ func requiredEnv(name string) string {
 		log.Fatalf("ssh gateway: %s must be set", name)
 	}
 	return value
-}
-
-func envOr(name, fallback string) string {
-	if value := os.Getenv(name); value != "" {
-		return value
-	}
-	return fallback
 }
 
 func durationEnv(name string, fallback time.Duration) time.Duration {

@@ -9,6 +9,7 @@ import {
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { pageIdentity } from "@/features/services/lib/page-identity";
 import type { EnvVarKey } from "@/features/services/types";
 
 // bex-api's env-vars GraphQL is Render dashboard-shaped (docs/ADR006-bex-api.md#env-vars):
@@ -53,12 +54,6 @@ function uniqueKeys(keys: EnvVarKey[]): EnvVarKey[] {
   return [...new Map(keys.map((key) => [key.id, key])).values()];
 }
 
-function pageIdentity(
-  serviceId: string,
-  items: Array<NonNullable<RawPageItem>>,
-) {
-  return `${serviceId}\0${items.map((item) => item.cursor).join("\0")}`;
-}
 
 export interface UseEnvVarKeysResult {
   keys: EnvVarKey[];

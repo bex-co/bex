@@ -51,6 +51,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
+	"github.com/bex-co/bex/lego/types/env"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -285,7 +286,7 @@ func main() {
 	ctrl.SetLogger(zap.New())
 	log := ctrl.Log.WithName("pg-sni-proxy")
 
-	addr := sniproxy.EnvOr("BEX_PROXY_ADDR", defaultAddr)
+	addr := env.Or("BEX_PROXY_ADDR", defaultAddr)
 	domain := os.Getenv("BEX_DB_DOMAIN")
 	if domain == "" {
 		log.Info("BEX_DB_DOMAIN is unset — proxy will refuse all connections (no routing table)")
@@ -342,7 +343,7 @@ func main() {
 		os.Exit(1)
 	}
 	meter.SetHealthy(true)
-	metricsAddr := sniproxy.EnvOr("BEX_PROXY_METRICS_ADDR", defaultMetricsAddr)
+	metricsAddr := env.Or("BEX_PROXY_METRICS_ADDR", defaultMetricsAddr)
 	metricsServer := &http.Server{
 		Addr: metricsAddr, Handler: promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 		ReadHeaderTimeout: 5 * time.Second,

@@ -238,7 +238,7 @@ func TestInitialBlueprintGroupsRollbackPreservesConcurrentMembership(t *testing.
 		}
 		failed = true
 		groups.Commit(first.ID, func(g *store.EnvGroup) {
-			g.ServiceLinks = addString(g.ServiceLinks, "other-service")
+			g.ServiceLinks = core.AddString(g.ServiceLinks, "other-service")
 			g.Name = "renamed"
 		})
 		return failure
@@ -312,9 +312,9 @@ func TestInitialBlueprintGroupsConflictCompensationRespectsCreationBoundary(t *t
 				}
 				injected = true
 				groups.Commit(id, func(g *store.EnvGroup) {
-					g.ServiceLinks = addString(g.ServiceLinks, "web")
+					g.ServiceLinks = core.AddString(g.ServiceLinks, "web")
 					if stage == "finalization" {
-						g.ServiceLinks = addString(g.ServiceLinks, "other-service")
+						g.ServiceLinks = core.AddString(g.ServiceLinks, "other-service")
 					}
 				})
 			}
