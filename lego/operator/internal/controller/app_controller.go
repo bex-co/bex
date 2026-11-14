@@ -537,7 +537,8 @@ func traefikMiddlewareRef(namespace, name string) string {
 }
 
 // applyIngressRouting stamps the shape every App-owned Ingress shares: the
-// cert-manager issuer, the Traefik middleware refs (or their removal), the
+// cert-manager issuer (which settleIngressTLS drops again when no host needs
+// a certificate of its own), the Traefik middleware refs (or their removal), the
 // legacy key's removal, the ingress class, and a cleared TLS/rule set ready for
 // appendIngressHostRoute. The serving Ingress and the host-redirect Ingress both
 // go through here so their routing contract cannot drift.
@@ -560,14 +561,12 @@ func (r *AppReconciler) applyIngressRouting(ing *networkingv1.Ingress, middlewar
 	ing.Spec.Rules = nil
 }
 
-// appendIngressHostRoute adds one host's TLS entry plus its catch-all rule
-// routing to svc:port. tlsIndex picks the host's TLS Secret name.
-func appendIngressHostRoute(ing *networkingv1.Ingress, appName, host string, tlsIndex int, svc string, port int32) {
+// appendIngressHostRoute adds one host's TLS entry (ingressTLSFor) plus its
+// catch-all rule routing to svc:port. tlsIndex picks the host's TLS Secret
+// name.
+func (r *AppReconciler) appendIngressHostRoute(ing *networkingv1.Ingress, appName, host string, tlsIndex int, svc string, port int32) {
 	pathType := networkingv1.PathTypePrefix
-	ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
-		Hosts:      []string{host},
-		SecretName: appv1alpha1.TLSSecretName(appName, tlsIndex == 0, host),
-	})
+	ing.Spec.TLS = append(ing.Spec.TLS, r.ingressTLSFor(appName, host, tlsIndex == 0))
 	ing.Spec.Rules = append(ing.Spec.Rules, networkingv1.IngressRule{
 		Host: host,
 		IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{
@@ -4451,7 +4450,7 @@ func (r *AppReconciler) applyServingIngress(ctx context.Context, app *appv1alpha
 	if !serve {
 		return r.deleteStaleChildren(ctx, ing)
 	}
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
+	return r.writeAppIngress(ctx, ing, func() error {
 		r.applyIngressRouting(ing, refs)
 		if wildcard {
 			ing.Annotations[traefikRouterPriorityAnnotation] = wildcardRouterPriority
@@ -4465,14 +4464,13 @@ func (r *AppReconciler) applyServingIngress(ctx context.Context, app *appv1alpha
 			if redirectSources[host] || appv1alpha1.IsWildcardHost(host) != wildcard {
 				continue
 			}
-			appendIngressHostRoute(ing, app.Name, host, i, svc, port)
+			r.appendIngressHostRoute(ing, app.Name, host, i, svc, port)
 		}
-		if err := r.prioritizeIngressTLS(ctx, ing); err != nil {
+		if err := r.settleIngressTLS(ctx, ing); err != nil {
 			return err
 		}
 		return controllerutil.SetControllerReference(app, ing, r.Scheme)
 	})
-	return err
 }
 
 // traefikRouterPriorityAnnotation sets the priority of every router an
@@ -4610,13 +4608,13 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 	}
 
 	ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: ingressName, Namespace: app.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
+	if err := r.writeAppIngress(ctx, ing, func() error {
 		r.applyIngressRouting(ing, middlewareNames)
 		ing.Labels = map[string]string{labelHostRedirectOwner: app.Name}
 		for _, source := range sources {
-			appendIngressHostRoute(ing, app.Name, source, slices.Index(hosts, source), svc, port)
+			r.appendIngressHostRoute(ing, app.Name, source, slices.Index(hosts, source), svc, port)
 		}
-		if err := r.prioritizeIngressTLS(ctx, ing); err != nil {
+		if err := r.settleIngressTLS(ctx, ing); err != nil {
 			return err
 		}
 		return controllerutil.SetControllerReference(app, ing, r.Scheme)

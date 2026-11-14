@@ -161,12 +161,15 @@ var _ = Describe("App Controller", func() {
 			Expect(ing.Spec.Rules[1].Host).To(Equal(name + ".onbex.co"))
 			Expect(ing.Spec.Rules[2].Host).To(Equal("www.example.com"))
 			Expect(ing.Spec.TLS).To(HaveLen(3))
-			Expect(ing.Spec.TLS[0].SecretName).To(Equal(name+"-tls"), "first host must keep the legacy secret")
-			Expect(ing.Spec.TLS[1].SecretName).To(Equal(name + "-tls-" + name + ".onbex.co"))
+			// No Secret is ready, so prioritizeIngressTLS puts the platform
+			// host's secretless entry first (w4/650).
+			Expect(ing.Spec.TLS[0].Hosts).To(Equal([]string{name + ".onbex.co"}))
+			Expect(ing.Spec.TLS[0].SecretName).To(BeEmpty(), "the *.onbex.co wildcard serves the platform host")
+			Expect(ing.Spec.TLS[1].Hosts).To(Equal([]string{"app.1.2.3.4.sslip.io"}))
+			Expect(ing.Spec.TLS[1].SecretName).To(Equal(name+"-tls"), "first host must keep the legacy secret")
+			Expect(ing.Spec.TLS[2].Hosts).To(Equal([]string{"www.example.com"}))
 			Expect(ing.Spec.TLS[2].SecretName).To(Equal(name + "-tls-www.example.com"))
-			for i, tls := range ing.Spec.TLS {
-				Expect(tls.Hosts).To(Equal([]string{ing.Spec.Rules[i].Host}), "TLS entries pair 1:1 with rules")
-			}
+			Expect(ing.Annotations).To(HaveKeyWithValue("cert-manager.io/cluster-issuer", "letsencrypt-prod"))
 
 			By("clearing all exposure removes the Ingress")
 			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())

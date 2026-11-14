@@ -2,7 +2,9 @@
 
 **Status:** Accepted, 2026-10-30 (user decision). Implemented 2026-10-31 (w4/441): `deploy/gitops/charts/onbex-default-tls/{issuer,certificate}.yaml`, `scripts/onbex-dns01-token-secret.sh`, the `deploy.yml` token steps and the `scripts/gitops-validate.sh` contract. Triggered by w4/441, where every production deploy failed because the hand-issued certificate entered its 30-day window.
 
-**Related decisions:** [ADR005](ADR005-custom-domain.md) owns per-host certificates (HTTP-01, unchanged here). [ADR019](ADR019-infra-credentials.md) is the credential inventory this ADR adds to and removes from. The fallback itself was built in w2/m85 (`.pm/w2/done/m85`), and D3 amends that milestone's certificate-ownership decision.
+**Amended 2026-11-14 (w4/650):** the wildcard is now the only certificate for platform hosts. A single label under `BEX_BASE_DOMAIN` gets no per-host certificate; its Ingress TLS entry names no Secret, and an Ingress with only such hosts has no cluster-issuer annotation. Every new service's per-host order spent the shared 50-per-week Let's Encrypt budget for `onbex.co`, which ran out on 2026-11-14 and left customers' orders `rateLimited`. Custom domains and deeper names keep per-host HTTP-01. See [ADR005](ADR005-custom-domain.md) § Projection and certificates.
+
+**Related decisions:** [ADR005](ADR005-custom-domain.md) owns per-host certificates for custom domains (HTTP-01, unchanged here); platform hosts use only this wildcard (w4/650). [ADR019](ADR019-infra-credentials.md) is the credential inventory this ADR adds to and removes from. The fallback itself was built in w2/m85 (`.pm/w2/done/m85`), and D3 amends that milestone's certificate-ownership decision.
 
 ![Architecture: cert-manager writes the challenge TXT through the Cloudflare API, Let's Encrypt validates it, and the issued wildcard lands in the Secret that Traefik's default TLSStore serves](assets/ADR093-onbex-wildcard-tls.svg)
 
