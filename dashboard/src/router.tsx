@@ -7,10 +7,17 @@ import NotFoundPage from "@/common/root-route/not-found-page";
 import { pendingInvitationDestination } from "@/features/invites/redirect-pending-invitation";
 import RoutePending from "@/common/root-route/route-pending";
 import { parseSearchWithExactText } from "@/common/lib/search-params/exact-text";
+import { installPreloadErrorReload } from "@/common/lib/preload-error-reload";
 
 export type { RouterContext } from "@/common/types/router-context";
 
+let preloadErrorReloadInstalled = false;
+
 export function getRouter() {
+  if (typeof window !== "undefined" && !preloadErrorReloadInstalled) {
+    preloadErrorReloadInstalled = true;
+    installPreloadErrorReload();
+  }
   const client = getClient();
   const router = createTanStackRouter({
     routeTree,

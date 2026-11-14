@@ -12,6 +12,8 @@ declare global {
     readonly VITE_KRATOS_SSR_URL?: string;
     /** Hydra public issuer (token endpoint base) for API-key exchange copy */
     readonly VITE_OAUTH_ISSUER?: string;
+    /** Per-build id stamped by vite.config.ts; guards the one preload-error reload (w4/651) */
+    readonly VITE_BEX_BUILD_ID?: string;
   }
 
   interface ImportMeta {

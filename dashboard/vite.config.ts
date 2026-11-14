@@ -418,6 +418,14 @@ export default defineConfig(({ mode }) => {
           ]
         : []),
     ],
+    define: {
+      // One id per build, so the dashboard's one reload on a failed chunk
+      // load re-arms for each new build (src/common/lib/preload-error-reload.ts,
+      // w4/651).
+      "import.meta.env.VITE_BEX_BUILD_ID": JSON.stringify(
+        Date.now().toString(36),
+      ),
+    },
     ssr: {
       // @ory/elements-react ships extensionless relative imports
       // (e.g. "./session-provider") that only resolve under bundler
