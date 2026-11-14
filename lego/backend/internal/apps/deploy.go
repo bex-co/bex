@@ -61,6 +61,23 @@ const (
 // can re-assert execution without widening every helper signature (w8/m39).
 type deployAuthorityKey struct{}
 
+// blueprintDeploysKey carries the services a Blueprint apply has opened a
+// deploy for, by public id, so the env-group rolls that follow its service
+// writes skip them: their new release already reads the groups' new values,
+// and a second roll would cancel it (w4/633).
+type blueprintDeploysKey struct{}
+
+func withBlueprintDeploys(ctx context.Context) (context.Context, map[string]bool) {
+	deployed := map[string]bool{}
+	return context.WithValue(ctx, blueprintDeploysKey{}, deployed), deployed
+}
+
+func noteBlueprintDeploy(ctx context.Context, a *appv1alpha1.App) {
+	if deployed, ok := ctx.Value(blueprintDeploysKey{}).(map[string]bool); ok {
+		deployed[core.AppPublicID(a)] = true
+	}
+}
+
 func withDeployAuthority(ctx context.Context, req DeployRequest) context.Context {
 	// Carry BlueprintID (and Confirm) for resource claims even when generation
 	// is zero — mid-apply execution asserts still require generation+runID
@@ -169,8 +186,11 @@ type EnvGroupApplier interface {
 	// plans without crossing the env-group package boundary or reading values.
 	GroupIDsByName(ctx context.Context) (map[string]string, error)
 	// ApplyEnvGroup upserts a group by name (create if absent, reconcile its vars);
-	// literals re-sync to their value, generates mint once. Idempotent.
-	ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) error
+	// literals re-sync to their value, generates mint once. Idempotent. A
+	// change returns the roll it owes the group's linked services, run once
+	// the apply's service writes are done (deployed: the services the apply
+	// already deployed, by public id); nil when nothing is owed (w4/633).
+	ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) (roll func(ctx context.Context, deployed map[string]bool) error, err error)
 	// LinkedGroupNames is the names of the groups an existing App already links,
 	// in its link order (w8/m64). Group identity only; no values are read.
 	LinkedGroupNames(ctx context.Context, a *appv1alpha1.App) ([]string, error)
@@ -885,11 +905,11 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 // 4. Resolve cross-references to existing resources (by name → id/CR name)
 // 5. Preflight env-groups, env-vars and protected placement (w3/m281)
 // 6. Apply groupings (projects, environments) — asserts Blueprint execution first
-// 7. Apply env-groups → datastores → services (each family re-asserts)
+// 7. Apply env-groups → datastores → services (each family re-asserts); changed groups roll their linked services last (w4/633)
 // 8. Patch the services a fromService reference cycle left unresolved (deferred host slugs)
 // 9. Auto-register Blueprint row (enables subsequent sync operations)
 // 10. Stamp ownership only while the admitted (generation, run) claim still holds
-func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack, snap *workspaceSnapshot) (StackResult, error) {
+func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack, snap *workspaceSnapshot) (res StackResult, err error) {
 	// Every resource created below inherits the Blueprint attribution (w5/m97).
 	// Keyed on the request rather than set by each caller because this is the
 	// one function all three Blueprint paths funnel through — initial create,
@@ -904,7 +924,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	ctx = withHostClaimScope(ctx)
 	// Every resource the apply creates is born inside the workspace's inbound
 	// IP rules (w9/m388): read them once for the whole stack.
-	ctx, err := s.withStackWorkspaceIPLayer(ctx)
+	ctx, err = s.withStackWorkspaceIPLayer(ctx)
 	if err != nil {
 		return StackResult{}, err
 	}
@@ -962,11 +982,23 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// guard (requireUnprotected) reads it via core.ConfirmFrom, the same
 	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
 	ctx = core.WithConfirm(ctx, req.Confirm)
-	res := StackResult{}
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
-	if err := s.applyStackEnvGroups(ctx, st.envGroups, assignments, &res); err != nil {
+	// A changed group owes its linked services a deploy. It is rolled after
+	// the service writes, skipping each service they deployed, so a service
+	// changed by both gets one deploy (w4/633). It runs even when a later
+	// step fails: the group's values are already written.
+	ctx, deployed := withBlueprintDeploys(ctx)
+	rolls, err := s.applyStackEnvGroups(ctx, st.envGroups, assignments, &res)
+	defer func() {
+		for _, roll := range rolls {
+			if rollErr := roll(context.WithoutCancel(ctx), deployed); rollErr != nil && err == nil {
+				err = rollErr
+			}
+		}
+	}()
+	if err != nil {
 		return res, err
 	}
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
@@ -1048,24 +1080,28 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 // group's id+name view onto res (the applyStackDatastores contract, w6/064).
 // Env groups first: a service's fromGroup links one, which needs the group (and
 // its projection Secret) to exist before the service is patched.
-func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, assignments map[string]core.EnvironmentAssignment, res *StackResult) error {
+func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, assignments map[string]core.EnvironmentAssignment, res *StackResult) (rolls []func(context.Context, map[string]bool) error, err error) {
 	if len(envGroups) == 0 {
-		return nil // nothing declared — and the EnvGroups seam may not be wired
+		return nil, nil // nothing declared — and the EnvGroups seam may not be wired
 	}
 	for _, g := range envGroups {
 		if err := requireDeployAuthority(ctx, s); err != nil {
-			return err
+			return rolls, err
 		}
-		if err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates); err != nil {
-			return fmt.Errorf("env group %q: %w", g.name, err)
+		roll, err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates)
+		if err != nil {
+			return rolls, fmt.Errorf("env group %q: %w", g.name, err)
+		}
+		if roll != nil {
+			rolls = append(rolls, roll)
 		}
 		if g.grouping != "" {
 			if assignment := assignments[g.grouping]; assignment.ID != "" {
 				if err := requireDeployAuthority(ctx, s); err != nil {
-					return err
+					return rolls, err
 				}
 				if err := s.EnvGroups.SetGroupEnvironment(ctx, g.name, assignment.ID); err != nil {
-					return fmt.Errorf("assigning env group %q to environment: %w", g.name, err)
+					return rolls, fmt.Errorf("assigning env group %q to environment: %w", g.name, err)
 				}
 			}
 		}
@@ -1075,12 +1111,12 @@ func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnv
 	// declared group has been applied.
 	ids, err := s.EnvGroups.GroupIDsByName(ctx)
 	if err != nil {
-		return fmt.Errorf("resolving applied env group ids: %w", err)
+		return rolls, fmt.Errorf("resolving applied env group ids: %w", err)
 	}
 	for _, g := range envGroups {
 		res.EnvGroups = append(res.EnvGroups, StackEnvGroupView{ID: ids[g.name], Name: g.name})
 	}
-	return nil
+	return rolls, nil
 }
 
 // applyStackDatastores upserts the stack's databases and key values, appending
@@ -4166,6 +4202,9 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	resourcemeta.Touch(existing, s.Now())
 	if err := s.Client.Patch(ctx, existing, base); err != nil {
 		return AppView{}, err
+	}
+	if deploySpecChanged && !suspendedHold {
+		noteBlueprintDeploy(ctx, existing)
 	}
 	recordHostClaims(ctx, existing)
 	if s.Kick != nil {

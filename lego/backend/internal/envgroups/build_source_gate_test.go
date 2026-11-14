@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -58,7 +59,7 @@ func TestGroupSaveSkipsALinkedBuildSource(t *testing.T) {
 	rebuilt := false
 	s.RebuildService = func(context.Context, string) error { rebuilt = true; return nil }
 	for _, mode := range []SaveMode{SaveModeDeploy, SaveModeRebuild} {
-		skipped, err := s.rollLink(context.Background(), "evg-1", "bds-1", mode)
+		skipped, err := s.rollLink(context.Background(), "evg-1", "bds-1", mode, store.TriggerConfigChange)
 		if err != nil || !skipped {
 			t.Fatalf("mode %v: rollLink = (%v, %v), want skipped", mode, skipped, err)
 		}

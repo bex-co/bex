@@ -78,7 +78,7 @@ func TestBlueprintApplyReadsEachNeededValueMapOnceUnderTheContentLock(t *testing
 	}
 	for _, value := range []string{"after", "after"} {
 		kv.calls = nil
-		if err := svc.ApplyEnvGroup(ctx, g.Name, map[string]string{"TOKEN": value}, nil); err != nil {
+		if _, err := svc.ApplyEnvGroup(ctx, g.Name, map[string]string{"TOKEN": value}, nil); err != nil {
 			t.Fatal(err)
 		}
 		envReads := 0

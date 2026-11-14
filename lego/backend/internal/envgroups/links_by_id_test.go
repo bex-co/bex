@@ -50,7 +50,7 @@ func TestEnvGroup_PatchSkipsAServiceThatDoesNotMountTheGroup(t *testing.T) {
 	store := newFakeStore()
 	svc := newService(store, apiApp("web", id.New(id.Service)))
 	ctx := testCtx()
-	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"A": "1"}, nil); err != nil {
+	if _, err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"A": "1"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := svc.LinkEnvGroup(ctx, "shared", "web"); err != nil {
@@ -65,8 +65,12 @@ func TestEnvGroup_PatchSkipsAServiceThatDoesNotMountTheGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"A": "2"}, nil); err != nil {
+	roll, err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"A": "2"}, nil)
+	if err != nil {
 		t.Fatalf("Blueprint sync: %v", err)
+	}
+	if err := roll(ctx, nil); err != nil {
+		t.Fatalf("Blueprint sync roll: %v", err)
 	}
 	if got := getApp(t, svc.Client, "web").Spec.RestartedAt; got != "" {
 		t.Errorf("the sync restarted the unrelated new service (restartedAt %q)", got)

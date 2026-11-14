@@ -41,7 +41,7 @@ func TestEnvGroupNamesFollowTheLabelRule(t *testing.T) {
 		}
 		_, createErr := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: name})
 		_, renameErr := svc.RenameEnvGroup(ctx, group.ID, name)
-		applyErr := svc.ApplyEnvGroup(ctx, name, map[string]string{"A": "1"}, nil)
+		_, applyErr := svc.ApplyEnvGroup(ctx, name, map[string]string{"A": "1"}, nil)
 		for verb, err := range map[string]error{"create": createErr, "rename": renameErr, "apply": applyErr} {
 			var coded *core.CodedError
 			if !errors.As(err, &coded) || coded.Code != code {

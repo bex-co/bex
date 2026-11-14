@@ -53,6 +53,11 @@ type fakeEnvGroups struct {
 	applied      map[string]appliedGroup // name -> last ApplyEnvGroup args
 	links        []string                // "group->service" in call order
 	environments map[string]string       // name -> environmentID from SetGroupEnvironment
+	// owed is the linked services (public ids) a change to the named group
+	// owes a deploy; ApplyEnvGroup returns a roll for them, which records
+	// each it deploys in rolled.
+	owed   map[string][]string
+	rolled []string
 }
 
 func newFakeEnvGroups(preexisting ...string) *fakeEnvGroups {
@@ -107,9 +112,19 @@ func (f *fakeEnvGroups) GroupIDsByName(context.Context) (map[string]string, erro
 	return out, nil
 }
 
-func (f *fakeEnvGroups) ApplyEnvGroup(_ context.Context, name string, literals map[string]string, generates []string) error {
+func (f *fakeEnvGroups) ApplyEnvGroup(_ context.Context, name string, literals map[string]string, generates []string) (func(context.Context, map[string]bool) error, error) {
 	f.applied[name] = appliedGroup{literals: literals, generates: generates}
-	return nil
+	if len(f.owed[name]) == 0 {
+		return nil, nil
+	}
+	return func(_ context.Context, deployed map[string]bool) error {
+		for _, service := range f.owed[name] {
+			if !deployed[service] {
+				f.rolled = append(f.rolled, service)
+			}
+		}
+		return nil
+	}, nil
 }
 
 func (f *fakeEnvGroups) LinkEnvGroup(_ context.Context, name, service string) error {
@@ -225,7 +240,7 @@ envVarGroups:
 		t.Fatalf("create action = %+v, want env-var-group create", action)
 	}
 
-	if err := groups.ApplyEnvGroup(context.Background(), "shared", map[string]string{"LOG_LEVEL": "info"}, nil); err != nil {
+	if _, err := groups.ApplyEnvGroup(context.Background(), "shared", map[string]string{"LOG_LEVEL": "info"}, nil); err != nil {
 		t.Fatalf("ApplyEnvGroup: %v", err)
 	}
 	updated, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")

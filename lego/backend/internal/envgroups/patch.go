@@ -140,7 +140,7 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, g store.EnvGro
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	return s.rollGroupPatch(ctx, g.ID, patch.SaveMode, result)
+	return s.rollGroupPatch(ctx, g.ID, patch.SaveMode, result, store.TriggerConfigChange)
 }
 
 // patchContents runs with the group's session lock held; unrelated rollout SQL
@@ -214,7 +214,9 @@ func (s *Service) patchContentsFromSnapshot(ctx context.Context, g store.EnvGrou
 	return result, nil
 }
 
-func (s *Service) rollGroupPatch(ctx context.Context, gid string, mode SaveMode, result EnvironmentPatchResult) (EnvironmentPatchResult, error) {
+// rollGroupPatch rolls the services a content save affected, recording each
+// deploy with trigger.
+func (s *Service) rollGroupPatch(ctx context.Context, gid string, mode SaveMode, result EnvironmentPatchResult, trigger string) (EnvironmentPatchResult, error) {
 	if mode == SaveModeOnly || len(result.AffectedServiceIDs) == 0 {
 		return result, nil
 	}
@@ -230,11 +232,11 @@ func (s *Service) rollGroupPatch(ctx context.Context, gid string, mode SaveMode,
 	affected := make([]string, 0, len(result.AffectedServiceIDs))
 	var stale []string
 	for _, serviceID := range result.AffectedServiceIDs {
-		skipped, actionErr := s.rollLink(ctx, gid, serviceID, mode)
+		skipped, actionErr := s.rollLink(ctx, gid, serviceID, mode, trigger)
 		if errors.Is(actionErr, core.ErrServiceReplaced) || apierrors.IsNotFound(actionErr) {
 			// Deleted, or deleted and recreated, since its read: judge the
 			// link again against the App now at serviceID (w5/158).
-			skipped, actionErr = s.rollLink(ctx, gid, serviceID, mode)
+			skipped, actionErr = s.rollLink(ctx, gid, serviceID, mode, trigger)
 		}
 		if errors.Is(actionErr, core.ErrNotFound) {
 			stale = append(stale, serviceID)
@@ -321,7 +323,7 @@ func (s *Service) saveContents(ctx context.Context, g store.EnvGroup, op store.E
 
 // rollLink rolls (or rebuilds) the service one link names. A service that is
 // gone, or no longer mounts the group, answers core.ErrNotFound.
-func (s *Service) rollLink(ctx context.Context, gid, serviceID string, saveMode SaveMode) (skipped bool, err error) {
+func (s *Service) rollLink(ctx context.Context, gid, serviceID string, saveMode SaveMode, trigger string) (skipped bool, err error) {
 	// The id comes from the group's own link set, which may name a build
 	// source (w2/m254).
 	a, err := s.GetApp(core.WithBuildSources(ctx), core.RelCanCreate, serviceID)
@@ -350,7 +352,7 @@ func (s *Service) rollLink(ctx context.Context, gid, serviceID string, saveMode 
 		}
 		return false, s.RebuildService(ctx, serviceID)
 	}
-	return s.rollOne(ctx, a, s.now())
+	return s.rollOne(ctx, a, s.now(), trigger)
 }
 
 // pruneStaleLinks removes stale links from the group's persisted link set:

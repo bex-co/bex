@@ -152,7 +152,8 @@ func TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 			return err
 		},
 		"ApplyEnvGroup": func(s *Service, g EnvGroupView) error {
-			return s.ApplyEnvGroup(ctx, g.Name, map[string]string{"BIG": big}, nil)
+			_, err := s.ApplyEnvGroup(ctx, g.Name, map[string]string{"BIG": big}, nil)
+			return err
 		},
 	}
 	exempt := map[string]string{

@@ -1232,7 +1232,7 @@ func TestEnvGroup_BlueprintSeamScopesToActingWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("erin create shared: %v", err)
 	}
-	if err := erinSvc.ApplyEnvGroup(erinCtx, "shared", map[string]string{"DB_URL": "postgres://bravo"}, nil); err != nil {
+	if _, err := erinSvc.ApplyEnvGroup(erinCtx, "shared", map[string]string{"DB_URL": "postgres://bravo"}, nil); err != nil {
 		t.Fatalf("erin seed shared: %v", err)
 	}
 
@@ -1248,7 +1248,7 @@ func TestEnvGroup_BlueprintSeamScopesToActingWorkspace(t *testing.T) {
 
 	// dana's blueprint apply of a SAME-NAMED "shared" group must create her OWN
 	// group, never touch/reuse tea-b's.
-	if err := danaSvc.ApplyEnvGroup(danaCtx, "shared", map[string]string{"DB_URL": "postgres://alpha"}, nil); err != nil {
+	if _, err := danaSvc.ApplyEnvGroup(danaCtx, "shared", map[string]string{"DB_URL": "postgres://alpha"}, nil); err != nil {
 		t.Fatalf("dana apply shared: %v", err)
 	}
 	alphaGIDRow, found, err := danaSvc.findGroupByName(danaCtx, "shared")

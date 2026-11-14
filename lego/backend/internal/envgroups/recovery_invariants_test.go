@@ -60,7 +60,7 @@ func TestValueConsumersRefuseAnActiveGroupSaveBeforeReadingOrLinking(t *testing.
 					return nil
 				}, nil)
 			case "blueprint apply":
-				err = svc.ApplyEnvGroup(ctx, "shared", map[string]string{"TOKEN": "new"}, nil)
+				_, err = svc.ApplyEnvGroup(ctx, "shared", map[string]string{"TOKEN": "new"}, nil)
 			}
 			var coded *core.CodedError
 			if !errors.As(err, &coded) || coded.Code != "ENV_GROUP_REVISION_CONFLICT" {

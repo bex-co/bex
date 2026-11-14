@@ -888,7 +888,7 @@ func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVar
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.rollGroupPatch(ctx, g.ID, SaveModeDeploy, result); err != nil {
+	if _, err := s.rollGroupPatch(ctx, g.ID, SaveModeDeploy, result, store.TriggerConfigChange); err != nil {
 		return nil, err
 	}
 	return envKeyViewsFromKeys(result.EnvVarKeys), nil
@@ -1137,8 +1137,8 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 // patch replaces whole, so a write computed from a stale read could drop the
 // service's own files reference a secrets write just set. A write that loses
 // re-reads the App and applies mutate again.
-func (s *Service) rollLinkedService(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) error {
-	return s.Rollout.PatchLocked(ctx, s.Client, a, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+func (s *Service) rollLinkedService(ctx context.Context, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App)) error {
+	return s.Rollout.PatchLocked(ctx, s.Client, a, trigger, func(a *appv1alpha1.App) error {
 		mutate(a)
 		return nil
 	})
@@ -1189,7 +1189,7 @@ func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp, gid
 			return nil
 		})
 	}
-	return false, s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+	return false, s.rollLinkedService(ctx, a, store.TriggerConfigChange, func(a *appv1alpha1.App) {
 		if link {
 			a.Spec.EnvFromSecrets = core.AddString(a.Spec.EnvFromSecrets, envSecretName(gid))
 			a.Spec.FilesFromSecrets = core.AddString(a.Spec.FilesFromSecrets, filesSecretName(gid))
@@ -1317,11 +1317,11 @@ func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.
 // what keeps the running pod on its current release until the owner deploys.
 // It reports whether the change waits for the next deploy: skipped for that
 // reason, or held because the service was suspended when written.
-func (s *Service) rollOne(ctx context.Context, a *appv1alpha1.App, stamp string) (bool, error) {
+func (s *Service) rollOne(ctx context.Context, a *appv1alpha1.App, stamp, trigger string) (bool, error) {
 	if autoDeployGated(a) {
 		return true, nil
 	}
-	if err := s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+	if err := s.rollLinkedService(ctx, a, trigger, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = stamp
 	}); err != nil {
 		return false, err
@@ -1487,28 +1487,37 @@ func GroupPlacements(s *Service) func(ctx context.Context) (map[string]string, e
 // already in the group but absent from the blueprint are retained (Render's
 // preservation rule). Idempotent: when the reconciled set already matches, no
 // Secret write and no roll of linked services. Manage scope.
-func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) error {
+//
+// A change is owed to the group's linked services, but ApplyEnvGroup does not
+// roll them: it returns roll, which the Blueprint apply runs once its own
+// service writes are done (w4/633). roll deploys each linked service once,
+// recorded as the Blueprint sync, except the services in deployed — those the
+// apply already deployed, whose new release reads the group's new values — so
+// one sync opens one deploy per service. It keeps the rest of a group save's
+// roll: the Auto-Deploy gate, suspended services, build sources, stale links.
+// roll is nil when nothing is owed.
+func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) (roll func(ctx context.Context, deployed map[string]bool) error, err error) {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return err
+		return nil, err
 	}
-	name, err := core.TrimmedLabel(name)
+	name, err = core.TrimmedLabel(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if name == "" {
-		return fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
+		return nil, fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
 	}
 	g, found, err := s.findGroupByName(ctx, name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !found {
 		workspace, ok := s.Tenant(ctx)
 		if !ok {
-			return core.ErrForbidden
+			return nil, core.ErrForbidden
 		}
 		if err := s.envGroupQuota(ctx, workspace); err != nil {
-			return err
+			return nil, err
 		}
 		inputs := make([]CreateEnvVarInput, 0, len(literals)+len(generates))
 		for _, key := range core.SortedKeys(literals) {
@@ -1519,7 +1528,7 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 		}
 		env, err := prepareCreateEnv(inputs)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		now := s.nowTime()
 		// No services to link on a Blueprint-minted group, so nothing can be
@@ -1527,7 +1536,7 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 		_, _, err = s.persistCreate(ctx, store.EnvGroup{
 			ID: id.New(id.EnvGroup), TenantID: workspace, Name: name, CreatedAt: now, UpdatedAt: now,
 		}, env, map[string]string{}, nil)
-		return err
+		return nil, err
 	}
 	var result EnvironmentPatchResult
 	changed := false
@@ -1567,11 +1576,15 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 		changed = err == nil
 		return err
 	})
-	if err != nil || !changed {
-		return err
+	if err != nil || !changed || len(result.AffectedServiceIDs) == 0 {
+		return nil, err
 	}
-	_, err = s.rollGroupPatch(ctx, g.ID, SaveModeDeploy, result)
-	return err
+	return func(ctx context.Context, deployed map[string]bool) error {
+		owed := result
+		owed.AffectedServiceIDs = slices.DeleteFunc(slices.Clone(result.AffectedServiceIDs), func(serviceID string) bool { return deployed[serviceID] })
+		_, err := s.rollGroupPatch(ctx, g.ID, SaveModeDeploy, owed, store.TriggerBlueprintSync)
+		return err
+	}, nil
 }
 
 // LinkEnvGroup links the named group to a service for the blueprint apply path

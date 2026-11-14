@@ -33,7 +33,7 @@ func TestApplyEnvGroupCreatesAndIsIdempotent(t *testing.T) {
 	svc := newService(st)
 	ctx := testCtx()
 
-	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"LOG_LEVEL": "info"}, []string{"SESSION_SECRET"}); err != nil {
+	if _, err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"LOG_LEVEL": "info"}, []string{"SESSION_SECRET"}); err != nil {
 		t.Fatalf("ApplyEnvGroup create: %v", err)
 	}
 	gidRow, found, err := svc.findGroupByName(ctx, "shared")
@@ -52,7 +52,7 @@ func TestApplyEnvGroupCreatesAndIsIdempotent(t *testing.T) {
 
 	// Re-apply the SAME set: no re-mint (the generated value persists), and no new
 	// resource version churn on the env (idempotent).
-	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"LOG_LEVEL": "info"}, []string{"SESSION_SECRET"}); err != nil {
+	if _, err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"LOG_LEVEL": "info"}, []string{"SESSION_SECRET"}); err != nil {
 		t.Fatalf("ApplyEnvGroup re-apply: %v", err)
 	}
 	gid2 := idNamed(ctx, svc, "shared")
@@ -64,7 +64,7 @@ func TestApplyEnvGroupCreatesAndIsIdempotent(t *testing.T) {
 	}
 
 	// A changed literal re-syncs; the generated value still persists.
-	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"LOG_LEVEL": "debug"}, []string{"SESSION_SECRET"}); err != nil {
+	if _, err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"LOG_LEVEL": "debug"}, []string{"SESSION_SECRET"}); err != nil {
 		t.Fatalf("ApplyEnvGroup change: %v", err)
 	}
 	env = st.m[st.key(ctx, envPath(gid))]
@@ -80,7 +80,7 @@ func TestGroupNamesListsEveryGroup(t *testing.T) {
 	svc := newService(newFakeStore())
 	ctx := testCtx()
 	for _, n := range []string{"beta", "alpha"} {
-		if err := svc.ApplyEnvGroup(ctx, n, map[string]string{"K": "v"}, nil); err != nil {
+		if _, err := svc.ApplyEnvGroup(ctx, n, map[string]string{"K": "v"}, nil); err != nil {
 			t.Fatalf("ApplyEnvGroup %s: %v", n, err)
 		}
 	}
@@ -105,7 +105,7 @@ func TestLinkEnvGroupIsIdempotent(t *testing.T) {
 	svc := newService(st, sampleApp("web"))
 	ctx := testCtx()
 
-	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"K": "v"}, nil); err != nil {
+	if _, err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"K": "v"}, nil); err != nil {
 		t.Fatalf("ApplyEnvGroup: %v", err)
 	}
 	if err := svc.LinkEnvGroup(ctx, "shared", "web"); err != nil {
@@ -156,11 +156,11 @@ func TestApplyEnvGroupAddsAnEmptyVariableToAnExistingGroup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			st := newFakeStore()
 			svc := newService(st)
-			if err := svc.ApplyEnvGroup(ctx, "shared", tc.existing, nil); err != nil {
+			if _, err := svc.ApplyEnvGroup(ctx, "shared", tc.existing, nil); err != nil {
 				t.Fatalf("fixture: %v", err)
 			}
 			gid := idNamed(ctx, svc, "shared")
-			if err := svc.ApplyEnvGroup(ctx, "shared", tc.declared, nil); err != nil {
+			if _, err := svc.ApplyEnvGroup(ctx, "shared", tc.declared, nil); err != nil {
 				t.Fatalf("reapply: %v", err)
 			}
 			if gid2 := idNamed(ctx, svc, "shared"); gid2 != gid {
@@ -181,11 +181,11 @@ func TestApplyEnvGroupAddsAnEmptyVariableToAnExistingGroup(t *testing.T) {
 	// A present empty value reapplied writes nothing.
 	st := newFakeStore()
 	svc := newService(st)
-	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"QA_EMPTY": ""}, nil); err != nil {
+	if _, err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"QA_EMPTY": ""}, nil); err != nil {
 		t.Fatal(err)
 	}
 	before, _ := svc.GetEnvGroup(ctx, mustGroupID(t, svc, "shared"))
-	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"QA_EMPTY": ""}, nil); err != nil {
+	if _, err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"QA_EMPTY": ""}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if after, _ := svc.GetEnvGroup(ctx, before.ID); after.Revision != before.Revision {
