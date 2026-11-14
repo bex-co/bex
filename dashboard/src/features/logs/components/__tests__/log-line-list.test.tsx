@@ -14,7 +14,6 @@ function line(over: Partial<LogLine> = {}): LogLine {
   return {
     key: over.key ?? "k",
     timestamp: "2026-07-05T10:36:01.709Z",
-    time: "10:36:01",
     instance: "bv612",
     type: "app",
     level: "",

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatTimeOfDay } from "@/common/lib/format";
 import {
   axisTickValues,
   formatAxisTickLabels,
@@ -57,7 +58,7 @@ export function SvgLineChart({
   markers,
   markersServiceId,
 }: SvgLineChartProps) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const [activeFrame, setActiveFrame] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -214,7 +215,7 @@ export function SvgLineChart({
 
       {active && (
         <ChartTooltip
-          label={new Date(active.time).toLocaleTimeString()}
+          label={formatTimeOfDay(active.time, i18n.language)}
           rows={frameTooltipRows(active, unit)}
         />
       )}

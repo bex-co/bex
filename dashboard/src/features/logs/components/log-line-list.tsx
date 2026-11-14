@@ -10,6 +10,7 @@ import { ArrowDown } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatClockTime } from "@/common/lib/format";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { type AnsiSpan } from "../lib/ansi";
 import { LOG_TYPE_REQUEST, type LogLine } from "../types";
@@ -122,7 +123,7 @@ export function LogLineList({
   loadingOlder = false,
   onLoadOlder,
 }: LogLineListProps) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
   const anchorRef = useRef<{ key: string; offset: number } | null>(null);
@@ -347,6 +348,7 @@ export function LogLineList({
               showTimestamps={showTimestamps}
               onInstanceFilter={onInstanceFilter}
               t={t}
+              language={i18n.language}
             />
           ))}
           <div aria-hidden style={{ height: paddingBottom }} />
@@ -389,6 +391,7 @@ const LogRow = memo(function LogRow({
   showTimestamps,
   onInstanceFilter,
   t,
+  language,
 }: {
   index: number;
   measureRef: (node: Element | null) => void;
@@ -397,6 +400,8 @@ const LogRow = memo(function LogRow({
   showTimestamps: boolean;
   onInstanceFilter?: (instance: string) => void;
   t: Translate;
+  /** The dashboard language the line clock reads in. */
+  language: string;
 }) {
   const isRequest = line.type === LOG_TYPE_REQUEST;
   return (
@@ -410,7 +415,7 @@ const LogRow = memo(function LogRow({
     >
       {showTimestamps ? (
         <span className="shrink-0 tabular-nums text-muted-foreground">
-          {line.time}
+          {formatClockTime(line.timestamp, language)}
         </span>
       ) : null}
       {line.instance ? (

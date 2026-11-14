@@ -10,7 +10,6 @@ import type { AnsiSpan } from "./lib/ansi";
 export interface LogLine {
   key: string;
   timestamp: string; // RFC3339Nano, or "" when the source omitted it
-  time: string; // `timestamp` formatted as Render's line clock, computed once
   instance: string; // replica id (Render's `[bv612]`), or ""
   message: string;
   // Parsed ANSI spans, computed ONCE at ingest (`makeLogLine`) rather than

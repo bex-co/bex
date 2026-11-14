@@ -27,7 +27,9 @@ import {
   type RangePreset,
   type RangeSelection,
 } from "@/features/metrics/lib/range";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatTimeWindow } from "@/common/lib/format";
 import type { en } from "@/i18n";
 
 const RANGE_LABEL_KEYS: Record<RangePreset["id"], keyof typeof en> = {
@@ -67,7 +69,14 @@ export function RangeSelect({
   onRangeChange,
   ariaLabel,
 }: RangeSelectProps) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
+  // The window reads the viewer's clock, which the SSR pass doesn't have, so
+  // it replaces "Custom…" only after hydration (w6/m107's rule).
+  const hydrated = useIsHydrated();
+  const customWindow =
+    hydrated && isCustomRange(range)
+      ? formatTimeWindow(range.startTime, range.endTime, i18n.language)
+      : null;
   const [pickerOpen, setPickerOpen] = useState(false);
   // Seeded when the picker opens (in the handler, not an effect) so it prefills
   // the active custom range, else the last 24 hours.
@@ -109,10 +118,15 @@ export function RangeSelect({
       >
         <SelectTrigger
           size="sm"
-          className="w-40"
+          className={customWindow ? "w-auto min-w-40 max-w-80" : "w-40"}
           aria-label={ariaLabel ?? t("metrics.rangeLabel")}
+          title={customWindow ?? undefined}
         >
-          <SelectValue />
+          <SelectValue>
+            {customWindow && (
+              <span className="truncate tabular-nums">{customWindow}</span>
+            )}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {RANGE_PRESETS.map((preset) => (

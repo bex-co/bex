@@ -161,7 +161,6 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
       {
         key: "k1",
         timestamp: "t",
-        time: "10:36:01",
         instance: "bv612",
         message: "hello from the app",
         type: "app",
@@ -227,7 +226,6 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
       {
         key: "k1",
         timestamp: "t",
-        time: "10:36:01",
         instance: "bv612",
         message: "hello from the app",
         type: "app",
@@ -314,7 +312,6 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
       {
         key: "k1",
         timestamp: "t",
-        time: "10:36:01",
         instance: "bv612",
         message: "historical",
         type: "app",
@@ -441,7 +438,6 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
       {
         key: "k-instance",
         timestamp: "t",
-        time: "10:36:01",
         instance,
         message: "hello from one replica",
         type: "app",
@@ -518,7 +514,6 @@ describe("LogViewer populated background failures", () => {
         {
           key: "reader-row",
           timestamp: new Date(Date.now() - 60_000).toISOString(),
-          time: "12:00:00",
           instance: "pod",
           message: "retained investigation row",
           type: "app",
@@ -553,7 +548,6 @@ describe("LogViewer combined live reader (w4/m192)", () => {
     return {
       key: `${timestamp}|pod|${message}`,
       timestamp,
-      time: "12:00:00",
       instance: "pod",
       message,
       type: "app",

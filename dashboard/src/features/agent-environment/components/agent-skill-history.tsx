@@ -4,7 +4,9 @@ import { Loader2 } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatMediumDateTime } from "@/common/lib/format";
 import { cn } from "@/common/lib/utils/utils.ts";
 import {
   useAgentSkillVersion,
@@ -33,22 +35,17 @@ interface AgentSkillHistoryProps {
 
 type View = "changes" | "content";
 
-function formatTime(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? iso
-    : date.toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      });
-}
-
 /** The author's name (or the id of a removed member), then time and short id. */
 function VersionMeta({ v }: { v: AgentSkillVersionSummary }) {
+  const { i18n } = useTranslations();
+  // The viewer's clock: absent from the SSR pass (w6/m107).
+  const hydrated = useIsHydrated();
   const author = useWorkspaceSubjectLabel(v.createdBy ?? "");
   const parts = [
     v.createdBy ? author : "",
-    v.createdAt ? formatTime(v.createdAt) : "",
+    hydrated && v.createdAt
+      ? formatMediumDateTime(v.createdAt, i18n.language) || v.createdAt
+      : "",
     v.shortId,
   ];
   return <>{parts.filter((part) => part !== "").join(" · ")}</>;

@@ -90,9 +90,9 @@ export function CreditBalanceCard({ billing }: { billing: Billing | null }) {
 }
 
 /** "YYYY-MM" for an RFC3339 instant, for labelling an invoice by its month. */
-function invoiceMonth(periodStart: string): string {
+function invoiceMonth(periodStart: string, language: string): string {
   if (periodStart.length < 7) return "";
-  return periodLabel(periodStart.slice(0, 7));
+  return periodLabel(periodStart.slice(0, 7), language);
 }
 
 /** A charge bex made when agent model spend reached its threshold (ADR091 D10.2a). */
@@ -138,7 +138,7 @@ export function InvoiceHistoryCard({ billing }: { billing: Billing | null }) {
             {invoices.map((inv) => (
               <tr key={inv.id} className="border-b last:border-b-0">
                 <td className="py-2.5 font-medium">
-                  {invoiceMonth(inv.periodStart) || "—"}
+                  {invoiceMonth(inv.periodStart, i18n.language) || "—"}
                   {isAgentModelCharge(inv) ? (
                     <Badge variant="outline" className="ml-2 font-normal">
                       {t("usage.invoiceKindAgentModelCharge")}

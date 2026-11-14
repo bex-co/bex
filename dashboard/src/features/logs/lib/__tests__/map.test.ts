@@ -9,7 +9,6 @@ import {
   toLogLine,
   toLogLines,
 } from "../map";
-import { formatLogTimestamp } from "../format";
 import type { LogLine } from "../../types";
 
 const gqlEntry = (over: Partial<Record<string, string | null>> = {}) => ({
@@ -71,8 +70,6 @@ describe("toLogLine / toLogLines", () => {
       message: "hello world",
       type: "app",
     });
-    // `time` is the once-computed formatted clock (locale/tz-dependent shape).
-    expect(line.time).toBe(formatLogTimestamp("2026-07-05T10:36:01.709Z"));
   });
 
   it("tolerates null fields (empty strings, default type)", () => {
@@ -234,7 +231,6 @@ describe("mergeLogLines", () => {
   const line = (key: string): LogLine => ({
     key,
     timestamp: key,
-    time: key,
     instance: "i",
     message: key,
     type: "app",
@@ -388,18 +384,7 @@ describe("mergeLogLines", () => {
   });
 });
 
-describe("formatLogTimestamp", () => {
-  it("renders blank for empty or unparseable input", () => {
-    expect(formatLogTimestamp("")).toBe("");
-    expect(formatLogTimestamp("not-a-date")).toBe("");
-  });
-
-  it("renders a clock time for a valid RFC3339 stamp", () => {
-    const out = formatLogTimestamp("2026-07-05T10:36:01.709Z");
-    // Locale/timezone-independent shape: HH:MM:SS with an AM/PM marker.
-    expect(out).toMatch(/\d{1,2}:\d{2}:\d{2}/);
-  });
-
+describe("ingest", () => {
   // w9/m63 t001: ANSI is parsed once at ingest (`spans`), not per render.
   it("parses ANSI into spans at ingest, and leaves a plain line null", () => {
     const esc = "\u001b";

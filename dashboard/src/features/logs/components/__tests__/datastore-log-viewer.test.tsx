@@ -43,7 +43,6 @@ function line(i: number): LogLine {
   return {
     key: `line-${i}`,
     timestamp: `2026-07-15T12:00:${String(i % 60).padStart(2, "0")}Z`,
-    time: "12:00:00",
     instance: "dpg-example-1",
     message: i === 0 ? "checkpoint complete" : `line ${i}`,
     spans: null,
@@ -74,7 +73,7 @@ describe("DatastoreLogViewer", () => {
 
     expect(screen.getByText("checkpoint complete")).toBeInTheDocument();
     expect(screen.getByText("[dpg-example-1]")).toBeInTheDocument();
-    expect(screen.getByText("12:00:00")).toBeInTheDocument();
+    expect(screen.getByText("12:00:00 PM")).toBeInTheDocument();
   });
 
   it("distinguishes empty, unavailable, unauthorized, and generic errors", () => {

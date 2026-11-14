@@ -20,11 +20,21 @@ export function periodFor(monthsBack: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-/** Human-readable label for a "YYYY-MM" period string. */
-export function periodLabel(period: string): string {
-  const [year, month] = period.split("-").map(Number);
-  return new Date(year!, month! - 1, 1).toLocaleString("default", {
+/** Human-readable label for a "YYYY-MM" period string in the dashboard
+ *  language: "November 2026", "2026年11月". */
+export function periodLabel(period: string, language: string): string {
+  return periodDate(period).toLocaleString(language, {
     month: "long",
     year: "numeric",
   });
+}
+
+/** The month alone of a "YYYY-MM" period: "November", "11月". */
+export function periodMonthLabel(period: string, language: string): string {
+  return periodDate(period).toLocaleString(language, { month: "long" });
+}
+
+function periodDate(period: string): Date {
+  const [year, month] = period.split("-").map(Number);
+  return new Date(year!, month! - 1, 1);
 }

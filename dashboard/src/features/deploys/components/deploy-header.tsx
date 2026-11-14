@@ -36,7 +36,7 @@ export interface DeployHeaderProps {
  * surfaces can't drift on what a given status looks like.
  */
 export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   // Absolute deploy times are the viewer's local timezone; the UTC SSR pod
   // can't know it, so defer them to a post-hydration render (w6/m107). Must be
   // read before the early `!deploy` return so the hook order stays stable.
@@ -60,24 +60,24 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
   }
   const preDeploy = preDeployStatusKey(deploy.preDeployStatus);
   const commitCreatedAt = hydrated
-    ? formatDateTime(deploy.commitCreatedAt)
+    ? formatDateTime(deploy.commitCreatedAt, i18n.language)
     : null;
   const facts = [
     {
       label: t("deploys.created"),
-      value: hydrated ? formatDateTime(deploy.createdAt) : null,
+      value: hydrated ? formatDateTime(deploy.createdAt, i18n.language) : null,
     },
     {
       label: t("deploys.updated"),
-      value: hydrated ? formatDateTime(deploy.updatedAt) : null,
+      value: hydrated ? formatDateTime(deploy.updatedAt, i18n.language) : null,
     },
     {
       label: t("deploys.started"),
-      value: hydrated ? formatDateTime(deploy.startedAt) : null,
+      value: hydrated ? formatDateTime(deploy.startedAt, i18n.language) : null,
     },
     {
       label: t("deploys.finished"),
-      value: hydrated ? formatDateTime(deploy.finishedAt) : null,
+      value: hydrated ? formatDateTime(deploy.finishedAt, i18n.language) : null,
     },
     {
       // Duration is an elapsed span, not a wall-clock reading — timezone-neutral,

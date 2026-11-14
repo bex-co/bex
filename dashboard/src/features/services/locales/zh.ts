@@ -2783,7 +2783,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Build & Deploy: help text for the pre-deploy command field",
   },
   "services.preDeployPaidOnly": {
-    message: "付费套餐才可使用部署前命令。",
+    message: "付费套餐才可使用预部署命令。",
     description:
       "Build & Deploy: why the pre-deploy command field is disabled on a Free service (Render: paid web services, private services and background workers; w8/m131)",
   },

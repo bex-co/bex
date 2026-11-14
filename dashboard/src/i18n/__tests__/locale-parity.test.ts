@@ -207,3 +207,14 @@ describe("zh addresses the user one way", () => {
     expect(formal).toEqual([]);
   });
 });
+
+// One Chinese name per product term (w4/617): the Pre-Deploy Command is
+// 预部署命令 on Settings, so no other page may call it 部署前命令.
+describe("zh names each product term one way", () => {
+  it.each(NAMESPACES)("$name: no zh message says 部署前命令", ({ zh }) => {
+    const variant = Object.entries(zh ?? {})
+      .filter(([, entry]) => entry.message.includes("部署前命令"))
+      .map(([key, entry]) => `${key}: ${entry.message}`);
+    expect(variant).toEqual([]);
+  });
+});

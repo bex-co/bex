@@ -1,4 +1,5 @@
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { formatDateTime, formatDateLong } from "@/common/lib/format";
 
 /**
@@ -15,11 +16,13 @@ export function useLocalDateTime(
   value: string | null | undefined,
 ): string | null {
   const hydrated = useIsHydrated();
-  return hydrated ? formatDateTime(value) : null;
+  const { i18n } = useTranslations();
+  return hydrated ? formatDateTime(value, i18n.language) : null;
 }
 
 /** The string form of `LocalDate` — see `useLocalDateTime`. */
 export function useLocalDate(value: string | null | undefined): string | null {
   const hydrated = useIsHydrated();
-  return hydrated ? formatDateLong(value) : null;
+  const { i18n } = useTranslations();
+  return hydrated ? formatDateLong(value, i18n.language) : null;
 }

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/common/lib/utils/utils";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { formatDateTime, formatDateLong } from "@/common/lib/format";
 
 interface LocalTimeProps {
@@ -39,22 +40,20 @@ function LocalTime({
   as = "time",
   placeholderClassName,
 }: LocalTimeProps & {
-  format: (iso: string) => string | null;
+  format: (iso: string, language: string) => string | null;
   placeholderClassName: string;
 }) {
   const hydrated = useIsHydrated();
+  const { i18n } = useTranslations();
   const parsed = value && !Number.isNaN(Date.parse(value)) ? value : null;
   if (!parsed) return <>{fallback}</>;
 
   const content = !hydrated ? (
     <Skeleton
-      className={cn(
-        "inline-block h-4 align-[-0.2em]",
-        placeholderClassName,
-      )}
+      className={cn("inline-block h-4 align-[-0.2em]", placeholderClassName)}
     />
   ) : (
-    (format(parsed) ?? fallback)
+    (format(parsed, i18n.language) ?? fallback)
   );
 
   return as === "span" ? (

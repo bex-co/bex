@@ -63,7 +63,7 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.buildMinutesDescription": {
     message:
-      "构建和部署前命令会消耗流水线分钟。你的套餐每月包含一定额度；超出部分按分钟计费。",
+      "构建和预部署命令会消耗流水线分钟。你的套餐每月包含一定额度；超出部分按分钟计费。",
     description: "Explains the plan's included build minutes (w6/m308)",
   },
   "usage.buildMinutesUsed": {
@@ -73,13 +73,13 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.buildMinutesNear": {
     message:
-      "包含的构建分钟即将用尽。如果没有付款方式，用尽后新的构建和部署前命令将停止，直到下月初。",
+      "包含的构建分钟即将用尽。如果没有付款方式，用尽后新的构建和预部署命令将停止，直到下月初。",
     description:
       "Warning once build minutes reach 80 percent of the included minutes (w6/m308)",
   },
   "usage.buildMinutesSpent": {
     message:
-      "包含的构建分钟已用尽。超出部分按分钟计费；如果没有付款方式，新的构建和部署前命令将停止，直到下月初。",
+      "包含的构建分钟已用尽。超出部分按分钟计费；如果没有付款方式，新的构建和预部署命令将停止，直到下月初。",
     description: "Notice once the included build minutes are spent (w6/m308)",
   },
   "usage.bandwidthTitle": {
@@ -120,7 +120,7 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.pipelineDescription": {
     message:
-      "构建和部署前命令会消耗流水线分钟。超出套餐包含额度的分钟按分钟计费，不超过你设置的每月消费上限。达到上限后，构建将停止到下月。",
+      "构建和预部署命令会消耗流水线分钟。超出套餐包含额度的分钟按分钟计费，不超过你设置的每月消费上限。达到上限后，构建将停止到下月。",
     description: "Explains the pipeline spend limit (w6/m309)",
   },
   "usage.pipelineSpendLimitValue": {
@@ -149,7 +149,7 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.pipelineSpendLimitDialogDescription": {
     message:
-      "此工作区每月在超出套餐包含额度的构建分钟上的最高花费。达到后，新的构建和部署前命令将停止，直到下月初。",
+      "此工作区每月在超出套餐包含额度的构建分钟上的最高花费。达到后，新的构建和预部署命令将停止，直到下月初。",
     description: "Explains what the pipeline spend limit caps (w6/m309)",
   },
   "usage.pipelineSpendLimitLabel": {

@@ -1,19 +1,19 @@
 # w10 · m376 — Absolute times read in the dashboard's language, and a custom range states its window
 
-**Worker:** worker10 **Goal:** in the zh dashboard every absolute date and time reads in Chinese while en stays byte-for-byte unchanged, the log clock follows the dashboard language instead of the browser's, a custom Logs or Metrics range shows the window it covers, and the Pre-Deploy Command has one Chinese name. **Status:** todo
+**Worker:** worker10 **Goal:** in the zh dashboard every absolute date and time reads in Chinese while en stays byte-for-byte unchanged, the log clock follows the dashboard language instead of the browser's, a custom Logs or Metrics range shows the window it covers, and the Pre-Deploy Command has one Chinese name. **Status:** blocked (release gate: t001, t003–t008 done 2026-11-14; t002's production cold-load check and t009 wait for the batched deploy, then a worker replays the live DoD; no user action)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The shared date formatters follow the dashboard language (absorbs w4/600) | 1h | — |
-| [t002](t002.md) | Server and client format dates in the same language, so a zh cold load hydrates cleanly | 30m | t001 |
-| [t003](t003.md) | A custom Logs or Metrics range shows the window it covers (absorbs w4/619) | 25m | t001 |
-| [t004](t004.md) | The Pre-Deploy Command has one Chinese name (absorbs w4/617) | 15m | — |
-| [t005](t005.md) | A test keeps hard-coded locales out of date formatting | 20m | t001 |
-| [t006](t006.md) | Render parity | 20m | t002, t003, t004, t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 40m | t006, t007 |
+| [t001](done/t001.md) | The shared date formatters follow the dashboard language (absorbs w4/600) — **DONE** | 1h | — |
+| [t002](t002.md) | Server and client format dates in the same language, so a zh cold load hydrates cleanly — **BLOCKED (release gate)** | 30m | t001 |
+| [t003](done/t003.md) | A custom Logs or Metrics range shows the window it covers (absorbs w4/619) — **DONE** | 25m | t001 |
+| [t004](done/t004.md) | The Pre-Deploy Command has one Chinese name (absorbs w4/617) — **DONE** | 15m | — |
+| [t005](done/t005.md) | A test keeps hard-coded locales out of date formatting — **DONE** | 20m | t001 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t002, t003, t004, t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 40m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 Total: **9 tasks, about 3h55m**.
@@ -41,4 +41,4 @@ On production, after the deploy that carries this milestone:
 
 ## Findings
 
-None yet.
+**2026-11-14 (`/loopx w10`).** Every formatter now takes `i18n.language`, the instance SSR renders with, and every absolute time still renders only after hydration, so the SSR markup holds no formatted time. The ESLint guard found nine more locale-less call sites than w4/600 listed (chart tooltips and markers, cron runs, skill versions, Usage month labels, a disk snapshot, four time-zone probes); all now go through `src/common/lib/format`. `periodLabel(…).split(" ")[0]` (the Usage month) only ever worked in English; `periodMonthLabel` replaces it. w21/054 is a separate language-bootstrap case and is not claimed fixed.

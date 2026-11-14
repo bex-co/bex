@@ -26,6 +26,7 @@ import {
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { LocalDateTime } from "@/common/components/local-time";
 import { useLocalDateTime } from "@/common/hooks/use-local-date";
 import {
   hasGraphQLErrorCode,
@@ -663,7 +664,7 @@ function SnapshotsCard({
           <ul className="divide-y">
             {snapshots.map((snapshot) => (
               <li key={snapshot.snapshotKey} className="flex items-center justify-between gap-4 py-3">
-                <span className="text-sm">{new Date(snapshot.createdAt).toLocaleString()}</span>
+                <LocalDateTime value={snapshot.createdAt} className="text-sm" as="span" />
                 {canCreate ? (
                   <Button
                     variant="outline"

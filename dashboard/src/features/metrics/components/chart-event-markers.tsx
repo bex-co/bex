@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { CircleDot, Rocket } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatTimeOfDay } from "@/common/lib/format";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import {
   CHART_WIDTH as WIDTH,
@@ -70,7 +71,7 @@ export function ChartEventStrip({
   clusters: MarkerCluster[];
   serviceId: string;
 }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const base = useServiceBase();
   const [active, setActive] = useState<number | null>(null);
 
@@ -138,7 +139,7 @@ export function ChartEventStrip({
                       {markerLabel(marker, t)}
                     </span>
                     <span className="shrink-0 text-muted-foreground">
-                      {new Date(marker.time).toLocaleTimeString()}
+                      {formatTimeOfDay(marker.time, i18n.language)}
                     </span>
                   </div>
                 ))}

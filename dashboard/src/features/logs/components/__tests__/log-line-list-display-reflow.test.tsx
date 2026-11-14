@@ -76,7 +76,6 @@ const makeLines = (count: number): LogLine[] =>
   Array.from({ length: count }, (_, i) => ({
     key: `line-${i}`,
     timestamp: "2026-10-17T00:00:00Z",
-    time: "00:00:00",
     instance: "",
     message: `ROW=${i}`,
     spans: null,

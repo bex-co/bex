@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
@@ -57,20 +57,23 @@ import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-nav
 /** Build `count` month options starting `startFrom` months back, newest first. */
 function buildMonthOptions(
   count: number,
-  startFrom = 0,
+  startFrom: number,
+  language: string,
 ): { value: string; label: string }[] {
   return Array.from({ length: count }, (_, i) => {
     const p = periodFor(i + startFrom);
-    return { value: p, label: periodLabel(p) };
+    return { value: p, label: periodLabel(p, language) };
   });
 }
-
-const MONTH_OPTIONS = buildMonthOptions(5, 1);
 // Sentinel value for Radix Select (an empty string is not a legal item value).
 const CURRENT_MONTH_SENTINEL = "__current__";
 
 export function UsagePage() {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
+  const monthOptions = useMemo(
+    () => buildMonthOptions(5, 1, i18n.language),
+    [i18n.language],
+  );
   const [selectedPeriod, setSelectedPeriod] = useState<string>(
     CURRENT_MONTH_SENTINEL,
   );
@@ -106,7 +109,7 @@ export function UsagePage() {
                   <SelectItem value={CURRENT_MONTH_SENTINEL}>
                     {t("usage.currentMonth")}
                   </SelectItem>
-                  {MONTH_OPTIONS.map((opt) => (
+                  {monthOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>

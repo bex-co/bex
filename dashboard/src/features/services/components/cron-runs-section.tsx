@@ -22,6 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/common/components/ui/table";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
+import { formatShortDateTime } from "@/common/lib/format";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCronRuns } from "@/features/services/hooks/use-cron-runs";
 import { useCronRun } from "@/features/services/hooks/use-cron-run";
@@ -92,7 +94,8 @@ function duration(run: CronRunView): string {
 /** Cursor-paged cron run objects with Trigger Run, per-run detail, and a
  *  confirmed cancel action for pending rows. */
 export function CronRunsSection({ serviceId }: { serviceId: string }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
+  const clockLanguage = useIsHydrated() ? i18n.language : null;
   const {
     runs,
     loading,
@@ -257,7 +260,11 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                               <span className="sr-only">
                                 {run.startedAt
                                   ? t("services.cronRunDetailToggle", {
-                                      when: runToggleWhen(run, runs),
+                                      when: runToggleWhen(
+                                        run,
+                                        runs,
+                                        clockLanguage,
+                                      ),
                                     })
                                   : t(
                                       "services.cronRunDetailToggleNotStarted",
@@ -351,19 +358,25 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
 /** What a started run's detail toggle names it by: its absolute start time,
  *  with its row number when another listed run shares it. The run id is never
  *  part of the name (w4/m300). */
-function runToggleWhen(run: CronRunView, runs: CronRunView[]): string {
-  const when = absoluteTime(run.startedAt);
+function runToggleWhen(
+  run: CronRunView,
+  runs: CronRunView[],
+  language: string | null,
+): string {
+  const when = absoluteTime(run.startedAt, language);
   const shared = runs.some(
-    (other) => other.id !== run.id && absoluteTime(other.startedAt) === when,
+    (other) =>
+      other.id !== run.id && absoluteTime(other.startedAt, language) === when,
   );
   return shared ? `${when} (#${runs.indexOf(run) + 1})` : when;
 }
 
-/** Absolute local timestamp, or an em dash when the run hasn't reached it yet. */
-function absoluteTime(value: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+/** Absolute local timestamp in the dashboard language, or an em dash when the
+ *  run hasn't reached it yet or the page hasn't hydrated (`language` null:
+ *  the SSR pass has no viewer clock, w6/m107). */
+function absoluteTime(value: string | null, language: string | null): string {
+  if (!value || language === null) return "—";
+  return formatShortDateTime(value, language) || "—";
 }
 
 /**
@@ -442,7 +455,8 @@ function runLogsSearch(run: CronRunView) {
 /** The detail's five-field grid — one layout for the masked preview and the
  *  ready detail, so the two cannot drift apart. */
 function CronRunFields({ run, masked }: { run: CronRunView; masked: boolean }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
+  const clockLanguage = useIsHydrated() ? i18n.language : null;
   return (
     <dl
       aria-busy={masked || undefined}
@@ -452,10 +466,14 @@ function CronRunFields({ run, masked }: { run: CronRunView; masked: boolean }) {
         <CronRunStatusBadge status={run.status} />
       </DetailField>
       <DetailField label={t("services.cronRunDetailStarted")} masked={masked}>
-        <span className="tabular-nums">{absoluteTime(run.startedAt)}</span>
+        <span className="tabular-nums">
+          {absoluteTime(run.startedAt, clockLanguage)}
+        </span>
       </DetailField>
       <DetailField label={t("services.cronRunDetailFinished")} masked={masked}>
-        <span className="tabular-nums">{absoluteTime(run.finishedAt)}</span>
+        <span className="tabular-nums">
+          {absoluteTime(run.finishedAt, clockLanguage)}
+        </span>
       </DetailField>
       <DetailField label={t("services.cronRunColDuration")} masked={masked}>
         <span className="tabular-nums">{duration(run)}</span>

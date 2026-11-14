@@ -1,7 +1,6 @@
 import type { LogsQuery } from "@/graphql/definitions";
 import type { LogLine } from "../types";
 import { LOG_TYPE_APP } from "../types";
-import { formatLogTimestamp } from "./format";
 import { needsAnsiParse, parseAnsi } from "./ansi";
 
 // map.ts is the log data layer: it turns bex-api's two log wire shapes — the
@@ -52,10 +51,10 @@ function lineKey(
 }
 
 // makeLogLine is the single place a LogLine is built — both wire shapes converge
-// here so the key derivation, the once-computed formatted `time`, and the `app`
-// type fallback live in one spot. level/method/statusCode/host/path come from
-// the entry's labels (empty for an app line without them, populated for a
-// request line).
+// here so the key derivation and the `app` type fallback live in one spot.
+// level/method/statusCode/host/path come from the entry's labels (empty for an
+// app line without them, populated for a request line). The clock is formatted
+// per row at render, in the dashboard language.
 function makeLogLine(
   id: string | undefined,
   timestamp: string,
@@ -69,7 +68,6 @@ function makeLogLine(
   return {
     key: lineKey(id, timestamp, instance, message),
     timestamp,
-    time: formatLogTimestamp(timestamp),
     instance,
     message,
     // ANSI parsed once here at ingest, not per render (w9/m63 t001).

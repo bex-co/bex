@@ -5,6 +5,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import { globalIgnores } from "eslint/config";
 
+const DATE_LANGUAGE_MESSAGE =
+  "Format dates in the dashboard language through src/common/lib/format, never the browser's or a fixed locale.";
+
 export default tseslint.config([
   globalIgnores([
     "dist",
@@ -75,6 +78,97 @@ export default tseslint.config([
       "react-hooks/immutability": "off",
       // Disable type-aware rules for test files
       "@typescript-eslint/no-floating-promises": "off",
+    },
+  },
+  // Absolute times read in the dashboard language, never the browser's or a
+  // hard-coded one (w4/600): format through src/common/lib/format, or hand
+  // the i18n language to Intl explicitly.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      "src/common/lib/format/**",
+      "**/*.test.{ts,tsx}",
+      "**/__tests__/**",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "date-fns",
+              importNames: [
+                "format",
+                "formatDistance",
+                "formatDistanceStrict",
+                "formatDistanceToNow",
+                "formatRelative",
+                "intlFormat",
+                "lightFormat",
+              ],
+              message: DATE_LANGUAGE_MESSAGE,
+            },
+          ],
+          patterns: [
+            {
+              group: ["date-fns/locale", "date-fns/locale/*"],
+              message: DATE_LANGUAGE_MESSAGE,
+            },
+          ],
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        // A date with no locale, or the browser's (undefined, [] or "default").
+        {
+          selector:
+            "CallExpression[callee.property.name=/^toLocale(Date|Time)String$/][arguments.length=0]",
+          message: DATE_LANGUAGE_MESSAGE,
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/][arguments.0.type='Identifier'][arguments.0.name='undefined']",
+          message: DATE_LANGUAGE_MESSAGE,
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/][arguments.0.type='ArrayExpression']",
+          message: DATE_LANGUAGE_MESSAGE,
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/][arguments.0.type='Literal'][arguments.0.value='default']",
+          message: DATE_LANGUAGE_MESSAGE,
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='toLocaleString'][arguments.length=0][callee.object.callee.name='Date']",
+          message: DATE_LANGUAGE_MESSAGE,
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='toLocaleString'][arguments.length=0][callee.object.name=/(date|At)$/i]",
+          message: DATE_LANGUAGE_MESSAGE,
+        },
+        // Intl.DateTimeFormat for display: a fixed locale, the browser's, or none.
+        // A bare `Intl.DateTimeFormat().resolvedOptions()` (the viewer's zone)
+        // is allowed.
+        {
+          selector:
+            ":matches(NewExpression, CallExpression)[callee.object.name='Intl'][callee.property.name='DateTimeFormat'][arguments.0.type=/^(Literal|ArrayExpression)$/]",
+          message: DATE_LANGUAGE_MESSAGE,
+        },
+        {
+          selector:
+            ":matches(NewExpression, CallExpression)[callee.object.name='Intl'][callee.property.name='DateTimeFormat'][arguments.0.type='Identifier'][arguments.0.name='undefined']",
+          message: DATE_LANGUAGE_MESSAGE,
+        },
+        {
+          selector:
+            "NewExpression[callee.object.name='Intl'][callee.property.name='DateTimeFormat'][arguments.length=0]",
+          message: DATE_LANGUAGE_MESSAGE,
+        },
+      ],
     },
   },
   {

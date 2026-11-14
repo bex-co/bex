@@ -4,6 +4,7 @@
 // words. The server stays the authority (minimum cron interval, past instants,
 // zone database), so only shape errors are caught here.
 
+import { isValidTimeZone } from "@/common/lib/format";
 import type { AgentAutomationScheduleInput } from "@/graphql/definitions";
 
 export const FREQUENCIES = ["hour", "day", "week", "once", "custom"] as const;
@@ -101,13 +102,7 @@ const WALL_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 function isKnownZone(zone: string): boolean {
-  if (zone === "" || zone === "Local") return false;
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: zone });
-    return true;
-  } catch {
-    return false;
-  }
+  return zone !== "" && zone !== "Local" && isValidTimeZone(zone);
 }
 
 interface WallParts {
@@ -120,6 +115,9 @@ interface WallParts {
 
 /** The wall clock in `zone` at an instant. */
 function wallPartsAt(ms: number, zone: string): WallParts {
+  // Numeric parts for schedule math, read back with formatToParts; nothing is
+  // displayed, so the locale only fixes the parts' shape.
+  // eslint-disable-next-line no-restricted-syntax
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: zone,
     hourCycle: "h23",

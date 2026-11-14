@@ -348,3 +348,44 @@ describe("RangeSelect keeps a precise custom window (w4/328)", () => {
     expect(screen.getByLabelText("Start")).not.toHaveAttribute("step");
   });
 });
+
+// w4/619: an active custom range says which window it covers, in the
+// dashboard language; "Custom…" stays the dropdown option.
+describe("RangeSelect names the custom window it covers", () => {
+  const window: CustomRange = {
+    id: "custom",
+    startTime: "2026-11-12T15:39:00Z",
+    endTime: "2026-11-12T15:39:20Z",
+    resolutionSeconds: 1,
+  };
+
+  it("shows the window in the trigger, and a preset's name otherwise", async () => {
+    const { rerender } = render(
+      <RangeSelect range={window} onRangeChange={() => {}} />,
+    );
+    const trigger = screen.getByRole("combobox");
+    expect(trigger).toHaveTextContent("Nov 12, 3:39:00 PM – 3:39:20 PM");
+    // Intl spaces with U+202F/U+2009; the text matcher folds them, so fold
+    // the attribute the same way.
+    expect(trigger.getAttribute("title")?.replace(/\s/g, " ")).toBe(
+      "Nov 12, 3:39:00 PM – 3:39:20 PM",
+    );
+    rerender(
+      <RangeSelect range={DEFAULT_RANGE_PRESET} onRangeChange={() => {}} />,
+    );
+    expect(screen.getByRole("combobox")).not.toHaveTextContent("3:39");
+  });
+
+  it("reads in zh", async () => {
+    const i18n = (await import("@/i18n/init")).default;
+    await i18n.changeLanguage("zh");
+    try {
+      render(<RangeSelect range={window} onRangeChange={() => {}} />);
+      expect(screen.getByRole("combobox")).toHaveTextContent(
+        "11/12 下午3:39:00 – 下午3:39:20",
+      );
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+  });
+});

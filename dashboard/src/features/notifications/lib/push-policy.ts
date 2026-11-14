@@ -1,3 +1,4 @@
+import { isValidTimeZone } from "@/common/lib/format";
 import {
   PushNotificationEvent,
   PushNotificationUrgency,
@@ -70,6 +71,8 @@ export const MAX_DEFERRAL_SECONDS = 7 * 24 * 60 * 60;
  */
 export function canonicalTimeZone(timeZone: string): string {
   try {
+    // Resolves the zone's canonical name; nothing is displayed.
+    // eslint-disable-next-line no-restricted-syntax
     const resolved = new Intl.DateTimeFormat("en", {
       timeZone,
     }).resolvedOptions().timeZone;
@@ -94,9 +97,7 @@ export function validatePushSettings(
   ) {
     return "notifications.pushInvalidTimezone";
   }
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: settings.timeZone }).format();
-  } catch {
+  if (!isValidTimeZone(settings.timeZone)) {
     return "notifications.pushInvalidTimezone";
   }
   if (

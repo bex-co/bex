@@ -51,7 +51,6 @@ function line(message: string, type: string): LogLine {
   return {
     key: message,
     timestamp: "2026-07-14T00:01:00Z",
-    time: "00:01:00",
     instance: "",
     message,
     spans: null,
@@ -265,7 +264,6 @@ describe("DeployLogPanel", () => {
     const line = (key: string, message: string, type: string): LogLine => ({
       key,
       timestamp: "2026-07-17T20:16:14Z",
-      time: "20:16:14",
       instance: "",
       message,
       spans: null,
@@ -349,7 +347,6 @@ describe("DeployLogPanel", () => {
     const line = (key: string, message: string): LogLine => ({
       key,
       timestamp: "2026-07-17T20:16:14Z",
-      time: "20:16:14",
       instance: "",
       message,
       spans: needsAnsiParse(message) ? parseAnsi(message) : null,
@@ -401,7 +398,6 @@ describe("DeployLogPanel", () => {
       {
         key: "selected",
         timestamp: "2026-07-17T20:16:14Z",
-        time: "20:16:14",
         instance: selectedInstance,
         message: "selected instance",
         spans: null,
@@ -415,7 +411,6 @@ describe("DeployLogPanel", () => {
       {
         key: "other",
         timestamp: "2026-07-17T20:16:15Z",
-        time: "20:16:15",
         instance: "eden-cms-v2-6f7d8f9c4b-r9x2p",
         message: "other instance",
         spans: null,

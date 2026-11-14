@@ -1,5 +1,5 @@
 import { formatDistanceStrict } from "date-fns";
-import { zhCN } from "date-fns/locale/zh-CN";
+import { dateFnsLocale, isChinese } from "./language";
 
 export interface TimeAgoOptions {
   /**
@@ -35,9 +35,20 @@ export function formatTimeAgo(
   if (now - then < 60_000) return justNow;
   return formatDistanceStrict(then, now, {
     addSuffix: true,
-    locale: language?.toLowerCase().startsWith("zh") ? zhCN : undefined,
+    locale: dateFnsLocale(language),
   });
 }
+
+const ZH_INSTANT: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+  timeZoneName: "short",
+};
 
 export interface InstantDetails {
   /** "September 15, 2026 at 9:31:22 AM PDT" — the viewer's own clock. */
@@ -48,18 +59,25 @@ export interface InstantDetails {
   unix: string;
 }
 
-// Deliberately the same fixed en-US calendar text as `formatDateTime` (month
-// names, "at", comma placement) so the two readings of one instant line up;
-// `long` adds seconds and the zone name that the row's short form omits.
-const LOCAL_FORMAT = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "long",
-  timeStyle: "long",
-});
-const UTC_FORMAT = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "long",
-  timeStyle: "long",
-  timeZone: "UTC",
-});
+// The same calendar text per language as `formatDateTime` ("at" and comma
+// placement in en, 年月日 and 上午/下午 in zh) so the two readings of one
+// instant line up; it adds seconds and the zone name the row's short form
+// omits. zh spells the fields out because its `timeStyle: "long"` is 24-hour.
+const instantLocal = {
+  en: new Intl.DateTimeFormat("en-US", {
+    dateStyle: "long",
+    timeStyle: "long",
+  }),
+  zh: new Intl.DateTimeFormat("zh-CN", ZH_INSTANT),
+};
+const instantUtc = {
+  en: new Intl.DateTimeFormat("en-US", {
+    dateStyle: "long",
+    timeStyle: "long",
+    timeZone: "UTC",
+  }),
+  zh: new Intl.DateTimeFormat("zh-CN", { ...ZH_INSTANT, timeZone: "UTC" }),
+};
 
 /**
  * The exact instant behind a relative time, three ways (local, UTC, Unix) —
@@ -70,13 +88,15 @@ const UTC_FORMAT = new Intl.DateTimeFormat("en-US", {
  */
 export function formatInstantDetails(
   iso: string | null | undefined,
+  language?: string,
 ): InstantDetails | null {
   const ms = parseInstant(iso);
   if (ms === null) return null;
   const date = new Date(ms);
+  const key = isChinese(language) ? "zh" : "en";
   return {
-    local: LOCAL_FORMAT.format(date),
-    utc: UTC_FORMAT.format(date),
+    local: instantLocal[key].format(date),
+    utc: instantUtc[key].format(date),
     unix: String(Math.floor(ms / 1000)),
   };
 }

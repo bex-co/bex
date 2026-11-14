@@ -58,8 +58,8 @@ export function InstantTooltip({
 }
 
 function InstantDetails({ value }: { value: string }) {
-  const { t } = useTranslations();
-  const details = formatInstantDetails(value);
+  const { t, i18n } = useTranslations();
+  const details = formatInstantDetails(value, i18n.language);
   if (!details) return null;
   const rows: [string, string][] = [
     [t("common.timeLocal"), details.local],

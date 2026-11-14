@@ -26,7 +26,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
-import { periodLabel } from "@/features/usage/lib/period";
+import { periodMonthLabel } from "@/features/usage/lib/period";
 import {
   billingWindow,
   currentPeriod,
@@ -501,7 +501,7 @@ export function ChargesCard({
                   add up to Stripe's subscription-period headline. */}
               <dt>
                 {t("usage.breakdownMonthToDate", {
-                  month: periodLabel(currentPeriod(now)).split(" ")[0] ?? "",
+                  month: periodMonthLabel(currentPeriod(now), i18n.language),
                 })}
               </dt>
               <dd className="font-mono tabular-nums">
@@ -526,8 +526,10 @@ export function ChargesCard({
                 {rated != null
                   ? t("usage.projectedTotalBillingPeriod")
                   : t("usage.projectedTotal", {
-                      month:
-                        periodLabel(currentPeriod(now)).split(" ")[0] ?? "",
+                      month: periodMonthLabel(
+                        currentPeriod(now),
+                        i18n.language,
+                      ),
                     })}
               </dt>
               <dd className="font-mono tabular-nums">
