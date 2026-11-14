@@ -1,19 +1,19 @@
 # w10 · m377 — An unpaged Render-shaped list returns Render's first page of 20, as on Render
 
-**Worker:** worker10 **Goal:** every REST list operation in Render's pinned contract that bex serves, called with neither `cursor` nor `limit`, answers Render's default page of 20 with a cursor to continue, as the user decided on 2026-11-13; bex's own clients that need whole lists page through. **Status:** todo
+**Worker:** worker10 **Goal:** every REST list operation in Render's pinned contract that bex serves, called with neither `cursor` nor `limit`, answers Render's default page of 20 with a cursor to continue, as the user decided on 2026-11-13; bex's own clients that need whole lists page through. **Status:** blocked (release gate: t001–t008 done 2026-11-14; t009 waits for the batched production deploy, then a worker replays DoD 2 as the QA user on a list that changed, such as `/v1/sandboxes` or a static site's `/routes`; no user action. The REST-only scope is still the proposal's recommendation, for the user to confirm)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Inventory: what each served list operation returns unpaged, and which in-repo clients read whole lists | 45m | — |
-| [t002](t002.md) | Contract: retire the full-set default for REST in ADR006 and record the decision in ADR018 | 20m | t001 |
-| [t003](t003.md) | Every served Render list answers Render's default page when unpaged | 1.5h | t002 |
-| [t004](t004.md) | A guard test walks every served pinned list operation | 1h | t003 |
-| [t005](t005.md) | bex's own REST clients page through whole lists; MCP follows Render's MCP server | 45m | t003 |
-| [t006](t006.md) | Render parity | 20m | t003, t004, t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 40m | t006, t007 |
+| [t001](done/t001.md) | Inventory: what each served list operation returns unpaged, and which in-repo clients read whole lists — **DONE** | 45m | — |
+| [t002](done/t002.md) | Contract: retire the full-set default for REST in ADR006 and record the decision in ADR018 — **DONE** | 20m | t001 |
+| [t003](done/t003.md) | Every served Render list answers Render's default page when unpaged — **DONE** | 1.5h | t002 |
+| [t004](done/t004.md) | A guard test walks every served pinned list operation — **DONE** | 1h | t003 |
+| [t005](done/t005.md) | bex's own REST clients page through whole lists; MCP follows Render's MCP server — **DONE** | 45m | t003 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t003, t004, t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 40m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 Total: **9 tasks, about 5h45m**.
@@ -38,4 +38,4 @@ Total: **9 tasks, about 5h45m**.
 
 ## Findings
 
-None yet.
+**2026-11-14 (`/loopx w10`).** Only six of the 45 pinned list operations still returned more than Render's page unpaged; the rest already answered 20 (most since w8/191). DoD 2's `GET /v1/projects` was one of those, so it cannot show the change; the live check uses a switched list instead. Several ADR006/ADR018 lines had described the old default wrongly before this change (env vars, secret files and Postgres already answered 20; deploys answered 100, not the full history). The guard caught one list whose `limit` is defined inline (`list-sandbox-groups`), which a `$ref`-only check would have missed.

@@ -525,11 +525,11 @@ expect_status 404 "$fixture_dir/member-b.curl" GET "/v1/sandboxes/$sandbox_a_id?
 expect_status 404 "$fixture_dir/member-b.curl" POST "/v1/sandboxes/$sandbox_a_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/stop-cross-owner.json"
 expect_status 200 "$fixture_dir/admin-a.curl" GET "/v1/sandboxes/$sandbox_a_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/get-admin.json"
 expect_status 404 "$fixture_dir/owner-c.curl" GET "/v1/sandboxes/$sandbox_a_id?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/get-cross-workspace.json"
-expect_status 200 "$fixture_dir/member-b.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/list-member.json"
+expect_status 200 "$fixture_dir/member-b.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A&limit=100" "$fixture_dir/list-member.json"
 jq -e --arg own "$sandbox_b_id" --arg foreign "$sandbox_a_id" \
   '([.[].sandbox.id] | index($own)) != null and ([.[].sandbox.id] | index($foreign)) == null' \
   "$fixture_dir/list-member.json" >/dev/null || fail "ordinary member list crossed the owner boundary"
-expect_status 200 "$fixture_dir/admin-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/list-admin.json"
+expect_status 200 "$fixture_dir/admin-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A&limit=100" "$fixture_dir/list-admin.json"
 jq -e --arg a "$sandbox_a_id" --arg b "$sandbox_b_id" \
   '([.[].sandbox.id] | index($a)) != null and ([.[].sandbox.id] | index($b)) != null' \
   "$fixture_dir/list-admin.json" >/dev/null || fail "workspace admin could not list both owned sandboxes"
@@ -1446,13 +1446,13 @@ jq -e --arg g "$group_limit_id" '.sandboxGroupId == $g' "$fixture_dir/group-x1.j
 expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$group_x1_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/group-x1-get.json"
 jq -e --arg g "$group_limit_id" '.sandboxGroupId == $g' "$fixture_dir/group-x1-get.json" >/dev/null \
   || fail "a read of the grouped sandbox lost its group"
-expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A&sandboxGroupId=$group_limit_id" "$fixture_dir/list-group-limit.json"
+expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A&sandboxGroupId=$group_limit_id&limit=100" "$fixture_dir/list-group-limit.json"
 jq -e --arg x1 "$group_x1_id" --arg g "$group_limit_id" '
   ([.[].sandbox.id] == [$x1]) and all(.[]; .sandbox.sandboxGroupId == $g)' "$fixture_dir/list-group-limit.json" >/dev/null \
   || fail "the group filter did not return exactly the sandbox created in that group: $(head -c 600 "$fixture_dir/list-group-limit.json")"
 # Read as the workspace admin: B is member-b's, and owner-a, an ordinary member,
 # lists only its own sandboxes (the owner boundary asserted above).
-expect_status 200 "$fixture_dir/admin-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A&sandboxGroupId=$group_default_id" "$fixture_dir/list-group-default.json"
+expect_status 200 "$fixture_dir/admin-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A&sandboxGroupId=$group_default_id&limit=100" "$fixture_dir/list-group-default.json"
 jq -e --arg x1 "$group_x1_id" --arg g "$group_default_id" --arg a "$sandbox_a_id" --arg b "$sandbox_b_id" --arg d "$sandbox_d_id" --arg e "$sandbox_e_id" '
   ([.[].sandbox.id] as $ids
    | ($ids | index($a)) != null and ($ids | index($b)) != null and ($ids | index($d)) != null and ($ids | index($e)) != null

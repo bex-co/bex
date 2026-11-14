@@ -351,20 +351,20 @@ n_unknown="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$JSVC&type=app&
   || fail "the plaintext line should be level=unknown, got $n_unknown lines"
 
 # 7. DISCOVERY: real values, and scoped to the service that asked (tenancy).
-levels="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$JSVC&label=level")"
+levels="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$JSVC&label=level&limit=100")"
 echo "$levels" | jq -e 'index("error") != null and index("info") != null and index("unknown") != null' >/dev/null \
   || fail "level discovery should list the fixture's real levels (error/info/unknown), got $levels"
-statuses="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$SVC&label=statusCode")"
+statuses="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$SVC&label=statusCode&limit=100")"
 echo "$statuses" | jq -e 'index("200") != null' >/dev/null \
   || fail "statusCode discovery should list 200 for $SVC, got $statuses"
 pass "DISCOVERY: label values are the service's REAL levels ($(echo "$levels" | jq -c .)) and statuses"
 
 # TENANCY: the JSON fixture never served a request, so it must expose NO methods —
 # proving discovery is scoped to the asking service, not the whole store.
-jmethods="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$JSVC&label=method")"
+jmethods="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$JSVC&label=method&limit=100")"
 [ "$(echo "$jmethods" | jq 'length')" -eq 0 ] \
   || fail "TENANCY LEAK: $JSVC has no request logs but method discovery returned $jmethods"
-jinst="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$JSVC&label=instance")"
+jinst="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$JSVC&label=instance&limit=100")"
 echo "$jinst" | jq -e --arg p "$NEW_POD" 'index($p) == null' >/dev/null \
   || fail "TENANCY LEAK: $JSVC's instance discovery lists $SVC's pod $NEW_POD"
 pass "TENANCY: $JSVC's discovery never returns $SVC's methods or pods (scoped to the caller's service)"

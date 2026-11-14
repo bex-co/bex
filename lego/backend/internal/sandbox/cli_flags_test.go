@@ -548,13 +548,11 @@ func TestNotOfferedRoutesNameTheFeature(t *testing.T) {
 }
 
 // The pinned OpenAPI (list-sandboxes) gives `limit` a default of 20, a minimum of
-// 1 and a maximum of 100. Once `limit` or `cursor` is present bex pages by the
-// repo's policy (core.PageParams): the default is 20, and a value outside 1..100
-// is clamped, never refused. Omitting both returns the full list, which is the
-// platform-wide divergence ADR006 records ("pre-pagination clients"); Render
-// returns 20 there. Whether Render clamps or refuses a 101 is not in the OpenAPI
-// (w22/001, ADR104 D7).
-func TestListLimitIsClampedToOneHundredAndAnUnpagedListIsComplete(t *testing.T) {
+// 1 and a maximum of 100. bex pages by the repo's policy (core.PageParams): the
+// default is 20, with or without a cursor, as on Render (w10/m377), and a value
+// outside 1..100 is clamped, never refused. Whether Render clamps or refuses a
+// 101 is not in the OpenAPI (w22/001, ADR104 D7).
+func TestListLimitIsClampedToOneHundredAndAnUnpagedListGetsRendersFirstPage(t *testing.T) {
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var items []map[string]any
 		for i := range 130 {
@@ -574,7 +572,7 @@ func TestListLimitIsClampedToOneHundredAndAnUnpagedListIsComplete(t *testing.T) 
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	for query, want := range map[string]int{
-		"":               130, // no limit or cursor: the full list (ADR006's recorded divergence from Render's 20)
+		"":               20,  // no limit or cursor: Render's first page (w10/m377)
 		"?limit=1":       1,   // minimum
 		"?limit=100":     100, // the maximum is accepted
 		"?limit=101":     100, // above it is clamped, not refused

@@ -153,11 +153,38 @@ func TestRESTListFiltersAndPaginates(t *testing.T) {
 		t.Fatalf("window = %+v, want [dep-4 dep-3]", list)
 	}
 
-	// No params returns the newest core.MaxPageLimit page (all 5 here fit;
-	// the store bounds an absent limit — codex-security round-6 #7).
+	// No params returns Render's first page of 20; all 5 fit here.
 	rec = get("/v1/services/web/deploys")
 	if list = decodeList(t, rec); len(list) != 5 {
-		t.Fatalf("no params = %d rows, want all 5 (under the page cap)", len(list))
+		t.Fatalf("no params = %d rows, want all 5 (under the page)", len(list))
+	}
+}
+
+// w10/m377: an unpaged REST list is Render's first page of 20, with the cursor
+// that fetches the rest; an explicit limit still reaches 100.
+func TestRESTUnpagedDeployListIsRendersFirstPage(t *testing.T) {
+	ds := newFakeStore()
+	base := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	for i := range 25 {
+		created := base.Add(time.Duration(i) * time.Minute)
+		ds.byApp["srv-1"] = append([]store.Deploy{{
+			ID: fmt.Sprintf("dep-%02d", i), AppID: "srv-1", Trigger: store.TriggerAPI,
+			Status: store.DeployLive, CreatedAt: created, UpdatedAt: created,
+		}}, ds.byApp["srv-1"]...)
+	}
+	svc, _ := newService(ds, sampleApp("web", "srv-1"))
+	get := func(path string) []deployWithCursor {
+		return decodeList(t, newRESTHarness(t, svc)("GET", path))
+	}
+	first := get("/v1/services/web/deploys")
+	if len(first) != core.DefaultPageLimit || first[0].Deploy.ID != "dep-24" {
+		t.Fatalf("unpaged = %+v, want the newest %d from dep-24", first, core.DefaultPageLimit)
+	}
+	if rest := get("/v1/services/web/deploys?cursor=" + first[len(first)-1].Cursor); len(rest) != 5 || rest[0].Deploy.ID != "dep-04" {
+		t.Fatalf("the cursor's page = %d rows, want the remaining 5 from dep-04", len(rest))
+	}
+	if all := get("/v1/services/web/deploys?limit=100"); len(all) != 25 {
+		t.Fatalf("limit=100 = %d rows, want all 25", len(all))
 	}
 }
 

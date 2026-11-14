@@ -26,7 +26,6 @@ import (
 	"maps"
 	"mime"
 	"net/http"
-	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -1420,7 +1419,10 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		routes := core.Filter(toRenderRouteObjects(serviceID, views), func(rt renderRoute) bool {
 			return matchesAny(types, rt.Type) && matchesAny(sources, rt.Source) && matchesAny(destinations, rt.Destination)
 		})
-		routes = pageRules(q, routes, func(rt renderRoute) string { return rt.ID })
+		// Route order is priority, the order the rules apply in, so the page
+		// keeps it; unpaged is Render's first page of 20 (w10/m377).
+		after, limit := core.PageParams(q)
+		routes = core.Page(routes, after, limit, func(rt renderRoute) string { return rt.ID })
 		out := make([]routeWithCursor, len(routes))
 		for i, rt := range routes {
 			out[i] = routeWithCursor{Route: rt, Cursor: rt.ID}
@@ -1449,7 +1451,8 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		headers := core.Filter(toRenderHeaderObjects(serviceID, views), func(h renderHeader) bool {
 			return matchesAny(paths, h.Path) && matchesAny(names, h.Name) && matchesAny(values, h.Value)
 		})
-		headers = pageRules(q, headers, func(h renderHeader) string { return h.ID })
+		after, limit := core.PageParams(q)
+		headers = core.Page(headers, after, limit, func(h renderHeader) string { return h.ID })
 		out := make([]headerWithCursor, len(headers))
 		for i, h := range headers {
 			out[i] = headerWithCursor{Header: h, Cursor: h.ID}
@@ -2090,13 +2093,3 @@ func matchesAny(filter []string, value string) bool {
 	return len(filter) == 0 || slices.Contains(filter, value)
 }
 
-// pageRules applies cursor/limit paging to static-site rules only when either
-// is given. Unlike StablePage it never re-sorts: route order is priority, the
-// order the rules apply in.
-func pageRules[T any](q url.Values, items []T, cursorOf func(T) string) []T {
-	if !q.Has("cursor") && !q.Has("limit") {
-		return items
-	}
-	after, limit := core.PageParams(q)
-	return core.Page(items, after, limit, cursorOf)
-}

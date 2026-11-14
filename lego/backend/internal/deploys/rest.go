@@ -174,15 +174,11 @@ func toDeployList(deploys []DeployView) []deployWithCursor {
 // (repeatable), created/updated/finished before/after bounds (RFC3339), cursor,
 // and limit —
 // into a ListFilter (w2/m31), over the one shared translator (FilterOf) the
-// GraphQL and MCP fragments also use. Absent limit stays 0 here and the store
-// bounds it at core.MaxPageLimit (codex-security round-6 #7 — the pre-m31
-// "absent = full history" contract was an unbounded-work primitive; still a
-// documented divergence from Render's default-20 page,
-// docs/ADR018-render-parity.md), which is why this parses limit itself
-// instead of core.PageParams (whose absent-means-20 default and silent
-// unparseable-means-default reading are both wrong here: a limit the caller
-// spelled wrong must 400, not silently return the default page) — that is
-// core.QueryLimit's whole job.
+// GraphQL and MCP fragments also use. An absent limit is Render's page of 20
+// (w10/m377; GraphQL and MCP keep their own defaults, and the store still
+// bounds any limit at core.MaxPageLimit). It parses limit with core.QueryLimit
+// rather than core.PageParams because a limit the caller spelled wrong must
+// 400, not silently return the default page.
 func filterFromQuery(q url.Values) (ListFilter, error) {
 	limit, err := core.QueryLimit(q)
 	if err != nil {
@@ -193,7 +189,7 @@ func filterFromQuery(q url.Values) (ListFilter, error) {
 		q.Get("createdBefore"), q.Get("createdAfter"),
 		q.Get("updatedBefore"), q.Get("updatedAfter"),
 		q.Get("finishedBefore"), q.Get("finishedAfter"),
-		q.Get("cursor"), limit,
+		q.Get("cursor"), core.PageLimitOrDefault(limit),
 	)
 }
 

@@ -140,15 +140,15 @@ func TestListJobsTranslatesEveryQueryParam(t *testing.T) {
 }
 
 func TestListJobsFilterEdgeCases(t *testing.T) {
-	t.Run("no params leaves the filter zero", func(t *testing.T) {
+	t.Run("no params asks for Render's first page", func(t *testing.T) {
 		st, mux := filterHarness(t)
 		if rec := getJobs(t, mux, "/v1/services/web/jobs"); rec.Code != http.StatusOK {
 			t.Fatalf("status = %d (body: %s)", rec.Code, rec.Body.String())
 		}
-		// Absent limit stays 0 so the store applies its own newest-first cap
-		// (codex-security round-6 #7), rather than silently defaulting to 20.
-		if st.filter.Limit != 0 || st.filter.Cursor != "" || len(st.filter.Statuses) != 0 {
-			t.Fatalf("filter = %+v, want zero", st.filter)
+		// An absent limit is Render's page of 20 (w10/m377); GraphQL and MCP
+		// keep theirs (list_limit_surface_test.go).
+		if st.filter.Limit != core.DefaultPageLimit || st.filter.Cursor != "" || len(st.filter.Statuses) != 0 {
+			t.Fatalf("filter = %+v, want only the default limit", st.filter)
 		}
 		if !st.filter.CreatedBefore.IsZero() || !st.filter.FinishedAfter.IsZero() {
 			t.Fatalf("time bounds = %+v, want zero", st.filter)

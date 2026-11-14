@@ -226,7 +226,7 @@ kubectl -n "$APP_NS" wait --for=jsonpath='{.status.phase}'=Running "app.app.bex.
 # than racing it.
 first_status=""
 for _ in $(seq 1 30); do
-  request GET "/v1/services/$SVC/deploys" ''
+  request GET "/v1/services/$SVC/deploys?limit=100" ''
   first_status="$(echo "$LAST_BODY" | jq -r '.[-1].deploy.status')"
   [ "$first_status" = "live" ] && break
   sleep 2

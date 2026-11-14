@@ -81,10 +81,8 @@ func toJobList(views []JobView) []jobWithCursor {
 }
 
 // filterFromQuery translates Render's ListJobParams query params into a
-// ListFilter. Absent limit stays 0 and the store bounds it at
-// core.MaxPageLimit (codex-security round-6 #7 — Render defaults to 20; bex
-// returns the larger newest-first cap and pages with the cursor, same as
-// deploys). core.QueryLimit rejects a present-but-bad one; see
+// ListFilter. An absent limit is Render's page of 20 (w10/m377), as for
+// deploys; core.QueryLimit rejects a present-but-bad one; see
 // FilterFromStrings for why presence has to be judged here.
 func filterFromQuery(q url.Values) (ListFilter, error) {
 	limit, err := core.QueryLimit(q)
@@ -96,7 +94,7 @@ func filterFromQuery(q url.Values) (ListFilter, error) {
 		q.Get("createdBefore"), q.Get("createdAfter"),
 		q.Get("startedBefore"), q.Get("startedAfter"),
 		q.Get("finishedBefore"), q.Get("finishedAfter"),
-		q.Get("cursor"), limit,
+		q.Get("cursor"), core.PageLimitOrDefault(limit),
 	)
 }
 

@@ -115,12 +115,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// Render's list is a cursor-paginated `[{sandbox, cursor}]` array, and
 		// its schema requires each cursor (the Render SDK refuses an item
 		// without one). The cursor is the sandbox id over listFiltered's stable
-		// newest-first order; a page is cut only when the caller asks for one,
-		// so a client that never pages still gets every sandbox.
-		if query.Has("cursor") || query.Has("limit") {
-			after, limit := core.PageParams(query)
-			out = core.Page(out, after, limit, func(sb Sandbox) string { return sb.ID })
-		}
+		// newest-first order. An unpaged call gets Render's first page of 20
+		// (w10/m377); GraphQL and MCP keep the whole list.
+		after, limit := core.PageParams(query)
+		out = core.Page(out, after, limit, func(sb Sandbox) string { return sb.ID })
 		envelopes := make([]SandboxEnvelope, 0, len(out))
 		for _, sb := range out {
 			envelopes = append(envelopes, SandboxEnvelope{Sandbox: sb, Cursor: sb.ID})

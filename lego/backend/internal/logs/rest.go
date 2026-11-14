@@ -102,7 +102,15 @@ func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
 		all = append(all, values...)
 	}
 	slices.Sort(all)
-	core.WriteJSON(w, http.StatusOK, slices.Compact(all))
+	all = slices.Compact(all)
+	// Render's limitParam on a bare array: at most `limit` values (20 when
+	// absent or below one, as /v1/logs reads it), the first in sorted order;
+	// Render does not document its order. GraphQL and MCP, which call
+	// LogLabelValues directly, keep every value.
+	if limit := core.PageLimitOrAbsent(int(min(q.Limit, core.MaxPageLimit))); len(all) > limit {
+		all = all[:limit]
+	}
+	core.WriteJSON(w, http.StatusOK, all)
 }
 
 // logsQuery serves GET /v1/logs — a historical query across App or managed

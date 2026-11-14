@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -654,6 +655,19 @@ func TestRESTRequestLogsAndDiscovery(t *testing.T) {
 	var values []string
 	if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &values) != nil || !slices.Equal(values, []string{"error", "info"}) {
 		t.Errorf("label discovery => [error info], got %d %s", rec.Code, rec.Body.String())
+	}
+	// Render's limitParam: an unpaged discovery returns the first 20 values,
+	// and limit=100 every one of these 25 (w10/m377).
+	many := make([]string, 25)
+	for i := range many {
+		many[i] = fmt.Sprintf("%q", fmt.Sprintf("v%02d", i))
+	}
+	f.body = `{"status":"success","data":[` + strings.Join(many, ",") + `]}`
+	for query, want := range map[string]int{"": 20, "&limit=100": 25, "&limit=3": 3} {
+		rec = serveREST(svc, "GET", "/v1/logs/values?resource=web&label=level"+query)
+		if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &values) != nil || len(values) != want || values[0] != "v00" {
+			t.Errorf("discovery%s => %d values from v00, got %d %s", query, want, rec.Code, rec.Body.String())
+		}
 	}
 	if rec = serveREST(svc, "GET", "/v1/logs/values?resource=web"); rec.Code != 400 {
 		t.Errorf("missing label => 400, got %d", rec.Code)

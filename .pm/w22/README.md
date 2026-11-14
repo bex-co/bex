@@ -23,7 +23,7 @@
 - [ ] [004](blocked/004.md) — Sandbox group list and paging: where bex's answers differ from Render's error vocabulary — **BLOCKED (a decision from the user on whether pagination errors follow Render's vocabulary everywhere (`invalid_limit`, `invalid_cursor`, `invalid_owner_id`; items 1 to 3 are repo-wide), and a check of live Render behavior, which the note says was never done)**
 - [ ] [005](blocked/005.md) — Agent-session sandboxes: decide whether their retained image is billed storage — **BLOCKED (the user's decision (absorb, bill, or tear down such sandboxes), after checking how Devin prices an idle session)**
 - [x] [006](done/006.md) — Provision the storage meter's registry users as operator-managed Zot credentials — promoted to **m321**
-- [x] [007](done/007.md) — Unparameterized lists return the full set where Render returns 20 — **decided 2026-11-13 by the user: Render's 20; filed as [w10/m377](../w10/m377/README.md)**
+- [x] [007](done/007.md) — Unparameterized lists return the full set where Render returns 20 — **decided 2026-11-13 by the user: Render's 20; filed as [w10/m377](../w10/blocked/m377/README.md)**
 - [ ] [008](blocked/008.md) — Enforce the 40 GB writable filesystem on sandbox pods, after checking kubelet's accounting under gVisor — **BLOCKED (a live gVisor sandbox node to read kubelet's ephemeral-storage accounting for a runsc pod (infra or the user))**
 - [ ] [009](009.md) — Widen the dashboard's `/agents` gate to every workspace, the day the platform model route widens (w10/m14 t007) ← from `/pm-brainstorm for w22` 2026-11-14
 - [ ] [010](010.md) — Pre-deploy commands get Render's 30 minutes, not 10 ← from `/pm-brainstorm for w22` 2026-11-14; render.com/docs/deploys

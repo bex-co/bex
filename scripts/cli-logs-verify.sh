@@ -318,7 +318,7 @@ done
   || fail "--path did not return both refusals without a status filter"
 jq -e --arg p "$blocked_path" "$JQ_LAB"' [.[] | select(lab("path") == $p)] | length == 2' \
   <<<"$(cli_logs --type request --limit 100)" >/dev/null || fail "unfiltered request history omitted refusals"
-api_json GET "/v1/logs/values?resource=$service_id&label=statusCode" | jq -e 'index("403") != null' >/dev/null \
+api_json GET "/v1/logs/values?resource=$service_id&label=statusCode&limit=100" | jq -e 'index("403") != null' >/dev/null \
   || fail "statusCode discovery omitted visible 403s"
 echo "PASS edge IPAllowList: two truthful 403s in CLI + raw REST; exact/class/path filters, exclusion, history, discovery agree"
 
