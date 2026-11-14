@@ -82,6 +82,7 @@ execd_allowed_pod="${run_id}-execd-allowed"
 controller_probe_pod="${run_id}-controller"
 peer_service="${run_id}-peer"
 session_label="${run_id}-agent-session"
+hold_selector="bex.co/verify-run=$run_id"
 
 sandbox_a_id=""
 sandbox_b_id=""
@@ -89,6 +90,7 @@ sandbox_c_id=""
 sandbox_d_id=""
 sandbox_e_id=""
 agent_session_id=""
+agent_key_set=false
 group_first_id=""
 group_limit_id=""
 group_default_id=""
@@ -154,7 +156,9 @@ cleanup() {
   kubectl -n opensandbox-system delete pod "$controller_probe_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n "$namespace_a" delete service "$peer_service" --ignore-not-found >/dev/null 2>&1
   kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "bex.co/agent-session=$session_label" --ignore-not-found >/dev/null 2>&1
-  kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "bex.co/verify-run=$run_id" --ignore-not-found >/dev/null 2>&1
+  kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "$hold_selector" --ignore-not-found >/dev/null 2>&1
+  [ "$agent_key_set" = true ] && api_call "$fixture_dir/admin-a.curl" PATCH "/v1/agent-environment?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-agent-key.json" \
+    --header 'Content-Type: application/json' --data '{"clearModelApiKey":true}' >/dev/null
   [ -n "$cr_a" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_a" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_b" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_b" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_c" ] && kubectl -n "$namespace_b" delete batchsandbox "$cr_c" --ignore-not-found --wait=false >/dev/null 2>&1
@@ -464,15 +468,18 @@ if [ "$verify_agent_driver" = 1 ]; then
   expect_status 200 "$fixture_dir/admin-a.curl" PATCH "/v1/agent-environment?ownerId=$BEX_WORKSPACE_A" \
     "$fixture_dir/agent-environment.json" --header 'Content-Type: application/json' \
     --data "{\"modelApiKey\":\"isolation-matrix-placeholder-$run_id\"}"
+  agent_key_set=true
   expect_status 201 "$fixture_dir/owner-a.curl" POST "/v1/agent-sessions?ownerId=$BEX_WORKSPACE_A" \
     "$fixture_dir/agent-session.json" --header 'Content-Type: application/json' \
     --data '{"title":"isolation matrix agent leg","agentConfig":{"agent":"claude","task":"Reply with the word ok."}}'
   agent_session_id="$(jq -er '.id' "$fixture_dir/agent-session.json")"
-  # Hold that turn in flight: before the dispatch starts the pod, drop the
-  # session's egress to bex-system, where the gateway's model proxy listens.
-  # The model request then hangs instead of failing on the placeholder key, so
-  # the session stays running (a failed session's sandbox is reclaimed at
-  # once, w5/m80) and no request leaves the cluster.
+  # Hold that turn in flight: drop the session's egress to bex-system, where
+  # the gateway's model proxy listens, so the model request hangs instead of
+  # failing on the placeholder key. The session then stays running (a failed
+  # session's sandbox is reclaimed at once, w5/m80) and no request leaves the
+  # cluster. The dispatch runs after create answers, and its pod has to start
+  # and launch the adapter before its first model call, so the hold lands
+  # first; if it ever loses that race, the leg fails at its pod lookups.
   jq -n --arg name "$run_id-hold-agent-turn" --arg namespace "$namespace_a" --arg run "$run_id" \
     --arg session "$agent_session_id" '{
       apiVersion: "cilium.io/v2", kind: "CiliumNetworkPolicy",
@@ -564,36 +571,34 @@ cr_c="$(find_batchsandbox "$namespace_b" "$sandbox_c_id" "$owner_c" base)"
 cr_d="$(find_batchsandbox "$namespace_a" "$sandbox_d_id" "$owner_a" base)"
 
 # find_session_batchsandbox <namespace> <session id>: the BatchSandbox bex-api
-# created for an agent session, by its session label or the session's
-# sandboxId. The dispatch runs after create answers, so wait for it; the
-# session's last read is kept for the failure message.
+# created for an agent session, which carries the session's label. The
+# dispatch runs after create answers, so wait for it.
 find_session_batchsandbox() {
-  local namespace="$1" session="$2" deadline=$((SECONDS + 300)) cr sandbox_id
+  local namespace="$1" session="$2" deadline=$((SECONDS + 300)) cr
   while ((SECONDS < deadline)); do
     cr="$(batchsandbox_by_label "$namespace" "bex.co/agent-session=$session")"
-    if [ -z "$cr" ] && [ "$(api_call "$fixture_dir/owner-a.curl" GET "/v1/agent-sessions/$session" \
-      "$fixture_dir/agent-session-read.json" || true)" = 200 ]; then
-      sandbox_id="$(jq -r '.sandboxId // empty' "$fixture_dir/agent-session-read.json")"
-      [ -z "$sandbox_id" ] || cr="$(batchsandbox_by_label "$namespace" "bex.co/sandbox-id=$sandbox_id")"
-    fi
     [ -n "$cr" ] && { printf '%s\n' "$cr"; return; }
     sleep 5
   done
   return 1
 }
 
-if [ "$verify_agent_driver" = 1 ]; then
-  cr_agent="$(find_session_batchsandbox "$namespace_a" "$agent_session_id")" \
-    || fail "agent session $agent_session_id has no sandbox after 5 minutes: $(jq -c '{phase, state, status, failureReason, failureReasonCode}' "$fixture_dir/agent-session-read.json" 2>/dev/null)"
+if [ "$verify_agent_driver" = 1 ] && ! cr_agent="$(find_session_batchsandbox "$namespace_a" "$agent_session_id")"; then
+  api_call "$fixture_dir/owner-a.curl" GET "/v1/agent-sessions/$agent_session_id" "$fixture_dir/agent-session-read.json" >/dev/null || true
+  fail "agent session $agent_session_id has no sandbox after 5 minutes: $(jq -c '{phase, state, status, failureReason, failureReasonCode}' "$fixture_dir/agent-session-read.json" 2>/dev/null)"
 fi
+
+# owned_pods <namespace> <cr>: the BatchSandbox's pods, as a JSON array.
+owned_pods() {
+  kubectl -n "$1" get pods -o json | jq -c --arg cr "$2" '
+    [.items[] | select(any(.metadata.ownerReferences[]?; .kind == "BatchSandbox" and .name == $cr))]'
+}
 
 find_ready_pod() {
   local namespace="$1" cr="$2" deadline=$((SECONDS + 300)) pod=""
   while ((SECONDS < deadline)); do
-    pod="$(kubectl -n "$namespace" get pods -o json | jq -r --arg cr "$cr" '
-      [.items[] |
-       select(any(.metadata.ownerReferences[]?; .kind == "BatchSandbox" and .name == $cr)) |
-       select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))] |
+    pod="$(owned_pods "$namespace" "$cr" | jq -r '
+      [.[] | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))] |
       sort_by(.metadata.creationTimestamp) | last | .metadata.name // empty')"
     [ -n "$pod" ] && { printf '%s\n' "$pod"; return; }
     sleep 5
@@ -610,8 +615,7 @@ explain_unready() {
   echo "--- why $cr is not Ready" >&2
   kubectl -n "$namespace" get batchsandbox "$cr" -o json 2>/dev/null \
     | jq -c '.status | {conditions, replicas, ready}' >&2 || true
-  pods="$(kubectl -n "$namespace" get pods -o json 2>/dev/null | jq -c --arg cr "$cr" '
-    [.items[] | select(any(.metadata.ownerReferences[]?; .kind == "BatchSandbox" and .name == $cr))]')"
+  pods="$(owned_pods "$namespace" "$cr" 2>/dev/null)"
   printf '%s' "${pods:-[]}" | jq -c '.[] | {pod: .metadata.name, phase: .status.phase,
     conditions: [.status.conditions[]? | select(.status != "True") | {type, reason, message}],
     containers: [(.status.initContainerStatuses // [])[], (.status.containerStatuses // [])[] |
@@ -622,19 +626,19 @@ explain_unready() {
     "\(.lastTimestamp // .eventTime) \(.involvedObject.kind)/\(.involvedObject.name) \(.reason): \(.message | .[0:300])"' >&2 || true
 }
 
+# wait_ready_pod <namespace> <cr>: find_ready_pod, explaining a timeout.
 wait_ready_pod() {
-  local namespace="$1" cr="$2" label="$3" pod
-  pod="$(find_ready_pod "$namespace" "$cr")" && { printf '%s\n' "$pod"; return; }
-  explain_unready "$namespace" "$cr"
-  fail "$label never reached Ready"
+  find_ready_pod "$1" "$2" && return
+  explain_unready "$1" "$2"
+  return 1
 }
 
-pod_a="$(wait_ready_pod "$namespace_a" "$cr_a" "sandbox A")"
-pod_b="$(wait_ready_pod "$namespace_a" "$cr_b" "sandbox B")"
-pod_c="$(wait_ready_pod "$namespace_b" "$cr_c" "sandbox C")"
-pod_d="$(wait_ready_pod "$namespace_a" "$cr_d" "sandbox D")"
+pod_a="$(wait_ready_pod "$namespace_a" "$cr_a")" || fail "sandbox A never reached Ready"
+pod_b="$(wait_ready_pod "$namespace_a" "$cr_b")" || fail "sandbox B never reached Ready"
+pod_c="$(wait_ready_pod "$namespace_b" "$cr_c")" || fail "sandbox C never reached Ready"
+pod_d="$(wait_ready_pod "$namespace_a" "$cr_d")" || fail "sandbox D never reached Ready"
 if [ "$verify_agent_driver" = 1 ]; then
-  pod_agent="$(wait_ready_pod "$namespace_a" "$cr_agent" "agent sandbox")"
+  pod_agent="$(wait_ready_pod "$namespace_a" "$cr_agent")" || fail "agent sandbox never reached Ready"
 fi
 
 workload_container() {
@@ -911,7 +915,8 @@ printf "%s" "$out" | grep -q "must be the session.s model-proxy placeholder" || 
   # held turn's dropped retries crowd the attacker's drops out of the node's
   # Hubble buffer before the evidence check below reads them.
   expect_status 200 "$fixture_dir/owner-a.curl" POST "/v1/agent-sessions/$agent_session_id/cancel" "$fixture_dir/agent-session-cancel.json"
-  kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "bex.co/verify-run=$run_id" --ignore-not-found >/dev/null
+  agent_session_id=""
+  kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "$hold_selector" --ignore-not-found >/dev/null
 fi
 
 kubectl -n "$BEX_WORKSPACE_A" run "$hosting_pod" --image "$python_image" --restart Never \
