@@ -1,6 +1,6 @@
 # w9 · m385 — Agent secrets apply on their own: workspace-wide and per-repo scopes (Devin parity)
 
-**Worker:** worker9 **Goal:** a workspace agent secret can be scoped to the whole workspace or to one repository and then reaches every matching session — API, dashboard, automation, `/bex` takeover, PR-feedback steer and child — without being named, as Devin's organization and repository secrets do; `explicit` keeps today's attach-by-name. **Status:** todo (t001, t002, t003, t004, t005 done)
+**Worker:** worker9 **Goal:** a workspace agent secret can be scoped to the whole workspace or to one repository and then reaches every matching session — API, dashboard, automation, `/bex` takeover, PR-feedback steer and child — without being named, as Devin's organization and repository secrets do; `explicit` keeps today's attach-by-name. **Status:** done (2026-11-14)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Dispatch: every session origin receives the secrets whose scope matches it — **DONE** | 90m | t002 |
 | [t004](done/t004.md) | REST, GraphQL and MCP: read and set a secret's scope; the session view names what applied and why — **DONE** | 90m | t003 |
 | [t005](done/t005.md) | Dashboard: scope picker on the Agent secrets card; applied secrets on the session page — **DONE** | 90m | t004 |
-| [t006](t006.md) | Live check on production: unnamed sessions and an automation receive workspace and repo secrets; another repo's session does not | 45m | t005 |
-| [t007](t007.md) | Render parity (Devin): every surface this milestone touched agrees, and matches Devin | 20m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t006](done/t006.md) | Live check on production: unnamed sessions and an automation receive workspace and repo secrets; another repo's session does not — **DONE** | 45m | t005 |
+| [t007](done/t007.md) | Render parity (Devin): every surface this milestone touched agrees, and matches Devin — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 ## Definition of done
 
