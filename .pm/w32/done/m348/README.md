@@ -1,6 +1,6 @@
 # w32 · m348 — A sandbox command runs under `bash -c` in the home directory, as on Render
 
-**Worker:** worker32 **Goal:** a command sent to a Render sandbox on bex (CLI `sandboxes exec`, the Render SDK's `exec`, REST, GraphQL or MCP) starts in the sandbox user's home directory and is interpreted by `bash -c`, so the documented "copy a file in, then run it" workflow and bash syntax work unchanged **Status:** blocked (t001–t004, t007, t008 done; t005 waits on the production deploy)
+**Worker:** worker32 **Goal:** a command sent to a Render sandbox on bex (CLI `sandboxes exec`, the Render SDK's `exec`, REST, GraphQL or MCP) starts in the sandbox user's home directory and is interpreted by `bash -c`, so the documented "copy a file in, then run it" workflow and bash syntax work unchanged **Status:** done (2026-11-14)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | The base sandbox image ships `bash` and every tool the file gateway's scripts use — **DONE** | 1.5h | t001 |
 | t003 | Exec starts in `$HOME` and runs the command under `bash -c`, falling back to `sh` — **DONE** | 1h | t001 |
 | t004 | Blast radius: agent-session sandboxes, suspended rootfs images and the other `/bin/sh` callers — **DONE** | 30m | t003 |
-| t005 | Production walk with the release CLI and the isolation matrix | 45m | t002, t003, t004 |
-| t006 | Render parity | 20m | t005 |
+| t005 | Production walk with the release CLI and the isolation matrix — **DONE** | 45m | t002, t003, t004 |
+| t006 | Render parity — **DONE** | 20m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -129,3 +129,20 @@ The same sandbox's exit codes, stderr, the env marker (`--env-var`), a directory
 
 - **Why only now:** every run from `60879160d` until 2026-11-14 08:53 UTC failed before this step. First the verifier asserted `oregon` after w32/016 moved groups to the platform region (fixed in `430ba206f`). Then the agent leg could not start an agent sandbox (w7/m393, w7/063).
 - **What remains:** with the 2026-11-13 walk (steps 1–5 above), both t005 acceptance criteria hold. t005 can be marked done and m348 unblocked for t006 (Render parity) and t009 (Closeout).
+
+## Render parity — t006 (2026-11-14)
+
+Render's contract: the SDK 1.8.0 `exec` docstring ("command is passed to `bash -c` in the sandbox") and render.com/docs/sandboxes-executing ("Each command starts in a new shell in your sandbox's home directory"). Every bex exec surface reaches the shell through one call site, `dialGateway` → `execArgv(command, inHome)` (`lego/backend/internal/sandbox/exec.go:152`), so the wrapper cannot differ between them.
+
+| Surface | Path | Result |
+| --- | --- | --- |
+| REST `POST /v1/sandboxes/{id}/exec` | `rest.go:176` → `StreamExec` | Live: isolation-matrix run `43580573152` passed both checks (`/home/render`, bash arrays and braces, `/bin/bash`) |
+| Connect-token run path (CLI, SDK) | `connect.go:296` → `StreamExec` | Live: the 2026-11-13 walk with release `bex` v0.5.0 (`from-script`, `/home/render`, `b` / `1 2 3`, exit codes as data) |
+| MCP `sandbox_exec` | `mcp.go:145` → `ExecBuffered` | Same call site; not exercised live. Buffered stdout, stderr and the exit code come from the same SSE |
+| GraphQL | none | No exec mutation, on Render or bex; `SandboxExecution` is the history record only |
+
+No difference from Render remains. ADR018's exec row moves from 🚧 to ✅. The UTF-8 split in streamed output (w32/021) is a separate bug, already filed.
+
+## Closed 2026-11-14 (`/loopx w32`)
+
+t005 (production walk + isolation matrix `43580573152`), t006 (parity table above) and t009 are done. All nine tasks are done.
