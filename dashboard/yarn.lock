@@ -6349,7 +6349,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"aria-query@npm:^5.0.0":
+"aria-query@npm:^5.0.0, aria-query@npm:^5.3.2":
   version: 5.3.2
   resolution: "aria-query@npm:5.3.2"
   checksum: 10c0/003c7e3e2cff5540bf7a7893775fc614de82b0c5dde8ae823d47b7a28a9d4da1f7ed85f340bdb93d5649caa927755f0e31ecc7ab63edfdfc00c8ef07e505e03e
@@ -6385,6 +6385,20 @@ __metadata:
   version: 5.0.1
   resolution: "auto-bind@npm:5.0.1"
   checksum: 10c0/a703375350ea7b6e92405d8e6bcc6dbfb84b0d7c7172b33e5788a7593929a18227999ff9aa9c32436741d06d021e6672457b1cec73287efe3fab95cff6627eaf
+  languageName: node
+  linkType: hard
+
+"axe-core@npm:^4.10.2":
+  version: 4.14.0
+  resolution: "axe-core@npm:4.14.0"
+  checksum: 10c0/8aaa0bf748e0dcf202e8f837951a37b28b4b62d639bed58c07a6890bf035ed6a11ede9f4006db9ca8041db821dc80476c27cff08fd70afa9195ee58fb995a958
+  languageName: node
+  linkType: hard
+
+"axobject-query@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "axobject-query@npm:4.1.0"
+  checksum: 10c0/c470e4f95008f232eadd755b018cb55f16c03ccf39c027b941cd8820ac6b68707ce5d7368a46756db4256fbc91bb4ead368f84f7fb034b2b7932f082f6dc0775
   languageName: node
   linkType: hard
 
@@ -6812,6 +6826,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"damerau-levenshtein@npm:^1.0.8":
+  version: 1.0.8
+  resolution: "damerau-levenshtein@npm:1.0.8"
+  checksum: 10c0/4c2647e0f42acaee7d068756c1d396e296c3556f9c8314bac1ac63ffb236217ef0e7e58602b18bb2173deec7ec8e0cac8e27cccf8f5526666b4ff11a13ad54a3
+  languageName: node
+  linkType: hard
+
 "dashboard@workspace:.":
   version: 0.0.0-use.local
   resolution: "dashboard@workspace:."
@@ -6882,6 +6903,7 @@ __metadata:
     date-fns: "npm:^4.4.0"
     dotenv: "npm:^17.4.2"
     eslint: "npm:^10.7.0"
+    eslint-plugin-jsx-a11y-x: "npm:0.2.0"
     eslint-plugin-react-hooks: "npm:^7.1.1"
     eslint-plugin-react-refresh: "npm:^0.5.7"
     globals: "npm:^17.7.0"
@@ -7330,6 +7352,23 @@ __metadata:
   version: 5.0.0
   resolution: "escape-string-regexp@npm:5.0.0"
   checksum: 10c0/6366f474c6f37a802800a435232395e04e9885919873e382b157ab7e8f0feb8fed71497f84a6f6a81a49aab41815522f5839112bd38026d203aea0c91622df95
+  languageName: node
+  linkType: hard
+
+"eslint-plugin-jsx-a11y-x@npm:0.2.0":
+  version: 0.2.0
+  resolution: "eslint-plugin-jsx-a11y-x@npm:0.2.0"
+  dependencies:
+    aria-query: "npm:^5.3.2"
+    axe-core: "npm:^4.10.2"
+    axobject-query: "npm:^4.1.0"
+    damerau-levenshtein: "npm:^1.0.8"
+    jsx-ast-utils-x: "npm:^0.1.0"
+    language-tags: "npm:^1.0.9"
+    minimatch: "npm:^10.2.5"
+  peerDependencies:
+    eslint: ^9.0.0 || ^10.0.0
+  checksum: 10c0/9e072841b523f9276857282dbd01d6719c6dcbc507bde6f237e1d558c717691539a3bbc6f9e6b163eb5500699b6ab4ec84e6cc5276471129e838e3b77b7f8a06
   languageName: node
   linkType: hard
 
@@ -8643,6 +8682,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jsx-ast-utils-x@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "jsx-ast-utils-x@npm:0.1.0"
+  checksum: 10c0/bd147ff19bace8309e48110ec5c7a0c9f750148bcab699b5ba5d44dfac6cea8f358127f3da35ebe073f81cfe46494ce1e9647dd45681bb6c84d83c315904b72b
+  languageName: node
+  linkType: hard
+
 "keyv@npm:^5.6.0":
   version: 5.6.0
   resolution: "keyv@npm:5.6.0"
@@ -8673,6 +8719,22 @@ __metadata:
     knip: bin/knip.js
     knip-bun: bin/knip-bun.js
   checksum: 10c0/728d9637d9c4b51862ba7db88075dc7b32234da523537685e70e32075f8d7a7f058a6ce77e401c78c0dbdb6d89be7648bab8d770e2fdf557f003fd6d37717d0d
+  languageName: node
+  linkType: hard
+
+"language-subtag-registry@npm:^0.3.20":
+  version: 0.3.23
+  resolution: "language-subtag-registry@npm:0.3.23"
+  checksum: 10c0/e9b05190421d2cd36dd6c95c28673019c927947cb6d94f40ba7e77a838629ee9675c94accf897fbebb07923187deb843b8fbb8935762df6edafe6c28dcb0b86c
+  languageName: node
+  linkType: hard
+
+"language-tags@npm:^1.0.9":
+  version: 1.0.9
+  resolution: "language-tags@npm:1.0.9"
+  dependencies:
+    language-subtag-registry: "npm:^0.3.20"
+  checksum: 10c0/9ab911213c4bd8bd583c850201c17794e52cb0660d1ab6e32558aadc8324abebf6844e46f92b80a5d600d0fbba7eface2c207bfaf270a1c7fd539e4c3a880bff
   languageName: node
   linkType: hard
 

@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import jsxA11yX from "eslint-plugin-jsx-a11y-x";
 import tseslint from "typescript-eslint";
 import { globalIgnores } from "eslint/config";
 
@@ -62,6 +63,20 @@ export default tseslint.config([
           argsIgnorePattern: "^_",
         },
       ],
+    },
+  },
+  // Static accessibility rules for the app's JSX (w21/m395 t001). The tests'
+  // fixtures are not product markup, so they are left out; the rendered output
+  // of every page is checked by the axe pass instead (t002).
+  {
+    files: ["src/**/*.tsx"],
+    ignores: ["**/*.test.tsx", "**/__tests__/**"],
+    extends: [jsxA11yX.configs.recommended],
+    rules: {
+      // Moving focus into a dialog or an inline editor the user just opened is
+      // focus management, not a page that steals focus on load; only a raw DOM
+      // element's autoFocus is checked, as components decide for themselves.
+      "jsx-a11y-x/no-autofocus": ["error", { ignoreNonDOM: true }],
     },
   },
   {

@@ -697,6 +697,7 @@ function HeaderFacts({ service }: { service: ServiceView }) {
             value: (
               <Tooltip>
                 <TooltipTrigger asChild>
+                  {/* eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip's trigger is focusable so keyboard users can reach its text */}
                   <code tabIndex={0} className="cursor-help">
                     {service.immutableName}
                   </code>

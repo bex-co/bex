@@ -40,6 +40,7 @@ export function InstantTooltip({
       <TooltipTrigger asChild>
         <time
           dateTime={value}
+          // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip's trigger is focusable so keyboard users can reach its text
           tabIndex={0}
           className={cn(
             "cursor-default rounded-sm underline decoration-dotted underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",

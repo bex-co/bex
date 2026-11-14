@@ -392,9 +392,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"div">) {
     const el = e.currentTarget;
     const side =
       (el.closest("[data-slot=sidebar]")?.getAttribute("data-side") as
-        | "left"
-        | "right"
-        | null) ?? "left";
+        "left" | "right" | null) ?? "left";
     el.setPointerCapture(e.pointerId);
     el.dataset.dragging = "true";
     wrapper.dataset.dragging = "true";
@@ -474,6 +472,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"div">) {
   };
 
   return (
+    // eslint-disable-next-line jsx-a11y-x/no-noninteractive-element-interactions -- a focusable separator with a value is the WAI-ARIA window splitter; its pointer and key handlers resize the sidebar
     <div
       data-sidebar="rail"
       data-slot="sidebar-rail"
@@ -483,6 +482,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"div">) {
       aria-valuemin={SIDEBAR_MIN_WIDTH_PX}
       aria-valuemax={SIDEBAR_MAX_WIDTH_PX}
       aria-valuenow={open ? width : SIDEBAR_MIN_WIDTH_PX}
+      // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- a focusable separator with a value is the WAI-ARIA window splitter; its pointer and key handlers resize the sidebar
       tabIndex={0}
       title={t("common.sidebarResizeHint")}
       onPointerDown={handlePointerDown}

@@ -173,6 +173,7 @@ export function OtpCodeInput({ inputProps }: OryNodeInputProps) {
       pattern="[0-9]*"
       maxLength={OTP_LENGTH}
       // The code entry is this page's single job; focus it on arrival.
+      // eslint-disable-next-line jsx-a11y-x/no-autofocus -- the code entry is this page's single job; focus it on arrival
       autoFocus
       className={textInputClassName}
       onChange={(event) => {

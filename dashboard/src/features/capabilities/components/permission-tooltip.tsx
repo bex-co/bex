@@ -34,6 +34,7 @@ export function PermissionTooltip({
         {triggerAsChild ? (
           children
         ) : (
+          // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the wrapper is the tooltip's trigger, focusable so keyboard users can reach the reason a disabled control explains
           <span className="inline-flex" tabIndex={0}>
             {children}
           </span>

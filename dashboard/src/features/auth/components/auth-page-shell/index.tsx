@@ -54,6 +54,7 @@ export function AuthPageShell({
             of overflowing a narrower max-w-md — and the loading skeleton, which
             is w-full of this column, is the same width as the card it stands in
             for (no width jump when the flow swaps in). */}
+        {/* eslint-disable-next-line jsx-a11y-x/click-events-have-key-events,jsx-a11y-x/no-static-element-interactions -- delegated click handler for the links Kratos renders; a link activated by key fires click too */}
         <div
           className="w-full max-w-[30rem] space-y-8"
           onClick={onAuthLinkClick}

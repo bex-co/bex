@@ -314,6 +314,7 @@ export function LogLineList({
 
   return (
     <div className={cn("relative", fill && "h-full")}>
+      {/* eslint-disable-next-line jsx-a11y-x/no-static-element-interactions -- the viewport only listens for reader input to end a reflow; it is not a control */}
       <div
         ref={viewportRef}
         data-log-viewport=""
