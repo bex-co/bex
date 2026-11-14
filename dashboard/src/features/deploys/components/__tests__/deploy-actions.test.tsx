@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { bumpAccessGeneration } from "@/features/capabilities/lib/access-generation";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -35,9 +37,10 @@ vi.mock("@apollo/client/react", () => ({
 }));
 
 const toastError = vi.fn();
+const toastSuccess = vi.fn();
 vi.mock("sonner", () => ({
   toast: {
-    success: vi.fn(),
+    success: (...args: unknown[]) => toastSuccess(...args),
     warning: vi.fn(),
     error: (...args: unknown[]) => toastError(...args),
   },
@@ -128,12 +131,54 @@ function renderActions(
   return router;
 }
 
+// A Deploys-list row: it shows DeployActions only while the deploy has an
+// action, so the cancel's own result unmounts the control (w4/623).
+function renderListRow(onCancel: (hide: () => void) => void) {
+  let hide = () => {};
+  function Row() {
+    const [shown, setShown] = useState(true);
+    hide = () => setShown(false);
+    return shown ? (
+      <DeployActions
+        serviceId="web"
+        deployId="dep-1"
+        status="build_in_progress"
+      />
+    ) : (
+      <p>canceled</p>
+    );
+  }
+  const root = createRootRoute();
+  const route = createRoute({
+    getParentRoute: () => root,
+    path: "/services/$serviceId/deploys",
+    component: Row,
+  });
+  const other = createRoute({
+    getParentRoute: () => root,
+    path: "/elsewhere",
+    component: () => <p>elsewhere</p>,
+  });
+  const router = createRouter({
+    routeTree: root.addChildren([route, other]),
+    history: createMemoryHistory({ initialEntries: ["/services/web/deploys"] }),
+    context: { client: {} as never, session: null },
+  });
+  cancelDeploy.mockImplementation(async () => {
+    onCancel(hide);
+    return { data: { cancelDeploy: { id: "dep-1", status: "canceled" } } };
+  });
+  render(<RouterProvider router={router} />);
+  return router;
+}
+
 beforeEach(() => {
   const receivedAt = Date.now();
   for (const snapshot of [allowedSnapshot, deniedCreateSnapshot]) {
     snapshot.receivedAt = receivedAt;
   }
   toastError.mockReset();
+  toastSuccess.mockReset();
   cancelDeploy.mockReset();
   rollbackService.mockReset();
   ask.mockReset();
@@ -180,6 +225,55 @@ describe("DeployActions", () => {
     expect(cancelDeploy).toHaveBeenCalledWith({
       variables: { serviceId: "web", deployId: "dep-1" },
     });
+  });
+
+  it("toasts a list cancel whose result unmounted the row's control (w4/623)", async () => {
+    const user = userEvent.setup();
+    renderListRow((hide) => act(() => hide()));
+
+    await user.click(
+      await screen.findByRole("button", { name: /^Cancel deploy / }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
+
+    expect(await screen.findByText("canceled")).toBeInTheDocument();
+    expect(toastSuccess).toHaveBeenCalledWith("Deploy canceled.");
+  });
+
+  it("does not toast a cancel resolved after a workspace switch", async () => {
+    const user = userEvent.setup();
+    renderListRow((hide) => {
+      act(() => hide());
+      bumpAccessGeneration();
+    });
+
+    await user.click(
+      await screen.findByRole("button", { name: /^Cancel deploy / }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
+
+    expect(await screen.findByText("canceled")).toBeInTheDocument();
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("does not toast a cancel resolved after the user left the service", async () => {
+    const user = userEvent.setup();
+    let router: ReturnType<typeof renderListRow> | null = null;
+    router = renderListRow((hide) => {
+      act(() => hide());
+      void router?.navigate({ to: "/elsewhere" });
+    });
+
+    await user.click(
+      await screen.findByRole("button", { name: /^Cancel deploy / }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
+
+    expect(await screen.findByText("elsewhere")).toBeInTheDocument();
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 
   // w8/m156: the registry keeps a bounded history of builds, and a deploy

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -24,6 +24,7 @@ import {
   useDeployActions,
   type ResourceActionsState,
 } from "@/features/capabilities/hooks/use-resource-actions";
+import { getAccessGeneration } from "@/features/capabilities/lib/access-generation";
 import { useBoundActionConfirm } from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useAskForProtectedConfirmation } from "@/common/providers/protected-retry-context";
@@ -100,6 +101,7 @@ export function DeployActions({
 }: DeployActionsProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
+  const router = useRouter();
   const base = useServiceBase();
   const { currentWorkspaceId } = useWorkspace();
   const ownProjection = useDeployActions(projection ? null : serviceId);
@@ -140,6 +142,7 @@ export function DeployActions({
     clearConfirm,
     recheckBeforeDispatch,
     isIntentCurrent,
+    isResultCurrent,
   } = useBoundActionConfirm({
     resourceId: serviceId,
     deployId,
@@ -202,6 +205,7 @@ export function DeployActions({
       if (!ok || !binding) return;
       dispatched = true;
       if (action === "cancel_deploy") {
+        const dispatchedAccessGeneration = getAccessGeneration();
         await cancelDeploy({
           variables: {
             serviceId: binding.resourceId,
@@ -209,8 +213,16 @@ export function DeployActions({
           },
         });
         // The mutation already ran; only a context change (not a routine
-        // permission refresh) makes its result obsolete.
-        if (!isIntentCurrent(binding)) return;
+        // permission refresh) makes its result obsolete. The canceled row
+        // loses its Cancel and may unmount this control first (w4/623).
+        if (
+          !isResultCurrent(
+            binding,
+            dispatchedAccessGeneration,
+            () => router.state.location.pathname,
+          )
+        )
+          return;
         toast.success(t("services.cancelDeploySuccess"));
       } else if (action === "rollback") {
         // A rollback swaps the running code: a protected member answers with

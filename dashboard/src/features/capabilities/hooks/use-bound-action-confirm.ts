@@ -128,6 +128,30 @@ export function useBoundActionConfirm(opts: {
     [],
   );
 
+  /**
+   * After a dispatched mutation resolves: may its result still be announced?
+   * While mounted this is isIntentCurrent. A control the result itself
+   * unmounts (a canceled deploy's row loses its Cancel, w4/623) still
+   * announces it if no workspace switch or access change happened since
+   * dispatch (both bump the access generation) and the current path (read
+   * from the caller's router) still names the resource; a result after the
+   * user left must not toast elsewhere (w4/m159).
+   */
+  const isResultCurrent = useCallback(
+    (
+      binding: ActionConfirmBinding,
+      dispatchedAccessGeneration: number,
+      currentPath: () => string,
+    ) => {
+      if (mounted.current) return isIntentCurrent(binding);
+      return (
+        dispatchedAccessGeneration === getAccessGeneration() &&
+        currentPath().split("/").includes(binding.resourceId)
+      );
+    },
+    [isIntentCurrent],
+  );
+
   /** Intent plus fresh eligibility: the only predicate that may dispatch. */
   const isBindingCurrent = useCallback(
     (binding: ActionConfirmBinding | null) =>
@@ -342,5 +366,6 @@ export function useBoundActionConfirm(opts: {
     recheckBeforeDispatch,
     isBindingCurrent,
     isIntentCurrent,
+    isResultCurrent,
   };
 }

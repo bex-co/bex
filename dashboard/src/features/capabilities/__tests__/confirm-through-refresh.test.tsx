@@ -41,7 +41,10 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() },
 }));
 const navigate = vi.fn();
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => navigate,
+  useRouter: () => ({ state: { location: { pathname: "/services/web" } } }),
+}));
 const restart = vi.fn();
 const trigger = vi.fn();
 vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
