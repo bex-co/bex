@@ -115,7 +115,7 @@ func NewShareFileError(code, message string) *ShareFileError {
 	status, hint := http.StatusServiceUnavailable, "Retry once later; if it keeps failing, tell the user the file could not be shared."
 	switch code {
 	case ShareFileInvalidRequest:
-		status, hint = http.StatusUnprocessableEntity, "Pass the path of a regular file under /workspace, /tmp or /attachments."
+		status, hint = http.StatusUnprocessableEntity, "Pass the path of a regular file under /workspace, /tmp, /var/tmp or /attachments."
 	case ShareFileTooLarge:
 		status, hint = http.StatusRequestEntityTooLarge, fmt.Sprintf("Files are limited to %d MiB; share a smaller file or summarize it.", MaxShareFileBytes>>20)
 	case ShareFileQuotaExceeded:

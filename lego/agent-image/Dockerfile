@@ -134,14 +134,19 @@ COPY --link --from=go-deps --chown=10001:10001 /opt/bex-go /opt/bex-go
 
 # Neither listener has an edge route. OpenSandbox supplies the remaining
 # non-secret BEX_AGENT_* session binding values per sandbox.
-# GOTMPDIR keeps the go command's work directory (compiled packages, link
-# outputs, test binaries) on the rootfs: under gVisor /tmp is a tmpfs that
-# counts against the sandbox's memory limit, and a full build and test of a
-# large repository there ran an 8 GiB sandbox out of memory (w6/124).
+# GOTMPDIR and TMPDIR keep temporary files on the rootfs, which the
+# ephemeral-storage limit bounds: under gVisor /tmp is a tmpfs that counts
+# against the sandbox's memory limit. A full build and test of a large
+# repository there ran an 8 GiB sandbox out of memory (w6/124). GOTMPDIR holds
+# the go command's work directory (compiled packages, link outputs, test
+# binaries). TMPDIR covers everything that asks the OS, including Node's
+# os.tmpdir() and so Claude Code's own temp files and background-task output
+# (w6/127).
 ENV HOME=/home/bex \
     GOMODCACHE=/opt/bex-go/mod \
     GOCACHE=/opt/bex-go/cache \
     GOTMPDIR=/var/tmp/go-tmp \
+    TMPDIR=/var/tmp \
     BEX_AGENT_CWD=/workspace \
     BEX_AGENT_LISTEN_HOST=0.0.0.0 \
     BEX_AGENT_LISTEN_PORT=8787

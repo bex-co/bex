@@ -34,12 +34,18 @@ export const maxShareFileNameBytes = 255;
 const requestTimeoutMs = 5 * 60_000;
 
 // The directories a shared file may live in, resolved through symlinks:
-// /attachments links to the extracted input copy. This is agent ergonomics —
+// /attachments links to the extracted input copy, and /var/tmp is the image's
+// TMPDIR, where mktemp and os.tmpdir() put files (w6/127). This is agent ergonomics —
 // it keeps the agent from sharing the image's own files by mistake — not a
 // security boundary: the agent controls the sandbox and could copy anything
 // into /tmp first. What the platform enforces is server-side: the Pod, the
 // session, the size and the quota.
-export const defaultShareRoots = ["/workspace", "/tmp", "/attachments"];
+export const defaultShareRoots = [
+  "/workspace",
+  "/tmp",
+  "/var/tmp",
+  "/attachments",
+];
 
 export const shareFileToolDefinition = {
   name: shareFileToolName,
@@ -47,7 +53,7 @@ export const shareFileToolDefinition = {
   description:
     "Hand the user a file that should not be committed to the repository: a report, a CSV, " +
     "a screenshot, a generated image or archive. The user sees it in the conversation and can download it. " +
-    `The file must be a regular file under /workspace, /tmp or /attachments, at most ${maxShareFileBytes >> 20} MiB. ` +
+    `The file must be a regular file under /workspace, /tmp, /var/tmp or /attachments, at most ${maxShareFileBytes >> 20} MiB. ` +
     "Code changes belong in commits and the pull request, not here. " +
     "If it returns an error, report that error to the user.",
   inputSchema: {
@@ -78,8 +84,7 @@ export interface SharedFile {
 }
 
 export type ShareFileOutcome =
-  | { ok: true; result: SharedFile }
-  | { ok: false; error: ToolError };
+  { ok: true; result: SharedFile } | { ok: false; error: ToolError };
 
 function refuse(
   code: string,
@@ -147,7 +152,7 @@ async function readShareable(
       ok: false,
       outcome: refuse(
         "invalid_request",
-        `${rawPath} is outside /workspace, /tmp and /attachments`,
+        `${rawPath} is outside /workspace, /tmp, /var/tmp and /attachments`,
         "Copy the file under /tmp first if it lives elsewhere.",
       ),
     };
