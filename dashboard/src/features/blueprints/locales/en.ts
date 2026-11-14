@@ -388,6 +388,12 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Environment Groups",
     description: "Review section plan group label — env groups in the manifest",
   },
+  "blueprints.previewManualSyncNote": {
+    message:
+      "bex doesn't receive this repo's pushes, so later changes to your Blueprint file won't sync automatically. Sync the Blueprint after each change, or connect the repo through the GitHub app.",
+    description:
+      "Review section note for a repo whose pushes can't reach bex (the preview's autoSync is false): the Blueprint is created without auto-sync",
+  },
   "blueprints.previewAutoSyncNote": {
     message:
       "All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.",

@@ -160,6 +160,7 @@ function validPreview(): BlueprintPreviewResult {
     existingResources: "adopt",
     resourceSuffix: null,
     suggestedName: null,
+    autoSync: true,
     matchedResources: [],
     validation: {
       valid: true,
@@ -185,6 +186,7 @@ const notReviewed = {
   existingResources: null,
   resourceSuffix: null,
   suggestedName: null,
+  autoSync: true,
   matchedResources: [],
 };
 
@@ -483,6 +485,25 @@ describe("NewBlueprintPage", () => {
   });
 
   // w21/036: a typed Blueprint name is held to the server's label rule.
+  // w10/m375: auto-sync runs only on pushes bex receives, so a repo whose
+  // pushes can't reach bex is reviewed with the manual-sync note.
+  // w10/m375: auto-sync runs only on pushes bex receives, so the review of a
+  // repo whose pushes can't reach bex says the Blueprint will not auto-sync.
+  it.each([
+    [true, /will be synced automatically/],
+    [false, /won't sync automatically/],
+  ])(
+    "with autoSync %s, the review's sync note matches",
+    async (autoSync, note) => {
+      reposState.repos = [repo()];
+      previewState.preview = { ...validPreview(), autoSync };
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByText("acme/hello-go"));
+      expect(await screen.findByText(note)).toBeInTheDocument();
+    },
+  );
+
   it("blocks Deploy for a 101-character name with an inline message", async () => {
     reposState.repos = [repo()];
     previewState.preview = validPreview();

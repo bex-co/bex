@@ -919,6 +919,7 @@ export type BlueprintPlannedSync = {
 
 export type BlueprintPreview = {
   __typename: 'BlueprintPreview';
+  autoSync: Maybe<Scalars['Boolean']['output']>;
   branch: Maybe<Scalars['String']['output']>;
   commitId: Maybe<Scalars['String']['output']>;
   error: Maybe<Scalars['String']['output']>;

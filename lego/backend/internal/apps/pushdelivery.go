@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -172,4 +173,29 @@ func (s *Service) pushDeliveryMethod(ctx context.Context, a *appv1alpha1.App) st
 		return PushDeliveryUnknown
 	}
 	return method
+}
+
+// errAutoSyncUnreachable refuses turning Blueprint auto-sync on for a repo
+// whose pushes cannot reach bex: auto-sync runs only on pushes bex receives
+// (ADR026 § 8).
+func errAutoSyncUnreachable() error {
+	return fmt.Errorf("%w: autoSync needs a connected Git provider: bex doesn't receive this repo's pushes. Sync the Blueprint manually, or connect the repo through the GitHub app", core.ErrBadRequest)
+}
+
+// repoPushesUnreachable reports whether no git push to repo, in tenantID's
+// workspace, can reach bex. "unknown" (a GitHub failure) may still deliver, so
+// it does not count. Only an install that rejects the shared manual webhook
+// key can answer "unavailable", so no other install asks GitHub.
+func (s *Service) repoPushesUnreachable(ctx context.Context, tenantID, repo string) bool {
+	return s.ManualWebhookDisabled && s.pushDeliveryMethod(ctx, newServiceProbe(tenantID, repo)) == PushDeliveryUnavailable
+}
+
+// newServiceProbe is the App a service on repo in tenantID would be, as far as
+// pushDeliveryMethod reads it (its repo and workspace).
+func newServiceProbe(tenantID, repo string) *appv1alpha1.App {
+	a := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: repo}}
+	if tenantID != "" {
+		a.Labels = map[string]string{core.LabelTenant: tenantID}
+	}
+	return a
 }

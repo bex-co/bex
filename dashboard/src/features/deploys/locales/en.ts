@@ -287,6 +287,17 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Auto-Deploy settings",
     description: "Deploys page banner link to the service Settings page",
   },
+  "deploys.deploysManualTitle": {
+    message: "Deploys are manual",
+    description:
+      "Deploys page banner title for a repo whose pushes can't reach bex (pushDeliveryMethod unavailable)",
+  },
+  "deploys.deploysManualBody": {
+    message:
+      "bex doesn't receive this repo's pushes, so they don't deploy this service. Deploy it manually or with the Deploy Hook, or connect the repo through the GitHub app.",
+    description:
+      "Deploys page banner body for a repo whose pushes can't reach bex: no Auto-Deploy setting can turn deploys on push on (Render: a public Git URL must be deployed manually)",
+  },
   "deploys.listTitle": {
     message: "Deploys",
     description: "Deploys tab: card title over the deploy-history list",

@@ -53,10 +53,12 @@ vi.mock("@/features/blueprints/hooks/use-blueprint", () => ({
 }));
 
 // --- sync hook mock ---
-const sync = vi.fn(async (): Promise<BlueprintSyncActionResult> => ({
-  status: "success",
-  result: null,
-}));
+const sync = vi.fn(
+  async (): Promise<BlueprintSyncActionResult> => ({
+    status: "success",
+    result: null,
+  }),
+);
 vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
   useSyncBlueprint: () => ({ sync, busy: false }),
 }));
@@ -168,6 +170,7 @@ function validPreview(
     existingResources: null,
     resourceSuffix: null,
     suggestedName: null,
+    autoSync: true,
     matchedResources: [],
     validation: {
       valid: true,

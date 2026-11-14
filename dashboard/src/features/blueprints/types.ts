@@ -162,6 +162,12 @@ export interface BlueprintPreviewResult {
    * the create would use (w8/250); null otherwise.
    */
   suggestedName: string | null;
+  /**
+   * Whether a Blueprint created from this review auto-syncs: false for a repo
+   * whose pushes can't reach bex, which bex creates paused; null for an
+   * existing Blueprint's preview.
+   */
+  autoSync: boolean | null;
   /** Declared resources whose names already exist in the workspace. */
   matchedResources: BlueprintMatchedResource[];
   validation: BlueprintPreviewValidation | null;

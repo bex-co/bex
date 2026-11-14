@@ -3,7 +3,10 @@ import { useParams, useRouterState } from "@tanstack/react-router";
 import { DeploysListSkeleton } from "@/common/components/route-skeletons";
 import { AutoDeployOffBanner } from "@/features/deploys/components/auto-deploy-off-banner";
 import { DeploysListPage } from "@/features/deploys/components/deploys-list-page";
-import { autoDeployOff } from "@/features/deploys/lib/auto-deploy-off";
+import {
+  autoDeployOff,
+  deploysManualOnly,
+} from "@/features/deploys/lib/auto-deploy-off";
 import { useServer } from "@/features/services/hooks/use-server";
 import type { ServiceBase } from "@/features/services/lib/service-base";
 import {
@@ -51,6 +54,7 @@ export function DeployHistoryView({
         serviceId={serviceId}
         branch={service?.branch ?? null}
         base={base}
+        manual={deploysManualOnly(service)}
       />
       {list}
     </div>
@@ -80,6 +84,7 @@ export function DeployHistorySkeleton() {
             serviceId={serviceId}
             branch={service?.branch ?? null}
             base={base}
+            manual={deploysManualOnly(service)}
           />
         ) : undefined
       }

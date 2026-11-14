@@ -19,6 +19,7 @@ const serverState: {
   repo: string | null;
   autoDeploy: boolean | null;
   branch: string | null;
+  pushDeliveryMethod?: string | null;
 } = { repo: null, autoDeploy: null, branch: null };
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => ({
@@ -77,7 +78,12 @@ function renderAt(path: string, pending = false) {
 
 describe("auto-deploy-off banner", () => {
   beforeEach(() => {
-    Object.assign(serverState, { repo: null, autoDeploy: null, branch: null });
+    Object.assign(serverState, {
+      repo: null,
+      autoDeploy: null,
+      branch: null,
+      pushDeliveryMethod: null,
+    });
   });
 
   it("flags only a repo-backed service whose auto-deploy is off", () => {
@@ -163,5 +169,39 @@ describe("auto-deploy-off banner", () => {
     expect(
       container.querySelector('[data-testid="auto-deploy-off-banner"]'),
     ).toBeNull();
+  });
+
+  // w10/m375: a repo whose pushes can't reach bex deploys manually, as
+  // Render's public Git URLs do, so the banner says so and links to no setting.
+  it.each([false, true])(
+    "for a repo whose pushes can't reach bex, says deploys are manual with no link (pending: %s)",
+    async (pending) => {
+      Object.assign(serverState, {
+        repo: "https://github.com/someone-else/side-project",
+        autoDeploy: false,
+        branch: "main",
+        pushDeliveryMethod: "unavailable",
+      });
+      renderAt("/services/web/deploys", pending);
+      const banner = await screen.findByTestId("auto-deploy-off-banner");
+      expect(banner).toHaveTextContent("Deploys are manual");
+      expect(banner).toHaveTextContent(
+        "bex doesn't receive this repo's pushes",
+      );
+      expect(screen.queryByRole("link")).toBeNull();
+    },
+  );
+
+  it("keeps the Settings link for a covered repo", async () => {
+    Object.assign(serverState, {
+      repo: "https://github.com/acme/web",
+      autoDeploy: false,
+      branch: "main",
+      pushDeliveryMethod: "github_app",
+    });
+    renderAt("/services/web/deploys");
+    expect(
+      await screen.findByRole("link", { name: "Auto-Deploy settings" }),
+    ).toBeInTheDocument();
   });
 });

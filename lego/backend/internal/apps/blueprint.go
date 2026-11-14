@@ -569,6 +569,10 @@ type BlueprintPreview struct {
 	// a free name derived from it (defaultBlueprintName), for a form to
 	// propose instead (w8/250). "" when none is free.
 	SuggestedName string `json:"suggestedName,omitempty"`
+	// AutoSync is whether a Blueprint created from this review auto-syncs:
+	// false for a repo whose pushes cannot reach bex, which CreateBlueprint
+	// creates paused (w10/m375). Set only for a not-yet-created Blueprint.
+	AutoSync *bool `json:"autoSync,omitempty"`
 }
 
 // BlueprintPreviewReason is the closed set of reasons a Blueprint fetch failed.
@@ -1178,6 +1182,8 @@ func (s *Service) previewBlueprintWith(ctx context.Context, ownerID, repo, branc
 		snap := s.newWorkspaceSnapshot(ctx)
 		preview.MatchedResources = s.blueprintMatchedResources(ctx, contents, snap)
 		preview.ExistingResources = mode
+		autoSync := !s.repoPushesUnreachable(ctx, tenantID, repo)
+		preview.AutoSync = &autoSync
 		// Review what the create would do. A create that would continue a
 		// failed one (BlueprintCreateRetry) is reviewed as that Blueprint,
 		// with its suffix and with its own resources not in conflict with it.
@@ -1392,7 +1398,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		Repo:              req.Repo,
 		Branch:            req.Branch,
 		Path:              req.Path,
-		AutoSync:          true,
+		AutoSync:          !s.repoPushesUnreachable(ctx, tenantID, req.Repo),
 		Manifest:          contents,
 		ExistingResources: mode,
 		ResourceSuffix:    suffix,
@@ -2003,6 +2009,9 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 			return BlueprintView{}, blueprintCreateFetchError(err, path, *req.Branch)
 		}
 	}
+	if req.AutoSync != nil && *req.AutoSync && !b.AutoSync && s.repoPushesUnreachable(ctx, tenantID, b.Repo) {
+		return BlueprintView{}, errAutoSyncUnreachable()
+	}
 	var newStatus *string
 	// A Blueprint whose first sync awaits approval stays created, as on
 	// Render ("status remains created until its first sync has been
@@ -2183,15 +2192,19 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 	if free, err := s.defaultBlueprintName(ctx, tenantID, name, ""); err == nil && free != "" {
 		name = free
 	}
+	autoSync, status := true, store.BlueprintStatusInSync
+	if s.repoPushesUnreachable(ctx, tenantID, req.Repo) {
+		autoSync, status = false, store.BlueprintStatusPaused
+	}
 	b, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
 		TenantID: tenantID,
 		Name:     name,
 		Repo:     req.Repo,
 		Branch:   branch,
 		Path:     CanonicalBlueprintFilename,
-		AutoSync: true,
+		AutoSync: autoSync,
 		Manifest: req.Manifest,
-		Status:   store.BlueprintStatusInSync,
+		Status:   status,
 	})
 	if err != nil || b.ID == "" || b.Status == "disconnected" {
 		return

@@ -14,35 +14,46 @@ const LINK_CLASS = "font-medium underline underline-offset-4";
 /**
  * Render's Deploys-page banner for a service whose auto-deploys are off
  * (changelog 2026-09-03, w3/064): pushes to the branch no longer deploy, and
- * the setting that turns them back on is in Settings.
+ * the setting that turns them back on is in Settings. For a repo whose pushes
+ * can't reach bex (`manual`) deploys are manual, as Render's are for a public
+ * Git URL, and no setting can change that, so none is linked.
  */
 export function AutoDeployOffBanner({
   serviceId,
   branch,
   base,
+  manual = false,
 }: {
   serviceId: string;
   branch: string | null;
   base: ServiceBase;
+  manual?: boolean;
 }) {
   const { t } = useTranslations();
+  const body = manual
+    ? t("deploys.deploysManualBody")
+    : branch
+      ? t("deploys.autoDeployOffBody", { branch })
+      : t("deploys.autoDeployOffBodyNoBranch");
   return (
     <Alert data-testid="auto-deploy-off-banner">
       <CirclePause />
-      <AlertTitle>{t("deploys.autoDeployOffTitle")}</AlertTitle>
+      <AlertTitle>
+        {t(
+          manual ? "deploys.deploysManualTitle" : "deploys.autoDeployOffTitle",
+        )}
+      </AlertTitle>
       <AlertDescription>
-        <p>
-          {branch
-            ? t("deploys.autoDeployOffBody", { branch })
-            : t("deploys.autoDeployOffBodyNoBranch")}
-        </p>
-        <Link
-          to={`${base}/$serviceId/settings`}
-          params={{ serviceId }}
-          className={LINK_CLASS}
-        >
-          {t("deploys.autoDeployOffSettings")}
-        </Link>
+        <p>{body}</p>
+        {manual ? null : (
+          <Link
+            to={`${base}/$serviceId/settings`}
+            params={{ serviceId }}
+            className={LINK_CLASS}
+          >
+            {t("deploys.autoDeployOffSettings")}
+          </Link>
+        )}
       </AlertDescription>
     </Alert>
   );

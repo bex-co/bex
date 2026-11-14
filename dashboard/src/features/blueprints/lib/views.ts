@@ -203,6 +203,7 @@ export function toBlueprintPreviewResult(
       null) as BlueprintPreviewResult["existingResources"],
     resourceSuffix: preview.resourceSuffix || null,
     suggestedName: preview.suggestedName || null,
+    autoSync: preview.autoSync ?? null,
     matchedResources: (preview.matchedResources ?? []).map(
       ({ kind, name }) => ({ kind, name }),
     ),

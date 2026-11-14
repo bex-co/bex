@@ -564,7 +564,11 @@ export function NewBlueprintPage() {
                         pricing={preview.validation?.estimatedPricing}
                         note={
                           <p className="text-sm text-muted-foreground">
-                            {t("blueprints.previewAutoSyncNote")}
+                            {t(
+                              preview.autoSync === false
+                                ? "blueprints.previewManualSyncNote"
+                                : "blueprints.previewAutoSyncNote",
+                            )}
                           </p>
                         }
                       />

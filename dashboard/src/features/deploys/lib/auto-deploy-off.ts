@@ -12,3 +12,15 @@ export function autoDeployOff(
 ): boolean {
   return !!service?.repo && service.autoDeploy === false;
 }
+
+/**
+ * Whether no push to the service's repo can reach bex (pushDeliveryMethod
+ * "unavailable"), so its deploys are manual for good, as Render's are for a
+ * public Git URL ("must be deployed manually"): the banner then offers no
+ * Auto-Deploy setting to turn on.
+ */
+export function deploysManualOnly(
+  service: Pick<ServiceView, "pushDeliveryMethod"> | null | undefined,
+): boolean {
+  return service?.pushDeliveryMethod === "unavailable";
+}

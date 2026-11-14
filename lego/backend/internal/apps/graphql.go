@@ -1202,6 +1202,13 @@ var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// Set when the name the create would use is taken: a free name
 		// derived from it (w8/250).
 		"suggestedName": gqlutil.StrField(func(p BlueprintPreview) any { return p.SuggestedName }),
+		// Whether a Blueprint created from this review auto-syncs (w10/m375).
+		"autoSync": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(p BlueprintPreview) any {
+			if p.AutoSync == nil {
+				return nil
+			}
+			return *p.AutoSync
+		})},
 		"matchedResources": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(blueprintResourceRefGQLType)), Resolve: gqlutil.Field(func(p BlueprintPreview) any {
 			return p.MatchedResources
 		})},

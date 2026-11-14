@@ -115,6 +115,9 @@ query BlueprintPreview(
     # Set when an approved Blueprint already has the name the create would
     # use: a free name derived from it (w8/250).
     suggestedName
+    # Whether a Blueprint created from this review auto-syncs: false for a repo
+    # whose pushes can't reach bex, which is created paused.
+    autoSync
     matchedResources {
       kind
       name

@@ -283,6 +283,17 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "自动部署设置",
     description: "Deploys page banner link to the service Settings page",
   },
+  "deploys.deploysManualTitle": {
+    message: "仅支持手动部署",
+    description:
+      "Deploys page banner title for a repo whose pushes can't reach bex (pushDeliveryMethod unavailable)",
+  },
+  "deploys.deploysManualBody": {
+    message:
+      "bex 收不到此仓库的推送，推送不会部署此服务。请手动部署或使用部署钩子，也可以通过 GitHub 应用连接此仓库。",
+    description:
+      "Deploys page banner body for a repo whose pushes can't reach bex: no Auto-Deploy setting can turn deploys on push on (Render: a public Git URL must be deployed manually)",
+  },
   "deploys.listTitle": {
     message: "部署",
     description: "Deploys tab: card title over the deploy-history list",

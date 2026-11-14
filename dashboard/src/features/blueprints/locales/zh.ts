@@ -354,6 +354,12 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "环境变量组",
     description: "Review section plan group label — env groups in the manifest",
   },
+  "blueprints.previewManualSyncNote": {
+    message:
+      "bex 收不到此仓库的推送，此后蓝图文件的更改不会自动同步。请在每次更改后同步蓝图，或通过 GitHub 应用连接此仓库。",
+    description:
+      "Review section note for a repo whose pushes can't reach bex (the preview's autoSync is false): the Blueprint is created without auto-sync",
+  },
   "blueprints.previewAutoSyncNote": {
     message:
       "此后该分支上蓝图文件的所有更新都会自动同步。创建后可暂停自动同步。",
