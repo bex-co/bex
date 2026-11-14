@@ -131,4 +131,22 @@ describe("MarkdownRenderer", () => {
       /^https?:\/\/attacker\.example\//,
     );
   });
+
+  // R25-09 (w21/m394 t016): raw HTML survives the sanitiser with a colon-less
+  // href the browser still resolves off-origin once it drops tab, newline,
+  // carriage return and leading control characters.
+  it.each([
+    ["a tab", "&#9;//evil.example/x"],
+    ["a leading control character", "&#1;//evil.example/x"],
+    ["leading spaces", "&#32;&#32;//evil.example/x"],
+    ["a newline inside the slashes", "/&#10;/evil.example/x"],
+  ])("treats a raw-HTML link with %s as external", (_name, href) => {
+    render(<MarkdownRenderer content={`<a href="${href}">Open</a>`} />);
+    const anchor = screen.getByText("Open").closest("a");
+    expect(anchor).not.toBeNull();
+    expect(anchor).toHaveAttribute("target", "_blank");
+    expect(anchor).toHaveAttribute("rel", "noopener noreferrer");
+    expect(anchor).toHaveAttribute("href", "https://evil.example/x");
+    expect(screen.getByTestId("external-link-icon")).toBeInTheDocument();
+  });
 });

@@ -1,4 +1,18 @@
 /**
+ * The destination as the browser reads it. WHATWG URL parsing strips leading and
+ * trailing C0 control characters and spaces and removes every tab, LF and CR
+ * before it looks at the scheme or authority, so `\t//host`, `/\n/host` and
+ * `java\tscript:` navigate where the unstripped string seems not to (R25-09).
+ */
+function browserVisibleHref(href: string): string {
+  let start = 0;
+  let end = href.length;
+  while (start < end && href.charCodeAt(start) <= 0x20) start++;
+  while (end > start && href.charCodeAt(end - 1) <= 0x20) end--;
+  return href.slice(start, end).replace(/[\t\n\r]/g, "");
+}
+
+/**
  * Classifier for an untrusted rich-content (Markdown) link destination.
  *
  * The prior `href.startsWith("http")` test in the Markdown renderer classified a
@@ -23,14 +37,15 @@ export function classifyHref(href: string | undefined): {
   isExternal: boolean;
 } {
   if (!href) return { safeHref: href, isExternal: false };
+  const visible = browserVisibleHref(href);
   // WHATWG URL parsing folds `\` to `/` for special schemes, so normalize first
   // to catch `/\host`, `\/host`, and similar authority-introducing obfuscations.
-  const normalized = href.replace(/\\/g, "/");
+  const normalized = visible.replace(/\\/g, "/");
   const hasSchemeOrAuthority =
     /^[a-z][a-z0-9+.-]*:/i.test(normalized) || normalized.startsWith("//");
   if (!hasSchemeOrAuthority) {
     // Relative path, root-relative path, or same-document (#/?) reference.
-    return { safeHref: href, isExternal: false };
+    return { safeHref: visible, isExternal: false };
   }
   let url: URL;
   try {
@@ -42,7 +57,7 @@ export function classifyHref(href: string | undefined): {
     return { safeHref: url.href, isExternal: true };
   }
   if (url.protocol === "mailto:" || url.protocol === "tel:") {
-    return { safeHref: href, isExternal: false };
+    return { safeHref: visible, isExternal: false };
   }
   return { safeHref: undefined, isExternal: false };
 }

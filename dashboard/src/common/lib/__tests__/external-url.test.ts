@@ -13,6 +13,41 @@ describe("classifyHref", () => {
     }
   });
 
+  // R25-09 (w21/m394 t016): the browser strips leading and trailing C0 control
+  // characters and spaces and removes tab, LF and CR anywhere before it parses a
+  // URL, so each of these navigates to https://evil.example/x.
+  it("classifies a destination the browser resolves off-origin as external", () => {
+    for (const href of [
+      "/\t/evil.example/x",
+      "  //evil.example/x",
+      "\t//evil.example/x",
+      "\u0001//evil.example/x",
+      "/\n/evil.example/x",
+      "//evil.example/x\r\n",
+      "\t\nhttps://evil.example/x",
+      "ht\ttps://evil.example/x",
+    ]) {
+      expect(classifyHref(href), JSON.stringify(href)).toEqual({
+        safeHref: "https://evil.example/x",
+        isExternal: true,
+      });
+    }
+  });
+
+  it("returns an internal destination without the characters the browser drops", () => {
+    expect(classifyHref("  /services/abc\n")).toEqual({
+      safeHref: "/services/abc",
+      isExternal: false,
+    });
+    expect(classifyHref("/ser\tvices/abc").safeHref).toBe("/services/abc");
+  });
+
+  it("refuses an active scheme hidden by dropped characters", () => {
+    for (const href of ["java\tscript:alert(1)", "\u0001javascript:alert(1)"]) {
+      expect(classifyHref(href).safeHref, JSON.stringify(href)).toBeUndefined();
+    }
+  });
+
   it("classifies http(s) absolute URLs as external regardless of scheme case", () => {
     expect(classifyHref("https://example.com").isExternal).toBe(true);
     expect(classifyHref("HTTP://example.com").isExternal).toBe(true);
