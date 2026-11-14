@@ -706,15 +706,33 @@ type OOMKilledInfo struct {
 }
 
 // withMemoryLimit fills the memory limit of an instance that was killed for
-// memory from the service's plan (Details.MemoryLimit). An unknown plan
-// leaves it empty.
+// memory from the service's plan: a running instance's (server_failed,
+// Details.MemoryLimit) or a release's that ran out while starting
+// (deploy_ended's reason.failure.oomKilled, w4/630). An unknown plan leaves
+// it empty.
 func withMemoryLimit(ev *Event, tier string) {
-	if ev.Type != TypeServerFailed || ev.Details.ReasonCode != store.EventReasonOOMKilled {
+	if !memoryKilled(*ev) {
 		return
 	}
-	if _, memory, _, ok := tiers.Compute.Resources(cmp.Or(tier, "free")); ok {
-		ev.Details.MemoryLimit = memory
+	_, memory, _, ok := tiers.Compute.Resources(cmp.Or(tier, "free"))
+	if !ok {
+		return
 	}
+	if ev.Type == TypeServerFailed {
+		ev.Details.MemoryLimit = memory
+	} else {
+		ev.Details.EndReason.Failure.OOMKilled.MemoryLimit = memory
+	}
+}
+
+// memoryKilled reports whether ev is a service instance killed for memory,
+// whose limit is its plan's.
+func memoryKilled(ev Event) bool {
+	if ev.Type == TypeServerFailed {
+		return ev.Details.ReasonCode == store.EventReasonOOMKilled
+	}
+	end := ev.Details.EndReason
+	return ev.Type == TypeDeployEnded && end != nil && end.Failure != nil && end.Failure.OOMKilled != nil
 }
 
 // deployEndReason maps an ended deploy row onto Render's reason (w8/m146):
@@ -1208,8 +1226,7 @@ func (s *Service) Get(ctx context.Context, eventID string) (Event, error) {
 	// that is gone leaves only the event's own commit to tell a Git-backed
 	// deploy, and no plan for an OOM's memory limit.
 	var a *appv1alpha1.App
-	oom := event.Type == TypeServerFailed && event.Details.ReasonCode == store.EventReasonOOMKilled
-	if oom || (isDeployEvent(event) && event.Details.Image != "" && event.Details.CommitID == "") {
+	if memoryKilled(event) || (isDeployEvent(event) && event.Details.Image != "" && event.Details.CommitID == "") {
 		if got, err := s.GetApp(ctx, core.RelCanView, lookup.ServiceID); err == nil {
 			a = got
 		}

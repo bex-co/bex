@@ -520,6 +520,12 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason health_timed_out, w4/566)",
   },
+  "deploys.reason.startup_out_of_memory": {
+    message:
+      "the instance ran out of memory during startup ({memory} limit on its instance type; exit code {code}) — reduce memory use or choose a larger instance type",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+  },
   "deploys.reason.probe_http_waiting": {
     message:
       "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: GET {path} on port {port}. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",

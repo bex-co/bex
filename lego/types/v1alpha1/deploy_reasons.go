@@ -46,6 +46,9 @@ const (
 	DeployReasonBuildTimedOut        = "build_timed_out"
 	DeployReasonPreDeployTimedOut    = "pre_deploy_timed_out"
 	DeployReasonHealthTimedOut       = "health_timed_out"
+	// w4/630: the service container was OOM-killed while starting; {memory}
+	// is its instance type's limit, as Render's "Out of memory" names it.
+	DeployReasonStartupOutOfMemory = "startup_out_of_memory"
 
 	// w4/591: the health-check stall, by its target and whether liveness has
 	// restarted the container. The operator writes the waiting half;
@@ -163,6 +166,7 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonBuildTimedOut:        "the build did not finish within the build window; check the build logs",
 	DeployReasonPreDeployTimedOut:    "the pre-deploy command did not finish within its window; check the pre-deploy logs",
 	DeployReasonHealthTimedOut:       "the deploy did not become healthy within the health-gate window; check the service logs",
+	DeployReasonStartupOutOfMemory:   "the instance ran out of memory during startup ({memory} limit on its instance type; exit code {code}) — reduce memory use or choose a larger instance type",
 
 	DeployReasonProbeHTTPWaiting:          probeStallHead + ProbeStallWaiting + probeStallHTTP + probeStallPathTail + probeStallHint,
 	DeployReasonProbeHTTPWaitingRestarted: probeStallHead + ProbeStallWaiting + probeStallHTTP + probeStallRestarted + probeStallPathTail + probeStallHint,

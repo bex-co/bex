@@ -143,6 +143,17 @@ func TestDeployReasonFieldReadsATailAsParts(t *testing.T) {
 	}
 }
 
+// w4/630: the operator's startup out-of-memory sentence, as stored, reads as
+// its code with the instance type's limit and the exit code.
+func TestDeployReasonParsesStartupOutOfMemory(t *testing.T) {
+	text := "the instance ran out of memory during startup (512Mi limit on its instance type; exit code 137) — reduce memory use or choose a larger instance type"
+	code, params, ok := appv1alpha1.ParseDeployReason(text)
+	want := []appv1alpha1.DeployReasonParam{{Name: "memory", Value: "512Mi"}, {Name: "code", Value: "137"}}
+	if !ok || code != appv1alpha1.DeployReasonStartupOutOfMemory || !slices.Equal(params, want) {
+		t.Fatalf("%q parses as %s %v (ok=%v)", text, code, params, ok)
+	}
+}
+
 var templateParam = regexp.MustCompile(`\{([a-z]+)\}`)
 
 // Every template formats and parses back to its code and parameters, a part
@@ -157,7 +168,7 @@ func TestDeployReasonsRoundTrip(t *testing.T) {
 		{Name: "detail", Value: "0/7 nodes are available: 7 Insufficient cpu"},
 		{Name: "hint", Value: " No open port was detected on the instance."},
 		{Name: "host", Value: "ghcr.io"}, {Name: "image", Value: "ghcr.io/acme/web:v1"},
-		{Name: "kind", Value: "readiness"}, {Name: "limit", Value: "3"}, {Name: "minutes", Value: "10"},
+		{Name: "kind", Value: "readiness"}, {Name: "limit", Value: "3"}, {Name: "memory", Value: "512Mi"}, {Name: "minutes", Value: "10"},
 		{Name: "noun", Value: "workspace"}, {Name: "path", Value: "/healthz"},
 		{Name: "port", Value: "8080"}, {Name: "ports", Value: "80, 9000, 9009"}, {Name: "previous", Value: "3000"},
 		{Name: "ref", Value: "g3-1a2b3c4d"}, {Name: "resources", Value: "cpu, ephemeral-storage"},

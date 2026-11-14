@@ -575,3 +575,53 @@ func TestPermanentStartupCrashSettlesBeforeRolloutDeadline(t *testing.T) {
 		})
 	}
 }
+
+// w4/630: a service the kernel kills for its memory limit while starting
+// settles as Render's "Out of memory", naming its instance type's limit and
+// the exit code, with no port-bind hint and no pointer at logs it never wrote.
+func TestStartupOutOfMemorySettlesAsOutOfMemory(t *testing.T) {
+	ctx := context.Background()
+	sched := metav1.NewTime(time.Now().Add(-3 * time.Minute))
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 3},
+		Spec:   appv1alpha1.AppSpec{Tier: tierFree},
+		Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ActiveRevision: "old", ReleaseGeneration: 3}}
+	dep := progressDeadlineDep("web")
+	dep.Status.Conditions = nil
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-new", Namespace: "default",
+		Labels: map[string]string{"app": "web", labelRevision: "rev-1"}},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Resources: resourcesForTier(tierFree)}}},
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
+				{Type: corev1.PodScheduled, Status: corev1.ConditionTrue, LastTransitionTime: sched},
+				{Type: corev1.PodReady, Status: corev1.ConditionFalse, LastTransitionTime: metav1.NewTime(sched.Add(2 * time.Second))},
+			},
+			ContainerStatuses: []corev1.ContainerStatus{{Name: "app", RestartCount: 2,
+				State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+				LastTerminationState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+					ExitCode: 137, Reason: "OOMKilled"}}}},
+		}}
+	cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod, servedReplicaSet(dep, "old")).WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+
+	want := "the instance ran out of memory during startup (512Mi limit on its instance type; exit code 137) — reduce memory use or choose a larger instance type"
+	if _, msg := r.stuckPodMessage(ctx, dep, 3000); msg != want {
+		t.Fatalf("in-flight diagnosis = %q, want %q", msg, want)
+	}
+	if _, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting"); err != nil {
+		t.Fatal(err)
+	}
+	var stored appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	rollout := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout)
+	if rollout == nil || rollout.Status != metav1.ConditionFalse || rollout.Message != want {
+		t.Fatalf("terminal reason = %+v, want %q", rollout, want)
+	}
+	if code, _, ok := appv1alpha1.ParseDeployReason(rollout.Message); !ok || code != appv1alpha1.DeployReasonStartupOutOfMemory {
+		t.Fatalf("%q parses as %q (ok=%v)", rollout.Message, code, ok)
+	}
+	if f := stored.Status.RolloutFailure; f == nil || !f.OOMKilled || f.ExitCode == nil || *f.ExitCode != 137 {
+		t.Fatalf("rolloutFailure = %+v, want an OOM kill with exit 137", f)
+	}
+}

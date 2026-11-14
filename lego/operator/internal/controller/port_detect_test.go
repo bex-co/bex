@@ -193,7 +193,7 @@ func TestADetectedPortRoutesButIsNotGivenBackAsPort(t *testing.T) {
 	if hint := crashHintPort(detected, 8080); hint != 0 {
 		t.Errorf("crash hint port = %d, want none: the process is not expected on $PORT", hint)
 	}
-	if msg := crashLoopMessage(corev1.ContainerStatus{}, crashHintPort(detected, 8080)); strings.Contains(msg, "$PORT") {
+	if msg := crashLoopMessage(&corev1.Pod{}, corev1.ContainerStatus{}, crashHintPort(detected, 8080)); strings.Contains(msg, "$PORT") {
 		t.Errorf("the crash message still says the process must listen on $PORT: %q", msg)
 	}
 

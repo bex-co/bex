@@ -4229,7 +4229,7 @@ func (r *AppReconciler) permanentRolloutCrash(ctx context.Context, dep *appsv1.D
 			crashed = cs.State.Waiting != nil && cs.State.Waiting.Reason == crashLoopBackOff &&
 				cs.RestartCount >= crashSettleRestarts && !podEverReady(pod)
 			if crashed && msg == "" {
-				msg = crashLoopMessage(cs, port)
+				msg = crashLoopMessage(pod, cs, port)
 			}
 		}
 		if !crashed {
@@ -6287,7 +6287,8 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 		client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
 		return "", ""
 	}
-	for _, p := range pods.Items {
+	for i := range pods.Items {
+		p := &pods.Items[i]
 		for _, cs := range p.Status.ContainerStatuses {
 			w := cs.State.Waiting
 			if w == nil {
@@ -6295,7 +6296,7 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 			}
 			switch w.Reason {
 			case crashLoopBackOff:
-				return crashLoopBackOff, crashLoopMessage(cs, port)
+				return crashLoopBackOff, crashLoopMessage(p, cs, port)
 			case imagePullBackOff, "ErrImagePull":
 				if msg, own := r.platformPullFailure(cs.Image, w.Message); own {
 					return imagePullBackOff, msg
@@ -6339,12 +6340,20 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 
 // crashLoopMessage words a crash-looping container's diagnosis; the Ready
 // condition while the rollout is in flight and the terminal deploy reason
-// (permanentRolloutCrash) are the same text.
-func crashLoopMessage(cs corev1.ContainerStatus, port int) string {
+// (permanentRolloutCrash) are the same text. A container the kernel killed
+// for exceeding its memory limit reads as Render's "Out of memory", naming
+// the pod's limit (its instance type's, resourcesForTier): it printed nothing
+// and bound no port, so neither the logs nor the port hint apply (w4/630).
+func crashLoopMessage(pod *corev1.Pod, cs corev1.ContainerStatus, port int) string {
 	exit := ""
 	if t := cs.LastTerminationState.Terminated; t != nil {
 		if t.Reason == runtimeStartError {
 			return startErrorMessage(t.Message)
+		}
+		if memory := containerMemoryLimit(pod, cs.Name); t.Reason == "OOMKilled" && memory != "" {
+			return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonStartupOutOfMemory,
+				appv1alpha1.DeployReasonParam{Name: "memory", Value: memory},
+				appv1alpha1.DeployReasonParam{Name: "code", Value: strconv.Itoa(int(t.ExitCode))})
 		}
 		exit = fmt.Sprintf(" (last exit code %d)", t.ExitCode)
 	}
@@ -6355,6 +6364,17 @@ func crashLoopMessage(cs corev1.ContainerStatus, port int) string {
 			" If the crash is a port bind: the process must listen on $PORT (%d).", port)
 	}
 	return msg
+}
+
+// containerMemoryLimit is the named container's memory limit ("512Mi"), or ""
+// when it has none.
+func containerMemoryLimit(pod *corev1.Pod, name string) string {
+	for _, c := range pod.Spec.Containers {
+		if q, ok := c.Resources.Limits[corev1.ResourceMemory]; ok && c.Name == name {
+			return q.String()
+		}
+	}
+	return ""
 }
 
 // pendingStallGrace and containerCreatingStallAfter keep a merely slow start

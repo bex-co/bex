@@ -499,6 +499,12 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason health_timed_out, w4/566)",
   },
+  "deploys.reason.startup_out_of_memory": {
+    message:
+      "实例在启动期间内存不足（其实例类型的内存上限为 {memory}；退出码 {code}）— 请减少内存占用或选择更大的实例类型",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+  },
   "deploys.reason.probe_http_waiting": {
     message:
       "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：端口 {port} 上的 GET {path}。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
