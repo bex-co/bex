@@ -387,7 +387,21 @@ export default defineConfig(({ mode }) => {
       }),
       viteReact(),
       nitro({
-        plugins: ["./server/plugins/mobile-association-content-type.ts"],
+        plugins: [
+          "./server/plugins/mobile-association-content-type.ts",
+          "./server/plugins/html-never-public.ts",
+        ],
+        // Global, not a `/assets/**` route: nitro-nightly 3.0.1-20260310
+        // passes a routed middleware's `{ route, handler }` record to h3 as the
+        // function, so every matching request answers 500. The handler returns
+        // undefined for any path outside `/assets`.
+        handlers: [
+          {
+            route: "/**",
+            middleware: true,
+            handler: "./server/middleware/assets-miss.ts",
+          },
+        ],
         routeRules: buildRouteRules(securityHeaders),
       }),
       // `ANALYZE=1 yarn build` emits a gitignored treemap of the bundle; normal
