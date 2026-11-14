@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -226,5 +227,28 @@ func TestServerTimeoutsConfigured(t *testing.T) {
 	}
 	if srv.IdleTimeout <= 0 {
 		t.Errorf("IdleTimeout = %v, want > 0", srv.IdleTimeout)
+	}
+}
+
+// The static server logs in zap's production mode: JSON at info level, with
+// sampling. Development mode logged at debug in a console format and turned a
+// DPanic into a panic of a server that serves every static site on its replica.
+func TestTheStaticServerLogsInProductionModeByDefault(t *testing.T) {
+	var out bytes.Buffer
+	logger := newLogger(&out)
+
+	logger.V(1).Info("debug detail")
+	logger.Info("serving", "addr", ":8080")
+
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("got %d log lines, want 1 (debug is off): %q", len(lines), out.String())
+	}
+	var record map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &record); err != nil {
+		t.Fatalf("log line is not JSON: %q (%v)", lines[0], err)
+	}
+	if record["msg"] != "serving" {
+		t.Fatalf("record = %v", record)
 	}
 }

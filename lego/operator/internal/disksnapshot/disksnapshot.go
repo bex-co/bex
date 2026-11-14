@@ -332,9 +332,11 @@ func extractTree(archive *tar.Reader, root string) error {
 			if err := rooted.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 				return err
 			}
-			// os.Root rejects absolute link targets and any relative target that
-			// escapes root. Later writes through a symlink are constrained by the
-			// same rooted handle, closing both forms of tar extraction escape.
+			// os.Root.Symlink does not validate the target: a link to an absolute
+			// path or one that climbs out of root is created as archived. What
+			// contains it is that the rooted handle never follows such a link, so
+			// a later entry written through it fails instead of landing outside
+			// the volume (TestExtractTreeRestoresAnEscapingLinkButNeverFollowsIt).
 			if err := rooted.Symlink(header.Linkname, name); err != nil {
 				return err
 			}

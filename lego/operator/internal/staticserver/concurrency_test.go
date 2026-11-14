@@ -18,6 +18,7 @@ package staticserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -283,3 +284,205 @@ func TestLiveBodyLeaseBoundsSlowClientWrites(t *testing.T) {
 		t.Fatalf("GET /b.html after release => %d, want 200", status)
 	}
 }
+
+// ctxOrigin is blockingOrigin that, like the S3 origin, gives up when the
+// context it was called with ends. Each Get records the context's error at the
+// moment it returned.
+type ctxOrigin struct {
+	release chan struct{}
+	entered chan string
+	body    []byte
+	total   atomic.Int64
+	ended   chan error    // one send per Get that returned an error
+	unwind  chan struct{} // when set, a cancelled Get returns only once it is closed
+}
+
+func newCtxOrigin() *ctxOrigin {
+	return &ctxOrigin{
+		release: make(chan struct{}),
+		entered: make(chan string, 16),
+		ended:   make(chan error, 16),
+		body:    []byte("home"),
+	}
+}
+
+func (o *ctxOrigin) Get(ctx context.Context, key string) (Object, error) {
+	o.total.Add(1)
+	o.entered <- key
+	select {
+	case <-o.release:
+		return Object{Body: o.body, ContentType: "text/html"}, nil
+	case <-ctx.Done():
+		if o.unwind != nil {
+			<-o.unwind
+			select {
+			case <-o.release:
+			default:
+			}
+		}
+		o.ended <- ctx.Err()
+		return Object{}, ctx.Err()
+	}
+}
+
+// serveAsync runs one GET for "/" in the background with its own cancellable context and
+// returns the recorder, a cancel for that request's client, and a channel that
+// closes when the handler returns.
+func serveAsync(h *Handler) (*httptest.ResponseRecorder, context.CancelFunc, <-chan struct{}) {
+	ctx, cancel := context.WithCancel(context.Background())
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "http://"+testHost+"/", nil).WithContext(ctx)
+	req.Host = testHost
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		h.ServeHTTP(rec, req)
+	}()
+	return rec, cancel, done
+}
+
+// The request that started a fetch is only the first of the requests waiting
+// on it. When its client goes away the others still need the object, so the
+// fetch must not be cancelled with it: before, the leader's cancellation came
+// back to every waiter as a 502.
+func TestACancelledLeaderDoesNotFailTheRequestsWaitingOnItsFetch(t *testing.T) {
+	origin := newCtxOrigin()
+	h := newConcurrentHandler(origin, nil)
+
+	_, cancelLeader, leaderDone := serveAsync(h)
+	<-origin.entered // the leader is inside origin.Get, holding the flight open
+	waiter, cancelWaiter, waiterDone := serveAsync(h)
+	defer cancelWaiter()
+	time.Sleep(100 * time.Millisecond) // the waiter coalesces onto the open flight
+
+	cancelLeader()
+	select {
+	case <-leaderDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("a cancelled request kept waiting for the origin")
+	}
+	close(origin.release)
+	select {
+	case <-waiterDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the waiting request never finished")
+	}
+
+	if waiter.Code != http.StatusOK {
+		t.Fatalf("waiter => %d, want 200 (its leader was cancelled, the object was not)", waiter.Code)
+	}
+	if got := origin.total.Load(); got != 1 {
+		t.Fatalf("origin fetches = %d, want 1", got)
+	}
+}
+
+// A request that waits on someone else's fetch leaves as soon as its own client
+// does; it does not hold its handler until the fetch ends.
+func TestACancelledWaiterReturnsWithoutWaitingForTheFetch(t *testing.T) {
+	origin := newCtxOrigin()
+	h := newConcurrentHandler(origin, nil)
+
+	leader, _, leaderDone := serveAsync(h)
+	<-origin.entered
+	_, cancelWaiter, waiterDone := serveAsync(h)
+	time.Sleep(100 * time.Millisecond)
+
+	cancelWaiter()
+	select {
+	case <-waiterDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("a cancelled waiter stayed blocked on the fetch")
+	}
+	close(origin.release)
+	<-leaderDone
+	if leader.Code != http.StatusOK {
+		t.Fatalf("leader => %d, want 200", leader.Code)
+	}
+}
+
+// When the last request waiting on a fetch leaves, nobody wants the object any
+// more: the fetch is cancelled at once rather than run to its deadline.
+func TestAFetchNoRequestWaitsOnAnyMoreIsCancelled(t *testing.T) {
+	origin := newCtxOrigin()
+	h := newConcurrentHandler(origin, nil)
+
+	_, cancel, done := serveAsync(h)
+	<-origin.entered
+	cancel()
+	<-done
+
+	select {
+	case err := <-origin.ended:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("fetch ended with %v, want it cancelled", err)
+		}
+	default:
+		t.Fatal("the request returned while its fetch was still running")
+	}
+}
+
+// A request that arrives while an abandoned fetch is still unwinding does not
+// join it and inherit its cancellation: it starts a fresh fetch.
+func TestARequestAfterAnAbandonedFetchStartsAFreshOne(t *testing.T) {
+	origin := newCtxOrigin()
+	origin.unwind = make(chan struct{}) // the first fetch takes its time to give up
+	h := newConcurrentHandler(origin, nil)
+
+	_, cancelFirst, firstDone := serveAsync(h)
+	<-origin.entered
+	go cancelFirst() // the last waiter leaves; its Get is told to stop but does not return yet
+
+	// The flight's context is cancelled once the leaver has run; wait for it.
+	time.Sleep(100 * time.Millisecond)
+	second, _, secondDone := serveAsync(h)
+	<-origin.entered // a second origin fetch began
+	close(origin.release)
+	close(origin.unwind)
+	<-secondDone
+	<-firstDone
+
+	if second.Code != http.StatusOK {
+		t.Fatalf("second request => %d, want 200 (it must not inherit the abandoned fetch's cancellation)", second.Code)
+	}
+	if got := origin.total.Load(); got != 2 {
+		t.Fatalf("origin fetches = %d, want 2", got)
+	}
+}
+
+// The fetch runs under its own deadline: an origin that never answers fails the
+// request that waits for it instead of holding it, and its fetch-gate slot,
+// forever.
+func TestAFetchThatNeverAnswersEndsAtItsDeadline(t *testing.T) {
+	old := originFetchTimeout
+	originFetchTimeout = 100 * time.Millisecond
+	t.Cleanup(func() { originFetchTimeout = old })
+
+	origin := newCtxOrigin()
+	h := newConcurrentHandler(origin, nil)
+
+	rec, _, done := serveAsync(h)
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("a request waited past its fetch's deadline")
+	}
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502", rec.Code)
+	}
+	if err := <-origin.ended; !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("fetch ended with %v, want its own deadline", err)
+	}
+}
+
+// A panic in an origin fails the requests waiting on it; it does not crash the
+// shared server from the fetch's goroutine.
+func TestAPanickingOriginFailsTheRequestNotTheServer(t *testing.T) {
+	h := newConcurrentHandler(panicOrigin{}, nil)
+	if got := getStatus(h, "/"); got != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502", got)
+	}
+}
+
+type panicOrigin struct{}
+
+func (panicOrigin) Get(context.Context, string) (Object, error) { panic("origin bug") }

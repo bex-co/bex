@@ -217,9 +217,11 @@ type Handler struct {
 	resolver Resolver
 	origin   Origin
 	cache    *cache
-	// group collapses concurrent misses for the same object key into one origin
-	// fetch (finding 12): a viral asset is fetched once, not once per request.
+	// group collapses concurrent encodes of one variant (encoding.go).
 	group singleflight.Group
+	// fetches collapses concurrent misses for the same object key into one origin
+	// fetch (flight.go).
+	fetches *flights
 	// gate bounds concurrent origin fetches (count + in-flight bytes) so a burst
 	// of distinct misses can't buffer an unbounded amount of memory (finding 12).
 	gate *fetchGate
@@ -247,6 +249,7 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 		resolver:   resolver,
 		origin:     origin,
 		cache:      newCache(cacheBytes),
+		fetches:    newFlights(),
 		gate:       newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes, defaultMaxSiteFetches),
 		clients:    newKeyedLimiter(defaultMaxClientFetches),
 		admission:  newAdmission(),
@@ -710,9 +713,9 @@ func (h *Handler) spaFallback(ctx context.Context, site Site, reqPath string) (O
 
 // get fetches a site-relative path through the cache. A revision prefix is
 // immutable, so a cached object is never stale within a revision. Concurrent
-// misses for the same key are collapsed into a single origin fetch (singleflight)
-// and admitted through the fetch gate, so a burst can neither stampede the origin
-// nor buffer unbounded memory (finding 12).
+// misses for the same key share a single origin fetch (flights), admitted
+// through the fetch gate, so a burst can neither stampede the origin nor buffer
+// unbounded memory (finding 12).
 func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, error) {
 	if hasGitSegment(reqPath) {
 		// No rewrite destination reaches git metadata either.
@@ -723,17 +726,17 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 	if obj, ok := h.cache.get(ck); ok {
 		return obj, negativeErr(obj)
 	}
-	v, err, _ := h.group.Do(ck, func() (any, error) {
+	obj, err := h.fetches.do(ctx, ck, func(fetchCtx context.Context) (Object, error) {
 		// A prior leader for this key may have just populated the cache.
 		if obj, ok := h.cache.get(ck); ok {
 			return obj, nil
 		}
-		release, ok := h.admit(ctx, site.AppID, client)
+		release, ok := h.admit(fetchCtx, site.AppID, client)
 		if !ok {
 			return Object{}, ErrOverloaded
 		}
 		defer release()
-		obj, gerr := h.origin.Get(ctx, key)
+		obj, gerr := h.origin.Get(fetchCtx, key)
 		if errors.Is(gerr, ErrNotFound) {
 			// A confirmed miss is immutable within the revision too; cache it
 			// so it stops costing origin round trips and fetch-gate slots.
@@ -753,7 +756,6 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 	if err != nil {
 		return Object{}, err
 	}
-	obj := v.(Object)
 	return obj, negativeErr(obj)
 }
 

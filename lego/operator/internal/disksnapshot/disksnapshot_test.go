@@ -266,6 +266,58 @@ func TestExtractTreeRejectsEscapingSymlinkTargets(t *testing.T) {
 	}
 }
 
+// os.Root does not validate a symlink's target when the link is created: a link
+// to "/etc" or "../outside" is restored as the link it was archived as. What
+// holds the line is that nothing is ever followed through it: a write by way of
+// the link is refused, and nothing is created outside the volume.
+func TestExtractTreeRestoresAnEscapingLinkButNeverFollowsIt(t *testing.T) {
+	for _, link := range []string{"/etc", "../outside"} {
+		t.Run(link, func(t *testing.T) {
+			tree := func(entries ...*tar.Header) *tar.Reader {
+				var raw bytes.Buffer
+				archive := tar.NewWriter(&raw)
+				for _, header := range entries {
+					// Owned by whoever runs the test, so restoring the owner needs no privilege.
+					header.Uid, header.Gid = os.Getuid(), os.Getgid()
+					if err := archive.WriteHeader(header); err != nil {
+						t.Fatal(err)
+					}
+					if header.Typeflag == tar.TypeReg {
+						if _, err := archive.Write(make([]byte, header.Size)); err != nil {
+							t.Fatal(err)
+						}
+					}
+				}
+				if err := archive.Close(); err != nil {
+					t.Fatal(err)
+				}
+				return tar.NewReader(bytes.NewReader(raw.Bytes()))
+			}
+			parent := t.TempDir()
+			root := filepath.Join(parent, "volume")
+			if err := os.Mkdir(root, 0o755); err != nil {
+				t.Fatal(err)
+			}
+
+			linkHeader := &tar.Header{Name: "link", Linkname: link, Typeflag: tar.TypeSymlink, Mode: 0o777}
+			if err := extractTree(tree(linkHeader), root); err != nil {
+				t.Fatalf("the link alone was refused: %v", err)
+			}
+			if got, err := os.Readlink(filepath.Join(root, "link")); err != nil || got != link {
+				t.Fatalf("Readlink = %q, %v, want the archived target %q", got, err, link)
+			}
+
+			through := &tar.Header{Name: "link/planted", Typeflag: tar.TypeReg, Mode: 0o600, Size: 4}
+			if err := extractTree(tree(through), root); err == nil {
+				t.Fatal("a write through the escaping link was accepted")
+			}
+			if _, err := os.Stat(filepath.Join(parent, "outside", "planted")); err == nil {
+				t.Fatal("a file was created outside the volume")
+			}
+		})
+	}
+}
+
 // Restore discards post-snapshot writes — that is Render's documented behavior
 // and the reason it warns before running one.
 func TestRestoreDiscardsEverythingWrittenAfterTheSnapshot(t *testing.T) {

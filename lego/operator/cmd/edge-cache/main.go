@@ -33,6 +33,26 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/edgecache"
 )
 
+// The sidecar proxies every request to the app, so only what the app cannot
+// bound for it is limited here: how long a client may take to send its headers
+// and how long a connection may sit idle between requests. There is no
+// ReadTimeout or WriteTimeout: either would cut an event stream, a long poll, a
+// WebSocket upgrade, a large download or a slow upload that the app serves on
+// purpose, and the app has its own limits for those.
+const (
+	readHeaderTimeout = 10 * time.Second
+	idleTimeout       = 120 * time.Second
+)
+
+func newServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: readHeaderTimeout,
+		IdleTimeout:       idleTimeout,
+	}
+}
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -50,7 +70,7 @@ func main() {
 		MaxBytes:       maxBytes,
 		MaxObjectBytes: maxBytes / 8,
 	})
-	server := &http.Server{Addr: os.Getenv("BEX_EDGE_CACHE_LISTEN"), Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+	server := newServer(os.Getenv("BEX_EDGE_CACHE_LISTEN"), handler)
 	drain, _ := strconv.Atoi(os.Getenv("BEX_EDGE_CACHE_DRAIN_SECONDS"))
 	go func() {
 		<-ctx.Done()

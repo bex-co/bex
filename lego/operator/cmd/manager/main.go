@@ -157,9 +157,7 @@ func parseManagerConfig() managerConfig {
 	flag.StringVar(&cfg.metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&cfg.enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	opts := zap.Options{
-		Development: true,
-	}
+	opts := logOptions()
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
@@ -260,6 +258,15 @@ func buildServerOptions(cfg managerConfig) (webhook.Server, metricsserver.Option
 	}
 
 	return webhookServer, metricsServerOptions
+}
+
+// logOptions are the manager's logging defaults before the --zap-* flags are
+// applied: zap's production set (JSON, info level, stack traces on errors only,
+// sampling). Development mode, which the kubebuilder scaffold sets, logs at
+// debug, prints a stack trace at every warning, makes DPanic panic and never
+// samples; --zap-devel still turns it on for a developer.
+func logOptions() zap.Options {
+	return zap.Options{}
 }
 
 func main() {

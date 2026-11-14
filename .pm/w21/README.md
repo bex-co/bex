@@ -19,7 +19,7 @@
 - [x] **m397** — [Docs and board references stay valid: a link gate, repaired links, and no new duplicate milestone numbers](done/m397/README.md) (8 tasks, ~5h) ← from `/pm-brainstorm for w21` 2026-11-14, filed by `/pmx them all to w21`; 71 broken links, 16 duplicate milestone numbers
 - [x] **m409** — [Admission policies bind every identity the round-25 audit named: the activator, a projected crown Secret, a platform toleration, hostPort, and the drain-guard's pod-template fields](done/m409/README.md) (8 tasks, ~5h) ← promoted from 068, 2026-11-14
 - [ ] **m410** — **BLOCKED (needs the user's decision on the localhost return URL that the documented "Local dev against prod" workflow needs; t001–t003 and t005–t007 are done and shipped)** — [Dashboard hardening from the round-25 audit: redirect validation, same-origin, content type, CSP, error headers, the return URL, and the consent screens](blocked/m410/README.md) (8 tasks, ~4h) ← promoted from 072, 2026-11-14
-- [ ] **m411** — [Operator hardening from the round-25 audit: the PROXY trust list, the edge cache, the static server's fetch leader, registry-migrate, logging, disk snapshots and the build context](m411/README.md) (10 tasks, ~5h) ← promoted from 073, 2026-11-14
+- [x] **m411** — [Operator hardening from the round-25 audit: the PROXY trust list, the edge cache, the static server's fetch leader, registry-migrate, logging, disk snapshots and the build context](done/m411/README.md) (10 tasks, ~5h) ← promoted from 073, 2026-11-14 — DONE 2026-11-14
 
 ## Inbox
 
@@ -95,7 +95,7 @@
 - [x] **070** — The SNI proxies count the global connection cap before the PROXY header and SNI are read, and nothing alerts on rejected connections → [`070.md`](done/070.md) (~1h30) ← from w21/m394 round 25, R25-12
 - [ ] **071** — **BLOCKED (needs the user's decision on whether the day-to-day credential keeps `pods/exec`, and a cluster to apply and verify default-deny NetworkPolicies on webhook and edge namespaces)** — The day-to-day `bex-operator` role grants cluster-wide `pods/exec`, and six platform namespaces have no NetworkPolicy → [`blocked/071.md`](blocked/071.md) (~1h30) ← from w21/m394 round 25 hardening
 - [x] **072** — Dashboard hardening notes from the round-25 audit: redirect validation, same-origin, content type, CSP, error headers, the device page, the consent token and a localhost return URL → [`072.md`](done/072.md) (~2h) ← from w21/m394 round 25 hardening — promoted to [m410](blocked/m410/README.md), 2026-11-14
-- [x] **073** — Operator proxy, job and logging hardening notes from the round-25 audit → [`073.md`](done/073.md) (~2h) ← from w21/m394 round 25 hardening — promoted to [m411](m411/README.md)
+- [x] **073** — Operator proxy, job and logging hardening notes from the round-25 audit → [`073.md`](done/073.md) (~2h) ← from w21/m394 round 25 hardening — promoted to [m411](done/m411/README.md)
 - [x] **074** — The backend's per-source connection and admission caps key an IPv6 client on its exact address, so one /64 holds 2^64 "sources" → [`074.md`](done/074.md) (~45m) ← from w21/m394 t006 reuse review, 2026-11-14
 - [ ] **075** — Reconcile Render's "Only IPv4 CIDR ranges are supported" with the IPv6 entries bex's inbound IP rules accept → [`075.md`](075.md) (~45m) ← from w21/m396 t006 Render parity check, 2026-11-14
 - [ ] **076** — bex refuses PORT 18014 where Render documents only 18012, 18013 and 19099 as reserved → [`076.md`](076.md) (~30m) ← from w21/m396 t006 Render parity check, 2026-11-14
@@ -104,3 +104,4 @@
 - [ ] **079** — Run the tightened admission policies on the local cluster: the sample App deploys and wakes, a node drains, and no policy denial reaches the logs → [`079.md`](079.md) (~45m) ← from w21/m409 t005, 2026-11-14
 - [ ] **080** — The device confirm page shows only the user code: add the client, scopes and request time if Hydra's admin API can say them before the accept → [`080.md`](080.md) (~1h) ← from w21/m410 t005, 2026-11-14
 - [ ] **081** — Narrow the dashboard CSP's `connect-src` from `https: wss:` to the origins the app actually reaches, with a browser sweep → [`081.md`](081.md) (~1h30) ← from w21/m410 t003, 2026-11-14
+- [ ] **082** — `make test` cannot run its codegen step on a machine with Go 1.27.3: controller-gen answers "directory prefix . does not contain modules listed in go.work" → [`082.md`](082.md) (~30m) ← from w21/m411 t008, 2026-11-14

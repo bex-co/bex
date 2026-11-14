@@ -25,11 +25,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -100,8 +102,13 @@ func run() error {
 		apps = []appv1alpha1.App{app}
 	}
 
+	authFile, removeAuthFile, err := writeSkopeoAuthFile(*registryHost, *regUser, *regPass)
+	if err != nil {
+		return fmt.Errorf("write the registry auth file: %w", err)
+	}
+	defer removeAuthFile()
 	eng := &migrate.Engine{
-		Registry: &skopeoRegistry{host: *registryHost, user: *regUser, password: *regPass},
+		Registry: &skopeoRegistry{host: *registryHost, user: *regUser, password: *regPass, authFile: authFile},
 	}
 	if *bucket != "" && *endpoint != "" {
 		eng.Objects = &awsObjects{bucket: *bucket, endpoint: *endpoint}
@@ -174,6 +181,9 @@ func run() error {
 // distribution HTTP API already in internal/registry.
 type skopeoRegistry struct {
 	host, user, password string
+	// authFile is the private file skopeo reads the credentials from; empty
+	// when there are none.
+	authFile string
 }
 
 func (s *skopeoRegistry) ListTags(ctx context.Context, repo string) ([]string, error) {
@@ -196,20 +206,50 @@ func (s *skopeoRegistry) PutTombstone(ctx context.Context, repo, digest string) 
 	return s.skopeoCopy(ctx, src, dst)
 }
 
-// skopeoCopyArgs builds the skopeo copy argv. Creds are passed explicitly so
-// --apply works without a prior `skopeo login` (m92 Phase 2: first tenant
-// apply failed with "authentication required" until a local login).
-func skopeoCopyArgs(src, dst, user, password string) []string {
+// skopeoCopyArgs builds the skopeo copy argv. Credentials reach skopeo through
+// an auth file (writeSkopeoAuthFile), never through --src-creds/--dest-creds:
+// an argument is readable by every process in the container, and the password
+// is the registry's. They are passed explicitly so --apply works without a prior
+// `skopeo login` (m92 Phase 2: first tenant apply failed with "authentication
+// required" until a local login). TLS verification is off because the registry
+// is the in-cluster Zot, reached by its Service name over the cluster network.
+func skopeoCopyArgs(src, dst, authFile string) []string {
 	args := []string{"copy", "--src-tls-verify=false", "--dest-tls-verify=false"}
-	if user != "" || password != "" {
-		creds := user + ":" + password
-		args = append(args, "--src-creds", creds, "--dest-creds", creds)
+	if authFile != "" {
+		args = append(args, "--src-authfile", authFile, "--dest-authfile", authFile)
 	}
 	return append(args, src, dst)
 }
 
+// writeSkopeoAuthFile writes the registry credentials in the containers-auth
+// format (a docker config.json also reads) to a file only this user can open,
+// in a private directory, and returns its path with a cleanup that removes
+// both. With no credentials there is no file and cleanup does nothing.
+func writeSkopeoAuthFile(host, user, password string) (path string, cleanup func(), err error) {
+	if user == "" && password == "" {
+		return "", func() {}, nil
+	}
+	dir, err := os.MkdirTemp("", "registry-migrate-")
+	if err != nil {
+		return "", nil, err
+	}
+	cleanup = func() { _ = os.RemoveAll(dir) }
+	auth := base64.StdEncoding.EncodeToString([]byte(user + ":" + password))
+	body, err := json.Marshal(map[string]any{"auths": map[string]any{host: map[string]string{"auth": auth}}})
+	if err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	path = filepath.Join(dir, "auth.json")
+	if err := os.WriteFile(path, body, 0o600); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	return path, cleanup, nil
+}
+
 func (s *skopeoRegistry) skopeoCopy(ctx context.Context, src, dst string) error {
-	cmd := exec.CommandContext(ctx, "skopeo", skopeoCopyArgs(src, dst, s.user, s.password)...)
+	cmd := exec.CommandContext(ctx, "skopeo", skopeoCopyArgs(src, dst, s.authFile)...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	return cmd.Run()
 }

@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	"github.com/bex-co/bex/lego/operator/internal/disksnapshot"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -639,5 +640,58 @@ func TestDiskSnapshotReservesNoCPUButKeepsItsLimits(t *testing.T) {
 	}
 	if got := res.Limits.Memory().String(); got != "256Mi" {
 		t.Fatalf("memory limit = %s, want 256Mi", got)
+	}
+}
+
+// The snapshot Job is told the volume's capacity, which bounds the stream it
+// uploads, so a large disk's parts stay under S3's part limit
+// (disksnapshot.PlanUpload). The larger of what was requested, what the claim
+// was allocated and what the filesystem reports is used: the volume only grows.
+func TestDiskSnapshotJobCarriesTheDisksCapacity(t *testing.T) {
+	r := &AppReconciler{BackupHelperImage: "test-operator"}
+	envOf := func(app *appv1alpha1.App) string {
+		for _, e := range r.diskSnapshotJobSpec(app, nil, "backup", nil).Template.Spec.Containers[0].Env {
+			if e.Name == "BEX_DISK_SIZE_GB" {
+				return e.Value
+			}
+		}
+		return "(unset)"
+	}
+
+	app := diskApp("svc", &appv1alpha1.DiskSpec{SizeGB: 500})
+	if got := envOf(app); got != "500" {
+		t.Fatalf("BEX_DISK_SIZE_GB = %s, want 500", got)
+	}
+	app.Status.Disk = &appv1alpha1.DiskStatus{AllocatedSizeGB: 800, CapacityGB: 10}
+	if got := envOf(app); got != "800" {
+		t.Fatalf("BEX_DISK_SIZE_GB = %s, want the larger allocated size 800", got)
+	}
+	app = diskApp("svc", &appv1alpha1.DiskSpec{SizeGB: 1})
+	app.Status.Disk = &appv1alpha1.DiskStatus{AllocatedSizeGB: 1, CapacityGB: 10}
+	if got := envOf(app); got != "10" {
+		t.Fatalf("BEX_DISK_SIZE_GB = %s, want the volume's 10 GB (a 1 GB disk sits on a 10 GB volume)", got)
+	}
+}
+
+// The uploader buffers its parts in memory, so the limit has to cover them: a
+// 10,000 GB disk's parts are over a GiB. A disk that is already fine keeps the
+// limit it has, and a restore, which uploads nothing, never gets the extra.
+func TestDiskSnapshotMemoryLimitCoversTheUploadBuffers(t *testing.T) {
+	r := &AppReconciler{BackupHelperImage: "test-operator"}
+	limit := func(sizeGB int32, command string) int64 {
+		app := diskApp("svc", &appv1alpha1.DiskSpec{SizeGB: sizeGB})
+		return r.diskSnapshotJobSpec(app, nil, command, nil).Template.Spec.Containers[0].Resources.Limits.Memory().Value()
+	}
+	const mi = int64(1) << 20
+
+	if got := limit(10, "backup"); got != 256*mi {
+		t.Fatalf("10 GB limit = %d MiB, want the unchanged 256", got/mi)
+	}
+	plan := disksnapshot.PlanUpload(10000)
+	if got := limit(10000, "backup"); got < 256*mi || got < plan.BufferBytes() {
+		t.Fatalf("10000 GB limit = %d MiB does not cover the %d MiB the uploader buffers", got/mi, plan.BufferBytes()/mi)
+	}
+	if got := limit(10000, "restore"); got != 256*mi {
+		t.Fatalf("restore limit = %d MiB, want 256: it uploads nothing", got/mi)
 	}
 }

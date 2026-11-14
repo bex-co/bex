@@ -1746,7 +1746,8 @@ func cachePhase(o Options, name, image, script string, args []string, mounts ...
 
 // sourcePathChecks names the checkout paths the build will read, so the clone
 // step can refuse a missing one in the tenant's own terms (w8/053) instead of
-// BuildKit's "invalid local: resolve : lstat /source/…". Each pair is the
+// BuildKit's "invalid local: resolve : lstat /source/…", and one that is a link
+// out of the checkout (w21/m411) before any later step enters it. Each pair is the
 // display path (repo-relative, as configured) and the bounded mount path the
 // build actually uses; both travel as env, never spliced into the script.
 func sourcePathChecks(o Options) []corev1.EnvVar {
@@ -1797,6 +1798,7 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 	if o.ExpectedCommit != "" {
 		env = append(env, corev1.EnvVar{Name: "EXPECTED_COMMIT", Value: execution.KubernetesLiteral(o.ExpectedCommit)})
 	}
+	env = append(env, corev1.EnvVar{Name: "BEX_SOURCE_ROOT", Value: execution.KubernetesLiteral(sourceMount)})
 	env = append(env, sourcePathChecks(o)...)
 	if o.CloneSecret != "" {
 		env = append(env, corev1.EnvVar{
@@ -1838,9 +1840,28 @@ bex_require() {
   echo "the $3 \"$4\" does not exist in the repository at \"$commit\"" >&2
   exit ` + fmt.Sprint(ExitTenantError) + `
 }
-if [ -n "${BEX_ROOT_DIR:-}" ]; then bex_require -d "$BEX_ROOT_DIR_PATH" "root directory" "$BEX_ROOT_DIR"; fi
-if [ -n "${BEX_DOCKER_CONTEXT:-}" ]; then bex_require -d "$BEX_DOCKER_CONTEXT_PATH" "Docker build context" "$BEX_DOCKER_CONTEXT"; fi
-if [ -n "${BEX_DOCKERFILE:-}" ]; then bex_require -f "$BEX_DOCKERFILE_PATH" "Dockerfile" "$BEX_DOCKERFILE"; fi
+bex_root="$(cd "$BEX_SOURCE_ROOT" && pwd -P)"
+bex_contained() {
+  case "$(cd "$1" && pwd -P)/" in
+    "$bex_root"/*) ;;
+    *)
+      echo "the $2 \"$3\" is a link that leaves the repository" >&2
+      exit ` + fmt.Sprint(ExitTenantError) + `
+      ;;
+  esac
+}
+if [ -n "${BEX_ROOT_DIR:-}" ]; then
+  bex_require -d "$BEX_ROOT_DIR_PATH" "root directory" "$BEX_ROOT_DIR"
+  bex_contained "$BEX_ROOT_DIR_PATH" "root directory" "$BEX_ROOT_DIR"
+fi
+if [ -n "${BEX_DOCKER_CONTEXT:-}" ]; then
+  bex_require -d "$BEX_DOCKER_CONTEXT_PATH" "Docker build context" "$BEX_DOCKER_CONTEXT"
+  bex_contained "$BEX_DOCKER_CONTEXT_PATH" "Docker build context" "$BEX_DOCKER_CONTEXT"
+fi
+if [ -n "${BEX_DOCKERFILE:-}" ]; then
+  bex_require -f "$BEX_DOCKERFILE_PATH" "Dockerfile" "$BEX_DOCKERFILE"
+  bex_contained "$(dirname "$BEX_DOCKERFILE_PATH")" "Dockerfile" "$BEX_DOCKERFILE"
+fi
 rm -rf .git
 if [ -d ` + outputMount + ` ]; then printf '%s' "$commit" > ` + revisionFile + `; fi`}, // the guard serves script tests run without the mount
 		Env: env,

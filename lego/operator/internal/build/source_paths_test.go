@@ -94,6 +94,51 @@ func TestCloneRefusesMissingSourcePaths(t *testing.T) {
 	}
 }
 
+// A root directory, build context or Dockerfile directory that is a link out of
+// the checkout would hand the build container's own filesystem to the build (a
+// Dockerfile's `COPY . /app`, a native build's working directory). The clone
+// step runs for every build, Dockerfile or native and with or without secret
+// files, so it is where the repository's links are refused as the tenant's own
+// error; a link that stays inside the checkout is the repository's business.
+func TestCloneRefusesALinkThatLeavesTheRepository(t *testing.T) {
+	parent := t.TempDir()
+	dir := filepath.Join(parent, "checkout")
+	outside := filepath.Join(parent, "outside")
+	must(t, os.MkdirAll(filepath.Join(dir, "app"), 0o755))
+	must(t, os.MkdirAll(outside, 0o755))
+	must(t, os.WriteFile(filepath.Join(dir, "app", "Dockerfile"), []byte("FROM x\n"), 0o644))
+	must(t, os.WriteFile(filepath.Join(outside, "Dockerfile"), []byte("FROM x\n"), 0o644))
+	must(t, os.Symlink("../outside", filepath.Join(dir, "relative-out")))
+	must(t, os.Symlink(outside, filepath.Join(dir, "absolute-out")))
+	must(t, os.Symlink("app", filepath.Join(dir, "inside")))
+	must(t, os.MkdirAll(filepath.Join(dir, "nest"), 0o755))
+	must(t, os.Symlink("../../outside", filepath.Join(dir, "nest", "deeper")))
+
+	for _, o := range []Options{
+		{Builder: BuilderDockerfile, RootDir: "inside"},
+		{Builder: BuilderNative, RootDir: "inside"},
+		{Builder: BuilderDockerfile, RootDir: "app", DockerContext: "inside"},
+	} {
+		if out, code := runSourceChecks(t, o, dir); code != 0 {
+			t.Errorf("%+v refused a link inside the repository: %d %s", o, code, out)
+		}
+	}
+	for _, tc := range []struct {
+		o    Options
+		want string
+	}{
+		{Options{Builder: BuilderDockerfile, RootDir: "relative-out"}, `the root directory "relative-out" is a link that leaves the repository`},
+		{Options{Builder: BuilderNative, RootDir: "absolute-out"}, `the root directory "absolute-out" is a link that leaves the repository`},
+		{Options{Builder: BuilderDockerfile, RootDir: "app", DockerContext: "relative-out"}, `the Docker build context "relative-out" is a link that leaves the repository`},
+		{Options{Builder: BuilderDockerfile, RootDir: "nest/deeper"}, `the root directory "nest/deeper" is a link that leaves the repository`},
+	} {
+		out, code := runSourceChecks(t, tc.o, dir)
+		if code != ExitTenantError || !strings.Contains(out, tc.want) || strings.Contains(out, dir) {
+			t.Errorf("%+v: exit %d %q, want ExitTenantError with %q", tc.o, code, out, tc.want)
+		}
+	}
+}
+
 // w4/467: the clone fetch is quiet, so git's "From …" and "* branch … ->
 // FETCH_HEAD" lines never lead a build failure's reason; errors still reach
 // stderr and the classifier.

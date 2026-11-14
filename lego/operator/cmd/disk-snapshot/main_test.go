@@ -18,6 +18,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"filippo.io/age"
@@ -135,5 +136,65 @@ func TestBackupRecordsThenClearsAFailure(t *testing.T) {
 	}
 	if _, err := store.PurgeAll(t.Context(), prefix); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// The restore key reaches the Job from an API request. It must name an object
+// under this disk's own prefix and nothing that climbs out of it: an object
+// store takes a key literally, so "..", an empty or a "." segment is never
+// meant, and is refused rather than passed on.
+func TestRestoreKeyMustLieUnderTheDisksPrefix(t *testing.T) {
+	const prefix = "tea-1/disk-a/"
+	for _, test := range []struct {
+		key  string
+		want string // substring of the error; empty means accepted
+	}{
+		{prefix + "2026-11-14T10:00:00Z.tar.gz.age", ""},
+		{prefix + "nested/2026-11-14T10:00:00Z.tar.gz.age", ""},
+		{"tea-1/disk-b/2026-11-14T10:00:00Z.tar.gz.age", "does not belong"},
+		{"tea-1/disk-a", "does not belong"},
+		{prefix, "names no snapshot"},
+		{prefix + "../disk-b/x.tar.gz.age", "path segment"},
+		{prefix + "a/../../disk-b/x.tar.gz.age", "path segment"},
+		{prefix + "./x.tar.gz.age", "path segment"},
+		{prefix + "a//x.tar.gz.age", "path segment"},
+		{prefix + "..", "path segment"},
+	} {
+		err := checkRestoreKey(test.key, prefix)
+		switch {
+		case test.want == "" && err != nil:
+			t.Errorf("%q refused: %v", test.key, err)
+		case test.want != "" && err == nil:
+			t.Errorf("%q accepted, want an error mentioning %q", test.key, test.want)
+		case test.want != "" && !strings.Contains(err.Error(), test.want):
+			t.Errorf("%q: error %q does not mention %q", test.key, err, test.want)
+		}
+	}
+}
+
+// The Job passes the disk's capacity so a large volume's snapshot is uploaded
+// in parts big enough to stay under S3's part limit.
+func TestStoreFromEnvPlansTheUploadFromTheDiskSize(t *testing.T) {
+	t.Setenv("BEX_DISK_SNAPSHOT_ENDPOINT", "https://s3.example")
+	t.Setenv("BEX_DISK_SNAPSHOT_BUCKET", "b")
+	t.Setenv("BEX_DISK_WORKSPACE", "tea-1")
+	t.Setenv("BEX_DISK_ID", "disk-a")
+
+	t.Setenv("BEX_DISK_SIZE_GB", "10000")
+	store, _, err := storeFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := disksnapshot.PlanUpload(10000); store.Upload != want {
+		t.Fatalf("Upload = %+v, want %+v", store.Upload, want)
+	}
+
+	t.Setenv("BEX_DISK_SIZE_GB", "")
+	store, _, err = storeFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.Upload != disksnapshot.PlanUpload(0) {
+		t.Fatalf("an unset size must give the defaults, got %+v", store.Upload)
 	}
 }

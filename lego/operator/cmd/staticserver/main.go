@@ -25,11 +25,13 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -78,8 +80,15 @@ func newServer(addr string, site http.Handler) *http.Server {
 	}
 }
 
+// newLogger is the static server's logger: zap's production mode (JSON at info
+// level, with sampling). It is not development mode, where a DPanic panics a
+// server that serves every static site on its replica.
+func newLogger(out io.Writer) logr.Logger {
+	return zap.New(zap.WriteTo(out))
+}
+
 func main() {
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+	ctrl.SetLogger(newLogger(os.Stderr))
 
 	addr := env.Or("BEX_STATIC_ADDR", ":8080")
 	namespace := os.Getenv("BEX_STATIC_NAMESPACE") // empty => all namespaces

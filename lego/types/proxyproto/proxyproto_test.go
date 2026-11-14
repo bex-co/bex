@@ -48,6 +48,42 @@ func TestParseTrustedProxyCIDRs(t *testing.T) {
 	}
 }
 
+// A prefix with host bits set ("10.10.0.7/24") used to be masked to the whole
+// network, so a mistyped mask trusted 254 other peers to assert a client
+// address. It is refused instead, naming the network the operator may have meant.
+func TestParseTrustedProxyCIDRsRefusesHostBits(t *testing.T) {
+	for _, test := range []struct{ raw, mentions string }{
+		{"10.10.0.7/24", "10.10.0.0/24"},
+		{"2001:db8::7/64", "2001:db8::/64"},
+		{"10.10.0.7/32, 10.10.1.9/16", "10.10.0.0/16"},
+		{"10.10.0.7/0", "0.0.0.0/0"},
+	} {
+		_, err := ParseTrustedProxyCIDRs(test.raw)
+		if err == nil {
+			t.Fatalf("%q was accepted", test.raw)
+		}
+		if !strings.Contains(err.Error(), test.mentions) {
+			t.Fatalf("%q: error %q does not name %s", test.raw, err, test.mentions)
+		}
+	}
+	for _, raw := range []string{"10.10.0.7/32", "10.10.0.0/24", "2001:db8::/64", "2001:db8::7/128", "0.0.0.0/0"} {
+		if _, err := ParseTrustedProxyCIDRs(raw); err != nil {
+			t.Fatalf("%q refused: %v", raw, err)
+		}
+	}
+}
+
+// A trusted peer that sends no PROXY header is served as itself. That is
+// accepted: the header is trust-gated only when present, so a connection made
+// straight to the proxy keeps working, and nothing is forged by the omission.
+func TestReadProxySourceServesATrustedPeerWithoutAHeaderAsItself(t *testing.T) {
+	reader := bufio.NewReader(strings.NewReader("\x16\x03\x01 a TLS hello"))
+	got, err := ReadProxySource(reader, tcpAddr("10.10.0.7"), trustedEdge())
+	if err != nil || got.String() != "10.10.0.7" {
+		t.Fatalf("source = %s, %v, want the peer's own 10.10.0.7", got, err)
+	}
+}
+
 func TestRemoteIP(t *testing.T) {
 	got, err := RemoteIP(tcpAddr("203.0.113.9"))
 	if err != nil || got.String() != "203.0.113.9" {

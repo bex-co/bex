@@ -46,6 +46,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"filippo.io/age"
@@ -174,8 +175,8 @@ func restore(ctx context.Context) error {
 	// Confine the restore to this disk's own prefix. The key reaches here from
 	// an API request, so a key naming another tenant's object must not be
 	// fetchable even if the signature that carried it were ever mis-issued.
-	if len(key) < len(prefix) || key[:len(prefix)] != prefix {
-		return fmt.Errorf("snapshot %q does not belong to this disk", key)
+	if err := checkRestoreKey(key, prefix); err != nil {
+		return err
 	}
 	mount := env.Or("BEX_DISK_MOUNT_PATH", defaultMountPath)
 	if err := requireDirectory(mount); err != nil {
@@ -194,6 +195,27 @@ func restore(ctx context.Context) error {
 		return fmt.Errorf("restore %s: %w", key, err)
 	}
 	log.Printf("disk-snapshot: restored %s", key)
+	return nil
+}
+
+// checkRestoreKey confines a restore to an object under the disk's own prefix.
+// An object store takes a key literally, so a ".." segment cannot climb out of
+// the prefix there; it is refused anyway, with the empty and "." segments, so
+// the check does not depend on that and a key is never something other than it
+// looks.
+func checkRestoreKey(key, prefix string) error {
+	if !strings.HasPrefix(key, prefix) {
+		return fmt.Errorf("snapshot %q does not belong to this disk", key)
+	}
+	rest := strings.TrimPrefix(key, prefix)
+	if rest == "" {
+		return fmt.Errorf("snapshot key %q names no snapshot under this disk", key)
+	}
+	for segment := range strings.SplitSeq(rest, "/") {
+		if segment == "" || segment == "." || segment == ".." {
+			return fmt.Errorf("snapshot key %q has an empty, \".\" or \"..\" path segment", key)
+		}
+	}
 	return nil
 }
 
@@ -230,6 +252,9 @@ func storeFromEnv() (disksnapshot.Store, string, error) {
 	case disk == "":
 		return store, "", fmt.Errorf("BEX_DISK_ID is required")
 	}
+	// The volume's capacity bounds the snapshot stream; the Job passes it so a
+	// large disk's parts stay under S3's part limit (disksnapshot.PlanUpload).
+	store.Upload = disksnapshot.PlanUpload(int64(envInt("BEX_DISK_SIZE_GB", 0)))
 	return store, disksnapshot.DiskPrefix(workspace, disk), nil
 }
 

@@ -42,7 +42,60 @@ type Store struct {
 	Bucket   string
 	Prefix   string
 	Region   string
+	// Upload sizes the multipart upload of a snapshot. The zero value is the
+	// uploader's defaults, which cap a snapshot near 78 GiB (see PlanUpload).
+	Upload UploadPlan
 }
+
+// The uploader's defaults, which every disk up to about 78 GiB has used, and the
+// constants PlanUpload sizes a bigger disk's upload from.
+const (
+	defaultPartSize          = int64(8) << 20
+	defaultUploadConcurrency = 5
+	// maxPlannedParts leaves a tenth of S3's 10,000-part limit unused, so a
+	// stream a little longer than estimated still fits.
+	maxPlannedParts = 9000
+	// streamOverheadPercent is what a snapshot stream can exceed the volume by:
+	// tar headers, gzip on data that does not compress, and age's per-chunk tags.
+	streamOverheadPercent = 110
+	// uploadBufferBudget is what the uploader may hold in memory (concurrency
+	// times the part size) before it gives up concurrency for part size.
+	uploadBufferBudget = int64(256) << 20
+	// maxPartSize is S3's limit on one part.
+	maxPartSize = int64(5) << 30
+)
+
+// UploadPlan sizes a snapshot's multipart upload: the part size and how many
+// parts upload at once. The zero value leaves both to the uploader's defaults.
+type UploadPlan struct {
+	PartSize    int64
+	Concurrency int
+}
+
+// PlanUpload sizes the upload of a snapshot of a volume of capacityGB. A snapshot
+// is one stream whose length is unknown until its last byte, so the uploader
+// cannot size its parts from the object; with its default 8 MiB parts and S3's
+// limit of 10,000, a stream past about 78 GiB fails and the disk never snapshots.
+// The volume's capacity bounds the stream, so the part size is that bound over
+// the part limit, rounded up to a whole MiB, and the concurrency falls as the
+// parts grow to keep what the uploader buffers near uploadBufferBudget. A disk
+// of an unknown size gets the defaults.
+func PlanUpload(capacityGB int64) UploadPlan {
+	plan := UploadPlan{PartSize: defaultPartSize, Concurrency: defaultUploadConcurrency}
+	if capacityGB <= 0 {
+		return plan
+	}
+	stream := capacityGB << 30 * streamOverheadPercent / 100
+	if need := (stream + maxPlannedParts - 1) / maxPlannedParts; need > plan.PartSize {
+		const mib = int64(1) << 20
+		plan.PartSize = min((need+mib-1)/mib*mib, maxPartSize)
+	}
+	plan.Concurrency = int(max(1, min(defaultUploadConcurrency, uploadBufferBudget/plan.PartSize)))
+	return plan
+}
+
+// BufferBytes is the most memory the uploader holds for the plan's parts.
+func (p UploadPlan) BufferBytes() int64 { return int64(p.Concurrency) * p.PartSize }
 
 // SnapshotSuffix is the object extension every snapshot carries. It names the
 // whole pipeline, so an operator listing the bucket can tell what a byte stream
@@ -89,7 +142,14 @@ func (s Store) Put(ctx context.Context, key string, body io.Reader) error {
 	if err != nil {
 		return err
 	}
-	uploader := transfermanager.New(client)
+	uploader := transfermanager.New(client, func(o *transfermanager.Options) {
+		if s.Upload.PartSize > 0 {
+			o.PartSizeBytes = s.Upload.PartSize
+		}
+		if s.Upload.Concurrency > 0 {
+			o.Concurrency = s.Upload.Concurrency
+		}
+	})
 	if _, err := uploader.UploadObject(ctx, &transfermanager.UploadObjectInput{
 		Bucket: aws.String(s.Bucket),
 		Key:    aws.String(s.join(key)),

@@ -82,7 +82,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | ssh-gateway | `BEX_CP_DB_URI`, `BEX_OPENFGA_URL`, `BEX_OPENFGA_TOKEN`, `BEX_API_NAMESPACE` | gateway store/authz/ns scope |
 | ssh-gateway | `BEX_SSH_HANDSHAKE_TIMEOUT` `10s`, `…_SESSION_TIMEOUT` `4h`, `…_MAX_SESSIONS` `100`, `…_PER_IDENTITY` `5` | connection bounds |
 | ssh-gateway | `BEX_SSH_MAX_PREAUTH_CONNS` `256`, `…_PER_SOURCE` `32` | pre-auth handshake caps (global + per-source); trusted PROXY CIDRs |
-| ssh-gateway | `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS` | CIDRs allowed to assert PROXY v1/v2 client IP |
+| ssh-gateway | `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS` | CIDRs allowed to assert PROXY v1/v2 client IP (host bits set, `10.244.0.5/16`, is refused at startup, not masked) |
 | ssh-gateway | `BEX_SSH_MAX_CHANNELS_PER_CONN` `16` | Zed multiplexing cap per conn for `ags-*` |
 | ssh-gateway | `BEX_SSH_MAX_CHANNELS` `512`, `…_PER_IDENTITY` `32` | process-wide exec-stream caps |
 | ssh-gateway | `BEX_SSH_DRAIN_BUFFER_PER_CHANNEL` `67108864`, `BEX_SSH_DRAIN_BUFFER_TOTAL` `134217728` | in-memory exec output buffer per channel / process (w6/099); `0` disables |

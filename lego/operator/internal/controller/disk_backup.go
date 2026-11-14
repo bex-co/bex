@@ -256,6 +256,8 @@ func (r *AppReconciler) diskBackupCronJobSpec(app *appv1alpha1.App) batchv1.Cron
 // argument, the volume they need, and whether they carry the decrypt key.
 func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[string]string, command string, extraEnv []corev1.EnvVar) batchv1.JobSpec {
 	mountsVolume := command != "purge"
+	capacityGB := diskCapacityGB(app)
+	isBackup := command == "backup"
 	env := append([]corev1.EnvVar{
 		{Name: "BEX_DISK_SNAPSHOT_ENDPOINT", Value: r.DiskSnapshots.Endpoint},
 		{Name: "BEX_DISK_SNAPSHOT_BUCKET", Value: r.DiskSnapshots.Bucket},
@@ -265,6 +267,7 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		{Name: "BEX_DISK_MOUNT_PATH", Value: diskSnapshotMountPath},
 		{Name: "BEX_DISK_WORKSPACE", Value: diskSnapshotWorkspace(app)},
 		{Name: "BEX_DISK_ID", Value: app.Name},
+		{Name: "BEX_DISK_SIZE_GB", Value: fmt.Sprint(capacityGB)},
 		{Name: "HOME", Value: "/tmp"},
 		{Name: awsIMDSDisabledEnv, Value: awsIMDSDisabled},
 	}, extraEnv...)
@@ -285,7 +288,7 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		// staged, so this needs working memory for the gzip/age buffers only —
 		// not a budget derived from the volume's size the way the KeyValue
 		// pipeline's EmptyDir must be.
-		Resources:       diskSnapshotResources(),
+		Resources:       diskSnapshotResources(isBackup, capacityGB),
 		SecurityContext: execution.RestrictedContainerSecurityContext(),
 	}
 	podSpec := corev1.PodSpec{
@@ -295,9 +298,8 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		AutomountServiceAccountToken: new(false),
 	}
 	if mountsVolume {
-		readOnly := command == "backup"
 		container.VolumeMounts = []corev1.VolumeMount{{
-			Name: diskVolumeName, MountPath: diskSnapshotMountPath, ReadOnly: readOnly,
+			Name: diskVolumeName, MountPath: diskSnapshotMountPath, ReadOnly: isBackup,
 		}}
 		// Volume-touching commands run as root with exactly the DAC bypass a
 		// backup needs. The operator image is USER 65532, and a non-root uid
@@ -386,12 +388,39 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 // could not fit even a 10m request), so the stream runs on spare capacity up
 // to its limits instead of failing to schedule at all. The explicit zero is
 // kept: a LimitRange default applies only when a request is absent.
-func diskSnapshotResources() corev1.ResourceRequirements {
-	res := backupResources("100m", "256Mi", diskSnapshotEphemeralBudget())
+//
+// A backup's memory limit also covers what its uploader buffers: the parts grow
+// with the disk so a large volume stays under S3's part limit
+// (disksnapshot.PlanUpload), and a disk's parts can pass a GiB. Only the
+// buffering beyond what a small disk already uses is added, and a restore or a
+// purge uploads nothing.
+func diskSnapshotResources(isBackup bool, capacityGB int64) corev1.ResourceRequirements {
+	memory := resource.MustParse("256Mi")
+	if isBackup {
+		if extra := disksnapshot.PlanUpload(capacityGB).BufferBytes() - disksnapshot.PlanUpload(0).BufferBytes(); extra > 0 {
+			memory.Add(*resource.NewQuantity(extra, resource.BinarySI))
+		}
+	}
+	res := backupResources("100m", memory.String(), diskSnapshotEphemeralBudget())
 	res.Requests = res.Requests.DeepCopy()
 	res.Requests[corev1.ResourceCPU] = resource.MustParse("0")
 	res.Requests[corev1.ResourceMemory] = resource.MustParse("64Mi")
 	return res
+}
+
+// diskCapacityGB is the volume's capacity as far as the operator knows it: the
+// largest of the size requested, the size the claim was allocated and the size
+// the filesystem reports. A volume only grows, and a 1 GB disk sits on a 10 GB
+// volume, so the largest is what bounds a snapshot's stream.
+func diskCapacityGB(app *appv1alpha1.App) int64 {
+	capacity := int64(diskAllocatedGB(app))
+	if app.Spec.Disk != nil {
+		capacity = max(capacity, int64(app.Spec.Disk.SizeGB))
+	}
+	if app.Status.Disk != nil {
+		capacity = max(capacity, int64(app.Status.Disk.CapacityGB))
+	}
+	return capacity
 }
 
 // diskSnapshotEphemeralBudget bounds the Job's writable layer. The pipeline

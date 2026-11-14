@@ -50,7 +50,10 @@ var proxyV2Signature = []byte("\r\n\r\n\x00\r\nQUIT\n")
 
 // ParseTrustedProxyCIDRs parses the comma-separated immediate peers that may
 // assert an original client address. An empty value disables PROXY trust while
-// preserving direct, headerless connections.
+// preserving direct, headerless connections. A prefix with host bits set
+// ("10.10.0.7/24") is refused rather than masked to its network: the mask would
+// silently trust every other host of it, and a typed address is far more often
+// the single peer the operator meant.
 func ParseTrustedProxyCIDRs(raw string) ([]netip.Prefix, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, nil
@@ -62,7 +65,11 @@ func ParseTrustedProxyCIDRs(raw string) ([]netip.Prefix, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parse trusted PROXY CIDR %q: %w", item, err)
 		}
-		prefixes = append(prefixes, prefix.Masked())
+		if prefix != prefix.Masked() {
+			return nil, fmt.Errorf("trusted PROXY CIDR %q has host bits set: write %s for the whole network or %s/%d for one peer",
+				item, prefix.Masked(), prefix.Addr(), prefix.Addr().BitLen())
+		}
+		prefixes = append(prefixes, prefix)
 	}
 	return prefixes, nil
 }
