@@ -2279,10 +2279,13 @@ func environmentBodyLimit(global int64) int64 {
 // writesSecretFiles reports whether a REST request is one of the environment
 // writes whose body is secret-file contents: a service's or build source's
 // secret-files PUTs, a service's or group's batch environment PATCH, a group's
-// secret-file PUT and its contents PATCH.
+// secret-file PUT and its contents PATCH, and the creates that seed secret
+// files: a service, a group and a build source (w4/657).
 func writesSecretFiles(r *http.Request) bool {
 	path := r.URL.Path
 	switch r.Method {
+	case http.MethodPost:
+		return path == "/v1/services" || path == "/v1/env-groups" || path == "/v1/build-sources"
 	case http.MethodPut:
 		return strings.Contains(path, "/secret-files")
 	case http.MethodPatch:

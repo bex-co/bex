@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -215,6 +216,38 @@ func TestRESTCreateSeedsOfficialCLISecretFiles(t *testing.T) {
 	}
 	if seeder.service != "web" || len(seeder.files) != 1 || seeder.files[0].Name != "app-secret" || seeder.files[0].Content != "top-secret" {
 		t.Fatalf("seed call = service %q, files %#v", seeder.service, seeder.files)
+	}
+}
+
+// w4/657: a create seeding one 1 MiB secret file of `"` characters, a 2 MiB+
+// body once JSON-escaped, is created with the file intact. The API's body
+// limiter gives the create route the environment cap
+// (api.TestSecretFileWritesTakeTheEnvironmentBodyCap); this is the handler half.
+func TestRESTCreateSeedsAFullSizeEscapedSecretFile(t *testing.T) {
+	seeder := &recordingCreateSecretsSeeder{}
+	svc, _ := newService(nil)
+	svc.CreateSecrets = seeder
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	content := strings.Repeat(`"`, 1<<20)
+	body, err := json.Marshal(map[string]any{
+		"name": "web", "type": "web_service", "image": map[string]any{"imagePath": "nginx:alpine"},
+		"secretFiles": []map[string]any{{"name": "quotes.txt", "content": content}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(body) <= 2<<20 {
+		t.Fatalf("the body is %d bytes; the case needs one past the 2 MiB global cap", len(body))
+	}
+	rec := httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", bytes.NewReader(body)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST with a 1 MiB secret file = %d: %.300s", rec.Code, rec.Body.String())
+	}
+	if len(seeder.files) != 1 || seeder.files[0].Content != content {
+		t.Fatalf("seeded %d files; want quotes.txt with its 1 MiB intact", len(seeder.files))
 	}
 }
 

@@ -68,6 +68,10 @@ func TestSecretFileWritesTakeTheEnvironmentBodyCap(t *testing.T) {
 		{http.MethodPut, "/v1/env-groups/evg-a/secret-files/cert.pem"},
 		{http.MethodPatch, "/v1/env-groups/evg-a/environment"},
 		{http.MethodPatch, "/v1/env-groups/evg-a/contents"},
+		// The creates that seed secret files (w4/657).
+		{http.MethodPost, "/v1/services"},
+		{http.MethodPost, "/v1/env-groups"},
+		{http.MethodPost, "/v1/build-sources"},
 	} {
 		if code := serve(route.method, route.path, quoted); code != http.StatusOK || reached != len(quoted) {
 			t.Errorf("%s %s with a 1 MiB file of quotes = %d (read %d), want it to reach the handler", route.method, route.path, code, reached)
@@ -78,6 +82,7 @@ func TestSecretFileWritesTakeTheEnvironmentBodyCap(t *testing.T) {
 	}
 	for _, route := range []struct{ method, path string }{
 		{http.MethodPost, "/v1/services/srv-a/deploys"},
+		{http.MethodPost, "/v1/projects"},
 		{http.MethodPut, "/v1/services/srv-a/env-vars"},
 		{http.MethodPatch, "/v1/services/srv-a"},
 		{http.MethodPatch, "/v1/agent-environment"},

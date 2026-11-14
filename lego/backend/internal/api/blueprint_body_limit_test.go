@@ -54,7 +54,9 @@ func TestRESTBodyLimitKeepsBlueprintBoundIndependentOfGlobal(t *testing.T) {
 					t.Fatalf("over-limit envelope: %d %s (read %d)", rec.Code, rec.Body.String(), reached)
 				}
 			}
-			for _, path := range []string{"/v1/services", "/v1/blueprints/deploy"} {
+			// A service create takes the environment cap, which seeds secret
+			// files (w4/657); a project create keeps the global one.
+			for _, path := range []string{"/v1/projects", "/v1/blueprints/deploy"} {
 				rec := httptest.NewRecorder()
 				handler.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, path, bytes.NewReader(make([]byte, global+1))))
 				want := http.StatusRequestEntityTooLarge
