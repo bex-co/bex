@@ -439,6 +439,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **330** — [A slow request that wakes a free web service is cut with the activator's 502 12–33 s after the wake, in 4 of 5 runs; Render holds it through the spin-up and serves it](blocked/330.md) (~1–2h once diagnosable, major) ← `/qa-find-bugs-cli` sweep 1298 2026-11-14. **BLOCKED (the cause needs either production activator/operator logs plus the App's Service, EndpointSlice and Ingress history around a wake (the `w8/287` gate), or a mock-cluster reproduction, which needs `sudo sysctl -w fs.inotify.max_user_instances=512 fs.inotify.max_user_watches=524288` on this host).**
+  - **bex:** free whoami (port 80, and a port-10000 control), hibernated, `curl …/?wait=130s` → `502 {"error":"bad gateway"}`, `x-render-routing: no-server`, the activator's non-dial proxy error, in 4 of 5 runs. The pod stays up.
+  - **Ruled out:** w8/329's header bound, port discovery, the hold-slot release and pod replacement.
+
 - [x] **329** — [The activator now ends a waking request with 502 when the woken app takes over 100 seconds to answer; Render allows HTTP responses up to 100 minutes](done/329.md) (~15m) ← `/qa-find-bugs-cli` 2026-11-14 review of the next roll, minor.
   - **Render:** "Render web services allow HTTP responses to take up to 100 minutes"; bex's tenant entrypoints match (w8/207, measured 400 s live).
   - **bex:** `0348c50c6` (w21/m394 t012) set `proxyResponseHeaderTimeout = 100 * time.Second` (`cmd/activator/hold.go:60`), commented "Render's 100-second HTTP request timeout".
