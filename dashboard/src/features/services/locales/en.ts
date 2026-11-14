@@ -5734,10 +5734,32 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Upload files",
     description: "Stage multiple local text files",
   },
-  "services.secretFileUploadError": {
+  "services.secretFileSkippedTitle_one": {
+    message: "{count} file was skipped:",
+    description:
+      "Secret-file upload: heading over the one skipped file (w4/628)",
+  },
+  "services.secretFileSkippedTitle_other": {
+    message: "{count} files were skipped:",
+    description: "Secret-file upload: heading over the skipped files (w4/628)",
+  },
+  "services.secretFileSkippedName": {
     message:
-      "Some files were skipped. Use unique safe names, UTF-8 text content, and files no larger than 1 MiB. For a binary file (keystore, .p12, DER certificate), upload it base64-encoded and decode it at start, e.g. base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12.",
-    description: "Secret-file upload validation summary",
+      "the name may use only letters, digits, '.', '-' and '_' (up to 253 characters).",
+    description: "Secret-file upload: why a file was skipped — its name",
+  },
+  "services.secretFileSkippedSize": {
+    message: "it is larger than 1 MiB.",
+    description: "Secret-file upload: why a file was skipped — its size",
+  },
+  "services.secretFileSkippedEncoding": {
+    message:
+      "it is not UTF-8 text. For a binary file (keystore, .p12, DER certificate), upload it base64-encoded and decode it at start, e.g. base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12.",
+    description: "Secret-file upload: why a file was skipped — not UTF-8 text",
+  },
+  "services.secretFileSkippedDuplicate": {
+    message: "a file with this name is already in the list.",
+    description: "Secret-file upload: why a file was skipped — duplicate name",
   },
   "services.secretFileDuplicateName": {
     message: "Each secret file name must be unique.",

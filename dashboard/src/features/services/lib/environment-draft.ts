@@ -478,24 +478,36 @@ export function environmentDraftPatch(
  * step as it. `session` names one Edit: it moves whenever an edit starts or
  * ends, so work begun in an earlier edit can tell it no longer applies.
  */
+/**
+ * Why an upload left a selected file out (w4/628): a name outside the allowed
+ * characters, a file over the 1 MiB limit, content that is not UTF-8 text (a
+ * NUL byte included), or a name already in the draft.
+ */
+export type UploadSkipReason = "name" | "size" | "encoding" | "duplicate";
+
+export interface SkippedUpload {
+  fileName: string;
+  reason: UploadSkipReason;
+}
+
 export interface EnvironmentEditState {
   draft: EnvironmentDraft | null;
   session: number;
-  /** The last upload left out at least one selected file. */
-  uploadRejected: boolean;
+  /** The files the last upload left out, each with its reason. */
+  uploadSkipped: readonly SkippedUpload[];
 }
 
 export const NO_ENVIRONMENT_EDIT: EnvironmentEditState = {
   draft: null,
   session: 0,
-  uploadRejected: false,
+  uploadSkipped: [],
 };
 
 export function startEdit(
   state: EnvironmentEditState,
   draft: EnvironmentDraft,
 ): EnvironmentEditState {
-  return { draft, session: state.session + 1, uploadRejected: false };
+  return { draft, session: state.session + 1, uploadSkipped: [] };
 }
 
 export function endEdit(state: EnvironmentEditState): EnvironmentEditState {
@@ -522,7 +534,7 @@ export function admitUploadedFiles(
   state: EnvironmentEditState,
   session: number,
   files: readonly SecretFileDraftRow[],
-  rejected: boolean,
+  skipped: readonly SkippedUpload[],
 ): EnvironmentEditState {
   if (!state.draft || state.session !== session) return state;
   const names = new Set(
@@ -530,8 +542,12 @@ export function admitUploadedFiles(
       .filter((row) => !row.deleted)
       .map((row) => row.name.trim()),
   );
+  const duplicates: SkippedUpload[] = [];
   const admitted = files.filter((file) => {
-    if (names.has(file.name)) return false;
+    if (names.has(file.name)) {
+      duplicates.push({ fileName: file.name, reason: "duplicate" });
+      return false;
+    }
     names.add(file.name);
     return true;
   });
@@ -543,7 +559,7 @@ export function admitUploadedFiles(
           secretFiles: [...state.draft.secretFiles, ...admitted],
         }
       : state.draft,
-    uploadRejected: rejected || admitted.length < files.length,
+    uploadSkipped: [...skipped, ...duplicates],
   };
 }
 

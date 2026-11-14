@@ -68,6 +68,7 @@ import {
   MAX_SECRET_FILE_BYTES,
   NO_ENVIRONMENT_EDIT,
   admitUploadedFiles,
+  type SkippedUpload,
   createEnvironmentDraft,
   editDraft,
   endEdit,
@@ -563,11 +564,15 @@ export function EnvironmentEditor({
     if (!selected || !draft || createDenied) return;
     const { session } = editor;
     const decoded: SecretFileDraftRow[] = [];
-    let rejected = false;
+    const skipped: SkippedUpload[] = [];
     for (const file of Array.from(selected)) {
       const name = file.name.split(/[\\/]/).at(-1) ?? "";
-      if (!isValidSecretFileName(name) || file.size > MAX_SECRET_FILE_BYTES) {
-        rejected = true;
+      if (!isValidSecretFileName(name)) {
+        skipped.push({ fileName: name || file.name, reason: "name" });
+        continue;
+      }
+      if (file.size > MAX_SECRET_FILE_BYTES) {
+        skipped.push({ fileName: name, reason: "size" });
         continue;
       }
       try {
@@ -582,7 +587,7 @@ export function EnvironmentEditor({
           ignoreBOM: true,
         }).decode(await file.arrayBuffer());
         if (content.includes("\0")) {
-          rejected = true;
+          skipped.push({ fileName: name, reason: "encoding" });
           continue;
         }
         decoded.push({
@@ -594,10 +599,10 @@ export function EnvironmentEditor({
           deleted: false,
         });
       } catch {
-        rejected = true;
+        skipped.push({ fileName: name, reason: "encoding" });
       }
     }
-    setEditor((state) => admitUploadedFiles(state, session, decoded, rejected));
+    setEditor((state) => admitUploadedFiles(state, session, decoded, skipped));
   }
 
   async function exportEnvironment(kind: "copy" | "download") {
@@ -887,7 +892,9 @@ export function EnvironmentEditor({
         }}
         loading={loading}
         notice={
-          editor.uploadRejected ? t("services.secretFileUploadError") : null
+          editor.uploadSkipped.length ? (
+            <SkippedUploadsNotice skipped={editor.uploadSkipped} />
+          ) : null
         }
         action={
           draft ? (
@@ -1118,7 +1125,7 @@ function EnvironmentSection({
   title: string;
   description: string;
   action?: React.ReactNode;
-  notice?: string | null;
+  notice?: React.ReactNode;
   loading: boolean;
   isEmpty: boolean;
   empty: { title: string; body: string; action?: React.ReactNode };
@@ -1139,9 +1146,9 @@ function EnvironmentSection({
       </CardHeader>
       <CardContent>
         {notice ? (
-          <p className="text-destructive mb-3 text-sm" role="alert">
+          <div className="text-destructive mb-3 text-sm" role="alert">
             {notice}
-          </p>
+          </div>
         ) : null}
         {loading ? (
           <RowsSkeleton />
@@ -1640,5 +1647,35 @@ function RowsSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+const SKIP_REASON_KEYS = {
+  name: "services.secretFileSkippedName",
+  size: "services.secretFileSkippedSize",
+  encoding: "services.secretFileSkippedEncoding",
+  duplicate: "services.secretFileSkippedDuplicate",
+} as const;
+
+/** Each file an upload left out, with its own reason (w4/628). */
+function SkippedUploadsNotice({
+  skipped,
+}: {
+  skipped: readonly SkippedUpload[];
+}) {
+  const { t } = useTranslations();
+  return (
+    <>
+      <p>{t("services.secretFileSkippedTitle", { count: skipped.length })}</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-5">
+        {skipped.map((skip, index) => (
+          <li key={`${skip.fileName}:${index}`}>
+            <span className="font-mono break-all">{skip.fileName}</span>
+            {": "}
+            {t(SKIP_REASON_KEYS[skip.reason])}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

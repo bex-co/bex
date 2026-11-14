@@ -5600,10 +5600,26 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "上传文件",
     description: "Stage multiple local text files",
   },
-  "services.secretFileUploadError": {
+  "services.secretFileSkippedTitle_other": {
+    message: "已跳过 {count} 个文件：",
+    description: "Secret-file upload: heading over the skipped files (w4/628)",
+  },
+  "services.secretFileSkippedName": {
+    message: "名称只能包含字母、数字、“.”、“-”和“_”（最多 253 个字符）。",
+    description: "Secret-file upload: why a file was skipped — its name",
+  },
+  "services.secretFileSkippedSize": {
+    message: "文件超过 1 MiB。",
+    description: "Secret-file upload: why a file was skipped — its size",
+  },
+  "services.secretFileSkippedEncoding": {
     message:
-      "部分文件已跳过。请使用唯一且安全的名称、UTF-8 文本内容，并确保文件不超过 1 MiB。二进制文件（密钥库、.p12、DER 证书）请以 base64 编码上传，并在启动时解码，例如 base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12。",
-    description: "Secret-file upload validation summary",
+      "内容不是 UTF-8 文本。二进制文件（密钥库、.p12、DER 证书）请以 base64 编码上传，并在启动时解码，例如 base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12。",
+    description: "Secret-file upload: why a file was skipped — not UTF-8 text",
+  },
+  "services.secretFileSkippedDuplicate": {
+    message: "列表中已有同名文件。",
+    description: "Secret-file upload: why a file was skipped — duplicate name",
   },
   "services.secretFileDuplicateName": {
     message: "每个机密文件名必须唯一。",

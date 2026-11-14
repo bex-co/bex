@@ -612,7 +612,13 @@ describe("EnvGroupEditors overlapping file uploads (w4/m205)", () => {
     expect(
       screen.queryByText(/secret file name must be unique/i),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/upload it base64-encoded/)).toBeInTheDocument();
+    // The selection that landed second names the file it left out, and why
+    // (w4/628).
+    const notice = screen.getByRole("alert");
+    expect(notice).toHaveTextContent("1 file was skipped:");
+    expect(notice).toHaveTextContent(
+      "qa-0.txt: a file with this name is already in the list.",
+    );
     expect(screen.getByRole("button", { name: /^Save/ })).toBeEnabled();
   });
 

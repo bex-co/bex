@@ -1375,7 +1375,7 @@ describe("ServiceEnvironmentEditor overlapping file uploads (w4/m205)", () => {
     fireEvent.change(input, { target: { files } });
   }
   const rows = (name: string) => screen.queryAllByDisplayValue(name);
-  const skippedNotice = () => screen.queryByText(/upload it base64-encoded/);
+  const skippedNotice = () => screen.queryByText(/files? (was|were) skipped/);
   const saveButton = () =>
     screen.getByRole("button", { name: "Save and deploy" });
   async function edit() {
@@ -1610,7 +1610,8 @@ describe("ServiceEnvironmentEditor uploaded file contents (w4/285)", () => {
       },
     });
     expect(await screen.findByDisplayValue("good.txt")).toBeInTheDocument();
-    expect(screen.getByText(/upload it base64-encoded/)).toBeInTheDocument();
+    // Each refused file is named with the base64 hint (w4/628).
+    expect(screen.getAllByText(/upload it base64-encoded/)).toHaveLength(2);
     expect(screen.queryByDisplayValue("bad.bin")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("nul.txt")).not.toBeInTheDocument();
   });
@@ -1691,5 +1692,50 @@ describe("ServiceEnvironmentEditor generated secret names (w4/286)", () => {
     await generate(user);
     expect(screen.getByDisplayValue("NEW_SECRET")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("NEW_SECRET_2")).not.toBeInTheDocument();
+  });
+});
+
+// w4/628: an upload names each file it left out, with that file's reason.
+describe("ServiceEnvironmentEditor skipped uploads (w4/628)", () => {
+  it("names each skipped file with its own reason", async () => {
+    const { container } = renderEditor();
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Edit" }));
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="file"][multiple]',
+    )!;
+    const file = (name: string, bytes: number[], size?: number) => {
+      const f = new File([new Uint8Array(bytes)], name, { type: "text/plain" });
+      Object.defineProperty(f, "arrayBuffer", {
+        value: vi.fn().mockResolvedValue(new Uint8Array(bytes).buffer),
+      });
+      if (size !== undefined) Object.defineProperty(f, "size", { value: size });
+      return f;
+    };
+    const text = (value: string) => [...new TextEncoder().encode(value)];
+    fireEvent.change(input, {
+      target: {
+        files: [
+          file("plain.txt", text("ok")),
+          file("my key.pem", text("key")),
+          file("big.txt", text("x"), 1_100_000),
+          file("bin.p12", [0x30, 0x82, 0xff, 0xfe]),
+          file("plain.txt", text("again")),
+        ],
+      },
+    });
+
+    expect(await screen.findByDisplayValue("plain.txt")).toBeInTheDocument();
+    const notice = await screen.findByRole("alert");
+    expect(notice).toHaveTextContent("4 files were skipped:");
+    expect(notice).toHaveTextContent(
+      "my key.pem: the name may use only letters",
+    );
+    expect(notice).toHaveTextContent("big.txt: it is larger than 1 MiB.");
+    expect(notice).toHaveTextContent("bin.p12: it is not UTF-8 text.");
+    expect(notice).toHaveTextContent(
+      "plain.txt: a file with this name is already in the list.",
+    );
   });
 });
