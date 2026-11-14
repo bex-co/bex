@@ -907,6 +907,11 @@ printf "%s" "$out" | grep -q "must be the session.s model-proxy placeholder" || 
     fail "muse profile runs in the agent sandbox with model traffic on the proxy only"
   fi
   pass "muse profile runs in the agent sandbox with model traffic on the proxy only"
+  # The leg is done: end the session, then its turn hold. Left running, the
+  # held turn's dropped retries crowd the attacker's drops out of the node's
+  # Hubble buffer before the evidence check below reads them.
+  expect_status 200 "$fixture_dir/owner-a.curl" POST "/v1/agent-sessions/$agent_session_id/cancel" "$fixture_dir/agent-session-cancel.json"
+  kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "bex.co/verify-run=$run_id" --ignore-not-found >/dev/null
 fi
 
 kubectl -n "$BEX_WORKSPACE_A" run "$hosting_pod" --image "$python_image" --restart Never \
