@@ -574,8 +574,10 @@ spec:
                     # feed BexOperatorReconcileQueueSlow and the Builds
                     # dashboard's operator panels: how long a spec change
                     # waits before the operator acts on it. Labels are the
-                    # controller names, a closed set.
-                    regex: bex_(build|datastore).*|workqueue_(depth|queue_duration_seconds_.*|work_duration_seconds_.*)|controller_runtime_(reconcile_time_seconds_.*|active_workers|max_concurrent_reconciles)
+                    # controller names, a closed set. registry_activation =>
+                    # RegistryCredentialActivationRestarted (w4/m347): the
+                    # last-resort zot restart when credential hot reload fails.
+                    regex: bex_(build|datastore|registry_activation).*|workqueue_(depth|queue_duration_seconds_.*|work_duration_seconds_.*)|controller_runtime_(reconcile_time_seconds_.*|active_workers|max_concurrent_reconciles)
                     action: keep
               # One post-policy netfilter meter per untainted tenant node. Pod discovery
               # (rather than the round-robin Service) preserves the node and

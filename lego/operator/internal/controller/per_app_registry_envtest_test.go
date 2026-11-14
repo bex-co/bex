@@ -29,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -310,14 +311,14 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		cleanupApp(r, name)
 	})
 
-	It("gates the workload on credential activation and bounces zot when stale (w9/m43)", func() {
+	It("gates the workload on credential activation, nudges zot to reload, and restarts it only as a last resort (w4/m347)", func() {
 		const name = "per-app-cred-gate"
 		status := &atomic.Int32{}
 		status.Store(http.StatusUnauthorized) // zot hasn't loaded the credential
 		r := newReconcilerAt(status)
-		r.PerAppRegistry.ActivationGrace = time.Nanosecond // past grace on the second probe
+		r.PerAppRegistry.ActivationGrace = time.Hour
 
-		// A labeled zot pod for the bounce to find.
+		// A labeled zot pod for the nudge and the fallback restart to find.
 		zotPod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "zot-0", Namespace: zotNamespace,
@@ -342,12 +343,31 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
 
-		// Past the grace the reconciler bounced the zot pod (envtest has no
-		// StatefulSet controller, so the pod is simply gone/terminating).
+		// The first credential write also wrote the canonical storage block,
+		// whose one-time restart (w8/m156) removed the pod; stand in for the
+		// StatefulSet that would bring it back. Inside the grace a pending
+		// credential never restarts zot (the nudge itself is covered in
+		// registry/verify_reload_test.go).
+		zotKey := types.NamespacedName{Name: "zot-0", Namespace: zotNamespace}
+		if err := k8sClient.Get(ctx, zotKey, &corev1.Pod{}); apierrors.IsNotFound(err) {
+			zotPod.ResourceVersion = ""
+			Expect(k8sClient.Create(ctx, zotPod)).To(Succeed())
+		}
+		reconcileN(r, nn, 2)
+		kept := &corev1.Pod{}
+		Expect(k8sClient.Get(ctx, zotKey, kept)).To(Succeed())
+		Expect(kept.DeletionTimestamp).To(BeNil(), "a pending credential must not restart zot inside the grace")
+
+		// Still rejected past the grace: hot reload is broken, so the
+		// reconciler falls back to restarting zot (envtest has no StatefulSet
+		// controller, so the pod is simply gone/terminating).
+		r.PerAppRegistry.ActivationGrace = time.Nanosecond
+		r.PerAppRegistry.BounceCooldown = time.Nanosecond // the storage restart above took the cooldown
+		reconcileN(r, nn, 1)
 		gone := &corev1.Pod{}
 		err := k8sClient.Get(ctx, types.NamespacedName{Name: "zot-0", Namespace: zotNamespace}, gone)
 		Expect(err != nil || gone.DeletionTimestamp != nil).To(BeTrue(),
-			"stale credential past grace must bounce the zot pod")
+			"a credential still rejected past the grace must fall back to restarting zot")
 
 		// "Restarted" zot accepts the credential: the workload proceeds.
 		status.Store(http.StatusOK)

@@ -10,15 +10,23 @@
 #     — reads and writes the zot-htpasswd Secret (per-App htpasswd entry) and
 #     creates/reads/updates the zot-config Secret (per-App Zot ACL entry).
 #   app_controller.handleAppDeletion (RevokeCreds): same — removes htpasswd+ACL
-#     on App delete. The running zot keeps accepting removed entries until it
-#     restarts, so revocation also triggers the rate-limited bounce below.
-#   registry.EnsureActive/tryBounce (w9/m43): pods get/list/delete — zot loads
-#     credentials only at process start (lego/operator/internal/registry/verify.go,
-#     docs/ADR022-tenant-isolation.md § Credential activation), so the operator
-#     bounces the zot pod to activate new entries and deactivate removed ones.
-#     Scoped here, not in the manager ClusterRole: the operator must never gain
-#     pod-delete on tenant or platform namespaces. Deliberately "delete", never
-#     "deletecollection" (bounceZot lists then deletes each pod).
+#     on App delete; the nudge below makes zot drop the entry within seconds.
+#   registry.nudgeZot (w4/m347): pods patch on zot-0 only — zot v2.1.22
+#     hot-reloads htpasswd and accessControl once the kubelet projects a Secret
+#     write into its pod, and the kubelet does that at once when the pod object
+#     changes. After every credential write the operator merge-patches one
+#     annotation (bex.co/registry-credentials-written) onto the zot pod, so new
+#     entries activate and removed ones stop working without a restart
+#     (lego/operator/internal/registry/verify.go, docs/ADR022-tenant-isolation.md
+#     § Credential activation). resourceNames pins it to the chart's single
+#     StatefulSet replica, so the grant cannot patch any other pod here.
+#   registry.EnsureActive last resort + ensureStorageActive: pods get/list/delete
+#     — a credential still rejected after the 3m activation grace (hot reload is
+#     broken; RegistryCredentialActivationRestarted alerts) or a new storage
+#     block (w8/m156) restarts zot. Scoped here, not in the manager ClusterRole:
+#     the operator must never gain pod-delete on tenant or platform namespaces.
+#     Deliberately "delete", never "deletecollection" (bounceZot lists then
+#     deletes each pod).
 #
 # This file lives in deploy/gitops (not lego/operator/config/rbac) because
 # config/default's kustomize namePrefix+namespace transform would rewrite any
@@ -36,6 +44,10 @@ rules:
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    resourceNames: ["zot-0"]
+    verbs: ["patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

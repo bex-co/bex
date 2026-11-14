@@ -60,10 +60,9 @@ func SnapshotRepoGlob(namespace string) string { return "snapshots/" + namespace
 //  2. a "snap-<namespace>" entry in the zot-htpasswd Secret;
 //  3. a read-only ACL entry for "snapshots/<namespace>/**" in zot-config.
 //
-// New entries take effect only after a zot restart (the same no-reload
-// behavior the per-App path works around with activation probes); resumes are
-// rare and per-App reconciles bounce zot regularly, so this path settles for
-// the shared rate-limited bounce instead of its own probe loop.
+// New entries take effect once zot reloads the projected Secrets (verify.go);
+// resumes are rare, so this path settles for the write's nudge instead of the
+// per-App path's activation probe loop.
 func (c *Creds) EnsureSnapshotCreds(ctx context.Context, namespace string) error {
 	zotUser := SnapshotZotUsername(namespace)
 	// Stamp the protected-from-tenant-mount label at create time (same contract
@@ -86,10 +85,9 @@ func (c *Creds) EnsureSnapshotCreds(ctx context.Context, namespace string) error
 		return fmt.Errorf("zot config: %w", err)
 	}
 	if wroteUser || wroteACL {
-		// Activate the fresh credential within the bounce cooldown; without
-		// this the first resume 401s until an unrelated per-App activation
-		// bounces zot.
-		c.tryBounce(ctx)
+		// Have zot reload now; without the nudge the first resume could
+		// 401 until the kubelet's next periodic sync.
+		c.nudgeZot(ctx)
 	}
 	return nil
 }
@@ -108,7 +106,7 @@ func (c *Creds) RevokeSnapshotCreds(ctx context.Context, namespace string) error
 		return fmt.Errorf("zot config revoke: %w", err)
 	}
 	if removedUser || removedACL {
-		c.tryBounce(ctx)
+		c.nudgeZot(ctx)
 	}
 	return nil
 }

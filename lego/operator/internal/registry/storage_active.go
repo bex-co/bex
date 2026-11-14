@@ -50,8 +50,8 @@ func (c *Creds) storageEpoch() string {
 //
 // The record is written after the restart, never before: a restart that fails
 // is then tried again at the next reconcile, where one recorded first would
-// leave the old rules running. It is best effort, like a bounce after a
-// revocation: a failure here must not fail the App's reconcile.
+// leave the old rules running. It is best effort, like a reload nudge: a
+// failure here must not fail the App's reconcile.
 func (c *Creds) ensureStorageActive(ctx context.Context) {
 	c.mu.Lock()
 	active := c.storageActive

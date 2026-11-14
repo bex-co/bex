@@ -1147,8 +1147,9 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	}
 
 	// The build's serial push phase uses this App's repository-scoped Zot
-	// credential. Zot reads htpasswd and ACL Secrets only at startup, so a new
-	// App's freshly minted credential may not be active yet. The workload gate
+	// credential. Zot hot-reloads the htpasswd and ACL Secrets, but only once
+	// the kubelet has projected the write into its pod, so a new App's freshly
+	// minted credential may not be active for a few seconds. The workload gate
 	// in reconcileKubernetes is necessarily too late for this path: the image
 	// must be pushed before there is an image to roll out. Prove activation
 	// before creating the build Job so a healthy build cannot fail at its final
@@ -2955,8 +2956,8 @@ func (r *AppReconciler) planReplicas(ctx context.Context, app *appv1alpha1.App, 
 }
 
 // deployRegistryGate holds a rollout until zot accepts this App's pull
-// credential (w9/m43): zot only loads per-App credentials at process start (see
-// registry/verify.go), so before rolling any workload (Deployment, CronJob,
+// credential (w9/m43): a credential write activates only once zot hot-reloads
+// the projected Secrets (see registry/verify.go), so before rolling any workload (Deployment, CronJob,
 // static-site publish Job) to a registry-hosted image, the credential must be
 // proven live. Suspended Apps skip the gate: they scale to zero and pull nothing.
 func (r *AppReconciler) deployRegistryGate(ctx context.Context, app *appv1alpha1.App, image string) (ctrl.Result, bool) {
@@ -6766,12 +6767,18 @@ func (r *AppReconciler) setPublicRoutingCondition(app *appv1alpha1.App, hosts []
 	})
 }
 
+// registryCredsPendingRequeue re-probes a pending credential. Activation is a
+// hot reload measured in seconds (w4/m347), so a short interval keeps the
+// "Preparing registry credentials" wait near that; each probe is one GET.
+const registryCredsPendingRequeue = 3 * time.Second
+
 // awaitRegistryCredActive proves zot accepts this App's per-App credential
-// before a build pushes or a workload pulls (zot loads credentials only at
-// process start — see registry/verify.go). It reports halted=true with the
-// result to return while the credential is unusable: a probe failure is a
-// platform hiccup (requeue, keep the previous state serving), a not-yet-active
-// credential parks the App at the caller's phase.
+// before a build pushes or a workload pulls (a write activates once the kubelet
+// projects it into the zot pod and zot reloads it, normally seconds — see
+// registry/verify.go). It reports halted=true with the result to return while
+// the credential is unusable: a probe failure is a platform hiccup (requeue,
+// keep the previous state serving), a not-yet-active credential parks the App
+// at the caller's phase and is probed again shortly.
 func (r *AppReconciler) awaitRegistryCredActive(ctx context.Context, app *appv1alpha1.App, phase appv1alpha1.AppPhase, logMsg, waitMsg string) (ctrl.Result, bool) {
 	active, err := r.PerAppRegistry.EnsureActiveFor(ctx, appIdentity(app), app.Namespace)
 	if err != nil {
@@ -6782,7 +6789,7 @@ func (r *AppReconciler) awaitRegistryCredActive(ctx context.Context, app *appv1a
 	}
 	if !active {
 		r.setPhase(ctx, app, phase, reasonRegistryCredsPending, waitMsg)
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, true
+		return ctrl.Result{RequeueAfter: registryCredsPendingRequeue}, true
 	}
 	return ctrl.Result{}, false
 }
@@ -8323,9 +8330,9 @@ func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1
 	for _, repo := range repos {
 		done, err := r.deleteRegistryRepoNamed(ctx, app, repo)
 		if repo == id.CacheRepo() && errors.Is(err, errRegistryDenied) {
-			// Zot honors a new grant only once it restarts, and the cache phases
-			// push with this same credential: a cache grant it has not honored
-			// let nothing be written.
+			// Zot honors a new grant only once it reloads the projected config,
+			// and the cache phases push with this same credential: a cache grant
+			// it has not honored let nothing be written.
 			continue
 		}
 		if err != nil || !done {

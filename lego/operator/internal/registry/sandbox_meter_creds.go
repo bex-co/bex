@@ -119,8 +119,8 @@ func (c *Creds) snapshotPlatformGrants(repo string) []zotGrant {
 //  3. an ACL entry for each on "snapshots/**" in zot-config: read for the
 //     meter, read and delete for the reaper, read and push for the importer.
 //
-// A new entry takes effect only after a Zot restart, like every other
-// credential here, so a write bounces Zot within the shared cooldown.
+// A new entry takes effect once Zot reloads the projected Secrets, like every
+// other credential here, so a write nudges the Zot pod (verify.go).
 func (c *Creds) EnsureSandboxMeterCreds(ctx context.Context) error {
 	passwords, err := c.ensureSandboxMeterSecret(ctx)
 	if err != nil {
@@ -150,7 +150,7 @@ func (c *Creds) EnsureSandboxMeterCreds(ctx context.Context) error {
 		return fmt.Errorf("zot config namespace patterns: %w", err)
 	}
 	if wrote || wroteNamespaces {
-		c.tryBounce(ctx)
+		c.nudgeZot(ctx)
 	}
 	return nil
 }

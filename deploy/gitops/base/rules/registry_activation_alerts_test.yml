@@ -1,0 +1,35 @@
+# w4/m347: a last-resort zot restart for credential activation always alerts.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: hot reload working means a flat counter and no alert
+    interval: 1m
+    input_series:
+      - series: bex_registry_activation_restarts_total{job="bex-operator",instance="op-a:8080"}
+        values: 0x120
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: RegistryCredentialActivationRestarted
+        exp_alerts: []
+  - name: one fallback restart fires at once and clears after an hour
+    interval: 1m
+    input_series:
+      - series: bex_registry_activation_restarts_total{job="bex-operator",instance="op-a:8080"}
+        values: 0x10 1x120
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: RegistryCredentialActivationRestarted
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+              job: bex-operator
+              instance: op-a:8080
+            exp_annotations:
+              summary: The operator restarted Zot because a registry credential did not hot-reload
+              description: "A per-App registry credential stayed rejected past the 3m activation grace despite reload nudges, so the operator fell back to deleting the zot pod, which interrupts every tenant's pushes and pulls. Check the operator log line 'registry hot reload did not activate a per-app credential', that the operator may patch pod zot-0 (deploy/gitops/base/operator-registry-rbac.yaml), and Zot's 'loaded htpasswd file' / 'loaded new configuration settings' log lines. Runbook: docs/ADR022-tenant-isolation.md (Credential activation)."
+      - eval_time: 75m
+        alertname: RegistryCredentialActivationRestarted
+        exp_alerts: []

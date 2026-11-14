@@ -650,6 +650,25 @@ groups:
           summary: "Zot garbage-collection log evidence is unavailable"
           description: "No fresh Zot log observation from a successfully scraped Alloy collector for 10m (freshness limit 5m). Zero observed GC failures is not healthy evidence while collection is unknown. Check the Zot pod/node, node-scoped platform log discovery, Alloy configuration and the private alloy scrape before diagnosing GC. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence"
 
+      # Credential activation (w4/m347, ADR022 § Credential activation).
+      # A new per-App registry credential activates by hot reload: the
+      # operator nudges the zot pod, the kubelet re-projects its Secrets
+      # and zot re-reads them, with no restart. Only a credential still
+      # rejected after the 3m grace restarts zot, and that restart fails
+      # every tenant's in-flight push and pull (round 190), so any
+      # increase means hot reload is broken and must be fixed, not
+      # tolerated. The operator exports the counter at 0 from start, so
+      # the first restart is an increase.
+      - alert: RegistryCredentialActivationRestarted
+        expr: increase(bex_registry_activation_restarts_total{job="bex-operator"}[1h]) > 0
+        labels:
+          severity: warning
+          namespace: bex-registry
+          service: zot
+        annotations:
+          summary: "The operator restarted Zot because a registry credential did not hot-reload"
+          description: "A per-App registry credential stayed rejected past the 3m activation grace despite reload nudges, so the operator fell back to deleting the zot pod, which interrupts every tenant's pushes and pulls. Check the operator log line 'registry hot reload did not activate a per-app credential', that the operator may patch pod zot-0 (deploy/gitops/base/operator-registry-rbac.yaml), and Zot's 'loaded htpasswd file' / 'loaded new configuration settings' log lines. Runbook: docs/ADR022-tenant-isolation.md (Credential activation)."
+
       # Build-plane SLIs (docs/ADR060 D5).
       #
       # The SLO is on INFRASTRUCTURE success, not on build success. A

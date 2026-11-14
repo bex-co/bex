@@ -32,10 +32,11 @@ limitations under the License.
 //     per-App repo ACL entries.
 //
 // Both are mounted as external Secrets by the Zot Helm chart
-// (deploy/gitops/base/zot.yaml). The running Zot never re-reads them — writes
-// only take effect after a zot pod restart (w9/m43; the full account lives in
-// verify.go and docs/ADR022-tenant-isolation.md § Credential activation), so
-// EnsureActive (verify.go) verifies activation and bounces the pod when needed.
+// (deploy/gitops/base/zot.yaml). The running Zot hot-reloads both once the
+// kubelet projects a write into its pod; every write nudges the pod so that
+// happens within seconds, and EnsureActive (verify.go) proves activation
+// before a push or pull (w4/m347; the full account lives in verify.go and
+// docs/ADR022-tenant-isolation.md § Credential activation).
 package registry
 
 import (
@@ -94,7 +95,7 @@ type Creds struct {
 	// Credential activation (w9/m43, verify.go). Zero values mean the package
 	// defaults; tests shrink them.
 	HTTPClient      *http.Client  // probe client; nil => shared 5s-timeout default
-	ActivationGrace time.Duration // rejected-probe tolerance before bouncing zot (default 30s)
+	ActivationGrace time.Duration // rejected-probe tolerance before the last-resort zot restart (default 3m)
 	BounceCooldown  time.Duration // minimum time between zot bounces, across all Apps (default 2m)
 
 	baseOnce    sync.Once
@@ -104,6 +105,7 @@ type Creds struct {
 	mu         sync.Mutex
 	apps       map[string]activation
 	lastBounce time.Time
+	lastNudge  time.Time
 	// storageActive is set once this process has seen that a zot restart
 	// loaded the canonical storage block (ensureStorageActive).
 	storageActive bool
@@ -197,9 +199,9 @@ func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS 
 		}
 	}
 	if wroteUser || wroteACL || wroteDual {
-		// The running zot cannot honor either write until it restarts, so the
-		// activation clock starts here (verify.go).
-		c.recordWrite(id.Key())
+		// The running zot honors the write once it reloads the projected
+		// Secrets: nudge it, and start the activation clock (verify.go).
+		c.recordWrite(ctx, id.Key())
 	}
 	return nil
 }
@@ -209,10 +211,10 @@ func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS 
 // objects cannot carry owner references, so owner-ref GC does not apply here).
 // The app controller's revokeAppRegistryCredentials does this.
 //
-// The running zot keeps accepting the removed credential until it restarts
-// (the same no-reload behavior activation works around), so revocation ends
-// with a best-effort rate-limited bounce; if the cooldown skips it, the
-// credential stays live until the next bounce or zot restart.
+// The running zot keeps accepting the removed credential until it reloads the
+// projected Secrets, so revocation ends with a best-effort nudge: the
+// credential stops authenticating within seconds, or at the kubelet's next
+// periodic sync if the nudge fails. zot is never restarted for it.
 func (c *Creds) RevokeCreds(ctx context.Context, appName string) error {
 	return c.RevokeCredsFor(ctx, identity.ForApp(appName, ""))
 }
@@ -256,7 +258,7 @@ func (c *Creds) RevokeCredsFor(ctx context.Context, id identity.Identity) error 
 		removedLegacy = lu || la
 	}
 	if removedUser || removedACL || removedDual || removedLegacy {
-		c.tryBounce(ctx)
+		c.nudgeZot(ctx)
 	}
 	return nil
 }
@@ -274,8 +276,8 @@ func (c *Creds) RevokeCredsFor(ctx context.Context, id identity.Identity) error 
 // the annotation. Workloads pick up the new pull Secret on the next kubelet
 // credential refresh, but the running zot still holds the old hash until the
 // activation loop (verify.go) re-proves the credential — expect a short
-// RegistryCredsPending window (bounded by the activation grace + a bounce)
-// after every rotation.
+// RegistryCredsPending window (seconds: the nudge, the kubelet projection and
+// zot's one-second file poll) after every rotation.
 func (c *Creds) RotateCreds(ctx context.Context, appName, appNS string) error {
 	return c.RotateCredsFor(ctx, identity.ForApp(appName, ""), appNS)
 }
@@ -305,9 +307,9 @@ func (c *Creds) RotateCredsFor(ctx context.Context, id identity.Identity, appNS 
 	if err := c.replaceHTPasswdEntry(ctx, zotUser, newPassword); err != nil {
 		return fmt.Errorf("htpasswd rotation: %w", err)
 	}
-	// The running zot deterministically rejects the new password until it
-	// restarts: restart the activation clock and drop the stale acceptance.
-	c.recordWrite(id.Key())
+	// The running zot rejects the new password until it reloads the projected
+	// Secret: nudge it, restart the activation clock, drop the stale acceptance.
+	c.recordWrite(ctx, id.Key())
 	return nil
 }
 

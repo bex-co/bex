@@ -685,7 +685,9 @@ check "the end-state verification checks Zot on every node" "$(grep -c 'check "Z
 check "the operator prerequisites include Zot" \
   "$(awk '/^operator_prereqs\(\)/,/^}$/' scripts/mock-cluster.sh | grep -c 'statefulset zot')" "1"
 check "the operator registry RBAC grants secrets and pod delete in bex-registry" \
-  "$(yq -N 'select(.kind == "Role") | .metadata.namespace + " " + ([.rules[].resources[]] | join(","))' deploy/gitops/base/operator-registry-rbac.yaml)" "bex-registry secrets,pods"
+  "$(yq -N 'select(.kind == "Role") | .metadata.namespace + " " + ([.rules[].resources[]] | unique | join(","))' deploy/gitops/base/operator-registry-rbac.yaml)" "bex-registry secrets,pods"
+check "the operator may patch only the zot pod (the w4/m347 reload nudge)" \
+  "$(yq -N 'select(.kind == "Role") | .rules[] | select(.verbs | contains(["patch"])) | select(.resources[] == "pods") | (.resourceNames | join(","))' deploy/gitops/base/operator-registry-rbac.yaml)" "zot-0"
 
 echo "cluster.yaml apply on a just-initialised mgmt cluster:"
 # A webhook that is not serving yet is retried; any other error is not.

@@ -7796,6 +7796,44 @@ dashboards:
               }
              ],
              "id": 25
+            },
+            {
+             "id": 26,
+             "type": "timeseries",
+             "title": "Zot restarts for credential activation",
+             "description": "Last-resort zot restarts the operator made because a per-App registry credential stayed rejected past the 3m activation grace (w4/m347). Credentials normally activate by hot reload with no restart, so this line stays at zero; any step means hot reload is broken and every tenant's in-flight push and pull was interrupted. RegistryCredentialActivationRestarted fires on any increase within 1h.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 124
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Credential activation (ADR022)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR022-tenant-isolation.md",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "unit": "short",
+               "min": 0,
+               "decimals": 0
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "sum(increase(bex_registry_activation_restarts_total{job=\"bex-operator\"}[1h])) or on() vector(0)",
+               "legendFormat": "zot restarts in the last hour"
+              }
+             ]
             }
           ]
         }

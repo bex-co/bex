@@ -1,16 +1,46 @@
 # w4 · m347 — A new service's credential for the shared registry works without restarting the registry, so a first build starts in seconds, not minutes
 
-**Worker:** worker4 **Goal:** a new service's per-App registry credential is accepted as soon as it is written. A first build or a first registry-hosted rollout then starts as fast as any later one, and creating a service never restarts the registry that every other tenant is pushing to and pulling from. **Status:** todo
+**Worker:** worker4 **Goal:** a new service's per-App registry credential is accepted as soon as it is written. A first build or a first registry-hosted rollout then starts as fast as any later one, and creating a service never restarts the registry that every other tenant is pushing to and pulling from. **Status:** todo (t001–t004 done; t005, the production replay, runs after the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Measure activation on the mock cluster: the wait under concurrent new Apps, and what a bounce does to in-flight pushes and pulls | 45m | — |
-| [t002](t002.md) | Activate a per-App credential without a registry restart, and amend ADR022 | 90m | t001 |
-| [t003](t003.md) | Simplify | 15m | t002 |
-| [t004](t004.md) | Test coverage | 30m | t002 |
+| [t001](done/t001.md) | Measure activation on the mock cluster: the wait under concurrent new Apps, and what a bounce does to in-flight pushes and pulls — **DONE** | 45m | — |
+| [t002](done/t002.md) | Activate a per-App credential without a registry restart, and amend ADR022 — **DONE** | 90m | t001 |
+| [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
+| [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
 | [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004 |
+
+## Outcome (t001–t004, 2026-11-14)
+
+### t001: activation measured on the mock cluster
+
+Local CAPD mock cluster, zot `v2.1.22` at the production digest. A throwaway htpasswd user and ACL entry were written into the live `zot-htpasswd` and `zot-config` Secrets, then probed through NodePort 30500 every 0.5 s (`GET /v2/<repo>/tags/list`). zot was never restarted: the pod's UID and restart count were the same before and after.
+
+| Case | Accepted after | Notes |
+| --- | --- | --- |
+| N = 1, Secret write only, no nudge | 16.6 s | the kubelet's periodic pod sync, which can take up to about a minute |
+| N = 1, write, then annotation nudge on `zot-0` | 1.2 s | the kubelet re-projects at once; zot's 1 s file poll reloads |
+| N = 6, written back to back, each followed by a nudge | all within 4.9 s of the first write | includes the twelve serial Secret writes |
+| Isolation: user c0 on c1's repository | `403` | ACL enforced after hot reload |
+| Revocation, then nudge | refused (`401`) in 0.8–1.1 s | was "at the next restart" |
+
+- **Restart effect on in-flight push/pull:** not re-measured, because that would have meant restarting the shared mock registry. Round 190's production evidence above stands: an upload failed with `EOF`, then `connection refused` for at least 10 s, longer than skopeo's 3-try budget.
+- **Round 180 overrun:** only partly explained. Any restart activates every credential written before it, so one App's credential wait is bounded by:
+  - the 30 s grace;
+  - whatever remains of the 2 min cooldown;
+  - zot's own restart, since the pod must be Ready again before a probe passes;
+  - up to one 10 s requeue.
+  That is roughly 3 min. The rest of the 6 m 30 s most likely came before 08:46:07, which was not sampled, probably the build-capacity wait (ADR060 §D6). t005's 5 s sampling separates the two. With hot reload, the credential part drops to seconds either way.
+- **Upstream proof** of the mechanism: `TestHTPasswdWatcherAtomicReplace` and `TestConfigReloaderKubernetesConfigMapUpdate` (tag `search`) pass at zot `v2.1.22`. `v2.1.18`'s watchers react to `Write` events only, which matches ADR022's original finding.
+
+### t002: what shipped
+
+- **Hot reload replaces the restart.** Every credential write (new App, rotation, revocation, snapshot and sandbox-meter users) ends with `registry.nudgeZot`: a merge patch of `bex.co/registry-credentials-written` on the zot pod. RBAC adds `pods: patch` with `resourceNames: [zot-0]`. The nudge is best effort; if it fails, the kubelet's periodic sync still delivers the write.
+- **The probe gate stays.** A pending credential re-probes every 3 s (was 10 s) and re-nudges at most every 5 s.
+- **The restart is a last resort that alerts.** A credential still rejected 3 min after its write (was 30 s) restarts zot, still capped at one restart per 2 min. It logs an error and increments `bex_registry_activation_restarts_total`. `RegistryCredentialActivationRestarted` alerts on any increase (promtool test `registry_activation_alerts_test.yml`), the series is in the `bex-operator` scrape keep-list, and the Cluster capacity dashboard graphs it.
+- **ADR022 § Credential activation is amended** with the mechanism, the round 180 and 190 evidence, and the measurements above. ADR060 and ADR097 had sentences that assumed restarts; both are corrected.
 
 ## Definition of done
 
