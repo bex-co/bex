@@ -29,8 +29,10 @@ import (
 // running, and the commit its row records as the one to build. Canceling
 // anything else names none, and the cancel settles as it always has: the older
 // deploy itself, a pending deploy that brought settings of its own, or one
-// behind a rollback. A saved-image service names its survivor too, and its
-// saved commit is left alone: it builds nothing.
+// behind a rollback the operator has not adopted. A saved-image service names
+// its survivor too, and its saved commit is left alone: it builds nothing. So
+// is a rollback or --image deploy the operator adopted (w4/666): it is held on
+// its own selection, which the saved commit takes no part in.
 func TestCancelOfThePendingDeployLeavesTheOlderOneRunning(t *testing.T) {
 	ctx := context.Background()
 	repoApp := func() *appv1alpha1.App {
@@ -49,17 +51,20 @@ func TestCancelOfThePendingDeployLeavesTheOlderOneRunning(t *testing.T) {
 		olderTrigger, olderImg string
 		pendingTrigger         string
 		cancelOlder            bool
+		adopted                bool
 		wantCanceled, wantKept string
 		wantCommit             string
 	}{
-		"a duplicate deploy":                                 {repoApp(), store.TriggerCreate, "", store.TriggerAPI, false, "2", "1", "aaa"},
-		"a pushed commit":                                    {repoApp(), store.TriggerAPI, "", store.TriggerNewCommit, false, "2", "1", "aaa"},
-		"the older deploy itself":                            {repoApp(), store.TriggerCreate, "", store.TriggerAPI, true, "1", "", "bbb"},
-		"a configuration change":                             {repoApp(), store.TriggerCreate, "", store.TriggerConfigChange, false, "2", "", "bbb"},
-		"a blueprint sync":                                   {repoApp(), store.TriggerCreate, "", store.TriggerBlueprintSync, false, "2", "", "bbb"},
-		"a deploy behind a rollback":                         {repoApp(), store.TriggerRollback, "web@sha256:old", store.TriggerAPI, false, "2", "", "bbb"},
-		"an image-backed service":                            {imageApp(), store.TriggerCreate, "web:v1", store.TriggerAPI, false, "2", "1", ""},
-		"an image service's deploy behind an --image deploy": {imageApp(), store.TriggerAPI, "web@sha256:pinned", store.TriggerAPI, false, "2", "", ""},
+		"a duplicate deploy":                                  {repoApp(), store.TriggerCreate, "", store.TriggerAPI, false, false, "2", "1", "aaa"},
+		"a pushed commit":                                     {repoApp(), store.TriggerAPI, "", store.TriggerNewCommit, false, false, "2", "1", "aaa"},
+		"the older deploy itself":                             {repoApp(), store.TriggerCreate, "", store.TriggerAPI, true, false, "1", "", "bbb"},
+		"a configuration change":                              {repoApp(), store.TriggerCreate, "", store.TriggerConfigChange, false, false, "2", "", "bbb"},
+		"a blueprint sync":                                    {repoApp(), store.TriggerCreate, "", store.TriggerBlueprintSync, false, false, "2", "", "bbb"},
+		"a deploy behind a rollback":                          {repoApp(), store.TriggerRollback, "web@sha256:old", store.TriggerAPI, false, false, "2", "", "bbb"},
+		"an image-backed service":                             {imageApp(), store.TriggerCreate, "web:v1", store.TriggerAPI, false, false, "2", "1", ""},
+		"an image service's deploy behind an --image deploy":  {imageApp(), store.TriggerAPI, "web@sha256:pinned", store.TriggerAPI, false, false, "2", "", ""},
+		"a pushed commit behind an adopted rollback":          {repoApp(), store.TriggerRollback, "web@sha256:old", store.TriggerNewCommit, false, true, "2", "1", "bbb"},
+		"an image service's deploy behind an adopted --image": {imageApp(), store.TriggerAPI, "web@sha256:pinned", store.TriggerAPI, false, true, "2", "1", ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			ds := newFakeStore()
@@ -68,6 +73,9 @@ func TestCancelOfThePendingDeployLeavesTheOlderOneRunning(t *testing.T) {
 			pending, _ := ds.CreateDeploy(ctx, "srv-1", tc.pendingTrigger, tc.app.Spec.Image, 2, store.CommitInfo{Hash: "bbb"}, "")
 			if !pending.OverlapPending {
 				t.Fatalf("precondition: the newer deploy waits in the pending slot, got %+v", pending)
+			}
+			if tc.adopted {
+				tc.app.Status.ReleaseGeneration, tc.app.Status.SelectedReleaseGeneration = 1, 1
 			}
 			svc, cl := newService(ds, tc.app)
 			target, other := pending, older

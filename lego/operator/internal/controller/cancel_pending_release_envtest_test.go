@@ -315,9 +315,11 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 	// Rollback's selection, and a configuration save rolls a release over it;
 	// either replaced the Rollback in progress. Under Render's Wait the
 	// Rollback goes live first, on its own image and settings, then the newer
-	// deploy runs.
+	// deploy runs. Canceling the newer deploy meanwhile, which bex-api stamps
+	// naming the Rollback as the release it leaves running, ends that deploy
+	// alone (w4/666).
 	DescribeTable("a Rollback rolling out serves before the newer deploy rolls out",
-		func(newer func(a *appv1alpha1.App)) {
+		func(newer func(a *appv1alpha1.App), cancelNewer bool) {
 			appImage := func() string {
 				GinkgoHelper()
 				return findContainer(envtestDeployment(nn).Spec.Template.Spec.Containers, appContainerName).Image
@@ -356,6 +358,13 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 			Expect(findContainer(envtestDeployment(nn).Spec.Template.Spec.Containers, appContainerName).Env).
 				NotTo(ContainElement(corev1.EnvVar{Name: "NEWER", Value: "1"}), "and its own settings")
 
+			if cancelNewer {
+				cancelLatest(rollback)
+				pass(2)
+				Expect(getApp().Status.ReleaseGeneration).To(Equal(rollback), "the cancel leaves the rollback in flight")
+				Expect(templateRevision()).To(Equal(fmt.Sprintf("rev-%d", rollback)))
+				Expect(appImage()).To(Equal("python:3.12-alpine"))
+			}
 			markEnvtestDeploymentReady(nn)
 			served := make([]string, 0, 4)
 			for range 4 {
@@ -364,6 +373,13 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 			}
 			Expect(served).To(ContainElement(fmt.Sprintf("rev-%d", rollback)), "the rollback served before the newer deploy was adopted")
 			app = getApp()
+			if cancelNewer {
+				Expect(app.Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", rollback)), "the rollback goes live")
+				Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+				Expect(templateRevision()).To(Equal(fmt.Sprintf("rev-%d", rollback)), "the canceled deploy never rolls")
+				Expect(appImage()).To(Equal("python:3.12-alpine"))
+				return
+			}
 			Expect(app.Status.ReleaseGeneration).To(Equal(rollback+1), "the newer deploy runs once the rollback serves")
 			Expect(app.Status.PendingReleaseGeneration).To(BeZero())
 			Expect(templateRevision()).To(Equal(fmt.Sprintf("rev-%d", rollback+1)))
@@ -374,11 +390,17 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 			a.Spec.RestartedAt = "2026-11-14T10:00:10Z"
 			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "NEWER", Value: "1"}}
 			a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(a.Generation+1, 10)
-		}),
+		}, false),
 		Entry("a configuration save, which leaves the selection in the spec", func(a *appv1alpha1.App) {
 			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "NEWER", Value: "1"}}
 			a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(a.Generation+1, 10)
-		}),
+		}, false),
+		Entry("a deploy that clears the selection, then is canceled (w4/666)", func(a *appv1alpha1.App) {
+			a.Spec.ReleaseConfig = nil
+			a.Spec.RestartedAt = "2026-11-14T10:00:10Z"
+			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "NEWER", Value: "1"}}
+			a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(a.Generation+1, 10)
+		}, true),
 	)
 
 	It("two image triggers before the first deploy starts still leave one deploy", func() {

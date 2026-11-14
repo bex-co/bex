@@ -623,7 +623,8 @@ func latestRequestCanceled(app *appv1alpha1.App) bool {
 // stays settled as a failed generation; once it serves, the cancel settles on
 // it. bex-api removes the name when that release is ended too (a suspend, or a
 // cancel of its own deploy), and a release the pin could not carry ends with
-// the cancel as before.
+// the cancel as before. A selected release in flight is carried on its adopted
+// view like any pinned release (w4/666).
 //
 // A saved-image release the newer request reached before it was adopted was
 // replaced then; for one the cancel names, the survivor is still in flight
@@ -637,6 +638,13 @@ func survivorInFlight(app *appv1alpha1.App) bool {
 	canceled, _ := canceledReleaseGeneration(app)
 	if survivor >= canceled || survivor <= successfulReleaseGeneration(app) {
 		return false
+	}
+	if survivor == app.Status.SelectedReleaseGeneration {
+		// A selected release (a Rollback, Restart or image override) runs only
+		// on its adopted view, which carries its selection (w4/661); bex-api
+		// names one only once the operator adopted it (w4/666). Without the
+		// view the saved spec would roll in its name, so the cancel ends it.
+		return survivor == app.Status.ReleaseGeneration && app.Status.ReleaseFingerprint != "" && selectedRelease(app)
 	}
 	if savedImageRelease(app) {
 		return true

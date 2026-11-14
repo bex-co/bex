@@ -289,6 +289,47 @@ func TestSelectedReleaseRollingOutWaitsForTheNewerDeploy(t *testing.T) {
 	}
 }
 
+// A cancel ends one deploy (w4/666): canceling the deploy waiting behind a
+// Rollback in flight, which bex-api names as the release it leaves running,
+// keeps the Rollback pinned on its view to go live. Without its view the saved
+// spec would roll in its name, so the cancel ends it too, as does a cancel that
+// names no survivor.
+func TestCancelOfTheDeployBehindASelectedReleaseLeavesItRunning(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		survivor string
+		withView bool
+		pinned   bool
+	}{
+		{"named, on its view", "2", true, true},
+		{"named, with no recorded view", "2", false, false},
+		{"not named", "", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, view := rollbackOverlapApp(appv1alpha1.PhaseDeploying)
+			app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "3"
+			if tc.survivor != "" {
+				app.Annotations[appv1alpha1.AnnotationSurvivingReleaseGeneration] = tc.survivor
+			}
+			var held *appv1alpha1.AppSpec
+			if tc.withView {
+				held = &view
+			}
+			decision := prepareAppReleaseDecision(app, held)
+			if tc.pinned {
+				if !decision.pinned || decision.canceled || decision.releaseChanged || app.Status.ReleaseGeneration != 2 {
+					t.Fatalf("pinned=%v canceled=%v changed=%v release=%d, want the rollback pinned at 2",
+						decision.pinned, decision.canceled, decision.releaseChanged, app.Status.ReleaseGeneration)
+				}
+				return
+			}
+			if !decision.canceled || app.Status.ReleaseGeneration != 1 {
+				t.Fatalf("canceled=%v release=%d, want the cancel settled on served release 1", decision.canceled, app.Status.ReleaseGeneration)
+			}
+		})
+	}
+}
+
 // Render's Override policy (w4/653): a source build in flight is replaced by
 // the newer release at once, where Wait pins it.
 func TestOverridePolicyReplacesTheBuildInFlight(t *testing.T) {

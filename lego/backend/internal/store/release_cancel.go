@@ -135,7 +135,9 @@ func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.Ap
 			metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, strconv.FormatInt(generation, 10))
 			if requested, _ := generationAnnotation(a, appv1alpha1.AnnotationReleaseGeneration); survivor != nil && requested == generation {
 				metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationSurvivingReleaseGeneration, strconv.FormatInt(survivor.Generation, 10))
-				if a.Spec.Repo != "" { // a saved-image release builds nothing
+				// A saved-image release builds nothing, and a selected one runs
+				// its selection: the saved commit is neither's (w4/666).
+				if a.Spec.Repo != "" && !SelectionAdopted(a, survivor.Generation) {
 					a.Spec.BuildCommit = survivor.Commit
 				}
 			}
@@ -149,6 +151,14 @@ func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.Ap
 		return fmt.Errorf("mark canceled release: %w", err)
 	}
 	return nil
+}
+
+// SelectionAdopted reports that the operator adopted generation as a selected
+// release (a Rollback, Restart or image override): it is the release in flight,
+// and the one spec.releaseConfig selected. The operator holds such a release on
+// its adopted view while newer deploys wait (w4/661).
+func SelectionAdopted(a *appv1alpha1.App, generation int64) bool {
+	return generation > 0 && a.Status.ReleaseGeneration == generation && a.Status.SelectedReleaseGeneration == generation
 }
 
 // canceledReleaseGeneration is the release generation the App's cancel stamp
