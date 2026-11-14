@@ -106,8 +106,8 @@ bex agent
   If the stream is unavailable, `chat` falls back to the shipped `/transcript` polling. That covers a 503 from an unconfigured gateway and `409 AGENT_SESSION_NOT_ATTACHABLE` while the first sandbox is still provisioning, which `chat` retries.
 
 - **Input.** `chat` is a line-mode prompt under the stream, not a full-screen TUI, so output stays in scrollback and works in tmux, in SSH sessions and in pipes to `tee`.
-  - The public live-turn path is disabled (`AGENT_SESSION_LIVE_TURN_UNAVAILABLE`, ADR047 D9), so a message typed while a turn runs is **queued in the client** in one slot.
-  - The queued message is sent with `steer` when the turn settles. Typing again replaces it, and the prompt shows `queued — sends when this turn ends`.
+  - The public live-turn path is disabled (`AGENT_SESSION_LIVE_TURN_UNAVAILABLE`, ADR047 D9), so a message typed while a turn runs is **queued on the server** ([ADR047 D12](ADR047-cloud-coding-agent-sessions.md), w22/m403), which replaces the client's earlier one-slot queue. `steer` answers `202` with the queued message.
+  - The server sends each queued message when the turn settles. Typing again adds another message instead of replacing the first, and the prompt shows `queued — sends when this turn ends`. A reattached `chat` lists what is still queued.
   - A message typed while no turn runs is sent with `steer` at once.
 - **Detach is not cancel.** Ctrl-D, `/quit` or Ctrl-C detach and leave the session running. `/cancel` asks for confirmation and then calls the cancel verb. This is ADR047's "client disconnect ≠ cancel" rule.
 - **New sessions.** `bex agent chat --repo acme/api [task…]` creates the session with the `run` flags and an idempotency key, then attaches. With no task it asks for the first message.

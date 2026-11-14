@@ -1,12 +1,12 @@
 # w22 · m403 — A message sent to a running agent session is queued, and Stop ends only the current turn, as on Devin
 
-**Worker:** worker22 **Goal:** a user can send a message to an agent session while its turn is running and it is queued, not refused. Queued messages can be edited, removed, reordered or sent now, and they run in order as the turn settles. A new "Stop turn" ends only the running turn and leaves the session alive and steerable with the reply streamed so far kept; Cancel is unchanged. Dashboard, REST, GraphQL, MCP and `bex agent chat` all use the one server-side queue. **Status:** todo
+**Worker:** worker22 **Goal:** a user can send a message to an agent session while its turn is running and it is queued, not refused. Queued messages can be edited, removed, reordered or sent now, and they run in order as the turn settles. A new "Stop turn" ends only the running turn and leaves the session alive and steerable with the reply streamed so far kept; Cancel is unchanged. Dashboard, REST, GraphQL, MCP and `bex agent chat` all use the one server-side queue. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Design record in ADR047 and a driver spike: the queue's rules, the interrupt's semantics, whether the driver and each engine can end only the current turn | 45m | — |
+| t001 | Design record in ADR047 and a driver spike: the queue's rules, the interrupt's semantics, whether the driver and each engine can end only the current turn — **DONE** | 45m | — |
 | t002 | The queue: store, service and API: a steer during a turn answers "queued"; list, edit, delete, reorder; REST, GraphQL and MCP | 75m | t001 |
 | t003 | The dispatcher: when a turn settles the next queued message runs through the existing steer path; safe across restarts and replicas | 60m | t002 |
 | t004 | The interrupt verb: ends only the current turn, the session returns to idle with its reply and branch kept; REST, GraphQL, MCP and the gateway-to-driver path | 60m | t001 |
@@ -39,3 +39,8 @@
 - **Anti-goal check:** `#APPROVAL-MODE` forbids approval gating, human-in-the-loop pauses and an agent-to-user question channel. This is the opposite direction (user to agent), gates nothing and pauses nothing, so it does not conflict.
 - **Open recommendations, not user decisions** (t001 records them in ADR047 as recommendations): queue by default with interrupt as an explicit action, because bex has no live injection into a running turn; a per-session cap on pending messages; FIFO one message per turn. Where Devin's default differs (its queueing is a preference, 2026-07-17), t001 records bex's choice in ADR047 and ADR018 as a divergence awaiting the user's sign-off. That sign-off is open and does not block closing the milestone: the repository rule is that parity work is never parked on an optional decision.
 - **Render parity included (reference product: Devin):** new fields and verbs on REST, GraphQL and MCP plus the dashboard and CLI, so t007 compares each with Devin.
+
+## Progress 2026-11-14 (/loopx w22)
+
+- **t001 done:** the design is [ADR047 D12](../../../docs/ADR047-cloud-coding-agent-sessions.md#d12--a-message-to-a-running-session-is-queued-stop-turn-ends-only-the-current-turn-w22m403-2026-11-14), with the Devin entries re-read on 2026-11-14 (two of the dates in the original proposal were paraphrased wrongly and are corrected here and in the ADR: queueing while Devin works is a preference, 2026-07-17; `Cmd/Ctrl+Enter` sends a queued message at once, 2026-08-26). Read-only code mapping found that every steer starts a fresh sandbox and driver, that the driver already has a per-turn `AbortController` wired only to SIGTERM, that there is no bex-api-to-driver push channel (the gateway exec path that reads the status file is the cheapest one), and that no phase constraint needs to change (an interrupted turn finalizes as `completed` with the turn flagged `interrupted`). The spike is by reading; the live check of the abort is t004's.
+- **ADR018** records the divergence awaiting the user's sign-off (queue by default, where Devin's queueing is a preference). It does not block this milestone.
