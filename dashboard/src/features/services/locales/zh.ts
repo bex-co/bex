@@ -1708,6 +1708,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "添加域名",
     description: "Add-domain dialog submit button",
   },
+  "services.domainAddPairSuccess": {
+    message: "已添加 {name} 和 {sibling}",
+    description:
+      "Toast on a custom-domain add that auto-paired its www/apex sibling (w4/618)",
+  },
   "services.domainAddSuccess": {
     message: "已添加 {name}",
     description: "Toast on a successful custom-domain add",
@@ -1730,6 +1735,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "{name} 已是该服务自己的平台子域名，不能作为自定义域名添加",
     description:
       "Toast when a custom-domain add names the service's own platform subdomain (400 CUSTOM_DOMAIN_OWN_PLATFORM_HOST, w4/558)",
+  },
+  "services.domainDeletePairSuccess": {
+    message: "已移除 {name} 和 {sibling}",
+    description:
+      "Toast on a custom-domain delete that also removed its auto-paired sibling (w4/618)",
   },
   "services.domainDeleteSuccess": {
     message: "已移除 {name}",

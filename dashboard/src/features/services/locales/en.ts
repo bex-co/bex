@@ -1742,6 +1742,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Add Domain",
     description: "Add-domain dialog submit button",
   },
+  "services.domainAddPairSuccess": {
+    message: "Added {name} and {sibling}",
+    description:
+      "Toast on a custom-domain add that auto-paired its www/apex sibling (w4/618)",
+  },
   "services.domainAddSuccess": {
     message: "Added {name}",
     description: "Toast on a successful custom-domain add",
@@ -1765,6 +1770,11 @@ const enServices: Record<string, TranslationEntry> = {
       "{name} is already this service's platform subdomain, so it can't be added as a custom domain",
     description:
       "Toast when a custom-domain add names the service's own platform subdomain (400 CUSTOM_DOMAIN_OWN_PLATFORM_HOST, w4/558)",
+  },
+  "services.domainDeletePairSuccess": {
+    message: "Removed {name} and {sibling}",
+    description:
+      "Toast on a custom-domain delete that also removed its auto-paired sibling (w4/618)",
   },
   "services.domainDeleteSuccess": {
     message: "Removed {name}",

@@ -192,7 +192,7 @@ function CustomDomainRow({
 }: {
   domain: CustomDomainView;
   sibling: CustomDomainView | null;
-  onDelete: (name: string) => Promise<boolean>;
+  onDelete: (name: string, sibling?: string) => Promise<boolean>;
   onVerify: (name: string) => Promise<CustomDomainView | null>;
   busy: boolean;
 }) {
@@ -326,7 +326,7 @@ function CustomDomainRow({
             cancelLabel={t("services.domainCancel")}
             confirmLabel={t("services.domainDelete")}
             onConfirm={() => {
-              void onDelete(domain.name);
+              void onDelete(domain.name, sibling?.name);
               setConfirming(false);
             }}
           />

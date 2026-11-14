@@ -162,7 +162,7 @@ export interface UseCustomDomainMutationsResult {
   /** Clear `addError` (on input change and when the dialog closes). */
   clearAddError: () => void;
   /** Remove a custom domain; resolves true on success. */
-  deleteDomain: (name: string) => Promise<boolean>;
+  deleteDomain: (name: string, sibling?: string) => Promise<boolean>;
   /** Re-check a domain's DNS/cert state now; resolves to the fresh domain, or null on error. */
   verifyDomain: (name: string) => Promise<CustomDomainView | null>;
   /** A write is in flight (disable the form/actions while true). */
@@ -200,12 +200,20 @@ export function useCustomDomainMutations(
         // include it — no race against the parent's next render.
         const fresh = await refetch();
         const primary = mapRaw(res.data?.addCustomDomain ?? null);
-        toast.success(t("services.domainAddSuccess", { name }), {
-          description: t("services.domainPropagateNote"),
-        });
-        return primary
-          ? { primary, sibling: pairedSibling(primary, fresh) }
-          : null;
+        const sibling = primary ? pairedSibling(primary, fresh) : null;
+        // Name the domains as saved (lowercased, no trailing dot), and both
+        // halves of an auto-pair (w4/618).
+        const saved = primary?.name ?? name;
+        toast.success(
+          sibling
+            ? t("services.domainAddPairSuccess", {
+                name: saved,
+                sibling: sibling.name,
+              })
+            : t("services.domainAddSuccess", { name: saved }),
+          { description: t("services.domainPropagateNote") },
+        );
+        return primary ? { primary, sibling } : null;
       } catch (e) {
         // Show the reason inline in the still-open dialog (persistent) rather
         // than only a transient toast that vanishes before it's read.
@@ -224,7 +232,7 @@ export function useCustomDomainMutations(
   );
 
   const deleteDomain = useCallback(
-    async (name: string) => {
+    async (name: string, sibling?: string) => {
       setBusy(true);
       try {
         try {
@@ -234,8 +242,18 @@ export function useCustomDomainMutations(
           // the delete has done what was asked (w4/574).
           if (!isNotFoundError(err)) throw err;
         }
-        await refetch();
-        toast.success(t("services.domainDeleteSuccess", { name }));
+        const fresh = await refetch();
+        // A canonical domain takes its auto-paired sibling with it (w4/618).
+        const removedSibling =
+          sibling && !fresh.some((d) => d.name === sibling) ? sibling : null;
+        toast.success(
+          removedSibling
+            ? t("services.domainDeletePairSuccess", {
+                name,
+                sibling: removedSibling,
+              })
+            : t("services.domainDeleteSuccess", { name }),
+        );
         return true;
       } catch (err) {
         toast.error(

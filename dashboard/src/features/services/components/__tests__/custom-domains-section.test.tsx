@@ -591,7 +591,10 @@ describe("CustomDomainsSection", () => {
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() =>
-      expect(mockDeleteDomain).toHaveBeenCalledWith("www.example.com"),
+      expect(mockDeleteDomain).toHaveBeenCalledWith(
+        "www.example.com",
+        undefined,
+      ),
     );
   });
 
@@ -613,7 +616,7 @@ describe("CustomDomainsSection", () => {
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() =>
-      expect(mockDeleteDomain).toHaveBeenCalledWith("foo.com"),
+      expect(mockDeleteDomain).toHaveBeenCalledWith("foo.com", "www.foo.com"),
     );
   });
 

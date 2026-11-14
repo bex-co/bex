@@ -53,3 +53,63 @@ describe("useCustomDomainMutations deleteDomain", () => {
     expect(toast.error).toHaveBeenCalled();
   });
 });
+
+// w4/618: the toasts name domains as saved, and both halves of an auto-pair.
+describe("useCustomDomainMutations toasts name the saved domains", () => {
+  it("names an added domain as saved, not as typed", async () => {
+    deleteMutation.mockResolvedValue({
+      data: { addCustomDomain: { name: "qa-example.com" } },
+    });
+    refetch.mockResolvedValue([{ name: "qa-example.com" }]);
+    const { result } = renderHook(() =>
+      useCustomDomainMutations("srv-1", refetch),
+    );
+    await act(async () => {
+      await result.current.addDomain("Qa-Example.COM.");
+    });
+    expect(toast.success).toHaveBeenCalledWith(
+      "Added qa-example.com",
+      expect.anything(),
+    );
+  });
+
+  it("names the auto-paired www sibling an apex add created", async () => {
+    deleteMutation.mockResolvedValue({
+      data: { addCustomDomain: { name: "example.com" } },
+    });
+    refetch.mockResolvedValue([
+      { name: "example.com" },
+      { name: "www.example.com", redirectForName: "example.com" },
+    ]);
+    const { result } = renderHook(() =>
+      useCustomDomainMutations("srv-1", refetch),
+    );
+    await act(async () => {
+      await result.current.addDomain("example.com");
+    });
+    expect(toast.success).toHaveBeenCalledWith(
+      "Added example.com and www.example.com",
+      expect.anything(),
+    );
+  });
+
+  it("names the sibling a delete removed with it, and only then", async () => {
+    deleteMutation.mockResolvedValue({});
+    refetch.mockResolvedValue([]);
+    const { result } = renderHook(() =>
+      useCustomDomainMutations("srv-1", refetch),
+    );
+    await act(async () => {
+      await result.current.deleteDomain("example.com", "www.example.com");
+    });
+    expect(toast.success).toHaveBeenLastCalledWith(
+      "Removed example.com and www.example.com",
+    );
+
+    refetch.mockResolvedValue([{ name: "example.com" }]);
+    await act(async () => {
+      await result.current.deleteDomain("www.example.com", "example.com");
+    });
+    expect(toast.success).toHaveBeenLastCalledWith("Removed www.example.com");
+  });
+});
