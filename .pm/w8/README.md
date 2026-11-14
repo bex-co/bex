@@ -441,12 +441,14 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **323** — [A static site serves `.html`, `.css`, `.md` and `.csv` with no charset (`text/html`, `text/markdown`), where Render declares `charset=utf-8` on every text type it serves](323.md) (~30m) ← `/qa-find-bugs-cli` sweep 3506 2026-11-14 (bex v0.6.0), minor. Render answers `text/html`, `text/css`, `text/markdown` and `text/plain` with `charset=utf-8`. bex's `utf8PlainText` (`s3origin.go:123`) declares it on `text/plain` only, as w4/335 scoped before Render's types were captured. Widen it to every `text/*` with no declared charset and a valid UTF-8 body.
 
-- [ ] **322** — [A static site's 404 headers differ from Render's: its `404.html` page lacks the HSTS and cache policy every file carries, and a bare 404 carries the site's custom headers where Render's carries only `nosniff`](322.md) (~30m) ← `/qa-find-bugs-cli` sweep cc60 2026-11-14 (bex v0.6.0), minor.
+- [x] **322** — [A static site's 404 headers differ from Render's: its `404.html` page lacks the HSTS and cache policy every file carries, and a bare 404 carries the site's custom headers where Render's carries only `nosniff`](done/322.md) (~30m) ← `/qa-find-bugs-cli` sweep cc60 2026-11-14 (bex v0.6.0), minor.
   - **Render** (four sites with `/*` rules): a miss served by `404.html` carries the rules plus HSTS and `cache-control`. A miss without one is a bare `text/plain` `Not Found` with `nosniff` only.
   - **bex:**
     - `serveNotFound` (`staticserver.go:429`) drops HSTS and `cache-control`;
     - `serveSiteError` (`:1027`) adds the rules to the bare 404, a w4/m101 choice that had no capture.
   - **Fix:** the 404 page gets `serveObject`'s file headers, and a bare 404 gets `nosniff` only. Other error classes stay as they are.
+
+  **DONE 2026-11-14.** The `404.html` miss gets a file's headers (cache policy, HSTS, nosniff, rules); a miss without one is a bare `Not Found` with nosniff only. Production check owed after the static-server rolls.
 
 - [x] **321** — [A web service's own `Server` header reaches clients verbatim (`server: nginx/1.27.5`), where Render moves it to `x-render-origin-server` and sends `x-render-origin-server: Render` when the app sets none](done/321.md) (~45m) ← `/qa-find-bugs-cli` sweep 66c6 2026-11-14 (bex v0.6.0), minor.
   - **Render:** a uvicorn app answers `x-render-origin-server: uvicorn`, and Express apps `x-render-origin-server: Render`. Static sites carry none.

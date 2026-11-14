@@ -679,14 +679,28 @@ func assertMarker(t *testing.T, rec *httptest.ResponseRecorder) {
 	}
 }
 
+// assertBareNotFound checks Render's answer to a miss on a site with no
+// 404.html (w8/322): a plain-text 404 with nosniff and none of the site's
+// rules.
+func assertBareNotFound(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	if rec.Code != http.StatusNotFound || rec.Body.String() != "Not Found\n" ||
+		rec.Header().Get("X-Content-Type-Options") != "nosniff" || rec.Header().Get("Content-Type") != "text/plain; charset=utf-8" {
+		t.Fatalf("miss = %d %q %v, want a bare 404 Not Found with nosniff", rec.Code, rec.Body, rec.Header())
+	}
+	for _, name := range []string{"X-Qa-Marker", "Strict-Transport-Security", "Cache-Control"} {
+		if got := rec.Header().Get(name); got != "" {
+			t.Errorf("%s = %q on a bare 404, want only nosniff", name, got)
+		}
+	}
+}
+
+// Error classes other than the bare 404 carry the site's matching rules
+// (w4/m101); Render's answers for them were not captured (w8/322).
 func TestErrorResponsesCarryCustomHeaders(t *testing.T) {
 	t.Run("404 miss", func(t *testing.T) {
 		h, _ := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
-		rec := do(h, http.MethodGet, "/nope.html")
-		if rec.Code != http.StatusNotFound {
-			t.Fatalf("code = %d, want 404", rec.Code)
-		}
-		assertMarker(t, rec)
+		assertBareNotFound(t, do(h, http.MethodGet, "/nope.html"))
 	})
 
 	t.Run("400 invalid redirect", func(t *testing.T) {
@@ -705,11 +719,7 @@ func TestErrorResponsesCarryCustomHeaders(t *testing.T) {
 		pad := maxObjectKeyBytes - len(key(""))
 		p := "/" + strings.Repeat("a", pad+1-len(".html")) + ".html"
 		h, _ := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
-		rec := do(h, http.MethodGet, p)
-		if rec.Code != http.StatusNotFound {
-			t.Fatalf("code = %d, want 404", rec.Code)
-		}
-		assertMarker(t, rec)
+		assertBareNotFound(t, do(h, http.MethodGet, p))
 	})
 
 	t.Run("404 overlong rewrite target", func(t *testing.T) {
@@ -719,11 +729,7 @@ func TestErrorResponsesCarryCustomHeaders(t *testing.T) {
 			Headers: markerHeaders(),
 			Routes:  []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/short", Destination: dest}},
 		}, nil)
-		rec := do(h, http.MethodGet, "/short")
-		if rec.Code != http.StatusNotFound {
-			t.Fatalf("code = %d, want 404", rec.Code)
-		}
-		assertMarker(t, rec)
+		assertBareNotFound(t, do(h, http.MethodGet, "/short"))
 	})
 
 	t.Run("413 oversize", func(t *testing.T) {

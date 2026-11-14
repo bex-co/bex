@@ -36,7 +36,10 @@ func TestHeaderPatternsServedResponses(t *testing.T) {
 		{Path: "/**/*.css", Name: "X-Nested-Css", Value: "yes"},
 		{Path: "/**/*", Name: "X-Nested-All", Value: "yes"},
 	}
-	h, _ := newTestHandler(t, Site{Headers: rules}, map[string]Object{
+	// Misses are served with the site's 404.html, which carries the rules
+	// matching the request path, as on Render (w8/322).
+	h, _ := newTestHandler(t, Site{Headers: rules, NoSPAFallback: true}, map[string]Object{
+		key("404.html"):           {Body: []byte("missing"), ContentType: "text/html"},
 		key("render.yaml"):        {Body: []byte("yaml")},
 		key("style.css"):          {Body: []byte("css")},
 		key("nested/config.yaml"): {Body: []byte("nested yaml")},
@@ -80,6 +83,9 @@ func TestHeaderPatternsServedResponses(t *testing.T) {
 				}
 				if method == http.MethodGet && tc.status == 200 && response.Body.String() != tc.body {
 					t.Errorf("body=%q, want %q", response.Body.String(), tc.body)
+				}
+				if method == http.MethodGet && tc.status == http.StatusNotFound && response.Body.String() != "missing" {
+					t.Errorf("miss body=%q, want the site's 404.html", response.Body.String())
 				}
 			})
 		}
