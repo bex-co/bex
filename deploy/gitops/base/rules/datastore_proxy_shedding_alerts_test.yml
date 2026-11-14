@@ -1,0 +1,49 @@
+# w21/070 (R25-12): shedding that continues for ten minutes alerts; one stray
+# rejection, or a quiet counter, does not.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: sustained shedding by either proxy alerts with its reason
+    interval: 1m
+    input_series:
+      - series: bex_pg_proxy_connections_rejected_total{job="bex-pg-proxy",reason="handshake",pod="pg-sni-proxy-a"}
+        values: 0+30x30
+      - series: bex_kv_proxy_connections_rejected_total{job="bex-kv-proxy",reason="source",pod="kv-sni-proxy-a"}
+        values: 0+5x30
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: DatastoreProxyShedding
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: DatastoreProxyShedding
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: bex-pg-proxy
+              reason: handshake
+            exp_annotations:
+              summary: "A public datastore proxy is shedding connections (bex-pg-proxy, handshake)"
+              description: "bex-pg-proxy or bex-kv-proxy has refused connections for over ten minutes. reason=global means the process is full, handshake means one network holds its share of unfinished handshakes, source, workspace and resource are the per-client and per-tenant caps. A flood or a misbehaving client; the caps are BEX_PROXY_* and BEX_KV_PROXY_* (lego/operator/AGENTS.md). Debug: kubectl -n bex-system logs -l app.bex.co/component=pg-sni-proxy | grep rejected (and kv-sni-proxy)."
+          - exp_labels:
+              severity: warning
+              job: bex-kv-proxy
+              reason: source
+            exp_annotations:
+              summary: "A public datastore proxy is shedding connections (bex-kv-proxy, source)"
+              description: "bex-pg-proxy or bex-kv-proxy has refused connections for over ten minutes. reason=global means the process is full, handshake means one network holds its share of unfinished handshakes, source, workspace and resource are the per-client and per-tenant caps. A flood or a misbehaving client; the caps are BEX_PROXY_* and BEX_KV_PROXY_* (lego/operator/AGENTS.md). Debug: kubectl -n bex-system logs -l app.bex.co/component=pg-sni-proxy | grep rejected (and kv-sni-proxy)."
+  - name: a stray rejection and a quiet counter do not alert
+    interval: 1m
+    input_series:
+      # One rejection at minute 3 and nothing after.
+      - series: bex_pg_proxy_connections_rejected_total{job="bex-pg-proxy",reason="source",pod="pg-sni-proxy-a"}
+        values: 0 0 0 1+0x40
+      - series: bex_kv_proxy_connections_rejected_total{job="bex-kv-proxy",reason="global",pod="kv-sni-proxy-a"}
+        values: 0+0x40
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: DatastoreProxyShedding
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: DatastoreProxyShedding
+        exp_alerts: []

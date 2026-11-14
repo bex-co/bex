@@ -623,7 +623,7 @@ spec:
                     target_label: pod
                 metric_relabel_configs:
                   - source_labels: [__name__]
-                    regex: bex_pg_proxy_(egress_bytes_total|healthy|process_start_time_seconds)
+                    regex: bex_pg_proxy_(egress_bytes_total|healthy|process_start_time_seconds|connections_rejected_total)
                     action: keep
               - job_name: bex-kv-proxy
                 scrape_interval: 15s
@@ -642,7 +642,7 @@ spec:
                     target_label: pod
                 metric_relabel_configs:
                   - source_labels: [__name__]
-                    regex: bex_kv_proxy_(egress_bytes_total|healthy|process_start_time_seconds)
+                    regex: bex_kv_proxy_(egress_bytes_total|healthy|process_start_time_seconds|connections_rejected_total)
                     action: keep
               # kubelet /metrics (NOT cadvisor): only kubelet_volume_stats_* — the
               # PVC used/capacity bytes behind the PersistentVolumeFillingUp alert.

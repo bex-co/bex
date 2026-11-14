@@ -1038,6 +1038,25 @@ groups:
           summary: "Key Value outbound accounting is unavailable"
           description: "The public Key Value proxy meter is missing or unhealthy. Public Key Value usage windows must fail rather than undercount. Debug: kubectl -n bex-system get pods -l app.bex.co/component=kv-sni-proxy -o wide"
 
+      # The public Postgres and Key Value proxies shed a connection
+      # at a cap (a source, a network's handshakes, a workspace, a resource, the
+      # process) and count it. Until this alert nobody watched the counter, and
+      # the scrape's keep list dropped it before Prometheus saw it, so a flood
+      # that shed every other client would have been silent. A 5m rate stays above
+      # zero for 5m after one stray rejection, so `for: 10m` fires only on
+      # shedding that continues for ten minutes.
+      - alert: DatastoreProxyShedding
+        expr: |
+          sum by (job, reason) (rate(bex_pg_proxy_connections_rejected_total[5m])) > 0
+          or
+          sum by (job, reason) (rate(bex_kv_proxy_connections_rejected_total[5m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "A public datastore proxy is shedding connections ({{ $labels.job }}, {{ $labels.reason }})"
+          description: "bex-pg-proxy or bex-kv-proxy has refused connections for over ten minutes. reason=global means the process is full, handshake means one network holds its share of unfinished handshakes, source, workspace and resource are the per-client and per-tenant caps. A flood or a misbehaving client; the caps are BEX_PROXY_* and BEX_KV_PROXY_* (lego/operator/AGENTS.md). Debug: kubectl -n bex-system logs -l app.bex.co/component=pg-sni-proxy | grep rejected (and kv-sni-proxy)."
+
       - alert: BackupCronJobStale
         expr: |
           (

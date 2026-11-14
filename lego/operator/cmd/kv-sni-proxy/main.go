@@ -56,13 +56,18 @@ const (
 
 	// Admission + copy-loop bounds (finding 6). Non-zero, generous defaults; a
 	// value of 0 disables that dimension.
-	defaultMaxConns          = 1024      // BEX_KV_PROXY_MAX_CONNS
-	defaultMaxConnsPerSource = 128       // BEX_KV_PROXY_MAX_CONNS_PER_SOURCE
-	defaultMaxConnsWorkspace = 256       // BEX_KV_PROXY_MAX_CONNS_PER_WORKSPACE
-	defaultMaxConnsResource  = 64        // BEX_KV_PROXY_MAX_CONNS_PER_RESOURCE
-	defaultIdleTimeout       = time.Hour // BEX_KV_PROXY_IDLE_TIMEOUT
-	defaultMaxLifetime       = 24 * time.Hour
-	labelWorkspace           = "app.bex.co/workspace"
+	defaultMaxConns          = 1024 // BEX_KV_PROXY_MAX_CONNS
+	defaultMaxConnsPerSource = 128  // BEX_KV_PROXY_MAX_CONNS_PER_SOURCE
+	// Connections still in their handshake (PROXY header to SNI) are bounded
+	// per network, apart from established ones, so a botnet inside a few
+	// networks cannot hold the global cap for the whole handshake deadline. One
+	// network is an IPv4 /24 or an IPv6 /64.
+	defaultMaxHandshakesPerNetwork = 32        // BEX_KV_PROXY_MAX_HANDSHAKES_PER_NETWORK
+	defaultMaxConnsWorkspace       = 256       // BEX_KV_PROXY_MAX_CONNS_PER_WORKSPACE
+	defaultMaxConnsResource        = 64        // BEX_KV_PROXY_MAX_CONNS_PER_RESOURCE
+	defaultIdleTimeout             = time.Hour // BEX_KV_PROXY_IDLE_TIMEOUT
+	defaultMaxLifetime             = 24 * time.Hour
+	labelWorkspace                 = "app.bex.co/workspace"
 )
 
 var scheme = runtime.NewScheme()
@@ -197,6 +202,9 @@ func main() {
 		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS", defaultMaxConns),
 		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS_PER_SOURCE", defaultMaxConnsPerSource),
 	)
+	limiter.SetHandshakeLimit(
+		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_HANDSHAKES_PER_NETWORK", defaultMaxHandshakesPerNetwork),
+	)
 	limiter.SetRouteLimits(
 		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS_PER_WORKSPACE", defaultMaxConnsWorkspace),
 		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS_PER_RESOURCE", defaultMaxConnsResource),
@@ -280,7 +288,10 @@ func handleConn(
 	},
 ) {
 	defer func() { _ = conn.Close() }()
-	_ = conn.SetReadDeadline(time.Now().Add(handshakeTimeout))
+	// The first bytes get the short PreHeaderTimeout; once they arrive the
+	// handshake has handshakeTimeout from accept.
+	start := time.Now()
+	_ = conn.SetReadDeadline(start.Add(sniproxy.PreHeaderTimeout()))
 	reader := bufio.NewReader(conn)
 	source, err := sniproxy.ReadProxySource(reader, conn.RemoteAddr(), trustedProxyCIDRs)
 	if err != nil {
@@ -297,6 +308,21 @@ func handleConn(
 		return
 	}
 	defer releaseSource()
+
+	// Handshake admission: a connection that has not said what it wants counts
+	// against its network's share of unfinished handshakes.
+	releaseHandshake, ok := limiter.AcquireHandshake(source)
+	if !ok {
+		meter.Reject(sniproxy.ScopeHandshake)
+		logger.Info("connection rejected: handshake limit reached", "source", source.String())
+		return
+	}
+	defer releaseHandshake()
+
+	if _, err := reader.Peek(1); err != nil {
+		return
+	}
+	_ = conn.SetReadDeadline(start.Add(handshakeTimeout))
 	record, err := sniproxy.ReadTLSRecord(reader, nil)
 	if err != nil {
 		logger.Info("TLS ClientHello read failed", "err", err)
@@ -307,6 +333,7 @@ func handleConn(
 		logger.Info("TLS ClientHello has no usable SNI", "err", err)
 		return
 	}
+	releaseHandshake()
 	_ = conn.SetReadDeadline(time.Time{})
 	route, ok := router.resolve(sni, source)
 	if !ok {

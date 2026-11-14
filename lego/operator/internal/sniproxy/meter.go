@@ -40,7 +40,7 @@ func NewByteMeter(registry prometheus.Registerer, subsystem, resourceKind string
 		}, []string{"resource_id", "resource_kind"}),
 		rejected: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: subsystem, Name: "connections_rejected_total",
-			Help: "Connections shed by the admission limiter, by reason (global|source).",
+			Help: "Connections shed by the admission limiter, by reason (global|source|handshake|workspace|resource).",
 		}, []string{"reason"}),
 		healthy: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "bex", Subsystem: subsystem, Name: "healthy",

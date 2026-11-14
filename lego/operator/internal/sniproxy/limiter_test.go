@@ -18,6 +18,7 @@ package sniproxy
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/netip"
 	"sync/atomic"
@@ -267,5 +268,104 @@ func TestCopyBidirectionalMaxLifetimeTearsDown(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("connection outlived its max-lifetime budget")
+	}
+}
+
+// A connection that has not finished its handshake holds a slot of its
+// network's share, so one network cannot keep the whole process waiting on
+// handshakes that never finish.
+func TestHandshakeCapIsPerNetwork(t *testing.T) {
+	limiter := NewLimiter(0, 0)
+	limiter.SetHandshakeLimit(3)
+
+	// Every address of one IPv4 /24 draws on the same share.
+	releases := make([]func(), 0, 3)
+	for host := range 3 {
+		release, ok := limiter.AcquireHandshake(netip.MustParseAddr(fmt.Sprintf("198.51.100.%d", host+1)))
+		if !ok {
+			t.Fatalf("handshake %d of the /24 was refused under its cap", host+1)
+		}
+		releases = append(releases, release)
+	}
+	if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("198.51.100.200")); ok {
+		t.Fatal("a 4th handshake from one /24 was admitted: rotating addresses dodges the cap")
+	}
+	// Another network is untouched.
+	if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("198.51.101.1")); !ok {
+		t.Fatal("a handshake from a different /24 was refused")
+	}
+	// An IPv4-mapped IPv6 address is the same network as the IPv4 one.
+	if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("::ffff:198.51.100.9")); ok {
+		t.Fatal("an IPv4-mapped address escaped its /24's cap")
+	}
+
+	// Releasing is exactly once.
+	releases[0]()
+	releases[0]()
+	if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("198.51.100.7")); !ok {
+		t.Fatal("a release did not free a slot")
+	}
+	if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("198.51.100.8")); ok {
+		t.Fatal("a double release freed a second slot")
+	}
+}
+
+func TestHandshakeCapKeysIPv6OnSlash64(t *testing.T) {
+	limiter := NewLimiter(0, 0)
+	limiter.SetHandshakeLimit(1)
+	if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("2001:db8:1:2::1")); !ok {
+		t.Fatal("the first handshake of a /64 was refused")
+	}
+	if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("2001:db8:1:2:ffff::9")); ok {
+		t.Fatal("a second address of the same /64 was admitted")
+	}
+	if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("2001:db8:1:3::1")); !ok {
+		t.Fatal("a different /64 was refused")
+	}
+}
+
+// One /24 cannot hold every global slot: with the defaults' shape (a global cap
+// of 1024 and a handshake share of 32), 256 addresses opening handshakes that
+// never finish fill 32 slots, not 1024.
+func TestOneNetworkCannotFillTheGlobalCapWithHandshakes(t *testing.T) {
+	const global, share = 1024, 32
+	limiter := NewLimiter(global, 0)
+	limiter.SetHandshakeLimit(share)
+	held := 0
+	for host := range 256 {
+		for range 8 {
+			release, ok := limiter.AcquireHandshake(netip.MustParseAddr(fmt.Sprintf("203.0.113.%d", host)))
+			if !ok {
+				continue
+			}
+			if _, ok := limiter.AcquireGlobal(); !ok {
+				t.Fatal("the global cap was reached")
+			}
+			_ = release // never released: the handshake stalls
+			held++
+		}
+	}
+	if held != share {
+		t.Fatalf("one /24 held %d connections in their handshake, want %d", held, share)
+	}
+	// A legitimate client elsewhere still gets a global slot and a handshake slot.
+	if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("192.0.2.50")); !ok {
+		t.Fatal("a legitimate client's handshake was refused")
+	}
+	if _, ok := limiter.AcquireGlobal(); !ok {
+		t.Fatal("no global slot is left for a legitimate client")
+	}
+}
+
+func TestHandshakeLimitDisabledAdmits(t *testing.T) {
+	limiter := NewLimiter(0, 0)
+	for range 50 {
+		if _, ok := limiter.AcquireHandshake(netip.MustParseAddr("198.51.100.1")); !ok {
+			t.Fatal("an unset handshake limit refused a connection")
+		}
+	}
+	var nilLimiter *Limiter
+	if _, ok := nilLimiter.AcquireHandshake(netip.MustParseAddr("198.51.100.1")); !ok {
+		t.Fatal("a nil limiter refused a connection")
 	}
 }

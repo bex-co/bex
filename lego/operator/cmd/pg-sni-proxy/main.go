@@ -70,13 +70,18 @@ const (
 
 	// Admission + copy-loop bounds (finding 6). Defaults are non-zero and
 	// generous so real connection pools are unaffected; 0 disables a dimension.
-	defaultMaxConns          = 1024      // BEX_PROXY_MAX_CONNS
-	defaultMaxConnsPerSource = 128       // BEX_PROXY_MAX_CONNS_PER_SOURCE
-	defaultMaxConnsWorkspace = 256       // BEX_PROXY_MAX_CONNS_PER_WORKSPACE
-	defaultMaxConnsResource  = 64        // BEX_PROXY_MAX_CONNS_PER_RESOURCE
-	defaultIdleTimeout       = time.Hour // BEX_PROXY_IDLE_TIMEOUT
-	defaultMaxLifetime       = 24 * time.Hour
-	labelWorkspace           = "app.bex.co/workspace"
+	defaultMaxConns          = 1024 // BEX_PROXY_MAX_CONNS
+	defaultMaxConnsPerSource = 128  // BEX_PROXY_MAX_CONNS_PER_SOURCE
+	// Connections still in their handshake (PROXY header to SNI) are bounded
+	// per network, apart from established ones, so a botnet inside a few
+	// networks cannot hold the global cap for the whole handshake deadline. One
+	// network is an IPv4 /24 or an IPv6 /64.
+	defaultMaxHandshakesPerNetwork = 32        // BEX_PROXY_MAX_HANDSHAKES_PER_NETWORK
+	defaultMaxConnsWorkspace       = 256       // BEX_PROXY_MAX_CONNS_PER_WORKSPACE
+	defaultMaxConnsResource        = 64        // BEX_PROXY_MAX_CONNS_PER_RESOURCE
+	defaultIdleTimeout             = time.Hour // BEX_PROXY_IDLE_TIMEOUT
+	defaultMaxLifetime             = 24 * time.Hour
+	labelWorkspace                 = "app.bex.co/workspace"
 )
 
 // backendSSLReplyTimeout bounds the wait for the backend's one-byte answer to
@@ -304,6 +309,9 @@ func main() {
 		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS", defaultMaxConns),
 		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS_PER_SOURCE", defaultMaxConnsPerSource),
 	)
+	limiter.SetHandshakeLimit(
+		sniproxy.EnvInt(log, "BEX_PROXY_MAX_HANDSHAKES_PER_NETWORK", defaultMaxHandshakesPerNetwork),
+	)
 	limiter.SetRouteLimits(
 		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS_PER_WORKSPACE", defaultMaxConnsWorkspace),
 		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS_PER_RESOURCE", defaultMaxConnsResource),
@@ -410,8 +418,11 @@ func handleConn(
 	defer func() { _ = conn.Close() }()
 	// Bound the handshake reads (PROXY preamble + SSLRequest peek + TLS
 	// ClientHello) so a slowloris connection can't hold this goroutine and fd
-	// open (codex-security #2). Cleared once SNI is resolved, before relay.
-	_ = conn.SetReadDeadline(time.Now().Add(handshakeTimeout))
+	// open (codex-security #2). The first bytes get the short PreHeaderTimeout;
+	// once they arrive the handshake has handshakeTimeout from accept. Cleared
+	// once SNI is resolved, before relay.
+	start := time.Now()
+	_ = conn.SetReadDeadline(start.Add(sniproxy.PreHeaderTimeout()))
 	reader := bufio.NewReader(conn)
 	source, err := sniproxy.ReadProxySource(reader, conn.RemoteAddr(), trustedProxyCIDRs)
 	if err != nil {
@@ -430,11 +441,23 @@ func handleConn(
 	}
 	defer releaseSource()
 
+	// Handshake admission: a connection that has not said what it wants counts
+	// against its network's share of unfinished handshakes, so stalled ones
+	// cannot fill the global cap for the whole handshake deadline.
+	releaseHandshake, ok := limiter.AcquireHandshake(source)
+	if !ok {
+		meter.Reject(sniproxy.ScopeHandshake)
+		log.Info("connection rejected: handshake limit reached", "source", source.String())
+		return
+	}
+	defer releaseHandshake()
+
 	// Peek at the first 8 bytes to distinguish SSLRequest from direct TLS.
 	var peek [8]byte
 	if _, err := io.ReadFull(reader, peek[:]); err != nil {
 		return
 	}
+	_ = conn.SetReadDeadline(start.Add(handshakeTimeout))
 
 	msgLen := int32(binary.BigEndian.Uint32(peek[0:4]))
 	msgCode := int32(binary.BigEndian.Uint32(peek[4:8]))
@@ -470,8 +493,10 @@ func handleConn(
 		log.Info("no SNI in ClientHello", "err", err)
 		return
 	}
-	// Handshake consumed — clear the deadline so backend reads/relaying are
-	// governed only by the upstream proxy's own timeouts, not this bound.
+	// Handshake consumed — free its slot and clear the deadline so backend
+	// reads/relaying are governed only by the upstream proxy's own timeouts,
+	// not this bound.
+	releaseHandshake()
 	_ = conn.SetReadDeadline(time.Time{})
 
 	route, ok := router.resolve(sni, source)

@@ -21,6 +21,8 @@ import (
 	"net"
 	"net/netip"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/bex-co/bex/lego/types/netutil"
 )
@@ -41,11 +43,43 @@ type Limiter struct {
 	maxWorkspace int
 	perResource  map[string]int
 	maxResource  int
+
+	// Handshake slots are held only from the PROXY header until the SNI is
+	// resolved, so a connection that never finishes its handshake cannot keep
+	// one for the whole handshake deadline. They are counted per network (an
+	// IPv4 /24, an IPv6 /64), not per address: a botnet inside one network is
+	// one source for this purpose.
+	handshakeNetwork    map[netip.Addr]int
+	maxHandshakeNetwork int
 }
 
 // scopeWorkspace is the rejectedScope returned when the per-workspace cap
 // sheds a connection.
 const scopeWorkspace = "workspace"
+
+// ScopeHandshake is the reason a connection is shed when its network already
+// has its share of connections still in their handshake.
+const ScopeHandshake = "handshake"
+
+// defaultPreHeaderTimeout bounds the first bytes of a connection: the PROXY
+// preamble and the first bytes of the client's handshake. A client that sends
+// nothing is closed after this, where the full handshake gets the proxy's
+// handshake timeout.
+const defaultPreHeaderTimeout = 2 * time.Second
+
+// preHeaderTimeout is atomic so a test can shorten it while connection handlers
+// from an earlier test are still starting.
+var preHeaderTimeout atomic.Int64
+
+func init() { preHeaderTimeout.Store(int64(defaultPreHeaderTimeout)) }
+
+// PreHeaderTimeout is how long a connection has to send its first bytes.
+func PreHeaderTimeout() time.Duration { return time.Duration(preHeaderTimeout.Load()) }
+
+// SetPreHeaderTimeout changes it and returns the value it replaced.
+func SetPreHeaderTimeout(d time.Duration) (previous time.Duration) {
+	return time.Duration(preHeaderTimeout.Swap(int64(d)))
+}
 
 // NewLimiter builds a Limiter with the given global and per-source concurrent
 // connection caps. A cap <= 0 disables that dimension.
@@ -56,6 +90,8 @@ func NewLimiter(maxGlobal, maxSource int) *Limiter {
 		perSource:    make(map[netip.Addr]int),
 		perWorkspace: make(map[string]int),
 		perResource:  make(map[string]int),
+
+		handshakeNetwork: make(map[netip.Addr]int),
 	}
 }
 
@@ -70,6 +106,42 @@ func (l *Limiter) SetRouteLimits(maxWorkspace, maxResource int) {
 	l.maxWorkspace = maxWorkspace
 	l.maxResource = maxResource
 	l.mu.Unlock()
+}
+
+// SetHandshakeLimit configures how many connections one network may have still
+// in their handshake. It must be called before the limiter is shared with
+// connection handlers. A non-positive cap disables it.
+func (l *Limiter) SetHandshakeLimit(maxPerNetwork int) {
+	if l == nil {
+		return
+	}
+	l.mu.Lock()
+	l.maxHandshakeNetwork = maxPerNetwork
+	l.mu.Unlock()
+}
+
+// handshakeNetwork is the key a handshake is counted under: the IPv4 /24 or the
+// IPv6 /64 of the real client address, so rotating through a network's
+// addresses does not dodge the cap and one network cannot hold more than its
+// share of the process's slots.
+func handshakeNetwork(addr netip.Addr) netip.Addr {
+	addr = addr.Unmap()
+	if addr.Is4() {
+		return netip.PrefixFrom(addr, 24).Masked().Addr()
+	}
+	return netutil.SourceKey(addr)
+}
+
+// AcquireHandshake reserves a handshake slot for addr, the real client address
+// resolved from the PROXY header. The caller releases it when the SNI is
+// resolved (or the connection ends), so a slot is held only while a client has
+// yet to say what it wants. ok is false when addr's network already has its
+// share. The release frees the slot exactly once.
+func (l *Limiter) AcquireHandshake(addr netip.Addr) (release func(), ok bool) {
+	if l == nil || l.maxHandshakeNetwork <= 0 {
+		return func() {}, true
+	}
+	return l.acquireCounted(l.handshakeNetwork, l.maxHandshakeNetwork, handshakeNetwork(addr))
 }
 
 // AcquireGlobal reserves one of the global connection slots. ok is false when the
@@ -105,23 +177,24 @@ func (l *Limiter) AcquireSource(addr netip.Addr) (release func(), ok bool) {
 	if l == nil || l.maxSource <= 0 {
 		return func() {}, true
 	}
-	key := netutil.SourceKey(addr)
+	return l.acquireCounted(l.perSource, l.maxSource, netutil.SourceKey(addr))
+}
+
+// acquireCounted takes one slot of key in counts when it holds fewer than max,
+// and returns the release that frees it exactly once.
+func (l *Limiter) acquireCounted(counts map[netip.Addr]int, max int, key netip.Addr) (release func(), ok bool) {
 	l.mu.Lock()
-	if l.perSource[key] >= l.maxSource {
+	if counts[key] >= max {
 		l.mu.Unlock()
 		return func() {}, false
 	}
-	l.perSource[key]++
+	counts[key]++
 	l.mu.Unlock()
 	var once sync.Once
 	return func() {
 		once.Do(func() {
 			l.mu.Lock()
-			if l.perSource[key] <= 1 {
-				delete(l.perSource, key)
-			} else {
-				l.perSource[key]--
-			}
+			decrementKey(counts, key)
 			l.mu.Unlock()
 		})
 	}, true
@@ -167,7 +240,7 @@ func (l *Limiter) AcquireRoute(workspace, resource string) (release func(), reje
 	}, "", true
 }
 
-func decrementKey(counts map[string]int, key string) {
+func decrementKey[K comparable](counts map[K]int, key K) {
 	if counts[key] <= 1 {
 		delete(counts, key)
 		return
