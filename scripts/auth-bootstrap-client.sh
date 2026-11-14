@@ -2,10 +2,11 @@
 # Seed the permanent platform OAuth2 clients: confidential `bex-bootstrap`, the
 # secretless public client hard-coded by the official Render CLI, the secretless
 # first-party `bex-desktop` editor client (Zed), the secretless first-party
-# `bex-mobile` native client, and the confidential `bex-obs` Grafana client
-# (docs/ADR088-platform-observability-ui.md §3). None is a tenant-created API
-# key. Idempotent: re-running resets every client to its intended grants without
-# minting a public-client secret.
+# `bex-mobile` native client, the confidential `bex-obs` Grafana client
+# (docs/ADR088-platform-observability-ui.md §3), and the confidential
+# `bex-openstatus` client (self-hosted openstatus at openstatus.onbex.co). None
+# is a tenant-created API key. Idempotent: re-running resets every client to
+# its intended grants without minting a public-client secret.
 #
 # The public clients are always upserted through the admin REST API (curl),
 # never the in-pod `hydra` CLI: they carry fields the CLI cannot express, and
@@ -13,9 +14,9 @@
 #
 # Secrets come from .env (gitignored) or the environment (CI: GitHub Actions
 # secrets): BEX_BOOTSTRAP_CLIENT_SECRET is required, while
-# BEX_OBS_OAUTH_CLIENT_SECRET gates only the obs client — when it is missing,
-# that one client is refused and the rest are seeded normally. Values are never
-# printed.
+# BEX_OBS_OAUTH_CLIENT_SECRET and BEX_OPENSTATUS_OAUTH_CLIENT_SECRET each gate
+# only their own client — when one is missing, that client is refused and the
+# rest are seeded normally. Values are never printed.
 #
 # Usage: scripts/auth-bootstrap-client.sh          # kubectl exec into hydra pod
 #        HYDRA_ADMIN_URL=http://... scripts/...    # use an already-reachable admin URL
@@ -38,6 +39,9 @@ MOBILE_AUDIENCE="${BEX_OAUTH_RESOURCE:-https://api.bex.co/mcp}"
 OBS_CLIENT_ID=bex-obs
 # Byte-exact Grafana generic_oauth callback (ADR088 §3) — the single entry.
 OBS_REDIRECT_URI=https://obs.bex.co/login/generic_oauth
+OPENSTATUS_CLIENT_ID=bex-openstatus
+# Auth.js callback of openstatus's generic OIDC provider (id `oidc`).
+OPENSTATUS_REDIRECT_URI=https://openstatus.onbex.co/api/auth/callback/oidc
 DEVICE_GRANT=urn:ietf:params:oauth:grant-type:device_code
 NS="${BEX_AUTH_NAMESPACE:-auth}"
 PF_PID=""
@@ -48,11 +52,13 @@ PF_LOG=""
 # captured so sourcing .env for one missing secret never clobbers the other.
 env_bootstrap_secret="${BEX_BOOTSTRAP_CLIENT_SECRET:-}"
 env_obs_secret="${BEX_OBS_OAUTH_CLIENT_SECRET:-}"
-if { [ -z "$env_bootstrap_secret" ] || [ -z "$env_obs_secret" ]; } && [ -f .env ]; then
+env_openstatus_secret="${BEX_OPENSTATUS_OAUTH_CLIENT_SECRET:-}"
+if { [ -z "$env_bootstrap_secret" ] || [ -z "$env_obs_secret" ] || [ -z "$env_openstatus_secret" ]; } && [ -f .env ]; then
   . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 secret="${env_bootstrap_secret:-${BEX_BOOTSTRAP_CLIENT_SECRET:-}}"
 obs_secret="${env_obs_secret:-${BEX_OBS_OAUTH_CLIENT_SECRET:-}}"
+openstatus_secret="${env_openstatus_secret:-${BEX_OPENSTATUS_OAUTH_CLIENT_SECRET:-}}"
 [ -n "$secret" ] || { echo "error: BEX_BOOTSTRAP_CLIENT_SECRET is missing or empty (.env or environment)" >&2; exit 1; }
 [ "${#secret}" -ge 16 ] || { echo "error: BEX_BOOTSTRAP_CLIENT_SECRET must be at least 16 characters (got ${#secret})" >&2; exit 1; }
 
@@ -271,33 +277,43 @@ assert_stored "$mobile_stored" '"token_endpoint_auth_method":"none"' \
 assert_stored "$mobile_stored" "\"$MOBILE_AUDIENCE\"" \
   "$MOBILE_CLIENT_ID audience did not round-trip"
 
-# ---- First-party observability client (Grafana at obs.bex.co, ADR088 §3) ----
-# Grafana signs in against the platform issuer as one more first-party client
+# ---- First-party sign-in clients (ops-gated relying parties) ----
+# Each signs in against the platform issuer as one more first-party client
 # (docs/ADR088-platform-observability-ui.md): confidential, client_secret_basic
-# (Grafana generic_oauth authenticates with HTTP basic by default), the exact
-# generic_oauth callback, and skip_consent=true riding every upsert (the
-# headless trusted path through the consent acceptor — the ops-workspace gate
-# still runs before any accept). Scope is identity-only (openid profile email)
-# and there is deliberately NO audience — unlike bex-mobile above — so a
-# Grafana token carries zero bex-api authority. The secret is never generated
-# or defaulted here: when BEX_OBS_OAUTH_CLIENT_SECRET is missing, provisioning
-# this one client is refused and every client seeded above stands untouched.
-if [ -z "$obs_secret" ]; then
-  echo "refusing to provision OAuth2 client $OBS_CLIENT_ID: BEX_OBS_OAUTH_CLIENT_SECRET is missing or empty (.env or environment); other clients were provisioned normally" >&2
-else
-  obs_body="$(printf '{"client_id":"%s","client_name":"bex observability (Grafana)","client_secret":"%s","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"scope":"openid profile email","token_endpoint_auth_method":"client_secret_basic","subject_type":"public","skip_consent":true}' \
-    "$OBS_CLIENT_ID" "$obs_secret" "$OBS_REDIRECT_URI")"
-  upsert_client "$OBS_CLIENT_ID" "$obs_body"
+# (both Grafana generic_oauth and Auth.js authenticate with HTTP basic by
+# default), its exact callback, and skip_consent=true riding every upsert (the
+# headless trusted path through the consent acceptor — the ops-workspace gate,
+# dashboard OAUTH_OPS_CLIENTS, still runs before any accept and stamps the
+# email claim both apps create their users from). Scope is identity-only
+# (openid profile email) and there is deliberately NO audience — unlike
+# bex-mobile above — so their tokens carry zero bex-api authority. A secret is
+# never generated or defaulted here: when a client's secret is missing,
+# provisioning that one client is refused and every other client stands.
+provision_signin_client() {
+  local id="$1" name="$2" redirect="$3" secret_var="$4" client_secret="$5" stored
+  if [ -z "$client_secret" ]; then
+    echo "refusing to provision OAuth2 client $id: $secret_var is missing or empty (.env or environment); other clients were provisioned normally" >&2
+    return 0
+  fi
+  upsert_client "$id" "$(printf '{"client_id":"%s","client_name":"%s","client_secret":"%s","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"scope":"openid profile email","token_endpoint_auth_method":"client_secret_basic","subject_type":"public","skip_consent":true}' \
+    "$id" "$name" "$client_secret" "$redirect")"
 
   # The identity-only posture is load-bearing: empty audience (Hydra always
-  # stores the key) means an obs token carries zero bex-api authority.
-  obs_stored="$(read_client "$OBS_CLIENT_ID")"
-  assert_stored "$obs_stored" "\"$OBS_REDIRECT_URI\"" \
-    "$OBS_CLIENT_ID redirect URI did not round-trip"
-  assert_stored "$obs_stored" '"token_endpoint_auth_method":"client_secret_basic"' \
-    "$OBS_CLIENT_ID is not a client_secret_basic confidential client"
-  assert_stored "$obs_stored" '"audience":[]' \
-    "$OBS_CLIENT_ID audience is not empty — an obs token must carry zero bex-api authority"
-fi
+  # stores the key) means the token carries zero bex-api authority.
+  stored="$(read_client "$id")"
+  assert_stored "$stored" "\"$redirect\"" \
+    "$id redirect URI did not round-trip"
+  assert_stored "$stored" '"token_endpoint_auth_method":"client_secret_basic"' \
+    "$id is not a client_secret_basic confidential client"
+  assert_stored "$stored" '"audience":[]' \
+    "$id audience is not empty — its token must carry zero bex-api authority"
+}
+
+# Grafana at obs.bex.co (ADR088 §3).
+provision_signin_client "$OBS_CLIENT_ID" "bex observability (Grafana)" \
+  "$OBS_REDIRECT_URI" BEX_OBS_OAUTH_CLIENT_SECRET "$obs_secret"
+# Self-hosted openstatus at openstatus.onbex.co.
+provision_signin_client "$OPENSTATUS_CLIENT_ID" "bex status (openstatus)" \
+  "$OPENSTATUS_REDIRECT_URI" BEX_OPENSTATUS_OAUTH_CLIENT_SECRET "$openstatus_secret"
 
 echo "token: POST <hydra-public>/oauth2/token  grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=***"

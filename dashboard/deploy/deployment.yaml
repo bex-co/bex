@@ -93,7 +93,7 @@ spec:
             # The token rides the out-of-band dashboard/bex-ops Secret and must
             # equal bex-system/bex-ops BEX_OPS_ROLE_TOKEN.
             - name: OAUTH_OPS_CLIENTS
-              value: bex-obs
+              value: bex-obs,bex-openstatus
             - name: BEX_OPS_ROLE_URL
               value: http://bex-api.bex-system.svc:8091/internal/ops-role
             # Verified-email consent gate (ADR075 D8 revision, w2/m168); fails
