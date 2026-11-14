@@ -294,22 +294,6 @@ func (c *Creds) claimNudge(now time.Time) bool {
 	return true
 }
 
-// claimBounce takes the one bounce the cooldown allows at now, reporting
-// whether the caller may restart zot.
-func (c *Creds) claimBounce(now time.Time) bool {
-	cooldown := c.BounceCooldown
-	if cooldown == 0 {
-		cooldown = defaultBounceCooldown
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if now.Sub(c.lastBounce) < cooldown {
-		return false
-	}
-	c.lastBounce = now
-	return true
-}
-
 // zotPods lists the registry pods by the chart's pod label.
 func (c *Creds) zotPods(ctx context.Context) ([]corev1.Pod, error) {
 	var pods corev1.PodList
