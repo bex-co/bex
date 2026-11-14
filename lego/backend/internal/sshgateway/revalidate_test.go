@@ -51,6 +51,11 @@ func TestWithRevalidationCancelsOnFailedCheck(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("a failed check did not cancel the stream context")
 	}
+	// The failed check's error is the cause, so a transport can name the end
+	// (w4/m352); Err stays context.Canceled for every existing caller.
+	if cause := context.Cause(ctx); cause == nil || cause.Error() != "membership gone" || !errors.Is(ctx.Err(), context.Canceled) {
+		t.Fatalf("cause = %v, err = %v", cause, ctx.Err())
+	}
 }
 
 // A passing check never cancels the stream; only the caller's Cancel does.

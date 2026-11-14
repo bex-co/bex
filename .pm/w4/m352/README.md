@@ -1,16 +1,16 @@
 # w4 · m352 — A deploy cuts every open shell and SSH session within a minute and refuses new ones as "no running instance yet", while the instance keeps running and serving until the new release goes live
 
-**Worker:** worker4 **Goal:** a shell or SSH session lives as long as the instance it is attached to. A deploy's build, pre-deploy and rollout leave the serving instance's sessions open, and new sessions can open on it. A session ends when its instance stops, or when the caller loses access to it. Any refusal or end names its real reason in the dashboard. **Status:** todo
+**Worker:** worker4 **Goal:** a shell or SSH session lives as long as the instance it is attached to. A deploy's build, pre-deploy and rollout leave the serving instance's sessions open, and new sessions can open on it. A session ends when its instance stops, or when the caller loses access to it. Any refusal or end names its real reason in the dashboard. **Status:** todo (t001–t005 done; t006 live production replay open)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Gate shell and SSH on a Ready instance of the serving release, not on the App phase | 45m | — |
-| [t002](t002.md) | Say why a shell was refused or ended: the refusal's own reason, and a classified end reason from the gateway | 45m | t001 |
-| [t003](t003.md) | Render parity | 15m | t002 |
-| [t004](t004.md) | Simplify | 15m | t003 |
-| [t005](t005.md) | Test coverage | 30m | t003 |
+| [t001](done/t001.md) | Gate shell and SSH on a Ready instance of the serving release, not on the App phase — **DONE** | 45m | — |
+| [t002](done/t002.md) | Say why a shell was refused or ended: the refusal's own reason, and a classified end reason from the gateway — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Render parity — **DONE** | 15m | t002 |
+| [t004](done/t004.md) | Simplify — **DONE** | 15m | t003 |
+| [t005](done/t005.md) | Test coverage — **DONE** | 30m | t003 |
 | [t006](t006.md) | Closeout (live replay on production) | 30m | t004, t005 |
 
 ## Definition of done

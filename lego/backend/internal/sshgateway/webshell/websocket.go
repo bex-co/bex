@@ -159,6 +159,49 @@ type serverControl struct {
 	Type    string `json:"type"`              // "exit" | "error"
 	Code    int    `json:"code,omitempty"`    // for type=exit
 	Message string `json:"message,omitempty"` // for type=error
+	// Reason classifies an error frame that ENDED a live session (w4/m352), one
+	// of the end* codes, so the dashboard can name it in the reader's language;
+	// Message stays the English fallback. Empty for a refusal before the shell
+	// started and for a transport failure.
+	Reason string `json:"reason,omitempty"`
+}
+
+// The reasons a live session ended, sent as serverControl.Reason (w4/m352).
+const (
+	endRevoked      = "revoked"
+	endSuspended    = apps.ShellRefusalSuspended
+	endIneligible   = apps.ShellRefusalIneligible
+	endInstanceGone = apps.ShellRefusalInstanceGone
+	endTimeout      = "timeout"
+	endUnverified   = "unverified"
+)
+
+var endMessages = map[string]string{
+	endRevoked:      "your access to this service ended",
+	endSuspended:    "the service was suspended, which ended this session; resume it to open a new one",
+	endIneligible:   "the service no longer has shell access (its plan or type changed), which ended this session",
+	endInstanceGone: "the instance this session ran on stopped",
+	endTimeout:      "the session reached its time limit",
+	endUnverified:   "your access couldn't be re-checked, so the session ended; reconnect to try again",
+}
+
+// watchdogEndReason classifies the error the revalidation watchdog ended a
+// session on. A runtime-gate refusal is named: ResolveSSHSession reaches those
+// only after the caller passed a fresh authorization, so the caller's own
+// GET /v1/services/{id} shows the same fact. An authorization failure is only
+// "your access ended", never why (a removed member, a role change, a newly
+// protected environment and a deleted service all read the same). Anything
+// else is the resolver failing closed on an unreachable store.
+func watchdogEndReason(err error) string {
+	var refusal *apps.ShellRefusal
+	switch {
+	case errors.As(err, &refusal):
+		return refusal.Reason
+	case errors.Is(err, core.ErrForbidden), errors.Is(err, core.ErrNotFound):
+		return endRevoked
+	default:
+		return endUnverified
+	}
 }
 
 // Enabled reports whether the Browser Web Shell transport is configured.
@@ -281,21 +324,29 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	defer cancelExec()
 	bridgeCtx, cancelBridge := context.WithCancel(execCtx)
 	defer cancelBridge()
-	completed := bridgeShell(bridgeCtx, cancelBridge, ws, s.Executor, target)
+	err = bridgeShell(bridgeCtx, cancelBridge, ws, s.Executor, target)
+	result = "failed"
 	switch {
+	case err == nil:
+		result = "completed"
 	case execCtx.Err() != nil && timedCtx.Err() == nil:
 		result = "revoked" // the watchdog ended the stream, not the client
-	case completed:
-		result = "completed"
+		ws.end(watchdogEndReason(context.Cause(execCtx)))
+	case ctx.Err() == nil && errors.Is(timedCtx.Err(), context.DeadlineExceeded):
+		ws.end(endTimeout)
+	case errors.Is(err, sshgateway.ErrTargetTerminated), errors.Is(err, sshgateway.ErrTargetNotReady):
+		// The attached pod stopped under the stream: a restart, a deploy's old
+		// instance going away once the new release is live, an eviction. The
+		// stream never moves to another replica (ADR035 § Fail-closed
+		// behavior); the end is named instead.
+		ws.end(endInstanceGone)
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		ws.fail("session closed") // the browser went away
 	default:
-		result = "failed"
+		ws.fail("unable to start a shell in this image")
 	}
 }
 
-// bridgeShell runs one interactive /bin/sh in the target and pumps it over the
-// WebSocket. It returns true when the shell ran to completion (any exit code),
-// false when it could not start or the context ended. The terminal always
-// receives an exit or error control frame.
 // pumpBrowserInput forwards the browser's frames to the shell: binary frames are
 // stdin bytes, text frames are resize control messages. Any read error ends the
 // exec stream via cancel — that is how a closed browser tab tears the session
@@ -347,7 +398,11 @@ func pumpKeepalive(ctx context.Context, ws *wsConn, cancel context.CancelFunc) {
 	}
 }
 
-func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, executor sshgateway.Executor, target apps.SSHInstanceTarget) bool {
+// bridgeShell runs one interactive /bin/sh in the target and pumps it over the
+// WebSocket. It returns nil when the shell ran to completion (any exit code),
+// after sending the exit frame, and otherwise the error that stopped it, which
+// the caller classifies into the terminal's error frame.
+func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, executor sshgateway.Executor, target apps.SSHInstanceTarget) error {
 	pr, pw := io.Pipe()
 	sizes := sshgateway.NewSizeQueue(ctx, &remotecommand.TerminalSize{Width: 80, Height: 24})
 
@@ -368,12 +423,7 @@ func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, exe
 	code, err := executor.Execute(ctx, target, []string{"/bin/sh"}, true, sizes, pr, ws, nil)
 	_ = pr.Close()
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			ws.fail("session closed")
-			return false
-		}
-		ws.fail("unable to start a shell in this image")
-		return false
+		return err
 	}
 	_ = ws.control(serverControl{Type: "exit", Code: sshgateway.ClampExit(code)})
 	ws.close(websocket.CloseNormalClosure, "")
@@ -384,7 +434,7 @@ func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, exe
 	case <-inputDone:
 	case <-time.After(wsCloseGrace):
 	}
-	return true
+	return nil
 }
 
 // wsCloseGrace bounds the wait for the browser's close reply.
@@ -427,6 +477,12 @@ func (w *wsConn) ping() error {
 // fail delivers a bounded error message to the terminal and closes.
 func (w *wsConn) fail(message string) {
 	_ = w.control(serverControl{Type: "error", Message: message})
+	w.close(websocket.CloseNormalClosure, "")
+}
+
+// end tells the terminal why the server ended its live session, then closes.
+func (w *wsConn) end(reason string) {
+	_ = w.control(serverControl{Type: "error", Reason: reason, Message: endMessages[reason]})
 	w.close(websocket.CloseNormalClosure, "")
 }
 

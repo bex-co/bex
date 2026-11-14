@@ -2,6 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WebShellTerminal } from "@/features/services/components/web-shell-terminal";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
 // xterm.js is DOM/canvas-heavy and imported dynamically inside the effect;
 // replace it with a spy so the test drives the connection logic, not rendering.
@@ -193,6 +194,130 @@ describe("WebShellTerminal", () => {
     await waitFor(() =>
       expect(createShellSession).toHaveBeenLastCalledWith("srv-y", undefined),
     );
+  });
+
+  // w4/m352: a refused mint shows the server's own sentence, not generic copy.
+  it("shows a 409 mint refusal's own reason", async () => {
+    createShellSession.mockRejectedValueOnce(
+      codedGraphQLError(
+        "CONFLICT",
+        {},
+        "conflict: the service has no running instance yet; wait for the current deploy to go live",
+      ),
+    );
+    render(<WebShellTerminal serviceId="srv-x" />);
+    expect(
+      await screen.findByText(
+        "The service has no running instance yet; wait for the current deploy to go live",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Connection error")).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't start a shell session.")).toBeNull();
+    expect(FakeWebSocket.instances).toHaveLength(0);
+  });
+
+  it("keeps the generic copy for a mint failure with no reason", async () => {
+    createShellSession.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(<WebShellTerminal serviceId="srv-x" />);
+    expect(
+      await screen.findByText("Couldn't start a shell session."),
+    ).toBeInTheDocument();
+  });
+
+  // w4/m352: a server-ended session reads "Session ended" with its reason,
+  // never "Connection error" or the gateway's raw English.
+  const endReasons: [string, string, string][] = [
+    [
+      "revoked",
+      "Your access to this service ended.",
+      "你对此服务的访问权限已结束。",
+    ],
+    [
+      "suspended",
+      "The service was suspended, which ended this session. Resume it to open a new one.",
+      "服务已暂停，此会话随之结束。恢复服务后即可打开新会话。",
+    ],
+    [
+      "ineligible",
+      "This service no longer has shell access (its plan or type changed), which ended this session.",
+      "此服务已不再支持 Shell 访问（其实例类型或服务类型已变更），此会话随之结束。",
+    ],
+    [
+      "instance_gone",
+      "The instance this session ran on stopped. Reconnect to open a shell on a running instance.",
+      "此会话所在的实例已停止。重新连接即可在运行中的实例上打开 Shell。",
+    ],
+    [
+      "timeout",
+      "The session reached its time limit. Reconnect to keep working.",
+      "会话已达到时长上限。重新连接即可继续。",
+    ],
+    [
+      "unverified",
+      "Your access couldn't be re-checked, so the session ended. Reconnect to try again.",
+      "无法重新验证你的访问权限，会话已结束。请重新连接重试。",
+    ],
+  ];
+
+  it.each(endReasons)(
+    "names a %s end under Session ended, in en and zh",
+    async (reason, en, zh) => {
+      const frame = JSON.stringify({
+        type: "error",
+        reason,
+        message: "the gateway's english sentence",
+      });
+      const view = render(<WebShellTerminal serviceId="srv-x" />);
+      let ws = await openSocket();
+      act(() => ws.onmessage?.({ data: frame }));
+      expect(await screen.findByText(en)).toBeInTheDocument();
+      expect(screen.getByText("Session ended")).toBeInTheDocument();
+      expect(screen.queryByText("Connection error")).toBeNull();
+      expect(screen.queryByText(/english sentence/)).toBeNull();
+      expect(
+        screen.getByRole("button", { name: /reconnect/i }),
+      ).toBeInTheDocument();
+      view.unmount();
+
+      const i18n = (await import("@/i18n/init")).default;
+      await i18n.changeLanguage("zh");
+      try {
+        FakeWebSocket.instances = [];
+        render(<WebShellTerminal serviceId="srv-x" />);
+        ws = await openSocket();
+        act(() => ws.onmessage?.({ data: frame }));
+        expect(await screen.findByText(zh)).toBeInTheDocument();
+        expect(screen.getByText("会话已结束")).toBeInTheDocument();
+      } finally {
+        await i18n.changeLanguage("en");
+      }
+    },
+  );
+
+  it("falls back to the gateway's sentence for a reason it doesn't know", async () => {
+    render(<WebShellTerminal serviceId="srv-x" />);
+    const ws = await openSocket();
+    act(() =>
+      ws.onmessage?.({
+        data: JSON.stringify({
+          type: "error",
+          reason: "something_new",
+          message: "a reason from a newer gateway",
+        }),
+      }),
+    );
+    expect(
+      await screen.findByText("a reason from a newer gateway"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Session ended")).toBeInTheDocument();
+  });
+
+  it("still shows Connection error for a transport failure", async () => {
+    render(<WebShellTerminal serviceId="srv-x" />);
+    const ws = await openSocket();
+    act(() => ws.onerror?.());
+    expect(await screen.findByText("Connection error")).toBeInTheDocument();
+    expect(screen.queryByText("Session ended")).toBeNull();
   });
 
   it("explains when the browser transport is unconfigured (503)", async () => {

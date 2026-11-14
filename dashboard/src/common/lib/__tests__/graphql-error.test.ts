@@ -230,6 +230,18 @@ describe("refusalReason", () => {
     ).toBe('Wildcard hostnames are not allowed: "*.x.com"');
   });
 
+  it("strips the conflict prefix the same way (w4/m352)", () => {
+    expect(
+      refusalReason(
+        uncodedGraphQLError(
+          "conflict: shell access is unavailable while the service is suspended; resume it first",
+        ),
+      ),
+    ).toBe(
+      "Shell access is unavailable while the service is suspended; resume it first",
+    );
+  });
+
   it("reads the first error of a combined GraphQL response", () => {
     const err = new CombinedGraphQLErrors(
       { data: null, errors: [{ message: "boss@x.com is already a member" }] },

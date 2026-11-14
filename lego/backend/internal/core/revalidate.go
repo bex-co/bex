@@ -35,10 +35,13 @@ const DefaultStreamRevalidateInterval = time.Minute
 // bridge, splice, or log follow from below. interval <= 0 disables the
 // watchdog and the result degrades to a plain context.WithCancel.
 //
-// The returned Cancel stops the watchdog AND cancels the child; callers that
+// The failed check's error is the child's context.Cause, so a transport can
+// say why the stream ended. The returned Cancel stops the watchdog AND cancels
+// the child; callers that
 // already defer a wait-group on the child keep their existing defer order.
 func WithRevalidation(parent context.Context, interval time.Duration, check func(context.Context) error) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(parent)
+	ctx, cancelCause := context.WithCancelCause(parent)
+	cancel := func() { cancelCause(nil) }
 	if interval <= 0 || check == nil {
 		return ctx, cancel
 	}
@@ -51,7 +54,7 @@ func WithRevalidation(parent context.Context, interval time.Duration, check func
 				return
 			case <-ticker.C:
 				if err := check(ctx); err != nil {
-					cancel()
+					cancelCause(err)
 					return
 				}
 			}

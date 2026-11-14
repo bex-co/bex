@@ -25,6 +25,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // codex round-8 #5: a transport may outlive its auth-time decision by hours,
@@ -120,6 +121,41 @@ func TestMidStreamRevocationEndsActiveMultiChannelExec(t *testing.T) {
 		}
 		ended := st.EndedSessions()
 		return len(ended) == 1 && endsWith(ended[0], ":revoked")
+	})
+}
+
+// w4/m352: native SSH (raw ssh and `render ssh`) runs the same gate as the web
+// shell. Over the production resolver, a live exec survives every tick while
+// its App goes through a deploy (Building → Deploying → Running) and ends at
+// the first tick after its pod is deleted.
+func TestSingleChannelExecSurvivesADeployAndEndsWithItsInstance(t *testing.T) {
+	clientSigner := signer(t)
+	exec := &countingExecutor{release: make(chan struct{})}
+	serving := gatewaytest.NewServingApp(t)
+	st := &gatewaytest.FakeStore{}
+	addr, stop := startGatewayConfigured(t, st, serving.Resolver, exec, clientSigner,
+		func(s *Server) { s.RevalidateInterval = 10 * time.Millisecond })
+	defer stop()
+
+	client, err := dialGateway(addr, gatewaytest.ServingAppID, clientSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	holdChannel(t, client, exec)
+
+	for _, phase := range []appv1alpha1.AppPhase{appv1alpha1.PhaseBuilding, appv1alpha1.PhaseDeploying, appv1alpha1.PhaseRunning} {
+		serving.Update(t, func(a *appv1alpha1.App) { a.Status.Phase = phase })
+		time.Sleep(80 * time.Millisecond) // ~8 ticks
+		if exec.activeNow() != 1 || len(st.EndedSessions()) != 0 {
+			t.Fatalf("the exec ended during %s (active %d, ended %v)", phase, exec.activeNow(), st.EndedSessions())
+		}
+	}
+
+	serving.DeletePod(t)
+	waitFor(t, func() bool {
+		ended := st.EndedSessions()
+		return exec.activeNow() == 0 && len(ended) == 1 && endsWith(ended[0], ":revoked")
 	})
 }
 

@@ -218,7 +218,6 @@ func TestSSHEligibilityFailsClosed(t *testing.T) {
 		"suspended":    func(app *appv1alpha1.App) { app.Spec.Suspended = true },
 		"cron":         func(app *appv1alpha1.App) { app.Spec.Type = appv1alpha1.TypeCronJob },
 		"static":       func(app *appv1alpha1.App) { app.Spec.Type = appv1alpha1.TypeStaticSite },
-		"not running":  func(app *appv1alpha1.App) { app.Status.Phase = appv1alpha1.PhaseDeploying },
 		"no revision":  func(app *appv1alpha1.App) { app.Status.ActiveRevision = "" },
 		"no image":     func(app *appv1alpha1.App) { app.Status.Image = "" },
 	} {
@@ -230,10 +229,10 @@ func TestSSHEligibilityFailsClosed(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if (name == "not running" || name == "no revision" || name == "no image") && view.SSHAddress == "" {
+			if (name == "no revision" || name == "no image") && view.SSHAddress == "" {
 				t.Fatal("configured eligible service should advertise address before it reaches Running")
 			}
-			if name != "not running" && name != "no revision" && name != "no image" && view.SSHAddress != "" {
+			if name != "no revision" && name != "no image" && view.SSHAddress != "" {
 				t.Fatalf("ineligible service advertised %q", view.SSHAddress)
 			}
 			if _, err := service.ResolveSSHSession(context.Background(), sshServiceID); !errors.Is(err, core.ErrConflict) {
@@ -354,5 +353,51 @@ func TestSSHInstanceIDCollisionFailsClosed(t *testing.T) {
 	ambiguousID := ids.LegacyServiceInstanceID(sshServiceID, string(first.UID))
 	if _, err := service.ResolveSSHSession(context.Background(), ambiguousID); !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("ambiguous instance resolved with %v", err)
+	}
+}
+
+// w4/m352: a deploy in progress leaves the serving release reachable. With the
+// App in Building or Deploying, a bare service id resolves to the Ready pod of
+// ActiveRevision, and neither the new revision's pod nor the deploy's
+// pre-deploy pod is ever a target, by any selector.
+func TestResolveSSHSessionDuringDeployTargetsTheServingRelease(t *testing.T) {
+	for _, phase := range []appv1alpha1.AppPhase{appv1alpha1.PhaseBuilding, appv1alpha1.PhaseDeploying} {
+		t.Run(string(phase), func(t *testing.T) {
+			app := sshApp()
+			app.Status.Phase = phase
+			serving := sshPod("web-rs-pod01", "example/web:v2", true)
+			newRevision := sshPod("web-rs-new01", "example/web:v3", true)
+			newRevision.Labels[core.PodLabelRevision] = "rev-3"
+			preDeploy := sshPod("web-predeploy-x1", "example/web:v3", true)
+			delete(preDeploy.Labels, core.PodLabelRevision)
+			service := &Service{Base: &core.Base{Client: fakeClient(app, serving, newRevision, preDeploy), Namespace: "default"}, SSHHost: "ssh.bex.co"}
+
+			for range 8 {
+				target, err := service.ResolveSSHSession(context.Background(), sshServiceID)
+				if err != nil || target.PodName != serving.Name {
+					t.Fatalf("bare id during %s = %+v, %v; want the serving pod", phase, target, err)
+				}
+			}
+			for _, pod := range []*corev1.Pod{newRevision, preDeploy} {
+				_, err := service.ResolveSSHSession(context.Background(), ids.DeriveServiceInstance(sshServiceID, pod.Name))
+				var refusal *ShellRefusal
+				if !errors.Is(err, core.ErrNotFound) || !errors.As(err, &refusal) || refusal.Reason != ShellRefusalInstanceGone {
+					t.Fatalf("%s resolved with %v, want an instance_gone not-found", pod.Name, err)
+				}
+			}
+		})
+	}
+}
+
+// With no Ready pod of the serving release left — the instance stopped — the
+// resolver refuses as instance_gone, which is what ends a live session.
+func TestResolveSSHSessionWithoutAReadyServingPodIsInstanceGone(t *testing.T) {
+	app := sshApp()
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	service := &Service{Base: &core.Base{Client: fakeClient(app, sshPod("web-rs-wait1", "example/web:v2", false)), Namespace: "default"}, SSHHost: "ssh.bex.co"}
+	_, err := service.ResolveSSHSession(context.Background(), sshServiceID)
+	var refusal *ShellRefusal
+	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &refusal) || refusal.Reason != ShellRefusalInstanceGone {
+		t.Fatalf("ResolveSSHSession = %v, want an instance_gone conflict", err)
 	}
 }

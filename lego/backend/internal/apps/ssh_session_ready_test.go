@@ -48,7 +48,6 @@ func TestSSHSessionReadyNamesTheBlocker(t *testing.T) {
 		{"unknown plan", with(func(v *AppView) { v.Plan = "" }), "needs a paid instance type"},
 		{"static site", with(func(v *AppView) { v.Type = appv1alpha1.TypeStaticSite; v.Plan = "" }), "web services, private services and background workers"},
 		{"cron job", with(func(v *AppView) { v.Type = appv1alpha1.TypeCronJob }), "web services, private services and background workers"},
-		{"not running", with(func(v *AppView) { v.Phase = string(appv1alpha1.PhaseDeploying) }), "no running instance yet"},
 		{"no revision", with(func(v *AppView) { v.Revision = "" }), "no running instance yet"},
 		{"no image", with(func(v *AppView) { v.Image = "" }), "no running instance yet"},
 	} {
@@ -64,6 +63,59 @@ func TestSSHSessionReadyNamesTheBlocker(t *testing.T) {
 		}
 		if strings.Contains(err.Error(), "not eligible and running") {
 			t.Errorf("%s: err = %v still the one-sentence refusal", tc.name, err)
+		}
+	}
+}
+
+// w4/m352: the gate reads the serving release, never the App phase, which
+// tracks the latest deploy. Every phase over a live release opens; every phase
+// over a release that never went live refuses with the first-deploy sentence.
+func TestSSHSessionReadyIgnoresThePhase(t *testing.T) {
+	phases := []appv1alpha1.AppPhase{
+		appv1alpha1.PhasePending, appv1alpha1.PhaseBuilding, appv1alpha1.PhaseDeploying,
+		appv1alpha1.PhaseRunning, appv1alpha1.PhaseHibernated, appv1alpha1.PhaseCanceled,
+		appv1alpha1.PhaseFailed, "",
+	}
+	for _, phase := range phases {
+		serving := AppView{
+			Type: appv1alpha1.TypeWebService, Plan: "starter",
+			Phase: string(phase), Revision: "rev-1", Image: "img:v1",
+		}
+		if err := sshSessionReady(serving); err != nil {
+			t.Errorf("phase %q over a live release: err = %v, want open", phase, err)
+		}
+		for name, neverServed := range map[string]AppView{
+			"no revision": {Type: serving.Type, Plan: serving.Plan, Phase: serving.Phase, Image: serving.Image},
+			"no image":    {Type: serving.Type, Plan: serving.Plan, Phase: serving.Phase, Revision: serving.Revision},
+		} {
+			err := sshSessionReady(neverServed)
+			var refusal *ShellRefusal
+			if !errors.Is(err, core.ErrConflict) || !errors.As(err, &refusal) || refusal.Reason != ShellRefusalInstanceGone ||
+				err.Error() != "conflict: the service has no running instance yet; wait for the current deploy to go live" {
+				t.Errorf("phase %q, %s: err = %v, want the first-deploy refusal", phase, name, err)
+			}
+		}
+	}
+}
+
+// Each refusal carries the reason code the web shell names when it ends a live
+// session, without changing the 409 or its sentence.
+func TestSSHSessionReadyRefusalReasons(t *testing.T) {
+	base := AppView{Type: appv1alpha1.TypeWebService, Plan: "starter", Revision: "rev-1", Image: "img:v1"}
+	for _, tc := range []struct {
+		mutate func(*AppView)
+		reason string
+	}{
+		{func(v *AppView) { v.Suspended = true }, ShellRefusalSuspended},
+		{func(v *AppView) { v.Plan = "free" }, ShellRefusalIneligible},
+		{func(v *AppView) { v.Type = appv1alpha1.TypeCronJob }, ShellRefusalIneligible},
+		{func(v *AppView) { v.Revision = "" }, ShellRefusalInstanceGone},
+	} {
+		v := base
+		tc.mutate(&v)
+		var refusal *ShellRefusal
+		if err := sshSessionReady(v); !errors.As(err, &refusal) || refusal.Reason != tc.reason {
+			t.Errorf("%+v: err = %v, want reason %q", v, err, tc.reason)
 		}
 	}
 }

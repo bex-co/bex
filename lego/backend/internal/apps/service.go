@@ -1338,10 +1338,44 @@ func sshEligible(v AppView) bool {
 	return !v.Suspended && sshPaidPlan(v.Plan) && sshTypeHasInstances(v.Type)
 }
 
+// Shell refusal reasons: a stable code for each runtime gate that refuses a
+// shell, so a transport can name why a live session ended without parsing the
+// sentence (w4/m352). Each is reachable only after the caller passed
+// authorization, so naming it discloses no more than their own
+// GET /v1/services/{id} would.
+const (
+	ShellRefusalSuspended    = "suspended"
+	ShellRefusalIneligible   = "ineligible"
+	ShellRefusalInstanceGone = "instance_gone"
+)
+
+// ShellRefusal is a runtime-gate refusal of a shell or SSH session. It wraps
+// the same 409/404 error the API returns, so status mapping and the message
+// are unchanged; Reason is one of the ShellRefusal* codes.
+type ShellRefusal struct {
+	Reason string
+	err    error
+}
+
+func (e *ShellRefusal) Error() string { return e.err.Error() }
+func (e *ShellRefusal) Unwrap() error { return e.err }
+
+func shellRefusal(reason string, err error) error {
+	return &ShellRefusal{Reason: reason, err: err}
+}
+
 // sshSessionReady is the shared runtime gate both pods/exec transports
 // (ResolveSSHSession's native SSH and CreateShellSession's browser shell)
-// apply on top of sshEligible: the service must be Running with a live
-// revision and image before a session can target one of its pods.
+// apply on top of sshEligible: the service must have a live release — an
+// active revision and its image — before a session can target one of its pods.
+//
+// The App phase is deliberately not consulted (w4/m352): it tracks the LATEST
+// deploy, Building or Deploying while one runs, while ActiveRevision and
+// Status.Image keep describing the release still serving. Render keeps a
+// zero-downtime deploy's old instance up until the new one is healthy, and its
+// shell attaches to that running instance; readySSHInstances then admits only
+// Ready pods of the serving release, so build and pre-deploy pods and a new
+// revision's pods are never targets, and a session lives until its pod stops.
 //
 // Every refusal stays a 409 but names its own blocker, so a client can tell
 // which remedy applies (w4/506). The type is checked before the plan because a
@@ -1349,13 +1383,13 @@ func sshEligible(v AppView) bool {
 func sshSessionReady(v AppView) error {
 	switch {
 	case v.Suspended:
-		return fmt.Errorf("%w: shell access is unavailable while the service is suspended; resume it first", core.ErrConflict)
+		return shellRefusal(ShellRefusalSuspended, fmt.Errorf("%w: shell access is unavailable while the service is suspended; resume it first", core.ErrConflict))
 	case !sshTypeHasInstances(v.Type):
-		return fmt.Errorf("%w: shell access is available for web services, private services and background workers", core.ErrConflict)
+		return shellRefusal(ShellRefusalIneligible, fmt.Errorf("%w: shell access is available for web services, private services and background workers", core.ErrConflict))
 	case !sshPaidPlan(v.Plan):
-		return fmt.Errorf("%w: shell access needs a paid instance type; Free services have no SSH or shell", core.ErrConflict)
-	case v.Phase != string(appv1alpha1.PhaseRunning) || v.Revision == "" || v.Image == "":
-		return fmt.Errorf("%w: the service has no running instance yet; wait for the current deploy to go live", core.ErrConflict)
+		return shellRefusal(ShellRefusalIneligible, fmt.Errorf("%w: shell access needs a paid instance type; Free services have no SSH or shell", core.ErrConflict))
+	case v.Revision == "" || v.Image == "":
+		return shellRefusal(ShellRefusalInstanceGone, fmt.Errorf("%w: the service has no running instance yet; wait for the current deploy to go live", core.ErrConflict))
 	}
 	return nil
 }
@@ -1753,7 +1787,7 @@ func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHIn
 	}
 	if instanceID == "" {
 		if len(targets) == 0 {
-			return SSHInstanceTarget{}, fmt.Errorf("%w: service has no Ready instance", core.ErrConflict)
+			return SSHInstanceTarget{}, shellRefusal(ShellRefusalInstanceGone, fmt.Errorf("%w: service has no Ready instance", core.ErrConflict))
 		}
 		return targets[rand.IntN(len(targets))], nil
 	}
@@ -1772,7 +1806,9 @@ func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHIn
 		matched = &targets[i]
 	}
 	if matched == nil {
-		return SSHInstanceTarget{}, core.ErrNotFound
+		// After authorization: the requested replica is not a Ready pod of the
+		// serving release (gone, or replaced by a newer live release).
+		return SSHInstanceTarget{}, shellRefusal(ShellRefusalInstanceGone, core.ErrNotFound)
 	}
 	return *matched, nil
 }
@@ -1796,9 +1832,15 @@ type ShellSessionView struct {
 // short-lived exec ticket the isolated gateway validates to open a browser
 // terminal. bex-api never gains pods/exec — it only authorizes and signs; the
 // gateway re-authorizes and re-resolves the instance for every connection. The
-// eligibility gate mirrors sshAddress (paid, non-suspended web/private/worker,
-// Running with a live revision and image); a specific instanceID, when given,
-// must belong to the service (the gateway still re-validates it is Ready).
+// eligibility gate mirrors sshAddress (paid, non-suspended web/private/worker)
+// plus a live release (an active revision and image, whatever the latest
+// deploy is doing — w4/m352); a specific instanceID, when given, must belong
+// to the service.
+//
+// The mint does not list pods: whether a Ready pod of the serving release
+// exists is decided once, by the gateway's connect-time ResolveSSHSession,
+// which refuses with "service has no Ready instance" (or not-found for a
+// pinned replica). Listing here too would only race that authoritative check.
 func (s *Service) CreateShellSession(ctx context.Context, name, instanceID string) (ShellSessionView, error) {
 	// SECURITY (codex #1): an interactive shell yields arbitrary code execution in
 	// the running pod, including reading its env vars and secret files — exactly

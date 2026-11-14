@@ -22,12 +22,14 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/shellticket"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func shellService() *Service {
@@ -151,5 +153,28 @@ func TestCreateShellSessionSuspendedIsConflict(t *testing.T) {
 	}
 	if _, err := svc.CreateShellSession(operatorCtx(), sshServiceID, ""); !errors.Is(err, core.ErrConflict) {
 		t.Errorf("suspended => %v, want ErrConflict", err)
+	}
+}
+
+// w4/m352: the ticket mint opens during a deploy over a live release (REST and
+// GraphQL both reach CreateShellSession), and still refuses a first deploy that
+// never went live with its own sentence.
+func TestCreateShellSessionDuringDeploy(t *testing.T) {
+	for _, phase := range []appv1alpha1.AppPhase{appv1alpha1.PhaseBuilding, appv1alpha1.PhaseDeploying} {
+		app := sshApp()
+		app.Status.Phase = phase
+		svc := shellService()
+		svc.Client = fakeClient(app, sshPod("web-rs-pod01", "example/web:v2", true))
+		if _, err := svc.CreateShellSession(operatorCtx(), sshServiceID, ""); err != nil {
+			t.Errorf("%s over a live release: %v, want a ticket", phase, err)
+		}
+		app = sshApp()
+		app.Status.Phase = phase
+		app.Status.ActiveRevision, app.Status.Image = "", ""
+		svc.Client = fakeClient(app)
+		_, err := svc.CreateShellSession(operatorCtx(), sshServiceID, "")
+		if !errors.Is(err, core.ErrConflict) || !strings.Contains(err.Error(), "no running instance yet; wait for the current deploy to go live") {
+			t.Errorf("%s first deploy: %v, want the first-deploy 409", phase, err)
+		}
 	}
 }

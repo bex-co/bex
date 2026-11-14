@@ -3,13 +3,31 @@ import type { Terminal as XTerminal } from "@xterm/xterm";
 import { RotateCw } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import { Button } from "@/common/components/ui/button";
-import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  type Translate,
+  useTranslations,
+} from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   ShellUnavailableError,
   useShellSession,
 } from "@/features/services/hooks/use-shell-session";
 
-type Status = "connecting" | "connected" | "closed" | "error";
+type Status = "connecting" | "connected" | "closed" | "ended" | "error";
+
+/**
+ * The reasons the gateway ends a live session (w4/m352). A reason missing here
+ * falls back to the gateway's own sentence, so a newer gateway never shows a
+ * blank end.
+ */
+const END_REASON_KEYS: Record<string, Parameters<Translate>[0]> = {
+  revoked: "services.shellEndRevoked",
+  suspended: "services.shellEndSuspended",
+  ineligible: "services.shellEndIneligible",
+  instance_gone: "services.shellEndInstanceGone",
+  timeout: "services.shellEndTimeout",
+  unverified: "services.shellEndUnverified",
+};
 
 /**
  * The Browser Web Shell terminal (w2/m55, docs/ADR035-ssh.md § Browser Web
@@ -95,13 +113,14 @@ export function WebShellTerminal({
       } catch (err) {
         if (cancelled) return;
         finalized = true;
-        if (err instanceof ShellUnavailableError) {
-          setStatus("error");
-          setDetail(t("services.shellErrorUnavailable"));
-        } else {
-          setStatus("error");
-          setDetail(t("services.shellErrorGeneric"));
-        }
+        setStatus("error");
+        // A refusal names its own blocker (suspended, Free, a first deploy not
+        // yet live; w4/506): show that sentence, not generic copy (w4/m352).
+        setDetail(
+          err instanceof ShellUnavailableError
+            ? t("services.shellErrorUnavailable")
+            : mutationErrorMessage(err, t("services.shellErrorGeneric")),
+        );
         return;
       }
       if (cancelled) return;
@@ -161,16 +180,28 @@ export function WebShellTerminal({
       observer.observe(containerRef.current);
 
       function handleControl(raw: string) {
-        let msg: { type?: string; code?: number; message?: string };
+        let msg: {
+          type?: string;
+          code?: number;
+          message?: string;
+          reason?: string;
+        };
         try {
           msg = JSON.parse(raw);
         } catch {
           return;
         }
         if (msg.type === "error") {
+          // A reason means the server ended a live session, not a failure.
+          const key =
+            msg.reason && Object.hasOwn(END_REASON_KEYS, msg.reason)
+              ? END_REASON_KEYS[msg.reason]
+              : undefined;
           finalized = true;
-          setStatus("error");
-          setDetail(msg.message ?? t("services.shellErrorGeneric"));
+          setStatus(msg.reason ? "ended" : "error");
+          setDetail(
+            (key && t(key)) || msg.message || t("services.shellErrorGeneric"),
+          );
         } else if (msg.type === "exit") {
           finalized = true;
           setStatus("closed");
@@ -191,7 +222,7 @@ export function WebShellTerminal({
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <StatusBadge status={status} />
-        {(status === "closed" || status === "error") && (
+        {(status === "closed" || status === "ended" || status === "error") && (
           <Button variant="outline" size="sm" onClick={reconnect}>
             <RotateCw />
             {t("services.shellReconnect")}
@@ -215,7 +246,9 @@ function StatusBadge({ status }: { status: Status }) {
         ? t("services.shellConnected")
         : status === "error"
           ? t("services.shellErrorStatus")
-          : t("services.shellClosed");
+          : status === "ended"
+            ? t("services.shellEnded")
+            : t("services.shellClosed");
   const dot =
     status === "connected"
       ? "bg-emerald-500"

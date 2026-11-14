@@ -176,6 +176,40 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Web shell status when the session failed to connect or errored",
   },
+  "services.shellEnded": {
+    message: "会话已结束",
+    description:
+      "Web shell status when the server ended a live session for a stated reason (access, suspension, instance stopped, time limit)",
+  },
+  "services.shellEndRevoked": {
+    message: "你对此服务的访问权限已结束。",
+    description:
+      "Web shell end reason: the caller lost access to the service mid-session (deliberately unspecific)",
+  },
+  "services.shellEndSuspended": {
+    message: "服务已暂停，此会话随之结束。恢复服务后即可打开新会话。",
+    description: "Web shell end reason: the service was suspended",
+  },
+  "services.shellEndIneligible": {
+    message:
+      "此服务已不再支持 Shell 访问（其实例类型或服务类型已变更），此会话随之结束。",
+    description:
+      "Web shell end reason: the service moved to the Free plan or a type without instances",
+  },
+  "services.shellEndInstanceGone": {
+    message: "此会话所在的实例已停止。重新连接即可在运行中的实例上打开 Shell。",
+    description:
+      "Web shell end reason: the attached instance stopped (restart, or the old instance leaving after a deploy went live)",
+  },
+  "services.shellEndTimeout": {
+    message: "会话已达到时长上限。重新连接即可继续。",
+    description: "Web shell end reason: the session hit its maximum duration",
+  },
+  "services.shellEndUnverified": {
+    message: "无法重新验证你的访问权限，会话已结束。请重新连接重试。",
+    description:
+      "Web shell end reason: the periodic access check could not complete",
+  },
   "services.shellReconnect": {
     message: "重新连接",
     description: "Button that re-opens a closed web shell session",

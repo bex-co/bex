@@ -140,8 +140,8 @@ func TestGatewayRealKubernetesWebShellTimeout(t *testing.T) {
 		}
 		var control serverControl
 		if json.Unmarshal(data, &control) == nil && control.Type == "error" {
-			if control.Message != "session closed" {
-				t.Fatalf("timeout message = %q, want session closed", control.Message)
+			if control.Reason != endTimeout {
+				t.Fatalf("timeout frame = %+v, want reason %q", control, endTimeout)
 			}
 			return
 		}

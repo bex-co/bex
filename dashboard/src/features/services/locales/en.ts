@@ -181,6 +181,43 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Web shell status when the session failed to connect or errored",
   },
+  "services.shellEnded": {
+    message: "Session ended",
+    description:
+      "Web shell status when the server ended a live session for a stated reason (access, suspension, instance stopped, time limit)",
+  },
+  "services.shellEndRevoked": {
+    message: "Your access to this service ended.",
+    description:
+      "Web shell end reason: the caller lost access to the service mid-session (deliberately unspecific)",
+  },
+  "services.shellEndSuspended": {
+    message:
+      "The service was suspended, which ended this session. Resume it to open a new one.",
+    description: "Web shell end reason: the service was suspended",
+  },
+  "services.shellEndIneligible": {
+    message:
+      "This service no longer has shell access (its plan or type changed), which ended this session.",
+    description:
+      "Web shell end reason: the service moved to the Free plan or a type without instances",
+  },
+  "services.shellEndInstanceGone": {
+    message:
+      "The instance this session ran on stopped. Reconnect to open a shell on a running instance.",
+    description:
+      "Web shell end reason: the attached instance stopped (restart, or the old instance leaving after a deploy went live)",
+  },
+  "services.shellEndTimeout": {
+    message: "The session reached its time limit. Reconnect to keep working.",
+    description: "Web shell end reason: the session hit its maximum duration",
+  },
+  "services.shellEndUnverified": {
+    message:
+      "Your access couldn't be re-checked, so the session ended. Reconnect to try again.",
+    description:
+      "Web shell end reason: the periodic access check could not complete",
+  },
   "services.shellReconnect": {
     message: "Reconnect",
     description: "Button that re-opens a closed web shell session",
