@@ -268,6 +268,14 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 	if got.Line != "3.4.4" || !strings.Contains(got.Image, "ruby:3.4.4-bookworm@"+exactDigest) || got.Narration() != "==> Using Ruby 3.4.4 (default)" {
 		t.Errorf("new service: %+v narration %q", got, got.Narration())
 	}
+	// w4/620: Render's default moved to 3.4.12, the line's reviewed patch, for
+	// services created since 2026-11-03; one created before keeps 3.4.4.
+	if c := run(renderDefaults20261103.Add(time.Hour), nil); c.Line != "3.4" || c.Image != reviewed.image || reviewed.version != "3.4.12" {
+		t.Errorf("service created after 2026-11-03 must build on the reviewed 3.4.12: %+v (reviewed %s)", c, reviewed.version)
+	}
+	if c := run(renderDefaults20261103.Add(-time.Hour), nil); c.Line != "3.4.4" {
+		t.Errorf("service created just before 2026-11-03 must keep 3.4.4: %+v", c)
+	}
 	for name, c := range map[string]NativeChoice{
 		"older service":   run(rubyDefaultCutoff.Add(-time.Hour), nil),
 		"unknown age":     run(time.Time{}, nil),
@@ -315,6 +323,14 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 	got := run(pythonCreationCutoff, nil)
 	if got.Line != "3.14.8" || !strings.Contains(got.Image, "python:3.14.8-bookworm@"+exactDigest) || got.Narration() != "==> Using Python 3.14.8 (default)" {
 		t.Errorf("new service: %+v narration %q", got, got.Narration())
+	}
+	// w4/620: Render's default moved to 3.14.10, the line's reviewed patch, for
+	// services created since 2026-11-03; one created before keeps 3.14.8.
+	if c := run(renderDefaults20261103.Add(time.Hour), nil); c.Line != "3.14" || c.Image != reviewed.image || reviewed.version != "3.14.10" {
+		t.Errorf("service created after 2026-11-03 must build on the reviewed 3.14.10: %+v (reviewed %s)", c, reviewed.version)
+	}
+	if c := run(renderDefaults20261103.Add(-time.Hour), nil); c.Line != "3.14.8" {
+		t.Errorf("service created just before 2026-11-03 must keep 3.14.8: %+v", c)
 	}
 	if c := run(pythonCreationCutoff.Add(time.Hour), map[string]string{"PYTHON_VERSION": "3.14"}); c.Line != "3.14" || c.Image != reviewed.image {
 		t.Errorf("PYTHON_VERSION=3.14 must keep the reviewed %s: %+v", reviewed.version, c)
@@ -519,5 +535,24 @@ func TestNodeReleaseFallsBackToBuster(t *testing.T) {
 		if !strings.Contains(dockerfile, want) {
 			t.Errorf("Dockerfile lacks %q:\n%s", want, dockerfile)
 		}
+	}
+}
+
+// w4/620: a later bump of a line's reviewed patch must not move a dated
+// default: a service created since 2026-11-03 still asks for exactly 3.14.10.
+func TestDatedDefaultSurvivesALinePinBump(t *testing.T) {
+	saved := nativeToolchains[nativePythonRuntime]
+	t.Cleanup(func() { nativeToolchains[nativePythonRuntime] = saved })
+	bumped := saved
+	bumped.lines = append([]nativeLine(nil), saved.lines...)
+	for i := range bumped.lines {
+		if bumped.lines[i].line == "3.14" {
+			bumped.lines[i].version = "3.14.11"
+		}
+	}
+	nativeToolchains[nativePythonRuntime] = bumped
+	got := defaultExact(renderDefaults20261103.Add(time.Hour), nativePythonRuntime, NativeChoice{Line: "3.14"})
+	if got != "3.14.10" {
+		t.Fatalf("defaultExact after a 3.14.11 line bump = %q, want 3.14.10", got)
 	}
 }
