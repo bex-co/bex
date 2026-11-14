@@ -1550,6 +1550,16 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "表",
     description: "Insights table column header (table name)",
   },
+  "databases.insightsColRelation": {
+    message: "表或索引",
+    description:
+      "Insights sizes column header (a table's or an index's name; tables and indexes are listed together)",
+  },
+  "databases.insightsIndexOn": {
+    message: "{table} 的索引",
+    description:
+      "Insights sizes: suffix naming the table an index row belongs to; {table} is the quoted schema-qualified table name",
+  },
   "databases.insightsColSize": {
     message: "大小",
     description: "Insights table column header (relation size)",

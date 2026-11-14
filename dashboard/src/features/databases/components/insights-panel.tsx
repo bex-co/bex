@@ -43,6 +43,30 @@ function qualifiedTableName(
     .join(".");
 }
 
+type SizeRelation = {
+  schema: string | null;
+  name: string | null;
+  sizeBytes?: number | null;
+  sizePretty: string | null;
+  /** The indexed table, set only on an index's row. */
+  table?: string | null;
+};
+
+/**
+ * Tables and indexes in one list, largest first, as Render's sizes endpoint
+ * ranks them (w4/634). A table's size excludes its indexes, which have rows of
+ * their own. Tables and indexes share a schema's relation namespace, so the
+ * qualified name stays a unique key across both.
+ */
+function sizeRows(
+  tables: SizeRelation[],
+  indexes: SizeRelation[],
+): SizeRelation[] {
+  return [...tables, ...indexes].sort(
+    (a, b) => (b.sizeBytes ?? 0) - (a.sizeBytes ?? 0),
+  );
+}
+
 /**
  * The database detail's Insights section: processes, top queries, sizes,
  * table scans, and non-default parameter overrides — a live introspection
@@ -97,12 +121,14 @@ export function InsightsPanel({ id }: { id: string }) {
                   {insights.sizes.database?.sizePretty ?? "—"}
                 </span>
               </div>
-              {(insights.sizes.tables?.length ?? 0) > 0 && (
+              {(insights.sizes.tables?.length ?? 0) +
+                (insights.sizes.indexes?.length ?? 0) >
+                0 && (
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="pb-1 pr-4 font-medium">
-                        {t("databases.insightsColTable")}
+                        {t("databases.insightsColRelation")}
                       </th>
                       <th className="pb-1 text-right font-medium">
                         {t("databases.insightsColSize")}
@@ -110,16 +136,29 @@ export function InsightsPanel({ id }: { id: string }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {insights.sizes.tables?.map((tbl) => (
+                    {sizeRows(
+                      insights.sizes.tables ?? [],
+                      insights.sizes.indexes ?? [],
+                    ).map((rel) => (
                       <tr
-                        key={qualifiedTableName(tbl.schema, tbl.name)}
+                        key={qualifiedTableName(rel.schema, rel.name)}
                         className="border-b last:border-0"
                       >
                         <td className="py-1 pr-4 font-mono text-muted-foreground">
-                          {qualifiedTableName(tbl.schema, tbl.name)}
+                          {qualifiedTableName(rel.schema, rel.name)}
+                          {rel.table != null && (
+                            <span className="ml-2 font-sans">
+                              {t("databases.insightsIndexOn", {
+                                table: qualifiedTableName(
+                                  rel.schema,
+                                  rel.table,
+                                ),
+                              })}
+                            </span>
+                          )}
                         </td>
                         <td className="py-1 text-right tabular-nums">
-                          {tbl.sizePretty}
+                          {rel.sizePretty}
                         </td>
                       </tr>
                     ))}

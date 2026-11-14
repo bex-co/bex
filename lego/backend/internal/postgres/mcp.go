@@ -527,7 +527,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres_sizes",
-		Description: "Get the total database size and per-table sizes for a managed Postgres database. Returns the overall database size (bytes + human-readable) and up to 50 tables ordered by size descending.",
+		Description: "Get the total database size and per-table and per-index sizes for a managed Postgres database. Returns the overall database size (bytes + human-readable), up to 50 tables and up to 50 indexes, each ordered by size descending. A table's size excludes its indexes, which are listed separately.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, SizesView, error) {
 		v, err := s.Sizes(ctx, in.PostgresID)
 		return nil, v, err

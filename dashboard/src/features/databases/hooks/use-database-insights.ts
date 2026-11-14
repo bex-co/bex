@@ -104,7 +104,11 @@ export function useDatabaseInsights(id: string) {
   const sizesView = useMemo(() => {
     const raw = sizesData?.databaseSizes;
     return raw
-      ? { database: raw.database, tables: (raw.tables ?? []).filter(nonNull) }
+      ? {
+          database: raw.database,
+          tables: (raw.tables ?? []).filter(nonNull),
+          indexes: (raw.indexes ?? []).filter(nonNull),
+        }
       : null;
   }, [sizesData]);
   const tableScansData = tableScans.data;

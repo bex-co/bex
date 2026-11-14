@@ -239,6 +239,16 @@ type ProcessView struct {
 	WaitEventType   string `json:"waitEventType,omitempty"`
 	WaitEvent       string `json:"waitEvent,omitempty"`
 	DurationSeconds int32  `json:"durationSeconds"`
+	DatabaseName    string `json:"databaseName,omitempty"`
+	// ClientAddr is empty for a connection over a local socket.
+	ClientAddr string `json:"clientAddr,omitempty"`
+	// BackendStart and QueryStart are RFC 3339 UTC; QueryStart is empty for a
+	// connection that has not run a statement yet.
+	BackendStart string `json:"backendStart,omitempty"`
+	QueryStart   string `json:"queryStart,omitempty"`
+	// IsLeader is Render's: the process runs on the primary of a highly
+	// available database. False on a single instance.
+	IsLeader bool `json:"isLeader,omitempty"`
 }
 
 // TopQueryView is one row from pg_stat_statements (aggregated by query text).
@@ -253,6 +263,20 @@ type TopQueryView struct {
 	Rows           int64   `json:"rows"`
 	SharedHitBlks  int64   `json:"sharedHitBlks"`
 	SharedReadBlks int64   `json:"sharedReadBlks"`
+	// QueryID is pg_stat_statements.queryid as a decimal string, as Render
+	// types it.
+	QueryID           string  `json:"queryId,omitempty"`
+	MinTimeMs         float64 `json:"minTimeMs"`
+	MaxTimeMs         float64 `json:"maxTimeMs"`
+	StddevTimeMs      float64 `json:"stddevTimeMs"`
+	SharedDirtiedBlks int64   `json:"sharedDirtiedBlks"`
+	SharedWrittenBlks int64   `json:"sharedWrittenBlks"`
+	LocalHitBlks      int64   `json:"localHitBlks"`
+	LocalReadBlks     int64   `json:"localReadBlks"`
+	LocalDirtiedBlks  int64   `json:"localDirtiedBlks"`
+	LocalWrittenBlks  int64   `json:"localWrittenBlks"`
+	TempReadBlks      int64   `json:"tempReadBlks"`
+	TempWrittenBlks   int64   `json:"tempWrittenBlks"`
 }
 
 // DatabaseSizeView is the overall database size.
@@ -262,7 +286,10 @@ type DatabaseSizeView struct {
 	SizePretty string `json:"sizePretty"`
 }
 
-// TableSizeView is one table's total size (data + indexes).
+// TableSizeView is one table's size without its indexes (pg_table_size: heap,
+// TOAST, free space and visibility maps), so a table's row and its indexes'
+// rows add up rather than count the indexes twice (w4/634). Render documents
+// no table measure; its sizes endpoint lists each index as a row of its own.
 type TableSizeView struct {
 	Schema     string `json:"schema"`
 	Name       string `json:"name"`
@@ -270,14 +297,26 @@ type TableSizeView struct {
 	SizePretty string `json:"sizePretty"`
 }
 
-// SizesView bundles the database-level size and per-table sizes.
+// IndexSizeView is one user index's size (pg_relation_size).
+type IndexSizeView struct {
+	Schema     string `json:"schema"`
+	Table      string `json:"table"`
+	Name       string `json:"name"`
+	SizeBytes  int64  `json:"sizeBytes"`
+	SizePretty string `json:"sizePretty"`
+}
+
+// SizesView bundles the database-level size and the 50 largest tables and the
+// 50 largest indexes.
 type SizesView struct {
 	Database DatabaseSizeView `json:"database"`
 	Tables   []TableSizeView  `json:"tables"`
+	Indexes  []IndexSizeView  `json:"indexes"`
 }
 
 // TableScanView is one row from pg_stat_user_tables.
 type TableScanView struct {
+	Database      string `json:"database"`
 	Schema        string `json:"schema"`
 	Name          string `json:"name"`
 	SeqScans      int64  `json:"seqScans"`
@@ -365,6 +404,12 @@ func reservedRoleSQL(col string) string {
 	return "(" + strings.Join(clauses, " OR ") + ")"
 }
 
+// rfc3339SQL formats the timestamptz column col as RFC 3339 UTC text, or as
+// an empty string when it is NULL.
+func rfc3339SQL(col string) string {
+	return "COALESCE(to_char(" + col + ` AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'), '')`
+}
+
 var (
 	sqlProcesses = `
 SELECT pid::int,
@@ -374,7 +419,12 @@ SELECT pid::int,
        COALESCE(left(query, 200), '')    AS query,
        COALESCE(wait_event_type, '')     AS wait_event_type,
        COALESCE(wait_event, '')          AS wait_event,
-       COALESCE(extract(epoch FROM clock_timestamp() - query_start)::int, 0) AS duration_sec
+       COALESCE(extract(epoch FROM clock_timestamp() - query_start)::int, 0) AS duration_sec,
+       COALESCE(datname, '')             AS datname,
+       COALESCE(host(client_addr), '')   AS client_addr,
+       ` + rfc3339SQL("backend_start") + ` AS backend_start,
+       ` + rfc3339SQL("query_start") + ` AS query_start,
+       NOT pg_is_in_recovery()           AS on_primary
 FROM pg_stat_activity
 WHERE pid <> pg_backend_pid()
   AND backend_type = 'client backend'
@@ -389,7 +439,12 @@ SELECT COALESCE(left(query, 500), '')   AS query,
        mean_exec_time                   AS mean_ms,
        rows,
        shared_blks_hit                  AS hit_blks,
-       shared_blks_read                 AS read_blks
+       shared_blks_read                 AS read_blks,
+       COALESCE(queryid::text, '')      AS queryid,
+       min_exec_time, max_exec_time, stddev_exec_time,
+       shared_blks_dirtied, shared_blks_written,
+       local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written,
+       temp_blks_read, temp_blks_written
 FROM pg_stat_statements
 WHERE userid NOT IN (SELECT oid FROM pg_roles WHERE ` + reservedRoleSQL("rolname") + `)
   AND COALESCE(query, '') NOT LIKE '%` + insightsTag + `%'
@@ -403,17 +458,28 @@ SELECT current_database()                                    AS dbname,
        pg_size_pretty(pg_database_size(current_database()))  AS size_pretty`
 
 	sqlTableSizes = `
-SELECT schemaname                                                                              AS schema,
-       tablename                                                                               AS tbl,
-       pg_total_relation_size(quote_ident(schemaname)||'.'||quote_ident(tablename))           AS size_bytes,
-       pg_size_pretty(pg_total_relation_size(quote_ident(schemaname)||'.'||quote_ident(tablename))) AS size_pretty
+SELECT schemaname                                                                    AS schema,
+       tablename                                                                     AS tbl,
+       pg_table_size(quote_ident(schemaname)||'.'||quote_ident(tablename))           AS size_bytes,
+       pg_size_pretty(pg_table_size(quote_ident(schemaname)||'.'||quote_ident(tablename))) AS size_pretty
 FROM pg_tables
 WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
 ORDER BY size_bytes DESC
 LIMIT 50`
 
+	sqlIndexSizes = `
+SELECT schemaname                                    AS schema,
+       relname                                       AS tbl,
+       indexrelname                                  AS idx,
+       pg_relation_size(indexrelid)                  AS size_bytes,
+       pg_size_pretty(pg_relation_size(indexrelid))  AS size_pretty
+FROM pg_stat_user_indexes
+ORDER BY size_bytes DESC
+LIMIT 50`
+
 	sqlTableScans = `
-SELECT schemaname                        AS schema,
+SELECT current_database()                AS dbname,
+       schemaname                        AS schema,
        relname                           AS tbl,
        seq_scan,
        seq_tup_read,
@@ -440,7 +506,7 @@ ORDER BY name`
 // untagged, before w4/557, left its untagged text in pg_stat_statements under a
 // query id the tag does not change, so the tagged runs since add to that row and
 // Top queries leaves those query ids out too (w5/184).
-var insightStatements = []string{sqlProcesses, sqlTopQueries, sqlDatabaseSize, sqlTableSizes, sqlTableScans, sqlParameterOverrides}
+var insightStatements = []string{sqlProcesses, sqlTopQueries, sqlDatabaseSize, sqlTableSizes, sqlIndexSizes, sqlTableScans, sqlParameterOverrides}
 
 // insightQueryIDTTL bounds how long a database's Insights query ids are reused:
 // they depend on its catalog, which a restore or a major upgrade replaces.
@@ -628,22 +694,29 @@ func floatVal(v any) float64 {
 // Processes returns a snapshot of active backend processes (pg_stat_activity).
 // Requires RelCanViewSensitive because process query texts may contain literal values.
 func (s *Service) Processes(ctx context.Context, dbID string) ([]ProcessView, error) {
-	res, err := s.runInsight(ctx, core.RelCanViewSensitive, dbID, sqlProcesses)
+	db, err := s.insightDatabase(ctx, core.RelCanViewSensitive, dbID)
 	if err != nil {
 		return nil, err
 	}
-	return processViews(res.Rows), nil
+	res, err := s.runAuthorizedInsight(ctx, db, sqlProcesses, false)
+	if err != nil {
+		return nil, err
+	}
+	return processViews(res.Rows, db.Status.HighAvailabilityEnabled), nil
 }
 
 // processViews maps sqlProcesses rows onto ProcessView, folding PostgreSQL's
 // privilege placeholder into the Masked flag. Split out from Processes so the
-// mapping — masking included — is testable without a live database.
-func processViews(rows [][]any) []ProcessView {
+// mapping — masking included — is testable without a live database. A row is
+// the leader's when the database is highly available and the backend runs on
+// the primary, the instance an insight dials.
+func processViews(rows [][]any, highlyAvailable bool) []ProcessView {
 	out := make([]ProcessView, 0, len(rows))
 	for _, row := range rows {
-		if len(row) < 8 {
+		if len(row) < 13 {
 			continue
 		}
+		onPrimary, _ := row[12].(bool)
 		query, masked := publishedQuery(strVal(row[4]))
 		out = append(out, ProcessView{
 			PID:             int32(intVal(row[0])),
@@ -655,6 +728,11 @@ func processViews(rows [][]any) []ProcessView {
 			WaitEventType:   strVal(row[5]),
 			WaitEvent:       strVal(row[6]),
 			DurationSeconds: int32(intVal(row[7])),
+			DatabaseName:    strVal(row[8]),
+			ClientAddr:      strVal(row[9]),
+			BackendStart:    strVal(row[10]),
+			QueryStart:      strVal(row[11]),
+			IsLeader:        highlyAvailable && onPrimary,
 		})
 	}
 	return out
@@ -689,26 +767,38 @@ func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, 
 func topQueryViews(rows [][]any) []TopQueryView {
 	out := make([]TopQueryView, 0, len(rows))
 	for _, row := range rows {
-		if len(row) < 7 {
+		if len(row) < 19 {
 			continue
 		}
 		query, masked := publishedQuery(strVal(row[0]))
 		out = append(out, TopQueryView{
-			Query:          query,
-			Masked:         masked,
-			Calls:          intVal(row[1]),
-			TotalTimeMs:    floatVal(row[2]),
-			MeanTimeMs:     floatVal(row[3]),
-			Rows:           intVal(row[4]),
-			SharedHitBlks:  intVal(row[5]),
-			SharedReadBlks: intVal(row[6]),
+			Query:             query,
+			Masked:            masked,
+			Calls:             intVal(row[1]),
+			TotalTimeMs:       floatVal(row[2]),
+			MeanTimeMs:        floatVal(row[3]),
+			Rows:              intVal(row[4]),
+			SharedHitBlks:     intVal(row[5]),
+			SharedReadBlks:    intVal(row[6]),
+			QueryID:           strVal(row[7]),
+			MinTimeMs:         floatVal(row[8]),
+			MaxTimeMs:         floatVal(row[9]),
+			StddevTimeMs:      floatVal(row[10]),
+			SharedDirtiedBlks: intVal(row[11]),
+			SharedWrittenBlks: intVal(row[12]),
+			LocalHitBlks:      intVal(row[13]),
+			LocalReadBlks:     intVal(row[14]),
+			LocalDirtiedBlks:  intVal(row[15]),
+			LocalWrittenBlks:  intVal(row[16]),
+			TempReadBlks:      intVal(row[17]),
+			TempWrittenBlks:   intVal(row[18]),
 		})
 	}
 	return out
 }
 
-// Sizes returns the database size and per-table sizes via pg_database_size /
-// pg_total_relation_size.
+// Sizes returns the database size and per-table and per-index sizes via
+// pg_database_size / pg_table_size / pg_relation_size.
 func (s *Service) Sizes(ctx context.Context, dbID string) (SizesView, error) {
 	dbRes, err := s.runInsight(ctx, core.RelCanView, dbID, sqlDatabaseSize)
 	if err != nil {
@@ -739,7 +829,24 @@ func (s *Service) Sizes(ctx context.Context, dbID string) (SizesView, error) {
 			SizePretty: strVal(row[3]),
 		})
 	}
-	return SizesView{Database: dbSize, Tables: tables}, nil
+	idxRes, err := s.runInsight(ctx, core.RelCanView, dbID, sqlIndexSizes)
+	if err != nil {
+		return SizesView{}, err
+	}
+	indexes := make([]IndexSizeView, 0, len(idxRes.Rows))
+	for _, row := range idxRes.Rows {
+		if len(row) < 5 {
+			continue
+		}
+		indexes = append(indexes, IndexSizeView{
+			Schema:     strVal(row[0]),
+			Table:      strVal(row[1]),
+			Name:       strVal(row[2]),
+			SizeBytes:  intVal(row[3]),
+			SizePretty: strVal(row[4]),
+		})
+	}
+	return SizesView{Database: dbSize, Tables: tables, Indexes: indexes}, nil
 }
 
 // TableScans returns sequential vs index scan stats from pg_stat_user_tables.
@@ -750,18 +857,19 @@ func (s *Service) TableScans(ctx context.Context, dbID string) ([]TableScanView,
 	}
 	out := make([]TableScanView, 0, len(res.Rows))
 	for _, row := range res.Rows {
-		if len(row) < 8 {
+		if len(row) < 9 {
 			continue
 		}
 		out = append(out, TableScanView{
-			Schema:        strVal(row[0]),
-			Name:          strVal(row[1]),
-			SeqScans:      intVal(row[2]),
-			SeqScanRows:   intVal(row[3]),
-			IndexScans:    intVal(row[4]),
-			IndexScanRows: intVal(row[5]),
-			LiveRows:      intVal(row[6]),
-			DeadRows:      intVal(row[7]),
+			Database:      strVal(row[0]),
+			Schema:        strVal(row[1]),
+			Name:          strVal(row[2]),
+			SeqScans:      intVal(row[3]),
+			SeqScanRows:   intVal(row[4]),
+			IndexScans:    intVal(row[5]),
+			IndexScanRows: intVal(row[6]),
+			LiveRows:      intVal(row[7]),
+			DeadRows:      intVal(row[8]),
 		})
 	}
 	return out, nil

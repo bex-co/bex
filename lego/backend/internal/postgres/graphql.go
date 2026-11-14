@@ -323,11 +323,23 @@ var tableSizeViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var indexSizeViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "IndexSizeInfo",
+	Fields: graphql.Fields{
+		"schema":     gqlutil.StrField(func(v IndexSizeView) any { return v.Schema }),
+		"table":      gqlutil.StrField(func(v IndexSizeView) any { return v.Table }),
+		"name":       gqlutil.StrField(func(v IndexSizeView) any { return v.Name }),
+		"sizeBytes":  gqlutil.IntField(func(v IndexSizeView) any { return v.SizeBytes }),
+		"sizePretty": gqlutil.StrField(func(v IndexSizeView) any { return v.SizePretty }),
+	},
+})
+
 var sizesViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseSizes",
 	Fields: graphql.Fields{
 		"database": gqlutil.Typed(databaseSizeViewGQLType, func(v SizesView) any { return v.Database }),
 		"tables":   gqlutil.Typed(graphql.NewList(tableSizeViewGQLType), func(v SizesView) any { return v.Tables }),
+		"indexes":  gqlutil.Typed(graphql.NewList(indexSizeViewGQLType), func(v SizesView) any { return v.Indexes }),
 	},
 })
 

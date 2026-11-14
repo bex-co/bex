@@ -1600,6 +1600,16 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Table",
     description: "Insights table column header (table name)",
   },
+  "databases.insightsColRelation": {
+    message: "Table or index",
+    description:
+      "Insights sizes column header (a table's or an index's name; tables and indexes are listed together)",
+  },
+  "databases.insightsIndexOn": {
+    message: "index on {table}",
+    description:
+      "Insights sizes: suffix naming the table an index row belongs to; {table} is the quoted schema-qualified table name",
+  },
   "databases.insightsColSize": {
     message: "Size",
     description: "Insights table column header (relation size)",

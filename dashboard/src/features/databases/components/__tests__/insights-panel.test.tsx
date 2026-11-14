@@ -65,7 +65,13 @@ type SpecRow = {
   observedSetting?: string | null;
   observedUnit?: string | null;
 };
-type SizeRow = { schema: string; name: string; sizePretty: string };
+type SizeRow = {
+  schema: string;
+  name: string;
+  sizePretty: string;
+  sizeBytes?: number;
+  table?: string;
+};
 type ScanRow = {
   schema: string;
   name: string;
@@ -79,7 +85,7 @@ const state: {
   topQueries: TopQueryRow[];
   topQueriesError: Error | undefined;
   parameterSpec: SpecRow[];
-  sizes: { database: null; tables: SizeRow[] } | null;
+  sizes: { database: null; tables: SizeRow[]; indexes?: SizeRow[] } | null;
   tableScans: ScanRow[];
 } = {
   processes: [],
@@ -304,6 +310,53 @@ describe("InsightsPanel declared parameters", () => {
     expect(
       screen.queryByRole("button", { name: /save|add|remove|discard/i }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// w4/634: the table's size excludes its indexes, so each index has a row of
+// its own, ranked with the tables by size and naming the table it indexes.
+describe("InsightsPanel index sizes", () => {
+  it("lists indexes beside tables, largest first", () => {
+    state.sizes = {
+      database: null,
+      tables: [
+        {
+          schema: "public",
+          name: "qa_t",
+          sizeBytes: 221184,
+          sizePretty: "216 kB",
+        },
+        {
+          schema: "public",
+          name: "tiny",
+          sizeBytes: 8192,
+          sizePretty: "8192 bytes",
+        },
+      ],
+      indexes: [
+        {
+          schema: "public",
+          table: "qa_t",
+          name: "qa_t_id",
+          sizeBytes: 131072,
+          sizePretty: "128 kB",
+        },
+      ],
+    };
+    render(<InsightsPanel id="dpg-1" />);
+
+    const table = screen
+      .getAllByRole("table")
+      .find((t) => t.textContent?.includes("Table or index"));
+    if (!table) throw new Error("no sizes table");
+    const rows = [...table.querySelectorAll("tbody tr")].map((tr) =>
+      [...tr.querySelectorAll("td")].map((td) => td.textContent ?? ""),
+    );
+    expect(rows).toEqual([
+      ['"public"."qa_t"', "216 kB"],
+      ['"public"."qa_t_id"index on "public"."qa_t"', "128 kB"],
+      ['"public"."tiny"', "8192 bytes"],
+    ]);
   });
 });
 

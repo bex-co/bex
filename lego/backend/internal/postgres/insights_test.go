@@ -44,7 +44,7 @@ func TestInsightStatementsCarryTheirTag(t *testing.T) {
 	}
 	for name, sql := range map[string]string{
 		"processes": sqlProcesses, "top queries": sqlTopQueries, "database size": sqlDatabaseSize,
-		"table sizes": sqlTableSizes, "table scans": sqlTableScans, "parameter overrides": sqlParameterOverrides,
+		"table sizes": sqlTableSizes, "index sizes": sqlIndexSizes, "table scans": sqlTableScans, "parameter overrides": sqlParameterOverrides,
 	} {
 		if !strings.HasPrefix(strings.TrimLeft(sql, " \t\n"), "SELECT ") {
 			t.Errorf("%s statement does not lead with SELECT, so tagInsight would mangle it", name)
@@ -303,6 +303,16 @@ func TestProcessesHidePlatformActivityIntegration(t *testing.T) {
 			t.Errorf("Insights' own statement leaked into Processes: %+v", p)
 		case p.UserName == role:
 			sawApp = true
+			// w4/634: where the connection came from and since when.
+			if p.DatabaseName == "" || p.ClientAddr == "" || p.IsLeader {
+				t.Errorf("the customer's process lacks Render's columns: %+v", p)
+			}
+			if _, err := time.Parse(time.RFC3339, p.BackendStart); err != nil {
+				t.Errorf("backendStart %q is not RFC 3339: %v", p.BackendStart, err)
+			}
+			if _, err := time.Parse(time.RFC3339, p.QueryStart); err != nil {
+				t.Errorf("queryStart %q is not RFC 3339: %v", p.QueryStart, err)
+			}
 		case p.UserName == "" || appv1alpha1.ReservedPostgresRole(p.UserName):
 			t.Errorf("platform activity leaked into Processes: %+v", p)
 		}
@@ -369,6 +379,13 @@ func TestTopQueriesIntegration(t *testing.T) {
 	t.Logf("TopQueries returned %d rows", len(out))
 }
 
+// topQueryStandInColumns are the pg_stat_statements columns a stand-in table
+// adds beyond those a test seeds, so sqlTopQueries reads it.
+const topQueryStandInColumns = ` min_exec_time double precision, max_exec_time double precision,
+	stddev_exec_time double precision, shared_blks_dirtied bigint, shared_blks_written bigint,
+	local_blks_hit bigint, local_blks_read bigint, local_blks_dirtied bigint, local_blks_written bigint,
+	temp_blks_read bigint, temp_blks_written bigint`
+
 // TestTopQueriesLeavesTheReadOnlyEnvelopeOut pins w21/058: on a database with no
 // application traffic, Top queries listed Insights' own `begin read only` and
 // `rollback`. The test database has no pg_stat_statements (it is not preloaded),
@@ -391,7 +408,7 @@ func TestTopQueriesLeavesTheReadOnlyEnvelopeOut(t *testing.T) {
 	}
 	if _, err := admin.Exec(ctx, `CREATE TABLE public.pg_stat_statements (
 		userid oid, query text, calls bigint, total_exec_time double precision,
-		mean_exec_time double precision, rows bigint, shared_blks_hit bigint, shared_blks_read bigint)`); err != nil {
+		mean_exec_time double precision, rows bigint, shared_blks_hit bigint, shared_blks_read bigint, queryid bigint,`+topQueryStandInColumns+`)`); err != nil {
 		t.Fatalf("create stand-in: %v", err)
 	}
 	// The test login is a reserved role (postgres), which the read leaves out by
@@ -439,9 +456,26 @@ func TestTopQueriesLeavesTheReadOnlyEnvelopeOut(t *testing.T) {
 	}
 }
 
-// TestSizesIntegration exercises pg_database_size / pg_total_relation_size.
+// TestSizesIntegration exercises pg_database_size / pg_table_size /
+// pg_relation_size. w4/634: an index has a row of its own, and its table's
+// size leaves it out.
 func TestSizesIntegration(t *testing.T) {
 	uri := testDBURI(t)
+	ctx := context.Background()
+	admin, err := pgx.Connect(ctx, uri)
+	if err != nil {
+		t.Fatalf("admin connect: %v", err)
+	}
+	defer admin.Close(ctx)
+	if _, err := admin.Exec(ctx, `DROP TABLE IF EXISTS size_t; CREATE TABLE size_t(id int);
+		INSERT INTO size_t SELECT generate_series(1, 5000); CREATE INDEX size_t_id ON size_t(id)`); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = admin.Exec(ctx, `DROP TABLE IF EXISTS size_t`) }()
+	var heap, index, total int64
+	if err := admin.QueryRow(ctx, `SELECT pg_table_size('size_t'), pg_relation_size('size_t_id'), pg_total_relation_size('size_t')`).Scan(&heap, &index, &total); err != nil {
+		t.Fatal(err)
+	}
 	svc, _ := newService()
 	seedDatabaseAt(t, svc, "size-live", uri)
 
@@ -452,7 +486,17 @@ func TestSizesIntegration(t *testing.T) {
 	if v.Database.SizeBytes <= 0 || v.Database.SizePretty == "" {
 		t.Errorf("database size missing: %+v", v.Database)
 	}
-	t.Logf("db=%q size=%s tables=%d", v.Database.Name, v.Database.SizePretty, len(v.Tables))
+	tbl := slices.IndexFunc(v.Tables, func(r TableSizeView) bool { return r.Name == "size_t" })
+	idx := slices.IndexFunc(v.Indexes, func(r IndexSizeView) bool { return r.Name == "size_t_id" })
+	if tbl < 0 || idx < 0 {
+		t.Fatalf("size_t or its index is missing: tables %+v, indexes %+v", v.Tables, v.Indexes)
+	}
+	if got := v.Tables[tbl].SizeBytes; got != heap || got == total {
+		t.Errorf("table size = %d, want %d without the index (total %d)", got, heap, total)
+	}
+	if got := v.Indexes[idx]; got.SizeBytes != index || got.Schema != "public" || got.Table != "size_t" {
+		t.Errorf("index row = %+v, want public.size_t at %d bytes", got, index)
+	}
 }
 
 // TestTableScansIntegration exercises pg_stat_user_tables.
@@ -475,6 +519,9 @@ func TestTableScansIntegration(t *testing.T) {
 	}
 	for _, r := range out {
 		if r.Name == "scan_test" {
+			if r.Database == "" {
+				t.Errorf("scan_test row has no database: %+v", r)
+			}
 			t.Logf("scan_test: seq=%d idx=%d", r.SeqScans, r.IndexScans)
 			return
 		}
@@ -627,9 +674,9 @@ func TestOperatorManagedParameterNames(t *testing.T) {
 // statistics beside it stay real.
 func TestMaskedQueryTextNeverReachesASurface(t *testing.T) {
 	procs := processViews([][]any{
-		{int32(11), "other_user", "psql", "active", pgInsufficientPrivilege, "", "", int32(4)},
-		{int32(12), "d_user", "bex", "active", "SELECT 1", "Client", "ClientRead", int32(0)},
-	})
+		processRow(int32(11), "other_user", "psql", "active", pgInsufficientPrivilege, "", "", int32(4)),
+		processRow(int32(12), "d_user", "bex", "active", "SELECT 1", "Client", "ClientRead", int32(0)),
+	}, false)
 	if len(procs) != 2 {
 		t.Fatalf("processViews => %d rows, want 2", len(procs))
 	}
@@ -645,8 +692,8 @@ func TestMaskedQueryTextNeverReachesASurface(t *testing.T) {
 	}
 
 	top := topQueryViews([][]any{
-		{pgInsufficientPrivilege, int64(7), 12.5, 1.75, int64(3), int64(9), int64(1)},
-		{"SELECT 2", int64(1), 1.0, 1.0, int64(1), int64(0), int64(0)},
+		topQueryRow(pgInsufficientPrivilege, int64(7), 12.5, 1.75, int64(3), int64(9), int64(1)),
+		topQueryRow("SELECT 2", int64(1), 1.0, 1.0, int64(1), int64(0), int64(0)),
 	})
 	if len(top) != 2 {
 		t.Fatalf("topQueryViews => %d rows, want 2", len(top))
@@ -663,10 +710,46 @@ func TestMaskedQueryTextNeverReachesASurface(t *testing.T) {
 
 	// A query that merely CONTAINS the placeholder is real SQL, not a mask.
 	embedded := topQueryViews([][]any{
-		{"SELECT '" + pgInsufficientPrivilege + "'", int64(1), 1.0, 1.0, int64(1), int64(0), int64(0)},
+		topQueryRow("SELECT '"+pgInsufficientPrivilege+"'", int64(1), 1.0, 1.0, int64(1), int64(0), int64(0)),
 	})
 	if embedded[0].Masked {
 		t.Errorf("embedded placeholder must not be treated as masked: %+v", embedded[0])
+	}
+}
+
+// processRow and topQueryRow pad a row's leading columns to the full width of
+// sqlProcesses and sqlTopQueries; the missing columns read as NULL.
+func processRow(cols ...any) []any  { return append(cols, make([]any, 13-len(cols))...) }
+func topQueryRow(cols ...any) []any { return append(cols, make([]any, 19-len(cols))...) }
+
+// TestProcessAndTopQueryViewsCarryRendersColumns pins w4/634: a process row
+// says where the connection came from and since when, and is the leader's only
+// on the primary of a highly available database; a top query carries its id,
+// worst and best case and every block counter Render names.
+func TestProcessAndTopQueryViewsCarryRendersColumns(t *testing.T) {
+	row := []any{int32(5), "app_user", "psql", "active", "SELECT 1", "", "", int32(3),
+		"app", "10.0.0.7", "2026-11-13T11:00:00.000000Z", "2026-11-13T11:25:00.000000Z", true}
+	got := processViews([][]any{row}, true)[0]
+	want := ProcessView{PID: 5, UserName: "app_user", ApplicationName: "psql", State: "active", Query: "SELECT 1", DurationSeconds: 3,
+		DatabaseName: "app", ClientAddr: "10.0.0.7", BackendStart: "2026-11-13T11:00:00.000000Z", QueryStart: "2026-11-13T11:25:00.000000Z", IsLeader: true}
+	if got != want {
+		t.Errorf("processViews = %+v, want %+v", got, want)
+	}
+	if processViews([][]any{row}, false)[0].IsLeader {
+		t.Error("a single instance's process reads as the leader's")
+	}
+	row[12] = false
+	if processViews([][]any{row}, true)[0].IsLeader {
+		t.Error("a standby's process reads as the leader's")
+	}
+
+	top := topQueryViews([][]any{{"SELECT $1", int64(4), 10.0, 2.5, int64(4), int64(1), int64(2),
+		"-8172635", 0.5, 6.0, 1.25, int64(3), int64(4), int64(5), int64(6), int64(7), int64(8), int64(9), int64(10)}})[0]
+	wantTop := TopQueryView{Query: "SELECT $1", Calls: 4, TotalTimeMs: 10, MeanTimeMs: 2.5, Rows: 4, SharedHitBlks: 1, SharedReadBlks: 2,
+		QueryID: "-8172635", MinTimeMs: 0.5, MaxTimeMs: 6, StddevTimeMs: 1.25, SharedDirtiedBlks: 3, SharedWrittenBlks: 4,
+		LocalHitBlks: 5, LocalReadBlks: 6, LocalDirtiedBlks: 7, LocalWrittenBlks: 8, TempReadBlks: 9, TempWrittenBlks: 10}
+	if top != wantTop {
+		t.Errorf("topQueryViews = %+v, want %+v", top, wantTop)
 	}
 }
 
@@ -785,8 +868,8 @@ func TestInsightsRedactLiterals(t *testing.T) {
 
 	// Both publishers apply it, and a redacted row is readable, not masked.
 	leak := `ALTER ROLE "dpg_x_user" WITH PASSWORD '` + verifier + `'`
-	top := topQueryViews([][]any{{leak, int64(1), 1.0, 1.0, int64(0), int64(0), int64(0)}})
-	procs := processViews([][]any{{int32(1), "postgres", "", "active", leak, "", "", int32(0)}})
+	top := topQueryViews([][]any{topQueryRow(leak, int64(1), 1.0, 1.0, int64(0), int64(0), int64(0))})
+	procs := processViews([][]any{processRow(int32(1), "postgres", "", "active", leak, "", "", int32(0))}, false)
 	for surface, got := range map[string]struct {
 		query  string
 		masked bool
@@ -834,7 +917,7 @@ func TestTopQueriesLeavesInsightsQueryIDsOut(t *testing.T) {
 		`CREATE ROLE topq_ids_customer`,
 		`CREATE TABLE public.pg_stat_statements (
 			userid oid, queryid bigint, query text, calls bigint, total_exec_time double precision,
-			mean_exec_time double precision, rows bigint, shared_blks_hit bigint, shared_blks_read bigint)`,
+			mean_exec_time double precision, rows bigint, shared_blks_hit bigint, shared_blks_read bigint,` + topQueryStandInColumns + `)`,
 	} {
 		if _, err := admin.Exec(ctx, stmt); err != nil {
 			t.Fatalf("%s: %v", stmt, err)

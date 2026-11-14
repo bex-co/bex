@@ -436,6 +436,13 @@ query DatabaseSizes($id: String!) {
       sizeBytes
       sizePretty
     }
+    indexes {
+      schema
+      table
+      name
+      sizeBytes
+      sizePretty
+    }
   }
 }
 

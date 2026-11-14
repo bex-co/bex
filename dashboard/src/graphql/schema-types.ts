@@ -1345,6 +1345,7 @@ export type DatabaseSizeInfo = {
 export type DatabaseSizes = {
   __typename: 'DatabaseSizes';
   database: Maybe<DatabaseSizeInfo>;
+  indexes: Maybe<Array<Maybe<IndexSizeInfo>>>;
   tables: Maybe<Array<Maybe<TableSizeInfo>>>;
 };
 
@@ -1698,6 +1699,15 @@ export type IncludedBandwidth = {
   __typename: 'IncludedBandwidth';
   included: Maybe<Scalars['Float']['output']>;
   used: Maybe<Scalars['Float']['output']>;
+};
+
+export type IndexSizeInfo = {
+  __typename: 'IndexSizeInfo';
+  name: Maybe<Scalars['String']['output']>;
+  schema: Maybe<Scalars['String']['output']>;
+  sizeBytes: Maybe<Scalars['Int']['output']>;
+  sizePretty: Maybe<Scalars['String']['output']>;
+  table: Maybe<Scalars['String']['output']>;
 };
 
 export type InstanceType = {
