@@ -334,10 +334,27 @@ func ResolveNativePoetry(env map[string]string) (NativeChoice, error) {
 	return NativeChoice{Label: "Poetry", Line: version, Source: "POETRY_VERSION=" + request}, nil
 }
 
-// defaultUVVersion is the uv a native Python uv project gets when the service
-// names none — Render's current default for new services (its uv version
-// contract, w8/m81).
-const defaultUVVersion = "0.12.10"
+// defaultUVVersion is Render's default uv for services created since
+// 2026-11-03 (render.com/docs/uv-version, w8/328); legacyUVVersion is its
+// default when w8/m81 shipped.
+const (
+	defaultUVVersion = "0.13.7"
+	legacyUVVersion  = "0.12.10"
+)
+
+// uvDefaultCutoff: bex applies defaultUVVersion to services created after this
+// change, not from Render's 2026-11-03, so a running service's toolchain never
+// moves under an operator upgrade (the pythonCreationCutoff pattern).
+var uvDefaultCutoff = time.Date(2026, time.November, 14, 0, 0, 0, 0, time.UTC)
+
+// uvDefault is the uv a service created at created gets without UV_VERSION. A
+// zero created (unknown) keeps the legacy default.
+func uvDefault(created time.Time) string {
+	if !created.IsZero() && !created.Before(uvDefaultCutoff) {
+		return defaultUVVersion
+	}
+	return legacyUVVersion
+}
 
 // uvRelease is an exact uv release, the form Render's UV_VERSION takes ("any
 // version number"); ranges are not resolved.
@@ -345,17 +362,17 @@ var uvRelease = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
 // ResolveNativeUV picks the uv a native Python build adds. As on Render, a
 // uv.lock in the service's root directory opts in, and UV_VERSION then picks
-// the release (else the default); without the lockfile the build is exactly
-// as before and UV_VERSION is not read (w8/m81). Like Poetry it is an exact
-// PyPI release, so Line is the version itself, and an incompatible Python
-// fails the install step by name.
-func ResolveNativeUV(env map[string]string, readFile func(string) ([]byte, bool)) (choice NativeChoice, found bool, err error) {
+// the release (else the default for a service created at created); without the
+// lockfile the build is exactly as before and UV_VERSION is not read (w8/m81).
+// Like Poetry it is an exact PyPI release, so Line is the version itself, and
+// an incompatible Python fails the install step by name.
+func ResolveNativeUV(created time.Time, env map[string]string, readFile func(string) ([]byte, bool)) (choice NativeChoice, found bool, err error) {
 	if _, locked := readFile("uv.lock"); !locked {
 		return NativeChoice{}, false, nil
 	}
 	request := strings.TrimSpace(env["UV_VERSION"])
 	if request == "" {
-		return NativeChoice{Label: "uv", Line: defaultUVVersion, Source: "uv.lock"}, true, nil
+		return NativeChoice{Label: "uv", Line: uvDefault(created), Source: "uv.lock"}, true, nil
 	}
 	version := strings.TrimPrefix(strings.ToLower(request), "v")
 	if !uvRelease.MatchString(version) {

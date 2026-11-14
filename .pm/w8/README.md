@@ -439,10 +439,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **328** — [A new Python uv project with no `UV_VERSION` builds with uv 0.12.10; Render's default for services created since 2026-11-03 is uv 0.13.7](328.md) (~30m) ← `/qa-find-bugs-cli` sweep 5cf7 2026-11-14 (bex v0.6.0), minor.
+- [x] **328** — [A new Python uv project with no `UV_VERSION` builds with uv 0.12.10; Render's default for services created since 2026-11-03 is uv 0.13.7](done/328.md) (~30m) ← `/qa-find-bugs-cli` sweep 5cf7 2026-11-14 (bex v0.6.0), minor.
   - **Render:** [uv-version](https://render.com/docs/uv-version) defaults by creation date: 0.13.7 since 2026-11-03, 0.12.24 from 2026-10-12, 0.12.10 from 2026-09-09.
   - **bex:** `defaultUVVersion = "0.12.10"` (`nativeversion.go:340`) for every service; `ResolveNativeUV` takes no creation time.
   - **Fix:** a creation-date cutoff (new services → 0.13.7, older keep 0.12.10), as `w4/620` does for the Python and Ruby defaults.
+  - **DONE 2026-11-14.** `uvDefault(created)`: services created since 2026-11-14 get 0.13.7, older keep 0.12.10. Production check owed after the operator rolls.
 
 - [x] **327** — [A Rust build that sets its toolchain logs `==> Using Rust 1 (default)` while rustup builds on the toolchain it named, and the default line names no version](done/327.md) (~30m) ← `/qa-find-bugs-cli` sweep c687 2026-11-14 (bex v0.6.0), minor.
   - **Render:** "Set the `RUSTUP_TOOLCHAIN` environment variable" or a root `rust-toolchain` file; the variable overrides the file; the default is "latest stable".

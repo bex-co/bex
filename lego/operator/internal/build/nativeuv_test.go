@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // uvProbeProject is a real uv project and its lockfile (uv 0.12, one pinned
@@ -64,10 +65,14 @@ wheels = [
 // A native Python build adds uv as Render does (w8/m81): a uv.lock in the
 // service's root directory opts in, empty or not, and UV_VERSION then picks an
 // exact release; without the lockfile nothing changes and UV_VERSION is not
-// read, even when it would be refused.
+// read, even when it would be refused. The default follows the service's
+// creation date as Render's does: defaultUVVersion since uvDefaultCutoff,
+// legacyUVVersion before it or when the age is unknown (w8/328).
 func TestResolveNativeUV(t *testing.T) {
+	newService, oldService := uvDefaultCutoff.Add(time.Hour), uvDefaultCutoff.Add(-time.Hour)
 	for _, tc := range []struct {
 		name, request    string
+		created          time.Time
 		files            map[string]string // nil: no lockfile
 		found            bool
 		version, source  string
@@ -76,8 +81,13 @@ func TestResolveNativeUV(t *testing.T) {
 		{name: "no lockfile"},
 		{name: "no lockfile ignores UV_VERSION", request: "0.11.3"},
 		{name: "no lockfile ignores an unusable UV_VERSION", request: "latest"},
-		{name: "lockfile default", files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: defaultUVVersion, source: "uv.lock"},
-		{name: "empty lockfile", files: map[string]string{"uv.lock": ""}, found: true, version: defaultUVVersion, source: "uv.lock"},
+		{name: "lockfile default, unknown age", files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: legacyUVVersion, source: "uv.lock"},
+		{name: "lockfile default, created before the cutoff", created: oldService, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: legacyUVVersion, source: "uv.lock"},
+		{name: "lockfile default, created at the cutoff", created: uvDefaultCutoff, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: defaultUVVersion, source: "uv.lock"},
+		// The literal pins Render's captured default, so the constant cannot drift silently.
+		{name: "lockfile default, new service", created: newService, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.13.7", source: "uv.lock"},
+		{name: "empty lockfile", created: newService, files: map[string]string{"uv.lock": ""}, found: true, version: defaultUVVersion, source: "uv.lock"},
+		{name: "exact override on a new service", created: newService, files: map[string]string{"uv.lock": uvProbeLock}, request: "0.12.10", found: true, version: "0.12.10", source: "UV_VERSION=0.12.10"},
 		{name: "exact override", files: map[string]string{"uv.lock": uvProbeLock}, request: "0.12.10", found: true, version: "0.12.10", source: "UV_VERSION=0.12.10"},
 		{name: "v-prefixed override", files: map[string]string{"uv.lock": uvProbeLock}, request: " v0.11.3 ", found: true, version: "0.11.3", source: "UV_VERSION=v0.11.3"},
 		{name: "range", files: map[string]string{"uv.lock": uvProbeLock}, request: ">=0.12", wantErrSubstring: "UV_VERSION=>=0.12 is not a supported uv version; set an exact uv release such as " + defaultUVVersion},
@@ -90,7 +100,7 @@ func TestResolveNativeUV(t *testing.T) {
 			if tc.request != "" {
 				env["UV_VERSION"] = tc.request
 			}
-			choice, found, err := ResolveNativeUV(env, files(tc.files))
+			choice, found, err := ResolveNativeUV(tc.created, env, files(tc.files))
 			if tc.wantErrSubstring != "" {
 				var unsupported *UnsupportedVersionError
 				if !errors.As(err, &unsupported) || !strings.Contains(err.Error(), tc.wantErrSubstring) || found {
@@ -106,8 +116,8 @@ func TestResolveNativeUV(t *testing.T) {
 			}
 		})
 	}
-	choice, _, _ := ResolveNativeUV(nil, func(string) ([]byte, bool) { return nil, true })
-	if got := choice.Narration(); got != "==> Using uv "+defaultUVVersion+" (from uv.lock)" {
+	choice, _, _ := ResolveNativeUV(newService, nil, func(string) ([]byte, bool) { return nil, true })
+	if got := choice.Narration(); got != "==> Using uv 0.13.7 (from uv.lock)" {
 		t.Errorf("narration = %q", got)
 	}
 }
@@ -219,7 +229,7 @@ func TestNativeImageRunsUV(t *testing.T) {
 		bun                 bool
 	}{
 		{"override-with-bun", "0.11.3", "0.11.3", true},
-		{"default", "", defaultUVVersion, false},
+		{"default", "", legacyUVVersion, false}, // ResolveNativeBuild knows no creation time
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			o := nativeOptions()

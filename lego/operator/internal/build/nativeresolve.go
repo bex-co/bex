@@ -66,7 +66,8 @@ func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) (
 }
 
 // ResolveNativeBuildAt is ResolveNativeBuild for a service created at created,
-// whose creation date picks the default Python line (w8/174).
+// whose creation date picks the default Python line (w8/174) and uv's default
+// (w8/328).
 func ResolveNativeBuildAt(created time.Time, runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
 	return ResolveNativeBuildExact(context.Background(), NewDockerHubResolver(), created, runtime, bundlePath, dockerfilePath, sourceDir)
 }
@@ -111,7 +112,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		if err != nil {
 			return nil, err
 		}
-		uv, withUV, err := ResolveNativeUV(env, readFile)
+		uv, withUV, err := ResolveNativeUV(created, env, readFile)
 		if err != nil {
 			return nil, err
 		}
