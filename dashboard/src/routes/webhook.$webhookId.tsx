@@ -6,10 +6,10 @@ import { WebhookDetailShellSkeleton } from "@/common/components/route-skeletons"
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { WebhookDetailContext } from "@/features/webhooks/components/webhook-detail-context";
 import { WebhookDetailHeader } from "@/features/webhooks/components/webhook-detail-header";
 import { useWebhook } from "@/features/webhooks/hooks/use-webhook";
-import { useWebhookCreator } from "@/features/webhooks/hooks/use-webhook-creator";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { WebhookEndpointDocument } from "@/graphql/definitions";
 import {
@@ -78,7 +78,7 @@ function WebhookDetailShell() {
     detail.endpoint?.ownerId,
   );
   const endpoint = adopting ? null : detail.endpoint;
-  const creatorIdentity = useWebhookCreator(endpoint?.createdBy ?? "");
+  const creatorIdentity = useWorkspaceSubjectLabel(endpoint?.createdBy ?? "");
 
   // A dead id redirects home (w9/m55); a failed query stays put on the inline
   // error state below. `useWebhook` owns that split — a not-found is REPORTED
