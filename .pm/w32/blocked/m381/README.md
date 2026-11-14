@@ -1,19 +1,19 @@
 # w32 · m381 — A command keeps its sandbox awake until it finishes, even after the client disconnects, as on Render
 
-**Worker:** worker32 **Goal:** a command started in a sandbox (CLI `sandboxes exec`, the Render SDK's `exec`, REST, the connect-token run path or MCP `sandbox_exec`) keeps the sandbox active for as long as it runs, whether or not its client is still connected. The sandbox's execution history shows the command as running until it exits, then records its exit code. **Status:** todo
+**Worker:** worker32 **Goal:** a command started in a sandbox (CLI `sandboxes exec`, the Render SDK's `exec`, REST, the connect-token run path or MCP `sandbox_exec`) keeps the sandbox active for as long as it runs, whether or not its client is still connected. The sandbox's execution history shows the command as running until it exits, then records its exit code. **Status:** blocked (t001–t004, t007, t008 done; t005 waits on the production deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design: how bex knows a command is still in progress without its client | 45m | — |
-| t002 | The idle sweeper does not suspend a sandbox while a command it started is running; the idle window runs from that command's end | 2h | t001 |
-| t003 | Execution history: a command whose client left stays running in the history until it exits, then carries its exit code | 1.5h | t001 |
-| t004 | Blast radius: the gateway's 4 h session cap, bex-api and ssh-gateway restarts, MCP's buffered exec, file transfers, agent-session sandboxes | 30m | t002, t003 |
+| t001 | Design: how bex knows a command is still in progress without its client — **DONE** | 45m | — |
+| t002 | The idle sweeper does not suspend a sandbox while a command it started is running; the idle window runs from that command's end — **DONE** | 2h | t001 |
+| t003 | Execution history: a command whose client left stays running in the history until it exits, then carries its exit code — **DONE** | 1.5h | t001 |
+| t004 | Blast radius: the gateway's 4 h session cap, bex-api and ssh-gateway restarts, MCP's buffered exec, file transfers, agent-session sandboxes — **DONE** | 30m | t002, t003 |
 | t005 | Production walk with the release CLI | 45m | t002, t003, t004 |
 | t006 | Render parity | 20m | t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t006 |
+| t007 | Simplify — **DONE** | 15m | t006 |
+| t008 | Test coverage — **DONE** | 30m | t006 |
 | t009 | Closeout | 10m | t007, t008 |
 
 ## Definition of done
@@ -29,7 +29,7 @@ On production, with the released `bex` CLI against a new sandbox in `bex-canary`
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep d91f, 2026-11-13, in `bex-canary` (`tea-daif693dqjvc73e7as3g`), with release `bex` v0.5.0 (Render CLI v2.35.0 pin) against `https://api.bex.co/v1/`, human device login, production pin `8acf1d116941`. The evidence is below.
-- **Goal linkage:** pillar 5 sandboxes and [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first). Agents and CI jobs start long commands and stop watching them. The Render SDK times out on 45 s of silence (w32/m284), and laptops sleep.
+- **Goal linkage:** pillar 5 sandboxes and [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first). Agents and CI jobs start long commands and stop watching them. The Render SDK times out on 45 s of silence (w32/m284), and laptops sleep.
 - **Expected outcome:** a long command survives its client going away, as Render documents. An agent or CI job no longer loses work because a stream dropped.
 - **Why now:** this is silent data loss in the most basic sandbox workflow. The process is killed and its output is never written, with no error anywhere, and the execution history says it stopped at the disconnect. w2/m322 (memory and processes across a suspension) would not fix it: Render does not suspend a sandbox with a command in progress at all, so a suspended command stalls even where memory survives.
 - **Render parity:** included. The change alters idle suspension for REST, the connect-token run path and MCP exec (GraphQL has no exec), and the execution history on REST, GraphQL and MCP. The dashboard has no sandbox exec surface.
@@ -90,3 +90,28 @@ connected-ok
 
 - Render's execution-history behavior for a disconnected command (`stoppedAt`/`exitCode` while it runs) is not documented. The DoD's history bullet follows from "does not stop an executing command".
 - How Render treats a command still running when the sandbox's own runtime timeout expires. It is out of scope here: the sandbox ends as it does today.
+
+## Blast radius — t004 (2026-11-14)
+
+Every way a command's stream can end before the command does is handled the same way: the stream ends without the command's exit, its record stays open, and the registry answers for it.
+
+| Case | Outcome after the change | Evidence |
+| --- | --- | --- |
+| The client leaves (Ctrl-C, SIGTERM, a dropped connection) | The command keeps the sandbox awake until it ends; the record closes at its own exit with its exit code | `TestADisconnectedCommandKeepsItsSandboxAwakeUntilItEnds`, `TestAStreamWithoutTheCommandsExitLeavesItsRecordOpen` |
+| The gateway's 4 h exec session cap (`sandboxsse.go:126`) ends a connected stream | Same as a disconnect: the stream ends without an exit, the command runs on and is registered | The wrapper does not depend on the stream; the cap is unchanged |
+| A bex-api rollout cuts the stream | `StreamExec`'s deferred stop never runs, so the record goes stale; the sweeper (open record) and history reads (stale record) probe the registry | `closeStaleExecutions`, `commandsKeepAwake` |
+| An ssh-gateway rollout cuts the stream | bex-api sees the stream end without an exit, as on a disconnect | same path |
+| MCP `sandbox_exec` stops reading at 2 MiB | `ExecBuffered` leaves the record open when the output is truncated; the command runs on and is registered | `exec.go` `ExecBuffered` |
+| File transfers | Unchanged. A transfer whose client leaves is aborted: the upload's `tar -x` reads EOF and its stage is removed, and the download's `tar -c` or `cat` fails on its closed pipe. Its record still closes when the request ends (`file_connect.go`) | m380's transfer tests; no registry entry |
+| Agent-session sandboxes | Unchanged: they never idle-suspend, and their commands run through `execShell` without a registry path | `execArgv(command, "", false)`; `TestAgentSessionSandboxesAreNotIdleManaged` |
+| Sandboxes created before the change | The wrapper travels in each exec's argv, so every command started after the deploy is registered in any sandbox. A command started before it behaves as before | `execArgv` |
+| A read-only root filesystem (an imported image) | `mkdir -p /run/bex-exec` fails, so the command runs unregistered, as before | `TestARegistryThatCannotBeMadeStillRunsTheCommand` |
+| A sandbox suspended or terminated while a disconnected command runs | Not probed: its commands died with it, so open records end at their last refresh (history read) or at termination (`StopOpenSandboxExecutions`), as before | `TestASuspendedSandboxsStaleRecordsEndAtTheirLastRefresh` |
+
+Nothing is left uncovered, so no follow-up is filed. The runtime timeout still ends a sandbox with a command running, which the milestone puts out of scope.
+
+## Parked 2026-11-14 (`/loopx w32`): t005 waits on the production deploy
+
+- **Shipped:** `882818b95` (the command registry, the sweeper and history reconciliation, the probe subject, ADR014 D4).
+- **Gate:** production deploys are batched: `deploy.yml` deploys a push, or the hourly schedule once the pin is 6 h old. No user decision is needed. Once `git merge-base --is-ancestor 882818b95 <pinned sha>` holds, a worker runs the acceptance walk below with the released CLI in `bex-canary`.
+- **ADR104 and ADR018:** their rows read 🚧 w32/m381 t005 until the walk passes; t006 flips them.
