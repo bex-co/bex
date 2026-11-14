@@ -28,8 +28,12 @@ function applyHook(
   return res;
 }
 
-describe("the /assets/** miss handler", () => {
+describe("the asset-directory miss handler", () => {
   it.each([
+    "/_assets/qa-missing-chunk-Xy12Ab.js",
+    "/_assets/qa-missing.css",
+    "/_assets/nope/qa.js",
+    "/_assets",
     "/assets/qa-missing.css",
     "/assets/nope/qa.js",
     "/assets/",
@@ -43,7 +47,7 @@ describe("the /assets/** miss handler", () => {
     expect(await res.text()).not.toMatch(/<html|<script/i);
   });
 
-  it.each(["/services", "/assetsx/a.css"])(
+  it.each(["/services", "/assetsx/a.css", "/_assetsx/a.js", "/static/srv-1"])(
     "leaves %s to the renderer",
     (path) => {
       expect(assetsMiss(middlewareEvent(path))).toBeUndefined();
@@ -80,18 +84,21 @@ describe("the response hook", () => {
     expect(res.headers.get("cache-control")).toBe("private, no-cache");
   });
 
-  it("forces no-store on a missing /assets/** file, whatever the route rule set", () => {
-    const res = applyHook("/assets/missing.js", "Not found", {
-      status: 404,
-      headers: { "content-type": "text/plain", "cache-control": immutable },
-    });
-    expect(res.headers.get("cache-control")).toBe("no-store");
-  });
+  it.each(["/_assets/missing.js", "/assets/missing.js"])(
+    "forces no-store on a missing asset (%s), whatever the route rule set",
+    (path) => {
+      const res = applyHook(path, "Not found", {
+        status: 404,
+        headers: { "content-type": "text/plain", "cache-control": immutable },
+      });
+      expect(res.headers.get("cache-control")).toBe("no-store");
+    },
+  );
 
   it.each([
     [
       "a real build file",
-      "/assets/index-abc123.js",
+      "/_assets/index-abc123.js",
       "text/javascript; charset=utf-8",
       immutable,
     ],

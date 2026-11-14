@@ -93,8 +93,8 @@ describe("route error retry after a bundle update", () => {
   });
 
   it.each([
-    "Failed to fetch dynamically imported module: https://dashboard.bex.co/assets/project-sidebar-D2ai0shz.js",
-    "error loading dynamically imported module: https://dashboard.bex.co/assets/project-sidebar-D2ai0shz.js",
+    "Failed to fetch dynamically imported module: https://dashboard.bex.co/_assets/project-sidebar-D2ai0shz.js",
+    "error loading dynamically imported module: https://dashboard.bex.co/_assets/project-sidebar-D2ai0shz.js",
     "Importing a module script failed.",
   ])("reloads the document once for %s", async (message) => {
     const { beforeLoad, router } = renderFailing(new TypeError(message));
@@ -108,7 +108,8 @@ describe("route error retry after a bundle update", () => {
   });
 
   it("does the same from the root route's error registration", async () => {
-    const message = "Failed to fetch dynamically imported module: /assets/x.js";
+    const message =
+      "Failed to fetch dynamically imported module: /_assets/x.js";
     renderFailing(new TypeError(message), true);
     expect(await screen.findByText(message)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));

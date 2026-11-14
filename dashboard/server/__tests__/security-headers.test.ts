@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { ASSETS_DIR } from "../assets-paths";
+import assetsMiss from "../middleware/assets-miss";
 import { buildRouteRules, buildSecurityHeaders } from "../security-headers";
+
+const missStatus = (path: string) =>
+  assetsMiss({ url: new URL(`https://dashboard.bex.co${path}`) })?.status;
 
 function directive(headers: Record<string, string>, name: string): string {
   const csp = headers["Content-Security-Policy"] ?? "";
@@ -57,9 +62,10 @@ describe("buildRouteRules", () => {
   });
 
   it("caches hashed assets and keeps the association documents' own policy", () => {
-    expect(rules["/assets/**"].headers["Cache-Control"]).toBe(
+    expect(rules[`/${ASSETS_DIR}/**`].headers["Cache-Control"]).toBe(
       "public, max-age=31536000, immutable",
     );
+    expect(rules[`/${ASSETS_DIR}/**`].headers["X-Frame-Options"]).toBe("DENY");
     for (const path of [
       "/.well-known/apple-app-site-association",
       "/.well-known/assetlinks.json",
@@ -70,5 +76,27 @@ describe("buildRouteRules", () => {
       );
       expect(rules[path].headers["X-Content-Type-Options"]).toBe("nosniff");
     }
+  });
+
+  // w4/m348: a route rule's headers land on whatever answers the path, so an
+  // immutable rule over a path whose miss falls through to the SSR shell
+  // caches HTML under a script URL for a year. Each immutable path needs the
+  // 404 no-store miss middleware (scripts/check-built-server.mjs checks the
+  // build).
+  it("puts immutable only on paths whose misses answer 404", () => {
+    const immutable = Object.entries(rules)
+      .filter(([, rule]) =>
+        rule.headers["Cache-Control"]?.includes("immutable"),
+      )
+      .map(([path]) => path);
+    expect(immutable).toEqual([`/${ASSETS_DIR}/**`]);
+    for (const path of immutable) {
+      expect(missStatus(path.replace("/**", "/missing-Xy12Ab.js"))).toBe(404);
+    }
+  });
+
+  it("answers the retired asset directory as a miss", () => {
+    expect(missStatus("/assets/vendor-react-v-sG7it2.js")).toBe(404);
+    expect(rules["/assets/**"]).toBeUndefined();
   });
 });

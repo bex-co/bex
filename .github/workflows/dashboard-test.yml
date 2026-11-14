@@ -139,3 +139,8 @@ jobs:
       - name: production build
         working-directory: dashboard
         run: yarn build
+      # The built server's cache contract (w4/m348): a missing asset answers
+      # 404 no-store, never the HTML shell under an immutable header.
+      - name: built server serving contract
+        working-directory: dashboard
+        run: yarn test:built-server

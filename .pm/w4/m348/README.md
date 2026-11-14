@@ -1,16 +1,16 @@
 # w4 · m348 — A dashboard deploy can cache the HTML shell under a JavaScript chunk's URL for a year, in Cloudflare and in the browser, so service pages fail with "Something went wrong" and neither Try again nor a reload recovers them
 
-**Worker:** worker4 **Goal:** a dashboard rollout never leaves a browser or the edge holding HTML for a script URL. A request for an asset that doesn't exist answers 404 and is never cached, a real asset stays immutable, and a page that hit a version mismatch recovers on Try again. **Status:** todo
+**Worker:** worker4 **Goal:** a dashboard rollout never leaves a browser or the edge holding HTML for a script URL. A request for an asset that doesn't exist answers 404 and is never cached, a real asset stays immutable, and a page that hit a version mismatch recovers on Try again. **Status:** todo (t001–t005 done; t006 production replay pending)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | A missing `/assets/*` file answers 404 with `Cache-Control: no-store`, never the HTML shell or the immutable header — **shipped with [w21/m394 t004](../../w21/m394/done/t004.md) (2026-11-14; its built-bundle check covers the missing-file, real-chunk, page and association-document acceptance criteria)** | 45m | — |
-| [t002](t002.md) | A rollout's overlap serves both builds' assets, or fails only once and recovers | 45m | t001 |
-| [t003](t003.md) | Move every asset URL once, so browsers that already cached HTML under a chunk URL stop using it | 20m | t001 |
-| [t004](t004.md) | Simplify | 15m | t002, t003 |
-| [t005](t005.md) | Test coverage | 30m | t002, t003 |
+| [t001](done/t001.md) | A missing `/assets/*` file answers 404 with `Cache-Control: no-store`, never the HTML shell or the immutable header — **DONE** (shipped by 9484c8339 with [w21/m394 t004](../../w21/m394/done/t004.md), 2026-11-14; its built-bundle check covers the missing-file, real-chunk, page and association-document criteria. This milestone extended it to `/_assets/`) | 45m | — |
+| [t002](done/t002.md) | A rollout's overlap serves both builds' assets, or fails only once and recovers — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Move every asset URL once, so browsers that already cached HTML under a chunk URL stop using it — **DONE** | 20m | t001 |
+| [t004](done/t004.md) | Simplify — **DONE** | 15m | t002, t003 |
+| [t005](done/t005.md) | Test coverage — **DONE** | 30m | t002, t003 |
 | [t006](t006.md) | Closeout (live replay on production) | 30m | t004, t005 |
 
 ## Definition of done
@@ -27,6 +27,20 @@ All on production:
 4. **Through a rollout.** During the next dashboard rollout, a browser that keeps its cache loads `/services/<id>/settings` every 5 s from before the new pod is Ready until the old pod is gone. Either no load ends on "Something went wrong", or every one that does recovers on Try again.
    - Afterwards, for every script the page loads, `fetch(url)` with the default cache answers `text/javascript`.
 5. **Fixtures.** Any fixture service is deleted.
+
+## Implementation (2026-11-14, t001–t005)
+
+- **Asset directory moved once:** build files are served from `/_assets/` (`ASSETS_DIR`, `dashboard/server/assets-paths.ts`). The DoD's `/assets/...` probes still apply: every path there now answers `404 no-store`. Probe `/_assets/qa-missing-<ts>.js` as well. The live `index-*` and its chunks are under `/_assets/`.
+- **Miss handling (t001):** shipped by 9484c8339 (w21/m394 t004). Its global middleware `dashboard/server/middleware/assets-miss.ts` answers every miss with `404`, `no-store`, `nosniff` and a `text/plain` body, before the SSR renderer. This milestone extended `isAssetsPath` to cover `/_assets/` as well as `/assets/`. A real file keeps `public, max-age=31536000, immutable`.
+- **No Cloudflare purge:** the deploy token is DNS-only (`.github/workflows/deploy.yml:702-706`). HTML copies stored under `/assets/` URLs, at the edge or in a browser, are never requested again, because no page names those URLs any more.
+- **Tests:** `yarn build && yarn test:built-server` (`dashboard/scripts/check-built-server.mjs`, run in `dashboard-test.yml`) plus two unit suites. `server/__tests__/security-headers.test.ts` checks that every immutable route rule covers a path the miss middleware answers with 404. `server/__tests__/assets-cache-guard.test.ts` covers both directories.
+
+### Rollout overlap decision (t002): (c)
+
+- **Chosen:** (c). t001 keeps every miss out of every cache, so a document that meets a version mismatch recovers: TanStack's `lazyRouteComponent` reloads the document once by itself on a missing module, and otherwise w4/269's Try again does it.
+- **Why not (a):** shipping the previous release's `assets/` in the new image only covers an old document reaching the new pod. A new document whose chunk request reaches the old pod still misses, because the old pod can never hold the new build's chunks. So (a) can't deliver "no error at all". It would also make every image build depend on the last-pushed `:latest`, which is not always the live build, and need generation pruning.
+- **Why not (b):** an object-store asset origin would solve both directions, but it is a new serving path (bucket, CDN rule, upload step in `deploy.yml`) for an overlap that lasts a few seconds per deploy.
+- **What's left:** while both pods serve, each request is load-balanced separately. A full load in that window can end on "Something went wrong", and so can a Try again inside the window. Once the old pod is gone, Try again recovers. The local two-version replay is in [t002](done/t002.md).
 
 ## Source + Goal linkage
 

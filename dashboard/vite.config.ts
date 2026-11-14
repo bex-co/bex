@@ -10,6 +10,7 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 import { visualizer } from "rollup-plugin-visualizer";
+import { ASSETS_DIR } from "./server/assets-paths";
 import {
   buildRouteRules,
   buildSecurityHeaders,
@@ -394,7 +395,8 @@ export default defineConfig(({ mode }) => {
         // Global, not a `/assets/**` route: nitro-nightly 3.0.1-20260310
         // passes a routed middleware's `{ route, handler }` record to h3 as the
         // function, so every matching request answers 500. The handler returns
-        // undefined for any path outside `/assets`.
+        // undefined for any path outside the asset directories
+        // (`isAssetsPath`: `/_assets` and the retired `/assets`).
         handlers: [
           {
             route: "/**",
@@ -423,9 +425,9 @@ export default defineConfig(({ mode }) => {
       noExternal: ["@ory/elements-react"],
     },
     build: {
-      assetsDir: "assets",
+      assetsDir: ASSETS_DIR,
       // No public sourcemaps (w9/m60 t005): the old `sourcemap: true` shipped
-      // `.map` files into `.output/public/assets`, exposing readable source and
+      // `.map` files into the public asset directory, exposing readable source and
       // adding weight. `"hidden"` would still emit those files; the dashboard
       // has no error-tracker map upload to justify keeping them, so `false`
       // ships none. Debug prod stack traces against the committed source / a

@@ -1,6 +1,8 @@
 // The SSR security headers, built once from the Vite config's env
 // (vite.config.ts) and kept here so the policy is testable.
 
+import { ASSETS_DIR } from "./assets-paths";
+
 // The production attachments bucket endpoint (ADR095); override with
 // VITE_AGENT_ATTACHMENTS_ORIGIN for another store.
 export const DEFAULT_ATTACHMENTS_ORIGIN =
@@ -66,7 +68,8 @@ export function buildSecurityHeaders(
  * policy. Pages are server-rendered for the signed-in user, so they are
  * `private, no-cache` — no shared cache keeps them, and the browser revalidates
  * every load (w4/526; `no-store` would also keep them out of the back/forward
- * cache). Hashed build assets never change, so they are immutable. The two
+ * cache). Hashed build assets never change, so they are immutable; a miss
+ * answers 404 `no-store` (`middleware/assets-miss.ts`). The two
  * app-association documents keep their short public lifetime.
  */
 export function buildRouteRules(
@@ -81,7 +84,7 @@ export function buildRouteRules(
     "/**": {
       headers: { ...securityHeaders, "Cache-Control": "private, no-cache" },
     },
-    "/assets/**": {
+    [`/${ASSETS_DIR}/**`]: {
       headers: {
         ...securityHeaders,
         "Cache-Control": "public, max-age=31536000, immutable",
