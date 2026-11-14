@@ -591,6 +591,59 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
   },
+  "workspaces.overlappingDeployPolicyTitle": {
+    message: "Overlapping Deploy Policy",
+    description:
+      "Workspace Settings section title, Render's name for the setting (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyDescription": {
+    message:
+      "Choose what happens when a service's deploy is triggered while another deploy of it is in progress.",
+    description:
+      "Workspace Settings → Overlapping Deploy Policy description (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyWait": {
+    message: "Wait",
+    description: "The Wait policy's label, Render's wording (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyWaitDescription": {
+    message:
+      "Allow the in-progress deploy to finish, then proceed directly to the most recently triggered deploy.",
+    description:
+      "The Wait policy's sentence, Render's wording (render.com/docs/deploys, w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyOverride": {
+    message: "Override",
+    description: "The Override policy's label, Render's wording (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyOverrideDescription": {
+    message: "Immediately cancel the in-progress deploy and start the new one.",
+    description:
+      "The Override policy's sentence, Render's wording (render.com/docs/deploys, w4/653)",
+  },
+  "workspaces.overlappingDeployPolicySave": {
+    message: "Save",
+    description: "Saves the selected Overlapping Deploy Policy (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicySaving": {
+    message: "Saving…",
+    description: "The Save button while the policy saves (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicySaved": {
+    message: "Overlapping deploy policy saved",
+    description:
+      "Toast after setWorkspaceOverlappingDeployPolicy succeeds (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyError": {
+    message: "Couldn't save the overlapping deploy policy. Please try again.",
+    description:
+      "Fallback toast when a policy save fails without a server reason (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyAdminOnly": {
+    message: "Only workspace Admins can change this policy.",
+    description:
+      "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
+  },
 };
 
 export default enWorkspaces;

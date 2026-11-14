@@ -3,6 +3,7 @@ import {
   Bot,
   Hammer,
   KeyRound,
+  Layers,
   Network,
   ScrollText,
   Settings2,
@@ -46,6 +47,11 @@ export function WorkspaceSettingsNavigation({
           },
         ]
       : []),
+    {
+      href: "#overlapping-deploy-policy",
+      label: t("workspaces.overlappingDeployPolicyTitle"),
+      icon: Layers,
+    },
     {
       href: "#inbound-ip-rules",
       label: t("workspaces.ipRulesTitle"),

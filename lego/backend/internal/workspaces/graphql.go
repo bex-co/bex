@@ -75,6 +75,17 @@ func (s *Service) workspaceType() *graphql.Object {
 						return views[0].IPAllowList, nil
 					},
 				},
+				// overlappingDeployPolicy is the workspace's Overlapping Deploy
+				// Policy (w4/653), "wait" or "override": Render's Workspace
+				// Settings section of that name. Read only when selected; the
+				// coded 403 for a member the workspace's 2FA requirement blocks.
+				"overlappingDeployPolicy": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.String),
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						w, _ := p.Source.(WorkspaceView)
+						return s.overlappingDeployPolicy(p.Context, w)
+					},
+				},
 			},
 		})
 	})
@@ -267,6 +278,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetRequireTwoFactor(p.Context, p.Args["workspaceId"].(string), p.Args["enabled"].(bool))
+			},
+		},
+		// setWorkspaceOverlappingDeployPolicy sets the workspace's Overlapping
+		// Deploy Policy (w4/653), "wait" or "override": Admin only.
+		// GraphQL-only: Render's public API and MCP have no such operation.
+		"setWorkspaceOverlappingDeployPolicy": &graphql.Field{
+			Type: s.workspaceType(),
+			Args: graphql.FieldConfigArgument{
+				"id":     gqlutil.ReqArg(graphql.String),
+				"policy": gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetOverlappingDeployPolicy(p.Context, p.Args["id"].(string), p.Args["policy"].(string))
 			},
 		},
 		// setPipelineSpendLimit sets the workspace's monthly pipeline spend

@@ -12,6 +12,8 @@ import { WorkspaceTwoFactorCard } from "@/features/workspaces/components/workspa
 import { WorkspaceTwoFactorCardSkeleton } from "@/features/workspaces/components/workspace-two-factor-card-skeleton";
 import { BuildPipelineCard } from "@/features/usage/components/build-pipeline-card";
 import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
+import { OverlappingDeployPolicyCard } from "@/features/workspaces/components/overlapping-deploy-policy-card";
+import { OverlappingDeployPolicyCardSkeleton } from "@/features/workspaces/components/overlapping-deploy-policy-card-skeleton";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-workspace-card";
 import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/workspace-settings-navigation";
@@ -129,6 +131,9 @@ function WorkspaceSettingsPage() {
                     <BuildPipelineCardSkeleton />
                   </section>
                 ) : null}
+                <section data-skeleton-region="overlapping-deploy-policy">
+                  <OverlappingDeployPolicyCardSkeleton />
+                </section>
                 <section data-skeleton-region="inbound-ip-rules">
                   <WorkspaceIPRulesCardSkeleton />
                 </section>
@@ -191,6 +196,17 @@ function WorkspaceSettingsPage() {
                     <BuildPipelineCard workspaceId={currentWorkspace.id} />
                   </section>
                 ) : null}
+                {/* Workspace Settings → Overlapping Deploy Policy (w4/653),
+                    after Build Pipeline as on Render: every member reads it
+                    and Admins change it. */}
+                <section
+                  id="overlapping-deploy-policy"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
+                  <OverlappingDeployPolicyCard
+                    workspaceId={currentWorkspace.id}
+                  />
+                </section>
                 {/* Workspace Settings → Inbound IP Rules (w9/m388): Render's
                     workspace-level rules (Scale and Enterprise), every member
                     reads them and Admins edit them. */}

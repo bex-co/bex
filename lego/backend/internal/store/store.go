@@ -520,11 +520,15 @@ type DesiredApp struct {
 	SourceRevision int64
 	// Disk is the service's live disk, nil when it has none. The projector
 	// turns it into spec.disk; clearing it detaches the volume.
-	Disk          *Disk
-	TenantName    string
-	PrimaryHost   string
-	Hosts         []string
-	HostRedirects map[string]string
+	Disk       *Disk
+	TenantName string
+	// OverlappingDeployPolicy is the workspace's (w4/653): OverlapWait or
+	// OverlapOverride. The projector labels an Override App so the operator
+	// holds no release in flight for it.
+	OverlappingDeployPolicy string
+	PrimaryHost             string
+	Hosts                   []string
+	HostRedirects           map[string]string
 	// EnvironmentIPAllowList is the member's environment inbound-IP layer
 	// (w4/m28), projected from the environments row at read time (the
 	// EnvironmentLayerCIDRs shape member CRs carry) so a projector-created CR
@@ -1814,7 +1818,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	// projector (re)creates, keeping the fallback-create path consistent with
 	// the environments fan-out.
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+appColumns+`, t.name, e.ip_allow_list, a.source_revision FROM apps a JOIN tenants t ON t.id = a.tenant_id
+		`SELECT `+appColumns+`, t.name, e.ip_allow_list, a.source_revision, t.overlapping_deploy_policy FROM apps a JOIN tenants t ON t.id = a.tenant_id
 		 LEFT JOIN environments e ON e.id = a.environment_id ORDER BY a.created_at`)
 	if err != nil {
 		return nil, err
@@ -1828,7 +1832,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
 			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.DisplayName,
-			&d.BuildSourceID, &d.BuildSourceImage, &d.ScopeProjectID, &d.ObjectName, &d.TenantName, &envRules, &d.SourceRevision)
+			&d.BuildSourceID, &d.BuildSourceImage, &d.ScopeProjectID, &d.ObjectName, &d.TenantName, &envRules, &d.SourceRevision, &d.OverlappingDeployPolicy)
 		if err != nil {
 			return nil, err
 		}
@@ -2584,8 +2588,9 @@ type DeferredRequest struct {
 // (w4/652). d names the app, trigger, caller, and the image and rollback
 // target the row shows while it waits; req is what runs. It replaces the
 // latest-pending row like any newer trigger and changes no App CR: its release
-// is opened when it runs. deferred=false (no row) means nothing is in flight
-// and the caller deploys at once.
+// is opened when it runs. deferred=false (no row) means nothing is in flight,
+// or the workspace's policy is Override (w4/653), and the caller deploys at
+// once.
 func (s *PGStore) CreateDeferredDeploy(ctx context.Context, d Deploy, req DeferredRequest) (_ Deploy, deferred bool, err error) {
 	d.ID, d.Generation, d.Status, d.OverlapPending, d.Deferred = ids.New(ids.Deploy), 0, DeployQueued, true, true
 	d.ClearCache = req.ClearCache == "clear"
@@ -2601,7 +2606,7 @@ func (s *PGStore) CreateDeferredDeploy(ctx context.Context, d Deploy, req Deferr
 			return err
 		}
 		var err error
-		if deferred, err = appHasActiveDeploy(ctx, tx, d.AppID); err != nil || !deferred {
+		if deferred, err = appWaitsForActiveDeploy(ctx, tx, d.AppID); err != nil || !deferred {
 			return err
 		}
 		if err := cancelPendingDeploys(ctx, tx, d.AppID, replaced); err != nil {
@@ -2802,14 +2807,61 @@ func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generatio
 	if err := cancelPendingDeploys(ctx, tx, appID, replacedReason); err != nil {
 		return "", "", err
 	}
-	active, err := appHasActiveDeploy(ctx, tx, appID)
+	waits, err := appWaitsForActiveDeploy(ctx, tx, appID)
+	if err != nil || waits {
+		return DeployQueued, "", err
+	}
+	// Under Override the deploy in progress ends here, as the new one starts;
+	// the operator replaces its release (w4/653).
+	return DeployCreated, "", cancelOpenDeploys(ctx, tx, appID, replacedReason, false)
+}
+
+// Render's two Overlapping Deploy Policy values (w4/653), tenants'
+// overlapping_deploy_policy.
+const (
+	// OverlapWait lets the deploy in progress finish, then runs the most
+	// recently triggered one: Render's default for workspaces created on or
+	// after 2025-07-14, and so every bex workspace's.
+	OverlapWait = "wait"
+	// OverlapOverride cancels the deploy in progress and starts the new one.
+	OverlapOverride = "override"
+)
+
+// appWaitsForActiveDeploy reports that a new deploy of appID must wait: a
+// deploy is executing and the app's workspace keeps Render's Wait. Under
+// Override nothing waits: the deploy in progress is canceled and the new one
+// starts at once (w4/653).
+func appWaitsForActiveDeploy(ctx context.Context, tx pgx.Tx, appID string) (bool, error) {
+	var waits bool
+	err := tx.QueryRow(ctx,
+		`SELECT t.overlapping_deploy_policy = $3 AND EXISTS (
+			SELECT 1 FROM deploys d WHERE d.app_id = a.id AND d.status = ANY($2) AND NOT d.overlap_pending)
+		 FROM apps a JOIN tenants t ON t.id = a.tenant_id WHERE a.id = $1`,
+		appID, openDeployStatuses, OverlapWait).Scan(&waits)
+	return waits, err
+}
+
+// SetOverlappingDeployPolicy sets workspaceID's Overlapping Deploy Policy
+// (w4/653), OverlapWait or OverlapOverride.
+func (s *PGStore) SetOverlappingDeployPolicy(ctx context.Context, workspaceID, policy string) error {
+	tag, err := s.Pool.Exec(ctx, `UPDATE tenants SET overlapping_deploy_policy = $2, updated_at = now() WHERE id = $1`, workspaceID, policy)
 	if err != nil {
-		return "", "", err
+		return classify("workspace", err)
 	}
-	if active {
-		return DeployQueued, "", nil
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("workspace: %w", ErrNotFound)
 	}
-	return DeployCreated, "", nil
+	return nil
+}
+
+// OverlappingDeployPolicy is workspaceID's Overlapping Deploy Policy (w4/653).
+func (s *PGStore) OverlappingDeployPolicy(ctx context.Context, workspaceID string) (string, error) {
+	var policy string
+	err := s.Pool.QueryRow(ctx, `SELECT overlapping_deploy_policy FROM tenants WHERE id = $1`, workspaceID).Scan(&policy)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("workspace: %w", ErrNotFound)
+	}
+	return policy, err
 }
 
 // cancelPendingDeploys coalesces overlapping triggers into one latest-pending
@@ -2817,6 +2869,12 @@ func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generatio
 // and insert in one App-row-locked transaction makes concurrent triggers
 // deterministic.
 func cancelPendingDeploys(ctx context.Context, tx pgx.Tx, appID, cancelReason string) error {
+	return cancelOpenDeploys(ctx, tx, appID, cancelReason, true)
+}
+
+// cancelOpenDeploys closes appID's latest-pending row (pending), or the deploy
+// executing, with cancelReason.
+func cancelOpenDeploys(ctx context.Context, tx pgx.Tx, appID, cancelReason string, pending bool) error {
 	_, err := tx.Exec(ctx,
 		`UPDATE deploys
 		 SET status = $2,
@@ -2828,8 +2886,8 @@ func cancelPendingDeploys(ctx context.Context, tx pgx.Tx, appID, cancelReason st
 		     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()),
 		     finished_at = clock_timestamp(),
 		     overlap_pending = false
-		 WHERE app_id = $1 AND status = $3 AND overlap_pending`,
-		appID, DeployCanceled, DeployQueued, cancelReason, PreDeployRunning, PreDeployCanceled)
+		 WHERE app_id = $1 AND status = ANY($3) AND overlap_pending = $7`,
+		appID, DeployCanceled, openDeployStatuses, cancelReason, PreDeployRunning, PreDeployCanceled, pending)
 	return err
 }
 

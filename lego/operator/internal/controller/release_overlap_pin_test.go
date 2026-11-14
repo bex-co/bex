@@ -172,6 +172,11 @@ func TestImageReleaseRollingOutWaitsForTheNewerTrigger(t *testing.T) {
 			app.Spec.Suspended = true
 			return app
 		}, false},
+		{"the workspace policy is Override", func() *appv1alpha1.App {
+			app := imageOverlapApp(appv1alpha1.PhaseDeploying, "rev-1")
+			app.Labels = map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride}
+			return app
+		}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := tc.app()
@@ -188,6 +193,22 @@ func TestImageReleaseRollingOutWaitsForTheNewerTrigger(t *testing.T) {
 					app.Status.ReleaseGeneration, app.Status.PendingReleaseGeneration, decision.releaseChanged)
 			}
 		})
+	}
+}
+
+// Render's Override policy (w4/653): a source build in flight is replaced by
+// the newer release at once, where Wait pins it.
+func TestOverridePolicyReplacesTheBuildInFlight(t *testing.T) {
+	waiting := overlapApp(appv1alpha1.PhaseBuilding, "rev-1")
+	if decision := prepareAppReleaseDecision(waiting, nil); !decision.pinned || waiting.Status.ReleaseGeneration != 2 {
+		t.Fatalf("Wait: pinned=%v release=%d, want release 2 pinned", decision.pinned, waiting.Status.ReleaseGeneration)
+	}
+	override := overlapApp(appv1alpha1.PhaseBuilding, "rev-1")
+	override.Labels = map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride}
+	decision := prepareAppReleaseDecision(override, nil)
+	if decision.pinned || !decision.releaseChanged || override.Status.ReleaseGeneration != 3 || override.Status.PendingReleaseGeneration != 0 {
+		t.Fatalf("Override: pinned=%v changed=%v release=%d pending=%d, want release 3 adopted at once",
+			decision.pinned, decision.releaseChanged, override.Status.ReleaseGeneration, override.Status.PendingReleaseGeneration)
 	}
 }
 

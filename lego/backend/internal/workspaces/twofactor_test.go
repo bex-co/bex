@@ -438,8 +438,9 @@ func TestExemptReadsLeakNothingAboutAWorkspaceToABlockedMember(t *testing.T) {
 
 	// What the exempt reads return is pinned to non-resource fields, so adding a
 	// field that exposes workspace contents is a decision, not an accident.
-	// IPAllowList (the inbound IP rules) is workspace configuration, so it is
-	// never filled for a blocked member: see the test below.
+	// IPAllowList (the inbound IP rules) and OverlappingDeployPolicy are
+	// workspace configuration, so they are never filled for a blocked member:
+	// see the tests below.
 	fieldNames := func(v any) []string {
 		var names []string
 		for field := range reflect.TypeOf(v).Fields() {
@@ -447,7 +448,7 @@ func TestExemptReadsLeakNothingAboutAWorkspaceToABlockedMember(t *testing.T) {
 		}
 		return names
 	}
-	if got, want := fieldNames(WorkspaceView{}), []string{"ID", "Name", "Slug", "Plan", "Role", "CreatedAt", "IPAllowList", "RequireTwoFactor"}; !slices.Equal(got, want) {
+	if got, want := fieldNames(WorkspaceView{}), []string{"ID", "Name", "Slug", "Plan", "Role", "CreatedAt", "IPAllowList", "RequireTwoFactor", "OverlappingDeployPolicy"}; !slices.Equal(got, want) {
 		t.Errorf("WorkspaceView fields = %v, want %v: List is exempt from the 2FA requirement", got, want)
 	}
 	if got, want := fieldNames(UserView{}), []string{"ID", "Email", "Name"}; !slices.Equal(got, want) {
@@ -570,6 +571,10 @@ func TestAWorkspacesIPRulesAreNotReadByABlockedMember(t *testing.T) {
 	field := f.svc.workspaceType().Fields()["ipAllowList"]
 	if _, err := field.Resolve(graphql.ResolveParams{Source: WorkspaceView{ID: f.workspace, RequireTwoFactor: true}, Context: ctx}); !isCoded(err, core.ErrForbidden, core.CodeWorkspaceTwoFactorRequired) {
 		t.Errorf("ipAllowList for a blocked member = %v, want the coded 403", err)
+	}
+	policy := f.svc.workspaceType().Fields()["overlappingDeployPolicy"]
+	if _, err := policy.Resolve(graphql.ResolveParams{Source: WorkspaceView{ID: f.workspace, RequireTwoFactor: true}, Context: ctx}); !isCoded(err, core.ErrForbidden, core.CodeWorkspaceTwoFactorRequired) {
+		t.Errorf("overlappingDeployPolicy for a blocked member = %v, want the coded 403 (w4/653)", err)
 	}
 
 	// A workspace that did not opt in is read as before, even with the gate refusing.

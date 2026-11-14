@@ -155,6 +155,16 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
 vi.mock("@/features/usage/components/build-pipeline-card", () => ({
   BuildPipelineCard: () => <div>Build pipeline card</div>,
 }));
+// Overlapping Deploy Policy (w4/653): the card's behavior is pinned in its
+// own test; here only its placement.
+vi.mock(
+  "@/features/workspaces/components/overlapping-deploy-policy-card",
+  () => ({
+    OverlappingDeployPolicyCard: ({ workspaceId }: { workspaceId: string }) => (
+      <div>Overlapping deploy policy card {workspaceId}</div>
+    ),
+  }),
+);
 
 const primaryWorkspace: WorkspaceView = {
   id: "tea-primary",
@@ -345,6 +355,27 @@ describe("WorkspaceSettingsPage", () => {
     expect(
       screen.getByRole("link", { name: "Inbound IP Rules" }),
     ).toHaveAttribute("href", "#inbound-ip-rules");
+  });
+
+  it("renders Overlapping Deploy Policy after Build Pipeline, as on Render, with its link (w4/653)", async () => {
+    await renderPage();
+
+    const card = screen.getByText(/Overlapping deploy policy card tea-primary/);
+    expect(card.closest("section")).toHaveAttribute(
+      "id",
+      "overlapping-deploy-policy",
+    );
+    const pipeline = screen.getByText("Build pipeline card");
+    const ipRules = screen.getByText(/Inbound IP rules card tea-primary/);
+    expect(
+      pipeline.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      card.compareDocumentPosition(ipRules) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Overlapping Deploy Policy" }),
+    ).toHaveAttribute("href", "#overlapping-deploy-policy");
   });
 
   it("opens the change-plan dialog from the Inbound IP Rules upgrade prompt", async () => {

@@ -77,6 +77,16 @@ const AnnotationSavedConfigRevision = "app.bex.co/saved-config-revision"
 // stable identity.
 const AnnotationReleaseGeneration = "app.bex.co/release-generation"
 
+// LabelOverlappingDeployPolicy carries the App's workspace Overlapping Deploy
+// Policy (w4/653), projected by bex-api: OverlappingDeployPolicyOverride, or
+// absent for Render's default Wait. Under Override the operator never holds a
+// release in flight: the newest release replaces it at once, as Render's
+// "Immediately cancel the in-progress deploy and start the new one" does.
+const LabelOverlappingDeployPolicy = "app.bex.co/overlapping-deploy-policy"
+
+// OverlappingDeployPolicyOverride is LabelOverlappingDeployPolicy's one value.
+const OverlappingDeployPolicyOverride = "override"
+
 // AnnotationReleaseConfigScaled records an explicit scale during a selected
 // historical release. Its value is that release generation, so even scaling to
 // the already-saved count supersedes the initial historical instance count

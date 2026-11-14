@@ -385,6 +385,11 @@ type appReleaseDecision struct {
 // deploys behind a selected one (w5/m284, w4/652), so here that is a direct CR
 // edit, a git push, a configuration change or a Blueprint sync (w4/654).
 func releaseInFlight(app *appv1alpha1.App) bool {
+	// Render's Override policy (w4/653): the newest release replaces the one
+	// in flight at once, so nothing is held.
+	if app.Labels[appv1alpha1.LabelOverlappingDeployPolicy] == appv1alpha1.OverlappingDeployPolicyOverride {
+		return false
+	}
 	if selected := app.Status.SelectedReleaseGeneration; !pinnableRelease(app) || (selected != 0 && selected == app.Status.ReleaseGeneration) {
 		return false
 	}

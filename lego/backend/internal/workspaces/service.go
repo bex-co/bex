@@ -357,6 +357,10 @@ type WorkspaceView struct {
 	// must be able to see why. A bex extension (Render has no workspace
 	// settings API), so the Render owner shape does not carry it.
 	RequireTwoFactor bool `json:"requireTwoFactor"`
+	// OverlappingDeployPolicy is the workspace's Overlapping Deploy Policy
+	// (w4/653), "wait" or "override": GraphQL reads it when the field is
+	// selected. Render's REST owner has no such field, so it is never encoded.
+	OverlappingDeployPolicy string `json:"-"`
 }
 
 func view(t store.Tenant, role string) WorkspaceView {

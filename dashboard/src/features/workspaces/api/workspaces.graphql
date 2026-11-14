@@ -164,3 +164,20 @@ mutation SetWorkspaceRequireTwoFactor(
     requireTwoFactor
   }
 }
+
+# Workspace Settings → Overlapping Deploy Policy (w4/653): "wait" (Render's
+# default for workspaces created on or after 2025-07-14) or "override". Every
+# member reads it; only an Admin sets it. GraphQL-only, as on Render.
+query WorkspaceOverlappingDeployPolicy($id: String!) {
+  workspace(id: $id) {
+    id
+    overlappingDeployPolicy
+  }
+}
+
+mutation SetWorkspaceOverlappingDeployPolicy($id: String!, $policy: String!) {
+  setWorkspaceOverlappingDeployPolicy(id: $id, policy: $policy) {
+    id
+    overlappingDeployPolicy
+  }
+}

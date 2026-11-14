@@ -585,6 +585,57 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
   },
+  "workspaces.overlappingDeployPolicyTitle": {
+    message: "重叠部署策略",
+    description:
+      "Workspace Settings section title, Render's name for the setting (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyDescription": {
+    message: "选择当某个服务已有部署正在进行时，再次触发部署会发生什么。",
+    description:
+      "Workspace Settings → Overlapping Deploy Policy description (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyWait": {
+    message: "等待",
+    description: "The Wait policy's label, Render's wording (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyWaitDescription": {
+    message: "让正在进行的部署完成，然后直接进行最近一次触发的部署。",
+    description:
+      "The Wait policy's sentence, Render's wording (render.com/docs/deploys, w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyOverride": {
+    message: "覆盖",
+    description: "The Override policy's label, Render's wording (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyOverrideDescription": {
+    message: "立即取消正在进行的部署，并开始新的部署。",
+    description:
+      "The Override policy's sentence, Render's wording (render.com/docs/deploys, w4/653)",
+  },
+  "workspaces.overlappingDeployPolicySave": {
+    message: "保存",
+    description: "Saves the selected Overlapping Deploy Policy (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicySaving": {
+    message: "正在保存…",
+    description: "The Save button while the policy saves (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicySaved": {
+    message: "重叠部署策略已保存",
+    description:
+      "Toast after setWorkspaceOverlappingDeployPolicy succeeds (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyError": {
+    message: "无法保存重叠部署策略，请重试。",
+    description:
+      "Fallback toast when a policy save fails without a server reason (w4/653)",
+  },
+  "workspaces.overlappingDeployPolicyAdminOnly": {
+    message: "只有工作区管理员可以更改此策略。",
+    description:
+      "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
+  },
 };
 
 export default zhWorkspaces;

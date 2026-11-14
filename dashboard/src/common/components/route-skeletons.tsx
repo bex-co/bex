@@ -65,6 +65,7 @@ import {
 import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
 import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/workspace-ip-rules-card-skeleton";
 import { WorkspaceTwoFactorCardSkeleton } from "@/features/workspaces/components/workspace-two-factor-card-skeleton";
+import { OverlappingDeployPolicyCardSkeleton } from "@/features/workspaces/components/overlapping-deploy-policy-card-skeleton";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
 import {
   AgentModelTermsHeader,
@@ -1297,6 +1298,10 @@ export function WorkspaceSettingsPageSkeleton() {
           {/* Build Pipeline (w6/m309): billing managers only, like Audit Logs below. */}
           <Region name="build-pipeline">
             <BuildPipelineCardSkeleton />
+          </Region>
+          {/* Overlapping Deploy Policy (w4/653): every member reads it. */}
+          <Region name="overlapping-deploy-policy">
+            <OverlappingDeployPolicyCardSkeleton />
           </Region>
           {/* Inbound IP Rules (w9/m388): every member reads them. */}
           <Region name="inbound-ip-rules">

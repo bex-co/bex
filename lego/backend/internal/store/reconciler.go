@@ -2669,6 +2669,13 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp, identity string) bool {
 	}
 	setOptional(core.LabelProject, d.ProjectID)
 	setOptional(core.LabelEnvironment, d.EnvironmentID)
+	// The workspace's Overlapping Deploy Policy (w4/653): only Override is
+	// labeled; the operator holds a release in flight for every other App.
+	override := ""
+	if d.OverlappingDeployPolicy == OverlapOverride {
+		override = appv1alpha1.OverlappingDeployPolicyOverride
+	}
+	setOptional(appv1alpha1.LabelOverlappingDeployPolicy, override)
 	return changed
 }
 

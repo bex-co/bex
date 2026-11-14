@@ -200,6 +200,7 @@ var classifiedOps = map[string]string{
 	"GQL Mutation.setSubdomainPolicy":                        core.OpClassWrite,
 	"GQL Mutation.setWebhookEndpointEnabled":                 core.OpClassWrite,
 	"GQL Mutation.setWorkspaceIPAllowList":                   core.OpClassWrite,
+	"GQL Mutation.setWorkspaceOverlappingDeployPolicy":       core.OpClassWrite,
 	"GQL Mutation.steerAgentSession":                         core.OpClassWrite,
 	"GQL Mutation.suspendDatabase":                           core.OpClassWrite,
 	"GQL Mutation.suspendKeyValue":                           core.OpClassWrite,

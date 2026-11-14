@@ -2135,6 +2135,7 @@ export type Mutation = {
   setSubdomainPolicy: Maybe<Service>;
   setWebhookEndpointEnabled: Maybe<WebhookEndpoint>;
   setWorkspaceIPAllowList: Maybe<Workspace>;
+  setWorkspaceOverlappingDeployPolicy: Maybe<Workspace>;
   setWorkspaceRequireTwoFactor: Maybe<Workspace>;
   steerAgentSession: Maybe<AgentSession>;
   suspendDatabase: Maybe<Database>;
@@ -3440,6 +3441,12 @@ export type MutationSetWebhookEndpointEnabledArgs = {
 export type MutationSetWorkspaceIpAllowListArgs = {
   id: Scalars['String']['input'];
   ipAllowList: Array<IpAllowListEntryInput>;
+};
+
+
+export type MutationSetWorkspaceOverlappingDeployPolicyArgs = {
+  id: Scalars['String']['input'];
+  policy: Scalars['String']['input'];
 };
 
 
@@ -5569,6 +5576,7 @@ export type Workspace = {
   id: Maybe<Scalars['String']['output']>;
   ipAllowList: Array<IpAllowListEntry>;
   name: Maybe<Scalars['String']['output']>;
+  overlappingDeployPolicy: Scalars['String']['output'];
   plan: Maybe<Scalars['String']['output']>;
   requireTwoFactor: Maybe<Scalars['Boolean']['output']>;
   role: Maybe<Scalars['String']['output']>;
