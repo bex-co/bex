@@ -37,6 +37,8 @@ import { safeHttpHref } from "@/common/lib/external-url";
 import { cn } from "@/common/lib/utils/utils";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
+import { ResumeServiceButton } from "@/features/services/components/resume-service-button";
+import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
@@ -77,6 +79,12 @@ export interface ServiceDetailHeaderProps {
   latestDeploy?: LatestDeploySummary | null;
   /** The lifecycle action in flight for this service, or null. */
   pending: LifecycleAction | null;
+  /** Runs a lifecycle action; the header offers Resume while suspended. */
+  onRun?: (
+    action: LifecycleAction,
+    service: ServiceView,
+    confirmation?: string,
+  ) => Promise<ProtectedActionResult>;
 }
 
 /**
@@ -90,12 +98,15 @@ export interface ServiceDetailHeaderProps {
  *
  * The action controls are Connect (SSH) and Manual Deploy (deploy/restart); the
  * header carries no "•••" lifecycle menu — restart lives in the Manual Deploy
- * dropdown (w2/m30) and Suspend/Resume moved to the Settings page.
+ * dropdown (w2/m30) and Suspend/Resume moved to the Settings page. A
+ * suspended service also gets Resume Service here, since every other action on
+ * its pages is disabled until it resumes (w4/643).
  */
 export function ServiceDetailHeader({
   service,
   latestDeploy,
   pending,
+  onRun,
 }: ServiceDetailHeaderProps) {
   const { t } = useTranslations();
   const { byID } = useInstanceTypes();
@@ -179,6 +190,14 @@ export function ServiceDetailHeader({
           {!isStaticSite(service) && (
             <ServiceConnectButton service={service} openPorts={openPorts} />
           )}
+          {service.suspended && onRun ? (
+            <ResumeServiceButton
+              service={service}
+              pending={pending}
+              onRun={onRun}
+              size="sm"
+            />
+          ) : null}
           <ManualDeployButton service={service} pending={pending !== null} />
         </div>
       </div>

@@ -28,6 +28,7 @@ import {
 } from "@/features/capabilities/lib/resource-actions";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { useState } from "react";
+import { ResumeServiceButton } from "@/features/services/components/resume-service-button";
 import type { en } from "@/i18n";
 
 const ACTION_LABEL: Record<"suspend" | "resume", keyof typeof en> = {
@@ -135,11 +136,6 @@ export function SuspendServiceCard({
     }
   }
 
-  async function handleResume() {
-    if (busy || permissionReason) return;
-    await runAction(openConfirm("resume"));
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -168,17 +164,11 @@ export function SuspendServiceCard({
       </CardHeader>
       <CardContent>
         {isSuspended ? (
-          <PermissionTooltip reason={permissionReason}>
-            <Button
-              onClick={() => void handleResume()}
-              disabled={busy || !!permissionReason}
-            >
-              {busy && pending === "resume" ? (
-                <Loader2 className="animate-spin" />
-              ) : null}
-              {t("services.actionResume")}
-            </Button>
-          </PermissionTooltip>
+          <ResumeServiceButton
+            service={service}
+            pending={pending}
+            onRun={onRun}
+          />
         ) : (
           <PermissionTooltip reason={permissionReason}>
             <Button

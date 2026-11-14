@@ -9,7 +9,10 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { ServiceDetailHeader } from "@/features/services/components/service-detail-header";
+import {
+  ServiceDetailHeader,
+  type ServiceDetailHeaderProps,
+} from "@/features/services/components/service-detail-header";
 import type { ServiceView } from "@/features/services/types";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { LatestDeploySummary } from "@/features/deploys/hooks/use-latest-deploy";
@@ -132,6 +135,7 @@ function renderHeader(
   props: Partial<{
     pending: null | "restart";
     latestDeploy: LatestDeploySummary | null;
+    onRun: ServiceDetailHeaderProps["onRun"];
   }> = {},
 ) {
   const rootRoute = createRootRoute();
@@ -143,6 +147,7 @@ function renderHeader(
         service={service}
         latestDeploy={props.latestDeploy}
         pending={props.pending ?? null}
+        onRun={props.onRun}
       />
     ),
   });
@@ -372,6 +377,42 @@ describe("ServiceDetailHeader", () => {
     expect(
       screen.getByRole("link", { name: "Change instance type" }),
     ).toHaveAttribute("href", "/services/app/plan");
+  });
+
+  // w4/643: every other action is disabled while suspended, so the header
+  // itself offers Resume, through the same gated verb as the Settings card.
+  it("offers Resume Service in a suspended service's header, and resumes", async () => {
+    const user = userEvent.setup();
+    const onRun = vi.fn().mockResolvedValue({ status: "success" });
+    permissionQuery.mockResolvedValue({
+      data: {
+        serverActions: [
+          {
+            action: "resume",
+            outcome: "allowed",
+            reason: null,
+            precondition: null,
+          },
+        ],
+      },
+    });
+    const service = svc({ suspended: true, plan: "starter" });
+    renderHeader(service, { onRun });
+
+    await user.click(await screen.findByRole("button", { name: "Resume" }));
+
+    await waitFor(() => expect(onRun).toHaveBeenCalledWith("resume", service));
+  });
+
+  it("offers no Resume on a running service", async () => {
+    renderHeader(svc({ plan: "starter" }), { onRun: vi.fn() });
+
+    expect(
+      await screen.findByRole("button", { name: "Connect" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Resume" }),
+    ).not.toBeInTheDocument();
   });
 
   it("points a suspended service's SSH section at Resume", async () => {

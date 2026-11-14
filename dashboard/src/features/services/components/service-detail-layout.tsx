@@ -57,7 +57,7 @@ export function ServiceDetailLayout({
   // Judge this page's permissions in the service's own workspace (w6/091).
   useAdoptResourceWorkspace(serviceId, routePending ? null : ownerId);
   const { deploy: latestDeploy } = useLatestDeploy(serviceId);
-  const { pending } = useServiceLifecycle({ refetch });
+  const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const signInAgain = useSignInAgain();
   const [deletingSelf, setDeletingSelf] = useState(false);
@@ -158,6 +158,7 @@ export function ServiceDetailLayout({
               service={shownService}
               latestDeploy={latestDeploy}
               pending={pending?.id === shownService.id ? pending.action : null}
+              onRun={run}
             />
           ) : (
             <ServiceDetailHeaderSkeleton />
