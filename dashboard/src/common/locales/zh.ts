@@ -145,6 +145,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "搜索",
     description: "Open the workspace-wide topbar search",
   },
+  "common.copyCode": {
+    message: "复制代码",
+    description: "Accessible name of the copy button on a code block",
+  },
   "common.topbarSearchPlaceholder": {
     message: "搜索页面和资源…",
     description: "Placeholder in the workspace-wide topbar command search",

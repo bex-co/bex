@@ -1,6 +1,10 @@
 import { useState, useMemo } from "react";
 import { TriangleAlert } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import { Switch } from "@/common/components/ui/switch";
 import { Label } from "@/common/components/ui/label";
 import { Input } from "@/common/components/ui/input";
@@ -38,8 +42,7 @@ interface FormState {
 }
 
 type ValidationKey =
-  | "services.scalingValidationMinMax"
-  | "services.scalingValidationTargets";
+  "services.scalingValidationMinMax" | "services.scalingValidationTargets";
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
@@ -142,6 +145,7 @@ function RangeSliderInput({
   onChangeMin: (v: number) => void;
   onChangeMax: (v: number) => void;
 }) {
+  const { t } = useTranslations();
   return (
     <div className="flex items-center gap-3">
       <Input
@@ -155,7 +159,7 @@ function RangeSliderInput({
           if (!isNaN(n)) onChangeMin(clamp(n, absMin, valueMax));
         }}
         className="h-8 w-16 text-center"
-        aria-label="Minimum instances"
+        aria-label={t("services.autoscaleMinInstances")}
       />
       <Slider
         min={min}
@@ -180,7 +184,7 @@ function RangeSliderInput({
           if (!isNaN(n)) onChangeMax(clamp(n, valueMin, absMax));
         }}
         className="h-8 w-16 text-center"
-        aria-label="Maximum instances"
+        aria-label={t("services.autoscaleMaxInstances")}
       />
     </div>
   );
@@ -363,7 +367,9 @@ export function AutoscalingSection({
         <CardContent>
           <Alert>
             <TriangleAlert />
-            <AlertTitle>{t("services.scalingMetricsUnavailableTitle")}</AlertTitle>
+            <AlertTitle>
+              {t("services.scalingMetricsUnavailableTitle")}
+            </AlertTitle>
             <AlertDescription>
               {t("services.scalingMetricsUnavailableBody")}
             </AlertDescription>

@@ -566,6 +566,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "自动伸缩",
     description: "Scaling tab section heading",
   },
+  "services.autoscaleMinInstances": {
+    message: "最小实例数",
+    description:
+      "Accessible name of the minimum-instances number input beside the autoscaling range slider",
+  },
+  "services.autoscaleMaxInstances": {
+    message: "最大实例数",
+    description:
+      "Accessible name of the maximum-instances number input beside the autoscaling range slider",
+  },
   "services.scalingEnabled": {
     message: "启用自动伸缩",
     description: "Autoscaling enable/disable toggle label",

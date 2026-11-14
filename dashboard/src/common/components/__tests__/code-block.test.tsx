@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
+import i18n from "@/i18n/init";
 import { CodeBlock } from "../code-block";
 
 vi.mock("sonner", () => ({
@@ -31,6 +38,22 @@ describe("CodeBlock", () => {
     const { container } = render(<CodeBlock code="const x = 1" />);
     expect(container.querySelector("pre")).toBeInTheDocument();
     expect(container.querySelector("code")).toHaveTextContent("const x = 1");
+  });
+
+  // w21/m395 t004: the copy button's accessible name came from a literal.
+  it("names the copy button in the dashboard language", async () => {
+    render(<CodeBlock code="const x = 1" />);
+    expect(
+      screen.getByRole("button", { name: "Copy code" }),
+    ).toBeInTheDocument();
+    await act(() => i18n.changeLanguage("zh"));
+    try {
+      expect(
+        screen.getByRole("button", { name: "复制代码" }),
+      ).toBeInTheDocument();
+    } finally {
+      await act(() => i18n.changeLanguage("en"));
+    }
   });
 
   it("shows language label when language prop is provided", () => {

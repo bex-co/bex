@@ -581,6 +581,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Autoscaling",
     description: "Scaling tab section heading",
   },
+  "services.autoscaleMinInstances": {
+    message: "Minimum instances",
+    description:
+      "Accessible name of the minimum-instances number input beside the autoscaling range slider",
+  },
+  "services.autoscaleMaxInstances": {
+    message: "Maximum instances",
+    description:
+      "Accessible name of the maximum-instances number input beside the autoscaling range slider",
+  },
   "services.scalingEnabled": {
     message: "Enable autoscaling",
     description: "Autoscaling enable/disable toggle label",

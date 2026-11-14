@@ -146,6 +146,10 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Search",
     description: "Open the workspace-wide topbar search",
   },
+  "common.copyCode": {
+    message: "Copy code",
+    description: "Accessible name of the copy button on a code block",
+  },
   "common.topbarSearchPlaceholder": {
     message: "Search pages and resources…",
     description: "Placeholder in the workspace-wide topbar command search",

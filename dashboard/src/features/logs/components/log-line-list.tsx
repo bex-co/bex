@@ -23,7 +23,7 @@ type Translate = ReturnType<typeof useTranslations>["t"];
 function statusChipClass(status: string): string {
   switch (status.charAt(0)) {
     case "2":
-      return "bg-green-500/15 text-green-700 dark:text-green-400";
+      return "bg-green-500/15 text-green-800 dark:text-green-400";
     case "3":
       return "bg-blue-500/15 text-blue-700 dark:text-blue-400";
     case "4":
