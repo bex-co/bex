@@ -439,6 +439,15 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **325** — [A static-site rule `/x/*` also matches the bare path `/x`, for both routes and headers, where Render matches only `/x/` and the paths below it](325.md) (~30m) ← `/qa-find-bugs-cli` sweep 1b01 2026-11-14 (bex v0.6.0), minor. On `wc3v.onrender.com` the bare `/assets/wc3icons` and `/maps` 404 past their `/*` redirects, and `/dev`, `/data` and `/skills` miss their `/*` header rules. bex's `matchPattern` (`staticserver.go:789`) matches `reqPath == prefix`. Drop that case for routes and headers.
+
+- [ ] **324** — [A static-site redirect rule drops the request's query string (`/old/x?v=1` → `Location: …/x`), stamps the site's custom headers on the 301, and is skipped for `POST`, where Render forwards the query, sends a bare 301 and redirects every method](324.md) (~45m) ← `/qa-find-bugs-cli` sweep 1b01 2026-11-14 (bex v0.6.0), major.
+  - **Render:** `wc3v.onrender.com` 301s `…/foo.jpg?v=1&x=2` to `https://cdn…/foo.jpg?v=1&x=2` with only `content-type` and `location`, and answers `POST` with the same 301.
+  - **bex:**
+    - the redirect branch (`staticserver.go:320`) writes the bare destination and applies custom rules;
+    - `serveOtherMethod` (`:386`, w8/319) never redirects.
+  - **Fix:** append `RawQuery`, send a headerless 301, and redirect every method.
+
 - [x] **323** — [A static site serves `.html`, `.css`, `.md` and `.csv` with no charset (`text/html`, `text/markdown`), where Render declares `charset=utf-8` on every text type it serves](done/323.md) (~30m) ← `/qa-find-bugs-cli` sweep 3506 2026-11-14 (bex v0.6.0), minor. Render answers `text/html`, `text/css`, `text/markdown` and `text/plain` with `charset=utf-8`. bex's `utf8PlainText` (`s3origin.go:123`) declares it on `text/plain` only, as w4/335 scoped before Render's types were captured. Widen it to every `text/*` with no declared charset and a valid UTF-8 body. **DONE 2026-11-14.** Every stored `text/*` type without a charset is served `charset=utf-8` when its bytes are valid UTF-8 (`declareUTF8Text`). Production check owed after the static-server rolls.
 
 - [x] **322** — [A static site's 404 headers differ from Render's: its `404.html` page lacks the HSTS and cache policy every file carries, and a bare 404 carries the site's custom headers where Render's carries only `nosniff`](done/322.md) (~30m) ← `/qa-find-bugs-cli` sweep cc60 2026-11-14 (bex v0.6.0), minor.
