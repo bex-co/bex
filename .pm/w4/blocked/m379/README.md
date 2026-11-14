@@ -131,4 +131,4 @@ Pinned spec, `GET /events/{eventId}` → `details`. The table lists every varian
 ## Test record (t001–t005, 2026-11-14)
 
 - `cd lego/backend && GOWORK=off go test ./...` passes, rebased on `fa496cb64`. Before that rebase, `internal/sandbox`'s `TestFileGatewayRefusalBeforeTheFirstByteReachesTheClient` failed on this macOS host, on the unchanged base as well. `fa496cb64` skips it on macOS.
-- Real Postgres + OpenFGA (`scripts/backend-test-deps.sh`): `GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -count=1 -p 1` over `internal/store`, `internal/events`, `internal/postgres`, `internal/keyvalue`, `internal/core`, `internal/webhooks` and `internal/api` passes. That includes the new `TestPGDatastoreEventFromValuesHydrate` and migration 0262.
+- Real Postgres + OpenFGA (`scripts/backend-test-deps.sh`): `GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -count=1 -p 1` over `internal/store`, `internal/events`, `internal/postgres`, `internal/keyvalue`, `internal/core`, `internal/webhooks` and `internal/api` passes. That includes the new `TestPGDatastoreEventFromValuesHydrate` and migration 0263.
