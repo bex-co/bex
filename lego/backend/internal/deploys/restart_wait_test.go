@@ -182,6 +182,41 @@ func TestRestartWaitsForTheDeployInFlight(t *testing.T) {
 	}
 }
 
+// w4/667: an environment "Save and deploy" that waits (a configuration
+// deploy, opened by the secrets service) runs through DeployServedBuild once
+// nothing is in flight, under its own row.
+func TestDeferredEnvironmentDeployRunsOnceNothingIsInFlight(t *testing.T) {
+	ds := newDeferringStore()
+	seedDeploys(ds.fakeStore,
+		store.Deploy{ID: "dep-flight", Status: store.DeployBuildInProgress, Generation: 3},
+		store.Deploy{ID: "dep-live", Status: store.DeployLive, Commit: runningCommit, Generation: 2},
+	)
+	svc, _ := newService(ds, repoApp("web", "srv-1", "main"))
+	var ran []string
+	svc.DeployServedBuild = func(ctx context.Context, a *appv1alpha1.App) error {
+		ran = append(ran, store.DeferredDeployID(ctx)+" "+a.Name)
+		return nil
+	}
+	waiting, deferred, err := ds.CreateDeferredDeploy(context.Background(), store.Deploy{AppID: "srv-1", Trigger: store.TriggerConfigChange}, store.DeferredRequest{})
+	if err != nil || !deferred {
+		t.Fatalf("CreateDeferredDeploy = %v, %v", deferred, err)
+	}
+	w := &DeferredDeployWorker{Svc: svc}
+	if err := w.tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(ran) != 0 {
+		t.Fatalf("ran %v while a deploy was in flight", ran)
+	}
+	ds.set("dep-flight", func(d *store.Deploy) { d.Status = store.DeployLive })
+	if err := w.tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{waiting.ID + " web"}; !slices.Equal(ran, want) {
+		t.Fatalf("ran %v, want %v", ran, want)
+	}
+}
+
 // A waiting restart whose service was suspended meanwhile is canceled with
 // the reason, not left queued.
 func TestDeferredRestartThatCannotRunIsCanceled(t *testing.T) {

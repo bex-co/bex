@@ -258,3 +258,93 @@ func TestDeployingStaticSiteEnvironmentStillRebuilds(t *testing.T) {
 		t.Fatalf("static deploy selected %+v, rows %+v; want a plain rebuild", a.Spec.ReleaseConfig, rec.rows)
 	}
 }
+
+// deferringDeploys adds the waiting-deploy capability of the deploy store:
+// inFlight says whether a deploy is in flight.
+type deferringDeploys struct {
+	*liveDeploys
+	inFlight bool
+	waiting  []store.Deploy
+	canceled []string
+}
+
+func (d *deferringDeploys) CreateDeferredDeploy(_ context.Context, row store.Deploy, _ store.DeferredRequest) (store.Deploy, bool, error) {
+	if !d.inFlight {
+		return store.Deploy{}, false, nil
+	}
+	row.ID, row.Status, row.Deferred = "dep-waiting", store.DeployQueued, true
+	d.waiting = append(d.waiting, row)
+	return row, true, nil
+}
+
+func (d *deferringDeploys) CancelDeferredDeploy(_ context.Context, id, _ string) (bool, error) {
+	d.canceled = append(d.canceled, id)
+	return true, nil
+}
+
+// w4/667: under Render's Wait, an environment "Save and deploy" behind a
+// deploy in progress waits for it, then runs the saved environment on the build
+// that deploy left serving. Selecting the build serving at save time replaced
+// the deploy in flight, or would roll the older build back over it. Behind
+// nothing it deploys at once.
+func TestDeployingEnvironmentSaveWaitsForTheDeployInFlight(t *testing.T) {
+	ctx := context.Background()
+	served := store.Deploy{ID: "dep-live", Status: store.DeployLive, ResolvedImage: "zot.bex-registry.svc:5000/t/web:gen-2@sha256:4d8c", Commit: "0f312a9"}
+	svc, live := sourceBuiltService(appv1alpha1.TypeWebService, served)
+	deploys := &deferringDeploys{liveDeploys: live, inFlight: true}
+	svc.Rollout = &rollout.Tracker{Store: deploys}
+	getApp := func() *appv1alpha1.App {
+		t.Helper()
+		var a appv1alpha1.App
+		if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &a); err != nil {
+			t.Fatal(err)
+		}
+		return &a
+	}
+	before := getApp()
+
+	res, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "new", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	})
+	if err != nil || !res.RolledOut {
+		t.Fatalf("PatchEnvironment(deploy) = %+v, %v", res, err)
+	}
+	a := getApp()
+	if len(deploys.waiting) != 1 || deploys.waiting[0].Trigger != store.TriggerConfigChange || len(live.rows) != 0 {
+		t.Fatalf("waiting %+v, opened %+v; want one waiting configuration deploy and no release", deploys.waiting, live.rows)
+	}
+	if a.Spec.ReleaseConfig != nil || a.Spec.RestartedAt != before.Spec.RestartedAt ||
+		a.Annotations[appv1alpha1.AnnotationReleaseGeneration] != before.Annotations[appv1alpha1.AnnotationReleaseGeneration] {
+		t.Fatalf("the save rolled a release while a deploy is in flight: releaseConfig %+v", a.Spec.ReleaseConfig)
+	}
+	if v, err := svc.GetEnvVar(ctx, "web", "MESSAGE"); err != nil || v.Value != "new" {
+		t.Fatalf("saved MESSAGE = %+v, %v", v, err)
+	}
+
+	// The deploy ahead goes live with a newer build; the waiting deploy runs it.
+	newer := store.Deploy{ID: "dep-newer", Status: store.DeployLive, ResolvedImage: "zot.bex-registry.svc:5000/t/web:gen-3@sha256:9e1f", Commit: "a1b2c3d"}
+	live.live, deploys.inFlight = []store.Deploy{newer}, false
+	if err := svc.DeployServedBuild(ctx, a); err != nil {
+		t.Fatalf("DeployServedBuild: %v", err)
+	}
+	a = getApp()
+	if ref := a.Spec.ReleaseConfig; ref == nil || ref.Image != newer.ResolvedImage {
+		t.Fatalf("releaseConfig = %+v, want the build serving when the deploy runs (%s)", ref, newer.ResolvedImage)
+	}
+	if len(live.rows) != 1 || live.rows[0].Image != newer.ResolvedImage || live.rows[0].Commit != newer.Commit {
+		t.Fatalf("rows = %+v, want one release of the newer build", live.rows)
+	}
+
+	// Behind nothing, a save deploys at once.
+	svc, live = sourceBuiltService(appv1alpha1.TypeWebService, served)
+	deploys = &deferringDeploys{liveDeploys: live}
+	svc.Rollout = &rollout.Tracker{Store: deploys}
+	if _, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "new", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(deploys.waiting) != 0 || len(live.rows) != 1 || live.rows[0].Image != served.ResolvedImage {
+		t.Fatalf("waiting %+v, opened %+v; want the save deployed at once on the served build", deploys.waiting, live.rows)
+	}
+}

@@ -19,6 +19,7 @@ package deploys
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -46,8 +47,11 @@ import (
 // restarting what serves once that deploy settles; a Rollback or an image
 // override waits behind any deploy, and any deploy this service opens waits
 // behind one of those (w4/652), which also covers a selection the operator has
-// not adopted yet. A git push, a configuration save, a Blueprint sync and a
-// build-source fan-out write through and wait behind the operator's pin.
+// not adopted yet. An environment "Save and deploy" of a Git-backed service
+// selects the build serving when it runs, so it waits here too (w4/667;
+// secrets.Service.DeployServedBuild runs it). A git push, a configuration save,
+// a Blueprint sync and a build-source fan-out write through and wait behind the
+// operator's pin.
 
 // DeployDeferrer is the store capability a waiting deploy needs;
 // *store.PGStore provides it. Without it the deploy replaces the one in
@@ -209,6 +213,8 @@ func (s *Service) runDeferredDeploy(ctx context.Context, queue DeferredDeployQue
 		_, err = s.restartNow(ctx, service, a)
 	case store.TriggerRollback:
 		_, err = s.rollbackFetched(ctx, service, a, r.RollbackOf, RollbackOptions{DisableAutoDeploy: r.Request.DisableAutoDeploy})
+	case store.TriggerConfigChange:
+		err = s.deployServedBuild(ctx, a, r)
 	default:
 		_, err = s.triggerFetched(ctx, service, a, TriggerParams{
 			ImageURL: r.Request.ImageURL, CommitID: r.Request.CommitID, BuildID: r.Request.BuildID,
@@ -225,6 +231,23 @@ func (s *Service) runDeferredDeploy(ctx context.Context, queue DeferredDeployQue
 		// Transient (the cluster or the database); the next tick retries.
 		log.Printf("deferred deploy %s: %v", r.ID, err)
 	}
+}
+
+// deployServedBuild runs a waiting environment "Save and deploy" (w4/667)
+// through DeployServedBuild, under the trigger lock and checked first like any
+// deferred deploy openRelease runs: another replica may have run it already.
+func (s *Service) deployServedBuild(ctx context.Context, a *appv1alpha1.App, r store.DeferredDeploy) error {
+	if s.DeployServedBuild == nil {
+		return fmt.Errorf("%w: environment deploys are unavailable", core.ErrBadRequest)
+	}
+	return s.withTriggerLock(ctx, r.AppID, func() error {
+		if checker, ok := s.Store.(deferredDeployChecker); ok {
+			if err := checker.CheckDeferredDeploy(ctx, r.ID, r.AppID); err != nil {
+				return err
+			}
+		}
+		return s.DeployServedBuild(ctx, a)
+	})
 }
 
 // deferredVerb names a waiting deploy's verb in its cancel reason.

@@ -217,6 +217,10 @@ type Service struct {
 	// started time and status follow within a second instead of at the next
 	// 30-second resync (w8/270). nil leaves the rows to the resync.
 	Kick func()
+	// DeployServedBuild runs an environment "Save and deploy" that waited for
+	// the deploy in flight (w4/667): secrets.Service.DeployServedBuild. nil
+	// closes such a deploy unrun.
+	DeployServedBuild func(ctx context.Context, a *appv1alpha1.App) error
 	// StartedNotifier is invoked asynchronously after a trigger opens its deploy
 	// row. nil keeps notifications disabled without changing trigger behavior.
 	StartedNotifier DeployStartedNotifier

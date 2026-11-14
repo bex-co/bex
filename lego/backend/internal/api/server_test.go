@@ -1197,6 +1197,13 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*deploys.Service]() && m.Name == "BuildSucceeded" {
 		return false
 	}
+	// The deferred-deploy worker's run of an environment "Save and deploy"
+	// that waited (w4/667): the save that queued it authorized its caller, and
+	// the worker runs it as the platform. Its contracts live in
+	// secrets/config_rollout_test.go and deploys/restart_wait_test.go.
+	if recv == reflect.TypeFor[*secrets.Service]() && m.Name == "DeployServedBuild" {
+		return false
+	}
 	// The fleet rebuild (`/api platform-rebuild`) is the platform's own action,
 	// served only on the cluster-internal :8091 listener behind the
 	// control-plane bearer, so it has no caller identity to authorize either.

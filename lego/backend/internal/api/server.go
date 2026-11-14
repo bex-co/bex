@@ -1074,6 +1074,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		BuildNamespace:    d.DeployBuildNamespace,
 		DeployHookBaseURL: d.DeployHookBaseURL,
 		DeployHookLimiter: deploys.NewDeployHookRateLimiter(deploys.DefaultDeployHookRPM, deploys.DefaultDeployHookBurst),
+		DeployServedBuild: secretsSvc.DeployServedBuild,
 	}
 	// An environment save's rebuild is a configuration change, not a Manual
 	// Deploy, for a group and a service alike (w4/347).

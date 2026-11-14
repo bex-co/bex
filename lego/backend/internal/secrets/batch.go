@@ -33,6 +33,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -402,6 +403,15 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 		}
 	}
+	// Behind a deploy in flight, the deploy waits for it and the save stages
+	// (w4/667).
+	waiting := ""
+	if saveMode == SaveModeDeploy && !a.Spec.Suspended {
+		var err error
+		if waiting, err = s.deferServedBuildDeploy(ctx, a); err != nil {
+			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
+		}
+	}
 	suspendedAtWrite := false
 	err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
 		read := a.DeepCopy()
@@ -415,19 +425,8 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		}
 		// A suspend that landed after PatchEnvironment's read stages too.
 		suspendedAtWrite = saveMode == SaveModeDeploy && a.Spec.Suspended
-		if saveMode == SaveModeDeploy && !suspendedAtWrite {
-			activatePendingProjectionReferences(a)
-			s.bumpRestart(a)
-			image, err := s.servedArtifact(ctx, a)
-			if err != nil {
-				return err
-			}
-			if image != "" {
-				// Bound to the release this patch opens (metadata.generation+1,
-				// the generation rollout.Stamp records); a later deploy expires it.
-				a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: a.Generation + 1, Image: image}
-			}
-			return nil
+		if saveMode == SaveModeDeploy && !suspendedAtWrite && waiting == "" {
+			return s.selectServedBuild(ctx, a)
 		}
 		stagePendingProjectionReferences(a, read, env, txn.env.changed, txn.files.changed)
 		if a.Annotations == nil {
@@ -440,6 +439,9 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		a.Annotations[appv1alpha1.AnnotationSavedConfigRevision] = rand.Text()
 		return nil
 	})
+	if waiting != "" && (err != nil || suspendedAtWrite) {
+		s.cancelWaitingDeploy(ctx, waiting)
+	}
 	if err != nil {
 		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 	}
@@ -453,6 +455,84 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		result.RolloutError = suspendedSaveMessage
 	}
 	return result, nil
+}
+
+// selectServedBuild makes a's patch an environment "Save and deploy": the
+// staged configuration activates, and the release reruns the build serving now
+// (servedArtifact) with it instead of building.
+func (s *Service) selectServedBuild(ctx context.Context, a *appv1alpha1.App) error {
+	activatePendingProjectionReferences(a)
+	s.bumpRestart(a)
+	image, err := s.servedArtifact(ctx, a)
+	if err != nil {
+		return err
+	}
+	if image != "" {
+		// Bound to the release this patch opens (metadata.generation+1,
+		// the generation rollout.Stamp records); a later deploy expires it.
+		a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: a.Generation + 1, Image: image}
+	}
+	return nil
+}
+
+// deployDeferrer is the deploy store's waiting-deploy capability
+// (*store.PGStore); without it a "Save and deploy" deploys at once.
+type deployDeferrer interface {
+	CreateDeferredDeploy(ctx context.Context, d store.Deploy, req store.DeferredRequest) (store.Deploy, bool, error)
+	CancelDeferredDeploy(ctx context.Context, id, reason string) (bool, error)
+}
+
+func (s *Service) deployDeferrer() deployDeferrer {
+	if s.Rollout == nil {
+		return nil
+	}
+	d, _ := s.Rollout.Store.(deployDeferrer)
+	return d
+}
+
+// deferServedBuildDeploy records an environment "Save and deploy" of a
+// Git-backed service as a deploy waiting for the one in flight, answering its
+// id, or "" when nothing is in flight (or the workspace's policy is Override, w4/653) and
+// the save deploys at once. Under Render's Wait the deploy in progress finishes
+// first, and the saved environment then runs on the build it leaves serving:
+// selecting the build serving at save time would replace the deploy in flight,
+// or roll the older build back over it (w4/667). The build is selected when the
+// deploy runs (DeployServedBuild), as a waiting Rollback is opened (w4/652).
+func (s *Service) deferServedBuildDeploy(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	deferrer, appID := s.deployDeferrer(), store.ManagedAppID(a.Labels)
+	if deferrer == nil || appID == "" {
+		return "", nil
+	}
+	if image, err := s.servedArtifact(ctx, a); err != nil || image == "" {
+		return "", err
+	}
+	d, deferred, err := deferrer.CreateDeferredDeploy(ctx,
+		store.Deploy{AppID: appID, Trigger: store.TriggerConfigChange, TriggeredBy: core.SubjectFrom(ctx)},
+		store.DeferredRequest{})
+	if err != nil || !deferred {
+		return "", err
+	}
+	return d.ID, nil
+}
+
+// cancelWaitingDeploy closes the waiting deploy of a save that did not deploy.
+func (s *Service) cancelWaitingDeploy(ctx context.Context, id string) {
+	if _, err := s.deployDeferrer().CancelDeferredDeploy(ctx, id, ""); err != nil {
+		log.Printf("secrets: cancel the waiting deploy %s of an environment save: %v", id, err)
+	}
+}
+
+// DeployServedBuild runs an environment "Save and deploy" that waited for the
+// deploy in flight (deferServedBuildDeploy): the saved configuration, on the
+// build serving now. ctx names the waiting row (store.WithDeferredDeploy),
+// which the release opened here promotes in place.
+func (s *Service) DeployServedBuild(ctx context.Context, a *appv1alpha1.App) error {
+	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+		if a.Spec.Suspended {
+			return fmt.Errorf("%w: service %q is suspended", core.ErrConflict, core.AppPublicName(a))
+		}
+		return s.selectServedBuild(ctx, a)
+	})
 }
 
 // validateCASPatch keeps the revision-aware surface deliberately narrow: one
