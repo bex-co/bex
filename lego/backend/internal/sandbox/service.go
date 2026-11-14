@@ -17,6 +17,7 @@ limitations under the License.
 package sandbox
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -111,6 +112,7 @@ type Template struct {
 // sandbox default-deny in place during cleanup.
 type SessionEgress interface {
 	PrepareSetup(ctx context.Context, namespace, sessionID, modelEndpoint string, egress sessionegress.Egress) error
+	PrepareBuild(ctx context.Context, namespace, buildID string, egress sessionegress.Egress) error
 	TransitionToAgent(ctx context.Context, namespace, sessionID, modelEndpoint string, egress sessionegress.Egress) error
 	Delete(ctx context.Context, namespace, sessionID string) error
 }
@@ -1034,46 +1036,108 @@ func NewAgentSessionLifecycle(service *Service) *AgentSessionLifecycle {
 // key so the fetch-to-injection path needs no translation.
 const ModelAPIKeyEnvVar = agentsession.ModelKeyField
 
+// AgentSessionSandbox is one dispatch's sandbox: the session and its
+// repository branch, the model endpoint and the session-bound model key
+// placeholder, the egress, the driver's run env, and the repository
+// environment build image to boot instead of the template's (ADR111 D4).
+type AgentSessionSandbox struct {
+	WorkspaceID   string
+	Template      string
+	SessionID     string
+	Repository    string
+	Branch        string
+	ModelEndpoint string
+	ModelAPIKey   string
+	Egress        sessionegress.Egress
+	DriverEnv     map[string]string
+	Image         AgentImage
+}
+
 // CreateAgentSessionSandbox is the narrow trusted lifecycle seam used by the
 // agent-sessions feature after it has performed the first-class session FGA
 // check. It preserves every reserved sandbox hardening stamp and adds the
 // durable session id, without re-checking can_create (session creation is
 // intentionally can_operate per ADR047 D3).
-func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egress sessionegress.Egress, driverEnv map[string]string) (Sandbox, error) {
+func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, spec AgentSessionSandbox) (Sandbox, error) {
 	s := l.service
-	if !s.enabled() {
-		return Sandbox{}, core.ErrSandboxesUnavailable
+	if err := s.requireAgentSandboxes(spec.WorkspaceID, spec.SessionID); err != nil {
+		return Sandbox{}, err
 	}
-	if s.SessionEgress == nil {
-		return Sandbox{}, core.ErrAgentSessionsUnavailable
-	}
-	if workspaceID == "" || sessionID == "" {
-		return Sandbox{}, fmt.Errorf("%w: workspace and agent session id are required", core.ErrBadRequest)
-	}
-	if !agentsession.IsModelKeyPlaceholder(modelAPIKey, sessionID) {
+	if !agentsession.IsModelKeyPlaceholder(spec.ModelAPIKey, spec.SessionID) {
 		return Sandbox{}, fmt.Errorf("%w: agent session model-proxy placeholder is required", core.ErrAgentSessionsUnavailable)
 	}
-	if template == "" {
-		template = "agent"
+	// The driver env carries the non-secret run env (prompt, agent, branch,
+	// repo, delivery toggle — ADR047 D4). The model key is required to be the
+	// exact session-bound proxy placeholder above; the reusable BYO key never
+	// enters a sandbox Pod spec. Metadata lands in status reads and audit, so
+	// neither value is stamped there.
+	env := maps.Clone(spec.DriverEnv)
+	if env == nil {
+		env = map[string]string{}
 	}
+	env[ModelAPIKeyEnvVar] = spec.ModelAPIKey
+	return s.createAgentSandbox(ctx, agentSandbox{
+		workspaceID: spec.WorkspaceID, template: spec.Template, principal: spec.SessionID,
+		repository: spec.Repository, branch: spec.Branch, env: env, image: spec.Image,
+		// Setup policy belongs to the session, not this attempt. A late
+		// failure must not delete a newer generation's policy; durable
+		// dispatch recovery removes this attempt's sandbox independently.
+		prepareEgress: func(namespace string) error {
+			return s.SessionEgress.PrepareSetup(ctx, namespace, spec.SessionID, spec.ModelEndpoint, spec.Egress)
+		},
+	})
+}
+
+// requireAgentSandboxes is every agent sandbox create's precondition.
+func (s *Service) requireAgentSandboxes(workspaceID, principal string) error {
+	if !s.enabled() {
+		return core.ErrSandboxesUnavailable
+	}
+	if s.SessionEgress == nil {
+		return core.ErrAgentSessionsUnavailable
+	}
+	if workspaceID == "" || principal == "" {
+		return fmt.Errorf("%w: workspace and agent session id are required", core.ErrBadRequest)
+	}
+	return nil
+}
+
+// agentSandbox is an agent template sandbox and the principal its binding
+// labels name: a session, or a repository environment build. prepareEgress
+// installs the principal's policy before the Pod exists.
+type agentSandbox struct {
+	workspaceID, template, principal, repository, branch string
+	env                                                  map[string]string
+	image                                                AgentImage
+	prepareEgress                                        func(namespace string) error
+}
+
+func (s *Service) createAgentSandbox(ctx context.Context, a agentSandbox) (Sandbox, error) {
+	template := cmp.Or(a.template, "agent")
 	tmpl, ok := s.Templates[template]
 	if !ok {
 		return Sandbox{}, fmt.Errorf("%w: unknown agent sandbox template %q", core.ErrBadRequest, template)
+	}
+	if a.image.BuildID != "" {
+		ref, err := s.agentImageRef(a.workspaceID, a.image)
+		if err != nil {
+			return Sandbox{}, err
+		}
+		tmpl.Image = ref
 	}
 	// An agent session's sandbox is the agent template's own size, and its
 	// plan label stays starter whatever a Render sandbox defaults to: what an
 	// agent sandbox costs is ADR047's and ADR091's decision, not the sandbox
 	// product's default plan (w8/247).
 	plan := PlanStarter
-	bindings, err := agentsession.BindingLabels(sessionID, repository, branch)
+	bindings, err := agentsession.BindingLabels(a.principal, a.repository, a.branch)
 	if err != nil {
 		return Sandbox{}, fmt.Errorf("%w: invalid agent session binding: %v", core.ErrBadRequest, err)
 	}
-	if turn := driverEnv["BEX_AGENT_TURN"]; turn != "" {
+	if turn := a.env["BEX_AGENT_TURN"]; turn != "" {
 		bindings[agentsession.LabelDispatchTurn] = turn
 	}
-	namespace := store.SandboxNamespace(workspaceID)
-	if err := s.SessionEgress.PrepareSetup(ctx, namespace, sessionID, modelEndpoint, egress); err != nil {
+	if err := a.prepareEgress(store.SandboxNamespace(a.workspaceID)); err != nil {
 		return Sandbox{}, err
 	}
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
@@ -1084,26 +1148,8 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	// transition instead receives both values directly from the caller
 	// (EnterAgentSessionPhase), which already holds them, so nothing needs to
 	// round-trip through a label.
-	// driverEnv carries the non-secret run env (prompt, agent, branch, repo,
-	// delivery toggle — ADR047 D4). modelAPIKey is required to be the exact
-	// session-bound proxy placeholder above; the reusable BYO key never enters a
-	// sandbox Pod spec. Metadata lands in status reads and audit, so neither value
-	// is stamped there.
-	var env map[string]string
-	if len(driverEnv) > 0 || modelAPIKey != "" {
-		env = map[string]string{}
-		for k, v := range driverEnv {
-			env[k] = v
-		}
-		if modelAPIKey != "" {
-			env[ModelAPIKeyEnvVar] = modelAPIKey
-		}
-	}
-	// Setup policy belongs to the session, not this attempt. A late failure
-	// must not delete a newer generation's policy; durable dispatch recovery
-	// removes this attempt's sandbox independently.
 	// Agent-session sandboxes keep the 86400 s bound on every plan (w5/m99).
-	return s.createResolved(ctx, workspaceID, template, tmpl, plan, defaultSandboxTimeout, policy, env, bindings)
+	return s.createResolved(ctx, a.workspaceID, template, tmpl, plan, defaultSandboxTimeout, policy, a.env, bindings)
 }
 
 // EnterAgentSessionPhase narrows one exact session sandbox from setup registry
@@ -1156,7 +1202,12 @@ func (l *AgentSessionLifecycle) ResumeAgentSessionSandbox(ctx context.Context, w
 // CancelAgentSessionSandbox terminates the exact session sandbox. OpenSandbox's
 // terminate is idempotent, so a retry can safely converge a canceling record.
 func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID string) error {
-	s := l.service
+	return l.service.terminateAgentSandbox(ctx, workspaceID, sessionID, sandboxID)
+}
+
+// terminateAgentSandbox terminates the exact sandbox bound to principal and
+// deletes the principal's egress policy.
+func (s *Service) terminateAgentSandbox(ctx context.Context, workspaceID, sessionID, sandboxID string) error {
 	key, err := s.agentSessionKey(ctx, workspaceID)
 	if err != nil {
 		return err
@@ -1210,7 +1261,12 @@ const agentSessionStatusPath = "/var/run/bex-agent/status.json"
 // only caller is a system loop that already owns the durable session. Empty
 // output means the file is not present yet (the headless turn is still running).
 func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error) {
-	s := l.service
+	return l.service.readAgentStatus(ctx, workspaceID, sessionID, sandboxID)
+}
+
+// readAgentStatus reads the driver status file of the sandbox bound to
+// principal: a session's turn, or a repository environment build.
+func (s *Service) readAgentStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error) {
 	status, err := s.sessionSandboxState(ctx, workspaceID, sessionID, sandboxID)
 	if err != nil {
 		return "", err

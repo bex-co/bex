@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, Pencil, Plus, ScrollText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -11,6 +11,7 @@ import {
 import { Alert, AlertDescription } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
+import { RelativeAge } from "@/common/components/relative-time";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -20,6 +21,8 @@ import {
   AgentRepoEnvironmentDialog,
   type RepoEnvironmentDialogTarget,
 } from "@/features/agent-environment/components/agent-repo-environment-dialog";
+import { AgentRepoEnvironmentBuildsDialog } from "@/features/agent-environment/components/agent-repo-environment-builds-dialog";
+import { RepoEnvironmentBuildBadge } from "@/features/agent-environment/components/repo-environment-build-badge";
 import {
   REPO_ENVIRONMENTS_ANCHOR,
   repoEnvironmentErrorKey,
@@ -27,6 +30,10 @@ import {
   type RepoStep,
   type RepoEnvironmentInput,
 } from "@/features/agent-environment/lib/repo-environments";
+import {
+  buildInstant,
+  hasBuilds,
+} from "@/features/agent-environment/lib/repo-environment-builds";
 
 /**
  * Settings → Repository environments (ADR109): per repository, the setup
@@ -34,6 +41,10 @@ import {
  * the checks the agent runs before it delivers. Members who can start
  * sessions see the list and can open an environment; only admins add, edit or
  * delete one. Each save replaces the repository's whole environment.
+ *
+ * A repository with setup steps also shows its newest build (ADR111): the
+ * snapshot its sessions boot from. Its build log opens from the row, where
+ * admins also start a build.
  */
 export function AgentRepoEnvironmentsCard({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
@@ -45,6 +56,11 @@ export function AgentRepoEnvironmentsCard({ ownerId }: { ownerId: string }) {
   );
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  // The repository whose builds are open; the row is re-read from the list
+  // so a poll's newer build reaches the open log view.
+  const [buildsRepo, setBuildsRepo] = useState<string | null>(null);
+  const buildsEnvironment =
+    environments.find((env) => env.repo === buildsRepo) ?? null;
 
   if (loading) return <AgentRepoEnvironmentsCardSkeleton />;
 
@@ -115,9 +131,18 @@ export function AgentRepoEnvironmentsCard({ ownerId }: { ownerId: string }) {
                 className="flex h-14 items-center gap-3 pr-1 pl-3"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-mono text-sm">{env.repo}</p>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate font-mono text-sm">{env.repo}</p>
+                    <LatestBuild environment={env} />
+                  </div>
                   <RepoEnvironmentSummary environment={env} />
                 </div>
+                {hasBuilds(env) ? (
+                  <BuildsButton
+                    repo={env.repo}
+                    onClick={() => setBuildsRepo(env.repo)}
+                  />
+                ) : null}
                 <Button
                   type="button"
                   variant="ghost"
@@ -224,7 +249,78 @@ export function AgentRepoEnvironmentsCard({ ownerId }: { ownerId: string }) {
           saving={saving}
         />
       ) : null}
+      {buildsEnvironment ? (
+        <AgentRepoEnvironmentBuildsDialog
+          key={buildsEnvironment.repo}
+          ownerId={ownerId}
+          environment={buildsEnvironment}
+          canManage={canManage}
+          onOpenChange={(open) => {
+            if (!open) setBuildsRepo(null);
+          }}
+        />
+      ) : null}
     </Card>
+  );
+}
+
+/** Opens a repository's builds and their logs (members read them too). */
+function BuildsButton({
+  repo,
+  onClick,
+}: {
+  repo: string;
+  onClick: () => void;
+}) {
+  const { t } = useTranslations();
+  const label = t("agentEnvironment.repoEnvs.builds.openLabel", { repo });
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="size-7"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+    >
+      <ScrollText className="size-4" />
+    </Button>
+  );
+}
+
+/**
+ * The row's newest build: its status and how long ago it last changed. A
+ * repository with setup steps that never built says so; a checks-only one
+ * shows nothing, since it never builds (ADR111 D1).
+ */
+function LatestBuild({ environment }: { environment: RepoEnvironmentView }) {
+  const { t } = useTranslations();
+  const build = environment.latestBuild;
+  if (!build) {
+    if (!hasBuilds(environment)) return null;
+    return (
+      <span
+        className="text-muted-foreground shrink-0 text-xs"
+        data-testid="repo-environment-not-built"
+      >
+        {t("agentEnvironment.repoEnvs.builds.notBuilt")}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="flex shrink-0 items-center gap-1.5"
+      data-testid="repo-environment-latest-build"
+    >
+      <RepoEnvironmentBuildBadge status={build.status} />
+      {/* Below sm the age gives its width to the repository's name. */}
+      <RelativeAge
+        value={buildInstant(build)}
+        fallback={null}
+        className="text-muted-foreground hidden text-xs sm:inline"
+      />
+    </span>
   );
 }
 

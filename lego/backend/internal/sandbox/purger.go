@@ -44,6 +44,15 @@ type WorkspacePurger struct {
 	// Images, when it has a reaper, deletes the workspace's imported images
 	// from the registry (w2/m359) while their rows still name them.
 	Images *Images
+	// AgentBuilds lists the workspace's repository environment build images,
+	// deleted with its imported ones (ADR111 D8); *store.PGStore.
+	AgentBuilds AgentBuildImages
+}
+
+// AgentBuildImages lists the repository environment builds whose images the
+// registry may hold.
+type AgentBuildImages interface {
+	AgentRepoEnvironmentBuildImageIDs(ctx context.Context, workspaceID string) ([]string, error)
 }
 
 // PurgeWorkspace stops every sandbox in the deleted workspace's `<ws>-sandbox`
@@ -80,9 +89,9 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 	return nil
 }
 
-// purgeImages deletes every image the workspace imported. It runs before the
-// tenant's rows cascade, which would otherwise leave the registry holding
-// images nothing names.
+// purgeImages deletes every image the workspace imported or built. It runs
+// before the tenant's rows cascade, which would otherwise leave the registry
+// holding images nothing names.
 func (p *WorkspacePurger) purgeImages(ctx context.Context, tenantID string) error {
 	if p.Images == nil || p.Images.Reaper == nil {
 		return nil
@@ -90,6 +99,13 @@ func (p *WorkspacePurger) purgeImages(ctx context.Context, tenantID string) erro
 	builds, err := p.Images.Store.SandboxBuildIDs(ctx, tenantID, "")
 	if err != nil {
 		return err
+	}
+	if p.AgentBuilds != nil {
+		agentBuilds, err := p.AgentBuilds.AgentRepoEnvironmentBuildImageIDs(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		builds = append(builds, agentBuilds...)
 	}
 	return p.Images.deleteImported(ctx, tenantID, builds)
 }

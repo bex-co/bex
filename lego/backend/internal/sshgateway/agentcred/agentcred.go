@@ -297,6 +297,13 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	namespace, mintRequest, service, err := parseProxyPath(r.URL.Path)
+	// A repository environment build (ADR111) only clones and fetches: no
+	// push and no pull-request verb, whatever its credential would allow.
+	if err == nil && agentsession.IsBuildPrincipal(mintRequest.SessionID) && !uploadPackRequest(r, service) {
+		b.Metrics.Authentication("rejected_target")
+		http.Error(w, "a repository environment build may only clone", http.StatusForbidden)
+		return
+	}
 	if err == nil && service == agentsession.PullRequestProxySegment {
 		b.servePullRequest(w, r, namespace, mintRequest)
 		return
@@ -517,6 +524,12 @@ func parseProxyPath(path string) (string, agentsession.MintRequest, string, erro
 		return "", agentsession.MintRequest{}, "", agentsession.ErrInvalidRequest
 	}
 	return namespace, agentsession.MintRequest{SessionID: sessionID, Repository: repository, Branch: branch}, service, nil
+}
+
+// uploadPackRequest reports a clone or fetch exchange: the upload-pack
+// advertisement or its RPC.
+func uploadPackRequest(r *http.Request, service string) bool {
+	return service == "git-upload-pack" || (service == "info/refs" && r.URL.Query().Get("service") == "git-upload-pack")
 }
 
 func validGitRequest(r *http.Request, service string) bool {

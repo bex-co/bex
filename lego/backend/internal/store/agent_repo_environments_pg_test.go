@@ -32,14 +32,14 @@ func TestPGAgentRepoEnvironments(t *testing.T) {
 	setup := []byte(`[{"name":"deps","run":"npm ci"}]`)
 	checks := []byte(`[{"name":"test","run":"npm test"}]`)
 	for _, repo := range []string{"acme/web", "acme/api"} {
-		if _, err := s.UpsertAgentRepoEnvironment(ctx, tenant.ID, repo, setup, checks, 2); err != nil {
+		if _, _, err := s.UpsertAgentRepoEnvironment(ctx, tenant.ID, repo, setup, checks, 2); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := s.UpsertAgentRepoEnvironment(ctx, tenant.ID, "acme/cli", setup, checks, 2); !errors.Is(err, ErrAgentRepoEnvironmentLimit) {
+	if _, _, err := s.UpsertAgentRepoEnvironment(ctx, tenant.ID, "acme/cli", setup, checks, 2); !errors.Is(err, ErrAgentRepoEnvironmentLimit) {
 		t.Fatalf("past the limit = %v", err)
 	}
-	replaced, err := s.UpsertAgentRepoEnvironment(ctx, tenant.ID, "acme/api", []byte(`[]`), checks, 2)
+	replaced, _, err := s.UpsertAgentRepoEnvironment(ctx, tenant.ID, "acme/api", []byte(`[]`), checks, 2)
 	if err != nil || string(replaced.Setup) != "[]" {
 		t.Fatalf("replace at the limit = %s / %v", replaced.Setup, err)
 	}

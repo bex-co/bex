@@ -246,6 +246,19 @@ func (c *Client) MintInstallationToken(ctx context.Context, installationID int64
 // reaching this method. Contents write includes clone/fetch read access and push;
 // metadata stays read-only. The token expires after GitHub's fixed one-hour TTL.
 func (c *Client) MintSessionInstallationToken(ctx context.Context, installationID int64, repository string) (InstallationToken, error) {
+	return c.mintRepositoryToken(ctx, installationID, repository, "write")
+}
+
+// MintRepositoryReadToken mints a repository environment build's clone
+// credential (ADR111): contents read-only, so the token cannot push whatever
+// the gateway lets through.
+func (c *Client) MintRepositoryReadToken(ctx context.Context, installationID int64, repository string) (InstallationToken, error) {
+	return c.mintRepositoryToken(ctx, installationID, repository, "read")
+}
+
+// mintRepositoryToken mints a token narrowed to one repository NAME with the
+// given contents permission and read-only metadata.
+func (c *Client) mintRepositoryToken(ctx context.Context, installationID int64, repository, contents string) (InstallationToken, error) {
 	repository = strings.TrimSpace(repository)
 	if repository == "" || strings.Contains(repository, "/") {
 		return InstallationToken{}, fmt.Errorf("github: repository name is required")
@@ -255,10 +268,7 @@ func (c *Client) MintSessionInstallationToken(ctx context.Context, installationI
 		Permissions  map[string]string `json:"permissions"`
 	}{
 		Repositories: []string{repository},
-		Permissions: map[string]string{
-			"contents": "write",
-			"metadata": "read",
-		},
+		Permissions:  map[string]string{"contents": contents, "metadata": "read"},
 	})
 }
 

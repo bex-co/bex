@@ -111,3 +111,28 @@ func runStep(ctx context.Context, name string, step func(context.Context) error)
 	}()
 	return step(ctx)
 }
+
+// Heartbeat runs touch every interval until ctx is done, logging each failure
+// as "name: heartbeat: err", and calls stop once touch reports the work is no
+// longer live (another owner settled it), so a long-running worker gives it up.
+func Heartbeat(ctx context.Context, name string, interval time.Duration, stop context.CancelFunc, touch func(context.Context) (bool, error)) {
+	if interval <= 0 {
+		interval = MinPollInterval
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			live, err := touch(ctx)
+			if err != nil {
+				log.Printf("%s: heartbeat: %v", name, err)
+			} else if !live {
+				stop()
+				return
+			}
+		}
+	}
+}

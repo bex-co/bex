@@ -116,8 +116,12 @@ type EgressTierStore interface {
 type EgressGranter struct {
 	Sessions     SessionStore
 	Environments EgressTierStore
-	Audit        core.AuditSink
-	Now          func() time.Time
+	// Builds grants a running repository environment build's builder the
+	// proxy, as its setup steps run with the session's egress tier (ADR111
+	// D11); nil refuses every build principal.
+	Builds BuildStore
+	Audit  core.AuditSink
+	Now    func() time.Time
 }
 
 func (g *EgressGranter) Grant(ctx context.Context, req ModelMintRequest) (response EgressGrantResponse, err error) {
@@ -128,7 +132,7 @@ func (g *EgressGranter) Grant(ctx context.Context, req ModelMintRequest) (respon
 		}
 		core.RecordAuditEvent(ctx, g.Audit, core.AuditEvent{
 			Caller: req.PodName, CallerMethod: "sandbox", Verb: AuditVerbGrantEgress,
-			Resource: core.WorkspaceObject(req.Workspace), Target: "agent-session:" + req.SessionID,
+			Resource: core.WorkspaceObject(req.Workspace), Target: principalTarget(req.SessionID),
 			TargetName: "egress-proxy", Outcome: outcome, At: g.now(),
 		})
 	}()
@@ -138,15 +142,8 @@ func (g *EgressGranter) Grant(ctx context.Context, req ModelMintRequest) (respon
 	if req.Workspace == "" || req.SessionID == "" || req.PodName == "" || req.PodUID == "" {
 		return EgressGrantResponse{}, fmt.Errorf("%w: incomplete verified identity", ErrInvalidRequest)
 	}
-	session, err := g.Sessions.GetAgentSession(ctx, req.SessionID)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return EgressGrantResponse{}, ErrForbidden
-		}
+	if err := g.currentCaller(ctx, req); err != nil {
 		return EgressGrantResponse{}, err
-	}
-	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
-		return EgressGrantResponse{}, ErrForbidden
 	}
 	env, err := g.Environments.GetAgentEnvironment(ctx, req.Workspace)
 	if errors.Is(err, store.ErrNotFound) {
@@ -161,6 +158,26 @@ func (g *EgressGranter) Grant(ctx context.Context, req ModelMintRequest) (respon
 		return EgressGrantResponse{}, ErrForbidden
 	}
 	return EgressGrantResponse{Allowed: true, SessionID: req.SessionID}, nil
+}
+
+// currentCaller is ErrForbidden unless the request comes from the live
+// sandbox of its session, or the builder of its running build.
+func (g *EgressGranter) currentCaller(ctx context.Context, req ModelMintRequest) error {
+	if IsBuildPrincipal(req.SessionID) {
+		_, err := currentBuilder(ctx, g.Builds, req.SessionID, req.Workspace, req.PodName, req.PodUID)
+		return err
+	}
+	session, err := g.Sessions.GetAgentSession(ctx, req.SessionID)
+	if errors.Is(err, store.ErrNotFound) {
+		return ErrForbidden
+	}
+	if err != nil {
+		return err
+	}
+	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
+		return ErrForbidden
+	}
+	return nil
 }
 
 func (g *EgressGranter) now() time.Time {

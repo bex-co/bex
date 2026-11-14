@@ -47,7 +47,7 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
 	placeholder := agentsession.ModelKeyPlaceholder("ags-session")
-	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", placeholder, sessionegress.Egress{Hosts: []string{"docs.example.com"}}, map[string]string{"BEX_AGENT_PROMPT": "do it", "BEX_AGENT_TURN": "2"})
+	created, err := lifecycle.CreateAgentSessionSandbox(ctx, AgentSessionSandbox{WorkspaceID: "tea-a", Template: "agent", SessionID: "ags-session", Repository: "bex-co/example", Branch: "bex-agent/session-test", ModelEndpoint: "https://api.openai.com/v1", ModelAPIKey: placeholder, Egress: sessionegress.Egress{Hosts: []string{"docs.example.com"}}, DriverEnv: map[string]string{"BEX_AGENT_PROMPT": "do it", "BEX_AGENT_TURN": "2"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestAgentSessionLifecycleRejectsReusableOrMissingModelCredential(t *testing
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
 	for _, credential := range []string{"", "sk-tenant-secret", agentsession.ModelKeyPlaceholder("ags-other")} {
-		if _, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", credential, sessionegress.Egress{}, nil); !errors.Is(err, core.ErrAgentSessionsUnavailable) {
+		if _, err := lifecycle.CreateAgentSessionSandbox(ctx, AgentSessionSandbox{WorkspaceID: "tea-a", Template: "agent", SessionID: "ags-session", Repository: "bex-co/example", Branch: "bex-agent/session-test", ModelEndpoint: "https://api.openai.com/v1", ModelAPIKey: credential}); !errors.Is(err, core.ErrAgentSessionsUnavailable) {
 			t.Fatalf("credential %q error = %v, want agent sessions unavailable", credential, err)
 		}
 	}

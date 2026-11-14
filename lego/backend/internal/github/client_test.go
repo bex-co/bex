@@ -185,6 +185,36 @@ func TestMintSessionInstallationTokenNarrowsRepositoryAndPermissions(t *testing.
 	}
 }
 
+// ADR111: a repository environment build's clone token is read-only and
+// narrowed to its one repository.
+func TestMintRepositoryReadTokenIsReadOnly(t *testing.T) {
+	keyPEM, _ := testKeyPEM(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Repositories []string          `json:"repositories"`
+			Permissions  map[string]string `json:"permissions"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if r.URL.Path != "/app/installations/42/access_tokens" || len(body.Repositories) != 1 || body.Repositories[0] != "repo" ||
+			body.Permissions["contents"] != "read" || body.Permissions["metadata"] != "read" || len(body.Permissions) != 2 {
+			t.Fatalf("read token request = %s %+v", r.URL.Path, body)
+		}
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"token":"ghs_read","expires_at":"2026-08-01T13:00:00Z"}`)
+	}))
+	defer server.Close()
+	client, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+	client.baseURL = server.URL
+	if token, err := client.MintRepositoryReadToken(context.Background(), 42, "repo"); err != nil || token.Token != "ghs_read" {
+		t.Fatalf("MintRepositoryReadToken = %+v / %v", token, err)
+	}
+	if _, err := client.MintRepositoryReadToken(context.Background(), 42, "owner/repo"); err == nil {
+		t.Fatal("an owner/name reached GitHub's name-only narrowing field")
+	}
+}
+
 func TestListRepoTreeFetchesNestedDirectoryAtRef(t *testing.T) {
 	keyPEM, _ := testKeyPEM(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

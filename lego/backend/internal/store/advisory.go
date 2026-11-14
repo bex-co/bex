@@ -40,6 +40,14 @@ func lockAgentRepoEnvironments(ctx context.Context, tx pgx.Tx, workspaceID strin
 	return err
 }
 
+// lockSandboxStorage serializes the writes that add retained image bytes to a
+// workspace (imports, repository environment build images), so each is
+// checked against its storage cap with a total no concurrent one moves.
+func lockSandboxStorage(ctx context.Context, tx pgx.Tx, workspaceID string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "sandbox-storage:"+workspaceID)
+	return err
+}
+
 // lockAgentSkills serializes a workspace's skill writes, so the count and
 // enabled-bytes caps are checked against a total no concurrent write moves.
 func lockAgentSkills(ctx context.Context, tx pgx.Tx, workspaceID string) error {

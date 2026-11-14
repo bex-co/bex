@@ -37,6 +37,16 @@ export interface RepoSetupConfig {
   gitName: string;
   gitEmail: string;
   deliveryBaseline?: DeliveryBaseline;
+  // The snapshot build this sandbox booted from (ADR111 D4), "" or unset for
+  // the plain agent image.
+  prebuilt?: string;
+}
+
+export interface EnsureRepoResult {
+  baseline: DeliveryBaseline;
+  // The checkout came from a snapshot build's image, where the setup steps
+  // already ran.
+  setupBaked: boolean;
 }
 
 export interface DeliveryBaseline {
@@ -81,6 +91,14 @@ async function isGitRepo(cwd: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function currentBranch(cwd: string): Promise<string> {
+  try {
+    return await git(cwd, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+  } catch {
+    return ""; // a detached HEAD
   }
 }
 
@@ -190,8 +208,16 @@ async function captureDeliveryBaseline(
 // until the id is persisted a few seconds later. Retrying with backoff turns that
 // startup race into a brief delay instead of a failed session; each retry cleans
 // any partial clone so `git clone .` sees an empty directory.
-async function cloneWithRetry(cwd: string, repoUrl: string): Promise<void> {
-  await withGitAuthRetry(() => git(cwd, ["clone", repoUrl, "."]), {
+export async function cloneWithRetry(
+  cwd: string,
+  repoUrl: string,
+  {
+    flags = [],
+    ...retry
+  }: { flags?: string[]; attempts?: number; delayMs?: number } = {},
+): Promise<void> {
+  await withGitAuthRetry(() => git(cwd, ["clone", ...flags, repoUrl, "."]), {
+    ...retry,
     onRetry: () => cleanDirectory(cwd),
   });
 }
@@ -216,7 +242,7 @@ async function cleanDirectory(cwd: string): Promise<void> {
 // bound branch.
 export async function ensureRepo(
   config: RepoSetupConfig,
-): Promise<DeliveryBaseline> {
+): Promise<EnsureRepoResult> {
   if (!config.repoUrl) {
     throw new Error("BEX_AGENT_REPO_URL is required for delivery");
   }
@@ -224,25 +250,46 @@ export async function ensureRepo(
   if (!existing) {
     await cloneWithRetry(config.cwd, config.repoUrl);
   }
+  // A snapshot build's image (ADR111 D4) holds the default branch as the
+  // build left it. The session starts from the latest code instead, as
+  // Devin's do: the session branch where it already exists, else the base.
+  // A checkout already on the session branch is this session's own work (a
+  // driver restarted in the same sandbox) and is kept, as below.
+  const fromImage =
+    existing &&
+    Boolean(config.prebuilt) &&
+    (await currentBranch(config.cwd)) !== config.branch;
   // A pre-cloned workspace is tenant-controlled state. Reset origin to
   // the control-plane supplied proxy before reading any remote identity.
   await git(config.cwd, ["remote", "set-url", "origin", config.repoUrl]);
   const baseline = await captureDeliveryBaseline(config);
-  if (existing) {
+  if (existing && !fromImage) {
     // Preserve existing commits and working-tree edits, but put them on the
     // session ref; the agent delivers them on its next turn.
     await git(config.cwd, ["checkout", "-B", config.branch]);
   } else {
+    // --force: changes the build's setup steps made to tracked files belong
+    // to the old commit. Untracked and ignored files (installed
+    // dependencies) stay.
     await git(config.cwd, [
       "checkout",
+      ...(fromImage ? ["--force"] : []),
       "-B",
       config.branch,
       baseline.remoteBranchOid || baseline.baseOid,
     ]);
   }
+  if (fromImage) {
+    // The image's origin/<base> is the build's; the agent compares against it.
+    await git(config.cwd, [
+      "update-ref",
+      `refs/remotes/origin/${baseline.baseBranch}`,
+      baseline.baseOid,
+    ]);
+  }
   await configureAgentGit(config);
   config.deliveryBaseline = baseline;
-  return baseline;
+  return { baseline, setupBaked: existing && Boolean(config.prebuilt) };
 }
 
 async function configureAgentGit(config: RepoSetupConfig): Promise<void> {
@@ -256,4 +303,35 @@ async function configureAgentGit(config: RepoSetupConfig): Promise<void> {
   for (const [key, value] of settings) {
     await git(config.cwd, ["config", "--local", key, value]);
   }
+}
+
+// scrubBuildCheckout removes per-run Git state from a snapshot build's
+// checkout before its image is committed (ADR111 D1): any credential helper
+// or extra auth header, and the build's Pod-bound proxy as origin, which
+// becomes the repository's public GitHub URL. A session's ensureRepo resets
+// origin to its own proxy again. Everything else the setup steps wrote stays.
+// The build cloned one branch to keep the image small; origin fetches every
+// branch again, as a session's own clone does.
+export async function scrubBuildCheckout(
+  cwd: string,
+  repository: string,
+): Promise<void> {
+  const keys = (await git(cwd, ["config", "--local", "--name-only", "--list"]))
+    .split("\n")
+    .filter((key) => /^credential\.|^http\..*extraheader$/i.test(key));
+  for (const key of new Set(keys)) {
+    await git(cwd, ["config", "--local", "--unset-all", key]);
+  }
+  await git(cwd, [
+    "remote",
+    "set-url",
+    "origin",
+    `https://github.com/${repository}.git`,
+  ]);
+  await git(cwd, [
+    "config",
+    "--local",
+    "remote.origin.fetch",
+    "+refs/heads/*:refs/remotes/origin/*",
+  ]);
 }

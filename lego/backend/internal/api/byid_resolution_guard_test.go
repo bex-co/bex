@@ -84,6 +84,9 @@ var byIDResolutions = map[string]byIDResolution{
 	"build-sources":                      {"apps", "AuthorizeApp", "a build source is a carrier App, resolved under core.WithBuildSources (ADR097)", nil},
 	"notification-device-subscriptions":  {"notifications", "ScopeByID", "the caller's own device, in the workspace it was registered in (w5/m115)", []string{"scopeDevice"}},
 	"notification-webpush-subscriptions": {"", "", "the caller's own browser registration", nil},
+
+	// ADR111: a build is routed by its own row.
+	"agent-repo-environment-builds": {"agentsessions", "ScopeByID", "agent_repo_environment_builds workspace routing read for an arb- id (ADR111)", []string{"RepoEnvironmentBuild"}},
 }
 
 // TestEveryByIDRouteResolvesItsOwnWorkspace fails when a REST route that takes
@@ -270,6 +273,8 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.AgentQueuedMessage.Prefix():       {"agent-sessions", "addressed under its session, authorized on the session object"},
 	ids.BuildSource.Prefix():              {"", "build-source routes still answer a named 404; w2/m254 t003 adds their by-id family"},
 	ids.Build.Prefix():                    {"", "a build is addressed under its build source"},
+
+	ids.AgentRepoEnvironmentBuild.Prefix(): {"agent-repo-environment-builds", ""},
 }
 
 // TestEveryIDKindIsClassifiedForByIDRouting closes the gap the route walk

@@ -200,6 +200,19 @@ describe("toAgentSessionView", () => {
     expect(partial.outcome).toBeNull();
   });
 
+  // ADR111 D4: the build the latest turn's sandbox booted from.
+  it("carries the environment build a turn booted from, else null", () => {
+    expect(
+      toAgentSessionView(wire({ environmentBuildId: "arb-1" }))
+        .environmentBuildId,
+    ).toBe("arb-1");
+    expect(
+      toAgentSessionView(wire({ environmentBuildId: null })).environmentBuildId,
+    ).toBeNull();
+    // A partial cache entry from before the field.
+    expect(toAgentSessionView(wire()).environmentBuildId).toBeNull();
+  });
+
   // w9/m386: the PR's state as bex last read it from GitHub.
   it.each(["open", "merged", "closed"])("carries PR state %s", (prState) => {
     expect(toAgentSessionView(wire({ prNumber: 7, prState })).prState).toBe(

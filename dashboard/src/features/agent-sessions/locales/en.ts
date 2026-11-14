@@ -1066,6 +1066,17 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Archived",
     description: "Badge marking a session as archived (out of the working set)",
   },
+  "agentSessions.startedFromSnapshot": {
+    message: "Started from snapshot",
+    description:
+      "Session header chip: the latest turn booted from a repository environment build (ADR111 D4)",
+  },
+  "agentSessions.startedFromSnapshotTitle": {
+    message:
+      "The latest turn started from environment build {id}, with the setup steps already run.",
+    description:
+      "Tooltip of the Started from snapshot chip (id is the build id, arb-…)",
+  },
   "agentSessions.delete": {
     message: "Delete",
     description: "Destructive action permanently deleting a finished session",

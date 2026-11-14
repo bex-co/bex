@@ -20,7 +20,7 @@
 // lives in this one versioned template so every engine receives the same
 // environment contract, whichever channel carries it (acp.ts).
 
-import type { RepoEnvironment } from "./repo-setup.js";
+import type { RepoEnvironment, RepoStep } from "./repo-setup.js";
 import type { AttachmentManifest } from "./attachments.js";
 import { skillsSection, type SkillManifest } from "./skills.js";
 import { toolName } from "./mcp-bex.js";
@@ -54,8 +54,11 @@ export interface OverlayContext {
   networkTier?: string;
   attachments?: AttachmentManifest;
   skills?: SkillManifest;
-  // The repository's declared checks (ADR109 D6).
+  // The repository's declared checks (ADR109 D6), and its setup steps.
   repoEnvironment?: RepoEnvironment;
+  // The sandbox booted from a snapshot build's image, where the setup steps
+  // already ran (ADR111 D4).
+  setupBaked?: boolean;
   // profile is the engine's release-profile id; engines with a native skill
   // loader get a shorter skills index.
   profile?: string;
@@ -241,22 +244,42 @@ function compactSchema(schema: string): string {
   }
 }
 
+// fencedSteps renders each step as a heading and its fenced command, so a
+// multi-line one stays intact.
+function fencedSteps(steps: RepoStep[]): string {
+  return steps
+    .map((step) => `### ${step.name}\n\n\`\`\`sh\n${step.run}\n\`\`\``)
+    .join("\n\n");
+}
+
+// setupSection names the setup steps a snapshot build already ran (ADR111
+// D4). bex does not run them again, as Devin does not run `maintenance` at a
+// session's start; the agent reruns one when the dependencies changed.
+function setupSection(context: OverlayContext): string {
+  const setup = context.repoEnvironment?.setup ?? [];
+  if (!context.setupBaked || setup.length === 0) return "";
+  return `
+
+## Repository setup
+
+This sandbox started from a snapshot of the repository's environment. These setup steps already ran from the repository root when the snapshot was built, and bex did not run them again for this session. The checkout was then updated to the latest code. If the dependencies changed since the snapshot (a lockfile, a manifest or a toolchain version differs), rerun the step that installs them before you build or test.
+
+${fencedSteps(setup)}`;
+}
+
 // checksSection names the repository's declared checks (ADR109 D6); only a
 // repository whose environment declares some has it. Each command is fenced,
 // so a multi-line one stays intact.
 function checksSection(context: OverlayContext): string {
   const checks = context.repoEnvironment?.checks ?? [];
   if (checks.length === 0) return "";
-  const blocks = checks.map(
-    (check) => `### ${check.name}\n\n\`\`\`sh\n${check.run}\n\`\`\``,
-  );
   return `
 
 ## Repository checks
 
 This repository declares these checks. Before you commit, run each one from the repository root, and name each result (passed, or what failed) in the pull request body or your final message. A failing check does not stop you from delivering; report it.
 
-${blocks.join("\n\n")}`;
+${fencedSteps(checks)}`;
 }
 
 // resultSection tells the agent this turn's answer is a structured result and
@@ -289,6 +312,6 @@ export function platformOverlay(context: OverlayContext): string {
 
 This section comes from bex, the platform hosting this session. It adds to your existing instructions and does not replace them.
 
-${body}${checksSection(context)}${attachmentsSection(context)}${skillsSection(context.skills, context.profile)}${sharingSection(context)}${childSessionsSection(context)}${resultSection(context)}
+${body}${setupSection(context)}${checksSection(context)}${attachmentsSection(context)}${skillsSection(context.skills, context.profile)}${sharingSection(context)}${childSessionsSection(context)}${resultSection(context)}
 `;
 }

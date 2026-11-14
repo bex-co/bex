@@ -351,10 +351,59 @@ export enum AgentNetworkTier {
 export type AgentRepoEnvironment = {
   __typename: 'AgentRepoEnvironment';
   checks: Array<AgentRepoStep>;
+  /** The newest build of the repository's environment, if it has one. */
+  latestBuild: Maybe<AgentRepoEnvironmentBuild>;
   ownerId: Scalars['String']['output'];
   repo: Scalars['String']['output'];
   setup: Array<AgentRepoStep>;
   updatedAt: Maybe<Scalars['String']['output']>;
+  /** The SHA-256 of the setup steps; a build of another version is stale. */
+  version: Scalars['String']['output'];
+};
+
+/** A build of a repository environment's setup steps into the image its sessions boot from (ADR111). */
+export type AgentRepoEnvironmentBuild = {
+  __typename: 'AgentRepoEnvironmentBuild';
+  createdAt: Maybe<Scalars['String']['output']>;
+  /** setup_failed, step_timeout, build_timeout, checkout_failed, storage_limit_reached or internal_error, on a failed build. */
+  failureCode: Maybe<Scalars['String']['output']>;
+  failureReason: Maybe<Scalars['String']['output']>;
+  finishedAt: Maybe<Scalars['String']['output']>;
+  /** The default branch commit the build checked out. */
+  headSha: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  /** Whether sessions can boot from the build's image. */
+  imageAvailable: Scalars['Boolean']['output'];
+  ownerId: Scalars['String']['output'];
+  repo: Scalars['String']['output'];
+  /** The image's compressed size. */
+  sizeBytes: Maybe<Scalars['Float']['output']>;
+  startedAt: Maybe<Scalars['String']['output']>;
+  /** queued, building, success, failed or cancelled. */
+  status: Scalars['String']['output'];
+  /** The build's redacted log; null on lists, read agentRepoEnvironmentBuild(id) for it. */
+  steps: Maybe<Array<AgentRepoEnvironmentBuildStep>>;
+  /** environment_saved, secret_changed, manual or refresh. */
+  trigger: Scalars['String']['output'];
+  /** The environment version the build baked; sessions use it while the environment's version is the same. */
+  version: Scalars['String']['output'];
+};
+
+export type AgentRepoEnvironmentBuildList = {
+  __typename: 'AgentRepoEnvironmentBuildList';
+  builds: Array<AgentRepoEnvironmentBuild>;
+  ownerId: Scalars['String']['output'];
+  repo: Scalars['String']['output'];
+};
+
+/** One setup step of a build: its exit, duration and redacted output tail. */
+export type AgentRepoEnvironmentBuildStep = {
+  __typename: 'AgentRepoEnvironmentBuildStep';
+  durationMs: Scalars['Float']['output'];
+  /** Null for a step that was killed or never started. */
+  exitCode: Maybe<Scalars['Int']['output']>;
+  name: Scalars['String']['output'];
+  output: Scalars['String']['output'];
 };
 
 export type AgentRepoEnvironmentList = {
@@ -408,6 +457,8 @@ export type AgentSession = {
   deliveryNote: Maybe<Scalars['String']['output']>;
   /** Distance from the root of the session's tree; 0 for a top-level session. */
   depth: Scalars['Int']['output'];
+  /** The repository environment build (arb-…) the latest turn's sandbox booted from; null when it ran the setup steps. */
+  environmentBuildId: Maybe<Scalars['String']['output']>;
   expiresAt: Maybe<Scalars['String']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
   failureReasonCode: Maybe<Scalars['String']['output']>;
@@ -541,7 +592,7 @@ export type AgentSessionQueuedMessage = {
   attachmentIds: Maybe<Array<Scalars['String']['output']>>;
   /** The member the turn runs as: who queued the message, or who last edited it. */
   author: Scalars['String']['output'];
-  /** Why the last attempt to run it failed (a spend or live-sandbox limit); it is retried within seconds. */
+  /** Why the last attempt to run it failed (a spend or live-sandbox limit); it is retried about every half minute. */
   blockedReason: Maybe<Scalars['String']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   droppedReason: Maybe<Scalars['String']['output']>;
@@ -1975,6 +2026,8 @@ export type Mutation = {
   approveBlueprint: Maybe<BlueprintApprovedSync>;
   archiveAgentSession: Maybe<AgentSession>;
   attachAgentSession: Maybe<AgentSession>;
+  /** Build a repository environment now (admins only). A queued build is replaced; a running one finishes first. At most 12 builds start per repository in 24 hours. */
+  buildAgentRepoEnvironment: AgentRepoEnvironmentBuild;
   cancelAgentSession: Maybe<AgentSession>;
   cancelCronJobRun: Maybe<CronRun>;
   cancelDeploy: Maybe<Deploy>;
@@ -2255,6 +2308,12 @@ export type MutationArchiveAgentSessionArgs = {
 export type MutationAttachAgentSessionArgs = {
   action?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
+};
+
+
+export type MutationBuildAgentRepoEnvironmentArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
 };
 
 
@@ -4028,6 +4087,10 @@ export type Query = {
   /** The workspace's agent automations, newest first. mine keeps the caller's own. */
   agentAutomations: AgentAutomationList;
   agentEnvironment: AgentEnvironment;
+  /** One repository environment build with its redacted log. */
+  agentRepoEnvironmentBuild: AgentRepoEnvironmentBuild;
+  /** A repository's environment builds, newest first (the last 20). */
+  agentRepoEnvironmentBuilds: AgentRepoEnvironmentBuildList;
   /** The workspace's repository environments (setup steps and checks). */
   agentRepoEnvironments: AgentRepoEnvironmentList;
   /** The workspace's agent secrets, names only. */
@@ -4211,6 +4274,18 @@ export type QueryAgentAutomationsArgs = {
 
 export type QueryAgentEnvironmentArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAgentRepoEnvironmentBuildArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAgentRepoEnvironmentBuildsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
 };
 
 
@@ -5444,6 +5519,7 @@ export type ServiceEventDetails = {
   displayNameTo: Maybe<Scalars['String']['output']>;
   domain: Maybe<Scalars['String']['output']>;
   edgeCacheTrigger: Maybe<EdgeCacheTrigger>;
+  enabled: Maybe<Scalars['Boolean']['output']>;
   envGroupId: Maybe<Scalars['String']['output']>;
   envGroupName: Maybe<Scalars['String']['output']>;
   environmentFrom: Maybe<Scalars['String']['output']>;
@@ -5453,8 +5529,12 @@ export type ServiceEventDetails = {
   failureReasonTemplate: Maybe<DeployReason>;
   finishedAt: Maybe<Scalars['String']['output']>;
   fromCount: Maybe<Scalars['Int']['output']>;
+  fromDiskSize: Maybe<Scalars['Int']['output']>;
+  fromReplicas: Maybe<Scalars['Int']['output']>;
   fromSizeGB: Maybe<Scalars['Int']['output']>;
+  fromStatus: Maybe<Scalars['String']['output']>;
   fromURI: Maybe<Scalars['String']['output']>;
+  fromVersion: Maybe<Scalars['String']['output']>;
   fullDeployStatus: Maybe<Scalars['String']['output']>;
   image: Maybe<Scalars['String']['output']>;
   instanceCountFrom: Maybe<Scalars['Int']['output']>;
@@ -5463,6 +5543,7 @@ export type ServiceEventDetails = {
   leaderId: Maybe<Scalars['String']['output']>;
   maintenanceEnabled: Maybe<Scalars['Boolean']['output']>;
   memoryLimit: Maybe<Scalars['String']['output']>;
+  message: Maybe<Scalars['String']['output']>;
   mountPath: Maybe<Scalars['String']['output']>;
   planFrom: Maybe<Scalars['String']['output']>;
   planTo: Maybe<Scalars['String']['output']>;
@@ -5471,6 +5552,7 @@ export type ServiceEventDetails = {
   projectTo: Maybe<Scalars['String']['output']>;
   reason: Maybe<BuildDeployEndReason>;
   reasonCode: Maybe<Scalars['String']['output']>;
+  restartReason: Maybe<Scalars['String']['output']>;
   resumedByUser: Maybe<EventUser>;
   sizeGB: Maybe<Scalars['Int']['output']>;
   stallReason: Maybe<Scalars['String']['output']>;
@@ -5480,7 +5562,11 @@ export type ServiceEventDetails = {
   suspendedByUser: Maybe<EventUser>;
   thresholdPercent: Maybe<Scalars['Float']['output']>;
   toCount: Maybe<Scalars['Int']['output']>;
+  toDiskSize: Maybe<Scalars['Int']['output']>;
+  toReplicas: Maybe<Scalars['Int']['output']>;
+  toStatus: Maybe<Scalars['String']['output']>;
   toURI: Maybe<Scalars['String']['output']>;
+  toVersion: Maybe<Scalars['String']['output']>;
   trigger: Maybe<DeployTrigger>;
   triggeredByUser: Maybe<Scalars['String']['output']>;
   usagePercent: Maybe<Scalars['Float']['output']>;

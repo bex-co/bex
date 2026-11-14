@@ -244,6 +244,7 @@ function detail(
       tags: null,
       maxSpendUSD: null,
       automationId: null,
+      environmentBuildId: null,
       createdBy: null,
       parentSessionId: null,
       rootSessionId: null,

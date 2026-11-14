@@ -301,6 +301,9 @@ type View struct {
 	// its source: inline, explicit (named), repo or workspace (ADR098 D9).
 	// Names only, never a value.
 	AppliedSecrets []AppliedSecret `json:"appliedSecrets"`
+	// EnvironmentBuildID is the repository environment build the latest turn's
+	// sandbox booted from (ADR111 D4); absent when it ran the setup steps.
+	EnvironmentBuildID string `json:"environmentBuildId,omitempty"`
 	// AutomationID is the agent automation that started the session (ADR101
 	// D5); absent for a session started by a person or client.
 	AutomationID string `json:"automationId,omitempty"`

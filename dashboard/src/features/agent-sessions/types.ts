@@ -169,6 +169,11 @@ export interface AgentSessionView {
   /** The agent automation (aut-…) that started the session, ADR101. */
   automationId: string | null;
   /**
+   * The repository environment build (arb-…) the latest turn's sandbox booted
+   * from (ADR111 D4); null when the turn ran the setup steps itself.
+   */
+  environmentBuildId: string | null;
+  /**
    * Who started the session (w7/m296): a member's identity subject or an API
    * key's client id. An automation's sessions carry its creator. Null on rows
    * from before it was recorded.

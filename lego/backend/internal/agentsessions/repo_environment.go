@@ -67,12 +67,16 @@ type RepoEnvironmentInput struct {
 }
 
 // RepoEnvironment is a repository's environment as every read shows it.
+// Version hashes its setup steps (ADR111 D7): a build whose version differs
+// is stale. LatestBuild is its newest build, when it has one.
 type RepoEnvironment struct {
-	OwnerID   string     `json:"ownerId"`
-	Repo      string     `json:"repo"`
-	Setup     []RepoStep `json:"setup"`
-	Checks    []RepoStep `json:"checks"`
-	UpdatedAt time.Time  `json:"updatedAt"`
+	OwnerID     string                `json:"ownerId"`
+	Repo        string                `json:"repo"`
+	Setup       []RepoStep            `json:"setup"`
+	Checks      []RepoStep            `json:"checks"`
+	Version     string                `json:"version"`
+	LatestBuild *RepoEnvironmentBuild `json:"latestBuild,omitempty"`
+	UpdatedAt   time.Time             `json:"updatedAt"`
 }
 
 // RepoEnvironmentList is a workspace's repository environments.
@@ -85,7 +89,7 @@ type RepoEnvironmentList struct {
 type RepoEnvironmentStore interface {
 	ListAgentRepoEnvironments(ctx context.Context, workspaceID string) ([]store.AgentRepoEnvironment, error)
 	GetAgentRepoEnvironment(ctx context.Context, workspaceID, repo string) (store.AgentRepoEnvironment, error)
-	UpsertAgentRepoEnvironment(ctx context.Context, workspaceID, repo string, setup, checks json.RawMessage, maxRepos int) (store.AgentRepoEnvironment, error)
+	UpsertAgentRepoEnvironment(ctx context.Context, workspaceID, repo string, setup, checks json.RawMessage, maxRepos int) (store.AgentRepoEnvironment, bool, error)
 	DeleteAgentRepoEnvironment(ctx context.Context, workspaceID, repo string) error
 }
 
@@ -146,10 +150,13 @@ func (in RepoEnvironmentInput) validate() error {
 	return nil
 }
 
-func repoEnvironmentView(row store.AgentRepoEnvironment) RepoEnvironment {
-	out := RepoEnvironment{OwnerID: row.WorkspaceID, Repo: row.Repo, Setup: []RepoStep{}, Checks: []RepoStep{}, UpdatedAt: row.UpdatedAt}
+func repoEnvironmentView(row store.AgentRepoEnvironment, latest map[string]RepoEnvironmentBuild) RepoEnvironment {
+	out := RepoEnvironment{OwnerID: row.WorkspaceID, Repo: row.Repo, Setup: []RepoStep{}, Checks: []RepoStep{}, Version: row.Version, UpdatedAt: row.UpdatedAt}
 	_ = json.Unmarshal(row.Setup, &out.Setup)
 	_ = json.Unmarshal(row.Checks, &out.Checks)
+	if build, ok := latest[row.Repo]; ok {
+		out.LatestBuild = &build
+	}
 	return out
 }
 
@@ -167,15 +174,17 @@ func (s *Service) RepoEnvironments(ctx context.Context, ownerID string) (RepoEnv
 	if err != nil {
 		return RepoEnvironmentList{}, core.HideCause(core.NewAgentSessionDependencyUnavailableError(), err)
 	}
+	latest := s.latestBuilds(ctx, workspaceID)
 	out := RepoEnvironmentList{OwnerID: workspaceID, Environments: make([]RepoEnvironment, 0, len(rows))}
 	for _, row := range rows {
-		out.Environments = append(out.Environments, repoEnvironmentView(row))
+		out.Environments = append(out.Environments, repoEnvironmentView(row, latest))
 	}
 	return out, nil
 }
 
 // SetRepoEnvironment creates or replaces one repository's environment
-// (admins only). Sessions pick it up from their next dispatch.
+// (admins only). Sessions pick it up from their next dispatch. A save that
+// changes the setup steps queues a build of them (ADR111 D3).
 func (s *Service) SetRepoEnvironment(ctx context.Context, ownerID, repo string, in RepoEnvironmentInput) (RepoEnvironment, error) {
 	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, ownerID, RepoEnvironmentAuditTarget)
 	if err != nil {
@@ -203,7 +212,7 @@ func (s *Service) SetRepoEnvironment(ctx context.Context, ownerID, repo string, 
 		return RepoEnvironment{}, repoEnvironmentInvalid("environment",
 			fmt.Sprintf("an environment's commands total at most %d KiB", maxRepoEnvironmentBytes>>10), map[string]any{"maxBytes": maxRepoEnvironmentBytes})
 	}
-	row, err := s.RepoEnvs.UpsertAgentRepoEnvironment(ctx, workspaceID, repo, setup, checks, maxRepoEnvironments)
+	row, changed, err := s.RepoEnvs.UpsertAgentRepoEnvironment(ctx, workspaceID, repo, setup, checks, maxRepoEnvironments)
 	if errors.Is(err, store.ErrAgentRepoEnvironmentLimit) {
 		return RepoEnvironment{}, core.NewBadRequestError("AGENT_REPO_ENVIRONMENT_LIMIT_EXCEEDED",
 			fmt.Sprintf("a workspace has environments for at most %d repositories", maxRepoEnvironments), map[string]any{"limit": maxRepoEnvironments})
@@ -211,10 +220,14 @@ func (s *Service) SetRepoEnvironment(ctx context.Context, ownerID, repo string, 
 	if err != nil {
 		return RepoEnvironment{}, core.HideCause(core.NewAgentSessionDependencyUnavailableError(), err)
 	}
-	return repoEnvironmentView(row), nil
+	if changed {
+		s.triggerBuild(ctx, workspaceID, repo, buildTriggerEnvironmentSaved)
+	}
+	return repoEnvironmentView(row, s.latestBuilds(ctx, workspaceID)), nil
 }
 
-// DeleteRepoEnvironment removes one repository's environment (admins only).
+// DeleteRepoEnvironment removes one repository's environment (admins only),
+// cancelling its builds and retiring their images (ADR111 D8).
 func (s *Service) DeleteRepoEnvironment(ctx context.Context, ownerID, repo string) error {
 	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, ownerID, RepoEnvironmentAuditTarget)
 	if err != nil {
@@ -237,19 +250,24 @@ func (s *Service) DeleteRepoEnvironment(ctx context.Context, ownerID, repo strin
 }
 
 // withRepoEnvironment adds the session repository's environment to the
-// dispatch env (ADR109 D7); a session with no repository, or a repository
-// with no environment, gets none.
-func (s *Service) withRepoEnvironment(ctx context.Context, record store.AgentSession, env map[string]string) (map[string]string, error) {
+// dispatch env (ADR109 D7) and returns it; a session with no repository, or a
+// repository with no environment, gets none (the zero environment).
+func (s *Service) withRepoEnvironment(ctx context.Context, record store.AgentSession, env map[string]string) (map[string]string, store.AgentRepoEnvironment, error) {
 	if s.RepoEnvs == nil || record.Repo == "" {
-		return env, nil
+		return env, store.AgentRepoEnvironment{}, nil
 	}
 	row, err := s.RepoEnvs.GetAgentRepoEnvironment(ctx, record.WorkspaceID, record.Repo)
 	if errors.Is(err, store.ErrNotFound) {
-		return env, nil
+		return env, store.AgentRepoEnvironment{}, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, store.AgentRepoEnvironment{}, err
 	}
-	// The stored JSON as it is: re-encoding would only escape shell's & < >.
-	return withEnv(env, repoEnvironmentEnv, `{"setup":`+string(row.Setup)+`,"checks":`+string(row.Checks)+`}`), nil
+	return withEnv(env, repoEnvironmentEnv, repoEnvironmentJSON(row)), row, nil
+}
+
+// repoEnvironmentJSON is BEX_REPO_ENVIRONMENT: the stored JSON as it is, since
+// re-encoding would only escape shell's & < >.
+func repoEnvironmentJSON(row store.AgentRepoEnvironment) string {
+	return `{"setup":` + string(row.Setup) + `,"checks":` + string(row.Checks) + `}`
 }

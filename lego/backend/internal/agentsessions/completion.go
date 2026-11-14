@@ -26,8 +26,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
@@ -71,6 +71,9 @@ type statusGit struct {
 type Completer struct {
 	Store   Store
 	Sandbox SandboxLifecycle
+	// Builds resolves a repository environment builder (ADR111) in the
+	// inventory reconcile; nil leaves no builder claimed, so each is reaped.
+	Builds agentsession.BuildStore
 	// Heads reads the session branch's head on GitHub
 	// (agentsession.BranchHeads). The completer records that head rather than
 	// the one the sandbox reports, since CI-failure steering keys on it
@@ -251,8 +254,14 @@ func (c *Completer) currentTurn(ctx context.Context, record store.AgentSession) 
 }
 
 func (c *Completer) statusReadFailureTTL() time.Duration {
-	if c.StatusReadFailureTTL > 0 {
-		return c.StatusReadFailureTTL
+	return statusRetryWindow(c.StatusReadFailureTTL)
+}
+
+// statusRetryWindow is how long status reads may keep failing before the
+// turn or build behind them fails (BEX_AGENT_STATUS_RETRY_WINDOW).
+func statusRetryWindow(configured time.Duration) time.Duration {
+	if configured > 0 {
+		return configured
 	}
 	return defaultStatusReadFailureTTL
 }
@@ -493,21 +502,11 @@ func (c *Completer) reconcileSandboxInventory(ctx context.Context) {
 		return
 	}
 	total := sandbox.InventoryCounts{OldestAge: map[string]float64{}}
-	lookup := func(ctx context.Context, sessionID string) (sandbox.SessionClaim, error) {
-		row, err := c.Store.GetAgentSession(ctx, sessionID)
-		if err != nil {
-			if errors.Is(err, store.ErrNotFound) {
-				return sandbox.SessionClaim{}, nil
-			}
-			return sandbox.SessionClaim{}, err
-		}
-		return sandbox.SessionClaim{Phase: row.Phase, SandboxID: row.SandboxID, Found: true}, nil
-	}
 	for _, key := range keys {
 		if err := ctx.Err(); err != nil {
 			return
 		}
-		counts, err := c.Sandbox.ReconcileWorkspaceInventory(ctx, key.WorkspaceID, key.APIKey, c.now(), lookup)
+		counts, err := c.Sandbox.ReconcileWorkspaceInventory(ctx, key.WorkspaceID, key.APIKey, c.now(), c.sandboxClaim)
 		if err != nil {
 			log.Printf("agent-session completer: sandbox inventory reconcile failed (workspace=%s): %v", key.WorkspaceID, err)
 			c.SandboxMetrics.ObserveTeardownFailure(sandbox.TeardownReasonInventory)
@@ -516,6 +515,36 @@ func (c *Completer) reconcileSandboxInventory(ctx context.Context) {
 		total.Merge(counts)
 	}
 	c.SandboxMetrics.SetInventory(total)
+}
+
+// sandboxClaim resolves the principal stamped on a live sandbox: a session,
+// or a repository environment build whose builder it is. A build owns its
+// builder only while it runs; once it has ended, the builder is an orphan.
+func (c *Completer) sandboxClaim(ctx context.Context, principal string) (sandbox.SessionClaim, error) {
+	if agentsession.IsBuildPrincipal(principal) {
+		if c.Builds == nil {
+			return sandbox.SessionClaim{}, nil
+		}
+		build, err := c.Builds.GetAgentRepoEnvironmentBuildBinding(ctx, principal)
+		if errors.Is(err, store.ErrNotFound) {
+			return sandbox.SessionClaim{}, nil
+		}
+		if err != nil {
+			return sandbox.SessionClaim{}, err
+		}
+		if build.Status != store.AgentRepoEnvironmentBuildBuilding {
+			return sandbox.SessionClaim{Found: true, Orphaned: true}, nil
+		}
+		return sandbox.SessionClaim{Phase: PhaseRunning, SandboxID: build.SandboxID, Found: true}, nil
+	}
+	row, err := c.Store.GetAgentSession(ctx, principal)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return sandbox.SessionClaim{}, nil
+		}
+		return sandbox.SessionClaim{}, err
+	}
+	return sandbox.SessionClaim{Phase: row.Phase, SandboxID: row.SandboxID, Found: true}, nil
 }
 
 func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
@@ -705,16 +734,7 @@ func deliveryNote(git statusGit) string {
 		if len(reasons) == maxDeliveryReasons {
 			break
 		}
-		reason := strings.TrimSpace(strings.Map(func(r rune) rune {
-			if unicode.IsControl(r) {
-				return ' '
-			}
-			return r
-		}, raw))
-		if r := []rune(reason); len(r) > maxDeliveryReasonRunes {
-			reason = strings.TrimSpace(string(r[:maxDeliveryReasonRunes])) + "…"
-		}
-		if reason != "" {
+		if reason := boundedText(raw, maxDeliveryReasonRunes); reason != "" {
 			reasons = append(reasons, reason)
 		}
 	}

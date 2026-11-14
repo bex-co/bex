@@ -787,6 +787,213 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Couldn't save the change. Try again.",
     description: "Generic environment write failure",
   },
+  "agentEnvironment.repoEnvs.builds.status.queued": {
+    message: "Queued",
+    description: "Build status badge: waiting to start (ADR111 D2)",
+  },
+  "agentEnvironment.repoEnvs.builds.status.building": {
+    message: "Building",
+    description: "Build status badge: the setup steps are running",
+  },
+  "agentEnvironment.repoEnvs.builds.status.success": {
+    message: "Ready",
+    description:
+      "Build status badge: success — sessions can start from this snapshot",
+  },
+  "agentEnvironment.repoEnvs.builds.status.failed": {
+    message: "Failed",
+    description: "Build status badge: the build failed",
+  },
+  "agentEnvironment.repoEnvs.builds.status.cancelled": {
+    message: "Cancelled",
+    description:
+      "Build status badge: a newer build replaced it, or its environment was deleted",
+  },
+  "agentEnvironment.repoEnvs.builds.trigger.environmentSaved": {
+    message: "Setup steps changed",
+    description:
+      "What queued a build: the environment was saved with changed setup steps",
+  },
+  "agentEnvironment.repoEnvs.builds.trigger.secretChanged": {
+    message: "Repository secret changed",
+    description: "What queued a build: a repo-scoped secret was set or changed",
+  },
+  "agentEnvironment.repoEnvs.builds.trigger.manual": {
+    message: "Manual build",
+    description:
+      "What queued a build: an admin clicked Build now (or used the API)",
+  },
+  "agentEnvironment.repoEnvs.builds.trigger.refresh": {
+    message: "Daily refresh",
+    description: "What queued a build: the daily rebuild",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.setupFailed": {
+    message: "A setup step failed.",
+    description:
+      "Failed build, failureCode setup_failed (the reason below names the step and exit code)",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.stepTimeout": {
+    message: "A setup step ran past its 3-hour limit.",
+    description: "Failed build, failureCode step_timeout",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.buildTimeout": {
+    message: "The build ran past its 3-hour limit.",
+    description: "Failed build, failureCode build_timeout",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.checkoutFailed": {
+    message: "Couldn't check out the repository's default branch.",
+    description: "Failed build, failureCode checkout_failed",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.storageLimitReached": {
+    message: "The snapshot would pass this workspace's sandbox storage limit.",
+    description: "Failed build, failureCode storage_limit_reached",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.internalError": {
+    message: "bex couldn't finish the build on its side. Try again.",
+    description: "Failed build, failureCode internal_error",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.unknown": {
+    message: "The build failed.",
+    description: "Failed build with no recognized failureCode",
+  },
+  "agentEnvironment.repoEnvs.builds.title": {
+    message: "Builds of {repo}",
+    description: "Build log dialog title (repo is owner/name)",
+  },
+  "agentEnvironment.repoEnvs.builds.openLabel": {
+    message: "Builds of {repo}",
+    description:
+      "Accessible label of a repository row's button that opens its builds and logs",
+  },
+  "agentEnvironment.repoEnvs.builds.description": {
+    message:
+      "Sessions start from the newest successful build whose setup steps match the current ones. When none matches, they run the setup steps at the start of each turn instead.",
+    description:
+      "Build log dialog description: how sessions use snapshots and the fallback (ADR111 D4)",
+  },
+  "agentEnvironment.repoEnvs.builds.buildNow": {
+    message: "Build now",
+    description:
+      "Button that queues a build of the repository's setup steps (admins only)",
+  },
+  "agentEnvironment.repoEnvs.builds.snapshotNote": {
+    message:
+      "Files the setup steps write are kept in the snapshot, so don't write credentials to files. Secrets reach the steps as environment variables, which aren't kept.",
+    description: "Note beside Build now (Devin's warning, ADR111 D6)",
+  },
+  "agentEnvironment.repoEnvs.builds.readOnly": {
+    message: "Only workspace admins can start a build.",
+    description: "Shown under a disabled Build now for non-admins",
+  },
+  "agentEnvironment.repoEnvs.builds.forbidden": {
+    message: "Only workspace admins can start a build.",
+    description: "Build now refused with FORBIDDEN",
+  },
+  "agentEnvironment.repoEnvs.builds.nothingToBuild": {
+    message:
+      "This environment has no setup steps, so there is nothing to build. Checks don't need a build.",
+    description:
+      "Build now on a checks-only environment (also AGENT_REPO_ENVIRONMENT_NOTHING_TO_BUILD)",
+  },
+  "agentEnvironment.repoEnvs.builds.queued": {
+    message: "Queued a build of {repo}",
+    description: "Toast after Build now succeeds",
+  },
+  "agentEnvironment.repoEnvs.builds.rateLimited": {
+    message:
+      "This repository already started 12 builds in the last 24 hours. Try again later.",
+    description:
+      "AGENT_REPO_ENVIRONMENT_BUILD_RATE_LIMITED without a usable nextBuildAt",
+  },
+  "agentEnvironment.repoEnvs.builds.rateLimitedUntil": {
+    message:
+      "This repository already started 12 builds in the last 24 hours. The next build can start at {time}.",
+    description:
+      "AGENT_REPO_ENVIRONMENT_BUILD_RATE_LIMITED; time is nextBuildAt in the viewer's local date and time",
+  },
+  "agentEnvironment.repoEnvs.builds.unavailable": {
+    message: "Environment builds aren't available on this deployment.",
+    description: "AGENT_REPO_ENVIRONMENT_BUILDS_UNAVAILABLE",
+  },
+  "agentEnvironment.repoEnvs.builds.buildFailed": {
+    message: "Couldn't start the build. Try again.",
+    description: "Generic Build now failure",
+  },
+  "agentEnvironment.repoEnvs.builds.loadFailed": {
+    message: "Couldn't load the builds.",
+    description: "Build history query failed",
+  },
+  "agentEnvironment.repoEnvs.builds.none": {
+    message: "No builds yet.",
+    description: "Build history list with no builds",
+  },
+  "agentEnvironment.repoEnvs.builds.noneLog": {
+    message:
+      "This repository hasn't built yet. Build now runs its setup steps once and keeps the result as a snapshot.",
+    description: "Build log panel when the repository has no builds",
+  },
+  "agentEnvironment.repoEnvs.builds.historyLabel": {
+    message: "Build history",
+    description: "Accessible label of the build history list",
+  },
+  "agentEnvironment.repoEnvs.builds.logTitle": {
+    message: "Build log",
+    description: "Build log panel header when no build is selected",
+  },
+  "agentEnvironment.repoEnvs.builds.logFailed": {
+    message: "Couldn't load this build's log.",
+    description: "Single build (log) query failed",
+  },
+  "agentEnvironment.repoEnvs.builds.took": {
+    message: "took {duration}",
+    description:
+      "A finished build's wall time, e.g. 'took 3m 12s' (joined with ' · ')",
+  },
+  "agentEnvironment.repoEnvs.builds.imageRemoved": {
+    message: "snapshot removed",
+    description:
+      "A successful build whose snapshot image was since deleted (older builds keep no image)",
+  },
+  "agentEnvironment.repoEnvs.builds.notBuilt": {
+    message: "Not built yet",
+    description: "Repository row: has setup steps but no build yet",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.queued": {
+    message:
+      "This build is waiting to start. Builds share the workspace's agent sandbox limit with sessions.",
+    description: "Build log of a queued build",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.building": {
+    message:
+      "The setup steps are running. Their log appears here when the build finishes.",
+    description: "Build log of a running build",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.cancelled": {
+    message:
+      "This build was cancelled: a newer build replaced it, or its environment was deleted.",
+    description: "Build log of a cancelled build",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.failed": {
+    message: "No setup step ran.",
+    description:
+      "Build log of a build that failed before any step ran (e.g. the checkout failed)",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.other": {
+    message: "This build recorded no steps.",
+    description: "Build log with no steps, any other status",
+  },
+  "agentEnvironment.repoEnvs.builds.stepExit": {
+    message: "exit {code}",
+    description: "A setup step's exit code badge",
+  },
+  "agentEnvironment.repoEnvs.builds.stepKilled": {
+    message: "stopped",
+    description: "A setup step with no exit code: killed or never started",
+  },
+  "agentEnvironment.repoEnvs.builds.noOutput": {
+    message: "No output.",
+    description: "A setup step that printed nothing",
+  },
   "agentEnvironment.skills.title": {
     message: "Agent skills",
     description: "Settings → Agent skills card title (ADR099)",

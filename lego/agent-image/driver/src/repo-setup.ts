@@ -34,10 +34,10 @@ export const SETUP_FAILED_CODE = "AGENT_SESSION_SETUP_FAILED";
 
 export const SETUP_STEP_TIMEOUT_MS = 10 * 60_000;
 export const SETUP_TOTAL_TIMEOUT_MS = 20 * 60_000;
-const OUTPUT_TAIL_BYTES = 8 << 10;
+export const OUTPUT_TAIL_BYTES = 8 << 10;
 // A step that succeeded keeps a shorter tail: setup runs every turn, so its
 // output is recorded every turn.
-const SUCCESS_TAIL_BYTES = 2 << 10;
+export const SUCCESS_TAIL_BYTES = 2 << 10;
 const HEARTBEAT_MS = 15_000;
 
 export class RepoSetupError extends Error {
@@ -75,6 +75,20 @@ export function parseRepoEnvironment(
   }
 }
 
+// SetupStepResult is one step's outcome as data, for a caller that records
+// steps rather than publishing them (a snapshot build, ADR111 D1).
+export interface SetupStepResult {
+  name: string;
+  // null when the step did not exit on its own (killed, or never started).
+  exitCode: number | null;
+  durationMs: number;
+  // The last OUTPUT_TAIL_BYTES of the step's output, not yet redacted.
+  output: string;
+  failure?: string;
+  // Killed at a time limit rather than failing on its own.
+  timedOut: boolean;
+}
+
 export interface RepoSetupOptions {
   cwd: string;
   // turn numbers the step tool calls: a transcript replays every turn in one
@@ -89,6 +103,7 @@ export interface RepoSetupOptions {
   abortSignal?: AbortSignal;
   stepTimeoutMs?: number;
   totalTimeoutMs?: number;
+  onStep?: (result: SetupStepResult) => void;
 }
 
 // runRepoSetup runs each setup step in order as a tool call titled
@@ -116,10 +131,12 @@ export async function runRepoSetup(
     });
     const remaining = deadline - Date.now();
     const timeoutMs = Math.min(stepTimeout, remaining);
-    const result =
+    const result: StepResult =
       remaining <= 0
         ? {
             failure: "did not start: setup ran past its total limit",
+            exitCode: null,
+            timedOut: true,
             durationMs: 0,
             output: "",
           }
@@ -134,6 +151,7 @@ export async function runRepoSetup(
                 ? "ran past setup's total limit"
                 : `ran past its ${minutes(timeoutMs)} limit`,
           });
+    options.onStep?.({ name: step.name, ...result });
     if (result.failure) {
       options.write({
         type: "tool-output-error",
@@ -159,7 +177,7 @@ export async function runRepoSetup(
 
 // lastBytes keeps the end of text within limit bytes, starting at a
 // character boundary.
-function lastBytes(text: string, limit: number): string {
+export function lastBytes(text: string, limit: number): string {
   const bytes = Buffer.from(text, "utf8");
   if (bytes.length <= limit) return text;
   return bytes
@@ -170,16 +188,16 @@ function lastBytes(text: string, limit: number): string {
 
 function minutes(ms: number): string {
   const m = Math.round(ms / 60_000);
+  if (m >= 60 && m % 60 === 0) {
+    const h = m / 60;
+    return `${h} hour${h === 1 ? "" : "s"}`;
+  }
   return m >= 1
     ? `${m} minute${m === 1 ? "" : "s"}`
     : `${Math.round(ms / 1000)} seconds`;
 }
 
-interface StepResult {
-  failure?: string;
-  durationMs: number;
-  output: string;
-}
+type StepResult = Omit<SetupStepResult, "name">;
 
 // After the step's shell exits, its stdio may still be held by something it
 // backgrounded (a service started for the agent); wait this long for the last
@@ -214,15 +232,16 @@ function runStep(
     child.stdout.on("data", keep);
     child.stderr.on("data", keep);
     let failure: string | undefined;
+    let timedOut = false;
     const kill = (reason: string) => {
       failure ??= reason;
       killProcessTree(child);
     };
     const heartbeat = setInterval(options.heartbeat, HEARTBEAT_MS);
-    const timer = setTimeout(
-      () => kill(options.timeoutFailure),
-      options.timeoutMs,
-    );
+    const timer = setTimeout(() => {
+      timedOut = failure === undefined;
+      kill(options.timeoutFailure);
+    }, options.timeoutMs);
     const onAbort = () => kill("was stopped: the turn ended");
     options.abortSignal?.addEventListener("abort", onAbort, { once: true });
     let settled = false;
@@ -243,6 +262,9 @@ function runStep(
             : `exited with code ${exitCode}`;
       resolve({
         failure,
+        exitCode:
+          typeof exitCode === "number" && exitCode >= 0 ? exitCode : null,
+        timedOut,
         durationMs: Date.now() - started,
         output: tail.toString("utf8").replace(/^\uFFFD+/, ""),
       });

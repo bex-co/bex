@@ -103,6 +103,7 @@ export async function tempConfig(
     modelBaseUrlEnvName: "",
     networkTier: "",
     secretValues: new Map(),
+    prebuilt: "",
     root,
     ...overrides,
   };

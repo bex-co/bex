@@ -176,10 +176,11 @@ type ImageStore interface {
 	FailGroupSandboxBuilds(ctx context.Context, workspaceID, groupID, reason string) error
 }
 
-// ImageDeleter deletes an imported image from the registry;
-// *RegistryReaper implements it.
+// ImageDeleter deletes an imported image, or a sandbox's snapshot images,
+// from the registry; *RegistryReaper implements it.
 type ImageDeleter interface {
 	DeleteImportedImage(ctx context.Context, workspaceID, buildID string) error
+	DeleteImages(ctx context.Context, workspaceID, ref string) error
 }
 
 // Images imports sandbox images into the sandbox registry. nil on the Service
@@ -352,6 +353,11 @@ func (im *Images) registryHost() (string, bool, error) {
 // workspace's snapshot namespace so its pods pull it with the namespace's own
 // read-only credential.
 func (im *Images) imageRepository(workspace, buildID string) (name.Repository, error) {
+	return im.repository(im.Registry.importedRepository(workspace, buildID))
+}
+
+// repository is a repository path's name in the sandbox registry.
+func (im *Images) repository(path string) (name.Repository, error) {
 	host, insecure, err := im.registryHost()
 	if err != nil {
 		return name.Repository{}, err
@@ -360,7 +366,7 @@ func (im *Images) imageRepository(workspace, buildID string) (name.Repository, e
 	if insecure {
 		opts = append(opts, name.Insecure)
 	}
-	return name.NewRepository(host+"/"+im.Registry.importedRepository(workspace, buildID), opts...)
+	return name.NewRepository(host+"/"+path, opts...)
 }
 
 // requireImages is the 503 of a deployment that cannot keep imported images.
@@ -911,7 +917,9 @@ func displayImage(uri string) string {
 func (im *Images) run(b store.SandboxBuild, ref name.Digest, image v1.Hash, cred *RegistryCredential) {
 	alive, stop := context.WithCancel(context.Background())
 	defer stop()
-	go im.heartbeat(alive, stop, b.ID)
+	go core.Heartbeat(alive, "sandbox images "+b.ID, importHeartbeat, stop, func(ctx context.Context) (bool, error) {
+		return im.Store.TouchSandboxBuild(ctx, b.ID)
+	})
 	release, ok := im.tenants.acquire(alive, b.WorkspaceID)
 	if !ok {
 		return
@@ -973,27 +981,6 @@ func (im *Images) deleteImported(ctx context.Context, workspace string, buildIDs
 		}
 	}
 	return errors.Join(errs...)
-}
-
-// heartbeat advances the build's updated_at until ctx ends, and calls stop
-// once the build is no longer pending or running.
-func (im *Images) heartbeat(ctx context.Context, stop context.CancelFunc, id string) {
-	t := time.NewTicker(importHeartbeat)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			live, err := im.Store.TouchSandboxBuild(ctx, id)
-			if err != nil {
-				log.Printf("sandbox images: heartbeat %s: %v", id, err)
-			} else if !live {
-				stop()
-				return
-			}
-		}
-	}
 }
 
 // Render's sandboxBuildFailureCode values bex records (its SDK's enum, 2026-11-13).
@@ -1062,13 +1049,9 @@ func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Diges
 	if got, err := img.Digest(); err != nil || got != image {
 		return "", 0, sourceError{fmt.Errorf("the source served image %s, not the %s it was checked as", got, image)}
 	}
-	user, password, err := im.Registry.credentials(ctx)
+	opts, err := im.registryOptions(ctx)
 	if err != nil {
-		return "", 0, fmt.Errorf("the sandbox registry credential is unavailable: %w", err)
-	}
-	opts := []remote.Option{remote.WithContext(ctx), remote.WithAuth(authn.FromConfig(authn.AuthConfig{Username: user, Password: password}))}
-	if im.Registry.HTTP != nil && im.Registry.HTTP.Transport != nil {
-		opts = append(opts, remote.WithTransport(im.Registry.HTTP.Transport))
+		return "", 0, err
 	}
 	if err := remote.Write(repo.Tag(imageTag), uploadOnly{img}, opts...); err != nil {
 		// The source image is lazy: its layers are read during the write, so
@@ -1084,6 +1067,66 @@ func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Diges
 	}
 	size, err := imageBytes(img)
 	return digest.String(), size, err
+}
+
+// registryOptions reach the sandbox registry with the importer's credential.
+func (im *Images) registryOptions(ctx context.Context) ([]remote.Option, error) {
+	user, password, err := im.Registry.credentials(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("the sandbox registry credential is unavailable: %w", err)
+	}
+	opts := []remote.Option{remote.WithContext(ctx), remote.WithAuth(authn.FromConfig(authn.AuthConfig{Username: user, Password: password}))}
+	if im.Registry.HTTP != nil && im.Registry.HTTP.Transport != nil {
+		opts = append(opts, remote.WithTransport(im.Registry.HTTP.Transport))
+	}
+	return opts, nil
+}
+
+// snapshotImage is the newest image a paused sandbox committed, and its
+// compressed size.
+func (im *Images) snapshotImage(ctx context.Context, workspaceID, sandboxRef string) (v1.Image, int64, error) {
+	path, tag, err := im.Registry.newestSnapshot(ctx, workspaceID, sandboxRef)
+	if err != nil {
+		return nil, 0, fmt.Errorf("find the builder's snapshot: %w", err)
+	}
+	repo, err := im.repository(path)
+	if err != nil {
+		return nil, 0, err
+	}
+	opts, err := im.registryOptions(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	img, err := remote.Image(repo.Tag(tag), opts...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("read the builder's snapshot: %w", err)
+	}
+	size, err := imageBytes(img)
+	if err != nil {
+		return nil, 0, fmt.Errorf("size the builder's snapshot: %w", err)
+	}
+	return img, size, nil
+}
+
+// pushAgentImage writes a builder's committed image to its build's repository
+// under imageTag (ADR111 D1) and returns its digest. Its layers are mounted,
+// not uploaded again: unlike an import's, they are the ones the controller's
+// commit Job wrote into this workspace's own snapshot repository, so no
+// digest here names another workspace's blob.
+func (im *Images) pushAgentImage(ctx context.Context, workspaceID, buildID string, img v1.Image) (string, error) {
+	repo, err := im.imageRepository(workspaceID, buildID)
+	if err != nil {
+		return "", err
+	}
+	opts, err := im.registryOptions(ctx)
+	if err != nil {
+		return "", err
+	}
+	if err := remote.Write(repo.Tag(imageTag), img, opts...); err != nil {
+		return "", fmt.Errorf("copy the builder's snapshot: %w", err)
+	}
+	digest, err := img.Digest()
+	return digest.String(), err
 }
 
 // uploadOnly is an image whose layers the write uploads, never mounts

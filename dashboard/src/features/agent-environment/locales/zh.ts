@@ -769,6 +769,208 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "无法保存更改，请重试。",
     description: "Generic environment write failure",
   },
+  "agentEnvironment.repoEnvs.builds.status.queued": {
+    message: "排队中",
+    description: "Build status badge: waiting to start (ADR111 D2)",
+  },
+  "agentEnvironment.repoEnvs.builds.status.building": {
+    message: "构建中",
+    description: "Build status badge: the setup steps are running",
+  },
+  "agentEnvironment.repoEnvs.builds.status.success": {
+    message: "就绪",
+    description:
+      "Build status badge: success — sessions can start from this snapshot",
+  },
+  "agentEnvironment.repoEnvs.builds.status.failed": {
+    message: "失败",
+    description: "Build status badge: the build failed",
+  },
+  "agentEnvironment.repoEnvs.builds.status.cancelled": {
+    message: "已取消",
+    description:
+      "Build status badge: a newer build replaced it, or its environment was deleted",
+  },
+  "agentEnvironment.repoEnvs.builds.trigger.environmentSaved": {
+    message: "设置步骤已更改",
+    description:
+      "What queued a build: the environment was saved with changed setup steps",
+  },
+  "agentEnvironment.repoEnvs.builds.trigger.secretChanged": {
+    message: "仓库密钥已更改",
+    description: "What queued a build: a repo-scoped secret was set or changed",
+  },
+  "agentEnvironment.repoEnvs.builds.trigger.manual": {
+    message: "手动构建",
+    description:
+      "What queued a build: an admin clicked Build now (or used the API)",
+  },
+  "agentEnvironment.repoEnvs.builds.trigger.refresh": {
+    message: "每日刷新",
+    description: "What queued a build: the daily rebuild",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.setupFailed": {
+    message: "某个设置步骤失败了。",
+    description:
+      "Failed build, failureCode setup_failed (the reason below names the step and exit code)",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.stepTimeout": {
+    message: "某个设置步骤超过了 3 小时的时限。",
+    description: "Failed build, failureCode step_timeout",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.buildTimeout": {
+    message: "构建超过了 3 小时的时限。",
+    description: "Failed build, failureCode build_timeout",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.checkoutFailed": {
+    message: "无法检出该仓库的默认分支。",
+    description: "Failed build, failureCode checkout_failed",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.storageLimitReached": {
+    message: "快照会超出此工作区的沙箱存储上限。",
+    description: "Failed build, failureCode storage_limit_reached",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.internalError": {
+    message: "bex 这边未能完成构建，请重试。",
+    description: "Failed build, failureCode internal_error",
+  },
+  "agentEnvironment.repoEnvs.builds.failure.unknown": {
+    message: "构建失败。",
+    description: "Failed build with no recognized failureCode",
+  },
+  "agentEnvironment.repoEnvs.builds.title": {
+    message: "{repo} 的构建",
+    description: "Build log dialog title (repo is owner/name)",
+  },
+  "agentEnvironment.repoEnvs.builds.openLabel": {
+    message: "{repo} 的构建",
+    description:
+      "Accessible label of a repository row's button that opens its builds and logs",
+  },
+  "agentEnvironment.repoEnvs.builds.description": {
+    message:
+      "会话从设置步骤与当前一致的最新成功构建启动；若没有匹配的构建，则改为在每轮开始时运行设置步骤。",
+    description:
+      "Build log dialog description: how sessions use snapshots and the fallback (ADR111 D4)",
+  },
+  "agentEnvironment.repoEnvs.builds.buildNow": {
+    message: "立即构建",
+    description:
+      "Button that queues a build of the repository's setup steps (admins only)",
+  },
+  "agentEnvironment.repoEnvs.builds.snapshotNote": {
+    message:
+      "设置步骤写入的文件会保留在快照中，因此不要把凭据写入文件。密钥以环境变量的形式提供给各步骤，不会保留在快照中。",
+    description: "Note beside Build now (Devin's warning, ADR111 D6)",
+  },
+  "agentEnvironment.repoEnvs.builds.readOnly": {
+    message: "只有工作区管理员可以启动构建。",
+    description: "Shown under a disabled Build now for non-admins",
+  },
+  "agentEnvironment.repoEnvs.builds.forbidden": {
+    message: "只有工作区管理员可以启动构建。",
+    description: "Build now refused with FORBIDDEN",
+  },
+  "agentEnvironment.repoEnvs.builds.nothingToBuild": {
+    message: "此环境没有设置步骤，因此无需构建；检查项不需要构建。",
+    description:
+      "Build now on a checks-only environment (also AGENT_REPO_ENVIRONMENT_NOTHING_TO_BUILD)",
+  },
+  "agentEnvironment.repoEnvs.builds.queued": {
+    message: "已将 {repo} 的构建加入队列",
+    description: "Toast after Build now succeeds",
+  },
+  "agentEnvironment.repoEnvs.builds.rateLimited": {
+    message: "此仓库在过去 24 小时内已启动 12 次构建，请稍后再试。",
+    description:
+      "AGENT_REPO_ENVIRONMENT_BUILD_RATE_LIMITED without a usable nextBuildAt",
+  },
+  "agentEnvironment.repoEnvs.builds.rateLimitedUntil": {
+    message:
+      "此仓库在过去 24 小时内已启动 12 次构建，下一次构建可在 {time} 开始。",
+    description:
+      "AGENT_REPO_ENVIRONMENT_BUILD_RATE_LIMITED; time is nextBuildAt in the viewer's local date and time",
+  },
+  "agentEnvironment.repoEnvs.builds.unavailable": {
+    message: "此部署不支持环境构建。",
+    description: "AGENT_REPO_ENVIRONMENT_BUILDS_UNAVAILABLE",
+  },
+  "agentEnvironment.repoEnvs.builds.buildFailed": {
+    message: "无法启动构建，请重试。",
+    description: "Generic Build now failure",
+  },
+  "agentEnvironment.repoEnvs.builds.loadFailed": {
+    message: "无法加载构建记录。",
+    description: "Build history query failed",
+  },
+  "agentEnvironment.repoEnvs.builds.none": {
+    message: "暂无构建。",
+    description: "Build history list with no builds",
+  },
+  "agentEnvironment.repoEnvs.builds.noneLog": {
+    message:
+      "此仓库尚未构建。“立即构建”会运行一次设置步骤，并将结果保存为快照。",
+    description: "Build log panel when the repository has no builds",
+  },
+  "agentEnvironment.repoEnvs.builds.historyLabel": {
+    message: "构建历史",
+    description: "Accessible label of the build history list",
+  },
+  "agentEnvironment.repoEnvs.builds.logTitle": {
+    message: "构建日志",
+    description: "Build log panel header when no build is selected",
+  },
+  "agentEnvironment.repoEnvs.builds.logFailed": {
+    message: "无法加载此构建的日志。",
+    description: "Single build (log) query failed",
+  },
+  "agentEnvironment.repoEnvs.builds.took": {
+    message: "耗时 {duration}",
+    description:
+      "A finished build's wall time, e.g. 'took 3m 12s' (joined with ' · ')",
+  },
+  "agentEnvironment.repoEnvs.builds.imageRemoved": {
+    message: "快照已删除",
+    description:
+      "A successful build whose snapshot image was since deleted (older builds keep no image)",
+  },
+  "agentEnvironment.repoEnvs.builds.notBuilt": {
+    message: "尚未构建",
+    description: "Repository row: has setup steps but no build yet",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.queued": {
+    message: "此构建正在等待启动。构建与会话共享工作区的智能体沙箱上限。",
+    description: "Build log of a queued build",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.building": {
+    message: "设置步骤正在运行，构建完成后日志会显示在这里。",
+    description: "Build log of a running build",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.cancelled": {
+    message: "此构建已取消：被更新的构建取代，或其环境已被删除。",
+    description: "Build log of a cancelled build",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.failed": {
+    message: "没有运行任何设置步骤。",
+    description:
+      "Build log of a build that failed before any step ran (e.g. the checkout failed)",
+  },
+  "agentEnvironment.repoEnvs.builds.noSteps.other": {
+    message: "此构建没有记录任何步骤。",
+    description: "Build log with no steps, any other status",
+  },
+  "agentEnvironment.repoEnvs.builds.stepExit": {
+    message: "退出码 {code}",
+    description: "A setup step's exit code badge",
+  },
+  "agentEnvironment.repoEnvs.builds.stepKilled": {
+    message: "已中止",
+    description: "A setup step with no exit code: killed or never started",
+  },
+  "agentEnvironment.repoEnvs.builds.noOutput": {
+    message: "无输出。",
+    description: "A setup step that printed nothing",
+  },
   "agentEnvironment.skills.title": {
     message: "智能体技能",
     description: "Settings → Agent skills card title (ADR099)",

@@ -217,6 +217,10 @@ type AgentSession struct {
 	// its source (w9/m385): named, inline, or by a workspace or repo scope.
 	// Names only; written by SetAgentSessionAppliedSecrets.
 	AppliedSecrets []AppliedSecret
+	// EnvironmentBuildID is the repository environment build the latest
+	// dispatch booted from (ADR111 D4); empty when it ran phase 1. Written by
+	// SetAgentSessionEnvironmentBuild.
+	EnvironmentBuildID string
 	// InitialPrompt is create-only input used to atomically insert turn 1 with
 	// the session row. It is not an agent_sessions column and is never scanned.
 	InitialPrompt string
@@ -299,9 +303,9 @@ var activeAgentSessionPhasesSQL = "phase IN ('" + strings.Join(ActiveAgentSessio
 
 // AgentSessionCount narrows CountActiveAgentSessions.
 type AgentSessionCount struct {
-	// WithSandbox counts only sessions holding a sandbox id: the ADR059 D6
-	// live-sandbox working set. Otherwise a session counts from the moment it
-	// is accepted.
+	// WithSandbox counts only sessions holding a sandbox id, plus running
+	// repository environment builds: the ADR059 D6 live-sandbox working set
+	// (ADR111 D3). Otherwise a session counts from the moment it is accepted.
 	WithSandbox bool
 	// Agent, when set, counts only sessions of that (normalized) agent profile.
 	Agent string
@@ -335,7 +339,7 @@ const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandb
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, ''),
 	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref,
-	applied_secrets, pr_state, pr_state_at`
+	applied_secrets, pr_state, pr_state_at, environment_build_id`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
@@ -344,7 +348,7 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID,
 		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef,
-		&s.AppliedSecrets, &s.PRState, &s.PRStateAt)
+		&s.AppliedSecrets, &s.PRState, &s.PRStateAt, &s.EnvironmentBuildID)
 	return s, err
 }
 
@@ -500,7 +504,7 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
 		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &out.AutomationID,
 		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &out.TakeoverPR, &out.TakeoverHeadRef,
-		&out.AppliedSecrets, &out.PRState, &out.PRStateAt, &hash)
+		&out.AppliedSecrets, &out.PRState, &out.PRStateAt, &out.EnvironmentBuildID, &hash)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}
@@ -1203,13 +1207,17 @@ func countActiveAgentSessions(ctx context.Context, q interface {
 	if c.AllWorkspaces {
 		scope = `$1::text IS NOT NULL`
 	}
+	// A running repository environment build holds a builder sandbox, so it
+	// counts in the live-sandbox working set (ADR111 D3).
 	var n int
 	err := q.QueryRow(ctx, `
-		SELECT count(*) FROM agent_sessions
-		WHERE `+scope+` AND `+activeAgentSessionPhasesSQL+`
-		  AND (NOT $2::boolean OR sandbox_id <> '')
-		  AND ($3::text = '' OR agent_config->>'agent' = $3::text)
-		  AND id <> $4::text`,
+		SELECT (SELECT count(*) FROM agent_sessions
+		        WHERE `+scope+` AND `+activeAgentSessionPhasesSQL+`
+		          AND (NOT $2::boolean OR sandbox_id <> '')
+		          AND ($3::text = '' OR agent_config->>'agent' = $3::text)
+		          AND id <> $4::text)
+		     + (CASE WHEN $2::boolean THEN (SELECT count(*) FROM agent_repo_environment_builds
+		        WHERE `+scope+` AND status = `+buildBuildingSQL+`) ELSE 0 END)`,
 		workspaceID, c.WithSandbox, c.Agent, c.ExcludeID).Scan(&n)
 	return n, err
 }
@@ -1680,6 +1688,15 @@ func (s *PGStore) listenOnce(ctx context.Context, fn func(id string)) error {
 type AppliedSecret struct {
 	Name   string `json:"name"`
 	Source string `json:"source"`
+}
+
+// SetAgentSessionEnvironmentBuild records the repository environment build
+// the session's latest dispatch booted from, "" for none (ADR111 D4).
+func (s *PGStore) SetAgentSessionEnvironmentBuild(ctx context.Context, sessionID, buildID string) error {
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET environment_build_id = $2 WHERE id = $1`, sessionID, buildID); err != nil {
+		return fmt.Errorf("set agent session environment build: %w", err)
+	}
+	return nil
 }
 
 // SetAgentSessionAppliedSecrets records what the session's latest dispatch

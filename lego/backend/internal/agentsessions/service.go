@@ -149,7 +149,7 @@ type TupleWriter interface {
 type SandboxLifecycle interface {
 	CleanupAgentDispatches(context.Context, []store.AgentDispatch) error
 	ReconcileWorkspaceInventory(ctx context.Context, workspaceID, apiKey string, now time.Time, lookup sandbox.SessionClaimLookup) (sandbox.InventoryCounts, error)
-	CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egress sessionegress.Egress, driverEnv map[string]string) (sandbox.Sandbox, error)
+	CreateAgentSessionSandbox(ctx context.Context, spec sandbox.AgentSessionSandbox) (sandbox.Sandbox, error)
 	EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egress sessionegress.Egress) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
@@ -294,6 +294,11 @@ type Service struct {
 	// environment verb answers AGENT_REPO_ENVIRONMENTS_UNAVAILABLE and
 	// dispatches carry none.
 	RepoEnvs RepoEnvironmentStore
+	// RepoBuilds and Builders are the ADR111 repository environment builds:
+	// their table and the sandbox side of a build. Either nil ⇒ no build runs
+	// and every session runs its setup steps (phase 1).
+	RepoBuilds RepoEnvironmentBuildStore
+	Builders   BuildSandboxes
 	// SecretScopes stores workspace agent secret scopes and each dispatch's
 	// applied secrets (w9/m385, ADR098 D9). nil ⇒ every secret is explicit.
 	SecretScopes SecretScopeStore
@@ -757,7 +762,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		modelEndpoint: req.AgentConfig.ModelEndpoint,
 		modelAPIKey:   modelAPIKey,
 		egress:        sessionEgress(env, egressAllowlist),
-		env:           s.withOutputEnv(s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env.ModelKeySet()), env.NetworkTier, record), record, output),
+		env:           s.withOutputEnv(s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env.ModelKeySet()), env.NetworkTier, record.WorkspaceID, record.ID), record, output),
 		turn:          record.Turns,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
@@ -846,13 +851,23 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		}
 		return s.failDispatch(ctx, record, spec.turn, failure, err)
 	}
-	if spec.env, err = s.withRepoEnvironment(ctx, record, spec.env); err != nil {
+	var repoEnv store.AgentRepoEnvironment
+	if spec.env, repoEnv, err = s.withRepoEnvironment(ctx, record, spec.env); err != nil {
 		log.Printf("agent-session dispatch: read repository environment failed (session=%s): %v", record.ID, err)
 		return s.failDispatch(ctx, record, spec.turn, repoEnvironmentReadFailure, err)
 	}
+	// A build of the environment's current setup steps boots the sandbox from
+	// its image, and the driver skips the steps (ADR111 D4).
+	image := s.prebuiltImage(ctx, repoEnv, spec.template)
+	if image.BuildID != "" {
+		spec.env = withEnv(spec.env, prebuiltEnv, image.BuildID)
+	}
 	s.recordAppliedSecrets(ctx, record, applied)
 	provisionStart := time.Now()
-	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, spec.template, record.ID, record.Repo, record.Branch, spec.modelEndpoint, spec.modelAPIKey, spec.egress, spec.env)
+	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, sandbox.AgentSessionSandbox{
+		WorkspaceID: ws, Template: spec.template, SessionID: record.ID, Repository: record.Repo, Branch: record.Branch,
+		ModelEndpoint: spec.modelEndpoint, ModelAPIKey: spec.modelAPIKey, Egress: spec.egress, DriverEnv: spec.env, Image: image,
+	})
 	if err != nil {
 		s.Metrics.observeProvision(provisionFailed, time.Since(provisionStart))
 		// Log the underlying reason: dispatch failures were previously invisible
@@ -875,6 +890,7 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		return store.AgentSession{}, err
 	}
 	s.Metrics.observeProvision(provisionRunning, time.Since(provisionStart))
+	s.recordEnvironmentBuild(ctx, record, image.BuildID)
 	if err := s.copyAttachments(ctx, ws, record.ID, sb.ID, inputs); err != nil {
 		log.Printf("agent-session dispatch: attachment copy failed (session=%s): %v", record.ID, err)
 		return s.failDispatch(ctx, record, spec.turn, attachmentCopyFailure, err)
@@ -1597,6 +1613,13 @@ func agentRuntimeConfig(agent string) (argsJSON, envJSON string) {
 // tenant sandbox: FQDN resolves + connects on :8082, `.svc` fails DNS).
 const defaultCredentialURL = "http://bex-ssh-gateway.bex-system.svc.cluster.local:8082"
 
+// The driver env naming the repository and its Git proxy remote, which a
+// session's sandbox and a build's builder both read.
+const (
+	envRepoURL    = "BEX_AGENT_REPO_URL"
+	envRepository = "BEX_AGENT_REPOSITORY"
+)
+
 func (s *Service) gitProxyURL() string {
 	if strings.TrimSpace(s.GitProxyURL) != "" {
 		return s.GitProxyURL
@@ -1630,12 +1653,12 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 		"BEX_AGENT_COMMAND":          agentCommand(config.Agent),
 		"BEX_AGENT_PROMPT":           config.Task,
 		"BEX_AGENT_BRANCH":           record.Branch,
-		"BEX_AGENT_REPO_URL":         repoURL,
+		envRepoURL:                   repoURL,
 		"BEX_AGENT_DELIVER":          deliver,
 		"BEX_AGENT_EXIT_AFTER_TURN":  "0",
 		"BEX_SANDBOX_NAMESPACE":      namespace,
 		"BEX_AGENT_SESSION_ID":       record.ID,
-		"BEX_AGENT_REPOSITORY":       record.Repo,
+		envRepository:                record.Repo,
 		"BEX_AGENT_GRANT_PUBLIC_KEY": s.driverGrantPublicKey(),
 		"BEX_AGENT_TURN":             fmt.Sprintf("%d", driverTurn(record)),
 	}
@@ -1759,8 +1782,9 @@ func (s *Service) egressProxyURL() string {
 // full-tier session also gets the proxy variables in both spellings, which
 // curl, npm, pip, Go, git (libcurl) and Claude Code honour, and NO_PROXY for
 // the gateway and loopback, so Git and model traffic keep their dedicated
-// Pod-bound proxies and local servers stay local.
-func (s *Service) withNetworkEnv(env map[string]string, tier string, record store.AgentSession) map[string]string {
+// Pod-bound proxies and local servers stay local. The proxy claim names the
+// sandbox's principal: its session, or a repository environment build.
+func (s *Service) withNetworkEnv(env map[string]string, tier, workspaceID, principal string) map[string]string {
 	if tier == "" {
 		tier = NetworkTierRegistries
 	}
@@ -1768,11 +1792,11 @@ func (s *Service) withNetworkEnv(env map[string]string, tier string, record stor
 	if tier != NetworkTierFull {
 		return env
 	}
-	proxy, err := agentsession.EgressProxyURL(s.egressProxyURL(), store.SandboxNamespace(record.WorkspaceID), record.ID)
+	proxy, err := agentsession.EgressProxyURL(s.egressProxyURL(), store.SandboxNamespace(workspaceID), principal)
 	if err != nil {
 		// A malformed BEX_AGENT_EGRESS_PROXY_URL leaves the sandbox without
 		// internet but still fully confined; startup validation rejects it.
-		log.Printf("agent-session dispatch: egress proxy URL invalid (session=%s): %v", record.ID, err)
+		log.Printf("agent-session dispatch: egress proxy URL invalid (principal=%s): %v", principal, err)
 		return env
 	}
 	noProxy := []string{"localhost", "127.0.0.1", "::1"}
@@ -1986,7 +2010,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
 	record = begun
-	env := s.withOutputEnv(s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv.ModelKeySet()), workspaceEnv.NetworkTier, record), record, output)
+	env := s.withOutputEnv(s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv.ModelKeySet()), workspaceEnv.NetworkTier, record.WorkspaceID, record.ID), record, output)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
 		template:          strings.TrimSpace(config.Template),
@@ -2201,7 +2225,7 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
-		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AppliedSecrets: appliedSecretsOf(record.AppliedSecrets), AutomationID: record.AutomationID, CreatedBy: record.CreatedBy,
+		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AppliedSecrets: appliedSecretsOf(record.AppliedSecrets), EnvironmentBuildID: record.EnvironmentBuildID, AutomationID: record.AutomationID, CreatedBy: record.CreatedBy,
 		ParentSessionID: record.ParentSessionID, RootSessionID: record.RootSessionID, Depth: record.Depth}
 	if record.MaxSpendMicroUSD != nil {
 		view.MaxSpendUSD = microUSDDecimal(*record.MaxSpendMicroUSD)

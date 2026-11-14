@@ -83,6 +83,10 @@ type SessionClaim struct {
 	Phase     string
 	SandboxID string
 	Found     bool
+	// Orphaned is a principal that has ended and owns no sandbox any more,
+	// with no teardown of its own to wait for (a finished repository
+	// environment build): its sandbox is reaped.
+	Orphaned bool
 }
 
 // SessionClaimLookup resolves an agent-session id stamped on sandbox metadata.
@@ -223,6 +227,9 @@ func (l *AgentSessionLifecycle) ReconcileWorkspaceInventory(ctx context.Context,
 func classifySessionSandbox(claim SessionClaim, sandboxID string) (class string, shouldStop bool) {
 	if !claim.Found {
 		return InventoryClassNoRowOrphan, true
+	}
+	if claim.Orphaned {
+		return InventoryClassTerminalOrphan, true
 	}
 	_, live := liveAgentPhases[claim.Phase]
 	ownsThis := claim.SandboxID == sandboxID || claim.SandboxID == ""

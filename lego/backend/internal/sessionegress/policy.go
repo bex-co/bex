@@ -104,6 +104,9 @@ type Phase string
 const (
 	PhaseSetup Phase = "setup"
 	PhaseAgent Phase = "agent"
+	// PhaseBuild is a repository environment build's builder (ADR111): the
+	// setup posture with no model target, since a builder runs no agent.
+	PhaseBuild Phase = "build"
 )
 
 // Config owns the platform-curated package registries every session may reach
@@ -306,6 +309,13 @@ func (m *Manager) PrepareSetup(ctx context.Context, namespace, sessionID, modelE
 	return m.apply(ctx, namespace, sessionID, PhaseSetup, modelEndpoint, egress)
 }
 
+// PrepareBuild installs a repository environment builder's posture before
+// the builder is created: the session tiers' destinations, with no model
+// host and no model proxy hop.
+func (m *Manager) PrepareBuild(ctx context.Context, namespace, buildID string, egress Egress) error {
+	return m.apply(ctx, namespace, buildID, PhaseBuild, "", egress)
+}
+
 // TransitionToAgent moves the session policy into the agent phase. It keeps the
 // package registries (ADR047 D5 amendment 2026-10-27) and verifies that the
 // tenant widening is byte-for-byte the one setup was prepared with, so a
@@ -392,9 +402,12 @@ func RenderPolicy(config Config, namespace, sessionID string, phase Phase, model
 }
 
 func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint string, egress Egress) (*unstructured.Unstructured, error) {
-	modelHost, err := ModelEndpointHost(modelEndpoint)
-	if err != nil {
-		return nil, err
+	modelHost := ""
+	if phase != PhaseBuild {
+		var err error
+		if modelHost, err = ModelEndpointHost(modelEndpoint); err != nil {
+			return nil, err
+		}
 	}
 	extra := egress.Hosts
 	if egress.FullInternet {
@@ -434,16 +447,15 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 		// egress proxy hop, model traffic through the model proxy hop and Git
 		// through the Git hop. The model proxy is mandatory here: without it
 		// the agent would have no model route at all.
-		if m.Config.ModelProxyPort == 0 {
-			return nil, errors.New("session egress: the full-internet posture requires the gateway model proxy")
-		}
 		annotations[postureAnnotation] = postureFull
-		egressRules = []any{
-			dnsRule(matchNames([]string{credentialGatewayHost})),
-			gatewayRule(credentialGatewayPort),
-			gatewayRule(m.Config.ModelProxyPort),
-			gatewayRule(m.egressProxyPort()),
+		egressRules = []any{dnsRule(matchNames([]string{credentialGatewayHost})), gatewayRule(credentialGatewayPort)}
+		if modelHost != "" {
+			if m.Config.ModelProxyPort == 0 {
+				return nil, errors.New("session egress: the full-internet posture requires the gateway model proxy")
+			}
+			egressRules = append(egressRules, gatewayRule(m.Config.ModelProxyPort))
 		}
+		egressRules = append(egressRules, gatewayRule(m.egressProxyPort()))
 	} else {
 		egressRules = m.allowlistRules(modelHost, extra)
 	}
@@ -477,14 +489,15 @@ func (m *Manager) egressProxyPort() uint16 {
 
 // allowlistRules renders the registries/custom posture: filtered DNS, one
 // exact FQDN+SNI rule (GitHub, the registry catalog and the tenant widening),
-// and the Git and model gateway hops.
+// and the Git and model gateway hops; a builder (no modelHost) gets no model
+// destination at all.
 func (m *Manager) allowlistRules(modelHost string, extra []string) []any {
 	domains := append([]string{}, githubDomains...)
 	// ADR062 narrowing: with the model proxy on, the tenant pod cannot resolve or
 	// reach the vendor host directly — the agent talks to it only through the
 	// gateway proxy (the gateway rule below), so a stolen credential inside the
 	// sandbox has no vendor destination to use it against.
-	if m.Config.ModelProxyPort == 0 {
+	if m.Config.ModelProxyPort == 0 && modelHost != "" {
 		domains = append(domains, modelHost)
 	}
 	// Package registries stay open in both phases (ADR047 D5 amendment
@@ -501,7 +514,7 @@ func (m *Manager) allowlistRules(modelHost string, extra []string) []any {
 		fqdnRule(matchNames(domains), domains),
 		gatewayRule(credentialGatewayPort),
 	}
-	if m.Config.ModelProxyPort != 0 {
+	if m.Config.ModelProxyPort != 0 && modelHost != "" {
 		egressRules = append(egressRules, gatewayRule(m.Config.ModelProxyPort))
 	}
 	return egressRules

@@ -16,7 +16,8 @@
  */
 
 import { agentEnvironment } from "./credentials.js";
-import { loadConfig } from "./config.js";
+import { runBuild } from "./build.js";
+import { driverMode, loadBuildConfig, loadConfig } from "./config.js";
 import { waitForAttachments } from "./attachments.js";
 import { installSkills } from "./skills.js";
 import { ensureRepo } from "./git-setup.js";
@@ -41,7 +42,8 @@ async function main(): Promise<void> {
   // Clone and configure the session checkout before a tenant process can run.
   // Live POST /turn calls await the same setup promise.
   const setup = (async () => {
-    if (config.deliver) await ensureRepo(config);
+    if (config.deliver)
+      config.setupBaked = (await ensureRepo(config)).setupBaked;
     // bex-api copies the session's attachments in while the sandbox starts;
     // the turn must not begin on a partial copy (ADR095 D4).
     if (config.attachments) await waitForAttachments(config.attachments);
@@ -160,4 +162,31 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+// buildMain runs a snapshot build (ADR111 D1): no agent, no model proxy, no
+// turns. After the status is written the process stays up, as a finished
+// fire-and-forget session does, while bex-api reads the status, pauses the
+// sandbox to commit its image and terminates it.
+async function buildMain(): Promise<void> {
+  const config = loadBuildConfig();
+  delete process.env.BEX_REPO_ENVIRONMENT;
+  const keepAlive = setInterval(() => undefined, 60 * 60_000);
+  const abort = new AbortController();
+  const stop = () => {
+    // Kills a running step's process group before the driver exits.
+    abort.abort(new Error("the build was stopped"));
+    clearInterval(keepAlive);
+    process.exit(0);
+  };
+  process.once("SIGTERM", stop);
+  process.once("SIGINT", stop);
+  try {
+    const status = await runBuild(config, { abortSignal: abort.signal });
+    if (status.state === "failed") console.error(status.error);
+  } catch (error) {
+    // Only the status write itself fails here.
+    console.error(describeError(error));
+  }
+}
+
+if (driverMode() === "build") await buildMain();
+else await main();

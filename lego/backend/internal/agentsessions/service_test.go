@@ -877,6 +877,7 @@ type fakeLifecycle struct {
 	fullInternet                        bool
 	repository, branch                  string
 	driverEnv                           map[string]string
+	image                               sandbox.AgentImage
 	sandboxSeq                          int
 	status                              string
 	statusErr                           error
@@ -900,18 +901,19 @@ func (f *fakeLifecycle) InterruptSessionTurn(_ context.Context, _, sessionID, sa
 	return f.interruptErr
 }
 
-func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egress sessionegress.Egress, driverEnv map[string]string) (sandbox.Sandbox, error) {
+func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, spec sandbox.AgentSessionSandbox) (sandbox.Sandbox, error) {
 	if f.createErr != nil {
 		return sandbox.Sandbox{}, f.createErr
 	}
 	f.created++
+	f.image = spec.Image
 	f.sandboxSeq++
-	f.repository, f.branch = repository, branch
-	f.modelEndpoint = modelEndpoint
-	f.modelAPIKey = modelAPIKey
-	f.egressAllowlist = append([]string(nil), egress.Hosts...)
-	f.fullInternet = egress.FullInternet
-	f.driverEnv = driverEnv
+	f.repository, f.branch = spec.Repository, spec.Branch
+	f.modelEndpoint = spec.ModelEndpoint
+	f.modelAPIKey = spec.ModelAPIKey
+	f.egressAllowlist = append([]string(nil), spec.Egress.Hosts...)
+	f.fullInternet = spec.Egress.FullInternet
+	f.driverEnv = spec.DriverEnv
 	return sandbox.Sandbox{ID: fmt.Sprintf("sandbox-%d", f.sandboxSeq), Status: sandbox.StatusRunning}, nil
 }
 func (f *fakeLifecycle) EnterAgentSessionPhase(_ context.Context, _, _, _, _ string, _ sessionegress.Egress) error {

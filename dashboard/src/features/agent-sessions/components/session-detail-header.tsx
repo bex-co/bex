@@ -11,6 +11,7 @@ import {
   GitBranch,
   Loader2,
   MoreHorizontal,
+  PackageCheck,
   Tag,
   Terminal,
   Trash2,
@@ -289,6 +290,21 @@ export function SessionDetailHeader({
             </span>
           ) : null}
           <SessionSecrets session={session} />
+          {/* The latest turn booted from a repository environment build
+              (ADR111 D4) instead of running the setup steps itself. */}
+          {session.environmentBuildId ? (
+            <Badge
+              variant="secondary"
+              className="gap-1"
+              title={t("agentSessions.startedFromSnapshotTitle", {
+                id: session.environmentBuildId,
+              })}
+              data-testid="session-environment-build"
+            >
+              <PackageCheck className="size-3" />
+              {t("agentSessions.startedFromSnapshot")}
+            </Badge>
+          ) : null}
           {session.isArchived ? (
             <Badge variant="secondary" className="gap-1">
               <Archive className="size-3" />

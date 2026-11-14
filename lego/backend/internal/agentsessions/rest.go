@@ -389,6 +389,16 @@ func (s *Service) registerRepoEnvironmentREST(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /v1/agent-repo-environments/{owner}/{repo}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteRepoEnvironment(r.Context(), r.URL.Query().Get("ownerId"), repoOf(r))
 	}))
+	// ADR111 D10: builds. Build now answers 202 with the queued build.
+	mux.HandleFunc("GET /v1/agent-repo-environments/{owner}/{repo}/builds", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.RepoEnvironmentBuilds(r.Context(), r.URL.Query().Get("ownerId"), repoOf(r))
+	}))
+	mux.HandleFunc("POST /v1/agent-repo-environments/{owner}/{repo}/builds", core.HandleJSON(http.StatusAccepted, func(r *http.Request) (any, error) {
+		return s.BuildRepoEnvironment(r.Context(), r.URL.Query().Get("ownerId"), repoOf(r))
+	}))
+	mux.HandleFunc("GET /v1/agent-repo-environment-builds/{buildId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.RepoEnvironmentBuild(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("buildId"))
+	}))
 }
 
 // AttachmentUploadPath is the streaming upload route; the REST mount exempts

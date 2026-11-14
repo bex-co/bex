@@ -1,22 +1,22 @@
 # w9 · m407 — Repository environment phase 2: sessions boot from a snapshot built from the setup steps, as Devin's do
 
-**Worker:** worker9 **Goal:** a repository's setup steps run once in a build, the result is kept as an image, and every session on that repository boots from the newest successful build with the latest code pulled and no setup wait, as Devin's sessions boot from blueprint snapshots. **Status:** todo (t001 done)
+**Worker:** worker9 **Goal:** a repository's setup steps run once in a build, the result is kept as an image, and every session on that repository boots from the newest successful build with the latest code pulled and no setup wait, as Devin's sessions boot from blueprint snapshots. **Status:** todo (t001, t002, t003, t004, t005, t006, t007, t008, t011 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | Design: ADR for phase 2 — builds, triggers, statuses, secrets, boot and retention; amend ADR109 D2/D3 — **DONE** | 60m | — |
-| [t002](t002.md) | Security review: builds make the privileged commit Job user-triggerable (ADR104 D4) | 45m | t001 |
-| [t003](t003.md) | Store: environment versions and the builds table | 60m | t001 |
-| [t004](t004.md) | Sandbox seams: boot an agent sandbox from a build image, commit a builder, keep its image | 75m | t001 |
-| [t005](t005.md) | Driver: a build mode and a prebuilt boot mode | 60m | t001 |
-| [t006](t006.md) | Build orchestration: triggers, queue, worker and failure handling | 90m | t002, t003, t004, t005 |
-| [t007](t007.md) | Dispatch: sessions boot from the newest matching build; phase 1 is the fallback | 45m | t006 |
-| [t008](t008.md) | Surfaces: builds on REST, GraphQL, MCP and the dashboard | 75m | t006, t007 |
+| [t002](done/t002.md) | Security review: builds make the privileged commit Job user-triggerable (ADR104 D4) — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Store: environment versions and the builds table — **DONE** | 60m | t001 |
+| [t004](done/t004.md) | Sandbox seams: boot an agent sandbox from a build image, commit a builder, keep its image — **DONE** | 75m | t001 |
+| [t005](done/t005.md) | Driver: a build mode and a prebuilt boot mode — **DONE** | 60m | t001 |
+| [t006](done/t006.md) | Build orchestration: triggers, queue, worker and failure handling — **DONE** | 90m | t002, t003, t004, t005 |
+| [t007](done/t007.md) | Dispatch: sessions boot from the newest matching build; phase 1 is the fallback — **DONE** | 45m | t006 |
+| [t008](done/t008.md) | Surfaces: builds on REST, GraphQL, MCP and the dashboard — **DONE** | 75m | t006, t007 |
 | [t009](t009.md) | Live check on production: a build runs, the next session boots from it, and a change rebuilds | 45m | t008 |
 | [t010](t010.md) | Devin parity: every surface this milestone touched agrees, and matches Devin's builds | 20m | t009 |
-| [t011](t011.md) | Simplify | 15m | t010 |
+| [t011](done/t011.md) | Simplify — **DONE** | 15m | t010 |
 | [t012](t012.md) | Test coverage | 45m | t010, t011 |
 | [t013](t013.md) | Closeout | 10m | t012 |
 

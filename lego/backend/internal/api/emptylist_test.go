@@ -198,6 +198,10 @@ var unreachableArrayRoutes = map[string]string{
 	"GET /v1/metrics/kv-memory":                          "resolves a Key Value through the live datastore path this fixture cannot satisfy; shares metrics.toRenderMetrics with the proven series routes",
 	"GET /v1/metrics/kv-connections":                     "same Key Value resolution; same toRenderMetrics",
 	"GET /v1/metrics/bandwidth-sources":                  "answers a {data: [...]} object, not a bare array (w8/190)",
+
+	// ADR111: repository environment builds.
+	"GET /v1/agent-repo-environments/{owner}/{repo}/builds": "the agent_repo_environment_builds table (Service.RepoBuilds); make([]RepoEnvironmentBuild, 0, …) (agentsessions/repo_environment_builds.go RepoEnvironmentBuilds)",
+	"GET /v1/agent-repo-environment-builds/{buildId}":       "the agent_repo_environment_builds table (Service.RepoBuilds); steps starts as []RepoEnvironmentBuildStep{} and the stored log is never null (agentsessions/repo_environment_builds.go repoEnvironmentBuildView)",
 }
 
 // scalarRoutes are the GETs whose 200 body contains no JSON array at all.

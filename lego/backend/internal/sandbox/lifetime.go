@@ -205,7 +205,7 @@ func (s *Service) beforeSuspend(ctx context.Context, key string, raw osSandbox) 
 	if !idleTracked(raw) || mapOpenSandboxStatus(raw.Status.State) != StatusRunning {
 		return nil
 	}
-	if err := s.checkStorageCap(ctx, raw); err != nil {
+	if err := s.checkStorageCap(ctx, raw, "suspend"); err != nil {
 		return err
 	}
 	now := s.Now()

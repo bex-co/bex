@@ -36,6 +36,12 @@ export interface AgentDriverConfig {
   // The session repository's environment (ADR109): setup steps run before
   // the first turn in this sandbox, checks named in the overlay.
   repoEnvironment?: RepoEnvironment;
+  // BEX_REPO_PREBUILT: the snapshot build this sandbox booted from (ADR111
+  // D4), "" for the plain agent image.
+  prebuilt: string;
+  // ensureRepo's verdict that the image's checkout was there, so its setup
+  // steps already ran and are not rerun.
+  setupBaked?: boolean;
   command: string;
   args: string[];
   // Release-profile id (agent-profiles.json): selects the overlay channel for
@@ -307,14 +313,66 @@ function networkTier(value: string | undefined): string {
 
 // model proxy routing is release-locked in agent-profiles.json (w5/m77).
 
+// BEX_AGENT_MODE selects what the driver runs: a session's agent turns (the
+// default), or a snapshot build of the repository's setup steps (ADR111 D1).
+export type DriverMode = "session" | "build";
+
+export function driverMode(env: NodeJS.ProcessEnv = process.env): DriverMode {
+  const mode = env.BEX_AGENT_MODE || "session";
+  if (mode !== "session" && mode !== "build") {
+    throw new Error("BEX_AGENT_MODE must be session or build");
+  }
+  return mode;
+}
+
+type DriverPaths = Pick<
+  AgentDriverConfig,
+  "cwd" | "sessionLogPath" | "statusPath" | "prRecordPath" | "resultRecordPath"
+>;
+
+function driverPaths(env: NodeJS.ProcessEnv): DriverPaths {
+  const statusPath =
+    env.BEX_AGENT_STATUS_FILE || "/var/run/bex-agent/status.json";
+  return {
+    cwd: path.resolve(env.BEX_AGENT_CWD || "/workspace"),
+    sessionLogPath:
+      env.BEX_AGENT_SESSION_LOG || "/var/log/bex-agent/session.jsonl",
+    statusPath,
+    prRecordPath: path.join(path.dirname(statusPath), "pull-request.json"),
+    resultRecordPath: path.join(path.dirname(statusPath), "result.json"),
+  };
+}
+
+// BuildConfig is a snapshot build's configuration (ADR111 D1). A build runs
+// no agent, so it takes no prompt, model proxy or agent profile. The driver's
+// own files are removed before the image is committed.
+export interface BuildConfig extends DriverPaths {
+  // A Git proxy URL for a read-only clone of the default branch.
+  repoUrl: string;
+  // owner/name, which becomes origin's URL in the committed image.
+  repository: string;
+  repoEnvironment?: RepoEnvironment;
+  // The build's secrets (ADR111 D6), scrubbed from every recorded output.
+  secretValues: Map<string, string>;
+}
+
+// loadBuildConfig never throws: whatever is missing fails the build through
+// its status file, which bex-api reads.
+export function loadBuildConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): BuildConfig {
+  return {
+    ...driverPaths(env),
+    repoUrl: env.BEX_AGENT_REPO_URL || "",
+    repository: env.BEX_AGENT_REPOSITORY || "",
+    repoEnvironment: parseRepoEnvironment(env.BEX_REPO_ENVIRONMENT),
+    secretValues: secretValuesFromEnv(env),
+  };
+}
+
 export function loadConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): AgentDriverConfig {
-  const cwd = path.resolve(env.BEX_AGENT_CWD || "/workspace");
-  const sessionLogPath =
-    env.BEX_AGENT_SESSION_LOG || "/var/log/bex-agent/session.jsonl";
-  const statusPath =
-    env.BEX_AGENT_STATUS_FILE || "/var/run/bex-agent/status.json";
   const modelCredential = env.BEX_AGENT_MODEL_API_KEY || "";
 
   const manifest = loadAgentProfiles();
@@ -393,7 +451,7 @@ export function loadConfig(
     profile: profile.id,
     model: profile.model ?? "",
     sessionConfig: { ...profile.sessionConfig },
-    cwd,
+    ...driverPaths(env),
     prompt: env.BEX_AGENT_PROMPT || "",
     branch: env.BEX_AGENT_BRANCH || "",
     repoUrl: env.BEX_AGENT_REPO_URL || "",
@@ -408,13 +466,9 @@ export function loadConfig(
     originalTask: env.BEX_AGENT_ORIGINAL_TASK || "",
     listenHost: env.BEX_AGENT_LISTEN_HOST || "0.0.0.0",
     listenPort: positivePort(env.BEX_AGENT_LISTEN_PORT),
-    sessionLogPath,
-    statusPath,
-    prRecordPath: path.join(path.dirname(statusPath), "pull-request.json"),
     shareUrl: env.BEX_AGENT_SHARE_URL || "",
     spawnUrl: env.BEX_AGENT_SPAWN_URL || "",
     ...outputContract(env),
-    resultRecordPath: path.join(path.dirname(statusPath), "result.json"),
     existingPrUrl: env.BEX_AGENT_PR_URL || "",
     existingPrNumber:
       optionalNonNegativeInt(env.BEX_AGENT_PR_NUMBER, "BEX_AGENT_PR_NUMBER") ||
@@ -435,6 +489,7 @@ export function loadConfig(
     attachments: parseAttachmentManifest(env.BEX_AGENT_ATTACHMENTS),
     skills: parseSkillManifest(env.BEX_AGENT_SKILLS),
     repoEnvironment: parseRepoEnvironment(env.BEX_REPO_ENVIRONMENT),
+    prebuilt: env.BEX_REPO_PREBUILT || "",
     secretValues: secretValuesFromEnv(env),
   };
 }

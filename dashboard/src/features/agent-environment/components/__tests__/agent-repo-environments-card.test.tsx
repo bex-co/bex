@@ -8,6 +8,11 @@ import { codedGraphQLError } from "@/test/mocks/apollo";
 import { AgentRepoEnvironmentsCard } from "@/features/agent-environment/components/agent-repo-environments-card";
 import type { UseAgentRepoEnvironmentsResult } from "@/features/agent-environment/hooks/use-agent-repo-environments";
 import type { RepoEnvironmentView } from "@/features/agent-environment/lib/repo-environments";
+import type { RepoEnvironmentBuildView } from "@/features/agent-environment/lib/repo-environment-builds";
+import type {
+  UseAgentRepoEnvironmentBuildResult,
+  UseAgentRepoEnvironmentBuildsResult,
+} from "@/features/agent-environment/hooks/use-agent-repo-environment-builds";
 
 const hook = vi.hoisted(() => ({
   current: null as unknown as UseAgentRepoEnvironmentsResult,
@@ -19,6 +24,27 @@ vi.mock(
 );
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+// The build log view reads the repository's builds on its own (ADR111).
+vi.mock(
+  "@/features/agent-environment/hooks/use-agent-repo-environment-builds",
+  () => ({
+    useAgentRepoEnvironmentBuilds: (): UseAgentRepoEnvironmentBuildsResult => ({
+      builds: [],
+      loading: false,
+      error: undefined,
+      retry: vi.fn(),
+      buildNow: vi.fn(),
+      starting: false,
+    }),
+    useAgentRepoEnvironmentBuild: (): UseAgentRepoEnvironmentBuildResult => ({
+      build: null,
+      loading: false,
+      error: undefined,
+      retry: vi.fn(),
+    }),
+  }),
+);
 
 // The add dialog's repository picker offers the workspace's connected
 // repositories, as the secrets card's repo scope does.
@@ -33,6 +59,7 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
 
 const API: RepoEnvironmentView = {
   repo: "acme/api",
+  version: "v-api",
   setup: [
     { name: "deps", run: "npm ci" },
     { name: "build", run: "npm run build" },
@@ -41,7 +68,35 @@ const API: RepoEnvironmentView = {
     { name: "lint", run: "npm run lint" },
     { name: "test", run: "npm test" },
   ],
+  latestBuild: null,
 };
+
+const hoursAgo = (n: number) =>
+  new Date(Date.now() - n * 3_600_000).toISOString();
+
+function build(
+  status: string,
+  over: Partial<RepoEnvironmentBuildView> = {},
+): RepoEnvironmentBuildView {
+  return {
+    __typename: "AgentRepoEnvironmentBuild",
+    id: `arb-${status}`,
+    ownerId: "tea-1",
+    repo: "acme/api",
+    version: "v-api",
+    trigger: "manual",
+    status,
+    failureCode: null,
+    failureReason: null,
+    headSha: null,
+    sizeBytes: null,
+    imageAvailable: status === "success",
+    createdAt: hoursAgo(3),
+    startedAt: null,
+    finishedAt: null,
+    ...over,
+  };
+}
 
 function setup(
   environments: RepoEnvironmentView[] = [API],
@@ -133,6 +188,104 @@ describe("AgentRepoEnvironmentsCard (ADR109)", () => {
     const list = screen.getByTestId("agent-repo-environments");
     expect(list).toHaveClass("border");
     expect(list.firstChild).toHaveClass("h-14");
+    cleanup();
+
+    // A row's newest build sits on its first line: the row keeps its
+    // 3.5rem, so the skeleton's one row still previews it (ADR111).
+    setup([{ ...API, latestBuild: build("failed") }]);
+    const row = screen.getByTestId("agent-repo-environments").firstChild;
+    expect(row).toHaveClass("h-14");
+    const latest = screen.getByTestId("repo-environment-latest-build");
+    expect(latest.parentElement).toHaveTextContent("acme/api");
+    expect(latest.parentElement).toHaveClass("flex", "items-center");
+  });
+
+  it.each([
+    ["queued", "Queued"],
+    ["building", "Building"],
+    ["success", "Ready"],
+    ["failed", "Failed"],
+    ["cancelled", "Cancelled"],
+  ])(
+    "shows a repository's newest build when it is %s, with its age",
+    (status, label) => {
+      setup([
+        {
+          ...API,
+          latestBuild: build(status, {
+            createdAt: hoursAgo(5),
+            finishedAt: ["success", "failed", "cancelled"].includes(status)
+              ? hoursAgo(3)
+              : null,
+            startedAt: status === "queued" ? null : hoursAgo(4),
+          }),
+        },
+      ]);
+      const latest = screen.getByTestId("repo-environment-latest-build");
+      const badge = within(latest).getByTestId("repo-environment-build-status");
+      expect(badge).toHaveTextContent(label);
+      expect(badge).toHaveAttribute("data-status", status);
+      // A settled build's age is since it finished; a running one's since it
+      // started; a queued one's since it was queued.
+      const age =
+        status === "queued" ? "5h" : status === "building" ? "4h" : "3h";
+      expect(latest.querySelector("time")).toHaveTextContent(age);
+      expect(screen.queryByTestId("repo-environment-not-built")).toBeNull();
+    },
+  );
+
+  // A checks-only environment never builds (ADR111 D1): no status, no
+  // "not built", no build log.
+  it("shows nothing build-related for a checks-only environment", () => {
+    setup([
+      {
+        repo: "acme/web",
+        version: "v-web",
+        setup: [],
+        checks: [{ name: "test", run: "npm test" }],
+        latestBuild: null,
+      },
+    ]);
+    expect(screen.getByText("acme/web")).toBeInTheDocument();
+    expect(screen.queryByTestId("repo-environment-latest-build")).toBeNull();
+    expect(screen.queryByTestId("repo-environment-not-built")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Builds of acme/web" }),
+    ).toBeNull();
+  });
+
+  it("says when a repository with setup steps has not built yet", () => {
+    setup([API]);
+    expect(screen.getByTestId("repo-environment-not-built")).toHaveTextContent(
+      "Not built yet",
+    );
+    expect(
+      screen.getByRole("button", { name: "Builds of acme/api" }),
+    ).toBeInTheDocument();
+  });
+
+  // Members read builds as they read environments (ADR111 D10).
+  it("opens a repository's build log from its row, for members too", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    const { user } = setup([{ ...API, latestBuild: build("success") }]);
+    await user.click(
+      screen.getByRole("button", { name: "Builds of acme/api" }),
+    );
+    const builds = screen.getByTestId("agent-repo-environment-builds-dialog");
+    expect(
+      within(builds).getByRole("heading", { name: "Builds of acme/api" }),
+    ).toBeInTheDocument();
+    expect(
+      within(builds).getByRole("button", { name: "Build now" }),
+    ).toBeDisabled();
+    await user.click(
+      within(builds).getAllByRole("button", { name: "Close" })[0]!,
+    );
+    expect(
+      screen.queryByTestId("agent-repo-environment-builds-dialog"),
+    ).toBeNull();
   });
 
   it("lists each repository with its setup steps and checks", async () => {
@@ -140,8 +293,10 @@ describe("AgentRepoEnvironmentsCard (ADR109)", () => {
       API,
       {
         repo: "acme/web",
+        version: "v-web",
         setup: [{ name: "deps", run: "pnpm i" }],
         checks: [],
+        latestBuild: null,
       },
     ]);
     const summaries = screen
@@ -350,11 +505,13 @@ describe("AgentRepoEnvironmentsCard (ADR109)", () => {
     const { user } = setup([
       {
         repo: "acme/api",
+        version: "v-api",
         setup: Array.from({ length: 10 }, (_, i) => ({
           name: `step${i}`,
           run: "true",
         })),
         checks: [],
+        latestBuild: null,
       },
     ]);
     await user.click(screen.getByRole("button", { name: "Edit acme/api" }));

@@ -153,7 +153,7 @@ func (s *PGStore) CreateSandboxBuild(ctx context.Context, in NewSandboxBuild, ma
 			}
 		}
 		if (in.MaxStorageBytes > 0 || in.WorkspaceShareBytes > 0) && in.SizeBytes > 0 {
-			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "sandbox-storage:"+in.WorkspaceID); err != nil {
+			if err := lockSandboxStorage(ctx, tx, in.WorkspaceID); err != nil {
 				return err
 			}
 		}

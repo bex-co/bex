@@ -345,31 +345,32 @@ func jsonTextField[T any](description string, value func(T) any) *graphql.Field 
 var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSession",
 	Fields: graphql.Fields{
-		"id":              gqlutil.ReqStrField(func(v View) any { return v.ID }),
-		"ownerId":         gqlutil.ReqStrField(func(v View) any { return v.OwnerID }),
-		"repo":            gqlutil.ReqStrField(func(v View) any { return v.Repo }),
-		"branch":          gqlutil.ReqStrField(func(v View) any { return v.Branch }),
-		"title":           gqlutil.StrField(func(v View) any { return v.Title }),
-		"maxSpendUSD":     gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
-		"tags":            &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
-		"secretNames":     &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
-		"appliedSecrets":  &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(appliedSecretGQLType))), Description: "The secrets the latest turn received, each with its source (inline, explicit, repo or workspace); values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.AppliedSecrets })},
-		"automationId":    &graphql.Field{Type: graphql.String, Description: "The agent automation (aut-…) that started this session, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.AutomationID })},
-		"createdBy":       &graphql.Field{Type: graphql.String, Description: "Who started the session: a member's identity id, or an API key's client id. An automation's sessions carry the automation's creator and a child session its parent's creator. Absent on sessions from before it was recorded.", Resolve: gqlutil.Field(func(v View) any { return v.CreatedBy })},
-		"parentSessionId": &graphql.Field{Type: graphql.String, Description: "The agent session (ags-…) that spawned this one, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.ParentSessionID })},
-		"rootSessionId":   &graphql.Field{Type: graphql.String, Description: "The top of this session's tree, absent on a top-level session.", Resolve: gqlutil.Field(func(v View) any { return v.RootSessionID })},
-		"depth":           &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Description: "Distance from the root of the session's tree; 0 for a top-level session.", Resolve: gqlutil.Field(func(v View) any { return v.Depth })},
-		"agentConfig":     gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
-		"sandboxId":       gqlutil.StrField(func(v View) any { return v.SandboxID }),
-		"sshAddress":      gqlutil.StrField(func(v View) any { return v.SSHAddress }),
-		"phase":           gqlutil.ReqStrField(func(v View) any { return v.Phase }),
-		"state":           gqlutil.ReqStrField(func(v View) any { return v.State }),
-		"steerable":       &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v View) any { return v.Steerable })},
-		"status":          gqlutil.ReqStrField(func(v View) any { return v.Status }),
-		"headSha":         gqlutil.StrField(func(v View) any { return v.HeadSHA }),
-		"prUrl":           gqlutil.StrField(func(v View) any { return v.PRURL }),
-		"prState":         &graphql.Field{Type: graphql.String, Description: "The pull request's state as bex last read it from GitHub: open (a draft too), merged or closed; null until first read.", Resolve: gqlutil.OptionalStrField(func(v View) any { return v.PRState }).Resolve},
-		"prStateAt":       gqlutil.TimeField(func(v View) any { return v.PRStateAt }),
+		"id":                 gqlutil.ReqStrField(func(v View) any { return v.ID }),
+		"ownerId":            gqlutil.ReqStrField(func(v View) any { return v.OwnerID }),
+		"repo":               gqlutil.ReqStrField(func(v View) any { return v.Repo }),
+		"branch":             gqlutil.ReqStrField(func(v View) any { return v.Branch }),
+		"title":              gqlutil.StrField(func(v View) any { return v.Title }),
+		"maxSpendUSD":        gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
+		"tags":               &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
+		"secretNames":        &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
+		"appliedSecrets":     &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(appliedSecretGQLType))), Description: "The secrets the latest turn received, each with its source (inline, explicit, repo or workspace); values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.AppliedSecrets })},
+		"environmentBuildId": &graphql.Field{Type: graphql.String, Description: "The repository environment build (arb-…) the latest turn's sandbox booted from; null when it ran the setup steps.", Resolve: gqlutil.OptionalStrField(func(v View) any { return v.EnvironmentBuildID }).Resolve},
+		"automationId":       &graphql.Field{Type: graphql.String, Description: "The agent automation (aut-…) that started this session, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.AutomationID })},
+		"createdBy":          &graphql.Field{Type: graphql.String, Description: "Who started the session: a member's identity id, or an API key's client id. An automation's sessions carry the automation's creator and a child session its parent's creator. Absent on sessions from before it was recorded.", Resolve: gqlutil.Field(func(v View) any { return v.CreatedBy })},
+		"parentSessionId":    &graphql.Field{Type: graphql.String, Description: "The agent session (ags-…) that spawned this one, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.ParentSessionID })},
+		"rootSessionId":      &graphql.Field{Type: graphql.String, Description: "The top of this session's tree, absent on a top-level session.", Resolve: gqlutil.Field(func(v View) any { return v.RootSessionID })},
+		"depth":              &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Description: "Distance from the root of the session's tree; 0 for a top-level session.", Resolve: gqlutil.Field(func(v View) any { return v.Depth })},
+		"agentConfig":        gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
+		"sandboxId":          gqlutil.StrField(func(v View) any { return v.SandboxID }),
+		"sshAddress":         gqlutil.StrField(func(v View) any { return v.SSHAddress }),
+		"phase":              gqlutil.ReqStrField(func(v View) any { return v.Phase }),
+		"state":              gqlutil.ReqStrField(func(v View) any { return v.State }),
+		"steerable":          &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v View) any { return v.Steerable })},
+		"status":             gqlutil.ReqStrField(func(v View) any { return v.Status }),
+		"headSha":            gqlutil.StrField(func(v View) any { return v.HeadSHA }),
+		"prUrl":              gqlutil.StrField(func(v View) any { return v.PRURL }),
+		"prState":            &graphql.Field{Type: graphql.String, Description: "The pull request's state as bex last read it from GitHub: open (a draft too), merged or closed; null until first read.", Resolve: gqlutil.OptionalStrField(func(v View) any { return v.PRState }).Resolve},
+		"prStateAt":          gqlutil.TimeField(func(v View) any { return v.PRStateAt }),
 		"prNumber": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v View) any {
 			if v.PRNumber == 0 {
 				return nil
@@ -613,10 +614,17 @@ var repoEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "AgentRepoEnvironment",
 	Description: "A repository's environment for agent sessions (ADR109): setup steps run before the agent, checks it runs before delivering.",
 	Fields: graphql.Fields{
-		"ownerId":   gqlutil.ReqStrField(func(v RepoEnvironment) any { return v.OwnerID }),
-		"repo":      gqlutil.ReqStrField(func(v RepoEnvironment) any { return v.Repo }),
-		"setup":     gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(repoStepGQLType))), func(v RepoEnvironment) any { return v.Setup }),
-		"checks":    gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(repoStepGQLType))), func(v RepoEnvironment) any { return v.Checks }),
+		"ownerId": gqlutil.ReqStrField(func(v RepoEnvironment) any { return v.OwnerID }),
+		"repo":    gqlutil.ReqStrField(func(v RepoEnvironment) any { return v.Repo }),
+		"setup":   gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(repoStepGQLType))), func(v RepoEnvironment) any { return v.Setup }),
+		"checks":  gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(repoStepGQLType))), func(v RepoEnvironment) any { return v.Checks }),
+		"version": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "The SHA-256 of the setup steps; a build of another version is stale.", Resolve: gqlutil.Field(func(v RepoEnvironment) any { return v.Version })},
+		"latestBuild": &graphql.Field{Type: repoEnvironmentBuildGQLType, Description: "The newest build of the repository's environment, if it has one.", Resolve: gqlutil.Field(func(v RepoEnvironment) any {
+			if v.LatestBuild == nil {
+				return nil
+			}
+			return *v.LatestBuild
+		})},
 		"updatedAt": gqlutil.TimeField(func(v RepoEnvironment) any { return v.UpdatedAt }),
 	},
 })
@@ -836,6 +844,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	}
 	maps.Copy(fields, s.skillQueries())
 	maps.Copy(fields, s.automationQueries())
+	maps.Copy(fields, s.repoEnvironmentBuildQueries())
 	return fields
 }
 
@@ -1017,5 +1026,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	maps.Copy(fields, s.skillMutations())
 	maps.Copy(fields, s.automationMutations())
 	maps.Copy(fields, s.queueMutations())
+	maps.Copy(fields, s.repoEnvironmentBuildMutations())
 	return fields
 }

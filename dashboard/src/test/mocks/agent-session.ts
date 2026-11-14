@@ -30,6 +30,7 @@ export function agentSessionView({
     secretNames: [],
     maxSpendUSD: null,
     automationId: null,
+    environmentBuildId: null,
     createdBy: null,
     parentSessionId: null,
     rootSessionId: null,

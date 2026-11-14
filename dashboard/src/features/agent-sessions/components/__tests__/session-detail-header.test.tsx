@@ -265,6 +265,29 @@ describe("SessionDetailHeader", () => {
     expect(screen.queryByTestId("started-by")).not.toBeInTheDocument();
   });
 
+  // ADR111 D4: the latest turn booted from a repository environment build.
+  it("marks a session that started from an environment snapshot", () => {
+    render(
+      <SessionDetailHeader
+        session={view({ environmentBuildId: "arb-0123456789abcdefghij" })}
+      />,
+    );
+    const chip = screen.getByTestId("session-environment-build");
+    expect(chip).toHaveTextContent("Started from snapshot");
+    expect(chip).toHaveAttribute(
+      "title",
+      "The latest turn started from environment build arb-0123456789abcdefghij, with the setup steps already run.",
+    );
+    // It sits in the one-line meta row with the other chips.
+    expect(chip.closest(".h-4")).not.toBeNull();
+  });
+
+  it("shows no snapshot chip for a turn that ran the setup steps", () => {
+    render(<SessionDetailHeader session={view()} />);
+    expect(screen.queryByTestId("session-environment-build")).toBeNull();
+    expect(screen.queryByText("Started from snapshot")).toBeNull();
+  });
+
   it("preserves the originating list filters in the Back link", () => {
     render(
       <SessionDetailHeader

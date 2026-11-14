@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -193,22 +194,31 @@ func (r *RegistryConfig) listTags(ctx context.Context, escapedRepo, repo string)
 	return tags.Tags, nil
 }
 
-// SnapshotBytes implements SnapshotSizer.
-func (r *RegistrySizer) SnapshotBytes(ctx context.Context, workspaceID, ref string) (int64, error) {
+// newestSnapshot is the repository of the sandbox whose substrate id is ref
+// and the tag of the newest image it committed.
+func (r *RegistryConfig) newestSnapshot(ctx context.Context, workspaceID, ref string) (string, string, error) {
 	repo, err := r.repository(workspaceID, ref)
 	if err != nil {
-		return 0, err
+		return "", "", err
 	}
-	escaped := escapeRepository(repo)
-	tags, err := r.listTags(ctx, escaped, repo)
+	tags, err := r.listTags(ctx, escapeRepository(repo), repo)
 	if err != nil {
-		return 0, err
+		return "", "", err
 	}
 	tag, ok := newestSnapshotTag(tags)
 	if !ok {
-		return 0, fmt.Errorf("registry: no snapshot image in %s yet", repo)
+		return "", "", fmt.Errorf("registry: no snapshot image in %s yet", repo)
 	}
-	body, _, err := r.get(ctx, "/v2/"+escaped+"/manifests/"+url.PathEscape(tag), manifestAccept)
+	return repo, tag, nil
+}
+
+// SnapshotBytes implements SnapshotSizer.
+func (r *RegistrySizer) SnapshotBytes(ctx context.Context, workspaceID, ref string) (int64, error) {
+	repo, tag, err := r.newestSnapshot(ctx, workspaceID, ref)
+	if err != nil {
+		return 0, err
+	}
+	body, _, err := r.get(ctx, "/v2/"+escapeRepository(repo)+"/manifests/"+url.PathEscape(tag), manifestAccept)
 	if err != nil {
 		return 0, err
 	}
@@ -327,11 +337,13 @@ func (r *RegistryReaper) DeleteImages(ctx context.Context, workspaceID, ref stri
 }
 
 // DeleteImportedImage deletes an imported image (w2/m358) once its group is
-// deleted (w2/m359): the one tag its repository holds. An image already gone
-// is not an error.
+// deleted (w2/m359), or a repository environment build's image (ADR111 D8):
+// the one tag its repository holds. An image already gone is not an error.
 func (r *RegistryReaper) DeleteImportedImage(ctx context.Context, workspaceID, buildID string) error {
-	if err := validateBuildID(buildID); err != nil {
-		return err
+	if !agentsession.IsBuildPrincipal(buildID) {
+		if err := validateBuildID(buildID); err != nil {
+			return err
+		}
 	}
 	return r.deleteTag(ctx, escapeRepository(r.importedRepository(workspaceID, buildID)), imageTag)
 }

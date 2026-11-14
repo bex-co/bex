@@ -44,6 +44,14 @@ func (f *fakeStorageUsage) SandboxStorageBytes(_ context.Context, ws string) (in
 	return f.bytes, f.err
 }
 
+func (f *fakeStorageUsage) ReserveAgentRepoEnvironmentBuildImage(_ context.Context, _, _ string, size, limit int64) error {
+	if f.bytes+size > limit {
+		return &store.SandboxStorageLimitError{UsedBytes: f.bytes}
+	}
+	f.bytes += size
+	return nil
+}
+
 // TestStorageCapRefusesTheSuspendThatWouldCommitAnotherImage: a workspace at its
 // cap cannot suspend (explicitly or on idle) and gets a named 429; the refused
 // sandbox keeps running, below the cap suspends as before, a sandbox of another

@@ -91,6 +91,11 @@ func (f *fakeSessionEgress) PrepareSetup(_ context.Context, namespace, session, 
 	return f.err
 }
 
+func (f *fakeSessionEgress) PrepareBuild(_ context.Context, namespace, build string, egress sessionegress.Egress) error {
+	f.calls = append(f.calls, egressCall{op: "build", namespace: namespace, session: build, extra: append([]string(nil), egress.Hosts...)})
+	return f.err
+}
+
 func (f *fakeSessionEgress) TransitionToAgent(_ context.Context, namespace, session, modelEndpoint string, egress sessionegress.Egress) error {
 	f.calls = append(f.calls, egressCall{op: "agent", namespace: namespace, session: session, modelEndpoint: modelEndpoint, extra: append([]string(nil), egress.Hosts...)})
 	return f.err
@@ -186,7 +191,7 @@ func TestAgentSessionPolicyPrecedesSandboxCreateAndTransitionUsesDurableAllowlis
 	})
 	svc.SessionEgress = eg
 	lifecycle := NewAgentSessionLifecycle(svc)
-	_, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", agentsession.ModelKeyPlaceholder("ags-one"), sessionegress.Egress{Hosts: []string{"docs.example.com"}}, nil)
+	_, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), AgentSessionSandbox{WorkspaceID: "tea-a", Template: "node", SessionID: "ags-one", Repository: "bex-co/example", Branch: "bex-agent/session-test", ModelEndpoint: "https://models.example.com/v1", ModelAPIKey: agentsession.ModelKeyPlaceholder("ags-one"), Egress: sessionegress.Egress{Hosts: []string{"docs.example.com"}}})
 	if err != nil {
 		t.Fatalf("CreateAgentSessionSandbox: %v", err)
 	}
@@ -215,7 +220,7 @@ func TestAgentSessionCreateFailurePreservesSessionPolicy(t *testing.T) {
 		http.Error(w, "boom", http.StatusBadGateway)
 	})
 	svc.SessionEgress = eg
-	_, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", agentsession.ModelKeyPlaceholder("ags-one"), sessionegress.Egress{}, nil)
+	_, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(callerCtx(), AgentSessionSandbox{WorkspaceID: "tea-a", Template: "node", SessionID: "ags-one", Repository: "bex-co/example", Branch: "bex-agent/session-test", ModelEndpoint: "https://models.example.com/v1", ModelAPIKey: agentsession.ModelKeyPlaceholder("ags-one")})
 	if err == nil {
 		t.Fatal("CreateAgentSessionSandbox succeeded against failed upstream")
 	}

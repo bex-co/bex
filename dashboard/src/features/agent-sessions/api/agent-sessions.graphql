@@ -28,6 +28,9 @@ fragment AgentSessionFields on AgentSession {
   depth
   # Names of the attached secrets (ADR098); values are never readable.
   secretNames
+  # The repository environment build (arb-…) the latest turn's sandbox booted
+  # from (ADR111 D4); null when it ran the setup steps itself.
+  environmentBuildId
   agentConfig {
     agent
     model

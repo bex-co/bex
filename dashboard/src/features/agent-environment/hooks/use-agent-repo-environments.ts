@@ -9,6 +9,8 @@ import type {
   RepoEnvironmentInput,
   RepoEnvironmentView,
 } from "@/features/agent-environment/lib/repo-environments";
+import { isActiveBuild } from "@/features/agent-environment/lib/repo-environment-builds";
+import { useBuildPolling } from "@/features/agent-environment/hooks/use-build-polling";
 
 export interface UseAgentRepoEnvironmentsResult {
   /** The workspace's repository environments, in the server's order. */
@@ -23,11 +25,15 @@ export interface UseAgentRepoEnvironmentsResult {
   saving: boolean;
 }
 
-/** Lists and writes the workspace's repository environments (ADR109). */
+/**
+ * Lists and writes the workspace's repository environments (ADR109), each
+ * with its newest build (ADR111). While any of those builds is queued or
+ * building, the list re-reads itself so the row's status follows the build.
+ */
 export function useAgentRepoEnvironments(
   ownerId: string | null,
 ): UseAgentRepoEnvironmentsResult {
-  const { data, loading, error, refetch } = useQuery(
+  const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(
     AgentRepoEnvironmentsDocument,
     {
       variables: { ownerId: ownerId ?? "" },
@@ -76,10 +82,17 @@ export function useAgentRepoEnvironments(
     () =>
       list?.environments.map((env) => ({
         repo: env.repo,
+        version: env.version,
         setup: env.setup.map(({ name, run }) => ({ name, run })),
         checks: env.checks.map(({ name, run }) => ({ name, run })),
+        latestBuild: env.latestBuild ?? null,
       })) ?? [],
     [list],
+  );
+  useBuildPolling(
+    environments.some((env) => isActiveBuild(env.latestBuild)),
+    startPolling,
+    stopPolling,
   );
   return {
     environments,

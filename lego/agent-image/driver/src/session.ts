@@ -356,9 +356,11 @@ export async function runHeadlessTurn(
             writer.write({ type: "start" });
             // The repository's setup steps (ADR109) run once per sandbox,
             // before the agent, through this stream so their output is
-            // redacted and recorded like any tool call.
+            // redacted and recorded like any tool call. A sandbox booted from
+            // a snapshot build's image already has them (ADR111 D4).
             if (
               config.repoEnvironment?.setup.length &&
+              !config.setupBaked &&
               !repoSetupDone.has(config)
             ) {
               await runRepoSetup(config.repoEnvironment, {

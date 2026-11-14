@@ -62,6 +62,7 @@ export function toAgentSessionView(
     secretNames: wire.secretNames ?? [],
     maxSpendUSD: wire.maxSpendUSD || null,
     automationId: wire.automationId || null,
+    environmentBuildId: wire.environmentBuildId || null,
     createdBy: wire.createdBy || null,
     parentSessionId: wire.parentSessionId || null,
     rootSessionId: wire.rootSessionId || null,

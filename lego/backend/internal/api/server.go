@@ -464,6 +464,9 @@ type Deps struct {
 	// AgentRepoEnvironmentStore holds repository environments (ADR109); nil ⇒
 	// none, and the verbs answer unavailable.
 	AgentRepoEnvironmentStore agentsessions.RepoEnvironmentStore
+	// AgentRepoEnvironmentBuildStore holds repository environment builds
+	// (ADR111); nil ⇒ no build runs and sessions run their setup steps.
+	AgentRepoEnvironmentBuildStore agentsessions.RepoEnvironmentBuildStore
 	// AgentAutomationStore is the ADR101 agent automations table; nil =>
 	// automations unavailable.
 	AgentAutomationStore agentsessions.AutomationStore
@@ -1062,9 +1065,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// off, so enabled() checks are honest instead of holding a typed-nil pointer.
 	var agentLifecycle agentsessions.SandboxLifecycle
 	var agentCopier agentsessions.AttachmentCopier
+	var agentBuilders agentsessions.BuildSandboxes
 	if sandboxSvc != nil {
 		lifecycle := sandbox.NewAgentSessionLifecycle(sandboxSvc)
-		agentLifecycle, agentCopier = lifecycle, lifecycle
+		agentLifecycle, agentCopier, agentBuilders = lifecycle, lifecycle, lifecycle
 	}
 	deploysSvc := &deploys.Service{
 		Base:              base,
@@ -1164,6 +1168,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Skills:           d.AgentSkillStore,
 		SecretScopes:     d.AgentSecretScopeStore,
 		RepoEnvs:         d.AgentRepoEnvironmentStore,
+		RepoBuilds:       d.AgentRepoEnvironmentBuildStore,
+		Builders:         agentBuilders,
 		Automations:      d.AgentAutomationStore,
 		Feedback:         d.AgentFeedbackStore,
 		Queue:            d.AgentQueueStore,
@@ -1213,7 +1219,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},
 		ServiceRefs:        &apps.ServiceRefPropagator{Svc: appsSvc},
 		AgentSessionCompleter: &agentsessions.Completer{
-			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
+			Store: d.AgentSessionStore, Sandbox: agentLifecycle, Builds: d.AgentRepoEnvironmentBuildStore,
 			IdleTTL:              d.AgentSandboxIdleTTL,
 			StatusReadFailureTTL: d.AgentStatusRetryWindow,
 			TurnTimeout:          d.AgentTurnTimeout,

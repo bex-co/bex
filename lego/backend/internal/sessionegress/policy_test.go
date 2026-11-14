@@ -653,3 +653,36 @@ func TestRenderPolicyIsTheManagersPolicy(t *testing.T) {
 		t.Fatal("an invalid model endpoint rendered a policy")
 	}
 }
+
+// ADR111: a repository environment builder's posture is a session tier's
+// destinations with no model target: no model host, no model proxy hop, in
+// both the allowlist and the full-internet posture.
+func TestBuildPostureHasNoModelTarget(t *testing.T) {
+	m := &Manager{Config: Config{ModelProxyPort: 8084}}
+	for _, egress := range []Egress{{Hosts: []string{"docs.example.com"}}, {FullInternet: true}} {
+		obj, err := m.policy("tea-test-sandbox", "arb-test", PhaseBuild, "", egress)
+		if err != nil {
+			t.Fatalf("build policy (%+v): %v", egress, err)
+		}
+		if obj.GetAnnotations()[phaseAnnotation] != string(PhaseBuild) || obj.GetAnnotations()[modelAnnotation] != "" {
+			t.Fatalf("build annotations = %v", obj.GetAnnotations())
+		}
+		rules, _, _ := unstructured.NestedSlice(obj.Object, "spec", "egress")
+		for _, raw := range rules {
+			for _, p := range raw.(map[string]any)["toPorts"].([]any) {
+				if p.(map[string]any)["ports"].([]any)[0].(map[string]any)["port"] == "8084" {
+					t.Fatalf("the builder policy reaches the model proxy: %#v", rules)
+				}
+			}
+		}
+		for _, name := range dnsNames(t, obj) {
+			if slices.Contains(modelProviderDomains, name) {
+				t.Fatalf("the builder policy resolves model provider %s", name)
+			}
+		}
+	}
+	// A session still needs its model endpoint.
+	if _, err := m.policy("tea-test-sandbox", "ags-test", PhaseSetup, "", Egress{}); err == nil {
+		t.Fatal("a session policy rendered without a model endpoint")
+	}
+}

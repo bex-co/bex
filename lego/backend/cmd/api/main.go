@@ -922,6 +922,8 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentAutomationStore = st      // ADR101: agent automations
 	deps.AgentFeedbackStore = st        // ADR047 D11: PR feedback turn origins
 	deps.AgentQueueStore = st           // ADR047 D12: messages queued behind a running turn
+	// ADR111: repository environment builds.
+	deps.AgentRepoEnvironmentBuildStore = st
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
@@ -1214,7 +1216,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	if cfg.SandboxExecSecret != "" {
 		internalRoot.Handle(agentsession.InternalMintPath, &agentsession.Handler{
 			Secret: []byte(cfg.SandboxExecSecret),
-			Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Audit: st},
+			Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Builds: st, Audit: st},
 			Nonce:  st,
 		})
 		// ADR090: the agent's own draft-PR verb. Same gateway-only HMAC and
@@ -1275,7 +1277,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 		internalRoot.Handle(agentsession.InternalSpawnPath, agentSpawns)
 		internalRoot.Handle(agentsession.InternalEgressGrantPath, &agentsession.EgressGrantHandler{
 			Secret:  []byte(cfg.SandboxExecSecret),
-			Granter: &agentsession.EgressGranter{Sessions: st, Environments: st, Audit: st},
+			Granter: &agentsession.EgressGranter{Sessions: st, Environments: st, Builds: st, Audit: st},
 			Nonce:   st,
 		})
 		// ADR062: the model-credential mint. Same gateway-only HMAC + internal-only
@@ -1557,7 +1559,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// never minting). Only meaningful with the store on (workspace delete
 			// needs it) and the client wired — both true in this branch.
 			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
-				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages})
+				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages, AgentBuilds: st})
 		}
 	}
 }
@@ -1741,6 +1743,11 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 		// It runs only when a session create could succeed.
 		if srv.AgentSessions.AutomationsRunnable() {
 			go (&agentsessions.AutomationScheduler{Service: srv.AgentSessions}).Run(ctx)
+		}
+		// Repository environment builds (ADR111): every replica ticks; the
+		// claim's SKIP LOCKED and each build's heartbeat keep a build on one.
+		if srv.AgentSessions.RepoEnvironmentBuildsRunnable() {
+			go (&agentsessions.RepoEnvironmentBuilder{Service: srv.AgentSessions, StatusReadFailureTTL: srv.AgentSessionCompleter.StatusReadFailureTTL}).Run(ctx)
 		}
 		// Queued PR feedback is delivered as soon as its session is idle; the
 		// lease keeps replicas from steering one session twice.

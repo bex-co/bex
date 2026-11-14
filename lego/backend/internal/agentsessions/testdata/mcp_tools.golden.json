@@ -109,6 +109,9 @@
         "depth": {
           "type": "integer"
         },
+        "environmentBuildId": {
+          "type": "string"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -701,6 +704,9 @@
         "depth": {
           "type": "integer"
         },
+        "environmentBuildId": {
+          "type": "string"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -1187,6 +1193,132 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
+    "description": "Build a repository environment now (workspace admins only): the setup steps run once with the repository's secrets (workspace- and repo-scoped), at most 3 hours, and the result becomes the image its sessions boot from with the steps already run. Files a step writes are kept in the image. A queued build is replaced; a running one finishes first. At most 12 builds start per repository in 24 hours (AGENT_REPO_ENVIRONMENT_BUILD_RATE_LIMITED).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "description": "the repository as owner/name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo"
+      ],
+      "type": "object"
+    },
+    "name": "build_agent_repo_environment",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "failureCode": {
+          "type": "string"
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "finishedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "imageAvailable": {
+          "type": "boolean"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "startedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "durationMs": {
+                "type": "integer"
+              },
+              "exitCode": {
+                "type": [
+                  "null",
+                  "integer"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "output": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "exitCode",
+              "durationMs",
+              "output"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "trigger": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "version",
+        "trigger",
+        "status",
+        "imageAvailable",
+        "createdAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
     "description": "Cancel a cloud coding-agent session and terminate its sandbox.",
     "inputSchema": {
       "additionalProperties": false,
@@ -1289,6 +1421,9 @@
         },
         "depth": {
           "type": "integer"
+        },
+        "environmentBuildId": {
+          "type": "string"
         },
         "expiresAt": {
           "type": [
@@ -2528,6 +2663,9 @@
         },
         "depth": {
           "type": "integer"
+        },
+        "environmentBuildId": {
+          "type": "string"
         },
         "expiresAt": {
           "type": [
@@ -4131,6 +4269,132 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
+    "description": "Read one repository environment build with its redacted per-step log (exit code, duration and output tail of each setup step).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "the build id (arb-…)",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_repo_environment_build",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "failureCode": {
+          "type": "string"
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "finishedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "imageAvailable": {
+          "type": "boolean"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "startedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "durationMs": {
+                "type": "integer"
+              },
+              "exitCode": {
+                "type": [
+                  "null",
+                  "integer"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "output": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "exitCode",
+              "durationMs",
+              "output"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "trigger": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "version",
+        "trigger",
+        "status",
+        "imageAvailable",
+        "createdAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
     "description": "Inspect one cloud coding-agent session.",
     "inputSchema": {
       "additionalProperties": false,
@@ -4233,6 +4497,9 @@
         },
         "depth": {
           "type": "integer"
+        },
+        "environmentBuildId": {
+          "type": "string"
         },
         "expiresAt": {
           "type": [
@@ -5312,6 +5579,9 @@
               "depth": {
                 "type": "integer"
               },
+              "environmentBuildId": {
+                "type": "string"
+              },
               "expiresAt": {
                 "type": [
                   "null",
@@ -6076,6 +6346,9 @@
         },
         "depth": {
           "type": "integer"
+        },
+        "environmentBuildId": {
+          "type": "string"
         },
         "expiresAt": {
           "type": [
@@ -6973,6 +7246,155 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
+    "description": "List a repository environment's builds, newest first (the last 20): each build bakes the setup steps into the image the repository's sessions boot from, with its status (queued, building, success, failed, cancelled), failure code and the environment version it built.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "description": "the repository as owner/name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo"
+      ],
+      "type": "object"
+    },
+    "name": "list_agent_repo_environment_builds",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "builds": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "type": "string"
+              },
+              "failureCode": {
+                "type": "string"
+              },
+              "failureReason": {
+                "type": "string"
+              },
+              "finishedAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "headSha": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "imageAvailable": {
+                "type": "boolean"
+              },
+              "ownerId": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "sizeBytes": {
+                "type": [
+                  "null",
+                  "integer"
+                ]
+              },
+              "startedAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "status": {
+                "type": "string"
+              },
+              "steps": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "durationMs": {
+                      "type": "integer"
+                    },
+                    "exitCode": {
+                      "type": [
+                        "null",
+                        "integer"
+                      ]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "output": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "exitCode",
+                    "durationMs",
+                    "output"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "trigger": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "ownerId",
+              "repo",
+              "version",
+              "trigger",
+              "status",
+              "imageAvailable",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ownerId",
+        "repo",
+        "builds"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
     "description": "List a workspace's repository environments: per repository, the setup steps bex runs from the repository root before the agent starts, and the checks (lint, test, build) the agent runs before it delivers.",
     "inputSchema": {
       "additionalProperties": false,
@@ -7015,6 +7437,109 @@
                   "array"
                 ]
               },
+              "latestBuild": {
+                "additionalProperties": false,
+                "properties": {
+                  "createdAt": {
+                    "type": "string"
+                  },
+                  "failureCode": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "finishedAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "headSha": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageAvailable": {
+                    "type": "boolean"
+                  },
+                  "ownerId": {
+                    "type": "string"
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "sizeBytes": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "startedAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "durationMs": {
+                          "type": "integer"
+                        },
+                        "exitCode": {
+                          "type": [
+                            "null",
+                            "integer"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "output": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "exitCode",
+                        "durationMs",
+                        "output"
+                      ],
+                      "type": "object"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "trigger": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "ownerId",
+                  "repo",
+                  "version",
+                  "trigger",
+                  "status",
+                  "imageAvailable",
+                  "createdAt"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
               "ownerId": {
                 "type": "string"
               },
@@ -7047,6 +7572,9 @@
               },
               "updatedAt": {
                 "type": "string"
+              },
+              "version": {
+                "type": "string"
               }
             },
             "required": [
@@ -7054,6 +7582,7 @@
               "repo",
               "setup",
               "checks",
+              "version",
               "updatedAt"
             ],
             "type": "object"
@@ -7558,6 +8087,9 @@
               },
               "depth": {
                 "type": "integer"
+              },
+              "environmentBuildId": {
+                "type": "string"
               },
               "expiresAt": {
                 "type": [
@@ -9092,6 +9624,9 @@
         "depth": {
           "type": "integer"
         },
+        "environmentBuildId": {
+          "type": "string"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -9844,6 +10379,9 @@
         "depth": {
           "type": "integer"
         },
+        "environmentBuildId": {
+          "type": "string"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -10330,7 +10868,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Create or replace a repository's environment (workspace admins only): setup steps run with bash from the repository root before every session's agent starts, with the session's secrets, at most 10 minutes each and 20 minutes in all; a failing step fails the turn AGENT_SESSION_SETUP_FAILED. Checks are listed to the agent to run before it delivers. Sessions use it from their next turn.",
+    "description": "Create or replace a repository's environment (workspace admins only): setup steps run with bash from the repository root. A save that changes them queues a build that bakes them into the image the repository's sessions boot from; until a build of the current steps succeeds, each session runs them before its agent starts, with the session's secrets, at most 10 minutes each and 20 minutes in all, and a failing step fails the turn AGENT_SESSION_SETUP_FAILED. Checks are listed to the agent to run before it delivers. Sessions use it from their next turn.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -10427,6 +10965,109 @@
             "array"
           ]
         },
+        "latestBuild": {
+          "additionalProperties": false,
+          "properties": {
+            "createdAt": {
+              "type": "string"
+            },
+            "failureCode": {
+              "type": "string"
+            },
+            "failureReason": {
+              "type": "string"
+            },
+            "finishedAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "headSha": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "imageAvailable": {
+              "type": "boolean"
+            },
+            "ownerId": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "sizeBytes": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "startedAt": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "status": {
+              "type": "string"
+            },
+            "steps": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "durationMs": {
+                    "type": "integer"
+                  },
+                  "exitCode": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "output": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "exitCode",
+                  "durationMs",
+                  "output"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "trigger": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "ownerId",
+            "repo",
+            "version",
+            "trigger",
+            "status",
+            "imageAvailable",
+            "createdAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
         "ownerId": {
           "type": "string"
         },
@@ -10459,6 +11100,9 @@
         },
         "updatedAt": {
           "type": "string"
+        },
+        "version": {
+          "type": "string"
         }
       },
       "required": [
@@ -10466,6 +11110,7 @@
         "repo",
         "setup",
         "checks",
+        "version",
         "updatedAt"
       ],
       "type": "object"
@@ -10651,6 +11296,9 @@
         },
         "depth": {
           "type": "integer"
+        },
+        "environmentBuildId": {
+          "type": "string"
         },
         "expiresAt": {
           "type": [
@@ -11387,6 +12035,9 @@
         "depth": {
           "type": "integer"
         },
+        "environmentBuildId": {
+          "type": "string"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -12072,6 +12723,9 @@
         },
         "depth": {
           "type": "integer"
+        },
+        "environmentBuildId": {
+          "type": "string"
         },
         "expiresAt": {
           "type": [
@@ -12950,6 +13604,9 @@
         },
         "depth": {
           "type": "integer"
+        },
+        "environmentBuildId": {
+          "type": "string"
         },
         "expiresAt": {
           "type": [

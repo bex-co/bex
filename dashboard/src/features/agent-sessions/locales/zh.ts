@@ -992,6 +992,16 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已归档",
     description: "Badge marking a session as archived (out of the working set)",
   },
+  "agentSessions.startedFromSnapshot": {
+    message: "从快照启动",
+    description:
+      "Session header chip: the latest turn booted from a repository environment build (ADR111 D4)",
+  },
+  "agentSessions.startedFromSnapshotTitle": {
+    message: "最近一轮从环境构建 {id} 启动，设置步骤已预先运行。",
+    description:
+      "Tooltip of the Started from snapshot chip (id is the build id, arb-…)",
+  },
   "agentSessions.delete": {
     message: "删除",
     description: "Destructive action permanently deleting a finished session",

@@ -59,16 +59,17 @@ func (f *fakeRepoEnvs) GetAgentRepoEnvironment(_ context.Context, ws, repo strin
 	return row, nil
 }
 
-func (f *fakeRepoEnvs) UpsertAgentRepoEnvironment(_ context.Context, ws, repo string, setup, checks json.RawMessage, maxRepos int) (store.AgentRepoEnvironment, error) {
-	if _, ok := f.rows[ws+"/"+repo]; !ok {
+func (f *fakeRepoEnvs) UpsertAgentRepoEnvironment(_ context.Context, ws, repo string, setup, checks json.RawMessage, maxRepos int) (store.AgentRepoEnvironment, bool, error) {
+	previous, ok := f.rows[ws+"/"+repo]
+	if !ok {
 		rows, _ := f.ListAgentRepoEnvironments(context.Background(), ws)
 		if len(rows) >= maxRepos {
-			return store.AgentRepoEnvironment{}, store.ErrAgentRepoEnvironmentLimit
+			return store.AgentRepoEnvironment{}, false, store.ErrAgentRepoEnvironmentLimit
 		}
 	}
-	row := store.AgentRepoEnvironment{WorkspaceID: ws, Repo: repo, Setup: setup, Checks: checks, UpdatedAt: time.Date(2026, 11, 14, 9, 0, 0, 0, time.UTC)}
+	row := store.AgentRepoEnvironment{WorkspaceID: ws, Repo: repo, Setup: setup, Checks: checks, Version: string(setup), UpdatedAt: time.Date(2026, 11, 14, 9, 0, 0, 0, time.UTC)}
 	f.rows[ws+"/"+repo] = row
-	return row, nil
+	return row, !ok || previous.Version != row.Version, nil
 }
 
 func (f *fakeRepoEnvs) DeleteAgentRepoEnvironment(_ context.Context, ws, repo string) error {
@@ -211,7 +212,7 @@ func TestDispatchCarriesTheSessionRepositorysEnvironment(t *testing.T) {
 	svc, _, lc, _ := secretSessionFixture(t)
 	envs := newFakeRepoEnvs()
 	svc.RepoEnvs = envs
-	if _, err := envs.UpsertAgentRepoEnvironment(context.Background(), "tea-a", "bex-co/example",
+	if _, _, err := envs.UpsertAgentRepoEnvironment(context.Background(), "tea-a", "bex-co/example",
 		json.RawMessage(`[{"name":"deps","run":"npm ci"}]`), json.RawMessage(`[{"name":"test","run":"npm test"}]`), 50); err != nil {
 		t.Fatal(err)
 	}

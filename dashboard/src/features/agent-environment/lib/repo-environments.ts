@@ -10,6 +10,7 @@ import {
   graphQLErrorExtensions,
   isForbiddenError,
 } from "@/common/lib/graphql-error";
+import type { RepoEnvironmentBuildView } from "@/features/agent-environment/lib/repo-environment-builds";
 
 /**
  * The settings card's element id: the session page's setup-failure callout
@@ -51,6 +52,10 @@ export interface RepoEnvironmentInput {
 export interface RepoEnvironmentView extends RepoEnvironmentInput {
   /** owner/name, lowercased by the server. */
   repo: string;
+  /** The SHA-256 of the setup steps (ADR111 D7). */
+  version: string;
+  /** The newest build (ADR111 D10); null for a repository that never built. */
+  latestBuild: RepoEnvironmentBuildView | null;
 }
 
 /** The locale keys of what is wrong with one row's name and command. */

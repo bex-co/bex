@@ -155,6 +155,11 @@ type repoEnvironmentArgs struct {
 	Repo    string `json:"repo" jsonschema:"the repository as owner/name"`
 }
 
+type repoEnvironmentBuildArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
+	ID      string `json:"id" jsonschema:"the build id (arb-…)"`
+}
+
 type setRepoEnvironmentArgs struct {
 	repoEnvironmentArgs
 	RepoEnvironmentInput
@@ -411,9 +416,24 @@ func (s *Service) registerRepoEnvironmentMCP(server *mcp.Server) {
 			out, err := s.RepoEnvironments(ctx, in.OwnerID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_repo_environment", Description: "Create or replace a repository's environment (workspace admins only): setup steps run with bash from the repository root before every session's agent starts, with the session's secrets, at most 10 minutes each and 20 minutes in all; a failing step fails the turn AGENT_SESSION_SETUP_FAILED. Checks are listed to the agent to run before it delivers. Sessions use it from their next turn."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_repo_environment", Description: "Create or replace a repository's environment (workspace admins only): setup steps run with bash from the repository root. A save that changes them queues a build that bakes them into the image the repository's sessions boot from; until a build of the current steps succeeds, each session runs them before its agent starts, with the session's secrets, at most 10 minutes each and 20 minutes in all, and a failing step fails the turn AGENT_SESSION_SETUP_FAILED. Checks are listed to the agent to run before it delivers. Sessions use it from their next turn."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in setRepoEnvironmentArgs) (*mcp.CallToolResult, RepoEnvironment, error) {
 			out, err := s.SetRepoEnvironment(ctx, in.OwnerID, in.Repo, in.RepoEnvironmentInput)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_repo_environment_builds", Description: "List a repository environment's builds, newest first (the last 20): each build bakes the setup steps into the image the repository's sessions boot from, with its status (queued, building, success, failed, cancelled), failure code and the environment version it built."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in repoEnvironmentArgs) (*mcp.CallToolResult, RepoEnvironmentBuildList, error) {
+			out, err := s.RepoEnvironmentBuilds(ctx, in.OwnerID, in.Repo)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_repo_environment_build", Description: "Read one repository environment build with its redacted per-step log (exit code, duration and output tail of each setup step)."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in repoEnvironmentBuildArgs) (*mcp.CallToolResult, RepoEnvironmentBuild, error) {
+			out, err := s.RepoEnvironmentBuild(ctx, in.OwnerID, in.ID)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "build_agent_repo_environment", Description: "Build a repository environment now (workspace admins only): the setup steps run once with the repository's secrets (workspace- and repo-scoped), at most 3 hours, and the result becomes the image its sessions boot from with the steps already run. Files a step writes are kept in the image. A queued build is replaced; a running one finishes first. At most 12 builds start per repository in 24 hours (AGENT_REPO_ENVIRONMENT_BUILD_RATE_LIMITED)."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in repoEnvironmentArgs) (*mcp.CallToolResult, RepoEnvironmentBuild, error) {
+			out, err := s.BuildRepoEnvironment(ctx, in.OwnerID, in.Repo)
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "delete_agent_repo_environment", Description: "Delete a repository's environment (workspace admins only); its sessions then run without setup steps or checks."},

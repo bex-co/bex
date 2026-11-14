@@ -30,27 +30,32 @@ import (
 const CodeSandboxStorageLimit = "SANDBOX_STORAGE_LIMIT"
 
 // StorageUsage reads the bytes a workspace's suspended sandboxes retain: the
-// storage meter's open, sized objects.
+// storage meter's open, sized objects. It also reserves a repository
+// environment build image's bytes under the workspace's storage lock,
+// refused with *store.SandboxStorageLimitError past limitBytes (ADR111 D9).
 type StorageUsage interface {
 	SandboxStorageBytes(ctx context.Context, workspaceID string) (int64, error)
+	ReserveAgentRepoEnvironmentBuildImage(ctx context.Context, workspaceID, buildID string, sizeBytes, limitBytes int64) error
 }
 
-// checkStorageCap refuses the suspend of a running sandbox whose workspace
-// already retains MaxStorageBytes of images: the suspend would commit one more.
+// checkStorageCap refuses the suspend (verb) of a running sandbox whose
+// workspace already retains MaxStorageBytes of images: the suspend would
+// commit one more. A builder's pause is one too (verb "build").
 // The refused sandbox keeps running, which is billed as compute, so the cap
 // never costs the customer more than leaving the sandbox up. A read failure
 // does not refuse: the cap bounds bex's registry, and blocking every suspend on
 // a database blip would keep every idle sandbox billing.
-func (s *Service) checkStorageCap(ctx context.Context, raw osSandbox) error {
+func (s *Service) checkStorageCap(ctx context.Context, raw osSandbox, verb string) error {
 	used, full := s.storageFull(ctx, raw.Metadata[metadataWorkspace])
 	if !full {
 		return nil
 	}
-	return s.storageLimitError(used, 0, "suspend")
+	return s.storageLimitError(used, 0, verb)
 }
 
-// storageLimitError is the named 429 for a suspend or an import refused by the
-// workspace's storage cap; adding is the import's size (0 for a suspend).
+// storageLimitError is the named 429 for a suspend, a build's pause or an
+// import refused by the workspace's storage cap; adding is the import's size
+// (0 otherwise).
 func (s *Service) storageLimitError(used, adding int64, verb string) error {
 	s.Metrics.observeRefusal("storage", verb)
 	details := map[string]any{"limitBytes": s.MaxStorageBytes, "usedBytes": used}
@@ -61,10 +66,7 @@ func (s *Service) storageLimitError(used, adding int64, verb string) error {
 		held = fmt.Sprintf("this %s image would take this workspace's suspended sandboxes and sandbox images from %s past its %s sandbox storage limit",
 			formatGB(adding), formatGB(used), formatGB(s.MaxStorageBytes))
 	}
-	then := "suspend again"
-	if verb == "import" {
-		then = "import again"
-	}
+	then := verb + " again"
 	return core.NewTooManyRequestsError(CodeSandboxStorageLimit,
 		fmt.Sprintf("%s; terminate sandboxes or delete sandbox groups you no longer need, then %s", held, then), details)
 }

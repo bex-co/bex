@@ -33,7 +33,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
-	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 )
 
 // w9/m94: the pinned CLI parses a sandbox id client-side (`ea sandboxes copy`
@@ -228,9 +227,9 @@ func TestAgentSessionSandboxKeepsSubstrateIdentity(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id":"os-session","status":{"state":"Running"}}`))
 	})
 	svc.SessionEgress = &fakeSessionEgress{}
-	box, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(
-		context.Background(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test",
-		"https://api.openai.com/v1", agentsession.ModelKeyPlaceholder("ags-one"), sessionegress.Egress{}, nil)
+	box, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(context.Background(), AgentSessionSandbox{
+		WorkspaceID: "tea-a", Template: "node", SessionID: "ags-one", Repository: "bex-co/example", Branch: "bex-agent/session-test",
+		ModelEndpoint: "https://api.openai.com/v1", ModelAPIKey: agentsession.ModelKeyPlaceholder("ags-one")})
 	if err != nil {
 		t.Fatal(err)
 	}

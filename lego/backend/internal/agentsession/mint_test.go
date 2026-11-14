@@ -63,8 +63,15 @@ func activeSession() store.AgentSession {
 
 type fakeSessionGitHub struct {
 	calls        int
+	readCalls    int
 	installation int64
 	repository   string
+}
+
+func (f *fakeSessionGitHub) MintRepositoryReadToken(_ context.Context, installation int64, repository string) (github.InstallationToken, error) {
+	f.readCalls++
+	f.installation, f.repository = installation, repository
+	return github.InstallationToken{Token: "ghs_read", ExpiresAt: time.Date(2026, 8, 1, 13, 0, 0, 0, time.UTC)}, nil
 }
 
 func (f *fakeSessionGitHub) MintSessionInstallationToken(_ context.Context, installation int64, repository string) (github.InstallationToken, error) {

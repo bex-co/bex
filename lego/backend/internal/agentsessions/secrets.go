@@ -322,6 +322,11 @@ func (s *Service) SetAgentSecret(ctx context.Context, ownerID, name string, in A
 			return AgentSecret{}, core.HideCause(core.NewAgentSessionDependencyUnavailableError(), err)
 		}
 	}
+	// A repository secret set or changed rebuilds its repository's
+	// environment, as Devin's does (ADR111 D3); workspace secrets do not.
+	if next.Scope == store.AgentSecretScopeRepo && (in.Value != "" || next != stored) {
+		s.triggerBuild(ctx, workspaceID, next.Repo, buildTriggerSecretChanged)
+	}
 	return AgentSecret{Name: name, Scope: next.Scope, Repo: next.Repo}, nil
 }
 
@@ -614,30 +619,39 @@ var secretUnavailableFailure = store.AgentSessionFailure{
 // withSessionSecrets resolves the secrets a dispatch applies into its env
 // (ADR098 D5, D9): the names the session attached (the inline value wins,
 // else the workspace secret's), plus every workspace-scoped secret and every
-// secret scoped to the session's repository. An attached name that resolves
-// to nothing fails the dispatch rather than running the agent without it; a
-// scoped secret deleted since its row was read is simply not applied. Every
-// applied name joins the driver's scrub list. It returns what applied, with
+// secret scoped to the session's repository. It returns what applied, with
 // each name's source; the error never carries a value.
 func (s *Service) withSessionSecrets(ctx context.Context, record store.AgentSession, env map[string]string) (map[string]string, []store.AppliedSecret, error) {
-	scoped, err := s.scopedSecretsFor(ctx, record)
+	var inline map[string]string
+	if len(record.SecretNames) > 0 && s.ModelKeys != nil {
+		var err error
+		if inline, _, err = s.sessionInline(ctx, record); err != nil {
+			return nil, nil, err
+		}
+	}
+	return s.withSecrets(ctx, record.WorkspaceID, record.Repo, record.SecretNames, inline, env)
+}
+
+// withSecrets resolves secrets into env: each attached name (its inline value
+// wins, else the workspace secret's), plus every scoped secret that reaches a
+// session on repo unnamed. An attached name that resolves to nothing fails
+// rather than running the agent without it; a scoped secret deleted since its
+// row was read is simply not applied. Every applied name joins the driver's
+// scrub list. A repository environment build applies the scoped secrets only
+// (ADR111 D6).
+func (s *Service) withSecrets(ctx context.Context, workspaceID, repo string, attached []string, inline, env map[string]string) (map[string]string, []store.AppliedSecret, error) {
+	scoped, err := s.scopedSecretsFor(ctx, workspaceID, repo, attached)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(record.SecretNames) == 0 && len(scoped) == 0 {
+	if len(attached) == 0 && len(scoped) == 0 {
 		return env, nil, nil
 	}
 	if s.ModelKeys == nil {
 		return nil, nil, errSessionSecretUnavailable
 	}
-	var inline map[string]string
-	if len(record.SecretNames) > 0 {
-		if inline, _, err = s.sessionInline(ctx, record); err != nil {
-			return nil, nil, err
-		}
-	}
 	var referenced []string
-	for _, name := range record.SecretNames {
+	for _, name := range attached {
 		if _, ok := inline[name]; !ok {
 			referenced = append(referenced, name)
 		}
@@ -645,26 +659,26 @@ func (s *Service) withSessionSecrets(ctx context.Context, record store.AgentSess
 	for _, row := range scoped {
 		referenced = append(referenced, row.Name)
 	}
-	workspace, err := s.workspaceSecretValues(ctx, record.WorkspaceID, referenced)
+	workspace, err := s.workspaceSecretValues(ctx, workspaceID, referenced)
 	if err != nil {
 		return nil, nil, err
 	}
 	out := withEnv(env, secretNamesEnv, "")
-	applied := make([]store.AppliedSecret, 0, len(record.SecretNames)+len(scoped))
+	applied := make([]store.AppliedSecret, 0, len(attached)+len(scoped))
 	names := make([]string, 0, cap(applied))
 	add := func(name, value, source string) {
 		out[name] = value
 		names = append(names, name)
 		applied = append(applied, store.AppliedSecret{Name: name, Source: source})
 	}
-	for _, name := range record.SecretNames {
+	for _, name := range attached {
 		value, ok := inline[name]
 		source := appliedSourceInline
 		if !ok {
 			value, source = workspace[name], store.AgentSecretScopeExplicit
 		}
 		if value == "" {
-			log.Printf("agent-session dispatch: attached secret missing (session=%s name=%s)", record.ID, name)
+			log.Printf("agent-session dispatch: attached secret missing (workspace=%s name=%s)", workspaceID, name)
 			return nil, nil, errSessionSecretUnavailable
 		}
 		add(name, value, source)
@@ -678,23 +692,23 @@ func (s *Service) withSessionSecrets(ctx context.Context, record store.AgentSess
 	return out, applied, nil
 }
 
-// scopedSecretsFor lists the scoped secrets that reach the session without
-// being named: every workspace-scoped one and every one scoped to its
-// repository, leaving out names it attached itself (their own source wins).
-func (s *Service) scopedSecretsFor(ctx context.Context, record store.AgentSession) ([]store.AgentSecretScope, error) {
+// scopedSecretsFor lists the scoped secrets that reach a session on repo
+// without being named: every workspace-scoped one and every one scoped to
+// repo, leaving out names attached by name (their own source wins).
+func (s *Service) scopedSecretsFor(ctx context.Context, workspaceID, repo string, attached []string) ([]store.AgentSecretScope, error) {
 	if s.SecretScopes == nil || s.ModelKeys == nil {
 		return nil, nil
 	}
-	rows, err := s.SecretScopes.ListAgentSecretScopes(ctx, record.WorkspaceID)
+	rows, err := s.SecretScopes.ListAgentSecretScopes(ctx, workspaceID)
 	if err != nil {
 		return nil, err
 	}
 	var out []store.AgentSecretScope
 	for _, row := range rows {
-		if slices.Contains(record.SecretNames, row.Name) {
+		if slices.Contains(attached, row.Name) {
 			continue
 		}
-		if row.Scope == store.AgentSecretScopeWorkspace || (row.Scope == store.AgentSecretScopeRepo && record.Repo != "" && row.Repo == record.Repo) {
+		if row.Scope == store.AgentSecretScopeWorkspace || (row.Scope == store.AgentSecretScopeRepo && repo != "" && row.Repo == repo) {
 			out = append(out, row)
 		}
 	}

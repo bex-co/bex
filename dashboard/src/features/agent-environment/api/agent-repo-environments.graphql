@@ -7,6 +7,9 @@ query AgentRepoEnvironments($ownerId: String!) {
     ownerId
     environments {
       repo
+      # The SHA-256 of the setup steps (ADR111 D7): a build of another version
+      # is stale, and sessions fall back to running the steps.
+      version
       setup {
         name
         run
@@ -15,7 +18,64 @@ query AgentRepoEnvironments($ownerId: String!) {
         name
         run
       }
+      # The newest build (ADR111 D10), for the row's status and time; null for
+      # a repository that never built (a checks-only environment never does).
+      latestBuild {
+        ...AgentRepoEnvironmentBuildFields
+      }
     }
+  }
+}
+
+# A build of a repository environment's setup steps into the image its
+# sessions boot from (ADR111). `steps` (the redacted log) is selected only by
+# the single-build read: lists never carry it, so it stays off this fragment.
+fragment AgentRepoEnvironmentBuildFields on AgentRepoEnvironmentBuild {
+  id
+  ownerId
+  repo
+  version
+  trigger
+  status
+  failureCode
+  failureReason
+  headSha
+  sizeBytes
+  imageAvailable
+  createdAt
+  startedAt
+  finishedAt
+}
+
+# A repository's last 20 builds, newest first (ADR111 D8, D10).
+query AgentRepoEnvironmentBuilds($ownerId: String!, $repo: String!) {
+  agentRepoEnvironmentBuilds(ownerId: $ownerId, repo: $repo) {
+    ownerId
+    repo
+    builds {
+      ...AgentRepoEnvironmentBuildFields
+    }
+  }
+}
+
+# One build with its log: each setup step's exit, duration and redacted output.
+query AgentRepoEnvironmentBuild($ownerId: String!, $id: String!) {
+  agentRepoEnvironmentBuild(ownerId: $ownerId, id: $id) {
+    ...AgentRepoEnvironmentBuildFields
+    steps {
+      name
+      exitCode
+      durationMs
+      output
+    }
+  }
+}
+
+# Build now (admins only, ADR111 D3): replaces a queued build, never stops a
+# running one; at most 12 starts per repository in 24 hours.
+mutation BuildAgentRepoEnvironment($ownerId: String!, $repo: String!) {
+  buildAgentRepoEnvironment(ownerId: $ownerId, repo: $repo) {
+    ...AgentRepoEnvironmentBuildFields
   }
 }
 

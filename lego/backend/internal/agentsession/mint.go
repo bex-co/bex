@@ -36,6 +36,9 @@ const (
 
 type GitHubClient interface {
 	MintSessionInstallationToken(context.Context, int64, string) (github.InstallationToken, error)
+	// MintRepositoryReadToken is a repository environment build's clone
+	// credential (ADR111): contents read-only.
+	MintRepositoryReadToken(context.Context, int64, string) (github.InstallationToken, error)
 }
 
 type ConnectionStore interface {
@@ -69,11 +72,15 @@ var credentialMintPhases = map[string]bool{
 // Exported so the ADR095 share verb, served outside this package, applies the
 // same rule as every other gateway verb.
 func CurrentSandboxCaller(session store.AgentSession, workspace, podName, podUID string) bool {
-	return session.WorkspaceID == workspace &&
-		credentialMintPhases[session.Phase] &&
-		session.SandboxID != "" &&
-		podUID != "" &&
-		podName == session.SandboxID+"-0"
+	return credentialMintPhases[session.Phase] && boundPod(session.WorkspaceID, session.SandboxID, workspace, podName, podUID)
+}
+
+// boundPod reports whether the gateway-resolved Pod is the sandbox a durable
+// principal (a session, a build) records, in its workspace: OpenSandbox names
+// a sandbox's Pod <sandbox_id>-0, and the Pod UID is the gateway's
+// Kubernetes-derived identity.
+func boundPod(principalWorkspace, sandboxID, workspace, podName, podUID string) bool {
+	return principalWorkspace == workspace && sandboxID != "" && podUID != "" && podName == sandboxID+"-0"
 }
 
 // Minter is bex-api's internal-only credential verb. It trusts only a request
@@ -82,8 +89,11 @@ type Minter struct {
 	GitHub      GitHubClient
 	Connections ConnectionStore
 	Sessions    SessionStore
-	Audit       core.AuditSink
-	Now         func() time.Time
+	// Builds authorizes a repository environment build's clone (ADR111); nil
+	// refuses every build principal.
+	Builds BuildStore
+	Audit  core.AuditSink
+	Now    func() time.Time
 }
 
 func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintResponse, err error) {
@@ -103,7 +113,7 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 		}
 		core.RecordAuditEvent(ctx, m.Audit, core.AuditEvent{
 			Caller: req.PodName, CallerMethod: "sandbox", Verb: AuditVerbMintCredential,
-			Resource: core.WorkspaceObject(req.Workspace), Target: "agent-session:" + req.SessionID,
+			Resource: core.WorkspaceObject(req.Workspace), Target: principalTarget(req.SessionID),
 			TargetName: auditRepository, Outcome: outcome, At: m.now(),
 		})
 	}()
@@ -119,6 +129,9 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 	}
 	if req.Workspace == "" || req.SessionID == "" || req.PodName == "" || req.PodUID == "" {
 		return MintResponse{}, fmt.Errorf("%w: incomplete verified identity", ErrInvalidRequest)
+	}
+	if IsBuildPrincipal(req.SessionID) {
+		return m.mintBuild(ctx, req)
 	}
 	// Bind the mint to the session's CURRENT lifecycle, not just the requesting
 	// pod's immutable identity (codex F12). A terminal session keeps its sandbox
@@ -142,18 +155,38 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 	if err := ValidateBranch(req.Branch); err != nil {
 		return MintResponse{}, err
 	}
+	return m.installationToken(ctx, req.Workspace, repository, m.GitHub.MintSessionInstallationToken)
+}
+
+// mintBuild is a repository environment build's clone credential (ADR111): a
+// contents-read token for the build's own repository, minted only for the
+// running build's builder, on the build branch its proxy URL carries.
+func (m *Minter) mintBuild(ctx context.Context, req MintRequest) (MintResponse, error) {
+	build, err := currentBuilder(ctx, m.Builds, req.SessionID, req.Workspace, req.PodName, req.PodUID)
+	if err != nil {
+		return MintResponse{}, err
+	}
+	if req.Repository != build.Repo || req.Branch != BuildBranch(build.ID) {
+		return MintResponse{}, ErrForbidden
+	}
+	return m.installationToken(ctx, req.Workspace, req.Repository, m.GitHub.MintRepositoryReadToken)
+}
+
+// installationToken mints a token for repository from the workspace
+// connection that owns its account.
+func (m *Minter) installationToken(ctx context.Context, workspace, repository string, mint func(context.Context, int64, string) (github.InstallationToken, error)) (MintResponse, error) {
 	owner, name, _ := strings.Cut(repository, "/")
 	// Resolve the connection that owns THIS repo's account (ADR078 §4). A
 	// no-match — the repo's owner is not one of the workspace's connected
 	// accounts — is a forbidden mint, exactly as the old owner-equality check was.
-	connection, err := m.Connections.GetGitConnectionByOwner(ctx, req.Workspace, owner)
+	connection, err := m.Connections.GetGitConnectionByOwner(ctx, workspace, owner)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return MintResponse{}, ErrForbidden
 		}
 		return MintResponse{}, err
 	}
-	token, err := m.GitHub.MintSessionInstallationToken(ctx, connection.InstallationID, name)
+	token, err := mint(ctx, connection.InstallationID, name)
 	if err != nil {
 		return MintResponse{}, err
 	}
@@ -161,6 +194,15 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 		return MintResponse{}, fmt.Errorf("github returned an incomplete installation token")
 	}
 	return MintResponse{Username: "x-access-token", Token: token.Token, ExpiresAt: token.ExpiresAt.UTC().Format(time.RFC3339)}, nil
+}
+
+// principalTarget is the audit target of a gateway principal: a session, or a
+// repository environment build.
+func principalTarget(principal string) string {
+	if IsBuildPrincipal(principal) {
+		return RepoEnvironmentBuildAuditTarget + ":" + principal
+	}
+	return "agent-session:" + principal
 }
 
 func (m *Minter) now() time.Time {

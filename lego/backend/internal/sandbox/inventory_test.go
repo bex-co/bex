@@ -342,6 +342,7 @@ func TestClassifySessionSandboxLeavesIdleGraceToTheCompleter(t *testing.T) {
 		{"redispatching blanked", SessionClaim{Found: true, Phase: "redispatching"}, false},
 		{"running names another sandbox", SessionClaim{Found: true, Phase: "running", SandboxID: "other"}, true},
 		{"no row", SessionClaim{}, true},
+		{"ended principal with nothing to reap itself", SessionClaim{Found: true, Orphaned: true}, true},
 	}
 	for _, tc := range cases {
 		if _, stop := classifySessionSandbox(tc.claim, "sb"); stop != tc.stop {
