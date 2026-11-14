@@ -10,7 +10,10 @@ const MAX_IMAGE_BYTES = 512;
 
 // distribution/reference grammar: a lowercase path of components, an optional
 // registry domain, an optional tag, an optional digest.
-const NAME_COMPONENT = String.raw`[a-z0-9]+(?:(?:[._]|__|-*)[a-z0-9]+)*`;
+// A separator is never empty: `-*` could match nothing, so a run of letters
+// split between the two quantifiers in exponentially many ways, and a
+// 30-character name that then failed to match froze the tab.
+const NAME_COMPONENT = String.raw`[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*`;
 const DOMAIN_COMPONENT = String.raw`[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?`;
 const DOMAIN = String.raw`(?:${DOMAIN_COMPONENT}(?:\.${DOMAIN_COMPONENT})*(?::[0-9]+)?|\[[0-9a-fA-F:.]+\](?::[0-9]+)?)`;
 const TAG = String.raw`[\w][\w.-]{0,127}`;
@@ -87,6 +90,22 @@ function unsafeRegistryHost(ref: string): boolean {
   return unsafeIPv4(host) || unsafeIPv6(host);
 }
 
+// The digest algorithms the server registers (crypto/sha256 and crypto/sha512
+// in store/image.go) and the hex length each requires: the reference grammar
+// takes any 32 or more hex digits, and the server's digest.Parse then refuses
+// an unknown algorithm or a length that does not match.
+const DIGEST_HEX_LENGTH: Readonly<Record<string, number>> = {
+  sha256: 64,
+  sha384: 96,
+  sha512: 128,
+};
+
+function malformedDigest(digest: string | undefined): boolean {
+  if (digest === undefined) return false;
+  const [algorithm, hex] = digest.split(":");
+  return DIGEST_HEX_LENGTH[algorithm] !== hex.length;
+}
+
 /**
  * The problem with a Docker image reference, or null when the field may
  * submit it. An empty value is not a problem here: the form's required check
@@ -97,7 +116,8 @@ export function dockerImageProblem(raw: string): DockerImageProblem | null {
   if (value === "") return null;
   if (new TextEncoder().encode(value).length > MAX_IMAGE_BYTES)
     return "tooLong";
-  if (!IMAGE_REF_RE.test(value)) return "malformed";
+  const ref = IMAGE_REF_RE.exec(value);
+  if (!ref || malformedDigest(ref[4])) return "malformed";
   if (unsafeRegistryHost(value)) return "privateHost";
   return null;
 }

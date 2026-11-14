@@ -2694,11 +2694,10 @@ func TestManagedDomainResolvesByIDOrName(t *testing.T) {
 	}
 }
 
-// w21/048: the dashboard's Add Custom Domain dialog pre-checks a name with the
-// same table (dashboard/src/features/services/lib/__tests__/
-// custom-domain-name.test.ts): it must send every name the server accepts that a
-// person really owns, and stop what the server refuses. Change one side and
-// change the other.
+// w21/048: the form the dashboard's Add Custom Domain dialog sends is the
+// stored form below. Whether a name is accepted is pinned by the shared corpus
+// (testdata/validation/custom-domain.json, TestCustomDomainCorpus), which the
+// dialog's own check is asserted against too.
 func TestCustomDomainDialogVectors(t *testing.T) {
 	for raw, want := range map[string]string{
 		"www.example.com":              "www.example.com",

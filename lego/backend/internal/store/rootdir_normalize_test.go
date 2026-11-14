@@ -66,8 +66,8 @@ func TestRootDirProblemVectors(t *testing.T) {
 			t.Errorf("root dir %q => %q, want it to name %q", in, got, want)
 		}
 	}
-	// The Dockerfile Path and the Docker Build Context are judged as typed: an
-	// empty segment is refused where the Root Directory drops it.
+	// The Dockerfile Path is judged as typed: an empty segment is refused where
+	// the Root Directory (and the Docker Build Context) drops it.
 	for _, ok := range []string{"", ".", "./Dockerfile", "docker/Dockerfile", "a b", "ctx"} {
 		if got := RootDirProblem(ok); got != "" {
 			t.Errorf("path %q refused: %s", ok, got)

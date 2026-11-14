@@ -12,11 +12,13 @@ const CONTROL_RE = /[\p{Cc}\u2028\u2029]/u;
 /**
  * Whether `value` is a label bex-api accepts once trimmed: non-empty, no
  * control characters or line separators, and at most
- * {@link MAX_LABEL_LENGTH} code points. Callers send `value.trim()`.
+ * {@link MAX_LABEL_LENGTH} code points. Callers send `value.trim()`, so the
+ * rule is judged on that: a newline at an edge is only whitespace, while a NEL
+ * (U+0085), which `trim` leaves, is the control character it is.
  */
 export function isValidLabel(value: string): boolean {
-  if (CONTROL_RE.test(value)) return false;
   const label = value.trim();
+  if (CONTROL_RE.test(label)) return false;
   return label !== "" && [...label].length <= MAX_LABEL_LENGTH;
 }
 

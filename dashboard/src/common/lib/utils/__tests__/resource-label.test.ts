@@ -20,6 +20,12 @@ describe("isValidLabel (w5/m153, core.CheckLabel)", () => {
     `srv-${XID}`,
     `dpg-${XID}`,
     ` red-${XID} `,
+    // The form sends value.trim(), which strips whitespace at an edge, line
+    // terminators included, before the control-character rule looks at it.
+    "edge\n",
+    "\nedge",
+    "sep\u2028",
+    "sep\u2029",
   ])("accepts %j", (value) => {
     expect(isValidLabel(value)).toBe(true);
   });
@@ -30,12 +36,11 @@ describe("isValidLabel (w5/m153, core.CheckLabel)", () => {
     "x".repeat(101),
     "tab\there",
     "line\nbreak",
-    "edge\n",
     "nul\u0000",
     "del\u007f",
     "c1\u0085",
-    "sep ",
-    "sep ",
+    "in\u2028side",
+    "in\u2029side",
   ])("rejects %j", (value) => {
     expect(isValidLabel(value)).toBe(false);
   });

@@ -15,7 +15,7 @@
 - [x] **m337** — [Dashboard routes hydrate cleanly across server and browser environments](done/m337/README.md) (7 tasks) ← from `/pm-brainstorm for w21`, 2026-11-11: seven production-found #418 mismatches, each guarded only after the fact — DONE 2026-11-11 (found and fixed the Router page's time-zone mismatch)
 - [x] **m394** — [Security review round 25: the operator's tenant-facing daemons and the dashboard's server routes](done/m394/README.md) (18 tasks) ← from `/pm-brainstorm for w21` 2026-11-14, filed by `/pmx them all to w21`; ADR107 § Coverage — DONE 2026-11-14 (ADR110)
 - [x] **m395** — [Dashboard accessibility gates: lint, an axe pass over every page fixture, and a contrast test on the colour tokens](done/m395/README.md) (7 tasks, ~5h15m) ← from `/pm-brainstorm for w21` 2026-11-14, filed by `/pmx them all to w21`; absorbs w4/607, w4/612 — DONE 2026-11-14 (axe pass, jsx-a11y lint, contrast test; three defects and one contrast fix)
-- [ ] **m396** — [Form checks and server rules share one corpus: the Go validator and the dashboard validator must agree on every input](m396/README.md) (9 tasks, ~5h50m) ← from `/pm-brainstorm for w21` 2026-11-14, filed by `/pmx them all to w21`; thirteen w21 notes (015 … 053) were this defect found field by field
+- [x] **m396** — [Form checks and server rules share one corpus: the Go validator and the dashboard validator must agree on every input](done/m396/README.md) (9 tasks, ~5h50m) ← from `/pm-brainstorm for w21` 2026-11-14, filed by `/pmx them all to w21`; thirteen w21 notes (015 … 053) were this defect found field by field
 - [ ] **m397** — [Docs and board references stay valid: a link gate, repaired links, and no new duplicate milestone numbers](m397/README.md) (8 tasks, ~5h) ← from `/pm-brainstorm for w21` 2026-11-14, filed by `/pmx them all to w21`; 71 broken links, 16 duplicate milestone numbers
 
 ## Inbox
@@ -94,3 +94,6 @@
 - [ ] **072** — Dashboard hardening notes from the round-25 audit: redirect validation, same-origin, content type, CSP, error headers, the device page, the consent token and a localhost return URL → [`072.md`](072.md) (~2h) ← from w21/m394 round 25 hardening
 - [ ] **073** — Operator proxy, job and logging hardening notes from the round-25 audit → [`073.md`](073.md) (~2h) ← from w21/m394 round 25 hardening
 - [ ] **074** — The backend's per-source connection and admission caps key an IPv6 client on its exact address, so one /64 holds 2^64 "sources" → [`074.md`](074.md) (~45m) ← from w21/m394 t006 reuse review, 2026-11-14
+- [ ] **075** — Reconcile Render's "Only IPv4 CIDR ranges are supported" with the IPv6 entries bex's inbound IP rules accept → [`075.md`](075.md) (~45m) ← from w21/m396 t006 Render parity check, 2026-11-14
+- [ ] **076** — bex refuses PORT 18014 where Render documents only 18012, 18013 and 19099 as reserved → [`076.md`](076.md) (~30m) ← from w21/m396 t006 Render parity check, 2026-11-14
+- [ ] **077** — Verify against Render the limits the validation corpus pins and no Render source states → [`077.md`](077.md) (~2h) ← from w21/m396 t006 Render parity check, 2026-11-14

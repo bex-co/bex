@@ -3,6 +3,20 @@ import { dockerImageProblem, isValidDockerImageRef } from "./docker-image";
 
 // w4/406: the dashboard mirrors bex-api's ValidateImage row-local rules.
 describe("dockerImageProblem", () => {
+  // The field validates on every keystroke. A name that fails to match once its
+  // run of letters is long must be refused at once, not after the regex has
+  // tried every way to split the run (2^n steps: 30 characters took half a
+  // minute).
+  it.each([
+    "a".repeat(40) + "!",
+    `ghcr.io/${"a".repeat(40)}A`,
+    `${"ab".repeat(30)}@`,
+  ])("refuses a long near-miss name without backtracking", (ref) => {
+    const start = performance.now();
+    expect(dockerImageProblem(ref)).toBe("malformed");
+    expect(performance.now() - start).toBeLessThan(100);
+  });
+
   it.each([
     "not a valid ref!!",
     "Nginx:latest",
