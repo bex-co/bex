@@ -1,6 +1,6 @@
 # w4 · m342 — Turning an environment's network isolation on or off takes effect at once, restarts nothing, and never cuts the environment's own private traffic
 
-**Worker:** worker4 **Goal:** toggling "Block cross-environment connections" changes only network policy: the boundary holds or lifts within one reconcile, no service in the environment gets a new instance, and services inside the environment keep reaching each other throughout. **Status:** todo (t001–t005 done; t006 waits for the production deploy)
+**Worker:** worker4 **Goal:** toggling "Block cross-environment connections" changes only network policy: the boundary holds or lifts within one reconcile, no service in the environment gets a new instance, and services inside the environment keep reaching each other throughout. **Status:** blocked — release gate (t001–t005 done, code shipped 2026-11-14 by `/loopx w4`; t006 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 

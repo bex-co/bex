@@ -808,14 +808,20 @@ func environmentIsolationPolicies(namespace string, isolated []string) []*networ
 	return policies
 }
 
+type environmentLister interface {
+	ListWorkspaceEnvironments(context.Context, string) ([]Environment, error)
+}
+
+// The production store must list environments, or every workspace would
+// silently lose its isolation boundaries.
+var _ environmentLister = (*PGStore)(nil)
+
 // isolatedEnvironments lists the ids of the workspace's environments with
 // network isolation on, sorted so the policies above are stable. A store
 // without environments (test fakes) isolates none; a failed read fails the
 // converge rather than write an allow-same-namespace that forgets a boundary.
 func (r *NamespaceReconciler) isolatedEnvironments(ctx context.Context, workspaceID string) ([]string, error) {
-	lister, ok := r.Store.(interface {
-		ListWorkspaceEnvironments(context.Context, string) ([]Environment, error)
-	})
+	lister, ok := r.Store.(environmentLister)
 	if !ok {
 		return nil, nil
 	}
