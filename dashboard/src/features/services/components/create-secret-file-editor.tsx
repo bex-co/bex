@@ -8,7 +8,9 @@ import { Textarea } from "@/common/components/ui/textarea";
 import {
   duplicateNames,
   isValidSecretFileName,
+  secretFilesOverLimit,
 } from "@/features/services/lib/environment-draft";
+import { submittableSecretFiles } from "@/features/services/lib/create-service-input";
 import { removeRow, updateRow } from "@/features/services/lib/row-editor";
 import type { SecretFileEntry } from "@/features/services/hooks/use-create-service";
 
@@ -23,6 +25,9 @@ export function CreateSecretFileEditor({
   const { t } = useTranslations();
   const baseId = useId();
   const duplicates = duplicateNames(rows.map((row) => row.name));
+  // The Environment editor's quota, checked before Submit (w4/658).
+  const overLimit = secretFilesOverLimit(submittableSecretFiles(rows));
+  const limitId = `${baseId}-limit`;
 
   function addRow() {
     onChange([...rows, { name: "", content: "" }]);
@@ -78,6 +83,10 @@ export function CreateSecretFileEditor({
                   aria-label={t("services.fileRowContent", {
                     n: String(i + 1),
                   })}
+                  aria-invalid={overLimit && row.name !== ""}
+                  aria-describedby={
+                    overLimit && row.name !== "" ? limitId : undefined
+                  }
                   className="min-h-20 font-mono text-sm"
                 />
               </div>
@@ -105,6 +114,11 @@ export function CreateSecretFileEditor({
           </div>
         );
       })}
+      {overLimit ? (
+        <p id={limitId} role="alert" className="text-xs text-destructive">
+          {t("services.secretFileLimit")}
+        </p>
+      ) : null}
     </div>
   );
 }

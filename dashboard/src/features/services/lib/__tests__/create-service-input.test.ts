@@ -740,6 +740,44 @@ describe("createFormErrors", () => {
     expect(createFormErrors(row("", "x".repeat(140000))).envValues).toEqual({});
   });
 
+  // w4/658: the Environment editor's secret-files quota (1 MiB of contents in
+  // UTF-8 bytes, names not counted; 500 files) holds Submit here too.
+  it("marks secret files past the 1 MiB total and holds Submit", () => {
+    const files = (...contents: string[]) =>
+      form({
+        secretFiles: contents.map((content, i) => ({
+          name: `f${i}.txt`,
+          content,
+        })),
+      });
+    const half = "x".repeat(512 * 1024);
+    expect(createFormErrors(files(half, half)).secretFilesLimit).toBe(false);
+    expect(isSubmittable(files(half, half))).toBe(true);
+    expect(createFormErrors(files(half, half + "x")).secretFilesLimit).toBe(
+      true,
+    );
+    expect(isSubmittable(files(half, half + "x"))).toBe(false);
+    // Bytes, not characters: "é" is two.
+    expect(
+      createFormErrors(files("é".repeat(512 * 1024 + 1))).secretFilesLimit,
+    ).toBe(true);
+    expect(
+      createFormErrors(files(...Array.from({ length: 501 }, () => "x")))
+        .secretFilesLimit,
+    ).toBe(true);
+    // The blank "add" placeholder is never counted.
+    expect(
+      createFormErrors(
+        form({
+          secretFiles: [
+            { name: "a.txt", content: half + half },
+            { name: "", content: "x" },
+          ],
+        }),
+      ).secretFilesLimit,
+    ).toBe(false);
+  });
+
   it("holds Submit for an invalid Build Filter pattern on a static build", () => {
     const base = form({ serviceType: "static_site", publishPath: "dist" });
     expect(

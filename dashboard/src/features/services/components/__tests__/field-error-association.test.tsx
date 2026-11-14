@@ -43,4 +43,41 @@ describe("create-time editor field errors", () => {
     const alert = screen.getByRole("alert");
     expect(input).toHaveAttribute("aria-describedby", alert.id);
   });
+
+  // w4/658: files past the 1 MiB total are marked before Submit, with the
+  // Environment editor's sentence.
+  it("secret files past the 1 MiB total are described and announced", () => {
+    const half = "x".repeat(512 * 1024);
+    render(
+      <CreateSecretFileEditor
+        rows={[
+          { name: "a.pem", content: half },
+          { name: "b.pem", content: half + "x" },
+        ]}
+        onChange={() => undefined}
+      />,
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(/combined size to 1 MiB/);
+    const contents = screen.getAllByRole("textbox", { name: /content/i });
+    expect(contents).toHaveLength(2);
+    for (const content of contents) {
+      expect(content).toHaveAttribute("aria-invalid", "true");
+      expect(content).toHaveAttribute("aria-describedby", alert.id);
+    }
+  });
+
+  it("secret files within the 1 MiB total carry no limit alert", () => {
+    const half = "x".repeat(512 * 1024);
+    render(
+      <CreateSecretFileEditor
+        rows={[
+          { name: "a.pem", content: half },
+          { name: "b.pem", content: half },
+        ]}
+        onChange={() => undefined}
+      />,
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

@@ -392,7 +392,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [ ] **661** — [A git push, a configuration change that rolls a release, a Blueprint sync or a build-source fan-out still cancels a Rollback, Restart or image-override deploy in progress, where Render's Wait lets it finish](661.md) (~4h; minor) ← follow-up from w4/652, 2026-11-14
 - [ ] **660** — [Render's MCP `list_services` accepts `includePreviews`; bex's takes no arguments](660.md) (~20m; minor, parity) ← follow-up from w4/m378, 2026-11-14
 - [ ] **659** — [bex-only MCP tools keep a false comment that "MCP tool outputs must be JSON objects"](659.md) (~10m; minor) ← follow-up from w4/m378, 2026-11-14
-- [ ] **658** — [The create-service form checks secret-file names but not the 1 MiB total, and relies on the server's 400](658.md) (~25m; minor) ← follow-up from w4/m363, 2026-11-14
+- [x] **658** — [The create-service form checks secret-file names but not the 1 MiB total, and relies on the server's 400](done/658.md) (~25m; minor) ← follow-up from w4/m363, 2026-11-14
 - [x] **657** — [Service and environment-group creates keep the 2 MiB body cap, so a create carrying a full 1 MiB secret file that JSON escaping doubles answers 413](done/657.md) (~30m; minor) ← follow-up from w4/m363, 2026-11-14
 - [x] **656** — [The secret-files quota refusal carries no `code`, while sibling secret-file refusals carry `SECRET_FILE_INVALID`](done/656.md) (~20m; minor) ← follow-up from w4/m363, 2026-11-14
 - [ ] **655** — [GraphQL `serviceEvent.details` exposes only `leaderId` of the datastore event details REST and MCP now carry](655.md) (~40m; minor) ← follow-up from w4/m379, 2026-11-14

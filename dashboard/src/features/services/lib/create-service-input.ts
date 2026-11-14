@@ -14,6 +14,7 @@ import {
   duplicateNames,
   envValueRuleError,
   isValidSecretFileName,
+  secretFilesOverLimit,
 } from "@/features/services/lib/environment-draft";
 import type { ServiceType } from "@/features/services/lib/create-context";
 import { servesHttp } from "@/features/services/lib/service-type";
@@ -196,11 +197,19 @@ export interface CreateFormErrors {
   buildFilter: boolean;
   /** The row index of an environment variable whose value the server refuses. */
   envValues: Record<number, "nul" | "tooLarge" | "portInvalid">;
+  /** The secret files break the Environment editor's quota (w4/658). */
+  secretFilesLimit: boolean;
 }
 
 export function createFormErrors(form: NewServiceForm): CreateFormErrors {
   const shape = buildShape(form);
-  const errors: CreateFormErrors = { buildFilter: false, envValues: {} };
+  const errors: CreateFormErrors = {
+    buildFilter: false,
+    envValues: {},
+    secretFilesLimit: secretFilesOverLimit(
+      submittableSecretFiles(form.secretFiles),
+    ),
+  };
   if (shape.isGitSource)
     errors.rootDir = rootDirError(form.rootDir) ?? undefined;
   if (shape.isDockerBuild) {
@@ -253,6 +262,7 @@ export function isSubmittable(form: NewServiceForm): boolean {
     !fieldErrors.dockerfilePath &&
     !fieldErrors.publishPath &&
     !fieldErrors.buildFilter &&
+    !fieldErrors.secretFilesLimit &&
     submittableEnvVars(form.envVars).every((row) =>
       VALID_ENV_KEY.test(row.key),
     ) &&

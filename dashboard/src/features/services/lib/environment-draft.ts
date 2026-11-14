@@ -275,6 +275,37 @@ const FILES_QUOTA: MapQuota = {
   countsNames: false,
 };
 
+// quotaBreach measures entries against quota: too many entries, or too many
+// bytes among the values it can see (a null value is opaque and not counted).
+function quotaBreach(
+  entries: readonly { name: string; value: string | null }[],
+  quota: MapQuota,
+): { tooMany: boolean; tooLarge: boolean } {
+  const knownBytes = entries.reduce((total, { name, value }) => {
+    if (value == null) return total;
+    const counted = quota.countsNames ? name.trim() + value : value;
+    return total + utf8.encode(counted).length;
+  }, 0);
+  return {
+    tooMany: entries.length > MAX_ENVIRONMENT_ENTRIES,
+    tooLarge: knownBytes > quota.maxBytes,
+  };
+}
+
+/**
+ * True when a create's secret files break the quota the Environment editor
+ * checks: more than 500 files, or more than 1 MiB of contents (w4/658).
+ */
+export function secretFilesOverLimit(
+  files: readonly { name: string; content: string }[],
+): boolean {
+  const { tooMany, tooLarge } = quotaBreach(
+    files.map((file) => ({ name: file.name, value: file.content })),
+    FILES_QUOTA,
+  );
+  return tooMany || tooLarge;
+}
+
 function flagOverLimit<R extends { id: string; deleted: boolean }>(
   rows: readonly R[],
   lens: RowLens<R>,
@@ -282,14 +313,10 @@ function flagOverLimit<R extends { id: string; deleted: boolean }>(
   errors: Record<string, string>,
 ): void {
   const live = rows.filter((row) => !row.deleted);
-  const knownBytes = live.reduce((total, row) => {
-    const value = lens.value(row);
-    if (value == null) return total;
-    const counted = quota.countsNames ? lens.name(row).trim() + value : value;
-    return total + utf8.encode(counted).length;
-  }, 0);
-  const tooMany = live.length > MAX_ENVIRONMENT_ENTRIES;
-  const tooLarge = knownBytes > quota.maxBytes;
+  const { tooMany, tooLarge } = quotaBreach(
+    live.map((row) => ({ name: lens.name(row), value: lens.value(row) })),
+    quota,
+  );
   if (!tooMany && !tooLarge) return;
   for (const row of live) {
     if (errors[row.id]) continue;
