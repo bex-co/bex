@@ -476,7 +476,7 @@ func parseCompute(entries []ComputeTier, defaultID string) (ComputeCatalog, erro
 		byID[t.ID] = t
 		byRender[t.RenderPlan] = t
 	}
-	if err := validateDefault(defaultID, func(id string) bool { _, ok := byID[id]; return ok }); err != nil {
+	if err := validateDefault(defaultID, byID); err != nil {
 		return ComputeCatalog{}, err
 	}
 	if byID[defaultID].Paused {
@@ -499,7 +499,7 @@ func parsePostgres(entries []PostgresTier, defaultID string) (PostgresCatalog, e
 		}
 		byID[t.ID] = t
 	}
-	if err := validateDefault(defaultID, func(id string) bool { _, ok := byID[id]; return ok }); err != nil {
+	if err := validateDefault(defaultID, byID); err != nil {
 		return PostgresCatalog{}, err
 	}
 	return PostgresCatalog{tiers: entries, byID: byID, defaultID: defaultID}, nil
@@ -524,7 +524,7 @@ func parseValkey(entries []ValkeyTier, defaultID string, pools []string) (Valkey
 		}
 		byID[t.ID] = t
 	}
-	if err := validateDefault(defaultID, func(id string) bool { _, ok := byID[id]; return ok }); err != nil {
+	if err := validateDefault(defaultID, byID); err != nil {
 		return ValkeyCatalog{}, err
 	}
 	if byID[defaultID].Paused {
@@ -563,11 +563,11 @@ func validateEntry[T any](id, cpu, memory string, seen map[string]T) error {
 	return nil
 }
 
-func validateDefault(defaultID string, exists func(string) bool) error {
+func validateDefault[T any](defaultID string, byID map[string]T) error {
 	if defaultID == "" {
 		return fmt.Errorf("default is required")
 	}
-	if !exists(defaultID) {
+	if _, ok := byID[defaultID]; !ok {
 		return fmt.Errorf("default %q is not a defined tier", defaultID)
 	}
 	return nil
