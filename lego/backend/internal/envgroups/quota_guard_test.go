@@ -61,8 +61,9 @@ func TestEnvGroupPatchQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 		// The group batch patch is /contents; /environment moves the group.
 		response := serveREST(svc, "PATCH", "/v1/env-groups/"+group.ID+"/contents",
 			`{"saveMode":"save_only","secretFiles":[{"name":"big.bin","content":"`+big+`"}]}`)
-		if response.Code != 400 || !strings.Contains(response.Body.String(), want) {
-			t.Fatalf("REST = %d %s, want 400 naming the quota", response.Code, response.Body.String())
+		if response.Code != 400 || !strings.Contains(response.Body.String(), want) ||
+			!strings.Contains(response.Body.String(), `"code":"`+secrets.SecretFileLimitCode+`"`) {
+			t.Fatalf("REST = %d %s, want a coded 400 naming the quota", response.Code, response.Body.String())
 		}
 		stored(t, svc, group)
 	})
@@ -73,8 +74,9 @@ func TestEnvGroupPatchQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 			"id": group.ID, "saveMode": "save_only",
 			"secretFiles": []any{map[string]any{"name": "big.bin", "content": big}},
 		}})
-		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), want) {
-			t.Fatalf("GraphQL = %v, want a bad request naming the quota", err)
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != secrets.SecretFileLimitCode || !strings.Contains(err.Error(), want) {
+			t.Fatalf("GraphQL = %v, want a coded bad request naming the quota", err)
 		}
 		stored(t, svc, group)
 	})
@@ -101,8 +103,8 @@ func TestEnvGroupPatchQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 		if err == nil && (res == nil || !res.IsError) {
 			t.Fatalf("MCP accepted the over-quota patch: %s", encoded)
 		}
-		if !strings.Contains(string(encoded), want) && (err == nil || !strings.Contains(err.Error(), want)) {
-			t.Fatalf("MCP refusal lost the quota sentence: err=%v result=%s", err, encoded)
+		if coded := secrets.SecretFileLimitCode + ": " + want; !strings.Contains(string(encoded), coded) && (err == nil || !strings.Contains(err.Error(), coded)) {
+			t.Fatalf("MCP refusal lost the coded quota sentence: err=%v result=%s", err, encoded)
 		}
 		stored(t, svc, group)
 	})

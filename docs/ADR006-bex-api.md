@@ -140,6 +140,7 @@ Environment variable and secret-file names are checked by Kubernetes' own Secret
 
 - `SCHEDULE_INVALID` and `SCHEDULE_NEVER_FIRES`;
 - `ENVIRONMENT_VARIABLE_INVALID` and `SECRET_FILE_INVALID`, with params `field` and `maxLength`;
+- `ENVIRONMENT_VARIABLE_LIMIT` and `SECRET_FILE_LIMIT` for a service's or group's map past its count or byte quota, with params `maxCount` and `maxBytes` (w4/656). Render's own code for these was never observed, so the codes are bex's;
 - `CUSTOM_DOMAIN_INVALID`, `CUSTOM_DOMAIN_RESERVED`, `CUSTOM_DOMAIN_OWN_PLATFORM_HOST` (a service's own `<slug>.<base>`, w4/558), and the 409 `CUSTOM_DOMAIN_IN_USE`;
 - `POSTGRES_IDENTIFIER_INVALID` and `POSTGRES_IDENTIFIER_RESERVED` on create and on add-user, with param `field`;
 - `RESOURCE_NAME_INVALID` for a service, Postgres, Key Value or workspace name outside the resource-name rule, with params `field` and `maxLength` (w5/093). One check, `core.CheckResourceName`, makes it on create, rename, the service name-availability check and a Blueprint's declarations, where it used to be a bare 400. The dashboard's rename dialogs branch on it.

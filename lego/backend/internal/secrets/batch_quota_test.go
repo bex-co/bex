@@ -126,7 +126,8 @@ func TestPatchEnvironmentRefusesAPatchPastTheQuota(t *testing.T) {
 }
 
 // The refusal is the same sentence on every surface the dashboard, the Render
-// CLI and agents reach the batch patch through (t005).
+// CLI and agents reach the batch patch through (t005), and it carries the same
+// code on each: REST's `code`, GraphQL's extensions and MCP's prefix (w4/656).
 func TestPatchEnvironmentQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 	const want = filesOverQuota
 	big := strings.Repeat("x", maxSecretFilesBytes+1)
@@ -135,8 +136,9 @@ func TestPatchEnvironmentQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 		store := newVersionedFakeSecretStore()
 		response := serveREST(newService(store, sampleApp("web")), "PATCH", "/v1/services/web/environment",
 			`{"saveMode":"deploy","secretFiles":[{"name":"big.bin","content":"`+big+`"}]}`)
-		if response.Code != 400 || !strings.Contains(response.Body.String(), want) {
-			t.Fatalf("REST = %d %s, want 400 naming the quota", response.Code, response.Body.String())
+		if response.Code != 400 || !strings.Contains(response.Body.String(), want) ||
+			!strings.Contains(response.Body.String(), `"code":"`+SecretFileLimitCode+`"`) {
+			t.Fatalf("REST = %d %s, want a coded 400 naming the quota", response.Code, response.Body.String())
 		}
 		if len(store.m[filesPath("web")]) != 0 {
 			t.Fatal("REST refusal wrote the file")
@@ -152,8 +154,9 @@ func TestPatchEnvironmentQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 				"secretFiles": []any{map[string]any{"name": "big.bin", "content": big}},
 			},
 		})
-		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), want) {
-			t.Fatalf("GraphQL = %v, want a bad request naming the quota", err)
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != SecretFileLimitCode || !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), want) {
+			t.Fatalf("GraphQL = %v, want a coded bad request naming the quota", err)
 		}
 		if len(store.m[filesPath("web")]) != 0 {
 			t.Fatal("GraphQL refusal wrote the file")
@@ -171,8 +174,8 @@ func TestPatchEnvironmentQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 		if err == nil && (res == nil || !res.IsError) {
 			t.Fatalf("MCP accepted the over-quota patch: %s", encoded)
 		}
-		if !strings.Contains(string(encoded), want) && (err == nil || !strings.Contains(err.Error(), want)) {
-			t.Fatalf("MCP refusal lost the quota sentence: err=%v result=%s", err, encoded)
+		if coded := SecretFileLimitCode + ": " + want; !strings.Contains(string(encoded), coded) && (err == nil || !strings.Contains(err.Error(), coded)) {
+			t.Fatalf("MCP refusal lost the coded quota sentence: err=%v result=%s", err, encoded)
 		}
 		if len(store.m[filesPath("web")]) != 0 {
 			t.Fatal("MCP refusal wrote the file")

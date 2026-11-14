@@ -994,33 +994,43 @@ const (
 const MaxEnvironmentBodyBytes = 2*(maxSecretFilesBytes+maxSecretMapBytes) + 1<<20
 
 // mapQuota is one map's aggregate bound: a key count and a byte total measured
-// by size, with the refusals that name each limit.
+// by size, with the refusals that name each limit and the stable code both
+// carry (w4/656), as the maps' name refusals carry theirs.
 type mapQuota struct {
 	maxKeys, maxBytes int
 	size              func(map[string]string) int
+	code              string
 	tooMany, tooLarge string
 }
 
+// The quota refusals' codes. Render's own were never observed, so these are
+// bex's, recorded in ADR006 and ADR018.
+const (
+	EnvVarLimitCode     = "ENVIRONMENT_VARIABLE_LIMIT"
+	SecretFileLimitCode = "SECRET_FILE_LIMIT"
+)
+
 var (
 	envQuota = mapQuota{
-		maxKeys: maxEnvKeys, maxBytes: maxSecretMapBytes, size: mapBytes,
+		maxKeys: maxEnvKeys, maxBytes: maxSecretMapBytes, size: mapBytes, code: EnvVarLimitCode,
 		tooMany:  fmt.Sprintf("environment variable limit of %d exceeded", maxEnvKeys),
 		tooLarge: fmt.Sprintf("total environment variable size limit of %d bytes exceeded", maxSecretMapBytes),
 	}
 	filesQuota = mapQuota{
-		maxKeys: maxSecretFiles, maxBytes: maxSecretFilesBytes, size: contentBytes,
+		maxKeys: maxSecretFiles, maxBytes: maxSecretFilesBytes, size: contentBytes, code: SecretFileLimitCode,
 		tooMany:  fmt.Sprintf("secret file limit of %d exceeded", maxSecretFiles),
 		tooLarge: fmt.Sprintf("the combined size of all secret files cannot exceed 1 MB (%d bytes)", maxSecretFilesBytes),
 	}
 )
 
-// check reports a friendly core.ErrBadRequest when m exceeds the quota.
+// check reports a coded 400 when m exceeds the quota.
 func (q mapQuota) check(m map[string]string) error {
+	params := map[string]any{"maxCount": q.maxKeys, "maxBytes": q.maxBytes}
 	if len(m) > q.maxKeys {
-		return fmt.Errorf("%w: %s", core.ErrBadRequest, q.tooMany)
+		return core.NewBadRequestError(q.code, q.tooMany, params)
 	}
 	if q.size(m) > q.maxBytes {
-		return fmt.Errorf("%w: %s", core.ErrBadRequest, q.tooLarge)
+		return core.NewBadRequestError(q.code, q.tooLarge, params)
 	}
 	return nil
 }

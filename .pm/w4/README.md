@@ -394,7 +394,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [ ] **659** — [bex-only MCP tools keep a false comment that "MCP tool outputs must be JSON objects"](659.md) (~10m; minor) ← follow-up from w4/m378, 2026-11-14
 - [ ] **658** — [The create-service form checks secret-file names but not the 1 MiB total, and relies on the server's 400](658.md) (~25m; minor) ← follow-up from w4/m363, 2026-11-14
 - [ ] **657** — [Service and environment-group creates keep the 2 MiB body cap, so a create carrying a full 1 MiB secret file that JSON escaping doubles answers 413](657.md) (~30m; minor) ← follow-up from w4/m363, 2026-11-14
-- [ ] **656** — [The secret-files quota refusal carries no `code`, while sibling secret-file refusals carry `SECRET_FILE_INVALID`](656.md) (~20m; minor) ← follow-up from w4/m363, 2026-11-14
+- [x] **656** — [The secret-files quota refusal carries no `code`, while sibling secret-file refusals carry `SECRET_FILE_INVALID`](done/656.md) (~20m; minor) ← follow-up from w4/m363, 2026-11-14
 - [ ] **655** — [GraphQL `serviceEvent.details` exposes only `leaderId` of the datastore event details REST and MCP now carry](655.md) (~40m; minor) ← follow-up from w4/m379, 2026-11-14
 - [ ] **654** — [A Postgres version upgrade records no caller, so `postgres_upgrade_started` carries no `user`](654.md) (~45m; minor) ← follow-up from w4/m379, 2026-11-14
 - [x] **653** — [Offer Render's workspace Overlapping Deploy Policy setting: Override (cancel the deploy in progress and start the new one) alongside the default Wait](done/653.md) (~4h; minor, optional variant) ← `/loopx w4` closeout of w4/635, 2026-11-14
