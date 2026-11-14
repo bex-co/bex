@@ -385,6 +385,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **660** — [Render's MCP `list_services` accepts `includePreviews`; bex's takes no arguments](660.md) (~20m; minor, parity) ← follow-up from w4/m378, 2026-11-14
+- [ ] **659** — [bex-only MCP tools keep a false comment that "MCP tool outputs must be JSON objects"](659.md) (~10m; minor) ← follow-up from w4/m378, 2026-11-14
 - [ ] **658** — [The create-service form checks secret-file names but not the 1 MiB total, and relies on the server's 400](658.md) (~25m; minor) ← follow-up from w4/m363, 2026-11-14
 - [ ] **657** — [Service and environment-group creates keep the 2 MiB body cap, so a create carrying a full 1 MiB secret file that JSON escaping doubles answers 413](657.md) (~30m; minor) ← follow-up from w4/m363, 2026-11-14
 - [ ] **656** — [The secret-files quota refusal carries no `code`, while sibling secret-file refusals carry `SECRET_FILE_INVALID`](656.md) (~20m; minor) ← follow-up from w4/m363, 2026-11-14
