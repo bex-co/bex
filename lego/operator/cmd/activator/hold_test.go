@@ -29,6 +29,7 @@ import (
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -421,5 +422,57 @@ func TestHibernatedAppStillWakesWhenReadyReadsTrue(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	if cl.patches.Load() == 0 {
 		t.Fatal("a hibernated App was not woken")
+	}
+}
+
+// w4/636: a static site that has served and reaches the activator unsuspended
+// (a resume, or the handover after a publish) gets the static-server's own
+// response for its host, not the first-deploy page; nothing is patched.
+func TestServedStaticSiteIsProxiedToTheStaticServer(t *testing.T) {
+	app := firstDeployApp()
+	app.Spec.Type, app.Status.Phase, app.Status.ActiveRevision = appv1alpha1.TypeStaticSite, appv1alpha1.PhaseRunning, "rev-1"
+	cl := &countingClient{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()}
+	cache := newHostCache(cl, logr.Discard(), "onbex.co")
+	cache.refreshOnce(context.Background())
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "site:"+r.Host+r.URL.Path)
+	}))
+	t.Cleanup(upstream.Close)
+	h := newHolder(cl)
+	h.static, _ = url.Parse(upstream.URL)
+	handler := newHoldingHandler(cl, cache, logr.Discard(), h)
+
+	for _, accept := range []string{"text/html", "application/json"} {
+		req := httptest.NewRequest(http.MethodGet, "https://first.onbex.co/about", nil)
+		req.Header.Set("Accept", accept)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK || rr.Body.String() != "site:first.onbex.co/about" {
+			t.Fatalf("Accept %s: response = %d %q, want the site's own page", accept, rr.Code, rr.Body.String())
+		}
+	}
+	if cl.patches.Load() != 0 {
+		t.Errorf("serving a static site patched %d objects", cl.patches.Load())
+	}
+
+	// A site that never served keeps the first-deploy page.
+	app.Status.ActiveRevision = ""
+	cl2 := &countingClient{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()}
+	cache2 := newHostCache(cl2, logr.Discard(), "onbex.co")
+	cache2.refreshOnce(context.Background())
+	rr := httptest.NewRecorder()
+	newHoldingHandler(cl2, cache2, logr.Discard(), h).ServeHTTP(rr, firstDeployRequest())
+	if rr.Code != http.StatusServiceUnavailable || !strings.Contains(rr.Body.String(), "first deploy") {
+		t.Fatalf("never-served site = %d %q, want the first-deploy page", rr.Code, rr.Body.String())
+	}
+}
+
+func TestStaticServerURL(t *testing.T) {
+	if u := staticServerURL("bex-static-server", "bex-system", ""); u == nil || u.String() != "http://bex-static-server.bex-system.svc:8080" {
+		t.Fatalf("static-server URL = %v", u)
+	}
+	if staticServerURL("", "bex-system", "8080") != nil {
+		t.Fatal("an unset service must leave no static-server")
 	}
 }

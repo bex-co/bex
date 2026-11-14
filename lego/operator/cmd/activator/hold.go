@@ -66,6 +66,9 @@ type holder struct {
 	target func(app *appv1alpha1.App) *url.URL
 	// ready decides whether the App can take traffic; tests replace it.
 	ready func(ctx context.Context, app *appv1alpha1.App) bool
+	// static is the shared static-server, which serves every static site;
+	// nil when the activator runs without one (w4/636).
+	static *url.URL
 
 	total  chan struct{}
 	mu     sync.Mutex
@@ -129,7 +132,11 @@ func (h *holder) newProxy() *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			app, _ := pr.In.Context().Value(appKey{}).(*appv1alpha1.App)
-			pr.SetURL(h.target(app))
+			if app != nil && app.Spec.Type == appv1alpha1.TypeStaticSite && h.static != nil {
+				pr.SetURL(h.static)
+			} else {
+				pr.SetURL(h.target(app))
+			}
 			pr.Out.Host = pr.In.Host
 			for _, name := range forwardedHeaders {
 				if v := pr.In.Header.Values(name); len(v) > 0 {
@@ -295,6 +302,18 @@ func (h *holder) serve(w http.ResponseWriter, r *http.Request, app *appv1alpha1.
 	ctx = context.WithValue(ctx, deadlineKey{}, start.Add(h.bound))
 	h.proxy.ServeHTTP(w, r.WithContext(ctx))
 	return true
+}
+
+// staticServerURL is the shared static-server's in-cluster address, or nil
+// when service is unset.
+func staticServerURL(service, namespace, port string) *url.URL {
+	if service == "" || namespace == "" {
+		return nil
+	}
+	if port == "" {
+		port = "8080"
+	}
+	return &url.URL{Scheme: "http", Host: net.JoinHostPort(service+"."+namespace+".svc", port)}
 }
 
 // proxyNow proxies r to an App that is already ready, with the same dial

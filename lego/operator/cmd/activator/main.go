@@ -133,7 +133,9 @@ func main() {
 	cache.refreshOnce(context.Background())
 	go appwatch.Loop(context.Background(), hostCacheRefresh, changed, func() { cache.refreshOnce(context.Background()) })
 
-	http.Handle("/", newHoldingHandler(c, cache, log, newHolder(c)))
+	hold := newHolder(c)
+	hold.static = staticServerURL(os.Getenv("BEX_STATIC_SERVER_SERVICE"), os.Getenv("POD_NAMESPACE"), os.Getenv("BEX_STATIC_SERVER_PORT"))
+	http.Handle("/", newHoldingHandler(c, cache, log, hold))
 
 	log.Info("listening", "addr", addr)
 	srv := &http.Server{
@@ -225,10 +227,16 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		}
 		// An unsuspended static site has no workload to wake. It reaches here
 		// only while its route moves to the static-server, after its first
-		// publish (or, for a second, on resume), so it keeps answering the
-		// first-deploy response until the static-server takes over (w4/m235
-		// t008).
+		// publish or on resume (w4/m235 t008).
 		if app.Spec.Type == appv1alpha1.TypeStaticSite {
+			// A site that has served (a resume, or the handover after a
+			// publish) gets its own response from the static-server, which
+			// sees the resumed spec within seconds, not a first-deploy page
+			// while its route moves back (w4/636).
+			if app.Status.ActiveRevision != "" && hold != nil && hold.static != nil {
+				hold.proxyNow(w, r, app)
+				return
+			}
 			setRouting(w, routingNoServer)
 			writeFirstDeployResponse(w, r)
 			return

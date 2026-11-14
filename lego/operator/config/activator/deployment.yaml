@@ -54,6 +54,18 @@ spec:
             # has written any status (w4/m235).
             - name: BEX_BASE_DOMAIN
               value: onbex.co
+            # The shared static-server (the operator's BEX_STATIC_SERVER_SERVICE
+            # and port): a resumed static site's route still points here until
+            # the operator moves it back, and the activator proxies the site's
+            # own response meanwhile (w4/636).
+            - name: BEX_STATIC_SERVER_SERVICE
+              value: bex-static-server
+            - name: BEX_STATIC_SERVER_PORT
+              value: "8080"
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           # TCP, not an HTTP path: every path on this listener belongs to a
           # tenant host (w4/m162), so a platform /healthz would shadow theirs.
           readinessProbe:
