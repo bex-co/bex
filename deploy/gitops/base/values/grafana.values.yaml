@@ -5867,6 +5867,36 @@ dashboards:
               ]
             },
             {
+             "id": 90,
+             "type": "timeseries",
+             "title": "Public datastore certificate pending",
+             "description": "How long each public Postgres or Key Value has waited for its publicly trusted certificate (w4/m357). Issuance normally takes under a minute; a rising line means Let's Encrypt refused or stalled it (often the 50-per-week bex.co budget). PublicCertificatePendingTooLong fires past 10 minutes (red line).",
+             "gridPos": { "h": 9, "w": 8, "x": 0, "y": 140 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "s",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 600 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "max by (namespace, name, kind) (bex_datastore_public_certificate_pending_seconds)",
+                 "legendFormat": "{{namespace}}/{{name}}"
+                }
+              ]
+            },
+            {
              "id": 4,
              "type": "timeseries",
              "title": "Platform DB WAL archiver age",
