@@ -89,13 +89,18 @@ func TestHealthPathProjectsTheNoRedirectExecProbe(t *testing.T) {
 }
 
 // Without a path the TCP probe stays; without the operator knowing its image,
-// or for a worker, the kubelet's HTTP probe does. None adds an init container.
+// or for a worker, the kubelet's HTTP probe does. Neither of the last two adds
+// an init container; a TCP-checked service carries the helper only for its
+// drain (w4/m353).
 func TestNoRedirectProbeOnlyWhereItApplies(t *testing.T) {
 	noPath := project(projectionApp(), execParams())
 	for _, probe := range probesOf(appContainerOf(t, noPath)) {
 		if probe.TCPSocket == nil || probe.Exec != nil {
 			t.Fatalf("no health path: probe = %+v, want the TCP check", probe.ProbeHandler)
 		}
+	}
+	if got := storedHealthProbeImage(noPath.Spec.Template.Spec); got != probeTestImage {
+		t.Fatalf("no health path: installer image = %q, want the helper for the drain", got)
 	}
 	noImage := project(httpHealthApp(), probeParams())
 	for _, probe := range probesOf(appContainerOf(t, noImage)) {
@@ -106,7 +111,6 @@ func TestNoRedirectProbeOnlyWhereItApplies(t *testing.T) {
 	worker := execParams()
 	worker.worker = true
 	for name, spec := range map[string]corev1.PodSpec{
-		"no path":  noPath.Spec.Template.Spec,
 		"no image": noImage.Spec.Template.Spec,
 		"worker":   project(httpHealthApp(), worker).Spec.Template.Spec,
 	} {

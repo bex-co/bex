@@ -646,7 +646,7 @@ func TestDrainLengthIsAdoptedLazilyFromTheOldDrain(t *testing.T) {
 	restarted := projectionApp(func(a *appv1alpha1.App) { a.Spec.RestartedAt = "2026-10-22T00:00:00Z" })
 	next := stored.DeepCopy()
 	applyDeploymentSpec(next, restarted, p)
-	if got := storedDrain(next.Spec.Template.Spec); got != 60 {
+	if got, _ := storedDrain(next.Spec.Template.Spec); got != 60 {
 		t.Errorf("the rolling pass drain = %d; want Render's 60", got)
 	}
 	if got := next.Spec.Template.Spec.TerminationGracePeriodSeconds; got == nil || *got != 60+defaultTerminationGracePeriodSeconds {

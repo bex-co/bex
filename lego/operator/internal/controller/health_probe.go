@@ -78,6 +78,58 @@ func healthProbeOpenPortHandler() corev1.ProbeHandler {
 		"--timeout", (time.Duration(healthCheckTimeoutSeconds) * time.Second).String()}}}
 }
 
+// healthProbeDrainHandler is the preStop drain of an instance that may still
+// serve (w4/m353): an exec of the helper's "drain", which runs check once and
+// waits seconds only when it passes. A deleted instance that is healthy keeps
+// serving through the drain as before (w1/m154, w8/180); one restarted by its
+// liveness probe, which readiness took out of rotation long before, gets
+// SIGTERM at once, so the restart lands at Render's 60 s. check is the liveness
+// probe's own handler, so the drain can never disagree with the probes. nil
+// when the helper cannot run that check.
+func healthProbeDrainHandler(check corev1.ProbeHandler, seconds int64) *corev1.LifecycleHandler {
+	args := healthProbeCheckArgs(check)
+	if args == nil {
+		return nil
+	}
+	command := append([]string{healthProbeBinary, "drain", "--seconds", strconv.FormatInt(seconds, 10)}, args...)
+	return &corev1.LifecycleHandler{Exec: &corev1.ExecAction{Command: command}}
+}
+
+// healthProbeCheckArgs is the helper subcommand and flags that run the check h
+// describes: an exec of the helper as is, a TCP probe as "tcp", an HTTP probe
+// as the no-redirect "check" with its path, port and Host. nil for anything
+// else.
+func healthProbeCheckArgs(h corev1.ProbeHandler) []string {
+	timeout := (time.Duration(healthCheckTimeoutSeconds) * time.Second).String()
+	switch {
+	case h.Exec != nil:
+		if len(h.Exec.Command) >= 2 && h.Exec.Command[0] == healthProbeBinary {
+			return h.Exec.Command[1:]
+		}
+	case h.TCPSocket != nil && h.TCPSocket.Port.IntValue() > 0:
+		return []string{"tcp", "--port", h.TCPSocket.Port.String(), "--timeout", timeout}
+	case h.HTTPGet != nil && h.HTTPGet.Port.IntValue() > 0:
+		host := ""
+		for _, header := range h.HTTPGet.HTTPHeaders {
+			if header.Name == probeHostHeader {
+				host = header.Value
+			}
+		}
+		return healthProbeExecHandler(h.HTTPGet.Path, h.HTTPGet.Port.IntValue(), host).Exec.Command[1:]
+	}
+	return nil
+}
+
+// healthProbeDrainSeconds reads the drain length off a preStop exec of the
+// helper (healthProbeDrainHandler's inverse), 0 for any other command.
+func healthProbeDrainSeconds(exec *corev1.ExecAction) int64 {
+	if exec == nil || len(exec.Command) < 4 || exec.Command[0] != healthProbeBinary || exec.Command[1] != "drain" || exec.Command[2] != "--seconds" {
+		return 0
+	}
+	seconds, _ := strconv.ParseInt(exec.Command[3], 10, 64)
+	return seconds
+}
+
 // healthProbeChecksOpenPort reports an exec probe that is the any-open-port
 // check (healthProbeOpenPortHandler).
 func healthProbeChecksOpenPort(exec *corev1.ExecAction) bool {

@@ -1,15 +1,15 @@
 # w4 · m353 — An instance that fails its health check is restarted after about 2 minutes, not Render's 60 seconds: the 60-second rollout drain also runs before every liveness restart, while the instance is already out of rotation
 
-**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** todo
+**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** todo (t001–t004 done 2026-11-14; t005 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Drain only an instance that is still serving: skip the preStop wait when the instance's own health check fails | 1h | — |
-| [t002](t002.md) | Cover TCP-checked services (no Health Check Path), and amend ADR004 | 45m | t001 |
-| [t003](t003.md) | Simplify | 15m | t002 |
-| [t004](t004.md) | Test coverage | 30m | t002 |
+| [t001](done/t001.md) | Drain only an instance that is still serving: skip the preStop wait when the instance's own health check fails — **DONE** | 1h | — |
+| [t002](done/t002.md) | Cover TCP-checked services (no Health Check Path), and amend ADR004 — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
+| [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
 | [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004 |
 
 ## Definition of done

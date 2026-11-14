@@ -197,14 +197,18 @@ type deploymentParams struct {
 	// openPortCheck is a first web image release whose template must not
 	// depend on the HTTP port discovery chooses (checksAnyOpenPort, w4/m350).
 	openPortCheck bool
+	// drainCheck runs the preStop drain through the health-probe helper, which
+	// skips the wait for an instance whose own health check fails (w4/m353);
+	// false keeps the plain preStop sleep (applyDeploymentSpec).
+	drainCheck bool
 }
 
-// usesHealthProbeBinary reports whether the App's health check runs as an exec
-// of bex's health-probe helper: a web or private service with a Health Check
-// Path (the no-redirect HTTP check), or one checking any open port, on an
-// operator that knows its own image.
+// usesHealthProbeBinary reports whether the App's pods carry bex's
+// health-probe helper: a web or private service with a Health Check Path (the
+// no-redirect HTTP check), one checking any open port, or one whose drain
+// checks its health first, on an operator that knows its own image.
 func (p deploymentParams) usesHealthProbeBinary(app *appv1alpha1.App) bool {
-	return !p.worker && (app.Spec.HealthCheckPath != "" || p.openPortCheck) && p.healthProbeImage != ""
+	return !p.worker && (app.Spec.HealthCheckPath != "" || p.openPortCheck || p.drainCheck) && p.healthProbeImage != ""
 }
 
 // usesOpenPortCheck reports the any-open-port check on an operator that can
@@ -406,9 +410,11 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 		}
 		handler := healthCheckHandler(path, p.port, probeHost)
 		if p.usesHealthProbeBinary(app) {
-			handler = healthProbeExecHandler(app.Spec.HealthCheckPath, p.port, probeHost)
-			if p.usesOpenPortCheck(app) {
+			switch {
+			case p.usesOpenPortCheck(app):
 				handler = healthProbeOpenPortHandler()
+			case app.Spec.HealthCheckPath != "":
+				handler = healthProbeExecHandler(app.Spec.HealthCheckPath, p.port, probeHost)
 			}
 			container.VolumeMounts = append(container.VolumeMounts,
 				corev1.VolumeMount{Name: healthProbeVolumeName, MountPath: healthProbeMountPath, ReadOnly: true})
@@ -542,6 +548,12 @@ func retainedProbeHost(stored corev1.PodTemplateSpec, app *appv1alpha1.App) (hos
 // routed to it. The length is Render's: the original instance keeps serving
 // its in-flight requests for 60 s after the switch (w8/180; it was 10 s,
 // w1/m154); docs/ADR004-app-deployment.md § Rollout headroom, ADR018.
+//
+// Kubernetes also runs preStop before a liveness restart, when readiness has
+// already taken the instance out of rotation, so a plain sleep pushed Render's
+// 60-second health restart to about two minutes (w4/m353). The drain
+// therefore runs the instance's own health check first and skips the wait
+// when it fails (healthProbeDrainHandler).
 const drainSeconds int64 = 60
 
 // drainSecondsFor is the preStop drain this App's pods should carry, or 0. A
@@ -555,16 +567,21 @@ func drainSecondsFor(app *appv1alpha1.App, p deploymentParams) int64 {
 	return drainSeconds
 }
 
-// storedDrain is the preStop drain a stored pod spec carries, 0 for none.
-func storedDrain(spec corev1.PodSpec) int64 {
+// storedDrain is the preStop drain a stored pod spec carries, 0 for none, and
+// whether it checks the instance's health first (healthProbeDrainHandler).
+func storedDrain(spec corev1.PodSpec) (seconds int64, checked bool) {
 	if len(spec.Containers) == 0 {
-		return 0
+		return 0, false
 	}
 	lifecycle := spec.Containers[0].Lifecycle
-	if lifecycle == nil || lifecycle.PreStop == nil || lifecycle.PreStop.Sleep == nil {
-		return 0
+	if lifecycle == nil || lifecycle.PreStop == nil {
+		return 0, false
 	}
-	return lifecycle.PreStop.Sleep.Seconds
+	if sleep := lifecycle.PreStop.Sleep; sleep != nil {
+		return sleep.Seconds, false
+	}
+	seconds = healthProbeDrainSeconds(lifecycle.PreStop.Exec)
+	return seconds, seconds > 0
 }
 
 // storedReadinessPeriod is the readiness probe period a stored pod spec
@@ -577,15 +594,19 @@ func storedReadinessPeriod(spec corev1.PodSpec) int32 {
 }
 
 // applyDrain sets the container's preStop drain and the pod's grace period
-// together, so they cannot drift apart. The drain is a native preStop.sleep,
-// which needs no shell or sleep binary in the tenant's image (scratch and
-// distroless images have neither).
-func applyDrain(spec *corev1.PodSpec, container *corev1.Container, shutdownDelay *int32, drain int64) {
+// together, so they cannot drift apart. With checked, the drain is an exec of
+// the health-probe helper running the container's own liveness check
+// (healthProbeDrainHandler); otherwise a native preStop.sleep. Neither needs a
+// shell or sleep binary in the tenant's image (scratch and distroless images
+// have neither).
+func applyDrain(spec *corev1.PodSpec, container *corev1.Container, shutdownDelay *int32, drain int64, checked bool) {
 	container.Lifecycle = nil
 	if drain > 0 {
-		container.Lifecycle = &corev1.Lifecycle{
-			PreStop: &corev1.LifecycleHandler{Sleep: &corev1.SleepAction{Seconds: drain}},
+		preStop := &corev1.LifecycleHandler{Sleep: &corev1.SleepAction{Seconds: drain}}
+		if checked && container.LivenessProbe != nil {
+			preStop = cmp.Or(healthProbeDrainHandler(container.LivenessProbe.ProbeHandler, drain), preStop)
 		}
+		container.Lifecycle = &corev1.Lifecycle{PreStop: preStop}
 	}
 	spec.TerminationGracePeriodSeconds = terminationGracePeriodSeconds(shutdownDelay, drain)
 }
@@ -623,24 +644,28 @@ func terminationGracePeriodSeconds(seconds *int32, drain int64) *int64 {
 // would change every web and private service's template on the same operator
 // upgrade and roll them all at once, where the surge pods outrun the tenant
 // headroom and mint nodes (ADR004 § Rollout headroom). A new Deployment, or
-// one already on the current drain, always gets it.
+// one already on the current drain, always gets it. The health-checked drain
+// (w4/m353) is adopted the same way: a stored template keeps its plain sleep,
+// and a TCP-checked service its helper-free pod, until the next roll.
 func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams) {
 	probeHost, retained := retainedProbeHost(dep.Spec.Template, app)
 	if !retained {
 		probeHost = healthProbeHost(app, p.baseDomain)
 	}
 	drain := drainSecondsFor(app, p)
+	p.drainCheck = drain > 0 && p.healthProbeImage != ""
 	p.openPortCheck = checksAnyOpenPort(dep.Spec.Template, app, p)
 	if stored := dep.Spec.Template; len(stored.Spec.Containers) > 0 {
-		keptDrain, keptPeriod := storedDrain(stored.Spec), storedReadinessPeriod(stored.Spec)
+		keptDrain, keptDrainCheck := storedDrain(stored.Spec)
+		keptPeriod := storedReadinessPeriod(stored.Spec)
 		keptProbeImage := storedHealthProbeImage(stored.Spec)
-		drainStale := drain > 0 && keptDrain != drain
+		drainStale := drain > 0 && (keptDrain != drain || keptDrainCheck != p.drainCheck)
 		periodStale := !p.worker && keptPeriod != healthCheckReadinessPeriodSeconds
 		// The no-redirect probe (w8/m133) is adopted the same lazy way: a
 		// running release keeps its HTTP probe, or the helper image it was
 		// installed from, until its template changes for another reason, so
 		// an operator upgrade never rolls the fleet.
-		probeStale := !p.worker && (app.Spec.HealthCheckPath != "" || p.openPortCheck) && keptProbeImage != p.healthProbeImage
+		probeStale := !p.worker && (app.Spec.HealthCheckPath != "" || p.openPortCheck || p.drainCheck) && keptProbeImage != p.healthProbeImage
 		if drainStale || periodStale || probeStale {
 			// Keep whatever the stored template carries when nothing else
 			// about it changes; any other change adopts the current values.
@@ -648,6 +673,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 			kept := p
 			kept.readinessPeriod = keptPeriod
 			kept.healthProbeImage = keptProbeImage
+			kept.drainCheck = keptDrainCheck
 			keptDrainFor := drain
 			if drainStale {
 				keptDrainFor = keptDrain
@@ -727,7 +753,7 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	// The persistent disk, when one is attached: its volume and mount, plus the
 	// Recreate strategy and eviction guard a shared volume forces (see disk.go).
 	applyDiskProjection(dep, &container, app)
-	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.MaxShutdownDelaySeconds, drain)
+	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.MaxShutdownDelaySeconds, drain, p.drainCheck && p.usesHealthProbeBinary(app))
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
 	dep.Spec.Template.Spec.InitContainers = nil
 	if p.usesHealthProbeBinary(app) {
