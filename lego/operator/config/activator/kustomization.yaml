@@ -7,4 +7,5 @@ resources:
   - service.yaml
   - deployment.yaml
   - pdb.yaml
+  - platform-host-fallback-https.yaml
   - platform-host-fallback-ingress.yaml

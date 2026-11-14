@@ -60,7 +60,7 @@ When a safe shared-hosting suffix is configured, the traffic target is the App's
 - A Cloudflare-proxied domain must use Full (strict) SSL mode; Flexible mode reaches the origin over HTTP and loops.
 - HTTPS on a port other than 443 is redirected to 443.
 
-`BEX_HTTPS_REDIRECT=false` turns the redirect off for a cluster whose hosts get no certificates. HSTS is deliberately not sent yet. A tenant that wants it can set the header itself; a platform-wide policy on the shared suffix would bind every tenant at once, and it would need a decision on preload and subdomains first.
+`BEX_HTTPS_REDIRECT=false` turns the redirect off for a cluster whose hosts get no certificates. It does not govern the platform-host fallback route, a static manifest whose own redirect Middleware always applies (w8/320). HSTS is deliberately not sent yet. A tenant that wants it can set the header itself; a platform-wide policy on the shared suffix would bind every tenant at once, and it would need a decision on preload and subdomains first.
 
 Cloudflare-for-SaaS registration, when used at the edge, remains an operational step outside this claim state machine. The database claim gates Bex routing; edge custom-hostname registration and edge/origin certificate issuance are separate convergence mechanisms.
 

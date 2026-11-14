@@ -944,8 +944,9 @@ func TestHealthPathsWakeASleepingApp(t *testing.T) {
 }
 
 // TestHealthPathsOnMaintenanceAndUnknownHosts: maintenance still wins without
-// a wake on platform and custom hosts, and an unknown host answers the bex
-// 404 (w4/m235 t008) — no health path short-circuits either.
+// a wake on platform and custom hosts, and an unknown host answers Render's
+// plain-text 404 (w4/m235 t008, w8/320) — no health path short-circuits
+// either.
 func TestHealthPathsOnMaintenanceAndUnknownHosts(t *testing.T) {
 	app := maintenanceApp("")
 	cache, base := primedHostCache(t, app)
@@ -1271,7 +1272,8 @@ func TestRobotsTxtExceptionIsOnlyForTheHibernatedGetPath(t *testing.T) {
 }
 
 // The platform-host fallback route reaches here for any platform host
-// (w4/m235 t008): a private service's would-be host answers the bex 404 and is
+// (w4/m235 t008): a private service's would-be host answers Render's plain-text
+// 404 (w8/320) and is
 // never woken, and a never-served public App answers its first-deploy response.
 func TestFallbackHostsNeverWakeANonPublicApp(t *testing.T) {
 	private := &appv1alpha1.App{
@@ -1290,19 +1292,12 @@ func TestFallbackHostsNeverWakeANonPublicApp(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://db-proxy.onbex.co/", nil))
 	if rr.Code != http.StatusNotFound || rr.Body.String() != unknownHostText {
-		t.Fatalf("private host = %d %q, want the bex 404", rr.Code, rr.Body.String())
+		t.Fatalf("private host = %d %q, want the unknown-host 404", rr.Code, rr.Body.String())
 	}
 	rr = httptest.NewRecorder()
 	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://fresh.onbex.co/", nil))
 	if rr.Code != http.StatusServiceUnavailable || rr.Body.String() != firstDeployText {
 		t.Fatalf("new public host = %d %q, want the first-deploy response", rr.Code, rr.Body.String())
-	}
-	html := httptest.NewRequest(http.MethodGet, "https://nobody.onbex.co/", nil)
-	html.Header.Set("Accept", "text/html")
-	rr = httptest.NewRecorder()
-	handler.ServeHTTP(rr, html)
-	if rr.Code != http.StatusNotFound || !strings.Contains(rr.Body.String(), "There is no service at this address") {
-		t.Fatalf("unknown host page = %d %q", rr.Code, rr.Body.String())
 	}
 	if n := cl.patches.Load(); n != 0 {
 		t.Fatalf("fallback requests issued %d patches, want 0", n)
@@ -1424,6 +1419,35 @@ func TestHostCacheServesAWildcardBelowItsOwnHosts(t *testing.T) {
 		}
 		if cache.claims(host) != (want != "") {
 			t.Errorf("claims(%q) = %v", host, cache.claims(host))
+		}
+	}
+}
+
+// w8/320: Render answers a host it routes nowhere with the same plain-text
+// 404 whatever the client accepts (captured 2026-11-13 on a nonexistent
+// onrender.com host): text/plain "Not Found", nosniff, no cache directive, no
+// page and no JSON.
+func TestAnUnknownHostAnswersRendersPlainNotFound(t *testing.T) {
+	cache, base := primedHostCache(t)
+	handler := newHandler(base, cache, logr.Discard())
+	for _, accept := range []string{"", "text/html,application/xhtml+xml,*/*;q=0.8", "application/json"} {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			req := httptest.NewRequest(method, "https://nobody.onbex.co/a?b=1", nil)
+			if accept != "" {
+				req.Header.Set("Accept", accept)
+			}
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+			want := unknownHostText
+			if method == http.MethodHead {
+				want = ""
+			}
+			hdr := rr.Header()
+			if rr.Code != http.StatusNotFound || rr.Body.String() != want || hdr.Get("Content-Length") != "10" ||
+				hdr.Get("Content-Type") != "text/plain; charset=utf-8" || hdr.Get("X-Content-Type-Options") != "nosniff" ||
+				hdr.Get("X-Render-Routing") != "no-server" || hdr.Get("Cache-Control") != "" {
+				t.Fatalf("%s Accept %q => %d %q %v, want Render's plain 404", method, accept, rr.Code, rr.Body.String(), hdr)
+			}
 		}
 	}
 }

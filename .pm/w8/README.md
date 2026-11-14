@@ -439,12 +439,14 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **320** — [An unknown or deleted service's `*.onbex.co` host answers a bex-styled negotiated 404 page and skips the HTTPS redirect, where Render answers a plain-text `404 Not Found` after redirecting to HTTPS](320.md) (~30m) ← `/qa-find-bugs-cli` sweep 83e1 2026-11-13, minor.
+- [x] **320** — [An unknown or deleted service's `*.onbex.co` host answers a bex-styled negotiated 404 page and skips the HTTPS redirect, where Render answers a plain-text `404 Not Found` after redirecting to HTTPS](done/320.md) (~30m) ← `/qa-find-bugs-cli` sweep 83e1 2026-11-13, minor.
   - **Render:** a nonexistent host 301s `http`→`https`, then answers `404 text/plain` `Not Found` with `nosniff` and `x-render-routing: no-server` for every `Accept`.
   - **bex:**
     - the activator (`writeUnknownHostResponse`, `main.go:411`) negotiates an HTML page, JSON or "There is no service at this address.", sends `no-store` and no `nosniff`;
     - the `platform-host-fallback` Ingress has no HTTPS redirect.
   - **Fix:** Render's text 404 for every `Accept`, plus a redirect middleware on the fallback route.
+
+  **DONE 2026-11-13.** Unknown hosts answer Render's plain `404 Not Found` (nosniff, `no-server`) for every `Accept`; the fallback Ingress leads with a `redirectScheme` Middleware, so plain HTTP 301s to HTTPS. Production check owed after the operator/activator roll.
 
 - [x] **319** — [A static site answers `POST`, `PUT`, `DELETE`, `PATCH` and `OPTIONS` with `405 method not allowed`, where Render answers `200` with an empty body](done/319.md) (~20m) ← `/qa-find-bugs-cli` sweep bc16 2026-11-13 (bex v0.6.0), minor. Four Render static sites answer all 24 `POST`/`OPTIONS` probes on `/`, a file and a missing path with a bare `200`, `content-length: 0` and no headers. bex answers `405` with `Allow: GET, HEAD` (`serveOtherMethod`, `staticserver.go:402`). Answer 200 with an empty body when no external rewrite claims the request; unknown hosts and w8/184 proxying are unchanged. **DONE 2026-11-13.** Other methods get the bare 200 unless an external rewrite claims the path; host resolved first (unknown host 404), suspended site 503 for every method. Production check owed after the static-server rolls.
 
