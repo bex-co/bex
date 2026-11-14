@@ -1237,6 +1237,41 @@ func TestCompleterHarvestsARunningTurnsCompletedItems(t *testing.T) {
 	}
 }
 
+// Every bex-api replica runs a Completer. When one fails a turn, captures its
+// transcript and terminates the sandbox, another replica's reap of the same
+// still-listed session reads a sandbox that is gone. That read must not turn
+// the captured transcript into a truncated one (found by w9/m387 t008: a
+// setup-failed turn showed "transcript read failed" with every part stored).
+func TestCompleterAnotherReplicasFailedReadKeepsACapturedTurn(t *testing.T) {
+	failed, _ := json.Marshal(statusReport{State: driverStateFailed, Error: `setup step "deps" exited with code 7`, Code: FailureCodeSetupFailed})
+	a, st, lc, id := completerFixture(string(failed), nil)
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text","text":"setup output"}}`
+	a.Reconcile(context.Background())
+	if turn := st.turns[id][1]; st.rows[id].Phase != PhaseFailed || !turn.TranscriptComplete {
+		t.Fatalf("replica A: phase=%s turn=%+v, want failed with a complete transcript", st.rows[id].Phase, turn)
+	}
+
+	stale := st.rows[id]
+	stale.SandboxID = "sandbox-1" // listed by replica B before A cleared it
+	lc.transcriptErr = core.ErrNotFound
+	b := &Completer{Store: st, Sandbox: lc}
+	b.teardown(context.Background(), stale)
+	if turn := st.turns[id][1]; !turn.TranscriptComplete || turn.TranscriptTruncated || turn.TruncationReason != "" {
+		t.Fatalf("after replica B's failed read: %+v, want the captured turn kept complete", turn)
+	}
+}
+
+// A turn no harvest has read yet is still marked when its read fails.
+func TestCompleterFailedFirstReadMarksTheTurn(t *testing.T) {
+	failed, _ := json.Marshal(statusReport{State: driverStateFailed, Error: "agent turn failed"})
+	c, st, lc, id := completerFixture(string(failed), nil)
+	lc.transcriptErr = errors.New("exec unreachable")
+	c.Reconcile(context.Background())
+	if turn := st.turns[id][1]; turn.TranscriptComplete || !turn.TranscriptTruncated || turn.TruncationReason != reasonTranscriptReadFailed {
+		t.Fatalf("turn = %+v, want truncated with %q", turn, reasonTranscriptReadFailed)
+	}
+}
+
 // A sandbox that dies mid-turn keeps what the running turn's harvests stored:
 // the turn fails with the transcript up to the last harvest, marked truncated
 // with the reason (w6/m398).

@@ -31,7 +31,11 @@ type Chunk = Record<string, unknown>;
 async function run(
   environment: RepoEnvironment,
   cwd: string,
-  options: { stepTimeoutMs?: number; totalTimeoutMs?: number } = {},
+  options: {
+    stepTimeoutMs?: number;
+    totalTimeoutMs?: number;
+    turn?: number;
+  } = {},
 ) {
   const chunks: Chunk[] = [];
   let beats = 0;
@@ -39,6 +43,7 @@ async function run(
   try {
     await runRepoSetup(environment, {
       cwd,
+      turn: 1,
       env: { PATH: process.env.PATH ?? "", SETUP_VALUE: "from-env" },
       write: (chunk) => chunks.push(chunk),
       heartbeat: () => beats++,
@@ -65,6 +70,17 @@ test("parseRepoEnvironment reads the dispatch value and ignores what does not pa
   );
 });
 
+// A transcript replays every turn as one conversation, so a later turn's setup
+// (a steer redispatched to a fresh sandbox) must not reuse turn 1's ids.
+test("each turn numbers its setup tool calls", async () => {
+  const config = await tempConfig();
+  const environment = { setup: [{ name: "deps", run: "true" }], checks: [] };
+  const first = await run(environment, config.cwd);
+  const second = await run(environment, config.cwd, { turn: 2 });
+  assert.equal(first.chunks[0].toolCallId, "bex-setup-1-1");
+  assert.equal(second.chunks[0].toolCallId, "bex-setup-2-1");
+});
+
 test("setup steps run in order from the repository root as setup tool calls", async () => {
   const config = await tempConfig();
   await writeFile(path.join(config.cwd, "marker"), "root");
@@ -82,12 +98,12 @@ test("setup steps run in order from the repository root as setup tool calls", as
   assert.deepEqual(
     chunks.map((c) => `${c.type}:${c.toolCallId}`),
     [
-      "tool-input-start:bex-setup-1",
-      "tool-input-available:bex-setup-1",
-      "tool-output-available:bex-setup-1",
-      "tool-input-start:bex-setup-2",
-      "tool-input-available:bex-setup-2",
-      "tool-output-available:bex-setup-2",
+      "tool-input-start:bex-setup-1-1",
+      "tool-input-available:bex-setup-1-1",
+      "tool-output-available:bex-setup-1-1",
+      "tool-input-start:bex-setup-1-2",
+      "tool-input-available:bex-setup-1-2",
+      "tool-output-available:bex-setup-1-2",
     ],
   );
   assert.equal(chunks[0].toolName, "setup: first");
@@ -126,7 +142,7 @@ test("a failing step names itself, stops setup and carries the setup failure cod
   assert.match(error.message, /setup step "broken" exited with code 3/);
   const failed = chunks.find((c) => c.type === "tool-output-error");
   assert.match(String(failed?.errorText), /exited with code 3\npartial/);
-  assert.ok(!chunks.some((c) => c.toolCallId === "bex-setup-2"));
+  assert.ok(!chunks.some((c) => c.toolCallId === "bex-setup-1-2"));
   await assert.rejects(readFile(path.join(config.cwd, "never-ran")));
 });
 
@@ -222,7 +238,7 @@ test("a turn runs setup before the agent, redacts its output, and fails without 
   assert.ok(!history.includes(secret), "setup output leaked the value");
   assert.match(history, /token=\[redacted:SETUP_TOKEN\]/);
   const firstSetup = hub.history.findIndex(
-    (part) => part.toolCallId === "bex-setup-1",
+    (part) => part.toolCallId === "bex-setup-1-1",
   );
   const firstText = hub.history.findIndex((part) => part.type === "text-delta");
   assert.ok(
@@ -235,12 +251,16 @@ test("a turn runs setup before the agent, redacts its output, and fails without 
     "the agent did not run after setup",
   );
   const log = await readFile(config.sessionLogPath, "utf8");
-  assert.ok(log.includes("bex-setup-1") && !log.includes(secret));
+  assert.ok(log.includes("bex-setup-1-1") && !log.includes(secret));
 
   // A second turn in the same sandbox does not run setup again.
   const hub2 = new UIMessageStreamHub();
   await runHeadlessTurn(config, childEnv(config), hub2, { turn: 2 });
-  assert.ok(!hub2.history.some((part) => part.toolCallId === "bex-setup-1"));
+  assert.ok(
+    !hub2.history.some((part) =>
+      String(part.toolCallId ?? "").startsWith("bex-setup-"),
+    ),
+  );
 
   // A broken step fails the turn with the code, and the agent never runs.
   const broken = await tempConfig({

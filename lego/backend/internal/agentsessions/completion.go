@@ -861,7 +861,7 @@ const (
 func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSession) bool {
 	reason, ok := c.harvestTranscript(ctx, record, false)
 	if !ok {
-		c.markTurnTranscript(ctx, record, false, true, reason)
+		c.markTurnHarvestFailed(ctx, record, reason)
 		return false
 	}
 	c.markTurnTranscript(ctx, record, reason == "", reason != "", reason)
@@ -987,7 +987,18 @@ func (c *Completer) pruneLive(rows []store.AgentSession) {
 }
 
 func (c *Completer) markTurnTranscript(ctx context.Context, record store.AgentSession, complete, truncated bool, reason string) {
-	if err := c.Store.CompleteAgentSessionTurn(ctx, record.ID, record.Turns, complete, truncated, reason); err != nil {
+	c.logTurnMarkFailure(record, c.Store.CompleteAgentSessionTurn(ctx, record.ID, record.Turns, complete, truncated, reason))
+}
+
+// markTurnHarvestFailed leaves alone a turn an earlier harvest already judged,
+// which another replica's harvest may have done just before this read missed
+// the sandbox it terminated.
+func (c *Completer) markTurnHarvestFailed(ctx context.Context, record store.AgentSession, reason string) {
+	c.logTurnMarkFailure(record, c.Store.MarkAgentSessionTurnHarvestFailed(ctx, record.ID, record.Turns, reason))
+}
+
+func (c *Completer) logTurnMarkFailure(record store.AgentSession, err error) {
+	if err != nil {
 		log.Printf("agent-session completer: transcript completeness write failed (session=%s turn=%d): %v", record.ID, record.Turns, err)
 	}
 }

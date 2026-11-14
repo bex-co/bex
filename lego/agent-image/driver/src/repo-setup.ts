@@ -77,6 +77,9 @@ export function parseRepoEnvironment(
 
 export interface RepoSetupOptions {
   cwd: string;
+  // turn numbers the step tool calls: a transcript replays every turn in one
+  // conversation, where a tool call id must not repeat.
+  turn: number;
   env: Record<string, string>;
   // write emits one UI-message chunk into the turn's stream, so setup steps
   // pass the same redaction and publication path as the agent's tool calls.
@@ -100,7 +103,7 @@ export async function runRepoSetup(
     Date.now() + (options.totalTimeoutMs ?? SETUP_TOTAL_TIMEOUT_MS);
   for (const [index, step] of environment.setup.entries()) {
     options.abortSignal?.throwIfAborted();
-    const toolCallId = `bex-setup-${index + 1}`;
+    const toolCallId = `bex-setup-${options.turn}-${index + 1}`;
     const title = `setup: ${step.name}`;
     // The tool name is the title, as acp-map.ts names the agent's tool calls.
     const tool = { toolCallId, toolName: title, dynamic: true as const };

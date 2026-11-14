@@ -446,6 +446,20 @@ func (f *fakeStore) CompleteAgentSessionTurn(_ context.Context, id string, turn 
 	return nil
 }
 
+func (f *fakeStore) MarkAgentSessionTurnHarvestFailed(_ context.Context, id string, turn int, reason string) error {
+	row, ok := f.turns[id][turn]
+	if !ok || row.TranscriptComplete || row.TranscriptTruncated {
+		return nil
+	}
+	row.TranscriptTruncated, row.TruncationReason = true, reason
+	if row.CompletedAt == nil {
+		at := f.now
+		row.CompletedAt = &at
+	}
+	f.turns[id][turn] = row
+	return nil
+}
+
 func (f *fakeStore) setTurnOutput(id string, turn int, output store.AgentTurnOutput) {
 	row := f.turns[id][turn]
 	row.OutputSchema, row.OutputRequired = output.Schema, output.Required

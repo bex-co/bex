@@ -644,6 +644,19 @@ func (s *PGStore) CompleteAgentSessionTurn(ctx context.Context, sessionID string
 	return nil
 }
 
+// MarkAgentSessionTurnHarvestFailed records that a finished turn's transcript
+// could not be harvested, unless a harvest already recorded a verdict on it. Each bex-api
+// replica's Completer reaps finished sessions, so one can read a sandbox just
+// after another captured its transcript and terminated it; that failed read
+// must not turn a captured transcript into a truncated one.
+func (s *PGStore) MarkAgentSessionTurnHarvestFailed(ctx context.Context, sessionID string, turn int, reason string) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE agent_session_turns
+		SET transcript_truncated=true, truncation_reason=$3, completed_at=COALESCE(completed_at, now())
+		WHERE session_id=$1 AND turn=$2 AND NOT transcript_complete AND NOT transcript_truncated`, sessionID, turn, reason)
+	return err
+}
+
 // RecordAgentSessionResult stores the structured result the agent submitted
 // for a session's current turn (ADR094 D5). It writes only while the session
 // is in a credential-eligible live phase and only to a turn that carries an

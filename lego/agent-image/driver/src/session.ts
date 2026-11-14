@@ -275,6 +275,7 @@ export async function runHeadlessTurn(
             ) {
               await runRepoSetup(config.repoEnvironment, {
                 cwd: config.cwd,
+                turn,
                 // The agent's own process environment (acp.ts), so steps see
                 // PATH, HOME and the session's secrets.
                 env: { ...process.env, ...agentEnv } as Record<string, string>,

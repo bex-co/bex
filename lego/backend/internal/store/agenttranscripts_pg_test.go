@@ -467,3 +467,55 @@ func TestPGToolFullOutputCapCountsTheSameTransaction(t *testing.T) {
 		}
 	}
 }
+
+// A failed transcript read marks only a turn no harvest recorded a verdict on
+// (w9/m387 t008): another replica's late read must not undo a capture.
+func TestPGMarkAgentSessionTurnHarvestFailedKeepsAnEarlierVerdict(t *testing.T) {
+	s, _, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	tenant, err := s.CreateTenant(ctx, "turn-unread-test", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteTenant(context.Background(), tenant.ID) })
+	read := func(id string) (complete, truncated bool, reason string) {
+		t.Helper()
+		if err := s.Pool.QueryRow(ctx, `SELECT transcript_complete, transcript_truncated, truncation_reason FROM agent_session_turns WHERE session_id=$1 AND turn=1`, id).Scan(&complete, &truncated, &reason); err != nil {
+			t.Fatal(err)
+		}
+		return complete, truncated, reason
+	}
+
+	captured := legacySession(t, s, tenant.ID, []json.RawMessage{json.RawMessage(`{"type":"text","text":"done"}`)}, true, "")
+	if err := s.CompleteAgentSessionTurn(ctx, captured, 1, true, false, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkAgentSessionTurnHarvestFailed(ctx, captured, 1, "transcript read failed"); err != nil {
+		t.Fatal(err)
+	}
+	if complete, truncated, reason := read(captured); !complete || truncated || reason != "" {
+		t.Fatalf("captured turn after a failed read: complete=%t truncated=%t reason=%q, want it kept complete", complete, truncated, reason)
+	}
+
+	limited := legacySession(t, s, tenant.ID, []json.RawMessage{json.RawMessage(`{"type":"text","text":"cut"}`)}, true, "")
+	if err := s.CompleteAgentSessionTurn(ctx, limited, 1, false, true, "transcript item limit reached"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkAgentSessionTurnHarvestFailed(ctx, limited, 1, "transcript read failed"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, reason := read(limited); reason != "transcript item limit reached" {
+		t.Fatalf("truncated turn's reason = %q, want the harvest's own kept", reason)
+	}
+
+	unread := legacySession(t, s, tenant.ID, []json.RawMessage{json.RawMessage(`{"type":"text","text":"x"}`)}, true, "")
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns SET transcript_complete=false, transcript_truncated=false, truncation_reason='' WHERE session_id=$1`, unread); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkAgentSessionTurnHarvestFailed(ctx, unread, 1, "transcript read failed"); err != nil {
+		t.Fatal(err)
+	}
+	if complete, truncated, reason := read(unread); complete || !truncated || reason != "transcript read failed" {
+		t.Fatalf("unread turn: complete=%t truncated=%t reason=%q, want truncated with the read failure", complete, truncated, reason)
+	}
+}

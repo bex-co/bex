@@ -116,6 +116,9 @@ type Store interface {
 	// of the request it was created from (ADR094 D4); store.ErrNotFound when none.
 	FindAgentSessionByIdempotencyKey(ctx context.Context, workspaceID, key string) (store.AgentSession, string, error)
 	CompleteAgentSessionTurn(ctx context.Context, sessionID string, turn int, complete, truncated bool, reason string) error
+	// MarkAgentSessionTurnHarvestFailed records a failed harvest on a turn no
+	// harvest has recorded a verdict on yet.
+	MarkAgentSessionTurnHarvestFailed(ctx context.Context, sessionID string, turn int, reason string) error
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	// Last complete items of one turn, newest first (ADR094 D7 outcome summary).
 	AgentSessionTurnTail(ctx context.Context, sessionID string, turn int, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
