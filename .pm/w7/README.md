@@ -15,6 +15,9 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m390** — [Muse Code runs as a fourth Cloud Agent profile (`muse`) in the agent sandbox](m390/README.md) (11 tasks) ← `/pm-brainstorm add meta muse coding agent with muse-code-acp to our cloud agents` item 1, filed by `/pmx them all to w7`, 2026-11-13
+- [ ] **m391** — [Muse on bex's Meta API key, contributor tier only](m391/README.md) (9 tasks; t005 needs a Meta Model API key from the user and m392) ← same brainstorm, item 2 as revised by the user's 2026-11-13 decisions (Meta's official API, not OpenRouter; `muse-spark-1.3-contributor` only)
+- [ ] **m392** — [Admins choose which Cloud Agents are available; Muse needs admin opt-in](m392/README.md) (8 tasks) ← same brainstorm, item 3 (Devin parity; Muse off by default is a recorded recommendation, not a user sign-off)
 - [x] **m296** — [Agent sessions record who started them: a "started by me" filter and editable tags (Devin parity)](done/m296/README.md) (8 tasks) — **DONE 2026-11-10:** `createdBy` on REST/GraphQL/MCP, `mine` and `createdBy` list filters, replace-all tags (`PUT …/tags`, `setAgentSessionTags`, `set_agent_session_tags`), the rail opens on Mine with Everyone, "Started by" in the header and lists, and an Edit tags dialog. Live on `a08efa99a`, verified on production as the QA user.
 
 **Approved monitoring queue (2026-09-28):** `$pm all for w7` materializes all five proposals in priority order **m161 → m162 → m163 → m164 → m165** (~17h50m including closing tasks). Work sequentially because the milestones share monitoring configuration. m165/t001 reuses the private Alloy scrape from m163/t001; the other milestones have no hard dependency on one another. Existing blocked work retains its scope.
