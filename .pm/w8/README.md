@@ -439,6 +439,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **326** — [A static site serves `.js` as `text/javascript; charset=utf-8`, `.xml` as `text/xml; charset=utf-8` and `.webmanifest` as `application/manifest+json`, where Render serves `application/javascript`, `application/xml` and `binary/octet-stream`](326.md) (~30m) ← `/qa-find-bugs-cli` sweep a1a1 2026-11-14 (bex v0.6.0), minor.
+  - **Render:** `application/javascript` on `sveltekit-static.onrender.com`'s bundles, `application/xml` on 8 sitemaps and feeds across 4 sites, `binary/octet-stream` on 2 `site.webmanifest` files.
+  - **bex:** the aws-cli 2.22.35 uploader's Python 3.12 table stores `text/javascript`, `text/xml` and `application/manifest+json`; `contentType` (`staticserver.go:1126`) keeps the origin's type, and `declareUTF8Text` adds the charset.
+  - **Fix:** map the three extensions (and `.mjs`/`.cjs` with `.js`) to Render's types in `contentType`, ahead of the origin.
+
 - [x] **325** — [A static-site rule `/x/*` also matches the bare path `/x`, for both routes and headers, where Render matches only `/x/` and the paths below it](done/325.md) (~30m) ← `/qa-find-bugs-cli` sweep 1b01 2026-11-14 (bex v0.6.0), minor. On `wc3v.onrender.com` the bare `/assets/wc3icons` and `/maps` 404 past their `/*` redirects, and `/dev`, `/data` and `/skills` miss their `/*` header rules. bex's `matchPattern` (`staticserver.go:789`) matches `reqPath == prefix`. Drop that case for routes and headers. **DONE 2026-11-14.** `/x/*` covers `/x/` and below, never `/x`, for routes and headers (and `/:name/*` likewise). Production check owed after the static-server rolls.
 
 - [x] **324** — [A static-site redirect rule drops the request's query string (`/old/x?v=1` → `Location: …/x`), stamps the site's custom headers on the 301, and is skipped for `POST`, where Render forwards the query, sends a bare 301 and redirects every method](done/324.md) (~45m) ← `/qa-find-bugs-cli` sweep 1b01 2026-11-14 (bex v0.6.0), major.
