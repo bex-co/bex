@@ -20,10 +20,10 @@
 #     (lego/operator/internal/registry/verify.go, docs/ADR022-tenant-isolation.md
 #     § Credential activation). resourceNames pins it to the chart's single
 #     StatefulSet replica, so the grant cannot patch any other pod here.
-#   registry.EnsureActive last resort + ensureStorageActive: pods get/list/delete
-#     — a credential still rejected after the 3m activation grace (hot reload is
-#     broken; RegistryCredentialActivationRestarted alerts) or a new storage
-#     block (w8/m156) restarts zot. Scoped here, not in the manager ClusterRole:
+#   registry.EnsureActive last resort: pods get/list/delete — a credential
+#     still rejected after the 3m activation grace (hot reload is broken;
+#     RegistryCredentialActivationRestarted alerts) restarts zot. A storage
+#     block change reloads live (w4/649). Scoped here, not in the manager ClusterRole:
 #     the operator must never gain pod-delete on tenant or platform namespaces.
 #     Deliberately "delete", never "deletecollection" (bounceZot lists then
 #     deletes each pod).

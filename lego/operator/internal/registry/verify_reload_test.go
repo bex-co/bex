@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -124,9 +125,6 @@ func newReloadFixture(t *testing.T) (c *Creds, cl client.Client, nudges, restart
 		return zot.project(ctx, cw)
 	})
 	c.Client = cl
-	// The storage block is not under test: mark it loaded so its one-time
-	// restart (w8/m156) does not count as an activation restart.
-	c.storageActive = true
 	if err := zot.project(context.Background(), cl); err != nil {
 		t.Fatal(err)
 	}
@@ -300,5 +298,43 @@ func TestNudgeFailureDoesNotFailTheWrite(t *testing.T) {
 	}
 	if err := c.EnsureCreds(ctx, "fresh", "default"); err != nil {
 		t.Fatalf("EnsureCreds with no zot pod to nudge: %v", err)
+	}
+}
+
+// w4/649: zot v2.1.22 applies a changed storage block (GC, retention) on the
+// same live reload as the ACL beside it, so neither a fresh install's first
+// App nor a later storage change restarts zot. The write is nudged like any
+// other config write, and the block zot reloads is the new one.
+func TestAStorageChangeReloadsWithoutRestart(t *testing.T) {
+	c, cl, nudges, restarts := newReloadFixture(t)
+	ctx := context.Background()
+
+	// Fresh install: the first App bootstraps the config with its storage block.
+	if err := c.EnsureCreds(ctx, "fresh", "default"); err != nil {
+		t.Fatal(err)
+	}
+	// A storage-only change (another retention count): nothing else to write.
+	changed := &Creds{Client: cl, ZotNamespace: c.ZotNamespace, HTPasswdName: c.HTPasswdName,
+		ConfigName: c.ConfigName, Registry: c.Registry, RetentionCount: 7}
+	nudgesBefore := nudges.Load()
+	if err := changed.EnsureCreds(ctx, "fresh", "default"); err != nil {
+		t.Fatal(err)
+	}
+	if got := nudges.Load() - nudgesBefore; got != 1 {
+		t.Fatalf("nudges for the storage change = %d, want 1", got)
+	}
+	zot := &projectedZot{}
+	if err := zot.project(ctx, cl); err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(zot.document, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := doc["storage"], changed.canonicalStorage(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("zot reloads storage %v, want the new block %v", got, want)
+	}
+	if restarts.Load() != 0 || !zotPodExists(t, cl) {
+		t.Fatal("a storage change restarted zot")
 	}
 }

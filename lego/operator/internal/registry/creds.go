@@ -106,9 +106,6 @@ type Creds struct {
 	apps       map[string]activation
 	lastBounce time.Time
 	lastNudge  time.Time
-	// storageActive is set once this process has seen that a zot restart
-	// loaded the canonical storage block (ensureStorageActive).
-	storageActive bool
 	// verified memoizes bcrypt comparisons by zot username (see hashVerified).
 	verified map[string][sha256.Size]byte
 }
@@ -185,9 +182,9 @@ func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS 
 	if err != nil {
 		return fmt.Errorf("zot config: %w", err)
 	}
-	// The config now carries the canonical storage block; make sure a zot
-	// restart has loaded it.
-	c.ensureStorageActive(ctx)
+	// The same write brings the config's storage block (GC, retention) to the
+	// canonical one, and zot applies that block live on the reload the write's
+	// nudge triggers, like the ACL beside it: no restart (w4/649, ADR022).
 	wroteDual := false
 	if c.DualReadEnabled && id.DualRead() {
 		// Only issued inside a supervised migration window (DualReadEnabled).

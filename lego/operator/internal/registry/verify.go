@@ -327,7 +327,7 @@ func (c *Creds) zotPods(ctx context.Context) ([]corev1.Pod, error) {
 // bounceZot deletes the registry pods (StatefulSet-managed, so they restart
 // and re-read htpasswd + config). Callers rate-limit via BounceCooldown. A
 // restart fails every tenant's in-flight push and pull, so only the
-// last-resort activation path and a storage-block change use it.
+// last-resort activation path uses it.
 // Deliberately list+delete rather than DeleteAllOf so the RBAC grant stays
 // "delete", never "deletecollection" (deploy/gitops/base/operator-registry-rbac.yaml).
 func (c *Creds) bounceZot(ctx context.Context) error {
