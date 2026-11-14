@@ -53,6 +53,11 @@ const (
 	// migration's output. Kept in sync by hand, like PodLabelApp above.
 	PodLabelPreDeploy  = "app.bex.co/predeploy"
 	PreDeployContainer = "predeploy"
+	// PodLabelComponent marks a pod an App's execution step runs in (the
+	// pre-deploy Job, a build or publish in the App's namespace), which also
+	// carries PodLabelApp; the App's own instances never carry it
+	// (execution.PodLabels in the operator).
+	PodLabelComponent = "app.bex.co/component"
 	// PodLabelCNPGCluster + CNPGPostgresContainer identify CNPG pods for a
 	// managed Postgres. CNPG stamps every cluster pod with cnpg.io/cluster=<cr-name>;
 	// the main postgres container is always named "postgres". The database logs
@@ -2244,11 +2249,15 @@ func (b *Base) AppPodsIn(ctx context.Context, namespace, app string) ([]corev1.P
 	return pods.Items, nil
 }
 
-// OwnAppPods is app's pods without those of an earlier App of the same name: a
-// service recreated under a deleted one's name shares its pod label, and the
-// predecessor's pods can still be terminating (w8/m124).
+// OwnAppPods is app's instance pods. It drops those of an earlier App of the
+// same name: a service recreated under a deleted one's name shares its pod
+// label, and the predecessor's pods can still be terminating (w8/m124). It
+// also drops the pods of app's execution steps, which share the label too: the
+// pre-deploy Job's pod is no instance, though it runs while the command does
+// (w4/663).
 func (b *Base) OwnAppPods(ctx context.Context, app *appv1alpha1.App) ([]corev1.Pod, error) {
 	pods, err := b.AppPodsIn(ctx, app.Namespace, app.Name)
+	pods = slices.DeleteFunc(pods, func(p corev1.Pod) bool { return p.Labels[PodLabelComponent] != "" })
 	return DropOtherIncarnations(pods, AppIncarnationID(app), AppNotBefore(app)), err
 }
 

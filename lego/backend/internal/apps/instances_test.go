@@ -107,6 +107,33 @@ func TestListInstancesProjectsLiveRolloutPodsOnly(t *testing.T) {
 	}
 }
 
+// w4/663: the pre-deploy Job's pod carries the App's pod label while its
+// command runs, but it is no instance: a first deploy in pre-deploy lists none
+// (as the shell says), and a later one only the Deployment's pods.
+func TestListInstancesSkipsThePreDeployPod(t *testing.T) {
+	for _, serviceType := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker} {
+		t.Run(serviceType, func(t *testing.T) {
+			app := instanceTestApp()
+			app.Spec.Type = serviceType
+			created := time.Date(2026, 11, 14, 13, 38, 34, 0, time.UTC)
+			preDeploy := instanceTestPod("predeploy-web-gen-2-x7k2p", app.Name, "99999999-9999-9999-9999-999999999999", corev1.PodRunning, created)
+			preDeploy.Labels[core.PodLabelComponent] = "predeploy"
+			preDeploy.Labels[core.PodLabelPreDeploy] = app.Name
+
+			got, err := instanceService(app, preDeploy).ListInstances(context.Background(), testServiceID)
+			if err != nil || len(got) != 0 {
+				t.Fatalf("first deploy in pre-deploy: instances = %+v, %v; want none", got, err)
+			}
+
+			serving := instanceTestPod("web-5ff6c9466c-l4hnb", app.Name, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", corev1.PodRunning, created.Add(-time.Hour))
+			got, err = instanceService(app, preDeploy, serving).ListInstances(context.Background(), testServiceID)
+			if err != nil || len(got) != 1 || !got[0].CreatedAt.Equal(serving.CreationTimestamp.Time) {
+				t.Fatalf("later deploy in pre-deploy: instances = %+v, %v; want only the serving pod", got, err)
+			}
+		})
+	}
+}
+
 func TestListInstancesReturnsAllocatedEmptyArrayForNoReplicaKinds(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
