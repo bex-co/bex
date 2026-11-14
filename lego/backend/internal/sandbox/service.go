@@ -98,6 +98,11 @@ type Template struct {
 	// Env is the template's own environment, under the caller's create env
 	// (a caller's variable of the same name wins).
 	Env map[string]string
+	// SessionOnly marks a template only an agent session's sandbox runs: its
+	// entrypoint needs the session env (model-proxy URL, session id,
+	// placeholder key) that a public create cannot set, since every BEX_* name
+	// is reserved, so the public create treats it as unknown (w7/063).
+	SessionOnly bool
 }
 
 // SessionEgress is the network-mechanism seam used by the agent-session
@@ -828,7 +833,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 		name = s.DefaultTemplate // Render CLI create sends no template — use the default.
 	}
 	tmpl, ok := s.Templates[name]
-	if !ok {
+	if !ok || tmpl.SessionOnly {
 		return Sandbox{}, fmt.Errorf("%w: unknown template %q", core.ErrBadRequest, name)
 	}
 	// A plan the caller names is the sandbox's size, as on Render; an omitted

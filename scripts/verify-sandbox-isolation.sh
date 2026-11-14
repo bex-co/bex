@@ -154,6 +154,7 @@ cleanup() {
   kubectl -n opensandbox-system delete pod "$controller_probe_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n "$namespace_a" delete service "$peer_service" --ignore-not-found >/dev/null 2>&1
   kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "bex.co/agent-session=$session_label" --ignore-not-found >/dev/null 2>&1
+  kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "bex.co/verify-run=$run_id" --ignore-not-found >/dev/null 2>&1
   [ -n "$cr_a" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_a" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_b" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_b" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_c" ] && kubectl -n "$namespace_b" delete batchsandbox "$cr_c" --ignore-not-found --wait=false >/dev/null 2>&1
@@ -458,9 +459,8 @@ if [ "$verify_agent_driver" = 1 ]; then
   # The agent image's driver starts only with a session's env (model-proxy
   # URL, session id, placeholder key), which a public sandbox create cannot
   # give it (every BEX_* name is refused), so the leg starts a chat-only
-  # session the way production does. Its model key is a per-run placeholder:
-  # the turn fails upstream, which the leg does not need, and the sandbox
-  # stays up through the idle grace after it (BEX_AGENT_SANDBOX_IDLE_TTL).
+  # session the way production does, on a per-run placeholder model key (the
+  # create needs one; the leg needs no model answer).
   expect_status 200 "$fixture_dir/admin-a.curl" PATCH "/v1/agent-environment?ownerId=$BEX_WORKSPACE_A" \
     "$fixture_dir/agent-environment.json" --header 'Content-Type: application/json' \
     --data "{\"modelApiKey\":\"isolation-matrix-placeholder-$run_id\"}"
@@ -468,6 +468,18 @@ if [ "$verify_agent_driver" = 1 ]; then
     "$fixture_dir/agent-session.json" --header 'Content-Type: application/json' \
     --data '{"title":"isolation matrix agent leg","agentConfig":{"agent":"claude","task":"Reply with the word ok."}}'
   agent_session_id="$(jq -er '.id' "$fixture_dir/agent-session.json")"
+  # Hold that turn in flight: before the dispatch starts the pod, drop the
+  # session's egress to bex-system, where the gateway's model proxy listens.
+  # The model request then hangs instead of failing on the placeholder key, so
+  # the session stays running (a failed session's sandbox is reclaimed at
+  # once, w5/m80) and no request leaves the cluster.
+  jq -n --arg name "$run_id-hold-agent-turn" --arg namespace "$namespace_a" --arg run "$run_id" \
+    --arg session "$agent_session_id" '{
+      apiVersion: "cilium.io/v2", kind: "CiliumNetworkPolicy",
+      metadata: {name: $name, namespace: $namespace, labels: {"bex.co/verify-run": $run}},
+      spec: {endpointSelector: {matchLabels: {"bex.co/agent-session": $session}},
+        egressDeny: [{toEndpoints: [{matchLabels: {"k8s:io.kubernetes.pod.namespace": "bex-system"}}]}]}}' \
+    | kubectl apply -f - >/dev/null || fail "could not hold the agent session's turn"
 fi
 [ "$(jq -r '.region' "$fixture_dir/sandbox-a.json")" = "$group_region" ] \
   || fail "sandbox A reads a region other than its group's ($group_region): $(head -c 300 "$fixture_dir/sandbox-a.json")"

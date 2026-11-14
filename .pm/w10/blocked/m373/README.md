@@ -1,6 +1,6 @@
 # w10 · m373 — Service and deploy reads match Render's schema both ways; the rendertest allowlist excuses only signed-off divergences
 
-**Worker:** worker10 **Goal:** a client generated from Render's pinned OpenAPI with required-field validation parses every bex service and deploy read, and `rendertest.Allowlist` no longer excuses omissions that exist only because the test fixtures run without production configuration. **Status:** in progress (t001, t002, t004, t005, t006 done 2026-11-13; t003 open with its findings below; live DoD 3-4 wait for the deploy that carries this)
+**Worker:** worker10 **Goal:** a client generated from Render's pinned OpenAPI with required-field validation parses every bex service and deploy read, and `rendertest.Allowlist` no longer excuses omissions that exist only because the test fixtures run without production configuration. **Status:** blocked (t001–t009 done 2026-11-13/14; t010 waits on two gates: DoD 1 needs a Render capture or the user's sign-off for each open entry in § Findings, and DoD 3-4 need the production deploy that carries this milestone)
 
 ## Tasks (in order)
 
@@ -8,13 +8,13 @@
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | The rendertest suites run on production-shaped fixtures; drop the metadata entries that only fixtures reproduce — **DONE** | 1.5h | — |
 | [t002](done/t002.md) | Every service read carries Render's required `buildPlan`, and a web service its `healthCheckPath` (absorbs w4/626) — **DONE** | 40m | t001 |
-| [t003](t003.md) | The remaining serviceDetails entries: conform each, or record it with the user's sign-off | 1h | t002 |
+| [t003](done/t003.md) | The remaining serviceDetails entries: conform each, or record it with the user's sign-off — **DONE** | 1h | t002 |
 | [t004](done/t004.md) | A Git-built service's deploys carry no `image` on any tenant read (absorbs w4/621) — **DONE** | 45m | t001 |
 | [t005](done/t005.md) | `numInstances` appears only where Render's schema has it; a cron job's header has no Instances fact (absorbs w4/606) — **DONE** | 30m | t001 |
 | [t006](done/t006.md) | ADR018 and the allowlist record what is left — **DONE** | 20m | t003, t004, t005 |
-| [t007](t007.md) | Render parity | 20m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 40m | t007, t008 |
+| [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 40m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 6h10m**.
@@ -50,3 +50,12 @@ Total: **10 tasks, about 6h10m**.
   - `runtime`/`env` (2): a build-source-linked service has no runtime. Real; same capture question.
   - `publishPath` (6) and `disk/id` (3, no control-plane store): fixture-shaped.
 - **Not changed:** `logs.DeployProgress.Image` (`api/server.go:889`) still narrates a Git deploy's internal image in the deploy log stream; `AppView.Image` is unchanged.
+
+**2026-11-14 (`/loopx w10`, t003).** The allowlist went from 40 to 34: 16 "Partial serviceDetails projection", 9 "Resource metadata omitted when unknown", 6 event details, 3 dry-run previews.
+
+- **Fixture gaps closed.** `plan`: every service bex-api or a Blueprint creates carries a tier, so `rendertest.Stamped` gives an App with no recorded writer create's default (`starter`); `rendertest.KubectlApplied` keeps a hand-applied CR tierless. `publishPath`: six static-site fixtures lacked the publish path every create path requires. `disk/id`: the bare apps mux has no workspace resolver, so its create writes no control-plane disk row; the field is now part of `SourceWorkspaces`.
+- **DoD 2 shown (scratch, not committed).** With `{"region", region}` removed from `renderServiceDetails`, `go test ./internal/api/ -run TestRenderConformance` fails on `/N/service/serviceDetails/region: property "region" is missing` for every listed service.
+- **Open: private service `url`.** Render's `privateServiceDetails` has required `url` in every pinned spec since 2026-07-20. bex omits it on a docs-based 2026-07-26 reading with no live capture (`docs/render-artifacts/service-addresses.md`, ADR041 D4). The value Render sends is unknown. A web service whose platform subdomain is off and has no custom domain also has no `url`.
+- **Open: image service `envSpecificDetails`.** Without a command there is none; with one, the block carries only the commands the official CLI clones (`dockerCommand`, `preDeployCommand`, a cron's `startCommand`), so it matches neither `dockerDetails` (which requires `dockerContext` and `dockerfilePath`) nor `nativeEnvironmentDetails`. Render's shape for `runtime: image` is not in the contract.
+- **Open: `runtime`/`env`.** A build-source-linked service takes its runtime from the carrier App, and `view()` has no context to read it; the matching `envSpecificDetails` would also have to come from the carrier. A bex `buildpack` builder with no explicit runtime names no Render runtime; this is a bex extension.
+- **What closes them:** a Render capture of a private service, an image service and a build-source-linked service (needs a Render API key, w10/002's gate), or the user's sign-off on each row in ADR018.

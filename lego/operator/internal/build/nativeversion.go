@@ -78,6 +78,9 @@ type NativeChoice struct {
 	// imageSuite is the Debian suite named by verified official-image history;
 	// empty only for the recognized legacy ADD history without a suite.
 	imageSuite string
+	// narratedVersion is the version the log names when it is not the line: the
+	// Rust toolchain rustup applies inside the line's one image (w8/327).
+	narratedVersion string
 }
 
 // Narration is the build-log line that names the choice and its source.
@@ -90,6 +93,9 @@ func (c NativeChoice) Narration() string {
 		from = "from " + c.Source
 	}
 	version := c.Line
+	if c.narratedVersion != "" {
+		version = c.narratedVersion
+	}
 	if c.otp != "" {
 		version += " on Erlang/OTP " + c.otp
 	}
@@ -115,7 +121,8 @@ func (e *UnsupportedVersionError) Error() string { return e.msg }
 //	node    NODE_VERSION → .node-version → .nvmrc → package.json engines.node → default
 //	ruby    Gemfile.lock / gems.locked RUBY VERSION → .ruby-version → .tool-versions → Gemfile `ruby` → default
 //	elixir  ELIXIR_VERSION (→ line), ERLANG_VERSION (must match that line's OTP major; a minor or patch is installed exactly, w8/197)
-//	go, rust  default (Render offers no Go selection; rustup applies Rust's)
+//	go      default (Render offers no Go selection)
+//	rust    the one line; RUSTUP_TOOLCHAIN → rust-toolchain → rust-toolchain.toml name the toolchain rustup applies (w8/327)
 //
 // A plain version maps onto its line by major.minor (major for Node) — a
 // requested patch is not reproduced, a recorded divergence from Render. A
@@ -223,9 +230,56 @@ func resolveNativeLine(created time.Time, runtime string, env map[string]string,
 		return r.first(r.fromLockedRuby, r.fromFile(".ruby-version", r.rubyFileLine), r.fromToolVersions("ruby", r.rubyFileLine), r.fromGemfile)
 	case "elixir":
 		return r.elixir()
+	case nativeRustRuntime:
+		return r.rustToolchain()
 	default:
 		return r.choice(t.defaultLine, "")
 	}
+}
+
+// rustToolchain keeps Rust's one image and line and names the toolchain rustup
+// applies inside it, in Render's precedence (render.com/docs/rust-toolchain):
+// RUSTUP_TOOLCHAIN, else the root toolchain file rustup reads, rust-toolchain
+// before rust-toolchain.toml. A request is named as written; rustup resolves
+// or refuses it. With no signal the log names the pinned release (w8/327).
+func (r resolver) rustToolchain() (NativeChoice, error) {
+	choice, err := r.choice(r.t.defaultLine, "")
+	if err != nil {
+		return choice, err
+	}
+	line, _ := r.t.find(choice.Line)
+	choice.narratedVersion = line.version
+	if request := strings.TrimSpace(r.env["RUSTUP_TOOLCHAIN"]); request != "" {
+		request = boundedRequest(request)
+		choice.Source, choice.narratedVersion = "RUSTUP_TOOLCHAIN="+request, request
+		return choice, nil
+	}
+	for _, name := range [...]string{"rust-toolchain", "rust-toolchain.toml"} {
+		if raw, ok := r.readFile(name); ok {
+			if channel := rustToolchainChannel(raw); channel != "" {
+				choice.Source, choice.narratedVersion = name, boundedRequest(channel)
+			}
+			break // rustup reads only the first file present
+		}
+	}
+	return choice, nil
+}
+
+// rustToolchainTOML is a toolchain file's `channel = "…"` setting, in whatever
+// section it appears.
+var rustToolchainTOML = regexp.MustCompile(`(?m)^\s*channel\s*=\s*["']([^"']+)["']`)
+
+// rustToolchainChannel is the channel a rust-toolchain file names: its first
+// line in the legacy one-line form, or the TOML form's channel setting.
+func rustToolchainChannel(raw []byte) string {
+	first := firstMeaningfulLine(raw)
+	if !strings.HasPrefix(first, "[") {
+		return first
+	}
+	if m := rustToolchainTOML.FindSubmatch(raw); m != nil {
+		return strings.TrimSpace(string(m[1]))
+	}
+	return ""
 }
 
 // ResolveNativeBun picks the Bun companion a native build adds, with Render's
@@ -445,6 +499,11 @@ func firstLine(readFile func(string) ([]byte, bool), name string) string {
 	if !ok {
 		return ""
 	}
+	return firstMeaningfulLine(raw)
+}
+
+// firstMeaningfulLine is raw's first line that is neither blank nor a # comment.
+func firstMeaningfulLine(raw []byte) string {
 	for line := range strings.SplitSeq(string(raw), "\n") {
 		if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "#") {
 			return line

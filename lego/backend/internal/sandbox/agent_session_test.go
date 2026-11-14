@@ -41,7 +41,7 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	// DefaultPlan is the Render sandbox default (1c-2g): an agent session's
 	// sandbox must not take it (w8/247, asserted below).
 	svc := &Service{Base: &core.Base{}, Client: NewClient(upstream.URL), DefaultPlan: DefaultPlan,
-		Templates: map[string]Template{"agent": {Image: "bex/agent:1", Entrypoint: []string{"driver"}}}}
+		Templates: map[string]Template{"agent": {Image: "bex/agent:1", Entrypoint: []string{"driver"}, SessionOnly: true}}}
 	eg := &fakeSessionEgress{}
 	svc.SessionEgress = eg
 	lifecycle := NewAgentSessionLifecycle(svc)

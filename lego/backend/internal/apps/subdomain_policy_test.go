@@ -51,8 +51,17 @@ import (
 func typedApp(name, svcType string) *appv1alpha1.App {
 	a := sampleApp(name)
 	a.Spec.Type = svcType
-	if svcType == appv1alpha1.TypeCronJob {
-		a.Spec.Schedule = "0 * * * *" // every create path requires one
+	return withCreateRequired(a)
+}
+
+// withCreateRequired fills the type-specific fields every create path
+// requires: a cron job's schedule and a static site's publish path.
+func withCreateRequired(a *appv1alpha1.App) *appv1alpha1.App {
+	switch a.Spec.Type {
+	case appv1alpha1.TypeCronJob:
+		a.Spec.Schedule = "0 * * * *"
+	case appv1alpha1.TypeStaticSite:
+		a.Spec.PublishPath = "public"
 	}
 	return a
 }

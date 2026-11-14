@@ -113,7 +113,7 @@ func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Te
 	// § Until the AX42-1 arrives); 30Gi stays within the LimitRange's 32Gi max.
 	agentTemplate := func(plan sandbox.Plan) sandbox.Template {
 		cpu, memory, _ := sandbox.PlanLimits(plan)
-		return sandbox.Template{Image: agentImage, Entrypoint: []string{"bex-agent-driver"}, CPU: cpu, Memory: memory, EphemeralStorage: "30Gi"}
+		return sandbox.Template{Image: agentImage, Entrypoint: []string{"bex-agent-driver"}, CPU: cpu, Memory: memory, EphemeralStorage: "30Gi", SessionOnly: true}
 	}
 	return map[string]sandbox.Template{
 		"base": {

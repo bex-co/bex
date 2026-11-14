@@ -112,6 +112,18 @@ func TestPlanSizesTheSandbox(t *testing.T) {
 	}
 }
 
+// w7/063: the agent template's driver cannot start without a session's env,
+// which a public create cannot set, so the public create refuses it as an
+// unknown template before reaching OpenSandbox.
+func TestPublicCreateRefusesASessionOnlyTemplate(t *testing.T) {
+	svc := refusingUpstream(t)
+	svc.Templates["agent"] = Template{Image: "agent:1", Entrypoint: []string{"bex-agent-driver"}, SessionOnly: true}
+	_, err := svc.Create(callerCtx(), CreateRequest{Template: "agent"})
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `unknown template "agent"`) {
+		t.Fatalf("public create of a session-only template = %v, want 400 unknown template", err)
+	}
+}
+
 func TestOmittedPlanKeepsTheTemplateSize(t *testing.T) {
 	svc, got := recordingUpstream(t)
 	svc.Templates["agent"] = Template{Image: "agent:1", Entrypoint: []string{"sh"}, CPU: "2", Memory: "4Gi"}

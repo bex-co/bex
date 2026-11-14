@@ -37,7 +37,8 @@ const (
 	// SourceDashboardURL is BEX_DASHBOARD_URL: `dashboardUrl`.
 	SourceDashboardURL Source = "dashboardUrl"
 	// SourceWorkspaces is the workspace store: `owner` and `ownerId` (with no
-	// owner there is no owner email to miss).
+	// owner there is no owner email to miss), and a disk's `id`, read from the
+	// control-plane row a create writes only for a workspace's service.
 	SourceWorkspaces Source = "workspaces"
 	// SourceIdentities is the identity reader: a present owner's `email`.
 	SourceIdentities Source = "identities"
@@ -47,7 +48,7 @@ const (
 var sourceFields = map[Source][]string{
 	SourceRegion:       {"region"},
 	SourceDashboardURL: {"dashboardUrl"},
-	SourceWorkspaces:   {"owner", "ownerId"},
+	SourceWorkspaces:   {"owner", "ownerId", "serviceDetails/disk/id"},
 	SourceIdentities:   {"owner/email"},
 }
 

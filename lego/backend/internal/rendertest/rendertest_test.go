@@ -39,8 +39,9 @@ import (
 // entry per type and missing field, each recorded in ADR018's events row.
 // w10/m373 lowered it from 109 to 40: stamped managedFields and Wrap's
 // metadata Sources retired the fixture-only metadata entries, and serviceDetails
-// gained buildPlan and healthCheckPath.
-const allowlistSize = 40
+// gained buildPlan and healthCheckPath; then to 34 (fixture plan, publishPath
+// and disk id; ADR018 § Production-shaped fixtures).
+const allowlistSize = 34
 
 func TestAllowlistOnlyShrinks(t *testing.T) {
 	n := 0

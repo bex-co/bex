@@ -22,6 +22,7 @@
     "envSpecificDetails": {
       "startCommand": "echo QA_CLONE_MARKER"
     },
+    "plan": "starter",
     "runtime": "image",
     "schedule": "*/2 * * * *",
     "url": "https://qa-image-cron.onbex.co"

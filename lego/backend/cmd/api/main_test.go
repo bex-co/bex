@@ -69,6 +69,13 @@ func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
 			t.Errorf("%s ephemeral storage = %q, want 30Gi", name, tmpl.EphemeralStorage)
 		}
 	}
+	// w7/063: only a session's sandbox runs the agent driver; the public
+	// create refuses these templates, and the base one stays public.
+	for name, tmpl := range templates {
+		if want := name != "base"; tmpl.SessionOnly != want {
+			t.Errorf("%s SessionOnly = %v, want %v", name, tmpl.SessionOnly, want)
+		}
+	}
 	if got := templates["base"].EphemeralStorage; got != "" {
 		t.Errorf("base ephemeral storage = %q, want the LimitRange default", got)
 	}

@@ -25,6 +25,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -54,6 +55,7 @@ func TestCLIWorkspaceServicePaths(t *testing.T) {
 		a.Namespace = ws
 		a.Labels = map[string]string{core.LabelTenant: ws, core.LabelServiceName: "old", core.LabelAppID: services[i]}
 		a.Spec.DisplayName = "web"
+		rendertest.Stamped(a) // seeded as bex-api's write: StampOnCreate fills no tier
 		if err := base.Client.Create(context.Background(), a); err != nil {
 			t.Fatal(err)
 		}
@@ -61,6 +63,7 @@ func TestCLIWorkspaceServicePaths(t *testing.T) {
 	unique := sampleApp(core.CRName(workspaces[1], "unique"))
 	unique.Namespace = workspaces[1]
 	unique.Labels = map[string]string{core.LabelTenant: workspaces[1], core.LabelServiceName: "unique", core.LabelAppID: ids.New(ids.Service)}
+	rendertest.Stamped(unique)
 	if err := base.Client.Create(context.Background(), unique); err != nil {
 		t.Fatal(err)
 	}

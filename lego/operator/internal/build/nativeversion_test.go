@@ -117,7 +117,7 @@ func TestResolveNativeVersion(t *testing.T) {
 		{"elixir env", "elixir", map[string]string{"ELIXIR_VERSION": "1.17.3"}, nil, "1.17", "ELIXIR_VERSION=1.17.3"},
 		{"elixir with matching erlang", "elixir", map[string]string{"ELIXIR_VERSION": "1.19", "ERLANG_VERSION": "28.1"}, nil, "1.19", "ELIXIR_VERSION=1.19, ERLANG_VERSION=28.1"},
 		{"go ignores go.mod (Render parity)", "go", nil, map[string]string{"go.mod": "module x\n\ngo 1.26\n"}, "1.27", ""},
-		{"rust stays on rustup", "rust", map[string]string{"RUSTUP_TOOLCHAIN": "1.80"}, nil, "1", ""},
+		{"rust stays on its one image, naming rustup's toolchain", "rust", map[string]string{"RUSTUP_TOOLCHAIN": "1.80"}, nil, "1", "RUSTUP_TOOLCHAIN=1.80"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

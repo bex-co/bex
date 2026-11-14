@@ -439,6 +439,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [x] **327** — [A Rust build that sets its toolchain logs `==> Using Rust 1 (default)` while rustup builds on the toolchain it named, and the default line names no version](done/327.md) (~30m) ← `/qa-find-bugs-cli` sweep c687 2026-11-14 (bex v0.6.0), minor.
+  - **Render:** "Set the `RUSTUP_TOOLCHAIN` environment variable" or a root `rust-toolchain` file; the variable overrides the file; the default is "latest stable".
+  - **bex:** `RUSTUP_TOOLCHAIN=1.75.0` builds and runs on 1.75.0, but `resolveNativeLine` (`nativeversion.go:215`) sends Rust to its `default:` branch, so the log reads `Using Rust 1 (default)` (the pin is 1.99.1).
+  - **Fix:** a Rust case narrating `RUSTUP_TOOLCHAIN` → `rust-toolchain` → `rust-toolchain.toml` → the pinned `1.99.1`.
+  - **DONE 2026-11-14.** `rustToolchain` names the toolchain rustup applies; the line and image are unchanged. Production check owed after the operator rolls.
+
 - [x] **326** — [A static site serves `.js` as `text/javascript; charset=utf-8`, `.xml` as `text/xml; charset=utf-8` and `.webmanifest` as `application/manifest+json`, where Render serves `application/javascript`, `application/xml` and `binary/octet-stream`](done/326.md) (~30m) ← `/qa-find-bugs-cli` sweep a1a1 2026-11-14 (bex v0.6.0), minor.
   - **Render:** `application/javascript` on `sveltekit-static.onrender.com`'s bundles, `application/xml` on 8 sitemaps and feeds across 4 sites, `binary/octet-stream` on 2 `site.webmanifest` files.
   - **bex:** the aws-cli 2.22.35 uploader's Python 3.12 table stores `text/javascript`, `text/xml` and `application/manifest+json`; `contentType` (`staticserver.go:1126`) keeps the origin's type, and `declareUTF8Text` adds the charset.

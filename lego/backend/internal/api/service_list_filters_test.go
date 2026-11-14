@@ -34,6 +34,7 @@ func TestServiceListFiltersThroughComposedServer(t *testing.T) {
 	suspended.Spec.Runtime = "docker"
 	suspended.Spec.Suspended = true
 	static.Spec.Type = appv1alpha1.TypeStaticSite
+	static.Spec.PublishPath = "public"
 	h, _ := serverWith(t, &core.Base{Client: fakeClient(node, docker, suspended, static), Namespace: "default"}, Deps{APIKeys: newFakeKeyStore(), Region: "fsn1"})
 	for _, tc := range []struct {
 		query  string

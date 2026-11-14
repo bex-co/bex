@@ -16,9 +16,25 @@ limitations under the License.
 
 package core
 
+import "github.com/bex-co/bex/lego/types/tiers"
+
 // PaidPlan reports whether an already-catalog-validated plan is non-free.
 // Every tier family has the same explicit/default free id in tiers.yaml; the
 // feature owning the family validates/normalizes before calling this helper.
 func PaidPlan(plan string) bool {
 	return plan != "" && plan != "free"
+}
+
+// DefaultPaidComputeTier is the cheapest paid rung of the compute ladder — the
+// catalog is ordered smallest-first, so the first non-free id is the tier a
+// plan-less service falls to (starter, Render's 0.5c-512mb). The catalog-default
+// fallback is unreachable with the reviewed tiers.yaml, which always carries
+// paid rungs.
+func DefaultPaidComputeTier() string {
+	for _, tierID := range tiers.Compute.IDs() {
+		if PaidPlan(tierID) {
+			return tierID
+		}
+	}
+	return tiers.Compute.Default().ID
 }
