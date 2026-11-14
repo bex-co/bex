@@ -1459,18 +1459,7 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 	if record.Phase == PhaseCanceled {
 		return s.toView(record) // idempotent public cancel
 	}
-	record, err = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseCanceling, "canceling", false)
-	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
-	}
-	// ADR102 D6: with the parent canceling it can start no new child, so the
-	// descendants listed now are the whole set. They are canceled before the
-	// parent finishes, so a failure leaves the parent canceling and a retry
-	// of this verb converges the rest.
-	if err := s.cancelDescendants(ctx, record); err != nil {
-		return View{}, err
-	}
-	record, err = s.finishCancel(ctx, record)
+	record, err = s.cancelTree(ctx, record, true)
 	if err != nil {
 		return View{}, err
 	}
@@ -2061,6 +2050,11 @@ func mapStoreError(id string, err error) error {
 			params = map[string]any{"id": id}
 		}
 		return core.NewConflictError(codePullRequestOwned, "another live session already works on this pull request", params)
+	}
+	if errors.Is(err, store.ErrAgentSessionBranchInUse) {
+		return core.NewConflictError(BranchInUseCode,
+			"another session is already working on this branch; send that session a message, or name another bex-agent/ branch",
+			map[string]any{"field": "branch"})
 	}
 	if errors.Is(err, store.ErrAgentSessionPromptQuota) {
 		return core.NewConflictError("AGENT_SESSION_PROMPT_QUOTA", "agent session prompt history has reached its byte limit", map[string]any{"id": id, "maxBytes": store.MaxAgentSessionPromptBytes})

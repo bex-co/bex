@@ -47,9 +47,10 @@ const (
 	// Public-server timeouts bound slow-header/slow-read/idle connections so a
 	// trickle client cannot pin a goroutine + fd open on the shared single-replica
 	// server (finding 12). ReadHeaderTimeout caps slow request headers; ReadTimeout
-	// caps the whole request read (this server only ever answers GET/HEAD, so a
-	// declared-but-withheld body must not pin a goroutine on Go's unread-body
-	// drain — w4/029.md #16); WriteTimeout caps the response phase (generous so a
+	// caps the whole request read (another method is proxied or answered without
+	// reading its body, so a declared-but-withheld body must not pin a goroutine
+	// on Go's unread-body drain — w4/029.md #16, w8/319); WriteTimeout caps the
+	// response phase (generous so a
 	// large-but-legitimate asset over a slow link still completes); IdleTimeout
 	// caps keep-alive idle.
 	readHeaderTimeout = 10 * time.Second

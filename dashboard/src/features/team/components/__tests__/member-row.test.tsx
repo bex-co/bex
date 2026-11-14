@@ -13,7 +13,6 @@ function member(overrides: Partial<MemberView> = {}): MemberView {
     createdAt: null,
     mfaEnabled: false,
     identityResolved: true,
-    isOwner: false,
     isSelf: false,
     ...overrides,
   };
@@ -106,39 +105,21 @@ describe("MemberRow — membership invariants (w5/m101)", () => {
     expectExplainedTriggers(2); // the role picker and the Remove action
   });
 
-  it("disables Remove and demotion on the workspace owner's row, and says why", () => {
-    renderRow({ isOwner: true });
-
-    expect(screen.getByText("Owner")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Remove \S/ })).toBeDisabled();
-    expect(screen.getByRole("combobox")).toBeDisabled();
-    expectExplainedTriggers(2);
-  });
-
   it("leaves an ordinary teammate fully actionable", () => {
     renderRow({});
 
     expect(screen.queryByText("You")).toBeNull();
-    expect(screen.queryByText("Owner")).toBeNull();
     expect(screen.getByRole("button", { name: /^Remove \S/ })).toBeEnabled();
     expect(screen.getByRole("combobox")).toBeEnabled();
     expectExplainedTriggers(0); // nothing to explain — nothing is refused
   });
 
-  it("names the refusal each row would hit, self before owner", () => {
+  it("names the refusal each row would hit: only the caller's own", () => {
     expect(memberActionReasonKeys(member())).toEqual({
       removeReason: null,
       roleReason: null,
     });
-    expect(memberActionReasonKeys(member({ isOwner: true }))).toEqual({
-      removeReason: "team.removeOwnerReason",
-      roleReason: "team.changeOwnerRoleReason",
-    });
-    // The owner looking at their own row is told about themselves — that
-    // refusal (CANNOT_REMOVE_SELF) is the one the server answers first.
-    expect(
-      memberActionReasonKeys(member({ isOwner: true, isSelf: true })),
-    ).toEqual({
+    expect(memberActionReasonKeys(member({ isSelf: true }))).toEqual({
       removeReason: "team.removeSelfReason",
       roleReason: "team.changeOwnRoleReason",
     });

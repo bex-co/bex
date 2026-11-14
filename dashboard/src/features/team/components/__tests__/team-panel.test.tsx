@@ -105,7 +105,8 @@ describe("TeamPanel", () => {
     const rows = skeleton.querySelectorAll("[data-skeleton-region=member-row]");
     expect(rows).toHaveLength(1);
     expect(rows[0]).toHaveTextContent("You");
-    expect(rows[0]).toHaveTextContent("Owner");
+    // The ready row has no Owner badge since w5/m372, so neither does this.
+    expect(rows[0]).not.toHaveTextContent("Owner");
     expect(rows[0].querySelector(".font-mono.text-xs")).not.toBeNull();
     teamState.loading = false;
   });
@@ -120,7 +121,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
       {
@@ -131,7 +131,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -150,7 +149,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -170,7 +168,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -189,7 +186,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -207,7 +203,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -231,7 +226,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -303,7 +297,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: true,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
       {
@@ -314,7 +307,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -335,7 +327,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
       {
@@ -346,7 +337,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -385,7 +375,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -410,7 +399,6 @@ describe("TeamPanel", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];
@@ -504,7 +492,6 @@ describe("remove-member dialog discloses key revocation", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
       {
@@ -515,7 +502,6 @@ describe("remove-member dialog discloses key revocation", () => {
         createdAt: null,
         mfaEnabled: false,
         identityResolved: true,
-        isOwner: false,
         isSelf: false,
       },
     ];

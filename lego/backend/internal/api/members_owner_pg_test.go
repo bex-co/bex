@@ -32,27 +32,26 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
-// members_owner_pg_test.go is w5/m101's regression proof against REAL Postgres,
-// driving the REAL chain the defect ran through: members.Service.Remove over
-// PGStore, then the onboarding path (tenantService.EnsureTenant) the auth gate
-// runs on every session request (internal/api/auth.go).
+// members_owner_pg_test.go proves, against REAL Postgres, the workspace
+// creator's removal and demotion (w5/m372, after w5/m101) over the REAL chain:
+// members.Service over PGStore, then the onboarding path
+// (tenantService.EnsureTenant) the auth gate runs on every session request
+// (internal/api/auth.go).
 //
-// The defect: onboarding resolves the personal workspace by
-// tenants.owner_identity_id and re-grants workspace admin on every cache miss,
-// so an owner removed through the members surface either (a) has their admin
-// tuple resurrected on the next request — the removal never sticks — or (b),
-// if that were "fixed" by honoring the removal, is left permanently
-// workspace-less, because TenantForOwner keeps finding the workspace and
-// CreateTenantWithMember is never reached. Refusing the removal is the only
-// answer that is correct in both directions.
+// Onboarding resolves the personal workspace by tenants.owner_identity_id and
+// re-grants workspace admin on every cache miss. w5/m101 refused the creator's
+// removal because, with the binding left in place, a removal either never
+// stuck (admin resurrected) or stranded the account. The store now ends the
+// binding in the same transaction as the membership, so neither can happen:
+// the removed creator's next session lands in a fresh personal workspace.
 //
 //	BEX_TEST_DB_URI=postgres://…/postgres?sslmode=disable \
-//	  go test ./internal/api -run TestOwnerRemoval -v
+//	  go test ./internal/api -run 'TestRemovingTheCreator|TestDemotingTheCreator|TestConcurrentRemovals' -v
 //
 // Like the other internal/api real-Postgres tests this is ADDITIVE: it never
 // truncates (packages run concurrently against the same throwaway database),
 // so every subject and workspace name is unique to the run.
-func TestOwnerRemovalIsRefusedAndCannotResurrectAdmin(t *testing.T) {
+func TestRemovingTheCreatorNeitherRestoresAdminNorStrandsTheAccount(t *testing.T) {
 	ctx, pool, st := ownerGuardPG(t)
 	run := uniqueRunSuffix()
 	owner, second := "owner-"+run, "admin-"+run
@@ -70,53 +69,51 @@ func TestOwnerRemovalIsRefusedAndCannotResurrectAdmin(t *testing.T) {
 	granter := &recordingGranter{}
 	ms := &members.Service{Base: &core.Base{}, Store: st, Granter: granter, Revoker: granter}
 
-	// 1. The refusal, from the surface the Team page drives. The last-admin rule
-	//    cannot explain it — there are two admins.
-	err = ms.Remove(core.WithIdentity(ctx, core.Identity{Subject: second, Method: "session"}), tenant.ID, owner)
-	var coded *core.CodedError
-	if !errors.As(err, &coded) || coded.Code != members.ErrorOwnerCannotBeRemoved {
-		t.Fatalf("remove owner: %v, want %s", err, members.ErrorOwnerCannotBeRemoved)
+	// 1. Another admin removes the creator, as Render allows (w5/m372): the row
+	//    and the onboarding binding end in one transaction.
+	if err := ms.Remove(core.WithIdentity(ctx, core.Identity{Subject: second, Method: "session"}), tenant.ID, owner); err != nil {
+		t.Fatalf("remove the creator: %v", err)
 	}
-	if _, err := st.GetTenantMember(ctx, tenant.ID, owner); err != nil {
-		t.Fatalf("owner membership row gone after a refused removal: %v", err)
+	if _, err := st.GetTenantMember(ctx, tenant.ID, owner); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("creator's row after removal: %v, want gone", err)
 	}
-
-	// 2. The store backstop: the same refusal when the service gate is bypassed
-	//    entirely (a second adapter, or a future caller reaching PGStore direct).
-	if err := st.RemoveMember(ctx, tenant.ID, owner); !errors.Is(err, store.ErrOwnerMember) {
-		t.Fatalf("direct store removal: %v, want ErrOwnerMember", err)
-	}
-	// And demotion, the same resurrection through the other verb.
-	if err := st.UpdateMemberRole(ctx, tenant.ID, owner, "viewer"); !errors.Is(err, store.ErrOwnerRole) {
-		t.Fatalf("direct store demotion: %v, want ErrOwnerRole", err)
+	if b, err := st.TenantOwnerSubject(ctx, tenant.ID); err != nil || b != "" {
+		t.Fatalf("owner binding after removal = %q (%v), want none", b, err)
 	}
 
-	// 3. The resurrection path is closed because the row never left: onboarding
-	//    resolves the owner back to this same workspace and re-asserts admin,
-	//    and that grant now agrees with the membership row instead of
-	//    contradicting it.
-	ten := NewTenantService(st, granter)
-	got, err := ten.EnsureTenant(ctx, owner, "", false)
-	if err != nil {
-		t.Fatalf("EnsureTenant for the owner: %v", err)
+	// 2. The creator's next sessions land in one fresh personal workspace and
+	//    are never re-granted admin on the old one (the resurrection m101
+	//    refused removal to avoid). Each session uses a fresh tenant service,
+	//    so every request reads the store rather than a cached answer.
+	var landed string
+	for i := range 3 {
+		got, err := NewTenantService(st, granter).EnsureTenant(ctx, owner, "", false)
+		if err != nil {
+			t.Fatalf("session %d: EnsureTenant for the removed creator: %v", i+1, err)
+		}
+		if got == tenant.ID {
+			t.Fatalf("session %d resolved the removed creator back to %q", i+1, tenant.ID)
+		}
+		if landed != "" && got != landed {
+			t.Fatalf("session %d landed in %q, session 1 in %q: one personal workspace, not one per session", i+1, got, landed)
+		}
+		landed = got
 	}
-	if got != tenant.ID {
-		t.Fatalf("EnsureTenant = %q, want the owned workspace %q", got, tenant.ID)
+	if granter.granted(tenant.ID, "user:"+owner) {
+		t.Error("onboarding re-granted the removed creator admin on the old workspace")
 	}
-	if !granter.granted(tenant.ID, "user:"+owner) {
-		t.Error("onboarding did not re-assert the owner's admin tuple")
+	if _, err := st.GetTenantMember(ctx, tenant.ID, owner); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("creator's row after three sessions: %v, want still gone", err)
 	}
-	m, err := st.GetTenantMember(ctx, tenant.ID, owner)
-	if err != nil || m.Role != "admin" {
-		t.Fatalf("row↔tuple disagree: row=%+v err=%v, tuple=admin", m, err)
+	if !granter.granted(landed, "user:"+owner) {
+		t.Errorf("the creator has no admin on their new personal workspace %q", landed)
 	}
 }
 
-// TestAccountOffboardingStillRemovesTheOwner keeps ADR086's exemption honest:
-// account deletion legitimately removes an owner because it clears the owner
-// binding in the SAME transaction, leaving no workspace whose owner is a
-// deleted account.
-func TestAccountOffboardingStillRemovesTheOwner(t *testing.T) {
+// Demoting the creator ends the binding too, so onboarding cannot restore
+// their admin tuple; the store does it under the same lock as the role write,
+// whether or not the members service ran first.
+func TestDemotingTheCreatorInTheStoreEndsTheBinding(t *testing.T) {
 	ctx, pool, st := ownerGuardPG(t)
 	run := uniqueRunSuffix()
 	owner, second := "owner-"+run, "admin-"+run
@@ -130,24 +127,23 @@ func TestAccountOffboardingStillRemovesTheOwner(t *testing.T) {
 		tenant.ID, second); err != nil {
 		t.Fatalf("seed second admin: %v", err)
 	}
-
-	if err := st.RemoveAccountMember(ctx, tenant.ID, owner); err != nil {
-		t.Fatalf("offboard owner: %v", err)
+	if err := st.UpdateMemberRole(ctx, tenant.ID, owner, "viewer"); err != nil {
+		t.Fatalf("demote the creator: %v", err)
 	}
-	if _, err := st.GetTenantMember(ctx, tenant.ID, owner); !errors.Is(err, store.ErrNotFound) {
-		t.Fatalf("offboarded owner still a member: %v", err)
+	if b, err := st.TenantOwnerSubject(ctx, tenant.ID); err != nil || b != "" {
+		t.Fatalf("owner binding after demotion = %q (%v), want none", b, err)
 	}
-	if binding, err := st.TenantOwnerSubject(ctx, tenant.ID); err != nil || binding != "" {
-		t.Fatalf("owner binding = %q err=%v, want cleared", binding, err)
+	if m, err := st.GetTenantMember(ctx, tenant.ID, owner); err != nil || m.Role != "viewer" {
+		t.Fatalf("creator after demotion = %+v (%v), want a viewer", m, err)
 	}
 }
 
-// TestConcurrentRemovalsCannotStripTheOwnerOrTheLastAdmin drives both
-// in-transaction rules at once under the membership advisory lock: two admins
-// removing each other at the same instant, in a workspace whose owner is one of
-// them. Whatever interleaving wins, the owner's row survives and at least one
-// admin remains.
-func TestConcurrentRemovalsCannotStripTheOwnerOrTheLastAdmin(t *testing.T) {
+// TestConcurrentRemovalsCannotStripTheLastAdmin drives the in-transaction
+// last-admin rule under the membership advisory lock: two admins removing each
+// other at the same instant, in a workspace whose creator is one of them.
+// Whatever interleaving wins, exactly one admin remains, and if the creator was
+// the one removed the binding went with them.
+func TestConcurrentRemovalsCannotStripTheLastAdmin(t *testing.T) {
 	ctx, pool, st := ownerGuardPG(t)
 	run := uniqueRunSuffix()
 	owner, second := "owner-"+run, "admin-"+run
@@ -168,15 +164,20 @@ func TestConcurrentRemovalsCannotStripTheOwnerOrTheLastAdmin(t *testing.T) {
 	go func() { defer wg.Done(); _ = st.RemoveMember(ctx, tenant.ID, second) }()
 	wg.Wait()
 
-	if _, err := st.GetTenantMember(ctx, tenant.ID, owner); err != nil {
-		t.Fatalf("owner lost under concurrent removals: %v", err)
-	}
 	admins, err := st.CountTenantAdmins(ctx, tenant.ID)
 	if err != nil {
 		t.Fatalf("count admins: %v", err)
 	}
-	if admins < 1 {
-		t.Fatalf("workspace left with %d admins", admins)
+	if admins != 1 {
+		t.Fatalf("workspace left with %d admins, want exactly 1", admins)
+	}
+	_, ownerErr := st.GetTenantMember(ctx, tenant.ID, owner)
+	b, err := st.TenantOwnerSubject(ctx, tenant.ID)
+	if err != nil {
+		t.Fatalf("owner binding: %v", err)
+	}
+	if errors.Is(ownerErr, store.ErrNotFound) && b != "" {
+		t.Fatalf("the creator was removed but the binding still names %q", b)
 	}
 }
 

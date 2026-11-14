@@ -19,6 +19,7 @@ package controller
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -33,14 +34,8 @@ import (
 // wildcard custom domain's route is pinned as low (w4/m326), but it can never
 // cover a platform host: those are reserved.
 func TestPlatformHostFallbackRouteIsTheLowestPriorityCatchAll(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "config", "activator", "platform-host-fallback-ingress.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	var ing networkingv1.Ingress
-	if err := yaml.Unmarshal(raw, &ing); err != nil {
-		t.Fatal(err)
-	}
+	readYAML(t, filepath.Join("..", "..", "config", "activator", "platform-host-fallback-ingress.yaml"), &ing)
 	rule := ing.Spec.Rules[0]
 	backend := rule.HTTP.Paths[0].Backend.Service
 	if ing.Annotations[traefikRouterPriorityAnnotation] != "1" || rule.Host != "*.onbex.co" ||
@@ -49,9 +44,45 @@ func TestPlatformHostFallbackRouteIsTheLowestPriorityCatchAll(t *testing.T) {
 		t.Fatalf("fallback route = %+v", ing)
 	}
 
+	// Plain HTTP redirects to HTTPS first, as on Render and every App route
+	// (w8/320). The annotation names the Middleware after config/default's
+	// namespace and namePrefix, which kustomize does not apply inside
+	// annotation values, so derive the expected reference from both files.
+	var kust struct {
+		Namespace  string `json:"namespace"`
+		NamePrefix string `json:"namePrefix"`
+	}
+	readYAML(t, filepath.Join("..", "..", "config", "default", "kustomization.yaml"), &kust)
+	var mw struct {
+		Metadata struct {
+			Name        string            `json:"name"`
+			Annotations map[string]string `json:"annotations"`
+		} `json:"metadata"`
+		Spec map[string]any `json:"spec"`
+	}
+	readYAML(t, filepath.Join("..", "..", "config", "activator", "platform-host-fallback-https.yaml"), &mw)
+	wantRef := traefikMiddlewareRef(kust.Namespace, kust.NamePrefix+mw.Metadata.Name)
+	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != wantRef {
+		t.Fatalf("fallback middlewares = %q, want %q", got, wantRef)
+	}
+	if !reflect.DeepEqual(mw.Spec, httpsRedirectSpec) || mw.Metadata.Annotations["argocd.argoproj.io/sync-wave"] != "-1" {
+		t.Fatalf("fallback redirect = %+v, want httpsRedirectSpec synced ahead of the Ingress", mw)
+	}
+
 	app := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: "web"}}
 	(&AppReconciler{}).applyIngressRouting(app, nil)
 	if _, ok := app.Annotations[traefikRouterPriorityAnnotation]; ok {
 		t.Fatal("an App route pins a priority; it must keep Traefik's default above the fallback")
+	}
+}
+
+func readYAML(t *testing.T, path string, into any) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.Unmarshal(raw, into); err != nil {
+		t.Fatal(err)
 	}
 }

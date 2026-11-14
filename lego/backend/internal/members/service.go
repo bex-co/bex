@@ -81,17 +81,6 @@ const (
 // manage members; it is the TARGET's state that forbids the write, which is
 // what 409 means here (403 would wrongly say "you are not an admin").
 const (
-	// ErrorOwnerCannotBeRemoved refuses removing the subject in
-	// tenants.owner_identity_id. Onboarding resolves the personal workspace by
-	// that binding and never re-mints one (internal/api/tenancy.go EnsureTenant),
-	// so honoring the removal would leave the account workspace-less while
-	// ignoring it would resurrect their admin tuple on the next request.
-	ErrorOwnerCannotBeRemoved = "OWNER_CANNOT_BE_REMOVED"
-	// ErrorOwnerRoleCannotChange refuses demoting that same subject below admin —
-	// the identical resurrection, through ChangeRole instead of Remove:
-	// ensureGranted re-writes the admin tuple on the owner's next request, so the
-	// demotion never sticks.
-	ErrorOwnerRoleCannotChange = "OWNER_ROLE_CANNOT_CHANGE"
 	// ErrorCannotRemoveSelf separates "manage a teammate" from "act on yourself":
 	// leaving is the deliberate verb (w5/m102), not a side effect of the admin
 	// surface.
@@ -99,11 +88,6 @@ const (
 	// ErrorCannotChangeOwnRole refuses self-promotion and self-demotion alike —
 	// a role change is something another admin does to you.
 	ErrorCannotChangeOwnRole = "CANNOT_CHANGE_OWN_ROLE"
-	// ErrorOwnerCannotLeave is the owner rule seen from the other side (w5/m102):
-	// the exit that replaces self-removal is still closed to the workspace
-	// owner, because leaving would strand the owner binding exactly as a removal
-	// would. Ownership transfer is the owner's exit and remains deferred.
-	ErrorOwnerCannotLeave = "OWNER_CANNOT_LEAVE"
 	// ErrorLastAdmin refuses removing or demoting a workspace's last admin,
 	// which would leave nobody to administer it.
 	ErrorLastAdmin = "LAST_ADMIN"
@@ -159,6 +143,19 @@ type Service struct {
 	// dispose), NOT a silent skip: when it is wired, its error is surfaced and
 	// the removal fails rather than reporting a clean exit.
 	Keys MemberKeyDisposer
+	// Sessions cancels the agent sessions a departing member started in this
+	// workspace, directly or through the API keys Keys just disposed of
+	// (w5/186): their running turns would otherwise keep minting git and model
+	// credentials until the turn timeout. Nil means agent sessions are not
+	// wired.
+	Sessions MemberSessionCanceler
+}
+
+// MemberSessionCanceler is the members service's seam to agent-session
+// teardown, satisfied by *agentsessions.Service. creators are the subjects
+// whose sessions end: the member and the client ids of their keys.
+type MemberSessionCanceler interface {
+	CancelMemberSessions(ctx context.Context, workspaceID string, creators []string) error
 }
 
 // MemberKeyDisposer is the members service's seam to machine-credential
@@ -178,7 +175,8 @@ type MembersStore interface {
 	CountTenantAdmins(ctx context.Context, tenantID string) (int, error)
 	// TenantOwnerSubject is the workspace's onboarding owner binding, "" when
 	// unset (every workspace minted through CreateWorkspace rather than first
-	// login). The owner guards read it (w5/m101).
+	// login, or one whose creator was removed, demoted or left). The member
+	// list reports it as isOwner, information only (w5/m372).
 	TenantOwnerSubject(ctx context.Context, tenantID string) (string, error)
 	CountInvites(ctx context.Context, tenantID string) (int, error)
 	UpdateMemberRole(ctx context.Context, tenantID, subject, role string) error
@@ -284,10 +282,11 @@ type MemberView struct {
 	CreatedAt        string `json:"createdAt"`
 	MFAEnabled       bool   `json:"mfaEnabled"`
 	IdentityResolved bool   `json:"identityResolved"`
-	// IsOwner marks the subject named by tenants.owner_identity_id, and IsSelf
-	// the caller's own row (w5/m101). Both are server-derived so the Team UI
-	// disables exactly the controls the API refuses, rather than guessing from
-	// session data it would have to keep in step with the owner binding.
+	// IsOwner marks the subject named by tenants.owner_identity_id, the
+	// workspace's creator while they remain an admin. It is information only:
+	// the creator is an ordinary Admin, as on Render, and no member action
+	// depends on it (w5/m372). IsSelf marks the caller's own row (w5/m101), which
+	// the Team UI uses to offer Leave instead of Remove.
 	IsOwner bool `json:"isOwner"`
 	IsSelf  bool `json:"isSelf"`
 }
@@ -496,9 +495,8 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 	if err != nil {
 		return nil, mapStoreErr(err)
 	}
-	// One owner-binding read for the whole list (w5/m101) — the Team UI disables
-	// the controls the API would refuse, so it needs to know which row is the
-	// owner's and which is the caller's own.
+	// One owner-binding read for the whole list, reported as isOwner
+	// (information only since w5/m372).
 	owner, err := s.Store.TenantOwnerSubject(ctx, workspaceID)
 	if err != nil {
 		return nil, mapStoreErr(err)
@@ -958,11 +956,6 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	if err := guardMachine(m); err != nil {
 		return MemberView{}, err
 	}
-	// After the membership read, so a subject who is not a member at all still
-	// answers 404 rather than an owner refusal.
-	if err := s.guardOwner(ctx, workspaceID, subject, role); err != nil {
-		return MemberView{}, err
-	}
 	if m.Role == role {
 		// Already at the target role in the row — but a prior partial failure may
 		// have left OpenFGA out of sync. Converge to the EXACT role rather than
@@ -995,6 +988,10 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	}
 	if err := s.Store.UpdateMemberRole(ctx, workspaceID, subject, role); err != nil {
 		return MemberView{}, mapStoreErr(err)
+	}
+	if m.Role == "admin" {
+		// A demoted creator's binding ended with the row (w5/m372).
+		s.invalidateResolution(subject, workspaceID)
 	}
 	// The row update and durable reconciliation intent committed together. Apply
 	// the known old->new transition synchronously (this also works in the legacy
@@ -1130,13 +1127,10 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if err := guardMachine(m); err != nil {
 		return err
 	}
-	if err := s.guardOwner(ctx, workspaceID, subject, ""); err != nil {
-		return err
-	}
 	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, ""); err != nil {
 		return err
 	}
-	revokedKeys, err := s.endMembership(ctx, workspaceID, subject, m.Role, mapStoreErr)
+	revokedKeys, err := s.endMembership(ctx, workspaceID, subject, m.Role)
 	if err != nil {
 		return err
 	}
@@ -1162,12 +1156,22 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 //     no privilege) that a retry converges — whereas deleting the row first
 //     would strand a stale tuple the retry can no longer reach (the member is
 //     gone, GetTenantMember 404s). The revoke error is SURFACED, not discarded.
-//  3. Delete the row last. storeErr lets each verb map the store's refusals
-//     into its own vocabulary (removal vs leaving speak differently about the
-//     owner).
+//     Then stop the agent sessions the member started here, directly or
+//     through the keys step 1 revoked (w5/186): a running turn keeps minting
+//     credentials. After the keys and the role, so neither can start another;
+//     before the row, so a failure leaves a member a retry can find. (A retry
+//     no longer knows the revoked keys' ids; the stop fails only on a
+//     database error.)
+//  3. Delete the row. For the workspace's creator the store ends the
+//     onboarding binding in the same transaction (w5/m372).
+//  4. For an admin, revoke the admin tuple once more. Onboarding re-grants a
+//     bound creator's admin tuple, and may have done so between step 2 and the
+//     commit that ended the binding; it re-checks the binding after a grant, so
+//     a grant after the commit takes itself back, and this covers one before.
+//     Best effort: the membership has ended, so a failure is logged.
+//  5. Evict the subject's cached workspace resolution (invalidateResolution).
 func (s *Service) endMembership(
 	ctx context.Context, workspaceID, subject, role string,
-	storeErr func(error) error,
 ) (int, error) {
 	revokedKeys, err := s.disposeMemberKeys(ctx, workspaceID, subject)
 	if err != nil {
@@ -1176,9 +1180,16 @@ func (s *Service) endMembership(
 	if err := s.revokeRoleErr(ctx, workspaceID, "user:"+subject, role); err != nil {
 		return 0, err
 	}
-	if err := s.Store.RemoveMember(ctx, workspaceID, subject); err != nil {
-		return 0, storeErr(err)
+	if err := cancelMemberSessions(ctx, s.Sessions, workspaceID, append([]string{subject}, revokedKeys...)); err != nil {
+		return 0, err
 	}
+	if err := s.Store.RemoveMember(ctx, workspaceID, subject); err != nil {
+		return 0, mapStoreErr(err)
+	}
+	if role == "admin" {
+		s.revokeRegrantedAdmin(ctx, workspaceID, subject)
+	}
+	s.invalidateResolution(subject, workspaceID)
 	return len(revokedKeys), nil
 }
 
@@ -1190,16 +1201,16 @@ func (s *Service) endMembership(
 // Authorization is self-scoped rather than can_manage (the AcceptInvite
 // precedent): leaving is not managing a teammate, so any member of the
 // workspace may do it — can_view is what every role holds, and the membership
-// row fetch below is what actually proves membership. The refusals are the
-// membership floors m101 established, seen from the other side: the owner
-// cannot leave (the binding would be stranded, and ownership transfer is
-// deferred), and the last admin cannot leave (nobody could administer the
-// workspace afterwards).
+// row fetch below is what actually proves membership. The one refusal is the
+// last-admin floor: the last human admin cannot leave (nobody could administer
+// the workspace afterwards). The workspace's creator leaves like any admin, as
+// on Render (w5/m372); the store ends their onboarding binding with the row.
 //
 // The end state is Remove's, reached the same fail-closed way: dispose the
 // caller's API keys in this workspace (w2/m163 — a credential must not outlive
 // the membership that justified it, whichever exit was taken), then revoke the
-// role tuple, then delete the row, then evict the caller's cached workspace
+// role tuple, then stop the agent sessions the caller started here (w5/186),
+// then delete the row, then evict the caller's cached workspace
 // resolution so their very next request does not answer from a membership that
 // no longer exists.
 func (s *Service) LeaveWorkspace(ctx context.Context, workspaceID string) error {
@@ -1226,53 +1237,37 @@ func (s *Service) LeaveWorkspace(ctx context.Context, workspaceID string) error 
 	if err := guardMachine(m); err != nil {
 		return err
 	}
-	if err := s.guardOwnerLeaving(ctx, workspaceID, id.Subject); err != nil {
-		return err
-	}
 	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, ""); err != nil {
 		return err
 	}
-	revokedKeys, err := s.endMembership(ctx, workspaceID, id.Subject, m.Role, leaveStoreErr)
+	revokedKeys, err := s.endMembership(ctx, workspaceID, id.Subject, m.Role)
 	if err != nil {
 		return err
 	}
-	s.invalidateResolution(id.Subject, workspaceID)
 	s.RecordMemberLeft(ctx, workspaceID, id.Subject, revokedKeys)
 	return nil
 }
 
-// guardOwnerLeaving is guardOwner's removal rule with the leaving caller's own
-// vocabulary — same condition, a code that names what the caller was trying to
-// do.
-func (s *Service) guardOwnerLeaving(ctx context.Context, workspaceID, subject string) error {
-	owner, err := s.Store.TenantOwnerSubject(ctx, workspaceID)
-	if err != nil {
-		return mapStoreErr(err)
+// revokeRegrantedAdmin is endMembership's step 4. It checks first, so the
+// usual case (no tuple came back) writes nothing.
+func (s *Service) revokeRegrantedAdmin(ctx context.Context, workspaceID, subject string) {
+	fga := "user:" + subject
+	if s.Base != nil && s.Base.Authz != nil {
+		if held, err := s.checkRoleFresh(ctx, fga, "admin", workspaceID); err == nil && !held {
+			return
+		}
 	}
-	if owner == "" || owner != subject {
-		return nil
+	if err := s.revokeRoleErr(ctx, workspaceID, fga, "admin"); err != nil {
+		log.Printf("members: membership of %s in %s ended; revoking a re-granted admin tuple: %v", subject, workspaceID, err)
 	}
-	return errOwnerCannotLeave()
 }
 
-func errOwnerCannotLeave() error {
-	return core.NewConflictError(ErrorOwnerCannotLeave,
-		"you own this workspace and cannot leave it; transferring ownership is not available yet", nil)
-}
-
-// leaveStoreErr is mapStoreErr plus the leaving caller's owner vocabulary: the
-// store backstop speaks in removal terms (ErrOwnerMember), which is right for
-// Remove and wrong here.
-func leaveStoreErr(err error) error {
-	if errors.Is(err, store.ErrOwnerMember) {
-		return errOwnerCannotLeave()
-	}
-	return mapStoreErr(err)
-}
-
-// invalidateResolution evicts the caller's cached workspace resolution and
-// their cached membership in the workspace they just left, so the next request
-// re-resolves instead of riding a positive for the rest of core.PositiveTTL.
+// invalidateResolution evicts a subject's cached workspace resolution and
+// their cached membership in a workspace whose membership just ended or
+// changed, so their next request re-resolves instead of riding a positive for
+// the rest of core.PositiveTTL. A removed or demoted creator's cached
+// resolution named this workspace as theirs; re-resolving lands them in a
+// fresh personal workspace (w5/m372).
 // The m13 finding is the failure this avoids: after a self-delete the
 // dashboard's workspace switcher went blank for up to 30s because the stale
 // entry still resolved to a workspace the caller no longer belonged to.
@@ -1331,6 +1326,11 @@ type AccountOffboarder struct {
 	Store     AccountMemberStore
 	Revoker   RoleRevoker
 	Workspace core.WorkspaceResolver
+	// Sessions cancels the deleting account's agent sessions in a workspace
+	// that survives it (w5/186), as a membership exit does. The account's keys
+	// were disposed of before this runs, so sessions a key started are not
+	// found here.
+	Sessions MemberSessionCanceler
 }
 
 func (a AccountOffboarder) Remove(ctx context.Context, workspaceID, subject string) error {
@@ -1349,11 +1349,26 @@ func (a AccountOffboarder) Remove(ctx context.Context, workspaceID, subject stri
 			return fmt.Errorf("revoke %s from workspace %s: %w", subject, workspaceID, err)
 		}
 	}
+	if err := cancelMemberSessions(ctx, a.Sessions, workspaceID, []string{subject}); err != nil {
+		return err
+	}
 	if err := a.Store.RemoveAccountMember(ctx, workspaceID, subject); err != nil {
 		return mapStoreErr(err)
 	}
 	if inv, ok := a.Workspace.(interface{ InvalidateTenant(string) }); ok {
 		inv.InvalidateTenant(subject)
+	}
+	return nil
+}
+
+// cancelMemberSessions stops the agent sessions creators started in
+// workspaceID; a nil canceler means agent sessions are not wired.
+func cancelMemberSessions(ctx context.Context, c MemberSessionCanceler, workspaceID string, creators []string) error {
+	if c == nil {
+		return nil
+	}
+	if err := c.CancelMemberSessions(ctx, workspaceID, creators); err != nil {
+		return fmt.Errorf("stop the agent sessions %s started in workspace %s: %w", creators[0], workspaceID, err)
 	}
 	return nil
 }
@@ -1422,45 +1437,10 @@ func guardSelf(ctx context.Context, subject, code, msg string) error {
 	return core.NewConflictError(code, msg, nil)
 }
 
-// guardOwner refuses severing the workspace's onboarding owner binding.
-// newRole is "" for a removal and the target role for a role change; keeping or
-// promoting the owner to admin is always allowed, so the guard skips the store
-// read in the common case. A workspace with no binding (CreateWorkspace, not
-// first login) has no owner to protect — the last-admin rule keeps covering it.
-func (s *Service) guardOwner(ctx context.Context, workspaceID, subject, newRole string) error {
-	if newRole == "admin" {
-		return nil
-	}
-	owner, err := s.Store.TenantOwnerSubject(ctx, workspaceID)
-	if err != nil {
-		return mapStoreErr(err)
-	}
-	if owner == "" || owner != subject {
-		return nil
-	}
-	if newRole == "" {
-		return errOwnerCannotBeRemoved()
-	}
-	return errOwnerRoleCannotChange()
-}
-
 // errLastAdmin is minted once, for the service guard and the store backstop
 // (mapStoreErr) alike, so the refusal reads the same whichever layer caught it.
 func errLastAdmin() error {
 	return core.NewBadRequestError(ErrorLastAdmin, "cannot remove or demote the last admin of a workspace", nil)
-}
-
-// The owner refusals are minted in one place: the service guard and the store
-// backstop (mapStoreErr) must answer with byte-identical messages, or the same
-// refusal would read differently depending on which layer caught it.
-func errOwnerCannotBeRemoved() error {
-	return core.NewConflictError(ErrorOwnerCannotBeRemoved,
-		"the workspace owner cannot be removed; transferring ownership is not available yet", nil)
-}
-
-func errOwnerRoleCannotChange() error {
-	return core.NewConflictError(ErrorOwnerRoleCannotChange,
-		"the workspace owner must remain an admin", nil)
 }
 
 // guardLastAdmin refuses a change that would leave a workspace with zero admins:
@@ -1618,13 +1598,6 @@ func mapStoreErr(err error) error {
 	switch {
 	case errors.Is(err, store.ErrNotFound):
 		return fmt.Errorf("%w: %v", core.ErrNotFound, err)
-	// The owner backstops recheck inside the advisory-lock transaction, so a
-	// caller that reached the store past the service gate still gets the same
-	// coded refusal on every adapter (w5/m101).
-	case errors.Is(err, store.ErrOwnerMember):
-		return errOwnerCannotBeRemoved()
-	case errors.Is(err, store.ErrOwnerRole):
-		return errOwnerRoleCannotChange()
 	case errors.Is(err, store.ErrLastAdmin):
 		return errLastAdmin()
 	case errors.Is(err, store.ErrConflict), errors.Is(err, store.ErrInvalid):

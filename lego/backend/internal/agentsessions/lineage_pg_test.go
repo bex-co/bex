@@ -457,3 +457,144 @@ func TestCancelParentCancelsUnfinishedDescendants(t *testing.T) {
 		t.Fatalf("second cancel = %+v / %v", again, err)
 	}
 }
+
+// w5/186: when a member leaves or is removed, the sessions they started,
+// directly or through an API key they created, are canceled with their
+// descendants and the cause recorded; their finished sessions and everyone
+// else's are left alone. A sandbox outage does not fail the exit: every
+// session is already canceling (no longer minting), and a later cancel
+// converges it.
+func TestCancelMemberSessionsEndsOnlyTheDepartedMembersUnfinishedSessions(t *testing.T) {
+	e := newLineageEnv(t)
+	ctx := context.Background()
+	setCreator := func(id, creator string) {
+		t.Helper()
+		if _, err := e.pg.Pool.Exec(ctx, `UPDATE agent_sessions SET created_by = $2 WHERE id = $1`, id, creator); err != nil {
+			t.Fatal(err)
+		}
+	}
+	running := e.create(t, "")
+	child := e.create(t, running.ID)
+	byKey := e.create(t, "")
+	setCreator(byKey.ID, "key-client-1")
+	finished := e.create(t, "")
+	e.setPhase(t, finished.ID, PhaseCompleted)
+	someoneElses := e.create(t, "")
+	setCreator(someoneElses.ID, "bob")
+	creators := []string{"alice", "key-client-1"}
+	exit := MemberExit{Service: e.svc}
+
+	e.lc.cancelErr = errors.New("sandbox api down")
+	if err := exit.CancelMemberSessions(ctx, e.ws, creators); err != nil {
+		t.Fatalf("a sandbox outage failed the exit: %v", err)
+	}
+	for _, id := range []string{running.ID, child.ID, byKey.ID} {
+		if got := e.phase(t, id); got != PhaseCanceling {
+			t.Fatalf("session %s after a failed teardown = %s, want canceling (no longer minting)", id, got)
+		}
+	}
+	e.lc.cancelErr = nil
+	if err := exit.CancelMemberSessions(ctx, e.ws, creators); err != nil {
+		t.Fatalf("second pass: %v", err)
+	}
+
+	for _, id := range []string{running.ID, byKey.ID} {
+		row, err := e.pg.GetAgentSession(ctx, id)
+		if err != nil || row.Phase != PhaseCanceled || row.FailureReasonCode != CreatorRemovedCode {
+			t.Fatalf("the departed member's session %s = phase %s code %q / %v", id, row.Phase, row.FailureReasonCode, err)
+		}
+	}
+	if got := e.phase(t, child.ID); got != PhaseCanceled {
+		t.Fatalf("its child = %s, want canceled", got)
+	}
+	if got := e.phase(t, finished.ID); got != PhaseCompleted {
+		t.Fatalf("a finished session became %s", got)
+	}
+	if got := e.phase(t, someoneElses.ID); got == PhaseCanceled || got == PhaseCanceling {
+		t.Fatalf("another member's session became %s", got)
+	}
+}
+
+// w5/m382: one session at work per branch. A create naming a branch a
+// working session in the workspace holds is refused, archived or not; once
+// that session has finished a person's (or an automation's next run's) create
+// may reuse it, but a spawned child, which an agent names, may not take any
+// branch a session could still push to. Racing creates on one branch yield
+// one session, and an idempotent retry gets that session back, not a 409.
+func TestOneSessionAtWorkPerBranch(t *testing.T) {
+	e := newLineageEnv(t)
+	branch := fmt.Sprintf("bex-agent/shared-%d", time.Now().UnixNano())
+	named := func(b string) CreateRequest {
+		in := e.input("")
+		in.Branch = b
+		return in
+	}
+	holder, err := e.svc.Create(caller("alice"), named(branch))
+	if err != nil {
+		t.Fatalf("first create on %s: %v", branch, err)
+	}
+	if _, err := e.svc.Create(caller("alice"), named(branch)); codeOf(err) != BranchInUseCode {
+		t.Fatalf("a create on a working session's branch = %v, want %s", err, BranchInUseCode)
+	}
+	if _, err := e.svc.SpawnChild(caller("alice"), holder.ID, SpawnRequest{Task: "help", Branch: branch}); codeOf(err) != BranchInUseCode {
+		t.Fatalf("a spawn onto the parent's working branch = %v, want %s", err, BranchInUseCode)
+	}
+	// Archiving does not stop a turn, so it does not free the branch.
+	if _, err := e.svc.Archive(caller("alice"), holder.ID); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+	if _, err := e.svc.Create(caller("alice"), named(branch)); codeOf(err) != BranchInUseCode {
+		t.Fatalf("a create on an archived but working session's branch = %v, want %s", err, BranchInUseCode)
+	}
+	if _, err := e.svc.Unarchive(caller("alice"), holder.ID); err != nil {
+		t.Fatalf("unarchive: %v", err)
+	}
+
+	// Finished but still messageable: a child may not take it, a person may.
+	e.setPhase(t, holder.ID, PhaseCompleted)
+	other := e.create(t, "")
+	if _, err := e.svc.SpawnChild(caller("alice"), other.ID, SpawnRequest{Task: "help", Branch: branch}); codeOf(err) != BranchInUseCode {
+		t.Fatalf("a spawn onto a finished session's branch = %v, want %s", err, BranchInUseCode)
+	}
+	if _, err := e.svc.Create(caller("alice"), named(branch)); err != nil {
+		t.Fatalf("a person's create on a finished session's branch: %v", err)
+	}
+
+	// Racing creates on a fresh branch: one wins, the rest are refused; with
+	// one idempotency key, every caller gets the one session.
+	race := func(b, key string) (ids []string, refused int) {
+		t.Helper()
+		type result struct {
+			id  string
+			err error
+		}
+		results := make(chan result, 4)
+		for range 4 {
+			go func() {
+				in := named(b)
+				in.IdempotencyKey = key
+				view, err := e.svc.Create(caller("alice"), in)
+				results <- result{view.ID, err}
+			}()
+		}
+		for range 4 {
+			r := <-results
+			switch {
+			case r.err == nil:
+				ids = append(ids, r.id)
+			case codeOf(r.err) == BranchInUseCode:
+				refused++
+			default:
+				t.Errorf("a racing create failed otherwise: %v", r.err)
+			}
+		}
+		return ids, refused
+	}
+	if ids, refused := race(branch+"-race", ""); len(ids) != 1 || refused != 3 {
+		t.Fatalf("racing creates: %d won, %d refused, want 1 and 3", len(ids), refused)
+	}
+	ids, refused := race(branch+"-retry", fmt.Sprintf("key-%d", time.Now().UnixNano()))
+	if refused != 0 || len(ids) != 4 || len(slices.Compact(slices.Sorted(slices.Values(ids)))) != 1 {
+		t.Fatalf("idempotent retries: sessions %v, %d refused, want one session for all four", ids, refused)
+	}
+}

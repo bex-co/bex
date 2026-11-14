@@ -732,6 +732,12 @@ if ! grep -Eq '^  changes:' .github/workflows/deploy.yml \
   echo "FAIL: deploy.yml lost the w1/m25 scheduled change gate or the w1/m59 write-back guard (scripts/deploy-superseded.sh)" >&2
   exit 1
 fi
+# actions/checkout points origin/main at the run's own commit; the gate must
+# read main's live tip, or a run queued behind a deploy deploys a second time.
+if ! grep -Fq 'run: git fetch --no-tags --filter=blob:none origin +refs/heads/main:refs/remotes/origin/main' .github/workflows/deploy.yml; then
+  echo "FAIL: deploy.yml's changes gate must fetch main's live tip before deploy_latency.py reads the pin" >&2
+  exit 1
+fi
 if [ "$(grep -cF "env.SUPERSEDED != 'true'" .github/workflows/deploy.yml)" -lt 4 ]; then
   echo "FAIL: deploy.yml rollout steps must gate on env.SUPERSEDED so a mid-build supersession concludes neutral (w1/m59)" >&2
   exit 1

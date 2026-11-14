@@ -134,8 +134,8 @@ func TestHealthPathRulesObjectsAndHeaders(t *testing.T) {
 	}
 }
 
-// TestHealthPathErrorsKeepTheSiteContract: origin failures, unsupported
-// methods, unknown hosts and degraded mode answer /healthz as any other path.
+// TestHealthPathErrorsKeepTheSiteContract: origin failures, other methods,
+// unknown hosts and degraded mode answer /healthz as any other path.
 func TestHealthPathErrorsKeepTheSiteContract(t *testing.T) {
 	failing := publishedSite(nil)
 	failing.errs = map[string]error{sitePrefix + "healthz": errors.New("boom")}
@@ -144,8 +144,8 @@ func TestHealthPathErrorsKeepTheSiteContract(t *testing.T) {
 	}
 
 	rr := serveSite(staticserver.Site{}, publishedSite(nil), http.MethodPost, "/healthz")
-	if rr.Code != http.StatusMethodNotAllowed || rr.Header().Get("Allow") != "GET, HEAD" {
-		t.Fatalf("POST /healthz = %d Allow %q, want 405 GET, HEAD", rr.Code, rr.Header().Get("Allow"))
+	if rr.Code != http.StatusOK || rr.Body.Len() != 0 || rr.Header().Get("Allow") != "" {
+		t.Fatalf("POST /healthz = %d %q Allow %q, want a bare 200", rr.Code, rr.Body, rr.Header().Get("Allow"))
 	}
 
 	h := staticserver.New(hostResolver{}, publishedSite(nil), 1<<20)

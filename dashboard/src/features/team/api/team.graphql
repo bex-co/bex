@@ -18,9 +18,8 @@ query WorkspaceMembers($workspaceId: String!) {
     createdAt
     mfaEnabled
     identityResolved
-    # w5/m101: the two rows whose Remove / role controls the server refuses —
-    # the workspace owner's, and the caller's own.
-    isOwner
+    # The caller's own row, whose Remove / role controls the server refuses
+    # (w5/m101).
     isSelf
   }
   workspaceSeatUsage(workspaceId: $workspaceId) {

@@ -31,11 +31,11 @@ run_quiet() {
   if grep -q "main is red" "$tmp/err"; then fail "$1: a green main reported red: $(cat "$tmp/err")"; fi
 }
 
-# One run as `gh run list` prints it: <conclusion> <status> <hour> [branch].
-# The hour is its createdAt, the only thing that orders runs.
+# One run as `gh run list` prints it: <conclusion> <status> <hour> [branch]
+# [event]. The hour is its createdAt, the only thing that orders runs.
 r() {
-  printf '{"conclusion":"%s","status":"%s","headSha":"%02dabc123def4","headBranch":"%s","url":"https://example.test/runs/%d","createdAt":"2026-10-05T%02d:00:00Z"}' \
-    "$1" "$2" "$3" "${4:-main}" "$3" "$3"
+  printf '{"conclusion":"%s","status":"%s","headSha":"%02dabc123def4","headBranch":"%s","event":"%s","url":"https://example.test/runs/%d","createdAt":"2026-10-05T%02d:00:00Z"}' \
+    "$1" "$2" "$3" "${4:-main}" "${5:-push}" "$3" "$3"
 }
 
 stub "[$(r failure completed 10)]"
@@ -77,6 +77,22 @@ stub "[]"
 run_ok HEAD
 grep -q "warning" "$tmp/err" || fail "no completed run gave no warning"
 
+# The suites run on every main push in their own workflows: a red suite is a
+# red main even while the batched deploy runs conclude success, and a suite's
+# pull-request run is not main's verdict.
+printf '[%s]\n' "$(r success completed 10)" >"$tmp/green.json"
+printf '[%s]\n' "$(r failure completed 11)" >"$tmp/red.json"
+printf '[%s,%s]\n' "$(r failure completed 12 main pull_request)" "$(r success completed 10)" >"$tmp/pr-red.json"
+suite_stub() { # <file for backend-test.yml runs>
+  printf '#!/bin/sh\ncase "$*" in *backend-test.yml*) cat "%s" ;; *) cat "%s" ;; esac\n' "$1" "$tmp/green.json" >"$tmp/gh"
+  chmod +x "$tmp/gh"
+}
+suite_stub "$tmp/red.json"
+run_warned HEAD
+grep -q "backend-test.yml run for 11abc123d" "$tmp/err" || fail "the warning does not name the red suite: $(cat "$tmp/err")"
+suite_stub "$tmp/pr-red.json"
+run_quiet HEAD
+
 printf '#!/bin/sh\nexit 1\n' >"$tmp/gh"
 run_ok HEAD
 grep -q "warning" "$tmp/err" || fail "unreadable status gave no warning"
@@ -109,7 +125,7 @@ if bash "$root/scripts/ship-gates.sh" 2>/dev/null; then fail "a missing base ref
 # and a push without dashboard changes runs nothing.
 repo="$tmp/repo"
 mkdir -p "$repo/scripts" "$repo/dashboard" "$repo/docs" "$repo/.github/scripts" "$repo/.github/workflows" "$repo/lego/operator"
-cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$repo/scripts/"
+cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$repo/scripts/"
 cp "$root/.github/scripts/native-common-qualify.py" "$repo/.github/scripts/"
 # Stands in for the native custody suites: logs that it ran, fails on demand.
 cat >"$repo/.github/scripts/test_native_oci_stub.py" <<PY
@@ -128,10 +144,12 @@ cat >"$tmp/yarn" <<YARN
 #!/bin/sh
 echo "\$(basename "\$PWD") \$*" >>"$tmp/yarn.log"
 [ "\$1" = "\${YARN_FAIL:-}" ] && exit 1
+# A file the tests would trip over: only the committed tree counts.
+[ ! -e BROKEN ] || exit 1
 exit 0
 YARN
 chmod +x "$tmp/yarn"
-gate() { (cd "$repo" && PATH="$tmp:$PATH" bash scripts/ship-gates.sh "$@") 2>"$tmp/err"; }
+gate() { (cd "$repo" && BEX_SHIP_GATES_TREE="$tmp/tree" PATH="$tmp:$PATH" bash scripts/ship-gates.sh "$@") 2>"$tmp/err"; }
 echo 'docs' >"$repo/docs/a.md"
 commit docs
 rm -f "$tmp/yarn.log"
@@ -151,6 +169,19 @@ grep -q "ship-gates: ok" "$tmp/err" && fail "a failing dashboard test still repo
 rm -f "$tmp/yarn.log"
 if YARN_FAIL="install" gate HEAD~1; then fail "a failing dashboard install did not block the push"; fi
 grep -qx "dashboard lint" "$tmp/yarn.log" && fail "lint ran after a failed install"
+
+# The gates test HEAD in a worktree, never the working tree: an uncommitted
+# file neither breaks a good commit nor rescues a broken one.
+grep -q "testing $(git -C "$repo" rev-parse --short HEAD) in $tmp/tree" "$tmp/err" || fail "the gate did not test HEAD in its worktree: $(cat "$tmp/err")"
+touch "$repo/dashboard/BROKEN"
+gate HEAD~1 || fail "an uncommitted file failed a good commit: $(cat "$tmp/err")"
+rm "$repo/dashboard/BROKEN"
+echo broken >"$repo/dashboard/BROKEN"
+commit broken
+if gate HEAD~1; then fail "a broken commit passed the gate"; fi
+git -C "$repo" rm -q dashboard/BROKEN
+commit unbroken
+[ ! -e "$tmp/tree.lock" ] || fail "the gate left its worktree locked"
 
 
 # The native custody gate (w6/107): a custody-pinned file, a native workflow or

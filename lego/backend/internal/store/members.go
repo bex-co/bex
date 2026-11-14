@@ -33,33 +33,18 @@ import (
 // workspace with zero administrators (codex round-16 #3).
 var ErrLastAdmin = fmt.Errorf("%w: cannot remove or demote the last admin of a workspace", ErrInvalid)
 
-// ErrOwnerMember / ErrOwnerRole are the in-transaction backstops for the
-// workspace owner binding (w5/m101), the same shape ErrLastAdmin has: the
-// members service refuses these cases up front with a coded error, and the
-// store rechecks under the membership advisory lock so a second adapter or a
-// race cannot slip past the service gate.
-//
-// Only the member verbs are guarded. RemoveAccountMember (ADR086 offboarding)
-// deliberately removes an owner — it clears the binding in the same
-// transaction, so the workspace never keeps a dangling owner.
-var (
-	ErrOwnerMember = fmt.Errorf("%w: cannot remove the workspace owner", ErrConflict)
-	ErrOwnerRole   = fmt.Errorf("%w: the workspace owner must remain an admin", ErrConflict)
-)
-
-// tenantOwnerIs reports whether subject is the workspace's onboarding owner,
-// read inside an open transaction (the advisory lock is already held).
-func tenantOwnerIs(ctx context.Context, tx pgx.Tx, tenantID, subject string) (bool, error) {
-	var owner *string
-	if err := tx.QueryRow(ctx,
-		`SELECT owner_identity_id FROM tenants WHERE id = $1`, tenantID,
-	).Scan(&owner); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
-		return false, err
-	}
-	return owner != nil && *owner == subject, nil
+// detachOwnerTx clears the workspace's onboarding owner binding when it names
+// subject, inside the caller's transaction (the membership advisory lock is
+// already held). The workspace creator is an ordinary Admin, as on Render
+// (w5/m372, docs/ADR024-members.md): removing, demoting or the creator leaving
+// ends the binding with the membership, so onboarding (EnsureTenant)
+// neither restores their admin role nor finds a workspace that is no longer
+// theirs; their next session lands in a fresh personal workspace.
+func detachOwnerTx(ctx context.Context, tx pgx.Tx, tenantID, subject string) error {
+	_, err := tx.Exec(ctx,
+		`UPDATE tenants SET owner_identity_id = NULL, updated_at = now() WHERE id = $1 AND owner_identity_id = $2`,
+		tenantID, subject)
+	return err
 }
 
 // Stable direct-invite redemption causes. Each wraps ErrConflict so existing
@@ -206,15 +191,6 @@ func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role 
 			}
 			return err
 		}
-		if role != "admin" {
-			owner, err := tenantOwnerIs(ctx, tx, tenantID, subject)
-			if err != nil {
-				return err
-			}
-			if owner {
-				return ErrOwnerRole
-			}
-		}
 		if currentRole == "admin" && role != "admin" {
 			var admins int
 			if err := tx.QueryRow(ctx,
@@ -224,6 +200,11 @@ func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role 
 			}
 			if admins <= 1 {
 				return ErrLastAdmin
+			}
+		}
+		if role != "admin" {
+			if err := detachOwnerTx(ctx, tx, tenantID, subject); err != nil {
+				return err
 			}
 		}
 		tag, err := tx.Exec(ctx,
@@ -239,7 +220,7 @@ func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role 
 		return enqueueRoleReconciliation(ctx, tx, tenantID, subject, role)
 	})
 	if err != nil {
-		if errors.Is(err, ErrLastAdmin) || errors.Is(err, ErrOwnerMember) || errors.Is(err, ErrOwnerRole) {
+		if errors.Is(err, ErrLastAdmin) {
 			return err
 		}
 		return classify("tenant_member", err)
@@ -272,13 +253,6 @@ func (s *PGStore) RemoveMember(ctx context.Context, tenantID, subject string) er
 			}
 			return err
 		}
-		owner, err := tenantOwnerIs(ctx, tx, tenantID, subject)
-		if err != nil {
-			return err
-		}
-		if owner {
-			return ErrOwnerMember
-		}
 		if currentRole == "admin" {
 			var admins int
 			if err := tx.QueryRow(ctx,
@@ -290,6 +264,9 @@ func (s *PGStore) RemoveMember(ctx context.Context, tenantID, subject string) er
 				return ErrLastAdmin
 			}
 		}
+		if err := detachOwnerTx(ctx, tx, tenantID, subject); err != nil {
+			return err
+		}
 		tag, err := tx.Exec(ctx,
 			`DELETE FROM tenant_members WHERE tenant_id = $1 AND subject = $2`,
 			tenantID, subject)
@@ -300,7 +277,7 @@ func (s *PGStore) RemoveMember(ctx context.Context, tenantID, subject string) er
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, ErrLastAdmin) || errors.Is(err, ErrOwnerMember) || errors.Is(err, ErrOwnerRole) {
+		if errors.Is(err, ErrLastAdmin) {
 			return err
 		}
 		return classify("tenant_member", err)

@@ -1,0 +1,18 @@
+# The platform-host fallback route's HTTPS redirect (w8/320). Render 301s a
+# host it routes nowhere from http to https before answering its 404, as every
+# App route here does through its own middleware (httpsRedirectSpec, w8/m118).
+# A request already on https passes through. A static manifest, so the
+# operator's BEX_HTTPS_REDIRECT switch does not govern it. Synced a wave ahead
+# of the Ingress that names it, because Traefik disables a router whose
+# middleware is missing.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: platform-host-fallback-https
+  namespace: bex-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true

@@ -32,9 +32,9 @@ import (
 // half (row+tuple both gone against live Postgres and OpenFGA, and the
 // post-leave resolution) lives in internal/api/members_leave_e2e_test.go.
 
-// leaveWorkspace seeds a workspace owned by `owner` with `caller` as a second
-// admin and a developer alongside, so neither the owner rule nor the last-admin
-// rule can be what explains an unexpected refusal.
+// leaveFixture seeds a workspace whose creator is owner-1, with admin-2 as a
+// second admin and dev-1 a developer, so the last-admin rule cannot be what
+// explains an unexpected refusal.
 func leaveFixture(t *testing.T) *fakeStore {
 	t.Helper()
 	st := newFakeStore(store.PlanPro)
@@ -66,19 +66,20 @@ func TestLeaveWorkspaceDropsTheCallersRowAndTuple(t *testing.T) {
 	}
 }
 
-func TestLeaveWorkspaceRefusesTheOwner(t *testing.T) {
+// The workspace's creator leaves like any admin, as on Render (w5/m372): the
+// membership ends and the onboarding binding with it.
+func TestLeaveWorkspaceLetsTheCreatorLeave(t *testing.T) {
 	st := leaveFixture(t)
 	s := svc(st, newFakeGranter(), nil, nil)
 
-	err := s.LeaveWorkspace(ctxWith("owner-1"), "tea-1")
-	if !errors.Is(err, core.ErrConflict) || codedErrorCode(err) != ErrorOwnerCannotLeave {
-		t.Fatalf("owner leaving: %v code=%q, want ErrConflict/%s", err, codedErrorCode(err), ErrorOwnerCannotLeave)
+	if err := s.LeaveWorkspace(ctxWith("owner-1"), "tea-1"); err != nil {
+		t.Fatalf("creator leaving with another admin: %v", err)
 	}
-	if _, ok := st.members["owner-1"]; !ok {
-		t.Error("owner left anyway")
+	if _, ok := st.members["owner-1"]; ok {
+		t.Error("the creator's membership survived the leave")
 	}
-	if !strings.Contains(err.Error(), "ownership") {
-		t.Errorf("refusal does not name the recovery path: %q", err.Error())
+	if st.ownerSubject != "" {
+		t.Errorf("owner binding = %q after the creator left, want none", st.ownerSubject)
 	}
 }
 
@@ -226,13 +227,15 @@ func TestLeaveWorkspaceEvictsTheCallersResolution(t *testing.T) {
 // A refused leave must evict nothing — eviction is a consequence of actually
 // having left, and a spurious one would churn every caller's resolution.
 func TestRefusedLeaveEvictsNothing(t *testing.T) {
-	st := leaveFixture(t)
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("dev-1", "developer")
 	resolver := &recordingResolver{}
 	s := svc(st, newFakeGranter(), nil, nil)
 	s.Base.Workspace = resolver
 
-	if err := s.LeaveWorkspace(ctxWith("owner-1"), "tea-1"); err == nil {
-		t.Fatal("owner leave was not refused")
+	if err := s.LeaveWorkspace(ctxWith("admin-1"), "tea-1"); err == nil {
+		t.Fatal("the last admin's leave was not refused")
 	}
 	if len(resolver.invalidatedTenants) != 0 || len(resolver.invalidatedMemberships) != 0 {
 		t.Errorf("refused leave evicted caches: %v %v",
@@ -261,4 +264,89 @@ func (r *recordingResolver) InvalidateTenant(subject string) {
 
 func (r *recordingResolver) InvalidateMembership(subject, tenantID string) {
 	r.invalidatedMemberships = append(r.invalidatedMemberships, subject+":"+tenantID)
+}
+
+// recordingSessions is the agent-session seam: it records whose sessions were
+// stopped, and whether the role tuple and the row were still there when.
+type recordingSessions struct {
+	g        *fakeGranter
+	st       *fakeStore
+	err      error
+	creators [][]string
+	hadRole  bool
+	hadRow   bool
+}
+
+func (r *recordingSessions) CancelMemberSessions(_ context.Context, workspaceID string, creators []string) error {
+	r.creators = append(r.creators, creators)
+	r.hadRole = r.g.tuples[key("developer", workspaceID, "user:"+creators[0])]
+	_, r.hadRow = r.st.members[creators[0]]
+	return r.err
+}
+
+// w5/186: every membership exit stops the agent sessions the member started
+// in that workspace, directly or through the keys the exit revoked. It runs
+// after the keys and the role tuple are gone, so neither can start another,
+// and before the row, so a failure leaves a member a retry can find.
+func TestMembershipExitsStopTheMembersAgentSessions(t *testing.T) {
+	exits := map[string]func(*Service) error{
+		"remove": func(s *Service) error { return s.Remove(ctxWith("admin-2"), "tea-1", "dev-1") },
+		"leave":  func(s *Service) error { return s.LeaveWorkspace(ctxWith("dev-1"), "tea-1") },
+	}
+	for name, exit := range exits {
+		t.Run(name, func(t *testing.T) {
+			st := leaveFixture(t)
+			g := newFakeGranter()
+			g.tuples[key("developer", "tea-1", "user:dev-1")] = true
+			sessions := &recordingSessions{g: g, st: st}
+			s := svc(st, g, nil, nil)
+			keys := newFakeKeyDisposer()
+			keys.seed("tea-1", "dev-1", "key-1")
+			s.Keys = keys
+			s.Sessions = sessions
+			if err := exit(s); err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			if !reflect.DeepEqual(sessions.creators, [][]string{{"dev-1", "key-1"}}) {
+				t.Errorf("sessions stopped for %v, want the member and the key they created", sessions.creators)
+			}
+			if sessions.hadRole || !sessions.hadRow {
+				t.Errorf("stopped with role tuple %v and row %v, want after the revoke and before the row delete", sessions.hadRole, sessions.hadRow)
+			}
+		})
+		t.Run(name+" fails closed", func(t *testing.T) {
+			st := leaveFixture(t)
+			g := newFakeGranter()
+			s := svc(st, g, nil, nil)
+			s.Sessions = &recordingSessions{g: g, st: st, err: errors.New("database unavailable")}
+			if err := exit(s); err == nil {
+				t.Fatal("a failed session stop was swallowed")
+			}
+			if _, ok := st.members["dev-1"]; !ok {
+				t.Error("a failed session stop still deleted the row; a retry could not find the member")
+			}
+		})
+	}
+}
+
+func TestAccountOffboarderStopsTheMembersAgentSessions(t *testing.T) {
+	st := leaveFixture(t)
+	g := newFakeGranter()
+	g.tuples[key("developer", "tea-1", "user:dev-1")] = true
+	sessions := &recordingSessions{g: g, st: st}
+	off := AccountOffboarder{Store: accountStoreOver{st}, Revoker: g, Sessions: sessions}
+	if err := off.Remove(context.Background(), "tea-1", "dev-1"); err != nil {
+		t.Fatalf("offboard: %v", err)
+	}
+	if !reflect.DeepEqual(sessions.creators, [][]string{{"dev-1"}}) || sessions.hadRole || !sessions.hadRow {
+		t.Errorf("stopped %v (role %v, row %v), want dev-1 after the revoke and before the row delete", sessions.creators, sessions.hadRole, sessions.hadRow)
+	}
+
+	failing := AccountOffboarder{Store: accountStoreOver{st}, Revoker: g, Sessions: &recordingSessions{g: g, st: st, err: errors.New("database unavailable")}}
+	if err := failing.Remove(context.Background(), "tea-1", "admin-2"); err == nil {
+		t.Fatal("a failed session stop was swallowed")
+	}
+	if _, ok := st.members["admin-2"]; !ok {
+		t.Error("a failed session stop still deleted the row")
+	}
 }

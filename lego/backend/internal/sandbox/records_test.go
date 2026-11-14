@@ -139,8 +139,8 @@ func TestTerminatedSandboxStaysReadable(t *testing.T) {
 		{"/v1/sandboxes/" + sb.ID + "/files/download/token?ownerId=" + f.ws + "&path=/tmp/a", ""},
 	} {
 		code, body := f.do(t, http.MethodPost, mint.path, mint.body)
-		if code != http.StatusConflict || errCode(body) != CodeSandboxEnded || !strings.Contains(body, "was terminated at "+at) {
-			t.Fatalf("mint %s = %d %s, want 409 %s naming the end", mint.path, code, body, CodeSandboxEnded)
+		if code != http.StatusConflict || errCode(body) != CodeSandboxNotRunning || !strings.Contains(body, "was terminated at "+at) {
+			t.Fatalf("mint %s = %d %s, want 409 %s naming the end", mint.path, code, body, CodeSandboxNotRunning)
 		}
 	}
 	if code, body := f.do(t, http.MethodPost, "/v1/sandboxes/"+sb.ID+"/resume?ownerId="+f.ws, ""); code != http.StatusConflict {
@@ -193,8 +193,8 @@ func TestErroredSandboxRefusesConnectTokens(t *testing.T) {
 	f := recordsFixture(t)
 	f.addBox("os-failed", "Failed")
 	code, body := f.do(t, http.MethodPost, "/v1/sandboxes/os-failed/runs/stream/token?ownerId="+f.ws, `{"command":"ls"}`)
-	if code != http.StatusConflict || errCode(body) != CodeSandboxEnded || !strings.Contains(body, "errored") {
-		t.Fatalf("mint on an errored sandbox = %d %s, want 409 %s", code, body, CodeSandboxEnded)
+	if code != http.StatusConflict || errCode(body) != CodeSandboxNotRunning || !strings.Contains(body, "errored") {
+		t.Fatalf("mint on an errored sandbox = %d %s, want 409 %s", code, body, CodeSandboxNotRunning)
 	}
 }
 

@@ -33,12 +33,13 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
-// members_owner_e2e_test.go is w5/m101 t009's row↔tuple half, against REAL
-// infrastructure — live Postgres AND live OpenFGA, enforced — driving the REAL
-// REST router: the membership refusals must leave the row and its authorization
-// tuple agreeing, whether the write was refused or allowed. A refusal that
-// revoked the tuple but kept the row (or the reverse) is the half-state the
-// guards exist to prevent, and only a real checker can show it.
+// members_owner_e2e_test.go is the row↔tuple half of the membership-invariant
+// matrix (w5/m101, amended by w5/m372), against REAL infrastructure — live
+// Postgres AND live OpenFGA, enforced — driving the REAL REST router: the self
+// refusals and the creator's demotion and removal must leave the row, its
+// authorization tuple and the onboarding binding agreeing. A write that revoked
+// the tuple but kept the row (or the reverse) is the half-state the ordering
+// exists to prevent, and only a real checker can show it.
 //
 //	BEX_TEST_DB_URI=postgres://…/postgres?sslmode=disable \
 //	BEX_TEST_OPENFGA_URL=http://127.0.0.1:58085 \
@@ -124,18 +125,17 @@ func TestMembershipInvariantsE2E(t *testing.T) {
 
 	membersPath := "/v1/workspaces/" + tenant.ID + "/members/"
 
-	// 1. admin2 tries to remove the owner — refused, and NOTHING moved: the row
-	//    is there and the admin tuple is intact.
-	rec := e2eCall(mux, ctx, admin2, "DELETE", membersPath+owner, "")
-	if rec.Code != http.StatusConflict || codeOf(t, rec) != members.ErrorOwnerCannotBeRemoved {
-		t.Fatalf("remove owner: %d %s", rec.Code, rec.Body)
-	}
-	if !isMember(t, owner) || !hasTuple(t, owner, "admin") {
-		t.Errorf("owner half-removed: row=%v tuple=%v", isMember(t, owner), hasTuple(t, owner, "admin"))
+	binding := func(t *testing.T) string {
+		t.Helper()
+		b, err := st.TenantOwnerSubject(ctx, tenant.ID)
+		if err != nil {
+			t.Fatalf("owner binding: %v", err)
+		}
+		return b
 	}
 
-	// 2. admin2 tries to remove themselves — refused, unchanged.
-	rec = e2eCall(mux, ctx, admin2, "DELETE", membersPath+admin2, "")
+	// 1. admin2 tries to remove themselves — refused, unchanged.
+	rec := e2eCall(mux, ctx, admin2, "DELETE", membersPath+admin2, "")
 	if rec.Code != http.StatusConflict || codeOf(t, rec) != members.ErrorCannotRemoveSelf {
 		t.Fatalf("self removal: %d %s", rec.Code, rec.Body)
 	}
@@ -143,7 +143,7 @@ func TestMembershipInvariantsE2E(t *testing.T) {
 		t.Errorf("caller half-removed: row=%v tuple=%v", isMember(t, admin2), hasTuple(t, admin2, "admin"))
 	}
 
-	// 3. admin2 tries to change their own role — refused, role unchanged in both
+	// 2. admin2 tries to change their own role — refused, role unchanged in both
 	//    the row and OpenFGA.
 	rec = e2eCall(mux, ctx, admin2, "PATCH", membersPath+admin2, `{"role":"VIEWER"}`)
 	if rec.Code != http.StatusConflict || codeOf(t, rec) != members.ErrorCannotChangeOwnRole {
@@ -153,24 +153,57 @@ func TestMembershipInvariantsE2E(t *testing.T) {
 		t.Error("caller's own role changed in OpenFGA despite the refusal")
 	}
 
-	// 4. admin2 tries to demote the owner — refused, owner still admin.
+	// 3. admin2 demotes the workspace's creator — allowed, as on Render
+	//    (w5/m372): the creator is an ordinary Admin. The role moves in the row
+	//    and OpenFGA, and the onboarding binding ends, so a session cannot
+	//    restore the admin tuple.
 	rec = e2eCall(mux, ctx, admin2, "PATCH", membersPath+owner, `{"role":"DEVELOPER"}`)
-	if rec.Code != http.StatusConflict || codeOf(t, rec) != members.ErrorOwnerRoleCannotChange {
-		t.Fatalf("owner demotion: %d %s", rec.Code, rec.Body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("creator demotion: %d %s", rec.Code, rec.Body)
 	}
-	if !hasTuple(t, owner, "admin") {
-		t.Error("owner lost their admin tuple to a refused demotion")
+	if hasTuple(t, owner, "admin") || !hasTuple(t, owner, "developer") {
+		t.Errorf("creator's tuples after demotion: admin=%v developer=%v", hasTuple(t, owner, "admin"), hasTuple(t, owner, "developer"))
+	}
+	if b := binding(t); b != "" {
+		t.Errorf("owner binding = %q after demoting the creator, want none", b)
 	}
 
-	// 5. The permitted case still works end to end — the guards refuse a target
-	//    class, not the verb: removing an ordinary teammate drops BOTH the row
-	//    and the tuple. Without this, every assertion above would also pass on a
-	//    members surface that refused everything.
+	// 4. Removing an ordinary teammate drops BOTH the row and the tuple.
 	rec = e2eCall(mux, ctx, admin2, "DELETE", membersPath+teammate, "")
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("remove teammate: %d %s", rec.Code, rec.Body)
 	}
 	if isMember(t, teammate) || hasTuple(t, teammate, "developer") {
 		t.Errorf("teammate half-removed: row=%v tuple=%v", isMember(t, teammate), hasTuple(t, teammate, "developer"))
+	}
+
+	// 5. admin2 promotes the creator back to Admin: the role returns, the
+	//    binding does not (it ended with the demotion).
+	rec = e2eCall(mux, ctx, admin2, "PATCH", membersPath+owner, `{"role":"ADMIN"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("creator re-promotion: %d %s", rec.Code, rec.Body)
+	}
+	if !hasTuple(t, owner, "admin") || hasTuple(t, owner, "developer") {
+		t.Errorf("creator's tuples after re-promotion: admin=%v developer=%v", hasTuple(t, owner, "admin"), hasTuple(t, owner, "developer"))
+	}
+	if b := binding(t); b != "" {
+		t.Errorf("owner binding = %q after re-promotion, want it still ended", b)
+	}
+
+	// 6. admin2 removes the creator while still bound — Render's DELETE answers
+	//    204 (w5/m372): row, tuple and binding end together. The binding is
+	//    restored first, as for a creator who was never demoted.
+	if _, err := pool.Exec(ctx, `UPDATE tenants SET owner_identity_id = $2 WHERE id = $1`, tenant.ID, owner); err != nil {
+		t.Fatalf("restore the creator's binding: %v", err)
+	}
+	rec = e2eCall(mux, ctx, admin2, "DELETE", membersPath+owner, "")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("remove creator: %d %s", rec.Code, rec.Body)
+	}
+	if isMember(t, owner) || hasTuple(t, owner, "admin") {
+		t.Errorf("creator half-removed: row=%v admin tuple=%v", isMember(t, owner), hasTuple(t, owner, "admin"))
+	}
+	if b := binding(t); b != "" {
+		t.Errorf("owner binding = %q after removing the creator, want none", b)
 	}
 }

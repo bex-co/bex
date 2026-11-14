@@ -23,7 +23,9 @@ import (
 )
 
 // w4/384: a directory requested without its trailing slash used to fall into
-// the SPA fallback and serve the homepage.
+// the SPA fallback and serve the homepage. w8/318: Render serves its index in
+// place with 200 (captured 2026-11-13: a Docusaurus site's /docs/about and
+// /docs/about/ carry the same ETag, with no Location).
 func directoryIndexObjects() map[string]Object {
 	return map[string]Object{
 		key("index.html"):      {Body: []byte("HOME"), ContentType: "text/html"},
@@ -31,23 +33,20 @@ func directoryIndexObjects() map[string]Object {
 	}
 }
 
-func TestDirectoryWithoutSlashRedirectsToTheSlashForm(t *testing.T) {
+func TestADirectoryWithoutItsSlashServesItsIndexInPlace(t *testing.T) {
 	h, _ := newTestHandler(t, Site{
-		Headers: []appv1alpha1.StaticHeader{{Path: "/blog/*", Name: "X-Blog", Value: "yes"}, {Path: "/blog", Name: "X-Blog-Bare", Value: "yes"}},
+		Headers: []appv1alpha1.StaticHeader{{Path: "/blog", Name: "X-Blog-Bare", Value: "yes"}, {Path: "/blog/index.html", Name: "X-Index", Value: "leaked"}},
 		// A catch-all SPA rewrite must not claim a published directory.
 		Routes: []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/*", Destination: "/index.html"}},
 	}, directoryIndexObjects())
-	for _, method := range []string{http.MethodGet, http.MethodHead} {
-		rec := do(h, method, "/blog?x=1&y=2")
-		if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != "/blog/?x=1&y=2" {
-			t.Fatalf("%s /blog => %d Location=%q, want 301 /blog/?x=1&y=2", method, rec.Code, rec.Header().Get("Location"))
-		}
-		if rec.Header().Get("X-Blog-Bare") != "yes" {
-			t.Fatalf("%s redirect lost the request-path headers: %v", method, rec.Header())
-		}
+	slash := do(h, http.MethodGet, "/blog/")
+	if slash.Code != http.StatusOK || slash.Body.String() != "BLOG" {
+		t.Fatalf("/blog/ => %d %q, want 200 BLOG", slash.Code, slash.Body)
 	}
-	if rec := do(h, http.MethodGet, "/blog/"); rec.Code != http.StatusOK || rec.Body.String() != "BLOG" {
-		t.Fatalf("/blog/ => %d %q, want 200 BLOG", rec.Code, rec.Body)
+	assertServedInPlace(t, h, "/blog?x=1&y=2", slash, "BLOG")
+	// Custom headers match the visitor's path, never the served object's.
+	if rec := do(h, http.MethodGet, "/blog"); rec.Header().Get("X-Blog-Bare") != "yes" || rec.Header().Get("X-Index") != "" {
+		t.Fatalf("/blog headers = %v, want the request path's rule only", rec.Header())
 	}
 }
 

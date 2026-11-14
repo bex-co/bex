@@ -1626,11 +1626,14 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/blueprints/{id}/approve", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			ManualEnvVars []ManualEnvVar `json:"manualEnvVars"`
+			// SyncID binds the approval to the plan the caller reviewed (bex
+			// extension, w5/m384).
+			SyncID string `json:"syncId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
-		return s.ApproveBlueprint(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"), body.ManualEnvVars)
+		return s.ApproveBlueprint(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"), body.SyncID, body.ManualEnvVars)
 	}))
 	mux.HandleFunc("GET /v1/blueprints/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		v, err := s.GetBlueprintByID(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"))

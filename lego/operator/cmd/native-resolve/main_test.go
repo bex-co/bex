@@ -119,7 +119,7 @@ func TestRunNarratesAnOptedInBun(t *testing.T) {
 	if code := run(time.Time{}, "node", dir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	const want = "==> Using Node 24 (default)\n==> Using Bun 1.3 (from BUN_VERSION=1.3.4)"
+	const want = "==> Using Node 24 (default)\n==> Using Bun 1.3.4 (from BUN_VERSION=1.3.4)"
 	if got := strings.TrimSpace(out.String()); got != want {
 		t.Errorf("narration = %q", got)
 	}

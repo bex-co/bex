@@ -87,10 +87,16 @@ func TestCompleterFinalizesWithTheAgentOpenedPR(t *testing.T) {
 	}
 }
 
-// The Completer has no way to reach GitHub at all: no field of it is a GitHub
-// client or connection store, so it can never open or edit a PR (ADR090).
+// The Completer can never open or edit a PR (ADR090): no field of it is a
+// GitHub client or connection store. Its one GitHub access is reading the
+// session branch's head (w5/m382), through an interface with that single
+// method.
 func TestCompleterHasNoGitHubDependency(t *testing.T) {
 	typ := reflect.TypeOf(Completer{})
+	heads, ok := typ.FieldByName("Heads")
+	if !ok || heads.Type.Kind() != reflect.Interface || heads.Type.NumMethod() != 1 || heads.Type.Method(0).Name != "Head" {
+		t.Fatalf("Completer.Heads = %s, want an interface whose only method reads a branch head", heads.Type)
+	}
 	for i := range typ.NumField() {
 		field := typ.Field(i)
 		for _, banned := range []string{"github", "GitHub", "PullRequest", "Connection"} {
@@ -189,6 +195,47 @@ func TestCompleterNoteTracksTheLatestTurn(t *testing.T) {
 	c.Reconcile(context.Background())
 	if row := st.rows[id]; row.Phase != PhaseCompleted || row.DeliveryNote != "" || row.PRNumber != 7 {
 		t.Fatalf("delivered steering turn = %+v", row)
+	}
+}
+
+// fakeHeads is GitHub's view of the session branch for the completer.
+type fakeHeads struct {
+	head  string
+	err   error
+	reads []string
+}
+
+func (f *fakeHeads) Head(_ context.Context, workspaceID, repository, branch string) (string, error) {
+	f.reads = append(f.reads, workspaceID+" "+repository+" "+branch)
+	return f.head, f.err
+}
+
+// w5/m382: the head recorded, and CI-failure steering keys on, is GitHub's
+// head of the session branch, not the sandbox's own report; an unreadable
+// GitHub records none rather than the sandbox's word.
+func TestCompleterRecordsGitHubsHeadNotTheSandboxs(t *testing.T) {
+	const githubHead = "89abcdef0123456789abcdef0123456789abcdef"
+	for name, tc := range map[string]struct {
+		heads *fakeHeads
+		want  string
+	}{
+		"GitHub disagrees":    {&fakeHeads{head: githubHead}, githubHead},
+		"GitHub agrees":       {&fakeHeads{head: remoteHead}, remoteHead},
+		"GitHub unreadable":   {&fakeHeads{err: errors.New("github down")}, ""},
+		"GitHub answers junk": {&fakeHeads{head: "not-a-sha"}, ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c, st, _, id := completerFixture(succeededStatus(true), nil)
+			c.Heads = tc.heads
+			c.Reconcile(context.Background())
+			row := st.rows[id]
+			if row.Phase != PhaseCompleted || row.HeadSHA != tc.want {
+				t.Fatalf("row phase %s head %q, want completed with head %q", row.Phase, row.HeadSHA, tc.want)
+			}
+			if len(tc.heads.reads) != 1 || tc.heads.reads[0] != "tea-a bex-co/example bex-agent/s1" {
+				t.Fatalf("GitHub reads = %v, want the session's own branch once", tc.heads.reads)
+			}
+		})
 	}
 }
 

@@ -12,17 +12,7 @@ dashboard/**
 deploy/opensandbox/**
 deploy/gitops/**
 .github/workflows/deploy.yml
-# Main has one gate owner, including suite/script-only changes. The reusable
-# suites run directly on PRs, never a second time on main.
-.github/workflows/backend-test.yml
-.github/workflows/operator-test.yml
-.github/workflows/dashboard-test.yml
-.github/workflows/opensandbox-controller-test.yml
+# The build installs Syft from it for the SBOMs.
 scripts/install-syft.py
-scripts/test_install_syft.py
-scripts/stripe-billing-*.sh
-scripts/stripe_billing_*.py
-scripts/test_stripe_billing_*.py
-scripts/stripe_orphan_audit.py
-scripts/test_stripe_orphan_audit.py
-scripts/lib/stripe-billing.sh
+# The test suites run on every push touching their own paths, so a change only
+# to a suite, its workflow or the scripts it tests deploys nothing.

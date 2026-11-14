@@ -330,6 +330,15 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 			// travels with it (w4/360).
 			StorageGB:  DatabaseStorageHighWater(src),
 			Parameters: tenantParameters(src.Spec.Parameters),
+			// A login retired after the restore target comes back from the
+			// backup with its old password; carrying the source's retirements
+			// puts them in the restored Cluster's managed roles, which CNPG
+			// applies once the restored primary starts (w5/m384, round 24).
+			// Not the owner: it is the restored instance's default credential,
+			// since the source's added users are not carried.
+			DeletedUsers: slices.DeleteFunc(slices.Clone(src.Spec.DeletedUsers), func(u string) bool {
+				return u == src.Spec.EffectiveDatabaseUser(src.Name)
+			}),
 			Recovery: &appv1alpha1.DatabaseRecovery{
 				SourceDatabase:         src.Name,
 				SourceBackupServerName: sourceBackupServerName,

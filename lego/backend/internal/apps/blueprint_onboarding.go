@@ -490,7 +490,11 @@ func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncW
 // ApproveBlueprint applies the Blueprint's newest planned sync, with the
 // sync:false values it requires. A newest sync that failed planning, or that
 // was already applied, cannot be approved.
-func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, supplied []ManualEnvVar) (ApprovedSync, error) {
+//
+// planned, when set, is the sync id of the plan the caller reviewed: approval
+// is refused unless it is still the newest planned sync, so a re-plan another
+// developer made meanwhile is never what gets applied (w5/m384, round 24).
+func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID, planned string, supplied []ManualEnvVar) (ApprovedSync, error) {
 	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
 	if err != nil {
 		return ApprovedSync{}, err
@@ -530,6 +534,16 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, su
 	default:
 		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_NOTHING_TO_APPROVE",
 			fmt.Sprintf("the newest sync %s is %s, not awaiting approval; plan a new sync first", syncID, latest.State), map[string]any{"syncId": syncID})
+	}
+	// Checked once the newest plan is known to be approvable, so a failed or
+	// settled newest plan answers as such. Either spelling of a sync id names
+	// the same run (ids package); details.syncId stays the newest sync, as in
+	// every other approve refusal.
+	if planned = strings.TrimSpace(planned); planned != "" && ids.BlueprintSyncStorageID(planned) != latest.ID {
+		reviewed := ids.BlueprintSyncPublicID(planned)
+		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_PLAN_CHANGED",
+			fmt.Sprintf("sync %s is no longer this Blueprint's newest plan (%s is); review the newest plan, then approve it", reviewed, syncID),
+			map[string]any{"syncId": syncID, "reviewedSyncId": reviewed})
 	}
 	values, err := approvalEnvVarValues(latest.RequiredManualEnvVars, supplied)
 	if err != nil {
@@ -765,6 +779,7 @@ func (s *Service) onboardingGraphQLMutations() graphql.Fields {
 				"id":            gqlutil.ReqArg(graphql.String),
 				"ownerId":       gqlutil.Arg(graphql.String),
 				"manualEnvVars": gqlutil.Arg(graphql.NewList(manualEnvVarInputGQLType)),
+				"syncId":        gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var supplied []ManualEnvVar
@@ -778,7 +793,7 @@ func (s *Service) onboardingGraphQLMutations() graphql.Fields {
 						supplied = append(supplied, v)
 					}
 				}
-				return s.ApproveBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"), supplied)
+				return s.ApproveBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "syncId"), supplied)
 			},
 		},
 	}
@@ -806,6 +821,7 @@ type blueprintIDArgs struct {
 type approveBlueprintArgs struct {
 	BlueprintID   string         `json:"blueprintId" jsonschema:"The Blueprint ID (exs-…, or the legacy blp-…). Use the Blueprint ID, not a sync ID."`
 	ManualEnvVars []ManualEnvVar `json:"manualEnvVars,omitempty" jsonschema:"Values for the environment variables listed in sync.requiredManualEnvVars: {serviceType, serviceName, key, value}."`
+	SyncID        string         `json:"syncId,omitempty" jsonschema:"The sync.id of the plan the user reviewed. Pass it: approval is refused if another plan has replaced it since. A bex extension."`
 }
 
 type updateBlueprintArgs struct {
@@ -991,9 +1007,9 @@ func (s *Service) registerOnboardingMCP(srv *mcp.Server) {
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "approve_blueprint",
-		Description: "Approve and apply the Blueprint's newest planned sync after confirming that planning succeeded; approval can update existing resources. Call it only after the user authorizes applying the reviewed plan. Supply a user-provided value in manualEnvVars for every entry in sync.requiredManualEnvVars; never invent a value (they appear as plaintext in the agent context — the user can instead approve through POST /v1/blueprints/{blueprintId}/approve or the dashboard). Refused when the newest sync failed planning or is not awaiting approval. Returns the approved sync, before its deployments finish.",
+		Description: "Approve and apply the Blueprint's newest planned sync after confirming that planning succeeded; approval can update existing resources. Call it only after the user authorizes applying the reviewed plan. Supply a user-provided value in manualEnvVars for every entry in sync.requiredManualEnvVars; never invent a value (they appear as plaintext in the agent context — the user can instead approve through POST /v1/blueprints/{blueprintId}/approve or the dashboard). Pass the reviewed plan's sync.id as syncId, so a plan that replaced it meanwhile is refused rather than applied. Refused when the newest sync failed planning or is not awaiting approval. Returns the approved sync, before its deployments finish.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in approveBlueprintArgs) (*mcp.CallToolResult, ApprovedSync, error) {
-		res, err := s.ApproveBlueprint(ctx, in.BlueprintID, core.NamedWorkspace(ctx), in.ManualEnvVars)
+		res, err := s.ApproveBlueprint(ctx, in.BlueprintID, core.NamedWorkspace(ctx), in.SyncID, in.ManualEnvVars)
 		return nil, res, err
 	})
 	mcputil.AddTool(srv, &mcp.Tool{

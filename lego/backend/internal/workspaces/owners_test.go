@@ -297,8 +297,8 @@ func (f *fakeMembers) Remove(_ context.Context, _, subject string) error {
 }
 
 // The userId the members list answers is what the mutations accept; Render's
-// role enum maps onto bex's roles; the members service's refusals (the owner
-// safeguards) pass through unchanged.
+// role enum maps onto bex's roles; the members service's refusals pass
+// through unchanged.
 func TestRenderMemberMutationsResolveTheListedUserID(t *testing.T) {
 	st := newFakeStore()
 	members := &fakeMembers{roles: map[string]string{}}

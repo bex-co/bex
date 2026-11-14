@@ -1191,3 +1191,20 @@ func TestZotConfigStorageMigrationAddsLiveTagRetention(t *testing.T) {
 		t.Errorf("migrated keepTags = %v; want a ^%s.* rule keeping %d", migrated["keepTags"], LiveTagPrefix, liveRetentionCount)
 	}
 }
+
+// w5/192: a HEAD in one repository for a blob only another repository holds
+// must answer 404. Zot's storage.hydrateBlobOnRead (its pre-conformance
+// behavior) would link the blob on that read, and go-containerregistry skips
+// uploading a blob the destination says it has, so a sandbox import could
+// borrow another workspace's layer by digest. The operator writes the whole
+// storage block on every reconcile (setZotStorage), so this is the only place
+// the flag could come from.
+func TestZotNeverHydratesBlobsAcrossRepositoriesOnRead(t *testing.T) {
+	storage := (&Creds{}).canonicalStorage()
+	if v, ok := storage["hydrateBlobOnRead"]; ok && v != false {
+		t.Fatalf("storage.hydrateBlobOnRead = %v: a HEAD would link another repository's blob", v)
+	}
+	if storage["dedupe"] != true {
+		t.Fatalf("storage.dedupe = %v; update the w5/192 reasoning (sandbox imports never mount) if dedupe changes", storage["dedupe"])
+	}
+}

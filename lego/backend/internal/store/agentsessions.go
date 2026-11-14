@@ -299,6 +299,11 @@ type AgentSessionCount struct {
 // names none; it is the bex-agent/ prefix agentsession.ValidateBranch requires.
 const DefaultAgentBranchPrefix = "bex-agent/"
 
+// ErrAgentSessionBranchInUse is a create refused because another session in
+// the workspace holds the branch it named on the same repository (w5/m382;
+// see lockUnheldBranch for what holds a branch).
+var ErrAgentSessionBranchInUse = errors.New("agent session branch is held by another live session")
+
 // ErrAgentSessionIdempotencyKey is a create that lost the race for its key: a
 // session already holds it in this workspace. Callers look the holder up.
 var ErrAgentSessionIdempotencyKey = errors.New("agent session idempotency key already in use")
@@ -328,6 +333,7 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 	in.ID = ids.New(ids.AgentSession)
 	// A repository session with no branch gets the session's own (ADR094 D3):
 	// an LLM caller should not have to invent a name that passes the prefix rule.
+	namedBranch := in.Branch != ""
 	if in.Repo != "" && in.Branch == "" {
 		in.Branch = DefaultAgentBranchPrefix + in.ID
 	}
@@ -392,6 +398,13 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			}
 			return err
 		}
+		// After the insert, so a retry with the same idempotency key fails on
+		// its key (and replays) before it could be refused for the branch.
+		if namedBranch && in.Repo != "" {
+			if err := lockUnheldBranch(ctx, tx, in.WorkspaceID, in.Repo, in.Branch, in.ID, in.ParentSessionID != ""); err != nil {
+				return err
+			}
+		}
 		if in.InitialPrompt != "" {
 			_, err = tx.Exec(ctx, `
 				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required, skills)
@@ -411,7 +424,7 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 		return insertAgentDispatch(ctx, tx, row, "")
 	})
 	if errors.Is(err, ErrAgentSessionIdempotencyKey) || errors.Is(err, ErrAgentSessionAdmissionLimit) ||
-		errors.Is(err, ErrAgentSessionPullRequestOwned) || isAgentSessionLineageRefusal(err) {
+		errors.Is(err, ErrAgentSessionPullRequestOwned) || errors.Is(err, ErrAgentSessionBranchInUse) || isAgentSessionLineageRefusal(err) {
 		return AgentSession{}, err
 	}
 	if err != nil {
@@ -762,6 +775,35 @@ func (s *PGStore) SetAgentSessionArchived(ctx context.Context, id string, archiv
 		return AgentSession{}, classify("agent session", err)
 	}
 	return out, nil
+}
+
+// lockUnheldBranch serializes the creates that name branch of repo in a
+// workspace and refuses while another session there holds it (w5/m382), so
+// two sessions never push over each other or re-sync each other's pull
+// request. A session that is working holds its branch, archived or not
+// (archiving does not stop a turn). For a child, which its parent's agent
+// names, any session that could still push holds it too: a finished one can
+// be messaged again. A person's or an automation's create may reuse a
+// finished session's branch (an automation's next run does).
+func lockUnheldBranch(ctx context.Context, tx pgx.Tx, workspaceID, repo, branch, self string, child bool) error {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+		"agent-session-branch:"+workspaceID+":"+repo+":"+branch); err != nil {
+		return err
+	}
+	holds := activeAgentSessionPhasesSQL
+	if child {
+		holds = "(" + holds + " OR (" + liveAgentSessionSQL + "))"
+	}
+	var held bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM agent_sessions
+		WHERE workspace_id = $1 AND repo = $2 AND branch = $3 AND id <> $4 AND `+holds+`)`,
+		workspaceID, repo, branch, self).Scan(&held); err != nil {
+		return err
+	}
+	if held {
+		return ErrAgentSessionBranchInUse
+	}
+	return nil
 }
 
 // lockUnarchivedTakeover refuses to unarchive a takeover session while
