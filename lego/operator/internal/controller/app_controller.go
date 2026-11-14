@@ -3430,12 +3430,7 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 	}
 
 	app.Status.Image = image
-	if len(hosts) > 0 {
-		setStatusURLs(app, hosts)
-	} else {
-		app.Status.URL = internalURL(app)
-		app.Status.URLs = nil
-	}
+	setServingURLs(app, hosts)
 	app.Status.ObservedGeneration = app.Generation
 	if err := r.markRunning(ctx, app, dep, replicas, "app running (kubernetes)",
 		"name", app.Name, "image", image, "replicas", replicas); err != nil {
@@ -3499,9 +3494,10 @@ func (r *AppReconciler) runningRequeue(ctx context.Context, app *appv1alpha1.App
 func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, image string, hosts []string, reason, message string) (ctrl.Result, error) {
 	app.Status.Phase = appv1alpha1.PhaseHibernated
 	app.Status.Image = image
-	if host := appv1alpha1.PublicURLHost(hosts); host != "" {
-		app.Status.URL = "https://" + host
-	}
+	// A parked App's spec can still change, and the activator routes by status
+	// as well as by spec, so a host the owner dropped must leave status now,
+	// not at the next Running pass (w21/m394 t011).
+	setServingURLs(app, hosts)
 	app.Status.ObservedGeneration = app.Generation
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
@@ -3708,6 +3704,21 @@ func internalURL(app *appv1alpha1.App) string {
 		return "http://" + app.InternalAddress()
 	}
 	return fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, app.ServicePort())
+}
+
+// setServingURLs projects the App's current public hosts onto status, or its
+// internal URL when it has none (an addressable type; any other type has no
+// URL at all).
+func setServingURLs(app *appv1alpha1.App, hosts []string) {
+	if len(hosts) > 0 {
+		setStatusURLs(app, hosts)
+		return
+	}
+	app.Status.URL = ""
+	if app.Spec.InternallyAddressable() {
+		app.Status.URL = internalURL(app)
+	}
+	app.Status.URLs = nil
 }
 
 // setStatusURLs projects a serving App's public hosts onto status: the first

@@ -22,15 +22,18 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"mime"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -774,27 +777,48 @@ func validateCustomPageURL(rawURI string, app *appv1alpha1.App, platformHost fun
 	return u, nil
 }
 
+// appHosts is every host the App names, in its spec or its status.
 func appHosts(app *appv1alpha1.App) map[string]struct{} {
+	hosts := specHosts(app, "")
+	maps.Copy(hosts, statusHosts(app))
+	return hosts
+}
+
+// specHosts are the hosts the App's spec claims, with its platform host when
+// baseDomain is known.
+func specHosts(app *appv1alpha1.App, baseDomain string) map[string]struct{} {
 	hosts := make(map[string]struct{})
-	add := func(value string) {
-		if u, err := url.Parse(value); err == nil && u.Hostname() != "" {
-			hosts[strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))] = struct{}{}
-			return
-		}
-		value = requestHost(value)
-		if value != "" {
-			hosts[value] = struct{}{}
-		}
-	}
-	add(app.Spec.Host)
+	addHost(hosts, app.Spec.Host)
 	for _, host := range app.Spec.Hosts {
-		add(host)
+		addHost(hosts, host)
 	}
-	add(app.Status.URL)
-	for _, value := range app.Status.URLs {
-		add(value)
+	if baseDomain != "" {
+		for _, host := range app.Spec.EffectiveHosts(app.Name, baseDomain) {
+			hosts[requestHost(host)] = struct{}{}
+		}
 	}
 	return hosts
+}
+
+// statusHosts are the hosts the operator last recorded for the App: what it
+// served at its last Running pass, which a spec edit may have since dropped.
+func statusHosts(app *appv1alpha1.App) map[string]struct{} {
+	hosts := make(map[string]struct{})
+	addHost(hosts, app.Status.URL)
+	for _, value := range app.Status.URLs {
+		addHost(hosts, value)
+	}
+	return hosts
+}
+
+func addHost(hosts map[string]struct{}, value string) {
+	if u, err := url.Parse(value); err == nil && u.Hostname() != "" {
+		hosts[strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))] = struct{}{}
+		return
+	}
+	if host := requestHost(value); host != "" {
+		hosts[host] = struct{}{}
+	}
 }
 
 func requestHost(value string) string {
@@ -833,27 +857,51 @@ func (h *hostCache) refreshOnce(ctx context.Context) {
 		h.log.Error(err, "refreshing app host cache")
 		return
 	}
-	next := make(map[string]*appv1alpha1.App, len(list.Items))
-	for i := range list.Items {
-		app := &list.Items[i]
-		// A deleted App lingers under its finalizer while the operator reclaims
-		// its artifacts. It is gone for the public: its hosts answer as unknown
-		// (404 no-server) and nothing wakes it (w4/516).
-		if !app.DeletionTimestamp.IsZero() {
-			continue
-		}
-		for host := range appHosts(app) {
-			next[host] = app
-		}
-		if h.baseDomain != "" {
-			for _, host := range app.Spec.EffectiveHosts(app.Name, h.baseDomain) {
-				next[requestHost(host)] = app
-			}
-		}
-	}
+	next := hostIndex(list.Items, h.baseDomain)
 	h.mu.Lock()
 	h.byHost = next
 	h.mu.Unlock()
+}
+
+// hostIndex maps each host to the App that serves it. A host an App's spec
+// claims beats one only its status records: a spec edit made while the App is
+// parked changes the spec at once and status only at its next Running pass, so
+// a stale status host must never take a host from the App that now claims it
+// (w21/m394 t011, R25-01). Within a tier the oldest App wins, then the lowest
+// namespace/name, so a host two Apps claim resolves the same way on every
+// rebuild whatever order the informer cache lists them in.
+func hostIndex(items []appv1alpha1.App, baseDomain string) map[string]*appv1alpha1.App {
+	apps := make([]*appv1alpha1.App, 0, len(items))
+	for i := range items {
+		// A deleted App lingers under its finalizer while the operator reclaims
+		// its artifacts. It is gone for the public: its hosts answer as unknown
+		// (404 no-server) and nothing wakes it (w4/516).
+		if items[i].DeletionTimestamp.IsZero() {
+			apps = append(apps, &items[i])
+		}
+	}
+	slices.SortFunc(apps, func(a, b *appv1alpha1.App) int {
+		return cmp.Or(
+			a.CreationTimestamp.Compare(b.CreationTimestamp.Time),
+			strings.Compare(a.Namespace, b.Namespace),
+			strings.Compare(a.Name, b.Name),
+		)
+	})
+	next := make(map[string]*appv1alpha1.App, len(apps))
+	claim := func(hosts map[string]struct{}, app *appv1alpha1.App) {
+		for host := range hosts {
+			if _, taken := next[host]; !taken {
+				next[host] = app
+			}
+		}
+	}
+	for _, app := range apps {
+		claim(specHosts(app, baseDomain), app)
+	}
+	for _, app := range apps {
+		claim(statusHosts(app), app)
+	}
+	return next
 }
 
 // claims reports whether host (canonicalized) is routed to ANY App in the
