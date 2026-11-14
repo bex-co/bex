@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -174,19 +175,32 @@ var _ = Describe("Edge caching (w5/m151)", func() {
 	})
 })
 
-// The sidecar listens on 18014, a reserved port (IsReservedImagePort): a
-// caching image-port web service whose image exposes it resolves no network,
+// Render documents three reserved ports and refuses nothing else, so a service
+// may bind any other. The sidecar has to sit on one of those three: a fourth,
+// as 18014 was, is a port Render lets a service use and bex does not
+// (w21/076, ADR018).
+func TestTheEdgeCacheSharesARenderReservedPortAndTakesNoFourth(t *testing.T) {
+	if got := appv1alpha1.ReservedImagePorts(); !slices.Equal(got, []int32{18012, 18013, 19099}) {
+		t.Fatalf("reserved ports = %v, want exactly Render's 18012, 18013 and 19099", got)
+	}
+	if !appv1alpha1.IsReservedImagePort(edgeCachePort) {
+		t.Fatalf("the sidecar's port %d is not reserved, so a service's PORT could collide with it", edgeCachePort)
+	}
+}
+
+// The sidecar listens on 19099, a port Render reserves too (IsReservedImagePort):
+// a caching image-port web service whose image exposes it resolves no network,
 // so no pod is projected with the app and the cache on one port, and an
-// explicit port cannot select it (a PORT of 18014 is ignored, envPort).
+// explicit port cannot select it (a PORT of 19099 is ignored, envPort).
 func TestImageExposingTheEdgeCachePortResolvesNoNetwork(t *testing.T) {
 	cached := func(a *appv1alpha1.App) {
 		a.Name, a.Generation = "cached", 1
 		a.Spec.PortMode, a.Spec.Tier, a.Spec.CacheProfile = appv1alpha1.PortModeWebImageV1, "pro", appv1alpha1.CacheProfileAll
 	}
-	r := &AppReconciler{Registry: "registry.test", HTTPClient: imageConfigRegistry(t, `"8080/tcp":{},"18014/tcp":{}`)}
+	r := &AppReconciler{Registry: "registry.test", HTTPClient: imageConfigRegistry(t, `"8080/tcp":{},"19099/tcp":{}`)}
 	app := projectionApp(cached)
-	if _, _, err := r.resolveImageNetwork(t.Context(), app, "registry.test/cached:gen-1"); err == nil || !strings.Contains(err.Error(), "18014 is reserved") {
-		t.Fatalf("resolveImageNetwork error = %v, want the reserved 18014 refused", err)
+	if _, _, err := r.resolveImageNetwork(t.Context(), app, "registry.test/cached:gen-1"); err == nil || !strings.Contains(err.Error(), "19099 is reserved") {
+		t.Fatalf("resolveImageNetwork error = %v, want the reserved 19099 refused", err)
 	}
 	if app.Status.ImageNetwork != nil {
 		t.Fatalf("network = %+v, want none resolved", app.Status.ImageNetwork)
@@ -196,7 +210,7 @@ func TestImageExposingTheEdgeCachePortResolvesNoNetwork(t *testing.T) {
 		a.Spec.PortMode, a.Spec.Port = appv1alpha1.PortModeWebImageConfiguredV1, edgeCachePort
 	})
 	if _, _, err := r.resolveImageNetwork(t.Context(), app, "registry.test/cached:gen-1"); err == nil {
-		t.Fatal("an explicit port of 18014 must not become the primary the cache would share")
+		t.Fatal("an explicit port of 19099 must not become the primary the cache would share")
 	}
 }
 

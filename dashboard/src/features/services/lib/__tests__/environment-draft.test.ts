@@ -558,7 +558,8 @@ describe("environment value rules (w21/047)", () => {
     ["99999999999999999999", false],
     ["18012", false],
     ["18013", false],
-    ["18014", false],
+    // Render does not reserve 18014; the edge-cache sidecar left it (w21/076).
+    ["18014", true],
     ["19099", false],
   ])("PORT=%j is %s", (value, ok) => {
     expect(isValidPortValue(value)).toBe(ok);
@@ -568,7 +569,7 @@ describe("environment value rules (w21/047)", () => {
   });
 
   it("pins the reserved ports against the Go list", () => {
-    expect([...RESERVED_PLATFORM_PORTS]).toEqual([18012, 18013, 18014, 19099]);
+    expect([...RESERVED_PLATFORM_PORTS]).toEqual([18012, 18013, 19099]);
   });
 
   it("applies the PORT rule to the exact key only", () => {

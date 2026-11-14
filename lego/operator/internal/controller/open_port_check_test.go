@@ -48,7 +48,7 @@ func TestFirstWebImageReleaseChecksAnyOpenPort(t *testing.T) {
 		t.Fatalf("container ports = %+v, want none while discovery may move the primary", c.Ports)
 	}
 	for _, probe := range probesOf(c) {
-		if !healthProbeChecksOpenPort(probe.Exec) || !slices.Contains(probe.Exec.Command, "18012,18013,18014,19099") {
+		if !healthProbeChecksOpenPort(probe.Exec) || !slices.Contains(probe.Exec.Command, "18012,18013,19099") {
 			t.Fatalf("probe = %+v, want the any-open-port helper skipping bex's reserved ports", probe.ProbeHandler)
 		}
 	}

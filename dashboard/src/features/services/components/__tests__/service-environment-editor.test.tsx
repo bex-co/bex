@@ -575,7 +575,7 @@ describe("ServiceEnvironmentEditor", () => {
   // of a toast after the round trip with the draft kept and the row unmarked.
   it.each([
     ["PORT=abc", "PORT", "abc", /PORT must be a whole number from 1 to 65535/],
-    ["PORT=18012", "PORT", "18012", /not 18012, 18013, 18014 or 19099/],
+    ["PORT=18012", "PORT", "18012", /not 18012, 18013 or 19099/],
     [
       "a 140000-character value",
       "QA_BIG",

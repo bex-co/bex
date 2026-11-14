@@ -74,7 +74,9 @@ func TestEnvValueRulesVectors(t *testing.T) {
 		// strconv.Atoi takes a sign and no surrounding space.
 		"+80": true,
 		"abc": false, "": false, "0": false, "65536": false, "-1": false, "80 ": false, " 80": false, "8.0": false,
-		"99999999999999999999": false, "18012": false, "18013": false, "18014": false, "19099": false,
+		"99999999999999999999": false, "18012": false, "18013": false, "19099": false,
+		// Render does not reserve 18014; bex's own sidecar left it (w21/076).
+		"18014": true,
 	} {
 		if got := ValidPortValue(value); got != ok {
 			t.Errorf("ValidPortValue(%q) = %v, want %v", value, got, ok)

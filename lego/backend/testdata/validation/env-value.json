@@ -34,7 +34,7 @@
   { "key": "PORT", "input": "99999999999999999999", "valid": false },
   { "key": "PORT", "input": "18012", "valid": false, "why": "a port the platform reserves" },
   { "key": "PORT", "input": "18013", "valid": false },
-  { "key": "PORT", "input": "18014", "valid": false },
+  { "key": "PORT", "input": "18014", "valid": true, "why": "Render does not reserve it; the edge-cache sidecar moved to 19099" },
   { "key": "PORT", "input": "19099", "valid": false },
   { "key": "PORT", "input": "18015", "valid": true, "why": "next to the reserved ports, not reserved" },
   { "key": " PORT ", "input": "abc", "valid": false, "why": "the form trims the key before it sends" },

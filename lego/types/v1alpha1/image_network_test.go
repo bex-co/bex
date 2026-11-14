@@ -167,7 +167,7 @@ func TestDetectedPortOverridesTheDefaultAcrossReaders(t *testing.T) {
 // a listener, and a pending image network stays [].
 func TestOpenPortsAddRuntimeListeners(t *testing.T) {
 	found := &RuntimePortsStatus{Revision: "rev-2", Ports: []int32{5432, 9187, 18012}, Retained: []int32{7000}}
-	webFound := &RuntimePortsStatus{Revision: "rev-2", Ports: []int32{8080, 9000, 10000, 18014}}
+	webFound := &RuntimePortsStatus{Revision: "rev-2", Ports: []int32{8080, 9000, 10000, 19099}}
 	for _, tc := range []struct {
 		name string
 		app  App

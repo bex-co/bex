@@ -55,10 +55,14 @@ func IsConfiguredPortMode(mode string) bool {
 }
 
 // ReservedImagePorts are the ports bex's own processes listen on inside a
-// tenant pod; no service port may be one of them.
+// tenant pod; no service port may be one of them. They are exactly the three
+// Render documents as reserved (https://render.com/docs/web-services, "The
+// following ports are reserved by Render and cannot be used"): a port a service
+// may bind on Render it may bind here, and bex's own sidecar sits on one of
+// Render's reserved ports rather than taking a fourth.
 func ReservedImagePorts() []int32 { return slices.Clone(reservedImagePorts) }
 
-var reservedImagePorts = []int32{18012, 18013, 18014, 19099}
+var reservedImagePorts = []int32{18012, 18013, 19099}
 
 // IsReservedImagePort keeps explicit primary ports and discovered TCP ports
 // under the same image-compatibility policy.

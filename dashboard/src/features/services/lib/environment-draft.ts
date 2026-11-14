@@ -339,7 +339,7 @@ export const MAX_ENV_ENTRY_BYTES = 131072;
  * PORT (`appv1alpha1.IsReservedImagePort`). The Go test
  * `TestEnvValueRulesVectors` and this module's test pin the same list.
  */
-export const RESERVED_PLATFORM_PORTS = [18012, 18013, 18014, 19099] as const;
+export const RESERVED_PLATFORM_PORTS = [18012, 18013, 19099] as const;
 
 /**
  * A PORT value the operator will serve on: an integer 1-65535 that is not

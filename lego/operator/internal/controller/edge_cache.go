@@ -42,9 +42,12 @@ const (
 	edgeCacheUpstreamEnv   = "BEX_EDGE_CACHE_UPSTREAM"
 	// edgeCacheUpstreamPrefix precedes the app port in edgeCacheUpstreamEnv.
 	edgeCacheUpstreamPrefix = "http://127.0.0.1:"
-	// edgeCachePort is reserved (IsReservedImagePort), so a service's own
-	// PORT can never collide with it.
-	edgeCachePort = 18014
+	// edgeCachePort is one of the three ports Render reserves
+	// (IsReservedImagePort), so a service's own PORT can never collide with it
+	// and the refused set stays Render's: 18014, which the sidecar used to take,
+	// is an ordinary port again. The Service reaches it by name
+	// (edgeCachePortName), so a rollout from the old port is seamless.
+	edgeCachePort = 19099
 	// edgeCacheMaxBytes bounds the cache's memory; its container limit leaves
 	// room for the proxy itself.
 	edgeCacheMaxBytes = 48 << 20

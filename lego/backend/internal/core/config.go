@@ -194,7 +194,7 @@ const portEnvKey = "PORT"
 
 // PortValueSentence is the one wording for a PORT value ValidPortValue rejects.
 // It never echoes the value.
-const PortValueSentence = "PORT must be an integer from 1 to 65535 (not 18012, 18013, 18014 or 19099, which the platform reserves); the operator would otherwise ignore it and serve the service's own port"
+const PortValueSentence = "PORT must be an integer from 1 to 65535 (not 18012, 18013 or 19099, which the platform reserves); the operator would otherwise ignore it and serve the service's own port"
 
 // ValidPortValue reports whether v is a PORT the operator will serve on:
 // digits only, 1-65535, not a platform-reserved port (the operator's own rule,

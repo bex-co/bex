@@ -5449,7 +5449,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.environmentPortInvalid": {
     message:
-      "PORT 必须是 1 到 65535 之间的整数，且不能是平台保留的 18012、18013、18014 或 19099。",
+      "PORT 必须是 1 到 65535 之间的整数，且不能是平台保留的 18012、18013 或 19099。",
     description:
       "Draft validation under a PORT environment variable the operator would ignore (w21/047)",
   },

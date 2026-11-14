@@ -392,10 +392,10 @@ func TestDiscoverPrivatePortsSettles(t *testing.T) {
 
 // A web service's listeners beyond its primary HTTP port are published on its
 // Service and in openPorts, as a private service's are (w3/m276); the app's
-// own 10000 and the edge cache's reserved 18014 are not, since 10000 stays
+// own 10000 and the edge cache's reserved 19099 are not, since 10000 stays
 // the route to the primary HTTP server.
 func TestDiscoverWebServiceListeners(t *testing.T) {
-	r, app, dep := privateScanFixture(&cannedScanner{open: []int{8080, 9000, 10000, 18014}}, true, time.Nanosecond)
+	r, app, dep := privateScanFixture(&cannedScanner{open: []int{8080, 9000, 10000, 19099}}, true, time.Nanosecond)
 	app.Spec.Type, app.Spec.Port = appv1alpha1.TypeWebService, 8080
 	for range 2 { // the pass that starts the sweep, then the one that takes its record
 		if err := r.discoverPrivatePorts(context.Background(), app, dep, 8080, true); err != nil {

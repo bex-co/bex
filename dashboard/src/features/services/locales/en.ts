@@ -5571,7 +5571,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.environmentPortInvalid": {
     message:
-      "PORT must be a whole number from 1 to 65535, and not 18012, 18013, 18014 or 19099, which the platform reserves.",
+      "PORT must be a whole number from 1 to 65535, and not 18012, 18013 or 19099, which the platform reserves.",
     description:
       "Draft validation under a PORT environment variable the operator would ignore (w21/047)",
   },
