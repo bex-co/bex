@@ -97,21 +97,6 @@ func BuildSourceOrNotFound(a *appv1alpha1.App) error {
 	return nil
 }
 
-// BuildSourceApp authorizes relation on build source id and returns the
-// carrier under the build-source context. The apps and deploys surfaces both
-// resolve a build source this way before acting on it, so the composition —
-// WithBuildSources, then AuthorizeApp, then BuildSourceOrNotFound — lives once
-// (w10/unify-duplicates). Keeping the callers' unexported buildSourceApp
-// wrappers means the audit verb walk still names the exported verb that acts.
-func (b *Base) BuildSourceApp(ctx context.Context, relation, id string) (context.Context, *appv1alpha1.App, error) {
-	ctx = WithBuildSources(ctx)
-	a, err := b.AuthorizeApp(ctx, relation, id)
-	if err != nil {
-		return ctx, nil, err
-	}
-	return ctx, a, BuildSourceOrNotFound(a)
-}
-
 // BuildSourceScope is the context the build-source surface acts in on id: it
 // resolves id under WithBuildSources and refuses anything that is not a build
 // source carrier, so a /v1/build-sources route can delegate to a service

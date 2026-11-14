@@ -99,10 +99,14 @@ func buildDeployID(buildID string) (string, bool) {
 }
 
 // buildSourceApp authorizes relation on build source id. Unexported so the
-// audit verb walk names the exported verb calling it; the composition itself
-// is core.Base.BuildSourceApp, shared with the apps surface.
+// audit verb walk names the exported verb calling it.
 func (s *Service) buildSourceApp(ctx context.Context, relation, id string) (context.Context, *appv1alpha1.App, error) {
-	return s.BuildSourceApp(ctx, relation, id)
+	ctx = core.WithBuildSources(ctx)
+	a, err := s.AuthorizeApp(ctx, relation, id)
+	if err != nil {
+		return ctx, nil, err
+	}
+	return ctx, a, core.BuildSourceOrNotFound(a)
 }
 
 // TriggerBuild is Render's trigger-build-source-build: a new build of the
