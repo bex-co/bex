@@ -59,6 +59,8 @@ env:
 
 jobs:
   # --- gates: all product + carried-controller tests pass before any image build ---
+  # Each suite also runs on every push touching its inputs, in its own
+  # workflow; here it runs again on the exact commit being deployed.
   test-backend:
     needs: changes
     if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
@@ -79,7 +81,7 @@ jobs:
     if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/opensandbox-controller-test.yml
 
-  # --- secret scanning: gitleaks over the pushed commits (w7/002) ---
+  # --- secret scanning: gitleaks over the commits being deployed (w7/002) ---
   # Runs in parallel with the test gates. Findings are warn-first and do not
   # block CI until the historical baseline is tuned; scanner setup failures do.
   # Distinct from trivy CVE scanning (w7/m10 — image vulnerabilities) and
@@ -111,14 +113,20 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
           chmod +x "$RUNNER_TEMP/gitleaks"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
-      - name: scan pushed commits for secrets
+      - name: scan the commits this deploy ships for secrets
         # Warn-first: findings fail this step but never block deploy.
         continue-on-error: true
         env:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
-          before="$BEFORE_SHA"
+          # Every commit since production's pin, not only this push's: the
+          # batched pushes before it ran no scan, and their commits ship here.
+          before="$(python3 scripts/deploy_latency.py --pinned 2>/dev/null || true)"
+          if [ -n "$before" ] && ! git merge-base --is-ancestor "$before" "$AFTER_SHA"; then
+            before=""
+          fi
+          [ -n "$before" ] || before="$BEFORE_SHA"
           if [ -z "$before" ] || [[ "$before" =~ ^0+$ ]]; then
             before="$(git rev-parse "${AFTER_SHA}^" 2>/dev/null || true)"
           fi
@@ -136,9 +144,10 @@ jobs:
   # being [skip ci], starts no run). git only, no API. A dispatch always
   # deploys unless its only_if_changed input asks for the gate without the
   # interval. Pushes during a deploy wait in the concurrency group with one
-  # pending run, which then finds a fresh pin and skips; the w1/m59 write-back
-  # guard in the deploy job stays the correctness gate against pinning images
-  # built from a tree older than production's inputs.
+  # pending run, which then reads main's live tip, finds the fresh pin and
+  # skips; the w1/m59 write-back guard in the deploy job stays the correctness
+  # gate against pinning images built from a tree older than production's
+  # inputs.
   changes:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
@@ -156,6 +165,12 @@ jobs:
             scripts
             .github
           persist-credentials: false
+      # actions/checkout points origin/main at this run's own commit. A run
+      # queued behind a deploy then read the pin from before that deploy's
+      # write-back and deployed a second time: every batch on 2026-11-13 went
+      # out twice (pins at 16:18 and 16:37, 22:56 and 23:19 UTC).
+      - name: read main's live tip
+        run: git fetch --no-tags --filter=blob:none origin +refs/heads/main:refs/remotes/origin/main
       - id: check
         env:
           EVENT: ${{ github.event_name }}
@@ -178,6 +193,8 @@ jobs:
           case "$rc" in
             0) echo "deploy=true" >> "$GITHUB_OUTPUT" ;;
             1) echo "::notice::nothing to deploy yet (see the line above); skipping"
+               # A skipped run still concludes success; say so on its page.
+               echo "Batched: this run deploys nothing and runs no test; the test suites run in their own workflows." >> "$GITHUB_STEP_SUMMARY"
                echo "deploy=false" >> "$GITHUB_OUTPUT" ;;
             *) echo "::error::could not tell whether main changed since the production pin"; exit 1 ;;
           esac

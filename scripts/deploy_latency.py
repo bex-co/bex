@@ -238,13 +238,20 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--repo", default=".")
     parser.add_argument("--threshold-hours", type=float, default=None)
-    parser.add_argument("--changed", action="store_true", help="exit 0 to deploy, 1 to skip (deploy.yml's gate)")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--changed", action="store_true", help="exit 0 to deploy, 1 to skip (deploy.yml's gate)")
+    mode.add_argument("--pinned", action="store_true", help="print the production pin's producer commit")
     parser.add_argument("--min-pin-age-hours", type=float, default=0, help="with --changed, also skip while the pin is younger")
     args = parser.parse_args(argv)
+    repo = pathlib.Path(args.repo)
     if args.changed:
-        return changed(pathlib.Path(args.repo), args.min_pin_age_hours)
+        return changed(repo, args.min_pin_age_hours)
     try:
-        wait = measure(pathlib.Path(args.repo))
+        if args.pinned:
+            pinned, _ = pin(repo)
+            print(pinned)
+            return 0
+        wait = measure(repo)
     except (subprocess.CalledProcessError, ValueError, OSError) as exc:
         print(f"deploy-latency: unusable: {exc}", file=sys.stderr)
         return 2
