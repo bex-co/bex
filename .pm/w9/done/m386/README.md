@@ -1,6 +1,6 @@
 # w9 · m386 — Sessions report their PR's state: open, merged or closed (Devin v3 `pr_state`)
 
-**Worker:** worker9 **Goal:** every session that opened a pull request shows whether it is open (a draft too), merged or closed on REST, GraphQL, MCP and `/agents`, filterable by state, as Devin's v3 session reads do — kept current by bex reading the PR, so it needs no new GitHub App event. **Status:** todo (t001, t002, t003, t004, t005 done)
+**Worker:** worker9 **Goal:** every session that opened a pull request shows whether it is open (a draft too), merged or closed on REST, GraphQL, MCP and `/agents`, filterable by state, as Devin's v3 session reads do — kept current by bex reading the PR, so it needs no new GitHub App event. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Webhook: apply `pull_request` closed, reopened and ready-for-review events when the App delivers them — **DONE** | 60m | t002 |
 | [t004](done/t004.md) | REST, GraphQL and MCP: PR state on the session view and a `prState` list filter — **DONE** | 90m | t002 |
 | [t005](done/t005.md) | Dashboard: PR state badge and filter on `/agents` and the session page — **DONE** | 90m | t004 |
-| [t006](t006.md) | Live check on production: merging one QA PR and closing another updates both sessions | 45m | t003, t005 |
-| [t007](t007.md) | Render parity (Devin): every surface this milestone touched agrees, and matches Devin | 20m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t006](done/t006.md) | Live check on production: merging one QA PR and closing another updates both sessions — **DONE** | 45m | t003, t005 |
+| [t007](done/t007.md) | Render parity (Devin): every surface this milestone touched agrees, and matches Devin — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 ## Definition of done
 
