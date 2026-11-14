@@ -85,8 +85,9 @@ vi.mock("@apollo/client/react", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } =
-    await import("@/test/mocks/resource-actions");
+  const { mockAllowedResourceActions } = await import(
+    "@/test/mocks/resource-actions"
+  );
   return mockAllowedResourceActions("app");
 });
 
@@ -203,6 +204,46 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
 
     const link = await screen.findByRole("link");
     expect(link).toHaveAttribute("href", "/services/app/deploys/dep-live-001");
+  });
+
+  it("shows a deploy's duration as the Deploys list does (w4/601)", async () => {
+    const timed = (id: string, startedAt?: string) =>
+      deployEvent({
+        id,
+        cursor: id,
+        details: {
+          deployId: `dep-${id}`,
+          deployStatus: "succeeded",
+          preDeployStatus: "",
+          actor: "dev@localhost",
+          triggeredByUser: "dev@localhost",
+          trigger: { manual: true },
+          ...(startedAt ? { startedAt } : {}),
+          finishedAt: "2026-11-12T07:22:09.80142Z",
+          image: `docker.io/library/nginx:${id}`,
+        },
+      });
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          timed("long", "2026-11-12T07:06:39.955445Z"),
+          timed("unstarted"),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    const long = (await screen.findByText("docker.io/library/nginx:long"))
+      .parentElement!;
+    expect(within(long).getByText("15m 29s")).toBeInTheDocument();
+    expect(screen.queryByText("930s")).not.toBeInTheDocument();
+    const unstarted = screen.getByText(
+      "docker.io/library/nginx:unstarted",
+    ).parentElement!;
+    expect(unstarted.children).toHaveLength(1);
   });
 
   it("presents deploy_started as in progress even though its status is empty", async () => {

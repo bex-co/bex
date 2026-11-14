@@ -34,6 +34,7 @@ import {
   isCancelableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
+import { formatDeployDuration } from "@/features/deploys/lib/deploy-presentation";
 import { useGoneBuilds } from "@/features/deploys/hooks/use-gone-builds";
 import {
   eventReasonKey,
@@ -473,14 +474,9 @@ function EventSummary({
     type === "service_moved" && environmentFrom !== environmentTo;
   const isDeploy = type === "deploy_started" || type === "deploy_ended";
   const exactTimestamp = useLocalDateTime(timestamp);
-  // Compute deploy duration (w1/m47): startedAt → finishedAt
-  const deployDuration =
-    startedAt && finishedAt
-      ? Math.round(
-          (new Date(finishedAt).getTime() - new Date(startedAt).getTime()) /
-            1000,
-        )
-      : null;
+  // The Deploys list's own duration (w4/601), so one deploy reads the same on
+  // both tabs.
+  const deployDuration = formatDeployDuration(startedAt, finishedAt);
 
   return (
     <div className="flex min-w-0 items-start gap-3">
@@ -562,7 +558,7 @@ function EventSummary({
                 <span className="font-mono">{commitId.slice(0, 8)}</span>
               ) : null}
               {image ? <span className="truncate">{image}</span> : null}
-              {deployDuration !== null ? <span>{deployDuration}s</span> : null}
+              {deployDuration !== null ? <span>{deployDuration}</span> : null}
             </div>
           </div>
         )}
