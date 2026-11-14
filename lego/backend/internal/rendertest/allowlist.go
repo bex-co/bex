@@ -65,23 +65,22 @@ var Allowlist = map[string][]Divergence{
 	// (Stamped), and a server lacking a metadata source is excused by its
 	// Source list (Wrap, Unallowed), not here.
 	"list-services": join(
-		details(SuiteAPI, "envSpecificDetails", "plan", "publishPath", "url"),
+		details(SuiteAPI, "envSpecificDetails", "url"),
 		imageCommands(SuiteAPI),
 	),
 	"retrieve-service": join(
-		details(SuiteAPI, "envSpecificDetails", "plan", "url"),
+		details(SuiteAPI, "envSpecificDetails", "url"),
 		imageCommands(SuiteAPI),
-		details(SuiteApps, "env", "publishPath", "runtime"),
+		details(SuiteApps, "env", "runtime"),
 	),
 	"create-service": join(
 		details(SuiteAPI, "envSpecificDetails", "url"),
 		imageCommands(SuiteAPI),
-		details(SuiteApps, "disk/id"),
 		[]Divergence{{Contains: "status 200: not a documented response", ADR018: RowDryRun, Suite: SuiteApps}},
 	),
 	"update-service": join(
 		details(SuiteAPI, "envSpecificDetails", "url"),
-		details(SuiteApps, "env", "plan", "runtime"),
+		details(SuiteApps, "env", "runtime"),
 		imageCommands(SuiteApps),
 	),
 

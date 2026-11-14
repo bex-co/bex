@@ -4029,7 +4029,7 @@ func selectableRenderPlans() []string {
 // paid, is the service free, what does it cost) rather than selection.
 func resolveTierForType(svcType, plan string) (string, error) {
 	if plan == "" && svcType != appv1alpha1.TypeStaticSite {
-		return defaultPaidTierID(), nil
+		return core.DefaultPaidComputeTier(), nil
 	}
 	tier, err := normalizeTierOrPlan(plan)
 	if err != nil {
@@ -4062,19 +4062,6 @@ func paidOnlyServiceType(svcType string) bool {
 		return true
 	}
 	return false
-}
-
-// defaultPaidTierID is the cheapest paid rung of the compute ladder — the
-// catalog is ordered smallest-first, so the first non-free id is the tier a
-// plan-less service falls to (starter, Render's 0.5c-512mb). The catalog-default fallback is
-// unreachable with the reviewed tiers.yaml, which always carries paid rungs.
-func defaultPaidTierID() string {
-	for _, tierID := range tiers.Compute.IDs() {
-		if core.PaidPlan(tierID) {
-			return tierID
-		}
-	}
-	return tiers.Compute.Default().ID
 }
 
 // errFreePlanForType refuses the free plan on a paid-only service type

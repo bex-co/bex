@@ -1151,12 +1151,13 @@ func TestSetPlanValidatesAndMapsRenderSpelling(t *testing.T) {
 
 func TestSetPlanUnknownPlanIsBadRequestAndNoOp(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web"))
+	before := getApp(t, cl, "web").Spec.Tier
 
 	if _, err := svc.SetPlan(context.Background(), "web", "gold"); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("unknown plan should be core.ErrBadRequest, got %v", err)
 	}
-	if got := getApp(t, cl, "web").Spec.Tier; got != "" {
-		t.Errorf("a rejected plan must not touch spec.tier, got %q", got)
+	if got := getApp(t, cl, "web").Spec.Tier; got != before {
+		t.Errorf("a rejected plan must not touch spec.tier: got %q, want %q", got, before)
 	}
 }
 
@@ -1195,12 +1196,13 @@ func TestSetPlanUnmanagedAppSkipsStore(t *testing.T) {
 func TestSetPlanRowWriteFailureLeavesCRUntouched(t *testing.T) {
 	rec := &recordingStore{err: errors.New("db down")}
 	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	before := getApp(t, cl, "web").Spec.Tier
 
 	if _, err := svc.SetPlan(context.Background(), "web", "standard"); err == nil {
 		t.Fatal("want error when the row write fails")
 	}
-	if got := getApp(t, cl, "web").Spec.Tier; got != "" {
-		t.Errorf("spec.tier must be untouched when the row write failed, got %q", got)
+	if got := getApp(t, cl, "web").Spec.Tier; got != before {
+		t.Errorf("spec.tier must be untouched when the row write failed: got %q, want %q", got, before)
 	}
 }
 
@@ -1440,12 +1442,7 @@ func TestSetIdleTTLUnmanagedAppSkipsStore(t *testing.T) {
 }
 
 func TestViewOmitsPlanForEmptyOrUnknownTier(t *testing.T) {
-	svc, _ := newService(nil, sampleApp("untiered"))
-	v, err := svc.Get(context.Background(), "untiered")
-	if err != nil {
-		t.Fatalf("Get: %v", err)
-	}
-	if v.Plan != "" {
+	if v := view(sampleApp("untiered")); v.Plan != "" {
 		t.Errorf("an untiered App's view should omit Plan, got %q", v.Plan)
 	}
 }

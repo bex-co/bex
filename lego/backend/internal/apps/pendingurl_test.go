@@ -38,7 +38,7 @@ import (
 
 // pendingApp is a never-successfully-deployed exposed App (no status.url).
 func pendingApp(name, svcType string) *appv1alpha1.App {
-	return &appv1alpha1.App{
+	a := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 		Spec: appv1alpha1.AppSpec{
 			Type:   svcType,
@@ -48,6 +48,7 @@ func pendingApp(name, svcType string) *appv1alpha1.App {
 		},
 		Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseBuilding},
 	}
+	return withCreateRequired(a)
 }
 
 func TestPendingURLDerivedForStaticSiteBeforeFirstDeploy(t *testing.T) {

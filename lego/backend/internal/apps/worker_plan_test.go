@@ -36,8 +36,8 @@ import (
 )
 
 func TestCreateWorkerDefaultsToPaidPlan(t *testing.T) {
-	if got := defaultPaidTierID(); got != "starter" {
-		t.Fatalf("defaultPaidTierID() = %q, want starter (the catalog's cheapest paid rung)", got)
+	if got := core.DefaultPaidComputeTier(); got != "starter" {
+		t.Fatalf("core.DefaultPaidComputeTier() = %q, want starter (the catalog's cheapest paid rung)", got)
 	}
 	svc, cl := newService(nil)
 	if _, err := svc.Create(context.Background(), CreateRequest{

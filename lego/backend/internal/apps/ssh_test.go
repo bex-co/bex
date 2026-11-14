@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -212,7 +213,7 @@ func TestSSHEligibleServiceTypesResolve(t *testing.T) {
 func TestSSHEligibilityFailsClosed(t *testing.T) {
 	for name, mutate := range map[string]func(*appv1alpha1.App){
 		"free":         func(app *appv1alpha1.App) { app.Spec.Tier = "free" },
-		"missing plan": func(app *appv1alpha1.App) { app.Spec.Tier = "" },
+		"missing plan": func(app *appv1alpha1.App) { app.Spec.Tier = ""; rendertest.KubectlApplied(app) },
 		"unknown plan": func(app *appv1alpha1.App) { app.Spec.Tier = "mystery" },
 		"suspended":    func(app *appv1alpha1.App) { app.Spec.Suspended = true },
 		"cron":         func(app *appv1alpha1.App) { app.Spec.Type = appv1alpha1.TypeCronJob },

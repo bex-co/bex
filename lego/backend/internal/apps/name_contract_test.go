@@ -48,12 +48,8 @@ import (
 // renamedApp is a sampleApp of the given type whose display label differs from
 // its immutable name — the exact shape the bug needs (create, then rename).
 func renamedApp(name, svcType, displayName string) *appv1alpha1.App {
-	a := sampleApp(name)
-	a.Spec.Type = svcType
+	a := typedApp(name, svcType)
 	a.Spec.DisplayName = displayName
-	if svcType == appv1alpha1.TypeCronJob {
-		a.Spec.Schedule = "0 * * * *" // every create path requires one
-	}
 	return a
 }
 
