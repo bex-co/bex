@@ -304,6 +304,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                     : deployEndedStatus(details);
                 const trigger = triggerKey(details?.trigger ?? null);
                 const preDeploy = preDeployKey(details?.preDeployStatus ?? "");
+                const actor = eventActor(details);
                 const summary = (
                   <EventSummary
                     type={event.type ?? ""}
@@ -311,17 +312,8 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                     factStatus={details?.status ?? ""}
                     trigger={trigger}
                     deployId={deployId}
-                    actor={
-                      details?.suspendedByUser?.id ||
-                      details?.resumedByUser?.id ||
-                      details?.trigger?.user?.id ||
-                      details?.edgeCacheTrigger?.user?.id ||
-                      (details?.actor && details.actor !== "user"
-                        ? details.actor
-                        : "") ||
-                      details?.triggeredByUser ||
-                      ""
-                    }
+                    actor={actor.subject}
+                    actorEmail={actor.email}
                     preDeployStatus={details?.preDeployStatus ?? ""}
                     preDeploy={preDeploy}
                     timestamp={event.timestamp}
@@ -410,6 +402,28 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
   );
 }
 
+type EventDetails = ServiceEventView["details"];
+
+/**
+ * Who acted on an event: the first user object the event names, with that
+ * user's own email (w4/602), else a stored subject the roster resolves.
+ */
+function eventActor(details: EventDetails): { subject: string; email: string } {
+  const user =
+    [
+      details?.suspendedByUser,
+      details?.resumedByUser,
+      details?.trigger?.user,
+      details?.edgeCacheTrigger?.user,
+    ].find((candidate) => candidate?.id) ?? null;
+  if (user) return { subject: user.id ?? "", email: user.email ?? "" };
+  const stored =
+    (details?.actor && details.actor !== "user" ? details.actor : "") ||
+    details?.triggeredByUser ||
+    "";
+  return { subject: stored, email: "" };
+}
+
 function EventSummary({
   type,
   status,
@@ -417,6 +431,7 @@ function EventSummary({
   trigger,
   deployId,
   actor,
+  actorEmail,
   preDeployStatus,
   preDeploy,
   timestamp,
@@ -428,6 +443,7 @@ function EventSummary({
   trigger: string | null;
   deployId: string;
   actor: string;
+  actorEmail: string;
   preDeployStatus: string;
   preDeploy: string | null;
   timestamp: string | null;
@@ -437,7 +453,7 @@ function EventSummary({
   details: ServiceEventView["details"];
 }) {
   const { t } = useTranslations();
-  const actorLabel = useWorkspaceSubjectLabel(actor);
+  const actorLabel = useWorkspaceSubjectLabel(actor, actorEmail);
   const image = details?.image || null;
   const commitId = details?.commitId || null;
   const commitMessage = details?.commitMessage || null;

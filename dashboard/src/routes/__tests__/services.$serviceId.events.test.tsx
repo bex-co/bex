@@ -53,7 +53,8 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
 }));
 
 vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
-  useWorkspaceSubjectLabel: (subject: string) => subject,
+  useWorkspaceSubjectLabel: (subject: string, known?: string | null) =>
+    known || subject,
 }));
 
 const mockUseQuery = vi.fn();
@@ -204,6 +205,34 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
 
     const link = await screen.findByRole("link");
     expect(link).toHaveAttribute("href", "/services/app/deploys/dep-live-001");
+  });
+
+  it("names the actor by the event's own email, not its user id (w4/602)", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          deployEvent({
+            details: {
+              deployId: "dep-live-001",
+              deployStatus: "succeeded",
+              preDeployStatus: "",
+              triggeredByUser: "usr-ada",
+              trigger: {
+                manual: true,
+                user: { id: "usr-ada", email: "ada@example.com" },
+              },
+            },
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText(/by ada@example\.com/)).toBeInTheDocument();
+    expect(screen.queryByText(/usr-ada/)).not.toBeInTheDocument();
   });
 
   it("shows a deploy's duration as the Deploys list does (w4/601)", async () => {
