@@ -221,11 +221,13 @@ func (c *Checker) Latest() (Release, error) {
 	if entry, err := c.readCache(); err == nil && c.Now().Sub(entry.CheckedAt) < cacheMaxAge {
 		return entry.Release, nil
 	}
-	release, err := c.fetch()
-	c.writeCache(cacheEntry{CheckedAt: c.Now(), Release: release})
+	best, err := c.LatestRelease()
 	if err != nil {
+		c.writeCache(cacheEntry{CheckedAt: c.Now()})
 		return Release{}, err
 	}
+	release := Release{Version: best.Version, URL: best.URL}
+	c.writeCache(cacheEntry{CheckedAt: c.Now(), Release: release})
 	return release, nil
 }
 
@@ -257,14 +259,6 @@ func (c *Checker) writeCache(entry cacheEntry) {
 		return
 	}
 	_ = os.WriteFile(c.CachePath, data, 0o600)
-}
-
-func (c *Checker) fetch() (Release, error) {
-	best, err := c.LatestRelease()
-	if err != nil {
-		return Release{}, err
-	}
-	return Release{Version: best.Version, URL: best.URL}, nil
 }
 
 // fetchReleases lists the published, non-draft/prerelease bex-cli releases,

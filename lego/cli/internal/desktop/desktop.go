@@ -92,10 +92,7 @@ func osSystem() system {
 // the desktop launcher, which resolves paths against the working directory it
 // inherits.
 func Command() *cobra.Command {
-	return newCommand(osSystem())
-}
-
-func newCommand(sys system) *cobra.Command {
+	sys := osSystem()
 	return &cobra.Command{
 		Use:   "edit [path[:line[:col]]… | ags-<id>] [editor flags]",
 		Short: "Open files, folders or an agent session's sandbox in bex desktop",
