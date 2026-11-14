@@ -163,6 +163,12 @@ type Service struct {
 	// past the ten App.status.runs keeps (w3/m366). nil in store-less mode,
 	// where run reads see the status window only.
 	CronRunHistory store.CronRunHistory
+	// CronRunActors records who triggered and who canceled each cron run
+	// (w4/631), and ActorEmails names them: a run reads triggeredBy/canceledBy
+	// as the person's email. Either nil (store-less mode, no Kratos) and runs
+	// name no one.
+	CronRunActors store.CronRunActors
+	ActorEmails   EmailLookup
 	// GitHub, when set (the GitHub App + control-plane store are wired), mints a
 	// fresh installation token and writes the <app>-clone Secret on every deploy
 	// trigger whose repo belongs to the workspace's connection, so private repos
@@ -435,6 +441,12 @@ type CronRunView struct {
 	StartedAt  string `json:"startedAt,omitempty"`
 	FinishedAt string `json:"finishedAt,omitempty"`
 	Status     string `json:"status"` // pending | successful | unsuccessful | canceled
+	// TriggeredBy / CanceledBy are the emails of the users who triggered and
+	// canceled the run (w4/631), Render's cronJobRun fields; empty for a
+	// scheduled run, a run nobody canceled, and runs from before they were
+	// recorded.
+	TriggeredBy string `json:"triggeredBy,omitempty"`
+	CanceledBy  string `json:"canceledBy,omitempty"`
 }
 
 // Stable machine-readable cron action failures. REST exposes these in `code`,
@@ -1611,6 +1623,9 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	// for, keep paying nothing for a lookup that costs GitHub round-trips.
 	v.PushDeliveryMethod = s.pushDeliveryMethod(ctx, a)
 	v.IPAllowListProxiedDomains = s.allowListProxiedDomains(ctx, a)
+	// A cron job's nested runs name their actors here too (w4/631), so
+	// GraphQL service(id).runs agrees with cronJobRuns; List leaves them out.
+	v.Runs = s.withCronRunActors(ctx, a.Labels[store.LabelAppID], v.Runs)
 	return v, nil
 }
 
@@ -4298,16 +4313,35 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 	now := s.Now().UTC()
 	runAt := now.Format(time.RFC3339Nano)
 	jobName := appv1alpha1.ManualCronRunJobName(a.Name, runAt)
+	runID := ids.Derive(ids.CronRun, jobName)
+	// The actor is recorded first, under the run's derived id, so a run that
+	// exists always names its trigger; a patch that then fails leaves a row
+	// for a run that never existed, which nothing reads.
+	appID := a.Labels[store.LabelAppID]
+	if err := s.recordCronRunTrigger(ctx, appID, runID); err != nil {
+		return CronRunView{}, err
+	}
+	preempted := ""
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		preempted = ""
 		if run, ok := pendingCronRun(a, now); ok {
 			a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: runAt, Unmaterialized: unmaterializedRun(a, run.Name)}
+			preempted = run.ID
 		}
 		a.Spec.RunAt = runAt
 	})
 	if err != nil {
 		return CronRunView{}, err
 	}
-	return CronRunView{ID: ids.Derive(ids.CronRun, jobName), Name: jobName, Status: cronRunPending}, nil
+	// The trigger's caller canceled the run it replaced (ADR038). The trigger
+	// has landed, so a failure here costs only that run's canceledBy.
+	if preempted != "" {
+		if err := s.recordCronRunCancel(ctx, appID, preempted); err != nil {
+			log.Printf("apps: cron %s: record preempting cancel of %s: %v", name, preempted, err)
+		}
+	}
+	run := CronRunView{ID: runID, Name: jobName, Status: cronRunPending}
+	return s.withCronRunActors(ctx, appID, []CronRunView{run})[0], nil
 }
 
 // ListCronRuns returns a cron_job's first-class run history, newest first. The
@@ -4321,7 +4355,11 @@ func (s *Service) ListCronRuns(ctx context.Context, name, cursor string, limit i
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return nil, core.ErrNotFound
 	}
-	return s.cronRunPage(ctx, a, cursor, core.PageLimitOrAbsent(limit))
+	page, err := s.cronRunPage(ctx, a, cursor, core.PageLimitOrAbsent(limit))
+	if err != nil {
+		return nil, err
+	}
+	return s.withCronRunActors(ctx, a.Labels[store.LabelAppID], page), nil
 }
 
 // cronRunPage pages the status window first (live runs, triggers not yet in
@@ -4405,7 +4443,11 @@ func (s *Service) GetCronRun(ctx context.Context, name, runID string) (CronRunVi
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return CronRunView{}, cronRunNotFound(runID)
 	}
-	return s.findCronRun(ctx, a, runID)
+	run, err := s.findCronRun(ctx, a, runID)
+	if err != nil {
+		return CronRunView{}, err
+	}
+	return s.withCronRunActors(ctx, a.Labels[store.LabelAppID], []CronRunView{run})[0], nil
 }
 
 // CancelCronRun records cancellation intent for one pending run. Terminal runs
@@ -4468,6 +4510,13 @@ func (s *Service) cancelCronRunFetched(ctx context.Context, a *appv1alpha1.App, 
 			map[string]any{"runId": run.ID, "status": run.Status},
 		)
 	}
+	// Recorded before the intent, as the trigger's actor is. A cancel whose
+	// patch fails names a canceler for a run it never stopped, which reads
+	// only if a later cancel stops it, and that cancel's caller replaces it.
+	appID := a.Labels[store.LabelAppID]
+	if err := s.recordCronRunCancel(ctx, appID, run.ID); err != nil {
+		return CronRunView{}, err
+	}
 	now := s.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: now, Unmaterialized: unmaterializedRun(a, run.Name)}
@@ -4476,7 +4525,7 @@ func (s *Service) cancelCronRunFetched(ctx context.Context, a *appv1alpha1.App, 
 	}
 	run.Status = cronRunCanceled
 	run.FinishedAt = now
-	return run, nil
+	return s.withCronRunActors(ctx, appID, []CronRunView{run})[0], nil
 }
 
 func cronRunByID(runs []appv1alpha1.CronRun, runID string) (CronRunView, error) {

@@ -312,6 +312,46 @@ describe("CronRunsSection", () => {
     );
   });
 
+  it("names who triggered and canceled a run in its detail, and no one for a scheduled run (w4/631)", async () => {
+    const manual = {
+      id: "crr-manual",
+      startedAt: "2026-07-09T10:05:00Z",
+      finishedAt: "2026-07-09T10:05:05Z",
+      status: "canceled",
+      triggeredBy: "alice@example.com",
+      canceledBy: "bob@example.com",
+    };
+    runs = [manual];
+    detailRun = manual;
+    const user = userEvent.setup();
+    const { unmount } = render(<CronRunsSection serviceId="nightly" />);
+    await user.click(
+      screen.getByRole("button", { name: /Run details, started/ }),
+    );
+    expect(screen.getByText("Triggered by")).toBeInTheDocument();
+    expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Canceled by")).toBeInTheDocument();
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument();
+    unmount();
+
+    const scheduled = {
+      ...manual,
+      id: "crr-scheduled",
+      status: "successful",
+      triggeredBy: null,
+      canceledBy: null,
+    };
+    runs = [scheduled];
+    detailRun = scheduled;
+    render(<CronRunsSection serviceId="nightly" />);
+    await user.click(
+      screen.getByRole("button", { name: /Run details, started/ }),
+    );
+    expect(screen.getByText("crr-scheduled")).toBeInTheDocument();
+    expect(screen.queryByText("Triggered by")).not.toBeInTheDocument();
+    expect(screen.queryByText("Canceled by")).not.toBeInTheDocument();
+  });
+
   it("opens a running run's logs in the live view (w2/m360)", async () => {
     const running = {
       id: "crr-live",

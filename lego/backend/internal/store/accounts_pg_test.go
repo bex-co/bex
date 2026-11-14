@@ -284,6 +284,8 @@ var accountDeletionDispositions = map[string]string{
 	"billing_export_issues.actor":               "retain: operator-supplied financial repair label from the internal control-plane API, not a customer identity binding",
 	"cli_telemetry_events.subject":              "delete: CleanupAccountSubject removes linkable installation diagnostics",
 	"deploys.triggered_by":                      "anonymize: CleanupAccountSubject replaces deploy trigger provenance on surviving workspace resources",
+	"cron_run_actors.triggered_by":              "anonymize: CleanupAccountSubject replaces who triggered a cron run on surviving workspace resources (w4/631)",
+	"cron_run_actors.canceled_by":               "anonymize: CleanupAccountSubject replaces who canceled a cron run on surviving workspace resources (w4/631)",
 	"device_push_subscriptions.subject":         "cascade: membership deletion removes personal push endpoints",
 	"github_claim_selections.subject":           "delete: CleanupAccountSubject removes pending authorization choices",
 	"github_connect_transactions.subject":       "delete: CleanupAccountSubject removes transient authorization state",

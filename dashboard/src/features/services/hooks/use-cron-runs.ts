@@ -60,6 +60,8 @@ function toRuns(
       startedAt: run.startedAt || null,
       finishedAt: run.finishedAt || null,
       status: run.status ?? "pending",
+      triggeredBy: run.triggeredBy || null,
+      canceledBy: run.canceledBy || null,
     }));
 }
 

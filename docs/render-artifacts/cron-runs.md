@@ -43,10 +43,10 @@ Render documents a single concurrent cron execution. A manual trigger while one 
 | `status` | enum | yes | `pending`, `successful`, `unsuccessful`, or `canceled` |
 | `startedAt` | RFC3339 date-time | no | Job `status.startTime` |
 | `finishedAt` | RFC3339 date-time | no | completion/failure transition or accepted cancellation time |
-| `triggeredBy` | string | no | omitted: Kubernetes Jobs do not retain the API caller identity |
-| `canceledBy` | string | no | omitted for the same reason |
+| `triggeredBy` | string | no | email of the user who triggered the run, recorded by bex-api at the trigger (w4/631); absent on scheduled runs |
+| `canceledBy` | string | no | email of the user who canceled the run (per-run cancel, `DELETE …/runs`, or a manual trigger that replaced it); only on a run that ended canceled |
 
-The CR keeps mechanism-facing `Running`/`Succeeded`/`Failed`/`Canceled` values; bex-api maps them to Render's wire enum. Actor fields are omitted rather than fabricated.
+The CR keeps mechanism-facing `Running`/`Succeeded`/`Failed`/`Canceled` values; bex-api maps them to Render's wire enum. Actors live in `cron_run_actors`, not on the Job; the email form is a bex choice Render's spec does not pin ([ADR038 § Run actors](../ADR038-cron-jobs.md#deliberate-divergences)).
 
 ## Paging and IDs
 

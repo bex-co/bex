@@ -294,6 +294,17 @@ type ServiceEventFilter struct {
 // Render requires on Build Started (w4/639).
 const factCarriesDeployTrigger = `f.fact_type IN ('` + string(EventFactPipelineMinutesExhausted) + `', '` + string(EventFactBuildStarted) + `')`
 
+// cronRunEndedUser is the user a cron_job_run_ended fact f names (w4/631),
+// from its run's cron_run_actors row ca: the canceler of a canceled run, else
+// the user who triggered it. A scheduled run nobody canceled names no one.
+const cronRunEndedUser = `CASE WHEN f.fact_type = 'cron_job_run_ended' THEN COALESCE(
+               CASE WHEN f.status = '` + EventStatusCanceled + `' THEN NULLIF(ca.canceled_by, '') END,
+               NULLIF(ca.triggered_by, ''), '') END`
+
+// cronRunActorsJoin joins a cron_job_run_ended fact f to its run's actors.
+const cronRunActorsJoin = `LEFT JOIN cron_run_actors ca
+  ON f.fact_type = 'cron_job_run_ended' AND f.run_id <> '' AND ca.app_id = f.app_id AND ca.run_id = f.run_id`
+
 // serviceEventsQuery is the composed view: two projections of `deploys`, one of
 // `audit_events`, and one of `service_event_facts`, ordered by the feed's total
 // order and paged by keyset.
@@ -492,7 +503,8 @@ WITH feed AS (
            COALESCE(dc.cancel_reason, ''),
            ''::text, -- stall_reason: a fact is a point observation
            ''::text,
-           CASE WHEN ` + factCarriesDeployTrigger + ` THEN COALESCE(dc.triggered_by, '') ELSE '' END,
+           CASE WHEN ` + factCarriesDeployTrigger + ` THEN COALESCE(dc.triggered_by, '')
+                ELSE COALESCE(` + cronRunEndedUser + `, '') END,
            NULL::text,
            NULL::text,
            NULL::integer,
@@ -531,6 +543,7 @@ WITH feed AS (
            NULL::text
     FROM service_event_facts f
     LEFT JOIN deploys dc ON dc.id = f.deploy_id AND f.deploy_id <> ''
+    ` + cronRunActorsJoin + `
     WHERE f.app_id = $1 AND f.fact_type = ANY($11)
 )
 SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, failure_reason, cancel_reason, stall_reason, verb, caller,
@@ -778,6 +791,7 @@ SELECT h.event_key AS key,
            WHEN h.source = '` + EventSourceAudit + `' THEN a.caller
            WHEN h.source = '` + EventSourceDeploy + `' THEN d.triggered_by
            WHEN h.source = '` + EventSourceFact + `' AND ` + factCarriesDeployTrigger + ` THEN COALESCE(fd.triggered_by, '')
+           WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(` + cronRunEndedUser + `, '')
            ELSE ''
        END AS caller,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.plan_from END AS plan_from,
@@ -849,6 +863,7 @@ LEFT JOIN datastore_event_facts df
   ON h.source = '` + EventSourceFact + `' AND df.source_key = h.source_row_id
 LEFT JOIN deploys fd
   ON h.source = '` + EventSourceFact + `' AND fd.id = COALESCE(f.deploy_id, '') AND COALESCE(f.deploy_id, '') <> ''
+` + cronRunActorsJoin + `
 WHERE (h.source = '` + EventSourceDeploy + `' AND d.id IS NOT NULL
        AND (h.phase = '` + EventPhaseStarted + `'
             OR (h.phase = '` + EventPhaseEnded + `' AND d.finished_at IS NOT NULL)))

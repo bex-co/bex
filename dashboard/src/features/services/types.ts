@@ -396,6 +396,10 @@ export interface CronRunView {
   finishedAt: string | null;
   /** Render run outcome — pending | successful | unsuccessful | canceled. */
   status: string;
+  /** Email of the user who triggered the run; null for a scheduled run (w4/631). */
+  triggeredBy?: string | null;
+  /** Email of the user who canceled the run; null unless one did. */
+  canceledBy?: string | null;
 }
 
 /** The lifecycle verbs the row exposes, named after bex-api's Render mutations. */

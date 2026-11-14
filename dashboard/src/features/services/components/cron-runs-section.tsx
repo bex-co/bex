@@ -452,7 +452,8 @@ function runLogsSearch(run: CronRunView) {
   return typeof range === "string" ? {} : rangeToSearch(range);
 }
 
-/** The detail's five-field grid — one layout for the masked preview and the
+/** The detail's field grid (five fields, plus the run's actors when it has
+ *  them) — one layout for the masked preview and the
  *  ready detail, so the two cannot drift apart. */
 function CronRunFields({ run, masked }: { run: CronRunView; masked: boolean }) {
   const { t, i18n } = useTranslations();
@@ -481,6 +482,25 @@ function CronRunFields({ run, masked }: { run: CronRunView; masked: boolean }) {
       <DetailField label={t("services.cronRunDetailId")} masked={masked}>
         <span className="font-mono text-xs">{run.id}</span>
       </DetailField>
+      {/* w4/631: who started and who stopped the run, as Render names them.
+          A scheduled run has no trigger. The history row the masked preview
+          draws from carries the same actors, so the two grids match. */}
+      {run.triggeredBy ? (
+        <DetailField
+          label={t("services.cronRunDetailTriggeredBy")}
+          masked={masked}
+        >
+          <span className="break-all">{run.triggeredBy}</span>
+        </DetailField>
+      ) : null}
+      {run.canceledBy ? (
+        <DetailField
+          label={t("services.cronRunDetailCanceledBy")}
+          masked={masked}
+        >
+          <span className="break-all">{run.canceledBy}</span>
+        </DetailField>
+      ) : null}
     </dl>
   );
 }

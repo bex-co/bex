@@ -810,8 +810,8 @@ func renderServiceName(a AppView) string {
 }
 
 // renderCronJobRun mirrors Render's cronJobRun schema. triggeredBy/canceledBy
-// are omitted because Kubernetes Jobs do not retain the caller identity; an
-// honest subset is preferable to fabricating an actor.
+// name the users who triggered and canceled the run by email (w4/631); a
+// scheduled run and a run nobody canceled omit them.
 type renderCronJobRun struct {
 	ID          string `json:"id"`
 	Status      string `json:"status"`
@@ -825,6 +825,7 @@ func toRenderCronJobRun(run CronRunView) renderCronJobRun {
 	return renderCronJobRun{
 		ID: run.ID, Status: run.Status,
 		StartedAt: run.StartedAt, FinishedAt: run.FinishedAt,
+		TriggeredBy: run.TriggeredBy, CanceledBy: run.CanceledBy,
 	}
 }
 

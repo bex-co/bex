@@ -1154,11 +1154,13 @@ export type ChargeLine = {
 
 export type CronRun = {
   __typename: 'CronRun';
+  canceledBy: Maybe<Scalars['String']['output']>;
   finishedAt: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
+  triggeredBy: Maybe<Scalars['String']['output']>;
 };
 
 export type CustomDomain = {
@@ -5380,6 +5382,7 @@ export type ServiceEventDetails = {
   trigger: Maybe<DeployTrigger>;
   triggeredByUser: Maybe<Scalars['String']['output']>;
   usagePercent: Maybe<Scalars['Float']['output']>;
+  user: Maybe<EventUser>;
 };
 
 export type ServiceInstance = {

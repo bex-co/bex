@@ -117,8 +117,10 @@ type renderDetails struct {
 	SuspendedByUser *renderUser `json:"suspendedByUser,omitempty"`
 	ResumedByUser   *renderUser `json:"resumedByUser,omitempty"`
 	TriggeredByUser string      `json:"triggeredByUser,omitempty"`
-	ReasonCode      string      `json:"reasonCode,omitempty"`
-	InstanceID      string      `json:"instanceID,omitempty"`
+	// User is cron_job_run_ended's Render {id, email} user (w4/631).
+	User       *renderUser `json:"user,omitempty"`
+	ReasonCode string      `json:"reasonCode,omitempty"`
+	InstanceID string      `json:"instanceID,omitempty"`
 	// FromInstances / ToInstances are the instance counts of
 	// instance_count_changed and the autoscaling pair.
 	FromInstances *int32 `json:"fromInstances,omitempty"`
@@ -397,6 +399,7 @@ func toRenderEvent(e Event) renderEvent {
 	case TypeCronJobRunEnded:
 		d.CronJobRunID = e.Details.CronJobRunID
 		d.Status = renderCronRunStatus(e.Details.Status)
+		d.User = toRenderUser(e.Details.User)
 		if reason := toFailureReason(e.Details); reason != nil {
 			d.Reason = reason
 		}

@@ -3451,6 +3451,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Finished",
     description: "Run detail: absolute finish timestamp label",
   },
+  "services.cronRunDetailTriggeredBy": {
+    message: "Triggered by",
+    description:
+      "Run detail: label for the email of the user who triggered the run (absent for a scheduled run)",
+  },
+  "services.cronRunDetailCanceledBy": {
+    message: "Canceled by",
+    description:
+      "Run detail: label for the email of the user who canceled the run",
+  },
   "services.cronRunDetailId": {
     message: "Run ID",
     description: "Run detail: the run's opaque id label",

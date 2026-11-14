@@ -60,6 +60,8 @@ func TestRenderEventDetailsMatchTheirMember(t *testing.T) {
 		{row: store.ServiceEventRow{Key: "job:job-0123456789abcdefghij:run_ended", Source: store.EventSourceFact, FactType: TypeJobRunEnded, FactStatus: store.EventStatusSucceeded}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeCronJobRunStarted, FactRunID: "crn-0123456789abcdefghij"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeCronJobRunEnded, FactRunID: "crn-0123456789abcdefghij", FactStatus: store.EventStatusFailed, ReasonCode: store.EventReasonEvicted}},
+		// w4/631: a user-canceled run names its user.
+		{row: store.ServiceEventRow{Key: "cron:canceled", Source: store.EventSourceFact, FactType: TypeCronJobRunEnded, FactRunID: "crn-0123456789abcdefghij", FactStatus: store.EventStatusCanceled, Caller: "usr-1"}, missing: []string{"user/email"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeServerFailed, InstanceID: instance, ReasonCode: store.EventReasonReadinessFailed}},
 		// w8/m158: a running service's process that crashed, was killed for
 		// memory or ended on its own, each with the instance that failed.

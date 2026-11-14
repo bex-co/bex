@@ -93,6 +93,8 @@ describe("useCronRuns trigger (w5/m60)", () => {
           status: "pending",
           startedAt: "",
           finishedAt: "",
+          triggeredBy: "alice@example.com",
+          canceledBy: null,
         },
       },
     });
@@ -108,6 +110,9 @@ describe("useCronRuns trigger (w5/m60)", () => {
       startedAt: null,
       finishedAt: null,
       status: "pending",
+      // w4/631: the trigger response names its caller.
+      triggeredBy: "alice@example.com",
+      canceledBy: null,
     });
     expect(result.current.runs[1].id).toBe("crr-old");
     expect(result.current.hasActiveRun).toBe(true);

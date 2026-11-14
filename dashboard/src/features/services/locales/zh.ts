@@ -3382,6 +3382,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "结束时间",
     description: "Run detail: absolute finish timestamp label",
   },
+  "services.cronRunDetailTriggeredBy": {
+    message: "触发者",
+    description:
+      "Run detail: label for the email of the user who triggered the run (absent for a scheduled run)",
+  },
+  "services.cronRunDetailCanceledBy": {
+    message: "取消者",
+    description:
+      "Run detail: label for the email of the user who canceled the run",
+  },
   "services.cronRunDetailId": {
     message: "运行 ID",
     description: "Run detail: the run's opaque id label",

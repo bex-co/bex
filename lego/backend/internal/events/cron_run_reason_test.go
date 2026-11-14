@@ -17,6 +17,7 @@ limitations under the License.
 package events
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -181,6 +182,43 @@ func TestCronJobRunEndedStatusUsesTheRunEnum(t *testing.T) {
 	}
 	if got := status(TypeJobRunEnded, store.EventStatusSucceeded); got != store.EventStatusSucceeded {
 		t.Errorf("job_run_ended succeeded -> %q, want it unchanged", got)
+	}
+}
+
+// w4/631: cron_job_run_ended names its user as Render's {id, email} — the
+// subject the store resolved for the run (its canceler, else its trigger),
+// filled with the email and usr- id like every other event user. A run with
+// no recorded user (a scheduled one nobody canceled) carries none, and no
+// other fact type grows one from the caller column.
+func TestCronJobRunEndedNamesItsUser(t *testing.T) {
+	row := store.ServiceEventRow{
+		Key: "fact:cron:srv-1:nightly-100:ended", At: time.Date(2026, 11, 14, 9, 0, 0, 0, time.UTC),
+		Source: store.EventSourceFact, FactType: TypeCronJobRunEnded, FactStatus: store.EventStatusCanceled,
+		FactRunID: "crr-abc", Caller: "kratos-a",
+	}
+	st := &fakeStore{rows: []store.ServiceEventRow{row}}
+	svc := newService(st, sampleApp("web", "srv-1", "tea-a"))
+	svc.Identities = emailLookup{"kratos-a": "a@example.com"}
+	svc.UserIDs = fakeUserIDs{"kratos-a": "own-00000000000000000007"}
+	events, err := svc.List(context.Background(), "web", Filter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := json.Marshal(toRenderEvent(events[0]).Details)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), `"user":{"id":"usr-00000000000000000007","email":"a@example.com"}`) {
+		t.Fatalf("REST/MCP details = %s, want the resolved user", body)
+	}
+
+	row.Caller = ""
+	if d := toRenderEvent(view(row, "srv-1")).Details; d.User != nil {
+		t.Errorf("a run with no recorded user carries %+v", d.User)
+	}
+	other := store.ServiceEventRow{Key: "fact:deploy:dep-1:build_ended", Source: store.EventSourceFact, FactType: TypeBuildEnded, FactStatus: store.EventStatusSucceeded, Caller: "kratos-a"}
+	if ev := view(other, "srv-1"); ev.Details.User != nil {
+		t.Errorf("build_ended grew a user: %+v", ev.Details.User)
 	}
 }
 

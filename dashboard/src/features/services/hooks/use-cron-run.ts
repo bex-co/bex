@@ -38,6 +38,8 @@ export function useCronRun(
           status: raw.status ?? "pending",
           startedAt: raw.startedAt ?? null,
           finishedAt: raw.finishedAt ?? null,
+          triggeredBy: raw.triggeredBy ?? null,
+          canceledBy: raw.canceledBy ?? null,
         }
       : null;
   return { run, loading, error: !!error };

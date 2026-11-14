@@ -413,6 +413,8 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			`UPDATE agent_session_feedback SET actor = $2 WHERE actor = $1`,
 			`UPDATE webhook_delivery_attempts SET requested_by = $2 WHERE requested_by = $1`,
 			`UPDATE deploys SET triggered_by = $2 WHERE triggered_by = $1`,
+			`UPDATE cron_run_actors SET triggered_by = $2 WHERE triggered_by = $1`,
+			`UPDATE cron_run_actors SET canceled_by = $2 WHERE canceled_by = $1`,
 			`UPDATE audit_events SET caller = $2 WHERE caller = $1`,
 			`UPDATE owner_ids SET subject = $2 WHERE subject = $1`,
 		}

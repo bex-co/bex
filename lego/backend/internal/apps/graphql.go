@@ -650,6 +650,10 @@ var cronRunGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"startedAt":  gqlutil.OptionalStrField(func(r CronRunView) any { return r.StartedAt }),
 		"finishedAt": gqlutil.OptionalStrField(func(r CronRunView) any { return r.FinishedAt }),
 		"status":     gqlutil.StrField(func(r CronRunView) any { return r.Status }),
+		// Render's cronJobRun.triggeredBy/canceledBy (w4/631): the users'
+		// emails, null for a scheduled run and a run nobody canceled.
+		"triggeredBy": gqlutil.OptionalStrField(func(r CronRunView) any { return r.TriggeredBy }),
+		"canceledBy":  gqlutil.OptionalStrField(func(r CronRunView) any { return r.CanceledBy }),
 	},
 })
 

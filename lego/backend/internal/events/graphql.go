@@ -190,6 +190,13 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return *d.ResumedByUser
 		})},
+		// user is cron_job_run_ended's {id, email} (w4/631).
+		"user": &graphql.Field{Type: userRefGQLType, Resolve: gqlutil.Field(func(d Details) any {
+			if d.User == nil {
+				return nil
+			}
+			return *d.User
+		})},
 		"triggeredByUser": &graphql.Field{
 			Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.TriggeredByUser }),
 		},

@@ -1,11 +1,15 @@
 # First-class cron run history. The list is cursor-paged by the stable crr- id;
 # cancel returns the accepted terminal run and the operator converges the Job.
+# triggeredBy/canceledBy are the users' emails (w4/631), null for a scheduled
+# run and a run nobody canceled.
 query CronJobRuns($serviceId: String!, $cursor: String, $limit: Int) {
   cronJobRuns(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
     id
     status
     startedAt
     finishedAt
+    triggeredBy
+    canceledBy
   }
 }
 
@@ -15,6 +19,8 @@ mutation CancelCronJobRun($serviceId: String!, $runId: String!) {
     status
     startedAt
     finishedAt
+    triggeredBy
+    canceledBy
   }
 }
 
@@ -27,6 +33,8 @@ mutation RunCronJob($id: String!) {
     status
     startedAt
     finishedAt
+    triggeredBy
+    canceledBy
   }
 }
 
@@ -38,5 +46,7 @@ query CronJobRun($serviceId: String!, $runId: String!) {
     status
     startedAt
     finishedAt
+    triggeredBy
+    canceledBy
   }
 }

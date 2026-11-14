@@ -877,6 +877,10 @@ type Details struct {
 	// cronJobRunId) and, with ReasonCode non_zero_exit or oom_killed, the failed
 	// run's container exit status.
 	CronJobRunID string
+	// User is cron_job_run_ended's Render {id, email} user (w4/631): the
+	// canceler of a canceled run, else the user who triggered it; nil for a
+	// scheduled run nobody canceled.
+	User *UserRef
 	// JobID is job_run_ended's job-… id, read back from its fact key.
 	JobID    string
 	ExitCode *int32
@@ -924,7 +928,7 @@ type Details struct {
 // userRefs are the {id, email} user objects an event's details name — the
 // ones resolveUserEmails and resolveUserIDs fill.
 func (d *Details) userRefs() []*UserRef {
-	refs := []*UserRef{d.SuspendedByUser, d.ResumedByUser}
+	refs := []*UserRef{d.SuspendedByUser, d.ResumedByUser, d.User}
 	if d.Trigger != nil {
 		refs = append(refs, d.Trigger.User)
 	}
@@ -1431,6 +1435,9 @@ func view(r store.ServiceEventRow, service string) Event {
 		ev.Details.CommitURL = r.CommitURL
 		ev.Details.Status = r.FactStatus
 		ev.Details.CronJobRunID = r.FactRunID
+		if ev.Type == TypeCronJobRunEnded && r.Caller != "" {
+			ev.Details.User = &UserRef{ID: r.Caller}
+		}
 		if ev.Type == TypeCronJobRunStarted && r.FactRunID == "" {
 			if name, ok := store.CronRunNameFromStartedKey(r.Key); ok {
 				ev.Details.CronJobRunID = ids.Derive(ids.CronRun, name)
