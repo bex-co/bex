@@ -128,6 +128,25 @@ var _ = Describe("RBAC least-privilege invariants", func() {
 		}
 	})
 
+	// w4/m364: the autoscaler reads pod utilization from metrics.k8s.io with
+	// the manager's ServiceAccount. Without this grant every read was refused
+	// on production and every autoscaled service held its count, while every
+	// test passed: envtest runs without RBAC and the unit tests fake the reader.
+	It("operator ClusterRole can read pod metrics for the autoscaler", func() {
+		var verbs []string
+		for _, cr := range parseClusterRoles(operatorClusterRole) {
+			for _, rule := range cr.Rules {
+				if !slices.Contains(rule.APIGroups, "metrics.k8s.io") || !slices.Contains(rule.Resources, "pods") {
+					continue
+				}
+				verbs = append(verbs, rule.Verbs...)
+			}
+		}
+		Expect(verbs).To(ContainElements("get", "list"),
+			"NewMetricsServerReader lists /apis/metrics.k8s.io/v1beta1/namespaces/<ns>/pods; keep the "+
+				"+kubebuilder:rbac:groups=metrics.k8s.io marker beside the App reconciler and re-run `make manifests`")
+	})
+
 	It("bex-api ClusterRole (api-role) has no cluster-wide secrets read", func() {
 		for _, cr := range parseClusterRoles(apiClusterRole) {
 			Expect(clusterRoleHasSecretsRead(cr)).To(BeFalse(),

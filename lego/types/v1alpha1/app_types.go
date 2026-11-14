@@ -182,6 +182,24 @@ const ConditionReady = "Ready"
 // expansion, so the last step can land on the next restart.
 const ConditionDiskReady = "DiskReady"
 
+// ConditionAutoscalingMetricsAvailable reports an autoscaled service whose
+// utilization read keeps failing (w4/m364). The autoscaler holds the instance
+// count when it cannot read pod metrics, and before this condition that hold
+// was silent: production ran every autoscaled service at a fixed count for
+// months because the operator was not allowed to read metrics.k8s.io.
+//
+// Present only as False with reason AutoscalingMetricsUnavailableReason while
+// reads fail, and removed on the first good read, when autoscaling is turned
+// off and while the service is suspended. Its message is tenant-safe: the raw
+// read error goes to the operator log, never into the App. It lives on the CRD
+// contract because the operator writes it and bex-api reads it to report
+// autoscaling as paused.
+const ConditionAutoscalingMetricsAvailable = "AutoscalingMetricsAvailable"
+
+// AutoscalingMetricsUnavailableReason is ConditionAutoscalingMetricsAvailable's
+// only reason.
+const AutoscalingMetricsUnavailableReason = "MetricsUnavailable"
+
 // ConditionWALArchiving mirrors CNPG's ContinuousArchiving on a backup-enabled
 // Database: True while WAL reaches the object store, False (with CNPG's reason
 // and message) when archiving fails — which silently stops point-in-time

@@ -25,9 +25,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 	"github.com/bex-co/bex/lego/types/podmetrics"
@@ -63,6 +68,27 @@ const annotAutoscaleScaleDownTo = "app.bex.co/autoscale-scale-down-to"
 // though only the replica count changed. This was the root cause of the
 // 51-generation / 9.7 Gi registry incident (eden-cms-v2-git, 2026-07-12).
 const annotAutoscaleReplicas = "app.bex.co/autoscale-replicas"
+
+// metricsFailureLogInterval is how often a still-failing metrics read is logged
+// again for one App after its first failure is logged (w4/m364).
+const metricsFailureLogInterval = 10 * time.Minute
+
+// autoscalingMetricsUnavailableMessage is the tenant-safe message of the
+// AutoscalingMetricsAvailable condition. The read error itself is logged.
+const autoscalingMetricsUnavailableMessage = "Autoscaling is paused: utilization metrics are unavailable, so the instance count is held"
+
+// autoscalingMetricsReadFailures counts failed utilization reads per App
+// (w4/m364). The series exist only for autoscaled Apps whose read failed, and
+// go with the App (forgetMetricsFailures). It feeds the
+// AutoscalingMetricsUnavailable alert.
+var autoscalingMetricsReadFailures = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "bex_autoscaling_metrics_read_failures_total",
+	Help: "Failed metrics-server utilization reads by the autoscaler, by App. While an App's reads fail its autoscaler holds the instance count.",
+}, []string{"namespace", "app"})
+
+func init() {
+	ctrlmetrics.Registry.MustRegister(autoscalingMetricsReadFailures)
+}
 
 // PodUsage is one pod's current resource consumption, as reported by metrics-server.
 // It is the shared decoder's record so autoscaling and bex-api's reported usage
@@ -250,6 +276,9 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 		return current, false
 	}
 	as := app.Spec.Autoscaling
+	if _, recorded := recordedAutoscaleCount(app); !recorded {
+		current = r.seedAutoscaler(ctx, app, current)
+	}
 	// Hold one from/to edge stable until the Deployment reaches its recorded
 	// target. This prevents a metrics wobble from overwriting a Started status
 	// before the backend can persist its matching Ended fact.
@@ -265,9 +294,11 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 	}
 	usage, err := r.MetricsReader(ctx, app.Namespace, app.Name)
 	if err != nil {
-		// Metrics unavailable — hold steady, requeue to retry.
+		// Metrics unavailable — hold steady, requeue to retry, and say so.
+		r.metricsReadFailed(ctx, app, err)
 		return current, true
 	}
+	r.metricsReadRecovered(ctx, app)
 
 	want, skip := autoscaleDesired(as, usage, app.Spec.Tier)
 	if skip {
@@ -320,16 +351,112 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 		return current, true
 	}
 	if want != current {
-		app.Status.Autoscaling = &appv1alpha1.AutoscalingStatus{
-			TransitionID: fmt.Sprintf("%s-%d-%d", now.Format(time.RFC3339Nano), current, want),
-			FromReplicas: current,
-			ToReplicas:   want,
-			State:        appv1alpha1.AutoscalingTransitionStarted,
-			StartedAt:    now.Format(time.RFC3339Nano),
-		}
+		startAutoscalingTransition(app, current, want, now)
 	}
 
 	return want, true // always requeue while autoscaling is on
+}
+
+// startAutoscalingTransition records the autoscaler moving app from one
+// replica count to another, which the backend reports as autoscaling_started
+// and, once the Deployment is there, autoscaling_ended.
+func startAutoscalingTransition(app *appv1alpha1.App, from, to int32, now time.Time) {
+	app.Status.Autoscaling = &appv1alpha1.AutoscalingStatus{
+		TransitionID: fmt.Sprintf("%s-%d-%d", now.Format(time.RFC3339Nano), from, to),
+		FromReplicas: from,
+		ToReplicas:   to,
+		State:        appv1alpha1.AutoscalingTransitionStarted,
+		StartedAt:    now.Format(time.RFC3339Nano),
+	}
+}
+
+// recordedAutoscaleCount is the replica count the autoscaler last recorded on
+// app, if it recorded a usable one.
+func recordedAutoscaleCount(app *appv1alpha1.App) (int32, bool) {
+	n, err := strconv.ParseInt(app.Annotations[annotAutoscaleReplicas], 10, 32)
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return int32(n), true
+}
+
+// autoscaleStart is the replica count an autoscaled pass starts from: the
+// count the autoscaler last recorded, else the count the service runs now (its
+// Deployment's), else its own configured count.
+func autoscaleStart(app *appv1alpha1.App, configured int32, dep *appsv1.Deployment) int32 {
+	if n, ok := recordedAutoscaleCount(app); ok {
+		return n
+	}
+	if dep != nil && dep.Spec.Replicas != nil && *dep.Spec.Replicas > 0 {
+		return *dep.Spec.Replicas
+	}
+	return configured
+}
+
+// seedAutoscaler gives the autoscaler a recorded count on its first pass:
+// running, clamped to the autoscaling range (w4/m364). From then on the
+// autoscaler owns the running count, and spec.replicas is only the stored
+// manual count the service returns to when autoscaling is turned off, as
+// Render ignores a manual scale while autoscaling is on. Before, the first
+// pass had no record until the first decision, so a manual scale inside the
+// first scale-down window still changed the running count. The seed is also
+// held to the plan's instance cap, as the Deployment will be: a transition to a
+// count it can never reach would never end, and its hold would stop the
+// autoscaler. A count the clamps move is a scaling the autoscaler made, so it
+// records a transition, unless one is already under way, whose end the
+// backend still has to see. A failed write records nothing; the next pass
+// seeds again from what then runs.
+func (r *AppReconciler) seedAutoscaler(ctx context.Context, app *appv1alpha1.App, running int32) int32 {
+	minR, maxR := autoscaleBounds(app.Spec.Autoscaling)
+	seed := clampReplicas(app, min(max(running, minR), maxR))
+	if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+		metav1.SetMetaDataAnnotation(meta, annotAutoscaleReplicas, strconv.Itoa(int(seed)))
+	}); err != nil {
+		return running
+	}
+	if transition := app.Status.Autoscaling; seed != running &&
+		(transition == nil || transition.State != appv1alpha1.AutoscalingTransitionStarted) {
+		startAutoscalingTransition(app, running, seed, time.Now().UTC())
+	}
+	return seed
+}
+
+// metricsReadFailed surfaces a failed utilization read (w4/m364): it counts
+// it, sets the AutoscalingMetricsAvailable condition and logs the error with
+// the App, at once on the first failure and then at most once per
+// metricsFailureLogInterval while reads keep failing.
+func (r *AppReconciler) metricsReadFailed(ctx context.Context, app *appv1alpha1.App, err error) {
+	autoscalingMetricsReadFailures.WithLabelValues(app.Namespace, app.Name).Inc()
+	changed := meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type:               appv1alpha1.ConditionAutoscalingMetricsAvailable,
+		Status:             metav1.ConditionFalse,
+		Reason:             appv1alpha1.AutoscalingMetricsUnavailableReason,
+		Message:            autoscalingMetricsUnavailableMessage,
+		ObservedGeneration: app.Generation,
+	})
+	key := app.Namespace + "/" + app.Name
+	now := time.Now()
+	if last, ok := r.metricsFailureLogged.Load(key); !changed && ok && now.Sub(last.(time.Time)) < metricsFailureLogInterval {
+		return
+	}
+	r.metricsFailureLogged.Store(key, now)
+	logf.FromContext(ctx).Error(err, "autoscaling metrics read failed; holding the instance count",
+		"app", app.Name, "namespace", app.Namespace)
+}
+
+// forgetMetricsFailures drops a deleted App's failed-read log limit and its
+// failure series, so neither outlives the App.
+func (r *AppReconciler) forgetMetricsFailures(namespace, name string) {
+	r.metricsFailureLogged.Delete(namespace + "/" + name)
+	autoscalingMetricsReadFailures.DeleteLabelValues(namespace, name)
+}
+
+// metricsReadRecovered clears what metricsReadFailed set once a read succeeds.
+func (r *AppReconciler) metricsReadRecovered(ctx context.Context, app *appv1alpha1.App) {
+	r.metricsFailureLogged.Delete(app.Namespace + "/" + app.Name)
+	if meta.RemoveStatusCondition(&app.Status.Conditions, appv1alpha1.ConditionAutoscalingMetricsAvailable) {
+		logf.FromContext(ctx).Info("autoscaling metrics read recovered", "app", app.Name, "namespace", app.Namespace)
+	}
 }
 
 // scaleDownPending reports whether a scale-down window is recorded on app.
@@ -346,6 +473,9 @@ func scaleDownPending(app *appv1alpha1.App) bool {
 // so turning it back on starts from the service's own count (w5/130). A
 // suspended or unwired service keeps both and resumes where it was.
 func (r *AppReconciler) skipAutoscaling(ctx context.Context, app *appv1alpha1.App) {
+	// A pass that reads no metrics has no failing read to report.
+	meta.RemoveStatusCondition(&app.Status.Conditions, appv1alpha1.ConditionAutoscalingMetricsAvailable)
+	r.metricsFailureLogged.Delete(app.Namespace + "/" + app.Name)
 	count := app.Annotations[annotAutoscaleReplicas]
 	if !autoscalingEnabled(app) {
 		count = ""
@@ -379,9 +509,9 @@ func autoscalingEnabled(app *appv1alpha1.App) bool {
 }
 
 // clearScaleDownWindow removes a scale-down window's stamp and its record.
-func clearScaleDownWindow(meta *metav1.ObjectMeta) {
-	delete(meta.Annotations, annotAutoscaleScaleDown)
-	delete(meta.Annotations, annotAutoscaleScaleDownTo)
+func clearScaleDownWindow(om *metav1.ObjectMeta) {
+	delete(om.Annotations, annotAutoscaleScaleDown)
+	delete(om.Annotations, annotAutoscaleScaleDownTo)
 }
 
 func completeAutoscalingTransition(app *appv1alpha1.App, replicas, ready int32, now time.Time) {

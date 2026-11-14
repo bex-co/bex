@@ -1,0 +1,34 @@
+# w4/m364: autoscaling that cannot read utilization alerts once an App keeps
+# failing for 15 minutes; a brief failure and a healthy counter stay quiet.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: two Apps refused for 30 minutes fire with their count
+    interval: 1m
+    input_series:
+      - series: bex_autoscaling_metrics_read_failures_total{job="bex-operator",instance="op-a:8080",namespace="tea-aaa",app="web"}
+        values: 0+2x40
+      - series: bex_autoscaling_metrics_read_failures_total{job="bex-operator",instance="op-a:8080",namespace="tea-bbb",app="api"}
+        values: 0+2x40
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: AutoscalingMetricsUnavailable
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: AutoscalingMetricsUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Autoscaling cannot read utilization metrics for 2 service(s)"
+              description: "The operator's metrics-server reads keep failing, so those autoscaled services hold their instance count: no scale-up under load and no scale-down when idle. Read the operator log line 'autoscaling metrics read failed; holding the instance count' for the error, check APIService v1beta1.metrics.k8s.io is Available, and check `kubectl auth can-i list pods.metrics.k8s.io -A --as system:serviceaccount:bex-system:bex-controller-manager` answers yes (lego/operator/config/rbac/role.yaml). Context: .pm/w4/m364."
+  - name: a five-minute failure that recovers does not page
+    interval: 1m
+    input_series:
+      - series: bex_autoscaling_metrics_read_failures_total{job="bex-operator",instance="op-a:8080",namespace="tea-aaa",app="web"}
+        values: 0x5 0+2x5 10x40
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: AutoscalingMetricsUnavailable
+        exp_alerts: []

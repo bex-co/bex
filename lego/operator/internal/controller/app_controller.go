@@ -318,6 +318,9 @@ type AppReconciler struct {
 	// detection.
 	PortScanner portscan.Scanner
 	portScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
+	// metricsFailureLogged rate-limits the autoscaler's failed-read log line
+	// (w4/m364).
+	metricsFailureLogged sync.Map // "<ns>/<name>" -> time.Time of the last log
 	// storedImagesRead is when each App's repository is next due to be read
 	// (refreshStoredImages): "<ns>/<name>" -> time.Time.
 	storedImagesRead sync.Map
@@ -493,6 +496,10 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;patch
+// The autoscaler reads pod utilization from metrics-server's aggregated API
+// (NewMetricsServerReader). Without this grant every read was refused and the
+// autoscaler held every service at its count on production (w4/m364).
+// +kubebuilder:rbac:groups=metrics.k8s.io,resources=pods,verbs=get;list
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // Persistent service disks (docs/ADR082-persistent-disks.md): the App controller
 // creates and grows the per-App PVC itself, and deletes it when the disk is
@@ -615,6 +622,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err := r.Get(ctx, req.NamespacedName, &app); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.forgetPortScans(req.Namespace + "/" + req.Name)
+			r.forgetMetricsFailures(req.Namespace, req.Name)
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -3171,18 +3179,16 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 
 	replicas := configured
 	var autoscaleRequeue bool
-	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
-	// to spec.replicas (the user's static count). applyAutoscaling writes the
-	// annotation instead of spec.replicas to avoid bumping generation (see annotAutoscaleReplicas).
+	// Start from the autoscaler's recorded count, so neither a metrics-failure
+	// pass nor a manual scale reverts to spec.replicas (the stored manual count,
+	// which Render ignores while autoscaling is on; w4/m364). The first pass
+	// seeds that record from what runs (autoscaleStart, seedAutoscaler).
+	// applyAutoscaling writes the annotation instead of spec.replicas to avoid
+	// bumping generation (see annotAutoscaleReplicas).
 	// Web, private, and background_worker all honor autoscaling (w4/m101); cron/static
 	// never reach this path. The API refuses config for types that cannot scale.
 	if autoscalingEnabled(app) && !app.Spec.Suspended {
-		if raw := app.Annotations[annotAutoscaleReplicas]; raw != "" {
-			if n, err := strconv.ParseInt(raw, 10, 32); err == nil && n > 0 {
-				replicas = int32(n)
-			}
-		}
-		replicas, autoscaleRequeue = r.applyAutoscaling(ctx, app, replicas)
+		replicas, autoscaleRequeue = r.applyAutoscaling(ctx, app, autoscaleStart(app, configured, obs.dep))
 	} else {
 		r.skipAutoscaling(ctx, app)
 	}

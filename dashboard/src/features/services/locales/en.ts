@@ -619,6 +619,17 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
   },
+  "services.scalingMetricsUnavailableTitle": {
+    message: "Autoscaling is paused: utilization metrics are unavailable",
+    description:
+      "Autoscaling card notice title while the operator cannot read the service's CPU and memory utilization (w4/m364)",
+  },
+  "services.scalingMetricsUnavailableBody": {
+    message:
+      "The service keeps its current instance count until CPU and memory utilization can be read again. Your autoscaling settings are saved.",
+    description:
+      "Autoscaling card notice body while utilization metrics are unavailable (w4/m364)",
+  },
   "services.scalingOff": {
     message: "Autoscaling off",
     description: "Autoscaling main toggle label when disabled",

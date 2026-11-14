@@ -606,6 +606,17 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
   },
+  "services.scalingMetricsUnavailableTitle": {
+    message: "自动伸缩已暂停：无法获取资源利用率指标",
+    description:
+      "Autoscaling card notice title while the operator cannot read the service's CPU and memory utilization (w4/m364)",
+  },
+  "services.scalingMetricsUnavailableBody": {
+    message:
+      "在能够重新读取 CPU 和内存利用率之前，服务将保持当前实例数。你的自动伸缩设置已保存。",
+    description:
+      "Autoscaling card notice body while utilization metrics are unavailable (w4/m364)",
+  },
   "services.scalingOff": {
     message: "自动伸缩已关闭",
     description: "Autoscaling main toggle label when disabled",

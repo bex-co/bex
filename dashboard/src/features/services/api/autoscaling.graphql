@@ -1,5 +1,7 @@
 # autoscalingConfig fetches the current autoscaling configuration for a service,
 # backing the Scaling tab's read path (backend/internal/apps/graphql.go).
+# metricsUnavailable is true while autoscaling is on but paused because the
+# service's utilization cannot be read (w4/m364).
 query AutoscalingConfig($id: String!) {
   autoscalingConfig(id: $id) {
     enabled
@@ -7,6 +9,7 @@ query AutoscalingConfig($id: String!) {
     maxInstances
     targetCPUPercent
     targetMemoryPercent
+    metricsUnavailable
   }
 }
 

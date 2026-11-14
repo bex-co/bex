@@ -288,6 +288,16 @@ type renderAutoscalingConfig struct {
 	Criteria renderAutoscalingCriteria `json:"criteria"`
 }
 
+// renderAutoscalingRead is the autoscaling bex reads back (GET/PUT
+// …/autoscaling and serviceDetails.autoscaling): Render's body plus the bex
+// extension metricsUnavailable, present only while autoscaling is paused
+// because the service's utilization cannot be read (w4/m364). It is a
+// response type only, so a request carrying the field is still refused.
+type renderAutoscalingRead struct {
+	renderAutoscalingConfig
+	MetricsUnavailable bool `json:"metricsUnavailable,omitempty"`
+}
+
 type renderAutoscalingCriteria struct {
 	CPU    renderAutoscalingCriterion `json:"cpu"`
 	Memory renderAutoscalingCriterion `json:"memory"`
@@ -326,7 +336,7 @@ func setAutoscalingRequestFromRender(body renderAutoscalingConfig) (SetAutoscali
 	return req, true, nil
 }
 
-func renderAutoscalingConfigFromView(v AutoscalingView) renderAutoscalingConfig {
+func renderAutoscalingConfigFromView(v AutoscalingView) renderAutoscalingRead {
 	out := renderAutoscalingConfig{
 		Enabled: v.Enabled,
 		Min:     v.MinInstances,
@@ -342,7 +352,7 @@ func renderAutoscalingConfigFromView(v AutoscalingView) renderAutoscalingConfig 
 	if v.TargetMemoryPercent != nil {
 		out.Criteria.Memory = renderAutoscalingCriterion{Enabled: true, Percentage: int(*v.TargetMemoryPercent)}
 	}
-	return out
+	return renderAutoscalingRead{renderAutoscalingConfig: out, MetricsUnavailable: v.MetricsUnavailable}
 }
 
 // serviceWithCursor is components.schemas.serviceWithCursor — the list-item

@@ -33,6 +33,7 @@ const autoscalingState = {
   maxInstances: 3,
   targetCPUPercent: null as number | null,
   targetMemoryPercent: null as number | null,
+  metricsUnavailable: false,
   save: vi.fn(async () => true),
   disable: vi.fn(async () => true),
 };

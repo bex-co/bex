@@ -7834,6 +7834,37 @@ dashboards:
                "legendFormat": "zot restarts in the last hour"
               }
              ]
+            },
+            {
+             "id": 27,
+             "type": "timeseries",
+             "title": "Autoscaling metrics read failures",
+             "description": "Failed metrics-server utilization reads by the autoscaler in the last 10 minutes, per App (w4/m364). While an App's reads fail its autoscaler holds the instance count, and the App carries AutoscalingMetricsAvailable=False. A line for every autoscaled App means metrics-server or the operator's metrics.k8s.io grant is broken; one App means that App's pods. AutoscalingMetricsUnavailable fires when any App keeps failing for 15 minutes.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 124
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "fieldConfig": {
+              "defaults": {
+               "unit": "short",
+               "min": 0,
+               "decimals": 0
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "sum by (namespace, app) (increase(bex_autoscaling_metrics_read_failures_total{job=\"bex-operator\"}[10m]))",
+               "legendFormat": "{{namespace}}/{{app}}"
+              }
+             ]
             }
           ]
         }

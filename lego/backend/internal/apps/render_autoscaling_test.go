@@ -85,7 +85,7 @@ func TestRenderAutoscalingConfigRoundTrip(t *testing.T) {
 	if wire.Criteria.Memory.Enabled {
 		t.Fatalf("memory should be disabled: %+v", wire.Criteria.Memory)
 	}
-	back, enable, err := setAutoscalingRequestFromRender(wire)
+	back, enable, err := setAutoscalingRequestFromRender(wire.renderAutoscalingConfig)
 	if err != nil || !enable {
 		t.Fatalf("back: %v %v", enable, err)
 	}

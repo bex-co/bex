@@ -747,6 +747,7 @@ export type Autoscaling = {
   __typename: 'Autoscaling';
   enabled: Maybe<Scalars['Boolean']['output']>;
   maxInstances: Maybe<Scalars['Int']['output']>;
+  metricsUnavailable: Maybe<Scalars['Boolean']['output']>;
   minInstances: Maybe<Scalars['Int']['output']>;
   targetCPUPercent: Maybe<Scalars['Int']['output']>;
   targetMemoryPercent: Maybe<Scalars['Int']['output']>;

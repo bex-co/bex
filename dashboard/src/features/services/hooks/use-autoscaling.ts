@@ -24,6 +24,8 @@ export interface UseAutoscalingResult {
   maxInstances: number;
   targetCPUPercent: number | null;
   targetMemoryPercent: number | null;
+  /** Autoscaling is on but paused: utilization metrics are unavailable (w4/m364). */
+  metricsUnavailable: boolean;
   save: (values: AutoscalingFormValues) => Promise<boolean>;
   disable: () => Promise<boolean>;
 }
@@ -96,6 +98,7 @@ export function useAutoscaling(serviceId: string): UseAutoscalingResult {
     maxInstances: cfg?.maxInstances ?? 3,
     targetCPUPercent: cfg?.targetCPUPercent ?? null,
     targetMemoryPercent: cfg?.targetMemoryPercent ?? null,
+    metricsUnavailable: cfg?.metricsUnavailable ?? false,
     save,
     disable,
   };

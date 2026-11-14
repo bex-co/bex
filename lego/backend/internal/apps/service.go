@@ -4722,7 +4722,10 @@ func planDowngradeError(a *appv1alpha1.App, tier, plan string) error {
 // row-first way as Suspend/SetPlan — the projector owns the field. The count is
 // what the operator runs when the App is active: suspend still wins (it forces
 // 0 in the operator's effectiveReplicas without rewriting spec.replicas), so
-// scaling a suspended App takes visible effect on resume. This is the
+// scaling a suspended App takes visible effect on resume. Autoscaling wins
+// the same way: while it is on the count is stored but the operator runs the
+// autoscaler's count, and the stored count takes effect when autoscaling is
+// turned off, as Render ignores a manual scale under autoscaling (w4/m364). This is the
 // degenerate, human-driven case of m3 (bin-pack/autoscale); the field
 // semantics settled here must stay compatible with it.
 //
@@ -4773,7 +4776,12 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	// webhook delivery. Because the allowed-write audit is deferred to this call,
 	// skipping it means a no-op scale produces no event at all, closing a cheap
 	// repeatable amplifier of the shared outbound-webhook queue (scan finding #3).
-	if fromReplicas != replicas {
+	//
+	// With autoscaling on the running count does not change either: "Render
+	// ignores this value as long as autoscaling is enabled for the service".
+	// The count is stored, and is what the service runs once autoscaling is
+	// turned off; the operator keeps running the autoscaler's count (w4/m364).
+	if fromReplicas != replicas && !autoscalingOn(a.Spec.Autoscaling) {
 		s.RecordScaleEffect(ctx, a, fromReplicas, replicas)
 	}
 	return result, nil
@@ -6386,6 +6394,11 @@ type AutoscalingView struct {
 	MaxInstances        int32  `json:"maxInstances"`
 	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty"`
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
+	// MetricsUnavailable reports autoscaling that is on but paused: the
+	// operator cannot read the service's utilization, so it holds the
+	// instance count (the App's AutoscalingMetricsAvailable=False condition,
+	// w4/m364). A bex extension; Render documents no such state.
+	MetricsUnavailable bool `json:"metricsUnavailable,omitempty"`
 }
 
 // SetAutoscalingRequest is the input for SetAutoscaling — Render's PUT
@@ -6502,6 +6515,8 @@ func autoscalingView(a *appv1alpha1.App) AutoscalingView {
 		MaxInstances:        as.MaxReplicas,
 		TargetCPUPercent:    as.TargetCPUPercent,
 		TargetMemoryPercent: as.TargetMemoryPercent,
+		MetricsUnavailable: as.Enabled && meta.IsStatusConditionFalse(a.Status.Conditions,
+			appv1alpha1.ConditionAutoscalingMetricsAvailable),
 	}
 }
 

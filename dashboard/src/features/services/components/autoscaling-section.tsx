@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { TriangleAlert } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert";
 import { Switch } from "@/common/components/ui/switch";
 import { Label } from "@/common/components/ui/label";
 import { Input } from "@/common/components/ui/input";
@@ -352,6 +354,20 @@ export function AutoscalingSection({
               {t("services.scalingPaidOnly")}
             </p>
           )}
+        </CardContent>
+      )}
+
+      {/* The operator holds the count while it cannot read utilization
+          (w4/m364); without this the card read as active autoscaling. */}
+      {eligible && as.enabled && as.metricsUnavailable && (
+        <CardContent>
+          <Alert>
+            <TriangleAlert />
+            <AlertTitle>{t("services.scalingMetricsUnavailableTitle")}</AlertTitle>
+            <AlertDescription>
+              {t("services.scalingMetricsUnavailableBody")}
+            </AlertDescription>
+          </Alert>
         </CardContent>
       )}
 
