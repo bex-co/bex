@@ -698,18 +698,39 @@ func enforceAgentSessionPromptQuota(ctx context.Context, tx pgx.Tx, sessionID, p
 // AgentSessionTurns returns the durable user intents in chronological order.
 // Prompt input is capped individually and by MaxAgentSessionPromptBytes across
 // the session; callers still stream assistant parts page-wise.
+//
+// It reads agent_session_turns alone: the SSH gateway's scoped database role
+// calls it (sshgateway/agentattach) and holds no privilege on any other table,
+// so it must never join one. A stopped turn's retention reads as recorded, which
+// is "" until its save has ended; the API path that shows the save in progress
+// is AgentSessionTurnsWithRetention.
 func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]AgentSessionTurn, error) {
+	return s.agentSessionTurns(ctx, sessionID, "retention", "agent_session_turns")
+}
+
+// AgentSessionTurnsWithRetention is AgentSessionTurns with a stopped turn's
+// retention as the API says it (ADR047 D12, w22/m413 t004): a turn whose disk
+// is still being saved reads TurnRetentionSaving, derived from the image's
+// saving row and never stored. It reads agent_session_retained_images, which
+// the SSH gateway's role cannot, so only bex-api's own paths call it.
+func (s *PGStore) AgentSessionTurnsWithRetention(ctx context.Context, sessionID string) ([]AgentSessionTurn, error) {
+	return s.agentSessionTurns(ctx, sessionID, `CASE WHEN retention = '' AND EXISTS (
+		              SELECT 1 FROM agent_session_retained_images r
+		              WHERE r.session_id = t.session_id AND r.turn = t.turn AND r.state = 'saving')
+		            THEN 'saving' ELSE retention END`, "agent_session_turns t")
+}
+
+// agentSessionTurns reads a session's turns with retention, a column
+// expression, as the retention each turn reports, from the from clause that
+// names agent_session_turns as t where the expression needs it.
+func (s *PGStore) agentSessionTurns(ctx context.Context, sessionID, retention, from string) ([]AgentSessionTurn, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT session_id, turn, prompt, delivery_mode,
 		       transcript_complete, transcript_truncated, truncation_reason,
 		       created_at, started_at, completed_at, attachments,
 		       output_schema, output_required, result, result_final, skills, interrupted, interrupt_requested_at,
-		       CASE WHEN retention = '' AND EXISTS (
-		              SELECT 1 FROM agent_session_retained_images r
-		              WHERE r.session_id = t.session_id AND r.turn = t.turn AND r.state = 'saving')
-		            THEN 'saving' ELSE retention END,
-		       retained_until, start_note, retention_reason
-		FROM agent_session_turns t WHERE session_id=$1 ORDER BY turn`, sessionID)
+		       `+retention+`, retained_until, start_note, retention_reason
+		FROM `+from+` WHERE session_id=$1 ORDER BY turn`, sessionID)
 	if err != nil {
 		return nil, err
 	}

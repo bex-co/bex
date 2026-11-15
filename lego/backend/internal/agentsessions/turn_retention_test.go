@@ -17,6 +17,7 @@ limitations under the License.
 package agentsessions
 
 import (
+	"context"
 	"slices"
 	"testing"
 	"time"
@@ -96,5 +97,26 @@ func TestEveryStoredLossReasonIsNamedOrLeftOutOnPurpose(t *testing.T) {
 	}
 	if len(named)+len(leftOut) != len(all) {
 		t.Errorf("%d named + %d left out is not the %d stored reasons", len(named), len(leftOut), len(all))
+	}
+}
+
+// The transcript says a stopped turn's disk is being saved, which only the
+// retention-aware read of the turns knows. The plain read is the one the SSH
+// gateway's database role calls, and its role cannot read the table that
+// derives it, so the service must ask for the aware one.
+func TestTranscriptReadsTheTurnsThroughTheRetentionAwareStore(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	turn := st.turns[id][1]
+	turn.Interrupted = true
+	st.turns[id][1] = turn
+	st.savingTurns = map[string]bool{id: true}
+
+	page, err := svc.Transcript(caller("alice"), id, -1, 0)
+	if err != nil || len(page.Turns) == 0 || page.Turns[0].Retention != RetentionSaving {
+		t.Fatalf("transcript turns = %+v / %v, want the first reading saving", page.Turns, err)
+	}
+	plain, err := st.AgentSessionTurns(context.Background(), id)
+	if err != nil || plain[0].Retention != "" {
+		t.Fatalf("the plain read says %q: it must not derive what the gateway's role cannot read", plain[0].Retention)
 	}
 }

@@ -112,6 +112,11 @@ type Store interface {
 	// session+turn+item index; a partial tee item is replaced by its complete copy).
 	MergeAgentSessionTranscriptItems(ctx context.Context, sessionID string, m store.TranscriptItemMerge) (store.TranscriptMergeResult, error)
 	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
+	// AgentSessionTurnsWithRetention is the turns as the API shows them: a
+	// stopped turn whose disk is being saved reads "saving" (ADR047 D12). The
+	// SSH gateway's database role cannot read what derives it, so it calls
+	// AgentSessionTurns instead.
+	AgentSessionTurnsWithRetention(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
 	// The session bound to an idempotency key within its window, with the digest
 	// of the request it was created from (ADR094 D4); store.ErrNotFound when none.
 	FindAgentSessionByIdempotencyKey(ctx context.Context, workspaceID, key string) (store.AgentSession, string, error)
@@ -1468,7 +1473,7 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			return TranscriptPage{}, mapStoreError(sessionID, err)
 		}
 	}
-	turnRows, err := s.Store.AgentSessionTurns(ctx, sessionID)
+	turnRows, err := s.Store.AgentSessionTurnsWithRetention(ctx, sessionID)
 	if err != nil {
 		return TranscriptPage{}, err
 	}

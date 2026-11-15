@@ -49,6 +49,11 @@ type fakeStore struct {
 	now            time.Time
 	transcript     map[string]map[int64]store.AgentSessionTranscriptPart
 	turns          map[string]map[int]store.AgentSessionTurn
+	// savingTurns are the sessions whose stopped turn's disk is being saved:
+	// only the retention-aware read, which the API uses, says so (the real
+	// store derives it from the retained image's row, which the SSH gateway's
+	// database role cannot read).
+	savingTurns map[string]bool
 	// openSSH models the ssh_sessions table for the teardown-deferral tests
 	// (ADR054 D6): resource id -> the started_at of a still-open editor session.
 	openSSH map[string]time.Time
@@ -432,6 +437,18 @@ func (f *fakeStore) AgentSessionTurns(_ context.Context, id string) ([]store.Age
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Turn < out[j].Turn })
 	return out, nil
+}
+
+func (f *fakeStore) AgentSessionTurnsWithRetention(ctx context.Context, id string) ([]store.AgentSessionTurn, error) {
+	out, err := f.AgentSessionTurns(ctx, id)
+	if f.savingTurns[id] {
+		for i := range out {
+			if out[i].Interrupted && out[i].Retention == "" {
+				out[i].Retention = store.TurnRetentionSaving
+			}
+		}
+	}
+	return out, err
 }
 
 func (f *fakeStore) CompleteAgentSessionTurn(_ context.Context, id string, turn int, complete, truncated bool, reason string) error {

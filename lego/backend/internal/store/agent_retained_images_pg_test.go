@@ -19,10 +19,13 @@ package store
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -117,6 +120,17 @@ func (f *retainedFixture) none(session AgentSession) {
 func (f *retainedFixture) turn(session AgentSession) AgentSessionTurn {
 	f.t.Helper()
 	turns, err := f.s.AgentSessionTurns(context.Background(), session.ID)
+	if err != nil || len(turns) == 0 {
+		f.t.Fatalf("turns = %v / %v", turns, err)
+	}
+	return turns[len(turns)-1]
+}
+
+// apiTurn is the session's last turn as the API reads it: a save in progress
+// reads "saving".
+func (f *retainedFixture) apiTurn(session AgentSession) AgentSessionTurn {
+	f.t.Helper()
+	turns, err := f.s.AgentSessionTurnsWithRetention(context.Background(), session.ID)
 	if err != nil || len(turns) == 0 {
 		f.t.Fatalf("turns = %v / %v", turns, err)
 	}
@@ -557,14 +571,18 @@ func TestPGTurnRecordsWhyItsDiskWasLost(t *testing.T) {
 	// While the save runs the turn reads "saving"; a turn nobody saves reads
 	// "" and so does one not stopped.
 	session, img := f.saving()
-	if turn := f.turn(session); turn.Retention != TurnRetentionSaving || turn.RetentionReason != "" {
+	if turn := f.apiTurn(session); turn.Retention != TurnRetentionSaving || turn.RetentionReason != "" {
 		t.Fatalf("turn while saving = %+v, want saving", turn)
+	}
+	// The plain read, the SSH gateway's, says what is recorded.
+	if turn := f.turn(session); turn.Retention != "" {
+		t.Fatalf("the plain read says %q while saving, want the recorded empty retention", turn.Retention)
 	}
 	var stored string
 	if err := f.pool.QueryRow(ctx, `SELECT retention FROM agent_session_turns WHERE session_id = $1`, session.ID).Scan(&stored); err != nil || stored != "" {
 		t.Fatalf("the stored retention while saving = %q / %v: \"saving\" is derived, never stored", stored, err)
 	}
-	if turn := f.turn(f.running()); turn.Retention != "" {
+	if turn := f.apiTurn(f.running()); turn.Retention != "" {
 		t.Fatalf("a running turn reads %+v", turn)
 	}
 	if err := f.s.ReserveAgentSessionRetainedImage(ctx, f.ws, img.ID, 4096, 1<<40); err != nil {
@@ -622,5 +640,69 @@ func TestPGTurnRecordsWhyItsDiskWasLost(t *testing.T) {
 	}
 	if turn := f.turn(editor); turn.Retention != TurnRetentionLost || turn.RetentionReason != RetainedNotSavedEditorOpen {
 		t.Fatalf("turn with an open editor = %+v", turn)
+	}
+}
+
+// The SSH gateway's scoped database role reads agent_session_turns and no other
+// table (sshgateway/dbrole, ADR035), and it calls AgentSessionTurns. That read
+// must stay join-free: run under a role that holds SELECT on that one table, it
+// still answers (with the retention as recorded), while the API's
+// retention-aware read, which derives "saving" from the retained image's row, is
+// refused by Postgres, so the derivation cannot leak into the gateway's path.
+func TestPGAgentSessionTurnsTouchesNoOtherTable(t *testing.T) {
+	f := newRetainedFixture(t, "retain-turns-role")
+	ctx := context.Background()
+	const role = "bex_turns_only_test"
+	if _, err := f.pool.Exec(ctx, `DO $$ BEGIN
+		IF EXISTS (SELECT FROM pg_roles WHERE rolname = '`+role+`') THEN
+			EXECUTE 'DROP OWNED BY `+role+`';
+			EXECUTE 'DROP ROLE `+role+`';
+		END IF;
+	END $$`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(ctx, `CREATE ROLE `+role+` NOLOGIN`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(ctx, `GRANT USAGE ON SCHEMA public TO `+role+`; GRANT SELECT ON agent_session_turns TO `+role); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = f.pool.Exec(context.Background(), `DROP OWNED BY `+role)
+		_, _ = f.pool.Exec(context.Background(), `DROP ROLE IF EXISTS `+role)
+	})
+
+	cfg, err := pgxpool.ParseConfig(os.Getenv("BEX_TEST_DB_URI"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, `SET ROLE `+role)
+		return err
+	}
+	scoped, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(scoped.Close)
+	gateway := NewPGStore(scoped)
+
+	// A stopped turn whose save is running: the row the derivation would read.
+	session, _ := f.saving()
+	turns, err := gateway.AgentSessionTurns(ctx, session.ID)
+	if err != nil || len(turns) != 1 {
+		t.Fatalf("the gateway's read under a role that sees only agent_session_turns = %v / %v", turns, err)
+	}
+	if turns[0].Retention != "" || !turns[0].Interrupted {
+		t.Fatalf("turn = %+v, want the retention as recorded (empty while saving), not derived", turns[0])
+	}
+	_, err = gateway.AgentSessionTurnsWithRetention(ctx, session.ID)
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "42501" {
+		t.Fatalf("the retention-aware read under that role = %v, want permission denied (42501): it is the API's, never the gateway's", err)
+	}
+	// Under the API's own pool it says what the save is doing.
+	if got, err := f.s.AgentSessionTurnsWithRetention(ctx, session.ID); err != nil || got[0].Retention != TurnRetentionSaving {
+		t.Fatalf("the API's read = %+v / %v, want saving", got, err)
 	}
 }
