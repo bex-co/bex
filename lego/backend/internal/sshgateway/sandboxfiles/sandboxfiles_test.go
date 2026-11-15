@@ -804,6 +804,18 @@ func TestAMissingPathIsAFileNotFoundCode(t *testing.T) {
 	}
 }
 
+// An upload through a symlinked ancestor names that cause, not the
+// existing-destination one (w32/024).
+func TestASymlinkedUploadAncestorAnswersItsCause(t *testing.T) {
+	s := serverFor(func(context.Context, []string, io.Reader, io.Writer) (int, error) { return 74, nil })
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, requestFor(t, http.MethodPut, []byte("data")))
+	var body struct{ Message string }
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || w.Code != http.StatusConflict || body.Message != "sandbox upload path passes through a symlink" {
+		t.Fatalf("upload answered %d %s (%v), want 409 naming the symlink", w.Code, w.Body, err)
+	}
+}
+
 // w32/018: the publish step receives the mode upload chose: the archive
 // root's for a directory, 0755 when the archive has none, 0644 for a file.
 func TestUploadPublishesWithTheChosenMode(t *testing.T) {

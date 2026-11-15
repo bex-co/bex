@@ -267,6 +267,8 @@ func executionError(code int, err error) error {
 		return &statusError{status: http.StatusNotFound, message: "sandbox source or destination parent does not exist", code: codeFileNotFound}
 	case 73:
 		return &statusError{status: http.StatusConflict, message: "sandbox destination exists or is not a supported file target"}
+	case 74:
+		return &statusError{status: http.StatusConflict, message: "sandbox upload path passes through a symlink"}
 	default:
 		return errOperationFailed
 	}
@@ -288,8 +290,13 @@ func (s *Server) execute(ctx context.Context, target apps.SSHInstanceTarget, com
 	return executionError(code, err)
 }
 
-// cdParent enters parent directory $1 physically, refusing a symlinked
-// ancestor; a relative $1 is under the (physically resolved) home directory.
+// cdParent enters parent directory $1; a relative $1 is under the
+// (physically resolved) home directory. An upload refuses a symlinked
+// ancestor (exit 74): following it would move the write to a path its ticket
+// did not name. A download passes "follow" as $2 and resolves its source as
+// the sandbox's own filesystem does (w32/024): it only reads, inside a
+// sandbox whose tenant is root and can already cat the same file through
+// exec. An argument, not a variable, so no environment can turn it on.
 const cdParent = `cd_parent() {
   case $1 in
   /*) dir=$1 ;;
@@ -302,7 +309,7 @@ const cdParent = `cd_parent() {
     fi ;;
   esac
   cd -P "$dir" || exit 66
-  [ "$(pwd -P)" = "$dir" ] || exit 73
+  [ "${2:-}" = follow ] || [ "$(pwd -P)" = "$dir" ] || exit 74
 }
 `
 
@@ -493,8 +500,7 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 
 const downloadScript = cdParent + `set -eu
 name=$2
-cd_parent "$1"
-[ ! -L "$name" ] || exit 73
+cd_parent "$1" follow
 if [ -d "$name" ]; then
   printf 'directory\n'
   tar -cf - -C "$name" .

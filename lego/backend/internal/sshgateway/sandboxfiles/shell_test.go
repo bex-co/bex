@@ -30,6 +30,40 @@ import (
 	"time"
 )
 
+// runCode runs command, with env (and PATH) when given, and returns its exit
+// status and stdout.
+func runCode(t *testing.T, command []string, env ...string) (int, []byte) {
+	t.Helper()
+	cmd := exec.Command(command[0], command[1:]...)
+	if env != nil {
+		cmd.Env = append(env, "PATH="+os.Getenv("PATH"))
+	}
+	out, err := cmd.Output()
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode(), out
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return 0, out
+}
+
+// An upload never follows a symlink: through one it would write where its
+// ticket did not name. A symlinked ancestor answers its own exit (74), a
+// symlinked destination the existing-destination one (73). A follow variable
+// in the environment, which a tenant's image or sandbox env can set, changes
+// nothing.
+// tarNames lists the members of a download script's directory output.
+func tarNames(t *testing.T, out []byte) []string {
+	t.Helper()
+	var names []string
+	for _, m := range members(t, bytes.TrimPrefix(out, []byte("directory\n"))) {
+		names = append(names, m.name)
+	}
+	return names
+}
+
 func TestShellRejectsExistingSymlinkAncestorsAndTargets(t *testing.T) {
 	root, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
@@ -39,30 +73,72 @@ func TestShellRejectsExistingSymlinkAncestorsAndTargets(t *testing.T) {
 	if err := os.Mkdir(actual, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(actual, "secret"), []byte("must remain private"), 0600); err != nil {
-		t.Fatal(err)
-	}
 	if err := os.Symlink(actual, alias); err != nil {
 		t.Fatal(err)
 	}
-	for _, command := range [][]string{
-		shell(downloadScript, alias, "secret"),
-		shell(stageScript, alias, "new-file", ".bex-copy-test", "file", "0"),
-		shell(downloadScript, root, "alias"),
-		shell(stageScript, root, "alias", ".bex-copy-test", "directory", "0"),
+	for _, tc := range []struct {
+		command []string
+		code    int
+	}{
+		{shell(checkScript, alias, "new-file", "file"), 74},
+		{shell(stageScript, alias, "new-file", ".bex-copy-test", "file", "0"), 74},
+		{shell(checkScript, root, "alias", "directory"), 73},
+		{shell(stageScript, root, "alias", ".bex-copy-test", "directory", "0"), 73},
 	} {
-		cmd := exec.Command(command[0], command[1:]...)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		if err := cmd.Run(); err == nil {
-			t.Fatal("symlink path accepted")
-		}
-		if out.Len() != 0 {
-			t.Fatalf("refused path leaked output: %q", out.Bytes())
+		for _, env := range [][]string{nil, {"follow=1", "HOME=" + root}} {
+			if code, out := runCode(t, tc.command, env...); code != tc.code || len(out) != 0 {
+				t.Errorf("%q with env %q = exit %d %q, want exit %d and no output", tc.command[4:], env, code, out, tc.code)
+			}
 		}
 	}
 	if _, err := os.Stat(filepath.Join(actual, ".bex-copy-test")); !os.IsNotExist(err) {
 		t.Fatal("upload followed symlink ancestor")
+	}
+}
+
+// A download reads its source as the sandbox's filesystem resolves it
+// (w32/024): a symlink to a file sends the file, one to a directory that
+// directory's tree, and a path through a symlinked directory (a virtualenv's
+// lib64 -> lib) its target. Only a dangling one is missing.
+func TestADownloadFollowsSymlinks(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	home := filepath.Join(root, "home")
+	site := filepath.Join(home, "venv", "lib", "python3.12")
+	if err := os.MkdirAll(site, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(site, "x.py"), []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for link, target := range map[string]string{
+		"venv/lib64": "lib",
+		"py-link":    "venv/lib/python3.12/x.py",
+		"dir-link":   "venv/lib/python3.12",
+		"dangling":   "missing",
+	} {
+		if err := os.Symlink(target, filepath.Join(home, link)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		parent, name string
+		code         int
+		check        func([]byte) bool
+	}{
+		{".", "py-link", 0, func(out []byte) bool { return string(out) == "file\nx" }},
+		{"venv/lib64/python3.12", "x.py", 0, func(out []byte) bool { return string(out) == "file\nx" }},
+		{"venv/lib64", "python3.12", 0, func(out []byte) bool { return slices.Contains(tarNames(t, out), "./x.py") }},
+		{".", "dir-link", 0, func(out []byte) bool { return slices.Contains(tarNames(t, out), "./x.py") }},
+		{filepath.Join(home, "venv"), "lib64", 0, func(out []byte) bool { return slices.Contains(tarNames(t, out), "./python3.12/x.py") }},
+		{".", "dangling", 66, func(out []byte) bool { return len(out) == 0 }},
+	} {
+		code, out := runCode(t, shell(downloadScript, tc.parent, tc.name), "HOME="+home)
+		if code != tc.code || !tc.check(out) {
+			t.Errorf("download of %s/%s = exit %d %q, want exit %d", tc.parent, tc.name, code, out, tc.code)
+		}
 	}
 }
 
@@ -167,15 +243,7 @@ func TestCheckRefusesTheStagesDestinations(t *testing.T) {
 		{root, "new", "file", 0},
 		{filepath.Join(root, "missing"), "new", "file", 66},
 	} {
-		command := shell(checkScript, tc.parent, tc.entry, tc.kind)
-		code := 0
-		var exitErr *exec.ExitError
-		if err := exec.Command(command[0], command[1:]...).Run(); errors.As(err, &exitErr) {
-			code = exitErr.ExitCode()
-		} else if err != nil {
-			t.Fatal(err)
-		}
-		if code != tc.code {
+		if code, _ := runCode(t, shell(checkScript, tc.parent, tc.entry, tc.kind)); code != tc.code {
 			t.Errorf("check %s %s as %s = exit %d, want %d", tc.parent, tc.entry, tc.kind, code, tc.code)
 		}
 	}
@@ -183,7 +251,7 @@ func TestCheckRefusesTheStagesDestinations(t *testing.T) {
 
 // w32/m299: a relative path is under the sandbox user's home, as Render
 // resolves it, even when the home itself is reached through a symlink; a
-// symlink inside the part the caller named is still refused.
+// symlinked directory under home is still refused for an upload.
 func TestShellResolvesRelativePathsUnderHome(t *testing.T) {
 	// The publish script runs in the sandbox's Linux userland and uses GNU
 	// `mv -T`; BSD mv (a macOS ship-gate host) answers usage exit 64. CI's
@@ -232,15 +300,7 @@ func TestShellResolvesRelativePathsUnderHome(t *testing.T) {
 	if err != nil || !bytes.HasPrefix(out, []byte("directory\n")) {
 		t.Fatalf("download of home = %q, %v", out, err)
 	}
-	var names []string
-	for tr := tar.NewReader(bytes.NewReader(out[len("directory\n"):])); ; {
-		h, err := tr.Next()
-		if err != nil {
-			break
-		}
-		names = append(names, h.Name)
-	}
-	if !slices.Contains(names, "./f.txt") || !slices.Contains(names, "./rel/f.txt") {
+	if names := tarNames(t, out); !slices.Contains(names, "./f.txt") || !slices.Contains(names, "./rel/f.txt") {
 		t.Fatalf("home archive = %v, want its files", names)
 	}
 	for _, kind := range []string{"directory", "file"} {
