@@ -18,6 +18,11 @@ set -euo pipefail
 # Optional after deploying w3/m37:
 #   BEX_VERIFY_AGENT_DRIVER=1
 #
+# Optional: run another probe against the same disposable fixtures instead of the
+# adversarial matrix (sandbox-measure.yml runs the measurement legs this way,
+# w22/m313, w22/m314, w22/m321, w22/002, w22/008):
+#   BEX_VERIFY_PROBE=scripts/measure-sandbox-kubelet.sh
+#
 # Cluster defaults can be overridden for non-production installations:
 #   BEX_AUTH_NAMESPACE=auth
 #   BEX_API_NAMESPACE=bex-system
@@ -405,7 +410,7 @@ done
 kubectl -n opensandbox-system rollout status deployment/opensandbox-server --timeout=180s
 kubectl -n opensandbox-system rollout status deployment/opensandbox-controller-manager --timeout=180s
 
-echo "==> run the complete gVisor/Cilium/OpenFGA adversarial matrix"
+echo "==> run ${BEX_VERIFY_PROBE:-the complete gVisor/Cilium/OpenFGA adversarial matrix}"
 BEX_API_URL="$api_url" \
 BEX_WORKSPACE_A="$workspace_a" \
 BEX_WORKSPACE_B="$workspace_b" \
@@ -414,6 +419,6 @@ BEX_WS_A_MEMBER_TOKEN="$token_member_b" \
 BEX_WS_A_ADMIN_TOKEN="$token_admin_a" \
 BEX_WS_B_OWNER_TOKEN="$token_owner_b" \
 BEX_VERIFY_AGENT_DRIVER="${BEX_VERIFY_AGENT_DRIVER:-0}" \
-  bash scripts/verify-sandbox-isolation.sh
+  bash "${BEX_VERIFY_PROBE:-scripts/verify-sandbox-isolation.sh}"
 
 echo "PASS: disposable principals/workspaces provisioned, matrix passed, cleanup armed"

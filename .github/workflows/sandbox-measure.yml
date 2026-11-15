@@ -1,0 +1,90 @@
+name: Sandbox measurement (manual)
+
+# w22/m313, w22/m314, w22/m321, w22/002 and w22/008 each need a reading that only
+# a live gVisor sandbox node can give: what the kubelet and cAdvisor report for a
+# runsc pod, what Zot holds for a suspended sandbox, what the storage meter does
+# with it. The user authorized short production probes for those items on
+# 2026-11-14: one disposable, billing-excluded workspace created through the same
+# control-plane path as the isolation matrix, a few sandboxes, bounded load, and
+# every fixture removed on exit.
+#
+# Manual only (no schedule). It shares the isolation matrix's concurrency group so
+# the two never race each other's workspaces and probe pods, and it opens no
+# tracking issue: a failed measurement is not an isolation breach. Evidence is the
+# run's own log (`MEASURE <name> <json>` lines); the findings go into the board
+# items as summaries, never as raw dumps (DO_NOT_DO #NO-ARTIFACTS-IN-GIT).
+
+on:
+  workflow_dispatch:
+    inputs:
+      leg:
+        description: "Which measurement: kubelet (w22/008, w22/002)"
+        type: choice
+        options:
+          - kubelet
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  # Two overlapping runs would race each other's probe pods and workspaces.
+  group: isolation-matrix
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    # Main-only and reviewer-free (DO_NOT_DO #ENV-REVIEWERS).
+    environment: production-observe
+    env:
+      BEX_API_URL: ${{ vars.BEX_API_URL || 'https://api.bex.co' }}
+      BEX_MEASURE_LEG: ${{ inputs.leg }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
+        with:
+          version: v1.36.1
+      # Same credential staging as isolation-matrix.yml: everything under
+      # $RUNNER_TEMP (auto-deleted at job end), the control-plane host key pinned.
+      - name: Get app cluster kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >> "$GITHUB_ENV"
+      # The SSH key was only ever needed to fetch admin.conf.
+      - name: Scrub SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+      - name: Measure (${{ inputs.leg }})
+        env:
+          # The explicit authorization for the live wrapper to create its
+          # disposable workspace, principals and tuples.
+          BEX_LIVE_VERIFY: "1"
+        run: |
+          BEX_VERIFY_PROBE="scripts/measure-sandbox-${BEX_MEASURE_LEG}.sh" \
+            bash scripts/verify-sandbox-isolation-live.sh
+      - name: Scrub app kubeconfig
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"

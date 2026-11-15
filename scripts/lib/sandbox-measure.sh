@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+# Shared helpers for the production measurement legs (scripts/measure-sandbox-*.sh),
+# which sandbox-measure.yml runs through scripts/verify-sandbox-isolation-live.sh
+# (BEX_VERIFY_PROBE): disposable, billing-excluded workspace A with one owner
+# token, the app-cluster admin kubeconfig, and nothing else. Source this file;
+# it installs an EXIT trap that terminates every sandbox a leg registered with
+# measure_register and removes its scratch directory.
+#
+# Required environment (the live wrapper sets all of it):
+#   BEX_API_URL BEX_WORKSPACE_A BEX_WS_A_OWNER_TOKEN KUBECONFIG
+#
+# Every measurement is printed as a `MEASURE <name> <json>` line, so a run's log
+# is the evidence and nothing needs to be committed (DO_NOT_DO #NO-ARTIFACTS-IN-GIT).
+
+set -euo pipefail
+
+: "${BEX_API_URL:?set BEX_API_URL}"
+: "${BEX_WORKSPACE_A:?set BEX_WORKSPACE_A}"
+: "${BEX_WS_A_OWNER_TOKEN:?set BEX_WS_A_OWNER_TOKEN}"
+: "${KUBECONFIG:?set KUBECONFIG}"
+
+for command in curl jq kubectl; do
+  command -v "$command" >/dev/null || {
+    echo "error: missing required command: $command" >&2
+    exit 2
+  }
+done
+
+api_url="${BEX_API_URL%/}"
+namespace_a="${BEX_WORKSPACE_A}-sandbox"
+fixture_dir="$(mktemp -d)"
+umask 077
+measure_ids=()
+measure_pf_pids=()
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+pass() { echo "PASS: $*"; }
+
+# measure <name> <json>: one evidence line.
+measure() { printf 'MEASURE %s %s\n' "$1" "$2"; }
+
+measure_cleanup() {
+  set +e
+  local pid id
+  for pid in "${measure_pf_pids[@]+"${measure_pf_pids[@]}"}"; do kill "$pid" 2>/dev/null; done
+  for id in "${measure_ids[@]+"${measure_ids[@]}"}"; do
+    api_call "$fixture_dir/owner.curl" POST "/v1/sandboxes/$id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-$id.json" >/dev/null 2>&1
+  done
+  # A terminated sandbox's image is reaped on the next meter poll rounds; leave
+  # them time before the live wrapper deletes the workspace.
+  [ "${#measure_ids[@]}" -gt 0 ] && sleep "${BEX_MEASURE_REAP_WAIT:-90}"
+  rm -rf "$fixture_dir"
+}
+trap measure_cleanup EXIT
+
+printf 'header = "Authorization: Bearer %s"\n' "$BEX_WS_A_OWNER_TOKEN" >"$fixture_dir/owner.curl"
+
+api_call() {
+  local auth_file="$1" method="$2" path="$3" output="$4"
+  shift 4
+  curl --config "$auth_file" --silent --show-error \
+    --request "$method" --output "$output" --write-out '%{http_code}' \
+    "$api_url$path" "$@"
+}
+
+expect_status() {
+  local want="$1" method="$2" path="$3" output="$4" got
+  shift 4
+  got="$(api_call "$fixture_dir/owner.curl" "$method" "$path" "$output" "$@")"
+  [ "$got" = "$want" ] || fail "$method $path returned $got, want $want: $(head -c 300 "$output" 2>/dev/null)"
+}
+
+# create_sandbox <output> <networkPolicy JSON> [extra JSON fields]: prints the
+# new sandbox's id and registers it for termination on exit.
+create_sandbox() {
+  local output="$1" policy="$2" extra="${3:-}" id
+  expect_status 201 POST "/v1/sandboxes" "$output" \
+    --header 'Content-Type: application/json' \
+    --data "{\"ownerId\":\"$BEX_WORKSPACE_A\",\"networkPolicy\":$policy${extra:+,$extra}}"
+  id="$(jq -er '.id' "$output")"
+  measure_ids+=("$id")
+  printf '%s\n' "$id"
+}
+
+# sandbox_status <id>: the sandbox's status, or "unknown".
+sandbox_status() {
+  local out="$fixture_dir/status-$1.json"
+  [ "$(api_call "$fixture_dir/owner.curl" GET "/v1/sandboxes/$1?ownerId=$BEX_WORKSPACE_A" "$out")" = 200 ] || { echo unknown; return; }
+  jq -r '.status // "unknown"' "$out"
+}
+
+# wait_status <id> <status> <seconds>
+wait_status() {
+  local id="$1" want="$2" deadline=$((SECONDS + $3)) got=""
+  while ((SECONDS < deadline)); do
+    got="$(sandbox_status "$id")"
+    [ "$got" = "$want" ] && return 0
+    sleep 5
+  done
+  fail "sandbox $id is $got after $3 s, want $want"
+}
+
+# sandbox_exec <id> <command> <output>: run one command through bex's public
+# exec path (mint a run token, redeem it for the SSE stream) and write its
+# stdout to <output>. Returns non-zero, with the SSE body kept, when the stream
+# fails or the command's exit code is not 0.
+sandbox_exec() {
+  local id="$1" command="$2" output="$3" body token_file
+  body="$(jq -cn --arg c "$command" '{command: $c}')"
+  [ "$(api_call "$fixture_dir/owner.curl" POST "/v1/sandboxes/$id/runs/stream/token?ownerId=$BEX_WORKSPACE_A" "$output.mint" \
+    --header 'Content-Type: application/json' --data "$body")" = 201 ] || return 1
+  token_file="$output.token.curl"
+  printf 'header = "Authorization: Bearer %s"\n' "$(jq -er '.token' "$output.mint")" >"$token_file"
+  curl --config "$token_file" --silent --show-error --max-time "${BEX_EXEC_MAX_TIME:-300}" \
+    --request POST --header 'Accept: text/event-stream' --header 'Content-Type: application/json' \
+    --data "$body" --output "$output.sse" "$(jq -er '.uri' "$output.mint")" || return 1
+  awk '/^event: /{ev=substr($0, 8)} /^data: /{if (ev == "output") print substr($0, 7)}' "$output.sse" \
+    | jq -rj 'select(.stream != "stderr") | .data' >"$output" || return 1
+  grep -q '"exit_code":0' "$output.sse"
+}
+
+# find_pod <id>: the substrate pod of a sandbox, "<pod> <node> <cr>". The
+# BatchSandbox carries the public id as the bex.co/sandbox-id label and its pod
+# is <cr>-0 (ADR042 D4; the pinned controller names a non-pooled sandbox's pod
+# <batchsandbox>-<index>).
+find_pod() {
+  local id="$1" deadline=$((SECONDS + 300)) cr="" pod=""
+  while ((SECONDS < deadline)); do
+    cr="$(kubectl -n "$namespace_a" get batchsandboxes -l "bex.co/sandbox-id=$id" -o json 2>/dev/null | jq -r '.items[0].metadata.name // empty')"
+    if [ -n "$cr" ]; then
+      pod="$(kubectl -n "$namespace_a" get pods -o json | jq -r --arg cr "$cr" '
+        [.items[] | select(any(.metadata.ownerReferences[]?; .kind == "BatchSandbox" and .name == $cr)
+                           and any(.status.conditions[]?; .type == "Ready" and .status == "True"))]
+        | sort_by(.metadata.creationTimestamp) | last | .metadata.name // empty')"
+      if [ -n "$pod" ]; then
+        printf '%s %s %s\n' "$pod" "$(kubectl -n "$namespace_a" get pod "$pod" -o jsonpath='{.spec.nodeName}')" "$cr"
+        return 0
+      fi
+    fi
+    sleep 5
+  done
+  fail "sandbox $id has no Ready pod after 5 minutes (cr='$cr')"
+}
+
+# node_summary <node> <output>: the kubelet's stats summary for the node.
+node_summary() { kubectl get --raw "/api/v1/nodes/$1/proxy/stats/summary" >"$2"; }
+
+# node_cadvisor <node> <output>: the node's raw cAdvisor exposition.
+node_cadvisor() { kubectl get --raw "/api/v1/nodes/$1/proxy/metrics/cadvisor" >"$2"; }
+
+# prom_forward: start a port-forward to Prometheus and set $prom_url ("" when
+# it did not start). The apiserver service proxy times out for the monitoring
+# namespace (Cilium remote-node denial; scripts/alerting-heartbeat.sh), so use
+# a port-forward as that script does.
+prom_url=""
+prom_forward() {
+  local log="$fixture_dir/prom-pf.log" i port
+  kubectl -n monitoring port-forward svc/prometheus-server :80 --request-timeout=20s >"$log" 2>&1 &
+  measure_pf_pids+=("$!")
+  for i in $(seq 1 40); do
+    port="$(sed -n 's/^Forwarding from 127\.0\.0\.1:\([0-9]*\) .*/\1/p' "$log" | head -1)"
+    [ -n "$port" ] && { prom_url="http://127.0.0.1:$port"; return 0; }
+    sleep 0.5
+  done
+  prom_url=""
+}
+
+# prom_query <expr>: the instant-query result array as compact JSON ("[]" on any failure).
+prom_query() {
+  [ -n "$prom_url" ] || { echo '[]'; return; }
+  curl -sS --fail --max-time 20 --get --data-urlencode "query=$1" "$prom_url/api/v1/query" 2>/dev/null \
+    | jq -c '.data.result // []' 2>/dev/null || echo '[]'
+}
