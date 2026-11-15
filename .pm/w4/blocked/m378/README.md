@@ -1,6 +1,6 @@
 # w4 · m378 — Sixteen of Render's shared MCP tools answer in bex's own shapes, not what Render's server returns: list envelopes, `list_logs`/`get_metrics` series, service creates without `deployId`, datastores without `owner`/`options`, and `query_render_postgres` rows without column names
 
-**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** blocked — release gate (t001–t010 done, code shipped 2026-11-14 by `/loopx w4`; t007 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** blocked — the round 408 replay (2026-11-15) found DoD 1–5 and 7 hold on production, but DoD 6's 6 MB truncation call answers the edge's 502 ([t012](t012.md)), and `create_postgres` omits `version` ([t013](t013.md)); both block the closeout. Previously: release gate (t001–t011 done, code shipped 2026-11-14 by `/loopx w4`)
 
 ## Tasks (in order)
 
@@ -16,7 +16,9 @@
 | [t004](done/t004.md) — **DONE** | Render parity | 20m | t003 |
 | [t005](done/t005.md) — **DONE** | Simplify | 15m | t004 |
 | [t006](done/t006.md) — **DONE** | Test coverage | 30m | t004 |
-| [t007](t007.md) | Closeout (live replay on production) | 20m | t005, t006 |
+| [t012](t012.md) | A 6 MB `query_render_postgres` answers Cloudflare's `error code: 502` on production, not the truncated rows and notice (found by the round 408 replay; cause unverified, possibly w4/671's) | 1h | — |
+| [t013](t013.md) | `create_postgres` with no version answers without Render's required `version` (found by the round 408 replay) | 20m | — |
+| [t007](t007.md) | Closeout (live replay on production) | 20m | t005, t006, t012, t013 |
 
 ## Definition of done
 
