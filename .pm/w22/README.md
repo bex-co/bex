@@ -17,6 +17,7 @@
 
 - [x] **m408** — [The message queue and Stop turn are hardened: keyed sends never run twice, an interrupt needs a request, a reorder is safe, a blocked message backs off](done/m408/README.md) (8 tasks, ~4h15m) ← promoted from w22/014, found by the w22/m403 review 2026-11-14 — **DONE 2026-11-14** (a keyed send is idempotent in every state, an interrupt needs a recorded request, a reorder cannot trade places with a message being started, a blocked message backs off; 11 mutations caught)
 - [ ] **m412** — [A sandbox group can be placed in a project environment, as in Render's dashboard](m412/README.md) (7 tasks, ~5h) ← promoted from w22/003, 2026-11-14; render.com/docs/sandboxes-creating, ADR018, ADR104 D7
+- [ ] **m413** — [A Stop turn keeps its work: the interrupted turn's disk is retained and the next message continues from it, as on Devin](m413/README.md) (9 tasks, ~10h) ← promoted from w22/012, 2026-11-14; user decision D3 (option A), ADR047 D12, Devin release notes
 
 ## Inbox
 
@@ -31,7 +32,7 @@
 - [ ] [009](blocked/009.md) — Widen the dashboard's `/agents` gate to every workspace, the day the platform model route widens (w10/m14 t007) ← from `/pm-brainstorm for w22` 2026-11-14 — **BLOCKED (w10/m14 t007 must widen the backend route first: it waits on `w6/m362` t010, after the 2026-11-16 cycle invoice; the user reported the OpenRouter top-up done 2026-11-14, balance unverified; the user decision of 2026-11-05 is to ship all of ADR091 before widening; then run the note's steps unchanged)**
 - [x] [010](done/010.md) — Pre-deploy commands get Render's 30 minutes, not 10 ← from `/pm-brainstorm for w22` 2026-11-14; render.com/docs/deploys — **DONE 2026-11-14** (Job deadline 30m, gate 35m, ADR004 and ADR018 updated)
 - [x] [011](done/011.md) — The sandbox file-gateway refusal test fails on macOS, which stops `ship-gates.sh` there ← found shipping w22/m402, 2026-11-14 — **DONE 2026-11-14** (already fixed by `fa496cb64` and `e3ef1ffdd`; the cause was bsdtar's AppleDouble entries)
-- [ ] [012](012.md) — Stop turn keeps only what the agent had pushed: save the checkout's work before the sandbox is replaced, and settle in seconds ← found by w22/m403 t007, 2026-11-14 — **UNBLOCKED 2026-11-14** (user decision 2026-11-14: option A, suspend the interrupted turn's sandbox and resume it for the next message; first ship the 2 s settle tick, then promote the rest)
+- [x] [012](done/012.md) — Stop turn keeps only what the agent had pushed: save the checkout's work before the sandbox is replaced, and settle in seconds — promoted to **m413**
 - [x] [013](done/013.md) — `bex agent stop`, and `send --wait` for a queued message ← found by w22/m403 t007, 2026-11-14 — **DONE 2026-11-14** (`bex agent stop` with exit codes 7 and 8 for its two refusals; `send --wait`/`--follow` wait for the queued message's own turn)
 - [x] [014](done/014.md) — Harden the message queue and Stop turn: keyed direct sends, a forged `interrupted` status, Move around a leased head, and blocked-head retry cadence ← found by w22/m403's review, 2026-11-14 — promoted to **m408**
 - [x] [015](done/015.md) — The board validator rejects moving a milestone back out of `blocked/` when another workstream uses its number ← found by `/unblock w22`, 2026-11-14 — **DONE 2026-11-14** (a milestone moving within its own workstream is no longer an addition; m321 can move back)
