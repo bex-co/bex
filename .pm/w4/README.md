@@ -385,6 +385,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **672** — [Intermittent: a Free image web service answered Traefik's `no available server` (503) for 63 s during a rollback that overlapped another deploy; on-demand reruns stayed at 200](672.md) (~1h; major when it happens, intermittent, cause unverified) ← live `/qa-find-bugs w4` loop rounds 396–397, 2026-11-15 UTC (pin `89ac87445bec`)
 - [ ] **671** — [bex-api answered 502, then 503 to every request for about 20 s, right after one tenant sent a burst of ~1 MiB secret-file writes](671.md) (~1h; major if confirmed, cause unverified — do not reproduce on production) ← live `/qa-find-bugs w4` loop round 393, 2026-11-15 UTC (pin `2d9bbae6bb8d`)
 - [ ] **670** — [A first deploy reads `update_in_progress` through its whole pre-deploy command: the row reaches `update_in_progress` at dispatch, and the lifecycle refuses the move back to `pre_deploy_in_progress`](670.md) (~45m; minor) ← live `/qa-find-bugs w4` loop round 392, 2026-11-15 UTC (pin `2d9bbae6bb8d`)
 - [ ] **669** — [For about 35 s after Suspend, a static site answers the static-server's `503 static site temporarily unavailable`, not the suspended page; the static-server already knows the site is suspended](669.md) (~40m; minor) ← live `/qa-find-bugs w4` loop round 374, 2026-11-14 UTC (pin `c99e7815ebec`), the w4/636 aside reproduced
