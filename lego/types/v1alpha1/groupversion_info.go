@@ -51,6 +51,3 @@ func (b *schemeBuilder) Register(objects ...runtime.Object) {
 		return nil
 	})
 }
-
-// AddToScheme adds every registered object to s.
-func (b *schemeBuilder) AddToScheme(s *runtime.Scheme) error { return b.SchemeBuilder.AddToScheme(s) }

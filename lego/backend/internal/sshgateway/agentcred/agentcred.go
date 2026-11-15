@@ -139,19 +139,19 @@ type Broker struct {
 	MaxRequestsPerWorkspace int
 	// PullRequests is the bex-api PR verb (ADR090) behind the fifth path
 	// segment `pull-request`. nil answers that route 503.
-	PullRequests PullRequestSyncer
+	PullRequests *agentsession.PullRequestClient
 	// PullRequestComments is the bex-api comment verb (ADR047 D11) behind the
 	// path tail `pull-request/comment`. nil answers that route 503.
-	PullRequestComments PullRequestCommenter
+	PullRequestComments *agentsession.PullRequestCommentClient
 	// Files is the bex-api share verb (ADR095 D6) behind ShareFileProxyPath.
 	// nil ⇒ the route answers unavailable.
-	Files ShareFileForwarder
+	Files *agentsession.ShareFileClient
 	// Results is the bex-api structured-result verb (ADR094 D5) behind
 	// ResultProxyPath. nil ⇒ the route answers unavailable.
-	Results ResultForwarder
+	Results *agentsession.ResultClient
 	// Spawns is the bex-api child-session verbs (ADR102 D9) behind
 	// SpawnProxyPath. nil ⇒ the route answers unavailable.
-	Spawns SpawnForwarder
+	Spawns *agentsession.SpawnClient
 	// MaxResponseBytes bounds one streamed upstream response body; 0 means
 	// defaultMaxResponseBodyBytes. Exceeding it aborts the exchange loudly.
 	MaxResponseBytes int64
