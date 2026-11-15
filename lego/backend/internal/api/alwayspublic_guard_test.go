@@ -130,10 +130,11 @@ var alwaysPublicInventory = map[string]string{
 // RateLimiter. They are present on rootMux but are NOT always-public, so the
 // census skips them (they are not an unmetered outside-gate hazard).
 var gatedWildcards = map[string]bool{
-	"/v1/":               true,
-	"POST /graphql":      true,
-	"/mcp":               true,
-	cloudAgentsMountPath: true, // narrow toolset of the same MCP server; same auth gate + rate limiter (ADR094)
+	"/v1/":                 true,
+	"POST /graphql":        true,
+	"/mcp":                 true,
+	cloudAgentsMountPath:   true, // narrow toolset of the same MCP server; same auth gate + rate limiter (ADR094)
+	cloudflareMountPattern: true, // wrangler's object storage routes (ADR112 D3); same auth gate, rate limiter and scope-class gate
 }
 
 func TestGraphQLIsPostOnly(t *testing.T) {

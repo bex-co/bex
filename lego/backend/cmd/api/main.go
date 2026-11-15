@@ -566,6 +566,15 @@ func main() {
 	go srv.AgentSessionCompleter.Run(ctx)
 	// ADR095 D2/D7: expire unbound uploads and purge deleted attachments.
 	go agentsessions.RunAttachmentSweep(ctx, srv.AgentSessions, time.Hour)
+	// ADR112 D5, D8, D9: the hourly object storage sweep (per-bucket usage, lifecycle
+	// rules, the purge of deleted workspaces) and the flush of its transfer meters.
+	// Both stay off without the control-plane store or the Wasabi credential.
+	if st != nil && deps.ObjectStorage.Enabled() {
+		objectSweeper := objectstorage.NewSweeper(deps.ObjectStorage, st)
+		objectSweeper.Exclusive = st
+		go objectSweeper.Run(ctx, objectstorage.SweepInterval)
+		go deps.ObjectStorage.RunMeter(ctx, objectstorage.TransferFlushInterval)
+	}
 	// The Blueprint recovery sweep settles sync runs abandoned by process
 	// loss (w8/m37 t004). No-op unless the control-plane store is wired.
 	go srv.BlueprintRecovery.Run(ctx)
@@ -934,6 +943,9 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	// route answers its named 404, until BEX_OBJECT_STORAGE_ACCESS_KEY and
 	// _SECRET_KEY are set.
 	deps.ObjectStorage = objectstorage.NewService(st, objectstorage.NewStores(cfg.ObjectStorage))
+	// ADR112 D8: the transfer shadow meters sum in memory and flush to usage_hourly
+	// (RunMeter, started in main).
+	deps.ObjectStorage.SetUsageSink(st)
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
@@ -999,6 +1011,10 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	// object is a no-op).
 	deps.WorkspacePostCascadePurgers = []workspaces.WorkspacePurger{
 		&apps.WorkspacePurger{Service: &apps.Service{Base: base}},
+		// ADR112 D9: the workspace's objects in Wasabi. DeleteTenant has already
+		// retired its bucket rows, so this runs after the cascade and never fails
+		// the deletion: a Wasabi outage leaves the retired rows for the sweep.
+		&objectstorage.WorkspacePurger{Service: deps.ObjectStorage, Repo: st},
 	}
 
 	// Workspace members & roles (w4/m12): the team surface writes through the

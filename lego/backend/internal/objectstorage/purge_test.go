@@ -1,0 +1,242 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package objectstorage_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
+	"github.com/bex-co/bex/lego/backend/internal/store"
+)
+
+// A workspace with buckets, objects and a sweep behind it, in both regions,
+// beside another workspace's objects in the same Wasabi buckets.
+type purgeFixture struct {
+	*sweepEnv
+	photos, east store.ObjectBucket
+	other        string
+	otherKey     string
+}
+
+func newPurgeFixture(t *testing.T, name string) *purgeFixture {
+	t.Helper()
+	e := newSweepEnv(t, name)
+	f := &purgeFixture{sweepEnv: e}
+	f.photos = e.bucket("photos", objectstorage.Oregon)
+	f.east = e.bucket("east", objectstorage.Frankfurt)
+	e.put(f.photos, "a.jpg", 10, time.Minute)
+	e.put(f.photos, "dir/b.jpg", 20, time.Minute)
+	e.put(f.east, "c.jpg", 30, time.Minute)
+	// An orphan and a stray key are under the workspace's prefix, so they go too.
+	e.putAt(e.WS, ids.New(ids.ObjectBucket), objectstorage.Oregon, "orphan", 5, time.Minute)
+	e.putRaw(objectstorage.Frankfurt, e.WS+"/stray", 5, time.Minute)
+	f.other = ids.New(ids.Workspace)
+	f.otherKey = e.putAt(f.other, ids.New(ids.ObjectBucket), objectstorage.Oregon, "keep", 7, time.Minute)
+	e.mustSweep() // usage rows exist, so there is something for the purge to drop
+	return f
+}
+
+func (f *purgeFixture) objectsLeft() (own, others int) {
+	for _, region := range objectstorage.Regions {
+		fake := f.Fakes[region]
+		own += len(fake.Keys(region.Bucket(), f.WS+"/"))
+		others += len(fake.Keys(region.Bucket(), f.other+"/"))
+	}
+	return own, others
+}
+
+// rows counts the workspace's bucket rows (retired or not) and usage rows.
+func (f *purgeFixture) rows() (buckets, retired, usage int) {
+	f.t.Helper()
+	err := f.Pool.QueryRow(context.Background(), `SELECT
+		(SELECT count(*) FROM object_buckets WHERE workspace_id = $1),
+		(SELECT count(*) FROM object_buckets WHERE workspace_id = $1 AND deleted_at IS NOT NULL),
+		(SELECT count(*) FROM object_storage_usage WHERE workspace_id = $1)`, f.WS).Scan(&buckets, &retired, &usage)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return buckets, retired, usage
+}
+
+func (f *purgeFixture) purger() *objectstorage.WorkspacePurger {
+	return &objectstorage.WorkspacePurger{Service: f.Svc, Repo: f.PG}
+}
+
+func TestWorkspaceDeletePurgesBothRegionsAndDropsTheRows(t *testing.T) {
+	f := newPurgeFixture(t, "purge-delete")
+	if own, _ := f.objectsLeft(); own != 5 {
+		t.Fatalf("setup: %d objects under the workspace, want 5", own)
+	}
+	if b, _, u := f.rows(); b != 2 || u != 4 {
+		t.Fatalf("setup: %d bucket rows and %d usage rows, want 2 and 4 (two buckets and an orphan marker in each region)", b, u)
+	}
+
+	// What the workspace teardown does: the tenant delete retires the rows, then
+	// the post-cascade purger runs.
+	ctx := context.Background()
+	if err := f.PG.DeleteTenant(ctx, f.WS); err != nil {
+		t.Fatal(err)
+	}
+	if _, retired, _ := f.rows(); retired != 2 {
+		t.Fatalf("DeleteTenant left %d retired rows, want 2", retired)
+	}
+	for _, b := range []store.ObjectBucket{f.photos, f.east} {
+		if _, err := f.PG.GetObjectBucketByID(ctx, b.ID); err == nil {
+			t.Fatalf("bucket %s still resolves for a pub- host after the workspace was deleted", b.ID)
+		}
+	}
+	if err := f.purger().PurgeWorkspace(ctx, f.WS); err != nil {
+		t.Fatal(err)
+	}
+
+	own, others := f.objectsLeft()
+	if own != 0 {
+		t.Fatalf("%d objects remain under the deleted workspace's prefix, want none in either region", own)
+	}
+	if others != 1 {
+		t.Fatalf("another workspace has %d objects left, want its 1 untouched", others)
+	}
+	if b, _, u := f.rows(); b != 0 || u != 0 {
+		t.Fatalf("%d bucket rows and %d usage rows remain, want none", b, u)
+	}
+}
+
+func TestPurgeThatFailedOnceIsRetriedBySweepUntilItFinishes(t *testing.T) {
+	f := newPurgeFixture(t, "purge-retry")
+	ctx := context.Background()
+	if err := f.PG.DeleteTenant(ctx, f.WS); err != nil {
+		t.Fatal(err)
+	}
+
+	// Oregon is down at deletion time. The deletion is not failed...
+	f.Fakes[objectstorage.Oregon].SetDown(true)
+	if err := f.purger().PurgeWorkspace(ctx, f.WS); err != nil {
+		t.Fatalf("a Wasabi outage failed the workspace deletion: %v", err)
+	}
+	// ...frankfurt, which was reachable, is purged, and the rows stay as the
+	// record of what is still owed, stamped with the attempt.
+	if own := len(f.Fakes[objectstorage.Frankfurt].Keys(objectstorage.Frankfurt.Bucket(), f.WS+"/")); own != 0 {
+		t.Fatalf("frankfurt still holds %d objects although it was up", own)
+	}
+	if b, retired, _ := f.rows(); b != 2 || retired != 2 {
+		t.Fatalf("%d rows, %d retired after the failed purge, want both kept and retired", b, retired)
+	}
+	var stamped int
+	if err := f.Pool.QueryRow(ctx, `SELECT count(*) FROM object_buckets WHERE workspace_id = $1 AND purge_attempted_at IS NOT NULL`, f.WS).Scan(&stamped); err != nil || stamped != 2 {
+		t.Fatalf("%d rows carry purge_attempted_at, %v; want both stamped", stamped, err)
+	}
+
+	// The hourly sweep retries, and keeps failing while Wasabi is down...
+	if err := f.Sweeper.Pass(ctx); err == nil {
+		t.Fatal("the sweep reported success while oregon was down")
+	}
+	if b, _, _ := f.rows(); b != 2 {
+		t.Fatalf("the rows were dropped (%d left) before the purge finished", b)
+	}
+	if own, _ := f.objectsLeft(); own == 0 {
+		t.Fatal("oregon's objects vanished while it was down")
+	}
+
+	// ...until it succeeds.
+	f.Fakes[objectstorage.Oregon].SetDown(false)
+	if err := f.Sweeper.Pass(ctx); err != nil {
+		t.Fatalf("the retry after Wasabi came back failed: %v", err)
+	}
+	own, others := f.objectsLeft()
+	if own != 0 || others != 1 {
+		t.Fatalf("after the retry %d objects remain under the workspace and %d under the other, want 0 and 1", own, others)
+	}
+	if b, _, u := f.rows(); b != 0 || u != 0 {
+		t.Fatalf("after the retry %d bucket rows and %d usage rows remain, want none", b, u)
+	}
+}
+
+func TestSweepPurgesAWorkspaceWhoseTenantRowIsGoneWithoutRetiredRows(t *testing.T) {
+	f := newPurgeFixture(t, "purge-ghost")
+	ctx := context.Background()
+	// The tenant row vanishes without DeleteTenant having retired the buckets: a
+	// bucket created while the workspace was being deleted, or a delete from
+	// before this code shipped.
+	if _, err := f.Pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, f.WS); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.PG.GetObjectBucketByID(ctx, f.photos.ID); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	if err := f.Sweeper.Pass(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if own, _ := f.objectsLeft(); own != 0 {
+		t.Fatalf("%d objects of a deleted workspace remain", own)
+	}
+	if b, _, u := f.rows(); b != 0 || u != 0 {
+		t.Fatalf("%d bucket rows and %d usage rows of a deleted workspace remain", b, u)
+	}
+}
+
+func TestPurgeBoundsItselfAndLeavesTheRestToTheSweep(t *testing.T) {
+	f := newPurgeFixture(t, "purge-timeout")
+	ctx := context.Background()
+	if err := f.PG.DeleteTenant(ctx, f.WS); err != nil {
+		t.Fatal(err)
+	}
+	// A purge that has no time at all is the request path giving up early: the
+	// deletion still succeeds and the rows wait for the sweep.
+	p := &objectstorage.WorkspacePurger{Service: f.Svc, Repo: f.PG, Timeout: time.Nanosecond}
+	if err := p.PurgeWorkspace(ctx, f.WS); err != nil {
+		t.Fatalf("a purge that ran out of time failed the deletion: %v", err)
+	}
+	if b, _, _ := f.rows(); b != 2 {
+		t.Fatalf("%d rows after a purge with no time, want both kept", b)
+	}
+	if err := f.Sweeper.Pass(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if b, _, _ := f.rows(); b != 0 {
+		t.Fatalf("%d rows after the sweep finished the purge, want none", b)
+	}
+}
+
+func TestPurgeIsANoOpWithoutACredential(t *testing.T) {
+	e := newSweepEnv(t, "purge-off")
+	b := e.bucket("photos", objectstorage.Oregon)
+	e.put(b, "a", 1, time.Minute)
+	ctx := context.Background()
+	if err := e.PG.DeleteTenant(ctx, e.WS); err != nil {
+		t.Fatal(err)
+	}
+	var nilPurger *objectstorage.WorkspacePurger
+	for name, p := range map[string]*objectstorage.WorkspacePurger{
+		"no service": {Repo: e.PG},
+		"no stores":  {Service: objectstorage.NewService(e.PG, nil), Repo: e.PG},
+		"nil":        nilPurger,
+	} {
+		if err := p.PurgeWorkspace(ctx, e.WS); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	// Nothing was touched: the rows wait, retired, for a sweep with a credential.
+	if got := len(e.Fakes[objectstorage.Oregon].Keys(objectstorage.Oregon.Bucket(), e.WS+"/")); got != 1 {
+		t.Fatalf("%d objects left, want the 1 untouched", got)
+	}
+	if _, err := e.PG.GetObjectBucketByID(ctx, b.ID); err == nil {
+		t.Fatal("the bucket resolves although its workspace was deleted")
+	}
+}

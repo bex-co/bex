@@ -523,6 +523,11 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 		// already includes memory (w22/m314). The default branch below would send
 		// it to Stripe under its own name, where no meter exists.
 		return "", "", true
+	case store.UsageKindObjectStorageGBSeconds, store.UsageKindObjectStorageIngressBytes, store.UsageKindObjectStorageEgressBytes:
+		// The object storage shadow meters (ADR112 D8): recorded and shown at $0,
+		// with no Stripe meter and no Price until the user sets one. The default
+		// branch below would send each to Stripe under its own name.
+		return "", "", true
 	case store.UsageKindSandboxSnapshotGBSeconds:
 		// A suspended sandbox's retained image, re-based to GB-hours like storage.
 		// An unpriced sheet has no meter, so nothing is owed.

@@ -26,6 +26,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -302,6 +303,12 @@ func TestStripeMeterEventMapping(t *testing.T) {
 		// w22/m313: a kind with no rate in pricing.yaml is skipped, never sent to
 		// Stripe under its own name (the default branch would), where no meter exists.
 		{"sandbox memory shadow meter skipped", Event{EventType: "sandbox_memory_gb_seconds", Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "", "", true},
+		// ADR112 D8: the object storage meters are shadow meters. They are skipped,
+		// never sent to Stripe under their own names (the default branch would),
+		// whatever the quantity.
+		{"object storage GB-seconds shadow meter skipped", Event{EventType: "object_storage_gb_seconds", Properties: map[string]string{"resource_kind": "object_storage", "value": "864000"}}, "", "", true},
+		{"object storage ingress shadow meter skipped", Event{EventType: "object_storage_ingress_bytes", Properties: map[string]string{"resource_kind": "object_storage", "value": "5368709120"}}, "", "", true},
+		{"object storage egress shadow meter skipped", Event{EventType: "object_storage_egress_bytes", Properties: map[string]string{"resource_kind": "object_storage", "value": "5368709120"}}, "", "", true},
 		// A suspended sandbox's retained image bills on its own GB-hour meter.
 		{"sandbox snapshot storage re-based to GB-hours", Event{EventType: "sandbox_snapshot_gb_seconds", Properties: map[string]string{"resource_kind": "sandbox", "value": "864000"}}, "sandbox_snapshot_gb_hours", "240", false},
 	}
@@ -312,6 +319,32 @@ func TestStripeMeterEventMapping(t *testing.T) {
 				t.Fatalf("got (%q,%q,%v), want (%q,%q,%v)", name, val, skip, tc.wantName, tc.wantVal, tc.wantSkip)
 			}
 		})
+	}
+}
+
+// The object storage meters (ADR112 D8) ride the same usage_hourly outbox as
+// every meter. They are accepted locally, so they never sit in it, and no request
+// reaches Stripe, which has no meter for them: sent under their own names each
+// would be a permanent rejection.
+func TestStripeIngestBatchAcceptsObjectStorageShadowMetersWithoutCallingStripe(t *testing.T) {
+	var calls atomic.Int32
+	c, _ := newStripeTest(t, func(string, string) (int, string) {
+		calls.Add(1)
+		return 500, `{"error":{"type":"api_error","message":"a shadow meter reached Stripe"}}`
+	})
+	var events []Event
+	for i, kind := range []string{"object_storage_gb_seconds", "object_storage_ingress_bytes", "object_storage_egress_bytes"} {
+		events = append(events, Event{
+			TransactionID: fmt.Sprintf("tx%d", i), CustomerID: "tea-a", EventType: kind, Timestamp: time.Now(),
+			Properties: map[string]string{"resource_kind": "object_storage", "value": "123456"},
+		})
+	}
+	result := c.IngestBatch(context.Background(), events)
+	if len(result.Accepted) != 3 || len(result.Failed) != 0 {
+		t.Fatalf("IngestBatch = %+v, want all three accepted locally", result)
+	}
+	if n := calls.Load(); n != 0 {
+		t.Fatalf("%d requests reached Stripe for shadow meters", n)
 	}
 }
 

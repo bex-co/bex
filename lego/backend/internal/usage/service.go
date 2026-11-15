@@ -448,6 +448,11 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 			capture = append(capture, store.ResourceDisplayName{Kind: svc.ResourceKind, ID: svc.ServiceID, Name: svc.ServiceName})
 		}
 		svc.Deleted = known[svc.ResourceKind] && !live[key]
+		if svc.ResourceKind == store.ResourceKindObjectStorage && svc.ServiceName == "" {
+			// One resource per workspace, whose id is the workspace's: it has no
+			// name of its own (ADR112 D8).
+			svc.ServiceName = "Object storage"
+		}
 		if svc.ResourceKind == store.ResourceKindSandbox {
 			svc.Deleted = sandboxMetadata[svc.ServiceID].Phase == "terminated"
 			if svc.ServiceName == "" {

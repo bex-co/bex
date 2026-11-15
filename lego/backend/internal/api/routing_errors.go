@@ -27,9 +27,18 @@ import (
 // handlers keep their writer (including streaming interfaces) and ServeMux
 // still populates wildcard path values. Canonical-path redirects pass through.
 func serveMuxJSON(mux *http.ServeMux, w http.ResponseWriter, r *http.Request) {
+	serveMuxWith(mux, w, r, func(w http.ResponseWriter, status int) {
+		core.WriteErrStatus(w, status, strings.ToLower(http.StatusText(status)))
+	})
+}
+
+// serveMuxWith is serveMuxJSON with the answer to a 404 or 405 the mux itself
+// generated written by write, so a surface with its own error shape (the
+// Cloudflare envelope) shares the translation.
+func serveMuxWith(mux *http.ServeMux, w http.ResponseWriter, r *http.Request, write func(http.ResponseWriter, int)) {
 	_, pattern := mux.Handler(r)
 	if pattern == "" {
-		mux.ServeHTTP(&routingErrorWriter{ResponseWriter: w}, r)
+		mux.ServeHTTP(&routingErrorWriter{ResponseWriter: w, write: write}, r)
 		return
 	}
 	mux.ServeHTTP(w, r)
@@ -37,13 +46,14 @@ func serveMuxJSON(mux *http.ServeMux, w http.ResponseWriter, r *http.Request) {
 
 type routingErrorWriter struct {
 	http.ResponseWriter
+	write      func(http.ResponseWriter, int)
 	translated bool
 }
 
 func (w *routingErrorWriter) WriteHeader(status int) {
 	if status == http.StatusNotFound || status == http.StatusMethodNotAllowed {
 		w.translated = true
-		core.WriteErrStatus(w.ResponseWriter, status, strings.ToLower(http.StatusText(status)))
+		w.write(w.ResponseWriter, status)
 		return
 	}
 	w.ResponseWriter.WriteHeader(status)

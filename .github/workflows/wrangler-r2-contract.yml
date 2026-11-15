@@ -1,0 +1,53 @@
+name: wrangler r2 contract
+
+# bex serves the routes stock `wrangler r2` calls (ADR112 D11, w21/m416). The
+# tool is Cloudflare's and its wire can change in any release, so this runs the
+# pinned wrangler against bex's own handlers over a fake S3 every week, and when
+# a change touches the handlers. It is not on every PR: the offline replay of the
+# recorded requests (TestWranglerFixturesReplay) already runs with the backend
+# suite. A failure here means wrangler moved or a handler drifted from what
+# wrangler sends.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 7 * * 1"
+  push:
+    branches: [main]
+    paths:
+      - "lego/backend/internal/api/cloudflare_r2*.go"
+      - "lego/backend/internal/api/testdata/wrangler-*/**"
+      - "lego/backend/internal/objectstorage/**"
+      - "scripts/wrangler-r2-contract.sh"
+      - ".github/workflows/wrangler-r2-contract.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wrangler-r2-contract
+  cancel-in-progress: true
+
+jobs:
+  wrangler:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/backend/go.mod
+          cache-dependency-path: |
+            lego/backend/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # wrangler's own engines floor is 22.12.
+          node-version: 22
+      - name: Run wrangler against the Cloudflare-shaped handlers
+        run: bash scripts/wrangler-r2-contract.sh

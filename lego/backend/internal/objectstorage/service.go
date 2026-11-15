@@ -18,6 +18,7 @@ package objectstorage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -42,9 +43,12 @@ type Repository interface {
 	CreateObjectBucket(ctx context.Context, in store.ObjectBucket, userCap int) (store.ObjectBucket, error)
 	EnsureSystemObjectBucket(ctx context.Context, workspaceID, name, region string) (store.ObjectBucket, error)
 	GetObjectBucket(ctx context.Context, workspaceID, name string) (store.ObjectBucket, error)
-	ListObjectBuckets(ctx context.Context, workspaceID string) ([]store.ObjectBucket, error)
+	ListObjectBucketSummaries(ctx context.Context, workspaceID string) ([]store.ObjectBucket, error)
 	DeleteObjectBucket(ctx context.Context, workspaceID, id string) error
 	ObjectStorageUsageTotals(ctx context.Context, workspaceID, region string) (bytes, objects int64, err error)
+	ListObjectStorageUsage(ctx context.Context, workspaceID string) ([]store.ObjectStorageUsage, error)
+	SetObjectBucketCORS(ctx context.Context, workspaceID, id string, rules json.RawMessage) error
+	SetObjectBucketLifecycle(ctx context.Context, workspaceID, id string, rules json.RawMessage) error
 }
 
 // Service is the object store's core (ADR006: one core, thin adapters). The
@@ -54,6 +58,11 @@ type Service struct {
 	stores  map[Region]Store
 	streams *StreamLimiter
 	mints   *core.KeyedRateLimiter[string]
+	// streamDeadline bounds one streamed put or get against Wasabi.
+	streamDeadline time.Duration
+	// meter sums the transfer shadow meters until RunMeter flushes them; nil
+	// (the default) records nothing. SetUsageSink installs it.
+	meter *transferMeter
 }
 
 // NewService returns the service. A nil or empty stores map leaves it disabled:
@@ -64,6 +73,9 @@ func NewService(repo Repository, stores map[Region]Store) *Service {
 		repo: repo, stores: stores,
 		streams: NewStreamLimiter(MaxConcurrentStreamsPerWorkspace, MaxConcurrentStreamsPerReplica),
 		mints:   core.NewKeyedRateLimiter[string](MintPerSecond*60, MintBurst, time.Minute, time.Minute),
+		// A Wasabi that stays connected and stops answering must not hold a
+		// stream slot.
+		streamDeadline: StreamDeadline,
 	}
 }
 
@@ -133,12 +145,13 @@ func (s *Service) GetBucket(ctx context.Context, workspaceID, name string) (stor
 	return b, err
 }
 
-// ListBuckets returns the workspace's live buckets, system buckets included.
+// ListBuckets returns the workspace's live buckets, system buckets included,
+// without their CORS and lifecycle rules.
 func (s *Service) ListBuckets(ctx context.Context, workspaceID string) ([]store.ObjectBucket, error) {
 	if !s.Enabled() {
 		return nil, ErrNotConfigured
 	}
-	return s.repo.ListObjectBuckets(ctx, workspaceID)
+	return s.repo.ListObjectBucketSummaries(ctx, workspaceID)
 }
 
 // DeleteBucket deletes an empty bucket. The row is the only record mapping the

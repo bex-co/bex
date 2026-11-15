@@ -20,6 +20,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -38,7 +42,28 @@ type ObjectInfo struct {
 	Size         int64
 	ETag         string
 	LastModified time.Time
-	ContentType  string
+	// Headers are the entity headers the object was stored with; Head and
+	// GetObject fill them, a listing does not.
+	Headers ObjectHeaders
+}
+
+// ObjectHeaders are the entity headers an object keeps, stored as the writer
+// sent them (ADR112 D3). Expires is the header's text, not a parsed time, so
+// what a writer sent is what a reader gets back.
+type ObjectHeaders struct {
+	ContentType        string
+	CacheControl       string
+	ContentDisposition string
+	ContentEncoding    string
+	ContentLanguage    string
+	Expires            string
+}
+
+// ObjectBody is an object being read: its metadata and a stream of its bytes,
+// which the caller closes.
+type ObjectBody struct {
+	ObjectInfo
+	Body io.ReadCloser
 }
 
 // ListPage is one page of a prefix listing. Next is the key to pass as
@@ -61,9 +86,23 @@ type Store interface {
 	Head(ctx context.Context, key string) (ObjectInfo, error)
 	// Delete removes one object; a missing key is not an error (S3's answer).
 	Delete(ctx context.Context, key string) error
+	// PutStream stores size bytes read from body at key, overwriting. It sends
+	// the real Content-Length, never a chunked body: Wasabi refuses one
+	// (ADR112 § Not verified, settled 2026-11-15). Nothing is buffered or
+	// written to disk. It returns the stored object's ETag. A body that ends
+	// before size bytes stores nothing.
+	PutStream(ctx context.Context, key string, size int64, body io.Reader, headers ObjectHeaders) (etag string, err error)
+	// GetObject opens key for reading, or returns ErrObjectNotFound. Its headers
+	// are the stored ones, and the body is never decompressed.
+	GetObject(ctx context.Context, key string) (ObjectBody, error)
 	// List returns up to limit objects under prefix whose keys sort after
 	// startAfter.
 	List(ctx context.Context, prefix, startAfter string, limit int) (ListPage, error)
+	// DeleteKeys removes up to ListMaxLimit keys in one request (S3's
+	// multi-object delete), which lifecycle rules need to finish inside the
+	// hour. It returns the keys it could not delete and an error when there were
+	// any; a key that was already gone is deleted.
+	DeleteKeys(ctx context.Context, keys []string) (failed []string, err error)
 	// DeletePrefix removes every object under prefix and reports how many it
 	// removed. A failure part-way leaves the rest for a retry.
 	DeletePrefix(ctx context.Context, prefix string) (int, error)
@@ -83,6 +122,18 @@ type Config struct {
 func (r Region) Config(accessKey, secretKey string) Config {
 	return Config{Endpoint: r.Endpoint(), Region: r.WasabiRegion(), Bucket: r.Bucket(), AccessKey: accessKey, SecretKey: secretKey}
 }
+
+// putClient carries PutStream's bytes. It has no overall timeout (a 300 MiB
+// body takes as long as the caller's link does; the request context bounds it),
+// keeps as many idle connections to Wasabi as bex-api allows streams so a burst
+// of small uploads does not pay a handshake each, and waits at most two minutes
+// for Wasabi to answer once it has the whole body.
+var putClient = &http.Client{Transport: func() *http.Transport {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.MaxIdleConnsPerHost = MaxConcurrentStreamsPerReplica
+	t.ResponseHeaderTimeout = 2 * time.Minute
+	return t
+}()}
 
 type wasabiStore struct {
 	client    *s3.Client
@@ -129,8 +180,92 @@ func (w *wasabiStore) Head(ctx context.Context, key string) (ObjectInfo, error) 
 		return ObjectInfo{}, err
 	}
 	return ObjectInfo{
-		Key: key, Size: aws.ToInt64(out.ContentLength), ETag: aws.ToString(out.ETag),
-		LastModified: aws.ToTime(out.LastModified), ContentType: aws.ToString(out.ContentType),
+		Key: key, Size: aws.ToInt64(out.ContentLength), ETag: aws.ToString(out.ETag), LastModified: aws.ToTime(out.LastModified),
+		Headers: ObjectHeaders{
+			ContentType: aws.ToString(out.ContentType), CacheControl: aws.ToString(out.CacheControl),
+			ContentDisposition: aws.ToString(out.ContentDisposition), ContentEncoding: aws.ToString(out.ContentEncoding),
+			ContentLanguage: aws.ToString(out.ContentLanguage), Expires: expiresText(out.ExpiresString, out.Expires),
+		},
+	}, nil
+}
+
+// expiresText is an object's Expires header as the writer sent it, or, when the
+// SDK could only parse it, as an HTTP date.
+func expiresText(raw *string, parsed *time.Time) string {
+	if s := aws.ToString(raw); s != "" {
+		return s
+	}
+	if parsed != nil {
+		return parsed.UTC().Format(http.TimeFormat)
+	}
+	return ""
+}
+
+func (w *wasabiStore) PutStream(ctx context.Context, key string, size int64, body io.Reader, h ObjectHeaders) (string, error) {
+	if size < 0 {
+		return "", fmt.Errorf("put stream: negative size %d", size)
+	}
+	signed, err := w.PresignPut(ctx, key, size, PresignTTL)
+	if err != nil {
+		return "", fmt.Errorf("presign put: %w", err)
+	}
+	// A zero length needs http.NoBody: net/http sends any other body with an
+	// unknown length chunked, which Wasabi refuses.
+	if size == 0 {
+		body = http.NoBody
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, signed, body)
+	if err != nil {
+		return "", err
+	}
+	req.ContentLength = size
+	// Entity headers travel unsigned: the presigned URL signs only the length,
+	// so the writer's own headers are stored as sent.
+	for name, value := range map[string]string{
+		"Content-Type": h.ContentType, "Cache-Control": h.CacheControl, "Content-Disposition": h.ContentDisposition,
+		"Content-Encoding": h.ContentEncoding, "Content-Language": h.ContentLanguage, "Expires": h.Expires,
+	} {
+		if value != "" {
+			req.Header.Set(name, value)
+		}
+	}
+	resp, err := putClient.Do(req)
+	if err != nil {
+		// net/http's error carries the whole URL, whose query is a signature
+		// that stays valid for 15 minutes; keep it out of logs.
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			err = urlErr.Err
+		}
+		return "", fmt.Errorf("put %s: %w", key, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		detail, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return "", fmt.Errorf("put %s: wasabi answered %s: %s", key, resp.Status, strings.TrimSpace(string(detail)))
+	}
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+	return resp.Header.Get("ETag"), nil
+}
+
+func (w *wasabiStore) GetObject(ctx context.Context, key string) (ObjectBody, error) {
+	out, err := w.client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(w.bucket), Key: aws.String(key)})
+	if err != nil {
+		if isNotFound(err) {
+			return ObjectBody{}, ErrObjectNotFound
+		}
+		return ObjectBody{}, err
+	}
+	return ObjectBody{
+		ObjectInfo: ObjectInfo{
+			Key: key, Size: aws.ToInt64(out.ContentLength), ETag: aws.ToString(out.ETag), LastModified: aws.ToTime(out.LastModified),
+			Headers: ObjectHeaders{
+				ContentType: aws.ToString(out.ContentType), CacheControl: aws.ToString(out.CacheControl),
+				ContentDisposition: aws.ToString(out.ContentDisposition), ContentEncoding: aws.ToString(out.ContentEncoding),
+				ContentLanguage: aws.ToString(out.ContentLanguage), Expires: expiresText(out.ExpiresString, out.Expires),
+			},
+		},
+		Body: out.Body,
 	}, nil
 }
 
@@ -176,21 +311,15 @@ func (w *wasabiStore) DeletePrefix(ctx context.Context, prefix string) (int, err
 		if len(page.Objects) == 0 {
 			return removed, nil
 		}
-		objects := make([]types.ObjectIdentifier, len(page.Objects))
+		keys := make([]string, len(page.Objects))
 		for i, o := range page.Objects {
-			objects[i] = types.ObjectIdentifier{Key: aws.String(o.Key)}
+			keys[i] = o.Key
 		}
-		out, err := w.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
-			Bucket: aws.String(w.bucket), Delete: &types.Delete{Objects: objects, Quiet: aws.Bool(true)},
-		})
+		failed, err := w.DeleteKeys(ctx, keys)
+		removed += len(keys) - len(failed)
 		if err != nil {
-			return removed, err
+			return removed, fmt.Errorf("under %q: %w", prefix, err)
 		}
-		if len(out.Errors) > 0 {
-			return removed + len(objects) - len(out.Errors), fmt.Errorf("delete %d of %d objects under %q: %s: %s",
-				len(out.Errors), len(objects), prefix, aws.ToString(out.Errors[0].Code), aws.ToString(out.Errors[0].Message))
-		}
-		removed += len(objects)
 	}
 }
 

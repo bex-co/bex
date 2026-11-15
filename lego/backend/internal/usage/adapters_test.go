@@ -29,6 +29,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -333,6 +334,52 @@ func seedMixedStore() *memUsageStore {
 		WindowStart:  window, Quantity: 36000,
 	})
 	return st
+}
+
+// ADR112 D8: a workspace's object storage shadow meters are listed under one
+// resource (service_id is the workspace) with their quantities, and add nothing
+// to the estimate.
+func TestObjectStorageShadowMetersAreListedAndCostNothing(t *testing.T) {
+	st := newMemUsageStore()
+	window := time.Date(2026, 7, 12, 8, 0, 0, 0, time.UTC)
+	for kind, quantity := range map[string]int64{
+		store.UsageKindObjectStorageGBSeconds:    2628000 * 3,
+		store.UsageKindObjectStorageIngressBytes: 5 * pricing.BytesPerGiB,
+		store.UsageKindObjectStorageEgressBytes:  2 * pricing.BytesPerGiB,
+	} {
+		_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+			WorkspaceID: "tea-os", ServiceID: "tea-os", ResourceKind: store.ResourceKindObjectStorage,
+			Kind: kind, WindowStart: window, Quantity: quantity,
+		})
+	}
+	svc := svcWithTenant(st, "tea-os")
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	req := httptest.NewRequest("GET", "/v1/usage", nil)
+	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user:alice"}))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", w.Code, w.Body.String())
+	}
+	var resp usageResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Services) != 1 || resp.Services[0].ResourceKind != store.ResourceKindObjectStorage || resp.Services[0].ServiceID != "tea-os" ||
+		resp.Services[0].ServiceName != "Object storage" || resp.Services[0].Deleted {
+		t.Fatalf("services = %+v, want the one object storage resource, named, and not deleted", resp.Services)
+	}
+	totals := map[string]int64{}
+	for _, row := range resp.Services[0].Rows {
+		totals[row.Kind] = row.Total
+	}
+	if len(totals) != 3 || totals[store.UsageKindObjectStorageGBSeconds] != 2628000*3 || totals[store.UsageKindObjectStorageEgressBytes] != 2*pricing.BytesPerGiB {
+		t.Fatalf("rows = %v, want the three meters with their quantities", totals)
+	}
+	if resp.EstimatedCost.TotalUSD != "0.00" || len(resp.EstimatedCost.Meters) != 0 {
+		t.Fatalf("estimate = %+v, want $0.00: the object storage meters are shadow meters", resp.EstimatedCost)
+	}
 }
 
 func entriesByResource(entries []usageServiceEntry) map[string]usageServiceEntry {

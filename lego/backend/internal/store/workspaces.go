@@ -296,6 +296,12 @@ func (s *PGStore) DeleteTenant(ctx context.Context, id string) error {
 		if err := retireWorkspaceAttachments(ctx, tx, id); err != nil {
 			return err
 		}
+		// Object buckets have no tenant FK either (ADR112 D9): retiring the rows
+		// stops any pub- host answering and leaves the object storage sweep a row
+		// per workspace whose Wasabi prefix still needs purging.
+		if err := retireWorkspaceObjectBuckets(ctx, tx, id); err != nil {
+			return err
+		}
 		tag, err := tx.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, id)
 		if err != nil {
 			return err

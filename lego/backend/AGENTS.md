@@ -16,6 +16,7 @@ One package per feature: service (business logic) + models + REST/GraphQL/MCP fr
   - `authz` (OpenFGA `core.Checker`), `gqlutil` helper.
 - `internal/store/` — control-plane Postgres + App-CR projector, opt-in via `BEX_CP_DB_URI` ([ADR003](../../docs/ADR003-control-plane.md))
 - `internal/billing/` — Stripe Billing (opt-in `BEX_STRIPE_SECRET_KEY`), sealed `usage_hourly` → Customers/Subscriptions, invoices, webhooks.
+- `internal/objectstorage/` — the object store of [ADR112](../../docs/ADR112-object-storage.md): workspace buckets as Postgres rows over one shared Wasabi bucket per region (region, name, key and cap constants; quota gate, stream limiter, presigned and streamed Wasabi client, CORS rules, the hourly sweep), with a fake S3 in `fakes3/`. Two thin adapters in `internal/api` call it: Render's `/v1/objects` routes (`objects_render.go`) and the Cloudflare-shaped routes `wrangler r2` calls under `/cloudflare/client/v4` (`cloudflare_r2*.go`, each answer Cloudflare's envelope; pinned by `testdata/wrangler-*/requests.json` and `scripts/wrangler-r2-contract.sh`). Environment variables carry only the credential (below).
 - `internal/api/` — composition root: one auth gate (`auth.go`) + one REST router / one GraphQL schema / one MCP registry. See [`internal/api/AGENTS.md`](internal/api/AGENTS.md).
 
 ## Rules

@@ -137,6 +137,38 @@ func TestObjectBucketRoundTrip(t *testing.T) {
 	}
 }
 
+// TestObjectBucketSummariesLeaveTheRulesOut: a listing must not load every
+// bucket's CORS and lifecycle rules, up to 64 KiB and 1 MiB each.
+func TestObjectBucketSummariesLeaveTheRulesOut(t *testing.T) {
+	s, ws := objectBucketStore(t, "objbkt-summaries")
+	ctx := context.Background()
+	b := newObjectBucket(t, s, ws, "photos", 10)
+	newObjectBucket(t, s, ws, "videos", 10)
+	if err := s.SetObjectBucketCORS(ctx, ws, b.ID, json.RawMessage(`[{"allowed":{"origins":["*"],"methods":["GET"]}}]`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetObjectBucketLifecycle(ctx, ws, b.ID, json.RawMessage(`[{"id":"a"}]`)); err != nil {
+		t.Fatal(err)
+	}
+
+	summaries, err := s.ListObjectBucketSummaries(ctx, ws)
+	if err != nil || len(summaries) != 2 || summaries[0].Name != "photos" || summaries[1].Name != "videos" {
+		t.Fatalf("ListObjectBucketSummaries = %+v, %v", summaries, err)
+	}
+	for _, sum := range summaries {
+		if sum.CORS != nil || sum.Lifecycle != nil {
+			t.Errorf("%s: a summary carries rules: %s %s", sum.Name, sum.CORS, sum.Lifecycle)
+		}
+		if sum.ID == "" || sum.Region != "oregon" || sum.LocationHint != "wnam" || sum.CreatedAt.IsZero() {
+			t.Errorf("%s: a summary lost a column: %+v", sum.Name, sum)
+		}
+	}
+	full, err := s.ListObjectBuckets(ctx, ws)
+	if err != nil || !strings.Contains(string(full[0].CORS), "origins") || !strings.Contains(string(full[0].Lifecycle), `"a"`) {
+		t.Fatalf("ListObjectBuckets keeps the rules for the sweep: %+v, %v", full, err)
+	}
+}
+
 func TestObjectBucketNameIsUniquePerWorkspace(t *testing.T) {
 	s, ws := objectBucketStore(t, "objbkt-dup")
 	other, otherWS := objectBucketStore(t, "objbkt-dup-other")

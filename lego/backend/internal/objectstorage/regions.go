@@ -93,6 +93,16 @@ func ParseRegion(value string) (Region, error) {
 	return "", &RegionNotOfferedError{Value: value}
 }
 
+// DefaultLocationHint is the Cloudflare location hint that names r, which a
+// bucket created without a hint reports: the inverse of what RegionFromHint
+// accepts.
+func (r Region) DefaultLocationHint() string {
+	if r == Frankfurt {
+		return "weur"
+	}
+	return "wnam"
+}
+
 // RegionFromHint reads the placement a Cloudflare bucket create asks for: a
 // location hint (`wnam`, `weur`, ...) and a jurisdiction (the cf-r2-jurisdiction
 // header, `eu`, `fedramp`, `default`). No hint and the hint `wnam` give oregon;

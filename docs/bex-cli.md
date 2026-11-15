@@ -341,6 +341,37 @@ bex ea objects delete backups/users.ndjson --region oregon --yes
 
 bex serves two regions, `oregon` and `frankfurt`; any other region answers 400. The limits are 5 GiB per object, 100 GB and 1,000,000 objects per workspace per region, and keys of 1 to 1024 bytes with no `.` or `..` segment. Render has not published its own limits, so these are bex's, listed with their status in the [object storage row of ADR018](ADR018-render-parity.md). A Render API key reaches every object of its workspace, as on Render. If the platform has no Wasabi credential installed, the commands say that object storage is not offered yet. `--local` stays upstream's filesystem mode under `.render/objects/` and never calls bex.
 
+### Buckets, CORS and lifecycle with `wrangler`
+
+bex has no bucket command of its own. Cloudflare's `wrangler r2` manages buckets, objects, CORS and lifecycle rules against bex when it is pointed at bex's Cloudflare-shaped API ([ADR112](ADR112-object-storage.md) D3). Three environment variables are all it needs, and nothing is installed on the bex side:
+
+```sh
+export CLOUDFLARE_API_BASE_URL=https://api.bex.co/cloudflare/client/v4
+export CLOUDFLARE_API_TOKEN=<a bex API key>   # sent as Authorization: Bearer, like every bex route
+export CLOUDFLARE_ACCOUNT_ID=<tea-id>         # the workspace id
+
+wrangler r2 bucket create photos
+wrangler r2 object put photos/cat.jpg --file cat.jpg --remote
+wrangler r2 object get photos/cat.jpg --file out.jpg --remote
+wrangler r2 bucket cors set photos --file cors.json
+wrangler r2 bucket lifecycle add photos expire-logs logs/ --expire-days 7
+```
+
+Things to know:
+
+- **`--remote` is required.** `wrangler r2 object put|get|delete` defaults to a local simulator and never reaches bex without it. Bucket, CORS and lifecycle commands have no local mode.
+- **The workspace is the account id,** so a key reaches the buckets of its own workspace and no other. A viewer lists buckets, reads their CORS and lifecycle rules and sees their size; reading an object's bytes needs a developer or an admin, and so do put, delete and every change.
+- **An object is at most 300 MiB.** wrangler sends the file in the API call itself and refuses a larger one before it connects; bex refuses it too. Bigger objects need the S3 API of ADR112 D10, which does not exist yet.
+- **wrangler cannot list a bucket's objects.** It has no such command, and bex has no S3 API for another tool to list with. The Render CLI lists only the workspace's `render-<region>` bucket (`bex ea objects list --region oregon`); a bucket you created is not listable from any CLI yet. Objects written to `render-oregon` or `render-frankfurt` with wrangler are the ones `bex ea objects` reads, and the other way round.
+- **Two regions.** A bucket created with no location hint, `--location wnam` or nothing else goes to Oregon; `--location weur` or `--jurisdiction eu` goes to Frankfurt. Every other hint answers `10042`. bex's region is exact where Cloudflare's hint is a preference, and `bucket info` reports the hint you gave. Names are unique per workspace; bex ignores the jurisdiction when it looks a name up. A bucket name must follow wrangler's own rule and must not start with `render-`.
+- **One storage class.** `--storage-class InfrequentAccess` and lifecycle storage-class transitions answer `10042`. `bucket lock`, `notification`, `sippy`, Data Catalog and custom domains (`domain list` returns an empty list) are not offered either.
+- **CORS is stored, not served yet.** `bucket cors set|list|delete` keep your rules (at most 100 rules and 64 KiB per bucket), but bex applies them only where it serves a bucket to browsers, which arrives with public buckets (w21/m417). `bucket dev-url` answers `10042` until then.
+- **Lifecycle rules run hourly.** An `Age` (up to 100 years) or `Date` expiry deletes the matching objects, at most 10,000 per rule per run. A short rule saves nothing on storage: Wasabi bills a 90-day minimum for every object, and whether it bills the rest of the 90 days for an object deleted sooner is unverified. `--abort-multipart-days` is stored and does nothing, since bex has no multipart upload.
+- **Limits.** 1,000 buckets per workspace, 100 GB and 1,000,000 objects per workspace per region, 8 uploads or downloads at once per workspace; a breach answers `10042` (a quota) or `10058` (too many at once). Keys follow the same rule as the Render CLI. Render and Cloudflare publish none of these limits for bex to match, so each is bex's own, listed with its status in [ADR018](ADR018-render-parity.md).
+- **No public access, no durability beyond one provider.** Objects live on one provider in one region with no replica. Nothing is served to the open internet.
+
+bex's routes are tested against the real tool: a recorded replay of wrangler 4.162.0's requests runs with every build, and the real wrangler runs against the handlers every week ([`scripts/wrangler-r2-contract.sh`](../scripts/wrangler-r2-contract.sh)). Other wrangler versions may differ.
+
 ## Compatibility and branding limits
 
 `bex` imports the pinned upstream command package; it does not fork or vendor it. A Layer-1 overlay in `lego/cli/internal/branding` mutates the exported `cmd.RootCmd` after Bex-native commands attach:

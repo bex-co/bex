@@ -556,8 +556,11 @@ func unitFor(kind string) meterUnit {
 		return meterUnit{"GB", BytesPerGiB}
 	case store.UsageKindBuildSeconds:
 		return meterUnit{"min", 60}
-	case store.UsageKindStorageGBSeconds, store.UsageKindDiskGBSeconds, store.UsageKindSandboxSnapshotGBSeconds:
+	case store.UsageKindStorageGBSeconds, store.UsageKindDiskGBSeconds, store.UsageKindSandboxSnapshotGBSeconds,
+		store.UsageKindObjectStorageGBSeconds:
 		return meterUnit{"GB-mo", 2628000}
+	case store.UsageKindObjectStorageIngressBytes, store.UsageKindObjectStorageEgressBytes:
+		return meterUnit{"GB", BytesPerGiB}
 	case store.UsageKindSandboxMemoryGBSeconds:
 		return meterUnit{"GiB-hr", 3600}
 	case store.UsageKindSandboxComputeSeconds:
@@ -636,7 +639,9 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 	case store.UsageKindSandboxSnapshotGBSeconds:
 		// The memory kind (sandbox_memory_gb_seconds) has no case: it is shown at
 		// $0 until the used-CPU meter lets billing switch (w22/m314), because the
-		// weighted compute charge above already includes memory.
+		// weighted compute charge above already includes memory. The three object
+		// storage kinds have none either: Render has published no price, so they
+		// are shadow meters shown at $0 (ADR112 D8) until the user sets one.
 		if resourceKind == store.ResourceKindSandbox {
 			return s.sandboxSnapshot
 		}

@@ -19,9 +19,10 @@ limitations under the License.
 // HEAD, DELETE, multi-object delete and ListObjectsV2) so tests exercise the
 // real AWS client and real presigned URLs against it.
 //
-// It does not check signatures, and it does not enforce a signed
-// Content-Length: whether Wasabi does is unverified (ADR112 D3). Tests read
-// what was signed from the recorded requests instead.
+// It does not check signatures. It does refuse a chunked PUT against a URL
+// that signs a Content-Length, which is what Wasabi does (ADR112 § Not
+// verified, settled 2026-11-15); it does not compare a declared length with the
+// bytes sent, so tests read what was sent from the recorded requests.
 package fakes3
 
 import (
@@ -103,6 +104,18 @@ func (s *Server) put(bucket, key string, body []byte, header http.Header) {
 	}
 }
 
+// SetLastModified sets a stored object's last-modified time, so a lifecycle
+// test can make an object any age. It reports whether the object exists.
+func (s *Server) SetLastModified(bucket, key string, t time.Time) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	o, ok := s.buckets[bucket][key]
+	if ok {
+		o.LastModified = t.UTC().Truncate(time.Second)
+	}
+	return ok
+}
+
 // Get returns a stored object's body.
 func (s *Server) Get(bucket, key string) ([]byte, bool) {
 	s.mu.Lock()
@@ -136,10 +149,19 @@ func (s *Server) Requests() []Request {
 }
 
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
+	bucket, key, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/")
+	s.mu.Lock()
+	s.requests = append(s.requests, Request{Method: r.Method, Bucket: bucket, Key: key, Query: r.URL.Query(), Header: r.Header.Clone()})
+	s.mu.Unlock()
+	// A body is read before the lock is taken: a slow upload must not stop the
+	// fake serving everything else, which is what real streaming tests need.
+	var body []byte
+	var bodyErr error
+	if r.Method == http.MethodPut && !chunkedRefusal(r) {
+		body, bodyErr = io.ReadAll(r.Body)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	bucket, key, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/")
-	s.requests = append(s.requests, Request{Method: r.Method, Bucket: bucket, Key: key, Query: r.URL.Query(), Header: r.Header.Clone()})
 	if s.down {
 		s.fail(w, r, http.StatusServiceUnavailable, "ServiceUnavailable", "the fake is down")
 		return
@@ -158,7 +180,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	case key == "":
 		s.fail(w, r, http.StatusNotImplemented, "NotImplemented", "the fake serves list-type=2 and delete only")
 	case r.Method == http.MethodPut:
-		s.putObject(w, r, bucket, key)
+		s.putObject(w, r, bucket, key, body, bodyErr)
 	case r.Method == http.MethodGet || r.Method == http.MethodHead:
 		s.getObject(w, r, objects, key)
 	case r.Method == http.MethodDelete:
@@ -169,14 +191,19 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) putObject(w http.ResponseWriter, r *http.Request, bucket, key string) {
+func (s *Server) putObject(w http.ResponseWriter, r *http.Request, bucket, key string, body []byte, bodyErr error) {
 	if strings.Contains(r.Header.Get("Content-Encoding"), "aws-chunked") || r.Header.Get("X-Amz-Decoded-Content-Length") != "" {
 		s.fail(w, r, http.StatusNotImplemented, "NotImplemented", "aws-chunked bodies are not served; use a presigned URL")
 		return
 	}
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		s.fail(w, r, http.StatusBadRequest, "IncompleteBody", err.Error())
+	// Wasabi refuses a PUT sent chunked, with no Content-Length, when the
+	// presigned URL signs one (ADR112 § Not verified, settled 2026-11-15).
+	if chunkedRefusal(r) {
+		s.fail(w, r, http.StatusForbidden, "SignatureDoesNotMatch", "a chunked body does not match the signed Content-Length")
+		return
+	}
+	if bodyErr != nil {
+		s.fail(w, r, http.StatusBadRequest, "IncompleteBody", bodyErr.Error())
 		return
 	}
 	header := http.Header{}
@@ -188,6 +215,11 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request, bucket, key s
 	s.put(bucket, key, body, header)
 	w.Header().Set("ETag", s.buckets[bucket][key].ETag)
 	w.WriteHeader(http.StatusOK)
+}
+
+// chunkedRefusal reports a PUT with no Content-Length against a URL that signs one.
+func chunkedRefusal(r *http.Request) bool {
+	return r.ContentLength < 0 && strings.Contains(r.URL.Query().Get("X-Amz-SignedHeaders"), "content-length")
 }
 
 func (s *Server) getObject(w http.ResponseWriter, r *http.Request, objects map[string]*Object, key string) {

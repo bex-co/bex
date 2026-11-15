@@ -73,4 +73,9 @@ const (
 
 	// PresignTTL is how long a presigned URL stays valid.
 	PresignTTL = 15 * time.Minute
+	// StreamDeadline is how long one object put or get through bex-api may
+	// run. The server's own 30 s read and write timeouts would cut a large
+	// body, so each stream extends them to this. 300 MiB takes 28 minutes at
+	// 1.5 Mbit/s; a slower link is refused rather than held open.
+	StreamDeadline = 30 * time.Minute
 )

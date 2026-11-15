@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -35,18 +36,35 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// memObjectRepo is objectstorage.Repository in memory, so the Render routes
+// memObjectRepo is objectstorage.Repository in memory, so the object routes
 // are exercised end to end without Postgres. The store's own tests cover the SQL.
 type memObjectRepo struct {
 	mu            sync.Mutex
 	buckets       []store.ObjectBucket
+	usage         []store.ObjectStorageUsage
 	bytes, object int64
 }
 
-func (r *memObjectRepo) CreateObjectBucket(_ context.Context, in store.ObjectBucket, _ int) (store.ObjectBucket, error) {
+func (r *memObjectRepo) CreateObjectBucket(_ context.Context, in store.ObjectBucket, userCap int) (store.ObjectBucket, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	users := 0
+	for _, b := range r.buckets {
+		if b.WorkspaceID != in.WorkspaceID {
+			continue
+		}
+		if b.Name == in.Name {
+			return store.ObjectBucket{}, store.ErrObjectBucketExists
+		}
+		if !b.System {
+			users++
+		}
+	}
+	if !in.System && users >= userCap {
+		return store.ObjectBucket{}, store.ErrObjectBucketQuota
+	}
 	in.ID = ids.New(ids.ObjectBucket)
+	in.CreatedAt = time.Now().UTC()
 	r.buckets = append(r.buckets, in)
 	return in, nil
 }
@@ -59,20 +77,80 @@ func (r *memObjectRepo) EnsureSystemObjectBucket(_ context.Context, ws, name, re
 			return b, nil
 		}
 	}
-	b := store.ObjectBucket{ID: ids.New(ids.ObjectBucket), WorkspaceID: ws, Name: name, Region: region, System: true}
+	b := store.ObjectBucket{ID: ids.New(ids.ObjectBucket), WorkspaceID: ws, Name: name, Region: region, System: true, CreatedAt: time.Now().UTC()}
 	r.buckets = append(r.buckets, b)
 	return b, nil
 }
 
-func (r *memObjectRepo) GetObjectBucket(context.Context, string, string) (store.ObjectBucket, error) {
+func (r *memObjectRepo) GetObjectBucket(_ context.Context, ws, name string) (store.ObjectBucket, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, b := range r.buckets {
+		if b.WorkspaceID == ws && b.Name == name {
+			return b, nil
+		}
+	}
 	return store.ObjectBucket{}, store.ErrNotFound
 }
-func (r *memObjectRepo) ListObjectBuckets(context.Context, string) ([]store.ObjectBucket, error) {
-	return nil, nil
+
+func (r *memObjectRepo) ListObjectBucketSummaries(_ context.Context, ws string) ([]store.ObjectBucket, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []store.ObjectBucket
+	for _, b := range r.buckets {
+		if b.WorkspaceID == ws {
+			out = append(out, b)
+		}
+	}
+	return out, nil
 }
-func (r *memObjectRepo) DeleteObjectBucket(context.Context, string, string) error { return nil }
+
+func (r *memObjectRepo) DeleteObjectBucket(_ context.Context, ws, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i, b := range r.buckets {
+		if b.WorkspaceID == ws && b.ID == id {
+			r.buckets = append(r.buckets[:i], r.buckets[i+1:]...)
+			return nil
+		}
+	}
+	return store.ErrNotFound
+}
+
 func (r *memObjectRepo) ObjectStorageUsageTotals(context.Context, string, string) (int64, int64, error) {
 	return r.bytes, r.object, nil
+}
+
+func (r *memObjectRepo) ListObjectStorageUsage(_ context.Context, ws string) ([]store.ObjectStorageUsage, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []store.ObjectStorageUsage
+	for _, u := range r.usage {
+		if u.WorkspaceID == ws {
+			out = append(out, u)
+		}
+	}
+	return out, nil
+}
+
+func (r *memObjectRepo) SetObjectBucketCORS(_ context.Context, ws, id string, rules json.RawMessage) error {
+	return r.update(ws, id, func(b *store.ObjectBucket) { b.CORS = rules })
+}
+
+func (r *memObjectRepo) SetObjectBucketLifecycle(_ context.Context, ws, id string, rules json.RawMessage) error {
+	return r.update(ws, id, func(b *store.ObjectBucket) { b.Lifecycle = rules })
+}
+
+func (r *memObjectRepo) update(ws, id string, set func(*store.ObjectBucket)) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i := range r.buckets {
+		if r.buckets[i].WorkspaceID == ws && r.buckets[i].ID == id {
+			set(&r.buckets[i])
+			return nil
+		}
+	}
+	return store.ErrNotFound
 }
 
 type objectsHarness struct {

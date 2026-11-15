@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -124,6 +125,60 @@ func TestBillableMeterNamesArePinned(t *testing.T) {
 		t.Fatalf("BillableMeterNames = %v, want %v\n"+
 			"If you changed this set, you MUST also run scripts/stripe-billing-setup.py "+
 			"against test AND live Stripe (--live) or every new subscription will fail.", got, want)
+	}
+	// The object storage meters (ADR112 D8) are shadow meters: recorded and shown
+	// at $0, with no Stripe Price. Naming them here, beside the pin, makes adding
+	// one to the billed set a deliberate edit of this test and of the Stripe catalog.
+	for _, name := range got {
+		if strings.HasPrefix(name, "object_storage") {
+			t.Errorf("%q is billable: the object storage meters are shadow meters until the user sets a price (ADR112 D8)", name)
+		}
+	}
+}
+
+// ADR112 D8: the three object storage meters are recorded and shown at $0 and
+// change neither the estimate nor the set of billed meters. The Stripe items are
+// BillableMeterNames (pinned above), so this proves the invoice cannot move.
+func TestObjectStorageShadowMetersAreShownAtZeroAndNeverBilled(t *testing.T) {
+	const (
+		tenGBFor730Hours = 10 * 730 * 3600
+		hundredGiB       = 100 * BytesPerGiB
+	)
+	compute := store.UsageSummaryRow{
+		ServiceID: "srv-1", Kind: store.UsageKindInstanceSeconds, Tier: "starter", ResourceKind: store.ResourceKindService, Total: 730 * 3600,
+	}
+	shadow := []store.UsageSummaryRow{
+		{ServiceID: "tea-1", Kind: store.UsageKindObjectStorageGBSeconds, ResourceKind: store.ResourceKindObjectStorage, Total: tenGBFor730Hours},
+		{ServiceID: "tea-1", Kind: store.UsageKindObjectStorageIngressBytes, ResourceKind: store.ResourceKindObjectStorage, Total: hundredGiB},
+		{ServiceID: "tea-1", Kind: store.UsageKindObjectStorageEgressBytes, ResourceKind: store.ResourceKindObjectStorage, Total: hundredGiB},
+	}
+	without := Default.Estimate([]store.UsageSummaryRow{compute})
+	with := Default.Estimate(append([]store.UsageSummaryRow{compute}, shadow...))
+	if with.TotalUSD != without.TotalUSD || fmt.Sprint(with.Meters) != fmt.Sprint(without.Meters) {
+		t.Fatalf("recording the object storage meters changed the bill: %+v vs %+v", with, without)
+	}
+	alone := Default.Estimate(shadow)
+	if alone.TotalUSD != "0.00" || len(alone.Meters) != 0 {
+		t.Fatalf("object storage alone = %+v, want $0.00 and no billed meter", alone)
+	}
+
+	// Each is listed under its resource at a rate of 0, in a unit a reader can check.
+	want := map[string]struct{ unit, quantity string }{
+		store.UsageKindObjectStorageGBSeconds:    {"GB-mo", "10.00"},
+		store.UsageKindObjectStorageIngressBytes: {"GB", "100.00"},
+		store.UsageKindObjectStorageEgressBytes:  {"GB", "100.00"},
+	}
+	lines := map[string]ChargeLine{}
+	for _, r := range alone.Resources {
+		for _, c := range r.Charges {
+			lines[c.Kind] = c
+		}
+	}
+	for kind, w := range want {
+		c, ok := lines[kind]
+		if !ok || c.RateUSD != "0" || c.CostUSD != "0.00" || c.Unit != w.unit || c.Quantity != w.quantity {
+			t.Errorf("%s line = %+v (listed %v), want %s %s at a rate of 0 costing 0.00", kind, c, ok, w.quantity, w.unit)
+		}
 	}
 }
 
@@ -673,6 +728,9 @@ func TestUnitLabelsCoverEveryMeterKind(t *testing.T) {
 		store.UsageKindSandboxComputeSeconds,
 		store.UsageKindSandboxMemoryGBSeconds,
 		store.UsageKindSandboxSnapshotGBSeconds,
+		store.UsageKindObjectStorageGBSeconds,
+		store.UsageKindObjectStorageIngressBytes,
+		store.UsageKindObjectStorageEgressBytes,
 	} {
 		if u := unitFor(kind); u.label == "" || u.per <= 0 {
 			t.Errorf("unitFor(%q) = %+v, want a label and positive divisor", kind, u)

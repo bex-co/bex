@@ -49,6 +49,16 @@ const (
 	// in decimal GB multiplied by the seconds it is retained: Render's snapshot
 	// storage (w22/m313, ADR023 § Sandbox snapshot storage).
 	UsageKindSandboxSnapshotGBSeconds = "sandbox_snapshot_gb_seconds"
+	// The three object storage meters (ADR112 D8). They are shadow meters:
+	// recorded and shown at $0, never exported to Stripe (billing.stripeMeterEvent
+	// skips them), because Render has published no object storage price. Their
+	// rows carry ResourceKindObjectStorage and the workspace id as service_id.
+	// GB-seconds are decimal GB multiplied by the seconds the objects were
+	// stored, accrued by the hourly sweep; the byte meters count a workspace's
+	// bytes put into and read out of object storage.
+	UsageKindObjectStorageGBSeconds    = "object_storage_gb_seconds"
+	UsageKindObjectStorageIngressBytes = "object_storage_ingress_bytes"
+	UsageKindObjectStorageEgressBytes  = "object_storage_egress_bytes"
 	// UsageKindDiskGBSeconds is a service disk's PROVISIONED capacity in GB
 	// multiplied by the seconds it was provisioned for — deliberately a
 	// different dimension from UsageKindStorageGBSeconds, which averages USED
@@ -103,6 +113,9 @@ const (
 	ResourceKindPostgres = "postgres"  // Database CR → CNPG Cluster
 	ResourceKindKeyValue = "key_value" // KeyValue CR → Valkey StatefulSet
 	ResourceKindSandbox  = "sandbox"   // hosted OpenSandbox execution environment
+	// ResourceKindObjectStorage is a workspace's object storage (ADR112): one
+	// resource per workspace, service_id the workspace id (`tea-…`).
+	ResourceKindObjectStorage = "object_storage"
 )
 
 // HourlyRow is one window of usage for one resource + meter kind.

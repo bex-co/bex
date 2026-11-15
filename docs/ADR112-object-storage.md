@@ -1,6 +1,8 @@
 # ADR112 — bex object storage: Render's `ea objects` and Cloudflare's `wrangler r2` contracts over Wasabi
 
-**Status:** proposed (2026-11-14). Filed 2026-11-15 as [w21/m415](../.pm/w21/blocked/m415/README.md), [m416](../.pm/w21/m416/README.md) and [m417](../.pm/w21/m417/README.md); § Tasks maps the split.
+**Status:** proposed (2026-11-14). Filed 2026-11-15 as [w21/m415](../.pm/w21/blocked/m415/README.md), [m416](../.pm/w21/blocked/m416/README.md) and [m417](../.pm/w21/m417/README.md); § Tasks maps the split.
+
+**Implemented 2026-11-15 (code only; no production walk yet).** Contract A and the store shipped as w21/m415, Contract B (the Cloudflare-shaped routes, CORS and lifecycle storage, the sweep, lifecycle execution, purge and the shadow meters) as w21/m416. Where the code differs from the text below, § D3 and § Not verified say so with the date.
 
 **Source:** user request 2026-11-14: an ADR to support Render's early-access object store with Wasabi S3. After a study of what customers need from object storage, the user restated the goal: "rw cli contract + wasabi wrapper", and asked for the ADR to be rewritten around it. I read "rw" as **R**ender and **w**rangler: serve the contract of Render's CLI (`render ea objects`) and of Cloudflare's `wrangler r2`, each as a thin wrapper over one Wasabi-backed store. If only wrangler was meant, D2 and the `render-<region>` system buckets in D1 drop out and nothing else changes.
 
@@ -139,6 +141,20 @@ The routes are not in Render's OpenAPI, so [ADR018](ADR018-render-parity.md)'s s
 - **`bucket info`.** `POST /graphql` answers `getR2StorageMetrics` from the last sweep's per-bucket usage. Unanswered, wrangler shows zeros (verified), which is wrong rather than broken.
 - **Not offered, each answering `10042`:** `lock`, `notification`, `sippy`, Data Catalog, and custom domains (`domain add|update|remove`; `domain list` returns an empty list). Custom domains would reuse [ADR005](ADR005-custom-domain.md)'s machinery and are a follow-up.
 - **No `bex` command is added.** wrangler is the client. The launcher's pass-through of `ea objects` (D11) is Contract A only.
+- **As built, 2026-11-15 (w21/m416).** What the code does where this section was silent or chose differently:
+  - **A get opens the object once** (`GetObject`, which answers the headers and the body together and `NoSuchKey` for a missing one) instead of a `HEAD` first. The answer is the same, with one Wasabi round trip fewer and no window in which the headers and the bytes belong to different versions.
+  - **A HEAD of an object is a HEAD to Wasabi,** answered with the stored headers and no body, holding no stream slot and metering nothing. Every put or get is bounded to 30 minutes on the Wasabi side too, so a Wasabi that stays connected and stops answering cannot hold a slot forever.
+  - **A lifecycle `maxAge` is at most 100 years in seconds,** and the rule set is validated by the same code that the hourly sweep runs a rule with (`objectstorage.ValidateLifecycle`, `ValidateCORS`), inside the service, so no route can store a rule the sweep would not run. A larger `maxAge`, a "never expire" idiom, would overflow a `time.Duration` and delete every object.
+  - **A bucket listing does not load each bucket's CORS and lifecycle rules** (up to 64 KiB and 1 MiB a bucket); only the rule routes and the sweep read them.
+  - **A delete of a missing key succeeds** (S3's answer, and Cloudflare's). Render's route answers 404 (D2). wrangler treats a 404 on delete as success anyway, so the difference is invisible to it.
+  - **A location hint or jurisdiction bex does not serve answers HTTP 400 with code `10042`,** not 403: D1's 400 and D3's `10042` both hold. An exceeded quota and a feature bex does not offer are 403 `10042`.
+  - **Codes outside the published subset:** `7003` (404) and `7000` (405) for a route or method nothing serves, `7400` (400) for a body or a rule set bex cannot read, and `10001`, `10013` and `10043` from Cloudflare's table for an internal error, a body shorter than its Content-Length and an unavailable service. `7400` is bex's own; the others are Cloudflare's.
+  - **Failures before a route runs** (the OAuth gate's 401, the rate limiter's 429, the scope-class refusal) are written by shared middleware in bex's own JSON shape; a gate around the surface rewrites each into the envelope (`10002`, `10058`, `10003`), keeping its headers and its message.
+  - **An object get is served with `Content-Disposition: attachment` unless the object stored one, `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; sandbox`,** and is exempt from response compression (its length and bytes are what was stored). Without them a signed-in browser that followed a link to an object would run a tenant's HTML on bex's origin, which ADR095 D7 forbids for attachments.
+  - **The put streams on a server-signed presigned PUT whose only signed header is `content-length`;** `Content-Type` and the other entity headers travel unsigned and are stored as sent. The fake S3 refuses a PUT with no Content-Length the way Wasabi does. Errors from the Wasabi call never carry the URL: its query is a signature valid for 15 minutes.
+  - **`POST /cloudflare/client/v4/graphql` answers only `getR2StorageMetrics`;** any other operation is 400. A jurisdiction prefix on the bucket name (`eu_`, `fedramp_`) is dropped.
+  - **Not offered, each `10042`:** `PATCH` of a bucket, `lock`, `sippy`, `local-uploads`, `event_notifications`, `r2-catalog`, and every method of custom domains except the list, which answers `{"domains": []}`. `domains/managed` (`dev-url`) answers `10042` until w21/m417 replaces it.
+  - **wrangler 4.162.0 has no `object bulk put`;** `r2 object` offers `get`, `put` and `delete`. The earlier text listing it came from reading source of a different version.
 
 ### D4 — Public access: `dev-url` enables a read-only gateway at `pub-<obk-id>.onbex.co`
 
@@ -249,7 +265,7 @@ Each is its own follow-up, per the rule that parity-sufficient work ships and wi
 `/pmx adr 112 to w21` (2026-11-15) filed this split on the board as three milestones, each a shippable step, with the tasks below cut finer (tens of minutes each):
 
 - [w21/m415](../.pm/w21/blocked/m415/README.md): the core store and Contract A (t001, t002, t004 and the Contract A parts of t008 and t009), ending in a production walk.
-- [w21/m416](../.pm/w21/m416/README.md): Contract B, the sweep, lifecycle, purge and the shadow meters (t003, t005, t007 and the Contract B parts of t008 and t009), ending in a production walk.
+- [w21/m416](../.pm/w21/blocked/m416/README.md): Contract B, the sweep, lifecycle, purge and the shadow meters (t003, t005, t007 and the Contract B parts of t008 and t009), ending in a production walk.
 - [w21/m417](../.pm/w21/m417/README.md): public reads, objectgw and its caps, alert and kill switch (t006 and the public part of t009).
 
 t010 (pricing) is not filed: it waits for the user to set a price.
@@ -271,7 +287,7 @@ t010 (pricing) is not filed: it waits for the user to set a price.
 
 - **Render:** the EA region set, price, quotas, presign lifetime, the list default and cap, key rules, delete-missing status, overwrite semantics, whether roles or fine-grained keys treat object operations as a permission of their own, and whether buckets will ever be added. The evidence is the pinned CLI and SDK source and a few feedback-board posts.
 - **The SDKs:** whether they can be pointed at a non-Render base URL (D11).
-- **wrangler:** only the commands listed under Contract B as run. The rest come from source. Any other wrangler version may differ; 4.162.0 is the one measured. I did not check what wrangler does with a real GraphQL answer for `bucket info`, or its behavior for a bodiless 2xx beyond reading the source.
+- **wrangler:** 4.162.0 is the version measured, and **since 2026-11-15 every command of the Contract B table runs for real against bex's own handlers** (`scripts/wrangler-r2-contract.sh`, weekly in CI), including the ones the first measurement skipped: `bucket create` with `--location`, `--jurisdiction` and `--storage-class`, `cors set`, `lifecycle add|set|remove`, `domain add|update|remove` and `dev-url disable` (the last four answer `10042`). The same run answered `bucket info` from a GraphQL result, and read a 2xx body on every object route. It ran against a fake S3, not Wasabi. Any other wrangler version may differ.
 - **Cloudflare:** the meaning of `10020` and of any code not in the published table; R2's overwrite and ETag semantics, which bex does not copy exactly.
 - **Wasabi:**
   - **Settled 2026-11-15 on production Wasabi (`us-west-1`, w21/m415 t010):** a presigned PUT whose signature covers `Content-Length` is enforced. A body of exactly the signed length is stored (200); one longer, one shorter, and one sent chunked with no length are all refused with 403 `SignatureDoesNotMatch`. So Contract A's size cap rests on Wasabi, not on the mint rate and the sweep, and a streamed PUT (Contract B) must send a real `Content-Length`, never chunked encoding. Not yet probed: a body streamed from a network reader, which is the same bytes on the wire as a fixed-length one (m416 t003's test and walk confirm it).

@@ -114,13 +114,18 @@ func (s *Service) MintGet(ctx context.Context, workspaceID string, region Region
 	if err != nil {
 		return PresignedURL{}, err
 	}
-	if _, err := st.Head(ctx, wasabiKey); err != nil {
+	info, err := st.Head(ctx, wasabiKey)
+	if err != nil {
 		return PresignedURL{}, err
 	}
 	url, err := st.PresignGet(ctx, wasabiKey, PresignTTL)
 	if err != nil {
 		return PresignedURL{}, fmt.Errorf("presign get: %w", err)
 	}
+	// The bytes bypass bex-api, so egress is an estimate: the object's size,
+	// exact for a complete download and an upper bound for a ranged one
+	// (ADR112 D2).
+	s.RecordEgress(ctx, workspaceID, info.Size)
 	return PresignedURL{URL: url, ExpiresAt: time.Now().Add(PresignTTL).UTC()}, nil
 }
 

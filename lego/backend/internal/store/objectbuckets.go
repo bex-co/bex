@@ -174,6 +174,30 @@ func (s *PGStore) GetObjectBucketByID(ctx context.Context, id string) (ObjectBuc
 	return b, nil
 }
 
+// ListObjectBucketSummaries is ListObjectBuckets without each bucket's CORS and
+// lifecycle rules, which are up to 64 KiB and 1 MiB a bucket: a listing of a
+// full workspace must not load a gigabyte to print names. CORS and Lifecycle
+// are nil in the result.
+func (s *PGStore) ListObjectBucketSummaries(ctx context.Context, workspaceID string) ([]ObjectBucket, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT id, workspace_id, name, region, location_hint, system, public, created_at
+		 FROM object_buckets WHERE workspace_id = $1 AND deleted_at IS NULL ORDER BY created_at, id`,
+		workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ObjectBucket
+	for rows.Next() {
+		var b ObjectBucket
+		if err := rows.Scan(&b.ID, &b.WorkspaceID, &b.Name, &b.Region, &b.LocationHint, &b.System, &b.Public, &b.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
 // ListObjectBuckets returns the workspace's live buckets, oldest first.
 func (s *PGStore) ListObjectBuckets(ctx context.Context, workspaceID string) ([]ObjectBucket, error) {
 	rows, err := s.Pool.Query(ctx,
