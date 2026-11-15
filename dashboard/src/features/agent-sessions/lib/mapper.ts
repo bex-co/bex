@@ -6,16 +6,21 @@ import type {
   AgentSessionFieldsFragment,
   AgentSessionMintFieldsFragment,
   AgentSessionQueuedMessageFieldsFragment,
+  AgentSessionTurnInterruptsQuery,
 } from "@/graphql/definitions";
 import {
   parseAgentSessionPrState,
+  TURN_RETENTION_LOST_REASONS,
+  TURN_RETENTION_STATES,
   type AgentSessionConfigView,
   type AgentSessionDeliveryMode,
   type AgentSessionPhase,
   type AgentSessionTicket,
   type AgentSessionView,
+  type InterruptedTurns,
   type QueuedMessageView,
   type SteerResult,
+  type TurnRetentionView,
 } from "@/features/agent-sessions/types";
 
 /** Phases after which the session will not change on its own. */
@@ -179,6 +184,51 @@ export function toSteerResult(
       ? toQueuedMessageView(wire.queuedMessage)
       : null,
   };
+}
+
+type WireTurnRetention =
+  AgentSessionTurnInterruptsQuery["agentSessionTranscript"]["turns"][number];
+
+/**
+ * Projects a stopped turn's retention (ADR047 D12, w22/m413). A state or reason
+ * this build does not know reads as none and as an unnamed loss: a newer
+ * bex-api never makes the transcript claim something it did not say. A kept
+ * disk with no time is none, since "kept until" needs one.
+ */
+export function toTurnRetentionView(
+  wire: Pick<
+    WireTurnRetention,
+    "retention" | "retainedUntil" | "retentionLostReason"
+  >,
+): TurnRetentionView {
+  const state = TURN_RETENTION_STATES.find((s) => s === wire.retention);
+  if (!state || (state === "kept" && !wire.retainedUntil)) {
+    return { state: "none", until: null, lostReason: null };
+  }
+  return {
+    state,
+    until: state === "kept" ? wire.retainedUntil : null,
+    lostReason:
+      state === "lost"
+        ? (TURN_RETENTION_LOST_REASONS.find(
+            (reason) => reason === wire.retentionLostReason,
+          ) ?? null)
+        : null,
+  };
+}
+
+/** The turns a person stopped, by turn number, each with its retention. */
+export function toInterruptedTurns(
+  wire: ReadonlyArray<WireTurnRetention> | null | undefined,
+): InterruptedTurns {
+  return new Map(
+    (wire ?? [])
+      .filter((turn) => turn.interrupted)
+      .map((turn): [number, TurnRetentionView] => [
+        turn.turn,
+        toTurnRetentionView(turn),
+      ]),
+  );
 }
 
 /** Bounded title for list rows — caps raw task text to avoid DOM/ARIA bloat. */

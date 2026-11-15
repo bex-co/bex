@@ -716,6 +716,62 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Transcript line at the end of a turn a person stopped with Stop turn (ADR047 D12); not a failure",
   },
+  "agentSessions.turnRetentionSaving": {
+    message:
+      "Сохраняем ваши изменения, чтобы следующее сообщение могло продолжить с них.",
+    description:
+      "Transcript line under a stopped turn while its unsaved work is being saved so the next message can continue from it (ADR047 D12, w22/m413)",
+  },
+  "agentSessions.turnRetentionKept": {
+    message: "Ваши изменения хранятся до {time}.",
+    description:
+      "Transcript line under a stopped turn: its unpushed changes are kept until {time}, a date and time in the viewer's own zone (ADR047 D12, w22/m413)",
+  },
+  "agentSessions.turnRetentionKeptNoTime": {
+    message: "Ваши изменения сохранены для следующего сообщения.",
+    description:
+      "Same as the kept line before the browser knows the viewer's time zone, so it names no time",
+  },
+  "agentSessions.turnRetentionContinued": {
+    message: "Следующее сообщение продолжило работу с этими изменениями.",
+    description:
+      "Transcript line under a stopped turn: the next message started from its kept changes",
+  },
+  "agentSessions.turnRetentionLostExpired": {
+    message:
+      "Ваши неотправленные изменения потеряны: срок хранения песочницы истёк.",
+    description:
+      "Transcript line under a stopped turn: its kept sandbox expired and the unpushed changes in it are gone",
+  },
+  "agentSessions.turnRetentionLostStorageFull": {
+    message:
+      "Ваши неотправленные изменения не сохранены: хранилище песочниц рабочего пространства было заполнено.",
+    description:
+      "Transcript line under a stopped turn: nothing was kept because the workspace's sandbox storage cap was full",
+  },
+  "agentSessions.turnRetentionLostSaveFailed": {
+    message:
+      "Не удалось сохранить ваши неотправленные изменения, и они потеряны.",
+    description:
+      "Transcript line under a stopped turn: saving its sandbox failed, so the unpushed changes are gone",
+  },
+  "agentSessions.turnRetentionLostEditorOpen": {
+    message:
+      "Ваши неотправленные изменения не сохранены: в песочнице был открыт редактор.",
+    description:
+      "Transcript line under a stopped turn: nothing was kept because an editor (SSH) was open on the sandbox, which Stop does not end",
+  },
+  "agentSessions.turnRetentionLostNotRestored": {
+    message:
+      "Не удалось восстановить ваши неотправленные изменения, поэтому следующее сообщение началось со свежего checkout.",
+    description:
+      "Transcript line under a stopped turn: the next message could not start from the kept changes and started from a fresh checkout",
+  },
+  "agentSessions.turnRetentionLost": {
+    message: "Ваши неотправленные изменения потеряны.",
+    description:
+      "Transcript line under a stopped turn: its unpushed changes were lost, for a reason that is not worth naming (the session was canceled or archived)",
+  },
   "agentSessions.turnError": {
     message: "Сбой хода {turn}",
     description:

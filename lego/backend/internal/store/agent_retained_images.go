@@ -45,11 +45,14 @@ const (
 	RetainedImageReleased = "released"
 )
 
-// A turn's retention outcome (agent_session_turns.retention).
+// A turn's retention outcome (agent_session_turns.retention). A stopped turn
+// reads "" until its save has ended; TurnRetentionSaving is what a read says
+// for it meanwhile, derived from the image's row and never stored.
 const (
 	TurnRetentionKept      = "kept"
 	TurnRetentionContinued = "continued"
 	TurnRetentionLost      = "lost"
+	TurnRetentionSaving    = "saving"
 )
 
 // Why a retained image was released (agent_session_retained_images.release_reason).
@@ -65,6 +68,10 @@ const (
 	RetainedReleaseUnusable    = "unusable"
 	RetainedReleaseAbandoned   = "abandoned"
 	RetainedReleaseNewAgent    = "agent_image_changed"
+	// RetainedNotSavedEditorOpen is recorded on a stopped turn only, as the
+	// reason it kept nothing: an editor was open on its sandbox, which a Stop
+	// must not end, so no image was ever begun (agent_session_turns.retention_reason).
+	RetainedNotSavedEditorOpen = "editor_open"
 )
 
 // AgentRetainedImage is one retained image's handle.
@@ -296,8 +303,8 @@ func (s *PGStore) ReleaseAgentSessionRetainedImages(ctx context.Context, session
 
 // releaseRetainedImagesTx releases the live retained images matching where,
 // whose own placeholders are $1 to $len(args), and records the outcome on
-// their turns: continued for a continuation, lost for every other reason. A
-// turn that already continued stays so.
+// their turns: continued for a continuation, lost, with the reason, for every
+// other. A turn that already continued stays so.
 func releaseRetainedImagesTx(ctx context.Context, tx pgx.Tx, where, reason string, now time.Time, args ...any) error {
 	_, err := releaseRetainedImagesCount(ctx, tx, where, reason, now, args...)
 	return err
@@ -306,9 +313,9 @@ func releaseRetainedImagesTx(ctx context.Context, tx pgx.Tx, where, reason strin
 // releaseRetainedImagesCount is releaseRetainedImagesTx reporting how many
 // images it released.
 func releaseRetainedImagesCount(ctx context.Context, tx pgx.Tx, where, reason string, now time.Time, args ...any) (int64, error) {
-	outcome := TurnRetentionLost
+	outcome, lostReason := TurnRetentionLost, reason
 	if reason == RetainedReleaseContinued {
-		outcome = TurnRetentionContinued
+		outcome, lostReason = TurnRetentionContinued, ""
 	}
 	n := len(args)
 	sql := fmt.Sprintf(`
@@ -318,13 +325,13 @@ func releaseRetainedImagesCount(ctx context.Context, tx pgx.Tx, where, reason st
 		  WHERE (%s) AND state <> 'released'
 		  RETURNING session_id, turn
 		), turns AS (
-		  UPDATE agent_session_turns t SET retention = $%d
+		  UPDATE agent_session_turns t SET retention = $%d, retention_reason = $%d
 		  FROM released r
 		  WHERE t.session_id = r.session_id AND t.turn = r.turn AND t.retention <> 'continued'
 		)
-		SELECT count(*) FROM released`, n+1, n+2, where, n+3)
+		SELECT count(*) FROM released`, n+1, n+2, where, n+3, n+4)
 	var count int64
-	if err := tx.QueryRow(ctx, sql, append(args, now, reason, outcome)...).Scan(&count); err != nil {
+	if err := tx.QueryRow(ctx, sql, append(args, now, reason, outcome, lostReason)...).Scan(&count); err != nil {
 		return 0, err
 	}
 	return count, nil
@@ -433,6 +440,15 @@ func (s *PGStore) AgentSessionsSavingRetainedImage(ctx context.Context, sessionI
 // the stopped turn's disk was kept.
 func (s *PGStore) SetAgentSessionTurnStartNote(ctx context.Context, sessionID string, turn int, note string) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns SET start_note = $3 WHERE session_id = $1 AND turn = $2`, sessionID, turn, note)
+	return err
+}
+
+// SetAgentSessionTurnRetentionLost records on a stopped turn that its disk was
+// not kept, and why, when no image was ever begun for it (an editor was open on
+// its sandbox). A turn that already records an outcome keeps it.
+func (s *PGStore) SetAgentSessionTurnRetentionLost(ctx context.Context, sessionID string, turn int, reason string) error {
+	_, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns SET retention = $4, retention_reason = $3
+		WHERE session_id = $1 AND turn = $2 AND retention = ''`, sessionID, turn, reason, TurnRetentionLost)
 	return err
 }
 

@@ -8,6 +8,8 @@ import {
   isTerminalPhase,
   toAgentSessionTicket,
   toAgentSessionView,
+  toInterruptedTurns,
+  toTurnRetentionView,
 } from "@/features/agent-sessions/lib/mapper";
 import type {
   AgentSessionFieldsFragment,
@@ -15,9 +17,14 @@ import type {
 } from "@/graphql/definitions";
 import {
   AGENT_SESSION_PR_STATES,
+  TURN_RETENTION_LOST_REASONS,
+  TURN_RETENTION_STATES,
   type AgentSessionPhase,
 } from "@/features/agent-sessions/types";
-import { goStringConstant } from "@/test/go-source";
+import {
+  goStringConstant,
+  goStringConstantsWithPrefix,
+} from "@/test/go-source";
 import { agentSessionView } from "@/test/mocks/agent-session";
 
 const ALL_PHASES: AgentSessionPhase[] = [
@@ -394,5 +401,120 @@ describe("isSandboxCapacityFailure", () => {
         failureReasonCode: SANDBOX_CAPACITY_LIMIT,
       }),
     ).toBe(false);
+  });
+});
+
+// w22/m413 t004: what bex-api says became of a stopped turn's unpushed work.
+describe("toTurnRetentionView", () => {
+  const wireTurn = (
+    retention: string,
+    retainedUntil: string | null = null,
+    retentionLostReason = "",
+  ) => ({ retention, retainedUntil, retentionLostReason });
+
+  it("projects each state with only what it carries", () => {
+    expect(
+      toTurnRetentionView(wireTurn("kept", "2026-11-16T10:00:00Z")),
+    ).toEqual({
+      state: "kept",
+      until: "2026-11-16T10:00:00Z",
+      lostReason: null,
+    });
+    expect(toTurnRetentionView(wireTurn("saving"))).toEqual({
+      state: "saving",
+      until: null,
+      lostReason: null,
+    });
+    expect(toTurnRetentionView(wireTurn("continued"))).toEqual({
+      state: "continued",
+      until: null,
+      lostReason: null,
+    });
+    expect(toTurnRetentionView(wireTurn("lost", null, "storage_full"))).toEqual(
+      { state: "lost", until: null, lostReason: "storage_full" },
+    );
+  });
+
+  it("keeps a time only for a kept disk, and a reason only for a lost one", () => {
+    expect(
+      toTurnRetentionView(wireTurn("lost", "2026-11-16T10:00:00Z", "expired")),
+    ).toMatchObject({ until: null, lostReason: "expired" });
+    expect(
+      toTurnRetentionView(
+        wireTurn("continued", "2026-11-16T10:00:00Z", "expired"),
+      ),
+    ).toMatchObject({ until: null, lostReason: null });
+  });
+
+  it("reads a state, or a kept disk with no time, that it cannot say as none", () => {
+    for (const wire of [
+      wireTurn("none"),
+      wireTurn("a-newer-state"),
+      wireTurn(""),
+      wireTurn("kept", null),
+      wireTurn("kept", ""),
+    ]) {
+      expect(toTurnRetentionView(wire)).toEqual({
+        state: "none",
+        until: null,
+        lostReason: null,
+      });
+    }
+  });
+
+  it("leaves the cause of a loss unnamed when it is a newer one or absent", () => {
+    expect(
+      toTurnRetentionView(wireTurn("lost", null, "something-new")),
+    ).toEqual({ state: "lost", until: null, lostReason: null });
+    expect(toTurnRetentionView(wireTurn("lost"))).toMatchObject({
+      lostReason: null,
+    });
+  });
+
+  it("knows exactly bex-api's states and loss reasons", () => {
+    const path = "lego/backend/internal/agentsessions/turn_retention.go";
+    expect([...TURN_RETENTION_STATES]).toEqual([
+      goStringConstant(path, "RetentionNone"),
+      goStringConstant(path, "RetentionSaving"),
+      goStringConstant(path, "RetentionKept"),
+      goStringConstant(path, "RetentionContinued"),
+      goStringConstant(path, "RetentionLost"),
+    ]);
+    expect([...TURN_RETENTION_LOST_REASONS].sort()).toEqual(
+      goStringConstantsWithPrefix(path, "RetentionLostReason").sort(),
+    );
+  });
+});
+
+describe("toInterruptedTurns", () => {
+  const turn = (n: number, interrupted: boolean, retention = "none") => ({
+    __typename: "AgentSessionTranscriptTurn" as const,
+    turn: n,
+    interrupted,
+    retention,
+    retainedUntil: retention === "kept" ? "2026-11-16T10:00:00Z" : null,
+    retentionLostReason: "",
+  });
+
+  it("is the stopped turns by number, each with its retention, in turn order", () => {
+    const turns = toInterruptedTurns([
+      turn(1, false),
+      turn(2, true, "kept"),
+      turn(3, false, "kept"),
+      turn(4, true, "saving"),
+    ]);
+    expect([...turns.keys()]).toEqual([2, 4]);
+    expect(turns.get(2)).toEqual({
+      state: "kept",
+      until: "2026-11-16T10:00:00Z",
+      lostReason: null,
+    });
+    expect(turns.get(4)?.state).toBe("saving");
+  });
+
+  it("is empty with no read yet", () => {
+    expect(toInterruptedTurns(undefined).size).toBe(0);
+    expect(toInterruptedTurns(null).size).toBe(0);
+    expect(toInterruptedTurns([]).size).toBe(0);
   });
 });

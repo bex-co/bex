@@ -296,6 +296,46 @@ export interface QueuedMessageView {
 }
 
 /**
+ * What became of the unpushed work of a turn a person stopped (ADR047 D12,
+ * w22/m413): its disk, which the next message continues from while it is kept.
+ * The const lists are the single source for the wire mapping.
+ */
+export const TURN_RETENTION_STATES = [
+  "none",
+  "saving",
+  "kept",
+  "continued",
+  "lost",
+] as const;
+
+export type TurnRetentionState = (typeof TURN_RETENTION_STATES)[number];
+
+/** Why a lost disk was lost, when bex-api says so. */
+export const TURN_RETENTION_LOST_REASONS = [
+  "expired",
+  "storage_full",
+  "save_failed",
+  "editor_open",
+  "canceled",
+  "archived",
+  "not_restored",
+] as const;
+
+export type TurnRetentionLostReason =
+  (typeof TURN_RETENTION_LOST_REASONS)[number];
+
+export interface TurnRetentionView {
+  state: TurnRetentionState;
+  /** RFC 3339: when a kept disk expires; null for every other state. */
+  until: string | null;
+  /** Why a lost disk was lost; null for every other state, or an unnamed cause. */
+  lostReason: TurnRetentionLostReason | null;
+}
+
+/** The stopped turns of a session by turn number, each with its retention. */
+export type InterruptedTurns = ReadonlyMap<number, TurnRetentionView>;
+
+/**
  * What a steer answers: the session and its ticket as for any mint, plus the
  * message it queued when the session was busy (null when it started a turn).
  */

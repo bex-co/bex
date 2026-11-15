@@ -702,6 +702,62 @@ const deAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Transcript line at the end of a turn a person stopped with Stop turn (ADR047 D12); not a failure",
   },
+  "agentSessions.turnRetentionSaving": {
+    message:
+      "Deine Änderungen werden gespeichert, damit die nächste Nachricht daran anknüpfen kann.",
+    description:
+      "Transcript line under a stopped turn while its unsaved work is being saved so the next message can continue from it (ADR047 D12, w22/m413)",
+  },
+  "agentSessions.turnRetentionKept": {
+    message: "Deine Änderungen werden bis {time} aufbewahrt.",
+    description:
+      "Transcript line under a stopped turn: its unpushed changes are kept until {time}, a date and time in the viewer's own zone (ADR047 D12, w22/m413)",
+  },
+  "agentSessions.turnRetentionKeptNoTime": {
+    message: "Deine Änderungen werden für deine nächste Nachricht aufbewahrt.",
+    description:
+      "Same as the kept line before the browser knows the viewer's time zone, so it names no time",
+  },
+  "agentSessions.turnRetentionContinued": {
+    message: "Die nächste Nachricht hat mit diesen Änderungen weitergemacht.",
+    description:
+      "Transcript line under a stopped turn: the next message started from its kept changes",
+  },
+  "agentSessions.turnRetentionLostExpired": {
+    message:
+      "Deine nicht gepushten Änderungen gingen verloren, als die aufbewahrte Sandbox ablief.",
+    description:
+      "Transcript line under a stopped turn: its kept sandbox expired and the unpushed changes in it are gone",
+  },
+  "agentSessions.turnRetentionLostStorageFull": {
+    message:
+      "Deine nicht gepushten Änderungen wurden nicht aufbewahrt, weil der Sandbox-Speicher des Workspace voll war.",
+    description:
+      "Transcript line under a stopped turn: nothing was kept because the workspace's sandbox storage cap was full",
+  },
+  "agentSessions.turnRetentionLostSaveFailed": {
+    message:
+      "Deine nicht gepushten Änderungen konnten nicht gespeichert werden und gingen verloren.",
+    description:
+      "Transcript line under a stopped turn: saving its sandbox failed, so the unpushed changes are gone",
+  },
+  "agentSessions.turnRetentionLostEditorOpen": {
+    message:
+      "Deine nicht gepushten Änderungen wurden nicht aufbewahrt, weil in der Sandbox ein Editor geöffnet war.",
+    description:
+      "Transcript line under a stopped turn: nothing was kept because an editor (SSH) was open on the sandbox, which Stop does not end",
+  },
+  "agentSessions.turnRetentionLostNotRestored": {
+    message:
+      "Deine nicht gepushten Änderungen konnten nicht wiederhergestellt werden, daher begann die nächste Nachricht mit einem frischen Checkout.",
+    description:
+      "Transcript line under a stopped turn: the next message could not start from the kept changes and started from a fresh checkout",
+  },
+  "agentSessions.turnRetentionLost": {
+    message: "Deine nicht gepushten Änderungen gingen verloren.",
+    description:
+      "Transcript line under a stopped turn: its unpushed changes were lost, for a reason that is not worth naming (the session was canceled or archived)",
+  },
   "agentSessions.turnError": {
     message: "Durchgang {turn} fehlgeschlagen",
     description:

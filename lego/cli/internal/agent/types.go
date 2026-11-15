@@ -62,6 +62,10 @@ type session struct {
 	// (ADR047 D12); PendingMessages is how many wait to run on a session read.
 	Queued          *queuedMessage `json:"queuedMessage"`
 	PendingMessages int            `json:"pendingMessages"`
+	// stopped is the session's latest turn when a person stopped it, which
+	// `get` reads from the transcript for its text view: the session answer
+	// itself carries no turn.
+	stopped *transcriptTurn
 }
 
 // queuedMessage is a message waiting in the session's server-side queue.
@@ -195,4 +199,27 @@ func (p *transcriptPart) UnmarshalJSON(data []byte) error {
 type transcriptTurn struct {
 	Turn   int    `json:"turn"`
 	Prompt string `json:"prompt"`
+	// Interrupted says a person stopped the turn; Retention, RetainedUntil and
+	// RetentionLostReason say what became of its unpushed work (its disk, kept
+	// for the next message): none, saving, kept (until RetainedUntil),
+	// continued or lost (and why). StartNote is set on a turn that had to
+	// start from a fresh checkout although that disk was kept (ADR047 D12).
+	Interrupted         bool       `json:"interrupted"`
+	Retention           string     `json:"retention"`
+	RetainedUntil       *time.Time `json:"retainedUntil"`
+	RetentionLostReason string     `json:"retentionLostReason"`
+	StartNote           string     `json:"startNote"`
+	// raw is the turn as the API sent it, for --output json.
+	raw json.RawMessage
+}
+
+func (t *transcriptTurn) UnmarshalJSON(data []byte) error {
+	type fields transcriptTurn
+	var f fields
+	if err := json.Unmarshal(data, &f); err != nil {
+		return err
+	}
+	*t = transcriptTurn(f)
+	t.raw = append(json.RawMessage(nil), data...)
+	return nil
 }

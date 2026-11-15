@@ -525,7 +525,11 @@ type AgentSessionTranscriptTurn {
   prompt: String!
   result: String
   resultFinal: Boolean!
+  retainedUntil: String
+  retention: String!
+  retentionLostReason: String!
   skills: [AgentSessionSkill!]!
+  startNote: String!
   transcriptComplete: Boolean!
   transcriptTruncated: Boolean!
   truncationReason: String!

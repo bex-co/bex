@@ -537,6 +537,19 @@ type TranscriptTurn struct {
 	// Interrupted says a person stopped the turn before it ended on its own
 	// (ADR047 D12).
 	Interrupted bool `json:"interrupted"`
+	// Retention says what became of the unpushed work of a stopped turn (its
+	// disk, ADR047 D12, w22/m413): one of the Retention* values, "none" for
+	// every turn that kept nothing, a turn that was not stopped included.
+	// RetainedUntil is when a "kept" disk expires; RetentionLostReason is why
+	// a "lost" one was, one of the RetentionLostReason* values, absent when the
+	// reason is not one of them.
+	Retention           string     `json:"retention"`
+	RetainedUntil       *time.Time `json:"retainedUntil,omitempty"`
+	RetentionLostReason string     `json:"retentionLostReason,omitempty"`
+	// StartNote is set on a turn that had to start from a fresh checkout
+	// although the stopped turn's disk was kept: the sentence its delivery
+	// note begins with.
+	StartNote string `json:"startNote,omitempty"`
 	// Attachments are the files this turn attached (ADR095 D3); never null.
 	Attachments []TurnAttachment `json:"attachments"`
 	// OutputSchema is the JSON Schema the turn was accepted with (ADR094 D5),

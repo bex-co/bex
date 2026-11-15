@@ -671,6 +671,60 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Transcript line at the end of a turn a person stopped with Stop turn (ADR047 D12); not a failure",
   },
+  "agentSessions.turnRetentionSaving": {
+    message: "다음 메시지에서 이어갈 수 있도록 변경 사항을 저장하는 중입니다.",
+    description:
+      "Transcript line under a stopped turn while its unsaved work is being saved so the next message can continue from it (ADR047 D12, w22/m413)",
+  },
+  "agentSessions.turnRetentionKept": {
+    message: "변경 사항은 {time}까지 보관됩니다.",
+    description:
+      "Transcript line under a stopped turn: its unpushed changes are kept until {time}, a date and time in the viewer's own zone (ADR047 D12, w22/m413)",
+  },
+  "agentSessions.turnRetentionKeptNoTime": {
+    message: "변경 사항은 다음 메시지를 위해 보관됩니다.",
+    description:
+      "Same as the kept line before the browser knows the viewer's time zone, so it names no time",
+  },
+  "agentSessions.turnRetentionContinued": {
+    message: "다음 메시지가 이 변경 사항에서 이어졌습니다.",
+    description:
+      "Transcript line under a stopped turn: the next message started from its kept changes",
+  },
+  "agentSessions.turnRetentionLostExpired": {
+    message:
+      "보관된 샌드박스가 만료되어 푸시하지 않은 변경 사항이 사라졌습니다.",
+    description:
+      "Transcript line under a stopped turn: its kept sandbox expired and the unpushed changes in it are gone",
+  },
+  "agentSessions.turnRetentionLostStorageFull": {
+    message:
+      "워크스페이스의 샌드박스 저장 공간이 가득 차서 푸시하지 않은 변경 사항이 보관되지 않았습니다.",
+    description:
+      "Transcript line under a stopped turn: nothing was kept because the workspace's sandbox storage cap was full",
+  },
+  "agentSessions.turnRetentionLostSaveFailed": {
+    message: "푸시하지 않은 변경 사항을 저장하지 못해 사라졌습니다.",
+    description:
+      "Transcript line under a stopped turn: saving its sandbox failed, so the unpushed changes are gone",
+  },
+  "agentSessions.turnRetentionLostEditorOpen": {
+    message:
+      "샌드박스에서 편집기가 열려 있어 푸시하지 않은 변경 사항이 보관되지 않았습니다.",
+    description:
+      "Transcript line under a stopped turn: nothing was kept because an editor (SSH) was open on the sandbox, which Stop does not end",
+  },
+  "agentSessions.turnRetentionLostNotRestored": {
+    message:
+      "푸시하지 않은 변경 사항을 복원하지 못해 다음 메시지는 새 체크아웃에서 시작되었습니다.",
+    description:
+      "Transcript line under a stopped turn: the next message could not start from the kept changes and started from a fresh checkout",
+  },
+  "agentSessions.turnRetentionLost": {
+    message: "푸시하지 않은 변경 사항이 사라졌습니다.",
+    description:
+      "Transcript line under a stopped turn: its unpushed changes were lost, for a reason that is not worth naming (the session was canceled or archived)",
+  },
   "agentSessions.turnError": {
     message: "{turn}번째 턴 실패",
     description:

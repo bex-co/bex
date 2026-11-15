@@ -678,8 +678,16 @@ export type AgentSessionTranscriptTurn = {
   result: Maybe<Scalars['String']['output']>;
   /** The agent declared result final; only a final result becomes outcome.result. */
   resultFinal: Scalars['Boolean']['output'];
+  /** When the disk of a kept turn expires (RFC 3339); null for every other retention. */
+  retainedUntil: Maybe<Scalars['String']['output']>;
+  /** What became of the unpushed work of a turn a person stopped (its disk, ADR047 D12): none (nothing was kept, and always for a turn that was not stopped), saving (being saved now), kept (until retainedUntil; the next message continues from it), continued (the next turn started from it) or lost (retentionLostReason says why, when it is known). */
+  retention: Scalars['String']['output'];
+  /** Why a lost disk was lost: expired, storage_full (the workspace's storage cap was full), save_failed, editor_open (an editor was open on the sandbox), canceled, archived or not_restored (the next turn could not start from it). Empty when the turn's retention is not lost or the cause is none of these. */
+  retentionLostReason: Scalars['String']['output'];
   /** The workspace skills this turn invoked (ADR099). */
   skills: Array<AgentSessionSkill>;
+  /** Set on a turn that had to start from a fresh checkout although the stopped turn's disk was kept: the sentence its delivery note begins with. Empty otherwise. */
+  startNote: Scalars['String']['output'];
   transcriptComplete: Scalars['Boolean']['output'];
   transcriptTruncated: Scalars['Boolean']['output'];
   truncationReason: Scalars['String']['output'];

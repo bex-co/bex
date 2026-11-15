@@ -1165,8 +1165,12 @@ func TestAStopWithAnOpenEditorKeepsTheSandboxAndRetainsNothing(t *testing.T) {
 	if row.Phase != PhaseCompleted || !e.turn(t, 1).Interrupted {
 		t.Fatalf("the stopped turn settled as %+v", row)
 	}
-	if len(e.rs.retained) != 0 || e.handles(t) != 0 || e.turn(t, 1).Retention != "" {
+	if len(e.rs.retained) != 0 || e.handles(t) != 0 {
 		t.Fatalf("a session with an open editor was saved: %+v, handles %d", e.rs.retained, e.handles(t))
+	}
+	// The turn says why nothing was kept.
+	if turn := e.turn(t, 1); turn.Retention != store.TurnRetentionLost || turn.RetentionReason != store.RetainedNotSavedEditorOpen {
+		t.Fatalf("turn = %+v, want the open editor recorded as why nothing was kept", turn)
 	}
 	e.c.reapIdleSandboxes(context.Background())
 	if e.lc.canceled != 0 || e.session(t).SandboxID != before.SandboxID {

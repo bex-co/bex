@@ -544,3 +544,83 @@ func TestPGClearRetainedSandboxIsConditional(t *testing.T) {
 		t.Fatalf("the clear for the session's sandbox left %q / %v", read(), err)
 	}
 }
+
+// A stopped turn's record carries what the API says about its disk
+// (w22/m413 t004): "saving" for as long as the save runs, which the read
+// derives from the image's row, and, once the image is released, why it was
+// lost, copied onto the turn because the row is deleted after the purge. A
+// disk that was continued keeps its outcome and no reason.
+func TestPGTurnRecordsWhyItsDiskWasLost(t *testing.T) {
+	f := newRetainedFixture(t, "retain-turn-reason")
+	ctx := context.Background()
+
+	// While the save runs the turn reads "saving"; a turn nobody saves reads
+	// "" and so does one not stopped.
+	session, img := f.saving()
+	if turn := f.turn(session); turn.Retention != TurnRetentionSaving || turn.RetentionReason != "" {
+		t.Fatalf("turn while saving = %+v, want saving", turn)
+	}
+	var stored string
+	if err := f.pool.QueryRow(ctx, `SELECT retention FROM agent_session_turns WHERE session_id = $1`, session.ID).Scan(&stored); err != nil || stored != "" {
+		t.Fatalf("the stored retention while saving = %q / %v: \"saving\" is derived, never stored", stored, err)
+	}
+	if turn := f.turn(f.running()); turn.Retention != "" {
+		t.Fatalf("a running turn reads %+v", turn)
+	}
+	if err := f.s.ReserveAgentSessionRetainedImage(ctx, f.ws, img.ID, 4096, 1<<40); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := f.s.KeepAgentSessionRetainedImage(ctx, img.ID, testImageDigest, f.now.Add(time.Hour)); err != nil || !ok {
+		t.Fatalf("keep = %v / %v", ok, err)
+	}
+	if turn := f.turn(session); turn.Retention != TurnRetentionKept || turn.RetentionReason != "" {
+		t.Fatalf("turn once kept = %+v", turn)
+	}
+	// A turn that holds an outcome is not overwritten by the editor-open record.
+	if err := f.s.SetAgentSessionTurnRetentionLost(ctx, session.ID, 1, RetainedNotSavedEditorOpen); err != nil {
+		t.Fatal(err)
+	}
+	if turn := f.turn(session); turn.Retention != TurnRetentionKept || turn.RetentionReason != "" {
+		t.Fatalf("a kept turn was recorded lost: %+v", turn)
+	}
+
+	// Each reason a release gives is copied onto the turn with the loss.
+	for _, reason := range []string{RetainedReleaseExpired, RetainedReleaseStorageFull, RetainedReleaseSaveFailed, RetainedReleaseCanceled} {
+		stopped, image := f.kept(4096, time.Hour)
+		if ok, err := f.s.ReleaseAgentSessionRetainedImage(ctx, image.ID, reason, f.now); err != nil || !ok {
+			t.Fatalf("release %s = %v / %v", reason, ok, err)
+		}
+		if turn := f.turn(stopped); turn.Retention != TurnRetentionLost || turn.RetentionReason != reason {
+			t.Fatalf("turn released as %s = %+v", reason, turn)
+		}
+	}
+
+	// A continuation records no reason, and a later release of another image
+	// does not turn it into a loss.
+	continued, used := f.kept(4096, time.Hour)
+	if _, err := f.s.ClaimAgentSessionRetainedImage(ctx, continued.ID, f.now, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.FinishAgentSessionRetainedImages(ctx, continued.ID, used.ID, f.now); err != nil {
+		t.Fatal(err)
+	}
+	if turn := f.turn(continued); turn.Retention != TurnRetentionContinued || turn.RetentionReason != "" {
+		t.Fatalf("continued turn = %+v", turn)
+	}
+	if err := f.s.ReleaseAgentSessionRetainedImages(ctx, continued.ID, RetainedReleaseCanceled, f.now); err != nil {
+		t.Fatal(err)
+	}
+	if turn := f.turn(continued); turn.Retention != TurnRetentionContinued || turn.RetentionReason != "" {
+		t.Fatalf("a continued turn changed after a later release: %+v", turn)
+	}
+
+	// With no image ever begun, the record of why is written once and holds.
+	editor := f.running()
+	f.stop(editor)
+	if err := f.s.SetAgentSessionTurnRetentionLost(ctx, editor.ID, 1, RetainedNotSavedEditorOpen); err != nil {
+		t.Fatal(err)
+	}
+	if turn := f.turn(editor); turn.Retention != TurnRetentionLost || turn.RetentionReason != RetainedNotSavedEditorOpen {
+		t.Fatalf("turn with an open editor = %+v", turn)
+	}
+}

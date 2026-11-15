@@ -421,16 +421,20 @@ query AgentSessionTurnSkills($id: String!) {
 }
 
 # Which turns a person stopped with Stop turn (ADR047 D12), so the transcript
-# can mark them "interrupted" rather than leave them looking cut off. Like the
-# two turn reads above it pages past every part. Its page size differs from
-# theirs (limit 2, not 1) only to keep it under its own cache key: `turns` has
-# no identity to merge by, so reads of one key that select different fields can
-# replace each other's list.
+# can mark them "interrupted" rather than leave them looking cut off, and what
+# became of each one's unpushed work (w22/m413): kept until a time, being saved,
+# continued, lost for a reason. Like the two turn reads above it pages past
+# every part. Its page size differs from theirs (limit 2, not 1) only to keep
+# it under its own cache key: `turns` has no identity to merge by, so reads of
+# one key that select different fields can replace each other's list.
 query AgentSessionTurnInterrupts($id: String!) {
   agentSessionTranscript(id: $id, afterSeq: 2147483647, limit: 2) {
     turns {
       turn
       interrupted
+      retention
+      retainedUntil
+      retentionLostReason
     }
   }
 }

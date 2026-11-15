@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -492,6 +493,29 @@ func (a *api) transcript(ctx context.Context, id string, afterSeq int64) (transc
 		return transcriptPage{}, fmt.Errorf("read transcript of agent session %s: %w", id, err)
 	}
 	return page, nil
+}
+
+// stoppedTurn is the session's latest turn when a person stopped it (ADR047
+// D12), or nil: read from the transcript with no part, so it costs one small
+// request, and only for a session that has settled. It is best effort: a
+// failed read leaves the session shown without it, never fails the command.
+func (a *api) stoppedTurn(ctx context.Context, s session) *transcriptTurn {
+	if !settled(s) || s.Turns == 0 {
+		return nil
+	}
+	query := url.Values{"limit": {"1"}, "afterSeq": {strconv.Itoa(math.MaxInt32)}}
+	raw, err := a.getJSON(ctx, query, "agent-sessions", s.ID, "transcript")
+	if err != nil {
+		return nil
+	}
+	var page transcriptPage
+	if json.Unmarshal(raw, &page) != nil || len(page.Turns) == 0 {
+		return nil
+	}
+	if last := page.Turns[len(page.Turns)-1]; last.Interrupted {
+		return &last
+	}
+	return nil
 }
 
 // downloadError is a storage answer other than 200.

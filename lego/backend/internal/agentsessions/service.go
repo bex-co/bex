@@ -1477,7 +1477,9 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 		Turns:        make([]TranscriptTurn, 0, len(turnRows)),
 		NextAfterSeq: afterSeq,
 	}
+	now := s.Now()
 	for _, turn := range turnRows {
+		retention := turnRetention(turn, now)
 		page.Turns = append(page.Turns, TranscriptTurn{
 			Turn: turn.Turn, Prompt: turn.Prompt, DeliveryMode: turn.DeliveryMode,
 			TranscriptComplete:  turn.TranscriptComplete,
@@ -1487,6 +1489,8 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			OutputSchema: jsonValue(turn.OutputSchema), OutputRequired: turn.OutputRequired,
 			Result: jsonValue(turn.Result), ResultFinal: turn.ResultFinal,
 			Skills: turnSkills(turn.Skills), Interrupted: turn.Interrupted,
+			Retention: retention.State, RetainedUntil: retention.Until,
+			RetentionLostReason: retention.LostReason, StartNote: turn.StartNote,
 		})
 	}
 	for _, p := range parts {

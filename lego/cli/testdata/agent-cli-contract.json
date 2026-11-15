@@ -90,6 +90,11 @@
         "transcriptComplete": true,
         "transcriptTruncated": false,
         "createdAt": "2026-11-05T10:00:00Z",
+        "interrupted": true,
+        "retention": "kept",
+        "retainedUntil": "2026-11-06T10:00:00Z",
+        "retentionLostReason": "expired",
+        "startNote": "The changes kept from the stopped turn could not be restored, so this turn started from a fresh checkout of the branch.",
         "attachments": []
       }
     ],

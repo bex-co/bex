@@ -221,6 +221,9 @@ func writeSession(w io.Writer, s session) {
 	}
 	row("PR", pr)
 	row("Delivery", o.DeliveryNote)
+	if s.stopped != nil {
+		row("Stopped", stoppedNote(*s.stopped))
+	}
 	if c := o.Cost; c != nil {
 		switch {
 		case c.TotalUSD != "":
@@ -303,6 +306,10 @@ type partPrinter struct {
 	printed   map[partKey]bool
 	held      []transcriptPart
 	lastTurn  int
+	// stopped are the turns a person stopped (ADR047 D12), as last read, and
+	// ended the ones whose ending has been printed.
+	stopped map[int]transcriptTurn
+	ended   map[int]bool
 }
 
 type partKey struct {
@@ -311,12 +318,16 @@ type partKey struct {
 }
 
 func newPartPrinter(w io.Writer, jsonLines, reasoning bool) *partPrinter {
-	return &partPrinter{w: w, jsonLines: jsonLines, reasoning: reasoning, prompts: map[int]string{}, printed: map[partKey]bool{}}
+	return &partPrinter{w: w, jsonLines: jsonLines, reasoning: reasoning, prompts: map[int]string{}, printed: map[partKey]bool{},
+		stopped: map[int]transcriptTurn{}, ended: map[int]bool{}}
 }
 
 func (p *partPrinter) turns(turns []transcriptTurn) {
 	for _, t := range turns {
 		p.prompts[t.Turn] = t.Prompt
+		if t.Interrupted {
+			p.stopped[t.Turn] = t
+		}
 	}
 }
 
@@ -335,6 +346,7 @@ func (p *partPrinter) flush() {
 		p.print(part)
 	}
 	p.held = nil
+	p.endTurn(p.lastTurn)
 }
 
 func (p *partPrinter) print(part transcriptPart) {
@@ -344,6 +356,7 @@ func (p *partPrinter) print(part transcriptPart) {
 	}
 	p.printed[key] = true
 	if p.jsonLines {
+		p.enterTurn(part.Turn)
 		_, _ = fmt.Fprintf(p.w, "%s\n", compactJSON(part.raw))
 		return
 	}
@@ -370,12 +383,39 @@ func (p *partPrinter) turnError(turn int, text string) {
 	_, _ = fmt.Fprintf(p.w, "error: %s\n", clip(firstLine(text), 200))
 }
 
-// turnHeader opens turn with its prompt, once.
-func (p *partPrinter) turnHeader(turn int) {
+// enterTurn moves the printer to turn, ending the turn before it, and reports
+// whether it was not there already.
+func (p *partPrinter) enterTurn(turn int) bool {
 	if turn == p.lastTurn {
+		return false
+	}
+	p.endTurn(p.lastTurn)
+	p.lastTurn = turn
+	return true
+}
+
+// endTurn closes a turn a person stopped, once, with what became of its
+// unpushed work (w22/m413): the sentence the dashboard shows under the same
+// turn, or with -o json the turn as the API sent it. A turn that was not
+// stopped has no ending of its own.
+func (p *partPrinter) endTurn(turn int) {
+	t, ok := p.stopped[turn]
+	if !ok || p.ended[turn] {
 		return
 	}
-	p.lastTurn = turn
+	p.ended[turn] = true
+	if p.jsonLines {
+		_, _ = fmt.Fprintf(p.w, "%s\n", compactJSON(t.raw))
+		return
+	}
+	_, _ = fmt.Fprintf(p.w, "■ %s\n", stoppedNote(t))
+}
+
+// turnHeader opens turn with its prompt, once.
+func (p *partPrinter) turnHeader(turn int) {
+	if !p.enterTurn(turn) {
+		return
+	}
 	_, _ = fmt.Fprintf(p.w, "── turn %d ──\n", turn)
 	if prompt := strings.TrimSpace(p.prompts[turn]); prompt != "" {
 		_, _ = fmt.Fprintf(p.w, "> %s\n", clip(strings.ReplaceAll(prompt, "\n", " "), 200))

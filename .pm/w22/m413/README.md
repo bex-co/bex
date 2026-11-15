@@ -1,6 +1,6 @@
 # w22 · m413 — A Stop turn keeps its work: the interrupted turn's disk is retained and the next message continues from it, as on Devin
 
-**Worker:** worker22 **Goal:** after a user stops a turn, the agent's uncommitted and unpushed work is still in the checkout when the next message starts, for a bounded time and with the user told how long, and Stop shows within seconds. **Status:** todo (t001–t003 done and shipped)
+**Worker:** worker22 **Goal:** after a user stops a turn, the agent's uncommitted and unpushed work is still in the checkout when the next message starts, for a bounded time and with the user told how long, and Stop shows within seconds. **Status:** todo (t001–t004 done)
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | Stop shows within seconds: the Completer reads a stop-requested session's status on a short tick — **DONE** | 45m | — |
 | t002 | Retain: an interrupted turn's disk is kept as an image, counted by the storage cap, bounded in time and deleted when it ends — **DONE** | 3h | t001 |
 | t003 | Continue: the next message boots a fresh sandbox from the retained image, and falls back to a fresh one when it is gone — **DONE** | 2h30m | t002 |
-| t004 | Show retention: the dashboard, API and CLI say how long the changes are kept, and that they were lost if they expired | 1h30m | t002 |
+| t004 | Show retention: the dashboard, API and CLI say how long the changes are kept, and that they were lost if they expired — **DONE** | 1h30m | t002 |
 | t005 | Render parity (Devin) | 30m | t003, t004 |
 | t006 | Simplify | 20m | t005 |
 | t007 | Test coverage | 45m | t005 |

@@ -11,7 +11,9 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
 }));
 
 const interrupted = vi.hoisted(() => ({
-  turns: new Set<number>([2]),
+  turns: new Map([
+    [2, { state: "kept", until: "2026-11-16T10:00:00Z", lostReason: null }],
+  ]),
   calls: [] as Array<[string, string | undefined]>,
 }));
 vi.mock(
@@ -30,13 +32,19 @@ vi.mock(
     SessionConversationImpl: ({
       interruptedTurns,
     }: {
-      interruptedTurns: ReadonlySet<number>;
-    }) => <div data-testid="impl">{[...interruptedTurns].join(",")}</div>,
+      interruptedTurns: ReadonlyMap<number, { state: string }>;
+    }) => (
+      <div data-testid="impl">
+        {[...interruptedTurns]
+          .map(([turn, r]) => `${turn}:${r.state}`)
+          .join(",")}
+      </div>
+    ),
   }),
 );
 
 describe("SessionConversation", () => {
-  it("passes the interrupted turns to the conversation, keyed by the attach signal", async () => {
+  it("passes the interrupted turns and their retention to the conversation, keyed by the attach signal", async () => {
     render(
       <SessionConversation
         sessionId="as-1"
@@ -45,7 +53,7 @@ describe("SessionConversation", () => {
         attachSignal="3:sbx-1:true"
       />,
     );
-    expect(await screen.findByTestId("impl")).toHaveTextContent("2");
+    expect(await screen.findByTestId("impl")).toHaveTextContent("2:kept");
     expect(interrupted.calls.at(-1)).toEqual(["as-1", "3:sbx-1:true"]);
   });
 });

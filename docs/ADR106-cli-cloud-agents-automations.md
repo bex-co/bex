@@ -286,6 +286,20 @@ bex agent send <session> --wait | --follow <message…>
                                    then for its own turn (w22/013); exit 1 if it left without a turn
 ```
 
+### `bex agent get` and `logs`: what became of a stopped turn's work
+
+A turn a person stopped keeps its unpushed work as a disk the next message continues from, for a bounded time ([ADR047](ADR047-cloud-coding-agent-sessions.md) D12, w22/m413 t004). The turn's transcript entry carries `interrupted`, `retention` (`none`, `saving`, `kept`, `continued` or `lost`), `retainedUntil` and `retentionLostReason`; the CLI says it in the dashboard's English.
+
+| Command | Output |
+| --- | --- |
+| `logs` | the stopped turn ends with `■ Turn N was interrupted before it finished.` and, for `kept`, ` Your changes are kept until 2026-11-16 10:00 PST.` (the viewer's zone), for `saving` ` Saving your changes so the next message can continue from them.`, for `continued` ` The next message continued from these changes.`, for `lost` ` Your unpushed changes were lost when the retained sandbox expired.` or the briefer cause (a full storage cap, a failed save, an open editor, a disk the next turn could not restore); `none` adds only the first sentence. The line comes after the turn's last row and before the next turn's header. |
+| `logs -o json` | one transcript row per line as before, and after the rows of a stopped turn that turn as the API sent it (it has no `seq`), so a script reads `retention` and `retainedUntil` |
+| `get` | a `Stopped` row with the same text when the session has settled and its latest turn was stopped, from one extra read of the transcript that asks for no part (`afterSeq=2147483647&limit=1`); the read is best effort, so a failure leaves the session shown without the row |
+| `get -o json\|yaml`, `wait`, `run --wait`, `chat` | unchanged: the API's own session answer, which carries no turn, and no extra request |
+
+- A state or reason this CLI does not know is shown as no sentence or as a plain loss, never as a claim the server did not make.
+- `logs --follow` prints the line for a stopped turn that is behind the stream, and for the last one when the follow ends on the poll fallback; a turn that has only just settled reads `saving`.
+
 ### `bex agent chat`
 
 ```

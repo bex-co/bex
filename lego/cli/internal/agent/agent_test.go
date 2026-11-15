@@ -55,7 +55,8 @@ type fakeAPI struct {
 	retryAfter string         // Retry-After sent with a createErrs or failTail answer
 	transcript map[string][]string
 	files      map[string][]attachmentFixture
-	raw        map[string]string // session id -> a GET answer served verbatim
+	raw        map[string]string           // session id -> a GET answer served verbatim
+	turns      map[string][]map[string]any // session id -> the turns a transcript page lists, when not the default two
 	// The end of a turn: once a GET has served a session as settled, tailRows
 	// join its transcript and the next transcript reads answer failTail.
 	settled  map[string]bool
@@ -89,7 +90,7 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 		t: t, script: map[string][]string{}, gets: map[string]int{}, owner: map[string]string{},
 		ssh: map[string]string{}, failGets: map[string]int{}, transcript: map[string][]string{},
 		files: map[string][]attachmentFixture{}, settled: map[string]bool{}, tailRows: map[string][]string{},
-		raw: map[string]string{},
+		raw: map[string]string{}, turns: map[string][]map[string]any{},
 	}
 	f.storage = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
@@ -279,6 +280,7 @@ func (f *fakeAPI) transcriptPage(w http.ResponseWriter, r *http.Request) {
 	f.transcrGet++
 	f.transcrQuery = r.URL.RawQuery
 	rows := f.transcript[id]
+	turns := f.turns[id]
 	var status int
 	if f.settled[id] && len(f.failTail) > 0 {
 		status, f.failTail = f.failTail[0], f.failTail[1:]
@@ -291,7 +293,10 @@ func (f *fakeAPI) transcriptPage(w http.ResponseWriter, r *http.Request) {
 	if raw := r.URL.Query().Get("afterSeq"); raw != "" {
 		_, _ = fmt.Sscan(raw, &after)
 	}
-	page := map[string]any{"parts": []json.RawMessage{}, "turns": []map[string]any{{"turn": 1, "prompt": "fix it"}, {"turn": 2, "prompt": "again"}}, "nextAfterSeq": after}
+	if turns == nil {
+		turns = []map[string]any{{"turn": 1, "prompt": "fix it"}, {"turn": 2, "prompt": "again"}}
+	}
+	page := map[string]any{"parts": []json.RawMessage{}, "turns": turns, "nextAfterSeq": after}
 	for _, row := range rows {
 		var seq struct {
 			Seq int64 `json:"seq"`
@@ -439,6 +444,11 @@ func TestContractFixtureDecodes(t *testing.T) {
 	page := golden.TranscriptPage
 	if len(page.Parts) != 1 || page.Parts[0].Seq != 7 || page.Parts[0].PartIndex != 3 || !page.Parts[0].Partial || len(page.Parts[0].Part) == 0 || page.NextAfterSeq != 7 || page.Turns[0].Prompt == "" {
 		t.Fatalf("transcript fields lost: %+v", page)
+	}
+	// What became of a stopped turn's unpushed work (ADR047 D12, w22/m413).
+	if turn := page.Turns[0]; !turn.Interrupted || turn.Retention != "kept" || turn.RetainedUntil == nil || !turn.RetainedUntil.Equal(time.Date(2026, 11, 6, 10, 0, 0, 0, time.UTC)) ||
+		turn.RetentionLostReason != "expired" || !strings.Contains(turn.StartNote, "fresh checkout") || len(turn.raw) == 0 {
+		t.Fatalf("stopped turn fields lost: %+v", turn)
 	}
 	var envelope struct {
 		Error json.RawMessage `json:"error"`

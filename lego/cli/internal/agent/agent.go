@@ -791,6 +791,11 @@ func getCommand(d deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if inv.format == formatText {
+				// What became of a stopped turn's unpushed work is on the turn,
+				// not the session: the structured answers stay the API's own.
+				s.stopped = inv.api.stoppedTurn(inv.ctx, s)
+			}
 			return inv.show(s, raw)
 		},
 	}

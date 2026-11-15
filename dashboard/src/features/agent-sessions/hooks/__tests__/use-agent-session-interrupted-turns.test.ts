@@ -1,30 +1,50 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AGENT_SESSION_ACTIVE_POLL_MS } from "@/features/agent-sessions/hooks/use-agent-sessions";
 import { useAgentSessionInterruptedTurns } from "@/features/agent-sessions/hooks/use-agent-session-interrupted-turns";
 
 const refetch = vi.fn(async () => undefined);
+const startPolling = vi.fn();
+const stopPolling = vi.fn();
 const queryOptions = vi.fn();
 let data: unknown;
 
 vi.mock("@apollo/client/react", () => ({
   useQuery: (_doc: unknown, options: unknown) => {
     queryOptions(options);
-    return { data, refetch };
+    return { data, refetch, startPolling, stopPolling };
   },
 }));
 
 beforeEach(() => {
   refetch.mockClear();
+  startPolling.mockClear();
+  stopPolling.mockClear();
   queryOptions.mockClear();
   data = undefined;
 });
 
-const turns = (...t: Array<{ turn: number; interrupted: boolean }>) => ({
-  agentSessionTranscript: { turns: t },
+interface WireTurn {
+  turn: number;
+  interrupted: boolean;
+  retention?: string;
+  retainedUntil?: string | null;
+  retentionLostReason?: string;
+}
+
+const turns = (...t: WireTurn[]) => ({
+  agentSessionTranscript: {
+    turns: t.map((turn) => ({
+      retention: "none",
+      retainedUntil: null,
+      retentionLostReason: "",
+      ...turn,
+    })),
+  },
 });
 
 describe("useAgentSessionInterruptedTurns", () => {
-  it("is the set of turns flagged interrupted", () => {
+  it("is the turns flagged interrupted", () => {
     data = turns(
       { turn: 1, interrupted: false },
       { turn: 2, interrupted: true },
@@ -34,7 +54,43 @@ describe("useAgentSessionInterruptedTurns", () => {
     const { result } = renderHook(() =>
       useAgentSessionInterruptedTurns("ags-1", "k"),
     );
-    expect([...result.current]).toEqual([2, 4]);
+    expect([...result.current.keys()]).toEqual([2, 4]);
+  });
+
+  it("carries what became of each stopped turn's unpushed work", () => {
+    data = turns(
+      { turn: 1, interrupted: true, retention: "none" },
+      {
+        turn: 2,
+        interrupted: true,
+        retention: "kept",
+        retainedUntil: "2026-11-16T10:00:00Z",
+      },
+      {
+        turn: 3,
+        interrupted: true,
+        retention: "lost",
+        retentionLostReason: "storage_full",
+      },
+    );
+    const { result } = renderHook(() =>
+      useAgentSessionInterruptedTurns("ags-1", "k"),
+    );
+    expect(result.current.get(1)).toEqual({
+      state: "none",
+      until: null,
+      lostReason: null,
+    });
+    expect(result.current.get(2)).toEqual({
+      state: "kept",
+      until: "2026-11-16T10:00:00Z",
+      lostReason: null,
+    });
+    expect(result.current.get(3)).toEqual({
+      state: "lost",
+      until: null,
+      lostReason: "storage_full",
+    });
   });
 
   it("is empty before the read lands and when nothing was interrupted", () => {
@@ -47,7 +103,7 @@ describe("useAgentSessionInterruptedTurns", () => {
     expect(result.current.size).toBe(0);
   });
 
-  it("reads once on mount, from the cache then the network, without polling", () => {
+  it("reads once on mount, from the cache then the network, without a standing poll", () => {
     renderHook(() => useAgentSessionInterruptedTurns("ags-1", "k"));
     expect(queryOptions).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -57,6 +113,7 @@ describe("useAgentSessionInterruptedTurns", () => {
     );
     expect(queryOptions.mock.lastCall?.[0]).not.toHaveProperty("pollInterval");
     expect(refetch).not.toHaveBeenCalled();
+    expect(startPolling).not.toHaveBeenCalled();
   });
 
   it("reads again each time the settle key changes, and only then", () => {
@@ -79,5 +136,59 @@ describe("useAgentSessionInterruptedTurns", () => {
     expect(queryOptions).toHaveBeenLastCalledWith(
       expect.objectContaining({ skip: true }),
     );
+  });
+
+  // The disk is saved after the turn settles, for up to a few minutes, so the
+  // first read after a Stop says "saving": the hook keeps reading until the
+  // save has ended, and stops once it has.
+  describe("while a stopped turn's disk is being saved", () => {
+    it("polls at the active cadence until the save ends, then stops", () => {
+      data = turns({ turn: 1, interrupted: true, retention: "saving" });
+      const { result, rerender } = renderHook(() =>
+        useAgentSessionInterruptedTurns("ags-1", "k"),
+      );
+      expect(result.current.get(1)?.state).toBe("saving");
+      expect(startPolling).toHaveBeenLastCalledWith(
+        AGENT_SESSION_ACTIVE_POLL_MS,
+      );
+
+      data = turns({
+        turn: 1,
+        interrupted: true,
+        retention: "kept",
+        retainedUntil: "2026-11-16T10:00:00Z",
+      });
+      stopPolling.mockClear();
+      rerender();
+      expect(result.current.get(1)?.state).toBe("kept");
+      expect(stopPolling).toHaveBeenCalled();
+      expect(startPolling).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not poll for a kept, lost or continued disk, or a turn nobody stopped", () => {
+      data = turns(
+        { turn: 1, interrupted: false, retention: "saving" },
+        {
+          turn: 2,
+          interrupted: true,
+          retention: "kept",
+          retainedUntil: "2026-11-16T10:00:00Z",
+        },
+        { turn: 3, interrupted: true, retention: "lost" },
+        { turn: 4, interrupted: true, retention: "continued" },
+      );
+      renderHook(() => useAgentSessionInterruptedTurns("ags-1", "k"));
+      expect(startPolling).not.toHaveBeenCalled();
+    });
+
+    it("lets the poll go when the page unmounts", () => {
+      data = turns({ turn: 1, interrupted: true, retention: "saving" });
+      const { unmount } = renderHook(() =>
+        useAgentSessionInterruptedTurns("ags-1", "k"),
+      );
+      stopPolling.mockClear();
+      unmount();
+      expect(stopPolling).toHaveBeenCalled();
+    });
   });
 });

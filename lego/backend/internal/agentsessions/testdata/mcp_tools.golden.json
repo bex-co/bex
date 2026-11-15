@@ -5265,7 +5265,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Read one page of a cloud coding-agent session's durable conversation transcript, seq-ordered: each part is a completed item (a UIMessage text, reasoning or dynamic-tool part; a data snapshot; or a start/finish chunk), partial when the live stream ended inside it (a later page may carry its complete copy under a new seq with the same turn and partIndex, which supersedes it; render parts in turn, partIndex order). Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty.",
+    "description": "Read one page of a cloud coding-agent session's durable conversation transcript, seq-ordered: each part is a completed item (a UIMessage text, reasoning or dynamic-tool part; a data snapshot; or a start/finish chunk), partial when the live stream ended inside it (a later page may carry its complete copy under a new seq with the same turn and partIndex, which supersedes it; render parts in turn, partIndex order). Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty. Each turn in turns carries interrupted (a person stopped it) and, for a stopped turn, retention: what became of its unpushed work, the disk the next message continues from (none, saving, kept until retainedUntil, continued, or lost with retentionLostReason); startNote is set on a turn that had to start from a fresh checkout although that disk was kept.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -5399,6 +5399,18 @@
               "resultFinal": {
                 "type": "boolean"
               },
+              "retainedUntil": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "retention": {
+                "type": "string"
+              },
+              "retentionLostReason": {
+                "type": "string"
+              },
               "skills": {
                 "items": {
                   "additionalProperties": false,
@@ -5422,6 +5434,9 @@
                   "array"
                 ]
               },
+              "startNote": {
+                "type": "string"
+              },
               "transcriptComplete": {
                 "type": "boolean"
               },
@@ -5443,6 +5458,7 @@
               "transcriptTruncated",
               "createdAt",
               "interrupted",
+              "retention",
               "attachments",
               "skills"
             ],

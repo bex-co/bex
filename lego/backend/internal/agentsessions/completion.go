@@ -736,7 +736,9 @@ func (c *Completer) settleCompleted(ctx context.Context, record store.AgentSessi
 	var fact store.TerminalTurnFact
 	var retention *store.AgentRetainedImage
 	var err error
-	if outcome == turnOutcomeInterrupted && c.Retention.retains() && record.SandboxID != "" && !c.editorOpen(ctx, record) {
+	keeps := outcome == turnOutcomeInterrupted && c.Retention.retains() && record.SandboxID != ""
+	openEditor := keeps && c.editorOpen(ctx, record)
+	if keeps && !openEditor {
 		// A turn a person stopped keeps its disk (ADR047 D12): the same write
 		// that settles it begins the save.
 		final, fact, retention, err = c.finalizeRetaining(ctx, record, headSHA, note)
@@ -748,6 +750,12 @@ func (c *Completer) settleCompleted(ctx context.Context, record store.AgentSessi
 			log.Printf("agent-session completer: finalize failed (session=%s): %v", record.ID, err)
 		}
 		return // retry next tick; the sandbox stays until the row is finalized
+	}
+	if openEditor {
+		// The turn's record says why its disk was not kept (the API shows it).
+		if err := c.Retention.Store.SetAgentSessionTurnRetentionLost(ctx, record.ID, record.Turns, store.RetainedNotSavedEditorOpen); err != nil {
+			log.Printf("agent-session completer: recording that an open editor kept the disk of a stopped turn failed (session=%s): %v", record.ID, err)
+		}
 	}
 	c.Metrics.observeTerminalTurn(outcome, fact)
 	log.Printf("agent-session completer: %s session=%s pr=%s head=%s dirty=%t unpushed=%d undelivered=%t", outcome, record.ID, final.PRURL, final.HeadSHA, report.Git.Dirty, report.Git.UnpushedCommits, note != "")

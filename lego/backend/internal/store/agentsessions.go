@@ -128,15 +128,20 @@ type AgentSessionTurn struct {
 	Interrupted          bool
 	InterruptRequestedAt *time.Time
 	// Retention is what became of a stopped turn's disk (ADR047 D12,
-	// w22/m413): "" when nothing was kept, TurnRetentionKept until
-	// RetainedUntil, TurnRetentionContinued once the next turn started from
-	// it, TurnRetentionLost when it could not be kept or was released unused.
+	// w22/m413): "" when nothing was kept, TurnRetentionSaving while its save
+	// runs (derived by the read), TurnRetentionKept until RetainedUntil,
+	// TurnRetentionContinued once the next turn started from it,
+	// TurnRetentionLost when it could not be kept or was released unused.
 	// StartNote is a sentence this turn adds to its delivery note when it
 	// finishes: it started from a fresh sandbox although the stopped turn's
 	// disk was kept.
 	Retention     string
 	RetainedUntil *time.Time
 	StartNote     string
+	// RetentionReason is why a lost disk was lost: the retained image's
+	// release reason (RetainedRelease*), or RetainedNotSavedEditorOpen; "" for
+	// every other Retention.
+	RetentionReason string
 }
 
 // AgentTurnOutput is the structured-output contract a turn is accepted with
@@ -699,8 +704,12 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		       transcript_complete, transcript_truncated, truncation_reason,
 		       created_at, started_at, completed_at, attachments,
 		       output_schema, output_required, result, result_final, skills, interrupted, interrupt_requested_at,
-		       retention, retained_until, start_note
-		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`, sessionID)
+		       CASE WHEN retention = '' AND EXISTS (
+		              SELECT 1 FROM agent_session_retained_images r
+		              WHERE r.session_id = t.session_id AND r.turn = t.turn AND r.state = 'saving')
+		            THEN 'saving' ELSE retention END,
+		       retained_until, start_note, retention_reason
+		FROM agent_session_turns t WHERE session_id=$1 ORDER BY turn`, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -712,7 +721,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
 			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt, &turn.Attachments,
 			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal, &turn.Skills, &turn.Interrupted, &turn.InterruptRequestedAt,
-			&turn.Retention, &turn.RetainedUntil, &turn.StartNote); err != nil {
+			&turn.Retention, &turn.RetainedUntil, &turn.StartNote, &turn.RetentionReason); err != nil {
 			return nil, err
 		}
 		out = append(out, turn)

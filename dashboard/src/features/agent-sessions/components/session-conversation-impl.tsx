@@ -60,7 +60,10 @@ import {
   deriveConversationState,
   type ConversationState,
 } from "@/features/agent-sessions/lib/conversation-state";
-import type { AgentSessionPhase } from "@/features/agent-sessions/types";
+import type {
+  AgentSessionPhase,
+  InterruptedTurns,
+} from "@/features/agent-sessions/types";
 import {
   Task,
   TaskTrigger,
@@ -143,13 +146,14 @@ export interface SessionConversationImplProps {
   terminalLabel?: string;
   /**
    * The durable turns a person stopped with Stop turn (ADR047 D12), each marked
-   * "interrupted" where it ends. Read by the wrapper from GraphQL: an
-   * interrupted turn settles as a completed one, so the stream cannot say.
+   * "interrupted" where it ends, with what became of its unpushed work. Read
+   * by the wrapper from GraphQL: an interrupted turn settles as a completed
+   * one, so the stream cannot say.
    */
-  interruptedTurns?: ReadonlySet<number>;
+  interruptedTurns?: InterruptedTurns;
 }
 
-const NO_INTERRUPTED_TURNS: ReadonlySet<number> = new Set();
+const NO_INTERRUPTED_TURNS: InterruptedTurns = new Map();
 
 // A transcript can be as large as the gateway allows (64 MiB / thousands of
 // parts). The client must not translate that straight into an unbounded React
@@ -944,7 +948,7 @@ const MessageRow = memo(function MessageRow({
   showCursor: boolean;
   settled: boolean;
   interrupted: boolean;
-  interruptedTurns: ReadonlySet<number>;
+  interruptedTurns: InterruptedTurns;
 }) {
   const isUser = role === "user";
   // The row's last durable turn ends with the row, not before another prompt.
@@ -1021,7 +1025,11 @@ const MessageRow = memo(function MessageRow({
           }
           if (block.type === "turn-end") {
             return interruptedTurns.has(block.turn) ? (
-              <TurnInterruptedNote key={block.key} turn={block.turn} />
+              <TurnInterruptedNote
+                key={block.key}
+                turn={block.turn}
+                retention={interruptedTurns.get(block.turn)}
+              />
             ) : null;
           }
           return (
@@ -1039,7 +1047,10 @@ const MessageRow = memo(function MessageRow({
           );
         })}
         {lastTurn != null && interruptedTurns.has(lastTurn) ? (
-          <TurnInterruptedNote turn={lastTurn} />
+          <TurnInterruptedNote
+            turn={lastTurn}
+            retention={interruptedTurns.get(lastTurn)}
+          />
         ) : null}
       </div>
       {isUser && <UserAvatar />}
