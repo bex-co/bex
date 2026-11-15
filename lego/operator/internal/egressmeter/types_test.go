@@ -33,35 +33,16 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func TestReconcilePodsListsAllNamespacesOnNode(t *testing.T) {
+// A label selector cannot OR the App label with the sandbox label, so one
+// cluster-wide list scoped to the node finds both kinds in a single request per
+// reconcile, and a namespaced list would omit every post-migration workspace.
+func TestReconcilePodsMakesOneClusterWideNodeScopedList(t *testing.T) {
 	client := fake.NewClientset()
 	meter := &Meter{config: Config{NodeName: "node-a"}, client: client}
 	meter.config.defaults()
 
 	// The fake client records the list action before reconcile reaches the
 	// deliberately unavailable BPF maps in this unit test.
-	_ = meter.reconcilePods(context.Background())
-	actions := client.Actions()
-	if len(actions) == 0 {
-		t.Fatal("reconcile did not list Pods")
-	}
-	list, ok := actions[0].(ktesting.ListAction)
-	if !ok {
-		t.Fatalf("first action = %T, want ListAction", actions[0])
-	}
-	if list.GetNamespace() != "" {
-		t.Fatalf("Pod list namespace = %q, want cluster-wide", list.GetNamespace())
-	}
-}
-
-// w22/m414: App pods and sandbox pods are told apart by different labels, and
-// a label selector cannot OR two of them. One node-scoped list, filtered in
-// code, finds both without a second request every ReconcileEvery per node.
-func TestReconcilePodsMakesOneNodeScopedListWithoutALabelSelector(t *testing.T) {
-	client := fake.NewClientset()
-	meter := &Meter{config: Config{NodeName: "node-a"}, client: client}
-	meter.config.defaults()
-
 	_ = meter.reconcilePods(context.Background())
 	var lists []ktesting.ListAction
 	for _, action := range client.Actions() {
@@ -70,9 +51,13 @@ func TestReconcilePodsMakesOneNodeScopedListWithoutALabelSelector(t *testing.T) 
 		}
 	}
 	if len(lists) != 1 {
-		t.Fatalf("reconcile made %d Pod lists, want exactly 1 (flat API load)", len(lists))
+		t.Fatalf("reconcile made %d Pod lists, want exactly 1", len(lists))
 	}
-	restrictions := lists[0].GetListRestrictions()
+	list := lists[0]
+	if list.GetNamespace() != "" {
+		t.Fatalf("Pod list namespace = %q, want cluster-wide", list.GetNamespace())
+	}
+	restrictions := list.GetListRestrictions()
 	if got := restrictions.Fields.String(); got != "spec.nodeName=node-a" {
 		t.Fatalf("Pod list field selector = %q, want the node", got)
 	}
@@ -232,26 +217,26 @@ func TestDesiredPodResourcesRejectsMissingStableIdentity(t *testing.T) {
 	}
 }
 
-func appPod(name, namespace string, uid types.UID, appID, ip string) corev1.Pod {
-	return corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name, Namespace: namespace, UID: uid,
-			Labels: map[string]string{PodLabelApp: "web", PodLabelAppID: appID},
-		},
-		Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIPs: []corev1.PodIP{{IP: ip}}},
-	}
-}
-
-func sandboxPod(name, namespace string, uid types.UID, ip string, extra map[string]string) corev1.Pod {
-	labels := map[string]string{PodLabelSandboxID: "sbx-" + name, "app.bex.co/regime": "sandbox"}
-	maps.Copy(labels, extra)
+// testPod is a Running pod with one IP.
+func testPod(name, namespace string, uid types.UID, ip string, labels map[string]string) corev1.Pod {
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, UID: uid, Labels: labels},
 		Status:     corev1.PodStatus{Phase: corev1.PodRunning, PodIPs: []corev1.PodIP{{IP: ip}}},
 	}
 }
 
-// w22/m414: a /v1/sandboxes sandbox pod carries neither App label. Its egress
+func appPod(name, namespace string, uid types.UID, appID, ip string) corev1.Pod {
+	return testPod(name, namespace, uid, ip, map[string]string{PodLabelApp: "web", PodLabelAppID: appID})
+}
+
+// sandboxPod carries the labels OpenSandbox gives a /v1/sandboxes sandbox, plus extra.
+func sandboxPod(name, namespace string, uid types.UID, ip string, extra map[string]string) corev1.Pod {
+	labels := map[string]string{PodLabelSandboxID: "sbx-" + name, "app.bex.co/regime": "sandbox"}
+	maps.Copy(labels, extra)
+	return testPod(name, namespace, uid, ip, labels)
+}
+
+// A /v1/sandboxes sandbox pod carries neither App label. Its egress
 // is the workspace's, keyed by the sandbox namespace and one constant app id so
 // the series count follows workspaces, not short-lived sandboxes.
 func TestDesiredPodResourcesAttributesSandboxPodToItsWorkspace(t *testing.T) {
@@ -304,24 +289,18 @@ func TestDesiredPodResourcesKeepsAppPodsBesideSandboxPods(t *testing.T) {
 }
 
 func TestDesiredPodResourcesSkipsPodsThatAreNeitherAppNorSandbox(t *testing.T) {
-	bare := func(name, namespace string, uid types.UID, ip string, labels map[string]string) corev1.Pod {
-		return corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, UID: uid, Labels: labels},
-			Status:     corev1.PodStatus{Phase: corev1.PodRunning, PodIPs: []corev1.PodIP{{IP: ip}}},
-		}
-	}
 	pods := []corev1.Pod{
 		// No label at all, in a sandbox namespace: a snapshot Job or any
 		// platform pod there is not a sandbox.
-		bare("snapshot-job", "tea-aaa-sandbox", "uid-1", "10.244.5.20", nil),
-		bare("coredns", "kube-system", "uid-2", "10.244.0.5", map[string]string{"k8s-app": "kube-dns"}),
+		testPod("snapshot-job", "tea-aaa-sandbox", "uid-1", "10.244.5.20", nil),
+		testPod("coredns", "kube-system", "uid-2", "10.244.0.5", map[string]string{"k8s-app": "kube-dns"}),
 		// The regime label alone does not make a /v1/sandboxes sandbox.
-		bare("regime-only", "tea-aaa-sandbox", "uid-3", "10.244.5.21", map[string]string{"app.bex.co/regime": "sandbox"}),
+		testPod("regime-only", "tea-aaa-sandbox", "uid-3", "10.244.5.21", map[string]string{"app.bex.co/regime": "sandbox"}),
 		// An empty id is not an id.
-		bare("empty-id", "tea-aaa-sandbox", "uid-4", "10.244.5.22", map[string]string{PodLabelSandboxID: ""}),
+		testPod("empty-id", "tea-aaa-sandbox", "uid-4", "10.244.5.22", map[string]string{PodLabelSandboxID: ""}),
 		// The sandbox id outside a sandbox namespace never opens a series for
 		// a hosting namespace.
-		bare("misplaced", "tea-aaa", "uid-5", "10.244.1.30", map[string]string{PodLabelSandboxID: "sbx-x"}),
+		testPod("misplaced", "tea-aaa", "uid-5", "10.244.1.30", map[string]string{PodLabelSandboxID: "sbx-x"}),
 	}
 	v4, v6, expected, err := desiredPodResources(pods)
 	if err != nil || expected != 0 || len(v4) != 0 || len(v6) != 0 {
@@ -411,7 +390,7 @@ func TestDesiredPodResourcesAttributesDualStackSandboxPod(t *testing.T) {
 }
 
 // The sandbox pool is tainted bex.co/sandbox, so a meter that does not tolerate
-// it never runs where sandbox pods do and no sandbox byte is counted (w22/m414).
+// it never runs where sandbox pods do and no sandbox byte is counted.
 // EgressMeterTargetMissing's expected-node expression (deploy/gitops/base/rules)
 // names exactly these two pool taints, and the Grafana "Egress meter fleet"
 // panel mirrors it: change all three together. Platform, build-only and

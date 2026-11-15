@@ -34,7 +34,7 @@ type datastoreFootprint struct {
 }
 
 const (
-	// limitRangeEphemeralRequestGi / LimitGi are baseLimitRange's defaults,
+	// limitRangeEphemeralRequestGi / LimitGi are the LimitRange's defaults (baseLimitRange),
 	// charged to every container that declares no ephemeral-storage: CNPG's
 	// postgres and barman-cloud containers, PgBouncer, CNPG's bootstrap Jobs,
 	// Valkey and its exporter, the Key Value proxy and the export Job.

@@ -65,7 +65,7 @@ const (
 	// SandboxEgressAppID is the app id under which every /v1/sandboxes sandbox
 	// of a workspace is metered, in that workspace's sandbox namespace. One
 	// series per workspace keeps the cardinality bounded by workspaces rather
-	// than by short-lived sandboxes (w22/m414, ADR104 D11).
+	// than by short-lived sandboxes (ADR104 D11).
 	SandboxEgressAppID = "sandboxes"
 	// sandboxNamespaceSuffix names a workspace's sandbox namespace
 	// (backend store.SandboxNamespace: `<workspace>-sandbox`).
@@ -387,8 +387,7 @@ func (m *Meter) reconcilePods(ctx context.Context) error {
 	// its workspace's `<ws>-sandbox` namespace. Keep this list cluster-wide and
 	// constrain it by node alone: a namespaced list would silently omit every
 	// post-migration workspace, and a label selector cannot OR the App label
-	// with the sandbox label. One request per reconcile finds both kinds;
-	// desiredPodResources filters them in code.
+	// with the sandbox label.
 	pods, err := m.client.CoreV1().Pods("").List(ctx, metav1.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector("spec.nodeName", m.config.NodeName).String(),
 	})

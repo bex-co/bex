@@ -30,10 +30,6 @@ cd "$(dirname "$0")/.."
 payload_mb="${BEX_MEASURE_PAYLOAD_MB:-100}"
 accrual_wait_min="${BEX_MEASURE_ACCRUAL_WAIT_MIN:-22}"
 ws="$BEX_WORKSPACE_A"
-failures=0
-check() { # check <name> <true|false> <detail>
-  if [ "$2" = true ]; then pass "$1"; else echo "FAIL: $1 ($3)"; failures=$((failures + 1)); fi
-}
 
 zot_forward
 prom_forward

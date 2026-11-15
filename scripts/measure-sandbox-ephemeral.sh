@@ -21,10 +21,6 @@ cd "$(dirname "$0")/.."
 
 below_gib="${BEX_MEASURE_BELOW_GIB:-38}"
 past_gib="${BEX_MEASURE_PAST_GIB:-6}"
-failures=0
-check() { # check <name> <true|false> <detail>
-  if [ "$2" = true ]; then pass "$1"; else echo "FAIL: $1 ($3)"; failures=$((failures + 1)); fi
-}
 
 echo "==> create a sandbox and read its pod's limits"
 sandbox_id="$(create_sandbox "$fixture_dir/sandbox.json" '{"type":"deny-all"}')"

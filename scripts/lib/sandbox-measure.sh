@@ -41,6 +41,13 @@ fail() {
 }
 pass() { echo "PASS: $*"; }
 
+# check <name> <true|false> <detail>: a non-fatal assertion; a leg ends with
+# [ "$failures" = 0 ] || fail "...".
+failures=0
+check() {
+  if [ "$2" = true ]; then pass "$1"; else echo "FAIL: $1 ($3)"; failures=$((failures + 1)); fi
+}
+
 # measure <name> <json>: one evidence line.
 measure() { printf 'MEASURE %s %s\n' "$1" "$2"; }
 

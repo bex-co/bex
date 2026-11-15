@@ -154,14 +154,24 @@ func requestFor(cpu, memory string) (reqCPU, reqMem string) {
 }
 
 // ephemeralRequestFor requests a quarter of an ephemeral storage limit, as
-// requestFor does for CPU and memory, with the LimitRange's 1Gi default
-// request as the floor; "" stays "" (the LimitRange default applies).
+// requestFor does for CPU and memory, never below the LimitRange's 1Gi default
+// request and never above 2Gi; "" stays "" (the LimitRange default applies).
+//
+// The cap is for density. The scheduler adds every pod's request to a node's
+// allocatable ephemeral storage, so a quarter of the base template's 40Gi
+// limit is 10Gi and a ~300 GB sandbox node would hold about 28 sandboxes
+// whatever their CPU and memory (a starter sandbox used to ask for 1Gi, 2 to
+// 4 times that density). At 2Gi the disk allows about 140 and CPU and memory
+// bind again. A small request with a large limit is intended: when a node comes
+// under disk pressure the kubelet evicts the pods using more than their request
+// first, so a sandbox that really writes tens of GiB goes first, and the limit
+// still bounds each one.
 func ephemeralRequestFor(limit string) string {
 	q, err := resource.ParseQuantity(limit)
 	if err != nil || q.Value() <= 0 {
 		return ""
 	}
-	bytes := max(q.Value()/4, 1<<30)
+	bytes := min(max(q.Value()/4, 1<<30), 2<<30)
 	return resource.NewQuantity(bytes, resource.BinarySI).String()
 }
 

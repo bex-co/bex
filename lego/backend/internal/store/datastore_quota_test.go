@@ -102,7 +102,7 @@ func TestQuotaBoundsEphemeralStorage(t *testing.T) {
 	if free.Cmp(paid) != 0 {
 		t.Errorf("Hobby ephemeral-storage cap %s differs from the paid cap %s", free.String(), paid.String())
 	}
-	lr := baseLimitRange("ns")
+	lr := limitRangeFor("ns", RegimeHosting)
 	item := lr.Spec.Limits[0]
 	for _, list := range []corev1.ResourceList{item.DefaultRequest, item.Default, item.Max} {
 		if q, ok := list[corev1.ResourceEphemeralStorage]; !ok || q.Value() <= 0 {

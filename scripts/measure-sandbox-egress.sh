@@ -18,10 +18,6 @@ cd "$(dirname "$0")/.."
 . scripts/lib/sandbox-measure.sh
 
 up_bytes="${BEX_MEASURE_UP_BYTES:-52428800}"
-failures=0
-check() { # check <name> <true|false> <detail>
-  if [ "$2" = true ]; then pass "$1"; else echo "FAIL: $1 ($3)"; failures=$((failures + 1)); fi
-}
 
 echo "==> create an allow-all sandbox and read its labels"
 sandbox_id="$(create_sandbox "$fixture_dir/sandbox.json" '{"type":"allow-all"}')"

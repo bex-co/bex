@@ -27,18 +27,8 @@ const labelBytes = 64
 // maps. It intentionally excludes pod UID and workspace: one Prometheus series
 // identifies one App (or, under SandboxEgressAppID, all of one workspace's
 // /v1/sandboxes sandboxes) on one node/source instance, while the Pod-IP maps
-// supply the short-lived packet identity before source NAT.
-//
-// Capacity (bpf/meter.bpf.c): the Pod-IP maps hold 65,536 addresses each and a
-// node runs at most 220 pods (kubelet max-pods on every pool), so even a node
-// full of dual-stack sandboxes fills 0.34% of them; BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE
-// times the workspaces on a node is capped by that same 220. The counter map
-// holds 16,384 keys, one per (namespace, app id) a node has ever counted, and
-// a key is never deleted (counter continuity, counterDecrease). Sandboxes add
-// one key per workspace that has run a sandbox on the node, never one per
-// sandbox, and sandbox pods schedule only on the sandbox pool, so they cannot
-// crowd App keys on a tenant node; EgressMeterMapPressure warns at 80%, 13,107
-// keys.
+// supply the short-lived packet identity before source NAT. The maps' bounds
+// are worked out in ADR104 D11.
 type ResourceKey struct {
 	AppID     [labelBytes]byte
 	Namespace [labelBytes]byte

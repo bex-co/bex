@@ -756,22 +756,34 @@ func quotaForPlan(plan string) corev1.ResourceList {
 // 32Gi ladder. The base sandbox template asks for exactly this (cmd/api).
 const SandboxEphemeralMax = "40Gi"
 
+// hostingEphemeralMax matches the compute ladder's largest tier (pro-ultra).
+const hostingEphemeralMax = "32Gi"
+
+// DefaultSandboxMaxActivePerWorkspace is BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE's
+// default (cmd/api config). A sandbox namespace's ephemeral-storage limit quota
+// (quotaForPlan: the 4Ti plan budget plus the datastore room, 15,121Gi) holds
+// it at SandboxEphemeralMax each with room to spare: 378 sandboxes of 40Gi. A
+// configured cap above that, or 0 (disabled), reaches the quota before the 429
+// does, and the pod is then refused at admission.
+const DefaultSandboxMaxActivePerWorkspace = 100
+
 // limitRangeFor is the namespace's LimitRange: the base one, with the sandbox
 // regime's ephemeral-storage ceiling raised to SandboxEphemeralMax so a sandbox
 // can carry the writable filesystem Render sells. The kubelet enforces it by
 // eviction; measured on production under gVisor, its accounting follows what a
 // sandbox writes (w22/008).
 func limitRangeFor(namespace, regime string) *corev1.LimitRange {
-	lr := baseLimitRange(namespace)
+	ceiling := hostingEphemeralMax
 	if regime == RegimeSandbox {
-		lr.Spec.Limits[0].Max[corev1.ResourceEphemeralStorage] = resource.MustParse(SandboxEphemeralMax)
+		ceiling = SandboxEphemeralMax
 	}
-	return lr
+	return baseLimitRange(namespace, ceiling)
 }
 
 // baseLimitRange supplies request/limit defaults for pods that omit them
-// (hand-applied or legacy App CRs), mirroring the shared tenant-apps-limits.
-func baseLimitRange(namespace string) *corev1.LimitRange {
+// (hand-applied or legacy App CRs), mirroring the shared tenant-apps-limits;
+// ephemeralMax is the per-container ephemeral-storage ceiling.
+func baseLimitRange(namespace, ephemeralMax string) *corev1.LimitRange {
 	return &corev1.LimitRange{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "tenant-limits",
@@ -794,10 +806,9 @@ func baseLimitRange(namespace string) *corev1.LimitRange {
 					corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
 				},
 				Max: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("8"),
-					corev1.ResourceMemory: resource.MustParse("32Gi"),
-					// Matches the compute ladder's largest tier (pro-ultra).
-					corev1.ResourceEphemeralStorage: resource.MustParse("32Gi"),
+					corev1.ResourceCPU:              resource.MustParse("8"),
+					corev1.ResourceMemory:           resource.MustParse("32Gi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse(ephemeralMax),
 				},
 			}},
 		},

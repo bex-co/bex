@@ -930,6 +930,9 @@ expect_denied "sandbox to same-workspace hosting namespace" exec_a /tmp/m35-netp
 expect_denied "sandbox to lifecycle API" exec_a /tmp/m35-netprobe tcp "$lifecycle_ip" 8077
 expect_denied "sandbox to Kubernetes API" exec_a /tmp/m35-netprobe tcp "$api_server_ip" 443
 expect_denied "sandbox to node/kubelet" exec_a /tmp/m35-netprobe tcp "$node_ip" 10250
+# The egress meter runs on the sandbox node (hostNetwork) and its :9091
+# listener exposes every workspace's egress counters.
+expect_denied "sandbox to the egress meter on its node" exec_a /tmp/m35-netprobe tcp "$node_ip" 9091
 expect_denied "sandbox to cloud metadata" exec_a /tmp/m35-netprobe tcp 169.254.169.254 80
 
 # Render's three postures (w32/m283). A is allow-all: any public destination,

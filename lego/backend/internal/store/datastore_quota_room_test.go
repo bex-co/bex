@@ -89,7 +89,7 @@ func quotaScopeMatches(t *testing.T, q *corev1.ResourceQuota, c quotaCharge) boo
 // podCharge is one Pod. Its containers declare no ephemeral-storage, so each
 // gets the LimitRange defaults (baseLimitRange), as on the API server.
 func podCharge(class, cpu, memory string, containers int64) quotaCharge {
-	lr := baseLimitRange("ns").Spec.Limits[0]
+	lr := limitRangeFor("ns", RegimeHosting).Spec.Limits[0]
 	ephReq, ephLim := lr.DefaultRequest[corev1.ResourceEphemeralStorage], lr.Default[corev1.ResourceEphemeralStorage]
 	return quotaCharge{pod: true, class: class, usage: corev1.ResourceList{
 		corev1.ResourcePods:                     resource.MustParse("1"),

@@ -37,6 +37,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 )
@@ -652,7 +653,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	// bound across groups (ADR104 D11; 100 is a recorded guess, not Render's).
 	cfg.SandboxMaxGroupsPerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE", sandbox.RenderMaxSandboxGroups)
 	cfg.SandboxMaxGroupConcurrency = p.zeroableInt("BEX_SANDBOX_MAX_GROUP_CONCURRENCY", sandbox.RenderMaxGroupConcurrency)
-	cfg.SandboxMaxActivePerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE", 100)
+	cfg.SandboxMaxActivePerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE", store.DefaultSandboxMaxActivePerWorkspace)
 	cfg.SandboxSnapshotRegistryURL = strings.TrimRight(strings.TrimSpace(getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_URL")), "/")
 	if u := cfg.SandboxSnapshotRegistryURL; u != "" {
 		if parsed, err := url.Parse(u); err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {

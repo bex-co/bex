@@ -249,8 +249,8 @@ tests:
           - exp_labels:
               severity: critical
             exp_annotations:
-              summary: "Not every tenant node has a scrapeable egress meter"
-              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
+              summary: "Not every metered node has a scrapeable egress meter"
+              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint, plus the serving and sandbox pools). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
 
   # The expected population is "nodes the meter DaemonSet can schedule on":
   # it tolerates the serving-pool and sandbox-pool taints and nothing else, so
@@ -259,7 +259,7 @@ tests:
   # PreferNoSchedule taint never blocks. The previous fixture named only the
   # platform taint — and the rule fired for weeks on prod the moment a sandbox
   # pool and a build-only node existed (2026-09-11). The sandbox pool left the
-  # excluded list when the meter began counting sandbox egress (w22/m414).
+  # excluded list when the meter began counting sandbox egress.
   - name: only nodes the meter DaemonSet can schedule on count as expected
     interval: 1m
     input_series:
@@ -292,7 +292,7 @@ tests:
       - series: 'up{job="bex-egress-meter", node="tenant-xl"}'
         values: "1x10"
       # The sandbox pool runs every /v1/sandboxes sandbox and the meter
-      # tolerates its taint (w22/m414): expected, and its meter is up.
+      # tolerates its taint: expected, and its meter is up.
       - series: 'kube_node_info{node="sandbox-a"}'
         values: "1x10"
       - series: 'kube_node_spec_taint{node="sandbox-a", key="bex.co/sandbox", value="true", effect="NoSchedule"}'
@@ -339,12 +339,12 @@ tests:
           - exp_labels:
               severity: critical
             exp_annotations:
-              summary: "Not every tenant node has a scrapeable egress meter"
-              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
+              summary: "Not every metered node has a scrapeable egress meter"
+              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint, plus the serving and sandbox pools). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
 
   # A sandbox-pool node runs sandboxes whose egress is billed to nobody but
-  # watched per workspace (w22/m414), so one without a meter is missed
-  # accounting, never an excluded node: before w22/m414 this was silent.
+  # watched per workspace, so one without a meter is missed accounting, never
+  # an excluded node (sandbox nodes used to be excluded, and this was silent).
   - name: a sandbox-pool node without its meter fires
     interval: 1m
     input_series:
@@ -363,8 +363,8 @@ tests:
           - exp_labels:
               severity: critical
             exp_annotations:
-              summary: "Not every tenant node has a scrapeable egress meter"
-              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
+              summary: "Not every metered node has a scrapeable egress meter"
+              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint, plus the serving and sandbox pools). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
 
   # The other direction: a pool-tainted node that somehow lost its taint is
   # expected from that moment on, and until a meter lands there the alert fires.
@@ -391,8 +391,8 @@ tests:
           - exp_labels:
               severity: critical
             exp_annotations:
-              summary: "Not every tenant node has a scrapeable egress meter"
-              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
+              summary: "Not every metered node has a scrapeable egress meter"
+              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the number of nodes the meter DaemonSet can schedule on (nodes with no pool taint, plus the serving and sandbox pools). Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key"
 
   - name: egress meter unhealthy is per tenant node
     interval: 1m
@@ -410,7 +410,7 @@ tests:
               node: tenant-a
             exp_annotations:
               summary: "Egress meter on tenant-a is incomplete"
-              description: "At least one App Pod IP lacks stable attribution, or the meter reported a map/checkpoint error. The affected hourly source must fail rather than become zero. Debug: kubectl -n bex-system logs -l app.bex.co/component=egress-meter --prefix"
+              description: "At least one App or sandbox Pod IP lacks stable attribution, or the meter reported a map/checkpoint error. The affected hourly source must fail rather than become zero. Debug: kubectl -n bex-system logs -l app.bex.co/component=egress-meter --prefix"
 
   - name: egress meter map pressure threshold
     interval: 1m
@@ -428,7 +428,7 @@ tests:
               node: tenant-a
             exp_annotations:
               summary: "Egress meter resource map on tenant-a is 90% full"
-              description: "The bounded App counter map is above 80%; reaching capacity makes new attribution fail closed. Debug: kubectl -n bex-system logs -l app.bex.co/component=egress-meter --prefix"
+              description: "The bounded counter map (one key per App, or per workspace for its sandboxes, the node has counted) is above 80%; reaching capacity makes new attribution fail closed. Debug: kubectl -n bex-system logs -l app.bex.co/component=egress-meter --prefix"
 
   - name: egress meter counter loss is visible
     interval: 1m

@@ -40,11 +40,12 @@ func TestSandboxRegimeLimitRangeAdmitsTheSandboxWritableLayer(t *testing.T) {
 	if got, want := sandbox.Default[corev1.ResourceEphemeralStorage], resource.MustParse("10Gi"); got.Cmp(want) != 0 {
 		t.Errorf("sandbox LimitRange ephemeral default = %s, want the unchanged %s", got.String(), want.String())
 	}
-	const defaultActiveSandboxes = 100 // BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE's default
+	// The default active-sandbox cap is the config default, not a copy of it.
 	quota := quotaForPlan("starter")[corev1.ResourceLimitsEphemeralStorage]
-	need := resource.MustParse(SandboxEphemeralMax)
-	need.Set(need.Value() * defaultActiveSandboxes)
-	if quota.Cmp(need) < 0 {
-		t.Errorf("workspace ephemeral-storage limit quota %s cannot hold %d sandboxes of %s", quota.String(), defaultActiveSandboxes, SandboxEphemeralMax)
+	each := resource.MustParse(SandboxEphemeralMax)
+	holds := quota.Value() / each.Value()
+	if holds < DefaultSandboxMaxActivePerWorkspace {
+		t.Errorf("workspace ephemeral-storage limit quota %s holds %d sandboxes of %s, below the default cap of %d",
+			quota.String(), holds, SandboxEphemeralMax, DefaultSandboxMaxActivePerWorkspace)
 	}
 }

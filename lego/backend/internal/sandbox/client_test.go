@@ -103,10 +103,20 @@ func TestRequestForQuartersLimitWithFloors(t *testing.T) {
 	}
 }
 
-// An ephemeral storage limit requests a quarter, never below the
-// LimitRange's 1Gi default request; no limit asks for nothing.
-func TestEphemeralRequestForQuartersLimitWithFloor(t *testing.T) {
-	for limit, want := range map[string]string{"30Gi": "7680Mi", "2Gi": "1Gi", "": "", "garbage": ""} {
+// An ephemeral storage limit requests a quarter, within the LimitRange's 1Gi
+// default request (the floor) and 2Gi (the cap): a 40Gi limit must not ask the
+// scheduler for 10Gi. No limit asks for nothing.
+func TestEphemeralRequestForQuartersLimitWithinFloorAndCap(t *testing.T) {
+	cases := map[string]string{
+		"40Gi":    "2Gi",    // the base template: a quarter is 10Gi, capped
+		"30Gi":    "2Gi",    // the agent templates
+		"8Gi":     "2Gi",    // a quarter is exactly the cap
+		"6Gi":     "1536Mi", // a quarter between floor and cap passes through
+		"2Gi":     "1Gi",    // a quarter below the floor
+		"":        "",
+		"garbage": "",
+	}
+	for limit, want := range cases {
 		if got := ephemeralRequestFor(limit); got != want {
 			t.Errorf("ephemeralRequestFor(%q) = %q, want %q", limit, got, want)
 		}
@@ -126,8 +136,8 @@ func TestClientCreateSendsEphemeralStorage(t *testing.T) {
 	if _, err := NewClient(srv.URL).Create(context.Background(), "k", "img", []string{"sh"}, limits, 0, nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	if gotBody.ResourceLimits.EphemeralStorage != "30Gi" || gotBody.ResourceRequests.EphemeralStorage != "7680Mi" {
-		t.Errorf("ephemeral storage limit/request = %q/%q, want 30Gi/7680Mi", gotBody.ResourceLimits.EphemeralStorage, gotBody.ResourceRequests.EphemeralStorage)
+	if gotBody.ResourceLimits.EphemeralStorage != "30Gi" || gotBody.ResourceRequests.EphemeralStorage != "2Gi" {
+		t.Errorf("ephemeral storage limit/request = %q/%q, want 30Gi/2Gi", gotBody.ResourceLimits.EphemeralStorage, gotBody.ResourceRequests.EphemeralStorage)
 	}
 }
 
