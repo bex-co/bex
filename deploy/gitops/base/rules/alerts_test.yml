@@ -678,6 +678,40 @@ tests:
               summary: "bex-system/bex-api-abc (api) is CrashLoopBackOff"
               description: "Platform container has been CrashLoopBackOff for >10m. Debug: kubectl -n bex-system describe pod bex-api-abc; kubectl -n bex-system logs bex-api-abc -c api --previous"
 
+  # BexApiRestarting (w4/671): two restarts across the replicas inside 15m
+  # fire; one restart alone, or a rollout's fresh pods at zero, do not.
+  - name: BexApiRestarting fires on repeated restarts, not on one or a rollout
+    interval: 1m
+    input_series:
+      # Two replicas each restart once at minute 20 (they fail together).
+      - series: 'kube_pod_container_status_restarts_total{namespace="bex-system", pod="bex-api-76bd9d9697-rjhqw", container="api"}'
+        values: "0x20 1x20"
+      - series: 'kube_pod_container_status_restarts_total{namespace="bex-system", pod="bex-api-76bd9d9697-vrdfp", container="api"}'
+        values: "0x20 1x20"
+      # A lone restart of another pod at minute 5, and a rollout's new pod.
+      - series: 'kube_pod_container_status_restarts_total{namespace="bex-system", pod="bex-api-6db5bb64fc-f489p", container="api"}'
+        values: "0x5 1x35"
+      - series: 'kube_pod_container_status_restarts_total{namespace="bex-system", pod="bex-api-6db5bb64fc-xrrfw", container="api"}'
+        values: "_x10 0x30"
+      # The operator's restarts are not bex-api's.
+      - series: 'kube_pod_container_status_restarts_total{namespace="bex-system", pod="bex-operator-controller-manager-abc", container="manager"}'
+        values: "0x5 3x35"
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: BexApiRestarting
+        exp_alerts: [] # one restart in the window
+      - eval_time: 22m
+        alertname: BexApiRestarting
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "bex-api restarted at least twice in 15m"
+              description: "bex-api's api container keeps restarting, and while no replica is ready every request is a 502 or 503. Read the last termination reason first: OOMKilled means the memory limit or GOMEMLIMIT in lego/operator/config/api/deployment.yaml. Debug: kubectl -n bex-system describe pods -l app.kubernetes.io/name=bex-api; kubectl -n bex-system logs deploy/bex-api --previous"
+      - eval_time: 39m
+        alertname: BexApiRestarting
+        exp_alerts: [] # the restarts left the window
+
   # PersistentVolumeFillingUp: the OPS alert stays on the PHYSICAL PVC
   # (kubelet_volume_stats_capacity_bytes), fires above 85%, respects the 15m
   # for-duration. w4/m91 repointed the USER-FACING disk_capacity metric at a

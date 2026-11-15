@@ -341,6 +341,7 @@ The groups carry actionable descriptions and links to diagnosis procedures:
 | `log-delivery` | `LogDeliveryLokiWALDiskFull` | a Loki WAL disk-full write failure was observed within 15m | warning |
 | `bex` | `OpenBaoSealed` | any OpenBao member reports sealed >5m (⇒ 503s the env-vars API) | critical |
 | `bex` | `BexApiDown` | `bex-api` has zero available replicas >5m | critical |
+| `bex` | `BexApiRestarting` | `bex-api`'s api container restarted at least twice in 15m across its replicas, which `BexApiDown` and `PlatformPodCrashLooping` miss when the replicas die in turn (w4/671) | warning |
 | `bex` | `BexApiOriginHighErrorRate` | >5% of the requests bex-api itself completed on one surface are 5xx for >10m (above a 0.1 req/s floor) — the origin-side sibling of `TraefikHigh5xxRate`, read together with it to place the fault ([ADR088 §6](ADR088-platform-observability-ui.md)) | warning |
 | `bex` | `BexApiOriginLatencyHigh` | bex-api's own p95 on one surface is above the recorded 2.5s baseline for >10m (above the same floor) | warning |
 | `bex` | `WebhookDeliveryAdmissionPressure` | >100 outbound webhook notifications remain capped in rolling 15m windows for >10m | warning |

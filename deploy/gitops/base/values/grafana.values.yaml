@@ -2893,6 +2893,36 @@ dashboards:
               ]
             },
             {
+             "id": 32,
+             "type": "timeseries",
+             "title": "bex-api container restarts (15m)",
+             "description": "Restarts of bex-api's api container over the last 15m, summed across replicas — the BexApiRestarting expression (fires at >=2; red line). A rollout replaces pods and never counts here (w4/671). Reads 0 only while kube-state-metrics is up.",
+             "gridPos": { "h": 8, "w": 12, "x": 12, "y": 140 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 2 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"bex-system\", pod=~\"bex-api-.*\", container=\"api\"}[15m])) or (count(up{job=\"kube-state-metrics\"} == 1) * 0)",
+                 "legendFormat": "restarts in 15m"
+                }
+              ]
+            },
+            {
              "id": 13,
              "type": "timeseries",
              "title": "Stranded node-local images",

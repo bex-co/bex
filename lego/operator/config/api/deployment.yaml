@@ -51,6 +51,12 @@ spec:
           imagePullPolicy: Always
           command: ["/api"]
           env:
+            # Ramps the GC before the 512Mi cgroup limit below (w4/671). With
+            # GOGC=100 alone the heap may double past its live set before a
+            # collection, which at the old 128Mi limit OOM-killed both
+            # replicas together.
+            - name: GOMEMLIMIT
+              value: 400MiB
             - name: BEX_API_ADDR
               value: ":8090"
             - name: BEX_API_PUBLIC_URL # public origin used in copy-ready deploy-hook URLs
@@ -691,10 +697,21 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          # w4/671: bex-api idles at 65-95 MiB working set. Its bounded
+          # transients are large next to that: one agent-session transcript
+          # harvest reads up to 16 MiB of driver log (maxTranscriptLogBytes)
+          # and its parse + coalesce alone allocates ~68 MiB, and an
+          # environment write may carry a 4 MiB body (MaxEnvironmentBodyBytes)
+          # beside the ~1 MiB stored files map, decoded, re-marshalled and
+          # materialized. Under the old 128Mi limit both replicas were
+          # OOM-killed or failed their probes together (10 restarts in
+          # 05:15-05:29 UTC on 2026-11-15, more on 2026-11-14), which the edge
+          # answered with 502 and then 503 for every workspace. The request
+          # covers the idle set so the scheduler reserves what the pod uses.
           resources:
             requests:
               cpu: 10m
-              memory: 32Mi
+              memory: 128Mi
             limits:
               cpu: 200m
-              memory: 128Mi
+              memory: 512Mi

@@ -1345,6 +1345,24 @@ groups:
           summary: "bex-api has no available replicas"
           description: "The bex-api control-plane surface (REST/GraphQL/MCP) has had zero available replicas for >5m. Debug: kubectl -n bex-system rollout status deploy/bex-api; kubectl -n bex-system logs deploy/bex-api"
 
+      # w4/671. BexApiDown needs 5m at zero and PlatformPodCrashLooping 10m
+      # of back-off, so neither saw 2026-11-15 05:15-05:29 UTC: both replicas
+      # were OOM-killed or failed their probes in turn (10 restarts), and the
+      # edge answered 502 and then 503 for every workspace for seconds at a
+      # time. A rollout replaces pods and never increments restarts, so two
+      # restarts of the api container inside 15m is a process dying, not a
+      # deploy. Summed across replicas: they fail together.
+      - alert: BexApiRestarting
+        expr: |
+          sum(
+            increase(kube_pod_container_status_restarts_total{namespace="bex-system", pod=~"bex-api-.*", container="api"}[15m])
+          ) >= 2
+        labels:
+          severity: warning
+        annotations:
+          summary: "bex-api restarted at least twice in 15m"
+          description: "bex-api's api container keeps restarting, and while no replica is ready every request is a 502 or 503. Read the last termination reason first: OOMKilled means the memory limit or GOMEMLIMIT in lego/operator/config/api/deployment.yaml. Debug: kubectl -n bex-system describe pods -l app.kubernetes.io/name=bex-api; kubectl -n bex-system logs deploy/bex-api --previous"
+
       # w3/m84. TraefikHigh5xxRate's origin-side sibling, and
       # deliberately the same shape (>5% over 5m, a 0.1 req/s floor,
       # 10m persistence) so the pair is READ TOGETHER: both firing is
