@@ -1790,6 +1790,17 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 		}
 	case appv1alpha1.PhaseDeploying:
 		if conditionCurrent {
+			// The operator stamps Deploying when it dispatches a first release,
+			// a pass before it creates the pre-deploy Job and records the step
+			// Running. Until the step has passed, the release is in its
+			// pre-deploy window, and the lifecycle refuses the move back from
+			// update_in_progress (w4/670).
+			if awaitingPreDeploy(open, app) {
+				if timedOut {
+					return DeployPreDeployFailed
+				}
+				return DeployPreDeployInProgress
+			}
 			// Render's deploy goes live when traffic moves to it. A settling
 			// rollout whose release the operator recorded active already
 			// holds the traffic: every pod of it is Ready, and only the
@@ -2592,6 +2603,22 @@ func (r *Reconciler) recordAutoscalingFacts(ctx context.Context, appID string, t
 // onto the open deploy. Empty means no pre-deploy step applies to this rollout.
 func preDeployStatusFor(app *appv1alpha1.App) string {
 	return preDeployStatusAt(app, appReleaseGeneration(app))
+}
+
+// awaitingPreDeploy reports an open row, not yet rolling out, whose release has
+// a pre-deploy step that has not passed: the operator runs that step (status
+// .preDeploy, read by preDeployStatusFor) before it rolls the release, so the
+// row's next phase is pre_deploy_in_progress, never update_in_progress
+// (w4/670).
+func awaitingPreDeploy(open Deploy, app *appv1alpha1.App) bool {
+	switch open.Status {
+	case DeployCreated, DeployQueued, DeployBuildInProgress, DeployPreDeployInProgress:
+	default:
+		return false
+	}
+	command, _ := app.PreDeployStepCommand()
+	return strings.TrimSpace(command) != "" && open.Generation == appReleaseGeneration(app) &&
+		preDeployStatusFor(app) != PreDeploySucceeded
 }
 
 // preDeployStatusAt maps the App CR's pre-deploy step status (status.preDeploy,

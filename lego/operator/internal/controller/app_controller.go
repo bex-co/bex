@@ -983,7 +983,7 @@ func (r *AppReconciler) observeCanceledPreDeploy(ctx context.Context, app *appv1
 	app.Status.PreDeploy = &ended
 	// A canceled release left to finish may have been the one running the
 	// initial hook; its success still completes it (w8/m63).
-	if _, initial := preDeployStepCommand(app); initial && ended.Status == appv1alpha1.PreDeploySucceeded {
+	if _, initial := app.PreDeployStepCommand(); initial && ended.Status == appv1alpha1.PreDeploySucceeded {
 		app.Status.InitialDeployHookCompleted = true
 	}
 	return 0
@@ -7215,7 +7215,7 @@ func (r *AppReconciler) settlePriorRelease(ctx context.Context, app *appv1alpha1
 // already passed or failed for the same revision. That terminal bookkeeping also
 // guards against re-creating the Job after its TTL reap.
 func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, bool, error) {
-	command, initialHook := preDeployStepCommand(app)
+	command, initialHook := app.PreDeployStepCommand()
 	if command == "" || canceledOverServed(app) {
 		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
 			return ctrl.Result{}, true, err
@@ -7439,7 +7439,7 @@ func preDeployNotStarted(ctx context.Context, app *appv1alpha1.App, err error) s
 // against the served image — as a Job for the served generation, since the gen-2
 // verdict never matches it — and held the service in Deploying until it finished.
 func hasPreDeployStep(app *appv1alpha1.App) bool {
-	command, _ := preDeployStepCommand(app)
+	command, _ := app.PreDeployStepCommand()
 	return strings.TrimSpace(command) != "" && scalableRuntime(app) && !canceledOverServed(app)
 }
 
@@ -7452,17 +7452,6 @@ func preDeployArgv(app *appv1alpha1.App, image, command string) []string {
 		return shellCommand(command)
 	}
 	return legacyShellCommand(execution.KubernetesLiteral(command))
-}
-
-// preDeployStepCommand is the command a release's pre-deploy step runs: the
-// one-time spec.initialDeployHook until a release has run it to success, then
-// spec.preDeployCommand (w8/m63). The roles stay separate even when the two
-// commands are equal; initial reports which one was selected.
-func preDeployStepCommand(app *appv1alpha1.App) (command string, initial bool) {
-	if strings.TrimSpace(app.Spec.InitialDeployHook) != "" && !app.Status.InitialDeployHookCompleted {
-		return app.Spec.InitialDeployHook, true
-	}
-	return app.Spec.PreDeployCommand, false
 }
 
 // preDeployPassed reports whether the current release may reach the pod
