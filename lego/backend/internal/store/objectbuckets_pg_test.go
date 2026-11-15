@@ -74,13 +74,13 @@ func TestObjectStorageMigrationRoundTrip(t *testing.T) {
 	}
 
 	if !exists("object_buckets") || !exists("object_storage_usage") || !exists("object_buckets_live_name") {
-		t.Fatal("0272 left its tables or the live-name index out")
+		t.Fatal("0273 left its tables or the live-name index out")
 	}
-	exec(read("0272_object_storage.down.sql"))
+	exec(read("0273_object_storage.down.sql"))
 	if exists("object_buckets") || exists("object_storage_usage") {
 		t.Fatal("the down migration left a table behind")
 	}
-	exec(read("0272_object_storage.up.sql"))
+	exec(read("0273_object_storage.up.sql"))
 	if !exists("object_buckets") || !exists("object_storage_usage") || !exists("object_buckets_live_name") {
 		t.Fatal("the up migration did not recreate the tables after a down")
 	}
