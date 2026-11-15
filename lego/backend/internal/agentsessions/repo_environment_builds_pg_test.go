@@ -273,7 +273,7 @@ func TestRepoEnvironmentBuildToPrebuiltSession(t *testing.T) {
 	}
 
 	session := e.startSession("acme/api")
-	if e.lc.image != (sandbox.AgentImage{BuildID: got.ID, Digest: testImageDigest}) || e.lc.driverEnv[prebuiltEnv] != got.ID || e.lc.driverEnv[repoEnvironmentEnv] == "" {
+	if e.lc.image != (sandbox.AgentImage{ID: got.ID, Digest: testImageDigest}) || e.lc.driverEnv[prebuiltEnv] != got.ID || e.lc.driverEnv[repoEnvironmentEnv] == "" {
 		t.Fatalf("session dispatch = image %+v env %v", e.lc.image, e.lc.driverEnv)
 	}
 	if session.EnvironmentBuildID != got.ID {

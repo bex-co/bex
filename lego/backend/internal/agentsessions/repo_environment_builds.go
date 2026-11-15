@@ -335,7 +335,7 @@ func (s *Service) prebuiltImage(ctx context.Context, env store.AgentRepoEnvironm
 		}
 		return sandbox.AgentImage{}
 	}
-	return sandbox.AgentImage{BuildID: build.ID, Digest: build.ImageDigest}
+	return sandbox.AgentImage{ID: build.ID, Digest: build.ImageDigest}
 }
 
 // recordEnvironmentBuild keeps the session view's environmentBuildId current.

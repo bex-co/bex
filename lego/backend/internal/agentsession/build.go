@@ -38,6 +38,19 @@ func IsBuildPrincipal(principal string) bool {
 	return ok && kind == id.AgentRepoEnvironmentBuild
 }
 
+// IsRetainedImage reports whether an image id is a stopped turn's retained
+// disk (ADR047 D12) rather than a build's.
+func IsRetainedImage(imageID string) bool {
+	kind, ok := id.KindOf(imageID)
+	return ok && kind == id.AgentRetainedImage
+}
+
+// IsAgentImage reports whether an id names an image an agent sandbox may boot
+// from: a repository environment build's or a retained turn disk.
+func IsAgentImage(imageID string) bool {
+	return IsBuildPrincipal(imageID) || IsRetainedImage(imageID)
+}
+
 // BuildBranch is the branch a builder's binding labels and proxy URL carry.
 // It satisfies ValidateBranch but is never pushed: a build may not push, and
 // its clone checks out the repository's default branch.

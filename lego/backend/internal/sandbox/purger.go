@@ -47,12 +47,21 @@ type WorkspacePurger struct {
 	// AgentBuilds lists the workspace's repository environment build images,
 	// deleted with its imported ones (ADR111 D8); *store.PGStore.
 	AgentBuilds AgentBuildImages
+	// AgentRetained lists the workspace's stopped agent turns' retained
+	// images, deleted with them (ADR047 D12); *store.PGStore.
+	AgentRetained AgentRetainedImages
 }
 
 // AgentBuildImages lists the repository environment builds whose images the
 // registry may hold.
 type AgentBuildImages interface {
 	AgentRepoEnvironmentBuildImageIDs(ctx context.Context, workspaceID string) ([]string, error)
+}
+
+// AgentRetainedImages lists the retained images of stopped agent turns whose
+// handles exist, which the registry may still hold.
+type AgentRetainedImages interface {
+	AgentRetainedImageIDs(ctx context.Context, workspaceID string) ([]string, error)
 }
 
 // PurgeWorkspace stops every sandbox in the deleted workspace's `<ws>-sandbox`
@@ -106,6 +115,13 @@ func (p *WorkspacePurger) purgeImages(ctx context.Context, tenantID string) erro
 			return err
 		}
 		builds = append(builds, agentBuilds...)
+	}
+	if p.AgentRetained != nil {
+		retained, err := p.AgentRetained.AgentRetainedImageIDs(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		builds = append(builds, retained...)
 	}
 	return p.Images.deleteImported(ctx, tenantID, builds)
 }

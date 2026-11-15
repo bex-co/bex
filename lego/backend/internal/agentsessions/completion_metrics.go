@@ -47,7 +47,22 @@ type CompletionMetrics struct {
 	// agent boot itself measured <1s on dev-5, so this closely tracks time-to-first
 	// -model-call for a turn-1 session (ADR047 records that approximation).
 	provisionLatency *prometheus.HistogramVec
+	// retentions counts the saves of a stopped turn's disk by bounded result
+	// (ADR047 D12, w22/m413).
+	retentions *prometheus.CounterVec
 }
+
+// retentionResult is the bounded result label of a stopped turn's save.
+type retentionResult string
+
+const (
+	retentionKept        retentionResult = "kept"
+	retentionFailed      retentionResult = "failed"
+	retentionStorageFull retentionResult = "storage_limit"
+	// retentionSuperseded is a save whose retention was released while it
+	// ran: a cancel, an archive, a delete or a turn that started fresh.
+	retentionSuperseded retentionResult = "superseded"
+)
 
 // provisionOutcome is the bounded outcome label on the provisioning histogram.
 type provisionOutcome string
@@ -121,8 +136,12 @@ func NewCompletionMetrics(reg prometheus.Registerer) *CompletionMetrics {
 			// wait is ~300s, so the tail bracket captures a stuck provision.
 			Buckets: []float64{1, 2, 5, 10, 20, 30, 60, 120, 300},
 		}, []string{"outcome"}),
+		retentions: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "bex_agent_session_retentions_total",
+			Help: "Saves of a stopped agent turn's disk as a retained image, by bounded result.",
+		}, []string{"result"}),
 	}
-	reg.MustRegister(m.statusReads, m.convergences, m.turnOutcomes, m.turnDuration, m.provisionLatency)
+	reg.MustRegister(m.statusReads, m.convergences, m.turnOutcomes, m.turnDuration, m.provisionLatency, m.retentions)
 	return m
 }
 
@@ -175,5 +194,11 @@ func (m *CompletionMetrics) read(outcome statusReadOutcome) {
 func (m *CompletionMetrics) converged(reason terminalConvergenceReason) {
 	if m != nil {
 		m.convergences.WithLabelValues(string(reason)).Inc()
+	}
+}
+
+func (m *CompletionMetrics) retention(result retentionResult) {
+	if m != nil {
+		m.retentions.WithLabelValues(string(result)).Inc()
 	}
 }

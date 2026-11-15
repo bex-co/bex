@@ -127,6 +127,16 @@ type AgentSessionTurn struct {
 	// sandbox's `interrupted` status, which the sandbox writes itself.
 	Interrupted          bool
 	InterruptRequestedAt *time.Time
+	// Retention is what became of a stopped turn's disk (ADR047 D12,
+	// w22/m413): "" when nothing was kept, TurnRetentionKept until
+	// RetainedUntil, TurnRetentionContinued once the next turn started from
+	// it, TurnRetentionLost when it could not be kept or was released unused.
+	// StartNote is a sentence this turn adds to its delivery note when it
+	// finishes: it started from a fresh sandbox although the stopped turn's
+	// disk was kept.
+	Retention     string
+	RetainedUntil *time.Time
+	StartNote     string
 }
 
 // AgentTurnOutput is the structured-output contract a turn is accepted with
@@ -688,7 +698,8 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		SELECT session_id, turn, prompt, delivery_mode,
 		       transcript_complete, transcript_truncated, truncation_reason,
 		       created_at, started_at, completed_at, attachments,
-		       output_schema, output_required, result, result_final, skills, interrupted, interrupt_requested_at
+		       output_schema, output_required, result, result_final, skills, interrupted, interrupt_requested_at,
+		       retention, retained_until, start_note
 		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`, sessionID)
 	if err != nil {
 		return nil, err
@@ -700,7 +711,8 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		if err := rows.Scan(&turn.SessionID, &turn.Turn, &turn.Prompt, &turn.DeliveryMode,
 			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
 			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt, &turn.Attachments,
-			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal, &turn.Skills, &turn.Interrupted, &turn.InterruptRequestedAt); err != nil {
+			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal, &turn.Skills, &turn.Interrupted, &turn.InterruptRequestedAt,
+			&turn.Retention, &turn.RetainedUntil, &turn.StartNote); err != nil {
 			return nil, err
 		}
 		out = append(out, turn)
@@ -905,6 +917,11 @@ func (s *PGStore) SetAgentSessionArchived(ctx context.Context, id string, archiv
 			WHERE id=$1
 			RETURNING `+agentSessionColumns, id, archived))
 		if err != nil || !archived {
+			return err
+		}
+		// An archived session takes no more messages, so its stopped turn's
+		// kept disk can never be continued from.
+		if err := releaseRetainedImagesTx(ctx, tx, `session_id = $1`, RetainedReleaseArchived, time.Now(), id); err != nil {
 			return err
 		}
 		return dropSessionQueued(ctx, tx, id, "the session was archived")
@@ -1307,25 +1324,32 @@ func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, 
 	var fact TerminalTurnFact
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var err error
-		out, err = scanAgentSession(tx.QueryRow(ctx, `
-			UPDATE agent_sessions
-			SET phase=$2, status=$3,
-			    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END,
-			    delivery_note=$5,
-			    failure_reason=$6, failure_reason_code='', updated_at=now()
-			WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching')
-			RETURNING `+agentSessionColumns,
-			id, phase, phase, headSHA, deliveryNote, failureReason))
-		if err != nil {
-			return err
-		}
-		fact, err = stampTerminalTurn(ctx, tx, id, out.Turns, out.UpdatedAt)
+		out, fact, err = finalizeAgentSessionTx(ctx, tx, id, phase, headSHA, deliveryNote, failureReason)
 		return err
 	})
 	if err != nil {
 		return AgentSession{}, TerminalTurnFact{}, classify("agent session", err)
 	}
 	return out, fact, nil
+}
+
+// finalizeAgentSessionTx is FinalizeAgentSession's write, for a caller that
+// does more in the same transaction.
+func finalizeAgentSessionTx(ctx context.Context, tx pgx.Tx, id, phase, headSHA, deliveryNote, failureReason string) (AgentSession, TerminalTurnFact, error) {
+	out, err := scanAgentSession(tx.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET phase=$2, status=$3,
+		    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END,
+		    delivery_note=$5,
+		    failure_reason=$6, failure_reason_code='', updated_at=now()
+		WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching')
+		RETURNING `+agentSessionColumns,
+		id, phase, phase, headSHA, deliveryNote, failureReason))
+	if err != nil {
+		return AgentSession{}, TerminalTurnFact{}, err
+	}
+	fact, err := stampTerminalTurn(ctx, tx, id, out.Turns, out.UpdatedAt)
+	return out, fact, err
 }
 
 // RecordAgentSessionPullRequest persists the draft PR the agent just opened or
@@ -1372,6 +1396,9 @@ func (s *PGStore) SetAgentSessionCanceled(ctx context.Context, id string) (Agent
 			return err
 		}
 		if err := dropSessionQueued(ctx, tx, id, "the session was canceled"); err != nil {
+			return err
+		}
+		if err := releaseRetainedImagesTx(ctx, tx, `session_id = $1`, RetainedReleaseCanceled, time.Now(), id); err != nil {
 			return err
 		}
 		fact, err = stampTerminalTurn(ctx, tx, id, out.Turns, out.UpdatedAt)

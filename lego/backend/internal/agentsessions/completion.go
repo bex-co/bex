@@ -142,6 +142,12 @@ type Completer struct {
 	liveMu                 sync.Mutex
 	live                   map[string]liveHarvest
 	liveWG                 sync.WaitGroup
+	// Retention keeps an interrupted turn's disk for the session's next turn
+	// (ADR047 D12, w22/m413); nil leaves every sandbox to its idle grace.
+	Retention *Retention
+	// retainRunner runs a save; nil starts a goroutine and tests run it inline.
+	retainRunner func(func())
+	retainWG     sync.WaitGroup
 }
 
 // liveHarvest is one running turn's periodic harvest on this replica: when it
@@ -466,6 +472,7 @@ func (c *Completer) Reconcile(ctx context.Context) {
 	}
 	c.reapIdleSandboxes(ctx)
 	c.reapPreviousSandboxes(ctx)
+	c.reapRetainedImages(ctx)
 	c.reconcileSandboxInventory(ctx)
 	c.recoverDispatches(ctx)
 }
@@ -482,7 +489,13 @@ func (c *Completer) reapIdleSandboxes(ctx context.Context) {
 		return
 	}
 	c.pruneIdle(rows)
+	saving := c.savingRetention(ctx, rows)
 	for _, row := range rows {
+		if saving[row.ID] {
+			// The save is pausing this sandbox and ends it itself.
+			c.logDeferral(row, "retention in progress")
+			continue
+		}
 		c.teardown(ctx, row)
 	}
 }
@@ -718,8 +731,18 @@ func (c *Completer) interruptRequested(ctx context.Context, record store.AgentSe
 // reported, records the outcome and tears the sandbox down.
 func (c *Completer) settleCompleted(ctx context.Context, record store.AgentSession, report statusReport, outcome turnOutcome) {
 	headSHA := c.verifiedHead(ctx, record, report.Git.RemoteHead)
-	note := deliveryNote(report.Git)
-	final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, headSHA, note, "")
+	note := c.withStartNote(ctx, record, deliveryNote(report.Git))
+	var final store.AgentSession
+	var fact store.TerminalTurnFact
+	var retention *store.AgentRetainedImage
+	var err error
+	if outcome == turnOutcomeInterrupted && c.Retention.retains() && record.SandboxID != "" && !c.editorOpen(ctx, record) {
+		// A turn a person stopped keeps its disk (ADR047 D12): the same write
+		// that settles it begins the save.
+		final, fact, retention, err = c.finalizeRetaining(ctx, record, headSHA, note)
+	} else {
+		final, fact, err = c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, headSHA, note, "")
+	}
 	if err != nil {
 		if !errors.Is(err, store.ErrNotFound) {
 			log.Printf("agent-session completer: finalize failed (session=%s): %v", record.ID, err)
@@ -728,10 +751,41 @@ func (c *Completer) settleCompleted(ctx context.Context, record store.AgentSessi
 	}
 	c.Metrics.observeTerminalTurn(outcome, fact)
 	log.Printf("agent-session completer: %s session=%s pr=%s head=%s dirty=%t unpushed=%d undelivered=%t", outcome, record.ID, final.PRURL, final.HeadSHA, report.Git.Dirty, report.Git.UnpushedCommits, note != "")
+	// The save pauses the sandbox and ends it, and the next turn continues
+	// from the image. It runs behind the settle, so Stop shows at once. Without
+	// one the sandbox takes the ordinary teardown below.
+	if retention != nil {
+		c.runRetention(func() { c.saveRetention(ctx, final, *retention) })
+		return
+	}
 	// Tear down against the FINALIZED row so the idle clock (record.UpdatedAt) is
 	// the turn-end time, not the stale pre-finalize timestamp; SandboxID survives
 	// finalize, so it is still present here.
 	c.teardown(ctx, final)
+}
+
+// editorOpen reports whether an editor SSH session is open on the session's
+// sandbox: Stop must not end a live edit, so such a sandbox is left to the
+// ordinary teardown, which the open session pins (ADR054 D6), and nothing is
+// kept. A failed read counts as open: the teardown reads it again.
+func (c *Completer) editorOpen(ctx context.Context, record store.AgentSession) bool {
+	open, _, err := c.Store.AgentSessionSSHActivity(ctx, record.ID, c.now().Add(-c.sshGraceTTL()))
+	if err != nil {
+		log.Printf("agent-session completer: ssh-activity check failed before keeping a stopped turn's disk (session=%s): %v", record.ID, err)
+		return true
+	}
+	return open
+}
+
+// withStartNote puts the sentence a turn recorded about how it started (it
+// started fresh although the stopped turn's disk was kept) before the note
+// that says what it left undelivered.
+func (c *Completer) withStartNote(ctx context.Context, record store.AgentSession, note string) string {
+	turn, found, err := c.currentTurn(ctx, record)
+	if err != nil || !found || turn.StartNote == "" {
+		return note
+	}
+	return strings.TrimSpace(turn.StartNote + " " + note)
 }
 
 // structuredOutputMissing reports a turn that was accepted with a required

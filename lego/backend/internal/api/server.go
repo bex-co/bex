@@ -477,6 +477,13 @@ type Deps struct {
 	// turn runs (ADR047 D12); nil answers such a message with the
 	// in-flight refusal.
 	AgentQueueStore agentsessions.QueueStore
+	// AgentRetainedImageStore holds the handles of stopped turns' retained
+	// disks (ADR047 D12, w22/m413); nil keeps nothing, and every turn starts
+	// from a fresh sandbox.
+	AgentRetainedImageStore agentsessions.RetainedImageStore
+	// AgentInterruptRetention is how long a stopped turn's disk is kept
+	// (BEX_AGENT_INTERRUPT_RETENTION); 0 keeps nothing.
+	AgentInterruptRetention time.Duration
 	// AgentRegistryHosts is the session-egress package-registry catalog,
 	// reported by the agent environment for display.
 	AgentRegistryHosts       []string
@@ -1066,9 +1073,15 @@ func NewServer(base *core.Base, d Deps) *Server {
 	var agentLifecycle agentsessions.SandboxLifecycle
 	var agentCopier agentsessions.AttachmentCopier
 	var agentBuilders agentsessions.BuildSandboxes
+	var agentRetention *agentsessions.Retention
 	if sandboxSvc != nil {
 		lifecycle := sandbox.NewAgentSessionLifecycle(sandboxSvc)
 		agentLifecycle, agentCopier, agentBuilders = lifecycle, lifecycle, lifecycle
+		if d.AgentRetainedImageStore != nil {
+			// The Service and the Completer share it: one continues from and
+			// releases the kept disks, the other saves and expires them.
+			agentRetention = &agentsessions.Retention{Store: d.AgentRetainedImageStore, Sandboxes: lifecycle, TTL: d.AgentInterruptRetention}
+		}
 	}
 	deploysSvc := &deploys.Service{
 		Base:              base,
@@ -1175,6 +1188,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Automations:      d.AgentAutomationStore,
 		Feedback:         d.AgentFeedbackStore,
 		Queue:            d.AgentQueueStore,
+		Retention:        agentRetention,
 
 		MetaRouteMaxSessions: d.AgentMetaRouteMaxSessions,
 	}
@@ -1227,6 +1241,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			TurnTimeout:          d.AgentTurnTimeout,
 			InventoryInterval:    time.Minute,
 			Stops:                agentStops,
+			Retention:            agentRetention,
 		},
 		Postgres:      pg,
 		KeyValue:      kv,

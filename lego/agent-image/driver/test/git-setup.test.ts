@@ -106,3 +106,108 @@ test("after ensureRepo a plain agent commit + push lands on the bound branch", a
   assert.doesNotMatch(config, /credential|token|password|extraheader/i);
   assert.equal(agentGit(cwd, ["config", "push.default"]), "current");
 });
+
+// ADR047 D12 (w22/m413): a turn a person stopped keeps its disk, and the
+// session's next turn runs in a fresh sandbox booted from it. That sandbox's
+// driver starts over the stopped turn's checkout: ensureRepo must leave the
+// commits the agent had not pushed and the edits it had not committed where
+// they are, on the session branch, for the agent to deliver. The driver itself
+// never commits or pushes (ADR090), so nothing here is written to the remote.
+async function stoppedTurnDisk() {
+  const { root, remote } = await bareRemote();
+  const cwd = path.join(root, "workspace");
+  await mkdir(cwd);
+  // The stopped turn: the driver set up the checkout, and the agent worked.
+  await ensureRepo(baseConfig(cwd, { repoUrl: remote }));
+  await writeFile(path.join(cwd, "pushed.txt"), "already delivered\n");
+  agentGit(cwd, ["add", "pushed.txt"]);
+  agentGit(cwd, ["commit", "-m", "feat: delivered part"]);
+  agentGit(cwd, ["push"]);
+  await writeFile(
+    path.join(cwd, "feature.txt"),
+    "the first half of the feature\n",
+  );
+  agentGit(cwd, ["add", "feature.txt"]);
+  agentGit(cwd, ["commit", "-m", "feat: unpushed commit"]);
+  await writeFile(path.join(cwd, "README.md"), "seed\nedited, not committed\n");
+  await writeFile(path.join(cwd, "scratch.txt"), "untracked work\n");
+  return { root, remote, cwd };
+}
+
+async function assertWorkSurvived(
+  cwd: string,
+  remote: string,
+  unpushed: string,
+) {
+  assert.equal(
+    git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]),
+    "bex-agent/session-1",
+  );
+  assert.equal(git(cwd, ["rev-parse", "HEAD"]), unpushed);
+  assert.equal(git(cwd, ["log", "-1", "--format=%s"]), "feat: unpushed commit");
+  assert.equal(
+    await readFile(path.join(cwd, "feature.txt"), "utf8"),
+    "the first half of the feature\n",
+  );
+  assert.equal(
+    await readFile(path.join(cwd, "README.md"), "utf8"),
+    "seed\nedited, not committed\n",
+  );
+  assert.equal(
+    await readFile(path.join(cwd, "scratch.txt"), "utf8"),
+    "untracked work\n",
+  );
+  // (the helper trims the first line's leading space)
+  const status = git(cwd, ["status", "--porcelain"])
+    .split("\n")
+    .map((line) => line.trim())
+    .sort();
+  assert.deepEqual(status, ["?? scratch.txt", "M README.md"]);
+  // Nothing was pushed on the agent's behalf: the remote branch is where the
+  // agent left it, one commit behind the checkout.
+  assert.notEqual(
+    git(remote, ["rev-parse", "refs/heads/bex-agent/session-1"]),
+    unpushed,
+  );
+}
+
+test("a sandbox booted from a stopped turn's disk keeps its dirty tree and unpushed commit", async () => {
+  const { root, remote, cwd } = await stoppedTurnDisk();
+  const unpushed = git(cwd, ["rev-parse", "HEAD"]);
+  // The next turn's sandbox gets its own proxy URL for the same repository,
+  // and the repository moved on meanwhile.
+  const moved = path.join(root, "moved");
+  git(root, ["clone", remote, moved]);
+  git(moved, ["config", "user.email", "other@bex.co"]);
+  git(moved, ["config", "user.name", "other"]);
+  await writeFile(path.join(moved, "other.txt"), "someone else's change\n");
+  git(moved, ["add", "-A"]);
+  git(moved, ["commit", "-m", "other: a change on main"]);
+  git(moved, ["push", "origin", "main"]);
+
+  await ensureRepo(baseConfig(cwd, { repoUrl: remote }));
+  await assertWorkSurvived(cwd, remote, unpushed);
+  // A third turn over the same disk changes nothing either.
+  await ensureRepo(baseConfig(cwd, { repoUrl: remote }));
+  await assertWorkSurvived(cwd, remote, unpushed);
+});
+
+test("a stopped turn that left the checkout on another branch keeps its work on the session branch", async () => {
+  const { remote, cwd } = await stoppedTurnDisk();
+  // The agent had switched to a scratch branch before it was stopped: its
+  // commits and edits come with it, onto the session branch.
+  agentGit(cwd, ["checkout", "-b", "scratch"]);
+  const unpushed = git(cwd, ["rev-parse", "HEAD"]);
+  await ensureRepo(baseConfig(cwd, { repoUrl: remote }));
+  await assertWorkSurvived(cwd, remote, unpushed);
+});
+
+test("the disk's checkout is pointed at the next turn's own remote and holds no credential", async () => {
+  const { root, remote, cwd } = await stoppedTurnDisk();
+  const other = path.join(root, "next-remote.git");
+  git(root, ["clone", "--bare", remote, other]);
+  await ensureRepo(baseConfig(cwd, { repoUrl: other }));
+  assert.equal(agentGit(cwd, ["remote", "get-url", "origin"]), other);
+  const config = await readFile(path.join(cwd, ".git", "config"), "utf8");
+  assert.doesNotMatch(config, /credential|token|password|extraheader/i);
+});

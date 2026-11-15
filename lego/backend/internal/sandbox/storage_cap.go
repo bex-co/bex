@@ -31,11 +31,13 @@ const CodeSandboxStorageLimit = "SANDBOX_STORAGE_LIMIT"
 
 // StorageUsage reads the bytes a workspace's suspended sandboxes retain: the
 // storage meter's open, sized objects. It also reserves a repository
-// environment build image's bytes under the workspace's storage lock,
-// refused with *store.SandboxStorageLimitError past limitBytes (ADR111 D9).
+// environment build image's bytes, or a stopped agent turn's retained image's,
+// under the workspace's storage lock, refused with
+// *store.SandboxStorageLimitError past limitBytes (ADR111 D9, ADR047 D6).
 type StorageUsage interface {
 	SandboxStorageBytes(ctx context.Context, workspaceID string) (int64, error)
 	ReserveAgentRepoEnvironmentBuildImage(ctx context.Context, workspaceID, buildID string, sizeBytes, limitBytes int64) error
+	ReserveAgentSessionRetainedImage(ctx context.Context, workspaceID, imageID string, sizeBytes, limitBytes int64) error
 }
 
 // checkStorageCap refuses the suspend (verb) of a running sandbox whose

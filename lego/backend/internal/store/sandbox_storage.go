@@ -385,7 +385,9 @@ func (s *PGStore) MarkSandboxStorageReaped(ctx context.Context, workspaceID, obj
 
 // SandboxStorageBytes is the stored bytes of a workspace's open, sized objects
 // plus its imported images (w2/m358), counting an import still copying at its
-// declared size (round 24, S-3): what the per-workspace cap reads. Imported
+// declared size (round 24, S-3), its repository environment build images
+// (ADR111 D9) and its stopped agent turns' retained images (ADR047 D6): what
+// the per-workspace cap reads. Imported
 // images count toward the cap but are not billed (ADR104 § Images). An object
 // not sized yet counts for nothing, so a workspace can pass the cap by the
 // images still waiting for a size.
@@ -404,14 +406,18 @@ const importedBuildSQL = `status <> 'failed' AND deleted_at IS NULL`
 // and ReserveAgentRepoEnvironmentBuildImage also read under the workspace's
 // storage lock. Repository environment build images count as imported ones do
 // (ADR111 D9): reserved while their build runs, then until the registry has
-// dropped them.
+// dropped them. A stopped agent turn's retained image counts from the moment
+// its size is reserved until its row is gone, which is after the registry has
+// dropped the image (ADR047 D6, D12).
 const sandboxStorageBytesSQL = `
 	SELECT ((SELECT COALESCE(sum(bytes), 0) FROM sandbox_storage_objects
 	        WHERE workspace_id = $1 AND ended_at IS NULL)
 	     + (SELECT COALESCE(sum(size_bytes), 0) FROM sandbox_builds
 	        WHERE workspace_id = $1 AND ` + importedBuildSQL + `)
 	     + (SELECT COALESCE(sum(size_bytes), 0) FROM agent_repo_environment_builds
-	        WHERE workspace_id = $1 AND (image_digest IS NOT NULL OR status = ` + buildBuildingSQL + `)))::bigint`
+	        WHERE workspace_id = $1 AND (image_digest IS NOT NULL OR status = ` + buildBuildingSQL + `))
+	     + (SELECT COALESCE(sum(size_bytes), 0) FROM agent_session_retained_images
+	        WHERE workspace_id = $1))::bigint`
 
 // platformImportedBytesSQL is the imported image bytes of every workspace
 // together, which CreateSandboxBuild's platform budget counts (w5/m383).

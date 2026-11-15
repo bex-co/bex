@@ -315,6 +315,10 @@ type Service struct {
 	// D12). nil (store off) answers such a message with the in-flight
 	// refusal and offers no queue verbs.
 	Queue QueueStore
+	// Retention keeps a stopped turn's disk, which the session's next turn
+	// continues from (ADR047 D12, w22/m413). The Completer holds the same
+	// pointer. nil starts every turn from a fresh sandbox.
+	Retention *Retention
 	// Stops tells the Completer which sessions a person just asked to stop, so
 	// it settles them in seconds (the Completer holds the same pointer). nil
 	// leaves Stop to the ordinary Completer tick.
@@ -795,6 +799,9 @@ type dispatchSpec struct {
 	// continuityEnv (its transcript read stays OFF the accept path) can
 	// re-deliver it on the rung-3 shape (w5/m84).
 	task string
+	// retained is the stopped turn's retained image this dispatch has claimed
+	// and boots its sandbox from (ADR047 D12); nil starts a fresh sandbox.
+	retained *store.AgentRetainedImage
 }
 
 // runDispatch executes the slow sandbox-provisioning half of a create/steer turn
@@ -814,6 +821,16 @@ func (s *Service) runDispatch(ctx context.Context, record store.AgentSession, sp
 // Steer's re-dispatch so their rollback semantics stay in lock-step.
 func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) (store.AgentSession, error) {
 	ws := record.WorkspaceID
+	// The stopped turn's retained disk, when this dispatch claimed it, is not
+	// spent until the turn is bound to the sandbox that booted from it: a
+	// dispatch that ends before that, however early, lets it go, so a later
+	// message can use it. Registered first, before any early return.
+	claimed, bound := spec.retained, false
+	defer func() {
+		if claimed != nil && !bound {
+			s.Retention.unclaim(claimed.ID)
+		}
+	}()
 	// CreateAgentSessionSandbox blocks until the pod is Running with an IP (or
 	// fails/times out), so its wall-clock is the provisioning latency the user
 	// waits through after the fast create-accept (w5/m81 t002).
@@ -860,18 +877,10 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		log.Printf("agent-session dispatch: read repository environment failed (session=%s): %v", record.ID, err)
 		return s.failDispatch(ctx, record, spec.turn, repoEnvironmentReadFailure, err)
 	}
-	// A build of the environment's current setup steps boots the sandbox from
-	// its image, and the driver skips the steps (ADR111 D4).
-	image := s.prebuiltImage(ctx, repoEnv, spec.template)
-	if image.BuildID != "" {
-		spec.env = withEnv(spec.env, prebuiltEnv, image.BuildID)
-	}
 	s.recordAppliedSecrets(ctx, record, applied)
 	provisionStart := time.Now()
-	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, sandbox.AgentSessionSandbox{
-		WorkspaceID: ws, Template: spec.template, SessionID: record.ID, Repository: record.Repo, Branch: record.Branch,
-		ModelEndpoint: spec.modelEndpoint, ModelAPIKey: spec.modelAPIKey, Egress: spec.egress, DriverEnv: spec.env, Image: image,
-	})
+	boot, err := s.bootSandbox(ctx, record, spec, repoEnv)
+	sb, image, retained := boot.Sandbox, boot.image, boot.retained
 	if err != nil {
 		s.Metrics.observeProvision(provisionFailed, time.Since(provisionStart))
 		// Log the underlying reason: dispatch failures were previously invisible
@@ -894,7 +903,7 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		return store.AgentSession{}, err
 	}
 	s.Metrics.observeProvision(provisionRunning, time.Since(provisionStart))
-	s.recordEnvironmentBuild(ctx, record, image.BuildID)
+	s.recordEnvironmentBuild(ctx, record, buildOf(image, retained))
 	if err := s.copyAttachments(ctx, ws, record.ID, sb.ID, inputs); err != nil {
 		log.Printf("agent-session dispatch: attachment copy failed (session=%s): %v", record.ID, err)
 		return s.failDispatch(ctx, record, spec.turn, attachmentCopyFailure, err)
@@ -916,13 +925,97 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	// The CAS in RecordAgentSessionDispatch (see its doc) rejects a session a
 	// concurrent Cancel already took terminal, returning ErrNotFound; we then tear
 	// the just-created sandbox back down rather than orphan it.
-	bound, err := s.Store.RecordAgentSessionDispatch(ctx, record.ID, sb.ID, phase, string(sb.Status), spec.delivery, spec.turn)
+	boundRecord, err := s.Store.RecordAgentSessionDispatch(ctx, record.ID, sb.ID, phase, string(sb.Status), spec.delivery, spec.turn)
 	if err != nil {
 		s.abandonDispatch(ctx, record, spec.turn, store.AgentSessionFailure{Reason: "sandbox dispatch record failed"})
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox dispatch record failed")
 		return store.AgentSession{}, mapStoreError(record.ID, err)
 	}
-	return bound, nil
+	bound = true
+	if spec.delivery == DeliveryRedispatch {
+		// A turn is now running in a sandbox: the disk it booted from is
+		// spent, and any other retained image of the session is stale.
+		usedID := ""
+		if retained != nil {
+			usedID = retained.ID
+		}
+		s.Retention.finish(ctx, s.Now, record.ID, usedID)
+	}
+	return boundRecord, nil
+}
+
+// bootedSandbox is a dispatch's sandbox, the image it booted from, and the
+// retained disk among them: nil when it started fresh, even if the dispatch
+// claimed one.
+type bootedSandbox struct {
+	sandbox.Sandbox
+	image    sandbox.AgentImage
+	retained *store.AgentRetainedImage
+}
+
+// createSessionSandbox creates the dispatch's sandbox from image with env.
+func (s *Service) createSessionSandbox(ctx context.Context, record store.AgentSession, spec dispatchSpec, image sandbox.AgentImage, env map[string]string) (sandbox.Sandbox, error) {
+	return s.Sandbox.CreateAgentSessionSandbox(ctx, sandbox.AgentSessionSandbox{
+		WorkspaceID: record.WorkspaceID, Template: spec.template, SessionID: record.ID, Repository: record.Repo, Branch: record.Branch,
+		ModelEndpoint: spec.modelEndpoint, ModelAPIKey: spec.modelAPIKey, Egress: spec.egress, DriverEnv: env, Image: image,
+	})
+}
+
+// bootSandbox creates the dispatch's sandbox: from the retained disk it
+// claimed, else from a fresh image (ADR047 D12). A sandbox that cannot start
+// from the disk, for any reason but the capacity limit, which a fresh one
+// meets as well, is retried once from a fresh sandbox, which never fails the
+// turn for the optimization, and the turn says so in its note. The disk is
+// then released as unusable. If the fresh sandbox does not start either, the
+// disk was not at fault: it stays claimed, and the dispatch lets it go.
+func (s *Service) bootSandbox(ctx context.Context, record store.AgentSession, spec dispatchSpec, repoEnv store.AgentRepoEnvironment) (bootedSandbox, error) {
+	image, env := s.dispatchImage(ctx, repoEnv, spec)
+	sb, err := s.createSessionSandbox(ctx, record, spec, image, env)
+	if err == nil || spec.retained == nil || sandbox.IsCapacityLimit(err) || ctx.Err() != nil {
+		return bootedSandbox{Sandbox: sb, image: image, retained: spec.retained}, err
+	}
+	log.Printf("agent-session dispatch: sandbox from the retained disk failed, retrying fresh (session=%s image=%s): %v", record.ID, spec.retained.ID, err)
+	retained := spec.retained
+	spec.retained = nil
+	// The failed attempt's sandbox, if one was created, carries this turn's
+	// label: end it before its replacement starts.
+	attempt := store.AgentDispatch{SessionID: record.ID, WorkspaceID: record.WorkspaceID, Turn: spec.turn}
+	if cleanupErr := s.Sandbox.CleanupAgentDispatches(ctx, []store.AgentDispatch{attempt}); cleanupErr != nil {
+		log.Printf("agent-session dispatch: end the failed attempt's sandbox failed (session=%s): %v", record.ID, cleanupErr)
+	}
+	image, env = s.dispatchImage(ctx, repoEnv, spec)
+	if sb, err = s.createSessionSandbox(ctx, record, spec, image, env); err != nil {
+		return bootedSandbox{}, err
+	}
+	s.Retention.release(ctx, s.Now, retained.ID, store.RetainedReleaseUnusable)
+	if noteErr := s.Retention.Store.SetAgentSessionTurnStartNote(ctx, record.ID, spec.turn, retainedFresh); noteErr != nil {
+		log.Printf("agent-session dispatch: record the fresh start failed (session=%s): %v", record.ID, noteErr)
+	}
+	return bootedSandbox{Sandbox: sb, image: image}, nil
+}
+
+// dispatchImage is the image a dispatch's sandbox boots from and the driver
+// env it is created with: the retained disk the dispatch claimed, else the
+// repository environment's prebuilt image, else the template's own.
+func (s *Service) dispatchImage(ctx context.Context, repoEnv store.AgentRepoEnvironment, spec dispatchSpec) (sandbox.AgentImage, map[string]string) {
+	if spec.retained != nil {
+		return sandbox.AgentImage{ID: spec.retained.ID, Digest: spec.retained.ImageDigest}, spec.env
+	}
+	image := s.prebuiltImage(ctx, repoEnv, spec.template)
+	if image.ID == "" {
+		return image, spec.env
+	}
+	return image, withEnv(spec.env, prebuiltEnv, image.ID)
+}
+
+// buildOf is the repository environment build a dispatch booted from, for the
+// session view's environmentBuildId: none when the sandbox booted from a
+// retained disk, which is no build's image.
+func buildOf(image sandbox.AgentImage, retained *store.AgentRetainedImage) string {
+	if retained != nil {
+		return ""
+	}
+	return image.ID
 }
 
 // failDispatch abandons a dispatch for failure and settles its turn with the
@@ -1230,6 +1323,11 @@ func (s *Service) setArchived(ctx context.Context, sessionID string, archived bo
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
 	}
+	if archived {
+		// Archiving released the stopped turn's retained disk with the same
+		// write; delete the image now instead of at the next sweep.
+		s.Retention.purge(ctx, s.Now(), sessionID)
+	}
 	return s.toView(record)
 }
 
@@ -1310,6 +1408,12 @@ func (s *Service) Delete(ctx context.Context, sessionID string) error {
 		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
 			return err // retryable: never delete the row while its pod may survive
 		}
+	}
+	// The stopped turn's retained disk lives in the registry and its handle
+	// with the session row: delete the image first, so the row never goes
+	// while the registry may still hold one.
+	if err := s.Retention.deleteSessionImages(ctx, s.Now, record); err != nil {
+		return err
 	}
 	if err := s.Store.DeleteAgentSession(ctx, sessionID); err != nil {
 		return mapStoreError(sessionID, err)
@@ -1596,6 +1700,9 @@ func (s *Service) finishCancel(ctx context.Context, record store.AgentSession) (
 		return store.AgentSession{}, mapStoreError(record.ID, err)
 	}
 	s.Metrics.observeTerminalTurn(turnOutcomeCanceled, fact)
+	// Canceling released the stopped turn's retained disk with the same write;
+	// delete the image now instead of at the next sweep.
+	s.Retention.purge(ctx, s.Now(), record.ID)
 	return canceled, nil
 }
 
@@ -2039,6 +2146,11 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 // runSteerDispatch tears the previous turn's sandbox down (idempotent) then
 // re-dispatches a fresh one for the steering prompt, in the background.
 func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) {
+	// A turn a person stopped kept its disk (ADR047 D12): wait for its save,
+	// which also reads the transcript the continuity below primes the agent
+	// from, and claim the image to boot from. This comes before the previous
+	// sandbox is torn down, since the save is pausing that very sandbox.
+	spec.retained = s.Retention.claim(ctx, s.Now, record.ID, spec.template)
 	// A redispatch crosses a sandbox-generation boundary: prime the blank agent
 	// from the durable transcript (ADR047 D3 ladder, w5/m84). Off the accept path
 	// by design — the transcript read is background work.

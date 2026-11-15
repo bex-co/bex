@@ -337,10 +337,11 @@ func (r *RegistryReaper) DeleteImages(ctx context.Context, workspaceID, ref stri
 }
 
 // DeleteImportedImage deletes an imported image (w2/m358) once its group is
-// deleted (w2/m359), or a repository environment build's image (ADR111 D8):
-// the one tag its repository holds. An image already gone is not an error.
+// deleted (w2/m359), a repository environment build's image (ADR111 D8) or a
+// stopped agent turn's retained image (ADR047 D12): the one tag its repository
+// holds. An image already gone is not an error.
 func (r *RegistryReaper) DeleteImportedImage(ctx context.Context, workspaceID, buildID string) error {
-	if !agentsession.IsBuildPrincipal(buildID) {
+	if !agentsession.IsAgentImage(buildID) {
 		if err := validateBuildID(buildID); err != nil {
 			return err
 		}

@@ -889,8 +889,13 @@ type fakeLifecycle struct {
 	// Injected background-provisioning failures (w2/m64). createErr aborts the
 	// sandbox create (nothing is counted); resumeErr aborts a resume.
 	createErr, resumeErr, cancelErr error
-	inventory                       func(context.Context) (sandbox.InventoryCounts, error)
-	cleanupErr                      error
+	// imageCreateErr fails only a create that boots from an image (a
+	// retained disk or a build), and onCreate runs at the start of every
+	// create, before it answers (ADR047 D12 tests).
+	imageCreateErr error
+	onCreate       func(sandbox.AgentSessionSandbox)
+	inventory      func(context.Context) (sandbox.InventoryCounts, error)
+	cleanupErr     error
 	// interrupts records InterruptSessionTurn calls (session, sandbox, turn).
 	interrupts   []string
 	interruptErr error
@@ -902,8 +907,14 @@ func (f *fakeLifecycle) InterruptSessionTurn(_ context.Context, _, sessionID, sa
 }
 
 func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, spec sandbox.AgentSessionSandbox) (sandbox.Sandbox, error) {
+	if f.onCreate != nil {
+		f.onCreate(spec)
+	}
 	if f.createErr != nil {
 		return sandbox.Sandbox{}, f.createErr
+	}
+	if f.imageCreateErr != nil && spec.Image.ID != "" {
+		return sandbox.Sandbox{}, f.imageCreateErr
 	}
 	f.created++
 	f.image = spec.Image

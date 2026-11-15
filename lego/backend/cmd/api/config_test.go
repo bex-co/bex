@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 )
 
 func loadFor(t *testing.T, env map[string]string) (*Config, []string, error) {
@@ -85,6 +86,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 		{"AuthMaxInflight", cfg.AuthMaxInflight, 64},
 		{"AuthMaxInflightPerCredential", cfg.AuthMaxInflightPerCredential, 64},
 		{"AgentSandboxIdleTTL", cfg.AgentSandboxIdleTTL, 2 * time.Hour},
+		{"AgentInterruptRetention", cfg.AgentInterruptRetention, 24 * time.Hour},
 		{"AgentTurnTimeout", cfg.AgentTurnTimeout, 30 * time.Minute},
 		{"AgentTurnIdleTimeout", cfg.AgentTurnIdleTimeout, 30 * time.Minute},
 		{"AgentToolCallTimeout", cfg.AgentToolCallTimeout, 2 * time.Hour},
@@ -314,6 +316,37 @@ func TestLoadConfigCPTokenFailClosed(t *testing.T) {
 	env["BEX_CP_INSECURE"] = "1"
 	if _, _, err := loadFor(t, env); err != nil {
 		t.Fatalf("BEX_CP_INSECURE=1 override still errored: %v", err)
+	}
+}
+
+// A stopped turn's disk is kept for BEX_AGENT_INTERRUPT_RETENTION (ADR047
+// D12): 24h by default, 0 keeps nothing, and no value reaches Devin's 14 days.
+func TestLoadConfigInterruptRetention(t *testing.T) {
+	for _, tc := range []struct {
+		value   string
+		want    time.Duration
+		warning bool
+	}{
+		{"", 24 * time.Hour, false},
+		{"48h", 48 * time.Hour, false},
+		{"0", 0, false},
+		{"720h", agentsessions.MaxRetentionTTL, true},
+		{"soon", 24 * time.Hour, true},
+		{"-1h", 24 * time.Hour, true},
+	} {
+		cfg, warnings, err := loadFor(t, map[string]string{"BEX_AGENT_INTERRUPT_RETENTION": tc.value})
+		if err != nil {
+			t.Fatalf("%q: %v", tc.value, err)
+		}
+		if cfg.AgentInterruptRetention != tc.want {
+			t.Errorf("BEX_AGENT_INTERRUPT_RETENTION=%q = %v, want %v", tc.value, cfg.AgentInterruptRetention, tc.want)
+		}
+		if got := hasWarning(warnings, "BEX_AGENT_INTERRUPT_RETENTION"); got != tc.warning {
+			t.Errorf("BEX_AGENT_INTERRUPT_RETENTION=%q warned = %v, want %v (%v)", tc.value, got, tc.warning, warnings)
+		}
+	}
+	if agentsessions.MaxRetentionTTL >= 14*24*time.Hour {
+		t.Errorf("the cap %v is not shorter than Devin's 14 days", agentsessions.MaxRetentionTTL)
 	}
 }
 

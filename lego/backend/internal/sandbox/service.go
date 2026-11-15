@@ -1124,7 +1124,7 @@ func (s *Service) createAgentSandbox(ctx context.Context, a agentSandbox) (Sandb
 	if !ok {
 		return Sandbox{}, fmt.Errorf("%w: unknown agent sandbox template %q", core.ErrBadRequest, template)
 	}
-	if a.image.BuildID != "" {
+	if a.image.ID != "" {
 		ref, err := s.agentImageRef(a.workspaceID, a.image)
 		if err != nil {
 			return Sandbox{}, err
@@ -1214,6 +1214,21 @@ func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, w
 // terminateAgentSandbox terminates the exact sandbox bound to principal and
 // deletes the principal's egress policy.
 func (s *Service) terminateAgentSandbox(ctx context.Context, workspaceID, sessionID, sandboxID string) error {
+	return s.endAgentSandbox(ctx, workspaceID, sessionID, sandboxID, true)
+}
+
+// endAgentSandbox terminates the exact sandbox bound to principal. Its egress
+// policy goes with it only when withPolicy: a session's policy is the
+// session's, shared by every sandbox of its turns, so a caller that cannot tell
+// whether a newer turn is using it leaves it (CleanupAgentDispatches does the
+// same).
+func (s *Service) endAgentSandbox(ctx context.Context, workspaceID, sessionID, sandboxID string, withPolicy bool) error {
+	deletePolicy := func() error {
+		if withPolicy && s.SessionEgress != nil {
+			return s.SessionEgress.Delete(ctx, store.SandboxNamespace(workspaceID), sessionID)
+		}
+		return nil
+	}
 	key, err := s.agentSessionKey(ctx, workspaceID)
 	if err != nil {
 		return err
@@ -1224,20 +1239,15 @@ func (s *Service) terminateAgentSandbox(ctx context.Context, workspaceID, sessio
 			// Already absent is the desired terminal state. A mismatched/foreign
 			// object is also deliberately indistinguishable from absent and is
 			// never touched; the authorized durable session may still converge.
-			if s.SessionEgress != nil {
-				return s.SessionEgress.Delete(ctx, store.SandboxNamespace(workspaceID), sessionID)
-			}
-			return nil
+			return deletePolicy()
 		}
 		return err
 	}
 	if err := s.terminateObserved(ctx, key, &raw); err != nil {
 		return err
 	}
-	if s.SessionEgress != nil {
-		if err := s.SessionEgress.Delete(ctx, store.SandboxNamespace(workspaceID), sessionID); err != nil {
-			return fmt.Errorf("delete terminated session egress policy: %w", err)
-		}
+	if err := deletePolicy(); err != nil {
+		return fmt.Errorf("delete terminated session egress policy: %w", err)
 	}
 	return nil
 }
@@ -1310,6 +1320,11 @@ func (s *Service) readAgentStatus(ctx context.Context, workspaceID, sessionID, s
 // interrupt.ts). A sentinel naming another turn is ignored, so a stale one can
 // never end a later turn.
 const agentSessionInterruptPath = "/var/run/bex-agent/interrupt"
+
+// agentSessionResultPath is the driver's record of the structured result a
+// turn submitted, beside the status file (lego/agent-image/driver/src/
+// config.ts resultRecordPath). A stopped turn's disk is retained without it.
+const agentSessionResultPath = "/var/run/bex-agent/result.json"
 
 // InterruptSessionTurn asks the driver in the exact session sandbox to end
 // turn, and only that turn, by writing the sentinel the driver watches. There

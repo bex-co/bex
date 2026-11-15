@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
@@ -35,15 +36,16 @@ import (
 // It runs the setup steps; then its paused root filesystem is copied into the
 // workspace's images repository, from which the repository's sessions boot.
 
-// AgentImage names a repository environment build's image an agent sandbox
-// boots from: the build's id and the image's digest, which place it in the
-// workspace's own images repository. The zero value boots the template image.
+// AgentImage names an image an agent sandbox boots from, in the workspace's
+// own images repository: a repository environment build's (ADR111 D4) or a
+// stopped turn's retained disk (ADR047 D12), by its id and the image's
+// digest. The zero value boots the template image.
 type AgentImage struct {
-	BuildID string
-	Digest  string
+	ID     string
+	Digest string
 }
 
-// AgentImageCommit is a committed build image: its digest and compressed size.
+// AgentImageCommit is a committed image: its digest and compressed size.
 type AgentImageCommit struct {
 	Digest    string
 	SizeBytes int64
@@ -75,10 +77,10 @@ func (s *Service) agentImageRef(workspaceID string, image AgentImage) (string, e
 	if s.Images == nil {
 		return "", errAgentImagesUnavailable()
 	}
-	if !agentsession.IsBuildPrincipal(image.BuildID) || !imageDigestPattern.MatchString(image.Digest) {
-		return "", fmt.Errorf("%w: invalid agent image %q@%q", core.ErrBadRequest, image.BuildID, image.Digest)
+	if !agentsession.IsAgentImage(image.ID) || !imageDigestPattern.MatchString(image.Digest) {
+		return "", fmt.Errorf("%w: invalid agent image %q@%q", core.ErrBadRequest, image.ID, image.Digest)
 	}
-	repo, err := s.Images.imageRepository(workspaceID, image.BuildID)
+	repo, err := s.Images.imageRepository(workspaceID, image.ID)
 	if err != nil {
 		return "", err
 	}
@@ -132,50 +134,83 @@ func (l *AgentSessionLifecycle) ReadAgentBuildStatus(ctx context.Context, worksp
 // outcome (TerminateAgentBuildSandbox).
 func (l *AgentSessionLifecycle) CommitAgentBuildSandbox(ctx context.Context, workspaceID, buildID, sandboxID string) (AgentImageCommit, error) {
 	s := l.service
+	return s.commitAgentSandbox(ctx, agentCommit{
+		workspaceID: workspaceID, principal: buildID, sandboxID: sandboxID, imageID: buildID, verb: "build",
+		stale: []string{agentSessionStatusPath},
+		reserve: func(ctx context.Context, size int64) error {
+			return s.reserveAgentImage(ctx, workspaceID, buildID, size)
+		},
+	})
+}
+
+// agentCommit is one pause-commit of an agent sandbox into an image: whose
+// sandbox it is, the id the image is stored under, the driver files that are
+// removed first so a sandbox that boots the image never reads them as its
+// own, and how the image's size is reserved against the workspace's cap.
+type agentCommit struct {
+	workspaceID, principal, sandboxID, imageID string
+	// verb names the commit in a storage refusal: "build" or "retain".
+	verb    string
+	stale   []string
+	reserve func(ctx context.Context, size int64) error
+}
+
+// ErrAgentSandboxPaused marks a commit that failed after the sandbox was
+// paused: it can no longer run its turn, so a caller that wants to keep it
+// has nothing to keep. A commit that fails before the pause leaves the
+// sandbox running.
+var ErrAgentSandboxPaused = errors.New("the sandbox was paused")
+
+func (s *Service) commitAgentSandbox(ctx context.Context, c agentCommit) (AgentImageCommit, error) {
 	if s.Images == nil {
 		return AgentImageCommit{}, errAgentImagesUnavailable()
 	}
-	key, err := s.agentSessionKey(ctx, workspaceID)
+	key, err := s.agentSessionKey(ctx, c.workspaceID)
 	if err != nil {
 		return AgentImageCommit{}, err
 	}
-	raw, err := s.agentSessionSandbox(ctx, key, workspaceID, buildID, sandboxID)
+	raw, err := s.agentSessionSandbox(ctx, key, c.workspaceID, c.principal, c.sandboxID)
 	if err != nil {
 		return AgentImageCommit{}, err
 	}
-	res, err := s.sessionExec(ctx, workspaceID, buildID, sandboxID,
-		"rm -f "+agentSessionStatusPath+" && test ! -e "+agentSessionStatusPath, maxExecOutputBytes)
+	// rm -f succeeds on a missing file, so the test is what proves each is gone.
+	command := "rm -f " + strings.Join(c.stale, " ")
+	for _, path := range c.stale {
+		command += " && test ! -e " + path
+	}
+	res, err := s.sessionExec(ctx, c.workspaceID, c.principal, c.sandboxID, command, maxExecOutputBytes)
 	if err == nil && res.ExitCode != 0 {
 		err = fmt.Errorf("exit %d", res.ExitCode)
 	}
 	if err != nil {
-		return AgentImageCommit{}, fmt.Errorf("remove the build's status file: %w", err)
+		return AgentImageCommit{}, fmt.Errorf("remove the driver's status files: %w", err)
 	}
-	if err := s.checkStorageCap(ctx, raw, "build"); err != nil {
+	if err := s.checkStorageCap(ctx, raw, c.verb); err != nil {
 		return AgentImageCommit{}, fmt.Errorf("%w: %w", ErrAgentImageStorageLimit, err)
 	}
 	s.Meter.Observe(ctx, raw)
-	if err := s.Client.Suspend(ctx, key, sandboxID); err != nil {
-		return AgentImageCommit{}, fmt.Errorf("pause the builder: %w", err)
+	if err := s.Client.Suspend(ctx, key, c.sandboxID); err != nil {
+		return AgentImageCommit{}, fmt.Errorf("pause the sandbox: %w", err)
 	}
 	raw.Status.State = string(StatusSuspending)
 	s.Meter.Observe(ctx, raw)
-	if err := s.awaitSuspended(ctx, key, sandboxID); err != nil {
-		return AgentImageCommit{}, err
+	paused := func(err error) error { return fmt.Errorf("%w: %w", ErrAgentSandboxPaused, err) }
+	if err := s.awaitSuspended(ctx, key, c.sandboxID); err != nil {
+		return AgentImageCommit{}, paused(err)
 	}
-	img, size, err := s.Images.snapshotImage(ctx, workspaceID, sandboxID)
+	img, size, err := s.Images.snapshotImage(ctx, c.workspaceID, c.sandboxID)
 	if err != nil {
-		return AgentImageCommit{}, err
+		return AgentImageCommit{}, paused(err)
 	}
 	if size > s.Images.maxBytes() {
-		return AgentImageCommit{}, fmt.Errorf("%w: the image is %s, over the %s an image may hold", ErrAgentImageStorageLimit, formatGB(size), formatGB(s.Images.maxBytes()))
+		return AgentImageCommit{}, paused(fmt.Errorf("%w: the image is %s, over the %s an image may hold", ErrAgentImageStorageLimit, formatGB(size), formatGB(s.Images.maxBytes())))
 	}
-	if err := s.reserveAgentImage(ctx, workspaceID, buildID, size); err != nil {
-		return AgentImageCommit{}, err
+	if err := c.reserve(ctx, size); err != nil {
+		return AgentImageCommit{}, paused(err)
 	}
-	digest, err := s.Images.pushAgentImage(ctx, workspaceID, buildID, img)
+	digest, err := s.Images.pushAgentImage(ctx, c.workspaceID, c.imageID, img)
 	if err != nil {
-		return AgentImageCommit{}, err
+		return AgentImageCommit{}, paused(err)
 	}
 	return AgentImageCommit{Digest: digest, SizeBytes: size}, nil
 }
@@ -184,10 +219,19 @@ func (l *AgentSessionLifecycle) CommitAgentBuildSandbox(ctx context.Context, wor
 // storage cap under the lock imports take, so two builds committing at once
 // cannot both pass it.
 func (s *Service) reserveAgentImage(ctx context.Context, workspaceID, buildID string, size int64) error {
+	return s.reserveImageBytes(size, func(limit int64) error {
+		return s.Storage.ReserveAgentRepoEnvironmentBuildImage(ctx, workspaceID, buildID, size, limit)
+	})
+}
+
+// reserveImageBytes runs reserve, the store's reservation of an image's size
+// under the workspace's storage lock, against the cap; a refusal past it is
+// ErrAgentImageStorageLimit. Without a cap or a store nothing is reserved.
+func (s *Service) reserveImageBytes(size int64, reserve func(limit int64) error) error {
 	if s.MaxStorageBytes <= 0 || s.Storage == nil {
 		return nil
 	}
-	err := s.Storage.ReserveAgentRepoEnvironmentBuildImage(ctx, workspaceID, buildID, size, s.MaxStorageBytes)
+	err := reserve(s.MaxStorageBytes)
 	var limit *store.SandboxStorageLimitError
 	if errors.As(err, &limit) {
 		return fmt.Errorf("%w: the %s image would take the workspace's sandbox images from %s past its %s limit",
@@ -231,13 +275,20 @@ func (s *Service) awaitSuspended(ctx context.Context, key, sandboxID string) err
 // storage object); the build's own copy stays. OpenSandbox's terminate is
 // idempotent.
 func (l *AgentSessionLifecycle) TerminateAgentBuildSandbox(ctx context.Context, workspaceID, buildID, sandboxID string) error {
-	s := l.service
-	if err := s.terminateAgentSandbox(ctx, workspaceID, buildID, sandboxID); err != nil {
+	return l.service.endPausedAgentSandbox(ctx, workspaceID, buildID, sandboxID, true)
+}
+
+// endPausedAgentSandbox ends a paused agent sandbox and deletes its pause
+// images, which no storage object would ever reap: a builder's, or a stopped
+// session turn's once its disk is saved. The egress policy goes with it only
+// when withPolicy (endAgentSandbox).
+func (s *Service) endPausedAgentSandbox(ctx context.Context, workspaceID, principal, sandboxID string, withPolicy bool) error {
+	if err := s.endAgentSandbox(ctx, workspaceID, principal, sandboxID, withPolicy); err != nil {
 		return err
 	}
 	if s.Images != nil && s.Images.Reaper != nil {
 		if err := s.Images.Reaper.DeleteImages(ctx, workspaceID, sandboxID); err != nil {
-			log.Printf("sandbox: delete builder %s's snapshot: %v", sandboxID, err)
+			log.Printf("sandbox: delete paused sandbox %s's snapshot: %v", sandboxID, err)
 		}
 	}
 	return nil
@@ -254,4 +305,100 @@ func (l *AgentSessionLifecycle) DeleteAgentBuildImage(ctx context.Context, works
 		return nil
 	}
 	return l.service.Images.deleteImported(ctx, workspaceID, []string{buildID})
+}
+
+// RetainEndTimeout bounds the end of a paused sandbox after its disk is saved.
+const RetainEndTimeout = 30 * time.Second
+
+// RetainedCommit is a stopped turn's disk, saved as an image.
+type RetainedCommit struct {
+	AgentImageCommit
+	// SandboxEnded says the paused sandbox and its pause images are gone. When
+	// it is false the sandbox still stands, paused, and the idle reaper ends it.
+	SandboxEnded bool
+}
+
+// RetainAgentSessionSandbox saves a stopped turn's disk (ADR047 D12): it
+// removes the driver's status, interrupt and result files, so the sandbox
+// that boots the image never reads the stopped turn's as its own; pauses the
+// sandbox, which commits its root filesystem (refused at the workspace's
+// storage cap); reserves the image's bytes against that cap; copies the
+// committed image to the workspace's images repository under imageID; and
+// ends the paused sandbox and its pause images, which no storage object would
+// ever reap. The session's egress policy is left: it is shared by every
+// sandbox of the session, so the caller deletes it (DeleteAgentSessionEgress)
+// once it knows no newer turn is using it. The caller (agentsessions) owns
+// authorization and has already read the transcript, which needs a running
+// pod.
+//
+// A failure before the pause leaves the sandbox running and untouched. One
+// after it ends the sandbox, since a paused sandbox can no longer be used, and
+// is marked ErrAgentSandboxPaused.
+func (l *AgentSessionLifecycle) RetainAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID, imageID string) (RetainedCommit, error) {
+	s := l.service
+	if !agentsession.IsRetainedImage(imageID) {
+		return RetainedCommit{}, fmt.Errorf("%w: invalid retained image id %q", core.ErrBadRequest, imageID)
+	}
+	commit, err := s.commitAgentSandbox(ctx, agentCommit{
+		workspaceID: workspaceID, principal: sessionID, sandboxID: sandboxID, imageID: imageID, verb: "retain",
+		stale: []string{agentSessionStatusPath, agentSessionInterruptPath, agentSessionResultPath},
+		reserve: func(ctx context.Context, size int64) error {
+			return s.reserveRetainedImage(ctx, workspaceID, imageID, size)
+		},
+	})
+	// The end of the sandbox is not bound by the commit's deadline: a sandbox
+	// that was paused and then not ended would linger paused. The session's
+	// egress policy stays: it is the session's, and a newer turn may be using
+	// it (see DeleteAgentSessionEgress).
+	settle, done := context.WithTimeout(context.WithoutCancel(ctx), RetainEndTimeout)
+	defer done()
+	if err != nil {
+		if errors.Is(err, ErrAgentSandboxPaused) {
+			if endErr := s.endPausedAgentSandbox(settle, workspaceID, sessionID, sandboxID, false); endErr != nil {
+				log.Printf("sandbox: end the paused sandbox %s after a failed retention: %v", sandboxID, endErr)
+			}
+		}
+		return RetainedCommit{}, err
+	}
+	out := RetainedCommit{AgentImageCommit: commit}
+	if endErr := s.endPausedAgentSandbox(settle, workspaceID, sessionID, sandboxID, false); endErr != nil {
+		log.Printf("sandbox: end the paused sandbox %s: %v", sandboxID, endErr)
+		return out, nil
+	}
+	out.SandboxEnded = true
+	return out, nil
+}
+
+// reserveRetainedImage counts a retained image's bytes against the
+// workspace's storage cap under the lock imports and builds take, so two
+// stopped turns saving at once cannot both pass it.
+func (s *Service) reserveRetainedImage(ctx context.Context, workspaceID, imageID string, size int64) error {
+	return s.reserveImageBytes(size, func(limit int64) error {
+		return s.Storage.ReserveAgentSessionRetainedImage(ctx, workspaceID, imageID, size, limit)
+	})
+}
+
+// DeleteAgentSessionEgress deletes the session's egress policy, which a save
+// leaves when it ends the paused sandbox: the policy is the session's, shared
+// by every sandbox of its turns, so only a caller that knows no newer turn is
+// using it may delete it (agentsessions checks the session's turn first).
+func (l *AgentSessionLifecycle) DeleteAgentSessionEgress(ctx context.Context, workspaceID, sessionID string) error {
+	s := l.service
+	if s.SessionEgress == nil {
+		return nil
+	}
+	return s.SessionEgress.Delete(ctx, store.SandboxNamespace(workspaceID), sessionID)
+}
+
+// DeleteAgentRetainedImage deletes a retained image from the registry (ADR047
+// D12). An image already gone is not an error; a deployment without the
+// registry or its reaper credential has nothing it can delete.
+func (l *AgentSessionLifecycle) DeleteAgentRetainedImage(ctx context.Context, workspaceID, imageID string) error {
+	if !agentsession.IsRetainedImage(imageID) {
+		return fmt.Errorf("%w: invalid retained image id %q", core.ErrBadRequest, imageID)
+	}
+	if l.service.Images == nil {
+		return nil
+	}
+	return l.service.Images.deleteImported(ctx, workspaceID, []string{imageID})
 }

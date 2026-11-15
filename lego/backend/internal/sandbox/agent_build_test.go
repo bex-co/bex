@@ -77,7 +77,7 @@ func TestAgentSessionSandboxBootsFromABuildImage(t *testing.T) {
 		return AgentSessionSandbox{WorkspaceID: "tea-a", SessionID: "ags-session", Repository: "bex-co/example", Branch: "bex-agent/session-test",
 			ModelEndpoint: "https://api.openai.com/v1", ModelAPIKey: placeholder, Image: image}
 	}
-	if _, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), spec(AgentImage{BuildID: build, Digest: testAgentDigest})); err != nil {
+	if _, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), spec(AgentImage{ID: build, Digest: testAgentDigest})); err != nil {
 		t.Fatal(err)
 	}
 	want := "zot.internal:5000/snapshots/tea-a-sandbox/images/" + build + "@" + testAgentDigest
@@ -87,13 +87,13 @@ func TestAgentSessionSandboxBootsFromABuildImage(t *testing.T) {
 	if got := lifecycle.AgentTemplateImage(""); got != "bex/agent:1" {
 		t.Fatalf("template image = %q", got)
 	}
-	for _, image := range []AgentImage{{BuildID: "sbb-0123456789abcdefghij", Digest: testAgentDigest}, {BuildID: build, Digest: "latest"}} {
+	for _, image := range []AgentImage{{ID: "sbb-0123456789abcdefghij", Digest: testAgentDigest}, {ID: build, Digest: "latest"}} {
 		if _, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), spec(image)); !errors.Is(err, core.ErrBadRequest) {
 			t.Fatalf("image %+v = %v", image, err)
 		}
 	}
 	svc.Images = nil
-	if _, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), spec(AgentImage{BuildID: build, Digest: testAgentDigest})); !errors.Is(err, core.ErrUnavailable) {
+	if _, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), spec(AgentImage{ID: build, Digest: testAgentDigest})); !errors.Is(err, core.ErrUnavailable) {
 		t.Fatalf("a build image without the registry = %v", err)
 	}
 }

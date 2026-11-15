@@ -254,7 +254,11 @@ type Config struct {
 	AgentSessionGatewayURL string
 	AgentGitProxyURL       string
 	AgentSandboxIdleTTL    time.Duration
-	AgentTurnTimeout       time.Duration
+	// AgentInterruptRetention is how long a stopped turn's disk is kept for
+	// the session's next message (BEX_AGENT_INTERRUPT_RETENTION, ADR047 D12);
+	// 0 keeps nothing.
+	AgentInterruptRetention time.Duration
+	AgentTurnTimeout        time.Duration
 	// AgentTurnIdleTimeout bounds how long one turn may go without progress
 	// (BEX_AGENT_TURN_IDLE_TIMEOUT); AgentTurnTimeout is its ceiling.
 	AgentTurnIdleTimeout time.Duration
@@ -615,6 +619,14 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	// w10/m15: a finished session's sandbox is terminated after 2h idle; the
 	// transcript stays and the next message continues in a fresh sandbox.
 	cfg.AgentSandboxIdleTTL = p.zeroableDuration("BEX_AGENT_SANDBOX_IDLE_TTL", 2*time.Hour)
+	// w22/m413: a turn a person stopped keeps its disk this long, and the
+	// session's next message continues from it (ADR047 D12); 0 keeps nothing.
+	// Never longer than the cap below Devin's 14 days.
+	cfg.AgentInterruptRetention = p.zeroableDuration("BEX_AGENT_INTERRUPT_RETENTION", agentsessions.DefaultRetentionTTL)
+	if clamped, capped := agentsessions.ClampRetentionTTL(cfg.AgentInterruptRetention); capped {
+		p.warnf("BEX_AGENT_INTERRUPT_RETENTION=%s is over the %s cap (Devin keeps a sleeping session 14 days); using the cap", cfg.AgentInterruptRetention, clamped)
+		cfg.AgentInterruptRetention = clamped
+	}
 	// w5/m80 t002: one turn's wall-clock bound. A 0/invalid value falls back to
 	// the Service's 30m default (the bound is never disabled — that is the
 	// 4h-hang bug this fixes).

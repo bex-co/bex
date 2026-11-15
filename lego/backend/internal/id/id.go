@@ -164,12 +164,15 @@ var (
 	// AgentRepoEnvironmentBuild is a build of a repository environment's setup
 	// steps into the image its sessions boot from (ADR111).
 	AgentRepoEnvironmentBuild = Kind{prefix: "arb", desc: "agent repository environment build"}
+	// AgentRetainedImage is the disk of a stopped agent turn, kept as an image
+	// for the session's next turn to continue from (ADR047 D12, w22/m413).
+	AgentRetainedImage = Kind{prefix: "ari", desc: "agent session retained image"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, AgentQueuedMessage, AgentRepoEnvironmentBuild}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

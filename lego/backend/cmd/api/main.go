@@ -925,6 +925,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentAutomationStore = st      // ADR101: agent automations
 	deps.AgentFeedbackStore = st        // ADR047 D11: PR feedback turn origins
 	deps.AgentQueueStore = st           // ADR047 D12: messages queued behind a running turn
+	deps.AgentRetainedImageStore = st   // ADR047 D12: a stopped turn's disk, kept as an image
 	// ADR111: repository environment builds.
 	deps.AgentRepoEnvironmentBuildStore = st
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
@@ -1562,7 +1563,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// never minting). Only meaningful with the store on (workspace delete
 			// needs it) and the client wired — both true in this branch.
 			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
-				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages, AgentBuilds: st})
+				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages, AgentBuilds: st, AgentRetained: st})
 		}
 	}
 }
@@ -1612,6 +1613,9 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// reap), and the per-workspace concurrent live-sandbox cap (default 5; 0 ⇒
 	// uncapped).
 	deps.AgentSandboxIdleTTL = cfg.AgentSandboxIdleTTL
+	// w22/m413: how long a stopped turn's disk is kept for the next message
+	// (BEX_AGENT_INTERRUPT_RETENTION, default 24h; 0 keeps nothing).
+	deps.AgentInterruptRetention = cfg.AgentInterruptRetention
 	// w5/m80 t002: one turn's wall-clock bound, injected into the sandbox as
 	// BEX_AGENT_TURN_TIMEOUT_MS. Default 30m; a 0/invalid value falls back to the
 	// Service's 30m default (the bound is never disabled — that is the 4h-hang bug
