@@ -33,10 +33,17 @@ spec:
       # build_seconds, not tenant egress bytes (ADR060 D8).
       # Platform/control-plane nodes cannot run tenant Apps and need no meter.
       # The dedicated serving pools (bex-tenant-xl/xxl, w2/m250) DO run tenant
-      # Apps, so the meter tolerates their taint — any pool value. Keep
-      # EgressMeterTargetMissing's expected-node expression in step.
+      # Apps, so the meter tolerates their taint — any pool value. The sandbox
+      # pool (taint bex.co/sandbox, ADR042 D3) runs every /v1/sandboxes
+      # sandbox, whose public egress is metered per workspace (w22/m414,
+      # ADR104 D11), so the meter tolerates that taint too. Keep
+      # EgressMeterTargetMissing's expected-node expression (and the Grafana
+      # "Egress meter fleet" panel that mirrors it) in step.
       tolerations:
         - key: bex.co/serving-pool
+          operator: Exists
+          effect: NoSchedule
+        - key: bex.co/sandbox
           operator: Exists
           effect: NoSchedule
       priorityClassName: system-node-critical

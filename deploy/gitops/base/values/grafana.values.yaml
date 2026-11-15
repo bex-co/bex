@@ -5341,6 +5341,36 @@ dashboards:
                  "legendFormat": "watch failures"
                 }
               ]
+            },
+            {
+             "id": 34,
+             "type": "timeseries",
+             "title": "Sandbox egress per workspace (1h, top 10)",
+             "description": "Bytes each workspace's /v1/sandboxes sandboxes sent to public destinations in the last hour: the egress meter's app_id=sandboxes series in the workspace's <ws>-sandbox namespace, summed over nodes. It counts what a sandbox sends, so a download barely registers (only its acknowledgements leave); uploads, scans and relayed traffic do. The red line is SandboxWorkspaceEgressHigh's 50 GiB threshold (2x a Pro workspace's monthly allowance, 10x Hobby's, 36x the hourly share of Scale's), which fires after 15m above it. The query is the alert's own: a node whose meter was not healthy for the last 5m, or whose counter reset in the hour, is left out, so a gap here with EgressMeterUnhealthy firing is the meter, not a quiet workspace. Top 10 keeps the dimension bounded (ADR088 section 6). Egress is metered and alerted, not billed (ADR104 D11).",
+             "gridPos": { "h": 9, "w": 24, "x": 0, "y": 134 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "bytes",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 53687091200 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "topk(10, sum by (namespace) (increase(bex_app_direct_egress_bytes_total{app_id=\"sandboxes\"}[1h]) and on (node, source_instance) (min_over_time(bex_egress_meter_healthy[5m]) == 1) and (resets(bex_app_direct_egress_bytes_total{app_id=\"sandboxes\"}[1h]) == 0)))",
+                 "legendFormat": "{{namespace}}"
+                }
+              ]
             }
           ]
         }
@@ -6635,7 +6665,7 @@ dashboards:
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "count(kube_node_info unless on (node) kube_node_spec_taint{effect=~\"NoSchedule|NoExecute\", key!~\"node\\\\.kubernetes\\\\.io/.*|bex\\\\.co/serving-pool\"})",
+                 "expr": "count(kube_node_info unless on (node) kube_node_spec_taint{effect=~\"NoSchedule|NoExecute\", key!~\"node\\\\.kubernetes\\\\.io/.*|bex\\\\.co/serving-pool|bex\\\\.co/sandbox\"})",
                  "legendFormat": "expected (nodes with no pool taint)"
                 },
                 {
@@ -6745,7 +6775,7 @@ dashboards:
              "id": 8,
              "type": "timeseries",
              "title": "Metered egress bytes",
-             "description": "The four billable outbound paths: direct App egress (netfilter meters), public Postgres/Key Value SNI splices, and WebSocket hijack frames.",
+             "description": "The four billable outbound paths: direct App egress (netfilter meters), public Postgres/Key Value SNI splices, and WebSocket hijack frames. Direct leaves out app_id=sandboxes, the /v1/sandboxes sandboxes the same meters count per workspace but never bill (ADR104 D11; see Sandbox egress per workspace on bex-api + gateways).",
              "gridPos": { "h": 9, "w": 24, "x": 0, "y": 36 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {
@@ -6755,7 +6785,7 @@ dashboards:
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "sum(rate(bex_app_direct_egress_bytes_total[5m]))",
+                 "expr": "sum(rate(bex_app_direct_egress_bytes_total{app_id!=\"sandboxes\"}[5m]))",
                  "legendFormat": "direct"
                 },
                 {

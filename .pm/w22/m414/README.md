@@ -1,14 +1,14 @@
 # w22 · m414 — Sandbox egress is metered per workspace, and a workspace whose sandboxes egress far above its plan raises an alert
 
-**Worker:** worker22 **Goal:** the operator's egress meter counts the public-internet bytes of each workspace's `/v1/sandboxes` sandboxes, an alert fires when one workspace's sandboxes send far more than its plan makes plausible, and a production run proves the counter against bytes a sandbox really moved. **Status:** todo
+**Worker:** worker22 **Goal:** the operator's egress meter counts the public-internet bytes of each workspace's `/v1/sandboxes` sandboxes, an alert fires when one workspace's sandboxes send far more than its plan makes plausible, and a production run proves the counter against bytes a sandbox really moved. **Status:** todo (t001–t003 done and shipped; t004 waits for the next batched production deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | ---- | ------------------------------------------------------------------ | ----- | ---------- |
-| t001 | Operator: the egress meter attributes sandbox pods to their workspace | 1h30m | — |
-| t002 | The alert: a workspace whose sandboxes egress far above its plan | 1h30m | t001 |
-| t003 | The panel and the docs | 45m | t002 |
+| t001 | Operator: the egress meter attributes sandbox pods to their workspace — **DONE** | 1h30m | — |
+| t002 | The alert: a workspace whose sandboxes egress far above its plan — **DONE** | 1h30m | t001 |
+| t003 | The panel and the docs — **DONE** | 45m | t002 |
 | t004 | Live check: a sandbox's downloaded bytes show in the meter | 1h | t003 |
 | t005 | Simplify | 20m | t004 |
 | t006 | Test coverage | 30m | t004 |

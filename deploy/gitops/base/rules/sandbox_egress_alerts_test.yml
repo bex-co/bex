@@ -1,0 +1,177 @@
+# w22/m414: SandboxWorkspaceEgressHigh. A workspace whose /v1/sandboxes
+# sandboxes send far more to the public internet than its plan makes plausible
+# raises one alert for that workspace (ADR104 D11).
+#
+# The egress meter counts every sandbox of a workspace under one series,
+# bex_app_direct_egress_bytes_total{namespace="<ws>-sandbox", app_id="sandboxes"},
+# one per node it ran on. The threshold is 50 GiB in an hour, so the fixtures
+# step a counter by 1 GiB a minute (60 GiB an hour, over) or by a few MiB.
+# Run: promtool test rules sandbox_egress_alerts_test.yml (alerting_rules.yml alongside).
+rule_files:
+  - alerting_rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # The healthy twin: a busy but plausible workspace stays quiet.
+  - name: sandbox egress below the threshold stays silent
+    interval: 1m
+    input_series:
+      # About 0.6 GiB an hour.
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa-sandbox", app_id="sandboxes", node="sandbox-a", source_instance="boot-a"}'
+        values: "0+10737418x180"
+      - series: 'bex_egress_meter_healthy{node="sandbox-a", source_instance="boot-a"}'
+        values: "1x180"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []
+      - eval_time: 170m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []
+
+  # One workspace above the threshold fires for that workspace, and a second
+  # workspace on the same node stays quiet.
+  - name: one workspace above the threshold fires and another stays quiet
+    interval: 1m
+    input_series:
+      # 1 GiB a minute: 60 GiB an hour.
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa-sandbox", app_id="sandboxes", node="sandbox-a", source_instance="boot-a"}'
+        values: "0+1073741824x180"
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-bbb-sandbox", app_id="sandboxes", node="sandbox-a", source_instance="boot-a"}'
+        values: "0+10737418x180"
+      - series: 'bex_egress_meter_healthy{node="sandbox-a", source_instance="boot-a"}'
+        values: "1x180"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts:
+          - &aaa_fires
+            exp_labels:
+              severity: warning
+              namespace: tea-aaa-sandbox
+            exp_annotations:
+              summary: "Sandboxes in tea-aaa-sandbox sent 60GiB to the public internet in the last hour"
+              description: "One workspace's /v1/sandboxes sandboxes sent more than 50 GiB to public destinations in an hour, counted by the egress meter under app_id=sandboxes in the workspace's sandbox namespace. The threshold is 2x a Pro workspace's whole monthly bandwidth allowance (25 GB), 10x Hobby's (5 GB) and 36x the hourly share of Scale's (1,000 GB a month, 1.4 GB an hour), so no plan makes it ordinary; allow-all is the default sandbox network policy for every plan, so this is the abuse and cost signal. The meter counts bytes the sandboxes send, so a large download barely moves it (only the acknowledgements leave); uploads, scans and relayed traffic do. Find the sandboxes: kubectl -n tea-aaa-sandbox get batchsandboxes,pods -o wide, and bex_app_direct_egress_bytes_total{app_id=\"sandboxes\"} by node. To stop a sandbox, terminate it through the owner's /v1/sandboxes API or, for abuse, kubectl -n tea-aaa-sandbox delete batchsandbox <name>. Egress is metered and alerted, not billed. Runbook: docs/ADR104-sandbox-render-parity.md D11"
+
+  # The workspace total is the signal, not any one node: a workspace whose
+  # sandboxes spread across two nodes, each below the threshold, is above it.
+  - name: a workspace is summed across the nodes its sandboxes run on
+    interval: 1m
+    input_series:
+      # 30 GiB an hour on each of two nodes: 60 GiB for the workspace.
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa-sandbox", app_id="sandboxes", node="sandbox-a", source_instance="boot-a"}'
+        values: "0+536870912x180"
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa-sandbox", app_id="sandboxes", node="sandbox-b", source_instance="boot-b"}'
+        values: "0+536870912x180"
+      - series: 'bex_egress_meter_healthy{node="sandbox-a", source_instance="boot-a"}'
+        values: "1x180"
+      - series: 'bex_egress_meter_healthy{node="sandbox-b", source_instance="boot-b"}'
+        values: "1x180"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts:
+          - *aaa_fires
+
+  # `for: 15m` holds the alert in pending while the hour first crosses the
+  # threshold (51 GiB of a 1 GiB-a-minute stream at minute 51), so a counter
+  # blip or one evaluation above it never pages.
+  - name: the alert waits out its for duration
+    interval: 1m
+    input_series:
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa-sandbox", app_id="sandboxes", node="sandbox-a", source_instance="boot-a"}'
+        values: "0+1073741824x180"
+      - series: 'bex_egress_meter_healthy{node="sandbox-a", source_instance="boot-a"}'
+        values: "1x180"
+    alert_rule_test:
+      - eval_time: 55m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []
+      - eval_time: 62m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts:
+          - *aaa_fires
+
+  # Do not alert on a meter that is unhealthy or reports nothing: an unhealthy
+  # meter's figure is not one to page a workspace over (EgressMeterUnhealthy
+  # pages for the meter itself).
+  - name: an unhealthy meter stays silent
+    interval: 1m
+    input_series:
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa-sandbox", app_id="sandboxes", node="sandbox-a", source_instance="boot-a"}'
+        values: "0+1073741824x180"
+      - series: 'bex_egress_meter_healthy{node="sandbox-a", source_instance="boot-a"}'
+        values: "0x180"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []
+      - eval_time: 170m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []
+
+  - name: a meter that reports no health stays silent
+    interval: 1m
+    input_series:
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa-sandbox", app_id="sandboxes", node="sandbox-a", source_instance="boot-a"}'
+        values: "0+1073741824x180"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []
+
+  # Health is per meter: an unhealthy meter on one node does not silence a
+  # workspace whose bytes a healthy meter on another node counted.
+  - name: an unhealthy meter on another node does not silence a healthy one
+    interval: 1m
+    input_series:
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa-sandbox", app_id="sandboxes", node="sandbox-a", source_instance="boot-a"}'
+        values: "0+1073741824x180"
+      - series: 'bex_egress_meter_healthy{node="sandbox-a", source_instance="boot-a"}'
+        values: "1x180"
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-bbb-sandbox", app_id="sandboxes", node="sandbox-b", source_instance="boot-b"}'
+        values: "0+1073741824x180"
+      - series: 'bex_egress_meter_healthy{node="sandbox-b", source_instance="boot-b"}'
+        values: "0x180"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts:
+          - *aaa_fires
+
+  # A restored counter checkpoint reads to Prometheus as a reset, and increase()
+  # then counts the whole restored value as one hour's bytes. The counter below
+  # holds 100 GiB, is restored 10 kB lower at minute 30 and then grows by about
+  # 1 kB a minute: that is 100 GiB of "increase" for no bytes at all.
+  - name: a counter reset in the window does not alert
+    interval: 1m
+    input_series:
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa-sandbox", app_id="sandboxes", node="sandbox-a", source_instance="boot-a"}'
+        values: "107374182400+1000x30 107374172400+1000x150"
+      - series: 'bex_egress_meter_healthy{node="sandbox-a", source_instance="boot-a"}'
+        values: "1x180"
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []
+
+  # Only sandbox egress is this alert's: an App's egress, however large, is
+  # the billed direct source and stays out.
+  - name: app egress does not raise the sandbox alert
+    interval: 1m
+    input_series:
+      - series: 'bex_app_direct_egress_bytes_total{namespace="tea-aaa", app_id="srv-abc", node="tenant-a", source_instance="boot-t"}'
+        values: "0+1073741824x180"
+      - series: 'bex_egress_meter_healthy{node="tenant-a", source_instance="boot-t"}'
+        values: "1x180"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SandboxWorkspaceEgressHigh
+        exp_alerts: []

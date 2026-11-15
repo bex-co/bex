@@ -29,6 +29,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -50,6 +51,25 @@ const (
 	// (a pre-deploy Job runs the service's own command but is never a Service
 	// backend) to its service's egress (w4/453).
 	PodLabelEgressAppID = "app.bex.co/egress-app-id"
+	// PodLabelSandboxID is the public id (`sbx-...`) bex-api stamps on a
+	// /v1/sandboxes sandbox and OpenSandbox persists as a pod label (the
+	// per-sandbox Cilium allow-list policy selects pods by it). The operator
+	// cannot import the backend, so the name is repeated here; backend
+	// sessionegress.SandboxIDLabel is the source (ADR042 D4).
+	PodLabelSandboxID = "bex.co/sandbox-id"
+	// PodLabelAgentSession marks an agent session's sandbox (backend
+	// agentsession.LabelSession). Its egress runs through the session egress
+	// policy and the model proxy (ADR047 D5), so it is not a workspace's
+	// /v1/sandboxes egress and is never metered here.
+	PodLabelAgentSession = "bex.co/agent-session"
+	// SandboxEgressAppID is the app id under which every /v1/sandboxes sandbox
+	// of a workspace is metered, in that workspace's sandbox namespace. One
+	// series per workspace keeps the cardinality bounded by workspaces rather
+	// than by short-lived sandboxes (w22/m414, ADR104 D11).
+	SandboxEgressAppID = "sandboxes"
+	// sandboxNamespaceSuffix names a workspace's sandbox namespace
+	// (backend store.SandboxNamespace: `<workspace>-sandbox`).
+	sandboxNamespaceSuffix = "-sandbox"
 
 	// Run after the raw table but before conntrack, mangle, and source NAT.
 	// Pod policy has already run at Cilium's host-facing veth ingress hook.
@@ -363,15 +383,17 @@ func (m *Meter) reconcile(ctx context.Context) {
 }
 
 func (m *Meter) reconcilePods(ctx context.Context) error {
-	// App Pods live in canonical per-workspace namespaces. Keep this list
-	// cluster-wide and constrain it by node plus the App label; a namespaced list
-	// would silently omit every post-migration workspace.
+	// App Pods live in canonical per-workspace namespaces, and a sandbox Pod in
+	// its workspace's `<ws>-sandbox` namespace. Keep this list cluster-wide and
+	// constrain it by node alone: a namespaced list would silently omit every
+	// post-migration workspace, and a label selector cannot OR the App label
+	// with the sandbox label. One request per reconcile finds both kinds;
+	// desiredPodResources filters them in code.
 	pods, err := m.client.CoreV1().Pods("").List(ctx, metav1.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector("spec.nodeName", m.config.NodeName).String(),
-		LabelSelector: PodLabelApp,
 	})
 	if err != nil {
-		return fmt.Errorf("list node-local App pods: %w", err)
+		return fmt.Errorf("list node-local pods: %w", err)
 	}
 	v4, v6, expected, err := desiredPodResources(pods.Items)
 	if err != nil {
@@ -404,6 +426,29 @@ func (m *Meter) reconcilePods(ctx context.Context) error {
 	return nil
 }
 
+// egressAppID is the resource a pod's public egress is attributed to, or ""
+// when the pod is not metered. An App pod is identified by the App label and
+// named by its app id. A /v1/sandboxes sandbox pod, which carries neither, is
+// identified by its sandbox id in a sandbox namespace and named by the one
+// constant app id of its workspace; an agent session's sandbox is never one.
+func egressAppID(pod *corev1.Pod) string {
+	if _, isApp := pod.Labels[PodLabelApp]; isApp {
+		// Job pods carry the App label without its id, so no Service selects
+		// them (w4/m181). A pre-deploy pod names its service for egress alone
+		// (w4/453); platform Jobs (static publish, purge, disk backup) name
+		// none and are skipped, never failing the node's whole attribution,
+		// which marked the meter unhealthy for every app on it (w4/452).
+		return cmp.Or(pod.Labels[PodLabelAppID], pod.Labels[PodLabelEgressAppID])
+	}
+	if _, session := pod.Labels[PodLabelAgentSession]; session {
+		return ""
+	}
+	if pod.Labels[PodLabelSandboxID] != "" && strings.HasSuffix(pod.Namespace, sandboxNamespaceSuffix) {
+		return SandboxEgressAppID
+	}
+	return ""
+}
+
 // desiredPodResources resolves the short-lived packet identity (Pod IP) through
 // the immutable Pod UID before producing the low-cardinality App map. If a
 // stale list ever presents one IP for two UIDs, accounting stops instead of
@@ -419,12 +464,7 @@ func desiredPodResources(pods []corev1.Pod) (map[[4]byte]ResourceKey, map[[16]by
 		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
 			continue
 		}
-		// Job pods carry the App label without its id, so no Service selects
-		// them (w4/m181). A pre-deploy pod names its service for egress alone
-		// (w4/453); platform Jobs (static publish, purge, disk backup) name
-		// none and are skipped, never failing the node's whole attribution,
-		// which marked the meter unhealthy for every app on it (w4/452).
-		appID := cmp.Or(pod.Labels[PodLabelAppID], pod.Labels[PodLabelEgressAppID])
+		appID := egressAppID(pod)
 		if appID == "" {
 			continue
 		}

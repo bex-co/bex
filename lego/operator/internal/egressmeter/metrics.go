@@ -50,10 +50,10 @@ func NewCollector(meter *Meter) prometheus.Collector {
 	labels := []string{"node", "source_instance"}
 	return &collector{
 		meter: meter, sourceInstance: persistentSourceInstance(meter.config.SourceIDPath), startedAt: float64(time.Now().Unix()),
-		bytes:       prometheus.NewDesc("bex_app_direct_egress_bytes_total", "Allowed App-initiated L3 bytes sent to public IPv4/IPv6 destinations at netfilter POST_ROUTING.", []string{"namespace", "app_id", "node", "source_instance"}, nil),
+		bytes:       prometheus.NewDesc("bex_app_direct_egress_bytes_total", "Allowed App-initiated L3 bytes sent to public IPv4/IPv6 destinations at netfilter POST_ROUTING. app_id=sandboxes counts all of one workspace's /v1/sandboxes sandboxes in its sandbox namespace; agent-session sandboxes are not counted.", []string{"namespace", "app_id", "node", "source_instance"}, nil),
 		healthy:     prometheus.NewDesc("bex_egress_meter_healthy", "1 when both host POST_ROUTING hooks, Pod-IP attribution, exclusions, and persistent counters are healthy.", labels, nil),
-		expected:    prometheus.NewDesc("bex_egress_meter_expected_pods", "Number of non-terminal App pods expected on this node.", labels, nil),
-		attributed:  prometheus.NewDesc("bex_egress_meter_attributed_pod_ips", "Number of current App Pod IPs present in the packet-attribution maps.", labels, nil),
+		expected:    prometheus.NewDesc("bex_egress_meter_expected_pods", "Number of non-terminal App and /v1/sandboxes sandbox pods expected on this node.", labels, nil),
+		attributed:  prometheus.NewDesc("bex_egress_meter_attributed_pod_ips", "Number of current App and sandbox Pod IPs present in the packet-attribution maps.", labels, nil),
 		errors:      prometheus.NewDesc("bex_egress_meter_reconcile_errors_total", "Pod-IP, exclusion, map, checkpoint, or hook errors; any increment invalidates source health until a clean reconcile.", labels, nil),
 		lossEvents:  prometheus.NewDesc("bex_egress_meter_counter_loss_events_total", "Durable count of detected counter-map restores or decreases.", labels, nil),
 		lastLoss:    prometheus.NewDesc("bex_egress_meter_last_counter_loss_time_seconds", "Unix time of the most recent detected counter-map restore or decrease; zero before any loss.", labels, nil),

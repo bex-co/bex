@@ -945,25 +945,29 @@ groups:
           summary: "ClusterBuilder image pin is older than the 30-day freshness SLO"
           description: "Committed builder resolution metadata is missing, malformed, or older than 30 days. Resolve with python3 scripts/lib/toolchain-freshness.py resolve, review the observed digest, update the listed files and resolved_at together. The workflow never applies a pin. Runbook: docs/ADR060-build-worker-reliability-and-performance.md D7."
 
-      # The meter DaemonSet tolerates only the dedicated serving-pool
-      # taint (lego/operator/config/egress-meter/daemonset.yaml; w2/m250:
-      # those nodes run tenant Apps), so its population is exactly "nodes
-      # with no other scheduling taint": every other pool taint
-      # (bex.co/platform, bex.co/sandbox, bex.co/build-only, the
+      # The meter DaemonSet tolerates the dedicated serving-pool taint
+      # (w2/m250: those nodes run tenant Apps) and the sandbox-pool taint
+      # (w22/m414: those nodes run every /v1/sandboxes sandbox, whose
+      # egress is metered per workspace;
+      # lego/operator/config/egress-meter/daemonset.yaml), so its
+      # population is exactly "nodes with no other scheduling taint":
+      # every other pool taint (bex.co/platform, bex.co/build-only, the
       # control-plane role taint) excludes a node by design, while the
       # kubelet's own node.kubernetes.io/* condition taints are exempt
       # because DaemonSet pods tolerate those automatically.
       # Naming one pool taint here (the previous shape) fired
       # continuously once the sandbox pool and the build-only node
-      # existed. The Grafana "Egress meter fleet" panel mirrors this
-      # expression verbatim — keep the two in sync.
+      # existed; the sandbox pool was excluded until w22/m414 put a meter
+      # on it, and it is expected from then on. The Grafana "Egress meter
+      # fleet" panel mirrors this expression verbatim — keep the two in
+      # sync.
       - alert: EgressMeterTargetMissing
         expr: |
           count(up{job="bex-egress-meter"} == 1)
           !=
           count(
             kube_node_info
-            unless on (node) kube_node_spec_taint{effect=~"NoSchedule|NoExecute", key!~"node\\.kubernetes\\.io/.*|bex\\.co/serving-pool"}
+            unless on (node) kube_node_spec_taint{effect=~"NoSchedule|NoExecute", key!~"node\\.kubernetes\\.io/.*|bex\\.co/serving-pool|bex\\.co/sandbox"}
           )
         for: 2m
         labels:
@@ -998,6 +1002,52 @@ groups:
         annotations:
           summary: "Egress meter resource map on {{ $labels.node }} is {{ $value | humanizePercentage }} full"
           description: "The bounded App counter map is above 80%; reaching capacity makes new attribution fail closed. Debug: kubectl -n bex-system logs -l app.bex.co/component=egress-meter --prefix"
+
+      # w22/m414 (ADR104 D11). The egress meter counts every /v1/sandboxes
+      # sandbox of a workspace under one series, app_id="sandboxes" in
+      # the workspace's <ws>-sandbox namespace (one series per node it ran
+      # on). The meter counts what a sandbox SENDS to a public destination
+      # (an L3 byte counter on the pod's source address), so a large
+      # download barely registers (only its acknowledgements leave) and
+      # uploads, scans and relayed traffic do.
+      #
+      # Threshold, 50 GiB in a rolling hour: allow-all is the default
+      # network policy of every plan, Free included (D11), and the plans'
+      # monthly outbound allowances are Hobby 5 GB, Pro 25 GB and Scale
+      # 1,000 GB (lego/backend/internal/pricing/pricing.yaml). 50 GiB in
+      # one hour is 10x a Hobby workspace's whole month, 2x a Pro
+      # workspace's whole month and 36x the hourly share of Scale's
+      # (1,000 GB / 730 h = 1.4 GB), so no plan makes it ordinary; as a
+      # rate it is about 120 Mbit/s held for the hour. One threshold
+      # serves every workspace because Prometheus does not know a
+      # workspace's plan.
+      # Tune it here, in this rule's test, and on the Grafana "Sandbox
+      # egress per workspace" panel's threshold line together.
+      # `for: 15m`: the hour-long window already integrates a burst, so the
+      # wait only rides out a counter blip.
+      #
+      # Silent, not firing, when the meter cannot be trusted:
+      # - the meter on a node must have reported healthy for the last 5m
+      #   (EgressMeterUnhealthy pages for the meter itself, and a meter
+      #   that reports nothing contributes nothing);
+      # - a series whose counter reset in the window is dropped. A restored
+      #   checkpoint reads to Prometheus as a reset, and increase() then
+      #   counts the whole restored value as one hour's bytes (the billing
+      #   read refuses such a window for the same reason, egressquery).
+      # Egress is metered and alerted, not billed.
+      - alert: SandboxWorkspaceEgressHigh
+        expr: |
+          sum by (namespace) (
+            increase(bex_app_direct_egress_bytes_total{app_id="sandboxes"}[1h])
+            and on (node, source_instance) (min_over_time(bex_egress_meter_healthy[5m]) == 1)
+            and (resets(bex_app_direct_egress_bytes_total{app_id="sandboxes"}[1h]) == 0)
+          ) > 50 * 1024 ^ 3
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sandboxes in {{ $labels.namespace }} sent {{ $value | humanize1024 }}B to the public internet in the last hour"
+          description: "One workspace's /v1/sandboxes sandboxes sent more than 50 GiB to public destinations in an hour, counted by the egress meter under app_id=sandboxes in the workspace's sandbox namespace. The threshold is 2x a Pro workspace's whole monthly bandwidth allowance (25 GB), 10x Hobby's (5 GB) and 36x the hourly share of Scale's (1,000 GB a month, 1.4 GB an hour), so no plan makes it ordinary; allow-all is the default sandbox network policy for every plan, so this is the abuse and cost signal. The meter counts bytes the sandboxes send, so a large download barely moves it (only the acknowledgements leave); uploads, scans and relayed traffic do. Find the sandboxes: kubectl -n {{ $labels.namespace }} get batchsandboxes,pods -o wide, and bex_app_direct_egress_bytes_total{app_id=\"sandboxes\"} by node. To stop a sandbox, terminate it through the owner's /v1/sandboxes API or, for abuse, kubectl -n {{ $labels.namespace }} delete batchsandbox <name>. Egress is metered and alerted, not billed. Runbook: docs/ADR104-sandbox-render-parity.md D11"
 
       - alert: WebSocketEgressMeterUnavailable
         expr: |

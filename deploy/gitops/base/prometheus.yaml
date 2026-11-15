@@ -582,7 +582,8 @@ spec:
                     # (w4/m364): failed utilization reads, by App.
                     regex: bex_(build|datastore|registry_activation|autoscaling_metrics).*|workqueue_(depth|queue_duration_seconds_.*|work_duration_seconds_.*)|controller_runtime_(reconcile_time_seconds_.*|active_workers|max_concurrent_reconciles)
                     action: keep
-              # One post-policy netfilter meter per untainted tenant node. Pod discovery
+              # One post-policy netfilter meter per untainted tenant node, serving-pool
+              # node and sandbox-pool node (w22/m414). Pod discovery
               # (rather than the round-robin Service) preserves the node and
               # source_instance labels needed to detect a missing/reset source.
               - job_name: bex-egress-meter
