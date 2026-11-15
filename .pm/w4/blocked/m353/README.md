@@ -1,6 +1,6 @@
 # w4 · m353 — An instance that fails its health check is restarted after about 2 minutes, not Render's 60 seconds: the 60-second rollout drain also runs before every liveness restart, while the instance is already out of rotation
 
-**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** blocked — the round 394 closeout replay (2026-11-15) found an extra exit event on a health-check restart: [t006](t006.md) is open and blocks the closeout. Previously: — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** blocked — the round 398 replay (2026-11-15) found DoD 2 holds for a process that exits on SIGTERM (62 s), while DoD 2's own `sh`-as-PID-1 fixture restarts at 145–150 s because the liveness kill waits the pod's whole drain + delay grace: [t007](t007.md) is open. Earlier, the round 394 closeout replay found an extra exit event on a health-check restart: [t006](t006.md) is open. Both block the closeout. Previously: — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 
@@ -11,7 +11,8 @@
 | [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
 | [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
 | [t006](t006.md) | A health-check restart also records the liveness SIGTERM as the app's own crash: an extra `server_failed {nonZeroExit}` (found by the round 394 replay) | 45m | — |
-| [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004, t006 |
+| [t007](t007.md) | A health-check restart of an instance that ignores SIGTERM waits the pod's whole grace (drain + `maxShutdownDelaySeconds`, 90 s) before SIGKILL, not Render's 30 s; set the liveness probe's own grace (found by the round 398 replay of DoD 2) | 45m | — |
+| [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004, t006, t007 |
 
 ## Definition of done
 
