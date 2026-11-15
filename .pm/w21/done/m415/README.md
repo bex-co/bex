@@ -1,6 +1,6 @@
 # w21 · m415 — Object storage core and Render's `ea objects` over Wasabi: buckets as rows, quotas, presigned put, get, list and delete
 
-**Worker:** worker21 **Goal:** the unchanged Render CLI and SDKs store, read, list and delete workspace objects in Wasabi, isolated per workspace and bounded by quotas. **Status:** todo (t001–t009 and t011–t013 done; t010 and t014 remain)
+**Worker:** worker21 **Goal:** the unchanged Render CLI and SDKs store, read, list and delete workspace objects in Wasabi, isolated per workspace and bounded by quotas. **Status:** done (2026-11-15)
 
 ## Tasks (in order)
 
@@ -15,11 +15,11 @@
 | [t007](done/t007.md) | Authorization and scope classes for Contract A, with a test for each — **DONE** | 40m | t006 |
 | [t008](done/t008.md) | The pinned Render CLI test for `ea objects`, the launcher pass-through and the checklist rows — **DONE** | 50m | t006, t007 |
 | [t009](done/t009.md) | Docs: the ADR018 object storage row, its dated divergences and `bex-cli.md` — **DONE** | 30m | t008 |
-| t010 | Production walk for Contract A: install the credentials, round trips in both regions, isolation | 60m | t004, t008, t009 |
+| [t010](done/t010.md) | Production walk for Contract A: install the credentials, round trips in both regions, isolation — **DONE** | 60m | t004, t008, t009 |
 | [t011](done/t011.md) | Render parity — **DONE** | 30m | t009 |
 | [t012](done/t012.md) | Simplify — **DONE** | 20m | t011 |
 | [t013](done/t013.md) | Test coverage — **DONE** | 45m | t011, t012 |
-| t014 | Closeout | 10m | t013 |
+| [t014](done/t014.md) | Closeout — **DONE** | 10m | t013 |
 
 ## Definition of done
 
@@ -51,3 +51,7 @@
 - **Remaining:** the walks and each closeout (below). Do not run `provision` or `install` again: both Secrets exist. The walks may create test buckets, objects and keys, and must delete them afterwards. For a token, sign in as the QA user with `bash scripts/qa-login.sh` (`.claude/skills/qa-find-bugs/SKILL.md`; never type the password). Whether the QA user can reach a second workspace is not verified: if a step needs one and there is none, park that task naming exactly that.
 - **Reference-product basis:** unchanged: Render's `ea objects` for Contract A, Cloudflare R2 and wrangler for Contract B and public reads.
 - **This milestone's next steps:** t010 steps 2 to 5 (round trips in both regions, isolation, scope and oversize checks, the ADR112 Not verified list and the checklist/ADR018 flips), then t014 Closeout. t010 step 1 is done.
+
+## Closeout (2026-11-15)
+
+Done. t010 walked Contract A on production (round trips of 0 B, 1 B and 5 MiB in `oregon` and `frankfurt` with matching sha256, isolation four ways, the `bex.read`-only refusal, 5 GiB + 1 refused at the mint, Wasabi's Content-Length enforcement re-confirmed through the real mint) and flipped the four `ea objects` checklist rows and the ADR018 object storage row. The bex-chosen values stay dated and unsigned. [t014](done/t014.md) records each definition-of-done line against its evidence.
