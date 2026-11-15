@@ -1,6 +1,6 @@
 # w22 · m311 — Sandbox groups, as on Render: a default group per workspace, a concurrency limit, and 429 at the limit
 
-**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** blocked (t001–t006, t008–t010 and t012 done and shipped; t007 and t011 wait for the production deploy)
+**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** todo — unblocked 2026-11-14 (t001–t006, t008–t010 and t012 done and shipped; t007 and t011 wait for the production deploy)
 
 ## Tasks (in order)
 
@@ -35,3 +35,10 @@
 - **Render parity:** included, sandbox REST/GraphQL/MCP surfaces change. Added 2026-11-10 during triage: Render's docs show a Dashboard "+ New > Sandbox Group" menu, so ADR104 D1's "dashboard N/A" was wrong for groups; t012 covers it (the optional project environment is a recorded gap, see t012).
 - **Not duplicated:** w3/m303 owns the CLI pin bump, the Hobby timeout contract and the named refusals for `sandbox-groups delete`, `default set` and `credentials`.
 - **Open decisions:** none new. The over-10-groups error and `environmentId` are decided in t001 from Render's docs as a recommendation, not a user decision.
+
+## 解阻记录 2026-11-14（/unblock w22）
+
+- **来源：** 复核证据（不是用户决定）。
+- **卡点已不成立：** 生产 `isolation-matrix.yml` 的 run 43580573152（2026-11-14，commit `7af7ed382`，包含部署 `88a13216f`；更早的 43579027377、43577969524 同样成功）已 PASS：建组、首个组为 workspace 的默认组、重名被拒、sandbox 归属与按组过滤、组达到 `concurrencyLimit` 时 429 且终止后释放名额、其他 workspace 的主体对该组得到同样的 `SANDBOX_GROUP_NOT_FOUND`。QA 登录 2026-11-14 实测通过（见 t007）。
+- **剩下的工作（worker）：** 见 t007 的 2026-11-14 记录；然后 t011 收尾。
+- **Render 对标：** 组与 429 的语义已按 render.com 文档做完，没有新增对标选择。

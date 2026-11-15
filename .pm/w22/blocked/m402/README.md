@@ -53,3 +53,12 @@
 **BLOCKED — needs, from the user or infra, a machine that can run the shared local cluster.** `scripts/dev-env.sh <N> up` requires the kind/CAPD cluster `bex` from `bash scripts/mock-cluster.sh` (kind, clusterctl, CAPD, CNPG, the operator, charts pulled from ghcr). The machine this session ran on has neither `kind` nor `clusterctl` and an 8 GiB Docker VM, and a ghcr pull returned 504 in the same session, so the stack could not be brought up. Everything t006 asks is unchanged: with real Kratos TOTP, an enrolled member (B), a member without 2FA (C), and an admin (A) on one workspace: A is refused enabling without 2FA, then enrolls and enables (one `ChangeTeam2FAEnforcementEvent`); C's dashboard session, REST/GraphQL, own API key, shell ticket and native SSH are all refused and C's other workspace still works; B's everything works; C enrolls and regains access within the documented bound (about 60 s API, about 90 s SSH); C removes TOTP and is blocked again, and an open shell is closed within about 150 s; A turns it off. Things only a live stack can show: that `MFAEnrolled` reads a real TOTP and a real passkey enrollment correctly (the webauthn `include_credential` assumption is the one the member badge already makes), that Hydra's `bex.co/created-by` stamp reads back for a fresh key, and the SSH banner in a real `ssh` client. Record the observed codes and timings under a "Live check" heading here, then run t010.
 
 **Rollout note for whoever deploys:** bex-api must be running the new verb before the new SSH gateway, otherwise native SSH and ticket redemption are refused until it is (ADR012 §9a "Rollout order").
+
+## 解阻记录 2026-11-14（/unblock w22）
+
+- **来源：** 复核证据；本次没有新的用户决定，等用户选路径。
+- **卡点：** t006 的实机检查要真实的 Kratos 加 TOTP，本机跑不起共享 kind/CAPD 栈：Docker VM 只有 8 GiB，`kind`、`clusterctl` 没装，ghcr 拉取返回 504。
+- **你能怎么帮（二选一，都不是必须）：**
+  - **路径 1（默认）：** 把 Docker Desktop 的内存调到至少 16 GiB，并确认本机能拉 ghcr.io。之后 worker 自己把 `kind`、`clusterctl` 装进 scratchpad（带 sha256 校验）并跑 `bash scripts/mock-cluster.sh`（该动作已预先批准），再做 t006。
+  - **路径 2：** 用户另行授权 worker 把这项检查做成生产探针（估计需要两个 QA 账号加 TOTP，且不能给真实 workspace 开启强制 2FA，这一点未验证）。目前没有授权，所以不走。
+- **不做的后果：** 代码已发布且有真实 Postgres 测试覆盖，里程碑停在最后一步实机验收。

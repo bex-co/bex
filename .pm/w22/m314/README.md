@@ -1,6 +1,6 @@
 # w22 · m314 — Sandbox CPU billed on use, as on Render: a gVisor accuracy spike, then the cutover
 
-**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** blocked (t001, the production CPU-accuracy spike, has its thresholds recorded and no measurement; t002–t009 depend on its verdict and are not started)
+**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** todo — unblocked 2026-11-14 (t001, the production CPU-accuracy spike, has its thresholds recorded and no measurement; t002–t009 depend on its verdict and are not started)
 
 ## Tasks (in order)
 
@@ -33,3 +33,14 @@
 - **Render parity:** included, usage surfaces change.
 - **Recommendation, not a user decision:** bill measured cgroup CPU with no subtraction (ADR104 D8). The user is asked only if the spike's escalation thresholds trip or it fails; then the fallback needs a signed ADR018 divergence.
 - **Allowlists:** none; one dated effective timestamp for every workspace (parity rule).
+
+## 解阻记录 2026-11-14（/unblock w22）
+
+- **来源：** 用户决定（D1，2026-11-14）加复核证据。
+- **决定：** 用户授权 w22 的 worker 在生产上做短时取证：加探针并手动 `gh workflow run` 派发 `isolation-matrix.yml`（环境 `production-observe`），只用一次性、不计费的 workspace（ADR046 billing-exclude，与周跑相同），读 Zot 大小、Prometheus、kubelet 统计。m314 可以对一个 sandbox 加几分钟 CPU 负载，m313 可以挂起一个 sandbox 等至少一小时的汇总。授权只到这里：更长的负载、多个 sandbox、写生产业务数据都要再问用户。
+- **已核实（访问不是计划，是已有的）：** (1) 该工作流的 `Get app cluster kubeconfig` 步骤用 `scripts/fetch-app-kubeconfig.sh` 取 `admin.conf`，所以 Zot 的 Secret、Prometheus、kubelet 统计都读得到；(2) `gh` 已登录，`workflow_dispatch` 已有成功运行（43577969524、43579027377、43580573152，2026-11-14）；(3) `scripts/qa-login.sh` 2026-11-14 实测通过（exit 0，已 `--logout`），w32/m284 记的"QA 登录坏了"已过时。
+- **约束：** 与周跑共用 `concurrency: isolation-matrix`，不要和每周二 03:41 UTC 的 cron 撞；不给 `production-*` 环境加人工闸门（DO_NOT_DO #ENV-REVIEWERS）；证据只记摘要和 run id，原始日志不入库（#NO-ARTIFACTS-IN-GIT）；探针结束时必须清理一次性 workspace 和 sandbox。如果发现某项读不到，把缺口写成精确的新闸门再停靠，不要猜。
+
+- **本项的状态：** t001 的阈值已在测量前记录，尚未测量；t002–t009 依赖它的结论。t003、t004 依赖的 m313 t002、t005 均已完成。
+- **worker 的下一步（t001）：** 在一次性 workspace 里对一个 sandbox 加已知的 CPU 负载，**不超过 10 分钟、只用一个 sandbox**；读 Prometheus 里该 sandbox 的 CPU 序列，用已记录的阈值判断 gVisor 报告的每 sandbox CPU 是否可用，写下结论。结论为"不可用"时走 README 里已写的回退方案并记给用户签字；为"可用"时继续 t002。
+- **验收：** t001 有一个带数据的结论（摘要，不贴原始序列）；之后各任务按原依赖推进。
