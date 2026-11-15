@@ -274,6 +274,54 @@ func TestBlueprintBuildSourcePlan(t *testing.T) {
 	}
 }
 
+// A file that stops linking an existing service unlinks it and points it back
+// at the Blueprint's own repository, an entry with no source of its own
+// inheriting that repo at parse. The sync changes the spec, so the plan has to
+// name the field that did it: buildSource, the declaration whose omission
+// unlinks, is no policy row and so was in no probe list, and the plan reported
+// an update with no changed fields beside it.
+func TestBlueprintServicePlanNamesAnUnlinkedBuildSource(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	ctx = core.WithWorkspace(ctx, "tea-a")
+	if _, err := svc.CreateBuildSource(ctx, monorepoSource); err != nil {
+		t.Fatal(err)
+	}
+	const linked = "services:\n  - type: web\n    name: api\n    buildSource: Mono\n    startCommand: node api.js\n"
+	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: linked}); err != nil {
+		t.Fatalf("linking apply: %v", err)
+	}
+	if app := getTenantApp(t, svc.Client, "tea-a", "api"); app.Spec.BuildSource == nil {
+		t.Fatalf("api spec = %+v, want it linked before the unlink is planned", app.Spec)
+	}
+
+	// The entry keeps no source of its own: as a sync parses it in the
+	// Blueprint's repository, it builds that repository.
+	// runtime: docker is the schema's required spelling and the build the
+	// linked service already had, so it is the one declared field that does
+	// not move; the link's removal and the inherited repo are the change.
+	const manifest = "services:\n  - type: web\n    name: api\n    runtime: docker\n"
+	source, ir, problems := CompileBlueprintIR(manifest)
+	if len(problems) > 0 {
+		t.Fatalf("CompileBlueprintIR() problems = %+v", problems)
+	}
+	st, err := parseCompiledStack(blueprintParseOverrides{repo: monorepoSource.Git.RepoURL, branch: "main", containing: true}, source, ir)
+	if err != nil {
+		t.Fatalf("parseCompiledStack: %v", err)
+	}
+	if _, declared := st.services[0].fields["repo"]; declared {
+		t.Fatal("the entry declares no repo; the Blueprint's is inherited")
+	}
+
+	plan, available, err := svc.blueprintActionPlan(ctx, ir, st, "", svc.newWorkspaceSnapshot(ctx))
+	if err != nil || !available {
+		t.Fatalf("blueprintActionPlan = %v, %v", available, err)
+	}
+	api := planAction(t, plan.Actions, "api")
+	if api.Operation != BlueprintPlanUpdate || !slices.Equal(fieldPaths(api.ChangedFields), []string{"buildSource"}) {
+		t.Fatalf("api plan = %+v %v, want an update of buildSource alone", api.Operation, fieldPaths(api.ChangedFields))
+	}
+}
+
 // Generate Blueprint exports a linked service as buildSource and its build
 // source under buildSources, and the export re-applies as a no-op.
 func TestGenerateBlueprintExportsBuildSources(t *testing.T) {
