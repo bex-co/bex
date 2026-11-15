@@ -328,6 +328,19 @@ base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12
 
 The dashboard's secret-file upload refuses a non-UTF-8 file with the same hint instead of saving a mangled copy.
 
+## Object storage: `bex ea objects`
+
+`bex ea objects list|put|get|delete` is Render's early-access object storage, served unchanged ([ADR112](ADR112-object-storage.md)). Your objects live in your workspace's `render-<region>` bucket on Wasabi. `put` and `get` upload and download straight to a presigned URL, so the bytes never pass through bex-api.
+
+```sh
+bex ea objects put backups/users.ndjson --file ./users.ndjson --region oregon
+bex ea objects list --region oregon --limit 200
+bex ea objects get backups/users.ndjson --file ./out.ndjson --region oregon
+bex ea objects delete backups/users.ndjson --region oregon --yes
+```
+
+bex serves two regions, `oregon` and `frankfurt`; any other region answers 400. The limits are 5 GiB per object, 100 GB and 1,000,000 objects per workspace per region, and keys of 1 to 1024 bytes with no `.` or `..` segment. Render has not published its own limits, so these are bex's, listed with their status in the [object storage row of ADR018](ADR018-render-parity.md). A Render API key reaches every object of its workspace, as on Render. If the platform has no Wasabi credential installed, the commands say that object storage is not offered yet. `--local` stays upstream's filesystem mode under `.render/objects/` and never calls bex.
+
 ## Compatibility and branding limits
 
 `bex` imports the pinned upstream command package; it does not fork or vendor it. A Layer-1 overlay in `lego/cli/internal/branding` mutates the exported `cmd.RootCmd` after Bex-native commands attach:

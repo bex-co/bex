@@ -73,6 +73,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
+	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
@@ -171,6 +172,7 @@ type Server struct {
 	RegistryCreds   *registrycreds.Service
 	Webhooks        *webhooks.Service
 	Jobs            *jobs.Service
+	RenderObjects   *renderObjects
 	CLITelemetry    *clitelemetry.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
@@ -778,6 +780,10 @@ type Deps struct {
 	// one-off jobs feature (Render's /services/{id}/jobs). nil => every job
 	// verb reports jobs.ErrJobsUnavailable (503).
 	JobStore jobs.JobStore
+	// ObjectStorage is the ADR112 object store behind Render's /v1/objects
+	// routes. nil, or a service with no stores, answers the named "not offered"
+	// 404 until the Wasabi credential is installed.
+	ObjectStorage *objectstorage.Service
 }
 
 // hostOf extracts the bare hostname (no scheme/port) from a URL like
@@ -1273,6 +1279,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		RegistryCreds:    rc,
 		Webhooks:         &webhooks.Service{Base: base, Store: d.WebhookStore, Metrics: d.WebhookMetrics},
 		Jobs:             &jobs.Service{Base: base, Store: d.JobStore, EventFacts: d.EventFacts},
+		RenderObjects:    &renderObjects{base: base, svc: d.ObjectStorage},
 		CLITelemetry:     telSvc,
 		Onboard:          d.Onboard,
 		OAuthRevocations: d.OAuthRevocations,
@@ -1433,6 +1440,7 @@ func (s *Server) features() []any {
 	out = appendFeature(out, s.CLITelemetry)
 	out = appendFeature(out, s.Webhooks)
 	out = appendFeature(out, s.Jobs)
+	out = appendFeature(out, s.RenderObjects)
 	return out
 }
 
@@ -1764,23 +1772,9 @@ func mountNotOffered(mux *http.ServeMux, routes map[string]core.NotOffered) {
 }
 
 // notOfferedRefusals maps every not-offered Render route pattern to its named
-// 404:
-//   - Render's early-access object storage (`render ea objects`) is not
-//     offered (ADR018, user decision 2026-10-29, w6/097).
-//   - Render's sandbox groups, imported images and snapshots are not served
-//     (ADR018 § Render operation omissions, w2/m263).
-var notOfferedRefusals = func() map[string]core.NotOffered {
-	routes := maps.Clone(sandbox.NotOfferedRoutes)
-	for _, pattern := range []string{
-		"GET /v1/objects/{ownerId}/{region}",
-		"PUT /v1/objects/{ownerId}/{region}/{key...}",
-		"GET /v1/objects/{ownerId}/{region}/{key...}",
-		"DELETE /v1/objects/{ownerId}/{region}/{key...}",
-	} {
-		routes[pattern] = core.NotOffered{Code: core.NotFoundCode, Message: objectStorageNotOffered}
-	}
-	return routes
-}()
+// 404: Render's sandbox groups, imported images and snapshots are not served
+// (ADR018 § Render operation omissions, w2/m263).
+var notOfferedRefusals = maps.Clone(sandbox.NotOfferedRoutes)
 
 // notOfferedRoutes are answered before the Render request gate runs: a body
 // the gate would refuse must still get the named 404.
@@ -1791,9 +1785,6 @@ var notOfferedRoutes = func() map[string]bool {
 	}
 	return set
 }()
-
-// objectStorageNotOffered is the answer to every Render object storage call.
-const objectStorageNotOffered = "bex does not offer Render's early-access object storage yet"
 
 // newSchema merges every feature's GraphQL fragments into the single root Query
 // and Mutation objects — the one schema the /graphql handler serves.

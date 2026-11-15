@@ -211,6 +211,9 @@ func heuristicRequiredClass(op string) (want string, ok bool) {
 	case op == "REST GET /v1/postgres/{id}/export" ||
 		strings.Contains(op, "databaseExports") || strings.Contains(op, "list_postgres_exports"):
 		return core.OpClassSensitive, true
+	// A presigned URL for an object hands over customer bytes (ADR112 D6).
+	case op == "REST GET /v1/objects/{ownerId}/{region}/{key...}":
+		return core.OpClassSensitive, true
 	case strings.Contains(op, "shell-ticket") || strings.Contains(op, "createShellSession") ||
 		strings.Contains(op, "create_shell_session"):
 		return core.OpClassSensitive, true

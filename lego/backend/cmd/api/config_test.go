@@ -240,6 +240,12 @@ func TestLoadConfigFatalKnobs(t *testing.T) {
 			"BEX_AGENT_ATTACHMENTS_S3_ENDPOINT": "https://s3.example",
 			"BEX_AGENT_ATTACHMENTS_S3_BUCKET":   "bex-agent-attachments",
 		}, "also set BEX_AGENT_ATTACHMENTS_S3_ACCESS_KEY, BEX_AGENT_ATTACHMENTS_S3_SECRET_KEY"},
+		{"object storage access key without the secret", map[string]string{
+			"BEX_OBJECT_STORAGE_ACCESS_KEY": "AKIAEXAMPLE",
+		}, "object storage is partly configured; also set BEX_OBJECT_STORAGE_SECRET_KEY"},
+		{"object storage secret without the access key", map[string]string{
+			"BEX_OBJECT_STORAGE_SECRET_KEY": "secret",
+		}, "object storage is partly configured; also set BEX_OBJECT_STORAGE_ACCESS_KEY"},
 		{"model proxy port", map[string]string{
 			"BEX_OPENSANDBOX_URL":       "http://sandbox",
 			"BEX_AGENT_MODEL_PROXY_URL": "http://gw:0",
@@ -848,5 +854,28 @@ func TestLoadConfigAgentTurnBoundsAndRetryWindow(t *testing.T) {
 	}
 	if hasWarning(warnings, "BEX_AGENT_TOOL_CALL_TIMEOUT") || hasWarning(warnings, "BEX_AGENT_TURN_TIMEOUT") {
 		t.Fatalf("0 warned instead of meaning the default: %v", warnings)
+	}
+}
+
+// TestLoadConfigObjectStorageCredentials: the Wasabi credential is the only
+// object-storage setting read from the environment (ADR112 D9). Both halves
+// enable the store, none leaves it off, and nothing else is read.
+func TestLoadConfigObjectStorageCredentials(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{
+		"BEX_OBJECT_STORAGE_ACCESS_KEY": "AKIAEXAMPLE",
+		"BEX_OBJECT_STORAGE_SECRET_KEY": "secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.ObjectStorage.Enabled() || cfg.ObjectStorage.AccessKey != "AKIAEXAMPLE" || cfg.ObjectStorage.SecretKey != "secret" {
+		t.Fatalf("both variables set: %+v", cfg.ObjectStorage)
+	}
+	cfg, _, err = loadFor(t, map[string]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ObjectStorage.Enabled() || cfg.ObjectStorage.Configured() {
+		t.Fatalf("no variables set must leave object storage off: %+v", cfg.ObjectStorage)
 	}
 }

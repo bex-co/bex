@@ -1,24 +1,24 @@
 # w21 · m415 — Object storage core and Render's `ea objects` over Wasabi: buckets as rows, quotas, presigned put, get, list and delete
 
-**Worker:** worker21 **Goal:** the unchanged Render CLI and SDKs store, read, list and delete workspace objects in Wasabi, isolated per workspace and bounded by quotas. **Status:** todo
+**Worker:** worker21 **Goal:** the unchanged Render CLI and SDKs store, read, list and delete workspace objects in Wasabi, isolated per workspace and bounded by quotas. **Status:** blocked — implementation, tests and Wasabi side done and verified; t010's production walk and t014 Closeout need the production cluster (see t010 Progress)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Migration, the `obk` id kind and the store methods for `object_buckets` and `object_storage_usage` | 45m | — |
-| t002 | `internal/objectstorage`: the region map, constants, name and key validation, and the key layout | 50m | — |
-| t003 | The Wasabi client over `internal/s3client`, a fake S3 for tests, and the two read-write credential variables | 60m | t002 |
-| t004 | Credentials rollout: IAM policies, `object-storage-s3-credentials.sh`, deployment wiring, ADR019 rows and the AGENTS inventory | 60m | t003 |
-| t005 | The bucket registry, the system bucket `render-<region>`, the quota gate and the stream limiter | 60m | t001, t002, t003 |
-| t006 | Contract A routes: list, put, get and delete replace the not-offered refusals | 60m | t005 |
-| t007 | Authorization and scope classes for Contract A, with a test for each | 40m | t006 |
-| t008 | The pinned Render CLI test for `ea objects`, the launcher pass-through and the checklist rows | 50m | t006, t007 |
-| t009 | Docs: the ADR018 object storage row, its dated divergences and `bex-cli.md` | 30m | t008 |
+| [t001](done/t001.md) | Migration, the `obk` id kind and the store methods for `object_buckets` and `object_storage_usage` — **DONE** | 45m | — |
+| [t002](done/t002.md) | `internal/objectstorage`: the region map, constants, name and key validation, and the key layout — **DONE** | 50m | — |
+| [t003](done/t003.md) | The Wasabi client over `internal/s3client`, a fake S3 for tests, and the two read-write credential variables — **DONE** | 60m | t002 |
+| [t004](done/t004.md) | Credentials rollout: IAM policies, `object-storage-s3-credentials.sh`, deployment wiring, ADR019 rows and the AGENTS inventory — **DONE** | 60m | t003 |
+| [t005](done/t005.md) | The bucket registry, the system bucket `render-<region>`, the quota gate and the stream limiter — **DONE** | 60m | t001, t002, t003 |
+| [t006](done/t006.md) | Contract A routes: list, put, get and delete replace the not-offered refusals — **DONE** | 60m | t005 |
+| [t007](done/t007.md) | Authorization and scope classes for Contract A, with a test for each — **DONE** | 40m | t006 |
+| [t008](done/t008.md) | The pinned Render CLI test for `ea objects`, the launcher pass-through and the checklist rows — **DONE** | 50m | t006, t007 |
+| [t009](done/t009.md) | Docs: the ADR018 object storage row, its dated divergences and `bex-cli.md` — **DONE** | 30m | t008 |
 | t010 | Production walk for Contract A: install the credentials, round trips in both regions, isolation | 60m | t004, t008, t009 |
-| t011 | Render parity | 30m | t010 |
-| t012 | Simplify | 20m | t011 |
-| t013 | Test coverage | 45m | t011, t012 |
+| [t011](done/t011.md) | Render parity — **DONE** | 30m | t009 |
+| [t012](done/t012.md) | Simplify — **DONE** | 20m | t011 |
+| [t013](done/t013.md) | Test coverage — **DONE** | 45m | t011, t012 |
 | t014 | Closeout | 10m | t013 |
 
 ## Definition of done
@@ -31,7 +31,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [ADR112](../../../docs/ADR112-object-storage.md), filed by `/pmx adr 112 to w21` on 2026-11-15; ADR112 tasks t001, t002, t004 and the Contract A parts of t008 and t009, reorganized into three milestones.
+- **Source:** [ADR112](../../../../docs/ADR112-object-storage.md), filed by `/pmx adr 112 to w21` on 2026-11-15; ADR112 tasks t001, t002, t004 and the Contract A parts of t008 and t009, reorganized into three milestones.
 - **Goal linkage:** ADR008 Render parity first: `render ea objects` is a Render capability ADR018 listed as not offered, and the user re-opened that row on 2026-11-14.
 - **Expected outcome:** A customer who points the unchanged Render CLI at bex stores and reads files, and the same store is ready for wrangler (w21/m416).
 - **Why now:** The user's 2026-11-14 instruction replaced the parity gap with a store; every later milestone (wrangler, public reads) sits on the registry, client and quotas built here.

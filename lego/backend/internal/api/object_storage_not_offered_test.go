@@ -24,10 +24,13 @@ import (
 	"testing"
 )
 
-// w6/097: Render's early-access object storage is not offered (ADR018). Each
-// of its four operations says so instead of the router's bare 404.
-func TestObjectStorageAnswersNotOffered(t *testing.T) {
-	mux := (&Server{}).restHandler()
+// Until a Wasabi credential is installed (ADR112 D9), Render's early-access
+// object storage answers as it did when it was not offered (ADR018, w6/097):
+// each of the four operations says so instead of the router's bare 404, so the
+// code can ship before any bucket exists. The region is not looked at either:
+// there is nothing to serve it from.
+func TestObjectStorageAnswersNotOfferedWithoutACredential(t *testing.T) {
+	mux := (&Server{RenderObjects: &renderObjects{}}).restHandler()
 	for _, tc := range []struct{ method, path string }{
 		{http.MethodGet, "/v1/objects/tea-a/oregon"},
 		{http.MethodPut, "/v1/objects/tea-a/oregon/dumps/prices.native"},

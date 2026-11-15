@@ -117,8 +117,6 @@ var emptyListCases = []emptyListCase{
 // neverEmptyArrayRoutes are array routes whose contents are a build-time
 // constant, so there is no empty case to assert — they cannot regress to null.
 var neverEmptyArrayRoutes = map[string]string{
-	"GET /v1/objects/{ownerId}/{region}":                                          "answers 404 not offered, never a list (ADR018, w6/097)",
-	"GET /v1/objects/{ownerId}/{region}/{key...}":                                 "answers 404 not offered (ADR018, w6/097)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots":                           "answers 404 SANDBOX_SNAPSHOTS_UNSUPPORTED, never a list (ADR018, w2/m263)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}":              "answers 404 SANDBOX_SNAPSHOTS_UNSUPPORTED (ADR018, w2/m263)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials":                         "answers 404 SANDBOX_GROUPS_UNSUPPORTED, never a list (CLI v2.36, w3/m303)",
@@ -141,6 +139,7 @@ var neverEmptyArrayRoutes = map[string]string{
 // session). Each entry cites the construction that makes its empty answer
 // non-nil, so the claim is checkable by reading rather than by running.
 var unreachableArrayRoutes = map[string]string{
+	"GET /v1/objects/{ownerId}/{region}":                 "Wasabi's listing of the workspace's render-<region> bucket; items is make([]objectWithCursorWire, 0, …) (objects_render.go), asserted empty by TestRenderObjectsListAnEmptyBucketIsAnEmptyArray",
 	"GET /v1/agent-automations":                          "the agent_automations table (Service.Automations); make([]AgentAutomation, 0, …) (agentsessions/automations.go AgentAutomations)",
 	"GET /v1/agent-automations/{id}/runs":                "the agent_automation_runs table (Service.Automations); the runs page is made non-nil (agentsessions/automation_run.go AgentAutomationRuns)",
 	"GET /v1/agent-skills/{ref}/versions":                "the agent_skill_versions table (Service.Skills); make([]AgentSkillVersion, 0, …) (agentsessions/skills_versions.go AgentSkillVersions)",
@@ -206,6 +205,7 @@ var unreachableArrayRoutes = map[string]string{
 
 // scalarRoutes are the GETs whose 200 body contains no JSON array at all.
 var scalarRoutes = map[string]bool{
+	"GET /v1/objects/{ownerId}/{region}/{key...}":                    true, // a presigned URL and its expiry
 	"GET /v1/agent-skills/{ref}":                                     true,
 	"GET /v1/agent-skills/{ref}/versions/{version}":                  true,
 	"GET /v1/agent-automations/{id}":                                 true, // triggers always holds the one stored trigger

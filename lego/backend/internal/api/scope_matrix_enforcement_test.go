@@ -393,3 +393,36 @@ func fmtMCP(res *mcp.CallToolResult) string {
 	b, _ := json.Marshal(res.Content)
 	return string(b)
 }
+
+// TestObjectStorageScopeClasses (ADR112 D6): minting a presigned GET hands over
+// customer bytes as a Postgres export does, so it is a sensitive read. Left a
+// plain read, a human OAuth token that consented to bex.read only could read
+// every object of its workspace. List stays a read; put and delete are writes.
+func TestObjectStorageScopeClasses(t *testing.T) {
+	const ws = "tea-abc123"
+	list := "/v1/objects/" + ws + "/oregon"
+	key := list + "/dumps/a.txt"
+	// The server has no object store, so a request the scope gate lets through
+	// is answered by the handler's named 404, never by an insufficient-scope 403.
+	passes := func(t *testing.T, h http.Handler, method, path, token, body string) {
+		t.Helper()
+		w := do(t, h, method, path, token, body)
+		if w.Code == http.StatusForbidden || strings.Contains(w.Body.String(), core.InsufficientScopeCode) {
+			t.Fatalf("%s %s refused by the scope gate: %d %s", method, path, w.Code, w.Body)
+		}
+	}
+
+	read, _, _ := scopedAPI(t, "identity-1", "dcr-client", "openid "+core.ScopeRead, []string{bexResource}, map[string]bool{"dcr-client": false})
+	passes(t, read, http.MethodGet, list, testToken, "")
+	assertRESTInsufficientScope(t, do(t, read, http.MethodGet, key, testToken, ""), core.ScopeSensitive)
+	assertRESTInsufficientScope(t, do(t, read, http.MethodPut, key, testToken, `{"sizeBytes":1}`), core.ScopeWrite)
+	assertRESTInsufficientScope(t, do(t, read, http.MethodDelete, key, testToken, ""), core.ScopeWrite)
+
+	write, _, _ := scopedAPI(t, "identity-1", "dcr-client", "openid "+core.ScopeWrite, []string{bexResource}, map[string]bool{"dcr-client": false})
+	passes(t, write, http.MethodPut, key, testToken, `{"sizeBytes":1}`)
+	passes(t, write, http.MethodDelete, key, testToken, "")
+	assertRESTInsufficientScope(t, do(t, write, http.MethodGet, key, testToken, ""), core.ScopeSensitive)
+
+	sensitive, _, _ := scopedAPI(t, "identity-1", "dcr-client", "openid "+core.ScopeSensitive, []string{bexResource}, map[string]bool{"dcr-client": false})
+	passes(t, sensitive, http.MethodGet, key, testToken, "")
+}

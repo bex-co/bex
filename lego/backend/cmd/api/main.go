@@ -71,6 +71,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
+	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/opsrole"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
@@ -929,6 +930,10 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentRetainedImageStore = st   // ADR047 D12: a stopped turn's disk, kept as an image
 	// ADR111: repository environment builds.
 	deps.AgentRepoEnvironmentBuildStore = st
+	// ADR112: Render's /v1/objects routes. The service has no stores, so every
+	// route answers its named 404, until BEX_OBJECT_STORAGE_ACCESS_KEY and
+	// _SECRET_KEY are set.
+	deps.ObjectStorage = objectstorage.NewService(st, objectstorage.NewStores(cfg.ObjectStorage))
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.

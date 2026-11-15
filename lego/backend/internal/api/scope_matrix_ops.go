@@ -797,7 +797,7 @@ var classifiedOps = map[string]string{
 	"REST GET /v1/notification-webpush-subscriptions":                                  core.OpClassRead,
 	"REST GET /v1/notifications":                                                       core.OpClassRead,
 	"REST GET /v1/objects/{ownerId}/{region}":                                          core.OpClassRead,
-	"REST GET /v1/objects/{ownerId}/{region}/{key...}":                                 core.OpClassRead,
+	"REST GET /v1/objects/{ownerId}/{region}/{key...}":                                 core.OpClassSensitive,
 	"REST GET /v1/owners":                                                              core.OpClassRead,
 	"REST GET /v1/owners/{ownerId}":                                                    core.OpClassRead,
 	"REST GET /v1/owners/{ownerId}/audit-logs":                                         core.OpClassRead,

@@ -1,0 +1,332 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// Package fakes3 is an in-memory S3 over HTTP, for tests of the object store
+// (ADR112). It serves the path-style subset bex uses (PUT, GET with Range,
+// HEAD, DELETE, multi-object delete and ListObjectsV2) so tests exercise the
+// real AWS client and real presigned URLs against it.
+//
+// It does not check signatures, and it does not enforce a signed
+// Content-Length: whether Wasabi does is unverified (ADR112 D3). Tests read
+// what was signed from the recorded requests instead.
+package fakes3
+
+import (
+	"bytes"
+	"crypto/md5" //nolint:gosec // S3 ETags are MD5, not a security use
+	"encoding/hex"
+	"encoding/xml"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
+
+// Object is one stored object.
+type Object struct {
+	Body         []byte
+	Header       http.Header // the entity headers the PUT carried
+	ETag         string
+	LastModified time.Time
+}
+
+// Request is one request the server saw, kept for assertions.
+type Request struct {
+	Method string
+	Bucket string
+	Key    string
+	Query  url.Values
+	Header http.Header
+}
+
+// Server is the fake. Its URL is the endpoint to give the S3 client.
+type Server struct {
+	*httptest.Server
+
+	mu       sync.Mutex
+	buckets  map[string]map[string]*Object
+	requests []Request
+	down     bool
+}
+
+// New starts a server holding the named, empty buckets.
+func New(buckets ...string) *Server {
+	s := &Server{buckets: map[string]map[string]*Object{}}
+	for _, b := range buckets {
+		s.buckets[b] = map[string]*Object{}
+	}
+	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
+	return s
+}
+
+// SetDown makes every request answer 503 until it is called with false.
+func (s *Server) SetDown(down bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.down = down
+}
+
+// Put seeds or replaces an object.
+func (s *Server) Put(bucket, key string, body []byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.put(bucket, key, body, http.Header{})
+}
+
+func (s *Server) put(bucket, key string, body []byte, header http.Header) {
+	if s.buckets[bucket] == nil {
+		s.buckets[bucket] = map[string]*Object{}
+	}
+	sum := md5.Sum(body) //nolint:gosec
+	s.buckets[bucket][key] = &Object{
+		Body: append([]byte(nil), body...), Header: header, ETag: `"` + hex.EncodeToString(sum[:]) + `"`,
+		LastModified: time.Now().UTC().Truncate(time.Second),
+	}
+}
+
+// Get returns a stored object's body.
+func (s *Server) Get(bucket, key string) ([]byte, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	o, ok := s.buckets[bucket][key]
+	if !ok {
+		return nil, false
+	}
+	return append([]byte(nil), o.Body...), true
+}
+
+// Keys lists a bucket's keys under prefix, in order.
+func (s *Server) Keys(bucket, prefix string) []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var keys []string
+	for k := range s.buckets[bucket] {
+		if strings.HasPrefix(k, prefix) {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// Requests returns every request seen so far, oldest first.
+func (s *Server) Requests() []Request {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]Request(nil), s.requests...)
+}
+
+func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	bucket, key, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/")
+	s.requests = append(s.requests, Request{Method: r.Method, Bucket: bucket, Key: key, Query: r.URL.Query(), Header: r.Header.Clone()})
+	if s.down {
+		s.fail(w, r, http.StatusServiceUnavailable, "ServiceUnavailable", "the fake is down")
+		return
+	}
+	objects, ok := s.buckets[bucket]
+	if !ok {
+		s.fail(w, r, http.StatusNotFound, "NoSuchBucket", "the bucket does not exist")
+		return
+	}
+	q := r.URL.Query()
+	switch {
+	case key == "" && r.Method == http.MethodGet && q.Get("list-type") == "2":
+		s.list(w, bucket, objects, q)
+	case key == "" && r.Method == http.MethodPost && q.Has("delete"):
+		s.deleteMany(w, r, objects)
+	case key == "":
+		s.fail(w, r, http.StatusNotImplemented, "NotImplemented", "the fake serves list-type=2 and delete only")
+	case r.Method == http.MethodPut:
+		s.putObject(w, r, bucket, key)
+	case r.Method == http.MethodGet || r.Method == http.MethodHead:
+		s.getObject(w, r, objects, key)
+	case r.Method == http.MethodDelete:
+		delete(objects, key)
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		s.fail(w, r, http.StatusMethodNotAllowed, "MethodNotAllowed", r.Method)
+	}
+}
+
+func (s *Server) putObject(w http.ResponseWriter, r *http.Request, bucket, key string) {
+	if strings.Contains(r.Header.Get("Content-Encoding"), "aws-chunked") || r.Header.Get("X-Amz-Decoded-Content-Length") != "" {
+		s.fail(w, r, http.StatusNotImplemented, "NotImplemented", "aws-chunked bodies are not served; use a presigned URL")
+		return
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		s.fail(w, r, http.StatusBadRequest, "IncompleteBody", err.Error())
+		return
+	}
+	header := http.Header{}
+	for _, name := range []string{"Content-Type", "Cache-Control", "Content-Disposition", "Content-Encoding", "Content-Language", "Expires"} {
+		if v := r.Header.Get(name); v != "" {
+			header.Set(name, v)
+		}
+	}
+	s.put(bucket, key, body, header)
+	w.Header().Set("ETag", s.buckets[bucket][key].ETag)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) getObject(w http.ResponseWriter, r *http.Request, objects map[string]*Object, key string) {
+	o, ok := objects[key]
+	if !ok {
+		s.fail(w, r, http.StatusNotFound, "NoSuchKey", "the key does not exist")
+		return
+	}
+	for name, values := range o.Header {
+		w.Header()[name] = values
+	}
+	// Like S3, a response-content-* query parameter overrides the stored header.
+	if v := r.URL.Query().Get("response-content-disposition"); v != "" {
+		w.Header().Set("Content-Disposition", v)
+	}
+	if v := r.URL.Query().Get("response-content-type"); v != "" {
+		w.Header().Set("Content-Type", v)
+	}
+	w.Header().Set("ETag", o.ETag)
+	w.Header().Set("Last-Modified", o.LastModified.Format(http.TimeFormat))
+	body := o.Body
+	status := http.StatusOK
+	if rng := r.Header.Get("Range"); rng != "" {
+		start, end, ok := parseRange(rng, int64(len(body)))
+		if !ok {
+			s.fail(w, r, http.StatusRequestedRangeNotSatisfiable, "InvalidRange", rng)
+			return
+		}
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(body)))
+		body, status = body[start:end+1], http.StatusPartialContent
+	}
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	w.WriteHeader(status)
+	if r.Method == http.MethodGet {
+		_, _ = w.Write(body)
+	}
+}
+
+func parseRange(h string, size int64) (start, end int64, ok bool) {
+	spec, found := strings.CutPrefix(h, "bytes=")
+	if !found || strings.Contains(spec, ",") {
+		return 0, 0, false
+	}
+	from, to, _ := strings.Cut(spec, "-")
+	switch {
+	case from == "":
+		n, err := strconv.ParseInt(to, 10, 64)
+		if err != nil || n <= 0 {
+			return 0, 0, false
+		}
+		start, end = max(size-n, 0), size-1
+	default:
+		var err error
+		if start, err = strconv.ParseInt(from, 10, 64); err != nil {
+			return 0, 0, false
+		}
+		end = size - 1
+		if to != "" {
+			if end, err = strconv.ParseInt(to, 10, 64); err != nil {
+				return 0, 0, false
+			}
+			end = min(end, size-1)
+		}
+	}
+	return start, end, start >= 0 && start <= end && start < size
+}
+
+type listResult struct {
+	XMLName     xml.Name       `xml:"http://s3.amazonaws.com/doc/2006-03-01/ ListBucketResult"`
+	Name        string         `xml:"Name"`
+	Prefix      string         `xml:"Prefix"`
+	KeyCount    int            `xml:"KeyCount"`
+	MaxKeys     int            `xml:"MaxKeys"`
+	IsTruncated bool           `xml:"IsTruncated"`
+	Contents    []listContents `xml:"Contents"`
+}
+
+type listContents struct {
+	Key          string `xml:"Key"`
+	LastModified string `xml:"LastModified"`
+	ETag         string `xml:"ETag"`
+	Size         int    `xml:"Size"`
+	StorageClass string `xml:"StorageClass"`
+}
+
+func (s *Server) list(w http.ResponseWriter, bucket string, objects map[string]*Object, q url.Values) {
+	prefix, after := q.Get("prefix"), q.Get("start-after")
+	maxKeys := 1000
+	if v, err := strconv.Atoi(q.Get("max-keys")); err == nil && v > 0 {
+		maxKeys = min(v, 1000)
+	}
+	var keys []string
+	for k := range objects {
+		if strings.HasPrefix(k, prefix) && k > after {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	res := listResult{Name: bucket, Prefix: prefix, MaxKeys: maxKeys}
+	if len(keys) > maxKeys {
+		keys, res.IsTruncated = keys[:maxKeys], true
+	}
+	for _, k := range keys {
+		o := objects[k]
+		res.Contents = append(res.Contents, listContents{
+			Key: k, LastModified: o.LastModified.Format("2006-01-02T15:04:05.000Z"), ETag: o.ETag, Size: len(o.Body), StorageClass: "STANDARD",
+		})
+	}
+	res.KeyCount = len(res.Contents)
+	w.Header().Set("Content-Type", "application/xml")
+	_, _ = io.WriteString(w, xml.Header)
+	_ = xml.NewEncoder(w).Encode(res)
+}
+
+func (s *Server) deleteMany(w http.ResponseWriter, r *http.Request, objects map[string]*Object) {
+	var in struct {
+		Objects []struct {
+			Key string `xml:"Key"`
+		} `xml:"Object"`
+	}
+	if err := xml.NewDecoder(r.Body).Decode(&in); err != nil {
+		s.fail(w, r, http.StatusBadRequest, "MalformedXML", err.Error())
+		return
+	}
+	for _, o := range in.Objects {
+		delete(objects, o.Key)
+	}
+	w.Header().Set("Content-Type", "application/xml")
+	_, _ = io.WriteString(w, xml.Header+`<DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"></DeleteResult>`)
+}
+
+func (s *Server) fail(w http.ResponseWriter, r *http.Request, status int, code, message string) {
+	if r.Method == http.MethodHead {
+		w.WriteHeader(status)
+		return
+	}
+	var msg bytes.Buffer
+	_ = xml.EscapeText(&msg, []byte(message))
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(status)
+	_, _ = fmt.Fprintf(w, `%s<Error><Code>%s</Code><Message>%s</Message></Error>`, xml.Header, code, msg.String())
+}

@@ -276,6 +276,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 
 	ids.AgentRepoEnvironmentBuild.Prefix(): {"agent-repo-environment-builds", ""},
 	ids.AgentRetainedImage.Prefix():        {"", "a stopped turn's retained disk, internal to its session; no API addresses it by id"},
+	ids.ObjectBucket.Prefix():              {"", "a bucket is addressed by workspace and name on every route; its id is only the second segment of its objects' Wasabi keys and the pub- host, which objectgw resolves through its own lookup (ADR112)"},
 }
 
 // TestEveryIDKindIsClassifiedForByIDRouting closes the gap the route walk

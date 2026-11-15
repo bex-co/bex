@@ -147,6 +147,9 @@ var (
 	// AgentAttachment is a file uploaded into, or shared out of, an agent
 	// session (ADR095).
 	AgentAttachment = Kind{prefix: "att", desc: "agent session attachment"}
+	// ObjectBucket is a bucket of bex object storage (ADR112). Its id, not its
+	// name, is the second segment of every object key in Wasabi.
+	ObjectBucket = Kind{prefix: "obk", desc: "object storage bucket"}
 	// BuildSource is a Render Build Source (w2/m254, ADR097); Render's contract
 	// names no prefix, and bsr is the Blueprint sync run's.
 	BuildSource = Kind{prefix: "bds", desc: "build source"}
@@ -172,7 +175,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, ObjectBucket, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

@@ -35,6 +35,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
+	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -328,6 +329,11 @@ type Config struct {
 	// AgentAttachments is the ADR095 attachments bucket; unset ⇒ attachments
 	// are unavailable.
 	AgentAttachments agentsessions.S3AttachmentConfig
+	// ObjectStorage is bex-api's Wasabi credential for object storage (ADR112
+	// D9): the only object-storage setting that is an environment variable.
+	// Endpoints, buckets, regions and caps are constants in internal/objectstorage.
+	// Unset ⇒ the object routes answer "not offered".
+	ObjectStorage objectstorage.Credentials
 
 	// Serving knobs (skipped entirely in stdio mode, like the inline reads
 	// they replaced — a local agent's leftover env must not fail a subprocess).
@@ -712,6 +718,16 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 			slices.Sort(missing)
 			p.errorf("agent attachments are partly configured; also set %s", strings.Join(missing, ", "))
 		}
+	}
+
+	// Object storage (ADR112 D9): a credential and nothing else.
+	cfg.ObjectStorage = objectstorage.Credentials{
+		AccessKey: getenv("BEX_OBJECT_STORAGE_ACCESS_KEY"),
+		SecretKey: getenv("BEX_OBJECT_STORAGE_SECRET_KEY"),
+	}
+	// Half a credential would silently turn the store off; refuse it.
+	if missing := cfg.ObjectStorage.Missing(); len(missing) > 0 {
+		p.errorf("object storage is partly configured; also set %s", strings.Join(missing, ", "))
 	}
 
 	// Serving knobs — skipped in stdio mode (the HTTP surface never starts).

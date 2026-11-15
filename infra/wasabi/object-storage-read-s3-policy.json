@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ObjectStorageReadBucketLocationAndList",
+      "Effect": "Allow",
+      "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::bex-objects-oregon", "arn:aws:s3:::bex-objects-frankfurt"]
+    },
+    {
+      "Sid": "ObjectStorageReadObjects",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": ["arn:aws:s3:::bex-objects-oregon/*", "arn:aws:s3:::bex-objects-frankfurt/*"]
+    }
+  ]
+}

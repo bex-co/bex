@@ -31,6 +31,9 @@ type Config struct {
 	// ChecksumsWhenRequired limits request checksums to the operations that
 	// require one, for a writer that streams bodies it cannot hash up front.
 	ChecksumsWhenRequired bool
+	// MaxAttempts caps how often the SDK tries a request that fails with a
+	// retryable error; zero keeps the SDK's default of three.
+	MaxAttempts int
 }
 
 // New returns the client. An empty Region is us-east-1, which every
@@ -43,6 +46,9 @@ func New(cfg Config) *s3.Client {
 	awsConfig := aws.Config{
 		Region:      region,
 		Credentials: aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(cfg.AccessKey, cfg.SecretKey, cfg.SessionToken)),
+	}
+	if cfg.MaxAttempts > 0 {
+		awsConfig.RetryMaxAttempts = cfg.MaxAttempts
 	}
 	if cfg.ChecksumsWhenRequired {
 		awsConfig.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
