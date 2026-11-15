@@ -90,4 +90,68 @@ describe("ScopeSelect (w4/215)", () => {
       "max-w-(--radix-select-content-available-width)",
     );
   });
+
+  // w22/m412: the sandbox group dialog reuses this select for its optional
+  // environment, so the "no environment" option is named by the caller, and
+  // the trigger can span the form like its Name input.
+  it("names the no-environment option for the caller, defaulting to the env group wording", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ScopeSelect
+        id="scope"
+        value="__workspace__"
+        environments={environments}
+        projects={projects}
+        onValueChange={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Environment" });
+    expect(trigger).toHaveTextContent("Workspace (no Environment)");
+
+    rerender(
+      <ScopeSelect
+        id="scope"
+        value="__workspace__"
+        environments={environments}
+        projects={projects}
+        noneLabel="No environment"
+        onValueChange={vi.fn()}
+      />,
+    );
+    expect(trigger).toHaveTextContent("No environment");
+    expect(trigger).not.toHaveTextContent("Workspace");
+    await user.click(trigger);
+    expect(
+      screen.getByRole("option", { name: "No environment" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Workspace (no Environment)" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("spans its container only when asked, and keeps the fit-content trigger otherwise", () => {
+    const { rerender } = render(
+      <ScopeSelect
+        id="scope"
+        value="__workspace__"
+        environments={environments}
+        projects={projects}
+        onValueChange={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Environment" });
+    expect(trigger).not.toHaveClass("w-full");
+
+    rerender(
+      <ScopeSelect
+        id="scope"
+        value="__workspace__"
+        environments={environments}
+        projects={projects}
+        fullWidth
+        onValueChange={vi.fn()}
+      />,
+    );
+    expect(trigger).toHaveClass("w-full");
+  });
 });

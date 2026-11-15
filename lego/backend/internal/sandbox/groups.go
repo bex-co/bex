@@ -103,7 +103,7 @@ const (
 // *store.PGStore implements it. nil (store off) serves no group route, refuses
 // a create that names a group, and enforces no concurrency limit.
 type GroupStore interface {
-	CreateSandboxGroup(ctx context.Context, workspaceID, name, region string, concurrencyLimit, maxGroups int) (store.SandboxGroup, error)
+	CreateSandboxGroup(ctx context.Context, workspaceID, name, region, environmentID string, concurrencyLimit, maxGroups int) (store.SandboxGroup, error)
 	EnsureDefaultSandboxGroup(ctx context.Context, workspaceID string, concurrencyLimit int) (store.SandboxGroup, error)
 	SandboxGroups(ctx context.Context, workspaceID string) ([]store.SandboxGroup, error)
 	SandboxGroup(ctx context.Context, workspaceID, id string) (store.SandboxGroup, error)
@@ -121,8 +121,8 @@ type GroupStore interface {
 }
 
 // Group is Render's sandbox group, the shape of the pinned OpenAPI schema.
-// EnvironmentID is always null: bex does not bind a group to a project
-// environment (ADR042 § Sandbox groups).
+// EnvironmentID is the public (evm-) id of the project environment the group
+// was placed in, null for a group in none (w22/m412, ADR042 § Sandbox groups).
 type Group struct {
 	ID            string  `json:"id"`
 	OwnerID       string  `json:"ownerId"`
@@ -151,6 +151,10 @@ type CreateGroupRequest struct {
 	OwnerID string `json:"ownerId,omitempty"`
 	Name    string `json:"name"`
 	Region  string `json:"region,omitempty"`
+	// EnvironmentID places the group in a project environment of the workspace
+	// (evm-…; the legacy env-… spelling is accepted), as Render's dashboard does
+	// (w22/m412). Render's REST create takes none; here it is a bex extension.
+	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"optional environment id (evm-...; legacy env-... accepted) in the target workspace to place the group in; it is returned as environmentId. Membership only: who can see or use the group does not change"`
 }
 
 // CodeSandboxGroupsUnavailable is the 503 of a deployment with no control-plane
@@ -185,8 +189,13 @@ func (s *Service) newGroupLimit() int { return s.clampLimit(RenderMaxGroupConcur
 func (s *Service) effectiveLimit(g store.SandboxGroup) int { return s.clampLimit(g.ConcurrencyLimit) }
 
 func (s *Service) groupView(g store.SandboxGroup) Group {
+	var environment *string
+	if g.EnvironmentID != "" {
+		public := ids.EnvironmentPublicID(g.EnvironmentID)
+		environment = &public
+	}
 	return Group{
-		ID: g.ID, OwnerID: g.WorkspaceID, Name: g.Name, Region: s.region(), IsDefault: g.IsDefault,
+		ID: g.ID, OwnerID: g.WorkspaceID, Name: g.Name, Region: s.region(), IsDefault: g.IsDefault, EnvironmentID: environment,
 		ConcurrencyLimit: s.effectiveLimit(g), CreatedAt: g.CreatedAt, UpdatedAt: g.UpdatedAt,
 	}
 }
@@ -266,8 +275,9 @@ func (s *Service) validateGroupRegion(region string) error {
 		map[string]any{"field": "region", "supported": supported})
 }
 
-// CreateGroup adds a group to the caller's workspace. The workspace's first
-// group becomes its default.
+// CreateGroup adds a group to the caller's workspace, in the project
+// environment the request names, if any. The workspace's first group becomes
+// its default.
 func (s *Service) CreateGroup(ctx context.Context, req CreateGroupRequest) (Group, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
@@ -282,7 +292,12 @@ func (s *Service) CreateGroup(ctx context.Context, req CreateGroupRequest) (Grou
 	if err := s.validateGroupRegion(req.Region); err != nil {
 		return Group{}, err
 	}
-	g, err := s.Groups.CreateSandboxGroup(ctx, s.WorkspaceOrDefault(ctx), req.Name, s.region(), s.newGroupLimit(), s.MaxGroups)
+	workspace := s.WorkspaceOrDefault(ctx)
+	environment, err := s.placeGroup(ctx, workspace, req.EnvironmentID)
+	if err != nil {
+		return Group{}, err
+	}
+	g, err := s.Groups.CreateSandboxGroup(ctx, workspace, req.Name, s.region(), environment, s.newGroupLimit(), s.MaxGroups)
 	switch {
 	case errors.Is(err, store.ErrSandboxGroupNameTaken):
 		return Group{}, core.NewConflictError(CodeSandboxGroupNameTaken,
@@ -293,6 +308,28 @@ func (s *Service) CreateGroup(ctx context.Context, req CreateGroupRequest) (Grou
 		return Group{}, store.MapError(err)
 	}
 	return s.groupView(g), nil
+}
+
+// placeGroup resolves the environment a group is created in to its durable id
+// ("" for none), through the resolver every resource kind places through, so a
+// protected environment needs an Admin (w3/m281). An environment of another
+// workspace is refused as not found, exactly like an id that does not exist
+// (the refusal is the same value, so a caller learns nothing about environments
+// it cannot see); that is the one place this differs from the resolver's own
+// answer, which says it belongs to another workspace.
+func (s *Service) placeGroup(ctx context.Context, workspace, environmentID string) (string, error) {
+	assignment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, environmentID, workspace)
+	var refusal *core.CodedError
+	switch {
+	case err == nil:
+		return assignment.ID, nil
+	case errors.As(err, &refusal) && refusal.Code == core.ProtectedPlacementCode:
+		return "", err
+	case errors.Is(err, core.ErrNotFound), errors.Is(err, core.ErrForbidden):
+		return "", core.NotFound("environment")
+	default:
+		return "", err
+	}
 }
 
 // groupLimitReached is Render's `sandbox_group_limit_reached` refusal.

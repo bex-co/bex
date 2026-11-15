@@ -37,6 +37,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/environments"
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
@@ -72,6 +73,9 @@ type groupFixture struct {
 	ws      string
 	mux     *http.ServeMux
 	handler http.Handler
+	// lastEnvironment is the public id of the environment the fixture created
+	// last (environmentOf), for a scenario that reads it back.
+	lastEnvironment string
 }
 
 func newGroupFixture(t *testing.T) *groupFixture {
@@ -93,6 +97,7 @@ func newGroupFixture(t *testing.T) *groupFixture {
 	f.svc.Groups = st
 	f.svc.MaxGroups = 3
 	f.svc.MaxGroupConcurrency = RenderMaxGroupConcurrency
+	f.svc.Environments = environments.NewCreateResolver(&environments.Service{Base: f.svc.Base, Store: st})
 
 	mux := http.NewServeMux()
 	f.svc.RegisterREST(mux)

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -18,11 +18,15 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspaceEnvironmentIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
+import { environmentNameIn } from "@/features/env-groups/lib/scope";
+import { SandboxGroupEnvironmentField } from "@/features/sandbox-groups/components/sandbox-group-environment-field";
 import {
   SANDBOX_GROUP_NAME_MAX,
   useCreateSandboxGroup,
   type SandboxGroup,
 } from "@/features/sandbox-groups/hooks/use-create-sandbox-group";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface NewSandboxGroupDialogProps {
   /**
@@ -35,16 +39,20 @@ export interface NewSandboxGroupDialogProps {
 
 /**
  * "New Sandbox Group" from the "+ New" menu, as on Render (ADR104, w22/m311).
- * A name. The region is not asked: bex-api places every group in the
- * platform's region (w32/016), which the confirmation shows as reported, the
- * way service settings show theirs. Render's optional project environment is
- * not offered because bex does not bind a group to one. Once created the
- * dialog confirms the group (id, name, region, whether it is the default, its
- * concurrency limit) in place, the way
- * the API-key dialog confirms a mint: Render documents no list or detail page
- * for groups, so there is nowhere truthful to navigate to.
+ * A name, and, for a workspace that has environments, Render's optional
+ * project environment (w22/m412): the env group dialog's own select, on "No
+ * environment" until one is chosen. The region is not asked: bex-api places
+ * every group in the platform's region (w32/016), which the confirmation shows
+ * as reported, the way service settings show theirs. Once created the dialog
+ * confirms the group (id, name, region, environment, whether it is the
+ * default, its concurrency limit) in place, the way the API-key dialog
+ * confirms a mint: Render documents no list or detail page for groups, so
+ * there is nowhere truthful to navigate to.
  *
- * A duplicate name and the workspace's group limit stay inline.
+ * The environments are read only while the dialog is open, and Create waits
+ * for them so a group is never created in none by a click that beat the
+ * select. A duplicate name, the workspace's group limit and a refused
+ * environment stay inline.
  */
 export function NewSandboxGroupDialog({
   open,
@@ -52,15 +60,40 @@ export function NewSandboxGroupDialog({
 }: NewSandboxGroupDialogProps) {
   const { t } = useTranslations();
   const { create, busy, refusal, clearRefusal } = useCreateSandboxGroup();
+  const { currentWorkspaceId } = useWorkspace();
+  const index = useWorkspaceEnvironmentIndex(open ? currentWorkspaceId : null);
   const [name, setName] = useState("");
+  const [environmentChoice, setEnvironmentChoice] = useState<string | null>(
+    null,
+  );
   const [created, setCreated] = useState<SandboxGroup | null>(null);
 
   // The name bex-api sees: it refuses a padded one, and every other create
   // dialog trims too.
   const trimmed = name.trim();
-  const canSubmit = trimmed.length > 0 && !busy;
+  // The chosen environment, if the index still lists it: after a re-read that
+  // dropped it the select shows No environment and none is sent.
+  const environmentId = index.environments.some(
+    (item) => item.id === environmentChoice,
+  )
+    ? environmentChoice
+    : null;
+  // Until the environments are read, or fail to be, the select is not there
+  // to choose from; a failed read lets the group be created without one.
+  const waitingForEnvironments = !index.ready && !index.error;
+  const canSubmit = trimmed.length > 0 && !busy && !waitingForEnvironments;
   const nameRefusal = refusal?.kind === "name" ? refusal.message : null;
   const limitRefusal = refusal?.kind === "limit" ? refusal.message : null;
+  const environmentRefusal =
+    refusal?.kind === "environment" ? refusal.message : null;
+
+  // A refused environment was chosen from a list that has since changed (it
+  // was deleted, or its protection changed): read the list again.
+  const environmentRefused = refusal?.kind === "environment";
+  const rereadEnvironments = index.retry;
+  useEffect(() => {
+    if (environmentRefused) rereadEnvironments();
+  }, [environmentRefused, rereadEnvironments]);
 
   // Whatever closes it (Done, Cancel, Escape, the URL changing under it, the
   // browser's Back button) leaves a clean form for the next open, never a stale
@@ -70,6 +103,7 @@ export function NewSandboxGroupDialog({
     setWasOpen(open);
     if (!open) {
       setName("");
+      setEnvironmentChoice(null);
       setCreated(null);
       clearRefusal();
     }
@@ -84,7 +118,7 @@ export function NewSandboxGroupDialog({
 
   async function handleSubmit() {
     if (!canSubmit) return;
-    const group = await create(trimmed);
+    const group = await create(trimmed, environmentId);
     if (group) setCreated(group);
   }
 
@@ -99,7 +133,15 @@ export function NewSandboxGroupDialog({
                 {t("sandboxGroups.createdDescription", { name: created.name })}
               </DialogDescription>
             </DialogHeader>
-            <CreatedGroup group={created} />
+            <CreatedGroup
+              group={created}
+              environmentName={
+                created.environmentId
+                  ? (environmentNameIn(index, created.environmentId) ??
+                    created.environmentId)
+                  : null
+              }
+            />
             <DialogFooter>
               <Button onClick={() => handleOpenChange(false)}>
                 {t("sandboxGroups.createdDone")}
@@ -149,6 +191,17 @@ export function NewSandboxGroupDialog({
               ) : null}
             </div>
 
+            <SandboxGroupEnvironmentField
+              index={index}
+              value={environmentId}
+              onValueChange={(next) => {
+                setEnvironmentChoice(next);
+                clearRefusal();
+              }}
+              disabled={busy}
+              refusal={environmentRefusal}
+            />
+
             {limitRefusal ? (
               <Alert variant="destructive">
                 <AlertTitle>{t("sandboxGroups.errorLimitTitle")}</AlertTitle>
@@ -176,8 +229,17 @@ export function NewSandboxGroupDialog({
   );
 }
 
-/** The created group's facts, as a label/value list. */
-function CreatedGroup({ group }: { group: SandboxGroup }) {
+/**
+ * The created group's facts, as a label/value list. `environmentName` is the
+ * environment it was placed in, null for a group in none.
+ */
+function CreatedGroup({
+  group,
+  environmentName,
+}: {
+  group: SandboxGroup;
+  environmentName: string | null;
+}) {
   const { t } = useTranslations();
   return (
     <dl className="space-y-3">
@@ -195,8 +257,11 @@ function CreatedGroup({ group }: { group: SandboxGroup }) {
           />
         </div>
       </Row>
-      <Row label={t("sandboxGroups.fieldRegion")}>
-        {group.region}
+      <Row label={t("sandboxGroups.fieldRegion")}>{group.region}</Row>
+      <Row label={t("envGroups.environmentLabel")}>
+        <span className="break-all">
+          {environmentName ?? t("environments.assignmentEnvironmentNone")}
+        </span>
       </Row>
       <Row label={t("sandboxGroups.fieldDefault")}>
         {group.isDefault

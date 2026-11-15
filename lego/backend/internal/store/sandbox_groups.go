@@ -60,12 +60,16 @@ var (
 
 // SandboxGroup is one row of sandbox_groups. ConcurrencyLimit is the configured
 // value; the effective limit the API reports is that capped by the platform's
-// maximum, which the sandbox service applies.
+// maximum, which the sandbox service applies. EnvironmentID is the durable
+// (env-) id of the project environment the group was placed in, empty when it
+// is in none (w22/m412); the sandbox service checks it belongs to the group's
+// workspace before it is written.
 type SandboxGroup struct {
 	ID               string
 	WorkspaceID      string
 	Name             string
 	Region           string
+	EnvironmentID    string
 	ConcurrencyLimit int
 	IsDefault        bool
 	CreatedAt        time.Time
@@ -79,11 +83,11 @@ type SandboxGroupMember struct {
 	LeaseUntil *time.Time
 }
 
-const sandboxGroupColumns = `id, workspace_id, name, region, concurrency_limit, is_default, created_at, updated_at`
+const sandboxGroupColumns = `id, workspace_id, name, region, COALESCE(environment_id, ''), concurrency_limit, is_default, created_at, updated_at`
 
 func scanSandboxGroup(row pgx.Row) (SandboxGroup, error) {
 	var g SandboxGroup
-	err := row.Scan(&g.ID, &g.WorkspaceID, &g.Name, &g.Region, &g.ConcurrencyLimit, &g.IsDefault, &g.CreatedAt, &g.UpdatedAt)
+	err := row.Scan(&g.ID, &g.WorkspaceID, &g.Name, &g.Region, &g.EnvironmentID, &g.ConcurrencyLimit, &g.IsDefault, &g.CreatedAt, &g.UpdatedAt)
 	return g, err
 }
 
@@ -95,10 +99,13 @@ func lockSandboxGroups(ctx context.Context, tx pgx.Tx, workspaceID string) error
 	return err
 }
 
-// CreateSandboxGroup adds a group. The workspace's first group becomes its
-// default; a create past maxGroups (0 disables the cap) is ErrSandboxGroupLimit
-// and a name another group has is ErrSandboxGroupNameTaken.
-func (s *PGStore) CreateSandboxGroup(ctx context.Context, workspaceID, name, region string, concurrencyLimit, maxGroups int) (SandboxGroup, error) {
+// CreateSandboxGroup adds a group, placed in environmentID (a durable env- id;
+// empty places it in none). The workspace's first group becomes its default; a
+// create past maxGroups (0 disables the cap) is ErrSandboxGroupLimit and a name
+// another group has is ErrSandboxGroupNameTaken. An environment that does not
+// exist is refused by the database; that it belongs to workspaceID is the
+// caller's check.
+func (s *PGStore) CreateSandboxGroup(ctx context.Context, workspaceID, name, region, environmentID string, concurrencyLimit, maxGroups int) (SandboxGroup, error) {
 	var out SandboxGroup
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if err := lockSandboxGroups(ctx, tx, workspaceID); err != nil {
@@ -111,19 +118,19 @@ func (s *PGStore) CreateSandboxGroup(ctx context.Context, workspaceID, name, reg
 		if maxGroups > 0 && count >= maxGroups {
 			return ErrSandboxGroupLimit
 		}
-		g, err := insertSandboxGroup(ctx, tx, workspaceID, name, region, concurrencyLimit, count == 0)
+		g, err := insertSandboxGroup(ctx, tx, workspaceID, name, region, environmentID, concurrencyLimit, count == 0)
 		out = g
 		return err
 	})
 	return out, err
 }
 
-func insertSandboxGroup(ctx context.Context, tx pgx.Tx, workspaceID, name, region string, concurrencyLimit int, isDefault bool) (SandboxGroup, error) {
+func insertSandboxGroup(ctx context.Context, tx pgx.Tx, workspaceID, name, region, environmentID string, concurrencyLimit int, isDefault bool) (SandboxGroup, error) {
 	g, err := scanSandboxGroup(tx.QueryRow(ctx, `
-		INSERT INTO sandbox_groups (id, workspace_id, name, region, concurrency_limit, is_default)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO sandbox_groups (id, workspace_id, name, region, environment_id, concurrency_limit, is_default)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING `+sandboxGroupColumns,
-		ids.New(ids.SandboxGroup), workspaceID, name, region, concurrencyLimit, isDefault))
+		ids.New(ids.SandboxGroup), workspaceID, name, region, nullIfEmpty(environmentID), concurrencyLimit, isDefault))
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "sandbox_groups_live_name" {
 		return SandboxGroup{}, ErrSandboxGroupNameTaken
@@ -174,7 +181,7 @@ func (s *PGStore) EnsureDefaultSandboxGroup(ctx context.Context, workspaceID str
 				RETURNING `+sandboxGroupColumns, workspaceID))
 			return err
 		}
-		out, err = insertSandboxGroup(ctx, tx, workspaceID, DefaultSandboxGroupName, SandboxGroupRegion, concurrencyLimit, true)
+		out, err = insertSandboxGroup(ctx, tx, workspaceID, DefaultSandboxGroupName, SandboxGroupRegion, "", concurrencyLimit, true)
 		return err
 	})
 	return out, err

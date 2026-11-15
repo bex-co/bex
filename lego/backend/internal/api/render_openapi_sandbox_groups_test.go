@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/getkin/kin-openapi/openapi3"
+
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -115,5 +117,70 @@ func TestSandboxBuildListAnswersRendersErrorCodes(t *testing.T) {
 				t.Fatalf("GET %s%s answered %s, want code %s", path, c.query, rr.Body.String(), c.code)
 			}
 		})
+	}
+}
+
+// TestSandboxGroupCreateTypesTheBexEnvironmentIdExtension pins w22/m412: the
+// pinned create-sandbox-group body has no environmentId (Render's REST create
+// takes none; its response carries a nullable one), and bex accepts an optional
+// one as an extension so a group can be placed in a project environment. The
+// gate types it (a string, or null as a group read back carries) and refuses
+// anything else before the handler runs, and an official client's body, which
+// never names it, passes as before.
+func TestSandboxGroupCreateTypesTheBexEnvironmentIdExtension(t *testing.T) {
+	for _, c := range []struct {
+		name, body string
+		status     int
+	}{
+		{"an official client's body", `{"ownerId":"tea-a","name":"CI agents","region":"oregon"}`, 299},
+		{"an environment id", `{"ownerId":"tea-a","name":"g","environmentId":"evm-cph1rs3idesc73a2b2mg"}`, 299},
+		{"a legacy environment id", `{"ownerId":"tea-a","name":"g","environmentId":"env-cph1rs3idesc73a2b2mg"}`, 299},
+		{"a null environment id", `{"ownerId":"tea-a","name":"g","environmentId":null}`, 299},
+		{"a number", `{"ownerId":"tea-a","name":"g","environmentId":5}`, http.StatusBadRequest},
+		{"an object", `{"ownerId":"tea-a","name":"g","environmentId":{"id":"evm-x"}}`, http.StatusBadRequest},
+		{"an environment id without the required fields", `{"environmentId":"evm-cph1rs3idesc73a2b2mg"}`, http.StatusBadRequest},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			reached := false
+			mux := http.NewServeMux()
+			mux.HandleFunc("POST /v1/sandbox-groups", func(w http.ResponseWriter, _ *http.Request) {
+				reached = true
+				w.WriteHeader(299)
+			})
+			h, err := newRenderRequestValidator(mux)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rr := requestOpenAPITest(t, h, http.MethodPost, "/v1/sandbox-groups", "application/json", c.body)
+			if rr.Code != c.status || reached != (c.status == 299) {
+				t.Fatalf("POST /v1/sandbox-groups %s = %d %s (handler reached: %v), want %d", c.body, rr.Code, rr.Body.String(), reached, c.status)
+			}
+		})
+	}
+}
+
+// The extension is on the create body alone: the response shape every group
+// read shares keeps Render's nullable string, and another operation's body does
+// not gain the field.
+func TestSandboxGroupEnvironmentIdExtensionIsOnTheCreateBodyOnly(t *testing.T) {
+	contract, err := renderContractOnce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := func(operationID string) *openapi3.Schema {
+		_, op := findRenderOperation(t, contract.document, operationID)
+		return op.RequestBody.Value.Content.Get("application/json").Schema.Value
+	}
+	create := body("create-sandbox-group").Properties["environmentId"]
+	if create == nil || create.Value.Type == nil || !create.Value.Type.Is("string") || !create.Value.Nullable {
+		t.Fatalf("create-sandbox-group environmentId = %+v, want a nullable string", create)
+	}
+	if _, ok := body("update-sandbox-group").Properties["environmentId"]; ok {
+		t.Error("update-sandbox-group gained an environmentId: a placement is chosen at create only")
+	}
+	_, get := findRenderOperation(t, contract.document, "retrieve-sandbox-group")
+	read := get.Responses.Status(http.StatusOK).Value.Content.Get("application/json").Schema.Value.Properties["environmentId"].Value
+	if read.Type == nil || !read.Type.Is("string") || !read.Nullable {
+		t.Errorf("the group response's environmentId = %+v, want Render's nullable string", read)
 	}
 }

@@ -28,6 +28,9 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // w22/m311 t005: REST, GraphQL and MCP answer every group behavior the same
@@ -41,12 +44,22 @@ import (
 type outcome struct {
 	Code   string
 	Fields map[string]any
+	// Raw is the same result before normalization, for a check of a value that
+	// is per-fixture (an environment's id) and so cannot be compared across
+	// surfaces. Only the group verbs fill it.
+	Raw map[string]any
 }
 
 const unsupportedSurface = "unsupported-by-this-surface"
 
 type groupDriver interface {
 	createGroup(groupName string) outcome
+	// createGroupIn creates a group in an environment, named as the caller
+	// spells it.
+	createGroupIn(groupName, environmentID string) outcome
+	// createGroupInNull creates a group with an explicit null environmentId, on
+	// the surfaces whose input can say null.
+	createGroupInNull(groupName string) outcome
 	getGroup(id string) outcome
 	// listGroups reads one page: after is the cursor ("" = the first page) and
 	// limit the page size (0 = the surface's default).
@@ -77,7 +90,7 @@ func normalize(v any) any {
 		}
 		return out
 	case string:
-		for _, prefix := range []string{"sbg-", "sbx-"} {
+		for _, prefix := range []string{"sbg-", "sbx-", "evm-"} {
 			if strings.HasPrefix(x, prefix) {
 				return "<" + prefix + "id>"
 			}
@@ -97,6 +110,12 @@ func fieldsOf(v any) map[string]any {
 	return norm
 }
 
+// resultOutcome is a successful surface answer: its normalized fields, and the
+// result as the surface sent it.
+func resultOutcome(v any) outcome {
+	return outcome{Fields: fieldsOf(map[string]any{"result": v}), Raw: map[string]any{"result": v}}
+}
+
 // ---- REST ----
 
 type restDriver struct {
@@ -112,11 +131,19 @@ func (d restDriver) call(method, path, body string) outcome {
 	}
 	var v any
 	_ = json.Unmarshal([]byte(resp), &v)
-	return outcome{Fields: fieldsOf(map[string]any{"result": v})}
+	return resultOutcome(v)
 }
 
 func (d restDriver) createGroup(name string) outcome {
 	return d.call(http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"name":%q}`, name))
+}
+
+func (d restDriver) createGroupIn(name, environmentID string) outcome {
+	return d.call(http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"name":%q,"environmentId":%q}`, name, environmentID))
+}
+
+func (d restDriver) createGroupInNull(name string) outcome {
+	return d.call(http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"name":%q,"environmentId":null}`, name))
 }
 
 func (d restDriver) getGroup(id string) outcome {
@@ -137,11 +164,13 @@ func (d restDriver) listGroups(after string, limit int) outcome {
 	}
 	// REST wraps each group as {sandboxGroup, cursor}; the other surfaces list groups.
 	items, _ := out.Fields["result"].([]any)
-	var groups []any
-	for _, item := range items {
+	raw, _ := out.Raw["result"].([]any)
+	var groups, rawGroups []any
+	for i, item := range items {
 		groups = append(groups, item.(map[string]any)["sandboxGroup"])
+		rawGroups = append(rawGroups, raw[i].(map[string]any)["sandboxGroup"])
 	}
-	return outcome{Fields: map[string]any{"result": groups}}
+	return outcome{Fields: map[string]any{"result": groups}, Raw: map[string]any{"result": rawGroups}}
 }
 
 func (d restDriver) updateGroup(id string, limit int) outcome {
@@ -208,7 +237,7 @@ func (d gqlDriver) run(root, query string, vars map[string]any) outcome {
 		return outcome{Code: code}
 	}
 	data, _ := res.Data.(map[string]any)
-	return outcome{Fields: fieldsOf(map[string]any{"result": data[root]})}
+	return resultOutcome(data[root])
 }
 
 const gqlGroupFields = `id ownerId name region isDefault environmentId concurrencyLimit createdAt updatedAt`
@@ -216,6 +245,17 @@ const gqlSandboxFields = `id name plan status region timeoutSeconds idleTimeoutS
 
 func (d gqlDriver) createGroup(name string) outcome {
 	return d.run("createSandboxGroup", `mutation($n: String!) { createSandboxGroup(name: $n) { `+gqlGroupFields+` } }`, map[string]any{"n": name})
+}
+
+func (d gqlDriver) createGroupIn(name, environmentID string) outcome {
+	return d.run("createSandboxGroup", `mutation($n: String!, $e: String) { createSandboxGroup(name: $n, environmentId: $e) { `+gqlGroupFields+` } }`,
+		map[string]any{"n": name, "e": environmentID})
+}
+
+func (d gqlDriver) createGroupInNull(name string) outcome {
+	// graphql-go reads no null literal in a query, so the null is a variable.
+	return d.run("createSandboxGroup", `mutation($n: String!, $e: String) { createSandboxGroup(name: $n, environmentId: $e) { `+gqlGroupFields+` } }`,
+		map[string]any{"n": name, "e": nil})
 }
 
 func (d gqlDriver) getGroup(id string) outcome {
@@ -282,12 +322,19 @@ func (d mcpDriver) call(tool string, args map[string]any) outcome {
 		}
 		return outcome{Code: code}
 	}
-	return outcome{Fields: fieldsOf(map[string]any{"result": res.StructuredContent})}
+	return resultOutcome(res.StructuredContent)
 }
 
 func (d mcpDriver) createGroup(name string) outcome {
 	return d.call("create_sandbox_group", map[string]any{"name": name})
 }
+
+func (d mcpDriver) createGroupIn(name, environmentID string) outcome {
+	return d.call("create_sandbox_group", map[string]any{"name": name, "environmentId": environmentID})
+}
+
+// An MCP input names a string or leaves it out; it has no null.
+func (mcpDriver) createGroupInNull(string) outcome { return outcome{Code: unsupportedSurface} }
 
 func (d mcpDriver) getGroup(id string) outcome {
 	return d.call("get_sandbox_group", map[string]any{"id": id})
@@ -307,7 +354,8 @@ func (d mcpDriver) listGroups(after string, limit int) outcome {
 	}
 	// MCP wraps the list as {sandboxGroups: [...]}.
 	inner, _ := out.Fields["result"].(map[string]any)
-	return outcome{Fields: map[string]any{"result": inner["sandboxGroups"]}}
+	rawInner, _ := out.Raw["result"].(map[string]any)
+	return outcome{Fields: map[string]any{"result": inner["sandboxGroups"]}, Raw: map[string]any{"result": rawInner["sandboxGroups"]}}
 }
 
 func (d mcpDriver) updateGroup(id string, limit int) outcome {
@@ -373,6 +421,33 @@ func groupNames(o outcome) []string {
 		names = append(names, item.(map[string]any)["name"].(string))
 	}
 	return names
+}
+
+// wantEnvironment checks the environmentId of the group a surface answered, as
+// the surface sent it: nil for a group in none, else the exact public id.
+func wantEnvironment(t *testing.T, got outcome, want *string) {
+	t.Helper()
+	if got.Code != "" {
+		t.Fatalf("the surface refused with %s, want a group", got.Code)
+	}
+	result, _ := got.Raw["result"].(map[string]any)
+	field, present := result["environmentId"]
+	switch {
+	case !present:
+		t.Errorf("the group has no environmentId, want an explicit one: %v", result)
+	case want == nil && field != nil:
+		t.Errorf("environmentId = %v, want null", field)
+	case want != nil && field != *want:
+		t.Errorf("environmentId = %v, want %s", field, *want)
+	}
+}
+
+// wantNoGroups checks that a refused placement left no group in the workspace.
+func wantNoGroups(t *testing.T, f *groupFixture) {
+	t.Helper()
+	if groups, err := f.st.SandboxGroups(context.Background(), f.ws); err != nil || len(groups) != 0 {
+		t.Errorf("the refused create left %d groups (%v)", len(groups), err)
+	}
 }
 
 func TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
@@ -479,17 +554,100 @@ func TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
 		{"listing a workspace with no groups", "", func(e env) outcome {
 			return e.d.listGroups("", 0)
 		}},
+		{"create in an environment of the workspace", "", func(e env) outcome {
+			return e.d.createGroupIn("placed", e.f.environment(t, "staging", false))
+		}},
+		{"create in an environment named by its legacy id", "", func(e env) outcome {
+			return e.d.createGroupIn("legacy", ids.EnvironmentStorageID(e.f.environment(t, "staging", false)))
+		}},
+		{"create with an explicit null environment", "", func(e env) outcome {
+			return e.d.createGroupInNull("plain")
+		}},
+		{"create in another workspace's environment", core.NotFoundCode, func(e env) outcome {
+			theirs := e.f.environmentOf(t, e.f.addWorkspace(t, "id-b"), "theirs", false)
+			return e.d.createGroupIn("mine", theirs)
+		}},
+		{"create in an environment that does not exist", core.NotFoundCode, func(e env) outcome {
+			return e.d.createGroupIn("mine", ids.EnvironmentPublicID("env-"+strings.Repeat("a", 20)))
+		}},
+		{"create in a malformed environment id", core.NotFoundCode, func(e env) outcome {
+			return e.d.createGroupIn("mine", "nope")
+		}},
+		{"a Developer placing a group in a protected environment", core.ProtectedPlacementCode, func(e env) outcome {
+			prod := e.f.environment(t, "production", true)
+			e.f.svc.Base.Authz = managerChecker{admin: false}
+			return e.d.createGroupIn("in-prod", prod)
+		}},
+		{"an Admin placing a group in a protected environment", "", func(e env) outcome {
+			prod := e.f.environment(t, "production", true)
+			e.f.svc.Base.Authz = managerChecker{admin: true}
+			return e.d.createGroupIn("in-prod", prod)
+		}},
+		{"retrieving a group in an environment", "", func(e env) outcome {
+			return e.d.getGroup(e.f.mustCreateGroupIn(t, "one", e.f.environment(t, "staging", false)).ID)
+		}},
+		{"updating a group in an environment", "", func(e env) outcome {
+			return e.d.updateGroup(e.f.mustCreateGroupIn(t, "one", e.f.environment(t, "staging", false)).ID, 5)
+		}},
+		{"listing groups echoes each one's environment", "", func(e env) outcome {
+			e.f.createGroup(t, "plain")
+			e.f.mustCreateGroupIn(t, "placed", e.f.environment(t, "staging", false))
+			return e.d.listGroups("", 0)
+		}},
+		{"retrieving a group after its environment was deleted", "", func(e env) outcome {
+			env := e.f.environment(t, "doomed", false)
+			g := e.f.mustCreateGroupIn(t, "survivor", env)
+			if err := e.f.st.DeleteEnvironment(context.Background(), ids.EnvironmentStorageID(env)); err != nil {
+				t.Fatal(err)
+			}
+			return e.d.getGroup(g.ID)
+		}},
 	}
 	// A group list is ordered, newest first, and these are the names each must
 	// carry; every other scenario's list is unordered.
 	groupLists := map[string][]string{
-		"listing a workspace's groups":            {"g2", "g1", "g0"},
-		"listing a page of groups after a cursor": {"g1"},
-		"listing a workspace with no groups":      {},
+		"listing a workspace's groups":                 {"g2", "g1", "g0"},
+		"listing a page of groups after a cursor":      {"g1"},
+		"listing a workspace with no groups":           {},
+		"listing groups echoes each one's environment": {"placed", "plain"},
 	}
 	// Only these surfaces have the operation at all: GraphQL has no exec verb, so
 	// waking a sandbox by exec is REST and MCP.
-	only := map[string][]string{"waking a suspended sandbox at the group's limit": {"MCP", "REST"}}
+	only := map[string][]string{
+		"waking a suspended sandbox at the group's limit": {"MCP", "REST"},
+		// An MCP input names a string or leaves it out; it has no null.
+		"create with an explicit null environment": {"GraphQL", "REST"},
+	}
+	// verify checks what the cross-surface comparison cannot: the exact value of
+	// something each fixture made for itself, such as an environment's id. It
+	// runs once per surface that answered.
+	placed := func(t *testing.T, e env, got outcome) { wantEnvironment(t, got, &e.f.lastEnvironment) }
+	unplaced := func(t *testing.T, _ env, got outcome) { wantEnvironment(t, got, nil) }
+	refusedNothingWritten := func(t *testing.T, e env, _ outcome) { wantNoGroups(t, e.f) }
+	verify := map[string]func(t *testing.T, e env, got outcome){
+		"create a group": unplaced,
+		"create in an environment of the workspace":              placed,
+		"create in an environment named by its legacy id":        placed,
+		"create with an explicit null environment":               unplaced,
+		"create in another workspace's environment":              refusedNothingWritten,
+		"create in an environment that does not exist":           refusedNothingWritten,
+		"create in a malformed environment id":                   refusedNothingWritten,
+		"a Developer placing a group in a protected environment": refusedNothingWritten,
+		"an Admin placing a group in a protected environment":    placed,
+		"retrieving a group in an environment":                   placed,
+		"updating a group in an environment":                     placed,
+		"retrieving a group after its environment was deleted":   unplaced,
+		"listing groups echoes each one's environment": func(t *testing.T, e env, got outcome) {
+			byName := map[string]any{}
+			for _, item := range got.Raw["result"].([]any) {
+				group := item.(map[string]any)
+				byName[group["name"].(string)] = group["environmentId"]
+			}
+			if !reflect.DeepEqual(byName, map[string]any{"placed": e.f.lastEnvironment, "plain": nil}) {
+				t.Errorf("listed environments = %v, want placed in %s and plain in none", byName, e.f.lastEnvironment)
+			}
+		},
+	}
 	for _, sc := range scenarios {
 		t.Run(sc.name, func(t *testing.T) {
 			got := map[string]outcome{}
@@ -506,6 +664,9 @@ func TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
 				}
 				_, ordered := groupLists[sc.name]
 				got[driver] = canonical(sc.run(e), ordered)
+				if check := verify[sc.name]; check != nil && got[driver].Code != unsupportedSurface {
+					t.Run("verify "+driver, func(t *testing.T) { check(t, e, got[driver]) })
+				}
 			}
 			var surfaces []string
 			for driver, out := range got {

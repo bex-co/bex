@@ -38,7 +38,8 @@ var sandboxGroupGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"name":      gqlutil.ReqStrField(func(g Group) any { return g.Name }),
 		"region":    gqlutil.ReqStrField(func(g Group) any { return g.Region }),
 		"isDefault": gqlutil.ReqBoolField(func(g Group) any { return g.IsDefault }),
-		// Always null for now: a group is not bound to an ADR032 environment.
+		// The project environment the group was placed in (its evm- id), null
+		// for a group in none (w22/m412).
 		"environmentId":    gqlutil.StrField(func(g Group) any { return g.EnvironmentID }),
 		"concurrencyLimit": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(g Group) any { return g.ConcurrencyLimit }),
 		"createdAt":        gqlutil.TimeField(func(g Group) any { return g.CreatedAt }),
@@ -77,15 +78,17 @@ func (s *Service) groupMutationFields() graphql.Fields {
 		"createSandboxGroup": &graphql.Field{
 			Type: sandboxGroupGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":    gqlutil.ReqArg(graphql.String),
-				"region":  gqlutil.Arg(graphql.String),
-				"ownerId": gqlutil.Arg(graphql.String),
+				"name":          gqlutil.ReqArg(graphql.String),
+				"region":        gqlutil.Arg(graphql.String),
+				"ownerId":       gqlutil.Arg(graphql.String),
+				"environmentId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.CreateGroup(p.Context, CreateGroupRequest{
-					OwnerID: gqlutil.Str(p.Args, "ownerId"),
-					Name:    p.Args["name"].(string),
-					Region:  gqlutil.Str(p.Args, "region"),
+					OwnerID:       gqlutil.Str(p.Args, "ownerId"),
+					Name:          p.Args["name"].(string),
+					Region:        gqlutil.Str(p.Args, "region"),
+					EnvironmentID: gqlutil.Str(p.Args, "environmentId"),
 				})
 			},
 		},
@@ -147,7 +150,7 @@ func (s *Service) registerGroupMCP(server *mcp.Server) {
 			g, err := s.GetGroup(ctx, in.ID)
 			return nil, g, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "create_sandbox_group", Description: "Create a sandbox group with a unique name. The workspace's first group becomes its default. A workspace may have a limited number of groups. A group and its sandboxes run in the platform's region, which the group reports; region may be omitted, oregon (Render's value) or that region."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "create_sandbox_group", Description: "Create a sandbox group with a unique name. The workspace's first group becomes its default. A workspace may have a limited number of groups. A group and its sandboxes run in the platform's region, which the group reports; region may be omitted, oregon (Render's value) or that region. environmentId optionally places the group in one of the workspace's project environments (list_environments), as Render's dashboard does; the group returns it as environmentId, null when it is in none. Placement is membership only: who can see or use the group does not change. A protected environment needs a workspace Admin, and another workspace's environment is not found."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in CreateGroupRequest) (*mcp.CallToolResult, Group, error) {
 			g, err := s.CreateGroup(ctx, in)
 			return nil, g, err

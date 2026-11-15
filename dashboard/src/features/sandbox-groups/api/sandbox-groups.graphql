@@ -1,17 +1,29 @@
 # Sandbox groups (ADR104, w22/m311). The dashboard only creates one, from
 # "+ New > Sandbox Group", as Render's does; Render documents no list page, so
-# there is no list query. `environmentId` is always null in bex and is not
-# selected: a group is not bound to a project environment.
+# there is no list query. `environmentId` places the group in a project
+# environment, optionally, as Render's dashboard lets a customer do (w22/m412);
+# a group in none reads it back as null.
 fragment SandboxGroupFields on SandboxGroup {
   id
   name
   region
   isDefault
+  environmentId
   concurrencyLimit
 }
 
-mutation CreateSandboxGroup($name: String!, $region: String, $ownerId: String) {
-  createSandboxGroup(name: $name, region: $region, ownerId: $ownerId) {
+mutation CreateSandboxGroup(
+  $name: String!
+  $region: String
+  $ownerId: String
+  $environmentId: String
+) {
+  createSandboxGroup(
+    name: $name
+    region: $region
+    ownerId: $ownerId
+    environmentId: $environmentId
+  ) {
     ...SandboxGroupFields
   }
 }

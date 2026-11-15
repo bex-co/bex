@@ -128,6 +128,23 @@ const ruSandboxGroups: Record<string, TranslationEntry> = {
     message: "Не удалось скопировать ID группы песочниц",
     description: "Toast when copying the sandbox group ID fails",
   },
+  "sandboxGroups.environmentLoading": {
+    message: "Загрузка окружений",
+    description:
+      "Accessible name of the loading placeholder shown where the new-sandbox-group dialog's Environment select will appear",
+  },
+  "sandboxGroups.environmentsError": {
+    message:
+      "Не удалось загрузить ваши окружения. Группу всё равно можно создать без окружения.",
+    description:
+      "Shown in the new-sandbox-group dialog when the workspace's environments could not be read; the group can still be created without one",
+  },
+  "sandboxGroups.errorEnvironmentGone": {
+    message:
+      "Это окружение больше не существует. Выберите другое или создайте группу без окружения.",
+    description:
+      "Inline error under the Environment select when the chosen environment was deleted before the group was created",
+  },
 };
 
 export default ruSandboxGroups;

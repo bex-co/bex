@@ -8,8 +8,11 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   graphQLErrorExtensions,
+  hasGraphQLErrorCode,
+  isNotFoundError,
   mutationErrorMessage,
 } from "@/common/lib/graphql-error";
+import { PROTECTED_PLACEMENT_CODE } from "@/features/environments/lib/placement";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 /** The longest group name bex-api accepts (`maxGroupName`, in characters). */
@@ -27,16 +30,24 @@ export type SandboxGroup = NonNullable<
 
 /**
  * Why the last create was refused, for inline display: a name refusal sits
- * beside the name field, the group-limit refusal is a form-level alert.
+ * beside the name field, an environment refusal under the environment select,
+ * the group-limit refusal is a form-level alert.
  */
 export interface SandboxGroupRefusal {
-  kind: "name" | "limit";
+  kind: "name" | "limit" | "environment";
   message: string;
 }
 
 export interface UseCreateSandboxGroupResult {
-  /** Fires createSandboxGroup; resolves the new group, or null on failure. */
-  create: (name: string) => Promise<SandboxGroup | null>;
+  /**
+   * Fires createSandboxGroup, in the project environment `environmentId` names
+   * when given (none otherwise: the variable is left out, as an official Render
+   * client's create leaves it out); resolves the new group, or null on failure.
+   */
+  create: (
+    name: string,
+    environmentId?: string | null,
+  ) => Promise<SandboxGroup | null>;
   busy: boolean;
   /** The last refusal worth showing inline; null once cleared or on success. */
   refusal: SandboxGroupRefusal | null;
@@ -49,10 +60,12 @@ export interface UseCreateSandboxGroupResult {
  * (ADR104, w22/m311). Scoped to the switcher's selected workspace, as every
  * other create hook is.
  *
- * A duplicate name and the workspace's group limit are the two refusals a user
- * can act on, so they are keyed on bex-api's error code (never its English
- * prose), localized here and shown inline. Every other failure relays the
- * server's own reason in a toast, or the generic copy for a transport failure.
+ * A duplicate name, the workspace's group limit and a refused environment (a
+ * protected one for a non-Admin, or one deleted since the list was read) are
+ * the refusals a user can act on, so they are keyed on bex-api's error code
+ * (never its English prose), localized here and shown inline. Every other
+ * failure relays the server's own reason in a toast, or the generic copy for a
+ * transport failure.
  */
 export function useCreateSandboxGroup(): UseCreateSandboxGroupResult {
   const { t } = useTranslations();
@@ -63,7 +76,7 @@ export function useCreateSandboxGroup(): UseCreateSandboxGroupResult {
   const clearRefusal = useCallback(() => setRefusal(null), []);
 
   const create = useCallback(
-    async (name: string) => {
+    async (name: string, environmentId?: string | null) => {
       // Never sent with a null ownerId, which bex-api would silently route to
       // the caller's default workspace (mirrors useCreateApiKey).
       if (currentWorkspaceId == null) {
@@ -76,13 +89,17 @@ export function useCreateSandboxGroup(): UseCreateSandboxGroupResult {
         const res = await mutate({
           // No region: bex-api places every group in the platform's region
           // and reports it, as services report theirs (w32/016).
-          variables: { name, ownerId: currentWorkspaceId },
+          variables: {
+            name,
+            ownerId: currentWorkspaceId,
+            ...(environmentId ? { environmentId } : {}),
+          },
         });
         const group = res.data?.createSandboxGroup;
         if (!group?.id) throw new Error("createSandboxGroup returned no id");
         return group;
       } catch (err) {
-        const inline = inlineRefusal(err, name, t);
+        const inline = inlineRefusal(err, name, Boolean(environmentId), t);
         if (inline) setRefusal(inline);
         else
           toast.error(
@@ -103,6 +120,7 @@ export function useCreateSandboxGroup(): UseCreateSandboxGroupResult {
 function inlineRefusal(
   err: unknown,
   name: string,
+  placed: boolean,
   t: ReturnType<typeof useTranslations>["t"],
 ): SandboxGroupRefusal | null {
   if (graphQLErrorExtensions(err, NAME_TAKEN)) {
@@ -119,6 +137,20 @@ function inlineRefusal(
       message: t("sandboxGroups.errorNameInvalid", {
         max: typeof max === "number" ? max : SANDBOX_GROUP_NAME_MAX,
       }),
+    };
+  }
+  if (hasGraphQLErrorCode(err, PROTECTED_PLACEMENT_CODE)) {
+    return {
+      kind: "environment",
+      message: t("environments.protectedPlacementAdminOnly"),
+    };
+  }
+  // The only thing a create looks up is its environment, so a not-found
+  // answers a chosen environment that no longer exists.
+  if (placed && isNotFoundError(err)) {
+    return {
+      kind: "environment",
+      message: t("sandboxGroups.errorEnvironmentGone"),
     };
   }
   const limit = graphQLErrorExtensions(err, LIMIT_REACHED);

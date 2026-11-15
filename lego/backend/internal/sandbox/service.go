@@ -177,6 +177,12 @@ type Service struct {
 	// MaxGroups caps a workspace's groups (Render: 10; 0 = uncapped), past which a
 	// group create answers 400 sandbox_group_limit_reached.
 	MaxGroups int
+	// Environments is the resource-create environment resolver every other kind
+	// places through (environments.NewCreateResolver; w22/m412): a group created
+	// with an environmentId is validated there, so another workspace's
+	// environment is not found and a protected one needs an Admin (w3/m281). nil
+	// refuses a create that names an environment.
+	Environments core.EnvironmentResolver
 	// Images imports Render's sandbox images and resolves a create's buildId or
 	// buildName (w2/m358); nil answers the image routes 503.
 	Images *Images

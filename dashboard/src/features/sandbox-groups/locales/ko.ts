@@ -110,6 +110,22 @@ const koSandboxGroups: Record<string, TranslationEntry> = {
     message: "샌드박스 그룹 ID를 복사하지 못했습니다",
     description: "Toast when copying the sandbox group ID fails",
   },
+  "sandboxGroups.environmentLoading": {
+    message: "환경을 불러오는 중",
+    description:
+      "Accessible name of the loading placeholder shown where the new-sandbox-group dialog's Environment select will appear",
+  },
+  "sandboxGroups.environmentsError": {
+    message: "환경을 불러오지 못했습니다. 환경 없이 그룹을 만들 수는 있습니다.",
+    description:
+      "Shown in the new-sandbox-group dialog when the workspace's environments could not be read; the group can still be created without one",
+  },
+  "sandboxGroups.errorEnvironmentGone": {
+    message:
+      "해당 환경이 더 이상 존재하지 않습니다. 다른 환경을 선택하거나 환경 없음을 선택하세요.",
+    description:
+      "Inline error under the Environment select when the chosen environment was deleted before the group was created",
+  },
 };
 
 export default koSandboxGroups;

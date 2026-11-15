@@ -18,7 +18,20 @@ Captured 2026-11-12 for w2/m359 from the pinned Render CLI v2.36 (`render-oss/cl
 
 ## The dashboard
 
-render.com/docs/sandboxes-creating (read 2026-11-12) mentions the dashboard only for creating a group ("+ New > Sandbox Group") and placing it in a project environment. Listing groups, deleting them, setting the default and images are CLI and API operations.
+render.com/docs/sandboxes-creating (read 2026-11-12 and again 2026-11-14) mentions the dashboard only for creating a group ("+ New > Sandbox Group") and, as its words are, "In the Dashboard, you can optionally place a group in a project environment". Listing groups, deleting them, setting the default and images are CLI and API operations.
+
+## The project environment
+
+The pinned OpenAPI's `create-sandbox-group` body has `ownerId`, `name` and `region` only; its response (and the retrieve and list shapes) carry a nullable `environmentId` ("The ID of the environment this sandbox group belongs to, if any"). The page says nothing about what placement does: whether it scopes the group's access or visibility, or whether a group can move between environments, is not documented, so bex records those as unknown and gives the placement the one meaning the page supports, membership (w22/m412, [ADR104 § D7](../ADR104-sandbox-render-parity.md#d7--groups-plans-limits-and-regions)).
+
+|  | bex |
+| --- | --- |
+| REST create body | the pinned fields, plus an optional `environmentId` (a string or `null`) as a **bex extension**; an official client never sends it |
+| Response | `environmentId` is the environment's public `evm-` id, `null` for a group in none |
+| Another workspace's environment, or an id that does not exist | `404 NOT_FOUND`, one answer for both |
+| A protected environment, for a non-Admin | `403 PROTECTED_ENVIRONMENT_ADMIN_REQUIRED` |
+
+Placement is the only group verb gated by environment protection. Deleting, editing or reading a group in a protected environment is not restricted: Render documents none of it (unknown, not enforced). | The environment is deleted | the group stays and reads `environmentId: null` | | Moving a group between environments | not offered (the update takes only `concurrencyLimit`) |
 
 ## What bex answers where Render is silent
 

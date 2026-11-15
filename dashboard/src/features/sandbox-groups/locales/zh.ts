@@ -108,6 +108,21 @@ const zhSandboxGroups: Record<string, TranslationEntry> = {
     message: "无法复制沙箱组 ID",
     description: "Toast when copying the sandbox group ID fails",
   },
+  "sandboxGroups.environmentLoading": {
+    message: "正在加载环境",
+    description:
+      "Accessible name of the loading placeholder shown where the new-sandbox-group dialog's Environment select will appear",
+  },
+  "sandboxGroups.environmentsError": {
+    message: "无法加载你的环境。你仍然可以不指定环境来创建沙箱组。",
+    description:
+      "Shown in the new-sandbox-group dialog when the workspace's environments could not be read; the group can still be created without one",
+  },
+  "sandboxGroups.errorEnvironmentGone": {
+    message: "该环境已不存在。请选择其他环境或不选择环境。",
+    description:
+      "Inline error under the Environment select when the chosen environment was deleted before the group was created",
+  },
 };
 
 export default zhSandboxGroups;

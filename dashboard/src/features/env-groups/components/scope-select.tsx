@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { cn } from "@/common/lib/utils/utils";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import {
@@ -18,7 +19,8 @@ import {
  * The Environment scope picker shared by every env-group surface that chooses
  * one: Move, Clone, and — since w4/m111 — Create. One component so the option
  * set and its labels cannot drift between the dialog that mints a group and
- * the dialogs that relocate it.
+ * the dialogs that relocate it. The sandbox group dialog (w22/m412) reuses it
+ * for its optional environment, naming the no-environment option itself.
  */
 export function ScopeSelect({
   id,
@@ -28,6 +30,8 @@ export function ScopeSelect({
   loading = false,
   restricts,
   restrictedReason,
+  noneLabel,
+  fullWidth = false,
   onValueChange,
 }: {
   id: string;
@@ -41,6 +45,12 @@ export function ScopeSelect({
    *  describes the trigger. */
   restricts?: (environment: EnvironmentView) => boolean;
   restrictedReason?: string;
+  /** The wording of the no-environment option; an env group's "Workspace (no
+   *  Environment)" unless the caller says otherwise. */
+  noneLabel?: string;
+  /** Span the container's width, like a text input, instead of fitting the
+   *  selected label. */
+  fullWidth?: boolean;
   onValueChange: (value: string) => void;
 }) {
   const { t } = useTranslations();
@@ -59,13 +69,16 @@ export function ScopeSelect({
         <SelectTrigger
           id={id}
           aria-describedby={anyRestricted ? reasonId : undefined}
-          className="min-h-9 max-w-full text-left whitespace-normal wrap-anywhere data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none"
+          className={cn(
+            "min-h-9 max-w-full text-left whitespace-normal wrap-anywhere data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none",
+            fullWidth && "w-full",
+          )}
         >
           <SelectValue placeholder={t("envGroups.environmentPlaceholder")} />
         </SelectTrigger>
         <SelectContent className="max-w-(--radix-select-content-available-width)">
           <SelectItem value={WORKSPACE_SCOPE}>
-            {t("envGroups.workspaceScope")}
+            {noneLabel ?? t("envGroups.workspaceScope")}
           </SelectItem>
           {environments.map((environment) => (
             <SelectItem

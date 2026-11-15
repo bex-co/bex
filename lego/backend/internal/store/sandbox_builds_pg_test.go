@@ -36,7 +36,7 @@ func TestSandboxBuildsPG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := st.CreateSandboxGroup(ctx, ws, "other", SandboxGroupRegion, 10, 0)
+	other, err := st.CreateSandboxGroup(ctx, ws, "other", SandboxGroupRegion, "", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestSandboxBuildDeletePG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := st.CreateSandboxGroup(ctx, ws, "other", SandboxGroupRegion, 10, 0)
+	other, err := st.CreateSandboxGroup(ctx, ws, "other", SandboxGroupRegion, "", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

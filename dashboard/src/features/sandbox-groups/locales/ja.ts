@@ -111,6 +111,23 @@ const jaSandboxGroups: Record<string, TranslationEntry> = {
     message: "サンドボックスグループ ID をコピーできませんでした",
     description: "Toast when copying the sandbox group ID fails",
   },
+  "sandboxGroups.environmentLoading": {
+    message: "環境を読み込み中",
+    description:
+      "Accessible name of the loading placeholder shown where the new-sandbox-group dialog's Environment select will appear",
+  },
+  "sandboxGroups.environmentsError": {
+    message:
+      "環境を読み込めませんでした。環境を指定せずにグループを作成することはできます。",
+    description:
+      "Shown in the new-sandbox-group dialog when the workspace's environments could not be read; the group can still be created without one",
+  },
+  "sandboxGroups.errorEnvironmentGone": {
+    message:
+      "その環境はもう存在しません。別の環境を選ぶか、環境なしを選んでください。",
+    description:
+      "Inline error under the Environment select when the chosen environment was deleted before the group was created",
+  },
 };
 
 export default jaSandboxGroups;

@@ -123,6 +123,22 @@ const esSandboxGroups: Record<string, TranslationEntry> = {
     message: "No se pudo copiar el ID del grupo de sandbox",
     description: "Toast when copying the sandbox group ID fails",
   },
+  "sandboxGroups.environmentLoading": {
+    message: "Cargando entornos",
+    description:
+      "Accessible name of the loading placeholder shown where the new-sandbox-group dialog's Environment select will appear",
+  },
+  "sandboxGroups.environmentsError": {
+    message:
+      "No se pudieron cargar tus entornos. Aun así puedes crear el grupo sin entorno.",
+    description:
+      "Shown in the new-sandbox-group dialog when the workspace's environments could not be read; the group can still be created without one",
+  },
+  "sandboxGroups.errorEnvironmentGone": {
+    message: "Ese entorno ya no existe. Elige otro o ninguno.",
+    description:
+      "Inline error under the Environment select when the chosen environment was deleted before the group was created",
+  },
 };
 
 export default esSandboxGroups;

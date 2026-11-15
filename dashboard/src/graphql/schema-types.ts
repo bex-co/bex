@@ -2593,6 +2593,7 @@ export type MutationCreateSandboxArgs = {
 
 
 export type MutationCreateSandboxGroupArgs = {
+  environmentId?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
   region?: InputMaybe<Scalars['String']['input']>;

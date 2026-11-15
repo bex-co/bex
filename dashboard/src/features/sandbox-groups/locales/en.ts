@@ -115,6 +115,22 @@ const enSandboxGroups: Record<string, TranslationEntry> = {
     message: "Couldn't copy the sandbox group ID",
     description: "Toast when copying the sandbox group ID fails",
   },
+  "sandboxGroups.environmentLoading": {
+    message: "Loading environments",
+    description:
+      "Accessible name of the loading placeholder shown where the new-sandbox-group dialog's Environment select will appear",
+  },
+  "sandboxGroups.environmentsError": {
+    message:
+      "Couldn't load your environments. You can still create the group without one.",
+    description:
+      "Shown in the new-sandbox-group dialog when the workspace's environments could not be read; the group can still be created without one",
+  },
+  "sandboxGroups.errorEnvironmentGone": {
+    message: "That environment no longer exists. Choose another or none.",
+    description:
+      "Inline error under the Environment select when the chosen environment was deleted before the group was created",
+  },
 };
 
 export default enSandboxGroups;

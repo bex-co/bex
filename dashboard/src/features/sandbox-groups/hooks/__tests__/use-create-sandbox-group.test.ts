@@ -31,6 +31,7 @@ const GROUP = {
   name: "ci",
   region: "frankfurt",
   isDefault: true,
+  environmentId: null,
   concurrencyLimit: 1000,
 };
 
@@ -41,12 +42,13 @@ beforeEach(() => {
   workspace.currentWorkspaceId = "tea-owner";
 });
 
-async function createCi(result: {
-  current: ReturnType<typeof useCreateSandboxGroup>;
-}) {
+async function createCi(
+  result: { current: ReturnType<typeof useCreateSandboxGroup> },
+  environmentId?: string | null,
+) {
   let group: Awaited<ReturnType<typeof result.current.create>> = null;
   await act(async () => {
-    group = await result.current.create("ci");
+    group = await result.current.create("ci", environmentId);
   });
   return group;
 }
@@ -192,5 +194,77 @@ describe("useCreateSandboxGroup", () => {
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't create sandbox group ci. Please try again.",
     );
+  });
+
+  // w22/m412: an optional project environment, as Render's dashboard offers.
+  it("places the group in the chosen environment by sending its id", async () => {
+    mutate.mockResolvedValue({
+      data: { createSandboxGroup: { ...GROUP, environmentId: "evm-prod" } },
+    });
+    const { result } = renderHook(() => useCreateSandboxGroup());
+
+    expect(await createCi(result, "evm-prod")).toEqual({
+      ...GROUP,
+      environmentId: "evm-prod",
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: {
+        name: "ci",
+        ownerId: "tea-owner",
+        environmentId: "evm-prod",
+      },
+    });
+  });
+
+  it.each([
+    ["no environment", undefined],
+    ["a null environment", null],
+    ["an empty one", ""],
+  ])("sends no environmentId for %s", async (_label, environmentId) => {
+    mutate.mockResolvedValue({ data: { createSandboxGroup: GROUP } });
+    const { result } = renderHook(() => useCreateSandboxGroup());
+
+    await createCi(result, environmentId);
+
+    // The key is absent, not null: an official Render body never names it.
+    expect(mutate.mock.calls[0]?.[0]).toStrictEqual({
+      variables: { name: "ci", ownerId: "tea-owner" },
+    });
+  });
+
+  it("shows a protected environment's admin-only refusal inline, decided by the code", async () => {
+    mutate.mockRejectedValue(
+      codedGraphQLError("PROTECTED_ENVIRONMENT_ADMIN_REQUIRED", {
+        environmentId: "evm-prod",
+      }),
+    );
+    const { result } = renderHook(() => useCreateSandboxGroup());
+
+    expect(await createCi(result, "evm-prod")).toBeNull();
+    expect(result.current.refusal).toEqual({
+      kind: "environment",
+      message:
+        "Only an admin can create resources in a protected environment or move them into or out of it.",
+    });
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("says an environment deleted in the meantime is gone, only when one was chosen", async () => {
+    mutate.mockRejectedValue(codedGraphQLError("NOT_FOUND"));
+    const { result } = renderHook(() => useCreateSandboxGroup());
+
+    expect(await createCi(result, "evm-gone")).toBeNull();
+    expect(result.current.refusal).toEqual({
+      kind: "environment",
+      message: "That environment no longer exists. Choose another or none.",
+    });
+    expect(toastError).not.toHaveBeenCalled();
+
+    // With none chosen a not-found cannot be about an environment: it is
+    // reported as any other failure, never worded as one.
+    await createCi(result);
+    expect(result.current.refusal).toBeNull();
+    expect(toastError).toHaveBeenCalledTimes(1);
   });
 });

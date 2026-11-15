@@ -1768,7 +1768,7 @@ type Mutation {
   createRouterKey(name: String!, ownerId: String!): Boolean
   createSSHKey(name: String!, publicKey: String!): SSHKey
   createSandbox(buildId: String, buildName: String, env: [EnvVarInput!], idleTimeoutSeconds: Int, name: String, networkPolicy: SandboxNetworkPolicyInput, ownerId: String, plan: String, region: String, sandboxGroupId: String, template: String, timeoutSeconds: Int): Sandbox
-  createSandboxGroup(name: String!, ownerId: String, region: String): SandboxGroup
+  createSandboxGroup(environmentId: String, name: String!, ownerId: String, region: String): SandboxGroup
   createService(autoDeploy: Boolean, autoDeployTrigger: String, branch: String, buildCommand: String, buildFilter: BuildFilterInput, builder: String, command: String, dockerContext: String, dockerfilePath: String, dryRun: Boolean, envVars: [EnvVarInput], environmentId: String, headers: [StaticHeaderInput], healthCheckPath: String, image: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maintenanceMode: MaintenanceModeInput, maxShutdownDelaySeconds: Int, name: String!, notifyOnFail: String, ownerId: String, plan: String, port: Int, preDeployCommand: String, publishPath: String, region: String, registryCredentialId: String, replicas: Int, repo: String, rootDir: String, routes: [StaticRouteInput], runtime: String, schedule: String, secretFiles: [SecretFileInput], startCommand: String, type: String): Service
   createShellSession(id: String!, instanceId: String): ShellSession
   createWebhookEndpoint(enabled: Boolean, eventTypes: [String]!, name: String, ownerId: String, url: String!): WebhookEndpoint

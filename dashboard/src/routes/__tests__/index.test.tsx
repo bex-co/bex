@@ -47,6 +47,28 @@ vi.mock("@/features/env-groups/hooks/use-stranded-link-guard", () => ({
     scopeNameFor: () => undefined,
   }),
 }));
+// "+ New > Sandbox Group" reads the workspace's environments while it is open
+// (w22/m412). This file's Apollo stub answers no projects or environments, and
+// hands the hook a new client on every render, so a resolved empty index stands
+// in: the dialog is then its name-only form, as before.
+const resolvedEnvironmentIndex = vi.hoisted(() => ({
+  ready: true,
+  loading: false,
+  error: undefined,
+  projects: [],
+  environments: [],
+  byId: new Map(),
+  retry: () => undefined,
+}));
+vi.mock(
+  "@/features/env-groups/hooks/use-env-group-scope-index",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/env-groups/hooks/use-env-group-scope-index")
+    >()),
+    useWorkspaceEnvironmentIndex: () => resolvedEnvironmentIndex,
+  }),
+);
 vi.mock("@/features/services/hooks/use-services", () => ({
   useServices: () => servicesState,
 }));
@@ -711,7 +733,8 @@ describe("URL-owned create dialogs (w1/m45)", () => {
       within(dialog).getByRole("button", { name: "Create Sandbox Group" }),
     );
 
-    expect(createSandboxGroup).toHaveBeenCalledWith("ci");
+    // No environment chosen: the dialog passes null (w22/m412).
+    expect(createSandboxGroup).toHaveBeenCalledWith("ci", null);
     expect(
       await within(dialog).findByText("sbg-returned-id"),
     ).toBeInTheDocument();

@@ -1060,7 +1060,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		// ConfigMap is necessary, but the backing key feature must be live too.
 		sshHost = d.SSHHost
 	}
-	sandboxSvc := sandboxService(base, d)
+	sandboxSvc := sandboxService(base, d, environmentCreateResolver)
 	// Keep the agent-session lifecycle a genuine nil interface when OpenSandbox is
 	// off, so enabled() checks are honest instead of holding a typed-nil pointer.
 	var agentLifecycle agentsessions.SandboxLifecycle
@@ -1336,7 +1336,7 @@ type (
 // sandboxService constructs the sandbox feature when an OpenSandbox client is
 // wired (BEX_OPENSANDBOX_URL set), else nil so features() skips it and the verbs
 // report ErrSandboxesUnavailable — byte-identical to before pillar 5 (ADR042).
-func sandboxService(base *core.Base, d Deps) *sandbox.Service {
+func sandboxService(base *core.Base, d Deps, resolver core.EnvironmentResolver) *sandbox.Service {
 	if d.SandboxClient == nil {
 		return nil
 	}
@@ -1359,6 +1359,7 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		UserIDs:         userIDLookup(d.SandboxExecutions),
 
 		Groups:              d.SandboxGroups,
+		Environments:        resolver,
 		Images:              d.SandboxImages,
 		MaxGroups:           d.SandboxMaxGroups,
 		MaxGroupConcurrency: d.SandboxMaxGroupConcurrency,

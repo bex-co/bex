@@ -284,6 +284,11 @@ var renderBodyPropertyExtensions = map[string]map[string]*openapi3.SchemaRef{
 		"expiresAt": {Value: openapi3.NewStringSchema()},
 	},
 	"update-registry-credential": {"expiresAt": {Value: openapi3.NewStringSchema()}},
+	// A sandbox group can be placed in a project environment, as Render's
+	// dashboard does (render.com/docs/sandboxes-creating, read 2026-11-14); the
+	// pinned create takes none while its response carries a nullable one, so null
+	// is accepted as a group read back reads (w22/m412).
+	"create-sandbox-group": {"environmentId": {Value: openapi3.NewStringSchema().WithNullable()}},
 }
 
 // renderRequestBodyExtensions declares an optional JSON body on an operation

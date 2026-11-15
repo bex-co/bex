@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -38,7 +40,7 @@ func TestSandboxGroupsPG(t *testing.T) {
 	ws := lifecycleTenant(t, st, "sandbox-groups").ID
 	other := lifecycleTenant(t, st, "sandbox-groups-other").ID
 
-	first, err := st.CreateSandboxGroup(ctx, ws, "CI agents", SandboxGroupRegion, 10, 3)
+	first, err := st.CreateSandboxGroup(ctx, ws, "CI agents", SandboxGroupRegion, "", 10, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,34 +50,34 @@ func TestSandboxGroupsPG(t *testing.T) {
 	if kind, ok := ids.KindOf(first.ID); !ok || kind != ids.SandboxGroup {
 		t.Fatalf("id %q is not a minted sandbox group id", first.ID)
 	}
-	second, err := st.CreateSandboxGroup(ctx, ws, "Nightly", SandboxGroupRegion, 5, 3)
+	second, err := st.CreateSandboxGroup(ctx, ws, "Nightly", SandboxGroupRegion, "", 5, 3)
 	if err != nil || second.IsDefault {
 		t.Fatalf("second group = %+v, %v, want a non-default group", second, err)
 	}
 
 	// Names are unique within a workspace, and only there.
-	if _, err := st.CreateSandboxGroup(ctx, ws, "CI agents", SandboxGroupRegion, 1, 3); !errors.Is(err, ErrSandboxGroupNameTaken) {
+	if _, err := st.CreateSandboxGroup(ctx, ws, "CI agents", SandboxGroupRegion, "", 1, 3); !errors.Is(err, ErrSandboxGroupNameTaken) {
 		t.Fatalf("duplicate name = %v, want ErrSandboxGroupNameTaken", err)
 	}
-	if g, err := st.CreateSandboxGroup(ctx, other, "CI agents", SandboxGroupRegion, 1, 3); err != nil || !g.IsDefault {
+	if g, err := st.CreateSandboxGroup(ctx, other, "CI agents", SandboxGroupRegion, "", 1, 3); err != nil || !g.IsDefault {
 		t.Fatalf("same name in another workspace = %+v, %v, want that workspace's own default", g, err)
 	}
-	if _, err := st.CreateSandboxGroup(ctx, ws, "", SandboxGroupRegion, 1, 3); err == nil {
+	if _, err := st.CreateSandboxGroup(ctx, ws, "", SandboxGroupRegion, "", 1, 3); err == nil {
 		t.Error("an empty name was stored")
 	}
-	if _, err := st.CreateSandboxGroup(ctx, ws, strings.Repeat("a", 101), SandboxGroupRegion, 1, 3); err == nil {
+	if _, err := st.CreateSandboxGroup(ctx, ws, strings.Repeat("a", 101), SandboxGroupRegion, "", 1, 3); err == nil {
 		t.Error("a 101-character name was stored")
 	}
-	if _, err := st.CreateSandboxGroup(ctx, ws, "zero", SandboxGroupRegion, 0, 3); err == nil {
+	if _, err := st.CreateSandboxGroup(ctx, ws, "zero", SandboxGroupRegion, "", 0, 3); err == nil {
 		t.Error("a concurrency limit of 0 was stored")
 	}
 
 	// The cap counts the workspace's groups and refuses the one past it; a
 	// refused create leaves nothing behind.
-	if _, err := st.CreateSandboxGroup(ctx, ws, "Third", SandboxGroupRegion, 1, 3); err != nil {
+	if _, err := st.CreateSandboxGroup(ctx, ws, "Third", SandboxGroupRegion, "", 1, 3); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.CreateSandboxGroup(ctx, ws, "Fourth", SandboxGroupRegion, 1, 3); !errors.Is(err, ErrSandboxGroupLimit) {
+	if _, err := st.CreateSandboxGroup(ctx, ws, "Fourth", SandboxGroupRegion, "", 1, 3); !errors.Is(err, ErrSandboxGroupLimit) {
 		t.Fatalf("create past the cap = %v, want ErrSandboxGroupLimit", err)
 	}
 	list, err := st.SandboxGroups(ctx, ws)
@@ -154,7 +156,7 @@ func TestEnsureDefaultSandboxGroupIsExactlyOnePG(t *testing.T) {
 	}
 
 	// A group created after the default is not the default.
-	next, err := st.CreateSandboxGroup(ctx, ws, "Later", SandboxGroupRegion, 5, 10)
+	next, err := st.CreateSandboxGroup(ctx, ws, "Later", SandboxGroupRegion, "", 5, 10)
 	if err != nil || next.IsDefault {
 		t.Fatalf("group after the default = %+v, %v", next, err)
 	}
@@ -170,7 +172,7 @@ func TestFirstExplicitGroupIsTheDefaultPG(t *testing.T) {
 	ctx := context.Background()
 	st := openLifecyclePG(t)
 	ws := lifecycleTenant(t, st, "sandbox-first").ID
-	first, err := st.CreateSandboxGroup(ctx, ws, "Mine", SandboxGroupRegion, 7, 10)
+	first, err := st.CreateSandboxGroup(ctx, ws, "Mine", SandboxGroupRegion, "", 7, 10)
 	if err != nil || !first.IsDefault {
 		t.Fatalf("first group = %+v, %v", first, err)
 	}
@@ -187,11 +189,11 @@ func TestEnsureDefaultPromotesTheOldestGroupWhenNoneIsDefaultPG(t *testing.T) {
 	ctx := context.Background()
 	st := openLifecyclePG(t)
 	ws := lifecycleTenant(t, st, "sandbox-nodefault").ID
-	oldest, err := st.CreateSandboxGroup(ctx, ws, "Oldest", SandboxGroupRegion, 7, 10)
+	oldest, err := st.CreateSandboxGroup(ctx, ws, "Oldest", SandboxGroupRegion, "", 7, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.CreateSandboxGroup(ctx, ws, "Newer", SandboxGroupRegion, 7, 10); err != nil {
+	if _, err := st.CreateSandboxGroup(ctx, ws, "Newer", SandboxGroupRegion, "", 7, 10); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.Pool.Exec(ctx, `UPDATE sandbox_groups SET is_default = false WHERE workspace_id = $1`, ws); err != nil {
@@ -214,11 +216,11 @@ func TestSandboxGroupMembersPG(t *testing.T) {
 	tenant := lifecycleTenant(t, st, "sandbox-members")
 	ws := tenant.ID
 	other := lifecycleTenant(t, st, "sandbox-members-other").ID
-	g, err := st.CreateSandboxGroup(ctx, ws, "g", SandboxGroupRegion, 5, 10)
+	g, err := st.CreateSandboxGroup(ctx, ws, "g", SandboxGroupRegion, "", 5, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	foreign, err := st.CreateSandboxGroup(ctx, other, "g", SandboxGroupRegion, 5, 10)
+	foreign, err := st.CreateSandboxGroup(ctx, other, "g", SandboxGroupRegion, "", 5, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,7 +327,7 @@ func TestSandboxAdmissionNeverExceedsTheLimitPG(t *testing.T) {
 	st := openLifecyclePG(t)
 	ws := lifecycleTenant(t, st, "sandbox-admit").ID
 	const limit, racers = 3, 24
-	g, err := st.CreateSandboxGroup(ctx, ws, "g", SandboxGroupRegion, limit, 10)
+	g, err := st.CreateSandboxGroup(ctx, ws, "g", SandboxGroupRegion, "", limit, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,11 +450,11 @@ func TestSandboxGroupDefaultSwapAndDeletePG(t *testing.T) {
 	ctx := context.Background()
 	st := openLifecyclePG(t)
 	ws := lifecycleTenant(t, st, "sandbox-groups-delete").ID
-	a, err := st.CreateSandboxGroup(ctx, ws, "a", SandboxGroupRegion, 10, 3)
+	a, err := st.CreateSandboxGroup(ctx, ws, "a", SandboxGroupRegion, "", 10, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := st.CreateSandboxGroup(ctx, ws, "b", SandboxGroupRegion, 10, 3)
+	b, err := st.CreateSandboxGroup(ctx, ws, "b", SandboxGroupRegion, "", 10, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -514,12 +516,12 @@ func TestSandboxGroupDefaultSwapAndDeletePG(t *testing.T) {
 		t.Fatalf("bind into a group being deleted = %v, want ErrNotFound", err)
 	}
 	// It leaves the cap at once: with the cap at 2, a new group fits.
-	if _, err := st.CreateSandboxGroup(ctx, ws, "c", SandboxGroupRegion, 10, 2); err != nil {
+	if _, err := st.CreateSandboxGroup(ctx, ws, "c", SandboxGroupRegion, "", 10, 2); err != nil {
 		t.Fatalf("a create once a group is being deleted = %v", err)
 	}
 	// A create admitted just before the mark still holds its lease: the group
 	// stays until the lease ends, so its sandbox can be terminated first.
-	d, err := st.CreateSandboxGroup(ctx, ws, "d", SandboxGroupRegion, 10, 0)
+	d, err := st.CreateSandboxGroup(ctx, ws, "d", SandboxGroupRegion, "", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -542,7 +544,7 @@ func TestSandboxGroupDefaultSwapAndDeletePG(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Its name is free again.
-	if _, err := st.CreateSandboxGroup(ctx, ws, "b", SandboxGroupRegion, 10, 0); err != nil {
+	if _, err := st.CreateSandboxGroup(ctx, ws, "b", SandboxGroupRegion, "", 10, 0); err != nil {
 		t.Fatalf("re-create a deleted group's name = %v", err)
 	}
 	if err := st.DeleteSandboxGroup(ctx, ws, a.ID); err != nil {
@@ -550,5 +552,246 @@ func TestSandboxGroupDefaultSwapAndDeletePG(t *testing.T) {
 	}
 	if _, err := st.SandboxGroup(ctx, ws, a.ID); err != nil {
 		t.Fatalf("DeleteSandboxGroup removed a group whose delete never started: %v", err)
+	}
+}
+
+// sandboxGroupEnvironment is an environment of a fresh project of ws.
+func sandboxGroupEnvironment(t *testing.T, st *PGStore, ws, name string) Environment {
+	t.Helper()
+	ctx := context.Background()
+	project, err := st.CreateProject(ctx, ws, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env, err := st.CreateEnvironment(ctx, project.ID, ws, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return env
+}
+
+// w22/m412: a group records the project environment it was placed in, and every
+// read of a group returns it, whichever path read it.
+func TestSandboxGroupEnvironmentPG(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-group-env").ID
+	env := sandboxGroupEnvironment(t, st, ws, "staging")
+
+	// The workspace's first group is its default, so the default-group read
+	// (which EnsureDefaultSandboxGroup answers without a lock) is covered too.
+	placed, err := st.CreateSandboxGroup(ctx, ws, "Placed", SandboxGroupRegion, env.ID, 10, 5)
+	if err != nil || placed.EnvironmentID != env.ID || !placed.IsDefault {
+		t.Fatalf("create in an environment = %+v, %v, want environment %s on the default group", placed, err, env.ID)
+	}
+	loose, err := st.CreateSandboxGroup(ctx, ws, "Loose", SandboxGroupRegion, "", 10, 5)
+	if err != nil || loose.EnvironmentID != "" {
+		t.Fatalf("create in no environment = %+v, %v, want an empty environment", loose, err)
+	}
+
+	for name, read := range map[string]func() (SandboxGroup, error){
+		"get by id":     func() (SandboxGroup, error) { return st.SandboxGroup(ctx, ws, placed.ID) },
+		"default group": func() (SandboxGroup, error) { return st.EnsureDefaultSandboxGroup(ctx, ws, 1000) },
+		"set limit":     func() (SandboxGroup, error) { return st.SetSandboxGroupLimit(ctx, ws, placed.ID, 4) },
+		"set default":   func() (SandboxGroup, error) { return st.SetDefaultSandboxGroup(ctx, ws, placed.ID) },
+	} {
+		if got, err := read(); err != nil || got.EnvironmentID != env.ID {
+			t.Errorf("%s returned environment %q (%v), want %s", name, got.EnvironmentID, err, env.ID)
+		}
+	}
+	list, err := st.SandboxGroups(ctx, ws)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("list = %d groups (%v), want 2", len(list), err)
+	}
+	byName := map[string]string{}
+	for _, g := range list {
+		byName[g.Name] = g.EnvironmentID
+	}
+	if byName["Placed"] != env.ID || byName["Loose"] != "" {
+		t.Fatalf("list environments = %v, want Placed in %s and Loose in none", byName, env.ID)
+	}
+	if got, err := st.SandboxGroup(ctx, ws, loose.ID); err != nil || got.EnvironmentID != "" {
+		t.Fatalf("a group in no environment reads %q (%v), want empty", got.EnvironmentID, err)
+	}
+
+	// The delete path reads the group it marks and the sweeper claims it again;
+	// both carry the environment so the teardown knows what it removes.
+	marked, err := st.MarkSandboxGroupDeleting(ctx, ws, loose.ID)
+	if err != nil || marked.EnvironmentID != "" {
+		t.Fatalf("mark deleting = %+v, %v", marked, err)
+	}
+	if _, err := st.CreateSandboxGroup(ctx, ws, "Doomed", SandboxGroupRegion, env.ID, 10, 5); err != nil {
+		t.Fatal(err)
+	}
+	doomed := ""
+	for _, g := range mustSandboxGroups(t, st, ws) {
+		if g.Name == "Doomed" {
+			doomed = g.ID
+		}
+	}
+	if _, err := st.MarkSandboxGroupDeleting(ctx, ws, doomed); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Pool.Exec(ctx, `UPDATE sandbox_groups SET deleting_at = now() - interval '1 hour' WHERE id = $1`, doomed); err != nil {
+		t.Fatal(err)
+	}
+	claimed, err := st.ClaimStaleSandboxGroupDeletes(ctx, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, g := range claimed {
+		if g.ID == doomed {
+			found = true
+			if g.EnvironmentID != env.ID {
+				t.Errorf("claimed group carries environment %q, want %s", g.EnvironmentID, env.ID)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("the stale delete of %s was not claimed (%d claimed)", doomed, len(claimed))
+	}
+}
+
+func mustSandboxGroups(t *testing.T, st *PGStore, ws string) []SandboxGroup {
+	t.Helper()
+	list, err := st.SandboxGroups(context.Background(), ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return list
+}
+
+// w22/m412: deleting the environment (or the project it sits in) keeps its
+// groups and clears their field, as env_groups.environment_id does. Nothing but
+// membership ties a group to an environment, so nothing else may go with it.
+func TestDeletingAnEnvironmentKeepsItsSandboxGroupsPG(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-group-env-delete").ID
+	env := sandboxGroupEnvironment(t, st, ws, "doomed")
+	other := sandboxGroupEnvironment(t, st, ws, "kept")
+
+	// Two groups in the doomed environment, one in another, one in none.
+	var inDoomed []SandboxGroup
+	for _, c := range []struct{ name, env string }{{"a", env.ID}, {"b", env.ID}, {"c", other.ID}, {"d", ""}} {
+		g, err := st.CreateSandboxGroup(ctx, ws, c.name, SandboxGroupRegion, c.env, 10, 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.env == env.ID {
+			inDoomed = append(inDoomed, g)
+		}
+	}
+	if err := st.DeleteEnvironment(ctx, env.ID); err != nil {
+		t.Fatalf("deleting an environment that holds groups: %v", err)
+	}
+	for _, g := range inDoomed {
+		got, err := st.SandboxGroup(ctx, ws, g.ID)
+		if err != nil {
+			t.Fatalf("group %s did not survive its environment's delete: %v", g.Name, err)
+		}
+		if got.EnvironmentID != "" || got.Name != g.Name || got.IsDefault != g.IsDefault {
+			t.Errorf("group %s after the delete = %+v, want the same group with no environment", g.Name, got)
+		}
+	}
+	byName := map[string]string{}
+	for _, g := range mustSandboxGroups(t, st, ws) {
+		byName[g.Name] = g.EnvironmentID
+	}
+	if len(byName) != 4 || byName["a"] != "" || byName["b"] != "" || byName["c"] != other.ID || byName["d"] != "" {
+		t.Fatalf("groups after the delete = %v, want a, b and d in none and c still in %s", byName, other.ID)
+	}
+
+	// A project delete cascades to its environments and reaches the same result.
+	if err := st.DeleteProject(ctx, other.ProjectID); err != nil {
+		t.Fatalf("deleting a project whose environment holds a group: %v", err)
+	}
+	for _, g := range mustSandboxGroups(t, st, ws) {
+		if g.EnvironmentID != "" {
+			t.Errorf("group %s still names environment %s after its project was deleted", g.Name, g.EnvironmentID)
+		}
+	}
+	if got := len(mustSandboxGroups(t, st, ws)); got != 4 {
+		t.Fatalf("%d groups remain after the project delete, want all 4", got)
+	}
+}
+
+// w22/m412: the database refuses a group in an environment that does not exist,
+// and the migration declares the column as nullable, ON DELETE SET NULL, with a
+// partial index that holds only the placed groups. It reverts and reapplies
+// cleanly (the transaction rolls both directions back).
+func TestSandboxGroupEnvironmentMigrationPG(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-group-env-migration").ID
+
+	if _, err := st.CreateSandboxGroup(ctx, ws, "Nowhere", SandboxGroupRegion, "env-"+strings.Repeat("a", 20), 10, 5); err == nil {
+		t.Fatal("a group was created in an environment that does not exist")
+	}
+	if list := mustSandboxGroups(t, st, ws); len(list) != 0 {
+		t.Fatalf("a refused create left %d groups", len(list))
+	}
+
+	up, err := migrationsFS.ReadFile("migrations/0270_sandbox_group_environment.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0270_sandbox_group_environment.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := st.Pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	column := func() (exists bool, nullable string) {
+		t.Helper()
+		err := tx.QueryRow(ctx, `SELECT true, is_nullable FROM information_schema.columns
+			WHERE table_schema = current_schema() AND table_name = 'sandbox_groups' AND column_name = 'environment_id'`).Scan(&exists, &nullable)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			t.Fatal(err)
+		}
+		return exists, nullable
+	}
+	index := func() (def string, exists bool) {
+		t.Helper()
+		err := tx.QueryRow(ctx, `SELECT indexdef FROM pg_indexes
+			WHERE schemaname = current_schema() AND tablename = 'sandbox_groups' AND indexname = 'sandbox_groups_environment_idx'`).Scan(&def)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			t.Fatal(err)
+		}
+		return def, err == nil
+	}
+	if exists, _ := column(); !exists {
+		t.Fatal("Migrate left sandbox_groups without environment_id")
+	}
+
+	// Down removes the column and its index; up restores them, and it is the
+	// freshly applied up that is checked, not whatever this database was
+	// migrated with earlier.
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("revert migration 0270: %v", err)
+	}
+	if exists, _ := column(); exists {
+		t.Fatal("environment_id is still there after the down migration")
+	}
+	if def, exists := index(); exists {
+		t.Fatalf("index %q is still there after the down migration", def)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("reapply migration 0270: %v", err)
+	}
+	if exists, nullable := column(); !exists || nullable != "YES" {
+		t.Fatalf("sandbox_groups.environment_id exists=%v nullable=%q after the up migration, want a nullable column", exists, nullable)
+	}
+	var onDelete string
+	if err := tx.QueryRow(ctx, `SELECT c.confdeltype::text FROM pg_constraint c
+		WHERE c.conrelid = 'sandbox_groups'::regclass AND c.contype = 'f' AND c.confrelid = 'environments'::regclass`).Scan(&onDelete); err != nil || onDelete != "n" {
+		t.Fatalf("foreign key to environments has ON DELETE %q (%v), want SET NULL (n)", onDelete, err)
+	}
+	if def, exists := index(); !exists || !strings.Contains(def, "(environment_id)") || !strings.Contains(def, "WHERE (environment_id IS NOT NULL)") {
+		t.Fatalf("index = %q, want a partial index on environment_id IS NOT NULL", def)
 	}
 }
