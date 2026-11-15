@@ -70,7 +70,21 @@
           "assets": ["./src/assets/images/icon.png"]
         }
       ],
-      "expo-localization",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": [
+            "en",
+            "zh-Hans",
+            "ko",
+            "ja",
+            "es",
+            "pt-BR",
+            "ru",
+            "de"
+          ]
+        }
+      ],
       [
         "expo-notifications",
         {

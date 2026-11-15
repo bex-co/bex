@@ -31,16 +31,13 @@ import enAgentEnvironment from "@/features/agent-environment/locales/en";
 import enAgentAutomations from "@/features/agent-automations/locales/en";
 import enSandboxGroups from "@/features/sandbox-groups/locales/en";
 import enLegal from "@/features/legal/locales/en";
-import {
-  DEFAULT_LANGUAGE,
-  type SupportedLanguage,
-  type TranslationEntry,
-} from "./config";
+import type { SupportedLanguage, TranslationEntry } from "./config";
 
 export type { SupportedLanguage, TranslationEntry } from "./config";
 export {
   SUPPORTED_LANGUAGES,
   LANGUAGE_NAMES,
+  LANGUAGE_TAGS,
   DEFAULT_LANGUAGE,
 } from "./config";
 export { persistLanguage } from "./utils";
@@ -57,8 +54,9 @@ export function extractMessages(
 /**
  * Per-language flattened `{ key: message }` resources, aggregated from every
  * feature's `locales/<lang>.ts`. Adding a language: create `<lang>.ts` next to
- * each `en.ts` above, add it to `SUPPORTED_LANGUAGES`/`LANGUAGE_NAMES`
- * (config.ts), then register its imports here.
+ * each `en.ts` above, add it to `SUPPORTED_LANGUAGES`/`LANGUAGE_NAMES`/
+ * `LANGUAGE_TAGS` (config.ts), add a `resources-<lang>.ts` aggregating them,
+ * then register its loader in `LAZY_RESOURCES` below.
  */
 export const en: Record<string, string> = {
   ...extractMessages(enCommon),
@@ -109,17 +107,27 @@ export const resources: Partial<
 /**
  * Resolve a language's flattened `{ key: message }` catalog. The default
  * language is already in the bundle; any other is a lazy `import()` (its own
- * async client chunk, and a synchronous server-side require during SSR). Extend
- * the switch when adding a language whose namespaces live in a `resources-<lang>.ts`.
+ * async client chunk, and a synchronous server-side require during SSR). Each
+ * `import()` must stay a literal path so the bundler can split it into its own
+ * chunk; the `Record` makes adding a language without its loader a type error.
  */
+const LAZY_RESOURCES: Record<
+  Exclude<SupportedLanguage, "en">,
+  () => Promise<{ default: Record<string, string> }>
+> = {
+  zh: () => import("./resources-zh"),
+  ko: () => import("./resources-ko"),
+  ja: () => import("./resources-ja"),
+  es: () => import("./resources-es"),
+  pt: () => import("./resources-pt"),
+  ru: () => import("./resources-ru"),
+  de: () => import("./resources-de"),
+};
+
 export async function loadLanguageResources(
   lang: SupportedLanguage,
 ): Promise<Record<string, string>> {
-  if (lang === DEFAULT_LANGUAGE) return en;
-  switch (lang) {
-    case "zh":
-      return (await import("./resources-zh")).default;
-    default:
-      return en;
-  }
+  // en is DEFAULT_LANGUAGE, the catalog already in the entry bundle.
+  if (lang === "en") return en;
+  return (await LAZY_RESOURCES[lang]()).default;
 }

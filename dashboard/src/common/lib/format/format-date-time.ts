@@ -1,5 +1,12 @@
 import { parseISO, isValid, format } from "date-fns";
-import { dateFnsLocale, isChinese } from "./language";
+import { zhCN } from "date-fns/locale/zh-CN";
+import { dashboardLanguage, perLanguage } from "./language";
+
+// en and zh keep their fixed date-fns patterns. Every other language reads its
+// CLDR long date from Intl ("12. November 2026 um 07:06", "2026年11月12日
+// 7:06"), so no date-fns locale data ships for it.
+const longDateTime = perLanguage({ dateStyle: "long", timeStyle: "short" });
+const longDate = perLanguage({ dateStyle: "long" });
 
 /**
  * Format a timestamp as the dashboard's standard full date + time, local time:
@@ -14,7 +21,7 @@ import { dateFnsLocale, isChinese } from "./language";
  * `useLocalDateTime` (`common/components/local-time.tsx`), which defers it to a
  * post-hydration client render; call this directly only off the render path.
  * @param dateString - RFC3339/ISO timestamp to format
- * @param language - the active i18n language ("en", "zh")
+ * @param language - the active i18n language ("en", "zh", "de", …)
  * @returns Formatted date-time or null if missing/invalid
  */
 export const formatDateTime = (
@@ -23,11 +30,12 @@ export const formatDateTime = (
 ): string | null => {
   const date = parseDate(dateString);
   if (!date) return null;
-  return format(
-    date,
-    isChinese(language) ? "yyyy年M月d日 ah:mm" : "MMMM d, yyyy 'at' h:mm a",
-    { locale: dateFnsLocale(language) },
-  );
+  const lang = dashboardLanguage(language);
+  if (lang === "en") return format(date, "MMMM d, yyyy 'at' h:mm a");
+  if (lang === "zh") {
+    return format(date, "yyyy年M月d日 ah:mm", { locale: zhCN });
+  }
+  return longDateTime(lang).format(date);
 };
 
 /**
@@ -35,7 +43,7 @@ export const formatDateTime = (
  * time: "July 16, 2026" ("2026年7月16日" in zh). For fields where the clock
  * reading carries no meaning (creation dates, expiry dates).
  * @param dateString - RFC3339/ISO timestamp to format
- * @param language - the active i18n language ("en", "zh")
+ * @param language - the active i18n language ("en", "zh", "de", …)
  * @returns Formatted date or null if missing/invalid
  */
 export const formatDateLong = (
@@ -44,7 +52,10 @@ export const formatDateLong = (
 ): string | null => {
   const date = parseDate(dateString);
   if (!date) return null;
-  return format(date, isChinese(language) ? "yyyy年M月d日" : "MMMM d, yyyy");
+  const lang = dashboardLanguage(language);
+  if (lang === "en") return format(date, "MMMM d, yyyy");
+  if (lang === "zh") return format(date, "yyyy年M月d日");
+  return longDate(lang).format(date);
 };
 
 const parseDate = (dateString: string | null | undefined): Date | null => {

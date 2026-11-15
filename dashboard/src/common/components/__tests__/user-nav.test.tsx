@@ -9,6 +9,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import i18n from "@/i18n/init";
+import { LANGUAGE_NAMES } from "@/i18n";
 import zhResources from "@/i18n/resources-zh";
 import { UserNav } from "@/common/components/user-nav";
 
@@ -132,7 +133,7 @@ describe("UserNav language switch (w6/m103 Bug A)", () => {
     // pointer sequence under jsdom (the top-level menu does); dispatch a raw
     // click, which still fires the item's plain React `onClick`.
     fireEvent.click(await screen.findByRole("menuitem", { name: /Language/i }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "中文" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "简体中文" }));
 
     // Post-fix: `ensureLanguage("zh")` loaded the catalog before the switch, so
     // both the bundle is present and the active language is zh. Pre-fix (the
@@ -194,7 +195,7 @@ describe("UserNav at narrow widths (w4/302)", () => {
     for (const name of ["Light", "Dark", "System"]) {
       expect(within(theme).getByRole("menuitem", { name })).toBeVisible();
     }
-    for (const name of ["English", "中文"]) {
+    for (const name of Object.values(LANGUAGE_NAMES)) {
       expect(
         within(language).getByRole("menuitem", { name: new RegExp(name) }),
       ).toBeVisible();
@@ -220,7 +221,7 @@ describe("UserNav at narrow widths (w4/302)", () => {
     renderNav();
     screen.getByRole("button").focus();
     await user.keyboard("{Enter}");
-    const zh = await screen.findByRole("menuitem", { name: "中文" });
+    const zh = await screen.findByRole("menuitem", { name: "简体中文" });
     zh.focus();
     await user.keyboard("{Enter}");
 

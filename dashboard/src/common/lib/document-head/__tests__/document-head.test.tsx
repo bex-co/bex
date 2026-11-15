@@ -363,6 +363,18 @@ describe("global dashboard metadata", () => {
     expect(serialized).not.toContain("robots");
   });
 
+  it("names every language's region in og:locale", () => {
+    const locale = (language: Parameters<typeof globalMetadata>[1]) =>
+      metadataValue(
+        globalMetadata("https://selfhost.test", language),
+        "og:locale",
+      );
+    expect(locale("en")).toBe("en_US");
+    expect(locale("zh")).toBe("zh_CN");
+    expect(locale("pt")).toBe("pt_BR");
+    expect(locale("ja")).toBe("ja_JP");
+  });
+
   it("omits absolute URL tags when no trustworthy origin is available", () => {
     for (const origin of [
       undefined,

@@ -17,7 +17,15 @@ experience.
   Kratos, or API credentials in AsyncStorage, source code, logs, analytics, or
   crash reports; never use a WebView login.
 - Every user-visible string goes through `useTranslations()` and is present in
-  both English and Chinese.
+  every supported language — `en`, `zh` (Simplified), `ko`, `ja`, `es`, `pt`
+  (Brazilian), `ru`, `de`, the dashboard and bex.co set (`SUPPORTED_LANGUAGES`
+  in `src/common/preferences/preferences.ts`). Placeholders are i18n-js's
+  `%{name}`; a bare `{name}` renders literally. `translations.test.ts` enforces
+  keys, placeholders and the `%{}` form. The app starts in the device language
+  when it speaks it (`resolveDeviceLanguage`; Traditional Chinese falls through
+  to the next preference), and a choice in Settings always wins. `app.json`'s
+  `expo-localization` `supportedLocales` lists the same set, so iOS and Android
+  offer bex in their per-app language settings.
 - Use theme tokens and `useWindowDimensions`; do not cache a fixed screen width.
 - Generated GraphQL belongs to codegen once m2 lands and is never hand-edited.
 
@@ -27,7 +35,7 @@ experience.
 app/                 Expo Router routes
 src/common/          providers, hooks, theme, generic utilities and charts
 src/components/      reusable controls
-src/translations/    en/zh resources
+src/translations/    one resource per supported language
 src/__tests__/       cross-cutting policy and utility tests
 ```
 

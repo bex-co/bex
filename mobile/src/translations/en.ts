@@ -379,7 +379,7 @@ export const en = {
     detail: {
       overview: "Overview",
       phase: "Phase",
-      updated: "Updated {time}",
+      updated: "Updated %{time}",
       unavailable: "This session is unavailable.",
       notFound: "Session not found.",
       failure: "Failure",

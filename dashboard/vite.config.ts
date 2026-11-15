@@ -323,7 +323,7 @@ function apiDevProxy(target = "https://api.bex.co/graphql"): Plugin {
 }
 
 // Strip translator/dev `description:` fields from the locale catalogs in the
-// PRODUCTION bundle (w9/m60 t002). Every `**/locales/{en,zh}.ts` entry is
+// PRODUCTION bundle (w9/m60 t002). Every `**/locales/<lang>.ts` entry is
 // `{ message, description }`; `extractMessages()` (src/i18n/index.ts) keeps only
 // `message` at runtime, but the ~4,900 description string literals still ship in
 // the always-mounted entry chunk (~60–90 KB gzip of dead weight). This build-only
@@ -333,7 +333,8 @@ function apiDevProxy(target = "https://api.bex.co/graphql"): Plugin {
 // comma-anchored strip is unambiguous; a malformed strip would fail the build
 // loudly rather than corrupt a catalog silently.
 function stripLocaleDescriptions(): Plugin {
-  const LOCALE_FILE = /\/locales\/(?:en|zh)\.ts$/;
+  // Every catalog: `locales/<two-letter language>.ts` (src/i18n/config.ts).
+  const LOCALE_FILE = /\/locales\/[a-z]{2}\.ts$/;
   const DESCRIPTION = /,\s*description:\s*"(?:[^"\\]|\\.)*"/g;
   return {
     name: "bex:strip-locale-descriptions",

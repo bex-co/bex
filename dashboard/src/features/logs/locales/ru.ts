@@ -1,0 +1,259 @@
+import type { TranslationEntry } from "@/i18n";
+
+const ruLogs: Record<string, TranslationEntry> = {
+  "logs.rangeLabel": {
+    message: "Период истории логов",
+    description: "Accessible label for the relative log-history range controls",
+  },
+  "logs.rangeHistoryNote": {
+    message:
+      "Период ограничивает историю. В режиме реального времени новые строки добавляются по мере поступления.",
+    description:
+      "Explains how the bounded history window interacts with live tail",
+  },
+  "logs.retentionWindow_one": {
+    message: "На тарифе {plan} логи хранятся {count} день.",
+    description:
+      "Log range picker hint: how many days the workspace plan keeps logs (w9/m389, from bex-api logRetention)",
+  },
+  "logs.retentionWindow_few": {
+    message: "На тарифе {plan} логи хранятся {count} дня.",
+    description:
+      "Log range picker hint: how many days the workspace plan keeps logs (w9/m389, from bex-api logRetention)",
+  },
+  "logs.retentionWindow_many": {
+    message: "На тарифе {plan} логи хранятся {count} дней.",
+    description:
+      "Log range picker hint: how many days the workspace plan keeps logs (w9/m389, from bex-api logRetention)",
+  },
+  "logs.retentionWindow_other": {
+    message: "На тарифе {plan} логи хранятся {count} дня.",
+    description:
+      "Log range picker hint: how many days the workspace plan keeps logs (w9/m389, from bex-api logRetention)",
+  },
+  "logs.retentionUpgrade_one": {
+    message: "Перейдите на {plan}, чтобы хранить логи {count} день.",
+    description:
+      "Log range picker hint: the cheapest plan that keeps logs longer, and its days (w9/m389)",
+  },
+  "logs.retentionUpgrade_few": {
+    message: "Перейдите на {plan}, чтобы хранить логи {count} дня.",
+    description:
+      "Log range picker hint: the cheapest plan that keeps logs longer, and its days (w9/m389)",
+  },
+  "logs.retentionUpgrade_many": {
+    message: "Перейдите на {plan}, чтобы хранить логи {count} дней.",
+    description:
+      "Log range picker hint: the cheapest plan that keeps logs longer, and its days (w9/m389)",
+  },
+  "logs.retentionUpgrade_other": {
+    message: "Перейдите на {plan}, чтобы хранить логи {count} дня.",
+    description:
+      "Log range picker hint: the cheapest plan that keeps logs longer, and its days (w9/m389)",
+  },
+  "logs.typeLabel": {
+    message: "Тип логов",
+    description: "Accessible label for the log-type filter dropdown",
+  },
+  "logs.typeAll": {
+    message: "Все логи",
+    description: "Log-type filter option: no type filter",
+  },
+  "logs.typeApplication": {
+    message: "Логи приложения",
+    description: "Log-type filter option: application (app) logs",
+  },
+  "logs.typeRequest": {
+    message: "Логи запросов",
+    description:
+      "Log-type filter option: request logs (Traefik access lines, from the durable store)",
+  },
+  "logs.levelLabel": {
+    message: "Уровень",
+    description: "Accessible label for the log-level filter dropdown",
+  },
+  "logs.levelAll": {
+    message: "Все уровни",
+    description: "Level filter option: no level filter",
+  },
+  "logs.methodLabel": {
+    message: "Метод",
+    description: "Accessible label for the HTTP-method filter dropdown",
+  },
+  "logs.methodAll": {
+    message: "Все методы",
+    description: "Method filter option: no method filter",
+  },
+  "logs.statusCodeLabel": {
+    message: "Код статуса",
+    description: "Accessible label for the HTTP-status filter dropdown",
+  },
+  "logs.statusCodeAll": {
+    message: "Все статусы",
+    description: "Status-code filter option: no status filter",
+  },
+  "logs.instanceLabel": {
+    message: "Инстанс",
+    description: "Accessible label for the instance (replica) filter dropdown",
+  },
+  "logs.instanceAll": {
+    message: "Все инстансы",
+    description: "Instance filter option: no instance filter",
+  },
+  "logs.filterByInstance": {
+    message: "Фильтровать логи по инстансу {instance}",
+    description:
+      "Accessible label for the clickable instance slug on an application log line",
+  },
+  "logs.pathLabel": {
+    message: "Путь запроса",
+    description: "Accessible label for the request-path filter input",
+  },
+  "logs.filtersButton": {
+    message: "Фильтры",
+    description:
+      "Trigger for the structured-filters popover (level/method/status/instance/path)",
+  },
+  "logs.chipRemove": {
+    message: "Убрать фильтр {label}",
+    description:
+      "Accessible label for an active-filter chip's clear button; {label} is the filter's field name",
+  },
+  "logs.pathPlaceholder": {
+    message: "Фильтр по пути",
+    description: "Placeholder for the request-path filter input",
+  },
+  "logs.hostLabel": {
+    message: "Хост запроса",
+    description:
+      "Accessible label for the request-host filter input and its chip (Render's host log filter, w4/538)",
+  },
+  "logs.hostPlaceholder": {
+    message: "Фильтр по хосту",
+    description: "Placeholder for the request-host filter input",
+  },
+  "logs.liveUnsupported": {
+    message:
+      "Просмотр в реальном времени отключён — метод, статус, путь и хост фильтруют логи запросов, поэтому логи приложения с ними отслеживать нельзя.",
+    description:
+      "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs)",
+  },
+  "logs.liveWindowClosed": {
+    message:
+      "Просмотр в реальном времени отключён — этот пользовательский период уже закончился, поэтому новые строки в нём появиться не могут.",
+    description:
+      "Note when the selected custom time range ended before it was applied, so live tail is off",
+  },
+  "logs.storeRequiredTitle": {
+    message: "Для логов запросов нужно хранилище логов",
+    description:
+      "Empty-state title when a request/structured-filter query hits a deployment with no durable store (503)",
+  },
+  "logs.storeRequiredBody": {
+    message:
+      "Логи запросов и фильтры по уровню, статусу, методу и пути читаются из постоянного хранилища логов, которое здесь не настроено. Они доступны там, где хранилище подключено.",
+    description: "Empty-state body for the store-unavailable (503) state",
+  },
+  "logs.requestPlanTitle": {
+    message: "Для HTTP-логов запросов нужен тариф Pro",
+    description:
+      "Notice title in place of Request logs on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
+  },
+  "logs.requestPlanBody": {
+    message:
+      "Логи запросов доступны на тарифе Pro и выше. Это рабочее пространство на тарифе Hobby, поэтому показываются только логи приложения и сборки.",
+    description:
+      "Notice body in place of Request logs on a Hobby workspace (w8/m138)",
+  },
+  "logs.searchPlaceholder": {
+    message: "Поиск по логам",
+    description: "Placeholder for the log search box (text filter)",
+  },
+  "logs.live": {
+    message: "В реальном времени",
+    description: "Label for the live-tail on/off toggle",
+  },
+  "logs.jumpToLatest": {
+    message: "К последним",
+    description: "Button to re-pin autoscroll to the newest log line",
+  },
+  "logs.loading": {
+    message: "Загрузка логов…",
+    description: "Shown while the first historical page is loading",
+  },
+  "logs.loadingOlder": {
+    message: "Загрузка более ранних логов…",
+    description:
+      "Shown at the top of the pane while a page-back request is in flight",
+  },
+  "logs.loadOlder": {
+    message: "Загрузить более ранние",
+    description:
+      "Button in the truncation notice that fetches the next older page — the keyboard/underfilled-pane path to what scrolling to the top does",
+  },
+  "logs.truncatedNotice": {
+    message:
+      "Загружена только часть этого периода. Загрузите более ранние записи, чтобы продолжить.",
+    description:
+      "Banner when hasMore is true: more of the selected range remains unloaded, however many older pages are already shown, so it names no line count (w4/280)",
+  },
+  "logs.partialSearchNotice": {
+    message:
+      "Пока просмотрена только самая новая часть этого периода — загрузите более ранние записи, чтобы продолжить поиск.",
+    description:
+      "Banner when a time-boxed search returned less than a page but hasMore is true: the older part of the range is unsearched, not empty (w4/m140)",
+  },
+  "logs.timeoutTitle": {
+    message: "Этот поиск занял слишком много времени",
+    description:
+      "State title when the logs query ran out of the server's time budget (QUERY_TIMEOUT, w4/m140)",
+  },
+  "logs.timeoutBody": {
+    message:
+      "Попробуйте выбрать более короткий период или более точный поисковый запрос.",
+    description: "State body under logs.timeoutTitle",
+  },
+  "logs.streaming": {
+    message: "В реальном времени — поступают новые строки",
+    description: "Status under the log list when the SSE tail is connected",
+  },
+  "logs.paused": {
+    message: "Просмотр в реальном времени приостановлен",
+    description: "Status under the log list when live tail is toggled off",
+  },
+  "logs.disconnected": {
+    message: "Просмотр в реальном времени отключён — повторное подключение…",
+    description: "Banner when the SSE stream drops",
+  },
+  "logs.emptyTitle": {
+    message: "В этом периоде нет логов",
+    description:
+      "Empty-state title when the selected (always-bounded) history range holds no lines. Never claims the service has never logged — the range can't establish that (w6/m111)",
+  },
+  "logs.emptyBody": {
+    message: "В этом периоде нет строк логов.",
+    description:
+      "Empty-state body with no filters applied — honest about the bounded window, not the service's whole history (w6/m111)",
+  },
+  "logs.emptyFilteredBody": {
+    message: "Нет логов, соответствующих этим фильтрам.",
+    description:
+      "Empty-state body when a type/text/structured filter yields nothing",
+  },
+  "logs.emptyFilteredTitle": {
+    message: "Подходящих логов нет",
+    description:
+      "Empty-state title when a type/text/structured filter yields nothing",
+  },
+  "logs.errorTitle": {
+    message: "Не удалось загрузить логи",
+    description: "Error-state title when the logs query fails",
+  },
+  "logs.errorTitleWithReason": {
+    message: "Не удалось загрузить логи: {reason}",
+    description:
+      "Inline banner over loaded log lines when a later read was refused; reason is the server's refusal",
+  },
+};
+
+export default ruLogs;

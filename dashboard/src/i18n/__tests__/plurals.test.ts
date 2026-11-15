@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from "vitest";
-import i18n from "@/i18n/init";
+import { describe, it, expect, afterEach, beforeAll } from "vitest";
+import i18n, { ensureLanguage } from "@/i18n/init";
 
 // THE pluralization convention (w6/062) — copy this pattern for any new
 // count-bearing string:
@@ -50,5 +50,44 @@ describe("pluralization convention (native _one/_other)", () => {
     expect(`${vars} · ${files}`).toBe(
       "1 variable operation · 0 file operations",
     );
+  });
+});
+
+// Every other language carries exactly its own CLDR categories (locale-parity
+// enforces the key shapes); these prove i18next selects them from the real
+// catalogs. Each is a lazy chunk, registered the way the app does it.
+describe("pluralization in languages with other plural categories", () => {
+  beforeAll(async () => {
+    for (const lang of ["ru", "es", "pt", "de", "ja", "ko"]) {
+      await ensureLanguage(lang);
+    }
+  });
+
+  const count = (lng: string, n: number) =>
+    i18n.t("deploys.listCount", { count: n, lng });
+
+  it("ru picks _one, _few and _many by the last digits", () => {
+    expect(count("ru", 1)).toBe("1 деплой");
+    expect(count("ru", 21)).toBe("21 деплой");
+    expect(count("ru", 3)).toBe("3 деплоя");
+    expect(count("ru", 24)).toBe("24 деплоя");
+    expect(count("ru", 5)).toBe("5 деплоев");
+    expect(count("ru", 11)).toBe("11 деплоев");
+    expect(count("ru", 0)).toBe("0 деплоев");
+  });
+
+  it("pt reads 0 as singular; es and pt have a _many form for millions", () => {
+    expect(count("pt", 0)).toBe("0 deploy");
+    expect(count("pt", 2)).toBe("2 deploys");
+    expect(count("es", 0)).toBe("0 despliegues");
+    expect(count("es", 1)).toBe("1 despliegue");
+    expect(count("es", 1_000_000)).toBe("1000000 de despliegues");
+  });
+
+  it("de has _one/_other; ja and ko use their single _other form", () => {
+    expect(count("de", 1)).toBe("1 Deployment");
+    expect(count("de", 2)).toBe("2 Deployments");
+    expect(count("ja", 1)).toBe("1 件のデプロイ");
+    expect(count("ko", 7)).toBe("배포 7개");
   });
 });

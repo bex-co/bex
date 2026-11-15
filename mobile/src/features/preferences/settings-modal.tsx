@@ -23,9 +23,10 @@ import {
 import { useThemeStyle } from "@/common/hooks/use-theme-style";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useThemeMode } from "@/common/providers/theme-provider";
-import type {
-  SupportedLanguage,
-  ThemeMode,
+import {
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+  type ThemeMode,
 } from "@/common/preferences/preferences";
 import { useAuth } from "@/features/auth/auth-provider";
 import { LogoutController } from "@/features/auth/logout-controller";
@@ -44,11 +45,22 @@ const THEME_OPTIONS: {
 ];
 
 // Language labels stay in their own script — a language menu you cannot read is
-// useless, so these are intentionally not run through translation.
-const LANGUAGE_OPTIONS: { value: SupportedLanguage; label: string }[] = [
-  { value: "en", label: "English" },
-  { value: "zh", label: "中文" },
-];
+// useless, so these are intentionally not run through translation. The same
+// names as the dashboard and bex.co language menus.
+const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
+  en: "English",
+  zh: "简体中文",
+  ko: "한국어",
+  ja: "日本語",
+  es: "Español",
+  pt: "Português",
+  ru: "Русский",
+  de: "Deutsch",
+};
+const LANGUAGE_OPTIONS = SUPPORTED_LANGUAGES.map((value) => ({
+  value,
+  label: LANGUAGE_NAMES[value],
+}));
 
 const getStyles = (theme: ColorTheme) =>
   StyleSheet.create({

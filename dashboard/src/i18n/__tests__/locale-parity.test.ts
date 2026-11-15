@@ -1,41 +1,54 @@
 import { describe, it, expect } from "vitest";
+import {
+  DEFAULT_LANGUAGE,
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from "@/i18n/config";
 
-// en <-> zh locale key parity, AUTO-DISCOVERED (w5/033). The i18n tooling only
-// console.warns in dev on a missing key (use-translations.ts); nothing failed
-// CI when zh lagged en as features add strings — and this test used to cover
-// only 4 hardcoded namespaces (common/auth/metrics/services), leaving the other
-// ~20 features to drift silently. import.meta.glob now discovers every
-// per-feature + common locale pair, so a newly added feature's pair is checked
-// without editing this test, and any drift fails CI (yarn test gates deploy.yml).
+// Locale key parity across EVERY supported language, AUTO-DISCOVERED (w5/033).
+// The i18n tooling only console.warns in dev on a missing key
+// (use-translations.ts); nothing else fails CI when a translation lags en as
+// features add strings. import.meta.glob discovers every per-feature + common
+// catalog, so a new feature's — or a new language's — files are checked without
+// editing this test, and any drift fails CI (yarn test gates deploy.yml).
 //
 // Path is relative to this file (src/i18n/__tests__/): ../../ == src/.
 type Entry = { message: string; description: string };
-const modules = import.meta.glob<{ default: Record<string, Entry> }>(
-  "../../**/locales/{en,zh}.ts",
+type Catalog = Record<string, Entry>;
+const modules = import.meta.glob<{ default: Catalog }>(
+  "../../**/locales/*.ts",
   { eager: true },
 );
 
-// Group by locale directory (e.g. "features/metrics") -> { en, zh } modules.
-type Pair = {
-  name: string;
-  en?: Record<string, Entry>;
-  zh?: Record<string, Entry>;
-};
-const byDir: Record<string, Pair> = {};
+// Group by locale directory (e.g. "features/metrics") -> one catalog per language.
+type Namespace = { name: string } & Partial<Record<SupportedLanguage, Catalog>>;
+const byDir: Record<string, Namespace> = {};
 for (const [path, mod] of Object.entries(modules)) {
-  const m = path.match(/\/([^/]+)\/locales\/(en|zh)\.ts$/);
+  const m = path.match(/\/([^/]+)\/locales\/([a-z]{2})\.ts$/);
   if (!m) continue;
   const [, name, lang] = m;
-  (byDir[name] ??= { name })[lang as "en" | "zh"] = mod.default;
+  (byDir[name] ??= { name })[lang as SupportedLanguage] = mod.default;
 }
 const NAMESPACES = Object.values(byDir).sort((a, b) =>
   a.name.localeCompare(b.name),
 );
 
-// Intentional gaps: keys allowed in one language but not the other. Keep empty
-// — add a key here (with a why) only for a deliberate divergence.
-const ALLOW_ONLY_EN = new Set<string>([]);
-const ALLOW_ONLY_ZH = new Set<string>([]);
+// Every translated language, and one (namespace, language) case per catalog.
+const TRANSLATIONS = SUPPORTED_LANGUAGES.filter(
+  (lang) => lang !== DEFAULT_LANGUAGE,
+);
+const CATALOGS = NAMESPACES.flatMap(({ name, en, ...rest }) =>
+  TRANSLATIONS.map((lang) => ({
+    name,
+    lang,
+    en: en ?? {},
+    catalog: (rest as Namespace)[lang] ?? {},
+  })),
+);
+
+// Intentional gaps: keys allowed to differ from en's key set. Keep empty — add
+// a key here (with a why) only for a deliberate divergence.
+const ALLOW_DIVERGENT = new Set<string>([]);
 
 // Keys that interpolate {count} but need no plural form: the count is a label
 // or a badge, with no noun agreeing with it ("Selected: {count}"). Everything
@@ -58,40 +71,96 @@ const LABEL_ONLY_COUNTS = new Set<string>([
   "router.minute",
 ]);
 
+// Native plurals (w6/062): en authors `key_one` + `key_other`; every other
+// language carries exactly its own CLDR cardinal categories for that key —
+// zh/ja/ko `_other` only, de `_one`/`_other`, es/pt `_one`/`_many`/`_other`,
+// ru `_one`/`_few`/`_many`/`_other` — the forms i18next selects through
+// Intl.PluralRules. A missing form falls back to English; an extra one is
+// unreachable (do not mechanically copy en's `_one` into zh/ja/ko).
+const pluralBase = (en: Catalog, key: string) => {
+  const m = key.match(/^(.*)_(one|other)$/);
+  return m && en[`${m[1]}_other`] ? m[1] : null;
+};
+function expectedKeys(en: Catalog, lang: SupportedLanguage): string[] {
+  const categories = new Intl.PluralRules(lang).resolvedOptions()
+    .pluralCategories;
+  const keys = new Set<string>();
+  for (const key of Object.keys(en)) {
+    const base = pluralBase(en, key);
+    if (base)
+      for (const category of categories) keys.add(`${base}_${category}`);
+    else keys.add(key);
+  }
+  return [...keys].filter((key) => !ALLOW_DIVERGENT.has(key)).sort();
+}
+
+// The en message a translated key renders in place of: itself, or for a
+// plural form the en `_one` (for `_one`) or `_other` (every other category).
+function englishSource(en: Catalog, key: string): Entry | undefined {
+  if (en[key]) return en[key];
+  const m = key.match(/^(.*)_(zero|two|few|many|other)$/);
+  return m ? en[`${m[1]}_other`] : undefined;
+}
+
+// The distinct placeholders a message interpolates. A translation may repeat
+// one where its grammar wants the name again instead of a pronoun.
+const placeholders = (message: string) =>
+  [...new Set(message.match(/\{[A-Za-z0-9_]+\}/g) ?? [])].sort();
+
+// Keys whose translations interpolate a different parameter than en, by
+// design. deploys.reasonWait.duration: en shows bex-api's Go duration
+// ({wait}, "3h0m0s") as the API words it; every other language reads the
+// duration in words ({units}) — deploy-reason.ts passes both (w5/m356).
+const TRANSLATED_PLACEHOLDERS: Record<string, string[]> = {
+  "deploys.reasonWait.duration": ["{units}"],
+};
+
 describe("locale key parity", () => {
-  it("discovers every locale pair (glob is not silently empty)", () => {
+  it("discovers every catalog of every language (glob is not silently empty)", () => {
     // A broken glob would generate zero it.each cases and vacuously "pass"; this
     // guards that the discovery actually found the full set.
     expect(NAMESPACES.length).toBeGreaterThanOrEqual(20);
     for (const ns of NAMESPACES) {
-      expect(ns.en, `${ns.name} is missing its en locale`).toBeDefined();
-      expect(ns.zh, `${ns.name} is missing its zh locale`).toBeDefined();
+      for (const lang of SUPPORTED_LANGUAGES) {
+        expect(
+          ns[lang],
+          `${ns.name} is missing its ${lang} locale`,
+        ).toBeDefined();
+      }
     }
   });
 
-  it.each(NAMESPACES)("$name: en and zh have the same keys", ({ en, zh }) => {
-    const enKeys = Object.keys(en ?? {});
-    const zhKeys = Object.keys(zh ?? {});
-    // Native plurals (w6/062): en authors `key_one` + `key_other`; zh has only
-    // one plural category, so its catalog carries only `key_other`. An en-only
-    // `key_one` is therefore expected parity, not drift, as long as both
-    // languages have the `key_other` it pairs with.
-    const isEnPluralOne = (k: string) => {
-      if (!k.endsWith("_one")) return false;
-      const other = `${k.slice(0, -"_one".length)}_other`;
-      return Boolean(en?.[other] && zh?.[other]);
-    };
-    const onlyEn = enKeys
-      .filter((k) => !zh?.[k] && !ALLOW_ONLY_EN.has(k) && !isEnPluralOne(k))
-      .sort();
-    const onlyZh = zhKeys
-      .filter((k) => !en?.[k] && !ALLOW_ONLY_ZH.has(k))
-      .sort();
-    expect(onlyEn, "keys in en but missing from zh").toEqual([]);
-    expect(onlyZh, "keys in zh but missing from en").toEqual([]);
-  });
+  it.each(CATALOGS)(
+    "$name/$lang: has en's keys, in $lang's own plural forms",
+    ({ lang, en, catalog }) => {
+      const actual = Object.keys(catalog)
+        .filter((key) => !ALLOW_DIVERGENT.has(key))
+        .sort();
+      expect(actual).toEqual(expectedKeys(en, lang));
+    },
+  );
 
-  it.each(NAMESPACES)("$name: plural keys are well-formed", ({ en, zh }) => {
+  it.each(CATALOGS)(
+    "$name/$lang: every message keeps en's placeholders",
+    ({ en, catalog }) => {
+      // A dropped or renamed {placeholder} renders literally or loses the value
+      // (i18next leaves an unknown {name} in place) — in one language only.
+      const mismatched = Object.entries(catalog)
+        .filter(([key, entry]) => {
+          const source = englishSource(en, key);
+          const expected =
+            TRANSLATED_PLACEHOLDERS[key] ??
+            (source && placeholders(source.message));
+          return (
+            expected && expected.join() !== placeholders(entry.message).join()
+          );
+        })
+        .map(([key, entry]) => `${key}: ${entry.message}`);
+      expect(mismatched).toEqual([]);
+    },
+  );
+
+  it.each(NAMESPACES)("$name: en plural keys are well-formed", ({ en }) => {
     // en: a `_one` form must have its `_other` sibling (English needs both).
     for (const k of Object.keys(en ?? {})) {
       if (!k.endsWith("_one")) continue;
@@ -101,13 +170,6 @@ describe("locale key parity", () => {
         `en has "${k}" but not its plural sibling "${other}"`,
       ).toBeDefined();
     }
-    // zh: no `_one` forms — Chinese's only cardinal plural category is
-    // "other", so a zh `_one` entry is unreachable (do not mechanically
-    // double zh when adding a pluralized string).
-    const zhOnes = Object.keys(zh ?? {})
-      .filter((k) => k.endsWith("_one"))
-      .sort();
-    expect(zhOnes, "zh must carry only the _other plural form").toEqual([]);
   });
 
   it.each(NAMESPACES)("$name: count messages are pluralized", ({ en }) => {
@@ -146,13 +208,12 @@ describe("locale key parity", () => {
   });
 
   it.each(NAMESPACES)(
-    "$name: every entry has a non-empty message",
-    ({ en, zh }) => {
-      for (const entry of [
-        ...Object.values(en ?? {}),
-        ...Object.values(zh ?? {}),
-      ]) {
-        expect(entry.message.length).toBeGreaterThan(0);
+    "$name: every entry in every language has a non-empty message",
+    (ns) => {
+      for (const lang of SUPPORTED_LANGUAGES) {
+        for (const entry of Object.values(ns[lang] ?? {})) {
+          expect(entry.message.trim().length).toBeGreaterThan(0);
+        }
       }
     },
   );
@@ -320,4 +381,48 @@ describe("zh renders each glossary term one way (w4/646)", () => {
     );
     expect(variant).toEqual([]);
   });
+});
+
+// Messages ko/ja/es/pt/ru/de deliberately keep in English: Render's product,
+// service-type and feature names (bex.co keeps them English in these locales
+// too), example commands, and IDs. zh has its own list (ZH_SAME_AS_EN), since
+// zh does translate the service types.
+const SAME_AS_EN = new Set<string>([
+  ...ZH_SAME_AS_EN,
+  // Render service types.
+  "services.typeWeb",
+  "services.typePrivate",
+  "services.typeWorker",
+  "services.typeCron",
+  "services.typeStatic",
+  "services.staticTitle",
+  // Feature names.
+  "deploys.triggerDeployHook",
+  "services.deployHookTitle",
+  "services.deployHookURLLabel",
+  "services.eventsTriggerDeployHook",
+  "services.shellWebTitle",
+  "services.settingsHealthChecksTitle",
+  "projects.filterKeyValues",
+  "webhooks.idLabel",
+  // Example commands in input placeholders.
+  "agentEnvironment.repoEnvs.setupRunPlaceholder",
+  "agentEnvironment.repoEnvs.checkRunPlaceholder",
+]);
+
+describe("every other language is translated", () => {
+  it.each(CATALOGS.filter(({ lang }) => lang !== "zh"))(
+    "$name/$lang: no message is an untranslated English phrase",
+    ({ en, catalog }) => {
+      const copied = Object.entries(catalog)
+        .filter(
+          ([key, entry]) =>
+            entry.message === englishSource(en, key)?.message &&
+            englishPhrase(entry.message) &&
+            !SAME_AS_EN.has(key),
+        )
+        .map(([key, entry]) => `${key}: ${entry.message}`);
+      expect(copied).toEqual([]);
+    },
+  );
 });

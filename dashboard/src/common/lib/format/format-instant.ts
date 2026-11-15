@@ -1,5 +1,6 @@
 import { formatDistanceStrict } from "date-fns";
-import { dateFnsLocale, isChinese } from "./language";
+import { LANGUAGE_TAGS, type SupportedLanguage } from "@/i18n/config";
+import { dashboardLanguage, dateFnsLocale } from "./language";
 
 export interface TimeAgoOptions {
   /**
@@ -8,7 +9,7 @@ export interface TimeAgoOptions {
    * (`useNow`) can drive every row instead of each row reading its own clock.
    */
   now: number;
-  /** The active i18n language ("en", "zh") — picks the unit words. */
+  /** The active i18n language ("en", "zh", "de", …) — picks the unit words. */
   language?: string;
   /**
    * Text for an instant under a minute old ("just now"), supplied already
@@ -62,22 +63,24 @@ export interface InstantDetails {
 // The same calendar text per language as `formatDateTime` ("at" and comma
 // placement in en, 年月日 and 上午/下午 in zh) so the two readings of one
 // instant line up; it adds seconds and the zone name the row's short form
-// omits. zh spells the fields out because its `timeStyle: "long"` is 24-hour.
-const instantLocal = {
-  en: new Intl.DateTimeFormat("en-US", {
-    dateStyle: "long",
-    timeStyle: "long",
-  }),
-  zh: new Intl.DateTimeFormat("zh-CN", ZH_INSTANT),
-};
-const instantUtc = {
-  en: new Intl.DateTimeFormat("en-US", {
-    dateStyle: "long",
-    timeStyle: "long",
-    timeZone: "UTC",
-  }),
-  zh: new Intl.DateTimeFormat("zh-CN", { ...ZH_INSTANT, timeZone: "UTC" }),
-};
+// omits. zh spells the fields out because its `timeStyle: "long"` is 24-hour;
+// every other language reads its own CLDR long date and time.
+function instantOptions(lang: SupportedLanguage): Intl.DateTimeFormatOptions {
+  return lang === "zh" ? ZH_INSTANT : { dateStyle: "long", timeStyle: "long" };
+}
+const instantFormats = new Map<string, Intl.DateTimeFormat>();
+function instantFormat(lang: SupportedLanguage, zone: "local" | "UTC") {
+  const key = `${lang}:${zone}`;
+  let format = instantFormats.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(LANGUAGE_TAGS[lang], {
+      ...instantOptions(lang),
+      ...(zone === "UTC" ? { timeZone: "UTC" } : {}),
+    });
+    instantFormats.set(key, format);
+  }
+  return format;
+}
 
 /**
  * The exact instant behind a relative time, three ways (local, UTC, Unix) —
@@ -93,10 +96,10 @@ export function formatInstantDetails(
   const ms = parseInstant(iso);
   if (ms === null) return null;
   const date = new Date(ms);
-  const key = isChinese(language) ? "zh" : "en";
+  const lang = dashboardLanguage(language);
   return {
-    local: instantLocal[key].format(date),
-    utc: instantUtc[key].format(date),
+    local: instantFormat(lang, "local").format(date),
+    utc: instantFormat(lang, "UTC").format(date),
     unix: String(Math.floor(ms / 1000)),
   };
 }

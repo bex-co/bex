@@ -361,7 +361,7 @@ export const zh = {
     detail: {
       overview: "概览",
       phase: "阶段",
-      updated: "更新于 {time}",
+      updated: "更新于 %{time}",
       unavailable: "该会话不可用。",
       notFound: "未找到会话。",
       failure: "失败原因",

@@ -50,6 +50,35 @@ describe("formatTimeAgo", () => {
     ).toBe("3 hours ago");
   });
 
+  // The other languages word date-fns' unit choice through Intl, so the bundle
+  // carries no date-fns locale for them (language.ts, intlDistanceLocale).
+  it.each([
+    ["ja", "3 時間前"],
+    ["ko", "3시간 전"],
+    ["es", "hace 3 horas"],
+    ["pt", "há 3 horas"],
+    ["ru", "3 часа назад"],
+    ["de", "vor 3 Stunden"],
+  ])("words the unit natively in %s", (language, expected) => {
+    expect(
+      formatTimeAgo(INSTANT, { ...opts, now: AT + 3 * 3600_000, language }),
+    ).toBe(expected);
+  });
+
+  it("keeps date-fns' strict unit choice and rounding in every language", () => {
+    // 40 days is "1 month", exactly as en reads it — date-fns still decides.
+    expect(
+      formatTimeAgo(INSTANT, {
+        ...opts,
+        now: AT + 40 * 86400_000,
+        language: "de",
+      }),
+    ).toBe("vor 1 Monat");
+    expect(
+      formatTimeAgo(INSTANT, { ...opts, now: AT + 90_000, language: "ru" }),
+    ).toBe("2 минуты назад");
+  });
+
   it("returns null for a missing or unparseable instant", () => {
     expect(formatTimeAgo(null, opts)).toBeNull();
     expect(formatTimeAgo("", opts)).toBeNull();

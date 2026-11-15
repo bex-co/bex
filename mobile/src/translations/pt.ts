@@ -1,0 +1,579 @@
+export const pt = {
+  freshness: {
+    notLoaded: "Aguardando a primeira atualização",
+    current: "Atual",
+    stale: "Desatualizado",
+  },
+  access: {
+    offline: "Reconecte-se para verificar o acesso antes de continuar.",
+    checking: "Verificando acesso…",
+    unavailable: "Não foi possível verificar o seu acesso. Tente novamente.",
+    changed: "Seu acesso neste workspace mudou.",
+    cannotOpen: "Este item não está disponível com o seu acesso atual.",
+    restrictedTitle: "Restrito",
+    backToStatus: "Voltar para Status",
+  },
+  navigation: {
+    status: "Status",
+    activity: "Atividade",
+    sessions: "Sessões",
+    notifications: "Alertas",
+  },
+  notifications: {
+    inboxChecking: "Verificando acesso e atualizando alertas…",
+    inboxError:
+      "Não foi possível atualizar os alertas. Verifique sua conexão e tente novamente.",
+    benefit:
+      "Receba no celular atualizações importantes sobre serviços e deploys.",
+    emptyTitle: "Ainda não há alertas",
+    title: "Alertas",
+    body: "Alertas operacionais recentes armazenados neste dispositivo.",
+    settings: "Notificações push",
+    permissionExplanation:
+      "O bex só pede permissão de notificação quando você toca em Ativar. Você pode alterar a permissão depois nas configurações do sistema.",
+    enable: "Ativar",
+    disable: "Desativar",
+    recent: "Recentes (%{count})",
+    markAllRead: "Marcar tudo como lido",
+    empty:
+      "As atualizações de serviços e deploys aparecerão aqui quando forem recebidas neste dispositivo.",
+    open: "Abrir notificação: %{title}",
+    states: {
+      checking: "Verificando permissão…",
+      unconfigured: "O push não está configurado para este build.",
+      unavailable: "A entrega de push está desativada neste servidor bex.",
+      disabled: "Desativado",
+      denied: "Permissão negada",
+      revoked: "A permissão foi revogada nas configurações do sistema",
+      enabling: "Ativando…",
+      enabled: "Ativado",
+      offline: "Offline — o registro será corrigido após a reconexão",
+      error: "Não foi possível concluir o registro",
+    },
+  },
+  status: {
+    overview: "Saúde dos recursos",
+    healthy: "Saudável",
+    review: "Revisar",
+    unknown: "Desconhecido",
+    title: "Status",
+    body: "Confira seus serviços e veja o que precisa de atenção.",
+  },
+  usageGlance: {
+    title: "Uso do mês até agora",
+    states: {
+      complete: "Dados completos",
+      partial: "Dados parciais",
+      unknown: "Cobertura não confirmada",
+      unavailable: "Indisponível",
+      "healthy-empty": "Completo · sem uso",
+    },
+    meters: {
+      instance_seconds: "Tempo de execução",
+      egress_bytes: "Largura de banda de saída",
+      build_seconds: "Tempo de build",
+      storage_gb_seconds: "Armazenamento de datastore",
+      sandbox_compute_seconds: "Computação de agente",
+    },
+    empty: "Os dados completos não indicam nenhum uso diferente de zero.",
+    noEvidence: "Os totais de uso ainda não estão disponíveis.",
+    through: "Medido até %{time}",
+    degraded: "Algumas fontes de uso estão atrasadas: %{sources}",
+    refreshUnavailable:
+      "A atualização está indisponível. Exibindo os últimos totais recebidos.",
+    loading: "Carregando o uso do mês até agora…",
+  },
+  activity: {
+    explore: "Explorar a atividade do serviço",
+    title: "Atividade",
+    body: "Escolha um serviço para inspecionar deploys, eventos, métricas e logs ao vivo somente leitura.",
+    timelineTitle: "Deploys e eventos",
+    deploy: "Deploy",
+    empty: "Ainda não há deploys nem eventos.",
+    loadMore: "Carregar atividade anterior",
+  },
+  resources: {
+    search: "Buscar recursos",
+    clearSearch: "Limpar busca",
+    resetFilters: "Limpar filtros",
+    noMatches: "Nenhum recurso correspondente",
+    service: "Serviço",
+    unknownStatus: "desconhecido",
+    updatedAt: "Atualizado %{time}",
+    waitingForUpdate: "Aguardando a primeira atualização",
+    filterLabel: "Filtrar recursos por tipo",
+    filters: {
+      all: "Todos",
+      service: "Serviços",
+      database: "Postgres",
+      keyValue: "Key Value",
+    },
+    partialError:
+      "Alguns dados de recursos não puderam ser atualizados. Os dados exibidos podem estar desatualizados.",
+    loadError:
+      "Não foi possível carregar os recursos. Puxe para baixo para tentar novamente.",
+    loading: "Carregando a saúde dos recursos…",
+    emptyTitle: "Nenhum recurso",
+    emptyBody: "Este workspace ainda não tem recursos supervisionados.",
+    emptyFilter: "Nenhum recurso corresponde a este filtro.",
+    ungrouped: "Recursos do workspace",
+    latestDeploy: "Último deploy %{id}",
+    resourceAccessibility: "%{name}, %{type}, status %{status}",
+  },
+  service: {
+    title: "Serviço",
+    overview: "Estado atual",
+    region: "Região",
+    replicas: "Instâncias",
+    revision: "Revisão",
+    latestDeploy: "Último deploy",
+    partialError:
+      "Algumas evidências do serviço não puderam ser atualizadas. Os dados exibidos podem estar desatualizados.",
+    loadError: "Não foi possível carregar as evidências do serviço.",
+  },
+  cron: {
+    title: "Histórico de execuções do cron",
+    description:
+      "Execuções recentes e tempos informados pelo servidor. Executar agora substitui qualquer execução atualmente ativa.",
+    runNow: "Executar agora",
+    cancelCurrent: "Cancelar execução atual",
+    suspended:
+      "Executar agora está indisponível enquanto este serviço estiver suspenso. Uma execução já ativa ainda pode ser cancelada.",
+    refreshRequired:
+      "A ação anterior pode ter sido efetivada. Atualize o histórico com sucesso antes de confirmar outra ação.",
+    refresh: "Atualizar histórico de execuções",
+    refreshing: "Atualizando…",
+    loadError: "Não foi possível carregar o histórico de execuções do cron.",
+    empty: "Ainda não há execuções do cron.",
+    loadMore: "Carregar execuções anteriores",
+    openLogs: "Abrir os logs gerais do serviço",
+    started: "Início: %{time}",
+    finished: "Fim: %{time}",
+    duration: "Duração: %{duration}",
+    notStarted: "não informado",
+    status: {
+      pending: "Pendente",
+      running: "Em execução",
+      successful: "Bem-sucedida",
+      failed: "Falhou",
+      canceled: "Cancelada",
+      unknown: "Desconhecido",
+    },
+    feedback: {
+      ambiguous:
+        "A resposta terminou sem um resultado confirmado. Atualize o histórico de execuções antes de revisar e confirmar outra ação.",
+      convergenceTimeout:
+        "O servidor aceitou a ação, mas o histórico de execuções não convergiu antes de o polling terminar. Atualize o histórico antes de outra ação.",
+    },
+  },
+  metrics: {
+    title: "Snapshot de métricas",
+    window: "Última hora · atualiza a cada 30 segundos",
+    cpu: "CPU",
+    memory: "Memória",
+    network: "Rede de saída",
+    loading: "Carregando %{metric}",
+    unavailable: "A fonte de métricas não está configurada.",
+    error: "Não foi possível carregar esta métrica.",
+    partial: "Amostras parciais — os últimos valores válidos são exibidos.",
+    degraded: "Pode estar subestimado: %{sources}",
+    noData: "Nenhuma amostra nesta janela.",
+    accessibilitySummary:
+      "%{metric}, atual %{value}, %{points} amostras na última hora",
+  },
+  events: {
+    unknown: "Evento: %{type}",
+    noType: "tipo desconhecido",
+    branchTransition: "Branch %{from} → %{to}",
+    countTransition: "Instâncias %{from} → %{to}",
+    reason: "Motivo: %{reason}",
+    types: {
+      deploy_started: "Deploy iniciado",
+      deploy_ended: "Deploy concluído",
+      build_started: "Build iniciado",
+      build_ended: "Build concluído",
+      pre_deploy_started: "Pré-deploy iniciado",
+      pre_deploy_ended: "Pré-deploy concluído",
+      server_available: "O serviço ficou disponível",
+      server_unavailable: "O serviço ficou indisponível",
+      plan_changed: "Plano alterado",
+      branch_changed: "Branch alterado",
+      instance_count_changed: "Número de instâncias alterado",
+      autoscaling_config_changed: "Escalonamento automático alterado",
+      job_run_started: "Execução de job iniciada",
+      job_run_ended: "Execução de job concluída",
+    },
+  },
+  datastores: {
+    overview: "Estado atual",
+    postgres: "Postgres",
+    keyValue: "Key Value",
+    plan: "Plano",
+    region: "Região",
+    id: "ID do recurso",
+    loadError:
+      "Este datastore não pôde ser atualizado. O estado exibido pode estar desatualizado; puxe para baixo para tentar novamente.",
+  },
+  postgresInsights: {
+    title: "Insights do Postgres",
+    connection: "Alcançabilidade do banco de dados",
+    capacity: "Capacidade",
+    logicalSize: "Tamanho lógico do banco de dados",
+    diskUsed: "Disco usado",
+    diskCapacity: "Capacidade do disco",
+    connections: "Conexões",
+    tables: "Sinais de varredura de tabelas",
+    tableSummary: "%{size} · seq %{sequential} · idx %{index} · dead %{dead}",
+    noTableData: "Nenhuma observação de tabela foi retornada.",
+    sourceUnavailable: "Esta fonte de insights não está configurada.",
+    transportError:
+      "Esta requisição de insights não conseguiu alcançar o servidor.",
+    state: {
+      loading: "Verificando",
+      empty: "Sem observações",
+      current: "Atual",
+      stale: "Desatualizado",
+      degraded: "Parcial",
+      "source-unavailable": "Fonte indisponível",
+      "transport-error": "Erro de conexão",
+    },
+    connectionState: {
+      loading: "Verificando a resposta do banco de dados…",
+      empty: "Sem observações do banco de dados",
+      current: "O banco de dados respondeu",
+      stale: "A última resposta está desatualizada",
+      degraded: "Somente parte da verificação foi concluída",
+      "source-unavailable": "Fonte de insights do banco de dados indisponível",
+      "transport-error":
+        "A verificação do banco de dados não conseguiu alcançar o servidor",
+    },
+  },
+  keyValueInsights: {
+    title: "Insights do Key Value",
+    refreshing: "Atualizando os insights do Key Value",
+    window: "Última hora · atualiza a cada 30 segundos",
+    connectionHealth: "Disponibilidade (não é um ping de protocolo)",
+    storage: "Armazenamento usado / capacidade",
+    memory: "Memória usada",
+    connections: "Clientes conectados",
+    accessibilitySummary:
+      "%{metric}: %{value}, com base em %{points} observações",
+    health: {
+      available: "Disponível",
+      creating: "Criando",
+      unavailable: "Indisponível",
+      suspended: "Suspenso",
+      unknown: "Desconhecido",
+    },
+  },
+  safeActions: {
+    cardTitle: "Ações seguras",
+    title: "Confirmar ação",
+    message:
+      "Confirme esta ação e este alvo exatos. O app não repetirá uma mutação automaticamente.",
+    serverConfirmation:
+      "Este recurso protegido exige uma segunda confirmação. Frase do servidor: %{confirmation}",
+    confirm: "Confirmar",
+    cancel: "Cancelar",
+    pending: "Enviando…",
+    noneAvailable: "Nenhuma ação segura está disponível no estado atual.",
+    dismiss: "Dispensar",
+    refreshFirst: "Atualize primeiro",
+    actions: {
+      triggerDeploy: "Fazer deploy do mais recente",
+      cancelDeploy: "Cancelar deploy ativo",
+      rollbackDeploy: "Fazer rollback do deploy",
+      restartService: "Reiniciar serviço",
+      suspendService: "Suspender serviço",
+      resumeService: "Retomar serviço",
+      restartDatabase: "Reiniciar Postgres",
+      suspendDatabase: "Suspender Postgres",
+      resumeDatabase: "Retomar Postgres",
+      suspendKeyValue: "Suspender Key Value",
+      resumeKeyValue: "Retomar Key Value",
+    },
+    feedback: {
+      success:
+        "O servidor aceitou a ação. O estado atualizado continuará sendo atualizado a partir do servidor.",
+      acceptedUnverified:
+        "O servidor aceitou a ação, mas esta API não consegue comprovar que a reinicialização foi concluída. Continue verificando o estado atual.",
+      authorizationDenied:
+        "Você não tem autorização para executar esta ação. Nenhum sucesso foi presumido.",
+      conflict:
+        "O estado do recurso mudou, então a ação não foi enviada. Atualize e revise novamente.",
+      timeoutUnknown:
+        "A resposta expirou e a ação pode ter sido efetivada. Atualize o estado do servidor antes de criar outra confirmação.",
+      auditPending:
+        "A ação foi efetivada, mas o resultado da auditoria ainda está pendente.",
+      auditUnavailable:
+        "O resultado da ação está incompleto porque o estado da auditoria está indisponível.",
+      failed:
+        "A ação falhou. O estado atual do servidor não foi alterado localmente.",
+      canceled: "A ação pendente foi cancelada localmente.",
+    },
+  },
+  resourceActions: {
+    blocked: {
+      protectedConfirmation:
+        "Este recurso protegido precisa de uma confirmação extra antes que esta ação possa ser executada.",
+      suspended:
+        "Indisponível enquanto o recurso estiver suspenso. Retome-o primeiro.",
+      noActiveDeploy: "Não há nenhum deploy ativo para cancelar agora.",
+      noActiveRun: "Não há nenhuma execução ativa para cancelar agora.",
+      noEligibleRollbackTarget:
+        "Nenhum deploy anterior é elegível como alvo de rollback.",
+      billingBlocked:
+        "O faturamento precisa de atenção antes que esta ação possa ser executada. Resolva no painel.",
+      unavailable:
+        "O servidor não conseguiu confirmar esta ação agora. Tente novamente.",
+      generic:
+        "O servidor não está permitindo esta ação agora. Tente novamente.",
+    },
+  },
+  sessions: {
+    title: "Sessões de agente",
+    body: "Atribua e supervisione o trabalho de agentes de código pelo celular.",
+    gated: "Requer a fase 1 da ADR047",
+  },
+  agentSessions: {
+    heading: "Seus agentes, num relance",
+    description:
+      "Acompanhe o progresso, revise resultados ou inicie uma nova tarefa.",
+    newShort: "Nova",
+    loading: "Carregando sessões…",
+    refreshError:
+      "Não foi possível atualizar. Exibindo as sessões carregadas anteriormente.",
+    unavailable: "Não foi possível carregar as sessões. Tente novamente.",
+    emptyTitle: "Ainda não há sessões de agente",
+    emptyBody:
+      "Atribua uma tarefa de agente de código a um repositório pelo celular.",
+    phase: {
+      creating: "Iniciando",
+      running: "Em execução",
+      resuming: "Retomando",
+      redispatching: "Reenviando",
+      completed: "Concluída",
+      failed: "Falhou",
+      canceling: "Cancelando",
+      canceled: "Cancelada",
+      unknown: "Desconhecida",
+    },
+    composer: {
+      new: "Nova sessão",
+      title: "Nova sessão de agente",
+      close: "Fechar",
+      repo: "Repositório",
+      agent: "Agente",
+      agentAuto: "Automático",
+      searchRepo: "Buscar repositórios",
+      searchEmpty: "Nenhum repositório corresponde",
+      prompt: "Tarefa",
+      promptPlaceholder: "Pergunte qualquer coisa",
+      submit: "Atribuir tarefa",
+      submitted: "Sessão atribuída.",
+      openSession: "Abrir sessão",
+      noRepos: "Nenhum repositório conectado.",
+      setupTitle: "Conclua a configuração no desktop",
+      needGithub: "Conecte o GitHub no desktop para abrir pull requests.",
+      needModelKey:
+        "Um administrador do workspace precisa adicionar uma chave de provedor de modelo em Configurações → Agentes do workspace, no painel web, para executar sessões.",
+      needDesktop: "Não foi possível carregar as sessões. Tente novamente.",
+      connectGithub: "Conectar GitHub",
+    },
+    detail: {
+      overview: "Visão geral",
+      phase: "Fase",
+      updated: "Atualizado %{time}",
+      unavailable: "Esta sessão está indisponível.",
+      notFound: "Sessão não encontrada.",
+      failure: "Falha",
+      deliveryNote: "Alterações não totalmente entregues",
+      pullRequest: "Pull request",
+      draftPr: "Pull request em rascunho",
+      openPr: "Abrir no GitHub",
+      cancel: "Cancelar sessão",
+      refreshError:
+        "Não foi possível atualizar. Exibindo os detalhes da sessão carregados anteriormente.",
+      stale:
+        "Os detalhes da sessão podem estar desatualizados. Puxe para baixo para atualizar.",
+    },
+  },
+  auth: {
+    loadingTitle: "Abrindo o bex",
+    loadingBody: "Restaurando sua sessão segura.",
+    signInTitle: "Entrar no bex",
+    signInBody:
+      "Continue no navegador do sistema. O app nunca vê sua senha nem a resposta do MFA.",
+    signInAction: "Continuar com segurança",
+    signInError:
+      "O login não foi concluído. Verifique sua conexão e tente novamente.",
+    callbackTitle: "Concluindo o login",
+    callbackBody: "Protegendo sua sessão e abrindo o bex.",
+    expiredTitle: "A sessão precisa de uma conexão",
+    expiredBody:
+      "Seu token de acesso expirou enquanto o bex estava offline. Reconecte-se para atualizá-lo com segurança.",
+    retry: "Tentar novamente",
+    signOut: "Sair",
+  },
+  invite: {
+    title: "Convite para o workspace",
+    loading: "Protegendo este convite no seu dispositivo.",
+    signInBody:
+      "Entre no navegador do sistema e depois volte aqui para revisar o convite. O link pode adicionar a conta que você escolher, independentemente do endereço de e-mail dela.",
+    signIn: "Entrar para revisar",
+    signInError:
+      "O login não foi concluído. O convite continua protegido neste dispositivo para que você possa tentar novamente.",
+    readyBody:
+      "Aceitar concede à sua conta atual do bex acesso ao workspace identificado por este link de uso único. O endereço de e-mail convidado não é verificado nesta aceitação direta.",
+    accept: "Aceitar convite",
+    accepting: "Aceitando este convite uma única vez. Mantenha o app aberto.",
+    retryTitle: "Convite não confirmado",
+    retry: "Tentar aceitar novamente",
+    retryable: {
+      transport:
+        "A resposta terminou antes que o bex pudesse confirmar o resultado. O convite continua protegido; tente novamente explicitamente quando estiver conectado.",
+      unavailable:
+        "O bex está temporariamente indisponível. O convite continua protegido; tente novamente explicitamente quando estiver conectado.",
+    },
+    acceptedTitle: "Convite aceito",
+    acceptedBody: "Você entrou em %{workspace}.",
+    refreshFailed:
+      "O convite foi aceito, mas a lista de workspaces não pôde ser atualizada. Reabrir Status tentará novamente.",
+    openWorkspace: "Abrir Status",
+    failedTitle: "Convite indisponível",
+    empty: "Esta rota não contém um convite pendente.",
+    failures: {
+      invalid: "Este link de convite é inválido ou não existe mais.",
+      expired:
+        "Este convite expirou. Peça a um administrador do workspace para reenviá-lo.",
+      "already-accepted": "Este convite de uso único já foi aceito.",
+      "plan-limit":
+        "O plano atual ou o limite de vagas do workspace não permite aceitar este convite. Peça a um administrador para resolver e reenviar o convite.",
+      authorization:
+        "Sua conta atual não tem autorização para aceitar este convite.",
+      "subject-changed":
+        "A conta conectada mudou, então o convite armazenado foi apagado. Abra o link original novamente com a conta pretendida.",
+      failed: "O bex recusou este convite. Nenhuma associação foi presumida.",
+      storage:
+        "Este dispositivo não conseguiu proteger nem apagar o convite. O app não tentará aceitá-lo.",
+    },
+  },
+  workspace: {
+    current: "Workspace",
+    choose: "Escolher workspace",
+    switchLabel: "Trocar de workspace. Workspace atual: %{name}",
+    confirm: "Trocar",
+    cancel: "Cancelar",
+    offline:
+      "Offline. Exibindo o workspace atual sem dados de tenant em cache.",
+    loadingTitle: "Abrindo seu workspace",
+    loadingBody: "Verificando sua participação no workspace do bex.",
+    switchingTitle: "Trocando de workspace",
+    switchingBody: "Limpando o workspace anterior antes de abrir o próximo.",
+    emptyTitle: "Ainda não há workspace",
+    emptyBody: "Entre ou crie um workspace em bex.co e tente novamente.",
+    errorTitle: "Workspace indisponível",
+    errorBody: "O bex não conseguiu carregar seu workspace. Tente novamente.",
+    offlineTitle: "O workspace precisa de uma conexão",
+    offlineBody:
+      "Reconecte-se para carregar os dados do workspace com segurança.",
+  },
+  drawer: {
+    openMenu: "Abrir menu",
+    openMenuHint: "Mostra seus workspaces e sua conta",
+    menuLabel: "Menu de workspaces e conta",
+    opened: "Menu aberto",
+    closeBackdrop: "Fechar menu",
+    workspaces: "Workspaces",
+    workspaceRow: "%{name}, %{status}",
+    noStatus: "sem função nem plano",
+    roles: {
+      admin: "Administrador",
+      developer: "Desenvolvedor",
+      contributor: "Colaborador",
+      viewer: "Visualizador",
+      billing: "Faturamento",
+    },
+    plans: {
+      hobby: "Hobby",
+      pro: "Pro",
+      scale: "Scale",
+      enterprise: "Enterprise",
+      free: "Gratuito",
+    },
+    signedIn: "Conectado",
+    identityLoading: "Carregando sua conta…",
+    identityOffline: "Offline — detalhes da conta indisponíveis",
+    identityUnavailable: "Detalhes da conta indisponíveis",
+    identityRetry: "Tentar novamente",
+    identityAccessibility: "Conectado como %{primary} %{secondary}",
+    logout: "Sair",
+    logoutConfirmTitle: "Sair?",
+    logoutConfirmMessage:
+      "Você precisará entrar novamente para supervisionar seus workspaces.",
+  },
+  settings: {
+    title: "Configurações",
+    open: "Abrir configurações",
+    close: "Fechar configurações",
+    colorScheme: "Esquema de cores",
+    themeSystem: "Sistema",
+    themeLight: "Claro",
+    themeDark: "Escuro",
+    language: "Idioma",
+    version: "Versão %{version}",
+  },
+  deepLink: {
+    invalidTitle: "Link do bex inválido",
+    invalidBody:
+      "Este link não contém um identificador de recurso do bex válido.",
+    serviceTitle: "Serviço",
+    serviceBody:
+      "Os detalhes de supervisão do serviço chegam no próximo marco.",
+    sessionTitle: "Sessão de agente",
+    sessionBody:
+      "Os detalhes de supervisão da sessão chegam com as operações de agente.",
+  },
+  logs: {
+    title: "Logs ao vivo",
+    description:
+      "Veja os logs recentes de app, build, pré-deploy e requisições e depois acompanhe a saída ao vivo sem abrir um shell.",
+    open: "Inspecionar logs",
+    back: "Voltar para as evidências do serviço",
+    searchLabel: "Buscar logs",
+    searchPlaceholder: "Buscar mensagens de log",
+    pause: "Pausar",
+    follow: "Acompanhar",
+    historyOnly:
+      "Somente histórico — estes filtros não podem ser aplicados ao acompanhamento ao vivo.",
+    storeUnavailable:
+      "Estes filtros de log exigem o armazenamento durável de logs.",
+    unavailable:
+      "Os logs estão indisponíveis. Verifique sua conexão e tente novamente.",
+    empty: "Nenhuma linha de log neste intervalo.",
+    type: {
+      all: "Todos",
+      app: "App",
+      build: "Build",
+      predeploy: "Pré-deploy",
+      request: "Requisição",
+    },
+    phase: {
+      idle: "Acompanhamento de logs parado",
+      catching_up: "Carregando logs recentes…",
+      connecting: "Conectando aos logs ao vivo…",
+      live: "Ao vivo",
+      reconnecting: "Reconectando aos logs ao vivo…",
+      history_only: "Somente histórico",
+      error: "Acompanhamento de logs indisponível",
+    },
+  },
+  common: {
+    back: "Voltar",
+    cancel: "Cancelar",
+    notFoundTitle: "Esta tela não existe",
+    backToStatus: "Voltar para Status",
+    seeAll: "Ver tudo",
+    notEnoughChartData: "Dados insuficientes",
+  },
+};

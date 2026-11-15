@@ -1,0 +1,6126 @@
+import type { TranslationEntry } from "@/i18n";
+
+const ruServices: Record<string, TranslationEntry> = {
+  "services.protectedConfirmationTitle": {
+    message: "Подтверждение для защищённого окружения",
+    description: "Title of a protected-service destructive-action retry dialog",
+  },
+  "services.protectedConfirmationBody": {
+    message:
+      "Сервис «{name}» относится к защищённому окружению. Чтобы продолжить, введите точную команду sudo, полученную от bex-api.",
+    description: "Body of a protected-service destructive-action retry dialog",
+  },
+  "services.protectedConfirmationPrompt": {
+    message: "Введите {phrase} ниже для подтверждения.",
+    description:
+      "Body prompt naming the exact protected-action confirmation phrase (rendered bold by SudoCommandField)",
+  },
+  "services.connect": {
+    message: "Подключиться",
+    description: "Open the service connection menu",
+  },
+  "services.connectSSH": {
+    message: "SSH",
+    description: "SSH section label in the service connection menu",
+  },
+  "services.openBrowserTerminal": {
+    message: "Открыть терминал в браузере",
+    description:
+      "RequiresSshKey gate — zero-setup second door to the Web Shell (no SSH key)",
+  },
+  "services.connectInternal": {
+    message: "Внутренний",
+    description:
+      "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
+  },
+  "services.connectInternalFreeNote": {
+    message:
+      "Бесплатные Web Service не могут принимать трафик из приватной сети. Перейдите на платный тариф, чтобы использовать внутренний адрес.",
+    description:
+      "Connect → Internal note for a free public web service: Render's Free plan does not support receiving private network traffic, so a sibling's internal call never reaches it (w8/m130)",
+  },
+  "services.headerServiceAddress": {
+    message: "Адрес сервиса",
+    description:
+      "Label before a private service's internal address in the detail header (Render's private-service wording)",
+  },
+  "services.openPorts": {
+    message: "Открытые порты",
+    description:
+      "Label before the TCP ports a private service's hostname serves, beside its Service Address and in Connect → Internal (Render's serviceDetails.openPorts, w6/m148)",
+  },
+  "services.openPortsPrimary": {
+    message: "основной",
+    description:
+      "Marker on the open port that is the service's primary port — the <slug>:<port> suffix of its Service Address (w6/m148)",
+  },
+  "services.openPortsPending": {
+    message: "Порты определяются по образу после первой сборки.",
+    description:
+      "Shown instead of a Service Address while an image-port private service has not built yet, so no port is known (openPorts is empty, w6/m148)",
+  },
+  "services.internalCopy": {
+    message: "Копировать внутренний адрес",
+    description: "Copy service internal address button",
+  },
+  "services.internalCopied": {
+    message: "Внутренний адрес скопирован",
+    description: "Successful internal address copy",
+  },
+  "services.internalCopyError": {
+    message: "Не удалось скопировать внутренний адрес",
+    description: "Failed internal address copy",
+  },
+  "services.sshCopy": {
+    message: "Копировать команду SSH",
+    description: "Copy service SSH command button",
+  },
+  "services.sshCopied": {
+    message: "Команда SSH скопирована",
+    description: "Successful SSH command copy",
+  },
+  "services.sshCopyError": {
+    message: "Не удалось скопировать команду SSH",
+    description: "Failed SSH command copy",
+  },
+  "services.sshUnavailable": {
+    message: "SSH недоступен",
+    description: "Service header state when no SSH address is advertised",
+  },
+  "services.sshUnavailableHint": {
+    message:
+      "SSH требует работающего платного Web Service, Private Service или Background Worker и активного шлюза.",
+    description: "Explanation for a service without an SSH address",
+  },
+  "services.sshUnavailableSuspended": {
+    message:
+      "Этот сервис приостановлен. Возобновите его, чтобы подключаться по SSH.",
+    description: "Why SSH is unavailable on a suspended service (w4/143)",
+  },
+  "services.sshUnavailableSuspendedFree": {
+    message:
+      "Этот сервис приостановлен, а для SSH нужен платный тип инстанса. Возобновление восстановит трафик, но бесплатные сервисы по-прежнему не включают доступ к оболочке.",
+    description:
+      "Why SSH is unavailable on a suspended Free service: both blockers, without implying a resume grants SSH (w4/m183)",
+  },
+  "services.sshUnavailableFree": {
+    message:
+      "Для SSH нужен платный тип инстанса. Бесплатные сервисы не включают доступ к оболочке.",
+    description: "Why SSH is unavailable on a Free-plan service (w4/143)",
+  },
+  "services.sshRemedyResume": {
+    message: "Возобновить сервис",
+    description:
+      "Link from an SSH-unavailable state to the service's suspend/resume setting (w4/143)",
+  },
+  "services.sshRemedyChangePlan": {
+    message: "Изменить тип инстанса",
+    description:
+      "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
+  },
+  "services.shellTitle": {
+    message: "Оболочка",
+    description: "Running-instance SSH connection page title",
+  },
+  "services.shellDescription": {
+    message:
+      "Откройте оболочку на работающем инстансе сервиса из вашего терминала.",
+    description: "Running-instance SSH connection page description",
+  },
+  "services.shellConnectionTitle": {
+    message: "Подключение по SSH",
+    description: "SSH connection card title",
+  },
+  "services.shellConnectionDescription": {
+    message:
+      "bex подключается к существующему готовому инстансу. Отдельный инстанс для оболочки не создаётся.",
+    description: "SSH running-instance behavior explanation",
+  },
+  "services.shellCommand": {
+    message: "Команда SSH",
+    description: "Label for a copy-ready service SSH command",
+  },
+  "services.shellManageKeys": {
+    message: "Управление публичными SSH-ключами",
+    description: "Link from a service shell page to account SSH key settings",
+  },
+  "services.shellSessionLifecycle": {
+    message:
+      "Команда выбирает готовый инстанс. Перезапуск, повторный деплой или приостановка сервиса закрывают сессию.",
+    description: "SSH session selection and lifecycle guidance",
+  },
+  "services.shellUnavailableTitle": {
+    message: "Доступ к оболочке недоступен",
+    description: "Unavailable SSH connection card title",
+  },
+  "services.shellUnavailableBody": {
+    message:
+      "Для доступа к оболочке нужны работающий платный Web Service, Private Service или Background Worker и активный SSH-шлюз.",
+    description: "Unavailable SSH connection card explanation",
+  },
+  "services.shellWebTitle": {
+    message: "Веб-оболочка",
+    description: "In-browser terminal card title",
+  },
+  "services.shellWebDescription": {
+    message: "Выполняйте команды внутри работающего инстанса прямо в браузере.",
+    description: "In-browser terminal card description",
+  },
+  "services.shellConnecting": {
+    message: "Подключение к работающему инстансу…",
+    description: "Web shell status while the terminal is connecting",
+  },
+  "services.shellConnected": {
+    message: "Подключено",
+    description: "Web shell status when the terminal stream is live",
+  },
+  "services.shellClosed": {
+    message: "Сессия закрыта",
+    description: "Web shell status when the terminal stream has ended",
+  },
+  "services.shellErrorStatus": {
+    message: "Ошибка подключения",
+    description:
+      "Web shell status when the session failed to connect or errored",
+  },
+  "services.shellEnded": {
+    message: "Сессия завершена",
+    description:
+      "Web shell status when the server ended a live session for a stated reason (access, suspension, instance stopped, time limit)",
+  },
+  "services.shellEndRevoked": {
+    message: "Ваш доступ к этому сервису закончился.",
+    description:
+      "Web shell end reason: the caller lost access to the service mid-session (deliberately unspecific)",
+  },
+  "services.shellEndSuspended": {
+    message:
+      "Сервис был приостановлен, из-за чего эта сессия завершилась. Возобновите его, чтобы открыть новую.",
+    description: "Web shell end reason: the service was suspended",
+  },
+  "services.shellEndIneligible": {
+    message:
+      "У этого сервиса больше нет доступа к shell (изменился его тариф или тип), из-за чего эта сессия завершилась.",
+    description:
+      "Web shell end reason: the service moved to the Free plan or a type without instances",
+  },
+  "services.shellEndInstanceGone": {
+    message:
+      "Инстанс, на котором работала эта сессия, остановился. Переподключитесь, чтобы открыть shell на работающем инстансе.",
+    description:
+      "Web shell end reason: the attached instance stopped (restart, or the old instance leaving after a deploy went live)",
+  },
+  "services.shellEndTimeout": {
+    message:
+      "Сессия достигла лимита времени. Переподключитесь, чтобы продолжить работу.",
+    description: "Web shell end reason: the session hit its maximum duration",
+  },
+  "services.shellEndUnverified": {
+    message:
+      "Не удалось повторно проверить ваш доступ, поэтому сессия завершилась. Переподключитесь и повторите попытку.",
+    description:
+      "Web shell end reason: the periodic access check could not complete",
+  },
+  "services.shellReconnect": {
+    message: "Подключиться снова",
+    description: "Button that re-opens a closed web shell session",
+  },
+  "services.shellConnect": {
+    message: "Запустить оболочку",
+    description: "Button that opens a web shell session",
+  },
+  "services.shellErrorGeneric": {
+    message: "Не удалось запустить сессию оболочки.",
+    description: "Web shell generic connection error",
+  },
+  "services.shellErrorUnavailable": {
+    message:
+      "Оболочка в браузере не включена на этой платформе. Используйте команду SSH ниже.",
+    description:
+      "Web shell error when the browser transport is unconfigured (503)",
+  },
+  "services.shellInstanceLabel": {
+    message: "Инстанс",
+    description: "Label for the web shell instance picker",
+  },
+  "services.shellInstanceAny": {
+    message: "Любой готовый инстанс",
+    description:
+      "Web shell instance picker option that selects a random ready replica",
+  },
+  "services.shellInstanceSelect": {
+    message: "Выберите инстанс",
+    description: "Placeholder for the web shell instance picker",
+  },
+  "services.shellSshFallback": {
+    message: "Предпочитаете свой терминал? Используйте команду SSH ниже.",
+    description: "Hint pointing web shell users to the copy-ready SSH command",
+  },
+  "services.actions": {
+    message: "Действия",
+    description: "Accessible heading for service configuration row actions",
+  },
+  "services.statTotal": {
+    message: "Всего сервисов",
+    description: "Services page stat card label",
+  },
+  "services.statRunning": {
+    message: "Работают",
+    description: "Services page stat card label",
+  },
+  "services.statSuspended": {
+    message: "Приостановлены",
+    description: "Services page stat card label",
+  },
+  "services.cardTitle": {
+    message: "Сервисы",
+    description:
+      "Services table card title, also used as the metrics page back-link",
+  },
+  "services.colName": {
+    message: "Название",
+    description: "Services table column header",
+  },
+  "services.colStatus": {
+    message: "Статус",
+    description: "Services table column header",
+  },
+  "services.colUrl": {
+    message: "URL",
+    description: "Services table column header",
+  },
+  "services.colBlueprintName": {
+    message: "Название в Blueprint",
+    description: "Immutable service name used to match Blueprint resources.",
+  },
+  "services.blueprintNameHelp": {
+    message:
+      "Используйте это неизменяемое название в services[].name в манифесте Blueprint. Отображаемые названия и публичные имена хостов могут отличаться.",
+    description: "Immutable service name used to match Blueprint resources.",
+  },
+  "services.colSlug": {
+    message: "Slug",
+    description:
+      "Service detail header fact (globally-unique platform-host segment, Render's slug field)",
+  },
+  "services.instancesSuspended": {
+    message: "0 ({n} после возобновления)",
+    description:
+      "The header's Instances fact for a suspended service, which runs none; n is its configured count (w4/547)",
+  },
+  "services.instancesSleeping": {
+    message: "0 ({n} после пробуждения)",
+    description:
+      "The header's Instances fact for a sleeping Free service, which runs none; n is its configured count (w4/547)",
+  },
+  "services.colInstances": {
+    message: "Инстансы",
+    description: "Services table column header (replica count — bex-native)",
+  },
+  "services.colRevision": {
+    message: "Ревизия",
+    description: "Services table column header (active revision — bex-native)",
+  },
+  "services.colCreated": {
+    message: "Создан",
+    description: "Services table column header (relative age from createdAt)",
+  },
+  "services.colActions": {
+    message: "Действия",
+    description: "Services table actions column header (screen-reader only)",
+  },
+  "services.statusRunning": {
+    message: "Работает",
+    description: "Services table status badge",
+  },
+  "services.statusSuspended": {
+    message: "Приостановлен",
+    description: "Services table status badge",
+  },
+  "services.statusSleeping": {
+    message: "Спит",
+    description:
+      "Services status badge: a free-tier App auto-hibernated after idle (bex extension)",
+  },
+  "services.undeployedChangesSuspendedHint": {
+    message:
+      "Сохранённые изменения ещё не применены. Возобновите сервис, затем выполните деплой, чтобы применить их.",
+    description:
+      "Notice when a suspended service has saved settings that differ from the release it serves: no deploy can run until it resumes",
+  },
+  "services.undeployedChangesHint": {
+    message:
+      "Сохранённые изменения ещё не применены. Выполните обычный деплой, чтобы применить их.",
+    description:
+      "Notice when saved settings differ from the running release, including Save only, cancellation, rollback or restart",
+  },
+  "services.undeployedChangesApplyingHint": {
+    message:
+      "Сохранённые изменения вступят в силу, когда завершится текущий деплой.",
+    description:
+      "Notice while an in-flight deploy already carries the saved settings, so no further deploy is needed (w4/m184)",
+  },
+  "services.undeployedChangesOverrideHint": {
+    message:
+      "Этот деплой запускает {running}, выбранный для него. Сохранённый образ — {saved}; обычный деплой вернётся к нему.",
+    description:
+      "Notice when a per-deploy image override (imageUrl/imgURL) runs a different image than the saved one: nothing was saved, and a standard deploy reverts to the saved image (w4/414)",
+  },
+  "services.statusSleepingHint": {
+    message:
+      "Спит для экономии ресурсов — проснётся при следующем запросе к публичному URL.",
+    description:
+      "Hint next to the Sleeping badge explaining free-tier auto-sleep + wake-on-request",
+  },
+  "services.statusPending": {
+    message: "В ожидании",
+    description: "Services table status badge",
+  },
+  "services.statusBuilding": {
+    message: "Сборка",
+    description: "Services table status badge",
+  },
+  "services.statusDeploying": {
+    message: "Деплой",
+    description: "Services table status badge",
+  },
+  "services.statusCanceled": {
+    message: "Отменён",
+    description:
+      "Services table status badge for a service whose first-ever deploy the user canceled",
+  },
+  "services.statusDeleting": {
+    message: "Удаление",
+    description:
+      "Services status badge for a service whose deletion is finalizing",
+  },
+  "services.statusFailed": {
+    message: "Ошибка",
+    description: "Services table status badge",
+  },
+  "services.statusUnknown": {
+    message: "Неизвестно",
+    description: "Services table status badge for an unrecognized phase",
+  },
+  "services.actionsMenu": {
+    message: "Действия для {name}",
+    description: "Accessible label for the per-row actions trigger",
+  },
+  "services.actionSuspend": {
+    message: "Приостановить",
+    description: "Row action: park the service",
+  },
+  "services.actionResume": {
+    message: "Возобновить",
+    description: "Row action: bring a suspended service back",
+  },
+  "services.actionRestart": {
+    message: "Перезапустить",
+    description:
+      "Row action: restart the service on the commit or image it is running",
+  },
+  "services.confirmSuspendTitle": {
+    message: "Приостановить {name}?",
+    description: "Suspend confirmation dialog title",
+  },
+  "services.confirmSuspendBody": {
+    message:
+      "Сервис масштабируется до нуля и перестаёт обслуживать трафик. Его URL и сертификаты сохраняются, и вы можете возобновить его в любой момент.",
+    description:
+      "Suspend confirmation dialog body, for the types served at a public host",
+  },
+  "services.confirmSuspendBodyNoUrl": {
+    message:
+      "Сервис масштабируется до нуля и перестаёт работать. Вы можете возобновить его в любой момент.",
+    description:
+      "Suspend confirmation dialog body, for private services and background workers — neither has a public URL or certificates to keep",
+  },
+  "services.confirmSuspendBodyStatic": {
+    message:
+      "Пока сайт приостановлен, он не отдаёт содержимое и отвечает 503. Его URL и сертификаты сохраняются, и вы можете возобновить его в любой момент.",
+    description:
+      "Suspend confirmation dialog body for a static site, which has no instances to scale to zero (w4/380)",
+  },
+  "services.suspendCronDescription": {
+    message:
+      "Приостановка этого Cron Job отменяет будущие запуски по расписанию. Активный запуск продолжится. Чтобы остановить его, нажмите «Отменить» на странице запусков.",
+    description:
+      "Cron suspension explanation in Settings and suspend confirmations; suspension does not cancel an active run",
+  },
+  "services.confirmRestartTitle": {
+    message: "Перезапустить {name}?",
+    description: "Restart confirmation dialog title",
+  },
+  "services.confirmRestartBody": {
+    message:
+      "{name} перезапустится на коммите или образе, которые работают сейчас. Отправленные позже коммиты не развёртываются. Новые инстансы заменят старые, когда станут работоспособными.",
+    description:
+      "Restart confirmation dialog body (service header and services list). A restart keeps the running release, as on Render; it never picks up newer commits",
+  },
+  "services.confirmRestartBodyStatic": {
+    message:
+      "{name} будет опубликован заново из коммита, который отдаётся сейчас. Отправленные позже коммиты не развёртываются.",
+    description:
+      "Restart confirmation body for a static site, which has no instances to replace (w4/m141)",
+  },
+  "services.confirmCancel": {
+    message: "Отменить",
+    description: "Confirmation dialog cancel button",
+  },
+  "services.toastSuspendSuccess": {
+    message: "Приостанавливаем {name}…",
+    description: "Toast shown after a suspend request is accepted",
+  },
+  "services.toastResumeSuccess": {
+    message: "Возобновляем {name}…",
+    description: "Toast shown after a resume request is accepted",
+  },
+  "services.toastRestartSuccess": {
+    message: "Перезапускаем {name}…",
+    description: "Toast shown after a restart request is accepted",
+  },
+  "services.toastError": {
+    message: "Не удалось обновить {name}. Попробуйте ещё раз.",
+    description: "Toast shown when a lifecycle action fails",
+  },
+  "services.errorTitle": {
+    message: "Не удалось загрузить сервисы",
+    description: "Services list error card title",
+  },
+  "services.errorBody": {
+    message:
+      "Запрос к bex-api не удался. Проверьте подключение и повторите попытку.",
+    description: "Services list error card body",
+  },
+  "services.detailErrorTitle": {
+    message: "Не удалось загрузить сервис",
+    description: "Service detail query error card title",
+  },
+  "services.detailErrorBody": {
+    message: "Запрос к bex-api не удался. Возможно, сервис всё ещё существует.",
+    description: "Service detail query error card body",
+  },
+  "services.emptyTitle": {
+    message: "Сервисов пока нет",
+    description: "Services list empty state title",
+  },
+  "services.emptyBody": {
+    message: "Разверните своё первое приложение, и оно появится здесь.",
+    description: "Services list empty state body",
+  },
+  "services.navPlan": {
+    message: "Тариф",
+    description: "Service sidebar link to the instance-type (plan) page",
+  },
+  "services.headerServiceId": {
+    message: "ID сервиса:",
+    description: "Service-detail header metadata label for the service id",
+  },
+  "services.headerServicePhase": {
+    message: "Сервис",
+    description:
+      "Service-detail header label distinguishing operator/App phase from deploy status",
+  },
+  "services.headerLatestDeploy": {
+    message: "Последний деплой",
+    description: "Service-detail header label for the newest deploy status",
+  },
+  "services.headerRuntime": {
+    message: "Среда выполнения",
+    description: "Service-detail header label for the selected runtime",
+  },
+  "services.headerSchedule": {
+    message: "Расписание:",
+    description:
+      "Service-detail header metadata label for a cron job's schedule",
+  },
+  "services.headerLastRun": {
+    message: "Последний успешный запуск:",
+    description:
+      "Service-detail header metadata label for a cron job's last successful run",
+  },
+  "services.headerNextRun": {
+    message: "Следующий запуск:",
+    description:
+      "Service-detail header metadata label for a cron job's next scheduled run",
+  },
+  "services.headerCopyServiceId": {
+    message: "Копировать ID сервиса",
+    description: "Accessible label for the header's service-id copy button",
+  },
+  "services.headerCopyUrl": {
+    message: "Копировать URL сервиса",
+    description: "Accessible label for the header's live-URL copy button",
+  },
+  "services.headerCopied": {
+    message: "Скопировано в буфер обмена",
+    description: "Toast after copying a value from the service-detail header",
+  },
+  "services.headerCopyError": {
+    message: "Не удалось скопировать в буфер обмена",
+    description: "Toast when a service-detail header copy fails",
+  },
+  "services.navLogs": {
+    message: "Логи",
+    description: "Service-detail nav item (logs tab)",
+  },
+  "services.navMetrics": {
+    message: "Метрики",
+    description: "Service-detail nav item (metrics tab)",
+  },
+  "services.navRedirects": {
+    message: "Редиректы/Рерайты",
+    description:
+      "Service-detail nav item (static-site route rules page, Render's label)",
+  },
+  "services.navHeaders": {
+    message: "Заголовки",
+    description:
+      "Service-detail nav item (static-site response headers page, Render's label)",
+  },
+  "services.navScaling": {
+    message: "Масштабирование",
+    description: "Service-detail nav item (autoscaling tab)",
+  },
+  "services.scalingTitle": {
+    message: "Автомасштабирование",
+    description: "Scaling tab section heading",
+  },
+  "services.autoscaleMinInstances": {
+    message: "Минимум инстансов",
+    description:
+      "Accessible name of the minimum-instances number input beside the autoscaling range slider",
+  },
+  "services.autoscaleMaxInstances": {
+    message: "Максимум инстансов",
+    description:
+      "Accessible name of the maximum-instances number input beside the autoscaling range slider",
+  },
+  "services.scalingEnabled": {
+    message: "Включить автомасштабирование",
+    description: "Autoscaling enable/disable toggle label",
+  },
+  "services.scalingMinInstances": {
+    message: "Мин. инстансов",
+    description: "Autoscaling min instances input label",
+  },
+  "services.scalingMaxInstances": {
+    message: "Макс. инстансов",
+    description: "Autoscaling max instances input label",
+  },
+  "services.scalingTargetCPU": {
+    message: "Целевой CPU, %",
+    description: "Autoscaling target CPU utilization input label",
+  },
+  "services.scalingTargetMemory": {
+    message: "Целевая память, %",
+    description: "Autoscaling target memory utilization input label",
+  },
+  "services.scalingUnavailableTitle": {
+    message: "Масштабирование недоступно",
+    description:
+      "Scaling tab heading when this service type cannot be scaled (cron)",
+  },
+  "services.scalingUnavailableBody": {
+    message:
+      "Масштабирование применимо к Web Service, Private Service и Background Worker с долгоживущими инстансами. У этого типа сервиса нет числа реплик, которое можно изменить.",
+    description:
+      "Scaling tab explanation when reached by direct URL for an ineligible type",
+  },
+  "services.scalingValidationMinMax": {
+    message: "Мин. число инстансов не должно превышать макс. число.",
+    description: "Autoscaling form validation when min exceeds max",
+  },
+  "services.scalingValidationTargets": {
+    message:
+      "Должна быть включена хотя бы одна целевая загрузка (CPU или память).",
+    description:
+      "Autoscaling form validation when both CPU and memory targets are off",
+  },
+  "services.scalingSave": {
+    message: "Сохранить",
+    description: "Autoscaling form save button",
+  },
+  "services.scalingSaved": {
+    message: "Настройки автомасштабирования сохранены.",
+    description: "Autoscaling save success toast",
+  },
+  "services.scalingDisabled": {
+    message: "Автомасштабирование отключено.",
+    description: "Autoscaling disable success toast",
+  },
+  "services.scalingError": {
+    message: "Не удалось обновить настройки автомасштабирования.",
+    description: "Autoscaling save error toast",
+  },
+  "services.scalingDescription": {
+    message:
+      "Автоматически увеличивайте или уменьшайте масштаб этого сервиса в зависимости от загрузки CPU и памяти.",
+    description: "Autoscaling card description",
+  },
+  "services.scalingOn": {
+    message: "Автомасштабирование включено",
+    description: "Autoscaling main toggle label when enabled",
+  },
+  "services.scalingPaidOnly": {
+    message:
+      "Автомасштабирование доступно на платных тарифах. Перейдите на платный тариф, чтобы включить его.",
+    description: "Autoscaling card explanation for a free service",
+  },
+  "services.scalingPaidOnlyInactive": {
+    message:
+      "Настройки автомасштабирования сохранены, но на бесплатном тарифе не действуют. Они вступят в силу, когда сервис перейдёт на платный тариф. Выключите автомасштабирование, чтобы удалить сохранённые настройки.",
+    description:
+      "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
+  },
+  "services.scalingMetricsUnavailableTitle": {
+    message: "Автомасштабирование приостановлено: метрики загрузки недоступны",
+    description:
+      "Autoscaling card notice title while the operator cannot read the service's CPU and memory utilization (w4/m364)",
+  },
+  "services.scalingMetricsUnavailableBody": {
+    message:
+      "Сервис сохраняет текущее число инстансов, пока снова нельзя будет считать загрузку CPU и памяти. Ваши настройки автомасштабирования сохранены.",
+    description:
+      "Autoscaling card notice body while utilization metrics are unavailable (w4/m364)",
+  },
+  "services.scalingOff": {
+    message: "Автомасштабирование выключено",
+    description: "Autoscaling main toggle label when disabled",
+  },
+  "services.scalingInstancesTitle": {
+    message: "Количество инстансов",
+    description: "Autoscaling instances range-slider section heading",
+  },
+  "services.scalingInstancesHint": {
+    message:
+      "bex масштабирует количество инстансов этого сервиса в заданном вами диапазоне.",
+    description: "Autoscaling instances range-slider section description",
+  },
+  "services.scalingCPUTitle": {
+    message: "Целевая загрузка CPU",
+    description: "Autoscaling CPU metric section heading",
+  },
+  "services.scalingCPUHint": {
+    message:
+      "Если средняя загрузка CPU заметно выше или ниже этого значения, bex соответственно добавляет или убирает инстансы.",
+    description: "Autoscaling CPU metric section description",
+  },
+  "services.scalingMemoryTitle": {
+    message: "Целевая загрузка памяти",
+    description: "Autoscaling memory metric section heading",
+  },
+  "services.scalingMemoryHint": {
+    message:
+      "Если средняя загрузка памяти заметно выше или ниже этого значения, bex соответственно добавляет или убирает инстансы.",
+    description: "Autoscaling memory metric section description",
+  },
+  "services.scalingCancel": {
+    message: "Отменить",
+    description: "Autoscaling form cancel button",
+  },
+  "services.scalingSaveChanges": {
+    message: "Сохранить изменения",
+    description: "Autoscaling form save-changes button",
+  },
+  "services.scalingDisableConfirmTitle": {
+    message: "Отключить автомасштабирование?",
+    description: "Autoscaling disable confirmation dialog title (w7/m43)",
+  },
+  "services.scalingDisableConfirmBody": {
+    message:
+      "Ваш сервис будет работать на фиксированном числе инстансов, заданном в разделе «Ручное масштабирование».",
+    description: "Autoscaling disable confirmation dialog body",
+  },
+  "services.scalingDisableConfirmAction": {
+    message: "Отключить",
+    description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingManualTitle": {
+    message: "Ручное масштабирование",
+    description: "Scaling page: manual instance-count card title (w7/m43)",
+  },
+  "services.scalingManualDescription": {
+    message:
+      "Запускайте несколько инстансов с автоматической балансировкой нагрузки. Все инстансы используют один тип инстанса и оплачиваются соответственно.",
+    description: "Scaling page: manual instance-count card description",
+  },
+  "services.scalingManualDescriptionFree": {
+    message:
+      "Бесплатные сервисы работают на одном инстансе. Перейдите на платный тариф, чтобы запускать несколько инстансов с балансировкой нагрузки.",
+    description:
+      "Scaling page: manual instance-count card description on the free plan",
+  },
+  "services.scalingManualInstances": {
+    message: "Инстансы",
+    description: "Scaling page: manual instance-count slider label",
+  },
+  "services.scalingMetricsTitle": {
+    message: "Недавние метрики",
+    description: "Scaling page: recent-metrics section title (w7/m43)",
+  },
+  "services.scalingMetricsNote": {
+    message: "Показаны метрики за последние 48 часов.",
+    description: "Scaling page: recent-metrics window note",
+  },
+  "services.scalingMetricsViewAll": {
+    message: "Все метрики.",
+    description: "Scaling page: link to the full Metrics tab",
+  },
+  "services.scalingMetricsMemory": {
+    message: "Средняя загрузка памяти",
+    description: "Scaling page: averaged memory utilization chart title",
+  },
+  "services.scalingMetricsCPU": {
+    message: "Средняя загрузка CPU",
+    description: "Scaling page: averaged CPU utilization chart title",
+  },
+  "services.scalingMetricsAcross": {
+    message: "По всем инстансам",
+    description: "Scaling page: recent-metrics chart subtitle",
+  },
+  "services.scalingMetricsEmpty": {
+    message: "Нет данных за последние 48 часов",
+    description: "Scaling page: recent-metrics empty state",
+  },
+  "services.navEnvironment": {
+    message: "Окружение",
+    description: "Service-detail nav item (environment variables tab)",
+  },
+  "services.envTitle": {
+    message: "Переменные окружения",
+    description: "Environment tab card title",
+  },
+  "services.envDescription": {
+    message:
+      "Задавайте конфигурацию и секреты для окружения, а затем читайте эти значения из своего кода.",
+    description: "Environment tab card description",
+  },
+  "services.envColKey": {
+    message: "Ключ",
+    description: "Environment table column header (variable name)",
+  },
+  "services.envColValue": {
+    message: "Значение",
+    description: "Environment table column header (variable value)",
+  },
+  "services.envManifestManaged": {
+    message: "Управляется Blueprint",
+    description:
+      "Badge on an environment row whose value the service's render.yaml manifest owns",
+  },
+  "services.envManifestManagedBody": {
+    message:
+      "Эта переменная объявлена в манифесте render.yaml сервиса, который управляет её значением. Измените манифест и синхронизируйте Blueprint, чтобы изменить её, или объявите её с `sync: false`, чтобы значением управляла панель.",
+    description:
+      "Explanation under a manifest-managed environment row: why it cannot be edited here and what to do instead",
+  },
+  "services.envShowSecret": {
+    message: "Показать значение",
+    description: "Environment row button to reveal a masked value",
+  },
+  "services.envHideSecret": {
+    message: "Скрыть значение",
+    description: "Environment row button to re-mask a revealed value",
+  },
+  "services.envRevealError": {
+    message: "Не удалось загрузить значение.",
+    description: "Environment row inline error when a value reveal fails",
+  },
+  "services.envEmptyTitle": {
+    message: "Нет переменных окружения",
+    description: "Environment tab empty-state title",
+  },
+  "services.envEmptyBody": {
+    message: "Добавьте переменную, чтобы настроить этот сервис.",
+    description: "Environment tab empty-state body",
+  },
+  "services.envUnavailableTitle": {
+    message: "Переменные окружения недоступны",
+    description:
+      "Environment tab state when the secret store is unconfigured (503)",
+  },
+  "services.envUnavailableBody": {
+    message: "Хранилище секретов не настроено для этого развёртывания.",
+    description: "Environment tab unavailable-state body",
+  },
+  "services.envForbiddenTitle": {
+    message: "Нет доступа",
+    description: "Environment tab state when the caller lacks permission (403)",
+  },
+  "services.envForbiddenBody": {
+    message: "У вас нет прав просматривать переменные окружения этого сервиса.",
+    description: "Environment tab forbidden-state body",
+  },
+  "services.envErrorTitle": {
+    message: "Не удалось загрузить переменные окружения",
+    description: "Environment tab generic error title",
+  },
+  "services.envErrorBody": {
+    message: "Что-то пошло не так. Попробуйте ещё раз.",
+    description: "Environment tab generic error body",
+  },
+  "services.envAdd": {
+    message: "Добавить переменную",
+    description: "Environment tab button to open the add-variable form",
+  },
+  "services.envExport": {
+    message: "Экспортировать",
+    description:
+      "Environment tab button that downloads all service variables as dotenv",
+  },
+  "services.envExportSuccess": {
+    message: "Окружение экспортировано",
+    description:
+      "Toast after every current environment value was safely exported",
+  },
+  "services.envExportError": {
+    message: "Не удалось экспортировать окружение целиком. Файл не скачан.",
+    description:
+      "Fail-closed toast when any environment value cannot be revealed",
+  },
+  "services.envEdit": {
+    message: "Изменить",
+    description: "Environment row button to edit a variable's value",
+  },
+  "services.envDelete": {
+    message: "Удалить",
+    description: "Environment row button to remove a variable",
+  },
+  "services.envValueFor": {
+    message: "Значение для {name}",
+    description:
+      "Accessible name for a Value textbox once its Key is set (m101/t013)",
+  },
+  "services.envDeleteOne": {
+    message: "Удалить {name}",
+    description:
+      "Accessible name for a Delete button once its Key is set (m101/t013)",
+  },
+  "services.envSave": {
+    message: "Сохранить",
+    description: "Environment add/edit form save button",
+  },
+  "services.envCancel": {
+    message: "Отменить",
+    description: "Environment add/edit form cancel button",
+  },
+  "services.envKeyPlaceholder": {
+    message: "NAME_OF_VARIABLE",
+    description: "Environment add-variable key input placeholder",
+  },
+  "services.envValuePlaceholder": {
+    message: "значение",
+    description: "Environment value input placeholder",
+  },
+  "services.envGenerate": {
+    message: "Сгенерировать",
+    description: "Generate a cryptographically random environment value",
+  },
+  "services.envGeneratePlaceholder": {
+    message: "Будет безопасно сгенерировано при сохранении",
+    description:
+      "Environment value placeholder while server generation is selected",
+  },
+  "services.envInvalidKey": {
+    message:
+      "Используйте до 253 букв, цифр, точек, дефисов и подчёркиваний; не '.' и не начиная с '..'.",
+    description:
+      "Environment add-variable validation message for an invalid key",
+  },
+  "services.envDeleteConfirmTitle": {
+    message: "Удалить {key}?",
+    description: "Environment delete-confirmation dialog title",
+  },
+  "services.envDeleteConfirmBody": {
+    message: "Сервис будет повторно развёрнут без этой переменной.",
+    description: "Environment delete-confirmation dialog body",
+  },
+  "services.envRolloutNote": {
+    message: "Сервис разворачивается заново, чтобы применить изменение.",
+    description:
+      "Toast description after an env-var write (bex rolls the pods)",
+  },
+  "services.envSaveSuccess": {
+    message: "{key} сохранена",
+    description: "Toast on a successful env-var add/update",
+  },
+  "services.envSaveError": {
+    message: "Не удалось сохранить {key}",
+    description: "Toast on a failed env-var add/update",
+  },
+  "services.envDeleteSuccess": {
+    message: "{key} удалена",
+    description: "Toast on a successful env-var delete",
+  },
+  "services.envDeleteError": {
+    message: "Не удалось удалить {key}",
+    description: "Toast on a failed env-var delete",
+  },
+  "services.secretFilesTitle": {
+    message: "Секретные файлы",
+    description: "Environment tab secret-files section title",
+  },
+  "services.secretFilesDescription": {
+    message:
+      "Храните файлы с секретным содержимым (сертификаты, учётные данные), которые монтируются в этот сервис при деплое.",
+    description: "Environment tab secret-files section description",
+  },
+  "services.secretFileColName": {
+    message: "Имя файла",
+    description: "Secret-files table column header (file name)",
+  },
+  "services.secretFileColContent": {
+    message: "Содержимое",
+    description: "Secret-files table column header (file body)",
+  },
+  "services.secretFileRevealError": {
+    message:
+      "Не удалось загрузить содержимое этого секретного файла. Закройте диалог и попробуйте ещё раз.",
+    description:
+      "Shown in the secret-file dialog when reading the stored contents fails.",
+  },
+  "services.secretFilesEmptyTitle": {
+    message: "Нет секретных файлов",
+    description: "Secret-files empty-state title",
+  },
+  "services.secretFilesEmptyBody": {
+    message:
+      "Добавьте файл, чтобы смонтировать секретное содержимое в этот сервис.",
+    description: "Secret-files empty-state body",
+  },
+  "services.secretFilesUnavailableTitle": {
+    message: "Секретные файлы недоступны",
+    description:
+      "Secret-files state when the secret store is unconfigured (503)",
+  },
+  "services.secretFilesUnavailableBody": {
+    message: "Хранилище секретов не настроено для этого развёртывания.",
+    description: "Secret-files unavailable-state body",
+  },
+  "services.secretFilesForbiddenTitle": {
+    message: "Нет доступа",
+    description: "Secret-files state when the caller lacks permission (403)",
+  },
+  "services.secretFilesForbiddenBody": {
+    message: "У вас нет прав просматривать секретные файлы этого сервиса.",
+    description: "Secret-files forbidden-state body",
+  },
+  "services.secretFilesErrorTitle": {
+    message: "Не удалось загрузить секретные файлы",
+    description: "Secret-files generic error title",
+  },
+  "services.secretFilesErrorBody": {
+    message: "Что-то пошло не так. Попробуйте ещё раз.",
+    description: "Secret-files generic error body",
+  },
+  "services.secretFileAdd": {
+    message: "Добавить секретный файл",
+    description: "Secret-files button to open the add-file form",
+  },
+  "services.secretFileNamePlaceholder": {
+    message: "filename.ext",
+    description: "Secret-files add-file name input placeholder",
+  },
+  "services.secretFileContentPlaceholder": {
+    message: "содержимое файла",
+    description: "Secret-files content input placeholder",
+  },
+  "services.secretFileInvalidName": {
+    message:
+      "Используйте до 253 букв, цифр, точек, дефисов и подчёркиваний; не '.' и не '..'.",
+    description: "Secret-files add-file validation message for an invalid name",
+  },
+  "services.secretFileNameHint": {
+    message:
+      "Используйте до 253 букв, цифр, точек, дефисов и подчёркиваний; не '.' и не '..'.",
+    description:
+      "Neutral file-name rule under a new secret-file row before the user types or blurs — same rule as secretFileInvalidName but helper styling, not an error",
+  },
+  "services.secretFileDeleteConfirmTitle": {
+    message: "Удалить {name}?",
+    description: "Secret-file delete-confirmation dialog title",
+  },
+  "services.secretFileDeleteConfirmBody": {
+    message: "Сервис будет повторно развёрнут без этого файла.",
+    description: "Secret-file delete-confirmation dialog body",
+  },
+  "services.secretFileSaveSuccess": {
+    message: "{name} сохранён",
+    description: "Toast on a successful secret-file add/update",
+  },
+  "services.secretFileSaveError": {
+    message: "Не удалось сохранить {name}",
+    description: "Toast on a failed secret-file add/update",
+  },
+  "services.secretFileDeleteSuccess": {
+    message: "{name} удалён",
+    description: "Toast on a successful secret-file delete",
+  },
+  "services.secretFileDeleteError": {
+    message: "Не удалось удалить {name}",
+    description: "Toast on a failed secret-file delete",
+  },
+  "services.envGroupsTitle": {
+    message: "Группы окружения",
+    description: "Environment tab env-groups section title",
+  },
+  "services.envGroupsDescription": {
+    message:
+      "Переиспользуемые наборы переменных окружения и секретных файлов, которые можно привязать к этому и другим сервисам.",
+    description: "Environment tab env-groups section description",
+  },
+  "services.envGroupsEmptyTitle": {
+    message: "Нет групп окружения",
+    description: "Env-groups empty-state title",
+  },
+  "services.envGroupsEmptyBody": {
+    message: "Создайте группу, чтобы делиться конфигурацией между сервисами.",
+    description: "Env-groups empty-state body",
+  },
+  "services.envGroupsUnavailableTitle": {
+    message: "Группы окружения недоступны",
+    description: "Env-groups state when the secret store is unconfigured (503)",
+  },
+  "services.envGroupsUnavailableBody": {
+    message: "Хранилище секретов не настроено для этого развёртывания.",
+    description: "Env-groups unavailable-state body",
+  },
+  "services.envGroupsForbiddenTitle": {
+    message: "Нет доступа",
+    description: "Env-groups state when the caller lacks permission (403)",
+  },
+  "services.envGroupsForbiddenBody": {
+    message: "У вас нет прав просматривать группы окружения.",
+    description: "Env-groups forbidden-state body",
+  },
+  "services.envGroupsErrorTitle": {
+    message: "Не удалось загрузить группы окружения",
+    description: "Env-groups generic error title",
+  },
+  "services.envGroupsErrorBody": {
+    message: "Что-то пошло не так. Попробуйте ещё раз.",
+    description: "Env-groups generic error body",
+  },
+  "services.envGroupCreate": {
+    message: "Создать группу",
+    description: "Env-groups button to open the create-group form",
+  },
+  "services.envGroupCreateSubmit": {
+    message: "Создать",
+    description: "Env-groups create-group form submit button",
+  },
+  "services.envGroupNamePlaceholder": {
+    message: "group-name",
+    description: "Env-groups create-group name input placeholder",
+  },
+  "services.envGroupNameLabel": {
+    message: "Название группы",
+    description: "Env-groups create-group name input accessible label",
+  },
+  "services.envGroupInvalidName": {
+    message: "Введите название группы.",
+    description:
+      "Env-groups create-group validation message for an invalid name",
+  },
+  "services.envGroupLinked": {
+    message: "Привязана",
+    description:
+      "Env-groups badge: this group is linked to the current service",
+  },
+  "services.envGroupWorkspaceScope": {
+    message: "Рабочее пространство",
+    description: "Scope label for a workspace-scoped environment group",
+  },
+  "services.envGroupOutOfScope": {
+    message:
+      "Область действия — {groupScope}, но этот сервис находится в {serviceScope} — её переменные и файлы всё равно применяются.",
+    description:
+      "Notice on a linked group whose scope no longer matches the service (w4/m238)",
+  },
+  "services.envGroupOutOfScopeNoEnvironment": {
+    message:
+      "Область действия — {groupScope}, но у этого сервиса нет окружения — её переменные и файлы всё равно применяются.",
+    description:
+      "Notice on a linked group scoped to an environment while the service has none (w4/m238)",
+  },
+  "services.envGroupEmptyContents": {
+    message: "Пока нет переменных и файлов.",
+    description: "Env-groups: shown when a group has no vars or secret files",
+  },
+  "services.envGroupKeyOverridden": {
+    message:
+      "Переопределена собственной переменной окружения {key} этого сервиса",
+    description:
+      "Tooltip on a linked group's key badge when a service variable of the same name shadows it at runtime (service wins)",
+  },
+  "services.envGroupFileOverridden": {
+    message: "Переопределён собственным секретным файлом {name} этого сервиса",
+    description:
+      "Tooltip on a linked group's secret-file badge when a service secret file of the same name shadows it at runtime (service wins)",
+  },
+  "services.envGroupKeyShadowedByGroup": {
+    message: "Переопределено группой {group}, созданной позже",
+    description:
+      "Tooltip on a linked group's key badge when a MORE recently created linked group defines the same key and wins it",
+  },
+  "services.envGroupFileShadowedByGroup": {
+    message: "Переопределено группой {group}, созданной позже",
+    description:
+      "Tooltip on a linked group's secret-file badge when a MORE recently created linked group defines the same file name and wins it",
+  },
+  "services.envGroupOverriddenNote": {
+    message:
+      "Зачёркнутые ключи переопределены собственными переменными окружения этого сервиса.",
+    description:
+      "Legend under a linked group's key list when at least one key is shadowed by a service variable",
+  },
+  "services.envGroupLink": {
+    message: "Привязать",
+    description: "Env-groups button: attach this group to the current service",
+  },
+  "services.envGroupUnlink": {
+    message: "Отвязать",
+    description:
+      "Env-groups button: detach this group from the current service",
+  },
+  "services.envGroupLinkAria": {
+    message: "Привязать {name}",
+    description:
+      "Accessible name of an env-group row's Link button on the service Environment tab, naming the group (w4/537)",
+  },
+  "services.envGroupUnlinkAria": {
+    message: "Отвязать {name}",
+    description:
+      "Accessible name of an env-group row's Unlink button on the service Environment tab, naming the group (w4/537)",
+  },
+  "services.envGroupDelete": {
+    message: "Удалить",
+    description: "Env-groups action: delete the group",
+  },
+  "services.envGroupDeleteConfirmTitle": {
+    message: "Удалить {name}?",
+    description: "Env-group delete-confirmation dialog title",
+  },
+  "services.envGroupDeleteConfirmBody": {
+    message:
+      "Группа будет убрана из всех сервисов, к которым она привязана. Это действие нельзя отменить.",
+    description: "Env-group delete-confirmation dialog body",
+  },
+  "services.envGroupCreateSuccess": {
+    message: "{name} создана",
+    description: "Toast on a successful env-group create",
+  },
+  "services.envGroupCreateError": {
+    message: "Не удалось создать {name}",
+    description: "Toast on a failed env-group create",
+  },
+  "services.envGroupDeleteSuccess": {
+    message: "Группа удалена",
+    description: "Toast on a successful env-group delete",
+  },
+  "services.envGroupDeleteError": {
+    message: "Не удалось удалить группу",
+    description: "Toast on a failed env-group delete",
+  },
+  "services.envGroupLinkSuccess": {
+    message: "Группа привязана",
+    description: "Toast on a successful env-group link",
+  },
+  "services.envGroupLinkError": {
+    message: "Не удалось привязать группу",
+    description: "Toast on a failed env-group link",
+  },
+  "services.envGroupUnlinkSuccess": {
+    message: "Группа отвязана",
+    description: "Toast on a successful env-group unlink",
+  },
+  "services.envGroupUnlinkError": {
+    message: "Не удалось отвязать группу",
+    description: "Toast on a failed env-group unlink",
+  },
+  "services.navSettings": {
+    message: "Настройки",
+    description: "Service-detail nav item (settings tab)",
+  },
+  "services.settingsNavigation": {
+    message: "Разделы настроек",
+    description: "Accessible label for the service settings section navigation",
+  },
+  "services.settingsDescription": {
+    message:
+      "Настройте название этого сервиса, размер инстанса и другие параметры.",
+    description: "Settings tab card description",
+  },
+  "services.generalTitle": {
+    message: "Общие",
+    description:
+      "Settings tab: first card heading, Render's 'General' section (w5/m52)",
+  },
+  "services.regionLabel": {
+    message: "Регион",
+    description:
+      "Settings General card: read-only platform placement row label",
+  },
+  "services.regionHint": {
+    message:
+      "Регион, в котором работает ваш сервис. Сервисы в одном регионе могут общаться по приватной сети.",
+    description: "Settings General card: Region row explanatory copy",
+  },
+  "services.editRowSave": {
+    message: "Сохранить изменения",
+    description:
+      "Shared editable-field row: save button shown while editing (Render parity)",
+  },
+  "services.editRowCancel": {
+    message: "Отменить",
+    description: "Shared editable-field row: cancel button shown while editing",
+  },
+  "services.editRowOptional": {
+    message: "Необязательно",
+    description:
+      "Shared editable-field row: badge next to a label for an optional field",
+  },
+  "services.displayNameLabel": {
+    message: "Название сервиса",
+    description:
+      "Settings tab row label for the mutable human-facing service name",
+  },
+  "services.displayNameHint": {
+    message: "ID сервиса остаётся {id}; URL и инфраструктура не меняются.",
+    description:
+      "Settings tab explanation that a display-name change preserves identity",
+  },
+  "services.displayNameEdit": {
+    message: "Изменить название сервиса",
+    description: "Accessible label for the service-name edit button",
+  },
+  "services.displayNameSuccess": {
+    message: "Сервис переименован в «{name}».",
+    description: "Toast after setDisplayName succeeds",
+  },
+  "services.displayNameCleared": {
+    message: "Пользовательское название сервиса сброшено.",
+    description: "Toast after clearing displayName",
+  },
+  "services.displayNameRefreshFailed": {
+    message:
+      "Сервис переименован в «{name}», но эту страницу не удалось обновить. Повторите попытку или перезагрузите страницу, чтобы увидеть сохранённое название.",
+    description:
+      "Warning after a service rename committed but the page could not re-read the saved name; offers Try again",
+  },
+  "services.displayNameUnpublished": {
+    message:
+      "Новое название сохранено, но эта страница пока не смогла его показать. Нажмите «Повторить» в уведомлении или перезагрузите страницу, прежде чем изменять название снова.",
+    description:
+      "Why the service name row is locked after a rename saved but its re-read failed",
+  },
+  "services.displayNameError": {
+    message: "Не удалось переименовать сервис. Попробуйте ещё раз.",
+    description: "Toast after setDisplayName fails",
+  },
+  "services.settingsInstanceType": {
+    message: "Тип инстанса",
+    description: "Settings tab row label for the App's current plan/tier",
+  },
+  "services.settingsNoInstanceType": {
+    message: "Тип инстанса не задан",
+    description: "Settings tab state for an untiered (bare-CR) App",
+  },
+  "services.settingsUpdate": {
+    message: "Изменить",
+    description: "Settings tab link to the instance-type picker",
+  },
+  "services.settingsIdleTimeout": {
+    message: "Тайм-аут простоя",
+    description:
+      "Settings tab: label for the free-tier auto-sleep window control",
+  },
+  "services.settingsIdleTimeoutHint": {
+    message:
+      "Бесплатные сервисы засыпают, если в течение этого времени нет публичных HTTP-запросов или сообщений WebSocket, и просыпаются при следующем публичном запросе. Внутренние запросы от других сервисов не удерживают их в рабочем состоянии и не будят их.",
+    description: "Settings tab: idle-timeout control help text (bex extension)",
+  },
+  "services.settingsIdleTimeoutPaid": {
+    message: "Платные сервисы работают постоянно и никогда не засыпают.",
+    description: "Settings tab: shown instead of the control on a paid plan",
+  },
+  "services.idleTimeoutDefault": {
+    message: "По умолчанию платформы",
+    description: "Idle-timeout option: 0 seconds = the operator's own window",
+  },
+  "services.idleTimeoutMinutes": {
+    message: "{minutes} мин",
+    description: "Idle-timeout option label in minutes",
+  },
+  "services.idleTimeoutHours": {
+    message: "{hours} ч",
+    description: "Idle-timeout option label in hours",
+  },
+  "services.idleTimeoutSeconds": {
+    message: "{seconds} с",
+    description: "Idle-timeout option label in seconds (non-round values)",
+  },
+  "services.idleTimeoutSuccess": {
+    message: "Тайм-аут простоя обновлён.",
+    description: "Toast after setIdleTimeout succeeds",
+  },
+  "services.idleTimeoutError": {
+    message: "Не удалось обновить тайм-аут простоя.",
+    description: "Toast after setIdleTimeout fails",
+  },
+  "services.settingsMaxShutdownDelay": {
+    message: "Макс. задержка остановки",
+    description: "Settings row label for the graceful SIGTERM window",
+  },
+  "services.settingsMaxShutdownDelayHint": {
+    message:
+      "Ждать от 1 до 300 секунд после SIGTERM, прежде чем принудительно остановить процесс (по умолчанию 30).",
+    description: "Settings row help for the shutdown-delay range",
+  },
+  "services.maxShutdownDelayEdit": {
+    message: "Изменить макс. задержку остановки",
+    description: "Accessible label for the shutdown-delay edit button",
+  },
+  "services.maxShutdownDelaySuccess": {
+    message: "Макс. задержка остановки обновлена. Запущен новый деплой.",
+    description: "Toast after setMaxShutdownDelay succeeds",
+  },
+  "services.maxShutdownDelayRangeError": {
+    message: "Введите целое число секунд от {min} до {max}.",
+    description:
+      "Inline validation message for a max shutdown delay outside 1–300 or not a whole number (w4/494)",
+  },
+  "services.maxShutdownDelayError": {
+    message: "Не удалось обновить макс. задержку остановки.",
+    description: "Toast after setMaxShutdownDelay fails",
+  },
+  "services.settingsHealthChecksTitle": {
+    message: "Проверки работоспособности",
+    description: "Settings tab: Health Checks section card title",
+  },
+  "services.settingsHealthChecksDescription": {
+    message:
+      "Задайте HTTP-путь, который bex периодически опрашивает для мониторинга вашего сервиса.",
+    description: "Settings tab: Health Checks section card description",
+  },
+  "services.settingsHealthCheckPath": {
+    message: "Путь проверки работоспособности",
+    description: "Settings tab: health-check path row label",
+  },
+  "services.settingsHealthCheckPathHint": {
+    message:
+      "HTTP-путь, который bex опрашивает, чтобы определить, работоспособен ли сервис; он должен отвечать 2xx или 3xx в течение 5 секунд, а 60 секунд подряд идущих сбоев перезапускают инстанс — укажите недорогой маршрут. Оставьте поле пустым, чтобы проверять только то, что процесс слушает свой порт — это правильный выбор, если у сервиса нет недорогого маршрута с ответом 2xx.",
+    description: "Settings tab: health-check path row hint text",
+  },
+  "services.settingsHealthCheckPathPlaceholder": {
+    message: "Пусто — проверять только порт",
+    description: "Settings tab: health-check path input placeholder",
+  },
+  "services.settingsHealthCheckPathEdit": {
+    message: "Изменить путь проверки работоспособности",
+    description:
+      "Settings tab: accessible label for the health-check path edit-pencil button",
+  },
+  "services.healthCheckPathSuccess": {
+    message: "Путь проверки работоспособности обновлён. Запущен новый деплой.",
+    description: "Toast after setHealthCheckPath succeeds",
+  },
+  "services.healthCheckPathError": {
+    message: "Не удалось обновить путь проверки работоспособности.",
+    description: "Toast after setHealthCheckPath fails",
+  },
+  "services.settingsPortTitle": {
+    message: "Порт",
+    description: "Settings tab: Port section card title",
+  },
+  "services.settingsPortDescription": {
+    message:
+      "Порт, который слушает ваш контейнер. bex направляет на него трафик и передаёт его как $PORT.",
+    description: "Settings tab: Port section card description",
+  },
+  "services.settingsPort": {
+    message: "Порт",
+    description: "Settings tab: service port row label",
+  },
+  "services.settingsPortHint": {
+    message:
+      "Порт, который слушает ваш контейнер (по умолчанию {port}). bex направляет на него трафик и передаёт его как $PORT. Переменная окружения PORT у сервиса переопределяет его, как и на Render. Сохранение запускает новый деплой и перезапускает инстансы.",
+    description: "Settings tab: service port row hint text",
+  },
+  "services.settingsPortImageHint": {
+    message:
+      "Этот сервис берёт порты из инструкций EXPOSE своего образа. Порт, заданный здесь, выбирает основной слушатель — порт, на который bex направляет трафик, проверяет его работоспособность и передаёт как $PORT, — а остальные объявленные в образе TCP-порты остаются опубликованными. Очистите поле, чтобы снова использовать порт образа. Сохранение запускает новый деплой и перезапускает инстансы.",
+    description:
+      "Settings tab: service port row hint for an image-port service (a Docker-built or prebuilt-image web or private service) whose ports come from its image's EXPOSE instructions; a blank port returns it to the image's (w6/m148, w4/m243, w4/m323)",
+  },
+  "services.settingsPortEdit": {
+    message: "Изменить порт",
+    description:
+      "Settings tab: accessible label for the service port edit-pencil button",
+  },
+  "services.portRangeError": {
+    message: "Введите порт от {min} до {max}.",
+    description:
+      "Validation message for a port outside the range the container can bind",
+  },
+  "services.portSuccess": {
+    message: "Порт обновлён. Выкатывается новый деплой.",
+    description: "Toast after setPort succeeds",
+  },
+  "services.portError": {
+    message: "Не удалось обновить порт.",
+    description: "Toast after setPort fails",
+  },
+  "services.settingsNotificationsTitle": {
+    message: "Уведомления",
+    description: "Settings tab: Notifications section card title",
+  },
+  "services.settingsNotificationsDescription": {
+    message:
+      "Выберите, какие уведомления о деплоях получать для этого сервиса.",
+    description: "Settings tab: Notifications section card description",
+  },
+  "services.notificationsLabel": {
+    message: "Уведомления сервиса",
+    description: "Settings tab: service notification policy label",
+  },
+  "services.notificationsHint": {
+    message:
+      "Переопределите значение по умолчанию рабочего пространства для этого сервиса. Значение по умолчанию задаётся в разделе «Настройки рабочего пространства» → «Уведомления».",
+    description: "Settings tab: service notification policy explanation",
+  },
+  "services.notificationsEdit": {
+    message: "Изменить уведомления сервиса",
+    description: "Accessible label for the service-notifications edit button",
+  },
+  "services.notificationsOptionDefault": {
+    message: "Использовать значение рабочего пространства ({level})",
+    description:
+      "Service notification option: inherit workspace default; {level} is the workspace's saved level (e.g. Only failure notifications)",
+  },
+  "services.notificationsOptionDefaultUnknown": {
+    message: "Использовать значение рабочего пространства",
+    description:
+      "Service notification option: inherit workspace default, while the workspace level is loading or unreadable",
+  },
+  "services.notificationsOptionAll": {
+    message: "Все уведомления",
+    description: "Service notification option: all lifecycle mail",
+  },
+  "services.notificationsOptionFailure": {
+    message: "Только уведомления о сбоях",
+    description: "Service notification option: failures only",
+  },
+  "services.notificationsOptionNone": {
+    message: "Нет",
+    description: "Service notification option: no mail",
+  },
+  "services.notificationsSuccess": {
+    message: "Настройка уведомлений сервиса обновлена.",
+    description: "Toast after notification policy update succeeds",
+  },
+  "services.notificationsError": {
+    message: "Не удалось обновить настройку уведомлений сервиса.",
+    description: "Toast after notification policy update fails",
+  },
+  "services.notifyOnFailLabel": {
+    message: "Уведомления о сбоях деплоя",
+    description: "Settings tab: notifyOnFail row label",
+  },
+  "services.notifyOnFailHint": {
+    message:
+      "По умолчанию действует личная настройка уведомлений каждого участника; для этого сервиса вы можете принудительно включить или выключить их.",
+    description: "Settings tab: notifyOnFail row hint text",
+  },
+  "services.notifyOnFailOptionDefault": {
+    message: "Использовать настройку участника",
+    description: "notifyOnFail select option: default",
+  },
+  "services.notifyOnFailOptionNotify": {
+    message: "Всегда уведомлять",
+    description: "notifyOnFail select option: notify",
+  },
+  "services.notifyOnFailOptionIgnore": {
+    message: "Никогда не уведомлять",
+    description: "notifyOnFail select option: ignore",
+  },
+  "services.notifyOnFailSuccess": {
+    message: "Настройка уведомлений обновлена.",
+    description: "Toast after setNotifyOnFail succeeds",
+  },
+  "services.notifyOnFailError": {
+    message: "Не удалось обновить настройку уведомлений.",
+    description: "Toast after setNotifyOnFail fails",
+  },
+  "services.planPickerTitle": {
+    message: "Выберите тип инстанса",
+    description: "Plan-picker page heading",
+  },
+  "services.planPickerFreeGroup": {
+    message: "Бесплатные",
+    description:
+      "Plan-picker section label separating the Free tier from paid tiers",
+  },
+  "services.planPickerFreeSmtp": {
+    message:
+      "Бесплатные сервисы не могут отправлять почту через SMTP-порты 25, 465 и 587.",
+    description:
+      "Plan picker note under the Free group: free instances are refused outbound SMTP, as on Render (w8/m127)",
+  },
+  "services.planPickerPaidSmtp": {
+    message:
+      "Платные сервисы могут отправлять почту через порт 587 или 2525 с STARTTLS. Порты 25 и 465 недоступны ни на одном тарифе.",
+    description:
+      "Plan picker note under the Paid group: outbound SMTP ports paid services may use (w8/m127)",
+  },
+  "services.planPickerLegacyFreeWorker": {
+    message:
+      "Этот Background Worker работает на бесплатном тарифе, который Background Worker больше не могут использовать. Он продолжает работать. Выбор платного типа инстанса переведёт его с бесплатного тарифа, и вернуться на него будет нельзя.",
+    description:
+      "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerUntieredWorker": {
+    message:
+      "У этого Background Worker нет типа инстанса, а бесплатный тариф для Background Worker больше недоступен. Он продолжает работать. Выберите платный тип инстанса, чтобы задать его.",
+    description:
+      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerLegacyFreePrivateService": {
+    message:
+      "Этот Private Service работает на бесплатном тарифе, который Private Service больше не могут использовать. Он продолжает работать. Выбор платного типа инстанса переведёт его с бесплатного тарифа, и вернуться на него будет нельзя.",
+    description:
+      "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerUntieredPrivateService": {
+    message:
+      "У этого Private Service нет типа инстанса, а бесплатный тариф для Private Service больше недоступен. Он продолжает работать. Выберите платный тип инстанса, чтобы задать его.",
+    description:
+      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerLegacyFreeCronJob": {
+    message:
+      "Этот Cron Job работает на бесплатном тарифе, который Cron Job больше не могут использовать. Он продолжает работать. Выбор платного типа инстанса переведёт его с бесплатного тарифа, и вернуться на него будет нельзя.",
+    description:
+      "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerUntieredCronJob": {
+    message:
+      "У этого Cron Job нет типа инстанса, а бесплатный тариф для Cron Job больше недоступен. Он продолжает работать. Выберите платный тип инстанса, чтобы задать его.",
+    description:
+      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerPaidGroup": {
+    message: "Платные",
+    description: "Plan-picker section label for the paid tier ladder",
+  },
+  "services.planPickerCancel": {
+    message: "Отменить",
+    description: "Plan-picker footer button: discard the selection",
+  },
+  "services.planPickerSave": {
+    message: "Сохранить изменения",
+    description: "Plan-picker footer button: confirm the plan change",
+  },
+  "services.planPickerConfirmTitle": {
+    message: "Изменить тип инстанса на {name}?",
+    description: "Plan-change confirm dialog title",
+  },
+  "services.planPickerConfirmBody": {
+    message:
+      "Размер сервиса изменится, а выкатка пройдёт без простоя — текущие запросы завершатся до замены старых инстансов.",
+    description: "Plan-change confirm dialog body",
+  },
+  "services.instanceTypePausedReason": {
+    message:
+      "«{name}» временно недоступен; выберите {largest} или меньший тип инстанса.",
+    description:
+      "A paused instance type's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
+  },
+  "services.planPickerConfirmBodyCron": {
+    message:
+      "Запуски, начавшиеся после изменения, используют новый тип инстанса.",
+    description:
+      "Plan-change confirm body for a cron job, which serves no requests: its next run takes the new size (w4/548)",
+  },
+  "services.planPickerConfirmBodyNeverLive": {
+    message:
+      "Сервис работает на новом типе инстанса. Пока ничего не обслуживается — он запустится, когда деплой завершится успешно.",
+    description:
+      "Plan-change confirm body for a service that has never gone live (w4/548)",
+  },
+  "services.planPickerConfirmRunPrice": {
+    message:
+      "Этот тип инстанса стоит ${price} за минуту работы, оплата посекундная на время выполнения запуска.",
+    description:
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+  },
+  "services.createFieldPlanCronHint": {
+    message: "Cron Job оплачивается посекундно на время выполнения запуска.",
+    description:
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+  },
+  "services.planPickerConfirmPrice": {
+    message: "Этот тип инстанса стоит ${price} в месяц.",
+    description:
+      "Plan-change confirm: the new instance type's monthly price, from the API's price sheet (w4/400)",
+  },
+  "services.planPickerSuccess": {
+    message: "Тип инстанса изменён на {name}",
+    description: "Toast on a successful plan change",
+  },
+  "services.planPickerError": {
+    message: "Не удалось изменить тип инстанса. Попробуйте ещё раз.",
+    description: "Toast on a failed plan change",
+  },
+  "services.planPickerErrorTitle": {
+    message: "Не удалось загрузить типы инстансов",
+    description: "Plan-picker error state title (instanceTypes query failed)",
+  },
+  "services.planPickerErrorBody": {
+    message:
+      "Запрос к bex-api не удался. Проверьте подключение и повторите попытку.",
+    description: "Plan-picker error state body",
+  },
+  "services.domainsTitle": {
+    message: "Пользовательские домены",
+    description: "Settings tab custom-domains section title",
+  },
+  "services.domainsDescription": {
+    message:
+      "Направьте принадлежащие вам пользовательские домены на этот сервис.",
+    description: "Settings tab custom-domains section description",
+  },
+  "services.domainColName": {
+    message: "Название",
+    description: "Custom-domains table column header (the FQDN)",
+  },
+  "services.domainColVerified": {
+    message: "Статус проверки",
+    description: "Custom-domains table column header (DNS verification)",
+  },
+  "services.domainColCertificate": {
+    message: "Статус сертификата",
+    description:
+      "Custom-domains table column header (TLS certificate serving state)",
+  },
+  "services.domainColActions": {
+    message: "Действия",
+    description:
+      "Custom-domains table actions column header (screen-reader only)",
+  },
+  "services.domainVerified": {
+    message: "Проверен",
+    description:
+      "Custom-domains status badge: DNS or TLS verification is complete",
+  },
+  "services.domainCertActive": {
+    message: "Активен",
+    description:
+      "Custom-domains status badge: certificate issued and serving traffic",
+  },
+  "services.domainCertBlockedLabel": {
+    message: "Сертификат заблокирован:",
+    description:
+      "Label before cert-manager's verbatim reason a custom domain's TLS certificate has not been issued",
+  },
+  "services.domainCertBlockedHint": {
+    message:
+      "DNS-запись должна быть только DNS (без проксирования) и указывать на имя хоста вашего сервиса в bex, иначе проверка сертификата не сможет до него добраться.",
+    description:
+      "Fix-it guidance shown with a blocked-certificate reason: proxied records (e.g. Cloudflare's orange cloud) break the ACME HTTP-01 challenge",
+  },
+  "services.domainPending": {
+    message: "В ожидании",
+    description:
+      "Custom-domains status badge: DNS or certificate is not complete",
+  },
+  "services.domainActionsMenu": {
+    message: "Действия для {domain}",
+    description: "Accessible label for the per-domain actions trigger",
+  },
+  "services.domainDelete": {
+    message: "Удалить",
+    description: "Custom-domains row action: remove the domain",
+  },
+  "services.domainCancel": {
+    message: "Отменить",
+    description: "Custom-domains dialog cancel button",
+  },
+  "services.domainDeleteConfirmTitle": {
+    message: "Удалить {name}?",
+    description: "Custom-domain delete-confirmation dialog title",
+  },
+  "services.domainDeleteConfirmBody": {
+    message:
+      "Сервис перестанет обслуживать этот домен. Его правило Ingress будет удалено, а TLS-сертификату позволят истечь. Это действие нельзя отменить.",
+    description: "Custom-domain delete-confirmation dialog body",
+  },
+  "services.domainDeletePairConfirmBody": {
+    message:
+      "Будут удалены {name} и автоматически добавленный редирект {sibling}. Оба правила Ingress будут удалены, а их TLS-сертификатам позволят истечь. Это действие нельзя отменить.",
+    description:
+      "Custom-domain delete confirmation when deleting a canonical host also removes its generated redirecting sibling",
+  },
+  "services.domainDeleteGeneratedConfirmBody": {
+    message:
+      "Будет удалён только {name}. {canonical} остаётся основным доменом и не перенаправляет. Правило Ingress удаляемого домена будет удалено, а его TLS-сертификату позволят истечь. Это действие нельзя отменить.",
+    description:
+      "Custom-domain delete confirmation when deleting only the generated redirecting sibling",
+  },
+  "services.domainDeletePendingConfirmBody": {
+    message:
+      "Будет удалена ожидающая заявка на {name}. Домен не был проверен, поэтому он ничего не обслуживал и сертификат не выпускался.",
+    description:
+      "Custom-domain delete confirmation for a domain still unverified: it was never routed (w4/142)",
+  },
+  "services.domainDeletePendingPairConfirmBody": {
+    message:
+      "Будут удалены ожидающие заявки на {name} и {sibling}. Ни один из доменов не был проверен, поэтому они ничего не обслуживали и сертификаты не выпускались.",
+    description:
+      "Custom-domain delete confirmation for a still-pending domain and its auto-paired sibling (w4/142)",
+  },
+  "services.domainDeletePendingGeneratedConfirmBody": {
+    message:
+      "Будет удалена только ожидающая заявка на {name}. {canonical} остаётся основным доменом. Домен не был проверен, поэтому он ничего не обслуживал и сертификат не выпускался.",
+    description:
+      "Custom-domain delete confirmation for a still-pending generated sibling: only it is removed, its canonical claim stays (w4/539)",
+  },
+  "services.domainAdd": {
+    message: "Добавить пользовательский домен",
+    description: "Custom-domains button to open the add-domain dialog",
+  },
+  "services.domainAddTitle": {
+    message: "Добавить пользовательский домен",
+    description: "Add-domain dialog title",
+  },
+  "services.domainAddDescription": {
+    message:
+      "Введите принадлежащий вам домен. Направьте его DNS на этот сервис, и bex автоматически выпустит TLS-сертификат.",
+    description: "Add-domain dialog description",
+  },
+  "services.domainPlaceholder": {
+    message: "www.example.com",
+    description: "Add-domain FQDN input placeholder",
+  },
+  "services.domainInvalid": {
+    message: "Введите корректный домен, напр. www.example.com.",
+    description: "Add-domain validation message for a malformed hostname",
+  },
+  "services.domainAddButton": {
+    message: "Добавить домен",
+    description: "Add-domain dialog submit button",
+  },
+  "services.domainAddPairSuccess": {
+    message: "Добавлены {name} и {sibling}",
+    description:
+      "Toast on a custom-domain add that auto-paired its www/apex sibling (w4/618)",
+  },
+  "services.domainAddSuccess": {
+    message: "Добавлен {name}",
+    description: "Toast on a successful custom-domain add",
+  },
+  "services.domainAddError": {
+    message: "Не удалось добавить {name}",
+    description: "Toast on a failed custom-domain add",
+  },
+  "services.domainAddConflict": {
+    message: "{name} уже используется другим сервисом",
+    description:
+      "Toast when a custom-domain add is rejected because the host is registered on another service (409)",
+  },
+  "services.domainAddReserved": {
+    message: "{name} — зарезервированное имя хоста платформы",
+    description:
+      "Toast when a custom-domain add is rejected because the host is a platform-owned name (400)",
+  },
+  "services.domainAddOwnPlatformHost": {
+    message:
+      "{name} уже является поддоменом платформы этого сервиса, поэтому его нельзя добавить как пользовательский домен",
+    description:
+      "Toast when a custom-domain add names the service's own platform subdomain (400 CUSTOM_DOMAIN_OWN_PLATFORM_HOST, w4/558)",
+  },
+  "services.domainDeletePairSuccess": {
+    message: "Удалены {name} и {sibling}",
+    description:
+      "Toast on a custom-domain delete that also removed its auto-paired sibling (w4/618)",
+  },
+  "services.domainDeleteSuccess": {
+    message: "Удалён {name}",
+    description: "Toast on a successful custom-domain delete",
+  },
+  "services.domainDeleteError": {
+    message: "Не удалось удалить {name}",
+    description: "Toast on a failed custom-domain delete",
+  },
+  "services.domainPropagateNote": {
+    message: "DNS и TLS-сертификат распространяются в фоновом режиме.",
+    description:
+      "Toast description after a custom-domain add (async convergence)",
+  },
+  "services.domainDnsToggle": {
+    message: "Показать настройку DNS для {domain}",
+    description:
+      "aria-label for the per-domain DNS-instructions disclosure toggle",
+  },
+  "services.domainDnsTitle": {
+    message: "Настройка DNS",
+    description: "Heading of the per-domain DNS-instructions panel",
+  },
+  "services.domainDnsSubdomainGuidance": {
+    message:
+      "Создайте эту запись в зоне {zone} у вашего DNS-провайдера. Host указывается относительно этой зоны. Проверка и выпуск TLS-сертификата произойдут автоматически, как только запись начнёт разрешаться.",
+    description:
+      "Guidance line above the DNS record for a subdomain — names the zone Host is relative to (w4/092)",
+  },
+  "services.domainDnsWildcardChallenge": {
+    message:
+      "Для домена с подстановочным символом (wildcard) нужна также эта запись. Она позволяет bex выпускать и продлевать TLS-сертификат домена.",
+    description:
+      "Above a wildcard custom domain's second DNS record, its _acme-challenge CNAME (w4/m326; Render's docs say it enables certificate issuance and renewal)",
+  },
+  "services.domainDnsApexFallback": {
+    message:
+      "Нет ALIAS/ANAME или CNAME flattening? Создайте вместо этого A-запись для @ с одним из текущих адресов edge ниже. Эти адреса могут меняться — запись ALIAS/ANAME продолжит работать, когда это произойдёт.",
+    description:
+      "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
+  },
+  "services.domainDnsApexGuidance": {
+    message:
+      "Корневые домены не могут использовать обычный CNAME — создайте эту запись ALIAS/ANAME (или CNAME flattening) в зоне {zone} (@ означает корень зоны). Если ваш провайдер не поддерживает ни то, ни другое, создайте A-запись для @ с IP-адресами, в которые разрешается Target. Проверка и TLS произойдут автоматически, как только запись начнёт разрешаться, а редирект www ↔ корневой домен bex настроит за вас.",
+    description:
+      "Guidance line above the DNS record for an apex domain — names the zone Host is relative to (w4/092)",
+  },
+  "services.domainRecordType": {
+    message: "Тип",
+    description: "Label for the DNS record type field (CNAME/ALIAS)",
+  },
+  "services.domainRecordHost": {
+    message: "Host",
+    description: "Label for the DNS record host/name field",
+  },
+  "services.domainRecordTarget": {
+    message: "Target",
+    description: "Label for the DNS record target/value field",
+  },
+  "services.domainCopyHost": {
+    message: "Копировать host ({type}) для {domain}",
+    description: "Accessible label for copying a DNS host field",
+  },
+  "services.domainCopyTarget": {
+    message: "Копировать target ({type}) для {domain}",
+    description: "Accessible label for copying a DNS target/value field",
+  },
+  "services.domainDnsUnavailable": {
+    message:
+      "Цель DNS пока недоступна — проверьте снова, когда сервис будет запущен.",
+    description: "Shown when the backend couldn't derive the DNS record target",
+  },
+  "services.domainRecheck": {
+    message: "Проверить снова",
+    description: "Button that re-checks a domain's DNS/certificate status",
+  },
+  "services.domainRecheckAria": {
+    message: "Проверить {domain} снова",
+    description:
+      "Accessible name of a custom domain's DNS-panel Re-check button, naming the domain (w4/540)",
+  },
+  "services.domainCopied": {
+    message: "Скопировано в буфер обмена",
+    description: "Toast when a DNS record value is copied",
+  },
+  "services.domainCopyError": {
+    message: "Не удалось скопировать в буфер обмена",
+    description: "Toast when copying a DNS record value fails",
+  },
+  "services.domainAddedTitle": {
+    message: "Домен добавлен — настройте DNS",
+    description: "Title of the post-add DNS-record step in the add dialog",
+  },
+  "services.domainAddedDescription": {
+    message:
+      "Создайте DNS-запись у своего провайдера; проверка завершится автоматически, как только запись начнёт разрешаться.",
+    description: "Subtitle of the post-add DNS-record step in the add dialog",
+  },
+  "services.domainRedirectsTo": {
+    message: "Перенаправляет на {canonical}",
+    description:
+      "Note under an auto-paired sibling domain showing its canonical redirect target",
+  },
+  "services.domainRedirectsHere": {
+    message: "{sibling} перенаправляет сюда",
+    description:
+      "Note under a canonical domain showing which auto-paired sibling redirects to it",
+  },
+  "services.domainPairedDnsTitle": {
+    message:
+      "{sibling} добавлен автоматически и перенаправляет на {canonical} — настройте и его DNS",
+    description:
+      "Heading of the second DNS-record block in the add dialog when the add auto-paired a www<->apex sibling (w6/m23)",
+  },
+  "services.domainDone": {
+    message: "Готово",
+    description: "Button closing the post-add DNS-record step",
+  },
+  "services.domainVerifySuccess": {
+    message: "{name} проверен",
+    description: "Toast when a re-check finds the domain verified",
+  },
+  "services.domainVerifyPending": {
+    message: "{name} ещё не проверен — возможно, DNS всё ещё распространяется.",
+    description: "Toast when a re-check finds the domain still pending",
+  },
+  "services.domainVerifyError": {
+    message: "Не удалось повторно проверить {name}.",
+    description: "Toast when the re-check request fails",
+  },
+  "services.domainsEmptyTitle": {
+    message: "Нет пользовательских доменов",
+    description: "Custom-domains empty-state title",
+  },
+  "services.domainsEmptyBody": {
+    message:
+      "Добавьте принадлежащий вам домен, чтобы обслуживать этот сервис с него.",
+    description: "Custom-domains empty-state body",
+  },
+  "services.domainsErrorTitle": {
+    message: "Не удалось загрузить пользовательские домены",
+    description: "Custom-domains generic error title",
+  },
+  "services.domainsErrorBody": {
+    message:
+      "Запрос к bex-api не удался. Проверьте подключение и повторите попытку.",
+    description: "Custom-domains generic error body",
+  },
+  "services.platformSubdomainTitle": {
+    message: "Поддомен платформы",
+    description: "Settings tab platform-subdomain section title",
+  },
+  "services.platformSubdomainDescription": {
+    message:
+      "Управляйте тем, отвечает ли ваш сервис на поддомене платформы bex в дополнение к настроенным пользовательским доменам.",
+    description: "Settings tab platform-subdomain section description",
+  },
+  "services.platformSubdomainEnabled": {
+    message: "Включён",
+    description: "Platform-subdomain toggle label when the subdomain is active",
+  },
+  "services.platformSubdomainDisabled": {
+    message: "Отключён",
+    description:
+      "Platform-subdomain toggle label when the subdomain is disabled",
+  },
+  "services.platformSubdomainPending": {
+    message: "URL платформы будет назначен, когда сервис запустится.",
+    description: "Platform-subdomain state when the service has no URL yet",
+  },
+  "services.platformSubdomainDisabledNote": {
+    message:
+      "Поддомен платформы отключён. Ваш сервис доступен только через пользовательские домены.",
+    description:
+      "Platform-subdomain note shown when the policy is set to disabled",
+  },
+  "services.platformSubdomainToggleLabel": {
+    message: "Переключить поддомен платформы",
+    description: "Accessible label for the platform-subdomain Switch",
+  },
+  "services.platformSubdomainNeedsVerifiedDomain": {
+    message:
+      "Проверьте пользовательский домен, прежде чем отключать поддомен платформы, чтобы у сервиса оставался адрес.",
+    description:
+      "Hint beside the platform-subdomain switch when no custom domain is verified yet (w4/142)",
+  },
+  "services.platformSubdomainNeedsVerifiedDomainPending": {
+    message:
+      "Чтобы отключить поддомен платформы, сначала должна завершиться проверка: {names}.",
+    description:
+      "Hint beside the platform-subdomain switch when custom domains exist but are all still pending verification (w4/142)",
+  },
+  "services.subdomainPolicySuccess": {
+    message: "Настройка поддомена платформы обновлена.",
+    description: "Toast on successful setSubdomainPolicy mutation",
+  },
+  "services.subdomainPolicyError": {
+    message:
+      "Не удалось обновить настройку поддомена платформы. Попробуйте ещё раз.",
+    description: "Toast on failed setSubdomainPolicy mutation",
+  },
+  "services.maintenanceModeTitle": {
+    message: "Режим обслуживания",
+    description: "Settings tab maintenance-mode section title",
+  },
+  "services.maintenanceModeDescription": {
+    message:
+      "Выведите этот сервис из работы за страницей обслуживания, не приостанавливая его — его поды продолжают работать, перенаправляется только публичный трафик.",
+    description: "Settings tab maintenance-mode section description",
+  },
+  "services.maintenanceModeEnabled": {
+    message: "Включён",
+    description: "Maintenance-mode toggle label when active",
+  },
+  "services.maintenanceModeDisabled": {
+    message: "Отключён",
+    description: "Maintenance-mode toggle label when inactive",
+  },
+  "services.maintenanceModeSwitchHint": {
+    message:
+      "Каждый хост, который обслуживает этот сервис, будет отвечать страницей обслуживания.",
+    description: "Maintenance-mode section hint text next to the switch",
+  },
+  "services.maintenanceModePaidOnly": {
+    message: "Режим обслуживания доступен на платных тарифах Web Service.",
+    description: "Maintenance mode free-plan eligibility note",
+  },
+  "services.maintenanceModeToggleLabel": {
+    message: "Переключить режим обслуживания",
+    description: "Accessible label for the maintenance-mode Switch",
+  },
+  "services.maintenanceModeUriLabel": {
+    message: "URL своей страницы обслуживания",
+    description: "Label for the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeUriPlaceholder": {
+    message: "https://status.example.com/maintenance (необязательно)",
+    description: "Placeholder for the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeUriHint": {
+    message:
+      "Загружается и отдаётся вместо страницы по умолчанию. Оставьте пустым, чтобы использовать страницу обслуживания bex по умолчанию. Не должен указывать на собственный URL этого сервиса.",
+    description: "Hint text under the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeUriEdit": {
+    message: "Изменить URL страницы обслуживания",
+    description:
+      "Accessible label for the maintenance-page URL edit-pencil button",
+  },
+  "services.maintenanceModeEnableAction": {
+    message: "Включить режим обслуживания",
+    description: "Confirm-dialog action button for enabling maintenance mode",
+  },
+  "services.confirmMaintenanceModeTitle": {
+    message: "Включить режим обслуживания?",
+    description: "Confirm-dialog title for enabling maintenance mode",
+  },
+  "services.confirmMaintenanceModeBody": {
+    message:
+      "{name} будет показывать страницу обслуживания каждому посетителю, пока вы не отключите режим. Поды сервиса продолжают работать.",
+    description: "Confirm-dialog body for enabling maintenance mode",
+  },
+  "services.maintenanceModeEnabledSuccess": {
+    message: "Режим обслуживания включён.",
+    description: "Toast on successfully enabling maintenance mode",
+  },
+  "services.maintenanceModeDisabledSuccess": {
+    message: "Режим обслуживания отключён.",
+    description: "Toast on successfully disabling maintenance mode",
+  },
+  "services.maintenancePageSavedSuccess": {
+    message: "Страница обслуживания сохранена.",
+    description: "Toast on saving only the custom maintenance page URL",
+  },
+  "services.maintenancePageClearedSuccess": {
+    message: "Страница обслуживания по умолчанию восстановлена.",
+    description: "Toast on clearing the custom maintenance page URL",
+  },
+  "services.maintenanceModeError": {
+    message: "Не удалось обновить режим обслуживания. Попробуйте ещё раз.",
+    description: "Toast on failed setMaintenanceMode mutation",
+  },
+  "services.edgeCachingTitle": {
+    message: "Edge-кеширование",
+    description: "Settings tab edge-caching section title (Render parity)",
+  },
+  "services.edgeCachingDescription": {
+    message:
+      "Кешируйте ответы на периферии, чтобы повторные запросы обслуживались без обращения к этому сервису.",
+    description: "Settings tab edge-caching section description",
+  },
+  "services.edgeCachingFileTypesLabel": {
+    message: "Кешируемые типы файлов",
+    description: "Edge-caching radio group label",
+  },
+  "services.edgeCachingOptionNone": {
+    message: "Нет",
+    description: "Edge-caching option: no-cache profile",
+  },
+  "services.edgeCachingOptionNoneDesc": {
+    message: "Каждый ответ отдаётся вашим сервисом.",
+    description: "Edge-caching no-cache option description",
+  },
+  "services.edgeCachingOptionStatic": {
+    message: "Распространённые статические файлы",
+    description: "Edge-caching option: origin-controlled profile",
+  },
+  "services.edgeCachingOptionStaticDesc": {
+    message:
+      "Кешировать распространённые типы статических файлов, такие как CSS, JavaScript, изображения и шрифты, если заголовок Cache-Control ответа не указывает иное.",
+    description: "Edge-caching origin-controlled option description",
+  },
+  "services.edgeCachingOptionAll": {
+    message: "Все файлы",
+    description: "Edge-caching option: origin-controlled-all profile",
+  },
+  "services.edgeCachingOptionAllDesc": {
+    message:
+      "Кешировать каждый подходящий ответ, если его заголовок Cache-Control не указывает иное. Убедитесь, что динамическое содержимое задаёт Cache-Control, чтобы оно не кешировалось.",
+    description:
+      "Edge-caching origin-controlled-all option description, with the dynamic-content warning",
+  },
+  "services.edgeCachingPurgeOnDeploy": {
+    message: "Кеш очищается при каждом деплое.",
+    description: "Note under the edge-caching options",
+  },
+  "services.edgeCachingPaidOnly": {
+    message: "Edge-кеширование недоступно для бесплатных Web Service.",
+    description: "Edge-caching free-plan eligibility note",
+  },
+  "services.edgeCachingSave": {
+    message: "Сохранить edge-кеширование",
+    description: "Edge-caching save button",
+  },
+  "services.edgeCachingSaving": {
+    message: "Сохранение…",
+    description: "Edge-caching save button while the mutation is in flight",
+  },
+  "services.edgeCachingSaved": {
+    message: "Edge-кеширование обновлено.",
+    description: "Toast on successful setCacheProfile mutation",
+  },
+  "services.edgeCachingError": {
+    message: "Не удалось обновить edge-кеширование. Попробуйте ещё раз.",
+    description: "Toast on failed setCacheProfile mutation",
+  },
+  "services.edgeCachingPurgeAction": {
+    message: "Очистить кеш",
+    description: "Edge-caching purge button and confirm action",
+  },
+  "services.edgeCachingPurgeConfirmTitle": {
+    message: "Очистить edge-кеш?",
+    description: "Confirm-dialog title for purging the edge cache",
+  },
+  "services.edgeCachingPurgeConfirmBody": {
+    message:
+      "Все кешированные ответы будут удалены. Пока кеш снова не прогреется, запросы будут идти к вашему сервису.",
+    description: "Confirm-dialog body for purging the edge cache",
+  },
+  "services.edgeCachingPurged": {
+    message:
+      "Кеш очищен. Он начинается заново вместе с инстансами вашего сервиса.",
+    description: "Toast on successful purgeServiceCache mutation",
+  },
+  "services.edgeCachingPurgeError": {
+    message: "Не удалось очистить кеш. Попробуйте ещё раз.",
+    description: "Toast on failed purgeServiceCache mutation",
+  },
+  "services.runtimeTitle": {
+    message: "Среда выполнения",
+    description: "Settings tab runtime section title (Render parity)",
+  },
+  "services.runtimeDescription": {
+    message: "Окружение, в котором bex собирает и запускает этот сервис.",
+    description: "Settings tab runtime section description",
+  },
+  "services.runtimeLabel": {
+    message: "Среда выполнения",
+    description: "Settings runtime select label",
+  },
+  "services.runtimeNote": {
+    message:
+      "Смена среды выполнения пересобирает и повторно развёртывает сервис. Нативные среды выполнения используют команду сборки и команду запуска ниже.",
+    description: "Note beside the Settings runtime select",
+  },
+  "services.runtimePlaceholder": {
+    message: "Выберите среду выполнения",
+    description:
+      "Settings runtime select placeholder for a legacy service with no runtime recorded",
+  },
+  "services.runtimeSave": {
+    message: "Сохранить среду выполнения",
+    description: "Settings runtime save button",
+  },
+  "services.runtimeSaving": {
+    message: "Сохранение…",
+    description: "Settings runtime save button while the mutation is in flight",
+  },
+  "services.runtimeConfirmTitle": {
+    message: "Сменить среду выполнения на {runtime}?",
+    description: "Confirm-dialog title for changing a service's runtime",
+  },
+  "services.runtimeConfirmBody": {
+    message:
+      "Сервис будет пересобран со средой выполнения {runtime} и развёрнут заново. Это запустит новый деплой.",
+    description: "Confirm-dialog body for changing a service's runtime",
+  },
+  "services.runtimeConfirmAction": {
+    message: "Сменить среду выполнения",
+    description: "Confirm-dialog action for changing a service's runtime",
+  },
+  "services.runtimeSaved": {
+    message: "Среда выполнения обновлена. Запущен новый деплой.",
+    description: "Toast on successful setRuntime mutation",
+  },
+  "services.runtimeError": {
+    message: "Не удалось сменить среду выполнения. Попробуйте ещё раз.",
+    description: "Toast on failed setRuntime mutation without a server message",
+  },
+  "services.maintenanceModeBannerTitle": {
+    message: "Режим обслуживания включён",
+    description: "Service-detail header banner title while in maintenance",
+  },
+  "services.maintenanceModeBannerBody": {
+    message:
+      "Посетители видят страницу обслуживания вместо этого сервиса. Поды всё ещё работают — отключите режим обслуживания в настройках, чтобы вернуться к обычной работе.",
+    description: "Service-detail header banner body while in maintenance",
+  },
+  "services.deployTitle": {
+    message: "Деплой",
+    description: "Cron job Settings tab: Deploy section title (Render parity)",
+  },
+  "services.deployDescription": {
+    message: "Как запускается этот Cron Job.",
+    description: "Cron job Settings tab: Deploy section description",
+  },
+  "services.deploySuccess": {
+    message: "Настройки Cron Job сохранены.",
+    description: "Toast after updateCronJob succeeds",
+  },
+  "services.cronScheduleSaved": {
+    message: "Следующий запуск пройдёт по новому расписанию.",
+    description:
+      "Toast description after saving a cron job's schedule alone: the next run follows it, nothing deploys (w4/593)",
+  },
+  "services.cronCommandSaved": {
+    message:
+      "Новая команда применяется деплоем; запуски после него будут её использовать.",
+    description:
+      "Toast description after saving a cron job's command: the save rolls a deploy that applies it (w4/593)",
+  },
+  "services.deployError": {
+    message: "Не удалось сохранить настройки Cron Job. Попробуйте ещё раз.",
+    description: "Toast after updateCronJob fails",
+  },
+  "services.deployRefreshFailed": {
+    message:
+      "Настройки Cron Job сохранены, но эту страницу не удалось обновить. Повторите попытку или перезагрузите страницу, чтобы увидеть сохранённые настройки.",
+    description:
+      "Warning after a cron save committed but its authoritative re-read failed; the save must not be retried or reported as failed (w4/276)",
+  },
+  "services.deployRefreshPending": {
+    message:
+      "Настройки сохранены — ожидаем свежие данные, прежде чем разрешить дальнейшие изменения.",
+    description:
+      "Reason shown while cron rows stay unwritable after a committed save whose refresh failed (w4/276)",
+  },
+  "services.deployScheduleLabel": {
+    message: "Расписание",
+    description: "Cron job Settings tab: Deploy section schedule field label",
+  },
+  "services.deployScheduleHint": {
+    message:
+      "Запускает эту команду по этому расписанию (crontab из 5 полей, в UTC).",
+    description: "Cron job Settings tab: Deploy section schedule help text",
+  },
+  "services.deploySchedulePreview": {
+    message: "{description} · запуск в UTC",
+    description:
+      "Cron job Settings tab: live human-readable description of the schedule",
+  },
+  "services.deploySchedulePlaceholder": {
+    message: "0 * * * *",
+    description: "Cron job Deploy section: schedule input placeholder",
+  },
+  "services.deployScheduleEdit": {
+    message: "Изменить расписание",
+    description: "Accessible label for the cron schedule edit button",
+  },
+  "services.deployCommandEdit": {
+    message: "Изменить команду",
+    description: "Accessible label for the cron command edit button",
+  },
+  "services.cronScheduleNeverFires": {
+    message:
+      "Это расписание никогда не сработает: ни одна дата не соответствует его дню месяца и месяцу (напр. 31 2 — это 31 февраля).",
+    description:
+      "Cron schedule validation error when the schedule parses but no date ever matches (w4/197)",
+  },
+  "services.deployScheduleError": {
+    message: "Введите корректное cron-выражение из 5 полей, напр. 0 * * * *.",
+    description: "Cron job Deploy section: schedule validation error",
+  },
+  "services.deployScheduleRequired": {
+    message: "Укажите расписание.",
+    description: "Cron job Deploy section: schedule required validation error",
+  },
+  "services.deployCommandLabel": {
+    message: "Команда",
+    description: "Cron job Settings tab: Deploy section command field label",
+  },
+  "services.deployCommandPlaceholder": {
+    message: "напр. python script.py",
+    description: "Cron job Deploy section: command input placeholder",
+  },
+  "services.deployCommandHint": {
+    message:
+      "Переопределяет точку входа образа по умолчанию. Оставьте пустым, чтобы запускать собственную команду образа.",
+    description: "Cron job Deploy section: command field help text",
+  },
+  "services.deployCommandNativeHint": {
+    message:
+      "Команда, которую задание запускает по каждому расписанию, — команда запуска его среды выполнения.",
+    description:
+      "Cron job Deploy section: command field help text for a native-runtime cron, whose command is its start command (w8/m69)",
+  },
+  "services.deployCommandRequired": {
+    message: "Укажите команду.",
+    description:
+      "Cron job Deploy section: command required validation error for a native-runtime cron (w8/m69)",
+  },
+  "services.buildTitle": {
+    message: "Сборка",
+    description:
+      "Settings tab: Build card title, Render's split Build section (w5/m52)",
+  },
+  "services.buildDescription": {
+    message: "Настройте, как bex собирает ваш сервис из репозитория.",
+    description: "Settings tab: Build card description",
+  },
+  "services.deploySectionTitle": {
+    message: "Деплой",
+    description:
+      "Settings tab: Deploy card title, Render's split Deploy section (w5/m52)",
+  },
+  "services.deploySectionDescription": {
+    message: "Настройте, как bex разворачивает и запускает ваш сервис.",
+    description: "Settings tab: Deploy card description",
+  },
+  "services.buildDeploySourceLabel": {
+    message: "Источник",
+    description: "Build & Deploy: repo field label",
+  },
+  "services.buildDeploySourceHint": {
+    message:
+      "Git-репозиторий, из которого собирается этот сервис. Выберите один из подключённых репозиториев или вставьте URL репозитория.",
+    description: "Build & Deploy: Source (repo) field help text (w5/m54)",
+  },
+  "services.buildDeploySourcePlaceholder": {
+    message: "https://github.com/owner/repo",
+    description: "Build & Deploy: Source combobox input placeholder",
+  },
+  "services.buildDeploySourceEdit": {
+    message: "Изменить источник",
+    description: "Accessible label for the Source edit-pencil button",
+  },
+  "services.buildDeploySourceConfirmTitle": {
+    message: "Сменить источник на {value}?",
+    description: "Build & Deploy: Source-change confirm dialog title",
+  },
+  "services.buildDeployBranchLabel": {
+    message: "Ветка",
+    description: "Build & Deploy: branch field label",
+  },
+  "services.buildDeployBranchHint": {
+    message: "Git-ветка для сборки и деплоя.",
+    description: "Build & Deploy: branch field hint (Render's copy)",
+  },
+  "services.buildDeployBranchEmpty": {
+    message: "main",
+    description:
+      "Build & Deploy: branch value shown when unset (the backend default)",
+  },
+  "services.buildDeployBranchPlaceholder": {
+    message: "main",
+    description: "Build & Deploy: branch input placeholder",
+  },
+  "services.buildDeployBranchEdit": {
+    message: "Изменить ветку",
+    description: "Build & Deploy: branch edit-button aria label",
+  },
+  "services.buildDeployBranchConfirmTitle": {
+    message: "Сменить ветку на «{value}»?",
+    description: "Build & Deploy: branch confirm-dialog title",
+  },
+  "services.buildDeployRootDirLabel": {
+    message: "Корневой каталог",
+    description: "Build & Deploy: root-directory field label",
+  },
+  "services.buildDeployRootDirOptional": {
+    message: "Необязательно",
+    description:
+      "Build & Deploy: badge next to the Root Directory label (Render parity)",
+  },
+  "services.buildDeployRootDirHint": {
+    message:
+      "Если задан, сборки выполняются из этого подкаталога, а не из корня репозитория. Изменения кода вне его не запускают автодеплой. Чаще всего используется с монорепозиторием.",
+    description: "Build & Deploy: root-directory field help text",
+  },
+  "services.buildDeployConfirmRoot": {
+    message: "корень репозитория",
+    description:
+      "Build & Deploy: mid-sentence phrase for the confirm dialog title when clearing rootDir to empty (a dedicated key, not a lowercased buildDeployRootDirEmpty, since that transform doesn't hold in every language)",
+  },
+  "services.buildDeployRootDirPlaceholder": {
+    message: "напр. backend",
+    description: "Build & Deploy: root-directory input placeholder",
+  },
+  "services.buildDeployEdit": {
+    message: "Изменить корневой каталог",
+    description: "Build & Deploy: accessible label for the edit-pencil button",
+  },
+  "services.buildDeployCancel": {
+    message: "Отменить",
+    description: "Build & Deploy: root-directory inline-edit cancel button",
+  },
+  "services.buildDeployConfirmTitle": {
+    message: "Сменить корневой каталог на {value}?",
+    description: "Build & Deploy: root-directory change confirm dialog title",
+  },
+  "services.buildDeployConfirmBody": {
+    message:
+      "Сервис будет пересобран и развёрнут заново для нового каталога — текущие запросы завершатся до замены старых инстансов.",
+    description: "Build & Deploy: root-directory change confirm dialog body",
+  },
+  "services.buildDeployConfirmBodyStatic": {
+    message:
+      "Это запустит пересборку из нового каталога. Ваш сайт продолжит отдавать текущую опубликованную версию, пока новая сборка не будет успешно опубликована.",
+    description:
+      "Build & Deploy: a live static site's root-directory change confirm body (atomic publish, no instances; w4/548)",
+  },
+  "services.buildDeployConfirmBodyNeverLive": {
+    message:
+      "Сервис будет собран и развёрнут из нового каталога. Пока ничего не обслуживается — он запустится, когда деплой завершится успешно.",
+    description:
+      "Build & Deploy: root-directory change confirm body for a service that has never gone live, so no current version keeps serving (w4/548)",
+  },
+  "services.buildDeploySuccess": {
+    message: "Корневой каталог обновлён.",
+    description: "Toast after setRootDir succeeds",
+  },
+  "services.buildDeployError": {
+    message: "Не удалось обновить корневой каталог. Попробуйте ещё раз.",
+    description: "Toast after setRootDir fails",
+  },
+  "services.sourceUpdateSuccess": {
+    message: "Источник обновлён.",
+    description:
+      "Toast after a repository, branch, or image source update succeeds",
+  },
+  "services.sourceUpdateError": {
+    message: "Не удалось обновить источник. Попробуйте ещё раз.",
+    description:
+      "Fallback toast when a source update fails without a server reason",
+  },
+  "services.sourceTitle": {
+    message: "Источник",
+    description: "Source card title",
+  },
+  "services.sourceRepoDescription": {
+    message: "Git-репозиторий и ветка, из которых собирается этот сервис.",
+    description: "Source card description for a repository-backed service",
+  },
+  "services.sourceImageDescription": {
+    message: "Готовый образ контейнера, который развёртывает этот сервис.",
+    description: "Source card description for an image-backed service",
+  },
+  "services.sourceImageLabel": {
+    message: "Образ",
+    description: "Source card: container image path field label",
+  },
+  "services.sourceNoAutoDeploy": {
+    message:
+      "Изменения не развёртываются автоматически — следующий деплой будет использовать новый источник.",
+    description:
+      "Shared note (Render parity): a source change doesn't trigger a deploy",
+  },
+  "services.sourceMissing": {
+    message: "Не настроено",
+    description: "Source card fallback when no source value is available",
+  },
+  "services.sourceEdit": {
+    message: "Изменить",
+    description: "Button opening the Update Source dialog",
+  },
+  "services.sourceDialogTitle": {
+    message: "Обновить источник",
+    description: "Update Source dialog title",
+  },
+  "services.sourcePickerLabel": {
+    message: "Выберите источник",
+    description: "Label above the source kind picker in Update Source",
+  },
+  "services.sourceBranchHint": {
+    message: "Выберите ветку или введите ту, которой нет в списке.",
+    description: "Branch picker free-text fallback hint",
+  },
+  "services.sourceBranchEmpty": {
+    message: "Подходящих веток нет. Введите название ветки.",
+    description: "Empty state for the Update Source branch picker",
+  },
+  "services.sourceTabBuildSource": {
+    message: "Источник сборки",
+    description: "Update Source tab: build the service from a build source",
+  },
+  "services.sourceBuildSourceDescription": {
+    message:
+      "Источник сборки, который развёртывает этот сервис. Его сборка общая для всех привязанных к нему сервисов.",
+    description:
+      "Source card description for a service linked to a build source",
+  },
+  "services.sourceBuildSourceLabel": {
+    message: "Источник сборки",
+    description: "Source card and Update Source: build source field label",
+  },
+  "services.sourceBuildSourceBuildsFrom": {
+    message: "Собирается из",
+    description:
+      "Source card: the repository or image the linked build source builds from",
+  },
+  "services.sourceBuildSourceEmpty": {
+    message:
+      "В этом рабочем пространстве пока нет источников сборки. Создайте один через API или MCP, затем привяжите к нему сервисы здесь.",
+    description: "Update Source build source tab: empty state",
+  },
+  "services.sourceBuildSourceLoadError": {
+    message:
+      "Не удалось загрузить источники сборки этого рабочего пространства. Закройте диалог и попробуйте ещё раз.",
+    description: "Update Source build source tab: the list failed to load",
+  },
+  "services.sourceBuildSourcePlaceholder": {
+    message: "Выберите источник сборки",
+    description: "Update Source build source picker placeholder",
+  },
+  "services.sourceBuildSourceStartHint": {
+    message:
+      "Этот источник сборки использует нативную среду выполнения, поэтому сервису нужна собственная команда запуска.",
+    description:
+      "Update Source: why a native-runtime build source needs a start command",
+  },
+  "services.sourceUpdateSave": {
+    message: "Обновить источник",
+    description: "Save button in the Update Source dialog",
+  },
+  "services.startCommandLabel": {
+    message: "Команда запуска",
+    description: "Build & Deploy: native-runtime start-command label",
+  },
+  "services.dockerCommandLabel": {
+    message: "Команда Docker",
+    description: "Build & Deploy: Docker CMD override label (Render wording)",
+  },
+  "services.startCommandHint": {
+    message: "Команда, которая запускает этот сервис после успешной сборки.",
+    description: "Build & Deploy: native start-command help text",
+  },
+  "services.dockerCommandHint": {
+    message:
+      "Переопределяет CMD в Dockerfile. Оставьте пустым, чтобы использовать команду образа по умолчанию.",
+    description: "Build & Deploy: Docker Command help text",
+  },
+  "services.startCommandConfirmEmpty": {
+    message: "команда по умолчанию",
+    description: "Build & Deploy: empty command phrase in confirmation title",
+  },
+  "services.startCommandPlaceholder": {
+    message: "напр. npm start",
+    description: "Build & Deploy: start-command input placeholder",
+  },
+  "services.startCommandEdit": {
+    message: "Изменить команду запуска",
+    description: "Build & Deploy: accessible command edit button label",
+  },
+  "services.dockerCommandEdit": {
+    message: "Изменить команду Docker",
+    description: "Build & Deploy: accessible Docker Command edit button label",
+  },
+  "services.dockerCommandPlaceholder": {
+    message: "напр. bin/server",
+    description: "Build & Deploy: Docker Command input placeholder",
+  },
+  "services.startCommandConfirmTitle": {
+    message: "Сменить команду запуска на {value}?",
+    description: "Build & Deploy: command-change confirmation title",
+  },
+  "services.dockerCommandConfirmTitle": {
+    message: "Сменить команду Docker на {value}?",
+    description: "Build & Deploy: Docker Command confirmation title",
+  },
+  "services.startCommandConfirmBody": {
+    message:
+      "Сервис будет развёрнут заново с новой командой. Текущие запросы завершатся до замены старых инстансов.",
+    description: "Build & Deploy: command-change confirmation body",
+  },
+  "services.startCommandConfirmBodyNeverLive": {
+    message:
+      "Сервис будет развёрнут с новой командой. Пока ничего не обслуживается — он запустится, когда деплой завершится успешно.",
+    description:
+      "Deploy: command change confirm body for a service that has never gone live (w4/548)",
+  },
+  "services.startCommandSuccess": {
+    message: "Команда запуска обновлена.",
+    description: "Toast after setStartCommand succeeds",
+  },
+  "services.startCommandError": {
+    message: "Не удалось обновить команду запуска. Попробуйте ещё раз.",
+    description: "Toast after setStartCommand fails",
+  },
+  "services.dockerCommandSuccess": {
+    message: "Команда Docker обновлена.",
+    description:
+      "Toast after a Dockerfile or Existing Image service's Docker Command is saved",
+  },
+  "services.dockerCommandError": {
+    message: "Не удалось обновить команду Docker. Попробуйте ещё раз.",
+    description:
+      "Toast when saving a Dockerfile or Existing Image service's Docker Command fails",
+  },
+  "services.buildCommandLabel": {
+    message: "Команда сборки",
+    description:
+      "Build & Deploy: build-command field label (all service types' settings + the New Service form)",
+  },
+  "services.buildCommandHint": {
+    message:
+      "Команда, которая собирает ваш сервис (напр. npm run build). Оставьте пустым, чтобы использовать значение среды выполнения по умолчанию.",
+    description:
+      "Build & Deploy: build-command help text — shown for every service type, so it must not assume static-site output",
+  },
+  "services.buildCommandConfirmEmpty": {
+    message: "Значение среды выполнения по умолчанию",
+    description:
+      "Build & Deploy: empty build-command phrase in confirmation title",
+  },
+  "services.buildCommandPlaceholder": {
+    message: "npm run build",
+    description: "Build & Deploy: build-command input placeholder",
+  },
+  "services.buildCommandEdit": {
+    message: "Изменить команду сборки",
+    description: "Build & Deploy: accessible build-command edit button label",
+  },
+  "services.buildCommandConfirmTitle": {
+    message: "Сменить команду сборки на {value}?",
+    description: "Build & Deploy: build-command change confirmation title",
+  },
+  "services.buildCommandConfirmBody": {
+    message:
+      "Сервис будет развёрнут заново с новой командой сборки. Текущие запросы будут завершены до замены старых инстансов.",
+    description: "Build & Deploy: build-command change confirmation body",
+  },
+  "services.buildCommandConfirmBodyNeverLive": {
+    message:
+      "Сервис будет собран и развёрнут с новой командой сборки. Пока ничего не обслуживается — он запустится, когда деплой завершится успешно.",
+    description:
+      "Build & Deploy: build-command change confirm body for a service that has never gone live (w4/548)",
+  },
+  "services.buildCommandConfirmBodyStatic": {
+    message:
+      "Это запустит пересборку с новой командой сборки. Ваш сайт продолжит отдавать текущую опубликованную версию, пока новая сборка не будет успешно опубликована.",
+    description:
+      "Build & Deploy: static-site build-command change confirmation body (atomic publish, no instances)",
+  },
+  "services.staticBuildConfirmBodyNeverLive": {
+    message:
+      "Это запустит сборку с этим изменением. Ваш сайт ещё не опубликован — он запустится, когда эта сборка завершится успешно.",
+    description:
+      "Build & Deploy: a static site's build-command or root-directory change confirm body when the site has never been published (w4/548)",
+  },
+  "services.buildCommandSuccess": {
+    message: "Команда сборки обновлена.",
+    description: "Toast after setBuildCommand succeeds",
+  },
+  "services.buildCommandError": {
+    message: "Не удалось обновить команду сборки. Попробуйте ещё раз.",
+    description: "Toast after setBuildCommand fails",
+  },
+  "services.dockerfilePathLabel": {
+    message: "Путь к Dockerfile",
+    description: "Build & Deploy: Dockerfile-path field label",
+  },
+  "services.dockerfilePathHint": {
+    message:
+      "Путь к Dockerfile относительно корневого каталога. Оставьте пустым, чтобы использовать Dockerfile.",
+    description: "Build & Deploy: Dockerfile-path help text",
+  },
+  "services.dockerfilePathConfirmEmpty": {
+    message: "Dockerfile по умолчанию",
+    description: "Build & Deploy: empty Dockerfile-path confirmation phrase",
+  },
+  "services.dockerfilePathPlaceholder": {
+    message: "напр. docker/Dockerfile.prod",
+    description: "Build & Deploy: Dockerfile-path input placeholder",
+  },
+  "services.dockerfilePathEdit": {
+    message: "Изменить путь к Dockerfile",
+    description: "Build & Deploy: accessible Dockerfile-path edit label",
+  },
+  "services.dockerfilePathConfirmTitle": {
+    message: "Сменить путь к Dockerfile на {value}?",
+    description: "Build & Deploy: Dockerfile-path confirmation title",
+  },
+  "services.dockerfilePathConfirmBody": {
+    message:
+      "Сервис будет пересобран из выбранного Dockerfile, а полученный образ — развёрнут.",
+    description: "Build & Deploy: Dockerfile-path confirmation body",
+  },
+  "services.dockerfilePathSuccess": {
+    message: "Путь к Dockerfile обновлён.",
+    description: "Toast after setDockerfilePath succeeds",
+  },
+  "services.dockerfilePathError": {
+    message: "Не удалось обновить путь к Dockerfile. Попробуйте ещё раз.",
+    description: "Toast after setDockerfilePath fails",
+  },
+  "services.dockerContextLabel": {
+    message: "Каталог контекста сборки Docker",
+    description: "Build & Deploy: Docker build context field label (w8/m128)",
+  },
+  "services.dockerContextHint": {
+    message:
+      "Контекст сборки относительно корневого каталога. Оставьте пустым, чтобы использовать корневой каталог.",
+    description: "Build & Deploy: Docker build context help text",
+  },
+  "services.dockerContextConfirmEmpty": {
+    message: "корневой каталог",
+    description:
+      "Build & Deploy: empty Docker build context confirmation phrase",
+  },
+  "services.dockerContextPlaceholder": {
+    message: "напр. .",
+    description: "Build & Deploy: Docker build context input placeholder",
+  },
+  "services.dockerContextEdit": {
+    message: "Изменить каталог контекста сборки Docker",
+    description: "Build & Deploy: accessible Docker build context edit label",
+  },
+  "services.dockerContextConfirmTitle": {
+    message: "Сменить каталог контекста сборки Docker на {value}?",
+    description: "Build & Deploy: Docker build context confirmation title",
+  },
+  "services.dockerContextConfirmBody": {
+    message:
+      "Сервис будет пересобран с новым контекстом сборки, а полученный образ — развёрнут.",
+    description: "Build & Deploy: Docker build context confirmation body",
+  },
+  "services.dockerContextSuccess": {
+    message: "Каталог контекста сборки Docker обновлён.",
+    description: "Toast after setDockerContext succeeds",
+  },
+  "services.dockerContextError": {
+    message:
+      "Не удалось обновить каталог контекста сборки Docker. Попробуйте ещё раз.",
+    description: "Toast after setDockerContext fails",
+  },
+  "services.buildFilterLabel": {
+    message: "Фильтры сборки",
+    description: "Build & Deploy: label for the build-filters editor",
+  },
+  "services.buildFilterHint": {
+    message:
+      "Запускать деплой, только когда git push изменяет подходящие файлы. Пути — это glob-шаблоны относительно корня репозитория (напр. src/**, **/*.md).",
+    description: "Build & Deploy: help text for the build-filters editor",
+  },
+  "services.buildFilterIncludedTitle": {
+    message: "Включаемые пути",
+    description: "Build & Deploy: title for the included-paths list",
+  },
+  "services.buildFilterIncludedHint": {
+    message:
+      "Push запускает деплой, только если изменённый файл соответствует одному из них. Пустой список означает, что включены все пути.",
+    description: "Build & Deploy: help text for the included-paths list",
+  },
+  "services.buildFilterIncludedPlaceholder": {
+    message: "напр. src/**",
+    description: "Build & Deploy: placeholder for an included-path input",
+  },
+  "services.buildFilterAddIncluded": {
+    message: "Добавить включаемый путь",
+    description: "Build & Deploy: add-row button for the included-paths list",
+  },
+  "services.buildFilterRemoveIncluded": {
+    message: "Удалить включаемый путь",
+    description: "Build & Deploy: remove-row label for an included path",
+  },
+  "services.buildFilterIgnoredTitle": {
+    message: "Игнорируемые пути",
+    description: "Build & Deploy: title for the ignored-paths list",
+  },
+  "services.buildFilterIgnoredHint": {
+    message:
+      "Изменённый файл, соответствующий одному из них, никогда не запускает деплой, даже если он соответствует и включаемому пути.",
+    description: "Build & Deploy: help text for the ignored-paths list",
+  },
+  "services.buildFilterIgnoredPlaceholder": {
+    message: "напр. docs/**",
+    description: "Build & Deploy: placeholder for an ignored-path input",
+  },
+  "services.buildFilterAddIgnored": {
+    message: "Добавить игнорируемый путь",
+    description: "Build & Deploy: add-row button for the ignored-paths list",
+  },
+  "services.buildFilterRemoveIgnored": {
+    message: "Удалить игнорируемый путь",
+    description: "Build & Deploy: remove-row label for an ignored path",
+  },
+  "services.buildPathTooLong": {
+    message: "Не более 512 байт",
+    description:
+      "Inline error under a Root Directory, Dockerfile Path, Docker Build Context or Build Filter pattern over the server's 512-byte limit; a Chinese character is 3 bytes (w21/045)",
+  },
+  "services.buildPathControlChar": {
+    message: "Не должно содержать управляющий символ или табуляцию",
+    description:
+      "Inline error under a build path or Build Filter pattern with a control character (w21/045)",
+  },
+  "services.buildPathBackslash": {
+    message: "Используйте / как разделитель пути, а не \\",
+    description:
+      "Inline error under a build path or Build Filter pattern with a backslash (w21/045)",
+  },
+  "services.buildPathAbsolute": {
+    message: "Путь должен быть относительным к репозиторию и не начинаться с /",
+    description:
+      "Inline error under a build path or Build Filter pattern that starts with / (w21/045)",
+  },
+  "services.buildPathDotDot": {
+    message: "Путь должен оставаться внутри репозитория: без сегмента ..",
+    description:
+      "Inline error under a build path or Build Filter pattern with a .. segment (w21/045)",
+  },
+  "services.buildPathEmptySegment": {
+    message: "Не должно быть пустых сегментов: без // и без / в конце",
+    description:
+      "Inline error under a Dockerfile Path or Docker Build Context with an empty path segment; the Root Directory normalizes these away (w21/045)",
+  },
+  "services.buildFilterUnclosedClass": {
+    message: "Символ [ нигде не закрыт символом ]",
+    description:
+      "Inline error under a Build Filter glob with an unclosed character class (w21/045)",
+  },
+  "services.healthCheckPathSlash": {
+    message: "Должен начинаться с / или быть пустым для проверки только порта",
+    description:
+      "Inline error under a Health Check Path that does not start with / (w21/045)",
+  },
+  "services.buildFilterSave": {
+    message: "Сохранить фильтры сборки",
+    description: "Build & Deploy: save button for the build-filters editor",
+  },
+  "services.buildFilterSuccess": {
+    message: "Фильтры сборки обновлены.",
+    description: "Toast after setBuildFilter succeeds",
+  },
+  "services.buildFilterError": {
+    message: "Не удалось обновить фильтры сборки. Попробуйте ещё раз.",
+    description: "Toast after setBuildFilter fails",
+  },
+  "services.preDeployLabel": {
+    message: "Команда перед деплоем",
+    description: "Build & Deploy: label for the pre-deploy command field",
+  },
+  "services.preDeployHint": {
+    message:
+      "Выполняется один раз на новом образе до того, как он начнёт обслуживать трафик (напр. миграция базы данных). Ненулевой код завершения приводит к ошибке деплоя, и предыдущая версия остаётся в работе.",
+    description: "Build & Deploy: help text for the pre-deploy command field",
+  },
+  "services.preDeployPaidOnly": {
+    message: "Команды перед деплоем доступны на платных тарифах.",
+    description:
+      "Build & Deploy: why the pre-deploy command field is disabled on a Free service (Render: paid web services, private services and background workers; w8/m131)",
+  },
+  "services.preDeployPlaceholder": {
+    message: "напр. npm run migrate",
+    description: "Build & Deploy: placeholder for the pre-deploy command input",
+  },
+  "services.preDeployEdit": {
+    message: "Изменить команду перед деплоем",
+    description:
+      "Build & Deploy: accessible label for the pre-deploy edit-pencil button",
+  },
+  "services.healthCheckPathConfirmTitle": {
+    message: "Сменить путь проверки работоспособности на {value}?",
+    description:
+      "Settings: Health Check Path change confirmation title (w4/616)",
+  },
+  "services.healthCheckPathConfirmEmpty": {
+    message: "TCP-проверка",
+    description:
+      "Settings: empty Health Check Path phrase in its confirmation title",
+  },
+  "services.maxShutdownDelayConfirmTitle": {
+    message: "Изменить макс. задержку остановки на {value} с?",
+    description:
+      "Settings: Max shutdown delay change confirmation title (w4/616)",
+  },
+  "services.preDeployConfirmTitle": {
+    message: "Сменить команду перед деплоем на {value}?",
+    description:
+      "Settings: Pre-Deploy Command change confirmation title (w4/616)",
+  },
+  "services.preDeployConfirmEmpty": {
+    message: "без команды перед деплоем",
+    description:
+      "Settings: empty Pre-Deploy Command phrase in its confirmation title",
+  },
+  "services.settingRedeployConfirmBody": {
+    message:
+      "Сервис будет развёрнут заново с новой настройкой. Текущие запросы завершатся до замены старых инстансов.",
+    description:
+      "Settings: confirmation body for a setting whose save starts a deploy (w4/616)",
+  },
+  "services.settingRedeployConfirmBodyNeverLive": {
+    message:
+      "Сервис будет развёрнут с новой настройкой. Пока ничего не обслуживается — он запустится, когда деплой завершится успешно.",
+    description:
+      "Settings: deploying-setting confirmation body for a service that has never gone live (w4/616)",
+  },
+  "services.preDeployConfirmBody": {
+    message:
+      "Сервис будет развёрнут заново, а новая команда выполнится до запуска нового релиза. Текущие запросы завершатся до замены старых инстансов.",
+    description:
+      "Settings: Pre-Deploy Command change confirmation body (w4/616)",
+  },
+  "services.preDeployConfirmBodyNeverLive": {
+    message:
+      "Сервис будет развёрнут, а новая команда выполнится до запуска релиза. Пока ничего не обслуживается — он запустится, когда деплой завершится успешно.",
+    description:
+      "Settings: Pre-Deploy Command confirmation body for a service that has never gone live (w4/616)",
+  },
+  "services.preDeploySuccess": {
+    message: "Команда перед деплоем обновлена. Запущен новый деплой.",
+    description: "Toast after setPreDeployCommand succeeds",
+  },
+  "services.preDeployError": {
+    message: "Не удалось обновить команду перед деплоем. Попробуйте ещё раз.",
+    description: "Toast after setPreDeployCommand fails",
+  },
+  "services.autoDeployLabel": {
+    message: "Автодеплой",
+    description: "Build & Deploy: label for the auto-deploy toggle",
+  },
+  "services.autoDeployOnCommit": {
+    message: "При коммите",
+    description:
+      "Auto-Deploy select option: redeploy on every matching git push (Render's autoDeployTrigger 'commit', w5/m53)",
+  },
+  "services.autoDeployAfterChecks": {
+    message: "После успешных проверок CI",
+    description:
+      "Auto-Deploy select option: redeploy a pushed commit once all its GitHub checks pass (Render's autoDeployTrigger 'checksPass', w1/m181)",
+  },
+  "services.autoDeployOff": {
+    message: "Выкл.",
+    description:
+      "Auto-Deploy select option: never redeploy on push (Render's autoDeployTrigger 'off')",
+  },
+  "services.autoDeployEdit": {
+    message: "Изменить автодеплой",
+    description:
+      "Accessible label for the Auto-Deploy select's edit-pencil button",
+  },
+  "services.autoDeployViaGitHub": {
+    message:
+      "Push в отслеживаемую ветку автоматически запускает повторный деплой через приложение GitHub.",
+    description:
+      "Build & Deploy: source indicator when the connected GitHub App installation grants THIS repo (pushDeliveryMethod github_app)",
+  },
+  "services.autoDeployViaWebhook": {
+    message:
+      "Push запускает повторный деплой, только если ручной git-вебхук репозитория настроен с BEX_WEBHOOK_SECRET этой установки.",
+    description:
+      "Build & Deploy: source indicator when the GitHub App cannot deliver a push for this repo — no connection, another git host, or a repo the installation does not grant (pushDeliveryMethod manual_webhook)",
+  },
+  "services.autoDeployUnavailable": {
+    message:
+      "Автодеплой не может работать для этого репозитория: GitHub не отправляет bex свои push-события. Подключите репозиторий через приложение GitHub или запускайте деплои через Deploy Hook.",
+    description:
+      "Build & Deploy: source indicator when no push can reach bex for this repo — the GitHub App does not cover it and this install rejects the shared manual webhook key (pushDeliveryMethod unavailable, w4/483)",
+  },
+  "services.autoDeployDeliveryUnknown": {
+    message:
+      "Проверяем, как push в отслеживаемую ветку доходит до bex… Если это не заканчивается, GitHub недоступен, и способ доставки не удаётся подтвердить.",
+    description:
+      "Build & Deploy: source indicator while the per-repo push-delivery check is loading or returned unknown (GitHub unreachable) — states the uncertainty instead of naming a mechanism (w6/m99)",
+  },
+  "services.autoDeployOnSuccess": {
+    message: "Автодеплой включён.",
+    description: "Toast after enabling auto-deploy",
+  },
+  "services.autoDeployChecksSuccess": {
+    message: "Автодеплой теперь ждёт успешного прохождения проверок CI.",
+    description: "Toast after choosing After CI Checks Pass",
+  },
+  "services.autoDeployOffSuccess": {
+    message: "Автодеплой выключен.",
+    description: "Toast after disabling auto-deploy",
+  },
+  "services.autoDeployError": {
+    message: "Не удалось изменить автодеплой. Попробуйте ещё раз.",
+    description: "Toast after setAutoDeploy fails",
+  },
+  "services.deployHookTitle": {
+    message: "Deploy Hook",
+    description: "Settings tab: secret Deploy Hook section title",
+  },
+  "services.deployHookDescription": {
+    message: "Запускайте деплой из CI с помощью одного секретного URL.",
+    description: "Settings tab: Deploy Hook section description",
+  },
+  "services.deployHookURLLabel": {
+    message: "URL Deploy Hook",
+    description: "Accessible label for the secret Deploy Hook URL field",
+  },
+  "services.deployHookReveal": {
+    message: "Показать URL Deploy Hook",
+    description: "Accessible label for the reveal-secret button",
+  },
+  "services.deployHookHide": {
+    message: "Скрыть URL Deploy Hook",
+    description: "Accessible label for the hide-secret button",
+  },
+  "services.deployHookCopy": {
+    message: "Копировать URL Deploy Hook",
+    description: "Accessible label for the Deploy Hook copy button",
+  },
+  "services.deployHookCopied": {
+    message: "URL Deploy Hook скопирован.",
+    description: "Toast after copying the Deploy Hook URL",
+  },
+  "services.deployHookCopyError": {
+    message: "Не удалось скопировать URL Deploy Hook.",
+    description: "Toast after Deploy Hook URL clipboard failure",
+  },
+  "services.deployHookSecretHint": {
+    message:
+      "Держите этот URL в секрете. Любой, у кого он есть, может развернуть этот сервис без API-ключа.",
+    description: "Security warning below the Deploy Hook URL",
+  },
+  "services.deployHookRegenerate": {
+    message: "Пересоздать хук",
+    description: "Deploy Hook rotation button",
+  },
+  "services.deployHookRegenerateTitle": {
+    message: "Пересоздать Deploy Hook?",
+    description: "Deploy Hook rotation confirmation title",
+  },
+  "services.deployHookRegenerateWarning": {
+    message:
+      "Текущий URL перестанет работать немедленно. Обновите все системы CI, cron-задания и интеграции, которые его используют.",
+    description: "Deploy Hook rotation confirmation warning",
+  },
+  "services.deployHookCancel": {
+    message: "Отменить",
+    description: "Deploy Hook rotation confirmation cancel button",
+  },
+  "services.deployHookRegenerateConfirm": {
+    message: "Пересоздать",
+    description: "Deploy Hook rotation confirmation action",
+  },
+  "services.deployHookRegenerated": {
+    message: "Deploy Hook пересоздан. Старый URL больше не работает.",
+    description: "Toast after successful Deploy Hook rotation",
+  },
+  "services.deployHookRegenerateError": {
+    message: "Не удалось пересоздать Deploy Hook. Попробуйте ещё раз.",
+    description: "Toast after Deploy Hook rotation fails",
+  },
+  "services.deployHookLoadError": {
+    message: "Не удалось загрузить URL Deploy Hook.",
+    description: "Deploy Hook section query error",
+  },
+  "services.colType": {
+    message: "Тип",
+    description: "Services table column header (service type)",
+  },
+  "services.typeWeb": {
+    message: "Web Service",
+    description: "Service-type badge: an HTTP service exposed at a URL",
+  },
+  "services.typePrivate": {
+    message: "Private Service",
+    description:
+      "Service-type badge: an HTTP service reachable only in-cluster",
+  },
+  "services.typeWorker": {
+    message: "Background Worker",
+    description: "Service-type badge: runs with no HTTP port/URL",
+  },
+  "services.typeCron": {
+    message: "Cron Job",
+    description: "Service-type badge: runs a command on a schedule",
+  },
+  "services.typeStatic": {
+    message: "Static Site",
+    description:
+      "Service-type badge: built output served from the object-store origin",
+  },
+  "services.staticTitle": {
+    message: "Static Site",
+    description:
+      "Settings section title for a static site's publish dir + edge rules",
+  },
+  "services.staticDescription": {
+    message:
+      "Каталог опубликованного вывода и правила edge, применяемые при его отдаче.",
+    description: "Static Site settings section description",
+  },
+  "services.staticEdgeRulesHint": {
+    message:
+      "У редиректов/рерайтов и заголовков ответа есть отдельные страницы:",
+    description:
+      "Settings hint pointing at the dedicated Redirects/Rewrites + Headers pages",
+  },
+  "services.staticCancel": {
+    message: "Отменить",
+    description: "Cancel an inline edit",
+  },
+  "services.publishPathEscapes": {
+    message:
+      "Этот путь выходит за пределы репозитория. Каталог публикации определяется относительно корневого каталога, поэтому уберите сегменты ...",
+    description:
+      "Inline error under a repo-backed static site's publish directory whose .. segments leave the checkout (w21/050)",
+  },
+  "services.publishPathControlChar": {
+    message: "Не должно содержать управляющий символ или перевод строки",
+    description:
+      "Inline error under a static site's publish directory with a control character (w21/050)",
+  },
+  "services.publishPathLabel": {
+    message: "Каталог публикации",
+    description: "Label for a static site's publishPath",
+  },
+  "services.publishPathPlaceholder": {
+    message: "dist",
+    description: "Placeholder for the publish directory input",
+  },
+  "services.publishPathEdit": {
+    message: "Изменить каталог публикации",
+    description:
+      "Accessible label for the publish-directory edit-pencil button",
+  },
+  "services.publishPathHint": {
+    message:
+      "Каталог собранного вывода, который отдаётся как корень сайта (напр. dist, build, public). Его изменение публикует сайт заново.",
+    description: "Help text under the publish directory field",
+  },
+  "services.publishPathSaved": {
+    message: "Каталог публикации обновлён",
+    description: "Toast after saving a static site's publishPath",
+  },
+  "services.publishPathRepublishNote": {
+    message: "Сайт скоро будет опубликован заново.",
+    description: "Toast description after changing publishPath",
+  },
+  "services.publishPathError": {
+    message: "Не удалось обновить каталог публикации",
+    description: "Error toast for a failed publishPath change",
+  },
+  "services.routesTitle": {
+    message: "Редиректы и рерайты",
+    description: "Title for the static-site routes editor",
+  },
+  "services.routesHint": {
+    message:
+      "Правила сопоставляются по порядку, побеждает первое совпадение. Редирект возвращает 301; рерайт отдаёт другой путь (SPA-фолбэк переписывает /* на /index.html). Сегмент :name захватывает один сегмент пути, напр. /blog/posts/:postid → /blog/:postid.",
+    description: "Help text for the routes editor",
+  },
+  "services.routeAdd": {
+    message: "Добавить правило",
+    description: "Add a route rule",
+  },
+  "services.routeType": {
+    message: "Тип",
+    description: "Route type column",
+  },
+  "services.routeSource": {
+    message: "Источник",
+    description: "Route source-path column",
+  },
+  "services.routeDestination": {
+    message: "Назначение",
+    description: "Route destination-path column",
+  },
+  "services.routeRewrite": {
+    message: "Рерайт",
+    description: "Route type: rewrite",
+  },
+  "services.routeRedirect": {
+    message: "Редирект",
+    description: "Route type: redirect",
+  },
+  "services.routeTypeAria": {
+    message: "Тип правила {n}",
+    description:
+      "A route rule's type select (aria-label), named by its row as Remove rule {n} is (w4/541)",
+  },
+  "services.routeSourceAria": {
+    message: "Источник правила {n}",
+    description:
+      "A route rule's source field (aria-label), named by its row (w4/541)",
+  },
+  "services.routeDestinationAria": {
+    message: "Назначение правила {n}",
+    description:
+      "A route rule's destination field (aria-label), named by its row (w4/541)",
+  },
+  "services.routeRemove": {
+    message: "Удалить правило {n}",
+    description: "Remove a route rule (aria-label)",
+  },
+  "services.routesSave": {
+    message: "Сохранить маршруты",
+    description: "Save the routes list",
+  },
+  "services.staticRuleRequired": {
+    message: "Обязательное поле",
+    description: "Inline error under an empty static-site rule field (w4/145)",
+  },
+  "services.staticRulePathSlash": {
+    message: "Должен быть путь, начинающийся с /",
+    description:
+      "Inline error under a static-site rule path that doesn't start with / (w4/145)",
+  },
+  "services.staticRuleExternalHost": {
+    message:
+      "Используйте обычный http(s) URL с фиксированным хостом, напр. https://example.org/new",
+    description:
+      "Inline error under a redirect destination that is an absolute URL without a literal host (w8/162)",
+  },
+  "services.staticRuleLocalPath": {
+    message: "Должен быть путь на этом сайте, а не //host",
+    description:
+      "Inline error under a redirect/rewrite destination that is a network-path reference (w4/145)",
+  },
+  "services.staticRuleFixRows": {
+    message: "Исправьте отмеченные строки, чтобы сохранить.",
+    description:
+      "Note beside a disabled Save while a static-site rule row is invalid (w4/145)",
+  },
+  "services.staticRuleEmptyRow": {
+    message: "Заполните или удалите пустую строку, чтобы сохранить.",
+    description:
+      "Note beside a disabled Save while a static-site rule row is still completely empty (w4/145)",
+  },
+  "services.staticRuleRow": {
+    message: "Строка {row}:",
+    description:
+      "Prefix naming the 1-based rule row in a server refusal, replacing its zero-based wire index (w4/145)",
+  },
+  "services.staticRulePathTooLong": {
+    message: "Не более 2048 байт",
+    description:
+      "Inline error under an over-long static-site rule path; the server counts UTF-8 bytes, so a Chinese character is 3 (w4/402, w21/043)",
+  },
+  "services.staticRuleSourceRepeatsPlaceholder": {
+    message: "Каждый :name может встречаться в источнике только один раз",
+    description:
+      "Inline error under a redirect/rewrite source that declares the same :name placeholder twice (w21/043)",
+  },
+  "services.staticRuleUndeclaredPlaceholder": {
+    message: "Использует :name, который не объявлен в источнике",
+    description:
+      "Inline error under a redirect/rewrite destination whose :name placeholder (other than :splat) the source never declares (w21/043)",
+  },
+  "services.staticRuleHeaderNameTooLong": {
+    message: "Не более 256 символов",
+    description: "Inline error under an over-long header name (w4/402)",
+  },
+  "services.staticRuleHeaderNameInvalid": {
+    message: "Недопустимое имя HTTP-заголовка",
+    description:
+      "Inline error under a header name with characters a header name can't hold (w4/402)",
+  },
+  "services.staticRuleHeaderNameReserved": {
+    message:
+      "Этот заголовок устанавливается сервером и не может быть переопределён",
+    description:
+      "Inline error under a reserved header name such as Content-Length (w4/402)",
+  },
+  "services.staticRuleHeaderValueTooLong": {
+    message: "Не более 4096 байт",
+    description: "Inline error under an over-long header value (w4/402)",
+  },
+  "services.staticRuleHeaderValueInvalid": {
+    message: "Содержит символ, недопустимый в значении заголовка",
+    description:
+      "Inline error under a header value with a control character (w4/402)",
+  },
+  "services.staticRuleCookieDomain": {
+    message: "Set-Cookie не может задавать Domain на общем хостинге",
+    description:
+      "Inline error under a Set-Cookie value carrying a Domain attribute (w4/402)",
+  },
+  "services.staticRoutesSaved": {
+    message: "Маршруты обновлены",
+    description: "Toast after saving routes",
+  },
+  "services.staticRoutesError": {
+    message: "Не удалось обновить маршруты",
+    description: "Error toast for a failed routes save",
+  },
+  "services.headersTitle": {
+    message: "Заголовки ответа",
+    description: "Title for the static-site custom-headers editor",
+  },
+  "services.headersHint": {
+    message:
+      "Пользовательские заголовки ответа добавляются к ответам с подходящим путём. Заголовки обрамления тела и соединения, такие как Content-Length, устанавливаются сервером и не могут быть переопределены. Задавайте Content-Encoding только для файлов, которые действительно хранятся в сжатом виде.",
+    description: "Help text for the headers editor",
+  },
+  "services.headerAdd": {
+    message: "Добавить заголовок",
+    description: "Add a custom header",
+  },
+  "services.headerPath": {
+    message: "Путь",
+    description: "Header path column",
+  },
+  "services.headerName": {
+    message: "Название",
+    description: "Header name column",
+  },
+  "services.headerValue": {
+    message: "Значение",
+    description: "Header value column",
+  },
+  "services.headerPathAria": {
+    message: "Путь заголовка {n}",
+    description:
+      "A header rule's path field (aria-label), named by its row as Remove header {n} is (w4/541)",
+  },
+  "services.headerNameAria": {
+    message: "Название заголовка {n}",
+    description:
+      "A header rule's name field (aria-label), named by its row (w4/541)",
+  },
+  "services.headerValueAria": {
+    message: "Значение заголовка {n}",
+    description:
+      "A header rule's value field (aria-label), named by its row (w4/541)",
+  },
+  "services.headerRemove": {
+    message: "Удалить заголовок {n}",
+    description: "Remove a header (aria-label)",
+  },
+  "services.headersSave": {
+    message: "Сохранить заголовки",
+    description: "Save the headers list",
+  },
+  "services.staticHeadersSaved": {
+    message: "Заголовки обновлены",
+    description: "Toast after saving headers",
+  },
+  "services.staticHeadersError": {
+    message: "Не удалось обновить заголовки",
+    description: "Error toast for a failed headers save",
+  },
+  "services.typeUnknown": {
+    message: "Сервис",
+    description: "Service-type badge fallback for an unrecognized type",
+  },
+  "services.cronRunsTitle": {
+    message: "Запуски",
+    description:
+      "Cron job Runs page: card title over the run history (w2/m360)",
+  },
+  "services.cronRunViewLogs": {
+    message: "Смотреть логи",
+    description:
+      "Cron job Runs page: link from a run's detail to the Logs tab narrowed to the run's time window (w2/m360)",
+  },
+  "services.cronRunsEmpty": {
+    message: "Запусков пока нет.",
+    description: "Cron job overview: shown when a cron has no run history",
+  },
+  "services.cronRunColStarted": {
+    message: "Начало",
+    description: "Cron runs table column header (run start time)",
+  },
+  "services.cronRunColDuration": {
+    message: "Длительность",
+    description: "Cron runs table column header (elapsed run time)",
+  },
+  "services.cronRunColStatus": {
+    message: "Статус",
+    description: "Cron runs table column header (run outcome)",
+  },
+  "services.cronRunColActions": {
+    message: "Действия",
+    description: "Cron runs table column header (row actions)",
+  },
+  "services.cronRunStatusRunning": {
+    message: "Выполняется",
+    description: "Cron run status badge",
+  },
+  "services.cronRunStatusSucceeded": {
+    message: "Успешно",
+    description: "Cron run status badge",
+  },
+  "services.cronRunStatusFailed": {
+    message: "Ошибка",
+    description: "Cron run status badge",
+  },
+  "services.cronRunStatusCanceled": {
+    message: "Отменён",
+    description: "Cron run status badge",
+  },
+  "services.cronRunCancel": {
+    message: "Отменить",
+    description: "Cancel an in-flight cron run",
+  },
+  "services.cronRunCancelConfirmTitle": {
+    message: "Отменить этот запуск?",
+    description: "Cron run cancellation confirmation title",
+  },
+  "services.cronRunCancelConfirmBody": {
+    message:
+      "Выполняющееся задание будет прервано. Это действие нельзя отменить.",
+    description: "Cron run cancellation confirmation body",
+  },
+  "services.cronRunCancelSuccess": {
+    message: "Запуск Cron Job отменён.",
+    description: "Toast after cron run cancellation is accepted",
+  },
+  "services.cronRunCancelError": {
+    message: "Не удалось отменить запуск Cron Job.",
+    description: "Toast after cron run cancellation fails",
+  },
+  "services.cronTriggerRun": {
+    message: "Запустить сейчас",
+    description: "Button that fires an immediate cron run (Render parity)",
+  },
+  "services.cronTriggering": {
+    message: "Запуск…",
+    description: "Trigger Run button label while the run is being created",
+  },
+  "services.cronTriggerSuccess": {
+    message: "Запуск Cron Job инициирован.",
+    description: "Toast after a manual cron run is accepted",
+  },
+  "services.cronTriggerError": {
+    message: "Не удалось инициировать запуск.",
+    description: "Fallback inline error when triggering a cron run fails",
+  },
+  "services.cronTriggerConfirmTitle": {
+    message: "Запустить сейчас?",
+    description: "Trigger Run confirmation dialog title",
+  },
+  "services.cronTriggerConfirmBody": {
+    message:
+      "Это запрашивает запуск вне расписания. Он заменяет любой ожидающий запрос ручного запуска и отменяет любой активный запуск, прежде чем начнётся новый.",
+    description:
+      "Trigger Run confirmation dialog body when no active run is visible (one may still exist, so state the replacement semantics conditionally)",
+  },
+  "services.cronTriggerConfirmBodyPreempt": {
+    message:
+      "Запуск уже выполняется. Если запустить сейчас, он будет отменён, а новый запуск начнётся немедленно, вне расписания.",
+    description:
+      "Trigger Run confirmation dialog body when a run is already active",
+  },
+  "services.cronRunDetailToggle": {
+    message: "Сведения о запуске, начат {when}",
+    description:
+      "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, with the row number when another listed run shares it (w4/213, w4/m300)",
+  },
+  "services.cronRunDetailToggleNotStarted": {
+    message: "Сведения о запуске, ещё не начат (строка {n})",
+    description:
+      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
+  },
+  "services.cronRunDetailError": {
+    message: "Не удалось загрузить сведения об этом запуске.",
+    description: "Shown when the single-run detail read fails (e.g. stale id)",
+  },
+  "services.cronRunDetailLoading": {
+    message: "Загрузка сведений о запуске…",
+    description:
+      "Screen-reader status while an expanded run's detail read is in flight; the visible fields are masked placeholders (w4/305)",
+  },
+  "services.cronRunDetailStarted": {
+    message: "Начало",
+    description: "Run detail: absolute start timestamp label",
+  },
+  "services.cronRunDetailFinished": {
+    message: "Завершение",
+    description: "Run detail: absolute finish timestamp label",
+  },
+  "services.cronRunDetailTriggeredBy": {
+    message: "Запустил",
+    description:
+      "Run detail: label for the email of the user who triggered the run (absent for a scheduled run)",
+  },
+  "services.cronRunDetailCanceledBy": {
+    message: "Отменил",
+    description:
+      "Run detail: label for the email of the user who canceled the run",
+  },
+  "services.cronRunDetailId": {
+    message: "ID запуска",
+    description: "Run detail: the run's opaque id label",
+  },
+  "services.cronRunsLoadMore": {
+    message: "Загрузить ещё",
+    description: "Cron run history pagination button",
+  },
+  "services.cronRunsLoadingMore": {
+    message: "Загрузка…",
+    description: "Cron run history pagination busy label",
+  },
+  "services.cronRunsLoadError": {
+    message: "Не удалось загрузить запуски Cron Job.",
+    description: "Cron run history read error",
+  },
+  "services.suspendCardTitle": {
+    message: "Приостановить сервис",
+    description: "Settings tab suspend section title",
+  },
+  "services.suspendCardDescription": {
+    message:
+      "Приостановка завершит работу вашего сервиса и остановит обслуживание трафика. Его URL и сертификаты сохраняются, и вы можете возобновить его в любой момент.",
+    description:
+      "Settings tab suspend section description, for the types served at a public host",
+  },
+  "services.suspendCardDescriptionNoUrl": {
+    message:
+      "Приостановка завершит работу вашего сервиса. Вы можете возобновить его в любой момент.",
+    description:
+      "Settings tab suspend section description, for private services and background workers — neither has a public URL or certificates to keep",
+  },
+  "services.resumeCardTitle": {
+    message: "Возобновить сервис",
+    description:
+      "Settings tab resume section title (shown when service is suspended)",
+  },
+  "services.resumeCardDescription": {
+    message:
+      "Возобновление вернёт ваш сервис в работу, и он снова начнёт обслуживать трафик.",
+    description: "Settings tab resume section description",
+  },
+  "services.resumeCardDescriptionCrashLoop": {
+    message:
+      "Мы приостановили этот сервис, потому что в течение 24 часов он многократно не мог запуститься и стать работоспособным. Частые причины — ошибка конфигурации, ошибка в коде приложения или слишком малый тип инстанса. Устраните причину, затем возобновите сервис, чтобы вернуть его в работу.",
+    description:
+      "Settings tab resume section description for a service the platform suspended for a crash loop (stuck_crashlooping)",
+  },
+  "services.resumeCardDescriptionCron": {
+    message: "Возобновление этого Cron Job возобновит запуски по расписанию.",
+    description: "Settings tab resume section description for a cron job",
+  },
+  "services.dangerZoneTitle": {
+    message: "Опасная зона",
+    description: "Settings tab delete section title (destructive)",
+  },
+  "services.dangerZoneDescription": {
+    message:
+      "Удаление сервиса безвозвратно удаляет его, его деплой и его URL. Это действие нельзя отменить.",
+    description:
+      "Settings tab delete section description, for the types served at a public host",
+  },
+  "services.dangerZoneDescriptionNoUrl": {
+    message:
+      "Удаление сервиса безвозвратно удаляет его и его деплой. Это действие нельзя отменить.",
+    description:
+      "Settings tab delete section description, for private services, background workers and cron jobs — none of which have a URL to remove",
+  },
+  "services.deleteButton": {
+    message: "Удалить сервис",
+    description: "Danger-zone button that opens the delete-confirm dialog",
+  },
+  "services.deleteConfirmTitle": {
+    message: "Удалить {name}?",
+    description: "Delete-confirm dialog title",
+  },
+  "services.deleteConfirmBody": {
+    message:
+      "Это действие нельзя отменить. Вы уверены, что хотите удалить этот сервис ({type})?",
+    description:
+      "Delete-confirm dialog body ({type} = lowercase Render type words, e.g. 'web service')",
+  },
+  "services.deleteConfirmPrompt": {
+    message: "Введите {phrase} ниже для подтверждения.",
+    description:
+      "Body prompt naming Render's exact 'sudo delete <type> <name>' phrase (rendered bold by SudoCommandField)",
+  },
+  "services.deleteCancel": {
+    message: "Отменить",
+    description: "Delete-confirm dialog cancel button",
+  },
+  "services.deleteConfirm": {
+    message: "Удалить сервис",
+    description:
+      "Delete-confirm dialog submit button (armed once the name matches)",
+  },
+  "services.deleteSuccess": {
+    message: "{name} удалён",
+    description: "Toast on a successful service delete",
+  },
+  "services.deleteError": {
+    message: "Не удалось удалить {name}",
+    description: "Toast on a failed service delete",
+  },
+  "services.newServiceButton": {
+    message: "Новый сервис",
+    description:
+      "Button on the services list page that opens the create wizard",
+  },
+  "services.createTitle": {
+    message: "Новый сервис",
+    description: "Create-wizard page title",
+  },
+  "services.createWebTitle": {
+    message: "Новый Web Service",
+    description:
+      "Create-wizard page title when the web_service type is selected",
+  },
+  "services.createWebDescription": {
+    message: "Разверните Web Service из Git-репозитория или образа Docker.",
+    description:
+      "Create-wizard page subtitle when the web_service type is selected",
+  },
+  "services.createPrivateTitle": {
+    message: "Новый Private Service",
+    description:
+      "Create-wizard page title when the private_service type is selected",
+  },
+  "services.createPrivateDescription": {
+    message: "Разверните Private Service из Git-репозитория или образа Docker.",
+    description:
+      "Create-wizard page subtitle when the private_service type is selected",
+  },
+  "services.createWorkerTitle": {
+    message: "Новый Background Worker",
+    description:
+      "Create-wizard page title when the background_worker type is selected",
+  },
+  "services.createWorkerDescription": {
+    message:
+      "Разверните Background Worker из Git-репозитория или образа Docker.",
+    description:
+      "Create-wizard page subtitle when the background_worker type is selected",
+  },
+  "services.createStaticTitle": {
+    message: "Новый Static Site",
+    description:
+      "Create-wizard page title when the static_site type is selected",
+  },
+  "services.createStaticDescription": {
+    message: "Соберите и разверните Static Site из Git-репозитория.",
+    description:
+      "Create-wizard page subtitle when the static_site type is selected",
+  },
+  "services.createCronTitle": {
+    message: "Новый Cron Job",
+    description: "Create-wizard page title when the cron_job type is selected",
+  },
+  "services.createCronDescription": {
+    message: "Запускайте команду по повторяющемуся расписанию.",
+    description:
+      "Create-wizard page subtitle when the cron_job type is selected",
+  },
+  "services.createSourceTitle": {
+    message: "Источник",
+    description: "Create-wizard source-picker section label",
+  },
+  "services.createTabGitHub": {
+    message: "GitHub",
+    description: "Create-wizard source-tab label for connected GitHub repos",
+  },
+  "services.createTabPublicGit": {
+    message: "Публичный Git URL",
+    description: "Create-wizard source-tab label for a public git URL",
+  },
+  "services.createTabImage": {
+    message: "Готовый образ",
+    description: "Create-wizard source-tab label for a pre-built Docker image",
+  },
+  "services.createRepoSearchPlaceholder": {
+    message: "Поиск репозиториев…",
+    description: "Create-wizard GitHub tab repo-search input placeholder",
+  },
+  "services.createRepoPrivateBadge": {
+    message: "Приватный",
+    description: "Badge on a private GitHub repo row in the repo picker",
+  },
+  "services.createRepoEmpty": {
+    message: "Репозитории не найдены.",
+    description:
+      "Create-wizard GitHub tab empty state (no repos in the installation)",
+  },
+  "services.createRepoNoMatch": {
+    message: "Нет репозиториев, соответствующих вашему запросу.",
+    description:
+      "Create-wizard GitHub tab empty state when the search filter returns nothing",
+  },
+  "services.createGitConnectPromptTitle": {
+    message: "Подключить GitHub",
+    description:
+      "Create-wizard GitHub tab connect-prompt heading (no GitHub connection yet)",
+  },
+  "services.createGitConnectPromptBody": {
+    message:
+      "Подключите аккаунт GitHub, чтобы разворачивать сервисы из приватных или публичных репозиториев.",
+    description:
+      "Create-wizard GitHub tab connect-prompt body (no GitHub connection yet)",
+  },
+  "services.createGitConnectButton": {
+    message: "Подключить GitHub",
+    description:
+      "Create-wizard GitHub tab button that opens the GitHub App install flow",
+  },
+  "services.createPublicUrlLabel": {
+    message: "URL репозитория",
+    description: "Create-wizard Public Git URL tab input label",
+  },
+  "services.createPublicUrlPlaceholder": {
+    message: "https://github.com/you/your-repo",
+    description: "Create-wizard Public Git URL tab input placeholder",
+  },
+  "services.createPublicUrlError": {
+    message:
+      "Введите URL с https:// или SSH-URL GitHub (git@github.com:owner/repo.git).",
+    description: "Create-wizard Public Git URL tab validation message",
+  },
+  "services.createPublicUrlFileError": {
+    message: "Укажите URL репозитория, а не страницы файла.",
+    description:
+      "Create-wizard Public Git URL: a GitHub file (blob) page was pasted, which names no repository to build (w4/576)",
+  },
+  "services.createImageLabel": {
+    message: "Docker-образ",
+    description: "Create-wizard Existing Image tab input label",
+  },
+  "services.createImagePlaceholder": {
+    message: "docker.io/library/nginx:latest",
+    description: "Create-wizard Existing Image tab input placeholder",
+  },
+  "services.createImagePortHint": {
+    message:
+      "bex использует порт, объявленный в образе (EXPOSE). Укажите порт ниже, только если образ слушает порт, который не объявлен.",
+    description:
+      "Create-wizard Existing Image tab hint: set the port below to the one the image listens on (w9/011, w6/m149)",
+  },
+  "services.createImageMalformed": {
+    message:
+      "Используйте ссылку на Docker-образ, напр. docker.io/library/nginx:latest — путь в нижнем регистре с необязательным тегом или дайджестом.",
+    description: "Inline error under a malformed Docker Image field (w4/406)",
+  },
+  "services.createImageTooLong": {
+    message: "Не более 512 байт",
+    description: "Inline error under an over-long Docker Image field (w4/406)",
+  },
+  "services.createImagePrivateHost": {
+    message:
+      "Хост реестра должен быть публичным — localhost, а также приватные и link-local адреса использовать нельзя.",
+    description:
+      "Inline error under a Docker Image field naming a private registry host (w4/406)",
+  },
+  "services.createFieldPort": {
+    message: "Порт",
+    description: "Create wizard: service port field label",
+  },
+  "services.createFieldPortFromImage": {
+    message: "Из образа",
+    description:
+      "Create wizard: port placeholder for an image-port service (a Docker-built or prebuilt-image web or private service), whose ports come from its image (w6/m148, w4/m243, w4/m323)",
+  },
+  "services.createFieldPortImageHint": {
+    message:
+      "Необязательно. bex публикует каждый TCP-порт, объявленный в образе (EXPOSE); порт 3000, если он объявлен, иначе наименьший объявленный, иначе 10000, становится $PORT и основным портом для проверки работоспособности. Укажите порт, чтобы выбрать основной самостоятельно.",
+    description:
+      "Create wizard: port hint for an image-port private service (Docker-built or prebuilt image), whose primary is also its $PORT — blank takes the image's declared ports (w6/m148, w4/m323, w4/615)",
+  },
+  "services.createFieldPortImageHintWeb": {
+    message:
+      "Необязательно. bex публикует каждый TCP-порт, объявленный в образе (EXPOSE); основным, который получает трафик и проверки работоспособности, становится 3000, если он объявлен, иначе наименьший объявленный, иначе 10000 — пока bex не найдёт порт, на котором ваш сервер отвечает по HTTP. $PORT остаётся равным 10000, если вы не зададите его. Укажите порт, чтобы выбрать основной самостоятельно.",
+    description:
+      "Create wizard: port hint for an image-port web service (Docker-built or prebuilt image) — the selected port gets the traffic, while $PORT stays Render's 10000 unless set (w4/m243, w4/615)",
+  },
+  "services.createFieldPortHint": {
+    message:
+      "Ваш контейнер должен слушать порт {port} — bex направляет трафик туда и передаёт его как $PORT. Измените значение в соответствии с разворачиваемым образом.",
+    description: "Create wizard: service port field hint",
+  },
+  "services.createRegistryCredentialLabel": {
+    message: "Учётные данные реестра",
+    description: "Create-wizard private-image registry credential label",
+  },
+  "services.createRegistryCredentialPlaceholder": {
+    message: "Выберите учётные данные реестра",
+    description: "Create-wizard registry credential picker placeholder",
+  },
+  "services.createRegistryCredentialNone": {
+    message: "Без учётных данных — публичный образ",
+    description: "Create-wizard registry credential picker empty option",
+  },
+  "services.createRegistryCredentialDescription": {
+    message:
+      "Выберите сохранённые учётные данные рабочего пространства, если образ или базовый образ Dockerfile приватный.",
+    description: "Create-wizard registry credential picker help text",
+  },
+  "services.registryCredentialEmpty": {
+    message: "Нет сохранённых учётных данных реестра.",
+    description: "Registry credential selector empty state",
+  },
+  "services.registryCredentialListError": {
+    message: "Не удалось загрузить учётные данные реестра.",
+    description: "Registry credential selector load error",
+  },
+  "services.registryCredentialManage": {
+    message: "Управление учётными данными реестра",
+    description: "Link from a service credential selector to account settings",
+  },
+  "services.registryCredentialSettingsTitle": {
+    message: "Учётные данные реестра образов",
+    description: "Service Settings private-image credential card title",
+  },
+  "services.registryCredentialSettingsDescription": {
+    message:
+      "Выберите сохранённые учётные данные для загрузки этого приватного образа или базового образа Dockerfile.",
+    description: "Service Settings private-image credential card description",
+  },
+  "services.registryCredentialSave": {
+    message: "Сохранить учётные данные",
+    description: "Service Settings registry credential save action",
+  },
+  "services.registryCredentialSaved": {
+    message: "Учётные данные реестра обновлены.",
+    description: "Toast after attaching or changing a registry credential",
+  },
+  "services.registryCredentialCleared": {
+    message: "Учётные данные реестра удалены.",
+    description: "Toast after clearing a registry credential",
+  },
+  "services.registryCredentialError": {
+    message: "Не удалось обновить учётные данные реестра.",
+    description: "Toast after a registry credential update fails",
+  },
+  "services.headerRegistryCredential": {
+    message: "Учётные данные реестра:",
+    description: "Service detail header label for a bound registry credential",
+  },
+  "services.createSettingsTitle": {
+    message: "Настройки",
+    description: "Create-wizard settings section heading",
+  },
+  "services.createFieldName": {
+    message: "Название",
+    description: "Create-wizard name input label",
+  },
+  "services.createFieldNamePlaceholder": {
+    message: "my-service",
+    description: "Create-wizard name input placeholder",
+  },
+  "services.createFieldNameError": {
+    message:
+      "Введите название не длиннее 100 символов, без переводов строки и управляющих символов.",
+    description: "Create-wizard name validation message",
+  },
+  "services.createFieldNameResourceName": {
+    message: "Имя ресурса: {name}",
+    description:
+      "Create-wizard preview of the resource name (slug) bex derives from a free-form service name (w5/m153)",
+  },
+  "services.createFieldNameTaken": {
+    message: "Название уже используется",
+    description:
+      "Create-wizard inline error when the service name is already taken in the current workspace (w4/m19)",
+  },
+  "services.createFieldNameUseSuggestion": {
+    message: "Использовать {name}",
+    description:
+      "Create-wizard button offering the suggested free name in place of a taken one (w4/m19)",
+  },
+  "services.createFieldNameChecking": {
+    message: "Проверка доступности…",
+    description:
+      "Create-wizard transient message while the debounced name-availability check is in flight (w4/m19)",
+  },
+  "services.createFieldBranch": {
+    message: "Ветка",
+    description: "Create-wizard branch input label (git sources)",
+  },
+  "services.createFieldBranchPlaceholder": {
+    message: "Ветка репозитория по умолчанию",
+    description:
+      "Create-wizard branch input placeholder when the repo's default is not known client-side: a blank branch builds the repository's default branch (w8/m76)",
+  },
+  "services.createFieldRootDir": {
+    message: "Корневой каталог",
+    description: "Create-wizard root-directory input label",
+  },
+  "services.createFieldRootDirPlaceholder": {
+    message: "напр. backend",
+    description: "Create-wizard root-directory input placeholder",
+  },
+  "services.createFieldRootDirHint": {
+    message:
+      "Подкаталог, из которого выполняется сборка. Оставьте пустым, чтобы использовать корень репозитория.",
+    description: "Create-wizard root-directory input hint text",
+  },
+  "services.createFieldRuntime": {
+    message: "Среда выполнения",
+    description: "Create-wizard Render-compatible runtime selector label",
+  },
+  "services.createFieldBuildCommand": {
+    message: "Команда сборки",
+    description: "Create-wizard Render-compatible build command label",
+  },
+  "services.createFieldStartCommand": {
+    message: "Команда запуска",
+    description: "Create-wizard Render-compatible start command label",
+  },
+  "services.createFieldDockerfilePath": {
+    message: "Путь к Dockerfile",
+    description: "Create-wizard Dockerfile-path label for the Docker runtime",
+  },
+  "services.createFieldDockerfilePathPlaceholder": {
+    message: "Dockerfile",
+    description: "Create-wizard Dockerfile-path placeholder",
+  },
+  "services.createFieldDockerfilePathHint": {
+    message:
+      "Путь относительно корневого каталога. Оставьте пустым для Dockerfile.",
+    description: "Create-wizard Dockerfile-path help text",
+  },
+  "services.createFieldDockerCommand": {
+    message: "Docker-команда",
+    description: "Create-wizard Docker CMD override label (Render wording)",
+  },
+  "services.createFieldDockerCommandPlaceholder": {
+    message: "Использовать CMD из Dockerfile",
+    description: "Create-wizard optional Docker Command placeholder",
+  },
+  "services.imageCommandPlaceholder": {
+    message: "Использовать команду образа по умолчанию",
+    description:
+      "Create-wizard and settings placeholder for an Existing Image service's optional Docker Command",
+  },
+  "services.imageCommandHint": {
+    message:
+      "Переопределяет команду образа по умолчанию (его CMD). Оставьте пустым, чтобы использовать её.",
+    description: "Existing Image service Settings: Docker Command help text",
+  },
+  "services.createRuntimeNode": {
+    message: "Node",
+    description: "Create-wizard Node runtime option",
+  },
+  "services.createRuntimePython": {
+    message: "Python 3",
+    description: "Create-wizard Python runtime option",
+  },
+  "services.createRuntimeGo": {
+    message: "Go",
+    description: "Create-wizard Go runtime option",
+  },
+  "services.createRuntimeRuby": {
+    message: "Ruby",
+    description: "Create-wizard Ruby runtime option",
+  },
+  "services.createRuntimeRust": {
+    message: "Rust",
+    description: "Create-wizard Rust runtime option",
+  },
+  "services.createRuntimeElixir": {
+    message: "Elixir",
+    description: "Create-wizard Elixir runtime option",
+  },
+  "services.createRuntimeDocker": {
+    message: "Docker",
+    description: "Create-wizard Docker runtime option",
+  },
+  "services.createFieldPlan": {
+    message: "Тип инстанса",
+    description: "Create-wizard plan-picker section label",
+  },
+  "services.createFieldAutoDeploy": {
+    message: "Автодеплой при push",
+    description: "Create-wizard auto-deploy toggle label",
+  },
+  "services.createFieldAutoDeployHint": {
+    message: "Автоматически разворачивать заново при push в эту ветку.",
+    description: "Create-wizard auto-deploy toggle hint text",
+  },
+  "services.createCancel": {
+    message: "Отмена",
+    description: "Create-wizard cancel button",
+  },
+  "services.createSubmit": {
+    message: "Развернуть сервис",
+    description: "Create-wizard submit button",
+  },
+  "services.createSuccess": {
+    message: "Развёртывание {name}…",
+    description: "Toast shown after createService succeeds",
+  },
+  "services.createError": {
+    message: "Не удалось создать {name}. Повторите попытку.",
+    description: "Toast shown after createService fails",
+  },
+  "services.scaleSuccess_one": {
+    message: "Масштабирование до {count} инстанса…",
+    description:
+      "Toast acknowledging that scaleService accepted the desired count; convergence is still asynchronous (singular)",
+  },
+  "services.scaleSuccess_few": {
+    message: "Масштабирование до {count} инстансов…",
+    description:
+      "Toast acknowledging that scaleService accepted the desired count; convergence is still asynchronous (plural)",
+  },
+  "services.scaleSuccess_many": {
+    message: "Масштабирование до {count} инстансов…",
+    description:
+      "Toast acknowledging that scaleService accepted the desired count; convergence is still asynchronous (plural)",
+  },
+  "services.scaleSuccess_other": {
+    message: "Масштабирование до {count} инстанса…",
+    description:
+      "Toast acknowledging that scaleService accepted the desired count; convergence is still asynchronous (plural)",
+  },
+  "services.scaleError": {
+    message: "Не удалось изменить число инстансов.",
+    description: "Toast shown after scaleService fails",
+  },
+  "services.createTypePickerTitle": {
+    message: "Тип сервиса",
+    description: "Label above the service type picker in the create wizard",
+  },
+  "services.createTypeWebDesc": {
+    message: "Откройте сервис по публичному URL",
+    description:
+      "Description shown under the Web Service type card in the create wizard",
+  },
+  "services.createTypePrivateDesc": {
+    message: "Доступен только внутри сети платформы",
+    description: "Description shown under the Private Service type card",
+  },
+  "services.createTypeWorkerDesc": {
+    message: "Фоновая обработка без порта и URL",
+    description: "Description shown under the Background Worker type card",
+  },
+  "services.createTypeCronDesc": {
+    message: "Запуск команды по расписанию",
+    description: "Description shown under the Cron Job type card",
+  },
+  "services.createTypeStaticDesc": {
+    message: "Сборка и раздача статического сайта из объектного хранилища",
+    description: "Description shown under the Static Site type card",
+  },
+  "services.createFieldSchedule": {
+    message: "Расписание",
+    description: "Label for the cron schedule field in the create wizard",
+  },
+  "services.createFieldSchedulePlaceholder": {
+    message: "0 0 * * *",
+    description: "Placeholder for the cron schedule field",
+  },
+  "services.createFieldScheduleHint": {
+    message:
+      "Выражение crontab из 5 полей (минута, час, день, месяц, день недели). Выполняется в UTC.",
+    description: "Hint text under the schedule field",
+  },
+  "services.createFieldSchedulePreview": {
+    message: "{description} · выполняется в UTC",
+    description:
+      "Live human-readable description of a valid schedule, shown under the field",
+  },
+  "services.createFieldScheduleError": {
+    message: "Введите корректное cron-выражение из 5 полей, напр. 0 0 * * *.",
+    description: "Validation error for an invalid cron expression",
+  },
+  "services.createFieldCommand": {
+    message: "Команда",
+    description: "Label for the command field in the create wizard",
+  },
+  "services.createFieldCommandPlaceholder": {
+    message: "python script.py",
+    description: "Placeholder for the command field",
+  },
+  "services.createFieldCommandHint": {
+    message: "Команда, которая выполняется при каждом запуске по расписанию.",
+    description: "Hint text under the command field",
+  },
+  "services.createFieldPublishPath": {
+    message: "Каталог публикации",
+    description: "Label for the publish directory field in the create wizard",
+  },
+  "services.createFieldPublishPathPlaceholder": {
+    message: "dist",
+    description: "Placeholder for the publish directory field",
+  },
+  "services.createFieldPublishPathHint": {
+    message:
+      "Каталог с результатом сборки, который будет корнем сайта (напр. dist, build, public).",
+    description: "Hint text under the publish directory field",
+  },
+  "services.createFieldPublishPathRequired": {
+    message:
+      "Обязательное поле. Укажите каталог с результатом сборки, который будет корнем сайта, относительно корневого каталога (напр. dist, build, public или . для самого корневого каталога — корня репозитория, если корневой каталог пуст).",
+    description:
+      "Hint under the publish directory field while it is blank: the field is required, the placeholder is only an example",
+  },
+  "services.createNoPublicUrlNote": {
+    message: "У этого типа сервиса нет публичного URL.",
+    description:
+      "Note shown for private/worker types that don't produce a public URL",
+  },
+  "services.createFieldEnvVarsTitle": {
+    message: "Переменные окружения",
+    description: "Section heading for env vars in the create wizard",
+  },
+  "services.createFieldEnvVarsAdd": {
+    message: "Добавить переменную",
+    description: "Button to add an env var row in the create wizard",
+  },
+  "services.envRowKey": {
+    message: "Ключ переменной {n}",
+    description:
+      "A create-flow variable row's key field (aria-label), named by its row as its Remove button is (w4/544)",
+  },
+  "services.envRowValue": {
+    message: "Значение переменной {n}",
+    description:
+      "A create-flow variable row's value field (aria-label), named by its row (w4/544)",
+  },
+  "services.envRowGenerate": {
+    message: "Сгенерировать значение для переменной {n}",
+    description:
+      "A create-flow variable row's Generate button (aria-label), named by its row (w4/544)",
+  },
+  "services.envRowRemove": {
+    message: "Удалить переменную {n}",
+    description:
+      "A create-flow variable row's Remove button (aria-label), named by its row (w4/544)",
+  },
+  "services.fileRowName": {
+    message: "Имя файла для секретного файла {n}",
+    description:
+      "A create-flow secret file row's name field (aria-label), named by its row and starting with the dialog's visible \"File name\" label (w4/544)",
+  },
+  "services.fileRowContent": {
+    message: "Содержимое секретного файла {n}",
+    description:
+      "A create-flow secret file row's contents field (aria-label), named by its row (w4/544)",
+  },
+  "services.fileRowRemove": {
+    message: "Удалить секретный файл {n}",
+    description:
+      "A create-flow secret file row's Remove button (aria-label), named by its row (w4/544)",
+  },
+  "services.createFieldEnvVarsKey": {
+    message: "Ключ",
+    description: "Label for the env var key column in the create wizard",
+  },
+  "services.createFieldEnvVarsValue": {
+    message: "Значение",
+    description: "Label for the env var value column in the create wizard",
+  },
+  "services.createFieldEnvVarsKeyPlaceholder": {
+    message: "KEY_NAME",
+    description: "Placeholder for the env var key input in the create wizard",
+  },
+  "services.createFieldEnvVarsValuePlaceholder": {
+    message: "значение",
+    description: "Placeholder for the env var value input in the create wizard",
+  },
+  "services.createFieldEnvVarsKeyError": {
+    message:
+      "Используйте до 253 букв, цифр, точек, дефисов и подчёркиваний; не '.' и не начинайте с '..'.",
+    description:
+      "Error shown when an env var key is invalid in the create wizard",
+  },
+  "services.createFieldSecretFilesTitle": {
+    message: "Секретные файлы",
+    description: "Section heading for secret files in the create wizard",
+  },
+  "services.createFieldSecretFilesHint": {
+    message:
+      "Монтируются только для чтения в /etc/secrets, начиная с первого деплоя.",
+    description: "Hint for create-time secret files",
+  },
+  "services.createFieldSecretFilesAdd": {
+    message: "Добавить секретный файл",
+    description: "Button to add a create-time secret file",
+  },
+  "services.createFieldSecretFilesNamePlaceholder": {
+    message: "credentials.json",
+    description: "Placeholder for a secret file name",
+  },
+  "services.createFieldSecretFilesContentPlaceholder": {
+    message: "Вставьте содержимое секрета",
+    description: "Placeholder for secret file contents",
+  },
+  "services.createFieldSecretFilesNameError": {
+    message:
+      "Используйте только буквы, цифры, точки, дефисы и подчёркивания; . и .. недопустимы.",
+    description: "Invalid secret file name error",
+  },
+  "services.createFieldEnvironmentTitle": {
+    message: "Проект и окружение",
+    description: "Create wizard grouping section title",
+  },
+  "services.createFieldProject": {
+    message: "Проект",
+    description: "Accessible label for the create project picker",
+  },
+  "services.createFieldProjectNone": {
+    message: "Без проекта",
+    description: "Unassigned option in the project picker",
+  },
+  "services.createFieldEnvironment": {
+    message: "Окружение",
+    description: "Accessible label for the create environment picker",
+  },
+  "services.createFieldEnvironmentNone": {
+    message: "Без окружения",
+    description: "Unassigned option in the environment picker",
+  },
+  "services.createFieldEnvironmentHint": {
+    message:
+      "При выборе окружения сервис также добавляется в его родительский проект.",
+    description: "Hint for create-time environment assignment",
+  },
+  "services.navEvents": {
+    message: "События",
+    description: "Service-detail nav item (events tab)",
+  },
+  "services.navDeploys": {
+    message: "Деплои",
+    description:
+      "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+  },
+  "services.navBuilds": {
+    message: "Сборки",
+    description:
+      "Service-detail nav item for a cron job: its build history, Render's Builds page (w2/m360)",
+  },
+  "services.navRuns": {
+    message: "Запуски",
+    description:
+      "Service-detail nav item for a cron job: its run history, Render's Runs page (w2/m360)",
+  },
+  "services.navDisk": {
+    message: "Диск",
+    description:
+      "Service-detail nav item (persistent disk page); Render's label is singular",
+  },
+  "services.diskTitle": {
+    message: "Диск",
+    description: "Disk tab card title",
+  },
+  "services.diskDescription": {
+    message:
+      "Подключите SSD, чтобы данные файловой системы сервиса сохранялись между деплоями. Диски тарифицируются по $0.175 за ГБ в месяц.",
+    description:
+      "Disk tab card description; bex's rate is 30% below Render's $0.25",
+  },
+  "services.diskEmptyTitle": {
+    message: "Диск не подключён",
+    description: "Disk tab empty state title",
+  },
+  "services.diskEmptyBody": {
+    message:
+      "Между деплоями и перезапусками сохраняются только файлы по пути монтирования диска.",
+    description: "Disk tab empty state body",
+  },
+  "services.diskPaidOnly": {
+    message:
+      "Для дисков нужен платный тип инстанса. Перейдите на другой тариф сервиса, чтобы подключить диск.",
+    description: "Shown instead of the add button on a free service",
+  },
+  "services.diskAddAction": {
+    message: "Добавить диск",
+    description: "Button that opens and submits the add-disk form",
+  },
+  "services.diskLoadErrorTitle": {
+    message: "Не удалось загрузить диск этого сервиса",
+    description: "Disk tab error state title",
+  },
+  "services.diskWarningsTitle": {
+    message: "Обратите внимание:",
+    description: "Heading above the five add-disk warnings (Render's wording)",
+  },
+  "services.diskWarningZeroDowntime": {
+    message: "Подключение диска отключает деплои без простоя для сервиса.",
+    description: "Add-disk warning 1",
+  },
+  "services.diskWarningSingleInstance": {
+    message:
+      "Сервисы с подключённым диском нельзя масштабировать на несколько инстансов.",
+    description: "Add-disk warning 2",
+  },
+  "services.diskWarningOnePerService": {
+    message: "К одному сервису можно подключить не более одного диска.",
+    description: "Add-disk warning 3",
+  },
+  "services.diskWarningMountPathOnly": {
+    message: "Сохраняются только файлы по пути монтирования диска.",
+    description: "Add-disk warning 4",
+  },
+  "services.diskWarningNoSharing": {
+    message: "Другие сервисы не имеют доступа к диску этого сервиса.",
+    description: "Add-disk warning 5",
+  },
+  "services.diskMountPathLabel": {
+    message: "Путь монтирования",
+    description: "Add-disk form field label",
+  },
+  "services.diskMountPathHint": {
+    message:
+      "Абсолютный путь монтирования диска. Между деплоями сохраняются только файлы по этому пути. Не может быть корневым каталогом (/).",
+    description: "Add-disk mount path helper text",
+  },
+  "services.diskMountPathRequired": {
+    message: "Введите путь монтирования.",
+    description: "Client-side validation: empty mount path",
+  },
+  "services.diskMountPathAbsolute": {
+    message: "Путь монтирования должен быть абсолютным (начинаться с /).",
+    description: "Client-side validation: relative mount path",
+  },
+  "services.diskMountPathNotRoot": {
+    message:
+      "Путь монтирования не может быть корневым каталогом или заканчиваться слэшем.",
+    description: "Client-side validation: root or trailing slash",
+  },
+  "services.diskMountPathReserved": {
+    message:
+      "Этот путь зарезервирован платформой. Смонтируйте вместо него его подкаталог.",
+    description: "Client-side validation: reserved mount path",
+  },
+  "services.diskSizeLabel": {
+    message: "Размер",
+    description: "Add-disk size field label",
+  },
+  "services.diskSizeHint": {
+    message:
+      "Размер можно увеличить позже, но нельзя уменьшить. Рекомендуем начать с наименьшего значения, подходящего для вашей задачи.",
+    description: "Add-disk size helper text (Render's wording)",
+  },
+  "services.diskSizeChip": {
+    message: "{size} ГБ",
+    description: "Size quick-select chip and size display",
+  },
+  "services.diskAddSuccess": {
+    message: "Диск подключён. Сервис разворачивается заново.",
+    description: "Toast after a disk is attached",
+  },
+  "services.diskGrowLabel": {
+    message: "Увеличить размер (ГБ)",
+    description: "Grow control label on an attached disk",
+  },
+  "services.diskGrowAction": {
+    message: "Увеличить размер",
+    description: "Grow button",
+  },
+  "services.diskGrowHint": {
+    message:
+      "Увеличение размера применяется без простоя; на некоторых томах файловая система дорастёт при следующем перезапуске. Уменьшить диск нельзя.",
+    description: "Grow helper text, including bex's honest CSI caveat",
+  },
+  "services.diskResizeSuccess": {
+    message: "Размер диска увеличен.",
+    description: "Toast after a successful grow",
+  },
+  "services.diskDeleteAction": {
+    message: "Удалить диск",
+    description: "Destructive action on an attached disk",
+  },
+  "services.diskDeleteTitle": {
+    message: "Удалить этот диск?",
+    description: "Delete confirmation title",
+  },
+  "services.diskDeleteWarning": {
+    message:
+      "Все данные на диске будут потеряны, а сервис сразу потеряет к нему доступ. Его снимки тоже будут удалены. Это действие нельзя отменить.",
+    description: "Delete confirmation body",
+  },
+  "services.diskDeleteConfirm": {
+    message: "Удалить диск",
+    description: "Delete confirmation action",
+  },
+  "services.diskDeleteSuccess": {
+    message: "Диск удалён.",
+    description: "Toast after a disk is deleted",
+  },
+  "services.diskSnapshotsTitle": {
+    message: "Снимки",
+    description: "Snapshots card title",
+  },
+  "services.diskSnapshotsDescription": {
+    message:
+      "Снимок этого диска создаётся ежедневно и хранится не менее семи дней.",
+    description: "Snapshots card description",
+  },
+  "services.diskSnapshotsNotConfiguredTitle": {
+    message: "Снимки не настроены",
+    description:
+      "Snapshots card heading when the deployment has no snapshot object store configured (not a failure).",
+  },
+  "services.diskSnapshotsNotConfiguredBody": {
+    message:
+      "В этой установке bex не настроено объектное хранилище для снимков дисков, поэтому снимки не создаются. Ваши данные не затронуты — попросите оператора включить снимки.",
+    description:
+      "Explains that snapshots are unconfigured rather than broken, and that an operator enables them.",
+  },
+  "services.diskSnapshotsEmptyTitle": {
+    message: "Снимков пока нет",
+    description: "Snapshots empty state title",
+  },
+  "services.diskSnapshotsEmptyBody": {
+    message: "Первый снимок будет создан при следующем ночном запуске.",
+    description: "Snapshots empty state body",
+  },
+  "services.diskSnapshotsFailedTitle": {
+    message: "Не удалось создать последний снимок",
+    description: "A disk's most recent nightly snapshot attempt failed",
+  },
+  "services.diskSnapshotsFailedReadBody": {
+    message:
+      "Часть этого диска не удалось прочитать, поэтому снимок не создан и последние изменения не защищены резервной копией. Существующие снимки не затронуты. Если ошибка повторится, обратитесь в поддержку.",
+    description: "Failed snapshot: the volume could not be read",
+  },
+  "services.diskSnapshotsFailedUploadBody": {
+    message:
+      "Не удалось сохранить снимок в хранилище, поэтому последние изменения не защищены резервной копией. Существующие снимки не затронуты; при следующем ночном запуске будет новая попытка.",
+    description: "Failed snapshot: the object store did not accept it",
+  },
+  "services.diskSnapshotsFailedConfigBody": {
+    message:
+      "Задача создания снимка не смогла корректно запуститься, поэтому последние изменения не защищены резервной копией. Существующие снимки не затронуты. Обратитесь в поддержку.",
+    description: "Failed snapshot: the job was misconfigured",
+  },
+  "services.diskSnapshotsFailedOtherBody": {
+    message:
+      "Последняя попытка создать снимок не удалась, поэтому последние изменения не защищены резервной копией. Существующие снимки не затронуты. Если ошибка повторится, обратитесь в поддержку.",
+    description: "Failed snapshot: an unrecognized stage",
+  },
+  "services.diskSnapshotsOverdueTitle": {
+    message: "Нет свежего снимка",
+    description: "A disk's nightly snapshot did not arrive when expected",
+  },
+  "services.diskSnapshotsOverdueBody": {
+    message:
+      "Ночной снимок, ожидавшийся к {dueBy}, не создан, поэтому последние изменения этого диска не защищены резервной копией. Существующие снимки не затронуты. Если проблема не исчезнет, обратитесь в поддержку.",
+    description:
+      "Explains an overdue nightly snapshot; {dueBy} is a local date/time",
+  },
+  "services.diskSnapshotsNotRunningTitle": {
+    message: "Снимки не создаются",
+    description:
+      "The platform could not schedule this disk's nightly snapshots",
+  },
+  "services.diskSnapshotsNotRunningBody": {
+    message:
+      "bex не удалось запланировать ночные снимки этого диска, поэтому новые изменения не защищены резервной копией. Существующие снимки не затронуты. Обратитесь в поддержку.",
+    description:
+      "Explains that nightly snapshots cannot be scheduled and whom to contact",
+  },
+  "services.diskSnapshotsUnavailableTitle": {
+    message: "Снимки недоступны",
+    description: "Snapshots error state title",
+  },
+  "services.diskRestoreDatabaseWarning": {
+    message:
+      "Не восстанавливайте диск, чтобы вернуть базу данных, которая на нём работает, — подмена файлов под работающей базой может её повредить. Используйте резервное копирование и восстановление самой базы данных.",
+    description:
+      "Render's database-recovery warning, carried verbatim in meaning",
+  },
+  "services.diskRestoreAction": {
+    message: "Восстановить",
+    description: "Restore button on a snapshot row",
+  },
+  "services.diskRestoreTitle": {
+    message: "Восстановить из этого снимка?",
+    description: "Restore confirmation title",
+  },
+  "services.diskRestoreWarning": {
+    message:
+      "Сервис остановится, диск будет заменён этим снимком, и сервис перезапустится. Всё, что записано после снимка, будет потеряно. Это действие нельзя отменить.",
+    description: "Restore confirmation body",
+  },
+  "services.diskRestoreConfirm": {
+    message: "Восстановить диск",
+    description: "Restore confirmation action",
+  },
+  "services.diskUnsupportedType": {
+    message:
+      "Для постоянных дисков нужен долгоживущий инстанс, к которому их можно примонтировать, поэтому они доступны для Web Service, Private Service и Background Worker.",
+    description:
+      "Empty-state body on the Disk tab for a service type that cannot have a disk.",
+  },
+  "services.diskSudoPrompt": {
+    message: "Чтобы продолжить, введите {phrase}",
+    description:
+      "Label above the typed-confirmation input for an irreversible disk action.",
+  },
+  "services.diskConfigTitle": {
+    message: "Конфигурация диска",
+    description:
+      "Heading of the card holding the disk's mount path and size settings.",
+  },
+  "services.diskConfigDescription": {
+    message: "Настройте путь монтирования и размер этого диска.",
+    description: "Subtitle of the disk configuration card.",
+  },
+  "services.diskSizeUnit": {
+    message: "ГБ",
+    description: "Unit suffix shown beside the disk size input.",
+  },
+  "services.diskEditAction": {
+    message: "Изменить",
+    description: "Button that unlocks the disk size field for editing.",
+  },
+  "services.diskProvisionedLabel": {
+    message: "Выделено {size} ГБ",
+    description:
+      "Provisioned disk size shown beside the usage chart heading; this is the size billing meters.",
+  },
+  "services.diskDeleteCardTitle": {
+    message: "Удалить диск",
+    description:
+      "Heading of the delete-disk card. Distinct from diskDeleteTitle, which is the confirmation dialog's question.",
+  },
+  "services.diskDeleteCardDescription": {
+    message:
+      "Диск будет отключён от этого сервиса, а все данные на нём будут удалены без возможности восстановления.",
+    description: "Subtitle of the delete-disk card, stating what is lost.",
+  },
+  "services.diskUsageTitle": {
+    message: "Использование диска",
+    description: "Heading of the disk usage chart on a service's Disk tab.",
+  },
+  "services.diskUsageDescription": {
+    message:
+      "Байты, записанные на смонтированный том, относительно выделенного объёма. Тарифицируется выделенный размер, а не использованные байты.",
+    description:
+      "Subtitle of the disk usage chart, stating that billing uses provisioned size.",
+  },
+  "services.diskRestoreStarted": {
+    message: "Диск восстанавливается. Сервис остановлен до завершения.",
+    description: "Toast after a restore is requested",
+  },
+  "services.navShell": {
+    message: "Shell",
+    description: "Service-detail nav item (running-instance SSH page)",
+  },
+  "services.eventsTitle": {
+    message: "Активность",
+    description: "Events tab card title",
+  },
+  "services.eventsDescription": {
+    message: "Недавние деплои и изменения сервиса.",
+    description: "Events tab card description",
+  },
+  "services.eventsCount_one": {
+    message: "{count} недавнее событие",
+    description:
+      "Accessible label for the number of visible service events (singular)",
+  },
+  "services.eventsCount_few": {
+    message: "{count} недавних события",
+    description:
+      "Accessible label for the number of visible service events (plural)",
+  },
+  "services.eventsCount_many": {
+    message: "{count} недавних событий",
+    description:
+      "Accessible label for the number of visible service events (plural)",
+  },
+  "services.eventsCount_other": {
+    message: "{count} недавнего события",
+    description:
+      "Accessible label for the number of visible service events (plural)",
+  },
+  "services.eventsEmptyTitle": {
+    message: "Активности пока нет",
+    description: "Events tab empty-state title",
+  },
+  "services.eventsEmpty": {
+    message: "Здесь появятся деплои и изменения сервиса.",
+    description: "Events tab empty-state description",
+  },
+  "services.eventsErrorTitle": {
+    message: "Активность недоступна",
+    description: "Events tab query-error title",
+  },
+  "services.eventsErrorDescription": {
+    message:
+      "Не удалось загрузить недавнюю активность. Повторите попытку чуть позже.",
+    description: "Events tab query-error description",
+  },
+  "services.eventsRetry": {
+    message: "Повторить",
+    description: "Events tab query-error retry button",
+  },
+  "services.eventsLoadOlder": {
+    message: "Загрузить более старые события",
+    description: "Button that loads the next page or earlier event window",
+  },
+  "services.eventsLoadingOlder": {
+    message: "Загрузка более старых событий…",
+    description: "Busy label while an older service-event page is loading",
+  },
+  "services.eventsHistoryEnd": {
+    message: "Вы дошли до начала истории этого сервиса.",
+    description: "Terminal label after all retained service events are loaded",
+  },
+  "services.eventsFilter": {
+    message: "Фильтр событий",
+    description: "Button opening the service event-type filter",
+  },
+  "services.eventsFilterSelected": {
+    message: "Фильтр событий ({count})",
+    description: "Event filter button with selected-type count",
+  },
+  "services.eventsFilterSearch": {
+    message: "Поиск событий",
+    description: "Search input for service event types",
+  },
+  "services.eventsFilterAll": {
+    message: "Все события",
+    description: "Master service event filter option",
+  },
+  "services.eventsFilterNoMatches": {
+    message: "Нет типов событий, соответствующих вашему запросу.",
+    description: "Empty search result in the event filter",
+  },
+  "services.eventsFilterEmptyTitle": {
+    message: "Нет подходящих событий",
+    description: "Title when loaded history has no selected event types",
+  },
+  "services.eventsFilterEmpty": {
+    message:
+      "Выберите больше типов событий или загрузите более старую историю.",
+    description: "Body when loaded history has no selected event types",
+  },
+  "services.eventsFilterGroup.deploy": {
+    message: "Деплой",
+    description: "Deploy event filter group",
+  },
+  "services.eventsFilterGroup.serviceStatus": {
+    message: "Статус сервиса",
+    description: "Service-status event filter group",
+  },
+  "services.eventsFilterGroup.scaling": {
+    message: "Масштабирование",
+    description: "Scaling event filter group",
+  },
+  "services.eventsFilterGroup.maintenanceMode": {
+    message: "Режим обслуживания",
+    description: "Maintenance-mode event filter group",
+  },
+  "services.eventsFilterGroup.edgeCache": {
+    message: "Edge-кеш",
+    description: "Edge-cache event filter group",
+  },
+  "services.eventsFilterGroup.configuration": {
+    message: "Конфигурация",
+    description: "bex configuration event filter group",
+  },
+  "services.eventsFilterGroup.other": {
+    message: "Другое",
+    description:
+      "Event filter group holding types the API returned that the dashboard catalog does not know yet",
+  },
+  "services.eventsActor": {
+    message: "— {actor}",
+    description: "Actor attribution shown on a service event",
+  },
+  "services.eventsDeployReference": {
+    message: "Деплой {id}",
+    description: "Deploy identifier shown on a deploy activity row",
+  },
+  "services.eventsTriggerRollback": {
+    message: "Откат",
+    description: "Deploy event trigger: rollback",
+  },
+  "services.eventsTriggerFirstBuild": {
+    message: "Первый деплой",
+    description: "Deploy event trigger: the service's first deploy",
+  },
+  "services.eventsTriggerManual": {
+    message: "Ручной деплой",
+    description: "Deploy event trigger: manual",
+  },
+  "services.eventsTriggerEnvUpdated": {
+    message: "Изменение конфигурации",
+    description:
+      "Deploy event trigger: an environment change (env var, secret file, or env-group edit); a Settings save no longer sets envUpdated (w8/m135)",
+  },
+  "services.eventsTriggerDeployHook": {
+    message: "Деплой-хук",
+    description:
+      "Deploy event trigger: a POST to the service's secret deploy-hook URL",
+  },
+  "services.eventsTriggerClearCache": {
+    message: "Кеш очищен",
+    description: "Deploy event trigger: build-cache clear",
+  },
+  "services.eventsTriggerDeployedByRender": {
+    message: "Деплой платформы",
+    description: "Deploy event trigger: platform initiated",
+  },
+  "services.eventsTypeDeployStarted": {
+    message: "Деплой начат",
+    description: "Service activity type: deploy started",
+  },
+  "services.eventsTypeDeployFinished": {
+    message: "Деплой завершён",
+    description: "Service activity type: deploy finished",
+  },
+  "services.eventsTypePipelineMinutesExhausted": {
+    message: "Минуты пайплайна исчерпаны",
+    description:
+      "Service activity type: a build refused because the workspace used its pipeline minutes",
+  },
+  "services.eventsTypeEdgeCacheEnabled": {
+    message: "Edge-кеш включён",
+    description: "Service activity type: edge caching turned on",
+  },
+  "services.eventsTypeEdgeCacheDisabled": {
+    message: "Edge-кеш отключён",
+    description: "Service activity type: edge caching turned off",
+  },
+  "services.eventsTypeEdgeCachePurged": {
+    message: "Edge-кеш очищен",
+    description: "Service activity type: edge cache purged",
+  },
+  "services.eventsTypeImagePullFailed": {
+    message: "Не удалось загрузить образ",
+    description: "Service activity type: image pull failed",
+  },
+  "services.eventsTypeSuspended": {
+    message: "Приостановлен",
+    description: "Service activity type: service suspended",
+  },
+  "services.eventsTypeResumed": {
+    message: "Возобновлён",
+    description: "Service activity type: service resumed",
+  },
+  "services.eventsTypeRestarted": {
+    message: "Сервер перезапущен",
+    description: "Service activity type: service restarted",
+  },
+  "services.eventsTypeInstanceFailed": {
+    message: "Сбой инстанса",
+    description: "Service activity type: running instance became unhealthy",
+  },
+  "services.eventsTypeDiskUsageHigh": {
+    message: "Высокое использование диска",
+    description:
+      "Service activity type: a service disk is over 80% full (service_disk_usage_high)",
+  },
+  "services.eventsTypeDiskUsageRecovered": {
+    message: "Использование диска пришло в норму",
+    description:
+      "Service activity type: a service disk dropped back below 80% (service_disk_usage_recovered)",
+  },
+  "services.eventsDiskUsage": {
+    message:
+      "Диск {disk} в {mountPath}: использовано {usage}% (порог {threshold}%)",
+    description: "Disk usage event detail line",
+  },
+  "services.eventsTypeHardwareFailure": {
+    message: "Аппаратный сбой",
+    description:
+      "Service activity type: an instance was lost with the machine it ran on",
+  },
+  "services.eventsTypeServiceSuspended": {
+    message: "Сервис приостановлен",
+    description: "Service activity type: suspension converged",
+  },
+  "services.eventsTypeServiceResumed": {
+    message: "Сервис возобновлён",
+    description: "Service activity type: resume converged",
+  },
+  "services.eventsTypeServiceHibernated": {
+    message: "Сервис уснул",
+    description:
+      "Service activity type: free-tier idle auto-hibernation — deliberately worded apart from a user-driven suspension",
+  },
+  "services.eventsTypeServiceWoken": {
+    message: "Сервис проснулся",
+    description:
+      "Service activity type: a sleeping free-tier service woke on an incoming request",
+  },
+  "services.eventsTypeServiceRecovered": {
+    message: "Сервис восстановлен",
+    description: "Service activity type: unhealthy service recovered",
+  },
+  "services.eventsTypePlanChanged": {
+    message: "Тип инстанса изменён",
+    description: "Service activity type: plan changed",
+  },
+  "services.eventsTypeInstanceCountChanged": {
+    message: "Число инстансов изменено",
+    description: "Service activity type: manual scale",
+  },
+  "services.eventsTypeAutoscalingChanged": {
+    message: "Конфигурация автомасштабирования изменена",
+    description: "Service activity type: autoscaling configuration changed",
+  },
+  "services.eventsTypeAutoscalingStarted": {
+    message: "Автомасштабирование началось",
+    description: "Service activity type: autoscaler began a replica change",
+  },
+  "services.eventsTypeAutoscalingEnded": {
+    message: "Автомасштабирование завершено",
+    description: "Service activity type: autoscaler replica change converged",
+  },
+  "services.eventsTypeBranchChanged": {
+    message: "Ветка изменена",
+    description: "Service activity type: tracked Git branch changed",
+  },
+  "services.eventsTypeCommitIgnored": {
+    message: "Коммит проигнорирован",
+    description: "Service activity type: matching Git push did not deploy",
+  },
+  "services.eventsTypeJobStarted": {
+    message: "Задача запущена",
+    description: "Service activity type: one-off job started",
+  },
+  "services.eventsTypeJobCanceled": {
+    message: "Задача отменена",
+    description: "Service activity type: one-off job canceled",
+  },
+  "services.eventsTypeJobRunEnded": {
+    message: "Задача завершена",
+    description: "Service activity type: one-off job finished",
+  },
+  "services.eventsTypeBuildStarted": {
+    message: "Сборка начата",
+    description: "Service activity type: image build started",
+  },
+  "services.eventsTypeBuildEnded": {
+    message: "Сборка завершена",
+    description: "Service activity type: image build finished",
+  },
+  "services.eventsTypePreDeployStarted": {
+    message: "Команда перед деплоем запущена",
+    description: "Service activity type: pre-deploy command started",
+  },
+  "services.eventsTypePreDeployEnded": {
+    message: "Команда перед деплоем завершена",
+    description: "Service activity type: pre-deploy command finished",
+  },
+  "services.eventsTypeBranchDeleted": {
+    message: "Ветка удалена",
+    description: "Service activity type: tracked Git branch deleted",
+  },
+  "services.eventsTypeMaintenanceModeChanged": {
+    message: "Конфигурация режима обслуживания изменена",
+    description: "Service activity type: maintenance mode setting changed",
+  },
+  "services.eventsTypeMaintenanceModeUriUpdated": {
+    message: "URI режима обслуживания обновлён",
+    description: "Service activity type: maintenance mode URI changed",
+  },
+  "services.eventsInstanceReference": {
+    message: "Инстанс {id}",
+    description: "Instance identifier shown on a service event",
+  },
+  "services.eventsReplicaChange": {
+    message: "Инстансы {from} → {to}",
+    description:
+      "Instance count from/to summary: an autoscaling start/end's replicas or an instance_count_changed event's counts",
+  },
+  "services.eventsAutoscalingChange": {
+    message: "Автомасштабирование {from} → {to}",
+    description:
+      "autoscaling_config_changed detail line; from/to are services.eventsAutoscalingOff or services.eventsAutoscalingRange (w4/568)",
+  },
+  "services.eventsAutoscalingOff": {
+    message: "Выкл.",
+    description: "One side of an autoscaling change: autoscaling off (w4/568)",
+  },
+  "services.eventsAutoscalingRange": {
+    message: "{min}–{max} инстансов",
+    description:
+      "One side of an autoscaling change: its minimum–maximum instances (w4/568)",
+  },
+  "services.eventsAutoscalingRangeCPU": {
+    message: "{min}–{max} инстансов, CPU {cpu}%",
+    description:
+      "One side of an autoscaling change: its instance range and CPU target (w4/m335)",
+  },
+  "services.eventsAutoscalingRangeMemory": {
+    message: "{min}–{max} инстансов, память {memory}%",
+    description:
+      "One side of an autoscaling change: its instance range and memory target (w4/m335)",
+  },
+  "services.eventsAutoscalingRangeCPUMemory": {
+    message: "{min}–{max} инстансов, CPU {cpu}%, память {memory}%",
+    description:
+      "One side of an autoscaling change: its instance range and both targets (w4/m335)",
+  },
+  "services.eventsPlanChange": {
+    message: "Тип инстанса {from} → {to}",
+    description:
+      "plan_changed detail line, by the instance types' names (w4/568)",
+  },
+  "services.eventsBranchChange": {
+    message: "Ветка {from} → {to}",
+    description: "Tracked branch from/to summary",
+  },
+  "services.eventsBranchDeleted": {
+    message: "Ветка {branch} удалена — автодеплой отключён",
+    description: "Deleted tracked branch summary",
+  },
+  "services.eventsStatus.succeeded": {
+    message: "Успешно",
+    description: "Lifecycle-step outcome badge: succeeded",
+  },
+  "services.eventsStatus.failed": {
+    message: "Сбой",
+    description: "Lifecycle-step outcome badge: failed",
+  },
+  "services.eventsStatus.canceled": {
+    message: "Отменено",
+    description: "Lifecycle-step outcome badge: canceled",
+  },
+  "services.eventsReason.superseded": {
+    message: "Этот деплой заменён более новым.",
+    description:
+      "Deploy/build ended reason: a newer deploy superseded this one",
+  },
+  "services.eventsReason.image_pull_backoff": {
+    message: "Среде выполнения не удалось загрузить указанный образ.",
+    description: "Bounded public image-pull failure reason",
+  },
+  "services.eventsReason.readiness_failed": {
+    message: "Запущенный инстанс не прошёл проверку работоспособности.",
+    description:
+      "Bounded public readiness failure reason; names the health check, as Settings and REST do (w4/m327)",
+  },
+  "services.eventsReason.root_directory": {
+    message:
+      "Ни один изменённый файл не относится к корневому каталогу сервиса.",
+    description: "Commit ignored because of root-directory scoping",
+  },
+  "services.eventsReason.build_filter": {
+    message: "Изменённые файлы не прошли фильтры сборки сервиса.",
+    description: "Commit ignored because of build filters",
+  },
+  "services.eventsReason.skip_phrase": {
+    message: "Сообщение коммита запрашивает пропустить этот деплой.",
+    description: "Commit ignored because of a Render skip phrase",
+  },
+  "services.eventsReason.non_zero_exit": {
+    message: "Запуск завершился со статусом {exitCode}.",
+    description:
+      "Cron run failure reason: the container exited non-zero (w4/m114)",
+  },
+  "services.eventsReason.oom_killed": {
+    message: "Запуску не хватило памяти, и он был остановлен.",
+    description:
+      "Cron run failure reason: the container was OOM-killed (w4/m114)",
+  },
+  "services.eventsReason.instance.non_zero_exit": {
+    message:
+      "Процесс инстанса завершился со статусом {exitCode} и был перезапущен.",
+    description:
+      "Instance failed reason for a running service: its process crashed (w8/m158)",
+  },
+  "services.eventsReason.instance.oom_killed": {
+    message:
+      "Инстансу не хватило памяти (лимит {memory}), и он был перезапущен.",
+    description:
+      "Instance failed reason for a running service: killed at its plan's memory limit (w8/m158)",
+  },
+  "services.eventsReason.instance.oom_killed_no_limit": {
+    message: "Инстансу не хватило памяти, и он был перезапущен.",
+    description:
+      "Instance failed reason for a running service: killed for memory, limit unknown (w8/m158)",
+  },
+  "services.eventsReason.early_exit": {
+    message:
+      "Процесс инстанса завершился и был перезапущен. Сервис должен работать постоянно.",
+    description:
+      "Instance failed reason for a running service: its process ended with status 0 (w8/m158)",
+  },
+  "services.eventsReason.evicted": {
+    message: "Запуск был вытеснен с узла до завершения.",
+    description: "Cron run failure reason: the run's pod was evicted (w4/m114)",
+  },
+  "services.eventsReason.timed_out": {
+    message: "Запуск достиг 12-часового лимита и был остановлен.",
+    description:
+      "Cron run failure reason: the run exceeded its deadline (w4/m114)",
+  },
+  "services.eventsTypeCronRunStarted": {
+    message: "Запуск Cron начат",
+    description: "Service activity type: cron run started",
+  },
+  "services.eventsTypeCronRunFinished": {
+    message: "Запуск Cron завершён",
+    description: "Service activity type: cron run finished",
+  },
+  "services.eventsTypeEnvVarsChanged": {
+    message: "Переменные окружения изменены",
+    description: "Service activity type: environment variables changed",
+  },
+  "services.eventsTypeEnvironmentChanged": {
+    message: "Конфигурация окружения изменена",
+    description:
+      "Service activity type: environment variables and secret files changed",
+  },
+  "services.eventsTypeServiceMoved": {
+    message: "Сервис перемещён",
+    description:
+      "Service activity type: the service was reassigned between projects or environments (service_moved) — distinct from the env-var fact above",
+  },
+  "services.eventsProjectChange": {
+    message: "Проект {from} → {to}",
+    description:
+      "service_moved detail line: previous and new project name (its id once it no longer exists), or the placement-none placeholder (w4/561)",
+  },
+  "services.eventsEnvironmentChange": {
+    message: "Окружение {from} → {to}",
+    description:
+      "service_moved detail line: previous and new environment name (its id once it no longer exists), or the placement-none placeholder (w4/561)",
+  },
+  "services.eventsPlacementNone": {
+    message: "нет",
+    description:
+      "Placeholder for an absent side of a service_moved event (assigned from / removed to nothing) or of a plan_changed event (no plan before)",
+  },
+  "services.eventsTypeEnvGroupLinked": {
+    message: "Группа окружения подключена",
+    description: "Service activity type: environment group linked",
+  },
+  "services.eventsTypeEnvGroupUnlinked": {
+    message: "Группа окружения отключена",
+    description: "Service activity type: environment group unlinked",
+  },
+  "services.eventsEnvGroupLinkedNamed": {
+    message: "Группа окружения {name} подключена",
+    description:
+      "Service activity title for env_group_linked naming the group, by its name at the time (w4/563)",
+  },
+  "services.eventsEnvGroupUnlinkedNamed": {
+    message: "Группа окружения {name} отключена",
+    description:
+      "Service activity title for env_group_unlinked naming the group, by its name at the time (w4/563)",
+  },
+  "services.eventsCustomDomainAddedNamed": {
+    message: "Пользовательский домен {name} добавлен",
+    description:
+      "Service activity title for custom_domain_added naming the domain's hostname (w4/m337)",
+  },
+  "services.eventsCustomDomainRemovedNamed": {
+    message: "Пользовательский домен {name} удалён",
+    description:
+      "Service activity title for custom_domain_removed naming the domain's hostname (w4/m337)",
+  },
+  "services.eventsCustomDomainVerifiedNamed": {
+    message: "Пользовательский домен {name} подтверждён",
+    description:
+      "Service activity title for custom_domain_verified naming the domain's hostname (w4/m337)",
+  },
+  "services.eventsDisplayNameChange": {
+    message: "Название {from} → {to}",
+    description:
+      "display_name_changed detail line: the service's name before and after the rename (w4/m337)",
+  },
+  "services.eventsTypeAutoDeployChanged": {
+    message: "Автодеплой обновлён",
+    description: "Service activity type: auto-deploy setting changed",
+  },
+  "services.eventsTypeIdleTimeoutChanged": {
+    message: "Тайм-аут простоя обновлён",
+    description: "Service activity type: idle timeout changed",
+  },
+  "services.eventsTypeDisplayNameChanged": {
+    message: "Отображаемое название изменено",
+    description: "Service activity type: display name changed",
+  },
+  "services.eventsTypeCustomDomainAdded": {
+    message: "Пользовательский домен добавлен",
+    description: "Service activity type: custom domain added",
+  },
+  "services.eventsTypeCustomDomainRemoved": {
+    message: "Пользовательский домен удалён",
+    description: "Service activity type: custom domain removed",
+  },
+  "services.eventsTypeCustomDomainVerified": {
+    message: "Пользовательский домен подтверждён",
+    description: "Service activity type: custom domain verified",
+  },
+  "services.eventsTypeDiskCreated": {
+    message: "Диск создан",
+    description: "Service activity type: persistent disk created",
+  },
+  "services.eventsTypeDiskUpdated": {
+    message: "Диск обновлён",
+    description: "Service activity type: persistent disk updated",
+  },
+  "services.eventsTypeDiskDeleted": {
+    message: "Диск удалён",
+    description: "Service activity type: persistent disk deleted",
+  },
+  "services.eventsTypeDiskSnapshotRestored": {
+    message: "Снимок диска восстановлен",
+    description:
+      "Service activity type: persistent disk restored from a snapshot",
+  },
+  "services.eventsTypeNotificationsChanged": {
+    message: "Уведомления о сбоях обновлены",
+    description: "Service activity type: failure notification setting changed",
+  },
+  "services.eventsTypeSubdomainPolicyChanged": {
+    message: "Поддомен платформы обновлён",
+    description: "Service activity type: platform subdomain policy changed",
+  },
+  "services.eventsTypeStaticSiteChanged": {
+    message: "Настройки Static Site изменены",
+    description: "Service activity type: static-site configuration changed",
+  },
+  "services.eventsFilterType.autoDeployEnabled": {
+    message: "Автодеплой включён",
+    description: "Events filter option for the auto deploy enabled event type",
+  },
+  "services.eventsFilterType.autoDeployDisabled": {
+    message: "Автодеплой отключён",
+    description: "Events filter option for the auto deploy disabled event type",
+  },
+  "services.eventsFilterType.autoDeployChanged": {
+    message: "Автодеплой обновлён (устар.)",
+    description: "Events filter option for the auto deploy changed event type",
+  },
+  "services.eventsFilterType.publishPathChanged": {
+    message: "Каталог публикации изменён",
+    description: "Events filter option for the publish path changed event type",
+  },
+  "services.eventsFilterType.routesChanged": {
+    message: "Редиректы и перезаписи изменены",
+    description: "Events filter option for the routes changed event type",
+  },
+  "services.eventsFilterType.headersChanged": {
+    message: "Заголовки изменены",
+    description: "Events filter option for the headers changed event type",
+  },
+  "services.eventsFilterType.rootDirectoryChanged": {
+    message: "Корневой каталог изменён",
+    description:
+      "Events filter option for the root directory changed event type",
+  },
+  "services.eventsFilterType.dockerfilePathChanged": {
+    message: "Путь к Dockerfile изменён",
+    description:
+      "Events filter option for the dockerfile path changed event type",
+  },
+  "services.eventsFilterType.dockerContextChanged": {
+    message: "Контекст сборки Docker изменён",
+    description:
+      "Events filter option for the docker context changed event type (w8/m128)",
+  },
+  "services.eventsFilterType.buildFilterChanged": {
+    message: "Фильтр сборки изменён",
+    description: "Events filter option for the build filter changed event type",
+  },
+  "services.eventsFilterType.commandsChanged": {
+    message: "Команды изменены",
+    description: "Events filter option for the commands changed event type",
+  },
+  "services.eventsFilterType.sourceChanged": {
+    message: "Источник изменён",
+    description: "Events filter option for the source changed event type",
+  },
+  "services.eventsFilterType.preDeployCommandChanged": {
+    message: "Команда перед деплоем изменена",
+    description:
+      "Events filter option for the pre deploy command changed event type",
+  },
+  "services.eventsFilterType.maxShutdownDelayChanged": {
+    message: "Максимальная задержка остановки изменена",
+    description:
+      "Events filter option for the max shutdown delay changed event type",
+  },
+  "services.eventsFilterType.deployHookRegenerated": {
+    message: "Деплой-хук создан заново",
+    description:
+      "Events filter option for the deploy hook regenerated event type",
+  },
+  "services.eventsTypeBuildSettingsChanged": {
+    message: "Настройки сборки и деплоя изменены",
+    description: "Service activity type: build or deploy configuration changed",
+  },
+  "services.eventsTypePortChanged": {
+    message: "Порт изменён",
+    description: "Service activity type: the service's listening port changed",
+  },
+  "services.eventsTypeServiceChanged": {
+    message: "Настройки сервиса изменены",
+    description: "Fallback service activity type",
+  },
+  "services.eventsManualDeploy": {
+    message: "Ручной деплой",
+    description: "Button to trigger a new deploy",
+  },
+  "services.deployMenuLatestCommit": {
+    message: "Развернуть последний коммит",
+    description:
+      "Manual Deploy dropdown item, repo-backed service: rebuild and redeploy from the branch's HEAD",
+  },
+  "services.deployMenuLatestImage": {
+    message: "Развернуть последний образ",
+    description:
+      "Manual Deploy dropdown item, image-backed service (no repo to rebuild from)",
+  },
+  "services.deployMenuClearCache": {
+    message: "Очистить кеш сборки и развернуть",
+    description:
+      "Manual Deploy dropdown item (Render parity): rebuild without importing prior build-cache layers when registry caching is enabled; still exports a fresh cache for later deploys",
+  },
+  "services.deployMenuRestart": {
+    message: "Перезапустить сервис",
+    description:
+      "Manual Deploy dropdown item: restart on the commit or image that is running; never deploys newer commits",
+  },
+  "services.deployMenuSpecificCommit": {
+    message: "Развернуть конкретный коммит",
+    description:
+      "Manual Deploy dropdown item, repo-backed service (Render parity): deploy a commit by SHA and turn auto-deploy off",
+  },
+  "services.deployCommitTitle": {
+    message: "Развернуть конкретный коммит",
+    description: "Title of the dialog that deploys a commit by SHA",
+  },
+  "services.deployCommitBody": {
+    message:
+      "Разворачивает указанный коммит и отключает автодеплой, чтобы последующие push его не заменяли. Автодеплой можно снова включить в настройках.",
+    description:
+      "Body of the deploy-a-specific-commit dialog. Render's dashboard disables automatic deploys when a specific commit is deployed",
+  },
+  "services.deployCommitLabel": {
+    message: "SHA коммита",
+    description:
+      "Label of the commit SHA input in the deploy-a-specific-commit dialog",
+  },
+  "services.deployCommitInvalid": {
+    message: "Введите SHA коммита: от 7 до 40 шестнадцатеричных символов.",
+    description: "Inline error when the entered commit SHA is malformed",
+  },
+  "services.deployCommitConfirm": {
+    message: "Развернуть коммит",
+    description: "Confirm button of the deploy-a-specific-commit dialog",
+  },
+  "services.restartServiceSuccess": {
+    message: "Перезапуск текущего релиза начат.",
+    description: "Toast after the header's Restart service is accepted",
+  },
+  "services.restartServiceError": {
+    message: "Не удалось перезапустить сервис.",
+    description:
+      "Toast when the header's Restart service fails and the server gave no reason",
+  },
+  "services.eventsCancelDeploy": {
+    message: "Отменить",
+    description: "Button to cancel an in-progress deploy",
+  },
+  "services.eventsCancelConfirmTitle": {
+    message: "Отменить этот деплой?",
+    description: "Cancel deploy confirm dialog title",
+  },
+  "services.eventsCancelConfirmBody": {
+    message:
+      "Выполняемый деплой будет остановлен. Если предыдущий деплой был успешным, он останется активным; иначе сервис ничего не будет отдавать. Сохранённые изменения останутся и попадут в следующий деплой.",
+    description:
+      "Cancel deploy confirm dialog body when it is unknown whether an earlier deploy is live, so both outcomes are stated (w4/334)",
+  },
+  "services.eventsCancelConfirmBodyFirstDeploy": {
+    message:
+      "Выполняемый деплой будет остановлен. Это первый деплой сервиса, активной версии пока нет — после отмены сервис ничего не будет отдавать.",
+    description:
+      "Cancel deploy confirm dialog body — the service's first deploy, nothing is serving yet (w4/103)",
+  },
+  "services.eventsRollback": {
+    message: "Откатить",
+    description: "Button to roll back to a specific deploy",
+  },
+  "services.eventsRollbackConfirmTitle": {
+    message: "Откатиться к этому деплою?",
+    description: "Rollback confirm dialog title",
+  },
+  "services.eventsRollbackConfirmBody": {
+    message:
+      "Сервис будет работать на образе этого деплоя и сохранённой конфигурации. Сохранённые настройки не изменятся и применятся при следующем стандартном деплое. Автодеплой будет отключён. Для старых деплоев без сохранённой конфигурации восстанавливается только образ.",
+    description: "Rollback confirm dialog body",
+  },
+  "services.eventsRollbackConfirmBodyCommit": {
+    message:
+      "Сервис будет работать на образе этого деплоя (собранном из {commit}) и сохранённой конфигурации. Сохранённые настройки не изменятся и применятся при следующем стандартном деплое. Автодеплой будет отключён. Для старых деплоев без сохранённой конфигурации восстанавливается только образ.",
+    description:
+      "Rollback confirm dialog body naming the commit being restored",
+  },
+  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
+    message:
+      "Сервис будет работать на образе этого деплоя и сохранённой конфигурации. Сохранённые настройки не изменятся и применятся при следующем стандартном деплое. Для старых деплоев без сохранённой конфигурации восстанавливается только образ.",
+    description:
+      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
+  },
+  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
+    message:
+      "Сервис будет работать на образе этого деплоя (собранном из {commit}) и сохранённой конфигурации. Сохранённые настройки не изменятся и применятся при следующем стандартном деплое. Для старых деплоев без сохранённой конфигурации восстанавливается только образ.",
+    description:
+      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
+  },
+  "services.eventsRollbackConfirmBodyStatic": {
+    message:
+      "Сайт будет опубликован заново из этого деплоя. Сохранённые настройки не изменятся, а автодеплой будет отключён.",
+    description:
+      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
+  },
+  "services.eventsRollbackConfirmBodyStaticCommit": {
+    message:
+      "Сайт будет опубликован заново из этого деплоя, {commit}. Сохранённые настройки не изменятся, а автодеплой будет отключён.",
+    description:
+      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
+  },
+  "services.eventsRollbackAria": {
+    message: "Откатиться к {target}",
+    description:
+      "Accessible name of a deploy row's Rollback control, naming the deploy it restores (w4/m141)",
+  },
+  "services.eventsCancelDeployAria": {
+    message: "Отменить деплой {target}",
+    description:
+      "Accessible name of a deploy row's Cancel control, naming the deploy (w4/m141)",
+  },
+  "services.eventsConfirmProceed": {
+    message: "Продолжить",
+    description: "Confirm dialog proceed button",
+  },
+  "services.eventsConfirmCancel": {
+    message: "Назад",
+    description: "Confirm dialog cancel button",
+  },
+  "services.triggerDeploySuccess": {
+    message: "Деплой запущен.",
+    description: "Toast after triggerDeploy succeeds",
+  },
+  "services.triggerDeployError": {
+    message: "Не удалось запустить деплой.",
+    description: "Toast after triggerDeploy fails",
+  },
+  "services.cancelDeploySuccess": {
+    message: "Деплой отменён.",
+    description: "Toast after cancelDeploy succeeds",
+  },
+  "services.cancelDeployError": {
+    message: "Не удалось отменить деплой.",
+    description: "Toast after cancelDeploy fails",
+  },
+  "services.rollbackSuccess": {
+    message: "Откат запущен.",
+    description: "Toast after rollbackService succeeds",
+  },
+  "services.rollbackError": {
+    message: "Не удалось выполнить откат.",
+    description: "Toast after rollbackService fails",
+  },
+  "services.eventsStatusLive": {
+    message: "Активен",
+    description: "Deploy status: live",
+  },
+  "services.eventsStatusInProgress": {
+    message: "Выполняется",
+    description: "Deploy status: update_in_progress",
+  },
+  "services.eventsStatusFailed": {
+    message: "Сбой",
+    description: "Deploy status: update_failed",
+  },
+  "services.eventsStatusCanceled": {
+    message: "Отменён",
+    description: "Deploy status: canceled",
+  },
+  "services.eventsPreDeployRunning": {
+    message: "Команда перед деплоем выполняется",
+    description: "Deploy row: the pre-deploy step is in progress",
+  },
+  "services.eventsPreDeploySucceeded": {
+    message: "Команда перед деплоем выполнена успешно",
+    description: "Deploy row: the pre-deploy step passed",
+  },
+  "services.eventsPreDeployCanceled": {
+    message: "Команда перед деплоем отменена",
+    description:
+      "Deploy row: the deploy ended (superseded or canceled) while its pre-deploy step was still running",
+  },
+  "services.eventsPreDeployFailed": {
+    message: "Команда перед деплоем завершилась сбоем",
+    description:
+      "Deploy row: the pre-deploy step failed (distinct from a health-check failure)",
+  },
+  "services.eventsRolledBackFrom": {
+    message: "Откат с {target}",
+    description: "Deploy row: provenance note when trigger=rollback",
+  },
+  "services.capLimitTitle": {
+    message: "Достигнут лимит сервисов",
+    description:
+      "Alert title when the workspace's service creation cap is hit (w7/m9)",
+  },
+  "services.capLimitUpgrade": {
+    message: "Сменить тариф",
+    description: "Upgrade CTA button inside the cap-limit Alert (w7/m9)",
+  },
+  "services.networkingTitle": {
+    message: "Сеть",
+    description: "Settings Networking card title (w7/m32)",
+  },
+  "services.networkingDescription": {
+    message: "Ограничьте входящий HTTP-трафик этими исходными CIDR.",
+    description: "Settings Networking card description (w7/m32)",
+  },
+  "services.networkingScalePlanOnly": {
+    message:
+      "Правила входящих IP для Web Service и Static Site доступны на тарифе Scale и выше. Уже заданные правила продолжают действовать и могут быть заменены правилом «разрешить всё».",
+    description:
+      "Hint replacing the editable IP rules below the Scale plan (w8/m137)",
+  },
+  "services.networkingClearAll": {
+    message: "Разрешить весь трафик",
+    description:
+      "Button replacing every inbound IP rule with the allow-all rule below the Scale plan (w8/m137, w8/m157)",
+  },
+  "services.networkingHint": {
+    message:
+      "Введите блок CIDR (напр. 203.0.113.0/24) и нажмите «Добавить». Без правил весь входящий трафик блокируется; правило 0.0.0.0/0 разрешает все исходные IP.",
+    description: "Hint below the CIDR list in the Networking card (w7/m32)",
+  },
+  "services.networkingOpen": {
+    message: "Открыт для всех исходных IP",
+    description:
+      "Shown below the Scale plan when the service has only the allow-all rule (Render default, w7/m32, w8/m157)",
+  },
+  "services.networkingBlocked": {
+    message:
+      "Нет правил: весь входящий трафик к этому сервису заблокирован. Добавьте 0.0.0.0/0, чтобы разрешить все исходные IP.",
+    description:
+      "Warning shown when a service's inbound IP rule list is empty, saved or about to be saved (w8/m157)",
+  },
+  "services.networkingAdd": {
+    message: "Добавить запись в список разрешённых",
+    description: "Button to add a CIDR to the draft list (w7/m32)",
+  },
+  "services.networkingEntryDescription": {
+    message: "Описание (необязательно)",
+    description: "Placeholder for a service allowlist entry description",
+  },
+  "services.networkingCIDR": {
+    message: "Новый блок CIDR",
+    description: "Accessible label for the add-row CIDR input",
+  },
+  "services.networkingCIDRRule": {
+    message: "Блок CIDR для правила {number}",
+    description: "Accessible label for an existing allowlist CIDR row",
+  },
+  "services.networkingDescriptionLabel": {
+    message: "Описание нового правила",
+    description: "Accessible label for the add-row description input",
+  },
+  "services.networkingDescriptionRule": {
+    message: "Описание для правила {number}",
+    description: "Accessible label for an existing allowlist description row",
+  },
+  "services.networkingInvalid": {
+    message: "Введите корректный блок CIDR IPv4 или IPv6.",
+    description: "Validation error for an invalid service allowlist CIDR",
+  },
+  "services.networkingSave": {
+    message: "Сохранить список",
+    description: "Button to persist the CIDR list (w7/m32)",
+  },
+  "services.networkingRemove": {
+    message: "Удалить {cidr}",
+    description:
+      "Accessible label on the trash icon next to a CIDR tag (w7/m32)",
+  },
+  "services.networkingMoveUp": {
+    message: "Переместить {cidr} вверх",
+    description: "Accessible label to move an allowlist entry earlier",
+  },
+  "services.networkingMoveDown": {
+    message: "Переместить {cidr} вниз",
+    description: "Accessible label to move an allowlist entry later",
+  },
+  "services.networkingSaved": {
+    message: "Список разрешённых IP обновлён",
+    description: "Toast on successful setServiceIpAllowList mutation (w7/m32)",
+  },
+  "services.networkingError": {
+    message: "Не удалось обновить список разрешённых IP. Повторите попытку.",
+    description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
+  },
+  "services.outboundIpsTitle": {
+    message: "Исходящие IP",
+    description: "Settings card title for service egress IPs (w8/010)",
+  },
+  "services.outboundIpsDescription": {
+    message:
+      "Общие адреса исходящего трафика этого сервиса. Это текущие публичные IP узлов пула арендатора, и они могут меняться, когда автомасштабирование добавляет или удаляет узлы.",
+    description:
+      "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
+  },
+  "services.outboundIpsEmpty": {
+    message:
+      "Исходящие IP пока не получены (обычно на локальных кластерах без ExternalIP у узлов).",
+    description: "Honest empty state when outboundIps.ips is empty (w8/010)",
+  },
+  "services.outboundIpsCopy": {
+    message: "Копировать {ip}",
+    description:
+      "Accessible label on the copy button for one outbound IP (w8/010)",
+  },
+  "services.outboundIpsCopied": {
+    message: "Скопировано",
+    description: "Toast after copying an outbound IP (w8/010)",
+  },
+  "services.outboundIpsCopyError": {
+    message: "Не удалось скопировать",
+    description: "Toast when clipboard write fails for an outbound IP (w8/010)",
+  },
+  "services.environmentPageTitle": {
+    message: "Окружение",
+    description: "Service Environment page heading",
+  },
+  "services.environmentPageDescription": {
+    message:
+      "Управляйте переменными сервиса, секретными файлами и подключёнными группами окружения.",
+    description: "Service Environment page introduction",
+  },
+  "services.environmentEdit": {
+    message: "Изменить",
+    description: "Enter the coherent service environment draft",
+  },
+  "services.environmentMaskedValue": {
+    message: "Скрытое значение секрета",
+    description: "Accessible label for an unrevealed secret",
+  },
+  "services.environmentUnchangedMasked": {
+    message: "Без изменений (скрыто)",
+    description: "Placeholder for an opaque unchanged draft value",
+  },
+  "services.environmentDuplicateKey": {
+    message: "Ключ каждой переменной должен быть уникальным.",
+    description: "Draft validation for a duplicate environment key",
+  },
+  "services.environmentValueRequired": {
+    message: "Введите значение для этой новой переменной.",
+    description: "Draft validation for a new variable without a value",
+  },
+  "services.environmentValueNul": {
+    message:
+      "Значение не может содержать байт NUL, который не поддерживается окружением процесса. Для бинарного содержимого используйте секретный файл.",
+    description:
+      "Draft validation under an environment variable value with a NUL byte (w21/047)",
+  },
+  "services.environmentValueTooLarge": {
+    message:
+      "Запись KEY=value может занимать не более 131 071 байт: процесс не запустится с большим размером. Для больших данных используйте секретный файл.",
+    description:
+      "Draft validation under an environment variable whose KEY=value entry is over the process limit; the server counts UTF-8 bytes, so a Chinese character is 3 (w21/047)",
+  },
+  "services.environmentPortInvalid": {
+    message:
+      "PORT должен быть целым числом от 1 до 65535 и не быть 18012, 18013 или 19099 — эти порты зарезервированы платформой.",
+    description:
+      "Draft validation under a PORT environment variable the operator would ignore (w21/047)",
+  },
+  "services.environmentLimit": {
+    message:
+      "Для сервиса или группы допускается не более 500 переменных окружения и 512 КиБ в сумме.",
+    description:
+      "Draft validation when the environment variables would exceed bex-api's per-service quota",
+  },
+  "services.environmentStagedDelete": {
+    message: "Будет удалено",
+    description: "Badge on a staged environment deletion",
+  },
+  "services.environmentUndo": {
+    message: "Отменить",
+    description: "Undo a staged environment deletion",
+  },
+  "services.environmentUnsavedTitle": {
+    message: "Несохранённые изменения окружения",
+    description: "Combined draft save bar heading",
+  },
+  "services.environmentRestoredTitle": {
+    message: "Несохранённые изменения восстановлены",
+    description:
+      "Heading of the banner shown when an unsaved env draft is recovered in this tab, after a reload or a session-expiry sign-in (w3/m80)",
+  },
+  "services.environmentRestoredBody": {
+    message:
+      "Ваши несохранённые правки окружения восстановлены. Проверьте их, затем сохраните или отмените.",
+    description:
+      "Body of the restored-draft banner. Names no cause: an ordinary reload restores the draft as a sign-in does (w4/337)",
+  },
+  "services.environmentRestoredDiscard": {
+    message: "Отменить восстановленные изменения",
+    description: "Button that throws away a recovered env draft",
+  },
+  "services.environmentUnsavedVariables_one": {
+    message: "{count} операция с переменными",
+    description:
+      "Draft variable-operation count, composed with the file count at the call site (singular)",
+  },
+  "services.environmentUnsavedVariables_few": {
+    message: "{count} операции с переменными",
+    description:
+      "Draft variable-operation count, composed with the file count at the call site (plural)",
+  },
+  "services.environmentUnsavedVariables_many": {
+    message: "{count} операций с переменными",
+    description:
+      "Draft variable-operation count, composed with the file count at the call site (plural)",
+  },
+  "services.environmentUnsavedVariables_other": {
+    message: "{count} операции с переменными",
+    description:
+      "Draft variable-operation count, composed with the file count at the call site (plural)",
+  },
+  "services.environmentUnsavedFiles_one": {
+    message: "{count} операция с файлами",
+    description:
+      "Draft file-operation count, composed with the variable count at the call site (singular)",
+  },
+  "services.environmentUnsavedFiles_few": {
+    message: "{count} операции с файлами",
+    description:
+      "Draft file-operation count, composed with the variable count at the call site (plural)",
+  },
+  "services.environmentUnsavedFiles_many": {
+    message: "{count} операций с файлами",
+    description:
+      "Draft file-operation count, composed with the variable count at the call site (plural)",
+  },
+  "services.environmentUnsavedFiles_other": {
+    message: "{count} операции с файлами",
+    description:
+      "Draft file-operation count, composed with the variable count at the call site (plural)",
+  },
+  "services.environmentSaveOptions": {
+    message: "Параметры сохранения окружения",
+    description: "Accessible label for the split save menu",
+  },
+  "services.environmentSaveOnly": {
+    message: "Только сохранить",
+    description: "Persist and project without rolling the service",
+  },
+  "services.environmentSaveDeploy": {
+    message: "Сохранить и развернуть",
+    description: "Persist and roll the current image once",
+  },
+  "services.environmentSaveRebuild": {
+    message: "Сохранить, пересобрать и развернуть",
+    description: "Persist then start one source build and deploy",
+  },
+  "services.environmentSaveOnlySuccess": {
+    message:
+      "Окружение сохранено без деплоя. Чтобы применить ожидающие изменения, запустите стандартный деплой.",
+    description:
+      "Save-only success feedback while the operator checks saved/runtime differences; does not assert that a no-op or revert has pending changes",
+  },
+  "services.environmentSaveDeploySuccess": {
+    message: "Окружение сохранено, деплой запущен",
+    description: "Toast after save-and-deploy succeeds",
+  },
+  "services.environmentSavedRefreshFailed": {
+    message:
+      "Окружение сохранено, но не удалось обновить страницу. Перезагрузите её, чтобы проверить актуальные значения и статус деплоя.",
+    description:
+      "A committed environment patch must not be retried because a follow-up read failed",
+  },
+  "services.environmentSaveError": {
+    message:
+      "Не удалось сохранить окружение. Ваш черновик сохранён на странице.",
+    description: "Batch environment save failure",
+  },
+  "services.environmentDraftStale": {
+    message:
+      "Эта группа окружения могла измениться с момента начала вашего черновика, поэтому черновик не сохранён. Скопируйте нужное, отмените черновик и начните правку заново с актуальной версии.",
+    description:
+      "Refusal when a group draft's base revision is no longer current (ENV_GROUP_REVISION_CONFLICT) or predates revision tracking (w4/m161)",
+  },
+  "services.environmentSavedDeployFailedTitle": {
+    message: "Конфигурация сохранена; выкатка не завершена",
+    description: "Partial rebuild failure heading",
+  },
+  "services.environmentSavedDeployFailedBody": {
+    message:
+      "Изменения окружения сохранены. Повторите только незавершённую выкатку, когда будете готовы.",
+    description: "Partial rebuild failure recovery explanation",
+  },
+  "services.environmentRetryDeploy": {
+    message: "Повторить выкатку",
+    description: "Retry only the failed deploy phase",
+  },
+  "services.environmentDiscardTitle": {
+    message: "Отменить изменения окружения?",
+    description: "Dirty navigation guard title",
+  },
+  "services.environmentDiscardBody": {
+    message: "Эти изменения не сохранены и будут потеряны, если вы уйдёте.",
+    description: "Dirty navigation guard explanation",
+  },
+  "services.environmentKeepEditing": {
+    message: "Продолжить редактирование",
+    description: "Cancel dirty navigation",
+  },
+  "services.environmentDiscard": {
+    message: "Отменить и уйти",
+    description: "Confirm dirty navigation",
+  },
+  "services.envReveal": {
+    message: "Показать",
+    description: "Reveal one masked environment value",
+  },
+  "services.envRevealOne": {
+    message: "Показать {name}",
+    description:
+      'aria-label of the per-row Reveal button for one env var or secret file; starts with the visible text "Reveal" (w4/499)',
+  },
+  "services.envHideOne": {
+    message: "Скрыть {name}",
+    description:
+      'aria-label of the per-row Hide button for one env var or secret file; starts with the visible text "Hide" (w4/499)',
+  },
+  "services.envHide": {
+    message: "Скрыть",
+    description: "Mask one revealed environment value",
+  },
+  "services.envCopy": {
+    message: "Копировать переменные окружения",
+    description: "Copy the complete dotenv export",
+  },
+  "services.envDownload": {
+    message: "Скачать .env",
+    description: "Download the complete dotenv export",
+  },
+  "services.envCopySuccess": {
+    message: "Окружение скопировано",
+    description: "Toast after the complete dotenv export is copied",
+  },
+  "services.envCopyOne": {
+    message: "Копировать {name}",
+    description:
+      "aria-label of the per-row copy button for one env var or secret file — distinct from the bulk envCopy dotenv export",
+  },
+  "services.envCopyOneSuccess": {
+    message: "{name} скопировано",
+    description:
+      "Toast after one env var value or secret file's contents is copied — distinct from the bulk envCopySuccess",
+  },
+  "services.envAddVariable": {
+    message: "Добавить переменную",
+    description: "Add one blank draft variable",
+  },
+  "services.envAddGenerated": {
+    message: "Сгенерированный секрет",
+    description: "Add one previewable generated secret",
+  },
+  "services.envImport": {
+    message: "Импорт из .env",
+    description: "Open the dotenv import dialog",
+  },
+  "services.envImportTitle": {
+    message: "Импорт переменных окружения",
+    description: "Dotenv import dialog title",
+  },
+  "services.envImportDescription": {
+    message:
+      "Вставьте присваивания в формате dotenv или выберите текстовый файл. Импортированные значения остаются в черновике, пока вы не сохраните.",
+    description: "Dotenv import dialog explanation",
+  },
+  "services.envImportTextLabel": {
+    message: "Содержимое dotenv",
+    description: "Accessible label for the dotenv import textarea",
+  },
+  "services.envImportPlaceholder": {
+    message: "API_URL=https://example.com\nSECRET=replace-me",
+    description: "Dotenv import textarea placeholder",
+  },
+  "services.envImportChooseFile": {
+    message: "Выбрать файл",
+    description: "Dotenv file picker button",
+  },
+  "services.envImportAdd": {
+    message: "Добавить переменные",
+    description: "Stage parsed dotenv variables",
+  },
+  "services.envImportLineError": {
+    message: "Строка {line} не является присваиванием KEY=value.",
+    description: "Line-numbered dotenv parse error",
+  },
+  "services.envImportKeyError": {
+    message:
+      "Строка {line}: имя может содержать до 253 букв, цифр, точек, дефисов и подчёркиваний.",
+    description:
+      "Dotenv import error: the variable name on a line is invalid (w4/159)",
+  },
+  "services.envImportQuoteError": {
+    message: "Кавычка, открытая в строке {line}, не закрыта.",
+    description: "Dotenv import error: a quoted value never closes (w4/159)",
+  },
+  "services.envImportTrailingError": {
+    message: "В строке {line} есть текст после закрывающей кавычки.",
+    description:
+      "Dotenv import error: text after a quoted value's closing quote (w4/159)",
+  },
+  "services.envImportReading": {
+    message: "Чтение файла…",
+    description:
+      "Status while a chosen dotenv file is being read; Add waits for it",
+  },
+  "services.envImportFileError": {
+    message: "Выберите читаемый текстовый файл размером не более 1 МиБ.",
+    description: "Dotenv file read or size error",
+  },
+  "services.secretFileUpload": {
+    message: "Загрузить файлы",
+    description: "Stage multiple local text files",
+  },
+  "services.secretFileSkippedTitle_one": {
+    message: "{count} файл пропущен:",
+    description:
+      "Secret-file upload: heading over the one skipped file (w4/628)",
+  },
+  "services.secretFileSkippedTitle_few": {
+    message: "{count} файла пропущено:",
+    description: "Secret-file upload: heading over the skipped files (w4/628)",
+  },
+  "services.secretFileSkippedTitle_many": {
+    message: "{count} файлов пропущено:",
+    description: "Secret-file upload: heading over the skipped files (w4/628)",
+  },
+  "services.secretFileSkippedTitle_other": {
+    message: "{count} файла пропущено:",
+    description: "Secret-file upload: heading over the skipped files (w4/628)",
+  },
+  "services.secretFileSkippedName": {
+    message:
+      "имя может содержать только буквы, цифры, '.', '-' и '_' (до 253 символов).",
+    description: "Secret-file upload: why a file was skipped — its name",
+  },
+  "services.secretFileSkippedSize": {
+    message: "размер превышает 1 МиБ.",
+    description: "Secret-file upload: why a file was skipped — its size",
+  },
+  "services.secretFileSkippedEncoding": {
+    message:
+      "это не текст в UTF-8. Бинарный файл (keystore, .p12, сертификат DER) загрузите в кодировке base64 и декодируйте при запуске, напр. base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12.",
+    description: "Secret-file upload: why a file was skipped — not UTF-8 text",
+  },
+  "services.secretFileSkippedDuplicate": {
+    message: "файл с таким именем уже есть в списке.",
+    description: "Secret-file upload: why a file was skipped — duplicate name",
+  },
+  "services.secretFileDuplicateName": {
+    message: "Имя каждого секретного файла должно быть уникальным.",
+    description: "Draft validation for a duplicate file name",
+  },
+  "services.secretFileContentRequired": {
+    message: "Добавьте содержимое для этого нового файла.",
+    description: "Draft validation for missing new-file content",
+  },
+  "services.secretFileLimit": {
+    message:
+      "Секретных файлов может быть не более 500 на сервис или группу, а их общий размер не должен превышать 1 MiB.",
+    description:
+      "Draft validation when the secret files would exceed bex-api's per-service quota: 500 files, 1 MiB of contents (names not counted), Render's 1 MB (w4/m363)",
+  },
+  "services.secretFileViewContent": {
+    message: "Показать содержимое",
+    description: "Reveal or inspect secret-file contents in a dialog",
+  },
+  "services.secretFileViewContentOne": {
+    message: "Показать содержимое {name}",
+    description:
+      "Accessible name for View contents once the file has a name (m101/t013)",
+  },
+  "services.secretFileEditContent": {
+    message: "Изменить содержимое",
+    description: "Edit staged secret-file contents in a dialog",
+  },
+  "services.secretFileEditContentOne": {
+    message: "Изменить содержимое {name}",
+    description:
+      "Accessible name for Edit contents once the file has a name (m101/t013)",
+  },
+  "services.secretFileContentDialogTitle": {
+    message: "Содержимое {name}",
+    description: "Secret-file content dialog title",
+  },
+  "services.secretFileContentDialogDescription": {
+    message:
+      "Этот файл будет примонтирован только для чтения в /etc/secrets после следующего деплоя.",
+    description: "Secret-file content dialog explanation",
+  },
+  "services.secretFileContentDialogDescriptionDocker": {
+    message:
+      "Этот файл будет примонтирован только для чтения в /etc/secrets после следующего деплоя. Сборка Docker также найдёт его в корне контекста сборки: добавьте его в .dockerignore, чтобы он не попал в образ.",
+    description:
+      "Secret-file content dialog explanation for a Docker-runtime service: the build context also receives the file, as on Render (w8/253)",
+  },
+  "services.secretFileLoadingContent": {
+    message: "Загрузка содержимого…",
+    description: "Secret-file content reveal progress",
+  },
+  "services.secretFileContentDone": {
+    message: "Готово",
+    description: "Close and stage secret-file content edits",
+  },
+  "services.secretFileUntitled": {
+    message: "файл без названия",
+    description: "Fallback title for a new unnamed secret file",
+  },
+  "services.secretFileDelete": {
+    message: "Удалить секретный файл",
+    description: "Accessible label for a staged secret-file deletion",
+  },
+  "services.secretFileDeleteOne": {
+    message: "Удалить секретный файл {name}",
+    description:
+      "Accessible name for Delete secret file once the file has a name (m101/t013)",
+  },
+  "services.envGroupsLinkedTitle": {
+    message: "Подключённые группы окружения",
+    description: "Service-side environment group card title",
+  },
+  "services.envGroupsLinkedCount": {
+    message: "Подключено ({count})",
+    description: "Count of groups linked to this service",
+  },
+  "services.envGroupsAvailableCount": {
+    message: "Доступно для подключения ({count})",
+    description: "Count of groups available to link",
+  },
+  "services.envGroupsNoneLinked": {
+    message: "К этому сервису не подключено ни одной группы окружения.",
+    description: "Service group empty linked state",
+  },
+  "services.envGroupsAvailableTitle": {
+    message: "Доступно для подключения",
+    description:
+      "Available-groups heading while the service's environment is still resolving (no count yet)",
+  },
+  "services.envGroupsScopeLoading": {
+    message: "Проверяем, какие группы относятся к окружению этого сервиса…",
+    description:
+      "Available groups wait for the service's environment scope (w4/217)",
+  },
+  "services.envGroupsOrderReading": {
+    message: "Уточняем, какая из подключённых групп имеет приоритет…",
+    description:
+      "Link order is being re-read after a link change; no winner is claimed until it lands (w4/322)",
+  },
+  "services.envGroupsOrderFailed": {
+    message:
+      "Группа подключена, но не удалось уточнить, какая из групп имеет приоритет. Перезагрузите порядок, чтобы увидеть его.",
+    description:
+      "The post-write Server read failed; the write stands, precedence stays unclaimed until a retry succeeds (w4/322)",
+  },
+  "services.envGroupsScopeError": {
+    message:
+      "Не удалось загрузить окружение этого сервиса, поэтому группы для подключения не предлагаются.",
+    description:
+      "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
+  },
+  "services.envGroupsScopeEnvironmentMissing": {
+    message:
+      "Окружения этого сервиса нет в загруженном списке окружений, поэтому группы для подключения не предлагаются. Повторите попытку, чтобы обновить список.",
+    description:
+      "The service reports an Environment the authorized scope index lacks even after a refresh; never falls back to Workspace (w4/220)",
+  },
+  "services.envGroupsNoneInScope": {
+    message:
+      "Нет неподключённых групп в окружении этого сервиса. Создайте группу здесь или переместите группу в это окружение.",
+    description:
+      "Unlinked groups exist, but none in this service's environment scope (w4/217)",
+  },
+  "services.envGroupsNoneAvailable": {
+    message: "Все группы окружения рабочего пространства уже подключены.",
+    description: "Service group empty available state",
+  },
+  "services.envGroupsNoneAvailableCreate": {
+    message:
+      "В рабочем пространстве пока нет групп окружения. Создайте группу с переменными, файлами и уже выбранным этим сервисом.",
+    description: "Service group create-first empty state",
+  },
+  "services.cronEveryMinute": {
+    message: "Каждую минуту",
+    description: "Cron schedule preview phrase (w4/m188): fires every minute",
+  },
+  "services.cronEveryNMinutes": {
+    message: "Каждые {n} мин.",
+    description:
+      "Cron schedule preview phrase (w4/m188): uniform minute step; n is the step",
+  },
+  "services.cronEveryHour": {
+    message: "Каждый час",
+    description:
+      "Cron schedule preview phrase (w4/m188): fires at minute 0 of every hour",
+  },
+  "services.cronEveryNHours": {
+    message: "Каждые {n} ч",
+    description:
+      "Cron schedule preview phrase (w4/m188): uniform hour step; n is the step",
+  },
+  "services.cronHourlyAtMinute": {
+    message: "Каждый час, минута {minute}",
+    description:
+      "Cron schedule preview phrase (w4/m188): fires once an hour at the given minute",
+  },
+  "services.cronDailyAt": {
+    message: "Каждый день в {time}",
+    description: "Cron schedule preview phrase (w4/m188): daily at HH:MM (UTC)",
+  },
+  "services.cronWeeklyAt": {
+    message: "Еженедельно: {day}, {time}",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekly; day is a services.cronDay* weekday name, time is HH:MM (UTC)",
+  },
+  "services.cronMonthlyAt": {
+    message: "Ежемесячно, {day}-го числа в {time}",
+    description:
+      "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
+  },
+  "services.cronDaySunday": {
+    message: "воскресенье",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayMonday": {
+    message: "понедельник",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayTuesday": {
+    message: "вторник",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayWednesday": {
+    message: "среда",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayThursday": {
+    message: "четверг",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayFriday": {
+    message: "пятница",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDaySaturday": {
+    message: "суббота",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+};
+
+export default ruServices;

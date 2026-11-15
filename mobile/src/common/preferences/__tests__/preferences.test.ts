@@ -1,4 +1,9 @@
-import { parseLanguage, parseThemeMode, resolveScheme } from "../preferences";
+import {
+  parseLanguage,
+  parseThemeMode,
+  resolveDeviceLanguage,
+  resolveScheme,
+} from "../preferences";
 
 describe("preferences", () => {
   it("accepts only known theme modes", () => {
@@ -11,10 +16,52 @@ describe("preferences", () => {
   });
 
   it("accepts only supported languages", () => {
-    expect(parseLanguage("en")).toBe("en");
-    expect(parseLanguage("zh")).toBe("zh");
+    for (const language of [
+      "en",
+      "zh",
+      "ko",
+      "ja",
+      "es",
+      "pt",
+      "ru",
+      "de",
+    ] as const) {
+      expect(parseLanguage(language)).toBe(language);
+    }
     expect(parseLanguage("fr")).toBe(null);
+    expect(parseLanguage("zh-CN")).toBe(null);
     expect(parseLanguage(undefined)).toBe(null);
+  });
+
+  it("follows the first device locale the app speaks", () => {
+    expect(resolveDeviceLanguage([{ languageCode: "de" }])).toBe("de");
+    expect(
+      resolveDeviceLanguage([
+        { languageCode: "fr" },
+        { languageCode: "pt", regionCode: "PT" },
+      ]),
+    ).toBe("pt");
+    expect(
+      resolveDeviceLanguage([
+        { languageCode: "zh", languageScriptCode: "Hans" },
+      ]),
+    ).toBe("zh");
+    expect(resolveDeviceLanguage([{ languageCode: "fr" }])).toBe(null);
+    expect(resolveDeviceLanguage([{ languageCode: null }])).toBe(null);
+    expect(resolveDeviceLanguage([])).toBe(null);
+  });
+
+  it("never reads Traditional Chinese as the Simplified zh catalog", () => {
+    expect(
+      resolveDeviceLanguage([
+        { languageCode: "zh", languageScriptCode: "Hant", regionCode: "TW" },
+        { languageCode: "ja" },
+      ]),
+    ).toBe("ja");
+    // Android often reports no script for zh-HK / zh-TW.
+    expect(
+      resolveDeviceLanguage([{ languageCode: "zh", regionCode: "HK" }]),
+    ).toBe(null);
   });
 
   it("follows the system scheme only when the mode is system", () => {

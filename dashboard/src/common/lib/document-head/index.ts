@@ -1,6 +1,6 @@
 import type { TOptions } from "i18next";
 import { getActiveI18n } from "@/i18n/request-scope";
-import type { SupportedLanguage } from "@/i18n";
+import { LANGUAGE_TAGS, type SupportedLanguage } from "@/i18n/config";
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
 import { isNotFoundError } from "@/common/lib/graphql-error";
 
@@ -172,10 +172,9 @@ export function absoluteMetadataUrl(
   return normalized ? new URL(path, normalized).toString() : null;
 }
 
-const OPEN_GRAPH_LOCALE: Record<SupportedLanguage, string> = {
-  en: "en_US",
-  zh: "zh_CN",
-};
+/** og:locale is the language's BCP 47 tag with an underscore: en_US, pt_BR. */
+const openGraphLocale = (language: SupportedLanguage) =>
+  LANGUAGE_TAGS[language].replace("-", "_");
 
 /**
  * Generic installation metadata. Route names deliberately never enter this
@@ -202,7 +201,7 @@ export function globalMetadata(
     { property: "og:title", content: DASHBOARD_NAME },
     { property: "og:description", content: description },
     { property: "og:site_name", content: DASHBOARD_NAME },
-    { property: "og:locale", content: OPEN_GRAPH_LOCALE[language] },
+    { property: "og:locale", content: openGraphLocale(language) },
     { name: "twitter:card", content: "summary_large_image" },
     { name: "twitter:title", content: DASHBOARD_NAME },
     { name: "twitter:description", content: description },
