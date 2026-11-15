@@ -1,6 +1,6 @@
 # w4 · m353 — An instance that fails its health check is restarted after about 2 minutes, not Render's 60 seconds: the 60-second rollout drain also runs before every liveness restart, while the instance is already out of rotation
 
-**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** blocked — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** blocked — the round 394 closeout replay (2026-11-15) found an extra exit event on a health-check restart: [t006](t006.md) is open and blocks the closeout. Previously: — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 
@@ -10,7 +10,8 @@
 | [t002](done/t002.md) | Cover TCP-checked services (no Health Check Path), and amend ADR004 — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
 | [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
-| [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004 |
+| [t006](t006.md) | A health-check restart also records the liveness SIGTERM as the app's own crash: an extra `server_failed {nonZeroExit}` (found by the round 394 replay) | 45m | — |
+| [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004, t006 |
 
 ## Definition of done
 
