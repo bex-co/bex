@@ -272,6 +272,40 @@ func TestGitProxyReceivePackAllowsOnlyBoundBranch(t *testing.T) {
 	if gh.calls != 1 || upstreamCalls != 1 {
 		t.Fatalf("valid push mints=%d upstream=%d", gh.calls, upstreamCalls)
 	}
+
+	// A push over http.postBuffer arrives chunked, and remote-curl probes it
+	// first with a body of just the flush packet "0000" (probe_rpc). The probe
+	// names no ref, so it is forwarded rather than refused — refusing it failed
+	// every large sandbox push before its pack was sent.
+	probe := httptest.NewRequest(http.MethodPost, base+"/git-receive-pack", strings.NewReader("0000"))
+	probe.RemoteAddr = "10.0.0.1:1234"
+	probe.Header.Set("Content-Type", "application/x-git-receive-pack-request")
+	rec := httptest.NewRecorder()
+	broker.Handler().ServeHTTP(rec, probe)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("push probe status=%d, want 200", rec.Code)
+	}
+	if gh.calls != 2 || upstreamCalls != 2 {
+		t.Fatalf("push probe mints=%d upstream=%d", gh.calls, upstreamCalls)
+	}
+}
+
+// TestValidateReceivePackAcceptsTheProbe is the w22 regression for a sandbox
+// that could not push at all: git's HTTP transport probes a chunked (over
+// http.postBuffer) push with a zero-command request before sending it
+// (remote-curl's probe_rpc POSTs a body of exactly "0000"). A zero-command
+// request names no ref, so it cannot escape the session branch; the validation
+// must replay it unchanged so the probe reaches the upstream and gets an
+// answer.
+func TestValidateReceivePackAcceptsTheProbe(t *testing.T) {
+	validated, err := validateReceivePack(strings.NewReader("0000"), "bex-agent/task-1")
+	if err != nil {
+		t.Fatalf("the push probe was refused: %v", err)
+	}
+	got, err := io.ReadAll(validated)
+	if err != nil || string(got) != "0000" {
+		t.Fatalf("validated probe changed: err=%v got=%q", err, got)
+	}
 }
 
 func TestValidateReceivePackAcceptsBoundedShallowMetadata(t *testing.T) {
