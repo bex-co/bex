@@ -1,6 +1,6 @@
 # w4 · m327 — A live service whose instance fails its health check reads "Deploying" on every surface though no deploy runs, and its saved settings are announced as going live "when the current deploy finishes"
 
-**Worker:** worker4 **Goal:** a health-check outage of the release that is already live reads as that release's outage, not as a deploy. The service status agrees with the Deploys list, the saved-changes notice tells the user to deploy, and the Events reason names a health check. **Status:** blocked — t001–t005 and t007–t009 done (shipped); t006's live replay ran in QA loop round 410 (2026-11-15, pin `89ac87445bec`) and DoD 1–4 hold (the Free wake control was not run); t006 closes with that control, then t010 closes
+**Worker:** worker4 **Goal:** a health-check outage of the release that is already live reads as that release's outage, not as a deploy. The service status agrees with the Deploys list, the saved-changes notice tells the user to deploy, and the Events reason names a health check. **Status:** blocked — t001–t005 and t007–t009 done (shipped); t006's live replay ran in QA loop round 410 (2026-11-15, pin `89ac87445bec`) and DoD 1–4 hold; round 415 ran the Free wake control, which reads `Deploying` on GraphQL while the pod starts (the dashboard frame came before the flip, so the header is not yet shown); t006 can close on that record, then t010 closes
 
 ## Tasks (in order)
 
