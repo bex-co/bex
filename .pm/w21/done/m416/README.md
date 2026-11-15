@@ -1,6 +1,6 @@
 # w21 · m416 — wrangler's `r2` contract over the same store: buckets, streamed objects, CORS, lifecycle, the sweep, purge and shadow meters
 
-**Worker:** worker21 **Goal:** stock `wrangler r2` with three environment variables manages buckets and objects in bex, and the usage, lifecycle and cleanup machinery behind both contracts runs. **Status:** todo (t001–t012 and t014–t016 done; t013 and t017 remain)
+**Worker:** worker21 **Goal:** stock `wrangler r2` with three environment variables manages buckets and objects in bex, and the usage, lifecycle and cleanup machinery behind both contracts runs. **Status:** done (2026-11-15)
 
 ## Tasks (in order)
 
@@ -18,11 +18,11 @@
 | [t010](done/t010.md) | Delete a workspace or account: purge `<tea-id>/` in both regions, drop the bucket rows, retry from the sweep — **DONE** | 50m | t008 |
 | [t011](done/t011.md) | Shadow meters: storage GB-seconds, ingress bytes and egress bytes at $0 — **DONE** | 45m | t008, t003, t004 |
 | [t012](done/t012.md) | Docs: the `bex-cli.md` wrangler section, the ADR018 Extension row and dated divergences, the AGENTS inventories — **DONE** | 40m | t007, t010, t011 |
-| t013 | Production walk for Contract B: real wrangler against production, a 300 MiB upload, Render and wrangler on the same data | 60m | w21/m415/t010, t012 |
+| [t013](done/t013.md) | Production walk for Contract B: real wrangler against production, a 300 MiB upload, Render and wrangler on the same data — **DONE** | 60m | w21/m415/t010, t012 |
 | [t014](done/t014.md) | Render parity (Cloudflare R2 reference for the Cloudflare-shaped surface) — **DONE** | 30m | t012 |
 | [t015](done/t015.md) | Simplify — **DONE** | 20m | t014 |
 | [t016](done/t016.md) | Test coverage — **DONE** | 45m | t014, t015 |
-| t017 | Closeout | 10m | t016 |
+| [t017](done/t017.md) | Closeout — **DONE** | 10m | t016 |
 
 ## Definition of done
 
@@ -54,3 +54,7 @@
 - **Remaining:** the walks and each closeout (below). Do not run `provision` or `install` again: both Secrets exist. The walks may create test buckets, objects and keys, and must delete them afterwards. For a token, sign in as the QA user with `bash scripts/qa-login.sh` (`.claude/skills/qa-find-bugs/SKILL.md`; never type the password). Whether the QA user can reach a second workspace is not verified: if a step needs one and there is none, park that task naming exactly that.
 - **Reference-product basis:** unchanged: Render's `ea objects` for Contract A, Cloudflare R2 and wrangler for Contract B and public reads.
 - **This milestone's next steps:** t013 (real wrangler against production, 300 MiB through Traefik, Render and wrangler on the same data) after w21/m415 t010, then t017 Closeout.
+
+## Closeout (2026-11-15)
+
+The production walk of Contract B passed (t013) and found one real defect, fixed in the same run: Cloudflare's proxy in front of `api.bex.co` refuses a request body over 100 MiB, so the Cloudflare-shaped routes are also served on the DNS-only `objects.onbex.co` (6316803e1). Not run live, with the reason recorded in t013 and t017: a workspace delete's purge (a second workspace needs a payment method), an `Age` lifecycle expiry, and the 10,000-deletion and quota caps. [w4/678](../../../w4/678.md) (a deleted `render-<region>` system bucket is recreated under a new id) is filed separately.
