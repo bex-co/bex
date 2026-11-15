@@ -63,6 +63,10 @@ type fakeStore struct {
 	lastSSHEnd   map[string]time.Time
 	reapAfter    map[string]time.Time
 	reapAttempts map[string]int
+	// liveHarvestUntil models agent_sessions.live_harvest_until; harvestRefused
+	// counts the claims refused (another replica's lease was current).
+	liveHarvestUntil map[string]time.Time
+	harvestRefused   int
 }
 
 func newFakeStore() *fakeStore {
@@ -461,6 +465,20 @@ func (f *fakeStore) CompleteAgentSessionTurn(_ context.Context, id string, turn 
 	row.CompletedAt = &at
 	f.turns[id][turn] = row
 	return nil
+}
+
+func (f *fakeStore) ClaimAgentSessionLiveHarvest(_ context.Context, id string, now time.Time, lease time.Duration) (bool, error) {
+	f.rowMu.Lock()
+	defer f.rowMu.Unlock()
+	if until, held := f.liveHarvestUntil[id]; held && until.After(now) {
+		f.harvestRefused++
+		return false, nil
+	}
+	if f.liveHarvestUntil == nil {
+		f.liveHarvestUntil = map[string]time.Time{}
+	}
+	f.liveHarvestUntil[id] = now.Add(lease)
+	return true, nil
 }
 
 func (f *fakeStore) MarkAgentSessionTurnHarvestFailed(_ context.Context, id string, turn int, reason string) error {
@@ -974,10 +992,16 @@ func (f *fakeLifecycle) ReadSessionStatus(ctx context.Context, _, _, _ string) (
 	}
 	return f.status, f.statusErr
 }
-func (f *fakeLifecycle) ReadSessionTranscript(context.Context, string, string, string) (string, error) {
+func (f *fakeLifecycle) ReadSessionTranscript(_ context.Context, _, _, _ string, line func([]byte)) (int64, error) {
 	f.readTranscript++
 	f.readTranscriptBeforeCancel = f.canceled == 0
-	return f.transcriptLog, f.transcriptErr
+	if f.transcriptErr != nil {
+		return 0, f.transcriptErr
+	}
+	for l := range strings.SplitSeq(f.transcriptLog, "\n") {
+		line([]byte(l))
+	}
+	return int64(len(f.transcriptLog)), nil
 }
 
 func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {

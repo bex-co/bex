@@ -17,6 +17,7 @@ limitations under the License.
 package agentsessions
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -158,11 +159,11 @@ type liveHarvest struct {
 	inFlight bool
 }
 
-// liveTranscriptInterval is how often a replica harvests a running turn's
-// driver log (w6/m398). A headless turn has no live tee (the gateway tees
+// liveTranscriptInterval is how often a running turn's driver log is
+// harvested (w6/m398). A headless turn has no live tee (the gateway tees
 // only an attached stream), so without it a sandbox that dies mid-turn leaves
-// no transcript at all. Every replica runs the Completer, so with two the
-// effective spacing is about half this.
+// no transcript at all. Every replica runs the Completer; the store's harvest
+// lease keeps the spacing at this however many run (w4/677).
 const liveTranscriptInterval = time.Minute
 
 // idleSandbox is what the Completer remembers about one finished turn whose
@@ -1051,7 +1052,8 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 // marks the turn's transcript: a running turn is not complete.
 func (c *Completer) harvestTranscript(ctx context.Context, record store.AgentSession, completedOnly bool) (string, bool) {
 	readCtx, cancel := context.WithTimeout(ctx, transcriptReadTimeout)
-	raw, err := c.Sandbox.ReadSessionTranscript(readCtx, record.WorkspaceID, record.ID, record.SandboxID)
+	fold := newTranscriptFold(record.Turns)
+	logBytes, err := c.Sandbox.ReadSessionTranscript(readCtx, record.WorkspaceID, record.ID, record.SandboxID, fold.line)
 	cancel()
 	if err != nil {
 		if !errors.Is(err, core.ErrNotFound) {
@@ -1059,9 +1061,8 @@ func (c *Completer) harvestTranscript(ctx context.Context, record store.AgentSes
 		}
 		return reasonTranscriptReadFailed, false
 	}
-	chunks, parseTruncated := parseTranscriptLog(raw, record.Turns)
-	driverTruncated := driverLogTruncated(raw, chunks)
-	items := agenttranscript.Coalesce(chunks)
+	items := fold.finish()
+	driverTruncated := fold.driverTruncated(logBytes)
 	if completedOnly {
 		items = slices.DeleteFunc(items, func(it agenttranscript.Item) bool { return it.Partial })
 	}
@@ -1072,11 +1073,7 @@ func (c *Completer) harvestTranscript(ctx context.Context, record store.AgentSes
 	var res store.TranscriptMergeResult
 	if len(items) > 0 {
 		merge := store.TranscriptItemMerge{Turn: record.Turns, Quota: c.transcriptQuota(),
-			FirstChunk: chunks[0].Index, LastChunk: chunks[0].Index}
-		for _, ch := range chunks {
-			merge.FirstChunk = min(merge.FirstChunk, ch.Index)
-			merge.LastChunk = max(merge.LastChunk, ch.Index)
-		}
+			FirstChunk: fold.first, LastChunk: fold.last}
 		if completedOnly {
 			// Never swap a legacy raw-chunk turn for a fold that left items out.
 			merge.FirstChunk, merge.LastChunk = -1, -1
@@ -1097,7 +1094,7 @@ func (c *Completer) harvestTranscript(ctx context.Context, record store.AgentSes
 	}
 	reason := ""
 	switch {
-	case parseTruncated:
+	case fold.parseTruncated:
 		reason = reasonParseTruncated
 	case itemCapped:
 		reason = reasonItemLimit
@@ -1108,14 +1105,15 @@ func (c *Completer) harvestTranscript(ctx context.Context, record store.AgentSes
 	}
 	if res.Inserted+res.Upgraded > 0 {
 		log.Printf("agent-session completer: captured transcript (session=%s turn=%d running=%t chunks=%d items=%d inserted=%d upgraded=%d replaced_legacy=%d)",
-			record.ID, record.Turns, completedOnly, len(chunks), len(items), res.Inserted, res.Upgraded, res.Replaced)
+			record.ID, record.Turns, completedOnly, fold.chunks, len(items), res.Inserted, res.Upgraded, res.Replaced)
 	}
 	return reason, true
 }
 
 // harvestRunningTurn starts a background harvest of a running turn's
 // completed items at most once per liveTranscriptInterval, one at a time per
-// session, so the serial status loop never waits on a log read.
+// session and, through the store's lease, one replica at a time, so the
+// serial status loop never waits on a log read.
 func (c *Completer) harvestRunningTurn(ctx context.Context, record store.AgentSession) {
 	interval := c.LiveTranscriptInterval
 	if interval <= 0 {
@@ -1136,7 +1134,15 @@ func (c *Completer) harvestRunningTurn(ctx context.Context, record store.AgentSe
 	c.liveWG.Add(1)
 	go func() {
 		defer c.liveWG.Done()
-		c.harvestTranscript(ctx, record, true)
+		// Every replica schedules this harvest; the lease leaves one of them to
+		// read the log each interval (w4/677).
+		claimed, err := c.Store.ClaimAgentSessionLiveHarvest(ctx, record.ID, now, interval)
+		if err != nil {
+			log.Printf("agent-session completer: live harvest claim failed (session=%s): %v", record.ID, err)
+		}
+		if claimed {
+			c.harvestTranscript(ctx, record, true)
+		}
 		c.liveMu.Lock()
 		defer c.liveMu.Unlock()
 		if h, ok := c.live[record.ID]; ok {
@@ -1187,55 +1193,81 @@ const (
 	driverSessionLogFullSlack = 64 << 10
 )
 
-// driverLogTruncated reports that the driver dropped parts of this turn from
-// its log (the driver's status file carries no such flag since ADR090): the
-// turn's part indexes have a gap — the driver numbers every part,
-// written or refused — or the log has reached the driver's byte cap, which
-// silently drops the tail of a turn.
-func driverLogTruncated(raw string, chunks []agenttranscript.Chunk) bool {
-	if len(raw) >= driverSessionLogMaxBytes-driverSessionLogFullSlack {
-		return true
-	}
-	seen := make(map[int64]struct{}, len(chunks))
-	maxIndex := int64(-1)
-	for _, ch := range chunks {
-		seen[ch.Index] = struct{}{}
-		maxIndex = max(maxIndex, ch.Index)
-	}
-	return int64(len(seen)) < maxIndex+1
+// transcriptFold folds this turn's UI-message chunks from the driver's JSONL
+// log (one `{"at":…,"type":"ui-message","turn":…,"partIndex":…,"part":{…}}`
+// record per line) into items as the lines stream in, so a harvest holds the
+// items and the one line being read, never the log or its chunks (w4/677).
+// The driver numbers a turn's parts in the order it writes them, so the log is
+// already in index order; a part at or below the last one folded is skipped,
+// and the turn is reported driver-truncated, since a log that goes back is
+// not one write of the turn. Unparseable lines (e.g. a partial leading line from the
+// byte-capped tail) are skipped and reported. The log itself is bounded
+// (16 MiB), so the item count is too; the item cap applies after folding.
+type transcriptFold struct {
+	turn      int
+	coalescer *agenttranscript.Coalescer
+	items     []agenttranscript.Item
+	// chunks counts the parts folded; first and last are their lowest and
+	// highest index (-1 before any).
+	chunks         int
+	first, last    int64
+	parseTruncated bool
+	wentBack       bool
 }
 
-// parseTranscriptLog extracts this turn's UI-message chunks from the driver's
-// JSONL log (one `{"at":…,"type":"ui-message","turn":…,"partIndex":…,"part":{…}}`
-// record per line), keeping the `.part` payload under its driver ordinal.
-// Unparseable lines (e.g. a partial leading line from the byte-capped tail) are
-// skipped and reported. The log itself is bounded (16 MiB), so the chunk count
-// is too; the item cap applies after folding.
-func parseTranscriptLog(raw string, turn int) ([]agenttranscript.Chunk, bool) {
-	out := make([]agenttranscript.Chunk, 0)
-	truncated := false
-	for _, line := range strings.Split(raw, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		var rec struct {
-			Turn      int             `json:"turn"`
-			PartIndex *int64          `json:"partIndex"`
-			Part      json.RawMessage `json:"part"`
-		}
-		if json.Unmarshal([]byte(line), &rec) != nil || len(rec.Part) == 0 {
-			truncated = true
-			continue
-		}
-		if rec.Turn != 0 && rec.Turn != turn {
-			continue
-		}
-		index := int64(len(out))
-		if rec.PartIndex != nil {
-			index = *rec.PartIndex
-		}
-		out = append(out, agenttranscript.Chunk{Index: index, Part: rec.Part})
+func newTranscriptFold(turn int) *transcriptFold {
+	return &transcriptFold{turn: turn, coalescer: agenttranscript.NewCoalescer(), first: -1, last: -1}
+}
+
+// transcriptRecord is one driver log line. Part is a copy, so it outlives the
+// line buffer it was read from.
+type transcriptRecord struct {
+	Turn      int             `json:"turn"`
+	PartIndex *int64          `json:"partIndex"`
+	Part      json.RawMessage `json:"part"`
+}
+
+// line folds one log line; the slice is not kept.
+func (f *transcriptFold) line(line []byte) {
+	line = bytes.TrimSpace(line)
+	if len(line) == 0 {
+		return
 	}
-	return out, truncated
+	var rec transcriptRecord
+	if json.Unmarshal(line, &rec) != nil || len(rec.Part) == 0 {
+		f.parseTruncated = true
+		return
+	}
+	if rec.Turn != 0 && rec.Turn != f.turn {
+		return
+	}
+	index := int64(f.chunks)
+	if rec.PartIndex != nil {
+		index = *rec.PartIndex
+	}
+	if f.chunks > 0 && index <= f.last {
+		f.wentBack = true
+		return
+	}
+	if f.chunks == 0 {
+		f.first = index
+	}
+	f.last = index
+	f.chunks++
+	_, released := f.coalescer.Push(index, rec.Part)
+	f.items = append(f.items, released...)
+}
+
+// finish releases the items still open, marking unfinished ones Partial.
+func (f *transcriptFold) finish() []agenttranscript.Item {
+	return append(f.items, f.coalescer.Flush()...)
+}
+
+// driverTruncated reports that the driver dropped parts of this turn from its
+// log of logBytes (the driver's status file carries no such flag since
+// ADR090): the turn's part indexes go back or have a gap (the driver numbers
+// every part, written or refused), or the log has reached the driver's byte
+// cap, which silently drops the tail of a turn.
+func (f *transcriptFold) driverTruncated(logBytes int64) bool {
+	return f.wentBack || logBytes >= driverSessionLogMaxBytes-driverSessionLogFullSlack || int64(f.chunks) < f.last+1
 }

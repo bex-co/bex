@@ -17,6 +17,7 @@ limitations under the License.
 package sandbox
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"crypto/sha256"
@@ -1300,14 +1301,14 @@ func (s *Service) readAgentStatus(ctx context.Context, workspaceID, sessionID, s
 		// there the gateway's target check answers how (OOMKilled, an exit
 		// code), so the session fails with its cause before the sandbox is
 		// deleted. NotFound either way.
-		_, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID, "true", maxExecOutputBytes)
+		_, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID, "true")
 		if _, ok := TerminationOf(err); ok {
 			return "", err
 		}
 		return "", sandboxNotFound(sandboxID)
 	}
 	result, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID,
-		"cat "+agentSessionStatusPath+" 2>/dev/null || true", maxExecOutputBytes)
+		"cat "+agentSessionStatusPath+" 2>/dev/null || true")
 	if err != nil {
 		return "", err
 	}
@@ -1344,7 +1345,7 @@ func (l *AgentSessionLifecycle) InterruptSessionTurn(ctx context.Context, worksp
 		return sandboxNotFound(sandboxID)
 	}
 	result, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID,
-		fmt.Sprintf("printf %%d %d > %[2]s.tmp && mv -f %[2]s.tmp %[2]s", turn, agentSessionInterruptPath), maxExecOutputBytes)
+		fmt.Sprintf("printf %%d %d > %[2]s.tmp && mv -f %[2]s.tmp %[2]s", turn, agentSessionInterruptPath))
 	if err != nil {
 		return err
 	}
@@ -1363,34 +1364,80 @@ const agentSessionLogPath = "/var/log/bex-agent/session.jsonl"
 // smaller in practice; this only guards a pathological driver.
 const maxTranscriptLogBytes = 16 << 20
 
-// ReadSessionTranscript returns the driver's session log (JSONL, one
+// ReadSessionTranscript streams the driver's session log (JSONL, one
 // UI-message part per line) from the exact session sandbox through the SAME
 // gateway pods/exec boundary the Completer already uses for ReadSessionStatus
 // (ADR051). Harvesting the on-disk log rides the proven status-read path instead
 // of a separate driver-stream dial. A terminated/errored pod (its log gone with
 // it) surfaces as NotFound so the caller treats it as "nothing to capture".
-func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error) {
+//
+// Each complete line goes to line, without its newline, as it arrives; the
+// slice is only valid during the call. Nothing holds the whole log, so a
+// harvest's memory follows what its caller keeps (w4/677). It returns the
+// log's size. On an error, the lines already delivered are not the whole log.
+func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string, line func([]byte)) (int64, error) {
 	s := l.service
 	status, err := s.sessionSandboxState(ctx, workspaceID, sessionID, sandboxID)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	if status == StatusTerminated || status == StatusErrored {
-		return "", sandboxNotFound(sandboxID)
+		return 0, sandboxNotFound(sandboxID)
 	}
 	// The public buffered-exec cap is 2 MiB, but the driver's own log is
-	// bounded at 16 MiB. Collect that full trusted artifact with framing headroom
-	// and fail explicitly if even this bound truncates it.
-	result, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID,
-		fmt.Sprintf("tail -c %d %s 2>/dev/null || true", maxTranscriptLogBytes, agentSessionLogPath),
-		maxTranscriptLogBytes+1<<20)
+	// bounded at 16 MiB: read the 16 MiB tail under a budget 1 MiB over it, and
+	// fail explicitly if even that truncates it.
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID, []string{"/bin/sh", "-c",
+		fmt.Sprintf("tail -c %d %s 2>/dev/null || true", maxTranscriptLogBytes, agentSessionLogPath)})
 	if err != nil {
-		return "", err
+		return 0, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	lines := lineSplitter{emit: line}
+	result, err := streamExecWithLimit(resp, maxTranscriptLogBytes+1<<20, func(stream, data string) {
+		if stream != "stderr" {
+			lines.write(data)
+		}
+	})
+	if err != nil {
+		return lines.size, err
 	}
 	if result.Truncated {
-		return "", fmt.Errorf("%w: agent session transcript exceeded harvest limit", core.ErrSandboxesUnavailable)
+		return lines.size, fmt.Errorf("%w: agent session transcript exceeded harvest limit", core.ErrSandboxesUnavailable)
 	}
-	return result.Stdout, nil
+	lines.flush()
+	return lines.size, nil
+}
+
+// lineSplitter cuts a byte stream into lines in one reused buffer that only
+// ever holds the line still being received.
+type lineSplitter struct {
+	buf  []byte
+	size int64
+	emit func([]byte)
+}
+
+func (l *lineSplitter) write(data string) {
+	l.size += int64(len(data))
+	l.buf = append(l.buf, data...)
+	start := 0
+	for {
+		i := bytes.IndexByte(l.buf[start:], '\n')
+		if i < 0 {
+			break
+		}
+		l.emit(l.buf[start : start+i])
+		start += i + 1
+	}
+	l.buf = l.buf[:copy(l.buf, l.buf[start:])]
+}
+
+// flush emits a final line the stream ended without a newline.
+func (l *lineSplitter) flush() {
+	if len(l.buf) > 0 {
+		l.emit(l.buf)
+		l.buf = l.buf[:0]
+	}
 }
 
 // sessionSandboxState re-validates a session read's sandbox binding and
@@ -1422,19 +1469,19 @@ func (s *Service) sessionSandboxState(ctx context.Context, workspaceID, sessionI
 
 // sessionExec runs one trusted Completer command in the session sandbox
 // through the gateway and buffers its output up to limit.
-func (s *Service) sessionExec(ctx context.Context, workspaceID, sessionID, sandboxID, command string, limit int) (ExecResult, error) {
-	return s.systemExec(ctx, workspaceID, sandboxID, sessionID, []string{"/bin/sh", "-c", command}, limit)
+func (s *Service) sessionExec(ctx context.Context, workspaceID, sessionID, sandboxID, command string) (ExecResult, error) {
+	return s.systemExec(ctx, workspaceID, sandboxID, sessionID, []string{"/bin/sh", "-c", command})
 }
 
 // systemExec runs one trusted argv of bex-api's own in a sandbox and buffers
 // its output up to limit: no caller-facing wrapper, record or activity.
-func (s *Service) systemExec(ctx context.Context, ws, sandboxID, agentSessionID string, argv []string, limit int) (ExecResult, error) {
+func (s *Service) systemExec(ctx context.Context, ws, sandboxID, agentSessionID string, argv []string) (ExecResult, error) {
 	resp, err := s.mintAndDial(ctx, ws, sandboxID, agentSessionID, argv)
 	if err != nil {
 		return ExecResult{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	return bufferExecWithLimit(resp, limit)
+	return bufferExec(resp)
 }
 
 func (s *Service) agentSessionKey(ctx context.Context, workspaceID string) (string, error) {

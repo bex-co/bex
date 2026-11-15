@@ -178,7 +178,7 @@ func (s *Service) commitAgentSandbox(ctx context.Context, c agentCommit) (AgentI
 	for _, path := range c.stale {
 		command += " && test ! -e " + path
 	}
-	res, err := s.sessionExec(ctx, c.workspaceID, c.principal, c.sandboxID, command, maxExecOutputBytes)
+	res, err := s.sessionExec(ctx, c.workspaceID, c.principal, c.sandboxID, command)
 	if err == nil && res.ExitCode != 0 {
 		err = fmt.Errorf("exit %d", res.ExitCode)
 	}

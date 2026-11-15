@@ -135,7 +135,7 @@ func (s *Service) probeCommands(ctx context.Context, ws string, raw osSandbox, i
 	ctx = core.WithIdentity(ctx, core.Identity{Subject: sandboxexec.ProbeSubjectPrefix + ws, Method: "sandbox-command-probe"})
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
-	res, err := s.systemExec(ctx, ws, raw.ID, "", append([]string{"/bin/sh", "-c", commandProbe, "bex-probe", commandRegistry}, ids...), maxExecOutputBytes)
+	res, err := s.systemExec(ctx, ws, raw.ID, "", append([]string{"/bin/sh", "-c", commandProbe, "bex-probe", commandRegistry}, ids...))
 	if err != nil {
 		return commandReport{}, err
 	}

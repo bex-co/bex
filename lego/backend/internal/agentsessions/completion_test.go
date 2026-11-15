@@ -1237,6 +1237,41 @@ func TestCompleterHarvestsARunningTurnsCompletedItems(t *testing.T) {
 	}
 }
 
+// Every bex-api replica schedules a running turn's harvest, but only the one
+// holding the store's lease reads the log each interval (w4/677): two
+// replicas harvested the same 16 MiB log about once a minute each before.
+func TestCompleterReplicasShareARunningTurnsHarvest(t *testing.T) {
+	a, st, lc, _ := completerFixture(`{"state":"running"}`, nil)
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text","text":"working"}}`
+	clock := time.Unix(1_800_000_000, 0)
+	b := &Completer{Store: st, Sandbox: lc}
+	for _, c := range []*Completer{a, b} {
+		c.Now = func() time.Time { return clock }
+		c.LiveTranscriptInterval = time.Minute
+	}
+	reconcile := func() {
+		for _, c := range []*Completer{a, b} {
+			c.Reconcile(context.Background())
+			c.liveWG.Wait()
+		}
+	}
+	reconcile()
+	if lc.readTranscript != 1 || st.harvestRefused != 1 {
+		t.Fatalf("two replicas read the running turn %d times (%d refused), want once", lc.readTranscript, st.harvestRefused)
+	}
+	clock = clock.Add(30 * time.Second) // B tried mid-interval: A's lease holds
+	b.live = nil
+	reconcile()
+	if lc.readTranscript != 1 {
+		t.Fatalf("read %d times within the lease, want 1", lc.readTranscript)
+	}
+	clock = clock.Add(30 * time.Second) // the lease has run out
+	reconcile()
+	if lc.readTranscript != 2 {
+		t.Fatalf("read %d times after the lease ran out, want 2", lc.readTranscript)
+	}
+}
+
 // Every bex-api replica runs a Completer. When one fails a turn, captures its
 // transcript and terminates the sandbox, another replica's reap of the same
 // still-listed session reads a sandbox that is gone. That read must not turn

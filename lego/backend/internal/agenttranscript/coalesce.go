@@ -258,7 +258,9 @@ func (c *Coalescer) release() []Item {
 		out[i] = p.item(false)
 		c.bytes -= p.size
 	}
+	kept := len(c.order) - n
 	c.order = append(c.order[:0], c.order[n:]...)
+	clear(c.order[kept : kept+n]) // drop the released items' references
 	return out
 }
 

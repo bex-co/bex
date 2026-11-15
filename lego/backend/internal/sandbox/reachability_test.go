@@ -145,7 +145,7 @@ func TestSessionReadsTreatAnUnknownStateAsTransient(t *testing.T) {
 			exec := &podExecutor{pod: sandboxPod(corev1.PodRunning, corev1.ConditionTrue, runningContainer)}
 			lifecycle := sessionReadFixture(t, state, exec)
 			_, statusErr := lifecycle.ReadSessionStatus(context.Background(), "tea-a", "ags-one", "os-agent")
-			_, transcriptErr := lifecycle.ReadSessionTranscript(context.Background(), "tea-a", "ags-one", "os-agent")
+			_, transcriptErr := lifecycle.ReadSessionTranscript(context.Background(), "tea-a", "ags-one", "os-agent", func([]byte) {})
 			for _, err := range []error{statusErr, transcriptErr} {
 				if !Transient(err) || !StateUnknown(err) || errors.Is(err, core.ErrNotFound) {
 					t.Fatalf("read in state %q = %v, want a transient unknown-state error", state, err)

@@ -17,12 +17,14 @@ limitations under the License.
 package sandbox
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -356,7 +358,9 @@ func TestReadSessionStatusMintsSystemSubjectWithoutIdentity(t *testing.T) {
 
 // ReadSessionTranscript (ADR051) harvests the driver's session log over the same
 // pods/exec boundary as ReadSessionStatus (a `tail` of the log file), under the
-// system subject with no caller identity. The Completer parses the returned JSONL.
+// system subject with no caller identity. The log streams to the caller line by
+// line (w4/677): a line split across output events arrives whole, stderr is
+// not log, and a last line without its newline still arrives.
 func TestReadSessionTranscriptHarvestsLogOverExecBoundary(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent" {
@@ -385,9 +389,16 @@ func TestReadSessionTranscriptHarvestsLogOverExecBoundary(t *testing.T) {
 		if len(claims.Command) == 3 {
 			gotCommand = claims.Command[2] // the `tail … session.jsonl` shell line
 		}
-		out, _ := json.Marshal(map[string]string{"stream": "stdout", "data": logLine + "\n"})
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprintf(w, "event: output\ndata: %s\n\n", out)
+		for _, ev := range []map[string]string{
+			{"stream": "stdout", "data": logLine[:10]},
+			{"stream": "stderr", "data": "tail: noise\n"},
+			{"stream": "stdout", "data": logLine[10:] + "\n" + logLine[:20]},
+			{"stream": "stdout", "data": logLine[20:]},
+		} {
+			out, _ := json.Marshal(ev)
+			fmt.Fprintf(w, "event: output\ndata: %s\n\n", out)
+		}
 		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":0}\n\n"))
 	}))
 	defer gateway.Close()
@@ -399,18 +410,82 @@ func TestReadSessionTranscriptHarvestsLogOverExecBoundary(t *testing.T) {
 	}
 	lifecycle := &AgentSessionLifecycle{service: service}
 
-	raw, err := lifecycle.ReadSessionTranscript(context.Background(), "tea-a", "ags-one", "os-agent")
+	var lines []string
+	size, err := lifecycle.ReadSessionTranscript(context.Background(), "tea-a", "ags-one", "os-agent",
+		func(line []byte) { lines = append(lines, string(line)) })
 	if err != nil {
 		t.Fatalf("ReadSessionTranscript: %v", err)
 	}
-	if !strings.Contains(raw, `"text":"hi"`) {
-		t.Fatalf("harvested log = %q, want the driver log line", raw)
+	if !slices.Equal(lines, []string{logLine, logLine}) || size != int64(2*len(logLine)+1) {
+		t.Fatalf("harvested lines = %q (size %d), want the driver log line twice", lines, size)
 	}
 	if gotSubject != systemExecSubject {
 		t.Fatalf("ticket subject = %q, want %q", gotSubject, systemExecSubject)
 	}
 	if !strings.Contains(gotCommand, agentSessionLogPath) {
 		t.Fatalf("exec command = %q, want a read of %q", gotCommand, agentSessionLogPath)
+	}
+}
+
+// The harvest streams a full 16 MiB driver log without holding it (w4/677):
+// while the lines arrive, the heap grows by the read buffers, not by the log.
+func TestReadSessionTranscriptStreamsTheLogWithoutHoldingIt(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sb := osSandbox{ID: "os-agent", Metadata: map[string]string{
+			metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
+			metadataNetworkPolicy: string(NetworkPolicyDenyAll), agentsession.LabelSession: "ags-one",
+		}}
+		sb.Status.State = "running"
+		_ = json.NewEncoder(w).Encode(sb)
+	}))
+	defer upstream.Close()
+	line := fmt.Sprintf(`{"turn":1,"partIndex":0,"part":{"type":"text-delta","id":"t","delta":%q}}`, strings.Repeat("x", 400))
+	var log strings.Builder
+	for log.Len()+len(line) < maxTranscriptLogBytes {
+		log.WriteString(line + "\n")
+	}
+	logSize, wantLines := log.Len(), log.Len()/(len(line)+1)
+	var body bytes.Buffer
+	for rest := log.String(); rest != ""; {
+		n := min(len(rest), 32<<10)
+		out, _ := json.Marshal(map[string]string{"stream": "stdout", "data": rest[:n]})
+		fmt.Fprintf(&body, "event: output\ndata: %s\n\n", out)
+		rest = rest[n:]
+	}
+	body.WriteString("event: exit\ndata: {\"exit_code\":0}\n\n")
+	log.Reset()
+	secret := []byte("exec-secret")
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write(body.Bytes())
+	}))
+	defer gateway.Close()
+	lifecycle := &AgentSessionLifecycle{service: &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: NewClient(upstream.URL),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gateway.URL, Client: gateway.Client()},
+	}}
+
+	liveHeap := func() int64 {
+		runtime.GC()
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		return int64(m.HeapAlloc)
+	}
+	base, peak, lines := liveHeap(), int64(0), 0
+	size, err := lifecycle.ReadSessionTranscript(context.Background(), "tea-a", "ags-one", "os-agent", func(got []byte) {
+		if string(got) != line {
+			t.Fatalf("line %d = %.80q, want the log line", lines, got)
+		}
+		if lines++; lines%1000 == 0 {
+			peak = max(peak, liveHeap()-base)
+		}
+	})
+	if err != nil || size != int64(logSize) || lines != wantLines {
+		t.Fatalf("ReadSessionTranscript = %d bytes in %d lines, %v; want %d bytes in %d lines", size, lines, err, logSize, wantLines)
+	}
+	if peak > 4<<20 {
+		t.Fatalf("streaming a %d-byte log held %d more bytes at its peak, want only the read buffers", logSize, peak)
 	}
 }
 

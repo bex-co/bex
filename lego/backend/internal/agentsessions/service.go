@@ -124,6 +124,9 @@ type Store interface {
 	// MarkAgentSessionTurnHarvestFailed records a failed harvest on a turn no
 	// harvest has recorded a verdict on yet.
 	MarkAgentSessionTurnHarvestFailed(ctx context.Context, sessionID string, turn int, reason string) error
+	// ClaimAgentSessionLiveHarvest takes the session's running-turn harvest
+	// for lease unless another replica holds it at now (w4/677).
+	ClaimAgentSessionLiveHarvest(ctx context.Context, sessionID string, now time.Time, lease time.Duration) (bool, error)
 	// RequestAgentSessionTurnInterrupt records, before the stop is sent to the
 	// sandbox, that a person asked to stop the turn; the Completer believes
 	// the sandbox's `interrupted` status only for a turn with one (ADR047 D12).
@@ -159,10 +162,12 @@ type SandboxLifecycle interface {
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
 	ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
-	// ReadSessionTranscript returns the driver's per-part session log (JSONL)
-	// over the same pods/exec boundary as ReadSessionStatus, so the
-	// Completer can persist the conversation before teardown (ADR051).
-	ReadSessionTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
+	// ReadSessionTranscript streams the driver's per-part session log
+	// (JSONL) line by line over the same pods/exec boundary as
+	// ReadSessionStatus, so the Completer can persist the conversation before
+	// teardown (ADR051) without holding the whole log (w4/677). Each line is
+	// valid only during its call; it returns the log's size.
+	ReadSessionTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string, line func([]byte)) (int64, error)
 	// InterruptSessionTurn asks the driver in the sandbox to end turn, and
 	// only that turn (ADR047 D12), through the same boundary.
 	InterruptSessionTurn(ctx context.Context, workspaceID, sessionID, sandboxID string, turn int) error

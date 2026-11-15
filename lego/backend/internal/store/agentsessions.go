@@ -783,6 +783,21 @@ func (s *PGStore) MarkAgentSessionTurnHarvestFailed(ctx context.Context, session
 	return err
 }
 
+// ClaimAgentSessionLiveHarvest takes the session's running-turn harvest for
+// lease from now, unless another replica's lease is still current at now,
+// decided in this one statement (w4/677). Every replica's Completer schedules
+// the harvest, so the lease leaves one of them to read the driver log each
+// interval. A session that is gone is never claimed.
+func (s *PGStore) ClaimAgentSessionLiveHarvest(ctx context.Context, sessionID string, now time.Time, lease time.Duration) (bool, error) {
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE agent_sessions SET live_harvest_until = $2::timestamptz + make_interval(secs => $3)
+		WHERE id = $1 AND (live_harvest_until IS NULL OR live_harvest_until <= $2)`, sessionID, now, lease.Seconds())
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
 // RecordAgentSessionResult stores the structured result the agent submitted
 // for a session's current turn (ADR094 D5). It writes only while the session
 // is in a credential-eligible live phase and only to a turn that carries an

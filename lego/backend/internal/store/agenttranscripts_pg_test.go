@@ -519,3 +519,30 @@ func TestPGMarkAgentSessionTurnHarvestFailedKeepsAnEarlierVerdict(t *testing.T) 
 		t.Fatalf("unread turn: complete=%t truncated=%t reason=%q, want truncated with the read failure", complete, truncated, reason)
 	}
 }
+
+// One replica at a time takes a running turn's harvest (w4/677): a claim
+// inside another's lease is refused, the next after it runs out is taken, and
+// a session that is gone is never claimed.
+func TestPGClaimAgentSessionLiveHarvestLeavesOneReplica(t *testing.T) {
+	s, _, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	tenant, err := s.CreateTenant(ctx, "live-harvest-lease-test", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteTenant(context.Background(), tenant.ID) })
+	session := legacySession(t, s, tenant.ID, []json.RawMessage{json.RawMessage(`{"type":"text","text":"x"}`)}, true, "")
+	now := time.Now().UTC().Truncate(time.Second)
+	for _, step := range []struct {
+		at   time.Duration
+		want bool
+	}{{0, true}, {0, false}, {59 * time.Second, false}, {time.Minute, true}, {90 * time.Second, false}} {
+		claimed, err := s.ClaimAgentSessionLiveHarvest(ctx, session, now.Add(step.at), time.Minute)
+		if err != nil || claimed != step.want {
+			t.Fatalf("claim at +%s = %t, %v; want %t", step.at, claimed, err, step.want)
+		}
+	}
+	if claimed, err := s.ClaimAgentSessionLiveHarvest(ctx, "ags-gone", now, time.Minute); err != nil || claimed {
+		t.Fatalf("claim on a missing session = %t, %v; want refused", claimed, err)
+	}
+}

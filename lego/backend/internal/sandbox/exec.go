@@ -18,6 +18,7 @@ package sandbox
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -513,46 +514,53 @@ func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult
 	return res, err
 }
 
-// bufferExec drains one gateway SSE exec response into a collected result. It is
-// shared by the public MCP verb and the trusted session-status read.
+// bufferExec drains one gateway SSE exec response into a collected result,
+// cut off at maxExecOutputBytes. It is shared by the public MCP verb and
+// bex-api's own small reads, such as the session status. Callers must still
+// reject Truncated when completeness is part of their contract.
 func bufferExec(resp *http.Response) (ExecResult, error) {
-	return bufferExecWithLimit(resp, maxExecOutputBytes)
+	// Builders, not string +=: the budget admits up to 2 MiB across
+	// many small SSE chunks, and appending to a string reallocates and copies
+	// everything accumulated so far on each one.
+	var stdout, stderr strings.Builder
+	out, err := streamExecWithLimit(resp, maxExecOutputBytes, func(stream, data string) {
+		if stream == "stderr" {
+			stderr.WriteString(data)
+		} else {
+			stdout.WriteString(data)
+		}
+	})
+	out.Stdout, out.Stderr = stdout.String(), stderr.String()
+	return out, err
 }
 
-// bufferExecWithLimit is the bounded collector shared by ordinary MCP exec
-// (2 MiB) and trusted agent-transcript harvest (the driver's 16 MiB log plus
-// framing headroom). Callers must still reject Truncated when completeness is
-// part of their contract.
-func bufferExecWithLimit(resp *http.Response, maxOutputBytes int) (ExecResult, error) {
+// streamExecWithLimit reads the gateway's exec SSE stream and hands each
+// output event's data to output as it arrives, holding none of it: the
+// trusted agent-transcript harvest streams the driver's 16 MiB log through
+// it line by line instead of buffering the whole log (w4/677). The returned
+// result carries only ExitCode and Truncated.
+func streamExecWithLimit(resp *http.Response, maxOutputBytes int, output func(stream, data string)) (ExecResult, error) {
 	var out ExecResult
 	exitSeen := false
-	total := 0 // combined stdout+stderr bytes accumulated so far
-	// Builders, not string +=: the budget below admits up to maxExecOutputBytes
-	// across many small SSE chunks, and appending to a string reallocates and
-	// copies everything accumulated so far on each one.
-	var stdout, stderr strings.Builder
-	finish := func() ExecResult {
-		out.Stdout, out.Stderr = stdout.String(), stderr.String()
-		return out
-	}
+	total := 0 // combined stdout+stderr bytes passed on so far
 	sc := bufio.NewScanner(resp.Body)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
 	event := ""
 	for sc.Scan() {
-		line := sc.Text()
+		line := sc.Bytes()
 		switch {
-		case strings.HasPrefix(line, "event: "):
-			event = strings.TrimPrefix(line, "event: ")
-		case strings.HasPrefix(line, "data: "):
-			payload := strings.TrimPrefix(line, "data: ")
+		case bytes.HasPrefix(line, sseEventPrefix):
+			event = string(line[len(sseEventPrefix):])
+		case bytes.HasPrefix(line, sseDataPrefix):
+			payload := line[len(sseDataPrefix):]
 			switch event {
 			case "output":
 				var ev struct {
 					Stream string `json:"stream"`
 					Data   string `json:"data"`
 				}
-				if json.Unmarshal([]byte(payload), &ev) == nil {
-					// Enforce a cumulative output budget: append only what fits, then
+				if json.Unmarshal(payload, &ev) == nil {
+					// Enforce a cumulative output budget: pass on only what fits, then
 					// stop reading so the caller closes the upstream stream (F8). An
 					// unbounded number of in-budget lines can no longer exhaust the pod.
 					// remaining is always > 0 here: the loop returns the moment total
@@ -563,17 +571,13 @@ func bufferExecWithLimit(resp *http.Response, maxOutputBytes int) (ExecResult, e
 						out.Truncated = true
 					}
 					total += len(data)
-					if ev.Stream == "stderr" {
-						stderr.WriteString(data)
-					} else {
-						stdout.WriteString(data)
-					}
+					output(ev.Stream, data)
 					if out.Truncated {
-						return finish(), nil
+						return out, nil
 					}
 				}
 			case "exit":
-				if code := decodeExitCode([]byte(payload)); code != nil {
+				if code := decodeExitCode(payload); code != nil {
 					out.ExitCode, exitSeen = *code, true
 				}
 			case "error":
@@ -581,21 +585,21 @@ func bufferExecWithLimit(resp *http.Response, maxOutputBytes int) (ExecResult, e
 				// internal {error, code}. `code` (or a 404 status) names the
 				// terminated target either way.
 				var ev sandboxexec.ErrorEvent
-				if json.Unmarshal([]byte(payload), &ev) == nil {
+				if json.Unmarshal(payload, &ev) == nil {
 					if err := execEventError(ev); err != nil {
-						return finish(), err
+						return out, err
 					}
 				}
 			}
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return finish(), core.HideCause(unreachable("the exec stream broke"), err)
+		return out, core.HideCause(unreachable("the exec stream broke"), err)
 	}
 	if !exitSeen {
-		return finish(), unreachable("the exec stream ended without an exit status")
+		return out, unreachable("the exec stream ended without an exit status")
 	}
-	return finish(), nil
+	return out, nil
 }
 
 // execEventError maps the gateway's `error` event onto bex-api's error
