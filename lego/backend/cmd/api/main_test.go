@@ -23,7 +23,10 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 func TestConfiguredWebhookRequiresDurableReplayStore(t *testing.T) {
@@ -38,6 +41,26 @@ func TestConfiguredWebhookRequiresDurableReplayStore(t *testing.T) {
 	}
 	if err := validateWebhookReplayConfig("", "", false); err != nil {
 		t.Fatalf("disabled webhook should not need a store: %v", err)
+	}
+}
+
+// Every sandbox template's writable layer must fit the sandbox namespace's
+// LimitRange ceiling, or the pod is refused at admission; the base template
+// carries Render's 40 GB (w22/008).
+func TestSandboxTemplatesFitTheSandboxLimitRange(t *testing.T) {
+	ceiling := resource.MustParse(store.SandboxEphemeralMax)
+	templates := sandboxTemplateRegistry("alpine:3", "agent:test")
+	if got := templates["base"].EphemeralStorage; got != "40Gi" {
+		t.Fatalf("base template ephemeral storage = %q, want 40Gi", got)
+	}
+	for name, tmpl := range templates {
+		if tmpl.EphemeralStorage == "" {
+			t.Errorf("template %q has no ephemeral-storage limit: a sandbox could fill the node's disk", name)
+			continue
+		}
+		if q := resource.MustParse(tmpl.EphemeralStorage); q.Cmp(ceiling) > 0 {
+			t.Errorf("template %q asks for %s, above the sandbox LimitRange ceiling %s", name, q.String(), ceiling.String())
+		}
 	}
 }
 
@@ -76,8 +99,8 @@ func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
 			t.Errorf("%s SessionOnly = %v, want %v", name, tmpl.SessionOnly, want)
 		}
 	}
-	if got := templates["base"].EphemeralStorage; got != "" {
-		t.Errorf("base ephemeral storage = %q, want the LimitRange default", got)
+	if got := templates["base"].EphemeralStorage; got != "40Gi" {
+		t.Errorf("base ephemeral storage = %q, want Render's 40Gi (w22/008)", got)
 	}
 	base := templates["base"]
 	if base.Image != "alpine:3" {

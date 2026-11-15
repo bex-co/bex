@@ -230,7 +230,7 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 			return fmt.Errorf("resourcequota %s: %w", quota.Name, err)
 		}
 	}
-	if err := r.applyObject(ctx, baseLimitRange(name)); err != nil {
+	if err := r.applyObject(ctx, limitRangeFor(name, regime)); err != nil {
 		return fmt.Errorf("limitrange: %w", err)
 	}
 	if err := r.applyObject(ctx, defaultDenyNetworkPolicy(name)); err != nil {
@@ -749,6 +749,24 @@ func quotaForPlan(plan string) corev1.ResourceList {
 		quota[key] = total
 	}
 	return quota
+}
+
+// SandboxEphemeralMax is the largest writable layer a sandbox may be given: the
+// 40 GB per sandbox of Render's plans (ADR104 D7), above the hosting regime's
+// 32Gi ladder. The base sandbox template asks for exactly this (cmd/api).
+const SandboxEphemeralMax = "40Gi"
+
+// limitRangeFor is the namespace's LimitRange: the base one, with the sandbox
+// regime's ephemeral-storage ceiling raised to SandboxEphemeralMax so a sandbox
+// can carry the writable filesystem Render sells. The kubelet enforces it by
+// eviction; measured on production under gVisor, its accounting follows what a
+// sandbox writes (w22/008).
+func limitRangeFor(namespace, regime string) *corev1.LimitRange {
+	lr := baseLimitRange(namespace)
+	if regime == RegimeSandbox {
+		lr.Spec.Limits[0].Max[corev1.ResourceEphemeralStorage] = resource.MustParse(SandboxEphemeralMax)
+	}
+	return lr
 }
 
 // baseLimitRange supplies request/limit defaults for pods that omit them

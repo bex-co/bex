@@ -1,0 +1,50 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package store
+
+import (
+	"testing"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+)
+
+// The sandbox regime's LimitRange admits Render's 40 GB writable layer, the
+// hosting regime keeps its 32Gi ladder, and a workspace's ephemeral-storage
+// quota still holds the default 100 active sandboxes at that size (w22/008).
+func TestSandboxRegimeLimitRangeAdmitsTheSandboxWritableLayer(t *testing.T) {
+	max := func(regime string) resource.Quantity {
+		return limitRangeFor("ns", regime).Spec.Limits[0].Max[corev1.ResourceEphemeralStorage]
+	}
+	if got, want := max(RegimeSandbox), resource.MustParse("40Gi"); got.Cmp(want) != 0 {
+		t.Errorf("sandbox LimitRange ephemeral max = %s, want %s", got.String(), want.String())
+	}
+	if got, want := max(RegimeHosting), resource.MustParse("32Gi"); got.Cmp(want) != 0 {
+		t.Errorf("hosting LimitRange ephemeral max = %s, want %s", got.String(), want.String())
+	}
+	sandbox := limitRangeFor("ns", RegimeSandbox).Spec.Limits[0]
+	if got, want := sandbox.Default[corev1.ResourceEphemeralStorage], resource.MustParse("10Gi"); got.Cmp(want) != 0 {
+		t.Errorf("sandbox LimitRange ephemeral default = %s, want the unchanged %s", got.String(), want.String())
+	}
+	const defaultActiveSandboxes = 100 // BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE's default
+	quota := quotaForPlan("starter")[corev1.ResourceLimitsEphemeralStorage]
+	need := resource.MustParse(SandboxEphemeralMax)
+	need.Set(need.Value() * defaultActiveSandboxes)
+	if quota.Cmp(need) < 0 {
+		t.Errorf("workspace ephemeral-storage limit quota %s cannot hold %d sandboxes of %s", quota.String(), defaultActiveSandboxes, SandboxEphemeralMax)
+	}
+}

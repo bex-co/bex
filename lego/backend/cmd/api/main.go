@@ -121,6 +121,9 @@ func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Te
 			Image: baseImage, Entrypoint: []string{"/bin/sh", "-c", baseEntrypoint},
 			Env: map[string]string{"HOME": baseHome},
 			CPU: baseCPU, Memory: baseMemory,
+			// Render's 40 GB writable filesystem per sandbox on every plan
+			// (ADR104 D7); the sandbox namespace's LimitRange admits it.
+			EphemeralStorage: store.SandboxEphemeralMax,
 		},
 		// Customers' sessions keep the 2c-4g agent; a session or automation
 		// that builds a large repository names agent-4c-8g, and the sandbox
