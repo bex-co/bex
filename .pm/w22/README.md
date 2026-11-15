@@ -22,7 +22,7 @@
 - [x] [001](done/001.md) — Pin sandbox `sh -c`, the list `limit` cap and the 40 GB filesystem with tests
 - [ ] [002](002.md) — Meter sandbox egress, then alert on a workspace whose allow-all sandboxes egress far above its plan — **UNBLOCKED 2026-11-14** (next: read whether a `<ws>-sandbox` pod has a network byte counter, through a dispatched probe (user authorized 2026-11-14, D1); then promote it)
 - [ ] [003](003.md) — Sandbox groups: the optional project environment on "+ New > Sandbox Group" — **UNBLOCKED 2026-11-14** (decided by the existing parity rule 2026-11-14: a group belongs to an environment, nothing more; build the optional `environmentId` and the dashboard dropdown)
-- [ ] [004](004.md) — Sandbox group list and paging: where bex's answers differ from Render's error vocabulary — **UNBLOCKED 2026-11-14** (user decision 2026-11-14: Render's `invalid_owner_id`, `invalid_limit` and `invalid_cursor` on the REST group list; GraphQL and MCP keep clamping)
+- [x] [004](done/004.md) — Sandbox group list and paging: where bex's answers differ from Render's error vocabulary — **DONE 2026-11-14** (the REST group list answers `invalid_owner_id`, `invalid_limit` and `invalid_cursor`; the build list follows in 016)
 - [x] [005](done/005.md) — Agent-session sandboxes: decide whether their retained image is billed storage — **DONE 2026-11-14** (absorb, as Devin does not bill a sleeping session; recorded in ADR047 D6, no code change)
 - [x] [006](done/006.md) — Provision the storage meter's registry users as operator-managed Zot credentials — promoted to **m321**
 - [x] [007](done/007.md) — Unparameterized lists return the full set where Render returns 20 — **decided 2026-11-13 by the user: Render's 20; filed as [w10/m377](../w10/blocked/m377/README.md)**
@@ -34,3 +34,4 @@
 - [x] [013](done/013.md) — `bex agent stop`, and `send --wait` for a queued message ← found by w22/m403 t007, 2026-11-14 — **DONE 2026-11-14** (`bex agent stop` with exit codes 7 and 8 for its two refusals; `send --wait`/`--follow` wait for the queued message's own turn)
 - [x] [014](done/014.md) — Harden the message queue and Stop turn: keyed direct sends, a forged `interrupted` status, Move around a leased head, and blocked-head retry cadence ← found by w22/m403's review, 2026-11-14 — promoted to **m408**
 - [x] [015](done/015.md) — The board validator rejects moving a milestone back out of `blocked/` when another workstream uses its number ← found by `/unblock w22`, 2026-11-14 — **DONE 2026-11-14** (a milestone moving within its own workstream is no longer an addition; m321 can move back)
+- [ ] [016](016.md) — The sandbox build list answers Render's `invalid_limit` and `invalid_cursor`, as the group list does ← found shipping w22/004, 2026-11-14

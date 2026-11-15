@@ -23,6 +23,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 	"unicode"
@@ -57,6 +58,13 @@ const (
 	// CodeInvalidSandboxGroupID is Render's `invalid_sandbox_group_id`: an id that
 	// is not a well-formed `sbg-` identifier.
 	CodeInvalidSandboxGroupID = "invalid_sandbox_group_id"
+	// CodeInvalidOwnerID, CodeInvalidLimit and CodeInvalidCursor are Render's
+	// `invalid_owner_id` ("the workspace ID is missing or repeated"),
+	// `invalid_limit` and `invalid_cursor` ("the cursor is malformed") from the
+	// pinned errorCode vocabulary, answered by the REST group list (w22/004).
+	CodeInvalidOwnerID = "invalid_owner_id"
+	CodeInvalidLimit   = "invalid_limit"
+	CodeInvalidCursor  = "invalid_cursor"
 	// CodeSandboxGroupLimitReached is Render's `sandbox_group_limit_reached`, a 400:
 	// "a sandbox group create, or a sandbox create that needs a new default group,
 	// for an owner already at its sandbox group limit" (pinned OpenAPI errorCode).
@@ -190,6 +198,30 @@ func validateGroupID(id string) error {
 	return core.NewBadRequestError(CodeInvalidSandboxGroupID,
 		fmt.Sprintf("%q is not a well-formed sandbox group id; they look like %s-…", id, ids.SandboxGroup.Prefix()),
 		map[string]any{"field": "sandboxGroupId"})
+}
+
+// ValidateGroupListQuery is the part of Render's list-sandbox-groups request
+// check the generic OpenAPI gate cannot make: the workspace is named exactly
+// once, and a cursor is a well-formed `sbg-` id (the list's cursor is the last
+// group's id). A well-formed cursor naming no group is an empty page, Render's
+// end of list. The `limit` bounds are the gate's own schema check, which
+// answers invalid_limit.
+func ValidateGroupListQuery(q url.Values) error {
+	if owners := q["ownerId"]; len(owners) != 1 || owners[0] == "" {
+		return core.NewBadRequestError(CodeInvalidOwnerID, "ownerId is required exactly once",
+			map[string]any{"field": "ownerId"})
+	}
+	for _, cursor := range q["cursor"] {
+		if cursor == "" {
+			continue
+		}
+		if kind, ok := ids.KindOf(cursor); !ok || kind != ids.SandboxGroup {
+			return core.NewBadRequestError(CodeInvalidCursor,
+				fmt.Sprintf("%q is not a cursor this list issued; they look like %s-…", cursor, ids.SandboxGroup.Prefix()),
+				map[string]any{"field": "cursor"})
+		}
+	}
+	return nil
 }
 
 func groupNotFound(id string) error {

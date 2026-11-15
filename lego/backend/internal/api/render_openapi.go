@@ -746,6 +746,13 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
+	if operationID == "list-sandbox-groups" {
+		if err := sandbox.ValidateGroupListQuery(r.URL.Query()); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+	}
+
 	// Clone copied the original Body interface. kin consumes and restores the
 	// clone, so transfer its restored reader back before the real handler runs.
 	validationRequest.Body = r.Body
@@ -932,6 +939,9 @@ type renderOperationRefusal struct {
 // over-long name and list-sandbox-builds' unknown status before the Service.
 var renderOperationRefusals = map[string]map[string]renderOperationRefusal{
 	"create-sandbox": {"name": {constraint: "maxLength", refuse: func(string) error { return sandbox.InvalidSandboxNameError() }}},
+	"list-sandbox-groups": {"limit": {refuse: func(message string) error {
+		return core.NewBadRequestError(sandbox.CodeInvalidLimit, message, map[string]any{"field": "limit"})
+	}}},
 	"list-sandbox-builds": {"status": {refuse: func(message string) error {
 		return core.NewBadRequestError(sandbox.CodeInvalidBuildStatus, message, map[string]any{"field": "status", "supported": sandbox.BuildStatuses()})
 	}}},
