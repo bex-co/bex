@@ -66,9 +66,12 @@ var (
 	// Registered model-provider API hosts are never tenant widening destinations:
 	// model traffic must traverse the credential proxy even when the selected
 	// profile uses a different provider.
-	// openrouter.ai is the platform model route's host (ADR090); like the
-	// others it is reached only through the gateway model proxy.
-	modelProviderDomains = []string{"api.anthropic.com", "api.openai.com", "generativelanguage.googleapis.com", "openrouter.ai"}
+	// openrouter.ai is the platform model route's host (ADR090) and api.meta.ai
+	// the muse profile's (ADR108); like the others they are reached only
+	// through the gateway model proxy. bex-api-session-egress admits exactly
+	// this list as a session's model endpoint (scripts/gitops-validate.sh holds
+	// the two equal).
+	modelProviderDomains = []string{"api.anthropic.com", "api.openai.com", "generativelanguage.googleapis.com", "openrouter.ai", "api.meta.ai"}
 )
 
 // NetworkTierFull is the workspace agent-environment tier whose sessions

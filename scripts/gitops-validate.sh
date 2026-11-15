@@ -2376,7 +2376,7 @@ for required_guard in \
   "rule.toPorts[0].ports[0].port == '8085').size() == (variables.full ? 1 : 0)" \
   "variables.build ? variables.model == ''" \
   "rule.toPorts[0].ports[0].port == '8084').size() == (variables.build ? 0 : 1)" \
-  "variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai']" \
+  "variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai', 'api.meta.ai']" \
   "request.resource.resource != 'rolebindings'" \
   "request.operation == 'DELETE'" \
   "variables.target.metadata.name == variables.target.roleRef.name" \
@@ -2387,6 +2387,18 @@ for required_guard in \
   grep -qF "$required_guard" deploy/gitops/base/bex-api-namespace-admission.yaml \
     || { echo "FAIL: NamespaceReconciler admission guard lost: $required_guard" >&2; fail=1; }
 done
+# bex-api-session-egress admits a session's model endpoint, and refuses a
+# direct FQDN/SNI rule, from one provider list; it must equal sessionegress's
+# modelProviderDomains, or a profile whose host is missing (api.meta.ai for
+# muse before w7/m391 t005) fails every create with "sandbox create failed".
+go_providers="$(sed -n 's/^[[:space:]]*modelProviderDomains = \[\]string{\(.*\)}$/\1/p' \
+  lego/backend/internal/sessionegress/policy.go | tr -d '" ' | tr ',' '\n' | sort | paste -sd, -)"
+[ -n "$go_providers" ] || { echo "FAIL: modelProviderDomains not found in sessionegress/policy.go" >&2; fail=1; }
+while IFS= read -r admitted; do
+  admitted="$(printf '%s' "$admitted" | tr -d "' " | tr ',' '\n' | sort | paste -sd, -)"
+  [ "$admitted" = "$go_providers" ] \
+    || { echo "FAIL: bex-api-session-egress provider list [$admitted] != sessionegress modelProviderDomains [$go_providers]" >&2; fail=1; }
+done < <(grep -oE "\['api\.anthropic\.com'[^]]*\]" deploy/gitops/base/bex-api-namespace-admission.yaml | tr -d '[]')
 sandbox_pod_admission_render="$(kubectl kustomize deploy/gitops/base | yq \
   'select((.kind == "ValidatingAdmissionPolicy" or .kind == "ValidatingAdmissionPolicyBinding") and
     .metadata.name == "bex-sandbox-pods")')"

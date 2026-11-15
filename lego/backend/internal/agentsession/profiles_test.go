@@ -18,10 +18,14 @@ package agentsession
 
 import (
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 )
 
 func TestAgentProfilesManifestCoversLegacyAdapters(t *testing.T) {
@@ -222,6 +226,28 @@ func TestResolveAuthSchemeMetaIsBearer(t *testing.T) {
 	for _, credential := range []string{"meta-key", "sk-ant-oat01-looks-like-anthropic"} {
 		if got := ResolveAuthScheme(MetaModelHost, credential); got != AuthSchemeBearer {
 			t.Fatalf("ResolveAuthScheme(meta, %q) = %q, want bearer", credential, got)
+		}
+	}
+}
+
+// A session's egress policy names its profile's model host, and
+// bex-api-session-egress admits only sessionegress's provider list there: a
+// profile or platform route whose host is missing fails every create with
+// "sandbox create failed" (muse on api.meta.ai, w7/m391 t005).
+func TestEveryModelHostIsARegisteredProvider(t *testing.T) {
+	providers := sessionegress.ModelProviderDomains()
+	hosts := []string{OpenRouterHost, MetaModelHost}
+	for _, id := range AgentProfileIDs() {
+		profile, _ := LookupAgentProfile(id)
+		u, err := url.Parse(profile.ModelEndpoint)
+		if err != nil || u.Hostname() == "" {
+			t.Fatalf("profile %s endpoint %q: %v", id, profile.ModelEndpoint, err)
+		}
+		hosts = append(hosts, u.Hostname())
+	}
+	for _, host := range hosts {
+		if !slices.Contains(providers, host) {
+			t.Errorf("model host %q is not in sessionegress.ModelProviderDomains() %v", host, providers)
 		}
 	}
 }
