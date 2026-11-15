@@ -132,4 +132,11 @@ The production server's verdicts match the corpora on every case sent, through t
 - **`docker-image.json`:** all 43 refusal cases were refused by `PATCH /v1/services/{id}` `image.imagePath`, and the saved image was unchanged. `nginx`, `  nginx  ` (trimmed), `traefik/whoami`, `docker.io/library/nginx:latest` and `nginx:1.27` were accepted, and the image was restored.
 - **`env-value.json`:** all 41 cases matched (`PATCH …/environment`, save only); every accepted value was deleted again.
 - **`repo-url.json`:** all 20 refusal cases were refused by `POST /v1/services`, and none created a service.
-- **Not sent:** `cidr`, `label`, `root-dir`, `build-path`, `registry-host`; the valid cases that would create resources.
+- **The other five families (round 406, 09:13–09:20 UTC):** every refusal case was refused, with no mismatch. Fixtures were a Free Key Value `qa-20261115-r406-kv` and a Docker web service `qa-20261115-r406-dock` from `render-examples/express-hello-world`; both were deleted (`GET` 404), and no registry credential was left.
+  - `cidr`: 21 refusals, via `PATCH /v1/key-value/{id}` `ipAllowList`.
+  - `root-dir`: 15 refusals, via `PATCH /v1/services/{id}` `rootDir`.
+  - `build-path`: 14 refusals, via `serviceDetails.envSpecificDetails.dockerfilePath`.
+  - `registry-host`: 26 refusals, via `POST /v1/registrycredentials` `host`.
+  - `label`: 13 of 15 refusals, via the service rename (`PATCH` `name`); `\x85abc` is refused with `DISPLAY_NAME_CONTROL_CHARACTER`, as the corpus says.
+  - The two blank cases (`""`, `"   "`) answer `200`. That is by design: REST `name` is the display name, and an explicit empty one clears it back to the immutable name (`apps/rest.go`, the `DisplayName` comment). The corpus marks blank "the caller's own required refusal".
+- **Not sent:** the valid cases that would create resources.
