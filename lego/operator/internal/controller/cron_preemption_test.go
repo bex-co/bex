@@ -77,7 +77,7 @@ func TestCronPreemptionWaitsForEveryActiveRun(t *testing.T) {
 			}).Build()
 			r := wakeReconciler(cl, scheme)
 			template := corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{labelApp: app.Name}}, Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "app", Image: "busybox:latest"}}}}
-			manualKey := client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}
+			manualKey := client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}
 			// A release decision the pass has set but not yet written (w5/121).
 			app.Status.ReleaseGeneration = 7
 			for range 2 {

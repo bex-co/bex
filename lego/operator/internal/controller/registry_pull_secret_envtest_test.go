@@ -104,7 +104,7 @@ var _ = Describe("Tenant registry imagePullSecrets (w6/m29)", func() {
 				Expect(k8sClient.Get(ctx, nn, cron)).To(Succeed())
 				Expect(secretNames(cron.Spec.JobTemplate.Spec.Template.Spec.ImagePullSecrets)).To(Equal(tc.want))
 
-				jobName := manualRunJobName(tc.name, spec.RunAt)
+				jobName := appv1alpha1.ManualCronRunJobName(tc.name, spec.RunAt)
 				job := &batchv1.Job{}
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: jobName, Namespace: namespace}, job)).To(Succeed())
 				Expect(secretNames(job.Spec.Template.Spec.ImagePullSecrets)).To(Equal(tc.want))

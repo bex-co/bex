@@ -5056,17 +5056,11 @@ func (r *AppReconciler) reconcileStaticServerAlias(ctx context.Context, app *app
 	return name, nil
 }
 
+// staticServerAliasName derives the static server's ExternalName alias,
+// truncated by the same child-name rule the disk plane uses
+// (types.DiskChildName) so one App's derived names cut at the same point.
 func staticServerAliasName(appName string) string {
-	return platformAliasName("bex-static-", appName)
-}
-
-// platformAliasName derives the ≤63-char Service name for an App's platform
-// ExternalName alias: prefix + app name, truncated with a digest when the
-// combination would exceed the DNS-label cap. It shares the child-name rule
-// with the disk plane (types.DiskChildName) so one App's derived names cut at
-// the same point.
-func platformAliasName(prefix, appName string) string {
-	return k8sname.Prefixed(prefix, appName)
+	return k8sname.Prefixed("bex-static-", appName)
 }
 
 // defaultMaintenanceService is the wake-activator Service name assumed when
@@ -5137,7 +5131,7 @@ func (r *AppReconciler) reconcilePlatformAlias(ctx context.Context, app *appv1al
 }
 
 func maintenanceAliasName(appName string) string {
-	return platformAliasName("bex-maintenance-", appName)
+	return k8sname.Prefixed("bex-maintenance-", appName)
 }
 
 func (r *AppReconciler) activatorNamespace() string {
@@ -5166,7 +5160,7 @@ func (r *AppReconciler) reconcileActivatorAlias(ctx context.Context, app *appv1a
 }
 
 func activatorAliasName(appName string) string {
-	return platformAliasName("bex-activator-", appName)
+	return k8sname.Prefixed("bex-activator-", appName)
 }
 
 // maxCronRuns caps how many recent runs the status carries — enough to show a
@@ -5465,7 +5459,7 @@ func (r *AppReconciler) manualCronRunActive(ctx context.Context, app *appv1alpha
 	if app.Spec.RunAt == "" || app.Spec.Suspended || manualRunSettled(app) {
 		return false, nil
 	}
-	for _, name := range []string{manualRunJobName(app.Name, app.Spec.RunAt), appv1alpha1.LegacyManualCronRunJobName(app.Name, app.Spec.RunAt)} {
+	for _, name := range []string{appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt), appv1alpha1.LegacyManualCronRunJobName(app.Name, app.Spec.RunAt)} {
 		job := &batchv1.Job{}
 		err := r.buildPlaneClient().Get(ctx, client.ObjectKey{Name: name, Namespace: app.Namespace}, job)
 		if err == nil {
@@ -5616,7 +5610,7 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 		return nil
 	}
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
-		Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
+		Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
 	}}
 	err := r.buildPlaneClient().Get(ctx, client.ObjectKeyFromObject(job), job)
 	if err == nil {
@@ -5894,18 +5888,12 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	}
 }
 
-// manualRunJobName derives a deterministic Job name from the App name + runAt, so
-// reconciling the same runAt twice never spawns a duplicate run.
-func manualRunJobName(appName, runAt string) string {
-	return appv1alpha1.ManualCronRunJobName(appName, runAt)
-}
-
 // isManualRunJob reports whether jobName is the manual run for runAt, under its
 // name or the name the previous release gave it (w4/m322): a run triggered,
 // started or canceled while a deploy rolled must be recognized as the same run
 // by every check that settles, pauses for, cancels or preempts it.
 func isManualRunJob(appName, runAt, jobName string) bool {
-	return runAt != "" && (jobName == manualRunJobName(appName, runAt) || jobName == appv1alpha1.LegacyManualCronRunJobName(appName, runAt))
+	return runAt != "" && (jobName == appv1alpha1.ManualCronRunJobName(appName, runAt) || jobName == appv1alpha1.LegacyManualCronRunJobName(appName, runAt))
 }
 
 // reconcileOpenSandbox runs the revision as an OpenSandbox sandbox (host runtime).

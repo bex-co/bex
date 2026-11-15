@@ -54,7 +54,7 @@ func (r *AppReconciler) adoptManualRun(ctx context.Context, app *appv1alpha1.App
 	if app.Spec.RunAt == "" || manualRunHandled(app) {
 		return nil
 	}
-	name := manualRunJobName(app.Name, app.Spec.RunAt)
+	name := appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
 	if app.Spec.CancelRun != nil && isManualRunJob(app.Name, app.Spec.RunAt, app.Spec.CancelRun.Name) {
 		return r.acknowledgeManualRun(ctx, app)
 	}

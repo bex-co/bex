@@ -58,7 +58,7 @@ func cronAppAt(runs []appv1alpha1.CronRun, cancel *appv1alpha1.CronRunCancellati
 }
 
 func TestCanceledManualRunStaysDeadAfterAnUnrelatedCancel(t *testing.T) {
-	manual := manualRunJobName(incidentApp, incidentRunAt)
+	manual := appv1alpha1.ManualCronRunJobName(incidentApp, incidentRunAt)
 	const scheduled = "tea-x-qa-20260917-p12-cron-29827874"
 
 	// 19:12 — triggered, running. Nothing is settled: the Job must be created
@@ -107,7 +107,7 @@ func TestCanceledManualRunStaysDeadAfterAnUnrelatedCancel(t *testing.T) {
 }
 
 func TestManualRunSettledCoversEveryTerminalStatus(t *testing.T) {
-	manual := manualRunJobName(incidentApp, incidentRunAt)
+	manual := appv1alpha1.ManualCronRunJobName(incidentApp, incidentRunAt)
 	for _, tc := range []struct {
 		status string
 		want   bool
@@ -151,7 +151,7 @@ func TestManualRunSettledIsSilentWithoutAMatchingRecord(t *testing.T) {
 // The schedule-pause gate reads the same predicate, so a canceled manual run
 // whose Job is gone cannot hold the recurring schedule paused forever.
 func TestSettledManualRunDoesNotPauseTheSchedule(t *testing.T) {
-	manual := manualRunJobName(incidentApp, incidentRunAt)
+	manual := appv1alpha1.ManualCronRunJobName(incidentApp, incidentRunAt)
 	app := cronAppAt(
 		[]appv1alpha1.CronRun{{Name: manual, Status: appv1alpha1.CronRunCanceled}},
 		&appv1alpha1.CronRunCancellation{Name: "tea-x-other-29827874", RequestedAt: "2026-09-17T19:18:00Z"})

@@ -103,7 +103,7 @@ type ModelUsageRecorder struct {
 	Now   func() time.Time
 	// Prices computes the upstream cost of an exchange that reported none
 	// (ADR091 D2.2); nil ⇒ such an exchange is recorded unpriced.
-	Prices ModelPricer
+	Prices *OpenRouterPriceTable
 	// Markup is the customer price multiplier on upstream cost (ADR091 D1);
 	// 0 ⇒ pricing.Default's agentModel.markup.
 	Markup float64
@@ -115,12 +115,6 @@ type ModelUsageRecorder struct {
 
 // unpricedLogEvery rate-limits the UNPRICED log line per model.
 const unpricedLogEvery = time.Hour
-
-// ModelPricer prices one exchange from a price table; *OpenRouterPriceTable
-// satisfies it. ok is false when the model is not in the table.
-type ModelPricer interface {
-	Cost(model string, at time.Time, in, out, cacheRead, cacheWrite int64) (usd float64, ok bool)
-}
 
 // microUSD converts USD to micro-USD, rounded half-up.
 func microUSD(usd float64) int64 {

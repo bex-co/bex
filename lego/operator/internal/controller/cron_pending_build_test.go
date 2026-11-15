@@ -126,7 +126,7 @@ func TestCronControlsOverPendingBuildKeepPriorTemplate(t *testing.T) {
 			reconcileTwice(t, r, nn)
 			check(true, "*/5 * * * *")
 			var job batchv1.Job
-			key := types.NamespacedName{Namespace: nn.Namespace, Name: manualRunJobName(app.Name, live.Spec.RunAt)}
+			key := types.NamespacedName{Namespace: nn.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, live.Spec.RunAt)}
 			g.Expect(cl.Get(ctx, key, &job)).To(Succeed())
 			if !reflect.DeepEqual(job.Spec.Template, prior.Spec.JobTemplate.Spec.Template) {
 				t.Fatal("manual run used the unbuilt release")

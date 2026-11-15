@@ -215,7 +215,11 @@ func agentAvailabilityPatch(current store.AgentEnvironment, input EnvironmentInp
 			enabled[id] = agentEnabled(current, id)
 		}
 	}
-	for _, agent := range deref(input.EnabledAgents) {
+	var enabledAgents []string
+	if input.EnabledAgents != nil {
+		enabledAgents = *input.EnabledAgents
+	}
+	for _, agent := range enabledAgents {
 		profile, ok := agentsession.LookupAgentProfile(agent)
 		if !ok {
 			return core.NewBadRequestError(AgentListInvalidCode,
@@ -237,13 +241,6 @@ func agentAvailabilityPatch(current store.AgentEnvironment, input EnvironmentInp
 	}
 	patch.DisabledAgents = &disabled
 	return nil
-}
-
-func deref[T any](list *[]T) []T {
-	if list == nil {
-		return nil
-	}
-	return *list
 }
 
 // spendCapField is the wire name of the spend-cap override.

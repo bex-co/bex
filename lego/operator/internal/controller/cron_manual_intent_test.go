@@ -68,7 +68,7 @@ func persistManualIntent(t *testing.T, r *AppReconciler, app *appv1alpha1.App) {
 
 func assertManualJobAbsent(t *testing.T, r *AppReconciler, app *appv1alpha1.App, runAt string) {
 	t.Helper()
-	key := client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, runAt)}
+	key := client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, runAt)}
 	if err := r.Get(t.Context(), key, &batchv1.Job{}); !apierrors.IsNotFound(err) {
 		t.Fatalf("canceled manual intent was recreated after history eviction: job=%s get=%v", key.Name, err)
 	}
@@ -78,7 +78,7 @@ func TestCanceledManualIntentStaysHandledAfterHistoryEviction(t *testing.T) {
 	r, app, template := manualIntentFixture(t)
 	reconcileManualIntent(t, r, app, template)
 	original := app.Spec.RunAt
-	name := manualRunJobName(app.Name, original)
+	name := appv1alpha1.ManualCronRunJobName(app.Name, original)
 	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: name, RequestedAt: "2026-09-17T19:14:20Z"}
 	persistManualIntent(t, r, app)
 	reconcileManualIntent(t, r, app, template)
@@ -123,7 +123,7 @@ func TestCanceledManualIntentStaysHandledAfterHistoryEviction(t *testing.T) {
 	app.Spec.RunAt = "2026-09-17T21:05:00Z"
 	persistManualIntent(t, r, app)
 	reconcileManualIntent(t, r, app, template)
-	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); err != nil {
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); err != nil {
 		t.Fatalf("fresh manual trigger did not execute: %v", err)
 	}
 	assertManualScheduleSuspended(t, r, app, true)
@@ -144,7 +144,7 @@ func TestLegacyManualIntentAdoptsExistingHistory(t *testing.T) {
 	for _, status := range []string{appv1alpha1.CronRunRunning, appv1alpha1.CronRunSucceeded, appv1alpha1.CronRunFailed, appv1alpha1.CronRunCanceled} {
 		t.Run(status, func(t *testing.T) {
 			r, app, template := manualIntentFixture(t)
-			name := manualRunJobName(app.Name, app.Spec.RunAt)
+			name := appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
 			app.Status.Runs = []appv1alpha1.CronRun{{Name: name, Status: status}}
 			if err := r.Status().Update(t.Context(), app); err != nil {
 				t.Fatal(err)
@@ -194,7 +194,7 @@ func TestLegacyTerminalManualJobAcknowledgedBeforeHistoryTruncation(t *testing.T
 	// The old manual Job has never appeared in status, and is older than the
 	// entire retained history. Its terminal evidence still must be acknowledged.
 	for i := range maxCronRuns + 2 {
-		name := manualRunJobName(app.Name, app.Spec.RunAt)
+		name := appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
 		if i > 0 {
 			name = fmt.Sprintf("%s-newer-%d", app.Name, i)
 		}
@@ -207,11 +207,11 @@ func TestLegacyTerminalManualJobAcknowledgedBeforeHistoryTruncation(t *testing.T
 	}
 	reconcileManualIntent(t, r, app, template)
 	for _, run := range app.Status.Runs {
-		if run.Name == manualRunJobName(app.Name, app.Spec.RunAt) {
+		if run.Name == appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt) {
 			t.Fatal("fixture did not exclude old terminal Job from bounded history")
 		}
 	}
-	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace}}
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace}}
 	if err := r.Delete(t.Context(), job); err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +228,7 @@ func TestManualIntentAcknowledgementKeepsExistingJobActive(t *testing.T) {
 		assertManualScheduleSuspended(t, r, app, true)
 	}
 	var job batchv1.Job
-	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, &job); err != nil {
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &job); err != nil {
 		t.Fatal(err)
 	}
 	job.Status.Conditions = []batchv1.JobCondition{{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}}
@@ -241,7 +241,7 @@ func TestManualIntentAcknowledgementKeepsExistingJobActive(t *testing.T) {
 
 func TestManualIntentCancellationPersistsBeforeDeletion(t *testing.T) {
 	r, app, template := manualIntentFixture(t)
-	name := manualRunJobName(app.Name, app.Spec.RunAt)
+	name := appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
 	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: name}
 	persistManualIntent(t, r, app)
 	if err := r.Create(t.Context(), &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace, Labels: map[string]string{labelApp: app.Name}}}); err != nil {
@@ -320,7 +320,7 @@ func TestManualIntentCrashAfterCreateAdoptsJobWithoutReexecution(t *testing.T) {
 
 func TestManualIntentConflictCannotOverwriteNewerAcknowledgement(t *testing.T) {
 	r, app, template := manualIntentFixture(t)
-	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: manualRunJobName(app.Name, app.Spec.RunAt)}
+	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}
 	persistManualIntent(t, r, app)
 	stale := app.DeepCopy()
 	app.Spec.RunAt = "2026-10-01T23:00:00Z"
@@ -356,7 +356,7 @@ func TestManualIntentNewTriggerDuringAcknowledgementPreemptsUnobservedJob(t *tes
 		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
 			if job, ok := obj.(*batchv1.Job); ok {
 				creates++
-				if job.Name == manualRunJobName(app.Name, original) {
+				if job.Name == appv1alpha1.ManualCronRunJobName(app.Name, original) {
 					job.Finalizers = []string{"test.bex.co/pods-running"}
 				}
 			}
@@ -395,7 +395,7 @@ func TestManualIntentNewTriggerDuringAcknowledgementPreemptsUnobservedJob(t *tes
 	// preempted merely because it shares the app label or a manual annotation.
 	foreignRunAt := "2026-10-01T22:00:00Z"
 	foreign := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
-		Name: manualRunJobName(app.Name, foreignRunAt), Namespace: app.Namespace,
+		Name: appv1alpha1.ManualCronRunJobName(app.Name, foreignRunAt), Namespace: app.Namespace,
 		Labels: map[string]string{labelApp: app.Name}, Annotations: map[string]string{annotationManualRunAt: foreignRunAt},
 		OwnerReferences: []metav1.OwnerReference{{APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: app.Name, UID: "other-app-lifetime", Controller: new(true)}},
 	}}
@@ -411,7 +411,7 @@ func TestManualIntentNewTriggerDuringAcknowledgementPreemptsUnobservedJob(t *tes
 	assertManualJobAbsent(t, r, app, newRunAt)
 	assertManualScheduleSuspended(t, r, app, true)
 	var originalJob batchv1.Job
-	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, original)}, &originalJob); err != nil {
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, original)}, &originalJob); err != nil {
 		t.Fatal(err)
 	}
 	if originalJob.DeletionTimestamp.IsZero() {
@@ -457,7 +457,7 @@ func TestLegacyActiveManualJobAdoptionAllowsUnobservedPreemption(t *testing.T) {
 	app.Name = "tea-" + strings.Repeat("legacy-cron", 5)
 	r, app, template := manualIntentFixtureForApp(t, app)
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
-		Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
+		Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
 		Labels: map[string]string{labelApp: app.Name}, Finalizers: []string{"test.bex.co/pods-running"},
 		OwnerReferences: []metav1.OwnerReference{{APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: app.Name, UID: app.UID, Controller: new(true)}},
 	}}
@@ -485,7 +485,7 @@ func TestLegacyActiveManualJobAdoptionAllowsUnobservedPreemption(t *testing.T) {
 // recorded Canceled, once.
 func TestUnmaterializedCancelRecordsTheRunWithoutExecutingIt(t *testing.T) {
 	app := cronAppAt(nil, nil)
-	name := manualRunJobName(app.Name, app.Spec.RunAt)
+	name := appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
 	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: name, RequestedAt: "2026-11-10T07:39:43Z", Unmaterialized: true}
 	r, app, template := manualIntentFixtureForApp(t, app)
 	reconcileManualIntent(t, r, app, template)
@@ -510,12 +510,12 @@ func TestUnmaterializedCancelRecordsTheRunWithoutExecutingIt(t *testing.T) {
 // added back.
 func TestReplacedUnmaterializedRunIsRecordedOnceAndReplacementRuns(t *testing.T) {
 	app := cronAppAt(nil, nil)
-	first := manualRunJobName(app.Name, app.Spec.RunAt)
+	first := appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
 	app.Spec.RunAt = "2026-11-10T07:41:10.5Z"
 	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: first, RequestedAt: app.Spec.RunAt, Unmaterialized: true}
 	r, app, template := manualIntentFixtureForApp(t, app)
 	reconcileManualIntent(t, r, app, template)
-	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); err != nil {
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); err != nil {
 		t.Fatalf("replacement did not run: %v", err)
 	}
 	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: first}, &batchv1.Job{}); !apierrors.IsNotFound(err) {
@@ -564,7 +564,7 @@ func TestManualRunAdoptsAJobNamedByThePreviousRelease(t *testing.T) {
 	if err := r.ensureManualRun(t.Context(), app, template); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); !apierrors.IsNotFound(err) {
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); !apierrors.IsNotFound(err) {
 		t.Fatalf("a second Job was created for a run the previous release started: %v", err)
 	}
 	var stored appv1alpha1.App

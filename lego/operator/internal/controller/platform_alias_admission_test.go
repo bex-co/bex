@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/types/k8sname"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -113,7 +114,7 @@ var _ = Describe("Platform alias admission", func() {
 					Expect(operator.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, alias)).To(Succeed())
 					// Cleanup Service explicitly: envtest has no garbage collector.
 					DeferCleanup(func() { Expect(admin.Delete(ctx, alias)).To(Succeed()) })
-					Expect(name).To(Equal(platformAliasName(family.prefix, appName)))
+					Expect(name).To(Equal(k8sname.Prefixed(family.prefix, appName)))
 					update := alias.DeepCopy()
 					update.Annotations = map[string]string{"test": "valid-update"}
 					Expect(operator.Update(ctx, update)).To(Succeed())

@@ -551,7 +551,7 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	series = dropPointsBefore(series, created)
 	var live []ids.InstanceCandidate
 	if len(q.Instances) > 0 || q.ReplicaAggregate != "" || q.AggregateMax {
-		if needsLiveInstanceCandidates(q.Metric) {
+		if instanceFilterSupported(q.Metric) {
 			pods, podErr := s.OwnAppPods(ctx, app)
 			if podErr != nil {
 				return nil, podErr
@@ -589,12 +589,6 @@ func dropPointsBefore(series []MetricSeries, created time.Time) []MetricSeries {
 		out = append(out, ser)
 	}
 	return out
-}
-
-func needsLiveInstanceCandidates(metric string) bool {
-	// Live candidates back the INSTANCE filter, so the set stays identical to
-	// its eligibility (w5/m91) — one predicate, not two lists to drift.
-	return instanceFilterSupported(metric)
 }
 
 // QuantileSeries is a MetricSeries paired with the http_latency percentile that

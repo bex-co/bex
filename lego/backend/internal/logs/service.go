@@ -1440,7 +1440,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		relist:       s.tailRelistInterval(),
 		pollRequests: true,
 	}
-	ctx, stopWatchdog := withRevalidation(ctx, s.revalidateInterval(), target.revalidate)
+	ctx, stopWatchdog := core.WithRevalidation(ctx, s.revalidateInterval(), target.revalidate)
 	defer stopWatchdog()
 	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
 		if q.renderStream {
@@ -1674,7 +1674,7 @@ func (s *Service) followDatastore(ctx context.Context, q LogQuery, emit func(Log
 	}
 	selectors := slices.Clone(q.Instance)
 	s.translateInstanceFilter(ctx, target.resource, target.namespace, &q, candidatesFromPods(pods))
-	ctx, stopWatchdog := withRevalidation(ctx, s.revalidateInterval(), target.revalidate)
+	ctx, stopWatchdog := core.WithRevalidation(ctx, s.revalidateInterval(), target.revalidate)
 	defer stopWatchdog()
 	return s.followPods(ctx, q, selectors, target, pods, emit, heartbeat)
 }
@@ -1997,13 +1997,6 @@ func (s *Service) revalidateTailTarget(ctx context.Context, namespace, name stri
 		return err
 	}
 	return s.AuthorizeAppFresh(ctx, core.RelCanViewLogs, &fresh)
-}
-
-// withRevalidation is the logs-facing name of core.WithRevalidation, shared
-// with the SSH/agent transports (round-9 #6 / round 15). logs must not import
-// the gateway package just for it.
-func withRevalidation(parent context.Context, interval time.Duration, check func(context.Context) error) (context.Context, context.CancelFunc) {
-	return core.WithRevalidation(parent, interval, check)
 }
 
 // followBuildLogs streams every currently-running container from the newest

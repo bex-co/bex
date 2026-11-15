@@ -748,7 +748,7 @@ func admissionTierWorkloads(namespace, policy, tier string) []client.Object {
 	cron := &batchv1.CronJob{}
 	Expect(r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: appv1alpha1.CronJobName(app.Name)}, cron)).To(Succeed())
 	manual := &batchv1.Job{}
-	Expect(r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, manual)).To(Succeed())
+	Expect(r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, manual)).To(Succeed())
 	workloads = append(workloads, cron, manual)
 	r, app = newApp("migration", appv1alpha1.TypeWebService)
 	app.Spec.PreDeployCommand = "true"
