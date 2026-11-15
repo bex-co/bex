@@ -508,7 +508,8 @@ func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha
 func (r *AppReconciler) promoteEarly(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, tmpl *corev1.PodTemplateSpec, image string, port int, replicas int32) (moved bool, err error) {
 	ready, firstReady := r.templatePodsReady(ctx, dep, tmpl)
 	want := int32(1)
-	if webImageReleaseHeld(app) {
+	held := webImageReleaseHeld(app)
+	if held {
 		want = replicas
 	}
 	if ready == 0 || ready < want && time.Since(firstReady) < heldReleaseFullSetWait && !r.rolloutQuotaBlocked(ctx, dep) {
@@ -517,13 +518,41 @@ func (r *AppReconciler) promoteEarly(ctx context.Context, app *appv1alpha1.App, 
 	// Record the replaced network before projecting: the very first Service
 	// write must already pin the new revision and alias the old primary, or
 	// it selects old pods on a port they lack (w4/430).
-	held := app.Status.PriorServingNetwork
+	recorded := app.Status.PriorServingNetwork
 	app.Status.PriorServingNetwork = app.Status.ServingNetwork.DeepCopy()
 	if moved, err = r.promoteImageNetwork(ctx, app, image, port); err != nil {
-		app.Status.PriorServingNetwork = held
+		app.Status.PriorServingNetwork = recorded
 		return false, err
 	}
+	if held {
+		r.releasePromotedHold(ctx, app, dep)
+	}
 	return moved, nil
+}
+
+// releasePromotedHold lifts a held web image release's hold on the Deployment
+// in the pass that promotes it, before its deploy can read live (w4/672). The
+// Deployment controller copies minReadySeconds onto the current ReplicaSet
+// only, so the promoted pods must become available while theirs is still the
+// current one. Left to the next pass, a release written in that pass made them
+// an old ReplicaSet with Ready but unavailable pods, and the controller's
+// cleanupUnhealthyReplicas scaled them to 0 first: the Services, pinned to
+// them, had no endpoint for a minute, or an unpinned restart served the
+// release before them. The patch bumps the Deployment's generation, so this
+// pass reports progress and the next one marks it Running. A failed write is
+// logged: the next pass projects the same values.
+func (r *AppReconciler) releasePromotedHold(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) {
+	if dep.CreationTimestamp.IsZero() {
+		return
+	}
+	base := dep.DeepCopy()
+	projectRolloutHold(dep, app)
+	if dep.Spec.MinReadySeconds == base.Spec.MinReadySeconds && equality.Semantic.DeepEqual(dep.Spec.Strategy, base.Spec.Strategy) {
+		return
+	}
+	if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
+		logf.FromContext(ctx).Error(err, "lifting a promoted release's hold", "app", app.Name)
+	}
 }
 
 // pinServedThroughCancel keeps the Services pinned to the served release while

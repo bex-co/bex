@@ -799,3 +799,56 @@ func TestHeldWebImageReleasePromotesAFullSetOfInstances(t *testing.T) {
 		t.Fatalf("quota-limited surge, 1 Ready: err=%v serving=%+v, want rev-2", err, app.Status.ServingNetwork)
 	}
 }
+
+// w4/672: the pass that promotes a held web image release lifts the hold on
+// the stored Deployment itself (releasePromotedHold), not the next pass.
+func TestPromotingPassLiftsTheHeldReleaseHold(t *testing.T) {
+	serving := &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "busybox@sha256:a", Revision: "rev-1", PrimaryPort: 10000, Ports: []int32{10000}, ConfiguredPort: new(int32(0))}
+	candidate := &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "busybox@sha256:b", Revision: "rev-2", PrimaryPort: 10000, Ports: []int32{10000}, ConfiguredPort: new(int32(0))}
+	app := webImageApp(2)
+	app.Namespace = "tea-a"
+	app.Status.ActiveRevision = "rev-1"
+	app.Status.ServingNetwork, app.Status.ImageNetwork = serving.DeepCopy(), candidate.DeepCopy()
+	dep := project(app, deploymentParams{image: candidate.Image, port: 10000})
+	dep.Namespace, dep.UID, dep.CreationTimestamp = app.Namespace, "dep-uid", metav1.Now()
+	if dep.Spec.MinReadySeconds != webImageHTTPSelectionHoldSeconds || !apiequality.Semantic.DeepEqual(dep.Spec.Strategy, heldReleaseStrategy()) {
+		t.Fatalf("unpromoted: minReadySeconds %d strategy %+v, want the hold", dep.Spec.MinReadySeconds, dep.Spec.Strategy)
+	}
+	objs := append(readyTemplatePod(dep, "final", dep.Spec.Template), app.DeepCopy(), dep.DeepCopy())
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(objs...).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if _, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 10000, *dep.Spec.Replicas); err != nil || app.Status.ServingNetwork.Revision != "rev-2" {
+		t.Fatalf("promotion: err=%v serving=%+v, want rev-2", err, app.Status.ServingNetwork)
+	}
+	var stored appsv1.Deployment
+	if err := cl.Get(t.Context(), client.ObjectKeyFromObject(dep), &stored); err != nil {
+		t.Fatal(err)
+	}
+	for name, got := range map[string]*appsv1.Deployment{"stored": &stored, "caller's": dep} {
+		if got.Spec.MinReadySeconds != 0 || !apiequality.Semantic.DeepEqual(got.Spec.Strategy, defaultRollingUpdateStrategy()) {
+			t.Errorf("%s Deployment after the promoting pass: minReadySeconds %d strategy %+v, want 0 and the default", name, got.Spec.MinReadySeconds, got.Spec.Strategy)
+		}
+	}
+	if !apiequality.Semantic.DeepEqual(stored.Spec.Template, dep.Spec.Template) {
+		t.Error("lifting the hold changed the pod template")
+	}
+
+	// An unpromoted pass leaves the hold in place.
+	held := webImageApp(2)
+	held.Namespace = "tea-a"
+	held.Status.ActiveRevision = "rev-1"
+	held.Status.ServingNetwork, held.Status.ImageNetwork = serving.DeepCopy(), candidate.DeepCopy()
+	waiting := project(held, deploymentParams{image: candidate.Image, port: 10000})
+	waiting.Namespace, waiting.UID, waiting.CreationTimestamp = held.Namespace, "dep-uid", metav1.Now()
+	cl = fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(held.DeepCopy(), waiting.DeepCopy()).Build()
+	r = &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if _, err := r.promoteEarly(t.Context(), held, waiting, &waiting.Spec.Template, candidate.Image, 10000, *waiting.Spec.Replicas); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(t.Context(), client.ObjectKeyFromObject(waiting), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Spec.MinReadySeconds != webImageHTTPSelectionHoldSeconds {
+		t.Errorf("no Ready pod: stored minReadySeconds %d, want the hold kept", stored.Spec.MinReadySeconds)
+	}
+}

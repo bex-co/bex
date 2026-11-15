@@ -704,6 +704,28 @@ func defaultRollingUpdateStrategy() appsv1.DeploymentStrategy {
 		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: &quarter, MaxUnavailable: new(quarter)}}
 }
 
+// projectRolloutHold writes the Deployment's minReadySeconds and strategy, the
+// two fields that hold a rollout's old pods. A port change holds its old pods
+// after a new one is Ready, so routing moves before the drain (w4/428). A web
+// image release that may not take traffic yet keeps the serving pods until
+// promotion moves routing to it, through discovery and the roll that follows
+// it (w4/m320). It starts every new instance at once and removes no serving
+// one, so promotion moves traffic to a full set, as Render's zero-downtime
+// deploy does (w4/571). The pass that promotes it lifts the hold with this
+// same projection (releasePromotedHold, w4/672).
+func projectRolloutHold(dep *appsv1.Deployment, app *appv1alpha1.App) {
+	dep.Spec.MinReadySeconds = 0
+	if app.Spec.HasImagePorts() && changesImagePorts(app) {
+		dep.Spec.MinReadySeconds = portChangeHoldSeconds
+	}
+	if webImageReleaseHeld(app) {
+		dep.Spec.MinReadySeconds = webImageHTTPSelectionHoldSeconds
+		dep.Spec.Strategy = heldReleaseStrategy()
+	} else if apiequality.Semantic.DeepEqual(dep.Spec.Strategy, heldReleaseStrategy()) {
+		dep.Spec.Strategy = defaultRollingUpdateStrategy()
+	}
+}
+
 // projectDeployment is applyDeploymentSpec with the drain and probe Host decided.
 func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams, drain int64, probeHost string) {
 	replicas := clampReplicas(app, p.replicas)
@@ -714,23 +736,7 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	// defaults this to 600s, which would cut Render's 15-minute window to 10
 	// for reasons nobody chose.
 	dep.Spec.ProgressDeadlineSeconds = new(rolloutBudgetSeconds)
-	// A port change holds its old pods after a new one is Ready, so routing
-	// moves before the drain (w4/428).
-	dep.Spec.MinReadySeconds = 0
-	if app.Spec.HasImagePorts() && changesImagePorts(app) {
-		dep.Spec.MinReadySeconds = portChangeHoldSeconds
-	}
-	// A web image release that may not take traffic yet keeps the serving pods
-	// until promotion moves routing to it, through discovery and the roll that
-	// follows it (w4/m320). It starts every new instance at once and removes
-	// no serving one, so promotion moves traffic to a full set, as Render's
-	// zero-downtime deploy does (w4/571).
-	if webImageReleaseHeld(app) {
-		dep.Spec.MinReadySeconds = webImageHTTPSelectionHoldSeconds
-		dep.Spec.Strategy = heldReleaseStrategy()
-	} else if apiequality.Semantic.DeepEqual(dep.Spec.Strategy, heldReleaseStrategy()) {
-		dep.Spec.Strategy = defaultRollingUpdateStrategy()
-	}
+	projectRolloutHold(dep, app)
 
 	// restart = roll the template (same mechanism as kubectl rollout restart,
 	// recorded in the contract). Never removed once set — removal would itself
