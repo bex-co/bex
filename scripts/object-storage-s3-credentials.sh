@@ -26,7 +26,11 @@
 # The bucket names, regions and endpoints are constants in
 # lego/backend/internal/objectstorage (regions.go) and in the committed policies
 # under infra/wasabi; a Go test fails if the three drift. Environment variables
-# carry the four credentials and nothing else.
+# carry the four Wasabi credentials, and the one bearer objectgw presents to
+# bex-api's internal listener (BEX_OBJECT_STORAGE_GATEWAY_TOKEN, ADR112 D4, D9),
+# and nothing else. The bearer is not a Wasabi key: provision mints it locally
+# (64 hex characters, once, never rotated by a re-run) and install puts the same
+# value in both Secrets, so bex-api can verify what objectgw sends.
 #
 # Wasabi shows a secret key once, so each key is written to .env the moment it
 # is minted: an orphaned pair cannot be recovered (w2/m86).
@@ -208,6 +212,19 @@ provision() {
     BEX_OBJECT_STORAGE_ACCESS_KEY BEX_OBJECT_STORAGE_SECRET_KEY
   ensure_user_and_keys "$RO_USER" "$RO_POLICY" object-storage-read-s3-policy.json \
     BEX_OBJECT_STORAGE_READ_ACCESS_KEY BEX_OBJECT_STORAGE_READ_SECRET_KEY
+  ensure_gateway_token
+}
+
+# ensure_gateway_token mints the bearer objectgw speaks to bex-api with, once. A
+# value already in the environment is kept, so a re-run never invalidates the
+# pair of Secrets an earlier install wrote.
+ensure_gateway_token() {
+  if [ -n "${BEX_OBJECT_STORAGE_GATEWAY_TOKEN:-}" ]; then
+    echo "kept gateway token (BEX_OBJECT_STORAGE_GATEWAY_TOKEN)"
+    return
+  fi
+  upsert_env BEX_OBJECT_STORAGE_GATEWAY_TOKEN "$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+  echo "minted gateway token (stored in $ENV_FILE)"
 }
 
 # denied_check <absent-ok 0|1> <label> <command...>: an explicit AccessDenied
@@ -236,7 +253,7 @@ denied_or_absent() { denied_check 1 "$@"; }
 
 ro_put_probe() { printf 'nope' | ro_s3 "$1" s3 cp - "s3://$2/verify/denied"; }
 
-# require_credentials fails unless all four credential variables are set.
+# require_credentials fails unless all four Wasabi credential variables are set.
 require_credentials() {
   local v
   for v in BEX_OBJECT_STORAGE_ACCESS_KEY BEX_OBJECT_STORAGE_SECRET_KEY BEX_OBJECT_STORAGE_READ_ACCESS_KEY BEX_OBJECT_STORAGE_READ_SECRET_KEY; do
@@ -296,8 +313,12 @@ install() {
   # Check all four before touching the cluster, so a missing read-only pair
   # cannot leave only the read-write Secret installed.
   require_credentials
-  install_secret "$rw_secret_name" "bex-api: read-write" BEX_OBJECT_STORAGE_ACCESS_KEY BEX_OBJECT_STORAGE_SECRET_KEY
-  install_secret "$ro_secret_name" "objectgw: read-only" BEX_OBJECT_STORAGE_READ_ACCESS_KEY BEX_OBJECT_STORAGE_READ_SECRET_KEY
+  require_nonempty "BEX_OBJECT_STORAGE_GATEWAY_TOKEN (run provision to mint it)" "${BEX_OBJECT_STORAGE_GATEWAY_TOKEN:-}"
+  # The same bearer goes to both sides: bex-api verifies what objectgw sends.
+  install_secret "$rw_secret_name" "bex-api: read-write, and the gateway bearer" \
+    BEX_OBJECT_STORAGE_ACCESS_KEY BEX_OBJECT_STORAGE_SECRET_KEY BEX_OBJECT_STORAGE_GATEWAY_TOKEN
+  install_secret "$ro_secret_name" "objectgw: read-only, and the gateway bearer" \
+    BEX_OBJECT_STORAGE_READ_ACCESS_KEY BEX_OBJECT_STORAGE_READ_SECRET_KEY BEX_OBJECT_STORAGE_GATEWAY_TOKEN
 }
 
 case "$COMMAND" in

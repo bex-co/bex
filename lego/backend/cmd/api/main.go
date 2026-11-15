@@ -71,6 +71,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
+	"github.com/bex-co/bex/lego/backend/internal/objectgw"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/opsrole"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
@@ -441,7 +442,10 @@ func main() {
 
 		go backfillSkillVersionContent(ctx, st)
 
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, twoFactorGate, opsRole, identityClaims, platformRebuild, shareFiles, agentResults, agentSpawns, ready)
+		// ADR112 D4: the public bucket gateway's two verbs, mounted on :8091 when
+		// BEX_OBJECT_STORAGE_GATEWAY_TOKEN is set.
+		objectGateway := (&objectgw.Verbs{Token: cfg.ObjectGatewayToken, Service: deps.ObjectStorage, BaseDomain: cfg.BaseDomain}).Handler()
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, twoFactorGate, opsRole, identityClaims, platformRebuild, shareFiles, agentResults, agentSpawns, objectGateway, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -574,6 +578,8 @@ func main() {
 		objectSweeper.Exclusive = st
 		go objectSweeper.Run(ctx, objectstorage.SweepInterval)
 		go deps.ObjectStorage.RunMeter(ctx, objectstorage.TransferFlushInterval)
+		// The month-to-date egress gauge the egress alert reads (ADR112 D4).
+		go objectstorage.NewEgressMonitor(metricRegistry, st).Run(ctx, objectstorage.EgressGaugeInterval)
 	}
 	// The Blueprint recovery sweep settles sync runs abandoned by process
 	// loss (w8/m37 t004). No-op unless the control-plane store is wired.
@@ -1228,7 +1234,7 @@ func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsessi
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, twoFactor *twofactor.Gate, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles, agentResults, agentSpawns http.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, twoFactor *twofactor.Gate, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles, agentResults, agentSpawns, objectGateway http.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -1343,6 +1349,11 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 				Nonce: st,
 			})
 		}
+	}
+	// ADR112 D4: the public bucket gateway's two calls (which bucket is this
+	// host, and the bytes it sent), behind their own bearer, only when it is set.
+	if cfg.ObjectGatewayToken != "" {
+		internalRoot.Handle(objectgw.PathPrefix, objectGateway)
 	}
 	// ADR088 §4: the ops-role verb mounts ONLY here, on the cluster-internal
 	// listener — never the public :8090 mux (api.bex.co routes the whole `/`

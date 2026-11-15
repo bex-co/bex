@@ -1,0 +1,72 @@
+# Public object-storage hosts (docs/ADR112-object-storage.md D4, w21/m417 t006):
+# pub-<obk-xid>.<base domain> goes to objectgw.
+#
+# Why an IngressRoute: a Kubernetes Ingress host can be exact or "*.<domain>",
+# never a prefix wildcard such as "pub-*", and the operator may write Ingresses
+# only in tenant and bootstrap namespaces
+# (deploy/gitops/base/operator-workload-admission.yaml). One platform manifest
+# with a HostRegexp covers every bucket with no per-bucket object.
+#
+# The host is ONE label under the shared platform suffix, so the existing
+# wildcard certificate covers it (docs/ADR093-onbex-wildcard-tls.md,
+# deploy/gitops/charts/onbex-default-tls): `tls: {}` names no Secret, so
+# Traefik serves its default store certificate and nothing is ordered per host.
+#
+# The label is "pub-" and a 20-character xid, [0-9a-v] (lowercase base32hex,
+# lego/backend/internal/id). The suffix below is "." + BEX_BASE_DOMAIN with its
+# dots escaped; keep it in sync with the activator, api, manager and
+# static-server deployments' BEX_BASE_DOMAIN and with
+# platform-host-fallback-ingress.yaml (scripts/gitops-validate.sh checks that
+# it still names the prod suffix). objectgw itself gets no BEX_BASE_DOMAIN.
+#
+# Precedence: Traefik ranks routers by an explicit priority first, and by rule
+# length otherwise. The platform-host fallback to the activator is priority 1,
+# a wildcard custom domain is priority 1, and every other App route keeps its
+# rule length (a few dozen to a few hundred characters). 10000 sits above all
+# of them, so no other route can capture a pub- host. Service slugs cannot take
+# the pub- prefix (reserved in service-slug validation, ADR112 D4), so no
+# service host is ever shadowed by this route.
+#
+# The route exists before any bucket does: with no credential the gateway
+# answers 503, and an unknown host answers 404. Scaling objectgw to zero stops
+# every pub- host (docs/runbooks/objectgw-kill-switch.md).
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: objectgw-public
+  namespace: bex-system
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      priority: 10000
+      match: HostRegexp(`^pub-[0-9a-v]{20}\.onbex\.co$`)
+      services:
+        - name: objectgw # kustomize rewrites to bex-objectgw (namePrefix)
+          port: 8080
+  tls: {}
+---
+# Plain HTTP redirects to HTTPS, as for every platform and App host (w8/320,
+# w8/m118). The Middleware is the platform-host fallback's
+# (config/activator/platform-host-fallback-https.yaml), in this namespace;
+# kustomize rewrites its name through kustomizeconfig.yaml. The web entrypoint
+# keeps no global redirect so cert-manager's HTTP-01 solver still answers
+# there.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: objectgw-public-http
+  namespace: bex-system
+spec:
+  entryPoints:
+    - web
+  routes:
+    - kind: Rule
+      priority: 10000
+      match: HostRegexp(`^pub-[0-9a-v]{20}\.onbex\.co$`)
+      middlewares:
+        - name: platform-host-fallback-https # kustomize rewrites to bex-platform-host-fallback-https
+      services:
+        - name: objectgw
+          port: 8080

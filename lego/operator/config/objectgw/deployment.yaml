@@ -1,0 +1,112 @@
+# objectgw: the read-only public gateway for public object-storage buckets
+# (docs/ADR112-object-storage.md D4, w21/m417). It serves GET and HEAD for
+# pub-<obk-xid>.<base domain> from the object store through a read-only
+# identity, with a small cache. Deployed like the static-server (same image,
+# its own entrypoint). The kill switch is this Deployment's replica count in
+# config/prod (docs/runbooks/objectgw-kill-switch.md).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: objectgw
+  namespace: bex-system
+spec:
+  # Two replicas behind a PodDisruptionBudget so a node drain, a roll or one
+  # crash never takes this platform-wide path down. config/prod owns the live
+  # value (the kill switch); this is the local default.
+  replicas: 2
+  selector:
+    matchLabels:
+      app.bex.co/component: objectgw
+  template:
+    metadata:
+      labels:
+        app.bex.co/component: objectgw
+    spec:
+      serviceAccountName: objectgw
+      # The gateway never calls the Kubernetes API.
+      automountServiceAccountToken: false
+      # Preferred, not required: on three platform nodes a required rule
+      # strands the rollout surge pod (the w2/029 bex-api lesson).
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.bex.co/component: objectgw
+      # Platform-pod hardening parity (w7/m58): bex-system is deliberately
+      # privileged-PSS (egress-meter needs BPF caps), so there is no namespace
+      # PodSecurity backstop and this per-pod context is the only control on
+      # an internet-facing server that fronts tenant bytes. The gateway writes
+      # no files, so readOnlyRootFilesystem needs no writable emptyDir.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      # Platform pool, the same placement as the static-server and activator.
+      nodeSelector:
+        bex.co/pool: platform
+      tolerations:
+        - key: bex.co/platform
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: objectgw
+          image: controller:latest # overridden by kustomize; same image as the manager, different entrypoint
+          command: ["/objectgw"]
+          # The in-memory object cache is 64 MiB; the rest is the Go runtime,
+          # the S3 SDK and bodies in flight. GOMEMLIMIT ramps the GC before
+          # the cgroup OOM killer fires.
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9090
+          # Credentials only (docs/ADR112-object-storage.md D9): the endpoints,
+          # buckets, regions and the upstream bex-api URL are constants in the
+          # binary. Deliberately no BEX_BASE_DOMAIN: bex-api resolves the host
+          # to a bucket, and the gateway never parses the suffix.
+          env:
+            # Soft memory cap below the 512 MiB cgroup limit.
+            - name: GOMEMLIMIT
+              value: 400MiB
+            # Never fall back to a node/cloud metadata credential if the
+            # read Secret is absent or malformed.
+            - name: AWS_EC2_METADATA_DISABLED
+              value: "true"
+          # The out-of-band bex-object-storage-read Secret, installed by
+          # scripts/object-storage-s3-credentials.sh: the read-only Wasabi
+          # pair (BEX_OBJECT_STORAGE_READ_ACCESS_KEY / _SECRET_KEY) and the
+          # token that authenticates this gateway to bex-api's :8091 listener
+          # (BEX_OBJECT_STORAGE_GATEWAY_TOKEN, the same value bex-api reads
+          # from bex-object-storage). Optional: without it the gateway starts
+          # degraded, answers 503 and stays Ready, so a local cluster does not
+          # crash-loop on a credential it does not have.
+          envFrom:
+            - secretRef:
+                name: bex-object-storage-read
+                optional: true
+          # The 9090 listener answers /healthz 200 as soon as the process is
+          # up, in degraded mode too. Not a probe on :8080: every path there
+          # belongs to a bucket.
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 2
+            periodSeconds: 5

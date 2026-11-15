@@ -6836,6 +6836,75 @@ dashboards:
                  "legendFormat": "{{source}}"
                 }
               ]
+            },
+            {
+             "id": 12,
+             "type": "timeseries",
+             "title": "Object storage egress: month to date",
+             "description": "Bytes bex has served from the object store this month, all workspaces and all three paths (presigned reads on both contracts and the public pub- gateway), from the usage_hourly shadow meter. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and the account is shared with platform backups. The amber line is ObjectStoragePublicEgressHigh (500 GB, 1 h) and the red line ObjectStoragePublicEgressCritical (900 GB, 15 m): first values, to be reset from the production walk's measurement (w21/m417 t008). The total drops on the first of the month. Runbook: docs/runbooks/objectgw-kill-switch.md",
+             "gridPos": { "h": 9, "w": 8, "x": 0, "y": 54 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "decbytes",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "orange", "value": 500000000000 },
+                      { "color": "red", "value": 900000000000 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "max(bex_usage_object_storage_egress_month_bytes)",
+                 "legendFormat": "month to date"
+                }
+              ]
+            },
+            {
+             "id": 13,
+             "type": "timeseries",
+             "title": "Public gateway bytes out by origin",
+             "description": "Body bytes objectgw sends to visitors of pub- hosts, by where they came from: wasabi (a read that cost egress) or cache (the gateway's 64 MiB in-memory cache, free). Zero with no line when objectgw is scaled to zero or no bucket is public.",
+             "gridPos": { "h": 9, "w": 8, "x": 8, "y": 54 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "Bps", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (origin) (rate(bex_objectgw_response_bytes_total[5m]))",
+                 "legendFormat": "{{origin}}"
+                }
+              ]
+            },
+            {
+             "id": 14,
+             "type": "timeseries",
+             "title": "Public gateway requests by result",
+             "description": "objectgw requests per second by outcome: ok, not_modified, preflight, not_found, method_not_allowed, rate_limited (429), range_not_satisfiable, unavailable (503, degraded or upstream down) and error. A rising rate_limited or unavailable share is the gateway protecting the object store or failing to reach it.",
+             "gridPos": { "h": 9, "w": 8, "x": 16, "y": 54 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "reqps", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (result) (rate(bex_objectgw_requests_total[5m]))",
+                 "legendFormat": "{{result}}"
+                }
+              ]
             }
           ]
         }

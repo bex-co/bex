@@ -282,3 +282,17 @@ func addObjectStorageUsageTx(ctx context.Context, tx pgx.Tx, workspaceID, kind s
 		workspaceID, kind, ResourceKindObjectStorage, window.UTC().Truncate(time.Hour), quantity)
 	return err
 }
+
+// ObjectStorageEgressSince is the bytes every workspace read out of object
+// storage since the start of the given hour, summed from the shadow meter's
+// hourly rows (all three paths: Render's presigned reads, wrangler's streams and
+// public reads). It feeds the month-to-date egress alert, the number Wasabi's
+// fair-use rule is about (ADR112 D4).
+func (s *PGStore) ObjectStorageEgressSince(ctx context.Context, since time.Time) (int64, error) {
+	var total int64
+	err := s.Pool.QueryRow(ctx, `
+		SELECT COALESCE(sum(quantity), 0)::bigint FROM usage_hourly
+		WHERE resource_kind = $1 AND kind = $2 AND window_start >= $3`,
+		ResourceKindObjectStorage, UsageKindObjectStorageEgressBytes, since.UTC().Truncate(time.Hour)).Scan(&total)
+	return total, err
+}

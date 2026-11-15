@@ -31,6 +31,7 @@ The `Dockerfile` (build context is `lego/`) builds the platform entrypoints into
 - `/manager` — the operator (default entrypoint).
 - `/api` — bex-api; the Deployment overrides `command: ["/api"]`. `api mcp-stdio` serves the MCP adapter over stdio for a local agent.
 - `/ssh-gateway` — the isolated public-key SSH server; its separate Deployment and ServiceAccount alone receive namespaced `pods/exec` permission ([ADR035](../docs/ADR035-ssh.md)).
+- `/objectgw` — the read-only public gateway for public object-storage buckets (`pub-<obk-xid>` hosts); its own Deployment holds a read-only object-store credential and no Kubernetes API access ([ADR112](../docs/ADR112-object-storage.md) D4).
 
 Deploy manifests live in [`operator/config/`](operator/config); Argo reconciles `lego/operator/config/default` ([`../deploy/gitops/base/bex.yaml`](../deploy/gitops/base/bex.yaml)).
 

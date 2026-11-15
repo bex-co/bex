@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS usage_hourly_object_storage_egress_idx;

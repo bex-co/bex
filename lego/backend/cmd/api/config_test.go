@@ -879,3 +879,28 @@ func TestLoadConfigObjectStorageCredentials(t *testing.T) {
 		t.Fatalf("no variables set must leave object storage off: %+v", cfg.ObjectStorage)
 	}
 }
+
+// TestLoadConfigObjectGatewayToken: the one credential public buckets add
+// (ADR112 D4, D9). Unset leaves public hosting unmounted, a short value is
+// refused (it guards a route that reads every public bucket's location), and a
+// real secret is kept as is.
+func TestLoadConfigObjectGatewayToken(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{})
+	if err != nil || cfg.ObjectGatewayToken != "" {
+		t.Fatalf("unset = %q, %v; want empty and no error", cfg.ObjectGatewayToken, err)
+	}
+	long := strings.Repeat("a", 32)
+	cfg, _, err = loadFor(t, map[string]string{"BEX_OBJECT_STORAGE_GATEWAY_TOKEN": long})
+	if err != nil || cfg.ObjectGatewayToken != long {
+		t.Fatalf("a %d-character token = %q, %v", len(long), cfg.ObjectGatewayToken, err)
+	}
+	if _, _, err := loadFor(t, map[string]string{"BEX_OBJECT_STORAGE_GATEWAY_TOKEN": long[:32-1]}); err == nil ||
+		!strings.Contains(err.Error(), "BEX_OBJECT_STORAGE_GATEWAY_TOKEN") {
+		t.Errorf("a token one character short = %v, want an error naming the variable", err)
+	}
+	// It is independent of the Wasabi credential: bex-api can hold the token
+	// before the credential is installed (the verbs then answer 503).
+	if cfg, _, err := loadFor(t, map[string]string{"BEX_OBJECT_STORAGE_GATEWAY_TOKEN": long}); err != nil || cfg.ObjectStorage.Enabled() {
+		t.Errorf("a token alone = %+v, %v", cfg.ObjectStorage, err)
+	}
+}

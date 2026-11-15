@@ -64,6 +64,27 @@ for sub in verify install; do
   done
 done
 
+# --- install also needs the gateway bearer, and puts it in both Secrets ---
+out="$(run env "${KEYS[0]}=set" "${KEYS[1]}=set" "${KEYS[2]}=set" "${KEYS[3]}=set" bash "$SCRIPT" install)"
+grep -q 'BEX_OBJECT_STORAGE_GATEWAY_TOKEN (run provision to mint it) is missing or empty' <<<"$out" \
+  && pass "install refuses without the gateway bearer" \
+  || fail "install should name BEX_OBJECT_STORAGE_GATEWAY_TOKEN when it is absent"
+# bex-api verifies what objectgw sends, so both Secrets carry the same value.
+for secret_call in 'install_secret "$rw_secret_name"' 'install_secret "$ro_secret_name"'; do
+  if grep -A2 -F "$secret_call" "$SCRIPT" | grep -q 'BEX_OBJECT_STORAGE_GATEWAY_TOKEN'; then
+    pass "$secret_call carries the gateway bearer"
+  else
+    fail "$secret_call must carry BEX_OBJECT_STORAGE_GATEWAY_TOKEN: objectgw sends it and bex-api verifies it"
+  fi
+done
+# The bearer is minted from the system's random source, once, and a value that
+# exists is never replaced (a re-run must not break an installed pair).
+if grep -q 'secrets.token_hex(32)' "$SCRIPT" && grep -q 'kept gateway token' "$SCRIPT"; then
+  pass "provision mints a 64-hex-character bearer once"
+else
+  fail "provision must mint BEX_OBJECT_STORAGE_GATEWAY_TOKEN with secrets.token_hex(32) and keep an existing one"
+fi
+
 # --- the two IAM policies stay least-privilege ---
 # objectgw serves the internet: a policy edit that lets it write or delete is
 # exactly what the two identities exist to prevent, and no Go test would see it.
@@ -125,7 +146,7 @@ for spec in oregon:us-west-1 frankfurt:eu-central-2; do
 done
 
 # --- the Secrets carry the environment variable names bex-api and objectgw read ---
-for v in "${KEYS[@]}"; do
+for v in "${KEYS[@]}" BEX_OBJECT_STORAGE_GATEWAY_TOKEN; do
   grep -q "$v" "$SCRIPT" && pass "script handles $v" || fail "script never mentions $v"
 done
 

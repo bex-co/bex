@@ -137,6 +137,21 @@ func (r *memObjectRepo) SetObjectBucketCORS(_ context.Context, ws, id string, ru
 	return r.update(ws, id, func(b *store.ObjectBucket) { b.CORS = rules })
 }
 
+func (r *memObjectRepo) SetObjectBucketPublic(_ context.Context, ws, id string, public bool) error {
+	return r.update(ws, id, func(b *store.ObjectBucket) { b.Public = public })
+}
+
+func (r *memObjectRepo) GetObjectBucketByID(_ context.Context, id string) (store.ObjectBucket, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, b := range r.buckets {
+		if b.ID == id {
+			return b, nil
+		}
+	}
+	return store.ObjectBucket{}, store.ErrNotFound
+}
+
 func (r *memObjectRepo) SetObjectBucketLifecycle(_ context.Context, ws, id string, rules json.RawMessage) error {
 	return r.update(ws, id, func(b *store.ObjectBucket) { b.Lifecycle = rules })
 }

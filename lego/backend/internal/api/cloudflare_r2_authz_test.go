@@ -52,6 +52,10 @@ var cloudflareRelations = map[string]string{
 	"GET " + cloudflareAccountR2 + "/buckets/{bucket}/lifecycle":      core.RelCanView,
 	"PUT " + cloudflareAccountR2 + "/buckets/{bucket}/lifecycle":      core.RelCanCreate,
 	"GET " + cloudflareAccountR2 + "/buckets/{bucket}/domains/custom": core.RelCanView,
+	// dev-url: reading the setting is a view, publishing customer data is an
+	// admin's call (ADR112 D6).
+	"GET " + cloudflareAccountR2 + "/buckets/{bucket}/domains/managed": core.RelCanView,
+	"PUT " + cloudflareAccountR2 + "/buckets/{bucket}/domains/managed": core.RelCanManage,
 }
 
 // cloudflareRefusals are the routes that answer 10042 to a caller who may view
@@ -61,7 +65,6 @@ var cloudflareRefusalPrefixes = []string{
 	cloudflareAccountR2 + "/buckets/{bucket}/sippy",
 	cloudflareAccountR2 + "/buckets/{bucket}/local-uploads",
 	cloudflareAccountR2 + "/buckets/{bucket}/domains/custom",
-	cloudflareAccountR2 + "/buckets/{bucket}/domains/managed",
 	cloudflareMount + "/accounts/{accountId}/event_notifications/",
 	cloudflareMount + "/accounts/{accountId}/r2-catalog/",
 }
@@ -83,7 +86,7 @@ func relationFor(pattern string) (relation string, ok bool) {
 }
 
 func TestEveryCloudflareRouteHasItsRelationPinned(t *testing.T) {
-	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{}, nil)}
+	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{}, nil, cfTestBaseDomain)}
 	patterns := serveMuxPatterns(srv.cloudflareRoutes())
 	if len(patterns) < 40 {
 		t.Fatalf("walked %d patterns; the enumerator looks broken", len(patterns))
@@ -123,7 +126,7 @@ func sampleCFRequest(ws, pattern string) (method, path string) {
 // 10003 before the route does anything.
 func TestCloudflareEachRouteAsksForExactlyItsRelation(t *testing.T) {
 	all := []string{core.RelCanView, core.RelCanViewSensitive, core.RelCanCreate, core.RelCanManage}
-	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{}, nil)}
+	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{}, nil, cfTestBaseDomain)}
 	patterns := serveMuxPatterns(srv.cloudflareRoutes())
 	for _, pattern := range patterns {
 		relation, _ := relationFor(pattern)
@@ -191,6 +194,9 @@ func TestCloudflareRolesSeeWhatTheirRelationsAllow(t *testing.T) {
 		{"cors list", http.MethodGet, "/buckets/photos/cors", nil, []string{"viewer", "developer", "admin"}},
 		{"lifecycle list", http.MethodGet, "/buckets/photos/lifecycle", nil, []string{"viewer", "developer", "admin"}},
 		{"domain list", http.MethodGet, "/buckets/photos/domains/custom", nil, []string{"viewer", "developer", "admin"}},
+		{"dev-url get", http.MethodGet, "/buckets/photos/domains/managed", nil, []string{"viewer", "developer", "admin"}},
+		{"dev-url enable", http.MethodPut, "/buckets/photos/domains/managed", []byte(`{"enabled":true}`), []string{"admin"}},
+		{"dev-url disable", http.MethodPut, "/buckets/photos/domains/managed", []byte(`{"enabled":false}`), []string{"admin"}},
 		{"object get", http.MethodGet, "/buckets/photos/objects/o", nil, []string{"developer", "admin"}},
 		{"object put", http.MethodPut, "/buckets/photos/objects/o2", []byte("x"), []string{"developer", "admin"}},
 		{"object delete", http.MethodDelete, "/buckets/photos/objects/o2", nil, []string{"developer", "admin"}},
@@ -306,6 +312,9 @@ func TestCloudflareScopeMatrixClassifiesTheObjectRoutes(t *testing.T) {
 		"REST GET " + cloudflareAccountR2 + "/buckets":  core.OpClassRead,
 		"REST POST " + cloudflareAccountR2 + "/buckets": core.OpClassWrite,
 		"REST POST " + cloudflareGraphQLPath:            core.OpClassRead,
+		// Publishing a bucket is a write; reading whether it is public is a read.
+		"REST GET " + cloudflareAccountR2 + "/buckets/{bucket}/domains/managed": core.OpClassRead,
+		"REST PUT " + cloudflareAccountR2 + "/buckets/{bucket}/domains/managed": core.OpClassWrite,
 	}
 	for _, op := range slices.Sorted(maps.Keys(want)) {
 		if got := classifiedOps[op]; got != want[op] {

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: objectgw
+  namespace: bex-system
+spec:
+  selector:
+    app.bex.co/component: objectgw
+  ports:
+    # Public read traffic, reached only through Traefik (ingressroute.yaml).
+    - name: http
+      port: 8080
+      targetPort: 8080
+    # Internal: /healthz and the Prometheus /metrics scrape (the bex-objectgw
+    # job in deploy/gitops/base/prometheus.yaml).
+    - name: metrics
+      port: 9090
+      targetPort: 9090

@@ -357,7 +357,7 @@ func TestCloudflareThreeHundredMiBStreamsWithFlatMemory(t *testing.T) {
 	st := objectstorage.NewStore(objectstorage.Config{Endpoint: wasabi.URL, Region: "us-west-1", Bucket: objectstorage.Oregon.Bucket(), AccessKey: "a", SecretKey: "s", MaxAttempts: 1})
 	repo := &memObjectRepo{}
 	svc := objectstorage.NewService(repo, map[objectstorage.Region]objectstorage.Store{objectstorage.Oregon: st})
-	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{}, svc)}
+	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{}, svc, cfTestBaseDomain)}
 	h := &cfHarness{srv: srv, h: srv.cloudflareHandler(cfTestAuth, passThrough), repo: repo, svc: svc, ws: ids.New(ids.Workspace)}
 	h.createBucket(t, "big")
 	ts := streamServer(t, h, 30*time.Second)

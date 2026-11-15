@@ -48,6 +48,8 @@ type Repository interface {
 	ObjectStorageUsageTotals(ctx context.Context, workspaceID, region string) (bytes, objects int64, err error)
 	ListObjectStorageUsage(ctx context.Context, workspaceID string) ([]store.ObjectStorageUsage, error)
 	SetObjectBucketCORS(ctx context.Context, workspaceID, id string, rules json.RawMessage) error
+	SetObjectBucketPublic(ctx context.Context, workspaceID, id string, public bool) error
+	GetObjectBucketByID(ctx context.Context, id string) (store.ObjectBucket, error)
 	SetObjectBucketLifecycle(ctx context.Context, workspaceID, id string, rules json.RawMessage) error
 }
 

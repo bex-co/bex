@@ -117,7 +117,8 @@ func (call *cfCall) done(err error) error {
 }
 
 // registerNotOffered answers what bex does not offer, each with 10042: bucket
-// locks, event notifications, Sippy, Data Catalog and custom domains. Listing
+// locks, event notifications, Sippy, Data Catalog and custom domains (a bucket's
+// managed domain, dev-url, is served by registerManagedDomain). Listing
 // custom domains answers an empty list instead, so `domain list` works.
 func (c *cloudflareR2) registerNotOffered(mux *http.ServeMux) {
 	c.route(mux, "GET "+cloudflareAccountR2+"/buckets/{bucket}/domains/custom", core.RelCanView, func(call *cfCall) error {
@@ -135,8 +136,6 @@ func (c *cloudflareR2) registerNotOffered(mux *http.ServeMux) {
 		{cloudflareMount + "/accounts/{accountId}/event_notifications/{rest...}", "event notifications are not offered by bex"},
 		{cloudflareMount + "/accounts/{accountId}/r2-catalog/{rest...}", "Data Catalog is not offered by bex"},
 		{cloudflareAccountR2 + "/buckets/{bucket}/domains/custom/{domain}", "custom domains are not offered by bex"},
-		// Public access is w21/m417; until its routes land, say so.
-		{cloudflareAccountR2 + "/buckets/{bucket}/domains/managed", "public access to a bucket is not available yet"},
 	}
 	for _, method := range []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete} {
 		for _, p := range refused {

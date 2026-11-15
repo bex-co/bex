@@ -97,7 +97,7 @@
       "Content-Length": "767",
       "Content-Type": "application/json"
     },
-    "body": "{\"query\":\"\\n    query getR2StorageMetrics($accountTag: String, $filter: R2StorageAdaptiveGroupsFilter_InputObject) {\\n      viewer {\\n        accounts(filter: { accountTag: $accountTag }) {\\n          r2StorageAdaptiveGroups(\\n            limit: 1\\n            filter: $filter\\n            orderBy: [datetime_DESC]\\n          ) {\\n            max {\\n              objectCount\\n              payloadSize\\n              metadataSize\\n            }\\n            dimensions {\\n              datetime\\n            }\\n          }\\n        }\\n      }\\n    }\\n    \",\"operationName\":\"getR2StorageMetrics\",\"variables\":{\"accountTag\":\"tea-dbspelv9pot15mntm2u0\",\"filter\":{\"datetime_geq\":\"2026-11-14T11:28:26.537Z\",\"datetime_leq\":\"2026-11-15T11:28:26.537Z\",\"bucketName\":\"photos\"}}}",
+    "body": "{\"query\":\"\\n    query getR2StorageMetrics($accountTag: String, $filter: R2StorageAdaptiveGroupsFilter_InputObject) {\\n      viewer {\\n        accounts(filter: { accountTag: $accountTag }) {\\n          r2StorageAdaptiveGroups(\\n            limit: 1\\n            filter: $filter\\n            orderBy: [datetime_DESC]\\n          ) {\\n            max {\\n              objectCount\\n              payloadSize\\n              metadataSize\\n            }\\n            dimensions {\\n              datetime\\n            }\\n          }\\n        }\\n      }\\n    }\\n    \",\"operationName\":\"getR2StorageMetrics\",\"variables\":{\"accountTag\":\"tea-dbsqfqv9pot80n80foa0\",\"filter\":{\"datetime_geq\":\"2026-11-14T12:39:10.574Z\",\"datetime_leq\":\"2026-11-15T12:39:10.574Z\",\"bucketName\":\"photos\"}}}",
     "status": 200
   },
   {
@@ -267,7 +267,7 @@
       "Content-Length": "603",
       "Content-Type": "application/json"
     },
-    "body": "{\"rules\":[{\"id\":\"expire-logs\",\"enabled\":true,\"conditions\":{\"prefix\":\"logs/\"},\"deleteObjectsTransition\":{\"condition\":{\"type\":\"Age\",\"maxAge\":604800}}},{\"id\":\"sunset\",\"enabled\":true,\"conditions\":{\"prefix\":\"\"},\"deleteObjectsTransition\":{\"condition\":{\"type\":\"Date\",\"date\":\"2027-01-01T00:00:00.000Z\"}}},{\"id\":\"tidy\",\"enabled\":true,\"conditions\":{\"prefix\":\"up/\"},\"abortMultipartUploadsTransition\":{\"condition\":{\"type\":\"Age\",\"maxAge\":86400}}},{\"id\":\"cold\",\"enabled\":true,\"conditions\":{\"prefix\":\"old/\"},\"storageClassTransitions\":[{\"condition\":{\"maxAge\":2592000,\"type\":\"Age\"},\"storageClass\":\"InfrequentAccess\"}]}]}",
+    "body": "{\"rules\":[{\"id\":\"expire-logs\",\"enabled\":true,\"conditions\":{\"prefix\":\"logs/\"},\"deleteObjectsTransition\":{\"condition\":{\"type\":\"Age\",\"maxAge\":604800}}},{\"id\":\"sunset\",\"enabled\":true,\"conditions\":{\"prefix\":\"\"},\"deleteObjectsTransition\":{\"condition\":{\"type\":\"Date\",\"date\":\"2027-01-01T00:00:00.000Z\"}}},{\"id\":\"tidy\",\"enabled\":true,\"conditions\":{\"prefix\":\"up/\"},\"abortMultipartUploadsTransition\":{\"condition\":{\"maxAge\":86400,\"type\":\"Age\"}}},{\"id\":\"cold\",\"enabled\":true,\"conditions\":{\"prefix\":\"old/\"},\"storageClassTransitions\":[{\"condition\":{\"maxAge\":2592000,\"type\":\"Age\"},\"storageClass\":\"InfrequentAccess\"}]}]}",
     "status": 403
   },
   {
@@ -290,7 +290,7 @@
       "Content-Length": "287",
       "Content-Type": "application/json"
     },
-    "body": "{\"rules\":[{\"id\":\"expire-logs\",\"enabled\":true,\"conditions\":{\"prefix\":\"logs/\"},\"deleteObjectsTransition\":{\"condition\":{\"type\":\"Age\",\"maxAge\":604800}}},{\"id\":\"tidy\",\"enabled\":true,\"conditions\":{\"prefix\":\"up/\"},\"abortMultipartUploadsTransition\":{\"condition\":{\"type\":\"Age\",\"maxAge\":86400}}}]}",
+    "body": "{\"rules\":[{\"id\":\"expire-logs\",\"enabled\":true,\"conditions\":{\"prefix\":\"logs/\"},\"deleteObjectsTransition\":{\"condition\":{\"type\":\"Age\",\"maxAge\":604800}}},{\"id\":\"tidy\",\"enabled\":true,\"conditions\":{\"prefix\":\"up/\"},\"abortMultipartUploadsTransition\":{\"condition\":{\"maxAge\":86400,\"type\":\"Age\"}}}]}",
     "status": 200
   },
   {
@@ -345,10 +345,10 @@
     "status": 403
   },
   {
-    "step": "dev-url get",
+    "step": "dev-url get private",
     "method": "GET",
     "path": "/cloudflare/client/v4/accounts/{account}/r2/buckets/photos/domains/managed",
-    "status": 403
+    "status": 200
   },
   {
     "step": "dev-url enable",
@@ -359,7 +359,13 @@
       "Content-Type": "application/json"
     },
     "body": "{\"enabled\":true}",
-    "status": 403
+    "status": 200
+  },
+  {
+    "step": "dev-url get public",
+    "method": "GET",
+    "path": "/cloudflare/client/v4/accounts/{account}/r2/buckets/photos/domains/managed",
+    "status": 200
   },
   {
     "step": "dev-url disable",
@@ -370,7 +376,7 @@
       "Content-Type": "application/json"
     },
     "body": "{\"enabled\":false}",
-    "status": 403
+    "status": 200
   },
   {
     "step": "lock list",

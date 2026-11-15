@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -502,5 +503,106 @@ func TestListObjectStorageWorkspacesFindsLiveRetiredAndGoneWorkspaces(t *testing
 	}
 	if order[deleted] < order[gone] {
 		t.Errorf("a purge just attempted (%d) leads one never attempted (%d): a failing purge would starve the rest", order[deleted], order[gone])
+	}
+}
+
+// TestObjectStorageEgressSinceSumsEveryWorkspaceFromTheGivenHour is the number the
+// month-to-date egress alert reads (ADR112 D4): all workspaces together, the
+// egress kind only, nothing before the start. Other tests share the database, so
+// the window is a year no other test writes to.
+func TestObjectStorageEgressSinceSumsEveryWorkspaceFromTheGivenHour(t *testing.T) {
+	s, ws := objectBucketStore(t, "objegress-a")
+	_, other := objectBucketStore(t, "objegress-b")
+	ctx := context.Background()
+	monthStart := time.Date(2037, 3, 1, 0, 0, 0, 0, time.UTC)
+	before, err := s.ObjectStorageEgressSince(ctx, monthStart)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before != 0 {
+		t.Fatalf("the test year is not empty: %d", before)
+	}
+	err = s.AddObjectStorageUsage(ctx, []ObjectStorageUsageDelta{
+		{WorkspaceID: ws, Kind: UsageKindObjectStorageEgressBytes, Window: monthStart.Add(-time.Hour), Quantity: 1000}, // last month
+		{WorkspaceID: ws, Kind: UsageKindObjectStorageEgressBytes, Window: monthStart, Quantity: 10},                   // the first hour counts
+		{WorkspaceID: ws, Kind: UsageKindObjectStorageEgressBytes, Window: monthStart.Add(30 * 24 * time.Hour), Quantity: 20},
+		{WorkspaceID: other, Kind: UsageKindObjectStorageEgressBytes, Window: monthStart.Add(5 * time.Hour), Quantity: 300},
+		{WorkspaceID: ws, Kind: UsageKindObjectStorageIngressBytes, Window: monthStart.Add(time.Hour), Quantity: 5000}, // not egress
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.ObjectStorageEgressSince(ctx, monthStart)
+	if err != nil || got != 330 {
+		t.Fatalf("egress since the month's start = %d, %v; want 330 (10 + 20 + 300: both workspaces, not last month, not ingress)", got, err)
+	}
+	if got, _ := s.ObjectStorageEgressSince(ctx, monthStart.Add(time.Hour)); got != 320 {
+		t.Errorf("one hour later = %d, want 320", got)
+	}
+	// A time inside an hour starts at the hour: the hour's row is not split.
+	if got, _ := s.ObjectStorageEgressSince(ctx, monthStart.Add(30*time.Minute)); got != 330 {
+		t.Errorf("half past the first hour = %d, want 330", got)
+	}
+}
+
+// TestEgressSumHasAnIndexAndItsDownMigrationRemovesIt: the month-to-date egress
+// gauge reads one kind across workspaces by window every minute on every
+// replica, and no other usage_hourly index serves that (0275). The index is
+// partial, so it holds only the egress rows, and the sum can be answered from it.
+func TestEgressSumHasAnIndexAndItsDownMigrationRemovesIt(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	const name = "usage_hourly_object_storage_egress_idx"
+	exists := func() bool {
+		t.Helper()
+		var ok bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = 'usage_hourly' AND indexname = $1)`, name).Scan(&ok); err != nil {
+			t.Fatal(err)
+		}
+		return ok
+	}
+	read := func(file string) string {
+		raw, err := migrationsFS.ReadFile("migrations/" + file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+	if !exists() {
+		t.Fatal("0275 left no index for the egress sum")
+	}
+	var def string
+	if err := tx.QueryRow(ctx, `SELECT indexdef FROM pg_indexes WHERE indexname = $1`, name).Scan(&def); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"window_start", "INCLUDE (quantity)", "object_storage_egress_bytes", "object_storage"} {
+		if !strings.Contains(def, want) {
+			t.Errorf("the index is %q, want it to name %q", def, want)
+		}
+	}
+	if _, err := tx.Exec(ctx, read("0275_object_storage_egress_index.down.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if exists() {
+		t.Fatal("the down migration left the index")
+	}
+	if _, err := tx.Exec(ctx, read("0275_object_storage_egress_index.up.sql")); err != nil || !exists() {
+		t.Fatalf("the up migration did not restore the index after a down: %v", err)
 	}
 }

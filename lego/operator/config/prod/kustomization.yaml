@@ -110,6 +110,22 @@ patches:
         value:
           name: BEX_DB_CLUSTER_ISSUER
           value: letsencrypt-prod
+  # THE objectgw KILL SWITCH (docs/ADR112-object-storage.md D4,
+  # docs/runbooks/objectgw-kill-switch.md). Argo CD syncs production from this
+  # overlay with selfHeal, so a `kubectl scale` is reverted within minutes;
+  # this value is the one reviewed change that stops every pub-<obk-xid> host.
+  # Normal value: 2. To stop public reads set it to 0, merge, and let Argo
+  # sync; to restore set it back to 2. Contract A and B object routes live in
+  # bex-api and are not affected. Never leave it at 0 after an incident.
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: bex-objectgw
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
   - target:
       group: apps
       version: v1

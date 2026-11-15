@@ -136,10 +136,13 @@ func writeCFError(w http.ResponseWriter, e *cfError) {
 type cloudflareR2 struct {
 	base *core.Base
 	svc  *objectstorage.Service
+	// baseDomain is BEX_BASE_DOMAIN, the suffix of a public bucket's host
+	// (ADR112 D4). Empty: public buckets are not offered.
+	baseDomain string
 }
 
-func newCloudflareR2(base *core.Base, svc *objectstorage.Service) *cloudflareR2 {
-	return &cloudflareR2{base: base, svc: svc}
+func newCloudflareR2(base *core.Base, svc *objectstorage.Service, baseDomain string) *cloudflareR2 {
+	return &cloudflareR2{base: base, svc: svc, baseDomain: baseDomain}
 }
 
 // cfCall is one authorized request: the workspace its account id names.
@@ -188,6 +191,7 @@ func (c *cloudflareR2) register(mux *http.ServeMux) {
 	c.registerBuckets(mux)
 	c.registerObjects(mux)
 	c.registerConfig(mux)
+	c.registerManagedDomain(mux)
 	c.registerNotOffered(mux)
 }
 

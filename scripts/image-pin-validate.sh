@@ -120,6 +120,7 @@ lego/operator/config/api/deployment.yaml	controller:latest	same manager image, /
 lego/operator/config/ssh/deployment.yaml	controller:latest	same manager image, /ssh-gateway entrypoint; rewritten by the same kustomize edit
 lego/operator/config/activator/deployment.yaml	controller:latest	same manager image, /activator entrypoint; rewritten by the same kustomize edit
 lego/operator/config/staticserver/deployment.yaml	controller:latest	same manager image, /staticserver entrypoint; rewritten by the same kustomize edit
+lego/operator/config/objectgw/deployment.yaml	controller:latest	same manager image, /objectgw entrypoint; rewritten by the same kustomize edit
 lego/operator/config/pg-sni-proxy/daemonset.yaml	controller:latest	same manager image, /pg-sni-proxy entrypoint; rewritten by the same kustomize edit
 lego/operator/config/kv-sni-proxy/daemonset.yaml	controller:latest	same manager image, /kv-sni-proxy entrypoint; rewritten by the same kustomize edit
 lego/operator/config/egress-meter/daemonset.yaml	controller:latest	same manager image, /egress-meter entrypoint; rewritten by the same kustomize edit

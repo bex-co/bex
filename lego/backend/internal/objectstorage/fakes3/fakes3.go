@@ -19,7 +19,9 @@ limitations under the License.
 // HEAD, DELETE, multi-object delete and ListObjectsV2) so tests exercise the
 // real AWS client and real presigned URLs against it.
 //
-// It does not check signatures. It does refuse a chunked PUT against a URL
+// It evaluates Range and the four conditional headers of a GET or HEAD as S3
+// does (206, 304, 412 and 416), which the public gateway hands through. It does
+// not check signatures. It does refuse a chunked PUT against a URL
 // that signs a Content-Length, which is what Wasabi does (ADR112 § Not
 // verified, settled 2026-11-15); it does not compare a declared length with the
 // bytes sent, so tests read what was sent from the recorded requests.
@@ -231,6 +233,11 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request, objects map[s
 	for name, values := range o.Header {
 		w.Header()[name] = values
 	}
+	if w.Header().Get("Content-Type") == "" {
+		// S3 types an object stored with no Content-Type as an opaque binary; left
+		// unset, Go's own server would sniff the bytes.
+		w.Header().Set("Content-Type", "binary/octet-stream")
+	}
 	// Like S3, a response-content-* query parameter overrides the stored header.
 	if v := r.URL.Query().Get("response-content-disposition"); v != "" {
 		w.Header().Set("Content-Disposition", v)
@@ -240,6 +247,14 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request, objects map[s
 	}
 	w.Header().Set("ETag", o.ETag)
 	w.Header().Set("Last-Modified", o.LastModified.Format(http.TimeFormat))
+	switch conditionalStatus(r, o) {
+	case http.StatusPreconditionFailed:
+		s.fail(w, r, http.StatusPreconditionFailed, "PreconditionFailed", "a condition of the request was not met")
+		return
+	case http.StatusNotModified:
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
 	body := o.Body
 	status := http.StatusOK
 	if rng := r.Header.Get("Range"); rng != "" {
@@ -256,6 +271,37 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request, objects map[s
 	if r.Method == http.MethodGet {
 		_, _ = w.Write(body)
 	}
+}
+
+// conditionalStatus evaluates the four conditional headers of a GET or HEAD as
+// S3 does, in RFC 7232's order: 412 when If-Match or If-Unmodified-Since fails,
+// 304 when If-None-Match matches or, without it, If-Modified-Since says the
+// object is unchanged, and 0 when the request is unconditional or passes.
+func conditionalStatus(r *http.Request, o *Object) int {
+	etagIn := func(list string) bool {
+		for _, tag := range strings.Split(list, ",") {
+			if tag = strings.TrimSpace(tag); tag == "*" || tag == o.ETag {
+				return true
+			}
+		}
+		return false
+	}
+	if m := r.Header.Get("If-Match"); m != "" && !etagIn(m) {
+		return http.StatusPreconditionFailed
+	}
+	if t, err := http.ParseTime(r.Header.Get("If-Unmodified-Since")); err == nil && o.LastModified.After(t) {
+		return http.StatusPreconditionFailed
+	}
+	if n := r.Header.Get("If-None-Match"); n != "" {
+		if etagIn(n) {
+			return http.StatusNotModified
+		}
+		return 0
+	}
+	if t, err := http.ParseTime(r.Header.Get("If-Modified-Since")); err == nil && !o.LastModified.After(t) {
+		return http.StatusNotModified
+	}
+	return 0
 }
 
 func parseRange(h string, size int64) (start, end int64, ok bool) {

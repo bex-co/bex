@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: objectgw
+  namespace: bex-system
+spec:
+  # A voluntary eviction (drain, CAPI Machine replacement) waits until the
+  # other replica serves, as for the static-server (w3/m175). Scaling to zero
+  # (the kill switch, docs/runbooks/objectgw-kill-switch.md) leaves no pod for
+  # the budget to protect, so it never blocks that.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.bex.co/component: objectgw

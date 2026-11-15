@@ -334,6 +334,10 @@ type Config struct {
 	// Endpoints, buckets, regions and caps are constants in internal/objectstorage.
 	// Unset ⇒ the object routes answer "not offered".
 	ObjectStorage objectstorage.Credentials
+	// ObjectGatewayToken is the bearer objectgw presents on bex-api's internal
+	// listener (ADR112 D4, D9): BEX_OBJECT_STORAGE_GATEWAY_TOKEN. Unset ⇒ the
+	// gateway's two verbs are not mounted and public buckets are never served.
+	ObjectGatewayToken string
 
 	// Serving knobs (skipped entirely in stdio mode, like the inline reads
 	// they replaced — a local agent's leftover env must not fail a subprocess).
@@ -728,6 +732,15 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	// Half a credential would silently turn the store off; refuse it.
 	if missing := cfg.ObjectStorage.Missing(); len(missing) > 0 {
 		p.errorf("object storage is partly configured; also set %s", strings.Join(missing, ", "))
+	}
+	// The gateway's bearer (ADR112 D4): the one credential public hosting adds.
+	// A short value guards a route that reads every public bucket's location, so
+	// it must be a real secret (scripts/object-storage-s3-credentials.sh mints 64
+	// hex characters).
+	const minObjectGatewayTokenBytes = 32
+	cfg.ObjectGatewayToken = getenv("BEX_OBJECT_STORAGE_GATEWAY_TOKEN")
+	if cfg.ObjectGatewayToken != "" && len(cfg.ObjectGatewayToken) < minObjectGatewayTokenBytes {
+		p.errorf("BEX_OBJECT_STORAGE_GATEWAY_TOKEN must be at least %d characters", minObjectGatewayTokenBytes)
 	}
 
 	// Serving knobs — skipped in stdio mode (the HTTP surface never starts).

@@ -35,6 +35,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/objectstorage/publichost"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -1112,10 +1113,12 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 		a.ID, a.DisplayName = ids.New(ids.Service), ""
 	}
 	a.Slug = a.Name
-	if a.ObjectName != "" {
-		// Beside its predecessor's App, whose Ingress and slug Service keep
-		// the bare slug until they are gone, a new subdomain: Render never
-		// reuses an onrender.com one either.
+	// A re-created service's new subdomain sits beside its predecessor's App,
+	// whose Ingress and slug Service keep the bare slug until they are gone;
+	// Render never reuses an onrender.com one either. A name with the shape of a
+	// public bucket's host (pub-<xid>) would take that bucket's host (ADR112 D4),
+	// so it takes a suffix too, as a taken subdomain does.
+	if a.ObjectName != "" || publichost.Reserved(a.Name) {
 		a.Slug = a.Name + "-" + randomSlugSuffix()
 	}
 	for attempt := 0; ; attempt++ {

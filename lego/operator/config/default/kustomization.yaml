@@ -33,6 +33,12 @@ resources:
 # The shared static-site origin proxy (w1/m21): serves static_site Apps from the
 # object store. Same image as the manager, different entrypoint (/staticserver).
 - ../staticserver
+# The read-only public gateway for public object-storage buckets (w21/m417,
+# docs/ADR112-object-storage.md D4): serves pub-<obk-xid>.<base domain> from the
+# object store. Same image as the manager, different entrypoint (/objectgw); it
+# starts degraded (503, still Ready) until bex-system/bex-object-storage-read
+# exists, so a local cluster needs no credential.
+- ../objectgw
 # The Postgres SNI front-door (w1/m29): handles the PostgreSQL SSLRequest preamble
 # so standard preamble-mode clients can connect to external managed databases.
 - ../pg-sni-proxy

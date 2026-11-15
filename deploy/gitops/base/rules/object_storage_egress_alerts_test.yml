@@ -1,0 +1,110 @@
+# w21/m417 t004: the month-to-date object-store egress alerts
+# (docs/ADR112-object-storage.md D4). The gauge is the month-to-date total, so
+# the series are flat levels; a reset on the first of the month is a drop to a
+# small value.
+rule_files:
+- alerting_rules.yml
+evaluation_interval: 1m
+tests:
+- name: above 500 GB for an hour warns and stays below critical
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_egress_month_bytes{job="bex-api",instance="api-1"}
+    values: 520e9x120
+  alert_rule_test:
+  - eval_time: 30m
+    alertname: ObjectStoragePublicEgressHigh
+    exp_alerts: []
+  - eval_time: 90m
+    alertname: ObjectStoragePublicEgressHigh
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: Object storage egress is 520GB this month
+        description: "bex has served over 500 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. This threshold is a FIRST value chosen conservatively below the 1 TB account minimum; reset it from the production walk's measurement (w21/m417 t008). Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
+  - eval_time: 90m
+    alertname: ObjectStoragePublicEgressCritical
+    exp_alerts: []
+- name: a total at the threshold or below stays quiet
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_egress_month_bytes{job="bex-api",instance="api-1"}
+    values: 500e9x180
+  alert_rule_test:
+  - eval_time: 150m
+    alertname: ObjectStoragePublicEgressHigh
+    exp_alerts: []
+  - eval_time: 150m
+    alertname: ObjectStoragePublicEgressCritical
+    exp_alerts: []
+- name: a short crossing under an hour does not warn
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_egress_month_bytes{job="bex-api",instance="api-1"}
+    values: 400e9x20 520e9x30 400e9x70
+  alert_rule_test:
+  - eval_time: 90m
+    alertname: ObjectStoragePublicEgressHigh
+    exp_alerts: []
+- name: above 900 GB for 15 minutes is critical and the warning fires too
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_egress_month_bytes{job="bex-api",instance="api-1"}
+    values: 950e9x120
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: ObjectStoragePublicEgressCritical
+    exp_alerts: []
+  - eval_time: 30m
+    alertname: ObjectStoragePublicEgressCritical
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+      exp_annotations:
+        summary: Object storage egress is 950GB this month, near the fair-use limit
+        description: "bex has served over 900 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. This threshold is a FIRST value chosen conservatively below the 1 TB account minimum; reset it from the production walk's measurement (w21/m417 t008). Scale objectgw to zero now with the kill switch (one reviewed change in lego/operator/config/prod/kustomization.yaml), then find the bucket. Runbook: docs/runbooks/objectgw-kill-switch.md"
+  - eval_time: 90m
+    alertname: ObjectStoragePublicEgressHigh
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: Object storage egress is 950GB this month
+        description: "bex has served over 500 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. This threshold is a FIRST value chosen conservatively below the 1 TB account minimum; reset it from the production walk's measurement (w21/m417 t008). Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
+- name: two replicas publish the same total and fire once
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_egress_month_bytes{job="bex-api",instance="api-1"}
+    values: 520e9x120
+  - series: bex_usage_object_storage_egress_month_bytes{job="bex-api",instance="api-2"}
+    values: 520e9x120
+  alert_rule_test:
+  - eval_time: 90m
+    alertname: ObjectStoragePublicEgressHigh
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: Object storage egress is 520GB this month
+        description: "bex has served over 500 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. This threshold is a FIRST value chosen conservatively below the 1 TB account minimum; reset it from the production walk's measurement (w21/m417 t008). Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
+- name: the month reset clears both alerts
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_egress_month_bytes{job="bex-api",instance="api-1"}
+    values: 950e9x100 2e9x60
+  alert_rule_test:
+  - eval_time: 90m
+    alertname: ObjectStoragePublicEgressCritical
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+      exp_annotations:
+        summary: Object storage egress is 950GB this month, near the fair-use limit
+        description: "bex has served over 900 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. This threshold is a FIRST value chosen conservatively below the 1 TB account minimum; reset it from the production walk's measurement (w21/m417 t008). Scale objectgw to zero now with the kill switch (one reviewed change in lego/operator/config/prod/kustomization.yaml), then find the bucket. Runbook: docs/runbooks/objectgw-kill-switch.md"
+  - eval_time: 150m
+    alertname: ObjectStoragePublicEgressHigh
+    exp_alerts: []
+  - eval_time: 150m
+    alertname: ObjectStoragePublicEgressCritical
+    exp_alerts: []

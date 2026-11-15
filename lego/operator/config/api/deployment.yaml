@@ -585,6 +585,17 @@ spec:
                   name: bex-object-storage
                   key: BEX_OBJECT_STORAGE_SECRET_KEY
                   optional: true
+            # The bearer token objectgw (the public-bucket gateway, config/
+            # objectgw) presents to bex-api's internal :8091 listener to
+            # resolve a pub-<obk-xid> host to its bucket. The same value is in
+            # bex-object-storage-read for objectgw. Optional: absent means the
+            # internal host-resolution route stays off and objectgw answers 503.
+            - name: BEX_OBJECT_STORAGE_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bex-object-storage
+                  key: BEX_OBJECT_STORAGE_GATEWAY_TOKEN
+                  optional: true
             # ADR090 platform model route (2026-10-23): the claude profile of
             # each allowlisted workspace runs on OpenRouter with a platform-owned
             # key, model pinned by the gateway. The key arrives from the

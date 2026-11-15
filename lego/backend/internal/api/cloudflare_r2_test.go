@@ -34,6 +34,9 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
+// cfTestBaseDomain is the hosting domain the harness gives public buckets.
+const cfTestBaseDomain = "onbex.test"
+
 // cfHarness drives the Cloudflare-shaped routes through the surface's own
 // chain (gate, scope-class check, routing) with an identity injected in place
 // of the OAuth gate, over a fake S3 and an in-memory bucket registry.
@@ -70,7 +73,7 @@ func newCFHarnessAuthz(t *testing.T, authz core.Checker) *cfHarness {
 	}
 	repo := &memObjectRepo{}
 	svc := objectstorage.NewService(repo, stores)
-	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{Authz: authz}, svc)}
+	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{Authz: authz}, svc, cfTestBaseDomain)}
 	return &cfHarness{
 		srv: srv, h: srv.cloudflareHandler(cfTestAuth, passThrough), fake: fake, repo: repo, svc: svc, ws: ids.New(ids.Workspace),
 	}
@@ -248,7 +251,7 @@ func TestCloudflareTooManyBucketsIs10009(t *testing.T) {
 }
 
 func TestCloudflareAnUnconfiguredStoreAnswers10042OnEveryRoute(t *testing.T) {
-	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{}, nil)}
+	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{}, nil, cfTestBaseDomain)}
 	h := srv.cloudflareHandler(cfTestAuth, passThrough)
 	ws := ids.New(ids.Workspace)
 	base := cloudflareMount + "/accounts/" + ws + "/r2"

@@ -1281,7 +1281,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Webhooks:         &webhooks.Service{Base: base, Store: d.WebhookStore, Metrics: d.WebhookMetrics},
 		Jobs:             &jobs.Service{Base: base, Store: d.JobStore, EventFacts: d.EventFacts},
 		RenderObjects:    &renderObjects{base: base, svc: d.ObjectStorage},
-		CloudflareR2:     newCloudflareR2(base, d.ObjectStorage),
+		CloudflareR2:     newCloudflareR2(base, d.ObjectStorage, d.BaseDomain),
 		CLITelemetry:     telSvc,
 		Onboard:          d.Onboard,
 		OAuthRevocations: d.OAuthRevocations,

@@ -365,10 +365,28 @@ Things to know:
 - **wrangler cannot list a bucket's objects.** It has no such command, and bex has no S3 API for another tool to list with. The Render CLI lists only the workspace's `render-<region>` bucket (`bex ea objects list --region oregon`); a bucket you created is not listable from any CLI yet. Objects written to `render-oregon` or `render-frankfurt` with wrangler are the ones `bex ea objects` reads, and the other way round.
 - **Two regions.** A bucket created with no location hint, `--location wnam` or nothing else goes to Oregon; `--location weur` or `--jurisdiction eu` goes to Frankfurt. Every other hint answers `10042`. bex's region is exact where Cloudflare's hint is a preference, and `bucket info` reports the hint you gave. Names are unique per workspace; bex ignores the jurisdiction when it looks a name up. A bucket name must follow wrangler's own rule and must not start with `render-`.
 - **One storage class.** `--storage-class InfrequentAccess` and lifecycle storage-class transitions answer `10042`. `bucket lock`, `notification`, `sippy`, Data Catalog and custom domains (`domain list` returns an empty list) are not offered either.
-- **CORS is stored, not served yet.** `bucket cors set|list|delete` keep your rules (at most 100 rules and 64 KiB per bucket), but bex applies them only where it serves a bucket to browsers, which arrives with public buckets (w21/m417). `bucket dev-url` answers `10042` until then.
+- **CORS applies to public buckets.** `bucket cors set|list|delete` keep your rules (at most 100 rules and 64 KiB per bucket), and bex applies them where it serves a bucket to browsers: the public host of a bucket you published with `dev-url` (below). The `wrangler` routes need a token, so a browser never reaches them and the rules do not apply there.
 - **Lifecycle rules run hourly.** An `Age` (up to 100 years) or `Date` expiry deletes the matching objects, at most 10,000 per rule per run. A short rule saves nothing on storage: Wasabi bills a 90-day minimum for every object, and whether it bills the rest of the 90 days for an object deleted sooner is unverified. `--abort-multipart-days` is stored and does nothing, since bex has no multipart upload.
 - **Limits.** 1,000 buckets per workspace, 100 GB and 1,000,000 objects per workspace per region, 8 uploads or downloads at once per workspace; a breach answers `10042` (a quota) or `10058` (too many at once). Keys follow the same rule as the Render CLI. Render and Cloudflare publish none of these limits for bex to match, so each is bex's own, listed with its status in [ADR018](ADR018-render-parity.md).
-- **No public access, no durability beyond one provider.** Objects live on one provider in one region with no replica. Nothing is served to the open internet.
+- **Private unless you publish, and no durability beyond one provider.** Objects live on one provider in one region with no replica. A bucket is private until a workspace admin runs `bucket dev-url enable` (below).
+
+#### Public buckets: `dev-url`
+
+```sh
+wrangler r2 bucket dev-url enable photos      # prints https://pub-<id>.<bex hosting domain>
+wrangler r2 bucket dev-url get photos
+wrangler r2 bucket dev-url disable photos
+```
+
+With `dev-url` on, anyone can read the bucket's objects over the web at `https://pub-<id>.<hosting domain>/<key>`, with no credential. It follows Cloudflare's `r2.dev` public development URL ([ADR112](ADR112-object-storage.md) D4, [ADR018](ADR018-render-parity.md)); Render has no public buckets.
+
+- **Who may publish.** The workspace's admin. `dev-url get` needs only read access to the workspace. A deployment with no hosting domain answers `10042`.
+- **What is served.** `GET` and `HEAD` of one object at a time, with `Range` (partial content) and conditional requests (`ETag`, `Last-Modified`), the `Content-Type` and `Cache-Control` the object was stored with, and `X-Content-Type-Options: nosniff`. The root and any path that is not a valid key answer `404`; there is no listing and no directory index. Anything but `GET`, `HEAD` and a CORS preflight answers `405`. A private, deleted or unknown bucket answers `404`, the same answer.
+- **CORS.** The rules you stored with `bucket cors set` apply to the public host, including the preflight. A bucket with no rules sends no CORS headers; credentials are never allowed.
+- **Turning it off takes up to 30 seconds** to reach every visitor, and a changed object up to 60 seconds, because the host serves from a short cache.
+- **Not for production traffic.** Like `r2.dev`, the host is rate-limited and is not a CDN: it caps requests and bandwidth per bucket and per workspace (a refusal is `429` with `Retry-After`), serves one provider from one region, and offers no custom domain, caching rules or signed URLs.
+- **A shared domain.** The host is under the platform's shared hosting domain, as tenant apps and static sites are, so a page served from a public bucket shares a registrable domain with them. Serve only content you would put on a static site, and do not host untrusted uploads from a public bucket.
+- **Egress is metered, not billed yet.** Bytes read from a public bucket count toward the workspace's `object_storage_egress_bytes`, shown at $0 until a price is set.
 
 bex's routes are tested against the real tool: a recorded replay of wrangler 4.162.0's requests runs with every build, and the real wrangler runs against the handlers every week ([`scripts/wrangler-r2-contract.sh`](../scripts/wrangler-r2-contract.sh)). Other wrangler versions may differ.
 

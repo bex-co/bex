@@ -3072,6 +3072,82 @@ for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
   done
 done
 
+# objectgw, the public object-storage gateway (w21/m417, docs/ADR112-object-storage.md
+# D4/D9). It fronts tenant bytes from the internet with a read-only object-store
+# identity, so its contract is pinned in both renders: credentials only (no
+# BEX_BASE_DOMAIN, no endpoint or bucket variables) from the OPTIONAL read Secret
+# (absent = degraded 503 but Ready, so local never crash-loops), no Kubernetes API
+# access, a /healthz readiness probe on the internal listener, and a replica count
+# that is a plain number in prod (the kill switch, docs/runbooks/objectgw-kill-switch.md:
+# the value may be 0 during an incident, so it is not asserted nonzero). The two
+# pub-<xid> routes must name the prod suffix, derived from BEX_BASE_DOMAIN here
+# rather than written as a literal, and must outrank every other route.
+echo "==> objectgw: credentials-only contract, no API access, pub- routes match the base domain"
+objectgw_domain="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  .spec.template.spec.containers[].env[]? | select(.name == "BEX_BASE_DOMAIN") | .value' \
+  "$tmp/bex-operator-prod.yaml")"
+scalar objectgw_domain "$objectgw_domain" || fail=1
+for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
+  render_name="$(basename "$render")"
+  objectgw_shape="$(yq -N -o=json -I=0 '
+    select(.kind == "Deployment" and .metadata.name == "bex-objectgw") |
+    {"count": 1,
+     "command": .spec.template.spec.containers[0].command,
+     "envNames": ([.spec.template.spec.containers[0].env[].name] | sort),
+     "envFrom": .spec.template.spec.containers[0].envFrom,
+     "metadataFallback": ([.spec.template.spec.containers[0].env[] | select(.name == "AWS_EC2_METADATA_DISABLED") | .value] | .[0]),
+     "readiness": .spec.template.spec.containers[0].readinessProbe.httpGet,
+     "automount": .spec.template.spec.automountServiceAccountToken,
+     "replicasIsInt": ((.spec.replicas | tag) == "!!int")}' "$render" | jq -cS .)"
+  want_shape='{"automount":false,"command":["/objectgw"],"count":1,"envFrom":[{"secretRef":{"name":"bex-object-storage-read","optional":true}}],"envNames":["AWS_EC2_METADATA_DISABLED","GOMEMLIMIT"],"metadataFallback":"true","readiness":{"path":"/healthz","port":"metrics"},"replicasIsInt":true}'
+  [ "$objectgw_shape" = "$want_shape" ] || {
+    echo "FAIL: bex-objectgw Deployment in $render_name is $objectgw_shape, want $want_shape" >&2
+    fail=1
+  }
+  objectgw_count="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "bex-objectgw") | .metadata.name' "$render" | grep -c . || true)"
+  [ "$objectgw_count" = "1" ] || {
+    echo "FAIL: $render_name has $objectgw_count bex-objectgw Deployments, want exactly 1" >&2
+    fail=1
+  }
+  objectgw_bindings="$(yq -N 'select(.kind == "RoleBinding" or .kind == "ClusterRoleBinding") | .subjects[]? | select(.kind == "ServiceAccount" and .name == "bex-objectgw") | .name' "$render" | grep -c . || true)"
+  [ "$objectgw_bindings" = "0" ] || {
+    echo "FAIL: bex-objectgw ServiceAccount is bound to a Role in $render_name; it needs no Kubernetes API access" >&2
+    fail=1
+  }
+  # Each public route: the exact host pattern (prod suffix when the render has one),
+  # the 20-character xid label, a priority above anything an App route reaches,
+  # and bex-objectgw:8080 behind it.
+  objectgw_routes="$(yq -N -o=json -I=0 '
+    select(.kind == "IngressRoute" and (.metadata.name | test("^bex-objectgw-public"))) |
+    {"name": .metadata.name, "entryPoints": .spec.entryPoints,
+     "match": .spec.routes[0].match, "highPriority": (.spec.routes[0].priority >= 1000),
+     "services": [.spec.routes[0].services[] | .name + ":" + (.port | tostring)],
+     "middlewares": [.spec.routes[0].middlewares[]?.name], "tls": .spec.tls}' "$render" | jq -cS . | sort | tr '\n' ' ')"
+  want_match="HostRegexp(\`^pub-[0-9a-v]{20}\\.${objectgw_domain//./\\.}\$\`)"
+  want_routes="$(jq -cnS --arg m "$want_match" '{"name":"bex-objectgw-public","entryPoints":["websecure"],"match":$m,"highPriority":true,"services":["bex-objectgw:8080"],"middlewares":[],"tls":{}}')"
+  want_routes_http="$(jq -cnS --arg m "$want_match" '{"name":"bex-objectgw-public-http","entryPoints":["web"],"match":$m,"highPriority":true,"services":["bex-objectgw:8080"],"middlewares":["bex-platform-host-fallback-https"],"tls":null}')"
+  [ "$objectgw_routes" = "$(printf '%s\n%s\n' "$want_routes" "$want_routes_http" | sort | tr '\n' ' ')" ] || {
+    echo "FAIL: pub- IngressRoutes in $render_name are $objectgw_routes, want match '$want_match' on websecure (tls: {}, default wildcard certificate) and web (redirect middleware), priority >= 1000, service bex-objectgw:8080" >&2
+    echo "      the host suffix is BEX_BASE_DOMAIN ('$objectgw_domain'); keep lego/operator/config/objectgw/ingressroute.yaml in sync with it" >&2
+    fail=1
+  }
+  yq -e 'select(.kind == "Middleware" and .metadata.name == "bex-platform-host-fallback-https")' - <"$render" >/dev/null 2>&1 || {
+    echo "FAIL: $render_name lost the bex-platform-host-fallback-https Middleware the pub- HTTP route redirects through" >&2
+    fail=1
+  }
+done
+objectgw_scrape="$(yq -N '
+  .spec.source.helm.values | from_yaml |
+  .serverFiles."prometheus.yml".scrape_configs[] |
+  select(.job_name == "bex-objectgw") |
+  .static_configs[0].targets[0] + "|" + .metric_relabel_configs[0].regex + "|" + .metric_relabel_configs[0].action' \
+  deploy/gitops/base/prometheus.yaml)"
+[ "$objectgw_scrape" = "bex-objectgw.bex-system.svc:9090|bex_objectgw_.*|keep" ] || {
+  echo "FAIL: bex-objectgw scrape job is '$objectgw_scrape', want bex-objectgw.bex-system.svc:9090 keeping bex_objectgw_.*" >&2
+  fail=1
+}
+
 # Static publish pull-secret custody (w1/m57, w9/012 chain #3): the publish Job's
 # extract initContainer pulls the built tenant image with bex-registry-pull in
 # the BUILD namespace, minted out-of-band by registry-secrets.sh as the

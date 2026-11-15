@@ -1685,6 +1685,37 @@ groups:
           summary: "{{ $labels.source }} usage has an hour unmetered for over 24h"
           description: "The usage rollup has not metered an hour of the {{ $labels.source }} source for more than 24h. Once that hour is past the 48h catch-up window it is skipped for good: never billed, and Metered through passes it (w4/496). Restore the source (Prometheus, the meter behind it, or bex-api's rollup) within the next day; the next hourly pass meters the hour. Runbook: docs/ADR023-usage-metering.md (Degraded hours and the watermark)"
 
+      # Public object-storage egress against Wasabi's fair-use rule
+      # (docs/ADR112-object-storage.md D4, w21/m417 t004). The gauge is the
+      # month-to-date total of every object-store download bex serves (all
+      # workspaces, presigned Contract A and B reads and the public pub- host
+      # gateway), from the usage_hourly shadow meter, sampled every minute by
+      # bex-api. It resets to near zero on the first of the month, so there is
+      # no `increase` window: Prometheus keeps only 3 days.
+      #
+      # FIRST values, not measured ones: 500 GB and 900 GB sit conservatively
+      # under the 1 TB the shared account's minimum plan stores. Reset both
+      # from the production walk's measurement (w21/m417 t008).
+      - alert: ObjectStoragePublicEgressHigh
+        expr: |
+          max(bex_usage_object_storage_egress_month_bytes) > 500e9
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Object storage egress is {{ $value | humanize }}B this month"
+          description: "bex has served over 500 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. This threshold is a FIRST value chosen conservatively below the 1 TB account minimum; reset it from the production walk's measurement (w21/m417 t008). Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
+
+      - alert: ObjectStoragePublicEgressCritical
+        expr: |
+          max(bex_usage_object_storage_egress_month_bytes) > 900e9
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Object storage egress is {{ $value | humanize }}B this month, near the fair-use limit"
+          description: "bex has served over 900 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. This threshold is a FIRST value chosen conservatively below the 1 TB account minimum; reset it from the production walk's measurement (w21/m417 t008). Scale objectgw to zero now with the kill switch (one reviewed change in lego/operator/config/prod/kustomization.yaml), then find the bucket. Runbook: docs/runbooks/objectgw-kill-switch.md"
+
       - alert: BillingPermanentReject
         expr: |
           bex_billing_enabled == 1
