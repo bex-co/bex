@@ -1,6 +1,6 @@
 # w32 · m380 — A directory copied into or out of a sandbox keeps its symlinks and hard links, as on Render
 
-**Worker:** worker32 **Goal:** `bex sandboxes copy` (and the Render SDK's directory upload and download) transfers a directory that contains symbolic links or hard links. Links arrive as links, sockets and FIFOs are skipped, and a download that cannot be served answers its real cause instead of `409 file ticket already used` or `503 sandbox file gateway unavailable`. **Status:** blocked (t001–t004, t007, t008 done; t005 waits on the production deploy)
+**Worker:** worker32 **Goal:** `bex sandboxes copy` (and the Render SDK's directory upload and download) transfers a directory that contains symbolic links or hard links. Links arrive as links, sockets and FIFOs are skipped, and a download that cannot be served answers its real cause instead of `409 file ticket already used` or `503 sandbox file gateway unavailable`. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | A downloaded directory archive carries the sandbox's symlinks and hard links; special entries are skipped — **DONE** | 1h | t001 |
 | t003 | A download that fails before its first byte answers its cause; bex-api never replays a file transfer to the gateway — **DONE** | 1h | — |
 | t004 | Blast radius: agent-session attachment and skill uploads, the destination-path symlink rule, limits, and the docs that grade copy — **DONE** | 30m | t001, t002, t003 |
-| t005 | Production walk with the release CLI | 45m | t004 |
-| t006 | Render parity | 20m | t005 |
-| t007 | Simplify | 15m | t006 |
+| t005 | Production walk with the release CLI — **DONE** | 45m | t004 |
+| t006 | Render parity — **DONE** | 20m | t005 |
+| t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -132,3 +132,9 @@ GET  <uri for up-hardonly, no links> (HTTP/1.1) → 200 Content-Type: applicatio
   - [w32/023](../../023.md): a directory over 10,000 entries is refused on upload and fails mid-stream on download without naming its cause. t003 had expected an over-limit download to name its cause, but the limit trips after bytes are out.
   - [w32/024](../../024.md): a download source that is or passes through a symlink answers the upload's "destination exists" `409`.
 - **Rechecked on pin `2d9bbae6bb8d`** (2026-11-14 22:48–23:04 UTC, with the rebuilt OpenSandbox controller; sandbox `sbx-dbseaf0rdlgs739t6b10`, since terminated): a downloaded directory kept `rel-link -> top.txt`, `dirlink -> sub` and a hard link (link count 2). An uploaded tree kept `link -> with space.txt`, `abs -> /etc/hostname` and `dangling -> nope`.
+
+## Closed 2026-11-14 (`/loopx w32`)
+
+- **t005:** `/qa-find-bugs-cli` sweep 23 walked every DoD bullet above with the release CLI on pin `c99e7815ebec` and rechecked it on `2d9bbae6bb8d` (the live check section). Both sandboxes read `terminated`. The crafted-archive refusals are not producible with the release CLI; `TestArchiveStillRefusesWritesThroughLinksAndEscapingHardLinks` (`sshgateway/sandboxfiles/links_test.go:125`) covers them.
+- **t006 (Render parity):** one route pair and one rule serve every surface. The CLI and the Render SDK (`copy_to`/`copy_from`, `scripts/render-sdk-compat/scenario.py`) both mint with `POST /v1/sandboxes/{id}/files/{operation}/token` (`sandbox/rest.go:214`) and stream through `ConnectFileUploadPattern`/`ConnectFileDownloadPattern` (`sandbox/file_connect.go:42-43`) to the gateway, where `copyArchive` (`sshgateway/sandboxfiles/sandboxfiles.go:712`) is the only archive rule, in both directions. GraphQL and MCP have no file transfer, and the dashboard has no sandbox file surface. ADR018's "Links in a copied directory" row now reads ✅. The live SDK run belongs to w32/m284, which is blocked on QA sign-in.
+- **Follow-ups filed by the walk:** [w32/023](../../023.md) (the 10,000-entry cap, which t003 expected to fail before streaming) and [w32/024](../../024.md) (a symlinked download source).

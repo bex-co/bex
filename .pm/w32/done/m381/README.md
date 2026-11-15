@@ -1,6 +1,6 @@
 # w32 · m381 — A command keeps its sandbox awake until it finishes, even after the client disconnects, as on Render
 
-**Worker:** worker32 **Goal:** a command started in a sandbox (CLI `sandboxes exec`, the Render SDK's `exec`, REST, the connect-token run path or MCP `sandbox_exec`) keeps the sandbox active for as long as it runs, whether or not its client is still connected. The sandbox's execution history shows the command as running until it exits, then records its exit code. **Status:** blocked (t001–t004, t007, t008 done; t005 waits on the production deploy)
+**Worker:** worker32 **Goal:** a command started in a sandbox (CLI `sandboxes exec`, the Render SDK's `exec`, REST, the connect-token run path or MCP `sandbox_exec`) keeps the sandbox active for as long as it runs, whether or not its client is still connected. The sandbox's execution history shows the command as running until it exits, then records its exit code. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | The idle sweeper does not suspend a sandbox while a command it started is running; the idle window runs from that command's end — **DONE** | 2h | t001 |
 | t003 | Execution history: a command whose client left stays running in the history until it exits, then carries its exit code — **DONE** | 1.5h | t001 |
 | t004 | Blast radius: the gateway's 4 h session cap, bex-api and ssh-gateway restarts, MCP's buffered exec, file transfers, agent-session sandboxes — **DONE** | 30m | t002, t003 |
-| t005 | Production walk with the release CLI | 45m | t002, t003, t004 |
-| t006 | Render parity | 20m | t005 |
+| t005 | Production walk with the release CLI — **DONE** | 45m | t002, t003, t004 |
+| t006 | Render parity — **DONE** | 20m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -131,3 +131,9 @@ Nothing is left uncovered, so no follow-up is filed. The runtime timeout still e
   - `cat done2` printed `13:43:47`. The execution record read `stoppedAt` `2026-11-14T13:43:47Z` and `exitCode: 0`.
 - **Not run:** the connected-command control from 2026-11-13. Both sandboxes were stopped and read `terminated`.
 - **Rechecked on pin `2d9bbae6bb8d`** (2026-11-14 22:48–23:04 UTC, with the rebuilt OpenSandbox controller; sandbox `sbx-dbseaf0rdlgs739t6b10`, since terminated): a CLI killed 5 s into `sleep 330` left the sandbox `running` until the command ended (22:57:25, `exitCode: 0`). It read `suspended` from 23:02:44, about 320 s later, so w9/m407's suspend storage cap did not refuse the idle suspend in `bex-canary`.
+
+## Closed 2026-11-14 (`/loopx w32`)
+
+- **t005:** `/qa-find-bugs-cli` sweep 23 ran every step with the release CLI on pin `c99e7815ebec` and rechecked it on `2d9bbae6bb8d` (the live check section): SIGTERM and SIGINT disconnects, the real `stoppedAt` and `exitCode: 0`, and a leftover background process that did not keep the sandbox up. The connected-command control from 2026-11-13 was not rerun; a connected command never relied on the registry.
+- **t006 (Render parity):** every exec surface runs through the registry. REST stream exec (`sandbox/rest.go:176`) and the connect-token run path (`sandbox/connect.go:296`) call `StreamExec`, and MCP `sandbox_exec` (`sandbox/mcp.go:145`) calls `ExecBuffered`. Both dial through `dialGateway`, which wraps an ordinary sandbox's command with `execArgv(command, registry)` (`sandbox/exec.go:188`). History reads the same records on every surface: REST `/execs` (`rest.go:141`) and MCP `list_sandbox_executions` (`mcp.go:138`) call `ListExecutions`, and GraphQL `sandboxExecutions`/`sandboxExecution` (`graphql.go:196`, `:207`) call `listExecutionViews`/`GetExecution`. Each reconciles through `closeStaleExecutions` first. GraphQL has no exec, and the dashboard has no sandbox exec surface. ADR104's row no longer cites m381, and ADR018's idle row records the walk.
+- **Noted, not filed:** a reconciled `stoppedAt` has whole seconds (the in-sandbox `date +%s`), while a connected command's has microseconds. Render's precision is undocumented.
