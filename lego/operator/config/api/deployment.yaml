@@ -567,6 +567,24 @@ spec:
                   name: bex-agent-attachments
                   key: BEX_AGENT_ATTACHMENTS_S3_SECRET_KEY
                   optional: true
+            # ADR112 object storage: the out-of-band bex-object-storage Secret
+            # installed by scripts/object-storage-s3-credentials.sh. The
+            # credential is the only setting; endpoints, buckets, regions and
+            # caps are constants in internal/objectstorage. Optional: absent
+            # means the Render object routes answer their named 404 and the
+            # Cloudflare-shaped routes answer 10042.
+            - name: BEX_OBJECT_STORAGE_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-object-storage
+                  key: BEX_OBJECT_STORAGE_ACCESS_KEY
+                  optional: true
+            - name: BEX_OBJECT_STORAGE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-object-storage
+                  key: BEX_OBJECT_STORAGE_SECRET_KEY
+                  optional: true
             # ADR090 platform model route (2026-10-23): the claude profile of
             # each allowlisted workspace runs on OpenRouter with a platform-owned
             # key, model pinned by the gateway. The key arrives from the
