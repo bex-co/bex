@@ -892,26 +892,47 @@ func matchRoutePattern(pattern, reqPath string) (string, map[string]string, bool
 	}
 	patSegs := strings.Split(base, "/")
 	reqSegs := strings.Split(reqPath, "/")
-	if hasSplat && len(reqSegs) <= len(patSegs) || !hasSplat && len(reqSegs) != len(patSegs) {
+	if !segmentsFit(hasSplat, len(patSegs), len(reqSegs)) {
 		return "", nil, false
 	}
-	captures := map[string]string{}
-	for i, seg := range patSegs {
-		if name, ok := routepattern.PlaceholderName(seg); ok {
-			if reqSegs[i] == "" {
-				return "", nil, false
-			}
-			captures[name] = reqSegs[i]
-			continue
-		}
-		if seg != reqSegs[i] {
-			return "", nil, false
-		}
+	captures, ok := routeCaptures(patSegs, reqSegs)
+	if !ok {
+		return "", nil, false
 	}
 	if !hasSplat {
 		return "", captures, true
 	}
 	return strings.Join(reqSegs[len(patSegs):], "/"), captures, true
+}
+
+// segmentsFit reports whether a request's segments can match a pattern's: a
+// trailing "/*" consumes any number beyond the pattern's segments, and
+// without one the counts must be equal.
+func segmentsFit(splat bool, pattern, request int) bool {
+	if splat {
+		return request > pattern
+	}
+	return request == pattern
+}
+
+// routeCaptures matches pattern segments against request segments, each
+// ":name" placeholder taking exactly one non-empty request segment. ok is
+// false on the first mismatch.
+func routeCaptures(patSegs, reqSegs []string) (map[string]string, bool) {
+	captures := map[string]string{}
+	for i, seg := range patSegs {
+		if name, ok := routepattern.PlaceholderName(seg); ok {
+			if reqSegs[i] == "" {
+				return nil, false
+			}
+			captures[name] = reqSegs[i]
+			continue
+		}
+		if seg != reqSegs[i] {
+			return nil, false
+		}
+	}
+	return captures, true
 }
 
 const (

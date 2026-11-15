@@ -158,12 +158,25 @@ func (a *App) RuntimeOnlyPorts(published []int32) []int32 {
 		if len(published)+len(out) >= MaxImagePorts {
 			break
 		}
-		if port < 1 || port > 65535 || IsReservedImagePort(port) || web && port == PrivateHTTPPort || slices.Contains(published, port) {
+		if !publishableRuntimePort(port, web, published) {
 			continue
 		}
 		out = append(out, port)
 	}
 	return out
+}
+
+// publishableRuntimePort reports whether a discovered listener joins the
+// published set: a real TCP port that is not reserved, not a web service's
+// 10000 route to its primary HTTP server, and not already published.
+func publishableRuntimePort(port int32, web bool, published []int32) bool {
+	if port < 1 || port > 65535 || IsReservedImagePort(port) {
+		return false
+	}
+	if web && port == PrivateHTTPPort {
+		return false
+	}
+	return !slices.Contains(published, port)
 }
 
 // listening is every port an instance of either revision accepts, ascending.
@@ -246,10 +259,17 @@ func (a *App) ServingPort() int32 {
 	if a.Status.EnvPort > 0 {
 		return a.Status.EnvPort
 	}
-	if a.Status.DetectedPort > 0 && (a.Spec.Port <= 0 || a.Spec.Port == DefaultPort) {
+	if a.Status.DetectedPort > 0 && !a.Spec.hasExplicitPort() {
 		return a.Status.DetectedPort
 	}
 	return a.Spec.EffectivePort()
+}
+
+// hasExplicitPort reports whether spec.port names a port itself rather than
+// being unset or the stored default. Only an explicit port outranks the
+// detected listener (w5/m149).
+func (s AppSpec) hasExplicitPort() bool {
+	return s.Port > 0 && s.Port != DefaultPort
 }
 
 // ServicePort is the published primary port; zero means discovery is pending.

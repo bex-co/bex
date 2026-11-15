@@ -337,7 +337,7 @@ func (ch *chatState) awaitNextTurn(turns int) error {
 		if err != nil {
 			return err
 		}
-		if ok && (s.Turns > turns || !settled(s) || (!ch.readOnly && s.PendingMessages == 0)) {
+		if ok && ch.turnToWatch(s, turns) {
 			return nil
 		}
 		line, fired, err := ch.next(nil, time.After(delay))
@@ -352,6 +352,17 @@ func (ch *chatState) awaitNextTurn(turns int) error {
 			return err
 		}
 	}
+}
+
+// turnToWatch reports that the wait is over: the server started a turn beyond
+// the one this chat saw, a turn is still in flight, or the queue emptied
+// without one starting (a message was removed). A read-only chat never waits
+// on that empty queue, because it cannot add to it.
+func (ch *chatState) turnToWatch(s session, turns int) bool {
+	if s.Turns > turns || !settled(s) {
+		return true
+	}
+	return !ch.readOnly && s.PendingMessages == 0
 }
 
 // input handles one typed line: a command, or a message, which goes to the
