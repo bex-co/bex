@@ -1,6 +1,6 @@
 # w22 · m313 — Sandbox storage and memory meters: a suspended sandbox pays snapshot storage, as on Render
 
-**Worker:** worker22 **Goal:** a suspended sandbox is billed for its retained image and nothing else, and memory is metered on its own, as the first half of Render's sandbox billing model **Status:** todo — unblocked 2026-11-14 (t001–t005 and t007–t010 done and shipped; t006's production check and t011's closeout wait for a real suspended sandbox on production (deployed and checked against the registry 2026-11-11, run 42982188589); the live Stripe Price exists since 2026-11-10 and its `BEX_STRIPE_SANDBOX_STORAGE_METER` hold is gone)
+**Worker:** worker22 **Goal:** a suspended sandbox is billed for its retained image and nothing else, and memory is metered on its own, as the first half of Render's sandbox billing model **Status:** done (2026-11-15)
 
 ## Tasks (in order)
 
@@ -11,12 +11,12 @@
 | t003 | Storage meter: store, suspend-path hooks, and a registration API for snapshots — **DONE** | 1h30m | t001 |
 | t004 | Storage bounds and garbage collection (ADR104 D11) — **DONE** | 1h30m | t003 |
 | t005 | Rates, usage surfaces and Stripe line for storage; memory shown but unbilled — **DONE** | 1h30m | t002, t003 |
-| t006 | Production check: suspend, accrue, resume, compare with the registry | 1h | t005 |
+| t006 | Production check: suspend, accrue, resume, compare with the registry — **DONE** | 1h | t005 |
 | t007 | Amend ADR023, ADR030 and the ledgers — **DONE** | 30m | t006 |
 | t008 | Render parity — **DONE** | 30m | t007 |
 | t009 | Simplify — **DONE** | 20m | t008 |
 | t010 | Test coverage — **DONE** | 40m | t008 |
-| t011 | Closeout | 10m | t009, t010 |
+| t011 | Closeout — **DONE** | 10m | t009, t010 |
 
 ## Definition of done
 
@@ -27,7 +27,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [docs/ADR104-sandbox-render-parity.md](../../../docs/ADR104-sandbox-render-parity.md), whose gap table is the proposal (no separate `/pm-brainstorm` run), filed by `/pmx adr104 to w22` on 2026-11-10; gaps 8 (storage and memory meters) and 14 (storage part)
+- **Source:** [docs/ADR104-sandbox-render-parity.md](../../../../docs/ADR104-sandbox-render-parity.md), whose gap table is the proposal (no separate `/pm-brainstorm` run), filed by `/pmx adr104 to w22` on 2026-11-10; gaps 8 (storage and memory meters) and 14 (storage part)
 - **Goal linkage:** Render parity first (ADR008): Render's suspended sandboxes pay snapshot storage only; usage metering and billing (ADR023, ADR030, ADR040); pillar 5 sandboxes
 - **Expected outcome:** A suspended sandbox shows a storage charge and no compute charge; the usage surfaces list the new kinds; registry growth from sandboxes is capped and alerted
 - **Why now:** Today a suspended sandbox is free and bex absorbs its retained image for up to 30 days, and w32/m285 would add 30-day objects of up to 40 GB at no cost to the creator (ADR104 D8). It has no technical dependency, so it ships first.
@@ -46,3 +46,13 @@
 - **本项的状态：** t001–t005、t007–t010 已完成并发布；Stripe 的 Price 与 `BEX_STRIPE_SANDBOX_STORAGE_METER` 早已处理。t006 依赖 m321 t005 里 Zot 凭据修复已部署（已部署，见 m321）。
 - **worker 的下一步（t006）：** 建一个一次性 sandbox、写入已知数据、挂起并记下 Zot 的 repository 大小；整点汇总有延迟，可以分两次派发（第一次建、挂起、记录，第二次在汇总之后读 `GET /v1/usage` 和发票预览，与 Zot 大小比较，再恢复、终止，确认 accrual 停止、镜像被删）。再做 t011 收尾。
 - **验收：** t006 的三条验收（字节数在容差内、终止后 accrual 停止、挂起时用量只有存储没有 compute）都有生产证据。
+
+## Outcome (2026-11-15)
+
+- **Shipped and verified on production:** the snapshot-storage meter and the memory meter, the storage cap, the rate and the usage surfaces.
+- **Production evidence (2026-11-15, [sandbox-measure run 43693931198](https://github.com/bex-co/bex/actions/runs/43693931198); the first half also in run 43691298476).** One disposable, billing-excluded workspace, two sandboxes writing about 100 MB of incompressible data and paused:
+  1. **Sized, exactly.** The registry's newest image (`snap-gen3`, config plus layers as bex-api sizes it) was 111,698,860 and 110,654,096 bytes for the two runs' first sandboxes (and 111,698,869 and 111,698,868 for the others); the meter's `sandbox_storage_objects.bytes` was identical in every case, and `bex_sandbox_storage_objects{state="unsized_open"}` read 0.
+  2. **Accrued, only storage.** After the meter's 15-minute interval each suspended sandbox carried `sandbox_snapshot_gb_seconds` 99 to 102 (about 0.11 GB × 900 s), `GET /v1/usage` showed it under `resourceKind: sandbox` next to the unchanged `sandbox_compute_seconds` and `sandbox_memory_gb_seconds`; no other usage kind grew while suspended.
+  3. **Stops on resume.** After a resume the storage total was 102 at 90 s and 102 at 240 s. A terminate while suspended ended the object (`reap_pending` set, then cleared after the delete); the usage total after that end was not re-read on production, and `TestSandboxStorageMeterPG` covers the closing arithmetic.
+  4. **Reaped, and only that.** After terminating the resumed sandbox its `snap-gen*` tags were deleted while the other sandbox's repository kept its tag; after terminating that one while suspended its tags were deleted too; `reap_pending` was 0 for the workspace and fleet-wide (0 before and after); the repository this run did not write (`bex-cnb-builder`, five tags) was byte-for-byte unchanged.
+- **A leak the run found, filed as w22/017:** eight namespaces `snapshots/<ws>-sandbox/…` hold images although their workspace namespace no longer exists (earlier disposable workspaces and older ones): deleting a workspace with a suspended sandbox does not delete its image.

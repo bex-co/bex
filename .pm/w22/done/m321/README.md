@@ -1,6 +1,6 @@
 # w22 · m321 — The storage meter's registry credentials: the operator mints a read user and a delete user for bex-api
 
-**Worker:** worker22 **Goal:** bex-api can read a suspended sandbox's image size from Zot and delete a terminated sandbox's `snap-gen` tags, through two operator-managed Zot users scoped to `snapshots/**`, with no admin credential in bex-api **Status:** todo — unblocked 2026-11-14 (the board validator gate, w22/015, shipped in `84c61a59c`) (t001–t004, t006 and t007 done and shipped; deployed 2026-11-11, run 42982188589; the first real reap showed both users locked out (403) of every per-workspace `snapshots/<ws>-sandbox/**` pattern, fixed in the operator and proven on a real Zot; t005's end-to-end check and t008's closeout wait for that fix to deploy, a real suspended sandbox and a real tag deletion)
+**Worker:** worker22 **Goal:** bex-api can read a suspended sandbox's image size from Zot and delete a terminated sandbox's `snap-gen` tags, through two operator-managed Zot users scoped to `snapshots/**`, with no admin credential in bex-api **Status:** done (2026-11-15)
 
 ## Tasks (in order)
 
@@ -10,10 +10,10 @@
 | t002 | Operator: mint the two Zot users, their ACL entries and the Secret — **DONE** | 1h30m | w22/m321/t001 |
 | t003 | Hook it into the operator: reconcile, RBAC and manifests — **DONE** | 1h | w22/m321/t002 |
 | t004 | bex-api: read the Secret into the storage meter's environment — **DONE** | 45m | w22/m321/t003 |
-| t005 | Production check: a suspended sandbox is sized, a terminated one's images are deleted | 1h | w22/m321/t004 |
+| t005 | Production check: a suspended sandbox is sized, a terminated one's images are deleted — **DONE** | 1h | w22/m321/t004 |
 | t006 | Simplify — **DONE** | 20m | w22/m321/t005 |
 | t007 | Test coverage — **DONE** | 40m | w22/m321/t005 |
-| t008 | Closeout | 10m | w22/m321/t006, w22/m321/t007 |
+| t008 | Closeout — **DONE** | 10m | w22/m321/t006, w22/m321/t007 |
 
 ## Definition of done
 
@@ -23,7 +23,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** w22/006 (filed by w22/m313 t004 on 2026-11-10), promoted 2026-11-10 by `/loopx w22`; [docs/ADR023-usage-metering.md](../../../docs/ADR023-usage-metering.md) § Sandbox snapshot storage, [docs/ADR104-sandbox-render-parity.md](../../../docs/ADR104-sandbox-render-parity.md) D11
+- **Source:** w22/006 (filed by w22/m313 t004 on 2026-11-10), promoted 2026-11-10 by `/loopx w22`; [docs/ADR023-usage-metering.md](../../../../docs/ADR023-usage-metering.md) § Sandbox snapshot storage, [docs/ADR104-sandbox-render-parity.md](../../../../docs/ADR104-sandbox-render-parity.md) D11
 - **Goal linkage:** Render parity first (ADR008): a suspended sandbox pays snapshot storage as on Render, which needs the meter to read sizes; D11's bound on registry growth needs the reaper
 - **Expected outcome:** the storage meter and the reaper work on production without anyone hand-setting a credential, and the registry stops keeping a terminated sandbox's images forever
 - **Why now:** w22/m313 shipped the meter and the reaper with no credential to run them: sizing is off, so no storage is billed and `SandboxStorageUnsized` fires once a sandbox is suspended
@@ -43,3 +43,13 @@
 - **验收：** DoD 第三条有生产证据：一个镜像被计量、一个终止 sandbox 的 tags 被删、其他 repository 不动。
 - **仅剩的机械卡点：** `scripts/pm-board-validate.py` 会把本目录从 `blocked/` 移回 `w22/m321` 判成"新增了 w4 已用的编号 m321"（它文档里写同一 workstream 内移动不算重复，实现却按目录比较）。已记为 w22/015；它发布后，`/pm unblock w22/m321` 把本目录移回 `w22/m321`，worker 做 t005 和 t008。
 - **机械卡点已清（2026-11-14）：** w22/015 已发布（`84c61a59c`），`/pm unblock` 把本目录移回 `w22/m321`；`pm-board-validate` 对这次移动通过。worker 做 t005 和 t008。
+
+## Outcome (2026-11-15)
+
+- **Shipped and verified on production:** two operator-minted Zot users, the Secret bex-api reads them from, sizing and reaping.
+- **Production evidence (2026-11-15, [sandbox-measure run 43693931198](https://github.com/bex-co/bex/actions/runs/43693931198); the first half also in run 43691298476).** One disposable, billing-excluded workspace, two sandboxes writing about 100 MB of incompressible data and paused:
+  1. **Sized, exactly.** The registry's newest image (`snap-gen3`, config plus layers as bex-api sizes it) was 111,698,860 and 110,654,096 bytes for the two runs' first sandboxes (and 111,698,869 and 111,698,868 for the others); the meter's `sandbox_storage_objects.bytes` was identical in every case, and `bex_sandbox_storage_objects{state="unsized_open"}` read 0.
+  2. **Accrued, only storage.** After the meter's 15-minute interval each suspended sandbox carried `sandbox_snapshot_gb_seconds` 99 to 102 (about 0.11 GB × 900 s), `GET /v1/usage` showed it under `resourceKind: sandbox` next to the unchanged `sandbox_compute_seconds` and `sandbox_memory_gb_seconds`; no other usage kind grew while suspended.
+  3. **Stops on resume.** After a resume the storage total was 102 at 90 s and 102 at 240 s. A terminate while suspended ended the object (`reap_pending` set, then cleared after the delete); the usage total after that end was not re-read on production, and `TestSandboxStorageMeterPG` covers the closing arithmetic.
+  4. **Reaped, and only that.** After terminating the resumed sandbox its `snap-gen*` tags were deleted while the other sandbox's repository kept its tag; after terminating that one while suspended its tags were deleted too; `reap_pending` was 0 for the workspace and fleet-wide (0 before and after); the repository this run did not write (`bex-cnb-builder`, five tags) was byte-for-byte unchanged.
+- **A leak the run found, filed as w22/017:** eight namespaces `snapshots/<ws>-sandbox/…` hold images although their workspace namespace no longer exists (earlier disposable workspaces and older ones): deleting a workspace with a suspended sandbox does not delete its image.
