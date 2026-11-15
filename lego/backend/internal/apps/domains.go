@@ -1729,16 +1729,8 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 			if err != nil {
 				return DomainView{}, false, err
 			}
-			if err := s.checkCustomDomainQuota(ctx, app, len(rows)); err != nil {
+			if err := s.refuseNewHostClaim(ctx, app, hostname, own, len(rows), false); err != nil {
 				return DomainView{}, false, err
-			}
-			if s.reservedHost(own, hostname) {
-				return DomainView{}, false, errReservedHostname(hostname)
-			}
-			if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
-				return DomainView{}, false, err
-			} else if claimed {
-				return DomainView{}, false, errDomainInUse()
 			}
 		}
 		claim, created, err := claims.AddDomainClaim(ctx, appID, hostname, redirectForName)
@@ -1770,18 +1762,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 	// Claim checks apply only to a host this App doesn't already serve; a host
 	// it does serve is only having its redirect rewritten.
 	if !present {
-		if err := s.checkCustomDomainQuota(ctx, app, claimedHostCount(app)); err != nil {
-			return DomainView{}, false, err
-		}
-		if s.reservedHost(own, hostname) {
-			return DomainView{}, false, errReservedHostname(hostname)
-		}
-		if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
-			return DomainView{}, false, err
-		} else if claimed {
-			return DomainView{}, false, errDomainInUse()
-		}
-		if err := s.requireDomainTraffic(ctx, app, hostname); err != nil {
+		if err := s.refuseNewHostClaim(ctx, app, hostname, own, claimedHostCount(app), true); err != nil {
 			return DomainView{}, false, err
 		}
 	}
@@ -1805,6 +1786,29 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 		return DomainView{}, false, err
 	}
 	return s.domainView(ctx, app, hostname, s.platformHost(app)), !present, nil
+}
+
+// refuseNewHostClaim runs the checks a host new to this App must pass: the
+// workspace quota, the reserved and own platform hosts, another App's claim,
+// and — on the CR path, which routes traffic before the operator serves it —
+// the DNS traffic that proves the host points here. The order decides which
+// error a caller sees when several apply.
+func (s *Service) refuseNewHostClaim(ctx context.Context, app *appv1alpha1.App, hostname, own string, count int, requireTraffic bool) error {
+	if err := s.checkCustomDomainQuota(ctx, app, count); err != nil {
+		return err
+	}
+	if s.reservedHost(own, hostname) {
+		return errReservedHostname(hostname)
+	}
+	if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
+		return err
+	} else if claimed {
+		return errDomainInUse()
+	}
+	if requireTraffic {
+		return s.requireDomainTraffic(ctx, app, hostname)
+	}
+	return nil
 }
 
 // setHostRedirect updates one source->canonical mapping and keeps the empty

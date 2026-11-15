@@ -3309,11 +3309,7 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 	// very next reconcile — no extra step, because this is a pure function of
 	// the current spec.
 	if r.suspendedRoutable(app) {
-		activatorSvc, err := r.reconcileActivatorAlias(ctx, app)
-		if err != nil {
-			return "", 0, err
-		}
-		return activatorSvc, int32(r.ActivatorPort), nil
+		return r.activatorBackend(ctx, app)
 	}
 	// Route through the activator whenever the App's own Service has no ready
 	// endpoint AND the activator is this App's wake path — not only once the
@@ -3335,12 +3331,8 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 	// plan, not only a sleep-eligible one: there is no endpoint and nothing to
 	// wake, and the activator answers its first-deploy response instead of
 	// Traefik's raw "no available server" (w4/m235).
-	if autoHibernating || (!serving && r.ActivatorService != "" && (autoSleepEligible(app) || awaitingFirstServe(app))) {
-		activatorSvc, err := r.reconcileActivatorAlias(ctx, app)
-		if err != nil {
-			return "", 0, err
-		}
-		return activatorSvc, int32(r.ActivatorPort), nil
+	if autoHibernating || (!serving && r.activatorIsWakePath(app)) {
+		return r.activatorBackend(ctx, app)
 	}
 	// The Services keep the serving network's ports until the candidate is
 	// promoted, so the route names the serving primary: a port-changing or
@@ -3355,6 +3347,23 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 		}
 	}
 	return app.Name, int32(port), nil
+}
+
+// activatorBackend reconciles this App's activator alias and returns it as the
+// Ingress backend.
+func (r *AppReconciler) activatorBackend(ctx context.Context, app *appv1alpha1.App) (string, int32, error) {
+	svc, err := r.reconcileActivatorAlias(ctx, app)
+	if err != nil {
+		return "", 0, err
+	}
+	return svc, int32(r.ActivatorPort), nil
+}
+
+// activatorIsWakePath reports whether the activator answers this App's host
+// before its own Service can: a sleep-eligible App past its idle TTL, or a
+// public App whose first release has never served.
+func (r *AppReconciler) activatorIsWakePath(app *appv1alpha1.App) bool {
+	return r.ActivatorService != "" && (autoSleepEligible(app) || awaitingFirstServe(app))
 }
 
 // awaitingFirstServe reports a public App whose first release has never

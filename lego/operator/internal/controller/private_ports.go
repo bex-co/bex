@@ -267,13 +267,7 @@ func (r *AppReconciler) declaredPortsClosed(ctx context.Context, ip string, netw
 // the next pass probes and publishes on it. It returns text for the stall
 // message: between scans, the last scan's.
 func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
-	network := app.Status.ImageNetwork
-	if r.PortScanner == nil || !app.Spec.UsesImagePorts() || app.Spec.HealthCheckPath != "" || network == nil ||
-		int(network.PrimaryPort) != port || network.Revision != releaseRevision(app) ||
-		dep.Spec.Template.Labels[labelRevision] != network.Revision || rolloutDeadline(app, dep) != nil {
-		return ""
-	}
-	if _, configured := app.ConfiguredImagePort(); configured {
+	if !r.privatePrimaryRescueApplies(app, dep, port) {
 		return ""
 	}
 	key, pod := r.dueUnreadyScan(ctx, app, dep)
@@ -281,6 +275,24 @@ func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alph
 		return r.replayPortHint(ctx, key, dep, port)
 	}
 	return r.keepPortHint(key, pod, port, r.scanForPrivatePrimary(ctx, app, key, pod.Status.PodIP, port))
+}
+
+// privatePrimaryRescueApplies reports whether the release still needs its
+// private primary rescued: the service can be scanned, has neither a PORT nor
+// a configured port, and its image network is the serving release's with no
+// rollout still in flight.
+func (r *AppReconciler) privatePrimaryRescueApplies(app *appv1alpha1.App, dep *appsv1.Deployment, port int) bool {
+	network := app.Status.ImageNetwork
+	if r.PortScanner == nil || !app.Spec.UsesImagePorts() || app.Spec.HealthCheckPath != "" {
+		return false
+	}
+	if _, configured := app.ConfiguredImagePort(); configured {
+		return false
+	}
+	return network != nil && int(network.PrimaryPort) == port &&
+		network.Revision == releaseRevision(app) &&
+		dep.Spec.Template.Labels[labelRevision] == network.Revision &&
+		rolloutDeadline(app, dep) == nil
 }
 
 // scanForPrivatePrimary is detectPrivatePrimary's scan of ip.

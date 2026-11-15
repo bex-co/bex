@@ -35,14 +35,22 @@ var postgresInputAliases = map[string]string{
 	"basic_4gb":   "basic-4gb",
 }
 
+// postgresSpecIDs is the spec-based spelling of each rung that has one — the
+// "c-" half of postgresInputAliases, spelled out so the reverse lookup needs
+// no string heuristic and cannot depend on map iteration order.
+var postgresSpecIDs = map[string]string{
+	"basic-256mb": "0.1c-256mb",
+	"basic-1gb":   "0.5c-1g",
+	"pro-4gb":     "1c-4g",
+	"basic-4gb":   "2c-4g",
+}
+
 // PostgresSpecID is a Postgres rung's Render spec-based plan id ("0.1c-256mb"
 // for basic-256mb), for a message about a plan the caller did not name; a rung
 // without one keeps its id (w8/246).
 func PostgresSpecID(id string) string {
-	for alias, target := range postgresInputAliases {
-		if target == id && strings.Contains(alias, "c-") {
-			return alias
-		}
+	if spec, ok := postgresSpecIDs[id]; ok {
+		return spec
 	}
 	return id
 }
@@ -100,7 +108,10 @@ func (c ValkeyCatalog) CanonicalID(id string) string {
 	if _, ok := c.byID[id]; ok {
 		return id
 	}
-	if underscored := strings.ReplaceAll(id, " ", "_"); c.byID[underscored].ID != "" {
+	// Render's Blueprint schema spells a legacy name with a space; the catalog
+	// keys it with the underscore its API uses.
+	underscored := strings.ReplaceAll(id, " ", "_")
+	if _, ok := c.byID[underscored]; ok {
 		return underscored
 	}
 	if canon, ok := valkeyInputAliases[id]; ok {
