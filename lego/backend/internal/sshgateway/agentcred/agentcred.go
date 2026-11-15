@@ -539,6 +539,17 @@ func validGitRequest(r *http.Request, service string) bool {
 	return r.Method == http.MethodPost && r.URL.RawQuery == "" && strings.EqualFold(r.Header.Get("Content-Type"), "application/x-"+service+"-request")
 }
 
+// validateReceivePack refuses a push unless every ref it updates is the
+// session's own branch, and returns the bytes it read together with the rest
+// of the stream so the request can be forwarded upstream unchanged.
+//
+// A body with no update command is accepted: it names no ref, so it cannot
+// leave the session branch, and git's HTTP transport sends exactly such a
+// request on purpose. A push larger than http.postBuffer arrives chunked,
+// which remote-curl cannot rewind, so before sending it (remote-curl.c,
+// probe_rpc) it POSTs a body of just the flush packet "0000" to learn whether
+// the server will answer such a request at all. Refusing that probe made every
+// large push from a sandbox fail before its pack was ever sent.
 func validateReceivePack(body io.Reader, branch string) (io.Reader, error) {
 	reader := bufio.NewReader(body)
 	var prefix bytes.Buffer
@@ -605,9 +616,6 @@ func validateReceivePack(body io.Reader, branch string) (io.Reader, error) {
 		if commands > 8 {
 			return nil, agentsession.ErrForbidden
 		}
-	}
-	if commands == 0 {
-		return nil, agentsession.ErrForbidden
 	}
 	return io.MultiReader(bytes.NewReader(prefix.Bytes()), reader), nil
 }
