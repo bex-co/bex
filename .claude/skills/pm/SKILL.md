@@ -1,10 +1,10 @@
 ---
 name: pm
 description: >-
-  Inspect and maintain the repository's .pm workstreams, inbox notes, milestones, and tasks. Use when the user asks for PM board status or requests a supported board mutation such as creating, promoting, adding, or completing work.
+  Inspect and maintain the repository's .pm workstreams, inbox notes, milestones, tasks, and routine lists. Use when the user asks for PM board status or requests a supported board mutation such as creating, promoting, adding, or completing work, or scheduling a routine.
 
 
-allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(mv:*), Bash(git rm:*), Bash(npx prettier*:*)
+allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(mv:*), Bash(git rm:*), Bash(npx prettier*:*), Bash(python3 scripts/loopx-guard.py routine-due:*)
 ---
 
 # Task: Arrange the `.pm` board
@@ -19,6 +19,7 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(mv
 | Inbox note | `wN/NNN.md` (`w1/005.md`) | one idea or a **sub-hour** unit of work, plain markdown | ≤ ~1h |
 | Milestone | `wN/mN/` (`m1`, `m2`, …) | a shippable chunk: `README.md` + task files | **> ~1h**, multiple tasks |
 | Task | `wN/mN/tNNN.md` | a single unit | tens of minutes |
+| Routine list | `wN/routine/README.md` | scheduled commands `/loopx <wN>` runs when the queue is drained | — |
 
 ## Rules (enforce every time)
 
@@ -47,7 +48,7 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(mv
 
 ### `status` (default)
 
-Read the tree (`find .pm -type f -name '*.md'`, skipping `done/`) and `.pm/DO_NOT_DO.md`. Print, per open workstream: its milestones with `**Status:**`, and the **next actionable task** per milestone — the first non-done task whose `depends_on` are all satisfied. Also list open inbox notes. Then run a lightweight validation pass and flag:
+Read the tree (`find .pm -type f -name '*.md'`, skipping `done/`) and `.pm/DO_NOT_DO.md`. Print, per open workstream: its milestones with `**Status:**`, and the **next actionable task** per milestone — the first non-done task whose `depends_on` are all satisfied. Also list open inbox notes, and the rows of the workstream's routine list when it has one. Then run a lightweight validation pass and flag:
 
 - items conflicting with `.pm/DO_NOT_DO.md`,
 - milestones missing `## Source + Goal linkage`,
@@ -98,6 +99,19 @@ If current-code evidence proves the item obsolete, duplicate or superseded, appl
 5. A deployed version is not proof that its live DoD passed: ready-for-QA work returns as pending verification. If the original end state is already verified, use the normal done conventions instead of reopening or marking unimplemented work done. An already-active item gets only genuinely new decision information; a repeated invocation must not duplicate the record or create a second item.
 
 Run the repository Markdown formatter and verify that file locations, README links/statuses, task frontmatter and dependencies agree. With `DRY_RUN=1`, show the intended record, status changes and moves without writing. Implementation and verification belong to `/loopx <wN>` after the board is ready; this subcommand does not start a worker or grant commit/push permission.
+
+### `routine <wN> add <name> <every> [always|changed] [paths] -- <command>` / `routine <wN> remove <name>` / `routine <wN> budget <N>`
+
+Edit the workstream's routine list, `wN/routine/README.md` (template below). `/loopx <wN>` runs the listed routines only when the queue is drained. `scripts/loopx-guard.py` schedules them: each row runs on its own interval, and new board items always go first. The list holds configuration only: it is not an item and never moves to `done/`. Run history stays out of the board, in `.git/loopx/`.
+
+- `add`: everything after `--` is the `<command>`, stored verbatim. It can be any command a `/loopx` worker can carry out: a slash command with all of its arguments (`/rt-remove-dead-code go`, `/qa-find-bugs-cli w4`, `/simplify`), a shell command, or a task in plain words. Nothing is appended at run time, so spell out every argument (a QA skill needs its target workstream to file into this one).
+  - A row is a standing request to run the command, and to ship what it produces, every interval while `/loopx <wN>` runs. Add one only when the user asks for it, and write limits such as `DRY_RUN=1` or "report only" into the command itself.
+  - Refuse unless `<name>` is a unique lowercase slug (letters, digits, dashes; it keys the run state), `<every>` is an interval like `30m`, `24h`, `3d`, or `1w`, and the command contains no `|` (wrap a pipeline in a script). When the command is a slash command for a repository skill, confirm `.claude/skills/<skill>/SKILL.md` exists.
+  - `when` defaults to `always` (run every interval). `changed` is an opt-in token saver: run only after one of the comma-separated repository-relative `paths` changed (any path when none are given), and double the interval after a run that ships nothing.
+  - Pair a short interval with a matching `budget`, or the default of 4 runs/day caps it. Create the file from the template if it does not exist (git does not track an empty `routine/` directory).
+- `remove`: delete the row with that name. Keep the file even when the table is empty: an empty table means no routines.
+- `budget`: set the `Budget: N runs/day` line (default 4 when absent).
+- **Verify before returning:** run `python3 scripts/loopx-guard.py routine-due <wN>` and confirm the reply lists no `problems` for the rows you touched. It reads `origin/main`, so it shows the change only after it ships; before that, check the rows by hand against the template.
 
 ## Templates
 
@@ -181,6 +195,20 @@ Plain terse markdown, no frontmatter — one idea or a sub-hour unit of work. Op
 
 ```markdown
 Why: <one sentence — motivation / payoff>
+```
+
+### Routine list `wN/routine/README.md`
+
+```markdown
+# wN routines
+
+Routines `/loopx wN` runs on schedule whenever the queue is drained; new board items always go first. A command is run verbatim: a slash command with its arguments, a shell command, or a task in plain words. `when: always` (the default) runs every interval; `when: changed` also waits for one of its `paths` (any path when empty) to change and backs off after empty runs. Edit with `/pm routine`.
+
+Budget: 4 runs/day
+
+| name         | command                   | every | when    | paths |
+| ------------ | ------------------------- | ----- | ------- | ----- |
+| go-dead-code | `/rt-remove-dead-code go` | 24h   | changed | lego  |
 ```
 
 ## Arguments

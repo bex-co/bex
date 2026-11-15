@@ -20,8 +20,31 @@
       "Bash(docker ps:*)",
       "Bash(docker images:*)",
       "Bash(clusterctl describe:*)",
-      "Bash(yq:*)"
+      "Bash(yq:*)",
+      "Bash(python3 scripts/loopx-guard.py:*)"
     ],
     "deny": ["Read(**/*.kubeconfig)"]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f \"$CLAUDE_PROJECT_DIR/scripts/loopx-guard.py\" || exit 0; python3 \"$CLAUDE_PROJECT_DIR/scripts/loopx-guard.py\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f \"$CLAUDE_PROJECT_DIR/scripts/loopx-guard.py\" || exit 0; python3 \"$CLAUDE_PROJECT_DIR/scripts/loopx-guard.py\" forget"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -1,4 +1,4 @@
 interface:
   display_name: "Loopx"
-  short_description: "Triage and drain a PM workstream item by item"
-  default_prompt: "Use $loopx to triage and drain a PM workstream to completion."
+  short_description: "Drain a PM workstream item by item, then run its routines and listen"
+  default_prompt: "Use $loopx to triage and drain a PM workstream, then keep listening for new items."

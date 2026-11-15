@@ -72,6 +72,11 @@ jobs:
             /.pm/w*/dev-*/
       - name: Skill layout consistency
         run: bash scripts/skill-layout-validate.sh
+      # The /loopx guard is the Stop hook of every Claude Code session in this
+      # checkout and the scheduler behind a drained workstream; proven against
+      # temporary repositories with a real bare remote and a fake gh.
+      - name: loopx guard self-test
+        run: python3 -B -m unittest scripts/test_loopx_guard.py -v
       - name: Retired platform paths remain absent
         run: bash scripts/platform-deprecations-validate.sh
       - name: GitHub Actions SHA-pin + inventory guard

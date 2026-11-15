@@ -6,13 +6,14 @@ description: >-
 
 # Task: File a proposal, ship it, drain the workstream
 
-`/pmx [<selection>] to <wN>` runs three steps back to back, without pausing between them: `/pm <selection> to <wN>` → `/ship` the filing → `/loopx <wN>`.
+`/pmx [<selection>] to <wN> [--no-listen]` runs three steps back to back, without pausing between them: `/pm <selection> to <wN>` → `/ship` the filing → `/loopx <wN>`.
 
 ## Arguments
 
 Parse from `$ARGUMENTS`:
 
 - **`<wN>`** (required) — the last `wN` token. If there is none, **STOP** and ask which workstream; never guess.
+- **`--no-listen`** (optional, after `<wN>`) — passed through to `/loopx` in step 4, so the run ends when the queue is drained instead of listening for more.
 - **`<selection>`** — `them all`, `all` or empty selects every numbered item in the proposal's **Summary (priority order)** plus the existing-item actions in its `/pm` hand-off (e.g. `/pm unblock …` of items whose gate cleared). Item numbers (`1,3`, `2-4`) select only those items; a hand-off action is included only when named.
 
 ## 1. Find the proposal
@@ -35,12 +36,14 @@ Parse from `$ARGUMENTS`:
 
 Invoke `/ship` for this board-only change, staging only the files step 2 wrote: one `docs(pm): file <ids> (from /pm-brainstorm for <wN>)` commit. Invoking `/pmx` is the user's explicit request to ship this filing and the items `/loopx` lands. Shipping before the drain puts the items on `origin/main` where other sessions see them, and keeps `/loopx`'s per-item commits free of filing noise.
 
-If `/ship` stops on something it cannot resolve, stop here and report: the filing is a run-level block, as in `/loopx`.
+If `/ship` stops on something it cannot resolve, stop here and report: a filing that cannot land is a hard stop, as in `/loopx`.
 
 ## 4. Drain
 
-Post a short checkpoint (what was filed, what was skipped and why), then invoke `/loopx <wN>` in the same turn and follow it to its own **Exit**. Its queue is every open item in `<wN>`, not only the ones just filed — that is intended.
+Post a short checkpoint (what was filed, what was skipped and why), then invoke `/loopx <wN>` (with `--no-listen` if it was given) in the same turn and follow it to its own **Exit**: arm the guard, dispatch each item to a fresh-context worker, verify its outcome. Its queue is every open item in `<wN>`, not only the ones just filed — that is intended.
+
+Draining is not the end. Unless `--no-listen` was given, `/loopx` writes a drained report, then runs the workstream's due routines (if it lists any) and listens for new items on `origin/main` for up to 24 idle hours, so its final Exit can arrive a day later. The drained report already carries the filed items' outcomes.
 
 ## Report
 
-The final report is `/loopx`'s report, headed by the filing: the new ids with their titles, the skipped items with their reasons, and every recommendation recorded in place of an open user decision.
+Head `/loopx`'s **first drained report** with the filing (or its Exit report, if the run exits before it ever drains, e.g. with `--no-listen` or a hard stop): the new ids with their titles, the skipped items with their reasons, and every recommendation recorded in place of an open user decision. Later drained and exit reports in the same run need no header.
