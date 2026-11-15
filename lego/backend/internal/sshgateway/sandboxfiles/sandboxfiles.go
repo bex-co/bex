@@ -38,6 +38,8 @@ import (
 	"time"
 	"unicode"
 
+	"golang.org/x/sync/semaphore"
+
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
@@ -138,7 +140,12 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	// The watchdog ends a transfer by canceling ctx under a live timed context;
 	// the client and the cap end timed itself. A transfer the watchdog ended was
 	// revoked: answer, log and count it as the exec stream does (w5/139).
+	// It also counts a transfer refused for gateway capacity, which both
+	// directions pass through here.
 	revoked := func(err error) error {
+		if errors.Is(err, errGatewayBusy) {
+			s.Metrics.LimitRejected("archive_index_memory")
+		}
 		if err == nil || ctx.Err() == nil || timed.Err() != nil {
 			return err
 		}
@@ -195,6 +202,8 @@ var (
 	// errNotReady is a target Pod that is not Ready (a NotReady or unreachable
 	// node): out of reach for now, never a missing sandbox.
 	errNotReady = &statusError{status: http.StatusServiceUnavailable, message: "sandbox is not reachable right now: its pod is not ready"}
+	// errGatewayBusy is a directory transfer past archiveIndexMemory.
+	errGatewayBusy = &statusError{status: http.StatusServiceUnavailable, message: "the sandbox file gateway is at capacity; retry the transfer"}
 )
 
 // hideCause answers errOperationFailed in place of an unclassified failure: a
@@ -707,12 +716,16 @@ func entryMode(h *tar.Header) int64 {
 // (render.com/docs/sandboxes-files, sandboxes-limits, read 2026-11-14), and a
 // project's node_modules or site-packages routinely holds tens of thousands
 // of entries. Targets are bytes the tenant chose, so at most
-// maxKeptSymlinkTargets of them are kept.
+// maxKeptSymlinkTargets of them are kept. Every index in the process also
+// draws on archiveIndexMemory.
 type archiveIndex struct {
 	seeds     [2]maphash.Seed
 	kinds     map[nameKey]byte
 	symlinks  map[nameKey]string
 	keptBytes int
+	budget    *semaphore.Weighted // archiveIndexMemory when the index began
+	used      int64               // bytes the index holds, as charged
+	reserved  int64               // bytes taken from budget
 }
 
 type nameKey [2]uint64
@@ -723,7 +736,26 @@ type nameKey [2]uint64
 // which is rare.
 const (
 	maxKeptSymlinkTargets = 8 << 20
-	symlinkEntryOverhead  = 80
+	symlinkEntryOverhead  = 96
+)
+
+// archiveIndexMemory bounds what the indexes of every archive this gateway
+// process copies hold at once (w32/025). One archive's index stays under
+// about 40 MiB, but up to BEX_SSH_MAX_SESSIONS transfers share the pod's
+// 512Mi with the exec drain buffer (128Mi) and every other session, so a few
+// worst-case archives from one tenant could end every session on the pod in
+// an out-of-memory kill. Past the budget an archive fails with errGatewayBusy
+// instead. A 25,000-entry tree takes under 2 MiB, so the budget engages only
+// under pressure; Render documents no transfer concurrency limit.
+var archiveIndexMemory = semaphore.NewWeighted(64 << 20)
+
+const (
+	// indexEntryCost is one kinds slot with its share of map growth: 524,288
+	// digests took 29.9 MiB of heap (measured 2026-11-14).
+	indexEntryCost = 64
+	// indexReserveChunk is how much an index takes from archiveIndexMemory at
+	// a time, so the shared semaphore is not touched per entry.
+	indexReserveChunk = 64 << 10
 )
 
 func newArchiveIndex() *archiveIndex {
@@ -731,6 +763,7 @@ func newArchiveIndex() *archiveIndex {
 		seeds:    [2]maphash.Seed{maphash.MakeSeed(), maphash.MakeSeed()},
 		kinds:    map[nameKey]byte{},
 		symlinks: map[nameKey]string{},
+		budget:   archiveIndexMemory,
 	}
 }
 
@@ -738,13 +771,38 @@ func (x *archiveIndex) key(name string) nameKey {
 	return nameKey{maphash.String(x.seeds[0], name), maphash.String(x.seeds[1], name)}
 }
 
+// charge accounts n more bytes, reserving from archiveIndexMemory as needed.
+func (x *archiveIndex) charge(n int) error {
+	x.used += int64(n)
+	if x.used <= x.reserved {
+		return nil
+	}
+	need := (x.used - x.reserved + indexReserveChunk - 1) / indexReserveChunk * indexReserveChunk
+	if !x.budget.TryAcquire(need) {
+		return errGatewayBusy
+	}
+	x.reserved += need
+	return nil
+}
+
+func (x *archiveIndex) release() {
+	x.budget.Release(x.reserved)
+	x.reserved = 0
+}
+
 // keepSymlink copies target: archive/tar hands back a PAX linkpath as a
 // substring of its whole PAX block, which can hold a megabyte of padding.
-func (x *archiveIndex) keepSymlink(key nameKey, target string) {
-	if cost := len(target) + symlinkEntryOverhead; x.keptBytes+cost <= maxKeptSymlinkTargets {
-		x.keptBytes += cost
-		x.symlinks[key] = strings.Clone(target)
+func (x *archiveIndex) keepSymlink(key nameKey, target string) error {
+	cost := len(target) + symlinkEntryOverhead
+	if x.keptBytes+cost > maxKeptSymlinkTargets {
+		return nil
 	}
+	if err := x.charge(cost); err != nil {
+		return err
+	}
+	x.keptBytes += cost
+	x.symlinks[key] = strings.Clone(target)
+	return nil
 }
 
 // entryName is an archive member's name relative to its root, as BusyBox's
@@ -773,6 +831,10 @@ func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 	tr := tar.NewReader(terminatedReader{src})
 	tw := tar.NewWriter(&boundedWriter{writer: dst, remaining: files.MaxTransferBytes})
 	index := newArchiveIndex()
+	defer index.release()
+	// tar's Reader and Writer hide their WriterTo and ReaderFrom, so io.Copy
+	// would allocate 32 KiB for every entry.
+	buf := make([]byte, 32<<10)
 	root := int64(plainDirMode)
 	for {
 		h, err := tr.Next()
@@ -813,7 +875,9 @@ func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 				return 0, fmt.Errorf("%w: unsafe symlink target", errBadArchive)
 			}
 			clean.Linkname = h.Linkname
-			index.keepSymlink(key, h.Linkname)
+			if err := index.keepSymlink(key, h.Linkname); err != nil {
+				return 0, err
+			}
 		case tar.TypeLink:
 			target := index.key(entryName(h.Linkname))
 			var ok bool
@@ -828,8 +892,13 @@ func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 					return 0, fmt.Errorf("%w: too many symlink targets to copy a hard link to one", errBadArchive)
 				}
 				clean.Typeflag = tar.TypeSymlink
-				index.keepSymlink(key, clean.Linkname)
+				if err := index.keepSymlink(key, clean.Linkname); err != nil {
+					return 0, err
+				}
 			}
+		}
+		if err := index.charge(indexEntryCost); err != nil {
+			return 0, err
 		}
 		// Recorded even when skipped, so a child under it is refused.
 		index.kinds[key] = kind
@@ -839,13 +908,12 @@ func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 		if err := tw.WriteHeader(clean); err != nil {
 			return 0, err
 		}
-		if _, err := io.Copy(tw, tr); err != nil {
+		if _, err := io.CopyBuffer(tw, tr, buf); err != nil {
 			return 0, archiveError(err)
 		}
 	}
 	// Reading through EOF also verifies a gzip footer. Reject non-padding data
 	// after tar's terminator instead of silently ignoring another archive.
-	buf := make([]byte, 32<<10)
 	for {
 		n, err := src.Read(buf)
 		for _, b := range buf[:n] {

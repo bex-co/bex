@@ -37,6 +37,11 @@ spec:
           imagePullPolicy: Always
           command: ["/ssh-gateway"]
           env:
+            # Ramps the GC before the 512Mi cgroup limit below: live exec drain
+            # buffers (128Mi) and archive indexes (64Mi) let GOGC=100 alone grow
+            # the heap near it (w32/025).
+            - name: GOMEMLIMIT
+              value: 450MiB
             - name: BEX_SSH_ADDR
               value: ":2222"
             - name: BEX_SSH_METRICS_ADDR

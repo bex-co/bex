@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/semaphore"
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
@@ -400,6 +401,61 @@ func TestTheByteBoundIsAnArchivesOnlySizeLimit(t *testing.T) {
 	}
 	if out.n != files.MaxTransferBytes {
 		t.Fatalf("copied %d bytes before the refusal, want %d", out.n, files.MaxTransferBytes)
+	}
+}
+
+// Every archive in the process draws on one index budget (w32/025): while one
+// holds it all, another is refused as retryable, and the budget returns
+// whole when the first ends.
+func TestArchiveIndexesShareOneBudget(t *testing.T) {
+	saved := archiveIndexMemory
+	archiveIndexMemory = semaphore.NewWeighted(2 * indexReserveChunk)
+	t.Cleanup(func() { archiveIndexMemory = saved })
+
+	r, w := io.Pipe()
+	defer r.Close()
+	first := make(chan error, 1)
+	go func() {
+		_, err := copyArchive(io.Discard, r)
+		first <- err
+	}()
+	tw := tar.NewWriter(w)
+	// One entry past a chunk reserves the second chunk. The pipe hands over
+	// a header only once copyArchive has finished the one before, so the
+	// extra entry proves that reservation was made.
+	for i := range indexReserveChunk/indexEntryCost + 2 {
+		if err := tw.WriteHeader(&tar.Header{Name: fmt.Sprintf("e%d", i), Typeflag: tar.TypeReg, Mode: 0o644}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	one := archive(t, &tar.Header{Name: "a", Typeflag: tar.TypeReg, Mode: 0o644})
+	_, err := copyArchive(io.Discard, bytes.NewReader(one))
+	if !errors.Is(err, errGatewayBusy) {
+		t.Fatalf("a second archive while the budget is held = %v, want %v", err, errGatewayBusy)
+	}
+	s := serverFor(func(_ context.Context, _ []string, _ io.Reader, out io.Writer) (int, error) {
+		_, _ = io.WriteString(out, "directory\n")
+		_, _ = out.Write(one)
+		return 0, nil
+	})
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, requestFor(t, http.MethodGet, nil))
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), errGatewayBusy.message) {
+		t.Fatalf("a download while the budget is held = %d %s, want 503 naming capacity", rec.Code, rec.Body)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	if err := <-first; err != nil {
+		t.Fatalf("the archive holding the budget: %v", err)
+	}
+	if !archiveIndexMemory.TryAcquire(2 * indexReserveChunk) {
+		t.Fatal("the finished archive did not return its budget")
+	}
+	archiveIndexMemory.Release(2 * indexReserveChunk)
+	if _, err := copyArchive(io.Discard, bytes.NewReader(one)); err != nil {
+		t.Fatalf("an archive after the budget returned: %v", err)
 	}
 }
 
