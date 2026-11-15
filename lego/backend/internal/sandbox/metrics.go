@@ -218,6 +218,11 @@ type StorageMetrics struct {
 	bytes        prometheus.Gauge
 	sizeFailures prometheus.Counter
 	reapFailures prometheus.Counter
+	// orphanReaped and orphanFailures are the registry orphan sweep's
+	// (OrphanSweeper): repositories of deleted workspaces it emptied, and its
+	// failed steps.
+	orphanReaped   prometheus.Counter
+	orphanFailures prometheus.Counter
 }
 
 // NewStorageMetrics registers the storage meter's series. The state label is a
@@ -243,8 +248,16 @@ func NewStorageMetrics(reg prometheus.Registerer) *StorageMetrics {
 			Name: "bex_sandbox_storage_reap_failures_total",
 			Help: "Failed deletions of a gone sandbox's images from the registry; each is retried on the next meter poll.",
 		}),
+		orphanReaped: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "bex_sandbox_storage_orphan_repositories_reaped_total",
+			Help: "Repositories under a deleted workspace's snapshot namespace whose images the orphan sweep deleted from the registry (w22/017); a workspace delete deletes its own, so this counts what that missed.",
+		}),
+		orphanFailures: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "bex_sandbox_storage_orphan_sweep_failures_total",
+			Help: "Failed steps of the registry orphan sweep: a catalog or workspace read that skipped a round, or a repository whose images could not be deleted; each is retried by a later round.",
+		}),
 	}
-	reg.MustRegister(m.objects, m.bytes, m.sizeFailures, m.reapFailures)
+	reg.MustRegister(m.objects, m.bytes, m.sizeFailures, m.reapFailures, m.orphanReaped, m.orphanFailures)
 	return m
 }
 
@@ -272,4 +285,18 @@ func (m *StorageMetrics) sizeFailed() {
 		return
 	}
 	m.sizeFailures.Inc()
+}
+
+func (m *StorageMetrics) orphanRepositoryReaped() {
+	if m == nil {
+		return
+	}
+	m.orphanReaped.Inc()
+}
+
+func (m *StorageMetrics) orphanSweepFailed() {
+	if m == nil {
+		return
+	}
+	m.orphanFailures.Inc()
 }

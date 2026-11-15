@@ -1507,6 +1507,10 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			deps.SandboxKeys = sandboxKeyProvider{st}
 			deps.SandboxStorage = st
 			deps.SandboxMeter = &sandbox.Meter{Client: deps.SandboxClient, Store: st, StorageMetrics: sandbox.NewStorageMetrics(reg)}
+			// The reaper's registry client: the meter deletes a gone sandbox's images
+			// with it, the workspace purge a deleted workspace's suspended ones, and
+			// the orphan sweep what a deleted workspace left (w22/017).
+			var registryReaper *sandbox.RegistryReaper
 			// A suspended sandbox pays for its retained image, sized from its manifest
 			// in the registry. Unset, nothing is sized and nothing billed.
 			if cfg.SandboxSnapshotRegistryURL != "" {
@@ -1533,7 +1537,8 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 				}
 				deps.SandboxMeter.Sizer = &sandbox.RegistrySizer{RegistryConfig: registry}
 				if reap {
-					deps.SandboxMeter.Reaper = &sandbox.RegistryReaper{RegistryConfig: reaper}
+					registryReaper = &sandbox.RegistryReaper{RegistryConfig: reaper}
+					deps.SandboxMeter.Reaper = registryReaper
 				}
 				// Imported sandbox images (w2/m358) are written by the operator's
 				// importer user, so they need the operator-minted Secret; the
@@ -1548,6 +1553,13 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 				}
 			}
 			go deps.SandboxMeter.Run(ctx)
+			// The orphan sweep deletes the registry images of workspaces whose row is
+			// gone, so it is for the control plane that owns the registry alone: with
+			// another identity on the same registry it would see its neighbour's
+			// workspaces as gone (ADR043 D9 scopes every prune the same way).
+			if registryReaper != nil && (cfg.CPIdentity == "" || cfg.CPIdentity == store.DefaultControlPlaneIdentity) {
+				go (&sandbox.OrphanSweeper{Reaper: registryReaper, Workspaces: st, Metrics: deps.SandboxMeter.StorageMetrics}).Run(ctx)
+			}
 			// Idle suspension (w2/m278): exec/file activity is recorded in the
 			// store; the sweeper itself starts once the Service exists.
 			deps.SandboxActivity = st
@@ -1561,9 +1573,11 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// key, migration 0056) cascade away. It joins the PRE-cascade purgers so
 			// the key still resolves; st satisfies sandbox.PurgeKeyLookup (lookup-only,
 			// never minting). Only meaningful with the store on (workspace delete
-			// needs it) and the client wired — both true in this branch.
+			// needs it) and the client wired — both true in this branch. The same
+			// purge deletes the images of the workspace's suspended sandboxes with the
+			// meter's reaper (w22/017), listed from rows the cascade is about to drop.
 			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
-				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages, AgentBuilds: st, AgentRetained: st})
+				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages, AgentBuilds: st, AgentRetained: st, Reaper: deps.SandboxMeter.Reaper, Storage: st})
 		}
 	}
 }

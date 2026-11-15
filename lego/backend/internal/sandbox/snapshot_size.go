@@ -316,24 +316,34 @@ func (r *RegistryReaper) DeleteImages(ctx context.Context, workspaceID, ref stri
 	if err != nil {
 		return err
 	}
+	_, err = r.deleteTags(ctx, repo, snapshotTag.MatchString)
+	return err
+}
+
+// deleteTags deletes, by tag, every tag of repo that owns accepts, and reports
+// how many. A repository the registry does not have is success: nothing to
+// delete.
+func (r *RegistryReaper) deleteTags(ctx context.Context, repo string, owns func(tag string) bool) (int, error) {
 	escaped := escapeRepository(repo)
 	tags, err := r.listTags(ctx, escaped, repo)
 	var re *registryError
 	if errors.As(err, &re) && re.status == http.StatusNotFound {
-		return nil // no repository: nothing to delete
+		return 0, nil
 	}
 	if err != nil {
-		return err
+		return 0, err
 	}
+	deleted := 0
 	for _, tag := range tags {
-		if !snapshotTag.MatchString(tag) {
+		if !owns(tag) {
 			continue // never delete what the controller did not write
 		}
 		if err := r.deleteTag(ctx, escaped, tag); err != nil {
-			return err
+			return deleted, err
 		}
+		deleted++
 	}
-	return nil
+	return deleted, nil
 }
 
 // DeleteImportedImage deletes an imported image (w2/m358) once its group is

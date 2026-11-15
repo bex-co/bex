@@ -16,7 +16,11 @@ limitations under the License.
 
 package sandbox
 
-import "context"
+import (
+	"context"
+	"errors"
+	"fmt"
+)
 
 // PurgeKeyLookup resolves a workspace's existing OpenSandbox tenant key WITHOUT
 // minting one — *store.PGStore's SandboxKeyLookup satisfies it structurally. The
@@ -50,6 +54,22 @@ type WorkspacePurger struct {
 	// AgentRetained lists the workspace's stopped agent turns' retained
 	// images, deleted with them (ADR047 D12); *store.PGStore.
 	AgentRetained AgentRetainedImages
+	// Reaper and Storage delete the images the workspace's /v1/sandboxes
+	// sandboxes retained when they were suspended (w22/017): Storage lists their
+	// registry refs while the `sandbox_storage_objects` rows that name them
+	// still exist, and Reaper deletes their `snap-gen<N>` tags, the meter's
+	// reaper. Either nil leaves them, as a deployment without the reaper
+	// credential always has; the orphan sweep (OrphanSweeper) still finds them
+	// once the workspace is gone. *store.PGStore is the Storage.
+	Reaper  ImageReaper
+	Storage RetainedSandboxImages
+}
+
+// RetainedSandboxImages lists the registry refs of the rootfs images a
+// workspace's sandboxes retained, whether open, closed or queued for the
+// reaper.
+type RetainedSandboxImages interface {
+	SandboxRootfsRefs(ctx context.Context, workspaceID string) ([]string, error)
 }
 
 // AgentBuildImages lists the repository environment builds whose images the
@@ -72,10 +92,21 @@ type AgentRetainedImages interface {
 // ever created ⇒ no-op; Client.Terminate already tolerates a missing sandbox
 // (NotFound), so a retried delete (or one racing the namespace prune) completes
 // cleanly. Never authorizes here — there is no Identity in ctx to check against.
+//
+// The suspended sandboxes' images go last, after the sandboxes are ended, so a
+// pause cannot commit a new image behind the delete; whatever still lands after
+// it is the orphan sweep's.
 func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) error {
 	if err := p.purgeImages(ctx, tenantID); err != nil {
 		return err
 	}
+	if err := p.terminateSandboxes(ctx, tenantID); err != nil {
+		return err
+	}
+	return p.purgeSandboxImages(ctx, tenantID)
+}
+
+func (p *WorkspacePurger) terminateSandboxes(ctx context.Context, tenantID string) error {
 	if p.Client == nil || p.Keys == nil {
 		return nil
 	}
@@ -124,4 +155,30 @@ func (p *WorkspacePurger) purgeImages(ctx context.Context, tenantID string) erro
 		builds = append(builds, retained...)
 	}
 	return p.Images.deleteImported(ctx, tenantID, builds)
+}
+
+// purgeSandboxImages deletes the `snap-gen<N>` tags of every rootfs image the
+// workspace's sandboxes retained, with the meter's reaper. A suspended sandbox's
+// image is named only by its `sandbox_storage_objects` row, which cascades away
+// with the tenant row, and no reap_pending row would ever ask for it after that.
+// It tries every repository and returns every failure, so the delete is retried
+// whole and one refused repository hides no other.
+func (p *WorkspacePurger) purgeSandboxImages(ctx context.Context, tenantID string) error {
+	if p.Reaper == nil || p.Storage == nil {
+		return nil
+	}
+	refs, err := p.Storage.SandboxRootfsRefs(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	var errs []error
+	for _, ref := range refs {
+		if !registryRef.MatchString(ref) {
+			continue // no repository can carry this name, so there is no image to delete
+		}
+		if err := p.Reaper.DeleteImages(ctx, tenantID, ref); err != nil {
+			errs = append(errs, fmt.Errorf("delete images of sandbox %s: %w", ref, err))
+		}
+	}
+	return errors.Join(errs...)
 }
