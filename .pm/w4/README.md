@@ -385,6 +385,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **670** — [A first deploy reads `update_in_progress` through its whole pre-deploy command: the row reaches `update_in_progress` at dispatch, and the lifecycle refuses the move back to `pre_deploy_in_progress`](670.md) (~45m; minor) ← live `/qa-find-bugs w4` loop round 392, 2026-11-15 UTC (pin `2d9bbae6bb8d`)
 - [ ] **669** — [For about 35 s after Suspend, a static site answers the static-server's `503 static site temporarily unavailable`, not the suspended page; the static-server already knows the site is suspended](669.md) (~40m; minor) ← live `/qa-find-bugs w4` loop round 374, 2026-11-14 UTC (pin `c99e7815ebec`), the w4/636 aside reproduced
 - [x] **668** — [A new Python service's build log reads "Using Python 3.14 (default)" though it runs 3.14.10: since w4/620 the narration names the line, not the patch, whenever Render's default equals the line's reviewed patch](done/668.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 368, 2026-11-14 UTC (pin `c99e7815ebec`)
 - [x] **666** — [Canceling a deploy queued behind a Rollback, Restart or image override in progress also ends that release](done/666.md) (~2h; minor) ← follow-up from w4/661, 2026-11-14
