@@ -46,7 +46,7 @@ var _ = Describe("App Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
 		service := &appv1alpha1.App{}
 
@@ -59,34 +59,48 @@ var _ = Describe("App Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &appv1alpha1.App{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+
+			// The reconcile under test stamps the finalizer; nothing in envtest
+			// runs the next pass, so clear it or the namespace keeps a terminating
+			// App for the rest of the suite.
+			resource.Finalizers = nil
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
 			By("Cleanup the specific resource instance App")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
-		It("should successfully reconcile the resource", func() {
+		It("stamps the finalizer before creating any child workload, then requeues", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &AppReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+			res, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			// The first pass stamps the finalizer and asks for the short settle
+			// requeue; the workload appears on the pass after that write is
+			// persisted. A child created first would be orphaned when the App is
+			// deleted mid-reconcile, so both halves of the ordering are asserted.
+			Expect(res.RequeueAfter).To(Equal(settleRequeue))
+
+			var current appv1alpha1.App
+			Expect(k8sClient.Get(ctx, typeNamespacedName, &current)).To(Succeed())
+			Expect(current.Finalizers).To(ContainElement(finalizer))
+
+			err = k8sClient.Get(ctx, typeNamespacedName, &appsv1.Deployment{})
+			Expect(errors.IsNotFound(err)).To(BeTrue(), "a spec-less App must get no Deployment until the finalizer is stamped, got %v", err)
 		})
 	})
 
