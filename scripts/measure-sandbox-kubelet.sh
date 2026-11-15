@@ -49,7 +49,7 @@ pod_stats() {
 }
 
 echo "==> what the sandbox has to work with"
-tools="$(sandbox_exec "$sandbox_id" 'for t in dd curl python3 df; do command -v $t >/dev/null 2>&1 && printf "%s " $t; done; echo' "$fixture_dir/tools.txt" && tr -d '\n' <"$fixture_dir/tools.txt" || true)"
+tools="$(sandbox_exec "$sandbox_id" 'for t in dd curl wget python3 df bash /bin/bash /usr/local/bin/bash; do { command -v $t || [ -x "$t" ]; } >/dev/null 2>&1 && printf "%s " $t; done; echo' "$fixture_dir/tools.txt" && tr -d '\n' <"$fixture_dir/tools.txt" || true)"
 measure tools "$(jq -cn --arg t "$tools" '{available: $t}')"
 
 echo "==> ephemeral-storage accounting while the sandbox writes (w22/008)"
@@ -82,7 +82,7 @@ node_cadvisor "$node" "$fixture_dir/cadvisor-net-0.txt"
 node_summary "$node" "$fixture_dir/summary-net-0.json"
 # The sandbox image is minimal (no curl, no python3), so move bytes with bash's
 # /dev/tcp over plain HTTP: a download of down_bytes and an upload of up_bytes.
-net_cmd='bash -c '"'"'
+net_cmd='B=/bin/bash; [ -x "$B" ] || B=/usr/local/bin/bash; "$B" -c '"'"'
   set -e
   host=speedtest.tele2.net
   exec 3<>/dev/tcp/$host/80
@@ -102,10 +102,11 @@ if [ -n "$net_cmd" ]; then
   node_summary "$node" "$fixture_dir/summary-net-1.json"
   # Every cAdvisor network series of this pod, with its labels, before and after.
   series() { grep -F "pod=\"$pod\"" "$1" | grep -E '^container_network_(receive|transmit)_bytes_total' | awk '{print substr($1, 1, 400), $2}' | jq -Rsc 'split("\n") | map(select(length > 0))'; }
-  measure network "$(jq -cn --argjson ok "$net_ok" --argjson down "$down_bytes" --argjson up "$up_bytes" \
+  net_detail="$(head -c 400 "$fixture_dir/net.txt" 2>/dev/null | tr '\n' ' '; head -c 300 "$fixture_dir/net.sse" 2>/dev/null | tr '\n' ' ')"
+  measure network "$(jq -cn --argjson ok "$net_ok" --arg detail "$net_detail" --argjson down "$down_bytes" --argjson up "$up_bytes" \
     --argjson sb "$(pod_stats "$fixture_dir/summary-net-0.json")" --argjson sa "$(pod_stats "$fixture_dir/summary-net-1.json")" \
     --argjson cb "$(series "$fixture_dir/cadvisor-net-0.txt")" --argjson ca "$(series "$fixture_dir/cadvisor-net-1.txt")" \
-    '{commandOk: $ok, expectedRxBytes: $down, expectedTxBytes: $up, kubeletBefore: $sb.network, kubeletAfter: $sa.network, cadvisorBefore: $cb, cadvisorAfter: $ca}')"
+    '{commandOk: $ok, detail: $detail, expectedRxBytes: $down, expectedTxBytes: $up, kubeletBefore: $sb.network, kubeletAfter: $sa.network, cadvisorBefore: $cb, cadvisorAfter: $ca}')"
 else
   measure network '{"skipped":"the sandbox has neither curl nor python3"}'
 fi

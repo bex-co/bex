@@ -41,49 +41,63 @@ cpu_prom() {
   prom_query "sum(last_over_time(container_cpu_usage_seconds_total{namespace=\"$2\",pod=\"$1\",container!=\"\"}[3m]))" \
     | jq -r '.[0].value[1] // "null"'
 }
+# cpu_cadvisor <pod> <node>: the pod-level cgroup's cumulative CPU seconds read
+# straight from the node's cAdvisor. Under gVisor the workload container's own
+# cgroup carries no series, so the only CPU series cAdvisor holds for a sandbox
+# pod have container="" (the pod slice and the pause container): exactly the
+# series Prometheus' kubernetes-cadvisor job drops. Pod slice = id ends in .slice.
+cpu_cadvisor() {
+  node_cadvisor "$2" "$fixture_dir/cadvisor-cpu.txt"
+  grep -F "pod=\"$1\"" "$fixture_dir/cadvisor-cpu.txt" | grep '^container_cpu_usage_seconds_total' | grep 'id="[^"]*\.slice"' | awk '{print $2}' | head -1
+}
 # cpu_kubelet <pod> <namespace> <node>: the same, from the kubelet summary at this instant.
 cpu_kubelet() {
   node_summary "$3" "$fixture_dir/summary-cpu.json"
   jq -r --arg ns "$2" --arg p "$1" '[.pods[] | select(.podRef.namespace == $ns and .podRef.name == $p)][0].cpu.usageCoreNanoSeconds // empty | . / 1e9' "$fixture_dir/summary-cpu.json"
 }
-# window <name> <pod> <ns> <node> <start prom> <start kubelet> <seconds>: print the deltas.
+# window <name> <pod> <ns> <node> <start prom> <start kubelet> <seconds> <start cadvisor>: print the deltas.
 window() {
-  local name="$1" p="$2" ns="$3" nd="$4" sp="$5" sk="$6" secs="$7" ep ek
+  local name="$1" p="$2" ns="$3" nd="$4" sp="$5" sk="$6" secs="$7" sc="${8:-}" ep ek ec
   sleep 45 # two scrapes, so the series carries the end of the window
   ep="$(cpu_prom "$p" "$ns")"
   ek="$(cpu_kubelet "$p" "$ns" "$nd")"
-  measure "$name" "$(jq -cn --arg sp "$sp" --arg ep "$ep" --arg sk "$sk" --arg ek "$ek" --argjson s "$secs" '
+  ec="$(cpu_cadvisor "$p" "$nd")"
+  measure "$name" "$(jq -cn --arg sp "$sp" --arg ep "$ep" --arg sk "$sk" --arg ek "$ek" --arg sc "$sc" --arg ec "$ec" --argjson s "$secs" '
     {windowSeconds: $s,
      prometheusCpuSeconds: (if ($sp == "null" or $ep == "null") then null else (($ep | tonumber) - ($sp | tonumber)) end),
-     kubeletCpuSeconds: (if ($sk == "" or $ek == "") then null else (($ek | tonumber) - ($sk | tonumber)) end)}')"
+     kubeletCpuSeconds: (if ($sk == "" or $ek == "") then null else (($ek | tonumber) - ($sk | tonumber)) end),
+     cadvisorPodCpuSeconds: (if ($sc == "" or $ec == "") then null else (($ec | tonumber) - ($sc | tonumber)) end)}')"
 }
 
 echo "==> accuracy: $bursts bursts of one busy core for 60 s each (expected about $((bursts * 60)) CPU-seconds)"
 sleep 30
 p0="$(cpu_prom "$pod" "$namespace_a")"
 k0="$(cpu_kubelet "$pod" "$namespace_a" "$node")"
-measure accuracy-start "$(jq -cn --arg p "$p0" --arg k "$k0" '{prometheus: $p, kubelet: $k}')"
+c0="$(cpu_cadvisor "$pod" "$node")"
+measure accuracy-start "$(jq -cn --arg p "$p0" --arg k "$k0" --arg c "$c0" '{prometheus: $p, kubelet: $k, cadvisorPod: $c}')"
 for i in $(seq 1 "$bursts"); do
   sandbox_exec "$sandbox_id" 'end=$((SECONDS + 60)); while [ "$SECONDS" -lt "$end" ]; do :; done' "$fixture_dir/burst-$i.txt" \
     || fail "busy burst $i did not complete: $(head -c 300 "$fixture_dir/burst-$i.sse" 2>/dev/null)"
 done
-window accuracy "$pod" "$namespace_a" "$node" "$p0" "$k0" "$((bursts * 60))"
+window accuracy "$pod" "$namespace_a" "$node" "$p0" "$k0" "$((bursts * 60))" "$c0"
 
 echo "==> idle baseline: $idle_seconds s with nothing running"
 sleep 30
 pi="$(cpu_prom "$pod" "$namespace_a")"
 ki="$(cpu_kubelet "$pod" "$namespace_a" "$node")"
+ci="$(cpu_cadvisor "$pod" "$node")"
 sleep "$idle_seconds"
-window idle "$pod" "$namespace_a" "$node" "$pi" "$ki" "$idle_seconds"
+window idle "$pod" "$namespace_a" "$node" "$pi" "$ki" "$idle_seconds" "$ci"
 
 echo "==> syscall-heavy load in the sandbox: $sys_runs x 60 s of dd bs=1"
 ps_="$(cpu_prom "$pod" "$namespace_a")"
 ks="$(cpu_kubelet "$pod" "$namespace_a" "$node")"
+cs="$(cpu_cadvisor "$pod" "$node")"
 for i in $(seq 1 "$sys_runs"); do
   sandbox_exec "$sandbox_id" 'timeout 60 dd if=/dev/zero of=/dev/null bs=1 2>/dev/null; true' "$fixture_dir/sys-$i.txt" \
     || fail "syscall burst $i did not complete"
 done
-window syscall-gvisor "$pod" "$namespace_a" "$node" "$ps_" "$ks" "$((sys_runs * 60))"
+window syscall-gvisor "$pod" "$namespace_a" "$node" "$ps_" "$ks" "$((sys_runs * 60))" "$cs"
 
 echo "==> the same load under runc, on the same node (best effort)"
 image="$(kubectl -n "$namespace_a" get pod "$pod" -o json | jq -r '[.spec.containers[] | select(.name != "execd" and (.name | test("execd") | not))][0].image // empty')"
@@ -115,10 +129,11 @@ fi
 if [ "$ref_ok" = true ]; then
   pr="$(cpu_prom "$ref" "$ref_ns")"
   kr="$(cpu_kubelet "$ref" "$ref_ns" "$node")"
+  cr_ref="$(cpu_cadvisor "$ref" "$node")"
   for i in $(seq 1 "$sys_runs"); do
     kubectl -n "$ref_ns" exec "$ref" -- bash -c 'timeout 60 dd if=/dev/zero of=/dev/null bs=1 2>/dev/null; true' || true
   done
-  window syscall-runc "$ref" "$ref_ns" "$node" "$pr" "$kr" "$((sys_runs * 60))"
+  window syscall-runc "$ref" "$ref_ns" "$node" "$pr" "$kr" "$((sys_runs * 60))" "$cr_ref"
 else
   measure syscall-runc "$(jq -cn --arg a "$(head -c 400 "$fixture_dir/ref-apply.txt" 2>/dev/null)" --arg w "$(head -c 400 "$fixture_dir/ref-wait.txt" 2>/dev/null)" --arg i "${image:-}" \
     '{skipped: "the runc reference pod did not start", image: $i, apply: $a, wait: $w}')"
