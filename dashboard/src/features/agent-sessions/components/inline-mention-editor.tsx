@@ -22,7 +22,6 @@ import {
 } from "@tiptap/suggestion";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MentionPicker } from "@/features/agent-sessions/components/mention-picker";
-import { AGENT_COMPOSER_FOCUS_EVENT } from "@/features/agent-sessions/lib/composer-focus";
 import {
   isRepoMentionId,
   isSessionMentionId,
@@ -323,15 +322,6 @@ export const InlineMentionEditor = forwardRef<
       editor.chain().focus("end").insertContent(text).run();
     },
   }));
-
-  useEffect(() => {
-    function focusEditor() {
-      editor?.commands.focus("end");
-    }
-    window.addEventListener(AGENT_COMPOSER_FOCUS_EVENT, focusEditor);
-    return () =>
-      window.removeEventListener(AGENT_COMPOSER_FOCUS_EVENT, focusEditor);
-  }, [editor]);
 
   useEffect(() => {
     if (!editor) return;
