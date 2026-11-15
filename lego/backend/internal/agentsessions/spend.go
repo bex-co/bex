@@ -90,9 +90,12 @@ func (a trustAdmission) refusal(live int) error {
 const MetaRouteCapacityCode = "AGENT_SESSION_AGENT_AT_CAPACITY"
 
 // DefaultMetaRouteMaxSessions keeps the shared Meta key's live sessions
-// within muse-spark-1.3-contributor's 150 requests per minute per key, at the
-// ~5–20 requests per minute one busy session makes (ADR108).
-const DefaultMetaRouteMaxSessions = 8
+// within muse-spark-1.3-contributor's 150 requests and 3M tokens per minute
+// per key even when every session is in its opening burst. Measured on
+// production (w7/m391 t005, 2026-11-15): a session's first minute made 23
+// requests and 414k tokens (cached included), so 6 × 23 = 138 requests and
+// 6 × 414k ≈ 2.5M tokens; 8 would reach 184 requests (ADR108).
+const DefaultMetaRouteMaxSessions = 6
 
 // enforceMetaRouteCapacity refuses starting, steering or resuming a session
 // of a platform-only agent (excludeID: the session being reactivated) when

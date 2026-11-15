@@ -18,7 +18,6 @@ package agentsession
 
 import (
 	"encoding/json"
-	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -233,17 +232,20 @@ func TestResolveAuthSchemeMetaIsBearer(t *testing.T) {
 // A session's egress policy names its profile's model host, and
 // bex-api-session-egress admits only sessionegress's provider list there: a
 // profile or platform route whose host is missing fails every create with
-// "sandbox create failed" (muse on api.meta.ai, w7/m391 t005).
+// "sandbox create failed".
 func TestEveryModelHostIsARegisteredProvider(t *testing.T) {
 	providers := sessionegress.ModelProviderDomains()
-	hosts := []string{OpenRouterHost, MetaModelHost}
+	hosts := []string{OpenRouterHost}
 	for _, id := range AgentProfileIDs() {
-		profile, _ := LookupAgentProfile(id)
-		u, err := url.Parse(profile.ModelEndpoint)
-		if err != nil || u.Hostname() == "" {
+		profile, ok := LookupAgentProfile(id)
+		if !ok {
+			t.Fatalf("AgentProfileIDs lists %q but LookupAgentProfile does not find it", id)
+		}
+		host, err := sessionegress.ModelEndpointHost(profile.ModelEndpoint)
+		if err != nil {
 			t.Fatalf("profile %s endpoint %q: %v", id, profile.ModelEndpoint, err)
 		}
-		hosts = append(hosts, u.Hostname())
+		hosts = append(hosts, host)
 	}
 	for _, host := range hosts {
 		if !slices.Contains(providers, host) {

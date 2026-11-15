@@ -270,7 +270,7 @@ type Service struct {
 	Sheet *pricing.Sheet
 	// MetaRouteMaxSessions caps live sessions of the platform-only profiles
 	// across every workspace, because one bex-owned Meta key carries them all
-	// within Meta's per-key rate limit (ADR108); 0 ⇒ defaultMetaRouteMaxSessions.
+	// within Meta's per-key rate limit (ADR108); 0 ⇒ DefaultMetaRouteMaxSessions.
 	MetaRouteMaxSessions int
 	// ModelCosts reads a session's platform-route model cost per turn
 	// (ADR091 D6). nil (store off) ⇒ every session reads zero cost.
