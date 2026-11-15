@@ -175,8 +175,10 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 		rotationRequested || scaledSelection || isolationChanged || cancelStamped
 }
 
-// labelApp marks the workloads bex creates for an App.
-const labelApp = "app.bex.co/app"
+// labelApp marks the workloads bex creates for an App. Alias of
+// execution.LabelApp: one definition for the operator, so the two spellings
+// cannot drift (same pattern as labelEnvironment below).
+const labelApp = execution.LabelApp
 
 // createContainerConfigError is the kubelet pod-condition reason the stuck-pod
 // classifier surfaces as its own App condition (a referenced Secret/ConfigMap
@@ -213,10 +215,12 @@ const labelRevision = "app.bex.co/revision"
 const labelHostRedirectOwner = "app.bex.co/host-redirect-owner"
 
 // labelWorkspace carries the owning workspace (tenant) id on pod templates so
-// NetworkPolicy selectors can express "same-workspace" allow rules. Kept in
-// sync by hand with core.LabelWorkspace in the backend — the operator never
-// imports the backend (same pattern as labelApp / core.PodLabelApp).
-const labelWorkspace = "app.bex.co/workspace"
+// NetworkPolicy selectors can express "same-workspace" allow rules. Alias of
+// execution.LabelWorkspace: one definition for the operator, so the two
+// spellings cannot drift. The backend keeps the same string as
+// core.LabelWorkspace without importing the operator — that cross-module pair
+// stays hand-synced (see label_cross_module_drift_test.go).
+const labelWorkspace = execution.LabelWorkspace
 
 // appIdentity is the shared-sink identity for app (w2/m75, docs/ADR074).
 func appIdentity(app *appv1alpha1.App) identity.Identity {
