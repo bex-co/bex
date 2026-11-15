@@ -20,6 +20,9 @@
 - [x] **m409** — [Admission policies bind every identity the round-25 audit named: the activator, a projected crown Secret, a platform toleration, hostPort, and the drain-guard's pod-template fields](done/m409/README.md) (8 tasks, ~5h) ← promoted from 068, 2026-11-14
 - [ ] **m410** — **BLOCKED (needs the user's decision on the localhost return URL that the documented "Local dev against prod" workflow needs; t001–t003 and t005–t007 are done and shipped)** — [Dashboard hardening from the round-25 audit: redirect validation, same-origin, content type, CSP, error headers, the return URL, and the consent screens](blocked/m410/README.md) (8 tasks, ~4h) ← promoted from 072, 2026-11-14
 - [x] **m411** — [Operator hardening from the round-25 audit: the PROXY trust list, the edge cache, the static server's fetch leader, registry-migrate, logging, disk snapshots and the build context](done/m411/README.md) (10 tasks, ~5h) ← promoted from 073, 2026-11-14 — DONE 2026-11-14
+- [ ] **m415** — [Object storage core and Render's `ea objects` over Wasabi: buckets as rows, quotas, presigned put, get, list and delete](m415/README.md) (14 tasks, ~10h20m) ← from [ADR112](../../docs/ADR112-object-storage.md), filed by `/pmx adr 112 to w21` 2026-11-15
+- [ ] **m416** — [wrangler's `r2` contract over the same store: buckets, streamed objects, CORS, lifecycle, the sweep, purge and shadow meters](m416/README.md) (17 tasks) ← from ADR112, filed by `/pmx adr 112 to w21` 2026-11-15; after m415
+- [ ] **m417** — [Public buckets: `dev-url` and objectgw serve a bucket read-only at `pub-<obk-id>.onbex.co`, with caps, an egress alert and a kill switch](m417/README.md) (12 tasks) ← from ADR112, filed by `/pmx adr 112 to w21` 2026-11-15; after m416
 
 ## Inbox
 

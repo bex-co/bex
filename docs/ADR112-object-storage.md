@@ -1,6 +1,6 @@
 # ADR112 — bex object storage: Render's `ea objects` and Cloudflare's `wrangler r2` contracts over Wasabi
 
-**Status:** proposed (2026-11-14). No implementation milestone yet; § Tasks is the proposed split.
+**Status:** proposed (2026-11-14). Filed 2026-11-15 as [w21/m415](../.pm/w21/m415/README.md), [m416](../.pm/w21/m416/README.md) and [m417](../.pm/w21/m417/README.md); § Tasks maps the split.
 
 **Source:** user request 2026-11-14: an ADR to support Render's early-access object store with Wasabi S3. After a study of what customers need from object storage, the user restated the goal: "rw cli contract + wasabi wrapper", and asked for the ADR to be rewritten around it. I read "rw" as **R**ender and **w**rangler: serve the contract of Render's CLI (`render ea objects`) and of Cloudflare's `wrangler r2`, each as a thin wrapper over one Wasabi-backed store. If only wrangler was meant, D2 and the `render-<region>` system buckets in D1 drop out and nothing else changes.
 
@@ -244,9 +244,15 @@ Each is its own follow-up, per the rule that parity-sufficient work ships and wi
 - **Quota is eventually consistent.** Gating at write plus rate limits bounds the overshoot but does not remove it.
 - **A new Stripe dimension is scarce.** One cost-denominated dimension (D8) is all the catalog can afford.
 
-## Tasks (two milestones)
+## Tasks (filed as three milestones)
 
-Milestone 1 is t001 to t005 and t007 to t009; milestone 2 is t006, which needs a decision on the public routing.
+`/pmx adr 112 to w21` (2026-11-15) filed this split on the board as three milestones, each a shippable step, with the tasks below cut finer (tens of minutes each):
+
+- [w21/m415](../.pm/w21/m415/README.md): the core store and Contract A (t001, t002, t004 and the Contract A parts of t008 and t009), ending in a production walk.
+- [w21/m416](../.pm/w21/m416/README.md): Contract B, the sweep, lifecycle, purge and the shadow meters (t003, t005, t007 and the Contract B parts of t008 and t009), ending in a production walk.
+- [w21/m417](../.pm/w21/m417/README.md): public reads, objectgw and its caps, alert and kill switch (t006 and the public part of t009).
+
+t010 (pricing) is not filed: it waits for the user to set a price.
 
 | # | Task |
 | --- | --- |
