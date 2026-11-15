@@ -975,7 +975,7 @@ func TestStripeCreateCheckoutSessionRejectsUntrustedReturnOrigin(t *testing.T) {
 		SuccessURL: "https://evil.example/steal",
 		CancelURL:  "https://dashboard.bex.co/usage",
 	})
-	if err == nil || !isInputError(err) {
+	if err == nil || !IsInputError(err) {
 		t.Fatalf("untrusted Checkout success URL error = %v, want inputError", err)
 	}
 	if len(stub.hits) != 0 {
@@ -1161,7 +1161,7 @@ func TestStripeCompleteCheckoutSessionRejectsCrossWorkspaceBinding(t *testing.T)
 	})
 	c.storeCustomer("tea-a", "cus_1")
 	err := c.CompleteCheckoutSession(context.Background(), &stripe.CheckoutSession{ID: "cs_test_bad"})
-	if err == nil || !isInputError(err) || !strings.Contains(err.Error(), "does not belong") {
+	if err == nil || !IsInputError(err) || !strings.Contains(err.Error(), "does not belong") {
 		t.Fatalf("cross-workspace completion error = %v", err)
 	}
 	if stub.count("/customers/cus_1") != 0 || stub.count("/subscriptions/sub_other") != 0 {
@@ -1178,7 +1178,7 @@ func TestStripeCompleteCheckoutSessionRejectsAuthoritativeOpenSession(t *testing
 	})
 	c.storeCustomer("tea-a", "cus_1")
 	err := c.CompleteCheckoutSession(context.Background(), &stripe.CheckoutSession{ID: "cs_test_open"})
-	if err == nil || !isInputError(err) || !strings.Contains(err.Error(), "not a completed setup session") {
+	if err == nil || !IsInputError(err) || !strings.Contains(err.Error(), "not a completed setup session") {
 		t.Fatalf("open Checkout completion error = %v", err)
 	}
 	if len(stub.hits) != 1 {

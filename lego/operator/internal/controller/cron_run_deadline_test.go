@@ -39,7 +39,7 @@ func TestCronRunsHaveTwelveHourDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	var manual batchv1.Job
-	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, &manual); err != nil {
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &manual); err != nil {
 		t.Fatal(err)
 	}
 	for name, spec := range map[string]batchv1.JobSpec{"scheduled": cron.Spec.JobTemplate.Spec, "manual": manual.Spec} {
@@ -144,7 +144,7 @@ func setDeadlineFixtureOwner(app *appv1alpha1.App, cron *batchv1.CronJob, job *b
 			runAt = "2026-09-17T18:00:00Z"
 			job.Annotations = map[string]string{annotationManualRunAt: runAt}
 		}
-		job.Name = manualRunJobName(app.Name, runAt)
+		job.Name = appv1alpha1.ManualCronRunJobName(app.Name, runAt)
 		if owner == "foreign manual" {
 			ref.UID = "foreign-app"
 		}
@@ -161,7 +161,7 @@ func TestManualCronDeadlineFailureWaitsForPodsThenReleasesSchedule(t *testing.T)
 	r, app, template := manualIntentFixture(t)
 	reconcileManualIntent(t, r, app, template)
 	var job batchv1.Job
-	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, &job); err != nil {
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &job); err != nil {
 		t.Fatal(err)
 	}
 	start := metav1.NewTime(time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC))
@@ -196,7 +196,7 @@ func TestManualCronDeadlineFailureWaitsForPodsThenReleasesSchedule(t *testing.T)
 	persistManualIntent(t, r, app)
 	reconcileManualIntent(t, r, app, template)
 	var next batchv1.Job
-	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, &next); err != nil {
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &next); err != nil {
 		t.Fatalf("later manual trigger did not execute: %v", err)
 	}
 	if next.Spec.ActiveDeadlineSeconds == nil || *next.Spec.ActiveDeadlineSeconds != 43200 {

@@ -208,7 +208,7 @@ func TestStripeCompleteCheckoutSessionRefusesForeignTaggedCustomer(t *testing.T)
 	adoption := &adoptionStub{customerOwner: "tea-other"}
 	c, stub := newStripeTest(t, adoption.route)
 	err := c.CompleteCheckoutSession(context.Background(), &stripe.CheckoutSession{ID: "cs_new"})
-	if err == nil || !isInputError(err) || !strings.Contains(err.Error(), "does not belong") {
+	if err == nil || !IsInputError(err) || !strings.Contains(err.Error(), "does not belong") {
 		t.Fatalf("foreign-tagged adoption error = %v", err)
 	}
 	if countPosts(stub.requests("/v1/customers/cus_new")) != 0 || countPosts(stub.requests("/v1/subscriptions")) != 0 {

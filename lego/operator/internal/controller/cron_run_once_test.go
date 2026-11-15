@@ -64,7 +64,7 @@ func TestCronRunsExecuteOnce(t *testing.T) {
 	}
 	reconcileTwice(t, r, nn)
 	var job batchv1.Job
-	if err := cl.Get(ctx, types.NamespacedName{Namespace: nn.Namespace, Name: manualRunJobName(app.Name, live.Spec.RunAt)}, &job); err != nil {
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: nn.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, live.Spec.RunAt)}, &job); err != nil {
 		t.Fatalf("manual run Job: %v", err)
 	}
 	if b := job.Spec.BackoffLimit; b == nil || *b != 0 {

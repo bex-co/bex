@@ -276,7 +276,7 @@ func classifyProviderError(err error) error {
 	if err == nil {
 		return nil
 	}
-	if isInputError(err) {
+	if IsInputError(err) {
 		return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 	}
 	if isStateError(err) {

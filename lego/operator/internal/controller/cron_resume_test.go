@@ -102,7 +102,7 @@ func TestResumingACronJobDuringAManualRunSkipsTheSlotsItMissed(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "nightly", Namespace: "tea-x", UID: "cron-resume-run"},
 		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Schedule: "*/2 * * * *", Suspended: true, RunAt: runAt},
 	}
-	run := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: manualRunJobName(app.Name, runAt), Namespace: app.Namespace, Labels: map[string]string{labelApp: app.Name}}}
+	run := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ManualCronRunJobName(app.Name, runAt), Namespace: app.Namespace, Labels: map[string]string{labelApp: app.Name}}}
 	scheme := wakeScheme()
 	cl := fake.NewClientBuilder().WithScheme(scheme).
 		WithStatusSubresource(&appv1alpha1.App{}, &batchv1.Job{}, &batchv1.CronJob{}).WithObjects(app, run).Build()

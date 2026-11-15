@@ -45,15 +45,11 @@ type stateError struct{ message string }
 
 func (e *stateError) Error() string { return e.message }
 
-func isInputError(err error) bool {
-	var target *inputError
-	return errors.As(err, &target)
-}
-
 // IsInputError reports a provider response that proves caller-visible setup is
 // incomplete or mismatched, rather than a transient Stripe failure.
 func IsInputError(err error) bool {
-	return isInputError(err)
+	var target *inputError
+	return errors.As(err, &target)
 }
 
 func isStateError(err error) bool {

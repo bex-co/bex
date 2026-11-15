@@ -144,7 +144,7 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			Expect(k8sClient.Update(ctx, app)).To(Succeed())
 			reconcileN(r, nn)
 
-			jobName := manualRunJobName(name, "2026-07-09T10:00:00Z")
+			jobName := appv1alpha1.ManualCronRunJobName(name, "2026-07-09T10:00:00Z")
 			job := &batchv1.Job{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: jobName, Namespace: "default"}, job)).To(Succeed())
 			Expect(job.Labels).To(HaveKeyWithValue(labelApp, name))
@@ -173,7 +173,7 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			got.Spec.RunAt = "2026-07-09T10:05:00Z"
 			Expect(k8sClient.Update(ctx, got)).To(Succeed())
 			reconcileN(r, nn)
-			cancelJobName := manualRunJobName(name, got.Spec.RunAt)
+			cancelJobName := appv1alpha1.ManualCronRunJobName(name, got.Spec.RunAt)
 			cancelJobNN := types.NamespacedName{Name: cancelJobName, Namespace: "default"}
 			Expect(k8sClient.Get(ctx, cancelJobNN, &batchv1.Job{})).To(Succeed())
 
@@ -234,7 +234,7 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			reconcileN(r, nn)
 
 			jobNN := types.NamespacedName{
-				Name: manualRunJobName(name, "2026-08-24T02:44:40Z"), Namespace: "default",
+				Name: appv1alpha1.ManualCronRunJobName(name, "2026-08-24T02:44:40Z"), Namespace: "default",
 			}
 			job := &batchv1.Job{}
 			Expect(k8sClient.Get(ctx, jobNN, job)).To(Succeed())
