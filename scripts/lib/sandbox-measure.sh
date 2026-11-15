@@ -60,12 +60,35 @@ trap measure_cleanup EXIT
 
 printf 'header = "Authorization: Bearer %s"\n' "$BEX_WS_A_OWNER_TOKEN" >"$fixture_dir/owner.curl"
 
+# refresh_owner_token: the disposable owner's access token lives about 15
+# minutes, and the storage leg waits longer than that; mint a new one from the
+# client credentials the live wrapper passes (through its Hydra port-forward).
+refresh_owner_token() {
+  [ -n "${BEX_HYDRA_PUBLIC_URL:-}" ] && [ -n "${BEX_WS_A_OWNER_CLIENT_ID:-}" ] || return 1
+  local out="$fixture_dir/token-refresh.json" code token
+  code="$(curl --silent --show-error --output "$out" --write-out '%{http_code}' \
+    --header 'Content-Type: application/x-www-form-urlencoded' \
+    --data-urlencode "grant_type=client_credentials" --data-urlencode "client_id=$BEX_WS_A_OWNER_CLIENT_ID" \
+    --data-urlencode "client_secret=$BEX_WS_A_OWNER_CLIENT_SECRET" "$BEX_HYDRA_PUBLIC_URL/oauth2/token")"
+  [ "$code" = 200 ] || return 1
+  token="$(jq -er '.access_token' "$out")" || return 1
+  printf 'header = "Authorization: Bearer %s"\n' "$token" >"$fixture_dir/owner.curl"
+}
+
+# api_call <auth file> <method> <path> <output> [curl args]: prints the status. A
+# 401 on the owner's own credentials refreshes the token once and repeats the call.
 api_call() {
-  local auth_file="$1" method="$2" path="$3" output="$4"
+  local auth_file="$1" method="$2" path="$3" output="$4" code
   shift 4
-  curl --config "$auth_file" --silent --show-error \
+  code="$(curl --config "$auth_file" --silent --show-error \
     --request "$method" --output "$output" --write-out '%{http_code}' \
-    "$api_url$path" "$@"
+    "$api_url$path" "$@")"
+  if [ "$code" = 401 ] && [ "$auth_file" = "$fixture_dir/owner.curl" ] && refresh_owner_token; then
+    code="$(curl --config "$auth_file" --silent --show-error \
+      --request "$method" --output "$output" --write-out '%{http_code}' \
+      "$api_url$path" "$@")"
+  fi
+  printf '%s' "$code"
 }
 
 expect_status() {

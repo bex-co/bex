@@ -44,6 +44,15 @@ measure baseline "$(jq -cn --argjson r "${reap_rows_before:-0}" \
   --argjson g "$(prom_query 'bex_sandbox_storage_objects')" \
   '{reapPendingRowsFleetwide: $r, storageObjectsGauge: [$g[]? | {state: .metric.state, value: .value[1]}]}')"
 
+# Images left behind by earlier disposable workspaces: a repository under
+# snapshots/<ws>-sandbox/ whose namespace no longer exists (a workspace deleted
+# while a sandbox was suspended leaves its image, as far as the code reads).
+orphans="$(curl --config "$fixture_dir/zot.curl" --silent --max-time 30 "$zot_url/v2/_catalog?n=1000" \
+  | jq -r '.repositories[]? | select(startswith("snapshots/")) | split("/")[1]' | sort -u | while read -r ns; do
+      kubectl get namespace "$ns" >/dev/null 2>&1 || printf '%s\n' "$ns"
+    done | jq -Rsc 'split("\n") | map(select(length > 0))')"
+measure orphan-snapshot-namespaces "$(jq -cn --argjson o "${orphans:-[]}" '{namespacesWithImagesAndNoNamespace: $o, count: ($o | length)}')"
+
 # A repository this run did not write: the reaper must leave it alone.
 control_repo="$(curl --config "$fixture_dir/zot.curl" --silent --max-time 30 "$zot_url/v2/_catalog?n=1000" \
   | jq -r --arg p "snapshots/${ws}-sandbox/" '[.repositories[]? | select(startswith($p) | not)][0] // empty')"
