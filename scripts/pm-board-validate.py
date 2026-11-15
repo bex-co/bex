@@ -106,12 +106,16 @@ def check_duplicates(root: str, base: str, tree: list[str]) -> tuple[list[str], 
     before = milestone_dirs(tree_files(root, merge_base))
     current = milestone_dirs(tree)
     added, deleted = current - before, before - current
+    # A milestone the base already held under this workstream keeps its number when
+    # it moves between live, blocked/ and done/: that is not an addition, even if a
+    # historical duplicate of the number sits in another workstream.
+    held = {(number, ws) for number, ws, _ in before}
     # What the base branch holds now, less what this change moves or removes.
     taken = current | (milestone_dirs(tree_files(root, base)) - deleted)
     problems = []
     for number, ws, directory in sorted(added):
         elsewhere = sorted({other for n, other, _ in taken if n == number and other != ws})
-        if elsewhere:
+        if elsewhere and (number, ws) not in held:
             problems.append(
                 f"{directory} adds milestone {number}, already used by {', '.join(elsewhere)}; "
                 "take the next free number (git fetch origin main, then the highest in the tree and "

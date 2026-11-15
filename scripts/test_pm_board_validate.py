@@ -123,6 +123,18 @@ class BoardValidateTest(unittest.TestCase):
         board.move(".pm/w1/m5", ".pm/w1/done/m5")
         self.assertGreen(board)
 
+    def test_a_historical_duplicate_can_move_between_its_own_workstreams_directories(self):
+        board = self.board({".pm/w2/blocked/m5/README.md": "# blocked, same number as w1's m5\n"})
+        board.move(".pm/w2/blocked/m5", ".pm/w2/m5")
+        self.assertGreen(board)
+        board.move(".pm/w2/m5", ".pm/w2/done/m5")
+        self.assertGreen(board)
+
+    def test_a_workstream_cannot_take_a_number_another_workstream_uses_by_moving_a_new_milestone_in(self):
+        board = self.board()
+        board.write({".pm/w2/blocked/m5/README.md": "# new here, m5 is w1's\n"})
+        self.assertRed(board, ".pm/w2/blocked/m5 adds milestone m5, already used by w1")
+
     def test_a_milestone_present_open_and_done_at_once_fails(self):
         board = self.board()
         board.write({".pm/w1/done/m5/README.md": "# copied, not moved\n"})
