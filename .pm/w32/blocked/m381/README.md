@@ -115,3 +115,19 @@ Nothing is left uncovered, so no follow-up is filed. The runtime timeout still e
 - **Shipped:** `882818b95` (the command registry, the sweeper and history reconciliation, the probe subject, ADR014 D4).
 - **Gate:** production deploys are batched: `deploy.yml` deploys a push, or the hourly schedule once the pin is 6 h old. No user decision is needed. Once `git merge-base --is-ancestor 882818b95 <pinned sha>` holds, a worker runs the acceptance walk below with the released CLI in `bex-canary`.
 - **ADR104 and ADR018:** their rows read 🚧 w32/m381 t005 until the walk passes; t006 flips them.
+
+## Live check — 2026-11-14 (`/qa-find-bugs-cli` sweep 23)
+
+- **Gate:** production pin `c99e7815ebec` (deployed 13:06 UTC) carries `882818b95`. Release `bex` v0.5.0, human device login, `bex-canary`. Sandbox `sbx-dbs5vn5v5sfs73boajn0` was created with `--wait --timeout 1800 --idle-timeout 300 --network-policy deny-all`.
+- **Disconnect with SIGTERM passes:**
+  - At 13:19:39 UTC, `timeout -s TERM 5 bex sandboxes exec <sbx> -- bash -c 'sleep 480; date -u +%T > ~/done'` started. The CLI was killed at 13:19:44.
+  - Mid-run, REST `GET /v1/sandboxes/<sbx>/execs` listed the execution with `startedAt` and no `stoppedAt` or `exitCode`.
+  - `bex sandboxes list --all -o json`, polled every 30 s, read `running` from 13:19:47 through 13:32:26. It read `suspending` at 13:32:57 and `suspended` from 13:33:27, which is 317–347 s after the command ended at 13:27:40.
+  - `bex sandboxes exec <sbx> -- cat done` resumed the sandbox in 5.1 s and printed `13:27:40`.
+  - The execution record then read `stoppedAt` `2026-11-14T13:27:40Z` and `exitCode: 0`. That `stoppedAt` has whole seconds, while a connected command's has microseconds (`13:35:30.243658Z`). This is noted only; Render's precision is unknown.
+- **Disconnect with Ctrl-C, and a leftover background process, pass:**
+  - At 13:35:46, `timeout -s INT 5 bex sandboxes exec <sbx> -- bash -c 'nohup sleep 900 >/dev/null 2>&1 & sleep 480; date -u +%T > ~/done2'` started.
+  - The sandbox read `running` through 13:48:34 and `suspended` from 13:49:05. That is 318–348 s after the command ended at 13:43:47, while the background `sleep 900` it left behind was still alive (until ~13:50:46). Render: "Background processes do not keep a sandbox active after the command that started them finishes".
+  - `cat done2` printed `13:43:47`. The execution record read `stoppedAt` `2026-11-14T13:43:47Z` and `exitCode: 0`.
+- **Not run:** the connected-command control from 2026-11-13. Both sandboxes were stopped and read `terminated`.
+- **Rechecked on pin `2d9bbae6bb8d`** (2026-11-14 22:48–23:04 UTC, with the rebuilt OpenSandbox controller; sandbox `sbx-dbseaf0rdlgs739t6b10`, since terminated): a CLI killed 5 s into `sleep 330` left the sandbox `running` until the command ended (22:57:25, `exitCode: 0`). It read `suspended` from 23:02:44, about 320 s later, so w9/m407's suspend storage cap did not refuse the idle suspend in `bex-canary`.

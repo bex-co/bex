@@ -113,3 +113,22 @@ GET  <uri for up-hardonly, no links> (HTTP/1.1) → 200 Content-Type: applicatio
 - **Shipped:** `d82e27ee2` (gateway archive rule, the pre-first-byte answer, bex-api's non-replayed hop, docs and the shared fixtures).
 - **Gate:** production deploys are batched: `deploy.yml` deploys a push, or the hourly schedule once the pin is 6 h old. No user decision is needed. Once `git merge-base --is-ancestor d82e27ee2 <pinned sha>` holds, a worker runs t005's walk with the released CLI, then t006 and t009.
 - **ADR018:** the new row "Links in a copied directory" reads 🚧 until t005 passes; t006 flips it.
+
+## Live check — 2026-11-14 (`/qa-find-bugs-cli` sweep 23): the DoD holds where exercised
+
+- **Gate:** production pin `c99e7815ebec` (deployed 13:06 UTC) carries `d82e27ee2`. Release `bex` v0.5.0, human device login, `bex-canary`, sandbox `sbx-dbs5u6dv5sfs73boaipg` (since terminated).
+- **Upload:**
+  - `bex sandboxes copy ./src <sbx>:up` succeeded. `./src` held `link -> with space.txt`, `abs-link -> /etc/hostname`, `dangling -> does-not-exist`, `dirlink -> sub` and a local hard-link pair.
+  - In the sandbox, each link read back its target, `cat link` printed `spaced` and `ls dirlink/` listed `in.txt`.
+  - The local hard-link pair arrived as two files, as expected: the pinned client writes both as regular files.
+  - `python3 -m venv --without-pip venv` uploaded with `bin/python -> python3`, `bin/python3 -> /usr/bin/python3`, `bin/python3.12 -> python3` and `lib64 -> lib` intact.
+- **Download:**
+  - In the sandbox, `~/dl` held `top.txt`, `rel-link -> top.txt`, `abs-link -> /etc/hostname`, `dirlink -> sub`, `sub/s.txt` and `hard.txt`, a hard link to `top.txt`. `bex sandboxes copy <sbx>:dl ./dl` succeeded.
+  - Locally the three symlinks read back their targets, `ls dirlink/` listed `s.txt`, and `hard.txt` shares `top.txt`'s inode (link count 2) and reads `top`.
+- **Refused before the first byte:** a missing path answered `404 file_not_found` ("sandbox source or destination parent does not exist"). A path under a symlinked directory answered `409`. Each answered the same once over HTTP/1.1 and once over HTTP/2, through a single-request probe. None answered `409 file ticket already used` or `503`.
+- **Control:** a plain tree uploaded and downloaded with identical contents: spaces, CJK and emoji names, `.hidden`, `empty/`, a `0755` script and a `0444` file. The `0444` file arrives `0644`, the existing w32/018 rule (`mode|0600`, as the pinned client extracts). The local download root is `0750`, which the client creates.
+- **Not exercised live:** the refusal of a crafted archive whose entry escapes its destination or sits under a symlink entry. The release CLI cannot produce one. The gateway tests cover it.
+- **Filed from this walk:**
+  - [w32/023](../../023.md): a directory over 10,000 entries is refused on upload and fails mid-stream on download without naming its cause. t003 had expected an over-limit download to name its cause, but the limit trips after bytes are out.
+  - [w32/024](../../024.md): a download source that is or passes through a symlink answers the upload's "destination exists" `409`.
+- **Rechecked on pin `2d9bbae6bb8d`** (2026-11-14 22:48–23:04 UTC, with the rebuilt OpenSandbox controller; sandbox `sbx-dbseaf0rdlgs739t6b10`, since terminated): a downloaded directory kept `rel-link -> top.txt`, `dirlink -> sub` and a hard link (link count 2). An uploaded tree kept `link -> with space.txt`, `abs -> /etc/hostname` and `dangling -> nope`.
