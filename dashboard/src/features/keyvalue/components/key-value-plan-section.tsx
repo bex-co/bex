@@ -25,6 +25,7 @@ import {
   keyValueClearPhrase,
   persistenceKeepsData,
 } from "@/features/keyvalue/lib/labels";
+import { isPlanDowngrade } from "@/features/keyvalue/lib/plan-downgrade";
 
 export interface KeyValuePlanSectionProps {
   keyValue: KeyValueView;
@@ -54,12 +55,13 @@ export function KeyValuePlanSection({
   const [confirming, setConfirming] = useState(false);
 
   // Render: "It is not currently possible to downgrade a Key Value instance"
-  // (w8/249), and bex-api refuses the change. The catalog lists plans from
-  // the smallest to the largest, so every plan before the current one is
-  // smaller. Each such card stays in place, disabled, like a paused plan's.
-  const currentIndex = instanceTypes.findIndex((it) => it.id === currentPlan);
-  const planCards = instanceTypes.map((it, index) =>
-    index < currentIndex
+  // (w8/249), and bex-api refuses the change. A smaller plan is one with less
+  // memory — bex-api's own comparison (keyvalue.ErrPlanDowngrade), read from
+  // the catalog it sends, not from the catalog's list order. Each such card
+  // stays in place, disabled, like a paused plan's.
+  const currentType = instanceTypes.find((it) => it.id === currentPlan);
+  const planCards = instanceTypes.map((it) =>
+    isPlanDowngrade(it, currentType)
       ? {
           ...it,
           available: false,
