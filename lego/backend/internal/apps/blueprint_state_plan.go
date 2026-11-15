@@ -535,14 +535,24 @@ func blueprintDeclaredFieldChanges(fields map[string]BlueprintField) []Blueprint
 
 // blueprintServiceProbePaths are the paths a service plan probes: each declared
 // field, and each service field the file omits, since an omission can change a
-// service too — an omitted buildFilter clears, and an image service takes the
-// Blueprint's repo — and is then listed under the path it omits, once.
+// service too — an omitted buildFilter clears, an image service takes the
+// Blueprint's repo, and an omitted buildSource unlinks the service — and is
+// then listed under the path it omits, once.
 func blueprintServiceProbePaths(declared map[string]BlueprintField) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		for name := range declared {
 			if !yield(name) {
 				return
 			}
+		}
+		// buildSource is no policy row: a service keeps a link the file stops
+		// naming while it has no source of its own, so the omission is not a
+		// value the file owns. But an entry that inherits the Blueprint's repo
+		// does have one, and the apply unlinks the service and points it there;
+		// the change belongs to the path the file dropped. Left unprobed, that
+		// sync planned an update naming nothing.
+		if _, ok := declared["buildSource"]; !ok && !yield("buildSource") {
+			return
 		}
 		for _, policy := range BlueprintServiceFieldPolicies {
 			if _, ok := declared[policy.Name]; !ok && !yield(policy.Name) {
