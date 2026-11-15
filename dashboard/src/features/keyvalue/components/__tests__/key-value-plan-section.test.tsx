@@ -8,9 +8,8 @@ import type { KeyValueView } from "@/features/keyvalue/types";
 
 const updatePlan = vi.fn();
 
-const catalog = vi.hoisted(() => ({
-  loading: false,
-  instanceTypes: [
+const catalog = vi.hoisted(() => {
+  const defaultTiers = [
     {
       id: "free",
       name: "Free",
@@ -27,8 +26,9 @@ const catalog = vi.hoisted(() => ({
       storageGB: 10,
       monthlyUsd: "7.00",
     },
-  ],
-}));
+  ];
+  return { loading: false, instanceTypes: defaultTiers, defaultTiers };
+});
 
 vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
   useKeyValueInstanceTypes: () =>
@@ -70,6 +70,7 @@ const KEY_VALUE: KeyValueView = {
 
 beforeEach(() => {
   catalog.loading = false;
+  catalog.instanceTypes = catalog.defaultTiers;
   persistence.mode = "journal-snapshot";
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   updatePlan.mockReset().mockResolvedValue(true);
@@ -113,6 +114,22 @@ describe("KeyValuePlanSection", () => {
     await user.click(free);
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     expect(updatePlan).not.toHaveBeenCalled();
+  });
+
+  // The smaller-plan rule compares the catalog's memory (bex-api's
+  // keyvalue.ErrPlanDowngrade), so a catalog that is not ordered
+  // smallest-first still disables exactly the smaller tiers.
+  it("judges plan size by memory, not by the catalog's order", () => {
+    catalog.instanceTypes = [...catalog.defaultTiers].reverse();
+    render(
+      <KeyValuePlanSection
+        keyValue={{ ...KEY_VALUE, plan: "starter" }}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("radio", { name: /Free/ })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /Starter/ })).toBeEnabled();
   });
 
   it("leaves every plan selectable on the smallest plan", () => {
