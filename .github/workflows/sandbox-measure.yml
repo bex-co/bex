@@ -18,10 +18,12 @@ on:
   workflow_dispatch:
     inputs:
       leg:
-        description: "Which measurement: kubelet (w22/008, w22/002)"
+        description: "Which measurement: kubelet (w22/008, w22/002), storage (w22/m321 t005, w22/m313 t006) or cpu (w22/m314 t001)"
         type: choice
         options:
           - kubelet
+          - storage
+          - cpu
         required: true
 
 permissions:

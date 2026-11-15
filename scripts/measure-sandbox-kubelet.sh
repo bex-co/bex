@@ -21,8 +21,8 @@ cd "$(dirname "$0")/.."
 . scripts/lib/sandbox-measure.sh
 
 fill_gib="${BEX_MEASURE_FILL_GIB:-5}"
-down_bytes="${BEX_MEASURE_DOWN_BYTES:-52428800}"
-up_bytes="${BEX_MEASURE_UP_BYTES:-20000000}"
+down_bytes="${BEX_MEASURE_DOWN_BYTES:-10485760}"
+up_bytes="${BEX_MEASURE_UP_BYTES:-5000000}"
 
 echo "==> create an allow-all sandbox and find its pod"
 sandbox_id="$(create_sandbox "$fixture_dir/sandbox.json" '{"type":"allow-all"}')"
@@ -80,13 +80,21 @@ measure cadvisor-fs-series "$(grep -F "pod=\"$pod\"" "$fixture_dir/cadvisor-fs.t
 echo "==> network byte counters while the sandbox downloads and uploads (w22/002)"
 node_cadvisor "$node" "$fixture_dir/cadvisor-net-0.txt"
 node_summary "$node" "$fixture_dir/summary-net-0.json"
-if printf '%s' "$tools" | grep -qw curl; then
-  net_cmd="curl -fsS -o /dev/null --max-time 120 'https://speed.cloudflare.com/__down?bytes=$down_bytes' && head -c $up_bytes /dev/urandom | curl -fsS -o /dev/null --max-time 120 -X POST --data-binary @- https://speed.cloudflare.com/__up"
-elif printf '%s' "$tools" | grep -qw python3; then
-  net_cmd="python3 -c \"import urllib.request as u; u.urlopen('https://speed.cloudflare.com/__down?bytes=$down_bytes', timeout=120).read()\""
-else
-  net_cmd=""
-fi
+# The sandbox image is minimal (no curl, no python3), so move bytes with bash's
+# /dev/tcp over plain HTTP: a download of down_bytes and an upload of up_bytes.
+net_cmd='bash -c '"'"'
+  set -e
+  host=speedtest.tele2.net
+  exec 3<>/dev/tcp/$host/80
+  printf "GET /10MB.zip HTTP/1.0\r\nHost: $host\r\nConnection: close\r\n\r\n" >&3
+  got=$(cat <&3 | wc -c)
+  echo "downloaded $got bytes"
+  exec 3<>/dev/tcp/$host/80
+  printf "POST /upload.php HTTP/1.0\r\nHost: $host\r\nContent-Length: '"$up_bytes"'\r\nConnection: close\r\n\r\n" >&3
+  head -c '"$up_bytes"' /dev/urandom >&3
+  cat <&3 | head -c 200 >/dev/null
+  echo uploaded '"$up_bytes"' bytes
+'"'"
 if [ -n "$net_cmd" ]; then
   if sandbox_exec "$sandbox_id" "$net_cmd" "$fixture_dir/net.txt"; then net_ok=true; else net_ok=false; fi
   sleep 20
@@ -101,6 +109,9 @@ if [ -n "$net_cmd" ]; then
 else
   measure network '{"skipped":"the sandbox has neither curl nor python3"}'
 fi
+
+node_cadvisor "$node" "$fixture_dir/cadvisor-census.txt"
+measure cadvisor-census "$(grep -F "pod=\"$pod\"" "$fixture_dir/cadvisor-census.txt" | awk '{ name = $1; sub(/\{.*/, "", name); c = "(none)"; if (match($1, /container="[^"]*"/)) c = substr($1, RSTART + 11, RLENGTH - 12); n[name " container=" c]++ } END { for (k in n) print k, n[k] }' | sort | jq -Rsc 'split("\n") | map(select(length > 0))')"
 
 echo "==> the same counters through Prometheus (its cAdvisor job drops container=\"\" series)"
 prom_forward

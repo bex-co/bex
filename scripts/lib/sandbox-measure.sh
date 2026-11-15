@@ -174,3 +174,63 @@ prom_query() {
   curl -sS --fail --max-time 20 --get --data-urlencode "query=$1" "$prom_url/api/v1/query" 2>/dev/null \
     | jq -c '.data.result // []' 2>/dev/null || echo '[]'
 }
+
+# db_query [psql args]: a read-only query as the bex-db superuser, SQL on stdin
+# (psql does not interpolate -v variables into -c strings). Prints unaligned,
+# tuple-only rows with | between columns. Only SELECTs belong here.
+db_primary=""
+db_query() {
+  [ -n "$db_primary" ] || db_primary="$(kubectl -n bex-system get clusters.postgresql.cnpg.io bex-db -o jsonpath='{.status.currentPrimary}')"
+  [ -n "$db_primary" ] || fail "bex-db has no primary"
+  kubectl -n bex-system exec -i "$db_primary" -c postgres -- \
+    psql -X -qAt -F '|' -v ON_ERROR_STOP=1 -U postgres -d bex "$@"
+}
+
+# zot_forward: port-forward to the registry and set $zot_url, with a curl config
+# in $fixture_dir/zot.curl holding the read-only meter user (never printed).
+zot_url=""
+zot_forward() {
+  local log="$fixture_dir/zot-pf.log" i port user pass
+  user="$(kubectl -n bex-registry get secret bex-sandbox-registry -o jsonpath='{.data.reader-username}' | base64 -d)"
+  pass="$(kubectl -n bex-registry get secret bex-sandbox-registry -o jsonpath='{.data.reader-password}' | base64 -d)"
+  [ -n "$user" ] && [ -n "$pass" ] || fail "the Secret bex-registry/bex-sandbox-registry has no reader credentials"
+  printf 'user = "%s:%s"\n' "$user" "$pass" >"$fixture_dir/zot.curl"
+  kubectl -n bex-registry port-forward svc/zot :5000 --request-timeout=20s >"$log" 2>&1 &
+  measure_pf_pids+=("$!")
+  for i in $(seq 1 40); do
+    port="$(sed -n 's/^Forwarding from 127\.0\.0\.1:\([0-9]*\) .*/\1/p' "$log" | head -1)"
+    [ -n "$port" ] && { zot_url="http://127.0.0.1:$port"; return 0; }
+    sleep 0.5
+  done
+  fail "port-forward to the registry did not start"
+}
+
+# zot_get <path> <output>: GET /v2/... with the reader; prints the HTTP status.
+zot_get() {
+  curl --config "$fixture_dir/zot.curl" --silent --show-error --max-time 30 --output "$2" --write-out '%{http_code}' \
+    --header 'Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+    "$zot_url$1"
+}
+
+# zot_repo_tags <repo>: the repository's tags as a sorted JSON array, [] when it has none or is gone.
+zot_repo_tags() {
+  local out="$fixture_dir/zot-tags.json"
+  if [ "$(zot_get "/v2/$1/tags/list" "$out")" = 200 ]; then jq -c '(.tags // []) | sort' "$out"; else echo '[]'; fi
+}
+
+# zot_newest_image_bytes <repo>: "<tag> <bytes>" for the highest snap-gen<N> tag,
+# sized as bex-api sizes it (config + the layers of the OCI manifest), or "none".
+zot_newest_image_bytes() {
+  local repo="$1" tag manifest="$fixture_dir/zot-manifest.json"
+  tag="$(zot_repo_tags "$repo" | jq -r '[.[] | select(test("^snap-gen[0-9]+$")) | ltrimstr("snap-gen") | tonumber] | if length == 0 then "" else "snap-gen\(max)" end')"
+  [ -n "$tag" ] || { echo none; return; }
+  [ "$(zot_get "/v2/$repo/manifests/$tag" "$manifest")" = 200 ] || { echo "$tag unreadable"; return; }
+  printf '%s %s\n' "$tag" "$(jq -r '(.config.size // 0) + ([.layers[]?.size] | add // 0)' "$manifest")"
+}
+
+# zot_sandbox_repos: this run's workspace's snapshot repositories, one per line.
+zot_sandbox_repos() {
+  local out="$fixture_dir/zot-catalog.json"
+  [ "$(zot_get "/v2/_catalog?n=1000" "$out")" = 200 ] || return 0
+  jq -r --arg p "snapshots/${BEX_WORKSPACE_A}-sandbox/" '.repositories[]? | select(startswith($p))' "$out"
+}
