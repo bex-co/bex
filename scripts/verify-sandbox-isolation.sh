@@ -25,7 +25,9 @@ set -euo pipefail
 # refused; the group list and its sandboxGroupId filter place each sandbox in its
 # group; a group at concurrencyLimit 1 answers 429 on a second create while
 # another group still admits one, and frees its slot once the first sandbox is
-# terminated; and the workspace-B principal gets the same SANDBOX_GROUP_NOT_FOUND
+# terminated; a sandbox paused out of the group stops counting, so a create fills
+# its slot and the resume of the paused one answers 429 and stays paused until
+# the slot is free; and the workspace-B principal gets the same SANDBOX_GROUP_NOT_FOUND
 # for workspace A's group on retrieve, update, create and list as for an id that
 # does not exist. It assumes the platform defaults (a ceiling of 1000 on a
 # group's limit, 10 groups a workspace). Groups have no delete route: the probe
@@ -97,6 +99,7 @@ group_default_id=""
 group_x1_id=""
 group_x2_id=""
 group_x3_id=""
+group_x4_id=""
 group_y_id=""
 group_leak_id=""
 cr_a=""
@@ -142,7 +145,7 @@ cleanup() {
   [ -n "$sandbox_d_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_d_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-d.json" >/dev/null
   [ -n "$sandbox_e_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_e_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-e.json" >/dev/null
   [ -n "$agent_session_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/agent-sessions/$agent_session_id/cancel" "$fixture_dir/cleanup-agent.json" >/dev/null
-  for group_sandbox in "$group_x1_id" "$group_x2_id" "$group_x3_id" "$group_y_id"; do
+  for group_sandbox in "$group_x1_id" "$group_x2_id" "$group_x3_id" "$group_x4_id" "$group_y_id"; do
     [ -n "$group_sandbox" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$group_sandbox/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-group-sandbox.json" >/dev/null
   done
   [ -n "$group_leak_id" ] && api_call "$fixture_dir/owner-c.curl" POST "/v1/sandboxes/$group_leak_id/terminate?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/cleanup-group-leak.json" >/dev/null
@@ -1499,6 +1502,40 @@ group_x3_id="$(create_sandbox_when_room "$fixture_dir/owner-a.curl" "$BEX_WORKSP
 jq -e --arg g "$group_limit_id" '.sandboxGroupId == $g' "$fixture_dir/group-x3.json" >/dev/null \
   || fail "the create after the slot was freed answered another group: $(head -c 400 "$fixture_dir/group-x3.json")"
 pass "a group at its concurrencyLimit answers 429 while another admits, and terminating a sandbox frees its slot"
+
+# A paused sandbox does not count against its group, so a create can take the
+# slot; the resume that would exceed the limit is then refused with the same 429
+# and leaves the sandbox paused (w22/m311, Render's limit holds on resume too).
+echo "==> sandbox groups: a resume into a full group answers 429"
+expect_status 204 "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$group_x3_id/pause?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/group-x3-pause.json"
+for _ in $(seq 1 30); do
+  expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$group_x3_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/group-x3-get.json"
+  [ "$(jq -r '.status' "$fixture_dir/group-x3-get.json")" = suspended ] && break
+  sleep 5
+done
+[ "$(jq -r '.status' "$fixture_dir/group-x3-get.json")" = suspended ] \
+  || fail "sandbox X3 never reached suspended after a pause: $(jq -c '{status}' "$fixture_dir/group-x3-get.json")"
+group_x4_id="$(create_sandbox_when_room "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/group-x4.json" '{"type":"deny-all"}' "\"sandboxGroupId\":\"$group_limit_id\"")"
+resume_status="$(api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$group_x3_id/resume?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/group-x3-resume-full.json")"
+[ "$resume_status" = 429 ] \
+  || fail "a resume into a group at its concurrencyLimit returned $resume_status, want 429: $(head -c 300 "$fixture_dir/group-x3-resume-full.json")"
+expect_code "a resume into a group at its concurrencyLimit" "$fixture_dir/group-x3-resume-full.json" SANDBOX_GROUP_CONCURRENCY_LIMIT
+jq -e --arg g "$group_limit_id" '.params.sandboxGroupId == $g and .params.concurrencyLimit == 1 and .params.active == 1' "$fixture_dir/group-x3-resume-full.json" >/dev/null \
+  || fail "the resume's 429 does not name the group, its limit of 1 and its 1 active sandbox: $(head -c 400 "$fixture_dir/group-x3-resume-full.json")"
+expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$group_x3_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/group-x3-get-after-429.json"
+[ "$(jq -r '.status' "$fixture_dir/group-x3-get-after-429.json")" = suspended ] \
+  || fail "the refused resume changed sandbox X3: $(jq -c '{status}' "$fixture_dir/group-x3-get-after-429.json")"
+# Terminating X4 frees the slot: the resume is admitted. A terminated sandbox can
+# still be listed for a moment, so a 429 is retried for up to a minute.
+expect_status 204 "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$group_x4_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/group-x4-terminate.json"
+for _ in $(seq 1 12); do
+  resume_status="$(api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$group_x3_id/resume?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/group-x3-resume-room.json")"
+  [ "$resume_status" = 429 ] || break
+  sleep 5
+done
+[ "$resume_status" = 204 ] \
+  || fail "a resume after the slot was freed returned $resume_status, want 204: $(head -c 300 "$fixture_dir/group-x3-resume-room.json")"
+pass "a resume into a group at its concurrencyLimit answers 429 and leaves the sandbox paused, and is admitted once a slot is free"
 
 # Workspace B's principal reaches none of workspace A's groups: the answer is the
 # one it gets for an id that does not exist.
