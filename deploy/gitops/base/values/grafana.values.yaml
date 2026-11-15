@@ -5897,6 +5897,30 @@ dashboards:
               ]
             },
             {
+             "id": 91,
+             "type": "timeseries",
+             "title": "Public datastore proxy shedding",
+             "description": "Connections the public Postgres and Key Value proxies refuse, by reason: global (the process is full), handshake (one network holds its share of unfinished handshakes), source, workspace and resource (per-client and per-tenant caps). DatastoreProxyShedding warns when any rate stays above zero for ten minutes.",
+             "gridPos": { "h": 9, "w": 16, "x": 8, "y": 140 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "cps", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (reason) (rate(bex_pg_proxy_connections_rejected_total[5m]))",
+                 "legendFormat": "postgres {{reason}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum by (reason) (rate(bex_kv_proxy_connections_rejected_total[5m]))",
+                 "legendFormat": "key value {{reason}}"
+                }
+              ]
+            },
+            {
              "id": 4,
              "type": "timeseries",
              "title": "Platform DB WAL archiver age",
