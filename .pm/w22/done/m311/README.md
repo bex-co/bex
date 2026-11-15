@@ -1,6 +1,6 @@
 # w22 · m311 — Sandbox groups, as on Render: a default group per workspace, a concurrency limit, and 429 at the limit
 
-**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** todo — unblocked 2026-11-14 (t001–t006, t008–t010 and t012 done and shipped; t007 and t011 wait for the production deploy)
+**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** done (2026-11-14)
 
 ## Tasks (in order)
 
@@ -13,11 +13,11 @@
 | t005 | GraphQL and MCP: groups and sandboxGroupId, answering the same as REST — **DONE** | 1h | t004 |
 | t006 | Resource and abuse bounds for compute (ADR104 D11); the egress alert moved to w22/002 — **DONE** | 1h30m | t004 |
 | t012 | Dashboard: "+ New > Sandbox Group", as on Render — **DONE** | 1h30m | t005 |
-| t007 | Production walk with the unmodified CLI, and flip the ledger rows | 1h | t005, t006, t012 |
+| t007 | Production walk with the unmodified CLI, and flip the ledger rows — **DONE** | 1h | t005, t006, t012 |
 | t008 | Render parity — **DONE** | 30m | t007 |
 | t009 | Simplify — **DONE** | 20m | t008 |
 | t010 | Test coverage — **DONE** | 40m | t008 |
-| t011 | Closeout | 10m | t007, t009, t010 |
+| t011 | Closeout — **DONE** | 10m | t007, t009, t010 |
 
 ## Definition of done
 
@@ -28,7 +28,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [docs/ADR104-sandbox-render-parity.md](../../../docs/ADR104-sandbox-render-parity.md), whose gap table is the proposal (no separate `/pm-brainstorm` run), filed by `/pmx adr104 to w22` on 2026-11-10; gaps 2, 12 (`group`) and 14 (compute and egress part)
+- **Source:** [docs/ADR104-sandbox-render-parity.md](../../../../docs/ADR104-sandbox-render-parity.md), whose gap table is the proposal (no separate `/pm-brainstorm` run), filed by `/pmx adr104 to w22` on 2026-11-10; gaps 2, 12 (`group`) and 14 (compute and egress part)
 - **Goal linkage:** Render parity first (ADR008 § Render parity first; ADR104 D1 and D7); pillar 5 sandboxes (re-opened 2026-07-27, `.pm/DO_NOT_DO.md` #18)
 - **Expected outcome:** The official Render CLI and SDKs can create and list sandbox groups against bex, and a group at its limit refuses new work as on Render
 - **Why now:** Groups are the largest unscheduled parity gap (ADR104 D7): snapshots (w32/m285, blocked) are scoped to a group and need at least a default group per workspace before m285 t002.
@@ -42,3 +42,10 @@
 - **卡点已不成立：** 生产 `isolation-matrix.yml` 的 run 43580573152（2026-11-14，commit `7af7ed382`，包含部署 `88a13216f`；更早的 43579027377、43577969524 同样成功）已 PASS：建组、首个组为 workspace 的默认组、重名被拒、sandbox 归属与按组过滤、组达到 `concurrencyLimit` 时 429 且终止后释放名额、其他 workspace 的主体对该组得到同样的 `SANDBOX_GROUP_NOT_FOUND`。QA 登录 2026-11-14 实测通过（见 t007）。
 - **剩下的工作（worker）：** 见 t007 的 2026-11-14 记录；然后 t011 收尾。
 - **Render 对标：** 组与 429 的语义已按 render.com 文档做完，没有新增对标选择。
+
+## Outcome (2026-11-14)
+
+- **Shipped:** groups, the default group, the per-group `concurrencyLimit` and the 429 on create and resume, REST, GraphQL, MCP and the dashboard's "+ New > Sandbox Group"; the production walk (isolation matrix run 43687264273, the unmodified pinned CLI, the dashboard) is recorded in t007. The matrix gained a probe for the resume path (`scripts/verify-sandbox-isolation.sh`).
+- **Not part of this milestone:** the group's optional environment picker (w22/003), the egress alert (w22/002), group paging error codes (w22/004 and w22/016, done).
+- **Left on production on purpose:** group `qa-m311-cli-walk`, the default group of workspace `bex`.
+
