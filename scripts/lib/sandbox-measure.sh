@@ -12,7 +12,9 @@
 # Every measurement is printed as a `MEASURE <name> <json>` line, so a run's log
 # is the evidence and nothing needs to be committed (DO_NOT_DO #NO-ARTIFACTS-IN-GIT).
 
-set -euo pipefail
+set -Eeuo pipefail
+# A leg that stops on an unhandled error says where, so a failed run is diagnosable.
+trap 'echo "ERR line $LINENO of ${BASH_SOURCE[1]:-?}: $BASH_COMMAND" >&2' ERR
 
 : "${BEX_API_URL:?set BEX_API_URL}"
 : "${BEX_WORKSPACE_A:?set BEX_WORKSPACE_A}"

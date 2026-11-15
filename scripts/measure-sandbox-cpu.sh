@@ -75,10 +75,17 @@ p0="$(cpu_prom "$pod" "$namespace_a")"
 k0="$(cpu_kubelet "$pod" "$namespace_a" "$node")"
 c0="$(cpu_cadvisor "$pod" "$node")"
 measure accuracy-start "$(jq -cn --arg p "$p0" --arg k "$k0" --arg c "$c0" '{prometheus: $p, kubelet: $k, cadvisorPod: $c}')"
+# Each burst reports its own user+sys CPU (bash's `times`, the shell is the only
+# process), so the pod-level reading is compared with what the load really used,
+# not with the 60 s it was asked for (the loop overruns by up to a second).
+inside_cpu=0
 for i in $(seq 1 "$bursts"); do
-  sandbox_exec "$sandbox_id" 'end=$((SECONDS + 60)); while [ "$SECONDS" -lt "$end" ]; do :; done' "$fixture_dir/burst-$i.txt" \
+  sandbox_exec "$sandbox_id" 'end=$((SECONDS + 60)); while [ "$SECONDS" -lt "$end" ]; do :; done; times' "$fixture_dir/burst-$i.txt" \
     || fail "busy burst $i did not complete: $(head -c 300 "$fixture_dir/burst-$i.sse" 2>/dev/null)"
+  used="$(head -1 "$fixture_dir/burst-$i.txt" | awk '{ for (i = 1; i <= NF; i++) { split($i, a, "m"); s += a[1] * 60 + a[2] } print s + 0 }')"
+  inside_cpu="$(awk -v a="$inside_cpu" -v b="${used:-0}" 'BEGIN { print a + b }')"
 done
+measure accuracy-reference "$(jq -cn --argjson inside "$inside_cpu" --argjson bursts "$bursts" '{inSandboxCpuSeconds: $inside, requestedSeconds: ($bursts * 60)}')"
 window accuracy "$pod" "$namespace_a" "$node" "$p0" "$k0" "$((bursts * 60))" "$c0"
 
 echo "==> idle baseline: $idle_seconds s with nothing running"
@@ -94,8 +101,8 @@ ps_="$(cpu_prom "$pod" "$namespace_a")"
 ks="$(cpu_kubelet "$pod" "$namespace_a" "$node")"
 cs="$(cpu_cadvisor "$pod" "$node")"
 for i in $(seq 1 "$sys_runs"); do
-  sandbox_exec "$sandbox_id" 'timeout 60 dd if=/dev/zero of=/dev/null bs=1 2>/dev/null; true' "$fixture_dir/sys-$i.txt" \
-    || fail "syscall burst $i did not complete"
+  sandbox_exec "$sandbox_id" 'timeout 60 dd if=/dev/zero of=/dev/null bs=1 2>/dev/null; echo finished' "$fixture_dir/sys-$i.txt" \
+    || fail "syscall burst $i did not complete: out='$(head -c 200 "$fixture_dir/sys-$i.txt" 2>/dev/null)' sse='$(head -c 400 "$fixture_dir/sys-$i.sse" 2>/dev/null | tr '\n' ' ')'"
 done
 window syscall-gvisor "$pod" "$namespace_a" "$node" "$ps_" "$ks" "$((sys_runs * 60))" "$cs"
 
