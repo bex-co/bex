@@ -3090,16 +3090,20 @@ objectgw_domain="$(yq -N '
 scalar objectgw_domain "$objectgw_domain" || fail=1
 for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
   render_name="$(basename "$render")"
-  objectgw_shape="$(yq -N -o=json -I=0 '
-    select(.kind == "Deployment" and .metadata.name == "bex-objectgw") |
+  # yq only selects the document; jq shapes it. A `select(..) | {.. | tag ..}`
+  # object re-materializes for every filtered-out document under CI's yq 4.44.6
+  # (one {"replicasIsInt":false} line per document, see scalar() above), which
+  # failed this check on every push from a378042b9 while passing on a newer yq.
+  objectgw_shape="$(yq -N -o=json -I=0 'select(.kind == "Deployment" and .metadata.name == "bex-objectgw")' "$render" | jq -cS '
+    .spec.template.spec.containers[0] as $c |
     {"count": 1,
-     "command": .spec.template.spec.containers[0].command,
-     "envNames": ([.spec.template.spec.containers[0].env[].name] | sort),
-     "envFrom": .spec.template.spec.containers[0].envFrom,
-     "metadataFallback": ([.spec.template.spec.containers[0].env[] | select(.name == "AWS_EC2_METADATA_DISABLED") | .value] | .[0]),
-     "readiness": .spec.template.spec.containers[0].readinessProbe.httpGet,
+     "command": $c.command,
+     "envNames": ([$c.env[].name] | sort),
+     "envFrom": $c.envFrom,
+     "metadataFallback": ([$c.env[] | select(.name == "AWS_EC2_METADATA_DISABLED") | .value] | .[0]),
+     "readiness": $c.readinessProbe.httpGet,
      "automount": .spec.template.spec.automountServiceAccountToken,
-     "replicasIsInt": ((.spec.replicas | tag) == "!!int")}' "$render" | jq -cS .)"
+     "replicasIsInt": ((.spec.replicas | type) == "number" and .spec.replicas == (.spec.replicas | floor))}')"
   want_shape='{"automount":false,"command":["/objectgw"],"count":1,"envFrom":[{"secretRef":{"name":"bex-object-storage-read","optional":true}}],"envNames":["AWS_EC2_METADATA_DISABLED","GOMEMLIMIT"],"metadataFallback":"true","readiness":{"path":"/healthz","port":"metrics"},"replicasIsInt":true}'
   [ "$objectgw_shape" = "$want_shape" ] || {
     echo "FAIL: bex-objectgw Deployment in $render_name is $objectgw_shape, want $want_shape" >&2
