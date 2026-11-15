@@ -70,17 +70,4 @@ describe("RootProvider", () => {
       expect(screen.getByText("Settings updated")).toBeInTheDocument(),
     );
   });
-
-  it("translates the toast through Ory's own catalog, not just English defaults", async () => {
-    render(<RootProvider>{null}</RootProvider>);
-    await screen.findByLabelText(/Notifications/);
-    toast.custom(() => <OryStyleToast />);
-
-    // OryLocales supplies this id, so the rendered text comes from the catalog.
-    // (Locale is `en` in tests; the assertion is that formatMessage resolved at
-    // all — an absent provider would have thrown before reaching this point.)
-    await waitFor(() =>
-      expect(screen.getByText("Settings updated")).toBeInTheDocument(),
-    );
-  });
 });

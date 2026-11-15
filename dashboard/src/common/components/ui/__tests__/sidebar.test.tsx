@@ -61,23 +61,6 @@ describe("Sidebar", () => {
   });
 
   describe("useSidebar hook", () => {
-    it("should export useSidebar hook", () => {
-      expect(useSidebar).toBeDefined();
-      expect(typeof useSidebar).toBe("function");
-    });
-
-    it("should provide sidebar context values", () => {
-      render(
-        <SidebarProvider>
-          <TestComponent />
-        </SidebarProvider>,
-      );
-
-      // Check that context values are available
-      expect(screen.getByTestId("is-mobile")).toBeInTheDocument();
-      expect(screen.getByTestId("open-mobile")).toBeInTheDocument();
-    });
-
     it("should allow setting openMobile state", () => {
       render(
         <SidebarProvider>

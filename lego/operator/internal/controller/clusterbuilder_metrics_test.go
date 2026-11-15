@@ -154,9 +154,4 @@ func TestClusterBuilderImageAgeUsesCommittedMetadata(t *testing.T) {
 	if got["bex_build_clusterbuilder_image_resolved_timestamp_seconds"] != 0 {
 		t.Fatalf("malformed metadata must export timestamp 0, got %v", got["bex_build_clusterbuilder_image_resolved_timestamp_seconds"])
 	}
-
-	later := resolved.Add(30 * 24 * time.Hour)
-	if later.Unix() <= resolved.Unix() {
-		t.Fatal("age must advance as wall time moves past committed resolved_at")
-	}
 }

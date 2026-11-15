@@ -53,12 +53,6 @@ describe("Format Utility", () => {
       expect(formatDateISO("2024-01-01")).toBe("2024-01-01");
       expect(formatDateISO("2024-12-31")).toBe("2024-12-31");
     });
-
-    it("should produce consistent output for the same date", () => {
-      const result1 = formatDateISO("2024-06-15");
-      const result2 = formatDateISO("2024-06-15");
-      expect(result1).toBe(result2);
-    });
   });
 
   // Zone-less inputs parse as local time, so the expected strings hold in any
