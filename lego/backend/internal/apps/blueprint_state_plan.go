@@ -265,6 +265,19 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if refsPending {
 			addChangedFields(&action, "envVars")
 		}
+		// A release the sync rolls runs the declared image, replacing a
+		// per-deploy image override the service serves; the spec diff cannot
+		// see that override (spec.releaseConfig), so name it (w4/m418).
+		current := r.services[resource.Name]
+		rolls := len(svc.generatedCopies) > 0 || refsPending || (changed && appv1alpha1.SpecRollsRelease(current.Spec, probe))
+		if running := servingImage(current); rolls && running != "" {
+			addChangedFields(&action, "image")
+			message := imageOverrideMessage(running, probe.Image)
+			if action.Message != "" {
+				message = action.Message + "; " + message
+			}
+			action.Message = message
+		}
 		if err := r.planMoves(ctx, &action, svc.grouping, svc.ungrouped, true, r.services[resource.Name].Labels); err != nil {
 			return BlueprintPlanAction{}, err
 		}
@@ -569,6 +582,12 @@ func oneField(fields map[string]BlueprintField, name string) map[string]Blueprin
 		return map[string]BlueprintField{name: f}
 	}
 	return nil
+}
+
+// imageOverrideMessage says a sync replaces the image override a service is
+// running with the image its manifest declares (w4/m418).
+func imageOverrideMessage(running, declared string) string {
+	return fmt.Sprintf("replaces the running image %s with the declared %s", store.PublicImageRef(running), store.PublicImageRef(declared))
 }
 
 // generatedCopyMessage names a service's copies of generated values for the

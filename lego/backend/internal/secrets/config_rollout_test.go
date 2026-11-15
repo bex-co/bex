@@ -348,3 +348,135 @@ func TestDeployingEnvironmentSaveWaitsForTheDeployInFlight(t *testing.T) {
 		t.Fatalf("waiting %+v, opened %+v; want the save deployed at once on the served build", deploys.waiting, live.rows)
 	}
 }
+
+// imageService is a prebuilt-image web service saved on busybox:1.36 whose
+// deploy history answers live.
+func imageService(live ...store.Deploy) (*Service, *deferringDeploys) {
+	a := managedApp("web")
+	a.Spec.Type = appv1alpha1.TypeWebService
+	a.Spec.Image = "docker.io/library/busybox:1.36"
+	a.Generation = 3
+	deploys := &deferringDeploys{liveDeploys: &liveDeploys{recordingDeploys: &recordingDeploys{}, live: live}}
+	svc := newService(newFakeSecretStore(), a)
+	svc.Rollout = &rollout.Tracker{Store: deploys}
+	return svc, deploys
+}
+
+func saveAndDeploy(t *testing.T, svc *Service) EnvironmentPatchResult {
+	t.Helper()
+	res, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "QA", Value: "x", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	})
+	if err != nil || !res.RolledOut {
+		t.Fatalf("PatchEnvironment(deploy) = %+v, %v", res, err)
+	}
+	return res
+}
+
+func readWeb(t *testing.T, svc *Service) *appv1alpha1.App {
+	t.Helper()
+	var a appv1alpha1.App
+	if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &a); err != nil {
+		t.Fatal(err)
+	}
+	return &a
+}
+
+var (
+	overrideServed = store.Deploy{ID: "dep-override", Status: store.DeployLive,
+		Image: "docker.io/library/busybox:1.37", ResolvedImage: "docker.io/library/busybox@sha256:a7dbc319"}
+	savedServed = store.Deploy{ID: "dep-saved", Status: store.DeployLive,
+		Image: "docker.io/library/busybox:1.36", ResolvedImage: "docker.io/library/busybox@sha256:73aaf090"}
+)
+
+// w4/m418 (round 399): after an imageUrl deploy of busybox:1.37 on a service
+// saved on 1.36, "Save and deploy" rolled the service back to 1.36. It must
+// rerun the image serving, recorded with that image.
+func TestDeployingEnvironmentSaveOnAnImageServiceRerunsTheServedOverride(t *testing.T) {
+	svc, deploys := imageService(overrideServed)
+	saveAndDeploy(t, svc)
+	a := readWeb(t, svc)
+	want := appv1alpha1.ReleaseConfigReference{Generation: 4, Image: overrideServed.ResolvedImage}
+	if a.Spec.ReleaseConfig == nil || *a.Spec.ReleaseConfig != want {
+		t.Fatalf("releaseConfig = %+v, want %+v", a.Spec.ReleaseConfig, want)
+	}
+	if a.Spec.Image != "docker.io/library/busybox:1.36" {
+		t.Fatalf("saved image = %q, want it untouched", a.Spec.Image)
+	}
+	if rows := deploys.rows; len(rows) != 1 || rows[0].Image != overrideServed.ResolvedImage || rows[0].Generation != 4 {
+		t.Fatalf("rows = %+v, want one release of the served override", rows)
+	}
+}
+
+// A service serving its saved tag selects nothing, so the saved tag keeps
+// resolving and the service does not start reading image_override.
+func TestDeployingEnvironmentSaveOnAnImageServiceServingItsSavedTagSelectsNothing(t *testing.T) {
+	svc, deploys := imageService(savedServed)
+	saveAndDeploy(t, svc)
+	if a := readWeb(t, svc); a.Spec.ReleaseConfig != nil {
+		t.Fatalf("releaseConfig = %+v, want no selection", a.Spec.ReleaseConfig)
+	}
+	if rows := deploys.rows; len(rows) != 1 || rows[0].Image != "docker.io/library/busybox:1.36" {
+		t.Fatalf("rows = %+v, want one release of the saved image", rows)
+	}
+}
+
+// An image service with no live release deploys its saved image: never m180's
+// 409 ENVIRONMENT_DEPLOY_NEEDS_LIVE_RELEASE.
+func TestDeployingEnvironmentSaveOnAnImageServiceWithoutALiveReleaseDeploysTheSavedImage(t *testing.T) {
+	svc, deploys := imageService()
+	saveAndDeploy(t, svc)
+	if a := readWeb(t, svc); a.Spec.ReleaseConfig != nil {
+		t.Fatalf("releaseConfig = %+v, want no selection", a.Spec.ReleaseConfig)
+	}
+	if len(deploys.rows) != 1 || len(deploys.waiting) != 0 {
+		t.Fatalf("rows %+v waiting %+v, want one release at once", deploys.rows, deploys.waiting)
+	}
+}
+
+// Under Render's Wait a "Save and deploy" of an image service behind a deploy
+// in flight waits for it, then reruns what that deploy leaves serving (here an
+// override that went live meanwhile). Under Override (w4/653, the deferrer
+// declines) it deploys at once on the image serving at save time.
+func TestDeployingEnvironmentSaveOnAnImageServiceWaitsUnderWaitAndDeploysUnderOverride(t *testing.T) {
+	svc, deploys := imageService(savedServed)
+	deploys.inFlight = true
+	saveAndDeploy(t, svc)
+	a := readWeb(t, svc)
+	if len(deploys.waiting) != 1 || len(deploys.rows) != 0 || a.Spec.ReleaseConfig != nil {
+		t.Fatalf("waiting %+v rows %+v releaseConfig %+v; want one waiting deploy and no release", deploys.waiting, deploys.rows, a.Spec.ReleaseConfig)
+	}
+	deploys.live, deploys.inFlight = []store.Deploy{overrideServed}, false
+	if err := svc.DeployServedBuild(context.Background(), a); err != nil {
+		t.Fatalf("DeployServedBuild: %v", err)
+	}
+	if ref := readWeb(t, svc).Spec.ReleaseConfig; ref == nil || ref.Image != overrideServed.ResolvedImage {
+		t.Fatalf("releaseConfig = %+v, want the override the deploy ahead left serving", ref)
+	}
+
+	svc, deploys = imageService(overrideServed)
+	saveAndDeploy(t, svc)
+	if ref := readWeb(t, svc).Spec.ReleaseConfig; len(deploys.waiting) != 0 || ref == nil || ref.Image != overrideServed.ResolvedImage {
+		t.Fatalf("waiting %+v releaseConfig %+v; want the save deployed at once on the served override", deploys.waiting, ref)
+	}
+}
+
+// A suspended image service's "Save and deploy" stages like Save only (w4/m234)
+// and selects nothing: no release is stamped for a selection to bind to.
+func TestDeployingEnvironmentSaveOnASuspendedImageServiceSelectsNothing(t *testing.T) {
+	svc, deploys := imageService(overrideServed)
+	a := readWeb(t, svc)
+	a.Spec.Suspended = true
+	if err := svc.Client.Update(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+	res, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "QA", Value: "x", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	})
+	if err != nil || res.RolledOut || res.RolloutError != suspendedSaveMessage {
+		t.Fatalf("PatchEnvironment(deploy, suspended) = %+v, %v", res, err)
+	}
+	if ref := readWeb(t, svc).Spec.ReleaseConfig; ref != nil || len(deploys.rows) != 0 || len(deploys.waiting) != 0 {
+		t.Fatalf("releaseConfig %+v rows %+v waiting %+v; want nothing deployed or selected", ref, deploys.rows, deploys.waiting)
+	}
+}

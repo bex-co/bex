@@ -137,7 +137,7 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	}
 	// Refuse a deploy with nothing to redeploy before anything is written; the
 	// locked patch checks again against the App it actually writes.
-	if patch.SaveMode == SaveModeDeploy {
+	if patch.SaveMode == SaveModeDeploy && a.Spec.Image == "" {
 		if _, err := s.servedArtifact(ctx, a); err != nil {
 			return EnvironmentPatchResult{}, err
 		}
@@ -190,10 +190,11 @@ func (s *Service) suspendedNow(ctx context.Context, a *appv1alpha1.App) bool {
 
 // servedArtifact is the image an environment "Save and deploy" reruns: deploy
 // means the current build with the new values, never a source build (w4/m180,
-// ADR013). Empty means nothing to select — a prebuilt image, a static site
-// (environment is build-time only, so deploy rebuilds), or unknown history.
+// ADR013). Empty means nothing serving to rerun — a static site (environment
+// is build-time only, so deploy rebuilds), unknown history, or a prebuilt
+// image with no live release, which deploys its saved image (never the 409).
 func (s *Service) servedArtifact(ctx context.Context, a *appv1alpha1.App) (string, error) {
-	if a.Spec.Image != "" || a.Spec.Type == appv1alpha1.TypeStaticSite {
+	if a.Spec.Type == appv1alpha1.TypeStaticSite {
 		return "", nil
 	}
 	live, err := s.Rollout.ServedRelease(ctx, a)
@@ -203,9 +204,12 @@ func (s *Service) servedArtifact(ctx context.Context, a *appv1alpha1.App) (strin
 	if err != nil {
 		return "", err
 	}
-	if live == nil {
+	if live == nil && a.Spec.Image == "" {
 		return "", core.NewConflictError("ENVIRONMENT_DEPLOY_NEEDS_LIVE_RELEASE",
 			fmt.Sprintf("service %q has no live build to deploy the new environment with; save only, or save, rebuild, and deploy", storeServiceName(a, a.Name)), nil)
+	}
+	if live == nil {
+		return "", nil
 	}
 	return live.ResolvedImage, nil
 }
@@ -459,18 +463,22 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 
 // selectServedBuild makes a's patch an environment "Save and deploy": the
 // staged configuration activates, and the release reruns the build serving now
-// (servedArtifact) with it instead of building.
+// (servedArtifact) with it instead of building. A prebuilt image reruns the
+// image it serves only when that is not its saved one (w4/m418); "Save,
+// rebuild, and deploy" does not come here, so it pulls the saved image, as
+// there is nothing to build.
 func (s *Service) selectServedBuild(ctx context.Context, a *appv1alpha1.App) error {
 	activatePendingProjectionReferences(a)
 	s.bumpRestart(a)
+	if a.Spec.Image != "" {
+		return s.Rollout.SelectServedImage(ctx, a)
+	}
 	image, err := s.servedArtifact(ctx, a)
 	if err != nil {
 		return err
 	}
 	if image != "" {
-		// Bound to the release this patch opens (metadata.generation+1,
-		// the generation rollout.Stamp records); a later deploy expires it.
-		a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: a.Generation + 1, Image: image}
+		rollout.SelectReleaseImage(a, image)
 	}
 	return nil
 }
@@ -491,7 +499,8 @@ func (s *Service) deployDeferrer() deployDeferrer {
 }
 
 // deferServedBuildDeploy records an environment "Save and deploy" of a
-// Git-backed service as a deploy waiting for the one in flight, answering its
+// service with a live release (Git-backed, or a prebuilt image, w4/m418) as a
+// deploy waiting for the one in flight, answering its
 // id, or "" when nothing is in flight (or the workspace's policy is Override, w4/653) and
 // the save deploys at once. Under Render's Wait the deploy in progress finishes
 // first, and the saved environment then runs on the build it leaves serving:

@@ -172,6 +172,32 @@ describe("BlueprintPlanSummary operations", () => {
     expect(screen.getByText("plan cannot shrink storage")).toBeInTheDocument();
   });
 
+  // w4/m418: a sync that replaces a running image override says so.
+  it("shows an update's message, such as the image override it replaces", () => {
+    render(
+      <BlueprintPlanSummary
+        plan={{
+          ...plan,
+          totalActions: 1,
+          actions: [
+            action("update", "web", {
+              changedFields: [{ path: "envVars" }, { path: "image" }],
+              message:
+                "replaces the running image docker.io/library/busybox:1.37 with the declared docker.io/library/busybox:1.36",
+            }),
+          ],
+        }}
+        pricing={null}
+      />,
+    );
+    expect(screen.getByText("Changes: envVars, image")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "replaces the running image docker.io/library/busybox:1.37 with the declared docker.io/library/busybox:1.36",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("labels a build source and the git fields its update changes", () => {
     render(
       <BlueprintPlanSummary

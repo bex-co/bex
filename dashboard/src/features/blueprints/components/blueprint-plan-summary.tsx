@@ -85,6 +85,11 @@ function PlanActionRow({
           {t("blueprints.previewChangedFields", { fields: fields.join(", ") })}
         </p>
       )}
+      {operation === "update" && action.message && (
+        <p className="break-words text-xs text-muted-foreground">
+          {action.message}
+        </p>
+      )}
       {operation === "update" && action.kind === "env_var_group" && (
         <p className="text-xs text-muted-foreground">
           {t("blueprints.previewEnvGroupReapplied")}

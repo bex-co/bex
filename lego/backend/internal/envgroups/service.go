@@ -1137,10 +1137,13 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 // patch replaces whole, so a write computed from a stale read could drop the
 // service's own files reference a secrets write just set. A write that loses
 // re-reads the App and applies mutate again.
+//
+// The release reruns the image a prebuilt-image service is serving, so a
+// group write never rolls an image override back to the saved tag (w4/m418).
 func (s *Service) rollLinkedService(ctx context.Context, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App)) error {
 	return s.Rollout.PatchLocked(ctx, s.Client, a, trigger, func(a *appv1alpha1.App) error {
 		mutate(a)
-		return nil
+		return s.Rollout.SelectServedImage(ctx, a)
 	})
 }
 

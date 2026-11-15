@@ -142,3 +142,76 @@ func TestEnvGroupWritesWithoutTrackerStillApply(t *testing.T) {
 		t.Fatal("the link must still roll the service")
 	}
 }
+
+// liveDeploys answers ServedRelease's live-row read.
+type liveDeploys struct {
+	*recordingDeploys
+	live []store.Deploy
+}
+
+func (l *liveDeploys) ListDeploys(_ context.Context, _ string, _ store.DeployFilter) ([]store.Deploy, error) {
+	return l.live, nil
+}
+
+// w4/m418 (round 400): linking a group, editing its variable or secret file,
+// and unlinking it each rolled a linked image service off its imageUrl
+// override (busybox:1.37) back to the saved tag (1.36). Each must rerun the image serving; a service
+// serving its saved tag selects nothing.
+func TestEnvGroupRollsKeepTheServedImage(t *testing.T) {
+	const override = "docker.io/library/busybox@sha256:a7dbc319"
+	for _, tc := range []struct {
+		name string
+		live store.Deploy
+		want string
+	}{
+		{name: "override served", live: store.Deploy{Status: store.DeployLive, Image: "docker.io/library/busybox:1.37", ResolvedImage: override}, want: override},
+		{name: "saved tag served", live: store.Deploy{Status: store.DeployLive, Image: "web:v1", ResolvedImage: "web@sha256:73aaf090"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testCtx()
+			deploys := &liveDeploys{recordingDeploys: &recordingDeploys{}, live: []store.Deploy{tc.live}}
+			svc := newService(newFakeStore(), managedApp("web"))
+			svc.Rollout = &rollout.Tracker{Store: deploys}
+			g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			check := func(step string) {
+				t.Helper()
+				a := getApp(t, svc.Client, "web")
+				ref := a.Spec.ReleaseConfig
+				last := deploys.rows[len(deploys.rows)-1]
+				if tc.want == "" {
+					if ref != nil && ref.Generation == last.Generation {
+						t.Fatalf("%s selected %+v, want nothing", step, ref)
+					}
+					return
+				}
+				if ref == nil || ref.Image != tc.want || ref.Generation != last.Generation || last.Image != tc.want {
+					t.Fatalf("%s: releaseConfig %+v, row %+v; want the served %s for the release opened", step, ref, last, tc.want)
+				}
+			}
+			if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
+				t.Fatal(err)
+			}
+			check("link")
+			svc.Base.Clock = func() time.Time { return time.Unix(2_000_000, 0).UTC() }
+			if _, err := svc.SetEnvGroupVars(ctx, g.ID, []EnvVarView{{Key: "QA_G", Value: "2"}}); err != nil {
+				t.Fatal(err)
+			}
+			check("variable edit")
+			svc.Base.Clock = func() time.Time { return time.Unix(3_000_000, 0).UTC() }
+			if _, err := svc.SetEnvGroupFile(ctx, g.ID, "app.conf", "x=1"); err != nil {
+				t.Fatal(err)
+			}
+			check("secret file write")
+			if err := svc.UnlinkService(ctx, g.ID, "web"); err != nil {
+				t.Fatal(err)
+			}
+			check("unlink")
+			if len(deploys.rows) != 4 {
+				t.Fatalf("rows = %d, want one release per write", len(deploys.rows))
+			}
+		})
+	}
+}
