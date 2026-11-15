@@ -929,7 +929,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		return nil
 	}
 	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) error {
-		stampReleaseGeneration(a, release)
+		core.StampReleaseGeneration(a, release)
 		stampClearCacheRelease(a, release, p.ClearCache)
 		// Env-group links an Auto-Deploy-off service was waiting on ship here,
 		// and its group refs adopt creation order (w4/m355).
@@ -990,13 +990,6 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 // and off-cluster adapters aligned with Kubernetes semantics.
 func patchedGeneration(before, after int64) int64 {
 	return max(after, before+1)
-}
-
-func stampReleaseGeneration(a *appv1alpha1.App, generation int64) {
-	if a.Annotations == nil {
-		a.Annotations = map[string]string{}
-	}
-	a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(generation, 10)
 }
 
 // stampClearCacheRelease binds Render's clearCache=clear to the release being

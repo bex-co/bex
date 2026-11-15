@@ -404,7 +404,7 @@ func (s *Service) dispatchCheckedCommit(ctx context.Context, a *appv1alpha1.App,
 		if s.Store != nil && managedAppID(live) != "" {
 			live.Annotations[resourcemeta.AnnotCheckedImageVersion] = strconv.FormatInt(rowVersion, 10)
 		}
-		stampReleaseGeneration(live, generation)
+		core.StampReleaseGeneration(live, generation)
 		if cloneSecret != "" {
 			live.Spec.CloneSecret = cloneSecret
 		}

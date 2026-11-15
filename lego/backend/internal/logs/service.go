@@ -506,7 +506,7 @@ func (q LogQuery) requestFilters() []string {
 func (q LogQuery) liveSubscribable() (LogQuery, error) {
 	// A datastore tail reads its pods' process log and applies the level
 	// filter per line (compileLevelFilter), so its own contract decides.
-	if isDatastoreResource(q.App) {
+	if core.IsDatastoreResource(q.App) {
 		return q, q.datastoreFilters(q.App)
 	}
 	var routed []string
@@ -899,7 +899,7 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 // rather than returning unfiltered lines. `type=build` without the store is a
 // 503, not a silent empty — the same honesty rule as request logs.
 func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	if isDatastoreResource(q.App) {
+	if core.IsDatastoreResource(q.App) {
 		return s.queryDatastoreLogs(ctx, q)
 	}
 	requested := q.App
@@ -1190,10 +1190,6 @@ func isKeyValueResource(resource string) bool {
 	return ok && kind == ids.KeyValue
 }
 
-func isDatastoreResource(resource string) bool {
-	return isPostgresResource(resource) || isKeyValueResource(resource)
-}
-
 // datastoreFilters pins the supported managed-datastore contract: time range,
 // direction, text search, level, limit, and instance. HTTP request/build
 // filters are service concepts; refusing them is safer than silently dropping
@@ -1243,7 +1239,7 @@ func (q LogQuery) filter(entries []LogEntry) []LogEntry {
 // stream label — the cardinality budget keeps it in the line), so it resolves even
 // without the store.
 func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
-	if isDatastoreResource(q.App) {
+	if core.IsDatastoreResource(q.App) {
 		return s.datastoreLogLabelValues(ctx, label, q)
 	}
 	requested := q.App
@@ -1373,7 +1369,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if opened := tailOpenedAt(); q.renderStream && q.Since.IsZero() && q.End.IsZero() && !opened.IsZero() {
 		q.Since = opened.Add(-time.Second)
 	}
-	if isDatastoreResource(q.App) {
+	if core.IsDatastoreResource(q.App) {
 		return s.followDatastore(ctx, q, emit, heartbeat)
 	}
 	requested := q.App

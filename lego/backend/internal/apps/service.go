@@ -2536,7 +2536,7 @@ func (s *Service) planNewApp(ctx context.Context, req CreateRequest, a *appv1alp
 	// which does not exist yet.
 	probe := a.DeepCopy()
 	stampAppIdentity(probe, tenantID, ids.New(ids.Service), managed)
-	stampReleaseGeneration(probe, store.FirstDeployGeneration)
+	core.StampReleaseGeneration(probe, store.FirstDeployGeneration)
 	resourcemeta.Touch(probe, s.Now())
 	if req.buildSource != nil {
 		// Its own ceiling; the App count quota gains room for it only once
@@ -3048,7 +3048,7 @@ func (s *Service) materializeNewAppLocked(ctx context.Context, req CreateRequest
 	// read first — so a write racing its first reconcile made it report a
 	// release the deploy row had never heard of, which reads as a supersede and
 	// closed brand-new deploys canceled (w6/m46 t004).
-	stampReleaseGeneration(a, store.FirstDeployGeneration)
+	core.StampReleaseGeneration(a, store.FirstDeployGeneration)
 	resourcemeta.Touch(a, s.Now())
 	if err := s.writeInitialApp(ctx, req, a, seed, createdRowID, func(cause error) (error, bool) {
 		cause = rollbackStoreRow(cause)
@@ -3098,15 +3098,6 @@ func errClaimServiceDomains(err error) error {
 		err = errDomainInUse()
 	}
 	return fmt.Errorf("claim service domains: %w", err)
-}
-
-// stampReleaseGeneration pins an App's open deploy to the release generation
-// whose work it represents, so the operator adopts that identity instead of
-// inferring one from whatever metadata generation it observes first (see
-// AnnotationReleaseGeneration's own contract).
-func stampReleaseGeneration(a *appv1alpha1.App, generation int64) {
-	metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration,
-		strconv.FormatInt(generation, 10))
 }
 
 // serviceCountCap is the plan's cap on services per workspace (the
@@ -4248,7 +4239,7 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 	// Untracked patch: this path opens its OWN deploy row below, with pushed-
 	// commit provenance that a generic config_change row cannot carry.
 	v, err := s.patchUntracked(ctx, a, func(a *appv1alpha1.App) {
-		stampReleaseGeneration(a, previousGeneration+1)
+		core.StampReleaseGeneration(a, previousGeneration+1)
 		if secretName != "" {
 			a.Spec.CloneSecret = secretName
 		}
