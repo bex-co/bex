@@ -1,6 +1,6 @@
 # w4 · m315 — A public datastore with no IP rules reads back as public on every surface: REST, GraphQL, MCP and the dashboard return its effective unrestricted rules, not an empty list that Render clients read as blocked
 
-**Worker:** worker4 **Goal:** every read of a Key Value or Postgres allowlist reports the store's _effective_ external access. A public store with no saved rules reads `0.0.0.0/0` + `::/0`, the rule the Blueprint export already uses. A Render client therefore never sees "external connections blocked" for a store that accepts outside connections, and writing back what it read never cuts access. **Status:** blocked — t001, t002, t004, t005 and t006 done (shipped); t003 live replay waits for the next production deploy, then t007 closes
+**Worker:** worker4 **Goal:** every read of a Key Value or Postgres allowlist reports the store's _effective_ external access. A public store with no saved rules reads `0.0.0.0/0` + `::/0`, the rule the Blueprint export already uses. A Render client therefore never sees "external connections blocked" for a store that accepts outside connections, and writing back what it read never cuts access. **Status:** blocked — t001, t002, t004, t005 and t006 done (shipped); t003's live replay ran in QA loop round 409 (2026-11-15, pin `89ac87445bec`) and DoD 1–5 hold (the 1440/390 skeleton comparison and the zh rule rows were not re-checked); t003 closes with that check, then t007 closes
 
 ## Tasks (in order)
 
