@@ -52,3 +52,32 @@ Everything that can be built, tested and checked offline is done: `dev-url`, obj
 - **Remaining:** the walks and each closeout (below). Do not run `provision` or `install` again: both Secrets exist. The walks may create test buckets, objects and keys, and must delete them afterwards. For a token, sign in as the QA user with `bash scripts/qa-login.sh` (`.claude/skills/qa-find-bugs/SKILL.md`; never type the password). Whether the QA user can reach a second workspace is not verified: if a step needs one and there is none, park that task naming exactly that.
 - **Reference-product basis:** unchanged: Render's `ea objects` for Contract A, Cloudflare R2 and wrangler for Contract B and public reads.
 - **This milestone's next steps:** t008 (enable `dev-url`, read with `Range` and CORS, disable, measure Traefik at zero replicas, reset the first-value caps and the two alert thresholds from measurement) after w21/m416 t013, then t012 Closeout. The Secrets and the gateway token the gate named are in place. For the kill-switch measurement scale `bex-objectgw` to zero for as short a time as the measurement needs, then restore 2 replicas and confirm Ready; no public bucket has customers yet.
+
+## QA note — 2026-11-15: a service whose slug is already `pub-<xid>` goes live and is unreachable, because objectgw's route outranks it
+
+Recorded by `/qa-find-bugs-cli` sweep 78 (nonce 03b0) on production pin `b9f42ac4648e`, the first pin that carries `a378042b9`. Released `bex` v0.6.0, QA human device login, `bex-canary`. Not a status change. Both fixtures are deleted (`GET` 404).
+
+```text
+# 20:22:46 UTC, 82 s after the pin write-back (20:21:24), before bex-api had rolled
+$ bex services create --name pub-dbt15qg9bdf60shrsoog --type web_service --image docker.io/traefik/whoami:v1.10.3 --plan free -o json
+  → srv-dbt195nfctss7387gfkg, slug pub-dbt15qg9bdf60shrsoog (no suffix), url https://pub-dbt15qg9bdf60shrsoog.onbex.co
+  deploys list: update_in_progress → live (20:25:57)
+  curl https://pub-dbt15qg9bdf60shrsoog.onbex.co/ → 503 "public buckets are not available" (objectgw), before and after live
+
+# 20:26:25 UTC, after the rollout: the reservation works
+$ bex services create --name pub-dbt1asc9mhspr7e1c2g0 … -o json
+  → srv-dbt1as80p4tc73b3d630, slug pub-dbt1asc9mhspr7e1c2g0-zhnp; live; the -zhnp host answers 200 (the app)
+  curl https://pub-dbt1asc9mhspr7e1c2g0.onbex.co/ → 503 from objectgw, as designed
+```
+
+- **Cause:** `lego/operator/config/objectgw/ingressroute.yaml:43,66` gives both `pub-` routes `priority: 10000`, above every App route. The comment at `:22-28` relies on "Service slugs cannot take the pub- prefix … so no service host is ever shadowed by this route". The reservation (`publichost.Reserved`, applied only in `store.PGStore.CreateApp`, `lego/backend/internal/store/store.go:1117-1123`) guards new creates only. Two kinds of App are left with a bare `pub-<xid>` slug:
+  - any App created before `a378042b9` reached production;
+  - any App created while objectgw's route was already live but the previous bex-api still answered. That is how the first fixture above was made.
+- **Effect:** the service reports `live` in the CLI, REST and the dashboard, but every request to its URL reaches objectgw and gets a 503 (404 once credentials are installed). Nothing tells the owner.
+- **Blast radius (unverified):** no production query was run. The affected rows are `apps.slug ~ '^pub-[0-9a-v]{20}$'` across all workspaces; the name shape is unusual, so the count is probably 0 apart from this sweep's deleted fixture. The rollout window happens once.
+- **Fix options:**
+  - **Recommended:** lower the two routes' `priority` below App routes but above the priority-1 fallbacks (for example `2`). An exact service host, whose rule-length priority is a few dozen, then wins, while unknown `pub-` hosts still reach objectgw ahead of the activator fallback. The reservation keeps new services off bucket hosts. Bucket xids are time-ordered, so an old service slug cannot match a bucket minted later.
+  - **Or:** a one-off migration that re-suffixes existing `pub-<xid>` slugs. That changes those services' URLs, which already do not serve.
+  - Either way, correct the comment at `ingressroute.yaml:26-28`, and have t008's production walk count matching slugs.
+- **Acceptance:** a service whose slug is a bare `pub-<xid>` serves its own app on its URL, `https://pub-<unknown xid>.onbex.co/` still reaches objectgw, and a new `pub-<xid>` service still gets a suffix.
+- Minor (a rare name, plus a one-time rollout window), but a silent outage for any service it hits. ~30m.

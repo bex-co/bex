@@ -39,3 +39,14 @@
 - **Release condition:** a `chore(deploy): pin platform images to <sha>` on main whose sha contains the commit (`git merge-base --is-ancestor`). Then with the QA account in `bex-canary`: `sandboxes create --timeout=0` reads back `timeoutSeconds: 0`, `--timeout=30` answers `SANDBOX_TIMEOUT_INVALID`, `sandbox-groups delete <id>`, `default set <id>` and `credentials list --group <id>` print the named refusal; record in `docs/cli-compatibility-checklist.md` (both rows say the walk is owed), terminate fixtures, run t010.
 - The ended-sandbox explanation is **not** part of t005's pass condition any more: it depends on `w3/062`.
 - No user decision needed.
+
+## Live data for t005 (`/qa-find-bugs-cli` sweep 30, 2026-11-15 03:48–03:50 UTC)
+
+The release condition holds: pin `2d9bbae6bb8d` carries `bd78e7e38` and `53df9d216`. This walk used the release `bex` v0.6.0 launcher, which imports v2.36.0 unmodified, not the bare `render` binary that t005 names. QA human device login, `bex-canary`. Fixtures: group `sbg-dbsin6f35ies73daagrg` and sandbox `sbx-dbsinb735ies73daagt0`, both since deleted or terminated (`GET` group 404).
+
+- `sandboxes create --timeout 30` and `--timeout 2592001`: each answers `400 (invalid_timeout_seconds): sandbox timeoutSeconds must be 0 (no timeout) or between 60 and 2592000`, and no sandbox is created. This is Render's code (w8/312), not the `SANDBOX_TIMEOUT_INVALID` that the release condition above names.
+- `sandboxes create --group <owned> --timeout 0 --idle-timeout 300 --name qa-20261115-bb05-t0 --wait`: `running`, `timeoutSeconds: 0`, `expiresAt` null. `sandboxes list --name <it>` and `--group <owned>` each return exactly it; an unknown name and the Default group return `[]`. The text table has a NAME column.
+- `sandbox-groups credentials list --group <owned>`: `404 (SANDBOX_CREDENTIALS_UNSUPPORTED): bex does not support Render's brokered sandbox credentials (sandbox-groups credentials), an early-access feature`.
+- `sandbox-groups delete <owned> --confirm`: **served, not refused.** It prints the group, the group leaves the list, and its sandbox reads `terminated` at 03:49:26Z (w2/m359). The checklist's v2.36.0 delta bullet still says bex refuses `delete` and `default set` by name (`SANDBOX_GROUP_OPERATION_UNSUPPORTED`); the `sandbox-groups delete` row says served. t005 should keep the row and correct the bullet.
+- An exec on the ended sandbox prints the v2.36 explanation: `sandbox sbx-dbsinb735ies73daagt0 was terminated at 2026-11-15T03:49:26Z` (w3/062 → m318 delivered).
+- Not walked: `sandbox-groups default set`, which would change the workspace's default group, a workspace setting the QA rules forbid changing.

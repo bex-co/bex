@@ -163,3 +163,17 @@ The definition of done's case "a cancel right after the URL first answers the ne
 - The cancel was accepted 0.5 s after the canceled build first answered, and that build kept answering for 16 s. The old build came back on a new instance. This is the Evidence's case 1 again, so t001's 409 does not cover the moment the switch has happened but `status.activeRevision` has not moved.
 - New detail: `build_ended` reads `canceled` for a build whose log says `==> Build successful 🎉`, 22 s earlier. That event was written only at the cancel. Check this in t003/t006: a build that finished should end `succeeded` whatever happens to the deploy afterwards.
 - No `server_failed` this time.
+
+## Live data point — `/qa-find-bugs-cli` sweep 25 (2026-11-15, pin `2d9bbae6bb8d`, filed under w32)
+
+A prebuilt-image service, not a build: a free web service, `docker.io/traefik/whoami:v1.10.1`, `healthCheckPath: /health` (`srv-dbsghdv35ies73daadd0`, since deleted). It had two cancels 3 s after `bex deploys create`, each acknowledged `successfully canceled`. Each recorded a phantom outage. The URL was probed about once a second from 01:51:02 to 01:51:43 and answered `200` 40 times out of 40.
+
+```text
+01:25:53 deploy_started   01:25:56 deploy_ended canceled
+01:25:59 server_failed {"unhealthy":"The instance failed its health check"}   01:26:00 server_available
+01:51:02 deploy_started   01:51:06 deploy_ended canceled
+01:51:10 server_failed {"unhealthy":"The instance failed its health check"}   01:51:17 server_available
+```
+
+- This matches this milestone's DoD ("no `server_failed`/`server_available`") on the image-service path, which the Node-build Acceptance does not exercise. t007's replay should include one image service.
+- Not captured: whether the canceled release's instance ever answered; the probe recorded status codes, not hostnames.
