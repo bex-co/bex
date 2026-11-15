@@ -27,9 +27,10 @@ import (
 
 // TestPGAServiceCannotTakeAPublicBucketsHost: a service whose name has the shape
 // of a public bucket's host label (pub-<xid>) would claim <name>.<base domain>,
-// the host objectgw serves that bucket at (ADR112 D4). It keeps its name and, as
-// for a taken subdomain on Render, gets a suffixed slug. A service that is only
-// called pub-something is untouched.
+// the host objectgw serves that bucket at (ADR112 D4), and a service called
+// objects would claim the direct API host. It keeps its name and, as for a taken
+// subdomain on Render, gets a suffixed slug. A service that is only called
+// pub-something is untouched.
 func TestPGAServiceCannotTakeAPublicBucketsHost(t *testing.T) {
 	st := newReplayTestStore(t)
 	ctx := context.Background()
@@ -62,6 +63,13 @@ func TestPGAServiceCannotTakeAPublicBucketsHost(t *testing.T) {
 	got, err := st.GetApp(ctx, shaped.ID)
 	if err != nil || got.Slug != shaped.Slug {
 		t.Errorf("stored slug = %q, %v; want %q", got.Slug, err, shaped.Slug)
+	}
+
+	// objects.<base domain> is the direct host of the Cloudflare-shaped object
+	// storage API (ADR112 D3), so a service called objects gets a suffixed slug too.
+	objects := create(publichost.APILabel)
+	if objects.Name != publichost.APILabel || objects.Slug == publichost.APILabel || !strings.HasPrefix(objects.Slug, publichost.APILabel+"-") {
+		t.Errorf("service %q got name %q and slug %q, want its name kept and a suffixed slug: the bare name is the API's host", publichost.APILabel, objects.Name, objects.Slug)
 	}
 
 	// Names that merely start with pub- keep the bare slug: Render lets a service be called that.

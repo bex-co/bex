@@ -94,11 +94,19 @@ func BucketIDOfHost(host, baseDomain string) (bucketID string, ok bool) {
 	return BucketID(label) // a label with a dot in it is not the shape of one
 }
 
-// Reserved reports whether a service slug has the shape of a public bucket
-// host. A slug is the label of the service's own host, so the host of a bucket
-// must not be one a service can take. Only this exact shape is reserved: a
-// service called "pub-site" keeps its name, as on Render.
+// APILabel is the host label of the direct (not Cloudflare-proxied) host of the
+// Cloudflare-shaped object storage API, "objects" (objects.<base domain>). The
+// proxy in front of api.<base domain> refuses a body over 100 MiB, so the
+// wrangler routes that take up to 300 MiB are also routed here
+// (lego/operator/config/api/ingressroute-objects.yaml, ADR112 D3).
+const APILabel = "objects"
+
+// Reserved reports whether a service slug is a label the platform serves objects
+// at: the shape of a public bucket host (pub-<xid>) or APILabel. A slug is the
+// label of the service's own host, so none of these may be one a service can
+// take. Only these exact labels are reserved: a service called "pub-site"
+// keeps its name, as on Render.
 func Reserved(slug string) bool {
 	_, ok := BucketID(slug)
-	return ok
+	return ok || slug == APILabel
 }

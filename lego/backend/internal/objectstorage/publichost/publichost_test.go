@@ -103,6 +103,22 @@ func TestReservedIsExactlyTheShapeOfABucketHost(t *testing.T) {
 	}
 }
 
+// The direct host of the Cloudflare-shaped API is objects.<base domain>
+// (ADR112 D3): a service cannot take that label either, and only that exact one.
+func TestReservedIncludesTheDirectAPIHost(t *testing.T) {
+	if APILabel != "objects" {
+		t.Fatalf("APILabel = %q: the IngressRoute in config/api and the docs name objects.<base domain>", APILabel)
+	}
+	if !Reserved(APILabel) {
+		t.Errorf("%q is the direct API host's label and must be reserved", APILabel)
+	}
+	for _, slug := range []string{"object", "objects-", "my-objects", "objects2", "Objects", "objects-abcd"} {
+		if Reserved(slug) {
+			t.Errorf("%q is reserved; only the exact label %q is", slug, APILabel)
+		}
+	}
+}
+
 func TestNormalizeHost(t *testing.T) {
 	for in, want := range map[string]string{
 		"Pub-X.OnBex.Co": "pub-x.onbex.co", "a.b:8443": "a.b", "a.b.": "a.b", "a.b.:80": "a.b", "[::1]:8080": "[::1]", "[::1]": "[::1]", "": "",

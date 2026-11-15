@@ -3140,6 +3140,26 @@ for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
     echo "FAIL: $render_name lost the bex-platform-host-fallback-https Middleware the pub- HTTP route redirects through" >&2
     fail=1
   }
+  # The direct host of the Cloudflare-shaped object storage API (ADR112 D3):
+  # api.<base domain> is Cloudflare-proxied and the proxy refuses a body over
+  # 100 MiB, so wrangler's 300 MiB objects need this DNS-only host. Exactly one
+  # route (no plain-HTTP twin: a bearer token must not travel over it), the
+  # default wildcard certificate, a priority above every App route, only the
+  # Cloudflare-shaped path prefix, and bex-api's public port 80, never :8091.
+  # yq only converts the stream; jq selects and shapes (see objectgw_shape above).
+  api_objects="$(yq -N -o=json -I=0 '.' "$render" | jq -cS '
+    select(.kind == "IngressRoute" and (.metadata.name | test("^bex-api-objects"))) |
+    {"name": .metadata.name, "entryPoints": .spec.entryPoints, "routes": (.spec.routes | length),
+     "match": .spec.routes[0].match, "highPriority": (.spec.routes[0].priority >= 1000),
+     "services": [.spec.routes[0].services[] | .name + ":" + (.port | tostring)],
+     "middlewares": [.spec.routes[0].middlewares[]?.name], "tls": .spec.tls}' | sort | tr '\n' ' ')"
+  want_api_match="Host(\`objects.${objectgw_domain}\`) && PathPrefix(\`/cloudflare/client/v4/\`)"
+  want_api="$(jq -cnS --arg m "$want_api_match" '{"name":"bex-api-objects","entryPoints":["websecure"],"routes":1,"match":$m,"highPriority":true,"services":["bex-api:80"],"middlewares":[],"tls":{}}')"
+  [ "$api_objects" = "$want_api " ] || {
+    echo "FAIL: the direct object storage API route in $render_name is $api_objects, want exactly $want_api" >&2
+    echo "      objects.<BEX_BASE_DOMAIN> is DNS-only so a 300 MiB wrangler upload is not stopped by Cloudflare's 100 MiB proxy limit on api.<BEX_BASE_DOMAIN>; keep lego/operator/config/api/ingressroute-objects.yaml in sync" >&2
+    fail=1
+  }
 done
 objectgw_scrape="$(yq -N '
   .spec.source.helm.values | from_yaml |

@@ -346,9 +346,9 @@ bex serves two regions, `oregon` and `frankfurt`; any other region answers 400. 
 bex has no bucket command of its own. Cloudflare's `wrangler r2` manages buckets, objects, CORS and lifecycle rules against bex when it is pointed at bex's Cloudflare-shaped API ([ADR112](ADR112-object-storage.md) D3). Three environment variables are all it needs, and nothing is installed on the bex side:
 
 ```sh
-export CLOUDFLARE_API_BASE_URL=https://api.bex.co/cloudflare/client/v4
-export CLOUDFLARE_API_TOKEN=<a bex API key>   # sent as Authorization: Bearer, like every bex route
-export CLOUDFLARE_ACCOUNT_ID=<tea-id>         # the workspace id
+export CLOUDFLARE_API_BASE_URL=https://objects.onbex.co/cloudflare/client/v4
+export CLOUDFLARE_API_TOKEN=<a bex access token>   # sent as Authorization: Bearer; see "The token" below
+export CLOUDFLARE_ACCOUNT_ID=<tea-id>              # the workspace id
 
 wrangler r2 bucket create photos
 wrangler r2 object put photos/cat.jpg --file cat.jpg --remote
@@ -359,15 +359,17 @@ wrangler r2 bucket lifecycle add photos expire-logs logs/ --expire-days 7
 
 Things to know:
 
+- **The token is an access token, not an API key's secret.** An API key's secret is not a bearer token ([CI and automation](#ci-and-automation)): exchange the key's `client_id` and `client_secret` at `https://oauth.bex.co/oauth2/token` with `grant_type=client_credentials` (credentials in the form body) and give wrangler the returned `access_token`, which lasts 15 minutes, so exchange again for a longer session. A signed-in person can use their own OAuth access token instead. The token needs the workspace's access and, for an object get, the sensitive scope class.
+- **Which host.** `objects.onbex.co` is the host to use: it goes straight to bex's edge, and only the `/cloudflare/client/v4/` routes answer there. `api.bex.co` serves the same routes but sits behind Cloudflare's proxy, which refuses any request body over 100 MiB with its own `413` page (measured on 2026-11-15: 104,857,600 bytes passed and 104,857,601 did not), so a larger object never reaches bex through it.
 - **`--remote` is required.** `wrangler r2 object put|get|delete` defaults to a local simulator and never reaches bex without it. Bucket, CORS and lifecycle commands have no local mode.
 - **The workspace is the account id,** so a key reaches the buckets of its own workspace and no other. A viewer lists buckets, reads their CORS and lifecycle rules and sees their size; reading an object's bytes needs a developer or an admin, and so do put, delete and every change.
-- **An object is at most 300 MiB.** wrangler sends the file in the API call itself and refuses a larger one before it connects; bex refuses it too. Bigger objects need the S3 API of ADR112 D10, which does not exist yet.
+- **An object is at most 300 MiB.** wrangler sends the file in the API call itself and refuses a larger one before it connects; bex refuses it too (`100100`). Through `objects.onbex.co` a 300 MiB object goes in and out byte for byte (verified on production, 2026-11-15); through `api.bex.co` the limit is 100 MiB, see above. Bigger objects need the S3 API of ADR112 D10, which does not exist yet; Contract A (`bex ea objects put`, up to 5 GiB) carries them in the meantime.
 - **wrangler cannot list a bucket's objects.** It has no such command, and bex has no S3 API for another tool to list with. The Render CLI lists only the workspace's `render-<region>` bucket (`bex ea objects list --region oregon`); a bucket you created is not listable from any CLI yet. Objects written to `render-oregon` or `render-frankfurt` with wrangler are the ones `bex ea objects` reads, and the other way round.
 - **Two regions.** A bucket created with no location hint, `--location wnam` or nothing else goes to Oregon; `--location weur` or `--jurisdiction eu` goes to Frankfurt. Every other hint answers `10042`. bex's region is exact where Cloudflare's hint is a preference, and `bucket info` reports the hint you gave. Names are unique per workspace; bex ignores the jurisdiction when it looks a name up. A bucket name must follow wrangler's own rule and must not start with `render-`.
 - **One storage class.** `--storage-class InfrequentAccess` and lifecycle storage-class transitions answer `10042`. `bucket lock`, `notification`, `sippy`, Data Catalog and custom domains (`domain list` returns an empty list) are not offered either.
 - **CORS applies to public buckets.** `bucket cors set|list|delete` keep your rules (at most 100 rules and 64 KiB per bucket), and bex applies them where it serves a bucket to browsers: the public host of a bucket you published with `dev-url` (below). The `wrangler` routes need a token, so a browser never reaches them and the rules do not apply there.
 - **Lifecycle rules run hourly.** An `Age` (up to 100 years) or `Date` expiry deletes the matching objects, at most 10,000 per rule per run. A short rule saves nothing on storage: Wasabi bills a 90-day minimum for every object, and whether it bills the rest of the 90 days for an object deleted sooner is unverified. `--abort-multipart-days` is stored and does nothing, since bex has no multipart upload.
-- **Limits.** 1,000 buckets per workspace, 100 GB and 1,000,000 objects per workspace per region, 8 uploads or downloads at once per workspace; a breach answers `10042` (a quota) or `10058` (too many at once). Keys follow the same rule as the Render CLI. Render and Cloudflare publish none of these limits for bex to match, so each is bex's own, listed with its status in [ADR018](ADR018-render-parity.md).
+- **Limits.** 1,000 buckets per workspace, 100 GB and 1,000,000 objects per workspace per region, 8 uploads or downloads at once per workspace on each bex-api replica (16 in all on the two production replicas, measured 2026-11-15); a breach answers `10042` (a quota) or `10058` (too many at once). Keys follow the same rule as the Render CLI. Render and Cloudflare publish none of these limits for bex to match, so each is bex's own, listed with its status in [ADR018](ADR018-render-parity.md).
 - **Private unless you publish, and no durability beyond one provider.** Objects live on one provider in one region with no replica. A bucket is private until a workspace admin runs `bucket dev-url enable` (below).
 
 #### Public buckets: `dev-url`
@@ -388,7 +390,7 @@ With `dev-url` on, anyone can read the bucket's objects over the web at `https:/
 - **A shared domain.** The host is under the platform's shared hosting domain, as tenant apps and static sites are, so a page served from a public bucket shares a registrable domain with them. Serve only content you would put on a static site, and do not host untrusted uploads from a public bucket.
 - **Egress is metered, not billed yet.** Bytes read from a public bucket count toward the workspace's `object_storage_egress_bytes`, shown at $0 until a price is set.
 
-bex's routes are tested against the real tool: a recorded replay of wrangler 4.162.0's requests runs with every build, and the real wrangler runs against the handlers every week ([`scripts/wrangler-r2-contract.sh`](../scripts/wrangler-r2-contract.sh)). Other wrangler versions may differ.
+bex's routes are tested against the real tool: a recorded replay of wrangler 4.162.0's requests runs with every build, and the real wrangler runs against the handlers every week ([`scripts/wrangler-r2-contract.sh`](../scripts/wrangler-r2-contract.sh)). Stock wrangler 4.162.0 was also run against production on 2026-11-15: every `bucket`, `object`, `cors` and `lifecycle` command above. Other wrangler versions may differ.
 
 ## Compatibility and branding limits
 
