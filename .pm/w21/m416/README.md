@@ -1,6 +1,6 @@
 # w21 · m416 — wrangler's `r2` contract over the same store: buckets, streamed objects, CORS, lifecycle, the sweep, purge and shadow meters
 
-**Worker:** worker21 **Goal:** stock `wrangler r2` with three environment variables manages buckets and objects in bex, and the usage, lifecycle and cleanup machinery behind both contracts runs. **Status:** blocked — every implementable task (t001–t012 and t014–t016) is done and shipped; t013 (the production walk) and t017 (closeout) need the production cluster, which m415 t010 must install the object-storage Secrets into first (see t013)
+**Worker:** worker21 **Goal:** stock `wrangler r2` with three environment variables manages buckets and objects in bex, and the usage, lifecycle and cleanup machinery behind both contracts runs. **Status:** todo (t001–t012 and t014–t016 done; t013 and t017 remain)
 
 ## Tasks (in order)
 
@@ -45,3 +45,12 @@
 - Recorded recommendation, not a user decision: every bex-chosen value (caps, error-code subset, key rule, regions) is unsigned in ADR018 until the user signs it.
 - Recorded recommendation: if Wasabi rejects a streamed presigned PUT, fall back to a single `PutObject` with the known length rather than spooling.
 - Not filed: ADR112 t010 (pricing) and the S3 API with tenant credentials (D10); both wait for the user.
+
+## Unblock (2026-11-15)
+
+- **Source:** the user's instruction in session on 2026-11-15 (the gate is not a missing deploy; deploy it yourself) and the verified evidence below. This is not a decision on any ADR018 divergence: those stay unsigned.
+- **Gate cleared (verified 2026-11-15):** the production cluster is reachable from this checkout. `HCLOUD_TOKEN` is in `.env` and the SSH key is `~/.ssh/bex` (the default of `scripts/fetch-app-kubeconfig.sh`, and `BEX_SSH_PRIVATE_KEY_FILE` in `.env.example`). The earlier notes named `~/.ssh/id_bex`, a stale name copied from older runbooks; that key was never needed. Recipe: `HCLOUD_TOKEN="$(grep '^HCLOUD_TOKEN=' .env | cut -d= -f2-)" bash scripts/fetch-app-kubeconfig.sh <path outside the repo>`, then `KUBECONFIG=<path> kubectl ...`. Never print the token or the kubeconfig, and delete the file when the work is done.
+- **Done on production 2026-11-15, by the orchestrator:** `provision` (kept both buckets and both key pairs, minted `BEX_OBJECT_STORAGE_GATEWAY_TOKEN`), `verify` (every check passes, including the shared-account denials), `install` (`bex-system/bex-object-storage` and `bex-system/bex-object-storage-read`, both carrying the same gateway token), then a rolling restart of `bex-api` (2/2) and `bex-objectgw` (2/2), both Ready. Argo already runs the code of w21/m417 (bex-api has the three `BEX_OBJECT_STORAGE_*` names in its environment). No round trip has been walked yet.
+- **Remaining:** the walks and each closeout (below). Do not run `provision` or `install` again: both Secrets exist. The walks may create test buckets, objects and keys, and must delete them afterwards. For a token, sign in as the QA user with `bash scripts/qa-login.sh` (`.claude/skills/qa-find-bugs/SKILL.md`; never type the password). Whether the QA user can reach a second workspace is not verified: if a step needs one and there is none, park that task naming exactly that.
+- **Reference-product basis:** unchanged: Render's `ea objects` for Contract A, Cloudflare R2 and wrangler for Contract B and public reads.
+- **This milestone's next steps:** t013 (real wrangler against production, 300 MiB through Traefik, Render and wrangler on the same data) after w21/m415 t010, then t017 Closeout.

@@ -1,6 +1,6 @@
 # ADR112 — bex object storage: Render's `ea objects` and Cloudflare's `wrangler r2` contracts over Wasabi
 
-**Status:** proposed (2026-11-14). Filed 2026-11-15 as [w21/m415](../.pm/w21/blocked/m415/README.md), [m416](../.pm/w21/blocked/m416/README.md) and [m417](../.pm/w21/blocked/m417/README.md); § Tasks maps the split.
+**Status:** proposed (2026-11-14). Filed 2026-11-15 as [w21/m415](../.pm/w21/m415/README.md), [m416](../.pm/w21/m416/README.md) and [m417](../.pm/w21/m417/README.md); § Tasks maps the split.
 
 **Implemented 2026-11-15 (code only; no production walk yet).** Contract A and the store shipped as w21/m415, Contract B (the Cloudflare-shaped routes, CORS and lifecycle storage, the sweep, lifecycle execution, purge and the shadow meters) as w21/m416, and public buckets (`dev-url`, objectgw, its caps, the egress alert and the kill switch) as w21/m417. Where the code differs from the text below, § D3, § D4 and § Not verified say so with the date.
 
@@ -279,9 +279,9 @@ Each is its own follow-up, per the rule that parity-sufficient work ships and wi
 
 `/pmx adr 112 to w21` (2026-11-15) filed this split on the board as three milestones, each a shippable step, with the tasks below cut finer (tens of minutes each):
 
-- [w21/m415](../.pm/w21/blocked/m415/README.md): the core store and Contract A (t001, t002, t004 and the Contract A parts of t008 and t009), ending in a production walk.
-- [w21/m416](../.pm/w21/blocked/m416/README.md): Contract B, the sweep, lifecycle, purge and the shadow meters (t003, t005, t007 and the Contract B parts of t008 and t009), ending in a production walk.
-- [w21/m417](../.pm/w21/blocked/m417/README.md): public reads, objectgw and its caps, alert and kill switch (t006 and the public part of t009).
+- [w21/m415](../.pm/w21/m415/README.md): the core store and Contract A (t001, t002, t004 and the Contract A parts of t008 and t009), ending in a production walk.
+- [w21/m416](../.pm/w21/m416/README.md): Contract B, the sweep, lifecycle, purge and the shadow meters (t003, t005, t007 and the Contract B parts of t008 and t009), ending in a production walk.
+- [w21/m417](../.pm/w21/m417/README.md): public reads, objectgw and its caps, alert and kill switch (t006 and the public part of t009).
 
 t010 (pricing) is not filed: it waits for the user to set a price.
 

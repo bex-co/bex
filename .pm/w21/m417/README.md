@@ -1,6 +1,6 @@
 # w21 · m417 — Public buckets: `dev-url` and objectgw serve a bucket read-only at `pub-<obk-id>.onbex.co`, with caps, an egress alert and a kill switch
 
-**Worker:** worker21 **Goal:** a workspace admin publishes a bucket with `wrangler r2 bucket dev-url enable` and anyone can read its objects over the web without a credential, bounded so it cannot take down the shared Wasabi account. **Status:** blocked — every implementable task (t001–t007 and t009–t011) is done; t008 (the production walk) and t012 (closeout) need the production cluster, which w21/m415 t010 and w21/m416 t013 must walk first (see t008's gate)
+**Worker:** worker21 **Goal:** a workspace admin publishes a bucket with `wrangler r2 bucket dev-url enable` and anyone can read its objects over the web without a credential, bounded so it cannot take down the shared Wasabi account. **Status:** todo (t001–t007 and t009–t011 done; t008 and t012 remain)
 
 ## Tasks (in order)
 
@@ -43,3 +43,12 @@ Everything that can be built, tested and checked offline is done: `dev-url`, obj
 - User-changeable, recommendation recorded: the public host lives on `onbex.co` (ADR112 D4); it shares a registrable domain with tenant apps, the same risk class as static sites.
 - Recommendation, not a decision: the kill switch is scaling objectgw to zero; an exact-404 switch would need a runtime flag store the backend does not have.
 - Not filed: custom domains, a CDN and signed public URLs (ADR112 D4 and D10).
+
+## Unblock (2026-11-15)
+
+- **Source:** the user's instruction in session on 2026-11-15 (the gate is not a missing deploy; deploy it yourself) and the verified evidence below. This is not a decision on any ADR018 divergence: those stay unsigned.
+- **Gate cleared (verified 2026-11-15):** the production cluster is reachable from this checkout. `HCLOUD_TOKEN` is in `.env` and the SSH key is `~/.ssh/bex` (the default of `scripts/fetch-app-kubeconfig.sh`, and `BEX_SSH_PRIVATE_KEY_FILE` in `.env.example`). The earlier notes named `~/.ssh/id_bex`, a stale name copied from older runbooks; that key was never needed. Recipe: `HCLOUD_TOKEN="$(grep '^HCLOUD_TOKEN=' .env | cut -d= -f2-)" bash scripts/fetch-app-kubeconfig.sh <path outside the repo>`, then `KUBECONFIG=<path> kubectl ...`. Never print the token or the kubeconfig, and delete the file when the work is done.
+- **Done on production 2026-11-15, by the orchestrator:** `provision` (kept both buckets and both key pairs, minted `BEX_OBJECT_STORAGE_GATEWAY_TOKEN`), `verify` (every check passes, including the shared-account denials), `install` (`bex-system/bex-object-storage` and `bex-system/bex-object-storage-read`, both carrying the same gateway token), then a rolling restart of `bex-api` (2/2) and `bex-objectgw` (2/2), both Ready. Argo already runs the code of w21/m417 (bex-api has the three `BEX_OBJECT_STORAGE_*` names in its environment). No round trip has been walked yet.
+- **Remaining:** the walks and each closeout (below). Do not run `provision` or `install` again: both Secrets exist. The walks may create test buckets, objects and keys, and must delete them afterwards. For a token, sign in as the QA user with `bash scripts/qa-login.sh` (`.claude/skills/qa-find-bugs/SKILL.md`; never type the password). Whether the QA user can reach a second workspace is not verified: if a step needs one and there is none, park that task naming exactly that.
+- **Reference-product basis:** unchanged: Render's `ea objects` for Contract A, Cloudflare R2 and wrangler for Contract B and public reads.
+- **This milestone's next steps:** t008 (enable `dev-url`, read with `Range` and CORS, disable, measure Traefik at zero replicas, reset the first-value caps and the two alert thresholds from measurement) after w21/m416 t013, then t012 Closeout. The Secrets and the gateway token the gate named are in place. For the kill-switch measurement scale `bex-objectgw` to zero for as short a time as the measurement needs, then restore 2 replicas and confirm Ready; no public bucket has customers yet.
