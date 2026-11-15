@@ -2822,12 +2822,13 @@ done
 # w21/m409: three privilege paths the round-25 audit found are refused by every
 # policy that can author them, so each clause must appear once per policy, not
 # just somewhere in the file: a projected volume may not source a crown Secret
-# (the workload and day-to-day policies; the build Job policy allows only
-# emptyDir and Secret volumes), no policy admits the platform taint, and a
-# host port is refused in containers, init containers and ephemeral containers
-# of all three.
+# (the workload and day-to-day policies; the build Job policy admits a
+# projection of non-crown Secrets alone, the packed secret files a build reads,
+# w32/027), no policy admits the platform taint, and a host port is refused in
+# containers, init containers and ephemeral containers of all three.
 for required_privilege_clause in \
   "2|v.projected.?sources.orValue([]).all(s, !has(s.secret) || !(s.secret.name in variables.crownSecrets))" \
+  "1|v.projected.?sources.orValue([]).all(s, has(s.secret) && !(s.secret.name in variables.crownSecrets))" \
   "3|t.key != 'bex.co/platform'" \
   "9|p.?hostPort.orValue(0) == 0"; do
   clause_count="${required_privilege_clause%%|*}"

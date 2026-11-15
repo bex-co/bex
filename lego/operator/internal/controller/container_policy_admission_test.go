@@ -597,9 +597,8 @@ var _ = Describe("Application container policy admission", func() {
 		// The build Job keeps its build-only toleration in its isolated
 		// execution namespace, and still may not reach a serving pool.
 		const buildNamespace = "build-boundary-test"
-		Expect(admin.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: buildNamespace, Labels: map[string]string{
-			"app.bex.co/execution-boundary": "untrusted",
-		}}})).To(Succeed())
+		untrustedBoundary := map[string]string{"app.bex.co/execution-boundary": "untrusted"}
+		Expect(admin.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: buildNamespace, Labels: untrustedBoundary}})).To(Succeed())
 		buildOpts := build.Options{Repo: "https://github.com/bex-co/hello", Ref: "main", Name: "hello", AppUID: "uid-hello",
 			Registry: "zot.bex-registry.svc:5000", Revision: "gen-7", Namespace: buildNamespace}
 		buildJob := build.BuildJob(buildOpts, buildOpts.ImageRef())
@@ -612,14 +611,52 @@ var _ = Describe("Application container policy admission", func() {
 		relabelled := admissionFreshWorkload(buildJob)
 		admissionPodTemplate(relabelled).Labels[execution.LabelComponent] = "predeploy"
 		expectPoolDenied(operator.Create(ctx, relabelled, client.DryRunAll), "non-build Job with the build-only toleration")
-		// bex-build-job-shape binds only the bex-build namespace.
-		Expect(admin.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "bex-build"}})).To(Succeed())
+		// bex-build-job-shape binds only the bex-build namespace. It carries
+		// production's labels (deploy/gitops/base/build-boundary.yaml), so the
+		// operator's own policies judge the same Job there too.
+		Expect(admin.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "bex-build", Labels: untrustedBoundary}})).To(Succeed())
 		shapeOpts := buildOpts
 		shapeOpts.Namespace = "bex-build"
 		shapeJob := build.BuildJob(shapeOpts, shapeOpts.ImageRef())
 		shapeAuthor := asUser(shapeAuthorName)
-		err = shapeAuthor.Create(ctx, admissionFreshWorkload(shapeJob), client.DryRunAll)
-		Expect(err).NotTo(HaveOccurred(), "the hardened build Job from another author")
+		expectShapeDenied := func(err error, scenario string) {
+			Expect(apierrors.IsForbidden(err)).To(BeTrue(), "%s: %v", scenario, err)
+			Expect(err.Error()).To(ContainSubstring("bex-build-job-shape"), scenario)
+		}
+		// Every volume BuildJob can write must pass the shape policy: the packed
+		// secret files' projected volume once shipped without it, and every
+		// build with a secret file was refused (w32/027).
+		var filesJob *batchv1.Job
+		for _, shape := range admissionBuildJobShapes(shapeOpts) {
+			job := build.BuildJob(shape.opts, shape.opts.ImageRef())
+			Expect(operator.Create(ctx, admissionFreshWorkload(job), client.DryRunAll)).To(Succeed(), "operator build Job "+shape.name)
+			Expect(shapeAuthor.Create(ctx, admissionFreshWorkload(job), client.DryRunAll)).To(Succeed(), "build Job "+shape.name+" from another author")
+			projects := slices.ContainsFunc(job.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool { return v.Projected != nil })
+			Expect(projects).To(Equal(len(shape.opts.NativeFilesSecrets) > 0), "build Job "+shape.name+" projects exactly its secret files")
+			if projects && filesJob == nil {
+				filesJob = job
+			}
+		}
+		// The projection may carry Secrets alone: a ServiceAccount token or the
+		// downward API would reach past the disabled token automount. The
+		// operator policies admit both sources, so admissionPrivilegePaths
+		// cannot hold these (its crown-Secret paths run below).
+		for _, forbidden := range []struct {
+			name   string
+			source corev1.VolumeProjection
+		}{
+			{"a ServiceAccount token", corev1.VolumeProjection{ServiceAccountToken: &corev1.ServiceAccountTokenProjection{Path: "token"}}},
+			{"the downward API", corev1.VolumeProjection{DownwardAPI: &corev1.DownwardAPIProjection{Items: []corev1.DownwardAPIVolumeFile{
+				{Path: "labels", FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.labels"}}}}}},
+		} {
+			bad := admissionFreshWorkload(filesJob)
+			volumes := admissionPodTemplate(bad).Spec.Volumes
+			volume := &volumes[slices.IndexFunc(volumes, func(v corev1.Volume) bool { return v.Projected != nil })]
+			volume.Projected.Sources = append(volume.Projected.Sources, forbidden.source)
+			err := shapeAuthor.Create(ctx, bad, client.DryRunAll)
+			expectShapeDenied(err, "secret files projecting "+forbidden.name)
+			Expect(err.Error()).To(ContainSubstring("a projected volume whose every source is a non-crown Secret"), forbidden.name)
+		}
 		for _, path := range admissionPrivilegePaths() {
 			// The operator's own write is refused by its workload policy ...
 			bad := admissionFreshWorkload(buildJob)
@@ -628,9 +665,7 @@ var _ = Describe("Application container policy admission", func() {
 			// ... and any author's in bex-build by the shape policy alone.
 			bad = admissionFreshWorkload(shapeJob)
 			path.change(admissionPodTemplate(bad))
-			err := shapeAuthor.Create(ctx, bad, client.DryRunAll)
-			Expect(apierrors.IsForbidden(err)).To(BeTrue(), "build Job "+path.name+": %v", err)
-			Expect(err.Error()).To(ContainSubstring("bex-build-job-shape"), "build Job "+path.name)
+			expectShapeDenied(shapeAuthor.Create(ctx, bad, client.DryRunAll), "build Job "+path.name)
 		}
 
 		By("holding the day-to-day credential to the same privilege paths")
@@ -661,9 +696,6 @@ var _ = Describe("Application container policy admission", func() {
 	})
 })
 
-// Collect actual producer output through fake storage, then submit those exact
-// objects to the real API server. This keeps unrelated release/status machinery
-// outside this admission test without replacing any workload constructor.
 // admissionMutation is a change to a pod template an admission policy must refuse.
 type admissionMutation struct {
 	name   string
@@ -704,6 +736,55 @@ func admissionPrivilegePaths() []admissionMutation {
 	}
 }
 
+// admissionBuildJobShape is one combination of build.Options the controller can
+// hand BuildJob.
+type admissionBuildJobShape struct {
+	name string
+	opts build.Options
+}
+
+// admissionBuildJobShapes covers every volume and container phase BuildJob can
+// add: the default and native builders, a static site's and a build source's
+// native build, a Dockerfile build with build secrets, and every credential
+// plus the layer cache. Secret files come packed into two Secrets, as w4/m363
+// splits them.
+func admissionBuildJobShapes(base build.Options) []admissionBuildJobShape {
+	files := []string{"bld-hello-files", "bld-hello-files-2"}
+	native := func(runtime, buildCommand, startCommand string) build.Options {
+		o := base
+		o.Builder, o.Runtime, o.BuildCommand, o.StartCommand = build.BuilderNative, runtime, buildCommand, startCommand
+		o.BuildEnv = []corev1.EnvVar{{Name: "GREETING", Value: "hi"}}
+		o.RuntimeEnvSecret = "hello-env"
+		o.NativeFilesSecrets, o.NativeFiles = files, []string{"a.txt", "b.txt"}
+		o.NativeResolverImage = "ghcr.io/bex-co/bex:test"
+		return o
+	}
+	web := native("go", "go build -o app .", "./app")
+	static := native("", "mkdir -p out && cp index.html out/", "")
+	static.StaticSite, static.StaticPublishPath = true, "out"
+	buildOnly := native("node", "npm ci", "")
+	buildOnly.BuildOnly = true
+	dockerfile := base
+	dockerfile.Builder = build.BuilderDockerfile
+	dockerfile.RuntimeEnvSecret = "hello-env"
+	dockerfile.NativeFilesSecrets, dockerfile.NativeFiles = files, []string{".env"}
+	dockerfile.PullSecret, dockerfile.RegistryConfig = "hello-pull", true
+	everything := web
+	everything.CloneSecret, everything.PushSecret, everything.PullSecret = "hello-clone", "hello-push", "hello-pull"
+	everything.SignKeySecret, everything.BuildCache = "hello-sign", true
+	return []admissionBuildJobShape{
+		{"default builder", base},
+		{"native web service with secret files", web},
+		{"static site native build with secret files", static},
+		{"build source with secret files", buildOnly},
+		{"Dockerfile build with build secrets", dockerfile},
+		{"native build with every credential and the cache", everything},
+	}
+}
+
+// Collect actual producer output through fake storage, then submit those exact
+// objects to the real API server. This keeps unrelated release/status machinery
+// outside this admission test without replacing any workload constructor.
 func admissionApplicationWorkloads(namespace, policy string) []client.Object {
 	return admissionTierWorkloads(namespace, policy, "free")
 }

@@ -605,7 +605,9 @@ spec:
 # privileged-Pod-Security namespace, and the policies above only constrain the
 # controller-manager identity. This policy pins the EXACT hardened BuildKit Job
 # template shape (ADR061 #6) for EVERY author of Jobs in bex-build: a pod user
-# namespace, no token/host/node pinning, emptyDir-or-secret volumes only, and a
+# namespace, no token/host/node pinning, only emptyDir, non-crown Secret, or
+# projected volumes whose every source is a non-crown Secret (how a build reads
+# its packed secret files, w4/m363; no token or downward-API projection), and a
 # container split where only the `buildkit` container may be powerful — and only
 # with the exact capability set lego/operator/internal/build/build.go mints —
 # while every other container (clone, cache-restore, native-preparer, push,
@@ -656,10 +658,11 @@ spec:
         (!has(variables.pod.tolerations) || variables.pod.tolerations.all(t,
           (has(t.key) && t.key != '' && !t.key.startsWith('node-role.kubernetes.io/control-plane') && t.key != 'node-role.kubernetes.io/master' && t.key != 'bex.co/platform'))) &&
         has(variables.pod.volumes) && variables.pod.volumes.all(v,
-          (has(v.emptyDir) || has(v.secret)) &&
-          (!has(v.secret) || !(v.secret.secretName in variables.crownSecrets)))
+          (has(v.emptyDir) || has(v.secret) || has(v.projected)) &&
+          (!has(v.secret) || !(v.secret.secretName in variables.crownSecrets)) &&
+          (!has(v.projected) || v.projected.?sources.orValue([]).all(s, has(s.secret) && !(s.secret.name in variables.crownSecrets))))
       reason: Forbidden
-      message: bex-build Jobs may not join host namespaces, pin a node, carry wildcard/control-plane/platform tolerations, or use volumes other than emptyDir/non-crown Secrets
+      message: bex-build Jobs may not join host namespaces, pin a node, carry wildcard/control-plane/platform tolerations, or use any volume but emptyDir, a non-crown Secret, or a projected volume whose every source is a non-crown Secret
     # A host port publishes a container on its node's address, past every
     # Service and NetworkPolicy; no operator-authored workload needs one.
     - expression: >-
