@@ -1144,8 +1144,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 	if envGroupApplier != nil {
 		appsSvc.EnvGroupPlacements = envgroups.GroupPlacements(envGroupsSvc)
 	}
+	agentStops := &agentsessions.StopSignal{}
 	agentSessionsSvc := &agentsessions.Service{
-		Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
+		Stops: agentStops,
+		Base:  base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
 		Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
 		GatewayURL: d.AgentSessionGatewayURL, APIPublicURL: d.DeployHookBaseURL,
 		GitProxyURL:    d.AgentGitProxyURL,
@@ -1224,6 +1226,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			StatusReadFailureTTL: d.AgentStatusRetryWindow,
 			TurnTimeout:          d.AgentTurnTimeout,
 			InventoryInterval:    time.Minute,
+			Stops:                agentStops,
 		},
 		Postgres:      pg,
 		KeyValue:      kv,

@@ -83,6 +83,11 @@ type Completer struct {
 	}
 	Interval time.Duration
 	Now      func() time.Time
+	// Stops is told by Service.Interrupt which sessions a person just asked to
+	// stop, so the Completer settles them on StopInterval (default stopTick)
+	// instead of waiting for Interval. nil keeps the single tick.
+	Stops        *StopSignal
+	StopInterval time.Duration
 	// MaxTranscriptBytes overrides the per-session cumulative transcript quota
 	// (store.MaxAgentSessionTranscriptBytes); zero => the platform default.
 	// Tests set it small to exercise the quota without 64 MiB payloads.
@@ -399,12 +404,42 @@ func (c *Completer) Run(ctx context.Context) {
 	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	// A nil channel never fires, so without a StopSignal this stays the one tick.
+	var stopTicks <-chan time.Time
+	if c.Stops != nil {
+		stopInterval := c.StopInterval
+		if stopInterval <= 0 {
+			stopInterval = stopTick
+		}
+		stopTicker := time.NewTicker(stopInterval)
+		defer stopTicker.Stop()
+		stopTicks = stopTicker.C
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			c.Reconcile(ctx)
+		case <-stopTicks:
+			c.reconcileStopped(ctx)
+		}
+	}
+}
+
+// reconcileStopped finalizes the sessions a person just asked to stop, read on
+// the short tick so the turn shows as stopped within seconds. It runs on the
+// same goroutine as Reconcile, so a session is never finalized twice at once.
+func (c *Completer) reconcileStopped(ctx context.Context) {
+	for _, id := range c.Stops.Pending(c.now()) {
+		record, err := c.Store.GetAgentSession(ctx, id)
+		if err != nil || !slices.Contains(activePhases, record.Phase) {
+			c.Stops.Done(id)
+			continue
+		}
+		c.finalize(ctx, record)
+		if after, err := c.Store.GetAgentSession(ctx, id); err != nil || !slices.Contains(activePhases, after.Phase) {
+			c.Stops.Done(id)
 		}
 	}
 }

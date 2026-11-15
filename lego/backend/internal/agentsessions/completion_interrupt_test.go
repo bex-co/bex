@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -241,6 +242,7 @@ func TestInterruptRecordsItsRequestBeforeTheSentinelAndForItsTurnOnly(t *testing
 	ctx := context.Background()
 	watch := &stopAtSentinel{SandboxLifecycle: e.lc, pg: e.pg}
 	e.svc.Sandbox = watch
+	e.svc.Stops = &StopSignal{}
 	e.send(t, "alice", "next")
 
 	if _, err := e.svc.Interrupt(caller("alice"), e.id); err != nil {
@@ -248,6 +250,10 @@ func TestInterruptRecordsItsRequestBeforeTheSentinelAndForItsTurnOnly(t *testing
 	}
 	if len(watch.seen) != 1 || !watch.seen[0] {
 		t.Fatalf("the request was recorded before the sentinel: %v, want [true]", watch.seen)
+	}
+	// The Completer is told, so it settles the turn on its short tick.
+	if got := e.svc.Stops.Pending(time.Now()); len(got) != 1 || got[0] != e.id {
+		t.Fatalf("the stop was not signalled to the Completer: %v", got)
 	}
 	turns, err := e.pg.AgentSessionTurns(ctx, e.id)
 	if err != nil || len(turns) != 1 || turns[0].InterruptRequestedAt == nil || turns[0].Interrupted {
@@ -278,5 +284,67 @@ func TestInterruptRecordsItsRequestBeforeTheSentinelAndForItsTurnOnly(t *testing
 	}
 	if got := e.phase(t, e.id); got != PhaseCompleted {
 		t.Fatalf("phase = %s, want completed", got)
+	}
+}
+
+// A person's Stop turn is settled on the short tick, not the 15 s one: the
+// Completer reads a session Service.Interrupt noted within StopInterval, while
+// the ordinary tick is far away (w22/m413 t001).
+func TestAStopRequestedSessionIsSettledOnTheShortTick(t *testing.T) {
+	c, st, lc, id := completerFixture(interruptedStatus(statusGit{RemoteHead: remoteHead}), nil)
+	c.Metrics = NewCompletionMetrics(prometheus.NewRegistry())
+	recordAgentPR(st, id)
+	requestStop(t, st, id, 1)
+	c.Stops = &StopSignal{}
+	c.Stops.Note(id, time.Now())
+	c.Interval = time.Hour
+	c.StopInterval = 5 * time.Millisecond
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { c.Run(ctx); close(done) }()
+	// The ordinary tick is an hour away: only the short tick can settle it.
+	time.Sleep(300 * time.Millisecond)
+	cancel()
+	<-done
+
+	if got := st.rows[id].Phase; got != PhaseCompleted || !st.turns[id][1].Interrupted {
+		t.Fatalf("the stop was not settled on the short tick: phase %s, turn %+v", got, st.turns[id][1])
+	}
+	if lc.readTranscript != 1 {
+		t.Fatalf("transcript read %d times, want once", lc.readTranscript)
+	}
+	if pending := c.Stops.Pending(time.Now()); len(pending) != 0 {
+		t.Fatalf("a settled session is still watched: %v", pending)
+	}
+}
+
+// Without a noted stop the short tick reads nothing: a running turn is still
+// watched by the ordinary tick alone.
+func TestTheShortTickReadsNothingForASessionNobodyStopped(t *testing.T) {
+	c, _, lc, _ := completerFixture(interruptedStatus(statusGit{}), nil)
+	c.Stops = &StopSignal{}
+	c.reconcileStopped(context.Background())
+	if lc.readTranscript != 0 {
+		t.Fatalf("the short tick read a session nobody stopped: transcript %d", lc.readTranscript)
+	}
+}
+
+// A request that nobody settles stops being watched after its window, so the
+// set cannot grow without bound.
+func TestAStopRequestIsForgottenAfterItsWindow(t *testing.T) {
+	s := &StopSignal{}
+	now := time.Now()
+	s.Note("agt-old", now.Add(-stopWatchWindow-time.Second))
+	s.Note("agt-new", now)
+	got := s.Pending(now)
+	if len(got) != 1 || got[0] != "agt-new" {
+		t.Fatalf("pending = %v, want only the recent request", got)
+	}
+	var none *StopSignal
+	none.Note("x", now)
+	none.Done("x")
+	if none.Pending(now) != nil {
+		t.Fatal("a nil StopSignal reported something")
 	}
 }

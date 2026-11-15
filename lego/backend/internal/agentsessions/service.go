@@ -315,6 +315,10 @@ type Service struct {
 	// D12). nil (store off) answers such a message with the in-flight
 	// refusal and offers no queue verbs.
 	Queue QueueStore
+	// Stops tells the Completer which sessions a person just asked to stop, so
+	// it settles them in seconds (the Completer holds the same pointer). nil
+	// leaves Stop to the ordinary Completer tick.
+	Stops *StopSignal
 	// QueueMetrics is the queue dispatcher's series, set beside Metrics and
 	// read by the dispatcher main starts; nil observes nothing.
 	QueueMetrics *QueueMetrics
