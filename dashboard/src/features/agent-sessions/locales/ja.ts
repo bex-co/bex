@@ -865,6 +865,15 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
     message: "{count} 個のツールを使用",
     description: "Activity-group summary segment — tools of no known kind",
   },
+  "agentSessions.activityThought_other": {
+    message: "{count} 回思考",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThinking": {
+    message: "思考中…",
+    description: "Live status line while the agent is thinking between calls",
+  },
   "agentSessions.activityFailed_other": {
     message: "{count} 件失敗",
     description: "Activity-group summary segment — failed tool calls",

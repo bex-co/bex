@@ -933,6 +933,20 @@ const deAgentSessions: Record<string, TranslationEntry> = {
     message: "{count} Tools verwendet",
     description: "Activity-group summary segment — tools of no known kind",
   },
+  "agentSessions.activityThought_one": {
+    message: "{count} Mal überlegt",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls (singular)",
+  },
+  "agentSessions.activityThought_other": {
+    message: "{count} Mal überlegt",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThinking": {
+    message: "Überlegt…",
+    description: "Live status line while the agent is thinking between calls",
+  },
   "agentSessions.activityFailed_one": {
     message: "{count} fehlgeschlagen",
     description:

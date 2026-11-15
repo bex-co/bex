@@ -1008,6 +1008,30 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
     message: "Использовано {count} инструмента",
     description: "Activity-group summary segment — tools of no known kind",
   },
+  "agentSessions.activityThought_one": {
+    message: "Размышлял {count} раз",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls (singular)",
+  },
+  "agentSessions.activityThought_few": {
+    message: "Размышлял {count} раза",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThought_many": {
+    message: "Размышлял {count} раз",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThought_other": {
+    message: "Размышлял {count} раза",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThinking": {
+    message: "Размышляет…",
+    description: "Live status line while the agent is thinking between calls",
+  },
   "agentSessions.activityFailed_one": {
     message: "{count} с ошибкой",
     description:

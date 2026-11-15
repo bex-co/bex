@@ -185,19 +185,27 @@ describe("long replay (ags-dbf8nggkbcjs73a5r3u0)", () => {
       // The terminus waits on the resume promise, one commit after "ready".
       expect(await screen.findByText("Session ended.")).toBeInTheDocument();
       const log = screen.getByRole("log");
-      // All 96 reasoning blocks, collapsed (a terminal replay never opens one).
-      const reasoning = log.querySelectorAll("[data-block='reasoning']");
-      expect(reasoning).toHaveLength(96);
-      expect(
-        [...reasoning].some((el) => el.querySelector("[aria-expanded='true']")),
-      ).toBe(false);
       expect(log.querySelectorAll("[data-block='text']")).toHaveLength(13);
       // ~300 tool calls, grouped into one summary line per run of steps.
       const groups = [...log.querySelectorAll("[data-block='activity']")];
-      expect(
-        groups.reduce((n, el) => n + Number(el.getAttribute("data-steps")), 0),
-      ).toBe(299);
+      const total = (attr: string) =>
+        groups.reduce((n, el) => n + Number(el.getAttribute(attr)), 0);
+      expect(total("data-steps")).toBe(299);
       expect(groups.length).toBeLessThan(299);
+      // All 96 thoughts survive: those beside a call fold into its group, the
+      // rest stand alone, collapsed (a terminal replay never opens one), and
+      // no standalone thought sits next to a group it could have joined.
+      const reasoning = [...log.querySelectorAll("[data-block='reasoning']")];
+      expect(reasoning.length + total("data-thoughts")).toBe(96);
+      expect(reasoning.length).toBeLessThan(96);
+      expect(
+        reasoning.some((el) => el.querySelector("[aria-expanded='true']")),
+      ).toBe(false);
+      for (const el of reasoning) {
+        for (const near of [el.previousElementSibling, el.nextElementSibling]) {
+          expect(near?.getAttribute("data-block")).not.toBe("activity");
+        }
+      }
       expect(screen.getAllByText(/Ran \d+ commands?/).length).toBeGreaterThan(
         0,
       );

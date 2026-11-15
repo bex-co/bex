@@ -968,6 +968,25 @@ const esAgentSessions: Record<string, TranslationEntry> = {
     message: "Usó {count} herramientas",
     description: "Activity-group summary segment — tools of no known kind",
   },
+  "agentSessions.activityThought_one": {
+    message: "Razonó {count} vez",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls (singular)",
+  },
+  "agentSessions.activityThought_many": {
+    message: "Razonó {count} de veces",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThought_other": {
+    message: "Razonó {count} veces",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThinking": {
+    message: "Razonando…",
+    description: "Live status line while the agent is thinking between calls",
+  },
   "agentSessions.activityFailed_one": {
     message: "{count} con error",
     description:

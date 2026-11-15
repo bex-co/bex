@@ -33,14 +33,12 @@ import {
   type AttachmentView,
 } from "@/features/agent-sessions/lib/attachments";
 import { ActivityGroup } from "@/features/agent-sessions/components/activity-group";
+import { ReasoningBlock } from "@/features/agent-sessions/components/reasoning-block";
 import {
+  isThoughtStep,
   stepLabel,
   type ActivityStep,
 } from "@/features/agent-sessions/lib/activity-steps";
-import {
-  formatStreamDuration,
-  useStreamDuration,
-} from "@/features/agent-sessions/lib/stream-duration";
 import { TypingIndicator } from "@/features/agent-sessions/components/typing-indicator";
 import {
   acpDataSchema,
@@ -70,20 +68,16 @@ import {
   TaskContent,
   TaskItem,
 } from "@/common/components/ai-elements/task";
-import {
-  Reasoning,
-  ReasoningTrigger,
-  ReasoningContent,
-} from "@/common/components/ai-elements/reasoning";
 
 // The live conversation column (ADR047 D9). `useChat` drives it over the m43
 // stream transport: `resume` replays the durable transcript on mount, then
 // (for a running session) live-tails; a terminal session replays and settles on
 // `[DONE]`. The rendering is the Devin chat shape: USER turns are right-aligned
 // bubbles with an avatar, AGENT turns are plain full-width prose (markdown, no
-// avatar, no bubble), and consecutive tool + ACP command/terminal/diff parts
-// fold into a single "Worked for <Ns>" activity group. This component is the
-// injectable, Apollo-free unit under test (the transport is passed in);
+// avatar, no bubble), and consecutive tool + ACP command/terminal/diff parts,
+// with the reasoning beside them, fold into a single activity group. This
+// component is the injectable, Apollo-free unit under test (the transport is
+// passed in);
 // `session-conversation.tsx` is the client-only wrapper that builds the real
 // ticket-minting transport.
 
@@ -414,14 +408,14 @@ export function SessionConversationImpl({
   const last = rendered[rendered.length - 1];
   // One live status line (t005): the latest tool call's label, or a newer ACP
   // status, replaced in place. Terminal replays never show it.
-  const lastSteps = last ? lastActivitySteps(last.blocks) : [];
+  const lastStep = last ? lastActivityStep(last.blocks) : undefined;
   const liveStatus =
     !isTerminal && isLoading
-      ? acpStatus && acpStatus.afterSteps === toolStepCount(last?.blocks)
+      ? acpStatus && acpStatus.afterSteps === renderedToolSteps
         ? acpStatus.text
-        : lastSteps.length > 0
-          ? stepLabel(lastSteps[lastSteps.length - 1])
-          : undefined
+        : isThoughtStep(lastStep)
+          ? t("agentSessions.activityThinking")
+          : lastStep && stepLabel(lastStep)
       : undefined;
   const showTyping =
     isLoading &&
@@ -599,9 +593,11 @@ function asObject(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function lastActivitySteps(blocks: DisplayBlock[]): ActivityStep[] {
+function lastActivityStep(blocks: DisplayBlock[]): ActivityStep | undefined {
   const block = blocks[blocks.length - 1];
-  return block?.type === "activity" ? block.steps : [];
+  return block?.type === "activity"
+    ? block.steps[block.steps.length - 1]
+    : undefined;
 }
 
 /** The durable turn the last prompt block of a row opened, if it names one. */
@@ -613,12 +609,19 @@ function lastDurableTurn(blocks: DisplayBlock[]): number | null {
   return null;
 }
 
+// Thoughts are not counted: a status the agent reported before a thought is
+// still its latest status.
 function toolStepCount(blocks: DisplayBlock[] | undefined): number {
   let count = 0;
   for (const block of blocks ?? []) {
-    if (block.type === "activity") count += block.steps.length;
+    if (block.type !== "activity") continue;
+    for (const step of block.steps) if (!isThoughtStep(step)) count++;
   }
   return count;
+}
+
+function thoughtStep(text: string, sourceTimesMs: number[]): ActivityStep {
+  return { kind: "thought", text, sourceTimesMs };
 }
 
 // The Devin-style transcript terminus: a settled dot + a phase-derived label
@@ -658,6 +661,10 @@ function capText(text: string): string {
 // A message's parts are folded into an ordered list of blocks: markdown text, a
 // collapsible reasoning ("Thought") block, a plan checklist, and activity groups
 // that merge every run of consecutive tool + ACP command/terminal/diff parts.
+// Reasoning beside a call joins that call's group as a step, so the
+// think-act-think-act rhythm of an agent reads as one line between two pieces
+// of narration (Devin's activity view folds the same way); only a thought with
+// no call beside it stays a block of its own.
 
 type DisplayBlock =
   | { type: "text"; key: string; text: string }
@@ -700,21 +707,30 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   // with its data-user-prompt): the key a step's full output is stored under.
   let turn: number | undefined;
 
-  const pushStep = (step: ActivityStep, index: number, part: PartLike) => {
-    const times = sourceTimestampsMs(part);
+  const pushStep = (step: ActivityStep, index: number, times: number[]) => {
     const prev = blocks[blocks.length - 1];
     if (prev?.type === "activity") {
       prev.steps.push(step);
       prev.sourceTimesMs.push(...times);
-    } else {
-      blocks.push({
-        type: "activity",
-        key: `activity-${index}`,
-        steps: [step],
-        sourceTimesMs: [...times],
-        sharedFileIds: [],
-      });
+      return;
     }
+    // The thoughts that led up to this call open its group.
+    const thoughts: ActivityStep[] = [];
+    const thoughtTimes: number[] = [];
+    let last: DisplayBlock | undefined = prev;
+    while (last?.type === "reasoning") {
+      blocks.pop();
+      thoughts.unshift(thoughtStep(last.text, last.sourceTimesMs));
+      thoughtTimes.unshift(...last.sourceTimesMs);
+      last = blocks[blocks.length - 1];
+    }
+    blocks.push({
+      type: "activity",
+      key: `activity-${index}`,
+      steps: [...thoughts, step],
+      sourceTimesMs: [...thoughtTimes, ...times],
+      sharedFileIds: [],
+    });
   };
 
   parts.forEach((part, index) => {
@@ -786,12 +802,18 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
     }
 
     if (part.type === "reasoning") {
-      blocks.push({
-        type: "reasoning",
-        key: `reasoning-${index}`,
-        text: capText(str(part.text)),
-        sourceTimesMs: sourceTimestampsMs(part),
-      });
+      const text = capText(str(part.text));
+      const times = sourceTimestampsMs(part);
+      if (blocks[blocks.length - 1]?.type === "activity") {
+        pushStep(thoughtStep(text, times), index, times);
+      } else {
+        blocks.push({
+          type: "reasoning",
+          key: `reasoning-${index}`,
+          text,
+          sourceTimesMs: times,
+        });
+      }
       return;
     }
 
@@ -823,7 +845,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
             newText: group.newText,
           },
           index,
-          part,
+          sourceTimestampsMs(part),
         );
         return;
       }
@@ -837,7 +859,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
           fullOutput: hasFullOutput(part),
         },
         index,
-        part,
+        sourceTimestampsMs(part),
       );
       return;
     }
@@ -853,7 +875,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
           fullOutput: hasFullOutput(part),
         },
         index,
-        part,
+        sourceTimestampsMs(part),
       );
       const sharedId =
         info.state === "output-available"
@@ -971,7 +993,7 @@ const MessageRow = memo(function MessageRow({
             : "min-w-0 flex-1",
         )}
       >
-        {blocks.map((block) => {
+        {blocks.map((block, i) => {
           if (block.type === "user") {
             return (
               <DurableUserTurn
@@ -996,6 +1018,8 @@ const MessageRow = memo(function MessageRow({
             return (
               <ReasoningBlock
                 key={block.key}
+                data-block="reasoning"
+                className="my-1.5"
                 text={block.text}
                 streaming={showCursor}
                 sourceTimesMs={block.sourceTimesMs}
@@ -1039,6 +1063,7 @@ const MessageRow = memo(function MessageRow({
                 steps={block.steps}
                 sourceTimesMs={block.sourceTimesMs}
                 interrupted={interrupted}
+                live={showCursor && i === blocks.length - 1}
               />
               {block.sharedFileIds.length > 0 ? (
                 <SharedFiles sessionId={sessionId} ids={block.sharedFileIds} />
@@ -1136,36 +1161,6 @@ function DurableUserTurn({
         <UserAvatar />
       </div>
     </div>
-  );
-}
-
-// The agent's chain-of-thought, rendered with the vendored AI Elements
-// `Reasoning` disclosure. Collapsed by default so a long transcript stays
-// scannable; the "Thought for <Ns>" label prefers persisted source timestamps.
-function ReasoningBlock({
-  text,
-  streaming,
-  sourceTimesMs,
-}: {
-  text: string;
-  streaming: boolean;
-  sourceTimesMs: number[];
-}) {
-  const { t } = useTranslations();
-  const duration = useStreamDuration(text.length, !streaming, sourceTimesMs);
-  const summary =
-    duration.ms >= 1000
-      ? t("agentSessions.groupThoughtFor", {
-          duration: formatStreamDuration(duration),
-        })
-      : t("agentSessions.groupThought");
-  return (
-    <Reasoning data-block="reasoning" className="my-1.5">
-      <ReasoningTrigger>{summary}</ReasoningTrigger>
-      <ReasoningContent>
-        <MarkdownRenderer content={text} />
-      </ReasoningContent>
-    </Reasoning>
   );
 }
 

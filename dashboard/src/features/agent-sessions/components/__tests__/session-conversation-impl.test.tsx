@@ -71,17 +71,19 @@ describe("SessionConversationImpl", () => {
     );
     expect(screen.getByText("Run the tests")).toBeInTheDocument();
 
-    // Reasoning renders as a collapsible "Thought" block, collapsed by default.
-    expect(screen.getByText("Thought")).toBeInTheDocument();
+    // The tool + diff + terminal parts (one ACP call, shared toolCallId) fold
+    // into ONE activity group whose collapsed summary counts the call once, as
+    // an edit (no derived duration on a one-frame replay). The reasoning right
+    // before the call joins that group rather than standing alone. The tool
+    // name, the thought and the terminal output stay hidden until the group is
+    // expanded.
+    expect(
+      screen.getByText("Edited 1 file · Thought 1 time"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Thought")).not.toBeInTheDocument();
     expect(
       screen.queryByText(/The task asks me to edit the file/),
     ).not.toBeInTheDocument();
-
-    // The tool + diff + terminal parts (one ACP call, shared toolCallId) fold
-    // into ONE activity group whose collapsed summary counts the call once, as
-    // an edit (no derived duration on a one-frame replay). The tool name and
-    // terminal output stay hidden until the group is expanded.
-    expect(screen.getByText("Edited 1 file")).toBeInTheDocument();
     expect(screen.queryByText("acp_agent")).not.toBeInTheDocument();
 
     // The final assistant text (markdown) renders.
@@ -93,17 +95,20 @@ describe("SessionConversationImpl", () => {
       expect(screen.getByText("Session ended.")).toBeInTheDocument(),
     );
 
-    // Expanding the reasoning block reveals its content.
+    // Expanding the activity group reveals each step (a vertical timeline): the
+    // thought, still collapsed, then the tool call and the folded diff.
+    await userEvent.click(screen.getByText("Edited 1 file · Thought 1 time"));
+    expect(screen.getByText("acp_agent")).toBeInTheDocument();
+    expect(screen.getByText(/committed by the agent/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/The task asks me to edit the file/),
+    ).not.toBeInTheDocument();
+
+    // Expanding the thought reveals its content.
     await userEvent.click(screen.getByText("Thought"));
     expect(
       screen.getByText(/The task asks me to edit the file/),
     ).toBeInTheDocument();
-
-    // Expanding the activity group reveals each step (a vertical timeline): the
-    // tool call and the folded diff.
-    await userEvent.click(screen.getByText("Edited 1 file"));
-    expect(screen.getByText("acp_agent")).toBeInTheDocument();
-    expect(screen.getByText(/committed by the agent/)).toBeInTheDocument();
   });
 
   it("renders the continuity annotation as an honest system line (w5/m84)", async () => {

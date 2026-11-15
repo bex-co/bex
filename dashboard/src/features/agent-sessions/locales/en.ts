@@ -925,6 +925,20 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Used {count} tools",
     description: "Activity-group summary segment — tools of no known kind",
   },
+  "agentSessions.activityThought_one": {
+    message: "Thought {count} time",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls (singular)",
+  },
+  "agentSessions.activityThought_other": {
+    message: "Thought {count} times",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThinking": {
+    message: "Thinking…",
+    description: "Live status line while the agent is thinking between calls",
+  },
   "agentSessions.activityFailed_one": {
     message: "{count} failed",
     description:

@@ -859,6 +859,15 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     message: "도구 {count}개 사용",
     description: "Activity-group summary segment — tools of no known kind",
   },
+  "agentSessions.activityThought_other": {
+    message: "{count}회 생각",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThinking": {
+    message: "생각하는 중…",
+    description: "Live status line while the agent is thinking between calls",
+  },
   "agentSessions.activityFailed_other": {
     message: "{count}개 실패",
     description: "Activity-group summary segment — failed tool calls",

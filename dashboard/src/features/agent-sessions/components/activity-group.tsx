@@ -21,20 +21,23 @@ import {
 } from "@/features/agent-sessions/lib/acp-parts";
 import {
   activityCounts,
+  isThoughtStep,
   isToolStepFailed,
   isToolStepPending,
   stepLabel,
   type ActivityStep,
 } from "@/features/agent-sessions/lib/activity-steps";
 import { FullToolOutput } from "@/features/agent-sessions/components/full-tool-output";
+import { ReasoningBlock } from "@/features/agent-sessions/components/reasoning-block";
 
 // One folded activity block: the consecutive tool parts and ACP
 // command/terminal/diff parts of a single assistant turn, merged into ONE
 // signal-first summary line (w10/m16 t005): "Ran 12 commands · Read 8 files ·
 // Edited 3 files", with the elapsed time beside it ("40s" from persisted source
 // timestamps, "~40s" from arrival timing, nothing on an untimestamped one-frame
-// replay). Collapsed by default; failed calls stay visible under the line
-// without expanding. Expanding reveals the steps as a VERTICAL TIMELINE.
+// replay), then the thoughts folded in with them ("· Thought 3 times").
+// Collapsed by default; failed calls stay visible under the line without
+// expanding. Expanding reveals the steps as a VERTICAL TIMELINE.
 
 const KIND_ORDER: ToolKind[] = [
   "command",
@@ -59,6 +62,7 @@ export function ActivityGroup({
   steps,
   sourceTimesMs = [],
   interrupted = false,
+  live = false,
 }: {
   /** The session, for loading a clipped step's full output (w10/m18). */
   sessionId?: string;
@@ -70,24 +74,34 @@ export function ActivityGroup({
    * — will never finish, so it renders Interrupted instead of spinning.
    */
   interrupted?: boolean;
+  /** The group is the tail of a reply still streaming. */
+  live?: boolean;
 }) {
   const { t } = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
 
-  const hasPending = !interrupted && steps.some(isToolStepPending);
+  // A thought still streaming at the tail is in progress like a running call.
+  const thinking = live && isThoughtStep(steps[steps.length - 1]);
+  const hasPending =
+    !interrupted && (thinking || steps.some(isToolStepPending));
   const duration = useStreamDuration(steps.length, !hasPending, sourceTimesMs);
   const failed = steps.filter(isToolStepFailed);
   const counts = activityCounts(steps);
+  const thoughts = steps.filter(isThoughtStep).length;
   const segments = KIND_ORDER.flatMap((kind) => {
     const count = counts.get(kind);
     return count ? [t(KIND_LABEL_KEYS[kind] as never, { count })] : [];
   });
+  if (thoughts > 0) {
+    segments.push(t("agentSessions.activityThought", { count: thoughts }));
+  }
   const summaryLabel = segments.join(" · ");
 
   return (
     <div
       data-block="activity"
-      data-steps={steps.length}
+      data-steps={steps.length - thoughts}
+      data-thoughts={thoughts}
       className="bg-muted/20 border-border/70 my-1.5 overflow-hidden rounded-lg border"
     >
       <button
@@ -155,6 +169,7 @@ export function ActivityGroup({
                 <ActivityStepView
                   step={step}
                   interrupted={interrupted}
+                  streaming={live && i === steps.length - 1}
                   sessionId={sessionId}
                 />
               </li>
@@ -180,13 +195,27 @@ function firstLine(text: string): string {
 function ActivityStepView({
   step,
   interrupted,
+  streaming,
   sessionId,
 }: {
   step: ActivityStep;
   interrupted: boolean;
+  /** The step is the live tail of a streaming reply. */
+  streaming: boolean;
   sessionId?: string;
 }) {
   const { t } = useTranslations();
+
+  if (isThoughtStep(step)) {
+    return (
+      <ReasoningBlock
+        data-step="thought"
+        text={step.text}
+        streaming={streaming}
+        sourceTimesMs={step.sourceTimesMs}
+      />
+    );
+  }
 
   if (step.kind === "terminal") {
     return (

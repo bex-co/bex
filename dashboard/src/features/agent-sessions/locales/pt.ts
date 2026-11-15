@@ -968,6 +968,25 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
     message: "Usou {count} ferramentas",
     description: "Activity-group summary segment — tools of no known kind",
   },
+  "agentSessions.activityThought_one": {
+    message: "Pensou {count} vez",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls (singular)",
+  },
+  "agentSessions.activityThought_many": {
+    message: "Pensou {count} de vezes",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThought_other": {
+    message: "Pensou {count} vezes",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThinking": {
+    message: "Pensando…",
+    description: "Live status line while the agent is thinking between calls",
+  },
   "agentSessions.activityFailed_one": {
     message: "{count} com falha",
     description:

@@ -36,7 +36,14 @@ export type ActivityStep =
       path?: string;
       oldText?: string;
       newText?: string;
-    };
+    }
+  | { kind: "thought"; text: string; sourceTimesMs: number[] };
+
+export function isThoughtStep(
+  step: ActivityStep | undefined,
+): step is Extract<ActivityStep, { kind: "thought" }> {
+  return step?.kind === "thought";
+}
 
 // The AI SDK v6 tool states a call never leaves: an output, an error, or a
 // denied execution (`tool-output-denied`).
@@ -81,7 +88,7 @@ export function activityCounts(
     else loose.push(kind);
   }
   for (const step of steps) {
-    if (step.kind === "tool") continue;
+    if (step.kind === "tool" || isThoughtStep(step)) continue;
     const kind: ToolKind = step.kind === "diff" ? "edit" : "command";
     const owner = step.toolCallId;
     if (owner && toolKinds.has(owner)) {
@@ -102,7 +109,7 @@ export function activityCounts(
 /** The one-line label for a step: its description, title, or command. */
 export function stepLabel(step: ActivityStep): string | undefined {
   if (step.kind === "diff") return step.path;
-  if (step.kind === "terminal") return undefined;
+  if (step.kind === "terminal" || isThoughtStep(step)) return undefined;
   const input =
     step.input && typeof step.input === "object"
       ? (step.input as Record<string, unknown>)

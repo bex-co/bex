@@ -858,6 +858,15 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已使用 {count} 个工具",
     description: "Activity-group summary segment — tools of no known kind",
   },
+  "agentSessions.activityThought_other": {
+    message: "思考 {count} 次",
+    description:
+      "Activity-group summary segment — the agent's thoughts between its calls",
+  },
+  "agentSessions.activityThinking": {
+    message: "思考中…",
+    description: "Live status line while the agent is thinking between calls",
+  },
   "agentSessions.activityFailed_other": {
     message: "{count} 个失败",
     description: "Activity-group summary segment — failed tool calls",
