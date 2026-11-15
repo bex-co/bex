@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -746,8 +747,8 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	if operationID == "list-sandbox-groups" {
-		if err := sandbox.ValidateGroupListQuery(r.URL.Query()); err != nil {
+	if check := sandboxListQueryChecks[operationID]; check != nil {
+		if err := check(r.URL.Query()); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
@@ -938,13 +939,27 @@ type renderOperationRefusal struct {
 // what GraphQL and MCP do (w8/312). The gate refuses create-sandbox's
 // over-long name and list-sandbox-builds' unknown status before the Service.
 var renderOperationRefusals = map[string]map[string]renderOperationRefusal{
-	"create-sandbox": {"name": {constraint: "maxLength", refuse: func(string) error { return sandbox.InvalidSandboxNameError() }}},
-	"list-sandbox-groups": {"limit": {refuse: func(message string) error {
-		return core.NewBadRequestError(sandbox.CodeInvalidLimit, message, map[string]any{"field": "limit"})
-	}}},
-	"list-sandbox-builds": {"status": {refuse: func(message string) error {
-		return core.NewBadRequestError(sandbox.CodeInvalidBuildStatus, message, map[string]any{"field": "status", "supported": sandbox.BuildStatuses()})
-	}}},
+	"create-sandbox":      {"name": {constraint: "maxLength", refuse: func(string) error { return sandbox.InvalidSandboxNameError() }}},
+	"list-sandbox-groups": {"limit": {refuse: refuseInvalidLimit}},
+	"list-sandbox-builds": {
+		"limit": {refuse: refuseInvalidLimit},
+		"status": {refuse: func(message string) error {
+			return core.NewBadRequestError(sandbox.CodeInvalidBuildStatus, message, map[string]any{"field": "status", "supported": sandbox.BuildStatuses()})
+		}},
+	},
+}
+
+// refuseInvalidLimit is Render's `invalid_limit` for a page size outside the
+// pinned 1 to 100 (w22/004, w22/016).
+func refuseInvalidLimit(message string) error {
+	return core.NewBadRequestError(sandbox.CodeInvalidLimit, message, map[string]any{"field": "limit"})
+}
+
+// sandboxListQueryChecks are the list requests' own checks the schema gate
+// cannot make (a repeated workspace, a malformed cursor), run before it.
+var sandboxListQueryChecks = map[string]func(url.Values) error{
+	"list-sandbox-groups": sandbox.ValidateGroupListQuery,
+	"list-sandbox-builds": sandbox.ValidateBuildListQuery,
 }
 
 // renderValidationField is the parameter or top-level body field a request

@@ -211,13 +211,16 @@ func ValidateGroupListQuery(q url.Values) error {
 		return core.NewBadRequestError(CodeInvalidOwnerID, "ownerId is required exactly once",
 			map[string]any{"field": "ownerId"})
 	}
+	return validateListCursor(q, ids.SandboxGroup)
+}
+
+// validateListCursor refuses a cursor that is not a well-formed id of the kind
+// the list pages on (a list's cursor is its last item's id).
+func validateListCursor(q url.Values, kind ids.Kind) error {
 	for _, cursor := range q["cursor"] {
-		if cursor == "" {
-			continue
-		}
-		if kind, ok := ids.KindOf(cursor); !ok || kind != ids.SandboxGroup {
+		if got, ok := ids.KindOf(cursor); cursor != "" && (!ok || got != kind) {
 			return core.NewBadRequestError(CodeInvalidCursor,
-				fmt.Sprintf("%q is not a cursor this list issued; they look like %s-…", cursor, ids.SandboxGroup.Prefix()),
+				fmt.Sprintf("%q is not a cursor this list issued; they look like %s-…", cursor, kind.Prefix()),
 				map[string]any{"field": "cursor"})
 		}
 	}

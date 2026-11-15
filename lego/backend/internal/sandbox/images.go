@@ -387,6 +387,14 @@ func validateImageName(n string) error {
 		map[string]any{"field": "name", "maxLength": maxImageName})
 }
 
+// ValidateBuildListQuery is the part of Render's list-sandbox-builds request
+// check the generic OpenAPI gate cannot make: a cursor is a well-formed `sbb-`
+// id. A well-formed cursor naming no build is an empty page; the `limit` bounds
+// are the gate's own schema check, which answers invalid_limit (w22/016).
+func ValidateBuildListQuery(q url.Values) error {
+	return validateListCursor(q, ids.SandboxBuild)
+}
+
 func validateBuildID(id string) error {
 	if kind, ok := ids.KindOf(id); ok && kind == ids.SandboxBuild {
 		return nil

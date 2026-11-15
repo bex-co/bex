@@ -72,3 +72,48 @@ func TestSandboxGroupListAnswersRendersErrorCodes(t *testing.T) {
 		})
 	}
 }
+
+// TestSandboxBuildListAnswersRendersErrorCodes pins w22/016: the build list
+// answers invalid_limit and invalid_cursor as the group list does, keeps its
+// own invalid_status, and passes a well-formed cursor naming no build through
+// (an empty page, Render's end of list).
+func TestSandboxBuildListAnswersRendersErrorCodes(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /v1/sandbox-groups/{sandboxGroupId}/builds", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(299) })
+	h, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := "/v1/sandbox-groups/" + ids.New(ids.SandboxGroup) + "/builds?"
+	for _, c := range []struct {
+		name, query string
+		status      int
+		code        string
+	}{
+		{"no query", "", 299, ""},
+		{"the largest page", "limit=100", 299, ""},
+		{"a well-formed cursor", "cursor=" + ids.New(ids.SandboxBuild), 299, ""},
+		{"a limit of zero", "limit=0", http.StatusBadRequest, "invalid_limit"},
+		{"a limit above 100", "limit=101", http.StatusBadRequest, "invalid_limit"},
+		{"a limit that is not a number", "limit=many", http.StatusBadRequest, "invalid_limit"},
+		{"a cursor that is not a build id", "cursor=nope", http.StatusBadRequest, "invalid_cursor"},
+		{"a cursor of another kind", "cursor=" + ids.New(ids.SandboxGroup), http.StatusBadRequest, "invalid_cursor"},
+		{"an unknown status", "status=nope", http.StatusBadRequest, "invalid_status"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			rr := requestOpenAPITest(t, h, http.MethodGet, path+c.query, "", "")
+			if rr.Code != c.status {
+				t.Fatalf("GET %s%s = %d %s, want %d", path, c.query, rr.Code, rr.Body.String(), c.status)
+			}
+			if c.code == "" {
+				return
+			}
+			var body struct {
+				Code string `json:"code"`
+			}
+			if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil || body.Code != c.code {
+				t.Fatalf("GET %s%s answered %s, want code %s", path, c.query, rr.Body.String(), c.code)
+			}
+		})
+	}
+}

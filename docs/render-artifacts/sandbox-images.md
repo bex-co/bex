@@ -53,5 +53,5 @@ Create "starts converting an OCI image into a sandbox image, and returns the bui
 ## What bex answers where Render is silent
 
 - `sandbox_group_suspended` is never produced: bex has no suspended sandbox groups.
-- `invalid_cursor` and `invalid_limit`: the build list still pages by the repository's policy (`core.PageParams`): an unknown cursor returns an empty page and a limit outside 1–100 is clamped. The group list answers both codes since w22/004, and the build list follows in w22/016.
+- `invalid_cursor` and `invalid_limit` (w22/004 and w22/016): a limit outside 1 to 100 or not a number is `400 invalid_limit`, and a cursor that is not an `sbb-` id (the pin says "malformed") is `400 invalid_cursor`; a well-formed cursor naming no build is an empty page, Render's end of list. GraphQL and MCP keep clamping, as Render has neither surface.
 - A refused image (no linux/amd64 image, over the size cap) is a `400 SANDBOX_IMAGE_INVALID` with no build; an unreachable source is `400 SANDBOX_IMAGE_UNAVAILABLE`; the in-flight limit is `429 SANDBOX_BUILD_LIMIT`.
