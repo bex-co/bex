@@ -121,3 +121,15 @@ Each piece and the test that fails when it is reverted (the mutations were run, 
 2. `validation-corpus.test.ts` asserts the nine client validators against the same files; stricter and looser self-tests fail per family; leniency only on the 17 `serverOnly` entries.
 3. Three families diverged and were fixed in the client; the Render comparison filed 075, 076 and 077.
 4. `python3 scripts/ci_test_inputs.py` passes; the dashboard workflow lists the corpus in both `paths` and a test holds it; `yarn lint` and `yarn test` pass; `cd lego/backend && go test ./...` runs in `scripts/ship-gates.sh` against real Postgres and OpenFGA before the push; `make lint` reports 0 issues in all four modules.
+
+## Live check (w4 QA loop round 405, 2026-11-15 08:58–09:08 UTC, pin `89ac87445bec`)
+
+The production server's verdicts match the corpora on every case sent, through the public REST routes. The fixture was the Free web service `qa-20261115-r405-val` (`srv-dbsn87ldergc73ccgpdg`), deleted afterwards (`GET` 404).
+
+- **`custom-domain.json`:** all 34 refusal cases were refused (`POST /v1/services/{id}/custom-domains`), with no mismatch.
+  - Valid spellings of a unique `qa-20261115-r405.example.com` were each stored normalized and removed at once: upper case, a trailing dot, surrounding spaces, a 63-character label, and a digit-led label.
+  - The syntax-valid wildcard answered `400 CUSTOM_DOMAIN_WILDCARD_UNAVAILABLE`, the known platform gap tracked in w4/m326.
+- **`docker-image.json`:** all 43 refusal cases were refused by `PATCH /v1/services/{id}` `image.imagePath`, and the saved image was unchanged. `nginx`, `  nginx  ` (trimmed), `traefik/whoami`, `docker.io/library/nginx:latest` and `nginx:1.27` were accepted, and the image was restored.
+- **`env-value.json`:** all 41 cases matched (`PATCH …/environment`, save only); every accepted value was deleted again.
+- **`repo-url.json`:** all 20 refusal cases were refused by `POST /v1/services`, and none created a service.
+- **Not sent:** `cidr`, `label`, `root-dir`, `build-path`, `registry-host`; the valid cases that would create resources.
