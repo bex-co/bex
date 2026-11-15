@@ -1,6 +1,6 @@
 # w4 · m363 — A service's or environment group's secret files hold Render's 1 MB combined, not 512 KiB
 
-**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** blocked — release gate (t001–t007 done, code shipped 2026-11-14 by `/loopx w4`; t008 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** blocked — the round 393 closeout replay (2026-11-15) found DoD 2 failing at the bound: [t009](t009.md) is open and blocks the closeout. Previously: — release gate (t001–t007 done, code shipped 2026-11-14 by `/loopx w4`; t008 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 
@@ -13,7 +13,8 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t002, t003, t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout (live replay on production) | 20m | t006, t007 |
+| [t009](t009.md) | A files map whose contents reach the promised 1 MiB answers 500 — OpenBao's raft entry cap stops the stored map about 254 bytes short (found by the round 393 replay) | 1h | — |
+| [t008](t008.md) | Closeout (live replay on production) | 20m | t006, t007, t009 |
 
 ## Definition of done
 
