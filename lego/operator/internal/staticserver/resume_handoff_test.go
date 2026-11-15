@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/bex-co/bex/lego/operator/internal/notserving"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -123,7 +124,10 @@ func (f *handoffFixture) fetches() int {
 	return n
 }
 
-func assertTemporarilyUnavailable(t *testing.T, label string, rec *httptest.ResponseRecorder, wantCustom bool) {
+// assertSuspended checks a request answered with the activator's suspended
+// response (w4/669): its status, body and content type, platform no-store and
+// Retry-After over any customer rule, and the site's custom headers applied.
+func assertSuspended(t *testing.T, label string, rec *httptest.ResponseRecorder, wantBody, wantType string, wantCustom bool) {
 	t.Helper()
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("%s: status %d %q, want 503", label, rec.Code, rec.Body)
@@ -131,22 +135,61 @@ func assertTemporarilyUnavailable(t *testing.T, label string, rec *httptest.Resp
 	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
 		t.Errorf("%s: Cache-Control %q, want no-store", label, got)
 	}
-	if got := rec.Header().Get("Retry-After"); got != "5" {
-		t.Errorf("%s: Retry-After %q, want 5", label, got)
+	if got := rec.Header().Get("Retry-After"); got != notserving.SuspendedRetryAfter {
+		t.Errorf("%s: Retry-After %q, want %s", label, got, notserving.SuspendedRetryAfter)
 	}
-	if got := rec.Body.String(); got != "static site temporarily unavailable\n" {
-		t.Errorf("%s: body %q, want the temporary-unavailable message", label, got)
+	if got := rec.Header().Get("Content-Type"); got != wantType {
+		t.Errorf("%s: Content-Type %q, want %q", label, got, wantType)
+	}
+	if got := rec.Body.String(); got != wantBody {
+		t.Errorf("%s: body %q, want the suspended response", label, got)
 	}
 	if got := rec.Header().Get("X-QA-A520"); (got == "preserved") != wantCustom {
 		t.Errorf("%s: X-QA-A520 %q, want custom header applied=%v", label, got, wantCustom)
 	}
 }
 
+func assertSuspendedText(t *testing.T, label string, rec *httptest.ResponseRecorder, wantCustom bool) {
+	t.Helper()
+	assertSuspended(t, label, rec, notserving.SuspendedText, "text/plain; charset=utf-8", wantCustom)
+}
+
+// Suspend persists, the snapshot sees it, and the Ingress still points at the
+// static-server until the operator's next reconcile moves it to the activator.
+// Visitors get the activator's suspended response in that window, negotiated
+// by Accept, not a generic "temporarily unavailable" outage (w4/669).
+func TestSuspendBeforeIngressMoveServesSuspendedPage(t *testing.T) {
+	f := newHandoffFixture(t)
+	f.setSuspended(t, true)
+	f.refresh(t)
+	before := f.fetches()
+	for _, tc := range []struct {
+		accept, body, ctype string
+	}{
+		{"text/html,application/xhtml+xml,*/*;q=0.8", notserving.SuspendedPage, "text/html; charset=utf-8"},
+		{"application/json", notserving.SuspendedJSON, "application/json"},
+		{"*/*", notserving.SuspendedText, "text/plain; charset=utf-8"},
+		{"", notserving.SuspendedText, "text/plain; charset=utf-8"},
+	} {
+		for _, path := range []string{"/", "/friendly"} {
+			hdr := http.Header{}
+			if tc.accept != "" {
+				hdr.Set("Accept", tc.accept)
+			}
+			assertSuspended(t, "GET "+path+" Accept "+tc.accept, doWith(f.h, http.MethodGet, path, hdr),
+				tc.body, tc.ctype, path == "/friendly")
+		}
+	}
+	if got := f.fetches(); got != before {
+		t.Fatalf("origin fetches while suspended = %d, want none", got-before)
+	}
+}
+
 // Resume persists and the Ingress returns to the static-server before the
-// resolver's next poll. The host must read as temporarily unavailable — never
-// as absent, never with cached bytes — and serve its original publication once
-// a Refresh observes the resume (w4/307).
-func TestResumeBeforeRefreshAnswersRetryable503(t *testing.T) {
+// resolver's next poll. The host must read as suspended (what the snapshot
+// knows, w4/669) — never as absent, never with cached bytes — and serve its
+// original publication once a Refresh observes the resume (w4/307).
+func TestResumeBeforeRefreshServesSuspendedResponse(t *testing.T) {
 	f := newHandoffFixture(t)
 	if rec := do(f.h, http.MethodGet, "/"); rec.Code != http.StatusOK || rec.Body.String() != "QA_A520_ROOT\n" {
 		t.Fatalf("published: GET / => %d %q", rec.Code, rec.Body)
@@ -157,7 +200,7 @@ func TestResumeBeforeRefreshAnswersRetryable503(t *testing.T) {
 	f.setSuspended(t, false) // resumed, not yet refreshed: ingress arrived first
 	before := f.fetches()
 	for _, path := range []string{"/", "/friendly", "/version.txt"} {
-		assertTemporarilyUnavailable(t, "GET "+path, do(f.h, http.MethodGet, path), path == "/friendly")
+		assertSuspendedText(t, "GET "+path, do(f.h, http.MethodGet, path), path == "/friendly")
 	}
 	if got := f.fetches(); got != before {
 		t.Fatalf("origin fetches during handoff = %d, want none", got-before)
@@ -168,7 +211,7 @@ func TestResumeBeforeRefreshAnswersRetryable503(t *testing.T) {
 	if err := f.resolver.Refresh(t.Context()); err == nil {
 		t.Fatal("refresh succeeded, want the staged error")
 	}
-	assertTemporarilyUnavailable(t, "after failed refresh", do(f.h, http.MethodGet, "/"), false)
+	assertSuspendedText(t, "after failed refresh", do(f.h, http.MethodGet, "/"), false)
 
 	f.reader.fail = false
 	f.refresh(t)
@@ -184,9 +227,9 @@ func TestResumeBeforeRefreshAnswersRetryable503(t *testing.T) {
 	}
 }
 
-// Over a real server, HEAD carries the temporary status and headers and no
-// body (a bare recorder would keep http.Error's bytes).
-func TestUnavailableHEADOverHTTP(t *testing.T) {
+// Over a real server, HEAD carries the suspended status and headers and no
+// body on the wire.
+func TestSuspendedHEADOverHTTP(t *testing.T) {
 	f := newHandoffFixture(t)
 	f.setSuspended(t, true)
 	f.refresh(t)
@@ -206,7 +249,7 @@ func TestUnavailableHEADOverHTTP(t *testing.T) {
 	if resp.StatusCode != http.StatusServiceUnavailable || len(body) != 0 {
 		t.Fatalf("HEAD => %d with %d body bytes, want 503 without a body", resp.StatusCode, len(body))
 	}
-	if resp.Header.Get("Cache-Control") != "no-store" || resp.Header.Get("Retry-After") != "5" ||
+	if resp.Header.Get("Cache-Control") != "no-store" || resp.Header.Get("Retry-After") != notserving.SuspendedRetryAfter ||
 		resp.Header.Get("X-QA-A520") != "preserved" {
 		t.Fatalf("HEAD headers = %v", resp.Header)
 	}

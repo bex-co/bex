@@ -49,6 +49,7 @@ import (
 	"golang.org/x/sync/singleflight"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/operator/internal/notserving"
 	"github.com/bex-co/bex/lego/types/netutil"
 	"github.com/bex-co/bex/lego/types/routepattern"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -140,8 +141,9 @@ type Site struct {
 	Incarnation string
 	// Unavailable marks a published site that is suspended in the last
 	// snapshot. Its host stays known so a request reaching the static-server
-	// across the suspend/resume Ingress handoff reads "try again", never the
-	// unknown-host 404 that says the site is gone (w4/307). It serves no bytes.
+	// across the suspend/resume Ingress handoff reads the suspended page
+	// (w4/669), never the unknown-host 404 that says the site is gone
+	// (w4/307). It serves no site bytes.
 	Unavailable bool
 	// NoSPAFallback is Render's miss handling (w8/183): a path that matches no
 	// file and no rule answers 404 with the site's own /404.html when it has
@@ -273,7 +275,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// origin keys and content type.
 	requestPath := normalizePath(r.URL.Path)
 	if site.Unavailable {
-		serveSiteUnavailable(w, site, requestPath)
+		serveSiteUnavailable(w, r, site, requestPath)
 		return
 	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
@@ -1129,16 +1131,12 @@ func serveSiteBusy(w http.ResponseWriter, site Site, requestPath string) {
 	http.Error(w, "server busy", http.StatusServiceUnavailable)
 }
 
-// serveSiteUnavailable answers a known site the last snapshot saw suspended:
-// the Ingress has switched back to the static-server on resume before the next
-// Refresh observes it (or still points here on suspend before the activator
-// takes over). Platform no-store + Retry-After are set after custom headers so
-// a customer rule cannot make the transition cacheable or disable backoff.
-func serveSiteUnavailable(w http.ResponseWriter, site Site, requestPath string) {
+// serveSiteUnavailable answers a site the snapshot sees suspended with the
+// activator's suspended response (w4/669). It runs after the custom headers so
+// a customer rule cannot make the response cacheable or disable backoff.
+func serveSiteUnavailable(w http.ResponseWriter, r *http.Request, site Site, requestPath string) {
 	applyErrorHeaders(w.Header(), site.Headers, requestPath)
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Retry-After", "5")
-	http.Error(w, "static site temporarily unavailable", http.StatusServiceUnavailable)
+	notserving.WriteSuspended(w, r)
 }
 
 // normalizePath cleans a request path to a rooted, slash-separated form,

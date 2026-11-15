@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -51,6 +50,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/bex-co/bex/lego/operator/internal/appwatch"
+	"github.com/bex-co/bex/lego/operator/internal/notserving"
 	"github.com/bex-co/bex/lego/types/netutil"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -197,7 +197,7 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		// maintenance page still gets that page.
 		if app.Spec.Suspended {
 			setRouting(w, routingSuspend)
-			writeSuspendedResponse(w, r)
+			notserving.WriteSuspended(w, r)
 			return
 		}
 
@@ -314,7 +314,7 @@ func isRobotsRequest(r *http.Request) bool {
 // writeRobotsResponse answers a sleeping service's robots.txt without waking it.
 func writeRobotsResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
-	writeBody(w, r, http.StatusOK, "text/plain; charset=utf-8", robotsDisallowAll)
+	notserving.WriteBody(w, r, http.StatusOK, "text/plain; charset=utf-8", robotsDisallowAll)
 }
 
 // wakeInFlight reports whether a request for app starts or joins a cold start:
@@ -371,53 +371,12 @@ func writeWakeResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Retry-After", "5")
 	w.Header().Set("Cache-Control", "no-store")
 	if acceptsHTML(r.Header.Values("Accept")) {
-		writeHTMLPage(w, r, http.StatusServiceUnavailable, wakePage)
+		notserving.WriteHTMLPage(w, r, http.StatusServiceUnavailable, wakePage)
 		return
 	}
-	writeBody(w, r, http.StatusServiceUnavailable, "application/json",
+	notserving.WriteBody(w, r, http.StatusServiceUnavailable, "application/json",
 		`{"error":"service not ready","retryAfter":5}`)
 }
-
-// writeSuspendedResponse answers a suspended service's public host: 503 plus
-// Retry-After, negotiated three ways — a document for browsers, a machine-
-// readable object for API clients, plain text for everything else (a bare curl,
-// an uptime monitor). It touches nothing: the caller has already decided not to
-// wake the App, and this function holds no client.
-//
-// Retry-After is an hour, not the wake path's 5 seconds: a suspended service
-// comes back when a human resumes it, so telling a monitor to retry every five
-// seconds would turn a deliberate suspension into a self-inflicted flood.
-func writeSuspendedResponse(w http.ResponseWriter, r *http.Request) {
-	writeNotServing(w, r, suspendedRetryAfter, suspendedPage, suspendedJSON, suspendedText)
-}
-
-// writeNotServing answers a host bex is deliberately not serving: 503 with
-// retryAfter, a page for an explicit text/html, JSON for an explicit
-// application/json, and plain text for everything else.
-func writeNotServing(w http.ResponseWriter, r *http.Request, retryAfter, page, json, text string) {
-	w.Header().Set("Retry-After", retryAfter)
-	writeNegotiated(w, r, http.StatusServiceUnavailable, page, json, text)
-}
-
-// writeNegotiated answers status with a page for an explicit text/html, JSON
-// for an explicit application/json, and plain text for everything else.
-func writeNegotiated(w http.ResponseWriter, r *http.Request, status int, page, json, text string) {
-	w.Header().Set("Cache-Control", "no-store")
-	switch {
-	case acceptsMedia(r.Header.Values("Accept"), "text/html"):
-		writeHTMLPage(w, r, status, page)
-	case acceptsMedia(r.Header.Values("Accept"), "application/json"):
-		writeBody(w, r, status, "application/json", json)
-	default:
-		writeBody(w, r, status, "text/plain; charset=utf-8", text)
-	}
-}
-
-const (
-	suspendedRetryAfter = "3600"
-	suspendedJSON       = `{"error":"service suspended"}`
-	suspendedText       = "This service is suspended.\n"
-)
 
 // writeUnknownHostResponse answers a host no public service owns as Render's
 // edge answers a host it routes nowhere (w8/320, captured 2026-11-13): 404
@@ -444,7 +403,7 @@ const unknownHostText = "Not Found\n"
 // couple of minutes, so ten seconds neither floods the host nor keeps a
 // visitor waiting long after it is live.
 func writeFirstDeployResponse(w http.ResponseWriter, r *http.Request) {
-	writeNotServing(w, r, firstDeployRetryAfter, firstDeployPage, firstDeployJSON, firstDeployText)
+	notserving.Write(w, r, firstDeployRetryAfter, firstDeployPage, firstDeployJSON, firstDeployText)
 }
 
 const (
@@ -453,56 +412,11 @@ const (
 	firstDeployText       = "This service's first deploy is in progress. Try again in a few seconds.\n"
 )
 
-// writeBody is writeHTMLPage's non-document sibling: the same no-store,
-// HEAD-aware shape for a body whose content type the caller names.
-func writeBody(w http.ResponseWriter, r *http.Request, status int, contentType, body string) {
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Type", contentType)
-	w.WriteHeader(status)
-	if r.Method != http.MethodHead {
-		_, _ = io.WriteString(w, body)
-	}
-}
-
 // acceptsHTML requires an explicit, non-zero text/html media range. Browsers
 // send one; API clients that omit Accept or send only */* keep the historical
 // JSON response instead of unexpectedly receiving a document.
 func acceptsHTML(values []string) bool {
-	return acceptsMedia(values, "text/html")
-}
-
-// acceptsMedia reports whether the Accept header values name want explicitly
-// with a non-zero q. Deliberately exact: a wildcard `*/*` (or no Accept at all)
-// is NOT a request for any particular representation, so callers fall through
-// to their own default rather than guessing a document for a curl.
-func acceptsMedia(values []string, want string) bool {
-	for _, value := range values {
-		for item := range strings.SplitSeq(value, ",") {
-			mediaType, params, err := mime.ParseMediaType(strings.TrimSpace(item))
-			if err != nil || !strings.EqualFold(mediaType, want) {
-				continue
-			}
-			if rawQ, ok := params["q"]; ok {
-				q, err := strconv.ParseFloat(rawQ, 64)
-				if err != nil || q <= 0 {
-					continue
-				}
-			}
-			return true
-		}
-	}
-	return false
-}
-
-// writeHTMLPage is the shared default-page seam for the maintenance and wake
-// responders. Custom maintenance pages keep their bounded origin response.
-func writeHTMLPage(w http.ResponseWriter, r *http.Request, status int, page string) {
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	if r.Method != http.MethodHead {
-		_, _ = io.WriteString(w, page)
-	}
+	return notserving.AcceptsMedia(values, "text/html")
 }
 
 func serveMaintenance(w http.ResponseWriter, r *http.Request, app *appv1alpha1.App, platformHost func(string) bool) {
@@ -714,13 +628,13 @@ func serveMaintenanceWithFetcher(
 ) {
 	w.Header().Set("Cache-Control", "no-store")
 	if app.Spec.MaintenanceMode.URI == "" {
-		writeHTMLPage(w, r, http.StatusServiceUnavailable, maintenancePage)
+		notserving.WriteHTMLPage(w, r, http.StatusServiceUnavailable, maintenancePage)
 		return
 	}
 
 	resp, err := fetch(r.Context(), app, app.Spec.MaintenanceMode.URI)
 	if errors.Is(err, errCustomPageFetchBusy) {
-		writeHTMLPage(w, r, http.StatusServiceUnavailable, maintenancePage)
+		notserving.WriteHTMLPage(w, r, http.StatusServiceUnavailable, maintenancePage)
 		return
 	}
 	if err != nil {
@@ -965,24 +879,6 @@ const maintenancePage = `<!DOCTYPE html>
 </head>
 <body><main><h1>This site is currently under maintenance.</h1>
 <p>The owner will restore service as soon as possible. Please try again later.</p></main></body>
-</html>`
-
-const suspendedPage = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>bex &mdash; Service suspended</title>
-  <style>
-    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;
-      background:#111827;color:#f9fafb}
-    main{max-width:36rem;padding:2rem;text-align:center}h1{font-size:1.75rem;margin-bottom:.75rem}
-    p{color:#d1d5db;line-height:1.6}
-  </style>
-</head>
-<body><main><h1>This service is suspended.</h1>
-<p>Its owner suspended this service, so it is not currently serving traffic.
-It will be available again once the owner resumes it.</p></main></body>
 </html>`
 
 const firstDeployPage = `<!DOCTYPE html>

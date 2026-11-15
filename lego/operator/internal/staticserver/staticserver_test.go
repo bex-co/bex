@@ -339,12 +339,12 @@ func TestOtherMethodsGetABareOK(t *testing.T) {
 	}
 }
 
-// A suspended site answers every method with its unavailable answer, never a
+// A suspended site answers every method with the suspended response, never a
 // 200 that reads as live.
 func TestASuspendedSiteRefusesOtherMethodsToo(t *testing.T) {
 	h, _ := newTestHandler(t, Site{Unavailable: true}, map[string]Object{key("index.html"): {Body: []byte("HOME")}})
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodOptions} {
-		assertTemporarilyUnavailable(t, method+" / on a suspended site", do(h, method, "/"), false)
+		assertSuspendedText(t, method+" / on a suspended site", do(h, method, "/"), false)
 	}
 }
 

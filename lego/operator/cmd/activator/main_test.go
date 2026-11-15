@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/operator/internal/appwatch"
+	"github.com/bex-co/bex/lego/operator/internal/notserving"
 	"github.com/bex-co/bex/lego/types/netutil"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -747,8 +748,8 @@ func TestSuspendedHandlerNegotiatesContentAndNeverWakes(t *testing.T) {
 			if rr.Code != http.StatusServiceUnavailable {
 				t.Fatalf("status = %d, want 503", rr.Code)
 			}
-			if got := rr.Header().Get("Retry-After"); got != suspendedRetryAfter {
-				t.Fatalf("Retry-After = %q, want %q", got, suspendedRetryAfter)
+			if got := rr.Header().Get("Retry-After"); got != notserving.SuspendedRetryAfter {
+				t.Fatalf("Retry-After = %q, want %q", got, notserving.SuspendedRetryAfter)
 			}
 			if got := rr.Header().Get("Content-Type"); got != tc.wantType {
 				t.Fatalf("Content-Type = %q, want %q", got, tc.wantType)
@@ -803,11 +804,12 @@ func TestSuspendedStaticSiteGetsTheSuspendedResponse(t *testing.T) {
 	rr := httptest.NewRecorder()
 	newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != suspendedRetryAfter {
-		t.Fatalf("status %d, Retry-After %q; want 503 with %q", rr.Code, rr.Header().Get("Retry-After"), suspendedRetryAfter)
+	if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != notserving.SuspendedRetryAfter {
+		t.Fatalf("status %d, Retry-After %q; want 503 with %q",
+			rr.Code, rr.Header().Get("Retry-After"), notserving.SuspendedRetryAfter)
 	}
-	if body := rr.Body.String(); body != suspendedJSON {
-		t.Fatalf("body = %q, want %q", body, suspendedJSON)
+	if body := rr.Body.String(); body != notserving.SuspendedJSON {
+		t.Fatalf("body = %q, want %q", body, notserving.SuspendedJSON)
 	}
 	if cl.patches.Load() != 0 {
 		t.Fatalf("a suspended site must not be woken: %d patches", cl.patches.Load())
@@ -821,7 +823,7 @@ func TestSuspendedHTMLHeadHasNoBody(t *testing.T) {
 		if accept != "" {
 			req.Header.Set("Accept", accept)
 		}
-		writeSuspendedResponse(rr, req)
+		notserving.WriteSuspended(rr, req)
 		if rr.Code != http.StatusServiceUnavailable || rr.Body.Len() != 0 {
 			t.Fatalf("HEAD (Accept %q) = %d %q", accept, rr.Code, rr.Body.String())
 		}
@@ -882,13 +884,13 @@ func TestHealthPathsFollowTheSuspendedContract(t *testing.T) {
 					if rr.Code != http.StatusServiceUnavailable {
 						t.Fatalf("status = %d, want 503", rr.Code)
 					}
-					if got := rr.Header().Get("Retry-After"); got != suspendedRetryAfter {
-						t.Fatalf("Retry-After = %q, want %q", got, suspendedRetryAfter)
+					if got := rr.Header().Get("Retry-After"); got != notserving.SuspendedRetryAfter {
+						t.Fatalf("Retry-After = %q, want %q", got, notserving.SuspendedRetryAfter)
 					}
 					if got := rr.Header().Get("Cache-Control"); got != "no-store" {
 						t.Fatalf("Cache-Control = %q, want no-store", got)
 					}
-					want := suspendedJSON
+					want := notserving.SuspendedJSON
 					if method == http.MethodHead {
 						want = ""
 					}
@@ -1142,7 +1144,8 @@ func TestFirstDeployYieldsToEveryOwnerChoice(t *testing.T) {
 		{"static handover", func(a *appv1alpha1.App) {
 			a.Spec.Type, a.Status.ActiveRevision = appv1alpha1.TypeStaticSite, "rev-1"
 		}, "10", firstDeployText},
-		{"suspended", func(a *appv1alpha1.App) { a.Spec.Suspended = true }, suspendedRetryAfter, suspendedText},
+		{"suspended", func(a *appv1alpha1.App) { a.Spec.Suspended = true },
+			notserving.SuspendedRetryAfter, notserving.SuspendedText},
 		{"failed first release", func(a *appv1alpha1.App) {
 			a.Status.Phase = appv1alpha1.PhaseFailed
 		}, "", "service unavailable"},

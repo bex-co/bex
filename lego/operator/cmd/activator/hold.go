@@ -30,6 +30,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/operator/internal/notserving"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -187,7 +188,7 @@ func (h *holder) newProxy() *httputil.ReverseProxy {
 				return
 			}
 			setRouting(w, routingNoServer)
-			writeBody(w, &http.Request{Method: http.MethodGet}, http.StatusBadGateway,
+			notserving.WriteBody(w, &http.Request{Method: http.MethodGet}, http.StatusBadGateway,
 				"application/json", `{"error":"bad gateway"}`)
 		},
 	}
@@ -343,6 +344,6 @@ func (h *holder) proxyNow(w http.ResponseWriter, r *http.Request, app *appv1alph
 // hold bound.
 func writeWakeTimeout(w http.ResponseWriter, r *http.Request) {
 	setRouting(w, routingWake)
-	writeBody(w, r, http.StatusGatewayTimeout, "application/json",
+	notserving.WriteBody(w, r, http.StatusGatewayTimeout, "application/json",
 		`{"error":"service did not wake in time","retryAfter":5}`)
 }

@@ -101,7 +101,7 @@ func TestPublishedSiteSuspendResumeWhileNewerBuildHeld(t *testing.T) {
 			}
 			for _, path := range []string{"/", "/app.js"} {
 				if rec := do(h, http.MethodGet, path); rec.Code != http.StatusServiceUnavailable || strings.Contains(rec.Body.String(), "published") {
-					t.Fatalf("suspended: GET %s => %d %q, want a temporary 503 without content", path, rec.Code, rec.Body)
+					t.Fatalf("suspended: GET %s => %d %q, want the suspended 503 without content", path, rec.Code, rec.Body)
 				}
 			}
 			if got := origin.gets[publishedPrefix+"app.js"]; got != 0 {
