@@ -421,6 +421,7 @@ jobs:
           BEX_CANARY_API_KEY: ${{ secrets.BEX_CANARY_API_KEY }}
         run: |
           code=0
+          title="Tenant view is broken"
           bash scripts/tenant-view-liveness.sh > tenant-view.txt 2>&1 || code=$?
           case "$code" in
             0) stage="none" ;;
@@ -428,8 +429,14 @@ jobs:
             4) stage="2/4 logs (bex-api does not report the request it just served)" ;;
             5) stage="3/4 metrics (empty series for a serving service)" ;;
             6) stage="4/4 events (the feed did not advance)" ;;
+            # w4/676: a repeating caller (an uptime monitor) never lets the free
+            # fixture sleep, so its events feed is empty by design. That is a
+            # fixture problem, not a broken tenant view, and the title says so.
+            7) stage="canary fixture held awake by a repeating caller (the events stage could not run)"
+               title="Tenant-view canary cannot run" ;;
             *) stage="configuration/probe error" ;;
           esac
+          echo "title=$title: $stage" >> "$GITHUB_OUTPUT"
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "stage=$stage" >> "$GITHUB_OUTPUT"
           if [ "$code" = 0 ]; then echo "down=false" >> "$GITHUB_OUTPUT"; else echo "down=true" >> "$GITHUB_OUTPUT"; fi
@@ -443,7 +450,7 @@ jobs:
           printf '%s\n' "$body" > issue-body.md
           bash scripts/lib/tracking-issue.sh open --label tenant-view-down \
             --color B60205 --description "The tenant view of a running service is broken (w3/m83)" \
-            --title "Tenant view is broken: ${{ steps.probe.outputs.stage }}" --body-file issue-body.md
+            --title "${{ steps.probe.outputs.title }}" --body-file issue-body.md
       - name: Close the tracking issue once the tenant view recovers
         if: steps.probe.outputs.down == 'false'
         run: |

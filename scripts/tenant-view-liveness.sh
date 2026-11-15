@@ -49,6 +49,9 @@
 #          BEX_CANARY_WOKEN_BUDGET  seconds stage 4 polls the events feed (default 120)
 #          BEX_CANARY_WAKE_THRESHOLD stage 1 seconds that count as a wake (default 3)
 #          BEX_CANARY_POLL_INTERVAL seconds between polls in stages 2-4 (default 5)
+#          BEX_CANARY_IDLE_WINDOW   seconds without a request before a free service
+#                       hibernates (default 900); a fixture whose requests never
+#                       leave a gap this long is held awake, not stalled (w4/676)
 #          BEX_CANARY_REQUIRE_NONCE 1 (default) = stage 2 must find THIS run's
 #                       request line. The nonce rides in the URL PATH, never in a
 #                       query parameter: the edge drops every query parameter
@@ -60,6 +63,8 @@
 #                       probe then degrades to "some request line exists for this
 #                       service", which is weaker).
 # Exit:    0 pass · 2 config error · 3 wake · 4 logs · 5 metrics · 6 events
+#          7 held awake: stage 4 could not run because a repeating caller never
+#            lets the fixture sleep, so its feed is empty by design (w4/676)
 #
 # Nothing secret is printed: the API key is exchanged through a private file and
 # the bearer rides in curl's -K header file (scripts/lib/canary-api.sh).
@@ -92,6 +97,8 @@ REQUIRE_NONCE="${BEX_CANARY_REQUIRE_NONCE:-1}"
 # served by an already-running pod.
 WAKE_THRESHOLD="${BEX_CANARY_WAKE_THRESHOLD:-3}"
 POLL="${BEX_CANARY_POLL_INTERVAL:-5}"
+# A free web service hibernates after ~15 min without a request (w1/m173).
+IDLE_WINDOW="${BEX_CANARY_IDLE_WINDOW:-900}"
 
 canary_require_tools
 
@@ -296,6 +303,60 @@ poll_events() {
     waited=$((waited + POLL))
   done
 }
+# held_awake_check — exit 7 when the window's request logs show a caller that
+# never let the fixture go IDLE_WINDOW without a request; return otherwise.
+# The window's two edges count as gaps too: a quiet stretch at either end
+# would have let the service hibernate, and a feed that recorded no
+# service_hibernated for it is exactly the stall exit 6 reports.
+held_awake_check() {
+  local start="$EVENTS_START" end summary count longest median ua ip page
+  end="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  : >"$TMP_DIR/held.jsonl"
+  # Page forward through the whole window (a caller every 10s, the w1/m173
+  # case, fills 100 lines in under 17 min). Too many pages to read means the
+  # gaps cannot be judged, so the stall verdict stands.
+  for page in $(seq 1 40); do
+    acurl -o "$TMP_DIR/held.json" --get "$API/v1/logs" \
+      --data-urlencode "resource=$SERVICE_ID" \
+      --data-urlencode "type=request" \
+      --data-urlencode "direction=forward" \
+      --data-urlencode "startTime=$start" \
+      --data-urlencode "endTime=$end" \
+      --data-urlencode "limit=100" 2>/dev/null || return 0
+    jq -c '.logs[]?' "$TMP_DIR/held.json" >>"$TMP_DIR/held.jsonl" || return 0
+    jq -e '.hasMore == true' "$TMP_DIR/held.json" >/dev/null || break
+    [ "$page" -lt 40 ] || return 0
+    start="$(jq -r '.nextStartTime' "$TMP_DIR/held.json")"
+    end="$(jq -r '.nextEndTime' "$TMP_DIR/held.json")"
+  done
+  # <requests>\t<longest gap s>\t<median gap s>\t<userAgent>\t<clientIP> over
+  # every request but the probe's own (any run's /bexProbe/ line).
+  summary="$(jq -rs --arg from "$EVENTS_START" --arg to "$end" '
+    def epoch: sub("\\.[0-9]+"; "") | fromdateiso8601;
+    def field($k): ((.message // "") | capture($k + "=\"(?<v>[^\"]*)\"").v) // "unknown";
+    def commonest: group_by(.) | max_by(length) | .[0];
+    [.[] | select(((.message // "") | contains("/bexProbe/"))
+        or any(.labels[]?; .name == "path" and (.value | contains("/bexProbe/"))) | not)
+      | select(.timestamp | type == "string")
+      | {t: (.timestamp | epoch), ua: field("userAgent"), ip: field("clientIP")}] as $r
+    | if ($r | length) < 2 then empty else
+        ([$from | epoch] + ($r | map(.t)) + [$to | epoch] | sort) as $t
+        | ([range(1; $t | length) as $i | $t[$i] - $t[$i - 1]] | sort) as $g
+        | [($r | length), ($g | last | floor), ($g[($g | length) / 2 | floor] | floor),
+           ($r | map(.ua) | commonest), ($r | map(.ip) | commonest)] | @tsv
+      end' "$TMP_DIR/held.jsonl" 2>/dev/null)" || return 0
+  [ -n "$summary" ] || return 0
+  IFS=$'\t' read -r count longest median ua ip <<<"$summary"
+  [ "$longest" -lt "$IDLE_WINDOW" ] || return 0
+  echo "HELD(4/4 events): no event in the last ${EVENT_WINDOW}s, and the canary fixture"
+  echo "      was held awake by $ua from $ip every ${median}s"
+  echo "      (${count} requests besides this probe's, longest gap ${longest}s, under the"
+  echo "      ${IDLE_WINDOW}s idle window), so it never hibernated and woke: the events"
+  echo "      stage could not run. This is not an events outage. Stop the caller (an"
+  echo "      uptime monitor such as OpenStatus at openstatus.onbex.co) from"
+  echo "      requesting the canary host, or give it an interval over ${IDLE_WINDOW}s."
+  exit 7
+}
 if [ "$wake_seconds" -ge "$WAKE_THRESHOLD" ]; then
   # A service this probe had to wake must report that wake as service_woken
   # (w1/m173): any recent event would also pass while the projection had
@@ -326,7 +387,10 @@ else
     # Events come only from state edges (store/event_facts.go): a service that
     # stayed up for the whole window has an empty feed, as on Render. w1/m173:
     # from 2026-10-07 to 10-15 the canary never slept because a cert-manager
-    # ACME self-check hit its public URL every ~10s.
+    # ACME self-check hit its public URL every ~10s; w4/676: from 2026-11-15 an
+    # OpenStatus uptime check every 60s. Request logs are trustworthy here:
+    # stage 2 already proved they are being recorded.
+    held_awake_check
     echo "FAIL(4/4 events): no event in the last ${EVENT_WINDOW}s after ${waited}s of polling."
     echo "      Stage 1 answered in ${wake_seconds}s (under the ${WAKE_THRESHOLD}s wake threshold),"
     echo "      so the service was serving before this run. Either it has not"

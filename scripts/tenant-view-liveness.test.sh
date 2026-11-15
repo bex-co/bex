@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Self-test for scripts/tenant-view-liveness.sh stage 4 (w6/110, issue #134): an
+# Self-test for scripts/tenant-view-liveness.sh stage 4 (w6/110, issue #134; w4/676): an
 # activator-held wake answers 200 once after ~14s with no retry, and the probe
 # must still treat it as a wake and poll for that wake's service_woken instead
 # of reading the events feed once and losing the race with the projection. A
@@ -28,8 +28,21 @@ while [ $# -gt 0 ]; do
   shift
 done
 if [ -n "$wfmt" ]; then sleep "${STUB_HOLD:-0}"; printf 200; exit 0; fi
+# iso <epoch> — RFC3339 UTC on GNU or BSD date.
+iso() { date -u -d "@$1" +%Y-%m-%dT%H:%M:%S.123Z 2>/dev/null || date -u -r "$1" +%Y-%m-%dT%H:%M:%S.123Z; }
 case "$url" in
-  */v1/logs*) body='{"logs":[{"message":"requestID=\"r\" responseTimeMS=1","labels":[{"name":"path","value":"/bexProbe/'"${STUB_NONCE_ANY:-x}"'"}]}]}' ;;
+  */v1/logs*)
+    # The probe's own line, plus STUB_REQ_GAPS: space-separated seconds between
+    # earlier requests from a repeating caller, newest first.
+    now=$(date -u +%s)
+    body='{"logs":[{"message":"requestID=\"r\" responseTimeMS=1","timestamp":"'"$(iso "$now")"'","labels":[{"name":"path","value":"/bexProbe/'"${STUB_NONCE_ANY:-x}"'"}]}'
+    t=$((now - 30))
+    for gap in ${STUB_REQ_GAPS:-}; do
+      body+=',{"message":"clientIP=\"85.239.239.149\" requestID=\"q\" responseTimeMS=1 userAgent=\"OpenStatus/1.0\"","timestamp":"'"$(iso "$t")"'","labels":[{"name":"path","value":"/"}]}'
+      t=$((t - gap))
+    done
+    body+=']}'
+    ;;
   */v1/metrics/*) body='[{"values":[{"value":1}]}]' ;;
   */events*)
     n=$(($(cat "$STUB_STATE" 2>/dev/null || echo 0) + 1))
@@ -46,6 +59,8 @@ printf '%s' "$body" >"${out:-/dev/stdout}"
 STUB
 chmod +x "$tmp/bin/curl"
 
+# Cases that want a fast (under-threshold) answer pass BEX_CANARY_WAKE_THRESHOLD=5:
+# the stub's own startup can push a 0s hold across a 1s threshold.
 # run <label> <want-rc> <needle> VAR=value… — runs the probe with the stub.
 run() {
   local label="$1" want="$2" needle="$3" out got
@@ -77,9 +92,28 @@ run "held 200 with no service_woken fails" 6 "no service_woken since" \
   STUB_HOLD=1 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=service_woken BEX_CANARY_WOKEN_BUDGET=2
 # A fast answer polls too, so a late-landing event is not a false red.
 run "fast 200 polls for a recent event" 0 "ok: newest event" \
-  STUB_HOLD=0 STUB_EVENTS_EMPTY=1 STUB_EVENT_TYPE=server_available BEX_CANARY_WOKEN_BUDGET=10
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_EMPTY=1 STUB_EVENT_TYPE=server_available BEX_CANARY_WOKEN_BUDGET=10
 run "fast 200 with an empty feed fails after polling" 6 "after 2s of polling" \
-  STUB_HOLD=0 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=2
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=2
+
+# w4/676: an uptime check every 60s keeps the fixture awake, so its feed is
+# empty by design — name the caller (exit 7) instead of blaming the feed.
+every60="$(printf '60 %.0s' $(seq 1 62))"
+run "fast 200, empty feed, a caller every 60s is held awake" 7 \
+  "held awake by OpenStatus/1.0 from 85.239.239.149 every 60s" \
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=1 \
+  STUB_REQ_GAPS="$every60"
+# A caller that began 20 min into the window left an idle stretch before it.
+run "fast 200, empty feed, a caller that started late is a stall" 6 "no event in the last" \
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=1 \
+  STUB_REQ_GAPS="$(printf '60 %.0s' $(seq 1 40))"
+# Only the probe's own request and no events: nothing held it awake, so a real stall.
+run "fast 200, empty feed, no other requests is a stall" 6 "no event in the last" \
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=1
+# A 20-minute gap should have let it hibernate; no service_hibernated is a stall.
+run "fast 200, empty feed, a 20-minute gap is a stall" 6 "no event in the last" \
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=1 \
+  STUB_REQ_GAPS="60 60 1200 60 60"
 
 [ "$fails" -eq 0 ] || exit 1
 echo "PASS: tenant-view-liveness stage 4"
