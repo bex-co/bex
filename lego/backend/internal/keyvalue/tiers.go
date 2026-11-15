@@ -61,7 +61,7 @@ func pausedPlanMessage(plan string) string {
 		return ""
 	}
 	selectable := tiers.Valkey.SelectableIDs()
-	return fmt.Sprintf("Key Value plan %q is temporarily unavailable; choose %s or a smaller plan.", kvTierDisplayName(plan), kvTierDisplayName(selectable[len(selectable)-1]))
+	return fmt.Sprintf("Key Value plan %q is temporarily unavailable; choose %s or a smaller plan.", TierDisplayName(plan), TierDisplayName(selectable[len(selectable)-1]))
 }
 
 // ErrPausedPlan refuses a new selection of a paused tier on every surface (API
@@ -99,7 +99,7 @@ func ErrPlanDowngrade(plan, current string) error {
 	}
 	return core.NewBadRequestError(PlanDowngradeUnsupportedCode,
 		fmt.Sprintf("a Key Value instance cannot move to a smaller plan (%s to %s); create a new instance on the smaller plan and move the data to it",
-			kvTierDisplayName(from.ID), kvTierDisplayName(to.ID)),
+			TierDisplayName(from.ID), TierDisplayName(to.ID)),
 		map[string]any{"plan": to.ID, "currentPlan": from.ID, "field": "plan"})
 }
 
@@ -131,7 +131,7 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]KeyValueInstanceType, er
 			UnavailableReason: reason,
 			MonthlyUSD:        monthlyUSD,
 			ID:                t.ID,
-			Name:              kvTierDisplayName(id),
+			Name:              TierDisplayName(id),
 			CPU:               t.CPU,
 			Memory:            t.Memory,
 			StorageGB:         t.StorageGB,
@@ -140,9 +140,12 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]KeyValueInstanceType, er
 	return out, nil
 }
 
-// kvTierDisplayName is a Valkey plan id for display: Render's names, e.g.
+// TierDisplayName is a Valkey plan id for display: Render's names, e.g.
 // "standard" -> "Standard", "pro_plus" -> "Pro Plus", "3g" -> "3 GB".
-func kvTierDisplayName(id string) string {
+// The Key Value family's spelling, shared by its plan picker and the
+// Blueprint estimate, so both name a plan the same way (the Postgres sibling
+// is postgres.TierDisplayName).
+func TierDisplayName(id string) string {
 	if size, ok := strings.CutSuffix(id, "g"); ok && size != "" && strings.Trim(size, "0123456789") == "" {
 		return size + " GB"
 	}

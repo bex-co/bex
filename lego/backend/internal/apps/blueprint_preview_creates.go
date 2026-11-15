@@ -145,6 +145,12 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 			}
 			plannedFreeKV++
 		}
+		// A paused tier is refused here as the apply refuses it: without this
+		// the preview says valid and prices a store the create then rejects
+		// with INSTANCE_TYPE_UNAVAILABLE (compute's paused-tier rule).
+		if err == nil {
+			err = keyvalue.ErrPausedPlan(kv.spec.Plan, "")
+		}
 		if err == nil {
 			var resource *appv1alpha1.KeyValue
 			if resource, err = s.planStackKeyValue(ctx, kv, core.EnvironmentAssignment{}); err == nil {

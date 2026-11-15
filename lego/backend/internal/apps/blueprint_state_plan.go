@@ -309,6 +309,12 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			if err := keyvalue.ErrPlanDowngrade(probe.Plan, live.Spec.Plan); err != nil {
 				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: BlueprintResourceKeyValue, name: resource.Name, err: err}}
 			}
+			// A plan change onto a paused tier is refused in the plan too, as
+			// the apply refuses it; re-declaring the store's own paused plan
+			// (probe.Plan == live.Spec.Plan) stays allowed.
+			if err := keyvalue.ErrPausedPlan(probe.Plan, live.Spec.Plan); err != nil {
+				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: BlueprintResourceKeyValue, name: resource.Name, err: err}}
+			}
 			action.Operation = BlueprintPlanUpdate
 			liveSpec := live.Spec
 			action.ChangedFields = blueprintPlanFieldChanges(maps.Keys(resource.Fields), func(name string) (bool, error) {
