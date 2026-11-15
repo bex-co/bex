@@ -36,7 +36,6 @@ const (
 	OperationUpload              = "upload"
 	OperationDownload            = "download"
 	MaxTransferBytes       int64 = 256 << 20
-	MaxArchiveEntries            = 10_000
 	MaxPathBytes                 = 4096
 	MaxPathDepth                 = 64
 	DefaultTransferTimeout       = 5 * time.Minute

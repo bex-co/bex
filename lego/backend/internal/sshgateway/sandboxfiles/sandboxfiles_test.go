@@ -18,6 +18,7 @@ package sandboxfiles
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -26,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -309,24 +311,120 @@ func TestArchiveEntryPolicyAndBudgets(t *testing.T) {
 	if _, err := copyArchive(io.Discard, &large); err == nil {
 		t.Fatal("oversized member accepted")
 	}
-	entries := make([]*tar.Header, files.MaxArchiveEntries+1)
-	for i := range entries {
-		entries[i] = &tar.Header{Name: "./", Typeflag: tar.TypeDir}
-	}
-	if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, entries...))); err == nil {
-		t.Fatal("entry count bypass through root directories")
-	}
-	// Links and skipped entries carry no body but still count (w32/m380).
-	for _, flag := range []byte{tar.TypeSymlink, tar.TypeFifo} {
-		for i := range entries {
-			entries[i] = &tar.Header{Name: fmt.Sprintf("e%d", i), Typeflag: flag, Linkname: "target"}
-		}
-		if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, entries...))); err == nil {
-			t.Fatalf("entry count bypass through %c entries", flag)
-		}
-	}
 	if _, err := io.Copy(io.Discard, &boundedReader{reader: strings.NewReader("123456789"), remaining: 8}); !errors.Is(err, errTooLarge) {
 		t.Fatalf("byte cap = %v", err)
+	}
+}
+
+// streamArchive is a tar stream of the headers next yields, until it yields
+// nil. The test's end stops it.
+func streamArchive(t *testing.T, next func(i int) *tar.Header) io.Reader {
+	t.Helper()
+	r, w := io.Pipe()
+	go func() {
+		buffered := bufio.NewWriterSize(w, 64<<10)
+		tw := tar.NewWriter(buffered)
+		for i := 0; ; i++ {
+			h := next(i)
+			if h == nil {
+				break
+			}
+			if err := tw.WriteHeader(h); err != nil {
+				_ = w.CloseWithError(err)
+				return
+			}
+		}
+		err := tw.Close()
+		if err == nil {
+			err = buffered.Flush()
+		}
+		_ = w.CloseWithError(err)
+	}()
+	t.Cleanup(func() { _ = r.Close() })
+	return bufio.NewReaderSize(r, 64<<10)
+}
+
+// The old 10,000-entry cap counted links and skipped entries too (w32/023).
+func TestManyLinksAndSkippedEntriesAreCopied(t *testing.T) {
+	const n = 25_000
+	src := streamArchive(t, func(i int) *tar.Header {
+		switch {
+		case i == 0:
+			return &tar.Header{Name: "./", Typeflag: tar.TypeDir, Mode: 0o755}
+		case i == 1:
+			return &tar.Header{Name: "d/", Typeflag: tar.TypeDir, Mode: 0o755}
+		case i > n+1:
+			return nil
+		}
+		name := fmt.Sprintf("d/e%d", i)
+		switch (i - 2) % 4 {
+		case 0:
+			return &tar.Header{Name: name, Typeflag: tar.TypeReg, Mode: 0o644}
+		case 1:
+			return &tar.Header{Name: name, Typeflag: tar.TypeSymlink, Linkname: "e2"}
+		case 2:
+			return &tar.Header{Name: name, Typeflag: tar.TypeLink, Linkname: fmt.Sprintf("d/e%d", i-2)}
+		default:
+			return &tar.Header{Name: name, Typeflag: tar.TypeFifo}
+		}
+	})
+	var out bytes.Buffer
+	if _, err := copyArchive(&out, src); err != nil {
+		t.Fatal(err)
+	}
+	counts := map[byte]int{}
+	for _, m := range members(t, out.Bytes()) {
+		counts[m.typeflag]++
+	}
+	if want := map[byte]int{tar.TypeDir: 1, tar.TypeReg: n / 4, tar.TypeSymlink: n / 4, tar.TypeLink: n / 4}; !maps.Equal(counts, want) {
+		t.Fatalf("copied %v, want %v (FIFOs skipped)", counts, want)
+	}
+}
+
+type countingWriter struct{ n int64 }
+
+func (w *countingWriter) Write(p []byte) (int, error) {
+	w.n += int64(len(p))
+	return len(p), nil
+}
+
+// The byte bound is the only bound on an archive's size: a stream of empty
+// files runs until its 256 MiB, past half a million entries (w32/023).
+func TestTheByteBoundIsAnArchivesOnlySizeLimit(t *testing.T) {
+	src := streamArchive(t, func(i int) *tar.Header {
+		return &tar.Header{Name: fmt.Sprintf("e%d", i), Typeflag: tar.TypeReg, Mode: 0o644}
+	})
+	var out countingWriter
+	if _, err := copyArchive(&out, src); !errors.Is(err, errTooLarge) {
+		t.Fatalf("copyArchive = %v, want %v", err, errTooLarge)
+	}
+	if out.n != files.MaxTransferBytes {
+		t.Fatalf("copied %d bytes before the refusal, want %d", out.n, files.MaxTransferBytes)
+	}
+}
+
+// Symlink targets are the tenant's bytes, so an archive keeps a bounded
+// amount of them; only a hard link to a symlink past that is refused.
+func TestAHardLinkToASymlinkPastTheKeptTargetsIsRefused(t *testing.T) {
+	target := strings.Repeat("t", files.MaxPathBytes)
+	kept := maxKeptSymlinkTargets / (len(target) + symlinkEntryOverhead)
+	var out bytes.Buffer
+	_, err := copyArchive(&out, streamArchive(t, func(i int) *tar.Header {
+		switch {
+		case i <= kept:
+			return &tar.Header{Name: fmt.Sprintf("s%d", i), Typeflag: tar.TypeSymlink, Linkname: target}
+		case i == kept+1:
+			return &tar.Header{Name: "to-the-last-kept", Typeflag: tar.TypeLink, Linkname: fmt.Sprintf("s%d", kept-1)}
+		case i == kept+2:
+			return &tar.Header{Name: "to-the-first-dropped", Typeflag: tar.TypeLink, Linkname: fmt.Sprintf("s%d", kept)}
+		}
+		return nil
+	}))
+	if !errors.Is(err, errBadArchive) || !strings.Contains(err.Error(), "too many symlink targets") {
+		t.Fatalf("a hard link to a symlink past the kept targets = %v, want %v", err, errBadArchive)
+	}
+	if !bytes.Contains(out.Bytes(), []byte("to-the-last-kept")) {
+		t.Fatal("the hard link to the last kept symlink was not copied")
 	}
 }
 

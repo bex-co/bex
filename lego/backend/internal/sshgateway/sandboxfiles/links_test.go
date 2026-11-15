@@ -181,6 +181,9 @@ func TestABusyBoxTreeOfLinksDownloadsWithItsLinks(t *testing.T) {
 	if w.Code != http.StatusOK || w.Header().Get("Content-Type") != "application/x-tar" {
 		t.Fatalf("download = %d %q: %s", w.Code, w.Header().Get("Content-Type"), w.Body)
 	}
+	if got := w.Header().Get("Cache-Control"); got != "no-store, no-transform" {
+		t.Errorf("Cache-Control = %q, want no-store, no-transform", got)
+	}
 	gz, err := gzip.NewReader(w.Body)
 	if err != nil {
 		t.Fatal(err)

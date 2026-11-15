@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/maphash"
 	"io"
 	"log"
 	"maps"
@@ -546,7 +547,11 @@ func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, so
 		"Content-Type":        {contentType},
 		"Content-Disposition": {mime.FormatMediaType("attachment", map[string]string{"filename": path.Base(source)})},
 		"Content-Encoding":    {"gzip"},
-		"Cache-Control":       {"no-store"},
+		// no-transform keeps the edge from decoding the gzip for a client that
+		// did not ask for it: a decoded body ends cleanly where the gateway
+		// aborts, so such a client would read a cut archive as complete
+		// (w32/023).
+		"Cache-Control": {"no-store, no-transform"},
 	}}
 	gz := gzip.NewWriter(&boundedWriter{writer: sent, remaining: files.MaxTransferBytes})
 	bounded := &boundedReader{reader: input, remaining: files.MaxTransferBytes}
@@ -656,7 +661,7 @@ func (r terminatedReader) Read(p []byte) (int, error) {
 // writing anything, so a producer of upload archives can prove its output is
 // one the gateway accepts.
 func ValidateArchive(src io.Reader) error {
-	_, err := copyArchive(io.Discard, src)
+	_, err := copyArchive(io.Discard, &boundedReader{reader: src, remaining: files.MaxTransferBytes})
 	return err
 }
 
@@ -687,6 +692,55 @@ func entryMode(h *tar.Header) int64 {
 	return h.Mode&0777 | 0600
 }
 
+// archiveIndex is what copyArchive remembers of the entries it has passed:
+// each name's type, and the targets of the symlinks a later hard link may
+// name. A name is held as a 128-bit digest under seeds chosen per archive, so
+// it costs a few tens of bytes however long it is. Every entry costs at least
+// one 512-byte header against MaxTransferBytes, so the byte bound also bounds
+// the index, and there is no entry-count cap (w32/023): Render documents none
+// (render.com/docs/sandboxes-files, sandboxes-limits, read 2026-11-14), and a
+// project's node_modules or site-packages routinely holds tens of thousands
+// of entries. Targets are bytes the tenant chose, so at most
+// maxKeptSymlinkTargets of them are kept.
+type archiveIndex struct {
+	seeds     [2]maphash.Seed
+	kinds     map[nameKey]byte
+	symlinks  map[nameKey]string
+	keptBytes int
+}
+
+type nameKey [2]uint64
+
+// maxKeptSymlinkTargets bounds the symlink targets one archive keeps, each
+// charged symlinkEntryOverhead for its map slot too. A hard link to a symlink
+// past it is refused. Tar writes one only for a symlink with a second name,
+// which is rare.
+const (
+	maxKeptSymlinkTargets = 8 << 20
+	symlinkEntryOverhead  = 80
+)
+
+func newArchiveIndex() *archiveIndex {
+	return &archiveIndex{
+		seeds:    [2]maphash.Seed{maphash.MakeSeed(), maphash.MakeSeed()},
+		kinds:    map[nameKey]byte{},
+		symlinks: map[nameKey]string{},
+	}
+}
+
+func (x *archiveIndex) key(name string) nameKey {
+	return nameKey{maphash.String(x.seeds[0], name), maphash.String(x.seeds[1], name)}
+}
+
+// keepSymlink copies target: archive/tar hands back a PAX linkpath as a
+// substring of its whole PAX block, which can hold a megabyte of padding.
+func (x *archiveIndex) keepSymlink(key nameKey, target string) {
+	if cost := len(target) + symlinkEntryOverhead; x.keptBytes+cost <= maxKeptSymlinkTargets {
+		x.keptBytes += cost
+		x.symlinks[key] = strings.Clone(target)
+	}
+}
+
 // entryName is an archive member's name relative to its root, as BusyBox's
 // `tar -cf - -C dir .` writes it (`./sub/f`) and as a hard link names its
 // target (`./f`).
@@ -712,9 +766,7 @@ func entryName(name string) string {
 func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 	tr := tar.NewReader(terminatedReader{src})
 	tw := tar.NewWriter(&boundedWriter{writer: dst, remaining: files.MaxTransferBytes})
-	seen := map[string]byte{}       // each name's type, as a later entry sees it
-	symlinks := map[string]string{} // each symlink's target
-	entries := 0
+	index := newArchiveIndex()
 	root := int64(plainDirMode)
 	for {
 		h, err := tr.Next()
@@ -723,10 +775,6 @@ func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 		}
 		if err != nil {
 			return 0, archiveError(err)
-		}
-		entries++
-		if entries > files.MaxArchiveEntries {
-			return 0, fmt.Errorf("%w: too many entries", errBadArchive)
 		}
 		if (h.Name == "." || h.Name == "./") && h.Typeflag == tar.TypeDir {
 			root = entryMode(h)
@@ -742,10 +790,11 @@ func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 			strings.Count(name, "/") >= files.MaxPathDepth || h.Size < 0 {
 			return 0, fmt.Errorf("%w: unsafe entry", errBadArchive)
 		}
-		if _, exists := seen[name]; exists {
+		key := index.key(name)
+		if _, exists := index.kinds[key]; exists {
 			return 0, fmt.Errorf("%w: duplicate entry", errBadArchive)
 		}
-		if parent := path.Dir(name); parent != "." && seen[parent] != tar.TypeDir {
+		if parent := path.Dir(name); parent != "." && index.kinds[index.key(parent)] != tar.TypeDir {
 			return 0, fmt.Errorf("%w: parent directory must precede its children", errBadArchive)
 		}
 		clean := &tar.Header{Name: name, Typeflag: h.Typeflag, Mode: entryMode(h), ModTime: archiveModTime(h.ModTime)}
@@ -758,23 +807,26 @@ func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 				return 0, fmt.Errorf("%w: unsafe symlink target", errBadArchive)
 			}
 			clean.Linkname = h.Linkname
-			symlinks[name] = h.Linkname
+			index.keepSymlink(key, h.Linkname)
 		case tar.TypeLink:
-			target := entryName(h.Linkname)
+			target := index.key(entryName(h.Linkname))
 			var ok bool
-			if kind, ok = seen[target]; !ok || kind == tar.TypeDir {
+			if kind, ok = index.kinds[target]; !ok || kind == tar.TypeDir {
 				return 0, fmt.Errorf("%w: a hard link must name a file earlier in the archive", errBadArchive)
 			}
 			switch kind {
 			case tar.TypeReg:
-				clean.Linkname = target
+				clean.Linkname = entryName(h.Linkname)
 			case tar.TypeSymlink: // BusyBox archives a second name for a symlink this way
-				clean.Typeflag, clean.Linkname = tar.TypeSymlink, symlinks[target]
-				symlinks[name] = clean.Linkname
+				if clean.Linkname, ok = index.symlinks[target]; !ok {
+					return 0, fmt.Errorf("%w: too many symlink targets to copy a hard link to one", errBadArchive)
+				}
+				clean.Typeflag = tar.TypeSymlink
+				index.keepSymlink(key, clean.Linkname)
 			}
 		}
 		// Recorded even when skipped, so a child under it is refused.
-		seen[name] = kind
+		index.kinds[key] = kind
 		if kind != tar.TypeReg && kind != tar.TypeDir && kind != tar.TypeSymlink {
 			continue
 		}

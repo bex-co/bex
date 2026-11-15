@@ -129,7 +129,6 @@ type fileRoundtripContract struct {
 	} `json:"connect"`
 	BexServerPolicy struct {
 		MaxTransferBytes       int64 `json:"maxTransferBytes"`
-		MaxArchiveEntries      int   `json:"maxArchiveEntries"`
 		MaxPathBytes           int   `json:"maxPathBytes"`
 		MaxPathDepth           int   `json:"maxPathDepth"`
 		TransferTimeoutSeconds int   `json:"transferTimeoutSeconds"`
@@ -154,7 +153,7 @@ func newFileRoundtripFixture(t *testing.T) *fileRoundtripFixture {
 		t.Fatal(err)
 	}
 	policy := f.contract.BexServerPolicy
-	if policy.MaxTransferBytes != sandboxfiles.MaxTransferBytes || policy.MaxArchiveEntries != sandboxfiles.MaxArchiveEntries ||
+	if policy.MaxTransferBytes != sandboxfiles.MaxTransferBytes ||
 		policy.MaxPathBytes != sandboxfiles.MaxPathBytes || policy.MaxPathDepth != sandboxfiles.MaxPathDepth ||
 		time.Duration(policy.TransferTimeoutSeconds)*time.Second != sandboxfiles.DefaultTransferTimeout {
 		t.Fatalf("shared CLI file contract limits drifted from gateway constants: %+v", policy)
