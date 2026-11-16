@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NetworkMetricsCard } from "../network-metrics-card";
 import { useMetrics } from "@/features/metrics/hooks/use-metrics";
@@ -132,6 +132,26 @@ describe("NetworkMetricsCard", () => {
       const trigger = screen.getByRole("combobox", { name });
       expect(trigger.className).not.toMatch(/(^|\s)w-(36|40)(\s|$)/);
     }
+  });
+
+  // w10/m374: a selected host too long for the capped trigger ends in an
+  // ellipsis (its own truncating span, since the flex select value clips text
+  // without one) and keeps its full name in the title.
+  it("ellipsizes a selected host and names it in full in the trigger's title", async () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+    const user = userEvent.setup();
+
+    renderCard();
+    const trigger = screen.getByRole("combobox", { name: "Host" });
+    expect(trigger).toHaveTextContent("All");
+    expect(trigger).not.toHaveAttribute("title");
+
+    await user.click(trigger);
+    await user.click(screen.getByRole("option", { name: "web.onbex.co" }));
+
+    expect(trigger).toHaveAttribute("title", "web.onbex.co");
+    const value = within(trigger).getByText("web.onbex.co");
+    expect(value).toHaveClass("truncate");
   });
 
   it("queries the shared window for all three request metrics, and passes the default p90 quantile only to latency", () => {

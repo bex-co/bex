@@ -271,7 +271,15 @@ export function NetworkMetricsCard({
                 <span className="text-muted-foreground">
                   {t("metrics.host")}
                 </span>
-                <SelectValue />
+                {/* The select value is a flex box, whose bare text never takes
+                    an ellipsis, so a long host needs its own truncating span. */}
+                <SelectValue>
+                  {host === "" ? (
+                    t("metrics.hostAll")
+                  ) : (
+                    <span className="truncate">{host}</span>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={HOST_ALL}>{t("metrics.hostAll")}</SelectItem>
