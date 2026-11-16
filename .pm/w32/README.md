@@ -21,6 +21,7 @@
 
 ## Inbox
 
+- [ ] [034](034.md) — A direct static publish that fails before the operator sees it cloning closes `build_failed` with no build on record: the log reads `==> Deploy queued` and there are no `build_started`/`build_ended` events (~45m) ← w32/028's closeout, 2026-11-16: seen on pin `a0266464aabd` (round 475), traced from the code; the direct path never stamps `status.buildRun`; minor
 - [ ] [033](033.md) — Four env-var sentences in ADR006, ADR018 and ADR049 contradict what bex ships (~25m) ← from `/pm-brainstorm` for Render parity of render.com/docs/environment-variables, 2026-11-16, item 5; docs only
 - [ ] [032](032.md) — A Blueprint `previewValue` is accepted with a notice when the file enables no previews, as on Render (~50m) ← from `/pm-brainstorm` for Render parity of render.com/docs/environment-variables, 2026-11-16, item 4
 - [x] [031](done/031.md) — A setting saved while a deploy waits on a throttled or failing image registry (429, 5xx, network) does not reach the serving release until the registry answers: the wait returns before the hold w32/m419 added (~1h) ← w32/m419's Render parity task, 2026-11-16; traced from the code; minor — DONE (over a served release the wait holds it as a build in flight: allow-list, suspend and resume converge while the deploy stays Deploying with its stall message and no verdict, and goes live once the registry answers; a rate-limited stall no longer flips to the generic wait on a save; envtest with 429 and a failed request, four mutations caught)
