@@ -21,6 +21,7 @@ package apps
 // update · disconnect. Auto-sync on push is in webhook.go.
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -1297,7 +1298,10 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	// The create's one row is written once the Blueprint has applied, naming
+	// it: a create refused by the fetch, the compile, a check or the apply
+	// records none, while a denial is still recorded here (w4/679).
+	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate); err != nil {
 		return BlueprintView{}, err
 	}
 	if s.Blueprints == nil {
@@ -1428,6 +1432,8 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if cerr != nil {
 		return BlueprintView{}, cerr
 	}
+	s.RecordAllowedWrite(ctx, "apps.CreateBlueprint", core.RelCanCreate, cmp.Or(b.TenantID, core.DefaultTenant),
+		core.BlueprintTarget(ids.BlueprintPublicID(b.ID)), b.Name)
 	// The apply succeeded, so its last write, the ownership stamp, left snap
 	// as the apply left the workspace.
 	v := toBlueprintView(b)

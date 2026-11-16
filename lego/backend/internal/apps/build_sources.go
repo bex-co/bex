@@ -186,7 +186,11 @@ func (s *Service) checkBuildSourceName(ctx context.Context, name, selfID string)
 // an image. It builds once it exists, as a new service does.
 func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRequest) (BuildSourceView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	// The one CreateBuildSourceEvent is written once the build source exists,
+	// naming it: a create refused by validation, a link check or a link the
+	// undo rolls back records none, while a denial is still recorded here
+	// (w4/679).
+	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate); err != nil {
 		return BuildSourceView{}, err
 	}
 	req.Name = strings.TrimSpace(req.Name)
@@ -243,16 +247,24 @@ func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRe
 	if err != nil {
 		return BuildSourceView{}, err
 	}
+	// Undoing a create that is never recorded records no delete either.
+	undoCtx := core.WithDeferredAllowedWriteAudit(ctx)
 	// The group links only touch the carrier: a refusal there (an env group
 	// scoped to an environment, which Render refuses) deletes it again, so the
 	// create writes nothing. The service links were checked above.
 	for _, g := range groups {
 		if err := s.EnvGroups.LinkEnvGroup(core.WithBuildSources(ctx), g, id); err != nil {
-			if undo := s.DeleteBuildSource(ctx, id); undo != nil {
+			if undo := s.DeleteBuildSource(undoCtx, id); undo != nil {
 				log.Printf("apps: delete build source %s after a refused env group link: %v", id, undo)
 			}
 			return BuildSourceView{}, fmt.Errorf("linking env group %q: %w", g, err)
 		}
+	}
+	// A build source is an App carrier, so its target is the service-kind
+	// one its update and delete rows name; the per-service events feed reads
+	// only its own verbs, never this one.
+	recordCreated := func() {
+		s.RecordAllowedWrite(ctx, "apps.CreateBuildSource", core.RelCanCreate, s.WorkspaceOrDefault(ctx), core.ServiceTarget(id), req.Name)
 	}
 	// Every service link was checked above, so a failure here is transient.
 	// Before any link lands, the carrier is deleted again and a retry starts
@@ -261,16 +273,19 @@ func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRe
 	for i, service := range links {
 		if _, err := s.LinkBuildSource(ctx, service, id, nil, false); err != nil {
 			if i == 0 {
-				if undo := s.DeleteBuildSource(ctx, id); undo != nil {
+				if undo := s.DeleteBuildSource(undoCtx, id); undo != nil {
 					log.Printf("apps: delete build source %s after a failed service link: %v", id, undo)
 				}
 				return BuildSourceView{}, fmt.Errorf("linking service %s: %w", service, err)
 			}
+			// The build source exists and stays, so its create is recorded.
+			recordCreated()
 			return BuildSourceView{}, core.NewConflictError(BuildSourcePartiallyLinkedCode,
 				fmt.Sprintf("build source %s was created and linked to %s; linking service %s failed: %v", id, strings.Join(links[:i], ", "), service, err),
 				map[string]any{"buildSourceId": id, "linkedServiceIds": links[:i], "failedServiceId": service})
 		}
 	}
+	recordCreated()
 	return s.GetBuildSource(ctx, id)
 }
 

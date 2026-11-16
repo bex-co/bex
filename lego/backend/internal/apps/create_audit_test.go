@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -77,4 +78,115 @@ func createRows(sink *captureAuditSink) []core.AuditEvent {
 		}
 	}
 	return out
+}
+
+// allowedRows is sink's allowed rows for verb.
+func allowedRows(sink *captureAuditSink, verb string) []core.AuditEvent {
+	var out []core.AuditEvent
+	for _, ev := range sink.events {
+		if ev.Verb == verb && ev.Outcome == core.AuditAllowed {
+			out = append(out, ev)
+		}
+	}
+	return out
+}
+
+// w4/679: a build source create records one CreateBuildSourceEvent once the
+// source exists, naming it; a create refused by validation, or one whose first
+// service link fails and is undone, records none, and the undo records no
+// delete; one whose later link fails keeps its source and records it.
+func TestBuildSourceCreateRecordsOneNamedRowOnlyForASourceThatExists(t *testing.T) {
+	svc, st, ctx := newBuildSourceService(t)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	for _, name := range []string{"web", "api"} {
+		if _, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: name, Type: "web_service",
+			Repo: "https://github.com/acme/" + name, Runtime: "node", BuildCommand: "npm ci", StartCommand: "node server.js"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	bad := monorepoSource
+	bad.Name = " "
+	if _, err := svc.CreateBuildSource(ctx, bad); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("a blank name: got %v, want a bad request", err)
+	}
+	linked := monorepoSource
+	linked.ServiceIDs = []string{"web", "api"}
+	st.failLinkCall = st.linkCalls + 1
+	if _, err := svc.CreateBuildSource(ctx, linked); err == nil {
+		t.Fatal("a failed first link: want an error")
+	}
+	if got := allowedRows(sink, "apps.CreateBuildSource"); len(got) != 0 {
+		t.Fatalf("refused creates recorded %+v", got)
+	}
+	for _, verb := range []string{"apps.DeleteBuildSource", "apps.Delete"} {
+		if got := allowedRows(sink, verb); len(got) != 0 {
+			t.Fatalf("the undo of an unrecorded create recorded %s rows %+v", verb, got)
+		}
+	}
+
+	created, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := allowedRows(sink, "apps.CreateBuildSource")
+	if len(rows) != 1 || rows[0].Target != core.ServiceTarget(created.ID) || rows[0].TargetName != "Mono" ||
+		rows[0].Resource != core.WorkspaceObject("tea-a") {
+		t.Fatalf("create rows = %+v, want one on workspace:tea-a naming %s Mono", rows, created.ID)
+	}
+
+	partial := linked
+	partial.Name = "Partial"
+	st.failLinkCall = st.linkCalls + 2
+	if _, err := svc.CreateBuildSource(ctx, partial); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("a failed second link: got %v, want the partially-linked conflict", err)
+	}
+	if rows := allowedRows(sink, "apps.CreateBuildSource"); len(rows) != 2 || rows[1].TargetName != "Partial" {
+		t.Fatalf("a kept source's create rows = %+v, want a second naming Partial", rows)
+	}
+
+	svc.Authz = denyRelationChecker{deny: core.RelCanCreate}
+	if _, err := svc.CreateBuildSource(ctx, monorepoSource); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("denied create: got %v, want ErrForbidden", err)
+	}
+	if n := sink.countVerb("apps.CreateBuildSource"); n != 3 {
+		t.Fatalf("a denied create must still record its denial: %d rows, want 3", n)
+	}
+}
+
+// w4/679: the one-step Blueprint create records one row once the Blueprint
+// has applied, naming it; a create refused by its name or by a failed apply
+// records none, and the retry that succeeds records the one.
+func TestCreateBlueprintRecordsOneNamedRowOnlyOnceItApplied(t *testing.T) {
+	svc, fs := connectionService(t)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	ctx := ownershipCtx()
+	failing := &atomic.Bool{}
+	svc.Client = failingAppWrites{Client: svc.Client, failing: failing}
+	req := CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathSite, Name: "again"}
+
+	failing.Store(true)
+	if _, err := svc.CreateBlueprint(ctx, connOwner, req); err == nil {
+		t.Fatal("the first attempt should fail while the API server refuses writes")
+	}
+	if got := allowedRows(sink, "apps.CreateBlueprint"); len(got) != 0 {
+		t.Fatalf("a create whose apply failed recorded %+v", got)
+	}
+	failing.Store(false)
+	created, err := svc.CreateBlueprint(ctx, connOwner, req)
+	if err != nil || len(fs.blueprints) != 1 {
+		t.Fatalf("retry: %v (%d Blueprints)", err, len(fs.blueprints))
+	}
+	rows := allowedRows(sink, "apps.CreateBlueprint")
+	if len(rows) != 1 || rows[0].Target != core.BlueprintTarget(created.ID) || rows[0].TargetName != "again" {
+		t.Fatalf("create rows = %+v, want one naming %s again", rows, created.ID)
+	}
+	if _, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathCron, Name: "again"}); err == nil {
+		t.Fatal("a create under a taken name must be refused")
+	}
+	if n := len(allowedRows(sink, "apps.CreateBlueprint")); n != 1 {
+		t.Fatalf("a refused create added a row: %d, want still 1", n)
+	}
 }

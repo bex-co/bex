@@ -546,6 +546,52 @@ func TestCreate_GrantFailureRollsBackRow(t *testing.T) {
 	}
 }
 
+// w4/679: a workspace create records one CreateWorkspaceEvent once the
+// workspace exists, in the new workspace's own log and naming it; a create
+// refused after authorization (a bad name, the payment gate, a failed admin
+// grant) records none, and a denial still records its error row.
+func TestCreate_RecordsOneRowOnlyForAWorkspaceThatExists(t *testing.T) {
+	st := newFakeStore()
+	g := &fakeGranter{failErr: errors.New("fga down")}
+	svc := allowSvc(st, g, nil, nil)
+	svc.Payment = rejectingPaymentGate{}
+	audit := &recordingAudit{}
+	svc.Audit = audit
+	ctx := ctxAs("user-a")
+
+	if _, err := svc.Create(ctx, "Bad Name", "hobby"); err == nil {
+		t.Fatal("a bad name must be refused")
+	}
+	if _, err := svc.Create(ctx, "paid", "pro"); !errors.Is(err, core.ErrPaymentRequired) {
+		t.Fatalf("paid create: want payment required, got %v", err)
+	}
+	if _, err := svc.Create(ctx, "acme", "hobby"); err == nil {
+		t.Fatal("a failed admin grant must fail the create")
+	}
+	if rows := audit.verbs("workspaces.Create"); len(rows) != 0 {
+		t.Fatalf("refused creates recorded %+v", rows)
+	}
+
+	g.failErr = nil
+	w, err := svc.Create(ctx, "acme", "hobby")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	rows := audit.verbs("workspaces.Create")
+	if len(rows) != 1 || rows[0].Outcome != core.AuditAllowed || rows[0].Resource != core.WorkspaceObject(w.ID) ||
+		rows[0].TargetName != "acme" || rows[0].Caller != "user-a" {
+		t.Fatalf("create rows = %+v, want one allowed on workspace:%s naming acme", rows, w.ID)
+	}
+
+	svc.Authz = &fakeChecker{allow: false}
+	if _, err := svc.Create(ctx, "other", "hobby"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("denied create: want forbidden, got %v", err)
+	}
+	if rows := audit.verbs("workspaces.Create"); len(rows) != 2 || rows[1].Outcome != core.AuditDenied {
+		t.Fatalf("a denied create must still record its denial: %+v", rows)
+	}
+}
+
 func TestCreate_Guards(t *testing.T) {
 	st := newFakeStore()
 	// Deny-all checker → forbidden before any write.

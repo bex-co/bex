@@ -1071,7 +1071,11 @@ func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView,
 	if err := s.AuthorizeMintClass(ctx); err != nil {
 		return WorkspaceView{}, err
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	// The one CreateWorkspaceEvent is written once the workspace exists, in
+	// the new workspace's own log: a create refused by validation, the plan
+	// cap, the payment gate or the store records none, while a denial is
+	// still recorded here (w4/679).
+	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate); err != nil {
 		return WorkspaceView{}, err
 	}
 	if s.Store == nil {
@@ -1120,6 +1124,7 @@ func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView,
 			return WorkspaceView{}, fmt.Errorf("workspace %s: granting admin failed: %w", t.ID, err)
 		}
 	}
+	s.RecordAllowedWrite(ctx, "workspaces.Create", core.RelCanCreate, t.ID, "", t.Label())
 	return view(t, "admin"), nil
 }
 
