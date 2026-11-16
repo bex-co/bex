@@ -4,10 +4,12 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Deferred
 
-- 2026-11-15 App label keys (`app.bex.co/app`, `app.bex.co/workspace`, `app.bex.co/revision`, `app.bex.co/component`, `app.bex.co/environment-id`, `app.bex.co/network-isolation`, `bex.co/app-id`) — hand-spelled in backend `core/base.go` and in operator `controller/app_controller.go`, `execution/security.go`, `predeploy`, `drainguard`, `egressmeter`, `cmd/{kv,pg}-sni-proxy`, `cmd/registry-migrate`, plus backend `apps/clonesecret.go`; move them to `lego/types` beside `renderenv.LabelAppID` and migrate every copy (PR #170 was closed for guarding them with mirrored literal tests instead)
+- 2026-11-16 Pre-deploy label key (`app.bex.co/predeploy`) — hand-spelled in backend `core.PodLabelPreDeploy` and operator `predeploy.LabelService`; same unify-to-`lego/types` class as the 2026-11-16 App-label fix, left out to keep that change to its 7 scoped keys
 
 ## Skipped
 
+- 2026-11-16 `*_test.go` fixtures hand-writing the unified label values — fixtures model external input; aliases keep same-package tests compiling unchanged
+- 2026-11-16 `lego/operator/config/*` YAML hand-writing label values (`app.bex.co/component` etc.) — manifests cannot import Go constants
 - 2026-11-15 `backend/internal/id` vs `operator/internal/identity` — different domains (minted typed resource ids vs workspace-scoped sink names)
 - 2026-11-15 identity `secretName` vs `k8sname.stable` — unifying would rename live Secrets (253-char subdomain fast path vs 63-char always-hashed label)
 - 2026-11-15 backend `namespaceFor`/`ownedBy` vs operator `canonicalNamespace` — complementary halves of the App CR boundary, not copies

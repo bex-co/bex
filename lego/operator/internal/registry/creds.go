@@ -149,12 +149,12 @@ func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
 func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS string) error {
 	zotUser := id.ZotUsername()
 	labels := map[string]string{
-		"app.bex.co/component":                    "registry-pull",
-		"app.bex.co/app":                          id.Name,
+		appv1alpha1.LabelComponent:                "registry-pull",
+		appv1alpha1.LabelApp:                      id.Name,
 		appv1alpha1.LabelProtectedFromTenantMount: appv1alpha1.ProtectedFromTenantMount,
 	}
 	if id.Workspace != "" {
-		labels["app.bex.co/workspace"] = id.Workspace
+		labels[appv1alpha1.LabelWorkspace] = id.Workspace
 	}
 	password, err := c.ensurePullSecret(ctx, appNS, id.PullSecretName(), zotUser, labels)
 	if err != nil {

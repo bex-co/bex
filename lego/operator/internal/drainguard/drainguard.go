@@ -62,6 +62,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
@@ -84,7 +86,8 @@ const (
 	ScaleDownTaint = "ToBeDeletedByClusterAutoscaler"
 
 	// appLabel selects an App's pods; its Deployment carries the App's name.
-	appLabel = "app.bex.co/app"
+	// It aliases the canonical key in lego/types (v1alpha1).
+	appLabel = appv1alpha1.LabelApp
 	// nodeNameField is the pod field selector for the node a pod runs on.
 	nodeNameField = "spec.nodeName"
 	// recheck paces a held Machine, or a node CA has marked, while its

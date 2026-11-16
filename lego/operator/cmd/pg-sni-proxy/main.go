@@ -81,7 +81,8 @@ const (
 	defaultMaxConnsResource        = 64        // BEX_PROXY_MAX_CONNS_PER_RESOURCE
 	defaultIdleTimeout             = time.Hour // BEX_PROXY_IDLE_TIMEOUT
 	defaultMaxLifetime             = 24 * time.Hour
-	labelWorkspace                 = "app.bex.co/workspace"
+	// labelWorkspace aliases the canonical key in lego/types (v1alpha1).
+	labelWorkspace = appv1alpha1.LabelWorkspace
 )
 
 // backendSSLReplyTimeout bounds the wait for the backend's one-byte answer to
