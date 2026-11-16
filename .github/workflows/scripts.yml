@@ -99,6 +99,10 @@ jobs:
       # w6/m153: the admin.conf fetch retries only mid-roll host-key failures.
       - name: Kubeconfig fetch mid-roll retry self-test
         run: bash scripts/fetch-app-kubeconfig.test.sh
+      # w21: a worker Machine Hetzner refused a server for (a stock-out) is retried
+      # by the fleet-rollout wait instead of wedging the app-cluster workflow.
+      - name: CAPI fleet wait server-create retry self-test
+        run: bash scripts/wait-capi-rollout.test.sh
       # w21/089: the QA login helper (curl replaced by a scripted mock) decodes the
       # percent-encoded login challenge Hydra's redirect carries before it encodes it.
       - name: QA login helper self-test
@@ -255,6 +259,7 @@ jobs:
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/sandbox-docker-spike.sh scripts/sandbox-docker-spike.test.sh
           scripts/fetch-app-kubeconfig.test.sh
+          scripts/wait-capi-rollout.sh scripts/wait-capi-rollout.test.sh
           scripts/stale-key-name-validate.sh scripts/stale-key-name-validate.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh scripts/lib/helm-isolated.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
