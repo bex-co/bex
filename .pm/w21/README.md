@@ -125,3 +125,4 @@
 - [ ] **098** — A subscription bex's own reclaimer cancels is treated as a payment failure: 11 cardless workspaces were put in grace, enforced and mailed → [`098.md`](098.md) (~1h) ← from w21/m336 t004, 2026-11-16
 - [ ] **099** — Revoking or deleting an API key answers 500 when its OpenFGA developer tuple is already gone, so the key can never be deleted → [`099.md`](099.md) (~1h) ← from w21/012's production read, 2026-11-16
 - [ ] **103** — The first dashboard save that edits a variable a Blueprint dropped is refused as stale → [`103.md`](103.md) (~1h) ← from w21/m421 t004, 2026-11-16
+- [ ] **104** — "Billing recovered: Payment recovered and resources changed by billing enforcement were restored" is sent to a workspace that never paid and never had a resource enforced → [`104.md`](104.md) (~1h) ← from w21/m336, 2026-11-16
