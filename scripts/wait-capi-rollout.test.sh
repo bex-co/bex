@@ -39,15 +39,19 @@ printf '{"items":[%s]}' "$healed" > "$state/md-machines.healed.json"
 printf '{"items":[%s,%s]}' "$healed" "$(machine plat-d Provisioning)" > "$state/md-machines.stalled.json"
 echo '{"items":[]}' > "$state/hcms.healed.json"
 
-# hcloudmachines: plat-d has no server; $1 = failure time, $2 = providerID.
+# hcloudmachines: plat-d has no server; $1 = its creation time, $2 = providerID.
+# CAPH rewrites the failure condition's lastTransitionTime minutes after the
+# failure, so it is always fresh here: the age must come from the creation time.
 stall() {
   cat > "$state/hcms.stalled.json" <<JSON
 {"items":[
- {"metadata":{"name":"plat-a"},"spec":{"providerID":"hcloud://1"},"status":{"conditions":[{"type":"Ready","status":"True"}]}},
- {"metadata":{"name":"plat-d","ownerReferences":[{"kind":"Machine","name":"plat-d"}]},"spec":{"providerID":"$2"},
+ {"metadata":{"name":"plat-a","creationTimestamp":"$(iso_ago 86400)"},"spec":{"providerID":"hcloud://1"},
+  "status":{"conditions":[{"type":"Ready","status":"True"}]}},
+ {"metadata":{"name":"plat-d","creationTimestamp":"$1","ownerReferences":[{"kind":"Machine","name":"plat-d"}]},
+  "spec":{"providerID":"$2"},
   "status":{"conditions":[{"type":"Ready","status":"False","reason":"ServerCreateFailedIrrecoverableError",
    "message":"failed to create HCloud server in fsn1 (type cx33): error during placement (resource_unavailable, abc)",
-   "lastTransitionTime":"$1"}]}}]}
+   "lastTransitionTime":"$(iso_ago 1)"}]}}]}
 JSON
 }
 owned_by() { # kind of the Machine plat-d's owner
@@ -92,15 +96,15 @@ run() {
 }
 fail() { echo "FAIL: $*"; cat "$work/stdout" "$work/stderr"; exit 1; }
 
-# A surge that Hetzner refused a server for, long enough ago: its MachineSet-owned
-# Machine is deleted once and the fleet converges.
+# A surge that Hetzner refused a server for, created long enough ago: its
+# MachineSet-owned Machine is deleted once and the fleet converges.
 stall "$(iso_ago 900)" ""; owned_by MachineSet; reset
 run env TIMEOUT_SECONDS=30 SERVER_CREATE_RETRY_SECONDS=300 || fail "a retried stock-out should converge"
 [ "$(cat "$state/deleted")" = plat-d ] || fail "want exactly plat-d deleted, got: $(cat "$state/deleted")"
 grep -q "resource_unavailable" "$work/stdout" || fail "the Hetzner error is not printed"
 grep -q "CAPI fleet converged" "$work/stdout" || fail "no convergence report"
 
-# A refusal younger than the retry interval is left alone (the attempts are paced),
+# A Machine younger than the retry interval is left alone (the attempts are paced),
 # so the gate times out with the stall visible in its diagnostics.
 stall "$(iso_ago 5)" ""; owned_by MachineSet; reset
 if run env TIMEOUT_SECONDS=3 SERVER_CREATE_RETRY_SECONDS=300; then fail "a young stall must not converge"; fi

@@ -52,8 +52,9 @@ kubectl_get() {
 # is what CAPH's own message asks for; the 2026-11-12 platform roll sat on one
 # for four days. Deleting a Machine that has no server cannot lose a node or
 # release capacity (one that carries a providerID is never touched), so retry it
-# here once its failure is SERVER_CREATE_RETRY_SECONDS old. A retry is a new
-# object with a fresh timestamp, which paces the attempts.
+# here once the HCloudMachine is SERVER_CREATE_RETRY_SECONDS old. A retry is a new
+# object, which paces the attempts; the condition's own lastTransitionTime cannot
+# serve, because CAPH rewrites it minutes after the failure (9 to 20, observed).
 # Only MachineSet-owned Machines are replaced: a control-plane Machine goes
 # through KubeadmControlPlane remediation (w6/098), so it is reported, once.
 warned=" "
@@ -63,7 +64,7 @@ replace_failed_server_creates() {
   stalled=$(jq -r --argjson now "$(date +%s)" --argjson after "$SERVER_CREATE_RETRY_SECONDS" '.items[] |
     ([.status.conditions[]? | select(.reason == "ServerCreateFailedIrrecoverableError")][0]) as $failed |
     select($failed != null and (.spec.providerID // "") == "" and
-      ($now - ($failed.lastTransitionTime | fromdateiso8601)) >= $after) |
+      ($now - (.metadata.creationTimestamp | fromdateiso8601)) >= $after) |
     [([.metadata.ownerReferences[]? | select(.kind == "Machine") | .name][0] // .metadata.name),
      ($failed.message | .[0:240])] | @tsv' <<<"$hcms")
 
