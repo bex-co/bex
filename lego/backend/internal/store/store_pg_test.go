@@ -66,12 +66,14 @@ func TestPGStore(t *testing.T) {
 	}
 	defer pool.Close()
 	// Isolate from previous runs (order respects FKs via cascade). audit_events
-	// has no FK to tenants (w4/m10 — a purged tenant's audit trail must outlive
-	// the row's own cascade delete), so it needs its own truncate.
+	// (w4/m10 — a purged tenant's audit trail must outlive the row's own cascade
+	// delete) and service_slugs (every slug ever minted, so an earlier test's
+	// deleted "web" would still hold it) have no FK to tenants, so they need
+	// their own truncate.
 	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `TRUNCATE audit_events`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE audit_events, service_slugs`); err != nil {
 		t.Fatal(err)
 	}
 	s := NewPGStore(pool)

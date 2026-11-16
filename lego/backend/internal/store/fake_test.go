@@ -35,6 +35,9 @@ type memStore struct {
 	mu      sync.Mutex
 	tenants map[string]Tenant
 	apps    map[string]App
+	// slugs mirrors service_slugs: every slug CreateApp minted, spanning every
+	// tenant and never released when its service is deleted (migration 0278).
+	slugs   map[string]bool
 	domains map[string]Domain
 	disks   map[string]Disk
 	// Tenancy mapping keys (mirrors 0002_workspaces + owner_identity_id):
@@ -72,6 +75,7 @@ func newMemStore() *memStore {
 	return &memStore{
 		tenants:           map[string]Tenant{},
 		apps:              map[string]App{},
+		slugs:             map[string]bool{},
 		domains:           map[string]Domain{},
 		disks:             map[string]Disk{},
 		members:           map[memberKey]string{},
@@ -236,17 +240,6 @@ func (m *memStore) UnbindClient(_ context.Context, clientID string) error {
 	return nil // idempotent — never bound is not an error
 }
 
-// slugTaken mirrors PGStore's apps_slug_idx: a slug is global, spanning every
-// tenant, unlike the tenant-scoped name check above it.
-func (m *memStore) slugTaken(slug string) bool {
-	for _, other := range m.apps {
-		if other.Slug == slug {
-			return true
-		}
-	}
-	return false
-}
-
 func (m *memStore) CreateApp(ctx context.Context, a App) (App, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -261,16 +254,17 @@ func (m *memStore) CreateApp(ctx context.Context, a App) (App, error) {
 	a.ID = ids.New(ids.Service)
 	a.Slug = a.Name
 	if a.ObjectName != "" {
-		a.Slug = a.Name + "-" + randomSlugSuffix()
+		a.Slug = suffixedSlug(a.Name)
 	}
-	for attempt := 0; m.slugTaken(a.Slug) && attempt < maxSlugMintAttempts; attempt++ {
-		a.Slug = a.Name + "-" + randomSlugSuffix()
+	for attempt := 0; m.slugs[a.Slug] && attempt < maxSlugMintAttempts; attempt++ {
+		a.Slug = suffixedSlug(a.Name)
 	}
-	if m.slugTaken(a.Slug) {
+	if m.slugs[a.Slug] {
 		return App{}, fmt.Errorf("app: %w", ErrConflict)
 	}
 	a.CreatedAt = time.Now()
 	m.apps[a.ID] = a
+	m.slugs[a.Slug] = true
 	if disk := a.InitialDisk; disk != nil {
 		d := Disk{ID: ids.New(ids.Disk), TenantID: a.TenantID, AppID: a.ID,
 			Name: disk.Name, MountPath: disk.MountPath, SizeGB: disk.SizeGB,

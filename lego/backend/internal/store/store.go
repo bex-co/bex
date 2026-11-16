@@ -1050,10 +1050,11 @@ func (s *PGStore) UnbindClient(ctx context.Context, clientID string) error {
 // never reports reads as superseded and closes canceled (w6/m46 t004).
 const FirstDeployGeneration int64 = 1
 
-// maxSlugMintAttempts bounds CreateApp's collision-retry loop for a fresh
-// random slug suffix (w4/m19 t002). Each attempt draws from a 36^4 space, so
-// exhausting this many is a practical impossibility short of a bug — treat it
-// as a real conflict rather than loop forever.
+// maxSlugMintAttempts bounds each loop that draws a fresh random slug suffix
+// (w4/m19 t002): claimSlug's, and CreateApp's retry on apps_slug_idx. Each
+// draw is from a 36^4 space, so exhausting this many is a practical
+// impossibility short of a bug — treat it as a real conflict rather than loop
+// forever.
 const maxSlugMintAttempts = 5
 
 const (
@@ -1074,13 +1075,39 @@ func randomSlugSuffix() string {
 	return string(b)
 }
 
+// suffixedSlug is name with a fresh random "-xxxx" suffix.
+func suffixedSlug(name string) string { return name + "-" + randomSlugSuffix() }
+
 // isSlugConflict reports whether err is a unique-violation on apps_slug_idx
-// specifically — the signal CreateApp retries on with a suffixed slug, as
-// opposed to a tenant_id+name conflict (a real same-workspace duplicate,
-// which must surface to the caller, not be silently retried away).
+// specifically — the signal CreateApp retries on with a suffixed slug (a
+// concurrent create took the same one), as opposed to a tenant_id+name conflict
+// (a real same-workspace duplicate, which must surface to the caller, not be
+// silently retried away).
 func isSlugConflict(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "apps_slug_idx"
+}
+
+// claimSlug records slug, or a suffixed one if any service holds or ever held
+// it, for serviceID in the service_slugs ledger, which never releases a slug
+// (Render never reuses a subdomain: docs/render-artifacts/duplicate-service-names.md
+// Rule 4). Claiming with ON CONFLICT DO NOTHING keeps a retired common name
+// (web, api) from aborting the create's transaction on each attempt, and a
+// concurrent create of the same slug waits on the ledger's key.
+func claimSlug(ctx context.Context, tx pgx.Tx, serviceID, name, slug string) (string, error) {
+	for range maxSlugMintAttempts + 1 {
+		err := tx.QueryRow(ctx,
+			`INSERT INTO service_slugs (slug, service_id) VALUES ($1, $2) ON CONFLICT (slug) DO NOTHING RETURNING slug`,
+			slug, serviceID).Scan(&slug)
+		if err == nil {
+			return slug, nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return "", err
+		}
+		slug = suffixedSlug(name)
+	}
+	return "", fmt.Errorf("app: no free slug for %q: %w", name, ErrConflict)
 }
 
 // CreateApp inserts the app row and opens its first deploy row (trigger
@@ -1094,11 +1121,11 @@ func isSlugConflict(err error) bool {
 // remember a second call.
 //
 // The slug (the globally-unique public subdomain, w4/m19 t002) starts as the
-// bare name; a apps_slug_idx collision (some other tenant already claimed
-// that bare name) makes this retry with a random "-xxxx" suffix, matching
-// Render's own onrender.com behavior. A tenant_id+name collision (the
-// caller's own workspace already has this name) is a real conflict and is
-// never retried — it classifies straight to ErrConflict.
+// bare name; a slug any service holds or ever held (another tenant's live
+// service, or a deleted one: see claimSlug) makes it take a random "-xxxx"
+// suffix, matching Render's own onrender.com behavior. A tenant_id+name
+// collision (the caller's own workspace already has this name) is a real
+// conflict and is never retried — it classifies straight to ErrConflict.
 //
 // A build source carrier must arrive with its bds- id already minted (the CR
 // and the API name it before the row exists, ADR097) and its display name,
@@ -1114,12 +1141,13 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 	}
 	a.Slug = a.Name
 	// A re-created service's new subdomain sits beside its predecessor's App,
-	// whose Ingress and slug Service keep the bare slug until they are gone;
-	// Render never reuses an onrender.com one either. A name with the shape of a
-	// public bucket's host (pub-<xid>) would take that bucket's host (ADR112 D4),
-	// so it takes a suffix too, as a taken subdomain does.
+	// whose Ingress and slug Service keep the bare slug until they are gone. The
+	// ledger holds that slug too, unless the predecessor was deleted before
+	// migration 0278 recorded it. A name with the shape of a public bucket's host
+	// (pub-<xid>) would take that bucket's host (ADR112 D4), so it takes a
+	// suffix too, as a taken subdomain does.
 	if a.ObjectName != "" || publichost.Reserved(a.Name) {
-		a.Slug = a.Name + "-" + randomSlugSuffix()
+		a.Slug = suffixedSlug(a.Name)
 	}
 	for attempt := 0; ; attempt++ {
 		deployID := ids.New(ids.Deploy)
@@ -1138,6 +1166,11 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 					return err
 				}
 			}
+			slug, err := claimSlug(ctx, tx, a.ID, a.Name, a.Slug)
+			if err != nil {
+				return err
+			}
+			a.Slug = slug
 			if err := tx.QueryRow(ctx,
 				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode, creation_pending,
 				   build_source_id, build_source_image, scope_project_id, display_name, object_name)
@@ -1165,7 +1198,7 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			}
 			// Retain the name now, in the same transaction, so the service's
 			// charges can still name it after it is deleted (w2/m96 t001).
-			_, err := tx.Exec(ctx,
+			_, err = tx.Exec(ctx,
 				`INSERT INTO resource_display_names (tenant_id, resource_kind, resource_id, display_name)
 				 VALUES ($1, $2, $3, $4)
 				 ON CONFLICT (tenant_id, resource_kind, resource_id)
@@ -1178,7 +1211,7 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			return a, nil
 		}
 		if isSlugConflict(err) && attempt < maxSlugMintAttempts {
-			a.Slug = a.Name + "-" + randomSlugSuffix()
+			a.Slug = suffixedSlug(a.Name)
 			continue
 		}
 		return App{}, classify("app", err)

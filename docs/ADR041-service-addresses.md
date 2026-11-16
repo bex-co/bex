@@ -8,7 +8,7 @@ The single reference for what a service's **public address** (the HTTPS origin t
 
 | Axis | Render behavior | Evidence |
 | --- | --- | --- |
-| Public address | `https://<slug>.onrender.com`; `slug` defaults to the service name, silently gains a short random suffix (`-p9vq`, `-bkxk`) on a **global** collision | [duplicate-service-names.md](render-artifacts/duplicate-service-names.md) |
+| Public address | `https://<slug>.onrender.com`; `slug` defaults to the service name, silently gains a short random suffix (`-p9vq`, `-bkxk`) on a **global** collision, including with a slug a deleted service held (never reused, Rule 4) | [duplicate-service-names.md](render-artifacts/duplicate-service-names.md) |
 | Internal address | bare `<hostname>:<port>`, optional protocol prefix — `elasticsearch-2j3e:9200`, `http://elastic-qeqj:10000`. No DNS suffix, no namespace segment. The hostname is the **slug** (note the suffixed examples) | [render.com/docs/private-network](https://render.com/docs/private-network) |
 | Which types are addressable | Web services and private services both carry an internal address (a private service labels it its **Service Address**); background workers and cron jobs can dial out but are not addressable | same |
 | Scope | Same private network ⇔ same **region** and same **workspace**; project-environment network isolation narrows it further | same |
@@ -24,7 +24,7 @@ All tenant Apps share one namespace (`BEX_CP_APPS_NAMESPACE`, default `default`)
 
 | Axis | bex behavior | Where |
 | --- | --- | --- |
-| Public address | `https://<slug>.<BEX_BASE_DOMAIN>`; slug = `spec.subdomain` (minted globally-unique with a random suffix on collision, w4/m19), fallback CR name; precedence `spec.host` → platform host → `spec.hosts[]` | `AppSpec.EffectiveHosts` / `PlatformSubdomain` (`lego/types/v1alpha1/app_types.go:511`), `apps.slug` column |
+| Public address | `https://<slug>.<BEX_BASE_DOMAIN>`; slug = `spec.subdomain` (minted globally-unique with a random suffix on collision, w4/m19; a deleted service's slug is never minted again, migration `0278_service_slugs`), fallback CR name; precedence `spec.host` → platform host → `spec.hosts[]` | `AppSpec.EffectiveHosts` / `PlatformSubdomain` (`lego/types/v1alpha1/app_types.go:511`), `apps.slug` column |
 | Internal DNS identity | the k8s Service named after the **App CR**. Store-managed CRs are named `<tenant>-<name>` (`tea-<xid>-web`), so the resolvable internal hostname carries the tenant prefix | Service create `app_controller.go:1114`; `core.CRName` (`lego/backend/internal/core/base.go:728`) |
 | Internal address surfaced | `status.URL` for a private service / worker-shaped App is the k8s FQDN `http://<crName>.<ns>.svc:<port>`; bex-api round-trips it into `serviceDetails.url`. No Connect-style internal-address surface exists | `app_controller.go:1241`; `apps/render.go` ("url" set whenever non-empty) |
 | Port | `spec.port`, default **3000**; `PORT` injected, never user-shadowable | `app_controller.go:313`; `appEnv` |

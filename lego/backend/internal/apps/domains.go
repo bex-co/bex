@@ -1547,9 +1547,9 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 // and its dry-run alike (w5/m116). Two inputs the create only learns by
 // writing are approximated:
 //   - The own `<slug>.<base>` exemption: store.CreateApp mints the slug as the
-//     service name unless another workspace already holds it, when it adds a
+//     service name unless any service holds or ever held it, when it adds a
 //     random suffix. So the plan exempts `<slug>.<base>` for slug, the name;
-//     in the collision case the write-time check still refuses the host.
+//     when the name is taken the write-time check still refuses the host.
 //   - The synchronous traffic-DNS proof (the storeless fallback): it resolves
 //     against the platform host of the slug the create will mint, which the
 //     plan only approximates, so the plan does not check it, though a

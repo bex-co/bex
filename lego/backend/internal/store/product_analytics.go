@@ -85,11 +85,16 @@ func (s *PGStore) RecordProductDomainTLS(ctx context.Context, domain string, rea
 // recent history even when its creation event has aged out of retention.
 func (s *PGStore) RollbackAppCreation(ctx context.Context, appID string) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		var lockedID string
-		if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id=$1 FOR UPDATE`, appID).Scan(&lockedID); err != nil {
+		var slug string
+		if err := tx.QueryRow(ctx, `SELECT slug FROM apps WHERE id=$1 FOR UPDATE`, appID).Scan(&slug); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil
 			}
+			return err
+		}
+		// A create that never completed held no subdomain, so its retry gets the
+		// same one; only a deleted service's slug stays retired (migration 0278).
+		if _, err := tx.Exec(ctx, `DELETE FROM service_slugs WHERE slug=$1 AND service_id=$2`, slug, appID); err != nil {
 			return err
 		}
 		// A failed create owes nothing. Ordinary deletion retains closed disk

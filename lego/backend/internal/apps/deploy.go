@@ -1403,8 +1403,8 @@ func resolveProvisionalRefs(svc *parsedService, refs []hostRef, st parsedStack, 
 // provisionalTarget is the App a sibling this apply has not created yet will
 // be, as far as a host reference reads it: its desired spec under the slug its
 // create mints first, the bare name (store.CreateApp). Any other slug (a
-// suffix minted on a collision or beside a deleting predecessor, or a
-// store-less create's CR name) makes the post-create pass correct the value.
+// suffix minted because a service holds or ever held the name, or a store-less
+// create's CR name) makes the post-create pass correct the value.
 func provisionalTarget(svc parsedService) (*appv1alpha1.App, bool) {
 	spec, err := specFromCreate(svc.req)
 	if err != nil {

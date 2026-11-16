@@ -47,6 +47,7 @@ func TestPGAServiceCannotTakeAPublicBucketsHost(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CreateApp(%q): %v", name, err)
 		}
+		forgetSlugAtCleanup(t, st, app)
 		return app
 	}
 
