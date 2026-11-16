@@ -2598,9 +2598,7 @@ function ReservedLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** A ready muted help paragraph, wrapping as its translated copy does. A div,
- *  not a <p>: ReservedText's bar is a div, which the HTML parser moves out of
- *  a paragraph in server-rendered HTML, stretching it across the page. */
+/** A ready muted help paragraph, wrapping as its translated copy does. */
 function ReservedHelp({
   children,
   className = "text-sm",

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
+import { hydrateAcrossBoundary } from "@/test/hydration";
 
 const refetch = vi.fn();
 const gitState = { loading: false };
@@ -173,5 +174,19 @@ describe("ConnectGithubCard loading frame", () => {
     expect(frame.querySelectorAll(".invisible")).toHaveLength(4);
     // No action is offered before the read decides which state applies.
     expect(container.querySelector("button")).toBeNull();
+  });
+
+  // w4/686 reopened: the frame's copy sits in <p>s, and a <div> bar inside one
+  // is moved out of it by the HTML parser, so every direct /settings load threw
+  // React #418. The server markup must hydrate as it is.
+  it("hydrates the loading frame's server markup without a mismatch (w4/686)", () => {
+    gitState.loading = true;
+    const now = Date.UTC(2026, 10, 16);
+    const probe = hydrateAcrossBoundary(<ConnectGithubCard />, {
+      serverNow: now,
+      clientNow: now,
+    });
+    expect(probe.html).toContain("git-connections-skeleton");
+    expect(probe.recovered).toEqual([]);
   });
 });

@@ -29,6 +29,7 @@ vi.mock("@/common/lib/ory/logout", () => ({
 import { useMutation, useQuery } from "@apollo/client/react";
 import { endBrowserSession } from "@/common/lib/ory/logout";
 import { codedGraphQLError } from "@/test/mocks/apollo";
+import { hydrateAcrossBoundary } from "@/test/hydration";
 import {
   AccountDeletionCard,
   accountDeletionConfirmation,
@@ -371,5 +372,28 @@ describe("AccountDeletionCard", () => {
     expect(lists).toEqual(readyLists);
     expect(frame.querySelector("input")).toBeNull();
     expect(frame.querySelector("button")).toBeNull();
+  });
+
+  // w4/686 reopened: the frame's prompt sits in a <p>, and a <div> bar inside
+  // it is moved out by the HTML parser, so every direct /settings load threw
+  // React #418. The server markup must hydrate as it is.
+  it("hydrates the loading frame's server markup without a mismatch (w4/686)", () => {
+    workspaces = [
+      { id: "tea-shared", name: "shared" },
+      { id: "tea-personal", name: "personal" },
+    ];
+    vi.mocked(useQuery).mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch,
+    } as never);
+    const now = Date.UTC(2026, 10, 16);
+    const probe = hydrateAcrossBoundary(<AccountDeletionCard />, {
+      serverNow: now,
+      clientNow: now,
+    });
+    expect(probe.html).toContain("account-deletion-skeleton");
+    expect(probe.recovered).toEqual([]);
   });
 });
