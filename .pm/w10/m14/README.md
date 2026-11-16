@@ -1,6 +1,6 @@
 # w10 · m14 — Platform model key: OpenRouter for an allowlisted workspace now, metered rollout to every workspace
 
-**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** blocked (t001–t007, t012–t015 done; t007 widened the route to every workspace on 2026-11-16 by user decision, ahead of the OpenRouter top-up; previously t007 waited only on an OpenRouter top-up (2026-11-12: key limit and Radar rules dropped by user decision, terms published, test-mode e2e check satisfied by the t014 and settle probes); t008–t011 follow t007) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
+**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** todo (t001–t007, t012–t015 done; t007 widened the route to every workspace on 2026-11-16 by user decision; t008–t011 next) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
 
 ## Tasks (in order)
 
@@ -41,5 +41,13 @@
 - **Expected outcome:** tenants can start agent sessions without bringing a model key, and the platform recovers the token cost through billing.
 - **Why now:** the production session above is unusable without a model key, and the AGENTS.md rule requires a dated widen-to-every-workspace task for any allowlist.
 - **Render parity included (t008):** model-key readiness is reported on REST/GraphQL/MCP and the dashboard composer.
-- **Pricing decision (2026-10-30):** [ADR091](../../../../docs/ADR091-agent-model-pricing.md) — provider cost × 1.3, every plan pays per use, USD spend caps, non-payment protection. Moved out of `blocked/` the same day; t012 absorbs `w10/009`.
+- **Pricing decision (2026-10-30):** [ADR091](../../../docs/ADR091-agent-model-pricing.md) — provider cost × 1.3, every plan pays per use, USD spend caps, non-payment protection. Moved out of `blocked/` the same day; t012 absorbs `w10/009`.
 - **Rescheduled 2026-11-05 (user decision: "完整的修", the complete fix).** t007 moves from 2026-11-06 to 2026-11-13. All of ADR091 ships before the allowlist widens: pricing (t004), caps and trust tiers (t005), BYO key (t012), UI (t013), threshold billing (t014) and settle-before-delete plus card checks (t015). The Billing label fix that t013 builds on is `w10/011`.
+
+## Unblocked 2026-11-16 (verified finding)
+
+- **Affected:** t008–t011.
+- **Source:** verified evidence. t007 shipped as `02c59e74c` on 2026-11-16 by explicit user decision ("直接改成所有的都能用 删除 BEX_AGENT_PALTFORM_MODEL_WORKSPACES"); see [t007](done/t007.md#done-2026-11-16-user-decision). `BEX_AGENT_PLATFORM_MODEL_WORKSPACES` no longer appears in `lego/`.
+- **Scope:** unchanged. t008–t011 depended only on t007, so their gate is clear. The OpenRouter top-up and `w6/m362`'s production verification were t007's rollout gates; the user shipped the widen ahead of them, so they gate neither t008–t011 nor closeout (they are operational checks recorded on t007).
+- **Next:** t008 parity walk (model-key readiness on REST, GraphQL, MCP and the composer), t009 `/simplify`, t010 tests for every-workspace scoping, t011 closeout.
+
