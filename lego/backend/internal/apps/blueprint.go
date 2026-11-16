@@ -1724,6 +1724,14 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		if auto != nil && RetryableBlueprintFetch(reason) {
 			return result, &blueprintAutoSyncRetry{err: err}
 		}
+		if auto == nil {
+			// The sync history keeps the "<reason>: <sentence>" text. The caller
+			// gets the answer a create gives: 503 for a GitHub that is
+			// rate-limiting or unreachable, 400 for the repository, path or
+			// access it can fix. The plain history error answered every one of
+			// them 500 (w21/m421; production, 2026-11-08).
+			return result, blueprintCreateFetchError(sourceErr, b.Path, b.Branch)
+		}
 		return result, err
 	}
 	var commitSHA string

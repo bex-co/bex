@@ -28,6 +28,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // Connecting a Blueprint whose file cannot be fetched answers the classified
@@ -80,5 +81,69 @@ func TestCreateBlueprintRESTFetchFailureIsNotA500(t *testing.T) {
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if rec.Code != http.StatusBadRequest || body.Code != string(BlueprintFetchRepoNotFound) || !strings.Contains(body.Message, "GitHub app") {
 		t.Fatalf("POST /v1/blueprints = %d %s, want 400 %s with its sentence", rec.Code, rec.Body.String(), BlueprintFetchRepoNotFound)
+	}
+}
+
+// A manual sync whose source cannot be fetched answers the same classified
+// reason a create does, at the status it means, and still records the
+// "<reason>: <sentence>" failure in the sync history. The history error was
+// returned to the caller as it was, so a GitHub that was unreachable or
+// rate-limiting answered `500 internal error` ("unavailable: Could not reach
+// GitHub to read the Blueprint file", production, 2026-11-08; w21/m421).
+func TestSyncBlueprintAnswersItsFetchFailureReason(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		err      error
+		sentinel error
+		reason   BlueprintPreviewReason
+		wantIn   string
+	}{
+		{"missing file", fmt.Errorf("github: file not found: %w", &github.APIError{Status: 404}), core.ErrBadRequest, BlueprintFetchFileNotFound, `"render.yaml"`},
+		{"access denied", fmt.Errorf("github: denied: %w", &github.APIError{Status: 403}), core.ErrBadRequest, BlueprintFetchAccessDenied, "not authorized"},
+		{"rate limited", fmt.Errorf("github: limited: %w", &github.APIError{Status: 429}), core.ErrUnavailable, BlueprintFetchRateLimited, "rate-limiting"},
+		{"github unreachable", fmt.Errorf("github: boom: %w", &github.APIError{Status: 500}), core.ErrUnavailable, BlueprintFetchUnavailable, "Could not reach GitHub"},
+		{"transport failure", errors.New("dial tcp: connection refused"), core.ErrUnavailable, BlueprintFetchUnavailable, "Could not reach GitHub"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fs := newFakeBlueprintStore(store.Blueprint{
+				ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+				Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
+				Status: "active", Name: "app",
+			})
+			svc := newBlueprintService(fs, fakeWorkspace{"user-a": "tea-a"})
+			svc.GitFetcher = fakeBlueprintFetcher{err: tc.err}
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+			_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "", nil)
+			var coded *core.CodedError
+			if !errors.Is(err, tc.sentinel) || !errors.As(err, &coded) || coded.Code != string(tc.reason) || !strings.Contains(err.Error(), tc.wantIn) {
+				t.Fatalf("SyncBlueprint = %v, want %v coded %q naming %q", err, tc.sentinel, tc.reason, tc.wantIn)
+			}
+			if len(fs.insertedSyncs) != 1 || fs.insertedSyncs[0].ErrorMessage == nil ||
+				!strings.HasPrefix(*fs.insertedSyncs[0].ErrorMessage, string(tc.reason)+": ") {
+				t.Fatalf("sync history = %+v, want one failed run recording %q first", fs.insertedSyncs, tc.reason)
+			}
+		})
+	}
+}
+
+// The REST sync answers that class on the wire, never `internal error`.
+func TestSyncBlueprintRESTFetchFailureIsNotA500(t *testing.T) {
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
+		Status: "active", Name: "app",
+	})
+	svc := newBlueprintService(fs, fakeWorkspace{"user-a": "tea-a"})
+	svc.GitFetcher = fakeBlueprintFetcher{err: fmt.Errorf("github: boom: %w", &github.APIError{Status: 500})}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	req := httptest.NewRequest(http.MethodPost, "/v1/blueprints/blp-1/sync", strings.NewReader(`{"ownerId":"tea-a"}`))
+	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
+	rec := httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, req)
+	var body struct{ Code, Message string }
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	if rec.Code != http.StatusServiceUnavailable || body.Code != string(BlueprintFetchUnavailable) || !strings.Contains(body.Message, "Could not reach GitHub") {
+		t.Fatalf("POST /v1/blueprints/{id}/sync = %d %s, want 503 %s with its sentence", rec.Code, rec.Body.String(), BlueprintFetchUnavailable)
 	}
 }
