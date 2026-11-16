@@ -38,6 +38,23 @@ func fixtureGit(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// fixtureRepo makes a one-commit repository at dir on branch, holding files
+// (path → content).
+func fixtureRepo(t *testing.T, dir, branch string, files map[string]string) {
+	t.Helper()
+	for name, body := range files {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fixtureGit(t, dir, "init", "-q", "-b", branch)
+	fixtureGit(t, dir, "add", ".")
+	fixtureGit(t, dir, "commit", "-q", "-m", "fixture")
+}
+
 // directPublish runs the direct publish's real clone script for a parent
 // whose site/theme is a submodule pinned behind the child's tip at url, and
 // returns the staged tree, the termination message and the exit status.
@@ -118,12 +135,12 @@ func TestDirectPublishIncludesPinnedSubmodules(t *testing.T) {
 	}
 }
 
-// A submodule that cannot be fetched fails the publish in this operator's
-// words, naming it, and stages nothing.
+// A submodule that cannot be fetched fails the build as the tenant's source
+// (w32/028), in this operator's words, naming it, and stages nothing.
 func TestDirectPublishFailsOnAnUnreachableSubmodule(t *testing.T) {
 	out, msg, code := directPublish(t, func(root string) string { return "file://" + filepath.Join(root, "missing") })
 	entries, _ := os.ReadDir(out)
-	if code == 0 || !strings.Contains(msg, `could not fetch the submodule "site/theme"`) || len(entries) != 0 {
+	if code != userSourceExit || !strings.Contains(msg, `could not fetch the submodule "site/theme"`) || len(entries) != 0 {
 		t.Fatalf("exit %d, message %q, staged %v; want a named failure and nothing staged", code, msg, entries)
 	}
 }
@@ -133,17 +150,7 @@ func TestDirectPublishFailsOnAnUnreachableSubmodule(t *testing.T) {
 func TestDirectPublishOfTheRepositoryRootLeavesGitMetadataOut(t *testing.T) {
 	root := t.TempDir()
 	repo := filepath.Join(root, "repo")
-	if err := os.MkdirAll(filepath.Join(repo, "docs"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	for name, body := range map[string]string{"README": "Hello World!\n", ".gitignore": "x\n", "docs/index.html": "docs\n"} {
-		if err := os.WriteFile(filepath.Join(repo, name), []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	fixtureGit(t, repo, "init", "-q", "-b", "master")
-	fixtureGit(t, repo, "add", ".")
-	fixtureGit(t, repo, "commit", "-q", "-m", "root")
+	fixtureRepo(t, repo, "master", map[string]string{"README": "Hello World!\n", ".gitignore": "x\n", "docs/index.html": "docs\n"})
 
 	for _, publishPath := range []string{"", "."} {
 		o := testOptions()
@@ -163,6 +170,38 @@ func TestDirectPublishOfTheRepositoryRootLeavesGitMetadataOut(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(out, name)); err != nil {
 				t.Errorf("publish path %q did not stage %s: %v", publishPath, name, err)
 			}
+		}
+	}
+}
+
+// w32/028: a direct publish of a branch, commit or repository that cannot be
+// fetched is the tenant's own source, as on a repo build (w7/m82). The real
+// clone script exits userSourceExit, so the observation fails the build with
+// the script's own sentence; git's 128 used to close the deploy update_failed.
+func TestDirectPublishOfAnUnfetchableRefIsAUserSourceError(t *testing.T) {
+	root := t.TempDir()
+	repo := filepath.Join(root, "repo")
+	fixtureRepo(t, repo, "main", map[string]string{"index.html": "site\n"})
+
+	for _, tc := range []struct{ name, repo, ref string }{
+		{"missing branch", "file://" + repo, "no-such-branch-b97f"},
+		{"missing commit", "file://" + repo, "0123456789abcdef0123456789abcdef01234567"},
+		{"unreadable repository", "file://" + filepath.Join(root, "gone"), "main"},
+	} {
+		o := testOptions()
+		o.Image, o.Repo, o.Ref, o.PublishPath = "", tc.repo, tc.ref, "."
+		run := filepath.Join(root, strings.ReplaceAll(tc.name, " ", "-"))
+		if err := os.MkdirAll(run, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		_, msg, code := runClone(t, run, o)
+		want := `could not fetch "` + tc.ref + `" from this service's repository — check that the branch or commit exists and that bex still has access to the repo`
+		if code != userSourceExit || msg != want {
+			t.Errorf("%s: exit %d, message %q; want exit %d with %q", tc.name, code, msg, userSourceExit, want)
+			continue
+		}
+		if obs := failedPublishObservation(t, cloneStep, int32(code), msg); !obs.UserError || obs.Message != want {
+			t.Errorf("%s: observation = %+v, want the bare sentence flagged as a user error", tc.name, obs)
 		}
 	}
 }

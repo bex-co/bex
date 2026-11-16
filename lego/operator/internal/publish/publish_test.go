@@ -562,6 +562,48 @@ func TestEnsureNeverBlocks(t *testing.T) {
 	}
 }
 
+// w32/028: an in-flight direct publish says which step it is in, so the
+// reconciler can report its clone as the site's build: waiting until a pod is
+// on a node, cloning until a pod's clone step exits 0, then publishing. A
+// retried attempt never takes it back to cloning.
+func TestDirectPublishReportsItsCloneStep(t *testing.T) {
+	ctx := context.Background()
+	o := testOptions()
+	o.Image, o.Repo = "", "https://github.com/bex-co/site"
+	cl := fake.NewClientBuilder().Build()
+	o.Client = cl
+	observe := func(want Phase, says string) {
+		t.Helper()
+		obs, err := Ensure(ctx, o)
+		if err != nil {
+			t.Fatalf("Ensure: %v", err)
+		}
+		if obs.Phase != want || !strings.Contains(obs.Message, says) {
+			t.Fatalf("observation = %+v, want %q saying %q", obs, want, says)
+		}
+	}
+	observe(PhaseWaiting, "waiting for its build pod to be created")
+
+	job := PublishJob(o)
+	addJobPod(t, cl, job, "pending", "", nil)
+	observe(PhaseWaiting, "no build node has room for it yet")
+	addJobPod(t, cl, job, "failed-clone", "node-1", &corev1.ContainerStatus{
+		Name: cloneStep, State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 1}},
+	})
+	observe(PhaseCloning, "")
+	addJobPod(t, cl, job, "cloned", "node-2", &corev1.ContainerStatus{
+		Name: cloneStep, State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 0}},
+	})
+	observe(PhasePublishing, "")
+
+	// An image-backed publish has no clone to report.
+	extract := testOptions()
+	extract.Client = fake.NewClientBuilder().Build()
+	if obs, err := Ensure(ctx, extract); err != nil || obs.Phase != PhasePublishing {
+		t.Fatalf("extract publish = %+v, %v; want publishing", obs, err)
+	}
+}
+
 // w6/038: a Publish Directory that does not exist in the built image is the most
 // common first-time-setup mistake on this surface, and the only thing shown for
 // it was Kubernetes' own "BackoffLimitExceeded: Job has reached the specified
@@ -682,7 +724,7 @@ func TestCloneStepsExplainTheirOwnFailures(t *testing.T) {
 	// Every step that can fail on the tenant's own input routes through fail().
 	for _, frag := range []string{
 		`fail() { printf '%s\n' "$2" > /dev/termination-log; exit "$1"; }`,
-		`fetch -q --depth 1 origin -- "$REF" || fail $?`,
+		`fetch -q --depth 1 origin -- "$REF" || fail 66`,
 		`checkout -q FETCH_HEAD || fail $?`,
 		`cd "/work/$SRC_DIR" || fail 66`,
 		`cp -a . /out/ || fail $?`,
@@ -812,28 +854,36 @@ func failedPublishObservation(t *testing.T, container string, exit int32, messag
 	if err := cl.Status().Update(ctx, job); err != nil {
 		t.Fatalf("fail Job: %v", err)
 	}
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: job.Name + "-abcde", Namespace: job.Namespace,
-			Labels: map[string]string{jobNameLabel: job.Name},
-		},
-		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "upload", Image: "x"}}},
-	}
-	if err := cl.Create(ctx, pod); err != nil {
-		t.Fatalf("create pod: %v", err)
-	}
-	pod.Status.InitContainerStatuses = []corev1.ContainerStatus{{
+	addJobPod(t, cl, job, job.Name+"-abcde", "", &corev1.ContainerStatus{
 		Name:  container,
 		State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: exit, Message: message}},
-	}}
-	if err := cl.Status().Update(ctx, pod); err != nil {
-		t.Fatalf("set pod status: %v", err)
-	}
+	})
 	obs, err := Ensure(ctx, o)
 	if err != nil {
 		t.Fatalf("Ensure on failed Job: %v", err)
 	}
 	return obs
+}
+
+// addJobPod creates one of job's pods on node ("" = not placed), with init
+// container status init when it is non-nil.
+func addJobPod(t *testing.T, cl client.Client, job *batchv1.Job, name, node string, init *corev1.ContainerStatus) {
+	t.Helper()
+	ctx := context.Background()
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: job.Namespace, Labels: map[string]string{jobNameLabel: job.Name}},
+		Spec:       corev1.PodSpec{NodeName: node, Containers: []corev1.Container{{Name: "upload", Image: "x"}}},
+	}
+	if err := cl.Create(ctx, pod); err != nil {
+		t.Fatalf("create pod: %v", err)
+	}
+	if init == nil {
+		return
+	}
+	pod.Status.InitContainerStatuses = []corev1.ContainerStatus{*init}
+	if err := cl.Status().Update(ctx, pod); err != nil {
+		t.Fatalf("set pod status: %v", err)
+	}
 }
 
 // w4/493: a missing publish directory is the tenant's own source error. It is
@@ -842,7 +892,7 @@ func failedPublishObservation(t *testing.T, container string, exit int32, messag
 // stays an update failure.
 func TestMissingPublishDirectoryIsAUserSourceError(t *testing.T) {
 	const said = `the publish directory "dist" does not exist in the repository at "ad13122c"`
-	for _, container := range []string{"clone", "extract"} {
+	for _, container := range []string{cloneStep, "extract"} {
 		obs := failedPublishObservation(t, container, userSourceExit, said)
 		if !obs.UserError || obs.Message != said {
 			t.Errorf("%s: observation = %+v, want the bare message flagged as a user error", container, obs)
@@ -852,9 +902,9 @@ func TestMissingPublishDirectoryIsAUserSourceError(t *testing.T) {
 	if upload.UserError || !strings.HasPrefix(upload.Message, "upload: ") || !strings.Contains(upload.Message, "(exit 1)") {
 		t.Errorf("upload fault = %+v, want an unflagged, prefixed platform message", upload)
 	}
-	fetch := failedPublishObservation(t, "clone", 128, `could not fetch "main" from this service's repository`)
-	if fetch.UserError {
-		t.Errorf("fetch failure = %+v, want it left as an update failure", fetch)
+	killed := failedPublishObservation(t, cloneStep, 137, "")
+	if killed.UserError || !strings.Contains(killed.Message, "(exit 137)") {
+		t.Errorf("killed clone = %+v, want an unflagged platform message", killed)
 	}
 }
 

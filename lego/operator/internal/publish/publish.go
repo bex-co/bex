@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -209,8 +210,18 @@ type Phase string
 
 const (
 	// PhasePublishing: the Job exists and has not reached a terminal condition;
-	// the reconciler requeues after ObserveInterval instead of blocking.
+	// the reconciler requeues after ObserveInterval instead of blocking. For a
+	// direct publish it means the clone step has finished and the upload runs.
 	PhasePublishing Phase = "publishing"
+	// PhaseWaiting: a direct publish's Job is dispatched but none of its pods
+	// is on a node yet. Message is the queued reason, in the deploy-reason
+	// vocabulary the build plane's capacity wait uses.
+	PhaseWaiting Phase = "waiting"
+	// PhaseCloning: a direct publish's pod is on a node and its clone step has
+	// not finished. Render counts the clone as the site's build (its build log
+	// opens with "==> Cloning from"), so the reconciler reports a build in
+	// progress, not a rollout (w32/028).
+	PhaseCloning Phase = "cloning"
 	// PhaseSucceeded: the Job completed — the revision is live at the origin.
 	PhaseSucceeded Phase = "succeeded"
 	// PhaseFailed: the Job failed (or its deadline reaped it). Message carries
@@ -224,9 +235,10 @@ type Observation struct {
 	Phase   Phase
 	Message string
 	// UserError marks a failed publish whose cause is the tenant's own source
-	// (a publish directory that does not exist), as opposed to a platform fault
-	// (upload, store). The reconciler closes the deploy build_failed for it, as
-	// Render fails the build for a missing publish directory (w4/493).
+	// (a publish directory that does not exist, w4/493; a branch, commit or
+	// repository the clone cannot fetch, w32/028), as opposed to a platform
+	// fault (upload, store). The reconciler closes the deploy build_failed for
+	// it, as Render fails the build for either.
 	UserError bool
 }
 
@@ -257,11 +269,50 @@ func Ensure(ctx context.Context, o Options) (Observation, error) {
 		msg, userErr := failureMessage(ctx, o.Client, cur)
 		return Observation{Phase: PhaseFailed, Message: msg, UserError: userErr}, nil
 	}
+	if o.Repo != "" {
+		return cloneProgress(ctx, o.Client, cur), nil
+	}
 	return Observation{Phase: PhasePublishing}, nil
+}
+
+// cloneProgress places an in-flight direct publish: waiting for a node, cloning,
+// or uploading once a pod's clone step has exited 0. Unlike the build plane's
+// queue check, a spent attempt counts as placed, so a retry does not read as
+// queued again. A failed listing reads as cloning: the deploy row refuses to
+// move back from update_in_progress, while reading it as uploading could move
+// a row still cloning past build_in_progress for good.
+func cloneProgress(ctx context.Context, cl client.Client, job *batchv1.Job) Observation {
+	pods, err := jobPods(ctx, cl, job)
+	if err != nil {
+		return Observation{Phase: PhaseCloning}
+	}
+	if len(pods) == 0 {
+		return Observation{Phase: PhaseWaiting, Message: appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedCapacityPod)}
+	}
+	placed := false
+	for i := range pods {
+		for _, cs := range pods[i].Status.InitContainerStatuses {
+			if cs.Name == cloneStep && cs.State.Terminated != nil && cs.State.Terminated.ExitCode == 0 {
+				return Observation{Phase: PhasePublishing}
+			}
+		}
+		placed = placed || pods[i].Spec.NodeName != ""
+	}
+	if placed {
+		return Observation{Phase: PhaseCloning}
+	}
+	return Observation{Phase: PhaseWaiting, Message: appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedCapacityNoNode)}
 }
 
 // jobNameLabel is the label the Job controller stamps on every pod it creates.
 const jobNameLabel = "job-name"
+
+// jobPods lists the pods job has created, across all of its attempts.
+func jobPods(ctx context.Context, cl client.Client, job *batchv1.Job) ([]corev1.Pod, error) {
+	var pods corev1.PodList
+	err := cl.List(ctx, &pods, client.InNamespace(job.Namespace), client.MatchingLabels{jobNameLabel: job.Name})
+	return pods.Items, err
+}
 
 // maxFailureDetail bounds what a container's own error contributes to the App's
 // status. A termination message can be 4 KiB; a status field is read by a human
@@ -289,9 +340,14 @@ func failureMessage(ctx context.Context, cl client.Client, job *batchv1.Job) (st
 }
 
 // userSourceExit is the exit code a publish step uses when the tenant's own
-// source is the cause (a missing publish directory, w4/493). No tool the steps
-// run exits with it (EX_NOINPUT), so it cannot be mistaken for a platform fault.
+// source is the cause: a missing publish directory (w4/493), or a branch,
+// commit, submodule or repository the clone cannot fetch (w32/028). No tool the
+// steps run exits with it (EX_NOINPUT), so it cannot be mistaken for a platform
+// fault.
 const userSourceExit = 66
+
+// failUserSource is the clone script's fail() call for a user-source failure.
+var failUserSource = "fail " + strconv.Itoa(userSourceExit)
 
 // failedContainerDetail returns "<container>: <what it printed> (exit N)" for
 // the first container of the Job's pods that terminated non-zero, or "" when
@@ -301,17 +357,14 @@ const userSourceExit = 66
 // pod already swept leaves the caller on the Job-level reason rather than
 // failing the observation.
 func failedContainerDetail(ctx context.Context, cl client.Client, job *batchv1.Job) (detail string, userErr bool) {
-	var pods corev1.PodList
-	if err := cl.List(ctx, &pods,
-		client.InNamespace(job.Namespace),
-		client.MatchingLabels{jobNameLabel: job.Name},
-	); err != nil {
+	pods, err := jobPods(ctx, cl, job)
+	if err != nil {
 		return "", false
 	}
-	for i := range pods.Items {
+	for i := range pods {
 		statuses := append(
-			append([]corev1.ContainerStatus{}, pods.Items[i].Status.InitContainerStatuses...),
-			pods.Items[i].Status.ContainerStatuses...,
+			append([]corev1.ContainerStatus{}, pods[i].Status.InitContainerStatuses...),
+			pods[i].Status.ContainerStatuses...,
 		)
 		for _, cs := range statuses {
 			term := cs.State.Terminated
@@ -346,7 +399,7 @@ func failedContainerDetail(ctx context.Context, cl client.Client, job *batchv1.J
 // the failure is not on their side of the line.
 func stepFailureFallback(container string) string {
 	switch container {
-	case "clone":
+	case cloneStep:
 		return "the site's repository could not be staged for publishing"
 	case "extract":
 		return "the built image's publish directory could not be staged for publishing"
@@ -592,13 +645,18 @@ cp -a "$PUBLISH_PATH"/. ` + outMount + `/`},
 const extractTerminationPolicy = corev1.TerminationMessageFallbackToLogsOnError
 
 // directSubmodules brings in the submodules the published directory may hold
-// (w8/m89), each failure in this operator's own words.
+// (w8/m89), each failure in this operator's own words. Both are the tenant's
+// source, as the build plane classifies them.
 var directSubmodules = execution.GitSubmoduleUpdate(
 	func(command string) string {
-		return command + ` || fail $? "could not fetch the submodule \"$module\" — check that its repository exists and that bex has access to it"`
+		return command + ` || ` + failUserSource + ` "could not fetch the submodule \"$module\" — check that its repository exists and that bex has access to it"`
 	},
-	func(message string) string { return `fail 1 "` + message + `"` },
+	func(message string) string { return failUserSource + ` "` + message + `"` },
 )
+
+// cloneStep names the direct publish's staging container, whose progress and
+// failures the reconciler reads off the pod.
+const cloneStep = "clone"
 
 // cloneContainer stages the site straight from the repository — the direct,
 // no-Dockerfile publish path (w9/010): shallow-fetch Repo@Ref, then copy
@@ -629,15 +687,18 @@ func cloneContainer(o Options) corev1.Container {
 	// explaining are all known in advance, so nothing needs to be echoed:
 	// writing a fixed line to /dev/termination-log under the DEFAULT
 	// (ReadFile) policy surfaces exactly this text and nothing git printed.
+	// A fetch that fails is the tenant's to fix, whatever git's exit: an
+	// unknown branch or commit, or a repository bex can no longer read. It
+	// fails the build, as a repo build's clone does (w32/028, w7/m82).
 	script := `set -e
 fail() { printf '%s\n' "$2" > /dev/termination-log; exit "$1"; }
 mkdir -p /work && cd /work
 git init -q .
 git remote add origin "$REPO"
 set -- ` + execution.GitHTTPSTransport + ` -c ` + execution.GitHubCredentialHelper + `
-git "$@" fetch -q --depth 1 origin -- "$REF" || fail $? "could not fetch \"$REF\" from this service's repository — check that the branch or commit exists and that bex still has access to the repo"
+git "$@" fetch -q --depth 1 origin -- "$REF" || ` + failUserSource + ` "could not fetch \"$REF\" from this service's repository — check that the branch or commit exists and that bex still has access to the repo"
 git checkout -q FETCH_HEAD || fail $? "fetched \"$REF\" but could not check it out"
-` + directSubmodules + `cd "/work/$SRC_DIR" || fail ` + fmt.Sprint(userSourceExit) + ` "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
+` + directSubmodules + `cd "/work/$SRC_DIR" || ` + failUserSource + ` "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
 find . -name .git -prune -exec rm -rf -- {} + || fail $? "could not leave the repository's git metadata out of the upload"
 cp -a . ` + outMount + `/ || fail $? "the publish directory \"$SRC_DIR\" exists but its contents could not be staged for upload"`
 	env := []corev1.EnvVar{
@@ -657,7 +718,7 @@ cp -a . ` + outMount + `/ || fail $? "the publish directory \"$SRC_DIR\" exists 
 		})
 	}
 	return corev1.Container{
-		Name:    "clone",
+		Name:    cloneStep,
 		Image:   img,
 		Command: []string{"sh", "-c", script},
 		Env:     env,

@@ -141,6 +141,10 @@ const (
 	// first publish, on ConditionRollout over a served release (w4/m155).
 	reasonPublishFailed = "PublishFailed"
 
+	// reasonPublishing is a static site uploading a revision to the object
+	// store, which bex-api reads as update_in_progress.
+	reasonPublishing = "Publishing"
+
 	// reasonMiddlewareFailed is a Traefik middleware (IP allow-list, edge
 	// compression, websocket meter) the Ingress needs but could not apply.
 	reasonMiddlewareFailed = "MiddlewareFailed"
@@ -4746,7 +4750,15 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 	if err := validateAWSCredentialSecret(ctx, r.buildPlaneClient(), publishNamespace, r.StaticStore.Secret); err != nil {
 		return r.fail(ctx, app, "StaticCredentialUnavailable", fmt.Errorf("static publish %w", err))
 	}
-	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
+	const publishingMessage = "Publishing static output to object store"
+	restore := staticRestoreSelection(app)
+	direct := restore == nil && image == ""
+	// A direct publish's clone is the site's build, so its phase follows the
+	// Job's progress below: a deploy row never moves back from
+	// update_in_progress to build_in_progress.
+	if !direct {
+		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reasonPublishing, publishingMessage)
+	}
 	opts := publish.Options{
 		Image:        image,
 		PublishPath:  app.Spec.PublishPath,
@@ -4766,14 +4778,14 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 		PullSecret: r.buildJobPullSecret(app),
 		Client:     r.Client,
 	}
-	if ref := staticRestoreSelection(app); ref != nil {
+	if restore != nil {
 		// Rollback (w4/m197): copy the target's retained publication. Neither
 		// the target's image nor today's publish directory takes part.
 		opts = publish.Options{
-			SourcePrefix: ref.StaticPrefix, AppID: opts.AppID, AppUID: opts.AppUID, Revision: rev, Store: r.StaticStore,
+			SourcePrefix: restore.StaticPrefix, AppID: opts.AppID, AppUID: opts.AppUID, Revision: rev, Store: r.StaticStore,
 			Namespace: publishNamespace, Workspace: opts.Workspace, AppNamespace: app.Namespace, Client: r.Client,
 		}
-	} else if image == "" {
+	} else if direct {
 		// Direct publish (w9/010): no build ran — the publish Job clones the
 		// repo and uploads rootDir/publishPath as-is.
 		opts.Repo = app.Spec.Repo
@@ -4801,15 +4813,21 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 		return r.fail(ctx, app, reasonPublishFailed, err)
 	}
 	switch obs.Phase {
+	case publish.PhaseSucceeded:
+		return ctrl.Result{}, nil
+	case publish.PhaseWaiting:
+		// A direct publish's clone is a build that has not started: Render's
+		// static deploy builds from its clone (w32/028).
+		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued, obs.Message)
+	case publish.PhaseCloning:
+		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuilding, "Building the site from "+app.Spec.Repo)
 	case publish.PhasePublishing:
-		// Keep the Deploying/Publishing phase visible and hand the worker back;
-		// the requeue re-observes the Job (Ensure is create/get, never a wait).
-		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
-		return ctrl.Result{RequeueAfter: publish.ObserveInterval}, nil
+		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reasonPublishing, publishingMessage)
 	case publish.PhaseFailed:
 		if obs.UserError {
-			// The tenant's own source (a publish directory that does not exist)
-			// fails the build, as it does on Render (w4/493). r.fail records the
+			// The tenant's own source (a publish directory that does not exist,
+			// or a branch, commit or repository the clone cannot fetch) fails
+			// the build, as it does on Render (w4/493, w32/028). r.fail records the
 			// durable Build condition bex-api closes the row build_failed from,
 			// and over a release that already served it keeps that release
 			// serving (settleFailureOverPriorRelease), so m155's guarantee holds.
@@ -4817,7 +4835,9 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 		}
 		return r.failPublish(ctx, app, errors.New(obs.Message))
 	}
-	return ctrl.Result{}, nil
+	// In flight: hand the worker back; the requeue re-observes the Job
+	// (Ensure is create/get, never a wait).
+	return ctrl.Result{RequeueAfter: publish.ObserveInterval}, nil
 }
 
 // failPublish records a terminal publication failure (w4/m155). Over a static
