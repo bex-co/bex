@@ -1726,6 +1726,17 @@ input MetricsQueryInput {
   start: String
 }
 
+type MetricsRetention {
+  days: Int!
+  plan: String!
+  upgrades: [MetricsRetentionUpgrade!]!
+}
+
+type MetricsRetentionUpgrade {
+  days: Int!
+  plan: String!
+}
+
 type MonthToDateBandwidth {
   degradedSources: [String]
   egressBandwidthMB: Float
@@ -2248,6 +2259,7 @@ type Query {
   metrics(query: MetricsQueryInput!): [MetricSeries]
   metricsFilters(query: MetricsFiltersQueryInput!): MetricsFiltersResult
   metricsPathFilterSuggestions(query: MetricsPathFilterSuggestionsInput!): MetricsPathFilterSuggestions
+  metricsRetention(resource: String!): MetricsRetention
   monthToDateBandwidth(resourceId: String!): MonthToDateBandwidth
   notificationDeviceSubscriptions(ownerId: String): [NotificationDeviceSubscription]
   notificationInbox(limit: Int = 50, ownerId: String): [PushNotification!]!

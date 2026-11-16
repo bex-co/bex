@@ -286,6 +286,40 @@ var metricsPathFilterSuggestionsGQLType = graphql.NewObject(graphql.ObjectConfig
 	},
 })
 
+// metricsRetentionGQLType is one resource's metrics window (w7/m427, a Bex
+// extension the dashboard bounds its range presets and custom picker by): the
+// workspace plan's core.MetricsRetention, at which every REST, GraphQL and MCP
+// chart read is floored. Render's API has no retention read.
+var metricsRetentionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "MetricsRetention",
+	Fields: graphql.Fields{
+		// plan is the resource's workspace plan; days how far back it keeps metrics.
+		"plan": gqlutil.ReqStrField(func(r *RetentionWindow) any { return r.Plan }),
+		"days": retentionDaysField(func(r *RetentionWindow) time.Duration { return r.Window }),
+		// upgrades is each longer window, shortest first, with the cheapest plan
+		// that has it; empty on the longest.
+		"upgrades": gqlutil.Typed(
+			graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(metricsRetentionUpgradeGQLType))),
+			func(r *RetentionWindow) any { return r.Upgrades },
+		),
+	},
+})
+
+var metricsRetentionUpgradeGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "MetricsRetentionUpgrade",
+	Fields: graphql.Fields{
+		"plan": gqlutil.ReqStrField(func(u core.RetentionUpgrade) any { return u.Plan }),
+		"days": retentionDaysField(func(u core.RetentionUpgrade) time.Duration { return u.Window }),
+	},
+})
+
+// retentionDaysField is a retention window as whole days: every plan window is.
+func retentionDaysField[T any](window func(T) time.Duration) *graphql.Field {
+	return gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(src T) any {
+		return int(window(src) / (24 * time.Hour))
+	})
+}
+
 // GraphQLQuery returns the metrics dashboard queries for the composition root.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
@@ -340,6 +374,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return out, nil
 			},
 		},
+		// How far back the resource's metrics reach on its workspace plan
+		// (w7/m427); null where no plan applies.
+		"metricsRetention": gqlutil.KeyVerb(metricsRetentionGQLType, "resource", s.MetricsRetention),
 		"monthToDateBandwidth": &graphql.Field{
 			Type: monthToDateBandwidthGQLType,
 			Args: graphql.FieldConfigArgument{

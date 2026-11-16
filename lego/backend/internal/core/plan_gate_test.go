@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -220,6 +221,37 @@ func TestLogRetentionFollowsThePlan(t *testing.T) {
 		next, window, ok := LogRetentionUpgrade(tc.plan)
 		if next != tc.next || window != tc.nextIn || ok != (tc.next != "") {
 			t.Errorf("LogRetentionUpgrade(%q) = %q, %s, %v; want %q, %s", tc.plan, next, window, ok, tc.next, tc.nextIn)
+		}
+	}
+}
+
+// w7/m427: each plan's metrics window is Render's (render.com/docs/service-metrics
+// § Metrics retention period), an unknown plan gets the shortest, and the
+// upgrade hint names each longer window with the cheapest plan that has it.
+func TestMetricsRetentionFollowsThePlan(t *testing.T) {
+	const day = 24 * time.Hour
+	if ShortestMetricsRetention() != 7*day {
+		t.Fatalf("ShortestMetricsRetention = %s, want Hobby's 7 days", ShortestMetricsRetention())
+	}
+	pro, scale := RetentionUpgrade{"pro", 14 * day}, RetentionUpgrade{"scale", 30 * day}
+	for _, tc := range []struct {
+		plan     string
+		window   time.Duration
+		upgrades []RetentionUpgrade
+	}{
+		{"hobby", 7 * day, []RetentionUpgrade{pro, scale}},
+		{"pro", 14 * day, []RetentionUpgrade{scale}},
+		// Enterprise keeps what Scale does, so it is never named as an upgrade.
+		{"scale", 30 * day, nil},
+		{"enterprise", 30 * day, nil},
+		{"platinum", 7 * day, []RetentionUpgrade{pro, scale}},
+		{"", 7 * day, []RetentionUpgrade{pro, scale}},
+	} {
+		if got := MetricsRetention(tc.plan); got != tc.window {
+			t.Errorf("MetricsRetention(%q) = %s, want %s", tc.plan, got, tc.window)
+		}
+		if got := MetricsRetentionUpgrades(tc.plan); !slices.Equal(got, tc.upgrades) {
+			t.Errorf("MetricsRetentionUpgrades(%q) = %v, want %v", tc.plan, got, tc.upgrades)
 		}
 	}
 }

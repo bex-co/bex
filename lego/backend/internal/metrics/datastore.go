@@ -273,6 +273,9 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	var logicalDiskGB int32
 	// container is the datastore's own container, for its resource series.
 	var container string
+	// workspaceID is the resource's own workspace, whose plan floors the read
+	// (w7/m427).
+	var workspaceID string
 	switch q.Kind {
 	case DatastoreDatabase:
 		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, q.Resource)
@@ -284,6 +287,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		namespace = db.Namespace
 		resource = db.Name
+		workspaceID = db.Labels[core.LabelTenant]
 		container = postgresContainer
 		isHA = db.Status.HighAvailabilityEnabled
 		logicalDiskGB = tiers.Postgres.EffectiveStorageGB(db.Spec.Plan, db.Spec.StorageGB, db.Status.AllocatedStorageGB)
@@ -300,6 +304,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		namespace = kv.Namespace
 		resource = kv.Name
+		workspaceID = kv.Labels[core.LabelTenant]
 		container = keyValueContainer
 		logicalDiskGB = tiers.Valkey.EffectiveStorageGB(kv.Spec.Plan, kv.Spec.StorageGB, kv.Status.AllocatedStorageGB)
 		// A Key Value's memory is its dataset's used memory (redis_exporter),
@@ -321,6 +326,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		namespace = app.Namespace
 		resource = app.Name
+		workspaceID = app.Labels[core.LabelTenant]
 		// Every other datastore metric describes a datastore process. A
 		// service has none — its cpu/memory/instances live on the App-metrics
 		// verb — so anything but the two PVC series is a caller error, named
@@ -358,6 +364,12 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	if err := checkPointBudget(q.Start, q.End, q.Resolution); err != nil {
 		return nil, err
 	}
+	// The workspace plan's window floors the read, as it does Metrics (w7/m427).
+	start, kept, err := s.withinRetention(ctx, workspaceID, q.Start, q.End, q.Resolution)
+	if err != nil || !kept {
+		return nil, err
+	}
+	q.Start = start
 	switch q.Metric {
 	case MetricDiskCapacity:
 		// Logical/billed capacity — the size the plan provisions and the user is

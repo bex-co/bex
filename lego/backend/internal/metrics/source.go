@@ -833,7 +833,11 @@ func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilter
 		if match == "" {
 			return []string{}, nil
 		}
-		u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(req.Label), url.Values{"match[]": {match}}.Encode())
+		params := url.Values{"match[]": {match}}
+		if !req.Since.IsZero() {
+			params.Set("start", strconv.FormatInt(req.Since.Unix(), 10))
+		}
+		u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(req.Label), params.Encode())
 
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 		if err != nil {

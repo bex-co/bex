@@ -316,6 +316,10 @@ type MetricsFilterValuesRequest struct {
 	// RequestMetricsRequest.
 	Routers []string
 	Label   string
+	// Since bounds discovery to values observed at or after it: the workspace
+	// plan's metrics floor (w7/m427), so the dropdown never offers a value
+	// only data the plan no longer shows carried. Zero: every stored value.
+	Since time.Time
 }
 
 // Service is the single metrics read every adapter calls, plus the dashboard's
@@ -530,6 +534,17 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if q.Start.Before(created) && !created.Before(q.End) {
 		return []MetricSeries{}, nil
 	}
+	// Nor is anything older than the workspace plan's window returned
+	// (w7/m427): start moves forward along the same grid, and a range wholly
+	// before the window answers empty.
+	start, kept, err := s.withinRetention(ctx, app.Labels[core.LabelTenant], q.Start, q.End, q.Resolution)
+	if err != nil {
+		return nil, err
+	}
+	if !kept {
+		return []MetricSeries{}, nil
+	}
+	q.Start = start
 	var series []MetricSeries
 	switch q.Metric {
 	case MetricCPU, MetricMemory:
@@ -1396,7 +1411,12 @@ func (s *Service) filterValuesOrEmpty(ctx context.Context, app *appv1alpha1.App,
 	if err != nil {
 		return nil, err // unclassified on purpose: see requestMetric (w5/112)
 	}
-	req := MetricsFilterValuesRequest{Namespace: app.Namespace, App: app.Name, Routers: routers, Label: label}
+	// Discovery has no range of its own, so it always takes the plan's floor.
+	since, err := s.planFloor(ctx, app.Labels[core.LabelTenant], s.Now())
+	if err != nil {
+		return nil, err
+	}
+	req := MetricsFilterValuesRequest{Namespace: app.Namespace, App: app.Name, Routers: routers, Label: label, Since: since}
 	values, err := s.MetricsFilterValuesSource(ctx, req)
 	if err == nil && values == nil {
 		values = []string{} // an empty discovery serializes as [], never null

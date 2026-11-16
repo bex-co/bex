@@ -130,46 +130,106 @@ func WebhookDestinationLimit(plan string) int {
 	}
 }
 
+// planRetention is how far back each plan's reads of one kind reach. Logs and
+// metrics each have their own table: Render documents the two separately, and
+// they agree today.
+type planRetention map[string]time.Duration
+
+// window is how far back plan's reads reach. An unknown plan gets the shortest
+// window. That is the opposite of PlanAllows, which opens a gate for an
+// unknown plan: a retention window only ever hides data, so the safe default
+// is to hide the most (validation and tenants.plan's CHECK keep unknown plans
+// out anyway).
+func (r planRetention) window(plan string) time.Duration {
+	if window, ok := r[plan]; ok {
+		return window
+	}
+	return r.shortest()
+}
+
+// shortest is the shortest plan window: no workspace's floor is ever later
+// than now minus it.
+func (r planRetention) shortest() time.Duration {
+	return slices.Min(slices.Collect(maps.Values(r)))
+}
+
+// RetentionUpgrade is a plan that keeps more than another does, and its window.
+type RetentionUpgrade struct {
+	Plan   string
+	Window time.Duration
+}
+
+// upgrades is every window longer than plan's, shortest first, each with the
+// cheapest plan that has it: the plans the dashboard's retention hint names.
+// Empty on the longest window.
+func (r planRetention) upgrades(plan string) []RetentionUpgrade {
+	have := r.window(plan)
+	var out []RetentionUpgrade
+	for _, p := range planLadder {
+		if w := r.window(p); w > have {
+			out = append(out, RetentionUpgrade{Plan: p, Window: w})
+			have = w
+		}
+	}
+	return out
+}
+
 // logRetention is how far back each plan's logs reach (w9/m389;
 // render.com/docs/logging, checked 2026-11-14): Hobby 7 days, Pro 14, Scale
 // and Enterprise 30. Every log read is floored at it, on every surface.
-var logRetention = map[string]time.Duration{
+var logRetention = planRetention{
 	planHobby:      7 * 24 * time.Hour,
 	planPro:        14 * 24 * time.Hour,
 	planScale:      30 * 24 * time.Hour,
 	planEnterprise: 30 * 24 * time.Hour,
 }
 
-// LogRetention is how far back plan's logs reach. An unknown plan gets the
-// shortest window (ShortestLogRetention). That is the opposite of PlanAllows, which opens a
-// gate for an unknown plan: a retention window only ever hides lines, so the
-// safe default is to hide the most (validation and tenants.plan's CHECK keep
-// unknown plans out anyway).
-func LogRetention(plan string) time.Duration {
-	if window, ok := logRetention[plan]; ok {
-		return window
-	}
-	return ShortestLogRetention()
+// metricsRetention is how far back each plan's metrics reach (w7/m427;
+// render.com/docs/service-metrics § Metrics retention period, checked
+// 2026-11-16): Hobby 7 days, Pro 14, Scale and Enterprise 30. Every metrics
+// chart read is floored at it, on every surface (metrics.Service's
+// withinRetention). The metrics store must hold the longest window:
+// scripts/metrics-retention-guard.sh checks production's Prometheus against
+// it, so change the two together.
+var metricsRetention = planRetention{
+	planHobby:      7 * 24 * time.Hour,
+	planPro:        14 * 24 * time.Hour,
+	planScale:      30 * 24 * time.Hour,
+	planEnterprise: 30 * 24 * time.Hour,
 }
+
+// LogRetention is how far back plan's logs reach; an unknown plan gets the
+// shortest window (ShortestLogRetention).
+func LogRetention(plan string) time.Duration { return logRetention.window(plan) }
 
 // ShortestLogRetention is the shortest plan window. No workspace's log floor
 // is ever later than now minus it: LogFloor subtracts at least this much, and
 // a floor a plan change kept lies at least this far before the change.
-func ShortestLogRetention() time.Duration {
-	return slices.Min(slices.Collect(maps.Values(logRetention)))
-}
+func ShortestLogRetention() time.Duration { return logRetention.shortest() }
 
 // LogRetentionUpgrade is the cheapest plan that keeps logs longer than plan,
-// and its window: the plan the dashboard's retention hint names. ok is false
-// on the longest window.
+// and its window. ok is false on the longest window.
 func LogRetentionUpgrade(plan string) (next string, window time.Duration, ok bool) {
-	have := LogRetention(plan)
-	for _, p := range planLadder {
-		if w := LogRetention(p); w > have {
-			return p, w, true
-		}
+	longer := logRetention.upgrades(plan)
+	if len(longer) == 0 {
+		return "", 0, false
 	}
-	return "", 0, false
+	return longer[0].Plan, longer[0].Window, true
+}
+
+// MetricsRetention is how far back plan's metrics reach; an unknown plan gets
+// the shortest window (ShortestMetricsRetention).
+func MetricsRetention(plan string) time.Duration { return metricsRetention.window(plan) }
+
+// ShortestMetricsRetention is the shortest plan window: a metrics read that
+// starts no earlier than now minus it reaches past no workspace's floor.
+func ShortestMetricsRetention() time.Duration { return metricsRetention.shortest() }
+
+// MetricsRetentionUpgrades is every metrics window longer than plan's,
+// shortest first, each with the cheapest plan that has it (Hobby: Pro's 14
+// days, then Scale's 30). Empty on the longest window.
+func MetricsRetentionUpgrades(plan string) []RetentionUpgrade {
+	return metricsRetention.upgrades(plan)
 }
 
 // LogFloor is the earliest instant a workspace on plan sees logs from at now:

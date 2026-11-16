@@ -334,6 +334,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.metrics":                                      core.OpClassRead,
 	"GQL Query.metricsFilters":                               core.OpClassRead,
 	"GQL Query.metricsPathFilterSuggestions":                 core.OpClassRead,
+	"GQL Query.metricsRetention":                             core.OpClassRead,
 	"GQL Query.monthToDateBandwidth":                         core.OpClassRead,
 	"GQL Query.notificationDeviceSubscriptions":              core.OpClassRead,
 	"GQL Query.notificationInbox":                            core.OpClassRead,
