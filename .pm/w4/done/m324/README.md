@@ -1,6 +1,6 @@
 # w4 · m324 — A native-runtime build log is BuildKit's transcript of bex's own Dockerfile: 132 of 187 lines are `#N` steps, layer digests and platform internals, and the build command's output arrives prefixed `#23 2.411`
 
-**Worker:** worker4 **Goal:** a Node, Python, Ruby, Go, Rust or Elixir build's log reads like Render's. It narrates the build command, shows that command's output as the command printed it, and says when the build succeeded or failed. bex's internal build recipe stays out of the tenant's log. Docker-runtime builds keep BuildKit's output, as on Render. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
+**Worker:** worker4 **Goal:** a Node, Python, Ruby, Go, Rust or Elixir build's log reads like Render's. It narrates the build command, shows that command's output as the command printed it, and says when the build succeeded or failed. bex's internal build recipe stays out of the tenant's log. Docker-runtime builds keep BuildKit's output, as on Render. **Status:** done — DoD replayed live on pin `7aaa8700befa` 2026-11-16 ([t004](done/t004.md))
 
 ## Tasks (in order)
 
@@ -9,12 +9,12 @@
 | [t001](done/t001.md) | A native build's log shows the build command and its output, not BuildKit's steps for bex's generated Dockerfile — **DONE** | 90m | — |
 | [t002](done/t002.md) | The failure reason and the `==> Build failed:` narration quote the command's output without BuildKit's elapsed-time prefixes (residual of w4/485) — **DONE** | 20m | — |
 | [t003](done/t003.md) | Blast radius: every native runtime and service type, the Docker and buildpack paths, live tail and stored logs — **DONE** | 20m | t001, t002 |
-| [t009](t009.md) | The live replay's failures: a failed build command's `failureReason` and `==> Build failed:` quote bex's toolchain steps as the "build environment", and push digests reach the log | 60m | t003 |
-| [t004](t004.md) | Live verification in `bex-canary` | 30m | t003, t009 |
+| [t009](done/t009.md) | The live replay's failures: a failed build command's `failureReason` and `==> Build failed:` quote bex's toolchain steps as the "build environment", and push digests reach the log — **DONE** | 60m | t003 |
+| [t004](done/t004.md) | Live verification in `bex-canary` — **DONE** | 30m | t003, t009 |
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007, t009 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t006, t007, t009 |
 
 Nine tasks, 285m (4h45m).
 
@@ -149,4 +149,11 @@ Logs were read with paged `GET /v1/logs?…&type=build&direction=forward`.
 ## Post-release probe — QA loop round 190 (2026-11-12, pin `a5be11e4e517`)
 
 - t009's failure reproduces on a static site: `echo qa-break2; exit 3` gives `failureReason` "build failed in the build environment step:" followed by `#13`–`#17` of bex's toolchain (820 characters), with no command output and no exit code, while the log shows `error: build command 'echo qa-break2; exit 3' exited with code 3`.
-- The verdict is missing because the kubelet keeps only the first 12 KiB ÷ (the pod's container count) bytes of each termination message (Kubernetes v1.33.0 `status_manager.go:1038-1055`). bex writes the transcript's last 4 KiB, so BuildKit's verdict at its end is cut. The full trace and the fix direction are in [t009's addendum](t009.md).
+- The verdict is missing because the kubelet keeps only the first 12 KiB ÷ (the pod's container count) bytes of each termination message (Kubernetes v1.33.0 `status_manager.go:1038-1055`). bex writes the transcript's last 4 KiB, so BuildKit's verdict at its end is cut. The full trace and the fix direction are in [t009's addendum](done/t009.md).
+
+## Unblock — 2026-11-16 (verified finding)
+
+- **Affected:** w4/m324 t009, t004, t008.
+- **Source:** verified evidence, no user decision needed. Production runs platform pin `7aaa8700befa` (verified live 2026-11-16 16:27Z). `git merge-base --is-ancestor <sha> 7aaa8700befa` holds for the milestone's fix `a9c016955`, `684391bc9`, the termination-message budget fix `be900d3f4` (w8/295, t009's traced cause) and the earlier pins `8330744bd643` and `ac206b76841b`.
+- **Release gate:** cleared. No other gate remains.
+- **Next:** replay the live DoD on production (t004) in `bex-canary` as the QA user, record it on t004, close t009 against its acceptance, then t008.
