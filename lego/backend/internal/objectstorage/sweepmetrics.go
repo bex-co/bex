@@ -33,6 +33,11 @@ const (
 // long a pass takes against its hour, and what a workspace costs, are read from
 // Prometheus instead of guessed. Only the replica that holds the sweep's lock
 // records; the others' series stay empty.
+//
+// The names are bex_usage_object_storage_sweep_*, beside the egress gauge, because
+// the bex-api scrape job keeps only the families its keep-list names
+// (deploy/gitops/base/prometheus.yaml) and bex_usage_ is one: a bex_object_storage_
+// family was exported by the pods and stored by nothing.
 type SweepMetrics struct {
 	passDuration      *prometheus.HistogramVec
 	workspaceDuration prometheus.Histogram
@@ -44,21 +49,21 @@ type SweepMetrics struct {
 func NewSweepMetrics(reg prometheus.Registerer) *SweepMetrics {
 	m := &SweepMetrics{
 		passDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "bex", Subsystem: "object_storage_sweep", Name: "pass_duration_seconds",
+			Namespace: "bex", Subsystem: "usage", Name: "object_storage_sweep_pass_duration_seconds",
 			Help:    "Wall time of one hourly object storage sweep pass by how it ended: complete, failures (every workspace reached, some failed) or cut_off (the deadline came first; the next pass starts with the workspaces it did not reach). A pass has fifty minutes.",
 			Buckets: []float64{1, 5, 15, 30, 60, 120, 300, 600, 1200, 1800, 2400, 3000},
 		}, []string{"result"}),
 		workspaceDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: "bex", Subsystem: "object_storage_sweep", Name: "workspace_duration_seconds",
+			Namespace: "bex", Subsystem: "usage", Name: "object_storage_sweep_workspace_duration_seconds",
 			Help:    "Wall time to sweep or purge one workspace: its listing in each region, its lifecycle deletes and the usage write. A workspace left fresh by another replica's pass is not observed.",
 			Buckets: []float64{.1, .25, .5, 1, 2.5, 5, 15, 60, 180, 600, 1800},
 		}),
 		workspaces: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "bex", Subsystem: "object_storage_sweep", Name: "workspaces_total",
+			Namespace: "bex", Subsystem: "usage", Name: "object_storage_sweep_workspaces_total",
 			Help: "Workspaces by what their turn in a pass came to: swept (listed or purged), fresh (observed within the minimum gap, left alone), failed, or not_reached (the pass ended first).",
 		}, []string{"result"}),
 		lastComplete: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "bex", Subsystem: "object_storage_sweep", Name: "last_complete_timestamp_seconds",
+			Namespace: "bex", Subsystem: "usage", Name: "object_storage_sweep_last_complete_timestamp_seconds",
 			Help: "Unix time the last pass that reached every workspace without a failure ended; 0 until one has.",
 		}),
 	}

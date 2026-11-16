@@ -19,6 +19,8 @@ package objectstorage_test
 import (
 	"context"
 	"fmt"
+	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -306,13 +308,13 @@ func TestPassNeverSweepsMoreWorkspacesThanItsWorkers(t *testing.T) {
 	if got := len(e.repo.recorded()); got != 12 {
 		t.Errorf("%d of 12 workspaces recorded", got)
 	}
-	if got := e.metric("bex_object_storage_sweep_workspaces_total", map[string]string{"result": "swept"}); got != 12 {
+	if got := e.metric("bex_usage_object_storage_sweep_workspaces_total", map[string]string{"result": "swept"}); got != 12 {
 		t.Errorf("workspaces_total{swept} = %v, want 12", got)
 	}
-	if got := e.metric("bex_object_storage_sweep_pass_duration_seconds", map[string]string{"result": "complete"}); got != 1 {
+	if got := e.metric("bex_usage_object_storage_sweep_pass_duration_seconds", map[string]string{"result": "complete"}); got != 1 {
 		t.Errorf("pass_duration_seconds{complete} samples = %v, want 1", got)
 	}
-	if got := e.metric("bex_object_storage_sweep_last_complete_timestamp_seconds", nil); got == 0 {
+	if got := e.metric("bex_usage_object_storage_sweep_last_complete_timestamp_seconds", nil); got == 0 {
 		t.Error("a pass that reached every workspace left last_complete_timestamp_seconds at 0")
 	}
 	if !e.logged("took") || !e.logged("12 swept") {
@@ -392,13 +394,13 @@ func TestAPassCutOffAtItsDeadlineRecordsWhatItFinished(t *testing.T) {
 	if !e.logged("2 swept, 0 fresh, 0 failed, 4 not reached") {
 		t.Errorf("the summary does not count what finished and what did not: %q", e.logs)
 	}
-	if got := e.metric("bex_object_storage_sweep_pass_duration_seconds", map[string]string{"result": "cut_off"}); got != 1 {
+	if got := e.metric("bex_usage_object_storage_sweep_pass_duration_seconds", map[string]string{"result": "cut_off"}); got != 1 {
 		t.Errorf("pass_duration_seconds{cut_off} samples = %v, want 1", got)
 	}
-	if got := e.metric("bex_object_storage_sweep_workspaces_total", map[string]string{"result": "not_reached"}); got != 4 {
+	if got := e.metric("bex_usage_object_storage_sweep_workspaces_total", map[string]string{"result": "not_reached"}); got != 4 {
 		t.Errorf("workspaces_total{not_reached} = %v, want 4", got)
 	}
-	if got := e.metric("bex_object_storage_sweep_last_complete_timestamp_seconds", nil); got != 0 {
+	if got := e.metric("bex_usage_object_storage_sweep_last_complete_timestamp_seconds", nil); got != 0 {
 		t.Error("a cut-off pass counted as complete")
 	}
 }
@@ -508,6 +510,40 @@ func TestARunCutsEachPassAtItsIntervalAndNeverOverlapsTheNext(t *testing.T) {
 		}
 		if x.errs[i] == nil || !strings.Contains(x.errs[i].Error(), "cut off") {
 			t.Errorf("pass %d ended %v, want a cut-off pass reported", i, x.errs[i])
+		}
+	}
+}
+
+// prometheusPath is the scrape config whose bex-api job keeps only the metric
+// families its keep-list names; a family outside it is exported by the pods and
+// stored by nothing (the sweep's first names were: bex_object_storage_sweep_*).
+const prometheusPath = "../../../../deploy/gitops/base/prometheus.yaml"
+
+func TestEverySweepMetricIsKeptByTheScrapeJob(t *testing.T) {
+	raw, err := os.ReadFile(prometheusPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := regexp.MustCompile(`(?m)^\s*regex:\s*(bex_\(billing\|\S+)\s*$`).FindSubmatch(raw)
+	if found == nil {
+		t.Fatalf("the bex-api keep-list (the regex that starts bex_(billing|) is not in %s: update this test with it", prometheusPath)
+	}
+	keep := regexp.MustCompile(`^(?:` + string(found[1]) + `)$`) // Prometheus anchors relabel regexes
+
+	e := newPoolEnv(t, 1, 1)
+	if err := e.sweeper.Pass(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	families, err := e.reg.Gather()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(families) != 4 {
+		t.Fatalf("the sweep registered %d metric families after a pass, want 4", len(families))
+	}
+	for _, f := range families {
+		if !keep.MatchString(f.GetName()) {
+			t.Errorf("%s is not matched by the bex-api scrape job's keep-list %q: Prometheus would drop it", f.GetName(), found[1])
 		}
 	}
 }
