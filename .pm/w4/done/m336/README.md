@@ -1,6 +1,6 @@
 # w4 · m336 — In the zh dashboard, the deploy reasons w4/m329 does not code stay English
 
-**Worker:** worker4 **Goal:** the health-check stall, the operator's pre-deploy verdicts, a build that never started, an abandoned deploy and every fixed cancel reason read in the dashboard's language on the deploy header, the Deploys list and Events, while REST and MCP keep Render's English byte for byte. **Status:** blocked — t001–t004 and t006–t008 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
+**Worker:** worker4 **Goal:** the health-check stall, the operator's pre-deploy verdicts, a build that never started, an abandoned deploy and every fixed cancel reason read in the dashboard's language on the deploy header, the Deploys list and Events, while REST and MCP keep Render's English byte for byte. **Status:** done — DoD replayed live on pin `7aaa8700befa` 2026-11-16 ([t005](done/t005.md))
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Writers: the operator and bex-api format through the templates — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | API and dashboard: `cancelReasonTemplate`, the zh and en catalogs, parameter wording — **DONE** | 40m | t002 |
 | [t004](done/t004.md) | Docs — **DONE** | 5m | t003 |
-| [t005](t005.md) | Live verification in zh on owned services | 20m | t003 |
+| [t005](done/t005.md) | Live verification in zh on owned services — **DONE** | 20m | t003 |
 | [t006](done/t006.md) | Render parity — **DONE** | 5m | t003 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t004 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t004 |
-| [t009](t009.md) | Closeout | 5m | t005–t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 5m | t005–t008 |
 
 Nine tasks, 215m (3h35m).
 
@@ -60,3 +60,22 @@ Why: w4/m329 words 14 operator and bex-api reason sentences in zh through coded 
 - **Seen and filed separately:**
   - The same pages show absolute dates in English (w4/600).
   - Events shows the failed deploy's duration as `930s` against the list's `15m 29s` (w4/601).
+
+## Unblock (2026-11-16)
+
+- **Affected:** w4/m336 t005, t009. **Source:** verified evidence (release gate).
+- **Finding:** production runs platform pin `7aaa8700befa` (`546945798`, the latest `chore(deploy): pin platform images` on `origin/main`). `git merge-base --is-ancestor` puts the gate line's `4630a48a7`, the fix commit `88d0df3b2` (w4/m336) and the stall follow-up `01b35169c` (w5/m356) inside it, so the release gate is clear and no gate remains. Next step: replay t005 live, then close (t009).
+
+## Live verification on pin `7aaa8700befa` (2026-11-16, t005)
+
+QA user via `scripts/qa-login.sh`, workspace `bex-canary`, dashboard in zh via `?lang=zh`. Fixtures were two image services, both deleted afterwards (DELETE 204, then GET 404):
+
+- `qa-20261116-r336-web` (`srv-dbtm7k8ddohc73aivf5g`, Starter, `docker.io/library/nginx:1.27-alpine`, Health Check Path `/qa-nope`), first deploy `dep-dbtm7k8ddohc73aivf60` at 20:13 UTC;
+- `qa-20261116-r336-sup` (`srv-dbtm7lfmufrc73b9vkj0`, Free, `traefik/whoami:v1.10.1`).
+
+Results:
+
+- **Health-check stall while waiting (20:16 and 20:17:17).** The deploy header read "容器正在运行，但其启动健康检查尚未成功，发布正在等待：端口 80 上的 GET /qa-nope。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。" both times, kind 启动, no flip between passes; the port hint is now in zh too (w5/m356).
+- **After it failed (`update_failed` at 20:28:07).** The header, the Deploys list row and Events' `部署已完成` row read "容器正在运行，但其启动健康检查在发布时限内始终未成功，部署因此失败：端口 80 上的 GET /qa-nope。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。" REST `failureReason` keeps the English "the container is running but its startup health check never succeeded within the rollout window, so the deploy failed: GET /qa-nope on port 80. Check that the path returns a 2xx or 3xx status on the service's own port."
+- **Superseded.** Three `POST …/deploys` about 2 s apart at 20:15:03: the queued middle one, `dep-dbtm8i8ddohc73aivf90`, closed `canceled` with no `startedAt`. REST `cancelReason` reads "Superseded by dep-dbtm8ioddohc73aivfa0"; the zh Deploys list, the deploy header and Events read "已被 dep-dbtm8ioddohc73aivfa0 取代", and Events adds "较新的部署取代了此部署。" (Two deploys alone no longer supersede: the first starts immediately and the second queues behind it.)
+- **Suspended.** `POST …/suspend` at 20:14:29 while `dep-dbtm82fmufrc73b9vkm0` was `update_in_progress`; it closed `canceled` at 20:14:29. REST `cancelReason` reads "Canceled: the service was suspended"; the zh list, header and Events read "已取消：服务已暂停".
