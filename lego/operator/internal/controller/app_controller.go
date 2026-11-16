@@ -312,6 +312,10 @@ const (
 // and run it as a revision on the selected runtime, recording status.
 type AppReconciler struct {
 	client.Client
+	// APIReader bypasses informer lag when a cron run's Job is about to be
+	// created: a cancel or replacement that landed during a long reconcile
+	// must keep the run from executing (w4/m300 t010). Nil reads r.Client.
+	APIReader client.Reader
 	// PortScanner finds the port a web service's process listens on when its
 	// health check keeps failing on the default port (w8/177), and every
 	// listener a private service's instances bind (w3/m273); nil disables
@@ -5414,6 +5418,16 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 	if !job.DeletionTimestamp.IsZero() {
 		return true, nil
 	}
+	// Suspend first: a suspended Job creates no Pod, so a run canceled before
+	// its Job made one never starts a container (w4/m300 t010). Foreground
+	// deletion alone leaves the Job controller free to create it meanwhile.
+	if job.Spec.Suspend == nil || !*job.Spec.Suspend {
+		before := job.DeepCopy()
+		job.Spec.Suspend = new(true)
+		if err := r.buildPlaneClient().Patch(ctx, job, client.MergeFrom(before)); err != nil && !apierrors.IsNotFound(err) {
+			return false, err
+		}
+	}
 	if err := r.buildPlaneClient().Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
 		return false, err
 	}
@@ -5634,6 +5648,13 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
+	// The App was read at the start of a reconcile that may have taken seconds.
+	// A cancel or a replacing trigger that landed since must win: creating the
+	// Job now would execute a run already reported canceled (w4/m300 t010). The
+	// spec update requeues this App, and the next pass sees it.
+	if superseded, err := r.manualRunSuperseded(ctx, app); err != nil || superseded {
+		return err
+	}
 	job.Labels = template.Labels
 	job.Annotations = map[string]string{annotationManualRunAt: app.Spec.RunAt}
 	job.Spec.Template = template
@@ -5646,6 +5667,18 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 		return err
 	}
 	return r.acknowledgeManualRun(ctx, app)
+}
+
+// manualRunSuperseded re-reads the App past the informer cache and reports
+// whether the trigger this reconcile is about to materialize has since been
+// replaced, canceled or suspended.
+func (r *AppReconciler) manualRunSuperseded(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	fresh := &appv1alpha1.App{}
+	if err := cmp.Or(r.APIReader, client.Reader(r.Client)).Get(ctx, client.ObjectKeyFromObject(app), fresh); err != nil {
+		return false, err
+	}
+	canceled := fresh.Spec.CancelRun != nil && isManualRunJob(app.Name, app.Spec.RunAt, fresh.Spec.CancelRun.Name)
+	return fresh.Spec.RunAt != app.Spec.RunAt || fresh.Spec.Suspended || canceled, nil
 }
 
 // cronRuns lists the Jobs backing an App's cron (by labelApp — both the CronJob's
@@ -5724,6 +5757,7 @@ func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App, cron
 	runs := make([]appv1alpha1.CronRun, 0, len(entries))
 	for _, e := range entries {
 		run := e.run
+		dropStartAfterCancel(&run)
 		// Failure causes are observed only for retained runs: an evicted Job's
 		// Pods are not worth a List on every reconcile.
 		if job, ok := jobByName[run.Name]; ok {
@@ -5734,6 +5768,20 @@ func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App, cron
 		runs = append(runs, run)
 	}
 	return runs, nil
+}
+
+// dropStartAfterCancel clears the start of a canceled run whose Job started
+// only after the cancel: the run was canceled before it started, and its
+// record must never read startedAt later than finishedAt (w4/m300 t010).
+func dropStartAfterCancel(run *appv1alpha1.CronRun) {
+	if run.Status != appv1alpha1.CronRunCanceled || run.StartedAt == "" {
+		return
+	}
+	started, err1 := time.Parse(time.RFC3339, run.StartedAt)
+	finished, err2 := time.Parse(time.RFC3339, run.FinishedAt)
+	if err1 == nil && err2 == nil && started.After(finished) {
+		run.StartedAt = ""
+	}
 }
 
 // cronRunEntry is one candidate for the bounded run history: its run record,

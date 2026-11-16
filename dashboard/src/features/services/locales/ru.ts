@@ -3446,6 +3446,11 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Действия",
     description: "Cron runs table column header (row actions)",
   },
+  "services.cronRunStatusPending": {
+    message: "Ожидает",
+    description:
+      "Cron run status badge for an active run that has not started yet (Render's pending before its start; w4/m300)",
+  },
   "services.cronRunStatusRunning": {
     message: "Выполняется",
     description: "Cron run status badge",
@@ -3524,6 +3529,11 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Сведения о запуске, ещё не начат (строка {n})",
     description:
       "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
+  },
+  "services.cronRunDetailToggleNeverStarted": {
+    message: "Сведения о запуске, так и не начат (строка {n})",
+    description:
+      "Screen-reader name of the expand/collapse control of a run that ended (e.g. canceled) without ever starting; {n} is its row number on the Runs page, never its id (w4/m300)",
   },
   "services.cronRunDetailError": {
     message: "Не удалось загрузить сведения об этом запуске.",

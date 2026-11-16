@@ -3432,6 +3432,11 @@ const koServices: Record<string, TranslationEntry> = {
     message: "작업",
     description: "Cron runs table column header (row actions)",
   },
+  "services.cronRunStatusPending": {
+    message: "대기 중",
+    description:
+      "Cron run status badge for an active run that has not started yet (Render's pending before its start; w4/m300)",
+  },
   "services.cronRunStatusRunning": {
     message: "실행 중",
     description: "Cron run status badge",
@@ -3509,6 +3514,11 @@ const koServices: Record<string, TranslationEntry> = {
     message: "실행 상세 정보, 아직 시작되지 않음({n}번째 행)",
     description:
       "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
+  },
+  "services.cronRunDetailToggleNeverStarted": {
+    message: "실행 상세 정보, 시작되지 않음({n}번째 행)",
+    description:
+      "Screen-reader name of the expand/collapse control of a run that ended (e.g. canceled) without ever starting; {n} is its row number on the Runs page, never its id (w4/m300)",
   },
   "services.cronRunDetailError": {
     message: "이 실행의 상세 정보를 불러오지 못했습니다.",

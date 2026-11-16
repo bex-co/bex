@@ -418,6 +418,42 @@ describe("CronRunsSection", () => {
     for (const name of names) expect(name).not.toContain("crr-");
   });
 
+  // w4/m300 t009/t011: a run that ended without starting says it never
+  // started; an active run with no start yet reads Pending until it starts.
+  it("tells a waiting run from a running one and from one that never started", () => {
+    runs = [
+      {
+        id: "crr-waiting",
+        startedAt: null,
+        finishedAt: null,
+        status: "pending",
+      },
+      {
+        id: "crr-running",
+        startedAt: "2026-07-09T10:00:00Z",
+        finishedAt: null,
+        status: "pending",
+      },
+      {
+        id: "crr-never",
+        startedAt: null,
+        finishedAt: "2026-07-09T09:00:01Z",
+        status: "canceled",
+      },
+    ];
+    render(<CronRunsSection serviceId="nightly" />);
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows[0]).toHaveTextContent("Run details, not started yet (row 1)");
+    expect(rows[0]).toHaveTextContent("Pending");
+    expect(rows[0]).not.toHaveTextContent("Running");
+    expect(rows[1]).toHaveTextContent("Running");
+    expect(rows[2]).toHaveTextContent("Run details, never started (row 3)");
+    expect(rows[2]).toHaveTextContent("Canceled");
+    expect(rows[2]).not.toHaveTextContent("not started yet");
+    for (const row of rows) expect(row.textContent).not.toContain("crr-");
+    expect(screen.getAllByRole("button", { name: "Cancel" })).toHaveLength(2);
+  });
+
   // w4/305: the first detail read showed one full-width h-16 block, so the
   // expanded row (and the table's columns) jumped to the five-field grid when
   // the read settled. The pending detail must be that same grid, sized by the

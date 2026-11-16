@@ -3471,6 +3471,11 @@ const esServices: Record<string, TranslationEntry> = {
     message: "Acciones",
     description: "Cron runs table column header (row actions)",
   },
+  "services.cronRunStatusPending": {
+    message: "Pendiente",
+    description:
+      "Cron run status badge for an active run that has not started yet (Render's pending before its start; w4/m300)",
+  },
   "services.cronRunStatusRunning": {
     message: "En ejecución",
     description: "Cron run status badge",
@@ -3549,6 +3554,11 @@ const esServices: Record<string, TranslationEntry> = {
     message: "Detalles de la ejecución, aún no iniciada (fila {n})",
     description:
       "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
+  },
+  "services.cronRunDetailToggleNeverStarted": {
+    message: "Detalles de la ejecución, nunca iniciada (fila {n})",
+    description:
+      "Screen-reader name of the expand/collapse control of a run that ended (e.g. canceled) without ever starting; {n} is its row number on the Runs page, never its id (w4/m300)",
   },
   "services.cronRunDetailError": {
     message: "No se pudieron cargar los detalles de esta ejecución.",

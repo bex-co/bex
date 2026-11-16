@@ -539,6 +539,101 @@ func TestReplacedUnmaterializedRunIsRecordedOnceAndReplacementRuns(t *testing.T)
 	}
 }
 
+// w4/m300 t010: a reconcile reads the App, then spends seconds before it
+// reaches the manual run. A cancel or a replacing trigger that lands meanwhile
+// wins: the stale pass creates no Job for the run already reported canceled.
+func TestAStaleReconcileDoesNotMaterializeACanceledOrReplacedRun(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		update func(app *appv1alpha1.App)
+	}{
+		{"canceled", func(app *appv1alpha1.App) {
+			app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt), RequestedAt: "2026-11-12T05:39:39.69Z", Unmaterialized: true}
+		}},
+		{"replaced", func(app *appv1alpha1.App) {
+			app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt), RequestedAt: "2026-11-12T05:40:11.74Z", Unmaterialized: true}
+			app.Spec.RunAt = "2026-11-12T05:40:11.74Z"
+		}},
+		{"suspended", func(app *appv1alpha1.App) { app.Spec.Suspended = true }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r, stale, template := manualIntentFixture(t)
+			current := stale.DeepCopy()
+			tc.update(current)
+			persistManualIntent(t, r, current)
+			if err := r.ensureManualRun(t.Context(), stale, template); err != nil {
+				t.Fatal(err)
+			}
+			assertManualJobAbsent(t, r, stale, stale.Spec.RunAt)
+		})
+	}
+	// Unchanged intent still runs.
+	r, app, template := manualIntentFixture(t)
+	if err := r.ensureManualRun(t.Context(), app, template); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); err != nil {
+		t.Fatalf("a current trigger was not materialized: %v", err)
+	}
+}
+
+// w4/m300 t010: canceling a run whose Job exists suspends the Job before the
+// foreground delete, so a Job that has not made its Pod yet never makes one.
+func TestCancelSuspendsTheJobBeforeDeletingIt(t *testing.T) {
+	app := cronAppAt(nil, nil)
+	name := appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
+	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: name, RequestedAt: "2026-11-12T05:39:39.69Z"}
+	r, app, _ := manualIntentFixtureForApp(t, app)
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace, Labels: map[string]string{labelApp: app.Name}, Finalizers: []string{"test.bex.co/pods-running"}}}
+	if err := r.Create(t.Context(), job); err != nil {
+		t.Fatal(err)
+	}
+	pending, err := r.cancelRequestedCronRun(t.Context(), app)
+	if err != nil || !pending {
+		t.Fatalf("cancel = %v, %v; want deletion in progress", pending, err)
+	}
+	if err := r.Get(t.Context(), client.ObjectKeyFromObject(job), job); err != nil {
+		t.Fatal(err)
+	}
+	if job.Spec.Suspend == nil || !*job.Spec.Suspend || job.DeletionTimestamp.IsZero() {
+		t.Fatalf("job suspend=%v deleting=%v; want suspended and deleting", job.Spec.Suspend, !job.DeletionTimestamp.IsZero())
+	}
+}
+
+// w4/m300 t010: a run whose Job started only after its cancel was canceled
+// before it started. Its record never reads startedAt after finishedAt; a run
+// canceled while running keeps its start.
+func TestACanceledRunNeverStartsAfterItFinished(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		started time.Time
+		want    string
+	}{
+		{"started after the cancel", time.Date(2026, time.November, 12, 5, 40, 13, 0, time.UTC), ""},
+		{"started before the cancel", time.Date(2026, time.November, 12, 5, 40, 1, 0, time.UTC), "2026-11-12T05:40:01Z"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := cronAppAt(nil, nil)
+			name := app.Name + "-scheduled-1"
+			app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: name, RequestedAt: "2026-11-12T05:40:11.74Z"}
+			r, app, _ := manualIntentFixtureForApp(t, app)
+			started := metav1.NewTime(tc.started)
+			job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace, Labels: map[string]string{labelApp: app.Name}}, Status: batchv1.JobStatus{StartTime: &started}}
+			if err := r.Create(t.Context(), job); err != nil {
+				t.Fatal(err)
+			}
+			runs, err := r.cronRuns(t.Context(), app, &batchv1.CronJob{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			i := slicesIndex(runs, name)
+			if i < 0 || runs[i].Status != appv1alpha1.CronRunCanceled || runs[i].StartedAt != tc.want {
+				t.Fatalf("runs = %+v, want %s canceled with startedAt %q", runs, name, tc.want)
+			}
+		})
+	}
+}
+
 func slicesIndex(runs []appv1alpha1.CronRun, name string) int {
 	for i, run := range runs {
 		if run.Name == name {

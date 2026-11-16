@@ -73,11 +73,20 @@ const RUN_STATUS: Record<
 
 // The same active set useCronRuns' hasActiveRun uses.
 const ACTIVE_STATUSES = new Set(["pending", "running"]);
+const isActive = (run: CronRunView) =>
+  ACTIVE_STATUSES.has(run.status.toLowerCase());
 
-function CronRunStatusBadge({ status }: { status: string }) {
+// Render's `pending` covers a run that has not started and one that is
+// running, so an active run with no start yet reads "Pending" (w4/m300 t011).
+function CronRunStatusBadge({ run }: { run: CronRunView }) {
   const { t } = useTranslations();
-  const value = RUN_STATUS[status.toLowerCase()] ?? RUN_STATUS.pending;
-  return <Badge variant={value.variant}>{t(value.label)}</Badge>;
+  const value = RUN_STATUS[run.status.toLowerCase()] ?? RUN_STATUS.pending;
+  const waiting = !run.startedAt && isActive(run);
+  return (
+    <Badge variant={value.variant}>
+      {t(waiting ? "services.cronRunStatusPending" : value.label)}
+    </Badge>
+  );
 }
 
 function duration(run: CronRunView): string {
@@ -121,7 +130,7 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
   // (w4/249). Re-read it whenever the set of active runs changes, and treat
   // Cancel as checking until that re-read settles.
   const activeRunKey = runs
-    .filter((run) => ACTIVE_STATUSES.has(run.status.toLowerCase()))
+    .filter(isActive)
     .map((run) => run.id)
     .join(" ");
   const [checkedRunKey, setCheckedRunKey] = useState(activeRunKey);
@@ -267,7 +276,9 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                                       ),
                                     })
                                   : t(
-                                      "services.cronRunDetailToggleNotStarted",
+                                      isActive(run)
+                                        ? "services.cronRunDetailToggleNotStarted"
+                                        : "services.cronRunDetailToggleNeverStarted",
                                       { n: runs.indexOf(run) + 1 },
                                     )}
                               </span>
@@ -277,10 +288,10 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                             {duration(run)}
                           </TableCell>
                           <TableCell>
-                            <CronRunStatusBadge status={run.status} />
+                            <CronRunStatusBadge run={run} />
                           </TableCell>
                           <TableCell className="text-right">
-                            {ACTIVE_STATUSES.has(run.status.toLowerCase()) ? (
+                            {isActive(run) ? (
                               <PermissionTooltip reason={cancelBlocked}>
                                 <Button
                                   size="sm"
@@ -464,7 +475,7 @@ function CronRunFields({ run, masked }: { run: CronRunView; masked: boolean }) {
       className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4"
     >
       <DetailField label={t("services.cronRunColStatus")} masked={masked}>
-        <CronRunStatusBadge status={run.status} />
+        <CronRunStatusBadge run={run} />
       </DetailField>
       <DetailField label={t("services.cronRunDetailStarted")} masked={masked}>
         <span className="tabular-nums">

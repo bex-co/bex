@@ -1,6 +1,6 @@
 # w4 · m300 — A triggered cron run exists from the moment it is acknowledged: readable, cancellable, and canceled (not lost) when a second trigger replaces it, as on Render
 
-**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** blocked — t001–t007 done (shipped); t009 todo (added 2026-11-11); t010 (round 171: canceled runs still execute) is open; t008 closes after t009 and t010
+**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** blocked — t001–t007, t009, t011 done (shipped); t010 code shipped 2026-11-15, its acceptance is a live replay; t008 closes after the live DoD replay
 
 ## Tasks (in order)
 
@@ -13,9 +13,9 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | w4/m300/t003, w4/m300/t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | w4/m300/t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | w4/m300/t005 |
-| [t009](t009.md) | A run canceled before it started is announced as "not started yet" in Recent Runs | 15m | w4/m300/t003 |
+| [t009](done/t009.md) | A run canceled before it started is announced as "not started yet" in Recent Runs — **DONE** | 15m | w4/m300/t003 |
 | [t010](t010.md) | A run canceled or replaced within a second of its trigger still executes (its pod prints after the row reads `canceled`), and a replaced run reads `finishedAt` before `startedAt` | 60m | w4/m300/t002 |
-| [t011](t011.md) | A triggered run that has not started yet reads "Running" in Recent Runs | 15m | w4/m300/t003 |
+| [t011](done/t011.md) | A triggered run that has not started yet reads "Running" in Recent Runs — **DONE** | 15m | w4/m300/t003 |
 | [t008](t008.md) | Closeout | 15m | w4/m300/t006, w4/m300/t007, w4/m300/t009, w4/m300/t010, w4/m300/t011 |
 
 Eleven tasks, 390m (6h30m); t010 added in round 171, t011 in round 244. One finding, major. t009 was added in round 81 of the `/qa-find-bugs w4` loop (2026-11-11). This milestone schedules the work only.
@@ -185,7 +185,7 @@ Live on production after the release pins this build. The fixture is a Starter c
 
 - **2026-11-10 — parked (loopx w4):** the code is shipped; only the live DoD replay remains. Production deploys moved to 19:00/00:00/05:00 UTC plus manual dispatch (`4630a48a7`, 2026-11-09), so this waits for the 2026-11-10 19:00 UTC deploy. Then replay the DoD and close. No user action.
 
-- **2026-11-11 — round 81 of the `/qa-find-bugs w4` loop:** production now runs `348bd77a5`, which contains `d4d105415`, so the deploy this milestone waited for has shipped. P1, P2 (`DELETE …/runs`) and P3 replays passed live; the probes are in [t009](t009.md). t009 was added for the canceled-before-start row's accessible name. t008's remaining replays (P2's two other cancel paths, "eleven runs later", P4 and the adjacent classes) still need running.
+- **2026-11-11 — round 81 of the `/qa-find-bugs w4` loop:** production now runs `348bd77a5`, which contains `d4d105415`, so the deploy this milestone waited for has shipped. P1, P2 (`DELETE …/runs`) and P3 replays passed live; the probes are in [t009](done/t009.md). t009 was added for the canceled-before-start row's accessible name. t008's remaining replays (P2's two other cancel paths, "eleven runs later", P4 and the adjacent classes) still need running.
 
 ## Post-release probe (QA loop round 171, 2026-11-12): P1 passes; P2 and P3 fail (filed as t010)
 
@@ -203,3 +203,10 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) carries t001–t007. The fixture and
   - But A's pod printed at 05:40:14, after A was recorded `canceled` at 05:40:11, and A reads `startedAt` 05:40:13 later than `finishedAt` 05:40:11.74.
 - **Not run:** P4 (dashboard Trigger Run at 1440 and 390 px) and the eleven-runs retention check.
 
+## Unblock record (2026-11-15, loopx w4)
+
+- **Affected:** w4/m300 (t008–t011).
+- **Source:** verified finding. Production's scheduled deploy at 2026-11-15 22:49Z ran on `06cc3b02c`, and `git merge-base --is-ancestor d4d105415 06cc3b02c` holds, so t001–t007 are live. The release gate this milestone was parked on has cleared.
+- **Remaining work:** t009, t010 and t011 were filed after the park (rounds 81, 171, 244) and have no code on main. None of them has an external gate, so the milestone returns to active work.
+- **Next steps:** implement t009 and t011 (dashboard Recent Runs labels) and t010 (a run canceled or replaced before its Job starts never executes), ship them, then replay the live DoD once a production deploy carries them. A deployed version is not proof the DoD passed.
+- **Outcome of this run (2026-11-15).** t009 and t011 are done, and t010's fix is shipped in the commit `fix(cron): … (w4/m300 t009–t011)`; see [t010](t010.md) § Implementation. The milestone is parked again on a gate that clears itself: production's next deploy must run a commit that contains that one (`git log --grep 'w4/m300 t009' origin/main`, then `git merge-base --is-ancestor <sha> <deployed sha>`). Then a worker replays the whole DoD (P1–P4, the adjacent classes, eleven runs later) plus t010's and t011's live checks, and closes t010 and t008. No user action.

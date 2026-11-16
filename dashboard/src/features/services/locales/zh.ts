@@ -3342,6 +3342,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "操作",
     description: "Cron runs table column header (row actions)",
   },
+  "services.cronRunStatusPending": {
+    message: "等待中",
+    description:
+      "Cron run status badge for an active run that has not started yet (Render's pending before its start; w4/m300)",
+  },
   "services.cronRunStatusRunning": {
     message: "运行中",
     description: "Cron run status badge",
@@ -3419,6 +3424,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "运行详情，尚未开始（第 {n} 行）",
     description:
       "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
+  },
+  "services.cronRunDetailToggleNeverStarted": {
+    message: "运行详情，未曾开始（第 {n} 行）",
+    description:
+      "Screen-reader name of the expand/collapse control of a run that ended (e.g. canceled) without ever starting; {n} is its row number on the Runs page, never its id (w4/m300)",
   },
   "services.cronRunDetailError": {
     message: "无法加载该运行的详情。",

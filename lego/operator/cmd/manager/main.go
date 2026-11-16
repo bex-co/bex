@@ -364,6 +364,7 @@ func setupAppReconciler(
 	appReconciler := &controller.AppReconciler{
 		PortScanner:           portscan.Dialer{},
 		Client:                mgr.GetClient(),
+		APIReader:             mgr.GetAPIReader(),
 		BuildClient:           uncachedClient,
 		Scheme:                mgr.GetScheme(),
 		AppsNamespace:         appsNamespace,
