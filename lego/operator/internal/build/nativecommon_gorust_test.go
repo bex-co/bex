@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -150,6 +151,32 @@ func TestNativeGoRustGeneratedImages(t *testing.T) {
 	}
 }
 
+// nativeGoRustRenderEnv is the environment a Go or Rust build runs with: the
+// selected image's, under Render's documented GOPATH (its bin first on PATH)
+// or CARGO_HOME and RUSTUP_HOME, plus the other defaults (w8/256).
+func nativeGoRustRenderEnv(runtime string, image []string) []string {
+	override := map[string]string{"GOPATH": nativeGoPath, "GO111MODULE": "on"}
+	if runtime == "rust" {
+		override = map[string]string{"CARGO_HOME": nativeCargoHome, "RUSTUP_HOME": nativeRustupHome, "ROCKET_ENV": "prod"}
+	}
+	env := make([]string, 0, len(image)+len(override))
+	for _, item := range image {
+		name, value, _ := strings.Cut(item, "=")
+		if runtime == "go" && name == "PATH" {
+			value = nativeGoPath + "/bin:" + value
+		}
+		if rendered, ok := override[name]; ok {
+			value = rendered
+			delete(override, name)
+		}
+		env = append(env, name+"="+value)
+	}
+	for _, name := range slices.Sorted(maps.Keys(override)) {
+		env = append(env, name+"="+override[name])
+	}
+	return env
+}
+
 func nativeGoRustGeneratedCase(t *testing.T, docker nativeUtilityDocker, common, runtime, output string) {
 	t.Helper()
 	evidence := filepath.Join(output, runtime)
@@ -163,7 +190,9 @@ func nativeGoRustGeneratedCase(t *testing.T, docker nativeUtilityDocker, common,
 	must(t, err)
 	primary, err := nativeGoRustPrimaryContract(runtime, choices[0])
 	must(t, err)
-	expected, err := json.MarshalIndent(primary, "", "  ")
+	rendered := primary
+	rendered.Env = nativeGoRustRenderEnv(runtime, primary.Env)
+	expected, err := json.MarshalIndent(rendered, "", "  ")
 	must(t, err)
 	files["expected-primary.json"] = string(expected) + "\n"
 	must(t, os.WriteFile(filepath.Join(source, "expected-primary.json"), []byte(files["expected-primary.json"]), 0o600))

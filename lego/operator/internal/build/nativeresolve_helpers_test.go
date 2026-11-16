@@ -18,14 +18,21 @@ package build
 
 import (
 	"context"
+	"os"
 	"time"
 )
 
-// resolveNativeBuild runs the resolve phase with no service creation date and
-// the live Docker Hub resolver, the shape most native-version fixtures use.
-// The default Python line (w8/174) and uv's default (w8/328) still vary by
-// creation date; the exact-created tests drive those through
-// ResolveNativeBuildExact with a fake resolver.
+// resolveNativeBuild runs the resolve phase with no service creation date, the
+// shape most native-version fixtures use. Unit tests resolve offline against
+// registry-faithful fake metadata. A generated-image test
+// (BEX_BUILDKIT_INTEGRATION=1) builds the recipe for real, so it resolves
+// against what Docker Hub actually serves. The default Python line (w8/174)
+// and uv's default (w8/328) still vary by creation date; the exact-created
+// tests drive those through ResolveNativeBuildExact.
 func resolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
-	return ResolveNativeBuildExact(context.Background(), &fakeExact{}, time.Time{}, runtime, bundlePath, dockerfilePath, sourceDir)
+	var resolver ExactImageResolver = &fakeExact{}
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "1" {
+		resolver = NewDockerHubResolver()
+	}
+	return ResolveNativeBuildExact(context.Background(), resolver, time.Time{}, runtime, bundlePath, dockerfilePath, sourceDir)
 }

@@ -68,12 +68,14 @@ def validate_primary(expected, actual):
     if runtime == "go":
         require(actual["executable"] == "/usr/local/go/bin/go", "Go executable is not the selected primary")
         require(actual["version"] == "go" + version, "Go patch version changed")
-        require(actual["goroot"] == "/usr/local/go" and actual["gopath"] == "/go", "Go installation roots changed")
+        require(actual["goroot"] == "/usr/local/go" and actual["gopath"] == environment["GOPATH"], "Go installation roots changed")
         require(actual["toolchain"] == "local", "Go toolchain could download or substitute another compiler")
     else:
         require(actual["executable"] == "/usr/local/cargo/bin/cargo", "Cargo executable is not the selected primary")
         require(actual["version"].startswith("rustc " + version + " "), "Rust patch version changed")
-        require(actual["sysroot"].startswith("/usr/local/rustup/toolchains/"), "Rust sysroot escaped the primary tree")
+        # Render's RUSTUP_HOME links to the image's rustup tree (w8/256).
+        require(actual["sysroot"].startswith(environment["RUSTUP_HOME"] + "/toolchains/")
+                and os.path.realpath(actual["sysroot"]).startswith("/usr/local/rustup/toolchains/"), "Rust sysroot escaped the primary tree")
         require(actual["rustc"] == actual["sysroot"] + "/bin/rustc", "rustup selected another compiler")
         require(actual["target_libdir"].startswith(actual["sysroot"] + "/lib/rustlib/"), "Rust standard library tree changed")
 
