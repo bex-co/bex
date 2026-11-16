@@ -18,6 +18,7 @@ package build
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -111,6 +112,27 @@ func pinErlangVersion(ctx context.Context, exact ExactImageResolver, choice Nati
 	return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
 		"ERLANG_VERSION=%[1]s is not available with Elixir %[2]s: no published image carries Elixir %[2]s on Erlang/OTP %[1]s; set ERLANG_VERSION to another OTP %[3]d release (or %[3]d for the line's own) or choose another ELIXIR_VERSION",
 		request, elixir, otpParts(request)[0])}
+}
+
+// pinDefaultErlang installs Render's default OTP under the default Elixir
+// (w8/333) the way pinErlangVersion installs a requested one. It is a default,
+// as an exact default patch is: when no image carries it or the registry cannot
+// be read, the build keeps the default Elixir's own image, with the OTP that
+// image was built on, and the log says so.
+func pinDefaultErlang(ctx context.Context, exact ExactImageResolver, choice NativeChoice) NativeChoice {
+	pinned, err := pinErlangVersion(ctx, exact, choice)
+	if err == nil {
+		return pinned
+	}
+	reason := err.Error()
+	if _, unavailable := errors.AsType[*UnsupportedVersionError](err); unavailable {
+		reason = "no published image carries it"
+	}
+	note := fmt.Sprintf("==> Could not install the default Erlang/OTP %s (%s); using the Erlang/OTP of the Elixir image", otpName(choice.erlang), reason)
+	choice.erlang = ""
+	choice = pinExactVersion(ctx, exact, choice)
+	choice.note = strings.TrimSuffix(note+"\n"+choice.note, "\n")
+	return choice
 }
 
 // otpName is how OTP names a release, without trailing zero parts past the

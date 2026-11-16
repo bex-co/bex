@@ -141,13 +141,17 @@ func (line nativeLine) matchesProvenance(suite, otp string) bool {
 func pinNativePrimary(ctx context.Context, exact ExactImageResolver, runtime string, reviewed NativeChoice) (NativeChoice, error) {
 	choice := reviewed
 	var err error
-	if choice.erlang != "" {
-		choice, err = pinErlangVersion(ctx, exact, choice)
-		if err != nil {
+	switch {
+	case choice.erlang == "":
+		choice = pinExactVersion(ctx, exact, choice)
+	case choice.Source == "":
+		// No version signal: the OTP is Render's default, which falls back
+		// where a requested one fails by name.
+		choice = pinDefaultErlang(ctx, exact, choice)
+	default:
+		if choice, err = pinErlangVersion(ctx, exact, choice); err != nil {
 			return NativeChoice{}, err
 		}
-	} else {
-		choice = pinExactVersion(ctx, exact, choice)
 	}
 	if nativeCommonBase != "" {
 		// The common image has no primary, including when selection kept the

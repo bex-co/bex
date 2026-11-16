@@ -188,6 +188,106 @@ func TestExactErlangUnavailableFailsByName(t *testing.T) {
 	})
 }
 
+// w8/333: Render's default Elixir 1.18.4 runs on its default Erlang/OTP
+// 28.0.2, not on the newer 28.x the official elixir image was built with. A
+// service created since the cutoff with neither ELIXIR_VERSION nor
+// ERLANG_VERSION builds on erlang:28.0.2.0 with hexpm's Elixir 1.18.4 for that
+// release, and the log names both. An explicit version, an older or
+// unknown-age service, and a default no image provides keep what they had.
+func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
+	const (
+		erlangImage = "erlang:28.0.2.0@" + exactDigest
+		newest      = "1.18.4-erlang-28.0.2-debian-trixie-20260610"
+	)
+	otpEnv := []string{"OTP_VERSION=28.0.2", "PATH=/usr/local/bin:/usr/bin"}
+	published := func() *fakeExact {
+		fake := &fakeExact{digests: map[string]string{
+			"erlang:28.0.2.0": exactDigest, "erlang:28.0.3.0": exactDigest, "elixir:1.18.4": exactDigest,
+			hexpmElixirRepo + ":" + newest:                                          otherDigest,
+			hexpmElixirRepo + ":1.18.4-erlang-28.0.2-debian-bookworm-20260518":      otherDigest,
+			hexpmElixirRepo + ":1.18.4-erlang-28.0.2-debian-bookworm-20260610-slim": otherDigest,
+			hexpmElixirRepo + ":1.18.4-erlang-28.0.3-debian-bookworm-20260824":      otherDigest,
+			hexpmElixirRepo + ":1.18.4-erlang-28.5.0.8-debian-trixie-20260824":      otherDigest,
+		}}
+		fake.envByImage = map[string]fakeExactMetadata{erlangImage: {otpEnv, commonOTPSyntheticHistory("bookworm")}}
+		return fake
+	}
+	created := erlangDefaultCutoff.Add(time.Hour)
+	reviewed, err := ResolveNativeVersion(nativeElixirRuntime, nil, files(nil))
+	must(t, err)
+	other, _ := nativeToolchains[nativeElixirRuntime].find("1.19")
+
+	fake := published()
+	choices, dockerfile := resolveExactAt(t, fake, created, nativeElixirRuntime, nil, nil)
+	if got, want := choices[0].Narration(), "==> Using Elixir 1.18.4 on Erlang/OTP 28.0.2 (default)"; got != want {
+		t.Errorf("narration %q, want %q", got, want)
+	}
+	if choices[0].Image != erlangImage || choices[0].Line != "1.18.4" {
+		t.Errorf("default build is not on Erlang/OTP 28.0.2: %+v", choices[0])
+	}
+	assertExactNativePrimary(t, dockerfile, reviewed.Image, erlangImage, otpEnv)
+	for _, want := range []string{
+		"COPY --link --from=" + hexpmElixirRepo + ":" + newest + "@" + otherDigest + " /usr/local/lib/elixir /usr/local/lib/elixir\n",
+		"ENV LANG=C.UTF-8 ELIXIR_VERSION=v1.18.4\n",
+	} {
+		if !strings.Contains(dockerfile, want) {
+			t.Errorf("Dockerfile lacks %q:\n%s", want, dockerfile)
+		}
+	}
+	if !slices.Equal(fake.asked[:1], []string{"list " + hexpmElixirRepo + ":1.18.4-erlang-28.0.2-debian-"}) || slices.Contains(fake.asked, "elixir:1.18.4") {
+		t.Errorf("the default looked beyond Erlang/OTP 28.0.2 or at the official elixir image: %v", fake.asked)
+	}
+
+	for name, tc := range map[string]struct {
+		created     time.Time
+		env         map[string]string
+		image, line string
+	}{
+		"created before the cutoff": {erlangDefaultCutoff.Add(-time.Hour), nil, "elixir:1.18.4@" + exactDigest, "1.18.4"},
+		"unknown age":               {time.Time{}, nil, reviewed.Image, reviewed.Line},
+		"explicit default line":     {created, map[string]string{"ELIXIR_VERSION": "1.18"}, reviewed.Image, reviewed.Line},
+		"explicit other Elixir":     {created, map[string]string{"ELIXIR_VERSION": "1.19"}, other.image, "1.19"},
+		"ERLANG_VERSION major only": {created, map[string]string{"ERLANG_VERSION": "28"}, "elixir:1.18.4@" + exactDigest, "1.18.4"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			choices, _ := resolveExactAt(t, published(), tc.created, nativeElixirRuntime, tc.env, nil)
+			if c := choices[0]; c.Image != tc.image || c.Line != tc.line || c.otp != "" || strings.Contains(c.Narration(), "Erlang/OTP") {
+				t.Errorf("must keep %s %s with the image's own OTP: %+v", tc.image, tc.line, c)
+			}
+		})
+	}
+	t.Run("explicit ERLANG_VERSION", func(t *testing.T) {
+		fake := published()
+		fake.envByImage["erlang:28.0.3.0@"+exactDigest] = fakeExactMetadata{[]string{"OTP_VERSION=28.0.3"}, commonOTPSyntheticHistory("bookworm")}
+		choices, _ := resolveExactAt(t, fake, created, nativeElixirRuntime, map[string]string{"ERLANG_VERSION": "28.0"}, nil)
+		if got, want := choices[0].Narration(), "==> Using Elixir 1.18.4 on Erlang/OTP 28.0.3 (from ERLANG_VERSION=28.0)"; got != want {
+			t.Errorf("narration %q, want %q", got, want)
+		}
+	})
+
+	// The default is a default, like an exact default patch: when no image
+	// carries it, or the registry cannot be read, the build keeps the Elixir
+	// default and says why, instead of failing.
+	t.Run("no image carries it", func(t *testing.T) {
+		choices, _ := resolveExactAt(t, &fakeExact{digests: map[string]string{"elixir:1.18.4": exactDigest}}, created, nativeElixirRuntime, nil, nil)
+		want := "==> Using Elixir 1.18.4 (default)\n==> Could not install the default Erlang/OTP 28.0.2 (no published image carries it); using the Erlang/OTP of the Elixir image"
+		if c := choices[0]; c.Image != "elixir:1.18.4@"+exactDigest || c.otp != "" || c.Narration() != want {
+			t.Errorf("fallback %+v narration %q, want %q", c, c.Narration(), want)
+		}
+	})
+	t.Run("registry failure", func(t *testing.T) {
+		choice, err := ResolveNativeVersionAt(created, nativeElixirRuntime, nil, files(nil))
+		must(t, err)
+		got := pinDefaultErlang(t.Context(), &fakeExact{err: errors.New("registry answered 500")}, choice)
+		want := "==> Using Elixir " + reviewed.lineVersion + " (default)\n" +
+			"==> Could not install the default Erlang/OTP 28.0.2 (look up Elixir 1.18.4 on Erlang/OTP 28.0.2.0: registry answered 500); using the Erlang/OTP of the Elixir image\n" +
+			"==> Could not look up elixir:1.18.4 (registry answered 500); using the reviewed Elixir 1.18 image"
+		if got.Image != reviewed.Image || got.erlang != "" || got.Narration() != want {
+			t.Errorf("fallback %+v narration %q, want %q", got, got.Narration(), want)
+		}
+	})
+}
+
 func TestDockerHubResolverListsTagsByPrefix(t *testing.T) {
 	all := []string{"1.19.4-erlang-28.3-debian-trixie-1", "1.19.5-erlang-27.3-debian-trixie-1", "11.19.5-erlang-28.3-debian-trixie-1",
 		"1.19.5-erlang-28.3-debian-trixie-1", "1.19.5-erlang-28.3.3-debian-trixie-1", "1.19.5-erlang-28.5-debian-trixie-1",

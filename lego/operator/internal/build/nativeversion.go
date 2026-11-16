@@ -127,7 +127,7 @@ func (e *UnsupportedVersionError) Error() string { return e.msg }
 //	python  PYTHON_VERSION → .python-version → default
 //	node    NODE_VERSION → .node-version → .nvmrc → package.json engines.node → default
 //	ruby    Gemfile.lock / gems.locked RUBY VERSION → .ruby-version → .tool-versions → Gemfile `ruby` → default
-//	elixir  ELIXIR_VERSION (→ line), ERLANG_VERSION (must match that line's OTP major; a minor or patch is installed exactly, w8/197)
+//	elixir  ELIXIR_VERSION (→ line), ERLANG_VERSION (must match that line's OTP major; a minor or patch is installed exactly, w8/197); with neither, Render's dated default Elixir on its default OTP (w8/333)
 //	go      default (Render offers no Go selection)
 //	rust    the one line; RUSTUP_TOOLCHAIN → rust-toolchain → rust-toolchain.toml name the toolchain rustup applies (w8/327)
 //
@@ -200,8 +200,53 @@ func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]st
 		if choice.Exact == "" && runtime == nativeNodeRuntime {
 			choice.rangeRequest = excludedNodeRange(choice, readFile)
 		}
+		if runtime == nativeElixirRuntime && choice.Source == "" {
+			choice.erlang = defaultErlang(created, choice)
+		}
 	}
 	return choice, err
+}
+
+// erlangDefaultCutoff: Render's default Erlang/OTP for services created since
+// 2025-06-12 is exactly 28.0.2, under its default Elixir 1.18.4
+// (render.com/docs/elixir-erlang-versions), not the OTP the official elixir
+// image was built on (w8/333). bex applies it to services created from this
+// change on, so a running service's OTP never moves under the operator upgrade
+// (the pythonCreationCutoff pattern).
+var erlangDefaultCutoff = time.Date(2026, time.November, 16, 0, 0, 0, 0, time.UTC)
+
+// erlangDefaults are Render's default Erlang/OTP releases by creation date,
+// oldest first, as exactDefaults are for the runtimes. Each is written in the
+// four-part form that names exactly one release (otpTag), so a later
+// maintenance patch (28.0.2.1) never moves a default.
+var erlangDefaults = []exactDefault{{erlangDefaultCutoff, "28.0.2.0"}}
+
+// defaultErlang is the exact Erlang/OTP an Elixir service with neither
+// ELIXIR_VERSION nor ERLANG_VERSION builds on: the resolve phase installs it as
+// it does an ERLANG_VERSION of that release (w8/197). A release outside the
+// chosen line's OTP major is never applied.
+func defaultErlang(created time.Time, choice NativeChoice) string {
+	release := datedDefault(erlangDefaults, created)
+	line, _ := nativeToolchains[nativeElixirRuntime].find(choice.Line)
+	if release == "" || !strings.HasPrefix(release, line.otp+".") {
+		return ""
+	}
+	return release
+}
+
+// datedDefault is the version of the last step dated at or before created, or
+// "" for a service created before the first step or of unknown age.
+func datedDefault(steps []exactDefault, created time.Time) string {
+	version := ""
+	if created.IsZero() {
+		return version
+	}
+	for _, step := range steps {
+		if !created.Before(step.from) {
+			version = step.version
+		}
+	}
+	return version
 }
 
 // exactDefault is one step of a runtime's default by creation date: services
@@ -239,15 +284,10 @@ var exactDefaults = map[string][]exactDefault{
 func defaultExact(created time.Time, runtime string, choice NativeChoice) string {
 	// ERLANG_VERSION alone names no Elixir: Render installs its default Elixir
 	// on the requested OTP.
-	if choice.Source != "" && !strings.HasPrefix(choice.Source, "ERLANG_VERSION=") || created.IsZero() {
+	if choice.Source != "" && !strings.HasPrefix(choice.Source, "ERLANG_VERSION=") {
 		return ""
 	}
-	version := ""
-	for _, step := range exactDefaults[runtime] {
-		if !created.Before(step.from) {
-			version = step.version
-		}
-	}
+	version := datedDefault(exactDefaults[runtime], created)
 	if version == "" || !strings.HasPrefix(version, choice.Line+".") {
 		return ""
 	}
