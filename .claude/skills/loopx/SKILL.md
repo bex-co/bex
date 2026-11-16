@@ -60,7 +60,7 @@ One worker at a time, strictly in sequence. Every worker ships to `main` from th
 
   A notification with no result block, in which the worker says it is waiting on its own background work, is not a result. End the turn again and keep waiting. Do not send a follow-up, and do not settle.
 
-- **Codex, or any agent without a subagent tool:** run [`worker.md`](worker.md) inline for this one item, then continue from step 3. Context then accumulates in this session, which is the old single-session behaviour; the loop rules are unchanged.
+- **Codex, or any agent without a subagent tool:** run [`worker.md`](worker.md) inline for this one item, then continue from step 3. Context then accumulates in this session; every other loop rule still applies.
 
 ### 3. Verify the outcome
 

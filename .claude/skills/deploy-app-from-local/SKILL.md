@@ -58,7 +58,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3999/   # expect 200
 docker stop smoke
 ```
 
-Use a **fresh tag** (git sha, never `:latest`) — the operator sets no `imagePullPolicy`, so k8s defaults to `IfNotPresent`; reusing a tag would silently serve the node's cached image.
+Use a **fresh tag** (git sha, never `:latest`). The operator sets `imagePullPolicy: Always` on every tenant container (`tenantImagePullPolicy` in `lego/operator/internal/controller/app_controller.go`), so the kubelet resolves the tag against a registry on every container start: an image that exists only in a node's containerd is not pullable.
 
 ## Step 4 — Import into the app node's containerd — _laptop → app node_ (confirm with user first, see Step 0)
 

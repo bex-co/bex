@@ -15,9 +15,9 @@ Review all changed files for reuse, quality, and efficiency. Fix any issues foun
 
 Run `git diff` (or `git diff HEAD` if there are staged changes) to see what changed. If there are no git changes, review the most recently modified files that the user mentioned or that you edited earlier in this conversation.
 
-## Phase 2: Launch Three Review Agents in Parallel
+## Phase 2: Review Through Three Lenses
 
-Use the Agent tool to launch all three agents concurrently in a single message. Pass each agent the full diff so it has the complete context.
+Review the diff through the three lenses below. For a small diff (a few files in one module), do the three reviews yourself. For a large diff, or one that spans modules, use the Agent tool to launch one agent per lens concurrently in a single message, and pass each agent the full diff so it has the complete context.
 
 ### Agent 1: Code Reuse Review
 
@@ -53,6 +53,6 @@ Review the same changes for efficiency:
 
 ## Phase 3: Fix Issues
 
-Wait for all three agents to complete. Aggregate their findings and fix each issue directly. If a finding is a false positive or not worth addressing, note it and move on — do not argue with the finding, just skip it.
+Wait for every agent you launched to complete. Aggregate the findings from all three lenses and fix each issue directly. If a finding is a false positive or not worth addressing, note it and move on — do not argue with the finding, just skip it.
 
 When done, briefly summarize what was fixed (or confirm the code was already clean).

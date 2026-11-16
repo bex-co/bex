@@ -113,7 +113,7 @@ When auditing **this repository**, treat the following as deliberate architectur
 
 | Anchor | Decision | Where recorded | Wrong remediation |
 | --- | --- | --- | --- |
-| `#CI-RUNNERS` | All CI on self-hosted ARM64 runners (`[self-hosted, Linux, ARM64]`) | [ADR083](../../../docs/ADR083-security-review-round20.md), [ADR019](../../../docs/ADR019-infra-credentials.md) §Decision 5, `.pm/DO_NOT_DO.md` `#CI-RUNNERS`, `scripts/github-actions-validate.sh` | Revert workflows to `ubuntu-latest` |
+| `#CI-RUNNERS` | All CI on GitHub-hosted runners (`ubuntu-24.04-arm`; `ubuntu-latest` only for linux/amd64 image work) | [ADR083](../../../docs/ADR083-security-review-round20.md) §Amendment 2026-11-09, [ADR019](../../../docs/ADR019-infra-credentials.md) §Decision 5, `.pm/DO_NOT_DO.md` `#CI-RUNNERS`, `scripts/github-actions-validate.sh` | Move jobs to self-hosted runners or runner pools |
 | `#PSL` | `onbex.co` not on browser PSL yet | [ADR080](../../../docs/ADR080-security-review-round19.md) #8, `.pm/DO_NOT_DO.md` `#PSL`, `scripts/gitops-validate.sh` | Unset `BEX_BASE_DOMAIN` |
 
-Legitimate optional hardening for `#CI-RUNNERS`: fork-PR blocking, split `ci`/`production` runner pools, ephemeral self-hosted runners — see ADR083 follow-ups.
+The credential boundary for `#CI-RUNNERS` is checked on the jobs themselves by `scripts/github-actions-validate.sh`: a credentialed job in a `pull_request` workflow rejects PR events, a registry publisher without an environment is main-only with only `GITHUB_TOKEN`, and production secrets stay behind main-only environments. A gap in one of those checks is a real finding — see ADR083 §Amendment 2026-11-09.

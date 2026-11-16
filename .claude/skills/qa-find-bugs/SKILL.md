@@ -91,7 +91,7 @@ Run **whole journeys**, not page loads — do the thing, wait for the async stat
 | 10 | Cron job, background worker, private service | schedule/run/logs behave; private service is not publicly reachable |
 | 11 | Postgres: create, connection info reveal + copy, backups, delete | copied URL connects; backup list is real |
 | 12 | Key Value: create, connection info, delete | same |
-| 13 | Blueprints (`bex.yml`) sync | plan diff matches what apply does |
+| 13 | Blueprints (`render.yaml`) sync | plan diff matches what apply does |
 | 14 | Deliberately break a build (bad start command) | failure UX, events, notifications/webhooks tell the truth |
 | 15 | Free-tier sleep → wake on first request | the activator wakes it inside the advertised window |
 | 16 | Delete every `qa-` resource | it disappears from every list, project page, and usage view |
@@ -170,17 +170,17 @@ Do this for every finding, and record the outcome in its record:
 4. Check whether the fix already landed but is not deployed: `git log --oneline -40 -- dashboard lego` plus a targeted `git log -S"<symbol>"`. If it is on `main`, it is a deploy-lag note in the report, not a bug to file.
 5. Prior live hunts and their residuals are precedent — `w9/m89`, `w9/m92` (under `.pm/w9/done/`). Match their shape, don't re-file their contents.
 
-## Phase 6 — Hand over to `/pm` (default `w6`)
+## Phase 6 — Hand over to `/pm` (target `<wN>`, default `w6`)
 
 `/pm` is the **only** skill that writes to `.pm/`. Invoke it; do not hand-edit the board.
 
-- **> ~1h across more than one task** → `/pm new milestone w6 <title>`. Supply: the title, one task per bug with estimate and `depends_on`, a Definition of done written as observable live-verifiable states (one bullet per bug, in the shape `w9/m92`'s DoD uses), and Source + Goal linkage naming this hunt's date, evidence paths, the ADR the surface belongs to, expected outcome, why now, and whether the Render-parity closing task applies (it does whenever a REST/GraphQL/MCP/UI surface changes).
-- **≤ ~1h** → `/pm add w6 <note>` as an inbox note. Do not inflate small findings into a milestone.
+- **> ~1h across more than one task** → `/pm new milestone <wN> <title>`. Supply: the title, one task per bug with estimate and `depends_on`, a Definition of done written as observable live-verifiable states (one bullet per bug, in the shape `w9/m92`'s DoD uses), and Source + Goal linkage naming this hunt's date, evidence paths, the ADR the surface belongs to, expected outcome, why now, and whether the Render-parity closing task applies (it does whenever a REST/GraphQL/MCP/UI surface changes).
+- **≤ ~1h** → `/pm add <wN> <note>` as an inbox note. Do not inflate small findings into a milestone.
 - **Write the DoD out of probes you actually ran.** Every bullet should be a command or a click the next person can repeat and watch succeed or fail. A surface you reasoned about but never exercised is not a DoD assertion — it belongs in a task as work to verify. Carry each record's _Unverified_ line across so nothing you inferred arrives on the board dressed as something you saw.
 - **State the target behavior in the DoD, not the symptom's absence.** "All surfaces agree" and "the page no longer breaks" are both satisfiable by the wrong fix; name the shape the surfaces must agree _on_.
 - **Give the blast radius its own task** whenever the cause lives in shared code: enumerate the callers, decide global-vs-allowlisted, and require regression tests on the callers that already behave correctly.
 - Let `/pm` own numbering and the standing closing tasks (Render parity → Simplify → Test coverage → Closeout). Never hand-roll them.
-- Confirm afterwards that `.pm/w6/README.md`, the milestone `README.md`, and each task's frontmatter agree, and that `npx prettier@3.4.2 --write "**/*.md"` has run.
+- Confirm afterwards that `.pm/<wN>/README.md`, the milestone `README.md`, and each task's frontmatter agree, and that `npx prettier@3.4.2 --write "**/*.md"` has run.
 
 ## Phase 7 — `/ship` the scheduled milestone
 
@@ -189,7 +189,7 @@ Invoke `/ship` so the newly scheduled work lands on `main` and is visible to who
 - Scope the commit to the `.pm/` files this run created. Anything that was already dirty in Phase 0 stays out — surface it to the user instead of sweeping it in.
 - `.playwright-mcp/` is gitignored: evidence stays local and is referenced by path from the milestone, exactly as `w9/m89` does.
 - Never commit `.env` or `*.kubeconfig`.
-- This ships the **filing**, not the fixes. Implementing the tasks is `/loopx w6` or ordinary work afterwards — say so in the report.
+- This ships the **filing**, not the fixes. Implementing the tasks is `/loopx <wN>` or ordinary work afterwards — say so in the report.
 - `DRY_RUN=1` skips this phase entirely.
 
 ## Phase 8 — Report
@@ -207,7 +207,7 @@ Then report:
 
 - Journeys exercised, and which were skipped and why (plan-gated, unsafe on prod, out of scope).
 - Findings by severity, each with root cause `file:line` and the proposed fix.
-- What was filed and where (`w6/mNN` or `w6/NNN.md`), what was deduped away and against what, and what was rejected as an anti-goal / non-goal / deploy lag.
+- What was filed and where (`<wN>/mNN` or `<wN>/NNN.md`), what was deduped away and against what, and what was rejected as an anti-goal / non-goal / deploy lag.
 - Cleanup status: every `qa-` resource deleted (or exactly what is still live), **and** whether this run's Kratos session was revoked.
 - The shipped HEAD.
 
