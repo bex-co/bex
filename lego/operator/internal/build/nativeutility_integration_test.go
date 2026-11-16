@@ -190,6 +190,7 @@ func nativeUtilityCases() []nativeUtilityCase {
 	omissions := []struct{ name, mid, failure string }{
 		{"jq", "98", "jq: command not found"},
 		{"rsync", "98", "rsync: command not found"},
+		{"pandoc", "93", "pandoc: command not found"},
 		{"python-metadata", "103", "No module named 'setuptools'"},
 		{"python-pip", "103", "No module named pip"},
 		{"python-headers", "103", "Python.h: No such file or directory"},
@@ -284,6 +285,10 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		command = "jq --version && rsync --version && rm /usr/bin/jq && test ! -e /usr/bin/jq && rsync --version"
 	case "rsync":
 		command = "jq --version && rsync --version && rm /usr/bin/rsync && test ! -e /usr/bin/rsync && jq --version"
+	case "pandoc":
+		// The packaged data must survive, so the original command fails on the
+		// missing program alone. dash caches command paths, hence hash -r.
+		command = "pandoc --version && rm /usr/bin/pandoc && test ! -e /usr/bin/pandoc && hash -r && ! command -v pandoc && test -f /usr/share/pandoc/data/abbreviations"
 	case "python-metadata":
 		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/setuptools && test ! -e /usr/lib/python3/dist-packages/setuptools && /usr/bin/python3 -m pip --version && test -f /usr/include/python3.11/Python.h"
 	case "python-pip":

@@ -26,6 +26,20 @@ def extra_cases():
    database.row_factory=sqlite3.Row;internal=[dict(row) for row in database.execute(query)]
   assert external==internal==[{'id':1,'label':'naïve 雪','n':2.5},{'id':2,'label':"quote's,comma",'n':-7},{'id':3,'label':'empty','n':0}]
   results.append('SQLite readonly CLI JSON and independent Python library exact same-file rows')
+  # Pandoc's Markdown reader, packaged template data and Lua filter runtime, independently parsed.
+  (d/'doc.md').write_text('# Café 雪\n\n| key | value |\n|-----|-------|\n| naïve | 7 < 9 |\n\nSee [docs](https://example.invalid/a?b=1&c=2).\n',encoding='utf-8');(d/'upper.lua').write_text('function Str(el) return pandoc.Str(pandoc.text.upper(el.text)) end\n');(d/'fail.lua').write_text('function Str(el) error("bex filter refused") end\n')
+  run(['pandoc','--from=markdown','--to=html5','--standalone','--metadata=title:QA 雪','--lua-filter=upper.lua','--output=doc.html','doc.md'],cwd=d)
+  from html.parser import HTMLParser
+  class Doc(HTMLParser):
+   def __init__(self):super().__init__();self.stack=[];self.text={};self.attrs={}
+   def handle_starttag(self,tag,attrs):self.stack.append(tag);self.attrs.setdefault(tag,[]).append(dict(attrs))
+   def handle_endtag(self,tag):self.stack.pop()
+   def handle_data(self,s):
+    if self.stack and s.strip():self.text.setdefault(self.stack[-1],[]).append(s.strip())
+  doc=Doc();doc.feed((d/'doc.html').read_text(encoding='utf-8'));doc.close()
+  assert doc.text['title']==['QA 雪'] and doc.text['h1']==['QA 雪','CAFÉ 雪'] and doc.text['th']==['KEY','VALUE'] and doc.text['td']==['NAÏVE','7 < 9'] and doc.text['a']==['DOCS'],doc.text
+  assert {'charset':'utf-8'} in doc.attrs['meta'] and doc.attrs['a']==[{'href':'https://example.invalid/a?b=1&c=2'}],doc.attrs
+  run(['pandoc','--from=bex-unsupported-format','doc.md'],cwd=d,fails=True);run(['pandoc','--lua-filter=fail.lua','doc.md'],cwd=d,fails=True);results.append('Pandoc UTF-8 Markdown table/link to standalone HTML5 with packaged template + Lua filter, independent parse; unknown-format and failing-filter errors')
   # Actual libvips development closure, C headers, linker and output values.
   (d/'vips.c').write_text('#include <vips/vips.h>\nint main(void){VipsImage *a=0,*b=0;size_t n=0;if(vips_init("qa")||vips_black(&a,2,1,"bands",3,NULL)||vips_invert(a,&b,NULL))return 1;unsigned char *p=vips_image_write_to_memory(b,&n);int ok=n==6;for(size_t i=0;i<n;i++)ok=ok&&p[i]==255;g_free(p);g_object_unref(a);g_object_unref(b);vips_shutdown();return ok?0:2;}\n')
   flags=shlex.split(run(['pkg-config','--cflags','--libs','vips']).decode());run(['gcc','vips.c','-o','vips-probe',*flags],cwd=d);run([str(d/'vips-probe')]);(d/'invalid.ppm').write_bytes(b'invalid image');run(['vipsheader','invalid.ppm'],cwd=d,fails=True);results.append('libvips headers/pkg-config/C-link/pixels and invalid-image')
