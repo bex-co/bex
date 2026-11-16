@@ -1,6 +1,6 @@
 # w7 · m426 — A bex API key works as a bearer token, as a Render API key does
 
-**Worker:** worker7 **Goal:** one bex API key string, sent as `Authorization: Bearer`, authenticates REST, GraphQL and MCP as a Render API key does, so Render's clients work with only the host and the key changed; the `client_credentials` exchange keeps working. **Status:** todo (t001–t005, t008 and t009 done; t006, t007 and t010 wait for the production pin)
+**Worker:** worker7 **Goal:** one bex API key string, sent as `Authorization: Bearer`, authenticates REST, GraphQL and MCP as a Render API key does, so Render's clients work with only the host and the key changed; the `client_credentials` exchange keeps working. **Status:** blocked — release gate, no user action (t001–t005, t008 and t009 done and shipped: `8227312bc` server, CLI and docs, `956e920d0` dashboard; t006, t007 and t010 wait for the production pin to carry `956e920d0`)
 
 ## Tasks (in order)
 
@@ -44,6 +44,19 @@ On production, as the QA user in `bex-canary`, with an owned key that is revoked
 - **Not yet checked:** anything on production. Definition-of-done items 1 to 5 are t006. Render's Terraform provider and the unmodified `render` CLI have not been run against the change anywhere.
 
 **Merged on the way in.** w21/091 step 1 (`e3a57b1c3`) landed in `auth.go` and `authadmission.go` while this was shipping. The two are merged: a key answered 429 is counted in its `bex_api_auth_admission_sheds_total` like every other, under `source` or a new cause `key_id` for the per-key-id bound, and its test and ADR088 §6 list that cause.
+
+**2026-11-16, parked on the release gate (t006 step 1).** The implementation is on main as `8227312bc` (server, CLI, docs, alert) and `956e920d0` (dashboard), the second containing the first. The newest `chore(deploy): pin platform images to …` commit on main at the check pinned `5be555762b06`, which does not contain it, so production does not serve the change yet and t006 cannot run.
+
+- **The gate clears by itself**: the deploy workflow builds main and commits the next pin. Nothing is needed from anyone.
+- **The check that proves it cleared:**
+
+  ```bash
+  git fetch origin main
+  pin=$(git log origin/main --grep='pin platform images to' -1 --format=%s | sed -E 's/.*pin platform images to ([0-9a-f]+).*/\1/')
+  git merge-base --is-ancestor 956e920d0 "$pin" && echo "the pin carries 956e920d0"
+  ```
+
+- **Then:** t006 (the production walk of definition-of-done items 1 to 5 as the QA user in `bex-canary`, with the pinned `render` CLI and Render's Terraform provider), t007 (Render parity, with the note below), t010 (closeout).
 
 **Order.** t008 (Simplify) and t009 (Test coverage) list t007 as a dependency and were done first, because the review and the tests had to precede the ship. If t006 or t007 changes code, both get another pass.
 
