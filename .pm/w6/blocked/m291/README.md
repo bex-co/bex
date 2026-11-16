@@ -1,6 +1,6 @@
 # w6 · m291 — Build toolchain digests are fresh again and #105 closes
 
-**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** in progress (t001–t003, t005, t006 done, PR #106 closed; t004 waits on the dispatched freshness run, t007 on a production build after deploy)
+**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** blocked (t001–t006 done, #105 closed by the monitor; only t007 remains: its production-build check waits on the next production deploy, which carries `a86820a2c`)
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | [Re-resolve the 25 drifted build-toolchain entries and verify their manifests](done/t001.md) — **DONE** | 45m | — |
 | t002 | [Update every pinned file and the freshness inventory](done/t002.md) — **DONE** | 45m | t001 |
 | t003 | [Qualify the new toolchain: build hello-go and one Node or Python buildpack app on dev-6](done/t003.md) — **DONE** | 1h | t002 |
-| t004 | [Close PR #106 with the reason and confirm the monitor closes #105](t004.md) | 20m | t002 |
+| t004 | [Close PR #106 with the reason and confirm the monitor closes #105](done/t004.md) — **DONE** | 20m | t002 |
 | t005 | [Simplify](done/t005.md) — **DONE** | 15m | t003, t004 |
 | t006 | [Test coverage](done/t006.md) — **DONE** | 20m | t005 |
 | t007 | [Closeout](t007.md) | 10m | t006 |
@@ -101,3 +101,23 @@ These pins live in 8 files: `lego/operator/internal/build/native.go` (17), `nati
 - **Gate 1 is cleared.** A pin refresh is now an ordinary change: the push publishes and qualifies a fresh common image, as run [43841677055](https://github.com/bex-co/bex/actions/runs/43841677055) did. Gate 2 was already gone.
 - **Remaining gates:** none.
 - **Next steps (unchanged):** follow "When unblocked" above. Re-run `resolve`, apply the pins and `resolved_at` (t002), qualify on dev-6 (t003), let native-common requalify on the new inputs, and confirm #105 closes (t004).
+
+## Parked — 2026-11-16 (closeout waits on the production deploy)
+
+**Shipped:** `e097d59c0` (the CNB run image's base) and `a86820a2c` (every other pin, plus the Node/Elixir default steps). Details are in [t002](done/t002.md), [t003](done/t003.md), [t005](done/t005.md) and [t006](done/t006.md).
+
+**Met:**
+
+- The pins and the inventory carry the reviewed digests. The dispatched freshness run [43868429300](https://github.com/bex-co/bex/actions/runs/43868429300) found no drift, and the monitor closed #105 at 12:39Z ([t004](done/t004.md)).
+- hello-go, a Node app and a Python app built and served on dev-6 on the new toolchain ([t003](done/t003.md)).
+- PR #106 is closed.
+
+**Gate (clears by itself): the production deploy of `a86820a2c`.**
+
+- `deploy.yml` run 43868419391 skipped: "nothing to deploy yet". The production pin was 0.4 h old, and deploys batch at most every 6 hours. So the operator image with the new native pins reaches production at the next batched deploy, by about 18:20Z on 2026-11-16 (6 h after the `4be6dc520` pin).
+- Argo already applies the kpack chart (builder, stack and run image) and the manager's `BEX_CNB_BUILDER` from main.
+- **Check that releases it:**
+  - A `chore(deploy): pin platform images to <sha>` commit at or after `a86820a2c` is on main.
+  - Signed in as the QA user (`bash scripts/qa-login.sh`), a new native Node or Python service from `bex-co/bex` `examples/hello-python` builds, and its log names the new pins: `Using Python 3.14.10 (default)` and `Using Node 24.22.3 (default)`. It answers 200 at its `onbex.co` URL.
+  - The kpack ClusterBuilder is Ready on the new builder (`bex_build_clusterbuilder_ready` is 1, and `ClusterBuilderNotReady` is not firing).
+  - Then run t007.
