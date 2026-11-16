@@ -439,6 +439,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **334** — [The docs tell users of the released bex v0.7.0 to set `BEX_API_KEY`, which v0.7.0 ignores: the CLI says "run `bex login`" without sending the key](334.md) (~10m, minor) ← `/qa-find-bugs-cli` sweep 9c1d 2026-11-16
+  - **bex v0.7.0:** `BEX_API_KEY=<x> bex services` gives "run `bex login`" in 0.0 s (nothing sent), while `BEX_ACCESS_TOKEN` and `RENDER_API_KEY` are sent as the bearer. `8227312bc` (w7/m426, 12:59 UTC) came after the v0.7.0 release (10:26 UTC).
+  - **Fix:** `docs/bex-cli.md:106` and `lego/cli/README.md:70` say "newer than v0.6.0" / "after v0.6.0"; make that v0.7.0, and put the `BEX_ACCESS_TOKEN` fallback next to the CI recipe.
+
 - [ ] **333** — [A new Elixir service with no `ERLANG_VERSION` builds on Erlang/OTP 28.5.0.8; Render's default since 2025-06-12 is exactly 28.0.2](333.md) (~45m, minor) ← `/qa-find-bugs-cli` sweep af3b 2026-11-16
   - **bex (pin `48bc2a0fedda`):** `render-examples/phoenix_hello` with no version variables gives `Using Elixir 1.18.4 (default)`, then `OTP_VERSION` 28.5.0.8, the `elixir:1.18` image's own OTP.
   - **Cause:** `exactDefaults` (`nativeversion.go:218-232`) has an exact Elixir step but no Erlang one, and `resolver.elixir` sets an exact OTP only from `ERLANG_VERSION`.
