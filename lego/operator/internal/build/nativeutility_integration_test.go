@@ -187,13 +187,15 @@ type nativeUtilityCase struct {
 // common image; supplier-removed builds the same Node recipe on the official
 // image, which has no PostgreSQL clients.
 func nativeUtilityCases() []nativeUtilityCase {
-	omissions := []struct{ name, mid, failure string }{
-		{"jq", "98", "jq: command not found"},
-		{"rsync", "98", "rsync: command not found"},
-		{"pandoc", "93", "pandoc: command not found"},
-		{"python-metadata", "103", "No module named 'setuptools'"},
-		{"python-pip", "103", "No module named pip"},
-		{"python-headers", "103", "Python.h: No such file or directory"},
+	// runtime is the primary the omitted milestone's original case runs on.
+	omissions := []struct{ name, mid, failure, runtime string }{
+		{"jq", "98", "jq: command not found", nativeNodeRuntime},
+		{"rsync", "98", "rsync: command not found", nativeNodeRuntime},
+		{"pandoc", "93", "pandoc: command not found", nativeNodeRuntime},
+		{"sqlite3", "94", "sqlite3: command not found", nativePythonRuntime},
+		{"python-metadata", "103", "No module named 'setuptools'", nativeNodeRuntime},
+		{"python-pip", "103", "No module named pip", nativeNodeRuntime},
+		{"python-headers", "103", "Python.h: No such file or directory", nativeNodeRuntime},
 	}
 	cases := make([]nativeUtilityCase, 0, 5+len(omissions))
 	cases = append(cases,
@@ -204,7 +206,13 @@ func nativeUtilityCases() []nativeUtilityCase {
 		nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", expectedPythonVersion: "3.14.8", supplied: true, created: pythonCreationCutoff.Add(time.Second)},
 	)
 	for _, omitted := range omissions {
-		cases = append(cases, nativeUtilityCase{name: "missing-" + omitted.name, runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "original-cases.py build node " + omitted.mid, supplied: true, removal: omitted.name, wantFailure: omitted.failure})
+		// original-cases.py's mode is the runtime name, and its Python mode
+		// insists on the primary's /usr/local interpreter.
+		interpreter := "/usr/bin/python3"
+		if omitted.runtime == nativePythonRuntime {
+			interpreter = "/usr/local/bin/python3"
+		}
+		cases = append(cases, nativeUtilityCase{name: "missing-" + omitted.name, runtime: omitted.runtime, interpreter: interpreter, build: "original-cases.py build " + omitted.runtime + " " + omitted.mid, supplied: true, removal: omitted.name, wantFailure: omitted.failure})
 	}
 	return cases
 }
@@ -289,6 +297,10 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		// The packaged data must survive, so the original command fails on the
 		// missing program alone. dash caches command paths, hence hash -r.
 		command = "pandoc --version && rm /usr/bin/pandoc && test ! -e /usr/bin/pandoc && hash -r && ! command -v pandoc && test -f /usr/share/pandoc/data/abbreviations"
+	case "sqlite3":
+		// Only the program goes: the shared libsqlite3 must still answer SQL,
+		// so the original command fails on the missing CLI alone.
+		command = `sqlite3 -version && rm /usr/bin/sqlite3 && test ! -e /usr/bin/sqlite3 && hash -r && ! command -v sqlite3 && /usr/bin/python3 -c 'import sqlite3; print(sqlite3.connect(":memory:").execute("SELECT sqlite_version()").fetchone()[0])'`
 	case "python-metadata":
 		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/setuptools && test ! -e /usr/lib/python3/dist-packages/setuptools && /usr/bin/python3 -m pip --version && test -f /usr/include/python3.11/Python.h"
 	case "python-pip":

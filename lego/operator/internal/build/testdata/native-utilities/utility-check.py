@@ -25,7 +25,18 @@ def extra_cases():
   with sqlite3.connect('file:'+str(d/'library.db')+'?mode=ro',uri=True) as database:
    database.row_factory=sqlite3.Row;internal=[dict(row) for row in database.execute(query)]
   assert external==internal==[{'id':1,'label':'naïve 雪','n':2.5},{'id':2,'label':"quote's,comma",'n':-7},{'id':3,'label':'empty','n':0}]
-  results.append('SQLite readonly CLI JSON and independent Python library exact same-file rows')
+  def refused(args,needle,data=None):
+   r=subprocess.run(args,cwd=d,input=data,capture_output=True,timeout=90);assert r.returncode!=0 and needle in r.stderr,(args,r.returncode,r.stderr[-500:])
+  # CLI-only CSV import, a -bail stdin seed that must stop at its first failure, and a refused readonly write.
+  (d/'rows.csv').write_text('id,label,n\n1,"naïve, ""雪""",2.5\n2,plain,-7\n',encoding='utf-8')
+  run(['sqlite3','-bail','import.db'],cwd=d,data='CREATE TABLE imported(id INTEGER,label TEXT,n REAL);\n.import --csv --skip 1 rows.csv imported\n'.encode())
+  query='SELECT id,label,n FROM imported ORDER BY id';external=json.loads(run(['sqlite3','-readonly','-json','import.db',query],cwd=d))
+  with sqlite3.connect('file:'+str(d/'import.db')+'?mode=ro',uri=True) as database:internal=database.execute(query).fetchall()
+  assert external==[{'id':1,'label':'naïve, "雪"','n':2.5},{'id':2,'label':'plain','n':-7}] and internal==[(1,'naïve, "雪"',2.5),(2,'plain',-7.0)],(external,internal)
+  refused(['sqlite3','-bail','seed.db'],b'UNIQUE constraint failed: seeded.id',b"CREATE TABLE seeded(id INTEGER PRIMARY KEY,label TEXT);\nINSERT INTO seeded VALUES(1,'kept');\nINSERT INTO seeded VALUES(1,'duplicate');\nINSERT INTO seeded VALUES(2,'after');\n")
+  with sqlite3.connect('file:'+str(d/'seed.db')+'?mode=ro',uri=True) as database:assert database.execute('SELECT id,label FROM seeded').fetchall()==[(1,'kept')]
+  stored=sha((d/'library.db').read_bytes());refused(['sqlite3','-readonly','library.db',"INSERT INTO library_rows VALUES(4,'x',1)"],b'readonly database');assert sha((d/'library.db').read_bytes())==stored
+  results.append('SQLite readonly CLI JSON and independent Python library exact same-file rows; CLI CSV import; -bail seed stops at a named constraint error; readonly write refused')
   # Pandoc's Markdown reader, packaged template data and Lua filter runtime, independently parsed.
   (d/'doc.md').write_text('# Café 雪\n\n| key | value |\n|-----|-------|\n| naïve | 7 < 9 |\n\nSee [docs](https://example.invalid/a?b=1&c=2).\n',encoding='utf-8');(d/'upper.lua').write_text('function Str(el) return pandoc.Str(pandoc.text.upper(el.text)) end\n');(d/'fail.lua').write_text('function Str(el) error("bex filter refused") end\n')
   run(['pandoc','--from=markdown','--to=html5','--standalone','--metadata=title:QA 雪','--lua-filter=upper.lua','--output=doc.html','doc.md'],cwd=d)
