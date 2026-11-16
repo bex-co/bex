@@ -529,6 +529,11 @@ const jaUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Charge-tree category for managed Key Value instances",
   },
+  "usage.categoryObjectStorage": {
+    message: "オブジェクトストレージ",
+    description:
+      "Charge-tree category for a workspace's object storage (ADR112)",
+  },
   "usage.categoryAgentSessions": {
     message: "エージェントセッション",
     description:
@@ -596,6 +601,21 @@ const jaUsage: Record<string, TranslationEntry> = {
     message: "サンドボックスのスナップショットストレージ",
     description:
       "Charge line for the image a suspended sandbox retains, billed per GB-month",
+  },
+  "usage.chargeObjectStorage": {
+    message: "ストレージ",
+    description:
+      "Charge line for the data a workspace keeps in object storage, billed per GB-month (shown at no charge until a price is set, ADR112 D8)",
+  },
+  "usage.chargeObjectStorageIngress": {
+    message: "インバウンド帯域幅",
+    description:
+      "Charge line for the bytes put into a workspace's object storage (shown at no charge, ADR112 D8)",
+  },
+  "usage.chargeObjectStorageEgress": {
+    message: "アウトバウンド帯域幅",
+    description:
+      "Charge line for the bytes read out of a workspace's object storage, public reads included (shown at no charge, ADR112 D8)",
   },
   "usage.creditsTotalLabel": {
     message: "合計残高",

@@ -26,6 +26,10 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
+import {
+  CATEGORY_LABEL_KEYS,
+  CHARGE_LABEL_KEYS,
+} from "@/features/usage/lib/charge-labels";
 import { periodMonthLabel } from "@/features/usage/lib/period";
 import {
   billingWindow,
@@ -51,31 +55,6 @@ import type {
  * said what any of it cost — here money is the spine and usage is a column, so
  * "what am I paying for" and "how much did it consume" are one question.
  */
-
-const CATEGORY_LABEL_KEYS: Record<string, string> = {
-  service: "usage.categoryServices",
-  postgres: "usage.categoryPostgres",
-  key_value: "usage.categoryKeyValue",
-  sandbox: "usage.categorySandboxes",
-  agent_session: "usage.categoryAgentSessions",
-};
-
-/** Meter kinds read as charge names on a bill, not as raw meter identifiers. */
-const CHARGE_LABEL_KEYS: Record<string, string> = {
-  instance_seconds: "usage.chargeCompute",
-  egress_bytes: "usage.chargeBandwidth",
-  build_seconds: "usage.chargeBuild",
-  storage_gb_seconds: "usage.chargeStorage",
-  sandbox_compute_seconds: "usage.chargeSandboxCompute",
-  sandbox_memory_gb_seconds: "usage.chargeSandboxMemory",
-  sandbox_snapshot_gb_seconds: "usage.chargeSandboxSnapshotStorage",
-  disk_gb_seconds: "usage.chargeDisk",
-  agent_model_cost_microusd: "usage.chargeAgentModelCost",
-  agent_model_input_tokens: "usage.chargeAgentModelInputTokens",
-  agent_model_output_tokens: "usage.chargeAgentModelOutputTokens",
-  agent_model_cache_read_tokens: "usage.chargeAgentModelCacheReadTokens",
-  agent_model_cache_write_tokens: "usage.chargeAgentModelCacheWriteTokens",
-};
 
 /** Agent-model lines carry the model id as their tier, and are priced at the
  * provider's cost plus a markup rather than a per-unit rate (ADR091). */

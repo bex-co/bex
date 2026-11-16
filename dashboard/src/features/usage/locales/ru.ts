@@ -532,6 +532,11 @@ const ruUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Charge-tree category for managed Key Value instances",
   },
+  "usage.categoryObjectStorage": {
+    message: "Объектное хранилище",
+    description:
+      "Charge-tree category for a workspace's object storage (ADR112)",
+  },
   "usage.categoryAgentSessions": {
     message: "Сессии агентов",
     description:
@@ -599,6 +604,21 @@ const ruUsage: Record<string, TranslationEntry> = {
     message: "Хранение снимков песочницы",
     description:
       "Charge line for the image a suspended sandbox retains, billed per GB-month",
+  },
+  "usage.chargeObjectStorage": {
+    message: "Хранилище",
+    description:
+      "Charge line for the data a workspace keeps in object storage, billed per GB-month (shown at no charge until a price is set, ADR112 D8)",
+  },
+  "usage.chargeObjectStorageIngress": {
+    message: "Входящий трафик",
+    description:
+      "Charge line for the bytes put into a workspace's object storage (shown at no charge, ADR112 D8)",
+  },
+  "usage.chargeObjectStorageEgress": {
+    message: "Исходящий трафик",
+    description:
+      "Charge line for the bytes read out of a workspace's object storage, public reads included (shown at no charge, ADR112 D8)",
   },
   "usage.creditsTotalLabel": {
     message: "Общий баланс",

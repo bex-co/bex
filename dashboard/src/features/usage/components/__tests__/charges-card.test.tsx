@@ -580,6 +580,75 @@ describe("ChargesCard", () => {
     ).not.toBeInTheDocument();
   });
 
+  // w21/086: a workspace's object storage (ADR112 D8) is one resource whose id
+  // is the workspace's, with three shadow meters at no charge. The shape is the
+  // one `GET /v1/usage` returned on production.
+  it("labels object storage's category and its three unpriced meters", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate(
+          [
+            resource({
+              serviceId: "tea-d0a1b2c3d4e5f6a7b8c9",
+              serviceName: "Object storage",
+              resourceKind: "object_storage",
+              costUsd: "0.00",
+              charges: [
+                {
+                  kind: "object_storage_gb_seconds",
+                  tier: "",
+                  unit: "GB-mo",
+                  rateUsd: "0",
+                  quantity: "0.00187",
+                  costUsd: "0.00",
+                },
+                {
+                  kind: "object_storage_ingress_bytes",
+                  tier: "",
+                  unit: "GB",
+                  rateUsd: "0",
+                  quantity: "1.29",
+                  costUsd: "0.00",
+                },
+                {
+                  kind: "object_storage_egress_bytes",
+                  tier: "",
+                  unit: "GB",
+                  rateUsd: "0",
+                  quantity: "0.61",
+                  costUsd: "0.00",
+                },
+              ],
+            }),
+          ],
+          "0.00",
+        )}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    // The category header and the resource row share the words "Object
+    // storage"; the resource's own row is the second.
+    const [category, row] = screen.getAllByRole("button", {
+      name: /Object storage/,
+    });
+    expect(category).toHaveTextContent("Object storage");
+    fireEvent.click(row!);
+
+    expect(screen.getByText("Storage")).toBeInTheDocument();
+    expect(screen.getByText("Inbound bandwidth")).toBeInTheDocument();
+    expect(screen.getByText("Outbound bandwidth")).toBeInTheDocument();
+    // The unit and quantity are bex-api's; an unpriced meter reads Included.
+    expect(screen.getByText("0.00187 GB-mo")).toBeInTheDocument();
+    expect(screen.getByText("1.29 GB")).toBeInTheDocument();
+    expect(screen.getByText("0.61 GB")).toBeInTheDocument();
+    expect(screen.getAllByText("Included")).toHaveLength(3);
+    expect(screen.queryByText(/object_storage/)).not.toBeInTheDocument();
+  });
+
   it("totals the estimate and projects month end when there is no invoice", () => {
     render(
       <ChargesCard

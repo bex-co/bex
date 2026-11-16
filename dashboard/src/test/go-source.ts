@@ -19,6 +19,30 @@ export function goReasonConstants(): Map<string, string> {
   );
 }
 
+/**
+ * Every Go string constant named `<prefix>…` declared in a non-test file of the
+ * package directory `dir` (relative to the repo root), name → value and the file
+ * it sits in. Both a `const (…)` block member and a lone `const X = "…"` count.
+ */
+export function goPackageConstants(
+  dir: string,
+  prefix: string,
+): Map<string, { value: string; file: string }> {
+  const found = new Map<string, { value: string; file: string }>();
+  const declaration = new RegExp(
+    `^\\s*(?:const\\s+)?(${prefix}\\w*)\\s*=\\s*"([^"]*)"`,
+    "gm",
+  );
+  for (const file of readdirSync(`${REPO_ROOT}/${dir}`).sort()) {
+    if (!file.endsWith(".go") || file.endsWith("_test.go")) continue;
+    const source = readFileSync(`${REPO_ROOT}/${dir}/${file}`, "utf8");
+    for (const [, name, value] of source.matchAll(declaration)) {
+      found.set(name, { value, file: `${dir}/${file}` });
+    }
+  }
+  return found;
+}
+
 /** The value of the Go string constant `name` declared in the file at path. */
 export function goStringConstant(path: string, name: string): string {
   const source = readFileSync(`${REPO_ROOT}/${path}`, "utf8");

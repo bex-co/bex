@@ -518,6 +518,11 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Charge-tree category for managed Key Value instances",
   },
+  "usage.categoryObjectStorage": {
+    message: "对象存储",
+    description:
+      "Charge-tree category for a workspace's object storage (ADR112)",
+  },
   "usage.categoryAgentSessions": {
     message: "Agent 会话",
     description:
@@ -585,6 +590,21 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "沙箱快照存储",
     description:
       "Charge line for the image a suspended sandbox retains, billed per GB-month",
+  },
+  "usage.chargeObjectStorage": {
+    message: "存储",
+    description:
+      "Charge line for the data a workspace keeps in object storage, billed per GB-month (shown at no charge until a price is set, ADR112 D8)",
+  },
+  "usage.chargeObjectStorageIngress": {
+    message: "入站带宽",
+    description:
+      "Charge line for the bytes put into a workspace's object storage (shown at no charge, ADR112 D8)",
+  },
+  "usage.chargeObjectStorageEgress": {
+    message: "出站带宽",
+    description:
+      "Charge line for the bytes read out of a workspace's object storage, public reads included (shown at no charge, ADR112 D8)",
   },
   "usage.creditsTotalLabel": {
     message: "余额合计",

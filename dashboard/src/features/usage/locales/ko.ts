@@ -523,6 +523,11 @@ const koUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Charge-tree category for managed Key Value instances",
   },
+  "usage.categoryObjectStorage": {
+    message: "오브젝트 스토리지",
+    description:
+      "Charge-tree category for a workspace's object storage (ADR112)",
+  },
   "usage.categoryAgentSessions": {
     message: "에이전트 세션",
     description:
@@ -590,6 +595,21 @@ const koUsage: Record<string, TranslationEntry> = {
     message: "샌드박스 스냅샷 스토리지",
     description:
       "Charge line for the image a suspended sandbox retains, billed per GB-month",
+  },
+  "usage.chargeObjectStorage": {
+    message: "스토리지",
+    description:
+      "Charge line for the data a workspace keeps in object storage, billed per GB-month (shown at no charge until a price is set, ADR112 D8)",
+  },
+  "usage.chargeObjectStorageIngress": {
+    message: "인바운드 대역폭",
+    description:
+      "Charge line for the bytes put into a workspace's object storage (shown at no charge, ADR112 D8)",
+  },
+  "usage.chargeObjectStorageEgress": {
+    message: "아웃바운드 대역폭",
+    description:
+      "Charge line for the bytes read out of a workspace's object storage, public reads included (shown at no charge, ADR112 D8)",
   },
   "usage.creditsTotalLabel": {
     message: "총 잔액",

@@ -3,10 +3,12 @@
 # build_seconds (CI/build), storage_gb_seconds (managed datastore storage),
 # sandbox_compute_seconds (weighted hosted-sandbox compute),
 # sandbox_memory_gb_seconds (a sandbox's allocated memory; shown, not billed
-# separately until the used-CPU cutover), and sandbox_snapshot_gb_seconds (the
-# image a suspended sandbox retains).
+# separately until the used-CPU cutover), sandbox_snapshot_gb_seconds (the
+# image a suspended sandbox retains), and the object storage meters
+# (object_storage_gb_seconds, object_storage_ingress_bytes and
+# object_storage_egress_bytes, shown at $0 until Render publishes a price).
 # resourceKind distinguishes App services, managed Postgres/KeyValue instances,
-# and hosted sandboxes.
+# hosted sandboxes and a workspace's object storage.
 # period: optional calendar month YYYY-MM; defaults to the current month.
 # ownerId: workspace to query (w6/m18); the dashboard always sends the
 # switcher's selection so multi-workspace callers see the right workspace's
