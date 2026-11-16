@@ -209,15 +209,22 @@ func TestMintPutIsRefusedAtTheQuota(t *testing.T) {
 func TestMintsAreRateLimitedPerWorkspace(t *testing.T) {
 	e := newPGEnv(t, "objects-rate")
 	ctx := context.Background()
+	// The bucket refills MintPerSecond tokens a second on the real clock, and
+	// each mint reads Postgres, so a slow run earns a few tokens back while it
+	// drains the burst: mint until the first refusal and allow what the
+	// elapsed time refilled.
 	granted := 0
 	var last error
-	for range objectstorage.MintBurst + 10 {
-		if _, last = e.Svc.MintPut(ctx, e.WS, objectstorage.Oregon, "k", 1); last == nil {
-			granted++
+	start := time.Now()
+	for range objectstorage.MintBurst + 100 {
+		if _, last = e.Svc.MintPut(ctx, e.WS, objectstorage.Oregon, "k", 1); last != nil {
+			break
 		}
+		granted++
 	}
-	if granted != objectstorage.MintBurst || !errors.Is(last, objectstorage.ErrRateLimited) {
-		t.Fatalf("granted %d mints, last error %v; want exactly %d then ErrRateLimited", granted, last, objectstorage.MintBurst)
+	refilled := int(time.Since(start).Seconds()*objectstorage.MintPerSecond) + 1
+	if !errors.Is(last, objectstorage.ErrRateLimited) || granted < objectstorage.MintBurst || granted > objectstorage.MintBurst+refilled {
+		t.Fatalf("granted %d mints, then %v; want %d (+ up to %d refilled) then ErrRateLimited", granted, last, objectstorage.MintBurst, refilled)
 	}
 	// A read mint draws on the same bucket, and another workspace is unaffected.
 	if _, err := e.Svc.MintGet(ctx, e.WS, objectstorage.Oregon, "k"); !errors.Is(err, objectstorage.ErrRateLimited) {
