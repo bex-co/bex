@@ -20,7 +20,7 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
 
   return (
     <TableRow>
-      <TableCell className="font-mono text-sm break-all">
+      <TableCell className="font-mono text-sm">
         {entry.name}
       </TableCell>
       <TableCell className="font-mono text-sm">

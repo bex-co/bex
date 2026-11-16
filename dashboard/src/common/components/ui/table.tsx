@@ -63,11 +63,17 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   );
 }
 
+// The body's overflow-wrap:anywhere makes a word's min-content one glyph, so
+// auto layout crushed a column beside fixed-width neighbours (w4/685). Words
+// stay whole here; a too-wide table scrolls in its container instead.
+const CELL_WRAP = "wrap-break-word";
+
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
       className={cn(
+        CELL_WRAP,
         "text-foreground h-9 px-2 text-left align-middle font-medium [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}
@@ -81,6 +87,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
+        CELL_WRAP,
         "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}

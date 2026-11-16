@@ -243,7 +243,7 @@ function CustomDomainRow({
   return (
     <>
       <TableRow>
-        <TableCell className="font-medium break-all">
+        <TableCell className="font-medium">
           <a
             href={`https://${domain.name}`}
             target="_blank"

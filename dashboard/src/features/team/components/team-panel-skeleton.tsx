@@ -60,7 +60,7 @@ export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
         </TableHeader>
         <TableBody>
           <TableRow data-skeleton-region="member-row">
-            <TableCell className="break-all">
+            <TableCell>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="min-w-0 text-transparent">
                   {PLACEHOLDER_EMAIL}

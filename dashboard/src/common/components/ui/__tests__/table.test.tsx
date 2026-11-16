@@ -130,4 +130,45 @@ describe("Table", () => {
     expect(getByText("Data 1")).toBeInTheDocument();
     expect(getByText("Data 2")).toBeInTheDocument();
   });
+
+  // w4/685
+  it("keeps words whole in head and body cells", () => {
+    const { container } = render(
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>bex-canary-probes-m96</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+
+    expect(container.querySelector('[data-slot="table-head"]')).toHaveClass(
+      "wrap-break-word",
+    );
+    expect(container.querySelector('[data-slot="table-cell"]')).toHaveClass(
+      "wrap-break-word",
+    );
+  });
+
+  it("no table cell in the dashboard breaks words between any two letters", () => {
+    const sources = import.meta.glob(
+      ["/src/**/*.tsx", "!/src/**/__tests__/**", "!/src/**/*.test.tsx"],
+      { query: "?raw", import: "default", eager: true },
+    );
+    const offenders = Object.entries(sources).flatMap(([path, source]) =>
+      ((source as string).match(/<Table(?:Cell|Head)\b[^>]*>/g) ?? [])
+        .filter((tag) =>
+          /break-all|wrap-anywhere|overflow-wrap:anywhere/.test(tag),
+        )
+        .map((tag) => `${path}: ${tag}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
 });

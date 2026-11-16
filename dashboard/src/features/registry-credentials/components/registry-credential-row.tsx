@@ -28,13 +28,13 @@ export function RegistryCredentialRow({
 
   return (
     <TableRow>
-      <TableCell className="font-mono text-sm break-all">
+      <TableCell className="font-mono text-sm">
         <div>{entry.name}</div>
         {entry.name !== entry.host && (
           <div className="text-muted-foreground text-xs">{entry.host}</div>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground font-mono text-sm break-all">
+      <TableCell className="text-muted-foreground font-mono text-sm">
         {entry.username}
       </TableCell>
       <TableCell className="text-sm whitespace-nowrap">
