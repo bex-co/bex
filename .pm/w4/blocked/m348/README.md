@@ -1,6 +1,6 @@
 # w4 · m348 — A dashboard deploy can cache the HTML shell under a JavaScript chunk's URL for a year, in Cloudflare and in the browser, so service pages fail with "Something went wrong" and neither Try again nor a reload recovers them
 
-**Worker:** worker4 **Goal:** a dashboard rollout never leaves a browser or the edge holding HTML for a script URL. A request for an asset that doesn't exist answers 404 and is never cached, a real asset stays immutable, and a page that hit a version mismatch recovers on Try again. **Status:** blocked — release gate (t001–t005 done, code shipped 2026-11-14 by `/loopx w4`; t006 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** a dashboard rollout never leaves a browser or the edge holding HTML for a script URL. A request for an asset that doesn't exist answers 404 and is never cached, a real asset stays immutable, and a page that hit a version mismatch recovers on Try again. **Status:** blocked — rollout replay (t001–t005 done, code shipped 2026-11-14; the release gate cleared on pin `284b83e1f540` 2026-11-16, and DoD 1–3 and 5 hold there. t006 still has to replay DoD 4 through a dashboard rollout, polling from before the new pod is Ready)
 
 ## Tasks (in order)
 
@@ -155,3 +155,27 @@ Argo served the new build from 13:09:20 UTC: `GET /auth/login` began naming `/_a
 5. **Fixtures — holds.** No fixture service was needed.
 
 **Verdict:** DoD 1–3 and 5 hold. DoD 4 holds for every load from 7 s after the switch; the next dashboard rollout should start the poll before the pin lands.
+
+## Unblock record (2026-11-16, `/loopx w4` worker; verified evidence)
+
+- **Affected:** w4/m348 t006 (t001–t005 stay done).
+- **Release gate — clear.** The newest platform pin is `284b83e1f540` (`02026e53f`, 2026-11-16 21:29Z). `git merge-base --is-ancestor <sha> 284b83e1f540` holds for every commit this milestone and its follow-up shipped: `9484c8339` (t001, miss → 404 no-store), `6e35c5b22` (t002/t003, `/_assets/`) and `1c2beeadb` (w4/651, reload once on a failed chunk load). Production already ran the first two from pin `c99e7815ebec` (round 361 above).
+- **Remaining gate — DoD 4's overlap window, still unobserved.** No replay has yet loaded the page from before a new dashboard pod is Ready. That needs a rollout this worker can watch from the start, and production access here is read-only, so no rollout can be triggered. The pin's own dashboard rollout ran at 21:32:57–21:33:51Z (ReplicaSets `dashboard-775ff9df86`, then `dashboard-d46ddf489`), before this worker started.
+- **Release condition (clears by itself, no user action):** the next production deploy that rolls the dashboard. `deploy.yml`'s schedule and push triggers wait for a pin at least 6 h old (`min_age=6`), so the next automatic one is the 04:17Z cron on 2026-11-17, unless someone dispatches a deploy earlier.
+- **Next steps for the worker:** start the 5 s signed-in poll of `/services/<id>/settings` (isolated persistent-profile Chromium, QA user via `bash scripts/qa-login.sh`) **before** the pin commit lands. Watch `kubectl -n dashboard get rs,pods -w` (read-only) for the new ReplicaSet, and keep polling until the old pod is gone. Record every load's outcome and every Try again. Then, with the default cache, `fetch` every script the page loads and record the answers. DoD 1–3 and 5 need only a short recheck on that pin.
+
+## Live replay — pin `284b83e1f540` (2026-11-16 21:54Z, about 20 min after its dashboard rollout)
+
+Requests were sent with `curl -s -A "Mozilla/5.0 … Chrome/130…"` from outside the cluster.
+
+1. **A missing asset — holds.** Each of these answered `404`, `text/plain; charset=utf-8`, `cache-control: no-store`, `cf-cache-status: BYPASS`, body `Not found`:
+   - `/assets/qa-missing-1794866054.js`, twice;
+   - `/assets/qa-missing-1794866054.css` and `/assets/nope/qa-1794866054.js`;
+   - `/_assets/qa-missing-1794866054.js`, twice;
+   - `/_assets/qa-missing-1794866054.css` and `/_assets/nope/qa-1794866054.js`.
+
+   No answer was a `HIT`.
+2. **A real asset — holds.** `/auth/login` names 11 `/_assets/` scripts and no `/assets/` URL. A crawl from those entries reached 135 distinct `/_assets/` scripts, including `services._serviceId.settings-CM6PDnuj.js`. Every one answered `200`, `text/javascript`, `public, max-age=31536000, immutable`; the crawl went through each chunk's `./` and `/_assets/` imports. On a first pass over 90 of them, 11 were `HIT` and 79 `MISS`. So the edge held no HTML under any live chunk URL 20 minutes after the 21:33 rollout, at least at the colo that answered this machine.
+3. **Pages unchanged — holds.** `/auth/login` → `200 text/html`, `private, no-cache`. `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` → `200 application/json`, `public, max-age=300`.
+4. **Through a rollout — not replayed** (gate above).
+5. **Fixtures — holds.** None were created.
