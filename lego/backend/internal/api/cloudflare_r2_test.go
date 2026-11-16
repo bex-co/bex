@@ -61,7 +61,8 @@ func passThrough(next http.Handler) http.Handler { return next }
 
 func newCFHarness(t *testing.T) *cfHarness { return newCFHarnessAuthz(t, nil) }
 
-func newCFHarnessAuthz(t *testing.T, authz core.Checker) *cfHarness {
+// fakeObjectStores is every region's Wasabi store over one fake S3.
+func fakeObjectStores(t *testing.T) (*fakes3.Server, map[objectstorage.Region]objectstorage.Store) {
 	t.Helper()
 	fake := fakes3.New(objectstorage.Oregon.Bucket(), objectstorage.Frankfurt.Bucket())
 	t.Cleanup(fake.Close)
@@ -71,6 +72,12 @@ func newCFHarnessAuthz(t *testing.T, authz core.Checker) *cfHarness {
 			Endpoint: fake.URL, Region: r.WasabiRegion(), Bucket: r.Bucket(), AccessKey: "a", SecretKey: "s", MaxAttempts: 1,
 		})
 	}
+	return fake, stores
+}
+
+func newCFHarnessAuthz(t *testing.T, authz core.Checker) *cfHarness {
+	t.Helper()
+	fake, stores := fakeObjectStores(t)
 	repo := &memObjectRepo{}
 	svc := objectstorage.NewService(repo, stores)
 	srv := &Server{CloudflareR2: newCloudflareR2(&core.Base{Authz: authz}, svc, cfTestBaseDomain)}
