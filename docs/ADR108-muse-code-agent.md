@@ -69,7 +69,7 @@ The driver therefore writes `run.workflow_trigger_mode: "off"` into `~/.config/m
 
 The 2026-11-16 probe ran Muse 1.4.14-R7309.1 (`muse-aarch64-linux`, the pinned SHA-256) under muse-code-acp 0.11.0, in `node:22-bookworm-slim` as uid 10001. It set the profile's session config over ACP and pointed the model at a stub Responses endpoint. By default, the first model request offered 26 tools, including `muse.workflow`. With the setting it offered 25 and no `muse.workflow`.
 
-Workflows can come back once the adapter holds the prompt until background work, and the turn that reports it, have finished ([w6/m434](../.pm/w6/m434/README.md)).
+Workflows can come back once the adapter holds the prompt until background work, and the turn that reports it, have finished ([w6/m434](../.pm/w6/blocked/m434/README.md)).
 
 ## Consequences
 
