@@ -129,6 +129,12 @@ func TestPodNameRegexCoversEveryGeneratedName(t *testing.T) {
 				base = base[:maxGeneratedNameLength]
 			}
 			pod := base + "c2d4e" // utilrand.String(5), alphanumeric
+			// The operator's instance-id webhook names the pod itself, with
+			// no cut (w4/m322 t009); the API server keeps that name.
+			stamped := object + "-" + hash + "-c2d4e"
+			if !mustMatchPod(t, object, stamped) {
+				t.Errorf("service name %d chars, hash %d chars: webhook-named pod %q unmatched", svcLen, hashLen, stamped)
+			}
 			if !mustMatchPod(t, object, pod) {
 				t.Errorf("service name %d chars, hash %d chars: pod %q (%d chars) unmatched\nregex: %s",
 					svcLen, hashLen, pod, len(pod), PodNameRegex(object))
@@ -166,11 +172,15 @@ func TestPodNameRegexSelectsEveryCronRunPod(t *testing.T) {
 		}
 		return base + "wkvfv"
 	}
+	// stampPod is what the operator's instance-id webhook names it: the same
+	// base and five random characters, never cut (instance_id.go), which is
+	// the shape production runs.
+	stampPod := func(job string) string { return job + "-wkvfv" }
 	for _, service := range []string{"qa-20261111-cr81", "qa-20261111-cron-mid-25x", "qa-2026111-cronjob-name-22ch", "qa-20261111-cr81-longname-0030"} {
 		obj := tenant + service
-		scheduled := generatePod(appv1alpha1.CronJobName(obj) + "-29906350")
-		manual := generatePod(appv1alpha1.ManualCronRunJobName(obj, runAt))
-		for _, pod := range []string{scheduled, manual} {
+		scheduledJob := appv1alpha1.CronJobName(obj) + "-29906350"
+		manualJob := appv1alpha1.ManualCronRunJobName(obj, runAt)
+		for _, pod := range []string{generatePod(scheduledJob), generatePod(manualJob), stampPod(scheduledJob), stampPod(manualJob)} {
 			if !mustMatchPod(t, obj, pod) {
 				t.Errorf("%s: run pod %q is not selected", service, pod)
 			}
@@ -189,5 +199,40 @@ func TestPodNameRegexSelectsEveryCronRunPod(t *testing.T) {
 	long := tenant + "qa-20261111-cr81-longname-0030"
 	if !mustMatchPod(t, long, "tea-daif693dqjvc73e7as3g-qa-20261111-cr-5cb8a9072637-29906dsdzn") {
 		t.Error("the long-name scheduled run pod is not selected")
+	}
+	// The production shape (round 166, t009): a 30-character cron's pods are
+	// named by the webhook, 67 characters scheduled and 68 manual. Their
+	// hostnames were these names cut at 63.
+	prod := tenant + "qa-20261112-r166-longcronjob12"
+	for _, pod := range []string{
+		"tea-daif693dqjvc73e7as3g-qa-20261112-r1-5309e6408859-29907625-k8x2q",
+		"tea-daif693dqjvc73e7as3g-qa-20261112-r1-5309e6408859-r6d3f1282-p4m7z",
+	} {
+		if got := appv1alpha1.CronJobName(prod); got != pod[:len(got)] {
+			t.Fatalf("CronJobName(%q) = %q, not the live prefix of %q", prod, got, pod)
+		}
+		if !mustMatchPod(t, prod, pod) {
+			t.Errorf("the production run pod %q (%d chars) is not selected", pod, len(pod))
+		}
+	}
+	// Another long-named App of the same 39-character prefix hashes to a
+	// different CronJob name, so its run pods stay out in either shape.
+	other := tenant + "qa-20261112-r166-longcronjob13"
+	otherJob := appv1alpha1.CronJobName(other)
+	if otherJob == appv1alpha1.CronJobName(prod) {
+		t.Fatalf("CronJobName collides for %q and %q", prod, other)
+	}
+	for _, pod := range []string{stampPod(otherJob + "-29907625"), stampPod(otherJob + "-r6d3f1282"), generatePod(otherJob + "-29907625")} {
+		if mustMatchPod(t, prod, pod) {
+			t.Errorf("a sibling cron's run pod %q is selected", pod)
+		}
+	}
+	// A web service whose object name extends the hashed CronJob name keeps a
+	// hyphen after its own segment, untruncated or cut, so it stays out too.
+	webObj := appv1alpha1.CronJobName(prod) + "-x"
+	for _, pod := range []string{webObj + "-5f557c45fd-ll7x9", generatePod(webObj + "-5f557c45fd")} {
+		if mustMatchPod(t, prod, pod) {
+			t.Errorf("web pod %q of object %q is selected", pod, webObj)
+		}
 	}
 }

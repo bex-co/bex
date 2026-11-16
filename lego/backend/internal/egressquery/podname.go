@@ -51,7 +51,9 @@ const (
 // Two shapes, because Kubernetes generates only one of them reliably:
 //
 //   - `<obj>-<replicaset-hash>-<5 random>` — the untruncated Deployment pod (and
-//     `<cronjob>-<timestamp>-<5 random>` for a CronJob's Job pods).
+//     `<cronjob>-<timestamp>-<5 random>` for a CronJob's Job pods). Every tenant
+//     pod has this shape at any length while the operator's instance-id webhook
+//     names it (generateName plus five random characters, never cut).
 //
 //   - `<obj>-<N alphanumerics>` — what is left once GenerateName truncates. The
 //     ReplicaSet controller passes base = "<obj>-<hash>-"; when that exceeds 58
@@ -77,12 +79,28 @@ func PodNameRegex(objectName string) string {
 	// A cron App whose object name is past the CronJob limit runs its Jobs
 	// under the hashed CronJob name, scheduled (`<cronjob>-<minute>`) and
 	// manual (`<cronjob>-r<8 hex>`) alike, so its run pods are not prefixed by
-	// the object name (w4/m322). That name is always MaxCronJob long, so every
-	// run pod's generateName base is past the cut: the pod is the truncated
-	// single segment. The hashed name is unique to this object.
+	// the object name (w4/m322). The hashed name is unique to this object.
+	// Two run pod shapes follow it, as for any object:
+	//
+	//   - `<cronjob>-<job suffix>-<5 random>`, untruncated (67–68 characters).
+	//     The operator's instance-id webhook names every tenant pod itself, as
+	//     generateName plus five random characters with no 58-character cut
+	//     (operator/internal/webhook/instance_id.go), and the API server keeps
+	//     that name. This is the shape production runs (w4/m322 t009).
+	//   - `<cronjob>-<N alphanumerics>`, the API server's own truncated name,
+	//     for a pod admitted while that webhook was unreachable (its
+	//     failurePolicy is Ignore). The CronJob name is always MaxCronJob long,
+	//     so the generateName base of every run pod is past the cut.
+	//
+	// A sibling App cannot match either: its own object name would have to
+	// start with this hashed name, and a pod of an object "<cronjob>-<x>" keeps
+	// a hyphen after <x> that neither the five-character tail nor the
+	// truncated single segment admits.
 	if len(objectName) > k8sname.MaxCronJob {
 		cronJob := appv1alpha1.CronJobName(objectName)
-		named += fmt.Sprintf(`|%s-[a-z0-9]{%d}`, RegexEscape(cronJob), maxPodNameLength-len(cronJob)-1)
+		escapedJob := RegexEscape(cronJob)
+		named += fmt.Sprintf(`|%s-[a-z0-9]+-[a-z0-9]{%d}|%s-[a-z0-9]{%d}`,
+			escapedJob, podRandomSuffixLength, escapedJob, maxPodNameLength-len(cronJob)-1)
 	}
 	if len(objectName) > maxGeneratedNameLength {
 		// The generateName base is already over the cut, so the truncation lands

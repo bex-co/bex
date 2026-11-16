@@ -1,6 +1,6 @@
 # w4 · m322 — A cron job's manually triggered runs, and every run of a cron job named 28–30 characters, chart no CPU, memory or instances and meter no instance time
 
-**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t009 (round 166: long-named run pods are not truncated) is open; t004's live replay passed DoD 1 and waits on t009 for DoD 2, then t008 closes
+**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** blocked — t001–t003, t005–t007 and t009 done (shipped); t004's live replay waits for a production deploy carrying t009's fix, then t008 closes
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | [t001](done/t001.md) | Select every run pod of a cron App in the shared cAdvisor matcher: manual-run Jobs and hashed long-name CronJob Jobs — **DONE** | 60m | — |
 | [t002](done/t002.md) | Blast radius: the three matcher callers, sibling-App isolation and regression tests on the shapes that work today — **DONE** | 30m | t001 |
 | [t003](done/t003.md) | A cron App that ran in a window but meters zero is a degraded read, not an honest zero — **DONE** | 30m | t001 |
-| [t009](t009.md) | A long-named cron job's run pods are not truncated (`<cronjob>-<minute>-<5>`, `<cronjob>-r<8 hex>-<5>`, 67–68 characters), so t001's single-segment alternative matches none and the job still charts nothing | 40m | t001 |
+| [t009](done/t009.md) | A long-named cron job's run pods are not truncated (`<cronjob>-<minute>-<5>`, `<cronjob>-r<8 hex>-<5>`, 67–68 characters), so t001's single-segment alternative matches none and the job still charts nothing — **DONE** | 40m | t001 |
 | [t004](t004.md) | Live verification in `bex-canary` | 30m | t002, t003, t009 |
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
@@ -154,3 +154,9 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `c1cc477b8`. Fixtures are i
   - If the usage meter counts those tails, each 49 s run would meter several minutes. The hourly rollup wasn't waited for, so DoD 3's ±15 s check is still open.
 - **Not run:** DoD 3 (usage after the hour rolls up) and DoD 4 (sibling isolation).
 
+
+## Unblock check (2026-11-15, `/loopx w4`): the release gate held for t001, not for t009
+
+- **Finding.** Production's scheduled deploy at 2026-11-15 22:49Z ran on `06cc3b02c`. `git merge-base --is-ancestor c1cc477b8 06cc3b02c` holds, so t001–t003's fix is live. But t009, filed in round 166 after DoD 2 failed live, had never been implemented, so a replay on `06cc3b02c` would fail DoD 2 again for the same reason. The replay was not run.
+- **Done instead.** t009 was implemented (see [its outcome](done/t009.md#outcome-2026-11-15-loopx-w4)): tenant run pods are named by the operator's instance-id webhook without the 58-character cut, and the selector now matches that shape under the hashed CronJob name.
+- **Remaining gate (clears by itself).** A production deploy whose commit contains the t009 fix commit (`git merge-base --is-ancestor <t009 sha> <deployed sha>`). Then a worker replays DoD 1–4 (t004) and closes out (t008). No user action.
