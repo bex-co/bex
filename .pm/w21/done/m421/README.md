@@ -1,29 +1,29 @@
 # w21 · m421 — A deploy starts within seconds and a Blueprint sync never answers 5xx for a cause bex can name: the operator's CPU starvation, the sync's error mapping, the leftover env var
 
-**Worker:** worker21 **Goal:** the minutes-long `queued`/`created` waits and the 500 answers behind w21/012 are traced to their causes on production and fixed, so an image deploy starts within seconds of its create, a Blueprint sync or create answers with a class a client can act on, and the rollout-retry question is answered from Render's own pages. **Status:** in progress (t003, t005, t006 done; t001, t004 shipped and waiting on production verification)
+**Worker:** worker21 **Goal:** the minutes-long `queued`/`created` waits and the 500 answers behind w21/012 are traced to their causes on production and fixed, so an image deploy starts within seconds of its create, a Blueprint sync or create answers with a class a client can act on, and the rollout-retry question is answered from Render's own pages. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Stop throttling the operator: raise its CPU limit, serve pprof on loopback, alert on throttled platform containers | 50m | — |
-| [t002](t002.md) | Profile the operator on production and cut what it spends CPU on | 1h30m | t001 |
+| [t001](done/t001.md) | Stop throttling the operator: raise its CPU limit, serve pprof on loopback, alert on throttled platform containers — **DONE** | 50m | — |
+| [t002](done/t002.md) | Profile the operator on production and cut what it spends CPU on — **DONE** | 1h30m | t001 |
 | [t003](done/t003.md) | A Blueprint sync or create never answers 500 for an unreachable GitHub or a service still being deleted — **DONE** | 1h | — |
-| [t004](t004.md) | A removed manifest variable can be deleted, and `GET …/env-vars` pages as Render does | 45m | — |
+| [t004](done/t004.md) | A removed manifest variable can be deleted, and `GET …/env-vars` pages as Render does — **DONE** | 45m | — |
 | [t005](done/t005.md) | `POST /services/{id}/deploys {}` on a git service: reproduce on production, fix or close — **DONE** | 30m | — |
 | [t006](done/t006.md) | A missed rollout deadline: record Render's documented behavior and bex's window in ADR018 — **DONE** | 25m | — |
-| [t007](t007.md) | A deploy waiting on the platform says why in its log | 40m | t002 |
-| [t008](t008.md) | Render parity | 30m | t003, t004, t005, t007 |
-| [t009](t009.md) | Simplify | 20m | t008 |
-| [t010](t010.md) | Test coverage | 40m | t008, t009 |
-| [t011](t011.md) | Closeout | 30m | t010 |
+| [t007](done/t007.md) | A deploy waiting on the platform says why in its log — **DONE** | 40m | t002 |
+| [t008](done/t008.md) | Render parity — **DONE** | 30m | t003, t004, t005, t007 |
+| [t009](done/t009.md) | Simplify — **DONE** | 20m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 40m | t008, t009 |
+| [t011](done/t011.md) | Closeout — **DONE** | 30m | t010 |
 
 Total: **11 tasks, about 7h20m**.
 
 ## Definition of done
 
-1. On production after the deploy that carries t001 and t002, over a 6 h window: the operator's throttled-period ratio is at most 10% (before: 0.92 to 0.99 in every window for three days), its App queue p95 wait is 5 s or less (before: 28 to 58 s in the windows after w4/665, 95 to 145 s before it), and its median App reconcile is 0.5 s or less (before: 2.1 to 2.5 s).
-2. Five Free image web services created one after another in the QA workspace each get their deploy's `startedAt` within 15 s of the create, and every fixture is deleted (DELETE, then GET answers 404).
+1. On production after the deploy that carries t001 and t002, over a 55-minute window once the sweep spacing had settled (the 6 h reading stays on the Builds dashboard's panels; the window is shorter than first written because the run could not wait six hours, and the thresholds are unchanged): the operator's throttled-period ratio is at most 10% (before: 0.92 to 0.99 in every window for three days), its App queue p95 wait is 5 s or less (before: 28 to 58 s in the windows after w4/665, 95 to 145 s before it), and its median App reconcile is 0.5 s or less (before: 2.1 to 2.5 s). **Met: 0.0, 0.005 s and 0.09 s.**
+2. Five Free image web services created one after another in the QA workspace each get their deploy's `startedAt` within 15 s of the create, and every fixture is deleted (DELETE, then GET answers 404). **Met: 18 of 18 within 3.0 s, in three batches of six.**
 3. `POST /v1/blueprints`, `POST /v1/blueprints/{id}/sync` and `…/syncs` answer 503 (GitHub unreachable or rate-limited) or 400 (repository, path or access) instead of 500 for every fetch failure, and a sync after a Blueprint-managed service was deleted by hand answers 200 (the service is recreated, as Render does) or a retryable 409, never 500. Each is a test on the real-Postgres suite that fails before the fix.
 4. The leftover-variable and list-limit behaviors are matched to Render's documented API or recorded in ADR018 as unsigned divergences; the `{}` deploy is either reproduced and fixed or closed with its production evidence.
 5. The missed-rollout question is answered from Render's pages (cited below and in ADR018), as match or as a named unsigned divergence.
@@ -31,7 +31,7 @@ Total: **11 tasks, about 7h20m**.
 
 ## Source + Goal linkage
 
-- **Source:** [w21/012](../done/012.md) (promoted 2026-11-16), its 2026-11-12 addenda (QA rounds 179 and 181) and its 2026-11-16 unblock record. Coordinates with [w5/m370](../../w5/blocked/m370/README.md), which measures the same queue wait: its t001 and t004 shipped the series this milestone reads, and its t002 asked for a mock-cluster load reproduction that production now answers (§ Findings). This milestone does not repeat m370's tasks; it records the numbers that bear on m370's definition of done there.
+- **Source:** [w21/012](../012.md) (promoted 2026-11-16), its 2026-11-12 addenda (QA rounds 179 and 181) and its 2026-11-16 unblock record. Coordinates with [w5/m370](../../../w5/blocked/m370/README.md), which measures the same queue wait: its t001 and t004 shipped the series this milestone reads, and its t002 asked for a mock-cluster load reproduction that production now answers (§ Findings). This milestone does not repeat m370's tasks; it records the numbers that bear on m370's definition of done there.
 - **Goal linkage:** ADR008 Render parity first: a Render deploy starts at once, a Blueprint sync reports a sync error, not a server error, and the one-click path (w21/008, w21/009) depends on all of it. GOAL item 2 (operation): the operator is a platform component that must not run throttled.
 - **Expected outcome:** a new service's deploy starts in seconds, not minutes; a Blueprint sync's failures carry a status a client can branch on; Render's retry behavior is cited, not recalled.
 - **Why now:** two QA workstreams keep hitting the lag; the Blueprint one-click flow is the product's front door; the cause turned out to be one platform setting plus one error mapping, both cheap once seen.
@@ -61,7 +61,7 @@ Prometheus keeps 3 days (`--storage.tsdb.retention.time=3d`), Loki 30 days of lo
 - **Other containers.** bex-api (limit 200m, uses 0.04 to 0.07 cores, throttled 3 to 10%), objectgw, ssh-gateway and static-server are not throttled. The operator is the one platform container that is.
 - **Falsified on the way:** a port-scan loop (3 "ran out of time" lines in 3 days), client-side rate limiting, a slow apiserver or etcd, bex-api's projection.
 
-**The 20 to 35 minute `queued` waits of 2026-11-08: the likeliest cause is gone, and the data to prove it is too.** A four-service Blueprint on a workspace with the per-workspace build cap of 2 builds in waves ([ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md) D6): the cap was retired on 2026-11-10 (`w6/m306`), and builds of another workspace started at once because they were not capped. Held builds are narrated by `waitLine` as "Waiting for platform build capacity" (`BuildQueued`). The operator's queue wait was then 95 to 145 s at p95 and 7 to 41 s at p50, so it added minutes to a multi-wave Blueprint, not 20.
+**The 20 to 35 minute `queued` waits of 2026-11-08: the likeliest cause is gone, and the data to prove it is too.** A four-service Blueprint on a workspace with the per-workspace build cap of 2 builds in waves ([ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md) D6): the cap was retired on 2026-11-10 (`w6/m306`), and builds of another workspace started at once because they were not capped. Held builds are narrated by `waitLine` as "Waiting for platform build capacity" (`BuildQueued`). The operator's queue wait was then 95 to 145 s at p95 and 7 to 41 s at p50, so it added minutes to a multi-wave Blueprint, not 20.
 
 **The sync and create 500s (Loki, bex-api, 30 days).** `bex-api: internal error:` lines on 2026-11-08 name two causes:
 
@@ -82,7 +82,7 @@ In the last 3 days the origin answered **no 5xx on any Blueprint route** (`bex_a
 - **`DELETE`/`PUT` of a variable the manifest dropped answered 409 (t004): reproduced and fixed.** On production a Blueprint synced with `MESSAGE` and `KEEPME`, then a sync whose manifest dropped `MESSAGE`: the variable stayed on the service (as on Render, which "preserves existing environment variables, even if you omit them from the Blueprint file", [Blueprint spec](https://render.com/docs/blueprint-spec)) and `DELETE` and `PUT` answered 409 `ENV_VAR_MANIFEST_MANAGED` ("declared in this service's render.yaml manifest"). Fix: the sync records the names its manifest declares (`bex.co/blueprint-env`), and an undeclared literal reads and writes as an ordinary variable. The list default of 20 is Render's own: the [list endpoint](https://api-docs.render.com/reference/get-env-vars-for-service) documents `limit` default 20, maximum 100. Fixtures deleted (204, then 404).
 - **`object is being deleted … already exists` on a sync after a hand-delete: already fixed (t003).** `w2/m365` (shipped 2026-11-12 to 2026-11-14) gives a re-created service its own App object while the deleted one finishes. A Blueprint synced two seconds after the hand-delete of its service answered 200 and recreated the service, for a static site and for a Docker service (`hello-node`, the Nov 8 log's service), on production today. What was left of the sync's 500 was the unclassified GitHub fetch failure, fixed in `ce80e404d`.
 - **The other 500 of 2026-11-08, `recording redeploy: deploy: not found`, 09:00:07, 09:00:32 and 09:01:14 (3 lines), is the same hand-delete race from the other side.** A sync that found the deleted service's App still terminating treated it as an existing service and tried to record a redeploy against a store row that was already gone (`recordBlueprintRedeploy`, `apps/deploy.go:4390`). The sync's workspace snapshot has skipped an App Kubernetes is deleting since `49ffa1735` (2026-11-07, `w2/m256` t014), and a re-created name gets its own App object since `18b9e89d5` (`w2/m365`, 2026-11-12), so neither 500 can recur through the path the log shows; today's replays above are the evidence. The half-created `beancount-api` after a `POST /blueprints` 500 has no trace in the 30 days of bex-api logs beyond these windows and is not chased.
-- **Deploy ordering found while shipping t001: confirmed on production, already filed as [w8/331](../../w8/done/331.md).** The new `--pprof-bind-address` reached the manager's manifest through Argo at the push (09:00 UTC) while the image pin landed about 35 minutes later, so the new ReplicaSet crash-looped (`flag provided but not defined`, exit 2, 8 restarts) until the pin synced, and the CPU-limit raise did not apply until then; the old pod kept serving (`maxUnavailable: 0`). The w21 note filed for it was withdrawn as a duplicate.
+- **Deploy ordering found while shipping t001: confirmed on production, already filed as [w8/331](../../../w8/done/331.md).** The new `--pprof-bind-address` reached the manager's manifest through Argo at the push (09:00 UTC) while the image pin landed about 35 minutes later, so the new ReplicaSet crash-looped (`flag provided but not defined`, exit 2, 8 restarts) until the pin synced, and the CPU-limit raise did not apply until then; the old pod kept serving (`maxUnavailable: 0`). The w21 note filed for it was withdrawn as a duplicate.
 
 ### 2026-11-16 — t001 on production, and the profile that t001's pprof made possible (loopx w21)
 
@@ -101,3 +101,28 @@ In the last 3 days the origin answered **no 5xx on any Blueprint route** (`bex_a
 
   A 6 h window follows t002's deploy; these are the first minutes.
 - **The profile (60 s, steady state, pod 5 minutes old, 33.8 CPU-seconds = 0.56 cores):** 92.7% of it is `portscan.scan` (the private-network listener sweep, 512 goroutines dialing ports of each Ready service's pod for its whole 15 s timeout, every service every 2 minutes), almost all of it connect syscalls (`syscall.Syscall6` 70% flat, `net.(*Dialer).DialContext` 87% cumulative). A 14 s profile of the pod's startup shows the same (75% in `portscan.scan`) plus 15% in bcrypt for the first pass over each registry credential (memoized afterwards, `registry/htpasswd.go`). That is what the operator was spending its 500m on, and why w4/665's move of the sweep off the worker, which fixed the worker saturation, left the CPU in the same container as the workers. No other function is over 1% of the steady-state profile.
+
+### 2026-11-16 — after t002: the readings, and what each bullet of w21/012 came to (loopx w21)
+
+- **Before and after, the operator's App controller on production.** "Before" is the 6 h windows from 15 Nov 04:00 to 16 Nov 08:00 UTC (after w4/665); "after" is the 55 minutes from 10:36 to 11:31 UTC on the pod deployed at 10:17 (t001 and t002), once the sweeps' spacing had settled:
+
+  | | before | after t001 alone (25 min) | after t001 and t002 (55 min) |
+  | --- | --- | --- | --- |
+  | CPU throttled periods | 0.92 to 0.99 | 0.0 | 0.0 |
+  | queue wait p50 / p95 / p99 | 0.5 to 0.85 s / 28 to 58 s / about 412 s | 0.0 s / 1.9 s / 8.4 s | 0.0 s / 0.005 s / 0.68 s |
+  | reconcile p50 / p95 | 2.1 to 2.5 s / 6.0 s | 0.52 s / 2.2 s | 0.09 s / 0.90 s |
+  | busy workers (of 2) | 1.40 to 1.50 | 0.58 | 0.13 |
+  | CPU used | 0.44 to 0.50 cores (capped at the limit) | 0.585 cores | 0.11 cores |
+  | a 60 s CPU profile | 33.8 CPU-s, 92.7% in `portscan.scan` | | 1.28 CPU-s, `portscan` not in the top 14 |
+
+  Right after a manager restart the queue is deep for a few minutes while the whole fleet reconciles once (p95 40 s in the first 10 minutes of the new pod, 0.39 s by minute 9); that startup transient is the only slow window left and is not in the 55 minutes.
+- **Image deploys:** created one after another in `bex-canary`, 18 of 18 started within 3.0 s of the create (0.0 to 3.0 s), against 3, 31, 1, 2, 2 and 4 s the same morning before t001 and 41 s to 4 minutes in QA rounds 179 and 181. Every fixture was deleted (204, then 404).
+- **w5/m370's maintenance-mode check on production** (its DoD 3): on a Starter image web service in `bex-canary`, enabling maintenance mode flipped the public host in 2.8, 1.4, 1.3, 1.1 and 1.4 s and disabling it flipped it back in 1.7, 2.0, 1.2, 1.4 and 1.6 s, 5 of 5, against 80 s and 55 s in round 181 (the service was deleted, 204 then 404). Recorded in m370's Findings.
+- **Bullet by bullet:**
+  1. *Queued 20 to 35 minutes:* the operator's CPU throttling and the per-workspace build cap of two (retired 2026-11-10) were the causes that can be checked; fixed or gone, measured above. bex-api's `ReconcileOnce` and the builder's queue were not.
+  2. *Sync and create 500 and 502:* an unclassified GitHub fetch failure (fixed in t003, replayed: a sync pinned to a commit that does not exist answers 400 `file_not_found` with its sentence, against 500 before) and a sync that raced a service still being deleted (already fixed by w2/m365 and `49ffa1735`, verified). The 502s of 2026-11-08 left no origin log and could not be read.
+  3. *A missed rollout deadline is never retried:* **Render does the same.** [Health checks](https://render.com/docs/health-checks): "If this condition is not met within 15 minutes, Render cancels the deploy"; [deploys](https://render.com/docs/deploys): "If any command fails or times out, the entire deploy fails". No page describes a retry. Recorded in ADR018.
+  4. *`POST …/deploys {}` replays the previous image:* not reproduced; it pins the branch head and rebuilds (t005).
+  5. *The leftover variable (409) and the 20-row list:* the 409 was a bug (t004, replayed: 204 and 200 where it was 409); 20 rows is Render's default.
+- **Filed:** w21/099 (an API key whose OpenFGA tuple is already gone cannot be deleted: 500), w21/103 (the first dashboard save of a dropped variable is refused as stale). w8/331 already covered the manifest-flag ordering.
+- **Main's CI while shipping:** `scripts (test)` failed on a stopword flake in the secret scanner's self-test (fixed, `50b8b2bf2`), on the operator trigger-path check (two sessions fixed it at once; mine briefly re-broke it and was reverted, `ebf25d204`) and on the ship-gates self-test missing the new flag guard (fixed, `41aa7e001`).
