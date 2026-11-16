@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply compatible native Python setuptools and metadata tools](t001.md) | 50m | [w8/m91/t007](../m91/t007.md) |
+| t001 | [Supply compatible native Python setuptools and metadata tools](t001.md) | 50m | [w8/m91/t007](../m91/done/t007.md) |
 | t002 | [Supply compatible native pip and target wheel installation](t002.md) | 60m | t001 |
 | t003 | [Supply matching Python development headers and compiler inputs](t003.md) | 65m | t002 |
 | t004 | [Audit all three prerequisites across shared native bases and phases](t004.md) | 40m | t001, t002, t003 |
@@ -40,7 +40,7 @@ Reviewed immutable multiarch setuptools, pip and matching development-header/con
 
 ## Shared foundation decision applied — 2026-10-31
 
-The explicit2026-10-29 user choice of one common Bookworm tools foundation overrides the earlier worker-derived C design. [m91/t007](../m91/t007.md) supplies the foundation and exact runtime installation. This milestone retains its original programs/data/commands and functional/hosted DoD. There is no remaining user architecture decision. Already-started C publications may finish as retained evidence; no new automatic C matrix or catalog adoption.
+The explicit2026-10-29 user choice of one common Bookworm tools foundation overrides the earlier worker-derived C design. [m91/t007](../m91/done/t007.md) supplies the foundation and exact runtime installation. This milestone retains its original programs/data/commands and functional/hosted DoD. There is no remaining user architecture decision. Already-started C publications may finish as retained evidence; no new automatic C matrix or catalog adoption.
 
 
 ## Drain disposition — 2026-11-01

@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply a reviewed native sqlite3 executable and dependencies](t001.md) | 70m | [w8/m91/t007](../m91/t007.md) |
+| t001 | [Supply a reviewed native sqlite3 executable and dependencies](t001.md) | 70m | [w8/m91/t007](../m91/done/t007.md) |
 | t002 | [Audit shared native consumers and preserve library and cache behavior](t002.md) | 35m | t001 |
 | t003 | [Verify SQLite CLI Render parity across native authoring surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify the changed SQLite CLI supplier](t004.md) | 15m | t003 |
@@ -38,7 +38,7 @@ A reviewed immutable multiarch sqlite3 executable with complete required librari
 
 ## Shared foundation decision applied — 2026-10-31
 
-The explicit2026-10-29 user choice of one common Bookworm tools foundation overrides the earlier worker-derived C design. [m91/t007](../m91/t007.md) supplies the foundation and exact runtime installation. This milestone retains its original programs/data/commands and functional/hosted DoD. There is no remaining user architecture decision. Already-started C publications may finish as retained evidence; no new automatic C matrix or catalog adoption.
+The explicit2026-10-29 user choice of one common Bookworm tools foundation overrides the earlier worker-derived C design. [m91/t007](../m91/done/t007.md) supplies the foundation and exact runtime installation. This milestone retains its original programs/data/commands and functional/hosted DoD. There is no remaining user architecture decision. Already-started C publications may finish as retained evidence; no new automatic C matrix or catalog adoption.
 
 
 ## Drain disposition — 2026-11-01

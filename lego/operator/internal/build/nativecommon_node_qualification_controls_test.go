@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -226,6 +227,19 @@ func TestCommonNodeQualificationCanonicalCells(t *testing.T) {
 				t.Fatal("unresolved legacy pnpm was masked by a test-only workaround")
 			}
 		})
+	}
+}
+
+// Production copies exactly the donor trees the families run qualifies; a
+// donor added, dropped or moved on one side only would ship unqualified.
+func TestProductionNodeDonorsAreTheQualifiedDonors(t *testing.T) {
+	qualified, err := commonNodeQualificationArtifacts("1")
+	must(t, err)
+	if !maps.Equal(nativeRuntimeArtifacts, qualified) {
+		t.Fatalf("production donors %v differ from the qualified donors %v", nativeRuntimeArtifacts, qualified)
+	}
+	if err := validateNativeBase(nativeCommonBase); err != nil || !strings.HasPrefix(nativeCommonBase, "ghcr.io/bex-co/bex-cnb-run@") {
+		t.Fatalf("common base %q is not a pinned reviewed image: %v", nativeCommonBase, err)
 	}
 }
 

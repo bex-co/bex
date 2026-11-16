@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply a reviewed native jq executable and dependencies](t001.md) | 50m | [w8/m91/t007](../m91/t007.md) |
+| t001 | [Supply a reviewed native jq executable and dependencies](t001.md) | 50m | [w8/m91/t007](../m91/done/t007.md) |
 | t002 | [Supply a reviewed native rsync executable and dependencies](t002.md) | 70m | t001 |
 | t003 | [Audit shared native bases, phases and both utility consumers](t003.md) | 35m | t001, t002 |
 | t004 | [Verify jq and rsync Render parity across native inputs](t004.md) | 20m | t003 |
@@ -39,7 +39,7 @@ Reviewed immutable multiarch jq and rsync payloads with compatible required libr
 
 ## Shared foundation decision applied — 2026-10-31
 
-The explicit2026-10-29 user choice of one common Bookworm tools foundation overrides the earlier worker-derived C design. [m91/t007](../m91/t007.md) supplies the foundation and exact runtime installation. This milestone retains its original programs/data/commands and functional/hosted DoD. There is no remaining user architecture decision. Already-started C publications may finish as retained evidence; no new automatic C matrix or catalog adoption.
+The explicit2026-10-29 user choice of one common Bookworm tools foundation overrides the earlier worker-derived C design. [m91/t007](../m91/done/t007.md) supplies the foundation and exact runtime installation. This milestone retains its original programs/data/commands and functional/hosted DoD. There is no remaining user architecture decision. Already-started C publications may finish as retained evidence; no new automatic C matrix or catalog adoption.
 
 
 ## Drain disposition — 2026-11-01

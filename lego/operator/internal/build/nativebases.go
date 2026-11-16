@@ -30,16 +30,26 @@ import (
 // continue to resolve the upstream primary rather than a derivative tag.
 var nativeSuppliedBases = map[string]string{}
 
-// nativeCommonBase is the user-selected single Bookworm system/tools image.
-// Keep it empty until every supported runtime/companion has been qualified on
-// the common foundation. Publication and partial-family proof never adopt it.
-var nativeCommonBase string
+// nativeCommonBase is the user-selected single Bookworm system/tools image
+// (2026-10-29): every native build's final stage starts from it, with the
+// selected runtime copied on top. Pin only a digest that one
+// native-common-image.yml families run published and passed on every family
+// case; this one is run 43883107194 (w8/m91 t008).
+var nativeCommonBase = "ghcr.io/bex-co/bex-cnb-run@sha256:5d6b8139138c574af6fc60b5f6be1415c764db19441900c4b0dcbfc27add19db"
 
 // nativeRuntimeArtifacts reuses approved runtime TREES, never their final
 // system base. Keys are exact selected upstream identities; a line artifact
-// must not substitute a newer patch for another exact request. Keep empty
-// until each actual artifact and generated common image have been reviewed.
-var nativeRuntimeArtifacts = map[string]string{}
+// must not substitute a newer patch for another exact request. These are the
+// published Node 14/16/18/20 and exact 14.21.2 trees with the Brotli backport
+// (2026-11-04 donor route); the families run qualifies exactly this map
+// (commonNodeQualificationArtifacts).
+var nativeRuntimeArtifacts = map[string]string{
+	"node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e":      "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+	"node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12": "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+	"node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6":      "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+	"node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783":      "ghcr.io/bex-co/bex-cnb-run@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+	"node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5":      "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+}
 
 var nativeImageEnvName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 

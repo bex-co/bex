@@ -42,7 +42,7 @@
       "upstream": "ghcr.io/bex-co/bex-cnb-run:latest",
       "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:77061d60c38fbf20f8b78fc9c8bdd580bc264d6612bbeed6852e3f51e932d8e5",
       "resolved_at": "2026-11-16T11:32:54Z",
-      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 43855831573 from e097d59c0 on run-jammy-base sha256:6031575989ab… (w6/m291, 2026-11-16): both platforms passed the libatomic1 ldconfig gate and Node 26 startup check before the signature and the latest tag; revision label e097d59c0, stack io.buildpacks.stacks.jammy and CNB user 1002:1000 verified on both platforms",
+      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 43855831573 from e097d59c0 on run-jammy-base sha256:6031575989ab\u2026 (w6/m291, 2026-11-16): both platforms passed the libatomic1 ldconfig gate and Node 26 startup check before the signature and the latest tag; revision label e097d59c0, stack io.buildpacks.stacks.jammy and CNB user 1002:1000 verified on both platforms",
       "files": [
         "deploy/gitops/charts/kpack/platform.yaml"
       ]
@@ -87,7 +87,7 @@
       "upstream": "docker.io/alpine/git:v2.52.0",
       "committed": "alpine/git:v2.52.0@sha256:4a0e72d49596a1f5d3701aeedafdadc5c0da4062be4657c7bdc4017387f591cc",
       "resolved_at": "2026-10-16T00:00:00Z",
-      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes — w8/m89)",
+      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes \u2014 w8/m89)",
       "files": [
         "lego/operator/internal/build/build.go",
         "lego/operator/internal/publish/publish.go"
@@ -99,7 +99,7 @@
       "upstream": "quay.io/skopeo/stable:v1.22.2",
       "committed": "quay.io/skopeo/stable:v1.22.2@sha256:2b7d76dde38c5924e1945348840c58786fc192201f2fd545832e58b53d26f7b8",
       "resolved_at": "2026-09-30T18:08:55Z",
-      "source": "Quay skopeo/stable:v1.22.2 OCI image index (the digest quay STORES; the converted Docker manifest-list digest it reports for that media type is not addressable — w7/m85)",
+      "source": "Quay skopeo/stable:v1.22.2 OCI image index (the digest quay STORES; the converted Docker manifest-list digest it reports for that media type is not addressable \u2014 w7/m85)",
       "files": [
         "lego/operator/internal/build/build.go"
       ]
@@ -535,6 +535,83 @@
       "source": "Anonymous Docker Hub index and linux/amd64 + linux/arm64 child manifests resolved 2026-11-16 (w6/m291), Debian bookworm root @1793827419; common factory input only, no published common candidate or runtime compatibility/adoption claim.",
       "files": [
         "deploy/native-common/Dockerfile"
+      ]
+    },
+    {
+      "id": "native-common-bookworm",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-common-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:5d6b8139138c574af6fc60b5f6be1415c764db19441900c4b0dcbfc27add19db",
+      "resolved_at": "2026-11-16T14:24:20Z",
+      "source": "native-common-image.yml families run 43883107194 on 37ce58067: published, scanned and signed by native-base-image.yml, then the complete AMD64 utility cohort and every family case passed on this digest (w8/m91 t008). A newer native-common-bookworm tag is a candidate for the next families run, not an adoption.",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
+    },
+    {
+      "id": "native-node-14-bullseye-donor",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-14-bullseye",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "resolved_at": "2026-11-16T14:24:20Z",
+      "source": "Reviewed published Node 14.21.3 runtime tree with the Brotli backport (w8/m91 supplier review, 2026-10-30/11-01), copied onto the common base for node:14-bullseye; qualified by the node-donors cases of families run 43883107194",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
+    },
+    {
+      "id": "native-node-14-21-2-bullseye-donor",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-14.21.2-bullseye",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+      "resolved_at": "2026-11-16T14:24:20Z",
+      "source": "Reviewed published Node 14.21.2 runtime tree with the Brotli backport (w8/m91 supplier review, 2026-10-30/11-01), copied onto the common base for node:14.21.2-bullseye; qualified by the node-donors cases of families run 43883107194",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
+    },
+    {
+      "id": "native-node-16-bookworm-donor",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-16-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "resolved_at": "2026-11-16T14:24:20Z",
+      "source": "Reviewed published Node 16.20.2 runtime tree with the Brotli backport (w8/m91 supplier review, 2026-10-30/11-01), copied onto the common base for node:16-bookworm; qualified by the node-donors cases of families run 43883107194",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
+    },
+    {
+      "id": "native-node-18-bookworm-donor",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-18-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+      "resolved_at": "2026-11-16T14:24:20Z",
+      "source": "Reviewed published Node 18.20.8 runtime tree with the Brotli backport (w8/m91 supplier review, 2026-10-30/11-01), copied onto the common base for node:18-bookworm; qualified by the node-donors cases of families run 43883107194",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
+    },
+    {
+      "id": "native-node-20-bookworm-donor",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-20-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+      "resolved_at": "2026-11-16T14:24:20Z",
+      "source": "Reviewed published Node 20.20.2 runtime tree with the Brotli backport (w8/m91 supplier review, 2026-10-30/11-01), copied onto the common base for node:20-bookworm; qualified by the node-donors cases of families run 43883107194",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
+    },
+    {
+      "id": "native-node-14-21-2-bullseye",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:14.21.2-bullseye",
+      "committed": "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12",
+      "resolved_at": "2026-11-16T14:24:20Z",
+      "source": "Docker Hub node:14.21.2-bullseye multi-arch index: the exact upstream identity whose runtime the published 14.21.2 donor tree replaces on the common base (w8/m91 t008)",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
       ]
     }
   ]

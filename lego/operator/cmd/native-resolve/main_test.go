@@ -43,12 +43,23 @@ func (stubExact) NodeSourceDigest(context.Context, string) (string, error) {
 	return "", fmt.Errorf("no Node source metadata fixture")
 }
 
+// ImageMetadata answers as the registry does for an official runtime image:
+// its version environment and Debian history. The common base reads it for
+// every selected primary; a line tag (node:24-bookworm) carries a patch of
+// its line.
 func (stubExact) ImageMetadata(_ context.Context, image string) (env, history []string, err error) {
-	if strings.HasPrefix(image, "python:3.11.9-bookworm@sha256:") {
-		return []string{"PYTHON_VERSION=3.11.9", "PATH=/usr/local/bin:/usr/bin"},
-			[]string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}, nil
+	ref, _, _ := strings.Cut(image, "@")
+	repo, tag, _ := strings.Cut(ref, ":")
+	key := map[string]string{"node": "NODE_VERSION", "python": "PYTHON_VERSION", "ruby": "RUBY_VERSION"}[repo]
+	if key == "" {
+		return nil, nil, fmt.Errorf("no metadata fixture for %s", image)
 	}
-	return nil, nil, fmt.Errorf("no metadata fixture for %s", image)
+	version, _, _ := strings.Cut(tag, "-")
+	for strings.Count(version, ".") < 2 {
+		version += ".0"
+	}
+	return []string{key + "=" + version, "PATH=/usr/local/bin:/usr/bin"},
+		[]string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}, nil
 }
 
 func TestMain(m *testing.M) {

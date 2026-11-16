@@ -1,14 +1,14 @@
 # w8 · m91 — Supply PostgreSQL clients in native builds and runtime
 
-**Worker:** worker8 **Goal:** ordinary native backup-processing commands can use the supplied PostgreSQL client tools. **Status:** in progress — t007 qualifies the common Bookworm foundation on one digest per families run; t008 adopts it in production; original functional and hosted acceptance remains open
+**Worker:** worker8 **Goal:** ordinary native backup-processing commands can use the supplied PostgreSQL client tools. **Status:** blocked — t007, t008 and t001 done; the remaining tasks need a production roll that carries the adopted digest
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t007 | [Implement the user-selected common Bookworm foundation](t007.md) | 240m | — |
-| t008 | [Adopt the qualified common digest without losing official-image features](t008.md) | 360m | t007 |
-| t001 | [Supply reviewed PostgreSQL client programs and libraries](t001.md) | 75m | t008 |
+| t007 | [Implement the user-selected common Bookworm foundation](done/t007.md) — **DONE** | 240m | — |
+| t008 | [Adopt the qualified common digest without losing official-image features](done/t008.md) — **DONE** | 360m | t007 |
+| t001 | [Supply reviewed PostgreSQL client programs and libraries](done/t001.md) — **DONE** | 75m | t008 |
 | t002 | [Audit shared native consumers and preserve image boundaries](t002.md) | 40m | t001 |
 | t003 | [Verify Render parity across native authoring surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify the changed client supplier](t004.md) | 15m | t003 |
@@ -24,7 +24,7 @@ After publication, both native clients' fresh first original Free backup-process
 ## Source + Goal linkage
 
 - **Source:** Authorized functional CLI sweep402,2026-10-17: two unchanged POST201/native0 first builds fail missing pg_restore after exact source/backup proofs; both one-line install controls reach Live and six real runtime archive checks pass.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [ADR018](../../../docs/ADR018-render-parity.md) and [reviewed native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): ordinary hosting build/start commands should work with named runtime utilities.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [ADR018](../../../../docs/ADR018-render-parity.md) and [reviewed native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): ordinary hosting build/start commands should work with named runtime utilities.
 - **Expected outcome:** A native service can inspect/process PostgreSQL archives with supplied client programs, without bootstrapping them in app code or rewriting CLI requests.
 - **Why now:** Both independent native clients reproduce the same missing program while primary tooling and exact input data work; the shared image path has no supplier or newer repair. Existing FFmpeg completion explicitly did not certify this tool family.
 - **Render parity:** Included because one native image change affects tenant build/runtime behavior across REST/GraphQL/MCP/Blueprint/dashboard; no new schema field, CLI fork or product toggle.
@@ -161,7 +161,7 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 
 ## Concurrent fixed-profile CI queue handoff — 2026-10-30
 
-Concurrent `w1/m188` is rolling ten unstarted modern99f requests forward to the already-fixed83c/39b2 publication profile after the repeated old scan/Syft failures. All ten replacement requests are bound to83c/main/attempt1, with the factory, official bases and27-line matrix unchanged; each target had a fresh all-source duplicate check. The [w1 board](../../w1/README.md) links the immutable plan, explicit approval and21:13 request-phase receipts.
+Concurrent `w1/m188` is rolling ten unstarted modern99f requests forward to the already-fixed83c/39b2 publication profile after the repeated old scan/Syft failures. All ten replacement requests are bound to83c/main/attempt1, with the factory, official bases and27-line matrix unchanged; each target had a fresh all-source duplicate check. The [w1 board](../../../w1/README.md) links the immutable plan, explicit approval and21:13 request-phase receipts.
 
 Each old request retires only after its correct replacement native job exists and a fresh old-job read still shows queued/runner0/zero steps. Started Node24/Go1.27/Elixir1.20 work and the three legacy requests are preserved; modern obligations are retained. Supplier review, full27 adoption and original hosted DoDs remain owned byw8/m91. Dispatch and queue handoff add no supplier approval or task closure.
 
@@ -171,20 +171,20 @@ Each old request retires only after its correct replacement native job exists an
 
 The preserved old99f Go1.27 build completed, but the ARM64 real offline tool gate failed because `unzip` was absent; AMD64 verification was canceled. Concurrent w1 shipped `8af93065a`, adding only explicit `unzip` to the shared `--no-install-recommends` package list, with all other non-PM files identical to the reviewed83c profile. The real archive gate remains unchanged. The old Go index is not eligible recovery or supplier approval.
 
-The fix's own automatic full push request41142599053 was canceled once before any native build started and is confirmed terminal. One Go-only normal rebuild is bound to8af/main/attempt1, run41142870861/job124361678277; build/runtime/scan/sign success is still pending. Existing modern requests and three legacy requests are preserved. The [w1 board](../../w1/README.md) links immutable failure, source, scheduling and exact historical-recipe compatibility evidence. Existing successfully gated images retain their exact old producer/verifier identity; this CI repair adds no supplier approval, production catalog adoption or hosted/task closure.
+The fix's own automatic full push request41142599053 was canceled once before any native build started and is confirmed terminal. One Go-only normal rebuild is bound to8af/main/attempt1, run41142870861/job124361678277; build/runtime/scan/sign success is still pending. Existing modern requests and three legacy requests are preserved. The [w1 board](../../../w1/README.md) links immutable failure, source, scheduling and exact historical-recipe compatibility evidence. Existing successfully gated images retain their exact old producer/verifier identity; this CI repair adds no supplier approval, production catalog adoption or hosted/task closure.
 
 ## Concurrent Elixir1.20 normal rebuild — 2026-10-30 23:33Z
 
 Preserved old99f Elixir1.20 passed its build, both runtime gates and full scans, then failed during ARM64 registry Syft layer download with HTTP2 PROTOCOL_ERROR. Log order supports three completed signing/attestation commands; it is not a complete independent five-proof acceptance. The existing workflow fixes this transport path, but the explicit-unzip installer change makes the old index ineligible for same-recipe recovery.
 
-Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed the PM-only9cb update against8af, checked all recent and known nonterminal requests, and submitted exactly one normal build. Actual native binding is9cb/main/attempt1, run41144656779/job124367871533, queued at first observation. No old-index authorization, cancellation, supplier approval or hosted/task closure is claimed. The [w1 board](../../w1/README.md) links frozen logs, dedupe, literal source predicate and actual run/jobs; independent Elixir supplier review remains w8/m91's work.
+Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed the PM-only9cb update against8af, checked all recent and known nonterminal requests, and submitted exactly one normal build. Actual native binding is9cb/main/attempt1, run41144656779/job124367871533, queued at first observation. No old-index authorization, cancellation, supplier approval or hosted/task closure is claimed. The [w1 board](../../../w1/README.md) links frozen logs, dedupe, literal source predicate and actual run/jobs; independent Elixir supplier review remains w8/m91's work.
 
 ## 用户决定（2026-10-29，`/unblock w8` 主题 1）——单一 Bookworm 公共底优先
 
 - **涉及 ID：** w8/m91、m93、m94、m95、m96、m97、m98、m99、m100、m101、m102、m103、m107（另见 w8/222）
 - **结论来源：** 用户明确决定。用户先问「Render 是怎么做的」，得到解释（Render 只有一个 Debian 12 公共环境，工具预装，语言版本按环境变量装在上面）后，选择**单一 bex native 公共底**：一个 bookworm 底预装 Render 工具表，语言版本装在上面；没有选 design.md 的选项 C（按语言线构建镜像）。
 - **冲突处理：** 明确用户决定覆盖较早 worker 按 parity 推断的选项 C。已开始的按语言线发布可收尾并保留真实证据，最终采用单一 Bookworm 公共底；无需把同一决定再交回用户。
-- **剩余工作：** [t007](t007.md) 实现并验证共同底与精确运行时安装，复用已有包、工具、修补和发布证明。停止自动扩大 C 发布，不取消已开始的工作；共同底采用和原28个程序/数据/命令的真实验收仍由 worker 完成。
+- **剩余工作：** [t007](done/t007.md) 实现并验证共同底与精确运行时安装，复用已有包、工具、修补和发布证明。停止自动扩大 C 发布，不取消已开始的工作；共同底采用和原28个程序/数据/命令的真实验收仍由 worker 完成。
 
 ## Bounded dependency-transfer repair — 2026-10-31
 
@@ -490,7 +490,7 @@ The gate above ("w6/100's remaining-work item 2") is built: the retained evidenc
 
 ## Reviewed-candidate path and evidence store retired — 2026-11-16 (w6/m422)
 
-- **Source:** the user's explicit request of 2026-11-16, "/pmx the deletion, cleanup of references of bex-evidence to w6", carried out by [w6/m422](../../w6/done/m422/README.md) (`e9f27399b`).
+- **Source:** the user's explicit request of 2026-11-16, "/pmx the deletion, cleanup of references of bex-evidence to w6", carried out by [w6/m422](../../../w6/done/m422/README.md) (`e9f27399b`).
 - **What changed:**
   - `native-common-image.yml` has no `source` input. `native-common-qualify.py` has no candidate receipt, custody validators, `D3_LEGACY_0941` or evidence subcommands.
   - Every run publishes one image and qualifies that image: plan → publish → the complete AMD64 utility cohort, then a dispatched family case on the same image.
@@ -509,3 +509,28 @@ The gate above ("w6/100's remaining-work item 2") is built: the retained evidenc
 - **Design choice (w8's own, open since m422): option 1.** `-f profile=families -f case=all` runs every family case as one `qualify-profile` matrix (up to 8 hosted VMs at a time) on the image that run published, after its utility cohort passed. The digest a green families run publishes is the adoption candidate. There is no digest input, no reuse, and no `cosign verify` step to maintain. A failed case is fixed in source, then the whole run is dispatched again.
 - **Why option 1:** CI moved to GitHub-hosted runners on 2026-11-09 (`DO_NOT_DO.md` #CI-RUNNERS reopened). The single-Mac constraint that forced one case at a time is gone, and hosted minutes are free for this public repository. A push run publishes in about 7 minutes and finishes the utility cohort in about 9 (run 43851335126).
 - **Case set:** 37 cases, not the 27 from 2026-11-02. The 2026-11-02 coverage plan dropped modern Python 3.9–3.14, legacy Python 3.7, Node 22/26 and the 14.21.3 donor pair because they had passed on 0941 earlier. That earlier evidence was retired with 0941, so a fresh digest needs fresh passes. Node 14/16/18/20 and exact 14.21.2 run through `node-donors`, the production route chosen on 2026-11-04. The `node` profile keeps only 22 and 26.
+
+## Families runs and production adoption — 2026-11-16 (loopx session)
+
+- **Run [43858983878](https://github.com/bex-co/bex/actions/runs/43858983878)** at `4bbc92827`, image `sha256:03d61605…`: utilities plus 26 of 37 legs passed. The 11 failures were three fixtures written before Render-parity env changes, not image defects:
+  - Render's project venv (w8/274) broke the Python fixtures.
+  - Render's `GOPATH`/`CARGO_HOME` (w8/256) broke the Go/Rust fixture.
+- **Run 43863264565** at `a00210e05` was cancelled before any leg ran. That commit had pointed the generated-image tests at the offline fake; `c78af8e14` restored the real registry for `BEX_BUILDKIT_INTEGRATION=1`.
+- **Run [43867237898](https://github.com/bex-co/bex/actions/runs/43867237898)** at `c78af8e14`, image `sha256:ec103720…`: utilities plus 35 of 37 legs passed.
+  - The historical node-addon route builds without the common base, so `families` now skips it.
+  - The Rust fixture compared unresolved rustup paths; it now compares resolved ones (`3b63bc1a6`).
+- **Run [43875499446](https://github.com/bex-co/bex/actions/runs/43875499446)** at `3b63bc1a6`, image `sha256:6838b872…`: every leg passed except `go-rust/rust`. The fixture looked for its C archive in Cargo's old `build/<pkg>-<hash>/` layout, while the reviewed Rust 1.99 Cargo writes `build/<pkg>/<hash>/`. Fixed in `37ce58067`.
+- **Run [43883107194](https://github.com/bex-co/bex/actions/runs/43883107194)** at `37ce58067`: utilities and all 36 common-image cases passed on `sha256:5d6b8139138c574af6fc60b5f6be1415c764db19441900c4b0dcbfc27add19db`. Its signed SPDX attestation lists `postgresql-client-18`/`libpq5` 18.7-1.pgdg12+2 and `rsync` 3.5.0+ds1-0+deb12u1, a Debian security update. Every other ADR060 D7 version is unchanged, and ADR060 records the new ones.
+- **Adoption** (the commit that moved t007, t008 and t001 to `done/`):
+  - `nativeCommonBase` is that digest, and `nativeRuntimeArtifacts` holds the five Node donor trees.
+  - `TestProductionNodeDonorsAreTheQualifiedDonors` keeps the donor map equal to the one the families run qualifies.
+  - `toolchain-freshness.json` covers the common image, the donors and the exact 14.21.2 key.
+  - `cmd/native-resolve`'s stub answers registry metadata.
+
+  Every existing service gets the base on its next ordinary build. An exact Node release with no bookworm image keeps working: its own bullseye/buster tree becomes the primary (`a00210e05`).
+
+**Gate:** a production roll that carries the adoption. `deploy.yml` deploys a waiting `lego/**` commit once the production pin is at least 6 hours old, and the previous roll pinned `48bc2a0fe` at 13:59Z on 2026-11-16, so the earliest roll is about 20:00Z. Check with `gh run list --workflow deploy.yml` for a non-skipped deploy whose pin is at or after the commit that `git log -S5d6b8139138c -- lego/operator/internal/build/nativebases.go` names. The gate clears by itself. Then a worker:
+
+- runs t002's pre-deploy Job check and t005's live `psql`/`pg_dump` check;
+- runs t003's two-client replay and t006's fresh Free hosted acceptance, signed in through `scripts/qa-login.sh`;
+- runs t004's removal of the unused per-language supplied-base mode.
