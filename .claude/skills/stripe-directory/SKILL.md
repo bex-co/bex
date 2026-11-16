@@ -4,6 +4,9 @@ description: >-
   Use when the user wants to find businesses, software, service providers, or partners for a specific industry, workflow, pain point, capability, or job to be done. Also use when the agent needs to programmatically purchase or consume a service. Use Stripe Directory to build a short relevant shortlist, even if the user does not mention Stripe Directory explicitly.
 
 
+# bex local override, not upstream: this description's triggers describe bex's own product
+# (finding and buying services), so only an explicit /stripe-directory loads the skill. Re-apply after an upstream sync.
+disable-model-invocation: true
 metadata:
   short-description: Find (and optionally purchase from) vendors or partners
 allowed-tools:

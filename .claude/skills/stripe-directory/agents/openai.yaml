@@ -1,0 +1,6 @@
+interface:
+  display_name: "Stripe Directory"
+  short_description: "Find vendors or partners through Stripe Directory"
+  default_prompt: "Use $stripe-directory only when the user asks for Stripe Directory by name."
+policy:
+  allow_implicit_invocation: false

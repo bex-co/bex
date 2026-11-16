@@ -1,0 +1,6 @@
+interface:
+  display_name: "Stripe Projects"
+  short_description: "Provision third-party services through Stripe Projects"
+  default_prompt: "Use $stripe-projects only when the user asks for Stripe Projects by name."
+policy:
+  allow_implicit_invocation: false
