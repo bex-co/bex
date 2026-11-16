@@ -1,6 +1,6 @@
 # w32 · m419 — A setting saved after a failed image deploy takes effect: IP allow-list, suspend and routing keep following the service while the previous release serves, as on Render
 
-**Worker:** worker32 **Goal:** on a prebuilt-image web service (or an image-port private service) whose newest deploy failed because the registry refused its image, every later setting that acts without a deploy reaches the running service within seconds, as it does on a healthy one: the IP allow-list blocks and reopens, a suspend stops it, and the failed deploy still reads `update_failed` with no false outage. **Status:** blocked (t001–t005 done; t006, the production walk, waits for a production pin that contains `1660a95e3`)
+**Worker:** worker32 **Goal:** on a prebuilt-image web service (or an image-port private service) whose newest deploy failed because the registry refused its image, every later setting that acts without a deploy reaches the running service within seconds, as it does on a healthy one: the IP allow-list blocks and reopens, a suspend stops it, and the failed deploy still reads `update_failed` with no false outage. **Status:** done (t001–t006 done; the production walk passed on 2026-11-16)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Render parity — **DONE** | 15m | t001, t002 |
 | t004 | Simplify — **DONE** | 15m | t003       |
 | t005 | Test coverage — **DONE** | 45m | t003       |
-| t006 | Closeout (live walk on production)                                                        | 30m | t005       |
+| t006 | Closeout (live walk on production) — **DONE** | 30m | t005       |
 
 ## Definition of done
 
@@ -159,3 +159,48 @@ Fixture: Free `qa-20261116-r475-who` (`srv-dbt72lft052c73c92v30`, `docker.io/tra
 4. **Saved tag: holds.** `POST …/deploys {}` went `live` on `docker.io/traefik/whoami:v1.10`, answering `200`.
 
 Also seen: the fixture's first deploy took 4 min 24 s to go `live` (02:58:29 → 03:02:53), about 20 min after the pin rolled. It was not repeated.
+
+## Unblock (2026-11-16, release gate cleared)
+
+- **Affects:** t006 (Closeout, the production walk).
+- **Source:** verified evidence against the release condition in § Gate (2026-11-16); no user decision was needed or taken.
+- **Finding:** the newest `chore(deploy): pin platform images to <sha>` commit on `origin/main` is `f53907e12`, which pins `f114fdd9f5a6`. `git merge-base --is-ancestor 1660a95e3 f114fdd9f5a6` exits 0, so the production pin carries the operator fix.
+- **Behavior and scope:** unchanged. The DoD stays as written: Render keeps the previous deploy live after a failed deploy, and its IP rules and suspension act on the service at once.
+- **Remaining gates:** none.
+- **Next:** t006 walks DoD 1–5 with the release `bex` CLI in `bex-canary` on free `docker.io/traefik/whoami` fixtures (deleted afterwards, `GET` 404), records the timestamps here, and closes the milestone.
+
+## Closeout walk (t006, 2026-11-16 09:22–09:40 UTC): DoD 1–5 hold
+
+Release `bex` v0.6.0 (Render CLI v2.36.0 pin, `linux-arm64` asset checked against the release `checksums.txt`), isolated config, `https://api.bex.co/v1/`, human device login approved headlessly (`qa-find-bugs` § Approving a CLI device login without a browser), workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`). Production pin `f114fdd9f5a6`. Its deploy run (`43835805217`) restarted the operator at 09:25:02 and finished at 09:26:03.
+
+Fixture: free `qa-20261116-20dd-who` (`srv-dbtcmg4avqms73bu0b30`), `docker.io/traefik/whoami:v1.10.3`, Frankfurt. Its first deploy went live at 09:23:47. It was deleted at 09:40:02, and `GET` and the URL both answered `404` at 09:40:05. A watcher sent one plain `GET` to the URL per second from an address outside `203.0.113.0/24`.
+
+1. **Failed deploy: holds.**
+   - 09:24:17 `bex deploys create <srv> --image docker.io/traefik/whoami:v0.0.99-qa-20dd --wait --confirm -o json` exited 1 after 11 s. `dep-dbtcnghpitkc73fds5bg` read `update_failed`, finished at 09:24:21.
+   - All 28 polls from 09:24:14 to 09:24:57 answered `200` from the serving instance.
+   - The events read `deploy_started`, `deploy_ended failed`, `image_pull_failed`. The fixture's whole history has no `server_failed`.
+2. **IP allow-list: holds, in about 1 s each way.**
+   - 09:29:08.9 `bex services update <srv> --ip-allow-list cidr=203.0.113.0/24,description=testnet -o json` exited 0 and read the rule back. The URL answered `403` from 09:29:10.0 (+1.1 s), on 43 polls.
+   - 09:30:29.7 `--ip-allow-list cidr=0.0.0.0/0,description=everywhere` brought `200` back from 09:30:30.8 (+1.1 s).
+   - A first pair at 09:25:15 / 09:25:47 saved and read back, but the URL stayed `200` for the 30 s between them. That window fell inside this pin's own rollout: `bex-controller-manager` restarted at 09:25:02 and rolled out at 09:25:15, `bex-api` was still rolling at 09:25:27, and a CLI call at 09:26:42 got `503 auth upstream unavailable`. Repeated on the settled operator, both directions acted within seconds. This is the operator's leader handover, not this milestone's path.
+3. **Suspend: holds.**
+   - 09:31:24.7 `POST /v1/services/<srv>/suspend` answered `202`. `GET` read `suspended` with suspenders `["user"]`, and `bex services instances <srv>` read `[]`.
+   - The URL answered `503 This service is suspended.` from 09:31:27.4 (+2.7 s), on 29 polls. One poll at +1.1 s got Traefik's `503 no available server` first.
+   - 09:32:42.5 `POST …/resume` answered `202`. The activator answered `503 {"error":"service not ready","retryAfter":5}` while the new instance started, then `200` from 09:33:07.9 (+25.4 s, a cold start; round 475 saw 24.1 s).
+4. **Saved tag: holds.** 09:34:22.5 `bex deploys create <srv> --wait --confirm -o json` exited 0 after 16 s. `dep-dbtcs7h9hcnc73acilig` went `live` on `whoami:v1.10.3`, and all 18 polls answered `200` across the switch of instances.
+5. **t002's matrix: holds.** The envtest table (`refused_image_hold_envtest_test.go`, "Settings over a refused image release (w32/m419)") is green at the pin: the `test-operator` job of run `43835805217` passed at 09:11:12. Production adds the saved-image path:
+   - 09:35:45 `bex services update <srv> --image docker.io/traefik/whoami:v0.0.98-qa-20dd` saved it, and nothing rolled. 09:35:50 `bex deploys create <srv> --wait --confirm` exited 1, with `dep-dbtcstm004dc73ajmgb0` `update_failed` at 09:35:51.
+   - 09:36:06.6 restrict: `403` from 09:36:08.2 (+1.6 s). 09:36:28.0 reopen: `200` from 09:36:29.8 (+1.8 s).
+   - 09:38:16 saving `v1.10.3` back rolled nothing; the same instance answered until the deploy. 09:38:32 the deploy went `live` (`dep-dbtcu6e004dc73ajmgq0`, 09:38:56).
+   - From 09:35:04 to 09:39:12 the URL answered 146 × `200` and 14 × `403`, the `403`s only while the rule was saved.
+   - **Not reachable on a free `bex-canary` fixture.** These rows rest on their envtest specs:
+     - maintenance mode: `400 maintenanceMode requires a paid web service plan`;
+     - `numInstances`, autoscaling and the image-port private service: paid plans;
+     - custom domains: no domain this walk controls;
+     - the environment and workspace layers: shared, pre-existing resources the walk must not change;
+     - free auto-sleep: 15 minutes idle ("sleeps and wakes a free service").
+
+Also seen:
+
+- Three more CLI or REST calls answered `503 auth upstream unavailable` outside the rollout window, at 09:35:06, 09:37:42 and once on an events read. No deploy job was rolling then; the next run was still testing. Each retry succeeded.
+- The 09:35:06 failure hit the `--image` save, so the deploy that followed redeployed `v1.10.3` (`dep-dbtcsiu004dc73ajmg50`, live), and the save was repeated at 09:35:45.
