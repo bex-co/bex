@@ -100,7 +100,10 @@ function renderAt(href: string) {
   return router;
 }
 
-const searchBox = () => screen.findByLabelText("Search logs");
+// The Logs page is heavy: on a loaded host its first render can take more
+// than findBy's default second, which left an empty body and a failed lookup.
+const searchBox = () =>
+  screen.findByLabelText("Search logs", undefined, { timeout: 5000 });
 const FILTERED = "/services/srv-one/logs?type=app&live=0&text=qa-alpha";
 
 beforeEach(() => {
