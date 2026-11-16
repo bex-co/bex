@@ -1,7 +1,5 @@
 import { useTranslations } from "@/common/hooks/use-translations";
-
-/** The public agent model usage terms (ADR091 D8, published 2026-11-12). */
-export const AGENT_MODEL_TERMS_PATH = "/legal/agent-models";
+import { agentModelTermsUrl } from "@/features/legal/lib/agent-model-terms-url";
 
 const LINK_CLASS = "underline underline-offset-4";
 
@@ -15,13 +13,13 @@ function AgentModelTermsLink({
 }: {
   placeholder?: boolean;
 }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   if (placeholder) {
     return <span className={LINK_CLASS}>{t("legal.termsLink")}</span>;
   }
   return (
     <a
-      href={AGENT_MODEL_TERMS_PATH}
+      href={agentModelTermsUrl(i18n.language)}
       target="_blank"
       rel="noreferrer"
       className={`${LINK_CLASS} hover:text-foreground`}

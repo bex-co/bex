@@ -195,10 +195,9 @@ export const ROUTE_SKELETON_MANIFEST = {
     regions: ["language-action", "page-header", "status-card"],
   },
   "/legal/agent-models": {
-    kind: "render",
+    kind: "redirect",
     owner: "routes/legal.agent-models.tsx",
-    shape: "legal-agent-models",
-    regions: ["language-action", "page-header", "terms-sections"],
+    destination: "https://bex.co/terms-of-service#agent-model",
   },
   "/auth/error": {
     kind: "render",

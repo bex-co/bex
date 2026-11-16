@@ -88,7 +88,7 @@ describe("AgentModelCard", () => {
     );
     expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute(
       "href",
-      "/legal/agent-models",
+      "https://bex.co/terms-of-service#agent-model",
     );
     unmount();
 

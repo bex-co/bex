@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { translatedTitleHead } from "@/common/lib/document-head";
-import { LegalAgentModelsRouteSkeleton } from "@/common/components/route-skeletons";
-import AgentModelTermsPage from "@/features/legal/pages/agent-model-terms-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { AGENT_MODEL_TERMS_URL } from "@/features/legal/lib/agent-model-terms-url";
 
-// Public: no requireAuth and no chrome, so it reads the same signed in or out.
+// The agent model usage terms are a section of the bex.co Terms of Service
+// (ADR091 D8). This keeps links to the dashboard copy, published 2026-11-12,
+// working.
 export const Route = createFileRoute("/legal/agent-models")({
-  component: AgentModelTermsPage,
-  pendingComponent: LegalAgentModelsRouteSkeleton,
-  head: ({ match }) => translatedTitleHead("legal.agentModels.title", match),
+  beforeLoad: () => {
+    throw redirect({ href: AGENT_MODEL_TERMS_URL, statusCode: 301 });
+  },
 });

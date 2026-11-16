@@ -532,7 +532,10 @@ describe("AgentEnvironmentCard", () => {
         "link",
         { name: "Terms" },
       );
-      expect(link).toHaveAttribute("href", "/legal/agent-models");
+      expect(link).toHaveAttribute(
+        "href",
+        "https://bex.co/terms-of-service#agent-model",
+      );
       expect(link).toHaveAttribute("target", "_blank");
       cleanup();
 

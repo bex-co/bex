@@ -67,11 +67,6 @@ import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/w
 import { WorkspaceTwoFactorCardSkeleton } from "@/features/workspaces/components/workspace-two-factor-card-skeleton";
 import { OverlappingDeployPolicyCardSkeleton } from "@/features/workspaces/components/overlapping-deploy-policy-card-skeleton";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
-import {
-  AgentModelTermsHeader,
-  AgentModelTermsSections,
-  LegalPageFrame,
-} from "@/features/legal/pages/agent-model-terms-page";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { NotificationOverridesCardSkeleton } from "@/features/notifications/components/notification-overrides-card-skeleton";
 import { RegistryCredentialsPanelSkeleton } from "@/features/registry-credentials/components/registry-credentials-panel-skeleton";
@@ -1524,32 +1519,6 @@ export function AccountDeletedRouteSkeleton() {
  *  as `/auth/account-deleted`. */
 export function AuthErrorRouteSkeleton() {
   return <AuthStatusRouteSkeleton route="auth-error" />;
-}
-
-/** `/legal/agent-models` — the public agent model terms. Its copy is static,
- *  so the frame renders the page's own header and sections as real text (they
- *  wrap exactly as the ready page does); only the language switcher is a
- *  placeholder. */
-export function LegalAgentModelsRouteSkeleton() {
-  return (
-    <PendingFrame route="legal-agent-models">
-      <LegalPageFrame
-        languageAction={
-          <Region name="language-action">
-            {/* The switcher is an icon-sm button. */}
-            <Skeleton className="size-8" />
-          </Region>
-        }
-      >
-        <Region name="page-header">
-          <AgentModelTermsHeader />
-        </Region>
-        <Region name="terms-sections">
-          <AgentModelTermsSections />
-        </Region>
-      </LegalPageFrame>
-    </PendingFrame>
-  );
 }
 
 /** One status card: an icon beside a two-line message, then one button. */
