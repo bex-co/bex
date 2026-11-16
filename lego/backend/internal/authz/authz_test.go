@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -348,5 +349,47 @@ func TestRevokeWorkspaceMemberEvictsCachedPositives(t *testing.T) {
 	}
 	if got := hits.Load(); got != 5 {
 		t.Fatalf("unrelated subject's cache entry was evicted (checks = %d, want 5)", got)
+	}
+}
+
+// A Check that lands on a pooled keep-alive connection the peer has already
+// reset is resent on a fresh connection, so the caller gets its answer instead
+// of ErrAuthzUnavailable's 503 (w4/695).
+func TestCheckSurvivesAResetReusedConnection(t *testing.T) {
+	var checks atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/stores":
+			_, _ = fmt.Fprint(w, `{"stores":[{"id":"store-1","name":"bex"}]}`)
+		case "/stores/store-1/check":
+			if checks.Add(1) == 2 {
+				// The second Check rides the connection the first two calls
+				// kept alive; drop it with a RST, as a peer that timed it out.
+				conn, _, err := w.(http.Hijacker).Hijack()
+				if err != nil {
+					t.Errorf("hijack: %v", err)
+					return
+				}
+				_ = conn.(*net.TCPConn).SetLinger(0)
+				_ = conn.Close()
+				return
+			}
+			_, _ = fmt.Fprint(w, `{"allowed":false}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	chk := NewOpenFGAChecker(srv.URL, "")
+	ctx := context.Background()
+
+	for i := range 2 { // negatives, so neither is answered from the cache
+		ok, err := chk.Check(ctx, "user:bad", core.RelCanView, core.DefaultWorkspace)
+		if err != nil || ok {
+			t.Fatalf("check %d: ok=%v err=%v, want a plain deny", i, ok, err)
+		}
+	}
+	if got := checks.Load(); got != 3 {
+		t.Fatalf("upstream checks = %d, want 3 (one reset, replayed once)", got)
 	}
 }

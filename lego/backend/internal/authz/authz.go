@@ -141,7 +141,7 @@ func (o *openfgaChecker) checkUpstream(ctx context.Context, subject, relation, o
 	var out struct {
 		Allowed bool `json:"allowed"`
 	}
-	if err := core.DoJSON(ctx, o.client, http.MethodPost, o.baseURL+"/stores/"+storeID+"/check", o.token, body, http.StatusOK, &out); err != nil {
+	if err := core.DoJSONRead(ctx, o.client, o.baseURL+"/stores/"+storeID+"/check", o.token, body, http.StatusOK, &out); err != nil {
 		return false, err
 	}
 	return out.Allowed, nil

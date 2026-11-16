@@ -603,6 +603,9 @@ const (
 var OryTransport = func() *http.Transport {
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.MaxIdleConnsPerHost = 32
+	// Close idle conns well before a middlebox or server idle timeout can drop
+	// them under us: a request on a dropped conn fails with a reset (w4/695).
+	tr.IdleConnTimeout = 30 * time.Second
 	return tr
 }()
 
@@ -677,6 +680,20 @@ func (e *HTTPStatusError) Error() string { return e.Summary }
 // *HTTPStatusError, response decoded into out when non-nil. Shared by the Hydra
 // admin store and the OpenFGA checker so request mechanics can't drift.
 func DoJSON(ctx context.Context, client *http.Client, method, endpoint, bearer string, body []byte, want int, out any) error {
+	return doJSON(ctx, client, method, endpoint, bearer, body, want, out, false)
+}
+
+// DoJSONRead is DoJSON for a POST that only reads (an OpenFGA Check). It marks
+// the request replayable, so when it lands on a pooled keep-alive connection the
+// peer has already dropped (connection reset, EOF before a response) the
+// transport resends it on a fresh connection instead of failing it (w4/695).
+// Never use it for a write: a write the server applied but whose response was
+// lost would be applied twice.
+func DoJSONRead(ctx context.Context, client *http.Client, endpoint, bearer string, body []byte, want int, out any) error {
+	return doJSON(ctx, client, http.MethodPost, endpoint, bearer, body, want, out, true)
+}
+
+func doJSON(ctx context.Context, client *http.Client, method, endpoint, bearer string, body []byte, want int, out any, replayable bool) error {
 	var rdr io.Reader
 	if body != nil {
 		rdr = bytes.NewReader(body)
@@ -690,6 +707,12 @@ func DoJSON(ctx context.Context, client *http.Client, method, endpoint, bearer s
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	if replayable {
+		// net/http retries a non-idempotent method on a reused connection only
+		// when the request carries an Idempotency-Key; a nil value marks it
+		// without sending the header.
+		req.Header["Idempotency-Key"] = nil
 	}
 	resp, err := client.Do(req)
 	if err != nil {
