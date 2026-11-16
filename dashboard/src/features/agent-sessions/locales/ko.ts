@@ -1239,9 +1239,15 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "{cap} 중 {used} 사용. 결제 크레딧이 먼저 사용되며, 그 초과 지출이 {cap}에 도달하면 등록된 카드로 청구되고 세션은 계속 실행됩니다. 청구에 실패한 경우에만 새 모델 요청이 중단됩니다.",
+      "결제 크레딧 초과 지출 {cap} 중 {used} 사용. 결제 크레딧이 먼저 사용되며, 그 초과 지출이 {cap}에 도달하면 등록된 카드로 청구되고 세션은 계속 실행됩니다. 청구에 실패한 경우에만 새 모델 요청이 중단됩니다.",
     description:
-      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a); {used} is the spend billing credits leave",
+  },
+  "agentSessions.spendWarningBodyCeiling": {
+    message:
+      "결제 크레딧 초과 지출 {cap} 중 {used} 사용. 결제 크레딧이 먼저 사용되며, 그 초과 지출이 {cap}에 도달하면 새 모델 요청이 중단됩니다.",
+    description:
+      "Composer warning body when the trust tier's ceiling binds on a workspace bex cannot charge (payment hold, excluded or comped) and the spend it counts, what billing credits leave ({used}), differs from month-to-date",
   },
   "agentSessions.spendReachedTitle.cap": {
     message: "월 에이전트 모델 지출 한도에 도달했습니다",

@@ -214,12 +214,20 @@ export function AgentEnvironmentCardSkeleton() {
             }
           />
           <div className="space-y-2">
+            {/* The summary holds its longer, beyond-credits variant. */}
             <p className="text-sm font-medium">
               <SkeletonText>
-                {t("agentEnvironment.spendSummary", {
-                  used: WIDE_USD,
-                  cap: WIDE_USD,
-                })}
+                {longest(
+                  t("agentEnvironment.spendSummary", {
+                    used: WIDE_USD,
+                    cap: WIDE_USD,
+                  }),
+                  t("agentEnvironment.spendSummaryCeiling", {
+                    used: WIDE_USD,
+                    cap: WIDE_USD,
+                    total: WIDE_USD,
+                  }),
+                )}
               </SkeletonText>
             </p>
             <Skeleton className="h-2 w-full rounded-full" />

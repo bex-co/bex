@@ -1379,9 +1379,15 @@ const esAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "{used} de {cap} usados. Los créditos de facturación se usan primero; cuando el gasto que los supera alcance {cap}, se cobrará a la tarjeta registrada y las sesiones seguirán ejecutándose. Las nuevas solicitudes al modelo solo se detienen si el cobro falla.",
+      "{used} de {cap} usados más allá de los créditos de facturación. Los créditos de facturación se usan primero; cuando el gasto que los supera alcance {cap}, se cobrará a la tarjeta registrada y las sesiones seguirán ejecutándose. Las nuevas solicitudes al modelo solo se detienen si el cobro falla.",
     description:
-      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a); {used} is the spend billing credits leave",
+  },
+  "agentSessions.spendWarningBodyCeiling": {
+    message:
+      "{used} de {cap} usados más allá de los créditos de facturación. Los créditos de facturación se usan primero; las nuevas solicitudes al modelo se detienen cuando el gasto que los supera alcance {cap}.",
+    description:
+      "Composer warning body when the trust tier's ceiling binds on a workspace bex cannot charge (payment hold, excluded or comped) and the spend it counts, what billing credits leave ({used}), differs from month-to-date",
   },
   "agentSessions.spendReachedTitle.cap": {
     message: "Se alcanzó el límite mensual de gasto del modelo del agente",

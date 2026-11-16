@@ -46,4 +46,4 @@ The definition of done holds on production. The details are in [t004](done/t004.
 - **The values are known before the first crossing.** A Billing page view re-recorded the credit at 15:22:21Z, and no threshold charge has run since 2026-11-13.
 - **No charge warning.** The composer shows none for the credited workspace.
 - **Not observed on production:** the T0 charge-point branch of the composer warning, which `spend.test.ts` covers. bex is T1. The only credited T0 workspace, bex-canary, has no spend this month, and bex does not charge it (`billing_excluded`).
-- **Follow-up:** [w6/131](../../131.md). Where bex cannot charge a credited T0 or locked workspace, the composer still warns on month-to-date. The mint holds such a workspace's tier ceiling against the unbilled spend.
+- **Follow-up:** [w6/131](../131.md). Where bex cannot charge a credited T0 or locked workspace, the composer still warns on month-to-date. The mint holds such a workspace's tier ceiling against the unbilled spend.

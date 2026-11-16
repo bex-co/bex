@@ -403,6 +403,45 @@ describe("AgentEnvironmentCard", () => {
       );
     });
 
+    it("meters the limit the mint holds once credits move the spend (w6/131)", () => {
+      // A T0 workspace bex cannot charge: the $10 ceiling counts the $8
+      // credits leave, not the $15 spent this month.
+      setup({
+        ...SPEND,
+        agentModelSpendMonthToDateUsd: 15,
+        agentModelUnbilledUsd: 8,
+        agentModelCreditUsd: 7,
+        agentModelChargesAtThreshold: false,
+      });
+      expect(screen.getByTestId("spend-summary")).toHaveTextContent(
+        "$8.00 of $10.00 beyond billing credits, $15.00 this month",
+      );
+      const meter = screen.getByRole("progressbar", {
+        name: "Agent model spend",
+      });
+      expect(meter).toHaveAttribute("aria-valuenow", "80");
+      expect(meter).toHaveAttribute("data-state", "warning");
+    });
+
+    it("meters the workspace's own cap when credits cover the ceiling (w6/131)", () => {
+      setup({
+        ...SPEND,
+        agentModelSpendMonthToDateUsd: 9,
+        agentModelUnbilledUsd: 0,
+        agentModelCreditUsd: 1_000_000,
+        agentModelChargesAtThreshold: false,
+      });
+      expect(screen.getByTestId("spend-summary")).toHaveTextContent(
+        "$9.00 of $20.00 this month",
+      );
+      const meter = screen.getByRole("progressbar", {
+        name: "Agent model spend",
+      });
+      expect(meter).toHaveAttribute("aria-valuenow", "45");
+      expect(meter).toHaveAttribute("aria-valuetext", "$9.00 of $20.00");
+      expect(meter).toHaveAttribute("data-state", "ok");
+    });
+
     it("names a top-tier month-end charge and a payment hold", () => {
       setup({
         ...SPEND,

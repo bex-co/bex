@@ -34,10 +34,10 @@ function capDraft(env: AgentEnvironmentView): string {
 }
 
 /**
- * Settings → Agents' agent-model spend (ADR091 D5, D6, D10.1): month-to-date
- * spend against the effective cap, the pricing statement, the billing trust
- * tier with its next charge point, and the admin-editable monthly cap (up to
- * 10x the plan default; Reset returns to the plan default). Non-admins see the
+ * Settings → Agents' agent-model spend (ADR091 D5, D6, D10.1): spend against
+ * the limit nearest to stopping new model requests, the pricing statement,
+ * the billing trust tier with its next charge point, and the admin-editable
+ * monthly cap (up to 10x the plan default; Reset returns to the plan default). Non-admins see the
  * same controls disabled, so the loaded section keeps its skeleton's geometry.
  */
 export function SpendCapSection({
@@ -58,6 +58,26 @@ export function SpendCapSection({
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
   const position = spendPosition(saved);
+  // The summary and meter show the limit nearest to stopping new model
+  // requests, and the spend the mint holds against it.
+  let summary = t("agentEnvironment.spendUnavailable");
+  let meterValue = summary;
+  if (position) {
+    const params = {
+      used: usd(position.heldUsd),
+      cap: usd(position.limitUsd),
+      total: usd(position.monthToDateUsd),
+    };
+    summary = t(
+      position.beyondCredits
+        ? "agentEnvironment.spendSummaryCeiling"
+        : "agentEnvironment.spendSummary",
+      params,
+    );
+    meterValue = position.beyondCredits
+      ? summary
+      : t("agentEnvironment.spendMeterValue", params);
+  }
   const maxUsd = saved.agentModelMaxSpendCapUsd;
   const planUsd = saved.agentModelPlanSpendCapUsd;
   const value = parseSpendCap(draft, maxUsd);
@@ -116,25 +136,13 @@ export function SpendCapSection({
       />
       <div className="space-y-2">
         <p className="text-sm font-medium" data-testid="spend-summary">
-          {position
-            ? t("agentEnvironment.spendSummary", {
-                used: usd(position.monthToDateUsd),
-                cap: usd(position.capUsd),
-              })
-            : t("agentEnvironment.spendUnavailable")}
+          {summary}
         </p>
         <UsageMeter
           label={t("agentEnvironment.spendTitle")}
           fraction={position?.fraction ?? null}
           level={position?.level ?? "ok"}
-          valueText={
-            position
-              ? t("agentEnvironment.spendMeterValue", {
-                  used: usd(position.monthToDateUsd),
-                  cap: usd(position.capUsd),
-                })
-              : t("agentEnvironment.spendUnavailable")
-          }
+          valueText={meterValue}
         />
         <p className="text-muted-foreground text-xs" data-testid="spend-tier">
           {tierLine ?? " "}

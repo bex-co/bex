@@ -1333,9 +1333,15 @@ const deAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "{used} von {cap} verbraucht. Abrechnungsguthaben wird zuerst verwendet; sobald die darüber hinausgehenden Ausgaben {cap} erreichen, wird die hinterlegte Karte belastet und Sitzungen laufen weiter. Neue Modellanfragen stoppen nur, wenn die Belastung fehlschlägt.",
+      "{used} von {cap} über das Abrechnungsguthaben hinaus verbraucht. Abrechnungsguthaben wird zuerst verwendet; sobald die darüber hinausgehenden Ausgaben {cap} erreichen, wird die hinterlegte Karte belastet und Sitzungen laufen weiter. Neue Modellanfragen stoppen nur, wenn die Belastung fehlschlägt.",
     description:
-      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a); {used} is the spend billing credits leave",
+  },
+  "agentSessions.spendWarningBodyCeiling": {
+    message:
+      "{used} von {cap} über das Abrechnungsguthaben hinaus verbraucht. Abrechnungsguthaben wird zuerst verwendet; neue Modellanfragen stoppen, sobald die darüber hinausgehenden Ausgaben {cap} erreichen.",
+    description:
+      "Composer warning body when the trust tier's ceiling binds on a workspace bex cannot charge (payment hold, excluded or comped) and the spend it counts, what billing credits leave ({used}), differs from month-to-date",
   },
   "agentSessions.spendReachedTitle.cap": {
     message: "Monatliches Ausgabenlimit für Agent-Modelle erreicht",

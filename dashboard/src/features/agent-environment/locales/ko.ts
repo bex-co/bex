@@ -259,6 +259,11 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
     message: "이번 달 {cap} 중 {used} 사용",
     description: "Month-to-date spend against the effective monthly cap",
   },
+  "agentEnvironment.spendSummaryCeiling": {
+    message: "결제 크레딧 초과 지출 {cap} 중 {used}, 이번 달 총 {total}",
+    description:
+      "Spend summary and meter value when the trust tier's ceiling binds on the spend billing credits leave ({used}), which differs from month-to-date ({total})",
+  },
   "agentEnvironment.spendMeterValue": {
     message: "{cap} 중 {used}",
     description: "Screen-reader value of the spend progress bar",

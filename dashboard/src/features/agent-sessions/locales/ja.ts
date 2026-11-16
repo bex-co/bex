@@ -1248,9 +1248,15 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "{cap} のうち {used} を使用しました。まず請求クレジットが充当され、それを超える支出が {cap} に達すると、登録済みのカードに請求され、セッションは継続して実行されます。請求に失敗した場合のみ、新しいモデルリクエストが停止されます。",
+      "請求クレジットを超える支出として {cap} のうち {used} を使用しました。まず請求クレジットが充当され、それを超える支出が {cap} に達すると、登録済みのカードに請求され、セッションは継続して実行されます。請求に失敗した場合のみ、新しいモデルリクエストが停止されます。",
     description:
-      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a); {used} is the spend billing credits leave",
+  },
+  "agentSessions.spendWarningBodyCeiling": {
+    message:
+      "請求クレジットを超える支出として {cap} のうち {used} を使用しました。まず請求クレジットが充当され、それを超える支出が {cap} に達すると、新しいモデルリクエストは停止されます。",
+    description:
+      "Composer warning body when the trust tier's ceiling binds on a workspace bex cannot charge (payment hold, excluded or comped) and the spend it counts, what billing credits leave ({used}), differs from month-to-date",
   },
   "agentSessions.spendReachedTitle.cap": {
     message: "エージェントのモデル支出の月間上限に達しました",

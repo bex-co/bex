@@ -1304,6 +1304,68 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
     expect(start()).toBeEnabled();
   });
 
+  // w6/131: bex-canary on production, T0 and billing-excluded, its credits
+  // far above its spend.
+  const excludedT0 = (
+    used: number,
+    unbilled: number,
+    over: Partial<AgentEnvironmentView> = {},
+  ) =>
+    spending(used, {
+      agentModelMonthlySpendCapUsd: 10,
+      agentModelSpendCapTierLimited: true,
+      agentModelSpendCapReached: false,
+      agentModelChargesAtThreshold: false,
+      agentModelCreditUsd: 1_000_000,
+      agentModelUnbilledUsd: unbilled,
+      trustTier: "T0",
+      ...over,
+    });
+
+  it("does not warn a credited workspace bex cannot charge at 80% of its ceiling's month-to-date", async () => {
+    excludedT0(9, 0);
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(banner()).toBeNull();
+    expect(start()).toBeEnabled();
+  });
+
+  it("warns that workspace as its unbilled spend nears the ceiling, with the mint's figures", async () => {
+    excludedT0(15, 8);
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(banner()).toHaveTextContent(
+      "Agent model spend is at 80% of this month's cap",
+    );
+    expect(banner()).toHaveTextContent(
+      "$8.00 of $10.00 used beyond billing credits. Billing credits pay first; new model requests stop once spend beyond them reaches $10.00.",
+    );
+    expect(start()).toBeEnabled();
+  });
+
+  it("warns that workspace on its own cap as month-to-date nears it", async () => {
+    excludedT0(16, 0);
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(banner()).toHaveTextContent(
+      "Agent model spend is at 80% of this month's cap",
+    );
+    expect(banner()).toHaveTextContent(
+      "$16.00 of $20.00 used. New model requests stop at the cap.",
+    );
+  });
+
+  it("names that workspace's own cap, not the new-workspace limit, once month-to-date reaches it", () => {
+    excludedT0(20, 0, { agentModelSpendCapReached: true });
+    render(<NewSessionComposer />);
+    expect(banner()).toHaveTextContent("Monthly agent model spend cap reached");
+    expect(banner()).toHaveTextContent("used $20.00 of its $20.00 monthly cap");
+    expect(screen.getByRole("link", { name: "Increase cap" })).toBeVisible();
+  });
+
   it("blocks with a Billing link while a payment is due", async () => {
     spending(1, { billingBalanceDue: true });
     const user = userEvent.setup();

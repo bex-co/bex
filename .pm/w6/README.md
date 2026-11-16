@@ -258,7 +258,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **131** — [The composer warns a credited workspace bex cannot charge on month-to-date, while the mint holds its tier ceiling against the unbilled spend](131.md) (~45m) ← w6/m400 t004, 2026-11-16
+- [x] **131** — [The composer warns a credited workspace bex cannot charge on month-to-date, while the mint holds its tier ceiling against the unbilled spend](done/131.md) (~45m) ← w6/m400 t004, 2026-11-16 — **done 2026-11-16**
 - [x] **130** — [The Muse adapter answers the prompt while background work still runs, so Muse workflows stay off](done/130.md) ← split from w6/129, 2026-11-16: the adapter change that would let ADR108 D8 turn Muse workflows back on — promoted to [m434](blocked/m434/README.md)
 - [ ] **129** — **BLOCKED (time: the production deploy that carries the w6/129 fix, then the next muse `rt-*` routine runs: none calls `workflow`, and each opens its PR or reports that it has nothing to change. Implemented: the driver turns Muse's Workflow tool off, ADR108 D8; the adapter change that would turn it back on is 130)** — [A muse turn ends as soon as the agent starts a background workflow, so the routine does nothing](blocked/129.md) (~1h) ← w6/m354 t007, 2026-11-16
 - [x] **128** — [The loopx guard charges a workflow's old red streak to this loop when its earlier runs fall outside the run window](done/128.md) (~45m) ← `/loopx` CI-fix dispatch for `pg-operand-image` (run 43841677012, charged to `e9f27399b`), 2026-11-16. That workflow has never passed on main: it stays red at w8/m92's deliberate owner-restore gate.

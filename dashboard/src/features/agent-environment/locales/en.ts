@@ -262,6 +262,11 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "{used} of {cap} this month",
     description: "Month-to-date spend against the effective monthly cap",
   },
+  "agentEnvironment.spendSummaryCeiling": {
+    message: "{used} of {cap} beyond billing credits, {total} this month",
+    description:
+      "Spend summary and meter value when the trust tier's ceiling binds on the spend billing credits leave ({used}), which differs from month-to-date ({total})",
+  },
   "agentEnvironment.spendMeterValue": {
     message: "{used} of {cap}",
     description: "Screen-reader value of the spend progress bar",

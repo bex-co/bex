@@ -1324,9 +1324,15 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "{used} of {cap} used. Billing credits pay first; once spend beyond them reaches {cap}, the card on file is charged and sessions keep running. New model requests stop only if the charge fails.",
+      "{used} of {cap} used beyond billing credits. Billing credits pay first; once spend beyond them reaches {cap}, the card on file is charged and sessions keep running. New model requests stop only if the charge fails.",
     description:
-      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a); {used} is the spend billing credits leave",
+  },
+  "agentSessions.spendWarningBodyCeiling": {
+    message:
+      "{used} of {cap} used beyond billing credits. Billing credits pay first; new model requests stop once spend beyond them reaches {cap}.",
+    description:
+      "Composer warning body when the trust tier's ceiling binds on a workspace bex cannot charge (payment hold, excluded or comped) and the spend it counts, what billing credits leave ({used}), differs from month-to-date",
   },
   "agentSessions.spendReachedTitle.cap": {
     message: "Monthly agent model spend cap reached",

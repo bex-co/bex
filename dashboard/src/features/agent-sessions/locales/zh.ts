@@ -1239,9 +1239,15 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "已使用 {used} / {cap}。先用 billing credits 抵扣；超出部分达到 {cap} 时会从绑定的卡扣款，会话继续运行。只有扣款失败才会停止新的模型请求。",
+      "超出 billing credits 的部分已使用 {used} / {cap}。先用 billing credits 抵扣；超出部分达到 {cap} 时会从绑定的卡扣款，会话继续运行。只有扣款失败才会停止新的模型请求。",
     description:
-      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a); {used} is the spend billing credits leave",
+  },
+  "agentSessions.spendWarningBodyCeiling": {
+    message:
+      "超出 billing credits 的部分已使用 {used} / {cap}。先用 billing credits 抵扣；超出部分达到 {cap} 后将停止新的模型请求。",
+    description:
+      "Composer warning body when the trust tier's ceiling binds on a workspace bex cannot charge (payment hold, excluded or comped) and the spend it counts, what billing credits leave ({used}), differs from month-to-date",
   },
   "agentSessions.spendReachedTitle.cap": {
     message: "已达到每月智能体模型支出上限",

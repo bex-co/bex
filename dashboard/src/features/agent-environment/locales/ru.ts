@@ -275,6 +275,11 @@ const ruAgentEnvironment: Record<string, TranslationEntry> = {
     message: "{used} из {cap} в этом месяце",
     description: "Month-to-date spend against the effective monthly cap",
   },
+  "agentEnvironment.spendSummaryCeiling": {
+    message: "{used} из {cap} сверх кредитов на оплату, {total} в этом месяце",
+    description:
+      "Spend summary and meter value when the trust tier's ceiling binds on the spend billing credits leave ({used}), which differs from month-to-date ({total})",
+  },
   "agentEnvironment.spendMeterValue": {
     message: "{used} из {cap}",
     description: "Screen-reader value of the spend progress bar",

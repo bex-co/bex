@@ -99,6 +99,111 @@ describe("billing credits at a charge point (w6/m400)", () => {
   });
 });
 
+describe("the tier's ceiling on a workspace bex cannot charge (w6/131)", () => {
+  // bex-canary on production: T0, billing-excluded, credits far above its
+  // spend. The mint holds the $10 ceiling against the unbilled spend and the
+  // workspace's own $20 cap against month-to-date.
+  const ceiling = (used: number, unbilled: number, over = {}) =>
+    env(used, 10, {
+      agentModelSpendCapTierLimited: true,
+      agentModelSpendCapReached: false,
+      agentModelChargesAtThreshold: false,
+      agentModelPlanSpendCapUsd: 20,
+      agentModelMaxSpendCapUsd: 200,
+      agentModelCreditUsd: 1_000_000,
+      agentModelUnbilledUsd: unbilled,
+      ...over,
+    });
+  const locked = (used: number, unbilled: number) =>
+    ceiling(used, unbilled, { trustTierLocked: true });
+
+  it.each([
+    ["an excluded workspace", ceiling],
+    ["a payment-locked workspace", locked],
+  ])("does not warn %s whose credits cover month-to-date", (_, at) => {
+    const position = spendPosition(at(9, 0));
+    expect(position).toMatchObject({
+      level: "ok",
+      chargePoint: false,
+      limit: "cap",
+      heldUsd: 9,
+      limitUsd: 20,
+    });
+    expect(position?.fraction).toBeCloseTo(0.45);
+    expect(composerSpendGate(at(9, 0)).kind).toBe("none");
+  });
+
+  it.each([
+    ["an excluded workspace", ceiling],
+    ["a payment-locked workspace", locked],
+  ])("warns %s whose unbilled spend nears the ceiling", (_, at) => {
+    // $15 this month, $8 of it beyond the credits: 80% of the $10 ceiling.
+    expect(spendPosition(at(15, 8))).toMatchObject({
+      level: "warning",
+      chargePoint: false,
+      limit: "ceiling",
+      heldUsd: 8,
+      limitUsd: 10,
+      fraction: 0.8,
+      beyondCredits: true,
+    });
+    expect(composerSpendGate(at(15, 8)).kind).toBe("warning");
+    expect(spendPosition(at(15, 7.99))?.level).toBe("ok");
+  });
+
+  it("warns on the workspace's own cap as month-to-date nears it", () => {
+    expect(spendPosition(ceiling(16, 0))).toMatchObject({
+      level: "warning",
+      limit: "cap",
+      heldUsd: 16,
+      limitUsd: 20,
+      ownCapUsd: 20,
+      fraction: 0.8,
+      beyondCredits: false,
+    });
+    // An override past the most an admin may set binds at that most.
+    expect(
+      spendPosition(
+        ceiling(160, 0, {
+          agentModelSpendCapOverrideUsd: 500,
+          agentModelMaxSpendCapUsd: 200,
+        }),
+      ),
+    ).toMatchObject({ level: "warning", limitUsd: 200 });
+  });
+
+  it("names the workspace's own cap once month-to-date reaches it", () => {
+    const gate = composerSpendGate(
+      ceiling(20, 0, { agentModelSpendCapReached: true }),
+    );
+    expect(gate).toMatchObject({
+      kind: "reached",
+      cause: "cap",
+      canRaiseCap: true,
+      position: { ownCapUsd: 20, capUsd: 10 },
+    });
+    // The ceiling, not the cap, refuses a workspace short of its own cap.
+    expect(
+      composerSpendGate(ceiling(12, 10, { agentModelSpendCapReached: true })),
+    ).toMatchObject({ kind: "reached", cause: "newWorkspace" });
+    // A payment hold is named first, as the mint names it.
+    expect(
+      composerSpendGate(
+        ceiling(20, 0, {
+          trustTierLocked: true,
+          agentModelSpendCapReached: true,
+        }),
+      ),
+    ).toMatchObject({ kind: "reached", cause: "locked" });
+  });
+
+  it("calls the ceiling's spend this month's when no credit moves it", () => {
+    expect(
+      spendPosition(ceiling(8.5, 8.5, { agentModelCreditUsd: 0 })),
+    ).toMatchObject({ limit: "ceiling", beyondCredits: false });
+  });
+});
+
 describe("composerSpendGate", () => {
   it("gates only the platform route", () => {
     expect(composerSpendGate(null).kind).toBe("none");
@@ -161,10 +266,13 @@ describe("canRaiseCap", () => {
       canRaiseCap: false,
     });
     // The tier's ceiling or a payment hold binds, not the cap.
-    expect(capped({ agentModelSpendCapTierLimited: true })).toMatchObject({
-      cause: "newWorkspace",
-      canRaiseCap: false,
-    });
+    expect(
+      capped({
+        agentModelSpendCapTierLimited: true,
+        agentModelMonthlySpendCapUsd: 10,
+        agentModelSpendMonthToDateUsd: 10,
+      }),
+    ).toMatchObject({ cause: "newWorkspace", canRaiseCap: false });
     expect(capped({ trustTierLocked: true })).toMatchObject({
       cause: "locked",
       canRaiseCap: false,

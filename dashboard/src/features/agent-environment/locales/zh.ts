@@ -255,6 +255,11 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "本月 {used} / {cap}",
     description: "Month-to-date spend against the effective monthly cap",
   },
+  "agentEnvironment.spendSummaryCeiling": {
+    message: "超出 billing credits 的部分 {used} / {cap}，本月共 {total}",
+    description:
+      "Spend summary and meter value when the trust tier's ceiling binds on the spend billing credits leave ({used}), which differs from month-to-date ({total})",
+  },
   "agentEnvironment.spendMeterValue": {
     message: "已用 {used}，上限 {cap}",
     description: "Screen-reader value of the spend progress bar",

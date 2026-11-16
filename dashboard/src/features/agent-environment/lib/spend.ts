@@ -1,5 +1,5 @@
 // Pure agent-model spend logic (ADR091 D5, D6, D10.1): where a workspace's
-// month-to-date spend stands against its effective cap, and what the
+// spend stands against the limits the mint holds it to, and what the
 // composer should do about it. Settings → Agents and the new-session
 // composer both read it, so the 80% / 100% thresholds live in one place.
 
@@ -23,10 +23,49 @@ export interface SpendPosition {
    */
   chargePoint: boolean;
   monthToDateUsd: number;
+  /** The effective cap: min(the workspace's own cap, the tier's ceiling). */
   capUsd: number;
-  /** Month-to-date as a share of the cap, clamped to [0, 1] for display. */
+  /** The workspace's own monthly cap, which month-to-date is held against. */
+  ownCapUsd: number;
+  /**
+   * The limit nearest to stopping new model requests, as the mint holds
+   * each (spendcap.go RefusesAtCap): the trust tier's ceiling against the
+   * spend billing credits and paid charges leave, or the workspace's own
+   * cap against month-to-date. The meter and the warning show it.
+   */
+  limit: "ceiling" | "cap";
+  /** The spend held against that limit, and the limit itself. */
+  heldUsd: number;
+  limitUsd: number;
+  /**
+   * The held spend is the ceiling's, and billing credits, paid charges or an
+   * invoice that billed the meter make it differ from month-to-date, so the
+   * copy names it rather than calling it this month's.
+   */
+  beyondCredits: boolean;
+  /** heldUsd as a share of limitUsd, clamped to [0, 1] for display. */
   fraction: number;
   level: SpendLevel;
+}
+
+type Hold = Pick<SpendPosition, "limit" | "heldUsd" | "limitUsd">;
+
+const share = ({ heldUsd, limitUsd }: Hold) =>
+  limitUsd > 0 ? heldUsd / limitUsd : 1;
+
+/**
+ * The workspace's own monthly cap: the override clamped to the most an admin
+ * may set, or the plan default. Where the tier's ceiling does not bind, it is
+ * the effective cap. Null when the API sends neither.
+ */
+function ownCap(env: AgentEnvironmentView): number | null {
+  if (!env.agentModelSpendCapTierLimited) {
+    return env.agentModelMonthlySpendCapUsd;
+  }
+  const override = env.agentModelSpendCapOverrideUsd;
+  const max = env.agentModelMaxSpendCapUsd;
+  if (override == null) return env.agentModelPlanSpendCapUsd;
+  return max == null ? override : Math.min(override, max);
 }
 
 /**
@@ -37,27 +76,40 @@ export function spendPosition(env: AgentEnvironmentView): SpendPosition | null {
   const used = env.agentModelSpendMonthToDateUsd;
   const cap = env.agentModelMonthlySpendCapUsd;
   if (used == null || cap == null) return null;
-  const ratio = cap > 0 ? used / cap : 1;
+  const own = ownCap(env);
+  // Where the tier's ceiling binds, the mint holds it against the spend
+  // billing credits and paid charges leave (an older API sends none, so
+  // month-to-date), whether or not bex can charge the workspace. The
+  // workspace's own cap is held against month-to-date everywhere.
+  const holds: Hold[] = [];
+  if (env.agentModelSpendCapTierLimited) {
+    holds.push({
+      limit: "ceiling",
+      heldUsd: env.agentModelUnbilledUsd ?? used,
+      limitUsd: cap,
+    });
+  }
+  if (own != null) holds.push({ limit: "cap", heldUsd: used, limitUsd: own });
+  const nearest = holds.reduce((a, b) => (share(b) > share(a) ? b : a));
+  const ratio = share(nearest);
   // The server's verdict is the mint's: a workspace whose next request would
   // charge its card is not reached. An older API sends none.
   const reached = env.agentModelSpendCapReached ?? ratio >= 1;
-  const chargePoint =
-    capCause(env) === "newWorkspace" &&
-    env.agentModelChargesAtThreshold === true;
-  // At a charge point the card is charged on the spend billing credits leave
-  // (ADR091 D10.2a), so that, not month-to-date, is what nears it.
-  const unbilled = env.agentModelUnbilledUsd;
-  const nearing =
-    chargePoint && unbilled != null && cap > 0 ? unbilled / cap : ratio;
   return {
     platform: env.modelSource === AgentModelSource.Platform,
-    chargePoint,
+    chargePoint:
+      env.agentModelSpendCapTierLimited === true &&
+      !env.trustTierLocked &&
+      env.agentModelChargesAtThreshold === true,
     monthToDateUsd: used,
     capUsd: cap,
+    ownCapUsd: own ?? cap,
+    ...nearest,
+    beyondCredits: nearest.limit === "ceiling" && nearest.heldUsd !== used,
     fraction: Math.min(1, Math.max(0, ratio)),
     level: reached
       ? "reached"
-      : nearing >= SPEND_WARNING_RATIO
+      : ratio >= SPEND_WARNING_RATIO
         ? "warning"
         : "ok",
   };
@@ -68,7 +120,13 @@ export type CapCause = "cap" | "newWorkspace" | "locked";
 
 export function capCause(env: AgentEnvironmentView): CapCause {
   if (env.trustTierLocked) return "locked";
-  if (env.agentModelSpendCapTierLimited) return "newWorkspace";
+  // The mint names the workspace's own cap once month-to-date reaches it,
+  // even while the tier's ceiling sets the effective cap
+  // (SpendCapReachedReason).
+  const own = ownCap(env);
+  const used = env.agentModelSpendMonthToDateUsd;
+  const ownReached = own != null && used != null && used >= own;
+  if (env.agentModelSpendCapTierLimited && !ownReached) return "newWorkspace";
   return "cap";
 }
 

@@ -264,6 +264,11 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
     message: "今月 {cap} のうち {used}",
     description: "Month-to-date spend against the effective monthly cap",
   },
+  "agentEnvironment.spendSummaryCeiling": {
+    message: "請求クレジット超過分 {cap} のうち {used}、今月の合計 {total}",
+    description:
+      "Spend summary and meter value when the trust tier's ceiling binds on the spend billing credits leave ({used}), which differs from month-to-date ({total})",
+  },
   "agentEnvironment.spendMeterValue": {
     message: "{cap} のうち {used}",
     description: "Screen-reader value of the spend progress bar",

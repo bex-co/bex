@@ -1432,9 +1432,15 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "Использовано {used} из {cap}. Сначала расходуются кредиты на оплату; когда расходы сверх них достигнут {cap}, с карты на счёте будет списана сумма, а сессии продолжат работу. Новые запросы к модели прекратятся, только если списание не удастся.",
+      "Использовано {used} из {cap} сверх кредитов на оплату. Сначала расходуются кредиты на оплату; когда расходы сверх них достигнут {cap}, с карты на счёте будет списана сумма, а сессии продолжат работу. Новые запросы к модели прекратятся, только если списание не удастся.",
     description:
-      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a); {used} is the spend billing credits leave",
+  },
+  "agentSessions.spendWarningBodyCeiling": {
+    message:
+      "Использовано {used} из {cap} сверх кредитов на оплату. Сначала расходуются кредиты на оплату; новые запросы к модели прекратятся, когда расходы сверх них достигнут {cap}.",
+    description:
+      "Composer warning body when the trust tier's ceiling binds on a workspace bex cannot charge (payment hold, excluded or comped) and the spend it counts, what billing credits leave ({used}), differs from month-to-date",
   },
   "agentSessions.spendReachedTitle.cap": {
     message: "Достигнут месячный лимит расходов на модель агентов",

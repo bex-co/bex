@@ -13,11 +13,14 @@ import { money } from "@/features/usage/lib/charges";
 const LINK_CLASS = "font-medium underline underline-offset-4";
 
 /**
- * The composer's spend banner: a warning at 80% of the monthly cap; at the
- * cap a refusal worded by its cause (the workspace's own cap, the
- * new-workspace limit, or a payment hold) with an "Increase cap" link for
- * admins only while the workspace's own cap binds below its maximum; and while a failed invoice is unpaid, a refusal that links to
- * Billing. The mint would refuse those sessions' model requests anyway.
+ * The composer's spend banner: a warning at 80% of the limit nearest to
+ * stopping new model requests (the workspace's own cap, or the trust tier's
+ * ceiling on the spend billing credits leave); at the cap a refusal worded
+ * by its cause (the workspace's own cap, the new-workspace limit, or a
+ * payment hold) with an "Increase cap" link for admins only while the
+ * workspace's own cap binds below its maximum; and while a failed invoice is
+ * unpaid, a refusal that links to Billing. The mint would refuse those
+ * sessions' model requests anyway.
  */
 export function ComposerSpendBanner({ gate }: { gate: ComposerSpendGate }) {
   const { t, i18n } = useTranslations();
@@ -42,6 +45,12 @@ export function ComposerSpendBanner({ gate }: { gate: ComposerSpendGate }) {
       );
     case "warning": {
       const { position } = gate;
+      const body =
+        position.limit === "ceiling" && position.chargePoint
+          ? "agentSessions.spendWarningBodyCharge"
+          : position.beyondCredits
+            ? "agentSessions.spendWarningBodyCeiling"
+            : "agentSessions.spendWarningBody";
       return (
         <Alert data-testid="composer-spend-banner">
           <AlertTriangle />
@@ -52,15 +61,10 @@ export function ComposerSpendBanner({ gate }: { gate: ComposerSpendGate }) {
           </AlertTitle>
           <AlertDescription>
             <p>
-              {t(
-                position.chargePoint
-                  ? "agentSessions.spendWarningBodyCharge"
-                  : "agentSessions.spendWarningBody",
-                {
-                  used: usd(position.monthToDateUsd),
-                  cap: usd(position.capUsd),
-                },
-              )}
+              {t(body, {
+                used: usd(position.heldUsd),
+                cap: usd(position.limitUsd),
+              })}
             </p>
           </AlertDescription>
         </Alert>
@@ -72,7 +76,8 @@ export function ComposerSpendBanner({ gate }: { gate: ComposerSpendGate }) {
       const body = cause === "cap" && !canRaiseCap ? "capMax" : cause;
       const params = {
         used: usd(position.monthToDateUsd),
-        cap: usd(position.capUsd),
+        // The workspace's own cap is held against month-to-date.
+        cap: usd(cause === "cap" ? position.ownCapUsd : position.capUsd),
       };
       return (
         <Alert variant="destructive" data-testid="composer-spend-banner">
