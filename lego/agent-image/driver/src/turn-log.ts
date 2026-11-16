@@ -24,6 +24,12 @@ async function ensureParent(filename: string): Promise<void> {
 
 const bufferBytes = 64 << 10;
 
+// flushDelayMs bounds how long a buffered part waits before it is written.
+// The log is what the Completer harvests from a running turn, and a
+// sandbox that dies loses whatever is still buffered: without this bound a
+// quiet turn's last 64 KiB, often minutes of it, never reached the file.
+const flushDelayMs = 5_000;
+
 export class TurnLogSink {
   readonly #path: string;
   readonly #turn: number;
@@ -36,16 +42,20 @@ export class TurnLogSink {
   #bufferBytes = 0;
   #writing: Promise<void> = Promise.resolve();
   #closing: Promise<void> | undefined;
+  readonly #flushDelayMs: number;
+  #flushTimer: NodeJS.Timeout | undefined;
 
   constructor(
     path: string,
     initialBytes: number,
     maxBytes: number,
     turn: number,
+    delayMs = flushDelayMs,
   ) {
     this.#path = path;
     this.#turn = turn;
     this.#remaining = Math.max(0, maxBytes - initialBytes);
+    this.#flushDelayMs = delayMs;
   }
 
   get openCount(): number {
@@ -88,6 +98,11 @@ export class TurnLogSink {
     } else {
       this.#buffer.push(line);
       this.#bufferBytes += bytes;
+      // A write failure surfaces from close(), which awaits the same chain.
+      this.#flushTimer ??= setTimeout(() => {
+        this.#flushTimer = undefined;
+        this.#flush().catch(() => {});
+      }, this.#flushDelayMs).unref();
     }
     return bytes;
   }
@@ -109,6 +124,8 @@ export class TurnLogSink {
   }
 
   close(): Promise<void> {
+    clearTimeout(this.#flushTimer);
+    this.#flushTimer = undefined;
     this.#closing ??= (async () => {
       try {
         await this.#flush();

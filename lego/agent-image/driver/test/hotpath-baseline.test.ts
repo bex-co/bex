@@ -215,6 +215,77 @@ test("turn log bounds buffers and preserves cap and skipped indexes", async (t) 
   await assert.rejects(sink.appendPart({ type: "finish" }), /not open/);
 });
 
+async function until(check: () => boolean): Promise<void> {
+  for (let waited = 0; !check(); waited += 10) {
+    assert.ok(waited < 2_000, "timed out waiting for the timed flush");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
+// w6/m398: the Completer harvests a running turn from this file, and a
+// sandbox killed mid-turn keeps only what reached it. A quiet turn's parts
+// sat in the 64 KiB buffer for minutes on production before this bound.
+test("a buffered part reaches the log within the flush delay while the turn runs", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "bex-timed-log-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const filename = path.join(root, "session.jsonl");
+  const sink = new TurnLogSink(filename, 0, 16 << 20, 1, 25);
+  await sink.open();
+  await sink.appendPart({ type: "text-start", id: "a" });
+  await sink.appendPart({ type: "text-delta", id: "a", delta: "first" });
+  assert.equal(sink.writeCount, 0, "parts are batched, not written one by one");
+  await until(() => sink.writeCount === 1);
+  const running = (await readFile(filename, "utf8")).trim().split("\n");
+  assert.deepEqual(
+    running.map((line) => JSON.parse(line).partIndex),
+    [0, 1],
+    "both buffered parts are on disk before the turn closes",
+  );
+  await sink.appendPart({ type: "text-end", id: "a" });
+  await until(() => sink.writeCount === 2);
+  await sink.close();
+  assert.equal(sink.writeCount, 2, "close has nothing left to write");
+  const records = (await readFile(filename, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  assert.deepEqual(
+    records.map((row) => row.part.type),
+    ["text-start", "text-delta", "text-end"],
+  );
+});
+
+test("a failed timed flush rejects close instead of escaping unhandled", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "bex-timed-log-failure-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const originalOpen = fs.open;
+  let writes = 0;
+  t.mock.method(fs, "open", async (...args: Parameters<typeof fs.open>) => {
+    const handle = await originalOpen(...args);
+    t.mock.method(handle, "writeFile", async () => {
+      writes++;
+      throw new Error("injected write failure");
+    });
+    return handle;
+  });
+  syncBuiltinESMExports();
+  t.after(() => {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+  });
+  const sink = new TurnLogSink(
+    path.join(root, "session.jsonl"),
+    0,
+    1 << 20,
+    1,
+    5,
+  );
+  await sink.open();
+  await sink.appendPart({ type: "finish" });
+  await until(() => writes === 1);
+  await assert.rejects(sink.close(), /injected/);
+});
+
 test("write and close failures reject flush and release the handle", async (t) => {
   for (const operation of ["writeFile", "close"] as const) {
     await t.test(operation, async (t) => {

@@ -1,6 +1,6 @@
 # w6 · m398 — A turn's transcript survives a sandbox that dies mid-turn
 
-**Worker:** worker6 **Goal:** a session whose sandbox dies mid-turn keeps its conversation and commands up to about 30 seconds before the death, on every surface, so the failure can be investigated. **Status:** blocked — on time: t004 needs the next batched production deploy (it carries the running-turn harvest), then a QA session whose sandbox is killed mid-turn. t001–t003 and t005–t007 done.
+**Worker:** worker6 **Goal:** a session whose sandbox dies mid-turn keeps its conversation and commands up to about 30 seconds before the death, on every surface, so the failure can be investigated. **Status:** blocked — on time: t004 re-runs once a production deploy carries the 2026-11-16 driver flush fix. Its first run killed a sandbox mid-turn: the transcript survived, but it kept nothing from the last 2 minutes. t001–t003 and t005–t007 done.
 
 ## Tasks (in order)
 
@@ -26,3 +26,10 @@ On production, a session whose sandbox Pod is killed mid-turn shows its transcri
 - **Expected outcome:** a crashed or OOM-killed turn can be read and debugged.
 - **Why now:** the routines run every three hours on 8 GiB sandboxes, and the next OOM's cause (w6/127 suspects `/tmp`) cannot be confirmed without its transcript.
 - **Render parity:** included (Devin is the reference for agent sessions): the transcript surfaces change.
+
+## Unblock 2026-11-16 (verified evidence)
+
+- **Affected:** t004, t008. **Source:** verified evidence, no new user decision.
+- **Finding:** the production deploy of `3c6654df6` (deploy.yml run 43816470794, started 06:23Z, succeeded 06:46Z) carries the running-turn harvest: `6ec9a62a5` is its ancestor, and Argo's `bex-operator` app has since synced main at `48bc2a0fe`. The time gate is clear.
+- **Next:** t004 runs on production as the QA user (`bash scripts/qa-login.sh`). It starts a session with a long turn, deletes that session's sandbox Pod mid-turn, and reads the transcript on REST and the session page. Accept when the stored parts reach to about 30 s before the kill and the turn reads truncated with the reason. Then t008 closes the milestone. Devin is the reference: an errored session keeps the history it had.
+- **Outcome of the run (2026-11-16):** the killed turn kept its harvested items and read truncated with the reason on REST, GraphQL and the session page. It lost the last 2 minutes, because the driver held parts in a 64 KiB buffer and the harvest ran once a minute (t004 has the evidence). Fixed in the same ship: the turn log writes buffered parts within 5 s, and the running harvest runs every 30 s. **Remaining gate (clears by itself):** a successful deploy.yml run whose head contains the `fix(agent-sessions): a running turn's parts reach the driver log within 5 s` commit. Then re-run t004, then t008.

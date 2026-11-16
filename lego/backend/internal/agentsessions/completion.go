@@ -163,8 +163,10 @@ type liveHarvest struct {
 // harvested (w6/m398). A headless turn has no live tee (the gateway tees
 // only an attached stream), so without it a sandbox that dies mid-turn leaves
 // no transcript at all. Every replica runs the Completer; the store's harvest
-// lease keeps the spacing at this however many run (w4/677).
-const liveTranscriptInterval = time.Minute
+// lease keeps the spacing at this however many run (w4/677). With the driver
+// writing its buffered parts within 5 s (turn-log.ts flushDelayMs), a dead
+// sandbox's stored transcript ends about 30 s before its death.
+const liveTranscriptInterval = 30 * time.Second
 
 // idleSandbox is what the Completer remembers about one finished turn whose
 // sandbox is waiting out its idle grace, so the reaper does not repeat work
