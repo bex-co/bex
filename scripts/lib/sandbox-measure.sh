@@ -201,7 +201,7 @@ prom_forward() {
   kubectl -n monitoring port-forward svc/prometheus-server :80 --request-timeout=20s >"$log" 2>&1 &
   measure_pf_pids+=("$!")
   for i in $(seq 1 40); do
-    port="$(sed -n 's/^Forwarding from 127\.0\.0\.1:\([0-9]*\) .*/\1/p' "$log" | head -1)"
+    port="$(sed -n 's/^Forwarding from 127\.0\.0\.1:\([0-9]*\) .*/\1/p' "$log" 2>/dev/null | head -1 || true)" # a poll: a failed read is tried again
     [ -n "$port" ] && { prom_url="http://127.0.0.1:$port"; return 0; }
     sleep 0.5
   done
@@ -238,7 +238,7 @@ zot_forward() {
   kubectl -n bex-registry port-forward svc/zot :5000 --request-timeout=20s >"$log" 2>&1 &
   measure_pf_pids+=("$!")
   for i in $(seq 1 40); do
-    port="$(sed -n 's/^Forwarding from 127\.0\.0\.1:\([0-9]*\) .*/\1/p' "$log" | head -1)"
+    port="$(sed -n 's/^Forwarding from 127\.0\.0\.1:\([0-9]*\) .*/\1/p' "$log" 2>/dev/null | head -1 || true)" # a poll: a failed read is tried again
     [ -n "$port" ] && { zot_url="http://127.0.0.1:$port"; return 0; }
     sleep 0.5
   done
