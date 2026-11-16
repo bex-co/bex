@@ -1,6 +1,6 @@
 # w6 · m163 — Native image workflows install Syft and Trivy with retries
 
-**Worker:** worker6 **Goal:** no workflow depends on a single-attempt Syft or Trivy download. **Status:** todo (t001–t006 done; t007 closes on the first native-common push run showing both retrying installers)
+**Worker:** worker6 **Goal:** no workflow depends on a single-attempt Syft or Trivy download. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | [Drop download-syft from the reviewed action inventory](done/t004.md) — **DONE** | 15m | t002 |
 | t005 | [Simplify](done/t005.md) — **DONE** | 15m | t003, t004 |
 | t006 | [Test coverage](done/t006.md) — **DONE** | 20m | t005 |
-| t007 | [Closeout](t007.md) | 10m | t006 |
+| t007 | [Closeout](done/t007.md) — **DONE** | 10m | t006 |
 
 ## Definition of done
 
