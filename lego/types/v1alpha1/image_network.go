@@ -240,8 +240,8 @@ func (a *App) ConfiguredImagePort() (port int32, ok bool) {
 	if a.Spec.HasImagePorts() && a.Status.EnvPort > 0 {
 		return a.Status.EnvPort, true
 	}
-	if a.Spec.HasImagePorts() && IsConfiguredPortMode(a.Spec.PortMode) {
-		return a.Spec.Port, true
+	if spec := a.RuntimeSpec(); spec.HasImagePorts() && IsConfiguredPortMode(spec.PortMode) {
+		return spec.Port, true
 	}
 	return 0, false
 }
@@ -250,19 +250,23 @@ func (a *App) ConfiguredImagePort() (port int32, ok bool) {
 // the port its own PORT environment variable selected, as the operator
 // recorded it, else an explicit non-default spec.port (w5/m149), else the detected
 // listener (w8/177, w8/202), else the default.
+//
+// The port is the running release's: a Restart or rollback keeps its selected
+// release's (RuntimeSpec, w4/m433) while a saved one waits for a deploy.
 func (a *App) ServingPort() int32 {
+	spec := a.RuntimeSpec()
 	// Image-port services publish through the serving image network instead of
 	// any recorded PORT or detected listener.
-	if a.Spec.HasImagePorts() {
-		return a.Spec.EffectivePort()
+	if spec.HasImagePorts() {
+		return spec.EffectivePort()
 	}
 	if a.Status.EnvPort > 0 {
 		return a.Status.EnvPort
 	}
-	if a.Status.DetectedPort > 0 && !a.Spec.hasExplicitPort() {
+	if a.Status.DetectedPort > 0 && !spec.hasExplicitPort() {
 		return a.Status.DetectedPort
 	}
-	return a.Spec.EffectivePort()
+	return spec.EffectivePort()
 }
 
 // hasExplicitPort reports whether spec.port names a port itself rather than

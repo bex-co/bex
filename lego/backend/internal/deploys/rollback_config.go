@@ -40,7 +40,8 @@ type RollbackOptions struct {
 }
 
 // targetReleaseConfig selects immutable runtime inputs without writing any saved
-// configuration. A legacy target with no record explicitly selects only its image;
+// configuration: the target's record, and the port, shutdown delay and
+// pre-deploy command it recorded. A legacy target with no record explicitly selects only its image;
 // this is a compatibility fallback, not full Render configuration parity.
 func (s *Service) targetReleaseConfig(ctx context.Context, a *appv1alpha1.App, target store.Deploy, restart bool) (*appv1alpha1.ReleaseConfigReference, error) {
 	image := target.ResolvedImage
@@ -67,6 +68,14 @@ func (s *Service) targetReleaseConfig(ctx context.Context, a *appv1alpha1.App, t
 		}
 	}
 	selected.SourceGeneration = target.Generation
+	// The record's port, shutdown delay and pre-deploy command, as Render's
+	// Restart keeps the running configuration (w4/m433). A record written
+	// before them leaves those to the saved spec.
+	selected.Runtime = spec.Runtime
+	if spec.Runtime == nil {
+		logf.FromContext(ctx).Info("release runs the saved port, shutdown delay and pre-deploy command: target record predates them",
+			"app", a.Name, "deploy", target.ID, "generation", target.Generation)
+	}
 	return selected, nil
 }
 

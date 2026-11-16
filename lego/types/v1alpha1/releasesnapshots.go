@@ -125,6 +125,71 @@ type ReleaseRecordSpec struct {
 	// release serving the saved tag's digest is not an undeployed change
 	// (w4/531). Empty in older records and for images run as written.
 	ImageSource string `json:"imageSource,omitempty"`
+	// Runtime is the port, shutdown delay and pre-deploy command the release
+	// ran with (w4/m433). nil in records written before them: a Restart or
+	// rollback to such a record runs the saved values.
+	Runtime *ReleaseRuntimeSettings `json:"runtime,omitempty"`
+}
+
+// ReleaseRuntimeSettings are the saved settings outside the pod's command and
+// environment that a release runs with, and that Render's Restart keeps
+// ("the exact same Git commit and configuration as the running instance";
+// render.com/docs/deploys#restarting-a-service). A rollback selects the
+// target's, as it does its start command and health check path (w4/m433).
+type ReleaseRuntimeSettings struct {
+	// +optional
+	Port int32 `json:"port,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Enum=configured-v1;image-v1;image-configured-v1;web-image-v1;web-image-configured-v1
+	PortMode string `json:"portMode,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=300
+	MaxShutdownDelaySeconds *int32 `json:"maxShutdownDelaySeconds,omitempty"`
+	// +optional
+	// +kubebuilder:validation:MaxLength=4096
+	PreDeployCommand string `json:"preDeployCommand,omitempty"`
+}
+
+// RuntimeSettings is the spec's ReleaseRuntimeSettings, as a release
+// dispatched from it records them.
+func (s AppSpec) RuntimeSettings() *ReleaseRuntimeSettings {
+	settings := &ReleaseRuntimeSettings{Port: s.Port, PortMode: s.PortMode, PreDeployCommand: s.PreDeployCommand}
+	if s.MaxShutdownDelaySeconds != nil {
+		settings.MaxShutdownDelaySeconds = new(*s.MaxShutdownDelaySeconds)
+	}
+	return settings
+}
+
+// ApplyTo runs spec with the recorded settings; nil leaves the saved ones. A
+// recorded port mode applies only within the saved mode's family (configured
+// or image ports): what discovers a service's ports is its source's, not a
+// setting a release selects.
+func (r *ReleaseRuntimeSettings) ApplyTo(spec *AppSpec) {
+	if r == nil {
+		return
+	}
+	probe := *spec
+	probe.PortMode = r.PortMode
+	if probe.HasImagePorts() == spec.HasImagePorts() {
+		spec.Port, spec.PortMode = r.Port, r.PortMode
+	}
+	spec.MaxShutdownDelaySeconds = nil
+	if r.MaxShutdownDelaySeconds != nil {
+		spec.MaxShutdownDelaySeconds = new(*r.MaxShutdownDelaySeconds)
+	}
+	spec.PreDeployCommand = r.PreDeployCommand
+}
+
+// RuntimeSpec is the spec the current release runs its port, shutdown delay
+// and pre-deploy command from: the active selection's recorded settings
+// (Restart, rollback) over the saved spec, else the saved spec itself.
+func (a *App) RuntimeSpec() AppSpec {
+	spec := a.Spec
+	if ref := a.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration > 0 {
+		ref.Runtime.ApplyTo(&spec)
+	}
+	return spec
 }
 
 // StaticPublicationRecordName is the per-release record of where a static_site
@@ -183,6 +248,11 @@ type ReleaseConfigReference struct {
 	// running configuration, including already-snapshotted group values.
 	// +optional
 	PreserveGroupValues bool `json:"preserveGroupValues,omitempty"`
+	// Runtime is the selected release's recorded port, shutdown delay and
+	// pre-deploy command (ReleaseRecordSpec.Runtime). nil when its record
+	// predates them: the release then runs the saved values.
+	// +optional
+	Runtime *ReleaseRuntimeSettings `json:"runtime,omitempty"`
 }
 
 // ActiveReleaseConfig returns the selection belonging to the current or newly

@@ -792,6 +792,32 @@ spec:
                       from the target's surviving group associations; Restart retains its exact
                       running configuration, including already-snapshotted group values.
                     type: boolean
+                  runtime:
+                    description: |-
+                      Runtime is the selected release's recorded port, shutdown delay and
+                      pre-deploy command (ReleaseRecordSpec.Runtime). nil when its record
+                      predates them: the release then runs the saved values.
+                    properties:
+                      maxShutdownDelaySeconds:
+                        format: int32
+                        maximum: 300
+                        minimum: 1
+                        type: integer
+                      port:
+                        format: int32
+                        type: integer
+                      portMode:
+                        enum:
+                        - configured-v1
+                        - image-v1
+                        - image-configured-v1
+                        - web-image-v1
+                        - web-image-configured-v1
+                        type: string
+                      preDeployCommand:
+                        maxLength: 4096
+                        type: string
+                    type: object
                   sourceGeneration:
                     description: |-
                       SourceGeneration zero explicitly requests the legacy image-only fallback.

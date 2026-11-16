@@ -233,7 +233,7 @@ func imageNetworkProcessPort(app *appv1alpha1.App, configured bool) int32 {
 // the workspace registry credential bound to this App for that image's host.
 func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha1.App, image string) (string, int, error) {
 	if !app.Spec.HasImagePorts() {
-		return image, int(app.Spec.EffectivePort()), nil
+		return image, int(releaseRuntimeSpec(app).EffectivePort()), nil
 	}
 	// The configured primary: an explicit port, or a web service's own PORT
 	// env (EnvPort), which wins over the image's choice (w4/m243).
@@ -285,7 +285,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	}
 	ports := metadata.TCPPorts
 	if len(ports) == 0 {
-		ports = []int32{app.Spec.EffectivePort()}
+		ports = []int32{releaseRuntimeSpec(app).EffectivePort()}
 		if configured {
 			ports = []int32{configuredPrimary}
 		}

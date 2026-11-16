@@ -33,5 +33,6 @@ func (a *App) PreDeployStepCommand() (command string, initial bool) {
 	if strings.TrimSpace(a.Spec.InitialDeployHook) != "" && !a.Status.InitialDeployHookCompleted {
 		return a.Spec.InitialDeployHook, true
 	}
-	return a.Spec.PreDeployCommand, false
+	// A Restart or rollback runs its selected release's command (w4/m433).
+	return a.RuntimeSpec().PreDeployCommand, false
 }

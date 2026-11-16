@@ -68,7 +68,8 @@ const (
 // explicitServingPort reports whether the App's own configuration already names
 // the serving port, so a detected listener must never override it.
 func explicitServingPort(app *appv1alpha1.App) bool {
-	return (app.Spec.Port > 0 && app.Spec.Port != appv1alpha1.DefaultPort) || app.Status.EnvPort > 0 || app.Spec.HasImagePorts()
+	spec := releaseRuntimeSpec(app)
+	return (spec.Port > 0 && spec.Port != appv1alpha1.DefaultPort) || app.Status.EnvPort > 0 || spec.HasImagePorts()
 }
 
 // detectedServingPort applies a detected port to the serving port decided from

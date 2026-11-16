@@ -249,8 +249,9 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 			}
 		}
 	}
-	// Settings outside the record's selected fields — plan, pre-deploy command,
-	// shutdown delay, build settings — differ when the served record's settings
+	// Settings outside the record's selected fields — plan, build settings,
+	// and the port, shutdown delay and pre-deploy command a record written
+	// before w4/m433 lacks — differ when the served record's settings
 	// fingerprint does not name the saved ones: a cancel retains them, and a
 	// Render Update Service PATCH saves them without deploying (w8/m135). A
 	// cancel of an identical redeploy leaves nothing pending (w4/m165). A

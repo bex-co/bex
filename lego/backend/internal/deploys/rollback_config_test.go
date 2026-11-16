@@ -24,6 +24,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -293,5 +294,36 @@ func TestRollbackCapabilitiesFollowSelectedReleaseAndConfigGeneration(t *testing
 	}
 	if _, err := svc.Rollback(ctx, "web", rolled.ID); !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("no-op rollback = %v, want conflict", err)
+	}
+}
+
+// A Restart and a rollback carry their selected release's recorded port,
+// shutdown delay and pre-deploy command to the operator; a record written
+// before them carries none, and the release runs the saved values (w4/m433).
+func TestReleaseSelectionCarriesTheRecordedRuntimeSettings(t *testing.T) {
+	ctx := context.Background()
+	recorded := &appv1alpha1.ReleaseRuntimeSettings{Port: 3000, MaxShutdownDelaySeconds: new(int32(45)), PreDeployCommand: "./migrate --v1"}
+	for _, tc := range []struct {
+		name    string
+		runtime *appv1alpha1.ReleaseRuntimeSettings
+	}{{"recorded", recorded}, {"legacy record", nil}} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl, d1 := rollbackFixture(t, false)
+			spec, _ := json.Marshal(appv1alpha1.ReleaseRecordSpec{StartCommand: "./server --v1", Runtime: tc.runtime})
+			if err := cl.Create(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: appv1alpha1.ReleaseRecordName("web", 1)},
+				Data: map[string][]byte{appv1alpha1.ReleaseRecordSpecKey: spec}}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := svc.Rollback(ctx, "web", d1.ID); err != nil {
+				t.Fatal(err)
+			}
+			got := getApp(t, cl, "web")
+			if selected := got.Spec.ReleaseConfig; selected == nil || selected.SourceGeneration != 1 || !equality.Semantic.DeepEqual(selected.Runtime, tc.runtime) {
+				t.Fatalf("selection = %+v, want runtime %+v", selected, tc.runtime)
+			}
+			if got.Spec.Port == 3000 || got.Spec.PreDeployCommand != "" {
+				t.Fatalf("the selection rewrote saved settings: port %d, pre-deploy %q", got.Spec.Port, got.Spec.PreDeployCommand)
+			}
+		})
 	}
 }

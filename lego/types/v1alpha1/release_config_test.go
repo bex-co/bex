@@ -44,3 +44,49 @@ func TestReleaseConfigExpiresOnlyWhenAnotherReleaseIsRequested(t *testing.T) {
 		t.Fatal("operator-adopted direct CR release retained stale selection")
 	}
 }
+
+// The running release's port, shutdown delay and pre-deploy command come from
+// its selection while one is active, and from the saved spec once a deploy
+// expires it (w4/m433).
+func TestRuntimeSpecRunsTheSelectionsRecordedSettings(t *testing.T) {
+	app := &App{}
+	app.Generation, app.Status.ReleaseGeneration = 4, 4
+	app.Spec = AppSpec{Type: TypeWebService, Port: 9000, MaxShutdownDelaySeconds: new(int32(40)), PreDeployCommand: "echo two"}
+	app.Spec.ReleaseConfig = &ReleaseConfigReference{Generation: 4, SourceGeneration: 1, Image: "image:A",
+		Runtime: &ReleaseRuntimeSettings{Port: 3000, PreDeployCommand: "echo one"}}
+	spec := app.RuntimeSpec()
+	if spec.Port != 3000 || spec.MaxShutdownDelaySeconds != nil || spec.PreDeployCommand != "echo one" {
+		t.Fatalf("selected runtime = port %d delay %v pre-deploy %q, want the recorded 3000, default, echo one", spec.Port, spec.MaxShutdownDelaySeconds, spec.PreDeployCommand)
+	}
+	if command, _ := app.PreDeployStepCommand(); command != "echo one" || app.ServingPort() != 3000 {
+		t.Fatalf("readers see pre-deploy %q, port %d", command, app.ServingPort())
+	}
+	if app.Spec.Port != 9000 || *app.Spec.MaxShutdownDelaySeconds != 40 {
+		t.Fatal("RuntimeSpec changed the saved spec")
+	}
+
+	app.Spec.ReleaseConfig.Runtime = nil
+	if spec := app.RuntimeSpec(); spec.Port != 9000 || spec.PreDeployCommand != "echo two" {
+		t.Fatal("a record without settings must run the saved ones")
+	}
+
+	app.Spec.ReleaseConfig.Runtime = &ReleaseRuntimeSettings{Port: 3000}
+	app.Annotations = map[string]string{AnnotationReleaseGeneration: "5"}
+	if spec := app.RuntimeSpec(); spec.Port != 9000 {
+		t.Fatal("a requested deploy runs the saved settings")
+	}
+}
+
+// A recorded port mode never moves a service between configured and image
+// ports: that follows its source, which a selection does not change.
+func TestRuntimeSettingsKeepThePortFamily(t *testing.T) {
+	spec := AppSpec{Type: TypePrivateService, PortMode: PortModeImageConfiguredV1, Port: 8080}
+	(&ReleaseRuntimeSettings{Port: 7000, PortMode: PortModeImageV1}).ApplyTo(&spec)
+	if spec.Port != 7000 || spec.PortMode != PortModeImageV1 {
+		t.Fatalf("same family = %d %q, want the recorded port and mode", spec.Port, spec.PortMode)
+	}
+	(&ReleaseRuntimeSettings{Port: 3000, PortMode: "configured-v1"}).ApplyTo(&spec)
+	if spec.Port != 7000 || spec.PortMode != PortModeImageV1 {
+		t.Fatalf("other family = %d %q, want the saved port kept", spec.Port, spec.PortMode)
+	}
+}

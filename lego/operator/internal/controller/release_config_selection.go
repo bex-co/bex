@@ -166,6 +166,9 @@ func (r *AppReconciler) ensureSelectedReleaseConfig(ctx context.Context, app *ap
 		if err := r.copySelectedSources(ctx, app, ref, rec); err != nil {
 			return err
 		}
+		// The selection's recorded settings, as bex-api read them: the port
+		// and pre-deploy step this pass already serves from (App.RuntimeSpec).
+		rec.spec.Runtime = ref.Runtime
 		// The selection's own spec, for its pin to render once a newer deploy
 		// clears it from the saved spec (heldReleaseView, w4/661).
 		if desiredAppReleaseIdentity(app.Spec).release == app.Status.ReleaseFingerprint {
@@ -383,6 +386,7 @@ func (rec *runtimeConfigRecord) projectRuntimeApp(app *appv1alpha1.App, generati
 		effectiveApp.Spec.Replicas = *rec.spec.Replicas
 	}
 	effectiveApp.Spec.Env = rec.spec.Env
+	rec.spec.Runtime.ApplyTo(&effectiveApp.Spec)
 	rec.applySources(effectiveApp)
 	return effectiveApp
 }
@@ -476,7 +480,20 @@ func releaseRecordSpec(app *appv1alpha1.App) appv1alpha1.ReleaseRecordSpec {
 	}
 	return appv1alpha1.ReleaseRecordSpec{Version: 1, StartCommand: app.Spec.StartCommand, Command: new(app.Spec.Command),
 		HealthCheckPath: new(app.Spec.HealthCheckPath), Replicas: new(app.Spec.Replicas), Env: app.Spec.Env,
-		EnvFromSecret: runtimeEnvSecret(app), EnvFromSecrets: app.Spec.EnvFromSecrets, FilesFromSecrets: files}
+		EnvFromSecret: runtimeEnvSecret(app), EnvFromSecrets: app.Spec.EnvFromSecrets, FilesFromSecrets: files,
+		Runtime: app.Spec.RuntimeSettings()}
+}
+
+// releaseRuntimeSpec is the spec this pass serves its port from: the
+// selected release's recorded settings for a Restart or rollback
+// (App.RuntimeSpec, w4/m433), the saved spec for any other release. A cancel
+// settling back onto the served release restores that release's own template
+// and keeps the saved port it always used.
+func releaseRuntimeSpec(app *appv1alpha1.App) appv1alpha1.AppSpec {
+	if canceledOverServed(app) {
+		return app.Spec
+	}
+	return app.RuntimeSpec()
 }
 
 // writeRuntimeConfigRecord stores record for generation, stamped with the saved

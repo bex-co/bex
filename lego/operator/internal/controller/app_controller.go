@@ -753,7 +753,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// early-return here reintroduces the config-drift bug. The expensive build path is
 	// gated separately (Status.Image reuse below), so a no-op pass never rebuilds.
 
-	port := int(app.Spec.EffectivePort())
+	port := int(releaseRuntimeSpec(&app).EffectivePort())
 	// A service's own PORT selects the serving port (w5/m149), decided before
 	// the cancel branch so a cancel settles on the same port it reports. An
 	// image-port service's PORT, web or private, becomes its image network's
