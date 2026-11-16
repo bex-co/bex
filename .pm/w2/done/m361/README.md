@@ -31,7 +31,7 @@
 - **Source:** `/pm-brainstorm for w2` 2026-11-12, item 5, filed by `/pmx them all for w2`. It follows [w2/075](../075.md) (2026-11-08), which replaced a 500 with a named 409 and left the wait.
 - **Render:**
   - [render.com/docs/projects](https://render.com/docs/projects): "All of a workspace's services must have unique names". That uniqueness covers live services.
-  - w2/075's check: a same-named create is accepted at once after a delete. Only the `onrender.com` subdomain is unique and never reused, and a taken one gets a random suffix.
+  - w2/075's check: a same-named create is accepted at once after a delete. Only the `onrender.com` subdomain is unique and never reused (Render Support's answers, [duplicate-service-names.md Rule 4](../../../../docs/render-artifacts/duplicate-service-names.md)), and a taken one gets a random suffix.
 - **bex today:**
   - ADR018:81 says the retry window "is an open divergence awaiting sign-off". The repository rule is that a divergence stands only with the user's sign-off, and parity work is not parked on a decision (ADR008 Render parity first).
   - The App object name derives from the service name (`lego/backend/internal/apps/service.go:2157-2166`, `blueprintResourceSlug`). A terminating holder keeps that object name until its finalizer runs. That is why create answers 409 `SERVICE_NAME_STILL_DELETING` (`service.go:2363-2369`), tested in `apps/create_name_deleting_test.go`, `apps/create_name_deleting_pg_test.go` and `api/create_name_deleting_test.go`.

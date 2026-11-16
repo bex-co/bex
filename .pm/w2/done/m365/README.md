@@ -28,7 +28,7 @@
 ## Source + Goal linkage
 
 - **Source:** promoted from [w2/084](../084.md) (2026-11-13), filed by w2/m361. That milestone's t001 inventory is the task list.
-- **Render:** a same-named create is accepted at once after a delete (w2/075's check). Only the `onrender.com` subdomain is unique, and a taken one gets a random suffix. (w2/075 also called it never reused; ADR005 § Accepted residuals, from w5/m137 t007, records that bex mirrors Render by re-minting a bare slug once no live service holds it, and production does so.)
+- **Render:** a same-named create is accepted at once after a delete (w2/075's check). Only the `onrender.com` subdomain is unique and never reused, and a taken one gets a random suffix (Render Support's answers, [duplicate-service-names.md Rule 4](../../../../docs/render-artifacts/duplicate-service-names.md)). Correction 2026-11-15: w5/m137 t007's premise that Render re-mints a bare slug was wrong; bex stopped re-minting a deleted service's slug in `6f5582952` (migration `0278_service_slugs`).
 - **bex today:** w2/m361 waits up to 20 s for the old App's teardown. A longer teardown still answers `409 SERVICE_NAME_STILL_DELETING`, an open gap in ADR018.
 - **Goal linkage:** ADR008 Render parity first, on the create-service surface and Blueprints.
 - **Expected outcome:** delete-and-recreate never waits or retries, static sites included.
