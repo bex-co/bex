@@ -1,6 +1,6 @@
 # w7 · m428 — Auto-deploy decides as Render documents: all six skip phrases, and build filters that reach outside the Root Directory
 
-**Worker:** worker7 **Goal:** a git push deploys, or is ignored, by Render's documented rules: any of Render's six skip phrases skips it, and a build filter's included paths decide even when they lie outside the service's Root Directory. **Status:** todo (t001, t002, t003, t006, t007 done; t004 waits for production to serve the change)
+**Worker:** worker7 **Goal:** a git push deploys, or is ignored, by Render's documented rules: any of Render's six skip phrases skips it, and a build filter's included paths decide even when they lie outside the service's Root Directory. **Status:** blocked (t001, t002, t003, t006, t007 done and shipped in `e9fbffd2e`; t004 waits for the production pin to carry it)
 
 ## Tasks (in order)
 
@@ -43,3 +43,4 @@ On production, in `bex-canary`, with an owned free web service on a monorepo fix
 ## Record
 
 - **Production count (t003 step 5, 2026-11-16T22:52Z, `kubectl get apps.app.bex.co -A` on the production app cluster).** 26 Git-backed Apps; 14 set a root directory; 6 set included paths, and all 6 also set a root directory. Each of the 6 includes only its own root (`<rootDir>/**`), so the new rule decides every push for them exactly as the old one did. 0 Apps set ignored paths, so none sits in the narrowed cell C. The kubeconfig was fetched through ADR019's recovery flow, as w7/m427 did: this machine's host-key pin was stale, `Verify production SSH trust` run 43877180814 reported the pinned ED25519 fingerprint, all three running control planes matched it on a fresh keyscan, and the fetch used a temporary pin built from those keys; `.env`, `~/.ssh/known_hosts` and the pin files were not changed.
+- **Parked 2026-11-16 (release gate, clears by itself).** The code shipped in `e9fbffd2e`. t004 starts once `git merge-base --is-ancestor e9fbffd2e <newest "pin platform images to" sha on main>` succeeds; then t005 and t008. The fixture is a temporary bex-co repository with `backend/` and `shared/`, as w1/m181 t006 used (`gh repo create`; deleting it needs the signed-in browser, since `gh` lacks `delete_repo`).
