@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Card,
   CardHeader,
@@ -63,14 +64,7 @@ export function ManualScalingSection({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t("services.scalingManualTitle")}</CardTitle>
-        <CardDescription className="mt-1">
-          {isFree
-            ? t("services.scalingManualDescriptionFree")
-            : t("services.scalingManualDescription")}
-        </CardDescription>
-      </CardHeader>
+      <ManualScalingHeader isFree={isFree} />
       <CardContent>
         <div className="space-y-3">
           <p className="text-sm font-medium">
@@ -99,6 +93,46 @@ export function ManualScalingSection({
               t("services.scalingSaveChanges")
             )}
           </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ManualScalingHeader({ isFree }: { isFree: boolean }) {
+  const { t } = useTranslations();
+  return (
+    <CardHeader>
+      <CardTitle>{t("services.scalingManualTitle")}</CardTitle>
+      <CardDescription className="mt-1">
+        {isFree
+          ? t("services.scalingManualDescriptionFree")
+          : t("services.scalingManualDescription")}
+      </CardDescription>
+    </CardHeader>
+  );
+}
+
+/**
+ * The Manual Scaling card's frame while the autoscaling read resolves
+ * (w4/688). The off state — this card showing — is the common outcome and the
+ * only one on a free plan, so the slot is reserved at this card's geometry:
+ * the same header and Instances label, the field row (the capped numeric input
+ * alone on free, the slider row otherwise; both 32 px) and the Save button.
+ */
+export function ManualScalingSkeleton({ plan }: { plan?: string | null }) {
+  const { t } = useTranslations();
+  const isFree = plan === "free";
+  return (
+    <Card data-testid="manual-scaling-loading">
+      <ManualScalingHeader isFree={isFree} />
+      <CardContent>
+        <div className="space-y-3">
+          <p className="text-sm font-medium">
+            {t("services.scalingManualInstances")}
+          </p>
+          <Skeleton className={isFree ? "h-8 w-16" : "h-8 w-full"} />
+          <Skeleton className="h-8 w-28" />
         </div>
       </CardContent>
     </Card>

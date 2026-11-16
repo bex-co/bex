@@ -445,4 +445,68 @@ describe("ServiceScalingPage (w7/m43)", () => {
       screen.queryByText("No limit configured — percentage is undefined"),
     ).toBeNull();
   });
+
+  // w4/688: while only the autoscaling read is pending, the page draws the
+  // autoscaling-off frame — the same cards, headers, copy and row heights the
+  // ready page lands on — so neither card nor Recent Metrics moves.
+  describe("pending autoscaling read keeps the ready frame (w4/688)", () => {
+    // jsdom has no layout, so compare what sets the geometry: each card's
+    // regions and copy, the header's control slot, and the height class of
+    // every row in the manual card's body.
+    // A row is as tall as its tallest fixed-height box (the slider track is
+    // h-1.5 inside the h-8 input's row).
+    function heightOf(el: Element): string | undefined {
+      const heights = [el, ...el.querySelectorAll("*")].flatMap((n) =>
+        [...n.classList].filter((c) => /^h-\d/.test(c)),
+      );
+      return heights.sort((a, b) => parseFloat(b.slice(2)) - parseFloat(a.slice(2)))[0];
+    }
+    function frame(container: HTMLElement) {
+      return [...container.querySelectorAll('[data-slot="card"]')].map(
+        (card) => {
+          const header = card.querySelector('[data-slot="card-header"]')!;
+          const control = header.querySelector(".shrink-0");
+          const body = card.querySelector('[data-slot="card-content"] .space-y-3');
+          return {
+            regions: [...card.children].map((c) => c.getAttribute("data-slot")),
+            title: card.querySelector('[data-slot="card-title"]')?.textContent,
+            description: card.querySelector('[data-slot="card-description"]')
+              ?.textContent,
+            copy: [...card.querySelectorAll('[data-slot="card-content"] p')]
+              .map((el) => el.textContent)
+              .filter(Boolean),
+            control: control ? control.children.length : null,
+            rows: body ? [...body.children].map(heightOf) : null,
+          };
+        },
+      );
+    }
+
+    it.each([
+      ["free", "web_service"],
+      ["starter", "web_service"],
+      ["free", "private_service"],
+    ] as const)("on a %s %s", async (plan, type) => {
+      serverState.service = svc({ type, plan, replicas: 1 });
+      autoscalingState.loading = true;
+      const pending = renderScaling();
+      expect(await screen.findByTestId("autoscaling-loading")).toBeInTheDocument();
+      expect(screen.getByTestId("manual-scaling-loading")).toBeInTheDocument();
+      // No control is offered before the state behind it is known.
+      expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+      expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+      const pendingFrame = frame(pending.container);
+      pending.unmount();
+
+      autoscalingState.loading = false;
+      const ready = renderScaling();
+      expect(
+        await screen.findByRole("switch", { name: "Autoscaling off" }),
+      ).toBeInTheDocument();
+      // The autoscaling and manual cards; Recent Metrics renders the same
+      // component in both states and follows them.
+      expect(pendingFrame.slice(0, 2)).toEqual(frame(ready.container).slice(0, 2));
+      expect(pendingFrame[1].title).toBe("Manual Scaling");
+    });
+  });
 });

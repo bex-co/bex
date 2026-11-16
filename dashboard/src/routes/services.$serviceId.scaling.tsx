@@ -1,6 +1,5 @@
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
-import { CardSkeleton } from "@/common/components/detail-skeletons";
 import {
   Card,
   CardDescription,
@@ -10,7 +9,10 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import { AutoscalingSection } from "@/features/services/components/autoscaling-section";
-import { ManualScalingSection } from "@/features/services/components/manual-scaling-section";
+import {
+  ManualScalingSection,
+  ManualScalingSkeleton,
+} from "@/features/services/components/manual-scaling-section";
 import { ScalingRecentMetrics } from "@/features/services/components/scaling-recent-metrics";
 import { useAutoscaling } from "@/features/services/hooks/use-autoscaling";
 import { useServer } from "@/features/services/hooks/use-server";
@@ -73,9 +75,12 @@ export function ServiceScalingPage({ serviceId }: { serviceId: string }) {
       {scalable ? (
         <AutoscalingSection autoscaling={autoscaling} plan={service.plan} />
       ) : null}
-      {/* Reserve the manual-card slot while autoscaling state resolves so the
-          card doesn't pop in and shift the layout (w9/m63 t003). */}
-      {scalable && autoscaling.loading ? <CardSkeleton rows={2} /> : null}
+      {/* Reserve the manual-card slot at that card's own geometry while
+          autoscaling state resolves, so nothing shifts when it settles
+          (w9/m63 t003, w4/688). */}
+      {scalable && autoscaling.loading ? (
+        <ManualScalingSkeleton plan={service.plan} />
+      ) : null}
       {scalable &&
       !autoscaling.loading &&
       (!autoscaling.enabled || service.plan === "free") ? (

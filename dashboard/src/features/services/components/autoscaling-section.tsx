@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
 import {
   Alert,
@@ -297,45 +297,72 @@ export function AutoscalingSection({
     setValidationError(null);
   }
 
-  if (as.loading) {
-    return (
-      <Card>
-        <CardHeader>
+  // The header is shared by both branches so the loading frame and the ready
+  // card cannot drift apart (w4/688): only the switch slot differs.
+  const header = (control: ReactNode) => (
+    <CardHeader>
+      <div className="flex items-center justify-between">
+        <div>
           <CardTitle>{t("services.scalingTitle")}</CardTitle>
-          <CardDescription>{t("services.scalingDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-20 w-full" />
-        </CardContent>
+          <CardDescription className="mt-1">
+            {t("services.scalingDescription")}
+          </CardDescription>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">{control}</div>
+      </div>
+    </CardHeader>
+  );
+
+  if (as.loading) {
+    // Draw the autoscaling-off frame — the common ready state, and the only
+    // one a free plan can show besides a stored-but-inactive config. The
+    // switch and its label become blocks of their ready size; the free plan's
+    // paid-only hint is plan-derived, so it shows as is. A paid service whose
+    // autoscaling turns out to be on expands into the form: that swap depends
+    // on data and is the one residual shift.
+    return (
+      <Card data-testid="autoscaling-loading">
+        {header(
+          <>
+            <Skeleton className="h-5 w-9 rounded-full" />
+            <Skeleton className="rounded-sm">
+              <span
+                aria-hidden
+                className="invisible block text-sm leading-none"
+              >
+                {t("services.scalingOff")}
+              </span>
+            </Skeleton>
+          </>,
+        )}
+        {!eligible && (
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              {t("services.scalingPaidOnly")}
+            </p>
+          </CardContent>
+        )}
       </Card>
     );
   }
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>{t("services.scalingTitle")}</CardTitle>
-            <CardDescription className="mt-1">
-              {t("services.scalingDescription")}
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Switch
-              id="autoscaling-enabled"
-              checked={enabled || storedInactive}
-              disabled={as.saving || (!eligible && !as.enabled)}
-              onCheckedChange={handleMainToggle}
-            />
-            <Label htmlFor="autoscaling-enabled" className="text-sm">
-              {enabled || storedInactive
-                ? t("services.scalingOn")
-                : t("services.scalingOff")}
-            </Label>
-          </div>
-        </div>
-      </CardHeader>
+      {header(
+        <>
+          <Switch
+            id="autoscaling-enabled"
+            checked={enabled || storedInactive}
+            disabled={as.saving || (!eligible && !as.enabled)}
+            onCheckedChange={handleMainToggle}
+          />
+          <Label htmlFor="autoscaling-enabled" className="text-sm">
+            {enabled || storedInactive
+              ? t("services.scalingOn")
+              : t("services.scalingOff")}
+          </Label>
+        </>,
+      )}
 
       {!eligible && (
         <CardContent>
