@@ -89,14 +89,22 @@ func renderStatus(e Event) string {
 }
 
 // renderMetadata builds Render's required string-map metadata: the audited
-// target keyed by its kind (Render's own example is {"service": "srv-…"}),
+// target keyed by its kind (Render's own example is {"service": "srv-…"}; an
+// object's is {"bucket": …, "key": …}),
 // the maintenance-mode `to` flag, and the denied marker renderStatus's enum
 // mapping would otherwise lose. Always non-nil so the field serializes as {}
 // rather than null (the schema requires it).
 func renderMetadata(e Event) map[string]string {
 	md := map[string]string{}
 	if kind, name, ok := core.SplitTarget(e.Target); ok {
-		md[kind] = name
+		// An object's target names its bucket and its key (w21/094): two keys, as
+		// the neighbouring kinds name theirs, not one "bucket/key" string a reader
+		// must cut. The key is already escaped and bounded (core.ObjectTarget).
+		if bucket, key, isObject := core.SplitObjectTarget(name); kind == "object" && isObject {
+			md["bucket"], md["key"] = bucket, key
+		} else {
+			md[kind] = name
+		}
 	}
 	// Target display name (generic across all target kinds).
 	if e.TargetName != "" {

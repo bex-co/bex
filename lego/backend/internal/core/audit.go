@@ -1087,9 +1087,10 @@ func (b *Base) RecordAllowedWrite(ctx context.Context, verb, relation, workspace
 // (AuditVerbViewEnvVarValues, AuditVerbViewConnectionInfo) of target, in the
 // workspace that owns it: one row per request, never one per value, and only
 // once the read has succeeded. A denied read is already its authorization's
-// row.
+// row. verb must be one of auditedViews (audit_object.go), the closed set of
+// reads that record a success.
 func (b *Base) RecordSecretsViewed(ctx context.Context, verb, workspaceID, target, targetName string) {
-	b.RecordAllowedWrite(ctx, verb, "", workspaceID, target, targetName)
+	b.recordView(ctx, verb, workspaceID, target, targetName)
 }
 
 // RecordDatabaseEffect records one successful, sourceable managed-Postgres
@@ -1399,7 +1400,9 @@ var readVerbs = map[string]bool{
 
 // readRelations are the Rel… constants that gate a read. A successful read
 // stays unrecorded (volume-prohibitive — every list/get/metrics call would
-// double audit_events' write rate); a DENIED read is a security-relevant
+// double audit_events' write rate) except the views of auditedViews, which a
+// verb records itself once the read succeeded (RecordSecretsViewed,
+// RecordObjectViewed), never through this rule; a DENIED read is a security-relevant
 // event (someone probed a resource they can't see) and is recorded exactly
 // like a denied write (w4/m20/t001, closing the deliberate w4/m10 cut noted
 // in docs/ADR006-bex-api.md § Audit log). No entry-point split: Authorize,

@@ -94,7 +94,7 @@ func (c *cloudflareR2) registerBuckets(mux *http.ServeMux) {
 		return nil
 	})
 
-	c.route(mux, "POST "+cloudflareAccountR2+"/buckets", objectstorage.AuditVerbCreateBucket, core.RelCanCreate, func(call *cfCall) error {
+	c.routeRecordedOnSuccess(mux, "POST "+cloudflareAccountR2+"/buckets", objectstorage.AuditVerbCreateBucket, core.RelCanCreate, func(call *cfCall) error {
 		var req cfCreateBucketRequest
 		if err := readCFBody(call.r, cfCreateBodyLimit, &req); err != nil {
 			return err
@@ -116,6 +116,7 @@ func (c *cloudflareR2) registerBuckets(mux *http.ServeMux) {
 		if err != nil {
 			return err
 		}
+		c.base.RecordAllowedWrite(call.r.Context(), objectstorage.AuditVerbCreateBucket, core.RelCanCreate, call.workspaceID, core.BucketTarget(b.Name), "")
 		writeCFResult(call.w, toCFBucket(b))
 		return nil
 	})
@@ -175,15 +176,15 @@ func (c *cloudflareR2) serveStorageMetrics(w http.ResponseWriter, r *http.Reques
 		writeCFError(w, cfFail(http.StatusBadRequest, cfCodeInvalidRequest, "bex answers only the %s GraphQL operation", cfStorageMetricsOperation))
 		return
 	}
-	workspaceID, err := c.base.AuthorizeWorkspaceAs(r.Context(), objectstorage.AuditVerbGetBucketUsage, core.RelCanView, req.Variables.AccountTag)
-	if err != nil {
-		writeCFError(w, cloudflareError(err))
-		return
-	}
 	// wrangler prefixes a jurisdiction to the name; bex ignores jurisdictions.
 	name := req.Variables.Filter.BucketName
 	for _, prefix := range []string{"eu_", "fedramp_"} {
 		name = strings.TrimPrefix(name, prefix)
+	}
+	workspaceID, err := c.base.AuthorizeWorkspaceTargetAs(r.Context(), objectstorage.AuditVerbGetBucketUsage, core.RelCanView, req.Variables.AccountTag, core.BucketTarget(name))
+	if err != nil {
+		writeCFError(w, cloudflareError(err))
+		return
 	}
 	groups := []any{}
 	b, err := c.svc.ResolveBucket(r.Context(), workspaceID, name)

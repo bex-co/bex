@@ -145,29 +145,53 @@ func newCloudflareR2(base *core.Base, svc *objectstorage.Service, baseDomain str
 	return &cloudflareR2{base: base, svc: svc, baseDomain: baseDomain}
 }
 
-// cfCall is one authorized request: the workspace its account id names.
+// cfCall is one authorized request: the workspace its account id names and the
+// audit target its path names.
 type cfCall struct {
 	c           *cloudflareR2
 	w           http.ResponseWriter
 	r           *http.Request
 	workspaceID string
+	auditTarget string
 }
 
 // route registers pattern with the relation its caller needs on the account's
-// workspace (ADR112 D6), recorded in the audit log under verb. fn returns the
+// workspace (ADR112 D6), recorded in the audit log under verb and under the
+// bucket or object its path names (core.ObjectTarget; w21/094). fn returns the
 // failure to answer, or nil after it wrote its own answer.
 func (c *cloudflareR2) route(mux *http.ServeMux, pattern, verb, relation string, fn func(*cfCall) error) {
+	c.handle(mux, pattern, verb, relation, false, fn)
+}
+
+// routeRecordedOnSuccess is route for a route whose target is not in its path: a
+// bucket create names its bucket in the body, which is read only once the caller
+// is authorized. A refusal records its row with no target, as route does; the
+// allowed row waits for the bucket and is written by the route once it exists
+// (core.RecordAllowedWrite), as a project's or an environment's create waits for
+// its own (w4/m321), so a create that failed (an invalid name, a name taken, a
+// workspace at its limit) records no allowed row and a successful one names the
+// bucket.
+func (c *cloudflareR2) routeRecordedOnSuccess(mux *http.ServeMux, pattern, verb, relation string, fn func(*cfCall) error) {
+	c.handle(mux, pattern, verb, relation, true, fn)
+}
+
+func (c *cloudflareR2) handle(mux *http.ServeMux, pattern, verb, relation string, deferAllowed bool, fn func(*cfCall) error) {
 	mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		if !c.svc.Enabled() {
 			writeCFError(w, cfNotEntitled("object storage is not available on this bex deployment"))
 			return
 		}
-		workspaceID, err := c.base.AuthorizeWorkspaceAs(r.Context(), verb, relation, r.PathValue("accountId"))
+		ctx := r.Context()
+		if deferAllowed {
+			ctx = core.WithDeferredAllowedWriteAudit(ctx)
+		}
+		target := core.ObjectTarget(r.PathValue("bucket"), r.PathValue("key"))
+		workspaceID, err := c.base.AuthorizeWorkspaceTargetAs(ctx, verb, relation, r.PathValue("accountId"), target)
 		if err != nil {
 			writeCFError(w, cloudflareError(err))
 			return
 		}
-		if err := fn(&cfCall{c: c, w: w, r: r, workspaceID: workspaceID}); err != nil {
+		if err := fn(&cfCall{c: c, w: w, r: r, workspaceID: workspaceID, auditTarget: target}); err != nil {
 			writeCFError(w, cloudflareError(err))
 		}
 	})

@@ -16,25 +16,30 @@ limitations under the License.
 
 package objectstorage
 
+import "github.com/bex-co/bex/lego/backend/internal/core"
+
 // The audit verbs of the object store. Render's /v1/objects routes and
 // wrangler's Cloudflare-shaped routes authorize in their HTTP adapters
 // (internal/api), where the stack frame core.Base derives a verb from is a
 // route closure, so each route names its verb here and passes it to
-// core.Base.AuthorizeWorkspaceAs. Both contracts share a verb for the same
+// core.Base.AuthorizeWorkspaceTargetAs. Both contracts share a verb for the same
 // action: a put through either is objectstorage.PutObject.
 //
 // Render's audit-log enum has no object or bucket event, so none maps onto one:
 // the audit log reports these as bex's own "<feature>.<Action>" value
 // (docs/render-artifacts/audit-logs-api.md).
 //
-// A write relation records the allowed call and the denied one, a read relation
-// only the denied one (core.writeRelations, core.readRelations), so the get,
-// list and info verbs appear in the log when a caller was refused.
+// Every row names its bucket, and an object row its key, in the audit target
+// (core.BucketTarget, core.ObjectTarget; ADR112 D6, w21/094). A write relation
+// records the allowed call and the denied one, a read relation only the denied
+// one (core.writeRelations, core.readRelations), so the list and info verbs
+// appear in the log when a caller was refused. GetObject is the one read that
+// also records a success, once per request (core.RecordObjectViewed).
 const (
 	// Objects.
 	AuditVerbListObjects  = "objectstorage.ListObjects"
 	AuditVerbPutObject    = "objectstorage.PutObject"
-	AuditVerbGetObject    = "objectstorage.GetObject"
+	AuditVerbGetObject    = core.AuditVerbGetObject
 	AuditVerbDeleteObject = "objectstorage.DeleteObject"
 
 	// Buckets.

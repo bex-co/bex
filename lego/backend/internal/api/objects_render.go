@@ -118,12 +118,16 @@ func (o *renderObjects) RegisterREST(mux *http.ServeMux) {
 
 	mux.HandleFunc("GET /v1/objects/{ownerId}/{region}/{key...}", func(w http.ResponseWriter, r *http.Request) {
 		// Object bytes are customer data, as a Postgres export is, so minting a
-		// URL to read them is a sensitive read (ADR112 D6).
+		// URL to read them is a sensitive read (ADR112 D6), and a mint is the
+		// download's one request to bex-api, so it records its row once the URL
+		// was minted (core.RecordObjectViewed): a missing object or a refused
+		// mint records none.
 		o.serve(w, r, objectstorage.AuditVerbGetObject, core.RelCanViewSensitive, func(workspaceID string, region objectstorage.Region) (int, any, error) {
 			get, err := o.svc.MintGet(r.Context(), workspaceID, region, r.PathValue("key"))
 			if err != nil {
 				return 0, nil, err
 			}
+			o.base.RecordObjectViewed(r.Context(), workspaceID, renderObjectTarget(r))
 			return http.StatusOK, getObjectResponse{URL: get.URL, ExpiresAt: get.ExpiresAt}, nil
 		})
 	})
@@ -138,15 +142,24 @@ func (o *renderObjects) RegisterREST(mux *http.ServeMux) {
 	})
 }
 
+// renderObjectTarget is the audit target of a request: the object its path names
+// in the workspace's system bucket for the region (render-oregon), or that bucket
+// for the list. Render's paths carry no bucket, so the system bucket's name is the
+// one a wrangler caller would see (ADR112 D2). It reads the path alone, so a
+// region or a key that is not valid yet is still bounded and escaped (core.ObjectTarget).
+func renderObjectTarget(r *http.Request) string {
+	return core.ObjectTarget(objectstorage.SystemBucketName(objectstorage.Region(r.PathValue("region"))), r.PathValue("key"))
+}
+
 // serve runs one route: the not-offered answer while no credential is
-// installed, then the workspace authorization under the route's audit verb,
-// then the region, then fn.
+// installed, then the workspace authorization under the route's audit verb and
+// target, then the region, then fn.
 func (o *renderObjects) serve(w http.ResponseWriter, r *http.Request, verb, relation string, fn func(workspaceID string, region objectstorage.Region) (int, any, error)) {
 	if !o.svc.Enabled() {
 		core.WriteErr(w, objectsError(objectstorage.ErrNotConfigured))
 		return
 	}
-	workspaceID, err := o.base.AuthorizeWorkspaceAs(r.Context(), verb, relation, r.PathValue("ownerId"))
+	workspaceID, err := o.base.AuthorizeWorkspaceTargetAs(r.Context(), verb, relation, r.PathValue("ownerId"), renderObjectTarget(r))
 	if err != nil {
 		core.WriteErr(w, err)
 		return

@@ -93,6 +93,10 @@ func TestAsEntryPointsRecordTheVerbTheyAreGiven(t *testing.T) {
 			_, err := b.AuthorizeWorkspaceAs(ctx, verb, RelCanOperate, "tea-a")
 			return err
 		}},
+		{"AuthorizeWorkspaceTargetAs", func(b *Base, ctx context.Context) error {
+			_, err := b.AuthorizeWorkspaceTargetAs(ctx, verb, RelCanOperate, "tea-a", BucketTarget("assets"))
+			return err
+		}},
 		{"AuthorizeAppAs", func(b *Base, ctx context.Context) error {
 			_, err := b.AuthorizeAppAs(ctx, verb, RelCanOperate, "web")
 			return err

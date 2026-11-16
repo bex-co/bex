@@ -1293,6 +1293,17 @@ func (b *Base) AuthorizeWorkspaceAs(ctx context.Context, verb, relation, workspa
 	return workspaceID, err
 }
 
+// AuthorizeWorkspaceTargetAs is AuthorizeWorkspaceAs with a named sub-resource
+// target (AuthorizeWorkspaceTarget's twin that takes the verb), for a route that
+// acts on one bucket or object of the workspace and knows which from its path
+// (core.BucketTarget, core.ObjectTarget). The target is recorded on the allowed
+// and the denied row alike; see AuthorizeAs.
+func (b *Base) AuthorizeWorkspaceTargetAs(ctx context.Context, verb, relation, workspaceID, target string) (string, error) {
+	workspaceID, resolveErr := b.workspaceArgument(ctx, workspaceID)
+	err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(workspaceID), target, verb, resolveErr)
+	return workspaceID, err
+}
+
 func (b *Base) workspaceArgument(ctx context.Context, workspaceID string) (string, error) {
 	if workspaceID != "" {
 		return workspaceID, nil

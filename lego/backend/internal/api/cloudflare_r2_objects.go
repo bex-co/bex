@@ -87,6 +87,10 @@ func (c *cloudflareR2) registerObjects(mux *http.ServeMux) {
 			return err
 		}
 		defer obj.Close()
+		// One row per download, written once the object opened and before its
+		// first byte: not per chunk, and none for a HEAD, which sends no bytes, or
+		// a get that found no object (core.RecordObjectViewed).
+		c.base.RecordObjectViewed(call.r.Context(), call.workspaceID, call.auditTarget)
 		writeObjectHeaders(call.w.Header(), obj.Info)
 		call.w.WriteHeader(http.StatusOK)
 		// A failure part-way cannot become an envelope: the status is sent. The

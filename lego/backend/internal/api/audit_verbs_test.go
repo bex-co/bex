@@ -227,6 +227,9 @@ func TestEveryRegisteredRouteRecordsANamedVerb(t *testing.T) {
 					surface, pattern, events[0].Verb, objectstorage.AuditVerbNotOffered)
 			case listed && events[0].Verb != want:
 				t.Errorf("%s %s recorded %q, want %q", surface, pattern, events[0].Verb, want)
+			case events[0].Target != wantSweptTarget(pattern, refused.ws):
+				t.Errorf("%s %s recorded target %q, want %q: a row names its bucket, and an object's its key (w21/094)",
+					surface, pattern, events[0].Target, wantSweptTarget(pattern, refused.ws))
 			default:
 				recorded[pattern] = true
 			}
@@ -272,12 +275,35 @@ func checkSweptVerbs(t *testing.T, surface, route string, events []core.AuditEve
 	}
 }
 
-// renderAuditedViews are the reads Render's audit log records
-// (ViewEnvVarValuesEvent, ViewConnectionInfoEvent): the only verbs an allowed
-// read may record a success row under.
+// renderAuditedViews are the reads whose success an audit row records
+// (ViewEnvVarValuesEvent and ViewConnectionInfoEvent in Render's log, and bex's
+// download of an object, w21/094): the only verbs an allowed read may record a
+// success row under. TestTheAuditedReadAllowlistIsPinned holds it to core's list.
 var renderAuditedViews = map[string]bool{
 	core.AuditVerbViewEnvVarValues:   true,
 	core.AuditVerbViewConnectionInfo: true,
+	objectstorage.AuditVerbGetObject: true,
+}
+
+// TestTheAuditedReadAllowlistIsPinned is w21/094's guard that the rule "a successful
+// read records nothing" is overridden for exactly these three verbs: the sweep's
+// own list and core's closed set (core.AuditedViewVerbs, which the one writer of a
+// view row, core.recordView, refuses to widen) must name the same verbs, and the
+// object verb is the one this item added. A fourth verb is a decision with its own
+// ADR line, not a line here.
+func TestTheAuditedReadAllowlistIsPinned(t *testing.T) {
+	var swept []string
+	for verb := range renderAuditedViews {
+		swept = append(swept, verb)
+	}
+	sort.Strings(swept)
+	if got := core.AuditedViewVerbs(); !slices.Equal(got, swept) {
+		t.Errorf("core records a success under %v, the sweep allows %v", got, swept)
+	}
+	want := []string{"datastores.ViewConnectionInfo", "objectstorage.GetObject", "secrets.ViewEnvVarValues"}
+	if !slices.Equal(swept, want) {
+		t.Errorf("the verbs an allowed read may record a success under are %v, want exactly %v", swept, want)
+	}
 }
 
 // readsThatWrite are the reads that may record a success row because they also

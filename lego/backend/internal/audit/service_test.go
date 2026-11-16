@@ -656,3 +656,35 @@ func TestGraphQLResourceNamesTheTarget(t *testing.T) {
 		t.Errorf("workspace row resource = %v, want workspace:tea-owner", got)
 	}
 }
+
+// w21/094: an object row names its bucket and its key as two metadata keys and a
+// bucket row its bucket, the way Render's own example keys its target by kind; the
+// objectstorage verbs pass through as bex's own event names. A denied row keeps
+// its relation and outcome beside them, and an old row with no target stays bare.
+func TestRenderMetadataNamesTheBucketAndKeyOfAnObjectRow(t *testing.T) {
+	put := toRenderAuditLog(Event{Verb: "objectstorage.PutObject", Outcome: string(core.AuditAllowed), Relation: core.RelCanCreate,
+		Target: core.ObjectTarget("assets", "img/logo.png")})
+	if put.Event != "objectstorage.PutObject" || put.Status != "success" || put.Metadata["bucket"] != "assets" || put.Metadata["key"] != "img/logo.png" {
+		t.Errorf("put = %+v, want bucket assets and key img/logo.png", put)
+	}
+	if _, ok := put.Metadata["object"]; ok || len(put.Metadata) != 2 {
+		t.Errorf("put metadata = %v, want exactly bucket and key", put.Metadata)
+	}
+	// A key with a colon or a slash is cut at the first slash only.
+	odd := toRenderAuditLog(Event{Verb: "objectstorage.GetObject", Target: core.ObjectTarget("assets", "a:b/c")})
+	if odd.Metadata["bucket"] != "assets" || odd.Metadata["key"] != "a:b/c" {
+		t.Errorf("metadata = %v", odd.Metadata)
+	}
+	bucket := toRenderAuditLog(Event{Verb: "objectstorage.CreateBucket", Outcome: string(core.AuditAllowed), Target: core.BucketTarget("assets")})
+	if bucket.Metadata["bucket"] != "assets" || len(bucket.Metadata) != 1 {
+		t.Errorf("bucket metadata = %v, want only the bucket", bucket.Metadata)
+	}
+	denied := toRenderAuditLog(Event{Verb: "objectstorage.GetObject", Outcome: string(core.AuditDenied), Relation: core.RelCanViewSensitive,
+		Target: core.ObjectTarget("assets", "secret.txt")})
+	if denied.Status != "error" || denied.Metadata["key"] != "secret.txt" || denied.Metadata["relation"] != core.RelCanViewSensitive || denied.Metadata["outcome"] != "denied" {
+		t.Errorf("denied = %+v", denied)
+	}
+	if bare := toRenderAuditLog(Event{Verb: "objectstorage.PutObject", Outcome: string(core.AuditAllowed)}); len(bare.Metadata) != 0 {
+		t.Errorf("a row recorded before the target = %v, want none", bare.Metadata)
+	}
+}
