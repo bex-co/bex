@@ -72,6 +72,14 @@ func NewSweepMetrics(reg prometheus.Registerer) *SweepMetrics {
 			Help: "Estimated bytes of ListObjectsV2 responses the sweep has read from Wasabi, by region. Wasabi counts what a listing reads as egress against its free-egress ratio on the shared account (ADR112 D8), so this is the sweep's share of it; an estimate from the keys listed (about 250 bytes each), not a measured count.",
 		}, []string{"region"}),
 	}
+	// Every region at zero on every replica, as the auth families are: only the
+	// replica that holds the sweep's lock lists, so without this the other
+	// exports no listing series at all, and a pod that takes the lock over starts
+	// its series at its first listing's bytes, which increase() then does not
+	// count (w21/095).
+	for _, r := range Regions {
+		m.listedBytes.WithLabelValues(string(r))
+	}
 	reg.MustRegister(m.passDuration, m.workspaceDuration, m.workspaces, m.lastComplete, m.listedBytes)
 	return m
 }

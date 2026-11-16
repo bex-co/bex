@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 )
 
@@ -155,5 +157,40 @@ func TestAPassLogsAndCountsWhatItsListingsRead(t *testing.T) {
 	}
 	if again := e.metric("bex_usage_object_storage_sweep_listed_bytes_total", map[string]string{"region": "oregon"}); again != want {
 		t.Errorf("sweep_listed_bytes_total grew from %v to %v on a pass that listed nothing", want, again)
+	}
+}
+
+// Only the replica that holds the sweep's lock lists. Its idle sibling must still
+// export the listing bytes of every region, at zero, so the series exists on both
+// pods from their start: a series that first appears with its first listing's
+// bytes would have that listing missed by increase(), which is what the
+// ObjectStorageSweepListingHigh alert and its panel read.
+func TestEveryReplicaExportsTheListingBytesOfEveryRegionAtZero(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	objectstorage.NewSweepMetrics(reg)
+	families, err := reg.Gather()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]float64{}
+	for _, f := range families {
+		if f.GetName() != "bex_usage_object_storage_sweep_listed_bytes_total" {
+			continue
+		}
+		for _, m := range f.GetMetric() {
+			for _, l := range m.GetLabel() {
+				if l.GetName() == "region" {
+					got[l.GetValue()] = m.GetCounter().GetValue()
+				}
+			}
+		}
+	}
+	if len(got) != len(objectstorage.Regions) {
+		t.Errorf("a replica that never listed exports listing bytes for %v, want one series at 0 for each of %v", got, objectstorage.Regions)
+	}
+	for _, r := range objectstorage.Regions {
+		if v, ok := got[string(r)]; !ok || v != 0 {
+			t.Errorf("sweep_listed_bytes_total{region=%s} = %v (present: %v) before any listing, want 0", r, v, ok)
+		}
 	}
 }
