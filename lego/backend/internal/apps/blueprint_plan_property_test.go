@@ -22,6 +22,9 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -458,6 +461,182 @@ func blueprintPlanRandomLiveSpec(r *rand.Rand, svcType string) appv1alpha1.AppSp
 		spec.Repo = ""
 	}
 	return spec
+}
+
+// mergeBlueprintEnv keeps the file's zero-value convention — a projected list
+// is nil, never an empty non-nil slice — even when the merge drops every
+// current variable. A sync before w8/302 could write a nameless variable, and
+// the merge drops those; without the canonical nil the apply stores an empty
+// non-nil list, reports a change on the next sync too, and only settles on the
+// third pass. The same empty-vs-nil disagreement is the whole w4/m124 family.
+func TestMergeBlueprintEnvCanonicalNil(t *testing.T) {
+	t.Parallel()
+	if got := mergeBlueprintEnv([]appv1alpha1.EnvVar{{Name: ""}}, nil); got != nil {
+		t.Fatalf("mergeBlueprintEnv(nameless, none) = %#v, want nil", got)
+	}
+
+	live := appv1alpha1.AppSpec{Env: []appv1alpha1.EnvVar{{Name: ""}}}
+	dst := *live.DeepCopy()
+	changed, err := ApplyBlueprintServiceSpec(&dst, appv1alpha1.AppSpec{}, map[string]BlueprintField{"envVars": {}})
+	if err != nil || !changed || dst.Env != nil {
+		t.Fatalf("first apply = changed %v err %v env %#v, want a change to nil", changed, err, dst.Env)
+	}
+	again := *dst.DeepCopy()
+	changedAgain, err := ApplyBlueprintServiceSpec(&again, appv1alpha1.AppSpec{}, map[string]BlueprintField{"envVars": {}})
+	if err != nil || changedAgain || !reflect.DeepEqual(again, dst) {
+		t.Fatalf("second apply = changed %v err %v, want a no-op: %#v", changedAgain, err, again)
+	}
+}
+
+// blueprintDatabaseAgreement applies a database want to live and compares the
+// result with the field list the plan reports: the same two invariants the
+// service property tests pin (apply is idempotent; the probes agree with the
+// whole apply), for the appliers that previously carried no such coverage. A
+// refusal is a plan error, never an update, so error cases assert the refusal
+// writes nothing and skip the probes, as the plan does.
+func blueprintDatabaseAgreement(t *testing.T, live *appv1alpha1.Database, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) {
+	t.Helper()
+	probe := live.DeepCopy()
+	changed, err := ApplyBlueprintDatabaseSpec(probe, want, fields, blueprintTestNow)
+	if err != nil {
+		if !reflect.DeepEqual(live.Spec, probe.Spec) || !reflect.DeepEqual(live.Annotations, probe.Annotations) {
+			t.Fatalf("a refused apply mutated the database: %#v", probe)
+		}
+		return
+	}
+
+	again := probe.DeepCopy()
+	changedAgain, err := ApplyBlueprintDatabaseSpec(again, want, fields, blueprintTestNow)
+	if err != nil {
+		t.Fatalf("second apply refused after a successful first: %v", err)
+	}
+	if changedAgain || !reflect.DeepEqual(again.Spec, probe.Spec) {
+		t.Fatalf("apply is not idempotent: second changed=%v\n first: %#v\nsecond: %#v", changedAgain, probe.Spec, again.Spec)
+	}
+
+	var probed []string
+	for name := range fields {
+		one := live.DeepCopy()
+		moved, err := ApplyBlueprintDatabaseSpec(one, want, oneField(fields, name), blueprintTestNow)
+		if err != nil {
+			t.Fatalf("isolated probe of %q refused: %v", name, err)
+		}
+		if moved {
+			probed = append(probed, name)
+		}
+	}
+	switch {
+	case changed && len(probed) == 0:
+		t.Fatalf("apply changes the spec but no probed field reports it:\n before: %#v\n  after: %#v", live.Spec, probe.Spec)
+	case !changed && len(probed) > 0:
+		t.Fatalf("apply is a no-op but the plan reports %v", probed)
+	}
+}
+
+func blueprintDatabaseAgreementLive() *appv1alpha1.Database {
+	return &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "orders", Namespace: "default"},
+		Spec: appv1alpha1.DatabaseSpec{
+			Name:            "orders",
+			DatabaseName:    "orders_db",
+			DatabaseUser:    "orders_user",
+			Plan:            "basic-256mb",
+			Version:         "16",
+			StorageGB:       10,
+			DiskAutoscaling: true,
+			Pooler:          true,
+			Public:          true,
+			IPAllowList:     []appv1alpha1.IPAllowEntry{{CIDR: "10.0.0.0/8"}},
+		},
+	}
+}
+
+func TestApplyBlueprintDatabaseSpecIdempotentAndAgrees(t *testing.T) {
+	t.Parallel()
+	full := map[string]BlueprintField{
+		"databaseName": {}, "user": {}, "plan": {}, "postgresMajorVersion": {},
+		"diskSizeGB": {}, "storageAutoscalingEnabled": {}, "connectionPool": {},
+		"ipAllowList": {}, "readReplicas": {}, "highAvailability": {},
+	}
+	t.Run("identical spec is a no-op", func(t *testing.T) {
+		t.Parallel()
+		live := blueprintDatabaseAgreementLive()
+		blueprintDatabaseAgreement(t, live, *live.Spec.DeepCopy(), full)
+	})
+	t.Run("a storage growth applies, stamps, and settles", func(t *testing.T) {
+		t.Parallel()
+		live := blueprintDatabaseAgreementLive()
+		blueprintDatabaseAgreement(t, live, appv1alpha1.DatabaseSpec{StorageGB: 15}, map[string]BlueprintField{"diskSizeGB": {}})
+	})
+	t.Run("disabling features applies narrowly", func(t *testing.T) {
+		t.Parallel()
+		live := blueprintDatabaseAgreementLive()
+		blueprintDatabaseAgreement(t, live, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{
+			"storageAutoscalingEnabled": {}, "connectionPool": {}, "ipAllowList": {},
+		})
+	})
+	t.Run("a refused increase writes nothing", func(t *testing.T) {
+		t.Parallel()
+		live := blueprintDatabaseAgreementLive()
+		live.Annotations = map[string]string{
+			appv1alpha1.AnnotationStorageIncreasedAt: blueprintTestNow.Add(-time.Hour).Format(time.RFC3339),
+		}
+		blueprintDatabaseAgreement(t, live, appv1alpha1.DatabaseSpec{StorageGB: 15}, map[string]BlueprintField{"diskSizeGB": {}})
+	})
+}
+
+// blueprintKeyValueAgreement is the key-value twin of blueprintDatabaseAgreement.
+func blueprintKeyValueAgreement(t *testing.T, live appv1alpha1.KeyValueSpec, want appv1alpha1.KeyValueSpec, fields map[string]BlueprintField) {
+	t.Helper()
+	probe := *live.DeepCopy()
+	changed := ApplyBlueprintKeyValueSpec(&probe, want, fields)
+
+	again := *probe.DeepCopy()
+	if changedAgain := ApplyBlueprintKeyValueSpec(&again, want, fields); changedAgain || !reflect.DeepEqual(again, probe) {
+		t.Fatalf("apply is not idempotent: second changed=%v\n first: %#v\nsecond: %#v", changedAgain, probe, again)
+	}
+
+	var probed []string
+	for name := range fields {
+		one := *live.DeepCopy()
+		if ApplyBlueprintKeyValueSpec(&one, want, oneField(fields, name)) {
+			probed = append(probed, name)
+		}
+	}
+	switch {
+	case changed && len(probed) == 0:
+		t.Fatalf("apply changes the spec but no probed field reports it:\n before: %#v\n  after: %#v", live, probe)
+	case !changed && len(probed) > 0:
+		t.Fatalf("apply is a no-op but the plan reports %v", probed)
+	}
+}
+
+func TestApplyBlueprintKeyValueSpecIdempotentAndAgrees(t *testing.T) {
+	t.Parallel()
+	live := appv1alpha1.KeyValueSpec{
+		Plan:            "starter",
+		MaxmemoryPolicy: "allkeys-lru",
+		PersistenceMode: "journal-snapshot",
+		Public:          true,
+		IPAllowList:     []appv1alpha1.IPAllowEntry{{CIDR: "192.0.2.0/24"}},
+	}
+	full := map[string]BlueprintField{
+		"plan": {}, "ipAllowList": {}, "maxmemoryPolicy": {}, "persistenceMode": {},
+	}
+	t.Run("identical spec is a no-op", func(t *testing.T) {
+		t.Parallel()
+		blueprintKeyValueAgreement(t, live, *live.DeepCopy(), full)
+	})
+	t.Run("declared changes apply and settle", func(t *testing.T) {
+		t.Parallel()
+		blueprintKeyValueAgreement(t, live, appv1alpha1.KeyValueSpec{
+			Plan: "standard", MaxmemoryPolicy: "volatile-lru", PersistenceMode: "off",
+		}, map[string]BlueprintField{"plan": {}, "maxmemoryPolicy": {}, "persistenceMode": {}})
+	})
+	t.Run("a declared empty allow list disables access", func(t *testing.T) {
+		t.Parallel()
+		blueprintKeyValueAgreement(t, live, appv1alpha1.KeyValueSpec{}, map[string]BlueprintField{"ipAllowList": {}})
+	})
 }
 
 func TestBlueprintPlanAndApplyAgreeOnGeneratedLiveSpecs(t *testing.T) {
