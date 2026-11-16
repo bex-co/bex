@@ -1,6 +1,6 @@
 # w4 · m418 — A configuration-only release of an image-backed service reruns the image it is running, as on Render
 
-**Worker:** worker4 **Goal:** an environment "Save and deploy", an env-group link/unlink/variable/secret-file write, and a Blueprint plan no longer silently roll an image-backed service back from a per-deploy `imageUrl` / `imgURL` override to the saved tag. **Status:** blocked — t001–t007 done (code shipped); t008 waits for the next production deploy (19:00, 00:00 or 05:00 UTC) to pin the fix, then a worker replays rounds 399, 400 and 407 live and closes — no user action
+**Worker:** worker4 **Goal:** an environment "Save and deploy", an env-group link/unlink/variable/secret-file write, and a Blueprint plan no longer silently roll an image-backed service back from a per-deploy `imageUrl` / `imgURL` override to the saved tag. **Status:** done — all eight tasks done; the live DoD was replayed on production pins `c98a0ef59766` and `7aaa8700befa` (2026-11-16)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t002, t003, t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005       |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005       |
-| [t008](t008.md) | Closeout                                                                                                | 10m | t007       |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007       |
 
 ## Definition of done
 
@@ -55,3 +55,8 @@ Code read at `8378bb0c5`; the note's premise holds:
 - Deviation: a prebuilt service whose saved image was changed with a save-only Settings PATCH and not yet deployed now reruns the image serving on "Save and deploy" (Render's "existing build"), where before it deployed the newly saved image.
 - t005 (parity, code walk): REST/GraphQL/MCP environment saves share `PatchEnvironment`; env-group REST/GraphQL/MCP writes share `rollLinked`/`rollOne`; REST/GraphQL validate return the plan's `changedFields` + `message`, which the dashboard review renders. The live walk is t008's replay.
 - t007: a Restart after such a save needs no new code. `restartSelection` re-selects the live row's resolved image, which is the override digest the save ran.
+
+## Unblock record (2026-11-16, loopx worker)
+
+- **Source:** verified evidence. The release gate held: production runs platform pin `7aaa8700befa` (pin commit `546945798`, live since 16:27Z), which carries 364fff7d4. No user decision was needed.
+- **Outcome:** t008 resumed and replayed the remaining DoD on production (Wait and Override policies, the dashboard Blueprint review line; [t008](done/t008.md), part 4). Every bullet holds, so the milestone closed.
