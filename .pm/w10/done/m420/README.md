@@ -1,6 +1,6 @@
 # w10 · m420 — A cron job never sends "Service unavailable": a run trigger or cancel is not an outage, as on Render
 
-**Worker:** worker10 **Goal:** a cron job's availability is never sampled, so no `server_failed` / `server_available` fact, "Service unavailable" email, push or webhook is ever produced for one. Triggering or canceling a run leaves a settled cron in `Running` instead of flipping it through `Deploying`. **Status:** blocked (t001–t005 done; t006 closeout waits on the production deploy and the live replay, DoD 3)
+**Worker:** worker10 **Goal:** a cron job's availability is never sampled, so no `server_failed` / `server_available` fact, "Service unavailable" email, push or webhook is ever produced for one. Triggering or canceling a run leaves a settled cron in `Running` instead of flipping it through `Deploying`. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Render parity — **DONE** | 15m | w10/m420/t001, w10/m420/t002 |
 | [t004](done/t004.md) | Simplify — **DONE** | 10m | w10/m420/t003 |
 | [t005](done/t005.md) | Test coverage — **DONE** | 30m | w10/m420/t003 |
-| [t006](t006.md) | Closeout | 15m | w10/m420/t004, w10/m420/t005 |
+| [t006](done/t006.md) | Closeout — **DONE** | 15m | w10/m420/t004, w10/m420/t005 |
 
 Six tasks, 160m (2h40m).
 
@@ -37,3 +37,19 @@ Six tasks, 160m (2h40m).
 - **t005 Test coverage** — the two tests above, each failing with its fix reverted. Backend `internal/store` and operator `make test` pass.
 - **Gate for t006** — DoD 3 needs a production deploy carrying both fixes, then the live replay as t006 describes, through the REST API as the QA user (`scripts/qa-login.sh`). It needs no kubeconfig. The production kubeconfig fetch's strict host-key failure (seen in triage) is unrelated and was not relaxed. The gate clears by itself once `deploy.yml` ships this commit; check that `api.bex.co` serves it, then run the replay.
 
+## Unblock record (2026-11-16, `/loopx w10` worker; verified evidence)
+
+- **Affected:** w10/m420 (t006).
+- **Source:** verified finding. The release gate cleared: production runs pin `284b83e1f540` or newer (`deploy.yml` on `284b83e1f` succeeded 2026-11-16T21:11Z, pin commit `02026e53f`; the newest pin is `938c5cb36b49`, `a24555d5c`), and `git merge-base --is-ancestor ea837ce20 284b83e1f540` holds (as does `… 938c5cb36b49`), so both fixes (`ea837ce20`) are live.
+- **Remaining work:** none gated. t006 runs DoD 3's live replay as the QA user over REST, records the evidence here, deletes the fixture, and closes the milestone.
+
+## Live replay and closeout (2026-11-16, `/loopx w10` worker)
+
+- **DoD 1–2:** `TestPGCronJobRecordsNoAvailability` (store) and the envtest `keeps a settled cron Running through a run trigger and cancel, and still deploys a schedule change` (t001, t002, t005; both mutation-checked) hold on `ea837ce20`, which production pin `284b83e1f540` and the newer `938c5cb36b49` both contain.
+- **DoD 3, live (23:31–23:39Z, `muse.env` QA user, `bex-canary`, all REST against `api.bex.co` with the QA session cookie).** Fixture: Starter `busybox:1.36` cron `qa-20261116-m420-cron` (`srv-dbtp4ipntgpc739be810`, `sh -c 'echo cron-m420: run host=$(hostname); sleep 3'`, schedule `0 0 1 1 *`).
+  - **22 triggers, 11 canceled 0.3 s after the `POST` answered**, alternating `POST …/runs/{id}/cancel` (200) and `DELETE …/runs` (204). Every `POST` answered 200 in 0.33–0.64 s. All 11 canceled runs read `canceled` with no `startedAt`, and all 11 others read `successful`.
+  - **Status never read `Deploying`.** A poller read `GET /v1/services/{id}` `phase` every ~0.4 s for the whole replay: 285 reads, all `Running`.
+  - **No outage fact.** The service's Events after the replay, and again 90 s after the failing run (past the two-pass debounce): `cron_job_run_ended` ×23, `cron_job_run_started` ×12, `deploy_started`/`deploy_ended` ×2, `commands_changed` ×1. No `server_failed`, `server_hardware_failure` or `server_available`.
+  - **A failing run still reports.** After the command was patched to `sh -c 'echo cron-m420: fail; exit 1'` and deployed (`dep-dbtp73b06sbc73b97vjg`, live), the triggered run `crr-0irbe6upuhb00vnfh4hm` read `unsuccessful` and recorded `cron_job_run_ended` `unsuccessful` / `non_zero_exit` (23:37:15Z). That fact is what "Cron job failed" mails from (t003; path untouched).
+  - **Mailbox not checked.** The QA mailbox was not reachable from this session (the Gmail connector is not connected), so the absence of a "Service unavailable" email and the presence of a "Cron job failed" email were not read directly. Both emails come only from facts (`classifyAlertEmail`), so the Events above are the evidence.
+  - **Cleanup.** Fixture deleted (204, then 404). The list has no `qa-20261116-m420` service. Only this run's session was revoked.
