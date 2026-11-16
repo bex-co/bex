@@ -266,6 +266,66 @@ Since 09:30 UTC, three machines in other pools (two `cx33`, one `cx43`) have fai
 - **Model spend is small.** The 09:47 run cost $0.25 of platform-model spend in 62 minutes.
 - **The spend cap no longer stops them.** The bex workspace (Scale plan, never paid before) sat at trust tier T0's $10 until 09:50:32, when its 09:47 run's first model request found $10.50 unbilled. bex charged the card $10.50 in that request (paid 4.9 s later, ADR091 D10.2a, w6/m362), the workspace moved to T1 with the $100 cap set on 2026-11-13, and the session continued.
 
+**The first full day with the cap cleared (2026-11-13 08:00 to 2026-11-14 08:00 UTC).** Read on 2026-11-16 from `agent_automation_runs`, joined to each session's turns. By then migration 0256 had repaired the turns the idle reap re-stamped (w6/126), so each `completed_at` equals the turn's last transcript row. A feedback turn is one that bex's PR feedback (ADR047 D11) started after a check failed or a review arrived on the routine's pull request.
+
+| Routine, scheduled UTC | Turn 1 | Feedback turns | End | 2026-11-12 on the `cx33` |
+| --- | --- | --- | --- | --- |
+| `rt-fix-logic-bugs`, 08:00 | 41 min 43 s | 4 min 51 s | PR #142 | completed, 3 h 34 min |
+| `rt-fix-prod-crashes`, 11:00 | 53 min 44 s | 8 min 51 s | PR #144 | completed, 3 h 06 min |
+| `rt-flatten-abstractions`, 14:00 | 1 h 24 min 56 s | none | out of memory at 8 GiB | status unavailable, 2 h 24 min |
+| `rt-normalize-abstractions`, 17:00 | 1 h 19 min 58 s | 12 min 20 s | PR #145 | terminated, 1 h 26 min |
+| `rt-prune-useless-tests`, 20:00 | 1 h 45 min 49 s | 37 min 55 s | PR #146 | not created (T0) |
+| `rt-remove-dead-code`, 23:00 | 1 h 45 min 53 s | none | PR #148 | terminated, 6 min |
+| `rt-simplify-logic`, 02:00 | 10 min 23 s | none | PR #149 | terminated, 1 h 28 min |
+| `rt-unify-duplicates`, 05:00 | 19 min 58 s | 17 min 56 s, 32 min 33 s | PR #150 | out of memory, 2 h 26 min |
+
+- **Seven of eight completed with a pull request**, against two on 2026-11-12. No sandbox was terminated or lost its status, and the cpx42 has been Ready since 00:02:34 on 2026-11-13.
+- **The one failure ran out of memory.** `rt-flatten-abstractions` reached its 8 GiB limit after 1 h 25 min. Its transcript did not survive (w6/m398), so the cause is not proven. Claude Code's task output still sat in gVisor's memory-backed `/tmp` then (w6/127).
+- **The module-wide suites took the time.** The first six runs ran `make lint`, the dashboard's `yarn test` and the backend's `go test ./...`, about 10 minutes each on 4 cores and often more than once, two or three at a time. Their first turns took 42 min to 1 h 46 min. Five of their six pull requests, counting the on-demand `rt-unify-duplicates` (#143), then failed CI. Four of those failures were main's own red `scripts (test)`, a ShellCheck warning, so their feedback turns went to main's failure; the fifth was `prettier`.
+
+**Targeted checks (from 2026-11-14 01:05 UTC).** On 2026-11-14 the user decided that the routines run targeted checks only and leave the full suites to the pull request's CI (`a0c8c6fad`). The production prompt now ends turn 1 at the draft PR. The last two runs above were the first under it. The next 36 hours of runs, still on Claude Code (`deepseek/deepseek-v4.1-flash-1017` through OpenRouter):
+
+| Routine | From 08:00 on 2026-11-14 | From 08:00 on 2026-11-15 |
+| --- | --- | --- |
+| `rt-fix-logic-bugs` | 53 min 37 s, PR #154 | 31 min 52 s, PR #162 |
+| `rt-fix-prod-crashes` | 22 min 19 s, PR #155 | 37 min 36 s, PR #163 |
+| `rt-flatten-abstractions` | 22 min 58 s and three feedback turns (6 min 22 s, 29 min 22 s, 7 min 3 s), PR #158 | 21 min 28 s, PR #164 |
+| `rt-normalize-abstractions` | 18 min 43 s and a feedback turn of 7 min 51 s, PR #159 | 15 min 41 s, PR #166 |
+| `rt-prune-useless-tests` | failed after 2 min 41 s: OpenRouter answered 402, out of credits | 29 min 1 s, PR #168 |
+| `rt-remove-dead-code` | 23 min 29 s, PR #160 | next run on muse |
+| `rt-simplify-logic` | 30 min 42 s, PR #161 | next run on muse |
+| `rt-unify-duplicates` | failed after 27 min 42 s: the model API answered 403, "Failed to authenticate" | next run on muse |
+
+- **The median first turn fell from 1 h 20 min to 23 min.** That compares the five runs that completed under the full suites with the 13 that completed under targeted checks (10 min 23 s to 53 min 37 s).
+- **A whole run is now about an hour at most.** The longest, `rt-unify-duplicates` at 05:00 on 2026-11-14, took 70 min 27 s across its three turns.
+- **Both failures came from the model provider, not the sandbox.**
+
+**Since 2026-11-15 22:41 UTC: another agent and a twice-daily schedule.** The automations were changed on production, outside this repository:
+
+- The agent is now `muse`, with model `muse-spark-1.3-contributor`.
+- Each routine runs every 12 hours, and the starts are 90 minutes apart.
+- `rt-fix-prod-crashes` was disabled at 01:57 UTC on 2026-11-16.
+- All eight still name `agent-4c-8g`.
+
+Thirteen runs through 12:30 UTC on 2026-11-16:
+
+| End | Runs | Turn 1 |
+| --- | --- | --- |
+| A pull request (#169, #170, #171) | 3 | 9 min 53 s to 17 min 42 s |
+| The skill's report that it had nothing to change | 5 | 4 min 26 s to 13 min 49 s |
+| The turn ended while a background `workflow` still ran | 3 | 2 min 21 s to 2 min 30 s |
+| `sandbox create failed` | 2 | none |
+
+- **A muse turn ends when its agent starts a workflow.** Every muse session that called the `workflow` tool had its turn closed 2 to 3 s later, while the workflow and its subagents still read `inProgress`. That left the routine with nothing done. Filed as w6/129.
+- **The two create failures came from the OpenSandbox server.** At 05:00:05 and 06:30:04 it answered 500 `KUBERNETES::API_ERROR`: "Connection aborted, RemoteDisconnected" from the Kubernetes API. The next creates, at 05:57 and 08:00, succeeded. w1/m405 retries a transient create.
+
+**Memory after `TMPDIR=/var/tmp` (w6/127).**
+
+- **Task output moved off `/tmp`.** Claude Code's task-output paths in the routines' transcripts sit under `/tmp/claude-10001` in seven runs through 05:00 on 2026-11-14 (190 mentions). From the 14:00 run on, eight runs put them under `/var/tmp/claude-10001` (82 mentions). The only `/tmp` ones left are three quotes of w6/127's own text. The image reached production between those two runs.
+- **No agent session has run out of memory since 14:00 UTC on 2026-11-13.** That covers the 22 routine runs that got a sandbox from 2026-11-14 14:00 to 2026-11-16 12:30 UTC.
+- **A live sandbox confirms it.** The muse sandboxes at 12:45 UTC on 2026-11-16 read `TMPDIR=/var/tmp` and keep the agent's temporary directories under `/var/tmp`. `/tmp` holds only files the agent named there itself, such as a 3 MB `yarn.cjs`.
+- **Temporary files now grow on disk, not in memory.** A muse routine for another repository in the bex workspace (`beancount-rt-dup-unifier`, `agent-4c-8g`) was sampled once a minute from 12:47 to 12:56 UTC on 2026-11-16. It held 3.7 to 4.0 cores and 1.4 to 5.2 GiB of memory, peaking while its checks ran. Over the same ten minutes `/var/tmp` grew from 110 to 138 MB and `/tmp` stayed at 2 MB. For comparison, the 2026-11-13 09:47 run peaked at 6.2 GiB, and `rt-simplify-logic` at 1.3 GiB under targeted checks on 2026-11-14. Prometheus holds no memory series for sandbox pods, so these comparisons rest on live `kubectl top` samples.
+
 **Rolling the pool.**
 
 - The MachineDeployment adds the new machine before it removes the `cx33`. Removing the `cx33` ends any sandbox running on it, so the roll waits for an idle node.
