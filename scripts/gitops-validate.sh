@@ -3162,14 +3162,24 @@ for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
     fail=1
   }
 done
-objectgw_scrape="$(yq -N '
+# The scrape is one target per pod (pod discovery in bex-system, the objectgw
+# component's pod IP on :9090, a pod label), never the Service: the counters
+# are per replica and a scrape of the ClusterIP reads one pod's series only, so
+# the "Public gateway" panels showed about half of the traffic (the w21/m417
+# t008 walk on production).
+objectgw_scrape="$(yq -N -o=json -I=0 '
   .spec.source.helm.values | from_yaml |
   .serverFiles."prometheus.yml".scrape_configs[] |
-  select(.job_name == "bex-objectgw") |
-  .static_configs[0].targets[0] + "|" + .metric_relabel_configs[0].regex + "|" + .metric_relabel_configs[0].action' \
-  deploy/gitops/base/prometheus.yaml)"
-[ "$objectgw_scrape" = "bex-objectgw.bex-system.svc:9090|bex_objectgw_.*|keep" ] || {
-  echo "FAIL: bex-objectgw scrape job is '$objectgw_scrape', want bex-objectgw.bex-system.svc:9090 keeping bex_objectgw_.*" >&2
+  select(.job_name == "bex-objectgw")' deploy/gitops/base/prometheus.yaml | jq -cS '{
+    static: (.static_configs // null),
+    sd: [(.kubernetes_sd_configs // [])[] | {role, namespaces: .namespaces.names}],
+    relabel: [(.relabel_configs // [])[] | {src: .source_labels, action, regex, target: .target_label, replacement}],
+    keep: [(.metric_relabel_configs // [])[] | {regex, action}]}
+  | walk(if type == "object" then with_entries(select(.value != null)) else . end)')"
+want_scrape='{"keep":[{"action":"keep","regex":"bex_objectgw_.*"}],"relabel":[{"action":"keep","regex":"objectgw","src":["__meta_kubernetes_pod_label_app_bex_co_component"]},{"replacement":"${1}:9090","src":["__meta_kubernetes_pod_ip"],"target":"__address__"},{"src":["__meta_kubernetes_pod_name"],"target":"pod"}],"sd":[{"namespaces":["bex-system"],"role":"pod"}]}'
+[ "$objectgw_scrape" = "$want_scrape" ] || {
+  echo "FAIL: bex-objectgw scrape job is $objectgw_scrape, want $want_scrape" >&2
+  echo "      a static target on the Service reads one replica's counters only; discover the pods (see the job's comment in prometheus.yaml)" >&2
   fail=1
 }
 

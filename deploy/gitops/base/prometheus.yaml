@@ -514,10 +514,29 @@ spec:
               # set. The keep-list drops Go and process families; the
               # month-to-date egress gauge the alerts read comes from bex-api
               # (bex_usage_ above), not from here.
+              #
+              # One target per pod, like the proxies below, NOT the Service:
+              # the counters are per replica, and a scrape of the ClusterIP
+              # keeps one keep-alive connection to one pod, so the production
+              # walk (w21/m417 t008) found Prometheus holding a single
+              # replica's series and the "Public gateway" panels showing about
+              # half of the traffic. The pod label keeps the replicas apart,
+              # so rate() never sees two pods' counters as one that resets.
               - job_name: bex-objectgw
                 scrape_interval: 15s
-                static_configs:
-                  - targets: [bex-objectgw.bex-system.svc:9090]
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [bex-system]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_bex_co_component]
+                    action: keep
+                    regex: objectgw
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9090
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
                 metric_relabel_configs:
                   - source_labels: [__name__]
                     regex: bex_objectgw_.*

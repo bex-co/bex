@@ -4,11 +4,11 @@
 
 ## When to use it
 
-- `ObjectStoragePublicEgressCritical` fires: more than 900 GB served from the object store this month.
+- `ObjectStoragePublicEgressCritical` fires: more than 50 GB served from the object store this month (about 75% of the shared Wasabi account's free-egress allowance).
 - `ObjectStoragePublicEgressHigh` has fired and the Billing and metering dashboard shows public gateway traffic (the "Public gateway bytes out by origin" panel, `origin="wasabi"`) is the growing part.
 - Wasabi warns about, or limits, the account.
 
-Why this is serious: Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account also holds the platform's backups and restore paths ([ADR031](../ADR031-platform-data-backup.md)). A limit on the account would reach them. The two alert thresholds (500 GB, 900 GB) are first values chosen conservatively below the 1 TB account minimum; the production walk's measurement (`w21/m417` t008) resets them.
+Why this is serious: Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account also holds the platform's backups and restore paths ([ADR031](../ADR031-platform-data-backup.md)). A limit on the account would reach them. The two alert thresholds (30 GB warning, 50 GB critical, each after five minutes) come from the production walk of 2026-11-16 (`w21/m417` t008): Wasabi's free egress is monthly egress at or below the account's active storage, which measured 67 GB for the whole shared account, so they are about 45% and 75% of that allowance. The caps in `lego/backend/internal/objectgw/limits.go` are sized from the same number (one workspace flat out moves about 30 GB an hour). When the account's storage changes materially, measure it again (below) and reset both thresholds and the sizing test in the same commit.
 
 Check first that public reads are the cause. The kill switch stops only the `pub-` hosts. If the "Object storage egress: month to date" panel keeps climbing while "Public gateway bytes out by origin" is flat, the bytes are leaving through presigned Contract A or Contract B downloads, which objectgw does not serve; the switch does not help, and the lever is a workspace's cap or the bucket itself.
 
@@ -39,9 +39,11 @@ kubectl -n bex-system get pods -l app.bex.co/component=objectgw   # none
 
 ## What a visitor sees
 
-A request to any `pub-` host still reaches Traefik, which still matches the route (`objectgw-public`) and holds a Service with no ready endpoint. Traefik answers its own no-backend response, which I expect to be `503 Service Unavailable` with a plain body. **That is an expectation, not a measurement:** it has not been verified on production. Measuring the real answer is task `w21/m417` t008; replace this paragraph with the measurement when it exists. It is not objectgw's own `404` for a private or unknown host, and an exact `404` would need a runtime flag store that the backend does not have.
+A request to any `pub-` host still reaches Traefik, which still matches the route (`objectgw-public`) and holds a Service with no ready endpoint. **Measured on production (2026-11-16, w21/m417 t008):** Traefik answers its own `503 Service Unavailable` with `Content-Type: text/plain; charset=utf-8` and the body `no available server`, for the host of an existing public bucket and for any other `pub-` host alike (no objectgw header, no CORS header), from the first half second after the last pod stops. For the first seconds, while the pods are still terminating and Traefik still holds their addresses, a request can instead get `502 Bad Gateway` (body `Bad Gateway`, no content type). It is never objectgw's own `404`, and an exact `404` would need a runtime flag store that the backend does not have. A browser page that fetches the public URL sees a failed request (no CORS headers on either answer).
 
-Plain-HTTP requests are still redirected to HTTPS first, by the route's middleware.
+Plain-HTTP requests are still redirected to HTTPS first (`301`, measured with the pods stopped), by the route's middleware. Every other host (a service, a static site) kept answering `200` during the measurement.
+
+The measurement used `kubectl scale`, which Argo CD's `selfHeal` reverts in 4 to 11 seconds, so it is no kill switch (see above); the answer is the same for the Deployment at `0` in Git, because only the Service's endpoints change. How long Argo takes to apply the commit was not measured.
 
 ## What is not affected
 
@@ -67,3 +69,15 @@ Restore only when the egress source is understood (a runaway bucket made private
 - `kubectl -n bex-system logs deploy/bex-api --since=1h` shows no errors from the object routes.
 - After restore, `bex_objectgw_requests_total{result="ok"}` rises on the "Public gateway requests by result" panel, and `unavailable` does not.
 - If Wasabi has already warned, the second response is the one ADR112 D1 records: move tenant data to a separate Wasabi account, which changes only the endpoint and credential values. It is a separate task and must not wait for this one.
+
+## Measuring the account's allowance again
+
+Wasabi's rule is monthly egress at or below the account's active storage (its pricing FAQ; it does not say the 1 TB minimum charge counts). To read the active storage, list every bucket of the account with the root credential (`TF_STATE_ACCESS_KEY` and `TF_STATE_SECRET_KEY` in `.env`, never printed) and add up the sizes, for example with the pinned aws-cli image of `scripts/object-storage-s3-credentials.sh`:
+
+```bash
+aws --endpoint-url https://s3.wasabisys.com s3api list-buckets --query 'Buckets[].Name' --output text
+# for each bucket, against its own region's endpoint (s3.<region>.wasabisys.com):
+aws s3 ls s3://<bucket> --recursive --summarize | tail -2
+```
+
+On 2026-11-16 the sum was 67.4 GB across 12 buckets. Set the warning at about 45% of the total and the critical alert at about 75%, update `TestTheBandwidthCapsLeaveTheAllowanceAnHourOfWarning` with the new total, and rerun `promtool test rules` over `deploy/gitops/base/rules/object_storage_egress_alerts_test.yml`.

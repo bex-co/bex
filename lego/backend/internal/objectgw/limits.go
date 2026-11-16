@@ -36,6 +36,33 @@ import (
 // times these, as core.KeyedRateLimiter documents. A bandwidth cap bounds a
 // rate, not a month: the month-to-date egress alert and the kill switch bound
 // the volume (docs/runbooks/objectgw-kill-switch.md).
+//
+// The values were reset from the production walk of 2026-11-16 (w21/m417 t008,
+// ADR112 § Not verified), which replaced the first values (50 and 100 requests
+// a second, 10 and 20 MiB a second):
+//
+//   - What a replica can move is not the constraint. Relaying from Wasabi's
+//     Frankfurt region, 24 parallel streams of a 20 MiB object reached 216 MiB/s
+//     over the two replicas, and each replica spent about 2 ms of CPU per MiB
+//     (0.55 and 0.36 CPU-seconds for 260 and 220 MiB), so one replica's 0.5 core
+//     limit is worth roughly 240 MiB/s; from Oregon a stream runs at 8 MiB/s and 8
+//     streams at 68 MiB/s. The nodes' egress is not the constraint either: 22 TB
+//     a month included per node against 24 GB used by all 15 servers.
+//   - What a workspace can spend of Wasabi's allowance is. Wasabi's free egress
+//     is monthly egress at or below the account's active storage, measured at
+//     67 GB for the whole shared account, so 20 MiB/s from each of two replicas
+//     (a workspace's first cap) spent all of it in 27 minutes, before the first
+//     alert's hour of waiting had passed. The bandwidth caps are now sized so one
+//     workspace flat out on both replicas moves less than half of that allowance
+//     in the hour an operator needs to answer an alert. The bursts are about 32
+//     seconds of the rate, so a large object does not hold a bucket in debt for
+//     minutes.
+//   - The request caps held exactly: 20 s and 30 s of load at 9,000 and 12,000
+//     requests a second were admitted at 2178 and 3192, the 2 x (burst + rate x
+//     seconds) the cap allows. A refused request cost about 80 microseconds of
+//     CPU, so a flood of about 6,000 requests a second to one replica uses its
+//     whole 0.5 core whatever the caps say; they protect bex-api's lookups and
+//     Wasabi's request volume, and no measurement asked for a change.
 const (
 	// BucketRequestsPerSecond and BucketRequestBurst bound one bucket's requests.
 	BucketRequestsPerSecond = 50
@@ -46,13 +73,13 @@ const (
 	WorkspaceRequestBurst      = 200
 
 	// BucketBytesPerSecond and BucketByteBurst bound the bytes one bucket sends:
-	// 10 MiB/s sustained, which is 80 Mbit/s, with room for one large object.
-	BucketBytesPerSecond = 10 << 20
-	BucketByteBurst      = 256 << 20
+	// 2 MiB/s sustained, which is 16 Mbit/s, with room for 64 MiB.
+	BucketBytesPerSecond = 2 << 20
+	BucketByteBurst      = 64 << 20
 	// WorkspaceBytesPerSecond and WorkspaceByteBurst bound all of one
 	// workspace's public buckets together.
-	WorkspaceBytesPerSecond = 20 << 20
-	WorkspaceByteBurst      = 512 << 20
+	WorkspaceBytesPerSecond = 4 << 20
+	WorkspaceByteBurst      = 128 << 20
 
 	// BucketInFlight and WorkspaceInFlight bound the responses one bucket or
 	// workspace has open at once, so a few slow readers of one bucket cannot hold

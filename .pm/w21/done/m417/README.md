@@ -1,6 +1,6 @@
 # w21 · m417 — Public buckets: `dev-url` and objectgw serve a bucket read-only at `pub-<obk-id>.onbex.co`, with caps, an egress alert and a kill switch
 
-**Worker:** worker21 **Goal:** a workspace admin publishes a bucket with `wrangler r2 bucket dev-url enable` and anyone can read its objects over the web without a credential, bounded so it cannot take down the shared Wasabi account. **Status:** todo (t001–t007 and t009–t011 done; t008 and t012 remain)
+**Worker:** worker21 **Goal:** a workspace admin publishes a bucket with `wrangler r2 bucket dev-url enable` and anyone can read its objects over the web without a credential, bounded so it cannot take down the shared Wasabi account. **Status:** done (2026-11-16)
 
 ## Tasks (in order)
 
@@ -13,11 +13,11 @@
 | [t005](done/t005.md) | Deploy objectgw: image, manifests, the read-only Secret, and the kill-switch runbook — **DONE** | 55m | t002 |
 | [t006](done/t006.md) | Route `pub-*` hosts to objectgw through Traefik and check the wildcard certificate covers them — **DONE** | 45m | t005 |
 | [t007](done/t007.md) | Public read tests: private, unknown, `Range`, CORS, listing and keys — **DONE** | 45m | t003, t004, t006 |
-| [t008](t008.md) | Production walk for public reads: enable `dev-url`, read with `Range` and CORS, disable, and measure the kill switch | 50m | t006, t007, w21/m416/t013 |
+| [t008](done/t008.md) | Production walk for public reads: enable `dev-url`, read with `Range` and CORS, disable, and measure the kill switch — **DONE** | 50m | t006, t007, w21/m416/t013 |
 | [t009](done/t009.md) | Render parity (Cloudflare R2 reference; Render has no public buckets) — **DONE** | 30m | t007 |
 | [t010](done/t010.md) | Simplify — **DONE** | 20m | t009 |
 | [t011](done/t011.md) | Test coverage — **DONE** | 45m | t009, t010 |
-| [t012](t012.md) | Closeout | 10m | t008, t011 |
+| [t012](done/t012.md) | Closeout — **DONE** | 10m | t008, t011 |
 
 ## Definition of done
 
@@ -81,3 +81,5 @@ $ bex services create --name pub-dbt1asc9mhspr7e1c2g0 … -o json
   - Either way, correct the comment at `ingressroute.yaml:26-28`, and have t008's production walk count matching slugs.
 - **Acceptance:** a service whose slug is a bare `pub-<xid>` serves its own app on its URL, `https://pub-<unknown xid>.onbex.co/` still reaches objectgw, and a new `pub-<xid>` service still gets a suffix.
 - Minor (a rare name, plus a one-time rollout window), but a silent outage for any service it hits. ~30m.
+
+**Disposition (2026-11-16, t008):** the count the note asked for is zero. None of the 38 Ingress hosts or 27 App resources on production is a bare `pub-<xid>` host or slug (the sweep's fixtures were deleted), and the reservation suffixes every new one, so no service is shadowed and none can be. The rollout window the note describes closed with the rollout, so the priority change was not made; lower the two `objectgw-public` routes below the App routes only if a bare slug ever turns up (`apps.slug ~ '^pub-[0-9a-v]{20}$'`).

@@ -210,6 +210,42 @@ func TestEveryProductionCapIsSetAndSane(t *testing.T) {
 	}
 }
 
+// TestTheBandwidthCapsLeaveTheAllowanceAnHourOfWarning pins how the production
+// bandwidth caps were sized (w21/m417 t008). Wasabi's free egress is monthly
+// egress at or below the account's active storage, which was measured at
+// 67,382,215,898 bytes for the whole shared account on 2026-11-16, and a month's
+// allowance cannot be protected by a rate: the alert and the kill switch do
+// that, so the caps only have to leave them the hour an operator needs. One
+// workspace flat out on every production replica must move less than half of the
+// allowance in that hour (the first caps, 20 MiB/s, spent all of it in 27
+// minutes), and a debt left by one large object must repay within a minute, so
+// one reader cannot hold its bucket in 429s for long. If the account's storage
+// changes materially, measure it again (docs/runbooks/objectgw-kill-switch.md),
+// reset the alert thresholds with it, and change this number in the same commit.
+func TestTheBandwidthCapsLeaveTheAllowanceAnHourOfWarning(t *testing.T) {
+	const (
+		allowanceBytes = 67_382_215_898
+		replicas       = 2 // bex-objectgw in the production overlay
+		hour           = 3600
+	)
+	c := DefaultLimits()
+	if perHour := c.WorkspaceBytesPerSecond * replicas * hour; perHour >= allowanceBytes/2 {
+		t.Errorf("one workspace flat out moves %.1f GB in an hour, which is %.0f%% of the %.1f GB allowance; want under half",
+			perHour/1e9, 100*perHour/allowanceBytes, float64(allowanceBytes)/1e9)
+	}
+	if perHour := c.BucketBytesPerSecond * replicas * hour; perHour >= c.WorkspaceBytesPerSecond*replicas*hour {
+		t.Errorf("one bucket flat out moves %.1f GB an hour, not less than its workspace's cap", perHour/1e9)
+	}
+	for name, repay := range map[string]float64{
+		"bucket":    float64(c.BucketByteBurst) / c.BucketBytesPerSecond,
+		"workspace": float64(c.WorkspaceByteBurst) / c.WorkspaceBytesPerSecond,
+	} {
+		if repay > 60 {
+			t.Errorf("a %s emptied by one object repays in %.0f s, want within a minute", name, repay)
+		}
+	}
+}
+
 // TestAZeroCapPanicsAtConstruction: a limiter built with a zero rate disables
 // itself, which would turn a typo into no cap at all.
 func TestAZeroCapPanicsAtConstruction(t *testing.T) {

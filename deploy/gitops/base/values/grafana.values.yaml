@@ -6871,7 +6871,7 @@ dashboards:
              "id": 12,
              "type": "timeseries",
              "title": "Object storage egress: month to date",
-             "description": "Bytes bex has served from the object store this month, all workspaces and all three paths (presigned reads on both contracts and the public pub- gateway), from the usage_hourly shadow meter. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and the account is shared with platform backups. The amber line is ObjectStoragePublicEgressHigh (500 GB, 1 h) and the red line ObjectStoragePublicEgressCritical (900 GB, 15 m): first values, to be reset from the production walk's measurement (w21/m417 t008). The total drops on the first of the month. Runbook: docs/runbooks/objectgw-kill-switch.md",
+             "description": "Bytes bex has served from the object store this month, all workspaces and all three paths (presigned reads on both contracts and the public pub- gateway), from the usage_hourly shadow meter. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and the account is shared with platform backups. The amber line is ObjectStoragePublicEgressHigh (30 GB, 5 m) and the red line ObjectStoragePublicEgressCritical (50 GB, 5 m): about 45% and 75% of the 67 GB the shared account stored when measured on 2026-11-16 (w21/m417 t008). The total drops on the first of the month. Runbook: docs/runbooks/objectgw-kill-switch.md",
              "gridPos": { "h": 9, "w": 8, "x": 0, "y": 54 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {
@@ -6883,8 +6883,8 @@ dashboards:
                    "mode": "absolute",
                    "steps": [
                       { "color": "green", "value": null },
-                      { "color": "orange", "value": 500000000000 },
-                      { "color": "red", "value": 900000000000 }
+                      { "color": "orange", "value": 30000000000 },
+                      { "color": "red", "value": 50000000000 }
                     ]
                   }
                 },

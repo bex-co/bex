@@ -501,6 +501,68 @@ func TestAFailedPreconditionIsCountedAsOne(t *testing.T) {
 	}
 }
 
+// TestAFailedPreconditionOnACachedObjectIsACompleteAnswer: the production walk
+// (w21/m417 t008) found `If-Match: "nope"` on a small, cached object reset the
+// HTTP/2 stream (INTERNAL_ERROR). The cache kept Wasabi's Content-Length among
+// the entity headers and http.ServeContent answers a failed precondition with a
+// status and no body, so the response promised bytes it never sent. A recorder
+// does not enforce a declared length and so never saw it: this test reads the
+// answer over a real connection, as a visitor does. The answer is the one the
+// uncached path gives (a plain line, never cached, none of the object's own
+// headers), and it is counted as a failed precondition, not as an ok.
+func TestAFailedPreconditionOnACachedObjectIsACompleteAnswer(t *testing.T) {
+	e := newGW(t, objectstorage.CORSRule{Allowed: objectstorage.CORSAllowed{Origins: []string{"*"}, Methods: []string{"GET", "HEAD"}}})
+	e.put("o", randomBytes(t, 2000), objectstorage.ObjectHeaders{ContentType: "image/png", CacheControl: "max-age=3600"})
+	e.do(http.MethodGet, "/o") // fill the cache: the requests below are hits
+	srv := httptest.NewServer(e.handler)
+	t.Cleanup(srv.Close)
+
+	for _, c := range []struct{ name, method, header, value string }{
+		{"If-Match, GET", http.MethodGet, "If-Match", `"other"`},
+		{"If-Match, HEAD", http.MethodHead, "If-Match", `"other"`},
+		{"If-Unmodified-Since, GET", http.MethodGet, "If-Unmodified-Since", "Mon, 02 Jan 2006 15:04:05 GMT"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(c.method, srv.URL+"/o", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Host = e.host
+			req.Header.Set("Origin", "https://example.com")
+			req.Header.Set(c.header, c.value)
+			resp, err := srv.Client().Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("reading the answer: %v (the response promised %q bytes it did not send)", err, resp.Header.Get("Content-Length"))
+			}
+			if resp.StatusCode != http.StatusPreconditionFailed {
+				t.Fatalf("%s = %d, want 412", c.name, resp.StatusCode)
+			}
+			if c.method == http.MethodGet && string(body) != "precondition failed\n" {
+				t.Errorf("body = %q, want the plain line the uncached path gives", body)
+			}
+			for _, name := range []string{"ETag", "Last-Modified", "Content-Disposition"} {
+				if v := resp.Header.Get(name); v != "" {
+					t.Errorf("%s = %q on a 412: the object's own headers do not belong on it", name, v)
+				}
+			}
+			if cc := resp.Header.Get("Cache-Control"); cc != "no-store" {
+				t.Errorf("Cache-Control = %q on a 412, want no-store (not the object's max-age=3600)", cc)
+			}
+			if resp.Header.Get("Access-Control-Allow-Origin") == "" {
+				t.Errorf("a CORS-enabled bucket's 412 lost Access-Control-Allow-Origin: %v", resp.Header)
+			}
+		})
+	}
+	if got := e.requests(resultPreconditionFailed); got != 3 {
+		t.Errorf("requests{result=precondition_failed} = %v, want 3: a cached 412 is not an ok", got)
+	}
+}
+
 // noTypeOrigin answers every read with a 200 that names no Content-Type, which
 // Wasabi never does (it types an untyped object binary/octet-stream) but a
 // misbehaving store could.

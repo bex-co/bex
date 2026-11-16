@@ -153,6 +153,9 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			st.result = resultNotModified
 		case http.StatusRequestedRangeNotSatisfiable:
 			st.result = resultRangeNotSatisfiable
+		case http.StatusPreconditionFailed:
+			// A cached object's failed precondition is answered by ServeContent.
+			st.result = resultPreconditionFailed
 		}
 	}
 	if h.Metrics != nil {
@@ -387,14 +390,37 @@ func entityHeadersOf(in http.Header) http.Header {
 func (h *Handler) serveCached(w *countingWriter, r *http.Request, b Bucket, obj *cachedObject) {
 	hdr := w.Header()
 	for name, values := range obj.header {
-		hdr[name] = values // ServeContent sets Content-Length, Content-Range and Accept-Ranges itself
+		hdr[name] = values
 	}
 	if hdr.Get("Content-Type") == "" {
 		// Without one, ServeContent would sniff the body.
 		hdr.Set("Content-Type", "application/octet-stream")
 	}
-	http.ServeContent(w, r, "", obj.modTime, bytes.NewReader(obj.body))
+	http.ServeContent(preconditionWriter{w, obj.header}, r, "", obj.modTime, bytes.NewReader(obj.body))
 	h.Limits.Charge(b.ID, b.WorkspaceID, w.n)
+}
+
+// preconditionWriter makes the answer ServeContent gives to a failed If-Match
+// or If-Unmodified-Since the answer the uncached path gives: a plain line that
+// is never cached, none of the object's own headers. ServeContent writes that
+// status with no body, so the headers copied from the object (its stored
+// Cache-Control, ETag and Last-Modified, and Wasabi's Content-Length, which
+// promised bytes that never came and reset the visitor's HTTP/2 stream) must
+// not ride on it.
+type preconditionWriter struct {
+	*countingWriter
+	entity http.Header
+}
+
+func (p preconditionWriter) WriteHeader(code int) {
+	if code != http.StatusPreconditionFailed {
+		p.countingWriter.WriteHeader(code)
+		return
+	}
+	for name := range p.entity {
+		p.Header().Del(name)
+	}
+	writePlain(p.countingWriter, code, "precondition failed")
 }
 
 // writerOnly and readerOnly hide the ReaderFrom and WriterTo shortcuts of what
