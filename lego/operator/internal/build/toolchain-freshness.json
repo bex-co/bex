@@ -29,9 +29,9 @@
       "id": "cnb-stack-run",
       "kind": "stack",
       "upstream": "docker.io/paketobuildpacks/run-jammy-base:latest",
-      "committed": "paketobuildpacks/run-jammy-base@sha256:8a671e0f8a5b5404f8a12579f00a3389ce824de8f18c6bc8f0f33403398fa5ab",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub reviewed 2026-10-28 for CVE-2026-111497: Jammy libbrotli1 1.0.9-2ubuntu0.1; build/run stack package verified on linux/amd64, builder inherits the build stack layers; bex run image rebuilt and Node-checked on amd64/arm64 before publication",
+      "committed": "paketobuildpacks/run-jammy-base@sha256:6031575989ab077c94b58a44886353e74224cf61c6f0f571cd3c4037efe2b2ac",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): Paketo run-jammy-base latest, linux/amd64+arm64 index created 2026-11-16, stack io.buildpacks.stacks.jammy and CNB user 1002:1000 unchanged; the bex run image is rebuilt from it by cnb-run-image.yml (libatomic1 ldconfig gate, Node 26 start on both architectures, signed) before cnb-run-image moves",
       "files": [
         "deploy/cnb-run/Dockerfile"
       ]
