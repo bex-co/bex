@@ -18,9 +18,12 @@ Informed by [OpenClaw's test-audit skill](https://github.com/openclaw/openclaw/b
 - Fix everything you find directly in the working tree. If a fix can't be finished safely in this run, revert only your partial work for that fix and list it under **Deferred** in the report — never leave the tree half-refactored.
 - Scope: parse `$ARGUMENTS` per Phase 1. Stay within that scope; do not turn a test audit into a general production refactor.
 - False-positive discipline: if a finding is intentional, load-bearing, or ambiguous, skip it with a one-line reason — don't argue it into a change.
+- A run that changes nothing is a success. Ship only findings that clear this routine's bar, and never pad a run with marginal items so it has something to show: one finding finished completely beats several half-justified ones. The routine runs often, so what is left today is still there tomorrow.
+- Read [`ledger.md`](ledger.md) beside this skill before auditing. It carries earlier runs' Deferred and Skipped findings. Do not re-audit a Skipped entry unless the code it cites has changed, and prefer finishing an open Deferred entry to hunting new ones. Update the ledger in the same change: add this run's Deferred and Skipped findings, and remove the entries this run fixed or whose code is gone. One line each, `- YYYY-MM-DD <path or symbol> — <finding>; <why deferred or skipped>`, newest first, at most 40 entries (drop the oldest Skipped first).
+- Never fold a CI fix into this routine's change. A check that fails on `origin/main` without your change is main's failure, not this run's. Per `AGENTS.md` it ships alone as a `fix(ci)` change, and only after `git log origin/main --since=24.hours --grep='fix(ci)'` shows no one has fixed it already, so parallel runs do not each carry the same fix.
 - Every change must pass the targeted checks in Phase 5 before being reported as done. Run one heavy command at a time, and leave the module-wide suites to CI: it runs them on the pull request against the real Postgres, OpenFGA and OpenBao a sandbox lacks, and a failed check comes back to the session as its next turn (ADR047 D11).
 - Run `npx prettier@3.4.2 --write` on any markdown touched.
-- Before shipping, summarize results in commentary using: **Fixed** (file:line + one-line rationale) / **Deferred** (item + why) / **Skipped** (finding + reason) / **Gates** (commands run + outcomes).
+- Before shipping, summarize results in commentary using: **Fixed** (file:line + one-line rationale) / **Deferred** (item + why, also written to the ledger) / **Skipped** (finding + reason) / **Gates** (commands run + outcomes).
 
 ## Phase 1 — Scope
 
@@ -68,7 +71,7 @@ Reapply the relevant mutation after strengthening: the improved test must fail f
 
 Run the focused tests first, then the targeted checks for what changed:
 
-- Go: `gofmt -l` on the touched files, `go vet` of each touched package, and `go test -count=1` of each changed test package and of any package whose helpers you removed.
+- Go: `gofmt -l` on the touched files, `go vet` of each touched package, and `go test -count=1` of each changed test package and of any package whose helpers you removed. Then lint those packages from each touched module with the pinned binary, `GOWORK=off "$(git rev-parse --show-toplevel)/lego/operator/bin/golangci-lint" run ./<pkg>/...` (`make golangci-lint` in `lego/operator` installs it): a removed helper often leaves an `unused` or `unparam` finding behind.
 - Types: also `go build ./...` and `go vet ./...` in the operator and backend modules, which compiles their tests without running them.
 - Dashboard: `yarn vitest run <each changed test file>`, `yarn eslint <changed files>`, and `yarn typecheck`.
 - Never the module-wide suites (`make lint`, `make test`, `go test ./...`, the whole `yarn test`): CI runs them on the pull request.
