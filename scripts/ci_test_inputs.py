@@ -32,6 +32,12 @@ fails too, so the list only holds live exceptions. Directory reads and paths
 composed at run time are not resolved: list those by hand (deploy.yml's full
 run is the backstop).
 
+A path under `.pm/` is never a read. Every suite's checkout leaves the board
+out (w6/m157), so a test that names a board file names a fixture, and board
+items move between `blocked/`, the queue and `done/`: a move that made a
+fixture's sample path a tracked file turned the operator suite red
+(`.pm/w8/m91/README.md`, 2026-11-16) on a push no gate checked.
+
   python3 scripts/ci_test_inputs.py [--repo DIR] [WORKFLOW ...]   # default: every suite
   python3 scripts/ci_test_inputs.py --affected < changed-paths    # which could open a gap
   python3 scripts/ci_test_inputs.py --suites                      # the suite workflows
@@ -87,6 +93,7 @@ _JOIN = re.compile(r"\b(?:filepath\.Join|path\.Join|path\.join|path\.resolve|joi
 _PLACEHOLDER = re.compile(r"\$\{[^}]*\}")
 _COMMENT = re.compile(r"^\s*(//|\*|/\*)")
 HOLE = "\0"  # a ${…} placeholder: REPO_ROOT, process.cwd(), …
+BOARD = ".pm/"  # in no suite's checkout, so never a test input
 
 
 def path_filters(text: str) -> dict[str, list[str]]:
@@ -252,7 +259,7 @@ def references(repo: pathlib.Path, suite: Suite, tracked: set[str]) -> dict[str,
         text = (repo / source).read_text(encoding="utf-8", errors="replace")
         for value in literals(text):
             path = resolve(value, source, root, tracked)
-            if path and not suite.inside(path):
+            if path and not suite.inside(path) and not path.startswith(BOARD):
                 found.setdefault(path, set()).add(source)
     return found
 

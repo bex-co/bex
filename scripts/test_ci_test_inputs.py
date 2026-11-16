@@ -137,6 +137,18 @@ class Repo(unittest.TestCase):
         problems = self.run_check({"lego/backend/gone.go": "x"})
         self.assertTrue(any("ignored lists lego/backend/gone.go" in p for p in problems), problems)
 
+    def test_a_board_file_a_test_names_is_never_a_read(self):
+        # No suite checks the board out, and an item moves between blocked/,
+        # the queue and done/: the same literal is tracked one day and not
+        # the next, so it can be neither a missing path nor an ignored one.
+        self.write(".pm/w8/m91/README.md", "x")
+        self.write("dashboard/src/__tests__/paths.test.ts", 'const sample = ".pm/w8/m91/README.md";\n')
+        self.write(WORKFLOW, workflow(["dashboard/**", "lego/backend/pricing.yaml", WORKFLOW]))
+        ignored = {"lego/backend/fixture.go": "a sample path"}
+        self.assertEqual(self.run_check(ignored), [])
+        stale = self.run_check({**ignored, ".pm/w8/m91/README.md": "a sample path"})
+        self.assertTrue(any("ignored lists .pm/w8/m91/README.md" in p for p in stale), stale)
+
     def test_the_own_tree_and_workflow_must_be_listed(self):
         self.write(WORKFLOW, workflow(["lego/backend/**"]))
         problems = self.run_check({"lego/backend/fixture.go": "x"})
@@ -159,6 +171,12 @@ class RealTree(unittest.TestCase):
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
             rc = cti.main(["--repo", str(HERE.parent)])
         self.assertEqual(rc, 0, out.getvalue())
+
+    def test_no_suite_checks_the_board_out(self):
+        # The premise of BOARD: a file outside the checkout cannot be read.
+        for name in cti.SUITES:
+            text = (HERE.parent / name).read_text()
+            self.assertIn("!/" + cti.BOARD, text, f"{name} checks out .pm/, so its tests could read the board")
 
 
 if __name__ == "__main__":
