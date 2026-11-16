@@ -74,7 +74,7 @@ Cardinalities of the rest of the table: 11 of 11 have `mapped = false`, `last_er
 
 Leaving them is not harmful in the meantime: with the payment gate on for every plan (production's `BEX_REQUIRE_PAYMENT_METHOD=all`, per m172's t006) a cardless workspace cannot create anything anyway, and the row recovers by itself on its first successful Stripe event (a successful card bind: `transitionBillingState` moves `enforced` to `recovering`, and the stale-event guard only drops events older than the 2026-10-03 cancel). That second part is read from the code, not exercised.
 
-**Question for the user:** for the 11 ids above, (a) recover all to `healthy` and accept the "Billing recovered" mail, (b) first make that notice say what is true for a workspace that never paid (or recover without a mail), then recover, or (c) leave them to recover on their own card bind. My recommendation is (b); the reclaim path that caused it is filed as [w21/098](../098.md).
+**Question for the user:** for the 11 ids above, (a) recover all to `healthy` and accept the "Billing recovered" mail, (b) first make that notice say what is true for a workspace that never paid (or recover without a mail), then recover, or (c) leave them to recover on their own card bind. My recommendation is (b); the reclaim path that caused it is filed as [w21/098](../done/098.md).
 
 ### The two checks (2026-11-16, 08:16 to 08:19 UTC)
 

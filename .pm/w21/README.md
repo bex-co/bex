@@ -122,7 +122,7 @@
 - [ ] **095** — Wasabi may count the hourly sweep's listing bytes against the egress ratio: 215 KB a 1,000-key page is about 155 GB a month for one workspace at the object cap → [`095.md`](095.md) (~1h) ← from w21/088, 2026-11-15
 - [ ] **096** — Nothing alerts when the object storage sweep stops completing → [`096.md`](096.md) (~1h) ← from w21/088, 2026-11-15
 - [ ] **097** — `scripts/fetch-app-kubeconfig.sh` needs `HCLOUD_TOKEN` already exported, so reaching production is not one command → [`097.md`](097.md) (~1h) ← from w21/089, 2026-11-16
-- [ ] **098** — A subscription bex's own reclaimer cancels is treated as a payment failure: 11 cardless workspaces were put in grace, enforced and mailed → [`098.md`](098.md) (~1h) ← from w21/m336 t004, 2026-11-16
+- [x] **098** — A subscription bex's own reclaimer cancels is treated as a payment failure: 11 cardless workspaces were put in grace, enforced and mailed → [`098.md`](done/098.md) (~1h) ← from w21/m336 t004, 2026-11-16
 - [ ] **099** — Revoking or deleting an API key answers 500 when its OpenFGA developer tuple is already gone, so the key can never be deleted → [`099.md`](099.md) (~1h) ← from w21/012's production read, 2026-11-16
 - [ ] **103** — The first dashboard save that edits a variable a Blueprint dropped is refused as stale → [`103.md`](103.md) (~1h) ← from w21/m421 t004, 2026-11-16
 - [ ] **104** — "Billing recovered: Payment recovered and resources changed by billing enforcement were restored" is sent to a workspace that never paid and never had a resource enforced → [`104.md`](104.md) (~1h) ← from w21/m336, 2026-11-16
