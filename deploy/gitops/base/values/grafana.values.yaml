@@ -4194,7 +4194,9 @@ dashboards:
     # ride their own registries. w3/m83 t006 adds the bex-api eventing surfaces that
     # exported health series with no rule: outbound webhook attempt outcomes,
     # push delivery freshness + queue depth, and agent-session provision
-    # outcomes. NB every one of those panels depends on the bex-api scrape job's
+    # outcomes. w21/091 adds what the 5 s token introspection window costs: cache
+    # misses per replica, admission 429s by caller, and the Hydra round trip
+    # (bex_api_auth_*). NB every one of those panels depends on the bex-api scrape job's
     # keep-list (prometheus.yaml) admitting bex_(agent_session|webhooks|push|api)_* —
     # sustained No data there means the keep-list dropped them, which is
     # exactly the visible pressure ADR088 §6 wants a panel to apply.
@@ -5401,6 +5403,119 @@ dashboards:
                  "refId": "B",
                  "expr": "bex:sandbox_workspace_egress_bytes:threshold",
                  "legendFormat": "alert threshold"
+                }
+              ]
+            },
+            {
+             "id": 35,
+             "type": "timeseries",
+             "title": "Token introspection misses per replica",
+             "description": "Bearer requests that found no cached Hydra introspection, per bex-api replica and by outcome. Every miss is a Hydra round trip and spends the credential's admission budget (BEX_AUTH_FAILURE_LIMIT, 60 a minute, 1 a second per replica), so the line is a tenth of that budget: the w21/091 rule narrows introspectionTTL from 5 s to 2 s only when the peak of the per-replica line stays under it over seven days. A replica's total is an upper bound on any one credential's rate. active is what live tokens pay (about 0.2 a second per live token at 5 s, 0.5 at 2 s); shed is a request an admission budget refused before Hydra. Includes the fresh introspections a durable-credential mint makes.",
+             "gridPos": { "h": 9, "w": 12, "x": 0, "y": 143 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "reqps",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.1 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (pod) (rate(bex_api_auth_introspection_misses_total[1m]))",
+                 "legendFormat": "{{pod}} (all outcomes)"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum by (outcome) (rate(bex_api_auth_introspection_misses_total[5m]))",
+                 "legendFormat": "all replicas: {{outcome}}"
+                }
+              ]
+            },
+            {
+             "id": 36,
+             "type": "timeseries",
+             "title": "Admission 429s by caller (1h)",
+             "description": "429 AUTH_OVERLOADED answers in the last hour. authenticated: this replica resolved the very same credential to an identity within the last 15 minutes, so a real caller was refused; unverified: it had not (invalid, new or unknown credentials, floods). The sheds happen before Hydra or Kratos is asked, so validity is remembered, not read. The w21/091 rule counts credential=bearer only: a Kratos session has no introspection window, so its sheds are not caused by it. cause is the budget that refused the call: source (the client IP spent its invalid-credential budget), credential (the credential spent its own), credential_inflight, inflight (the process-wide pool).",
+             "gridPos": { "h": 9, "w": 12, "x": 12, "y": 143 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "short", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (credential, cause) (increase(bex_api_auth_admission_sheds_total{caller=\"authenticated\"}[1h]))",
+                 "legendFormat": "authenticated {{credential}} / {{cause}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum by (credential) (increase(bex_api_auth_admission_sheds_total{caller=\"unverified\"}[1h]))",
+                 "legendFormat": "unverified {{credential}}"
+                }
+              ]
+            },
+            {
+             "id": 37,
+             "type": "timeseries",
+             "title": "Hydra introspection latency p50/p99 (1h)",
+             "description": "One bex-api to Hydra introspection round trip (coalesced misses are one call), over the last hour so a quiet period still has samples. The line is the w21/091 bound: narrow introspectionTTL only while the p99 stays under 50 ms. Hydra's own latency is not scraped; this is what bex-api waits for, network included.",
+             "gridPos": { "h": 9, "w": 12, "x": 0, "y": 152 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "s",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 0.05 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "histogram_quantile(0.5, sum by (le) (rate(bex_api_auth_hydra_introspection_duration_seconds_bucket[1h])))",
+                 "legendFormat": "p50"
+                },
+                {
+                 "refId": "B",
+                 "expr": "histogram_quantile(0.99, sum by (le) (rate(bex_api_auth_hydra_introspection_duration_seconds_bucket[1h])))",
+                 "legendFormat": "p99"
+                }
+              ]
+            },
+            {
+             "id": 38,
+             "type": "timeseries",
+             "title": "Hydra introspection calls by outcome",
+             "description": "Introspection round trips bex-api makes to Hydra, all replicas, by outcome. error is a transport failure or a non-200 answer, which the gate turns into a 503. One call can serve several concurrent misses of one token.",
+             "gridPos": { "h": 9, "w": 12, "x": 12, "y": 152 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "reqps", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (outcome) (rate(bex_api_auth_hydra_introspection_duration_seconds_count[5m]))",
+                 "legendFormat": "{{outcome}}"
                 }
               ]
             }

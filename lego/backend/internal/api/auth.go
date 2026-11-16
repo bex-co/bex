@@ -198,6 +198,11 @@ type oryAuth struct {
 	// (w1/m67 F1). Only INVALID credentials are charged — see authadmission.go.
 	// nil disables both bounds (pre-m67 behavior).
 	admission *AuthAdmission
+
+	// metrics counts what the introspection window costs: cache misses by
+	// outcome, admission sheds by cause and the Hydra round trip (authmetrics.go,
+	// w21/091). nil (tests, stdio) records nothing.
+	metrics *OriginMetrics
 }
 
 type cachedIdentity struct {
@@ -468,6 +473,8 @@ func (a *oryAuth) introspect(r *http.Request, token string) (core.Identity, erro
 	// credential per introspectionTTL.
 	release, err := a.admission.admit(r)
 	if err != nil {
+		a.metrics.observeIntrospectionMiss(missShed)
+		a.metrics.observeAuthShed(credentialBearer, err, a.admission.wasAuthenticated(r))
 		return core.Identity{}, err
 	}
 	defer release()
@@ -476,6 +483,7 @@ func (a *oryAuth) introspect(r *http.Request, token string) (core.Identity, erro
 		return nil, a.introspectUpstream(ctx, token)
 	})
 	if err != nil {
+		a.metrics.observeIntrospectionMiss(missError)
 		return core.Identity{}, err
 	}
 	// Read the cache instead of returning singleflight's shared value directly.
@@ -483,8 +491,11 @@ func (a *oryAuth) introspect(r *http.Request, token string) (core.Identity, erro
 	// resuming; in that case invalidate deleted the entry and this request must
 	// observe the token as inactive.
 	if entry, ok := a.cache.Get(token); ok {
+		a.metrics.observeIntrospectionMiss(missActive)
+		a.admission.markAuthenticated(r)
 		return entry.Identity, nil
 	}
+	a.metrics.observeIntrospectionMiss(missRefused)
 	// The token was rejected upstream: charge this source (w1/m67 F1). Only
 	// failures are metered, so a busy legitimate caller is never throttled while
 	// a flood of distinct invalid tokens exhausts its budget within seconds.
@@ -507,14 +518,18 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	started := time.Now()
 	resp, err := a.client.Do(req)
 	if err != nil {
+		a.metrics.observeHydraIntrospection(hydraError, time.Since(started))
 		return err
 	}
 	defer core.DrainClose(resp)
 	if resp.StatusCode != http.StatusOK {
+		a.metrics.observeHydraIntrospection(hydraError, time.Since(started))
 		return core.Err("hydra introspection returned " + resp.Status)
 	}
+	a.metrics.observeHydraIntrospection(hydraOK, time.Since(started))
 	var out struct {
 		Active   bool     `json:"active"`
 		Sub      string   `json:"sub"`
@@ -659,6 +674,7 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	// an upstream call and is metered as one (w1/m67 F1).
 	release, admitErr := a.admission.admit(r)
 	if admitErr != nil {
+		a.metrics.observeAuthShed(credentialSession, admitErr, a.admission.wasAuthenticated(r))
 		return core.Identity{}, admitErr
 	}
 	defer release()
@@ -709,6 +725,7 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	if out.Identity.ID == "" {
 		return core.Identity{}, nil
 	}
+	a.admission.markAuthenticated(r)
 	// traits.email is the standard Kratos identity schema's email field — the key
 	// a pending workspace invite is redeemed against on this caller's first login.
 	// traits.name is bex's optional display-name trait (w4/m25); "" when unset.

@@ -1732,6 +1732,7 @@ func (s *Server) newAuthGate() (*oryAuth, error) {
 	gate := newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.OAuthRequireAudience, s.AuthAdmission, s.Onboard, touch, s.apiScope())
 	gate.setPlatformClientIDs(s.OAuthPlatformClients)
 	gate.revocations = s.OAuthRevocations
+	gate.metrics = s.OriginMetrics
 	gate.requireVerifiedEmail = s.RequireVerifiedEmail
 	gate.emailVerified = s.EmailVerified
 	// The durable-credential mint verbs' class gate (round-7 F3) resolves

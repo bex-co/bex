@@ -63,6 +63,38 @@ import (
 // of upstream auth calls in flight. Mapped to 429 + Retry-After.
 var errAuthOverloaded = errors.New("authentication upstream budget exhausted")
 
+// The four budgets that can refuse an upstream auth call. They are the `cause`
+// label of bex_api_auth_admission_sheds_total, so the set is closed.
+const (
+	// shedSource: the client IP has spent its invalid-credential budget.
+	shedSource = "source"
+	// shedCredential: this credential has spent its own request budget
+	// (BEX_AUTH_FAILURE_LIMIT per minute, per replica).
+	shedCredential = "credential"
+	// shedCredentialInflight: this credential already holds its maximum number
+	// of concurrent upstream calls (BEX_AUTH_MAX_INFLIGHT_PER_CREDENTIAL).
+	shedCredentialInflight = "credential_inflight"
+	// shedInflight: the process-wide pool of upstream calls is full
+	// (BEX_AUTH_MAX_INFLIGHT).
+	shedInflight = "inflight"
+)
+
+// shedError is errAuthOverloaded carrying the budget that refused the call, so
+// the gate can count a shed by cause. errors.Is(err, errAuthOverloaded) holds
+// for every one of them, and they are shared values, so a shed still allocates
+// nothing.
+type shedError struct{ cause string }
+
+func (e *shedError) Error() string { return errAuthOverloaded.Error() }
+func (e *shedError) Unwrap() error { return errAuthOverloaded }
+
+var (
+	errShedSource             = &shedError{cause: shedSource}
+	errShedCredential         = &shedError{cause: shedCredential}
+	errShedCredentialInflight = &shedError{cause: shedCredentialInflight}
+	errShedInflight           = &shedError{cause: shedInflight}
+)
+
 const (
 	// maxCredentialBytes bounds a bearer/session credential before it is copied
 	// into an upstream request body or header. Real Hydra access tokens and
@@ -73,6 +105,14 @@ const (
 	// authAdmissionIdle/Sweep mirror the other limiters' housekeeping.
 	authAdmissionIdle  = 10 * time.Minute
 	authAdmissionSweep = 5 * time.Minute
+
+	// authenticatedMemory is how long this replica remembers that it resolved a
+	// credential to an identity. It is only a label on the shed counter (the
+	// shed itself never reads it): a refused request whose credential was
+	// valid inside this window is an authenticated caller that got a 429. It is
+	// Hydra's access-token lifetime (hydra.values.yaml, 15m), so a token that is
+	// shed for as long as it lives is still counted as authenticated.
+	authenticatedMemory = 15 * time.Minute
 )
 
 // AuthAdmission is the per-source failure budget, per-credential request and
@@ -91,6 +131,15 @@ type AuthAdmission struct {
 	credentialInflight    map[string]int
 	// inflight bounds concurrent upstream auth calls process-wide. nil ⇒ unbounded.
 	inflight chan struct{}
+	// authenticated remembers the HMAC fingerprints of credentials an upstream
+	// verdict found valid, so a shed can say whether it landed on one (the
+	// `caller` label of bex_api_auth_admission_sheds_total). Only valid
+	// credentials are written, never the raw value, and it is bounded like every
+	// TTLCache.
+	authenticated *core.TTLCache[struct{}]
+	// now is the clock of the authenticated memory, so a test can cross
+	// authenticatedMemory without sleeping. nil => time.Now.
+	now func() time.Time
 	// TrustedProxies resolves the real client IP behind the edge proxies, so
 	// every anonymous Internet caller does not share Traefik's single bucket.
 	// Set by the composition root alongside the other IP-keyed budgets.
@@ -107,7 +156,9 @@ func NewAuthAdmission(failuresPerMin float64, burst, maxInflight, maxInflightPer
 		failures:           core.NewKeyedRateLimiter[string](failuresPerMin, burst, authAdmissionIdle, authAdmissionSweep),
 		credentials:        core.NewKeyedRateLimiter[string](failuresPerMin, burst, authAdmissionIdle, authAdmissionSweep),
 		credentialInflight: map[string]int{},
+		authenticated:      core.NewTTLCache[struct{}](),
 	}
+	a.authenticated.Now = a.clock
 	_, _ = rand.Read(a.fingerprintKey[:])
 	if maxInflight > 0 {
 		a.inflight = make(chan struct{}, maxInflight)
@@ -137,15 +188,15 @@ func (a *AuthAdmission) admit(r *http.Request) (release func(), err error) {
 		return func() {}, nil
 	}
 	if a.failures != nil && a.failures.Bucket(a.sourceKey(r)).Tokens() < 1 {
-		return nil, errAuthOverloaded
+		return nil, errShedSource
 	}
 	credential := a.credentialFingerprint(r)
 	if a.credentials != nil && !a.credentials.Bucket(credential).Allow() {
-		return nil, errAuthOverloaded
+		return nil, errShedCredential
 	}
 	releaseCredential, ok := a.acquireCredential(credential)
 	if !ok {
-		return nil, errAuthOverloaded
+		return nil, errShedCredentialInflight
 	}
 	if a.inflight == nil {
 		return releaseCredential, nil
@@ -160,7 +211,7 @@ func (a *AuthAdmission) admit(r *http.Request) (release func(), err error) {
 		releaseCredential()
 		// Shed rather than queue: a queued request holds a connection and its
 		// upstream deadline while the flood continues. Overload must be visible.
-		return nil, errAuthOverloaded
+		return nil, errShedInflight
 	}
 }
 
@@ -200,6 +251,34 @@ func (a *AuthAdmission) acquireCredential(key string) (func(), bool) {
 			delete(a.credentialInflight, key)
 		}
 	}, true
+}
+
+// markAuthenticated records that an upstream verdict found r's credential
+// valid. Called only after that verdict, so the memory holds valid credentials
+// and nothing an anonymous caller chose.
+func (a *AuthAdmission) markAuthenticated(r *http.Request) {
+	if a == nil {
+		return
+	}
+	a.authenticated.Put(a.credentialFingerprint(r), struct{}{}, a.clock().Add(authenticatedMemory))
+}
+
+func (a *AuthAdmission) clock() time.Time {
+	if a.now != nil {
+		return a.now()
+	}
+	return time.Now()
+}
+
+// wasAuthenticated reports whether this replica resolved r's credential to an
+// identity within authenticatedMemory. It reads, never writes, so it allocates
+// no entry for a shed request.
+func (a *AuthAdmission) wasAuthenticated(r *http.Request) bool {
+	if a == nil {
+		return false
+	}
+	_, ok := a.authenticated.Get(a.credentialFingerprint(r))
+	return ok
 }
 
 // penalize charges r's source one token for a credential that turned out to be

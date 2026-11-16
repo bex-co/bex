@@ -71,6 +71,9 @@ type OriginMetrics struct {
 	graphql   *prometheus.HistogramVec
 	mcpTools  *prometheus.HistogramVec
 	telemetry *prometheus.CounterVec
+	// auth is the gate's own telemetry (introspection misses, admission sheds,
+	// the Hydra round trip): authmetrics.go.
+	auth authMetrics
 }
 
 // Request surfaces — the coarse "which product surface" axis every panel and
@@ -186,6 +189,7 @@ func NewOriginMetrics(reg prometheus.Registerer) *OriginMetrics {
 		}, []string{"command", "completion_kind", "cli_version", "output_format"}),
 	}
 	reg.MustRegister(m.duration, m.requests, m.inFlight, m.graphql, m.mcpTools, m.telemetry)
+	m.auth = newAuthMetrics(reg)
 	return m
 }
 
