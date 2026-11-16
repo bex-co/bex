@@ -97,7 +97,7 @@ While a first release's HTTP port is being discovered, the pod template carries 
 
 - [w2/078](../../w2/done/078.md) (done) fixed the first-deploy second roll for a listener on the declared port only. This is the case it didn't cover, not a regression of what it verified.
 - [w4/m320](../../done/m320/README.md) (done) is about a deploy over a serving release.
-- [w4/m323](../blocked/m323/README.md) (blocked) is private services pinned to 10000.
+- [w4/m323](../../done/m323/README.md) (done) is private services pinned to 10000.
 - `grep -rlE "rolls? (a second|two) ReplicaSet|second ReplicaSet|rolls twice|rolled twice|two ReplicaSets" .pm` finds only those three, w5/m149, w6/m104 and w1/m52, none open for a first deploy.
 - Not deploy lag: `git log ca7fbbe606c8..origin/main -- lego/operator/internal/controller/web_image_http.go lego/operator/internal/controller/deployment_projection.go lego/operator/internal/controller/image_network.go` is empty.
 

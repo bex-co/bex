@@ -1,6 +1,6 @@
 # w4 · m323 — A private service created in the dashboard from a prebuilt image is pinned to port 10000, so an image listening on its declared port never goes live, and the stall hint's "remove it" fix exists nowhere
 
-**Worker:** worker4 **Goal:** New Private Service → Existing Image takes its ports from the image, as the backend has since w6/095 and as the hint on the same form promises. Every remediation the rollout stall reason names can actually be done. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
+**Worker:** worker4 **Goal:** New Private Service → Existing Image takes its ports from the image, as the backend has since w6/095 and as the hint on the same form promises. Every remediation the rollout stall reason names can actually be done. **Status:** done — every task done; the live DoD held on production pin `7aaa8700befa` (2026-11-16)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | The create form treats a prebuilt-image private service as an image-port service: blank Port, no `port` sent — **DONE** | 30m | — |
 | [t002](done/t002.md) | Every remediation the rollout stall reason names is reachable: clearing the port of an image-port service returns it to the image's port — **DONE** | 45m | — |
 | [t003](done/t003.md) | Blast radius: the form shape's consumers, the stall-reason branches, and regression tests on the shapes that work today — **DONE** | 20m | t001, t002 |
-| [t004](t004.md) | Live verification in `bex-canary` | 30m | t003 |
+| [t004](done/t004.md) | Live verification in `bex-canary` — **DONE** | 30m | t003 |
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t006, t007 |
 
 Eight tasks, 190m (3h10m).
 
@@ -146,3 +146,29 @@ Fixtures: Starter private services from `docker.io/traefik/whoami:v1.10.1`, crea
   - a `service_updated` deploy was queued, and the stalled first deploy closed `canceled`;
   - the new deploy read `live` at 04:41:44.
 - **Not run:** DoD 4's controls (a Git-built Docker private service and the native 10000 pre-fill).
+
+## Unblock — 2026-11-16 (verified evidence)
+
+- **Affected:** w4/m323 t004, t008.
+- **Source:** verified evidence, no user decision. Production runs platform pin `7aaa8700befa` (verified live 2026-11-16 16:27Z), and `git merge-base --is-ancestor <sha> 7aaa8700befa` holds for every m323 commit: `3d49ddc20` (filing), `06be8df61` (the fix) and `272d906b6` (the round-167 probe record).
+- **Remaining gates:** none. The release gate is clear; t004 replays the live DoD on that pin and t008 closes.
+
+## Live DoD replay on pin `7aaa8700befa` (2026-11-16 19:06–19:22 UTC): DoD 1–4 pass
+
+QA user via `scripts/qa-login.sh`, workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`). The `CreateService` variables were read from the dashboard's own GraphQL request (Apollo batches it, so the body is a one-element array). All reads are `GET https://api.bex.co/v1/services/{id}` from the signed-in page.
+
+- **DoD 1 passes.** New Private Service → Existing Image `docker.io/traefik/whoami:v1.10.1`, `qa-20261116-m323-p80`, everything else default.
+  - Port was blank with placeholder "From the image"; the variables were `{image, name, type: "private_service", registryCredentialId: "", runtime: "image", plan: "starter", ownerId}`, with no `port`.
+  - Deploy `dep-dbtl8f8ddohc73aivcig` went `live` at 19:06:54, about 17 s after create. The service read `port 80`, `internalAddress "qa-20261116-m323-p80:80"`, `openPorts [{80,TCP}]`.
+  - A busybox cron peer (`qa-20261116-m323-peer`, manual run `crr-rrlocb11o3dd2uge973b`, `successful`) ran `wget -qO- -T 5` on `http://qa-20261116-m323-p80/` and `:80/`; both returned whoami's body (`Hostname: srv-dbtl8f8ddohc73aivci0-…`).
+- **DoD 2 passes.** The same form with Port `8080` (`qa-20261116-m323-p8080`) sent `port: 8080`. The service read `port 8080`, `openPorts [80, 8080]`, and the first deploy stalled `update_in_progress` with "… Nothing accepted a TCP connection on port 8080, set by the service's configured port; the image declares TCP ports (80). Change the service's port in Settings to the one it listens on, or remove it to use the image's port. …".
+- **DoD 3 passes, on both surfaces.**
+  - **Dashboard.** Settings → Port → Edit → clear → Save changes at 19:07:14. The field was accepted blank (no `aria-invalid`, no alert) and read blank after the save, and a `service_updated` deploy `dep-dbtl8o8ddohc73aivcjg` opened `queued`. Since round 167, w4/652/653/661 made Render's default Overlapping Deploy Policy, Wait, bex's default. So the queued deploy now waits for the stalled first deploy instead of canceling it (round 167 saw it canceled). The first deploy closed `update_failed` at 19:21:34, on Render's 15-minute budget. The queued deploy started at 19:21:35 and went `live` at 19:21:59, and the service read `port 80`, `internalAddress "…-p8080:80"`, `openPorts [{80,TCP}]`.
+  - **REST.** On `-p80`, `PATCH {serviceDetails:{port:8080}}` (200) plus `POST …/deploys` stalled on 8080 as above. Then `PATCH {serviceDetails:{port:0}}` (200), canceling the stalled deploy (200 `canceled`) and `POST …/deploys` (201 `dep-dbtlalnmufrc73b9vjqg`) gave a deploy `live` at 19:11:31 on `port 80`, `openPorts [{80,TCP}]`. A REST PATCH saves the port without deploying, so a deploy has to be triggered; the dashboard save starts one.
+- **DoD 4 passes.**
+  - New Web Service opens with Port pre-filled `10000` (native runtime).
+  - The same form on Existing Image whoami (`qa-20261116-m323-web`) left Port blank and sent no `port`. It went `live` on `port 80`, `openPorts [{80,TCP}]`.
+  - New Private Service → Public Git URL `https://github.com/bex-co/bex`, root `examples/multi-port`, runtime Docker (`qa-20261116-m323-git`) showed Port blank and sent no `port`. It went `live` on `port 8123`, `openPorts [8123, 9000]`.
+- **DoD 5** held at ship time (06be8df61's gates); this replay changes no code.
+- **Cleanup.** Every fixture, plus one accidental `whoami` service (`srv-dbtl87oddohc73aivcg0`, created by a form submit before the name was typed), was deleted: DELETE 204, then GET 404. The QA session was logged out (`--logout` → `ok logged-out`).
+
