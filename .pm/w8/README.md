@@ -439,7 +439,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **335** — [`PYTHON_VERSION=3.15.2` fails the build ("not a supported Python version"), though Python 3.15 was released on 2026-10-09 and Render takes "any released version from 3.7.3 onward"](335.md) (~1h, major) ← `/qa-find-bugs-cli` sweep 0596 2026-11-16
+- [x] **335** — [`PYTHON_VERSION=3.15.2` fails the build ("not a supported Python version"), though Python 3.15 was released on 2026-10-09 and Render takes "any released version from 3.7.3 onward"](done/335.md) (~1h, major) ← `/qa-find-bugs-cli` sweep 0596 2026-11-16 **DONE 2026-11-16:** a reviewed Python 3.15 line (3.15.2, `93b1d057b`) and a common image whose packaging installer takes 3.15. Families run 43900534897 passed all 37 cases on that image, and `nativeCommonBase` now pins it. The freshness resolve flags the next released Python or Node line. The production check runs after the roll that carries the re-pin.
   - **bex (pin `bf2ab888d7dc`):** the build fails at version selection with "supported Python lines are 3.7 … 3.14"; the `3.14.10` control goes live.
   - **Cause:** `nativePythonRuntime`'s lines end at 3.14 (`native.go:118-126`, set by `w8/m51` before 3.15 shipped). The `w6/m291` refresh renews existing digests only.
   - **Fix:** a digest-pinned `python:3.15-bookworm` line (3.15.2) and its freshness entry. Have the freshness review flag released-but-missing upstream lines.
