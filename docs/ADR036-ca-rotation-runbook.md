@@ -19,7 +19,7 @@ kubeadm renews all component client certs in place. No downtime for running work
 
 ### Prerequisites
 
-- Admin kubeconfig (`KUBECONFIG`) pointing at the app cluster. Start with `scripts/fetch-app-kubeconfig.sh <path outside the repo>`: it needs `HCLOUD_TOKEN` in its environment (from `.env`) and uses the `bex` key below by default.
+- Admin kubeconfig (`KUBECONFIG`) pointing at the app cluster. Start with `scripts/fetch-app-kubeconfig.sh <path outside the repo>`: it loads `HCLOUD_TOKEN` from `.env` itself and uses the `bex` key below by default.
 - SSH access to each control-plane node via the `bex` key, `~/.ssh/bex` (`BEX_SSH_PRIVATE_KEY_FILE` in `.env.example`; `ssh -i ~/.ssh/bex` below). A missing key file under any other name an older note gave is not a reason to stop: check `~/.ssh/bex` and run the fetch first.
 - `BAO_ROOT_TOKEN` in `.env` (the unseal step below is only needed if control-plane nodes are rebooted as part of the maintenance window).
 

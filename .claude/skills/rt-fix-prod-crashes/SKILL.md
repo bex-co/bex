@@ -38,7 +38,7 @@ Parse `$ARGUMENTS`:
 ## Phase 2 — Listen to platform service logs
 
 1. Resolve a cluster, in priority order; never print kubeconfig contents:
-   - **Production:** run `HCLOUD_TOKEN="$(grep '^HCLOUD_TOKEN=' .env | cut -d= -f2-)" bash scripts/fetch-app-kubeconfig.sh /tmp/bex-app.kubeconfig` first (the token comes from `.env`, the SSH key defaults to `~/.ssh/bex`), then `export KUBECONFIG=/tmp/bex-app.kubeconfig`. Delete `/tmp/bex-app.kubeconfig` when the phase ends. A missing key file under a name an older note gave is **not** a reason to skip production: the key is `~/.ssh/bex`, so try the fetch before you write "no production access".
+   - **Production:** run `bash scripts/fetch-app-kubeconfig.sh /tmp/bex-app.kubeconfig` first (it loads the token from `.env` itself, the SSH key defaults to `~/.ssh/bex`), then `export KUBECONFIG=/tmp/bex-app.kubeconfig`. Delete `/tmp/bex-app.kubeconfig` when the phase ends. A missing key file under a name an older note gave is **not** a reason to skip production: the key is `~/.ssh/bex`, so try the fetch before you write "no production access".
    - **Local:** `infra/local/bex.kubeconfig` if the mock cluster is up.
    - Neither reachable → note it in the report and continue to Phase 3.
 2. Check restarts and events: `kubectl -n bex-system get pods` (restart counts) and `kubectl -n bex-system get events --sort-by=.lastTimestamp` (OOMKilled, CrashLoopBackOff, probe failures).

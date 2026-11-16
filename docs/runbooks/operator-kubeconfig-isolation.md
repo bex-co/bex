@@ -81,7 +81,7 @@ For a future node-local refresh, per [ADR036 §1](../ADR036-ca-rotation-runbook.
 # on each control-plane node
 sudo kubeadm certs renew admin.conf
 # then re-fetch and re-run CI's kubeconfig acquisition
-HCLOUD_TOKEN=... scripts/fetch-app-kubeconfig.sh <out>
+scripts/fetch-app-kubeconfig.sh <out>
 ```
 
 That command does **not** update the CAPI-managed kubeconfig Secret; its lifecycle and safe regeneration are documented in ADR036. Neither renewal invalidates a previously copied client certificate: with the CA unchanged it remains accepted until its original expiry. Full CA rotation (emergency) is ADR036 §2 and is the only documented way to invalidate it immediately. Update `.env` / CI secrets if the fetched kubeconfig is cached anywhere per ADR019.

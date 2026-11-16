@@ -6,8 +6,12 @@
 # :22 — the recorded auth-only baseline, docs/ADR019-infra-credentials.md). The
 # admin.conf already points at the kube-api LB, so no rewriting is needed.
 #
-# Usage:  HCLOUD_TOKEN=... scripts/fetch-app-kubeconfig.sh <output-path>
-# Env:    HCLOUD_TOKEN        (required) Hetzner Cloud API token
+# Usage:  scripts/fetch-app-kubeconfig.sh <output-path>
+# Env:    HCLOUD_TOKEN        (required) Hetzner Cloud API token. Exported =>
+#                             used as is and .env is never read (CI passes it
+#                             from a secret). Unset => taken from the
+#                             repository-root .env (w21/097), so a local run is
+#                             one command.
 #         BEX_SSH_KEY_PATH    SSH private key override (otherwise
 #                             BEX_SSH_PRIVATE_KEY_FILE or ~/.ssh/bex)
 #         BEX_SSH_KNOWN_HOSTS_FILE  authoritative known-hosts file. Set => the
@@ -16,16 +20,47 @@
 #                                  read (w1/m66 F7). Unset => trust-on-first-use,
 #                                  as before, with a notice on stderr.
 #         CLUSTER_NAME        cluster name (default bex)
+# When it loads .env, only this script's own inputs come from it (HCLOUD_TOKEN,
+# BEX_SSH_PRIVATE_KEY_FILE, BEX_SSH_KNOWN_HOSTS_FILE), each only when the caller
+# has not set it. The file is read in a subshell and the values are assigned,
+# not exported, so the rest of it (S3 keys, proxy or KUBECONFIG settings, ...)
+# never reaches the curl/ssh/kubectl children. A group- or other-readable .env
+# is refused by scripts/lib/env-file.sh. The token is never printed.
 # Callers: .github/workflows/app-cluster.yml, .github/workflows/deploy.yml
 #          and local operators.
 set -euo pipefail
 
 OUT="${1:?usage: fetch-app-kubeconfig.sh <output-path>}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# bex_fetch_env_inputs: fill in this script's own inputs from the repository
+# root's .env (resolved from this file's location, not the cwd) for the ones
+# the caller has not set. Each value is read in a subshell and assigned as a
+# plain shell variable, so nothing else in .env, and not even the token, is
+# exported into the curl/ssh/kubectl children.
+bex_fetch_env_inputs() {
+  local env_file name value
+  env_file="$(cd "$SCRIPT_DIR/.." && pwd)/.env"
+  [ -e "$env_file" ] || return 0
+  # shellcheck source=scripts/lib/env-file.sh
+  source "$SCRIPT_DIR/lib/env-file.sh"
+  bex_env_file_guard "$env_file" || return 1 # once here, so a refusal prints once, not per name
+  for name in HCLOUD_TOKEN BEX_SSH_PRIVATE_KEY_FILE BEX_SSH_KNOWN_HOSTS_FILE; do
+    [ -z "${!name:-}" ] || continue
+    value="$(bex_load_env "$env_file" > /dev/null && printf '%s' "${!name:-}")" || {
+      echo "error: could not load $env_file" >&2
+      return 1
+    }
+    [ -z "$value" ] || printf -v "$name" '%s' "$value"
+  done
+}
+[ -n "${HCLOUD_TOKEN:-}" ] || bex_fetch_env_inputs || exit 1
+
 : "${HCLOUD_TOKEN:?HCLOUD_TOKEN is required}"
 KEY="${BEX_SSH_KEY_PATH:-${BEX_SSH_PRIVATE_KEY_FILE:-$HOME/.ssh/bex}}"
 CLUSTER="${CLUSTER_NAME:-bex}"
 # shellcheck source=scripts/lib/ssh-hostkey.sh
-source "$(dirname "${BASH_SOURCE[0]}")/lib/ssh-hostkey.sh"
+source "$SCRIPT_DIR/lib/ssh-hostkey.sh"
 bex_ssh_hostkey_args
 
 # A control-plane roll replaces nodes (new IPs, new host keys) one at a time,

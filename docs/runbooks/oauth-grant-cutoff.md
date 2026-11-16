@@ -15,12 +15,11 @@ A person's device, token or session was lost, stolen or leaked, and waiting out 
 ## 1. Reach the cluster
 
 ```bash
-HCLOUD_TOKEN="$(grep '^HCLOUD_TOKEN=' .env | cut -d= -f2-)" \
-  bash scripts/fetch-app-kubeconfig.sh "$HOME/.kube/bex-prod.kubeconfig"   # a path outside the repo
+bash scripts/fetch-app-kubeconfig.sh "$HOME/.kube/bex-prod.kubeconfig"   # a path outside the repo
 export KUBECONFIG="$HOME/.kube/bex-prod.kubeconfig"
 ```
 
-Never print the token or the kubeconfig. (`scripts/fetch-app-kubeconfig.sh` reads the SSH key `~/.ssh/bex`; see [operator-kubeconfig-isolation.md](operator-kubeconfig-isolation.md) for the narrower operator kubeconfig.)
+Never print the token or the kubeconfig. (`scripts/fetch-app-kubeconfig.sh` loads `HCLOUD_TOKEN` from `.env` and reads the SSH key `~/.ssh/bex`; see [operator-kubeconfig-isolation.md](operator-kubeconfig-isolation.md) for the narrower operator kubeconfig.)
 
 ## 2. Find the subject
 
