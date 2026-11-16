@@ -1,6 +1,7 @@
 import { InvitationFrame } from "@/features/invites/invitation-frame";
 import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
 import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-table-header";
+import { WebhooksPageHeader } from "@/features/webhooks/components/webhooks-panel";
 import {
   Table,
   TableBody,
@@ -15,7 +16,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardAction,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PanelCenteredState } from "@/common/components/panel-states";
@@ -45,13 +45,25 @@ import {
   MetadataListSkeleton,
 } from "@/common/components/detail-skeletons";
 import {
+  SECTIONED_BODY_CLASS,
+  SECTIONED_GRID_CLASS,
   SECTION_NAVIGATION_ITEMS_CLASS,
   SECTION_NAVIGATION_STICKY_CLASS,
 } from "@/common/components/section-navigation";
 import { cn } from "@/common/lib/utils/utils";
 import {
+  PageFrame,
+  PageHeader,
+  PageScroll,
+} from "@/common/components/page-frame";
+import { UsageNavigation } from "@/features/usage/components/usage-navigation";
+import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/workspace-settings-navigation";
+import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings-navigation";
+import { NotificationsNavigation } from "@/features/notifications/components/notifications-navigation";
+import {
   DEFAULT_SERVICE_TYPE,
   SERVICE_TYPES,
+  serviceTypeCreateCopy,
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
@@ -174,38 +186,6 @@ function ReservedButton({
   );
 }
 
-function PageHeaderSkeleton({
-  description = false,
-  back = false,
-  actions = 1,
-}: {
-  description?: boolean;
-  back?: boolean;
-  actions?: number;
-}) {
-  return (
-    <Region
-      name="page-header"
-      className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6"
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        {back ? <Skeleton className="size-9 shrink-0" /> : null}
-        <div className="space-y-1.5">
-          <Skeleton className="h-6 w-48 max-w-[55vw]" />
-          {description ? <Skeleton className="h-4 w-72 max-w-[65vw]" /> : null}
-        </div>
-      </div>
-      {actions > 0 ? (
-        <div className="flex items-center gap-2">
-          {Array.from({ length: actions }, (_, index) => (
-            <Skeleton key={index} className="h-9 w-24" />
-          ))}
-        </div>
-      ) : null}
-    </Region>
-  );
-}
-
 export function TableRowsSkeleton({
   rows = 3,
   columns = 4,
@@ -288,28 +268,18 @@ function TableCardSkeleton({
   );
 }
 
-function VerticalNavigationSkeleton({ count = 5 }: { count?: number }) {
-  return (
-    <Region name="section-navigation" className="space-y-2">
-      {Array.from({ length: count }, (_, index) => (
-        <Skeleton
-          key={index}
-          className={index === 0 ? "h-8 w-full" : "h-8 w-5/6"}
-        />
-      ))}
-    </Region>
-  );
-}
-
 function ResponsiveSectionNavigationSkeleton({ count }: { count: number }) {
   return (
     <Region
       name="section-navigation"
-      className={cn(SECTION_NAVIGATION_STICKY_CLASS, "min-w-0")}
+      className={SECTION_NAVIGATION_STICKY_CLASS}
     >
       <div className={SECTION_NAVIGATION_ITEMS_CLASS}>
         {Array.from({ length: count }, (_, index) => (
-          <Skeleton key={index} className="h-8 w-28 shrink-0 lg:w-full" />
+          <Skeleton
+            key={index}
+            className="h-8 w-24 shrink-0 rounded-full @4xl/page:w-full @4xl/page:rounded-md"
+          />
         ))}
       </div>
     </Region>
@@ -577,7 +547,7 @@ export function OverviewPopulatedSkeleton({
         <div className="flex h-5 items-center">
           <Skeleton className="h-3.5 w-20" />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
           {Array.from({ length: projects }, (_, index) => (
             <Skeleton
               key={index}
@@ -617,126 +587,132 @@ export function OverviewPopulatedSkeleton({
 }
 
 export function OverviewPageSkeleton() {
+  const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
   const shape = useOverviewShape(currentWorkspaceId);
   return (
-    <PendingFrame route="overview" className="flex-1 overflow-auto p-4 sm:p-6">
-      <div className="w-full space-y-6">
-        <Region
-          name="page-header"
-          className="flex items-center justify-between gap-2"
-        >
-          <Skeleton className="h-6 w-36" />
-          <Skeleton className="h-8 w-24" />
-        </Region>
-        {shape.kind === "empty" ? (
-          <OverviewEmptySkeleton />
-        ) : (
-          <OverviewPopulatedSkeleton
-            projects={shape.projects}
-            rows={shape.rows}
-          />
-        )}
-      </div>
-    </PendingFrame>
+    <PageFrame
+      pending="overview"
+      width="wide"
+      header={
+        <PageHeader
+          title={t("projects.overviewTitle")}
+          actions={
+            <ReservedButton variant="default" size="sm">
+              <Plus />
+              {t("projects.newButton")}
+            </ReservedButton>
+          }
+        />
+      }
+    >
+      {shape.kind === "empty" ? (
+        <OverviewEmptySkeleton />
+      ) : (
+        <OverviewPopulatedSkeleton
+          projects={shape.projects}
+          rows={shape.rows}
+        />
+      )}
+    </PageFrame>
   );
 }
 
 export function BillingPageSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame route="billing" className="flex-1 overflow-auto p-4 sm:p-6">
-      <div className="mx-auto grid w-full max-w-5xl items-start gap-8 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-        <div className="min-w-0 space-y-6">
-          <Region
-            name="page-header"
-            className="flex flex-wrap items-start justify-between gap-4"
-          >
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-36" />
-              <Skeleton className="h-4 w-72 max-w-full" />
-            </div>
-            <Skeleton className="h-8 w-44" />
-          </Region>
-          <Region name="mobile-navigation" className="border-y py-2 lg:hidden">
-            <div className="flex gap-2 overflow-hidden">
-              {Array.from({ length: 4 }, (_, index) => (
-                <Skeleton key={index} className="h-8 w-24 shrink-0" />
-              ))}
-            </div>
-          </Region>
-          <Region name="plan">
-            <CardSkeleton rows={3} />
-          </Region>
-          <Region name="payment-method">
-            <CardSkeleton rows={3} />
-          </Region>
-          <Region name="included-usage">
-            <CardSkeleton rows={4} />
-            {/* Pipeline minutes (w6/m308), below the Free instance hours. */}
-            <CardSkeleton rows={3} />
-            {/* Included bandwidth (w6/m319), below the pipeline minutes. */}
-            <CardSkeleton rows={3} />
-          </Region>
-          <Region name="charges">
-            <CardSkeleton rows={7} />
-          </Region>
-          <Region name="agent-model">
-            <AgentModelCardSkeleton />
-          </Region>
-          <Region name="credit-balance">
-            <CardSkeleton rows={3} />
-          </Region>
-          <Region name="invoice-history">
-            <TableCardSkeleton
-              rows={3}
-              columns={3}
-              description
-              action={false}
-            />
-          </Region>
-        </div>
-        <div className="sticky top-6 hidden lg:block">
-          <VerticalNavigationSkeleton count={7} />
-        </div>
-      </div>
-    </PendingFrame>
+    <PageFrame
+      pending="billing"
+      header={
+        <PageHeader
+          title={t("usage.pageTitle")}
+          description={t("usage.pageSubtitle")}
+          actions={<Skeleton className="h-8 w-44" />}
+        />
+      }
+      navigation={<UsageNavigation />}
+    >
+      <Region name="plan">
+        <CardSkeleton rows={3} />
+      </Region>
+      <Region name="payment-method">
+        <CardSkeleton rows={3} />
+      </Region>
+      <Region name="included-usage" className="space-y-6">
+        <CardSkeleton rows={4} />
+        {/* Pipeline minutes (w6/m308), below the Free instance hours. */}
+        <CardSkeleton rows={3} />
+        {/* Included bandwidth (w6/m319), below the pipeline minutes. */}
+        <CardSkeleton rows={3} />
+      </Region>
+      <Region name="charges">
+        <CardSkeleton rows={7} />
+      </Region>
+      <Region name="agent-model">
+        <AgentModelCardSkeleton />
+      </Region>
+      <Region name="credit-balance">
+        <CardSkeleton rows={3} />
+      </Region>
+      <Region name="invoice-history">
+        <TableCardSkeleton rows={3} columns={3} description action={false} />
+      </Region>
+    </PageFrame>
   );
 }
 
 export function NotificationsPageSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame
-      route="notifications"
-      className="flex-1 overflow-auto p-4 sm:p-6"
+    <PageFrame
+      pending="notifications"
+      header={
+        <PageHeader
+          title={t("notifications.title")}
+          description={t("notifications.pageDescription")}
+        />
+      }
+      navigation={<NotificationsNavigation />}
     >
-      <div className="mx-auto w-full max-w-2xl space-y-6">
-        <Region name="email-notifications">
-          <CardSkeleton rows={3} />
-        </Region>
-        <Region name="push-notifications">
-          <CardSkeleton rows={5} />
-        </Region>
-        <Region name="web-push">
-          <CardSkeleton rows={2} />
-        </Region>
-      </div>
-    </PendingFrame>
+      <Region name="email-notifications">
+        <CardSkeleton rows={3} />
+      </Region>
+      <Region name="push-notifications">
+        <CardSkeleton rows={5} />
+      </Region>
+      <Region name="web-push">
+        <CardSkeleton rows={2} />
+      </Region>
+    </PageFrame>
   );
 }
 
 export function BlueprintsListPageSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame
-      route="blueprints-list"
-      className="flex min-h-0 flex-1 flex-col"
+    <PageFrame
+      pending="blueprints-list"
+      header={
+        <PageHeader
+          title={t("blueprints.pageTitle")}
+          actions={
+            <>
+              <ReservedButton variant="outline" size="sm">
+                {t("blueprints.generateButton")}
+              </ReservedButton>
+              <ReservedButton variant="default" size="sm">
+                <Plus />
+                {t("blueprints.createButton")}
+              </ReservedButton>
+            </>
+          }
+        />
+      }
     >
-      <PageHeaderSkeleton actions={2} />
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <Region name="blueprints-table" className="mx-auto w-full max-w-4xl">
-          <BlueprintsTableSkeleton />
-        </Region>
-      </div>
-    </PendingFrame>
+      <Region name="blueprints-table">
+        <BlueprintsTableSkeleton />
+      </Region>
+    </PageFrame>
   );
 }
 
@@ -767,20 +743,20 @@ export function BlueprintDetailContentSkeleton() {
 }
 
 export function BlueprintCreatePageSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame
-      route="blueprint-create"
-      className="flex-1 overflow-auto p-4 sm:p-6"
+    <PageFrame
+      pending="blueprint-create"
+      width="form"
+      header={
+        <PageHeader
+          title={t("blueprints.createTitle")}
+          description={t("blueprints.createDescription")}
+        />
+      }
     >
-      <Region name="blueprint-form" className="mx-auto w-full max-w-2xl">
-        <Card className="min-h-[902px] sm:min-h-0">
-          <CardHeader className="space-y-2" data-skeleton-region="form-header">
-            <Skeleton className="h-6 w-56 max-w-full" />
-            <div className="space-y-1">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-4/5" />
-            </div>
-          </CardHeader>
+      <Region name="blueprint-form">
+        <Card>
           <CardContent className="space-y-6">
             <Region name="source-picker">
               <SourcePickerSkeleton tabs={2} />
@@ -800,52 +776,36 @@ export function BlueprintCreatePageSkeleton() {
           </CardContent>
         </Card>
       </Region>
-    </PendingFrame>
+    </PageFrame>
   );
 }
 
 export function EnvGroupsListPageSkeleton() {
-  return (
-    <PendingFrame
-      route="env-groups-list"
-      className="flex min-h-0 flex-1 flex-col"
-    >
-      <EnvGroupsPageHeaderSkeleton />
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <EnvGroupsContentSkeleton />
-      </div>
-    </PendingFrame>
-  );
-}
-
-/** The list header's own translated title, description and New button, so
- *  wrapping and the action's footprint match the ready header (w4/m220). */
-function EnvGroupsPageHeaderSkeleton() {
   const { t } = useTranslations();
   return (
-    <Region
-      name="page-header"
-      className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6"
+    <PageFrame
+      pending="env-groups-list"
+      header={
+        <PageHeader
+          title={t("envGroups.pageTitle")}
+          description={t("envGroups.pageDescription")}
+          actions={
+            <ReservedButton variant="default" size="sm">
+              <Plus />
+              {t("envGroups.newButton")}
+            </ReservedButton>
+          }
+        />
+      }
     >
-      <div>
-        <div className="relative text-xl font-semibold">
-          <ReservedText>{t("envGroups.pageTitle")}</ReservedText>
-        </div>
-        <div className="relative text-sm">
-          <ReservedText>{t("envGroups.pageDescription")}</ReservedText>
-        </div>
-      </div>
-      <ReservedButton variant="default" size="sm">
-        <Plus />
-        {t("envGroups.newButton")}
-      </ReservedButton>
-    </Region>
+      <EnvGroupsContentSkeleton />
+    </PageFrame>
   );
 }
 
 export function EnvGroupsContentSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-4">
+    <div className="space-y-4">
       <Region name="search">
         <Skeleton className="h-9 w-full max-w-md" />
       </Region>
@@ -901,24 +861,19 @@ export function EnvGroupDetailContentSkeleton() {
 
 export function WebhooksListPageSkeleton() {
   return (
-    <PendingFrame
-      route="webhooks-list"
-      className="flex-1 overflow-auto p-4 sm:p-6"
-    >
-      <Region name="webhooks-card" className="mx-auto w-full max-w-2xl">
+    <PageFrame pending="webhooks-list" header={<WebhooksPageHeader pending />}>
+      <Region name="webhooks-card">
         <WebhooksCardPreview />
       </Region>
-    </PendingFrame>
+    </PageFrame>
   );
 }
 
 /**
- * The ready WebhooksPanel's own card, inert: real title, translated
- * description and Create action in the CardAction slot, the search field and
- * its help in CardContent, then the five-column table — so the swap moves no
- * header, search or table (w4/m220 a832). A workspace known to be below Pro
- * always settles to the panel's plan-gate card, so it previews that instead
- * (w4/432).
+ * The ready WebhooksPanel's own card body, inert: the search field and its
+ * help, then the five-column table — so the swap moves no search or table
+ * (w4/m220 a832). A workspace known to be below Pro always settles to the
+ * panel's plan gate, so it previews that instead (w4/432).
  */
 function WebhooksCardPreview() {
   const { t } = useTranslations();
@@ -926,14 +881,6 @@ function WebhooksCardPreview() {
   if (currentWorkspace && !proFeaturesPlan(currentWorkspace.plan)) {
     return (
       <Card inert aria-busy="true">
-        <CardHeader>
-          <CardTitle as="h1" className="relative w-fit">
-            <ReservedText>{t("webhooks.title")}</ReservedText>
-          </CardTitle>
-          <CardDescription className="relative">
-            <ReservedText>{t("webhooks.proOnly")}</ReservedText>
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           <PanelCenteredState
             icon={<Webhook />}
@@ -946,19 +893,6 @@ function WebhooksCardPreview() {
   }
   return (
     <Card inert aria-busy="true">
-      <CardHeader>
-        <CardTitle as="h1" className="relative w-fit">
-          <ReservedText>{t("webhooks.title")}</ReservedText>
-        </CardTitle>
-        <CardDescription className="relative">
-          <ReservedText>{t("webhooks.description")}</ReservedText>
-        </CardDescription>
-        <CardAction>
-          <ReservedButton variant="outline" size="sm">
-            <Plus /> {t("webhooks.create")}
-          </ReservedButton>
-        </CardAction>
-      </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="max-w-md space-y-1.5">
@@ -998,55 +932,50 @@ function WebhooksCardPreview() {
 }
 
 export function WebhookCreatePageSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame
-      route="webhook-create"
-      className="flex min-h-0 flex-1 flex-col"
+    <PageFrame
+      pending="webhook-create"
+      width="form"
+      header={
+        <PageHeader
+          leading={<Skeleton className="size-9" />}
+          title={t("webhooks.newTitle")}
+          description={t("webhooks.createDescription")}
+        />
+      }
     >
-      <PageHeaderSkeleton back actions={0} />
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <Region name="webhook-form" className="mx-auto w-full max-w-2xl">
-          <Card className="min-h-[973px] sm:min-h-0">
-            <CardHeader
-              className="space-y-2"
-              data-skeleton-region="form-header"
-            >
-              <Skeleton className="h-6 w-40" />
-              <Skeleton className="h-4 w-full" />
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Region name="identity" className="space-y-6">
-                <FieldRowSkeleton hint />
-                <FieldRowSkeleton hint />
-              </Region>
-              <Region name="events" className="space-y-2">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-4 w-4/5" />
-                <WebhookEventPickerSkeleton />
-              </Region>
-              <Region name="status">
-                <ToggleRowSkeleton />
-              </Region>
-              <Region name="actions">
-                <div className="flex justify-end">
-                  <Skeleton className="h-9 w-32" />
-                </div>
-              </Region>
-            </CardContent>
-          </Card>
-        </Region>
-      </div>
-    </PendingFrame>
+      <Region name="webhook-form">
+        <Card>
+          <CardContent className="space-y-6">
+            <Region name="identity" className="space-y-6">
+              <FieldRowSkeleton hint />
+              <FieldRowSkeleton hint />
+            </Region>
+            <Region name="events" className="space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-4/5" />
+              <WebhookEventPickerSkeleton />
+            </Region>
+            <Region name="status">
+              <ToggleRowSkeleton />
+            </Region>
+            <Region name="actions">
+              <div className="flex justify-end">
+                <Skeleton className="h-9 w-32" />
+              </div>
+            </Region>
+          </CardContent>
+        </Card>
+      </Region>
+    </PageFrame>
   );
 }
 
 export function ProjectOverviewPageSkeleton() {
   return (
-    <PendingFrame
-      route="project-overview"
-      className="flex-1 overflow-auto p-4 sm:p-6"
-    >
-      <div className="w-full space-y-6">
+    <PageScroll>
+      <PendingFrame route="project-overview" className="w-full space-y-6">
         <Region name="project-header" className="space-y-2">
           <Skeleton className="h-3 w-20" />
           <div className="flex items-center gap-2">
@@ -1055,8 +984,8 @@ export function ProjectOverviewPageSkeleton() {
           </div>
         </Region>
         <ProjectEnvironmentsSkeleton />
-      </div>
-    </PendingFrame>
+      </PendingFrame>
+    </PageScroll>
   );
 }
 
@@ -1111,61 +1040,53 @@ export function ProjectEnvironmentCardSkeleton() {
 export function ProjectSettingsPageSkeleton() {
   const { t } = useTranslations();
   return (
-    <PendingFrame
-      route="project-settings"
-      className="flex-1 overflow-auto p-4 sm:p-6"
+    <PageFrame
+      pending="project-settings"
+      width="form"
+      header={<PageHeader title={t("projects.settingsTitle")} />}
     >
-      <div className="w-full max-w-2xl space-y-6">
-        <Region name="page-header">
-          <div className="relative w-fit text-xl font-semibold">
-            <ReservedText>{t("projects.settingsTitle")}</ReservedText>
-          </div>
-        </Region>
-        <Region name="project-name">
-          <Card>
-            <CardHeader>
-              <CardTitle className="relative w-fit">
-                <ReservedText>{t("projects.nameCardTitle")}</ReservedText>
-              </CardTitle>
-              <CardDescription className="relative">
-                <ReservedText>{t("projects.nameCardDescription")}</ReservedText>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div
-                data-skeleton-region="project-name-row"
-                className="flex items-center gap-2"
-              >
-                <Skeleton className="h-9 min-w-0 flex-1" />
-                <ReservedButton variant="outline" size="sm">
-                  <Pencil />
-                  {t("projects.editNameButton")}
-                </ReservedButton>
-              </div>
-            </CardContent>
-          </Card>
-        </Region>
-        <Region name="danger-zone">
-          <Card className="border-destructive/50">
-            <CardHeader>
-              <CardTitle className="relative w-fit text-destructive">
-                <ReservedText>{t("projects.deleteCardTitle")}</ReservedText>
-              </CardTitle>
-              <CardDescription className="relative">
-                <ReservedText>
-                  {t("projects.deleteCardDescription")}
-                </ReservedText>
-              </CardDescription>
-            </CardHeader>
-            <CardContent data-skeleton-region="project-delete-action">
-              <ReservedButton variant="destructive">
-                {t("projects.deleteCardButton")}
+      <Region name="project-name">
+        <Card>
+          <CardHeader>
+            <CardTitle className="relative w-fit">
+              <ReservedText>{t("projects.nameCardTitle")}</ReservedText>
+            </CardTitle>
+            <CardDescription className="relative">
+              <ReservedText>{t("projects.nameCardDescription")}</ReservedText>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div
+              data-skeleton-region="project-name-row"
+              className="flex items-center gap-2"
+            >
+              <Skeleton className="h-9 min-w-0 flex-1" />
+              <ReservedButton variant="outline" size="sm">
+                <Pencil />
+                {t("projects.editNameButton")}
               </ReservedButton>
-            </CardContent>
-          </Card>
-        </Region>
-      </div>
-    </PendingFrame>
+            </div>
+          </CardContent>
+        </Card>
+      </Region>
+      <Region name="danger-zone">
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="relative w-fit text-destructive">
+              <ReservedText>{t("projects.deleteCardTitle")}</ReservedText>
+            </CardTitle>
+            <CardDescription className="relative">
+              <ReservedText>{t("projects.deleteCardDescription")}</ReservedText>
+            </CardDescription>
+          </CardHeader>
+          <CardContent data-skeleton-region="project-delete-action">
+            <ReservedButton variant="destructive">
+              {t("projects.deleteCardButton")}
+            </ReservedButton>
+          </CardContent>
+        </Card>
+      </Region>
+    </PageFrame>
   );
 }
 
@@ -1191,17 +1112,20 @@ export function ProjectRouteSkeleton() {
 }
 
 export function KeyValueCreatePageSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame
-      route="keyvalue-create"
-      className="flex-1 overflow-auto p-4 sm:p-6"
+    <PageFrame
+      pending="keyvalue-create"
+      width="form"
+      header={
+        <PageHeader
+          title={t("keyvalue.createTitle")}
+          description={t("keyvalue.createDescription")}
+        />
+      }
     >
-      <Region name="keyvalue-form" className="mx-auto w-full max-w-2xl">
-        <Card className="min-h-[1190px] sm:min-h-0">
-          <CardHeader className="space-y-2" data-skeleton-region="form-header">
-            <Skeleton className="h-6 w-44" />
-            <Skeleton className="h-4 w-80 max-w-full" />
-          </CardHeader>
+      <Region name="keyvalue-form">
+        <Card>
           <CardContent className="space-y-6">
             <Region name="name">
               <FieldRowSkeleton />
@@ -1231,21 +1155,23 @@ export function KeyValueCreatePageSkeleton() {
           </CardContent>
         </Card>
       </Region>
-    </PendingFrame>
+    </PageFrame>
   );
 }
 
 export function WorkspaceCreatePageSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame
-      route="workspace-create"
-      className="flex-1 overflow-auto p-4 sm:p-6"
+    <PageFrame
+      pending="workspace-create"
+      header={
+        <PageHeader
+          title={t("workspaces.createTitle")}
+          description={t("workspaces.createDescription")}
+        />
+      }
     >
-      <div className="mx-auto w-full max-w-4xl space-y-8">
-        <Region name="page-header" className="space-y-2">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-5 w-96 max-w-full" />
-        </Region>
+      <div className="space-y-8">
         <Region name="workspace-details" className="space-y-4">
           <Skeleton className="h-7 w-44" />
           <FieldRowsSkeleton rows={3} />
@@ -1270,117 +1196,101 @@ export function WorkspaceCreatePageSkeleton() {
           <Skeleton className="h-9 w-24" />
         </Region>
       </div>
-    </PendingFrame>
+    </PageFrame>
   );
 }
 
 export function WorkspaceSettingsPageSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame
-      route="workspace-settings"
-      className="flex-1 overflow-auto p-4 sm:p-6"
+    <PageFrame
+      pending="workspace-settings"
+      header={
+        <PageHeader
+          title={t("workspaces.settingsTitle")}
+          description={t("workspaces.settingsDescription")}
+        />
+      }
+      navigation={<WorkspaceSettingsNavigation showDangerZone />}
     >
-      <div className="mx-auto grid w-full max-w-4xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-        <ResponsiveSectionNavigationSkeleton count={10} />
-        <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
-          <Region name="page-header" className="space-y-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-80 max-w-full" />
-          </Region>
-          <Region name="general">
-            <CardSkeleton rows={5} />
-          </Region>
-          {/* Build Pipeline (w6/m309): billing managers only, like Audit Logs below. */}
-          <Region name="build-pipeline">
-            <BuildPipelineCardSkeleton />
-          </Region>
-          {/* Overlapping Deploy Policy (w4/653): every member reads it. */}
-          <Region name="overlapping-deploy-policy">
-            <OverlappingDeployPolicyCardSkeleton />
-          </Region>
-          {/* Inbound IP Rules (w9/m388): every member reads them. */}
-          <Region name="inbound-ip-rules">
-            <WorkspaceIPRulesCardSkeleton />
-          </Region>
-          {/* Two-factor authentication (w22/m402): every member sees the card. */}
-          <Region name="two-factor">
-            <WorkspaceTwoFactorCardSkeleton />
-          </Region>
-          <Region name="team">
-            <TeamPanelSkeleton />
-          </Region>
-          <Region name="notifications" className="space-y-6">
-            <WorkspaceNotificationsCardSkeleton />
-            <NotificationOverridesCardSkeleton />
-          </Region>
-          <Region name="agents" className="space-y-6">
-            <AgentEnvironmentCardSkeleton />
-            <AgentSecretsCardSkeleton />
-            <AgentRepoEnvironmentsCardSkeleton />
-            <AgentSkillsCardSkeleton />
-          </Region>
-          <Region name="registry-credentials">
-            <RegistryCredentialsPanelSkeleton />
-          </Region>
-          <Region name="audit-logs">
-            <AuditLogPanelSkeleton />
-          </Region>
-          <Region name="danger-zone">
-            <LeaveWorkspaceCardSkeleton />
-          </Region>
-        </div>
-      </div>
-    </PendingFrame>
+      <Region name="general">
+        <CardSkeleton rows={5} />
+      </Region>
+      {/* Build Pipeline (w6/m309): billing managers only, like Audit Logs below. */}
+      <Region name="build-pipeline">
+        <BuildPipelineCardSkeleton />
+      </Region>
+      {/* Overlapping Deploy Policy (w4/653): every member reads it. */}
+      <Region name="overlapping-deploy-policy">
+        <OverlappingDeployPolicyCardSkeleton />
+      </Region>
+      {/* Inbound IP Rules (w9/m388): every member reads them. */}
+      <Region name="inbound-ip-rules">
+        <WorkspaceIPRulesCardSkeleton />
+      </Region>
+      {/* Two-factor authentication (w22/m402): every member sees the card. */}
+      <Region name="two-factor">
+        <WorkspaceTwoFactorCardSkeleton />
+      </Region>
+      <Region name="team">
+        <TeamPanelSkeleton />
+      </Region>
+      <Region name="notifications" className="space-y-6">
+        <WorkspaceNotificationsCardSkeleton />
+        <NotificationOverridesCardSkeleton />
+      </Region>
+      <Region name="agents" className="space-y-6">
+        <AgentEnvironmentCardSkeleton />
+        <AgentSecretsCardSkeleton />
+        <AgentRepoEnvironmentsCardSkeleton />
+        <AgentSkillsCardSkeleton />
+      </Region>
+      <Region name="registry-credentials">
+        <RegistryCredentialsPanelSkeleton />
+      </Region>
+      <Region name="audit-logs">
+        <AuditLogPanelSkeleton />
+      </Region>
+      <Region name="danger-zone">
+        <LeaveWorkspaceCardSkeleton />
+      </Region>
+    </PageFrame>
   );
 }
 
 export function AccountSettingsPageSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame
-      route="account-settings"
-      className="flex-1 overflow-auto p-4 sm:p-6"
+    <PageFrame
+      pending="account-settings"
+      header={
+        <PageHeader
+          title={t("auth.settingsTitle")}
+          description={t("auth.settingsSubtitle")}
+        />
+      }
+      navigation={<SettingsNavigation />}
     >
-      <div className="mx-auto grid w-full max-w-6xl items-start gap-8 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-        <div className="min-w-0">
-          <Region name="page-header" className="space-y-2">
-            <Skeleton className="h-6 w-44" />
-            <Skeleton className="h-4 w-80 max-w-full" />
-          </Region>
-          <Region
-            name="mobile-navigation"
-            className="mt-6 border-y py-2 lg:hidden"
-          >
-            <div className="flex gap-2 overflow-hidden">
-              {Array.from({ length: 5 }, (_, index) => (
-                <Skeleton key={index} className="h-8 w-24 shrink-0" />
-              ))}
+      <div className="space-y-10">
+        {[
+          { name: "account", count: 2 },
+          { name: "integrations", count: 1 },
+          { name: "access", count: 2 },
+          { name: "security", count: 2 },
+          { name: "danger-zone", count: 1 },
+        ].map(({ name, count }) => (
+          <Region key={name} name={name} className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-72 max-w-full" />
             </div>
-          </Region>
-          <div className="mt-8 space-y-10 lg:mt-10">
-            {[
-              { name: "account", count: 2 },
-              { name: "integrations", count: 1 },
-              { name: "access", count: 2 },
-              { name: "security", count: 2 },
-              { name: "danger-zone", count: 1 },
-            ].map(({ name, count }) => (
-              <Region key={name} name={name} className="space-y-4">
-                <div className="space-y-2">
-                  <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-4 w-72 max-w-full" />
-                </div>
-                {Array.from({ length: count }, (_, index) => (
-                  <CardSkeleton key={index} rows={3} />
-                ))}
-              </Region>
+            {Array.from({ length: count }, (_, index) => (
+              <CardSkeleton key={index} rows={3} />
             ))}
-          </div>
-        </div>
-        <div className="sticky top-6 hidden lg:block">
-          <VerticalNavigationSkeleton count={5} />
-        </div>
+          </Region>
+        ))}
       </div>
-    </PendingFrame>
+    </PageFrame>
   );
 }
 
@@ -1656,6 +1566,7 @@ export function ServiceCreatePageSkeleton() {
   const { t } = useTranslations();
   const { type } = useSearch({ from: "/services/new" });
   const serviceType = type ?? DEFAULT_SERVICE_TYPE;
+  const createCopy = serviceTypeCreateCopy(serviceType);
   const staticSite = serviceType === "static_site";
   const cron = serviceType === "cron_job";
   const noPublicUrl =
@@ -1663,16 +1574,18 @@ export function ServiceCreatePageSkeleton() {
   const fieldCount = staticSite ? 5 : cron ? 7 : 6;
 
   return (
-    <PendingFrame
-      route="service-create"
-      className="flex-1 overflow-auto p-4 sm:p-6"
+    <PageFrame
+      pending="service-create"
+      width="form"
+      header={
+        <PageHeader
+          title={t(createCopy.titleKey)}
+          description={t(createCopy.descriptionKey)}
+        />
+      }
     >
-      <Region name="service-form" className="mx-auto w-full max-w-2xl">
-        <Card className={staticSite ? undefined : "min-h-[2458px] sm:min-h-0"}>
-          <CardHeader className="space-y-2" data-skeleton-region="form-header">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-full" />
-          </CardHeader>
+      <Region name="service-form">
+        <Card>
           <CardContent className="space-y-6">
             <Region name="service-type" className="space-y-3">
               <Skeleton className="h-4 w-28" />
@@ -1743,7 +1656,7 @@ export function ServiceCreatePageSkeleton() {
           </CardContent>
         </Card>
       </Region>
-    </PendingFrame>
+    </PageFrame>
   );
 }
 
@@ -2298,12 +2211,12 @@ export function ServiceSettingsSkeleton({
       route={
         isStaticSiteType(shape.type) ? "static-settings" : "service-settings"
       }
-      className="service-settings-layout grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10"
+      className={cn("service-settings-layout", SECTIONED_GRID_CLASS)}
     >
       <ResponsiveSectionNavigationSkeleton
         count={navigableSettingsSections(sections).length}
       />
-      <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+      <div className={SECTIONED_BODY_CLASS}>
         {sections.map((section) => (
           <Region
             key={section}
@@ -2653,11 +2566,11 @@ export function WebhookDetailShellSkeleton() {
         <Skeleton className="h-5 w-16" />
         <Skeleton className="h-5 w-16" />
       </Region>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <Region name="active-tab" className="mx-auto w-full max-w-4xl">
+      <PageScroll>
+        <Region name="active-tab" className="mx-auto w-full max-w-5xl">
           {settings ? <WebhookSettingsSkeleton /> : <WebhookActivitySkeleton />}
         </Region>
-      </div>
+      </PageScroll>
     </PendingFrame>
   );
 }
@@ -2666,10 +2579,10 @@ export function DatabaseOverviewSkeleton() {
   return (
     <PendingFrame
       route="database-overview"
-      className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10"
+      className={cn("mx-auto max-w-5xl", SECTIONED_GRID_CLASS)}
     >
       <ResponsiveSectionNavigationSkeleton count={10} />
-      <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+      <div className={SECTIONED_BODY_CLASS}>
         <Region name="metadata">
           <DatastoreMetadataPreview kind="postgres" />
         </Region>
@@ -2710,7 +2623,7 @@ export function DatastoreLogsSkeleton() {
   return (
     <PendingFrame
       route="datastore-logs"
-      className="mx-auto w-full max-w-4xl space-y-4"
+      className="mx-auto w-full max-w-5xl space-y-4"
     >
       <Region name="log-filters" className="flex flex-wrap items-center gap-3">
         <Skeleton className="h-8 w-32" />
@@ -2755,7 +2668,7 @@ export function DatastoreMetricsSkeleton({
   return (
     <PendingFrame
       route={`${kind}-metrics`}
-      className="mx-auto w-full max-w-4xl"
+      className="mx-auto w-full max-w-5xl"
     >
       <Region name="datastore-metrics">
         <Card>
@@ -2790,10 +2703,10 @@ export function KeyValueOverviewSkeleton() {
   return (
     <PendingFrame
       route="keyvalue-overview"
-      className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10"
+      className={cn("mx-auto max-w-5xl", SECTIONED_GRID_CLASS)}
     >
       <ResponsiveSectionNavigationSkeleton count={7} />
-      <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+      <div className={SECTIONED_BODY_CLASS}>
         <Region name="metadata">
           <DatastoreMetadataPreview kind="keyvalue" />
         </Region>

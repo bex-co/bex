@@ -198,8 +198,10 @@ export function TeamPanel() {
                   <TableBody>
                     {invites.map((invite) => (
                       <TableRow key={invite.id}>
-                        <TableCell className="break-all">
-                          {invite.email}
+                        <TableCell className="w-full max-w-0">
+                          <span className="block break-words">
+                            {invite.email}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">

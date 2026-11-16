@@ -1,6 +1,14 @@
 import type { TranslationEntry } from "@/i18n";
 
 const ruWorkspaces: Record<string, TranslationEntry> = {
+  "workspaces.idCopied": {
+    message: "ID рабочего пространства скопирован",
+    description: "Toast after copying the workspace ID",
+  },
+  "workspaces.idCopyFailed": {
+    message: "Не удалось скопировать ID рабочего пространства",
+    description: "Toast when copying the workspace ID fails",
+  },
   "workspaces.switcherEmpty": {
     message: "Выберите рабочее пространство",
     description: "Switcher trigger label before any workspace is selected",

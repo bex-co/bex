@@ -301,7 +301,7 @@ function ConnectionRow({
           </span>
         </span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {connection.installUrl && (
           <Button variant="outline" size="sm" asChild>
             <a href={connection.installUrl} target="_blank" rel="noreferrer">

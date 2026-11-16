@@ -93,12 +93,14 @@ describe("NotificationSettingsPanel", () => {
   });
 });
 
-// w4/410: the page's visible title is its one h1.
+// w4/410: the page's one h1 is the /notifications PageHeader; this card
+// titles its own section, the email channel.
 describe("NotificationSettingsPanel heading", () => {
-  it("renders the title as an h1", async () => {
+  it("titles its section as an h2", async () => {
     render(<NotificationSettingsPanel />);
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Notifications" }),
+      await screen.findByRole("heading", { level: 2, name: "Email" }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 });

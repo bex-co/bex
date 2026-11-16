@@ -508,7 +508,7 @@ function DeliveryRow({
           <TableCell colSpan={7}>
             <div
               id={`webhook-attempt-${delivery.id}`}
-              className="grid gap-4 md:grid-cols-2"
+              className="grid gap-4 @2xl:grid-cols-2"
             >
               <EvidencePanel
                 title={t("webhooks.requestPayload")}

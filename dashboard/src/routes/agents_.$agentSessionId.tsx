@@ -1,3 +1,4 @@
+import { PageScroll } from "@/common/components/page-frame";
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
@@ -270,7 +271,7 @@ function DetailSkeleton() {
 function LoadErrorState({ message }: { message: string }) {
   const { t } = useTranslations();
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6">
+    <PageScroll>
       <div className="mx-auto w-full max-w-3xl space-y-4">
         <Link
           to="/agents"
@@ -290,6 +291,6 @@ function LoadErrorState({ message }: { message: string }) {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageScroll>
   );
 }

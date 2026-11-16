@@ -1,3 +1,4 @@
+import { PageScroll } from "@/common/components/page-frame";
 import { useState } from "react";
 import {
   createFileRoute,
@@ -150,7 +151,7 @@ export function ProjectPage() {
 
   return (
     <>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
+      <PageScroll>
         <div className="w-full space-y-6">
           {showAuthError ? (
             <ResourceLoadError variant="unauthenticated" />
@@ -196,7 +197,7 @@ export function ProjectPage() {
             </>
           )}
         </div>
-      </div>
+      </PageScroll>
 
       {/* aria-describedby={undefined} is deliberate, not an oversight: Radix
           points every DialogContent at a description id and warns when the

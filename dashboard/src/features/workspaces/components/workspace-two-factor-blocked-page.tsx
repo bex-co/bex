@@ -1,3 +1,4 @@
+import { PageScroll } from "@/common/components/page-frame";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { Loader2, LogOut, ShieldAlert } from "lucide-react";
 import {
@@ -71,10 +72,7 @@ export function WorkspaceTwoFactorBlockedPage({
   }
 
   return (
-    <div
-      className="flex-1 overflow-auto p-4 sm:p-6"
-      data-testid="workspace-two-factor-blocked"
-    >
+    <PageScroll data-testid="workspace-two-factor-blocked">
       <div className="mx-auto w-full max-w-xl">
         <Card>
           <CardHeader>
@@ -163,6 +161,6 @@ export function WorkspaceTwoFactorBlockedPage({
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageScroll>
   );
 }

@@ -57,6 +57,8 @@ import {
   SettingsSectionSkeleton,
 } from "@/common/components/route-skeletons";
 import {
+  SECTIONED_BODY_CLASS,
+  SECTIONED_GRID_CLASS,
   SECTION_NAVIGATION_STICKY_CLASS,
   SECTION_NAVIGATION_TARGET_CLASS,
 } from "@/common/components/section-navigation";
@@ -424,14 +426,14 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   }
 
   return (
-    <div className="service-settings-layout grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
+    <div className={cn("service-settings-layout", SECTIONED_GRID_CLASS)}>
       <ServiceSettingsNavigation
         sections={sections}
         suspended={service?.suspended ?? false}
         className={SECTION_NAVIGATION_STICKY_CLASS}
       />
 
-      <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+      <div className={SECTIONED_BODY_CLASS}>
         {sections.map((id) => (
           <section
             key={id}

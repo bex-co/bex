@@ -1,3 +1,4 @@
+import { PageHeader } from "@/common/components/page-frame";
 import { Plus } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -44,23 +45,18 @@ export function AutomationsListSkeleton() {
         data-route-skeleton="automations-list"
         className="space-y-6"
       >
-        <header
-          data-skeleton-region="page-header"
-          className="flex flex-wrap items-start justify-between gap-3"
-        >
-          <div className="min-w-0 space-y-1">
-            <h1 className="text-xl font-semibold">
-              {t("agentAutomations.pageTitle")}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {t("agentAutomations.pageDescription")}
-            </p>
-          </div>
-          <Button disabled>
-            <Plus />
-            {t("agentAutomations.create")}
-          </Button>
-        </header>
+        <div data-skeleton-region="page-header">
+          <PageHeader
+            title={t("agentAutomations.pageTitle")}
+            description={t("agentAutomations.pageDescription")}
+            actions={
+              <Button disabled>
+                <Plus />
+                {t("agentAutomations.create")}
+              </Button>
+            }
+          />
+        </div>
         <div data-skeleton-region="scope-tabs">
           <Tabs value="mine">
             <TabsList>

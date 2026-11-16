@@ -1,6 +1,20 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enNotifications: Record<string, TranslationEntry> = {
+  "notifications.pageDescription": {
+    message:
+      "Choose which events reach you, and where: email, the bex mobile app, or this browser.",
+    description: "Notifications page header description",
+  },
+  "notifications.emailTitle": {
+    message: "Email",
+    description:
+      "Notifications page: email preferences card title and section link",
+  },
+  "notifications.sectionNavigation": {
+    message: "Notification sections",
+    description: "Accessible name of the Notifications page section navigation",
+  },
   "notifications.title": {
     message: "Notifications",
     description: "Settings Notifications section card title",

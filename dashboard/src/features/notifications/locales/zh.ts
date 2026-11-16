@@ -1,6 +1,20 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhNotifications: Record<string, TranslationEntry> = {
+  "notifications.pageDescription": {
+    message:
+      "选择哪些事件通知你，以及通过哪里：邮件、bex 移动应用或这个浏览器。",
+    description: "Notifications page header description",
+  },
+  "notifications.emailTitle": {
+    message: "邮件",
+    description:
+      "Notifications page: email preferences card title and section link",
+  },
+  "notifications.sectionNavigation": {
+    message: "通知设置分区",
+    description: "Accessible name of the Notifications page section navigation",
+  },
   "notifications.title": {
     message: "通知",
     description: "Settings Notifications section card title",

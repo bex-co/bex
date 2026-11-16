@@ -13,6 +13,7 @@ import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { isValidEmail } from "@/common/lib/utils/email";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Button } from "@/common/components/ui/button";
@@ -140,17 +141,15 @@ export function NewWorkspacePage() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl space-y-8">
-          <header className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {t("workspaces.createTitle")}
-            </h1>
-            <p className="text-muted-foreground">
-              {t("workspaces.createDescription")}
-            </p>
-          </header>
-
+      <PageFrame
+        header={
+          <PageHeader
+            title={t("workspaces.createTitle")}
+            description={t("workspaces.createDescription")}
+          />
+        }
+      >
+        <div className="space-y-8">
           <section
             className="space-y-4"
             aria-labelledby="workspace-details-heading"
@@ -291,7 +290,7 @@ export function NewWorkspacePage() {
             </Button>
           </div>
         </div>
-      </div>
+      </PageFrame>
     </DashboardLayout>
   );
 }

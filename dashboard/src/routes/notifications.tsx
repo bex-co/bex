@@ -11,6 +11,10 @@ import {
   PushNotificationSettingsDocument,
 } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
+import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
+import { useTranslations } from "@/common/hooks/use-translations";
+import { NotificationsNavigation } from "@/features/notifications/components/notifications-navigation";
 import { NotificationSettingsPanel } from "@/features/notifications/components/notification-settings-panel";
 import { PushNotificationSettingsPanel } from "@/features/notifications/components/push-notification-settings-panel";
 import { WebPushSettingsPanel } from "@/features/notifications/components/web-push-settings-panel";
@@ -46,15 +50,28 @@ export const Route = createFileRoute("/notifications")({
 });
 
 function NotificationsPage() {
+  const { t } = useTranslations();
   return (
     <DashboardLayout>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-2xl space-y-6">
+      <PageFrame
+        header={
+          <PageHeader
+            title={t("notifications.title")}
+            description={t("notifications.pageDescription")}
+          />
+        }
+        navigation={<NotificationsNavigation />}
+      >
+        <section id="email" className={SECTION_NAVIGATION_TARGET_CLASS}>
           <NotificationSettingsPanel />
+        </section>
+        <section id="mobile-push" className={SECTION_NAVIGATION_TARGET_CLASS}>
           <PushNotificationSettingsPanel />
+        </section>
+        <section id="browser" className={SECTION_NAVIGATION_TARGET_CLASS}>
           <WebPushSettingsPanel />
-        </div>
-      </div>
+        </section>
+      </PageFrame>
     </DashboardLayout>
   );
 }

@@ -5,6 +5,7 @@ import { Button } from "@/common/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/common/components/ui/tabs";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AutomationListFrame } from "@/features/agent-automations/components/automation-frame";
+import { PageHeader } from "@/common/components/page-frame";
 import { AutomationLoadError } from "@/features/agent-automations/components/automation-load-state";
 import { AutomationRow } from "@/features/agent-automations/components/automation-row";
 import { AutomationRowsSkeleton } from "@/features/agent-automations/components/automations-list-skeleton";
@@ -36,29 +37,25 @@ export function AutomationsPage() {
 
   return (
     <AutomationListFrame>
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <h1 className="text-xl font-semibold">
-            {t("agentAutomations.pageTitle")}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {t("agentAutomations.pageDescription")}
-          </p>
-        </div>
-        {viewer.canCreate ? (
-          <Button asChild>
-            <Link to="/automations/new">
+      <PageHeader
+        title={t("agentAutomations.pageTitle")}
+        description={t("agentAutomations.pageDescription")}
+        actions={
+          viewer.canCreate ? (
+            <Button asChild>
+              <Link to="/automations/new">
+                <Plus />
+                {t("agentAutomations.create")}
+              </Link>
+            </Button>
+          ) : (
+            <Button disabled>
               <Plus />
               {t("agentAutomations.create")}
-            </Link>
-          </Button>
-        ) : (
-          <Button disabled>
-            <Plus />
-            {t("agentAutomations.create")}
-          </Button>
-        )}
-      </header>
+            </Button>
+          )
+        }
+      />
 
       <Tabs value={scope} onValueChange={(next) => setScope(next as Scope)}>
         <TabsList>

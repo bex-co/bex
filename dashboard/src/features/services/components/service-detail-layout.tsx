@@ -1,3 +1,4 @@
+import { PageScroll } from "@/common/components/page-frame";
 import { useState, type ReactNode } from "react";
 import { Outlet } from "@tanstack/react-router";
 import { LogIn, TriangleAlert } from "lucide-react";
@@ -88,8 +89,8 @@ export function ServiceDetailLayout({
   if (!routePending && loadErrorVariant) {
     content = (
       <DashboardLayout>
-        <div className="flex-1 overflow-auto p-4 sm:p-6">
-          <div className="mx-auto w-full max-w-4xl">
+        <PageScroll>
+          <div className="mx-auto w-full max-w-5xl">
             <Card>
               <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
                 {expired ? (
@@ -129,7 +130,7 @@ export function ServiceDetailLayout({
               </CardContent>
             </Card>
           </div>
-        </div>
+        </PageScroll>
       </DashboardLayout>
     );
   } else if (!routePending && !service && !loading) {
@@ -152,7 +153,7 @@ export function ServiceDetailLayout({
   } else {
     content = (
       <DashboardLayout>
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div data-page-scroll="" className="min-h-0 flex-1 overflow-auto">
           {shownService ? (
             <ServiceDetailHeader
               service={shownService}
@@ -163,13 +164,13 @@ export function ServiceDetailLayout({
           ) : (
             <ServiceDetailHeaderSkeleton />
           )}
-          <div className="p-4 sm:p-6">
-            {/* Detail tabs stay at the established 4xl width; the long Settings
-                page opts into a 6xl shell so its right rail doesn't compress
-                the existing form cards. */}
+          {/* The page container the section layout's queries measure. The
+              scroller has no top padding (the service header scrolls away
+              above), so a sticky bar needs no offset. */}
+          <div className="@container/page p-4 sm:p-6">
             <div
               data-skeleton-region={!shownService ? "active-tab" : undefined}
-              className="mx-auto w-full max-w-4xl space-y-6 has-[>.service-settings-layout]:max-w-6xl"
+              className="mx-auto w-full max-w-5xl space-y-6"
             >
               {shownService ? (
                 <Outlet />

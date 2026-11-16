@@ -15,6 +15,7 @@ import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
 import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { GettingStartedCard } from "@/features/onboarding/components/getting-started-card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
@@ -266,105 +267,108 @@ export function HomePage() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="w-full space-y-6">
-          <div className="flex flex-row items-center justify-between gap-2">
-            <h1 className="text-xl font-semibold">
-              {t("projects.overviewTitle")}
-            </h1>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm">
-                  <Plus className="size-4" />
-                  {t("projects.newButton")}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <NewServiceMenuItems triggerLabelKey="projects.newService" />
-                <DropdownMenuItem onSelect={() => setNewDatabaseOpen(true)}>
-                  {t("projects.newDatabase")}
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/keyvalue/new">{t("projects.newKeyValue")}</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setNewProjectOpen(true)}>
-                  {t("projects.newProjectButton")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setNewSandboxGroupOpen(true)}>
-                  {t("sandboxGroups.createTitle")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {showError ? (
-            <Alert variant="destructive">
-              <AlertTitle>{t("projects.errorTitle")}</AlertTitle>
-              <AlertDescription>{t("projects.errorBody")}</AlertDescription>
-            </Alert>
-          ) : showSkeleton ? (
-            shape.kind === "empty" ? (
-              <OverviewEmptySkeleton />
-            ) : (
-              <OverviewPopulatedSkeleton
-                projects={shape.projects}
-                rows={shape.rows}
-              />
-            )
-          ) : showEmpty ? (
-            <>
-              <GettingStartedCard />
-              <div className="py-8 text-center">
-                <p className="font-medium">{t("projects.emptyTitle")}</p>
-                <p className="text-sm text-muted-foreground">
-                  {t("projects.emptyBody")}
-                </p>
-                <Button asChild size="sm" className="mt-4">
-                  <Link to="/services/new">
+      <PageFrame
+        width="wide"
+        header={
+          <PageHeader
+            title={t("projects.overviewTitle")}
+            actions={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm">
                     <Plus className="size-4" />
-                    {t("projects.emptyCreateService")}
-                  </Link>
-                </Button>
-              </div>
-            </>
+                    {t("projects.newButton")}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <NewServiceMenuItems triggerLabelKey="projects.newService" />
+                  <DropdownMenuItem onSelect={() => setNewDatabaseOpen(true)}>
+                    {t("projects.newDatabase")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/keyvalue/new">{t("projects.newKeyValue")}</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setNewProjectOpen(true)}>
+                    {t("projects.newProjectButton")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setNewSandboxGroupOpen(true)}
+                  >
+                    {t("sandboxGroups.createTitle")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
+          />
+        }
+      >
+        {showError ? (
+          <Alert variant="destructive">
+            <AlertTitle>{t("projects.errorTitle")}</AlertTitle>
+            <AlertDescription>{t("projects.errorBody")}</AlertDescription>
+          </Alert>
+        ) : showSkeleton ? (
+          shape.kind === "empty" ? (
+            <OverviewEmptySkeleton />
           ) : (
-            <>
+            <OverviewPopulatedSkeleton
+              projects={shape.projects}
+              rows={shape.rows}
+            />
+          )
+        ) : showEmpty ? (
+          <>
+            <GettingStartedCard />
+            <div className="py-8 text-center">
+              <p className="font-medium">{t("projects.emptyTitle")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("projects.emptyBody")}
+              </p>
+              <Button asChild size="sm" className="mt-4">
+                <Link to="/services/new">
+                  <Plus className="size-4" />
+                  {t("projects.emptyCreateService")}
+                </Link>
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold">
+                {t("projects.projectsHeading")}
+              </h2>
+              <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
+                {groups.map((g) => (
+                  <ProjectCard
+                    key={g.id}
+                    id={g.id}
+                    name={g.name}
+                    rows={g.rows}
+                  />
+                ))}
+                <NewProjectCard onClick={() => setNewProjectOpen(true)} />
+              </div>
+            </section>
+
+            {ungrouped.length > 0 && (
               <section className="space-y-3">
                 <h2 className="text-sm font-semibold">
-                  {t("projects.projectsHeading")}
+                  {t("projects.ungroupedHeading")}
                 </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {groups.map((g) => (
-                    <ProjectCard
-                      key={g.id}
-                      id={g.id}
-                      name={g.name}
-                      rows={g.rows}
-                    />
-                  ))}
-                  <NewProjectCard onClick={() => setNewProjectOpen(true)} />
-                </div>
+                <ResourceTable
+                  rows={ungrouped}
+                  servicePending={pending}
+                  onRunServiceAction={run}
+                  onDatabaseDeleted={refetchAll}
+                  onKeyValueDeleted={refetchAll}
+                />
               </section>
-
-              {ungrouped.length > 0 && (
-                <section className="space-y-3">
-                  <h2 className="text-sm font-semibold">
-                    {t("projects.ungroupedHeading")}
-                  </h2>
-                  <ResourceTable
-                    rows={ungrouped}
-                    servicePending={pending}
-                    onRunServiceAction={run}
-                    onDatabaseDeleted={refetchAll}
-                    onKeyValueDeleted={refetchAll}
-                  />
-                </section>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+            )}
+          </>
+        )}
+      </PageFrame>
       <CreateDatabaseDialog
         open={newDatabaseOpen}
         onOpenChange={setNewDatabaseOpen}

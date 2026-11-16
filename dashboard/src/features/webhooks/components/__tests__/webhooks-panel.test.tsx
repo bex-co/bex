@@ -9,7 +9,10 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
+import {
+  WebhooksPageHeader,
+  WebhooksPanel,
+} from "@/features/webhooks/components/webhooks-panel";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 const setEnabled = vi.fn();
@@ -70,7 +73,13 @@ function panelRouter() {
   const index = createRoute({
     getParentRoute: () => root,
     path: "/",
-    component: WebhooksPanel,
+    // The /webhooks page: the shared page header over the panel.
+    component: () => (
+      <>
+        <WebhooksPageHeader />
+        <WebhooksPanel />
+      </>
+    ),
   });
   const detail = createRoute({
     getParentRoute: () => root,
@@ -191,29 +200,21 @@ describe("WebhooksPanel", () => {
 // w4/m220 (a832): the list's loading preview must be the ready card itself,
 // or the header and table jump on load. Pixel parity is a browser measurement;
 // this pins the shared copy, action and columns.
-it("previews the ready card's copy, action, search help and columns (w4/m220)", async () => {
+it("previews the ready header, search help and columns (w4/m220)", async () => {
   const ready = renderPanel();
   await screen.findByText("payments");
   const text = (el: Element | null) => el?.textContent?.trim();
-  const readyAction = text(
-    ready.container.querySelector('[data-slot="card-action"]'),
-  );
-  const readyTitle = text(
-    ready.container.querySelector('[data-slot="card-title"]'),
-  );
+  const readyHeader = text(ready.container.querySelector("[data-page-header]"));
   const readyLabels = [...ready.container.querySelectorAll("th")].map(text);
   ready.unmount();
 
   const { WebhooksListPageSkeleton } =
     await import("@/common/components/route-skeletons");
   const { container } = render(<WebhooksListPageSkeleton />);
-  expect(readyAction).toBeTruthy();
-  expect(text(container.querySelector('[data-slot="card-action"]'))).toBe(
-    readyAction,
-  );
-  expect(text(container.querySelector('[data-slot="card-title"]'))).toBe(
-    readyTitle,
-  );
+  // The pending frame renders the ready page's own header: title,
+  // plan-aware description and Create action.
+  expect(readyHeader).toContain("Webhooks");
+  expect(text(container.querySelector("[data-page-header]"))).toBe(readyHeader);
   expect([...container.querySelectorAll("th")].map(text)).toEqual(readyLabels);
   // Every reserved bar sits in a positioned box, never a <p> it would escape.
   expect(container.querySelector("p [data-slot='skeleton']")).toBeNull();
@@ -227,25 +228,22 @@ it("previews a Hobby workspace's plan-gate card, not the Pro list (w4/432)", asy
   const ready = renderPanel();
   await screen.findByText(/Upgrade this workspace to add an endpoint/);
   const text = (el: Element | null) => el?.textContent?.trim();
-  const readyDescription = text(
-    ready.container.querySelector('[data-slot="card-description"]'),
-  );
-  const readyBody = text(
-    ready.container.querySelector('[data-slot="card-content"]'),
+  const readyHeader = text(ready.container.querySelector("[data-page-header]"));
+  // The gate offers the way out: the workspace's change-plan flow.
+  expect(screen.getByRole("link", { name: "Change plan" })).toHaveAttribute(
+    "href",
+    "/workspace/settings?plan=change",
   );
   ready.unmount();
 
   const { WebhooksListPageSkeleton } =
     await import("@/common/components/route-skeletons");
   const { container } = render(<WebhooksListPageSkeleton />);
-  expect(container.querySelector('[data-slot="card-action"]')).toBeNull();
   expect(container.querySelector("th")).toBeNull();
   expect(container.querySelector("input, [type=search]")).toBeNull();
-  expect(text(container.querySelector('[data-slot="card-description"]'))).toBe(
-    readyDescription,
-  );
-  expect(text(container.querySelector('[data-slot="card-content"]'))).toBe(
-    readyBody,
+  expect(text(container.querySelector("[data-page-header]"))).toBe(readyHeader);
+  expect(container).toHaveTextContent(
+    /Upgrade this workspace to add an endpoint/,
   );
 });
 

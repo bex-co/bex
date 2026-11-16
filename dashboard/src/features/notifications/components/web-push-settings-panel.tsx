@@ -25,7 +25,7 @@ export function WebPushSettingsPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("notifications.webPushTitle")}</CardTitle>
+        <CardTitle as="h2">{t("notifications.webPushTitle")}</CardTitle>
         <CardDescription>
           {t("notifications.webPushDescription")}
         </CardDescription>

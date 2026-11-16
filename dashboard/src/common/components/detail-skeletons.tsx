@@ -1,3 +1,8 @@
+import {
+  PageFrame,
+  PageHeader,
+  PageScroll,
+} from "@/common/components/page-frame";
 import { AtSign } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { buttonVariants } from "@/common/components/ui/button";
@@ -25,19 +30,19 @@ import {
  */
 export function ListPageSkeleton() {
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6">
+    <PageScroll>
       <div className="w-full space-y-6">
         <div className="flex items-center justify-between gap-2">
           <Skeleton className="h-7 w-44" />
           <Skeleton className="h-9 w-28" />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
           <CardSkeleton rows={2} />
           <CardSkeleton rows={2} />
           <CardSkeleton rows={2} />
         </div>
       </div>
-    </div>
+    </PageScroll>
   );
 }
 
@@ -52,56 +57,47 @@ export function AgentsPageSkeleton({
 }: {
   mode?: "composer" | "list";
 }) {
+  const { t } = useTranslations();
   return (
-    <div
-      aria-hidden="true"
-      className="min-h-0 min-w-0 flex-1 overflow-auto"
-      data-route-skeleton="agents-list"
+    <PageFrame
+      pending="agents-list"
       data-testid="agents-page-skeleton"
+      header={
+        mode === "list" ? (
+          <PageHeader title={t("agentSessions.pageTitle")} />
+        ) : null
+      }
     >
-      <div className="mx-auto w-full max-w-5xl space-y-8 p-4 sm:p-6">
-        {mode === "composer" ? (
+      {mode === "composer" ? (
+        <div
+          className="mx-auto w-full max-w-[40rem] space-y-3"
+          data-skeleton-region="composer"
+        >
+          <ComposerBoxSkeleton />
+          <Skeleton
+            className="h-4 w-64 max-w-full"
+            data-skeleton-region="composer-hint"
+          />
+        </div>
+      ) : (
+        <div className="w-full space-y-3" data-skeleton-region="session-list">
+          {/* The ready list's heading row: heading at the left, the
+              PR-state filter at its real size at the right. */}
           <div
-            className="mx-auto w-full max-w-[40rem] space-y-3"
-            data-skeleton-region="composer"
+            className={SESSION_LIST_HEADING_ROW_CLASS}
+            data-skeleton-region="session-list-toolbar"
           >
-            <ComposerBoxSkeleton />
-            <Skeleton
-              className="h-4 w-64 max-w-full"
-              data-skeleton-region="composer-hint"
-            />
+            <Skeleton className="h-5 w-24" />
+            <SessionPrStateFilterSkeleton />
           </div>
-        ) : (
-          <>
-            <div className="mx-auto w-full max-w-4xl">
-              <Skeleton
-                className="h-7 w-40"
-                data-skeleton-region="page-header"
-              />
-            </div>
-            <div
-              className="mx-auto w-full max-w-4xl space-y-3"
-              data-skeleton-region="session-list"
-            >
-              {/* The ready list's heading row: heading at the left, the
-                  PR-state filter at its real size at the right. */}
-              <div
-                className={SESSION_LIST_HEADING_ROW_CLASS}
-                data-skeleton-region="session-list-toolbar"
-              >
-                <Skeleton className="h-5 w-24" />
-                <SessionPrStateFilterSkeleton />
-              </div>
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-lg" />
+            ))}
+          </div>
+        </div>
+      )}
+    </PageFrame>
   );
 }
 
@@ -156,12 +152,12 @@ function ComposerBoxSkeleton() {
  */
 export function FormPageSkeleton() {
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
+    <PageScroll>
+      <div className="mx-auto w-full max-w-5xl space-y-6">
         <Skeleton className="h-7 w-52" />
         <CardSkeleton rows={5} />
       </div>
-    </div>
+    </PageScroll>
   );
 }
 

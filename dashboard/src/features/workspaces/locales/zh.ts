@@ -1,6 +1,14 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhWorkspaces: Record<string, TranslationEntry> = {
+  "workspaces.idCopied": {
+    message: "已复制工作区 ID",
+    description: "Toast after copying the workspace ID",
+  },
+  "workspaces.idCopyFailed": {
+    message: "无法复制工作区 ID",
+    description: "Toast when copying the workspace ID fails",
+  },
   "workspaces.switcherEmpty": {
     message: "选择工作区",
     description: "Switcher trigger label before any workspace is selected",

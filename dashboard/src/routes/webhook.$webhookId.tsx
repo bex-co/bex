@@ -1,3 +1,4 @@
+import { PageScroll } from "@/common/components/page-frame";
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -104,13 +105,13 @@ function WebhookDetailShell() {
               {t("webhooks.tabSettings")}
             </TabLink>
           </nav>
-          <div className="flex-1 overflow-auto p-4 sm:p-6">
-            <div className="mx-auto w-full max-w-4xl space-y-6">
+          <PageScroll>
+            <div className="mx-auto w-full max-w-5xl space-y-6">
               <WebhookDetailContext.Provider value={detail}>
                 <Outlet />
               </WebhookDetailContext.Provider>
             </div>
-          </div>
+          </PageScroll>
         </>
       ) : adopting || loading || notFound ? (
         <WebhookDetailShellSkeleton />

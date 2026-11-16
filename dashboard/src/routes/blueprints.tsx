@@ -19,6 +19,7 @@ import {
 import { prefetchInParallel } from "@/common/lib/prefetch";
 import { BlueprintsDocument } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Card,
@@ -86,115 +87,115 @@ function BlueprintsListPage() {
 
   return (
     <DashboardLayout>
-      {/* Wraps below ~390 px, where the two action labels no longer fit
-          beside the title (w4/520); the pending header wraps the same way. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
-        <h1 className="text-xl font-semibold">{t("blueprints.pageTitle")}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setGenerating(true)}
-          >
-            {t("blueprints.generateButton")}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => void navigate({ to: "/blueprints/new" })}
-          >
-            <Plus className="size-4" />
-            {t("blueprints.createButton")}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl space-y-6">
-          {error && blueprints.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="font-medium">{t("blueprints.errorTitle")}</p>
-            </div>
-          ) : showSkeleton ? (
-            <BlueprintsTableSkeleton />
-          ) : blueprints.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="font-medium">{t("blueprints.emptyTitle")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("blueprints.emptyBody")}
-              </p>
-              <Button
-                size="sm"
-                className="mt-4"
-                onClick={() => void navigate({ to: "/blueprints/new" })}
-              >
-                <Plus className="size-4" />
-                {t("blueprints.createButton")}
-              </Button>
-            </div>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("blueprints.cardTitle")}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  {/* Short labels never wrap: in the scrolling mobile table,
+      <PageFrame
+        header={
+          <PageHeader
+            title={t("blueprints.pageTitle")}
+            actions={
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setGenerating(true)}
+                >
+                  {t("blueprints.generateButton")}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => void navigate({ to: "/blueprints/new" })}
+                >
+                  <Plus className="size-4" />
+                  {t("blueprints.createButton")}
+                </Button>
+              </>
+            }
+          />
+        }
+      >
+        {error && blueprints.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="font-medium">{t("blueprints.errorTitle")}</p>
+          </div>
+        ) : showSkeleton ? (
+          <BlueprintsTableSkeleton />
+        ) : blueprints.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="font-medium">{t("blueprints.emptyTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("blueprints.emptyBody")}
+            </p>
+            <Button
+              size="sm"
+              className="mt-4"
+              onClick={() => void navigate({ to: "/blueprints/new" })}
+            >
+              <Plus className="size-4" />
+              {t("blueprints.createButton")}
+            </Button>
+          </div>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("blueprints.cardTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                {/* Short labels never wrap: in the scrolling mobile table,
                       wrapping stacked them vertically in a 180–220px header
                       (w4/m220). */}
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="whitespace-nowrap">
-                        {t("blueprints.colName")}
-                      </TableHead>
-                      <TableHead className="whitespace-nowrap">
-                        {t("blueprints.colRepo")}
-                      </TableHead>
-                      <TableHead className="whitespace-nowrap">
-                        {t("blueprints.colBranch")}
-                      </TableHead>
-                      <TableHead className="whitespace-nowrap">
-                        {t("blueprints.colStatus")}
-                      </TableHead>
-                      <TableHead className="whitespace-nowrap">
-                        {t("blueprints.colUpdated")}
-                      </TableHead>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">
+                      {t("blueprints.colName")}
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      {t("blueprints.colRepo")}
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      {t("blueprints.colBranch")}
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      {t("blueprints.colStatus")}
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      {t("blueprints.colUpdated")}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {blueprints.map((bp) => (
+                    <TableRow key={bp.id}>
+                      <TableCell className="font-medium">
+                        <Link
+                          to="/blueprints/$blueprintId"
+                          params={{ blueprintId: bp.id }}
+                          className="hover:underline"
+                        >
+                          {bp.name}
+                        </Link>
+                        <BlueprintResourceSuffix
+                          suffix={bp.resourceSuffix}
+                          className="ml-2"
+                        />
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                        {bp.repo}
+                      </TableCell>
+                      <TableCell className="text-sm">{bp.branch}</TableCell>
+                      <TableCell>
+                        <BlueprintStatusBadge status={bp.status} />
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <RelativeAge value={bp.updatedAt} />
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {blueprints.map((bp) => (
-                      <TableRow key={bp.id}>
-                        <TableCell className="font-medium">
-                          <Link
-                            to="/blueprints/$blueprintId"
-                            params={{ blueprintId: bp.id }}
-                            className="hover:underline"
-                          >
-                            {bp.name}
-                          </Link>
-                          <BlueprintResourceSuffix
-                            suffix={bp.resourceSuffix}
-                            className="ml-2"
-                          />
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                          {bp.repo}
-                        </TableCell>
-                        <TableCell className="text-sm">{bp.branch}</TableCell>
-                        <TableCell>
-                          <BlueprintStatusBadge status={bp.status} />
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          <RelativeAge value={bp.updatedAt} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+      </PageFrame>
       {generating ? (
         <GenerateBlueprintDialog open onOpenChange={setGenerating} />
       ) : null}

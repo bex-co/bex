@@ -1,3 +1,4 @@
+import { PageScroll } from "@/common/components/page-frame";
 import { useState } from "react";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
@@ -382,8 +383,8 @@ export function BlueprintDetailPage() {
         )}
       </div>
 
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl space-y-6">
+      <PageScroll>
+        <div className="mx-auto w-full max-w-5xl space-y-6">
           {loadErrorVariant ? (
             <ResourceLoadError onRetry={refetch} variant={loadErrorVariant} />
           ) : blueprint ? (
@@ -645,7 +646,7 @@ export function BlueprintDetailPage() {
             <BlueprintDetailContentSkeleton />
           )}
         </div>
-      </div>
+      </PageScroll>
 
       <ConfirmDialog
         open={confirming}

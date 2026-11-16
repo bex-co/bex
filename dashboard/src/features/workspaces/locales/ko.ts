@@ -1,6 +1,14 @@
 import type { TranslationEntry } from "@/i18n";
 
 const koWorkspaces: Record<string, TranslationEntry> = {
+  "workspaces.idCopied": {
+    message: "워크스페이스 ID를 복사했습니다",
+    description: "Toast after copying the workspace ID",
+  },
+  "workspaces.idCopyFailed": {
+    message: "워크스페이스 ID를 복사하지 못했습니다",
+    description: "Toast when copying the workspace ID fails",
+  },
   "workspaces.switcherEmpty": {
     message: "워크스페이스 선택",
     description: "Switcher trigger label before any workspace is selected",

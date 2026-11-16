@@ -253,7 +253,7 @@ export function SessionDetailHeader({
         {/* One 16px line at every width, as the route skeleton draws it: on a
             narrow screen the metadata scrolls sideways instead of wrapping to
             a second line and shifting the page on load. */}
-        <div className="text-muted-foreground mt-0.5 flex h-4 items-center gap-x-3 overflow-x-auto text-xs whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0">
+        <div className="text-muted-foreground mt-0.5 flex h-4 items-center gap-x-3 overflow-x-auto text-xs whitespace-nowrap scrollbar-none [&>*]:shrink-0">
           {/* A repo-less (chat-only) session has no branch — drop the whole
               element, icon included, rather than leaving an orphan GitBranch
               floating next to nothing (w1/m90 t002). */}

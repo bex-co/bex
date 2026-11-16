@@ -1,6 +1,14 @@
 import type { TranslationEntry } from "@/i18n";
 
 const jaWorkspaces: Record<string, TranslationEntry> = {
+  "workspaces.idCopied": {
+    message: "ワークスペース ID をコピーしました",
+    description: "Toast after copying the workspace ID",
+  },
+  "workspaces.idCopyFailed": {
+    message: "ワークスペース ID をコピーできませんでした",
+    description: "Toast when copying the workspace ID fails",
+  },
   "workspaces.switcherEmpty": {
     message: "ワークスペースを選択",
     description: "Switcher trigger label before any workspace is selected",

@@ -1,6 +1,20 @@
 import type { TranslationEntry } from "@/i18n";
 
 const jaNotifications: Record<string, TranslationEntry> = {
+  "notifications.pageDescription": {
+    message:
+      "どのイベントをどこで受け取るかを選びます：メール、bex モバイルアプリ、またはこのブラウザー。",
+    description: "Notifications page header description",
+  },
+  "notifications.emailTitle": {
+    message: "メール",
+    description:
+      "Notifications page: email preferences card title and section link",
+  },
+  "notifications.sectionNavigation": {
+    message: "通知のセクション",
+    description: "Accessible name of the Notifications page section navigation",
+  },
   "notifications.title": {
     message: "通知",
     description: "Settings Notifications section card title",

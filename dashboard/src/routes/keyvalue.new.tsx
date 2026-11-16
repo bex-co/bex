@@ -5,14 +5,9 @@ import { ArrowUpRight, Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { useTranslations } from "@/common/hooks/use-translations";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
+import { Card, CardContent } from "@/common/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -137,207 +132,199 @@ export function NewKeyValuePage() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-2xl space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle as="h1" className="text-xl font-semibold">
-                {t("keyvalue.createTitle")}
-              </CardTitle>
-              <CardDescription>
-                {t("keyvalue.createDescription")}
-              </CardDescription>
-            </CardHeader>
-            <HydrationFieldset>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="kv-name">{t("keyvalue.fieldName")}</Label>
-                  <Input
-                    id="kv-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t("keyvalue.fieldNamePlaceholder")}
-                    autoComplete="off"
-                    aria-invalid={showNameError}
-                    aria-describedby={
-                      showNameError ? "kv-name-error" : undefined
-                    }
-                  />
-                  {showNameError ? (
-                    <p
-                      id="kv-name-error"
-                      role="alert"
-                      className="text-sm text-destructive"
-                    >
-                      {t("keyvalue.fieldNameError")}
-                    </p>
-                  ) : null}
-                </div>
+      <PageFrame
+        width="form"
+        header={
+          <PageHeader
+            title={t("keyvalue.createTitle")}
+            description={t("keyvalue.createDescription")}
+          />
+        }
+      >
+        <Card>
+          <HydrationFieldset>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="kv-name">{t("keyvalue.fieldName")}</Label>
+                <Input
+                  id="kv-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("keyvalue.fieldNamePlaceholder")}
+                  autoComplete="off"
+                  aria-invalid={showNameError}
+                  aria-describedby={showNameError ? "kv-name-error" : undefined}
+                />
+                {showNameError ? (
+                  <p
+                    id="kv-name-error"
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
+                    {t("keyvalue.fieldNameError")}
+                  </p>
+                ) : null}
+              </div>
 
-                <div className="space-y-2">
-                  <Label>{t("keyvalue.fieldPlan")}</Label>
-                  {/* The ready grid's three inert tier cards while the catalog
+              <div className="space-y-2">
+                <Label>{t("keyvalue.fieldPlan")}</Label>
+                {/* The ready grid's three inert tier cards while the catalog
                     first loads, so the version control below doesn't jump
                     (w4/330); a settled failed or empty catalog says so and
                     retries in place (w4/m218). */}
-                  {catalogLoading && instanceTypes.length === 0 ? (
-                    <PlanTierSlots />
-                  ) : instanceTypes.length === 0 ? (
-                    <PlanCatalogUnavailable
-                      onRetry={() => void retryCatalog()}
-                      retrying={catalogRetrying}
-                    />
-                  ) : (
-                    <PlanCardGrid
-                      instanceTypes={instanceTypes}
-                      value={plan}
-                      ariaLabel={t("keyvalue.fieldPlan")}
-                      onChange={setPlanOverride}
-                    />
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="kv-version">
-                    {t("keyvalue.fieldVersion")}
-                  </Label>
-                  <Select value={version} onValueChange={setVersion}>
-                    <SelectTrigger id="kv-version" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={VERSION_DEFAULT}>
-                        {t("keyvalue.fieldVersionDefault")}
-                      </SelectItem>
-                      {VERSIONS.map((v) => (
-                        <SelectItem key={v} value={v}>
-                          Valkey {v}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="kv-maxmemory">
-                    {t("keyvalue.fieldMaxmemoryPolicy")}
-                  </Label>
-                  <Select
-                    value={maxmemoryPolicy}
-                    onValueChange={setMaxmemoryPolicy}
-                  >
-                    <SelectTrigger id="kv-maxmemory" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MAXMEMORY_POLICIES.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p}
-                          {p === RECOMMENDED_MAXMEMORY_POLICY
-                            ? ` ${t("keyvalue.fieldMaxmemoryRecommended")}`
-                            : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    {t("keyvalue.fieldMaxmemoryPolicyHint")}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="kv-persistence">
-                    {t("keyvalue.fieldPersistenceMode")}
-                  </Label>
-                  <Select
-                    value={persistenceMode}
-                    onValueChange={setPersistenceMode}
-                  >
-                    <SelectTrigger id="kv-persistence" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PERSISTENCE_MODES.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {t(PERSISTENCE_LABEL_KEYS[m])}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    {t("keyvalue.fieldPersistenceModeHint")}
-                  </p>
-                </div>
-
-                <ProjectEnvironmentSelector
-                  projectId={projectId}
-                  environmentId={environmentId}
-                  onProjectChange={setProjectId}
-                  onEnvironmentChange={setEnvironmentId}
-                />
-
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <div className="space-y-0.5 pr-4">
-                    <Label htmlFor="kv-public">
-                      {t("keyvalue.fieldPublic")}
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      {t("keyvalue.fieldPublicHint")}
-                    </p>
-                  </div>
-                  <Switch
-                    id="kv-public"
-                    checked={isPublic}
-                    onCheckedChange={setIsPublic}
+                {catalogLoading && instanceTypes.length === 0 ? (
+                  <PlanTierSlots />
+                ) : instanceTypes.length === 0 ? (
+                  <PlanCatalogUnavailable
+                    onRetry={() => void retryCatalog()}
+                    retrying={catalogRetrying}
                   />
-                </div>
+                ) : (
+                  <PlanCardGrid
+                    instanceTypes={instanceTypes}
+                    value={plan}
+                    ariaLabel={t("keyvalue.fieldPlan")}
+                    onChange={setPlanOverride}
+                  />
+                )}
+              </div>
 
-                {capLimit ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>{t("keyvalue.capLimitTitle")}</AlertTitle>
-                    <AlertDescription className="flex flex-col gap-2">
-                      <span>{capLimit}</span>
-                      {capLimitUpgrade ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="self-start"
-                          onClick={() =>
-                            void navigate({
-                              to: "/workspace/settings",
-                              search: { plan: "change" },
-                            })
-                          }
-                        >
-                          <ArrowUpRight className="size-3.5" />
-                          {t("keyvalue.capLimitUpgrade")}
-                        </Button>
-                      ) : null}
-                    </AlertDescription>
-                  </Alert>
-                ) : null}
+              <div className="space-y-2">
+                <Label htmlFor="kv-version">{t("keyvalue.fieldVersion")}</Label>
+                <Select value={version} onValueChange={setVersion}>
+                  <SelectTrigger id="kv-version" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={VERSION_DEFAULT}>
+                      {t("keyvalue.fieldVersionDefault")}
+                    </SelectItem>
+                    {VERSIONS.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        Valkey {v}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => void navigate({ to: "/" })}
-                    disabled={busy}
-                  >
-                    {t("keyvalue.createCancel")}
-                  </Button>
-                  <Button
-                    onClick={() => void handleSubmit()}
-                    disabled={!canSubmit}
-                  >
-                    {busy ? <Loader2 className="animate-spin" /> : null}
-                    {t("keyvalue.createSubmit")}
-                  </Button>
+              <div className="space-y-2">
+                <Label htmlFor="kv-maxmemory">
+                  {t("keyvalue.fieldMaxmemoryPolicy")}
+                </Label>
+                <Select
+                  value={maxmemoryPolicy}
+                  onValueChange={setMaxmemoryPolicy}
+                >
+                  <SelectTrigger id="kv-maxmemory" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MAXMEMORY_POLICIES.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                        {p === RECOMMENDED_MAXMEMORY_POLICY
+                          ? ` ${t("keyvalue.fieldMaxmemoryRecommended")}`
+                          : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {t("keyvalue.fieldMaxmemoryPolicyHint")}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="kv-persistence">
+                  {t("keyvalue.fieldPersistenceMode")}
+                </Label>
+                <Select
+                  value={persistenceMode}
+                  onValueChange={setPersistenceMode}
+                >
+                  <SelectTrigger id="kv-persistence" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PERSISTENCE_MODES.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {t(PERSISTENCE_LABEL_KEYS[m])}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {t("keyvalue.fieldPersistenceModeHint")}
+                </p>
+              </div>
+
+              <ProjectEnvironmentSelector
+                projectId={projectId}
+                environmentId={environmentId}
+                onProjectChange={setProjectId}
+                onEnvironmentChange={setEnvironmentId}
+              />
+
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div className="space-y-0.5 pr-4">
+                  <Label htmlFor="kv-public">{t("keyvalue.fieldPublic")}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("keyvalue.fieldPublicHint")}
+                  </p>
                 </div>
-              </CardContent>
-            </HydrationFieldset>
-          </Card>
-        </div>
-      </div>
+                <Switch
+                  id="kv-public"
+                  checked={isPublic}
+                  onCheckedChange={setIsPublic}
+                />
+              </div>
+
+              {capLimit ? (
+                <Alert variant="destructive">
+                  <AlertTitle>{t("keyvalue.capLimitTitle")}</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-2">
+                    <span>{capLimit}</span>
+                    {capLimitUpgrade ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="self-start"
+                        onClick={() =>
+                          void navigate({
+                            to: "/workspace/settings",
+                            search: { plan: "change" },
+                          })
+                        }
+                      >
+                        <ArrowUpRight className="size-3.5" />
+                        {t("keyvalue.capLimitUpgrade")}
+                      </Button>
+                    ) : null}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => void navigate({ to: "/" })}
+                  disabled={busy}
+                >
+                  {t("keyvalue.createCancel")}
+                </Button>
+                <Button
+                  onClick={() => void handleSubmit()}
+                  disabled={!canSubmit}
+                >
+                  {busy ? <Loader2 className="animate-spin" /> : null}
+                  {t("keyvalue.createSubmit")}
+                </Button>
+              </div>
+            </CardContent>
+          </HydrationFieldset>
+        </Card>
+      </PageFrame>
     </DashboardLayout>
   );
 }

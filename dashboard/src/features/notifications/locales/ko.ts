@@ -1,6 +1,20 @@
 import type { TranslationEntry } from "@/i18n";
 
 const koNotifications: Record<string, TranslationEntry> = {
+  "notifications.pageDescription": {
+    message:
+      "어떤 이벤트를 어디로 받을지 선택하세요: 이메일, bex 모바일 앱 또는 이 브라우저.",
+    description: "Notifications page header description",
+  },
+  "notifications.emailTitle": {
+    message: "이메일",
+    description:
+      "Notifications page: email preferences card title and section link",
+  },
+  "notifications.sectionNavigation": {
+    message: "알림 섹션",
+    description: "Accessible name of the Notifications page section navigation",
+  },
   "notifications.title": {
     message: "알림",
     description: "Settings Notifications section card title",

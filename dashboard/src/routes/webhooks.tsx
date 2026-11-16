@@ -8,7 +8,11 @@ import {
 import { prefetchInParallel } from "@/common/lib/prefetch";
 import { WebhookEndpointsDocument } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
-import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
+import {
+  WebhooksPageHeader,
+  WebhooksPanel,
+} from "@/features/webhooks/components/webhooks-panel";
+import { PageFrame } from "@/common/components/page-frame";
 
 /**
  * Outbound event webhooks as a first-class page (w1/m45) — Render's sidebar
@@ -40,11 +44,9 @@ export const Route = createFileRoute("/webhooks")({
 function WebhooksPage() {
   return (
     <DashboardLayout>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-2xl space-y-6">
-          <WebhooksPanel />
-        </div>
-      </div>
+      <PageFrame header={<WebhooksPageHeader />}>
+        <WebhooksPanel />
+      </PageFrame>
     </DashboardLayout>
   );
 }

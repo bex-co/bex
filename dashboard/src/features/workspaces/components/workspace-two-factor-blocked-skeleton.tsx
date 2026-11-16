@@ -1,3 +1,4 @@
+import { PageScroll } from "@/common/components/page-frame";
 import { ShieldAlert } from "lucide-react";
 import {
   Card,
@@ -20,11 +21,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 export function WorkspaceTwoFactorBlockedSkeleton() {
   const { t } = useTranslations();
   return (
-    <div
-      className="flex-1 overflow-auto p-4 sm:p-6"
-      data-testid="workspace-two-factor-blocked-skeleton"
-      aria-hidden
-    >
+    <PageScroll data-testid="workspace-two-factor-blocked-skeleton" aria-hidden>
       <div className="mx-auto w-full max-w-xl">
         <Card>
           <CardHeader>
@@ -61,6 +58,6 @@ export function WorkspaceTwoFactorBlockedSkeleton() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageScroll>
   );
 }

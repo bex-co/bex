@@ -1,3 +1,4 @@
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { useEffect, useState } from "react";
 import { Copy, Plus, Settings } from "lucide-react";
 import { toast } from "sonner";
@@ -101,15 +102,13 @@ export function RouterContent({
   };
   return (
     <DashboardLayout>
-      <div className="min-h-0 min-w-0 flex-1 overflow-auto">
-        <div
-          className="mx-auto w-full max-w-7xl space-y-8 p-4 sm:p-6"
-          aria-busy={pending}
-        >
-          <section className="space-y-4" aria-label={t("router.usage")}>
-            <div className="space-y-2">
-              <h1 className="text-xl font-semibold">{t("router.usage")}</h1>
-              <div className="text-muted-foreground h-5 text-sm">
+      <PageFrame
+        width="wide"
+        header={
+          <PageHeader
+            title={t("router.usage")}
+            description={
+              <div className="h-5">
                 {pending ? (
                   <Skeleton className="h-5 w-64 max-w-full" />
                 ) : overview?.quota ? (
@@ -118,8 +117,13 @@ export function RouterContent({
                   })
                 ) : null}
               </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            }
+          />
+        }
+      >
+        <div className="space-y-8" aria-busy={pending}>
+          <section className="space-y-4" aria-label={t("router.usage")}>
+            <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-3">
               {WINDOWS.map(([kind, label]) => {
                 const window = overview?.quota?.windows.find(
                   (w) => w.kind === kind,
@@ -301,7 +305,7 @@ export function RouterContent({
             />
           ) : null}
         </div>
-      </div>
+      </PageFrame>
     </DashboardLayout>
   );
 }

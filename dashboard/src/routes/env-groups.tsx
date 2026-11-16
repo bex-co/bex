@@ -19,6 +19,7 @@ import {
   ServicesDocument,
 } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
@@ -116,17 +117,20 @@ export function EnvGroupsPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
-        <div>
-          <h1 className="text-xl font-semibold">{t("envGroups.pageTitle")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("envGroups.pageDescription")}
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus />
-          {t("envGroups.newButton")}
-        </Button>
+      <PageFrame
+        header={
+          <PageHeader
+            title={t("envGroups.pageTitle")}
+            description={t("envGroups.pageDescription")}
+            actions={
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus />
+                {t("envGroups.newButton")}
+              </Button>
+            }
+          />
+        }
+      >
         <NewEnvGroupDialog
           key={currentWorkspaceId}
           open={createOpen}
@@ -152,120 +156,112 @@ export function EnvGroupsPage() {
             })
           }
         />
-      </div>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-5xl space-y-6">
-          {errorKind && groups.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-12 text-center">
-              <AlertTriangle className="size-8 text-destructive" />
-              <p className="font-medium">{t(`envGroups.${errorKind}Title`)}</p>
-              <p className="text-sm text-muted-foreground">
-                {t(`envGroups.${errorKind}Body`)}
-              </p>
-            </div>
-          ) : initialLoading ? (
-            <EnvGroupsContentSkeleton />
-          ) : groups.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-12 text-center">
-              <Layers3 className="size-8 text-muted-foreground" />
-              <p className="font-medium">{t("envGroups.emptyTitle")}</p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                {t("envGroups.emptyBody")}
-              </p>
-              <Button
-                size="sm"
-                className="mt-2"
-                onClick={() => setCreateOpen(true)}
-              >
-                <Plus />
-                {t("envGroups.newButton")}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative max-w-md flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    // Uneditable until handlers attach: a query typed into
-                    // the server HTML is wiped by hydration (w4/m219).
-                    disabled={!hydrated}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder={t("envGroups.searchPlaceholder")}
-                    aria-label={t("envGroups.searchLabel")}
-                    className="pl-9"
-                  />
-                </div>
-                {search ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSearch("")}
-                  >
-                    <X /> {t("envGroups.resetSearch")}
-                  </Button>
-                ) : null}
+        {errorKind && groups.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <AlertTriangle className="size-8 text-destructive" />
+            <p className="font-medium">{t(`envGroups.${errorKind}Title`)}</p>
+            <p className="text-sm text-muted-foreground">
+              {t(`envGroups.${errorKind}Body`)}
+            </p>
+          </div>
+        ) : initialLoading ? (
+          <EnvGroupsContentSkeleton />
+        ) : groups.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <Layers3 className="size-8 text-muted-foreground" />
+            <p className="font-medium">{t("envGroups.emptyTitle")}</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              {t("envGroups.emptyBody")}
+            </p>
+            <Button
+              size="sm"
+              className="mt-2"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus />
+              {t("envGroups.newButton")}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative max-w-md flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  // Uneditable until handlers attach: a query typed into
+                  // the server HTML is wiped by hydration (w4/m219).
+                  disabled={!hydrated}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t("envGroups.searchPlaceholder")}
+                  aria-label={t("envGroups.searchLabel")}
+                  className="pl-9"
+                />
               </div>
-              {visibleGroups.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-12 text-center">
-                  <Search className="size-8 text-muted-foreground" />
-                  <p className="font-medium">{t("envGroups.noMatchesTitle")}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t("envGroups.noMatchesBody")}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSearch("")}
-                  >
-                    {t("envGroups.resetSearch")}
-                  </Button>
-                </div>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <EnvGroupsTableHeader />
-                    <TableBody>
-                      {visibleGroups.map((group) => (
-                        <TableRow key={group.id}>
-                          <TableCell className="min-w-48">
-                            <Link
-                              to="/env-groups/$groupId"
-                              params={{ groupId: group.id }}
-                              className="font-medium hover:underline"
-                            >
-                              {group.name}
-                            </Link>
-                            <p className="max-w-64 truncate font-mono text-xs text-muted-foreground">
-                              {group.id} ·{" "}
-                              {t("envGroups.serviceCount", {
-                                count: group.serviceLinks.length,
-                              })}
-                            </p>
-                          </TableCell>
-                          <TableCell className="min-w-40">
-                            {environmentLabel(group.environmentId)}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {group.envVarKeys.length}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {group.secretFileNames.length}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap text-right text-muted-foreground">
-                            <LocalDateTime value={group.updatedAt} />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+              {search ? (
+                <Button variant="ghost" size="sm" onClick={() => setSearch("")}>
+                  <X /> {t("envGroups.resetSearch")}
+                </Button>
+              ) : null}
             </div>
-          )}
-        </div>
-      </div>
+            {visibleGroups.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-12 text-center">
+                <Search className="size-8 text-muted-foreground" />
+                <p className="font-medium">{t("envGroups.noMatchesTitle")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("envGroups.noMatchesBody")}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSearch("")}
+                >
+                  {t("envGroups.resetSearch")}
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <EnvGroupsTableHeader />
+                  <TableBody>
+                    {visibleGroups.map((group) => (
+                      <TableRow key={group.id}>
+                        <TableCell className="min-w-48">
+                          <Link
+                            to="/env-groups/$groupId"
+                            params={{ groupId: group.id }}
+                            className="font-medium hover:underline"
+                          >
+                            {group.name}
+                          </Link>
+                          <p className="max-w-64 truncate font-mono text-xs text-muted-foreground">
+                            {group.id} ·{" "}
+                            {t("envGroups.serviceCount", {
+                              count: group.serviceLinks.length,
+                            })}
+                          </p>
+                        </TableCell>
+                        <TableCell className="min-w-40">
+                          {environmentLabel(group.environmentId)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {group.envVarKeys.length}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {group.secretFileNames.length}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-right text-muted-foreground">
+                          <LocalDateTime value={group.updatedAt} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        )}
+      </PageFrame>
     </DashboardLayout>
   );
 }

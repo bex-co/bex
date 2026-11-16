@@ -70,13 +70,15 @@ export function MemberRow({
 
   return (
     <TableRow>
-      <TableCell className="break-all">
-        {/* flex-wrap + shrink-0 badges: the cell is break-all, so a badge
-            competing for width on a narrow viewport would otherwise squeeze the
-            email down to its min-content and break it one character per line.
-            Wrapping lets the badges drop to their own line instead. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="min-w-0">{identity}</span>
+      {/* w-full max-w-0: the member column takes the width the role and
+          action columns leave instead of squeezing them. Badges that don't
+          fit beside the name wrap to their own line. */}
+      <TableCell className="w-full max-w-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {/* The full identity, wrapping at its own break points (an email's
+              hyphen or dot) — a phone has no hover to reveal a truncation.
+              Only the secondary subject line below truncates. */}
+          <span className="min-w-0 max-w-full break-words">{identity}</span>
           {member.isSelf ? (
             <Badge variant="secondary" className="shrink-0">
               {t("team.you")}
@@ -113,7 +115,10 @@ export function MemberRow({
           ) : null}
         </div>
         {identity !== member.subject ? (
-          <div className="font-mono text-xs text-muted-foreground">
+          <div
+            className="truncate font-mono text-xs text-muted-foreground"
+            title={member.subject}
+          >
             {member.subject}
           </div>
         ) : null}
@@ -130,7 +135,7 @@ export function MemberRow({
             >
               <SelectTrigger
                 size="sm"
-                className="w-[150px]"
+                className="w-[7.5rem] @md:w-[150px]"
                 aria-label={t("team.roleFor", { identity })}
               >
                 <SelectValue />

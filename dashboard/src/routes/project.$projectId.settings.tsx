@@ -1,3 +1,4 @@
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { useMemo, useState } from "react";
 import {
   doomedResourceNames,
@@ -107,102 +108,99 @@ export function ProjectSettingsPage() {
     // (w9/m55). Only a query error stays put, on its inline message.
     if (projectResult.state !== "error") return null;
     return (
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
+      <PageFrame width="form">
         <p className="text-sm text-muted-foreground">
           {t("projects.errorTitle")}
         </p>
-      </div>
+      </PageFrame>
     );
   }
 
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6">
-      <div className="w-full max-w-2xl space-y-6">
-        <h1 className="text-xl font-semibold">{t("projects.settingsTitle")}</h1>
-
-        <Card>
-          <CardHeader>
-            {/* Both mutually exclusive inputs below point at this heading, so
+    <PageFrame
+      width="form"
+      header={<PageHeader title={t("projects.settingsTitle")} />}
+    >
+      <Card>
+        <CardHeader>
+          {/* Both mutually exclusive inputs below point at this heading, so
                 the control is named by its purpose in either state rather than
                 by whatever value it currently holds (w4/134). */}
-            <CardTitle id="project-name-card-title">
-              {t("projects.nameCardTitle")}
-            </CardTitle>
-            <CardDescription>
-              {t("projects.nameCardDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {editing ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  aria-labelledby="project-name-card-title"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  autoFocus
-                  autoComplete="off"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && canSave) void handleSave();
-                    if (e.key === "Escape") setEditing(false);
-                  }}
-                />
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("projects.renameSubmit")}
-                  disabled={renaming || !canSave}
-                  onClick={() => void handleSave()}
-                >
-                  {renaming ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Check className="text-emerald-600" />
-                  )}
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("projects.createCancel")}
-                  disabled={renaming}
-                  onClick={() => setEditing(false)}
-                >
-                  <X />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Input
-                  aria-labelledby="project-name-card-title"
-                  value={project?.name ?? ""}
-                  disabled
-                  readOnly
-                  className="flex-1"
-                />
-                <Button variant="outline" size="sm" onClick={startEdit}>
-                  <Pencil />
-                  {t("projects.editNameButton")}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          <CardTitle id="project-name-card-title">
+            {t("projects.nameCardTitle")}
+          </CardTitle>
+          <CardDescription>{t("projects.nameCardDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {editing ? (
+            <div className="flex items-center gap-2">
+              <Input
+                aria-labelledby="project-name-card-title"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                autoFocus
+                autoComplete="off"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canSave) void handleSave();
+                  if (e.key === "Escape") setEditing(false);
+                }}
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={t("projects.renameSubmit")}
+                disabled={renaming || !canSave}
+                onClick={() => void handleSave()}
+              >
+                {renaming ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Check className="text-emerald-600" />
+                )}
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={t("projects.createCancel")}
+                disabled={renaming}
+                onClick={() => setEditing(false)}
+              >
+                <X />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Input
+                aria-labelledby="project-name-card-title"
+                value={project?.name ?? ""}
+                disabled
+                readOnly
+                className="flex-1"
+              />
+              <Button variant="outline" size="sm" onClick={startEdit}>
+                <Pencil />
+                {t("projects.editNameButton")}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <CardTitle className="text-destructive">
-              {t("projects.deleteCardTitle")}
-            </CardTitle>
-            <CardDescription>
-              {t("projects.deleteCardDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-              {t("projects.deleteCardButton")}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle className="text-destructive">
+            {t("projects.deleteCardTitle")}
+          </CardTitle>
+          <CardDescription>
+            {t("projects.deleteCardDescription")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+            {t("projects.deleteCardButton")}
+          </Button>
+        </CardContent>
+      </Card>
 
       <ConfirmDialog
         open={deleteOpen}
@@ -230,7 +228,7 @@ export function ProjectSettingsPage() {
         pending={deletingThis}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageFrame>
   );
 }
 

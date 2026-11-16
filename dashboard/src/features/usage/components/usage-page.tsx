@@ -41,6 +41,8 @@ import { AgentModelCard } from "./agent-model-card";
 import { CreditBalanceCard, InvoiceHistoryCard } from "./billing-summary-cards";
 import { UsageNavigation } from "./usage-navigation";
 import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
+import { cn } from "@/common/lib/utils/utils";
 
 /**
  * The workspace billing page (`/billing`).
@@ -85,18 +87,12 @@ export function UsagePage() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto grid w-full max-w-5xl items-start gap-8 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-          <div className="min-w-0 space-y-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="text-xl font-semibold">
-                  {t("usage.pageTitle")}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {t("usage.pageSubtitle")}
-                </p>
-              </div>
+      <PageFrame
+        header={
+          <PageHeader
+            title={t("usage.pageTitle")}
+            description={t("usage.pageSubtitle")}
+            actions={
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
                 <SelectTrigger
                   size="sm"
@@ -116,80 +112,72 @@ export function UsagePage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            }
+          />
+        }
+        navigation={<UsageNavigation />}
+      >
+        {error && !summary && (
+          <Alert variant="destructive">
+            <AlertTitle>{t("usage.errorTitle")}</AlertTitle>
+            <AlertDescription>
+              {mutationErrorMessage(error, t("common.loadErrorRetry"))}
+            </AlertDescription>
+          </Alert>
+        )}
 
-            {/* Mobile section nav — the desktop right rail renders below. */}
-            <UsageNavigation className="sticky top-0 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:hidden" />
-
-            {error && !summary && (
-              <Alert variant="destructive">
-                <AlertTitle>{t("usage.errorTitle")}</AlertTitle>
-                <AlertDescription>
-                  {mutationErrorMessage(error, t("common.loadErrorRetry"))}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <section id="plan" className={SECTION_NAVIGATION_TARGET_CLASS}>
-              <PlanCard />
-            </section>
-            <section
-              id="payment-method"
-              className={SECTION_NAVIGATION_TARGET_CLASS}
-            >
-              <PaymentMethodCard />
-            </section>
-            <section
-              id="included-usage"
-              className={SECTION_NAVIGATION_TARGET_CLASS}
-            >
-              <WorkspaceResourceCaps />
-              <FreeHoursCard hours={summary?.freeInstanceHours ?? null} />
-              <BuildMinutesCard minutes={summary?.buildMinutes ?? null} />
-              <IncludedBandwidthCard
-                bandwidth={summary?.includedBandwidth ?? null}
-              />
-            </section>
-            <section id="charges" className={SECTION_NAVIGATION_TARGET_CLASS}>
-              <ChargesCard
-                estimatedCost={summary?.estimatedCost ?? null}
-                coverage={summary?.coverage ?? null}
-                invoicedUsd={billing?.currentCost?.amountUsd ?? null}
-                amountDueUsd={billing?.currentCost?.amountDueUsd ?? null}
-                ratedPeriodStart={billing?.currentCost?.periodStart ?? null}
-                ratedPeriodEnd={billing?.currentCost?.periodEnd ?? null}
-                loading={loading}
-                period={period ?? ""}
-              />
-            </section>
-            <section
-              id="agent-model"
-              className={SECTION_NAVIGATION_TARGET_CLASS}
-            >
-              <AgentModelCard
-                agentModel={summary?.agentModel ?? null}
-                loading={loading}
-                current={period == null}
-              />
-            </section>
-            <section
-              id="credit-balance"
-              className={SECTION_NAVIGATION_TARGET_CLASS}
-            >
-              <CreditBalanceCard billing={billing} />
-            </section>
-            <section
-              id="invoice-history"
-              className={SECTION_NAVIGATION_TARGET_CLASS}
-            >
-              <InvoiceHistoryCard billing={billing} />
-            </section>
-          </div>
-
-          {/* Desktop right rail — same quick nav as the service settings page. */}
-          <UsageNavigation className="sticky top-6 hidden lg:block" />
-        </div>
-      </div>
+        <section id="plan" className={SECTION_NAVIGATION_TARGET_CLASS}>
+          <PlanCard />
+        </section>
+        <section
+          id="payment-method"
+          className={SECTION_NAVIGATION_TARGET_CLASS}
+        >
+          <PaymentMethodCard />
+        </section>
+        <section
+          id="included-usage"
+          className={cn(SECTION_NAVIGATION_TARGET_CLASS, "space-y-6")}
+        >
+          <WorkspaceResourceCaps />
+          <FreeHoursCard hours={summary?.freeInstanceHours ?? null} />
+          <BuildMinutesCard minutes={summary?.buildMinutes ?? null} />
+          <IncludedBandwidthCard
+            bandwidth={summary?.includedBandwidth ?? null}
+          />
+        </section>
+        <section id="charges" className={SECTION_NAVIGATION_TARGET_CLASS}>
+          <ChargesCard
+            estimatedCost={summary?.estimatedCost ?? null}
+            coverage={summary?.coverage ?? null}
+            invoicedUsd={billing?.currentCost?.amountUsd ?? null}
+            amountDueUsd={billing?.currentCost?.amountDueUsd ?? null}
+            ratedPeriodStart={billing?.currentCost?.periodStart ?? null}
+            ratedPeriodEnd={billing?.currentCost?.periodEnd ?? null}
+            loading={loading}
+            period={period ?? ""}
+          />
+        </section>
+        <section id="agent-model" className={SECTION_NAVIGATION_TARGET_CLASS}>
+          <AgentModelCard
+            agentModel={summary?.agentModel ?? null}
+            loading={loading}
+            current={period == null}
+          />
+        </section>
+        <section
+          id="credit-balance"
+          className={SECTION_NAVIGATION_TARGET_CLASS}
+        >
+          <CreditBalanceCard billing={billing} />
+        </section>
+        <section
+          id="invoice-history"
+          className={SECTION_NAVIGATION_TARGET_CLASS}
+        >
+          <InvoiceHistoryCard billing={billing} />
+        </section>
+      </PageFrame>
     </DashboardLayout>
   );
 }

@@ -197,7 +197,7 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
         ) : null}
 
         {facts.length > 0 ? (
-          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-5">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-muted-foreground @lg:grid-cols-2 @3xl:grid-cols-5">
             {facts.map((fact) => (
               <div key={fact.label}>
                 <dt className="inline font-medium">{fact.label}: </dt>

@@ -32,7 +32,7 @@ export function InstanceTypeGroup({
         {label}
       </div>
       {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 @md:grid-cols-2 @2xl:grid-cols-3">
         {children}
       </div>
     </div>

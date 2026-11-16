@@ -1,6 +1,20 @@
 import type { TranslationEntry } from "@/i18n";
 
 const ruNotifications: Record<string, TranslationEntry> = {
+  "notifications.pageDescription": {
+    message:
+      "Выберите, о каких событиях и где получать уведомления: по электронной почте, в мобильном приложении bex или в этом браузере.",
+    description: "Notifications page header description",
+  },
+  "notifications.emailTitle": {
+    message: "Электронная почта",
+    description:
+      "Notifications page: email preferences card title and section link",
+  },
+  "notifications.sectionNavigation": {
+    message: "Разделы уведомлений",
+    description: "Accessible name of the Notifications page section navigation",
+  },
   "notifications.title": {
     message: "Уведомления",
     description: "Settings Notifications section card title",

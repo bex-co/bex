@@ -57,7 +57,7 @@ export function NotificationSettingsPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h1">{t("notifications.title")}</CardTitle>
+        <CardTitle as="h2">{t("notifications.emailTitle")}</CardTitle>
         <CardDescription>{t("notifications.description")}</CardDescription>
       </CardHeader>
       <CardContent>

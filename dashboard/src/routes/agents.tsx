@@ -10,6 +10,7 @@ import {
 import { prefetchInParallel } from "@/common/lib/prefetch";
 import { AgentSessionsDocument } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -132,38 +133,29 @@ export function AgentSessionsPageContent({
   tag,
   prState,
 }: AgentSessionListSearch) {
+  const { t } = useTranslations();
   const listMode =
     agentSessionsPageMode({ archived, phase, tag, prState }) === "list";
 
   return (
     <DashboardLayout>
-      <div className="min-h-0 min-w-0 flex-1 overflow-auto">
-        <div className="mx-auto w-full max-w-5xl space-y-8 p-4 sm:p-6">
-          {listMode ? (
-            <>
-              <PageHeader />
-              <SessionListSection
-                archived={archived}
-                phase={phase}
-                tag={tag}
-                prState={prState}
-              />
-            </>
-          ) : (
-            <ComposerSection />
-          )}
-        </div>
-      </div>
+      <PageFrame
+        header={
+          listMode ? <PageHeader title={t("agentSessions.pageTitle")} /> : null
+        }
+      >
+        {listMode ? (
+          <SessionListSection
+            archived={archived}
+            phase={phase}
+            tag={tag}
+            prState={prState}
+          />
+        ) : (
+          <ComposerSection />
+        )}
+      </PageFrame>
     </DashboardLayout>
-  );
-}
-
-function PageHeader() {
-  const { t } = useTranslations();
-  return (
-    <header className="mx-auto w-full max-w-4xl">
-      <h1 className="text-xl font-semibold">{t("agentSessions.pageTitle")}</h1>
-    </header>
   );
 }
 
@@ -208,10 +200,7 @@ function SessionListSection({
         : t("agentSessions.filterActive");
 
   return (
-    <section
-      className="mx-auto w-full max-w-4xl space-y-3"
-      aria-labelledby="session-list-title"
-    >
+    <section className="w-full space-y-3" aria-labelledby="session-list-title">
       {/* One row at every width: the heading truncates rather than wrapping
           the filter onto a second line, so the pending skeleton (which draws
           this row at the same height) never shifts on load. */}

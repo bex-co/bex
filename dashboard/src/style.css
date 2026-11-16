@@ -475,3 +475,17 @@
   /* Transparent corner where vertical and horizontal scrollbars meet */
   background: transparent;
 }
+
+/*
+ * A scroller that hides its scrollbar (a tab bar, a chip row): the content
+ * itself shows it scrolls (a faded edge, a clipped item). Unlayered, like the
+ * global rules above, which out-rank any Tailwind utility — so a
+ * `[scrollbar-width:none]` utility can never beat `* { scrollbar-width: thin }`;
+ * this class (specificity 0,1,0) does.
+ */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

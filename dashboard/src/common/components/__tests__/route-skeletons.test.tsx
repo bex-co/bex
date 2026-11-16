@@ -19,6 +19,7 @@ import {
   EnvGroupsListPageSkeleton,
   KeyValueCreatePageSkeleton,
   KeyValueOverviewSkeleton,
+  NotificationsPageSkeleton,
   ServiceEnvironmentSkeleton,
   ServiceCreatePageSkeleton,
   ServiceLogsSkeleton,
@@ -134,7 +135,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     [
       <BlueprintCreatePageSkeleton key="blueprint-create" />,
       "blueprint-create",
-      ["form-header", "source-picker", "settings", "preview", "actions"],
+      ["page-header", "source-picker", "settings", "preview", "actions"],
     ],
     [
       <KeyValueCreatePageSkeleton key="keyvalue-create" />,
@@ -246,10 +247,6 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
   it.each([
     [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 7],
-    // 8: Build Pipeline (w6/m309) joined the billing manager's rail; 9:
-    // Inbound IP Rules (w9/m388) and 10: Two-factor authentication (w22/m402) joined
-    // every member's.
-    [<WorkspaceSettingsPageSkeleton key="workspace" />, 10],
     [<ServiceSettingsSkeleton key="service" />, 13],
   ])(
     "keeps long-page section navigation at narrow and wide breakpoints",
@@ -260,7 +257,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       );
 
       expect(nav).not.toBeNull();
-      expect(nav).toHaveClass("sticky", "lg:col-start-2");
+      expect(nav).toHaveClass("sticky", "@4xl/page:col-start-2");
       expect(nav).toHaveClass("min-w-0");
       expect(nav).not.toHaveClass("max-w-full");
       expect(nav).not.toHaveClass("hidden");
@@ -376,38 +373,55 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     expect(native.rows).toBe(7);
   });
 
-  it("keeps account settings mobile navigation and desktop rail together", () => {
-    const { container } = render(<AccountSettingsPageSkeleton />);
-    expect(regions(container)).toEqual(
-      expect.arrayContaining([
-        "mobile-navigation",
-        "section-navigation",
-        "danger-zone",
-      ]),
-    );
-    expect(
-      container.querySelector('[data-skeleton-region="mobile-navigation"]')
-        ?.children[0]?.children,
-    ).toHaveLength(5);
-    expect(
-      container
-        .querySelector('[data-skeleton-region="section-navigation"]')
-        ?.querySelectorAll('[data-slot="skeleton"]'),
-    ).toHaveLength(5);
-  });
+  it.each([
+    // Build Pipeline (w6/m309) is billing managers' only, so the pending rail
+    // is the every-member one plus Audit Logs (reserved until the role loads).
+    [
+      <WorkspaceSettingsPageSkeleton key="workspace" />,
+      "workspace-settings",
+      10,
+    ],
+    [<AccountSettingsPageSkeleton key="account" />, "account-settings", 5],
+    [<BillingPageSkeleton key="billing" />, "billing", 7],
+    [<NotificationsPageSkeleton key="notifications" />, "notifications", 3],
+  ])(
+    "renders %s pending through the settings page frame, with its real rail",
+    (component, shape, links) => {
+      const { container, unmount } = render(component);
+      const frame = container.querySelector<HTMLElement>(
+        `[data-route-skeleton="${shape}"]`,
+      );
+      expect(frame).toHaveAttribute("data-page-scroll");
+      // The ready page's own heading and navigation, not bars standing in.
+      expect(
+        frame!.querySelector('[data-skeleton-region="page-header"] h1'),
+      ).not.toBeNull();
+      const rail = frame!.querySelector<HTMLElement>(
+        '[data-skeleton-region="navigation"]',
+      );
+      expect(rail).toHaveClass("sticky", "@4xl/page:col-start-2");
+      expect(rail!.querySelectorAll("nav a[href^='#']")).toHaveLength(links);
+      unmount();
+    },
+  );
 
   it.each([
-    [<BlueprintCreatePageSkeleton key="blueprint" />, "min-h-[902px]"],
-    [<KeyValueCreatePageSkeleton key="keyvalue" />, "min-h-[1190px]"],
-    [<WebhookCreatePageSkeleton key="webhook" />, "min-h-[973px]"],
+    [<BlueprintCreatePageSkeleton key="blueprint" />, "blueprint-create"],
+    [<KeyValueCreatePageSkeleton key="keyvalue" />, "keyvalue-create"],
+    [<WebhookCreatePageSkeleton key="webhook" />, "webhook-create"],
   ])(
-    "reserves the measured narrow-mobile create-card height",
-    (component, heightClass) => {
+    "titles the create form above its card, in the form-width frame",
+    (component, shape) => {
       const { container, unmount } = render(component);
-      expect(container.querySelector('[data-slot="card"]')).toHaveClass(
-        heightClass,
-        "sm:min-h-0",
+      const frame = container.querySelector<HTMLElement>(
+        `[data-route-skeleton="${shape}"]`,
       );
+      expect(frame?.querySelector(".max-w-2xl")).not.toBeNull();
+      const title = frame!.querySelector(
+        '[data-skeleton-region="page-header"] h1',
+      );
+      expect(title?.textContent).not.toBe("");
+      expect(title?.closest('[data-slot="card"]')).toBeNull();
       unmount();
     },
   );
@@ -487,12 +501,11 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
           "actions",
         ]),
       );
-      const card = container.querySelector('[data-slot="card"]');
-      if (path.endsWith("static_site")) {
-        expect(card).not.toHaveClass("min-h-[2458px]");
-      } else {
-        expect(card).toHaveClass("min-h-[2458px]", "sm:min-h-0");
-      }
+      // The type's own create title, in the shared page header.
+      expect(
+        container.querySelector('[data-skeleton-region="page-header"] h1')
+          ?.textContent,
+      ).not.toBe("");
     },
   );
 });

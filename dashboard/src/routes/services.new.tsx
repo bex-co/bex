@@ -4,14 +4,9 @@ import { Loader2, ArrowUpRight } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { useTranslations } from "@/common/hooks/use-translations";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
+import { Card, CardContent } from "@/common/components/ui/card";
 import {
   Alert,
   AlertDescription,
@@ -147,540 +142,527 @@ export function NewServicePage() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-2xl space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle as="h1" className="text-xl">
-                {t(createCopy.titleKey)}
-              </CardTitle>
-              <CardDescription>{t(createCopy.descriptionKey)}</CardDescription>
-            </CardHeader>
-            <HydrationFieldset>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <Label>{t("services.createTypePickerTitle")}</Label>
-                  <ServiceTypePicker
-                    value={form.serviceType}
-                    onChange={(serviceType) => {
-                      setServiceType(serviceType);
-                      // Mirror the choice into ?type= so the route's head()
-                      // re-runs and the tab title tracks the <h1> (w6/045).
-                      // replace + retained search params: same match stays
-                      // mounted, so the in-progress form state survives.
-                      void navigate({
-                        to: ".",
-                        search: (current) => ({
-                          ...current,
-                          type: serviceType,
-                        }),
-                        replace: true,
-                      });
-                    }}
-                  />
-                </div>
-
-                <ServiceSourcePicker
-                  tab={form.tab}
-                  onTabChange={setTab}
-                  selectedRepo={form.selectedRepo}
-                  onSelectRepo={(selectedRepo) => set({ selectedRepo })}
-                  gitUrl={form.gitUrl}
-                  onGitUrlChange={(gitUrl) => set({ gitUrl })}
-                  onGitHubPage={(page) =>
-                    set((current) => ({
-                      branch: current.branch || page.branch,
-                      rootDir: current.rootDir || page.rootDir,
-                    }))
-                  }
-                  // A static site has no image source (ADR029): omitting the
-                  // prop is what removes the Existing Image tab, same as the
-                  // Blueprint caller.
-                  image={
-                    shape.isStaticType
-                      ? undefined
-                      : {
-                          value: form.image,
-                          onChange: (image) => {
-                            clearImageRefusal();
-                            set({ image });
-                          },
-                          serverError: imageRefusal,
-                          registryCredentialId: form.registryCredentialId,
-                          onRegistryCredentialChange: (registryCredentialId) =>
-                            set({ registryCredentialId }),
-                          showPortHint: shape.showPort,
-                        }
-                  }
+      <PageFrame
+        width="form"
+        header={
+          <PageHeader
+            title={t(createCopy.titleKey)}
+            description={t(createCopy.descriptionKey)}
+          />
+        }
+      >
+        <Card>
+          <HydrationFieldset>
+            <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <Label>{t("services.createTypePickerTitle")}</Label>
+                <ServiceTypePicker
+                  value={form.serviceType}
+                  onChange={(serviceType) => {
+                    setServiceType(serviceType);
+                    // Mirror the choice into ?type= so the route's head()
+                    // re-runs and the tab title tracks the <h1> (w6/045).
+                    // replace + retained search params: same match stays
+                    // mounted, so the in-progress form state survives.
+                    void navigate({
+                      to: ".",
+                      search: (current) => ({
+                        ...current,
+                        type: serviceType,
+                      }),
+                      replace: true,
+                    });
+                  }}
                 />
+              </div>
 
-                <div className="space-y-4">
-                  <p className="text-base font-semibold">
-                    {t("services.createSettingsTitle")}
-                  </p>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="svc-name">
-                      {t("services.createFieldName")}
-                    </Label>
-                    <Input
-                      id="svc-name"
-                      value={name.name}
-                      onChange={(e) => {
-                        name.editName(e.target.value);
-                        clearNameConflict();
-                      }}
-                      placeholder={t("services.createFieldNamePlaceholder")}
-                      autoComplete="off"
-                      aria-invalid={showNameError || showNameTaken}
-                      aria-describedby={
-                        showNameError || showNameTaken
-                          ? "svc-name-error"
-                          : undefined
+              <ServiceSourcePicker
+                tab={form.tab}
+                onTabChange={setTab}
+                selectedRepo={form.selectedRepo}
+                onSelectRepo={(selectedRepo) => set({ selectedRepo })}
+                gitUrl={form.gitUrl}
+                onGitUrlChange={(gitUrl) => set({ gitUrl })}
+                onGitHubPage={(page) =>
+                  set((current) => ({
+                    branch: current.branch || page.branch,
+                    rootDir: current.rootDir || page.rootDir,
+                  }))
+                }
+                // A static site has no image source (ADR029): omitting the
+                // prop is what removes the Existing Image tab, same as the
+                // Blueprint caller.
+                image={
+                  shape.isStaticType
+                    ? undefined
+                    : {
+                        value: form.image,
+                        onChange: (image) => {
+                          clearImageRefusal();
+                          set({ image });
+                        },
+                        serverError: imageRefusal,
+                        registryCredentialId: form.registryCredentialId,
+                        onRegistryCredentialChange: (registryCredentialId) =>
+                          set({ registryCredentialId }),
+                        showPortHint: shape.showPort,
                       }
-                    />
-                    {name.resourceNamePreview !== null ? (
-                      <p className="text-sm text-muted-foreground">
-                        {t("services.createFieldNameResourceName", {
-                          name: name.resourceNamePreview,
-                        })}
-                      </p>
-                    ) : null}
-                    {showNameError ? (
-                      <p
-                        id="svc-name-error"
-                        role="alert"
-                        className="text-sm text-destructive"
-                      >
-                        {t("services.createFieldNameError")}
-                      </p>
-                    ) : showNameTaken ? (
-                      <p
-                        id="svc-name-error"
-                        role="alert"
-                        className="flex flex-wrap items-center gap-2 text-sm text-destructive"
-                      >
-                        <span>{t("services.createFieldNameTaken")}</span>
-                        {name.nameTaken && name.nameSuggestion ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-6 px-2 text-xs"
-                            onClick={name.acceptSuggestion}
-                          >
-                            {t("services.createFieldNameUseSuggestion", {
-                              name: name.nameSuggestion,
-                            })}
-                          </Button>
-                        ) : null}
-                      </p>
-                    ) : name.checkingName ? (
-                      <p className="text-sm text-muted-foreground">
-                        {t("services.createFieldNameChecking")}
-                      </p>
-                    ) : null}
-                  </div>
+                }
+              />
 
-                  {shape.isGitSource ? (
-                    <>
-                      <TextField
-                        id="svc-branch"
-                        label={t("services.createFieldBranch")}
-                        value={form.branch}
-                        onChange={(branch) => set({ branch })}
-                        placeholder={
-                          (form.tab === "github" &&
-                            form.selectedRepo?.defaultBranch) ||
-                          t("services.createFieldBranchPlaceholder")
-                        }
-                      />
-                      <TextField
-                        id="svc-rootdir"
-                        label={t("services.createFieldRootDir")}
-                        value={form.rootDir}
-                        onChange={(rootDir) => set({ rootDir })}
-                        placeholder={t(
-                          "services.createFieldRootDirPlaceholder",
-                        )}
-                        hint={t("services.createFieldRootDirHint")}
-                        error={
-                          fieldErrors.rootDir
-                            ? t(fieldErrors.rootDir)
-                            : undefined
-                        }
-                      />
-                      {shape.isBuildableGit ? (
-                        <>
-                          <div className="space-y-2">
-                            <Label htmlFor="svc-runtime">
-                              {t("services.createFieldRuntime")}
-                            </Label>
-                            <Select
-                              value={form.runtime}
-                              onValueChange={(value) =>
-                                build.setRuntime(value as GitRuntime)
-                              }
-                            >
-                              <SelectTrigger
-                                id="svc-runtime"
-                                className="w-full"
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {RUNTIME_DEFS.map(({ id, labelKey }) => (
-                                  <SelectItem key={id} value={id}>
-                                    {t(labelKey)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {shape.isNativeBuild ? (
-                            <>
-                              <TextField
-                                id="svc-build-command"
-                                label={t("services.createFieldBuildCommand")}
-                                value={form.buildCommand}
-                                onChange={build.setBuildCommand}
-                              />
-                              {!shape.isCronType ? (
-                                <TextField
-                                  id="svc-start-command"
-                                  label={t("services.createFieldStartCommand")}
-                                  value={form.startCommand}
-                                  onChange={build.setStartCommand}
-                                />
-                              ) : null}
-                            </>
-                          ) : (
-                            <>
-                              <TextField
-                                id="svc-dockerfile-path"
-                                label={t("services.createFieldDockerfilePath")}
-                                value={form.dockerfilePath}
-                                onChange={build.setDockerfilePath}
-                                placeholder={t(
-                                  "services.createFieldDockerfilePathPlaceholder",
-                                )}
-                                hint={t(
-                                  "services.createFieldDockerfilePathHint",
-                                )}
-                                error={
-                                  fieldErrors.dockerfilePath
-                                    ? t(fieldErrors.dockerfilePath)
-                                    : undefined
-                                }
-                              />
-                              <RegistryCredentialSelect
-                                id="svc-registry-credential-docker"
-                                value={form.registryCredentialId}
-                                onValueChange={(registryCredentialId) =>
-                                  set({ registryCredentialId })
-                                }
-                                description={t(
-                                  "services.createRegistryCredentialDescription",
-                                )}
-                              />
-                              {!shape.isCronType ? (
-                                <TextField
-                                  id="svc-docker-command"
-                                  label={t("services.createFieldDockerCommand")}
-                                  value={form.startCommand}
-                                  onChange={build.setStartCommand}
-                                  placeholder={t(
-                                    "services.createFieldDockerCommandPlaceholder",
-                                  )}
-                                />
-                              ) : null}
-                            </>
-                          )}
-                        </>
-                      ) : null}
-                    </>
-                  ) : null}
+              <div className="space-y-4">
+                <p className="text-base font-semibold">
+                  {t("services.createSettingsTitle")}
+                </p>
 
-                  {/* Cron jobs set theirs through Command below. */}
-                  {shape.showImageCommand ? (
-                    <TextField
-                      id="svc-image-docker-command"
-                      label={t("services.createFieldDockerCommand")}
-                      value={form.imageCommand}
-                      onChange={(imageCommand) => set({ imageCommand })}
-                      placeholder={t("services.imageCommandPlaceholder")}
-                    />
-                  ) : null}
-
-                  {shape.isCronType ? (
-                    <>
-                      <TextField
-                        id="svc-schedule"
-                        label={t("services.createFieldSchedule")}
-                        value={form.schedule}
-                        onChange={(schedule) => set({ schedule })}
-                        placeholder={t(
-                          "services.createFieldSchedulePlaceholder",
-                        )}
-                        hint={
-                          scheduleDescription
-                            ? t("services.createFieldSchedulePreview", {
-                                description: scheduleDescription,
-                              })
-                            : t("services.createFieldScheduleHint")
-                        }
-                        error={
-                          scheduleProblem === "never_fires"
-                            ? t("services.cronScheduleNeverFires")
-                            : scheduleProblem === "format"
-                              ? t("services.createFieldScheduleError")
-                              : undefined
-                        }
-                      />
-                      <TextField
-                        id="svc-command"
-                        label={t("services.createFieldStartCommand")}
-                        value={form.command}
-                        onChange={(command) => set({ command })}
-                        placeholder={t(
-                          "services.createFieldCommandPlaceholder",
-                        )}
-                        hint={t("services.createFieldCommandHint")}
-                      />
-                    </>
-                  ) : null}
-
-                  {shape.isStaticBuild ? (
-                    <>
-                      <TextField
-                        id="svc-static-build-command"
-                        label={t("services.createFieldBuildCommand")}
-                        value={form.staticBuildCommand}
-                        onChange={(staticBuildCommand) =>
-                          set({ staticBuildCommand })
-                        }
-                        placeholder={t("services.buildCommandPlaceholder")}
-                        hint={t("services.buildCommandHint")}
-                      />
-                      <div className="space-y-4 rounded-md border p-4">
-                        <div>
-                          <div className="text-sm font-medium">
-                            {t("services.buildFilterLabel")}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {t("services.buildFilterHint")}
-                          </div>
-                        </div>
-                        <PathList
-                          title={t("services.buildFilterIncludedTitle")}
-                          hint={t("services.buildFilterIncludedHint")}
-                          placeholder={t(
-                            "services.buildFilterIncludedPlaceholder",
-                          )}
-                          addLabel={t("services.buildFilterAddIncluded")}
-                          removeLabel={t("services.buildFilterRemoveIncluded")}
-                          values={form.buildFilterPaths}
-                          onChange={(buildFilterPaths) =>
-                            set({ buildFilterPaths })
-                          }
-                          validate={patternError}
-                        />
-                        <PathList
-                          title={t("services.buildFilterIgnoredTitle")}
-                          hint={t("services.buildFilterIgnoredHint")}
-                          placeholder={t(
-                            "services.buildFilterIgnoredPlaceholder",
-                          )}
-                          addLabel={t("services.buildFilterAddIgnored")}
-                          removeLabel={t("services.buildFilterRemoveIgnored")}
-                          values={form.buildFilterIgnored}
-                          onChange={(buildFilterIgnored) =>
-                            set({ buildFilterIgnored })
-                          }
-                          validate={patternError}
-                        />
-                      </div>
-                    </>
-                  ) : null}
-
-                  {shape.isStaticType ? (
-                    <TextField
-                      id="svc-publish-path"
-                      label={t("services.createFieldPublishPath")}
-                      value={form.publishPath}
-                      onChange={(publishPath) => set({ publishPath })}
-                      placeholder={t(
-                        "services.createFieldPublishPathPlaceholder",
-                      )}
-                      hint={
-                        publishPathMissing
-                          ? t("services.createFieldPublishPathRequired")
-                          : t("services.createFieldPublishPathHint")
-                      }
-                      error={
-                        fieldErrors.publishPath
-                          ? t(fieldErrors.publishPath)
-                          : undefined
-                      }
-                    />
-                  ) : null}
-
-                  {shape.showNoUrlNote ? (
+                <div className="space-y-2">
+                  <Label htmlFor="svc-name">
+                    {t("services.createFieldName")}
+                  </Label>
+                  <Input
+                    id="svc-name"
+                    value={name.name}
+                    onChange={(e) => {
+                      name.editName(e.target.value);
+                      clearNameConflict();
+                    }}
+                    placeholder={t("services.createFieldNamePlaceholder")}
+                    autoComplete="off"
+                    aria-invalid={showNameError || showNameTaken}
+                    aria-describedby={
+                      showNameError || showNameTaken
+                        ? "svc-name-error"
+                        : undefined
+                    }
+                  />
+                  {name.resourceNamePreview !== null ? (
                     <p className="text-sm text-muted-foreground">
-                      {t("services.createNoPublicUrlNote")}
+                      {t("services.createFieldNameResourceName", {
+                        name: name.resourceNamePreview,
+                      })}
                     </p>
                   ) : null}
+                  {showNameError ? (
+                    <p
+                      id="svc-name-error"
+                      role="alert"
+                      className="text-sm text-destructive"
+                    >
+                      {t("services.createFieldNameError")}
+                    </p>
+                  ) : showNameTaken ? (
+                    <p
+                      id="svc-name-error"
+                      role="alert"
+                      className="flex flex-wrap items-center gap-2 text-sm text-destructive"
+                    >
+                      <span>{t("services.createFieldNameTaken")}</span>
+                      {name.nameTaken && name.nameSuggestion ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={name.acceptSuggestion}
+                        >
+                          {t("services.createFieldNameUseSuggestion", {
+                            name: name.nameSuggestion,
+                          })}
+                        </Button>
+                      ) : null}
+                    </p>
+                  ) : name.checkingName ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t("services.createFieldNameChecking")}
+                    </p>
+                  ) : null}
+                </div>
 
-                  {/* Port (w4/m121/t003): the container port bex routes to and
+                {shape.isGitSource ? (
+                  <>
+                    <TextField
+                      id="svc-branch"
+                      label={t("services.createFieldBranch")}
+                      value={form.branch}
+                      onChange={(branch) => set({ branch })}
+                      placeholder={
+                        (form.tab === "github" &&
+                          form.selectedRepo?.defaultBranch) ||
+                        t("services.createFieldBranchPlaceholder")
+                      }
+                    />
+                    <TextField
+                      id="svc-rootdir"
+                      label={t("services.createFieldRootDir")}
+                      value={form.rootDir}
+                      onChange={(rootDir) => set({ rootDir })}
+                      placeholder={t("services.createFieldRootDirPlaceholder")}
+                      hint={t("services.createFieldRootDirHint")}
+                      error={
+                        fieldErrors.rootDir ? t(fieldErrors.rootDir) : undefined
+                      }
+                    />
+                    {shape.isBuildableGit ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="svc-runtime">
+                            {t("services.createFieldRuntime")}
+                          </Label>
+                          <Select
+                            value={form.runtime}
+                            onValueChange={(value) =>
+                              build.setRuntime(value as GitRuntime)
+                            }
+                          >
+                            <SelectTrigger id="svc-runtime" className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {RUNTIME_DEFS.map(({ id, labelKey }) => (
+                                <SelectItem key={id} value={id}>
+                                  {t(labelKey)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {shape.isNativeBuild ? (
+                          <>
+                            <TextField
+                              id="svc-build-command"
+                              label={t("services.createFieldBuildCommand")}
+                              value={form.buildCommand}
+                              onChange={build.setBuildCommand}
+                            />
+                            {!shape.isCronType ? (
+                              <TextField
+                                id="svc-start-command"
+                                label={t("services.createFieldStartCommand")}
+                                value={form.startCommand}
+                                onChange={build.setStartCommand}
+                              />
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            <TextField
+                              id="svc-dockerfile-path"
+                              label={t("services.createFieldDockerfilePath")}
+                              value={form.dockerfilePath}
+                              onChange={build.setDockerfilePath}
+                              placeholder={t(
+                                "services.createFieldDockerfilePathPlaceholder",
+                              )}
+                              hint={t("services.createFieldDockerfilePathHint")}
+                              error={
+                                fieldErrors.dockerfilePath
+                                  ? t(fieldErrors.dockerfilePath)
+                                  : undefined
+                              }
+                            />
+                            <RegistryCredentialSelect
+                              id="svc-registry-credential-docker"
+                              value={form.registryCredentialId}
+                              onValueChange={(registryCredentialId) =>
+                                set({ registryCredentialId })
+                              }
+                              description={t(
+                                "services.createRegistryCredentialDescription",
+                              )}
+                            />
+                            {!shape.isCronType ? (
+                              <TextField
+                                id="svc-docker-command"
+                                label={t("services.createFieldDockerCommand")}
+                                value={form.startCommand}
+                                onChange={build.setStartCommand}
+                                placeholder={t(
+                                  "services.createFieldDockerCommandPlaceholder",
+                                )}
+                              />
+                            ) : null}
+                          </>
+                        )}
+                      </>
+                    ) : null}
+                  </>
+                ) : null}
+
+                {/* Cron jobs set theirs through Command below. */}
+                {shape.showImageCommand ? (
+                  <TextField
+                    id="svc-image-docker-command"
+                    label={t("services.createFieldDockerCommand")}
+                    value={form.imageCommand}
+                    onChange={(imageCommand) => set({ imageCommand })}
+                    placeholder={t("services.imageCommandPlaceholder")}
+                  />
+                ) : null}
+
+                {shape.isCronType ? (
+                  <>
+                    <TextField
+                      id="svc-schedule"
+                      label={t("services.createFieldSchedule")}
+                      value={form.schedule}
+                      onChange={(schedule) => set({ schedule })}
+                      placeholder={t("services.createFieldSchedulePlaceholder")}
+                      hint={
+                        scheduleDescription
+                          ? t("services.createFieldSchedulePreview", {
+                              description: scheduleDescription,
+                            })
+                          : t("services.createFieldScheduleHint")
+                      }
+                      error={
+                        scheduleProblem === "never_fires"
+                          ? t("services.cronScheduleNeverFires")
+                          : scheduleProblem === "format"
+                            ? t("services.createFieldScheduleError")
+                            : undefined
+                      }
+                    />
+                    <TextField
+                      id="svc-command"
+                      label={t("services.createFieldStartCommand")}
+                      value={form.command}
+                      onChange={(command) => set({ command })}
+                      placeholder={t("services.createFieldCommandPlaceholder")}
+                      hint={t("services.createFieldCommandHint")}
+                    />
+                  </>
+                ) : null}
+
+                {shape.isStaticBuild ? (
+                  <>
+                    <TextField
+                      id="svc-static-build-command"
+                      label={t("services.createFieldBuildCommand")}
+                      value={form.staticBuildCommand}
+                      onChange={(staticBuildCommand) =>
+                        set({ staticBuildCommand })
+                      }
+                      placeholder={t("services.buildCommandPlaceholder")}
+                      hint={t("services.buildCommandHint")}
+                    />
+                    <div className="space-y-4 rounded-md border p-4">
+                      <div>
+                        <div className="text-sm font-medium">
+                          {t("services.buildFilterLabel")}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {t("services.buildFilterHint")}
+                        </div>
+                      </div>
+                      <PathList
+                        title={t("services.buildFilterIncludedTitle")}
+                        hint={t("services.buildFilterIncludedHint")}
+                        placeholder={t(
+                          "services.buildFilterIncludedPlaceholder",
+                        )}
+                        addLabel={t("services.buildFilterAddIncluded")}
+                        removeLabel={t("services.buildFilterRemoveIncluded")}
+                        values={form.buildFilterPaths}
+                        onChange={(buildFilterPaths) =>
+                          set({ buildFilterPaths })
+                        }
+                        validate={patternError}
+                      />
+                      <PathList
+                        title={t("services.buildFilterIgnoredTitle")}
+                        hint={t("services.buildFilterIgnoredHint")}
+                        placeholder={t(
+                          "services.buildFilterIgnoredPlaceholder",
+                        )}
+                        addLabel={t("services.buildFilterAddIgnored")}
+                        removeLabel={t("services.buildFilterRemoveIgnored")}
+                        values={form.buildFilterIgnored}
+                        onChange={(buildFilterIgnored) =>
+                          set({ buildFilterIgnored })
+                        }
+                        validate={patternError}
+                      />
+                    </div>
+                  </>
+                ) : null}
+
+                {shape.isStaticType ? (
+                  <TextField
+                    id="svc-publish-path"
+                    label={t("services.createFieldPublishPath")}
+                    value={form.publishPath}
+                    onChange={(publishPath) => set({ publishPath })}
+                    placeholder={t(
+                      "services.createFieldPublishPathPlaceholder",
+                    )}
+                    hint={
+                      publishPathMissing
+                        ? t("services.createFieldPublishPathRequired")
+                        : t("services.createFieldPublishPathHint")
+                    }
+                    error={
+                      fieldErrors.publishPath
+                        ? t(fieldErrors.publishPath)
+                        : undefined
+                    }
+                  />
+                ) : null}
+
+                {shape.showNoUrlNote ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t("services.createNoPublicUrlNote")}
+                  </p>
+                ) : null}
+
+                {/* Port (w4/m121/t003): the container port bex routes to and
                     injects as $PORT. Only the port-binding types (web/private)
                     get the field — `shape.showPort` is the same predicate that
                     gates the image tab's $PORT hint and the Settings section,
                     so a worker, a cron job and a static site have no port
                     control anywhere and submit no `port`. */}
-                  {shape.showPort ? (
-                    <TextField
-                      id="svc-port"
-                      label={t("services.createFieldPort")}
-                      value={port}
-                      onChange={(port) => set({ port })}
-                      placeholder={
-                        shape.imagePorts
-                          ? t("services.createFieldPortFromImage")
-                          : String(DEFAULT_SERVICE_PORT)
-                      }
-                      hint={
-                        shape.imagePorts
-                          ? t(
-                              form.serviceType === "web_service"
-                                ? "services.createFieldPortImageHintWeb"
-                                : "services.createFieldPortImageHint",
-                            )
-                          : t("services.createFieldPortHint", {
-                              port: port.trim() || String(DEFAULT_SERVICE_PORT),
-                            })
-                      }
-                      error={
-                        portError
-                          ? t("services.portRangeError", {
-                              min: String(MIN_SERVICE_PORT),
-                              max: String(MAX_SERVICE_PORT),
-                            })
-                          : undefined
-                      }
-                    />
-                  ) : null}
-
-                  {shape.showPlan ? (
-                    <div className="space-y-2">
-                      <Label>{t("services.createFieldPlan")}</Label>
-                      {shape.isCronType ? (
-                        <p className="text-muted-foreground text-xs">
-                          {t("services.createFieldPlanCronHint")}
-                        </p>
-                      ) : null}
-                      {instanceTypes.length === 0 && !catalog.loading ? (
-                        <PlanCatalogUnavailable
-                          onRetry={() => void catalog.retry()}
-                          retrying={catalog.retrying}
-                        />
-                      ) : instanceTypes.length === 0 ? (
-                        <PlanTierSlots
-                          count={servicePlanSlotCount(form.serviceType)}
-                          lastWraps
-                        />
-                      ) : (
-                        <PlanCardGrid
-                          instanceTypes={instanceTypes}
-                          value={form.plan}
-                          ariaLabel={t("services.createFieldPlan")}
-                          onChange={(planOverride) => set({ planOverride })}
-                          runTimePricing={shape.isCronType}
-                        />
-                      )}
-                    </div>
-                  ) : null}
-
-                  <ProjectEnvironmentSelector
-                    projectId={form.projectId}
-                    environmentId={form.environmentId}
-                    onProjectChange={(projectId) => set({ projectId })}
-                    onEnvironmentChange={(environmentId) =>
-                      set({ environmentId })
+                {shape.showPort ? (
+                  <TextField
+                    id="svc-port"
+                    label={t("services.createFieldPort")}
+                    value={port}
+                    onChange={(port) => set({ port })}
+                    placeholder={
+                      shape.imagePorts
+                        ? t("services.createFieldPortFromImage")
+                        : String(DEFAULT_SERVICE_PORT)
+                    }
+                    hint={
+                      shape.imagePorts
+                        ? t(
+                            form.serviceType === "web_service"
+                              ? "services.createFieldPortImageHintWeb"
+                              : "services.createFieldPortImageHint",
+                          )
+                        : t("services.createFieldPortHint", {
+                            port: port.trim() || String(DEFAULT_SERVICE_PORT),
+                          })
+                    }
+                    error={
+                      portError
+                        ? t("services.portRangeError", {
+                            min: String(MIN_SERVICE_PORT),
+                            max: String(MAX_SERVICE_PORT),
+                          })
+                        : undefined
                     }
                   />
-
-                  {shape.isGitSource ? (
-                    <div className="flex items-center justify-between rounded-md border p-3">
-                      <div className="space-y-0.5 pr-4">
-                        <Label htmlFor="svc-autodeploy">
-                          {t("services.createFieldAutoDeploy")}
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          {t("services.createFieldAutoDeployHint")}
-                        </p>
-                      </div>
-                      <Switch
-                        id="svc-autodeploy"
-                        checked={form.autoDeploy}
-                        onCheckedChange={(autoDeploy) => set({ autoDeploy })}
-                      />
-                    </div>
-                  ) : null}
-
-                  <CreateEnvVarEditor
-                    rows={form.envVars}
-                    onChange={(envVars) => set({ envVars })}
-                  />
-                  <CreateSecretFileEditor
-                    rows={form.secretFiles}
-                    onChange={(secretFiles) => set({ secretFiles })}
-                  />
-                </div>
-
-                {capLimit ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>{t("services.capLimitTitle")}</AlertTitle>
-                    <AlertDescription className="flex flex-col gap-2">
-                      <span>{capLimit}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="self-start"
-                        onClick={() =>
-                          void navigate({
-                            to: "/workspace/settings",
-                            search: { plan: "change" },
-                          })
-                        }
-                      >
-                        <ArrowUpRight className="size-3.5" />
-                        {t("services.capLimitUpgrade")}
-                      </Button>
-                    </AlertDescription>
-                  </Alert>
                 ) : null}
 
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => void navigate({ to: "/" })}
-                    disabled={busy}
-                  >
-                    {t("services.createCancel")}
-                  </Button>
-                  <Button
-                    onClick={() => void handleSubmit()}
-                    disabled={!canSubmit}
-                  >
-                    {busy ? <Loader2 className="animate-spin" /> : null}
-                    {t("services.createSubmit")}
-                  </Button>
-                </div>
-              </CardContent>
-            </HydrationFieldset>
-          </Card>
-        </div>
-      </div>
+                {shape.showPlan ? (
+                  <div className="space-y-2">
+                    <Label>{t("services.createFieldPlan")}</Label>
+                    {shape.isCronType ? (
+                      <p className="text-muted-foreground text-xs">
+                        {t("services.createFieldPlanCronHint")}
+                      </p>
+                    ) : null}
+                    {instanceTypes.length === 0 && !catalog.loading ? (
+                      <PlanCatalogUnavailable
+                        onRetry={() => void catalog.retry()}
+                        retrying={catalog.retrying}
+                      />
+                    ) : instanceTypes.length === 0 ? (
+                      <PlanTierSlots
+                        count={servicePlanSlotCount(form.serviceType)}
+                        lastWraps
+                      />
+                    ) : (
+                      <PlanCardGrid
+                        instanceTypes={instanceTypes}
+                        value={form.plan}
+                        ariaLabel={t("services.createFieldPlan")}
+                        onChange={(planOverride) => set({ planOverride })}
+                        runTimePricing={shape.isCronType}
+                      />
+                    )}
+                  </div>
+                ) : null}
+
+                <ProjectEnvironmentSelector
+                  projectId={form.projectId}
+                  environmentId={form.environmentId}
+                  onProjectChange={(projectId) => set({ projectId })}
+                  onEnvironmentChange={(environmentId) =>
+                    set({ environmentId })
+                  }
+                />
+
+                {shape.isGitSource ? (
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <div className="space-y-0.5 pr-4">
+                      <Label htmlFor="svc-autodeploy">
+                        {t("services.createFieldAutoDeploy")}
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {t("services.createFieldAutoDeployHint")}
+                      </p>
+                    </div>
+                    <Switch
+                      id="svc-autodeploy"
+                      checked={form.autoDeploy}
+                      onCheckedChange={(autoDeploy) => set({ autoDeploy })}
+                    />
+                  </div>
+                ) : null}
+
+                <CreateEnvVarEditor
+                  rows={form.envVars}
+                  onChange={(envVars) => set({ envVars })}
+                />
+                <CreateSecretFileEditor
+                  rows={form.secretFiles}
+                  onChange={(secretFiles) => set({ secretFiles })}
+                />
+              </div>
+
+              {capLimit ? (
+                <Alert variant="destructive">
+                  <AlertTitle>{t("services.capLimitTitle")}</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-2">
+                    <span>{capLimit}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="self-start"
+                      onClick={() =>
+                        void navigate({
+                          to: "/workspace/settings",
+                          search: { plan: "change" },
+                        })
+                      }
+                    >
+                      <ArrowUpRight className="size-3.5" />
+                      {t("services.capLimitUpgrade")}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => void navigate({ to: "/" })}
+                  disabled={busy}
+                >
+                  {t("services.createCancel")}
+                </Button>
+                <Button
+                  onClick={() => void handleSubmit()}
+                  disabled={!canSubmit}
+                >
+                  {busy ? <Loader2 className="animate-spin" /> : null}
+                  {t("services.createSubmit")}
+                </Button>
+              </div>
+            </CardContent>
+          </HydrationFieldset>
+        </Card>
+      </PageFrame>
     </DashboardLayout>
   );
 }

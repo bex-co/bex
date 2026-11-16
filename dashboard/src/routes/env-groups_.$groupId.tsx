@@ -1,3 +1,4 @@
+import { PageScroll } from "@/common/components/page-frame";
 import { useState } from "react";
 import {
   Link,
@@ -202,7 +203,7 @@ export function EnvGroupDetailPage() {
         )}
       </div>
 
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
+      <PageScroll>
         <div className="mx-auto w-full max-w-5xl space-y-6">
           {(adopting || loading || notFound || !errorKind) && !group ? (
             <EnvGroupDetailContentSkeleton />
@@ -251,7 +252,7 @@ export function EnvGroupDetailPage() {
             </>
           )}
         </div>
-      </div>
+      </PageScroll>
     </DashboardLayout>
   );
 }

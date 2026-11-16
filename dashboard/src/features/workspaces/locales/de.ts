@@ -1,6 +1,14 @@
 import type { TranslationEntry } from "@/i18n";
 
 const deWorkspaces: Record<string, TranslationEntry> = {
+  "workspaces.idCopied": {
+    message: "Workspace-ID kopiert",
+    description: "Toast after copying the workspace ID",
+  },
+  "workspaces.idCopyFailed": {
+    message: "Workspace-ID konnte nicht kopiert werden",
+    description: "Toast when copying the workspace ID fails",
+  },
   "workspaces.switcherEmpty": {
     message: "Workspace auswählen",
     description: "Switcher trigger label before any workspace is selected",

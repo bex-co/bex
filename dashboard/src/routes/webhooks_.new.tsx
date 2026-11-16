@@ -4,14 +4,9 @@ import { WebhookCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { useTranslations } from "@/common/hooks/use-translations";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
+import { Card, CardContent } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
@@ -112,205 +107,202 @@ export function NewWebhookPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center gap-3 border-b px-4 py-4 sm:px-6">
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/webhooks" aria-label={t("webhooks.backToList")}>
-            <ArrowLeft />
-          </Link>
-        </Button>
-        <h1 className="text-xl font-semibold">{t("webhooks.newTitle")}</h1>
-      </div>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-2xl space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("webhooks.createTitle")}</CardTitle>
-              <CardDescription>
-                {t("webhooks.createDescription")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!proPlan ? (
+      <PageFrame
+        width="form"
+        header={
+          <PageHeader
+            leading={
+              <Button variant="ghost" size="icon" asChild>
+                <Link to="/webhooks" aria-label={t("webhooks.backToList")}>
+                  <ArrowLeft />
+                </Link>
+              </Button>
+            }
+            title={t("webhooks.newTitle")}
+            description={t("webhooks.createDescription")}
+          />
+        }
+      >
+        <Card>
+          <CardContent>
+            {!proPlan ? (
+              <p className="text-muted-foreground text-sm" role="status">
+                {t("webhooks.planGate")} <PlanBillingLink />
+              </p>
+            ) : !canManage ? (
+              capabilitiesLoaded ? (
                 <p className="text-muted-foreground text-sm" role="status">
-                  {t("webhooks.planGate")} <PlanBillingLink />
+                  {t("webhooks.manageRequired")}
                 </p>
-              ) : !canManage ? (
-                capabilitiesLoaded ? (
-                  <p className="text-muted-foreground text-sm" role="status">
-                    {t("webhooks.manageRequired")}
+              ) : null
+            ) : (
+              <form
+                className="space-y-6"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleSubmit();
+                }}
+              >
+                {hasFieldErrors(errors) ? (
+                  <p className="text-destructive text-sm" role="alert">
+                    {t("webhooks.formErrorsSummary")}
                   </p>
-                ) : null
-              ) : (
-                <form
-                  className="space-y-6"
-                  noValidate
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void handleSubmit();
-                  }}
-                >
-                  {hasFieldErrors(errors) ? (
-                    <p className="text-destructive text-sm" role="alert">
-                      {t("webhooks.formErrorsSummary")}
-                    </p>
-                  ) : null}
-                  <div className="space-y-2">
-                    <Label htmlFor="webhook-name">
-                      {t("webhooks.fieldName")}
-                    </Label>
-                    <p
-                      id="webhook-name-help"
-                      className="text-muted-foreground text-sm"
-                    >
-                      {t("webhooks.fieldNameHelp")}
-                    </p>
-                    <Input
-                      id="webhook-name"
-                      ref={nameRef}
-                      value={name}
-                      onChange={(e) => {
-                        setName(e.target.value);
-                        clearField("name");
-                      }}
-                      placeholder={t("webhooks.fieldNamePlaceholder")}
-                      autoComplete="off"
-                      autoFocus
-                      aria-invalid={!!errors.name}
-                      aria-describedby={`webhook-name-help${errors.name ? " webhook-name-error" : ""}`}
-                    />
-                    {errors.name ? (
-                      <p
-                        id="webhook-name-error"
-                        className="text-destructive text-sm"
-                      >
-                        {errors.name}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="webhook-url">
-                      {t("webhooks.fieldUrl")}
-                    </Label>
-                    <p
-                      id="webhook-url-help"
-                      className="text-muted-foreground text-sm"
-                    >
-                      {t("webhooks.fieldUrlHelp")}
-                    </p>
-                    <Input
-                      id="webhook-url"
-                      ref={urlRef}
-                      value={url}
-                      onChange={(e) => {
-                        setUrl(e.target.value);
-                        clearField("url");
-                      }}
-                      placeholder={t("webhooks.fieldUrlPlaceholder")}
-                      autoComplete="off"
-                      inputMode="url"
-                      aria-invalid={!!errors.url}
-                      aria-describedby={`webhook-url-help${errors.url ? " webhook-url-error" : ""}${!errors.url && isUnreachableWebhookDestination(url) ? " webhook-url-notice" : ""}`}
-                    />
-                    {errors.url ? (
-                      <p
-                        id="webhook-url-error"
-                        className="text-destructive text-sm"
-                      >
-                        {errors.url}
-                      </p>
-                    ) : isUnreachableWebhookDestination(url) ? (
-                      <WebhookUrlNotice id="webhook-url-notice" />
-                    ) : null}
-                  </div>
-                  <div
-                    ref={eventsRef}
-                    className="space-y-2"
-                    tabIndex={-1}
-                    aria-invalid={!!errors.events}
+                ) : null}
+                <div className="space-y-2">
+                  <Label htmlFor="webhook-name">
+                    {t("webhooks.fieldName")}
+                  </Label>
+                  <p
+                    id="webhook-name-help"
+                    className="text-muted-foreground text-sm"
                   >
-                    <Label id="webhook-events-label">
-                      {t("webhooks.fieldEvents")}
-                    </Label>
+                    {t("webhooks.fieldNameHelp")}
+                  </p>
+                  <Input
+                    id="webhook-name"
+                    ref={nameRef}
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      clearField("name");
+                    }}
+                    placeholder={t("webhooks.fieldNamePlaceholder")}
+                    autoComplete="off"
+                    autoFocus
+                    aria-invalid={!!errors.name}
+                    aria-describedby={`webhook-name-help${errors.name ? " webhook-name-error" : ""}`}
+                  />
+                  {errors.name ? (
                     <p
-                      id="webhook-events-help"
-                      className="text-muted-foreground text-sm"
-                    >
-                      {t("webhooks.fieldEventsHelp")}
-                    </p>
-                    <WebhookEventPickerField
-                      eventTypes={eventTypes}
-                      loading={typesLoading}
-                      error={typesError}
-                      retry={retryTypes}
-                      value={checked}
-                      onChange={(next) => {
-                        setChecked(next);
-                        clearField("events");
-                      }}
-                      disabled={busy}
-                      describedBy={`webhook-events-help${errors.events ? " webhook-events-error" : ""}`}
-                    />
-                    {errors.events ? (
-                      <p
-                        id="webhook-events-error"
-                        className="text-destructive text-sm"
-                      >
-                        {errors.events}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <Label htmlFor="webhook-create-enabled">
-                        {t("webhooks.settingsStatus")}
-                      </Label>
-                      <p className="text-muted-foreground text-sm">
-                        {t("webhooks.createEnabledHelp")}
-                      </p>
-                    </div>
-                    <Switch
-                      id="webhook-create-enabled"
-                      checked={enabled}
-                      onCheckedChange={setEnabled}
-                      disabled={busy}
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      type="submit"
-                      disabled={!catalogReady || !mutationAllowed}
-                      aria-describedby={
-                        !catalogReady ? "webhook-create-disabled" : undefined
-                      }
-                    >
-                      {busy ? <Loader2 className="animate-spin" /> : null}
-                      {t("webhooks.createSubmit")}
-                    </Button>
-                  </div>
-                  {!catalogReady ? (
-                    <p
-                      id="webhook-create-disabled"
-                      className="text-muted-foreground text-right text-xs"
-                    >
-                      {t("webhooks.formUnavailableEvents")}
-                    </p>
-                  ) : null}
-                  {errors.form ? (
-                    <p
-                      ref={formErrorRef}
-                      tabIndex={-1}
+                      id="webhook-name-error"
                       className="text-destructive text-sm"
-                      role="alert"
                     >
-                      {errors.form}
+                      {errors.name}
                     </p>
                   ) : null}
-                </form>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="webhook-url">{t("webhooks.fieldUrl")}</Label>
+                  <p
+                    id="webhook-url-help"
+                    className="text-muted-foreground text-sm"
+                  >
+                    {t("webhooks.fieldUrlHelp")}
+                  </p>
+                  <Input
+                    id="webhook-url"
+                    ref={urlRef}
+                    value={url}
+                    onChange={(e) => {
+                      setUrl(e.target.value);
+                      clearField("url");
+                    }}
+                    placeholder={t("webhooks.fieldUrlPlaceholder")}
+                    autoComplete="off"
+                    inputMode="url"
+                    aria-invalid={!!errors.url}
+                    aria-describedby={`webhook-url-help${errors.url ? " webhook-url-error" : ""}${!errors.url && isUnreachableWebhookDestination(url) ? " webhook-url-notice" : ""}`}
+                  />
+                  {errors.url ? (
+                    <p
+                      id="webhook-url-error"
+                      className="text-destructive text-sm"
+                    >
+                      {errors.url}
+                    </p>
+                  ) : isUnreachableWebhookDestination(url) ? (
+                    <WebhookUrlNotice id="webhook-url-notice" />
+                  ) : null}
+                </div>
+                <div
+                  ref={eventsRef}
+                  className="space-y-2"
+                  tabIndex={-1}
+                  aria-invalid={!!errors.events}
+                >
+                  <Label id="webhook-events-label">
+                    {t("webhooks.fieldEvents")}
+                  </Label>
+                  <p
+                    id="webhook-events-help"
+                    className="text-muted-foreground text-sm"
+                  >
+                    {t("webhooks.fieldEventsHelp")}
+                  </p>
+                  <WebhookEventPickerField
+                    eventTypes={eventTypes}
+                    loading={typesLoading}
+                    error={typesError}
+                    retry={retryTypes}
+                    value={checked}
+                    onChange={(next) => {
+                      setChecked(next);
+                      clearField("events");
+                    }}
+                    disabled={busy}
+                    describedBy={`webhook-events-help${errors.events ? " webhook-events-error" : ""}`}
+                  />
+                  {errors.events ? (
+                    <p
+                      id="webhook-events-error"
+                      className="text-destructive text-sm"
+                    >
+                      {errors.events}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <Label htmlFor="webhook-create-enabled">
+                      {t("webhooks.settingsStatus")}
+                    </Label>
+                    <p className="text-muted-foreground text-sm">
+                      {t("webhooks.createEnabledHelp")}
+                    </p>
+                  </div>
+                  <Switch
+                    id="webhook-create-enabled"
+                    checked={enabled}
+                    onCheckedChange={setEnabled}
+                    disabled={busy}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={!catalogReady || !mutationAllowed}
+                    aria-describedby={
+                      !catalogReady ? "webhook-create-disabled" : undefined
+                    }
+                  >
+                    {busy ? <Loader2 className="animate-spin" /> : null}
+                    {t("webhooks.createSubmit")}
+                  </Button>
+                </div>
+                {!catalogReady ? (
+                  <p
+                    id="webhook-create-disabled"
+                    className="text-muted-foreground text-right text-xs"
+                  >
+                    {t("webhooks.formUnavailableEvents")}
+                  </p>
+                ) : null}
+                {errors.form ? (
+                  <p
+                    ref={formErrorRef}
+                    tabIndex={-1}
+                    className="text-destructive text-sm"
+                    role="alert"
+                  >
+                    {errors.form}
+                  </p>
+                ) : null}
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </PageFrame>
     </DashboardLayout>
   );
 }

@@ -2,14 +2,8 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Plus, ShieldAlert, Webhook } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardAction,
-  CardContent,
-} from "@/common/components/ui/card";
+import { Card, CardContent } from "@/common/components/ui/card";
+import { PageHeader } from "@/common/components/page-frame";
 import { Table, TableBody } from "@/common/components/ui/table";
 import {
   PanelCenteredState,
@@ -28,6 +22,50 @@ import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities"
 import { useWorkspace } from "@/features/workspaces/context";
 import { proFeaturesPlan } from "@/features/workspaces/types";
 import { eventLabelKey } from "@/features/webhooks/event-catalog";
+
+/**
+ * The `/webhooks` page header: title, the plan-aware description and the
+ * Create action (Render's create flow is a page, not a dialog, w1/m49/t003).
+ */
+export function WebhooksPageHeader({
+  pending = false,
+}: {
+  /** In the route's pending frame: the same action, inert and linkless. */
+  pending?: boolean;
+}) {
+  const { t } = useTranslations();
+  const { canManage } = useCapabilities();
+  const { currentWorkspace } = useWorkspace();
+  const proPlan = proFeaturesPlan(currentWorkspace?.plan);
+  return (
+    <PageHeader
+      title={t("webhooks.title")}
+      description={proPlan ? t("webhooks.description") : t("webhooks.proOnly")}
+      actions={
+        canManage && proPlan ? <CreateWebhookButton pending={pending} /> : null
+      }
+    />
+  );
+}
+
+/** In a pending frame the router's Link cannot render, so the button is inert. */
+function CreateWebhookButton({ pending = false }: { pending?: boolean }) {
+  const { t } = useTranslations();
+  const label = (
+    <>
+      <Plus /> {t("webhooks.create")}
+    </>
+  );
+  return pending ? (
+    <Button size="sm" disabled>
+      {label}
+    </Button>
+  ) : (
+    <Button size="sm" asChild>
+      <Link to="/webhooks/new">{label}</Link>
+    </Button>
+  );
+}
 
 /**
  * Settings → Integrations → Webhooks (w3/m11): the workspace's outbound
@@ -81,22 +119,6 @@ export function WebhooksPanel() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle as="h1">{t("webhooks.title")}</CardTitle>
-        <CardDescription>
-          {proPlan ? t("webhooks.description") : t("webhooks.proOnly")}
-        </CardDescription>
-        <CardAction>
-          {/* Render's create flow is a page, not a dialog (w1/m49/t003). */}
-          {showCreate ? (
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/webhooks/new">
-                <Plus /> {t("webhooks.create")}
-              </Link>
-            </Button>
-          ) : null}
-        </CardAction>
-      </CardHeader>
       <CardContent>
         {error ? (
           <PanelCenteredState
@@ -115,6 +137,20 @@ export function WebhooksPanel() {
             icon={<Webhook />}
             title={t("webhooks.emptyTitle")}
             body={t(proPlan ? "webhooks.emptyBody" : "webhooks.planGate")}
+            action={
+              !proPlan && canManage ? (
+                <Button size="sm" asChild>
+                  <Link
+                    to="/workspace/settings"
+                    search={{ plan: "change" as const }}
+                  >
+                    {t("workspaces.changePlanTrigger")}
+                  </Link>
+                </Button>
+              ) : showCreate ? (
+                <CreateWebhookButton />
+              ) : null
+            }
           />
         ) : (
           <div className="space-y-4">

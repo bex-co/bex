@@ -17,6 +17,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
 import { AccountDeletionCard } from "@/features/auth/pages/settings-page/account-deletion-card";
+import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings-navigation";
 import { SettingsSection } from "@/features/auth/pages/settings-page/settings-section";
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
@@ -44,78 +45,69 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto grid w-full max-w-6xl items-start gap-8 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-          <div className="min-w-0">
-            <div className="space-y-1">
-              <h1 className="text-xl font-semibold text-foreground">
-                {t("auth.settingsTitle")}
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                {t("auth.settingsSubtitle")}
-              </p>
-            </div>
-
-            <SettingsNavigation className="sticky top-0 z-20 -mx-4 mt-6 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:hidden" />
-
-            <div className="mt-8 space-y-10 lg:mt-10">
-              <SettingsSection
-                id="account"
-                title={t("auth.accountSection")}
-                description={t("auth.accountSectionSubtitle")}
-              >
-                {flow ? (
-                  // Without baseUrl, SessionProvider guesses the Ory SDK URL as this
-                  // app's own origin — but Kratos lives on its own host, so its
-                  // whoami would 404/500 against the dashboard itself.
-                  <SessionProvider baseUrl={KRATOS_PUBLIC_URL}>
-                    <Settings
-                      className="account-settings-flow"
-                      flow={flow}
-                      config={oryConfig}
-                      components={settingsComponents}
-                    />
-                  </SessionProvider>
-                ) : (
-                  <AccountSettingsSkeleton />
-                )}
-              </SettingsSection>
-
-              <SettingsSection
-                id="integrations"
-                title={t("auth.integrationsSection")}
-                description={t("auth.integrationsSectionSubtitle")}
-              >
-                <ConnectGithubCard
-                  callbackError={search.git_error}
-                  claimSelectionId={search.git_claim_selection}
+      <PageFrame
+        header={
+          <PageHeader
+            title={t("auth.settingsTitle")}
+            description={t("auth.settingsSubtitle")}
+          />
+        }
+        navigation={<SettingsNavigation />}
+      >
+        <div className="space-y-10">
+          <SettingsSection
+            id="account"
+            title={t("auth.accountSection")}
+            description={t("auth.accountSectionSubtitle")}
+          >
+            {flow ? (
+              // Without baseUrl, SessionProvider guesses the Ory SDK URL as this
+              // app's own origin — but Kratos lives on its own host, so its
+              // whoami would 404/500 against the dashboard itself.
+              <SessionProvider baseUrl={KRATOS_PUBLIC_URL}>
+                <Settings
+                  className="account-settings-flow"
+                  flow={flow}
+                  config={oryConfig}
+                  components={settingsComponents}
                 />
-              </SettingsSection>
+              </SessionProvider>
+            ) : (
+              <AccountSettingsSkeleton />
+            )}
+          </SettingsSection>
 
-              <SettingsSection
-                id="access"
-                title={t("auth.accessSection")}
-                description={t("auth.accessSectionSubtitle")}
-              >
-                <ApiKeysPanel />
-                <SSHKeysPanel />
-              </SettingsSection>
+          <SettingsSection
+            id="integrations"
+            title={t("auth.integrationsSection")}
+            description={t("auth.integrationsSectionSubtitle")}
+          >
+            <ConnectGithubCard
+              callbackError={search.git_error}
+              claimSelectionId={search.git_claim_selection}
+            />
+          </SettingsSection>
 
-              <SecurityComplianceSection />
+          <SettingsSection
+            id="access"
+            title={t("auth.accessSection")}
+            description={t("auth.accessSectionSubtitle")}
+          >
+            <ApiKeysPanel />
+            <SSHKeysPanel />
+          </SettingsSection>
 
-              <SettingsSection
-                id="danger-zone"
-                title={t("auth.dangerZoneSection")}
-                description={t("auth.dangerZoneSectionSubtitle")}
-              >
-                <AccountDeletionCard />
-              </SettingsSection>
-            </div>
-          </div>
+          <SecurityComplianceSection />
 
-          <SettingsNavigation className="sticky top-6 hidden lg:block" />
+          <SettingsSection
+            id="danger-zone"
+            title={t("auth.dangerZoneSection")}
+            description={t("auth.dangerZoneSectionSubtitle")}
+          >
+            <AccountDeletionCard />
+          </SettingsSection>
         </div>
-      </div>
+      </PageFrame>
     </DashboardLayout>
   );
 }

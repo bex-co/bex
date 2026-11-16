@@ -12,6 +12,7 @@ import {
 } from "@/common/components/ui/card";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { CopyButton } from "@/common/components/copy-button";
 import { Button } from "@/common/components/ui/button";
 import {
   Alert,
@@ -131,7 +132,7 @@ export function WorkspaceDetailsCard({
           </Alert>
         ) : null}
 
-        <dl className="grid grid-cols-1 gap-4 border-t pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="grid grid-cols-1 gap-4 border-t pt-4 text-sm @md:grid-cols-2 @3xl:grid-cols-4">
           <div className="space-y-1">
             <dt className="text-muted-foreground">
               {t("workspaces.fieldPlan")}
@@ -151,13 +152,31 @@ export function WorkspaceDetailsCard({
           </div>
           <div className="space-y-1">
             <dt className="text-muted-foreground">{t("workspaces.fieldId")}</dt>
-            <dd className="font-mono text-xs">{workspace.id}</dd>
+            <dd className="flex min-w-0 items-center gap-1">
+              {/* An ID is one token: never broken across lines, truncated
+                  with the whole value on hover and one click to copy. */}
+              <span className="truncate font-mono text-xs" title={workspace.id}>
+                {workspace.id}
+              </span>
+              <CopyButton
+                value={workspace.id}
+                label={t("common.copyField", {
+                  field: t("workspaces.fieldId"),
+                })}
+                successText={t("workspaces.idCopied")}
+                errorText={t("workspaces.idCopyFailed")}
+              />
+            </dd>
           </div>
           <div className="space-y-1">
             <dt className="text-muted-foreground">
               {t("workspaces.fieldSlug")}
             </dt>
-            <dd className="font-mono text-xs">{workspace.slug}</dd>
+            <dd className="truncate font-mono text-xs" title={workspace.slug}>
+              {workspace.slug || (
+                <span className="text-muted-foreground font-sans">—</span>
+              )}
+            </dd>
           </div>
           <div className="space-y-1">
             <dt className="text-muted-foreground">

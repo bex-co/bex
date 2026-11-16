@@ -1,3 +1,5 @@
+import { cn } from "@/common/lib/utils/utils";
+import { PageScroll } from "@/common/components/page-frame";
 import {
   createFileRoute,
   useNavigate,
@@ -47,6 +49,8 @@ import {
   translatedText,
 } from "@/common/lib/document-head";
 import {
+  SECTIONED_BODY_CLASS,
+  SECTIONED_GRID_CLASS,
   SECTION_NAVIGATION_STICKY_CLASS,
   SECTION_NAVIGATION_TARGET_CLASS,
 } from "@/common/components/section-navigation";
@@ -171,19 +175,16 @@ export function KeyValueDetailPage() {
           ]}
         />
 
-        <div
-          data-skeleton-region={!keyValue ? "active-tab" : undefined}
-          className="flex-1 overflow-auto p-4 sm:p-6"
-        >
+        <PageScroll data-skeleton-region={!keyValue ? "active-tab" : undefined}>
           {loadErrorVariant ? (
-            <div className="mx-auto w-full max-w-4xl space-y-6">
+            <div className="mx-auto w-full max-w-5xl space-y-6">
               <ResourceLoadError
                 onRetry={() => void refetch()}
                 variant={loadErrorVariant}
               />
             </div>
           ) : keyValue && tab === "logs" ? (
-            <div className="mx-auto w-full max-w-4xl space-y-6">
+            <div className="mx-auto w-full max-w-5xl space-y-6">
               <DatastoreLogViewer
                 kind="keyvalue"
                 resource={keyValue.id}
@@ -202,17 +203,17 @@ export function KeyValueDetailPage() {
               />
             </div>
           ) : keyValue && tab === "metrics" ? (
-            <div className="mx-auto w-full max-w-4xl space-y-6">
+            <div className="mx-auto w-full max-w-5xl space-y-6">
               <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.id} />
             </div>
           ) : keyValue ? (
-            <div className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
+            <div className={cn("mx-auto max-w-5xl", SECTIONED_GRID_CLASS)}>
               {/* Same right-rail quick nav as the service settings page. */}
               <KeyValueDetailNavigation
                 className={SECTION_NAVIGATION_STICKY_CLASS}
               />
 
-              <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+              <div className={SECTIONED_BODY_CLASS}>
                 <section
                   id="metadata"
                   className={SECTION_NAVIGATION_TARGET_CLASS}
@@ -290,7 +291,7 @@ export function KeyValueDetailPage() {
           ) : (
             <KeyValueOverviewSkeleton />
           )}
-        </div>
+        </PageScroll>
       </div>
     </DashboardLayout>
   );
