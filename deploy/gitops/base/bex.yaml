@@ -26,7 +26,7 @@ spec:
     path: lego/operator/config/default
     kustomize:
       images:
-        - controller=ghcr.io/bex-co/bex-operator@sha256:4b4b83e3cd8fb2fe78c423ebdc5c3d48d4ec04d171f9d1ada1740b73ca72888d
+        - controller=ghcr.io/bex-co/bex-operator@sha256:49f79557434c106fc0d9ce22e8f5601c856061f0a54a6f62217d73d9ee62c673
   destination:
     server: https://kubernetes.default.svc
     namespace: bex-system
