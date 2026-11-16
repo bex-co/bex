@@ -767,6 +767,47 @@ describe("ServiceEventsPage — rename and custom-domain details (w4/m337)", () 
   });
 });
 
+describe("ServiceEventsPage — why auto-deploy turned off (w4/m431)", () => {
+  it("says which action turned auto-deploy off, and nothing for an unknown reason", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          row("evt-pin", "auto_deploy_disabled", 9, {
+            autoDeployDisabledReason: "manual_deploy",
+          }),
+          row("evt-rollback", "auto_deploy_disabled", 8, {
+            autoDeployDisabledReason: "rollback",
+          }),
+          row("evt-setting", "auto_deploy_disabled", 7, {
+            autoDeployDisabledReason: "setting_change",
+          }),
+          row("evt-future", "auto_deploy_disabled", 6, {
+            autoDeployDisabledReason: "some_new_reason",
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText(
+        "Turned off by a deploy of a specific commit, so later pushes don't replace it",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Turned off by a rollback, so later pushes don't replace it",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Turned off in settings")).toBeInTheDocument();
+    expect(screen.getAllByText("Auto-deploy updated")).toHaveLength(4);
+    expect(screen.queryByText(/some_new_reason/)).not.toBeInTheDocument();
+  });
+});
+
 describe("ServiceEventsPage — edge cache and pipeline minutes (w9/m345)", () => {
   it("names each edge-cache change and the refused build, with who did it, in en and zh", async () => {
     const cache = {

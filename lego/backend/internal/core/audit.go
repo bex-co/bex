@@ -633,12 +633,14 @@ const (
 	AutoDeployTriggerChecksPass = "checksPass"
 )
 
-// Render's AutoDeployDisabled reasons bex produces (w3/m317). bex has no path
-// that turns auto-deploy off on a manual deploy, so Render's manual_deploy is
-// never written.
+// Render's AutoDeployDisabled reasons (w3/m317): a settings change, a
+// dashboard rollback, or a deploy of a specific commit through the dashboard
+// or a deploy hook's ref (w4/m431). Render's API and CLI triggers keep
+// auto-deploy on, so they write none of these.
 const (
 	AutoDeployReasonSettingChange = "setting_change"
 	AutoDeployReasonRollback      = "rollback"
+	AutoDeployReasonManualDeploy  = "manual_deploy"
 )
 
 // RenderAutoDeployTrigger is Render's autoDeployTrigger for spec.autoDeploy

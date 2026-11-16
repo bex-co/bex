@@ -35,3 +35,27 @@ export function memoryLimitLabel(quantity: string): string {
   if (!match) return quantity;
   return `${match[1]} ${match[2] === "Mi" ? "MB" : "GB"}`;
 }
+
+/**
+ * Render's AutoDeployDisabled reasons the API sends (w3/m317, w4/m431): a
+ * settings change, a dashboard rollback, or a deploy of a specific commit
+ * from the dashboard or a deploy hook's `ref`.
+ */
+export const AUTO_DEPLOY_DISABLED_REASONS = [
+  "setting_change",
+  "rollback",
+  "manual_deploy",
+] as const;
+
+/**
+ * The translation key for an auto_deploy_disabled event's reason, or null for
+ * a reason this dashboard has no sentence for (the row keeps its title).
+ */
+export function autoDeployDisabledReasonKey(
+  reason: string | null | undefined,
+): string | null {
+  return reason &&
+    (AUTO_DEPLOY_DISABLED_REASONS as readonly string[]).includes(reason)
+    ? `services.eventsAutoDeployDisabledReason.${reason}`
+    : null;
+}

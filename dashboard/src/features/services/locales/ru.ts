@@ -4970,6 +4970,22 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Ветка {from} → {to}",
     description: "Tracked branch from/to summary",
   },
+  "services.eventsAutoDeployDisabledReason.setting_change": {
+    message: "Отключено в настройках",
+    description:
+      "auto_deploy_disabled reason: the auto-deploy setting was turned off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.rollback": {
+    message: "Отключено откатом, чтобы последующие пуши его не заменили",
+    description:
+      "auto_deploy_disabled reason: a dashboard rollback turned auto-deploy off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.manual_deploy": {
+    message:
+      "Отключено деплоем конкретного коммита, чтобы последующие пуши его не заменили",
+    description:
+      "auto_deploy_disabled reason: a deploy of a specific commit from the dashboard or a deploy hook turned auto-deploy off (w4/m431)",
+  },
   "services.eventsBranchDeleted": {
     message: "Ветка {branch} удалена — автодеплой отключён",
     description: "Deleted tracked branch summary",

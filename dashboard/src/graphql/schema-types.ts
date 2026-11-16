@@ -3654,6 +3654,7 @@ export type MutationTriggerDeployArgs = {
   commitId?: InputMaybe<Scalars['String']['input']>;
   confirm?: InputMaybe<Scalars['String']['input']>;
   deployMode?: InputMaybe<Scalars['String']['input']>;
+  disableAutoDeploy?: InputMaybe<Scalars['Boolean']['input']>;
   imageUrl?: InputMaybe<Scalars['String']['input']>;
   serviceId: Scalars['String']['input'];
 };

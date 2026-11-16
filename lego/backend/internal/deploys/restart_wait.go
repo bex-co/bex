@@ -218,7 +218,7 @@ func (s *Service) runDeferredDeploy(ctx context.Context, queue DeferredDeployQue
 	default:
 		_, err = s.triggerFetched(ctx, service, a, TriggerParams{
 			ImageURL: r.Request.ImageURL, CommitID: r.Request.CommitID, BuildID: r.Request.BuildID,
-			DeployMode: r.Request.DeployMode, ClearCache: r.Request.ClearCache,
+			DeployMode: r.Request.DeployMode, ClearCache: r.Request.ClearCache, DisableAutoDeploy: r.Request.DisableAutoDeploy,
 		}, r.Trigger)
 	}
 	switch {

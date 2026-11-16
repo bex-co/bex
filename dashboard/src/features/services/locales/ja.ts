@@ -4951,6 +4951,23 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "ブランチ {from} → {to}",
     description: "Tracked branch from/to summary",
   },
+  "services.eventsAutoDeployDisabledReason.setting_change": {
+    message: "設定でオフにしました",
+    description:
+      "auto_deploy_disabled reason: the auto-deploy setting was turned off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.rollback": {
+    message:
+      "ロールバックによりオフになりました。以降のプッシュで置き換えられません",
+    description:
+      "auto_deploy_disabled reason: a dashboard rollback turned auto-deploy off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.manual_deploy": {
+    message:
+      "特定のコミットのデプロイによりオフになりました。以降のプッシュで置き換えられません",
+    description:
+      "auto_deploy_disabled reason: a deploy of a specific commit from the dashboard or a deploy hook turned auto-deploy off (w4/m431)",
+  },
   "services.eventsBranchDeleted": {
     message: "ブランチ {branch} を削除しました — 自動デプロイは無効です",
     description: "Deleted tracked branch summary",

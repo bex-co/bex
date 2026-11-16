@@ -527,7 +527,10 @@ describe("drafts survive a routine refresh", () => {
     const before = apolloQuery.mock.calls.length;
     fireEvent.click(confirmButton("Deploy commit"));
     await flush();
-    expect(trigger).toHaveBeenCalledWith("srv-first", { commitId: "abc1234" });
+    expect(trigger).toHaveBeenCalledWith("srv-first", {
+      commitId: "abc1234",
+      disableAutoDeploy: true,
+    });
     expect(
       apolloQuery.mock.calls
         .slice(before)

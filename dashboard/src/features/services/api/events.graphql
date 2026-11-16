@@ -149,6 +149,9 @@ query ServiceEvents(
       envGroupName
       displayNameFrom
       displayNameTo
+      # auto_deploy_disabled (w4/m431): Render's reason, setting_change,
+      # rollback or manual_deploy.
+      autoDeployDisabledReason
       domain
       trigger {
         firstBuild
@@ -179,12 +182,15 @@ query ServiceEvents(
 
 # confirm: the protected-environment phrase a commitId deploy needs on a
 # protected member (w4/m176), copied from the first call's refusal.
+# disableAutoDeploy: Deploy a specific commit turns auto-deploy off in the same
+# write, as Render's dashboard does (w4/m431).
 mutation TriggerDeploy(
   $serviceId: String!
   $commitId: String
   $deployMode: String
   $clearCache: String
   $confirm: String
+  $disableAutoDeploy: Boolean
 ) {
   triggerDeploy(
     serviceId: $serviceId
@@ -192,6 +198,7 @@ mutation TriggerDeploy(
     deployMode: $deployMode
     clearCache: $clearCache
     confirm: $confirm
+    disableAutoDeploy: $disableAutoDeploy
   ) {
     id
     status

@@ -375,9 +375,14 @@ func (s *Service) DeployHookHandler() http.Handler {
 			core.WriteErr(w, err)
 			return
 		}
+		// Render: "Deploying a specific commit through the Dashboard or a
+		// deploy hook disables auto-deploys" (w4/m431), so a ref pins the
+		// commit and turns auto-deploy off in the same write.
+		ref := r.URL.Query().Get("ref")
 		d, err := s.triggerFetched(r.Context(), core.AppPublicName(a), a, TriggerParams{
-			CommitID: r.URL.Query().Get("ref"),
-			ImageURL: r.URL.Query().Get("imgURL"),
+			CommitID:          ref,
+			ImageURL:          r.URL.Query().Get("imgURL"),
+			DisableAutoDeploy: ref != "",
 		}, store.TriggerDeployHook)
 		if err != nil {
 			core.WriteErr(w, inHookVocabulary(err))

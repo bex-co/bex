@@ -238,18 +238,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// The protected-environment phrase for an imageUrl/commitId
 				// deploy (w4/m176), copied from the first call's refusal.
 				"confirm": gqlutil.Arg(graphql.String),
+				// Render's dashboard "Deploy a specific commit" turns auto-deploy
+				// off; its API does not (render.com/docs/deploys). The dashboard
+				// passes true with commitId, so the pin and the switch-off are one
+				// write (w4/m431); every other caller keeps auto-deploy.
+				"disableAutoDeploy": &graphql.ArgumentConfig{Type: graphql.Boolean, DefaultValue: false},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				commitID := gqlutil.Str(p.Args, "commitId")
-				deployMode := gqlutil.Str(p.Args, "deployMode")
-				imageURL := gqlutil.Str(p.Args, "imageUrl")
-				clearCache := gqlutil.Str(p.Args, "clearCache")
+				disable, _ := p.Args["disableAutoDeploy"].(bool)
 				return s.TriggerManual(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["serviceId"].(string), TriggerParams{
-					CommitID:   commitID,
-					DeployMode: deployMode,
-					ImageURL:   imageURL,
-					ClearCache: clearCache,
-					BuildID:    gqlutil.Str(p.Args, "buildId"),
+					CommitID:          gqlutil.Str(p.Args, "commitId"),
+					DeployMode:        gqlutil.Str(p.Args, "deployMode"),
+					ImageURL:          gqlutil.Str(p.Args, "imageUrl"),
+					ClearCache:        gqlutil.Str(p.Args, "clearCache"),
+					BuildID:           gqlutil.Str(p.Args, "buildId"),
+					DisableAutoDeploy: disable,
 				})
 			},
 		},

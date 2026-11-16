@@ -37,6 +37,7 @@ import { DeployActions } from "@/features/deploys/components/deploy-actions";
 import { formatDeployDuration } from "@/features/deploys/lib/deploy-presentation";
 import { useGoneBuilds } from "@/features/deploys/hooks/use-gone-builds";
 import {
+  autoDeployDisabledReasonKey,
   eventReasonKey,
   memoryLimitLabel,
 } from "@/features/services/lib/event-reason";
@@ -471,6 +472,10 @@ function EventSummary({
   const usagePercent = details?.usagePercent ?? null;
   const thresholdPercent = details?.thresholdPercent ?? null;
   const commitUrl = details?.commitUrl || null;
+  const autoDeployReason =
+    type === "auto_deploy_disabled"
+      ? autoDeployDisabledReasonKey(details?.autoDeployDisabledReason)
+      : null;
   // service_moved placement pair (w6/m134). A dimension renders only when it
   // actually changed; an absent side reads as the placement-none placeholder.
   const projectFrom = details?.projectFrom ?? null;
@@ -628,6 +633,11 @@ function EventSummary({
               from: details.displayNameFrom ?? "",
               to: details.displayNameTo,
             })}
+          </p>
+        ) : null}
+        {autoDeployReason ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t(autoDeployReason as Parameters<typeof t>[0])}
           </p>
         ) : null}
         {branchFrom && branchTo ? (

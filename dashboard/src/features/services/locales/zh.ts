@@ -4807,6 +4807,21 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "分支 {from} → {to}",
     description: "跟踪分支变化摘要",
   },
+  "services.eventsAutoDeployDisabledReason.setting_change": {
+    message: "已在设置中关闭",
+    description:
+      "auto_deploy_disabled reason: the auto-deploy setting was turned off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.rollback": {
+    message: "已因回滚关闭，之后的推送不会替换它",
+    description:
+      "auto_deploy_disabled reason: a dashboard rollback turned auto-deploy off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.manual_deploy": {
+    message: "已因部署指定提交关闭，之后的推送不会替换它",
+    description:
+      "auto_deploy_disabled reason: a deploy of a specific commit from the dashboard or a deploy hook turned auto-deploy off (w4/m431)",
+  },
   "services.eventsBranchDeleted": {
     message: "已删除分支 {branch} — 自动部署已关闭",
     description: "已删除的跟踪分支摘要",

@@ -4991,6 +4991,23 @@ const esServices: Record<string, TranslationEntry> = {
     message: "Rama {from} → {to}",
     description: "Tracked branch from/to summary",
   },
+  "services.eventsAutoDeployDisabledReason.setting_change": {
+    message: "Desactivado en la configuración",
+    description:
+      "auto_deploy_disabled reason: the auto-deploy setting was turned off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.rollback": {
+    message:
+      "Desactivado por un rollback, para que los pushes posteriores no lo reemplacen",
+    description:
+      "auto_deploy_disabled reason: a dashboard rollback turned auto-deploy off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.manual_deploy": {
+    message:
+      "Desactivado por el deploy de un commit específico, para que los pushes posteriores no lo reemplacen",
+    description:
+      "auto_deploy_disabled reason: a deploy of a specific commit from the dashboard or a deploy hook turned auto-deploy off (w4/m431)",
+  },
   "services.eventsBranchDeleted": {
     message: "Rama {branch} eliminada — despliegue automático desactivado",
     description: "Deleted tracked branch summary",

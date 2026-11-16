@@ -11,7 +11,6 @@ import {
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { TextField } from "@/common/components/text-field";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { isCron } from "@/features/services/lib/service-type";
@@ -48,8 +47,8 @@ export interface ManualDeployButtonProps {
  * Every item opens a deploy-history row and lands on its page. Restart runs
  * `restartServer`, which keeps the commit or image that is live; a
  * parameter-free `triggerDeploy` would build the branch head (w1/m148). A
- * specific-commit deploy also turns auto-deploy off, as Render's dashboard
- * does, so the next push cannot replace the pin. A specific commit also needs
+ * specific-commit deploy also turns auto-deploy off in the same mutation, as
+ * Render's dashboard does, so the next push cannot replace the pin. A specific commit also needs
  * the create grant because it chooses executable content.
  */
 export function ManualDeployButton({
@@ -66,7 +65,6 @@ export function ManualDeployButton({
     requiredCapability: "can_create",
   });
   const { deploying, trigger, restart } = useTriggerDeploy();
-  const { setAutoDeploy, busy: autoDeployBusy } = useAutoDeploy();
   const navigate = useNavigate();
   const [storedDialog, setDialog] = useState<{
     kind: "restart" | "commit";
@@ -83,7 +81,7 @@ export function ManualDeployButton({
       : null;
   const commitId = dialog?.kind === "commit" ? dialog.commitId : "";
   const base = serviceBaseForType(service.type);
-  const busy = checking || deploying || autoDeployBusy || pending;
+  const busy = checking || deploying || pending;
   const repoBacked = !!service.repo;
   // Render: a specific commit is "Not supported for cron jobs".
   const canDeployCommit = repoBacked && !isCron(service);
@@ -184,16 +182,11 @@ export function ManualDeployButton({
   async function handleDeployCommit() {
     if (commitBlocked || !shaValid || dialog?.kind !== "commit") return;
     const { binding } = dialog;
-    await runDeploy(commitConfirm, binding, async () => {
-      const deployId = await trigger(service.id, { commitId: sha });
-      // Pinning also turns off auto-deploy; this second mutation needs its
-      // own fresh check if access changed during the deploy request.
-      if (deployId && service.autoDeploy !== false) {
-        const { ok } = await commitConfirm.recheckBeforeDispatch(binding);
-        if (ok) await setAutoDeploy(service.id, false);
-      }
-      return deployId;
-    });
+    // Pinning also turns auto-deploy off, in the same write, so no push can
+    // land between the pin and the switch-off (w4/m431).
+    await runDeploy(commitConfirm, binding, () =>
+      trigger(service.id, { commitId: sha, disableAutoDeploy: true }),
+    );
   }
 
   return (

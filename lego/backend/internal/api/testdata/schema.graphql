@@ -1926,7 +1926,7 @@ type Mutation {
   takeOverAgentAutomation(id: String!, ownerId: String): AgentAutomation!
   terminateSandbox(id: String!, ownerId: String): Boolean!
   triggerBuild(buildSourceId: String!, clearCache: String): Build
-  triggerDeploy(buildId: String, clearCache: String, commitId: String, confirm: String, deployMode: String, imageUrl: String, serviceId: String!): Deploy
+  triggerDeploy(buildId: String, clearCache: String, commitId: String, confirm: String, deployMode: String, disableAutoDeploy: Boolean = false, imageUrl: String, serviceId: String!): Deploy
   unarchiveAgentSession(id: String!): AgentSession
   unlinkEnvGroup(id: String!, serviceId: String!): Boolean
   unregisterNotificationDeviceSubscription(deviceId: String!, ownerId: String): Boolean

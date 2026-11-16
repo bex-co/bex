@@ -4996,6 +4996,23 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Branch {from} → {to}",
     description: "Tracked branch from/to summary",
   },
+  "services.eventsAutoDeployDisabledReason.setting_change": {
+    message: "In den Einstellungen deaktiviert",
+    description:
+      "auto_deploy_disabled reason: the auto-deploy setting was turned off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.rollback": {
+    message:
+      "Durch ein Rollback deaktiviert, damit spätere Pushes es nicht ersetzen",
+    description:
+      "auto_deploy_disabled reason: a dashboard rollback turned auto-deploy off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.manual_deploy": {
+    message:
+      "Durch das Deployen eines bestimmten Commits deaktiviert, damit spätere Pushes ihn nicht ersetzen",
+    description:
+      "auto_deploy_disabled reason: a deploy of a specific commit from the dashboard or a deploy hook turned auto-deploy off (w4/m431)",
+  },
   "services.eventsBranchDeleted": {
     message: "Branch {branch} gelöscht — Auto-Deploy deaktiviert",
     description: "Deleted tracked branch summary",

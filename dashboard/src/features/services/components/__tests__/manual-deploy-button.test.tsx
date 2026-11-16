@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import type { ServiceView } from "@/features/services/types";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
 import { mockCapabilities } from "@/test/mocks/capabilities";
-import { ViewerCapabilitiesDocument } from "@/graphql/definitions";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -17,11 +16,6 @@ const trigger = vi.fn();
 const restart = vi.fn();
 vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
   useTriggerDeploy: () => ({ deploying: false, trigger, restart }),
-}));
-
-const setAutoDeploy = vi.fn();
-vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
-  useAutoDeploy: () => ({ setAutoDeploy, busy: false }),
 }));
 
 const apolloQuery = vi.fn();
@@ -112,7 +106,6 @@ beforeEach(() => {
   mockNavigate.mockReset();
   trigger.mockReset();
   restart.mockReset();
-  setAutoDeploy.mockReset().mockResolvedValue(true);
 });
 
 describe("ManualDeployButton permission freshness", () => {
@@ -155,7 +148,6 @@ describe("ManualDeployButton permission freshness", () => {
         }
         expect(trigger, menuItem).not.toHaveBeenCalled();
         expect(restart, menuItem).not.toHaveBeenCalled();
-        expect(setAutoDeploy, menuItem).not.toHaveBeenCalled();
         expect(mockNavigate, menuItem).not.toHaveBeenCalled();
       },
     );
@@ -235,7 +227,6 @@ describe("ManualDeployButton permission freshness", () => {
     await user.click(pin);
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(trigger).not.toHaveBeenCalled();
-    expect(setAutoDeploy).not.toHaveBeenCalled();
   });
 
   it("rechecks create permission before deploying a specific commit", async () => {
@@ -264,46 +255,6 @@ describe("ManualDeployButton permission freshness", () => {
     await user.type(screen.getByLabelText("Commit SHA"), "abcdef1");
     await user.click(screen.getByRole("button", { name: "Deploy commit" }));
     expect(trigger).not.toHaveBeenCalled();
-    expect(setAutoDeploy).not.toHaveBeenCalled();
-  });
-
-  it("does not change auto-deploy when create permission is revoked during the deploy", async () => {
-    let createChecks = 0;
-    apolloQuery.mockImplementation(async ({ query }) => {
-      if (query !== ViewerCapabilitiesDocument) {
-        return { data: { deployActions: allowedDeploy } };
-      }
-      const allowed = ++createChecks === 1;
-      return {
-        data: {
-          viewerCapabilities: {
-            ...mockCapabilities({ canCreate: allowed }),
-            fresh: true,
-            grants: [
-              {
-                action: "can_create",
-                outcome: allowed ? "allowed" : "denied",
-                reason: allowed ? null : "insufficient_permission",
-              },
-            ],
-          },
-        },
-      };
-    });
-    trigger.mockResolvedValue("dep-pinned");
-    const user = userEvent.setup();
-    render(<ManualDeployButton service={svc(repo)} pending={false} />);
-    await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
-    await user.click(
-      screen.getByRole("menuitem", { name: "Deploy a specific commit" }),
-    );
-    await user.type(screen.getByLabelText("Commit SHA"), "abcdef1");
-    await user.click(screen.getByRole("button", { name: "Deploy commit" }));
-    await waitFor(() => expect(createChecks).toBe(2));
-    expect(trigger).toHaveBeenCalledExactlyOnceWith("web", {
-      commitId: "abcdef1",
-    });
-    expect(setAutoDeploy).not.toHaveBeenCalled();
   });
 });
 
@@ -486,7 +437,7 @@ describe("ManualDeployButton — Deploy a specific commit (w1/m148, Render parit
     ).not.toBeInTheDocument();
   });
 
-  it("deploys the entered SHA, turns auto-deploy off, then opens the deploy", async () => {
+  it("deploys the entered SHA and turns auto-deploy off in one mutation, then opens the deploy", async () => {
     trigger.mockResolvedValue("dep-pin-1");
     const user = await openCommitDialog(svc(repo));
 
@@ -496,10 +447,12 @@ describe("ManualDeployButton — Deploy a specific commit (w1/m148, Render parit
     await user.type(screen.getByLabelText("Commit SHA"), ` ${SHA} `);
     await user.click(screen.getByRole("button", { name: "Deploy commit" }));
 
-    expect(trigger).toHaveBeenCalledWith("web", { commitId: SHA });
-    await waitFor(() =>
-      expect(setAutoDeploy).toHaveBeenCalledWith("web", false),
-    );
+    // One write pins the commit and turns auto-deploy off (w4/m431): no
+    // follow-up setAutoDeploy a push could land in front of.
+    expect(trigger).toHaveBeenCalledExactlyOnceWith("web", {
+      commitId: SHA,
+      disableAutoDeploy: true,
+    });
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith({
         to: "/services/$serviceId/deploys/$deployId",
@@ -532,21 +485,17 @@ describe("ManualDeployButton — Deploy a specific commit (w1/m148, Render parit
     expect(trigger).not.toHaveBeenCalled();
   });
 
-  it("leaves auto-deploy alone when the deploy is refused or it is already off", async () => {
+  it("does not open a deploy the server refused", async () => {
     trigger.mockResolvedValue(null);
-    let user = await openCommitDialog(svc(repo));
+    const user = await openCommitDialog(svc(repo));
     await user.type(screen.getByLabelText("Commit SHA"), SHA);
     await user.click(screen.getByRole("button", { name: "Deploy commit" }));
-    await waitFor(() => expect(trigger).toHaveBeenCalled());
-    expect(setAutoDeploy).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(trigger).toHaveBeenCalledExactlyOnceWith("web", {
+        commitId: SHA,
+        disableAutoDeploy: true,
+      }),
+    );
     expect(mockNavigate).not.toHaveBeenCalled();
-    cleanup();
-
-    trigger.mockResolvedValue("dep-pin-2");
-    user = await openCommitDialog(svc({ ...repo, autoDeploy: false }));
-    await user.type(screen.getByLabelText("Commit SHA"), SHA);
-    await user.click(screen.getByRole("button", { name: "Deploy commit" }));
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
-    expect(setAutoDeploy).not.toHaveBeenCalled();
   });
 });

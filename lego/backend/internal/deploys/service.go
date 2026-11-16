@@ -547,6 +547,11 @@ type TriggerParams struct {
 	// BuildID deploys this build of the service's build source (Render's
 	// buildId) instead of the source's current build.
 	BuildID string
+	// DisableAutoDeploy turns auto-deploy off in the release write that pins
+	// CommitID, as Render's dashboard "Deploy a specific commit" and a deploy
+	// hook's ref do (w4/m431). Render's API and CLI keep auto-deploy, so REST
+	// and MCP never set it. Refused without a CommitID.
+	DisableAutoDeploy bool
 	// build is the build a build-source fan-out ships, resolved once for
 	// every linked service; nil resolves it per deploy (BuildID or current).
 	build *sourceBuild
@@ -560,10 +565,11 @@ type TriggerParams struct {
 // p.CommitID, if non-empty, sets spec.BuildCommit so the operator checks out
 // that ref instead of Branch HEAD. A trigger without a commitId resolves the
 // branch head and pins that SHA (or "" when it cannot be resolved), so each
-// trigger builds exactly one commit. Pinning does not turn autoDeploy off:
-// Render's API says commitId "does not disable autodeploys"; its dashboard's
-// "Deploy a specific commit" does that as a separate step. Restart pins the
-// live commit instead of the branch head.
+// trigger builds exactly one commit. Pinning alone does not turn autoDeploy
+// off: Render's API says commitId "does not disable autodeploys". The
+// dashboard's "Deploy a specific commit" and a deploy hook's ref do, through
+// p.DisableAutoDeploy in the same write (w4/m431). Restart pins the live
+// commit instead of the branch head.
 //
 // p.DeployMode "deploy_only" is an explicit request NOT to rebuild:
 //   - repo-backed service: rejected with ErrBadRequest (this public trigger does
@@ -710,6 +716,9 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 	}
 	if appStoreID(a) == "" {
 		return fmt.Errorf("%w: service %q is not store-managed", core.ErrBadRequest, service)
+	}
+	if p.DisableAutoDeploy && p.CommitID == "" {
+		return fmt.Errorf("%w: disableAutoDeploy needs a commitId: only a deploy of a specific commit turns auto-deploy off", core.ErrBadRequest)
 	}
 	if p.BuildID != "" {
 		if a.Spec.BuildSource == nil {
@@ -878,7 +887,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// holds it behind an adopted selection.
 	if p.build == nil && !p.restart {
 		d, deferred, err := s.deferDeploy(ctx, a, store.Deploy{Trigger: trigger, Image: p.ImageURL, TriggeredBy: triggeredBy},
-			store.DeferredRequest{ImageURL: p.ImageURL, CommitID: p.CommitID, BuildID: p.BuildID, DeployMode: p.DeployMode, ClearCache: p.ClearCache},
+			store.DeferredRequest{ImageURL: p.ImageURL, CommitID: p.CommitID, BuildID: p.BuildID, DeployMode: p.DeployMode, ClearCache: p.ClearCache, DisableAutoDeploy: p.DisableAutoDeploy},
 			func(a *appv1alpha1.App) bool { return p.ImageURL != "" || a.ActiveReleaseConfig() != nil })
 		if deferred || err != nil {
 			return d, err
@@ -928,9 +937,17 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		}
 		return nil
 	}
+	// The trigger auto-deploy was on with, read under the lock from the App
+	// the release write changes; "" when this write leaves auto-deploy alone.
+	disabledTrigger := ""
 	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) error {
 		core.StampReleaseGeneration(a, release)
 		stampClearCacheRelease(a, release, p.ClearCache)
+		disabledTrigger = ""
+		if p.DisableAutoDeploy && a.Spec.AutoDeploy {
+			disabledTrigger = core.RenderAutoDeployTrigger(true, a.Spec.AutoDeployTrigger)
+			a.Spec.AutoDeploy = false
+		}
 		// Env-group links an Auto-Deploy-off service was waiting on ship here,
 		// and its group refs adopt creation order (w4/m355).
 		rollout.PrepareGroupRefsForRelease(a)
@@ -977,6 +994,9 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	})
 	if err != nil {
 		return DeployView{}, err
+	}
+	if disabledTrigger != "" {
+		s.RecordAutoDeployDisabled(ctx, a, disabledTrigger, core.AutoDeployReasonManualDeploy)
 	}
 	if store.IsOpenDeployStatus(d.Status) {
 		s.notifyDeployStarted(ctx, a, service)

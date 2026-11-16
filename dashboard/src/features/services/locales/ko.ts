@@ -4917,6 +4917,21 @@ const koServices: Record<string, TranslationEntry> = {
     message: "브랜치 {from} → {to}",
     description: "Tracked branch from/to summary",
   },
+  "services.eventsAutoDeployDisabledReason.setting_change": {
+    message: "설정에서 꺼짐",
+    description:
+      "auto_deploy_disabled reason: the auto-deploy setting was turned off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.rollback": {
+    message: "롤백으로 꺼졌습니다. 이후 푸시가 이를 대체하지 않습니다",
+    description:
+      "auto_deploy_disabled reason: a dashboard rollback turned auto-deploy off (w4/m431)",
+  },
+  "services.eventsAutoDeployDisabledReason.manual_deploy": {
+    message: "특정 커밋 배포로 꺼졌습니다. 이후 푸시가 이를 대체하지 않습니다",
+    description:
+      "auto_deploy_disabled reason: a deploy of a specific commit from the dashboard or a deploy hook turned auto-deploy off (w4/m431)",
+  },
   "services.eventsBranchDeleted": {
     message: "브랜치 {branch} 삭제됨 — 자동 배포 비활성화",
     description: "Deleted tracked branch summary",

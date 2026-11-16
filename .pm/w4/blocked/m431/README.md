@@ -1,18 +1,18 @@
 # w4 · m431 — Deploying a specific commit from the dashboard or a deploy hook turns auto-deploy off in the same write and records `manual_deploy`, as on Render
 
-**Worker:** worker4 **Goal:** a commit pinned through the dashboard or a deploy hook's `ref` stays pinned: the same write turns auto-deploy off, the event reads Render's `manual_deploy`, and REST and MCP triggers keep auto-deploy as Render's API does. **Status:** todo
+**Worker:** worker4 **Goal:** a commit pinned through the dashboard or a deploy hook's `ref` stays pinned: the same write turns auto-deploy off, the event reads Render's `manual_deploy`, and REST and MCP triggers keep auto-deploy as Render's API does. **Status:** blocked (t001–t003, t005–t007 done; t004 waits for the production deploy carrying this change)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | One trigger verb that pins a commit and turns auto-deploy off in the same write, recording `manual_deploy` | 45m | — |
-| t002 | A deploy hook called with `ref` pins the commit and turns auto-deploy off | 25m | t001 |
-| t003 | GraphQL `triggerDeploy(disableAutoDeploy:)` and the dashboard's Deploy a specific commit in one mutation | 40m | t001 |
+| t001 | One trigger verb that pins a commit and turns auto-deploy off in the same write, recording `manual_deploy` — **DONE** | 45m | — |
+| t002 | A deploy hook called with `ref` pins the commit and turns auto-deploy off — **DONE** | 25m | t001 |
+| t003 | GraphQL `triggerDeploy(disableAutoDeploy:)` and the dashboard's Deploy a specific commit in one mutation — **DONE** | 40m | t001 |
 | t004 | REST and MCP keep auto-deploy; live check on production | 30m | t002, t003 |
-| t005 | Render parity | 20m | t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 30m | t005 |
+| t005 | Render parity — **DONE** | 20m | t004 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 30m | t005 |
 | t008 | Closeout | 10m | t006, t007 |
 
 ## Definition of done

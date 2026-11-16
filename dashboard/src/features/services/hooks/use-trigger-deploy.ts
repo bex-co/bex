@@ -35,6 +35,11 @@ export interface TriggerOptions {
    * values are no-ops (ephemeral Jobs start empty).
    */
   clearCache?: string;
+  /**
+   * Turn auto-deploy off in the same write that pins `commitId`, as Render's
+   * dashboard "Deploy a specific commit" does (w4/m431). Needs `commitId`.
+   */
+  disableAutoDeploy?: boolean;
 }
 
 export interface UseTriggerDeployResult {
@@ -103,6 +108,7 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
             commitId: opts?.commitId,
             deployMode: opts?.deployMode,
             clearCache: opts?.clearCache,
+            disableAutoDeploy: opts?.disableAutoDeploy,
             confirm,
           },
         }),

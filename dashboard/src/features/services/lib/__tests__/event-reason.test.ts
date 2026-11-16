@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  AUTO_DEPLOY_DISABLED_REASONS,
+  autoDeployDisabledReasonKey,
   eventReasonKey,
   memoryLimitLabel,
 } from "@/features/services/lib/event-reason";
@@ -56,5 +59,36 @@ describe("memoryLimitLabel", () => {
     expect(memoryLimitLabel("2Gi")).toBe("2 GB");
     expect(memoryLimitLabel("1.5Gi")).toBe("1.5 GB");
     expect(memoryLimitLabel("weird")).toBe("weird");
+  });
+});
+
+// w4/m431: every reason the API can send has a sentence in every shipped
+// language. Read from the Go constants, so a new backend reason without
+// dashboard wording fails here rather than rendering a bare title.
+describe("autoDeployDisabledReasonKey", () => {
+  const audit = readFileSync(
+    `${process.cwd()}/../lego/backend/internal/core/audit.go`,
+    "utf8",
+  );
+  const backendReasons = [
+    ...audit.matchAll(/^\s*AutoDeployReason[A-Za-z]+\s*=\s*"([^"]+)"/gm),
+  ].map(([, value]) => value);
+
+  it("covers exactly the reasons the backend writes", () => {
+    expect(backendReasons).toContain("manual_deploy");
+    expect([...AUTO_DEPLOY_DISABLED_REASONS].sort()).toEqual(
+      [...backendReasons].sort(),
+    );
+  });
+
+  it("has a sentence for each reason in en and zh, and none for an unknown one", () => {
+    for (const reason of AUTO_DEPLOY_DISABLED_REASONS) {
+      const key = autoDeployDisabledReasonKey(reason);
+      expect(key, reason).not.toBeNull();
+      expect(en[key as keyof typeof en], reason).toBeDefined();
+      expect(zh[key as keyof typeof zh], reason).toBeDefined();
+    }
+    expect(autoDeployDisabledReasonKey("some_new_reason")).toBeNull();
+    expect(autoDeployDisabledReasonKey(null)).toBeNull();
   });
 });
