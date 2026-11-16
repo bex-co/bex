@@ -188,7 +188,7 @@ func TestMonthlyEstimateReadReplicasAddPrimaryPricedLines(t *testing.T) {
 func TestMonthlyEstimateCronNeverPrices(t *testing.T) {
 	cron := MonthlyResource{
 		Name: "nightly", ResourceKind: store.ResourceKindService, Tier: "pro-max",
-		Cron: true,
+		Cron:      true,
 		StorageGB: 100, HighAvailability: true, ReadReplicas: 3, Instances: 5,
 	}
 	for _, extra := range []MonthlyResource{cron, {Name: "n", ResourceKind: store.ResourceKindService, Tier: "starter", Cron: true, Autoscaling: true}} {
