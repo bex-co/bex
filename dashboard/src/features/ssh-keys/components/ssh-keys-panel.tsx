@@ -26,16 +26,14 @@ import { Label } from "@/common/components/ui/label";
 import { Textarea } from "@/common/components/ui/textarea";
 import {
   PanelCenteredState,
-  PanelTableSkeleton,
-  TableActionsHead,
+  PanelTableHeader,
+  PanelTableFrame,
 } from "@/common/components/panel-states";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/common/components/ui/table";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -64,6 +62,12 @@ export function SSHKeysPanel() {
   const [publicKey, setPublicKey] = useState("");
   const keyValid = publicKeyPattern.test(publicKey.trim());
   const valid = name.trim().length > 0 && keyValid;
+  const columns = [
+    t("sshKeys.name"),
+    t("sshKeys.fingerprint"),
+    t("sshKeys.created"),
+  ];
+  const actionsLabel = t("sshKeys.actions");
 
   async function create() {
     if (!valid) return;
@@ -167,7 +171,7 @@ export function SSHKeysPanel() {
             body={t("sshKeys.errorBody")}
           />
         ) : state.loading && state.keys.length === 0 ? (
-          <PanelTableSkeleton />
+          <PanelTableFrame columns={columns} actionsLabel={actionsLabel} />
         ) : state.keys.length === 0 ? (
           <PanelCenteredState
             icon={<KeyRound />}
@@ -176,14 +180,7 @@ export function SSHKeysPanel() {
           />
         ) : (
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("sshKeys.name")}</TableHead>
-                <TableHead>{t("sshKeys.fingerprint")}</TableHead>
-                <TableHead>{t("sshKeys.created")}</TableHead>
-                <TableActionsHead label={t("sshKeys.actions")} />
-              </TableRow>
-            </TableHeader>
+            <PanelTableHeader columns={columns} actionsLabel={actionsLabel} />
             <TableBody>
               {state.keys.map((key) => (
                 <TableRow key={key.id}>

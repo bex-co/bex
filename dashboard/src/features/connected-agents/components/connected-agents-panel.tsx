@@ -6,17 +6,11 @@ import {
   CardDescription,
   CardContent,
 } from "@/common/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-} from "@/common/components/ui/table";
+import { Table, TableBody } from "@/common/components/ui/table";
 import {
   PanelCenteredState,
-  PanelTableSkeleton,
-  TableActionsHead,
+  PanelTableHeader,
+  PanelTableFrame,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectedAgents } from "@/features/connected-agents/hooks/use-connected-agents";
@@ -32,6 +26,11 @@ import { ConnectedAgentRow } from "@/features/connected-agents/components/connec
 export function ConnectedAgentsPanel() {
   const { t } = useTranslations();
   const { agents, loading, error, revoke, revoking } = useConnectedAgents();
+  const columns = [
+    t("connectedAgents.colClient"),
+    t("connectedAgents.colScopes"),
+    t("connectedAgents.colGranted"),
+  ];
 
   return (
     <Card>
@@ -47,7 +46,7 @@ export function ConnectedAgentsPanel() {
             body={t("connectedAgents.errorBody")}
           />
         ) : loading ? (
-          <PanelTableSkeleton />
+          <PanelTableFrame columns={columns} />
         ) : agents.length === 0 ? (
           <PanelCenteredState
             icon={<Bot />}
@@ -56,14 +55,7 @@ export function ConnectedAgentsPanel() {
           />
         ) : (
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("connectedAgents.colClient")}</TableHead>
-                <TableHead>{t("connectedAgents.colScopes")}</TableHead>
-                <TableHead>{t("connectedAgents.colGranted")}</TableHead>
-                <TableActionsHead />
-              </TableRow>
-            </TableHeader>
+            <PanelTableHeader columns={columns} />
             <TableBody>
               {agents.map((agent) => (
                 <ConnectedAgentRow

@@ -9,17 +9,18 @@ import {
 } from "@/common/components/ui/card";
 import {
   Table,
-  TableHeader,
   TableBody,
+  TableCell,
   TableRow,
-  TableHead,
 } from "@/common/components/ui/table";
+import { Badge } from "@/common/components/ui/badge";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { Button } from "@/common/components/ui/button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import {
   PanelCenteredState,
-  PanelTableSkeleton,
-  TableActionsHead,
+  PanelTableHeader,
+  PanelTableFrame,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useActiveSessions } from "@/features/sessions/hooks/use-active-sessions";
@@ -45,6 +46,11 @@ export function ActiveSessionsPanel() {
   } = useActiveSessions();
 
   const hasOtherSessions = sessions.some((s) => !s.current);
+  const columns = [
+    t("activeSessions.colDevice"),
+    t("activeSessions.colLocation"),
+    t("activeSessions.colSignedIn"),
+  ];
 
   return (
     <Card>
@@ -79,7 +85,25 @@ export function ActiveSessionsPanel() {
             body={t("activeSessions.errorBody")}
           />
         ) : loading ? (
-          <PanelTableSkeleton />
+          // The current session is always listed, first and with no revoke
+          // (w4/686): its row is the frame's one placeholder.
+          <PanelTableFrame columns={columns}>
+            <TableRow data-testid="current-session-placeholder">
+              <TableCell className="max-w-[16rem] truncate">
+                <Skeleton className="inline-block h-4 w-40 align-middle" />
+                <Badge variant="secondary" className="ml-2">
+                  {t("activeSessions.current")}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-24" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-20" />
+              </TableCell>
+              <TableCell />
+            </TableRow>
+          </PanelTableFrame>
         ) : sessions.length === 0 ? (
           <PanelCenteredState
             icon={<Monitor />}
@@ -88,14 +112,7 @@ export function ActiveSessionsPanel() {
           />
         ) : (
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("activeSessions.colDevice")}</TableHead>
-                <TableHead>{t("activeSessions.colLocation")}</TableHead>
-                <TableHead>{t("activeSessions.colSignedIn")}</TableHead>
-                <TableActionsHead />
-              </TableRow>
-            </TableHeader>
+            <PanelTableHeader columns={columns} />
             <TableBody>
               {orderSessions(sessions).map((session) => (
                 <SessionRow

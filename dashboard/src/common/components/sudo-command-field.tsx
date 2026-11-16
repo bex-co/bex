@@ -38,15 +38,10 @@ export function SudoCommandField({
   inputClassName,
 }: SudoCommandFieldProps) {
   const { t } = useTranslations();
-  const [before, after] = t(promptKey, { phrase: PHRASE_SENTINEL }).split(
-    PHRASE_SENTINEL,
-  );
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground">
-        {before}
-        <strong className="font-semibold text-foreground">{phrase}</strong>
-        {after}
+        <SudoPrompt promptKey={promptKey} phrase={phrase} />
       </p>
       <Label htmlFor={id}>{t("common.sudoCommandLabel")}</Label>
       <Input
@@ -58,5 +53,29 @@ export function SudoCommandField({
         className={inputClassName}
       />
     </div>
+  );
+}
+
+/**
+ * The "Type <phrase> below to confirm." copy with the phrase in bold: the
+ * field's instruction, and the text its loading frames reserve.
+ */
+export function SudoPrompt({
+  promptKey,
+  phrase,
+}: {
+  promptKey: keyof typeof en;
+  phrase: string;
+}) {
+  const { t } = useTranslations();
+  const [before, after] = t(promptKey, { phrase: PHRASE_SENTINEL }).split(
+    PHRASE_SENTINEL,
+  );
+  return (
+    <>
+      {before}
+      <strong className="font-semibold text-foreground">{phrase}</strong>
+      {after}
+    </>
   );
 }

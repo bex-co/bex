@@ -16,6 +16,11 @@ vi.mock("@apollo/client/react", () => ({
   useQuery: vi.fn(),
   useMutation: vi.fn(),
 }));
+// The account's workspaces: the loading frame draws one row per workspace.
+let workspaces: { id: string; name: string }[] = [];
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ workspaces }),
+}));
 vi.mock("@/common/lib/ory/logout", () => ({
   endBrowserSession: vi.fn(),
   clearBrowserAccountState,
@@ -54,6 +59,7 @@ function preview(overrides?: {
 
 describe("AccountDeletionCard", () => {
   beforeEach(() => {
+    workspaces = [];
     mutate.mockReset();
     refetch.mockReset();
     vi.mocked(useMutation).mockReturnValue([
@@ -304,5 +310,66 @@ describe("AccountDeletionCard", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // w4/686: the preview's loading frame draws the ready card's header, prompt,
+  // field and button with the same copy, and one row per workspace.
+  it("frames the ready card while the preview loads (w4/686)", () => {
+    workspaces = [
+      { id: "tea-shared", name: "shared" },
+      { id: "tea-personal", name: "personal" },
+      { id: "tea-team", name: "team" },
+    ];
+    preview({
+      delete: [{ id: "tea-personal", name: "personal", action: "delete" }],
+      leave: [
+        { id: "tea-shared", name: "shared", action: "leave" },
+        { id: "tea-team", name: "team", action: "leave" },
+      ],
+    });
+    const ready = render(<AccountDeletionCard />);
+    const readyTitle = screen.getByText("Delete account").textContent;
+    const readyDescription = ready.container.querySelector(
+      "[data-slot='card-description']",
+    )!.textContent;
+    const readyPrompt = ready.container.querySelector(
+      "[data-slot='card-content'] p",
+    )!.textContent;
+    const readyLists = [
+      ...ready.container.querySelectorAll("[data-slot='card-content'] ul"),
+    ].map((list) => list.querySelectorAll("li").length);
+    ready.unmount();
+
+    vi.mocked(useQuery).mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch,
+    } as never);
+    const { container } = render(<AccountDeletionCard />);
+    const frame = container.querySelector(
+      "[data-testid='account-deletion-skeleton']",
+    )!;
+    const reserved = [...frame.querySelectorAll(".invisible")].map(
+      (node) => node.textContent,
+    );
+    // Each row reserves its workspace's name and id (no separator in text).
+    expect(reserved).toEqual([
+      readyTitle,
+      readyDescription,
+      "personaltea-personal",
+      "sharedtea-shared",
+      "teamtea-team",
+      readyPrompt,
+      "Sudo Command",
+      "Delete my account",
+    ]);
+    // Two lists, the rows in id order, as many as the ready preview lists.
+    const lists = [...frame.querySelectorAll("ul")].map(
+      (list) => list.querySelectorAll("li").length,
+    );
+    expect(lists).toEqual(readyLists);
+    expect(frame.querySelector("input")).toBeNull();
+    expect(frame.querySelector("button")).toBeNull();
   });
 });

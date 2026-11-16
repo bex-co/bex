@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { tableHeaders } from "@/test/table";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ActiveSessionsPanel } from "@/features/sessions/components/active-sessions-panel";
@@ -192,5 +193,41 @@ describe("ActiveSessionsPanel", () => {
         name: "Sign out Unknown device, —, signed in —",
       }),
     ).toBeInTheDocument();
+  });
+
+  // w4/686: the current session is always listed, so the loading frame is the
+  // header row over that one row: its badge, and no revoke control.
+  it("frames the header and the current session's row while loading (w4/686)", () => {
+    sessionsState.sessions = [
+      {
+        id: "session-current",
+        current: true,
+        userAgent: "Chrome on macOS",
+        authenticatedAt: null,
+      },
+    ];
+    const ready = render(<ActiveSessionsPanel />);
+    const readyHeaders = tableHeaders(ready.container);
+    const readyRow = ready.container.querySelector("tbody tr")!;
+    const readyCells = readyRow.querySelectorAll("td").length;
+    const readyDeviceClass = readyRow.querySelector("td")!.className;
+    ready.unmount();
+
+    sessionsState.sessions = [];
+    sessionsState.loading = true;
+    const { container } = render(<ActiveSessionsPanel />);
+    expect(tableHeaders(container)).toEqual(readyHeaders);
+    const rows = container.querySelectorAll("tbody tr");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveAttribute(
+      "data-testid",
+      "current-session-placeholder",
+    );
+    expect(rows[0].querySelectorAll("td")).toHaveLength(readyCells);
+    expect(rows[0].querySelector("td")!.className).toBe(readyDeviceClass);
+    expect(
+      within(rows[0] as HTMLElement).getByText("This device"),
+    ).toBeVisible();
+    expect(rows[0].querySelector("button")).toBeNull();
   });
 });

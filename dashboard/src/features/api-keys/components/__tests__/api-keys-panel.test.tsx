@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { tableHeaders } from "@/test/table";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { codedGraphQLError } from "@/test/mocks/apollo";
@@ -139,5 +140,33 @@ describe("ApiKeysPanel", () => {
     );
 
     expect(refetch).toHaveBeenCalled();
+  });
+
+  it("frames the ready table's header while the keys load (w4/686)", () => {
+    apiKeysState.keys = [
+      {
+        id: "key-1",
+        name: "deploy-agent",
+        createdAt: null,
+        createdBy: null,
+        lastUsedAt: null,
+      },
+    ];
+    const ready = render(<ApiKeysPanel />);
+    const readyHeaders = tableHeaders(ready.container);
+    ready.unmount();
+
+    apiKeysState.keys = [];
+    apiKeysState.loading = true;
+    const { container } = render(<ApiKeysPanel />);
+    expect(tableHeaders(container)).toEqual(readyHeaders);
+    const rows = container.querySelectorAll(
+      "tbody tr[data-testid='panel-table-row-placeholder']",
+    );
+    expect(rows).toHaveLength(1);
+    // One cell per column, the last the 36 px revoke slot.
+    const cells = rows[0].querySelectorAll("td");
+    expect(cells).toHaveLength(readyHeaders.length);
+    expect(cells[cells.length - 1].firstElementChild).toHaveClass("size-9");
   });
 });

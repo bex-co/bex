@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { tableHeaders } from "@/test/table";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SSHKeysPanel } from "@/features/ssh-keys/components/ssh-keys-panel";
@@ -183,5 +184,29 @@ describe("SSHKeysPanel", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     // safe-next.ts collapses any off-origin value to "/".
     expect(navigate).toHaveBeenCalledWith({ href: "/" });
+  });
+
+  it("frames the ready table's header while the keys load (w4/686)", () => {
+    state.keys = [
+      {
+        id: "ssh-1",
+        name: "laptop",
+        fingerprint: "SHA256:abc",
+        createdAt: "2026-01-01T00:00:00Z",
+      } as SSHKeyView,
+    ];
+    const ready = render(<SSHKeysPanel />);
+    const readyHeaders = tableHeaders(ready.container);
+    ready.unmount();
+
+    state.keys = [];
+    state.loading = true;
+    const { container } = render(<SSHKeysPanel />);
+    expect(tableHeaders(container)).toEqual(readyHeaders);
+    expect(
+      container.querySelectorAll(
+        "tbody tr[data-testid='panel-table-row-placeholder']",
+      ),
+    ).toHaveLength(1);
   });
 });

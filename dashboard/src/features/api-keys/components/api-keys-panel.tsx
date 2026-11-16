@@ -7,17 +7,11 @@ import {
   CardAction,
   CardContent,
 } from "@/common/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-} from "@/common/components/ui/table";
+import { Table, TableBody } from "@/common/components/ui/table";
 import {
   PanelCenteredState,
-  PanelTableSkeleton,
-  TableActionsHead,
+  PanelTableHeader,
+  PanelTableFrame,
 } from "@/common/components/panel-states";
 import { isForbiddenError } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -38,6 +32,13 @@ export function ApiKeysPanel() {
   const { keys, loading, error, refetch } = useApiKeys();
   const { revoke, revoking } = useRevokeApiKey();
 
+  const columns = [
+    t("apiKeys.colName"),
+    t("apiKeys.colClientId"),
+    t("apiKeys.colCreated"),
+    t("apiKeys.colCreatedBy"),
+    t("apiKeys.colLastUsed"),
+  ];
   const forbidden = isForbiddenError(error);
   const initialLoading = loading && keys.length === 0;
 
@@ -76,7 +77,7 @@ export function ApiKeysPanel() {
             body={t(forbidden ? "apiKeys.forbiddenBody" : "apiKeys.errorBody")}
           />
         ) : initialLoading ? (
-          <PanelTableSkeleton />
+          <PanelTableFrame columns={columns} />
         ) : keys.length === 0 ? (
           <PanelCenteredState
             icon={<KeyRound />}
@@ -85,16 +86,7 @@ export function ApiKeysPanel() {
           />
         ) : (
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("apiKeys.colName")}</TableHead>
-                <TableHead>{t("apiKeys.colClientId")}</TableHead>
-                <TableHead>{t("apiKeys.colCreated")}</TableHead>
-                <TableHead>{t("apiKeys.colCreatedBy")}</TableHead>
-                <TableHead>{t("apiKeys.colLastUsed")}</TableHead>
-                <TableActionsHead />
-              </TableRow>
-            </TableHeader>
+            <PanelTableHeader columns={columns} />
             <TableBody>
               {keys.map((entry) => (
                 <ApiKeyRow

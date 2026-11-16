@@ -15,6 +15,10 @@ import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { PanelCenteredState } from "@/common/components/panel-states";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
+  ReservedButton,
+  ReservedText,
+} from "@/common/components/reserved-skeleton";
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -161,7 +165,7 @@ export function ConnectGithubCard({
             body={t("git.errorBody")}
           />
         ) : initialLoading ? (
-          <Skeleton className="h-10 w-full" />
+          <GitConnectionsSkeleton />
         ) : connected ? (
           <ConnectedList
             connections={connections}
@@ -182,6 +186,39 @@ export function ConnectGithubCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * The connections read's loading frame (w4/686): DisconnectedState's hint,
+ * action row and footnote at their ready geometry, the copy reserved but not
+ * drawn. A connected workspace settles to its account list over the same
+ * action row and footnote, so only its list rows are a residual.
+ */
+function GitConnectionsSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <div
+      aria-hidden="true"
+      className="flex flex-col items-start gap-3"
+      data-testid="git-connections-skeleton"
+    >
+      <p className="relative text-sm">
+        <ReservedText>{t("git.disconnectedBody")}</ReservedText>
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <ReservedButton variant="default">
+          <GithubIcon className="size-4" />
+          {t("git.connectButton")}
+        </ReservedButton>
+        <ReservedButton variant="outline">
+          {t("git.claimButton")}
+        </ReservedButton>
+      </div>
+      <p className="relative text-xs">
+        <ReservedText>{t("git.claimHint")}</ReservedText>
+      </p>
+    </div>
   );
 }
 

@@ -4,11 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
 
 const refetch = vi.fn();
+const gitState = { loading: false };
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnections: () => ({
     connections: [],
     connected: false,
-    loading: false,
+    loading: gitState.loading,
     error: undefined,
     refetch,
   }),
@@ -40,6 +41,7 @@ vi.mock("@/features/git/hooks/use-claim-selection", () => ({
 }));
 
 beforeEach(() => {
+  gitState.loading = false;
   refetch.mockReset();
   select.mockReset();
   select.mockResolvedValue(true);
@@ -146,5 +148,30 @@ describe("ConnectGithubCard claim account picker", () => {
     expect(
       screen.getByText("Select Claim installed account below to start again."),
     ).toBeInTheDocument();
+  });
+});
+
+// w4/686: the connections read's loading frame is the disconnected state's
+// hint, action row and footnote at their ready geometry, its copy reserved.
+describe("ConnectGithubCard loading frame", () => {
+  it("reserves the hint, both actions and the footnote while loading (w4/686)", () => {
+    const ready = render(<ConnectGithubCard />);
+    const readyText = ready.container.querySelector(
+      "[data-slot='card-content']",
+    )!.textContent;
+    expect(ready.container.querySelectorAll("button")).toHaveLength(2);
+    ready.unmount();
+
+    gitState.loading = true;
+    const { container } = render(<ConnectGithubCard />);
+    const frame = container.querySelector(
+      "[data-testid='git-connections-skeleton']",
+    )!;
+    expect(frame).toHaveAttribute("aria-hidden", "true");
+    // The same copy, laid out invisibly so it wraps as the ready card does.
+    expect(frame.textContent).toBe(readyText);
+    expect(frame.querySelectorAll(".invisible")).toHaveLength(4);
+    // No action is offered before the read decides which state applies.
+    expect(container.querySelector("button")).toBeNull();
   });
 });

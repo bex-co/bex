@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { tableHeaders } from "@/test/table";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConnectedAgentsPanel } from "@/features/connected-agents/components/connected-agents-panel";
@@ -54,14 +55,9 @@ describe("ConnectedAgentsPanel", () => {
     ];
     render(<ConnectedAgentsPanel />);
 
-    expect(screen.getByText("bex.read")).toHaveAttribute(
-      "data-slot",
-      "badge",
-    );
+    expect(screen.getByText("bex.read")).toHaveAttribute("data-slot", "badge");
     expect(screen.getByText("bex.write").className).toMatch(/destructive/);
-    expect(screen.getByText("bex.sensitive").className).toMatch(
-      /destructive/,
-    );
+    expect(screen.getByText("bex.sensitive").className).toMatch(/destructive/);
   });
 
   it("shows an empty state with no connected agents", () => {
@@ -91,7 +87,9 @@ describe("ConnectedAgentsPanel", () => {
     render(<ConnectedAgentsPanel />);
 
     await user.click(
-      screen.getByRole("button", { name: "Revoke connected agent Claude Code" }),
+      screen.getByRole("button", {
+        name: "Revoke connected agent Claude Code",
+      }),
     );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(
@@ -99,5 +97,29 @@ describe("ConnectedAgentsPanel", () => {
     );
 
     expect(revoke).toHaveBeenCalledWith("agent-1", "Claude Code");
+  });
+
+  it("frames the ready table's header while the grants load (w4/686)", () => {
+    agentsState.agents = [
+      {
+        clientId: "agent-1",
+        clientName: "Claude Code",
+        scopes: ["openid"],
+        grantedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    const ready = render(<ConnectedAgentsPanel />);
+    const readyHeaders = tableHeaders(ready.container);
+    ready.unmount();
+
+    agentsState.agents = [];
+    agentsState.loading = true;
+    const { container } = render(<ConnectedAgentsPanel />);
+    expect(tableHeaders(container)).toEqual(readyHeaders);
+    expect(
+      container.querySelectorAll(
+        "tbody tr[data-testid='panel-table-row-placeholder']",
+      ),
+    ).toHaveLength(1);
   });
 });
