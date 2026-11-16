@@ -257,6 +257,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **128** — [The loopx guard charges a workflow's old red streak to this loop when its earlier runs fall outside the run window](128.md) (~45m) ← `/loopx` CI-fix dispatch for `pg-operand-image` (run 43841677012, charged to `e9f27399b`), 2026-11-16. That workflow has never passed on main: it stays red at w8/m92's deliberate owner-restore gate.
 - [x] **126** — [A turn's `completed_at` is re-stamped when its idle sandbox is reaped two hours later](done/126.md) (~1h) ← from `/pm-brainstorm more for w6` 2026-11-14, filed by `/pmx` — **done 2026-11-14**
 - [x] **127** — [The agent sandbox's TMPDIR moves off gVisor's memory-backed /tmp](done/127.md) (~45m) ← from `/pm-brainstorm more for w6` 2026-11-14, filed by `/pmx` — **done 2026-11-14**
 - [x] **125** — [A declined agent-model threshold charge stays open while its usage is billed again by the cycle (or settle) invoice](done/125.md) (~1h) ← w6/m362 t015, 2026-11-13 — **done 2026-11-13**
