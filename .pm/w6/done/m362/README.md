@@ -1,6 +1,6 @@
 # w6 · m362 — Reaching an agent-model charge threshold charges the card and the workspace keeps working
 
-**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** blocked — on time: the next batched production deploy (no earlier than 15:46 UTC on 2026-11-13; it carries t014, t016 and t007) and the bex workspace's 2026-11-16 cycle invoice. t010 then confirms that `agent_model_billed_until` is recorded, that the live key reads billing credits before a charge (t017), that Settings → Billing lists both kinds of charge, and that the cycle invoice turns the −$10.29 into customer balance and nothing else. t001–t009 and t011–t017 done.
+**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** done (2026-11-16) — every task done; the definition of done holds on production (t006, t010).
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@
 | t007 | [Render parity (Devin): spend and charge surfaces agree](done/t007.md) — **DONE** | 20m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 45m | t007, t008 |
-| t010 | [Closeout](t010.md) | 10m | t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t009 |
 
 ## Definition of done
 
@@ -41,10 +41,31 @@
 - **Recommendations, not user decisions:** the charge point is the tier's threshold ($10 at T0), and the $5 in-flight allowance retires with the race it covered; the user's sentence named $15, the stop point at the time, and moving the first charge to $15 is one `pricing.yaml` value. Netting a paid charge out of the cycle invoice with a negative pending invoice item on the subscription (t012, revised: not exporting it to the meter cannot undo hours already exported); it issues no value, so it is not `.pm/DO_NOT_DO.md`'s rejected ADR071 credit system.
 - **Why the interim mechanism is replaced:** it reused Stripe's asynchronous threshold invoice (an hourly meter export plus 15 to 28 minutes) behind a $5 buffer, which a slow invoice could still exhaust and stop a workspace whose card was fine — the race the user ruled out.
 
-- **Source:** [ADR091 D10.2a](../../../docs/ADR091-agent-model-pricing.md) (amended 2026-11-13, user decision: "到达 $10 的时候应该是扣钱以继续，而不是阻止 … 收到钱 / 升级 / 收到更多钱 / 然后逐渐升级"). Found while timing the routines in `w6/blocked/m354`: the bex workspace (Scale plan, card bound since 2026-08-17) reached $10.01 of platform-model spend on 2026-11-13, no threshold invoice came, `billing_trust` held no row for any workspace, and every routine failed with `AGENT_MODEL_SPEND_CAP_REACHED` until the month's reset.
+- **Source:** [ADR091 D10.2a](../../../../docs/ADR091-agent-model-pricing.md) (amended 2026-11-13, user decision: "到达 $10 的时候应该是扣钱以继续，而不是阻止 … 收到钱 / 升级 / 收到更多钱 / 然后逐渐升级"). Found while timing the routines in `w6/blocked/m354`: the bex workspace (Scale plan, card bound since 2026-08-17) reached $10.01 of platform-model spend on 2026-11-13, no threshold invoice came, `billing_trust` held no row for any workspace, and every routine failed with `AGENT_MODEL_SPEND_CAP_REACHED` until the month's reset.
 - **Goal linkage:** ADR008 pillar 5 (hosted agent sessions) and ADR091's non-payment protection; agent sessions on the platform model become the default path once w10/m14 t007 widens it.
 - **Expected outcome:** a new workspace is never stopped while its card works; the bex routines run again as soon as t001 or t003 is live.
 - **Why now:** w10/m14 t007 widens the platform model to every workspace (due 2026-11-13). Widening first would stop every new workspace at its first $10 for an hour or more, or for the rest of the month where no threshold is set.
 - **Recommendations, not user decisions:** the in-flight allowance's initial value ($5 at T0, t002) and the retryable refusal past it (t004) are this milestone's recommendation; the rule they rest on (charge to continue, stop only on failure) is the user's.
 - **The widening itself stays in w10/m14 t007** (dated 2026-11-13, gated on the OpenRouter credit limit, Radar rules, terms copy and a Stripe test key), so this milestone files no second widen task. t006 amends t007's pre-widening threshold check to this mechanism.
 - **Render parity:** included (t007). Customer-facing billing and agent-environment fields change; the reference for agent sessions is Devin, and render.com has no agent-model billing.
+
+## Unblock 2026-11-16
+
+- **Affected:** t010, the only open task.
+- **Source:** verified evidence.
+  - The production deploy of `3c6654df6` (deploy.yml run 43816470794, 2026-11-16 06:23Z) carries t017 (`8caf1aec8`) and w6/m400 (`676867ce6`). t017 had already gone live with the 2026-11-14 13:06Z pin of `c99e7815e`. Production now runs `e3a57b1c3`.
+  - The bex workspace's 2026-11-16 cycle invoice `in_1UcDNYEqsEqs2tLVboNLWAjH` was finalized and paid at 01:03:56Z.
+- **Remaining gates:** none. t010 ran the same day (below).
+
+## Closed 2026-11-16
+
+The definition of done holds on production. The details are in [t010](done/t010.md).
+
+- **t006:** the T0 crossing was charged and served.
+- **The cycle invoice billed only uncharged usage.** It nets the −$10.50 item, and billing credits paid its $21.69 of metered usage. Its −$10.50 total went to customer balance, with $0.00 due.
+- **Credits are read.** The live key reads billing credits, and the bex workspace's credits are recorded inside the charge window.
+- **Settings → Billing lists both kinds of charge,** on REST, GraphQL and the dashboard.
+- **No live subscription keeps an item threshold.**
+- **t001:** `billing_trust` is backfilled.
+- **t005, t007:** the charge-point surfaces were done there.
+- **Not observed on production:** a declined or 3-D Secure charge, and a failed hosting invoice. Both are covered by t004, t013 and their tests.
