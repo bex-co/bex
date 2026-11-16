@@ -30,7 +30,7 @@ The production probe could not tell admission from node capacity with one-minute
 
 ## Source + Goal linkage
 
-- **Source:** this session's 2026-11-10 discussion of the tenant build experience against Render, then `/pm-brainstorm for w6` (same session) and `/pmx them all to w6`. Decision recorded in docs/ADR060 §D5/§D6/§D8 (amended 2026-11-10), docs/ADR034 (amendment note), docs/ADR018 § Deploys "Build concurrency" and § Gap backlog. Related, not duplicated: `w21/blocked/012` (an undiagnosed 20–35-minute `queued` stall; t001–t002 give it the data it lacks).
+- **Source:** this session's 2026-11-10 discussion of the tenant build experience against Render, then `/pm-brainstorm for w6` (same session) and `/pmx them all to w6`. Decision recorded in docs/ADR060 §D5/§D6/§D8 (amended 2026-11-10), docs/ADR034 (amendment note), docs/ADR018 § Deploys "Build concurrency" and § Gap backlog. Related, not duplicated: `w21/012` (an undiagnosed 20–35-minute `queued` stall; t001–t002 give it the data it lacks).
 - **Goal linkage:** ADR008 Render parity first. Render limits only one active build per service; bex's per-workspace cap of 2 was never recorded in ADR018 or signed off, so it is an open parity gap, not a divergence. The README's "first deploy takes 20–40 minutes" is its customer-visible face.
 - **Expected outcome:** a Blueprint with several services builds in one wave; any wait before a build starts is measured and alerted on; a full ceiling is shared fairly.
 - **Why now:** it is the largest avoidable delay in a first deploy and blocks the one-click Deploy-to-bex path (w21/008, w21/009). The SLI lands first (t001–t002) so the cap's removal is measured from both sides.

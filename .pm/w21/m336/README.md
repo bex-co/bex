@@ -1,6 +1,6 @@
 # w21 · m336 — Billing and push workers: one bad row cannot stop the pass
 
-**Worker:** worker21 **Goal:** a billing lifecycle row whose provider mapping is missing completes instead of failing every tick, and neither the billing worker nor the push worker lets one failing row or stage starve the others in the same pass. **Status:** blocked (t001–t003, t005 and t006 done and shipped; t004 and t007 wait on a read of the production cluster)
+**Worker:** worker21 **Goal:** a billing lifecycle row whose provider mapping is missing completes instead of failing every tick, and neither the billing worker nor the push worker lets one failing row or stage starve the others in the same pass. **Status:** todo (t001–t003, t005 and t006 done and shipped; t004 and t007 remain: the production read and the closeout)
 
 ## Tasks (in order)
 
@@ -25,7 +25,17 @@
 ## Source + Goal linkage
 
 - **Source:** [`finding.md`](finding.md) (re-homed from `w10/012`, found 2026-11-08 and still open: no commit since then touches `store/billing_lifecycle.go` or `billing/worker.go`), plus the 2026-11-11 audit of the 22 `core.Poll` workers in `lego/backend/internal` (`/pm-brainstorm for w21`): only the billing lifecycle worker and the push worker abort a pass on one failing item.
-- **Goal linkage:** the V0 roadmap's "multi tenant and usage metering" (`.pm/GOAL.md`): a workspace that does not pay is enforced and told so ([ADR046](../../../../docs/ADR046-payment-onboarding-and-paid-gating.md)); today the lifecycle worker never finishes that for the 11 stuck rows and never reaches its notice or purge stages.
+- **Goal linkage:** the V0 roadmap's "multi tenant and usage metering" (`.pm/GOAL.md`): a workspace that does not pay is enforced and told so ([ADR046](../../../docs/ADR046-payment-onboarding-and-paid-gating.md)); today the lifecycle worker never finishes that for the 11 stuck rows and never reaches its notice or purge stages.
 - **Expected outcome:** unmapped lifecycle rows settle; billing notices go out and old Stripe events are purged again; one poison feed row can no longer stop push delivery.
 - **Why now:** the error has been logged about every 20 seconds since at least 2026-11-08, so each tick spent on the stuck rows is a tick the notice and purge stages never run.
 - **Render parity task:** omitted. These are internal workers and store queries; no REST, GraphQL, MCP or dashboard surface changes, and Render has no counterpart for the dunning worker.
+
+## Unblock (2026-11-16)
+
+- **Source:** verified evidence and the user's standing instruction (2026-11-15: a "no access" gate is not a stop until the real paths were tried). It records no decision about any customer's billing state; the enforcement policy itself is unchanged.
+- **Gate cleared, access (verified 2026-11-15 and 2026-11-16):** the production cluster is reachable from this checkout. Several workers read production logs and rows through it. Recipe: `HCLOUD_TOKEN="$(grep '^HCLOUD_TOKEN=' .env | cut -d= -f2-)" bash scripts/fetch-app-kubeconfig.sh <path outside the repo>`, then `KUBECONFIG=<path> kubectl …`; the key is `~/.ssh/bex` (the `id_bex` name in the earlier notes was stale, fixed by w21/089). Never print the token, the kubeconfig or a customer's data beyond what the table needs, and delete the kubeconfig afterwards.
+- **Gate dissolved, the 11 `enforcing` workspaces:** the earlier text asked for a decision "before the deploy mails their owners". The fix (`c79ba1f77`, 2026-11-11) has been on production through several deploys since, so that point has passed: the 11 rows either already completed to `enforced` (and their owners were mailed) or something else is holding them. What the rows are now is a fact to read, not a choice to make first. The read comes first; a decision is needed only for a row that should not be enforced (first-party, comped, excluded).
+- **Rule for that row, from the existing code and ADR046:** correct it through the sanctioned override (`SetBillingException`, `ForceBillingRecovery`), the way `finding.md` names. A first-party or test workspace that was suspended or mailed by mistake is recovered, not left. For a real customer workspace that is `enforced` for a real unpaid reason, leave it. If a row's right state is not decidable from the rows, the grace deadline, the provider mapping and the workspace's plan, park only that row's t004 step, naming the workspace and the question, and finish the rest of the milestone.
+- **Remaining:** t004 (read the rows and the log, record the table, check the log count and the row count) and t007 (Closeout).
+- **This milestone's next steps:** t004 steps 1 to 3 as rewritten below, then t007.
+- **Reference-product basis:** none needed: this is a worker fix and a production check, and the enforcement policy stays ADR046's as shipped. I did not re-verify Render's failed-payment behavior for this record.
