@@ -1,6 +1,6 @@
 # w4 · m322 — A cron job's manually triggered runs, and every run of a cron job named 28–30 characters, chart no CPU, memory or instances and meter no instance time
 
-**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** blocked — t001–t003, t005–t007, t009 and t010 done (shipped). t004's replay 1 (2026-11-16) passed DoD 1 and 2 on the API and DoD 4. The dashboard half of DoD 1 waits for t010's fix to be live, and DoD 3 waits for w4/691. Then t008 closes.
+**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** done — all ten tasks done. Replay 2 on pin `7aaa8700befa` (2026-11-16) passed the dashboard half of DoD 1 and 2 on the 12-hour view and DoD 3 exactly; replay 1 had passed the API half of DoD 1–2 and DoD 4.
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | A cron App that ran in a window but meters zero is a degraded read, not an honest zero — **DONE** | 30m | t001 |
 | [t009](done/t009.md) | A long-named cron job's run pods are not truncated (`<cronjob>-<minute>-<5>`, `<cronjob>-r<8 hex>-<5>`, 67–68 characters), so t001's single-segment alternative matches none and the job still charts nothing — **DONE** | 40m | t001 |
 | [t010](done/t010.md) | On a coarse step (the 12-hour default), a cron job's short run charts CPU but Memory and Total Instances read "No data in range" — **DONE** | 30m | t009 |
-| [t004](t004.md) | Live verification in `bex-canary` | 30m | t002, t003, t009, t010 |
+| [t004](done/t004.md) | Live verification in `bex-canary` — **DONE** | 30m | t002, t003, t009, t010 |
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007, t009, t010 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t006, t007, t009, t010 |
 
 Ten tasks, 285m (4h45m); t009 added in round 166, t010 in t004's replay on 2026-11-16.
 
@@ -170,7 +170,7 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `c1cc477b8`. Fixtures are i
 
 ## Park record (2026-11-16, `/loopx w4`): replay 1 passes DoD 1–2 on the API and DoD 4; t010 is shipped, and DoD 3 waits for w4/691
 
-- **Results.** See [t004](t004.md#replay-1-2026-11-16-0913-0921-utc-pin-3c6654df60a2).
+- **Results.** See [t004](done/t004.md#replay-1-2026-11-16-0913-0921-utc-pin-3c6654df60a2).
   - DoD 1 and 2 pass on REST: one series per run instance, at 19 and 30 characters.
   - DoD 4 passes for metrics and usage.
   - DoD 1's dashboard half failed on the 12-hour view. That is fixed in t010 (`ff3290aaf`).
@@ -180,3 +180,9 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `c1cc477b8`. Fixtures are i
   2. w4/691 shipped and live.
 
   Then a worker replays the dashboard half of DoD 1 and 2 on the 12-hour view, and DoD 3 after an hour rolls up, and closes out (t008).
+
+## Unblock and closeout (2026-11-16, `/loopx w4`)
+
+- **Gate held.** The newest pin commit `546945798` pins `7aaa8700befa`, live on production since 16:27Z. `git merge-base --is-ancestor` holds for t010's `ff3290aaf` and w4/691's `701c60d40` (done).
+- **Replay 2 passes** ([t004](done/t004.md#replay-2-2026-11-16-1653-1730-utc-pin-7aaa8700befa)). On a fresh load of the 12-hour view, both cron jobs (20 and 30 characters) chart every run in Memory, CPU and Total Instances, with no "No data in range". The 16:00 hour metered `instance_seconds` 182 and 99, exactly the summed run durations (182 s, 99 s).
+- With DoD 1–4 observed live and DoD 5 passed in t007 and in the gates of each code ship, the milestone closes (t008).
