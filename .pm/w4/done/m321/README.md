@@ -1,6 +1,6 @@
 # w4 · m321 — The workspace audit log records the dashboard's own billing and audit reads, but not the reads Render audits: env var values and datastore connection info
 
-**Worker:** worker4 **Goal:** the audit log answers "who did what" as Render's does. Viewing env var values and datastore connection info leaves a Render-named event. Admin pages that read billing status, invites or the audit log itself leave none. **Status:** blocked — t001–t004, t006–t008 and t010–t012 done (shipped). t005's live replay waits for the production deploy that pins t011/t012's commit, then t009 closes
+**Worker:** worker4 **Goal:** the audit log answers "who did what" as Render's does. Viewing env var values and datastore connection info leaves a Render-named event. Admin pages that read billing status, invites or the audit log itself leave none. **Status:** done — all twelve tasks done; the DoD held live on pin `3c6654df60a2` (2026-11-16)
 
 ## Tasks (in order)
 
@@ -13,11 +13,11 @@
 | [t004](done/t004.md) | Ledger and artifact: ADR018's audit row and `audit-logs-api.md` state the read rules and the event mapping — **DONE** | 20m | t002, t003, t010 |
 | [t011](done/t011.md) | A service or project create, and a project delete, name what they created or deleted: their rows read only `{"relation":"can_create"}` (round 311 adds env group, webhook and Blueprint rows) — **DONE** | 50m | t004 |
 | [t012](done/t012.md) | A refused service create records a `CreateServerEvent` with status `success`: the row is written at authorization, before the 409, and env-group create shares the shape — **DONE** | 30m | t011 |
-| [t005](t005.md) | Live verification in `bex-canary` | 30m | t004, t011, t012 |
+| [t005](done/t005.md) | Live verification in `bex-canary` — **DONE** | 30m | t004, t011, t012 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008, t011, t012 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t007, t008, t011, t012 |
 
 Twelve tasks, 375m (6h15m). t010 was added in round 58, t011 in round 144, t012 in round 155.
 
@@ -223,3 +223,28 @@ Every fixture was deleted afterwards (`GET` 404, project list empty). These are 
 - **Observed, not judged:**
   - `MoveEnvironmentResourceEvent` names the service but not the environment it moved to.
   - `DeleteServerEvent` carries the service id without the `targetName` its create row has.
+
+## Closing replay (`/loopx w4`, 2026-11-16 09:03–09:08 UTC, pin `3c6654df60a2`, `bex-canary` admin, dashboard session)
+
+`git merge-base --is-ancestor 3f2a99188 3c6654df60a2` holds, so t011/t012 are live. This run reuses round 486 above (DoD 1–3, 5 and 6 over REST on `14af7282d9ac`) and replays the dashboard clicks and t011's naming it did not run. `t0` = 09:03:27.785Z.
+
+Fixtures, all deleted afterwards (DELETE 204, then GET 404):
+
+- Free image web service `qa-20261116-m321w-au` (`srv-dbtcdo4eqavs73ai1n60`, `QA_AUDIT_ONE`);
+- env group `qa-20261116-m321w-eg` (`evg-dbtcdofhaims738pke3g`, `QA_EG`);
+- Free Key Value `qa-20261116-m321w-kv` (`red-dbtceaseqavs73ai1nc0`) and Free Postgres `qa-20261116-m321w-pg` (`dpg-dbtceb7haims738pke9g`);
+- REST project `qa-20261116-m321w-proj` (`prj-dbtcg1vhaims738pkec0`, Production and Staging).
+
+Results (`GET /v1/owners/tea-daif693dqjvc73e7as3g/audit-logs?startTime=<t0>`, 27 rows including other sessions' work):
+
+- **DoD 1 holds.** Billing three times, account Settings `#team`/`#audit-logs` three times each and Workspace Settings `#audit-logs` four times added no `billing.Status`, `members.ListInvites`, `audit.List` or `apps.PlanBlueprint` row. The Workspace Settings loads did add `agentsessions.RepoEnvironments` ×2; that is w4/683, whose fix is shipped and waits for its own deploy.
+- **DoD 2 holds, dashboard included.** Opening the Environment tab added no row. The dashboard's Reveal (09:04:21), Export → Download .env (09:04:30) and `GET …/env-vars` (09:04:32) each added one `ViewEnvVarValuesEvent {"service":"srv-dbtcdo4eqavs73ai1n60","targetName":"qa-20261116-m321w-au"}`. `GET /v1/env-groups/{id}/env-vars/QA_EG` added one naming `envGroup` + `targetName`.
+- **DoD 3 holds, dashboard included.** "Reveal connection info" on the Key Value (09:06:52) and the Postgres (09:06:59), then `GET …/connection-info` on each (09:07:02), gave four `ViewConnectionInfoEvent` rows naming `keyvalue:red-dbtceaseqavs73ai1nc0` / `database:dpg-dbtceb7haims738pke9g` with their `targetName`.
+- **DoD 4 holds.** Workspace Settings → Export as CSV for 2026-11-16 downloaded `audit-logs-tea-daif693dqjvc73e7as3g-2026-11-16-2026-11-16.csv`. Its `event` column carries every `ViewEnvVarValuesEvent` and `ViewConnectionInfoEvent` row above, with `resource` + `targetName` in `metadata`.
+- **DoD 5** held in round 486 on `14af7282d9ac`. This run's project create + delete gave one `CreateProjectEvent` and one `DeleteProjectEvent`, both `{"project":"prj-dbtcg1vhaims738pkec0","targetName":"qa-20261116-m321w-proj"}`.
+- **DoD 6 holds.** A second `POST /v1/services` named `qa-20261116-m321w-au` answered `409 CONFLICT "name … is already in use"` at 09:04:50. The window holds exactly one `CreateServerEvent` for it: the real create at 09:03:28.
+- **t011's naming holds.** In REST `metadata`, with no `relation`: `CreateServerEvent {"service":…,"targetName":"qa-20261116-m321w-au"}`, `envgroups.CreateEnvGroup {"envGroup":…,"targetName":"qa-20261116-m321w-eg"}` (Render's enum has no env-group create event), `DeleteEnvGroupEvent {"envGroup":"evg-dbtcdofhaims738pke3g"}`. The dashboard's Resource cell reads `qa-20261116-m321w-au` / `service:srv-…` and `qa-20261116-m321w-proj` / `project:prj-…`.
+- **DoD 7** is covered by tests (t008); it needs a second account live.
+- **Observed, not judged:** delete rows of an existing resource (`DeleteEnvGroupEvent`, `DeleteServerEvent`) name it by id with no `targetName`, as t011's acceptance allows (it requires `targetName` only for the service and project rows).
+
+The QA session was revoked (`qa-login.sh --logout`: `ok logged-out`) and the downloaded `.env` and CSV were deleted locally.
