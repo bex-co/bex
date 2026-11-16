@@ -111,5 +111,7 @@
 - [ ] **083** — **BLOCKED (needs the production deploy of the report-only CSP header, commit b417940d8; the sweep after it needs only the QA user)** — Enforce the dashboard CSP's narrowed `connect-src` once a QA sweep shows no report-only violation → [`083.md`](blocked/083.md) (~45m, due by 2026-12-14) ← from w21/081, 2026-11-14
 - [x] **084** — The `bex-api` Prometheus job reads one replica's counters, so request panels show about half the traffic → [`done/084.md`](done/084.md)
 - [x] **085** — A token revoked at Hydra is still accepted by bex-api for more than 90 seconds → [`done/085.md`](done/085.md) — DONE 2026-11-15: the window was the 30 s introspection cache; now 5 s, measured 3.9 to 4.9 s on production, ADR012 §8d
+- [x] **086** — The dashboard's charges card has no labels for the three object-storage usage kinds → [`done/086.md`](done/086.md) — DONE 2026-11-15: category and lines labelled in all eight languages, and a test that reads every usage and resource kind from the Go constants; checked on production at desktop and 390 px
 - [ ] **090** — An operator who revokes a token or consent session at Hydra has no way to make every bex-api replica refuse it at once → [`090.md`](090.md) (~1h) ← from w21/085, 2026-11-15
 - [ ] **091** — Narrow the 5 s token introspection window once production shows the Hydra and admission headroom → [`091.md`](091.md) (~1h) ← from w21/085, 2026-11-15
+- [ ] **092** — The charges card's object storage resource row is English in every language → [`092.md`](092.md) (~30m) ← from w21/086, 2026-11-15
