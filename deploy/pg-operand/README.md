@@ -46,7 +46,7 @@ docker build --build-arg BASE_IMAGE="$(jq -r '."18".base' deploy/pg-operand/matr
   --build-arg PG_MAJOR=18 --build-arg PGDG_PACKAGES="$(jq -r '."18".packages' deploy/pg-operand/matrix.json)" \
   -t bex-pg:18 deploy/pg-operand
 docker run --rm --network none -v "$PWD/deploy/pg-operand:/check:ro" bex-pg:18 \
-  bash /check/check.sh 18 "$(jq -r '."18".extensions | join(",")' deploy/pg-operand/matrix.json)" 18.6
+  bash /check/check.sh 18 "$(jq -r '."18".extensions | join(",")' deploy/pg-operand/matrix.json)" 18.7
 ```
 
 `TestApplicationDatabaseExtensionsOnCNPG` (`BEX_CNPG_KUBECONFIG`, `BEX_PG_OPERAND_IMAGES="18=<image>"`) repeats the core of the gate through bex's real Cluster projection on a real CloudNativePG.
