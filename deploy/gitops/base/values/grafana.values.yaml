@@ -7235,7 +7235,7 @@ dashboards:
              "id": 5,
              "type": "timeseries",
              "title": "PVC fill ratio",
-             "description": "used/capacity per PVC (kubelet volume stats — etcd/Loki/OpenBao/Prometheus and tenant disks). PersistentVolumeFillingUp warns at 85% (red line); this series also feeds the disk autoscaler.",
+             "description": "used/capacity per PVC (kubelet volume stats — etcd/Loki/OpenBao/Prometheus and tenant disks). PersistentVolumeFillingUp warns at 85% (red line); MetricsStoreVolumeFillingUp warns at 70% for monitoring/prometheus-server alone, whose size cap drops the oldest metrics at about 77%. This series also feeds the disk autoscaler.",
              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 18 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {

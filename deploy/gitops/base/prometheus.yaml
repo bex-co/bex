@@ -32,8 +32,9 @@
 # on tenant/build nodes. The exporter observes their shared node/image root disk;
 # it does not collect a general host-metric suite. Pushgateway remains disabled.
 # PVC usage comes from kubelet metrics; node readiness from kube-state-metrics.
-# Days-scale retention on a small PV; bex-api points at
-# the server with BEX_PROM_URL=http://prometheus-server.monitoring.
+# Ten days on a small PV here; production keeps 30 days on a larger one
+# (overlays/prod, w7/m427). bex-api points at the server with
+# BEX_PROM_URL=http://prometheus-server.monitoring.
 #
 # NOTE: the Traefik scrape target below matches pods labelled
 # app.kubernetes.io/name=traefik on port 9100 (the metrics entrypoint). If the
@@ -286,13 +287,14 @@ spec:
           # node loss), local-path on the CAPD mock (node-local) — so history
           # survives a pod restart (and a node loss on prod); with emptyDir a
           # reschedule silently wiped every chart.
-          # Ten days, with a size cap under the volume. Production stored 1.9 GB
-          # for 3.3 days (0.58 GB a day) on a 9.7 GB volume, so ten days is about
-          # 6 GB and the cap is what keeps a growing series count from filling
+          # Ten days, with a size cap under the volume: the local stack's
+          # window. The cap is what keeps a growing series count from filling
           # the disk (it drops the oldest blocks first; the WAL is not counted
-          # and stays under 0.5 GB). Three days could not hold a week-long
-          # measurement: the w21/091 reading of the token introspection window
-          # needs seven days of bex_api_auth_* at once.
+          # and stays under 0.5 GB). Production overrides all three in
+          # overlays/prod: 30 days, the longest plan window bex-api serves
+          # (w7/m427), capped at 30GB on a 40Gi volume. It ran these values
+          # for a few hours on 2026-11-16 (w21/091: three days could not hold
+          # a week-long measurement).
           retention: 10d
           retentionSize: 7GB
           persistentVolume:

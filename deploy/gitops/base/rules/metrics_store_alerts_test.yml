@@ -1,0 +1,50 @@
+# w7/m427: the metrics store keeps 30 days under a size cap it reaches at
+# about 77% full, so it warns at 70%, before the cap drops history inside a
+# plan's window, and only for the store's own claim.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: MetricsStoreVolumeFillingUp warns at 70% of the store's volume after an hour
+    interval: 1m
+    input_series:
+      # A 40Gi claim's filesystem, 72% full from the start.
+      - series: 'kubelet_volume_stats_used_bytes{namespace="monitoring", persistentvolumeclaim="prometheus-server"}'
+        values: "30150000000x180"
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="monitoring", persistentvolumeclaim="prometheus-server"}'
+        values: "41875000000x180"
+      # Another claim in the namespace at the same fill is not the metrics store.
+      - series: 'kubelet_volume_stats_used_bytes{namespace="monitoring", persistentvolumeclaim="storage-loki-0"}'
+        values: "15120000000x180"
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="monitoring", persistentvolumeclaim="storage-loki-0"}'
+        values: "21000000000x180"
+    alert_rule_test:
+      - eval_time: 59m
+        alertname: MetricsStoreVolumeFillingUp
+        exp_alerts: [] # not yet an hour
+      - eval_time: 61m
+        alertname: MetricsStoreVolumeFillingUp
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              persistentvolumeclaim: prometheus-server
+            exp_annotations:
+              summary: "The metrics store's volume is 72% full: its size cap is close to dropping metrics inside the 30-day plan window"
+              description: "Prometheus keeps 30 days of metrics under a size cap (--storage.tsdb.retention.size). Past the cap it deletes the oldest blocks, so Scale and Enterprise workspaces see fewer than their 30 days. Compare prometheus_tsdb_storage_blocks_bytes with prometheus_tsdb_retention_limit_bytes and read the oldest sample from prometheus_tsdb_lowest_timestamp_seconds, then raise server.persistentVolume.size and server.retentionSize together in deploy/gitops/overlays/prod/kustomization.yaml (docs/ADR010-observability.md#retention-30-days-in-production-read-per-plan-w7m427-2026-11-16)."
+      # The generic alert stays quiet: 72% is below its 85%.
+      - eval_time: 61m
+        alertname: PersistentVolumeFillingUp
+        exp_alerts: []
+  - name: MetricsStoreVolumeFillingUp stays quiet while 30 days fit under the cap
+    interval: 1m
+    input_series:
+      # 30 days at twice the 2026-11-16 ingest: 28 GB of 41.9 GB, 67%.
+      - series: 'kubelet_volume_stats_used_bytes{namespace="monitoring", persistentvolumeclaim="prometheus-server"}'
+        values: "28000000000x180"
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="monitoring", persistentvolumeclaim="prometheus-server"}'
+        values: "41875000000x180"
+    alert_rule_test:
+      - eval_time: 120m
+        alertname: MetricsStoreVolumeFillingUp
+        exp_alerts: []

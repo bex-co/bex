@@ -15,10 +15,17 @@ patches:
   # Reserve a larger working set and bound the recovery attempt; local keeps
   # the base budget. Existing-data replay/query peaks remain a rollout gate.
   #
-  # The 40Gi volume comes first and alone (w7/m427): production is about to
-  # keep metrics 30 days, the longest plan window, and the claim must be
-  # that size before the retention is raised, so the disk cannot fill
-  # between the two. Local keeps the base's 8Gi (local-path cannot grow).
+  # Production keeps metrics 30 days, the longest plan window (Render: Scale
+  # and Enterprise; w7/m427): bex-api floors each chart read at the workspace
+  # plan's 7, 14 or 30 days and relies on the store holding them. Measured
+  # 2026-11-16: 0.47 GB of blocks a day, so 30 days is about 14 GB; the 40Gi
+  # volume (grown first, in its own commit) and the 30GB block cap, three
+  # quarters of it, hold twice that. The cap drops the oldest blocks first,
+  # so growth costs history, not the disk, and MetricsStoreVolumeFillingUp
+  # warns at 70% full, before it does. Retention does not grow the head or
+  # the WAL replay the memory budget is sized for.
+  # scripts/metrics-retention-guard.sh holds the three parameters together;
+  # local keeps the base's ten days on its small volume. Sizing: ADR010.
   - target:
       group: argoproj.io
       version: v1alpha1
@@ -31,6 +38,8 @@ patches:
           - { name: server.resources.requests.memory, value: 1Gi }
           - { name: server.resources.limits.memory, value: 2Gi }
           - { name: server.persistentVolume.size, value: 40Gi }
+          - { name: server.retention, value: 30d }
+          - { name: server.retentionSize, value: 30GB }
   # The shared controller values retain the local snapshot registry so the CAPD
   # mock remains usable. Production clears it because the secure namespace's
   # baseline PSS blocks the upstream commit Job (ADR042 D5); controller/committer

@@ -1766,6 +1766,12 @@ if [ -f "$LOKI_APP" ]; then
     || { echo "FAIL: loki.yaml PVC must be sized for 21d + zot/static-server evidence (60Gi)" >&2; fail=1; }
 fi
 
+# Metrics retention (w7/m427): production Prometheus keeps the longest plan
+# window, 30 days, under a size cap the fill alert stays ahead of.
+echo "==> production Prometheus keeps Render's longest metrics window (w7/m427)"
+METRICS_RETENTION_APPS="$tmp/prod-apps.yaml" bash scripts/metrics-retention-guard.sh || fail=1
+bash scripts/metrics-retention-guard.test.sh || fail=1
+
 # Operator day-to-day RBAC guard (w7/m37, docs/ADR019-infra-credentials.md): the
 # scoped ClusterRole must NOT grant write verbs on cluster-administrative resources
 # (namespaces, ClusterRoles, ClusterRoleBindings, nodes, or CRDs). Day-to-day ops

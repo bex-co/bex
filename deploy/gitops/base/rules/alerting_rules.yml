@@ -390,6 +390,26 @@ groups:
           summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
           description: "A platform PVC (etcd/Loki/OpenBao/Prometheus PVs — hcloud-csi on prod, local-path on the mock) is >85% full. Debug: kubectl -n {{ $labels.namespace }} get pvc {{ $labels.persistentvolumeclaim }}; grow the volume or prune data."
 
+      # The metrics store's volume (w7/m427). Production keeps 30 days of
+      # metrics, the longest plan window, under a size cap that drops the
+      # oldest blocks first: 30GB of blocks on a 40Gi volume, reached at about
+      # 77% full (deploy/gitops/overlays/prod/kustomization.yaml). A store that
+      # outgrows the cap therefore never reaches the generic 85% above. It
+      # keeps fewer than 30 days, and Scale and Enterprise workspaces lose
+      # history their plan includes while every chart still loads. 70% full is
+      # nine tenths of the cap, so this fires while every day is still stored.
+      - alert: MetricsStoreVolumeFillingUp
+        expr: |
+          kubelet_volume_stats_used_bytes{namespace="monitoring", persistentvolumeclaim="prometheus-server"}
+          / kubelet_volume_stats_capacity_bytes{namespace="monitoring", persistentvolumeclaim="prometheus-server"}
+          > 0.70
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "The metrics store's volume is {{ $value | humanizePercentage }} full: its size cap is close to dropping metrics inside the 30-day plan window"
+          description: "Prometheus keeps 30 days of metrics under a size cap (--storage.tsdb.retention.size). Past the cap it deletes the oldest blocks, so Scale and Enterprise workspaces see fewer than their 30 days. Compare prometheus_tsdb_storage_blocks_bytes with prometheus_tsdb_retention_limit_bytes and read the oldest sample from prometheus_tsdb_lowest_timestamp_seconds, then raise server.persistentVolume.size and server.retentionSize together in deploy/gitops/overlays/prod/kustomization.yaml (docs/ADR010-observability.md#retention-30-days-in-production-read-per-plan-w7m427-2026-11-16)."
+
       # Zot registry volume — fires before the generic PersistentVolumeFillingUp
       # (>85%) so there's time to act before pushes start returning 500.
       # Incident (2026-07-12): a runaway rebuild loop pushed 44+ image
