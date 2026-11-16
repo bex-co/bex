@@ -1,6 +1,6 @@
 # w4 · m327 — A live service whose instance fails its health check reads "Deploying" on every surface though no deploy runs, and its saved settings are announced as going live "when the current deploy finishes"
 
-**Worker:** worker4 **Goal:** a health-check outage of the release that is already live reads as that release's outage, not as a deploy. The service status agrees with the Deploys list, the saved-changes notice tells the user to deploy, and the Events reason names a health check. **Status:** blocked — t001–t005 and t007–t009 done (shipped); t006's live replay ran in QA loop round 410 (2026-11-15, pin `89ac87445bec`) and DoD 1–4 hold; round 415 ran the Free wake control, which reads `Deploying` on GraphQL while the pod starts (the dashboard frame came before the flip, so the header is not yet shown); t006 can close on that record, then t010 closes
+**Worker:** worker4 **Goal:** a health-check outage of the release that is already live reads as that release's outage, not as a deploy. The service status agrees with the Deploys list, the saved-changes notice tells the user to deploy, and the Events reason names a health check. **Status:** done — DoD replayed live on pin `7aaa8700befa` 2026-11-16, including the Free wake dashboard frame ([t006](done/t006.md))
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Operator: `undeployedChangesApplying` is true only while a newer release is requested or rolling — **DONE** | 30m | t002 |
 | [t004](done/t004.md) | Blast radius: every reader of phase `Deploying` in the operator, backend and dashboard — **DONE** | 45m | t002, t003 |
 | [t005](done/t005.md) | Dashboard: the `readiness_failed` Events reason names a health check, en and zh — **DONE** | 10m | — |
-| [t006](t006.md) | Live verification on an owned Free image web service | 30m | t004, t005 |
+| [t006](done/t006.md) | Live verification on an owned Free image web service — **DONE** | 30m | t004, t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 10m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007 |
-| [t010](t010.md) | Closeout | 10m | t008, t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t008, t009 |
 
 Ten tasks, 285m (4h45m).
 
@@ -134,3 +134,9 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `8f38a34dc`. This is a part
   - `GET …/instances` still lists the one instance `…-ruhev6ibkllg5qc4725l` (created 03:11:03), restarted in place. `/` and `/health` answered 200 again at 03:17:08.
 - **Not run:** the zh strings, and DoD 4's controls (a Manual Deploy reading Deploying; a Free wake).
 
+## Unblock record (2026-11-16)
+
+- **Affected:** w4/m327 t006, t010.
+- **Source:** verified evidence. Production was verified live on platform pin `7aaa8700befa` at 2026-11-16 16:27Z, and the m327 fix `8f38a34dc` is its ancestor (`git merge-base --is-ancestor`).
+- **Outcome:** the release gate is clear; no user action was needed.
+- **Next step, done the same day:** t006 replayed DoD 1–4 on that pin (all hold, and the Free wake control now has its dashboard frame after the flip), then t010 closed the milestone.
