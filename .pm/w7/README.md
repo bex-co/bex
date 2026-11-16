@@ -159,6 +159,8 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 ## Inbox
 
+- [ ] **067** — [Loki's production volume is 20Gi while the manifest and its guard say 60Gi](067.md) (45m) ← found by w7/m427, 2026-11-16
+- [ ] **066** — [The local Go format gates use whichever gofmt is first on PATH, not the toolchain CI formats with](066.md) (45m) ← found by w7/m427, 2026-11-16
 - [ ] **065** — [`scripts/auth-oauth21-e2e.sh` fails at its trusted-client leg and leaves its servers running](065.md) (60m) ← found by w7/m426, 2026-11-16
 - [ ] **064** — [bex-api without the control-plane store crashes at start once Hydra holds an API key](064.md) (30m) ← found by w7/m426, 2026-11-16
 - [x] **063** — [Public sandbox create accepts the internal `agent` template, whose pod dies at once](done/063.md) (45m) ← found by w7/m390 t007, 2026-11-14 — **DONE 2026-11-14:** the public create refuses session-only templates as unknown
