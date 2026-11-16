@@ -19,6 +19,7 @@ import {
 import { AuthWidgetSkeleton } from "@/common/components/route-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
+import { trackEvent } from "@/common/lib/telemetry";
 
 /**
  * Verification page — Kratos's verification flow (docs/ADR012-auth.md §11). Registration
@@ -83,6 +84,7 @@ export default function VerificationPage() {
             if (event.flowType !== FlowType.Verification) return;
             if (event.flow.state !== VerificationFlowState.PassedChallenge)
               return;
+            trackEvent("email_verified");
             // Continue INTO the product (the registration session is already
             // held) through the payment wall, which carries the deep link
             // onward; `href`, not `to` (see login-page): the wall URL carries

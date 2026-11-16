@@ -8,6 +8,7 @@ import { pendingInvitationDestination } from "@/features/invites/redirect-pendin
 import RoutePending from "@/common/root-route/route-pending";
 import { parseSearchWithExactText } from "@/common/lib/search-params/exact-text";
 import { installPreloadErrorReload } from "@/common/lib/preload-error-reload";
+import { installRouterTelemetry } from "@/common/lib/telemetry-router";
 
 export type { RouterContext } from "@/common/types/router-context";
 
@@ -78,6 +79,7 @@ export function getRouter() {
     },
   });
 
+  installRouterTelemetry(router);
   return router;
 }
 declare module "@tanstack/react-router" {

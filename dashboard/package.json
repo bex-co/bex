@@ -22,6 +22,7 @@
     "generate:mobile-associations": "node scripts/generate-mobile-associations.mjs",
     "test": "vitest run",
     "test:built-server": "node --test scripts/check-built-server.mjs",
+    "check:ga-container": "node scripts/check-ga-container.mjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "kill": "lsof -n -i4TCP:5173 | grep LISTEN | awk '{ print $2 }' | xargs kill"

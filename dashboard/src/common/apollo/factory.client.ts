@@ -10,6 +10,7 @@ import { apolloCacheConfig } from "./cache";
 import { apolloDefaultOptions } from "./default-options";
 import { createRetryLink } from "./retry-link";
 import { createAuthErrorLink } from "./auth-error-link";
+import { createTelemetryLink } from "./telemetry-link";
 import {
   handleEmailVerificationRequired,
   handleUnauthenticated,
@@ -51,7 +52,9 @@ function createTerminatingLink() {
 function createApolloCsrClientImpl() {
   return new ApolloClient({
     link: ApolloLink.from([
-      // Outermost, so it sees the final error after the retry link has had its
+      // First, so it counts each mutation's final outcome, after the retry link.
+      createTelemetryLink(),
+      // Outside the retry link, so it sees the final error after that has had its
       // say (w3/m80 t001): a 401 on an already-mounted page re-checks the
       // session and, if it's gone, redirects to login instead of leaving a
       // dead-end error card. It never retries — a 401 is an answer, not a blip.

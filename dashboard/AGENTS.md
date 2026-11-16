@@ -197,6 +197,32 @@ i18next + react-i18next (w5/m3), modeled on `beancount-dashboard`'s `docs/i18n.m
 - **zh voice:** address the user as 你, never the formal 您, in every `zh.ts` message (w4/573); `locale-parity.test.ts` fails on 您.
 - **Adding a feature's own strings:** create `src/features/<name>/locales/<lang>.ts` for every supported language, prefix every key with the feature name, and import+merge it into `en` in `src/i18n/index.ts` and into every `resources-<lang>.ts`.
 
+## Analytics (GA4)
+
+Production reports to Google Analytics 4: property `564342603`, web stream "bex dashboard" (`G-7X5XTVZ55N`). Without `VITE_GA_MEASUREMENT_ID` nothing loads and every call below is a no-op.
+
+**The rule: GA receives only bounded, PII-free labels.** No resource id or name, no email, no token, no free text, no raw URL and no document title. Dashboard URLs carry invite tokens, Kratos flow ids and verification codes in their query; titles carry resource names.
+
+- **Pages** are reported by route template. `page_location` is the origin plus the deepest match's `fullPath` (`/services/$serviceId/logs`), `page_title` is the template and `content_group` its first segment. Only campaign parameters (`utm_*`, `gclid`, …) survive from the query. `common/lib/telemetry-router.ts` sends one `page_view` per path from the router's `onRendered`.
+- **Events** go through `trackEvent` (`common/lib/telemetry.ts`). Names are the `TelemetryEvent` union; a param value must pass `telemetryLabel` (identifier-shaped, at most 40 characters).
+- **Product actions** are counted in one place, the Apollo link `common/apollo/telemetry-link.ts`. `MUTATION_EVENTS` maps a GraphQL mutation's operation name to an event and the labels read from its variables; any mutation that is refused or fails reports `action_failed` (`action`, `error_code`). To count a new action, add its mutation to the table, not a `trackEvent` at the call site. A test fails when the table names a mutation that no longer exists.
+- **Auth events** are read from the Kratos session in the root route context, so password, GitHub and passkey flows and their full-page redirects are counted alike. A session first seen within 10 minutes of authenticating is a `sign_up` (its identity was created with it) or a `login`, once per session id (`localStorage`). The verification page reports `email_verified`; Stripe Checkout's return (`?billing=`) reports `add_payment_info` or `checkout_cancelled`, once per `begin_checkout`.
+- **Automated browsers** (`navigator.webdriver`: the QA sweeps, Playwright) send `traffic_type=internal`, which the property's Internal Traffic data filter excludes from every report.
+
+**The code depends on how the stream's Google tag is configured.** The tag is a Tag Manager container (`GTM-T4TH44WS`). Its Google Analytics tag ignores an on-page `gtag('config')`, so `send_page_view: false` in page code does nothing; fired at initialization (the default) it sends a page view with the raw URL and title before any code runs. The container is therefore set up as follows (version 5, 2026-11-15):
+
+- The Google Analytics tag fires on the custom event `bex_ga_ready`. The inline bootstrap (`common/lib/google-analytics.ts`) pushes that event only after it has set a page context with nothing in it.
+- The tag sets `send_page_view=false`.
+- Automatic event detection is off (history page views, scrolls, outbound clicks, forms, video, downloads), and so is the stream's Enhanced measurement. Each of those events reads the raw URL or the page's content; a history page view ignores the page context the code sets.
+- User-provided data detection is off: it scans pages for emails, phone numbers and addresses.
+- `github.com`, `stripe.com`, `auth.bex.co` and `oauth.bex.co` are unwanted referrals, so the sign-in, install and Checkout round trips do not become a session's source.
+
+The stream also redacts 30 query parameter keys (`token`, `code`, `flow`, `next`, …) as a second layer. `yarn check:ga-container` reads the live container and fails when one of the first four no longer holds. Run it after any change in Tag Manager or the GA admin.
+
+**Property settings** (GA admin): event data retention 14 months; key events `sign_up`, `add_payment_info`, `service_created`, `agent_session_created`; event-scoped custom dimensions for `service_type`, `runtime`, `plan`, `source`, `deploy_mode`, `agent`, `model`, `role`, `action`, `error_code` and `surface`. A new event param needs its custom dimension registered there before a report can break down by it.
+
+GA loads for every visitor: there is no consent banner and no consent mode.
+
 ## Development commands
 
 ```bash
@@ -248,6 +274,6 @@ Server-only (not `VITE_`) variables read by the dashboard's SSR runtime, verbati
 
 **Build-time:** `VITE_AGENT_ATTACHMENTS_ORIGIN` (default `https://s3.eu-central-2.wasabisys.com`, the production attachments bucket endpoint) is added to the CSP `img-src` so agent-session attachment thumbnails load from their presigned URLs (ADR095 D7). `VITE_SHELL_WS_URL` (default `wss://ssh.bex.co/shell`, bex-api's `BEX_SHELL_WS_URL`) names the Web Shell WebSocket for the report-only policy below. The headers are built in `server/security-headers.ts`.
 
-**Build-time:** `VITE_GA_MEASUREMENT_ID` (production: `G-7X5XTVZ55N`, the GA4 "bex dashboard" web stream, set in `deploy.yml`) loads gtag.js in the document head (`src/common/components/document/google-analytics.tsx`) and adds Google's GA4 origins to the CSP `script-src`/`img-src` and the report-only narrowed `connect-src`. Unset (dev, tests, self-hosted builds) loads no GA. SPA navigations are counted by the stream's enhanced measurement (browser-history page changes).
+**Build-time:** `VITE_GA_MEASUREMENT_ID` (production: `G-7X5XTVZ55N`, set in `deploy.yml`) loads Google Analytics and adds Google's GA4 origins to the CSP `script-src`/`img-src` and the report-only narrowed `connect-src`. Unset (dev, tests, self-hosted builds) loads nothing. See [Analytics](#analytics-ga4).
 
 **Cache policy:** pages are `private, no-cache` and build files, under `/_assets/**` (`ASSETS_DIR`, `server/assets-paths.ts`), are `public, max-age=31536000, immutable` (route rules in `server/security-headers.ts`). A path under `/_assets/` with no file in the build answers `404` `no-store` from `server/middleware/assets-miss.ts`. It never gets the SSR page, which embeds the visitor's Kratos session (w21/m394 t004), and which Cloudflare and the browser would otherwise keep as HTML under a script URL for a year (w4/m348). The build directory moved there once from `/assets/` (w4/m348), because browsers and the edge may still hold HTML under old `/assets/` chunk URLs. Every `/assets/**` request is now a miss too (`isAssetsPath`). Never put `immutable` on a path `isAssetsPath` does not cover. `server/plugins/html-never-public.ts` is the last boundary: no `text/html` response may carry `public`. The middleware is registered as a global one; see the comment in `vite.config.ts` for why a routed middleware does not work. `yarn build && yarn test:built-server` checks the built server, and CI runs it.
