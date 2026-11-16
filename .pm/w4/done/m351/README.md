@@ -1,6 +1,6 @@
 # w4 · m351 — A first deploy whose start command crashes is marked failed in about 40 s but keeps restarting for 15 minutes, so a crash that clears serves traffic under a deploy that reads Failed
 
-**Worker:** worker4 **Goal:** once a never-served release settles failed, it stops, whichever path settled it. A crash-settled first deploy has no running or restarting instance and comes back only through a new deploy, restart or resume, as w1/m179 promised and as Render cancels a failed deploy. **Status:** blocked — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** once a never-served release settles failed, it stops, whichever path settled it. A crash-settled first deploy has no running or restarting instance and comes back only through a new deploy, restart or resume, as w1/m179 promised and as Render cancels a failed deploy. **Status:** done — live DoD replayed on pin `284b83e1f540` 2026-11-16 (t005)
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | [t002](done/t002.md) | Decide and align the pull-failure early settle: stop it too, or keep its deploy open — **DONE** | 30m | t001 |
 | [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
 | [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
-| [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004 |
+| [t005](done/t005.md) | Closeout (live replay on production) — **DONE** | 30m | t003, t004 |
 
 ## Definition of done
 
@@ -37,7 +37,7 @@ All on production, on Free busybox image web services created with `POST /v1/ser
 - **Source:** live `/qa-find-bugs w4` loop, round 214, 2026-11-12 17:33–17:52 UTC (`muse.env`, workspace `bex-canary`; pin `77531cc764d3`). The probes are under § Finding.
 - **Governing docs:**
   - [w1/m179](../../w1/done/m179/README.md) (done 2026-10-16): "a release that never served and settled failed has no running or restarting pod". It was implemented at the progress deadline only (`stopsFirstRelease`).
-  - [w4/454](../done/454.md) (done 2026-11-01) added the early startup-crash settle, `permanentRolloutCrash`. Its live acceptance checked the deploy row (`update_failed` at +22 s) but not the instance afterwards.
+  - [w4/454](../454.md) (done 2026-11-01) added the early startup-crash settle, `permanentRolloutCrash`. Its live acceptance checked the deploy row (`update_failed` at +22 s) but not the instance afterwards.
   - ADR004 records the three-timer contract.
 - **Goal linkage:** Render parity for the failure path of a first deploy. Render fails a deploy whose process "exited or crashed during startup", and "cancels the deploy" whose instances never pass their health check. A failed deploy never serves.
 - **Expected outcome:**
@@ -120,3 +120,10 @@ The progress-deadline stop still works; it just comes 16 minutes after the failu
 
 - **Failure UX.** The deploy page shows the failure reason, the crash output (stdout and stderr, both `type=app`) and the closing `==> Deploy failed: …` line.
 - **Logs search.** `text=fatal` on REST, and the dashboard Logs search box, list only the crash lines.
+
+## Unblock record — 2026-11-16
+
+- **Affected:** w4/m351/t005.
+- **Source:** verified evidence. The fix `47a7e0caa` (t001–t004) is an ancestor of the platform pin `284b83e1f540` (`git merge-base --is-ancestor 47a7e0caa 284b83e1f540` exits 0; pin commit `02026e53f`, 2026-11-16 21:29Z).
+- **Remaining gates:** none. The release gate was the only one.
+- **Next step:** t005 replays DoD 1–5 on production, including what round 394 left out: the full 10-minute quiet window of DoD 1, the header of DoD 2, and both regression cases of DoD 4.
