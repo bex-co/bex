@@ -35,6 +35,10 @@ var (
 	ErrBucketExists   = errors.New("bucket name is taken")
 	ErrBucketNotEmpty = errors.New("bucket is not empty")
 	ErrTooManyBuckets = errors.New("bucket limit reached")
+	// ErrSystemBucket refuses deleting a render-<region> bucket.
+	ErrSystemBucket = errors.New("render-<region> is the Render CLI's object namespace and cannot be deleted")
+	// ErrBucketDeleting refuses a put into a bucket a delete is checking.
+	ErrBucketDeleting = errors.New("the bucket is being deleted")
 )
 
 // Repository is the part of the store the service reads and writes.
@@ -44,7 +48,9 @@ type Repository interface {
 	EnsureSystemObjectBucket(ctx context.Context, workspaceID, name, region string) (store.ObjectBucket, error)
 	GetObjectBucket(ctx context.Context, workspaceID, name string) (store.ObjectBucket, error)
 	ListObjectBucketSummaries(ctx context.Context, workspaceID string) ([]store.ObjectBucket, error)
-	DeleteObjectBucket(ctx context.Context, workspaceID, id string) error
+	DeleteObjectBucketIfEmpty(ctx context.Context, workspaceID, id string, empty func(context.Context) (bool, error)) (deleted bool, err error)
+	CheckObjectBucketWritable(ctx context.Context, workspaceID, id string) error
+	ConfirmObjectBucketLive(ctx context.Context, workspaceID, id string) error
 	ObjectStorageUsageTotals(ctx context.Context, workspaceID, region string) (bytes, objects int64, err error)
 	ListObjectStorageUsage(ctx context.Context, workspaceID string) ([]store.ObjectStorageUsage, error)
 	SetObjectBucketCORS(ctx context.Context, workspaceID, id string, rules json.RawMessage) error
@@ -156,31 +162,45 @@ func (s *Service) ListBuckets(ctx context.Context, workspaceID string) ([]store.
 	return s.repo.ListObjectBucketSummaries(ctx, workspaceID)
 }
 
-// DeleteBucket deletes an empty bucket. The row is the only record mapping the
-// objects' key prefix, so deleting a non-empty bucket would orphan them: the
-// check lists one key under the bucket's prefix first. ADR112 is silent on
-// deleting a system bucket, so it follows the same rule.
+// DeleteBucket deletes an empty user bucket. The row is the only record
+// mapping the objects' key prefix, so deleting a non-empty bucket would orphan
+// them: the check lists one key under the bucket's prefix first, and the store
+// runs it so that no streamed put can land between the check and the delete
+// (store.PGStore.DeleteObjectBucketIfEmpty).
+//
+// A system bucket is never deleted (ErrSystemBucket). It is the Render CLI's
+// whole namespace, which Render gives no way to delete, and a deleted one comes
+// back under a new id on the next Render call while a URL MintPut signed
+// before the delete still uploads under the old one, where nothing lists,
+// reads or deletes the object (w4/678).
 func (s *Service) DeleteBucket(ctx context.Context, workspaceID, name string) error {
 	b, err := s.GetBucket(ctx, workspaceID, name)
 	if err != nil {
 		return err
 	}
+	if b.System {
+		return ErrSystemBucket
+	}
 	st, err := s.Store(Region(b.Region))
 	if err != nil {
 		return err
 	}
-	page, err := st.List(ctx, Prefix(workspaceID, b.ID), "", 1)
-	if err != nil {
-		return fmt.Errorf("check bucket %s is empty: %w", name, err)
-	}
-	if len(page.Objects) > 0 {
-		return ErrBucketNotEmpty
-	}
-	if err := s.repo.DeleteObjectBucket(ctx, workspaceID, b.ID); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return ErrBucketNotFound
+	deleted, err := s.repo.DeleteObjectBucketIfEmpty(ctx, workspaceID, b.ID, func(ctx context.Context) (bool, error) {
+		ctx, cancel := context.WithTimeout(ctx, deleteCheckTimeout)
+		defer cancel()
+		page, err := st.List(ctx, Prefix(workspaceID, b.ID), "", 1)
+		if err != nil {
+			return false, fmt.Errorf("check bucket %s is empty: %w", name, err)
 		}
+		return len(page.Objects) == 0, nil
+	})
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return ErrBucketNotFound
+	case err != nil:
 		return err
+	case !deleted:
+		return ErrBucketNotEmpty
 	}
 	return nil
 }

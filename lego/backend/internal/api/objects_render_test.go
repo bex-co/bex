@@ -105,12 +105,32 @@ func (r *memObjectRepo) ListObjectBucketSummaries(_ context.Context, ws string) 
 	return out, nil
 }
 
-func (r *memObjectRepo) DeleteObjectBucket(_ context.Context, ws, id string) error {
+// DeleteObjectBucketIfEmpty runs the emptiness check holding the repo's lock,
+// which ConfirmObjectBucketLive also takes, as the store's row lock does.
+func (r *memObjectRepo) DeleteObjectBucketIfEmpty(ctx context.Context, ws, id string, empty func(context.Context) (bool, error)) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for i, b := range r.buckets {
 		if b.WorkspaceID == ws && b.ID == id {
+			if ok, err := empty(ctx); err != nil || !ok {
+				return false, err
+			}
 			r.buckets = append(r.buckets[:i], r.buckets[i+1:]...)
+			return true, nil
+		}
+	}
+	return false, store.ErrNotFound
+}
+
+func (r *memObjectRepo) CheckObjectBucketWritable(ctx context.Context, ws, id string) error {
+	return r.ConfirmObjectBucketLive(ctx, ws, id)
+}
+
+func (r *memObjectRepo) ConfirmObjectBucketLive(_ context.Context, ws, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, b := range r.buckets {
+		if b.WorkspaceID == ws && b.ID == id {
 			return nil
 		}
 	}

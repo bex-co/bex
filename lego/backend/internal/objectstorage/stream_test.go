@@ -43,6 +43,8 @@ type streamRepo struct {
 	bytes, object int64
 	setErr        error
 	cors, life    json.RawMessage
+	writeErr      error
+	confirm       func()
 }
 
 func (r *streamRepo) EnsureSystemObjectBucket(_ context.Context, ws, name, region string) (store.ObjectBucket, error) {
@@ -60,6 +62,33 @@ func (r *streamRepo) GetObjectBucket(_ context.Context, ws, name string) (store.
 		return b, nil
 	}
 	return store.ObjectBucket{}, store.ErrNotFound
+}
+
+// CheckObjectBucketWritable answers writeErr, or ErrNotFound for a bucket the
+// map no longer holds.
+func (r *streamRepo) CheckObjectBucketWritable(_ context.Context, ws, id string) error {
+	if r.writeErr != nil {
+		return r.writeErr
+	}
+	return r.live(ws, id)
+}
+
+// ConfirmObjectBucketLive runs confirm first, so a test can delete the bucket
+// while the put's bytes are already in Wasabi.
+func (r *streamRepo) ConfirmObjectBucketLive(_ context.Context, ws, id string) error {
+	if r.confirm != nil {
+		r.confirm()
+	}
+	return r.live(ws, id)
+}
+
+func (r *streamRepo) live(ws, id string) error {
+	for _, b := range r.buckets {
+		if b.WorkspaceID == ws && b.ID == id {
+			return nil
+		}
+	}
+	return store.ErrNotFound
 }
 
 func (r *streamRepo) ObjectStorageUsageTotals(context.Context, string, string) (int64, int64, error) {
@@ -497,5 +526,29 @@ func TestAStalledWasabiDoesNotHoldAStreamSlot(t *testing.T) {
 	}
 	if got := slots(); got != objectstorage.MaxConcurrentStreamsPerWorkspace {
 		t.Fatalf("%d of %d slots are free after the stalled calls", got, objectstorage.MaxConcurrentStreamsPerWorkspace)
+	}
+}
+
+// TestPutStreamNeverSucceedsIntoAGoneBucket: a bucket a delete is checking is
+// refused before a byte is read, and a bucket deleted while the bytes moved
+// loses the object again (w4/678).
+func TestPutStreamNeverSucceedsIntoAGoneBucket(t *testing.T) {
+	e := newStreamEnv(t)
+	ctx := context.Background()
+	e.Repo.writeErr = store.ErrObjectBucketDeleting
+	if _, err := e.Svc.PutStream(ctx, e.WS, e.B, "a.txt", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); !errors.Is(err, objectstorage.ErrBucketDeleting) {
+		t.Fatalf("a put into a bucket being deleted = %v, want ErrBucketDeleting", err)
+	}
+	if n := e.puts(); n != 0 {
+		t.Fatalf("the refused put reached Wasabi %d times", n)
+	}
+	e.Repo.writeErr = nil
+
+	e.Repo.confirm = func() { delete(e.Repo.buckets, e.WS+"/photos") }
+	if _, err := e.Svc.PutStream(ctx, e.WS, e.B, "a.txt", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); !errors.Is(err, objectstorage.ErrBucketNotFound) {
+		t.Fatalf("a put whose bucket went mid-stream = %v, want ErrBucketNotFound", err)
+	}
+	if _, ok := e.Fake.Get(objectstorage.Oregon.Bucket(), e.wasabiKey("a.txt")); ok {
+		t.Fatal("the put left its object under the deleted bucket's prefix")
 	}
 }

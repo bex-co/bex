@@ -19,6 +19,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,6 +59,23 @@ func TestCloudflareBucketLifecycleThroughTheRoutes(t *testing.T) {
 	wantOK(t, h.do(t, http.MethodDelete, h.url("/buckets/photos"), nil))
 	wantCF(t, h.do(t, http.MethodGet, h.url("/buckets/photos"), nil), http.StatusNotFound, 10006)
 	h.createBucket(t, "photos")
+}
+
+// TestCloudflareRefusesDeletingTheRenderNamespace pins w4/678: an empty
+// render-oregon answers 403 10003 to a delete and keeps its creation date,
+// because a recreated one gets a new id and orphans an upload still in flight.
+func TestCloudflareRefusesDeletingTheRenderNamespace(t *testing.T) {
+	h := newCFHarness(t)
+	before := resultOf[cfBucket](t, h.do(t, http.MethodGet, h.url("/buckets/render-oregon"), nil))
+	refused := h.do(t, http.MethodDelete, h.url("/buckets/render-oregon"), nil)
+	wantCF(t, refused, http.StatusForbidden, 10003)
+	if !strings.Contains(string(refused.Raw), "object namespace and cannot be deleted") {
+		t.Fatalf("the refusal does not say why: %s", refused.Raw)
+	}
+	after := resultOf[cfBucket](t, h.do(t, http.MethodGet, h.url("/buckets/render-oregon"), nil))
+	if after != before {
+		t.Fatalf("render-oregon after the refused delete = %+v, want %+v", after, before)
+	}
 }
 
 // TestCloudflareLocationHintsPlaceTheBucket: the hint (and the jurisdiction

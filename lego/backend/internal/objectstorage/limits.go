@@ -78,4 +78,11 @@ const (
 	// body, so each stream extends them to this. 300 MiB takes 28 minutes at
 	// 1.5 Mbit/s; a slower link is refused rather than held open.
 	StreamDeadline = 30 * time.Minute
+	// deleteCheckTimeout bounds a bucket delete's one-key emptiness list, which
+	// runs holding the bucket's row lock. It stays well inside the store's
+	// two-minute life of a delete's mark (objectBucketDeletingTTL).
+	deleteCheckTimeout = 30 * time.Second
+	// orphanRemoveTimeout bounds removing a put's object from a bucket deleted
+	// while the bytes moved.
+	orphanRemoveTimeout = 30 * time.Second
 )

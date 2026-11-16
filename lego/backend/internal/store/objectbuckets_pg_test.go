@@ -186,14 +186,14 @@ func TestObjectBucketRecreatedNameGetsANewID(t *testing.T) {
 	s, ws := objectBucketStore(t, "objbkt-recreate")
 	ctx := context.Background()
 	first := newObjectBucket(t, s, ws, "photos", 10)
-	if err := s.DeleteObjectBucket(ctx, ws, first.ID); err != nil {
+	if _, err := s.DeleteObjectBucketIfEmpty(ctx, ws, first.ID, emptyBucket); err != nil {
 		t.Fatal(err)
 	}
 	second := newObjectBucket(t, s, ws, "photos", 10)
 	if second.ID == first.ID {
 		t.Fatalf("recreated bucket reused id %s: the old objects' prefix would be visible again", first.ID)
 	}
-	if err := s.DeleteObjectBucket(ctx, ws, first.ID); !errors.Is(err, ErrNotFound) {
+	if _, err := s.DeleteObjectBucketIfEmpty(ctx, ws, first.ID, emptyBucket); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("deleting the old id again = %v, want ErrNotFound", err)
 	}
 }
@@ -293,7 +293,7 @@ func TestObjectBucketSettingsAreScopedToTheWorkspace(t *testing.T) {
 	if err := s.SetObjectBucketPublic(ctx, otherWS, b.ID, false); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("another workspace changed the bucket: %v, want ErrNotFound", err)
 	}
-	if err := s.DeleteObjectBucket(ctx, otherWS, b.ID); !errors.Is(err, ErrNotFound) {
+	if _, err := s.DeleteObjectBucketIfEmpty(ctx, otherWS, b.ID, emptyBucket); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("another workspace deleted the bucket: %v, want ErrNotFound", err)
 	}
 	if still, _ := s.GetObjectBucket(ctx, ws, "photos"); !still.Public {
@@ -345,7 +345,7 @@ func TestObjectStorageUsageTotalsSumPerWorkspaceAndRegion(t *testing.T) {
 	}
 
 	// Deleting a bucket drops its usage row with it.
-	if err := s.DeleteObjectBucket(ctx, ws, b.ID); err != nil {
+	if _, err := s.DeleteObjectBucketIfEmpty(ctx, ws, b.ID, emptyBucket); err != nil {
 		t.Fatal(err)
 	}
 	if bytes, _, _ := s.ObjectStorageUsageTotals(ctx, ws, "oregon"); bytes != 10 {
@@ -417,5 +417,72 @@ func TestObjectBucketCreationIsSerializedPerWorkspace(t *testing.T) {
 	}
 	if system != 1 {
 		t.Fatalf("%d system buckets exist, want 1", system)
+	}
+}
+
+// emptyBucket is a delete's emptiness check that finds nothing.
+func emptyBucket(context.Context) (bool, error) { return true, nil }
+
+// TestObjectBucketDeleteShutsOutAPutUntilItDecides pins w4/678: while a delete
+// checks a bucket is empty, a put starting then is refused, a finished put's
+// confirmation waits for the delete's verdict, and a refused delete leaves the
+// bucket writable again.
+func TestObjectBucketDeleteShutsOutAPutUntilItDecides(t *testing.T) {
+	s, ws := objectBucketStore(t, "objbkt-deleting")
+	ctx := context.Background()
+	b := newObjectBucket(t, s, ws, "photos", 10)
+	if err := s.CheckObjectBucketWritable(ctx, ws, b.ID); err != nil {
+		t.Fatalf("a bucket no delete touches = %v, want writable", err)
+	}
+
+	confirmed := make(chan error, 1)
+	deleted, err := s.DeleteObjectBucketIfEmpty(ctx, ws, b.ID, func(context.Context) (bool, error) {
+		if err := s.CheckObjectBucketWritable(ctx, ws, b.ID); !errors.Is(err, ErrObjectBucketDeleting) {
+			t.Errorf("a put starting during the check = %v, want ErrObjectBucketDeleting", err)
+		}
+		go func() { confirmed <- s.ConfirmObjectBucketLive(ctx, ws, b.ID) }()
+		select {
+		case err := <-confirmed:
+			t.Errorf("a put confirmed its bucket (%v) while the delete was still checking it", err)
+			confirmed <- err
+		case <-time.After(300 * time.Millisecond):
+		}
+		return false, nil // the put's object is there
+	})
+	if err != nil || deleted {
+		t.Fatalf("a delete that found an object = %v, %v; want kept", deleted, err)
+	}
+	if err := <-confirmed; err != nil {
+		t.Fatalf("the put's confirmation after a refused delete = %v, want the bucket live", err)
+	}
+	if err := s.CheckObjectBucketWritable(ctx, ws, b.ID); err != nil {
+		t.Fatalf("a refused delete left its mark: %v", err)
+	}
+
+	// A check that fails keeps the row and clears the mark too.
+	boom := errors.New("wasabi down")
+	if deleted, err := s.DeleteObjectBucketIfEmpty(ctx, ws, b.ID, func(context.Context) (bool, error) { return false, boom }); !errors.Is(err, boom) || deleted {
+		t.Fatalf("a failed check = %v, %v; want its error and the bucket kept", deleted, err)
+	}
+	if err := s.CheckObjectBucketWritable(ctx, ws, b.ID); err != nil {
+		t.Fatalf("a failed check left its mark: %v", err)
+	}
+
+	// A mark a dead delete left behind stops refusing once it is stale.
+	if _, err := s.Pool.Exec(ctx, `UPDATE object_buckets SET deleting_since = now() - interval '3 minutes' WHERE id = $1`, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CheckObjectBucketWritable(ctx, ws, b.ID); err != nil {
+		t.Fatalf("a stale mark = %v, want writable", err)
+	}
+
+	if deleted, err := s.DeleteObjectBucketIfEmpty(ctx, ws, b.ID, emptyBucket); err != nil || !deleted {
+		t.Fatalf("deleting the empty bucket = %v, %v", deleted, err)
+	}
+	if err := s.ConfirmObjectBucketLive(ctx, ws, b.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("confirming a deleted bucket = %v, want ErrNotFound", err)
+	}
+	if err := s.CheckObjectBucketWritable(ctx, ws, b.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("writing a deleted bucket = %v, want ErrNotFound", err)
 	}
 }

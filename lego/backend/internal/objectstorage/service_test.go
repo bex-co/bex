@@ -19,7 +19,9 @@ package objectstorage_test
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -367,5 +369,89 @@ func TestARecreatedBucketDoesNotSeeTheOldObjects(t *testing.T) {
 	}
 	if err := s.DeleteBucket(ctx, ws, "photos"); err != nil {
 		t.Fatalf("the new, empty bucket could not be deleted because of the old data: %v", err)
+	}
+}
+
+// TestASystemBucketIsNeverDeleted pins w4/678: render-<region> is the Render
+// CLI's namespace, so a delete is refused before it lists anything, the
+// bucket keeps its id, and a put URL minted before the attempt still uploads
+// into a prefix the Render routes list.
+func TestASystemBucketIsNeverDeleted(t *testing.T) {
+	e := newPGEnv(t, "objsvc-system-delete")
+	ctx := context.Background()
+	body := []byte("still mine")
+	put, err := e.Svc.MintPut(ctx, e.WS, objectstorage.Oregon, "late.txt", int64(len(body)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sys, err := e.Svc.SystemBucket(ctx, e.WS, objectstorage.Oregon)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := len(e.Fake.Requests())
+	if err := e.Svc.DeleteBucket(ctx, e.WS, "render-oregon"); !errors.Is(err, objectstorage.ErrSystemBucket) {
+		t.Fatalf("deleting the empty render-oregon = %v, want ErrSystemBucket", err)
+	}
+	if n := len(e.Fake.Requests()); n != before {
+		t.Fatalf("the refused delete reached Wasabi %d times", n-before)
+	}
+	again, err := e.Svc.SystemBucket(ctx, e.WS, objectstorage.Oregon)
+	if err != nil || again.ID != sys.ID || !again.CreatedAt.Equal(sys.CreatedAt) {
+		t.Fatalf("render-oregon after the refused delete = %+v, %v; want the same bucket %s", again, err, sys.ID)
+	}
+	upload(t, put.URL, body)
+	page, err := e.Svc.ListObjects(ctx, e.WS, objectstorage.Oregon, "", 10)
+	if err != nil || len(page.Items) != 1 || page.Items[0].Key != "late.txt" {
+		t.Fatalf("ListObjects after the upload = %+v, %v; want late.txt listed", page, err)
+	}
+}
+
+// TestAStreamRacingADeleteNeverOrphansItsObject pins w4/678 for named buckets:
+// a put whose bytes are still moving when the bucket is deleted fails and
+// leaves nothing under the gone prefix, and one that finished first keeps the
+// bucket.
+func TestAStreamRacingADeleteNeverOrphansItsObject(t *testing.T) {
+	e := newPGEnv(t, "objsvc-stream-race")
+	ctx := context.Background()
+	b, err := e.Svc.CreateBucket(ctx, e.WS, "photos", objectstorage.Oregon, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pr, pw := io.Pipe()
+	done := make(chan error, 1)
+	go func() {
+		_, err := e.Svc.PutStream(ctx, e.WS, b, "big.bin", 4, pr, objectstorage.ObjectHeaders{})
+		done <- err
+	}()
+	// The first bytes are taken, so the put is past its checks and streaming.
+	if _, err := pw.Write([]byte("ab")); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Svc.DeleteBucket(ctx, e.WS, "photos"); err != nil {
+		t.Fatalf("deleting the bucket while the stream had stored nothing = %v", err)
+	}
+	if _, err := pw.Write([]byte("cd")); err != nil {
+		t.Fatal(err)
+	}
+	_ = pw.Close()
+	if err := <-done; !errors.Is(err, objectstorage.ErrBucketNotFound) {
+		t.Fatalf("the put into the deleted bucket = %v, want ErrBucketNotFound", err)
+	}
+	if keys := e.Fake.Keys(objectstorage.Oregon.Bucket(), objectstorage.Prefix(e.WS, b.ID)); len(keys) != 0 {
+		t.Fatalf("the failed put left %v under the deleted bucket's prefix", keys)
+	}
+
+	kept, err := e.Svc.CreateBucket(ctx, e.WS, "photos", objectstorage.Oregon, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Svc.PutStream(ctx, e.WS, kept, "a.txt", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Svc.DeleteBucket(ctx, e.WS, "photos"); !errors.Is(err, objectstorage.ErrBucketNotEmpty) {
+		t.Fatalf("deleting after the put finished = %v, want ErrBucketNotEmpty", err)
+	}
+	if keys := e.Fake.Keys(objectstorage.Oregon.Bucket(), objectstorage.Prefix(e.WS, kept.ID)); len(keys) != 1 {
+		t.Fatalf("the kept bucket holds %v, want its one object", keys)
 	}
 }

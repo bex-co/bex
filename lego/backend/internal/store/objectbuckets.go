@@ -35,6 +35,8 @@ var (
 	ErrObjectBucketExists = fmt.Errorf("object bucket name is taken: %w", ErrConflict)
 	// ErrObjectBucketQuota refuses a bucket past the workspace's bucket cap.
 	ErrObjectBucketQuota = fmt.Errorf("object bucket limit reached: %w", ErrConflict)
+	// ErrObjectBucketDeleting refuses a put into a bucket a delete is checking.
+	ErrObjectBucketDeleting = fmt.Errorf("object bucket is being deleted: %w", ErrConflict)
 )
 
 // ObjectBucket is one row of object_buckets (ADR112 D1). Its ID, not its Name,
@@ -218,23 +220,95 @@ func (s *PGStore) ListObjectBuckets(ctx context.Context, workspaceID string) ([]
 	return out, rows.Err()
 }
 
-// DeleteObjectBucket removes the live bucket row and its usage row. The caller
-// has already checked the bucket is empty: the row is the only record that
-// maps the objects' key prefix, so deleting a non-empty bucket would orphan
-// them.
-func (s *PGStore) DeleteObjectBucket(ctx context.Context, workspaceID, id string) error {
-	return s.withTx(ctx, func(tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx,
-			`DELETE FROM object_buckets WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL`, id, workspaceID)
-		if err != nil {
+// objectBucketDeletingTTL is how long a delete's mark (deleting_since) refuses
+// puts. A delete lists one key under a deadline far inside it, so a mark this
+// old is a delete that died mid-way and refuses nothing.
+const objectBucketDeletingTTL = 2 * time.Minute
+
+// DeleteObjectBucketIfEmpty removes the live bucket row and its usage row when
+// empty reports the bucket's prefix holds no object. The row is the only
+// record that maps the objects' key prefix, so deleting a non-empty bucket, or
+// one an upload lands in during the check, would orphan them (w4/678):
+//
+//   - The row is marked deleting first, in its own statement, so a put that
+//     starts during the delete refuses before its first byte
+//     (CheckObjectBucketWritable).
+//   - empty runs and the row goes while the delete holds the row FOR UPDATE,
+//     which a finished put's FOR SHARE read waits on (ConfirmObjectBucketLive).
+//     A put that confirms first has its object in Wasabi before empty lists, so
+//     the delete refuses; one that confirms after finds no row and removes its
+//     object.
+//
+// A bucket that is not empty, or whose check failed, keeps its row and loses
+// its mark; deleted is false and err is empty's error.
+func (s *PGStore) DeleteObjectBucketIfEmpty(ctx context.Context, workspaceID, id string, empty func(context.Context) (bool, error)) (deleted bool, err error) {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE object_buckets SET deleting_since = now() WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL`,
+		id, workspaceID)
+	if err != nil {
+		return false, classify("object bucket", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return false, fmt.Errorf("object bucket %s: %w", id, ErrNotFound)
+	}
+	var checkErr error
+	err = s.withTx(ctx, func(tx pgx.Tx) error {
+		var one int
+		if err := tx.QueryRow(ctx,
+			`SELECT 1 FROM object_buckets WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL FOR UPDATE`,
+			id, workspaceID).Scan(&one); err != nil {
 			return err
 		}
-		if tag.RowsAffected() == 0 {
-			return fmt.Errorf("object bucket %s: %w", id, ErrNotFound)
+		ok, err := empty(ctx)
+		if err != nil || !ok {
+			checkErr = err
+			_, err := tx.Exec(ctx, `UPDATE object_buckets SET deleting_since = NULL WHERE id = $1`, id)
+			return err
 		}
-		_, err = tx.Exec(ctx, `DELETE FROM object_storage_usage WHERE bucket_id = $1`, id)
-		return err
+		if _, err := tx.Exec(ctx, `DELETE FROM object_buckets WHERE id = $1`, id); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM object_storage_usage WHERE bucket_id = $1`, id); err != nil {
+			return err
+		}
+		deleted = true
+		return nil
 	})
+	if err != nil {
+		return false, classify("object bucket", err)
+	}
+	return deleted, checkErr
+}
+
+// CheckObjectBucketWritable is the check a streamed put makes before its first
+// byte: ErrNotFound for a bucket with no live row, ErrObjectBucketDeleting for
+// one a delete is checking.
+func (s *PGStore) CheckObjectBucketWritable(ctx context.Context, workspaceID, id string) error {
+	var deleting bool
+	err := s.Pool.QueryRow(ctx,
+		`SELECT deleting_since IS NOT NULL AND deleting_since > now() - $3 * interval '1 second'
+		 FROM object_buckets WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL`,
+		id, workspaceID, objectBucketDeletingTTL.Seconds()).Scan(&deleting)
+	if err != nil {
+		return classify("object bucket", err)
+	}
+	if deleting {
+		return ErrObjectBucketDeleting
+	}
+	return nil
+}
+
+// ConfirmObjectBucketLive is the check a streamed put makes once its object is
+// in Wasabi: ErrNotFound when the bucket's live row is gone. Its FOR SHARE read
+// waits for a delete's emptiness check to decide (DeleteObjectBucketIfEmpty),
+// so a row it finds, marked or not, is one no delete can drop without seeing
+// the object. Puts do not wait on each other.
+func (s *PGStore) ConfirmObjectBucketLive(ctx context.Context, workspaceID, id string) error {
+	var one int
+	err := s.Pool.QueryRow(ctx,
+		`SELECT 1 FROM object_buckets WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL FOR SHARE`,
+		id, workspaceID).Scan(&one)
+	return classify("object bucket", err)
 }
 
 // SetObjectBucketPublic turns public reads of a bucket on or off (ADR112 D4).

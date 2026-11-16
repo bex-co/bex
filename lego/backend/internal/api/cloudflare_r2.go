@@ -220,6 +220,10 @@ func cloudflareError(err error) *cfError {
 		return cfFail(http.StatusConflict, cfCodeBucketConflict, "a bucket with this name already exists")
 	case errors.Is(err, objectstorage.ErrBucketNotEmpty):
 		return cfFail(http.StatusConflict, cfCodeBucketNotEmpty, "the bucket you tried to delete is not empty")
+	case errors.Is(err, objectstorage.ErrSystemBucket):
+		return cfFail(http.StatusForbidden, cfCodeAccessDenied, "%s", objectstorage.ErrSystemBucket.Error())
+	case errors.Is(err, objectstorage.ErrBucketDeleting):
+		return cfFail(http.StatusConflict, cfCodeBucketConflict, "the bucket is being deleted; retry shortly")
 	case errors.Is(err, objectstorage.ErrTooManyBuckets):
 		return cfFail(http.StatusBadRequest, cfCodeTooManyBuckets, "this workspace has reached its limit of %d buckets", objectstorage.MaxUserBuckets)
 	case errors.Is(err, objectstorage.ErrInvalidKey):

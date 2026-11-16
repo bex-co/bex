@@ -135,6 +135,11 @@ func (s *Service) locate(workspaceID string, b store.ObjectBucket, key string) (
 // slot (the workspace's and the replica's) for as long as the bytes move, at
 // most StreamDeadline. The bytes go to Wasabi as they arrive: nothing is
 // buffered or spooled.
+//
+// A put never succeeds into a prefix no row maps (w4/678). It refuses a bucket
+// a delete is checking (ErrBucketDeleting) before its first byte, and confirms
+// the bucket's row once the object is in Wasabi: a bucket deleted while the
+// bytes moved loses the object again and answers ErrBucketNotFound.
 func (s *Service) PutStream(ctx context.Context, workspaceID string, b store.ObjectBucket, key string, size int64, body io.Reader, headers ObjectHeaders) (etag string, err error) {
 	st, wasabiKey, err := s.locate(workspaceID, b, key)
 	if err != nil {
@@ -148,6 +153,9 @@ func (s *Service) PutStream(ctx context.Context, workspaceID string, b store.Obj
 	}
 	if err := s.Gate(ctx, workspaceID, Region(b.Region), size); err != nil {
 		return "", err
+	}
+	if err := s.repo.CheckObjectBucketWritable(ctx, workspaceID, b.ID); err != nil {
+		return "", bucketWriteError(err)
 	}
 	release, err := s.AcquireStream(workspaceID)
 	if err != nil {
@@ -168,7 +176,32 @@ func (s *Service) PutStream(ctx context.Context, workspaceID string, b store.Obj
 		return "", err
 	}
 	s.RecordIngress(ctx, workspaceID, size)
+	// The confirmation outlives a caller that hung up: its bytes are stored.
+	// Only a row that is gone loses them; any other failure keeps the object,
+	// which may have overwritten one the customer still owns.
+	if err := s.repo.ConfirmObjectBucketLive(context.WithoutCancel(ctx), workspaceID, b.ID); err != nil {
+		if !errors.Is(err, store.ErrNotFound) {
+			return "", err
+		}
+		rmCtx, rmCancel := context.WithTimeout(context.WithoutCancel(ctx), orphanRemoveTimeout)
+		defer rmCancel()
+		if rmErr := st.Delete(rmCtx, wasabiKey); rmErr != nil {
+			return "", fmt.Errorf("remove %s from a bucket deleted during the put: %w (after %w)", key, rmErr, ErrBucketNotFound)
+		}
+		return "", ErrBucketNotFound
+	}
 	return etag, nil
+}
+
+// bucketWriteError is the service error for a store answer about a put's bucket.
+func bucketWriteError(err error) error {
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return ErrBucketNotFound
+	case errors.Is(err, store.ErrObjectBucketDeleting):
+		return ErrBucketDeleting
+	}
+	return err
 }
 
 // ObjectReader is an object open for reading. Closing it ends the read,
