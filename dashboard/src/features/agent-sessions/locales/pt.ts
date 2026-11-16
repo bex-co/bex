@@ -426,7 +426,7 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
       "Detail header — tooltip on the disabled Stop turn button while the sandbox starts",
   },
   "agentSessions.stopTurnSuccess": {
-    message: "Parando o turno. Ele termina em cerca de 15 segundos.",
+    message: "Parando o turno. Ele termina em alguns segundos.",
     description: "Detail header — toast after Stop turn is accepted",
   },
   "agentSessions.steerTitle": {

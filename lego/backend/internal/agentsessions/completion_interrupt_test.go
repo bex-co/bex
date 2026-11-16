@@ -19,6 +19,8 @@ package agentsessions
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -287,6 +289,22 @@ func TestInterruptRecordsItsRequestBeforeTheSentinelAndForItsTurnOnly(t *testing
 	}
 }
 
+// The signal Service.Interrupt hands the Completer is stamped by the service's
+// own clock, the one the Completer reads Pending with: under an injected clock
+// the request is still being watched, not already past its window.
+func TestInterruptNotesTheStopOnTheServicesOwnClock(t *testing.T) {
+	e := newQueueEnv(t)
+	ahead := time.Now().Add(24 * time.Hour)
+	e.svc.Clock = func() time.Time { return ahead }
+	e.svc.Stops = &StopSignal{}
+	if _, err := e.svc.Interrupt(caller("alice"), e.id); err != nil {
+		t.Fatal(err)
+	}
+	if got := e.svc.Stops.Pending(e.svc.Now()); len(got) != 1 || got[0] != e.id {
+		t.Fatalf("pending on the service's clock = %v, want the stopped session: the signal was stamped by another clock", got)
+	}
+}
+
 // A person's Stop turn is settled on the short tick, not the 15 s one: the
 // Completer reads a session Service.Interrupt noted within StopInterval, while
 // the ordinary tick is far away (w22/m413 t001).
@@ -316,6 +334,103 @@ func TestAStopRequestedSessionIsSettledOnTheShortTick(t *testing.T) {
 	}
 	if pending := c.Stops.Pending(time.Now()); len(pending) != 0 {
 		t.Fatalf("a settled session is still watched: %v", pending)
+	}
+}
+
+// getFailing makes the next reads of one session fail with err.
+type getFailing struct {
+	Store
+	err      error
+	failures int
+}
+
+func (g *getFailing) GetAgentSession(ctx context.Context, id string) (store.AgentSession, error) {
+	if g.failures > 0 {
+		g.failures--
+		return store.AgentSession{}, g.err
+	}
+	return g.Store.GetAgentSession(ctx, id)
+}
+
+// The short look at a stopped session ends when the session is gone or has
+// left its live phases, and not when one read of it fails: a transient database
+// error keeps the request, so the next short tick settles the turn instead of
+// leaving it to the 15 s tick (the watch window bounds the retries).
+func TestTheShortTickKeepsAStopRequestWhenTheSessionReadFailsTransiently(t *testing.T) {
+	for name, tc := range map[string]struct {
+		err         error
+		stillWatchd bool
+	}{
+		"a transient error":        {errors.New("connection reset by peer"), true},
+		"the session is not found": {store.ErrNotFound, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c, st, _, id := completerFixture(interruptedStatus(statusGit{RemoteHead: remoteHead}), nil)
+			c.Metrics = NewCompletionMetrics(prometheus.NewRegistry())
+			recordAgentPR(st, id)
+			requestStop(t, st, id, 1)
+			c.Stops = &StopSignal{}
+			c.Stops.Note(id, time.Now())
+			c.Store = &getFailing{Store: st, err: tc.err, failures: 1}
+
+			c.reconcileStopped(context.Background())
+			if got := c.Stops.Pending(time.Now()); (len(got) == 1) != tc.stillWatchd {
+				t.Fatalf("after a failed read (%v) the request is watched: %v, want %v", tc.err, got, tc.stillWatchd)
+			}
+			if !tc.stillWatchd {
+				return
+			}
+			// The next short tick reads the session again and settles the turn.
+			c.reconcileStopped(context.Background())
+			if st.rows[id].Phase != PhaseCompleted || !st.turns[id][1].Interrupted {
+				t.Fatalf("the retried look did not settle the stop: phase %s, turn %+v", st.rows[id].Phase, st.turns[id][1])
+			}
+			if got := c.Stops.Pending(time.Now()); len(got) != 0 {
+				t.Fatalf("a settled session is still watched: %v", got)
+			}
+		})
+	}
+}
+
+// settledReadsFail fails every read that finds the session out of its live
+// phases while down is set: the read after a settle that could not be made.
+type settledReadsFail struct {
+	Store
+	down bool
+}
+
+func (g *settledReadsFail) GetAgentSession(ctx context.Context, id string) (store.AgentSession, error) {
+	record, err := g.Store.GetAgentSession(ctx, id)
+	if err == nil && g.down && !slices.Contains(activePhases, record.Phase) {
+		return store.AgentSession{}, errors.New("connection reset by peer")
+	}
+	return record, err
+}
+
+// A failed read after the settle keeps the request too, until a read can say
+// the session has left its live phases.
+func TestTheShortTickKeepsAStopRequestWhenTheReadAfterTheSettleFails(t *testing.T) {
+	c, st, _, id := completerFixture(interruptedStatus(statusGit{RemoteHead: remoteHead}), nil)
+	c.Metrics = NewCompletionMetrics(prometheus.NewRegistry())
+	recordAgentPR(st, id)
+	requestStop(t, st, id, 1)
+	c.Stops = &StopSignal{}
+	c.Stops.Note(id, time.Now())
+	flaky := &settledReadsFail{Store: st, down: true}
+	c.Store = flaky
+
+	c.reconcileStopped(context.Background())
+	if st.rows[id].Phase != PhaseCompleted {
+		t.Fatalf("the stop was not settled: phase %s", st.rows[id].Phase)
+	}
+	if got := c.Stops.Pending(time.Now()); len(got) != 1 {
+		t.Fatalf("pending after a failed read = %v, want the request kept", got)
+	}
+	// The database comes back: the next look finds the session settled and lets it go.
+	flaky.down = false
+	c.reconcileStopped(context.Background())
+	if got := c.Stops.Pending(time.Now()); len(got) != 0 {
+		t.Fatalf("a settled session is still watched: %v", got)
 	}
 }
 

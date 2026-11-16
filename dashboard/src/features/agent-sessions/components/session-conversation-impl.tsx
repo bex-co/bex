@@ -975,6 +975,8 @@ const MessageRow = memo(function MessageRow({
   const isUser = role === "user";
   // The row's last durable turn ends with the row, not before another prompt.
   const lastTurn = lastDurableTurn(blocks);
+  const lastRetention =
+    lastTurn != null ? interruptedTurns.get(lastTurn) : undefined;
 
   return (
     <div
@@ -1048,11 +1050,12 @@ const MessageRow = memo(function MessageRow({
             return <ContinuityNote key={block.key} rung={block.rung} />;
           }
           if (block.type === "turn-end") {
-            return interruptedTurns.has(block.turn) ? (
+            const retention = interruptedTurns.get(block.turn);
+            return retention ? (
               <TurnInterruptedNote
                 key={block.key}
                 turn={block.turn}
-                retention={interruptedTurns.get(block.turn)}
+                retention={retention}
               />
             ) : null;
           }
@@ -1071,11 +1074,8 @@ const MessageRow = memo(function MessageRow({
             </Fragment>
           );
         })}
-        {lastTurn != null && interruptedTurns.has(lastTurn) ? (
-          <TurnInterruptedNote
-            turn={lastTurn}
-            retention={interruptedTurns.get(lastTurn)}
-          />
+        {lastTurn != null && lastRetention ? (
+          <TurnInterruptedNote turn={lastTurn} retention={lastRetention} />
         ) : null}
       </div>
       {isUser && <UserAvatar />}

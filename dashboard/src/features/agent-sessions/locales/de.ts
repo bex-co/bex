@@ -425,7 +425,7 @@ const deAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.stopTurnSuccess": {
     message:
-      "Der Durchgang wird gestoppt. Er endet innerhalb von etwa 15 Sekunden.",
+      "Der Durchgang wird gestoppt. Er endet innerhalb weniger Sekunden.",
     description: "Detail header — toast after Stop turn is accepted",
   },
   "agentSessions.steerTitle": {

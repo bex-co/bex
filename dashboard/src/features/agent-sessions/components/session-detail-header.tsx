@@ -111,7 +111,8 @@ export function SessionDetailHeader({
   const [canceling, setCanceling] = useState(false);
   const [stopping, setStopping] = useState(false);
   // The turn a stop was delivered for: the turn ends at the driver's next
-  // poll and the Completer settles it within ~15 s, so the phase still reads
+  // poll and the Completer settles it within a few seconds (a request another
+  // replica served costs up to its 15 s tick), so the phase still reads
   // running after the 202 and Stop turn must not offer itself again.
   const [stoppedTurn, setStoppedTurn] = useState<number | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);

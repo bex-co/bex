@@ -202,14 +202,13 @@ type transcriptTurn struct {
 	// Interrupted says a person stopped the turn; Retention, RetainedUntil and
 	// RetentionLostReason say what became of its unpushed work (its disk, kept
 	// for the next message): none, saving, kept (until RetainedUntil),
-	// continued or lost (and why). StartNote is set on a turn that had to
-	// start from a fresh checkout although that disk was kept (ADR047 D12).
+	// continued or lost (and why) (ADR047 D12).
 	Interrupted         bool       `json:"interrupted"`
 	Retention           string     `json:"retention"`
 	RetainedUntil       *time.Time `json:"retainedUntil"`
 	RetentionLostReason string     `json:"retentionLostReason"`
-	StartNote           string     `json:"startNote"`
-	// raw is the turn as the API sent it, for --output json.
+	// raw is a stopped turn as the API sent it, for --output json; other
+	// turns are not printed, so they are not copied.
 	raw json.RawMessage
 }
 
@@ -220,6 +219,8 @@ func (t *transcriptTurn) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*t = transcriptTurn(f)
-	t.raw = append(json.RawMessage(nil), data...)
+	if t.Interrupted {
+		t.raw = append(json.RawMessage(nil), data...)
+	}
 	return nil
 }

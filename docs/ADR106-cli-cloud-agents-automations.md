@@ -341,7 +341,7 @@ bex agent stop <session>
 | `409 AGENT_SESSION_TURN_STARTING` | `stop: the turn is still starting; try again once the agent is working` on stderr | `8` |
 | any other refusal (canceled or archived session, no `can_operate`, unknown session, network) | the API's error on stderr | `1` |
 
-- It ends the running turn only and asks for no confirmation, on a terminal or not, because it is not `cancel`: the session stays open, and queued messages run next. The wording is chat's `/stop` (hence `/cancel` in the first line). The `202` is the request delivered, not the turn ended: the Completer settles it on its 15 s tick, so a script that needs the turn over runs `bex agent wait` next.
+- It ends the running turn only and asks for no confirmation, on a terminal or not, because it is not `cancel`: the session stays open, and queued messages run next. The wording is chat's `/stop` (hence `/cancel` in the first line). The `202` is the request delivered, not the turn ended: the Completer settles it within a few seconds (it reads that session's status every 2 s once bex-api has delivered the request; its 15 s tick that watches every running session is only the fallback for a request another replica served or a lost signal), so a script that needs the turn over runs `bex agent wait` next.
 - Session picker, dashboard URLs and shell completion work as for `cancel`.
 
 ### `bex agent archive | unarchive | delete | tags | tree | cost`

@@ -496,8 +496,9 @@ func (a *api) transcript(ctx context.Context, id string, afterSeq int64) (transc
 }
 
 // stoppedTurn is the session's latest turn when a person stopped it (ADR047
-// D12), or nil: read from the transcript with no part, so it costs one small
-// request, and only for a session that has settled. It is best effort: a
+// D12), or nil: read from the transcript asking for no part, so it costs one
+// request whose answer is the turns alone, and only for a session that has
+// settled. It is best effort: a
 // failed read leaves the session shown without it, never fails the command.
 func (a *api) stoppedTurn(ctx context.Context, s session) *transcriptTurn {
 	if !settled(s) || s.Turns == 0 {

@@ -162,6 +162,31 @@ func (s *PGStore) FinalizeAgentSessionRetaining(ctx context.Context, id, headSHA
 	return out, fact, retained, nil
 }
 
+// FinalizeAgentSessionNotRetaining is FinalizeAgentSession for a turn a person
+// stopped whose disk is deliberately not kept (an editor is open on its
+// sandbox, which Stop must not end): the same transaction that settles the turn
+// records on it that its disk was lost and why, so no read sees the settled turn
+// without the reason and no failed second write leaves it unsaid. No image is
+// begun. ErrNotFound, as for FinalizeAgentSession, when the session already left
+// its live phase, in which case nothing is recorded.
+func (s *PGStore) FinalizeAgentSessionNotRetaining(ctx context.Context, id, headSHA, deliveryNote, reason string) (AgentSession, TerminalTurnFact, error) {
+	var out AgentSession
+	var fact TerminalTurnFact
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var err error
+		if out, fact, err = finalizeAgentSessionTx(ctx, tx, id, "completed", headSHA, deliveryNote, ""); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `UPDATE agent_session_turns SET retention = $4, retention_reason = $3
+			WHERE session_id = $1 AND turn = $2 AND interrupted AND retention = ''`, id, out.Turns, reason, TurnRetentionLost)
+		return err
+	})
+	if err != nil {
+		return AgentSession{}, TerminalTurnFact{}, classify("agent session", err)
+	}
+	return out, fact, nil
+}
+
 // ReserveAgentSessionRetainedImage records a saving image's size before it is
 // copied, under the workspace's storage lock that imports and repository
 // environment builds take too, refused with *SandboxStorageLimitError when the
@@ -440,15 +465,6 @@ func (s *PGStore) AgentSessionsSavingRetainedImage(ctx context.Context, sessionI
 // the stopped turn's disk was kept.
 func (s *PGStore) SetAgentSessionTurnStartNote(ctx context.Context, sessionID string, turn int, note string) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns SET start_note = $3 WHERE session_id = $1 AND turn = $2`, sessionID, turn, note)
-	return err
-}
-
-// SetAgentSessionTurnRetentionLost records on a stopped turn that its disk was
-// not kept, and why, when no image was ever begun for it (an editor was open on
-// its sandbox). A turn that already records an outcome keeps it.
-func (s *PGStore) SetAgentSessionTurnRetentionLost(ctx context.Context, sessionID string, turn int, reason string) error {
-	_, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns SET retention = $4, retention_reason = $3
-		WHERE session_id = $1 AND turn = $2 AND retention = ''`, sessionID, turn, reason, TurnRetentionLost)
 	return err
 }
 

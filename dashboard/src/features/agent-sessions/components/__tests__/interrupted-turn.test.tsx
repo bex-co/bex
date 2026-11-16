@@ -13,7 +13,7 @@ import {
   type TurnRetentionView,
 } from "@/features/agent-sessions/types";
 import i18n from "@/i18n/init";
-import { agentSessionView } from "@/test/mocks/agent-session";
+import { agentSessionView, RETAINED_UNTIL } from "@/test/mocks/agent-session";
 
 // A turn a person stopped with Stop turn (ADR047 D12) settles as a completed
 // one, flagged `interrupted`: the transcript says so in a neutral line, and no
@@ -159,7 +159,7 @@ describe("an interrupted turn in the transcript", () => {
 
 describe("TurnInterruptedNote", () => {
   it("names the turn in a muted system line", () => {
-    render(<TurnInterruptedNote turn={4} />);
+    render(<TurnInterruptedNote turn={4} retention={NO_RETENTION} />);
     expect(screen.getByText(NOTE(4))).toBeInTheDocument();
     expect(screen.getByTestId("turn-interrupted")).toHaveClass(
       "text-muted-foreground",
@@ -191,7 +191,7 @@ describe("what became of a stopped turn's unpushed work", () => {
     ...NO_RETENTION,
     ...over,
   });
-  const KEPT = retention({ state: "kept", until: "2026-11-16T10:00:00Z" });
+  const KEPT = retention({ state: "kept", until: RETAINED_UNTIL });
   const LINE = () => screen.getByTestId("turn-retention");
 
   it("says until when a kept disk is kept, at the viewer's own time", () => {
@@ -274,14 +274,10 @@ describe("what became of a stopped turn's unpushed work", () => {
     );
   });
 
-  it("adds nothing for a turn that kept nothing, or with no retention read", () => {
-    const { rerender } = render(
-      <TurnInterruptedNote turn={2} retention={NO_RETENTION} />,
-    );
+  it("adds nothing for a turn that kept nothing", () => {
+    render(<TurnInterruptedNote turn={2} retention={NO_RETENTION} />);
     expect(screen.queryByTestId("turn-retention")).toBeNull();
     expect(screen.getByText(NOTE(2))).toBeInTheDocument();
-    rerender(<TurnInterruptedNote turn={2} />);
-    expect(screen.queryByTestId("turn-retention")).toBeNull();
   });
 
   it("never reads as a failure, whichever state it is in", () => {

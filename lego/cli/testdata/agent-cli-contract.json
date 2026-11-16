@@ -94,12 +94,21 @@
         "retention": "kept",
         "retainedUntil": "2026-11-06T10:00:00Z",
         "retentionLostReason": "expired",
-        "startNote": "The changes kept from the stopped turn could not be restored, so this turn started from a fresh checkout of the branch.",
         "attachments": []
       }
     ],
     "nextAfterSeq": 7
   },
+  "retentionStates": ["none", "saving", "kept", "continued", "lost"],
+  "retentionLostReasons": [
+    "expired",
+    "storage_full",
+    "save_failed",
+    "editor_open",
+    "canceled",
+    "archived",
+    "not_restored"
+  ],
   "error": {
     "error": "agent session not found",
     "message": "agent session not found",

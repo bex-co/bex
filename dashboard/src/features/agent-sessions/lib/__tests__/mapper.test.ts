@@ -25,7 +25,11 @@ import {
   goStringConstant,
   goStringConstantsWithPrefix,
 } from "@/test/go-source";
-import { agentSessionView } from "@/test/mocks/agent-session";
+import {
+  agentSessionView,
+  RETAINED_UNTIL,
+  wireTurn,
+} from "@/test/mocks/agent-session";
 
 const ALL_PHASES: AgentSessionPhase[] = [
   "creating",
@@ -406,67 +410,71 @@ describe("isSandboxCapacityFailure", () => {
 
 // w22/m413 t004: what bex-api says became of a stopped turn's unpushed work.
 describe("toTurnRetentionView", () => {
-  const wireTurn = (
-    retention: string,
-    retainedUntil: string | null = null,
-    retentionLostReason = "",
-  ) => ({ retention, retainedUntil, retentionLostReason });
+  const none = { state: "none", until: null, lostReason: null };
 
   it("projects each state with only what it carries", () => {
-    expect(
-      toTurnRetentionView(wireTurn("kept", "2026-11-16T10:00:00Z")),
-    ).toEqual({
+    expect(toTurnRetentionView(wireTurn({ retention: "kept" }))).toEqual({
       state: "kept",
-      until: "2026-11-16T10:00:00Z",
+      until: RETAINED_UNTIL,
       lostReason: null,
     });
-    expect(toTurnRetentionView(wireTurn("saving"))).toEqual({
+    expect(toTurnRetentionView(wireTurn({ retention: "saving" }))).toEqual({
       state: "saving",
       until: null,
       lostReason: null,
     });
-    expect(toTurnRetentionView(wireTurn("continued"))).toEqual({
+    expect(toTurnRetentionView(wireTurn({ retention: "continued" }))).toEqual({
       state: "continued",
       until: null,
       lostReason: null,
     });
-    expect(toTurnRetentionView(wireTurn("lost", null, "storage_full"))).toEqual(
-      { state: "lost", until: null, lostReason: "storage_full" },
-    );
+    expect(
+      toTurnRetentionView(
+        wireTurn({ retention: "lost", retentionLostReason: "storage_full" }),
+      ),
+    ).toEqual({ state: "lost", until: null, lostReason: "storage_full" });
   });
 
   it("keeps a time only for a kept disk, and a reason only for a lost one", () => {
     expect(
-      toTurnRetentionView(wireTurn("lost", "2026-11-16T10:00:00Z", "expired")),
+      toTurnRetentionView(
+        wireTurn({
+          retention: "lost",
+          retainedUntil: RETAINED_UNTIL,
+          retentionLostReason: "expired",
+        }),
+      ),
     ).toMatchObject({ until: null, lostReason: "expired" });
     expect(
       toTurnRetentionView(
-        wireTurn("continued", "2026-11-16T10:00:00Z", "expired"),
+        wireTurn({
+          retention: "continued",
+          retainedUntil: RETAINED_UNTIL,
+          retentionLostReason: "expired",
+        }),
       ),
     ).toMatchObject({ until: null, lostReason: null });
   });
 
   it("reads a state, or a kept disk with no time, that it cannot say as none", () => {
     for (const wire of [
-      wireTurn("none"),
-      wireTurn("a-newer-state"),
-      wireTurn(""),
-      wireTurn("kept", null),
-      wireTurn("kept", ""),
+      wireTurn({ retention: "none" }),
+      wireTurn({ retention: "a-newer-state" }),
+      wireTurn({ retention: "" }),
+      wireTurn({ retention: "kept", retainedUntil: null }),
+      wireTurn({ retention: "kept", retainedUntil: "" }),
     ]) {
-      expect(toTurnRetentionView(wire)).toEqual({
-        state: "none",
-        until: null,
-        lostReason: null,
-      });
+      expect(toTurnRetentionView(wire)).toEqual(none);
     }
   });
 
   it("leaves the cause of a loss unnamed when it is a newer one or absent", () => {
     expect(
-      toTurnRetentionView(wireTurn("lost", null, "something-new")),
+      toTurnRetentionView(
+        wireTurn({ retention: "lost", retentionLostReason: "something-new" }),
+      ),
     ).toEqual({ state: "lost", until: null, lostReason: null });
-    expect(toTurnRetentionView(wireTurn("lost"))).toMatchObject({
+    expect(toTurnRetentionView(wireTurn({ retention: "lost" }))).toMatchObject({
       lostReason: null,
     });
   });
@@ -487,26 +495,17 @@ describe("toTurnRetentionView", () => {
 });
 
 describe("toInterruptedTurns", () => {
-  const turn = (n: number, interrupted: boolean, retention = "none") => ({
-    __typename: "AgentSessionTranscriptTurn" as const,
-    turn: n,
-    interrupted,
-    retention,
-    retainedUntil: retention === "kept" ? "2026-11-16T10:00:00Z" : null,
-    retentionLostReason: "",
-  });
-
   it("is the stopped turns by number, each with its retention, in turn order", () => {
     const turns = toInterruptedTurns([
-      turn(1, false),
-      turn(2, true, "kept"),
-      turn(3, false, "kept"),
-      turn(4, true, "saving"),
+      wireTurn({ turn: 1, interrupted: false }),
+      wireTurn({ turn: 2, retention: "kept" }),
+      wireTurn({ turn: 3, interrupted: false, retention: "kept" }),
+      wireTurn({ turn: 4, retention: "saving" }),
     ]);
     expect([...turns.keys()]).toEqual([2, 4]);
     expect(turns.get(2)).toEqual({
       state: "kept",
-      until: "2026-11-16T10:00:00Z",
+      until: RETAINED_UNTIL,
       lostReason: null,
     });
     expect(turns.get(4)?.state).toBe("saving");

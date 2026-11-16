@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AGENT_SESSION_ACTIVE_POLL_MS } from "@/features/agent-sessions/hooks/use-agent-sessions";
 import { useAgentSessionInterruptedTurns } from "@/features/agent-sessions/hooks/use-agent-session-interrupted-turns";
+import { RETAINED_UNTIL, wireTurn } from "@/test/mocks/agent-session";
 
 const refetch = vi.fn(async () => undefined);
 const startPolling = vi.fn();
@@ -24,32 +25,17 @@ beforeEach(() => {
   data = undefined;
 });
 
-interface WireTurn {
-  turn: number;
-  interrupted: boolean;
-  retention?: string;
-  retainedUntil?: string | null;
-  retentionLostReason?: string;
-}
-
-const turns = (...t: WireTurn[]) => ({
-  agentSessionTranscript: {
-    turns: t.map((turn) => ({
-      retention: "none",
-      retainedUntil: null,
-      retentionLostReason: "",
-      ...turn,
-    })),
-  },
+const turns = (...t: Array<Parameters<typeof wireTurn>[0]>) => ({
+  agentSessionTranscript: { turns: t.map((turn) => wireTurn(turn)) },
 });
 
 describe("useAgentSessionInterruptedTurns", () => {
   it("is the turns flagged interrupted", () => {
     data = turns(
       { turn: 1, interrupted: false },
-      { turn: 2, interrupted: true },
+      { turn: 2 },
       { turn: 3, interrupted: false },
-      { turn: 4, interrupted: true },
+      { turn: 4 },
     );
     const { result } = renderHook(() =>
       useAgentSessionInterruptedTurns("ags-1", "k"),
@@ -59,19 +45,9 @@ describe("useAgentSessionInterruptedTurns", () => {
 
   it("carries what became of each stopped turn's unpushed work", () => {
     data = turns(
-      { turn: 1, interrupted: true, retention: "none" },
-      {
-        turn: 2,
-        interrupted: true,
-        retention: "kept",
-        retainedUntil: "2026-11-16T10:00:00Z",
-      },
-      {
-        turn: 3,
-        interrupted: true,
-        retention: "lost",
-        retentionLostReason: "storage_full",
-      },
+      { turn: 1 },
+      { turn: 2, retention: "kept" },
+      { turn: 3, retention: "lost", retentionLostReason: "storage_full" },
     );
     const { result } = renderHook(() =>
       useAgentSessionInterruptedTurns("ags-1", "k"),
@@ -83,7 +59,7 @@ describe("useAgentSessionInterruptedTurns", () => {
     });
     expect(result.current.get(2)).toEqual({
       state: "kept",
-      until: "2026-11-16T10:00:00Z",
+      until: RETAINED_UNTIL,
       lostReason: null,
     });
     expect(result.current.get(3)).toEqual({
@@ -98,7 +74,7 @@ describe("useAgentSessionInterruptedTurns", () => {
       useAgentSessionInterruptedTurns("ags-1", "k"),
     );
     expect(result.current.size).toBe(0);
-    data = turns({ turn: 1, interrupted: false });
+    data = turns({ interrupted: false });
     rerender();
     expect(result.current.size).toBe(0);
   });
@@ -143,7 +119,7 @@ describe("useAgentSessionInterruptedTurns", () => {
   // save has ended, and stops once it has.
   describe("while a stopped turn's disk is being saved", () => {
     it("polls at the active cadence until the save ends, then stops", () => {
-      data = turns({ turn: 1, interrupted: true, retention: "saving" });
+      data = turns({ retention: "saving" });
       const { result, rerender } = renderHook(() =>
         useAgentSessionInterruptedTurns("ags-1", "k"),
       );
@@ -152,12 +128,7 @@ describe("useAgentSessionInterruptedTurns", () => {
         AGENT_SESSION_ACTIVE_POLL_MS,
       );
 
-      data = turns({
-        turn: 1,
-        interrupted: true,
-        retention: "kept",
-        retainedUntil: "2026-11-16T10:00:00Z",
-      });
+      data = turns({ retention: "kept" });
       stopPolling.mockClear();
       rerender();
       expect(result.current.get(1)?.state).toBe("kept");
@@ -168,21 +139,16 @@ describe("useAgentSessionInterruptedTurns", () => {
     it("does not poll for a kept, lost or continued disk, or a turn nobody stopped", () => {
       data = turns(
         { turn: 1, interrupted: false, retention: "saving" },
-        {
-          turn: 2,
-          interrupted: true,
-          retention: "kept",
-          retainedUntil: "2026-11-16T10:00:00Z",
-        },
-        { turn: 3, interrupted: true, retention: "lost" },
-        { turn: 4, interrupted: true, retention: "continued" },
+        { turn: 2, retention: "kept" },
+        { turn: 3, retention: "lost" },
+        { turn: 4, retention: "continued" },
       );
       renderHook(() => useAgentSessionInterruptedTurns("ags-1", "k"));
       expect(startPolling).not.toHaveBeenCalled();
     });
 
     it("lets the poll go when the page unmounts", () => {
-      data = turns({ turn: 1, interrupted: true, retention: "saving" });
+      data = turns({ retention: "saving" });
       const { unmount } = renderHook(() =>
         useAgentSessionInterruptedTurns("ags-1", "k"),
       );

@@ -128,7 +128,7 @@ type RetainedImageStore interface {
 	DeleteAgentSessionRetainedImage(ctx context.Context, id string) error
 	AgentSessionsSavingRetainedImage(ctx context.Context, sessionIDs []string) (map[string]bool, error)
 	SetAgentSessionTurnStartNote(ctx context.Context, sessionID string, turn int, note string) error
-	SetAgentSessionTurnRetentionLost(ctx context.Context, sessionID string, turn int, reason string) error
+	FinalizeAgentSessionNotRetaining(ctx context.Context, id, headSHA, deliveryNote, reason string) (store.AgentSession, store.TerminalTurnFact, error)
 }
 
 // RetentionSandboxes is the sandbox side of retention

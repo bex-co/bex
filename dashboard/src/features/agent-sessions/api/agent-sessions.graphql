@@ -293,7 +293,7 @@ mutation CancelAgentSession($id: String!) {
 }
 
 # Stop turn (ADR047 D12): ends only the running turn, never the session. The
-# call answers once the request is delivered; the turn settles within about 15
+# call answers once the request is delivered; the turn settles within a few
 # seconds as completed with the turn interrupted, and the session stays
 # steerable with its queue in place. Cancel, above, is the terminal verb.
 # AGENT_SESSION_NO_TURN_RUNNING when idle; AGENT_SESSION_TURN_STARTING while the

@@ -440,15 +440,29 @@ func (c *Completer) Run(ctx context.Context) {
 func (c *Completer) reconcileStopped(ctx context.Context) {
 	for _, id := range c.Stops.Pending(c.now()) {
 		record, err := c.Store.GetAgentSession(ctx, id)
-		if err != nil || !slices.Contains(activePhases, record.Phase) {
+		if stopWatchOver(record, err) {
 			c.Stops.Done(id)
 			continue
 		}
+		if err != nil {
+			continue // transient: look again on the next short tick
+		}
 		c.finalize(ctx, record)
-		if after, err := c.Store.GetAgentSession(ctx, id); err != nil || !slices.Contains(activePhases, after.Phase) {
+		if after, err := c.Store.GetAgentSession(ctx, id); stopWatchOver(after, err) {
 			c.Stops.Done(id)
 		}
 	}
+}
+
+// stopWatchOver reports whether a stop request no longer needs the short look:
+// its session is gone or has left its live phases. A read that failed for any
+// other reason (a transient database error) does not say so, and the request
+// stays, bounded by the watch window.
+func stopWatchOver(record store.AgentSession, err error) bool {
+	if err != nil {
+		return errors.Is(err, store.ErrNotFound)
+	}
+	return !slices.Contains(activePhases, record.Phase)
 }
 
 // activePhases are the non-terminal phases the Completer watches: a live turn
@@ -738,12 +752,16 @@ func (c *Completer) settleCompleted(ctx context.Context, record store.AgentSessi
 	var retention *store.AgentRetainedImage
 	var err error
 	keeps := outcome == turnOutcomeInterrupted && c.Retention.retains() && record.SandboxID != ""
-	openEditor := keeps && c.editorOpen(ctx, record)
-	if keeps && !openEditor {
+	switch {
+	case keeps && !c.editorOpen(ctx, record):
 		// A turn a person stopped keeps its disk (ADR047 D12): the same write
 		// that settles it begins the save.
 		final, fact, retention, err = c.finalizeRetaining(ctx, record, headSHA, note)
-	} else {
+	case keeps:
+		// An editor is open: nothing is kept, and the same write that settles
+		// the turn records why, so the API never shows it settled without it.
+		final, fact, err = c.Retention.Store.FinalizeAgentSessionNotRetaining(ctx, record.ID, headSHA, note, store.RetainedNotSavedEditorOpen)
+	default:
 		final, fact, err = c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, headSHA, note, "")
 	}
 	if err != nil {
@@ -751,12 +769,6 @@ func (c *Completer) settleCompleted(ctx context.Context, record store.AgentSessi
 			log.Printf("agent-session completer: finalize failed (session=%s): %v", record.ID, err)
 		}
 		return // retry next tick; the sandbox stays until the row is finalized
-	}
-	if openEditor {
-		// The turn's record says why its disk was not kept (the API shows it).
-		if err := c.Retention.Store.SetAgentSessionTurnRetentionLost(ctx, record.ID, record.Turns, store.RetainedNotSavedEditorOpen); err != nil {
-			log.Printf("agent-session completer: recording that an open editor kept the disk of a stopped turn failed (session=%s): %v", record.ID, err)
-		}
 	}
 	c.Metrics.observeTerminalTurn(outcome, fact)
 	log.Printf("agent-session completer: %s session=%s pr=%s head=%s dirty=%t unpushed=%d undelivered=%t", outcome, record.ID, final.PRURL, final.HeadSHA, report.Git.Dirty, report.Git.UnpushedCommits, note != "")

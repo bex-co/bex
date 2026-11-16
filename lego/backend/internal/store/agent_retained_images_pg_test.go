@@ -594,13 +594,6 @@ func TestPGTurnRecordsWhyItsDiskWasLost(t *testing.T) {
 	if turn := f.turn(session); turn.Retention != TurnRetentionKept || turn.RetentionReason != "" {
 		t.Fatalf("turn once kept = %+v", turn)
 	}
-	// A turn that holds an outcome is not overwritten by the editor-open record.
-	if err := f.s.SetAgentSessionTurnRetentionLost(ctx, session.ID, 1, RetainedNotSavedEditorOpen); err != nil {
-		t.Fatal(err)
-	}
-	if turn := f.turn(session); turn.Retention != TurnRetentionKept || turn.RetentionReason != "" {
-		t.Fatalf("a kept turn was recorded lost: %+v", turn)
-	}
 
 	// Each reason a release gives is copied onto the turn with the loss.
 	for _, reason := range []string{RetainedReleaseExpired, RetainedReleaseStorageFull, RetainedReleaseSaveFailed, RetainedReleaseCanceled} {
@@ -632,14 +625,66 @@ func TestPGTurnRecordsWhyItsDiskWasLost(t *testing.T) {
 		t.Fatalf("a continued turn changed after a later release: %+v", turn)
 	}
 
-	// With no image ever begun, the record of why is written once and holds.
+}
+
+// A stopped turn that keeps nothing because an editor is open on its sandbox is
+// settled and recorded lost, with the reason, by ONE transaction: the API never
+// reads it settled without the reason, and a settle that does not happen
+// records nothing. No image is begun.
+func TestPGStoppedTurnSettlesAndRecordsWhyNothingIsKeptTogether(t *testing.T) {
+	f := newRetainedFixture(t, "retain-editor-open")
+	ctx := context.Background()
 	editor := f.running()
 	f.stop(editor)
-	if err := f.s.SetAgentSessionTurnRetentionLost(ctx, editor.ID, 1, RetainedNotSavedEditorOpen); err != nil {
+
+	out, fact, err := f.s.FinalizeAgentSessionNotRetaining(ctx, editor.ID, "", "a delivery note", RetainedNotSavedEditorOpen)
+	if err != nil || out.Phase != "completed" || fact.Turn != 1 || out.DeliveryNote != "a delivery note" {
+		t.Fatalf("settle = %+v / %+v / %v", out, fact, err)
+	}
+	// One read: the settled session and the turn's reason agree.
+	if turn := f.apiTurn(editor); turn.Retention != TurnRetentionLost || turn.RetentionReason != RetainedNotSavedEditorOpen || turn.CompletedAt == nil {
+		t.Fatalf("turn with an open editor = %+v, want it settled and lost for editor_open", turn)
+	}
+	f.none(editor)
+	if n := f.rows(`SELECT count(*) FROM agent_session_retained_images WHERE session_id = $1`, editor.ID); n != 0 {
+		t.Fatalf("%d retained images for a turn that kept nothing", n)
+	}
+
+	// A session that has already left its live phase settles nothing and so
+	// records nothing: ErrNotFound, and the first record stands.
+	if _, _, err := f.s.FinalizeAgentSessionNotRetaining(ctx, editor.ID, "", "", RetainedReleaseExpired); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a second settle = %v, want ErrNotFound", err)
+	}
+	if turn := f.turn(editor); turn.RetentionReason != RetainedNotSavedEditorOpen {
+		t.Fatalf("a refused settle changed the record: %+v", turn)
+	}
+	// A turn nobody stopped records nothing either.
+	running := f.running()
+	if _, _, err := f.s.FinalizeAgentSessionNotRetaining(ctx, running.ID, "", "", RetainedNotSavedEditorOpen); err != nil {
 		t.Fatal(err)
 	}
-	if turn := f.turn(editor); turn.Retention != TurnRetentionLost || turn.RetentionReason != RetainedNotSavedEditorOpen {
-		t.Fatalf("turn with an open editor = %+v", turn)
+	if turn := f.turn(running); turn.Retention != "" || turn.RetentionReason != "" {
+		t.Fatalf("an unstopped turn was recorded %+v", turn)
+	}
+}
+
+// Only a stopped turn can have a save in progress, so only it is probed for
+// one: a turn nobody stopped reads as recorded even beside a saving row for its
+// number (which the settle never creates).
+func TestPGOnlyAStoppedTurnIsReadAsSaving(t *testing.T) {
+	f := newRetainedFixture(t, "retain-probe")
+	ctx := context.Background()
+	session := f.running() // not stopped
+	if _, err := f.pool.Exec(ctx, `INSERT INTO agent_session_retained_images (id, session_id, workspace_id, turn, save_deadline)
+		VALUES ($1, $2, $3, 1, now() + interval '5 minutes')`, ids.New(ids.AgentRetainedImage), session.ID, f.ws); err != nil {
+		t.Fatal(err)
+	}
+	if turn := f.apiTurn(session); turn.Retention != "" {
+		t.Fatalf("a turn nobody stopped reads %q beside a saving row, want it as recorded", turn.Retention)
+	}
+	f.stop(session)
+	if turn := f.apiTurn(session); turn.Retention != TurnRetentionSaving {
+		t.Fatalf("a stopped turn with a saving row reads %q, want saving", turn.Retention)
 	}
 }
 

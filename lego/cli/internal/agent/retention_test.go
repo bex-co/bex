@@ -17,7 +17,10 @@ limitations under the License.
 package agent
 
 import (
+	"encoding/json"
 	"net/http"
+	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -225,5 +228,63 @@ func TestGetStillShowsTheSessionWhenTheTurnReadFails(t *testing.T) {
 	}
 	if f.transcrGet == 0 {
 		t.Fatal("the turn was never read, so the failure was not exercised")
+	}
+}
+
+// The states and loss reasons bex-api's transcript names are the fixture's
+// lists, which the backend twin pins to its own constants. The CLI declares the
+// same lists and says every entry: a state or reason added to the server
+// reaches the fixture, and so this test, where the CLI is made to decide how to
+// word it (a cause with nothing to say is a plain loss, on purpose).
+func TestEveryRetentionStateAndLossReasonTheContractNamesIsSaid(t *testing.T) {
+	raw, err := os.ReadFile("../../testdata/agent-cli-contract.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var golden struct {
+		States  []string `json:"retentionStates"`
+		Reasons []string `json:"retentionLostReasons"`
+	}
+	if err := json.Unmarshal(raw, &golden); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{retentionNone, retentionSaving, retentionKept, retentionContinued, retentionLost}; !slices.Equal(golden.States, want) {
+		t.Fatalf("the contract's states %v are not the CLI's %v", golden.States, want)
+	}
+	if want := []string{lostExpired, lostStorageFull, lostSaveFailed, lostEditorOpen, lostCanceled, lostArchived, lostNotRestored}; !slices.Equal(golden.Reasons, want) {
+		t.Fatalf("the contract's loss reasons %v are not the CLI's %v", golden.Reasons, want)
+	}
+
+	until := keptUntil
+	for _, state := range golden.States {
+		got := retentionSentence(transcriptTurn{Retention: state, RetainedUntil: &until})
+		if (state == retentionNone) != (got == "") {
+			t.Errorf("state %q says %q: only none says nothing", state, got)
+		}
+	}
+	plainLoss := lostSentence("")
+	for _, reason := range golden.Reasons {
+		got := lostSentence(reason)
+		ended := reason == lostCanceled || reason == lostArchived
+		if got == "" || (got == plainLoss) != ended {
+			t.Errorf("loss reason %q says %q: only a canceled or archived session is a plain loss (%q)", reason, got, plainLoss)
+		}
+	}
+	// A reason this CLI does not know is a plain loss, never a guess.
+	if got := lostSentence("something-new"); got != plainLoss {
+		t.Errorf("an unknown loss reason says %q, want %q", got, plainLoss)
+	}
+}
+
+// Only a stopped turn is ever printed as the API sent it, so only it keeps its
+// bytes: a transcript of many turns is not copied turn by turn.
+func TestOnlyAStoppedTurnKeepsItsRawBytes(t *testing.T) {
+	var page transcriptPage
+	const body = `{"parts":[],"turns":[{"turn":1,"prompt":"a","interrupted":false},{"turn":2,"prompt":"b","interrupted":true,"retention":"lost"}],"nextAfterSeq":0}`
+	if err := json.Unmarshal([]byte(body), &page); err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Turns) != 2 || page.Turns[0].raw != nil || !strings.Contains(string(page.Turns[1].raw), `"retention":"lost"`) {
+		t.Fatalf("raw bytes kept: turn 1 %q, turn 2 %q", page.Turns[0].raw, page.Turns[1].raw)
 	}
 }

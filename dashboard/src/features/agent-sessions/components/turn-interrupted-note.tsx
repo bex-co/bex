@@ -20,7 +20,7 @@ export function TurnInterruptedNote({
   retention,
 }: {
   turn: number;
-  retention?: TurnRetentionView;
+  retention: TurnRetentionView;
 }) {
   const { t } = useTranslations();
   return (
@@ -31,7 +31,7 @@ export function TurnInterruptedNote({
       <CircleStop aria-hidden className="mt-0.5 size-3 shrink-0" />
       <div className="min-w-0 space-y-0.5">
         <p>{t("agentSessions.turnInterrupted", { turn })}</p>
-        {retention ? <TurnRetentionLine retention={retention} /> : null}
+        <TurnRetentionLine retention={retention} />
       </div>
     </div>
   );

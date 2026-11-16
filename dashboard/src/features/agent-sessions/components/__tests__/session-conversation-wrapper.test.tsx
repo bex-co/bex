@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
+import { RETAINED_UNTIL } from "@/test/mocks/agent-session";
 
 // The wrapper reads which turns Stop turn ended (ADR047 D12) and hands them to
 // the stream-only impl, which has no Apollo of its own.
@@ -11,9 +12,8 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
 }));
 
 const interrupted = vi.hoisted(() => ({
-  turns: new Map([
-    [2, { state: "kept", until: "2026-11-16T10:00:00Z", lostReason: null }],
-  ]),
+  // Set in beforeEach: this block runs before the imports it would read.
+  turns: new Map<number, { state: string; until: string | null }>(),
   calls: [] as Array<[string, string | undefined]>,
 }));
 vi.mock(
@@ -44,6 +44,12 @@ vi.mock(
 );
 
 describe("SessionConversation", () => {
+  beforeEach(() => {
+    interrupted.turns = new Map([
+      [2, { state: "kept", until: RETAINED_UNTIL }],
+    ]);
+  });
+
   it("passes the interrupted turns and their retention to the conversation, keyed by the attach signal", async () => {
     render(
       <SessionConversation

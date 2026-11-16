@@ -447,7 +447,7 @@ func TestContractFixtureDecodes(t *testing.T) {
 	}
 	// What became of a stopped turn's unpushed work (ADR047 D12, w22/m413).
 	if turn := page.Turns[0]; !turn.Interrupted || turn.Retention != "kept" || turn.RetainedUntil == nil || !turn.RetainedUntil.Equal(time.Date(2026, 11, 6, 10, 0, 0, 0, time.UTC)) ||
-		turn.RetentionLostReason != "expired" || !strings.Contains(turn.StartNote, "fresh checkout") || len(turn.raw) == 0 {
+		turn.RetentionLostReason != "expired" || len(turn.raw) == 0 {
 		t.Fatalf("stopped turn fields lost: %+v", turn)
 	}
 	var envelope struct {

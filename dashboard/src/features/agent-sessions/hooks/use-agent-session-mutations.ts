@@ -109,8 +109,10 @@ export interface UseAgentSessionMutationsResult {
   cancel: (id: string) => Promise<AgentSessionView>;
   /**
    * Stop turn (ADR047 D12): ends only the running turn, never the session. The
-   * call answers once the request is delivered; the turn settles within about
-   * 15 seconds and the session stays steerable with its queue in place.
+   * call answers once the request is delivered; the turn settles within a few
+   * seconds (the Completer's 15 s tick is only the fallback for a request
+   * another replica served) and the session stays steerable with its queue in
+   * place.
    */
   interrupt: (id: string) => Promise<AgentSessionView>;
   /** Archives a session out of the working set (ADR065 D1); still viewable. */

@@ -1189,6 +1189,49 @@ func TestAStopWithAnOpenEditorKeepsTheSandboxAndRetainsNothing(t *testing.T) {
 	}
 }
 
+// settleCounter counts the settles that go through the Completer's own store
+// and through the retention store.
+type settleCounter struct {
+	sshOpenStore
+	plain int
+}
+
+func (c *settleCounter) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, note, failure string) (store.AgentSession, store.TerminalTurnFact, error) {
+	c.plain++
+	return c.sshOpenStore.FinalizeAgentSession(ctx, id, phase, headSHA, note, failure)
+}
+
+type notRetainingSpy struct {
+	RetainedImageStore
+	reasons []string
+}
+
+func (s *notRetainingSpy) FinalizeAgentSessionNotRetaining(ctx context.Context, id, headSHA, note, reason string) (store.AgentSession, store.TerminalTurnFact, error) {
+	s.reasons = append(s.reasons, reason)
+	return s.RetainedImageStore.FinalizeAgentSessionNotRetaining(ctx, id, headSHA, note, reason)
+}
+
+// The stopped turn with an open editor is settled by ONE write that also says
+// why nothing is kept, not by the ordinary settle followed by a second write
+// that a failure or a read between the two could miss: the turn reads lost for
+// editor_open the instant it reads settled.
+func TestAStopWithAnOpenEditorIsSettledAndRecordedByOneWrite(t *testing.T) {
+	e := newRetainEnv(t)
+	counter := &settleCounter{sshOpenStore: sshOpenStore{e.pg}}
+	spy := &notRetainingSpy{RetainedImageStore: e.pg}
+	e.c.Store, e.r.Store = counter, spy
+	e.stop(t)
+	e.settle(t)
+
+	if counter.plain != 0 || len(spy.reasons) != 1 || spy.reasons[0] != store.RetainedNotSavedEditorOpen {
+		t.Fatalf("ordinary settles %d, not-retaining settles %v: want the one write that records why", counter.plain, spy.reasons)
+	}
+	turns, err := e.pg.AgentSessionTurnsWithRetention(context.Background(), e.id)
+	if err != nil || len(turns) != 1 || turns[0].CompletedAt == nil || turns[0].Retention != store.TurnRetentionLost || turns[0].RetentionReason != store.RetainedNotSavedEditorOpen {
+		t.Fatalf("turns = %+v / %v, want the settled turn already recorded lost for editor_open", turns, err)
+	}
+}
+
 // The records a save writes when it ends have a time of their own, started
 // then: a save that takes longer than that bound still records its image.
 func TestASlowSaveStillRecordsItsImage(t *testing.T) {

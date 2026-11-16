@@ -430,7 +430,7 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
       "Detail header — tooltip on the disabled Stop turn button while the sandbox starts",
   },
   "agentSessions.stopTurnSuccess": {
-    message: "Ход останавливается. Он завершится примерно за 15 секунд.",
+    message: "Ход останавливается. Он завершится через несколько секунд.",
     description: "Detail header — toast after Stop turn is accepted",
   },
   "agentSessions.steerTitle": {

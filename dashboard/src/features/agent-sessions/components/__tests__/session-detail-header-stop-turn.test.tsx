@@ -101,7 +101,7 @@ describe("Stop turn button", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(mutations.cancel).not.toHaveBeenCalled();
     expect(toastSuccess).toHaveBeenCalledWith(
-      "Stopping the turn. It ends within about 15 seconds.",
+      "Stopping the turn. It ends within a few seconds.",
     );
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
   });

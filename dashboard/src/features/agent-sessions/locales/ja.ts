@@ -417,7 +417,7 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
       "Detail header — tooltip on the disabled Stop turn button while the sandbox starts",
   },
   "agentSessions.stopTurnSuccess": {
-    message: "ターンを停止しています。約 15 秒以内に終了します。",
+    message: "ターンを停止しています。数秒以内に終了します。",
     description: "Detail header — toast after Stop turn is accepted",
   },
   "agentSessions.steerTitle": {

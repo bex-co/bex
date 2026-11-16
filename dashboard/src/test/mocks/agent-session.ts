@@ -1,3 +1,4 @@
+import type { AgentSessionTurnInterruptsQuery } from "@/graphql/definitions";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 
 /**
@@ -87,4 +88,29 @@ export function repoLessAgentSessionView(
     repo: "",
     branch: "",
   });
+}
+
+/** When a kept stopped turn's disk expires, in the tests that read one. */
+export const RETAINED_UNTIL = "2026-11-16T10:00:00Z";
+
+type WireTurn =
+  AgentSessionTurnInterruptsQuery["agentSessionTranscript"]["turns"][number];
+
+/**
+ * A turn of the transcript as bex-api's GraphQL answers the interrupted-turns
+ * read (w22/m413 t004): a stopped turn that kept nothing unless overridden.
+ * `retainedUntil` defaults to `RETAINED_UNTIL` for a kept disk and null for any
+ * other, as the server sends it.
+ */
+export function wireTurn(over: Partial<WireTurn> = {}): WireTurn {
+  const retention = over.retention ?? "none";
+  return {
+    __typename: "AgentSessionTranscriptTurn",
+    turn: 1,
+    interrupted: true,
+    retention,
+    retainedUntil: retention === "kept" ? RETAINED_UNTIL : null,
+    retentionLostReason: "",
+    ...over,
+  };
 }

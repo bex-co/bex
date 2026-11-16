@@ -52,6 +52,19 @@ func TestShapesMatchCLIAgentContract(t *testing.T) {
 		"queuedMessageList": reflect.TypeFor[QueuedMessageList](),
 	})
 
+	// The retention states and loss reasons the CLI words (ADR047 D12, w22/m413
+	// t004): a state or reason added here must reach the CLI's fixture, where
+	// its test makes the CLI decide how to say it.
+	states := []any{RetentionNone, RetentionSaving, RetentionKept, RetentionContinued, RetentionLost}
+	if !reflect.DeepEqual(golden["retentionStates"], states) {
+		t.Errorf("retention states %v, the CLI expects %v", states, golden["retentionStates"])
+	}
+	reasons := []any{RetentionLostReasonExpired, RetentionLostReasonStorageFull, RetentionLostReasonSaveFailed, RetentionLostReasonEditorOpen,
+		RetentionLostReasonCanceled, RetentionLostReasonArchived, RetentionLostReasonNotRestored}
+	if !reflect.DeepEqual(golden["retentionLostReasons"], reasons) {
+		t.Errorf("retention loss reasons %v, the CLI expects %v", reasons, golden["retentionLostReasons"])
+	}
+
 	// The error envelope is written by core.WriteErr, not a struct.
 	rec := httptest.NewRecorder()
 	core.WriteErr(rec, mapStoreError("ags-x", store.ErrNotFound))

@@ -429,7 +429,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Detail header — tooltip on the disabled Stop turn button while the sandbox starts",
   },
   "agentSessions.stopTurnSuccess": {
-    message: "Stopping the turn. It ends within about 15 seconds.",
+    message: "Stopping the turn. It ends within a few seconds.",
     description: "Detail header — toast after Stop turn is accepted",
   },
   // Steering composer

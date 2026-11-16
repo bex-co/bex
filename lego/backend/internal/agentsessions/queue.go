@@ -425,7 +425,8 @@ func (s *Service) Interrupt(ctx context.Context, sessionID string) (View, error)
 	if err := s.Sandbox.InterruptSessionTurn(ctx, record.WorkspaceID, record.ID, record.SandboxID, turn); err != nil {
 		return View{}, err
 	}
-	s.Stops.Note(record.ID, time.Now())
+	// On the service's own clock, the one the Completer reads Pending with.
+	s.Stops.Note(record.ID, s.Now())
 	return s.toView(record)
 }
 

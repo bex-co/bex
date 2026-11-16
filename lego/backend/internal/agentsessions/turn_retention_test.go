@@ -65,17 +65,6 @@ func TestTurnRetentionReadsTheStoredRecord(t *testing.T) {
 // one the API leaves out on purpose, so a new release reason cannot slip by
 // unnamed unnoticed.
 func TestEveryStoredLossReasonIsNamedOrLeftOutOnPurpose(t *testing.T) {
-	named := map[string]string{
-		store.RetainedReleaseExpired:     RetentionLostReasonExpired,
-		store.RetainedReleaseStorageFull: RetentionLostReasonStorageFull,
-		store.RetainedReleaseSaveFailed:  RetentionLostReasonSaveFailed,
-		store.RetainedReleaseAbandoned:   RetentionLostReasonSaveFailed,
-		store.RetainedNotSavedEditorOpen: RetentionLostReasonEditorOpen,
-		store.RetainedReleaseCanceled:    RetentionLostReasonCanceled,
-		store.RetainedReleaseArchived:    RetentionLostReasonArchived,
-		store.RetainedReleaseUnusable:    RetentionLostReasonNotRestored,
-		store.RetainedReleaseNewAgent:    RetentionLostReasonNotRestored,
-	}
 	// Continued is not a loss; superseded means a later turn made the disk
 	// stale, and deleted ends the session, so neither tells a reader anything.
 	leftOut := []string{store.RetainedReleaseContinued, store.RetainedReleaseSuperseded, store.RetainedReleaseDeleted}
@@ -87,16 +76,16 @@ func TestEveryStoredLossReasonIsNamedOrLeftOutOnPurpose(t *testing.T) {
 	now := time.Now()
 	for _, stored := range all {
 		got := turnRetention(store.AgentSessionTurn{Interrupted: true, Retention: store.TurnRetentionLost, RetentionReason: stored}, now).LostReason
-		if want, ok := named[stored]; ok {
-			if got != want {
-				t.Errorf("a loss recorded as %q reads %q, want %q", stored, got, want)
-			}
-		} else if !slices.Contains(leftOut, stored) || got != "" {
+		_, named := retentionLostReasons[stored]
+		switch {
+		case named && got == "":
+			t.Errorf("a loss recorded as %q is named in the table but reads no reason", stored)
+		case !named && (!slices.Contains(leftOut, stored) || got != ""):
 			t.Errorf("a loss recorded as %q reads %q: name it, or list it as left out on purpose", stored, got)
 		}
 	}
-	if len(named)+len(leftOut) != len(all) {
-		t.Errorf("%d named + %d left out is not the %d stored reasons", len(named), len(leftOut), len(all))
+	if len(retentionLostReasons)+len(leftOut) != len(all) {
+		t.Errorf("%d named + %d left out is not the %d stored reasons", len(retentionLostReasons), len(leftOut), len(all))
 	}
 }
 

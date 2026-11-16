@@ -418,7 +418,7 @@ const koAgentSessions: Record<string, TranslationEntry> = {
       "Detail header — tooltip on the disabled Stop turn button while the sandbox starts",
   },
   "agentSessions.stopTurnSuccess": {
-    message: "턴을 중지하는 중입니다. 약 15초 안에 종료됩니다.",
+    message: "턴을 중지하는 중입니다. 몇 초 안에 종료됩니다.",
     description: "Detail header — toast after Stop turn is accepted",
   },
   "agentSessions.steerTitle": {

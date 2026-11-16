@@ -421,7 +421,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "Detail header — tooltip on the disabled Stop turn button while the sandbox starts",
   },
   "agentSessions.stopTurnSuccess": {
-    message: "正在停止本轮，约 15 秒内结束。",
+    message: "正在停止本轮，几秒内结束。",
     description: "Detail header — toast after Stop turn is accepted",
   },
   // Steering composer
