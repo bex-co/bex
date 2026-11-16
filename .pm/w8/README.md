@@ -439,6 +439,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **331** — [A manager flag added to the operator manifest reaches production before the image that defines it, so the new manager pods exit until the next image pin](331.md) (~45m) ← `/qa-find-bugs-cli` 2026-11-16 read of `f114fdd9f` (w21/m421 t001), minor, pod state unverified.
+  - **Mechanism:** Argo syncs `lego/operator/config` from `main` while the image digest moves only on a pin; the old binary's `flag.Parse()` exits on `--pprof-bind-address`.
+  - **Fix:** a gitops-validate guard against manifest flags the pinned image does not define, so a flag ships code-first and manifest-second.
+
 - [ ] **330** — [A slow request that wakes a free web service is cut with the activator's 502 12–33 s after the wake, in 4 of 5 runs; Render holds it through the spin-up and serves it](blocked/330.md) (~1–2h once diagnosable, major) ← `/qa-find-bugs-cli` sweep 1298 2026-11-14. **BLOCKED (the cause needs either production activator/operator logs plus the App's Service, EndpointSlice and Ingress history around a wake (the `w8/287` gate), or a mock-cluster reproduction, which needs `sudo sysctl -w fs.inotify.max_user_instances=512 fs.inotify.max_user_watches=524288` on this host).**
   - **bex:** free whoami (port 80, and a port-10000 control), hibernated, `curl …/?wait=130s` → `502 {"error":"bad gateway"}`, `x-render-routing: no-server`, the activator's non-dial proxy error, in 4 of 5 runs. The pod stays up.
   - **Ruled out:** w8/329's header bound, port discovery, the hold-slot release and pod replacement.
