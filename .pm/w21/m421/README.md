@@ -83,3 +83,21 @@ In the last 3 days the origin answered **no 5xx on any Blueprint route** (`bex_a
 - **`object is being deleted … already exists` on a sync after a hand-delete: already fixed (t003).** `w2/m365` (shipped 2026-11-12 to 2026-11-14) gives a re-created service its own App object while the deleted one finishes. A Blueprint synced two seconds after the hand-delete of its service answered 200 and recreated the service, for a static site and for a Docker service (`hello-node`, the Nov 8 log's service), on production today. What was left of the sync's 500 was the unclassified GitHub fetch failure, fixed in `ce80e404d`.
 - **The other 500 of 2026-11-08, `recording redeploy: deploy: not found`, 09:00:07, 09:00:32 and 09:01:14 (3 lines), is the same hand-delete race from the other side.** A sync that found the deleted service's App still terminating treated it as an existing service and tried to record a redeploy against a store row that was already gone (`recordBlueprintRedeploy`, `apps/deploy.go:4390`). The sync's workspace snapshot has skipped an App Kubernetes is deleting since `49ffa1735` (2026-11-07, `w2/m256` t014), and a re-created name gets its own App object since `18b9e89d5` (`w2/m365`, 2026-11-12), so neither 500 can recur through the path the log shows; today's replays above are the evidence. The half-created `beancount-api` after a `POST /blueprints` 500 has no trace in the 30 days of bex-api logs beyond these windows and is not chased.
 - **Deploy ordering found while shipping t001: confirmed on production, already filed as [w8/331](../../w8/done/331.md).** The new `--pprof-bind-address` reached the manager's manifest through Argo at the push (09:00 UTC) while the image pin landed about 35 minutes later, so the new ReplicaSet crash-looped (`flag provided but not defined`, exit 2, 8 restarts) until the pin synced, and the CPU-limit raise did not apply until then; the old pod kept serving (`maxUnavailable: 0`). The w21 note filed for it was withdrawn as a duplicate.
+
+### 2026-11-16 — t001 on production, and the profile that t001's pprof made possible (loopx w21)
+
+- **Rollout.** `f114fdd9f` reached the manifest at 09:00 UTC and the image pin at about 09:24, so the new pod crash-looped in between (w8/331). The operator ran on the new image from 09:25 UTC: limit 2 CPUs, no throttling (`container_cpu_cfs_throttled_periods_total` ratio 0.0 over the first 4 minutes, from 0.92 to 0.99 for three days).
+- **Effect of t001 alone, first 4 minutes (`workqueue_queue_duration_seconds{name="app"}`, `controller_runtime_reconcile_time_seconds{controller="app"}`):**
+
+  | | before (6 h windows since 15 Nov 04:00) | after (4 min, pod started 09:25) |
+  | --- | --- | --- |
+  | queue wait p50 | 0.5 to 0.85 s | 0.0 s |
+  | queue wait p95 | 28 to 58 s | 0.76 s |
+  | queue wait p99 | about 412 s (3 days) | 7.1 s |
+  | reconcile p50 | 2.1 to 2.5 s | 0.54 s |
+  | reconcile p95 | 6.0 s | 2.2 s |
+  | busy workers (of 2) | 1.40 to 1.50 | 0.51 |
+  | CPU used | 0.44 to 0.50 cores (capped) | 0.56 cores |
+
+  A 6 h window follows t002's deploy; these are the first minutes.
+- **The profile (60 s, steady state, pod 5 minutes old, 33.8 CPU-seconds = 0.56 cores):** 92.7% of it is `portscan.scan` (the private-network listener sweep, 512 goroutines dialing ports of each Ready service's pod for its whole 15 s timeout, every service every 2 minutes), almost all of it connect syscalls (`syscall.Syscall6` 70% flat, `net.(*Dialer).DialContext` 87% cumulative). A 14 s profile of the pod's startup shows the same (75% in `portscan.scan`) plus 15% in bcrypt for the first pass over each registry credential (memoized afterwards, `registry/htpasswd.go`). That is what the operator was spending its 500m on, and why w4/665's move of the sweep off the worker, which fixed the worker saturation, left the CPU in the same container as the workers. No other function is over 1% of the steady-state profile.
