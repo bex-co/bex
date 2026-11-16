@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/bex-co/bex/lego/backend/internal/oauthgrant"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -93,12 +92,10 @@ func runRevokeOAuthGrant(ctx context.Context, cfg *Config, args []string, out, e
 		AuditWorkspace: cfg.OpsWorkspace,
 	}
 	res, runErr := revoker.Run(ctx, req)
-	for _, rev := range res.Revoked {
-		if rev.Marker {
-			// The pod's log is the durable record beside the audit row.
-			log.Printf("bex-api: operator revoked the OAuth grant of subject %s to client %s (hydra: %s, audited: %t)",
-				res.Subject, rev.ClientID, rev.Hydra, rev.Audited)
-		}
+	if runErr != nil && len(res.Targets) == 0 {
+		// Refused or failed before there was anything to report.
+		fmt.Fprintln(errOut, runErr)
+		return 1
 	}
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "  ")
