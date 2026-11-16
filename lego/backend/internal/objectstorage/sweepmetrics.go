@@ -43,6 +43,7 @@ type SweepMetrics struct {
 	workspaceDuration prometheus.Histogram
 	workspaces        *prometheus.CounterVec
 	lastComplete      prometheus.Gauge
+	listedBytes       *prometheus.CounterVec
 }
 
 // NewSweepMetrics registers the sweep's series on reg.
@@ -66,8 +67,12 @@ func NewSweepMetrics(reg prometheus.Registerer) *SweepMetrics {
 			Namespace: "bex", Subsystem: "usage", Name: "object_storage_sweep_last_complete_timestamp_seconds",
 			Help: "Unix time the last pass that reached every workspace without a failure ended; 0 until one has.",
 		}),
+		listedBytes: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "usage", Name: "object_storage_sweep_listed_bytes_total",
+			Help: "Estimated bytes of ListObjectsV2 responses the sweep has read from Wasabi, by region. Wasabi counts what a listing reads as egress against its free-egress ratio on the shared account (ADR112 D8), so this is the sweep's share of it; an estimate from the keys listed (about 250 bytes each), not a measured count.",
+		}, []string{"region"}),
 	}
-	reg.MustRegister(m.passDuration, m.workspaceDuration, m.workspaces, m.lastComplete)
+	reg.MustRegister(m.passDuration, m.workspaceDuration, m.workspaces, m.lastComplete, m.listedBytes)
 	return m
 }
 
@@ -90,6 +95,13 @@ func (m *SweepMetrics) observePass(took time.Duration, t passTally) {
 	m.workspaces.WithLabelValues("not_reached").Add(float64(t.notReached))
 	if result == passComplete {
 		m.lastComplete.SetToCurrentTime()
+	}
+}
+
+// observeListed records the estimated bytes of one listing page read in region.
+func (m *SweepMetrics) observeListed(region Region, bytes int64) {
+	if m != nil {
+		m.listedBytes.WithLabelValues(string(region)).Add(float64(bytes))
 	}
 }
 

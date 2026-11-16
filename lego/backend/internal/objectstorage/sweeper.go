@@ -24,6 +24,7 @@ import (
 	"runtime/debug"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -32,8 +33,11 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// The hourly sweep (ADR112 D8). For each workspace that has bucket rows it lists
-// the workspace's prefix, <tea-id>/, in each region once, and from that listing
+// The hourly sweep (ADR112 D8). Every hour, for each workspace that has bucket
+// rows, it lists the workspace's prefix, <tea-id>/, in each region whose last
+// observation is older than its gap (a small region every pass, a large one every
+// few hours at most every 72: Wasabi counts what a listing reads as egress,
+// sweepbudget.go), and from that listing
 //
 //   - attributes bytes and objects to a bucket by the second path segment and
 //     records them in object_storage_usage, which the quota gate, `bucket info`
@@ -57,10 +61,11 @@ const (
 	// the exact count, and an unbounded listing would not finish inside the hour.
 	MaxSweepListedObjects = 2 * MaxWorkspaceObjects
 
-	// sweepMinGap is how recent a workspace's usage must be for the sweep to
-	// skip listing it. Every replica schedules the sweep and one runs it at a
-	// time, so without this a second replica's tick, half an hour after the first
-	// replica's, would list everything again.
+	// sweepMinGap is how recent a region's usage must be for the sweep to skip
+	// listing it, for a region of up to SweepHourlyObjects objects; a larger one
+	// waits longer (regionGap). Every replica schedules the sweep and one runs it
+	// at a time, so without this a second replica's tick, half an hour after the
+	// first replica's, would list everything again.
 	sweepMinGap = 45 * time.Minute
 
 	// sweepRegionTimeout bounds the listing of one workspace in one region.
@@ -134,9 +139,15 @@ type Sweeper struct {
 	Exclusive Exclusive
 	// LifecycleCap is the most objects one rule deletes in one pass.
 	LifecycleCap int
-	// MinGap is how recent a workspace's usage must be for a pass to leave it
-	// alone. Zero sweeps every workspace every pass.
+	// MinGap is how recent a region's usage must be for a pass to leave it alone,
+	// when the region held up to HourlyObjects objects. Zero sweeps every region
+	// every pass.
 	MinGap time.Duration
+	// HourlyObjects and MaxGap scale MinGap with the region's size: one more hour
+	// for each HourlyObjects objects its last observation counted, at most MaxGap
+	// (sweepbudget.go). Zero turns the scaling or the ceiling off.
+	HourlyObjects int64
+	MaxGap        time.Duration
 	// RegionTimeout bounds one workspace in one region; PassTimeout the pass.
 	RegionTimeout, PassTimeout time.Duration
 	// Workers is how many workspaces a pass sweeps at once; below one it is one.
@@ -147,6 +158,10 @@ type Sweeper struct {
 	MaxListed int
 	Now       func() time.Time
 	Logf      func(format string, args ...any)
+
+	// listedBytes is the estimated size of every listing response this sweeper
+	// has read (listResponseBytes), so a pass can log what it cost.
+	listedBytes atomic.Int64
 }
 
 // NewSweeper returns the sweep over svc's regions. A service with no credential
@@ -155,6 +170,7 @@ func NewSweeper(svc *Service, repo SweepRepository) *Sweeper {
 	return &Sweeper{
 		svc: svc, repo: repo,
 		LifecycleCap: MaxLifecycleDeletesPerRule, MinGap: sweepMinGap,
+		HourlyObjects: SweepHourlyObjects, MaxGap: SweepMaxInterval - (SweepInterval - sweepMinGap),
 		RegionTimeout: sweepRegionTimeout, PassTimeout: sweepPassTimeout, Workers: sweepWorkers, MaxListed: int(MaxSweepListedObjects),
 		Now: time.Now, Logf: log.Printf,
 	}
@@ -203,6 +219,7 @@ func (sw *Sweeper) Pass(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, sw.PassTimeout)
 	defer cancel()
 	started := time.Now()
+	listedBefore := sw.listedBytes.Load()
 	workspaces, err := sw.repo.ListObjectStorageWorkspaces(ctx)
 	if err != nil {
 		return fmt.Errorf("list workspaces: %w", err)
@@ -234,8 +251,8 @@ func (sw *Sweeper) Pass(ctx context.Context) error {
 		tally.add(o)
 	}
 	took := time.Since(started)
-	sw.Logf("object storage sweep: pass over %d workspaces took %s with %d workers: %d swept, %d fresh, %d failed, %d not reached",
-		len(workspaces), took.Round(time.Millisecond), workers, tally.swept, tally.fresh, tally.failed, tally.notReached)
+	sw.Logf("object storage sweep: pass over %d workspaces took %s with %d workers: %d swept, %d fresh, %d failed, %d not reached; listings read about %d bytes",
+		len(workspaces), took.Round(time.Millisecond), workers, tally.swept, tally.fresh, tally.failed, tally.notReached, sw.listedBytes.Load()-listedBefore)
 	sw.Metrics.observePass(took, tally)
 	switch {
 	case tally.notReached > 0:
@@ -342,8 +359,11 @@ func (sw *Sweeper) PurgeWorkspace(ctx context.Context, workspaceID string) error
 
 // SweepWorkspace sweeps one live workspace, region by region, and reports
 // whether it listed any region. A region that fails keeps its old usage rows and
-// does not stop the other. A region whose usage is newer than MinGap was swept
-// by another replica and is left alone.
+// does not stop the other. A region whose usage is newer than its gap (MinGap
+// for a small one, longer for one that held many objects: regionGap) was swept
+// by another replica or not long enough ago, and is left alone. Wasabi counts
+// what a listing reads as egress, so the wait is what keeps a large region's
+// listings inside the account's free allowance (sweepbudget.go).
 func (sw *Sweeper) SweepWorkspace(ctx context.Context, workspaceID string) (listed bool, err error) {
 	buckets, err := sw.repo.ListObjectBuckets(ctx, workspaceID)
 	if err != nil {
@@ -365,11 +385,11 @@ func (sw *Sweeper) SweepWorkspace(ctx context.Context, workspaceID string) (list
 				inRegion = append(inRegion, b)
 			}
 		}
-		lastSeen, hasUsage := lastObserved(usage, region)
+		lastSeen, objects, hasUsage := regionObservation(usage, region)
 		if len(inRegion) == 0 && !hasUsage {
 			continue // nothing of this workspace was ever recorded here
 		}
-		if hasUsage && sw.Now().Sub(lastSeen) < sw.MinGap {
+		if hasUsage && sw.Now().Sub(lastSeen) < sw.regionGap(objects) {
 			continue
 		}
 		listed = true
@@ -380,14 +400,20 @@ func (sw *Sweeper) SweepWorkspace(ctx context.Context, workspaceID string) (list
 	return listed, errors.Join(errs...)
 }
 
-// lastObserved is the newest observation among the usage rows of a region.
-func lastObserved(usage []store.ObjectStorageUsage, region Region) (at time.Time, ok bool) {
+// regionObservation is what the usage rows of a region say: when it was last
+// observed (the newest row) and how many objects the live buckets and the
+// orphans held, which is what a listing of it will read.
+func regionObservation(usage []store.ObjectStorageUsage, region Region) (at time.Time, objects int64, ok bool) {
 	for _, u := range usage {
-		if u.Region == string(region) && u.ObservedAt.After(at) {
+		if u.Region != string(region) {
+			continue
+		}
+		objects += u.Objects
+		if u.ObservedAt.After(at) {
 			at, ok = u.ObservedAt, true
 		}
 	}
-	return at, ok
+	return at, objects, ok
 }
 
 // bucketTally is what the sweep counted under one usage key.
@@ -418,6 +444,9 @@ func (sw *Sweeper) sweepRegion(ctx context.Context, workspaceID string, region R
 		if err != nil {
 			return fmt.Errorf("list %s: %w", prefix, err)
 		}
+		read := listResponseBytes(prefix, page.Objects)
+		sw.listedBytes.Add(read)
+		sw.Metrics.observeListed(region, read)
 		var expired []ObjectInfo
 		var expiredOwner []*bucketTally
 		for _, o := range page.Objects {

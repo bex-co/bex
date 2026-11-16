@@ -24,7 +24,7 @@ tests:
         severity: warning
       exp_annotations:
         summary: Object storage egress is 35GB this month
-        description: "bex has served over 30 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 45% of that allowance; re-measure and reset the threshold if its storage has changed. Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
+        description: "bex has served over 30 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 45% of that allowance; re-measure and reset the threshold if its storage has changed. The total is what bex serves to tenants; Wasabi also counts what the hourly sweep's listings read (ADR112 D8), which is budgeted at 10 GB a month and watched by ObjectStorageSweepListingHigh. Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
   - eval_time: 30m
     alertname: ObjectStoragePublicEgressCritical
     exp_alerts: []
@@ -58,7 +58,7 @@ tests:
         severity: warning
       exp_annotations:
         summary: Object storage egress is 35GB this month
-        description: "bex has served over 30 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 45% of that allowance; re-measure and reset the threshold if its storage has changed. Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
+        description: "bex has served over 30 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 45% of that allowance; re-measure and reset the threshold if its storage has changed. The total is what bex serves to tenants; Wasabi also counts what the hourly sweep's listings read (ADR112 D8), which is budgeted at 10 GB a month and watched by ObjectStorageSweepListingHigh. Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
 - name: above 50 GB for five minutes is critical and the warning fires too
   interval: 1m
   input_series:
@@ -75,7 +75,7 @@ tests:
         severity: critical
       exp_annotations:
         summary: Object storage egress is 55GB this month, near the fair-use limit
-        description: "bex has served over 50 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 75% of that allowance; re-measure and reset the threshold if its storage has changed. Scale objectgw to zero now with the kill switch (one reviewed change in lego/operator/config/prod/kustomization.yaml), then find the bucket. Runbook: docs/runbooks/objectgw-kill-switch.md"
+        description: "bex has served over 50 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 75% of that allowance; re-measure and reset the threshold if its storage has changed. The total is what bex serves to tenants; Wasabi also counts what the hourly sweep's listings read (ADR112 D8), up to a 10 GB monthly budget on top of it, so the account is over its allowance at about 57 GB of this total. Scale objectgw to zero now with the kill switch (one reviewed change in lego/operator/config/prod/kustomization.yaml), then find the bucket. Runbook: docs/runbooks/objectgw-kill-switch.md"
   - eval_time: 30m
     alertname: ObjectStoragePublicEgressHigh
     exp_alerts:
@@ -83,7 +83,7 @@ tests:
         severity: warning
       exp_annotations:
         summary: Object storage egress is 55GB this month
-        description: "bex has served over 30 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 45% of that allowance; re-measure and reset the threshold if its storage has changed. Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
+        description: "bex has served over 30 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 45% of that allowance; re-measure and reset the threshold if its storage has changed. The total is what bex serves to tenants; Wasabi also counts what the hourly sweep's listings read (ADR112 D8), which is budgeted at 10 GB a month and watched by ObjectStorageSweepListingHigh. Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
 - name: two replicas publish the same total and fire once
   interval: 1m
   input_series:
@@ -99,7 +99,7 @@ tests:
         severity: warning
       exp_annotations:
         summary: Object storage egress is 35GB this month
-        description: "bex has served over 30 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 45% of that allowance; re-measure and reset the threshold if its storage has changed. Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
+        description: "bex has served over 30 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 45% of that allowance; re-measure and reset the threshold if its storage has changed. The total is what bex serves to tenants; Wasabi also counts what the hourly sweep's listings read (ADR112 D8), which is budgeted at 10 GB a month and watched by ObjectStorageSweepListingHigh. Find the source on the Billing and metering dashboard (Object storage egress: month to date, bytes by origin, requests by result), then scale objectgw to zero if public reads are the cause. Runbook: docs/runbooks/objectgw-kill-switch.md"
 - name: the month reset clears both alerts
   interval: 1m
   input_series:
@@ -113,10 +113,62 @@ tests:
         severity: critical
       exp_annotations:
         summary: Object storage egress is 55GB this month, near the fair-use limit
-        description: "bex has served over 50 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 75% of that allowance; re-measure and reset the threshold if its storage has changed. Scale objectgw to zero now with the kill switch (one reviewed change in lego/operator/config/prod/kustomization.yaml), then find the bucket. Runbook: docs/runbooks/objectgw-kill-switch.md"
+        description: "bex has served over 50 GB from the object store this month. Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account is shared with the platform's backups, so a limit on it would reach the restore paths. The shared account stored 67 GB when measured on 2026-11-16 (w21/m417 t008), so this is about 75% of that allowance; re-measure and reset the threshold if its storage has changed. The total is what bex serves to tenants; Wasabi also counts what the hourly sweep's listings read (ADR112 D8), up to a 10 GB monthly budget on top of it, so the account is over its allowance at about 57 GB of this total. Scale objectgw to zero now with the kill switch (one reviewed change in lego/operator/config/prod/kustomization.yaml), then find the bucket. Runbook: docs/runbooks/objectgw-kill-switch.md"
   - eval_time: 150m
     alertname: ObjectStoragePublicEgressHigh
     exp_alerts: []
   - eval_time: 150m
     alertname: ObjectStoragePublicEgressCritical
     exp_alerts: []
+# w21/095: the sweep's listing volume (docs/ADR112-object-storage.md D8). The
+# counter is the sweep's estimated response bytes; the alert reads its increase
+# over three days against 1 GB, the 10 GB a month budget. Series are sampled
+# hourly here.
+- name: a sweep reading 20 MB an hour passes 1 GB in three days and warns
+  interval: 1h
+  input_series:
+  - series: bex_usage_object_storage_sweep_listed_bytes_total{job="bex-api",instance="api-1",region="oregon"}
+    values: 0+20000000x120
+  alert_rule_test:
+  - eval_time: 24h
+    alertname: ObjectStorageSweepListingHigh
+    exp_alerts: []
+  - eval_time: 100h
+    alertname: ObjectStorageSweepListingHigh
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: The object storage sweep read 1.44GB of listings in three days
+        description: "The hourly sweep's listings of Wasabi read over 1 GB in the last three days, a pace above the 10 GB a month it is budgeted (ADR112 D8). Wasabi counts what a listing reads as egress, and the account's free egress is its active storage (67 GB when measured on 2026-11-16), shared with the platform's backups. Find the workspaces on the Billing and metering dashboard (Object storage sweep: listing bytes) and in bex-api's logs (the pass line says what its listings read). The sweep already lists a region less often the more objects it held (at most every 72 hours); the next step is keeping object counts incrementally on writes so a listing is only a reconciliation, or a lower object cap, both named in ADR112 D8."
+- name: the planned scale, 8.6 GB a month, stays quiet
+  interval: 1h
+  input_series:
+  # 8.6 GB over 720 hours is about 12 MB an hour: 860 MB in three days.
+  - series: bex_usage_object_storage_sweep_listed_bytes_total{job="bex-api",instance="api-1",region="oregon"}
+    values: 0+12000000x240
+  alert_rule_test:
+  - eval_time: 200h
+    alertname: ObjectStorageSweepListingHigh
+    exp_alerts: []
+- name: the replica that holds the lock changes and the counters restart from zero
+  interval: 1h
+  input_series:
+  # Two replicas hand the sweep's lock over every 24 hours and a pod restart
+  # resets its counter; the sum of the increases is still 20 MB an hour.
+  - series: bex_usage_object_storage_sweep_listed_bytes_total{job="bex-api",instance="api-1",region="oregon"}
+    values: 0+20000000x24 _x24 0+20000000x24 _x48
+  - series: bex_usage_object_storage_sweep_listed_bytes_total{job="bex-api",instance="api-2",region="oregon"}
+    values: _x24 0+20000000x24 _x24 0+20000000x48
+  alert_rule_test:
+  - eval_time: 24h
+    alertname: ObjectStorageSweepListingHigh
+    exp_alerts: []
+  - eval_time: 100h
+    alertname: ObjectStorageSweepListingHigh
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: The object storage sweep read 1.423GB of listings in three days
+        description: "The hourly sweep's listings of Wasabi read over 1 GB in the last three days, a pace above the 10 GB a month it is budgeted (ADR112 D8). Wasabi counts what a listing reads as egress, and the account's free egress is its active storage (67 GB when measured on 2026-11-16), shared with the platform's backups. Find the workspaces on the Billing and metering dashboard (Object storage sweep: listing bytes) and in bex-api's logs (the pass line says what its listings read). The sweep already lists a region less often the more objects it held (at most every 72 hours); the next step is keeping object counts incrementally on writes so a listing is only a reconciliation, or a lower object cap, both named in ADR112 D8."

@@ -7112,6 +7112,41 @@ dashboards:
                  "legendFormat": "{{result}}"
                 }
               ]
+            },
+            {
+             "id": 15,
+             "type": "timeseries",
+             "title": "Object storage sweep: listing bytes",
+             "description": "Estimated bytes of ListObjectsV2 responses the hourly sweep read from Wasabi over the trailing three days (about 250 bytes a listed object; ADR112 D8). Wasabi counts what a listing reads as egress against the shared account's free allowance, so this is the sweep's share of the 67 GB. The line is the ObjectStorageSweepListingHigh threshold, 1 GB in three days, the 10 GB a month budget; the planned scale reads about 0.9 GB. Zero before the first pass, and on a replica that does not hold the sweep's lock.",
+             "gridPos": { "h": 9, "w": 8, "x": 0, "y": 63 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "decbytes",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1000000000 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum(increase(bex_usage_object_storage_sweep_listed_bytes_total[3d]))",
+                 "legendFormat": "three days"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum by (region) (increase(bex_usage_object_storage_sweep_listed_bytes_total[3d]))",
+                 "legendFormat": "{{region}}"
+                }
+              ]
             }
           ]
         }

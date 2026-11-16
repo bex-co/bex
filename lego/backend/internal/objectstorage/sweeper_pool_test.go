@@ -47,10 +47,11 @@ type poolRepo struct {
 	order    []string // the order the store lists live workspaces: by id
 	buckets  map[string]string
 	observed map[string]time.Time
+	objects  map[string]int64 // what a workspace's last observation counted
 }
 
 func newPoolRepo(n int) *poolRepo {
-	r := &poolRepo{buckets: map[string]string{}, observed: map[string]time.Time{}}
+	r := &poolRepo{buckets: map[string]string{}, observed: map[string]time.Time{}, objects: map[string]int64{}}
 	for range n {
 		ws := ids.New(ids.Workspace)
 		r.order = append(r.order, ws)
@@ -80,7 +81,7 @@ func (r *poolRepo) ListObjectStorageUsage(_ context.Context, ws string) ([]store
 	if !ok {
 		return nil, nil
 	}
-	return []store.ObjectStorageUsage{{BucketID: r.buckets[ws], WorkspaceID: ws, Region: string(objectstorage.Oregon), ObservedAt: at}}, nil
+	return []store.ObjectStorageUsage{{BucketID: r.buckets[ws], WorkspaceID: ws, Region: string(objectstorage.Oregon), Objects: r.objects[ws], ObservedAt: at}}, nil
 }
 
 func (r *poolRepo) RecordObjectStorageObservation(ctx context.Context, ws, _ string, _ []store.ObjectStorageUsage, at time.Time) error {
@@ -538,8 +539,8 @@ func TestEverySweepMetricIsKeptByTheScrapeJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(families) != 4 {
-		t.Fatalf("the sweep registered %d metric families after a pass, want 4", len(families))
+	if len(families) != 5 {
+		t.Fatalf("the sweep registered %d metric families after a pass, want 5", len(families))
 	}
 	for _, f := range families {
 		if !keep.MatchString(f.GetName()) {
