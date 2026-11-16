@@ -318,6 +318,29 @@ func (s *Service) labelBlueprintOwnership(ctx context.Context, blueprintID strin
 	return nil
 }
 
+// stampBlueprintEnv records on a service's App which env vars its manifest
+// declares with a value of their own (core.AnnotationBlueprintEnv), so a literal
+// an earlier sync wrote and this manifest no longer names reads as the
+// ordinary variable Render keeps. It patches only when the record differs, and
+// fails the sync like a failed label does.
+func (s *Service) stampBlueprintEnv(ctx context.Context, app *appv1alpha1.App, owned []string) error {
+	want := strings.Join(owned, ",")
+	if have, ok := app.GetAnnotations()[core.AnnotationBlueprintEnv]; ok && have == want {
+		return nil
+	}
+	base := app.DeepCopy()
+	annotations := app.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[core.AnnotationBlueprintEnv] = want
+	app.SetAnnotations(annotations)
+	if err := s.Client.Patch(ctx, app, client.MergeFrom(base)); err != nil {
+		return fmt.Errorf("recording the declared environment on %s/%s: %w", app.GetNamespace(), app.GetName(), err)
+	}
+	return nil
+}
+
 // stampBlueprintOwnership records req.BlueprintID on every resource the apply
 // converged — create, adopt, and takeover all land here as a fail-loud
 // backfill for no-op short circuits that already claimed at write time
@@ -377,6 +400,9 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 		for _, svc := range st.services {
 			if app := services[svc.req.Name]; app != nil {
 				if err := claimAndLabel(store.BlueprintClaimService, svc.req.Name, app); err != nil {
+					return err
+				}
+				if err := s.stampBlueprintEnv(ctx, app, svc.ownedEnvNames()); err != nil {
 					return err
 				}
 			}

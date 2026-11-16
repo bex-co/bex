@@ -265,6 +265,16 @@ const LabelEnvironment = "app.bex.co/environment-id"
 // BLUEPRINT_RESOURCE_CONFLICT unless the takeover confirmation transfers it.
 const LabelBlueprint = "bex.co/blueprint-id"
 
+// AnnotationBlueprintEnv lists, on a Blueprint-managed App, the env var names
+// the Blueprint's manifest declared with a value of their own at its last
+// sync (comma-joined, sorted; present, possibly empty, once a sync has stamped
+// it). A literal on spec.Env that is not listed was declared by an earlier
+// manifest and left out of this one: Render keeps such a variable on the
+// service as an ordinary one, so env writes may change or delete it
+// (w21/m421). An App with no annotation (synced before it existed) treats
+// every literal as declared, as before.
+const AnnotationBlueprintEnv = "bex.co/blueprint-env"
+
 // LabelNetworkIsolation carries an App CR's environment id (w6/m19
 // protected-environment ACLs), but ONLY while that environment currently has
 // networkIsolationEnabled=true — unlike LabelEnvironment above (unconditional

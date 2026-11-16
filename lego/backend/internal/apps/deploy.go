@@ -706,6 +706,34 @@ type parsedService struct {
 	ungrouped              bool
 }
 
+// ownedEnvNames are the env var names the service's manifest declares with a
+// value of its own, sorted: its literals and its fromDatabase/fromService
+// references, which a sync writes to spec.Env. sync:false, generateValue and
+// fromGroup entries live in the mutable store or a group and are not listed.
+func (p parsedService) ownedEnvNames() []string {
+	names := map[string]struct{}{}
+	for _, e := range p.req.Env {
+		names[e.Name] = struct{}{}
+	}
+	for key := range p.env.literals {
+		names[key] = struct{}{}
+	}
+	for _, r := range p.env.refVars {
+		names[r.Key] = struct{}{}
+	}
+	for _, r := range p.databaseRefs {
+		names[r.Key] = struct{}{}
+	}
+	for _, r := range p.kvRefs {
+		names[r.Key] = struct{}{}
+	}
+	for _, r := range p.hostRefs {
+		names[r.key] = struct{}{}
+	}
+	delete(names, "")
+	return slices.Sorted(maps.Keys(names))
+}
+
 // hostRef is a deferred fromService host/hostport/port reference: the env key,
 // the sibling render.yaml name it targets, and the property. The hostname is
 // the sibling's slug, minted at create (docs/ADR041-service-addresses.md D3),

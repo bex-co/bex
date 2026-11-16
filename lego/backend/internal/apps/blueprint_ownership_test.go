@@ -546,3 +546,62 @@ func TestTheOwnershipStampLabelsTheCopyTheApplyResolved(t *testing.T) {
 		}
 	}
 }
+
+const ownershipEnvManifest = `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+    envVars:
+      - key: MESSAGE
+        value: hi
+      - key: KEEPME
+        value: "1"
+`
+
+// A sync records which env vars its manifest declares on the App
+// (core.AnnotationBlueprintEnv), so a variable a later manifest leaves out is
+// read as the ordinary one Render keeps: it stays on spec.Env with its value
+// and drops out of the record, which is what lets the env verbs free it
+// (w21/m421, production 2026-11-16: DELETE answered 409 "declared in this
+// service's render.yaml manifest" for a variable the manifest no longer named).
+func TestASyncRecordsWhichEnvVarsItsManifestDeclares(t *testing.T) {
+	svc, _ := ownershipService(t)
+	svc.GitFetcher = fakeBlueprintFetcher{contents: ownershipEnvManifest, sha: "abc1234"}
+	ctx := ownershipCtx()
+	bp, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/acme/a", Branch: "main"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	declared := func() (string, []string) {
+		var apps appv1alpha1.AppList
+		if err := svc.Client.List(ctx, &apps); err != nil {
+			t.Fatal(err)
+		}
+		for i := range apps.Items {
+			if core.AppPublicName(&apps.Items[i]) != "web" {
+				continue
+			}
+			var names []string
+			for _, e := range apps.Items[i].Spec.Env {
+				names = append(names, e.Name)
+			}
+			slices.Sort(names)
+			return apps.Items[i].Annotations[core.AnnotationBlueprintEnv], names
+		}
+		t.Fatal("service web not found")
+		return "", nil
+	}
+	if record, onSpec := declared(); record != "KEEPME,MESSAGE" || !slices.Equal(onSpec, []string{"KEEPME", "MESSAGE"}) {
+		t.Fatalf("after the first sync: record %q, spec.Env %v; want both declared", record, onSpec)
+	}
+
+	// The manifest drops MESSAGE: the variable stays, and is no longer declared.
+	dropped := strings.Replace(ownershipEnvManifest, "      - key: MESSAGE\n        value: hi\n", "", 1)
+	if _, err := svc.SyncBlueprint(ctx, bp.ID, "tea-a", dropped, "", nil); err != nil {
+		t.Fatalf("sync without MESSAGE: %v", err)
+	}
+	if record, onSpec := declared(); record != "KEEPME" || !slices.Equal(onSpec, []string{"KEEPME", "MESSAGE"}) {
+		t.Fatalf("after the manifest dropped MESSAGE: record %q, spec.Env %v; want the record to name KEEPME only and MESSAGE kept", record, onSpec)
+	}
+}

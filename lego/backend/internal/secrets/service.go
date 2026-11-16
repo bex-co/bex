@@ -268,12 +268,16 @@ func manifestEnv(a *appv1alpha1.App) map[string]string {
 	if a == nil || len(a.Spec.Env) == 0 {
 		return nil
 	}
+	declared, tracked := declaredBlueprintEnv(a)
 	out := make(map[string]string, len(a.Spec.Env))
 	for _, item := range a.Spec.Env {
 		switch {
 		case item.Name == "":
 			// A sync before w8/302 could write one; no process reads it.
 		case item.ValueFrom == nil:
+			if tracked && !declared[item.Name] && core.ValidEnvKey(item.Name) {
+				continue // retained: left out of the manifest, see retainedEnv
+			}
 			out[item.Name] = item.Value
 		case item.ValueFrom.SecretKeyRef != nil:
 			out[item.Name] = ""
@@ -324,7 +328,8 @@ func (s *Service) resolveManifestRefs(ctx context.Context, a *appv1alpha1.App, m
 // about.
 func (s *Service) mergeManifestEnv(ctx context.Context, env map[string]string, a *appv1alpha1.App, withValues bool) (map[string]string, map[string]bool, error) {
 	manifest := manifestEnv(a)
-	if len(manifest) == 0 {
+	retained := retainedEnv(a)
+	if len(manifest) == 0 && len(retained) == 0 {
 		return env, nil, nil
 	}
 	if withValues {
@@ -332,8 +337,13 @@ func (s *Service) mergeManifestEnv(ctx context.Context, env map[string]string, a
 			return nil, nil, err
 		}
 	}
-	merged := make(map[string]string, len(env)+len(manifest))
+	merged := make(map[string]string, len(env)+len(manifest)+len(retained))
 	for k, v := range env {
+		merged[k] = v
+	}
+	// A retained literal is what the process holds, so it shows beside the
+	// store's variables, and not as the manifest's (not in owned).
+	for k, v := range retained {
 		merged[k] = v
 	}
 	owned := make(map[string]bool, len(manifest))
@@ -609,6 +619,10 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err := refuseManifestKeys(a, keys...); err != nil {
 		return nil, err
 	}
+	// A whole-set replace decides every variable, a retained literal included.
+	if err := s.adoptRetainedEnv(ctx, a, service); err != nil {
+		return nil, err
+	}
 	env := make(map[string]string, len(vars))
 	for _, v := range vars {
 		key := strings.TrimSpace(v.Key)
@@ -696,6 +710,9 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if err := refuseManifestKeys(a, key); err != nil {
 		return EnvVarView{}, err
 	}
+	if err := s.adoptRetainedEnv(ctx, a, service, key); err != nil {
+		return EnvVarView{}, err
+	}
 	value, err := resolveValue(key, write.Value, write.GenerateValue)
 	if err != nil {
 		return EnvVarView{}, err
@@ -737,6 +754,9 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 		return err
 	}
 	if err := refuseManifestKeys(a, key); err != nil {
+		return err
+	}
+	if err := s.adoptRetainedEnv(ctx, a, service, key); err != nil {
 		return err
 	}
 	// An invalid-name literal a pre-w8/027 create left on spec.Env is removed
@@ -1277,12 +1297,21 @@ func envSecretName(service string) string { return service + "-env" }
 // the Deployment; bumping spec.restartedAt rolls the pods, since envFrom is read
 // only at pod creation — the same no-downtime mechanism as the restart verb.
 func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision) error {
+	return s.materializeEnvEditing(ctx, a, env, revision, nil)
+}
+
+// materializeEnvEditing is materializeEnv with an edit of the App inside the
+// same locked patch, for a write that also changes spec.Env.
+func (s *Service) materializeEnvEditing(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision, edit func(*appv1alpha1.App)) error {
 	if stagedWrite(ctx) {
-		return s.stageEnvWrite(ctx, a, env, revision, nil)
+		return s.stageEnvWrite(ctx, a, env, revision, edit)
 	}
 	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
 		if err := s.projectEnv(ctx, a, env, revision); err != nil {
 			return err
+		}
+		if edit != nil {
+			edit(a)
 		}
 		s.bumpRestart(a)
 		return nil
