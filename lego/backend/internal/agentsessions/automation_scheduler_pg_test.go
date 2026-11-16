@@ -535,7 +535,7 @@ func TestAutomationSchedulerIdempotentReplay(t *testing.T) {
 	if err != nil || again.ID != first.ID || again.Created == nil || *again.Created {
 		t.Fatalf("replay = %+v err=%v", again, err)
 	}
-	if err := e.svc.fireAutomationRun(context.Background(), c); err != nil {
+	if err := e.svc.fireAutomationRun(context.Background(), AuditVerbFireAgentAutomation, c); err != nil {
 		t.Fatal(err)
 	}
 	settled := e.latestRun(a.ID)
@@ -764,7 +764,7 @@ func TestAutomationDecideRunBranches(t *testing.T) {
 		"no creator":          {noCreator, store.AutomationRunDenied},
 		"unreadable template": {brokenTemplate, store.AutomationRunFailedCreate},
 	} {
-		outcome, session, errText, err := e.svc.decideAutomationRun(ctx, store.ClaimedRun{Automation: tc.row, Run: run})
+		outcome, session, errText, err := e.svc.decideAutomationRun(ctx, AuditVerbFireAgentAutomation, store.ClaimedRun{Automation: tc.row, Run: run})
 		if err != nil || outcome != tc.outcome || session != "" || errText == "" {
 			t.Errorf("%s: outcome=%q session=%q err text=%q err=%v, want %s with a reason", name, outcome, session, errText, err, tc.outcome)
 		}
@@ -774,7 +774,7 @@ func TestAutomationDecideRunBranches(t *testing.T) {
 	// claimed for the recovery pass.
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
-	if outcome, _, _, err := e.svc.decideAutomationRun(canceled, store.ClaimedRun{Automation: a, Run: run}); err == nil || outcome != "" {
+	if outcome, _, _, err := e.svc.decideAutomationRun(canceled, AuditVerbFireAgentAutomation, store.ClaimedRun{Automation: a, Run: run}); err == nil || outcome != "" {
 		t.Errorf("canceled context decided %q err=%v, want a transient error", outcome, err)
 	}
 

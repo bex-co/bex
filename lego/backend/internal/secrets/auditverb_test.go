@@ -171,6 +171,10 @@ func TestDeniedSensitiveReadsRecordTheirOwnAuditVerbName(t *testing.T) {
 			_, err := s.ListEnvVars(ctx, "web")
 			return err
 		}},
+		{"ListEnvVarsPage", AuditVerbListEnvVarsPage, func(s *Service, ctx context.Context) error {
+			_, err := s.ListEnvVarsPage(ctx, "web", "", 10)
+			return err
+		}},
 		{"EnvVarValue", "secrets.EnvVarValue", func(s *Service, ctx context.Context) error {
 			_, err := s.EnvVarValue(ctx, "web", "K")
 			return err
@@ -336,6 +340,39 @@ func TestGraphQLEnvVarsRecordsAViewOnlyWhenValuesAreSelected(t *testing.T) {
 		}
 		if views != tc.views {
 			t.Errorf("%s: %d view events, want %d", tc.query, views, tc.views)
+		}
+	}
+}
+
+// w21/093: GraphQL's envVars field calls the paged list from its resolver's
+// closure, so a refused query recorded the closure's name
+// ("secrets.graphQLQuery.func1"). It records the verb REST and MCP record for the
+// same list, whether the query selects values or keys only.
+func TestRefusedGraphQLEnvVarsRecordsTheVerbRESTAndMCPRecord(t *testing.T) {
+	if AuditVerbListEnvVarsPage != "secrets.ListEnvVarsPage" {
+		t.Fatalf("the verb is spelled %q, which is not the one REST and MCP's ListEnvVarsPage derive", AuditVerbListEnvVarsPage)
+	}
+	for _, query := range []string{
+		`{ envVars(serviceId:"web") { envVar { key } cursor } }`,
+		`{ envVars(serviceId:"web") { envVar { key value } } }`,
+	} {
+		sink := &recordingAuditSink{}
+		svc := auditedService(false, sink)
+		schema, err := graphql.NewSchema(graphql.SchemaConfig{
+			Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res := graphql.Do(graphql.Params{Schema: schema, Context: auditCtx(), RequestString: query}); !res.HasErrors() {
+			t.Fatalf("%s: a refused query returned data", query)
+		}
+		if len(sink.events) != 1 {
+			t.Fatalf("%s: recorded %d audit events, want exactly 1: %+v", query, len(sink.events), sink.events)
+		}
+		ev := sink.events[0]
+		if ev.Verb != AuditVerbListEnvVarsPage || ev.Outcome != core.AuditDenied || ev.Target != core.ServiceTarget("web") {
+			t.Errorf("%s: recorded %s %s on %s, want a denied %s on the service", query, ev.Outcome, ev.Verb, ev.Target, AuditVerbListEnvVarsPage)
 		}
 	}
 }

@@ -73,7 +73,7 @@ func (s *Service) RunAgentAutomationNow(ctx context.Context, ownerID, ref string
 	if !inserted {
 		return AgentAutomationRun{}, errAutomationConflict("a run for this instant already exists; try again")
 	}
-	if err := s.fireAutomationRun(ctx, store.ClaimedRun{Run: run, Automation: row}); err != nil {
+	if err := s.fireAutomationRun(ctx, AuditVerbRunAgentAutomationNow, store.ClaimedRun{Run: run, Automation: row}); err != nil {
 		return AgentAutomationRun{}, err
 	}
 	settled, err := s.storedRun(ctx, run)

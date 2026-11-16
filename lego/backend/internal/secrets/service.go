@@ -205,6 +205,28 @@ func (s *Service) scope(ctx context.Context, relation, service string) (*appv1al
 	if err != nil {
 		return nil, nil, "", err // ErrNotFound for unknown services, exactly like Get
 	}
+	return s.scopeAuthorized(ctx, relation, a, service)
+}
+
+// scopeAs is scope with the audit verb named by the caller, for a read that a
+// GraphQL resolver closure reaches: a derived verb would be the closure's name
+// ("secrets.graphQLQuery.func1"), not the verb every surface records
+// (AuditVerbListEnvVarsPage, w21/093). Its parameter names are scope's, which the
+// static guards in events/vocabulary_test.go and m66_secretfile_keying_test.go
+// read.
+func (s *Service) scopeAs(ctx context.Context, verb, relation, service string) (*appv1alpha1.App, context.Context, string, error) {
+	a, err := s.AuthorizeAppAs(ctx, verb, relation, service)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	return s.scopeAuthorized(ctx, relation, a, service)
+}
+
+// scopeAuthorized is what scope and scopeAs do once a is authorized. Its
+// service-named result is the store's canonical name for the service, so its
+// parameter is not named service: the key-canonicalization sweep reads that name
+// as the caller's raw token.
+func (s *Service) scopeAuthorized(ctx context.Context, relation string, a *appv1alpha1.App, requested string) (*appv1alpha1.App, context.Context, string, error) {
 	// A read of a service whose deletion is accepted is as absent as the service
 	// itself (w3/m81, w4/503); a write keeps reaching the CR being torn down.
 	if relation == core.RelCanView || relation == core.RelCanViewSensitive {
@@ -228,8 +250,8 @@ func (s *Service) scope(ctx context.Context, relation, service string) (*appv1al
 			}
 		}
 	}
-	ctx, service = scopeApp(ctx, a, service)
-	return a, ctx, service, nil
+	ctx, canonical := scopeApp(ctx, a, requested)
+	return a, ctx, canonical, nil
 }
 
 // readMap fetches exactly the map under the request's tenant. Legacy
@@ -401,11 +423,18 @@ func (s *Service) listEnvVars(ctx context.Context, service string, withValues bo
 	if err != nil {
 		return nil, nil, err
 	}
+	views, err := s.envViewsOf(ctx, env, a, revision, withValues)
+	return views, a, err
+}
+
+// envViewsOf is the manifest-merged, sorted views of an environment the caller
+// is already authorized to read.
+func (s *Service) envViewsOf(ctx context.Context, env map[string]string, a *appv1alpha1.App, revision string, withValues bool) ([]EnvVarView, error) {
 	merged, owned, err := s.mergeManifestEnv(ctx, env, a, withValues)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return envVarViews(merged, revision, owned), a, nil
+	return envVarViews(merged, revision, owned), nil
 }
 
 // recordValuesViewed records Render's ViewEnvVarValuesEvent for a read that
@@ -430,6 +459,23 @@ func (s *Service) readAuthorizedEnv(ctx context.Context, service string) (map[st
 	if err != nil {
 		return nil, nil, "", err
 	}
+	return s.readScopedEnv(ctx, a, service)
+}
+
+// readAuthorizedEnvAs is readAuthorizedEnv with the audit verb named by the
+// caller; see scopeAs.
+func (s *Service) readAuthorizedEnvAs(ctx context.Context, verb, service string) (map[string]string, *appv1alpha1.App, string, error) {
+	a, ctx, service, err := s.scopeAs(ctx, verb, core.RelCanViewSensitive, service)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	return s.readScopedEnv(ctx, a, service)
+}
+
+// readScopedEnv reads the environment of a, which scope or scopeAs authorized and
+// scoped ctx to. Its second name parameter is the store's canonical name for the
+// service, so it is not called service: see scopeAuthorized.
+func (s *Service) readScopedEnv(ctx context.Context, a *appv1alpha1.App, storeName string) (map[string]string, *appv1alpha1.App, string, error) {
 	// codex round-8 #8: every env value is a secret reveal, so re-assert the
 	// relation uncached before reading OpenBao — a member revoked within the
 	// last PositiveTTL must not reveal one last value off a stale positive.
@@ -438,13 +484,13 @@ func (s *Service) readAuthorizedEnv(ctx context.Context, service string) (map[st
 	}
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
-		env, err := s.readMap(ctx, envPath(service))
+		env, err := s.readMap(ctx, envPath(storeName))
 		if err != nil {
 			return nil, nil, "", err
 		}
 		return env, a, "", nil
 	}
-	env, revision, err := s.readVersionedEnvMap(ctx, envPath(service), versioned)
+	env, revision, err := s.readVersionedEnvMap(ctx, envPath(storeName), versioned)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -474,6 +520,13 @@ func secretChanged() error {
 	return fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
 }
 
+// AuditVerbListEnvVarsPage is the audit verb of a paged env-var list on every
+// surface, named rather than derived: GraphQL's envVars field reaches the read
+// from a resolver closure, whose name ("secrets.graphQLQuery.func1") a derived
+// verb would record (w21/093). It is spelled as ListEnvVarsPage's own, which
+// core.callerVerb derives for REST and MCP.
+const AuditVerbListEnvVarsPage = "secrets.ListEnvVarsPage"
+
 // ListEnvVarsPage returns a stable keyset page of a service's environment
 // variables. after is the prior page's item cursor (the env-var key). Paging
 // policy: see applyPageLimits.
@@ -488,9 +541,13 @@ func (s *Service) ListEnvVarsPage(ctx context.Context, service, after string, li
 
 // listEnvVarsPage is ListEnvVarsPage without the view record, for GraphQL's
 // field, which records only when the query selects values and resolves
-// references only then.
+// references only then. Both surfaces authorize under AuditVerbListEnvVarsPage.
 func (s *Service) listEnvVarsPage(ctx context.Context, service, after string, limit int, withValues bool) ([]EnvVarView, *appv1alpha1.App, error) {
-	vars, a, err := s.listEnvVars(ctx, service, withValues)
+	env, a, revision, err := s.readAuthorizedEnvAs(ctx, AuditVerbListEnvVarsPage, service)
+	if err != nil {
+		return nil, nil, err
+	}
+	vars, err := s.envViewsOf(ctx, env, a, revision, withValues)
 	if err != nil {
 		return nil, nil, err
 	}

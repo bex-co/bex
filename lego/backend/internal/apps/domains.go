@@ -1648,7 +1648,9 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 func (s *Service) addDomainPair(ctx context.Context, appName, hostname string) (DomainView, *DomainView, error) {
 	// One index of the platform's host claims serves both adds: the sibling
 	// add's check can only differ by this App's own claims, which are exempt.
-	ctx = core.WithRequestMemo(ctx)
+	// REST's add reaches this from a route closure, so the add names its verb
+	// (w21/093); AddDomain's own stack names the same one.
+	ctx = core.WithAuditVerb(core.WithRequestMemo(ctx), core.AuditVerbAddDomain)
 	// The raw input goes straight to addOne, which authorizes FIRST (the
 	// authz-before-validation verb contract) and then canonicalizes; the
 	// canonical value comes back as view.Name for the sibling pairing below.

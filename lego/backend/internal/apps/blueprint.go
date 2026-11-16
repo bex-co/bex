@@ -1152,6 +1152,9 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 // minted here and returns it for the create to pass back. The default stays
 // adopt, the review of managing the resources the file names.
 func (s *Service) previewBlueprintWith(ctx context.Context, ownerID, repo, branch, filePath string, opts blueprintPreviewOptions) (BlueprintPreview, error) {
+	// The three adapters reach this from a closure, so the authorizations deeper in
+	// the preview (a build source's, say) name the preview too (w21/093).
+	ctx = core.WithAuditVerb(ctx, AuditVerbPreviewBlueprint)
 	ctx, forBlueprintID, err := s.blueprintRequestScope(ctx, AuditVerbPreviewBlueprint, core.RelCanViewSensitive, opts.ForBlueprintID, ownerID)
 	if err != nil {
 		return BlueprintPreview{}, err

@@ -28,6 +28,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/graphql-go/graphql"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -368,5 +371,60 @@ func TestTruncateCommandKeepsWholeRunes(t *testing.T) {
 	}
 	if truncateCommand("ls") != "ls" {
 		t.Error("a short command changed")
+	}
+}
+
+type executionAuditRows struct {
+	mu     sync.Mutex
+	events []core.AuditEvent
+}
+
+func (a *executionAuditRows) Record(_ context.Context, ev core.AuditEvent) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.events = append(a.events, ev)
+	return nil
+}
+
+type denyAll struct{}
+
+func (denyAll) Check(context.Context, string, string, string) (bool, error) { return false, nil }
+
+// w21/093: GraphQL's sandboxExecutions read the history through an unexported
+// helper from its resolver's closure, so a refused read would have recorded the
+// closure's name. It goes through ListExecutions, the verb REST and MCP call, and
+// answers the same list.
+func TestGraphQLSandboxExecutionsReadsThroughListExecutions(t *testing.T) {
+	f := newConnectFixture(t, "id-a", nil)
+	f.svc.Executions = &fakeExecutions{rows: []store.SandboxExecution{
+		{ID: "exe-1", WorkspaceID: "tea-a", SandboxID: "os-1", Type: "runs", Operation: "sync", Subject: "id-a", StartedAt: time.Now()},
+	}}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: f.svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const query = `{ sandboxExecutions(id: "os-1", ownerId: "tea-a") { id } }`
+
+	res := graphql.Do(graphql.Params{Schema: schema, RequestString: query, Context: identityCtx("id-a")})
+	if res.HasErrors() {
+		t.Fatal(res.Errors)
+	}
+	data, _ := json.Marshal(res.Data)
+	if !strings.Contains(string(data), `"id":"exe-1"`) {
+		t.Fatalf("history = %s, want execution exe-1", data)
+	}
+
+	rows := &executionAuditRows{}
+	f.svc.Audit = rows
+	f.svc.Authz = denyAll{}
+	if res := graphql.Do(graphql.Params{Schema: schema, RequestString: query, Context: identityCtx("id-a")}); !res.HasErrors() {
+		t.Fatal("a refused history read returned data")
+	}
+	rows.mu.Lock()
+	defer rows.mu.Unlock()
+	if len(rows.events) != 1 || rows.events[0].Verb != "sandbox.ListExecutions" || rows.events[0].Outcome != core.AuditDenied {
+		t.Fatalf("recorded %+v, want one denied sandbox.ListExecutions", rows.events)
 	}
 }

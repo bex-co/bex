@@ -193,7 +193,17 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"limit":   gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.listExecutionViews(gqlutil.OwnerScoped(p), p.Args["id"].(string), gqlutil.Str(p.Args, "cursor"), core.PageLimitOrDefault(gqlutil.Int(p.Args, "limit")))
+				// Through the verb REST and MCP call, so the history read records
+				// sandbox.ListExecutions, not this resolver's name (w21/093).
+				envelopes, err := s.ListExecutions(gqlutil.OwnerScoped(p), p.Args["id"].(string), gqlutil.Str(p.Args, "cursor"), core.PageLimitOrDefault(gqlutil.Int(p.Args, "limit")))
+				if err != nil {
+					return nil, err
+				}
+				views := make([]Execution, len(envelopes))
+				for i, e := range envelopes {
+					views[i] = e.Execution
+				}
+				return views, nil
 			},
 		},
 		"sandboxExecution": &graphql.Field{

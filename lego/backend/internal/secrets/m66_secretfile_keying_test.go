@@ -172,7 +172,7 @@ func TestEveryStoreKeyIsCanonicalized(t *testing.T) {
 						// scopeForWrite is scope with the allowed-write audit
 						// deferred (w4/m122); it returns the same four results,
 						// so it canonicalizes identically and must be swept too.
-						if sel, ok := call.Fun.(*ast.SelectorExpr); ok && (sel.Sel.Name == "scope" || sel.Sel.Name == "scopeForWrite") {
+						if sel, ok := call.Fun.(*ast.SelectorExpr); ok && (sel.Sel.Name == "scope" || sel.Sel.Name == "scopeAs" || sel.Sel.Name == "scopeForWrite") {
 							authorizes = true
 							if id, ok := assign.Lhs[2].(*ast.Ident); ok && id.Name == "service" {
 								canonicalizes = true

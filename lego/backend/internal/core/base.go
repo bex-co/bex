@@ -731,7 +731,7 @@ func (b *Base) Now() time.Time {
 // caller asks for B, gets served A, and a write lands in the wrong workspace).
 func (b *Base) Authorize(ctx context.Context, relation string) error {
 	object, err := b.callerWorkspace(ctx)
-	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), err)
+	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(ctx, verbFrameSkip), err)
 }
 
 // AuthorizeTarget is Authorize for a verb that acts on one named
@@ -742,7 +742,7 @@ func (b *Base) Authorize(ctx context.Context, relation string) error {
 // workspace resolved from context.
 func (b *Base) AuthorizeTarget(ctx context.Context, relation, target string) error {
 	object, err := b.callerWorkspace(ctx)
-	return b.authorizeAndAudit(ctx, relation, object, target, callerVerb(verbFrameSkip), err)
+	return b.authorizeAndAudit(ctx, relation, object, target, callerVerb(ctx, verbFrameSkip), err)
 }
 
 // Can reports whether the caller holds relation on their acting workspace,
@@ -880,7 +880,7 @@ func (b *Base) resolveWorkspaceUncached(ctx context.Context) (string, error) {
 // for the RelCanManage/RelCanCreate/RelCanOperate/RelCanManageKeys verbs that
 // call this directly). Same audit interception as Authorize.
 func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
-	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), nil)
+	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(ctx, verbFrameSkip), nil)
 }
 
 // AuthorizeOnOwner is AuthorizeOn for a resource fetched by its id whose
@@ -890,7 +890,7 @@ func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
 // refused and a member is told kind is not found in it (see verbFrameSkip for
 // why this calls callerVerb itself).
 func (b *Base) AuthorizeOnOwner(ctx context.Context, relation, owner, kind string) error {
-	verb := callerVerb(verbFrameSkip)
+	verb := callerVerb(ctx, verbFrameSkip)
 	if named, explicit := WorkspaceFrom(ctx); explicit && named != owner {
 		_, err := b.resolveWorkspace(ctx)
 		if err == nil {
@@ -912,7 +912,7 @@ func (b *Base) AuthorizeOnOwner(ctx context.Context, relation, owner, kind strin
 // verbFrameSkip's comment for why delegation would silently rename every
 // recorded verb.
 func (b *Base) AuthorizeOnTarget(ctx context.Context, relation, object, target string) error {
-	return b.authorizeAndAudit(ctx, relation, object, target, callerVerb(verbFrameSkip), nil)
+	return b.authorizeAndAudit(ctx, relation, object, target, callerVerb(ctx, verbFrameSkip), nil)
 }
 
 // authorizeAndAudit runs the OpenFGA check and records the outcome
@@ -1249,7 +1249,7 @@ func (b *Base) ListOwnerIDs(ctx context.Context, owners []string) ([]string, err
 // failures are audited against the requested workspace and never fall back.
 func (b *Base) AuthorizeWorkspace(ctx context.Context, relation, workspaceID string) (string, error) {
 	workspaceID, resolveErr := b.workspaceArgument(ctx, workspaceID)
-	err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(workspaceID), "", callerVerb(verbFrameSkip), resolveErr)
+	err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(workspaceID), "", callerVerb(ctx, verbFrameSkip), resolveErr)
 	return workspaceID, err
 }
 
@@ -1257,7 +1257,7 @@ func (b *Base) AuthorizeWorkspace(ctx context.Context, relation, workspaceID str
 // target, preserving member/invite identity in both allowed and denied audits.
 func (b *Base) AuthorizeWorkspaceTarget(ctx context.Context, relation, workspaceID, target string) (string, error) {
 	workspaceID, resolveErr := b.workspaceArgument(ctx, workspaceID)
-	err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(workspaceID), target, callerVerb(verbFrameSkip), resolveErr)
+	err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(workspaceID), target, callerVerb(ctx, verbFrameSkip), resolveErr)
 	return workspaceID, err
 }
 
@@ -1270,6 +1270,12 @@ func (b *Base) AuthorizeWorkspaceTarget(ctx context.Context, relation, workspace
 func (b *Base) AuthorizeAs(ctx context.Context, verb, relation string) error {
 	object, err := b.callerWorkspace(ctx)
 	return b.authorizeAndAudit(ctx, relation, object, "", verb, err)
+}
+
+// AuthorizeOnAs is AuthorizeOn with the verb named by the caller; see
+// AuthorizeAs.
+func (b *Base) AuthorizeOnAs(ctx context.Context, verb, relation, object string) error {
+	return b.authorizeAndAudit(ctx, relation, object, "", verb, nil)
 }
 
 // AuthorizeTargetAs is AuthorizeTarget with the verb named by the caller; see
@@ -1346,7 +1352,19 @@ func (b *Base) AppWorkspace(ctx context.Context, a *appv1alpha1.App) string {
 // maxFallbackCandidateAudits per request, with one aggregate row past the cap
 // (w4/015 — see the constant's doc for the latency/amplification rationale).
 func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
-	verb := callerVerb(verbFrameSkip)
+	return b.authorizeApp(ctx, callerVerb(ctx, verbFrameSkip), relation, name)
+}
+
+// AuthorizeAppAs is AuthorizeApp with the verb named by the caller, for a path
+// that reaches the seam through a closure or a plain function, where callerVerb
+// would record that frame's name ("agentsessions.RunOnce.func1"); see AuthorizeAs.
+func (b *Base) AuthorizeAppAs(ctx context.Context, verb, relation, name string) (*appv1alpha1.App, error) {
+	return b.authorizeApp(ctx, verb, relation, name)
+}
+
+// authorizeApp is the body AuthorizeApp and AuthorizeAppAs share. verb is a
+// parameter, not derived here: see verbFrameSkip.
+func (b *Base) authorizeApp(ctx context.Context, verb, relation, name string) (*appv1alpha1.App, error) {
 	acting, actingErr := b.resolveWorkspace(ctx)
 	if actingErr != nil {
 		named, _ := WorkspaceFrom(ctx)
@@ -1679,8 +1697,12 @@ func AppPublicName(a *appv1alpha1.App) string {
 // ErrNotFound like a service that never existed (w3/m81, w4/503). Writes and
 // lifecycle teardown keep AuthorizeApp, which must still reach the CR being
 // removed.
+//
+// It authorizes through authorizeApp with its own caller's verb, not through
+// AuthorizeApp: this exported method would otherwise be the frame callerVerb
+// stops at, and a denied read recorded "core.AuthorizeLiveApp" (w21/093).
 func (b *Base) AuthorizeLiveApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
-	a, err := b.AuthorizeApp(ctx, relation, name)
+	a, err := b.authorizeApp(ctx, callerVerb(ctx, verbFrameSkip), relation, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1737,14 +1759,28 @@ func canonicalAppTarget(a *appv1alpha1.App) string {
 // AuthorizeApp's doc for the design; the two are siblings because Database (and
 // KeyValue, below) carry the same core.LabelTenant contract as an App.
 func (b *Base) AuthorizeDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
-	return authorizeDatastore(b, ctx, relation, DatabaseTarget(name), callerVerb(verbFrameSkip),
+	return authorizeDatastore(b, ctx, relation, DatabaseTarget(name), callerVerb(ctx, verbFrameSkip),
+		func(ctx context.Context) (*appv1alpha1.Database, error) { return b.findDatabase(ctx, name) })
+}
+
+// AuthorizeDatabaseAs is AuthorizeDatabase with the verb named by the caller;
+// see AuthorizeAppAs.
+func (b *Base) AuthorizeDatabaseAs(ctx context.Context, verb, relation, name string) (*appv1alpha1.Database, error) {
+	return authorizeDatastore(b, ctx, relation, DatabaseTarget(name), verb,
 		func(ctx context.Context) (*appv1alpha1.Database, error) { return b.findDatabase(ctx, name) })
 }
 
 // AuthorizeKeyValue is AuthorizeApp for a managed KeyValue — see AuthorizeApp
 // and AuthorizeDatabase.
 func (b *Base) AuthorizeKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
-	return authorizeDatastore(b, ctx, relation, KeyValueTarget(name), callerVerb(verbFrameSkip),
+	return authorizeDatastore(b, ctx, relation, KeyValueTarget(name), callerVerb(ctx, verbFrameSkip),
+		func(ctx context.Context) (*appv1alpha1.KeyValue, error) { return b.findKeyValue(ctx, name) })
+}
+
+// AuthorizeKeyValueAs is AuthorizeKeyValue with the verb named by the caller;
+// see AuthorizeAppAs.
+func (b *Base) AuthorizeKeyValueAs(ctx context.Context, verb, relation, name string) (*appv1alpha1.KeyValue, error) {
+	return authorizeDatastore(b, ctx, relation, KeyValueTarget(name), verb,
 		func(ctx context.Context) (*appv1alpha1.KeyValue, error) { return b.findKeyValue(ctx, name) })
 }
 

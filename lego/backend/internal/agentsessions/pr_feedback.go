@@ -95,11 +95,20 @@ func (s *Service) turnOrigins(ctx context.Context, sessionID string) []TurnOrigi
 	return out
 }
 
+// The audit verbs of the two access probes the pull request intake asks before it
+// starts or steers a session as a linked member. A probe reaches the check from a
+// closure that linkedMember calls, whose name ("agentsessions.startingMember.func1")
+// a derived verb would record, so each names its own (w21/093).
+const (
+	AuditVerbCheckCreateAccess = "agentsessions.CheckCreateAccess"
+	AuditVerbCheckSteerAccess  = "agentsessions.CheckSteerAccess"
+)
+
 // maySteer reports whether subject may steer the session: the can_create
 // check Steer itself makes, asked ahead of queuing feedback for it.
 func (s *Service) maySteer(ctx context.Context, subject, sessionID string) (bool, error) {
 	ctx = core.WithIdentity(ctx, core.Identity{Subject: subject, Method: "session"})
-	return allowedUnlessForbidden(s.AuthorizeOn(ctx, core.RelCanCreate, sessionObject(sessionID)))
+	return allowedUnlessForbidden(s.AuthorizeOnAs(ctx, AuditVerbCheckSteerAccess, core.RelCanCreate, sessionObject(sessionID)))
 }
 
 // allowedUnlessForbidden reads an authorization answer as a yes or no: a

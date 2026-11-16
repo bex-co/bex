@@ -181,6 +181,36 @@ type AuditEvent struct {
 
 type deferAllowedWriteAuditKey struct{}
 
+type auditVerbKey struct{}
+
+// WithAuditVerb names the operation ctx's work performs, for the authorizations
+// it reaches through a stack that holds no verb method for callerVerb to read: a
+// worker's step (core.Poll), a handler mounted as a method value, a closure, a
+// goroutine, or a helper chain under one of those. Such a path would otherwise
+// record the nearest frame ("core.runStep", "logs.followAll.func1"), which tells
+// a reader of the audit log nothing (w21/093). It fills in only where the walk
+// finds no verb: an exported method on the stack still names its own verb, so
+// naming an operation never renames a verb it calls. verb is spelled
+// "<feature>.<Action>", as a derived one is.
+//
+// Prefer the ...As entry points where one call site is the whole path; this is
+// for a chain too deep to hand a verb down, and for goroutines, which inherit ctx.
+func WithAuditVerb(ctx context.Context, verb string) context.Context {
+	return context.WithValue(ctx, auditVerbKey{}, verb)
+}
+
+// CurrentVerb is the audit verb the caller's own authorizations would record: the
+// verb method on the stack above it, or the operation ctx names (WithAuditVerb)
+// where none is. A function that hands authorizing work to a closure whose name
+// it cannot pass down (a transaction's callback) reads it here first and gives
+// the closure WithAuditVerb(ctx, CurrentVerb(ctx)).
+func CurrentVerb(ctx context.Context) string { return callerVerb(ctx, verbFrameSkip) }
+
+func auditVerbFrom(ctx context.Context) (string, bool) {
+	verb, ok := ctx.Value(auditVerbKey{}).(string)
+	return verb, ok && verb != ""
+}
+
 const (
 	// AuditVerbMaintenanceModeEnabled and AuditVerbMaintenanceModeURIUpdated
 	// are Render's two field-level maintenance effects. Unlike ordinary verbs,
@@ -1419,7 +1449,10 @@ const verbFrameSkip = 2
 const helperWalkLimit = 8
 
 // callerVerb resolves the short "<package>.<Method>" name of the verb that
-// called into an authorize entry point, starting skip frames up the stack.
+// called into an authorize entry point, starting skip frames up the stack. Where
+// the walk ends on a frame that is no verb method (a closure, a plain function, a
+// method value the standard library calls) and ctx names the operation
+// (WithAuditVerb), that name stands in for the frame's.
 //
 // The frame at skip is usually the verb itself ("every verb starts with
 // s.Authorize…"). But a verb may share its write path with siblings through an
@@ -1436,7 +1469,7 @@ const helperWalkLimit = 8
 // A bad skip count is a bug caught by audit_test.go's expected-verb
 // assertions, not a panic (an unresolved frame degrades to "unknown", never
 // blocks the verb).
-func callerVerb(skip int) string {
+func callerVerb(ctx context.Context, skip int) string {
 	// One unwind for the whole candidate window (runtime.Callers), not one
 	// full-stack runtime.Caller per candidate — this runs on every write-verb
 	// authorize. +1: Callers counts skip from itself where Caller counts from
@@ -1458,16 +1491,44 @@ func callerVerb(skip int) string {
 			first = short
 		}
 		if !unexportedHelperMethod(name, short) {
+			if named, ok := auditVerbFrom(ctx); ok && !verbMethod(name, short) {
+				return named
+			}
 			return short
 		}
 		if !more {
 			break
 		}
 	}
+	if named, ok := auditVerbFrom(ctx); ok {
+		return named
+	}
 	if first == "" {
 		return "unknown"
 	}
 	return first // nothing but helpers in budget: degrade to the nearest frame
+}
+
+// verbMethod reports whether a resolved frame is an exported METHOD with no
+// closure suffix ("apps.(*Service).Suspend" → "apps.Suspend"): the shape of a
+// verb. Any other frame callerVerb stops on (a closure, a plain function) names
+// no verb.
+func verbMethod(name, short string) bool {
+	method, ok := methodName(name, short)
+	return ok && method[0] >= 'A' && method[0] <= 'Z'
+}
+
+// methodName is the bare method name of a frame that is a method with no closure
+// suffix; ok is false for a plain function or a closure.
+func methodName(name, short string) (method string, ok bool) {
+	if !receiverRE.MatchString(name) {
+		return "", false
+	}
+	_, method, ok = strings.Cut(short, ".")
+	if !ok || strings.Contains(method, ".") {
+		return "", false
+	}
+	return method, true
 }
 
 // unexportedHelperMethod reports whether a resolved frame is an unexported
@@ -1476,15 +1537,9 @@ func callerVerb(skip int) string {
 // after path-trimming (receiver still present); short is the receiver-stripped
 // "<pkg>.<func>" form.
 func unexportedHelperMethod(name, short string) bool {
-	if !receiverRE.MatchString(name) {
-		return false // plain function (or nothing to strip): terminal
-	}
-	_, method, ok := strings.Cut(short, ".")
-	if !ok || strings.Contains(method, ".") {
-		return false // closures ("….func1") are terminal, never walked past
-	}
-	r := rune(method[0])
-	return r >= 'a' && r <= 'z'
+	// A plain function, or a closure ("….func1"), is terminal, never walked past.
+	method, ok := methodName(name, short)
+	return ok && method[0] >= 'a' && method[0] <= 'z'
 }
 
 // emit records one audit event for an authorize call: a write relation's

@@ -45,12 +45,26 @@ import (
 // walk's "unknown" fallback.
 var namedVerb = regexp.MustCompile(`^[a-z][a-z0-9]*\.[A-Z][A-Za-z0-9]*$`)
 
+// closureMarkers are what the Go runtime puts in the name of a function that is
+// not a declared one: a closure ("func1"), a method value ("-fm"), the wrapper of
+// a go or defer statement ("gowrap1", "deferwrap1") and a package-level
+// initializer ("glob.."). A verb carrying one was derived from such a frame.
+var closureMarkers = []string{"func", "-fm", "gowrap", "deferwrap", "glob."}
+
 // verbProblem names why verb is not a verb a reader of the audit log can search
 // for, or "" when it is one.
 func verbProblem(verb string) string {
+	lower := strings.ToLower(verb)
+	for _, marker := range closureMarkers {
+		if strings.Contains(lower, marker) {
+			return "derived from a closure or a function value"
+		}
+	}
 	switch {
-	case strings.Contains(strings.ToLower(verb), "func"):
-		return "derived from a closure or a function value"
+	case strings.HasPrefix(verb, "core."):
+		// The kernel holds no verb: a "core." verb is the name of a helper
+		// (core.AuthorizeLiveApp) or of the worker loop (core.runStep).
+		return "named after a core helper, not a feature's action"
 	case !namedVerb.MatchString(verb):
 		return "not of the form <feature>.<Action>"
 	}
@@ -248,24 +262,10 @@ func TestEveryRegisteredRouteRecordsANamedVerb(t *testing.T) {
 	t.Logf("%d routes drove %d distinct verbs", total, len(seen))
 }
 
-// closureVerbBacklog is every route that still records a closure's name, with
-// the verb it records, each filed as its own note: a GraphQL or MCP adapter
-// that reaches an authorizing helper from a closure. The sweeps below fail on
-// any other, and fail on an entry that records a named verb by now, so the
-// backlog only shrinks.
-var closureVerbBacklog = map[string]string{
-	"graphql envVars": "secrets.graphQLQuery.func1", // w21/093
-}
-
-func checkSweptVerbs(t *testing.T, surface, route string, events []core.AuditEvent, seen map[string]bool, backlogHit map[string]bool) {
+func checkSweptVerbs(t *testing.T, surface, route string, events []core.AuditEvent, seen map[string]bool) {
 	t.Helper()
 	for _, ev := range events {
 		seen[ev.Verb] = true
-		key := surface + " " + route
-		if known, ok := closureVerbBacklog[key]; ok && ev.Verb == known {
-			backlogHit[key] = true
-			continue
-		}
 		if p := verbProblem(ev.Verb); p != "" {
 			t.Errorf("%s %s recorded verb %q: %s", surface, route, ev.Verb, p)
 		}
@@ -311,20 +311,11 @@ func isReadTool(tool *mcp.Tool) bool {
 	return strings.HasPrefix(tool.Name, "list_") || strings.HasPrefix(tool.Name, "get_")
 }
 
-func finishBacklog(t *testing.T, surface string, backlogHit map[string]bool) {
-	t.Helper()
-	for key, verb := range closureVerbBacklog {
-		if strings.HasPrefix(key, surface+" ") && !backlogHit[key] {
-			t.Errorf("closureVerbBacklog lists %q recording %q, which it no longer does: remove the entry", key, verb)
-		}
-	}
-}
-
 // TestEveryMCPToolRecordsANamedVerb is the sweep above for the MCP surface: each
 // tool is called with its required arguments and then with each optional one
 // added, as a refused and as an allowed caller.
 func TestEveryMCPToolRecordsANamedVerb(t *testing.T) {
-	seen, backlogHit := map[string]bool{}, map[string]bool{}
+	seen := map[string]bool{}
 	tools := 0
 	for _, allow := range []bool{false, true} {
 		sink := &lockedAuditSink{}
@@ -371,14 +362,13 @@ func TestEveryMCPToolRecordsANamedVerb(t *testing.T) {
 				if allow && isReadTool(tool) {
 					checkReadRecordsNoSuccess(t, "mcp", tool.Name, events)
 				}
-				checkSweptVerbs(t, "mcp", tool.Name, events, seen, backlogHit)
+				checkSweptVerbs(t, "mcp", tool.Name, events, seen)
 			}
 		}
 	}
 	if tools < 100 || len(seen) < 100 {
 		t.Fatalf("%d tools drove %d distinct verbs — the sweep went vacuous", tools, len(seen))
 	}
-	finishBacklog(t, "mcp", backlogHit)
 	t.Logf("%d tools drove %d distinct verbs", tools, len(seen))
 }
 
@@ -428,7 +418,7 @@ func sampleSchemaValue(property any) any {
 // surface: every query and mutation field is called with its required
 // arguments set to a value of their type, as a refused and as an allowed caller.
 func TestEveryGraphQLFieldRecordsANamedVerb(t *testing.T) {
-	seen, backlogHit := map[string]bool{}, map[string]bool{}
+	seen := map[string]bool{}
 	fields := 0
 	for _, allow := range []bool{false, true} {
 		sink := &lockedAuditSink{}
@@ -454,14 +444,13 @@ func TestEveryGraphQLFieldRecordsANamedVerb(t *testing.T) {
 				if allow && root.op == "query" {
 					checkReadRecordsNoSuccess(t, "graphql", name, events)
 				}
-				checkSweptVerbs(t, "graphql", name, events, seen, backlogHit)
+				checkSweptVerbs(t, "graphql", name, events, seen)
 			}
 		}
 	}
 	if fields < 200 || len(seen) < 100 {
 		t.Fatalf("%d fields drove %d distinct verbs — the sweep went vacuous", fields, len(seen))
 	}
-	finishBacklog(t, "graphql", backlogHit)
 	t.Logf("%d fields drove %d distinct verbs", fields, len(seen))
 }
 
@@ -535,6 +524,14 @@ func TestVerbProblemFlagsClosureVerbs(t *testing.T) {
 		"api.serve",                  // an unexported helper
 		"unknown",                    // callerVerb's fallback
 		"",
+		"secrets.graphQLQuery.func1",    // a GraphQL resolver's closure (w21/093)
+		"agentsessions.RunOnce.func1",   // a goroutine's closure (w21/093)
+		"keyvalue.ClearProjectID.func1", // a retry callback's closure (w21/093)
+		"apps.glob..func5",              // a package-level table's closure
+		"apps.labelNewService-fm",       // a method value
+		"core.runStep",                  // core.Poll's step, where a worker's authorization stops
+		"core.AuthorizeLiveApp",         // a kernel entry point that delegated to a sibling
+		"logs.followAll.gowrap1",        // the wrapper of a go statement
 	} {
 		if verbProblem(bad) == "" {
 			t.Errorf("verbProblem(%q) accepted it", bad)

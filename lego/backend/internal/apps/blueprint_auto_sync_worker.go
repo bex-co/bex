@@ -43,6 +43,11 @@ type blueprintAutoSyncRetry struct{ err error }
 func (e *blueprintAutoSyncRetry) Error() string { return e.err.Error() }
 func (e *blueprintAutoSyncRetry) Unwrap() error { return e.err }
 
+// AuditVerbAutoSyncBlueprint is the audit verb of the authorizations an automatic
+// Blueprint sync makes: the worker reaches them from core.Poll's step, which
+// names no verb.
+const AuditVerbAutoSyncBlueprint = "apps.AutoSyncBlueprint"
+
 // BlueprintAutoSyncWorker periodically claims and executes pending Blueprint
 // auto-sync intents. Run is a no-op when the store is unwired.
 type BlueprintAutoSyncWorker struct {
@@ -97,7 +102,9 @@ func (w *BlueprintAutoSyncWorker) process(ctx context.Context, intent store.Blue
 		_ = w.Svc.Blueprints.CompleteBlueprintAutoSyncIntent(ctx, intent.ID, intent.ClaimGeneration, "Auto Sync disabled or Blueprint path changed")
 		return
 	}
-	runCtx := core.WithBlueprintSync(core.WithActingTenant(core.WithWorkspace(ctx, b.TenantID), b.TenantID))
+	// The worker's step is not a verb method, so the authorizations a sync makes
+	// below it name the sync (w21/093); the verbs it calls keep their own.
+	runCtx := core.WithAuditVerb(core.WithBlueprintSync(core.WithActingTenant(core.WithWorkspace(ctx, b.TenantID), b.TenantID)), AuditVerbAutoSyncBlueprint)
 	_, syncErr := w.Svc.runSync(runCtx, b, "", "", nil, &intent)
 	if syncErr != nil {
 		var retry *blueprintAutoSyncRetry

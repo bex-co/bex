@@ -373,6 +373,22 @@ func (s *Service) fetchKeyValue(ctx context.Context, relation, name string) (*ap
 	return s.AuthorizeKeyValue(ctx, relation, name)
 }
 
+// The audit verbs of the two conditional placement clears, named rather than
+// derived: core.RetryPlacementClear runs the authorizing fetch from a closure,
+// whose name ("keyvalue.ClearProjectID.func1") a derived verb would record.
+// They are spelled as the methods' own, which core.callerVerb derives for every
+// other verb (w21/093).
+const (
+	AuditVerbClearProjectID     = "keyvalue.ClearProjectID"
+	AuditVerbClearEnvironmentID = "keyvalue.ClearEnvironmentID"
+)
+
+// fetchKeyValueAs is fetchKeyValue with the audit verb named by the caller, for
+// a fetch that runs inside a closure.
+func (s *Service) fetchKeyValueAs(ctx context.Context, verb, relation, name string) (*appv1alpha1.KeyValue, error) {
+	return s.AuthorizeKeyValueAs(ctx, verb, relation, name)
+}
+
 // fetchKeyValueForRead is the by-id read gate: authorize + fetch, then treat a
 // DeletionTimestamp as not-found so get/connection-info/sibling reads agree with
 // List and with Render's GET 404 (w8/m35 / core.NotFoundIfDeleting). A plan or
@@ -830,7 +846,9 @@ func (s *Service) SetProjectID(ctx context.Context, name, expectedEnvironmentID,
 // reassignment since the caller listed the resource is left intact.
 func (s *Service) ClearProjectID(ctx context.Context, name, expectedProjectID string) error {
 	return core.RetryPlacementClear(ctx,
-		func() (*appv1alpha1.KeyValue, error) { return s.fetchKeyValue(ctx, core.RelCanCreate, name) },
+		func() (*appv1alpha1.KeyValue, error) {
+			return s.fetchKeyValueAs(ctx, AuditVerbClearProjectID, core.RelCanCreate, name)
+		},
 		func(kv *appv1alpha1.KeyValue) error {
 			if kv.Labels[core.LabelProject] != expectedProjectID {
 				return nil
@@ -957,7 +975,9 @@ func (s *Service) SetEnvironmentID(ctx context.Context, name, expectedEnvironmen
 // ClearEnvironmentID removes only the environment observed by the caller.
 func (s *Service) ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error {
 	return core.RetryPlacementClear(ctx,
-		func() (*appv1alpha1.KeyValue, error) { return s.fetchKeyValue(ctx, core.RelCanCreate, name) },
+		func() (*appv1alpha1.KeyValue, error) {
+			return s.fetchKeyValueAs(ctx, AuditVerbClearEnvironmentID, core.RelCanCreate, name)
+		},
 		func(kv *appv1alpha1.KeyValue) error {
 			if kv.Labels[core.LabelEnvironment] != expectedEnvironmentID {
 				return nil

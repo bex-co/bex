@@ -261,12 +261,27 @@ func featurePackages(t *testing.T) []string {
 // targets the resource it fetched, and (w1/m33) AuthorizeOnTarget, the
 // explicit-workspace sibling the members verbs record member:/invite: targets
 // through.
+//
+// The ...As twins (w21/093) take the verb ahead of the relation, so the relation
+// is one argument later (relationArg); they record the same targets.
 var targetingCalls = map[string]bool{
-	"AuthorizeTarget":   true,
-	"AuthorizeOnTarget": true,
-	"AuthorizeApp":      true,
-	"AuthorizeDatabase": true,
-	"AuthorizeKeyValue": true,
+	"AuthorizeTarget":     true,
+	"AuthorizeOnTarget":   true,
+	"AuthorizeApp":        true,
+	"AuthorizeDatabase":   true,
+	"AuthorizeKeyValue":   true,
+	"AuthorizeAppAs":      true,
+	"AuthorizeDatabaseAs": true,
+	"AuthorizeKeyValueAs": true,
+}
+
+// relationArg is the index of the relation among a targeting call's arguments:
+// second, or third when the caller names the verb (the ...As twins).
+func relationArg(name string) int {
+	if strings.HasSuffix(name, "As") {
+		return 2
+	}
+	return 1
 }
 
 // targetedVerbsIn returns the "<pkg>.<Method>" names in dir whose body calls
@@ -379,7 +394,7 @@ func targetsResource(fn *ast.FuncDecl, methods map[string]*ast.FuncDecl, visited
 			if workspaceTrailTarget(call) {
 				return true
 			}
-			if sel.Sel.Name == "AuthorizeTarget" || !targetsReadOnly(call, binding) {
+			if sel.Sel.Name == "AuthorizeTarget" || !targetsReadOnly(call, sel.Sel.Name, binding) {
 				found = true
 			}
 		case methods[sel.Sel.Name] != nil:
@@ -452,18 +467,20 @@ func relationBinding(helper *ast.FuncDecl, call *ast.CallExpr, binding map[strin
 	return next
 }
 
-// targetsReadOnly reports whether call's relation argument (the second
-// argument to AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue) is PROVABLY a
+// targetsReadOnly reports whether call's relation argument (relationArg of the
+// callee: AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue and their ...As
+// twins) is PROVABLY a
 // read relation — a literal core.RelCanView/RelCanViewLogs/RelCanViewSensitive
 // selector, or a `relation` parameter binding (see relationBinding) that
 // resolves to one. Anything else (a write relation, or a variable this sweep
 // can't resolve) is not provably read-only — see targetedVerbsIn.
-func targetsReadOnly(call *ast.CallExpr, binding map[string]string) bool {
-	if len(call.Args) < 2 {
+func targetsReadOnly(call *ast.CallExpr, callee string, binding map[string]string) bool {
+	at := relationArg(callee)
+	if len(call.Args) <= at {
 		return false
 	}
 	name := ""
-	switch a := call.Args[1].(type) {
+	switch a := call.Args[at].(type) {
 	case *ast.SelectorExpr:
 		name = a.Sel.Name
 	case *ast.Ident:

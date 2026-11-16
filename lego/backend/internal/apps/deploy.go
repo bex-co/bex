@@ -1986,6 +1986,11 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 	var audits []groupingAuditEntry
 	var err error
 	if s.BlueprintGroupsTx != nil {
+		// The transaction's callback is a closure, which names no verb: hand it the
+		// verb this apply records under (SyncBlueprint, ApproveBlueprint, the auto-sync
+		// worker's), so the can_manage check inside it records what the no-store path
+		// records instead of "apps.applyBlueprintGroupings.func1" (w21/093).
+		ctx = core.WithAuditVerb(ctx, core.CurrentVerb(ctx))
 		// One transaction for the whole grouping set: a mid-loop failure
 		// (store error, quota refusal, cancellation) rolls back every row
 		// from this sync instead of persisting a partial set (w8/m20 t001).

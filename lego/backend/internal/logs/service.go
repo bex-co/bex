@@ -1337,6 +1337,11 @@ func (s *Service) datastoreLogLabelValues(ctx context.Context, label string, q L
 // lines are dated in the past, can keep reading them.
 var tailOpenedAt = time.Now
 
+// AuditVerbFollowLogs is the audit verb of a live tail on every transport: the
+// exported FollowLogs derives it, and REST's subscribe route, which reaches the
+// tail from a handler and a goroutine per resource, names it.
+const AuditVerbFollowLogs = "logs.FollowLogs"
+
 // FollowLogs streams a resource's new log lines to emit until ctx is cancelled
 // or emit errors. The tail always reads live pod logs (never the store —
 // real-time, zero ingest lag). It serves app logs from App pods and type=build

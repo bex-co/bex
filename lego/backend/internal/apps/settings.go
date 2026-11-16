@@ -381,7 +381,9 @@ var servicePatchTable = []servicePatchOp{
 			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
-			a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, id)
+			// Named, not derived: this runs as a package-level function literal, whose
+			// name a derived verb would record (w21/093). It is SetAutoDeploy's own.
+			a, err := s.AuthorizeAppAs(core.WithDeferredAllowedWriteAudit(ctx), core.AuditVerbSetAutoDeploy, core.RelCanOperate, id)
 			if err != nil {
 				return AppView{}, err
 			}

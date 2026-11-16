@@ -1474,6 +1474,10 @@ func (s *Service) GroupIDsByName(ctx context.Context) (map[string]string, error)
 	return out, nil
 }
 
+// AuditVerbGroupPlacements is the audit verb of the group-placement read the
+// Blueprint protected-placement check makes through GroupPlacements.
+const AuditVerbGroupPlacements = "envgroups.GroupPlacements"
+
 // GroupPlacements is s's group-placement read as the Blueprint
 // protected-placement check is wired with (w3/m281): each of the acting
 // workspace's groups by name, mapped to the environment it is scoped to (""
@@ -1481,7 +1485,8 @@ func (s *Service) GroupIDsByName(ctx context.Context) (map[string]string, error)
 // function, not a Service method, so the verb sweeps do not take it for a verb.
 func GroupPlacements(s *Service) func(ctx context.Context) (map[string]string, error) {
 	return func(ctx context.Context) (map[string]string, error) {
-		groups, err := s.listGroups(ctx, "")
+		// A closure names no verb, so the check records this function's name (w21/093).
+		groups, err := s.listGroups(core.WithAuditVerb(ctx, AuditVerbGroupPlacements), "")
 		if err != nil {
 			return nil, err
 		}

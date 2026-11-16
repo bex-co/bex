@@ -115,7 +115,7 @@ func (t *PRTakeover) apply(row *store.AgentSession) {
 // intake can pick a workspace.
 func (s *Service) mayCreate(ctx context.Context, subject, workspaceID string) (bool, error) {
 	ctx = core.WithWorkspace(core.WithIdentity(ctx, core.Identity{Subject: subject, Method: "session"}), workspaceID)
-	return allowedUnlessForbidden(s.Authorize(ctx, core.RelCanCreate))
+	return allowedUnlessForbidden(s.AuthorizeAs(ctx, AuditVerbCheckCreateAccess, core.RelCanCreate))
 }
 
 // takeoverRefusal is why pull request pr of repository cannot be taken over,

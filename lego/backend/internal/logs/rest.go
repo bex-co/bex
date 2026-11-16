@@ -152,6 +152,9 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 //     browser EventSource and curl -N.
 //   - Anything else → NDJSON (`<JSON>\n` per line).
 func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
+	// Mounted as a method value, this has no verb method beneath it: the tail's
+	// authorizations name FollowLogs, as the other surfaces' tail does (w21/093).
+	r = r.WithContext(core.WithAuditVerb(r.Context(), AuditVerbFollowLogs))
 	resources, q, err := parseLogParams(r)
 	if err != nil {
 		core.WriteErr(w, err)
@@ -246,6 +249,8 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 // error (the transports turn it into their refusal frame); a client
 // disconnect ends every follower quietly.
 func (s *Service) followAll(ctx context.Context, queries []LogQuery, emit func(LogEntry) error, heartbeat func() error) error {
+	// Each follower runs in a goroutine of its own, with no verb method beneath it.
+	ctx = core.WithAuditVerb(ctx, AuditVerbFollowLogs)
 	if len(queries) == 1 {
 		return s.followLogs(ctx, queries[0], emit, heartbeat)
 	}

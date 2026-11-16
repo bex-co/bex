@@ -98,7 +98,7 @@ func (w *AutomationScheduler) RunOnce(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			if err := w.Service.fireAutomationRun(ctx, run); err != nil {
+			if err := w.Service.fireAutomationRun(ctx, AuditVerbFireAgentAutomation, run); err != nil {
 				log.Printf("agent-automations: %s fire_at=%s left claimed for retry: %v",
 					run.Run.AutomationID, run.Run.FireAt.UTC().Format(time.RFC3339Nano), err)
 			}
@@ -158,14 +158,24 @@ func automationIdempotencyKey(automationID string, fireAt time.Time) string {
 // may not use it, so no member can pre-claim a run's key.
 const automationKeyPrefix = "aut:"
 
+// The audit verbs of the creator's re-authorization before a run (ADR101 D4),
+// named rather than derived: the scheduler reaches it from a goroutine closure,
+// whose name ("agentsessions.RunOnce.func1") a derived verb would record, so the
+// scheduler's fire names its own, and a run-now keeps the verb of the call that
+// asked for it, spelled as core.callerVerb derives it.
+const (
+	AuditVerbFireAgentAutomation   = "agentsessions.FireAgentAutomation"
+	AuditVerbRunAgentAutomationNow = "agentsessions.RunAgentAutomationNow"
+)
+
 // fireAutomationRun is ADR101 D3 steps 3 and 4 for a run the caller owns:
-// re-authorize the creator (D4), skip on overlap (D6), create the session
-// (idempotently) and settle the run. A definite answer settles the run; a
-// transient failure (authorization or database unavailable, a 5xx-class
+// re-authorize the creator (D4) under verb, skip on overlap (D6), create the
+// session (idempotently) and settle the run. A definite answer settles the run;
+// a transient failure (authorization or database unavailable, a 5xx-class
 // create error, a canceled context) settles nothing and is returned, so the
 // run stays claimed and the recovery pass retries it after the lease.
-func (s *Service) fireAutomationRun(ctx context.Context, c store.ClaimedRun) error {
-	outcome, sessionID, errText, err := s.decideAutomationRun(ctx, c)
+func (s *Service) fireAutomationRun(ctx context.Context, verb string, c store.ClaimedRun) error {
+	outcome, sessionID, errText, err := s.decideAutomationRun(ctx, verb, c)
 	if err != nil {
 		return err
 	}
@@ -173,7 +183,7 @@ func (s *Service) fireAutomationRun(ctx context.Context, c store.ClaimedRun) err
 }
 
 // decideAutomationRun returns the run's definite outcome, or a transient error.
-func (s *Service) decideAutomationRun(ctx context.Context, c store.ClaimedRun) (outcome, sessionID, errText string, err error) {
+func (s *Service) decideAutomationRun(ctx context.Context, verb string, c store.ClaimedRun) (outcome, sessionID, errText string, err error) {
 	a, run := c.Automation, c.Run
 	key := automationIdempotencyKey(a.ID, run.FireAt)
 
@@ -197,7 +207,7 @@ func (s *Service) decideAutomationRun(ctx context.Context, c store.ClaimedRun) (
 	}
 	ctx = core.WithIdentity(ctx, core.Identity{Subject: a.CreatedBy, Method: "session"})
 	ctx = core.WithWorkspace(ctx, a.WorkspaceID)
-	if _, err := s.AuthorizeWorkspace(ctx, core.RelCanCreate, a.WorkspaceID); err != nil {
+	if _, err := s.AuthorizeWorkspaceAs(ctx, verb, core.RelCanCreate, a.WorkspaceID); err != nil {
 		if errors.Is(err, core.ErrForbidden) {
 			return store.AutomationRunDenied, "", "the creator can no longer create sessions in this workspace", nil
 		}
