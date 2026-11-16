@@ -37,12 +37,16 @@ used_bytes() { # used_bytes: the pod's ephemeral-storage usedBytes from the kube
   jq -r --arg ns "$namespace_a" --arg p "$pod" '[.pods[] | select(.podRef.namespace == $ns and .podRef.name == $p)][0]["ephemeral-storage"].usedBytes // "null"' "$fixture_dir/summary.json"
 }
 
+# fill <step>: write 2 GiB to /root/fill-<step> (a repeat rewrites the same file).
+fill() { sandbox_exec "$sandbox_id" "dd if=/dev/zero of=/root/fill-$1 bs=1M count=2048 conv=fsync 2>&1 | tail -1" "$fixture_dir/fill-$1.txt"; }
+
 echo "==> write up to $below_gib GiB in 2 GiB steps: no eviction below the limit"
 step=0
 alive=true
 while [ $((step * 2)) -lt "$below_gib" ]; do
   step=$((step + 1))
-  if ! sandbox_exec "$sandbox_id" "dd if=/dev/zero of=/root/fill-$step bs=1M count=2048 conv=fsync 2>&1 | tail -1" "$fixture_dir/fill-$step.txt"; then
+  # One repeat after a pause: a bex-api rollout can cut the exec stream.
+  if ! fill "$step" && { sleep 45; ! fill "$step"; }; then
     measure below-limit-step "$(jq -cn --argjson s "$step" --arg o "$(head -c 300 "$fixture_dir/fill-$step.sse" 2>/dev/null | tr '\n' ' ')" '{step: $s, failed: true, detail: $o}')"
     alive=false
     break
@@ -61,7 +65,7 @@ evicted=false
 empty_object='{}'
 for extra in $(seq 1 "$past_gib"); do
   step=$((step + 1))
-  sandbox_exec "$sandbox_id" "dd if=/dev/zero of=/root/fill-$step bs=1M count=2048 conv=fsync 2>&1 | tail -1" "$fixture_dir/fill-$step.txt" || true
+  fill "$step" || true
   sleep 12
   phase="$(kubectl -n "$namespace_a" get pod "$pod" -o json 2>/dev/null | jq -c '{phase: .status.phase, reason: .status.reason, message: .status.message}' || echo '{}')"
   case "$phase" in *Evicted*) evicted=true ;; esac

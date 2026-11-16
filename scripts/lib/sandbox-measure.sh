@@ -117,11 +117,19 @@ create_sandbox() {
   printf '%s\n' "$id"
 }
 
-# sandbox_status <id>: the sandbox's status, or "unknown".
+# sandbox_status <id>: the sandbox's status, or "unknown" when the API still
+# does not answer after a minute and a half: a bex-api rollout drops calls for
+# about that long, and a leg that runs ten minutes can overlap one.
 sandbox_status() {
-  local out="$fixture_dir/status-$1.json"
-  [ "$(api_call "$fixture_dir/owner.curl" GET "/v1/sandboxes/$1?ownerId=$BEX_WORKSPACE_A" "$out")" = 200 ] || { echo unknown; return; }
-  jq -r '.status // "unknown"' "$out"
+  local out="$fixture_dir/status-$1.json" try
+  for try in 1 2 3 4 5 6 7 8 9; do
+    if [ "$(api_call "$fixture_dir/owner.curl" GET "/v1/sandboxes/$1?ownerId=$BEX_WORKSPACE_A" "$out")" = 200 ]; then
+      jq -r '.status // "unknown"' "$out"
+      return
+    fi
+    sleep 10
+  done
+  echo unknown
 }
 
 # wait_status <id> <status> <seconds>
