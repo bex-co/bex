@@ -106,6 +106,43 @@ func TestPGCronRunHistoryPagesEveryFinishedRun(t *testing.T) {
 	}
 }
 
+// w4/691: the usage meter bills a cron job's runs from their facts. Exactly the
+// finished runs that overlap the window come back, with both times.
+func TestPGCronRunsOverlappingWindow(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	_, appID := seedDiskApp(t, ctx, s)
+	window := time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC)
+	var facts []ServiceEventFact
+	// recordedRun's runs last 30 s from their start.
+	for name, start := range map[string]time.Duration{
+		"web-before":   -time.Minute,                    // ended 09:59:30
+		"web-crossing": -10 * time.Second,               // ended 10:00:20
+		"web-inside":   20 * time.Minute,                // inside
+		"web-last":     59*time.Minute + 50*time.Second, // ended 11:00:20
+		"web-after":    time.Hour,                       // started at the window's end
+	} {
+		facts = append(facts, recordedRun(appID, name, window.Add(start), appv1alpha1.CronRunSucceeded, true)...)
+	}
+	facts = append(facts, recordedRun(appID, "web-canceled", window.Add(5*time.Minute), appv1alpha1.CronRunCanceled, false)...)
+	if err := s.InsertServiceEventFacts(ctx, facts); err != nil {
+		t.Fatalf("insert facts: %v", err)
+	}
+	recs, err := s.CronRunsOverlapping(ctx, appID, window, window.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, r := range recs {
+		got = append(got, r.Name)
+		if !r.FinishedAt.Equal(r.StartedAt.Add(30 * time.Second)) {
+			t.Errorf("%s = [%s, %s), want a 30 s run", r.Name, r.StartedAt, r.FinishedAt)
+		}
+	}
+	if want := []string{"web-crossing", "web-inside", "web-last"}; !slices.Equal(got, want) {
+		t.Fatalf("overlapping runs = %v, want %v", got, want)
+	}
+}
+
 // Facts from before migration 0141 carry no run_id; 0245 derives it in SQL. It
 // must be exactly id.Derive(id.CronRun, <job name>), or every old run's id
 // changes under the clients that paged with it.

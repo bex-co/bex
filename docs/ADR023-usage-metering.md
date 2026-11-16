@@ -6,7 +6,7 @@ bex records month-to-date resource consumption per workspace and exposes it over
 
 | Meter | Unit | Source |
 | --- | --- | --- |
-| `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — per-pod running time: 15 s steps at which each pod had reported within 59 s (containers collapsed per pod), × 15 s |
+| `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — per-pod running time: 15 s steps at which each pod had reported within 59 s (containers collapsed per pod), × 15 s; a cron job's runs' own start-to-finish time (w4/691) |
 | `egress_bytes` | bytes | loss-detecting sum of exact App HTTP + WebSocket + direct-public sources, or the public datastore proxy response source |
 | `build_seconds` | seconds | build and pre-deploy runs that ended in the window — Jobs and kpack Builds, failed ones included — from pod placement to their end (§ `build_seconds` against Render's pipeline minutes) |
 | `storage_gb_seconds` | decimal GB-seconds | average `kubelet_volume_stats_used_bytes` over the window × window seconds, summed across a datastore's PVCs |
@@ -141,6 +141,8 @@ For App services, each meter (`instance_seconds`, `egress_bytes`, and `build_sec
   - gaps of up to three missed scrapes lose nothing, while four lose one step;
   - a restarted container's overlapping new series continues its pod once.
 - **Cut-over.** Hours metered after each deploy use that deploy's query, so `usage_hourly` holds two over-counted cohorts. Rows from before w4/m173 billed every container series a full hour. Rows from the w4/m173 query (live from pin `f837cec46294` until the deploy that ships w5/m111) billed each terminated pod about 285 s of lookback. Whether to recompute paid-tier hours, and to repair Stripe meter events already sent for them through ADR040's reconcile/repair path, is an open decision (w4/m173 t002). Paid exposure must first be quantified with a read-only production query.
+
+**Cron jobs meter run time (w4/691).** Render bills a cron job per second of run time. The pod measure above cannot meet that: its three-step tail metered each ~50 s run about 95 s (production, 2026-11-16: three runs of 149 s metered 285 s). A cron App's `instance_seconds` is therefore the seconds each of its runs spent in the hour, from the run's own `startedAt` and `finishedAt` — the times `GET /v1/cron-jobs/{id}/runs` shows. The durable `cron_job_run_started`/`_ended` facts supply finished runs; the App CR's `status.runs` adds a run still in flight, counted to the hour's end. An unreadable fact store leaves the hour for catch-up. A deleted cron App's final hour still meters from its pods: the retired-resource record carries no service type.
 
 Successful zero egress/build rows are coverage anchors in `usage_hourly`; the period aggregation omits their all-zero groups so REST/GraphQL/MCP response semantics remain unchanged. `instance_seconds` retains zero groups for tiered suspended services, as before. Any analysis that needs to prove collection completeness must query raw hourly rows from the deployment time of this corrected contract; older positive-only rows are consumption evidence, not coverage evidence.
 

@@ -83,6 +83,8 @@ type UsageStore interface {
 	ResourceDisplayNames(ctx context.Context, tenantID string, refs []store.ResourceDisplayName) (map[string]string, error)
 	RecordResourceDisplayNames(ctx context.Context, tenantID string, records []store.ResourceDisplayName) error
 	SandboxUsageMetadata(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]store.SandboxUsageMetadata, error)
+	// A cron job's instance time is its runs' time (w4/691).
+	CronRunsOverlapping(ctx context.Context, appID string, from, to time.Time) ([]store.CronRunRecord, error)
 }
 
 // Service is the usage feature. Base carries the Kubernetes client, namespace,
@@ -1190,6 +1192,11 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		// per-tenant namespace its pods actually live in under ADR043; the shared
 		// namespace holds none of them after the migration.
 		cr, resolved := s.resolveAppCR(ctx, app, store.UsageKindInstanceSeconds)
+		if isCronApp(app, cr) {
+			quantity, ok = s.queryCronRunSeconds(ctx, app.ID, cr, window, end)
+			health = oneSourceHealth(store.UsageSourceInstance, ok, expectedFrom)
+			break
+		}
 		if crName, namespace, identified := s.appPodIdentity(app, cr); identified {
 			quantity, ok = s.queryInstanceSeconds(ctx, crName, namespace, window, end)
 		}
@@ -1199,7 +1206,7 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		// stayed silent for the life of this meter. Keep the row so the cursor
 		// still advances (a genuinely-down App must not stall the meter forever),
 		// but stop the health record from asserting the zero is sound.
-		if ok && quantity == 0 && resolved && expectsRunningPods(cr, window, end) {
+		if ok && quantity == 0 && resolved && expectsRunningPods(cr, window) {
 			health = degradeSourceHealth(health)
 		}
 	case store.UsageKindEgressBytes:
@@ -1450,9 +1457,9 @@ func (s *Service) appPodIdentity(app store.App, cr *appv1alpha1.App) (name, name
 
 // expectsRunningPods reports whether an App should have at least one pod alive
 // for the window starting at windowStart, so a zero pod-count is evidence of a
-// broken read rather than of the App's own state. Cron Apps have pods only
-// while a run is in flight and suspended/zero-replica Apps have none by
-// construction; both are honest zeros. So is a Free service the operator
+// broken read rather than of the App's own state. Suspended and zero-replica
+// Apps have none by construction, an honest zero (cron Apps meter run time,
+// not pods: queryCronRunSeconds). So is a Free service the operator
 // auto-hibernated (or suspended) before the window began: its spec still asks
 // for replicas, but it ran no pod. Production degraded every hour of every
 // hibernated Free service this way, pinning usage coverage to the month start
@@ -1461,14 +1468,8 @@ func (s *Service) appPodIdentity(app store.App, cr *appv1alpha1.App) (name, name
 // whose first release ended Failed or Canceled without ever serving (no
 // ActiveRevision): production degraded every hour of four such Apps this way,
 // with no pods behind any of them (w4/496). A first rollout still in progress
-// does run pods, so it is not exempt. A cron App expects pods only for a
-// window one of its recorded runs spent cronRunScrapeFloor or more in: a run
-// its selector cannot see, as manual runs were (w4/m322), then degrades
-// coverage instead of passing as an idle hour.
-func expectsRunningPods(cr *appv1alpha1.App, windowStart, windowEnd time.Time) bool {
-	if cr != nil && cr.Spec.Type == appv1alpha1.TypeCronJob {
-		return cronRanIn(cr, windowStart, windowEnd)
-	}
+// does run pods, so it is not exempt.
+func expectsRunningPods(cr *appv1alpha1.App, windowStart time.Time) bool {
 	if cr == nil || cr.Spec.Suspended || neverServedTerminal(cr) {
 		return false
 	}
@@ -1481,36 +1482,64 @@ func expectsRunningPods(cr *appv1alpha1.App, windowStart, windowEnd time.Time) b
 	return cr.Spec.Replicas > 0
 }
 
-// cronRunScrapeFloor is the least time a run must spend in a window before a
-// zero for that window is a broken read: two 15 s cAdvisor scrapes, so a run
-// too short to be sampled stays an honest zero.
-const cronRunScrapeFloor = 30 * time.Second
+// isCronApp reports a cron job, from its App CR when it resolved and from the
+// control-plane row otherwise.
+func isCronApp(app store.App, cr *appv1alpha1.App) bool {
+	if cr != nil {
+		return cr.Spec.Type == appv1alpha1.TypeCronJob
+	}
+	return app.Type == appv1alpha1.TypeCronJob
+}
 
-// cronRanIn reports a recorded run of cr that spent cronRunScrapeFloor or more
-// inside [start, end). A run still in flight counts up to end.
-func cronRanIn(cr *appv1alpha1.App, start, end time.Time) bool {
-	for _, run := range cr.Status.Runs {
-		began, err := time.Parse(time.RFC3339, run.StartedAt)
-		if err != nil {
-			continue
-		}
-		finished := end
-		if run.FinishedAt != "" {
-			if finished, err = time.Parse(time.RFC3339, run.FinishedAt); err != nil {
-				continue
+// queryCronRunSeconds is a cron job's instance time in [start, end): the
+// seconds each run spent in the window, from the run's own start and finish,
+// as Render bills a cron job per second of run time (w4/691). cAdvisor
+// presence cannot measure that: its samples sit up to 45 s apart, so the pod
+// meter credits a terminated pod three 15 s steps past its last sample, which
+// metered every ~50 s run about 95 s. The run facts are the durable record
+// (they outlive status.runs' ten entries); status.runs adds a run still in
+// flight, counted to the window's end, and a finish the facts have not
+// caught up with. These are the same times GET /v1/cron-jobs/{id}/runs shows.
+func (s *Service) queryCronRunSeconds(ctx context.Context, appID string, cr *appv1alpha1.App, start, end time.Time) (int64, bool) {
+	recorded, err := s.Store.CronRunsOverlapping(ctx, appID, start, end)
+	if err != nil {
+		log.Printf("usage: instance_seconds cron runs of %s: %v", appID, err)
+		return 0, false
+	}
+	type span struct{ began, finished time.Time }
+	runs := make(map[string]span, len(recorded))
+	for _, run := range recorded {
+		runs[run.Name] = span{run.StartedAt, run.FinishedAt}
+	}
+	if cr != nil {
+		for _, run := range cr.Status.Runs {
+			began, err := time.Parse(time.RFC3339, run.StartedAt)
+			if err != nil {
+				continue // not started: it has run no time
 			}
+			finished := end
+			if run.FinishedAt != "" {
+				if finished, err = time.Parse(time.RFC3339, run.FinishedAt); err != nil {
+					continue
+				}
+			}
+			runs[run.Name] = span{began, finished}
+		}
+	}
+	var ran time.Duration
+	for _, run := range runs {
+		began, finished := run.began, run.finished
+		if began.Before(start) {
+			began = start
 		}
 		if finished.After(end) {
 			finished = end
 		}
-		if began.Before(start) {
-			began = start
-		}
-		if finished.Sub(began) >= cronRunScrapeFloor {
-			return true
+		if finished.After(began) {
+			ran += finished.Sub(began)
 		}
 	}
-	return false
+	return int64(math.Round(ran.Seconds())), true
 }
 
 // neverServedTerminal reports an App whose first release ended Failed or

@@ -79,6 +79,13 @@ ORDER BY e.at DESC, e.source_key DESC
 LIMIT $5`
 )
 
+// cronRunsOverlappingSQL bounds both ends by the app_at index: a run ended
+// after the window opened and started before it closed.
+const cronRunsOverlappingSQL = cronRunRecordSQL + `
+  AND e.at > $2
+  AND s.at < $3
+ORDER BY e.at, e.source_key`
+
 const cronRunRecordByIDSQL = cronRunRecordSQL + `
   AND e.run_id = $2
 LIMIT 1`
@@ -119,6 +126,26 @@ func (s *PGStore) ListCronRunRecords(ctx context.Context, appID, after string, e
 	rows, err := s.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list cron runs of %s: %w", appID, err)
+	}
+	defer rows.Close()
+	var out []CronRunRecord
+	for rows.Next() {
+		rec, err := scanCronRunRecord(rows, appID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rec)
+	}
+	return out, rows.Err()
+}
+
+// CronRunsOverlapping returns appID's finished runs that started before to and
+// ended after from: the run facts the usage meter bills a cron job's run time
+// from (w4/691). A run canceled before it started ran no time, so it is absent.
+func (s *PGStore) CronRunsOverlapping(ctx context.Context, appID string, from, to time.Time) ([]CronRunRecord, error) {
+	rows, err := s.Pool.Query(ctx, cronRunsOverlappingSQL, appID, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("cron runs of %s in [%s, %s): %w", appID, from, to, err)
 	}
 	defer rows.Close()
 	var out []CronRunRecord

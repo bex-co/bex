@@ -58,6 +58,8 @@ type memUsageStore struct {
 	upsert      func(store.HourlyRow) error
 	coverage    store.UsageCoverage
 	coverageErr error
+	cronRuns    map[string][]store.CronRunRecord // appID -> finished runs
+	cronRunsErr error
 	// diskRows is the provisioned-disk meter's source: GB-seconds per window
 	// start, so a test can assert exactly which windows got metered.
 	diskRows map[time.Time][]store.DiskUsageRow
@@ -130,6 +132,23 @@ func (m *memUsageStore) CloseIdleUsageSourceStreams(_ context.Context, kind, sou
 	defer m.mu.Unlock()
 	m.idleClosed = append(m.idleClosed, idleStreamClose{kind, source, active, through})
 	return nil
+}
+
+// CronRunsOverlapping mirrors the SQL: finished runs that started before to
+// and ended after from.
+func (m *memUsageStore) CronRunsOverlapping(_ context.Context, appID string, from, to time.Time) ([]store.CronRunRecord, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.cronRunsErr != nil {
+		return nil, m.cronRunsErr
+	}
+	var out []store.CronRunRecord
+	for _, run := range m.cronRuns[appID] {
+		if !run.StartedAt.IsZero() && run.StartedAt.Before(to) && run.FinishedAt.After(from) {
+			out = append(out, run)
+		}
+	}
+	return out, nil
 }
 
 func (m *memUsageStore) ListRetiredUsageResources(_ context.Context, since time.Time) ([]store.RetiredUsageResource, error) {
@@ -1915,37 +1934,6 @@ func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
 		status: parked("CrashLoopBackOff", window.Add(-3*time.Hour)),
 		pods:   0, want: store.UsageSourceDegraded, quant: 0,
 	}, {
-		name:   "cron App has pods only during a run",
-		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
-		status: serving,
-		pods:   0, want: store.UsageSourceHealthy, quant: 0,
-	}, {
-		// w4/m322: a run the selector could not see (every manual run did)
-		// metered zero as an idle hour; a recorded run in the window makes
-		// the zero a broken read.
-		name: "cron App that ran in the window reporting no pods is suspicious",
-		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
-		status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-1", Runs: []appv1alpha1.CronRun{{
-			Name: "tea-h-web-r1c18537e", StartedAt: window.Add(43 * time.Minute).Format(time.RFC3339), FinishedAt: window.Add(44 * time.Minute).Format(time.RFC3339),
-		}}},
-		pods: 0, want: store.UsageSourceDegraded, quant: 0,
-	}, {
-		name: "cron App with a run still in flight at the window end is suspicious",
-		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
-		status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-1", Runs: []appv1alpha1.CronRun{{
-			Name: "tea-h-web-29906350", StartedAt: window.Add(59 * time.Minute).Format(time.RFC3339),
-		}}},
-		pods: 0, want: store.UsageSourceDegraded, quant: 0,
-	}, {
-		name: "cron App whose only runs fell outside the window, or were too short to scrape, has an honest zero",
-		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
-		status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-1", Runs: []appv1alpha1.CronRun{{
-			Name: "tea-h-web-before", StartedAt: window.Add(-10 * time.Minute).Format(time.RFC3339), FinishedAt: window.Add(-5 * time.Minute).Format(time.RFC3339),
-		}, {
-			Name: "tea-h-web-short", StartedAt: window.Add(10 * time.Minute).Format(time.RFC3339), FinishedAt: window.Add(10*time.Minute + 12*time.Second).Format(time.RFC3339),
-		}}},
-		pods: 0, want: store.UsageSourceHealthy, quant: 0,
-	}, {
 		name:   "running App with pods stays healthy",
 		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
 		status: serving,
@@ -1995,6 +1983,116 @@ func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
 				t.Errorf("source health: want %q, got %q", tc.want, row.SourceHealth[0].State)
 			}
 		})
+	}
+}
+
+// TestCronInstanceSecondsMeterRunTime: a cron job's instance time is its runs'
+// time, as Render bills a cron job per second of run time (w4/691). The pod
+// meter credited each terminated run pod 45 s past its last cAdvisor sample:
+// production metered three ~50 s runs (149 s) as 285 s. Prometheus here
+// reports a full hour of pods, so any reading of it would show.
+func TestCronInstanceSecondsMeterRunTime(t *testing.T) {
+	window := time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC)
+	at := func(d time.Duration) time.Time { return window.Add(d) }
+	rfc := func(d time.Duration) string { return at(d).Format(time.RFC3339) }
+	finished := func(name string, from, to time.Duration) store.CronRunRecord {
+		return store.CronRunRecord{Name: name, StartedAt: at(from), FinishedAt: at(to), Status: store.EventStatusSucceeded}
+	}
+	cases := []struct {
+		name     string
+		recorded []store.CronRunRecord
+		status   []appv1alpha1.CronRun
+		noCR     bool
+		want     int64
+	}{{
+		name: "the m322 replay: three manual runs of 49, 50 and 50 s meter 149 s",
+		recorded: []store.CronRunRecord{
+			finished("tea-h-job-run-1", 10*time.Minute, 10*time.Minute+49*time.Second),
+			finished("tea-h-job-run-2", 20*time.Minute, 20*time.Minute+50*time.Second),
+			finished("tea-h-job-run-3", 30*time.Minute, 30*time.Minute+50*time.Second),
+		},
+		want: 149,
+	}, {
+		name: "runs crossing the window's edges meter only their seconds inside it",
+		recorded: []store.CronRunRecord{
+			finished("tea-h-job-before", -40*time.Second, 20*time.Second),
+			finished("tea-h-job-after", 59*time.Minute+30*time.Second, 61*time.Minute),
+		},
+		want: 50,
+	}, {
+		name:   "a run still in flight meters to the window's end",
+		status: []appv1alpha1.CronRun{{Name: "tea-h-job-29906350", StartedAt: rfc(59 * time.Minute), Status: appv1alpha1.CronRunRunning}},
+		want:   60,
+	}, {
+		name:     "a run in both status and the facts counts once, by status",
+		recorded: []store.CronRunRecord{finished("tea-h-job-1", 5*time.Minute, 5*time.Minute+30*time.Second)},
+		status: []appv1alpha1.CronRun{
+			{Name: "tea-h-job-1", StartedAt: rfc(5 * time.Minute), FinishedAt: rfc(5*time.Minute + 30*time.Second), Status: appv1alpha1.CronRunSucceeded},
+			{Name: "tea-h-job-2", StartedAt: rfc(6 * time.Minute), FinishedAt: rfc(6*time.Minute + 12*time.Second), Status: appv1alpha1.CronRunFailed},
+			{Name: "tea-h-job-3", FinishedAt: rfc(7 * time.Minute), Status: appv1alpha1.CronRunCanceled},
+		},
+		want: 42,
+	}, {
+		name: "no run in the window is an honest zero",
+		want: 0,
+	}, {
+		name:     "an App CR that did not resolve meters from the facts alone",
+		recorded: []store.CronRunRecord{finished("tea-h-job-1", time.Minute, time.Minute+45*time.Second)},
+		noCR:     true,
+		want:     45,
+	}}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			prom := fakeProm(240)
+			defer prom.Close()
+			scheme := runtime.NewScheme()
+			if err := appv1alpha1.AddToScheme(scheme); err != nil {
+				t.Fatal(err)
+			}
+			app := store.App{ID: "srv-c", TenantID: "tea-h", Name: "job", Tier: "starter", Type: appv1alpha1.TypeCronJob}
+			builder := fake.NewClientBuilder().WithScheme(scheme)
+			if !tc.noCR {
+				builder = builder.WithRuntimeObjects(&appv1alpha1.App{
+					ObjectMeta: metav1.ObjectMeta{Name: "tea-h-job", Namespace: "tea-h", Labels: map[string]string{store.LabelAppID: app.ID}},
+					Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
+					Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-1", Runs: tc.status},
+				})
+			}
+			st := newMemUsageStore()
+			st.cronRuns = map[string][]store.CronRunRecord{app.ID: tc.recorded}
+			svc := NewService(&core.Base{Client: builder.Build(), Namespace: "default"}, st, prom.URL, prom.Client())
+			if got := svc.processAppMeterWindowResult(context.Background(), app, store.UsageKindInstanceSeconds, window); got != appMeterWindowSuccess {
+				t.Fatalf("window: want success, got %v", got)
+			}
+			st.mu.Lock()
+			row, ok := st.rows[usageKey{store.ResourceKindService, app.ID, store.UsageKindInstanceSeconds, "starter", window}]
+			st.mu.Unlock()
+			if !ok {
+				t.Fatal("no usage_hourly row written")
+			}
+			if row.Quantity != tc.want {
+				t.Errorf("instance_seconds = %d, want %d", row.Quantity, tc.want)
+			}
+			if len(row.SourceHealth) != 1 || row.SourceHealth[0].State != store.UsageSourceHealthy {
+				t.Errorf("source health = %+v, want one healthy instance observation", row.SourceHealth)
+			}
+		})
+	}
+}
+
+// An unreadable run record leaves the window unmetered for catch-up to retry,
+// never a zero.
+func TestCronInstanceSecondsUnreadableRunsRetry(t *testing.T) {
+	st := newMemUsageStore()
+	st.cronRunsErr = errors.New("db down")
+	svc := NewService(&core.Base{Namespace: "default"}, st, "", nil)
+	app := store.App{ID: "srv-c", TenantID: "tea-h", Name: "job", Tier: "starter", Type: appv1alpha1.TypeCronJob}
+	window := time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC)
+	if got := svc.processAppMeterWindowResult(context.Background(), app, store.UsageKindInstanceSeconds, window); got != appMeterWindowSourceUnavailable {
+		t.Fatalf("want source-unavailable, got %v", got)
+	}
+	if len(st.rows) != 0 {
+		t.Errorf("wrote rows %+v", st.rows)
 	}
 }
 
