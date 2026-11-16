@@ -73,11 +73,12 @@ def validate_primary(expected, actual):
     else:
         require(actual["executable"] == "/usr/local/cargo/bin/cargo", "Cargo executable is not the selected primary")
         require(actual["version"].startswith("rustc " + version + " "), "Rust patch version changed")
-        # Render's RUSTUP_HOME links to the image's rustup tree (w8/256).
-        require(actual["sysroot"].startswith(environment["RUSTUP_HOME"] + "/toolchains/")
-                and os.path.realpath(actual["sysroot"]).startswith("/usr/local/rustup/toolchains/"), "Rust sysroot escaped the primary tree")
-        require(actual["rustc"] == actual["sysroot"] + "/bin/rustc", "rustup selected another compiler")
-        require(actual["target_libdir"].startswith(actual["sysroot"] + "/lib/rustlib/"), "Rust standard library tree changed")
+        # Render's RUSTUP_HOME links to the image's rustup tree (w8/256), so
+        # compare resolved paths: the compiler and its sysroot stay inside it.
+        sysroot = os.path.realpath(actual["sysroot"])
+        require(sysroot.startswith("/usr/local/rustup/toolchains/"), "Rust sysroot escaped the primary tree")
+        require(os.path.realpath(actual["rustc"]) == sysroot + "/bin/rustc", "rustup selected another compiler")
+        require(os.path.realpath(actual["target_libdir"]).startswith(sysroot + "/lib/rustlib/"), "Rust standard library tree changed")
 
 
 def validate_outputs(runtime, outputs):

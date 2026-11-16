@@ -1463,13 +1463,17 @@ class ProfileRoutingControls(unittest.TestCase):
                 legs = [(leg["profile"], leg["case"]) for leg in actual["matrix"]]
                 self.assertEqual(len(legs), len(set(legs)))
                 # Every case of every profile, except the Node source-fallback
-                # lines the production donor route replaces.
+                # lines the production donor route replaces and the historical
+                # route that never builds on the common image.
                 donors = set(qualification.PROFILES["node-donors"][2])
                 expected = {(p, c) for p, entry in qualification.PROFILES.items() for c in entry[2]}
                 expected -= {("node", c) for c in donors}
+                expected -= {("node-addon", "historical-python313-node16")}
                 self.assertEqual(set(legs), expected)
                 self.assertEqual({c for p, c in legs if p == "node"}, {"node-22", "node-26"})
-                self.assertEqual(len(legs), 37)
+                self.assertEqual({c for p, c in legs if p == "node-addon"},
+                                 {"common-node14-primary", "common-node16-primary", "common-python313-node16"})
+                self.assertEqual(len(legs), 36)
                 for leg in actual["matrix"]:
                     selected = qualification.profile_selection(leg["profile"], leg["case"])
                     self.assertEqual(leg["job_minutes"], int(selected["job_minutes"]))

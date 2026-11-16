@@ -76,14 +76,16 @@ PROFILES = {
 # One dispatch runs every case below, as a matrix, on the image that run
 # published: one digest is then shown to pass all of them (w8/m91). Production
 # Node 14/16/18/20 run on the published donor trees, so those lines go through
-# node-donors; node keeps only its lines that are not backports.
+# node-donors; node keeps only its lines that are not backports. A historical
+# route builds on the official images without the common base, so it says
+# nothing about the digest; it stays a single case.
 FAMILIES = "families"
 
 
 def family_cases():
     donors = set(PROFILES["node-donors"][2])
     return [(profile, case) for profile, (_, _, cases, _, _) in PROFILES.items()
-            for case in cases if not (profile == "node" and case in donors)]
+            for case in cases if not (profile == "node" and case in donors) and not case.startswith("historical-")]
 
 
 def profile_selection(profile, case):
