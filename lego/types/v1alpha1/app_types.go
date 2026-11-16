@@ -1615,6 +1615,18 @@ type BuildRunStatus struct {
 	FinishedAt string `json:"finishedAt,omitempty"`
 }
 
+// RegistryWaitStatus records a release waiting on an image registry that does
+// not answer its metadata read (w4/692). The wait retries within a bound; past
+// it the release fails over the serving one, as Render fails a deploy whose
+// image "is no longer available or reachable".
+type RegistryWaitStatus struct {
+	// Generation is the release generation that waits.
+	Generation int64 `json:"generation"`
+
+	// Since is when that generation's read first failed.
+	Since metav1.Time `json:"since"`
+}
+
 // Causes of a build hold (BuildHoldStatus.Cause).
 const (
 	// BuildHoldAdmission: the build admission ceiling is full.
@@ -1890,6 +1902,12 @@ type AppStatus struct {
 	// dispatched; nil once its build Job exists or when nothing is held.
 	// +optional
 	BuildHold *BuildHoldStatus `json:"buildHold,omitempty"`
+
+	// RegistryWait is when the current release's image metadata read first
+	// failed transiently (a network error, 5xx or 429), so the wait is bounded
+	// across manager restarts (w4/692); nil once the read answers.
+	// +optional
+	RegistryWait *RegistryWaitStatus `json:"registryWait,omitempty"`
 
 	// Autoscaling is the latest autoscaler-driven replica transition. Manual
 	// Scale changes never populate it.

@@ -1636,6 +1636,24 @@ spec:
                   tag rather than a digest, so a release rolled back to an older image
                   gets a fresh live tag of its own.
                 type: string
+              registryWait:
+                description: |-
+                  RegistryWait is when the current release's image metadata read first
+                  failed transiently (a network error, 5xx or 429), so the wait is bounded
+                  across manager restarts (w4/692); nil once the read answers.
+                properties:
+                  generation:
+                    description: Generation is the release generation that waits.
+                    format: int64
+                    type: integer
+                  since:
+                    description: Since is when that generation's read first failed.
+                    format: date-time
+                    type: string
+                required:
+                - generation
+                - since
+                type: object
               releaseArtifactFingerprint:
                 description: |-
                   ReleaseArtifactFingerprint is the artifact identity of the in-flight release

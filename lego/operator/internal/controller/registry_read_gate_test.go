@@ -29,6 +29,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -390,21 +391,24 @@ func TestACancelledReadDoesNotOpenTheBreaker(t *testing.T) {
 	}
 }
 
-// A registry wait ends once its release has waited the rollout budget from its
-// own start, whether the registry failed the read or the gate turned it away;
-// a refusal, a success or a start that is another release's never expires it
-// (w4/692).
+// A registry wait ends once it has lasted the rollout budget from its own
+// start, whether the registry failed the read or the gate turned it away; a
+// refusal, a success or a wait that is another release's never expires it, and
+// neither does a release that started long before its wait did: a git-built
+// image's release starts before its build (w4/692).
 func TestRegistryWaitExpiresAtTheRolloutBudget(t *testing.T) {
 	start := time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)
-	budget := time.Duration(rolloutBudgetSeconds) * time.Second
+	budget := registryWaitBound
 	transient := registry.NewTransientError(errors.New("connection refused"), 0)
 	busy := &registryBusyError{host: "docker.io", retryAfter: time.Minute}
 	app := func(gen int64) *appv1alpha1.App {
 		a := webImageApp(1)
 		a.Status.ReleaseGeneration = 3
-		a.Status.ReleaseStart = &appv1alpha1.ReleaseStart{Generation: gen, StartedAt: start.Format(time.RFC3339)}
+		a.Status.RegistryWait = &appv1alpha1.RegistryWaitStatus{Generation: gen, Since: metav1.NewTime(start)}
 		return a
 	}
+	builtLong := app(3)
+	builtLong.Status.ReleaseStart = &appv1alpha1.ReleaseStart{Generation: 3, StartedAt: start.Add(-2 * budget).Format(time.RFC3339)}
 	for _, tc := range []struct {
 		name    string
 		app     *appv1alpha1.App
@@ -417,8 +421,9 @@ func TestRegistryWaitExpiresAtTheRolloutBudget(t *testing.T) {
 		{"a turned-away read past the budget", app(3), busy, budget + time.Minute, true},
 		{"a refusal past the budget", app(3), &registry.RefusedError{Status: http.StatusNotFound}, 2 * budget, false},
 		{"a success past the budget", app(3), nil, 2 * budget, false},
-		{"another release's start", app(2), transient, 2 * budget, false},
-		{"no start", func() *appv1alpha1.App { a := app(3); a.Status.ReleaseStart = nil; return a }(), transient, 2 * budget, false},
+		{"another release's wait", app(2), transient, 2 * budget, false},
+		{"no wait yet", func() *appv1alpha1.App { a := app(3); a.Status.RegistryWait = nil; return a }(), transient, 2 * budget, false},
+		{"a release that started a build ago", builtLong, transient, time.Minute, false},
 	} {
 		if got := registryWaitExpired(tc.app, tc.err, start.Add(tc.elapsed)); got != tc.want {
 			t.Errorf("%s: expired = %v, want %v", tc.name, got, tc.want)
@@ -430,5 +435,66 @@ func TestRegistryWaitExpiresAtTheRolloutBudget(t *testing.T) {
 	}
 	if want := "the registry ghcr.io did not answer the read of the image ghcr.io/acme/web:v1 for 15 minutes"; !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("message = %q, want it to open %q", err.Error(), want)
+	}
+}
+
+// The wait's start is its first failed or turned-away read, written to status
+// so a fresh reconciler (a manager restart) keeps it; no requeue sleeps past
+// the bound, a newer release starts its own wait and an answer ends it
+// (w4/692).
+func TestImageRegistryWaitRecordsItsStart(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	app := webImageApp(1)
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).WithStatusSubresource(app).Build()
+	clock := &fakeClock{now: time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)}
+	reconciler := func() *AppReconciler {
+		r := &AppReconciler{Client: cl, Scheme: scheme}
+		r.registryReads().now = clock.Now
+		return r
+	}
+	transient := func() error { return registry.NewTransientError(errors.New("connection refused"), 0) }
+	wait := func(r *AppReconciler, err error) (time.Duration, bool) {
+		t.Helper()
+		res, waiting := r.imageRegistryWait(t.Context(), app, err)
+		return res.RequeueAfter, waiting
+	}
+
+	r := reconciler()
+	if _, waiting := wait(r, transient()); !waiting {
+		t.Fatal("the first failure did not wait")
+	}
+	began := clock.now
+	stored := &appv1alpha1.App{}
+	if err := cl.Get(t.Context(), types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, stored); err != nil ||
+		stored.Status.RegistryWait == nil || stored.Status.RegistryWait.Generation != 1 || !stored.Status.RegistryWait.Since.Time.Equal(began) {
+		t.Fatalf("stored registryWait = %+v (%v), want generation 1 since %v", stored.Status.RegistryWait, err, began)
+	}
+
+	// After a restart the wait keeps its start, and the requeue stops at the
+	// bound: a failure two minutes before it backs off 30s, a busy answer
+	// 30s before it requeues at the bound, not a minute later.
+	clock.Advance(registryWaitBound - 2*time.Minute)
+	r = reconciler()
+	if requeue, waiting := wait(r, transient()); !waiting || requeue != imageRegistryRetry || !app.Status.RegistryWait.Since.Time.Equal(began) {
+		t.Fatalf("after a restart: requeue %v waiting %v since %v, want a %v wait since %v", requeue, waiting, app.Status.RegistryWait.Since, imageRegistryRetry, began)
+	}
+	clock.Advance(90 * time.Second)
+	if requeue, waiting := wait(r, &registryBusyError{retryAfter: time.Minute}); !waiting || requeue != 30*time.Second {
+		t.Fatalf("a busy answer 30s before the bound requeued %v (waiting %v), want 30s", requeue, waiting)
+	}
+	clock.Advance(30 * time.Second)
+	if !registryWaitExpired(app, transient(), clock.now) {
+		t.Fatal("the wait did not expire at the bound")
+	}
+
+	// A newer release waits afresh; an answer ends the wait.
+	app.Status.ReleaseGeneration = 2
+	if _, waiting := wait(r, transient()); !waiting || app.Status.RegistryWait.Generation != 2 || registryWaitExpired(app, transient(), clock.now) {
+		t.Fatalf("a newer release did not start its own wait: %+v", app.Status.RegistryWait)
+	}
+	if _, waiting := wait(r, nil); waiting || app.Status.RegistryWait != nil {
+		t.Fatalf("an answered read left the wait: waiting %v, %+v", waiting, app.Status.RegistryWait)
 	}
 }

@@ -649,8 +649,11 @@ func (r *AppReconciler) rolloutQuotaBlocked(ctx context.Context, dep *appsv1.Dep
 
 // imageRegistryWait keeps a deploy open while the image registry throttles or
 // fails a metadata read: a 429, 5xx or network error is transient, and Render
-// retries the pull rather than failing the deploy (w4/m243 t008).
+// retries the pull rather than failing the deploy (w4/m243 t008). The wait's
+// first pass records its start (startRegistryWait), and no requeue sleeps past
+// the rollout budget it is bounded by (registryWaitExpired).
 func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.App, err error) (ctrl.Result, bool) {
+	now := r.registryReads().now()
 	// A read the gate turned away is neither a failure nor a reason to wait
 	// long: the registry is being read, or backing off (registry_read_gate.go).
 	if busy, ok := errors.AsType[*registryBusyError](err); ok {
@@ -662,13 +665,14 @@ func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.
 		if app.Status.Phase == appv1alpha1.PhaseDeploying && ready != nil && ready.Reason == reasonImageRegistryRateLimited {
 			reason, msg = reasonImageRegistryRateLimited, imageRegistryRateLimitedMessage
 		}
-		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reason, msg)
-		return ctrl.Result{RequeueAfter: busy.busyRequeue()}, true
+		r.setPhaseWith(ctx, app, appv1alpha1.PhaseDeploying, reason, msg, startRegistryWait(app, now))
+		return ctrl.Result{RequeueAfter: min(busy.busyRequeue(), registryWaitLeft(app, now))}, true
 	}
 	var transient *registry.TransientError
 	if !errors.As(err, &transient) {
 		// The read answered (or failed for good): the App's failures start over.
 		r.registryReads().appSucceeded(app.Namespace + "/" + app.Name)
+		app.Status.RegistryWait = nil
 		return ctrl.Result{}, false
 	}
 	logf.FromContext(ctx).Info("image registry read failed; retrying", "app", app.Name, "error", err.Error())
@@ -676,29 +680,57 @@ func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.
 	if transient.Status == http.StatusTooManyRequests {
 		reason, msg = reasonImageRegistryRateLimited, imageRegistryRateLimitedMessage
 	}
-	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reason, msg)
+	r.setPhaseWith(ctx, app, appv1alpha1.PhaseDeploying, reason, msg, startRegistryWait(app, now))
 	// Consecutive failures of one App back off, 30 s doubling to 5 minutes,
 	// whatever the registry's own Retry-After asks for within that range.
 	failures := r.registryReads().appFailed(app.Namespace + "/" + app.Name)
-	return ctrl.Result{RequeueAfter: min(max(transient.RetryAfter, registryRetryDelay(failures)), imageRegistryRetryMax)}, true
+	return ctrl.Result{RequeueAfter: min(max(transient.RetryAfter, registryRetryDelay(failures)), imageRegistryRetryMax, registryWaitLeft(app, now))}, true
+}
+
+// registryWaitBound is how long a release waits on a registry that fails or
+// turns away its image metadata read: the deploy's rollout budget.
+const registryWaitBound = time.Duration(rolloutBudgetSeconds) * time.Second
+
+// startRegistryWait records when the current release's registry wait began,
+// and reports whether status changed. It is the wait's own start, not the
+// release's: a git-built image's release starts before its build, which may
+// itself take most of the budget. Kept in status, a manager restart does not
+// restart it; a newer release starts its own.
+func startRegistryWait(app *appv1alpha1.App, now time.Time) bool {
+	gen := releaseGeneration(app)
+	if wait := app.Status.RegistryWait; wait != nil && wait.Generation == gen {
+		return false
+	}
+	app.Status.RegistryWait = &appv1alpha1.RegistryWaitStatus{Generation: gen, Since: metav1.NewTime(now)}
+	return true
+}
+
+// registryWaitLeft is what remains of the current release's registry wait
+// (at least a second, so a requeue is never immediate), the whole bound before
+// it has begun.
+func registryWaitLeft(app *appv1alpha1.App, now time.Time) time.Duration {
+	wait := app.Status.RegistryWait
+	if wait == nil || wait.Generation != releaseGeneration(app) {
+		return registryWaitBound
+	}
+	return max(registryWaitBound-now.Sub(wait.Since.Time), time.Second)
 }
 
 // registryWaitExpired reports a registry wait (imageRegistryWait) that has
-// outlasted its deploy's rollout budget, counted from the release's own start
-// (ReleaseStart): the registry failed or turned away every read for as long as
-// a new instance may take to become healthy. Render fails a deploy whose image
-// is "no longer available or reachable" (render.com/docs/rollbacks), so such a
-// wait ends as the deploy's failure, not an open deploy that lasts as long as
-// the outage (w4/692). A release with no start of its own keeps waiting.
+// outlasted its deploy's rollout budget, counted from the wait's own start
+// (startRegistryWait): the registry failed or turned away every read for as
+// long as a new instance may take to become healthy. Render fails a deploy
+// whose image is "no longer available or reachable" (render.com/docs/rollbacks),
+// so such a wait ends as the deploy's failure, not an open deploy that lasts as
+// long as the outage (w4/692). A wait not yet begun has not expired.
 func registryWaitExpired(app *appv1alpha1.App, err error, now time.Time) bool {
 	_, busy := errors.AsType[*registryBusyError](err)
 	_, transient := errors.AsType[*registry.TransientError](err)
-	start := app.Status.ReleaseStart
-	if (!busy && !transient) || start == nil || start.Generation != releaseGeneration(app) {
+	wait := app.Status.RegistryWait
+	if (!busy && !transient) || wait == nil || wait.Generation != releaseGeneration(app) {
 		return false
 	}
-	started, perr := time.Parse(time.RFC3339, start.StartedAt)
-	return perr == nil && now.Sub(started) >= time.Duration(rolloutBudgetSeconds)*time.Second
+	return now.Sub(wait.Since.Time) >= registryWaitBound
 }
 
 // registryUnreachableError is the failure of a deploy whose registry wait
@@ -709,7 +741,7 @@ func registryUnreachableError(image string) error {
 	return &unreachableRegistryError{msg: appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageRegistryUnreachable,
 		appv1alpha1.DeployReasonParam{Name: "host", Value: imageRegistryHost(image)},
 		appv1alpha1.DeployReasonParam{Name: "image", Value: image},
-		appv1alpha1.DeployReasonParam{Name: "minutes", Value: strconv.Itoa(int(rolloutBudgetSeconds / 60))},
+		appv1alpha1.DeployReasonParam{Name: "minutes", Value: strconv.Itoa(int(registryWaitBound / time.Minute))},
 	)}
 }
 
