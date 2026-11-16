@@ -305,15 +305,17 @@ func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) strin
 	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployFailed)
 }
 
-// startExecFailure matches runc's exec failure inside a StartError message:
-// `exec: "/bin/sh": stat /bin/sh: no such file or directory`.
-var startExecFailure = regexp.MustCompile(`exec: "([A-Za-z0-9._/+-]{1,256})": (.*)$`)
+// StartExecFailure matches runc's exec failure inside a StartError message:
+// `exec: "/bin/sh": stat /bin/sh: no such file or directory`. It is the one
+// parser for this shape: the controller's crash-loop diagnosis shares it so a
+// runc message change updates both call sites at once.
+var StartExecFailure = regexp.MustCompile(`exec: "([A-Za-z0-9._/+-]{1,256})": (.*)$`)
 
 // startErrorMessage names the program the runtime could not launch, so the
 // owner is not pointed at logs a command that never ran cannot have written.
 func startErrorMessage(runtimeMsg string) string {
 	const neverRan = "; the program never ran, so there are no pre-deploy logs"
-	m := startExecFailure.FindStringSubmatch(runtimeMsg)
+	m := StartExecFailure.FindStringSubmatch(runtimeMsg)
 	if m == nil {
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployCouldNotLaunch)
 	}

@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -121,4 +122,13 @@ func PublicCertificateState(conditions []metav1.Condition, trusted bool) (state,
 	default:
 		return ExternalCertificateFailed, "Issuing the certificate failed. Issuance is retried automatically."
 	}
+}
+
+// IsDatastoreResource reports whether a Render resource id names a managed
+// datastore (Postgres dpg- or Key Value red-) rather than a service. It is
+// the one predicate for this question: the metrics and logs surfaces shared
+// copies that could drift when a family is added, so both delegate here.
+func IsDatastoreResource(resource string) bool {
+	kind, _ := ids.KindOf(resource)
+	return kind == ids.Postgres || kind == ids.KeyValue
 }

@@ -245,7 +245,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				var series []MetricSeries
 				if metricType == renderActiveConnections {
 					series, err = s.activeConnections(ctx, id, q.Start, q.End, q.Resolution)
-				} else if isDatastoreResource(id) {
+				} else if core.IsDatastoreResource(id) {
 					dq := q
 					dq.Metric = metricIDFor(metricType)
 					dq.CPUAggregation = cpuAggregationFor(dq.Metric, cpuAgg)

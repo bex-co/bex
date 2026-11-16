@@ -104,7 +104,7 @@ func (s *Service) bandwidthSources(w http.ResponseWriter, r *http.Request) {
 	q.Metric, q.Resolution = MetricBandwidth, time.Hour
 	out := []bandwidthSourceSeries{}
 	for _, res := range resources {
-		if isDatastoreResource(res) {
+		if core.IsDatastoreResource(res) {
 			// The same named refusal /v1/metrics/bandwidth gives a datastore.
 			if _, err := s.datastoreAppMetric(r.Context(), q, res); err != nil {
 				core.WriteErr(w, err)

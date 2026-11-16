@@ -6515,10 +6515,6 @@ const (
 // (runc reports 128 with a 1970 start time).
 const runtimeStartError = "StartError"
 
-// startExecFailure matches runc's exec failure inside a StartError message:
-// `exec: "/bin/sh": stat /bin/sh: no such file or directory`.
-var startExecFailure = regexp.MustCompile(`exec: "([A-Za-z0-9._/+-]{1,256})": (.*)$`)
-
 // startErrorMessage explains a crash loop whose last termination was a
 // StartError, naming the program only when runc's message identifies it in a
 // recognizable shape. The raw OCI message (container ids, shim internals) is
@@ -6529,7 +6525,7 @@ func startErrorMessage(runtimeMsg string) string {
 	const prefix = "container could not start: "
 	const neverRan = " The program never ran, so there is no application output in the logs."
 	const checkCommand = " Check the Docker Command and the image's entrypoint."
-	m := startExecFailure.FindStringSubmatch(runtimeMsg)
+	m := predeploy.StartExecFailure.FindStringSubmatch(runtimeMsg)
 	if m == nil {
 		return prefix + "the container runtime could not launch the startup program." + neverRan + checkCommand
 	}

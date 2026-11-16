@@ -124,7 +124,7 @@ func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, s
 		if target, selected, err = selectRelease(a); err != nil {
 			return err
 		}
-		stampReleaseGeneration(a, release)
+		core.StampReleaseGeneration(a, release)
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 		selection := *selected
 		selection.Generation = release

@@ -144,14 +144,8 @@ func (s *Service) activeConnections(ctx context.Context, resource string, start,
 	})
 }
 
-// isDatastoreResource reports whether a Render metrics `resource` names a
-// Postgres (dpg-) or Key Value (red-) rather than a service.
-func isDatastoreResource(resource string) bool {
-	kind, _ := ids.KindOf(resource)
-	return kind == ids.Postgres || kind == ids.KeyValue
-}
-
 // datastoreAppMetric answers one of Render's App-metric paths (cpu, memory,
+
 // *-limit, instance-count, http-*, bandwidth) for a datastore id (w8/061).
 // Render scopes them to Postgres and Key Value too. DatastoreMetrics serves cpu,
 // memory and their limits (w1/m180; Key Value memory is its kv_memory series)
@@ -286,7 +280,7 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 
 	var all []MetricSeries
 	for _, res := range resources {
-		if isDatastoreResource(res) {
+		if core.IsDatastoreResource(res) {
 			series, err := s.datastoreAppMetric(r.Context(), q, res)
 			if err != nil {
 				core.WriteErr(w, err)
