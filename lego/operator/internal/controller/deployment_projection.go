@@ -226,18 +226,21 @@ func (p deploymentParams) usesOpenPortCheck(app *appv1alpha1.App) bool {
 // Such a release checks Render's default, any open port, and pins no container
 // port, so discovery moves only the Services and the route. The choice is kept
 // for the release once its stored template carries it, so going live does not
-// roll it again. A release over a serving one keeps w4/m320's HTTP guard, and
-// later releases the TCP probe on their known port. An edge-cached service
-// keeps its sidecar on the primary, which discovery moves, so it is left out.
+// roll it again. A release over a serving one that discovers its port checks
+// the same way (w4/m320): the hold and the Services' pin, not its probe, keep
+// it out of traffic until promotion, so discovery does not roll the template a
+// second time and start another instance. Later releases with a known port
+// keep the TCP probe on it. An edge-cached service keeps its sidecar on the
+// primary, which discovery moves, so it is left out.
 func checksAnyOpenPort(stored corev1.PodTemplateSpec, app *appv1alpha1.App, p deploymentParams) bool {
 	if p.worker || p.healthProbeImage == "" || p.edgeCacheImage != "" || app.Spec.HealthCheckPath != "" ||
-		!discoversWebImagePort(app) || webImageHTTPSelectionGuardsServing(app) {
+		!discoversWebImagePort(app) {
 		return false
 	}
 	if stored.Labels[labelRevision] == releaseRevision(app) && storedChecksOpenPort(stored.Spec) {
 		return true
 	}
-	return app.Status.ActiveRevision == "" && app.Status.ServingNetwork == nil
+	return app.Status.ActiveRevision == "" && app.Status.ServingNetwork == nil || webImageHTTPSelectionGuardsServing(app)
 }
 
 // storedChecksOpenPort reports a stored pod spec whose app container checks any
@@ -401,11 +404,12 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 	if !p.worker {
 		path := app.Spec.HealthCheckPath
 		if path == "" && webImageHTTPSelectionGuardsServing(app) {
-			// A binary listener can pass TCP readiness and let the Deployment
-			// drain the serving release before HTTP discovery finishes. A
-			// first release has nothing to drain, so it keeps the final TCP
-			// probe: switching it after discovery would roll a second
-			// ReplicaSet for no reason (w2/078).
+			// Only without the helper image (checksAnyOpenPort covers the
+			// rest, w4/m320): a binary listener can pass TCP readiness and let
+			// the Deployment drain the serving release before HTTP discovery
+			// finishes. A first release has nothing to drain, so it keeps the
+			// final TCP probe: switching it after discovery would roll a
+			// second ReplicaSet for no reason (w2/078).
 			path = "/"
 		}
 		handler := healthCheckHandler(path, p.port, probeHost)

@@ -1,6 +1,6 @@
 # w4 · m320 — An image web service's deploy takes no traffic until it is the live release: HTTP port discovery doesn't put the candidate in front of users, an image change rolls once, and a canceled deploy never answered
 
-**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** blocked — t001–t005, t007–t009 and t011 done (shipped); t012 (round 156: a supersede in the settling window) is open. Rounds 397–401 reproduced it on demand and traced its endpoint loss to Kubernetes cleaning up the promoted ReplicaSet under the 150 s hold ([w4/672](../../done/672.md), t012 addendum); t006 live replay follows it and the next production deploy, then t010 closes
+**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** blocked. t001–t005, t007–t009 and t011–t013 are done. On 2026-11-16 the release gate cleared (production deploy on `06cc3b02c`) and the live DoD replay ran. t012 holds live. t013 (one instance per image change) is shipped and waits for the next production deploy. Then t006 re-runs its two open bullets and t010 closes.
 
 ## Tasks (in order)
 
@@ -11,15 +11,16 @@
 | [t003](done/t003.md) | Cancel before promotion keeps the serving pods, and the canceled candidate never answered — **DONE** | 30m | t001, t002 |
 | [t004](done/t004.md) | A deploy whose release already holds all traffic reads `live` in the same pass — **DONE** | 40m | t001 |
 | [t005](done/t005.md) | Blast radius: every rollout kind through the Service selector and the discovery hold — **DONE** | 40m | t002, t003, t004 |
-| [t006](t006.md) | Live verification on an owned image web service | 30m | t005, t012 |
+| [t006](t006.md) | Live verification on an owned image web service | 30m | t005, t012, t013 |
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
 | [t011](done/t011.md) | Regression of w8/m122: every image change on an image web service goes live without `image.sha`, because the row closes `live` before the operator records the digest — **DONE** | 40m | t004 |
-| [t012](t012.md) | Regression of w4/405: a second deploy that arrives after an image release already holds all traffic, but before its row reads `live`, closes that release `canceled`. This includes a first deploy, which leaves the service with no live row. After an image change it also puts an older release back and drops requests | 75m | t004 |
-| [t010](t010.md) | Closeout | 10m | t008, t009, t011, t012 |
+| [t012](done/t012.md) | Regression of w4/405: a second deploy that arrives after an image release already holds all traffic, but before its row reads `live`, closes that release `canceled`. This includes a first deploy, which leaves the service with no live row. After an image change it also puts an older release back and drops requests — **DONE** | 75m | t004 |
+| [t013](done/t013.md) | One instance per image change: a release over a serving one checks any open port while it discovers its port, so discovery never rolls a second ReplicaSet — **DONE** | 45m | t005 |
+| [t010](t010.md) | Closeout | 10m | t008, t009, t011, t012, t013 |
 
-Twelve tasks, 435m (7h15m); t012 added in round 156 and widened in round 157. **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
+Thirteen tasks, 480m (8h). t012 was added in round 156 and widened in round 157; t013 was added in the 2026-11-16 replay. **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
 
 ## Finding
 
@@ -236,3 +237,25 @@ Pin `e7a56b07e0d7` contains `f24e6e7f7`.
   - the rollback `dep-dbqivki140ds739rb83g` to v1.10.3's digest (`sha256:43a68d10…`, live 03:19:39).
 - **Not run:** the saved-image change plus a standard deploy, and the rest of this DoD (t006).
 
+
+## Unblock record and live replay, 2026-11-16 (`/loopx w4`)
+
+- **Affected:** m320 t006, t012, t013 (new) and t010.
+- **Source:** verified evidence.
+  - The release gate named on the board held: production's scheduled deploy at 2026-11-15 22:49Z ran on `06cc3b02c`.
+  - `git merge-base --is-ancestor` puts `7dec58bb5` (t001–t005), `f24e6e7f7` (t011) and `8378bb0c5` (w4/672, t012's outage half) in it.
+  - The milestone was unblocked on that finding, and the live DoD was replayed on production as the QA user (`scripts/qa-login.sh`; session revoked afterwards).
+- **Fixtures:** `bex-canary`, all deleted afterwards (DELETE 204, GET 404):
+  - `qa-20261116-m320-ngx` (`srv-dbt69htp70ac73bdn10g`);
+  - `qa-20261116-m320-go` (`srv-dbt6oqdp70ac73bdn2hg`);
+  - `qa-20261116-m320-bb` (`srv-dbt6l1jeh8gc738gogjg`);
+  - `qa-20261116-m320-crash` (`srv-dbt6m0dp70ac73bdn2e0`).
+- **Outcome per bullet:**
+  - Holds: cancel before promotion (REST and dashboard), the same-image control (switch → `finishedAt` 1.2 s, 24 s before), the neighbours (port change, env save, restart, every poll `200`), the image digest on all three arms, and every supersede bullet. t012 is done; its record is in [t012](done/t012.md).
+  - **No early traffic** holds within one poll on nginx (switch 02:07:38.29, `finishedAt` 02:07:39.82, no alternation). The git-built case still reads `live` about 4 s after the new body first answers (34 s in round 123). t006 re-measures it after t013.
+  - **One instance per change** fails: every image change started two instances, as t002's option (b) allows and the DoD does not. Fixed in t013 (shipped with this record): the provisional template is now the final one.
+  - The full table is in [t006](t006.md).
+- **Render basis:** Render starts one new instance per deploy and moves all traffic to it once it is healthy (render.com/docs/deploys, zero-downtime deploys). t013 makes the instance count match. The traffic and status timing already matched within a poll.
+- **Remaining gate (clears by itself):**
+  - A production deploy whose pin contains t013's commit, `fix(operator): an image change over a serving web service starts one new instance (w4/m320 t013)`. Check with `git merge-base --is-ancestor <that sha> <deploy commit>`.
+  - Then a worker re-runs t006's "One instance per change" and git-built "No early traffic" bullets (Run A plus the hello-go rebuild, counting instances via `GET /v1/logs`) and closes t010 if both hold. No user action.

@@ -171,7 +171,7 @@ var _ = Describe("A first web image deploy on an undeclared port (w4/m350)", fun
 		reconcileToFixedPoint(run)
 		Expect(apiequality.Semantic.DeepEqual(envtestDeployment(nn).Spec.Template, first)).To(BeTrue(), "the served first release rolled again")
 
-		By("a new image over the serving release keeps w4/m320's guard and hold")
+		By("a new image over the serving release checks any open port under w4/m320's hold")
 		r.HTTPClient = imageConfigRegistry(GinkgoT(), `"80/tcp":{},"81/tcp":{}`)
 		app.Spec.Image = "docker.io/traefik/whoami:v1.11"
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())
@@ -180,14 +180,28 @@ var _ = Describe("A first web image deploy on an undeclared port (w4/m350)", fun
 		Expect(webImageHTTPSelectionGuardsServing(app)).To(BeTrue())
 		candidate := envtestDeployment(nn)
 		Expect(candidate.Spec.Template.Labels[labelRevision]).To(Equal("rev-2"))
+		Expect(candidate.Spec.Template.Spec.Containers[0].Ports).To(BeEmpty(), "discovery may still move the candidate's primary")
 		for _, probe := range probesOf(candidate.Spec.Template.Spec.Containers[0]) {
-			Expect(probe.HTTPGet).NotTo(BeNil(), "a candidate over a serving release waits for HTTP, not any open port")
-			Expect(probe.HTTPGet.Path).To(Equal("/"))
+			Expect(healthProbeChecksOpenPort(probe.Exec)).To(BeTrue(), "probe %+v: want the any-open-port check", probe.ProbeHandler)
 		}
 		svc := &corev1.Service{}
 		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
 		Expect(svc.Spec.Selector).To(HaveKeyWithValue(labelRevision, "rev-1"), "the Services pin the serving release until promotion")
 		Expect(candidate.Spec.Strategy.RollingUpdate.MaxUnavailable.IntValue()).To(BeZero(), "the serving pods are held")
+		Expect(candidate.Spec.MinReadySeconds).To(Equal(webImageHTTPSelectionHoldSeconds), "a Ready candidate is not available before promotion")
+		held := candidate.Spec.Template
+
+		By("discovery and promotion keep the candidate's template: one new instance per image change")
+		simulateTemplatePod(nn, "second", true)
+		detect(nn, run)
+		Expect(apiequality.Semantic.DeepEqual(envtestDeployment(nn).Spec.Template, held)).To(BeTrue(),
+			"discovery rolled the candidate's template a second time: %+v", envtestDeployment(nn).Spec.Template.Spec.Containers[0])
+		assertImagePortService(nn, 10000)
+		app = envtestApp(nn)
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+		Expect(app.Status.ActiveRevision).To(Equal("rev-2"), "the candidate's one template was promoted")
+		reconcileToFixedPoint(run)
+		Expect(apiequality.Semantic.DeepEqual(envtestDeployment(nn).Spec.Template, held)).To(BeTrue(), "the promoted release rolled again")
 	})
 
 	It("keeps the HTTP check on the chosen port for a service with a Health Check Path", func() {

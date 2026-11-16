@@ -27,9 +27,12 @@ import (
 
 // w4/m350: a first web image release discovering its HTTP port checks any open
 // port with the helper, pins no container port, and keeps that template when
-// discovery moves the primary and when the release goes live. A release over
-// a serving one, a service with a Health Check Path or an edge cache, and an
-// operator without its own image keep the port-bound probe.
+// discovery moves the primary and when the release goes live. So does a
+// release over a serving one while it discovers its port (w4/m320: the hold,
+// not the probe, keeps it out of traffic, and discovery does not roll it
+// again). A release whose port is already known, a service with a Health Check
+// Path or an edge cache, and an operator without its own image keep the
+// port-bound probe.
 func TestFirstWebImageReleaseChecksAnyOpenPort(t *testing.T) {
 	first := func() *appv1alpha1.App {
 		app := webImageApp(1)
@@ -87,12 +90,32 @@ func TestFirstWebImageReleaseChecksAnyOpenPort(t *testing.T) {
 		}
 	}
 
+	// A release over a serving one that discovers its port checks the same way.
+	over := first()
+	over.Status.ActiveRevision = "rev-0"
+	over.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{Image: "img@sha256:0", Revision: "rev-0", PrimaryPort: 80, Ports: []int32{80}, HTTPSelection: appv1alpha1.HTTPSelectionDetected}
+	overDep := project(over, params(80))
+	for _, probe := range probesOf(appContainerOf(t, overDep)) {
+		if !healthProbeChecksOpenPort(probe.Exec) {
+			t.Fatalf("release over a serving one: probe = %+v, want the any-open-port check", probe.ProbeHandler)
+		}
+	}
+	overStored := overDep.Spec.Template.DeepCopy()
+	over.Status.ImageNetwork.PrimaryPort, over.Status.ImageNetwork.Ports, over.Status.ImageNetwork.HTTPSelection = 10000, []int32{80, 10000}, appv1alpha1.HTTPSelectionDetected
+	applyDeploymentSpec(overDep, over, params(10000))
+	if !apiequality.Semantic.DeepEqual(overDep.Spec.Template, *overStored) {
+		t.Fatalf("discovery rolled the release over a serving one:\n%+v\nwant\n%+v", appContainerOf(t, overDep), overStored.Spec.Containers[0])
+	}
+
 	for name, mutate := range map[string]func(*appv1alpha1.App, *deploymentParams){
-		"a release over a serving one": func(a *appv1alpha1.App, _ *deploymentParams) { a.Status.ActiveRevision = "rev-0" },
-		"a Health Check Path":          func(a *appv1alpha1.App, _ *deploymentParams) { a.Spec.HealthCheckPath = "/health" },
-		"an edge cache":                func(_ *appv1alpha1.App, p *deploymentParams) { p.edgeCacheImage = probeTestImage },
-		"no helper image":              func(_ *appv1alpha1.App, p *deploymentParams) { p.healthProbeImage = "" },
-		"the service's own PORT":       func(a *appv1alpha1.App, _ *deploymentParams) { a.Status.EnvPort = 8080 },
+		"a release over a serving one with a retained port": func(a *appv1alpha1.App, _ *deploymentParams) {
+			a.Status.ActiveRevision = "rev-0"
+			a.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionRetained
+		},
+		"a Health Check Path":    func(a *appv1alpha1.App, _ *deploymentParams) { a.Spec.HealthCheckPath = "/health" },
+		"an edge cache":          func(_ *appv1alpha1.App, p *deploymentParams) { p.edgeCacheImage = probeTestImage },
+		"no helper image":        func(_ *appv1alpha1.App, p *deploymentParams) { p.healthProbeImage = "" },
+		"the service's own PORT": func(a *appv1alpha1.App, _ *deploymentParams) { a.Status.EnvPort = 8080 },
 	} {
 		app, p := first(), params(80)
 		mutate(app, &p)
