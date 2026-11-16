@@ -439,6 +439,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **335** — [`PYTHON_VERSION=3.15.2` fails the build ("not a supported Python version"), though Python 3.15 was released on 2026-10-09 and Render takes "any released version from 3.7.3 onward"](335.md) (~1h, major) ← `/qa-find-bugs-cli` sweep 0596 2026-11-16
+  - **bex (pin `bf2ab888d7dc`):** the build fails at version selection with "supported Python lines are 3.7 … 3.14"; the `3.14.10` control goes live.
+  - **Cause:** `nativePythonRuntime`'s lines end at 3.14 (`native.go:118-126`, set by `w8/m51` before 3.15 shipped). The `w6/m291` refresh renews existing digests only.
+  - **Fix:** a digest-pinned `python:3.15-bookworm` line (3.15.2) and its freshness entry. Have the freshness review flag released-but-missing upstream lines.
+
 - [x] **334** — [The docs tell users of the released bex v0.7.0 to set `BEX_API_KEY`, which v0.7.0 ignores: the CLI says "run `bex login`" without sending the key](done/334.md) (~10m, minor) ← `/qa-find-bugs-cli` sweep 9c1d 2026-11-16. **DONE 2026-11-16:** the docs and `lego/cli/README.md` now say `BEX_API_KEY` needs a `bex` newer than v0.7.0. The `BEX_ACCESS_TOKEN=<key>` fallback sits under the CI recipe. The object-storage lines name v0.7.0, the first release that has them. `/release cli` now lists the docs each new tag makes stale.
   - **bex v0.7.0:** `BEX_API_KEY=<x> bex services` gives "run `bex login`" in 0.0 s (nothing sent), while `BEX_ACCESS_TOKEN` and `RENDER_API_KEY` are sent as the bearer. `8227312bc` (w7/m426, 12:59 UTC) came after the v0.7.0 release (10:26 UTC).
   - **Fix:** `docs/bex-cli.md:106` and `lego/cli/README.md:70` say "newer than v0.6.0" / "after v0.6.0"; make that v0.7.0, and put the `BEX_ACCESS_TOKEN` fallback next to the CI recipe.
