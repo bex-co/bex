@@ -124,4 +124,3 @@
 - [ ] **097** — `scripts/fetch-app-kubeconfig.sh` needs `HCLOUD_TOKEN` already exported, so reaching production is not one command → [`097.md`](097.md) (~1h) ← from w21/089, 2026-11-16
 - [ ] **098** — A subscription bex's own reclaimer cancels is treated as a payment failure: 11 cardless workspaces were put in grace, enforced and mailed → [`098.md`](098.md) (~1h) ← from w21/m336 t004, 2026-11-16
 - [ ] **099** — Revoking or deleting an API key answers 500 when its OpenFGA developer tuple is already gone, so the key can never be deleted → [`099.md`](099.md) (~1h) ← from w21/012's production read, 2026-11-16
-- [ ] **100** — A manifest change that adds a binary flag crash-loops the new pod from the Argo sync of the push until the image pin lands → [`100.md`](100.md) (~1h) ← from w21/m421 t001, 2026-11-16
