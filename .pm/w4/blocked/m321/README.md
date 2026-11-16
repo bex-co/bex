@@ -199,3 +199,27 @@ Fixtures, both deleted afterwards (GET 404):
 - **DoD 5** passed in round 144, and its code is unchanged except for t011's naming. It is re-run in t005.
 - **DoD 6 still fails on `06cc3b02c`. This is expected: it is t012, fixed after this pin.** The refused `POST /v1/services` (409 at 03:38:11) wrote `CreateServerEvent` `success` `{"relation":"can_create"}`. The service and env group creates likewise read only `{"relation":"can_create"}` (t011).
 - **Remaining gate, no user action:** the next production deploy must pin the commit `fix(audit): … (w4/m321 t011, t012)`. Check it with `git merge-base --is-ancestor <sha> <deployed sha>`. Then a worker re-runs t005 (DoD 5 and 6, plus t011's naming) and closes t009.
+
+## Live replay over REST (`/qa-find-bugs w4` round 486, 2026-11-16 05:29–05:33 UTC, pin `14af7282d9ac`, `bex-canary`, the admin's dashboard session)
+
+Every fixture was deleted afterwards (`GET` 404, project list empty). These are REST probes; the dashboard clicks (Reveal, Export → Download .env, "Reveal connection info", Export as CSV) were not driven.
+
+- **DoD 1, partly: holds.** Three `GET /v1/owners/tea-daif693dqjvc73e7as3g/audit-logs?limit=5` added no row. The Billing and Team views were not opened.
+- **DoD 2, partly: holds.** `GET /v1/services/srv-dbt99eidrmis73edarug/env-vars` added `ViewEnvVarValuesEvent {"service":"srv-dbt99eidrmis73edarug","targetName":"qa-20261116-r486-aud"}`.
+- **DoD 3, REST: holds.** `GET …/connection-info` on a Free Postgres and a Free Key Value added:
+  - `ViewConnectionInfoEvent {"database":"dpg-dbt9a7k0h0ts7389hbl0","targetName":"qa-20261116-r486-pg"}`;
+  - `ViewConnectionInfoEvent {"keyvalue":"red-dbt9a7idrmis73edas30","targetName":"qa-20261116-r486-kv"}`.
+- **DoD 5: holds.** The steps were:
+  - `POST /v1/projects` with two environments;
+  - `POST /v1/environments/{a}/resources`, then `{b}/resources`, with the service;
+  - the service delete;
+  - `DELETE /v1/projects/{id}`.
+
+  The log listed one `CreateProjectEvent` (`project`, `targetName`), one `MoveEnvironmentResourceEvent` per move (two moves, two rows, each naming the `service`), and one `DeleteProjectEvent` (`project`, `targetName`). There were no `projects.CreateWithEnvironments` or `environments.SetServices` rows.
+- **DoD 6: holds.** A second `POST /v1/services` with the owned service's name answered `409 CONFLICT "name … is already in use"`. The window holds only the one `CreateServerEvent` of the real create.
+- **Not run:**
+  - DoD 4 (the CSV export is built in the dashboard);
+  - DoD 7 (needs a second account).
+- **Observed, not judged:**
+  - `MoveEnvironmentResourceEvent` names the service but not the environment it moved to.
+  - `DeleteServerEvent` carries the service id without the `targetName` its create row has.
