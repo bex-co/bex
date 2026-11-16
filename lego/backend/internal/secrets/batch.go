@@ -547,7 +547,7 @@ func (s *Service) cancelWaitingDeploy(ctx context.Context, id string) {
 func (s *Service) DeployServedBuild(ctx context.Context, a *appv1alpha1.App) error {
 	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
 		if a.Spec.Suspended {
-			return fmt.Errorf("%w: service %q is suspended", core.ErrConflict, core.AppPublicName(a))
+			return fmt.Errorf("%w: service %q is suspended", core.ErrConflict, core.DisplayedAppName(a))
 		}
 		return s.selectServedBuild(ctx, a)
 	})

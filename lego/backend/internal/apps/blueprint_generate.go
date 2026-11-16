@@ -407,7 +407,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	// file its own validation refuses (w8/048).
 	if paidOnlyServiceType(svcType) && a.Spec.Tier != "" && !core.PaidPlan(a.Spec.Tier) {
 		return nil, core.NewBadRequestError("BLUEPRINT_GENERATE_PAID_PLAN_REQUIRED",
-			fmt.Sprintf("service %q: %s; change its plan before exporting it", core.AppPublicName(a), freePlanForTypeMessage(svcType)),
+			fmt.Sprintf("service %q: %s; change its plan before exporting it", core.DisplayedAppName(a), freePlanForTypeMessage(svcType)),
 			map[string]any{"resourceId": s.view(a).ID})
 	}
 	// Always written: an omitted plan now means Render's paid default (w1/122),

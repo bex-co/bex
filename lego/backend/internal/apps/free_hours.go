@@ -79,7 +79,7 @@ func (s *Service) requireFreeHoursAvailable(a *appv1alpha1.App) error {
 		return nil
 	}
 	return core.NewBadRequestError(FreeHoursErrorCode,
-		fmt.Sprintf("this workspace has used its monthly Free instance hours; Free web services resume at the start of next month, or upgrade %q to a paid plan to run it now", core.AppPublicName(a)),
+		fmt.Sprintf("this workspace has used its monthly Free instance hours; Free web services resume at the start of next month, or upgrade %q to a paid plan to run it now", core.DisplayedAppName(a)),
 		map[string]any{"month": month})
 }
 

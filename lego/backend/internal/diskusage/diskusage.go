@@ -169,7 +169,7 @@ func (w *Sweeper) evaluate(ctx context.Context, a *appv1alpha1.App, now time.Tim
 		// retried before the crossing is recorded. Accepted residual: if the
 		// write keeps failing and usage returns before it succeeds, the email
 		// has no event in the feed.
-		if err := w.Notifier.NotifyDiskUsage(ctx, tenantID, serviceID, core.AppPublicName(a), high, details, sourceKey, now); err != nil {
+		if err := w.Notifier.NotifyDiskUsage(ctx, tenantID, serviceID, core.DisplayedAppName(a), high, details, sourceKey, now); err != nil {
 			return fmt.Errorf("notify: %w", err)
 		}
 	}

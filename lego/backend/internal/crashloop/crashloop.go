@@ -116,7 +116,7 @@ func (w *Sweeper) SweepOnce(ctx context.Context) error {
 			continue
 		}
 		if w.Notifier != nil {
-			if err := w.Notifier.NotifyCrashLoopSuspended(ctx, a.Labels[core.LabelTenant], core.AppPublicID(a), core.AppPublicName(a), since, now); err != nil {
+			if err := w.Notifier.NotifyCrashLoopSuspended(ctx, a.Labels[core.LabelTenant], core.AppPublicID(a), core.DisplayedAppName(a), since, now); err != nil {
 				errs = append(errs, fmt.Errorf("notify %s: %w", a.Name, err))
 				continue
 			}

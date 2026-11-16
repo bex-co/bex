@@ -113,6 +113,35 @@ func TestGetDomainFoundAndNotFound(t *testing.T) {
 	}
 }
 
+// TestDomainServerNameIsTheDisplayedName covers w4/694: Render's
+// customDomain.server.name is the owning service's current name, so after a
+// rename both the storeless (spec.hosts) view and the claim view name the
+// service by spec.displayName, and an unrenamed service keeps its creation name.
+func TestDomainServerNameIsTheDisplayedName(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct{ displayName, want string }{
+		{"", "web"},
+		{"web-renamed", "web-renamed"},
+	} {
+		storeless := appWithHosts("web", "www.example.com")
+		storeless.Spec.DisplayName = tc.displayName
+		svc, _ := newService(nil, storeless)
+		listed, err := svc.ListDomains(ctx, "web")
+		if err != nil || len(listed) != 1 || listed[0].ServiceName != tc.want {
+			t.Errorf("storeless displayName=%q: ServiceName = %+v err=%v, want %q", tc.displayName, listed, err, tc.want)
+		}
+
+		managed := managedApp("web", "srv-1")
+		managed.Spec.DisplayName = tc.displayName
+		svc, _ = newService(newMemoryDomainClaimStore(), managed)
+		svc.DomainTraffic = &recordingDomainTraffic{pointed: false}
+		created, err := svc.AddDomain(ctx, "web", "app.example.com")
+		if err != nil || created.ServiceName != tc.want {
+			t.Errorf("claim displayName=%q: ServiceName = %q err=%v, want %q", tc.displayName, created.ServiceName, err, tc.want)
+		}
+	}
+}
+
 // app.example.com is a deep subdomain — wwwSibling returns "" for it (t002), so
 // these generic add tests stay about a single, unpaired host. Paired-add
 // behavior gets its own tests below (TestAddDomainAutoPairsSibling etc).
