@@ -1323,7 +1323,8 @@ var writeRelations = map[string]bool{
 // agent sessions). Like a read relation they record their denials only
 // (w4/m321): Render's audit log records actions, and in one workspace's day
 // these reads were 392 of 861 rows, every page of the log writing another.
-// Names are callerVerb's; TestReadVerbsNameServiceMethods keeps them real.
+// Names are callerVerb's; TestReadVerbsNameServiceMethods keeps them real,
+// and api's audit verb sweeps fail a read left off the list.
 // Verbs that also write (apps.PlanBlueprint persists its plan, a turn ticket
 // is a live credential) are not here.
 var readVerbs = map[string]bool{
@@ -1357,6 +1358,11 @@ var readVerbs = map[string]bool{
 	"agentsessions.AgentAutomations":     true,
 	"agentsessions.AgentAutomation":      true,
 	"agentsessions.AgentAutomationRuns":  true,
+	// The Repository environments card's reads (w4/683): Workspace Settings
+	// and the card's 10 s build poll would otherwise write a row per visit.
+	"agentsessions.RepoEnvironments":      true,
+	"agentsessions.RepoEnvironmentBuilds": true,
+	"agentsessions.RepoEnvironmentBuild":  true,
 }
 
 // readRelations are the Rel… constants that gate a read. A successful read

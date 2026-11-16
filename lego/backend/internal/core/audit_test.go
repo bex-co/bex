@@ -436,6 +436,10 @@ func TestReadVerbsGatedByAWriteRelationRecordDenialsOnly(t *testing.T) {
 		"audit.List":          RelCanManage,
 		"members.ListInvites": RelCanManage,
 		"agentsessions.Wait":  RelCanOperate,
+		// w4/683: the repository environment reads authorize can_create.
+		"agentsessions.RepoEnvironments":      RelCanCreate,
+		"agentsessions.RepoEnvironmentBuilds": RelCanCreate,
+		"agentsessions.RepoEnvironmentBuild":  RelCanCreate,
 	} {
 		allowed := &fakeAuditSink{}
 		b := &Base{Authz: &fakeAllowChecker{}, Audit: allowed}

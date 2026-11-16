@@ -191,7 +191,11 @@ func TestEveryRegisteredRouteRecordsANamedVerb(t *testing.T) {
 				body = `{"operationName":"` + cfStorageMetricsOperation + `","variables":{"accountTag":"` + refused.ws + `","filter":{"bucketName":"b"}}}`
 			}
 			events := refused.drive(refused.muxes[surface], method, target, body)
-			for _, ev := range append(slices.Clone(events), allowed.drive(allowed.muxes[surface], method, target, body)...) {
+			allowedEvents := allowed.drive(allowed.muxes[surface], method, target, body)
+			if method == http.MethodGet {
+				checkReadRecordsNoSuccess(t, surface, pattern, allowedEvents)
+			}
+			for _, ev := range append(slices.Clone(events), allowedEvents...) {
 				seen[ev.Verb] = true
 				if p := verbProblem(ev.Verb); p != "" {
 					t.Errorf("%s %s recorded verb %q: %s", surface, pattern, ev.Verb, p)
@@ -268,6 +272,45 @@ func checkSweptVerbs(t *testing.T, surface, route string, events []core.AuditEve
 	}
 }
 
+// renderAuditedViews are the reads Render's audit log records
+// (ViewEnvVarValuesEvent, ViewConnectionInfoEvent): the only verbs an allowed
+// read may record a success row under.
+var renderAuditedViews = map[string]bool{
+	core.AuditVerbViewEnvVarValues:   true,
+	core.AuditVerbViewConnectionInfo: true,
+}
+
+// readsThatWrite are the reads that may record a success row because they also
+// write, each with the verb it records.
+var readsThatWrite = map[string]string{
+	// Resuming a workspace creation mints its Stripe Customer and SetupIntent
+	// when the attempt has none yet.
+	"graphql workspaceCreationAttempt": "workspaces.ResumeWorkspaceCreation",
+}
+
+// checkReadRecordsNoSuccess fails a read (a GET route, a GraphQL query field, a
+// read MCP tool) that an allowed caller sees record a success row (w4/683).
+// Render's audit log records actions and two views; a read a write relation
+// gates belongs in core's readVerbs, which keeps its denials recorded and its
+// successes out.
+func checkReadRecordsNoSuccess(t *testing.T, surface, route string, events []core.AuditEvent) {
+	t.Helper()
+	for _, ev := range events {
+		if ev.Outcome == core.AuditAllowed && !renderAuditedViews[ev.Verb] && readsThatWrite[surface+" "+route] != ev.Verb {
+			t.Errorf("%s %s is a read and recorded an allowed %q row: list the verb in core's readVerbs", surface, route, ev.Verb)
+		}
+	}
+}
+
+// isReadTool reports whether an MCP tool reads: annotated read-only, or named
+// as a list or a get.
+func isReadTool(tool *mcp.Tool) bool {
+	if tool.Annotations != nil && tool.Annotations.ReadOnlyHint {
+		return true
+	}
+	return strings.HasPrefix(tool.Name, "list_") || strings.HasPrefix(tool.Name, "get_")
+}
+
 func finishBacklog(t *testing.T, surface string, backlogHit map[string]bool) {
 	t.Helper()
 	for key, verb := range closureVerbBacklog {
@@ -288,6 +331,13 @@ func TestEveryMCPToolRecordsANamedVerb(t *testing.T) {
 		base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: allow}, Audit: sink}
 		srv := NewServer(base, Deps{})
 		raw := mcp.NewServer(&mcp.Implementation{Name: "audit-verbs", Version: "0"}, nil)
+		// The client's context does not cross the in-memory transport: sign the
+		// server side in, or every allowed call is refused for want of a caller.
+		raw.AddReceivingMiddleware(func(next mcp.MethodHandler) mcp.MethodHandler {
+			return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+				return next(core.WithIdentity(ctx, core.Identity{Subject: "user-verbs", Method: core.MethodSession}), method, req)
+			}
+		})
 		for _, f := range srv.features() {
 			if r, ok := f.(mcpRegistrar); ok {
 				r.RegisterMCP(raw)
@@ -317,7 +367,11 @@ func TestEveryMCPToolRecordsANamedVerb(t *testing.T) {
 					defer func() { _ = recover() }()
 					_, _ = session.CallTool(ctx, &mcp.CallToolParams{Name: tool.Name, Arguments: args})
 				}()
-				checkSweptVerbs(t, "mcp", tool.Name, sink.take(), seen, backlogHit)
+				events := sink.take()
+				if allow && isReadTool(tool) {
+					checkReadRecordsNoSuccess(t, "mcp", tool.Name, events)
+				}
+				checkSweptVerbs(t, "mcp", tool.Name, events, seen, backlogHit)
 			}
 		}
 	}
@@ -396,7 +450,11 @@ func TestEveryGraphQLFieldRecordsANamedVerb(t *testing.T) {
 					defer func() { _ = recover() }()
 					graphql.Do(graphql.Params{Schema: schema, RequestString: gqlOperation(root.op, name, field), Context: ctx})
 				}()
-				checkSweptVerbs(t, "graphql", name, sink.take(), seen, backlogHit)
+				events := sink.take()
+				if allow && root.op == "query" {
+					checkReadRecordsNoSuccess(t, "graphql", name, events)
+				}
+				checkSweptVerbs(t, "graphql", name, events, seen, backlogHit)
 			}
 		}
 	}
