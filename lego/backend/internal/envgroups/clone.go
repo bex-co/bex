@@ -42,7 +42,7 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 		return EnvGroupView{}, err
 	}
 	targetCtx := core.WithWorkspace(ctx, req.OwnerID)
-	if err := s.Authorize(targetCtx, core.RelCanCreate); err != nil {
+	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(targetCtx), core.RelCanCreate); err != nil {
 		return EnvGroupView{}, err
 	}
 	var env, files map[string]string
@@ -84,5 +84,5 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 	for _, name := range core.SortedKeys(files) {
 		create.SecretFiles = append(create.SecretFiles, SecretFileView{Name: name, Content: files[name]})
 	}
-	return s.createEnvGroupAuthorized(targetCtx, create)
+	return s.createEnvGroupRecorded(targetCtx, "envgroups.CloneEnvGroup", create)
 }

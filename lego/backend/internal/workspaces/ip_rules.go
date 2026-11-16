@@ -100,7 +100,7 @@ func (s *Service) SetIPAllowList(ctx context.Context, ownerID string, entries []
 	if err := st.SetWorkspaceIPAllowList(ctx, ownerID, entries); err != nil {
 		return WorkspaceView{}, mapStoreErr(err)
 	}
-	s.RecordAllowedWrite(ctx, core.AuditVerbSetWorkspaceIPAllowList, core.RelCanManage, ownerID)
+	s.RecordAllowedWrite(ctx, core.AuditVerbSetWorkspaceIPAllowList, core.RelCanManage, ownerID, "", "")
 	// Every lookup the projection makes is scoped to this workspace.
 	saved, err := s.projectIPLayer(core.WithWorkspace(deferred, ownerID), st, ownerID, entries)
 	if err != nil {

@@ -1,6 +1,6 @@
 # w4 · m321 — The workspace audit log records the dashboard's own billing and audit reads, but not the reads Render audits: env var values and datastore connection info
 
-**Worker:** worker4 **Goal:** the audit log answers "who did what" as Render's does. Viewing env var values and datastore connection info leaves a Render-named event. Admin pages that read billing status, invites or the audit log itself leave none. **Status:** blocked — t001–t004, t006–t008 and t010 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
+**Worker:** worker4 **Goal:** the audit log answers "who did what" as Render's does. Viewing env var values and datastore connection info leaves a Render-named event. Admin pages that read billing status, invites or the audit log itself leave none. **Status:** blocked — t001–t004, t006–t008 and t010–t012 done (shipped). t005's live replay waits for the production deploy that pins t011/t012's commit, then t009 closes
 
 ## Tasks (in order)
 
@@ -11,8 +11,8 @@
 | [t003](done/t003.md) | Record Render's `ViewConnectionInfoEvent` for Postgres and Key Value connection info — **DONE** | 30m | t001 |
 | [t010](done/t010.md) | One Render-named event per user action wherever Render's enum has one, including `CreateProjectEvent` and `CreateEnvironmentEvent`, which the mapping names but never emits — **DONE** | 50m | t001 |
 | [t004](done/t004.md) | Ledger and artifact: ADR018's audit row and `audit-logs-api.md` state the read rules and the event mapping — **DONE** | 20m | t002, t003, t010 |
-| [t011](t011.md) | A service or project create, and a project delete, name what they created or deleted: their rows read only `{"relation":"can_create"}` (round 311 adds env group, webhook and Blueprint rows) | 50m | t004 |
-| [t012](t012.md) | A refused service create records a `CreateServerEvent` with status `success`: the row is written at authorization, before the 409, and env-group create shares the shape | 30m | t011 |
+| [t011](done/t011.md) | A service or project create, and a project delete, name what they created or deleted: their rows read only `{"relation":"can_create"}` (round 311 adds env group, webhook and Blueprint rows) — **DONE** | 50m | t004 |
+| [t012](done/t012.md) | A refused service create records a `CreateServerEvent` with status `success`: the row is written at authorization, before the 409, and env-group create shares the shape — **DONE** | 30m | t011 |
 | [t005](t005.md) | Live verification in `bex-canary` | 30m | t004, t011, t012 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
@@ -177,3 +177,25 @@ Fixtures, both deleted afterwards (GET 404):
 - The dashboard form, at 01:32:08, left `aud-dbqhe65jiris73e60t2g`.
 - `POST /v1/services` at 01:37:21 (body in t012) answered `409 CONFLICT "name \"qa-20261112-r155-pserv\" is already in use"`. `…/audit-logs?startTime=2026-11-12T01:37:21.449Z` then listed exactly one row: `CreateServerEvent`, `success`, `{"relation":"can_create"}`.
 - The 01:26–01:33 window holds three `CreateServerEvent` success rows for two services that exist.
+
+## Unblock record and replay on `06cc3b02c` (`/loopx w4`, 2026-11-16 03:37–03:39 UTC)
+
+- **The release gate cleared (verified evidence).** Production's scheduled deploy at 2026-11-15 22:49Z ran on `06cc3b02c`, and `git merge-base --is-ancestor 0e5a309c0 06cc3b02c` holds. t001–t004, t006–t008 and t010 (the code in `0e5a309c0`) are live.
+- **t011 and t012 were still open work.** Both were filed after the milestone was parked, and neither had code. Both were implemented in this run; see their Outcome sections. With no user decision needed, nothing gated them.
+- **Replay, signed in as the `bex-canary` admin over REST and GraphQL** (`scripts/qa-login.sh`). `t0` = 03:37:19Z.
+  - Fixtures, all deleted afterwards (DELETE 204, then GET 404):
+    - Free image web service `qa-20261116-m321-au` (`srv-dbt7krthdqoc73dn7gug`, `QA_AUDIT_ONE`/`QA_AUDIT_TWO`);
+    - Free Postgres `qa-20261116-m321-pg` (`dpg-dbt7ks5hdqoc73dn7gvg`);
+    - Free Key Value `qa-20261116-m321-kv` (`red-dbt7ks5c12ts73fj7ldg`);
+    - env group `qa-20261116-m321-eg` (`evg-dbt7ksdc12ts73fj7lf0`, `QA_EG`).
+  - `GET /v1/owners/tea-daif693dqjvc73e7as3g/audit-logs?startTime=<t0>` returned 12 rows.
+- **DoD 1 passes.** Three rounds of the dashboard's own reads added no `billing.Status`, `members.ListInvites`, `audit.List` or `apps.PlanBlueprint` row: `workspaceBillingReadiness`, `workspaceInvites`, GraphQL `auditLogs` and the REST audit log.
+- **DoD 2 passes, including the parts round 144 did not run.** The service had four reads: the GraphQL `envVar` reveal; the two `envVar` reads Export → Download .env makes (`service-environment-editor.tsx` `exportEnvironment`); and `GET …/env-vars`.
+  - These gave exactly 4 `ViewEnvVarValuesEvent` rows `{"service":"srv-dbt7krthdqoc73dn7gug","targetName":"qa-20261116-m321-au"}`.
+  - The keys-only `envVarKeys` read added none.
+  - `GET /v1/env-groups/{id}/env-vars/QA_EG` gave one row `{"envGroup":"evg-dbt7ksdc12ts73fj7lf0","targetName":"qa-20261116-m321-eg"}`.
+- **DoD 3 passes for Postgres and Key Value.** Each `GET …/connection-info` gave one `ViewConnectionInfoEvent` naming `dpg-dbt7ks5hdqoc73dn7gvg` or `red-dbt7ks5c12ts73fj7ldg`. A Key Value read made while the store was still creating answered 409 and recorded nothing.
+- **DoD 4 passes on its source.** The dashboard's CSV export is built from GraphQL `auditLogs`, and for the window that query returned the new `ViewEnvVarValuesEvent` and `ViewConnectionInfoEvent` actions.
+- **DoD 5** passed in round 144, and its code is unchanged except for t011's naming. It is re-run in t005.
+- **DoD 6 still fails on `06cc3b02c`. This is expected: it is t012, fixed after this pin.** The refused `POST /v1/services` (409 at 03:38:11) wrote `CreateServerEvent` `success` `{"relation":"can_create"}`. The service and env group creates likewise read only `{"relation":"can_create"}` (t011).
+- **Remaining gate, no user action:** the next production deploy must pin the commit `fix(audit): … (w4/m321 t011, t012)`. Check it with `git merge-base --is-ancestor <sha> <deployed sha>`. Then a worker re-runs t005 (DoD 5 and 6, plus t011's naming) and closes t009.

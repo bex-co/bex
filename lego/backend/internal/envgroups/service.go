@@ -417,10 +417,23 @@ func (s *Service) ExportEnvGroup(ctx context.Context, gid string) (name string, 
 // validation failures therefore have exactly zero side effects. Manage scope.
 func (s *Service) CreateEnvGroup(ctx context.Context, req CreateEnvGroupRequest) (EnvGroupView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate); err != nil {
 		return EnvGroupView{}, err
 	}
-	return s.createEnvGroupAuthorized(ctx, req)
+	return s.createEnvGroupRecorded(ctx, "envgroups.CreateEnvGroup", req)
+}
+
+// createEnvGroupRecorded runs createEnvGroupAuthorized for a verb that
+// authorized under WithDeferredAllowedWriteAudit and writes the verb's one
+// allowed row once the group exists, naming it: a create refused by
+// validation, the quota or a name conflict records none (w4/m321 t012).
+func (s *Service) createEnvGroupRecorded(ctx context.Context, verb string, req CreateEnvGroupRequest) (EnvGroupView, error) {
+	v, err := s.createEnvGroupAuthorized(ctx, req)
+	if err != nil {
+		return EnvGroupView{}, err
+	}
+	s.RecordAllowedWrite(ctx, verb, core.RelCanCreate, v.OwnerID, core.EnvGroupTarget(v.ID), v.Name)
+	return v, nil
 }
 
 // createEnvGroupAuthorized is the target-side half shared with CloneEnvGroup.
@@ -1653,7 +1666,7 @@ func (s *Service) authorizeGroup(ctx context.Context, relation, gid string) (sto
 	if err != nil {
 		return store.EnvGroup{}, err
 	}
-	if err := s.Authorize(ctx, relation); err != nil {
+	if err := s.AuthorizeTarget(ctx, relation, core.EnvGroupTarget(gid)); err != nil {
 		return store.EnvGroup{}, err
 	}
 	return s.fetchGroup(ctx, relation, gid)

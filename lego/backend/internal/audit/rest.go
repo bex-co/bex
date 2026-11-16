@@ -123,7 +123,9 @@ func renderMetadata(e Event) map[string]string {
 	if e.RevokedKeyCount != nil {
 		md["revokedKeyCount"] = strconv.FormatInt(int64(*e.RevokedKeyCount), 10)
 	}
-	if e.Relation != "" {
+	// The OpenFGA relation is bex's authorization term, not a Render field:
+	// it stays only where it explains a refusal (w4/m321 t011).
+	if e.Relation != "" && denied(e) {
 		md["relation"] = e.Relation
 	}
 	if e.OAuthClientID != "" {

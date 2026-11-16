@@ -151,3 +151,45 @@ func TestBlueprintInitialGroupsRecordNamedLinks(t *testing.T) {
 		t.Fatalf("link rows = %+v, want one naming %s first", links, group.ID)
 	}
 }
+
+// w4/m321 t011/t012: an env group create records one row once the group
+// exists, naming it, and a create refused by validation records none; the
+// group verbs that act on an existing group name it too.
+func TestEnvGroupCreateAndDeleteRowsNameTheGroup(t *testing.T) {
+	svc := newService(newFakeStore())
+	ctx := testCtx()
+	sink := &viewAuditSink{}
+	svc.Audit = sink
+	rows := func(verb string) []core.AuditEvent {
+		var out []core.AuditEvent
+		for _, ev := range sink.events {
+			if ev.Verb == verb && ev.Outcome == core.AuditAllowed {
+				out = append(out, ev)
+			}
+		}
+		return out
+	}
+
+	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "  "}); err == nil {
+		t.Fatal("a blank name must be refused")
+	}
+	if got := rows("envgroups.CreateEnvGroup"); len(got) != 0 {
+		t.Fatalf("a refused create recorded %+v", got)
+	}
+	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	created := rows("envgroups.CreateEnvGroup")
+	if len(created) != 1 || created[0].Target != core.EnvGroupTarget(g.ID) || created[0].TargetName != "shared" {
+		t.Fatalf("create rows = %+v, want one naming %s shared", created, g.ID)
+	}
+
+	if err := svc.DeleteEnvGroup(ctx, g.ID); err != nil {
+		t.Fatal(err)
+	}
+	deleted := rows("envgroups.DeleteEnvGroup")
+	if len(deleted) != 1 || deleted[0].Target != core.EnvGroupTarget(g.ID) {
+		t.Fatalf("delete rows = %+v, want one targeting %s", deleted, g.ID)
+	}
+}

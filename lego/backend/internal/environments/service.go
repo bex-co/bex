@@ -613,19 +613,22 @@ func (s *Service) OwnerWorkspace(ctx context.Context, id string) (string, error)
 
 // Create creates a new environment under the named project, authorized once in
 // the project's own workspace (scopeProject).
+// Its one CreateEnvironmentEvent is written once the environment exists,
+// naming it, as CreateWithACL's is (w4/m321 t012).
 func (s *Service) Create(ctx context.Context, projectID, name string) (EnvironmentView, error) {
 	ctx, err := s.scopeProject(ctx, projectID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	deferred := core.WithDeferredAllowedWriteAudit(ctx)
+	if err := s.Authorize(deferred, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
 	name, err = validateEnvironmentName(name)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	p, err := s.actingProject(ctx, core.RelCanCreate, projectID)
+	p, err := s.actingProject(deferred, core.RelCanCreate, projectID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -633,7 +636,9 @@ func (s *Service) Create(ctx context.Context, projectID, name string) (Environme
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	return newView(e), nil
+	v := newView(e)
+	s.RecordAllowedWrite(ctx, "environments.Create", core.RelCanCreate, e.TenantID, core.EnvironmentTarget(v.ID), v.Name)
+	return v, nil
 }
 
 // CreateWithACL creates an environment and its optional protected-environment
@@ -652,7 +657,7 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	s.RecordAllowedWrite(ctx, "environments.CreateWithACL", relation, workspaceID)
+	s.RecordAllowedWrite(ctx, "environments.CreateWithACL", relation, workspaceID, core.EnvironmentTarget(v.ID), v.Name)
 	return v, nil
 }
 
@@ -797,7 +802,7 @@ func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView,
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.EnvironmentTarget(ids.EnvironmentPublicID(id))); err != nil {
 		return EnvironmentView{}, err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
@@ -994,7 +999,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.deleteEnvironment(ctx, e, true); err != nil {
 		return err
 	}
-	s.RecordAllowedWrite(ctx, "environments.Delete", core.RelCanCreate, e.TenantID)
+	s.RecordAllowedWrite(ctx, "environments.Delete", core.RelCanCreate, e.TenantID, core.EnvironmentTarget(ids.EnvironmentPublicID(e.ID)), e.Name)
 	return nil
 }
 
@@ -1099,7 +1104,7 @@ func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
 	if err := s.deleteEnvironment(ctx, e, false); err != nil {
 		return err
 	}
-	s.RecordAllowedWrite(ctx, "environments.DeleteIfEmpty", core.RelCanCreate, e.TenantID)
+	s.RecordAllowedWrite(ctx, "environments.DeleteIfEmpty", core.RelCanCreate, e.TenantID, core.EnvironmentTarget(v.ID), v.Name)
 	return nil
 }
 
@@ -1318,7 +1323,7 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.EnvironmentTarget(ids.EnvironmentPublicID(id))); err != nil {
 		return EnvironmentView{}, err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)

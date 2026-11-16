@@ -2250,7 +2250,7 @@ func (s *Service) blueprintScope(ctx context.Context, relation, bpID, ownerID st
 	if err != nil {
 		return ctx, bpID, store.MapError(err)
 	}
-	if err := s.Authorize(ctx, relation); err != nil {
+	if err := s.AuthorizeTarget(ctx, relation, core.BlueprintTarget(ids.BlueprintPublicID(bpID))); err != nil {
 		return ctx, bpID, err
 	}
 	if s.Blueprints == nil {

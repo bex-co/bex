@@ -376,6 +376,9 @@ func targetsResource(fn *ast.FuncDecl, methods map[string]*ast.FuncDecl, visited
 		}
 		switch {
 		case targetingCalls[sel.Sel.Name]:
+			if workspaceTrailTarget(call) {
+				return true
+			}
 			if sel.Sel.Name == "AuthorizeTarget" || !targetsReadOnly(call, binding) {
 				found = true
 			}
@@ -388,6 +391,34 @@ func targetsResource(fn *ast.FuncDecl, methods map[string]*ast.FuncDecl, visited
 		return true
 	})
 	return found
+}
+
+// workspaceTrailTargets are the core target constructors of resources that
+// live on the WORKSPACE audit trail only — a project, an environment, an env
+// group, a webhook or a Blueprint (w4/m321 t011). The per-service events feed
+// can never join those kinds, so an AuthorizeTarget naming one is not a
+// service-targeted verb.
+var workspaceTrailTargets = map[string]bool{
+	"ProjectTarget": true, "EnvironmentTarget": true, "EnvGroupTarget": true,
+	"WebhookTarget": true, "BlueprintTarget": true,
+}
+
+// workspaceTrailTarget reports whether call's last argument is a
+// core.<workspaceTrailTargets>(…) call.
+func workspaceTrailTarget(call *ast.CallExpr) bool {
+	if len(call.Args) == 0 {
+		return false
+	}
+	inner, ok := call.Args[len(call.Args)-1].(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	sel, ok := inner.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	pkg, ok := sel.X.(*ast.Ident)
+	return ok && pkg.Name == "core" && workspaceTrailTargets[sel.Sel.Name]
 }
 
 // relationBinding computes the binding a recursive targetsResource call into

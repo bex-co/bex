@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -157,7 +158,10 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	if req.OwnerID != "" {
 		ctx = core.WithWorkspace(ctx, req.OwnerID)
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	// The create's one row is written once the Blueprint is saved, naming it;
+	// a create refused by validation, a taken name or a failed fetch records
+	// none (w4/m321).
+	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate); err != nil {
 		return BlueprintPlanResult{}, err
 	}
 	plans, err := s.blueprintPlans()
@@ -241,6 +245,8 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 		return BlueprintPlanResult{}, err
 	}
 	bp := toRenderBlueprint(toBlueprintView(b))
+	s.RecordAllowedWrite(ctx, "apps.CreatePlannedBlueprint", core.RelCanCreate, cmp.Or(b.TenantID, core.DefaultTenant),
+		core.BlueprintTarget(ids.BlueprintPublicID(b.ID)), b.Name)
 	result.Blueprint = &bp
 	return result, nil
 }

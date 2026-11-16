@@ -2206,14 +2206,15 @@ func (s *Service) stampWorkspaceLayer(ctx context.Context, a *appv1alpha1.App, t
 // against one workspace and land in another.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
+	// Resolved once for the authorization, the write and the audit row: the
+	// create never acts in another workspace.
+	ctx = s.WithResolvedWorkspace(ctx)
 	req.RootDir = store.NormalizeRootDir(req.RootDir) // `./`, `server/` and `/server` are one directory (w8/165)
-	// A dry-run writes nothing, its audit row included (w5/m116); a refusal
-	// is still recorded.
-	authCtx := ctx
-	if req.DryRun {
-		authCtx = core.WithDeferredAllowedWriteAudit(ctx)
-	}
-	if err := s.Authorize(authCtx, core.RelCanCreate); err != nil {
+	// The one CreateServerEvent is written once the service exists, naming
+	// it: a dry-run (w5/m116) and a create refused after authorization (a
+	// name in use, a region, a plan) record none, while a denial is still
+	// recorded here (w4/m321 t011, t012).
+	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate); err != nil {
 		return AppView{}, err
 	}
 	if err := s.Metadata.CheckRequestedRegion(req.Region); err != nil {
@@ -2245,8 +2246,15 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 		// Name what the user typed as well as the resource name it maps to.
 		return v, core.NewConflictError("CONFLICT", fmt.Sprintf("name %q maps to resource name %q, which is already in use", label, req.Name), nil)
 	}
-	if err != nil || label == "" {
+	if err != nil {
 		return v, err
+	}
+	if !req.DryRun {
+		s.RecordAllowedWrite(ctx, "apps.Create", core.RelCanCreate, s.WorkspaceOrDefault(ctx),
+			core.ServiceTarget(cmp.Or(v.ID, v.Name)), cmp.Or(label, req.Name))
+	}
+	if label == "" {
+		return v, nil
 	}
 	if req.DryRun {
 		v.DisplayName = label

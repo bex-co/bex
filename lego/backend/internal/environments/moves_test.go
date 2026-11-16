@@ -220,10 +220,15 @@ func TestEnvironmentCreateRecordsOneRowOnlyWhenItHappens(t *testing.T) {
 	if len(sink.events) != 0 {
 		t.Fatalf("a refused create recorded %+v", sink.events)
 	}
-	if _, err := svc.CreateWithACL(ctxAs("user-a"), CreateEnvironmentRequest{ProjectID: "prj-1", Name: "staging"}); err != nil {
+	e, err := svc.CreateWithACL(ctxAs("user-a"), CreateEnvironmentRequest{ProjectID: "prj-1", Name: "staging"})
+	if err != nil {
 		t.Fatal(err)
 	}
 	if len(sink.events) != 1 || sink.events[0].Verb != "environments.CreateWithACL" || sink.events[0].Outcome != core.AuditAllowed {
 		t.Fatalf("a create recorded %+v, want one environments.CreateWithACL row", sink.events)
+	}
+	// The row names what it created (w4/m321 t011).
+	if ev := sink.events[0]; ev.Target != core.EnvironmentTarget(e.ID) || ev.TargetName != "staging" {
+		t.Errorf("create row target = %q name %q, want environment:%s staging", ev.Target, ev.TargetName, e.ID)
 	}
 }

@@ -427,7 +427,7 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 	if err != nil {
 		return ProjectView{}, err
 	}
-	s.RecordAllowedWrite(ctx, "projects.CreateWithEnvironments", core.RelCanCreate, workspaceID)
+	s.RecordAllowedWrite(ctx, "projects.CreateWithEnvironments", core.RelCanCreate, workspaceID, core.ProjectTarget(v.ID), v.Name)
 	return v, nil
 }
 
@@ -613,7 +613,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	// One DeleteProjectEvent, for a delete that happened (w4/m321).
-	s.RecordAllowedWrite(ctx, "projects.Delete", core.RelCanCreate, p.TenantID)
+	s.RecordAllowedWrite(ctx, "projects.Delete", core.RelCanCreate, p.TenantID, core.ProjectTarget(p.ID), p.Name)
 	return nil
 }
 
@@ -728,7 +728,7 @@ func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
 		return err
 	}
 	// A refused delete (the project is not empty) records nothing (w4/m321).
-	s.RecordAllowedWrite(ctx, "projects.DeleteIfEmpty", core.RelCanCreate, p.TenantID)
+	s.RecordAllowedWrite(ctx, "projects.DeleteIfEmpty", core.RelCanCreate, p.TenantID, core.ProjectTarget(p.ID), p.Name)
 	return nil
 }
 

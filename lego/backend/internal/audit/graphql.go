@@ -17,6 +17,7 @@ limitations under the License.
 package audit
 
 import (
+	"cmp"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -68,7 +69,11 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return "success"
 		})},
-		"resource": gqlutil.StrField(func(e Event) any { return e.Resource }),
+		// resource is what the row acted on: its target ("service:srv-…",
+		// "project:prj-…") when it names one, else the workspace object, so
+		// the dashboard's Resource column names a created or deleted service
+		// instead of its workspace (w4/m321 t011).
+		"resource": gqlutil.StrField(func(e Event) any { return cmp.Or(e.Target, e.Resource) }),
 		// targetName is the target's stored display name (migration 0038);
 		// null for pre-0038 rows (stored "") so the dashboard falls back to
 		// the raw id rather than rendering an empty cell.

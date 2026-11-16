@@ -161,4 +161,8 @@ func TestProjectMoveAndDeleteRecordOneRowEach(t *testing.T) {
 	if len(sink.events) != 1 || sink.events[0].Verb != "projects.DeleteIfEmpty" || sink.events[0].Outcome != core.AuditAllowed {
 		t.Fatalf("a delete recorded %+v, want one projects.DeleteIfEmpty row", sink.events)
 	}
+	// The row names what it deleted (w4/m321 t011).
+	if ev := sink.events[0]; ev.Target != core.ProjectTarget("prj-1") || ev.TargetName != "web-stack" {
+		t.Errorf("delete row target = %q name %q, want project:prj-1 web-stack", ev.Target, ev.TargetName)
+	}
 }

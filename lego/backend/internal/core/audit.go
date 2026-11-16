@@ -507,6 +507,21 @@ func KeyValueTarget(name string) string { return "keyvalue:" + name }
 // evg- id.
 func EnvGroupTarget(id string) string { return "envGroup:" + id }
 
+// ProjectTarget, EnvironmentTarget, WebhookTarget and BlueprintTarget are
+// EnvGroupTarget's siblings for the workspace-level resources a create, delete
+// or move acts on, each by its public id, so every such row names what it
+// touched (w4/m321 t011).
+func ProjectTarget(id string) string { return "project:" + id }
+
+// EnvironmentTarget: see ProjectTarget.
+func EnvironmentTarget(id string) string { return "environment:" + id }
+
+// WebhookTarget: see ProjectTarget.
+func WebhookTarget(id string) string { return "webhook:" + id }
+
+// BlueprintTarget: see ProjectTarget.
+func BlueprintTarget(id string) string { return "blueprint:" + id }
+
 // MemberTarget is the audit target of a verb acting on one workspace MEMBER
 // (role change, removal). The subject is the member's identity id — an opaque
 // identifier, never a value; the events feed never reads this kind (members
@@ -1028,8 +1043,12 @@ func RecordInviteAccepted(ctx context.Context, sink AuditSink, at time.Time, wor
 // that authorizes more than once, or whose write can still be refused after
 // authorization (a delete of an environment that is not empty), then records
 // one row per action and none for an action that did not happen (w4/m321).
-func (b *Base) RecordAllowedWrite(ctx context.Context, verb, relation, workspaceID string) {
-	b.emit(ctx, verb, relation, WorkspaceObject(workspaceID), "", nil)
+// target and targetName name the resource the action created, deleted or
+// changed, once it exists; both are "" for a workspace-wide verb.
+func (b *Base) RecordAllowedWrite(ctx context.Context, verb, relation, workspaceID, target, targetName string) {
+	ev := b.verbAuditEvent(ctx, verb, WorkspaceObject(workspaceID), target)
+	ev.Relation, ev.TargetName = relation, targetName
+	b.recordAudit(ctx, ev)
 }
 
 // RecordSecretsViewed records one successful read that returned secret values
@@ -1038,9 +1057,7 @@ func (b *Base) RecordAllowedWrite(ctx context.Context, verb, relation, workspace
 // once the read has succeeded. A denied read is already its authorization's
 // row.
 func (b *Base) RecordSecretsViewed(ctx context.Context, verb, workspaceID, target, targetName string) {
-	ev := b.verbAuditEvent(ctx, verb, WorkspaceObject(workspaceID), target)
-	ev.TargetName = targetName
-	b.recordAudit(ctx, ev)
+	b.RecordAllowedWrite(ctx, verb, "", workspaceID, target, targetName)
 }
 
 // RecordDatabaseEffect records one successful, sourceable managed-Postgres
@@ -1468,14 +1485,10 @@ func unexportedHelperMethod(name, short string) bool {
 // swallowed, never returned: audit recording must never fail the verb it's
 // recording.
 func (b *Base) emit(ctx context.Context, verb, relation, resource, target string, authzErr error) {
-	outcome := AuditAllowed
+	ev := b.verbAuditEvent(ctx, verb, resource, target)
+	ev.Relation = relation
 	if authzErr != nil {
-		outcome = AuditDenied
-	}
-	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: outcome, At: b.Now(), Relation: relation}
-	if id, ok := IdentityFrom(ctx); ok {
-		ev.Caller, ev.CallerMethod = id.Subject, id.Method
-		id.AttachOAuthProvenance(&ev)
+		ev.Outcome = AuditDenied
 	}
 	b.recordAudit(ctx, ev)
 }

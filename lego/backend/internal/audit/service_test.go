@@ -610,3 +610,49 @@ func TestGraphQLExposesTheTwoFactorEnforcementValue(t *testing.T) {
 		t.Errorf("metadata = %v, want to=true", row["metadata"])
 	}
 }
+
+// w4/m321 t011: REST metadata keeps bex's OpenFGA relation only on a denied
+// row, where it explains the refusal; an allowed row names its target alone.
+func TestRenderMetadataKeepsTheRelationOnlyOnADenial(t *testing.T) {
+	allowed := toRenderAuditLog(Event{Verb: "apps.Create", Outcome: string(core.AuditAllowed),
+		Relation: core.RelCanCreate, Target: core.ServiceTarget("srv-1"), TargetName: "web"})
+	if _, ok := allowed.Metadata["relation"]; ok {
+		t.Errorf("allowed row metadata = %v, want no relation", allowed.Metadata)
+	}
+	if allowed.Metadata["service"] != "srv-1" || allowed.Metadata["targetName"] != "web" {
+		t.Errorf("allowed row metadata = %v, want service srv-1 named web", allowed.Metadata)
+	}
+	denied := toRenderAuditLog(Event{Verb: "apps.Create", Outcome: string(core.AuditDenied), Relation: core.RelCanCreate})
+	if denied.Metadata["relation"] != core.RelCanCreate {
+		t.Errorf("denied row metadata = %v, want relation %s", denied.Metadata, core.RelCanCreate)
+	}
+}
+
+// w4/m321 t011: GraphQL's resource is the row's target when it names one, so
+// the dashboard's Resource column names a created or deleted service rather
+// than its workspace; a workspace-wide row keeps the workspace object.
+func TestGraphQLResourceNamesTheTarget(t *testing.T) {
+	fs := &fakeStore{listRows: []store.AuditRow{
+		{ID: "aud-targeted", WorkspaceID: "tea-owner", Resource: "workspace:tea-owner", Target: "project:prj-1"},
+		{ID: "aud-workspace", WorkspaceID: "tea-owner", Resource: "workspace:tea-owner"},
+	}}
+	svc := &Service{Base: &core.Base{Authz: fakeAllowChecker{}}, Store: fs}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "admin-1", Method: "session"})
+	res := graphql.Do(graphql.Params{Schema: schema, RequestString: `{ auditLogs(ownerId:"tea-owner") { id resource } }`, Context: ctx})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	rows := res.Data.(map[string]any)["auditLogs"].([]any)
+	if got := rows[0].(map[string]any)["resource"]; got != "project:prj-1" {
+		t.Errorf("targeted row resource = %v, want project:prj-1", got)
+	}
+	if got := rows[1].(map[string]any)["resource"]; got != "workspace:tea-owner" {
+		t.Errorf("workspace row resource = %v, want workspace:tea-owner", got)
+	}
+}

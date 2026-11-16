@@ -520,7 +520,9 @@ type CreateRequest struct {
 // platform clients still pass.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
-	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+	// The one CreateWebhookEvent is written once the endpoint exists, naming
+	// it; a create refused by the plan or validation records none (w4/m321).
+	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanManage); err != nil {
 		return EndpointView{}, err
 	}
 	// Durable signing secret — same durable-credential gate as API-key
@@ -555,11 +557,14 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 	if id, ok := core.IdentityFrom(ctx); ok {
 		createdBy = id.Subject
 	}
-	e, err := s.Store.CreateWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), name, dest, secret, types, req.Enabled, createdBy)
+	workspaceID := s.WorkspaceOrDefault(ctx)
+	e, err := s.Store.CreateWebhookEndpoint(ctx, workspaceID, name, dest, secret, types, req.Enabled, createdBy)
 	if err != nil {
 		return EndpointView{}, mapCreateErr(err)
 	}
-	return toView(e, true), nil // Create is admin-gated: echo the exact destination
+	v := toView(e, true)
+	s.RecordAllowedWrite(ctx, "webhooks.Create", core.RelCanManage, workspaceID, core.WebhookTarget(v.ID), v.Name)
+	return v, nil // Create is admin-gated: echo the exact destination
 }
 
 // requireWebhookPlan applies the workspace plan's webhook rule (w8/m138):
@@ -749,7 +754,7 @@ func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
 	if err != nil {
 		return err
 	}
-	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanManage, core.WebhookTarget(id)); err != nil {
 		return err
 	}
 	if s.Store == nil {
@@ -901,7 +906,7 @@ func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequ
 	if err != nil {
 		return EndpointView{}, err
 	}
-	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanManage, core.WebhookTarget(id)); err != nil {
 		return EndpointView{}, err
 	}
 	if s.Store == nil {
