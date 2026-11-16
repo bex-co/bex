@@ -246,10 +246,10 @@ DEADCODE = $(LOCALBIN)/deadcode
 KUSTOMIZE_VERSION ?= v5.8.1
 CONTROLLER_TOOLS_VERSION ?= v0.20.1
 
-#ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
+#ENVTEST_VERSION is the controller-runtime version whose setup-envtest to install. The release branches stopped carrying tools/setup-envtest at release-0.24 (`go install ...@release-0.25` answers "does not contain package"), so the module's own tag is used: it resolves for the nested module (0.24 and later) and for the main module (earlier releases).
 ENVTEST_VERSION ?= $(shell v='$(call gomodver,sigs.k8s.io/controller-runtime)'; \
   [ -n "$$v" ] || { echo "Set ENVTEST_VERSION manually (controller-runtime replace has no tag)" >&2; exit 1; }; \
-  printf '%s\n' "$$v" | sed -E 's/^v?([0-9]+)\.([0-9]+).*/release-\1.\2/')
+  printf '%s\n' "$$v")
 
 #ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries (i.e. 1.34)
 ENVTEST_K8S_VERSION ?= $(shell v='$(call gomodver,k8s.io/api)'; \
