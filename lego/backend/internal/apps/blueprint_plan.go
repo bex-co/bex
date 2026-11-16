@@ -520,6 +520,12 @@ func mergeBlueprintEnv(current, declared []appv1alpha1.EnvVar) []appv1alpha1.Env
 			delete(byName, variable.Name)
 		}
 	}
+	// A merge that drops every variable (today: only legacy nameless ones)
+	// is nil, like no variables at all: an empty non-nil list disagrees with
+	// the stored form across a CR round-trip and re-plans as a change.
+	if len(merged) == 0 {
+		return nil
+	}
 	return merged
 }
 
