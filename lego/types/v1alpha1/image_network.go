@@ -237,13 +237,33 @@ func (a *App) ActiveImageNetwork() *ImageNetworkStatus {
 // selects its primary as a web service's does (w3/m273 t010): Render serves a
 // private service on the port it binds, whatever its image declares.
 func (a *App) ConfiguredImagePort() (port int32, ok bool) {
+	return a.configuredImagePort(a.RuntimeSpec())
+}
+
+func (a *App) configuredImagePort(spec AppSpec) (port int32, ok bool) {
 	if a.Spec.HasImagePorts() && a.Status.EnvPort > 0 {
 		return a.Status.EnvPort, true
 	}
-	if spec := a.RuntimeSpec(); spec.HasImagePorts() && IsConfiguredPortMode(spec.PortMode) {
+	if spec.HasImagePorts() && IsConfiguredPortMode(spec.PortMode) {
 		return spec.Port, true
 	}
 	return 0, false
+}
+
+// SavedPort is the port the saved settings name, which the Settings row reads
+// back: ConfiguredImagePort and ServingPort read through the saved spec rather
+// than the running release's, else the published primary (ServicePort) of an
+// image-port service whose image still chooses. A save-only port change reads
+// back at once while a Restart or rollback keeps serving the release's own
+// port (w4/433, w4/m433).
+func (a *App) SavedPort() int32 {
+	if port, ok := a.configuredImagePort(a.Spec); ok && port > 0 {
+		return port
+	}
+	if a.Spec.HasImagePorts() {
+		return a.ServicePort()
+	}
+	return a.servingPort(a.Spec)
 }
 
 // ServingPort is the port a configured (non-image-port) service listens on:
@@ -254,7 +274,10 @@ func (a *App) ConfiguredImagePort() (port int32, ok bool) {
 // The port is the running release's: a Restart or rollback keeps its selected
 // release's (RuntimeSpec, w4/m433) while a saved one waits for a deploy.
 func (a *App) ServingPort() int32 {
-	spec := a.RuntimeSpec()
+	return a.servingPort(a.RuntimeSpec())
+}
+
+func (a *App) servingPort(spec AppSpec) int32 {
 	// Image-port services publish through the serving image network instead of
 	// any recorded PORT or detected listener.
 	if spec.HasImagePorts() {

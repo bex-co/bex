@@ -427,3 +427,33 @@ func TestClearingAnImagePortServicesPortReturnsItToTheImage(t *testing.T) {
 		t.Fatalf("clearing a native service's port: got %v, want bad request", err)
 	}
 }
+
+// w4/m433: a Restart or rollback keeps serving its selected release's port
+// while a saved one waits for a deploy. The published port and openPorts name
+// the running port, and the Settings row reads back the saved one, as w4/433
+// requires after any save. Production showed configuredPort reading the
+// running 10000 after a save-only PATCH of 8080 (t005, 2026-11-16).
+func TestSettingsPortReadsTheSaveWhileASelectionRunsTheRecordedPort(t *testing.T) {
+	selected := func(a *appv1alpha1.App, runtime appv1alpha1.ReleaseRuntimeSettings) {
+		a.Generation, a.Status.ReleaseGeneration = 4, 4
+		a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 4, SourceGeneration: 1, Image: "image:A", Runtime: &runtime}
+	}
+	app := portApp("web", appv1alpha1.TypeWebService, 8080)
+	selected(app, appv1alpha1.ReleaseRuntimeSettings{Port: 10000})
+	svc, _ := newService(nil, app)
+	view := svc.view(app)
+	if view.Port != 10000 || len(view.OpenPorts) != 1 || view.OpenPorts[0].Port != 10000 {
+		t.Fatalf("serving port=%d openPorts=%v, want the running 10000", view.Port, view.OpenPorts)
+	}
+	if view.ConfiguredPort != 8080 {
+		t.Fatalf("configuredPort=%d, want the saved 8080", view.ConfiguredPort)
+	}
+
+	image := portApp("web", appv1alpha1.TypeWebService, 3001)
+	image.Spec.PortMode = appv1alpha1.PortModeWebImageConfiguredV1
+	image.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{PrimaryPort: 3000}
+	selected(image, appv1alpha1.ReleaseRuntimeSettings{Port: 3000, PortMode: appv1alpha1.PortModeWebImageConfiguredV1})
+	if view := svc.view(image); view.Port != 3000 || view.ConfiguredPort != 3001 {
+		t.Fatalf("image port: port=%d configuredPort=%d, want the running 3000 and the saved 3001", view.Port, view.ConfiguredPort)
+	}
+}

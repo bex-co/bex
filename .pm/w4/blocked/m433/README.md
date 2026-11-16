@@ -1,6 +1,6 @@
 # w4 · m433 — A restart keeps the running shutdown delay, port and pre-deploy command instead of shipping undeployed settings, as Render's Restart keeps the running configuration
 
-**Worker:** worker4 **Goal:** a restart reruns the configuration the instance is running, including its shutdown delay, port and pre-deploy command; a rollback runs the target's; an undeployed save waits for the next deploy and stays reported until then. **Status:** blocked — t001–t004 and t006–t008 done (code shipped); t005 waits for the next production deploy (19:00, 00:00 or 05:00 UTC) to pin the fix, then a worker runs the live check and t009 closes — no user action
+**Worker:** worker4 **Goal:** a restart reruns the configuration the instance is running, including its shutdown delay, port and pre-deploy command; a rollback runs the target's; an undeployed save waits for the next deploy and stays reported until then. **Status:** blocked — t001–t004 and t006–t008 done (code shipped); t005's live run on pin `7aaa8700befa` (2026-11-16) held for the restart, deploy and rollback, but the saved port did not read back (`configuredPort` showed the running port); that fix shipped with the evidence. t005 waits for the next production deploy (19:00, 00:00 or 05:00 UTC) to pin it, then a worker repeats the save-then-Restart read and t009 closes — no user action
 
 ## Tasks (in order)
 

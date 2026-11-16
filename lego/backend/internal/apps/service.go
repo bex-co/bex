@@ -5449,13 +5449,14 @@ func addressablePort(app *appv1alpha1.App) int32 {
 	return app.ServicePort()
 }
 
-// settingsPort is AppView.ConfiguredPort: an image-port service's configured
-// primary, which the serving network adopts only once promoted.
+// settingsPort is AppView.ConfiguredPort: the saved port (App.SavedPort), which
+// the serving network adopts only once a deploy promotes it, and which a
+// Restart or rollback leaves pending (w4/m433).
 func settingsPort(app *appv1alpha1.App) int32 {
-	if port, ok := app.ConfiguredImagePort(); ok && port > 0 {
-		return port
+	if !app.Spec.InternallyAddressable() {
+		return 0
 	}
-	return addressablePort(app)
+	return app.SavedPort()
 }
 
 // validateServicePort is the one port bounds check every surface shares, so a
