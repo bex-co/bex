@@ -17,6 +17,11 @@ fail() {
 }
 # head closing the pipe ends tr with SIGPIPE, which pipefail would report.
 rand() { LC_ALL=C tr -dc "$1" </dev/urandom | head -c "$2" || true; }
+# A key the generic rule must report: gitleaks drops a candidate that contains
+# a dictionary stopword, which an alphanumeric draw does about one run in three
+# (the "a generic API key gave exit 0" failures of 2026-11-16). With no vowel
+# no English word, stopword included, can occur in it.
+rand_key() { rand 'B-DF-HJ-NP-TV-Zb-df-hj-np-tv-z0-9' "$1"; }
 
 repo="$tmp/repo"
 mkdir -p "$repo/scripts"
@@ -40,7 +45,7 @@ commit allowlisted
 scan HEAD~1..HEAD || fail "an allowlisted shape was reported: $(cat "$tmp/out")"
 
 # A generic API key and a GitHub token are reported, redacted.
-key=$(rand A-Za-z0-9 32)
+key=$(rand_key 32)
 echo "api_key = \"$key\"" >"$repo/config.py"
 commit generic
 rc=0
@@ -54,7 +59,7 @@ scan HEAD~1..HEAD || rc=$?
 [ "$rc" = 1 ] || fail "a GitHub token gave exit $rc, not 1: $(cat "$tmp/out")"
 
 # The allowlisted id shape does not hide another value on the same line.
-echo "credential rgc-$(rand 0-9a-v 20) api_key = \"$(rand A-Za-z0-9 32)\"" >"$repo/mixed.md"
+echo "credential rgc-$(rand 0-9a-v 20) api_key = \"$(rand_key 32)\"" >"$repo/mixed.md"
 commit mixed
 rc=0
 scan HEAD~1..HEAD || rc=$?
