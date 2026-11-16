@@ -8,7 +8,8 @@
 #   tracking-issue.sh close  --label L --comment TEXT
 #
 # open keeps exactly one open issue per label: it edits the newest open one, or
-# creates one. A create is retried only after listing again, so a create that
+# creates one. An edit rewrites the title as well as the body, so the title
+# always names the current failure, not the first one (w4/687). A create is retried only after listing again, so a create that
 # GitHub applied but whose response was lost cannot open a second issue.
 # append adds TEXT as a line to the open issue's body, or opens one with F and
 # TEXT, so each event stays listed until a person closes the issue.
@@ -45,13 +46,13 @@ open_issue() {
     --json number --jq '.[0].number // empty'
 }
 
-# Edit the newest open issue with the label to $body_file, or create one.
+# Edit the newest open issue with the label to $title and $body_file, or create one.
 open_or_edit() {
   gh_retry gh label create "$label" --repo "$GITHUB_REPOSITORY" --color "$color" \
     ${description:+--description "$description"} --force
   existing=$(open_issue)
   if [ -n "$existing" ]; then
-    gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body-file "$body_file"
+    gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$body_file"
     return 0
   fi
   for attempt in 1 2 3; do
@@ -62,7 +63,7 @@ open_or_edit() {
     # The failed create may have landed: never create a second one.
     existing=$(open_issue)
     if [ -n "$existing" ]; then
-      gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body-file "$body_file"
+      gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$body_file"
       return 0
     fi
   done

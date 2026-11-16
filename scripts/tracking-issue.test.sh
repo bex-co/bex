@@ -19,12 +19,18 @@ case "$1 $2" in
     label=$(arg --label "$@")
     awk -v l="$label" '$2 == "open" && $3 == l { n = $1 } END { if (n) print n }' "$STATE/issues"
     ;;
-  "issue edit") echo "$3" >>"$STATE/edited"; cp "$(arg --body-file "$@")" "$STATE/body-$3" ;;
+  "issue edit")
+    echo "$3" >>"$STATE/edited"
+    cp "$(arg --body-file "$@")" "$STATE/body-$3"
+    title=$(arg --title "$@")
+    [ -z "$title" ] || echo "$title" >"$STATE/title-$3"
+    ;;
   "issue view") cat "$STATE/body-$3" ;;
   "issue create")
     n=$(($(wc -l <"$STATE/issues") + 1))
     echo "$n open $(arg --label "$@")" >>"$STATE/issues"
     cp "$(arg --body-file "$@")" "$STATE/body-$n"
+    arg --title "$@" >"$STATE/title-$n"
     # LOSE_CREATES=N: the first N creates land but the client sees a failure.
     lost=$(cat "$STATE/lost" 2>/dev/null || echo 0)
     if [ "$lost" -lt "${LOSE_CREATES:-0}" ]; then echo $((lost + 1)) >"$STATE/lost"; exit 1; fi
@@ -48,6 +54,13 @@ helper close --label probe-down --comment "Recovered" || fail "close"
 [ "$(open_count probe-down)" = 0 ] || fail "close left the issue open"
 helper close --label probe-down --comment "Recovered" || fail "close with nothing open"
 echo "ok: open, update, close"
+
+reset
+helper open --label probe-down --title "Probe is down: stage a" --body-file "$tmp/body" || fail "first titled open"
+helper open --label probe-down --title "Probe is down: stage b" --body-file "$tmp/body" || fail "second titled open"
+[ "$(open_count probe-down)" = 1 ] || fail "a retitling open created another issue"
+[ "$(cat "$tmp/state/title-1")" = "Probe is down: stage b" ] || fail "an update kept the first title: $(cat "$tmp/state/title-1")"
+echo "ok: an update retitles the open issue to the current failure"
 
 reset
 LOSE_CREATES=1 helper open --label probe-down --title "Probe is down" --body-file "$tmp/body" || fail "lost-response open"
