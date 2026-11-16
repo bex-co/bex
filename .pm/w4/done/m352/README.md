@@ -1,6 +1,6 @@
 # w4 · m352 — A deploy cuts every open shell and SSH session within a minute and refuses new ones as "no running instance yet", while the instance keeps running and serving until the new release goes live
 
-**Worker:** worker4 **Goal:** a shell or SSH session lives as long as the instance it is attached to. A deploy's build, pre-deploy and rollout leave the serving instance's sessions open, and new sessions can open on it. A session ends when its instance stops, or when the caller loses access to it. Any refusal or end names its real reason in the dashboard. **Status:** blocked — release gate (t001–t005 done, code shipped 2026-11-14 by `/loopx w4`; t006 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** a shell or SSH session lives as long as the instance it is attached to. A deploy's build, pre-deploy and rollout leave the serving instance's sessions open, and new sessions can open on it. A session ends when its instance stops, or when the caller loses access to it. Any refusal or end names its real reason in the dashboard. **Status:** done — 2026-11-16 (DoD 1–6 replayed live on pin `284b83e1f540`; see [t006](done/t006.md))
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Render parity — **DONE** | 15m | t002 |
 | [t004](done/t004.md) | Simplify — **DONE** | 15m | t003 |
 | [t005](done/t005.md) | Test coverage — **DONE** | 30m | t003 |
-| [t006](t006.md) | Closeout (live replay on production) | 30m | t004, t005 |
+| [t006](done/t006.md) | Closeout (live replay on production) — **DONE** | 30m | t004, t005 |
 
 ## Definition of done
 
@@ -35,8 +35,8 @@ All on production, on a Starter image web service (`docker.io/library/nginx:1.27
 
 - **Source:** live `/qa-find-bugs w4` loop, round 226, 2026-11-12 19:39–20:00 UTC (`muse.env`, workspace `bex-canary`; pin `33e1b1e6117c`). The probes are under § Finding. Screenshots: `.playwright-mcp/qa-r226-shell-1.png` (a working session) and `.playwright-mcp/qa-r226-shell-2.png` (the cut session during pre-deploy, header "Service Deploying · Pre-Deploy In Progress").
 - **Governing docs:**
-  - [ADR035](../../../docs/ADR035-ssh.md) — SSH and the Browser Web Shell. Line 57 says "the gateway still requires Running phase, an active revision, and a Ready current-image pod before authenticating", and § Browser Web Shell repeats "Running with a live revision" for the ticket mint. The fix amends both: the gate becomes an active revision and a Ready current-image pod, which is what "an already-running instance" means.
-  - [w4/506](../done/506.md) (done) gave each refusal its own sentence. This milestone stops one of them, "no running instance yet", from firing over a running instance.
+  - [ADR035](../../../../docs/ADR035-ssh.md) — SSH and the Browser Web Shell. Line 57 says "the gateway still requires Running phase, an active revision, and a Ready current-image pod before authenticating", and § Browser Web Shell repeats "Running with a live revision" for the ticket mint. The fix amends both: the gate becomes an active revision and a Ready current-image pod, which is what "an already-running instance" means.
+  - [w4/506](../506.md) (done) gave each refusal its own sentence. This milestone stops one of them, "no running instance yet", from firing over a running instance.
 - **Goal linkage:** Render parity for SSH and Shell. Render's CLI "verifies a live deploy" before it connects (ADR035 § Context). A service whose newer deploy is building or in pre-deploy still has that live deploy, and its instance keeps serving. With zero-downtime deploys, Render keeps the old instance until the new one is healthy.
 - **Expected outcome:**
   - a team with auto-deploy can keep a shell open, or open one, while a push builds or runs pre-deploy;
@@ -93,3 +93,10 @@ Fixture `qa-20261112-r226-shell` (`srv-dbr1c4q585js73afghj0`), `POST /v1/service
 - **The dashboard.**
   - Any `createShellSession` error other than `SHELL_UNAVAILABLE` becomes the generic "Couldn't start a shell session." (`dashboard/src/features/services/components/web-shell-terminal.tsx:92-104`, `services.shellErrorGeneric`). The server's own sentence is dropped.
   - A gateway `error` frame shows status "Connection error" (`services.shellErrorStatus`) with the frame's raw English text, here `session closed` (`:166-174`).
+
+## Unblock record — 2026-11-16
+
+- **Affected:** w4/m352/t006.
+- **Source:** verified evidence. The release gate named the next production deploy carrying the fix `653389fb8`. `git merge-base --is-ancestor 653389fb8 284b83e1f540` exits 0, and the newest platform pin `02026e53f` (2026-11-16 21:29Z) sets both `bex-operator@sha256:4d3a9429…` and `bex-dashboard@sha256:379ce8e1…`. Those are the images production's `bex-api`, `bex-ssh-gateway` and `dashboard` Deployments run (`kubectl get deploy`, read-only).
+- **Board repair:** the m348 park commit `993376f2e` had copied m348's rollout-replay gate onto this milestone's workstream line. m352's gate was the release gate, not a dashboard rollout.
+- **Next:** t006 replays DoD 1–6 on that pin and records the requests, responses and timings.
