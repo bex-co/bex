@@ -1,6 +1,6 @@
 # w4 · m347 — A new service's credential for the shared registry works without restarting the registry, so a first build starts in seconds, not minutes
 
-**Worker:** worker4 **Goal:** a new service's per-App registry credential is accepted as soon as it is written. A first build or a first registry-hosted rollout then starts as fast as any later one, and creating a service never restarts the registry that every other tenant is pushing to and pulling from. **Status:** blocked — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** a new service's per-App registry credential is accepted as soon as it is written. A first build or a first registry-hosted rollout then starts as fast as any later one, and creating a service never restarts the registry that every other tenant is pushing to and pulling from. **Status:** todo — release gate clear 2026-11-16 (t001–t004 done; t005 replays the live DoD)
 
 ## Tasks (in order)
 
@@ -164,3 +164,9 @@ This answers part of t001's step 2 from the customer side. The platform side (wh
 - **Unverified:** whether a credential-activation bounce caused it. Other sessions were creating services (`qa-20261112-6aa7-sd` was present), and this service's own first build at 14:38–14:42 had waited about a minute in `queued` before building.
 - **The narration is the tenant-facing text** since w8/286. The retry budget held this time, but the round 190 outage (at least 10 s) had exhausted it.
 - **Correction to round 201's entry:** the push retries at 14:44:19–21 happened while the platform rolled out pin `ca7fbbe606c8` (commit `8e18e630f` at 14:41:54), so a platform rollout is a candidate cause beside a credential-activation bounce. Neither was confirmed.
+
+## Unblock — release gate clear (2026-11-16)
+
+- **Source:** verified evidence, `/loopx w4` worker.
+- **Finding:** production runs platform pin `7aaa8700befa` (`546945798`, pinned 2026-11-16 16:22Z, still the latest pin on `origin/main`). The m347 code commit and its follow-ups are its ancestors: `git merge-base --is-ancestor 905751cc1 7aaa8700befa`, `… b9b61972c …` and `… 6e2b04bd9 …` (w4/649) each exit 0.
+- **Next:** t005 replays DoD 1–4 on production; no gate remains.
