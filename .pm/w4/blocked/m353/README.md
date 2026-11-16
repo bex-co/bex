@@ -1,6 +1,6 @@
 # w4 · m353 — An instance that fails its health check is restarted after about 2 minutes, not Render's 60 seconds: the 60-second rollout drain also runs before every liveness restart, while the instance is already out of rotation
 
-**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** blocked — the round 398 replay (2026-11-15) found DoD 2 holds for a process that exits on SIGTERM (62 s), while DoD 2's own `sh`-as-PID-1 fixture restarts at 145–150 s because the liveness kill waits the pod's whole drain + delay grace: [t007](t007.md) is open. Earlier, the round 394 closeout replay found an extra exit event on a health-check restart: [t006](t006.md) is open. Both block the closeout. Previously: — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** blocked — release gate (t001–t004, t006, t007 done; t006 and t007 shipped 2026-11-16 by `/loopx w4` in the commit whose subject ends `(w4/m353 t006, t007)`; t005 replays DoD 1–4 on the first production pin that carries it). Previously: the round 394 and 398 replays opened t006 and t007 on pin `2d9bbae6bb8d`/`89ac87445bec`, after t001–t004 shipped on 2026-11-14 (`5565407fa`).
 
 ## Tasks (in order)
 
@@ -10,8 +10,8 @@
 | [t002](done/t002.md) | Cover TCP-checked services (no Health Check Path), and amend ADR004 — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
 | [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
-| [t006](t006.md) | A health-check restart also records the liveness SIGTERM as the app's own crash: an extra `server_failed {nonZeroExit}` (found by the round 394 replay) | 45m | — |
-| [t007](t007.md) | A health-check restart of an instance that ignores SIGTERM waits the pod's whole grace (drain + `maxShutdownDelaySeconds`, 90 s) before SIGKILL, not Render's 30 s; set the liveness probe's own grace (found by the round 398 replay of DoD 2) | 45m | — |
+| [t006](done/t006.md) | A health-check restart also records the liveness SIGTERM as the app's own crash: an extra `server_failed {nonZeroExit}` (found by the round 394 replay) — **DONE** | 45m | — |
+| [t007](done/t007.md) | A health-check restart of an instance that ignores SIGTERM waits the pod's whole grace (drain + `maxShutdownDelaySeconds`, 90 s) before SIGKILL, not Render's 30 s; set the liveness probe's own grace (found by the round 398 replay of DoD 2) — **DONE** | 45m | — |
 | [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004, t006, t007 |
 
 ## Definition of done
@@ -22,8 +22,10 @@ All on production, on a Free web service from `POST /v1/services`: `docker.io/tr
    - After Live, `curl -X POST --data 500 https://<name>.onbex.co/health` (whoami's `/health` then answers 500).
    - `curl` `/` and `/health` every 2 s.
    - `/` stops answering within about 15 s, as today (w8/189). `GET /v1/logs?…&type=app` shows the next `Starting up on port 10000` no later than 75 s after `Update health check status code [500]`. Round 229 measured 114 s.
-   - `/` answers 200 again within about 15 s of that line. The Events tab shows `server_failed` (`unhealthy`) and then `server_available`.
-2. **The same holds without a Health Check Path.** A service checked by TCP, whose listener stops accepting (for example a busybox `httpd` that is killed while the shell keeps PID 1 alive), is restarted no later than 75 s after its checks start failing.
+   - `/` answers 200 again within about 15 s of that line. The Events tab shows exactly `server_failed` (`unhealthy`) and then `server_available`, with no `server_failed {nonZeroExit}` between them (t006).
+2. **The same holds without a Health Check Path.** A service checked by TCP whose listener stops accepting (a busybox `httpd` that is killed while the shell stays up) is restarted in time (amended by t007, 2026-11-16):
+   - a process that exits on SIGTERM (the shell traps TERM and exits; round 398's fixture B) restarts no later than 75 s after its checks start failing;
+   - one that ignores SIGTERM (`sh` as PID 1; round 398's fixture A) restarts no later than 60 s + `maxShutdownDelaySeconds` + 15 s, ≤ 105 s by default.
 3. **The drain still protects healthy instances (w8/180, w1/m154).** On a Starter web service with two instances, a 70-second request started just before a Manual Deploy completes with 200, as in w8/180's acceptance. The retired instance's last log line comes about 60 s after the new instance is Ready.
 4. **Fixtures.** Every fixture is deleted, and each GET answers 404.
 
@@ -68,3 +70,13 @@ Fixture `qa-20261112-r229-hc` (`srv-dbr24ia585js73afgis0`), created at 20:32:10 
 - Render's own measured restart time was not captured; its docs are the reference.
 - Whether Render waits `maxShutdownDelaySeconds` after SIGTERM on a health restart is not documented. bex keeps that SIGTERM-to-SIGKILL window either way.
 - **Corroboration (not a new probe):** [w4/m327](../../done/m327/README.md)'s round 100 ran the same whoami experiment on 2026-11-11. Its flip at 11:41:42 came back as 200 at 11:43:59, 137 s later — the same liveness-plus-drain shape, recorded there without the timing analysis.
+
+## Decision record — 2026-11-16 (`/pm unblock`, verified evidence)
+
+- **Affected:** w4/m353 t005, t006, t007.
+- **Source:** verified evidence, no user decision. The parked gate named the release of `5565407fa` (t001–t004). `git merge-base --is-ancestor 5565407fa 284b83e1f540` succeeds, and `284b83e1f540` is the production pin (w4/m350 and w4/m351 closed on it). The gate had cleared, so it was stale. What remained was implementable work, t006 and t007, which the round 394 and 398 replays had filed. Neither needs a user decision.
+- **Chosen behavior:** Render's documented restart: "after 60 consecutive seconds of failures … Render automatically restarts the instance", and SIGKILL `maxShutdownDelaySeconds` after SIGTERM. A health-check restart is one outage with one Instance Failed event, as before t001.
+  - t006: the operator remembers, for each pod run, when an instance that was still running stopped being ready (`unreadyRuns`, `instance_exits.go`). The exit that ends that run is marked `afterUnready` even when it is first read after the replacement process is ready again. A run that becomes ready again is forgotten, so a later crash of a recovered instance is still its own failure (w8/m158, w4/608). The memory is in-process: after an operator restart an exit falls back to the pod's Ready condition, as before.
+  - t007: a pod with the health-checked drain carries `livenessProbe.terminationGracePeriodSeconds` = `maxShutdownDelaySeconds` (default 30) + 5 s (`livenessTerminationGracePeriodSeconds`, `deployment_projection.go`). The pod keeps drain + delay. Stored templates adopt it on their next roll, not on the operator upgrade. ADR004 § Rollout headroom records the trade-off.
+- **Remaining gate:** release. The first production deploy whose pin contains the commit that ships t006 and t007: `git log --grep 'w4/m353 t006, t007' origin/main`, then `git merge-base --is-ancestor <sha> <deployed sha>`. No owner action; production deploys run at 19:00, 00:00 and 05:00 UTC.
+- **Next steps (t005):** on that pin, replay DoD 1 (Events exactly `unhealthy` then `server_available`), DoD 2 with both fixtures (exits on SIGTERM ≤ 75 s; ignores SIGTERM ≤ 105 s), DoD 3 (a healthy two-instance Manual Deploy still drains for 60 s) and DoD 4. A template adopts the liveness grace only on its next roll, so create the fixtures fresh.

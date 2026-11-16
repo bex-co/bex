@@ -374,6 +374,9 @@ type AppReconciler struct {
 	// stoppedCanceledBuilds holds, per App UID, the canceled release
 	// generation whose build a canceled pass stopped (settleCanceledRelease).
 	stoppedCanceledBuilds sync.Map
+	// unreadyRuns remembers when a serving instance stopped being ready while
+	// its process still ran, for the exit that follows (recordInstanceExits).
+	unreadyRuns unreadyRuns
 	// AppsNamespace is the shared/bootstrap tenant namespace (BEX_APPS_NAMESPACE,
 	// default "default"). Together with each App's own workspace namespace it
 	// defines the canonical set the reconciler will act on — see canonicalNamespace

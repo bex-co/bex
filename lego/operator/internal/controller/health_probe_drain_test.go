@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -109,7 +110,7 @@ func TestHealthProbeCheckArgsFollowTheProbe(t *testing.T) {
 			t.Errorf("%s: check = %v, want none", name, got)
 		}
 		container := corev1.Container{LivenessProbe: &corev1.Probe{ProbeHandler: handler}}
-		applyDrain(&corev1.PodSpec{}, &container, nil, drainSeconds, true)
+		applyDrain(&corev1.PodSpec{}, &container, nil, drainSeconds, true, true)
 		if container.Lifecycle.PreStop.Sleep == nil || container.Lifecycle.PreStop.Sleep.Seconds != drainSeconds {
 			t.Errorf("%s: preStop = %+v, want the plain sleep", name, container.Lifecycle.PreStop)
 		}
@@ -153,6 +154,7 @@ func TestHealthCheckedDrainIsAdoptedOnTheNextRollNotOnUpgrade(t *testing.T) {
 	sleepingPathService.Spec.Template.Spec.Containers[0].Lifecycle = &corev1.Lifecycle{
 		PreStop: &corev1.LifecycleHandler{Sleep: &corev1.SleepAction{Seconds: drainSeconds}},
 	}
+	sleepingPathService.Spec.Template.Spec.Containers[0].LivenessProbe.TerminationGracePeriodSeconds = nil
 	for _, tc := range []struct {
 		name   string
 		app    func(...func(*appv1alpha1.App)) *appv1alpha1.App
@@ -193,5 +195,90 @@ func TestHealthCheckedDrainIsAdoptedOnTheNextRollNotOnUpgrade(t *testing.T) {
 				t.Error("once adopted, the health-checked drain must re-project unchanged")
 			}
 		})
+	}
+}
+
+// w4/m353 t007: a liveness restart gives the process Render's
+// maxShutdownDelaySeconds between SIGTERM and SIGKILL, plus the drain's one
+// check, not the pod's drain + delay. Round 398's sh-as-PID-1 fixture, which
+// ignores SIGTERM, restarted about 150 s after its checks began to fail. The
+// pod keeps drain + delay, so a deletion still drains a healthy instance
+// (w1/m154, w8/180).
+func TestALivenessRestartGetsTheShutdownDelayNotTheDrain(t *testing.T) {
+	delay := func(seconds int32) func(*appv1alpha1.App) {
+		return func(a *appv1alpha1.App) { a.Spec.MaxShutdownDelaySeconds = &seconds }
+	}
+	private := func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypePrivateService; a.Spec.Expose = false }
+	for _, tc := range []struct {
+		name  string
+		app   *appv1alpha1.App
+		delay int64
+	}{
+		{"web service with a path", httpHealthApp(), defaultTerminationGracePeriodSeconds},
+		{"tcp-checked web service", projectionApp(), defaultTerminationGracePeriodSeconds},
+		{"web service with a delay", httpHealthApp(delay(120)), 120},
+		{"private service", projectionApp(private), defaultTerminationGracePeriodSeconds},
+		{"private service with a delay", projectionApp(private, delay(5)), 5},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dep := project(tc.app, execParams())
+			app := appContainerOf(t, dep)
+			drainCheckArgs(t, app)
+			if grace := app.LivenessProbe.TerminationGracePeriodSeconds; grace == nil || *grace != tc.delay+int64(healthCheckTimeoutSeconds) {
+				t.Errorf("liveness grace = %v, want %d + %d", grace, tc.delay, healthCheckTimeoutSeconds)
+			}
+			if grace := dep.Spec.Template.Spec.TerminationGracePeriodSeconds; grace == nil || *grace != drainSeconds+tc.delay {
+				t.Errorf("pod grace = %v, want %d + %d", grace, drainSeconds, tc.delay)
+			}
+			// Kubernetes accepts a probe-level grace on liveness and startup
+			// only; the startup probe kills before any drain applies.
+			if app.StartupProbe.TerminationGracePeriodSeconds != nil || app.ReadinessProbe.TerminationGracePeriodSeconds != nil {
+				t.Errorf("startup %v readiness %v, want no probe-level grace", app.StartupProbe.TerminationGracePeriodSeconds, app.ReadinessProbe.TerminationGracePeriodSeconds)
+			}
+		})
+	}
+
+	// Without a drain, or with the plain sleep, the pod's grace stands: there
+	// a shorter one would cut the sleep.
+	worker := execParams()
+	worker.worker = true
+	disk := projectionApp(func(a *appv1alpha1.App) {
+		a.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
+	})
+	for name, dep := range map[string]*appsv1.Deployment{
+		"worker":          project(projectionApp(), worker),
+		"disk-attached":   project(disk, execParams()),
+		"no helper image": project(httpHealthApp(), probeParams()),
+	} {
+		if probe := appContainerOf(t, dep).LivenessProbe; probe != nil && probe.TerminationGracePeriodSeconds != nil {
+			t.Errorf("%s: liveness grace = %d, want the pod's", name, *probe.TerminationGracePeriodSeconds)
+		}
+	}
+}
+
+// What t001's operator stored, the health-checked drain under the pod's grace,
+// keeps it until the template changes for another reason; the next roll
+// adopts the liveness probe's own grace and then re-projects unchanged.
+func TestLivenessGraceIsAdoptedOnTheNextRollNotOnUpgrade(t *testing.T) {
+	for _, app := range []func(...func(*appv1alpha1.App)) *appv1alpha1.App{httpHealthApp, projectionApp} {
+		stored := project(app(), execParams())
+		stored.Spec.Template.Spec.Containers[0].LivenessProbe.TerminationGracePeriodSeconds = nil
+		upgraded := stored.DeepCopy()
+		applyDeploymentSpec(upgraded, app(), execParams())
+		if !equalPodTemplate(upgraded.Spec.Template, stored.Spec.Template) {
+			t.Fatalf("%s: an operator upgrade changed an unchanged service's template", app().Name)
+		}
+
+		restarted := app(func(a *appv1alpha1.App) { a.Spec.RestartedAt = "2026-11-16T00:00:00Z" })
+		next := stored.DeepCopy()
+		applyDeploymentSpec(next, restarted, execParams())
+		if !storedLivenessGrace(next.Spec.Template.Spec) {
+			t.Errorf("%s: the next roll has no liveness grace", app().Name)
+		}
+		again := next.DeepCopy()
+		applyDeploymentSpec(again, restarted, execParams())
+		if !equalPodTemplate(again.Spec.Template, next.Spec.Template) {
+			t.Errorf("%s: once adopted, the liveness grace must re-project unchanged", app().Name)
+		}
 	}
 }

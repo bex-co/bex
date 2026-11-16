@@ -20,6 +20,7 @@ import (
 	"cmp"
 	"context"
 	"slices"
+	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -75,7 +76,9 @@ func (r *AppReconciler) recordInstanceExits(ctx context.Context, app *appv1alpha
 	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
 		return
 	}
-	app.Status.InstanceExits = withInstanceExits(app.Status.InstanceExits, pods.Items, app.Status.ActiveRevision, settled, time.Now())
+	now := time.Now()
+	r.unreadyRuns.note(pods.Items, app.Status.ActiveRevision, now)
+	app.Status.InstanceExits = withInstanceExits(&r.unreadyRuns, app.Status.InstanceExits, pods.Items, app.Status.ActiveRevision, settled, now)
 }
 
 // rolloutSettledAt is when dep's current rollout completed: the time
@@ -100,16 +103,101 @@ const instanceExitUnreadySlack = 3 * time.Second
 
 // unreadyBefore reports whether pod had already stopped being ready before
 // its process exited at finished (InstanceExit.AfterUnready). A pod that is
-// ready again no longer says when it was not, so it answers false: the exit
-// is then taken as the cause. The answer is recorded with the exit the first
-// time it is seen, which is normally while the instance is still down.
-func unreadyBefore(pod *corev1.Pod, finished time.Time) bool {
-	for _, c := range pod.Status.Conditions {
-		if c.Type == corev1.PodReady {
-			return c.Status != corev1.ConditionTrue && c.LastTransitionTime.Time.Before(finished.Add(-instanceExitUnreadySlack))
+// ready again no longer says when it was not, so it answers from what
+// unreadyRuns saw while the process still ran; with nothing seen, false: the
+// exit is then taken as the cause. The answer is recorded with the exit the
+// first time it is seen.
+func unreadyBefore(runs *unreadyRuns, pod *corev1.Pod, restarts int32, finished time.Time) bool {
+	before := finished.Add(-instanceExitUnreadySlack)
+	if since, ok := runs.since(pod, restarts); ok && since.Before(before) {
+		return true
+	}
+	c := podReadyCondition(pod)
+	return c != nil && c.Status != corev1.ConditionTrue && c.LastTransitionTime.Time.Before(before)
+}
+
+func podReadyCondition(pod *corev1.Pod) *corev1.PodCondition {
+	for i := range pod.Status.Conditions {
+		if pod.Status.Conditions[i].Type == corev1.PodReady {
+			return &pod.Status.Conditions[i]
 		}
 	}
-	return false
+	return nil
+}
+
+// unreadyRuns remembers when each running app container's instance stopped
+// being ready, by pod and the restart count its exit will be recorded under
+// (w4/m353 t006). The pod's own Ready condition says so only until the
+// instance is ready again. A health-check restart is a liveness kill about
+// 45 s after readiness failed, and its replacement process is ready a few
+// seconds later: an exit first read after that, or whose first reading's
+// status write was lost, was taken as the cause of the outage and recorded
+// as a second Instance Failed. The outage itself is seen on the passes its
+// readiness change wakes, long before the kill. Held in memory: after an
+// operator restart, an exit falls back to the pod's condition alone.
+type unreadyRuns struct {
+	m sync.Map // unreadyRun -> unreadySeen
+}
+
+type unreadyRun struct {
+	pod      string // namespace/name
+	restarts int32
+}
+
+type unreadySeen struct {
+	since, last time.Time
+}
+
+func runOf(pod *corev1.Pod, restarts int32) unreadyRun {
+	return unreadyRun{pod: pod.Namespace + "/" + pod.Name, restarts: restarts}
+}
+
+// note records the revision's running, not-ready instances and forgets one
+// that is ready again within the same run, so a later crash of a recovered
+// instance still counts as its cause. Entries not seen for instanceExitMaxAge
+// are dropped: their exit is past recording too.
+func (u *unreadyRuns) note(pods []corev1.Pod, revision string, now time.Time) {
+	for i := range pods {
+		pod := &pods[i]
+		if pod.Labels[labelRevision] != revision || !pod.DeletionTimestamp.IsZero() {
+			continue
+		}
+		ready := podReadyCondition(pod)
+		for _, cs := range pod.Status.ContainerStatuses {
+			if cs.Name != appContainerName || cs.State.Running == nil || ready == nil {
+				continue
+			}
+			run := runOf(pod, cs.RestartCount+1)
+			if ready.Status == corev1.ConditionTrue {
+				u.m.Delete(run)
+				continue
+			}
+			seen := unreadySeen{since: ready.LastTransitionTime.Time, last: now}
+			if prev, ok := u.m.Load(run); ok && prev.(unreadySeen).since.Before(seen.since) {
+				seen.since = prev.(unreadySeen).since
+			}
+			u.m.Store(run, seen)
+		}
+	}
+	u.m.Range(func(key, value any) bool {
+		if now.Sub(value.(unreadySeen).last) > instanceExitMaxAge {
+			u.m.Delete(key)
+		}
+		return true
+	})
+}
+
+// since is when the run of pod whose exit is recorded under restarts was
+// seen to stop being ready. A nil u has seen nothing.
+func (u *unreadyRuns) since(pod *corev1.Pod, restarts int32) (time.Time, bool) {
+	if u == nil {
+		return time.Time{}, false
+	}
+	v, ok := u.m.Load(runOf(pod, restarts))
+	if !ok {
+		return time.Time{}, false
+	}
+	return v.(unreadySeen).since, true
 }
 
 // lastExit is the app container's latest exit and the restart count it is
@@ -146,7 +234,7 @@ func lastExit(cs corev1.ContainerStatus) (*corev1.ContainerStateTerminated, int3
 // before since, the time the release's rollout settled, is a start-up crash
 // of the rollout and is left out. It returns recorded itself when the pods
 // show nothing new, so an unchanged status is not rewritten.
-func withInstanceExits(recorded []appv1alpha1.InstanceExit, pods []corev1.Pod, revision string, since, now time.Time) []appv1alpha1.InstanceExit {
+func withInstanceExits(runs *unreadyRuns, recorded []appv1alpha1.InstanceExit, pods []corev1.Pod, revision string, since, now time.Time) []appv1alpha1.InstanceExit {
 	var found []appv1alpha1.InstanceExit
 	for i := range pods {
 		pod := &pods[i]
@@ -172,7 +260,7 @@ func withInstanceExits(recorded []appv1alpha1.InstanceExit, pods []corev1.Pod, r
 			}
 			exit := appv1alpha1.InstanceExit{
 				Instance: pod.Name, RestartCount: restarts, ExitCode: t.ExitCode, OOMKilled: oom, FinishedAt: t.FinishedAt,
-				AfterUnready: unreadyBefore(pod, t.FinishedAt.Time),
+				AfterUnready: unreadyBefore(runs, pod, restarts, t.FinishedAt.Time),
 			}
 			// The same exit is never recorded under two counts: it is known by
 			// its instance and either its count or its finish time.

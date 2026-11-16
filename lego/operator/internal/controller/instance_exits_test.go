@@ -54,7 +54,7 @@ func TestInstanceExitsRecordTheCauseOfEachRestart(t *testing.T) {
 		exitedPod("web-b", "rev-9", 2, terminated(137, "OOMKilled", at.Add(90*time.Second))),
 		exitedPod("web-c", "rev-9", 1, terminated(0, "Completed", at.Add(3*time.Minute))),
 	}
-	got := withInstanceExits(nil, pods, "rev-9", settled, at.Add(4*time.Minute))
+	got := withInstanceExits(nil, nil, pods, "rev-9", settled, at.Add(4*time.Minute))
 	want := []appv1alpha1.InstanceExit{
 		{Instance: "web-c", RestartCount: 1, ExitCode: 0, FinishedAt: metav1.NewTime(at.Add(3 * time.Minute))},
 		{Instance: "web-b", RestartCount: 2, ExitCode: 137, OOMKilled: true, FinishedAt: metav1.NewTime(at.Add(90 * time.Second))},
@@ -72,13 +72,13 @@ func TestInstanceExitsRecordTheCauseOfEachRestart(t *testing.T) {
 
 	// The same pods on a later pass add nothing and leave the slice alone, so
 	// an unchanged status is not rewritten.
-	again := withInstanceExits(got, pods, "rev-9", settled, at.Add(6*time.Minute))
+	again := withInstanceExits(nil, got, pods, "rev-9", settled, at.Add(6*time.Minute))
 	if len(again) != len(got) || &again[0] != &got[0] {
 		t.Errorf("an unchanged pass rebuilt the list: %+v", again)
 	}
 	// The same instance crashing again is a new exit.
 	pods[0] = exitedPod("web-a", "rev-9", 2, terminated(7, "Error", at.Add(5*time.Minute)))
-	next := withInstanceExits(got, pods, "rev-9", settled, at.Add(6*time.Minute))
+	next := withInstanceExits(nil, got, pods, "rev-9", settled, at.Add(6*time.Minute))
 	if len(next) != 4 || next[0].Instance != "web-a" || next[0].RestartCount != 2 || next[0].ExitCode != 7 {
 		t.Errorf("a second crash of web-a = %+v, want it first of four", next)
 	}
@@ -107,7 +107,7 @@ func TestInstanceExitsLeaveOutWhatIsNotTheApplicationExiting(t *testing.T) {
 			return p
 		}(),
 	} {
-		if got := withInstanceExits(nil, []corev1.Pod{pod}, "rev-9", settled, at.Add(time.Minute)); len(got) != 0 {
+		if got := withInstanceExits(nil, nil, []corev1.Pod{pod}, "rev-9", settled, at.Add(time.Minute)); len(got) != 0 {
 			t.Errorf("%s: recorded %+v", name, got)
 		}
 	}
@@ -118,7 +118,7 @@ func TestInstanceExitsKeepTheNewestTen(t *testing.T) {
 	var recorded []appv1alpha1.InstanceExit
 	for i := range 14 {
 		pod := exitedPod("web-a", "rev-9", int32(i+1), terminated(1, "Error", at.Add(time.Duration(i)*time.Minute)))
-		recorded = withInstanceExits(recorded, []corev1.Pod{pod}, "rev-9", at.Add(-time.Hour), at.Add(time.Duration(i)*time.Minute))
+		recorded = withInstanceExits(nil, recorded, []corev1.Pod{pod}, "rev-9", at.Add(-time.Hour), at.Add(time.Duration(i)*time.Minute))
 	}
 	if len(recorded) != appv1alpha1.MaxInstanceExits {
 		t.Fatalf("kept %d exits, want %d", len(recorded), appv1alpha1.MaxInstanceExits)
@@ -174,7 +174,7 @@ func TestInstanceExitsMarkAnExitThatFollowedTheOutage(t *testing.T) {
 			return p
 		}(), false},
 	} {
-		got := withInstanceExits(nil, []corev1.Pod{tc.pod}, "rev-9", settled, at.Add(30*time.Second))
+		got := withInstanceExits(nil, nil, []corev1.Pod{tc.pod}, "rev-9", settled, at.Add(30*time.Second))
 		if len(got) != 1 || got[0].AfterUnready != tc.want {
 			t.Errorf("%s: exits = %+v, want one with afterUnready %v", name, got, tc.want)
 			continue
@@ -182,9 +182,78 @@ func TestInstanceExitsMarkAnExitThatFollowedTheOutage(t *testing.T) {
 		// The mark does not change when the pod recovers and the exit is seen again.
 		recovered := tc.pod
 		recovered.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: metav1.NewTime(at.Add(time.Minute))}}
-		if again := withInstanceExits(got, []corev1.Pod{recovered}, "rev-9", settled, at.Add(2*time.Minute)); len(again) != 1 || again[0].AfterUnready != tc.want {
+		if again := withInstanceExits(nil, got, []corev1.Pod{recovered}, "rev-9", settled, at.Add(2*time.Minute)); len(again) != 1 || again[0].AfterUnready != tc.want {
 			t.Errorf("%s: the mark changed once the pod recovered: %+v", name, again)
 		}
+	}
+}
+
+// w4/m353 t006: round 394 recorded a health-check restart as an outage and
+// then a second server_failed {nonZeroExit: 2}: whoami's answer to the
+// liveness SIGTERM, first read after the replacement process was Ready again,
+// when the pod no longer says it had been unready. The passes during the
+// outage saw the instance running and unready, and that decides the exit.
+// The same instance recovering in place and crashing later is still the cause.
+func TestInstanceExitsRememberAnOutageTheRestartedPodNoLongerShows(t *testing.T) {
+	flip := time.Date(2026, 11, 15, 5, 37, 4, 0, time.UTC)
+	settled := flip.Add(-time.Hour)
+	pod := func(restarts int32, state corev1.ContainerState, ready corev1.ConditionStatus, since time.Time, last *corev1.ContainerStateTerminated) corev1.Pod {
+		return corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "ws-a", Name: "web-a", Labels: map[string]string{labelRevision: "rev-9"}},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: ready, LastTransitionTime: metav1.NewTime(since)}},
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: appContainerName, RestartCount: restarts, State: state,
+					LastTerminationState: corev1.ContainerState{Terminated: last},
+				}},
+			},
+		}
+	}
+	running := corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(settled)}}
+	unready := flip.Add(13 * time.Second) // readiness pulls it after 15 s of failures
+	kill := terminated(2, "Error", flip.Add(65*time.Second))
+	restarted := corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(kill.FinishedAt.Add(2 * time.Second))}}
+	readyAgain := pod(1, restarted, corev1.ConditionTrue, kill.FinishedAt.Add(7*time.Second), kill)
+
+	var runs unreadyRuns
+	outage := pod(0, running, corev1.ConditionFalse, unready, nil)
+	runs.note([]corev1.Pod{outage}, "rev-9", unready.Add(time.Second))
+	runs.note([]corev1.Pod{outage}, "rev-9", unready.Add(40*time.Second))
+	runs.note([]corev1.Pod{readyAgain}, "rev-9", kill.FinishedAt.Add(8*time.Second))
+	got := withInstanceExits(&runs, nil, []corev1.Pod{readyAgain}, "rev-9", settled, kill.FinishedAt.Add(8*time.Second))
+	if len(got) != 1 || !got[0].AfterUnready || got[0].RestartCount != 1 || got[0].ExitCode != 2 {
+		t.Fatalf("exits = %+v, want the liveness kill under restart count 1 marked afterUnready", got)
+	}
+	// Without the outage's passes, the pod alone takes the exit as the cause:
+	// what produced the extra event.
+	if got := withInstanceExits(nil, nil, []corev1.Pod{readyAgain}, "rev-9", settled, kill.FinishedAt.Add(8*time.Second)); len(got) != 1 || got[0].AfterUnready {
+		t.Fatalf("setup: exits without a memory = %+v, want the exit taken as the cause", got)
+	}
+
+	// The replacement is ready, so its run starts with nothing remembered: a
+	// crash of the healthy instance is its own failure (w8/m158, w4/608).
+	crash := terminated(3, "Error", kill.FinishedAt.Add(10*time.Minute))
+	crashed := pod(2, restarted, corev1.ConditionFalse, crash.FinishedAt.Time, crash)
+	if got := withInstanceExits(&runs, nil, []corev1.Pod{crashed}, "rev-9", settled, crash.FinishedAt.Add(time.Second)); len(got) != 1 || got[0].AfterUnready {
+		t.Errorf("a later crash of the healthy replacement = %+v, want its own failure", got)
+	}
+
+	// An instance that was unready for a while, recovered within the same run
+	// and crashed later is the cause of that crash too.
+	var flapped unreadyRuns
+	flapped.note([]corev1.Pod{outage}, "rev-9", unready.Add(time.Second))
+	flapped.note([]corev1.Pod{pod(0, running, corev1.ConditionTrue, unready.Add(20*time.Second), nil)}, "rev-9", unready.Add(21*time.Second))
+	later := terminated(3, "Error", unready.Add(5*time.Minute))
+	if got := withInstanceExits(&flapped, nil, []corev1.Pod{pod(1, restarted, corev1.ConditionTrue, later.FinishedAt.Add(5*time.Second), later)}, "rev-9", settled, later.FinishedAt.Add(6*time.Second)); len(got) != 1 || got[0].AfterUnready {
+		t.Errorf("a crash after the instance recovered = %+v, want its own failure", got)
+	}
+
+	// What is not seen again for instanceExitMaxAge is forgotten.
+	var stale unreadyRuns
+	stale.note([]corev1.Pod{outage}, "rev-9", unready)
+	stale.note(nil, "rev-9", unready.Add(instanceExitMaxAge+time.Second))
+	if _, ok := stale.since(&outage, 1); ok {
+		t.Error("an entry not seen for instanceExitMaxAge was kept")
 	}
 }
 
@@ -212,7 +281,7 @@ func TestInstanceExitsReadAnExitBeforeTheRestart(t *testing.T) {
 		State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
 		LastTerminationState: corev1.ContainerState{Terminated: crash},
 	})
-	got := withInstanceExits(nil, []corev1.Pod{waiting}, "rev-9", settled, at.Add(2*time.Second))
+	got := withInstanceExits(nil, nil, []corev1.Pod{waiting}, "rev-9", settled, at.Add(2*time.Second))
 	if len(got) != 1 || got[0].RestartCount != 1 || got[0].ExitCode != 3 || !got[0].FinishedAt.Equal(&crash.FinishedAt) {
 		t.Fatalf("exits in back-off = %+v, want the exit under restart count 1", got)
 	}
@@ -223,20 +292,20 @@ func TestInstanceExitsReadAnExitBeforeTheRestart(t *testing.T) {
 		State:                corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(at.Add(10 * time.Second))}},
 		LastTerminationState: corev1.ContainerState{Terminated: crash},
 	})
-	again := withInstanceExits(got, []corev1.Pod{running}, "rev-9", settled, at.Add(15*time.Second))
+	again := withInstanceExits(nil, got, []corev1.Pod{running}, "rev-9", settled, at.Add(15*time.Second))
 	if len(again) != 1 || &again[0] != &got[0] {
 		t.Errorf("the restart recorded the same exit again: %+v", again)
 	}
 
 	// A container that has just stopped, before any back-off: the same count.
 	stopped := pod(corev1.ContainerStatus{RestartCount: 0, ContainerID: "containerd://first", State: corev1.ContainerState{Terminated: crash}})
-	if got := withInstanceExits(nil, []corev1.Pod{stopped}, "rev-9", settled, at.Add(time.Second)); len(got) != 1 || got[0].RestartCount != 1 {
+	if got := withInstanceExits(nil, nil, []corev1.Pod{stopped}, "rev-9", settled, at.Add(time.Second)); len(got) != 1 || got[0].RestartCount != 1 {
 		t.Errorf("exits of a just-stopped container = %+v, want the exit under restart count 1", got)
 	}
 	// A later crash of a container that has run since: one more.
 	second := terminated(3, "Error", at.Add(time.Minute))
 	second.ContainerID = "containerd://second"
-	if got := withInstanceExits(again, []corev1.Pod{pod(corev1.ContainerStatus{
+	if got := withInstanceExits(nil, again, []corev1.Pod{pod(corev1.ContainerStatus{
 		RestartCount:         1,
 		ContainerID:          "containerd://second",
 		State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
@@ -253,19 +322,19 @@ func TestInstanceExitsReadAnExitBeforeTheRestart(t *testing.T) {
 		State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}},
 		LastTerminationState: corev1.ContainerState{Terminated: crash},
 	})
-	if got := withInstanceExits(nil, []corev1.Pod{created}, "rev-9", settled, at.Add(5*time.Second)); len(got) != 1 || got[0].RestartCount != 1 {
+	if got := withInstanceExits(nil, nil, []corev1.Pod{created}, "rev-9", settled, at.Add(5*time.Second)); len(got) != 1 || got[0].RestartCount != 1 {
 		t.Errorf("exits of a created, not yet started container = %+v, want the exit under restart count 1", got)
 	}
 	// Recorded under one count, the same exit read under another is known by
 	// its finish time.
-	if got := withInstanceExits([]appv1alpha1.InstanceExit{{Instance: "web-a", RestartCount: 7, ExitCode: 3, FinishedAt: crash.FinishedAt}},
+	if got := withInstanceExits(nil, []appv1alpha1.InstanceExit{{Instance: "web-a", RestartCount: 7, ExitCode: 3, FinishedAt: crash.FinishedAt}},
 		[]corev1.Pod{running}, "rev-9", settled, at.Add(15*time.Second)); len(got) != 1 {
 		t.Errorf("the same exit under another count was recorded again: %+v", got)
 	}
 
 	// A container waiting to start for the first time has no exit.
 	creating := pod(corev1.ContainerStatus{State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ContainerCreating"}}})
-	if got := withInstanceExits(nil, []corev1.Pod{creating}, "rev-9", settled, at); len(got) != 0 {
+	if got := withInstanceExits(nil, nil, []corev1.Pod{creating}, "rev-9", settled, at); len(got) != 0 {
 		t.Errorf("exits of a container that never ran = %+v, want none", got)
 	}
 }
@@ -290,7 +359,7 @@ func TestInstanceExitsLeaveOutAPodThePlatformStopped(t *testing.T) {
 	evicted := stopped("web-evicted")
 	evicted.Status.Phase = corev1.PodFailed
 	evicted.Status.Reason = "Evicted"
-	if got := withInstanceExits(nil, []corev1.Pod{deleting, evicted}, "rev-9", settled, at.Add(time.Second)); len(got) != 0 {
+	if got := withInstanceExits(nil, nil, []corev1.Pod{deleting, evicted}, "rev-9", settled, at.Add(time.Second)); len(got) != 0 {
 		t.Errorf("exits = %+v, want none from pods the platform stopped", got)
 	}
 }

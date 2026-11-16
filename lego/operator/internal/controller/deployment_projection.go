@@ -39,12 +39,8 @@ import (
 // KeyValue reconcilers count to decide a rollout has converged — a pod that
 // exists but is not PodReady is not yet serving.
 func podReady(pod *corev1.Pod) bool {
-	for _, condition := range pod.Status.Conditions {
-		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-	return false
+	c := podReadyCondition(pod)
+	return c != nil && c.Status == corev1.ConditionTrue
 }
 
 // currentRevisionPodsReady closes the window where a Pod has already crashed
@@ -201,6 +197,10 @@ type deploymentParams struct {
 	// skips the wait for an instance whose own health check fails (w4/m353);
 	// false keeps the plain preStop sleep (applyDeploymentSpec).
 	drainCheck bool
+	// livenessGrace gives a health-checked drain's liveness probe its own
+	// grace period (livenessTerminationGracePeriodSeconds, w4/m353 t007);
+	// false keeps the pod's for a stored template without it.
+	livenessGrace bool
 }
 
 // usesHealthProbeBinary reports whether the App's pods carry bex's
@@ -588,6 +588,13 @@ func storedDrain(spec corev1.PodSpec) (seconds int64, checked bool) {
 	return seconds, seconds > 0
 }
 
+// storedLivenessGrace reports whether a stored pod spec's liveness probe
+// carries its own grace period (livenessTerminationGracePeriodSeconds).
+func storedLivenessGrace(spec corev1.PodSpec) bool {
+	return len(spec.Containers) > 0 && spec.Containers[0].LivenessProbe != nil &&
+		spec.Containers[0].LivenessProbe.TerminationGracePeriodSeconds != nil
+}
+
 // storedReadinessPeriod is the readiness probe period a stored pod spec
 // carries, 0 for none or an unset one (which the server defaults to 10s).
 func storedReadinessPeriod(spec corev1.PodSpec) int32 {
@@ -602,17 +609,52 @@ func storedReadinessPeriod(spec corev1.PodSpec) int32 {
 // the health-probe helper running the container's own liveness check
 // (healthProbeDrainHandler); otherwise a native preStop.sleep. Neither needs a
 // shell or sleep binary in the tenant's image (scratch and distroless images
-// have neither).
-func applyDrain(spec *corev1.PodSpec, container *corev1.Container, shutdownDelay *int32, drain int64, checked bool) {
+// have neither). With livenessGrace, a checked drain's liveness probe also
+// carries its own grace (livenessTerminationGracePeriodSeconds).
+func applyDrain(spec *corev1.PodSpec, container *corev1.Container, shutdownDelay *int32, drain int64, checked, livenessGrace bool) {
 	container.Lifecycle = nil
 	if drain > 0 {
 		preStop := &corev1.LifecycleHandler{Sleep: &corev1.SleepAction{Seconds: drain}}
 		if checked && container.LivenessProbe != nil {
-			preStop = cmp.Or(healthProbeDrainHandler(container.LivenessProbe.ProbeHandler, drain), preStop)
+			if handler := healthProbeDrainHandler(container.LivenessProbe.ProbeHandler, drain); handler != nil {
+				preStop = handler
+				if livenessGrace {
+					container.LivenessProbe.TerminationGracePeriodSeconds = livenessTerminationGracePeriodSeconds(shutdownDelay)
+				}
+			}
 		}
 		container.Lifecycle = &corev1.Lifecycle{PreStop: preStop}
 	}
 	spec.TerminationGracePeriodSeconds = terminationGracePeriodSeconds(shutdownDelay, drain)
+}
+
+// livenessTerminationGracePeriodSeconds is the grace of a liveness restart of
+// an instance whose drain checks its health first: Render's
+// maxShutdownDelaySeconds between SIGTERM and SIGKILL, plus the drain's one
+// check (healthCheckTimeoutSeconds), not the pod's drain + delay (w4/m353
+// t007). The kubelet uses a liveness probe's own grace for the kill it
+// decides, preStop included. Without it, an instance that ignores SIGTERM
+// (sh as PID 1) waited out the 60 s the drain had skipped as well, and was
+// restarted about 150 s after its checks began to fail instead of Render's
+// 60 + 30.
+//
+// The trade-off: an instance that recovers in the instant between its sixth
+// failed liveness check and the drain's own check drains only until this
+// grace runs out, then gets the kubelet's 2-second minimum before SIGKILL.
+// It had just failed its check for 60 s and is restarted either way. A pod
+// whose drain is the plain sleep keeps the pod's grace, which a shorter one
+// would cut (ADR004 § Rollout headroom).
+func livenessTerminationGracePeriodSeconds(shutdownDelay *int32) *int64 {
+	value := shutdownDelaySeconds(shutdownDelay) + int64(healthCheckTimeoutSeconds)
+	return &value
+}
+
+// shutdownDelaySeconds is Render's maxShutdownDelaySeconds, 30 when unset.
+func shutdownDelaySeconds(seconds *int32) int64 {
+	if seconds == nil {
+		return defaultTerminationGracePeriodSeconds
+	}
+	return int64(*seconds)
 }
 
 // terminationGracePeriodSeconds maps Render's maxShutdownDelaySeconds — the time
@@ -625,11 +667,7 @@ func terminationGracePeriodSeconds(seconds *int32, drain int64) *int64 {
 	if seconds == nil && drain == 0 {
 		return nil
 	}
-	shutdown := defaultTerminationGracePeriodSeconds
-	if seconds != nil {
-		shutdown = int64(*seconds)
-	}
-	value := drain + shutdown
+	value := drain + shutdownDelaySeconds(seconds)
 	return &value
 }
 
@@ -658,12 +696,14 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	}
 	drain := drainSecondsFor(app, p)
 	p.drainCheck = drain > 0 && p.healthProbeImage != ""
+	p.livenessGrace = p.drainCheck
 	p.openPortCheck = checksAnyOpenPort(dep.Spec.Template, app, p)
 	if stored := dep.Spec.Template; len(stored.Spec.Containers) > 0 {
 		keptDrain, keptDrainCheck := storedDrain(stored.Spec)
 		keptPeriod := storedReadinessPeriod(stored.Spec)
 		keptProbeImage := storedHealthProbeImage(stored.Spec)
-		drainStale := drain > 0 && (keptDrain != drain || keptDrainCheck != p.drainCheck)
+		keptLivenessGrace := storedLivenessGrace(stored.Spec)
+		drainStale := drain > 0 && (keptDrain != drain || keptDrainCheck != p.drainCheck || keptLivenessGrace != p.livenessGrace)
 		periodStale := !p.worker && keptPeriod != healthCheckReadinessPeriodSeconds
 		// The no-redirect probe (w8/m133) is adopted the same lazy way: a
 		// running release keeps its HTTP probe, or the helper image it was
@@ -678,6 +718,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 			kept.readinessPeriod = keptPeriod
 			kept.healthProbeImage = keptProbeImage
 			kept.drainCheck = keptDrainCheck
+			kept.livenessGrace = keptLivenessGrace
 			keptDrainFor := drain
 			if drainStale {
 				keptDrainFor = keptDrain
@@ -763,7 +804,7 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	// The persistent disk, when one is attached: its volume and mount, plus the
 	// Recreate strategy and eviction guard a shared volume forces (see disk.go).
 	applyDiskProjection(dep, &container, app)
-	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.MaxShutdownDelaySeconds, drain, p.drainCheck && p.usesHealthProbeBinary(app))
+	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.MaxShutdownDelaySeconds, drain, p.drainCheck && p.usesHealthProbeBinary(app), p.livenessGrace)
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
 	dep.Spec.Template.Spec.InitContainers = nil
 	if p.usesHealthProbeBinary(app) {
