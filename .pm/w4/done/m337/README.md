@@ -1,6 +1,6 @@
 # w4 · m337 — A service's "Display name changed" event names neither name, and its custom-domain rows name no domain
 
-**Worker:** worker4 **Goal:** a rename event names the old and new names, and every custom-domain added/removed/verified event names its hostname, on REST, GraphQL, MCP and the Events tab. **Status:** blocked — t001–t004 and t006–t008 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
+**Worker:** worker4 **Goal:** a rename event names the old and new names, and every custom-domain added/removed/verified event names its hostname, on REST, GraphQL, MCP and the Events tab. **Status:** done — DoD replayed live on pin `7aaa8700befa` 2026-11-16 ([t005](done/t005.md))
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | API: `from`/`to` and `domain` on REST and MCP, the names on GraphQL — **DONE** | 20m | t001 |
 | [t003](done/t003.md) | Dashboard: the rename line and the named domain titles, en and zh — **DONE** | 20m | t002 |
 | [t004](done/t004.md) | Docs: the service-events contract and ADR018 — **DONE** | 5m | t002 |
-| [t005](t005.md) | Live verification on an owned service | 15m | t003 |
+| [t005](done/t005.md) | Live verification on an owned service — **DONE** | 15m | t003 |
 | [t006](done/t006.md) | Render parity — **DONE** | 5m | t002 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t004 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 20m | t004 |
-| [t009](t009.md) | Closeout | 5m | t005–t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 5m | t005–t008 |
 
 Nine tasks, 135m (2h15m).
 
@@ -97,3 +97,17 @@ Why: after a rename, the Events feed reads "Display name changed" and nothing el
 - **Events tab:**
   - en: "Name qa-20261112-r175-web → qa-20261112-r175-renamed", "Custom domain qa-20261112-r175.example added" and "Custom domain www.qa-20261112-r175.example removed".
   - zh: "名称 qa-20261112-r175-web → qa-20261112-r175-renamed", "已添加自定义域名 qa-20261112-r175.example" and "已移除自定义域名 www.qa-20261112-r175.example".
+
+## Unblock (2026-11-16)
+
+- **Affected:** w4/m337 t005, t009. **Source:** verified evidence (release gate).
+- **Finding:** production runs platform pin `7aaa8700befa` (`546945798`, the latest `chore(deploy): pin platform images` on `origin/main`). `git merge-base --is-ancestor` puts the gate line's `4630a48a7` and the fix commit `93488e374` (w4/m337) inside it, so the release gate is clear and no gate remains. Next step: replay t005 live, then close (t009).
+
+## Live verification on pin `7aaa8700befa` (2026-11-16, t005)
+
+QA user via `scripts/qa-login.sh`, workspace `bex-canary`. Fixture: Free web service `qa-20261116-r337-web` (`srv-dbtmgonmufrc73b9vm60`, `docker.io/traefik/whoami:v1.10.1`), deleted afterwards (DELETE 204, then GET 404).
+
+- **Rename.** In Settings → **Edit service name** → `qa-20261116-r337-renamed` → **Save changes** at 20:32:45 UTC; the toast read `Service renamed to "qa-20261116-r337-renamed".` REST `display_name_changed` carries `{"from":"qa-20261116-r337-web","to":"qa-20261116-r337-renamed"}`; GraphQL `serviceEvents { details { displayNameFrom displayNameTo } }` returns the same two names.
+- **Domains.** `POST …/custom-domains {"name":"qa-20261116-r337.example"}` → 201 (apex plus `www.` sibling, both `unverified`); `DELETE …/custom-domains/qa-20261116-r337.example` → 204 and the list read `[]`. REST lists four rows, each with `{"domain":…}`: `custom_domain_added` and `custom_domain_removed` for the apex and for `www.`; GraphQL `details.domain` agrees.
+- **Events tab.** en: "Name qa-20261116-r337-web → qa-20261116-r337-renamed", "Custom domain qa-20261116-r337.example added", "Custom domain www.qa-20261116-r337.example removed". zh: "名称 qa-20261116-r337-web → qa-20261116-r337-renamed", "已添加自定义域名 qa-20261116-r337.example", "已移除自定义域名 www.qa-20261116-r337.example".
+- **Seen and filed separately:** the custom-domain response's `server.name` kept the creation name after the rename (w4 inbox, filed this run).
