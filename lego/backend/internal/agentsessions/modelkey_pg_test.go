@@ -204,12 +204,13 @@ func TestModelKeyPG(t *testing.T) {
 	}
 }
 
-// The 2026-11-06 workspace bex incident against the real store: a workspace
-// the platform route covers still holds a key put in OpenBao by hand before
+// The 2026-11-06 workspace bex incident against the real store: with the
+// platform route on (it covers every workspace), a workspace still holds a key put in OpenBao by hand before
 // ADR091 D7. The startup backfill must not flag it (the route never read that
 // key), so the next mint is still the platform key on OpenRouter, not the
 // stale vendor key Anthropic rejected — which failed the session as
-// vendor-auth-rejected and denied every later mint.
+// vendor-auth-rejected and denied every later mint. With the route off, the
+// same pass flags every hand-put key.
 func TestModelKeyBackfillKeepsPlatformRoutePG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -246,8 +247,8 @@ func TestModelKeyBackfillKeepsPlatformRoutePG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Keys != 2 || got.Marked != 1 || got.PlatformRouted != 1 || got.Failed != 0 {
-		t.Fatalf("backfill = %+v, want the routed workspace skipped and the other flagged", got)
+	if got.Keys != 2 || got.Marked != 0 || got.PlatformRouted != 2 || got.Failed != 0 {
+		t.Fatalf("backfill = %+v, want every workspace skipped while the route is on", got)
 	}
 	flagged := func(ws string) bool {
 		row, err := pg.GetAgentEnvironment(ctx, ws)
@@ -256,8 +257,8 @@ func TestModelKeyBackfillKeepsPlatformRoutePG(t *testing.T) {
 		}
 		return row.ModelKeySet()
 	}
-	if flagged(routed.ID) || !flagged(other.ID) {
-		t.Fatalf("flags: routed=%v other=%v, want false/true", flagged(routed.ID), flagged(other.ID))
+	if flagged(routed.ID) || flagged(other.ID) {
+		t.Fatalf("flags: routed=%v other=%v, want neither flagged", flagged(routed.ID), flagged(other.ID))
 	}
 
 	config, _ := json.Marshal(map[string]string{"agent": "claude", "modelEndpoint": "https://openrouter.ai/api"})
@@ -272,6 +273,18 @@ func TestModelKeyBackfillKeepsPlatformRoutePG(t *testing.T) {
 	if mint.Credential != platformKey || mint.EndpointHost != agentsession.OpenRouterHost {
 		t.Fatalf("mint after backfill = host %q platformKey=%v stale=%v, want the platform key on OpenRouter",
 			mint.EndpointHost, mint.Credential == platformKey, mint.Credential == stale)
+	}
+
+	_ = agentsession.EnablePlatformModelRoute("", "", "")
+	got, err = BackfillModelKeyFlags(ctx, keys, pg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Keys != 2 || got.Marked != 2 || got.PlatformRouted != 0 || got.Failed != 0 {
+		t.Fatalf("backfill without the route = %+v, want both flagged", got)
+	}
+	if !flagged(routed.ID) || !flagged(other.ID) {
+		t.Fatalf("flags without the route: routed=%v other=%v, want both", flagged(routed.ID), flagged(other.ID))
 	}
 }
 
