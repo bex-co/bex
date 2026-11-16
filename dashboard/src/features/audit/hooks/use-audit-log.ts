@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { useApolloClient, useQuery } from "@apollo/client/react";
 import { AuditLogsDocument } from "@/graphql/definitions";
-import { toAuditEvents } from "@/features/audit/lib/audit-events";
+import {
+  AUDIT_PAGE_SIZE,
+  toAuditEvents,
+} from "@/features/audit/lib/audit-events";
 import type { AuditEvent } from "@/features/audit/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   classifyRefusal,
   planFeatureRequired,
 } from "@/common/lib/graphql-error";
-
-const PAGE_SIZE = 20;
 
 export interface UseAuditLogResult {
   events: AuditEvent[];
@@ -70,7 +71,7 @@ export function useAuditLog(): UseAuditLogResult {
   const resolved = currentWorkspaceId != null;
 
   const { data, loading, error } = useQuery(AuditLogsDocument, {
-    variables: { ownerId: currentWorkspaceId ?? "", limit: PAGE_SIZE },
+    variables: { ownerId: currentWorkspaceId ?? "", limit: AUDIT_PAGE_SIZE },
     skip: !resolved,
     fetchPolicy: "network-only",
     errorPolicy: "all",
@@ -92,8 +93,8 @@ export function useAuditLog(): UseAuditLogResult {
   );
   const hasMore =
     scoped.lastPageSize === null
-      ? firstPage.length === PAGE_SIZE
-      : scoped.lastPageSize === PAGE_SIZE;
+      ? firstPage.length === AUDIT_PAGE_SIZE
+      : scoped.lastPageSize === AUDIT_PAGE_SIZE;
 
   async function loadMore() {
     if (!currentWorkspaceId || loadingMore || events.length === 0) return;
@@ -106,7 +107,7 @@ export function useAuditLog(): UseAuditLogResult {
       const cursor = events[events.length - 1].id;
       const result = await client.query({
         query: AuditLogsDocument,
-        variables: { ownerId, cursor, limit: PAGE_SIZE },
+        variables: { ownerId, cursor, limit: AUDIT_PAGE_SIZE },
         fetchPolicy: "network-only",
         errorPolicy: "all",
       });
@@ -114,7 +115,7 @@ export function useAuditLog(): UseAuditLogResult {
       // Defensive only — the exclusive keyset cursor shouldn't ever hand back
       // an id already loaded. Bounded to the current tail, not the full
       // history, so a click's cost doesn't grow as a user pages deeper in.
-      const seenTail = new Set(events.slice(-PAGE_SIZE).map((e) => e.id));
+      const seenTail = new Set(events.slice(-AUDIT_PAGE_SIZE).map((e) => e.id));
       setAppended((prev) => {
         const base = prev.workspaceId === ownerId ? prev.events : [];
         return {

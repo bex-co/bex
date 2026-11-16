@@ -1,6 +1,9 @@
 import type { AuditLogsQuery } from "@/graphql/definitions";
 import type { AuditEvent } from "@/features/audit/types";
 
+/** The first page, and each Load more page, of the audit table. */
+export const AUDIT_PAGE_SIZE = 20;
+
 type RawEvent = NonNullable<AuditLogsQuery["auditLogs"]>[number];
 
 /** The wire's audit events as the UI's, dropping id-less entries. */

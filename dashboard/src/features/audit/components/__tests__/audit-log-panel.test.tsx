@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AuditLogPanel } from "@/features/audit/components/audit-log-panel";
+import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
 import { formatDateTime } from "@/common/lib/format";
 import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
 import type { ReactNode } from "react";
@@ -13,6 +14,15 @@ vi.mock("@/features/audit/components/audit-log-export", () => ({
   AuditLogExport: ({ ownerId }: { ownerId: string }) => (
     <div>Export control {ownerId}</div>
   ),
+}));
+
+// The current workspace's plan: a loading panel previews the state it settles
+// to from it (w4/684).
+let workspacePlan = "pro";
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({
+    currentWorkspace: { id: "tea-primary", plan: workspacePlan },
+  }),
 }));
 
 // The plan notice links to Billing; render the router Link as its anchor.
@@ -48,6 +58,7 @@ function renderPanel(overrides: Partial<UseAuditLogResult> = {}) {
 }
 
 beforeEach(() => {
+  workspacePlan = "pro";
   auditState.events = [];
   auditState.loading = false;
   auditState.loadingMore = false;
@@ -82,9 +93,19 @@ describe("AuditLogPanel", () => {
     expect(screen.queryByText(/Export control/)).not.toBeInTheDocument();
   });
 
-  it("offers no export until the plan is known", () => {
+  it("keeps the export row while a Pro workspace's first page loads (w4/684)", () => {
     renderPanel({ loading: true });
+    expect(screen.getByText("Export control tea-primary")).toBeInTheDocument();
+  });
+
+  it("previews the plan notice, and no export or table, while a Hobby workspace loads (w4/684)", () => {
+    workspacePlan = "hobby";
+    renderPanel({ loading: true });
+    expect(
+      screen.getByText("Audit logs require the Pro plan"),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Export control/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("renders nothing for a non-admin (forbidden) caller", () => {
@@ -93,14 +114,89 @@ describe("AuditLogPanel", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows a loading skeleton on the initial fetch", () => {
-    auditState.loading = true;
-    const { container } = renderPanel();
-    expect(screen.getByText("Audit Log")).toBeInTheDocument();
+  // w4/684: the first page's frame is the ready table's — its five headers, a
+  // full page of rows and the Load more slot — so nothing below the card
+  // moves when an active workspace's 20 events arrive. The route and inline
+  // skeleton draw the same frame under their export row.
+  it("frames a full first page while it loads, as the page skeleton does (w4/684)", () => {
+    auditState.events = Array.from({ length: 20 }, (_, i) => ({
+      id: `ev-${i}`,
+      timestamp: "2026-07-11T00:00:00Z",
+      actor: "user:alice",
+      actorMethod: "session",
+      action: "apps.UpdateService",
+      status: "success" as const,
+      resource: "service:srv-1",
+      targetName: "my-api",
+      displayNameFrom: "",
+      displayNameTo: "",
+      domain: "",
+      envGroupId: "",
+      envGroupName: "",
+      relation: "",
+      oauthClientId: "",
+      oauthAudience: "",
+      oauthScopes: [],
+    }));
+    auditState.hasMore = true;
+    const ready = renderPanel();
+    const headers = (root: ParentNode) =>
+      [...root.querySelectorAll("thead th")].map((th) => th.textContent);
+    const readyHeaders = headers(ready.container);
+    const readyRows = ready.container.querySelectorAll("tbody tr").length;
+    expect(readyRows).toBe(20);
+    expect(screen.getByRole("button", { name: "Load more" })).toBeVisible();
+    ready.unmount();
+
+    const pending = renderPanel({ events: [], hasMore: false, loading: true });
+    expect(screen.getByText("Export control tea-primary")).toBeInTheDocument();
+    expect(headers(pending.container)).toEqual(readyHeaders);
     expect(
-      container.querySelectorAll("[data-slot='skeleton']").length,
-    ).toBeGreaterThan(0);
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      pending.container.querySelectorAll(
+        "tbody tr[data-testid='audit-log-row-placeholder']",
+      ),
+    ).toHaveLength(readyRows);
+    // Each placeholder row is two lines tall in its actor and resource cells,
+    // as an event row with an auth method and a named target is.
+    const firstRow = pending.container.querySelector("tbody tr")!;
+    expect(
+      firstRow
+        .querySelectorAll("td")[1]
+        .querySelectorAll("[data-slot='skeleton']"),
+    ).toHaveLength(2);
+    expect(
+      firstRow
+        .querySelectorAll("td")[4]
+        .querySelectorAll("[data-slot='skeleton']"),
+    ).toHaveLength(2);
+    // The Load more slot follows the table.
+    const frame = pending.container.querySelector(
+      "[data-testid='audit-log-table-frame']",
+    )!;
+    expect(frame.lastElementChild).toHaveAttribute("data-slot", "skeleton");
+    expect(frame.lastElementChild).toHaveClass("h-8");
+    pending.unmount();
+
+    const skeleton = render(<AuditLogPanelSkeleton />);
+    expect(
+      skeleton.container.querySelector(
+        "[data-testid='audit-log-export-frame']",
+      ),
+    ).not.toBeNull();
+    expect(headers(skeleton.container)).toEqual(readyHeaders);
+    expect(skeleton.container.querySelectorAll("tbody tr")).toHaveLength(
+      readyRows,
+    );
+  });
+
+  it("previews the plan notice in the page skeleton for a Hobby workspace (w4/684)", () => {
+    workspacePlan = "hobby";
+    const { container } = render(<AuditLogPanelSkeleton />);
+    expect(container).toHaveTextContent("Audit logs require the Pro plan");
+    expect(container.querySelector("table")).toBeNull();
+    expect(
+      container.querySelector("[data-testid='audit-log-export-frame']"),
+    ).toBeNull();
   });
 
   it("shows an explanatory state when the audit store isn't configured (503)", () => {
