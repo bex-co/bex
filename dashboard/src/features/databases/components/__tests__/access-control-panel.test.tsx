@@ -17,6 +17,7 @@ let credentials: { username: string; default: boolean }[] = [];
 let pooled: { internal: string; external: string } | null = null;
 let allowList: { cidrBlock: string; description: string }[] = [];
 let allowListPending = false;
+let credentialsPending = false;
 
 // Only the connection-pool toggle writes through Apollo here; the access
 // controls' own reads and writes come from the mocked useAccessControl.
@@ -36,6 +37,7 @@ vi.mock("@/features/databases/hooks/use-access-control", () => ({
     allowList,
     allowListPending,
     credentials,
+    credentialsPending,
     loading: false,
     savingAllowList: false,
     creatingCredential: false,
@@ -60,6 +62,7 @@ beforeEach(() => {
   pooled = null;
   allowList = [];
   allowListPending = false;
+  credentialsPending = false;
 });
 
 type PanelOverrides = Partial<AccessControlPanelProps["database"]> & {
@@ -231,6 +234,35 @@ describe("AccessControlPanel credentials", () => {
     expect(
       screen.getByRole("textbox", { name: "New rule description" }),
     ).toBeInTheDocument();
+  });
+});
+
+// w4/681: every Postgres has its default credential, so the pending list
+// previews that one row at the ready row's geometry instead of drawing an
+// empty list that grows by a row when the read lands.
+describe("AccessControlPanel credentials pending", () => {
+  it("previews the default credential's row while the list loads", () => {
+    credentialsPending = true;
+    const { container } = renderPanel();
+
+    const rows = container.querySelectorAll('[data-preview="credential-row"]');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].tagName).toBe("LI");
+    expect(rows[0]).toHaveClass("rounded-md", "border", "px-3", "py-2");
+    expect(rows[0]).toHaveAttribute("aria-hidden");
+    expect(screen.queryByRole("button", { name: /^Delete / })).toBeNull();
+  });
+
+  it("replaces the preview with the loaded credentials", () => {
+    credentials = [{ username: "dpg_x_user", default: true }];
+    const { container } = renderPanel();
+
+    expect(
+      container.querySelector('[data-preview="credential-row"]'),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Delete dpg_x_user" }),
+    ).toBeDisabled();
   });
 });
 

@@ -11,6 +11,7 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Badge } from "@/common/components/ui/badge";
 import { Switch } from "@/common/components/ui/switch";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { ConnectionField } from "@/common/components/connection-field";
 import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
@@ -155,11 +156,9 @@ function CredentialsSection({ access }: { access: Access }) {
         {t("databases.accessCredentialsHint")}
       </p>
       <ul className="space-y-1">
+        {access.credentialsPending ? <CredentialRowSkeleton /> : null}
         {access.credentials.map((c) => (
-          <li
-            key={c.username}
-            className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
-          >
+          <li key={c.username} className={credentialRowClass}>
             <span className="flex min-w-0 items-center gap-2">
               <code className="truncate font-mono text-sm">{c.username}</code>
               {c.default ? (
@@ -238,6 +237,27 @@ function CredentialsSection({ access }: { access: Access }) {
         }}
       />
     </section>
+  );
+}
+
+// Shared by the ready row and its placeholder so the two keep one height.
+const credentialRowClass =
+  "flex items-center justify-between gap-2 rounded-md border px-3 py-2";
+
+// The default credential's row while the list loads (w4/681).
+function CredentialRowSkeleton() {
+  return (
+    <li
+      aria-hidden
+      data-preview="credential-row"
+      className={credentialRowClass}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <Skeleton className="h-5 w-40 max-w-full" />
+        <Skeleton className="h-[22px] w-14 shrink-0" />
+      </div>
+      <Skeleton className="size-8 shrink-0" />
+    </li>
   );
 }
 

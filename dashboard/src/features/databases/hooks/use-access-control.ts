@@ -191,6 +191,11 @@ export function useAccessControl(id: string) {
     allowListPending:
       allowListQuery.loading && allowListQuery.data?.database == null,
     credentials,
+    // Every Postgres has its default credential, so an unread list is one
+    // row the panel can preview, not an empty list (w4/681).
+    credentialsPending:
+      credentialsQuery.loading &&
+      credentialsQuery.data?.databaseCredentials == null,
     loading: allowListQuery.loading || credentialsQuery.loading,
     savingAllowList,
     creatingCredential,
