@@ -158,3 +158,45 @@ func TestOnlyAnUndeclaredLiteralIsFreed(t *testing.T) {
 		t.Fatalf("an App with no recorded declaration: delete(MESSAGE) = %v, want %s", err, CodeEnvVarManifestManaged)
 	}
 }
+
+// The dashboard saves against the revision it listed. Adopting a retained
+// literal writes the store, so the first save that names one meets a newer
+// revision and is refused as stale; nothing is half-applied, and a save
+// against the refreshed revision lands. This pins that order so a later change
+// cannot turn the refusal into a silent overwrite or a lost value.
+func TestASaveAgainstTheListedRevisionNamingARetainedLiteral(t *testing.T) {
+	ctx := context.Background()
+	svc := newService(newVersionedFakeSecretStore(), retainedApp("bp"))
+	listed, err := svc.EnvVarValue(ctx, "bp", "MESSAGE")
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := func(revision string) error {
+		_, err := svc.PatchEnvironment(ctx, "bp", EnvironmentPatch{
+			SaveMode: SaveModeOnly, ExpectedEnvRevision: &revision,
+			EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "edited", ValueSet: true}},
+		})
+		return err
+	}
+	if err := patch(listed.Revision); err == nil {
+		t.Fatal("a save against the pre-adoption revision was accepted")
+	} else if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("the stale save = %v, want the conflict class", err)
+	}
+	if got, err := svc.GetEnvVar(ctx, "bp", "MESSAGE"); err != nil || got.Value != "hello from bex" {
+		t.Fatalf("after the refused save MESSAGE = %+v (err %v), want its value kept", got, err)
+	}
+	refreshed, err := svc.EnvVarValue(ctx, "bp", "MESSAGE")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := patch(refreshed.Revision); err != nil {
+		t.Fatalf("the save against the refreshed revision: %v", err)
+	}
+	if got, err := svc.GetEnvVar(ctx, "bp", "MESSAGE"); err != nil || got.Value != "edited" {
+		t.Fatalf("after the refreshed save MESSAGE = %+v (err %v), want %q", got, err, "edited")
+	}
+	if _, still := specEnvNames(getApp(t, svc.Client, "bp"))["MESSAGE"]; still {
+		t.Error("spec.Env still carries MESSAGE after the save")
+	}
+}
