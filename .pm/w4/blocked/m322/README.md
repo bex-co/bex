@@ -1,6 +1,6 @@
 # w4 · m322 — A cron job's manually triggered runs, and every run of a cron job named 28–30 characters, chart no CPU, memory or instances and meter no instance time
 
-**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** todo — t001–t003, t005–t007 and t009 done (shipped); t004's live replay is unblocked (pin `3c6654df60a2` carries t009), then t008 closes
+**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** blocked — t001–t003, t005–t007, t009 and t010 done (shipped). t004's replay 1 (2026-11-16) passed DoD 1 and 2 on the API and DoD 4. The dashboard half of DoD 1 waits for t010's fix to be live, and DoD 3 waits for w4/691. Then t008 closes.
 
 ## Tasks (in order)
 
@@ -132,9 +132,9 @@ Signed in to `bex-canary` after the release pins this build, with owned Starter 
 
 - **Source:** the finding above (round 81 of the `/qa-find-bugs w4` loop, 2026-11-11). The durable evidence is the probe record above; no screenshot was kept.
 - **Goal linkage:**
-  - [ADR038](../../../docs/ADR038-cron-jobs.md) (cron jobs) and [ADR010](../../../docs/ADR010-observability.md) (the metrics selector).
-  - ADR023/[ADR040](../../../docs/ADR040-billing-metronome.md) (usage metering and billing) and [ADR030](../../../docs/ADR030-pricing.md).
-  - [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first).
+  - [ADR038](../../../../docs/ADR038-cron-jobs.md) (cron jobs) and [ADR010](../../../../docs/ADR010-observability.md) (the metrics selector).
+  - ADR023/[ADR040](../../../../docs/ADR040-billing-metronome.md) (usage metering and billing) and [ADR030](../../../../docs/ADR030-pricing.md).
+  - [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first).
 - **Expected outcome:** a cron job's Metrics and usage describe the runs it actually executed. A manually triggered run, the normal way to test a cron job, is charted and billed like a scheduled one.
 - **Why now:**
   - A user debugging a cron job reaches for Trigger Run first, then sees "No data in range" for the run they just watched succeed.
@@ -167,3 +167,16 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `c1cc477b8`. Fixtures are i
 - **Affected:** t004, t008. **Source:** verified evidence.
 - **Finding.** The newest `chore(deploy): pin platform images` commit, `d3e0b99e4` (2026-11-16 06:42Z), pins `3c6654df60a2` (earlier pin `14af7282d9ac`). `git merge-base --is-ancestor 3183cafcf 3c6654df60a2` holds, so t009's fix (and t001's `c1cc477b8`) is in the pinned build.
 - **Next.** A worker replays DoD 1–4 live (t004) as the QA user in `bex-canary`, then closes out (t008). DoD 3 needs the hourly usage rollup after the runs.
+
+## Park record (2026-11-16, `/loopx w4`): replay 1 passes DoD 1–2 on the API and DoD 4; t010 is shipped, and DoD 3 waits for w4/691
+
+- **Results.** See [t004](t004.md#replay-1-2026-11-16-0913-0921-utc-pin-3c6654df60a2).
+  - DoD 1 and 2 pass on REST: one series per run instance, at 19 and 30 characters.
+  - DoD 4 passes for metrics and usage.
+  - DoD 1's dashboard half failed on the 12-hour view. That is fixed in t010 (`ff3290aaf`).
+  - DoD 3 meters every run now, but each run reads about 45 s over its length (w4/691).
+- **Gates.** Both must hold before the replay reruns:
+  1. A production deploy whose commit contains `ff3290aaf` (`git merge-base --is-ancestor ff3290aaf <pinned sha>`). This clears by itself.
+  2. w4/691 shipped and live.
+
+  Then a worker replays the dashboard half of DoD 1 and 2 on the 12-hour view, and DoD 3 after an hour rolls up, and closes out (t008).
