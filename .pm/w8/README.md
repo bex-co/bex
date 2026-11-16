@@ -439,6 +439,16 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **333** — [A new Elixir service with no `ERLANG_VERSION` builds on Erlang/OTP 28.5.0.8; Render's default since 2025-06-12 is exactly 28.0.2](333.md) (~45m, minor) ← `/qa-find-bugs-cli` sweep af3b 2026-11-16
+  - **bex (pin `48bc2a0fedda`):** `render-examples/phoenix_hello` with no version variables gives `Using Elixir 1.18.4 (default)`, then `OTP_VERSION` 28.5.0.8, the `elixir:1.18` image's own OTP.
+  - **Cause:** `exactDefaults` (`nativeversion.go:218-232`) has an exact Elixir step but no Erlang one, and `resolver.elixir` sets an exact OTP only from `ERLANG_VERSION`.
+  - **Fix:** default `choice.erlang = "28.0.2"` for services created since 2025-06-12, through `w8/197`'s exact-OTP path, and name the OTP in the log line.
+
+- [ ] **332** — [`NODE_VERSION=lts` (and `.nvmrc` `lts/*`) builds on Node 24 although Node 26 has been LTS since 2026-10-28, and `lts/lithium` fails the build](332.md) (~30m, major for `lts/lithium`, minor for `lts`) ← `/qa-find-bugs-cli` sweep 4006 2026-11-16
+  - **bex (pin `e3a57b1c398f`):** `lts` gives `Using Node 24.22.3`; `lts/lithium` fails with "not a supported Node version; supported Node lines are 14, …, 26"; `26` gives 26.13.1; unset gives 24.22.1, Render's default.
+  - **Cause:** `nodeLTSLine = "24"` and no `lithium` in `nodeLTSCodenames` (`nativeversion.go:592-595`), shared by `NODE_VERSION`, `.node-version`, `.nvmrc` and `engines.node`.
+  - **Fix:** `lithium` → 26, and a dated LTS line (26 since 2026-10-28) in place of the constant.
+
 - [x] **331** — [A manager flag added to the operator manifest reaches production before the image that defines it, so the new manager pods exit until the next image pin](done/331.md) (~45m) ← `/qa-find-bugs-cli` 2026-11-16 read of `f114fdd9f` (w21/m421 t001), minor. **DONE 2026-11-16:** confirmed on production by the w21 owner (CrashLoopBackOff ~35 min); `scripts/manifest_flag_guard.py` is now ship-gate 9.
   - **Mechanism:** Argo syncs `lego/operator/config` from `main` while the image digest moves only on a pin; the old binary's `flag.Parse()` exits on `--pprof-bind-address`.
   - **Fix:** a gitops-validate guard against manifest flags the pinned image does not define, so a flag ships code-first and manifest-second.
