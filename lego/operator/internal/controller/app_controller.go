@@ -783,8 +783,8 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		}
 		requested := image
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
-		if res, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
-			return res, nil
+		if wait, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
+			return r.holdRegistryWait(ctx, &app, wait), nil
 		}
 		if err != nil {
 			return r.failBeforeDispatch(ctx, &app, imageMetadataFailureReason(err), imageRefusalError(requested, err, app.Spec.ExternalRegistryPullSecret != ""))
@@ -7557,24 +7557,48 @@ func scalableRuntime(app *appv1alpha1.App) bool {
 	return true
 }
 
-// holdPendingArtifact is the pre-deploy hold one stage earlier (w1/m157). While a
+// holdPendingArtifact is holdServingRelease for every halt but a registry wait,
+// open while a build's poll leaves the phase Building.
+func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result) (bool, ctrl.Result, error) {
+	building := buildHalt.RequeueAfter > 0 && app.Status.Phase == appv1alpha1.PhaseBuilding
+	return r.holdServingRelease(ctx, app, buildHalt, building)
+}
+
+// holdRegistryWait holds a served release while its successor's image metadata
+// read waits on a throttled or failing registry (imageRegistryWait), as a build
+// in flight is held: routing, IP allow-lists, replicas and suspension follow
+// the App, and the deploy stays open with the wait's phase and stall message
+// and no verdict, so it still rolls once the registry answers (w32/031). The
+// pass keeps the wait's cadence, not the serving release's, and a hold error
+// is logged rather than retried at once: either way the registry is read no
+// sooner than the wait asks. A save comes back through the watch at once.
+func (r *AppReconciler) holdRegistryWait(ctx context.Context, app *appv1alpha1.App, wait ctrl.Result) ctrl.Result {
+	if _, _, err := r.holdServingRelease(ctx, app, ctrl.Result{}, true); err != nil {
+		logf.FromContext(ctx).Error(err, "serving release not converged while the image registry read waits", "app", app.Name)
+	}
+	return wait
+}
+
+// holdServingRelease is the pre-deploy hold one stage earlier (w1/m157). While a
 // newer release has no image yet (its build is queued, running, waiting on a
 // registry credential or failed), its image's metadata read failed before
-// dispatch (w32/m419), or a suspended App reuses its serving image instead of
-// building, the prior release's replicas and public routing keep following the
-// App and its pod template stays untouched.
+// dispatch (w32/m419) or waits on the registry (w32/031), or a suspended App
+// reuses its serving image instead of building, the prior release's replicas
+// and public routing keep following the App and its pod template stays
+// untouched.
 //
 // buildHalt is the result buildFromSource halted with, zero for any other
-// pass; its requeue is this pass's cadence. A pass that leaves the phase
-// Building keeps it: that phase pins the release to its build (releaseInFlight), so
-// the hold neither parks over it nor records a failure in its place.
+// pass; its requeue is this pass's cadence. open marks a pass that leaves its
+// release in flight: a build's poll in Building, or a registry wait in
+// Deploying. That phase pins the release (releaseInFlight), so the hold keeps
+// it, neither parking over it nor recording a failure in its place.
 //
 // A static site holds only its routing (holdPendingStaticArtifact).
 //
 // held=false keeps the pass on its halt: the opensandbox runtime, no serving prior release, or a build failure recorded
 // only in the legacy Ready marker, which a held pass's status write would
 // erase. A background worker is held too (w1/m158): only its replicas move.
-func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result) (bool, ctrl.Result, error) {
+func (r *AppReconciler) holdServingRelease(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result, open bool) (bool, ctrl.Result, error) {
 	if r.Mode != ModeKubernetes || legacyReadyBuildVerdict(app) {
 		return false, ctrl.Result{}, nil
 	}
@@ -7596,9 +7620,8 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 		return false, ctrl.Result{}, nil
 	}
 	poll := buildHalt.RequeueAfter > 0
-	building := poll && app.Status.Phase == appv1alpha1.PhaseBuilding
 	held := func(res ctrl.Result, err error) (bool, ctrl.Result, error) {
-		if err != nil && !building {
+		if err != nil && !open {
 			res, err = r.failStep(ctx, app, err)
 		}
 		return true, res, err
@@ -7622,7 +7645,7 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 		res.RequeueAfter = soonerRequeue(res.RequeueAfter, buildHalt.RequeueAfter)
 		return held(res, err)
 	}
-	if building && plan.parked {
+	if open && plan.parked {
 		if _, _, err := r.convergeServingRoute(ctx, app, plan); err != nil {
 			return held(ctrl.Result{}, err)
 		}

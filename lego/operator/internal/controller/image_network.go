@@ -655,7 +655,14 @@ func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.
 	// long: the registry is being read, or backing off (registry_read_gate.go).
 	if busy, ok := errors.AsType[*registryBusyError](err); ok {
 		logf.FromContext(ctx).Info("image registry read deferred", "app", app.Name, "registry", busy.host)
-		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reasonImageRegistryUnavailable, imageRegistryWaitMessage)
+		// It learns nothing about the registry either, so a wait whose last
+		// read was rate-limited keeps saying so, as a save's pass restamps it.
+		reason, msg := reasonImageRegistryUnavailable, imageRegistryWaitMessage
+		ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+		if app.Status.Phase == appv1alpha1.PhaseDeploying && ready != nil && ready.Reason == reasonImageRegistryRateLimited {
+			reason, msg = reasonImageRegistryRateLimited, imageRegistryRateLimitedMessage
+		}
+		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reason, msg)
 		return ctrl.Result{RequeueAfter: busy.busyRequeue()}, true
 	}
 	var transient *registry.TransientError
@@ -667,7 +674,7 @@ func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.
 	logf.FromContext(ctx).Info("image registry read failed; retrying", "app", app.Name, "error", err.Error())
 	reason, msg := reasonImageRegistryUnavailable, imageRegistryWaitMessage
 	if transient.Status == http.StatusTooManyRequests {
-		reason, msg = reasonImageRegistryRateLimited, "Waiting for the image registry: it rate-limited the image metadata read (HTTP 429); bex retries it automatically"
+		reason, msg = reasonImageRegistryRateLimited, imageRegistryRateLimitedMessage
 	}
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reason, msg)
 	// Consecutive failures of one App back off, 30 s doubling to 5 minutes,
@@ -682,7 +689,8 @@ const (
 	imageRegistryRetry    = 30 * time.Second
 	imageRegistryRetryMax = 5 * time.Minute
 
-	imageRegistryWaitMessage = "Waiting for the image registry to answer the image metadata read; bex retries it automatically"
+	imageRegistryWaitMessage        = "Waiting for the image registry to answer the image metadata read; bex retries it automatically"
+	imageRegistryRateLimitedMessage = "Waiting for the image registry: it rate-limited the image metadata read (HTTP 429); bex retries it automatically"
 )
 
 // imageMetadataFailureReason is the reason a failed image metadata read fails

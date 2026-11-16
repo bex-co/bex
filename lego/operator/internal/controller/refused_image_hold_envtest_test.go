@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -81,6 +82,28 @@ func refusingImageRegistry(status int, reads *atomic.Int32) *http.Client {
 			return answer(status, `{"errors":[{"code":"UNAUTHORIZED"}]}`, challenge)
 		}
 		return answer(status, `{"errors":[{"code":"MANIFEST_UNKNOWN","message":"manifest unknown"}]}`, nil)
+	})}
+}
+
+// delayedTag is the tag throttlingImageRegistry delays.
+const delayedTag = "v1.10.4"
+
+// throttlingImageRegistry is imageConfigRegistry whose delayed tag fails
+// transiently until recovered is set: its manifest read answers status with
+// Retry-After 120, or fails as a request when status is 0. reads counts that
+// tag's failed reads.
+func throttlingImageRegistry(status int, recovered *atomic.Bool, reads *atomic.Int32) *http.Client {
+	served := imageConfigRegistry(GinkgoT(), `"80/tcp":{}`).Transport
+	return &http.Client{Transport: imageNetworkTransport(func(request *http.Request) (*http.Response, error) {
+		if recovered.Load() || !strings.HasSuffix(request.URL.Path, "/manifests/"+delayedTag) {
+			return served.RoundTrip(request)
+		}
+		reads.Add(1)
+		if status == 0 {
+			return nil, errors.New("connection reset by peer")
+		}
+		header := http.Header{"Retry-After": []string{"120"}}
+		return &http.Response{StatusCode: status, Header: header, Body: io.NopCloser(strings.NewReader(`{"errors":[{"code":"TOOMANYREQUESTS"}]}`))}, nil
 	})}
 }
 
@@ -268,6 +291,41 @@ var _ = Describe("Settings over a refused image release (w32/m419)", func() {
 		return gen, held
 	}
 
+	// settings walks the settings a held release must follow without a deploy:
+	// the IP allow-list restricted and reopened, then a suspend and a resume,
+	// which leave the phases given. check runs after each but the reopen.
+	settings := func(f *fixture, check func(), suspended, resumed appv1alpha1.AppPhase) {
+		GinkgoHelper()
+		name := f.nn.Name
+		By("restricting the IP allow-list: enforced on the serving route")
+		update(f, func(app *appv1alpha1.App) {
+			app.Spec.SetIPAllowListEntries([]appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24", Description: "testnet"}})
+		})
+		Expect(middleware(f, "-ip-allow")).To(Equal([]any{"203.0.113.0/24"}))
+		Expect(chained(f)).To(ContainSubstring(name + "-ip-allow"))
+		check()
+
+		By("reopening it")
+		update(f, func(app *appv1alpha1.App) { app.Spec.SetIPAllowListEntries(nil) })
+		Expect(middleware(f, "-ip-allow")).To(BeNil())
+		Expect(chained(f)).NotTo(ContainSubstring(name + "-ip-allow"))
+
+		By("suspending: zero replicas, the hosts on the suspended responder")
+		update(f, func(app *appv1alpha1.App) { app.Spec.Suspended = true })
+		Expect(replicas(f)).To(BeZero())
+		Expect(backend(f)).To(Equal(activatorAliasName(name) + ":8888"))
+		Expect(envtestApp(f.nn).Status.Phase).To(Equal(suspended))
+		check()
+
+		By("resuming")
+		update(f, func(app *appv1alpha1.App) { app.Spec.Suspended = false })
+		Expect(replicas(f)).To(Equal(int32(1)))
+		serve(f)
+		Expect(backend(f)).To(Equal(name + ":80"))
+		Expect(envtestApp(f.nn).Status.Phase).To(Equal(resumed))
+		check()
+	}
+
 	type refusal struct {
 		status   int
 		reason   string
@@ -292,33 +350,7 @@ var _ = Describe("Settings over a refused image release (w32/m419)", func() {
 			pass(f)
 			Expect(f.reads.Load()).To(Equal(reads))
 
-			By("restricting the IP allow-list: enforced on the serving route")
-			update(f, func(app *appv1alpha1.App) {
-				app.Spec.SetIPAllowListEntries([]appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24", Description: "testnet"}})
-			})
-			Expect(middleware(f, "-ip-allow")).To(Equal([]any{"203.0.113.0/24"}))
-			Expect(chained(f)).To(ContainSubstring(name + "-ip-allow"))
-			held()
-
-			By("reopening it")
-			update(f, func(app *appv1alpha1.App) { app.Spec.SetIPAllowListEntries(nil) })
-			Expect(middleware(f, "-ip-allow")).To(BeNil())
-			Expect(chained(f)).NotTo(ContainSubstring(name + "-ip-allow"))
-
-			By("suspending: zero replicas, the hosts on the suspended responder")
-			update(f, func(app *appv1alpha1.App) { app.Spec.Suspended = true })
-			Expect(replicas(f)).To(BeZero())
-			Expect(backend(f)).To(Equal(activatorAliasName(name) + ":8888"))
-			Expect(envtestApp(f.nn).Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
-			held()
-
-			By("resuming")
-			update(f, func(app *appv1alpha1.App) { app.Spec.Suspended = false })
-			Expect(replicas(f)).To(Equal(int32(1)))
-			serve(f)
-			Expect(backend(f)).To(Equal(name + ":80"))
-			Expect(envtestApp(f.nn).Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
-			held()
+			settings(f, held, appv1alpha1.PhaseHibernated, appv1alpha1.PhaseRunning)
 			Expect(f.reads.Load()).To(Equal(reads), "no setting reads the refused image again")
 
 			if c.saved {
@@ -474,5 +506,101 @@ var _ = Describe("Settings over a refused image release (w32/m419)", func() {
 		Expect(ready.Reason).To(Equal(appv1alpha1.ReasonImagePullFailed))
 		Expect(meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)).To(BeNil())
 		Expect(apierrors.IsNotFound(k8sClient.Get(ctx, f.nn, &appsv1.Deployment{}))).To(BeTrue(), "nothing is dispatched")
+	})
+
+	// w32/031: a deploy whose image metadata read waits on a throttled or
+	// failing registry (a 429, a 5xx, a failed request) returned before the
+	// hold, so no setting reached the serving release for as long as the wait
+	// lasted, and Docker Hub's anonymous limit can last hours. The wait holds
+	// that release too, while the deploy stays open on it: no verdict, the
+	// Deploying phase and the wait's stall message, until the registry answers
+	// and the release goes live.
+	Context("when the registry delays the deploy instead (w32/031)", func() {
+		const delayed = "docker.io/traefik/whoami:" + delayedTag
+
+		// newDelayedFixture is newFixture on a registry that delays delayedTag
+		// with status, read through a gate whose clock stands still. answer
+		// ends the delay and moves that clock past the host's breaker.
+		newDelayedFixture := func(name, image string, status int) (f *fixture, clock *fakeClock, answer func()) {
+			GinkgoHelper()
+			f = newFixture(name, appv1alpha1.TypeWebService, "starter", image, http.StatusOK)
+			recovered := &atomic.Bool{}
+			f.r.HTTPClient = throttlingImageRegistry(status, recovered, f.reads)
+			clock = &fakeClock{now: time.Now()}
+			f.r.registryReads().now = clock.Now
+			return f, clock, func() {
+				recovered.Store(true)
+				clock.Advance(imageRegistryRetryMax + time.Second)
+			}
+		}
+		stall := func(f *fixture) *metav1.Condition {
+			GinkgoHelper()
+			app := envtestApp(f.nn)
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
+			ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+			Expect(ready).NotTo(BeNil())
+			Expect(ready.ObservedGeneration).To(Equal(app.Generation), "the deploy row reads a current stall")
+			return ready
+		}
+
+		// requeue is the wait's own cadence on the second failed read: the
+		// registry's Retry-After, else the App's backoff (registryRetryDelay).
+		DescribeTable("keeps the serving release following the App while the deploy waits",
+			func(status int, reason, message string, requeue time.Duration) {
+				name := fmt.Sprintf("delayed-%d", status)
+				f, clock, answer := newDelayedFixture(name, served, status)
+				By("serving whoami:v1.10.3")
+				pass(f)
+				goLive(f)
+				servedTemplate := envtestDeployment(f.nn).Spec.Template.DeepCopy()
+
+				By("deploying a tag the registry delays")
+				gen := deploy(f, &appv1alpha1.ReleaseConfigReference{Image: delayed})
+				waiting := func() {
+					GinkgoHelper()
+					ready := stall(f)
+					Expect(ready.Reason).To(Equal(reason))
+					Expect(ready.Message).To(Equal(message))
+					app := envtestApp(f.nn)
+					if rollout := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout); rollout != nil {
+						Expect(rollout.ObservedGeneration).To(BeNumerically("<", gen), "the waiting release has no verdict")
+					}
+					Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
+					Expect(equality.Semantic.DeepEqual(*servedTemplate, envtestDeployment(f.nn).Spec.Template)).To(BeTrue())
+				}
+				waiting()
+				Expect(f.reads.Load()).To(Equal(int32(1)), "the host's breaker turns the later passes away")
+
+				settings(f, waiting, appv1alpha1.PhaseDeploying, appv1alpha1.PhaseDeploying)
+				Expect(f.reads.Load()).To(Equal(int32(1)))
+
+				By("reading again once the breaker allows: the pass keeps the wait's cadence")
+				clock.Advance(imageRegistryRetry + time.Second)
+				res, err := run(f)()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(f.reads.Load()).To(Equal(int32(2)))
+				Expect(res.RequeueAfter).To(Equal(requeue))
+				waiting()
+
+				By("the registry answering: the waiting release goes live")
+				answer()
+				pass(f)
+				goLive(f)
+				app := envtestApp(f.nn)
+				Expect(app.Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", gen)))
+				Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+				Expect(envtestDeployment(f.nn).Spec.Template.Labels[labelRevision]).To(Equal(fmt.Sprintf("rev-%d", gen)))
+			},
+			Entry("a rate limit (429)", http.StatusTooManyRequests, reasonImageRegistryRateLimited, imageRegistryRateLimitedMessage, 2*time.Minute),
+			Entry("a failed request", 0, reasonImageRegistryUnavailable, imageRegistryWaitMessage, registryRetryDelay(2)),
+		)
+
+		It("keeps a first release on its plain wait", func() {
+			f, _, _ := newDelayedFixture("delayed-first", delayed, http.StatusServiceUnavailable)
+			pass(f)
+			ready := stall(f)
+			Expect(ready.Reason).To(Equal(reasonImageRegistryUnavailable))
+			Expect(apierrors.IsNotFound(k8sClient.Get(ctx, f.nn, &appsv1.Deployment{}))).To(BeTrue(), "nothing is dispatched")
+		})
 	})
 })
