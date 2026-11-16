@@ -49,20 +49,14 @@ tx() { # tx: the sandbox's own transmitted byte counter (eth0 in /proc/net/dev)
 }
 tx_before="$(tx || echo 0)"
 meter_before="$(meter_value)"
-# The sink's address is resolved here, on the runner, and the sandbox connects to
-# the literal: a sandbox's own name lookup is not what this leg measures, and a
-# failed `exec 3<>/dev/tcp/...` does not stop a non-interactive bash, so the
-# command says it failed and exits instead of printing "sent".
-sink_host="${BEX_MEASURE_UP_HOST:-speedtest.tele2.net}"
-sink_ip="$(getent ahostsv4 "$sink_host" | awk 'NR == 1 { print $1 }')"
-[ -n "$sink_ip" ] || fail "the runner cannot resolve $sink_host"
-send_cmd='B=/bin/bash; [ -x "$B" ] || B=/usr/local/bin/bash; "$B" -c '"'"'
-  exec 3<>/dev/tcp/'"$sink_ip"'/80 || { echo connect-failed; exit 3; }
-  printf "POST /upload.php HTTP/1.0\r\nHost: '"$sink_host"'\r\nContent-Length: '"$up_bytes"'\r\n\r\n" >&3
-  head -c '"$up_bytes"' /dev/urandom >&3 || echo write-failed
-  cat <&3 | head -c 200 | tr "\r\n" "  "
-  echo " sent"
-'"'"' 2>&1'
+# The upload is a POST over HTTPS with the image's busybox wget to Cloudflare's
+# public speed-test endpoint (the sandbox image has no curl, and a sandbox's
+# plain port 80 does not reach every public host: speedtest.tele2.net timed out
+# on the first production runs). The 50 MiB body is written to the sandbox's
+# disk first, so what crosses the network is only the upload; wget's own error
+# and exit code are part of the output.
+sink_url="${BEX_MEASURE_UP_URL:-https://speed.cloudflare.com/__up}"
+send_cmd="dd if=/dev/urandom of=/root/up.bin bs=1M count=$((up_bytes / 1048576)) 2>/dev/null; wget -q -T 120 -O /dev/null --post-file=/root/up.bin $sink_url 2>&1; echo \"wget-exit=\$?\"; rm -f /root/up.bin"
 sandbox_exec "$sandbox_id" "$send_cmd" "$fixture_dir/send.txt" || true
 measure send-output "$(jq -cn --arg o "$(head -c 300 "$fixture_dir/send.txt" 2>/dev/null | tr '\n' ' ')" --arg s "$(head -c 300 "$fixture_dir/send.sse" 2>/dev/null | tr '\n' ' ')" '{stdout: $o, sse: $s}')"
 sleep 5
