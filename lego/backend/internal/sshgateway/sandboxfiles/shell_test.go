@@ -352,7 +352,7 @@ func TestUploadKeepsModTimesAndPublishesPlainModes(t *testing.T) {
 		&tar.Header{Name: "sub/y.txt", Typeflag: tar.TypeReg, Mode: 0o644, Size: 2, ModTime: mtime},
 	)
 	var clean bytes.Buffer
-	mode, err := copyArchive(&clean, bytes.NewReader(src))
+	mode, err := copyArchive(&clean, bytes.NewReader(src), "tea-a")
 	if err != nil || mode != 0o750 {
 		t.Fatalf("copyArchive = %o, %v; want the root's 750", mode, err)
 	}
@@ -381,7 +381,7 @@ func TestCopyArchiveDefaultsTheRootModeAndClampsTimes(t *testing.T) {
 	mode, err := copyArchive(&clean, bytes.NewReader(archive(t,
 		&tar.Header{Name: "early", Typeflag: tar.TypeReg, Mode: 0o600, ModTime: time.Unix(-5, 0)},
 		&tar.Header{Name: "late", Typeflag: tar.TypeReg, Mode: 0o600, ModTime: time.Unix(1<<40, 0), Format: tar.FormatPAX},
-	)))
+	)), "tea-a")
 	if err != nil || mode != plainDirMode {
 		t.Fatalf("copyArchive = %o, %v; want the default %o", mode, err, plainDirMode)
 	}

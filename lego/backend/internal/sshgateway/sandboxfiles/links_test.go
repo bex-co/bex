@@ -101,7 +101,7 @@ func TestArchiveKeepsLinksAndSkipsSpecialEntries(t *testing.T) {
 		&tar.Header{Name: "./tty", Typeflag: tar.TypeChar, Devmajor: 5},
 		&tar.Header{Name: "./disk", Typeflag: tar.TypeBlock, Devmajor: 8},
 		&tar.Header{Name: "./last.txt", Typeflag: tar.TypeReg, Mode: 0o644, Size: 1},
-	)))
+	)), "tea-a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestArchiveStillRefusesWritesThroughLinksAndEscapingHardLinks(t *testing.T)
 		"a traversal name on a skipped fifo": {{Name: "../p", Typeflag: tar.TypeFifo}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, headers...))); !errors.Is(err, errBadArchive) {
+			if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, headers...)), "tea-a"); !errors.Is(err, errBadArchive) {
 				t.Fatalf("copyArchive = %v, want a bad archive", err)
 			}
 		})
@@ -288,7 +288,7 @@ func TestUploadedLinksArriveAsLinks(t *testing.T) {
 		t.Fatal(err)
 	}
 	var clean bytes.Buffer
-	mode, err := copyArchive(&clean, &upload)
+	mode, err := copyArchive(&clean, &upload, "tea-a")
 	if err != nil {
 		t.Fatal(err)
 	}

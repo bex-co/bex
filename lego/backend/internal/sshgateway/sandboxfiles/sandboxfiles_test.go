@@ -39,7 +39,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/sync/semaphore"
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
@@ -292,7 +291,7 @@ func TestArchiveEntryPolicyAndBudgets(t *testing.T) {
 	for _, name := range []string{"/", "/absolute", "a/../b", "../b", "a//b", "a\nb", "a\\b", strings.Repeat("a", files.MaxPathBytes+1)} {
 		t.Run(name, func(t *testing.T) {
 			data := archive(t, &tar.Header{Name: name, Typeflag: tar.TypeDir})
-			if _, err := copyArchive(io.Discard, bytes.NewReader(data)); err == nil {
+			if _, err := copyArchive(io.Discard, bytes.NewReader(data), "tea-a"); err == nil {
 				t.Fatal("unsafe archive accepted")
 			}
 		})
@@ -301,7 +300,7 @@ func TestArchiveEntryPolicyAndBudgets(t *testing.T) {
 		{{Name: "same", Typeflag: tar.TypeReg}, {Name: "same", Typeflag: tar.TypeReg}},
 		{{Name: "missing/child", Typeflag: tar.TypeReg}},
 	} {
-		if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, headers...))); err == nil {
+		if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, headers...)), "tea-a"); err == nil {
 			t.Fatal("duplicate/missing parent accepted")
 		}
 	}
@@ -310,7 +309,7 @@ func TestArchiveEntryPolicyAndBudgets(t *testing.T) {
 	if err := tw.WriteHeader(&tar.Header{Name: "huge", Typeflag: tar.TypeReg, Size: files.MaxTransferBytes + 1}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := copyArchive(io.Discard, &large); err == nil {
+	if _, err := copyArchive(io.Discard, &large, "tea-a"); err == nil {
 		t.Fatal("oversized member accepted")
 	}
 	if _, err := io.Copy(io.Discard, &boundedReader{reader: strings.NewReader("123456789"), remaining: 8}); !errors.Is(err, errTooLarge) {
@@ -371,7 +370,7 @@ func TestManyLinksAndSkippedEntriesAreCopied(t *testing.T) {
 		}
 	})
 	var out bytes.Buffer
-	if _, err := copyArchive(&out, src); err != nil {
+	if _, err := copyArchive(&out, src, "tea-a"); err != nil {
 		t.Fatal(err)
 	}
 	counts := map[byte]int{}
@@ -397,7 +396,7 @@ func TestTheByteBoundIsAnArchivesOnlySizeLimit(t *testing.T) {
 		return &tar.Header{Name: fmt.Sprintf("e%d", i), Typeflag: tar.TypeReg, Mode: 0o644}
 	})
 	var out countingWriter
-	if _, err := copyArchive(&out, src); !errors.Is(err, errTooLarge) {
+	if _, err := copyArchive(&out, src, "tea-a"); !errors.Is(err, errTooLarge) {
 		t.Fatalf("copyArchive = %v, want %v", err, errTooLarge)
 	}
 	if out.n != files.MaxTransferBytes {
@@ -405,52 +404,61 @@ func TestTheByteBoundIsAnArchivesOnlySizeLimit(t *testing.T) {
 	}
 }
 
-// withIndexBudget gives the archives the test copies an index budget of n
-// bytes of their own.
-func withIndexBudget(t *testing.T, n int64) {
+// heldBy is what workspace's indexes hold of b.
+func (b *indexBudget) heldBy(workspace string) int64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.held[workspace]
+}
+
+// withIndexBudget gives the archives the test copies an index budget of
+// their own: total bytes, at most share of them per workspace.
+func withIndexBudget(t *testing.T, total, share int64) {
 	t.Helper()
 	saved := archiveIndexMemory
-	archiveIndexMemory = semaphore.NewWeighted(n)
+	archiveIndexMemory = newIndexBudget(total, share)
 	t.Cleanup(func() { archiveIndexMemory = saved })
 }
 
-// Every archive in the process draws on one index budget (w32/025): while one
-// holds it all, another is refused as retryable, and the budget returns
-// whole when the first ends.
-func TestArchiveIndexesShareOneBudget(t *testing.T) {
-	withIndexBudget(t, 2*indexReserveChunk)
-
+// holdIndex pipes entries empty files into an archive of workspace's and
+// leaves it open, so its index keeps what it charged until finish ends it.
+// The pipe hands over a header only once copyArchive has finished the one
+// before, so on return every entry but perhaps the last is charged. A count
+// one past a chunk's worth of entries would leave the last chunk unsettled.
+func holdIndex(t *testing.T, workspace string, entries int) (finish func() error) {
+	t.Helper()
 	r, w := io.Pipe()
-	defer r.Close()
-	first := make(chan error, 1)
+	t.Cleanup(func() { _ = w.CloseWithError(errors.New("the test ended")) })
+	done := make(chan error, 1)
 	go func() {
-		_, err := copyArchive(io.Discard, r)
-		first <- err
+		_, err := copyArchive(io.Discard, r, workspace)
+		_ = r.CloseWithError(err)
+		done <- err
 	}()
 	tw := tar.NewWriter(w)
-	// One entry past a chunk reserves the second chunk. The pipe hands over
-	// a header only once copyArchive has finished the one before, so the
-	// extra entry proves that reservation was made.
-	for i := range indexReserveChunk/indexEntryCost + 2 {
+	for i := range entries {
 		if err := tw.WriteHeader(&tar.Header{Name: fmt.Sprintf("e%d", i), Typeflag: tar.TypeReg, Mode: 0o644}); err != nil {
-			t.Fatal(err)
+			t.Fatalf("holding %s's index at entry %d: %v", workspace, i, err)
 		}
 	}
-	one := archive(t, &tar.Header{Name: "a", Typeflag: tar.TypeReg, Mode: 0o644})
-	_, err := copyArchive(io.Discard, bytes.NewReader(one))
-	if !errors.Is(err, errGatewayBusy) {
-		t.Fatalf("a second archive while the budget is held = %v, want %v", err, errGatewayBusy)
+	return func() error {
+		if err := tw.Close(); err != nil {
+			return err
+		}
+		_ = w.Close()
+		return <-done
 	}
-	s := serverFor(func(_ context.Context, _ []string, _ io.Reader, out io.Writer) (int, error) {
+}
+
+// wantTransfersRefused checks that a download of one and an upload of it,
+// both requestFor's workspace's, each answer 503 with want's message.
+func wantTransfersRefused(t *testing.T, metrics *sshgateway.Metrics, one []byte, want *statusError) {
+	t.Helper()
+	down := serverFor(func(_ context.Context, _ []string, _ io.Reader, out io.Writer) (int, error) {
 		_, _ = io.WriteString(out, "directory\n")
 		_, _ = out.Write(one)
 		return 0, nil
 	})
-	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, requestFor(t, http.MethodGet, nil))
-	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), errGatewayBusy.message) {
-		t.Fatalf("a download while the budget is held = %d %s, want 503 naming capacity", rec.Code, rec.Body)
-	}
 	up := serverFor(func(_ context.Context, _ []string, input io.Reader, _ io.Writer) (int, error) {
 		if input != nil {
 			_, _ = io.Copy(io.Discard, input)
@@ -459,24 +467,114 @@ func TestArchiveIndexesShareOneBudget(t *testing.T) {
 	})
 	upload := requestFor(t, http.MethodPut, one)
 	upload.Header.Set("Content-Type", "application/x-tar")
-	rec = httptest.NewRecorder()
-	up.Handler().ServeHTTP(rec, upload)
-	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), errGatewayBusy.message) {
-		t.Fatalf("an upload while the budget is held = %d %s, want 503 naming capacity", rec.Code, rec.Body)
+	for _, tc := range []struct {
+		name string
+		s    *Server
+		r    *http.Request
+	}{{"download", down, requestFor(t, http.MethodGet, nil)}, {"upload", up, upload}} {
+		tc.s.Metrics = metrics
+		rec := httptest.NewRecorder()
+		tc.s.Handler().ServeHTTP(rec, tc.r)
+		if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), want.message) {
+			t.Fatalf("a %s = %d %s, want 503 %q", tc.name, rec.Code, rec.Body, want.message)
+		}
 	}
-	if err := tw.Close(); err != nil {
-		t.Fatal(err)
+}
+
+// Every archive in the process draws on one index budget (w32/025): while one
+// holds it all, another workspace's is refused as retryable, and the budget
+// returns whole when the first ends.
+func TestArchiveIndexesShareOneBudget(t *testing.T) {
+	withIndexBudget(t, 2*indexReserveChunk, 2*indexReserveChunk)
+	// One entry past a chunk reserves the second chunk, and the extra entry
+	// proves that reservation was made.
+	finish := holdIndex(t, "tea-b", indexReserveChunk/indexEntryCost+2)
+	one := archive(t, &tar.Header{Name: "a", Typeflag: tar.TypeReg, Mode: 0o644})
+	_, err := copyArchive(io.Discard, bytes.NewReader(one), "tea-a")
+	if !errors.Is(err, errGatewayBusy) {
+		t.Fatalf("a second archive while the budget is held = %v, want %v", err, errGatewayBusy)
 	}
-	_ = w.Close()
-	if err := <-first; err != nil {
+	reg := prometheus.NewRegistry()
+	wantTransfersRefused(t, sshgateway.NewMetrics(reg), one, errGatewayBusy)
+	if got := gatewaytest.MetricValue(t, reg, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": "archive_index_memory"}); got != 2 {
+		t.Errorf("refusals counted for the gateway's budget = %v, want 2", got)
+	}
+	if err := finish(); err != nil {
 		t.Fatalf("the archive holding the budget: %v", err)
 	}
-	if !archiveIndexMemory.TryAcquire(2 * indexReserveChunk) {
-		t.Fatal("the finished archive did not return its budget")
+	if err := archiveIndexMemory.take("tea-b", 2*indexReserveChunk); err != nil {
+		t.Fatalf("the finished archive did not return its budget: %v", err)
 	}
-	archiveIndexMemory.Release(2 * indexReserveChunk)
-	if _, err := copyArchive(io.Discard, bytes.NewReader(one)); err != nil {
+	archiveIndexMemory.give("tea-b", 2*indexReserveChunk)
+	if _, err := copyArchive(io.Discard, bytes.NewReader(one), "tea-a"); err != nil {
 		t.Fatalf("an archive after the budget returned: %v", err)
+	}
+}
+
+// One workspace's archives hold at most its share of the budget (w32/030):
+// while two of its slow archives hold the whole share, another workspace's
+// 25,000-entry tree still copies on the same process, and the first
+// workspace's next archive, upload or download is refused.
+func TestOneWorkspaceHoldsAtMostItsShareOfTheIndexBudget(t *testing.T) {
+	withIndexBudget(t, archiveIndexBudget, workspaceIndexShare)
+	half := int(workspaceIndexShare / 2 / indexEntryCost)
+	finishes := []func() error{holdIndex(t, "tea-a", half), holdIndex(t, "tea-a", half)}
+
+	src := streamArchive(t, func(i int) *tar.Header {
+		if i == 25_000 {
+			return nil
+		}
+		return &tar.Header{Name: fmt.Sprintf("e%d", i), Typeflag: tar.TypeReg, Mode: 0o644}
+	})
+	if _, err := copyArchive(io.Discard, src, "tea-b"); err != nil {
+		t.Fatalf("another workspace's 25,000-entry archive while tea-a holds its share: %v", err)
+	}
+	one := archive(t, &tar.Header{Name: "a", Typeflag: tar.TypeReg, Mode: 0o644})
+	if _, err := copyArchive(io.Discard, bytes.NewReader(one), "tea-a"); !errors.Is(err, errWorkspaceBusy) {
+		t.Fatalf("a third archive of the workspace holding its share = %v, want %v", err, errWorkspaceBusy)
+	}
+	reg := prometheus.NewRegistry()
+	wantTransfersRefused(t, sshgateway.NewMetrics(reg), one, errWorkspaceBusy)
+	if got := gatewaytest.MetricValue(t, reg, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": "archive_index_workspace"}); got != 2 {
+		t.Errorf("refusals counted for the workspace's share = %v, want 2", got)
+	}
+	for _, finish := range finishes {
+		if err := finish(); err != nil {
+			t.Fatalf("an archive holding tea-a's share: %v", err)
+		}
+	}
+	if _, err := copyArchive(io.Discard, bytes.NewReader(one), "tea-a"); err != nil {
+		t.Fatalf("an archive of tea-a after its holders ended: %v", err)
+	}
+}
+
+// The share is no routine cap (w32/030): the most entries the byte bound
+// admits, each a symlink so that the kept targets fill too, index about
+// 40 MiB, and that lone worst-case archive still copies on an idle process.
+func TestALoneWorstCaseArchiveFitsAWorkspacesShare(t *testing.T) {
+	withIndexBudget(t, archiveIndexBudget, workspaceIndexShare)
+	// Each entry is one header block; the end marker takes two.
+	entries := int((files.MaxTransferBytes - 1024) / 512)
+	var held int64
+	src := streamArchive(t, func(i int) *tar.Header {
+		if i == entries {
+			// Read before the end marker is written, so the index still holds
+			// every entry but the few the pipe's buffers carry.
+			held = archiveIndexMemory.heldBy("tea-a")
+			return nil
+		}
+		return &tar.Header{Name: fmt.Sprintf("e%d", i), Typeflag: tar.TypeSymlink, Linkname: "t"}
+	})
+	var out countingWriter
+	if _, err := copyArchive(&out, src, "tea-a"); err != nil {
+		t.Fatalf("a lone archive of %d entries: %v", entries, err)
+	}
+	if out.n != files.MaxTransferBytes {
+		t.Fatalf("copied %d bytes, want %d", out.n, files.MaxTransferBytes)
+	}
+	t.Logf("the index held %d KiB of a %d KiB share", held>>10, workspaceIndexShare>>10)
+	if held < 39<<20 {
+		t.Fatalf("the index held only %d KiB: the archive is not the worst case", held>>10)
 	}
 }
 
@@ -512,12 +610,14 @@ func TestAnArchiveIsRefusedBeforeItsIndexHoldsMoreThanTheBudget(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			withIndexBudget(t, budget)
+			// A lone archive meets its workspace's share and the total at
+			// once, and the share answers.
+			withIndexBudget(t, budget, budget)
 			base := live()
 			r, w := io.Pipe()
 			done := make(chan error, 1)
 			go func() {
-				_, err := copyArchive(io.Discard, r)
+				_, err := copyArchive(io.Discard, r, "tea-a")
 				_ = r.CloseWithError(err)
 				done <- err
 			}()
@@ -531,8 +631,8 @@ func TestAnArchiveIsRefusedBeforeItsIndexHoldsMoreThanTheBudget(t *testing.T) {
 					peak = max(peak, live()-base)
 				}
 			}
-			if err := <-done; !errors.Is(err, errGatewayBusy) {
-				t.Fatalf("copyArchive = %v, want %v", err, errGatewayBusy)
+			if err := <-done; !errors.Is(err, errWorkspaceBusy) {
+				t.Fatalf("copyArchive = %v, want %v", err, errWorkspaceBusy)
 			}
 			t.Logf("peak index heap %d KiB of a %d KiB budget", peak>>10, budget>>10)
 			if peak > budget+slack {
@@ -561,7 +661,7 @@ func TestAHardLinkToASymlinkPastTheKeptTargetsIsRefused(t *testing.T) {
 			return &tar.Header{Name: "to-the-first-dropped", Typeflag: tar.TypeLink, Linkname: fmt.Sprintf("s%d", kept)}
 		}
 		return nil
-	}))
+	}), "tea-a")
 	if !errors.Is(err, errBadArchive) || !strings.Contains(err.Error(), "too many symlink targets") {
 		t.Fatalf("a hard link to a symlink past the kept targets = %v, want %v", err, errBadArchive)
 	}

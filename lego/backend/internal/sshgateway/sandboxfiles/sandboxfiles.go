@@ -35,10 +35,9 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
-
-	"golang.org/x/sync/semaphore"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -143,8 +142,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	// It also counts a transfer refused for gateway capacity, which both
 	// directions pass through here.
 	revoked := func(err error) error {
-		if errors.Is(err, errGatewayBusy) {
+		switch {
+		case errors.Is(err, errGatewayBusy):
 			s.Metrics.LimitRejected("archive_index_memory")
+		case errors.Is(err, errWorkspaceBusy):
+			s.Metrics.LimitRejected("archive_index_workspace")
 		}
 		if err == nil || ctx.Err() == nil || timed.Err() != nil {
 			return err
@@ -202,8 +204,10 @@ var (
 	// errNotReady is a target Pod that is not Ready (a NotReady or unreachable
 	// node): out of reach for now, never a missing sandbox.
 	errNotReady = &statusError{status: http.StatusServiceUnavailable, message: "sandbox is not reachable right now: its pod is not ready"}
-	// errGatewayBusy is a directory transfer past archiveIndexMemory.
-	errGatewayBusy = &statusError{status: http.StatusServiceUnavailable, message: "the sandbox file gateway is at capacity; retry the transfer"}
+	// errGatewayBusy is a directory transfer past archiveIndexMemory, and
+	// errWorkspaceBusy one past its workspace's share of it.
+	errGatewayBusy   = &statusError{status: http.StatusServiceUnavailable, message: "the sandbox file gateway is at capacity; retry the transfer"}
+	errWorkspaceBusy = &statusError{status: http.StatusServiceUnavailable, message: "this workspace's directory transfers hold its share of the sandbox file gateway; retry when one of them ends"}
 )
 
 // hideCause answers errOperationFailed in place of an unclassified failure: a
@@ -473,7 +477,7 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 	go func() {
 		var err error
 		if kind == "directory" {
-			mode, err = copyArchive(writer, input)
+			mode, err = copyArchive(writer, input, target.OwnerID)
 		} else {
 			var n int64
 			n, err = io.Copy(writer, input)
@@ -571,7 +575,7 @@ func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, so
 	gz := gzip.NewWriter(&boundedWriter{writer: sent, remaining: files.MaxTransferBytes})
 	bounded := &boundedReader{reader: input, remaining: files.MaxTransferBytes}
 	if kind == "directory\n" {
-		_, err = copyArchive(gz, bounded)
+		_, err = copyArchive(gz, bounded, target.OwnerID)
 	} else {
 		_, err = io.Copy(gz, bounded)
 	}
@@ -674,9 +678,10 @@ func (r terminatedReader) Read(p []byte) (int, error) {
 
 // ValidateArchive applies the extraction rules copyArchive enforces without
 // writing anything, so a producer of upload archives can prove its output is
-// one the gateway accepts.
+// one the gateway accepts. Every caller's index draws on the share of one
+// workspace, "".
 func ValidateArchive(src io.Reader) error {
-	_, err := copyArchive(io.Discard, &boundedReader{reader: src, remaining: files.MaxTransferBytes})
+	_, err := copyArchive(io.Discard, &boundedReader{reader: src, remaining: files.MaxTransferBytes}, "")
 	return err
 }
 
@@ -717,15 +722,16 @@ func entryMode(h *tar.Header) int64 {
 // project's node_modules or site-packages routinely holds tens of thousands
 // of entries. Targets are bytes the tenant chose, so at most
 // maxKeptSymlinkTargets of them are kept. Every index in the process also
-// draws on archiveIndexMemory.
+// draws on archiveIndexMemory, within its workspace's share.
 type archiveIndex struct {
 	seeds     [2]maphash.Seed
 	kinds     map[nameKey]byte
 	symlinks  map[nameKey]string
 	keptBytes int
-	budget    *semaphore.Weighted // archiveIndexMemory when the index began
-	used      int64               // bytes the index holds, as charged
-	reserved  int64               // bytes taken from budget
+	budget    *indexBudget // archiveIndexMemory when the index began
+	workspace string       // whose share the index draws on
+	used      int64        // bytes the index holds, as charged
+	reserved  int64        // bytes taken from budget
 }
 
 type nameKey [2]uint64
@@ -751,9 +757,17 @@ func keptSymlinkCost(target string) int {
 // an out-of-memory kill. Past the budget an archive fails with errGatewayBusy
 // instead. A 25,000-entry tree takes under 2 MiB, so the budget engages only
 // under pressure; Render documents no transfer concurrency limit.
-var archiveIndexMemory = semaphore.NewWeighted(64 << 20)
+//
+// One workspace's archives hold at most workspaceIndexShare of it (w32/030),
+// so one tenant's slow transfers always leave the others 16 MiB, about
+// 250,000 entries, while a lone worst-case archive still fits. Past its share
+// an archive fails with errWorkspaceBusy. A fixed fraction, like the sandbox
+// import budget's quarter (w5/m383), would refuse a lone worst-case tree.
+var archiveIndexMemory = newIndexBudget(archiveIndexBudget, workspaceIndexShare)
 
 const (
+	archiveIndexBudget  = 64 << 20
+	workspaceIndexShare = 48 << 20
 	// indexEntryCost is one kinds slot with its share of map growth: 524,288
 	// digests took 29.9 MiB of heap (measured 2026-11-14).
 	indexEntryCost = 64
@@ -765,12 +779,51 @@ const (
 	indexReserveChunk = 64 << 10
 )
 
-func newArchiveIndex() *archiveIndex {
+// indexBudget lends archive indexes memory from one process-wide total, and
+// at most share of it to one workspace's indexes together.
+type indexBudget struct {
+	mu    sync.Mutex
+	free  int64
+	share int64
+	held  map[string]int64 // by workspace
+}
+
+func newIndexBudget(total, share int64) *indexBudget {
+	return &indexBudget{free: total, share: share, held: map[string]int64{}}
+}
+
+// take lends workspace n bytes. A workspace past its share is told so even
+// when the process is full too: its own transfers are what to wait for.
+func (b *indexBudget) take(workspace string, n int64) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.held[workspace]+n > b.share {
+		return errWorkspaceBusy
+	}
+	if n > b.free {
+		return errGatewayBusy
+	}
+	b.free -= n
+	b.held[workspace] += n
+	return nil
+}
+
+func (b *indexBudget) give(workspace string, n int64) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.free += n
+	if b.held[workspace] -= n; b.held[workspace] == 0 {
+		delete(b.held, workspace)
+	}
+}
+
+func newArchiveIndex(workspace string) *archiveIndex {
 	return &archiveIndex{
-		seeds:    [2]maphash.Seed{maphash.MakeSeed(), maphash.MakeSeed()},
-		kinds:    map[nameKey]byte{},
-		symlinks: map[nameKey]string{},
-		budget:   archiveIndexMemory,
+		seeds:     [2]maphash.Seed{maphash.MakeSeed(), maphash.MakeSeed()},
+		kinds:     map[nameKey]byte{},
+		symlinks:  map[nameKey]string{},
+		budget:    archiveIndexMemory,
+		workspace: workspace,
 	}
 }
 
@@ -785,15 +838,15 @@ func (x *archiveIndex) charge(n int) error {
 		return nil
 	}
 	need := (x.used - x.reserved + indexReserveChunk - 1) / indexReserveChunk * indexReserveChunk
-	if !x.budget.TryAcquire(need) {
-		return errGatewayBusy
+	if err := x.budget.take(x.workspace, need); err != nil {
+		return err
 	}
 	x.reserved += need
 	return nil
 }
 
 func (x *archiveIndex) release() {
-	x.budget.Release(x.reserved)
+	x.budget.give(x.workspace, x.reserved)
 	x.reserved = 0
 }
 
@@ -834,10 +887,12 @@ func entryName(name string) string {
 // it stays inside the tree: tar archives the first name it reads for an inode
 // and each later one as a link to it. It counts as what it names: a file stays
 // a hard link, a symlink is copied, and a special entry is skipped too.
-func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
+//
+// workspace is whose share of archiveIndexMemory the archive's index draws on.
+func copyArchive(dst io.Writer, src io.Reader, workspace string) (int64, error) {
 	tr := tar.NewReader(terminatedReader{src})
 	tw := tar.NewWriter(&boundedWriter{writer: dst, remaining: files.MaxTransferBytes})
-	index := newArchiveIndex()
+	index := newArchiveIndex(workspace)
 	defer index.release()
 	// tar's Reader and Writer hide their WriterTo and ReaderFrom, so io.Copy
 	// would allocate 32 KiB for every entry.
