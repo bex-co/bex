@@ -79,7 +79,7 @@ const nativeVersionPattern = /^[0-9A-Za-z][0-9A-Za-z.+-]*(?![\s\S])/;
 const nativeSHA256Pattern = /^[0-9a-f]{64}(?![\s\S])/;
 
 // Profiles whose adapter the driver can pin to the manifest's model: Muse
-// Code reads it from its settings file (acp.ts writeMuseModel). A model on any
+// Code reads it from its settings file (acp.ts writeMuseSettings). A model on any
 // other profile would be silently ignored, so it is refused.
 export const MODEL_SETTINGS_PROFILES: ReadonlySet<string> = new Set(["muse"]);
 

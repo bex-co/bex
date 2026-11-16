@@ -316,7 +316,7 @@ Thirteen runs through 12:30 UTC on 2026-11-16:
 | The turn ended while a background `workflow` still ran | 3 | 2 min 21 s to 2 min 30 s |
 | `sandbox create failed` | 2 | none |
 
-- **A muse turn ends when its agent starts a workflow.** Every muse session that called the `workflow` tool had its turn closed 2 to 3 s later, while the workflow and its subagents still read `inProgress`. That left the routine with nothing done. Filed as w6/129.
+- **A muse turn ends when its agent starts a workflow.** Every muse session that called the `workflow` tool had its turn closed 2 to 3 s later, while the workflow and its subagents still read `inProgress`. That left the routine with nothing done. Filed as w6/129: Muse's Workflow tool is now off ([ADR108](ADR108-muse-code-agent.md) D8).
 - **The two create failures came from the OpenSandbox server.** At 05:00:05 and 06:30:04 it answered 500 `KUBERNETES::API_ERROR`: "Connection aborted, RemoteDisconnected" from the Kubernetes API. The next creates, at 05:57 and 08:00, succeeded. w1/m405 retries a transient create.
 
 **Memory after `TMPDIR=/var/tmp` (w6/127).**

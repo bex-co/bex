@@ -1,6 +1,6 @@
 # ADR108 — Muse Code as a Cloud Agent profile (`muse`)
 
-**Status:** accepted (2026-11-13, w7/m390). The model route and billing are w7/m391; admin enablement is w7/m392.
+**Status:** accepted (2026-11-13, w7/m390). The model route and billing are w7/m391; admin enablement is w7/m392. D8 (workflows off) added 2026-11-16 by w6/129.
 
 ## Context
 
@@ -56,6 +56,20 @@ Only the gateway model proxy carries Muse's model traffic. `api.meta.ai` stays o
 ### D7 — Instructions
 
 The adapter has no `systemPrompt` capability, so the bex overlay goes in the first-prompt preamble, as for Gemini. If live turns show Muse ignoring the delivery contract that way, the fix is an adapter release that advertises `systemPrompt`.
+
+### D8 — Muse's Workflow tool is off (2026-11-16, w6/129)
+
+On production from 2026-11-15 22:41 to 2026-11-16 12:30 UTC, three of 19 Muse sessions called `workflow`. Each ended its turn 2 to 3 s later and was recorded as completed with its work undone: three `rt-*` routine runs opened no pull request. Every Muse session that never called it finished its work.
+
+Muse's Workflow tool only runs in the background. Its launch result tells the model that "the workflow runs in the background and its completion is delivered to this conversation", and that "the result is delivered automatically and wakes you even after you end the turn". No Muse setting makes the tool wait for its result.
+
+muse-code-acp 0.11.0 answers ACP `session/prompt` as soon as the launching turn ends. It goes on reporting the workflow's cards only while it keeps the Muse host, which is 60 seconds after the prompt. It never streams the turn Muse starts to deliver the result, and it refuses an ordinary prompt while that turn runs (the adapter's `docs/async-tasks.md` and `docs/goal-extension.md`). The driver ends a turn when its prompt is answered. So no wait on the driver side can bring a workflow's result into a turn.
+
+The driver therefore writes `run.workflow_trigger_mode: "off"` into `~/.config/muse/settings.json` together with the model, before the adapter starts. Other keys are kept. Muse then offers no Workflow tool, and its prompt tells the model that "Workflows are disabled for this run". A Devin session keeps working until its work is done; with the tool off, a Muse session does all its work inside the turn the driver waits on.
+
+The 2026-11-16 probe ran Muse 1.4.14-R7309.1 (`muse-aarch64-linux`, the pinned SHA-256) under muse-code-acp 0.11.0, in `node:22-bookworm-slim` as uid 10001. It set the profile's session config over ACP and pointed the model at a stub Responses endpoint. By default, the first model request offered 26 tools, including `muse.workflow`. With the setting it offered 25 and no `muse.workflow`.
+
+Workflows can come back once the adapter holds the prompt until background work, and the turn that reports it, have finished ([w6/130](../.pm/w6/130.md)).
 
 ## Consequences
 

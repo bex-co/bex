@@ -337,10 +337,20 @@ export async function removeStaleCodexRules(
   await rm(path.join(home, "rules", staleCodexRulesFile), { force: true });
 }
 
-// writeMuseModel pins Muse Code's model (ADR108 D4) in its user settings,
-// which the adapter merges into every session host's settings. Other keys a
-// previous turn left there are kept; an unreadable file is replaced.
-export async function writeMuseModel(
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+// writeMuseSettings writes Muse Code's user settings, which the adapter
+// merges into every session host's settings: the profile's model (ADR108 D4)
+// and Muse's Workflow tool turned off (ADR108 D8). A Muse workflow only runs
+// in the background and reports by waking the agent after its turn has ended,
+// which the pinned adapter never carries to an ACP client, so the turn the
+// driver waits on would end with the work undone. Other keys a previous turn
+// left there are kept; an unreadable file is replaced.
+export async function writeMuseSettings(
   env: Record<string, string | undefined>,
   model: string,
 ): Promise<void> {
@@ -349,13 +359,16 @@ export async function writeMuseModel(
   const file = path.join(configHome, "muse", "settings.json");
   let settings: Record<string, unknown> = {};
   try {
-    const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
-      settings = parsed as Record<string, unknown>;
+    settings = asRecord(JSON.parse(await readFile(file, "utf8")));
   } catch {
     // Absent or unreadable: start from an empty document.
   }
-  await writeJsonAtomic(file, { ...settings, schema_version: 1, model });
+  await writeJsonAtomic(file, {
+    ...settings,
+    schema_version: 1,
+    ...(model ? { model } : {}),
+    run: { ...asRecord(settings.run), workflow_trigger_mode: "off" },
+  });
 }
 
 async function createSessionAttempt(
@@ -370,7 +383,8 @@ async function createSessionAttempt(
   const codexOverlay = overlay !== "" && config.profile === "codex";
   const childEnv = { ...process.env, ...agentEnv };
   if (config.profile === "codex") await removeStaleCodexRules(childEnv);
-  if (config.model) await writeMuseModel(childEnv, config.model);
+  if (config.profile === "muse")
+    await writeMuseSettings(childEnv, config.model);
   const spawnEnv = codexOverlay
     ? { ...childEnv, ...codexOverlayEnv(overlay, childEnv.CODEX_CONFIG) }
     : childEnv;

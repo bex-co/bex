@@ -15,7 +15,13 @@
  * limitations under the License.
  */
 
-import { appendFileSync, closeSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  closeSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import readline from "node:readline";
 
@@ -25,6 +31,15 @@ if (
 ) {
   throw new Error(
     "expected model credential was not isolated to the ACP child",
+  );
+}
+
+// What Muse Code would read from its settings file as the adapter starts.
+if (process.env.ACP_FIXTURE_MUSE_SETTINGS_LOG) {
+  const settings = `${process.env.XDG_CONFIG_HOME}/muse/settings.json`;
+  writeFileSync(
+    process.env.ACP_FIXTURE_MUSE_SETTINGS_LOG,
+    existsSync(settings) ? readFileSync(settings, "utf8") : "absent",
   );
 }
 

@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-// The muse profile's driver contract (ADR108): its model lands in Muse's own
-// settings, and the profile's ACP session config is set on every session
-// before the first prompt, failing setup when the adapter refuses it.
+// The muse profile's driver contract (ADR108): its model and Muse's Workflow
+// tool turned off land in Muse's own settings before the adapter starts, and
+// the profile's ACP session config is set on every session before the first
+// prompt, failing setup when the adapter refuses it.
 import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { writeMuseModel } from "../src/acp.js";
+import { writeMuseSettings } from "../src/acp.js";
 import { loadConfig } from "../src/config.js";
 import { loadAgentProfiles, validateAgentProfiles } from "../src/profiles.js";
 import { runHeadlessTurn } from "../src/session.js";
@@ -34,16 +35,23 @@ const museConfig = {
   mode: "bypassApprovals",
 };
 
-test("writeMuseModel pins the model and keeps the rest of the settings", async () => {
+test("writeMuseSettings pins the model, turns workflows off and keeps the rest", async () => {
   const { root } = await tempConfig();
   const configHome = path.join(root, "config");
   const file = path.join(configHome, "muse", "settings.json");
   await mkdir(path.dirname(file), { recursive: true });
+  // A user or an earlier turn may have left Muse's default workflow mode and
+  // other run settings; only the workflow mode is overridden.
   await writeFile(
     file,
-    JSON.stringify({ schema_version: 1, model: "muse-spark-1.2", theme: "x" }),
+    JSON.stringify({
+      schema_version: 1,
+      model: "muse-spark-1.2",
+      theme: "x",
+      run: { workflow_trigger_mode: "auto", parallel_tool_calls: true },
+    }),
   );
-  await writeMuseModel(
+  await writeMuseSettings(
     { XDG_CONFIG_HOME: configHome },
     "muse-spark-1.3-contributor",
   );
@@ -51,19 +59,29 @@ test("writeMuseModel pins the model and keeps the rest of the settings", async (
     schema_version: 1,
     model: "muse-spark-1.3-contributor",
     theme: "x",
+    run: { workflow_trigger_mode: "off", parallel_tool_calls: true },
   });
   await writeFile(file, "{not json");
-  await writeMuseModel(
+  await writeMuseSettings(
     { XDG_CONFIG_HOME: configHome },
     "muse-spark-1.3-contributor",
   );
   assert.deepEqual(JSON.parse(await readFile(file, "utf8")), {
     schema_version: 1,
     model: "muse-spark-1.3-contributor",
+    run: { workflow_trigger_mode: "off" },
+  });
+  // A profile without a model keeps Muse's own model and still runs without
+  // workflows; a malformed run section is replaced.
+  await writeFile(file, JSON.stringify({ schema_version: 1, run: "auto" }));
+  await writeMuseSettings({ XDG_CONFIG_HOME: configHome }, "");
+  assert.deepEqual(JSON.parse(await readFile(file, "utf8")), {
+    schema_version: 1,
+    run: { workflow_trigger_mode: "off" },
   });
 });
 
-test("a muse session gets its model and session config before the first prompt", async () => {
+test("a muse session gets its model, no workflows and its session config before the first prompt", async () => {
   const config = await tempConfig({
     profile: "muse",
     model: "muse-spark-1.3-contributor",
@@ -71,18 +89,21 @@ test("a muse session gets its model and session config before the first prompt",
   });
   const callLog = path.join(config.root, "calls.log");
   const configLog = path.join(config.root, "config.log");
+  const settingsLog = path.join(config.root, "muse-settings.log");
   const configHome = path.join(config.root, "xdg");
   config.agentEnv = {
     ACP_FIXTURE_LOG: callLog,
     ACP_FIXTURE_CONFIG_LOG: configLog,
+    ACP_FIXTURE_MUSE_SETTINGS_LOG: settingsLog,
     XDG_CONFIG_HOME: configHome,
   };
   await runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub());
 
-  const settings = JSON.parse(
-    await readFile(path.join(configHome, "muse", "settings.json"), "utf8"),
-  );
+  // The settings the adapter found when it started, which is when Muse's
+  // host reads them.
+  const settings = JSON.parse(await readFile(settingsLog, "utf8"));
   assert.equal(settings.model, "muse-spark-1.3-contributor");
+  assert.equal(settings.run.workflow_trigger_mode, "off");
   const calls = (await readFile(callLog, "utf8")).trim().split("\n");
   const firstConfig = calls.indexOf("session/set_config_option");
   assert.ok(firstConfig > calls.indexOf("session/new"));
@@ -99,6 +120,31 @@ test("a muse session gets its model and session config before the first prompt",
     museConfig,
   );
   assert.ok(applied.every((p) => p.sessionId === applied[0]!.sessionId));
+});
+
+test("a muse session without a pinned model still runs without workflows", async () => {
+  const config = await tempConfig({ profile: "muse" });
+  const settingsLog = path.join(config.root, "muse-settings.log");
+  config.agentEnv = {
+    ACP_FIXTURE_MUSE_SETTINGS_LOG: settingsLog,
+    XDG_CONFIG_HOME: path.join(config.root, "xdg"),
+  };
+  await runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub());
+  assert.deepEqual(JSON.parse(await readFile(settingsLog, "utf8")), {
+    schema_version: 1,
+    run: { workflow_trigger_mode: "off" },
+  });
+});
+
+test("another profile's session leaves Muse's settings alone", async () => {
+  const config = await tempConfig({ profile: "claude" });
+  const settingsLog = path.join(config.root, "muse-settings.log");
+  config.agentEnv = {
+    ACP_FIXTURE_MUSE_SETTINGS_LOG: settingsLog,
+    XDG_CONFIG_HOME: path.join(config.root, "xdg"),
+  };
+  await runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub());
+  assert.equal(await readFile(settingsLog, "utf8"), "absent");
 });
 
 test("a refused session config option fails setup instead of running on defaults", async () => {
