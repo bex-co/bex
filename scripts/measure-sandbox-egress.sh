@@ -49,13 +49,20 @@ tx() { # tx: the sandbox's own transmitted byte counter (eth0 in /proc/net/dev)
 }
 tx_before="$(tx || echo 0)"
 meter_before="$(meter_value)"
+# The sink's address is resolved here, on the runner, and the sandbox connects to
+# the literal: a sandbox's own name lookup is not what this leg measures, and a
+# failed `exec 3<>/dev/tcp/...` does not stop a non-interactive bash, so the
+# command says it failed and exits instead of printing "sent".
+sink_host="${BEX_MEASURE_UP_HOST:-speedtest.tele2.net}"
+sink_ip="$(getent ahostsv4 "$sink_host" | awk 'NR == 1 { print $1 }')"
+[ -n "$sink_ip" ] || fail "the runner cannot resolve $sink_host"
 send_cmd='B=/bin/bash; [ -x "$B" ] || B=/usr/local/bin/bash; "$B" -c '"'"'
-  exec 3<>/dev/tcp/speedtest.tele2.net/80
-  printf "POST /upload.php HTTP/1.0\r\nHost: speedtest.tele2.net\r\nContent-Length: '"$up_bytes"'\r\n\r\n" >&3
-  head -c '"$up_bytes"' /dev/urandom >&3 || true
-  cat <&3 | head -c 100 >/dev/null || true
-  echo sent
-'"'"
+  exec 3<>/dev/tcp/'"$sink_ip"'/80 || { echo connect-failed; exit 3; }
+  printf "POST /upload.php HTTP/1.0\r\nHost: '"$sink_host"'\r\nContent-Length: '"$up_bytes"'\r\n\r\n" >&3
+  head -c '"$up_bytes"' /dev/urandom >&3 || echo write-failed
+  cat <&3 | head -c 200 | tr "\r\n" "  "
+  echo " sent"
+'"'"' 2>&1'
 sandbox_exec "$sandbox_id" "$send_cmd" "$fixture_dir/send.txt" || true
 measure send-output "$(jq -cn --arg o "$(head -c 300 "$fixture_dir/send.txt" 2>/dev/null | tr '\n' ' ')" --arg s "$(head -c 300 "$fixture_dir/send.sse" 2>/dev/null | tr '\n' ' ')" '{stdout: $o, sse: $s}')"
 sleep 5
