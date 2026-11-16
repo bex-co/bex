@@ -25,7 +25,7 @@ import (
 	"testing"
 )
 
-var nativeModernPythonLines = []string{"3.9", "3.10", "3.11", "3.12", "3.14"}
+var nativeModernPythonLines = []string{"3.9", "3.10", "3.11", "3.12", "3.14", "3.15"}
 
 const modernPoetrySolve = "poetry==2.1.3"
 
@@ -124,7 +124,7 @@ func TestNativeModernPythonGeneratedImages(t *testing.T) {
 	}
 	t.Logf("retained modern Python family evidence: %s", output)
 	inputs, err := json.MarshalIndent(map[string]any{"common": common, "builder": docker.builder, "platform": docker.platform,
-		"owner": docker.owner, "profile": "modern-python39-python310-python311-python312-python314-table", "tool_solve": modernPoetrySolve,
+		"owner": docker.owner, "profile": "modern-python39-python310-python311-python312-python314-python315-table", "tool_solve": modernPoetrySolve,
 		"shared_application_observer": "unchanged legacy fixture; existing qa-output/legacy-*.json filenames retained",
 		"scope":                       "opt-in generated images only; original13/28/default3.14.8/3.13utilities/first-cohort unchanged"}, "", "  ")
 	must(t, err)

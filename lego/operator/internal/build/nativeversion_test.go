@@ -71,6 +71,9 @@ func TestResolveNativeVersion(t *testing.T) {
 		{"node bounded old range", "node", nil, map[string]string{"package.json": `{"engines":{"node":">=16 <21"}}`}, "20", "package.json engines.node"},
 		{"python 3.9", "python", map[string]string{"PYTHON_VERSION": "3.9.18"}, nil, "3.9", "PYTHON_VERSION=3.9.18"},
 		{"python 3.7 floor", "python", map[string]string{"PYTHON_VERSION": "3.7.3"}, nil, "3.7", "PYTHON_VERSION=3.7.3"},
+		// Python 3.15 was released 2026-10-09; Render takes any released version (w8/335).
+		{"python 3.15 exact", "python", map[string]string{"PYTHON_VERSION": "3.15.2"}, nil, "3.15", "PYTHON_VERSION=3.15.2"},
+		{"python 3.15 file", "python", nil, map[string]string{".python-version": "3.15\n"}, "3.15", ".python-version"},
 		{"ruby 3.2 Render rails example", "ruby", nil, map[string]string{".ruby-version": "ruby-3.2.0"}, "3.2", ".ruby-version"},
 		{"ruby 3.2 Gemfile", "ruby", nil, map[string]string{"Gemfile": "ruby '3.2.0'"}, "3.2", "Gemfile"},
 		{"elixir 1.20", "elixir", map[string]string{"ELIXIR_VERSION": "1.20.4"}, nil, "1.20", "ELIXIR_VERSION=1.20.4"},
@@ -146,7 +149,8 @@ func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 		env, files map[string]string
 		want       string
 	}{
-		{"python", map[string]string{"PYTHON_VERSION": "2.7.18"}, nil, `PYTHON_VERSION=2.7.18 is not a supported Python version; supported Python lines are 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14`},
+		{"python", map[string]string{"PYTHON_VERSION": "2.7.18"}, nil, `PYTHON_VERSION=2.7.18 is not a supported Python version; supported Python lines are 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14, 3.15`},
+		{"python", map[string]string{"PYTHON_VERSION": "3.16.0"}, nil, `PYTHON_VERSION=3.16.0 is not a supported Python version; supported Python lines are 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14, 3.15`},
 		{"python", map[string]string{"PYTHON_VERSION": "3.6.15"}, nil, `PYTHON_VERSION=3.6.15 is not a supported Python version`},
 		{"python", nil, map[string]string{".python-version": "pypy3.10"}, `.python-version "pypy3.10"`},
 		{"node", map[string]string{"NODE_VERSION": "8"}, nil, "supported Node lines are 14, 16, 18, 20, 22, 24, 26"},

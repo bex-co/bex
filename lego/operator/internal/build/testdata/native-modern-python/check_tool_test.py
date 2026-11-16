@@ -28,7 +28,7 @@ def identity():
 
 class ModernToolOracle(unittest.TestCase):
     def test_shared_observer_requires_each_exact_modern_app_and_project(self):
-        for version in ("3.9.25", "3.10.22", "3.11.18", "3.12.16", "3.14.10"):
+        for version in ("3.9.25", "3.10.22", "3.11.18", "3.12.16", "3.14.10", "3.15.2"):
             for project in (False, True):
                 prefix = "/project/environment" if project else "/usr/local"
                 data = {"python": version, "python_env": version, "base_prefix": "/usr/local",

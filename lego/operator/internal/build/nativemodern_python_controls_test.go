@@ -28,10 +28,10 @@ import (
 )
 
 func TestNativeModernPythonMatrixAndUnchangedApplicationFixture(t *testing.T) {
-	if !slices.Equal(nativeModernPythonLines, []string{"3.9", "3.10", "3.11", "3.12", "3.14"}) {
-		t.Fatal("modern profile must cover the five remaining reviewed Python lines")
+	if !slices.Equal(nativeModernPythonLines, []string{"3.9", "3.10", "3.11", "3.12", "3.14", "3.15"}) {
+		t.Fatal("modern profile must cover the six remaining reviewed Python lines")
 	}
-	for name, version := range map[string]string{"3.9": "3.9.25", "3.10": "3.10.22", "3.11": "3.11.18", "3.12": "3.12.16", "3.14": "3.14.10"} {
+	for name, version := range map[string]string{"3.9": "3.9.25", "3.10": "3.10.22", "3.11": "3.11.18", "3.12": "3.12.16", "3.14": "3.14.10", "3.15": "3.15.2"} {
 		line, found := nativeToolchains[nativePythonRuntime].find(name)
 		if !found || line.version != version || !nativeModernPythonVersion(version) {
 			t.Fatalf("missing reviewed %s %s", name, version)

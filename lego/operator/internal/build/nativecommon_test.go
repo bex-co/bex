@@ -206,7 +206,9 @@ func TestCommonFoundationCoversEveryExistingReviewedChoice(t *testing.T) {
 			})
 		}
 	}
-	if count != 27 {
+	// A new line joins its family qualification first: Python 3.15 is the
+	// modern-python profile's 3.15 case (w8/335).
+	if count != 28 {
 		t.Fatalf("reviewed matrix changed; qualify all %d choices", count)
 	}
 }

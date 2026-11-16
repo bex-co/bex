@@ -57,7 +57,7 @@ PROFILES = {
                      "node-exact14213", "ruby-node-exact14213",
                      "node-exact14212", "ruby-node-exact14212"), 90, 120),
     "modern-python": ("TestNativeModernPythonGeneratedImages", "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE",
-                      ("3.9", "3.10", "3.11", "3.12", "3.14"), 110, 140),
+                      ("3.9", "3.10", "3.11", "3.12", "3.14", "3.15"), 110, 140),
     "legacy-python": ("TestNativeLegacyPythonGeneratedImages", "BEX_NATIVE_LEGACY_PYTHON_INTEGRATION",
                       ("3.7", "3.8"), 110, 140),
     "ruby": ("TestCommonRubyGeneratedImages", "BEX_NATIVE_TEST_RUBY_PROFILE",

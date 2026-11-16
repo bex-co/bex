@@ -337,22 +337,29 @@ def line_of(version: str) -> tuple[int, int] | None:
     return (int(match.group(1)), int(match.group(2))) if match else None
 
 
+def fixture_version(key: str) -> tuple[bool, str | None]:
+    """FRESHNESS_LATEST_LINES's newest version for key: (fixture set, version)."""
+    fixture = os.environ.get("FRESHNESS_LATEST_LINES")
+    if not fixture:
+        return False, None
+    try:
+        data = json.loads(Path(fixture).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as err:
+        fail(f"FRESHNESS_LATEST_LINES is not readable JSON: {err}")
+    version = data.get(key) if isinstance(data, dict) else None
+    if version is not None and not isinstance(version, str):
+        raise RuntimeError(f"unexpected release feed shape: {version!r}")
+    return True, version
+
+
 def latest_line(image_id: str) -> str | None:
     """Upstream's newest major.minor for a LINE_SOURCES toolchain, or None."""
-    fixture = os.environ.get("FRESHNESS_LATEST_LINES")
-    if fixture:
-        try:
-            data = json.loads(Path(fixture).read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as err:
-            fail(f"FRESHNESS_LATEST_LINES is not readable JSON: {err}")
-        version = data.get(image_id) if isinstance(data, dict) else None
-        if version is None:
-            return None
-    else:
+    fixed, version = fixture_version(image_id)
+    if not fixed:
         version = upstream_version(image_id)
-    if not isinstance(version, str):
-        raise RuntimeError(f"unexpected release feed shape: {version!r}")
-    line = line_of(version)
+        if not isinstance(version, str):
+            raise RuntimeError(f"unexpected release feed shape: {version!r}")
+    line = line_of(version) if version else None
     return f"{line[0]}.{line[1]}" if line else None
 
 
@@ -364,8 +371,67 @@ def upstream_version(image_id: str) -> object:
     return data[0]["version"] if kind == "go" else data.get("tag_name", "")
 
 
+# RELEASE_LINE_SOURCES are the runtimes with one native line per upstream
+# release line, as many as Render builds: any released version (w8/335). A
+# line released upstream but newer than every pinned one is missing, and a
+# service asking for it fails at version selection, which is how Python 3.15
+# shipped four days after the lines stopped at 3.14. The finding rides on the
+# newest pinned entry. Each feed's version key, its prefix, and the line depth.
+RELEASE_LINE_SOURCES = {
+    "docker.io/library/python": (
+        "https://www.python.org/api/v2/downloads/release/?is_published=true&pre_release=false",
+        "name", "Python ", 2,
+    ),
+    "docker.io/library/node": ("https://nodejs.org/dist/index.json", "version", "v", 1),
+}
+
+
+def release_line(version: str, depth: int) -> tuple[int, ...] | None:
+    """The first depth numbers of a version or tag: 3.14-bookworm → (3, 14)."""
+    match = re.match(r"\d+(?:\.\d+)*", version)
+    parts = tuple(int(part) for part in match.group(0).split(".")) if match else ()
+    return parts[:depth] if len(parts) >= depth else None
+
+
+def newest_release_line(repo: str) -> tuple[int, ...] | None:
+    """Upstream's newest released line of a RELEASE_LINE_SOURCES runtime."""
+    url, key, prefix, depth = RELEASE_LINE_SOURCES[repo]
+    fixed, version = fixture_version(repo)
+    if fixed:
+        return release_line(version, depth) if version else None
+    # Final releases only: Node's index leads with its alphas and Python's
+    # feed is filtered but checked here too.
+    lines = [release_line(item[key].removeprefix(prefix), depth) for item in http_json(url)
+             if re.fullmatch(r"\d+\.\d+\.\d+", item[key].removeprefix(prefix))]
+    return max(lines, default=None)
+
+
+def missing_release_lines(images: list[dict]) -> dict[str, str]:
+    """Inventory id of each runtime's newest pinned line → the newer released line."""
+    newest: dict[str, tuple[str, tuple[int, ...]]] = {}
+    for image in images:
+        repo, _, tag = image["upstream"].rpartition(":")
+        if repo in RELEASE_LINE_SOURCES:
+            line = release_line(tag, RELEASE_LINE_SOURCES[repo][3])
+            if line and (repo not in newest or line > newest[repo][1]):
+                newest[repo] = (image["id"], line)
+    missing = {}
+    for repo, (ident, pinned) in sorted(newest.items()):
+        # Advisory, like LINE_SOURCES: an unreachable feed must not fail the
+        # digest check this resolve exists for.
+        try:
+            released = newest_release_line(repo)
+        except (RuntimeError, KeyError, TypeError, AttributeError) as err:
+            print(f"warning: {repo}: newest released line unavailable: {err}", file=sys.stderr)
+            continue
+        if released and released > pinned:
+            missing[ident] = ".".join(str(part) for part in released)
+    return missing
+
+
 def resolve(path: Path) -> dict:
     inventory = validate(path)
+    missing = missing_release_lines(inventory["images"])
     images = []
     for image in sorted(inventory["images"], key=lambda item: item["id"]):
         try:
@@ -394,6 +460,9 @@ def resolve(path: Path) -> dict:
             if newest and pinned and line_of(newest) > pinned:
                 entry["changed"] = True
                 entry["newer_line"] = newest
+        if image["id"] in missing:
+            entry["changed"] = True
+            entry["missing_line"] = missing[image["id"]]
         images.append(entry)
     return {"images": images, "schema": SCHEMA}
 
@@ -428,6 +497,12 @@ def issue_body(report: dict) -> str:
             section.append(
                 f"- **newer line upstream: `{image['newer_line']}`**: move the pin to that"
                 " line's tag and digest (Render builds with the newest), not to the observed digest"
+            )
+        if image.get("missing_line"):
+            section.append(
+                f"- **released line missing: `{image['missing_line']}`**: add it as a new reviewed"
+                " line beside this one (Render builds any released version); a service asking"
+                " for it fails at version selection until then"
             )
         section.extend(["- files:", files, ""])
         lines.extend(section)

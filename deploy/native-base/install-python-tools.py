@@ -11,9 +11,9 @@ import sysconfig
 root = Path(__file__).resolve().parent
 manifest = json.loads((root / "python-tools.json").read_text())
 version = sys.version_info[:2]
-if version < (3, 7) or version > (3, 14):
-    raise RuntimeError("native primary Python packaging requires a reviewed Python 3.7–3.14")
-line = "3.7" if version == (3, 7) else "3.8" if version == (3, 8) else "3.9-3.14"
+if version < (3, 7) or version > (3, 15):
+    raise RuntimeError("native primary Python packaging requires a reviewed Python 3.7–3.15")
+line = "3.7" if version == (3, 7) else "3.8" if version == (3, 8) else "3.9-3.15"
 selected = [item for item in manifest["artifacts"] if item["id"] in manifest["selections"][line]]
 site = Path(sysconfig.get_path("purelib"))
 matches = True

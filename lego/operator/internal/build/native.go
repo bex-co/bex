@@ -124,6 +124,7 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "3.12", version: "3.12.16", image: "python:3.12-bookworm@sha256:4209fae09a3e20afd863e528bfddc235da5fd5977983e1996cd54cc9a72e6267"},
 		{line: "3.13", version: "3.13.18", image: "python:3.13-bookworm@sha256:cc55e4ded9c95f6ce2133b3d096db43f214d280c2a8af65d83e246c8fa7d168c"},
 		{line: "3.14", version: "3.14.10", image: "python:3.14-bookworm@sha256:3fe825da0a80fa8e2cd79baadeb76b03c0ddf3d6cdbc8346778a0208b9d6038c"},
+		{line: "3.15", version: "3.15.2", image: "python:3.15-bookworm@sha256:6f060cab421d9509c6c6a6a7762c651baf03c3f1d0145befe16b688762b7fe81"},
 	}},
 	nativeRubyRuntime: {label: "Ruby", defaultLine: "3.4", lines: []nativeLine{
 		{line: "3.0", version: "3.0.7", image: "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72"},

@@ -356,6 +356,59 @@ else
   fails=$((fails + 1))
 fi
 
+# Missing release lines (w8/335): Python 3.15 shipped while the pinned lines
+# stopped at 3.14. A released line newer than every pinned one is flagged on
+# the newest pinned entry only; an exact-patch pin is no newer line.
+mkdir -p "$tmp/release"
+python3 - "$tmp/release" "$DIGEST_A" "$DIGEST_B" "$DIGEST_C" <<'PYFIXTURE'
+import json, sys
+from pathlib import Path
+root, a, b, c = Path(sys.argv[1]), *sys.argv[2:]
+entries = [("cnb-builder", "builder", "docker.io/example/builder:latest", "example/builder", a),
+           ("native-python", "native-base", "docker.io/library/python:3.13-bookworm", "python:3.13-bookworm", b),
+           ("native-python-3-14", "native-base", "docker.io/library/python:3.14-bookworm", "python:3.14-bookworm", c),
+           ("native-node-26", "native-base", "docker.io/library/node:26-bookworm", "node:26-bookworm", a),
+           ("native-node-14-21-2", "native-base", "docker.io/library/node:14.21.2-bullseye", "node:14.21.2-bullseye", b)]
+images = [{"id": ident, "kind": kind, "upstream": upstream, "committed": name + "@" + digest,
+           "resolved_at": "2026-10-20T00:00:00Z", "source": "x", "files": ["pin.go"]}
+          for ident, kind, upstream, name, digest in entries]
+(root / "inv.json").write_text(json.dumps({"schema": "bex.build-toolchain-freshness/v1", "images": images}))
+(root / "pin.go").write_text("".join(f'"{image["committed"]}"\n' for image in images))
+(root / "digests.json").write_text(json.dumps({image["upstream"]: image["committed"].split("@")[1] for image in images}))
+PYFIXTURE
+release_resolve() {
+  printf '{"docker.io/library/python":"%s","docker.io/library/node":"%s"}\n' "$1" "$2" >"$tmp/release/lines.json"
+  env FRESHNESS_ROOT="$tmp/release" FRESHNESS_INVENTORY="$tmp/release/inv.json" \
+      FRESHNESS_PIN_SITES="pin.go" FRESHNESS_DIGESTS="$tmp/release/digests.json" \
+      FRESHNESS_LATEST_LINES="$tmp/release/lines.json" "$SCRIPT" resolve
+}
+release_resolve 3.15.2 26.13.1 >"$tmp/release/missing.json"
+if python3 - "$tmp/release/missing.json" <<'PYCHECK'
+import json, sys
+report = {image["id"]: image for image in json.load(open(sys.argv[1]))["images"]}
+flagged = {ident: image["missing_line"] for ident, image in report.items() if "missing_line" in image}
+changed = {ident for ident, image in report.items() if image["changed"]}
+sys.exit(0 if flagged == {"native-python-3-14": "3.15"} and changed == {"native-python-3-14"} else 1)
+PYCHECK
+then
+  echo "ok: a released Python line newer than every pinned one is flagged on the newest pin"
+else
+  echo "FAIL: missing Python 3.15 line not flagged on native-python-3-14 alone: $(cat "$tmp/release/missing.json")" >&2
+  fails=$((fails + 1))
+fi
+assert_stdout "the issue body asks for the missing line" 'released line missing: `3.15`' \
+  "$SCRIPT" issue-body "$tmp/release/missing.json"
+release_resolve 3.14.10 27.0.0 >"$tmp/release/node.json"
+assert_stdout "a released Node major newer than every pinned one is flagged" '"missing_line": "27"' cat "$tmp/release/node.json"
+# Lines compare numerically: 3.9 is older than 3.14.
+release_resolve 3.9.25 26.13.1 >"$tmp/release/current.json"
+if grep -q '"changed": true' "$tmp/release/current.json"; then
+  echo "FAIL: no released line is newer than the pinned ones" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: released lines compare numerically, and current ones are not drift"
+fi
+
 if [ "$fails" -ne 0 ]; then
   echo "FAIL: $fails build-toolchain freshness checks" >&2
   exit 1
