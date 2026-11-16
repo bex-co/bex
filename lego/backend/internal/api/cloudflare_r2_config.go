@@ -60,11 +60,13 @@ func decodeRules[T any](r *http.Request, limit int64) ([]T, error) {
 }
 
 func (c *cloudflareR2) registerConfig(mux *http.ServeMux) {
-	registerRules(c, mux, "cors", func(b store.ObjectBucket) json.RawMessage { return b.CORS }, cfCORSBodyLimit, c.svc.SetCORS)
-	registerRules(c, mux, "lifecycle", func(b store.ObjectBucket) json.RawMessage { return b.Lifecycle }, cfLifecycleBodyLimit, c.svc.SetLifecycle)
+	registerRules(c, mux, "cors", objectstorage.AuditVerbGetBucketCORS, objectstorage.AuditVerbSetBucketCORS,
+		func(b store.ObjectBucket) json.RawMessage { return b.CORS }, cfCORSBodyLimit, c.svc.SetCORS)
+	registerRules(c, mux, "lifecycle", objectstorage.AuditVerbGetBucketLifecycle, objectstorage.AuditVerbSetBucketLifecycle,
+		func(b store.ObjectBucket) json.RawMessage { return b.Lifecycle }, cfLifecycleBodyLimit, c.svc.SetLifecycle)
 	// Cloudflare has no lifecycle delete route (wrangler puts the set without
 	// the rule), but a CORS configuration is deleted.
-	c.route(mux, "DELETE "+cloudflareAccountR2+"/buckets/{bucket}/cors", core.RelCanCreate, func(call *cfCall) error {
+	c.route(mux, "DELETE "+cloudflareAccountR2+"/buckets/{bucket}/cors", objectstorage.AuditVerbDeleteBucketCORS, core.RelCanCreate, func(call *cfCall) error {
 		b, err := call.bucket()
 		if err != nil {
 			return err
@@ -74,13 +76,14 @@ func (c *cloudflareR2) registerConfig(mux *http.ServeMux) {
 }
 
 // registerRules serves GET (list) and PUT (set) of a bucket's rule set under
-// /buckets/{bucket}/<name>. The stored rules are listed as they were stored;
+// /buckets/{bucket}/<name>, recorded in the audit log under getVerb and setVerb.
+// The stored rules are listed as they were stored;
 // a set is validated and stored by the service (set), so what a route accepts
 // is what the sweep or the public host will run.
-func registerRules[T any](c *cloudflareR2, mux *http.ServeMux, name string, stored func(store.ObjectBucket) json.RawMessage, limit int64,
+func registerRules[T any](c *cloudflareR2, mux *http.ServeMux, name, getVerb, setVerb string, stored func(store.ObjectBucket) json.RawMessage, limit int64,
 	set func(ctx context.Context, workspaceID string, b store.ObjectBucket, rules []T) error) {
 	path := cloudflareAccountR2 + "/buckets/{bucket}/" + name
-	c.route(mux, "GET "+path, core.RelCanView, func(call *cfCall) error {
+	c.route(mux, "GET "+path, getVerb, core.RelCanView, func(call *cfCall) error {
 		b, err := call.bucket()
 		if err != nil {
 			return err
@@ -94,7 +97,7 @@ func registerRules[T any](c *cloudflareR2, mux *http.ServeMux, name string, stor
 		writeCFResult(call.w, map[string]any{"rules": rules})
 		return nil
 	})
-	c.route(mux, "PUT "+path, core.RelCanCreate, func(call *cfCall) error {
+	c.route(mux, "PUT "+path, setVerb, core.RelCanCreate, func(call *cfCall) error {
 		rules, err := decodeRules[T](call.r, limit)
 		if err != nil {
 			return err
@@ -121,7 +124,7 @@ func (call *cfCall) done(err error) error {
 // managed domain, dev-url, is served by registerManagedDomain). Listing
 // custom domains answers an empty list instead, so `domain list` works.
 func (c *cloudflareR2) registerNotOffered(mux *http.ServeMux) {
-	c.route(mux, "GET "+cloudflareAccountR2+"/buckets/{bucket}/domains/custom", core.RelCanView, func(call *cfCall) error {
+	c.route(mux, "GET "+cloudflareAccountR2+"/buckets/{bucket}/domains/custom", objectstorage.AuditVerbListCustomDomains, core.RelCanView, func(call *cfCall) error {
 		if _, err := call.bucket(); err != nil {
 			return err
 		}

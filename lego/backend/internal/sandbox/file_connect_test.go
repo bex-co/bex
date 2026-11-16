@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -156,6 +157,51 @@ func TestFileConnectPinnedMintAndUpload(t *testing.T) {
 	}
 	if f.calls.Load() != 1 {
 		t.Fatalf("gateway called %d times", f.calls.Load())
+	}
+}
+
+// auditSpy records the audit events a service writes.
+type auditSpy struct {
+	mu     sync.Mutex
+	events []core.AuditEvent
+}
+
+func (a *auditSpy) Record(_ context.Context, ev core.AuditEvent) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.events = append(a.events, ev)
+	return nil
+}
+
+func (a *auditSpy) verbs() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	out := make([]string, 0, len(a.events))
+	for _, ev := range a.events {
+		out = append(out, ev.Verb)
+	}
+	return out
+}
+
+// TestFileConnectAuditNamesTheMintAndTheTransfer: the redemption authorizes in
+// the transfer route's handler closure, so a derived verb recorded the closure
+// ("api.composedMuxes.ConnectFileHandler.func9", 214 production rows, w21/087).
+// The mint and the transfer each record a row under a verb a reader can search.
+func TestFileConnectAuditNamesTheMintAndTheTransfer(t *testing.T) {
+	f := newFileConnectFixture(t, "id-a", nil, nil)
+	spy := &auditSpy{}
+	f.svc.Base.Audit = spy
+
+	token := f.mint(t, "upload", "/workspace/out.txt")
+	if got := spy.verbs(); len(got) != 1 || got[0] != AuditVerbConnectFile {
+		t.Fatalf("after the mint the audit verbs are %v, want [%s]", got, AuditVerbConnectFile)
+	}
+	if got := redeemFile(t, token, strings.NewReader("x")).StatusCode; got != http.StatusNoContent {
+		t.Fatalf("upload status %d", got)
+	}
+	want := []string{AuditVerbConnectFile, AuditVerbTransferFile}
+	if got := spy.verbs(); !slices.Equal(got, want) {
+		t.Fatalf("audit verbs = %v, want %v", got, want)
 	}
 }
 

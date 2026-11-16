@@ -1251,6 +1251,32 @@ func (b *Base) AuthorizeWorkspaceTarget(ctx context.Context, relation, workspace
 	return workspaceID, err
 }
 
+// AuthorizeAs is Authorize with the verb named by the caller, for a path whose
+// stack holds no verb method for callerVerb to read: an HTTP adapter's route
+// closure, or a helper that every surface's closure calls. callerVerb would
+// record the closure ("api.route.func1", "usage.RegisterREST.func1"), which tells
+// a reader of the audit log nothing. verb is spelled "<feature>.<Action>", as a
+// derived one is (objectstorage.AuditVerbPutObject).
+func (b *Base) AuthorizeAs(ctx context.Context, verb, relation string) error {
+	object, err := b.callerWorkspace(ctx)
+	return b.authorizeAndAudit(ctx, relation, object, "", verb, err)
+}
+
+// AuthorizeTargetAs is AuthorizeTarget with the verb named by the caller; see
+// AuthorizeAs.
+func (b *Base) AuthorizeTargetAs(ctx context.Context, verb, relation, target string) error {
+	object, err := b.callerWorkspace(ctx)
+	return b.authorizeAndAudit(ctx, relation, object, target, verb, err)
+}
+
+// AuthorizeWorkspaceAs is AuthorizeWorkspace with the verb named by the caller;
+// see AuthorizeAs.
+func (b *Base) AuthorizeWorkspaceAs(ctx context.Context, verb, relation, workspaceID string) (string, error) {
+	workspaceID, resolveErr := b.workspaceArgument(ctx, workspaceID)
+	err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(workspaceID), "", verb, resolveErr)
+	return workspaceID, err
+}
+
 func (b *Base) workspaceArgument(ctx context.Context, workspaceID string) (string, error) {
 	if workspaceID != "" {
 		return workspaceID, nil

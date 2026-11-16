@@ -44,7 +44,7 @@ func (c *cloudflareR2) registerObjects(mux *http.ServeMux) {
 	// The bytes travel in this call, so the server's 30 s timeouts are lifted
 	// for it, the Content-Length is required, and the body goes to Wasabi as it
 	// arrives (objectstorage.Service.PutStream).
-	c.route(mux, "PUT "+cloudflareObjectPattern, core.RelCanCreate, func(call *cfCall) error {
+	c.route(mux, "PUT "+cloudflareObjectPattern, objectstorage.AuditVerbPutObject, core.RelCanCreate, func(call *cfCall) error {
 		c.extendStreamDeadlines(call.w)
 		if class := call.r.Header.Get("cf-r2-storage-class"); class != "" && class != cfStorageClass {
 			return cfNotEntitled("the %s storage class is not offered by bex, which has one class", class)
@@ -66,7 +66,7 @@ func (c *cloudflareR2) registerObjects(mux *http.ServeMux) {
 	// A get opens the object (a missing one is 10007) and streams it back with
 	// the headers it was stored with. A HEAD, which the same pattern matches,
 	// asks Wasabi for the headers only.
-	c.route(mux, "GET "+cloudflareObjectPattern, core.RelCanViewSensitive, func(call *cfCall) error {
+	c.route(mux, "GET "+cloudflareObjectPattern, objectstorage.AuditVerbGetObject, core.RelCanViewSensitive, func(call *cfCall) error {
 		b, err := call.bucket()
 		if err != nil {
 			return err
@@ -97,7 +97,7 @@ func (c *cloudflareR2) registerObjects(mux *http.ServeMux) {
 
 	// A delete of a missing key succeeds, as S3 and Cloudflare answer; Render's
 	// route answers 404 and wrangler treats a 404 here as success anyway.
-	c.route(mux, "DELETE "+cloudflareObjectPattern, core.RelCanCreate, func(call *cfCall) error {
+	c.route(mux, "DELETE "+cloudflareObjectPattern, objectstorage.AuditVerbDeleteObject, core.RelCanCreate, func(call *cfCall) error {
 		b, err := call.bucket()
 		if err != nil {
 			return err

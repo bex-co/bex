@@ -154,15 +154,15 @@ type cfCall struct {
 }
 
 // route registers pattern with the relation its caller needs on the account's
-// workspace (ADR112 D6). fn returns the failure to answer, or nil after it
-// wrote its own answer.
-func (c *cloudflareR2) route(mux *http.ServeMux, pattern, relation string, fn func(*cfCall) error) {
+// workspace (ADR112 D6), recorded in the audit log under verb. fn returns the
+// failure to answer, or nil after it wrote its own answer.
+func (c *cloudflareR2) route(mux *http.ServeMux, pattern, verb, relation string, fn func(*cfCall) error) {
 	mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		if !c.svc.Enabled() {
 			writeCFError(w, cfNotEntitled("object storage is not available on this bex deployment"))
 			return
 		}
-		workspaceID, err := c.base.AuthorizeWorkspace(r.Context(), relation, r.PathValue("accountId"))
+		workspaceID, err := c.base.AuthorizeWorkspaceAs(r.Context(), verb, relation, r.PathValue("accountId"))
 		if err != nil {
 			writeCFError(w, cloudflareError(err))
 			return
@@ -181,7 +181,7 @@ func cfNotEntitled(format string, args ...any) *cfError {
 // It still needs a caller who can view the workspace, so the refusal is not an
 // unauthenticated oracle for which account ids exist.
 func (c *cloudflareR2) refuse(mux *http.ServeMux, pattern, message string) {
-	c.route(mux, pattern, core.RelCanView, func(*cfCall) error {
+	c.route(mux, pattern, objectstorage.AuditVerbNotOffered, core.RelCanView, func(*cfCall) error {
 		return cfNotEntitled("%s", message)
 	})
 }

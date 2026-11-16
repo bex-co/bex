@@ -54,7 +54,7 @@ var byIDResolutions = map[string]byIDResolution{
 	"services":                {"apps", "AuthorizeApp", "cluster-wide CR lookup, authorized on the App's tenant label", nil},
 	"cron-jobs":               {"apps", "AuthorizeApp", "a cron job is a service", nil},
 	"disks":                   {"apps", "authorizeDisk", "disk row → its App → AuthorizeApp", nil},
-	"blueprints":              {"apps", "ScopeByID", "BlueprintWorkspace routing read (w4/m169, w5/m115)", []string{"blueprintScope"}},
+	"blueprints":              {"apps", "ScopeByID", "BlueprintWorkspace routing read (w4/m169, w5/m115); blueprintScope and blueprintScopeAs both resolve through it", []string{"resolveBlueprintScope"}},
 	"postgres":                {"postgres", "AuthorizeDatabase", "cluster-wide CR lookup, authorized on the Database's tenant label", nil},
 	"key-value":               {"keyvalue", "AuthorizeKeyValue", "cluster-wide CR lookup, authorized on the KeyValue's tenant label", nil},
 	"redis":                   {"keyvalue", "AuthorizeKeyValue", "Render's deprecated spelling of key-value (w3/m274): the same verbs", nil},

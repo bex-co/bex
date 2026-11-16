@@ -81,7 +81,7 @@ type cfCreateBucketRequest struct {
 }
 
 func (c *cloudflareR2) registerBuckets(mux *http.ServeMux) {
-	c.route(mux, "GET "+cloudflareAccountR2+"/buckets", core.RelCanView, func(call *cfCall) error {
+	c.route(mux, "GET "+cloudflareAccountR2+"/buckets", objectstorage.AuditVerbListBuckets, core.RelCanView, func(call *cfCall) error {
 		buckets, err := c.svc.ListBuckets(call.r.Context(), call.workspaceID)
 		if err != nil {
 			return err
@@ -94,7 +94,7 @@ func (c *cloudflareR2) registerBuckets(mux *http.ServeMux) {
 		return nil
 	})
 
-	c.route(mux, "POST "+cloudflareAccountR2+"/buckets", core.RelCanCreate, func(call *cfCall) error {
+	c.route(mux, "POST "+cloudflareAccountR2+"/buckets", objectstorage.AuditVerbCreateBucket, core.RelCanCreate, func(call *cfCall) error {
 		var req cfCreateBucketRequest
 		if err := readCFBody(call.r, cfCreateBodyLimit, &req); err != nil {
 			return err
@@ -120,7 +120,7 @@ func (c *cloudflareR2) registerBuckets(mux *http.ServeMux) {
 		return nil
 	})
 
-	c.route(mux, "GET "+cloudflareAccountR2+"/buckets/{bucket}", core.RelCanView, func(call *cfCall) error {
+	c.route(mux, "GET "+cloudflareAccountR2+"/buckets/{bucket}", objectstorage.AuditVerbGetBucket, core.RelCanView, func(call *cfCall) error {
 		b, err := call.bucket()
 		if err != nil {
 			return err
@@ -129,7 +129,7 @@ func (c *cloudflareR2) registerBuckets(mux *http.ServeMux) {
 		return nil
 	})
 
-	c.route(mux, "DELETE "+cloudflareAccountR2+"/buckets/{bucket}", core.RelCanCreate, func(call *cfCall) error {
+	c.route(mux, "DELETE "+cloudflareAccountR2+"/buckets/{bucket}", objectstorage.AuditVerbDeleteBucket, core.RelCanCreate, func(call *cfCall) error {
 		if err := c.svc.DeleteBucket(call.r.Context(), call.workspaceID, call.r.PathValue("bucket")); err != nil {
 			return err
 		}
@@ -138,7 +138,7 @@ func (c *cloudflareR2) registerBuckets(mux *http.ServeMux) {
 	})
 
 	// A storage class change has nothing to change: bex has one class.
-	c.route(mux, "PATCH "+cloudflareAccountR2+"/buckets/{bucket}", core.RelCanCreate, func(*cfCall) error {
+	c.route(mux, "PATCH "+cloudflareAccountR2+"/buckets/{bucket}", objectstorage.AuditVerbUpdateBucket, core.RelCanCreate, func(*cfCall) error {
 		return cfNotEntitled("changing a bucket's storage class is not offered by bex, which has one class")
 	})
 
@@ -175,7 +175,7 @@ func (c *cloudflareR2) serveStorageMetrics(w http.ResponseWriter, r *http.Reques
 		writeCFError(w, cfFail(http.StatusBadRequest, cfCodeInvalidRequest, "bex answers only the %s GraphQL operation", cfStorageMetricsOperation))
 		return
 	}
-	workspaceID, err := c.base.AuthorizeWorkspace(r.Context(), core.RelCanView, req.Variables.AccountTag)
+	workspaceID, err := c.base.AuthorizeWorkspaceAs(r.Context(), objectstorage.AuditVerbGetBucketUsage, core.RelCanView, req.Variables.AccountTag)
 	if err != nil {
 		writeCFError(w, cloudflareError(err))
 		return

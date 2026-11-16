@@ -79,7 +79,7 @@ type listObjectsResponse struct {
 // RegisterREST mounts the four routes of Render's object storage.
 func (o *renderObjects) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/objects/{ownerId}/{region}", func(w http.ResponseWriter, r *http.Request) {
-		o.serve(w, r, core.RelCanView, func(workspaceID string, region objectstorage.Region) (int, any, error) {
+		o.serve(w, r, objectstorage.AuditVerbListObjects, core.RelCanView, func(workspaceID string, region objectstorage.Region) (int, any, error) {
 			limit, err := listLimit(r)
 			if err != nil {
 				return 0, nil, err
@@ -100,7 +100,7 @@ func (o *renderObjects) RegisterREST(mux *http.ServeMux) {
 
 	mux.HandleFunc("PUT /v1/objects/{ownerId}/{region}/{key...}", func(w http.ResponseWriter, r *http.Request) {
 		// Presigning a PUT lets the caller write, so it is a create.
-		o.serve(w, r, core.RelCanCreate, func(workspaceID string, region objectstorage.Region) (int, any, error) {
+		o.serve(w, r, objectstorage.AuditVerbPutObject, core.RelCanCreate, func(workspaceID string, region objectstorage.Region) (int, any, error) {
 			var req putObjectRequest
 			if err := core.DecodeJSON(r, &req); err != nil {
 				return 0, nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
@@ -119,7 +119,7 @@ func (o *renderObjects) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/objects/{ownerId}/{region}/{key...}", func(w http.ResponseWriter, r *http.Request) {
 		// Object bytes are customer data, as a Postgres export is, so minting a
 		// URL to read them is a sensitive read (ADR112 D6).
-		o.serve(w, r, core.RelCanViewSensitive, func(workspaceID string, region objectstorage.Region) (int, any, error) {
+		o.serve(w, r, objectstorage.AuditVerbGetObject, core.RelCanViewSensitive, func(workspaceID string, region objectstorage.Region) (int, any, error) {
 			get, err := o.svc.MintGet(r.Context(), workspaceID, region, r.PathValue("key"))
 			if err != nil {
 				return 0, nil, err
@@ -129,7 +129,7 @@ func (o *renderObjects) RegisterREST(mux *http.ServeMux) {
 	})
 
 	mux.HandleFunc("DELETE /v1/objects/{ownerId}/{region}/{key...}", func(w http.ResponseWriter, r *http.Request) {
-		o.serve(w, r, core.RelCanCreate, func(workspaceID string, region objectstorage.Region) (int, any, error) {
+		o.serve(w, r, objectstorage.AuditVerbDeleteObject, core.RelCanCreate, func(workspaceID string, region objectstorage.Region) (int, any, error) {
 			if err := o.svc.DeleteObject(r.Context(), workspaceID, region, r.PathValue("key")); err != nil {
 				return 0, nil, err
 			}
@@ -139,13 +139,14 @@ func (o *renderObjects) RegisterREST(mux *http.ServeMux) {
 }
 
 // serve runs one route: the not-offered answer while no credential is
-// installed, then the workspace authorization, then the region, then fn.
-func (o *renderObjects) serve(w http.ResponseWriter, r *http.Request, relation string, fn func(workspaceID string, region objectstorage.Region) (int, any, error)) {
+// installed, then the workspace authorization under the route's audit verb,
+// then the region, then fn.
+func (o *renderObjects) serve(w http.ResponseWriter, r *http.Request, verb, relation string, fn func(workspaceID string, region objectstorage.Region) (int, any, error)) {
 	if !o.svc.Enabled() {
 		core.WriteErr(w, objectsError(objectstorage.ErrNotConfigured))
 		return
 	}
-	workspaceID, err := o.base.AuthorizeWorkspace(r.Context(), relation, r.PathValue("ownerId"))
+	workspaceID, err := o.base.AuthorizeWorkspaceAs(r.Context(), verb, relation, r.PathValue("ownerId"))
 	if err != nil {
 		core.WriteErr(w, err)
 		return

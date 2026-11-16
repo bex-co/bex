@@ -228,6 +228,10 @@ type ServiceUsage struct {
 	Rows         []store.UsageSummaryRow
 }
 
+// AuditVerbMonthToDate is the audit verb of a usage read on every surface, as
+// the exported MonthToDate derives it.
+const AuditVerbMonthToDate = "usage.MonthToDate"
+
 // monthToDateAt is the implementation used by adapters. now controls both the
 // calendar month (monthStart is derived from it) and the inclusive upper bound
 // of the query. Adapters pass s.Now().UTC() for the live query or the start of
@@ -238,7 +242,9 @@ type ServiceUsage struct {
 // caller is not a member of is core.ErrForbidden.
 func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Time) (Summary, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	// Named, not derived: the REST, GraphQL and MCP adapters each reach this
+	// through a closure, whose name would be the verb recorded.
+	if err := s.AuthorizeAs(ctx, AuditVerbMonthToDate, core.RelCanView); err != nil {
 		return Summary{}, err
 	}
 	if s.Store == nil {

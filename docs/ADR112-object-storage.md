@@ -192,7 +192,7 @@ The routes are not in Render's OpenAPI, so [ADR018](ADR018-render-parity.md)'s s
 
 Render has no bucket-level access control that I could find: access is the workspace role plus the API key, and a key today carries every permission of the account ([fine-grained keys](https://render.com/changelog/scope-access-to-a-workspace-s-resources-with-api-keys) are a private beta). bex mirrors Render's roles ([ADR024](ADR024-members.md), `deploy/gitops/authz/model.fga`), so access is by workspace and needs no new FGA type.
 
-- **OpenFGA**, through `Base.AuthorizeWorkspace` (`lego/backend/internal/core/base.go:1231`) on `ownerId` or `accountId`:
+- **OpenFGA**, through `Base.AuthorizeWorkspaceAs` (`lego/backend/internal/core/base.go`) on `ownerId` or `accountId`:
 
   | Operation | Relation |
   | --- | --- |
@@ -202,6 +202,8 @@ Render has no bucket-level access control that I could find: access is the works
   | `dev-url enable\|disable` | `can_manage` |
 
   Object bytes are customer data, as Postgres exports are, so get is sensitive, matching [ADR095](ADR095-agent-attachments.md).
+
+  **Audit verbs (w21/087).** The routes authorize in their HTTP adapters, where `core.Base` would derive the audit verb from the calling closure; the audit log named them `api.route.func1`, `api.RegisterREST.func2` and the like. Each route names its verb through `AuthorizeWorkspaceAs`, spelled `objectstorage.<Action>` (`lego/backend/internal/objectstorage/audit.go`): `PutObject`, `GetObject`, `DeleteObject`, `ListObjects`, `CreateBucket`, `DeleteBucket`, `GetBucket`, `ListBuckets`, `UpdateBucket`, `GetBucketUsage`, `Get/Set/DeleteBucketCORS`, `Get/SetBucketLifecycle`, `Get/SetBucketPublic`, `ListCustomDomains` and `NotOffered` (the refusals). Both contracts share a verb for the same action. A write relation records the allowed and the denied call, a read relation only the denied one, so a successful get, list or info leaves no row. Render's audit-log enum has no object or bucket event, so none maps onto one: REST reports the verb as bex's own `<feature>.<Action>` value ([audit-logs-api.md](render-artifacts/audit-logs-api.md)). `TestEveryRegisteredRouteRecordsANamedVerb` drives every route and fails a verb that is not `<feature>.<Action>`.
 
 - **OAuth scope class**, for a human OAuth token only: `bex.read`, `bex.write` or `bex.sensitive` (`lego/backend/internal/core/scope.go:217-232`). Machine API keys carry no scope and skip this layer ([ADR012](ADR012-auth.md)); they hold the `developer` role, so a key reaches every object of its workspace, as a Render key does. **The matrix row for Contract A's `GET …/{key...}` changes from `OpClassRead` to `OpClassSensitive`** (`scope_matrix_ops.go:800`, beside the Postgres export at `:810`); left as read, a developer's token that consented to `bex.read` only could mint a presigned GET for the bytes. Contract B's object get is `sensitive`, its public toggle `write`, and the rest follow the table. t002 adds a test for each.
 - **Out of scope:** per-bucket or per-prefix credentials. Cloudflare scopes tokens to buckets, not prefixes; that belongs to the S3 API follow-up (D10).

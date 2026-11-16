@@ -18,6 +18,7 @@ package apps
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -33,6 +34,8 @@ import (
 // get/plan/update take Render's blueprintId.
 func TestRenderBlueprintMCPTools(t *testing.T) {
 	svc, st, ctx := newOnboardingService(t, onboardingManifest)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
 	server := mcp.NewServer(&mcp.Implementation{Name: "m283", Version: "0"}, nil)
 	svc.RegisterMCP(server)
 	a, b := mcp.NewInMemoryTransports()
@@ -105,6 +108,16 @@ func TestRenderBlueprintMCPTools(t *testing.T) {
 	}
 	if _, refused := call("update_blueprint", map[string]any{"blueprintId": id, "autoSync": true}); refused {
 		t.Fatal("re-enabling autoSync was refused")
+	}
+	// The tool authorizes from its closure; a derived verb recorded
+	// "apps.registerOnboardingMCP.func5" (w21/087).
+	for _, ev := range sink.events {
+		if strings.Contains(ev.Verb, "func") {
+			t.Errorf("an MCP Blueprint call recorded the closure verb %q", ev.Verb)
+		}
+	}
+	if n := sink.countVerb(AuditVerbUpdateBlueprint); n < 2 {
+		t.Errorf("two update_blueprint calls recorded %d %s rows, want at least 2", n, AuditVerbUpdateBlueprint)
 	}
 	got, refused := call("get_blueprint", map[string]any{"blueprintId": id})
 	if refused || got["id"] != id || got["status"] != store.BlueprintStatusCreated {

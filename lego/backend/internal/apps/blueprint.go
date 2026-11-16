@@ -681,25 +681,36 @@ type UpdateBlueprintRequest struct {
 // applying anything. An optional blueprint ID includes owned-resource detachments.
 // Reads current state when available and requires can_view.
 func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML, blueprintID string) (BlueprintValidation, error) {
-	ctx, blueprintID, err := s.blueprintRequestScope(ctx, core.RelCanView, blueprintID, ownerID)
+	ctx, blueprintID, err := s.blueprintRequestScope(ctx, AuditVerbValidateBlueprint, core.RelCanView, blueprintID, ownerID)
 	if err != nil {
 		return BlueprintValidation{}, err
 	}
 	return s.blueprintValidationFor(ctx, "", "", bexYAML, blueprintID)
 }
 
-// blueprintRequestScope authorizes a validate/preview: on behalf of an existing
-// Blueprint it acts in that Blueprint's own workspace (blueprintScope, w4/m172)
-// unless ownerID names one; for a new manifest, in the named or default one.
-// Like blueprintScope it returns the storage (blp-) form of bpID.
-func (s *Service) blueprintRequestScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, string, error) {
+// The audit verbs of a Blueprint validation, preview and MCP update check, named
+// rather than derived: the REST, GraphQL and MCP adapters each reach them through
+// a closure, whose name would be the verb recorded.
+const (
+	AuditVerbValidateBlueprint = "apps.ValidateBlueprint"
+	AuditVerbPreviewBlueprint  = "apps.PreviewBlueprint"
+	// AuditVerbUpdateBlueprint is the verb of MCP's update_blueprint edit check,
+	// the one UpdateBlueprint derives for the write itself.
+	AuditVerbUpdateBlueprint = "apps.UpdateBlueprint"
+)
+
+// blueprintRequestScope authorizes a validate/preview under verb: on behalf of an
+// existing Blueprint it acts in that Blueprint's own workspace (blueprintScope,
+// w4/m172) unless ownerID names one; for a new manifest, in the named or default
+// one. Like blueprintScope it returns the storage (blp-) form of bpID.
+func (s *Service) blueprintRequestScope(ctx context.Context, verb, relation, bpID, ownerID string) (context.Context, string, error) {
 	if bpID != "" {
-		return s.blueprintScope(ctx, relation, bpID, ownerID)
+		return s.blueprintScopeAs(ctx, verb, relation, bpID, ownerID)
 	}
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
 	}
-	return ctx, bpID, s.Authorize(ctx, relation)
+	return ctx, bpID, s.AuthorizeAs(ctx, verb, relation)
 }
 
 // unresolvedRepoKey marks a read-only Blueprint validation that does not know
@@ -1141,7 +1152,7 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 // minted here and returns it for the create to pass back. The default stays
 // adopt, the review of managing the resources the file names.
 func (s *Service) previewBlueprintWith(ctx context.Context, ownerID, repo, branch, filePath string, opts blueprintPreviewOptions) (BlueprintPreview, error) {
-	ctx, forBlueprintID, err := s.blueprintRequestScope(ctx, core.RelCanViewSensitive, opts.ForBlueprintID, ownerID)
+	ctx, forBlueprintID, err := s.blueprintRequestScope(ctx, AuditVerbPreviewBlueprint, core.RelCanViewSensitive, opts.ForBlueprintID, ownerID)
 	if err != nil {
 		return BlueprintPreview{}, err
 	}
@@ -2245,6 +2256,32 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 // returned id is always the storage form, which callers use for every lookup,
 // comparison and write downstream.
 func (s *Service) blueprintScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, string, error) {
+	ctx, bpID, err := s.resolveBlueprintScope(ctx, bpID, ownerID)
+	if err != nil {
+		return ctx, bpID, err
+	}
+	if err := s.AuthorizeTarget(ctx, relation, core.BlueprintTarget(ids.BlueprintPublicID(bpID))); err != nil {
+		return ctx, bpID, err
+	}
+	return ctx, bpID, s.blueprintsAvailable()
+}
+
+// blueprintScopeAs is blueprintScope with the audit verb named by the caller, for
+// the adapters' shared helpers (blueprintRequestScope).
+func (s *Service) blueprintScopeAs(ctx context.Context, verb, relation, bpID, ownerID string) (context.Context, string, error) {
+	ctx, bpID, err := s.resolveBlueprintScope(ctx, bpID, ownerID)
+	if err != nil {
+		return ctx, bpID, err
+	}
+	if err := s.AuthorizeTargetAs(ctx, verb, relation, core.BlueprintTarget(ids.BlueprintPublicID(bpID))); err != nil {
+		return ctx, bpID, err
+	}
+	return ctx, bpID, s.blueprintsAvailable()
+}
+
+// resolveBlueprintScope scopes ctx to the workspace that owns Blueprint bpID and
+// returns its storage-form id; the authorization is the caller's.
+func (s *Service) resolveBlueprintScope(ctx context.Context, bpID, ownerID string) (context.Context, string, error) {
 	bpID = ids.BlueprintStorageID(bpID)
 	var owner core.ResourceOwner
 	if s.Blueprints != nil {
@@ -2256,13 +2293,14 @@ func (s *Service) blueprintScope(ctx context.Context, relation, bpID, ownerID st
 	if err != nil {
 		return ctx, bpID, store.MapError(err)
 	}
-	if err := s.AuthorizeTarget(ctx, relation, core.BlueprintTarget(ids.BlueprintPublicID(bpID))); err != nil {
-		return ctx, bpID, err
-	}
-	if s.Blueprints == nil {
-		return ctx, bpID, ErrBlueprintsUnavailable
-	}
 	return ctx, bpID, nil
+}
+
+func (s *Service) blueprintsAvailable() error {
+	if s.Blueprints == nil {
+		return ErrBlueprintsUnavailable
+	}
+	return nil
 }
 
 // resolveTenantID returns the effective tenant id.

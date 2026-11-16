@@ -364,10 +364,14 @@ func (s *Service) view(ctx context.Context, p store.Project) (ProjectView, error
 	return vs[0], nil
 }
 
+// AuditVerbList is the audit verb of a project list on every surface: the REST
+// list reaches listBare from a closure, whose name would be the verb recorded.
+const AuditVerbList = "projects.List"
+
 // listBare authorizes the caller to view workspaceID and returns the resolved
 // workspace id with its projects as bare views (no membership).
 func (s *Service) listBare(ctx context.Context, workspaceID string) (string, []ProjectView, error) {
-	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, workspaceID)
+	workspaceID, err := s.AuthorizeWorkspaceAs(ctx, AuditVerbList, core.RelCanView, workspaceID)
 	if err != nil {
 		return "", nil, err
 	}

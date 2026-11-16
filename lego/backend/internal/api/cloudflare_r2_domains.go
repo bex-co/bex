@@ -47,14 +47,14 @@ type cfManagedDomain struct {
 // needs only can_view (ADR112 D6). A private bucket is the default.
 func (c *cloudflareR2) registerManagedDomain(mux *http.ServeMux) {
 	path := cloudflareAccountR2 + "/buckets/{bucket}/domains/managed"
-	c.route(mux, "GET "+path, core.RelCanView, func(call *cfCall) error {
+	c.route(mux, "GET "+path, objectstorage.AuditVerbGetBucketPublic, core.RelCanView, func(call *cfCall) error {
 		b, err := call.bucket()
 		if err != nil {
 			return err
 		}
 		return call.writeManagedDomain(b, b.Public)
 	})
-	c.route(mux, "PUT "+path, core.RelCanManage, func(call *cfCall) error {
+	c.route(mux, "PUT "+path, objectstorage.AuditVerbSetBucketPublic, core.RelCanManage, func(call *cfCall) error {
 		var req struct {
 			Enabled *bool `json:"enabled"`
 		}

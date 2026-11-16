@@ -946,7 +946,9 @@ func (s *Service) updateBlueprintTool(ctx context.Context, in updateBlueprintArg
 	// The edit right is checked even when nothing changes: a no-op answer must
 	// not tell a read-only member the update succeeded.
 	owner := core.NamedWorkspace(ctx)
-	scoped, bpID, err := s.blueprintScope(ctx, core.RelCanCreate, in.BlueprintID, owner)
+	// Named, not derived: the tool's closure is the caller, and its name
+	// ("apps.registerOnboardingMCP.func5") would be the verb recorded.
+	scoped, bpID, err := s.blueprintScopeAs(ctx, AuditVerbUpdateBlueprint, core.RelCanCreate, in.BlueprintID, owner)
 	if err != nil {
 		return updateBlueprintResult{}, err
 	}

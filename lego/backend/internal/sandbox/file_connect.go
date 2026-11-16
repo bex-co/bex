@@ -104,15 +104,25 @@ func validateFileConnectPath(value string) error {
 	return nil
 }
 
-// authorizeFileTarget preserves exec's owner/admin and agent-session boundary.
+// The audit verbs of a file transfer: the token's mint, and the transfer it is
+// redeemed for. The redemption authorizes inside the transfer route's handler
+// closure, whose name ("api.composedMuxes.ConnectFileHandler.func9") a derived
+// verb would record, so both name their verb.
+const (
+	AuditVerbConnectFile  = "sandbox.ConnectFile"
+	AuditVerbTransferFile = "sandbox.TransferFile"
+)
+
+// authorizeFileTarget preserves exec's owner/admin and agent-session boundary,
+// recording the check under verb.
 // Both reading credentials and writing executable content require can_create;
 // the fresh check makes a role revoked since mint effective at redemption.
-func (s *Service) authorizeFileTarget(ctx context.Context, req FileConnectRequest) (string, osSandbox, error) {
+func (s *Service) authorizeFileTarget(ctx context.Context, verb string, req FileConnectRequest) (string, osSandbox, error) {
 	ctx, err := s.scopeSandbox(ctx, req.OwnerID, req.SandboxID)
 	if err != nil {
 		return "", osSandbox{}, err
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.AuthorizeAs(ctx, verb, core.RelCanCreate); err != nil {
 		return "", osSandbox{}, err
 	}
 	if err := s.fileAvailabilityError(); err != nil {
@@ -159,7 +169,7 @@ func (s *Service) authorizeFileTarget(ctx context.Context, req FileConnectReques
 // Only the returned transfer URI accepts it; run and gateway tickets use
 // different signing keys even when all features share the configured secret.
 func (s *Service) ConnectFile(ctx context.Context, req FileConnectRequest, baseURL string) (ConnectResponse, error) {
-	ws, raw, err := s.authorizeFileTarget(ctx, req)
+	ws, raw, err := s.authorizeFileTarget(ctx, AuditVerbConnectFile, req)
 	if err != nil {
 		return ConnectResponse{}, err
 	}
@@ -254,7 +264,7 @@ func (s *Service) ConnectFileHandler() http.Handler {
 			_ = controller.SetReadDeadline(time.Time{})
 			_ = controller.SetWriteDeadline(time.Time{})
 		}()
-		ws, raw, err := s.authorizeFileTarget(withResumeWait(ctx, LongResumeWait), FileConnectRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Operation: claims.Operation, Path: claims.Path})
+		ws, raw, err := s.authorizeFileTarget(withResumeWait(ctx, LongResumeWait), AuditVerbTransferFile, FileConnectRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Operation: claims.Operation, Path: claims.Path})
 		if err != nil {
 			core.WriteErr(w, err)
 			return
