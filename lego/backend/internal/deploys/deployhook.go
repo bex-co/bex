@@ -354,6 +354,14 @@ func (s *Service) DeployHookHandler() http.Handler {
 		// the credential out of RequestPath prevents it from reaching either the
 		// raw edge log or the tenant request-log pipeline (finding 25).
 		token := r.URL.Query().Get("key")
+		// Render: `key` is "Required. If it's missing, the response is 401. If
+		// it's invalid, the response is 404" (w4/689). Answered before the
+		// limiter, so every keyless caller does not share the empty key's bucket
+		// and get a 429 for what is a missing credential.
+		if token == "" {
+			core.WriteErrStatus(w, http.StatusUnauthorized, "deploy hook key is required")
+			return
+		}
 		if ok, retry := limiter.reserve(w.Header(), token); !ok {
 			seconds := max(1, int(math.Ceil(retry.Seconds())))
 			w.Header().Set("Retry-After", strconv.Itoa(seconds))

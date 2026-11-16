@@ -283,24 +283,74 @@ func TestDeployHookAnswers202WithNoIDWhenItsDeployWaits(t *testing.T) {
 	}
 }
 
-func TestDeployHookHandlerCollapsesInvalidAndRotatedTokensTo404(t *testing.T) {
+// Render: `key` is "Required. If it's missing, the response is 401. If it's
+// invalid, the response is 404" (render.com/docs/deploy-hooks, w4/689). A
+// rotated key is an invalid one, and a path other than the hook's is a 404
+// whatever its key.
+func TestDeployHookKeyStatusesMatchRender(t *testing.T) {
 	svc, _ := newService(newFakeStore(), sampleApp("web", "srv-1"))
+	svc.DeployHookLimiter = NewDeployHookRateLimiter(6000, 100)
 	old, err := svc.GetDeployHook(context.Background(), "web")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.RegenerateDeployHook(context.Background(), "web"); err != nil {
+	hook, err := svc.RegenerateDeployHook(context.Background(), "web")
+	if err != nil {
 		t.Fatal(err)
 	}
 	h := svc.DeployHookHandler()
-	for _, path := range []string{
-		"/v1/deploy-hooks/not-even-close",
-		old.URL,
+	for _, tc := range []struct {
+		name, target string
+		want         int
+		wantID       string
+	}{
+		{"missing", "/v1/deploy-hooks", http.StatusUnauthorized, "unauthorized"},
+		{"empty", "/v1/deploy-hooks?key=", http.StatusUnauthorized, "unauthorized"},
+		{"missing with ref", "/v1/deploy-hooks?ref=deadbeef", http.StatusUnauthorized, "unauthorized"},
+		{"malformed", "/v1/deploy-hooks?key=not-a-token", http.StatusNotFound, "not_found"},
+		{"unknown", "/v1/deploy-hooks?key=dhk-" + strings.Repeat("a", 43), http.StatusNotFound, "not_found"},
+		{"rotated", old.URL, http.StatusNotFound, "not_found"},
+		{"other path", "/v1/deploy-hooks/not-even-close", http.StatusNotFound, "not_found"},
+		{"valid", hook.URL, http.StatusOK, ""},
 	} {
+		for _, method := range []string{http.MethodGet, http.MethodPost} {
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, httptest.NewRequest(method, tc.target, nil))
+			if w.Code != tc.want {
+				t.Errorf("%s %s: code=%d body=%s, want %d", method, tc.name, w.Code, w.Body.String(), tc.want)
+				continue
+			}
+			if got := w.Header().Get("Cache-Control"); got != "no-store" {
+				t.Errorf("%s %s: Cache-Control = %q, want no-store", method, tc.name, got)
+			}
+			if got := w.Header().Get("Referrer-Policy"); got != "no-referrer" {
+				t.Errorf("%s %s: Referrer-Policy = %q, want no-referrer", method, tc.name, got)
+			}
+			if tc.wantID == "" {
+				continue
+			}
+			var body map[string]any
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatalf("%s %s: body not JSON: %v (%s)", method, tc.name, err, w.Body.String())
+			}
+			if body["id"] != tc.wantID || body["message"] == "" || body["message"] == nil {
+				t.Errorf("%s %s: body = %v, want id %q and a message", method, tc.name, body, tc.wantID)
+			}
+		}
+	}
+}
+
+// A keyless call is refused before the limiter, so callers with no key never
+// share one bucket and see 429 where Render answers 401.
+func TestDeployHookMissingKeyIsNotRateLimited(t *testing.T) {
+	svc, _ := newService(newFakeStore(), sampleApp("web", "srv-1"))
+	svc.DeployHookLimiter = NewDeployHookRateLimiter(0.01, 1)
+	h := svc.DeployHookHandler()
+	for i := range 3 {
 		w := httptest.NewRecorder()
-		h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, path, nil))
-		if w.Code != http.StatusNotFound {
-			t.Errorf("%s: code=%d body=%s, want 404", path, w.Code, w.Body.String())
+		h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/v1/deploy-hooks", nil))
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("call %d: code=%d body=%s, want 401", i, w.Code, w.Body.String())
 		}
 	}
 }
