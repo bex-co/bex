@@ -188,7 +188,8 @@ func (e *sweepEnv) store(region objectstorage.Region) objectstorage.Store {
 
 func (e *sweepEnv) sweep() error {
 	e.t.Helper()
-	return e.Sweeper.SweepWorkspace(context.Background(), e.WS)
+	_, err := e.Sweeper.SweepWorkspace(context.Background(), e.WS)
+	return err
 }
 
 func (e *sweepEnv) mustSweep() {

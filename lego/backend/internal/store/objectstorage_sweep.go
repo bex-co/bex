@@ -38,13 +38,18 @@ import (
 type ObjectStorageWorkspace struct {
 	ID      string
 	Retired bool
+	// LastObserved is the oldest observation among the workspace's usage rows,
+	// so a workspace with one stale region counts as stale. Zero when it has no
+	// usage row: the sweep has never recorded it.
+	LastObserved time.Time
 }
 
 // ListObjectStorageWorkspaces returns every workspace that has a bucket row, live
 // or retired, or a usage row, so the sweep never lists Wasabi for a workspace
 // that never used it. Retired workspaces come first, the one whose purge was
 // attempted longest ago (or never) leading, so a purge that keeps failing cannot
-// starve the rest.
+// starve the rest. The live ones follow in id order, each with its oldest
+// observation, which the sweep sorts them by (Sweeper.Pass).
 func (s *PGStore) ListObjectStorageWorkspaces(ctx context.Context) ([]ObjectStorageWorkspace, error) {
 	rows, err := s.Pool.Query(ctx, `
 		WITH ws AS (
@@ -54,7 +59,8 @@ func (s *PGStore) ListObjectStorageWorkspaces(ctx context.Context) ([]ObjectStor
 		)
 		SELECT ws.workspace_id,
 		       (EXISTS (SELECT 1 FROM object_buckets b WHERE b.workspace_id = ws.workspace_id AND b.deleted_at IS NOT NULL)
-		        OR NOT EXISTS (SELECT 1 FROM tenants t WHERE t.id = ws.workspace_id)) AS retired
+		        OR NOT EXISTS (SELECT 1 FROM tenants t WHERE t.id = ws.workspace_id)) AS retired,
+		       (SELECT min(u.observed_at) FROM object_storage_usage u WHERE u.workspace_id = ws.workspace_id) AS last_observed
 		FROM ws
 		ORDER BY retired DESC,
 		         COALESCE((SELECT max(b.purge_attempted_at) FROM object_buckets b
@@ -67,8 +73,12 @@ func (s *PGStore) ListObjectStorageWorkspaces(ctx context.Context) ([]ObjectStor
 	var out []ObjectStorageWorkspace
 	for rows.Next() {
 		var w ObjectStorageWorkspace
-		if err := rows.Scan(&w.ID, &w.Retired); err != nil {
+		var lastObserved *time.Time
+		if err := rows.Scan(&w.ID, &w.Retired, &lastObserved); err != nil {
 			return nil, err
+		}
+		if lastObserved != nil {
+			w.LastObserved = *lastObserved
 		}
 		out = append(out, w)
 	}

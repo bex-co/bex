@@ -21,9 +21,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -64,8 +67,16 @@ const (
 	sweepRegionTimeout = 30 * time.Minute
 
 	// sweepPassTimeout bounds a whole pass; what it did not reach is picked up by
-	// the next one.
+	// the next one, which starts with it (sweepOrder).
 	sweepPassTimeout = 50 * time.Minute
+
+	// sweepWorkers is how many workspaces one pass sweeps at once (ADR112 D8).
+	// One workspace's listing stays sequential, so this is also the most list
+	// requests in flight to Wasabi: the sweep is a client of a vendor that
+	// publishes no limit for S3 requests and shares the account with the
+	// platform's backups (ADR112 D1), so it takes a few slots, not a burst. The
+	// production measurements behind 4 are in ADR112 D8.
+	sweepWorkers = 4
 
 	// sweepLockName is the advisory lock that keeps the pass on one replica.
 	sweepLockName = "object-storage-sweep"
@@ -128,6 +139,10 @@ type Sweeper struct {
 	MinGap time.Duration
 	// RegionTimeout bounds one workspace in one region; PassTimeout the pass.
 	RegionTimeout, PassTimeout time.Duration
+	// Workers is how many workspaces a pass sweeps at once; below one it is one.
+	Workers int
+	// Metrics records each pass and workspace; nil records nothing.
+	Metrics *SweepMetrics
 	// MaxListed stops a listing after about this many objects.
 	MaxListed int
 	Now       func() time.Time
@@ -140,7 +155,7 @@ func NewSweeper(svc *Service, repo SweepRepository) *Sweeper {
 	return &Sweeper{
 		svc: svc, repo: repo,
 		LifecycleCap: MaxLifecycleDeletesPerRule, MinGap: sweepMinGap,
-		RegionTimeout: sweepRegionTimeout, PassTimeout: sweepPassTimeout, MaxListed: int(MaxSweepListedObjects),
+		RegionTimeout: sweepRegionTimeout, PassTimeout: sweepPassTimeout, Workers: sweepWorkers, MaxListed: int(MaxSweepListedObjects),
 		Now: time.Now, Logf: log.Printf,
 	}
 }
@@ -149,8 +164,19 @@ func NewSweeper(svc *Service, repo SweepRepository) *Sweeper {
 // replica runs it and Exclusive lets one pass at a time through (the attachment
 // sweep, which beside it purges Wasabi objects, claims rows with SKIP LOCKED
 // instead, but a pass over a prefix listing has no row to claim).
+//
+// A pass never outlives its interval: its context ends at the interval, or at
+// PassTimeout when that is sooner. core.Poll finishes a pass before it reads the
+// ticker, which holds one tick, so a tick that falls inside a pass is skipped,
+// never queued, and passes do not overlap on a replica; the advisory lock does
+// the same across replicas.
 func (sw *Sweeper) Run(ctx context.Context, interval time.Duration) {
 	core.Poll(ctx, "object storage sweep", interval, func(ctx context.Context) error {
+		if interval > 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, interval)
+			defer cancel()
+		}
 		if sw.Exclusive == nil {
 			return sw.Pass(ctx)
 		}
@@ -160,43 +186,150 @@ func (sw *Sweeper) Run(ctx context.Context, interval time.Duration) {
 }
 
 // Pass sweeps every workspace that has object storage rows: a live workspace's
-// usage and lifecycle, a deleted workspace's purge. One workspace failing, or one
-// of its regions, does not stop the others; it is logged, and the pass reports
-// how many failed.
+// usage and lifecycle, a deleted workspace's purge. Up to Workers workspaces are
+// swept at once, so a workspace with millions of objects does not hold the ones
+// behind it; each workspace's own listing stays sequential. One workspace
+// failing, or one of its regions, does not stop the others; it is logged, and the
+// pass reports how many failed.
+//
+// A pass that reaches PassTimeout (or its caller's deadline) stops starting
+// workspaces, abandons the ones in flight (their listings are never recorded
+// half-done) and returns an error that says how many it did not reach. The next
+// pass starts with those: sweepOrder puts the least recently observed first.
 func (sw *Sweeper) Pass(ctx context.Context) error {
 	if !sw.svc.Enabled() {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, sw.PassTimeout)
 	defer cancel()
+	started := time.Now()
 	workspaces, err := sw.repo.ListObjectStorageWorkspaces(ctx)
 	if err != nil {
 		return fmt.Errorf("list workspaces: %w", err)
 	}
-	failed := 0
-	for _, w := range workspaces {
+	sweepOrder(workspaces)
+
+	// Each worker writes its own element; the zero value is "not reached".
+	outcomes := make([]workspaceOutcome, len(workspaces))
+	workers := max(sw.Workers, 1)
+	var group errgroup.Group
+	group.SetLimit(workers)
+	for i, w := range workspaces {
 		if ctx.Err() != nil {
-			return fmt.Errorf("stopped after %d of %d workspaces: %w", len(workspaces)-failed, len(workspaces), ctx.Err())
+			break
 		}
-		var err error
-		if w.Retired {
-			// One large purge must not eat the pass and starve the live sweeps
-			// behind it; what it did not finish is retried next hour.
-			purgeCtx, cancelPurge := context.WithTimeout(ctx, sw.RegionTimeout)
-			err = sw.PurgeWorkspace(purgeCtx, w.ID)
-			cancelPurge()
-		} else {
-			err = sw.SweepWorkspace(ctx, w.ID)
-		}
-		if err != nil {
-			failed++
-			sw.Logf("object storage sweep: workspace %s: %v", w.ID, err)
-		}
+		group.Go(func() error {
+			// Go blocks while every worker is busy, so the deadline may have
+			// passed by the time this one has a place.
+			if ctx.Err() == nil {
+				outcomes[i] = sw.sweepOne(ctx, w)
+			}
+			return nil
+		})
 	}
-	if failed > 0 {
-		return fmt.Errorf("%d of %d workspaces failed", failed, len(workspaces))
+	_ = group.Wait() // the workers return no error: sweepOne logs and counts
+
+	var tally passTally
+	for _, o := range outcomes {
+		tally.add(o)
+	}
+	took := time.Since(started)
+	sw.Logf("object storage sweep: pass over %d workspaces took %s with %d workers: %d swept, %d fresh, %d failed, %d not reached",
+		len(workspaces), took.Round(time.Millisecond), workers, tally.swept, tally.fresh, tally.failed, tally.notReached)
+	sw.Metrics.observePass(took, tally)
+	switch {
+	case tally.notReached > 0:
+		return fmt.Errorf("pass cut off: %d of %d workspaces not reached, the next pass starts with them (%d failed): %w",
+			tally.notReached, len(workspaces), tally.failed, ctx.Err())
+	case tally.failed > 0:
+		return fmt.Errorf("%d of %d workspaces failed", tally.failed, len(workspaces))
 	}
 	return nil
+}
+
+// sweepOrder puts deleted workspaces first, in the order the store lists them
+// (the purge attempted longest ago leads), then live ones least recently
+// observed first, a workspace the sweep never recorded before any that it did.
+// A pass cut off at its deadline leaves the workspaces it did not reach with the
+// oldest observations, so the next pass starts with exactly those instead of
+// sweeping the head of the list again, which an id order would.
+func sweepOrder(workspaces []store.ObjectStorageWorkspace) {
+	slices.SortStableFunc(workspaces, func(a, b store.ObjectStorageWorkspace) int {
+		switch {
+		case a.Retired != b.Retired:
+			if a.Retired {
+				return -1
+			}
+			return 1
+		case a.Retired:
+			return 0
+		}
+		return a.LastObserved.Compare(b.LastObserved)
+	})
+}
+
+// workspaceOutcome is what one workspace's turn in a pass came to. The zero
+// value is a workspace the pass never finished: it ended first, and the next
+// pass takes it.
+type workspaceOutcome int
+
+const (
+	outcomeNotReached workspaceOutcome = iota
+	outcomeSwept                       // listed, or purged
+	outcomeFresh                       // every region was observed within MinGap
+	outcomeFailed                      // an error, a panic, or a purge that did not finish
+)
+
+// passTally counts a pass's workspaces by outcome.
+type passTally struct{ swept, fresh, failed, notReached int }
+
+func (t *passTally) add(o workspaceOutcome) {
+	switch o {
+	case outcomeSwept:
+		t.swept++
+	case outcomeFresh:
+		t.fresh++
+	case outcomeFailed:
+		t.failed++
+	case outcomeNotReached:
+		t.notReached++
+	}
+}
+
+// sweepOne sweeps or purges one workspace and records what it cost. A panic
+// fails this workspace only: Pass runs it on a worker goroutine, where core.Poll's
+// recover does not reach, and one malformed row must not take bex-api down.
+func (sw *Sweeper) sweepOne(ctx context.Context, w store.ObjectStorageWorkspace) (outcome workspaceOutcome) {
+	started := time.Now()
+	defer func() {
+		if p := recover(); p != nil {
+			sw.Logf("object storage sweep: workspace %s: recovered panic: %v\n%s", w.ID, p, debug.Stack())
+			outcome = outcomeFailed
+		}
+	}()
+	listed := true
+	var err error
+	if w.Retired {
+		// One large purge must not eat the pass and starve the live sweeps
+		// behind it; what it did not finish is retried next hour.
+		purgeCtx, cancelPurge := context.WithTimeout(ctx, sw.RegionTimeout)
+		err = sw.PurgeWorkspace(purgeCtx, w.ID)
+		cancelPurge()
+	} else {
+		listed, err = sw.SweepWorkspace(ctx, w.ID)
+	}
+	switch {
+	case err != nil && ctx.Err() != nil:
+		return outcomeNotReached
+	case err == nil && !listed:
+		return outcomeFresh
+	}
+	sw.Metrics.observeWorkspace(time.Since(started))
+	if err != nil {
+		sw.Logf("object storage sweep: workspace %s: %v", w.ID, err)
+		return outcomeFailed
+	}
+	return outcomeSwept
 }
 
 // PurgeWorkspace purges a deleted workspace: every object under <tea-id>/ in
@@ -207,17 +340,18 @@ func (sw *Sweeper) PurgeWorkspace(ctx context.Context, workspaceID string) error
 	return err
 }
 
-// SweepWorkspace sweeps one live workspace, region by region. A region that
-// fails keeps its old usage rows and does not stop the other. A region whose
-// usage is newer than MinGap was swept by another replica and is left alone.
-func (sw *Sweeper) SweepWorkspace(ctx context.Context, workspaceID string) error {
+// SweepWorkspace sweeps one live workspace, region by region, and reports
+// whether it listed any region. A region that fails keeps its old usage rows and
+// does not stop the other. A region whose usage is newer than MinGap was swept
+// by another replica and is left alone.
+func (sw *Sweeper) SweepWorkspace(ctx context.Context, workspaceID string) (listed bool, err error) {
 	buckets, err := sw.repo.ListObjectBuckets(ctx, workspaceID)
 	if err != nil {
-		return fmt.Errorf("list buckets: %w", err)
+		return false, fmt.Errorf("list buckets: %w", err)
 	}
 	usage, err := sw.repo.ListObjectStorageUsage(ctx, workspaceID)
 	if err != nil {
-		return fmt.Errorf("list usage: %w", err)
+		return false, fmt.Errorf("list usage: %w", err)
 	}
 	var errs []error
 	for _, region := range Regions {
@@ -238,11 +372,12 @@ func (sw *Sweeper) SweepWorkspace(ctx context.Context, workspaceID string) error
 		if hasUsage && sw.Now().Sub(lastSeen) < sw.MinGap {
 			continue
 		}
+		listed = true
 		if err := sw.sweepRegion(ctx, workspaceID, region, st, inRegion); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", region, err))
 		}
 	}
-	return errors.Join(errs...)
+	return listed, errors.Join(errs...)
 }
 
 // lastObserved is the newest observation among the usage rows of a region.

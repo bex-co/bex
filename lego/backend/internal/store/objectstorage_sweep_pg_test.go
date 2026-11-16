@@ -461,6 +461,12 @@ func TestListObjectStorageWorkspacesFindsLiveRetiredAndGoneWorkspaces(t *testing
 	if err := s.UpsertObjectStorageUsage(ctx, ObjectStorageUsage{BucketID: "orphan:" + usageOnly + ":oregon", WorkspaceID: usageOnly, Region: "oregon", Bytes: 1, Objects: 1, ObservedAt: at}); err != nil {
 		t.Fatal(err)
 	}
+	// A second region observed two hours earlier: the workspace is as stale as
+	// its stalest region, which is what the sweep orders by.
+	older := at.Add(-2 * time.Hour)
+	if err := s.UpsertObjectStorageUsage(ctx, ObjectStorageUsage{BucketID: "orphan:" + usageOnly + ":frankfurt", WorkspaceID: usageOnly, Region: "frankfurt", Bytes: 1, Objects: 1, ObservedAt: older}); err != nil {
+		t.Fatal(err)
+	}
 	newObjectBucket(t, s, deleted, "photos", 10)
 	if err := s.DeleteTenant(ctx, deleted); err != nil {
 		t.Fatal(err)
@@ -488,6 +494,12 @@ func TestListObjectStorageWorkspacesFindsLiveRetiredAndGoneWorkspaces(t *testing
 	}
 	if _, ok := byID[never]; ok {
 		t.Errorf("a workspace with no object storage row is listed: the sweep would list Wasabi for nothing")
+	}
+	if got := byID[usageOnly].LastObserved; got.Sub(older).Abs() > time.Millisecond {
+		t.Errorf("LastObserved of a workspace observed at %s and %s = %s, want the older", at, older, got)
+	}
+	if got := byID[live].LastObserved; !got.IsZero() {
+		t.Errorf("LastObserved of a workspace the sweep never recorded = %s, want zero", got)
 	}
 	// Retired workspaces lead, the one never attempted before the one attempted.
 	if order[deleted] > order[live] || order[gone] > order[usageOnly] {
