@@ -1238,13 +1238,21 @@ class BoardTest(RemoteFixture):
 
 
 FAKE_GH = """#!/usr/bin/env python3
-import os, pathlib, sys
-pathlib.Path(os.environ["FAKE_GH_DIR"], "calls").open("a").write(" ".join(sys.argv[1:]) + "\\n")
+import json, os, pathlib, sys
+args = sys.argv[1:]
+pathlib.Path(os.environ["FAKE_GH_DIR"], "calls").open("a").write(" ".join(args) + "\\n")
 runs = pathlib.Path(os.environ["FAKE_GH_DIR"], "runs.json")
 if not runs.exists():
     sys.stderr.write("gh: not signed in\\n")
     sys.exit(1)
-sys.stdout.write(runs.read_text())
+listed = json.loads(runs.read_text())
+if "--workflow" in args:  # that workflow's own history, which may reach further back
+    history = pathlib.Path(os.environ["FAKE_GH_DIR"], "history.json")
+    workflow = args[args.index("--workflow") + 1]
+    listed = [r for r in json.loads((history if history.exists() else runs).read_text()) if r["workflowName"] == workflow]
+if "--limit" in args:
+    listed = listed[: int(args[args.index("--limit") + 1])]
+sys.stdout.write(json.dumps(listed))
 """
 
 
@@ -1274,9 +1282,13 @@ class CITest(RemoteFixture):
     def gh_says(self, *runs: dict) -> None:
         (self.gh_dir / "runs.json").write_text(json.dumps(list(reversed(runs))))  # gh lists newest first
 
-    def gh_calls(self) -> int:
+    def gh_history(self, *runs: dict) -> None:
+        """What `gh run list --workflow` answers: runs older than the repository-wide listing reaches."""
+        (self.gh_dir / "history.json").write_text(json.dumps(list(reversed(runs))))
+
+    def gh_calls(self, containing: str = "") -> int:
         calls = self.gh_dir / "calls"
-        return len(calls.read_text().splitlines()) if calls.exists() else 0
+        return sum(1 for line in calls.read_text().splitlines() if containing in line) if calls.exists() else 0
 
     def pushed(self, *shas: str) -> None:
         result = json.loads(self.run_guard("outcome", "w2", "routine:cli-qa", *shas).stdout)
@@ -1308,6 +1320,51 @@ class CITest(RemoteFixture):
         self.gh_says(self.run_on("test (backend)", self.theirs, "failure"), self.run_on("test (backend)", self.ours, "failure"))
         ci = self.ci()
         self.assertTrue(ci["checked"])
+        self.assertEqual((ci["own_failures"], ci["still_red"]), ([], []))
+
+    def test_a_streak_that_began_before_the_listing_is_not_ours(self) -> None:
+        # A rarely run workflow: its earlier red runs fall outside the newest-runs listing.
+        self.pushed(self.ours)
+        earlier = [self.run_on("pg operand", self.theirs, "failure"), self.run_on("pg operand", "f" * 40, "failure")]
+        ours = self.run_on("pg operand", self.ours, "failure")
+        self.gh_history(*earlier, ours)
+        self.gh_says(ours)
+        ci = self.ci()
+        self.assertTrue(ci["checked"])
+        self.assertEqual((ci["own_failures"], ci["still_red"]), ([], []))
+        self.assertEqual(self.gh_calls("--workflow pg operand"), 1)
+
+    def test_the_history_stops_at_the_last_success(self) -> None:
+        self.pushed(self.ours)
+        ours = self.run_on("pg operand", self.ours, "failure")
+        self.gh_history(self.run_on("pg operand", self.theirs, "failure"), self.run_on("pg operand", "f" * 40, "success"), ours)
+        self.gh_says(ours)
+        failure = self.ci()["own_failures"][0]
+        self.assertEqual((failure["workflow"], failure["since"]), ("pg operand", self.ours[:9]))
+
+    def test_a_workflow_whose_only_runs_are_ours_and_red_is_ours(self) -> None:
+        self.pushed(self.ours)
+        self.gh_says(self.run_on("pg operand", self.ours, "failure"))
+        failure = self.ci()["own_failures"][0]
+        self.assertEqual((failure["workflow"], failure["since"], failure["attempt"]), ("pg operand", self.ours[:9], 1))
+        self.assertEqual(self.ci()["still_red"], ["pg operand"])
+        self.assertEqual(self.gh_calls("--workflow"), 1)  # where it began is read once, not on every poll
+
+    def test_an_entry_an_older_guard_owned_is_dropped_when_its_streak_began_earlier(self) -> None:
+        # The state an older guard left: it took the listing's first red run for the streak's start.
+        self.pushed(self.ours)
+        state = self.repo / ".git" / "loopx" / "ci-w2.state"
+        recorded = json.loads(state.read_text())
+        recorded["owned"] = {"pg operand": {"since": self.ours, "reported": [1], "at": time.time()}}
+        state.write_text(json.dumps(recorded))
+        earlier = self.run_on("pg operand", self.theirs, "failure")
+        ours = self.run_on("pg operand", self.ours, "failure")
+        fix = self.local_commit("cli/app.py", "print(2)\n")
+        self.pushed(fix)
+        retry = self.run_on("pg operand", fix, "failure")
+        self.gh_history(earlier, ours, retry)
+        self.gh_says(ours, retry)
+        ci = self.ci()
         self.assertEqual((ci["own_failures"], ci["still_red"]), ([], []))
 
     def test_cancelled_and_running_runs_are_not_verdicts(self) -> None:

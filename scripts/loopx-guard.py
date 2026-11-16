@@ -164,6 +164,9 @@ ROUTINE_PAUSED_INTERVAL = 24 * 3600.0
 # day: 400 runs covered 5 to 8 hours of this repository on 2026-11-15.
 CI_WINDOW = 4 * 3600.0
 CI_RUNS = 400
+# A workflow that runs rarely can show a red streak with nothing before it in
+# that listing; its own history (this many runs) says where the streak began.
+CI_WORKFLOW_RUNS = 50
 # A completed run with one of these conclusions is no verdict; any other
 # conclusion but `success` is red (the same reading as scripts/ci-red-streak.sh).
 CI_NO_VERDICT = ("cancelled", "skipped", "neutral")
@@ -788,19 +791,21 @@ def ci_slug(workflow: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", workflow.lower()).strip("-")[:60] or "workflow"
 
 
-def gh_runs() -> list | None:
+def gh_runs(workflow: str | None = None) -> list | None:
     """Recent push-triggered workflow runs on main, oldest first; None when `gh` cannot say.
 
-    The branch and the event are filtered here, not by `gh`: `--branch` turns
+    With WORKFLOW, only that workflow's runs, read from its own history. The
+    branch and the event are filtered here, not by `gh`: `--branch` turns
     GitHub's listing into a search that can answer with a page of only old
     runs (scripts/ship-gates.sh records the incident).
     """
     if not shutil.which("gh"):
         return None
+    scope = ["--workflow", workflow, "--limit", str(CI_WORKFLOW_RUNS)] if workflow else ["--limit", str(CI_RUNS)]
     try:
         listed = subprocess.run(
             [
-                "gh", "run", "list", "--limit", str(CI_RUNS),
+                "gh", "run", "list", *scope,
                 "--json", "databaseId,workflowName,headSha,headBranch,event,status,conclusion,createdAt,url",
             ],
             cwd=project_dir(), capture_output=True, text=True, timeout=45, check=False,
@@ -814,6 +819,31 @@ def gh_runs() -> list | None:
     return sorted(pushed, key=lambda r: str(r.get("createdAt", "")))
 
 
+def has_verdict(run: dict) -> bool:
+    return run.get("status") == "completed" and run.get("conclusion") not in CI_NO_VERDICT
+
+
+def streak_began(workflow: str, settled: list[dict], streak: list[dict]) -> dict | None:
+    """The run that began WORKFLOW's current red streak; None when `gh` cannot say.
+
+    The repository-wide listing holds only the newest CI_RUNS runs. When no
+    success comes before the streak there, the streak may have begun long
+    before the listing does, so the workflow's own history decides.
+    """
+    if len(streak) < len(settled):
+        return streak[0]
+    history = gh_runs(workflow)
+    if history is None:
+        return None
+    first = str(streak[0].get("createdAt", ""))
+    start = streak[0]
+    for run in reversed([r for r in history if has_verdict(r) and str(r.get("createdAt", "")) < first]):
+        if run.get("conclusion") == "success":
+            break
+        start = run
+    return start
+
+
 def own_ci(workstream: str, mark: bool = False) -> dict:
     """Workflows on main that one of this loop's pushes turned red.
 
@@ -821,6 +851,8 @@ def own_ci(workstream: str, mark: bool = False) -> dict:
     is on a commit this loop pushed. It stays ours until a run passes, and is
     reported again only when another of our commits (a fix attempt) fails too.
     Red that began on someone else's commit is theirs: never reported here.
+    Where the streak began is checked once per owned workflow, and once more
+    for an entry recorded before that check existed.
     With MARK the reported runs are remembered, so the next call is quiet.
     """
     path = ci_state_path(workstream)
@@ -848,7 +880,7 @@ def own_ci(workstream: str, mark: bool = False) -> dict:
     pending = 0
     for workflow, sequence in by_workflow.items():
         pending += sum(1 for r in sequence if r.get("status") != "completed" and r.get("headSha") in ours)
-        settled = [r for r in sequence if r.get("status") == "completed" and r.get("conclusion") not in CI_NO_VERDICT]
+        settled = [r for r in sequence if has_verdict(r)]
         streak: list[dict] = []
         for run in reversed(settled):
             if run.get("conclusion") == "success":
@@ -859,10 +891,19 @@ def own_ci(workstream: str, mark: bool = False) -> dict:
                 owned.pop(workflow, None)  # green again
             continue
         entry = owned.get(workflow)
-        if not isinstance(entry, dict):
-            if streak[0].get("headSha") not in ours:
+        if not isinstance(entry, dict) or not entry.get("verified"):
+            claim = entry.get("since") if isinstance(entry, dict) else None
+            if claim is None and streak[0].get("headSha") not in ours:
                 continue  # it went red on someone else's commit
-            entry = owned[workflow] = {"since": streak[0].get("headSha", ""), "reported": [], "at": now}
+            start = streak_began(workflow, settled, streak)
+            if start is None:
+                continue  # gh cannot say where the streak began: ask again next time
+            if start.get("headSha") not in ((ours | {claim}) if claim else ours):
+                owned.pop(workflow, None)
+                continue  # it was already red before our push
+            if not isinstance(entry, dict):
+                entry = owned[workflow] = {"since": start.get("headSha", ""), "reported": [], "at": now}
+            entry["verified"] = True
         fresh = [r for r in streak if r.get("headSha") in ours and r.get("databaseId") not in entry["reported"]]
         if fresh:
             failures.append(
