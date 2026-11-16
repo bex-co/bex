@@ -24,7 +24,9 @@ case "$want" in
 esac
 [ "${#want}" -eq 64 ] || { echo "ci-fetch-verified: SHA256 must be 64 lowercase hex digits" >&2; exit 2; }
 
-verified() { [ -f "$out" ] && [ "$(sha256sum "$out" | cut -d' ' -f1)" = "$want" ]; }
+# shasum: macOS before 26 has no sha256sum (scripts/gitleaks.sh runs here locally).
+if command -v sha256sum >/dev/null; then sum=(sha256sum); else sum=(shasum -a 256); fi
+verified() { [ -f "$out" ] && [ "$("${sum[@]}" "$out" | cut -d' ' -f1)" = "$want" ]; }
 
 token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
 auth=()

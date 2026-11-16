@@ -19,10 +19,12 @@ case "$1 $2" in
     label=$(arg --label "$@")
     awk -v l="$label" '$2 == "open" && $3 == l { n = $1 } END { if (n) print n }' "$STATE/issues"
     ;;
-  "issue edit") echo "$3" >>"$STATE/edited" ;;
+  "issue edit") echo "$3" >>"$STATE/edited"; cp "$(arg --body-file "$@")" "$STATE/body-$3" ;;
+  "issue view") cat "$STATE/body-$3" ;;
   "issue create")
     n=$(($(wc -l <"$STATE/issues") + 1))
     echo "$n open $(arg --label "$@")" >>"$STATE/issues"
+    cp "$(arg --body-file "$@")" "$STATE/body-$n"
     # LOSE_CREATES=N: the first N creates land but the client sees a failure.
     lost=$(cat "$STATE/lost" 2>/dev/null || echo 0)
     if [ "$lost" -lt "${LOSE_CREATES:-0}" ]; then echo $((lost + 1)) >"$STATE/lost"; exit 1; fi
@@ -51,6 +53,14 @@ reset
 LOSE_CREATES=1 helper open --label probe-down --title "Probe is down" --body-file "$tmp/body" || fail "lost-response open"
 [ "$(open_count probe-down)" = 1 ] || fail "a lost create response opened $(open_count probe-down) issues"
 echo "ok: a create whose response is lost opens one issue"
+
+reset
+printf 'header\n\n' >"$tmp/header"
+helper append --label secret-scan --title "Leak" --body-file "$tmp/header" --line "- run 1" || fail "first append"
+helper append --label secret-scan --title "Leak" --body-file "$tmp/header" --line "- run 2" || fail "second append"
+[ "$(open_count secret-scan)" = 1 ] || fail "append opened $(open_count secret-scan) issues"
+[ "$(cat "$tmp/state/body-1")" = "$(printf 'header\n\n- run 1\n- run 2')" ] || fail "append lost a line: $(cat "$tmp/state/body-1")"
+echo "ok: append opens one issue and keeps every line"
 
 mkdir -p "$tmp/fail"
 printf '#!/bin/sh\ncase "$1 $2" in "issue create") exit 1 ;; esac\nexit 0\n' >"$tmp/fail/gh"

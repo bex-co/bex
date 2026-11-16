@@ -138,6 +138,10 @@ jobs:
       # gh, no network.
       - name: ship gates self-test
         run: bash scripts/ship-gates.test.sh
+      # The real pinned binary and .gitleaks.toml: a credential-shaped value is
+      # reported, the allowlisted shapes are not.
+      - name: secret scanner self-test
+        run: bash scripts/gitleaks.test.sh
       - name: gh retry helper self-test
         run: bash scripts/gh-retry.test.sh
       # w22/m312 t006: the Docker-in-gVisor spike script refuses the production
@@ -247,6 +251,7 @@ jobs:
           scripts/ci-schedule-drift.sh scripts/ci-schedule-drift.test.sh
           scripts/image-pin-validate.sh scripts/image-pin-validate.test.sh
           scripts/hashicorp-install.sh scripts/hashicorp-install.test.sh
+          scripts/gitleaks.sh scripts/gitleaks.test.sh scripts/secret-scan-alert.sh
           scripts/lib/image-digest-exists.sh
           scripts/disk-snapshot-secret.sh scripts/disk-snapshot-secret.test.sh
           scripts/object-storage-s3-credentials.sh scripts/object-storage-s3-credentials.test.sh

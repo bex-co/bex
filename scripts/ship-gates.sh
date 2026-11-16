@@ -32,6 +32,10 @@
 #      file a suite's tests read is missing from that suite's trigger paths
 #      (scripts/ci_test_inputs.py). Blocks: a change to the unlisted file would
 #      skip the suite on every push until the next batched deploy.
+#   7. A commit in the push carries what looks like a credential
+#      (scripts/gitleaks.sh over base..HEAD). Blocks: the repository is
+#      public, and this is the last point where it is not yet published
+#      (ADR019 §6).
 #
 # Gates 2, 3, 5 and 6 and the gofmt check run in a detached worktree at HEAD,
 # never in the working tree: a gate run beside an edit in progress tested the
@@ -119,6 +123,16 @@ if [ "$red_main" = 1 ]; then
 fi
 
 bash scripts/repo-artifact-guard.sh "$base"
+
+leak_rc=0
+bash scripts/gitleaks.sh "$base..HEAD" || leak_rc=$?
+if [ "$leak_rc" = 1 ]; then
+  echo "ship-gates: a commit in this push carries what looks like a credential (findings above, redacted): remove it from the unpushed commits and rotate it if it is real; if its shape is never a credential, allowlist that shape in .gitleaks.toml with the reason" >&2
+  exit 1
+elif [ "$leak_rc" != 0 ]; then
+  echo "ship-gates: the secret scan could not run; unscanned commits are not pushed" >&2
+  exit 1
+fi
 
 # Which gates this push needs, from git objects only. Captured, not piped into
 # grep: under pipefail an early-exiting grep can SIGPIPE git and make a large

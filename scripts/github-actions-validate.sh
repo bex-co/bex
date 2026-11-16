@@ -9,8 +9,9 @@
 #     composite actions first, then updating the pinned SHA + `# vX.Y.Z` comment.
 #  2. The reviewed inventory (Node 24-compatible majors) is diffed against the
 #     tree so a new/changed action can't slip in unreviewed.
-#  3. No end-of-life Node 20 runtime; deploy.yml keeps its checksum-pinned
-#     Gitleaks scan and its w1/m59 supersession wiring.
+#  3. No end-of-life Node 20 runtime; every Gitleaks scan goes through the
+#     checksum-pinned scripts/gitleaks.sh, and deploy.yml keeps its w1/m59
+#     supersession wiring.
 #  4. Workflows fetching admin.conf pin the SSH host and keep the fetched
 #     kubeconfig alive until their last cluster command.
 #  5. GitHub-hosted runners (owner decision 2026-11-09; ADR083 amendment,
@@ -697,11 +698,12 @@ if ! diff -u <(printf '%s\n' "$expected_actions") <(third_party_refs); then
   exit 1
 fi
 
-if ! grep -Fq 'GITLEAKS_VERSION: 8.30.1' .github/workflows/deploy.yml \
-  || ! grep -Fq 'GITLEAKS_LINUX_ARM64_SHA256: e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080' .github/workflows/deploy.yml \
-  || ! grep -Fq 'gitleaks_${GITLEAKS_VERSION}_linux_arm64.tar.gz' .github/workflows/deploy.yml \
-  || ! grep -Fq 'gitleaks git --no-banner --redact --exit-code 1 --log-opts="$log_opts" .' .github/workflows/deploy.yml; then
-  echo "FAIL: deploy must checksum-pin and execute the reviewed Gitleaks CLI scanner" >&2
+if ! grep -Fq 'bash "$here/ci-fetch-verified.sh"' scripts/gitleaks.sh \
+  || ! grep -Fq 'bash scripts/gitleaks.sh ' .github/workflows/deploy.yml \
+  || ! grep -Fq 'bash scripts/gitleaks.sh ' .github/workflows/secret-scan.yml \
+  || ! grep -Fq 'bash scripts/gitleaks.sh ' scripts/ship-gates.sh \
+  || grep -qiE 'gitleaks/releases|gitleaks-action' .github/workflows/*.yml; then
+  echo "FAIL: every secret scan must run the checksum-verified Gitleaks CLI through scripts/gitleaks.sh" >&2
   exit 1
 fi
 # Tuning the scan's config must never quietly turn the scan off: only the

@@ -126,11 +126,19 @@ All workflows target operator-custodied ARM64 self-hosted runners. Since 2026-09
 
 `bex-co/bex` is public and most of its commits come from agents whose sessions hold `.env`, kubeconfigs and provider tokens. A credential that reaches public history cannot be taken back, so the repository refuses it before it lands: GitHub **secret scanning** and **push protection** are enabled, and a push carrying a recognized credential format is refused with `GH013`. The response is always to remove the value and rotate it if it is real — never the bypass link (ship skill, AGENTS.md). Rotation, not a history rewrite, is the fix for an exposed credential.
 
-- **Layers:** push protection (pre-receive, provider formats) → the gitleaks job in `deploy.yml` (post-push, generic patterns; w7/002) → secret-scanning alerts on history.
+- **Layers** (generic patterns amended 2026-11-15). Push protection only knows provider formats, so generic patterns are caught by gitleaks, run through `scripts/gitleaks.sh` (one checksum-pinned CLI) with `.gitleaks.toml`:
+  - **Before the push:** `scripts/ship-gates.sh` scans `origin/main..HEAD`, and a finding stops the push. This is the only gitleaks layer that runs before the credential is public.
+  - **On every push to main:** `secret-scan.yml` scans that push's commits within minutes. A finding, or a scan that could not run, opens the `secret-scan` tracking issue. This catches a push that skipped the gate.
+  - **At deploy:** the `deploy.yml` job is the backstop for a `[skip ci]` push, which starts no run. A finding there is listed on the same tracking issue but never blocks the deploy, which would not unpublish anything.
+  - **On history:** GitHub's secret-scanning alerts.
+  - **Handling a finding:** rotate the value if it is real. A shape that is never a credential is allowlisted in `.gitleaks.toml` by shape, scoped to named rules, and `scripts/github-actions-validate.sh` refuses any other kind of allowlist.
 - **Not available:** non-provider patterns and validity checks need a paid GitHub Secret Protection licence; the organization is on the free plan (2026-11-13). Buying it is a user decision.
 - **`main` history:** ruleset `main history` blocks deletion and non-fast-forward pushes with no bypass actor and no PR requirement; a deliberate rewrite follows [runbooks/main-history-rewrite.md](runbooks/main-history-rewrite.md).
 - **Drift:** `scripts/github-repo-security-drift.sh` checks both, daily (`github-repo-security-drift.yml`, one tracking issue) and on every ship (`scripts/ship-gates.sh`, a warning). Only an admin token can read push protection, so the daily run checks secret scanning through the alerts endpoint and says push protection was not read.
 - **First scan (2026-11-13):** two alerts, both dispositioned without rotation — the Standard Webhooks specification's published test vector (`lego/backend/internal/webhooks/signing_test.go`, used in tests) and the Firebase Android client API key in `mobile/google-services.json` (an identifier that ships in every APK by design).
+- **Full-history gitleaks scan (2026-11-15):** gitleaks 8.30.1 covered every public ref: `main` and the 43 other branches on `origin`, 19,701 commits. It reported 2,068 findings, and none was a credential, so nothing needed rotating.
+  - 2,055 were `generic-api-key` matches, 1,957 of them under `.pm/`: sha256 digests keyed by file names containing `key`, `secret` or `creds`; `object_identity_key` values; Python images' public `GPG_KEY` fingerprints; go.sum hashes; SealedSecret ciphertext; OAuth client ids; and test tokens. Four were the empty `BAO_UNSEAL_KEY_1=` in `.env.example` and `.env.template`, where the rule read the next line's name as the value. `.gitleaks.toml` now allowlists the digests named as hashes.
+  - The 13 provider-rule matches: redaction-test fixtures in `scripts/test_log_shipper.py` (its Stripe and AWS values are sequential alphabets, and its PEM body is not valid base64), an upstream chart's Secret manifest, a `curl -u "$VAR:"`, and the Firebase client key above.
 
 ## Consequences & known gaps
 

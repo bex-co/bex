@@ -28,3 +28,13 @@ description = "Sec-WebSocket-Key is a handshake nonce, not a credential"
 targetRules = ["generic-api-key"]
 regexTarget = "match"
 regexes = ['''(?i)Sec-WebSocket-Key["']?\s*[:,]''']
+
+# A hex digest under a name that says it is a hash (renderOpenAPISHA256 in
+# lego/backend/internal/api/render_openapi.go, a manifest's "api_sha256") is a
+# content hash, never a credential. Matched on the finding, so another value
+# on the line is still reported.
+[[allowlists]]
+description = "hex digests named as hashes are not credentials"
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+regexes = ['''(?i)(sha(1|224|256|384|512)|digest|checksum)\w*["']?\s*[:=]+\s*["'`]?[0-9a-f]{40,128}\b''']

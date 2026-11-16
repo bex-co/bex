@@ -82,41 +82,31 @@ jobs:
     uses: ./.github/workflows/opensandbox-controller-test.yml
 
   # --- secret scanning: gitleaks over the commits being deployed (w7/002) ---
-  # Runs in parallel with the test gates. Findings are warn-first and do not
-  # block CI until the historical baseline is tuned; scanner setup failures do.
-  # Shapes that are never credentials are allowlisted in .gitleaks.toml.
-  # Distinct from trivy CVE scanning (w7/m10 — image vulnerabilities) and
-  # Dependabot (w1/006 — dependency CVEs): this catches secrets in the repo itself.
+  # The backstop for a [skip ci] push, which starts no secret-scan.yml run
+  # (ADR019 §6): a finding is listed on the tracking issue but never blocks the
+  # deploy, and a scan that cannot run fails the job. Distinct from trivy
+  # (w7/m10, image CVEs) and Dependabot (w1/006, dependency CVEs).
   secret-scan:
     needs: changes
     if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
+    outputs:
+      leak: ${{ steps.scan.outputs.leak }}
     steps:
-      # full-checkout: gitleaks must scan every tracked byte, board evidence included (w6/m157)
+      # History without blobs: scripts/gitleaks.sh fetches the range's blobs,
+      # and deploy_latency.py --pinned reads only the log.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0  # full history so gitleaks can walk the pushed commit range
-      # The maintained gitleaks-action requires a separate license for GitHub
-      # organization repositories. Run the official open-source CLI directly so
-      # this gate performs a real scan without a JavaScript action runtime.
-      - name: install Gitleaks CLI
-        env:
-          GITLEAKS_VERSION: 8.30.1
-          GITLEAKS_LINUX_ARM64_SHA256: e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080
-        run: |
-          archive="$RUNNER_TEMP/gitleaks.tar.gz"
-          # Retried: a one-shot download failed secret-scan, and so skipped the
-          # deploy, on a transient TLS EOF (run 39554751754).
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "$archive" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_arm64.tar.gz"
-          echo "$GITLEAKS_LINUX_ARM64_SHA256  $archive" | sha256sum -c -
-          tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
-          chmod +x "$RUNNER_TEMP/gitleaks"
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          fetch-depth: 0
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /scripts/gitleaks.sh
+            /scripts/ci-fetch-verified.sh
+            /scripts/deploy_latency.py
       - name: scan the commits this deploy ships for secrets
-        # Warn-first: findings fail this step but never block deploy.
-        continue-on-error: true
+        id: scan
         env:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
@@ -132,11 +122,35 @@ jobs:
             before="$(git rev-parse "${AFTER_SHA}^" 2>/dev/null || true)"
           fi
           if [ -n "$before" ]; then
-            log_opts="$before..$AFTER_SHA"
+            range="$before..$AFTER_SHA"
           else
-            log_opts="$AFTER_SHA"
+            range="$AFTER_SHA"
           fi
-          gitleaks git --no-banner --redact --exit-code 1 --log-opts="$log_opts" .
+          rc=0
+          bash scripts/gitleaks.sh "$range" || rc=$?
+          [ "$rc" != 1 ] || echo "leak=true" >> "$GITHUB_OUTPUT"
+          [ "$rc" = 1 ] || exit "$rc"
+
+  secret-scan-alert:
+    needs: secret-scan
+    if: needs.secret-scan.outputs.leak == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /scripts/secret-scan-alert.sh
+            /scripts/lib/
+      - name: list this run on the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash scripts/secret-scan-alert.sh leak "$RUN_URL"
 
   # --- changes: the deploy gate (block-eden-mono w1/m25) ---
   # A push or scheduled run deploys only when a deployable commit

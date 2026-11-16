@@ -125,7 +125,7 @@ if bash "$root/scripts/ship-gates.sh" 2>/dev/null; then fail "a missing base ref
 # and a push without dashboard changes runs nothing.
 repo="$tmp/repo"
 mkdir -p "$repo/scripts" "$repo/dashboard" "$repo/docs" "$repo/.github/scripts" "$repo/.github/workflows" "$repo/lego/operator"
-cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$repo/scripts/"
+cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$root/scripts/gitleaks.sh" "$repo/scripts/"
 cp "$root/.github/scripts/native-common-qualify.py" "$repo/.github/scripts/"
 # Stands in for the native custody suites: logs that it ran, fails on demand.
 cat >"$repo/.github/scripts/test_native_oci_stub.py" <<PY
@@ -149,7 +149,17 @@ echo "\$(basename "\$PWD") \$*" >>"$tmp/yarn.log"
 exit 0
 YARN
 chmod +x "$tmp/yarn"
-gate() { (cd "$repo" && BEX_SHIP_GATES_TREE="$tmp/tree" PATH="$tmp:$PATH" bash scripts/ship-gates.sh "$@") 2>"$tmp/err"; }
+# Stands in for the pinned Gitleaks binary: logs its arguments; a finding or
+# a scanner error on demand.
+cat >"$tmp/gitleaks" <<STUB
+#!/bin/sh
+echo "\$*" >>"$tmp/gitleaks.log"
+[ ! -e "$tmp/leak" ] || exit 3
+[ ! -e "$tmp/scanerr" ] || exit 1
+exit 0
+STUB
+chmod +x "$tmp/gitleaks"
+gate() { (cd "$repo" && BEX_SHIP_GATES_TREE="$tmp/tree" BEX_GITLEAKS_BIN="$tmp/gitleaks" PATH="$tmp:$PATH" bash scripts/ship-gates.sh "$@") 2>"$tmp/err"; }
 echo 'docs' >"$repo/docs/a.md"
 commit docs
 rm -f "$tmp/yarn.log"
@@ -183,6 +193,17 @@ git -C "$repo" rm -q dashboard/BROKEN
 commit unbroken
 [ ! -e "$tmp/tree.lock" ] || fail "the gate left its worktree locked"
 
+# The secret scan (gate 7): the pushed commits are scanned, a finding blocks,
+# and a scanner that cannot run fails closed.
+grep -q -- "--log-opts=HEAD~1..HEAD" "$tmp/gitleaks.log" || fail "the gate did not scan the pushed commits: $(cat "$tmp/gitleaks.log")"
+touch "$tmp/leak"
+if gate HEAD~1; then fail "a pushed credential did not block the push"; fi
+grep -q "looks like a credential" "$tmp/err" || fail "a finding was not named: $(cat "$tmp/err")"
+rm "$tmp/leak"
+touch "$tmp/scanerr"
+if gate HEAD~1; then fail "a scan that could not run let the push through"; fi
+grep -q "secret scan could not run" "$tmp/err" || fail "a scanner error was not named: $(cat "$tmp/err")"
+rm "$tmp/scanerr"
 
 # The native custody gate (w6/107): a custody-pinned file, a native workflow or
 # a native module runs the custody suites, a failure blocks, and anything else
