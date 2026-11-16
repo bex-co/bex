@@ -1,6 +1,6 @@
 # w4 · m315 — A public datastore with no IP rules reads back as public on every surface: REST, GraphQL, MCP and the dashboard return its effective unrestricted rules, not an empty list that Render clients read as blocked
 
-**Worker:** worker4 **Goal:** every read of a Key Value or Postgres allowlist reports the store's _effective_ external access. A public store with no saved rules reads `0.0.0.0/0` + `::/0`, the rule the Blueprint export already uses. A Render client therefore never sees "external connections blocked" for a store that accepts outside connections, and writing back what it read never cuts access. **Status:** blocked — t001, t002, t004, t005, t006 and t008 done (shipped). t003's live replay on the 06cc3b02c deploy (2026-11-16) holds DoD 1–4, the CLI and the MCP steps, and the en/zh rule rows. It found the Postgres Access control pending frame saying "No IP rules" for a public store while its allowlist loads, which t008 fixes. t003 needs only that pending frame re-checked live after a production deploy carries t008; then t007 closes
+**Worker:** worker4 **Goal:** every read of a Key Value or Postgres allowlist reports the store's _effective_ external access. A public store with no saved rules reads `0.0.0.0/0` + `::/0`, the rule the Blueprint export already uses. A Render client therefore never sees "external connections blocked" for a store that accepts outside connections, and writing back what it read never cuts access. **Status:** done — all eight tasks done. t003's re-check on pin `971a79648213` (2026-11-16) found the Postgres Access control pending frame previewing two rule rows, never "No IP rules", with the same allowlist height pending and ready at 1440 and 390
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | One effective-access projection for every datastore allowlist read (REST, GraphQL, MCP, Blueprint export) — **DONE** | 50m | — |
 | [t002](done/t002.md) | Dashboard Key Value Networking and Postgres Access control list the effective rules — **DONE** | 35m | t001 |
 | [t008](done/t008.md) | Postgres Access control previews its rule rows while the allowlist loads, instead of saying "No IP rules" — **DONE** | 30m | t002 |
-| [t003](t003.md) | Live verification on owned public Free Key Value and Postgres stores | 25m | t002, t008 |
+| [t003](done/t003.md) | Live verification on owned public Free Key Value and Postgres stores — **DONE** | 25m | t002, t008 |
 | [t004](done/t004.md) | Render parity — **DONE** | 20m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
-| [t007](t007.md) | Closeout | 10m | t005, t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 10m | t005, t006 |
 
 Eight tasks, 215m (3h35m). Major: the readback states network exposure wrongly in the unsafe direction (it says blocked while the store is open), and a no-op read-then-write disables access.
 
@@ -169,3 +169,9 @@ Same pin. The fixture was Free Postgres `qa-20261112-r173-pg` (`dpg-dbqlfterbf4s
   - `PUT …/ip-allow-list {"cidrs":[]}` → 200, after which `GET` read `[]` and `public: false`. 25 s later psql got `SSL error: unexpected eof while reading`: new external connections are refused.
 - **Also seen:** Recovery reads "Backups aren't enabled for this plan, so recovery isn't available…" (zh "当前套餐未启用备份，无法恢复。…"), `GET …/recovery` → `{"recoveryStatus":"NOT_AVAILABLE"}`, and `GET …/export` → `[]`.
 - **Not run:** the private and explicit-rules controls, and skeleton geometry.
+
+## Unblock record (2026-11-15, verified evidence)
+
+- **Affected:** w4/m315 t003, t007.
+- **Source:** verified finding, no user decision needed. Production runs platform pin `14af7282d9ac` (commit `a518fa61f`; QA round 486 confirmed it live), and `git merge-base --is-ancestor 741859893 14af7282d9ac` holds, so production carries t008's fix.
+- **Remaining gate:** none. **Next:** a worker reloads a public Free Postgres's `#access-control` at 1440 and 390 and checks that the pending frame shows rule-row placeholders and never "No IP rules", and that the ready frame lists `0.0.0.0/0` and `::/0` (t003); then t007 closes.
