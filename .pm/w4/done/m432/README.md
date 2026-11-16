@@ -1,6 +1,6 @@
 # w4 · m432 — Rolling back a prebuilt image named by tag pulls what the tag names now, and fails if it is gone, as on Render
 
-**Worker:** worker4 **Goal:** a rollback of a registry-image service selects the target deploy's original reference: a tag is pulled again, a digest runs the exact image, and an image that no longer resolves fails the rollback while the live release keeps serving. **Status:** blocked — t001–t004 and t006–t008 done (code shipped); t005 waits for the next production deploy (19:00, 00:00 or 05:00 UTC) to pin the fix, then a worker runs the live check and t009 closes — no user action
+**Worker:** worker4 **Goal:** a rollback of a registry-image service selects the target deploy's original reference: a tag is pulled again, a digest runs the exact image, and an image that no longer resolves fails the rollback while the live release keeps serving. **Status:** done — all nine tasks done; the live DoD passed on production pin `7aaa8700befa` (2026-11-16)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | A rollback selects the target deploy's original reference: a tag is pulled again, a digest stays exact — **DONE** | 50m | t001 |
 | [t003](done/t003.md) | A rollback to a tag that no longer resolves fails as a deploy, and the live release keeps serving — **DONE** | 40m | t002 |
 | [t004](done/t004.md) | Dashboard rollback confirmation and the ADR matrices say what a tag rollback runs — **DONE** | 20m | t002 |
-| [t005](t005.md) | Live check on production: tag moved, digest pinned, tag deleted | 30m | t003, t004 |
+| [t005](done/t005.md) | Live check on production: tag moved, digest pinned, tag deleted — **DONE** | 30m | t003, t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -34,3 +34,9 @@
 - **Expected outcome:** an owner who rolls back to `:stable` after re-pushing it gets the image they pushed, as on Render.
 - **Why now:** rollback was just reworked (w4/652, w4/661), so the selection code is fresh; the divergence has no sign-off.
 - **Render parity:** included: rollback results read on REST, GraphQL, MCP and the dashboard change.
+
+## Unblock record (2026-11-16, loopx worker)
+
+- **Affected:** w4/m432 t005, t009. **Source:** verified evidence, not a user decision.
+- **Finding:** the release gate cleared by itself. Production runs pin `7aaa8700befa` (pin commit `546945798`, live 16:27Z), which carries 2cd28d692.
+- **Outcome:** t005 ran live the same day and every Definition of done item holds (evidence in `done/t005.md`), so the milestone closed instead of returning to the open queue. The fixture registry was ttl.sh (anonymous, public, honors manifest `DELETE`), since a new GHCR package cannot be made public by API.
