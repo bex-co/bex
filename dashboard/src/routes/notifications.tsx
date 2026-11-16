@@ -9,6 +9,7 @@ import { prefetchInParallel } from "@/common/lib/prefetch";
 import {
   NotificationSettingsDocument,
   PushNotificationSettingsDocument,
+  ServicesDocument,
 } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
@@ -29,8 +30,12 @@ export const Route = createFileRoute("/notifications")({
   component: NotificationsPage,
   pendingComponent: NotificationsPageSkeleton,
   beforeLoad: requireAuth(),
+  // The push panel's per-service override select lists the workspace's
+  // services, so they load with the settings: the ready form's first paint
+  // then has the select its pending frame reserves (w4/680).
   loader: ({ context, cause }) => {
     const fetchPolicy = titleLoaderFetchPolicy(cause);
+    const ownerId = context.workspaceId;
     return prefetchInParallel([
       () =>
         context.client.query({
@@ -44,6 +49,17 @@ export const Route = createFileRoute("/notifications")({
           fetchPolicy,
           errorPolicy: "all",
         }),
+      ...(ownerId == null
+        ? []
+        : [
+            () =>
+              context.client.query({
+                query: ServicesDocument,
+                variables: { ownerId },
+                fetchPolicy,
+                errorPolicy: "all",
+              }),
+          ]),
     ]);
   },
   head: ({ match }) => translatedTitleHead("notifications.title", match),

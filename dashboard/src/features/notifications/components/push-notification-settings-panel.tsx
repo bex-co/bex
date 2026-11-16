@@ -41,6 +41,7 @@ import { useUpdatePushNotificationSettings } from "@/features/notifications/hook
 import {
   canonicalTimeZone,
   droppedSelections,
+  pushEventKeys,
   pushEvents,
   pushUrgencies,
   pushWeekdays,
@@ -50,41 +51,6 @@ import {
   type PublishedPushEvent,
   type PushEventUrgencies,
 } from "@/features/notifications/lib/push-policy";
-
-const eventKeys: Record<PushNotificationEvent, string> = {
-  [PushNotificationEvent.DeployFailed]: "notifications.pushEventDeployFailed",
-  [PushNotificationEvent.ServerFailed]: "notifications.pushEventServerFailed",
-  [PushNotificationEvent.CronFailed]: "notifications.pushEventCronFailed",
-  [PushNotificationEvent.DeployStarted]: "notifications.pushEventDeployStarted",
-  [PushNotificationEvent.DeploySucceeded]:
-    "notifications.pushEventDeploySucceeded",
-  [PushNotificationEvent.ServerAvailable]:
-    "notifications.pushEventServerAvailable",
-  [PushNotificationEvent.ServiceSuspended]:
-    "notifications.pushEventServiceSuspended",
-  [PushNotificationEvent.ServiceResumed]:
-    "notifications.pushEventServiceResumed",
-  [PushNotificationEvent.AgentNeedsDecision]:
-    "notifications.pushEventAgentNeedsDecision",
-  [PushNotificationEvent.AgentPrReady]: "notifications.pushEventAgentPrReady",
-  [PushNotificationEvent.AgentFailed]: "notifications.pushEventAgentFailed",
-  [PushNotificationEvent.AgentAutomationPaused]:
-    "notifications.pushEventAgentAutomationPaused",
-  [PushNotificationEvent.PostgresUnavailable]:
-    "notifications.pushEventPostgresUnavailable",
-  [PushNotificationEvent.PostgresAvailable]:
-    "notifications.pushEventPostgresAvailable",
-  [PushNotificationEvent.KeyValueUnhealthy]:
-    "notifications.pushEventKeyValueUnhealthy",
-  [PushNotificationEvent.KeyValueAvailable]:
-    "notifications.pushEventKeyValueAvailable",
-  [PushNotificationEvent.PostgresBackupFailed]:
-    "notifications.pushEventPostgresBackupFailed",
-  [PushNotificationEvent.PostgresRestoreFailed]:
-    "notifications.pushEventPostgresRestoreFailed",
-  [PushNotificationEvent.PostgresUpgradeFailed]:
-    "notifications.pushEventPostgresUpgradeFailed",
-};
 
 const urgencyKeys: Record<PushNotificationUrgency, string> = {
   [PushNotificationUrgency.Routine]: "notifications.pushUrgencyRoutine",
@@ -417,7 +383,7 @@ function DroppedSummary({
     service?: string,
   ) =>
     t(key, {
-      event: t(eventKeys[event]),
+      event: t(pushEventKeys[event]),
       urgency: t(urgencyKeys[urgencies.get(event)!.urgency]),
       minimum: t(urgencyKeys[floor]),
       ...(service ? { service } : {}),
@@ -501,7 +467,7 @@ function EventOption({
       />
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline justify-between gap-x-2">
-          <span id={`${id}-name`}>{t(eventKeys[event])}</span>
+          <span id={`${id}-name`}>{t(pushEventKeys[event])}</span>
           {urgency && (
             <span
               id={`${id}-urgency`}

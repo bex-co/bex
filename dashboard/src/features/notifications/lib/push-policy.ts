@@ -29,6 +29,42 @@ export const pushEvents = [
   PushNotificationEvent.PostgresUpgradeFailed,
 ] as const;
 
+/** Each push event's translated label key, in the panel and its skeleton. */
+export const pushEventKeys: Record<PushNotificationEvent, string> = {
+  [PushNotificationEvent.DeployFailed]: "notifications.pushEventDeployFailed",
+  [PushNotificationEvent.ServerFailed]: "notifications.pushEventServerFailed",
+  [PushNotificationEvent.CronFailed]: "notifications.pushEventCronFailed",
+  [PushNotificationEvent.DeployStarted]: "notifications.pushEventDeployStarted",
+  [PushNotificationEvent.DeploySucceeded]:
+    "notifications.pushEventDeploySucceeded",
+  [PushNotificationEvent.ServerAvailable]:
+    "notifications.pushEventServerAvailable",
+  [PushNotificationEvent.ServiceSuspended]:
+    "notifications.pushEventServiceSuspended",
+  [PushNotificationEvent.ServiceResumed]:
+    "notifications.pushEventServiceResumed",
+  [PushNotificationEvent.AgentNeedsDecision]:
+    "notifications.pushEventAgentNeedsDecision",
+  [PushNotificationEvent.AgentPrReady]: "notifications.pushEventAgentPrReady",
+  [PushNotificationEvent.AgentFailed]: "notifications.pushEventAgentFailed",
+  [PushNotificationEvent.AgentAutomationPaused]:
+    "notifications.pushEventAgentAutomationPaused",
+  [PushNotificationEvent.PostgresUnavailable]:
+    "notifications.pushEventPostgresUnavailable",
+  [PushNotificationEvent.PostgresAvailable]:
+    "notifications.pushEventPostgresAvailable",
+  [PushNotificationEvent.KeyValueUnhealthy]:
+    "notifications.pushEventKeyValueUnhealthy",
+  [PushNotificationEvent.KeyValueAvailable]:
+    "notifications.pushEventKeyValueAvailable",
+  [PushNotificationEvent.PostgresBackupFailed]:
+    "notifications.pushEventPostgresBackupFailed",
+  [PushNotificationEvent.PostgresRestoreFailed]:
+    "notifications.pushEventPostgresRestoreFailed",
+  [PushNotificationEvent.PostgresUpgradeFailed]:
+    "notifications.pushEventPostgresUpgradeFailed",
+};
+
 export const pushUrgencies = [
   PushNotificationUrgency.Routine,
   PushNotificationUrgency.Important,

@@ -9,7 +9,12 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { useRouterState, useSearch } from "@tanstack/react-router";
-import { Pencil, Plus, Webhook } from "lucide-react";
+import { Bell, Pencil, Plus, Webhook } from "lucide-react";
+import { PushNotificationEvent } from "@/graphql/definitions";
+import {
+  pushEventKeys,
+  pushEvents,
+} from "@/features/notifications/lib/push-policy";
 import {
   Card,
   CardContent,
@@ -675,15 +680,223 @@ export function NotificationsPageSkeleton() {
       navigation={<NotificationsNavigation />}
     >
       <Region name="email-notifications">
-        <CardSkeleton rows={3} />
+        <EmailNotificationsCardSkeleton />
       </Region>
       <Region name="push-notifications">
-        <CardSkeleton rows={5} />
+        <PushNotificationsCardSkeleton />
       </Region>
       <Region name="web-push">
-        <CardSkeleton rows={2} />
+        <WebPushCardSkeleton />
       </Region>
     </PageFrame>
+  );
+}
+
+/** A ready switch row: label and hint beside the switch, in the row's frame. */
+function SwitchRowSkeleton({ label, hint }: { label: string; hint: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-md border p-3">
+      <div className="space-y-0.5 pr-4">
+        <ReservedLabel>{label}</ReservedLabel>
+        <ReservedHelp>{hint}</ReservedHelp>
+      </div>
+      <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
+    </div>
+  );
+}
+
+const EMAIL_NOTIFICATION_ROWS = [
+  ["notifications.deployStarted", "notifications.deployStartedHint"],
+  ["notifications.deploySucceeded", "notifications.deploySucceededHint"],
+  ["notifications.deployFailed", "notifications.deployFailedHint"],
+] as const;
+
+/** Mirrors `NotificationSettingsPanel`: the three deploy-email switch rows. */
+function EmailNotificationsCardSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="relative w-fit">
+          <ReservedText>{t("notifications.emailTitle")}</ReservedText>
+        </CardTitle>
+        <CardDescription className="relative">
+          <ReservedText>{t("notifications.description")}</ReservedText>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {EMAIL_NOTIFICATION_ROWS.map(([label, hint]) => (
+            <SwitchRowSkeleton key={label} label={t(label)} hint={t(hint)} />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** A ready push fieldset's legend (a 20px `text-sm font-medium` line). */
+function ReservedLegend({ children }: { children: React.ReactNode }) {
+  return (
+    <legend className="relative text-sm font-medium">
+      <ReservedText>{children}</ReservedText>
+    </legend>
+  );
+}
+
+/** A ready schedule or overrides fieldset's legend and hint, one block. */
+function PushFieldsetHeading({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div>
+      <ReservedLegend>{title}</ReservedLegend>
+      <ReservedHelp>{hint}</ReservedHelp>
+    </div>
+  );
+}
+
+const PUSH_FIELD_LABELS = [
+  "notifications.pushMinimumUrgency",
+  "notifications.pushTimezone",
+  "notifications.pushMaxDeferral",
+] as const;
+
+const PUSH_SCHEDULE_EDITORS = [
+  ["notifications.pushWorkingHours", "notifications.pushWorkingHoursHint"],
+  ["notifications.pushQuietHours", "notifications.pushQuietHoursHint"],
+] as const;
+
+/**
+ * Events bex-api publishes as `sent: false` (its `unsentPushEvents`, w4/349):
+ * the ready option carries a "not sent yet" line under the name. A copy of
+ * server data the pending frame cannot fetch: when bex-api starts sending one,
+ * drop it here or that row stays 16px taller than the ready option.
+ */
+const UNSENT_PUSH_EVENTS = new Set<PushNotificationEvent>([
+  PushNotificationEvent.AgentNeedsDecision,
+]);
+
+/**
+ * Mirrors `PushNotificationSettingsPanel`'s form, which is the same height
+ * whether push is on or off (off disables the controls, it does not hide
+ * them): the enable row, one option per selectable event in two columns, the
+ * urgency/time-zone/deferral fields, the working- and quiet-hours editors
+ * with no ranges, the overrides editor's add select and Save. The optional
+ * banners (unavailable, dropped selections, validation) stay out.
+ */
+function PushNotificationsCardSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <CardTitle className="relative w-fit">
+            <ReservedText>{t("notifications.pushTitle")}</ReservedText>
+          </CardTitle>
+          <span className="relative rounded-full px-2 py-0.5 text-xs font-medium">
+            <ReservedText>{t("notifications.bexExtension")}</ReservedText>
+          </span>
+        </div>
+        <CardDescription className="relative">
+          <ReservedText>{t("notifications.pushDescription")}</ReservedText>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <SwitchRowSkeleton
+          label={t("notifications.pushEnabled")}
+          hint={t("notifications.pushEnabledHint")}
+        />
+        <fieldset className="space-y-2">
+          <ReservedLegend>{t("notifications.pushEvents")}</ReservedLegend>
+          <ReservedHelp>{t("notifications.pushEventsHint")}</ReservedHelp>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {pushEvents.map((event) => (
+              <div
+                key={event}
+                data-push-event-skeleton
+                className="flex items-start gap-2 rounded-md border p-2 text-sm"
+              >
+                <Skeleton className="mt-0.5 size-4 shrink-0 rounded-[4px]" />
+                <span className="min-w-0 flex-1">
+                  <span className="relative flex flex-wrap items-baseline justify-between gap-x-2">
+                    <span className="invisible">{t(pushEventKeys[event])}</span>
+                    <span className="invisible text-xs">
+                      {t("notifications.pushUrgencyImportant")}
+                    </span>
+                    <Skeleton className="absolute inset-0" />
+                  </span>
+                  {UNSENT_PUSH_EVENTS.has(event) ? (
+                    <span className="relative block text-xs">
+                      <ReservedText>
+                        {t("notifications.pushEventNotSentYet")}
+                      </ReservedText>
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        </fieldset>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {PUSH_FIELD_LABELS.map((label) => (
+            <div key={label} className="space-y-2">
+              <ReservedLabel>{t(label)}</ReservedLabel>
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ))}
+        </div>
+        {PUSH_SCHEDULE_EDITORS.map(([title, hint]) => (
+          <fieldset key={title} className="space-y-3">
+            <PushFieldsetHeading title={t(title)} hint={t(hint)} />
+            <div>
+              <ReservedButton variant="outline" size="sm">
+                <Plus /> {t("notifications.pushAddRange")}
+              </ReservedButton>
+            </div>
+          </fieldset>
+        ))}
+        <fieldset className="space-y-3">
+          <PushFieldsetHeading
+            title={t("notifications.pushOverrides")}
+            hint={t("notifications.pushOverridesHint")}
+          />
+          <Skeleton className="h-9 w-full" />
+        </fieldset>
+        <div className="flex items-center justify-end gap-3">
+          <ReservedButton variant="default">
+            {t("notifications.pushSave")}
+          </ReservedButton>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Mirrors `WebPushSettingsPanel` in its usual state: the status line beside
+ *  the Enable button. */
+function WebPushCardSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="relative w-fit">
+          <ReservedText>{t("notifications.webPushTitle")}</ReservedText>
+        </CardTitle>
+        <CardDescription className="relative">
+          <ReservedText>{t("notifications.webPushDescription")}</ReservedText>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="relative text-sm">
+            <ReservedText>{t("notifications.webPushOff")}</ReservedText>
+          </div>
+          <ReservedButton variant="default">
+            <Bell className="size-4" />
+            {t("notifications.webPushEnable")}
+          </ReservedButton>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
