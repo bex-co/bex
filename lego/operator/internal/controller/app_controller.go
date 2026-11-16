@@ -35,6 +35,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -343,6 +344,14 @@ type AppReconciler struct {
 	// privatePortSweeps holds each service's listener sweep, running or
 	// finished, until a pass takes its record (w4/665).
 	privatePortSweeps sync.Map // "<ns>/<name>" -> *privatePortSweep
+	// privatePortStable counts, per service, the consecutive sweeps of one
+	// revision that found what the sweep before found, which spaces the next
+	// (privatePortRescanEvery).
+	privatePortStable sync.Map // "<ns>/<name>" -> privatePortHistory
+	// privatePortRescans counts the rescans of an already-swept revision that
+	// run now, bounded by privatePortRescanSlots; a new revision's first sweep
+	// never waits for a slot.
+	privatePortRescans atomic.Int32
 	// privatePortSwept wakes an App whose sweep finished. Made by
 	// SetupWithManager; nil in tests that drive Reconcile directly.
 	privatePortSwept chan event.GenericEvent

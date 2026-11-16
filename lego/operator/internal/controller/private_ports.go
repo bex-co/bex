@@ -47,9 +47,73 @@ import (
 // every port, so a loopback-only listener is never found.
 
 // privatePortScanInterval spaces the scans of one service once its current
-// revision has been scanned, so a listener opened after readiness is published
-// within one interval.
+// revision has been scanned, while its listeners keep changing (it doubles
+// after each sweep that finds no change, up to privatePortBackoffDoublings), so
+// a listener opened after readiness is published within one interval.
 const privatePortScanInterval = 2 * time.Minute
+
+const (
+	// privatePortBackoffDoublings caps the spacing of a service whose
+	// listeners hold still at 2, 4, 8 and 16 minutes. A sweep dials thousands
+	// of ports of the pod for its whole 15 s timeout, so sweeping every
+	// service every two minutes was 93% of the manager's CPU (w21/m421 t002).
+	privatePortBackoffDoublings = 3
+	// privatePortRescanSlots is how many rescans of an already-swept revision
+	// run at once, so the manager's CPU for sweeps has a ceiling whatever the
+	// number of services. A new revision's first sweep, which gates what the
+	// service publishes, never waits for one.
+	privatePortRescanSlots = 2
+)
+
+// privatePortHistory is how long a revision's listeners have held still.
+type privatePortHistory struct {
+	revision string
+	stable   int
+}
+
+// privatePortHistoryOf is key's history for revision: zero for another one.
+func (r *AppReconciler) privatePortHistoryOf(key, revision string) privatePortHistory {
+	if v, ok := r.privatePortStable.Load(key); ok {
+		if h := v.(privatePortHistory); h.revision == revision {
+			return h
+		}
+	}
+	return privatePortHistory{revision: revision}
+}
+
+// privatePortRescanEvery is the spacing before key's next rescan of revision.
+func (r *AppReconciler) privatePortRescanEvery(key, revision string) time.Duration {
+	every := privatePortScanInterval
+	if r.portDetectEvery > 0 {
+		every = r.portDetectEvery
+	}
+	return every << min(r.privatePortHistoryOf(key, revision).stable, privatePortBackoffDoublings)
+}
+
+// notePrivateSweep records whether a finished sweep found the listeners the
+// record already held: a failed sweep proves nothing and changes nothing.
+func (r *AppReconciler) notePrivateSweep(key, revision string, prev, next *appv1alpha1.RuntimePortsStatus) {
+	if next == nil {
+		return
+	}
+	h := r.privatePortHistoryOf(key, revision)
+	if prev != nil && prev.Revision == revision && slices.Equal(prev.Ports, next.Ports) {
+		h.stable++
+	} else {
+		h.stable = 0
+	}
+	r.privatePortStable.Store(key, h)
+}
+
+// acquireRescanSlot takes one of the rescan slots without waiting; a pass that
+// finds none leaves the rescan to its next pass.
+func (r *AppReconciler) acquireRescanSlot() (release func(), ok bool) {
+	if r.privatePortRescans.Add(1) > privatePortRescanSlots {
+		r.privatePortRescans.Add(-1)
+		return nil, false
+	}
+	return func() { r.privatePortRescans.Add(-1) }, true
+}
 
 // discoverPrivatePorts scans a web or private service's current revision when
 // a scan is due and records what it binds in status.runtimePorts. rolloutDone
@@ -123,17 +187,14 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 		}
 		r.privatePortSweeps.Delete(key)
 		if sweep.uid == app.UID && sweep.revision == revision {
+			r.notePrivateSweep(key, revision, app.Status.RuntimePorts, sweep.next)
 			return sweep.next
 		}
 		// A revision this App no longer runs: its new one is due at once below.
 	}
 	prev := app.Status.RuntimePorts
 	sameRevision := prev != nil && prev.Revision == revision
-	every := privatePortScanInterval
-	if r.portDetectEvery > 0 {
-		every = r.portDetectEvery
-	}
-	if last, ok := r.privatePortScanned.Load(key); ok && sameRevision && time.Since(last.(time.Time)) < every {
+	if last, ok := r.privatePortScanned.Load(key); ok && sameRevision && time.Since(last.(time.Time)) < r.privatePortRescanEvery(key, revision) {
 		return nil
 	}
 	// A rescan of a revision already scanned waits until the App is Running: a
@@ -147,11 +208,20 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 	if ip == "" {
 		return nil
 	}
+	release := func() {}
+	if sameRevision {
+		slot, ok := r.acquireRescanSlot()
+		if !ok {
+			return nil
+		}
+		release = slot
+	}
 	r.privatePortScanned.Store(key, time.Now())
 	sweep := &privatePortSweep{uid: app.UID, revision: revision, done: make(chan struct{})}
 	r.privatePortSweeps.Store(key, sweep)
 	snapshot := app.DeepCopy()
 	go func() {
+		defer release()
 		sweep.next = r.sweepPrivatePorts(context.WithoutCancel(ctx), snapshot, revision, ip)
 		close(sweep.done) // before the wake, so the woken pass finds the record
 		if r.privatePortSwept == nil {
