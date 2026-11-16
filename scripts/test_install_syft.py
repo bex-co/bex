@@ -50,7 +50,7 @@ class InstallerTests(unittest.TestCase):
 
         partial = InterruptedResponse()
         with patch.object(syft, "open_https", side_effect=[partial, Response(b"complete")]) as opened, patch.object(syft.time, "sleep") as sleep:
-            self.assertEqual(syft.download(URL, 8), b"complete")
+            self.assertEqual(syft.download(URL, 8, "Syft"), b"complete")
             self.assertEqual(opened.call_count, 2)
             self.assertTrue(partial.closed)
             sleep.assert_called_once_with(1)
@@ -58,17 +58,17 @@ class InstallerTests(unittest.TestCase):
     def test_tls_eof_retries_but_never_relaxes_verification(self):
         error = urllib.error.URLError(ssl.SSLEOFError("interrupted handshake"))
         with patch.object(syft, "open_https", side_effect=[error, Response(b"complete")]), patch.object(syft.time, "sleep") as sleep:
-            self.assertEqual(syft.download(URL, 8), b"complete")
+            self.assertEqual(syft.download(URL, 8, "Syft"), b"complete")
             sleep.assert_called_once_with(1)
 
     def test_response_read_is_bounded_even_when_server_sends_excess(self):
         with patch.object(syft, "open_https", return_value=Response(b"x" * 100)):
-            self.assertEqual(len(syft.download(URL, 8)), 9)
+            self.assertEqual(len(syft.download(URL, 8, "Syft")), 9)
 
     def test_timeout_exhaustion_is_four_attempts_and_123_backoff(self):
         with patch.object(syft, "open_https", side_effect=TimeoutError()) as opened, patch.object(syft.time, "sleep") as sleep:
             with self.assertRaisesRegex(RuntimeError, "TimeoutError"):
-                syft.download(URL, 8)
+                syft.download(URL, 8, "Syft")
             self.assertEqual(opened.call_count, 4)
             self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2, 3])
 
@@ -77,14 +77,14 @@ class InstallerTests(unittest.TestCase):
                       urllib.error.URLError(ssl.SSLCertVerificationError("bad certificate"))):
             with self.subTest(error=type(error)), patch.object(syft, "open_https", side_effect=error) as opened, patch.object(syft.time, "sleep") as sleep:
                 with self.assertRaises(RuntimeError):
-                    syft.download(URL, 8)
+                    syft.download(URL, 8, "Syft")
                 self.assertEqual(opened.call_count, 1)
                 sleep.assert_not_called()
 
     def test_transient_http_recovers_and_closes_failed_response(self):
         error = urllib.error.HTTPError(URL, 503, "unavailable", {}, io.BytesIO(b"partial"))
         with patch.object(syft, "open_https", side_effect=[error, Response(b"complete")]), patch.object(syft.time, "sleep"):
-            self.assertEqual(syft.download(URL, 8), b"complete")
+            self.assertEqual(syft.download(URL, 8, "Syft"), b"complete")
             self.assertTrue(error.closed)
 
     def test_https_downgrade_is_refused_before_following_redirect(self):
@@ -97,7 +97,7 @@ class InstallerTests(unittest.TestCase):
         entry = ("arm64", len(payload), hashlib.sha256(payload).hexdigest())
         with patch.object(syft.platform, "system", return_value="Linux"), patch.object(syft.platform, "machine", return_value="aarch64"), patch.dict(syft.RELEASES[syft.VERSION], {"aarch64": entry}), patch.object(syft, "download", return_value=payload if content is None else content) as download:
             syft.install(root, path_file or root / "github-path")
-            download.assert_called_once_with(URL, len(payload))
+            download.assert_called_once_with(URL, len(payload), "Syft")
 
     def test_success_publishes_only_regular_binary_after_integrity_check(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -151,7 +151,7 @@ class InstallerTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "stop"):
                     syft.install(root, root / "github-path", "1.55.0")
             download.assert_called_once_with(
-                "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz", 31198534)
+                "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz", 31198534, "Syft")
 
 
 if __name__ == "__main__":

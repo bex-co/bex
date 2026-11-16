@@ -17,8 +17,8 @@ import urllib.request
 
 # Reviewed releases only; official release checksums and GitHub asset digests
 # agree for every archive below. 1.51.1 is the default (download-syft's former
-# default); 1.55.0 is what native-common and pg-operand pin (native-base-image.yml
-# still uses download-syft until w6/m163 moves it here).
+# default); 1.55.0 is what the native-base, native-common and pg-operand
+# workflows pin.
 # https://github.com/anchore/syft/releases/tag/v1.51.1
 # https://github.com/anchore/syft/releases/tag/v1.55.0 (checked 2026-11-05)
 VERSION = "1.51.1"
@@ -33,12 +33,13 @@ RELEASES = {
     },
 }
 TRANSIENT_HTTP = (408, 425, 429, 500, 502, 503, 504)
+URL = "https://github.com/anchore/syft/releases/download/v%s/syft_%s_linux_%s.tar.gz"
 
 
 class HTTPSRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, request, response, code, message, headers, url):
         if not url.startswith("https://"):
-            raise RuntimeError("Syft release redirected outside HTTPS")
+            raise RuntimeError("Release download redirected outside HTTPS")
         return super().redirect_request(request, response, code, message, headers, url)
 
 
@@ -46,14 +47,14 @@ def open_https(url):
     return urllib.request.build_opener(HTTPSRedirect()).open(url, timeout=60)
 
 
-def download(url, size):
+def download(url, size, tool):
     """Fresh complete requests only; do not retry certificate/integrity errors."""
     for attempt in range(4):
         try:
             with open_https(url) as response:
                 # A redirect may never downgrade the release transfer to HTTP.
                 if not response.geturl().startswith("https://"):
-                    raise RuntimeError("Syft release redirected outside HTTPS")
+                    raise RuntimeError("Release download redirected outside HTTPS")
                 return response.read(size + 1)
         except (urllib.error.URLError, TimeoutError, ConnectionError,
                 http.client.IncompleteRead, ssl.SSLError) as error:
@@ -63,43 +64,52 @@ def download(url, size):
                 category = "HTTP " + str(error.code)
                 error.close()
                 if error.code not in TRANSIENT_HTTP:
-                    raise RuntimeError("Syft download failed: " + category) from None
+                    raise RuntimeError("%s download failed: %s" % (tool, category)) from None
             if isinstance(reason, ssl.SSLCertVerificationError) or attempt == 3:
-                raise RuntimeError("Syft download failed: " + category) from None
+                raise RuntimeError("%s download failed: %s" % (tool, category)) from None
             # Never print a redirect URL: release-assets URLs carry signatures.
-            print("Syft download retry %d/4: %s" % (attempt + 1, category), file=sys.stderr)
+            print("%s download retry %d/4: %s" % (tool, attempt + 1, category), file=sys.stderr)
             time.sleep(attempt + 1)
 
 
-def install(temporary_root, path_file, version=VERSION):
-    if version not in RELEASES:
-        raise RuntimeError("Syft %s is not a reviewed release" % version)
-    releases = RELEASES[version]
-    if platform.system() != "Linux" or platform.machine() not in releases:
-        raise RuntimeError("Syft installer supports Linux amd64/arm64 runners only")
-    arch, size, checksum = releases[platform.machine()]
-    url = "https://github.com/anchore/syft/releases/download/v%s/syft_%s_linux_%s.tar.gz" % (version, version, arch)
-    content = download(url, size)
+def install_release(temporary_root, path_file, tool, releases, version, url_template):
+    """Publish the one regular `tool` binary of a reviewed release archive.
+
+    `url_template` is a %-template over (version, version, asset architecture).
+    """
+    if version not in releases:
+        raise RuntimeError("%s %s is not a reviewed release" % (tool, version))
+    machines = releases[version]
+    if platform.system() != "Linux" or platform.machine() not in machines:
+        raise RuntimeError("%s installer supports Linux amd64/arm64 runners only" % tool)
+    arch, size, checksum = machines[platform.machine()]
+    url = url_template % (version, version, arch)
+    content = download(url, size, tool)
     if len(content) != size or hashlib.sha256(content).hexdigest() != checksum:
-        raise RuntimeError("Syft release archive size/checksum mismatch")
+        raise RuntimeError("%s release archive size/checksum mismatch" % tool)
+    binary = tool.lower()
     # Read one regular member into a fresh file; archive paths and symlinks
     # cannot write outside the job's own installation directory.
     with tarfile.open(fileobj=io.BytesIO(content), mode="r:gz") as archive:
-        member = archive.getmember("syft")
+        member = archive.getmember(binary)
         if not member.isfile():
-            raise RuntimeError("Syft release does not contain a regular binary")
-        destination = Path(tempfile.mkdtemp(prefix="bex-syft-", dir=temporary_root))
+            raise RuntimeError("%s release does not contain a regular binary" % tool)
+        destination = Path(tempfile.mkdtemp(prefix="bex-%s-" % binary, dir=temporary_root))
         try:
-            target = destination / "syft"
-            with archive.extractfile(member) as binary, target.open("wb") as output:
-                shutil.copyfileobj(binary, output)
+            target = destination / binary
+            with archive.extractfile(member) as source, target.open("wb") as output:
+                shutil.copyfileobj(source, output)
             target.chmod(0o755)
             with path_file.open("a") as output:
                 output.write(str(destination) + "\n")
         except BaseException:
             shutil.rmtree(destination)
             raise
-    print("Installed Syft %s linux/%s from reviewed SHA256 %s" % (version, arch, checksum))
+    print("Installed %s %s from reviewed %s (SHA256 %s)" % (tool, version, url.rsplit("/", 1)[1], checksum))
+
+
+def install(temporary_root, path_file, version=VERSION):
+    install_release(temporary_root, path_file, "Syft", RELEASES, version, URL)
 
 
 if __name__ == "__main__":

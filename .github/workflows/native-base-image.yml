@@ -237,6 +237,12 @@ jobs:
           done
           SH
           chmod 755 "$RUNNER_TEMP/native-trivy"
+      # trivy-action's nested setup-trivy downloads Trivy in one attempt; a
+      # failed download there failed a fully built run (42037362778). Install
+      # the reviewed archive with retries and let the scan reuse it.
+      - name: Install reviewed Trivy with bounded transport retries
+        timeout-minutes: 15
+        run: python3 scripts/install-trivy.py 0.70.0
       - name: scan amd64 candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
@@ -246,6 +252,7 @@ jobs:
           TRIVY_CMD: ${{ runner.temp }}/native-trivy
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}
           format: json
           output: native-amd64.trivy.json
@@ -254,9 +261,9 @@ jobs:
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
           cosign-release: v3.1.4
-      - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
-        with:
-          syft-version: v1.55.0
+      - name: Install reviewed Syft with bounded transport retries
+        timeout-minutes: 15
+        run: python3 scripts/install-syft.py 1.55.0
       - name: sign and attest the immutable candidate
         env:
           REF: ${{ env.NATIVE_IMAGE }}@${{ steps.candidate.outputs.digest }}

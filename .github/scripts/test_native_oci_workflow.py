@@ -236,7 +236,35 @@ class PublisherInputControls(unittest.TestCase):
         self.assertRegex(push, r'(?m)^      - "lego/operator/internal/build/testdata/native-utilities/\*\*"$')
         self.assertRegex(common, r"(?m)^    uses: \./\.github/workflows/native-base-image\.yml$")
         self.assertRegex(common, r"(?m)^      runtime: common-bookworm$")
-        self.assertRegex(WORKFLOW_TEXT, r"(?m)^          syft-version: v1\.55\.0$")
+        # The publisher runs both reviewed installers, so a change to either
+        # one re-runs the publication that proves it.
+        self.assertRegex(push, r'(?m)^      - "scripts/install-syft\.py"$')
+        self.assertRegex(push, r'(?m)^      - "scripts/install-trivy\.py"$')
+
+    def test_scanner_and_sbom_tools_come_from_the_retrying_reviewed_installers(self):
+        # w6/m163: a single-attempt Trivy download inside trivy-action failed a
+        # fully built run (42037362778); download-syft had the same shape.
+        build = WORKFLOW_TEXT.split("\n  build:\n", 1)[1]
+        steps = build.split("\n      - ")
+        def step(text):
+            matches = [body for body in steps if text in body]
+            self.assertEqual(len(matches), 1, text)
+            return steps.index(matches[0]), matches[0]
+        trivy_install, trivy_body = step("run: python3 scripts/install-trivy.py 0.70.0")
+        syft_install, syft_body = step("run: python3 scripts/install-syft.py 1.55.0")
+        scan, scan_body = step("name: scan amd64 candidate")
+        sign, sign_body = step("name: sign and attest the immutable candidate")
+        for body in (trivy_body, syft_body):
+            self.assertIn("timeout-minutes: 15\n", body)
+        # The scan reuses the installed binary instead of setup-trivy's download.
+        self.assertIn("uses: aquasecurity/trivy-action@", scan_body)
+        self.assertIn("          skip-setup-trivy: true\n", scan_body)
+        self.assertLess(trivy_install, scan)
+        self.assertLess(syft_install, sign)
+        self.assertIn("syft scan", sign_body)
+        self.assertNotIn("download-syft", WORKFLOW_TEXT)
+        self.assertNotIn("setup-trivy@", WORKFLOW_TEXT)
+        self.assertEqual(WORKFLOW_TEXT.count("uses: aquasecurity/trivy-action@"), 1)
 
     def select(self, runtime):
         with tempfile.TemporaryDirectory(prefix="native-oci-publish-input-") as temporary:
