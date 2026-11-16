@@ -1465,7 +1465,7 @@ tests:
       - eval_time: 160m
         alertname: PushDeliveryStale
         exp_alerts:
-          - exp_labels: { severity: warning, job: bex-api, instance: prod-a }
+          - exp_labels: { severity: warning }
             exp_annotations:
               summary: "Push delivery has not succeeded in 2h 40m 0s while work is queued"
               description: "Push transport is configured and rows are waiting in send_pending/receipt_pending, but no provider operation has succeeded for over two hours — every mobile supervision notification (ADR048) is silently undelivered. Check the VAPID credentials and provider reachability first, then bex_push_transport_total{result} and bex_push_operations_total{result} for whether sends are being rejected or never attempted. Runbook: docs/ADR010-observability.md#outbound-webhook-and-push-delivery"
@@ -1499,6 +1499,89 @@ tests:
         values: "40x200"
     alert_rule_test:
       - eval_time: 160m
+        alertname: PushDeliveryStale
+        exp_alerts: []
+
+  # w21/084 — bex-api runs two replicas and Prometheus scrapes each as its own
+  # target. The push queue is one Postgres table both workers drain, so the
+  # replica that lost every claim race keeps a last-success gauge of 0 while the
+  # other delivers: judged per pod it would page on a healthy fleet.
+  - name: a replica that delivers nothing does not make push stale while the other delivers
+    interval: 1m
+    input_series:
+      - series: 'bex_push_enabled{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "1x200"
+      - series: 'bex_push_enabled{job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "1x200"
+      # Replica a delivers every minute; replica b never stamps its gauge.
+      - series: 'bex_push_last_success_timestamp_seconds{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "0+60x200"
+      - series: 'bex_push_last_success_timestamp_seconds{job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "0x200"
+      # Both replicas read the same standing backlog.
+      - series: 'bex_push_queue_rows{state="send_pending",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "40x200"
+      - series: 'bex_push_queue_rows{state="send_pending",job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "40x200"
+    alert_rule_test:
+      - eval_time: 160m
+        alertname: PushDeliveryStale
+        exp_alerts: []
+
+  - name: queued push work that no replica delivers pages once, not once per replica
+    interval: 1m
+    input_series:
+      - series: 'bex_push_enabled{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "1x200"
+      - series: 'bex_push_enabled{job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "1x200"
+      - series: 'bex_push_last_success_timestamp_seconds{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "0x200"
+      - series: 'bex_push_last_success_timestamp_seconds{job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "0x200"
+      # The backlog is shared: the replicas report the same rows, which must not
+      # be added together (the lag between two polls could otherwise differ).
+      - series: 'bex_push_queue_rows{state="send_pending",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "5x200"
+      - series: 'bex_push_queue_rows{state="receipt_pending",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "2x200"
+      - series: 'bex_push_queue_rows{state="send_pending",job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "5x200"
+    alert_rule_test:
+      - eval_time: 140m
+        alertname: PushDeliveryStale
+        exp_alerts: []
+      - eval_time: 160m
+        alertname: PushDeliveryStale
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "Push delivery has not succeeded in 2h 40m 0s while work is queued"
+              description: "Push transport is configured and rows are waiting in send_pending/receipt_pending, but no provider operation has succeeded for over two hours — every mobile supervision notification (ADR048) is silently undelivered. Check the VAPID credentials and provider reachability first, then bex_push_transport_total{result} and bex_push_operations_total{result} for whether sends are being rejected or never attempted. Runbook: docs/ADR010-observability.md#outbound-webhook-and-push-delivery"
+
+  # A replica that only just started publishes 0 while the fleet's freshest
+  # success is recent: the max across replicas must read the recent one.
+  - name: a freshly restarted replica does not hide the fleet's last push success
+    interval: 1m
+    input_series:
+      - series: 'bex_push_enabled{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "1x200"
+      - series: 'bex_push_enabled{job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "1x200"
+      # Delivered once at t=60m, then nothing further for the rest of the run.
+      - series: 'bex_push_last_success_timestamp_seconds{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "0x60 3600x140"
+      - series: 'bex_push_last_success_timestamp_seconds{job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "0x200"
+      - series: 'bex_push_queue_rows{state="send_pending",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "3x200"
+      - series: 'bex_push_queue_rows{state="send_pending",job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "3x200"
+    alert_rule_test:
+      # At 170m replica a's stamp is 6600s old, inside the 2h window, while b's
+      # 0 alone would read 10200s and have paged since 150m: the freshest stamp
+      # across the replicas sets the age.
+      - eval_time: 170m
         alertname: PushDeliveryStale
         exp_alerts: []
 
@@ -1671,6 +1754,29 @@ tests:
               summary: "1 orphaned live sandbox(es) still running"
               description: "Inventory reconcile found sandboxes whose agent session is terminal or absent. Check bex_sandbox_live{class} and Completer logs for terminate failures (bex_sandbox_teardown_failures_total). Prefer the reconcile reclaiming them; a stuck substrate may need kubectl -n <ws>-sandbox. Runbook: docs/ADR014-sandboxes.md"
 
+  # w21/084 — every replica recounts the whole inventory, so each orphan is
+  # reported once per replica. The value is the orphan count, not the count
+  # times the replicas.
+  - name: orphans reported by both replicas are counted once
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_live{class="terminal_orphan",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "1x5"
+      - series: 'bex_sandbox_live{class="no_row_orphan",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "0x5"
+      - series: 'bex_sandbox_live{class="terminal_orphan",job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "1x5"
+      - series: 'bex_sandbox_live{class="no_row_orphan",job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "1x5"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: SandboxOrphansPresent
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "2 orphaned live sandbox(es) still running"
+              description: "Inventory reconcile found sandboxes whose agent session is terminal or absent. Check bex_sandbox_live{class} and Completer logs for terminate failures (bex_sandbox_teardown_failures_total). Prefer the reconcile reclaiming them; a stuck substrate may need kubectl -n <ws>-sandbox. Runbook: docs/ADR014-sandboxes.md"
+
   - name: zero orphans stay silent
     interval: 1m
     input_series:
@@ -1824,6 +1930,27 @@ tests:
           - exp_labels: { severity: warning, surface: rest }
             exp_annotations:
               summary: "bex-api is serving 16.67% 5xx on its rest surface"
+              description: "More than 5% of the requests bex-api itself completed on the rest surface were 5xx for >10m, with meaningful traffic — this is the ORIGIN's own view, so the fault is in bex-api or a dependency it calls, not the edge. Compare with TraefikHigh5xxRate: if only the edge alert fires, the failure is between Traefik and the pod. Find the routes on the bex-api-gateways dashboard (origin 5xx ratio by route), then: kubectl -n bex-system logs deploy/bex-api; check OpenFGA/Hydra/Postgres reachability. Runbook: docs/ADR088-platform-observability-ui.md"
+
+  # w21/084 — the rate is summed over the replicas, each its own target: the
+  # ratio is the fleet's, not any one pod's. Replica b alone is at 50% 5xx and
+  # replica a at 0%; together 1 of 7 requests a second is a 5xx.
+  - name: the origin 5xx ratio is the sum over replicas, not one pod's
+    interval: 1m
+    input_series:
+      - series: 'bex_api_http_requests_total{surface="rest",route="GET /v1/services",method="GET",status="200",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "0+300x60"
+      - series: 'bex_api_http_requests_total{surface="rest",route="GET /v1/services",method="GET",status="200",job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "0+60x60"
+      - series: 'bex_api_http_requests_total{surface="rest",route="GET /v1/services",method="GET",status="500",job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "0+60x60"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BexApiOriginHighErrorRate
+        exp_alerts:
+          - exp_labels: { severity: warning, surface: rest }
+            exp_annotations:
+              summary: "bex-api is serving 14.29% 5xx on its rest surface"
               description: "More than 5% of the requests bex-api itself completed on the rest surface were 5xx for >10m, with meaningful traffic — this is the ORIGIN's own view, so the fault is in bex-api or a dependency it calls, not the edge. Compare with TraefikHigh5xxRate: if only the edge alert fires, the failure is between Traefik and the pod. Find the routes on the bex-api-gateways dashboard (origin 5xx ratio by route), then: kubectl -n bex-system logs deploy/bex-api; check OpenFGA/Hydra/Postgres reachability. Runbook: docs/ADR088-platform-observability-ui.md"
 
   - name: a quiet bex-api surface under the traffic floor stays silent
@@ -2037,6 +2164,51 @@ tests:
             exp_annotations:
               summary: "bex rejected or failed a Stripe webhook delivery"
               description: "checkout.session.completed is the only writer of payment_method_bound_at, which alone decides whether a workspace may create anything — so a dropped delivery locks a real customer out with no trace. A signature or livemode rejection is a permanent loss (Stripe never retries a 4xx); a handler error returns 503 and Stripe retries for up to three days, and persistent failure gets the endpoint disabled. Check the bex-api log for the matching 'billing: ...' line, which names the event id. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
+
+  # w21/084 — a Stripe delivery lands on ONE bex-api replica, and each replica
+  # is its own scrape target. The counter is per process, so the alert stays per
+  # pod: it fires with the replica that failed, and the other replica's flat
+  # counter neither hides it nor joins it.
+  - name: a Stripe webhook failure on one replica pages with that replica's labels
+    interval: 1m
+    input_series:
+      - series: 'bex_billing_enabled{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "1x30"
+      - series: 'bex_billing_enabled{job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "1x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a",operation="webhook_handler",result="error"}'
+        values: "0x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b",operation="webhook_handler",result="error"}'
+        values: "0x10 1x20"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BillingWebhookRejected
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: BillingWebhookRejected
+        exp_alerts:
+          - exp_labels: { severity: critical, job: bex-api, instance: "10.244.2.7:8091" }
+            exp_annotations:
+              summary: "bex rejected or failed a Stripe webhook delivery"
+              description: "checkout.session.completed is the only writer of payment_method_bound_at, which alone decides whether a workspace may create anything — so a dropped delivery locks a real customer out with no trace. A signature or livemode rejection is a permanent loss (Stripe never retries a 4xx); a handler error returns 503 and Stripe retries for up to three days, and persistent failure gets the endpoint disabled. Check the bex-api log for the matching 'billing: ...' line, which names the event id. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
+
+  # increase() over a series whose first sample already reads 1 is 0: nothing
+  # before it to subtract. A counter created lazily by its first failure is
+  # therefore a failure the alert never sees, once per new pod. Every operation
+  # an alert here reads with result="error" is registered at 0 when the process
+  # starts (billing.NewMetrics; TestAlertedBillingOperationsStartAtZero pins the
+  # list to this file), so the test above models the real series.
+  - name: a billing counter first created by its failure is not an increase
+    interval: 1m
+    input_series:
+      - series: 'bex_billing_enabled{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "1x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a",operation="webhook_handler",result="error"}'
+        values: "_x10 1x20"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: BillingWebhookRejected
+        exp_alerts: []
 
   # The series run at 1m to match this file's evaluation_interval — coarser
   # samples go stale between evaluations and `for:` never accumulates — and run

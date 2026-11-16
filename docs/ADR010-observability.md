@@ -498,6 +498,17 @@ Admission pressure (above) is about the queue's bound. These two are about the w
 
 Both rules use a traffic floor rather than an `or vector(0)` coercion: a window with no attempts produces no series at all, which reads as "nothing happened" instead of as a fake healthy zero.
 
+#### bex-api replicas (w21/084)
+
+Production runs two bex-api replicas. The `bex-api` job discovers the Ready pods (the `internal` container port, `:8091`) instead of scraping the Service, because a scrape of the ClusterIP keeps one keep-alive connection to one pod: Prometheus read a single replica, and the request panels showed about half of the traffic (on 2026-11-15 the pods read 309 and 338 against Prometheus's 337). Every series now carries `pod` and an `instance` of the pod's IP, and each metric is read according to what it is:
+
+- **Per-process counters and histograms** (`bex_api_http_*`, `bex_webhooks_*`, `bex_sandbox_create_*`, `bex_billing_operations_total` and the rest) are added with `sum` (`rate` and `increase` run per series first, so two pods never look like one counter that resets). Every rule and panel over them already aggregated.
+- **Shared state every replica reads from Postgres** (`bex_push_queue_rows`, `bex_sandbox_live`, the usage and billing gauges) is collapsed with `max`, never `sum`, which would double it. `SandboxOrphansPresent` takes `max by (class)` before adding the classes, and the push-queue and sandbox-live panels use `max by`.
+- **Per-process timestamps and flags** that only the replica that did the work stamps (`bex_push_last_success_timestamp_seconds`) are read as the freshest across the replicas: `PushDeliveryStale` uses `time() - max(...)`. The push queue is one table both workers drain, so the replica that lost every claim race would otherwise page on a healthy fleet; the alert is fleet-wide and carries no pod label.
+- **Per-process counters behind single-event alerts** keep their alert per pod (`BillingWebhookRejected` and the other billing `increase()` rules fire with the failing replica's labels; Alertmanager groups by `alertname`, so two replicas are one notification). Their `result="error"` series are registered at 0 when the process starts (`billing.NewMetrics`), because `increase()` over a series whose first sample already reads 1 is 0: a lazily created counter would hide the first failure on every new pod. `TestAlertedBillingOperationsStartAtZero` reads the rule pack and fails when an alert names an operation that is not registered.
+
+`scripts/gitops-validate.sh` pins the job's shape and the Deployment's pod label and port name it keys on; renaming either would drop every target.
+
 ### Where every tenant-facing surface's signal lives
 
 The rule pack and the tenant reads above are two of three answers to "how would we know". The third is the scheduled probe, for failures visible only from the tenant's side — a query that returns empty, a URL that 404s, an isolation invariant. [ADR088 §6](ADR088-platform-observability-ui.md#tenant-facing-surface-coverage-w3m83-t001) carries the per-surface ledger: each tenant-facing surface classified as covered by an alert rule, covered by a scheduled probe, or waived with its reason, and no surface left implicitly uncovered.

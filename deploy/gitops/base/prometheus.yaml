@@ -544,11 +544,31 @@ spec:
               # Stripe Billing operations expose only account-wide gauges and
               # bounded operation/result labels. No workspace, provider object,
               # invoice, transaction, payment, or secret value is a label.
+              #
+              # One target per Ready pod, NOT the Service (w21/084): production
+              # runs two replicas, a scrape of the ClusterIP keeps one keep-alive
+              # connection to one pod, and the request panels read about half of
+              # the traffic. The pod label keeps the replicas' counters apart so
+              # rate() never sees two pods as one that resets. The rules and
+              # panels aggregate per-process series (docs/ADR010-observability.md
+              # "bex-api replicas"). Ready only: a pod that is starting or
+              # draining is not a target that can go "down" on a deploy.
               - job_name: bex-api
                 scrape_interval: 15s
                 metrics_path: /metrics
-                static_configs:
-                  - targets: [bex-api.bex-system.svc:8091]
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [bex-system]
+                relabel_configs:
+                  - source_labels:
+                      - __meta_kubernetes_pod_label_app_kubernetes_io_name
+                      - __meta_kubernetes_pod_container_port_name
+                      - __meta_kubernetes_pod_ready
+                    action: keep
+                    regex: bex-api;internal;true
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
                 metric_relabel_configs:
                   - source_labels: [__name__]
                     # billing => the Billing* alerts; agent_session => the

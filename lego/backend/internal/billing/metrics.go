@@ -41,6 +41,20 @@ type Metrics struct {
 	agentModelWrittenOff *prometheus.GaugeVec
 }
 
+// alertedErrorOperations are the operations whose result="error" series an
+// alert reads through increase() (deploy/gitops/base/rules/alerting_rules.yml).
+// A CounterVec child exists only once it is first used, so without this its
+// first sample on a pod would already read 1, and increase() over a series that
+// starts at 1 is 0: the first failure after every deploy would be a failure the
+// alert never sees. Each is registered at 0 when the process starts instead,
+// the way objectgw's counters are. TestAlertedBillingOperationsStartAtZero
+// reads the rules file and fails when an alert names an operation missing here.
+var alertedErrorOperations = []string{
+	"webhook_signature", "webhook_mode", "webhook_handler", "webhook_version",
+	"local_stamp", "duplicate_customer", "duplicate_subscription",
+	"invoice_read", "provisioning",
+}
+
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
 	m := &Metrics{
 		enabled: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -83,6 +97,9 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 	registerer.MustRegister(m.enabled, m.operations, m.pendingRows, m.oldestPendingAge, m.rejectedRows, m.ambiguousRows, m.lastWebhook,
 		m.agentModelRevenue, m.agentModelWrittenOff)
 	m.enabled.Set(0)
+	for _, operation := range alertedErrorOperations {
+		m.operations.WithLabelValues(operation, "error")
+	}
 	return m
 }
 

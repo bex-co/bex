@@ -3183,6 +3183,41 @@ want_scrape='{"keep":[{"action":"keep","regex":"bex_objectgw_.*"}],"relabel":[{"
   fail=1
 }
 
+# bex-api is scraped the same way (w21/084): production runs two replicas, so a
+# static target on the Service reads one pod's counters and the request panels
+# showed about half of the traffic. The job keeps each Ready pod's `internal`
+# container port (:8091, where /metrics is served) and labels it with the pod
+# name. Aggregating rules and panels depend on the replicas being separate
+# series, and the keep depends on the Deployment's pod label and port name, so
+# both are pinned: renaming the port would otherwise drop every target and the
+# alerts would read absent series. The keep-list of metric families is not
+# pinned here: scripts/obs-scrape-keep-check.sh guards it against the rules.
+bexapi_scrape="$(yq -N -o=json -I=0 '
+  .spec.source.helm.values | from_yaml |
+  .serverFiles."prometheus.yml".scrape_configs[] |
+  select(.job_name == "bex-api")' deploy/gitops/base/prometheus.yaml | jq -cS '{
+    static: (.static_configs // null),
+    path: .metrics_path,
+    sd: [(.kubernetes_sd_configs // [])[] | {role, namespaces: .namespaces.names}],
+    relabel: [(.relabel_configs // [])[] | {src: .source_labels, action, regex, target: .target_label, replacement}]}
+  | walk(if type == "object" then with_entries(select(.value != null)) else . end)')"
+want_bexapi_scrape='{"path":"/metrics","relabel":[{"action":"keep","regex":"bex-api;internal;true","src":["__meta_kubernetes_pod_label_app_kubernetes_io_name","__meta_kubernetes_pod_container_port_name","__meta_kubernetes_pod_ready"]},{"src":["__meta_kubernetes_pod_name"],"target":"pod"}],"sd":[{"namespaces":["bex-system"],"role":"pod"}]}'
+[ "$bexapi_scrape" = "$want_bexapi_scrape" ] || {
+  echo "FAIL: bex-api scrape job is $bexapi_scrape, want $want_bexapi_scrape" >&2
+  echo "      a static target on the Service reads one replica's counters only; discover the Ready pods (see the job's comment in prometheus.yaml)" >&2
+  fail=1
+}
+for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
+  bexapi_target="$(yq -N -o=json -I=0 'select(.kind == "Deployment" and .metadata.name == "bex-api")' "$render" | jq -cS '{
+    label: .spec.template.metadata.labels["app.kubernetes.io/name"],
+    ports: [.spec.template.spec.containers[].ports[]? | select(.name == "internal") | .containerPort]}')"
+  [ "$bexapi_target" = '{"label":"bex-api","ports":[8091]}' ] || {
+    echo "FAIL: bex-api Deployment in $(basename "$render") is $bexapi_target, want pod label app.kubernetes.io/name=bex-api and one container port named internal on 8091" >&2
+    echo "      the bex-api scrape job in prometheus.yaml keeps exactly that label and port name; change them together" >&2
+    fail=1
+  }
+done
+
 # Static publish pull-secret custody (w1/m57, w9/012 chain #3): the publish Job's
 # extract initContainer pulls the built tenant image with bex-registry-pull in
 # the BUILD namespace, minted out-of-band by registry-secrets.sh as the

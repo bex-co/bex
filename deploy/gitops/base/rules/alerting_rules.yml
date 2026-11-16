@@ -1474,13 +1474,22 @@ groups:
       # stamps the gauge within one worker poll — far inside the
       # 30-minute persistence window, which is what makes the
       # restart transient silent without hiding the real case.
+      #
+      # The queue is shared (Postgres) and the worker runs on every bex-api
+      # replica, each scraped as its own target (w21/084): the replica that
+      # lost every claim race never stamps its gauge, so judged per pod it
+      # would page while the other replica delivers. The freshest stamp across
+      # the replicas is the fleet's last success, and the backlog is one number
+      # every replica reads, so the alert is fleet-wide and carries no pod.
       - alert: PushDeliveryStale
         expr: |
-          (time() - bex_push_last_success_timestamp_seconds) > (2 * 3600)
-          and bex_push_enabled == 1
-          and on (job, instance) (
-            sum by (job, instance) (
-              bex_push_queue_rows{state=~"send_pending|receipt_pending"}
+          (time() - max(bex_push_last_success_timestamp_seconds)) > (2 * 3600)
+          and on () (max(bex_push_enabled) == 1)
+          and on () (
+            max(
+              sum by (job, instance) (
+                bex_push_queue_rows{state=~"send_pending|receipt_pending"}
+              )
             ) > 0
           )
         for: 30m
@@ -1615,8 +1624,11 @@ groups:
       # fire when any orphan class stays non-empty past one Completer
       # interval (15s tick, 2m for: covers a couple of missed ticks).
       - alert: SandboxOrphansPresent
+        # Every replica recounts the whole inventory each pass and exports the
+        # same classes, so the replicas are collapsed with max before the
+        # classes are added: sum alone would report each orphan once per replica.
         expr: |
-          sum(bex_sandbox_live{class=~"terminal_orphan|no_row_orphan"}) > 0
+          sum(max by (class) (bex_sandbox_live{class=~"terminal_orphan|no_row_orphan"})) > 0
         for: 2m
         labels:
           severity: warning

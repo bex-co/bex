@@ -4650,7 +4650,7 @@ dashboards:
              "id": 11,
              "type": "timeseries",
              "title": "Push: time since last successful delivery",
-             "description": "Age of bex_push_last_success_timestamp_seconds — the numerator of PushDeliveryStale (red line at 2h). The gauge is process-local and starts at zero, so the age jumps after a bex-api restart and drops back within one worker poll; a plateau above the line with queued rows next door is the real failure.",
+             "description": "Age of bex_push_last_success_timestamp_seconds — the numerator of PushDeliveryStale (red line at 2h). The gauge is process-local and starts at zero, so a restarted replica reads zero until it delivers; the line takes the freshest stamp across the bex-api replicas (the push queue is shared, so any replica delivering counts). After a roll the age jumps and drops back within one worker poll; a plateau above the line with queued rows next door is the real failure.",
              "gridPos": {
                "h": 9,
                "w": 12,
@@ -4689,7 +4689,7 @@ dashboards:
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "max(time() - bex_push_last_success_timestamp_seconds)",
+                 "expr": "time() - max(bex_push_last_success_timestamp_seconds)",
                  "legendFormat": "age since last success"
                 }
               ]
@@ -4719,7 +4719,7 @@ dashboards:
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "sum by (state) (bex_push_queue_rows)",
+                 "expr": "max by (state) (bex_push_queue_rows)",
                  "legendFormat": "{{state}}"
                 }
               ]
@@ -5108,7 +5108,7 @@ dashboards:
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "sum by (class) (bex_sandbox_live)",
+                 "expr": "max by (class) (bex_sandbox_live)",
                  "legendFormat": "{{class}}"
                 },
                 {
