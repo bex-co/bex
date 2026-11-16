@@ -21,7 +21,7 @@ hydra:
       # bex lets any caller re-mint a token freely (docs/ADR012-auth.md) — so a short
       # window bounds a leaked/stale access token's blast radius without costing
       # callers anything but a cheap re-mint. 15m balances that against
-      # introspection load (bex-api caches positive introspections ≤30s, so the
+      # introspection load (bex-api caches positive introspections ≤5s, so the
       # extra Hydra traffic from re-issuance is negligible). This is global, so
       # OAuth 2.1 user access tokens shorten too — they carry refresh tokens, so
       # the shorter access token is transparent to those callers.

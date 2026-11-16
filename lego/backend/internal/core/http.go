@@ -589,7 +589,9 @@ func statusErrID(code int) string {
 }
 
 const (
-	// PositiveTTL is how long a positive introspection/authz answer may be reused.
+	// PositiveTTL is how long a positive authz or lookup answer may be reused.
+	// A bearer token's introspection has its own, shorter window
+	// (api.introspectionTTL, docs/ADR012-auth.md §8d).
 	PositiveTTL = 30 * time.Second
 	// CacheMax bounds a TTLCache; the expired are swept before a wholesale reset.
 	CacheMax = 4096

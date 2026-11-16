@@ -6,7 +6,7 @@
 #   3. The bootstrap identity mints an API key via POST /v1/api-keys; the new
 #      key's token also authenticates; the key lists without its secret.
 #   4. Revoking the key kills it: no new tokens can be minted with it.
-#      (Already-issued tokens may ride bex-api's ≤30s introspection cache.)
+#      (Already-issued tokens may ride bex-api's ≤5s introspection cache.)
 #   5. Authorization (BEX_OPENFGA_URL set): the seeded bootstrap identity (admin
 #      of tenant:default) passes and can mint; the freshly minted key has no
 #      tuples and gets 403; with the env unset the same key passes again

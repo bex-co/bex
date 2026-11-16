@@ -44,6 +44,21 @@ import (
 // parameter inside the github feature handler. Exact method + path matching keeps
 // that alternate credential from becoming a general auth bypass.
 
+// introspectionTTL is how long one replica reuses a positive Hydra introspection
+// of a bearer token (cache key: the raw token). It bounds how long a token revoked
+// at Hydra by a path outside bex keeps working, because Hydra answers active=false
+// at its very next introspection but has no hook to tell the replicas. The number
+// is the revocation latency docs/ADR012-auth.md §8d states, and
+// TestRevokedAtHydraIsRefusedWithinTheRevocationLatency pins it.
+//
+// Why 5 s, not 0: every miss is a Hydra round trip and spends the per-credential
+// admission budget (authadmission.go, default 60/min per replica), so the floor is
+// about 1 s. 5 s caps a live token at 12 misses/min/replica, a fifth of that
+// budget. Revocations that pass through bex (logout, connected-app revoke, API-key
+// revoke) do not wait for it: they evict every replica through the shared
+// oauth_revocations marker.
+const introspectionTTL = 5 * time.Second
+
 // requestCredential is the single credential selected from an HTTP request.
 type requestCredential struct {
 	kind  string
@@ -142,6 +157,9 @@ type oryAuth struct {
 	// misses for one token coalesce into a single Hydra call (group), which also
 	// writes the cache exactly once per upstream call.
 	cache *core.TTLCache[cachedIdentity]
+	// now is the clock for cache expiry, so a test can cross introspectionTTL
+	// without sleeping (set it together with cache.Now). nil => time.Now.
+	now   func() time.Time
 	group singleflight.Group
 	// revocations is the cross-replica positive-cache invalidation boundary.
 	// nil preserves DB-free operation; production wires the control-plane store.
@@ -197,6 +215,14 @@ type RevocationStore interface {
 // errEmailVerificationUnresolved fails a human introspection closed when the
 // verification gate is on but Kratos admin cannot answer for the subject.
 var errEmailVerificationUnresolved = core.Err("kratos admin could not resolve email verification")
+
+// clock is the time the introspection cache is written at.
+func (a *oryAuth) clock() time.Time {
+	if a.now != nil {
+		return a.now()
+	}
+	return time.Now()
+}
 
 func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, requireAudience bool, admission *AuthAdmission, onboard Onboarding, touch func(string), apiScope string) *oryAuth {
 	challenge := "Bearer"
@@ -269,7 +295,7 @@ func (a *oryAuth) IsPlatformClientFresh(ctx context.Context, clientID string) (b
 // revokes one grant in Hydra (the presented token's request ID, w8/037), and
 // the official CLI refreshes before logout when its token expires within 24h,
 // so deleting only the bearer would leave the immediately previous token of
-// that grant usable until PositiveTTL. bex cannot map a cached token to its
+// that grant usable until introspectionTTL. bex cannot map a cached token to its
 // grant, so it evicts every positively cached token for the subject+client:
 // the revoked grant's tokens then fail fresh introspection, while the user's
 // other devices simply re-introspect as active.
@@ -403,7 +429,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 // introspectFresh bypasses the positive token cache for durable credential
 // minting. AuthorizeMintClass rechecks the platform-client registry; this
 // companion check refreshes the bearer itself so a revoked token cannot mint an
-// API key during PositiveTTL.
+// API key during introspectionTTL.
 func (a *oryAuth) introspectFresh(r *http.Request, token string) (core.Identity, error) {
 	a.cache.Delete(token)
 	return a.introspect(r, token)
@@ -439,7 +465,7 @@ func (a *oryAuth) introspect(r *http.Request, token string) (core.Identity, erro
 	// it (w1/m67 F1) so a flood of DISTINCT invalid tokens — which defeats both
 	// the positive cache and singleflight — cannot amplify into the shared
 	// identity service. A legitimate caller pays at most one token per
-	// credential per PositiveTTL.
+	// credential per introspectionTTL.
 	release, err := a.admission.admit(r)
 	if err != nil {
 		return core.Identity{}, err
@@ -591,14 +617,15 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	// client_id (the API key's own id for client_credentials tokens), not the
 	// subject — a user token's subject is the Kratos id, not a key. The callee
 	// throttles + runs async and no-ops non-api-key clients, so this is cheap and
-	// only fires on cache misses (≤ once per PositiveTTL per token).
+	// only fires on cache misses (≤ once per introspectionTTL per token).
 	if a.touch != nil && out.ClientID != "" {
 		a.touch(out.ClientID)
 	}
 
-	expires := time.Now().Add(core.PositiveTTL)
+	now := a.clock()
+	expires := now.Add(introspectionTTL)
 	if human && a.requireVerifiedEmail && !id.EmailVerified {
-		expires = time.Now().Add(a.unverifiedTTL)
+		expires = now.Add(a.unverifiedTTL)
 	}
 	if exp := time.Unix(int64(out.Exp), 0); out.Exp > 0 && exp.Before(expires) {
 		expires = exp
@@ -620,7 +647,7 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	if a.revocationEpoch.Load() != epoch {
 		return nil
 	}
-	a.cache.Put(token, cachedIdentity{Identity: id, CachedAt: time.Now()}, expires)
+	a.cache.Put(token, cachedIdentity{Identity: id, CachedAt: now}, expires)
 	return nil
 }
 

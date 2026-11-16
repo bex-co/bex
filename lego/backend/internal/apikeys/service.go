@@ -447,7 +447,9 @@ func (s *Service) boundTenant(ctx context.Context) (tenantID string, scoped bool
 }
 
 // RevokeAPIKey deletes the credential; tokens already minted with it stop
-// introspecting active (subject to bex-api's ≤30s introspection cache). ownerID
+// introspecting active, and the shared revocation marker (UnbindKey) makes every
+// bex-api replica refuse them at once rather than after its introspection
+// cache window (docs/ADR012-auth.md §8d). ownerID
 // ("" => the key's own bound workspace, w4/194; see revokeScope) must be the
 // key's OWN bound workspace — a caller who can manage keys in their own workspace may not
 // revoke another workspace's (the same cross-workspace gate w6/m14 gave

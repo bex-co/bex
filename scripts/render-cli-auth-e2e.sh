@@ -197,7 +197,7 @@ grep -q 'Successfully logged out' "$TMP/logout-a.txt" || fail "CLI logout did no
 [ ! -e "$CFG_A" ] || fail "CLI logout left the local config behind"
 
 # Hydra revokes the token immediately; each bex-api replica may serve its
-# cached positive introspection for up to core.PositiveTTL (30s), and only the
+# cached positive introspection for up to introspectionTTL (5s), and only the
 # replica that handled the logout invalidates its cache entry synchronously —
 # so against a multi-replica deployment the 401 can lag by one cache window.
 status=""
