@@ -39,6 +39,12 @@
 #   8. A pushed commit's message carries a skip-CI marker. Blocks: GitHub then
 #      runs no workflow for the whole push, the secret scan and the test
 #      suites included (07a4238f1 did, quoting one in its body).
+#   9. The push adds a flag to a bex-built container's args under
+#      lego/operator/config that the pinned image does not define
+#      (scripts/manifest_flag_guard.py). Blocks: Argo applies the manifest at
+#      the push while the image moves only at the next pin, so the running
+#      binary exits on the unknown flag (f114fdd9f crash-looped the manager for
+#      about 35 minutes, w8/331).
 #
 # Gates 2, 3, 5 and 6 and the gofmt check run in a detached worktree at HEAD,
 # never in the working tree: a gate run beside an edit in progress tested the
@@ -142,6 +148,7 @@ if grep -qiE '\[(skip ci|ci skip|no ci|skip actions|actions skip)\]' <<<"$messag
   echo "ship-gates: a commit message in this push carries a skip-CI marker, so GitHub would run no workflow for the push; reword it" >&2
   exit 1
 fi
+python3 -B scripts/manifest_flag_guard.py "$base" HEAD
 
 # Which gates this push needs, from git objects only. Captured, not piped into
 # grep: under pipefail an early-exiting grep can SIGPIPE git and make a large

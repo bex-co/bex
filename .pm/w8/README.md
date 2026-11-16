@@ -439,7 +439,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **331** — [A manager flag added to the operator manifest reaches production before the image that defines it, so the new manager pods exit until the next image pin](331.md) (~45m) ← `/qa-find-bugs-cli` 2026-11-16 read of `f114fdd9f` (w21/m421 t001), minor, pod state unverified.
+- [x] **331** — [A manager flag added to the operator manifest reaches production before the image that defines it, so the new manager pods exit until the next image pin](done/331.md) (~45m) ← `/qa-find-bugs-cli` 2026-11-16 read of `f114fdd9f` (w21/m421 t001), minor. **DONE 2026-11-16:** confirmed on production by the w21 owner (CrashLoopBackOff ~35 min); `scripts/manifest_flag_guard.py` is now ship-gate 9.
   - **Mechanism:** Argo syncs `lego/operator/config` from `main` while the image digest moves only on a pin; the old binary's `flag.Parse()` exits on `--pprof-bind-address`.
   - **Fix:** a gitops-validate guard against manifest flags the pinned image does not define, so a flag ships code-first and manifest-second.
 

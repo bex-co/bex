@@ -8,6 +8,10 @@ The **operator** module (`github.com/bex-co/bex/lego/operator`) is the **mechani
 - controller-gen reads CRD/deepcopy markers from `../types/...` and RBAC markers from `./...`; deepcopy lands in `../types/v1alpha1/zz_generated.deepcopy.go`, the CRD YAML in `config/crd/bases/`. Both are **generated — never hand-edit**.
 - `make test` runs codegen automatically; envtest binaries download to `bin/` on first run (version derives from `k8s.io/api` in go.mod). **CI-enforced** on every push/PR touching `lego/operator/**` or `lego/types/**` (`.github/workflows/operator-test.yml`); the test suite must pass before `deploy.yml` proceeds.
 
+## Manifest arguments ship after their binary
+
+Argo applies `config/` from `main` at the push, but the operator image moves only when `deploy.yml` writes its `chore(deploy): pin platform images to <sha>` commit. A new command-line flag passed in a manifest therefore reaches the previous binary first, whose `flag.Parse()` exits on it (`f114fdd9f`'s `--pprof-bind-address` crash-looped the manager for ~35 minutes, w8/331). Ship the flag's definition first and the manifest argument once a pin carries it, or pass the setting as an env var, which an older binary ignores. `scripts/ship-gates.sh` enforces this with `scripts/manifest_flag_guard.py`.
+
 ## Layering (mechanism only)
 
 - `cmd/manager/` — the manager entrypoint (`go build ./cmd/manager`).
