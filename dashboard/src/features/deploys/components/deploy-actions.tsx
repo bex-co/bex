@@ -55,6 +55,12 @@ export interface DeployActionsProps {
   commitId?: string | null;
   commitMessage?: string | null;
   /**
+   * The image reference the selected deploy ran from. A registry tag (no
+   * `@sha256:` digest) is pulled again by a rollback, so the confirm dialog
+   * says so (w4/m432); a digest or absent image adds nothing.
+   */
+  image?: string | null;
+  /**
    * The selected deploy's trigger (`create`, `api`, `deploy_hook`, …). It is
    * used for exactly one thing: a `create` deploy is the service's FIRST build,
    * so canceling it leaves nothing serving, and the cancel confirm says so
@@ -93,6 +99,7 @@ export function DeployActions({
   status,
   commitId,
   commitMessage,
+  image,
   trigger,
   buildAvailable,
   autoDeployOn = true,
@@ -282,7 +289,7 @@ export function DeployActions({
   // re-published, with no image or instances to speak of (w4/m141).
   const commit = deployCommitLabel(commitId, commitMessage);
   const staticSite = base === "/static";
-  const rollbackBody = staticSite
+  const baseRollbackBody = staticSite
     ? commit
       ? t("services.eventsRollbackConfirmBodyStaticCommit", { commit })
       : t("services.eventsRollbackConfirmBodyStatic")
@@ -293,6 +300,13 @@ export function DeployActions({
       : commit
         ? t("services.eventsRollbackConfirmBodyCommit", { commit })
         : t("services.eventsRollbackConfirmBody");
+  // Render: "With a tag, Render pulls the latest image under that tag, which
+  // may differ from the original" (render.com/docs/rollbacks, w4/m432).
+  const tag = image?.trim() ?? "";
+  const rollbackBody =
+    !staticSite && tag !== "" && !tag.includes("@")
+      ? `${baseRollbackBody} ${t("services.eventsRollbackConfirmTagPull", { image: tag })}`
+      : baseRollbackBody;
   // Each row's controls name their deploy, so two rows are not two identical
   // "Rollback" buttons to a screen reader (w4/m141, as w4/084 did for revoke).
   const shortSha = (commitId ?? "").trim().slice(0, 7);

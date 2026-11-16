@@ -349,6 +349,7 @@ export function DeploysListPage({
                         status={d.status}
                         commitId={d.commitId}
                         commitMessage={d.commitMessage}
+                        image={d.image}
                         trigger={d.trigger}
                         buildAvailable={d.buildAvailable}
                         autoDeployOn={

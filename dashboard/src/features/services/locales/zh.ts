@@ -5228,6 +5228,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
   },
+  "services.eventsRollbackConfirmTagPull": {
+    message:
+      "{image} 是一个标签：回滚会拉取该标签当前指向的镜像，可能与此部署运行的镜像不同；如果该标签已不存在，回滚将失败。",
+    description:
+      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
+  },
   "services.eventsRollbackAria": {
     message: "回滚到 {target}",
     description:

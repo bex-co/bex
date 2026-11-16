@@ -2964,9 +2964,10 @@ func restartCanceledReason(id string) string {
 }
 
 // CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10):
-// unlike a normal trigger, the restored image is already fully known (it ran
-// live before), so resolved_image is set immediately rather than waiting for
-// the reconciler's write-back to backfill it on convergence. commit is the
+// unlike a normal trigger, resolved_image is set at open to the selected
+// reference. A build's exact image or a digest is already fully known; a
+// registry tag is re-resolved by the operator (w4/m432), and the reconciler's
+// live close overwrites resolved_image and image_sha with what it ran. commit is the
 // TARGET deploy's commit metadata (w9/001) — a rollback re-runs what the
 // restored deploy built, so its provenance is copied, never re-resolved
 // against a branch that has since moved.

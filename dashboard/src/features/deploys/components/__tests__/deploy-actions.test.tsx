@@ -98,6 +98,7 @@ function renderActions(
   commit?: {
     commitId?: string | null;
     commitMessage?: string | null;
+    image?: string | null;
     trigger?: string | null;
     buildAvailable?: boolean | null;
     autoDeployOn?: boolean;
@@ -114,6 +115,7 @@ function renderActions(
         status={status}
         commitId={commit?.commitId}
         commitMessage={commit?.commitMessage}
+        image={commit?.image}
         trigger={commit?.trigger}
         buildAvailable={commit?.buildAvailable}
         autoDeployOn={commit?.autoDeployOn}
@@ -556,6 +558,34 @@ describe("DeployActions", () => {
         "Older deploys without retained configuration restore only the image.",
       );
       expect(dialog).not.toHaveTextContent(/auto-deploy/i);
+    },
+  );
+
+  // w4/m432, Render's rollbacks page: "With a tag, Render pulls the latest
+  // image under that tag ... A digest always refers to the same image."
+  it.each([
+    ["docker.io/acme/web:v1", true],
+    ["docker.io/acme/web@sha256:" + "a".repeat(64), false],
+    ["acme/web:v1@sha256:" + "a".repeat(64), false],
+    [null, false],
+  ])(
+    "says a tag rollback pulls what the tag names now (image %s)",
+    async (image, tag) => {
+      const user = userEvent.setup();
+      renderActions("deactivated", { image, autoDeployOn: false });
+
+      await user.click(
+        await screen.findByRole("button", { name: /^Rollback to / }),
+      );
+      const dialog = await screen.findByRole("alertdialog");
+      const sentence =
+        "is a tag: the rollback pulls the image it names now, which may differ from the one this deploy ran, and fails if the tag no longer exists.";
+      if (tag) {
+        expect(dialog).toHaveTextContent(`${image} ${sentence}`);
+      } else {
+        expect(dialog).not.toHaveTextContent(sentence);
+      }
+      expect(dialog.textContent ?? "").not.toContain("{image}");
     },
   );
 

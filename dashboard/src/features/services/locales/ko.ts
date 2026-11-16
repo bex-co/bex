@@ -5345,6 +5345,12 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
   },
+  "services.eventsRollbackConfirmTagPull": {
+    message:
+      "{image}은(는) 태그입니다. 롤백은 이 태그가 지금 가리키는 이미지를 가져오며, 이 배포가 실행한 이미지와 다를 수 있습니다. 태그가 더 이상 없으면 롤백이 실패합니다.",
+    description:
+      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
+  },
   "services.eventsRollbackAria": {
     message: "{target}(으)로 롤백",
     description:

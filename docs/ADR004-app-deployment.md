@@ -236,7 +236,7 @@ The m152 decision to restore historical environment values and commands into sav
 | Build artifact, start/Docker command, health-check path, instance count, service environment | Target deploy |
 | Environment groups | Target associations with current values; deleted groups are omitted and shared sources are never rewritten |
 | Compute plan, disks, domains, static routes and headers | Current settings |
-| External registry image | Render re-fetches the target's original tag/digest; Bex currently selects the recorded resolved image (retained divergence) |
+| External registry image | The target deploy's own reference, as on Render: a tag is pulled again (the operator resolves it as the rollback's release, and the rollback deploy records that digest); a digest runs that exact image; a tag that no longer resolves fails the rollback while the live release serves (w4/m432) |
 
 The backend stamps a generation-scoped `spec.releaseConfig` selection instead of rewriting saved image, command or secret data. The operator materializes the selected configuration into the new release's own snapshots and projects it on each reconcile. A normal deploy clears the selection and uses saved settings. `undeployedChanges` reports a saved/runtime difference without attributing it solely to cancellation; a rollback followed by Restart can retain that difference.
 

@@ -5349,6 +5349,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
   },
+  "services.eventsRollbackConfirmTagPull": {
+    message:
+      "{image} is a tag: the rollback pulls the image it names now, which may differ from the one this deploy ran, and fails if the tag no longer exists.",
+    description:
+      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
+  },
   "services.eventsRollbackAria": {
     message: "Rollback to {target}",
     description:

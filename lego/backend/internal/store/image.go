@@ -101,17 +101,28 @@ func ImageRepository(v string) (string, error) {
 // value is never changed; this runs at the read-projection boundary only, so
 // rollback still runs the exact stored image.
 func PublicImageRef(v string) string {
-	segment, rest, ok := registrySegment(v)
-	if !ok {
-		return v
-	}
-	hostname := normalizeRegistryHost((&url.URL{Host: segment}).Hostname())
-	if hostname == "zot.bex-registry.svc" ||
-		strings.HasSuffix(hostname, ".svc") ||
-		strings.HasSuffix(hostname, ".cluster.local") {
+	if rest, ok := platformImageRest(v); ok {
 		return rest
 	}
 	return v
+}
+
+// PlatformImage reports whether v names an image in a cluster-internal
+// registry (the platform's own zot build registry, any *.svc or
+// *.cluster.local host): a build bex made and retains, never a tenant's
+// registry image.
+func PlatformImage(v string) bool {
+	_, ok := platformImageRest(v)
+	return ok
+}
+
+func platformImageRest(v string) (string, bool) {
+	segment, rest, ok := registrySegment(v)
+	if !ok {
+		return "", false
+	}
+	hostname := normalizeRegistryHost((&url.URL{Host: segment}).Hostname())
+	return rest, strings.HasSuffix(hostname, ".svc") || strings.HasSuffix(hostname, ".cluster.local")
 }
 
 // registrySegment returns the explicit registry host segment (host[:port]) of

@@ -1,20 +1,20 @@
 # w4 · m432 — Rolling back a prebuilt image named by tag pulls what the tag names now, and fails if it is gone, as on Render
 
-**Worker:** worker4 **Goal:** a rollback of a registry-image service selects the target deploy's original reference: a tag is pulled again, a digest runs the exact image, and an image that no longer resolves fails the rollback while the live release keeps serving. **Status:** todo
+**Worker:** worker4 **Goal:** a rollback of a registry-image service selects the target deploy's original reference: a tag is pulled again, a digest runs the exact image, and an image that no longer resolves fails the rollback while the live release keeps serving. **Status:** blocked — t001–t004 and t006–t008 done (code shipped); t005 waits for the next production deploy (19:00, 00:00 or 05:00 UTC) to pin the fix, then a worker runs the live check and t009 closes — no user action
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Map which image reference a rollback selects today, and where the original tag or digest is kept | 20m | — |
-| t002 | A rollback selects the target deploy's original reference: a tag is pulled again, a digest stays exact | 50m | t001 |
-| t003 | A rollback to a tag that no longer resolves fails as a deploy, and the live release keeps serving | 40m | t002 |
-| t004 | Dashboard rollback confirmation and the ADR matrices say what a tag rollback runs | 20m | t002 |
-| t005 | Live check on production: tag moved, digest pinned, tag deleted | 30m | t003, t004 |
-| t006 | Render parity | 20m | t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| [t001](done/t001.md) | Map which image reference a rollback selects today, and where the original tag or digest is kept — **DONE** | 20m | — |
+| [t002](done/t002.md) | A rollback selects the target deploy's original reference: a tag is pulled again, a digest stays exact — **DONE** | 50m | t001 |
+| [t003](done/t003.md) | A rollback to a tag that no longer resolves fails as a deploy, and the live release keeps serving — **DONE** | 40m | t002 |
+| [t004](done/t004.md) | Dashboard rollback confirmation and the ADR matrices say what a tag rollback runs — **DONE** | 20m | t002 |
+| [t005](t005.md) | Live check on production: tag moved, digest pinned, tag deleted | 30m | t003, t004 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
+| [t009](t009.md) | Closeout | 10m | t007, t008 |
 
 ## Definition of done
 

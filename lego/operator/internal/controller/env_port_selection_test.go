@@ -156,3 +156,32 @@ func TestEnvPortNormalSavedInlineDoesNotRequireReleaseRecord(t *testing.T) {
 		t.Fatalf("saved inline PORT=%d/%d err=%v", port, app.Status.EnvPort, err)
 	}
 }
+
+// A held selected release that never dispatched — a rollback whose image read
+// the registry refused before any pod ran (w4/m432) — has no record of its
+// own. PORT still reads its target's inputs; it used to fail the pass with
+// "read materialized release", so no later pass converged anything.
+func TestEnvPortReadsAHeldSelectionThatNeverMaterialized(t *testing.T) {
+	ctx := context.Background()
+	r, app := selectedReleaseFixture(t)
+	record, err := r.readRuntimeConfigRecord(ctx, app, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.spec.Env = []appv1alpha1.EnvVar{{Name: "PORT", Value: "8080"}}
+	if err := r.persistRuntimeConfigRecord(ctx, app, 1, record); err != nil {
+		t.Fatal(err)
+	}
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	app.Status.ReleaseFingerprint = "an-earlier-adoption"
+	if !heldRelease(app) {
+		t.Fatal("fixture: the selected release must be held")
+	}
+	port, err := r.envPort(ctx, app, 10000)
+	if err != nil || port != 8080 {
+		t.Fatalf("port=%d err=%v, want the target's PORT 8080", port, err)
+	}
+	if _, err := r.readRuntimeConfigRecord(ctx, app, 3); !apierrors.IsNotFound(err) {
+		t.Fatalf("PORT read materialized a release: %v", err)
+	}
+}

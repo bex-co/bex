@@ -70,7 +70,13 @@ func (r *AppReconciler) envPort(ctx context.Context, app *appv1alpha1.App, specP
 // configuration or changes the saved App. envPort runs before that commit point.
 func (r *AppReconciler) portRuntimeApp(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, error) {
 	if heldRelease(app) {
-		return r.selectedRuntimeApp(ctx, app)
+		runtime, err := r.selectedRuntimeApp(ctx, app)
+		if !apierrors.IsNotFound(err) {
+			return runtime, err
+		}
+		// A selected release that never dispatched (a rollback whose image read
+		// the registry refused, w4/m432) has no record of its own: read its
+		// sources as an unmaterialized selection does below.
 	}
 	ref := app.ActiveReleaseConfig()
 	if ref == nil || ref.SourceGeneration == 0 || canceledOverServed(app) {

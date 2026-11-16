@@ -28,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -326,10 +327,28 @@ func (r *AppReconciler) runtimeRecord(ctx context.Context, app *appv1alpha1.App)
 		return nil, 0, nil
 	}
 	rec, err := r.readRuntimeConfigRecord(ctx, app, ref.Generation)
+	if apierrors.IsNotFound(err) && selectionHaltedBeforeDispatch(app) {
+		// The selection never reached its commit point: its image read was
+		// refused or waits on the registry (a rollback to a tag, w4/m432). The
+		// held serving release renders as a refused override's does (w32/m419).
+		return nil, 0, nil
+	}
 	if err != nil {
 		return nil, 0, fmt.Errorf("read materialized release %d: %w", ref.Generation, err)
 	}
 	return rec, ref.Generation, nil
+}
+
+// selectionHaltedBeforeDispatch reports that the current release stopped at
+// its image metadata read, before ensureSelectedReleaseConfig ran: a recorded
+// refusal (imageReadFailureRecorded) or a registry wait (imageRegistryWait).
+func selectionHaltedBeforeDispatch(app *appv1alpha1.App) bool {
+	if imageReadFailureRecorded(app) {
+		return true
+	}
+	ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+	return app.Status.Phase == appv1alpha1.PhaseDeploying && ready != nil &&
+		(ready.Reason == reasonImageRegistryUnavailable || ready.Reason == reasonImageRegistryRateLimited)
 }
 
 // heldReleaseRecord is the record a held release (heldRelease) renders from:

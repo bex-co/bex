@@ -134,6 +134,7 @@ export function DeployDetailPage({
               status={deploy.status}
               commitId={deploy.commitId}
               commitMessage={deploy.commitMessage}
+              image={deploy.image}
               trigger={deploy.trigger}
               buildAvailable={deploy.buildAvailable}
               autoDeployOn={service ? service.autoDeploy === true : undefined}

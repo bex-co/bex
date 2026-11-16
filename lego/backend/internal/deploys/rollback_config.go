@@ -43,7 +43,11 @@ type RollbackOptions struct {
 // configuration. A legacy target with no record explicitly selects only its image;
 // this is a compatibility fallback, not full Render configuration parity.
 func (s *Service) targetReleaseConfig(ctx context.Context, a *appv1alpha1.App, target store.Deploy, restart bool) (*appv1alpha1.ReleaseConfigReference, error) {
-	selected := &appv1alpha1.ReleaseConfigReference{Image: target.ResolvedImage, PreserveGroupValues: restart}
+	image := target.ResolvedImage
+	if !restart {
+		image = rollbackImage(target)
+	}
+	selected := &appv1alpha1.ReleaseConfigReference{Image: image, PreserveGroupValues: restart}
 	if target.Generation <= 0 {
 		return selected, nil
 	}
@@ -64,6 +68,22 @@ func (s *Service) targetReleaseConfig(ctx context.Context, a *appv1alpha1.App, t
 	}
 	selected.SourceGeneration = target.Generation
 	return selected, nil
+}
+
+// rollbackImage is the image reference a rollback to target runs. Render
+// (render.com/docs/rollbacks § Registry-hosted Docker images): "The rollback
+// uses the same image tag or digest as the target deploy. With a tag, Render
+// pulls the latest image under that tag ... A digest always refers to the same
+// image." So a registry image rolls back to the reference the target deployed
+// (store.Deploy.Image), which the operator resolves again as a new release and
+// records on the rollback's own row when it goes live (w4/m432). A build bex
+// made from source is bex's own retained artifact: it runs the exact image the
+// target ran (ResolvedImage), as Restart does.
+func rollbackImage(target store.Deploy) string {
+	if target.Image == "" || store.PlatformImage(target.Image) {
+		return target.ResolvedImage
+	}
+	return target.Image
 }
 
 // staticReleaseSelection selects a static_site target's retained publication

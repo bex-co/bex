@@ -23,6 +23,8 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -636,5 +638,24 @@ func TestReleaseImageSourceFollowsTheSelectedRelease(t *testing.T) {
 	// Another image than the selected release ran knows no source.
 	if got := r.releaseImageSource(ctx, app, tmplFor("registry.example/api@sha256:bbbb")); got != "" {
 		t.Fatalf("an unrelated digest's source = %q, want none", got)
+	}
+}
+
+// A selection that stopped at its image read (a rollback to a tag the
+// registry refused or is slow to answer, w4/m432) never materialized its own
+// record. The held serving release renders without it, as a refused override
+// does, instead of failing every pass with "read materialized release". Any
+// other missing record still fails: a lost selection is never hidden.
+func TestRuntimeRecordOfASelectionHaltedBeforeDispatch(t *testing.T) {
+	ctx := context.Background()
+	r, app := selectedReleaseFixture(t)
+	if _, _, err := r.runtimeRecord(ctx, app); !apierrors.IsNotFound(err) {
+		t.Fatalf("an unmaterialized selection in flight: err=%v, want not found", err)
+	}
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonImageRegistryUnavailable})
+	rec, gen, err := r.runtimeRecord(ctx, app)
+	if err != nil || rec != nil || gen != 0 {
+		t.Fatalf("registry wait: rec=%v gen=%d err=%v, want the saved spec", rec, gen, err)
 	}
 }
