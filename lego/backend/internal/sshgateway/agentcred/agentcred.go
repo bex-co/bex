@@ -30,17 +30,12 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -87,38 +82,8 @@ const (
 // bytes.
 const maxRequestBodyBytes = 256 << 20
 
-type SessionPod struct {
-	Name   string
-	UID    string
-	Labels map[string]string
-}
-
-type SessionPodResolver interface {
-	ResolveSessionPod(context.Context, string, string) (SessionPod, error)
-}
-
-type KubeSessionPodResolver struct{ Client kubernetes.Interface }
-
-func (r KubeSessionPodResolver) ResolveSessionPod(ctx context.Context, namespace, sourceIP string) (SessionPod, error) {
-	if r.Client == nil || namespace == "" || net.ParseIP(sourceIP) == nil {
-		return SessionPod{}, agentsession.ErrForbidden
-	}
-	pods, err := r.Client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-		FieldSelector: fields.OneTermEqualSelector("status.podIP", sourceIP).String(),
-		Limit:         2,
-	})
-	if err != nil || len(pods.Items) != 1 {
-		return SessionPod{}, agentsession.ErrForbidden
-	}
-	pod := pods.Items[0]
-	if pod.Status.PodIP != sourceIP || pod.DeletionTimestamp != nil {
-		return SessionPod{}, agentsession.ErrForbidden
-	}
-	return SessionPod{Name: pod.Name, UID: string(pod.UID), Labels: pod.Labels}, nil
-}
-
 type Broker struct {
-	Pods    SessionPodResolver
+	Pods    sshgateway.SessionPodResolver
 	API     *agentsession.Client
 	Audit   core.AuditSink
 	Metrics *sshgateway.Metrics
@@ -207,7 +172,7 @@ const (
 // request that idles past admission while its context stays live.
 type admission struct {
 	r        *http.Request
-	pod      SessionPod
+	pod      sshgateway.SessionPod
 	verified agentsession.MintRequest
 	release  func()
 	freeSlot func()
@@ -216,12 +181,12 @@ type admission struct {
 // podAuthorizer binds a resolved source Pod to the request's claimed target:
 // the branch-scoped label digests for Git and the PR verb (authorizeBranch),
 // the session label alone for the share route.
-type podAuthorizer func(namespace string, pod SessionPod) (agentsession.MintRequest, error)
+type podAuthorizer func(namespace string, pod sshgateway.SessionPod) (agentsession.MintRequest, error)
 
 // authorizeBranch is the Git and PR-verb rule: the Pod's labels must bind the
 // claimed session, repository and branch.
 func authorizeBranch(claimed agentsession.MintRequest) podAuthorizer {
-	return func(namespace string, pod SessionPod) (agentsession.MintRequest, error) {
+	return func(namespace string, pod sshgateway.SessionPod) (agentsession.MintRequest, error) {
 		return agentsession.AuthorizePod(namespace, pod.Name, pod.UID, pod.Labels, claimed)
 	}
 }
@@ -229,7 +194,7 @@ func authorizeBranch(claimed agentsession.MintRequest) podAuthorizer {
 // authorizeSession is the share route's rule: the Pod's labels must bind the
 // claimed session; a repo-less session has no repository or branch to check.
 func authorizeSession(sessionID string) podAuthorizer {
-	return func(namespace string, pod SessionPod) (agentsession.MintRequest, error) {
+	return func(namespace string, pod sshgateway.SessionPod) (agentsession.MintRequest, error) {
 		verified, err := agentsession.AuthorizeSessionPod(namespace, pod.Name, pod.UID, pod.Labels, sessionID)
 		return agentsession.MintRequest{SessionID: verified.SessionID, Workspace: verified.Workspace,
 			PodName: verified.PodName, PodUID: verified.PodUID}, err
@@ -244,7 +209,7 @@ func authorizeSession(sessionID string) podAuthorizer {
 // refuse, and reports false. The budget metric labels keep their git_ names
 // for dashboard continuity although every route on this listener charges them.
 func (b *Broker) admit(r *http.Request, namespace string, authorize podAuthorizer, refuse func(admissionRefusal)) (admission, bool) {
-	sourceIP, err := RemoteIP(r.RemoteAddr)
+	sourceIP, err := sshgateway.RemoteIP(r.RemoteAddr)
 	if err != nil {
 		refuse(refusedSource)
 		return admission{}, false
@@ -672,18 +637,4 @@ func (b *Broker) now() time.Time {
 		return b.Now().UTC()
 	}
 	return time.Now().UTC()
-}
-
-// RemoteIP extracts the validated source IP from a request RemoteAddr. Shared
-// with the model proxy (ADR062), which resolves the same source Pod.
-func RemoteIP(remoteAddr string) (string, error) {
-	host, _, err := net.SplitHostPort(remoteAddr)
-	if err != nil {
-		host = remoteAddr
-	}
-	ip := net.ParseIP(strings.TrimSpace(host))
-	if ip == nil {
-		return "", agentsession.ErrForbidden
-	}
-	return ip.String(), nil
 }

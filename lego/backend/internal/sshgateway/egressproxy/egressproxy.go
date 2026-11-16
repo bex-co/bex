@@ -52,7 +52,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
-	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 )
 
 // Defaults used when the corresponding Broker field is zero; cmd/ssh-gateway
@@ -89,7 +88,7 @@ type Resolver interface {
 // Broker is the egress proxy. It is disabled unless both the Pod resolver and
 // the grant client are wired, so an unconfigured gateway never starts it.
 type Broker struct {
-	Pods    agentcred.SessionPodResolver
+	Pods    sshgateway.SessionPodResolver
 	API     Granter
 	Audit   core.AuditSink
 	Metrics *sshgateway.Metrics
@@ -193,7 +192,7 @@ func (b *Broker) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bex egress proxy: proxy credentials required (use the HTTPS_PROXY URL as given)", http.StatusProxyAuthRequired)
 		return
 	}
-	sourceIP, err := agentcred.RemoteIP(r.RemoteAddr)
+	sourceIP, err := sshgateway.RemoteIP(r.RemoteAddr)
 	if err != nil {
 		b.fail(w, refuse(http.StatusForbidden, "source", "forbidden"))
 		return

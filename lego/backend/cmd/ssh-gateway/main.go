@@ -254,7 +254,7 @@ func main() {
 		// exec tickets (round-13 #3): fresh can_operate on the ticket's workspace
 		// and, for agent-session sandboxes, can_view_sensitive on the session
 		// object (round-13 #1, defense in depth behind bex-api's mint gate).
-		Revalidator:        &sandboxsse.ExecRevalidator{Base: base},
+		Revalidator:        &sshgateway.ExecRevalidator{Base: base},
 		SessionTimeout:     sessionTimeout,
 		RevalidateInterval: revalidateInterval,
 	}
@@ -286,7 +286,7 @@ func main() {
 	egress := &egressproxy.Broker{Metrics: metrics}
 	if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
 		apiURL := env.Or("BEX_AGENT_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalMintPath)
-		credentials.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
+		credentials.Pods = sshgateway.KubeSessionPodResolver{Client: clientset}
 		credentials.API = &agentsession.Client{URL: apiURL, Secret: []byte(secret)}
 		credentials.Audit = st
 		// codex round-9 #4: bound concurrent git-proxy exchanges per source Pod
@@ -335,7 +335,7 @@ func main() {
 		}
 
 		modelAPIURL := env.Or("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
-		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
+		model.Pods = sshgateway.KubeSessionPodResolver{Client: clientset}
 		model.API = &agentsession.ModelClient{URL: modelAPIURL, Secret: []byte(secret)}
 		model.Limits = sshgateway.NewSessionLimiter(
 			intEnv("BEX_AGENT_MODEL_MAX_CONNS", 32),
@@ -349,7 +349,7 @@ func main() {
 		model.MaxRequestsPerSession = intEnv("BEX_AGENT_MODEL_MAX_REQUESTS_PER_SESSION", 1000)
 		model.MaxRequestsPerWorkspace = intEnv("BEX_AGENT_MODEL_MAX_REQUESTS_PER_WORKSPACE", 5000)
 
-		egress.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
+		egress.Pods = sshgateway.KubeSessionPodResolver{Client: clientset}
 		egress.API = &agentsession.EgressGrantClient{
 			URL:    env.Or("BEX_AGENT_EGRESS_GRANT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalEgressGrantPath),
 			Secret: []byte(secret),

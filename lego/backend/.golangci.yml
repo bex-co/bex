@@ -26,6 +26,21 @@ linters:
           deny:
             - pkg: github.com/bex-co/bex/lego/operator
               desc: "backend must not import operator; cross through lego/types and the App CR instead — see lego/AGENTS.md"
+        # The sshgateway transports (agentcred, modelproxy, egressproxy,
+        # sandboxfiles, sandboxsse, …) share the parent internal/sshgateway
+        # kernel (session Pod resolution, exec revalidation) instead of
+        # importing each other: sideways imports re-couple doors that deploy,
+        # scale and fail independently. Deny the child prefix with its trailing
+        # slash so the kernel import itself (no slash) stays allowed. Test
+        # fakes still cross-wire through gatewaytest, so this guards
+        # production code only.
+        sshgateway-kernel:
+          files:
+            - "**/internal/sshgateway/*/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/bex-co/bex/lego/backend/internal/sshgateway/
+              desc: "sshgateway transports must not import each other; move the shared piece to the parent internal/sshgateway kernel"
         # internal/authz is the production core.Checker: it answers authorization
         # questions and must lean on the leaf kernel, never on a feature package.
         # A sideways import here (it once reached into agentsession for a

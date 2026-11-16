@@ -59,7 +59,7 @@ func TestGitProxyBuildPrincipalOnlyClones(t *testing.T) {
 	defer upstream.Close()
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Pods: credentialPodResolver{pods: map[string]SessionPod{
+		Pods: credentialPodResolver{pods: map[string]sshgateway.SessionPod{
 			"10.0.0.9": {Name: "builder-1-0", UID: "uid-builder", Labels: credentialLabels(t, "tea-a", proxyBuildID, agentsession.BuildBranch(proxyBuildID))},
 		}},
 		API:   &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()},

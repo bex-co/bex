@@ -40,7 +40,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
-	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 )
 
 const (
@@ -59,7 +58,7 @@ const (
 // source-pod resolver and the bex-api model-mint client are wired, so an
 // unconfigured deployment simply never starts the listener.
 type Broker struct {
-	Pods    agentcred.SessionPodResolver
+	Pods    sshgateway.SessionPodResolver
 	API     *agentsession.ModelClient
 	Metrics *sshgateway.Metrics
 	// HTTP is a test seam; production leaves it nil and the streaming client below
@@ -112,7 +111,7 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid model request", http.StatusBadRequest)
 		return
 	}
-	sourceIP, err := agentcred.RemoteIP(r.RemoteAddr)
+	sourceIP, err := sshgateway.RemoteIP(r.RemoteAddr)
 	if err != nil {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return

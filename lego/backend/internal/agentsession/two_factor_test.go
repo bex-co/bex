@@ -315,10 +315,10 @@ func TestEveryMethodTheTwoFactorVerbAcceptsIsTheOneItsProducerSets(t *testing.T)
 		"MethodAgentAttach": core.MethodAgentAttach, "MethodSandboxExec": core.MethodSandboxExec,
 	}
 	producers := map[string]string{
-		"../sshgateway/nativessh/server.go":      core.MethodSSH,
-		"../sshgateway/webshell/websocket.go":    core.MethodShell,
-		"../sshgateway/sandboxsse/sandboxsse.go": core.MethodSandboxExec,
-		"../agentsessions/attach_revalidate.go":  core.MethodAgentAttach,
+		"../sshgateway/nativessh/server.go":     core.MethodSSH,
+		"../sshgateway/webshell/websocket.go":   core.MethodShell,
+		"../sshgateway/revalidate.go":           core.MethodSandboxExec,
+		"../agentsessions/attach_revalidate.go": core.MethodAgentAttach,
 	}
 	if len(producers) != len(twoFactorMethods) {
 		t.Fatalf("producers = %d, verb methods = %v: every accepted method needs a named producer", len(producers), twoFactorMethods)
