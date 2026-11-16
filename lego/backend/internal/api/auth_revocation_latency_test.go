@@ -62,7 +62,9 @@ func (c *stepClock) Advance(d time.Duration) {
 //     (200) or with the refresh token (200, revokes the whole chain), admin
 //     DELETE /admin/oauth2/tokens?client_id= (204), admin
 //     DELETE /admin/oauth2/auth/sessions/consent?subject=&client= (204), and
-//     admin DELETE /admin/clients/{id} (204).
+//     admin DELETE /admin/clients/{id} (204);
+//   - GET /admin/oauth2/auth/sessions/consent?subject= lists a subject's live
+//     grants (internal/oauthgrant's dry run and --all-clients read it).
 //
 // There is no real Hydra in the backend suite's dependencies (Postgres, OpenFGA,
 // OpenBao, Loki), so this stands in for it; the live check in the ADR repeats the
@@ -123,6 +125,18 @@ func (h *revocableHydra) serve(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		w.WriteHeader(http.StatusNoContent)
+	case r.Method == http.MethodGet && r.URL.Path == "/admin/oauth2/auth/sessions/consent":
+		// The subject's live grants, one consent session per client that holds
+		// an unrevoked token for it.
+		w.Header().Set("Content-Type", "application/json")
+		seen, sessions := map[string]bool{}, []string{}
+		for _, g := range h.grants {
+			if g.sub == r.URL.Query().Get("subject") && !g.revoked && !seen[g.client] {
+				seen[g.client] = true
+				sessions = append(sessions, `{"grant_scope":["openid","bex.read"],"consent_request":{"client":{"client_id":"`+g.client+`"}}}`)
+			}
+		}
+		_, _ = w.Write([]byte("[" + strings.Join(sessions, ",") + "]\n"))
 	case r.Method == http.MethodDelete && r.URL.Path == "/admin/oauth2/auth/sessions/consent":
 		for _, g := range h.grants {
 			if g.sub == r.URL.Query().Get("subject") && g.client == r.URL.Query().Get("client") {

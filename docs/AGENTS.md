@@ -34,7 +34,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 
 ### Auth, members, GitHub
 
-- [ADR012-auth.md](ADR012-auth.md) — Ory Kratos + Hydra on CNPG; OAuth 2.1
+- [ADR012-auth.md](ADR012-auth.md) — Ory Kratos + Hydra on CNPG; OAuth 2.1; a token revoked at Hydra is refused within 5 s, at the next request when revoked with the operator command ([runbooks/oauth-grant-cutoff.md](runbooks/oauth-grant-cutoff.md), §8d)
 - [ADR027-sso.md](ADR027-sso.md) — social OIDC via Kratos; enterprise SAML deferred
 - [ADR024-members.md](ADR024-members.md) — workspace members & roles, OpenFGA tuples
 - [ADR086-account-deletion.md](ADR086-account-deletion.md) — durable self-delete, workspace offboarding, credential cleanup
