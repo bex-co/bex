@@ -1,6 +1,6 @@
 # w4 · m325 — A request-log line is Traefik's raw JSON access record (`ServiceName`, `KubernetesIngressName`, `Duration` in nanoseconds, three copies of the request id) where Render shows a readable request summary; ADR018 records the divergence without the user's sign-off
 
-**Worker:** worker4 **Goal:** a request log line reads like Render's on every surface. It is a one-line summary of method, status, host and path, response time in milliseconds, and the request id, in Render's `key=value` shape. bex's ingress attribution fields stay internal. **Status:** blocked — t001–t004, t006–t008 and t010 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
+**Worker:** worker4 **Goal:** a request log line reads like Render's on every surface. It is a one-line summary of method, status, host and path, response time in milliseconds, and the request id, in Render's `key=value` shape. bex's ingress attribution fields stay internal. **Status:** done — DoD replayed live on pin `7aaa8700befa` 2026-11-16 ([t005](done/t005.md))
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | The Logs tab renders the summary, and the raw record stays reachable only if t001 says Render offers it — **DONE** | 30m | t002 |
 | [t004](done/t004.md) | Blast radius: every reader of the request line, `text` search semantics, live tail and the CLI — **DONE** | 30m | t002 |
 | [t010](done/t010.md) | A request line's labels follow Render's — `host` and `path` where Render carries them, and a recorded answer for `requestID`, which Render's label enum omits — **DONE** | 30m | t001 |
-| [t005](t005.md) | Live verification in `bex-canary` | 20m | t003, t004, t010 |
+| [t005](done/t005.md) | Live verification in `bex-canary` — **DONE** | 20m | t003, t004, t010 |
 | [t006](done/t006.md) | Render parity — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 10m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t007, t008 |
 
 Ten tasks, 255m (4h15m).
 
@@ -104,7 +104,7 @@ Signed in to `bex-canary` after the release pins this build, on an owned Free we
 1. **REST reads a Render-shaped summary.** After `curl -H 'x-set-response-status-code: 503' https://<svc>.onbex.co/qa-err`, `GET /v1/logs?…&type=request&path=/qa-err` returns a `message` in t001's recorded Render format. It carries method `GET`, status `503`, host, path `/qa-err`, response time in ms and the request id. It contains none of `KubernetesIngressName`, `ServiceName`, `Duration` or `_Rndr-Id`. The labels are unchanged.
 2. **The dashboard shows the summary.** Logs → Request logs (Live on and off) shows the same text for that line.
 3. **Filters and metrics still work.** `path=/qa-err`, `statusCode=503`, `host=<svc>.onbex.co` and the Metrics page's request count and latency for the window are unchanged.
-4. **Static sites too.** On an owned static site, a request line reads in the same format.
+4. **Static sites have no request lines (amended 2026-11-16 per [w4/585](../585.md)).** Render emits no logs for static sites, so on an owned static site `GET /v1/logs?…&resource=<static>` returns no lines. The original bullet ("a request line reads in the same format") was superseded when w4/585 closed on 2026-11-11.
 5. **Labels follow Render (t010, added from loop round 130).** The same `GET /v1/logs?…&type=request&path=/qa-err` returns exactly the request-line label names t010 records from Render, and GraphQL and MCP agree. Today it returns `type`, `resource`, `method`, `statusCode` and `requestID`: no `host` or `path`, though Render's pinned `logLabel.name` enum lists both and omits `requestID`. `requestID`'s status is recorded in ADR010 and ADR018.
 
 ## Source + Goal linkage
@@ -153,3 +153,10 @@ Same pin. Fixtures, both deleted afterwards (DELETE 204, then GET 404):
   - **Latency observation, not filed:** `GET /v1/metrics/http-latency` returned `values: []` for those first three requests (after more than a minute). After 12 more requests, one point appeared (`03:25:57`, 7.7 ms), while `http-requests` showed two buckets (`03:25=3`, `03:26=12`). This may be the quantile window's alignment rather than a defect, and needs a closer look before anyone files it.
 - **DoD 4 passes.** The static site's request lines read the same way, e.g. `clientIP="…" requestID="…" responseTimeMS=49 responseBytes=10 userAgent="curl/8.7.1"` with `statusCode=404`, `path=/qa162-static`, `level=warning`. Whether static request lines should exist at all is w4/585.
 - **DoD 5, GraphQL agrees.** `logs(resource, type: "request", path: ["/qa-err"])` → the same `message`, with `method GET`, `statusCode 503`, `host`, `path /qa-err` and `level error`. **Not run:** MCP `list_logs`.
+
+## Unblock record (2026-11-16)
+
+- **Affected:** w4/m325 t005, t009.
+- **Source:** verified evidence. Production was verified live on platform pin `7aaa8700befa` at 2026-11-16 16:27Z, and every m325 commit is its ancestor (`ef7e8d669`, `8c126cc19`, `6be581c67`, `739ee64a7`, `f2ed184d4`, `ba2785d32`; `git merge-base --is-ancestor`).
+- **Outcome:** the release gate is clear; no user action was needed. DoD 4 is amended to w4/585's shipped behavior (no static-site logs, matching Render), which round 340 recorded as the pending amendment.
+- **Next step, done the same day:** t005 replayed every DoD bullet on that pin (all pass), then t009 closed the milestone.
