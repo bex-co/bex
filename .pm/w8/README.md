@@ -448,7 +448,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
   - **Cause:** `exactDefaults` (`nativeversion.go:218-232`) has an exact Elixir step but no Erlang one, and `resolver.elixir` sets an exact OTP only from `ERLANG_VERSION`.
   - **Fix:** default `choice.erlang = "28.0.2"` for services created since 2025-06-12, through `w8/197`'s exact-OTP path, and name the OTP in the log line.
 
-- [ ] **332** — [`NODE_VERSION=lts` (and `.nvmrc` `lts/*`) builds on Node 24 although Node 26 has been LTS since 2026-10-28, and `lts/lithium` fails the build](332.md) (~30m, major for `lts/lithium`, minor for `lts`) ← `/qa-find-bugs-cli` sweep 4006 2026-11-16
+- [x] **332** — [`NODE_VERSION=lts` (and `.nvmrc` `lts/*`) builds on Node 24 although Node 26 has been LTS since 2026-10-28, and `lts/lithium` fails the build](done/332.md) (~30m, major for `lts/lithium`, minor for `lts`) ← `/qa-find-bugs-cli` sweep 4006 2026-11-16. **DONE 2026-11-16:** a dated `nodeLTS` table (each reviewed line's codename and first-LTS date) replaces the constant, so `lts`/`lts/*` give 26 and `lts/lithium` resolves; the production regression checks run after the next roll.
   - **bex (pin `e3a57b1c398f`):** `lts` gives `Using Node 24.22.3`; `lts/lithium` fails with "not a supported Node version; supported Node lines are 14, …, 26"; `26` gives 26.13.1; unset gives 24.22.1, Render's default.
   - **Cause:** `nodeLTSLine = "24"` and no `lithium` in `nodeLTSCodenames` (`nativeversion.go:592-595`), shared by `NODE_VERSION`, `.node-version`, `.nvmrc` and `engines.node`.
   - **Fix:** `lithium` → 26, and a dated LTS line (26 since 2026-10-28) in place of the constant.

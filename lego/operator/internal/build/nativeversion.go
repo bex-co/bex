@@ -588,11 +588,40 @@ func (r resolver) minorLine(request string) (string, bool) {
 	return line, ok
 }
 
-// nodeLTSCodenames are the release codenames nvm-style `lts/<name>` names.
-var nodeLTSCodenames = map[string]string{"fermium": "14", "gallium": "16", "hydrogen": "18", "iron": "20", "jod": "22", "krypton": "24"}
+// nodeLTSRelease is one Node line's long-term-support entry: its codename and
+// the day its first LTS release shipped.
+type nodeLTSRelease struct {
+	codename, line string
+	from           time.Time
+}
 
-// nodeLTSLine is the current active LTS line (24 until 26 enters LTS).
-const nodeLTSLine = "24"
+// nodeLTS is Node's LTS schedule for the reviewed lines, oldest first: the
+// codename and date nodejs.org/dist/index.json gives each line's first LTS
+// release (14.15.0 Fermium … 26.13.0 Lithium). Every reviewed Node line has an
+// entry (TestNodeLTSCoversTheReviewedLines): a new line takes its planned LTS
+// start from github.com/nodejs/Release's schedule.json, with no codename until
+// Node names it, so `lts` moves on that date without another edit (w8/332).
+var nodeLTS = []nodeLTSRelease{
+	{"fermium", "14", time.Date(2020, time.October, 27, 0, 0, 0, 0, time.UTC)},
+	{"gallium", "16", time.Date(2021, time.October, 26, 0, 0, 0, 0, time.UTC)},
+	{"hydrogen", "18", time.Date(2022, time.October, 25, 0, 0, 0, 0, time.UTC)},
+	{"iron", "20", time.Date(2023, time.October, 24, 0, 0, 0, 0, time.UTC)},
+	{"jod", "22", time.Date(2024, time.October, 29, 0, 0, 0, 0, time.UTC)},
+	{"krypton", "24", time.Date(2025, time.October, 28, 0, 0, 0, 0, time.UTC)},
+	{"lithium", "26", time.Date(2026, time.October, 28, 0, 0, 0, 0, time.UTC)},
+}
+
+// nodeLTSLineAt is the line `lts` and `lts/*` name for a build running at now:
+// the newest one whose LTS has begun, as nvm, n and fnm resolve the alias.
+func nodeLTSLineAt(now time.Time) string {
+	line := nodeLTS[0].line
+	for _, r := range nodeLTS {
+		if !now.Before(r.from) {
+			line = r.line
+		}
+	}
+	return line
+}
 
 var plainVersion = regexp.MustCompile(`^v?\d+(\.\d+){0,2}$`)
 
@@ -603,10 +632,13 @@ func (r resolver) nodeRequest(request string) (string, bool) {
 	lower := strings.ToLower(strings.TrimSpace(request))
 	switch {
 	case lower == "lts" || lower == "lts/*":
-		return nodeLTSLine, true
+		return nodeLTSLineAt(time.Now()), true
 	case strings.HasPrefix(lower, "lts/"):
-		line, ok := nodeLTSCodenames[strings.TrimPrefix(lower, "lts/")]
-		return line, ok
+		i := slices.IndexFunc(nodeLTS, func(r nodeLTSRelease) bool { return r.codename != "" && "lts/"+r.codename == lower })
+		if i < 0 {
+			return "", false
+		}
+		return nodeLTS[i].line, true
 	case lower == "node" || lower == "latest" || lower == "current" || lower == "stable":
 		return r.t.lines[len(r.t.lines)-1].line, true
 	case plainVersion.MatchString(lower):

@@ -77,8 +77,13 @@ func TestResolveNativeVersion(t *testing.T) {
 		{"node env major", "node", map[string]string{"NODE_VERSION": "22"}, nil, "22", "NODE_VERSION=22"},
 		{"node env full", "node", map[string]string{"NODE_VERSION": "v22.11.0"}, nil, "22", "NODE_VERSION=v22.11.0"},
 		{"node .node-version beats .nvmrc", "node", nil, map[string]string{".node-version": "26", ".nvmrc": "22"}, "26", ".node-version"},
-		{"node .nvmrc lts", "node", nil, map[string]string{".nvmrc": "lts/*"}, "24", ".nvmrc"},
+		// Node 26 has been LTS since 2026-10-28 (w8/332).
+		{"node .nvmrc lts", "node", nil, map[string]string{".nvmrc": "lts/*"}, "26", ".nvmrc"},
+		{"node env lts", "node", map[string]string{"NODE_VERSION": "lts"}, nil, "26", "NODE_VERSION=lts"},
+		{"node engines lts", "node", nil, map[string]string{"package.json": `{"engines":{"node":"lts/*"}}`}, "26", "package.json engines.node"},
 		{"node .nvmrc codename", "node", nil, map[string]string{".nvmrc": "lts/jod"}, "22", ".nvmrc"},
+		{"node env codename lithium", "node", map[string]string{"NODE_VERSION": "lts/lithium"}, nil, "26", "NODE_VERSION=lts/lithium"},
+		{"node env codename krypton", "node", map[string]string{"NODE_VERSION": "lts/Krypton"}, nil, "24", "NODE_VERSION=lts/Krypton"},
 		{"node .nvmrc beats engines", "node", nil, map[string]string{".nvmrc": "22", "package.json": `{"engines":{"node":">=26"}}`}, "22", ".nvmrc"},
 		{"node bounded engines range", "node", nil, map[string]string{"package.json": `{"engines":{"node":">=20 <23"}}`}, "22", "package.json engines.node"},
 		{"node caret engines", "node", nil, map[string]string{"package.json": `{"engines":{"node":"^22.5.0"}}`}, "22", "package.json engines.node"},
@@ -145,6 +150,7 @@ func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 		{"python", map[string]string{"PYTHON_VERSION": "3.6.15"}, nil, `PYTHON_VERSION=3.6.15 is not a supported Python version`},
 		{"python", nil, map[string]string{".python-version": "pypy3.10"}, `.python-version "pypy3.10"`},
 		{"node", map[string]string{"NODE_VERSION": "8"}, nil, "supported Node lines are 14, 16, 18, 20, 22, 24, 26"},
+		{"node", map[string]string{"NODE_VERSION": "lts/notacodename"}, nil, "NODE_VERSION=lts/notacodename is not a supported Node version; supported Node lines are 14, 16, 18, 20, 22, 24, 26"},
 		{"node", nil, map[string]string{"package.json": `{"engines":{"node":"<14"}}`}, `package.json engines.node "<14"`},
 		{"ruby", nil, map[string]string{"Gemfile": `ruby "2.7.8"`}, `Gemfile ruby "2.7.8"`},
 		{"ruby", nil, map[string]string{".tool-versions": "ruby 2.7.8\n"}, `.tool-versions ruby "2.7.8"`},
@@ -156,6 +162,46 @@ func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 		var unsupported *UnsupportedVersionError
 		if !errors.As(err, &unsupported) || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%s %v %v: err = %v, want an UnsupportedVersionError containing %q", tc.runtime, tc.env, tc.files, err, tc.want)
+		}
+	}
+}
+
+// `lts` names the newest line whose LTS has begun when the build runs, so it
+// moves on Node's own date with no edit (w8/332).
+func TestNodeLTSLineFollowsTheSchedule(t *testing.T) {
+	for _, tc := range []struct {
+		now  time.Time
+		want string
+	}{
+		{time.Date(2026, time.October, 27, 23, 59, 59, 0, time.UTC), "24"},
+		{time.Date(2026, time.October, 28, 0, 0, 0, 0, time.UTC), "26"},
+		{time.Date(2026, time.November, 16, 13, 50, 0, 0, time.UTC), "26"},
+		{time.Date(2025, time.March, 1, 0, 0, 0, 0, time.UTC), "22"},
+		{time.Date(2019, time.January, 1, 0, 0, 0, 0, time.UTC), "14"},
+	} {
+		if got := nodeLTSLineAt(tc.now); got != tc.want {
+			t.Errorf("nodeLTSLineAt(%s) = %q, want %q", tc.now.Format(time.DateOnly), got, tc.want)
+		}
+	}
+}
+
+// Every reviewed Node line carries its LTS date and every entry names a
+// reviewed line, oldest first, so adding a line without its schedule fails
+// here and `lts` never names a line bex cannot build.
+func TestNodeLTSCoversTheReviewedLines(t *testing.T) {
+	lines := nativeToolchains[nativeNodeRuntime].lines
+	if len(nodeLTS) != len(lines) {
+		t.Fatalf("nodeLTS has %d entries for %d reviewed Node lines", len(nodeLTS), len(lines))
+	}
+	for i, r := range nodeLTS {
+		if r.line != lines[i].line {
+			t.Errorf("nodeLTS[%d] is line %s, want the reviewed line %s", i, r.line, lines[i].line)
+		}
+		if r.codename != strings.ToLower(r.codename) {
+			t.Errorf("line %s codename %q must be lower-case", r.line, r.codename)
+		}
+		if i > 0 && !nodeLTS[i-1].from.Before(r.from) {
+			t.Errorf("line %s's LTS date %s is not after line %s's", r.line, r.from.Format(time.DateOnly), nodeLTS[i-1].line)
 		}
 	}
 }
