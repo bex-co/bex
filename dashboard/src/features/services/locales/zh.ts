@@ -2381,7 +2381,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployRootDirHint": {
     message:
-      "如果设置，构建将从此子目录而非仓库根目录运行。此目录之外的代码更改不会触发自动部署。常用于 monorepo。",
+      "如果设置，构建将从此子目录而非仓库根目录运行。此目录之外的代码更改不会触发自动部署，除非匹配构建过滤器的包含路径。常用于 monorepo。",
     description: "Build & Deploy: root-directory field help text",
   },
   "services.buildDeployConfirmRoot": {
@@ -2733,7 +2733,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterHint": {
     message:
-      "仅当 git 推送改动了匹配的文件时才触发部署。路径为相对仓库根目录的通配模式（如 src/**、**/*.md）。",
+      "仅当 git 推送改动了匹配的文件时才触发部署。即使设置了根目录，路径也是相对仓库根目录的通配模式（如 src/**、**/*.md）。",
     description: "Build & Deploy: help text for the build-filters editor",
   },
   "services.buildFilterIncludedTitle": {
@@ -2741,7 +2741,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Build & Deploy: title for the included-paths list",
   },
   "services.buildFilterIncludedHint": {
-    message: "仅当改动的文件匹配其中之一时才部署。留空表示包含所有路径。",
+    message:
+      "仅当改动的文件匹配其中之一时才部署，根目录之外的文件也是如此。留空表示包含根目录内的所有路径。",
     description: "Build & Deploy: help text for the included-paths list",
   },
   "services.buildFilterIncludedPlaceholder": {

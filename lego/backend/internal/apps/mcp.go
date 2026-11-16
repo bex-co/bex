@@ -130,7 +130,7 @@ type autoscalingArg struct {
 // create_web_service: repository-root-relative globs deciding whether a git push
 // triggers an auto-deploy. Patterns support *, **, ?, and [class] wildcards.
 type buildFilterArg struct {
-	Paths        []string `json:"paths,omitempty" jsonschema:"include globs (e.g. 'src/**'); a push deploys only when a changed file matches one — empty means every path is included"`
+	Paths        []string `json:"paths,omitempty" jsonschema:"include globs (e.g. 'src/**'); a push deploys only when a changed file matches one, even outside rootDir — empty means every path under rootDir is included"`
 	IgnoredPaths []string `json:"ignoredPaths,omitempty" jsonschema:"exclude globs (e.g. 'docs/**'); a changed file matching one never triggers a deploy, even if it also matches paths"`
 }
 

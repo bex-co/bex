@@ -2467,7 +2467,7 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployRootDirHint": {
     message:
-      "Se definido, os builds são executados a partir deste subdiretório em vez da raiz do repositório. Alterações de código fora dele não disparam um deploy automático. Muito usado com monorepos.",
+      "Se definido, os builds são executados a partir deste subdiretório em vez da raiz do repositório. Alterações de código fora dele não disparam um deploy automático, a menos que correspondam a um caminho incluído dos filtros de build. Muito usado com monorepos.",
     description: "Build & Deploy: root-directory field help text",
   },
   "services.buildDeployConfirmRoot": {
@@ -2834,7 +2834,7 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterHint": {
     message:
-      "Dispare um deploy somente quando um git push alterar arquivos correspondentes. Os caminhos são padrões glob relativos à raiz do repositório (ex.: src/**, **/*.md).",
+      "Dispare um deploy somente quando um git push alterar arquivos correspondentes. Os caminhos são padrões glob relativos à raiz do repositório, mesmo com um diretório raiz definido (ex.: src/**, **/*.md).",
     description: "Build & Deploy: help text for the build-filters editor",
   },
   "services.buildFilterIncludedTitle": {
@@ -2843,7 +2843,7 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterIncludedHint": {
     message:
-      "Um push dispara deploy somente quando um arquivo alterado corresponde a um destes. Vazio significa que todos os caminhos estão incluídos.",
+      "Um push dispara deploy somente quando um arquivo alterado corresponde a um destes, mesmo fora do diretório raiz. Vazio significa que todos os caminhos dentro do diretório raiz estão incluídos.",
     description: "Build & Deploy: help text for the included-paths list",
   },
   "services.buildFilterIncludedPlaceholder": {

@@ -2432,7 +2432,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployRootDirHint": {
     message:
-      "If set, builds run from this subdirectory instead of the repository root. Code changes outside of it don't trigger an auto-deploy. Most commonly used with a monorepo.",
+      "If set, builds run from this subdirectory instead of the repository root. Code changes outside of it don't trigger an auto-deploy unless they match an included build filter path. Most commonly used with a monorepo.",
     description: "Build & Deploy: root-directory field help text",
   },
   "services.buildDeployConfirmRoot": {
@@ -2797,7 +2797,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterHint": {
     message:
-      "Only trigger a deploy when a git push changes matching files. Paths are glob patterns relative to the repository root (e.g. src/**, **/*.md).",
+      "Only trigger a deploy when a git push changes matching files. Paths are glob patterns relative to the repository root, even when a root directory is set (e.g. src/**, **/*.md).",
     description: "Build & Deploy: help text for the build-filters editor",
   },
   "services.buildFilterIncludedTitle": {
@@ -2806,7 +2806,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterIncludedHint": {
     message:
-      "A push deploys only when a changed file matches one of these. Empty means every path is included.",
+      "A push deploys only when a changed file matches one of these, even outside the root directory. Empty means every path under the root directory is included.",
     description: "Build & Deploy: help text for the included-paths list",
   },
   "services.buildFilterIncludedPlaceholder": {

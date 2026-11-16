@@ -211,6 +211,43 @@ func TestDeployManifestThreadsBuildFilter(t *testing.T) {
 	}
 }
 
+// A Blueprint-declared rootDir and buildFilter reach the same push decision as
+// the dashboard's settings (w7/m428): the included path outside the root
+// directory deploys, an ignored path wins, and a change under the root
+// directory that no included path matches does not deploy.
+func TestBlueprintRootDirAndBuildFilterDecideAPush(t *testing.T) {
+	const repo = "https://github.com/x/mono"
+	manifest := "services:\n  - name: api\n    type: web\n    runtime: docker\n    repo: " + repo + "\n    rootDir: backend\n" +
+		"    buildFilter:\n      paths:\n        - shared/**\n      ignoredPaths:\n        - \"**/*.md\"\n"
+	for _, c := range []struct {
+		changed string
+		deploys bool
+	}{
+		{"shared/lib.go", true},
+		{"shared/README.md", false},
+		{"backend/main.go", false},
+		{"frontend/app.js", false},
+	} {
+		t.Run(c.changed, func(t *testing.T) {
+			svc, cl := newService(nil)
+			if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+				t.Fatalf("DeployStack: %v", err)
+			}
+			if a := getApp(t, cl, "api"); a.Spec.RootDir != "backend" || !a.Spec.AutoDeploy {
+				t.Fatalf("Blueprint service = rootDir %q autoDeploy %v, want backend with auto-deploy on", a.Spec.RootDir, a.Spec.AutoDeploy)
+			}
+			h := &GitWebhook{Svc: svc, Secret: "shh"}
+			redeployed, _, err := h.redeployMatching(context.Background(), newPush(repo, []string{c.changed}), "main", "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if contains(redeployed, "api") != c.deploys {
+				t.Errorf("a push changing %s redeployed %v, want deploy %v", c.changed, redeployed, c.deploys)
+			}
+		})
+	}
+}
+
 // --- SetBuildFilter validation + guards ---
 
 func TestSetBuildFilterRejectsImageBackedApp(t *testing.T) {

@@ -30,78 +30,212 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// --- rootDirMatches (the path-scoped auto-deploy filter, monorepo support) ---
+// --- pathsIgnoredReason: the Root Directory and Build Filters decide together ---
 
-func TestRootDirMatches(t *testing.T) {
-	cases := []struct {
-		name    string
-		rootDir string
-		paths   []string
-		want    bool
-	}{
-		{"empty rootDir always matches (today's whole-repo behavior)", "", []string{"unrelated/file.go"}, true},
-		{"no changed paths at all fails open (nothing to filter on)", "services/api", nil, true},
-		{"file inside rootDir matches", "services/api", []string{"services/api/main.go"}, true},
-		{"file outside rootDir does not match", "services/api", []string{"services/web/index.js"}, false},
-		{"file at an unrelated top-level path does not match", "services/api", []string{"README.md"}, false},
-		{"one matching path among several is enough", "services/api", []string{"README.md", "services/api/main.go"}, true},
-		{"leading slash on the changed path is tolerated", "services/api", []string{"/services/api/main.go"}, true},
-		{"trailing slash on rootDir is tolerated", "services/api/", []string{"services/api/main.go"}, true},
-		{"sibling directory with a matching prefix string is not a match", "services/api", []string{"services/api-gateway/main.go"}, false},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			if got := rootDirMatches(c.rootDir, c.paths); got != c.want {
-				t.Errorf("rootDirMatches(%q, %v) = %v, want %v", c.rootDir, c.paths, got, c.want)
-			}
-		})
-	}
-}
-
-// --- buildFilterMatches (Render's Build Filters, glob-based auto-deploy gate) ---
-
-func TestBuildFilterMatches(t *testing.T) {
+// TestPathsIgnoredReason walks every cell of the decision table in
+// docs/render-artifacts/auto-deploy-filters.md (w7/m428 t002), plus the
+// matching details (globs, slashes, prefixes). "" deploys.
+func TestPathsIgnoredReason(t *testing.T) {
+	const (
+		deploys = ""
+		rootDir = store.EventReasonRootDirectory
+		filter  = store.EventReasonBuildFilter
+	)
 	bf := func(paths, ignored []string) *appv1alpha1.BuildFilterSpec {
 		return &appv1alpha1.BuildFilterSpec{Paths: paths, IgnoredPaths: ignored}
 	}
+	shared := []string{"shared/**"}
+	docs := []string{"**/*.md"}
 	cases := []struct {
-		name   string
-		filter *appv1alpha1.BuildFilterSpec
-		paths  []string
-		want   bool
+		name    string
+		rootDir string
+		filter  *appv1alpha1.BuildFilterSpec
+		paths   []string
+		want    string
 	}{
-		{"nil filter always matches (today's behavior)", nil, []string{"anything.go"}, true},
-		{"all-empty filter always matches", bf(nil, nil), []string{"anything.go"}, true},
-		{"no changed paths fails open (nothing to filter on)", bf([]string{"src/**"}, nil), nil, true},
+		// No changed paths in the payload: nothing to filter on, so it deploys.
+		{"no paths, root directory set", "backend", nil, nil, deploys},
+		{"no paths, included paths set", "", bf(shared, nil), nil, deploys},
+		{"no paths, everything else set", "backend", bf(shared, docs), nil, deploys},
 
-		// Included paths only: deploy iff a changed file matches an include glob.
-		{"included: a matching file triggers", bf([]string{"src/**"}, nil), []string{"src/app/main.go"}, true},
-		{"included: no matching file does not trigger", bf([]string{"src/**"}, nil), []string{"web/index.js"}, false},
-		{"included: one match among several is enough", bf([]string{"src/**"}, nil), []string{"web/index.js", "src/app/main.go"}, true},
-		{"included: globstar spans directories", bf([]string{"**/*.md"}, nil), []string{"docs/guide/readme.md"}, true},
-		{"included: leading slash on the changed path is tolerated", bf([]string{"src/**"}, nil), []string{"/src/main.go"}, true},
+		// Row 1: no root directory, no filter. Every change deploys.
+		{"row 1: any file", "", nil, []string{"unrelated/file.go"}, deploys},
+		{"row 1: an all-empty filter is no filter", "", bf(nil, nil), []string{"unrelated/file.go"}, deploys},
 
-		// Ignored paths only: skip iff ALL changed files are ignored.
-		{"ignored: all changed files ignored => no deploy", bf(nil, []string{"docs/**"}), []string{"docs/a.md", "docs/b.md"}, false},
-		{"ignored: one non-ignored file => deploy", bf(nil, []string{"docs/**"}), []string{"docs/a.md", "src/main.go"}, true},
+		// Row 2: ignored paths only. Deploys unless every changed file is ignored.
+		{"row 2: every file ignored", "", bf(nil, []string{"docs/**"}), []string{"docs/a.md", "docs/b.md"}, filter},
+		{"row 2: one file not ignored", "", bf(nil, []string{"docs/**"}), []string{"docs/a.md", "src/main.go"}, deploys},
 
-		// Both: ignored wins over included, even for a file that matches both.
-		{"both: a file that is included but also ignored does not trigger", bf([]string{"src/**"}, []string{"src/**/*.test.go"}), []string{"src/app/main.test.go"}, false},
-		{"both: an included, non-ignored file triggers", bf([]string{"src/**"}, []string{"src/**/*.test.go"}), []string{"src/app/main.go"}, true},
-		{"both: a mix with one triggering file deploys", bf([]string{"src/**"}, []string{"src/**/*.test.go"}), []string{"src/app/main.test.go", "src/app/main.go"}, true},
+		// Row 3: included paths, no root directory. A file must be included and not ignored.
+		{"row 3: an included file", "", bf([]string{"src/**"}, nil), []string{"src/app/main.go"}, deploys},
+		{"row 3: no included file", "", bf([]string{"src/**"}, nil), []string{"web/index.js"}, filter},
+		{"row 3: one included file among several", "", bf([]string{"src/**"}, nil), []string{"web/index.js", "src/app/main.go"}, deploys},
+		{"row 3: globstar spans directories", "", bf(docs, nil), []string{"docs/guide/readme.md"}, deploys},
+		{"row 3: a leading slash on the changed path", "", bf([]string{"src/**"}, nil), []string{"/src/main.go"}, deploys},
+		{"row 3: included but also ignored", "", bf([]string{"src/**"}, []string{"src/**/*.test.go"}), []string{"src/app/main.test.go"}, filter},
+		{"row 3: included and not ignored", "", bf([]string{"src/**"}, []string{"src/**/*.test.go"}), []string{"src/app/main.go"}, deploys},
+		{"row 3: one triggering file among ignored ones", "", bf([]string{"src/**"}, []string{"src/**/*.test.go"}), []string{"src/app/main.test.go", "src/app/main.go"}, deploys},
+
+		// Row 4: root directory, no filter. A file must lie under the root directory.
+		{"row 4: a file under the root directory", "services/api", nil, []string{"services/api/main.go"}, deploys},
+		{"row 4: a file outside it", "services/api", nil, []string{"services/web/index.js"}, rootDir},
+		{"row 4: a top-level file", "services/api", nil, []string{"README.md"}, rootDir},
+		{"row 4: one file under it among several", "services/api", nil, []string{"README.md", "services/api/main.go"}, deploys},
+		{"row 4: a leading slash on the changed path", "services/api", nil, []string{"/services/api/main.go"}, deploys},
+		{"row 4: a trailing slash on the root directory", "services/api/", nil, []string{"services/api/main.go"}, deploys},
+		{"row 4: a sibling sharing the name's prefix is outside", "services/api", nil, []string{"services/api-gateway/main.go"}, rootDir},
+
+		// Row 5: root directory and ignored paths, no included paths. A file must
+		// lie under the root directory and not be ignored.
+		{"row 5: under the root and not ignored", "backend", bf(nil, docs), []string{"backend/main.go"}, deploys},
+		{"row 5: under the root but ignored", "backend", bf(nil, docs), []string{"backend/README.md"}, filter},
+		{"row 5: outside the root, not ignored", "backend", bf(nil, docs), []string{"frontend/app.js"}, rootDir},
+		{"row 5: outside the root and ignored", "backend", bf(nil, docs), []string{"README.md"}, rootDir},
+		{"row 5: ignored under the root plus a file outside it (inferred)", "backend", bf(nil, docs), []string{"backend/README.md", "frontend/app.js"}, filter},
+		{"row 5: an ignored file never rescues a push outside the root", "backend", bf(nil, docs), []string{"backend/README.md", "frontend/README.md"}, filter},
+
+		// Row 6: root directory and included paths. The included paths decide,
+		// wherever they point; the root directory no longer does.
+		{"row 6: under the root and included", "backend", bf([]string{"backend/**", "shared/**"}, nil), []string{"backend/main.go"}, deploys},
+		{"row 6: under the root, not included (the ambiguous cell)", "backend", bf(shared, nil), []string{"backend/main.go"}, filter},
+		{"row 6: outside the root and included", "backend", bf(shared, nil), []string{"shared/lib.go"}, deploys},
+		{"row 6: outside the root, not included", "backend", bf(shared, nil), []string{"frontend/app.js"}, filter},
+		{"row 6: outside the root, included but ignored", "backend", bf(shared, docs), []string{"shared/README.md"}, filter},
+		{"row 6: one included file outside the root among ignored ones", "backend", bf(shared, docs), []string{"shared/README.md", "shared/lib.go"}, deploys},
+		{"row 6: under the root, included but ignored", "backend", bf([]string{"backend/**"}, docs), []string{"backend/README.md"}, filter},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := buildFilterMatches(c.filter, c.paths); got != c.want {
-				t.Errorf("buildFilterMatches(%+v, %v) = %v, want %v", c.filter, c.paths, got, c.want)
+			if got := pathsIgnoredReason(c.rootDir, c.filter, c.paths); got != c.want {
+				t.Errorf("pathsIgnoredReason(%q, %+v, %v) = %q, want %q", c.rootDir, c.filter, c.paths, got, c.want)
 			}
 		})
 	}
 }
 
-// TestRedeployMatchingComposesBuildFilterWithRootDir proves buildFilter is ANDed
-// after rootDir scoping: a change inside rootDir that the buildFilter ignores does
-// not redeploy, while an included change inside rootDir does.
+// andRule is the decision bex made before w7/m428: the root directory and the
+// build filters each had to pass, so an included path outside the root
+// directory could never deploy.
+func andRule(rootDir string, bf *appv1alpha1.BuildFilterSpec, paths []string) bool {
+	if len(paths) == 0 {
+		return true
+	}
+	rootOK := rootDir == ""
+	filterOK := bf == nil || (len(bf.Paths) == 0 && len(bf.IgnoredPaths) == 0)
+	for _, p := range paths {
+		p = strings.TrimPrefix(p, "/")
+		rootOK = rootOK || underRootDir(rootDir, p)
+		if bf != nil && !matchesAnyGlob(bf.IgnoredPaths, p) && (len(bf.Paths) == 0 || matchesAnyGlob(bf.Paths, p)) {
+			filterOK = true
+		}
+	}
+	return rootOK && filterOK
+}
+
+// TestPathsDecisionOnlyWidensButForIgnoredFilesUnderTheRoot is the w7/m428
+// property, checked over every combination of a small monorepo: a push the
+// old AND rule deployed still deploys, with one exception. With a root
+// directory, ignored paths and no included paths, a push whose files under the
+// root directory are all ignored, and whose other files lie outside it, no
+// longer deploys: Render treats a file outside the root directory as ignored
+// too (the decision table's row 5, inferred cell).
+func TestPathsDecisionOnlyWidensButForIgnoredFilesUnderTheRoot(t *testing.T) {
+	universe := []string{"backend/main.go", "backend/README.md", "shared/lib.go", "shared/README.md", "frontend/app.js", "README.md"}
+	rootDirs := []string{"", "backend"}
+	includes := [][]string{nil, {"shared/**"}, {"backend/**"}, {"**/*.go"}}
+	ignores := [][]string{nil, {"**/*.md"}, {"shared/**"}, {"backend/**"}}
+	checked, widened, narrowed := 0, 0, 0
+	for _, rd := range rootDirs {
+		for _, inc := range includes {
+			for _, ign := range ignores {
+				var filter *appv1alpha1.BuildFilterSpec
+				if inc != nil || ign != nil {
+					filter = &appv1alpha1.BuildFilterSpec{Paths: inc, IgnoredPaths: ign}
+				}
+				for mask := 1; mask < 1<<len(universe); mask++ {
+					var paths []string
+					for i, p := range universe {
+						if mask&(1<<i) != 0 {
+							paths = append(paths, p)
+						}
+					}
+					checked++
+					before, after := andRule(rd, filter, paths), pathsIgnoredReason(rd, filter, paths) == ""
+					switch {
+					case !before && after:
+						widened++
+					case before && !after:
+						narrowed++
+						if !onlyIgnoredUnderRoot(rd, inc, ign, paths) {
+							t.Errorf("root %q, included %v, ignored %v, paths %v: deployed before and not now", rd, inc, ign, paths)
+						}
+					}
+				}
+			}
+		}
+	}
+	if widened == 0 || narrowed == 0 {
+		t.Fatalf("checked %d pushes: widened %d, narrowed %d; the property must see both kinds of change", checked, widened, narrowed)
+	}
+}
+
+// onlyIgnoredUnderRoot is the one cell where the old rule deployed and Render's
+// does not: a root directory and ignored paths, no included paths, every
+// changed file under the root directory ignored, and some file outside it.
+func onlyIgnoredUnderRoot(rootDir string, included, ignored, paths []string) bool {
+	if rootDir == "" || len(included) > 0 || len(ignored) == 0 {
+		return false
+	}
+	outside := false
+	for _, p := range paths {
+		if !underRootDir(rootDir, p) {
+			outside = true
+		} else if !matchesAnyGlob(ignored, p) {
+			return false
+		}
+	}
+	return outside
+}
+
+// An included path outside the root directory deploys the service through the
+// webhook, and an ignored path matching the same file still wins.
+func TestRedeployMatchingIncludedPathOutsideRootDirDeploys(t *testing.T) {
+	const repo = "https://github.com/x/mono"
+	app := autoDeployApp("api", repo)
+	app.Spec.RootDir = "backend"
+	app.Spec.BuildFilter = &appv1alpha1.BuildFilterSpec{Paths: []string{"shared/**"}}
+	app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-api"}
+	svc, _ := newService(nil, app)
+	writer := &recordingFactWriter{}
+	svc.EventFacts = writer
+	h := &GitWebhook{Svc: svc, Secret: "shh"}
+
+	got, _, err := h.redeployMatching(context.Background(), newPush(repo, []string{"shared/lib.go"}), "main", "")
+	if err != nil || !contains(got, "api") {
+		t.Fatalf("a change under an included path outside the root directory = %v (err %v), want api redeployed", got, err)
+	}
+
+	app2 := autoDeployApp("api", repo)
+	app2.Spec.RootDir = "backend"
+	app2.Spec.BuildFilter = &appv1alpha1.BuildFilterSpec{Paths: []string{"shared/**"}, IgnoredPaths: []string{"shared/**/*.md"}}
+	app2.Labels = app.Labels
+	svc2, _ := newService(nil, app2)
+	svc2.EventFacts = writer
+	h2 := &GitWebhook{Svc: svc2, Secret: "shh"}
+	ev := newPush(repo, []string{"shared/README.md"})
+	ev.DeliveryKey, ev.HeadCommit.ID = "delivery-ignored", "abc123"
+	got2, _, err := h2.redeployMatching(context.Background(), ev, "main", "")
+	if err != nil || len(got2) != 0 {
+		t.Fatalf("an included file that is also ignored = %v (err %v), want no redeploy", got2, err)
+	}
+	fact, ok := writer.facts["git:delivery-ignored:srv-api:ignored"]
+	if !ok || fact.Type != store.EventFactCommitIgnored || fact.ReasonCode != store.EventReasonBuildFilter {
+		t.Fatalf("ignored fact = %+v (recorded %v), want commit_ignored with build_filter", fact, ok)
+	}
+}
+
+// TestRedeployMatchingComposesBuildFilterWithRootDir: with no included paths
+// the root directory decides, and an ignored path inside it still wins.
 func TestRedeployMatchingComposesBuildFilterWithRootDir(t *testing.T) {
 	const repo = "https://github.com/x/mono"
 	app := &appv1alpha1.App{}
@@ -322,14 +456,95 @@ func TestWebhookBranchDeleteVariants(t *testing.T) {
 	})
 }
 
+// Render's six skip phrases (render.com/docs/deploys § Skipping an auto-deploy)
+// and messages that only look like one (w7/m428 t001).
+var (
+	renderSkipPhrases = []string{"[skip render]", "[render skip]", "[skip deploy]", "[deploy skip]", "[skip cd]", "[cd skip]"}
+	skipNearMisses    = []string{
+		"ordinary release", "[skip-render]", "skip render", "render skip", "[skip  render]", "[skipdeploy]",
+		"(skip cd)", "[skip ci]", "[ci skip]", "[skip bex]", "[skip render", "skip render]",
+	}
+)
+
 func TestCommitSkipPhrases(t *testing.T) {
-	for _, message := range []string{"release [skip render]", "[RENDER SKIP] docs"} {
-		if !commitHasSkipPhrase(message) {
-			t.Errorf("%q did not match", message)
+	for _, phrase := range renderSkipPhrases {
+		for _, message := range []string{phrase, strings.ToUpper(phrase), "docs: fix a typo " + phrase, phrase + " docs\n\nlonger body", "subject\n\nbody " + phrase} {
+			if !commitHasSkipPhrase(message) {
+				t.Errorf("%q did not match", message)
+			}
 		}
 	}
-	if commitHasSkipPhrase("ordinary release") {
-		t.Error("ordinary commit message matched a skip phrase")
+	for _, message := range skipNearMisses {
+		if commitHasSkipPhrase(message) {
+			t.Errorf("%q matched a skip phrase", message)
+		}
+	}
+}
+
+// Each skip phrase skips the deploy and records commit_ignored with the
+// skip-phrase reason, on the commit path and on the checks-pass path (where the
+// commit is not even awaited); a near-miss still deploys or is awaited.
+func TestSkipPhrasesSkipBothAutoDeployPaths(t *testing.T) {
+	const repo = "https://github.com/x/mono"
+	labels := map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-api"}
+	push := func(message string) pushEvent {
+		ev := newPush(repo, []string{"main.go"})
+		ev.DeliveryKey, ev.HeadCommit.ID, ev.HeadCommit.Message = "delivery-"+message, shaA, message
+		return ev
+	}
+	for _, trigger := range []string{"commit", checksPassTrigger} {
+		newApp := func() *appv1alpha1.App {
+			a := autoDeployApp("api", repo)
+			a.Labels = labels
+			if trigger == checksPassTrigger {
+				a.Spec.AutoDeployTrigger = checksPassTrigger
+			}
+			return a
+		}
+		for _, phrase := range renderSkipPhrases {
+			t.Run(trigger+" "+phrase, func(t *testing.T) {
+				svc, cl := newService(nil, newApp())
+				writer := &recordingFactWriter{}
+				svc.EventFacts = writer
+				h := &GitWebhook{Svc: svc, Secret: "shh"}
+				ev := push("chore: bump the docs " + phrase)
+				redeployed, _, err := h.redeployMatching(context.Background(), ev, "main", "")
+				if err != nil || len(redeployed) != 0 {
+					t.Fatalf("redeployed %v (err %v), want none", redeployed, err)
+				}
+				got := getApp(t, cl, "api")
+				if got.Spec.RestartedAt != "" || got.Annotations[annotChecksPendingCommit] != "" {
+					t.Errorf("restartedAt %q, awaited %q: a skipped commit must neither deploy nor wait for checks", got.Spec.RestartedAt, got.Annotations[annotChecksPendingCommit])
+				}
+				fact, ok := writer.facts["git:"+ev.DeliveryKey+":srv-api:ignored"]
+				if !ok || fact.Type != store.EventFactCommitIgnored || fact.ReasonCode != store.EventReasonSkipPhrase || fact.CommitID != shaA {
+					t.Errorf("ignored fact = %+v (recorded %v), want commit_ignored with skip_phrase for %s", fact, ok, shaA)
+				}
+			})
+		}
+		for _, message := range skipNearMisses {
+			t.Run(trigger+" near miss "+message, func(t *testing.T) {
+				svc, cl := newService(nil, newApp())
+				writer := &recordingFactWriter{}
+				svc.EventFacts = writer
+				h := &GitWebhook{Svc: svc, Secret: "shh"}
+				redeployed, _, err := h.redeployMatching(context.Background(), push(message), "main", "")
+				if err != nil {
+					t.Fatal(err)
+				}
+				got := getApp(t, cl, "api")
+				if trigger == checksPassTrigger {
+					if got.Annotations[annotChecksPendingCommit] != shaA {
+						t.Errorf("awaited %q, want %s awaiting its checks", got.Annotations[annotChecksPendingCommit], shaA)
+					}
+				} else if !contains(redeployed, "api") {
+					t.Errorf("redeployed %v, want api", redeployed)
+				}
+				if len(writer.facts) != 0 {
+					t.Errorf("recorded %v, want no commit_ignored", writer.facts)
+				}
+			})
+		}
 	}
 }
 

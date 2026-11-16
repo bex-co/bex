@@ -2435,7 +2435,7 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployRootDirHint": {
     message:
-      "설정하면 저장소 루트 대신 이 하위 디렉터리에서 빌드가 실행됩니다. 이 디렉터리 밖의 코드 변경은 자동 배포를 트리거하지 않습니다. 모노레포에서 가장 많이 사용합니다.",
+      "설정하면 저장소 루트 대신 이 하위 디렉터리에서 빌드가 실행됩니다. 이 디렉터리 밖의 코드 변경은 빌드 필터의 포함 경로와 일치하지 않는 한 자동 배포를 트리거하지 않습니다. 모노레포에서 가장 많이 사용합니다.",
     description: "Build & Deploy: root-directory field help text",
   },
   "services.buildDeployConfirmRoot": {
@@ -2801,7 +2801,7 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterHint": {
     message:
-      "git push로 일치하는 파일이 변경될 때만 배포를 트리거합니다. 경로는 저장소 루트를 기준으로 한 glob 패턴입니다(예: src/**, **/*.md).",
+      "git push로 일치하는 파일이 변경될 때만 배포를 트리거합니다. 경로는 루트 디렉터리를 설정해도 저장소 루트를 기준으로 한 glob 패턴입니다(예: src/**, **/*.md).",
     description: "Build & Deploy: help text for the build-filters editor",
   },
   "services.buildFilterIncludedTitle": {
@@ -2810,7 +2810,7 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterIncludedHint": {
     message:
-      "변경된 파일이 이 중 하나와 일치할 때만 push로 배포됩니다. 비워 두면 모든 경로가 포함됩니다.",
+      "변경된 파일이 이 중 하나와 일치할 때만 push로 배포되며, 루트 디렉터리 밖의 파일도 마찬가지입니다. 비워 두면 루트 디렉터리 안의 모든 경로가 포함됩니다.",
     description: "Build & Deploy: help text for the included-paths list",
   },
   "services.buildFilterIncludedPlaceholder": {

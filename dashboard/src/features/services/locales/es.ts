@@ -2468,7 +2468,7 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployRootDirHint": {
     message:
-      "Si se define, los builds se ejecutan desde este subdirectorio en lugar de la raíz del repositorio. Los cambios de código fuera de él no activan un despliegue automático. Se usa sobre todo con un monorepo.",
+      "Si se define, los builds se ejecutan desde este subdirectorio en lugar de la raíz del repositorio. Los cambios de código fuera de él no activan un despliegue automático, salvo que coincidan con una ruta incluida de los filtros de build. Se usa sobre todo con un monorepo.",
     description: "Build & Deploy: root-directory field help text",
   },
   "services.buildDeployConfirmRoot": {
@@ -2835,7 +2835,7 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterHint": {
     message:
-      "Activa un despliegue solo cuando un push de git cambie archivos coincidentes. Las rutas son patrones glob relativos a la raíz del repositorio (p. ej. src/**, **/*.md).",
+      "Activa un despliegue solo cuando un push de git cambie archivos coincidentes. Las rutas son patrones glob relativos a la raíz del repositorio, aunque haya un directorio raíz definido (p. ej. src/**, **/*.md).",
     description: "Build & Deploy: help text for the build-filters editor",
   },
   "services.buildFilterIncludedTitle": {
@@ -2844,7 +2844,7 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterIncludedHint": {
     message:
-      "Un push despliega solo si un archivo modificado coincide con alguna de estas. Vacío significa que se incluyen todas las rutas.",
+      "Un push despliega solo si un archivo modificado coincide con alguna de estas, incluso fuera del directorio raíz. Vacío significa que se incluyen todas las rutas dentro del directorio raíz.",
     description: "Build & Deploy: help text for the included-paths list",
   },
   "services.buildFilterIncludedPlaceholder": {

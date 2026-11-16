@@ -1040,10 +1040,10 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch,
 // prepareCheckedPush persists every eligible checked acceptance before this
 // workspace's ordinary deployment mutations. Failed intake is not acknowledged.
 func (h *GitWebhook) prepareCheckedPush(ctx context.Context, ev pushEvent, branch string, candidates []appv1alpha1.App) error {
+	paths := ev.changedPaths()
 	for i := range candidates {
 		a := &candidates[i]
-		if !checksGated(a.Spec) || !branchMatches(a.Spec.Branch, branch) || commitHasSkipPhrase(ev.HeadCommit.Message) ||
-			!rootDirMatches(a.Spec.RootDir, ev.changedPaths()) || !buildFilterMatches(a.Spec.BuildFilter, ev.changedPaths()) {
+		if !checksGated(a.Spec) || !branchMatches(a.Spec.Branch, branch) || commitIgnoredReason(&a.Spec, ev.HeadCommit.Message, paths) != "" {
 			continue
 		}
 		if err := h.Svc.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
@@ -1074,16 +1074,8 @@ func (h *GitWebhook) redeployCandidates(ctx context.Context, ev pushEvent, branc
 		if !branchMatches(a.Spec.Branch, branch) {
 			continue
 		}
-		if commitHasSkipPhrase(ev.HeadCommit.Message) {
-			h.recordCommitIgnored(ctx, a, ev, store.EventReasonSkipPhrase)
-			continue
-		}
-		if !rootDirMatches(a.Spec.RootDir, paths) {
-			h.recordCommitIgnored(ctx, a, ev, store.EventReasonRootDirectory)
-			continue
-		}
-		if !buildFilterMatches(a.Spec.BuildFilter, paths) {
-			h.recordCommitIgnored(ctx, a, ev, store.EventReasonBuildFilter)
+		if reason := commitIgnoredReason(&a.Spec, ev.HeadCommit.Message, paths); reason != "" {
+			h.recordCommitIgnored(ctx, a, ev, reason)
 			continue
 		}
 		// codex #6: enforce the billing lifecycle gate on push-triggered
@@ -1119,9 +1111,26 @@ func (h *GitWebhook) redeployCandidates(ctx context.Context, ev pushEvent, branc
 	return redeployed, tenants
 }
 
+// commitIgnoredReason is the auto-deploy decision for one service and one push
+// on its tracked branch: "" deploys it, anything else is the commit_ignored
+// reason. A skip phrase in the head commit's message wins; then the changed
+// paths decide (pathsIgnoredReason).
+func commitIgnoredReason(spec *appv1alpha1.AppSpec, message string, paths []string) string {
+	if commitHasSkipPhrase(message) {
+		return store.EventReasonSkipPhrase
+	}
+	return pathsIgnoredReason(spec.RootDir, spec.BuildFilter, paths)
+}
+
+// skipPhrases are Render's (render.com/docs/deploys § Skipping an auto-deploy,
+// read 2026-11-16): "[skip render]" or "[render skip]", where "render" may be
+// replaced with "deploy" or "cd". The page says nothing about letter case;
+// bex matches any case.
+var skipPhrases = []string{"[skip render]", "[render skip]", "[skip deploy]", "[deploy skip]", "[skip cd]", "[cd skip]"}
+
 func commitHasSkipPhrase(message string) bool {
 	message = strings.ToLower(message)
-	for _, phrase := range []string{"[skip render]", "[render skip]"} {
+	for _, phrase := range skipPhrases {
 		if strings.Contains(message, phrase) {
 			return true
 		}
@@ -1187,56 +1196,52 @@ func branchMatches(specBranch, branch string) bool {
 	return branch == "" || specBranch == branch
 }
 
-// rootDirMatches gates the path-scoped auto-deploy filter (App.spec.rootDir,
-// monorepo support, mirroring Render's Root Directory setting): a push whose
-// changed files all sit outside rootDir does not redeploy an App scoped to it.
-// An empty rootDir always matches (today's whole-repo behavior, unchanged).
-// When rootDir is set but the payload carries no commit path info at all
-// (e.g. a host/event that omits it), this fails open and matches, since there
-// is nothing to filter on.
-func rootDirMatches(rootDir string, paths []string) bool {
-	if rootDir == "" || len(paths) == 0 {
-		return true
+// pathsIgnoredReason decides a push by its changed files, as Render's
+// monorepo-support page does for a service's Root Directory (App.spec.rootDir)
+// and Build Filters (App.spec.buildFilter); every cell, with the sentence it
+// rests on, is in docs/render-artifacts/auto-deploy-filters.md. A changed file
+// triggers a deploy when no ignored path matches it ("ignoring a path takes
+// precedence over including it") and either included paths are set and one
+// matches it, wherever it lies ("your build filters can include paths from
+// other directories in your repo"), or none are set and it lies under the Root
+// Directory. The push deploys ("") when any changed file triggers, or when the
+// payload carries no changed paths at all, since there is nothing to filter
+// on. Otherwise the reason is root_directory when no included paths are set
+// and no changed file lies under the Root Directory, and build_filter
+// otherwise. Globs are repository-root-relative.
+func pathsIgnoredReason(rootDir string, bf *appv1alpha1.BuildFilterSpec, paths []string) string {
+	if len(paths) == 0 {
+		return ""
 	}
-	dir := strings.Trim(rootDir, "/")
-	prefix := dir + "/"
+	var included, ignored []string
+	if bf != nil {
+		included, ignored = bf.Paths, bf.IgnoredPaths
+	}
+	anyUnderRoot := false
 	for _, p := range paths {
 		p = strings.TrimPrefix(p, "/")
-		if p == dir || strings.HasPrefix(p, prefix) {
-			return true
+		var candidate bool
+		if len(included) > 0 {
+			candidate = matchesAnyGlob(included, p)
+		} else {
+			candidate = underRootDir(rootDir, p)
+			anyUnderRoot = anyUnderRoot || candidate
+		}
+		if candidate && !matchesAnyGlob(ignored, p) {
+			return ""
 		}
 	}
-	return false
+	if len(included) == 0 && !anyUnderRoot {
+		return store.EventReasonRootDirectory
+	}
+	return store.EventReasonBuildFilter
 }
 
-// buildFilterMatches gates the glob-based auto-deploy filter (App.spec.buildFilter,
-// Render's Build Filters): a push redeploys only when at least one changed file is
-// a "triggering" file — one that matches an include glob (or, with no includes, any
-// file) and is NOT excluded by an ignore glob. Ignored wins over included, matching
-// Render ("ignored paths will not trigger an autodeploy, even if those files also
-// match an included path"). A nil or all-empty filter always matches (today's
-// behavior, unchanged). Globs are repository-root-relative (matching Render — a
-// filter can name paths outside RootDir), so this composes independently with the
-// coarse rootDirMatches prefix scoping. When the filter is set but the payload
-// carries no changed-path info, this fails open and matches (as rootDirMatches
-// does), since there is nothing to filter on.
-func buildFilterMatches(bf *appv1alpha1.BuildFilterSpec, paths []string) bool {
-	if bf == nil || (len(bf.Paths) == 0 && len(bf.IgnoredPaths) == 0) {
-		return true
-	}
-	if len(paths) == 0 {
-		return true
-	}
-	for _, p := range paths {
-		p = strings.TrimPrefix(p, "/")
-		if matchesAnyGlob(bf.IgnoredPaths, p) {
-			continue // ignored files never trigger, even when they also match Paths
-		}
-		if len(bf.Paths) == 0 || matchesAnyGlob(bf.Paths, p) {
-			return true
-		}
-	}
-	return false
+// underRootDir reports whether the repository-relative path lies under rootDir.
+// An empty rootDir is the repository root, which holds every path.
+func underRootDir(rootDir, path string) bool {
+	dir := strings.Trim(rootDir, "/")
+	return dir == "" || path == dir || strings.HasPrefix(path, dir+"/")
 }
 
 // matchesAnyGlob reports whether path matches any of the doublestar glob patterns

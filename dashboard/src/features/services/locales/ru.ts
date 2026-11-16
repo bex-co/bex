@@ -2450,7 +2450,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployRootDirHint": {
     message:
-      "Если задан, сборки выполняются из этого подкаталога, а не из корня репозитория. Изменения кода вне его не запускают автодеплой. Чаще всего используется с монорепозиторием.",
+      "Если задан, сборки выполняются из этого подкаталога, а не из корня репозитория. Изменения кода вне его не запускают автодеплой, если они не соответствуют включаемому пути фильтров сборки. Чаще всего используется с монорепозиторием.",
     description: "Build & Deploy: root-directory field help text",
   },
   "services.buildDeployConfirmRoot": {
@@ -2815,7 +2815,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterHint": {
     message:
-      "Запускать деплой, только когда git push изменяет подходящие файлы. Пути — это glob-шаблоны относительно корня репозитория (напр. src/**, **/*.md).",
+      "Запускать деплой, только когда git push изменяет подходящие файлы. Пути — это glob-шаблоны относительно корня репозитория, даже если задан корневой каталог (напр. src/**, **/*.md).",
     description: "Build & Deploy: help text for the build-filters editor",
   },
   "services.buildFilterIncludedTitle": {
@@ -2824,7 +2824,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterIncludedHint": {
     message:
-      "Push запускает деплой, только если изменённый файл соответствует одному из них. Пустой список означает, что включены все пути.",
+      "Push запускает деплой, только если изменённый файл соответствует одному из них, даже вне корневого каталога. Пустой список означает, что включены все пути внутри корневого каталога.",
     description: "Build & Deploy: help text for the included-paths list",
   },
   "services.buildFilterIncludedPlaceholder": {

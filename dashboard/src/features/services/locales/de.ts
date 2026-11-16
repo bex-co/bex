@@ -2475,7 +2475,7 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployRootDirHint": {
     message:
-      "Wenn festgelegt, laufen Builds aus diesem Unterverzeichnis statt aus dem Repository-Stamm. Codeänderungen außerhalb davon lösen kein Auto-Deployment aus. Wird meist bei einem Monorepo verwendet.",
+      "Wenn festgelegt, laufen Builds aus diesem Unterverzeichnis statt aus dem Repository-Stamm. Codeänderungen außerhalb davon lösen kein Auto-Deployment aus, außer sie passen zu einem eingeschlossenen Pfad der Build-Filter. Wird meist bei einem Monorepo verwendet.",
     description: "Build & Deploy: root-directory field help text",
   },
   "services.buildDeployConfirmRoot": {
@@ -2848,7 +2848,7 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterHint": {
     message:
-      "Löse nur dann ein Deployment aus, wenn ein Git-Push passende Dateien ändert. Pfade sind Glob-Muster relativ zum Repository-Stamm (z. B. src/**, **/*.md).",
+      "Löse nur dann ein Deployment aus, wenn ein Git-Push passende Dateien ändert. Pfade sind Glob-Muster relativ zum Repository-Stamm, auch wenn ein Stammverzeichnis festgelegt ist (z. B. src/**, **/*.md).",
     description: "Build & Deploy: help text for the build-filters editor",
   },
   "services.buildFilterIncludedTitle": {
@@ -2857,7 +2857,7 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterIncludedHint": {
     message:
-      "Ein Push deployt nur, wenn eine geänderte Datei zu einem dieser Muster passt. Leer bedeutet, dass jeder Pfad eingeschlossen ist.",
+      "Ein Push deployt nur, wenn eine geänderte Datei zu einem dieser Muster passt, auch außerhalb des Stammverzeichnisses. Leer bedeutet, dass jeder Pfad im Stammverzeichnis eingeschlossen ist.",
     description: "Build & Deploy: help text for the included-paths list",
   },
   "services.buildFilterIncludedPlaceholder": {

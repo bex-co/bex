@@ -2455,7 +2455,7 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployRootDirHint": {
     message:
-      "設定すると、リポジトリのルートではなくこのサブディレクトリからビルドを実行します。その外側のコードの変更では自動デプロイは開始されません。モノレポで最もよく使われます。",
+      "設定すると、リポジトリのルートではなくこのサブディレクトリからビルドを実行します。その外側のコードの変更では、ビルドフィルターの含めるパスに一致しない限り自動デプロイは開始されません。モノレポで最もよく使われます。",
     description: "Build & Deploy: root-directory field help text",
   },
   "services.buildDeployConfirmRoot": {
@@ -2823,7 +2823,7 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterHint": {
     message:
-      "git push で一致するファイルが変更されたときだけデプロイを開始します。パスはリポジトリのルートからの相対 glob パターンです（例: src/**, **/*.md）。",
+      "git push で一致するファイルが変更されたときだけデプロイを開始します。パスは、ルートディレクトリを設定していてもリポジトリのルートからの相対 glob パターンです（例: src/**, **/*.md）。",
     description: "Build & Deploy: help text for the build-filters editor",
   },
   "services.buildFilterIncludedTitle": {
@@ -2832,7 +2832,7 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.buildFilterIncludedHint": {
     message:
-      "変更されたファイルがいずれかに一致する場合のみ、push でデプロイされます。空の場合は、すべてのパスが対象です。",
+      "変更されたファイルがいずれかに一致する場合のみ、push でデプロイされます。ルートディレクトリの外側のファイルも同様です。空の場合は、ルートディレクトリ内のすべてのパスが対象です。",
     description: "Build & Deploy: help text for the included-paths list",
   },
   "services.buildFilterIncludedPlaceholder": {
