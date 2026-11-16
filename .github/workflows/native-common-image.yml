@@ -21,12 +21,12 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: Single AMD64 case after the complete original AMD64 utility cohort
+        description: AMD64 family cases after the complete original AMD64 utility cohort; families runs every case on this run's one image
         type: choice
         default: utilities
-        options: [utilities, node-addon, node, node-donors, modern-python, legacy-python, ruby, go-rust, elixir, native-init]
+        options: [utilities, families, node-addon, node, node-donors, modern-python, legacy-python, ruby, go-rust, elixir, native-init]
       case:
-        description: Exact allowlisted Go case, or pilot for the first case; no family-wide run
+        description: Exact allowlisted Go case, or pilot for the profile's first case; families always runs all
         type: string
         default: pilot
 
@@ -45,7 +45,7 @@ jobs:
     outputs:
       profile: ${{ steps.selection.outputs.profile }}
       case: ${{ steps.selection.outputs.case }}
-      job_minutes: ${{ steps.selection.outputs.job_minutes }}
+      matrix: ${{ steps.selection.outputs.matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -258,8 +258,9 @@ jobs:
 
   qualify-profile:
     needs: [plan, publish, qualify]
-    # One family case on the image this run published, after its complete
-    # utility cohort passed on that image.
+    # The planned family cases, each on the image this run published, after
+    # its complete utility cohort passed on that image. A families dispatch
+    # runs every case here, so one digest is shown to pass all of them.
     if: >-
       ${{ always() && !cancelled() && github.ref == 'refs/heads/main' &&
           github.event_name == 'workflow_dispatch' && needs.plan.result == 'success' &&
@@ -267,13 +268,16 @@ jobs:
           needs.qualify.result == 'success' && needs.publish.outputs.ref != '' }}
     permissions:
       contents: read
+    name: qualify-profile (${{ matrix.leg.profile }}/${{ matrix.leg.case }})
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ fromJSON(needs.plan.outputs.job_minutes) }}
+    timeout-minutes: ${{ matrix.leg.job_minutes }}
     strategy:
       fail-fast: false
-      max-parallel: 1
+      # Each leg is its own hosted VM; leave room for the repository's other CI.
+      max-parallel: 8
       matrix:
         arch: [amd64]
+        leg: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       GOWORK: "off"
       GOMAXPROCS: "2"
@@ -350,8 +354,8 @@ jobs:
             lego/types/go.sum
       - name: export only the validated single-case profile environment
         env:
-          QUALIFICATION_PROFILE: ${{ needs.plan.outputs.profile }}
-          QUALIFICATION_CASE: ${{ needs.plan.outputs.case }}
+          QUALIFICATION_PROFILE: ${{ matrix.leg.profile }}
+          QUALIFICATION_CASE: ${{ matrix.leg.case }}
         run: python3 .github/scripts/native-common-qualify.py profile-env
       - id: owned
         name: record gated inputs and assign ownership before creating resources
@@ -413,7 +417,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.owned.outputs.root != ''
         with:
-          name: common-pilot-${{ needs.plan.outputs.profile }}-${{ needs.plan.outputs.case }}-${{ github.sha }}-${{ matrix.arch }}-${{ github.run_attempt }}
+          name: common-family-${{ matrix.leg.profile }}-${{ matrix.leg.case }}-${{ github.sha }}-${{ matrix.arch }}-${{ github.run_attempt }}
           path: ${{ steps.owned.outputs.root }}
           if-no-files-found: error
           # Only this fresh owned evidence root; render-env secrets stay in

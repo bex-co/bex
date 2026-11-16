@@ -73,6 +73,19 @@ PROFILES = {
 }
 
 
+# One dispatch runs every case below, as a matrix, on the image that run
+# published: one digest is then shown to pass all of them (w8/m91). Production
+# Node 14/16/18/20 run on the published donor trees, so those lines go through
+# node-donors; node keeps only its lines that are not backports.
+FAMILIES = "families"
+
+
+def family_cases():
+    donors = set(PROFILES["node-donors"][2])
+    return [(profile, case) for profile, (_, _, cases, _, _) in PROFILES.items()
+            for case in cases if not (profile == "node" and case in donors)]
+
+
 def profile_selection(profile, case):
     """Resolve one fixed case, with the original full utility gate unchanged."""
     if profile == "utilities":
@@ -170,11 +183,19 @@ def plan():
     case = os.environ.get("REQUESTED_CASE", "pilot")
     if event not in ("push", "workflow_dispatch") or (event == "push" and profile != "utilities"):
         raise ValueError("extra profiles require an explicit manual dispatch")
-    selection = profile_selection(profile, case)
+    if profile == FAMILIES:
+        require(case in ("pilot", "all"), "families always runs every family case")
+        case, legs = "all", family_cases()
+    else:
+        selection = profile_selection(profile, case)
+        case = selection["case"]
+        legs = [] if profile == "utilities" else [(profile, case)]
     # Validate everything before opening any output or creating any resources.
+    matrix = [{"profile": leg_profile, "case": leg_case,
+               "job_minutes": int(profile_selection(leg_profile, leg_case)["job_minutes"])}
+              for leg_profile, leg_case in legs]
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
-        for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes"):
-            output.write(key + "=" + selection[key] + "\n")
+        output.write("profile=" + profile + "\ncase=" + case + "\nmatrix=" + json.dumps(matrix, separators=(",", ":")) + "\n")
 
 
 def profile_environment():

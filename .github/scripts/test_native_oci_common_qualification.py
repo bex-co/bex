@@ -1411,6 +1411,7 @@ class ProfileRoutingControls(unittest.TestCase):
 
     def test_invalid_selections_fail_before_any_output_or_resource_operation(self):
         for profile, case in (("all", "pilot"), ("node", "all"), ("ruby", "node-14"),
+                              ("families", "node-22"), ("families", "3.9"), ("families\n", "all"),
                               ("node", "node-14/.*"), ("modern-python", "3x9"),
                               ("utilities", "node-14"), ("native-init", "npm"),
                               ("node\nother=1", "pilot"), ("ruby", "$(echo bad)"),
@@ -1427,22 +1428,54 @@ class ProfileRoutingControls(unittest.TestCase):
             with self.assertRaises(ValueError):
                 qualification.plan()
 
+    @staticmethod
+    def planned(event, profile, case):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "outputs"
+            env = dict(os.environ, GITHUB_EVENT_NAME=event, REQUESTED_PROFILE=profile, REQUESTED_CASE=case,
+                       GITHUB_OUTPUT=str(output), PYTHONDONTWRITEBYTECODE="1")
+            process = subprocess.run([sys.executable, "-B", str(HERE / "native-common-qualify.py"), "plan"],
+                                     env=env, text=True, capture_output=True, timeout=10)
+            if process.returncode != 0:
+                raise AssertionError(process.stderr)
+            actual = dict(line.split("=", 1) for line in output.read_text().splitlines())
+        actual["matrix"] = json.loads(actual["matrix"])
+        return actual
+
     def test_plan_cli_outputs_only_validated_values_and_push_keeps_full_utilities(self):
-        for event, profile, case in (("push", "utilities", "pilot"), ("workflow_dispatch", "utilities", "all"),
-                                     ("workflow_dispatch", "modern-python", "3.14")):
-            with self.subTest(event=event, profile=profile), tempfile.TemporaryDirectory() as directory:
-                output = Path(directory) / "outputs"
-                env = dict(os.environ, GITHUB_EVENT_NAME=event, REQUESTED_PROFILE=profile, REQUESTED_CASE=case,
-                           GITHUB_OUTPUT=str(output), PYTHONDONTWRITEBYTECODE="1")
-                process = subprocess.run([sys.executable, "-B", str(HERE / "native-common-qualify.py"), "plan"],
-                                         env=env, text=True, capture_output=True, timeout=10)
-                self.assertEqual(process.returncode, 0, process.stderr)
-                actual = dict(line.split("=", 1) for line in output.read_text().splitlines())
-                expected = qualification.profile_selection(profile, case)
-                self.assertEqual(actual, {key: expected[key] for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes")})
-                if profile == "utilities":
-                    self.assertEqual(actual["case"], "all")
-                    self.assertEqual(actual["selector"], "^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$")
+        for event, profile, case, legs in (("push", "utilities", "pilot", []), ("workflow_dispatch", "utilities", "all", []),
+                                           ("workflow_dispatch", "modern-python", "3.14", [("modern-python", "3.14")]),
+                                           ("workflow_dispatch", "ruby", "pilot", [("ruby", "ruby30")])):
+            with self.subTest(event=event, profile=profile):
+                actual = self.planned(event, profile, case)
+                self.assertEqual(set(actual), {"profile", "case", "matrix"})
+                self.assertEqual(actual["profile"], profile)
+                self.assertEqual(actual["case"], qualification.profile_selection(profile, case)["case"])
+                self.assertEqual(actual["matrix"], [
+                    {"profile": p, "case": c, "job_minutes": int(qualification.profile_selection(p, c)["job_minutes"])}
+                    for p, c in legs])
+
+    def test_families_plans_every_production_family_case_on_one_run(self):
+        for case in ("pilot", "all"):
+            with self.subTest(case=case):
+                actual = self.planned("workflow_dispatch", "families", case)
+                self.assertEqual((actual["profile"], actual["case"]), ("families", "all"))
+                legs = [(leg["profile"], leg["case"]) for leg in actual["matrix"]]
+                self.assertEqual(len(legs), len(set(legs)))
+                # Every case of every profile, except the Node source-fallback
+                # lines the production donor route replaces.
+                donors = set(qualification.PROFILES["node-donors"][2])
+                expected = {(p, c) for p, entry in qualification.PROFILES.items() for c in entry[2]}
+                expected -= {("node", c) for c in donors}
+                self.assertEqual(set(legs), expected)
+                self.assertEqual({c for p, c in legs if p == "node"}, {"node-22", "node-26"})
+                self.assertEqual(len(legs), 37)
+                for leg in actual["matrix"]:
+                    selected = qualification.profile_selection(leg["profile"], leg["case"])
+                    self.assertEqual(leg["job_minutes"], int(selected["job_minutes"]))
+        with patch.dict(os.environ, GITHUB_EVENT_NAME="push", REQUESTED_PROFILE="families", REQUESTED_CASE="all"):
+            with self.assertRaises(ValueError):
+                qualification.plan()
 
     def test_profile_environment_clears_all_other_opt_ins_and_rejects_original_gate(self):
         flags = {value[1] for value in qualification.PROFILES.values()}
@@ -1511,9 +1544,15 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertIn("needs.qualify.result == 'success'", pilot)
         self.assertIn("needs.publish.outputs.ref != ''", pilot)
         self.assertIn("always() && !cancelled()", pilot)
-        self.assertIn("timeout-minutes: ${{ fromJSON(needs.plan.outputs.job_minutes) }}", pilot)
+        self.assertIn("timeout-minutes: ${{ matrix.leg.job_minutes }}", pilot)
+        self.assertIn("leg: ${{ fromJSON(needs.plan.outputs.matrix) }}", pilot)
+        self.assertIn("QUALIFICATION_PROFILE: ${{ matrix.leg.profile }}\n", pilot)
+        self.assertIn("QUALIFICATION_CASE: ${{ matrix.leg.case }}\n", pilot)
+        self.assertNotIn("needs.plan.outputs.case", pilot)
+        self.assertIn("max-parallel: 1", original)
+        self.assertIn("fail-fast: false", pilot)
         for job in (original, pilot):
-            for unchanged in ("max-parallel: 1", "arch: [amd64]", "use: false", "cleanup: false",
+            for unchanged in ("arch: [amd64]", "use: false", "cleanup: false",
                               "contents: read"):
                 self.assertIn(unchanged, job)
             for retained in ("capacity", "cleanup", "manifest"):
@@ -1524,7 +1563,7 @@ class ProfileRoutingControls(unittest.TestCase):
         for job in (original, pilot):
             self.assertNotIn("${{ secrets.", job)
             self.assertNotIn("docker login", job)
-        self.assertIn("common-pilot-${{ needs.plan.outputs.profile }}-${{ needs.plan.outputs.case }}-", pilot)
+        self.assertIn("common-family-${{ matrix.leg.profile }}-${{ matrix.leg.case }}-", pilot)
         self.assertNotIn("BEX_NATIVE_TEST_PREPARE_WHEELS:", pilot)
         self.assertNotIn("BEX_NATIVE_TEST_SYFT:", pilot)
 

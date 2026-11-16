@@ -502,3 +502,9 @@ The gate above ("w6/100's remaining-work item 2") is built: the retained evidenc
 - **Next steps:**
   - Qualify a fresh image. `gh workflow run native-common-image.yml -f profile=<family> -f case=<case>` publishes, runs the utility cohort and then that case, one dispatch at a time.
   - Run the 27 required AMD64 family cases on images built from the current source, then adoption (the dry-run notes above still apply) and the original 28 hosted cases.
+
+## One dispatch qualifies one digest on every family case — 2026-11-16 (loopx session)
+
+- **Design choice (w8's own, open since m422): option 1.** `-f profile=families -f case=all` runs every family case as one `qualify-profile` matrix (up to 8 hosted VMs at a time) on the image that run published, after its utility cohort passed. The digest a green families run publishes is the adoption candidate. There is no digest input, no reuse, and no `cosign verify` step to maintain. A failed case is fixed in source, then the whole run is dispatched again.
+- **Why option 1:** CI moved to GitHub-hosted runners on 2026-11-09 (`DO_NOT_DO.md` #CI-RUNNERS reopened). The single-Mac constraint that forced one case at a time is gone, and hosted minutes are free for this public repository. A push run publishes in about 7 minutes and finishes the utility cohort in about 9 (run 43851335126).
+- **Case set:** 37 cases, not the 27 from 2026-11-02. The 2026-11-02 coverage plan dropped modern Python 3.9–3.14, legacy Python 3.7, Node 22/26 and the 14.21.3 donor pair because they had passed on 0941 earlier. That earlier evidence was retired with 0941, so a fresh digest needs fresh passes. Node 14/16/18/20 and exact 14.21.2 run through `node-donors`, the production route chosen on 2026-11-04. The `node` profile keeps only 22 and 26.
