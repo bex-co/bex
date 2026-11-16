@@ -230,6 +230,11 @@ func TestCommonNodeQualificationCanonicalCells(t *testing.T) {
 }
 
 func TestCommonNodeQualificationRejectsChangedPrerequisite(t *testing.T) {
+	// The checksum-bound source fallback this control checks applies only
+	// with no published donor trees.
+	artifacts := nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeRuntimeArtifacts = artifacts })
+	nativeRuntimeArtifacts = map[string]string{}
 	node := NativeChoice{imageEnv: []string{"NODE_VERSION=14.21.3"}}
 	stage, err := commonNodeBuildStage("node:14-bullseye@"+exactDigest, "14.21.3", strings.Repeat("b", 64))
 	must(t, err)

@@ -27,5 +27,5 @@ import (
 // creation date; the exact-created tests drive those through
 // ResolveNativeBuildExact with a fake resolver.
 func resolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
-	return ResolveNativeBuildExact(context.Background(), NewDockerHubResolver(), time.Time{}, runtime, bundlePath, dockerfilePath, sourceDir)
+	return ResolveNativeBuildExact(context.Background(), &fakeExact{}, time.Time{}, runtime, bundlePath, dockerfilePath, sourceDir)
 }

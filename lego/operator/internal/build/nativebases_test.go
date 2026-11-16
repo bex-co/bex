@@ -35,7 +35,22 @@ const suppliedFixtureImage = "ghcr.io/bex-co/bex-native:test@" + otherDigest
 
 // The resolver returns the upstream language identity even after its final
 // FROM adopts a supplied derivative. Neighbor tests must check both contracts.
+// withoutCommonBase clears the common-base pin for one test. The per-language
+// supplied bases, and the official-image fallbacks they keep, apply only
+// without it; production carries the common base.
+func withoutCommonBase(t *testing.T) {
+	t.Helper()
+	base, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = base, artifacts })
+	nativeCommonBase, nativeRuntimeArtifacts = "", map[string]string{}
+}
+
 func expectedNativeBase(reviewed string) string {
+	if nativeCommonBase != "" {
+		// Every selection's final stage starts from the common image; the
+		// selected runtime is copied onto it.
+		return nativeCommonBase
+	}
 	key := reviewed
 	for _, toolchain := range nativeToolchains {
 		for _, line := range toolchain.lines {
@@ -53,7 +68,7 @@ func expectedNativeBase(reviewed string) string {
 func assertExactNativePrimary(t *testing.T, dockerfile, reviewed, exact string, env []string) {
 	t.Helper()
 	base := exact
-	if len(nativeSuppliedBases) != 0 {
+	if len(nativeSuppliedBases) != 0 || nativeCommonBase != "" {
 		base = expectedNativeBase(reviewed)
 		copyAt := strings.Index(dockerfile, "COPY --link --from="+exact+" /usr/local/ /usr/local/\n")
 		resetAt := strings.Index(dockerfile, "rm -rf /usr/local")
@@ -74,6 +89,7 @@ func assertExactNativePrimary(t *testing.T, dockerfile, reviewed, exact string, 
 }
 
 func TestSuppliedResolverPreservesEveryReviewedPrimary(t *testing.T) {
+	withoutCommonBase(t)
 	original := nativeSuppliedBases
 	t.Cleanup(func() { nativeSuppliedBases = original })
 	catalog := map[string]string{}
@@ -118,6 +134,7 @@ func TestSuppliedResolverPreservesEveryReviewedPrimary(t *testing.T) {
 }
 
 func TestSuppliedExactPrimaryPrecedesCompanions(t *testing.T) {
+	withoutCommonBase(t)
 	for _, tc := range []struct{ runtime, env, version, tag string }{
 		{"node", "NODE_VERSION", "24.10.0", "node:24.10.0-bookworm"},
 		{"python", "PYTHON_VERSION", "3.14.8", "python:3.14.8-bookworm"},
@@ -178,6 +195,7 @@ func TestSuppliedExactPrimaryPrecedesCompanions(t *testing.T) {
 }
 
 func TestSuppliedExactErlangKeepsTheMatchedElixir(t *testing.T) {
+	withoutCommonBase(t)
 	original := nativeSuppliedBases
 	t.Cleanup(func() { nativeSuppliedBases = original })
 	fake := erlangFake("28.3.3.0")
@@ -226,6 +244,7 @@ func TestSuppliedBaseRefusesUnreviewedInputs(t *testing.T) {
 }
 
 func TestSuppliedResolverKeepsTheRequestedExactMetadata(t *testing.T) {
+	withoutCommonBase(t)
 	original := nativeSuppliedBases
 	t.Cleanup(func() { nativeSuppliedBases = original })
 	line, _ := nativeToolchains["python"].find("3.14")
@@ -248,6 +267,7 @@ func TestSuppliedResolverKeepsTheRequestedExactMetadata(t *testing.T) {
 }
 
 func TestSuppliedResolverEnvironmentLookupFailureKeepsVersionFallbackRules(t *testing.T) {
+	withoutCommonBase(t)
 	original := nativeSuppliedBases
 	t.Cleanup(func() { nativeSuppliedBases = original })
 	for _, runtime := range []string{"python", "elixir"} {
@@ -426,6 +446,7 @@ elixir -e 'unless System.version() == "1.18.4" and System.get_env("OTP_VERSION")
 // A pre-existing platform backport must remain a fallback while the supplier
 // catalog and exact lookup continue to name the reviewed official input.
 func TestSuppliedBasePreservesPlatformBackportProvenance(t *testing.T) {
+	withoutCommonBase(t)
 	const platform = "ghcr.io/bex-co/bex-native:python-backport@" + otherDigest
 	originalToolchain, originalCatalog := nativeToolchains[nativePythonRuntime], nativeSuppliedBases
 	t.Cleanup(func() {

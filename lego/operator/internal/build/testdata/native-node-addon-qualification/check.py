@@ -169,7 +169,9 @@ def retain_tool_packages(tools):
 def snapshot(expected, prefix):
     node = successful(command(prefix + "-node", ["node", "-p", "process.versions.node"]))
     assert node == expected["node_contract"]["node"]
-    python = successful(command(prefix + "-app-python", ["python3", "-c", "import hashlib,json,ssl,sys,sysconfig; print(json.dumps([sys.version.split()[0],sys.prefix,sys.executable,sysconfig.get_path('stdlib'),{'ssl_file':ssl.__file__,'ssl_sha256':hashlib.sha256(open(ssl.__file__,'rb').read()).hexdigest(),'openssl':ssl.OPENSSL_VERSION}]))"]))
+    # PATH python3 is the app's Render virtualenv (w8/274); its base is the
+    # selected /usr/local interpreter.
+    python = successful(command(prefix + "-app-python", ["python3", "-c", "import hashlib,json,ssl,sys,sysconfig; print(json.dumps([sys.version.split()[0],sys.base_prefix,sys.executable,sysconfig.get_path('stdlib'),{'ssl_file':ssl.__file__,'ssl_sha256':hashlib.sha256(open(ssl.__file__,'rb').read()).hexdigest(),'openssl':ssl.OPENSSL_VERSION}]))"]))
     if expected["app_python"]:
         actual = json.loads(python)
         assert actual[0] == expected["app_python"] and actual[1] == "/usr/local"

@@ -53,7 +53,45 @@ func (f *fakeExact) ImageMetadata(_ context.Context, image string) (env, history
 	if metadata, ok := f.envByImage[image]; ok {
 		return metadata.env, metadata.history, f.envErr
 	}
+	if f.env == nil && f.history == nil && f.envErr == nil {
+		env, history = officialImageMetadata(image)
+		return env, history, nil
+	}
 	return f.env, f.history, f.envErr
+}
+
+// officialImageMetadata is what Docker Hub serves for an official runtime
+// image. Common-mode resolution reads it for every selected primary, so a fake
+// without explicit metadata answers as the registry would: a reviewed line
+// image carries its line's metadata, an exact tag its tag's version and suite.
+func officialImageMetadata(image string) (env, history []string) {
+	for runtime, toolchain := range nativeToolchains {
+		for _, line := range toolchain.lines {
+			if line.image == image || line.upstream == image {
+				metadata := commonReviewedFixtureMetadata(runtime, line)
+				return metadata.env, metadata.history
+			}
+		}
+	}
+	ref, _, _ := strings.Cut(image, "@")
+	repo, tag, _ := strings.Cut(ref, ":")
+	version, variant, _ := strings.Cut(tag, "-")
+	suite := "bookworm"
+	for _, older := range []string{"bullseye", "buster", "trixie"} {
+		if strings.Contains(variant, older) {
+			suite = older
+		}
+	}
+	env = []string{"PATH=/usr/local/bin:/usr/bin"}
+	switch repo {
+	case nativeNodeRuntime:
+		env = append(env, "NODE_VERSION="+version)
+	case nativePythonRuntime:
+		env = append(env, "PYTHON_VERSION="+version)
+	case nativeRubyRuntime:
+		env = append(env, "RUBY_VERSION="+version)
+	}
+	return env, commonOTPSyntheticHistory(suite)
 }
 
 func (f *fakeExact) ResolveTag(_ context.Context, repo, tag string) (string, bool, error) {
@@ -135,14 +173,24 @@ func TestExactVersionPinsTheRequestedPatch(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			fake := &fakeExact{digests: map[string]string{tc.tag: exactDigest}, env: tc.metadata,
-				history: []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}}
+			history := []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}
+			if tc.runtime == nativeElixirRuntime {
+				history = commonOTPSyntheticHistory("bookworm")
+			}
+			fake := &fakeExact{digests: map[string]string{tc.tag: exactDigest},
+				envByImage: map[string]fakeExactMetadata{tc.tag + "@" + exactDigest: {tc.metadata, history}}}
 			choices, dockerfile := resolveExact(t, fake, tc.runtime, tc.env, tc.files)
+			// The exact tag is looked up first. A supplied or common base then
+			// reads that image's environment; companions read their own after.
 			wantAsked := []string{tc.tag}
-			if len(nativeSuppliedBases) != 0 {
+			if len(nativeSuppliedBases) != 0 || nativeCommonBase != "" {
 				wantAsked = append(wantAsked, "env "+tc.tag+"@"+exactDigest)
 			}
-			if !slices.Equal(fake.asked, wantAsked) {
+			asked := fake.asked
+			if nativeCommonBase != "" && len(asked) > len(wantAsked) {
+				asked = asked[:len(wantAsked)]
+			}
+			if !slices.Equal(asked, wantAsked) {
 				t.Fatalf("asked %v, want %v", fake.asked, wantAsked)
 			}
 			reviewed, err := ResolveNativeVersion(tc.runtime, tc.env, files(tc.files))
@@ -179,7 +227,15 @@ func TestExactVersionLeavesLineRequestsAlone(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			fake := &fakeExact{}
 			resolveExact(t, fake, tc.runtime, tc.env, tc.files)
-			if len(fake.asked) != 0 {
+			asked := fake.asked
+			if nativeCommonBase != "" {
+				// The common base reads each selected image's environment and
+				// looks for a Bookworm OTP; neither is an exact-tag lookup.
+				asked = slices.DeleteFunc(slices.Clone(asked), func(entry string) bool {
+					return strings.HasPrefix(entry, "env ") || strings.HasPrefix(entry, "list "+hexpmErlangRepo+":")
+				})
+			}
+			if len(asked) != 0 {
 				t.Errorf("registry consulted: %v", fake.asked)
 			}
 		})
@@ -194,7 +250,12 @@ func TestExactVersionFallsBackToTheReviewedPatch(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			choices, dockerfile := resolveExact(t, fake, "python", map[string]string{"PYTHON_VERSION": "3.11.9"}, nil)
 			line, _ := nativeToolchains["python"].find("3.11")
-			if choices[0].Image != line.image || !strings.Contains(dockerfile, "FROM "+expectedNativeBase(line.image)+"\n") || strings.Contains(dockerfile, "rm -rf /usr/local") {
+			// On the common base the reviewed tree is the one copied in.
+			kept := !strings.Contains(dockerfile, "rm -rf /usr/local")
+			if nativeCommonBase != "" {
+				kept = strings.Contains(dockerfile, "COPY --link --from="+line.image+" /usr/local/ /usr/local/\n")
+			}
+			if choices[0].Image != line.image || !strings.Contains(dockerfile, "FROM "+expectedNativeBase(line.image)+"\n") || !kept {
 				t.Errorf("Dockerfile left the reviewed image:\n%s", dockerfile)
 			}
 			narration := choices[0].Narration()
@@ -245,7 +306,9 @@ func TestDockerHubResolver(t *testing.T) {
 // on Render's default 3.4.4, and the log names it; an older or unknown-age
 // service, and any explicit signal, keep the line's reviewed patch.
 func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
-	fake := &fakeExact{digests: map[string]string{"ruby:3.4.4-bookworm": exactDigest}, env: []string{"RUBY_VERSION=3.4.4"}}
+	exactEnv := []string{"RUBY_VERSION=3.4.4"}
+	fake := &fakeExact{digests: map[string]string{"ruby:3.4.4-bookworm": exactDigest}, envByImage: map[string]fakeExactMetadata{
+		"ruby:3.4.4-bookworm@" + exactDigest: {exactEnv, []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}}}}
 	reviewed, _ := nativeToolchains[nativeRubyRuntime].find("3.4")
 	run := func(created time.Time, files map[string]string) NativeChoice {
 		t.Helper()
@@ -259,7 +322,7 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 		if choices[0].Image == "ruby:3.4.4-bookworm@"+exactDigest {
 			out, err := os.ReadFile(dockerfile)
 			must(t, err)
-			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, fake.env)
+			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, exactEnv)
 		}
 		return choices[0]
 	}
@@ -301,7 +364,9 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 // PYTHON_VERSION=3.14 keeps the reviewed patch, and an older or unknown-age
 // service keeps its 3.13 default.
 func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
-	fake := &fakeExact{digests: map[string]string{"python:3.14.8-bookworm": exactDigest}, env: []string{"PYTHON_VERSION=3.14.8"}}
+	exactEnv := []string{"PYTHON_VERSION=3.14.8"}
+	fake := &fakeExact{digests: map[string]string{"python:3.14.8-bookworm": exactDigest}, envByImage: map[string]fakeExactMetadata{
+		"python:3.14.8-bookworm@" + exactDigest: {exactEnv, []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}}}}
 	reviewed, _ := nativeToolchains[nativePythonRuntime].find("3.14")
 	run := func(created time.Time, env map[string]string) NativeChoice {
 		t.Helper()
@@ -315,7 +380,7 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 		if choices[0].Image == "python:3.14.8-bookworm@"+exactDigest {
 			out, err := os.ReadFile(dockerfile)
 			must(t, err)
-			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, fake.env)
+			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, exactEnv)
 		}
 		return choices[0]
 	}
@@ -446,10 +511,16 @@ func TestNodeReleaseOlderThanBookwormIsCopiedOntoTheLine(t *testing.T) {
 			choices, dockerfile := resolveExact(t, fake, "node", env, nil)
 			line, _ := nativeToolchains["node"].find("16")
 			narration := choices[0].Narration()
-			if choices[0].Image != line.image || !strings.HasPrefix(narration, "==> Using Node 16.13.2 (") || !strings.Contains(narration, "copying Node 16.13.2 from node:16.13.2-bullseye onto the Node 16 image") {
+			// On the common base the release's own image is the copied primary;
+			// on the official line image only its node is copied in.
+			wantImage, wantNote, wantCopy := line.image, "copying Node 16.13.2 from node:16.13.2-bullseye onto the Node 16 image", " /usr/local/bin/node /usr/local/bin/node"
+			if nativeCommonBase != "" {
+				wantImage, wantNote, wantCopy = donor, "using Node 16.13.2 from node:16.13.2-bullseye", " /usr/local/ /usr/local/"
+			}
+			if choices[0].Image != wantImage || !strings.HasPrefix(narration, "==> Using Node 16.13.2 (") || !strings.Contains(narration, wantNote) {
 				t.Fatalf("choice image %q, narration %q", choices[0].Image, narration)
 			}
-			copyNode := strings.Index(dockerfile, "COPY --link --from="+donor+" /usr/local/bin/node /usr/local/bin/node")
+			copyNode := strings.Index(dockerfile, "COPY --link --from="+donor+wantCopy)
 			patch := strings.Index(dockerfile, "prepare-node14-tools.py")
 			if copyNode < 0 || !strings.Contains(dockerfile, "FROM "+expectedNativeBase(line.image)+"\n") || patch < copyNode {
 				t.Fatalf("Dockerfile must keep the line base and copy the release before patching npm:\n%s", dockerfile)
@@ -530,12 +601,22 @@ func TestOlderNodeReleaseRunsOnTheLineImage(t *testing.T) {
 func TestNodeReleaseFallsBackToBuster(t *testing.T) {
 	fake := &fakeExact{digests: map[string]string{"node:16.8.0-buster": exactDigest}}
 	_, dockerfile := resolveExact(t, fake, "node", map[string]string{"NODE_VERSION": "16.8.0"}, nil)
-	for _, want := range []string{
+	wants := []string{
 		"COPY --link --from=node:16.8.0-buster@" + exactDigest + " /usr/local/bin/node /usr/local/bin/node",
 		"COPY --link --from=node:16.8.0-buster@" + exactDigest + " /usr/local/include/node /usr/local/include/node",
 		"else rm -f /usr/local/bin/corepack; fi",
 		"ENV NODE_VERSION=16.8.0\n",
-	} {
+	}
+	if nativeCommonBase != "" {
+		// The common base copies the whole buster tree, Corepack link and all,
+		// behind a guard that admits exactly a buster primary on bookworm.
+		wants = []string{
+			"COPY --link --from=node:16.8.0-buster@" + exactDigest + " /usr/local/ /usr/local/",
+			`[ "$primary_os" = buster ] && [ "$VERSION_CODENAME" = bookworm ]`,
+			`ENV NODE_VERSION="16.8.0"`,
+		}
+	}
+	for _, want := range wants {
 		if !strings.Contains(dockerfile, want) {
 			t.Errorf("Dockerfile lacks %q:\n%s", want, dockerfile)
 		}

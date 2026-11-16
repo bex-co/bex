@@ -19,6 +19,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -82,9 +83,16 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 		}
 		choice.runtimeCheck += lines
 	}
-	if strings.Contains(choice.Image, "-bullseye@") {
-		choice.legacySource = (runtime == nativeNodeRuntime && strings.HasPrefix(version, "14.")) ||
-			(runtime == nativePythonRuntime && strings.HasPrefix(version, "3.7.")) ||
+	// The nodejs.org binary is one glibc 2.17 build in every Debian variant, so
+	// any older-variant Node image runs on Bookworm (Node 14, and an exact
+	// release with no bookworm image, w8/309).
+	switch {
+	case runtime == nativeNodeRuntime:
+		choice.legacySource = slices.ContainsFunc(nodeOlderVariants, func(variant string) bool {
+			return strings.Contains(choice.Image, variant+"@")
+		})
+	case strings.Contains(choice.Image, "-bullseye@"):
+		choice.legacySource = (runtime == nativePythonRuntime && strings.HasPrefix(version, "3.7.")) ||
 			(runtime == nativeRubyRuntime && strings.HasPrefix(version, "3.0."))
 	}
 	return choice, nil
@@ -145,7 +153,11 @@ func commonRuntimeProvenance(choice NativeChoice) string {
 func nativeCommonSourceGuard(source string, legacy, reset bool) string {
 	compatible := `[ "$primary_os" = "$VERSION_CODENAME" ]`
 	if legacy {
-		compatible += ` || { [ "$primary_os" = bullseye ] && [ "$VERSION_CODENAME" = bookworm ]; }`
+		older := "bullseye"
+		if strings.Contains(source, "-buster@") {
+			older = "buster"
+		}
+		compatible += ` || { [ "$primary_os" = ` + older + ` ] && [ "$VERSION_CODENAME" = bookworm ]; }`
 	}
 	lines := "COPY --link --from=" + source + " /usr/lib/os-release /opt/bex-primary-os-release\n" +
 		"RUN . /opt/bex-primary-os-release && [ -n \"$VERSION_CODENAME\" ] && primary_os=\"$VERSION_CODENAME\" && . /etc/os-release && [ -n \"$VERSION_CODENAME\" ] && " +

@@ -267,6 +267,24 @@ func resolveFixture(t *testing.T, o Options, env, files map[string]string) (stri
 	return string(raw), choices
 }
 
+// commonResolutionKeeps reports whether a common-base resolution of the
+// generated Dockerfile before changed nothing the generator wrote: the final
+// stage starts from the common image, every generated line after the original
+// FROM survives byte for byte at the end, and the inserted runtime lines copy
+// each named image.
+func commonResolutionKeeps(before, after, generatedFrom string, copied ...string) bool {
+	_, rest, found := strings.Cut(before, "\nFROM "+generatedFrom+"\n")
+	if !found || !strings.Contains(after, "\nFROM "+nativeCommonBase+"\n"+"COPY --link --from=") || !strings.HasSuffix(after, "\n"+rest) {
+		return false
+	}
+	for _, image := range copied {
+		if !strings.Contains(after, "\nCOPY --link --from="+image+" ") {
+			return false
+		}
+	}
+	return true
+}
+
 func must(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
@@ -293,7 +311,15 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	want := strings.Replace(string(before), "FROM "+nativeToolchains["python"].defaultImage()+"\n", "FROM "+expectedNativeBase(py311.image)+"\n"+
 		nativeJSToolLines(nativeToolchains["node"].defaultImage(), nativeToolchains["node"].defaultLine)+
 		"RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n", 1)
-	if string(after) != want {
+	if nativeCommonBase != "" {
+		// The common base copies Python 3.11 and the default Node companion
+		// in; Poetry follows them, and the generated lines stay as they were.
+		poetry := "RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n"
+		if !commonResolutionKeeps(string(before), string(after), nativeToolchains["python"].defaultImage(), py311.image, nativeToolchains["node"].defaultImage()) ||
+			!strings.Contains(string(after), `ENV PYTHON_VERSION="`+py311.version+`"`) || !strings.Contains(string(after), poetry) {
+			t.Fatalf("Dockerfile =\n%s", after)
+		}
+	} else if string(after) != want {
 		t.Fatalf("Dockerfile =\n%s\nwant\n%s", after, want)
 	}
 
@@ -330,7 +356,11 @@ func TestResolveNativeBuildKeepsPnpmOnEveryNodeLine(t *testing.T) {
 			t.Fatalf("Bun opt-in displaced:\n%s", after)
 		}
 		wantDefault := strings.Replace(string(before), "FROM "+l.image+"\n", "FROM "+expectedNativeBase(l.image)+"\n", 1)
-		if l.line == "24" && string(after) != wantDefault {
+		unchanged := string(after) == wantDefault
+		if nativeCommonBase != "" {
+			unchanged = commonResolutionKeeps(string(before), string(after), l.image, l.image)
+		}
+		if l.line == "24" && !unchanged {
 			t.Fatalf("the default line must leave the Dockerfile unchanged:\n%s", after)
 		}
 	}
@@ -502,7 +532,12 @@ func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
 	}
 	defaultImage := nativeToolchains[nativeNodeRuntime].defaultImage()
 	want := strings.Replace(string(before), "FROM "+defaultImage+"\n", "FROM "+expectedNativeBase(defaultImage)+"\n", 1)
-	if after, _ := os.ReadFile(dockerfile); string(after) != want {
+	after, _ := os.ReadFile(dockerfile)
+	unchanged := string(after) == want
+	if nativeCommonBase != "" {
+		unchanged = commonResolutionKeeps(string(before), string(after), defaultImage, defaultImage) && !strings.Contains(string(after), "/usr/local/bin/bun")
+	}
+	if !unchanged {
 		t.Fatalf("no opt-in changed the Dockerfile:\n%s", after)
 	}
 }

@@ -1,20 +1,21 @@
 # w8 · m91 — Supply PostgreSQL clients in native builds and runtime
 
-**Worker:** worker8 **Goal:** ordinary native backup-processing commands can use the supplied PostgreSQL client tools. **Status:** in progress — t007 implements the user-selected common Bookworm foundation; original functional and hosted acceptance remains open
+**Worker:** worker8 **Goal:** ordinary native backup-processing commands can use the supplied PostgreSQL client tools. **Status:** in progress — t007 qualifies the common Bookworm foundation on one digest per families run; t008 adopts it in production; original functional and hosted acceptance remains open
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t007 | [Implement the user-selected common Bookworm foundation](t007.md) | 240m | — |
-| t001 | [Supply reviewed PostgreSQL client programs and libraries](t001.md) | 75m | t007 |
+| t008 | [Adopt the qualified common digest without losing official-image features](t008.md) | 360m | t007 |
+| t001 | [Supply reviewed PostgreSQL client programs and libraries](t001.md) | 75m | t008 |
 | t002 | [Audit shared native consumers and preserve image boundaries](t002.md) | 40m | t001 |
 | t003 | [Verify Render parity across native authoring surfaces](t003.md) | 20m | t002 |
 | t004 | [Simplify the changed client supplier](t004.md) | 15m | t003 |
 | t005 | [Test real archive processing and shared toolchain neighbors](t005.md) | 40m | t003 |
 | t006 | [Accept fresh native defaults and close the milestone](t006.md) | 15m | t004, t005 |
 
-**Total:**7 tasks/445m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep402/README.md).
+**Total:** 8 tasks/805m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep402/README.md).
 
 ## Definition of done
 

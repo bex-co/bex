@@ -95,8 +95,11 @@ def main():
         return
     if phase not in ("build", "runtime"):
         raise RuntimeError("expected build/runtime/project phase")
-    if any(os.environ.get(key) for key in ("VIRTUAL_ENV", "CONDA_PREFIX", "POETRY_ACTIVE",
-                                           "POETRY_VIRTUALENVS_USE_POETRY_PYTHON", "POETRY_VIRTUALENVS_CREATE")):
+    # Render's own project virtualenv is active in every native Python build
+    # (w8/274); nothing else may force an interpreter environment.
+    if os.environ.get("VIRTUAL_ENV") not in (None, "/opt/render/project/src/.venv") or any(
+            os.environ.get(key) for key in ("CONDA_PREFIX", "POETRY_ACTIVE",
+                                            "POETRY_VIRTUALENVS_USE_POETRY_PYTHON", "POETRY_VIRTUALENVS_CREATE")):
         raise RuntimeError("automatic interpreter control must start without forcing an environment")
     if phase == "build":
         logged([sys.executable, "setup.py", "build_ext", "--inplace"], output / "compile.log")

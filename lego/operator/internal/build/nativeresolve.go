@@ -475,13 +475,18 @@ func pinExactVersion(ctx context.Context, exact ExactImageResolver, choice Nativ
 		return choice
 	}
 	digest, found, err := exact.ResolveTag(ctx, repo, tag)
-	// The common base reads its runtime from the selected image itself, so a
-	// copied release is offered only on the official line images.
-	if err == nil && !found && nativeCommonBase == "" {
+	if err == nil && !found {
 		if donor, ok := olderNodeDonor(ctx, exact, repo, tag); ok {
 			donorRef, _, _ := strings.Cut(donor, "@")
-			choice.note = fmt.Sprintf("==> %s:%s does not exist; copying Node %s from %s onto the %s %s image", repo, tag, choice.Exact, donorRef, choice.Label, choice.Line)
-			choice.nodeDonor = donor
+			if nativeCommonBase != "" {
+				// The common base takes its runtime from the selected image,
+				// so the older-variant image is the exact primary itself.
+				choice.note = fmt.Sprintf("==> %s:%s does not exist; using Node %s from %s", repo, tag, choice.Exact, donorRef)
+				choice.Image = donor
+			} else {
+				choice.note = fmt.Sprintf("==> %s:%s does not exist; copying Node %s from %s onto the %s %s image", repo, tag, choice.Exact, donorRef, choice.Label, choice.Line)
+				choice.nodeDonor = donor
+			}
 			choice.Line = choice.Exact
 			return choice
 		}
@@ -523,7 +528,7 @@ func pinRangeRelease(ctx context.Context, exact ExactImageResolver, choice Nativ
 	}
 	best := newestTagRelease(tags, suffix, constraint)
 	searched := repo + ":" + choice.Line + ".x" + suffix
-	if best == nil && repo == nativeNodeRuntime && suffix == "-bookworm" && nativeCommonBase == "" {
+	if best == nil && repo == nativeNodeRuntime && suffix == "-bookworm" {
 		searched = repo + ":" + choice.Line + ".x (bookworm, bullseye or buster)"
 		// pinExactVersion copies a release from its older variant (w8/309).
 		for _, older := range nodeOlderVariants {

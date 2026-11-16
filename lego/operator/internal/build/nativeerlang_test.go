@@ -17,6 +17,7 @@ limitations under the License.
 package build
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -60,8 +61,8 @@ func erlangFake(erlangTags ...string) *fakeExact {
 
 func TestExactErlangFullReleaseLimitsTheTagSearch(t *testing.T) {
 	fake := erlangFake("28.5.0.6")
-	fake.env = []string{"OTP_VERSION=28.5.0.6", "PATH=/usr/local/bin:/usr/bin"}
-	fake.history = []string{"# debian.sh --arch 'amd64' out/ 'trixie' '@1749513600'"}
+	fake.envByImage = map[string]fakeExactMetadata{"erlang:28.5.0.6@" + exactDigest: {
+		[]string{"OTP_VERSION=28.5.0.6", "PATH=/usr/local/bin:/usr/bin"}, commonOTPSyntheticHistory("trixie")}}
 	resolveExact(t, fake, nativeElixirRuntime, map[string]string{"ELIXIR_VERSION": "1.19.5", "ERLANG_VERSION": "28.5.0.6"}, nil)
 	if len(fake.asked) == 0 || fake.asked[0] != "list hexpm/elixir:1.19.5-erlang-28.5.0.6-debian-" {
 		t.Fatalf("a fully specified release searched unrelated image families: %v", fake.asked)
@@ -103,14 +104,16 @@ func TestExactErlangBuildsOnTheRequestedOTP(t *testing.T) {
 			fake := erlangFake(tc.erlangTags...)
 			_, release, _ := strings.Cut(tc.hexpm, "-erlang-")
 			release, _, _ = strings.Cut(release, "-debian-")
-			fake.env = []string{"OTP_VERSION=" + release, "PATH=/usr/local/bin:/usr/bin"}
-			fake.history = []string{"# debian.sh --arch 'amd64' out/ 'trixie' '@1749513600'"}
+			otpEnv := []string{"OTP_VERSION=" + release, "PATH=/usr/local/bin:/usr/bin"}
+			fake.envByImage = map[string]fakeExactMetadata{"erlang:" + tc.erlang + "@" + exactDigest: {otpEnv, commonOTPSyntheticHistory("trixie")}}
 			choices, dockerfile := resolveExact(t, fake, "elixir", tc.env, nil)
 			reviewed, err := ResolveNativeVersion(nativeElixirRuntime, tc.env, files(nil))
 			if err != nil {
 				t.Fatal(err)
 			}
-			assertExactNativePrimary(t, dockerfile, reviewed.Image, "erlang:"+tc.erlang+"@"+exactDigest, fake.env)
+			// A trixie OTP is rebuilt on the common base in its own stage, which the
+			// final image then copies like any exact primary.
+			assertExactNativePrimary(t, dockerfile, reviewed.Image, cmp.Or(choices[0].primaryImage, "erlang:"+tc.erlang+"@"+exactDigest), otpEnv)
 			for _, want := range []string{
 				"COPY --link --from=hexpm/elixir:" + tc.hexpm + "@" + otherDigest + " /usr/local/lib/elixir /usr/local/lib/elixir\n",
 				"/usr/local/bin/\nENV LANG=C.UTF-8 ELIXIR_VERSION=v" + choices[0].Line + "\n",

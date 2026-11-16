@@ -258,9 +258,11 @@ func TestCommonRuntimeArtifactsNeverChangeExactIdentity(t *testing.T) {
 }
 
 func TestCommonExactCompanionsPreservePatchAndHeaders(t *testing.T) {
-	original := nativeCommonBase
-	t.Cleanup(func() { nativeCommonBase = original })
-	nativeCommonBase = commonFixtureImage
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
+	// No published donor covers this fixture's digest: the exact release is
+	// rebuilt from its checksum-bound source.
+	nativeCommonBase, nativeRuntimeArtifacts = commonFixtureImage, map[string]string{}
 	o := nativeOptions()
 	o.Runtime = nativePythonRuntime
 	python, _ := nativeToolchains[nativePythonRuntime].find("3.13")
