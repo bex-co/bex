@@ -17,11 +17,13 @@ package controller
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -29,6 +31,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -40,7 +43,7 @@ import (
 // The policy once admitted only the isolation label, so moving a Key Value into
 // an environment was denied and the serving store read Failed.
 var _ = Describe("Operator pod label admission", func() {
-	It("admits the Key Value in-place relabel and denies every other pod change", func() {
+	It("admits the Key Value in-place relabel and the zot reload stamp, and denies every other pod change", func() {
 		// The policy matches only the operator's identity, but give it its own API
 		// server anyway: admission's compiled cache outlives a policy delete.
 		admissionEnv := &envtest.Environment{BinaryAssetsDirectory: getFirstFoundEnvTestBinaryDir()}
@@ -127,6 +130,37 @@ var _ = Describe("Operator pod label admission", func() {
 			"owner rename": func(p *corev1.Pod) { p.OwnerReferences[0].Name = "foreign" },
 		} {
 			Expect(denied(change)).To(BeTrue(), name)
+		}
+
+		// w4/m347: the registry's hot-reload nudge (registry.nudgeZot) stamps one
+		// annotation on bex-registry/zot-0. Production denied it until the policy
+		// excepted exactly that key on exactly that pod, so a new App's credential
+		// waited for the kubelet's periodic sync instead of activating in seconds.
+		Expect(admin.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "bex-registry"}})).To(Succeed())
+		zot := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "zot-0", Namespace: "bex-registry",
+				Labels: map[string]string{registry.ZotPodLabelKey: registry.ZotPodLabelValue}},
+			Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "zot", Image: "ghcr.io/project-zot/zot:v2.1.22"}}},
+		}
+		Expect(admin.Create(ctx, zot)).To(Succeed())
+		stamp := func(target *corev1.Pod, key, value string) error {
+			return operator.Patch(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: target.Name, Namespace: target.Namespace}},
+				client.RawPatch(types.MergePatchType, fmt.Appendf(nil, `{"metadata":{"annotations":{%q:%q}}}`, key, value)))
+		}
+		Expect(stamp(zot, registry.ZotReloadAnnotation, "2026-11-16T21:40:00Z")).To(Succeed())
+		Expect(stamp(zot, registry.ZotReloadAnnotation, "2026-11-16T21:40:05Z")).To(Succeed(), "a later nudge restamps")
+		stamped := &corev1.Pod{}
+		Expect(admin.Get(ctx, client.ObjectKeyFromObject(zot), stamped)).To(Succeed())
+		Expect(stamped.Annotations).To(HaveKeyWithValue(registry.ZotReloadAnnotation, "2026-11-16T21:40:05Z"))
+
+		for name, err := range map[string]error{
+			"other annotation on zot":       stamp(zot, "x", "y"),
+			"reload stamp on another pod":   stamp(pod, registry.ZotReloadAnnotation, "2026-11-16T21:40:00Z"),
+			"zot image":                     operator.Patch(ctx, zot, client.RawPatch(types.StrategicMergePatchType, []byte(`{"spec":{"containers":[{"name":"zot","image":"evil/zot:1"}]}}`))),
+			"reload stamp removed from zot": operator.Patch(ctx, zot, client.RawPatch(types.MergePatchType, []byte(`{"metadata":{"annotations":{"`+registry.ZotReloadAnnotation+`":null}}}`))),
+		} {
+			Expect(err).To(HaveOccurred(), name)
+			Expect(err.Error()).To(ContainSubstring("bex-operator-pod-labels"), name)
 		}
 	})
 })

@@ -12,6 +12,15 @@
 # keyvalue_isolation.go; w3/055). (Pod status is the
 # separate pods/status resource and is not matched.) Pod CREATE and DELETE are
 # not granted by RBAC at all. See ADR032 §Datastores under network isolation.
+#
+# One annotation is the exception (w4/m347): on the registry pod
+# bex-registry/zot-0 the operator may set or change
+# bex.co/registry-credentials-written (registry.ZotReloadAnnotation). That write
+# is the nudge that makes the kubelet re-project zot's credential Secrets at
+# once, so a new App's registry credential activates by hot reload in seconds
+# instead of at the next periodic kubelet sync (ADR022 § Credential
+# activation). It changes nothing zot runs; every other rule still holds for
+# that pod.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -36,11 +45,22 @@ spec:
       expression: oldObject.metadata.?labels.orValue({})
     - name: inPlace
       expression: "['app.bex.co/network-isolation', 'app.bex.co/environment-id']"
+    - name: annotations
+      expression: object.metadata.?annotations.orValue({})
+    - name: oldAnnotations
+      expression: oldObject.metadata.?annotations.orValue({})
+    - name: zotReload
+      expression: >-
+        object.metadata.namespace == 'bex-registry' && object.metadata.name == 'zot-0'
+        ? ['bex.co/registry-credentials-written'] : []
   validations:
     - expression: object.spec == oldObject.spec
       message: the operator may relabel a pod but never change its spec
     - expression: >-
-        object.metadata.?annotations.orValue({}) == oldObject.metadata.?annotations.orValue({}) && object.metadata.?ownerReferences.orValue([]) == oldObject.metadata.?ownerReferences.orValue([]) && object.metadata.?finalizers.orValue([]) == oldObject.metadata.?finalizers.orValue([])
+        variables.annotations.all(k, k in variables.zotReload ||
+          (k in variables.oldAnnotations && variables.oldAnnotations[k] == variables.annotations[k])) &&
+        variables.oldAnnotations.all(k, k in variables.annotations) &&
+        object.metadata.?ownerReferences.orValue([]) == oldObject.metadata.?ownerReferences.orValue([]) && object.metadata.?finalizers.orValue([]) == oldObject.metadata.?finalizers.orValue([])
 
       message: the operator may relabel a pod but never change its annotations, owners or finalizers
     - expression: >-
