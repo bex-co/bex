@@ -118,3 +118,5 @@
 - [ ] **092** — The charges card's object storage resource row is English in every language → [`092.md`](092.md) (~30m) ← from w21/086, 2026-11-15
 - [ ] **093** — Three more paths still record a closure's name as the audit verb: a refused GraphQL `envVars`, the automation scheduler's fire, and the placement clears → [`093.md`](093.md) (~1h) ← from w21/087, 2026-11-16
 - [ ] **094** — An object or bucket audit row names no bucket and no key, and a successful get leaves no row → [`094.md`](094.md) (~1h) ← from w21/087, 2026-11-16
+- [ ] **095** — Wasabi may count the hourly sweep's listing bytes against the egress ratio: 215 KB a 1,000-key page is about 155 GB a month for one workspace at the object cap → [`095.md`](095.md) (~1h) ← from w21/088, 2026-11-15
+- [ ] **096** — Nothing alerts when the object storage sweep stops completing → [`096.md`](096.md) (~1h) ← from w21/088, 2026-11-15
