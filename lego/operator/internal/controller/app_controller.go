@@ -5690,8 +5690,14 @@ const cronRunBackoffLimit = 0
 // operator, so without the hold a run canceled at API speed still executed
 // (w4/m300 t010, production 2026-11-16: 2 of 9 cancels sent 0.3 s after the
 // trigger started a Pod). On render.com a run canceled right after its
-// trigger never starts either.
-const manualRunStartHold = 2 * time.Second
+// trigger never starts either. The hold is measured from runAt, which bex-api
+// stamps before it answers the trigger, and a cancel lands only after the
+// trigger's answer and the cancel's own authorization and actor record. On
+// production those took up to 8 s between them, so a 2 s hold still let 3 of
+// 19 cancels sent 0.3 s after the trigger's answer start their run
+// (2026-11-16, pin 7aaa8700befa). 10 s covers that tail, and a Render run
+// takes longer than that to start anyway.
+const manualRunStartHold = 10 * time.Second
 
 // ensureManualRun creates the one-off Job for the current spec.runAt if it does
 // not already exist. The Job carries labelApp (so it shows up in run history) and
