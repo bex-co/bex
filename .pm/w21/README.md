@@ -115,3 +115,5 @@
 - [ ] **090** — An operator who revokes a token or consent session at Hydra has no way to make every bex-api replica refuse it at once → [`090.md`](090.md) (~1h) ← from w21/085, 2026-11-15
 - [ ] **091** — Narrow the 5 s token introspection window once production shows the Hydra and admission headroom → [`091.md`](091.md) (~1h) ← from w21/085, 2026-11-15
 - [ ] **092** — The charges card's object storage resource row is English in every language → [`092.md`](092.md) (~30m) ← from w21/086, 2026-11-15
+- [ ] **093** — Three more paths still record a closure's name as the audit verb: a refused GraphQL `envVars`, the automation scheduler's fire, and the placement clears → [`093.md`](093.md) (~1h) ← from w21/087, 2026-11-16
+- [ ] **094** — An object or bucket audit row names no bucket and no key, and a successful get leaves no row → [`094.md`](094.md) (~1h) ← from w21/087, 2026-11-16
