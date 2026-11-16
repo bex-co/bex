@@ -32,7 +32,7 @@ beforeEach(() => {
 });
 
 describe("useCreateApiKey", () => {
-  it("uses fetchPolicy no-cache — the secret must never enter Apollo's cache", () => {
+  it("uses fetchPolicy no-cache — the key and secret must never enter Apollo's cache", () => {
     mockUseMutation.mockReturnValue([vi.fn()]);
     renderHook(() => useCreateApiKey());
     expect(mockUseMutation).toHaveBeenCalledWith(
@@ -41,12 +41,15 @@ describe("useCreateApiKey", () => {
     );
   });
 
-  it("resolves the minted key (with secret) and toasts success", async () => {
+  it("resolves the minted key (bearer string and secret) and toasts success", async () => {
+    // The server's key is carried as issued: this one could not be rebuilt
+    // from the id and the secret.
     const mutate = vi.fn().mockResolvedValue({
       data: {
         createApiKey: {
           id: "key-1",
           name: "deploy-agent",
+          key: "bex_issued-by-the-server",
           secret: "s3cret",
           createdAt: null,
         },
@@ -63,10 +66,40 @@ describe("useCreateApiKey", () => {
     expect(key).toEqual({
       id: "key-1",
       name: "deploy-agent",
+      key: "bex_issued-by-the-server",
       secret: "s3cret",
     });
     expect(mutate).toHaveBeenCalledWith({
       variables: { name: "deploy-agent", ownerId: "tea-1" },
+    });
+    expect(toastSuccess).toHaveBeenCalledWith("Created deploy-agent");
+  });
+
+  it("composes the key from id and secret when the server answers without one (w7/m426 rollout)", async () => {
+    const mutate = vi.fn().mockResolvedValue({
+      data: {
+        createApiKey: {
+          id: "key-1",
+          name: "deploy-agent",
+          key: null,
+          secret: "s3cret",
+          createdAt: null,
+        },
+      },
+    });
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateApiKey());
+    let key;
+    await act(async () => {
+      key = await result.current.create("deploy-agent");
+    });
+
+    expect(key).toEqual({
+      id: "key-1",
+      name: "deploy-agent",
+      key: ["bex", "key-1", "s3cret"].join("_"),
+      secret: "s3cret",
     });
     expect(toastSuccess).toHaveBeenCalledWith("Created deploy-agent");
   });
@@ -106,7 +139,13 @@ describe("useCreateApiKey", () => {
   it("treats a response with no secret as a failure (server contract violated)", async () => {
     const mutate = vi.fn().mockResolvedValue({
       data: {
-        createApiKey: { id: "key-1", name: "x", secret: null, createdAt: null },
+        createApiKey: {
+          id: "key-1",
+          name: "x",
+          key: null,
+          secret: null,
+          createdAt: null,
+        },
       },
     });
     mockUseMutation.mockReturnValue([mutate]);

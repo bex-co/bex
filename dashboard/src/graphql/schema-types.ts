@@ -800,6 +800,7 @@ export type ApiKey = {
   createdAt: Maybe<Scalars['String']['output']>;
   createdBy: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  key: Maybe<Scalars['String']['output']>;
   lastUsedAt: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   secret: Maybe<Scalars['String']['output']>;

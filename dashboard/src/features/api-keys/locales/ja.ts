@@ -21,7 +21,7 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.colClientId": {
     message: "クライアント ID",
     description:
-      "API Keys table column header — OAuth2 client_id paired with the secret",
+      "API Keys table column header: the key's id, which is also its OAuth2 client_id",
   },
   "apiKeys.colCreated": {
     message: "作成日時",
@@ -33,8 +33,7 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.colLastUsed": {
     message: "最終使用",
-    description:
-      "API Keys table column header — when a token for the key was last used",
+    description: "API Keys table column header: when the key was last used",
   },
   "apiKeys.neverUsed": {
     message: "未使用",
@@ -94,20 +93,51 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.createdTitle": {
     message: "API キーを作成しました",
-    description: "Mint dialog title (secret-shown step)",
+    description: "Mint dialog title (key-shown step)",
   },
   "apiKeys.createdWarning": {
+    message: "キーを今すぐコピーしてください。再表示はできません。",
+    description:
+      "Mint dialog warning (key-shown step): the key is shown only once",
+  },
+  "apiKeys.fieldKey": {
+    message: "API キー",
+    description:
+      "Mint dialog label for the key itself, the one string sent as Authorization: Bearer",
+  },
+  "apiKeys.copyKey": {
+    message: "API キーをコピー",
+    description: "Copy button aria-label for the key",
+  },
+  "apiKeys.keyHelp": {
     message:
-      "クライアント ID とシークレットを今すぐコピーしてください。シークレットは再表示できません。",
-    description: "Mint dialog warning (secret-shown step)",
+      "すべてのリクエストで Authorization: Bearer として送信してください。このキーは、接続文字列を含め、このワークスペースで完全な権限を持つため、パスワードと同様に扱ってください。",
+    description:
+      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+  },
+  "apiKeys.curlTitle": {
+    message: "リクエスト例",
+    description:
+      "Mint dialog label for the curl example that lists services with the key",
+  },
+  "apiKeys.copyCurl": {
+    message: "リクエスト例をコピー",
+    description: "Copy button aria-label for the curl example",
+  },
+  "apiKeys.oauthDetails": {
+    message: "OAuth クライアント認証情報",
+    description:
+      "Mint dialog title of the collapsed detail holding the client ID, the client secret and the optional token exchange",
   },
   "apiKeys.fieldClientId": {
     message: "クライアント ID",
-    description: "Mint dialog label for the OAuth2 client_id",
+    description:
+      "Mint dialog label for the OAuth2 client_id, inside the OAuth client credentials detail",
   },
   "apiKeys.fieldSecret": {
     message: "クライアントシークレット",
-    description: "Mint dialog label for the one-time client_secret",
+    description:
+      "Mint dialog label for the one-time client_secret, inside the OAuth client credentials detail",
   },
   "apiKeys.copyClientId": {
     message: "クライアント ID をコピー",
@@ -123,25 +153,22 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.exchangeHelp": {
     message:
-      "これはベアラートークンではなく、OAuth2 の client_credentials クライアントです。{tokenEndpoint} で交換してください。\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\nスコープは送信しないでください。このキーは、接続文字列を含め、このワークスペースで完全な権限を持つため、パスワードと同様に扱ってください。返された access_token を Authorization: Bearer として使用します。",
+      "このキーは OAuth2 クライアントとしても使えます。有効期間の短いトークンを使いたい場合は、{tokenEndpoint} でクライアント ID とクライアントシークレットをアクセストークンに交換してください。\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\nスコープは送信しないでください。返された access_token を、キーの代わりに Authorization: Bearer として使用します。",
     description:
-      "Mint dialog usage copy for the client_credentials exchange (token endpoint from config)",
+      "Mint dialog copy inside the OAuth client credentials detail: the optional client_credentials exchange (token endpoint from config)",
   },
   "apiKeys.createdDone": {
     message: "完了",
-    description: "Mint dialog close button (secret-shown step)",
-  },
-  "apiKeys.copy": {
-    message: "シークレットをコピー",
-    description: "Copy-to-clipboard icon button label",
+    description: "Mint dialog close button (key-shown step)",
   },
   "apiKeys.copied": {
     message: "クリップボードにコピーしました",
-    description: "Toast on a successful secret copy",
+    description:
+      "Toast on a successful copy (the key, the example request, the client ID or the secret)",
   },
   "apiKeys.copyError": {
     message: "クリップボードにコピーできませんでした",
-    description: "Toast on a failed secret copy",
+    description: "Toast on a failed copy",
   },
   "apiKeys.createSuccess": {
     message: "{name} を作成しました",

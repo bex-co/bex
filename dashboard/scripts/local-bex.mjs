@@ -25,6 +25,7 @@
 //   VITE_KRATOS_PUBLIC_URL=http://localhost:8099 \
 //   VITE_KRATOS_SSR_URL=http://localhost:8099 yarn dev
 
+import { randomBytes, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.PORT) || 8099;
@@ -91,8 +92,9 @@ const WORKSPACES = [
 
 // API keys are empty by default but create/revoke are interactive so the
 // account-settings mint-once flow can be browser-verified offline. The stored
-// rows intentionally exclude the secret; only CreateApiKey's immediate
-// response carries it, matching bex-api and Render's one-time display rule.
+// rows intentionally exclude the key and its secret; only CreateApiKey's
+// immediate response carries them, matching bex-api and Render's one-time
+// display rule.
 const API_KEYS = [];
 
 // Render allows five free Hobby workspaces per user (w6/RESEARCH-workspaces.md
@@ -2288,9 +2290,12 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "SSHKeys":
       return { sshKeys: [] };
     case "CreateApiKey": {
+      // bex-api's shapes (docs/ADR012-auth.md §8e): the id is a UUID, the
+      // secret 26 URL-safe characters, and `key` the one bearer string
+      // `bex_<id>_<secret>` the dashboard leads with (w7/m426).
       const created = {
         __typename: "ApiKey",
-        id: `key-local${Date.now().toString(36)}`,
+        id: randomUUID(),
         name: variables.name,
         ownerId: variables.ownerId ?? WORKSPACE_DEFAULT,
         createdAt: new Date().toISOString(),
@@ -2298,10 +2303,12 @@ function resolveGraphQL({ operationName, variables = {} }) {
         lastUsedAt: null,
       };
       API_KEYS.push(created);
+      const secret = randomBytes(20).toString("base64url").slice(0, 26);
       return {
         createApiKey: {
           ...created,
-          secret: `bex_local_${Date.now().toString(36)}_shown_once`,
+          key: `bex_${created.id}_${secret}`,
+          secret,
         },
       };
     }

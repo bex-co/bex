@@ -21,7 +21,7 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.colClientId": {
     message: "ID клиента",
     description:
-      "API Keys table column header — OAuth2 client_id paired with the secret",
+      "API Keys table column header: the key's id, which is also its OAuth2 client_id",
   },
   "apiKeys.colCreated": {
     message: "Создан",
@@ -33,8 +33,7 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.colLastUsed": {
     message: "Последнее использование",
-    description:
-      "API Keys table column header — when a token for the key was last used",
+    description: "API Keys table column header: when the key was last used",
   },
   "apiKeys.neverUsed": {
     message: "Никогда",
@@ -95,20 +94,51 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.createdTitle": {
     message: "API-ключ создан",
-    description: "Mint dialog title (secret-shown step)",
+    description: "Mint dialog title (key-shown step)",
   },
   "apiKeys.createdWarning": {
+    message: "Скопируйте ключ сейчас. Позже увидеть его будет нельзя.",
+    description:
+      "Mint dialog warning (key-shown step): the key is shown only once",
+  },
+  "apiKeys.fieldKey": {
+    message: "API-ключ",
+    description:
+      "Mint dialog label for the key itself, the one string sent as Authorization: Bearer",
+  },
+  "apiKeys.copyKey": {
+    message: "Копировать API-ключ",
+    description: "Copy button aria-label for the key",
+  },
+  "apiKeys.keyHelp": {
     message:
-      "Скопируйте ID клиента и секрет сейчас — позже секрет увидеть будет нельзя.",
-    description: "Mint dialog warning (secret-shown step)",
+      "Передавайте его в каждом запросе как Authorization: Bearer. Ключ действует с полными правами в этом рабочем пространстве, включая строки подключения, поэтому обращайтесь с ним как с паролем.",
+    description:
+      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+  },
+  "apiKeys.curlTitle": {
+    message: "Пример запроса",
+    description:
+      "Mint dialog label for the curl example that lists services with the key",
+  },
+  "apiKeys.copyCurl": {
+    message: "Копировать пример запроса",
+    description: "Copy button aria-label for the curl example",
+  },
+  "apiKeys.oauthDetails": {
+    message: "Учётные данные клиента OAuth",
+    description:
+      "Mint dialog title of the collapsed detail holding the client ID, the client secret and the optional token exchange",
   },
   "apiKeys.fieldClientId": {
     message: "ID клиента",
-    description: "Mint dialog label for the OAuth2 client_id",
+    description:
+      "Mint dialog label for the OAuth2 client_id, inside the OAuth client credentials detail",
   },
   "apiKeys.fieldSecret": {
     message: "Секрет клиента",
-    description: "Mint dialog label for the one-time client_secret",
+    description:
+      "Mint dialog label for the one-time client_secret, inside the OAuth client credentials detail",
   },
   "apiKeys.copyClientId": {
     message: "Копировать ID клиента",
@@ -124,25 +154,22 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.exchangeHelp": {
     message:
-      "Это клиент OAuth2 client_credentials, а не bearer-токен. Обменяйте его на токен по адресу {tokenEndpoint}:\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\nНе передавайте scope: ключ действует с полными правами в этом рабочем пространстве, включая строки подключения, поэтому обращайтесь с ним как с паролем. Используйте полученный access_token как Authorization: Bearer.",
+      "Этот ключ работает и как клиент OAuth2. Если вы предпочитаете краткосрочные токены, обменяйте ID клиента и секрет клиента на токен доступа по адресу {tokenEndpoint}:\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\nНе передавайте scope. Используйте полученный access_token как Authorization: Bearer вместо ключа.",
     description:
-      "Mint dialog usage copy for the client_credentials exchange (token endpoint from config)",
+      "Mint dialog copy inside the OAuth client credentials detail: the optional client_credentials exchange (token endpoint from config)",
   },
   "apiKeys.createdDone": {
     message: "Готово",
-    description: "Mint dialog close button (secret-shown step)",
-  },
-  "apiKeys.copy": {
-    message: "Копировать секрет",
-    description: "Copy-to-clipboard icon button label",
+    description: "Mint dialog close button (key-shown step)",
   },
   "apiKeys.copied": {
     message: "Скопировано в буфер обмена",
-    description: "Toast on a successful secret copy",
+    description:
+      "Toast on a successful copy (the key, the example request, the client ID or the secret)",
   },
   "apiKeys.copyError": {
     message: "Не удалось скопировать в буфер обмена",
-    description: "Toast on a failed secret copy",
+    description: "Toast on a failed copy",
   },
   "apiKeys.createSuccess": {
     message: "{name} создан",

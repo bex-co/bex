@@ -5,7 +5,8 @@ interface Config {
    * bex-api serves GraphQL and the REST logs stream from the same origin
    * (docs/ADR006-bex-api.md), so the one deployment fact (where the API lives) stays
    * here rather than being re-derived inside a feature. Consumed by the SSE
-   * live-log tail (`features/logs`).
+   * live-log tail (`features/logs`) and by the curl example shown with a
+   * freshly minted API key (`features/api-keys`).
    */
   apiBaseUrl: string;
   ssrApiUrl: string;
@@ -23,7 +24,11 @@ interface Config {
    * client_credentials token endpoint when minting an API key (w4/m105).
    */
   oauthIssuer: string;
-  /** `{oauthIssuer}/oauth2/token` — the exchange an API key requires. */
+  /**
+   * `{oauthIssuer}/oauth2/token` — where an API key's client ID and secret
+   * can be exchanged for a short-lived token. Optional since w7/m426: the key
+   * itself is sent as `Authorization: Bearer`.
+   */
   oauthTokenEndpoint: string;
 }
 

@@ -21,7 +21,7 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.colClientId": {
     message: "客户端 ID",
     description:
-      "API Keys table column header — OAuth2 client_id paired with the secret",
+      "API Keys table column header: the key's id, which is also its OAuth2 client_id",
   },
   "apiKeys.colCreated": {
     message: "创建时间",
@@ -33,8 +33,7 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.colLastUsed": {
     message: "最近使用",
-    description:
-      "API Keys table column header — when a token for the key was last used",
+    description: "API Keys table column header: when the key was last used",
   },
   "apiKeys.neverUsed": {
     message: "从未使用",
@@ -94,19 +93,51 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.createdTitle": {
     message: "API 密钥已创建",
-    description: "Mint dialog title (secret-shown step)",
+    description: "Mint dialog title (key-shown step)",
   },
   "apiKeys.createdWarning": {
-    message: "请立即复制客户端 ID 和密钥——之后将无法再次查看密钥。",
-    description: "Mint dialog warning (secret-shown step)",
+    message: "请立即复制此密钥，之后将无法再次查看。",
+    description:
+      "Mint dialog warning (key-shown step): the key is shown only once",
+  },
+  "apiKeys.fieldKey": {
+    message: "API 密钥",
+    description:
+      "Mint dialog label for the key itself, the one string sent as Authorization: Bearer",
+  },
+  "apiKeys.copyKey": {
+    message: "复制 API 密钥",
+    description: "Copy button aria-label for the key",
+  },
+  "apiKeys.keyHelp": {
+    message:
+      "在每个请求中将它作为 Authorization: Bearer 发送。此密钥在该工作区内拥有完整权限（包括连接字符串），请像密码一样保管。",
+    description:
+      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+  },
+  "apiKeys.curlTitle": {
+    message: "示例请求",
+    description:
+      "Mint dialog label for the curl example that lists services with the key",
+  },
+  "apiKeys.copyCurl": {
+    message: "复制示例请求",
+    description: "Copy button aria-label for the curl example",
+  },
+  "apiKeys.oauthDetails": {
+    message: "OAuth 客户端凭证",
+    description:
+      "Mint dialog title of the collapsed detail holding the client ID, the client secret and the optional token exchange",
   },
   "apiKeys.fieldClientId": {
     message: "客户端 ID",
-    description: "Mint dialog label for the OAuth2 client_id",
+    description:
+      "Mint dialog label for the OAuth2 client_id, inside the OAuth client credentials detail",
   },
   "apiKeys.fieldSecret": {
     message: "客户端密钥",
-    description: "Mint dialog label for the one-time client_secret",
+    description:
+      "Mint dialog label for the one-time client_secret, inside the OAuth client credentials detail",
   },
   "apiKeys.copyClientId": {
     message: "复制客户端 ID",
@@ -122,25 +153,22 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.exchangeHelp": {
     message:
-      "这是 OAuth2 client_credentials 客户端，不是 Bearer 令牌。请先在 {tokenEndpoint} 交换：\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\n请勿传 scope：此密钥在该工作空间内拥有完整权限（包括连接字符串），请像密码一样保管。将返回的 access_token 用作 Authorization: Bearer。",
+      "此密钥也可以作为 OAuth2 客户端使用。如果你更想使用短期令牌，可以在 {tokenEndpoint} 用客户端 ID 和客户端密钥换取访问令牌：\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\n请勿传 scope。用返回的 access_token 代替此密钥，作为 Authorization: Bearer 发送。",
     description:
-      "Mint dialog usage copy for the client_credentials exchange (token endpoint from config)",
+      "Mint dialog copy inside the OAuth client credentials detail: the optional client_credentials exchange (token endpoint from config)",
   },
   "apiKeys.createdDone": {
     message: "完成",
-    description: "Mint dialog close button (secret-shown step)",
-  },
-  "apiKeys.copy": {
-    message: "复制密钥",
-    description: "Copy-to-clipboard icon button label",
+    description: "Mint dialog close button (key-shown step)",
   },
   "apiKeys.copied": {
     message: "已复制到剪贴板",
-    description: "Toast on a successful secret copy",
+    description:
+      "Toast on a successful copy (the key, the example request, the client ID or the secret)",
   },
   "apiKeys.copyError": {
     message: "复制到剪贴板失败",
-    description: "Toast on a failed secret copy",
+    description: "Toast on a failed copy",
   },
   "apiKeys.createSuccess": {
     message: "已创建 {name}",

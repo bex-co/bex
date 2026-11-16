@@ -1,20 +1,20 @@
 # w7 · m426 — A bex API key works as a bearer token, as a Render API key does
 
-**Worker:** worker7 **Goal:** one bex API key string, sent as `Authorization: Bearer`, authenticates REST, GraphQL and MCP as a Render API key does, so Render's clients work with only the host and the key changed; the `client_credentials` exchange keeps working. **Status:** todo
+**Worker:** worker7 **Goal:** one bex API key string, sent as `Authorization: Bearer`, authenticates REST, GraphQL and MCP as a Render API key does, so Render's clients work with only the host and the key changed; the `client_credentials` exchange keeps working. **Status:** todo (t001–t005, t008 and t009 done; t006, t007 and t010 wait for the production pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | ADR012 §8 defines the bearer key: its string, the server-side exchange, failure limits; the ADR018 row follows | 45m | — |
-| t002 | bex-api accepts an API key as `Authorization: Bearer` on REST, GraphQL and MCP | 120m | t001 |
-| t003 | Create answers one key string, and the dashboard shows it with a curl example | 75m | t002 |
-| t004 | Failed key attempts are rate-limited, counted and never logged | 45m | t002 |
-| t005 | The CLI and the skills pack use an API key directly | 60m | t002 |
+| t001 | ADR012 §8 defines the bearer key: its string, the server-side exchange, failure limits; the ADR018 row follows — **DONE** | 45m | — |
+| t002 | bex-api accepts an API key as `Authorization: Bearer` on REST, GraphQL and MCP — **DONE** | 120m | t001 |
+| t003 | Create answers one key string, and the dashboard shows it with a curl example — **DONE** | 75m | t002 |
+| t004 | Failed key attempts are rate-limited, counted and never logged — **DONE** | 45m | t002 |
+| t005 | The CLI and the skills pack use an API key directly — **DONE** | 60m | t002 |
 | t006 | Live check on production: curl, the `render` CLI, `/mcp` and the Terraform provider with one key | 45m | t003, t004, t005 |
 | t007 | Render parity | 20m | t006 |
-| t008 | Simplify | 15m | t007 |
-| t009 | Test coverage | 45m | t007 |
+| t008 | Simplify — **DONE** | 15m | t007 |
+| t009 | Test coverage — **DONE** | 45m | t007 |
 | t010 | Closeout | 10m | t008, t009 |
 
 ## Definition of done
@@ -28,6 +28,28 @@ On production, as the QA user in `bex-canary`, with an owned key that is revoked
 5. A `client_credentials` exchange with the same key's id and secret still works.
 6. ADR012 §8 and ADR018's API-key row describe the bearer key, and no dashboard locale says a key is "not a bearer token".
 7. `cd lego/backend && go test ./...`, `make lint`, `cd lego/cli && go test ./...`, and dashboard `yarn lint` + `yarn test` pass.
+
+## Record
+
+**2026-11-16, implementation (t001–t005, with t008 and t009 run ahead of the production check).** What shipped is in each task file under `done/`. In short:
+
+- **The key.** `bex_<id>_<secret>`, defined in ADR012 §8e. bex-api exchanges it at Hydra's token endpoint and remembers the token per replica; nothing new is stored. Create answers it once as `key` on REST, GraphQL and MCP.
+- **Checked against real components**, on a throwaway kind cluster with a Postgres-backed bex-api, a real Hydra and Kratos, and the `bex` CLI built from the tree (`scripts/auth-oauth21-e2e.sh`, leg `extra/w7-m426`, with `BEX_BIN`):
+  - a signed-in person mints a key, and that one string answers 200 on REST, GraphQL and an MCP `tools/call`;
+  - `BEX_API_KEY=<key> bex services -o json` lists the key's workspace with no login and no exchange;
+  - a wrong secret, an unknown id, a malformed key and random text get one 401;
+  - the key's id and secret still exchange for a working token;
+  - the revoked key answers 401 on the three surfaces 0.1 s after the revocation (5.2 s on a bex-api without the store, where the bound is the introspection window).
+- **Against Hydra v26.2.0**, the version production runs, with a DB-free bex-api: the three surfaces answer 200, the failures answer one 401, and the 58th wrong attempt from one source answers 429 `auth_overloaded` with `Retry-After`.
+- **Not yet checked:** anything on production. Definition-of-done items 1 to 5 are t006. Render's Terraform provider and the unmodified `render` CLI have not been run against the change anywhere.
+
+**Merged on the way in.** w21/091 step 1 (`e3a57b1c3`) landed in `auth.go` and `authadmission.go` while this was shipping. The two are merged: a key answered 429 is counted in its `bex_api_auth_admission_sheds_total` like every other, under `source` or a new cause `key_id` for the per-key-id bound, and its test and ADR088 §6 list that cause.
+
+**Order.** t008 (Simplify) and t009 (Test coverage) list t007 as a dependency and were done first, because the review and the tests had to precede the ship. If t006 or t007 changes code, both get another pass.
+
+**Found on the way, filed:** `w7/064` (a DB-free bex-api crashes at start once Hydra holds an API key) and `w7/065` (`scripts/auth-oauth21-e2e.sh` fails at its older leg 8 and leaves its servers running).
+
+**For t007.** One thing to weigh there, seen locally: the 401 is one REST-shaped body on all three surfaces, while the 429 is REST-shaped on REST and MCP and a GraphQL `errors` envelope on `/graphql`. That is how `auth_overloaded` has answered since w4/m100 for every credential, not something this milestone introduced.
 
 ## Source + Goal linkage
 

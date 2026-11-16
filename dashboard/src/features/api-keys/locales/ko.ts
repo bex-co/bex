@@ -21,7 +21,7 @@ const koApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.colClientId": {
     message: "클라이언트 ID",
     description:
-      "API Keys table column header — OAuth2 client_id paired with the secret",
+      "API Keys table column header: the key's id, which is also its OAuth2 client_id",
   },
   "apiKeys.colCreated": {
     message: "생성일",
@@ -33,8 +33,7 @@ const koApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.colLastUsed": {
     message: "마지막 사용",
-    description:
-      "API Keys table column header — when a token for the key was last used",
+    description: "API Keys table column header: when the key was last used",
   },
   "apiKeys.neverUsed": {
     message: "사용 안 함",
@@ -94,20 +93,51 @@ const koApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.createdTitle": {
     message: "API 키를 만들었습니다",
-    description: "Mint dialog title (secret-shown step)",
+    description: "Mint dialog title (key-shown step)",
   },
   "apiKeys.createdWarning": {
+    message: "지금 키를 복사하세요. 다시 볼 수 없습니다.",
+    description:
+      "Mint dialog warning (key-shown step): the key is shown only once",
+  },
+  "apiKeys.fieldKey": {
+    message: "API 키",
+    description:
+      "Mint dialog label for the key itself, the one string sent as Authorization: Bearer",
+  },
+  "apiKeys.copyKey": {
+    message: "API 키 복사",
+    description: "Copy button aria-label for the key",
+  },
+  "apiKeys.keyHelp": {
     message:
-      "지금 클라이언트 ID와 시크릿을 복사하세요. 시크릿은 다시 볼 수 없습니다.",
-    description: "Mint dialog warning (secret-shown step)",
+      "모든 요청에 Authorization: Bearer로 보내세요. 이 키는 연결 문자열을 포함해 이 워크스페이스에서 모든 권한을 가지므로 비밀번호처럼 다루세요.",
+    description:
+      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+  },
+  "apiKeys.curlTitle": {
+    message: "요청 예시",
+    description:
+      "Mint dialog label for the curl example that lists services with the key",
+  },
+  "apiKeys.copyCurl": {
+    message: "요청 예시 복사",
+    description: "Copy button aria-label for the curl example",
+  },
+  "apiKeys.oauthDetails": {
+    message: "OAuth 클라이언트 자격 증명",
+    description:
+      "Mint dialog title of the collapsed detail holding the client ID, the client secret and the optional token exchange",
   },
   "apiKeys.fieldClientId": {
     message: "클라이언트 ID",
-    description: "Mint dialog label for the OAuth2 client_id",
+    description:
+      "Mint dialog label for the OAuth2 client_id, inside the OAuth client credentials detail",
   },
   "apiKeys.fieldSecret": {
     message: "클라이언트 시크릿",
-    description: "Mint dialog label for the one-time client_secret",
+    description:
+      "Mint dialog label for the one-time client_secret, inside the OAuth client credentials detail",
   },
   "apiKeys.copyClientId": {
     message: "클라이언트 ID 복사",
@@ -123,25 +153,22 @@ const koApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.exchangeHelp": {
     message:
-      "이것은 bearer 토큰이 아니라 OAuth2 client_credentials 클라이언트입니다. {tokenEndpoint}에서 교환하세요:\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\nscope는 보내지 마세요. 이 키는 연결 문자열을 포함해 이 워크스페이스에서 모든 권한을 가지므로 비밀번호처럼 다루세요. 반환된 access_token을 Authorization: Bearer로 사용하세요.",
+      "이 키는 OAuth2 클라이언트로도 사용할 수 있습니다. 수명이 짧은 토큰을 선호한다면 {tokenEndpoint}에서 클라이언트 ID와 클라이언트 시크릿을 액세스 토큰으로 교환하세요:\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\nscope는 보내지 마세요. 반환된 access_token을 키 대신 Authorization: Bearer로 사용하세요.",
     description:
-      "Mint dialog usage copy for the client_credentials exchange (token endpoint from config)",
+      "Mint dialog copy inside the OAuth client credentials detail: the optional client_credentials exchange (token endpoint from config)",
   },
   "apiKeys.createdDone": {
     message: "완료",
-    description: "Mint dialog close button (secret-shown step)",
-  },
-  "apiKeys.copy": {
-    message: "시크릿 복사",
-    description: "Copy-to-clipboard icon button label",
+    description: "Mint dialog close button (key-shown step)",
   },
   "apiKeys.copied": {
     message: "클립보드에 복사했습니다",
-    description: "Toast on a successful secret copy",
+    description:
+      "Toast on a successful copy (the key, the example request, the client ID or the secret)",
   },
   "apiKeys.copyError": {
     message: "클립보드에 복사하지 못했습니다",
-    description: "Toast on a failed secret copy",
+    description: "Toast on a failed copy",
   },
   "apiKeys.createSuccess": {
     message: "{name} 키를 만들었습니다",

@@ -5,22 +5,23 @@ import { CreateApiKeyDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { bearerKey } from "@/features/api-keys/lib/bearer-key";
 import type { CreatedApiKey } from "@/features/api-keys/types";
 
 export interface UseCreateApiKeyResult {
-  /** Fires createApiKey; resolves the minted key (secret included) or null. */
+  /** Fires createApiKey; resolves the minted key (its bearer string and secret included) or null. */
   create: (name: string) => Promise<CreatedApiKey | null>;
   busy: boolean;
 }
 
 /**
  * Wires the mint dialog to bex-api's `createApiKey`. `fetchPolicy: "no-cache"`
- * is deliberate: the secret is returned exactly once by design (docs/ADR012-auth.md),
- * and Apollo's normalized cache would otherwise key the response under
- * `ApiKey:<id>` and hold the secret there indefinitely — reachable by any later
- * cache read even after the mint dialog dismisses it. no-cache means the
- * response only ever exists in this hook's return value and the dialog's own
- * state, both cleared on dismiss (t003's "unretrievable after dismiss").
+ * is deliberate: the key and its secret are returned exactly once by design
+ * (docs/ADR012-auth.md), and Apollo's normalized cache would otherwise key the
+ * response under `ApiKey:<id>` and hold them there indefinitely — reachable by
+ * any later cache read even after the mint dialog dismisses it. no-cache means
+ * the response only ever exists in this hook's return value and the dialog's
+ * own state, both cleared on dismiss (t003's "unretrievable after dismiss").
  */
 export function useCreateApiKey(): UseCreateApiKeyResult {
   const { t } = useTranslations();
@@ -45,12 +46,17 @@ export function useCreateApiKey(): UseCreateApiKeyResult {
         const res = await mutate({
           variables: { name, ownerId: currentWorkspaceId },
         });
-        const key = res.data?.createApiKey;
-        if (!key?.id || !key.secret) {
+        const minted = res.data?.createApiKey;
+        if (!minted?.id || !minted.secret) {
           throw new Error("createApiKey returned no secret");
         }
         toast.success(t("apiKeys.createSuccess", { name }));
-        return { id: key.id, name: key.name ?? name, secret: key.secret };
+        return {
+          id: minted.id,
+          name: minted.name ?? name,
+          key: bearerKey(minted.id, minted.secret, minted.key),
+          secret: minted.secret,
+        };
       } catch (err) {
         toast.error(
           mutationErrorMessage(err, t("apiKeys.createError", { name })),

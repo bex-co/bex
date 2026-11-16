@@ -1,9 +1,14 @@
-# bex-api's API-key surface (backend/internal/apikeys/graphql.go, docs/ADR012-auth.md).
-# Keys are workspace-shared machine credentials (Hydra OAuth2 clients), not
-# per-user — the list query never requests `secret` (the server always resolves
-# it empty for `apiKeys` anyway, but the dashboard doesn't even ask): the only
-# place a secret is ever fetched is the create mutation's response, exactly
-# once, matching Render's "shown only at creation" API-key UX.
+# bex-api's API-key surface (backend/internal/apikeys/graphql.go,
+# docs/ADR012-auth.md §8e). A key is a workspace-shared machine credential, not
+# per-user, and it is one string: `key` (`bex_<id>_<secret>`) is sent as
+# `Authorization: Bearer <key>`, as on Render (w7/m426). The same credential is
+# also an OAuth2 client: `id` and `secret` are its client_id and client_secret
+# for the optional client_credentials exchange.
+#
+# `key` and `secret` exist only in the create mutation's response, exactly
+# once, matching Render's "shown only at creation" API-key UX. The list query
+# never requests either (the server resolves them empty for `apiKeys` anyway,
+# but the dashboard doesn't even ask).
 
 # ownerId (w6/m18): the workspace to list/mint/revoke in — the dashboard always
 # sends the switcher's selection so a multi-workspace caller manages the right
@@ -22,6 +27,7 @@ mutation CreateApiKey($name: String!, $ownerId: String) {
   createApiKey(name: $name, ownerId: $ownerId) {
     id
     name
+    key
     secret
     createdAt
   }

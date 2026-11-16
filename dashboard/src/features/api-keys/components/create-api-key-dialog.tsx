@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { useId, useState } from "react";
+import { Plus } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -17,23 +17,29 @@ import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { config } from "@/config/config";
 import { useCreateApiKey } from "@/features/api-keys/hooks/use-create-api-key";
+import { curlExample } from "@/features/api-keys/lib/bearer-key";
 import type { CreatedApiKey } from "@/features/api-keys/types";
 
 export interface CreateApiKeyDialogProps {
-  /** Called once a create succeeds (before the secret dialog is dismissed). */
+  /** Called once a create succeeds (before the key is dismissed). */
   onCreated: () => void;
 }
 
 /**
- * The mint flow (w4/m8/t003, extended w4/m105): a name, then both the
- * `client_id` and the one-time secret with copy affordances, plus the
- * client_credentials exchange the credential actually needs. `created` is
- * local component state only — never written to Apollo's cache (the hook
- * uses `fetchPolicy: "no-cache"`) — and is discarded on close, so there is no
- * path to re-display a minted secret after the dialog dismisses. The dialog is
- * uncontrolled (no `open` state of our own): Radix already fires
+ * The mint flow (w4/m8/t003, w4/m105; Render's shape since w7/m426): a name,
+ * then the key. The created step leads with the one string the user sends as
+ * `Authorization: Bearer` and a curl that works when pasted, as Render's "make
+ * your first request" step does. The same credential is also an OAuth2 client,
+ * so its client ID, client secret and the optional client_credentials exchange
+ * sit in a detail that starts collapsed. What the key can do is stated in the
+ * primary area, never only inside that detail.
+ *
+ * `created` is local component state only — never written to Apollo's cache
+ * (the hook uses `fetchPolicy: "no-cache"`) — and is discarded on close, so
+ * there is no path to re-display a minted key after the dialog dismisses. The
+ * dialog is uncontrolled (no `open` state of our own): Radix already fires
  * `onOpenChange` for every close path (Done/Cancel/Escape/overlay), which is
- * all `reset()` needs.
+ * all the reset needs.
  */
 export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
   const { t } = useTranslations();
@@ -47,7 +53,7 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
     const key = await create(name.trim());
     if (key) {
       setCreated(key);
-      onCreated(); // refresh the list now; the secret dialog stays open independently
+      onCreated(); // refresh the list now; the key stays on screen independently
     }
   }
 
@@ -65,7 +71,10 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
           <Plus /> {t("apiKeys.create")}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      {/* The key, the curl and the token endpoint are long unbroken strings. A
+          bounded column keeps their intrinsic width from widening the grid
+          past a narrow viewport; each one wraps inside its own box. */}
+      <DialogContent className="grid-cols-[minmax(0,1fr)]">
         {created ? (
           <>
             <DialogHeader>
@@ -74,22 +83,45 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
                 {t("apiKeys.createdWarning")}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <CredentialField
+                  label={t("apiKeys.fieldKey")}
+                  value={created.key}
+                  copyLabel={t("apiKeys.copyKey")}
+                />
+                <p className="text-muted-foreground text-sm">
+                  {t("apiKeys.keyHelp")}
+                </p>
+              </div>
               <CredentialField
-                label={t("apiKeys.fieldClientId")}
-                value={created.id}
-                copyLabel={t("apiKeys.copyClientId")}
+                block
+                label={t("apiKeys.curlTitle")}
+                value={curlExample(config.apiBaseUrl, created.key)}
+                copyLabel={t("apiKeys.copyCurl")}
               />
-              <CredentialField
-                label={t("apiKeys.fieldSecret")}
-                value={created.secret}
-                copyLabel={t("apiKeys.copySecret")}
-              />
-              <p className="text-muted-foreground text-sm whitespace-pre-line">
-                {t("apiKeys.exchangeHelp", {
-                  tokenEndpoint: config.oauthTokenEndpoint,
-                })}
-              </p>
+              <details className="rounded-md border">
+                <summary className="cursor-pointer rounded-md px-3 py-2 text-sm font-medium">
+                  {t("apiKeys.oauthDetails")}
+                </summary>
+                <div className="space-y-3 border-t p-3">
+                  <CredentialField
+                    label={t("apiKeys.fieldClientId")}
+                    value={created.id}
+                    copyLabel={t("apiKeys.copyClientId")}
+                  />
+                  <CredentialField
+                    label={t("apiKeys.fieldSecret")}
+                    value={created.secret}
+                    copyLabel={t("apiKeys.copySecret")}
+                  />
+                  <p className="text-muted-foreground text-sm [overflow-wrap:anywhere] whitespace-pre-line">
+                    {t("apiKeys.exchangeHelp", {
+                      tokenEndpoint: config.oauthTokenEndpoint,
+                    })}
+                  </p>
+                </div>
+              </details>
             </div>
             <DialogFooter>
               <DialogClose asChild>
@@ -126,11 +158,13 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
                   {t("apiKeys.createCancel")}
                 </Button>
               </DialogClose>
+              {/* `loading` draws the spinner over the label instead of beside
+                  it, so the button is the same width idle and busy. */}
               <Button
                 onClick={() => void handleSubmit()}
-                disabled={!name.trim() || busy}
+                disabled={!name.trim()}
+                loading={busy}
               >
-                {busy ? <Loader2 className="animate-spin" /> : null}
                 {t("apiKeys.createSubmit")}
               </Button>
             </DialogFooter>
@@ -141,30 +175,57 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
   );
 }
 
+/**
+ * One labelled value with its copy button. `block` is a multi-line code sample
+ * (the curl): it keeps its line breaks and indentation, and its copy button
+ * moves up beside the label so the sample has the full width. Either way the
+ * value wraps anywhere inside its box, so a 67-character key or a long URL
+ * never widens the dialog.
+ */
 function CredentialField({
   label,
   value,
   copyLabel,
+  block = false,
 }: {
   label: string;
   value: string;
   copyLabel: string;
+  block?: boolean;
 }) {
   const { t } = useTranslations();
+  const labelId = useId();
+  const copy = (
+    <CopyButton
+      value={value}
+      label={copyLabel}
+      successText={t("apiKeys.copied")}
+      errorText={t("apiKeys.copyError")}
+    />
+  );
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-3">
-        <code className="flex-1 overflow-x-auto font-mono text-sm break-all">
-          {value}
-        </code>
-        <CopyButton
-          value={value}
-          label={copyLabel}
-          successText={t("apiKeys.copied")}
-          errorText={t("apiKeys.copyError")}
-        />
-      </div>
+    <div role="group" aria-labelledby={labelId} className="space-y-1.5">
+      {block ? (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <Label id={labelId}>{label}</Label>
+            {copy}
+          </div>
+          <pre className="rounded-md border bg-muted/50 p-3 font-mono text-xs break-all whitespace-pre-wrap">
+            {value}
+          </pre>
+        </>
+      ) : (
+        <>
+          <Label id={labelId}>{label}</Label>
+          <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-3">
+            <code className="min-w-0 flex-1 overflow-x-auto font-mono text-sm break-all">
+              {value}
+            </code>
+            {copy}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -439,3 +439,65 @@ describe("local-bex.mjs service environment groups", () => {
     expect(group.serviceLinks).toEqual(["eden-cms-v2"]);
   });
 });
+
+describe("local-bex.mjs API keys", () => {
+  it("mints one bearer key from its id and secret, and never lists either again", async () => {
+    // bex-api's contract (docs/ADR012-auth.md §8e, w7/m426): `key` is the one
+    // string sent as Authorization: Bearer, `bex_<id>_<secret>`, and it exists
+    // only in the create response.
+    const ownerId = "tea-localdefault00000001";
+    const { data, errors } = await graphql(
+      "CreateApiKey",
+      `
+        mutation CreateApiKey($name: String!, $ownerId: String) {
+          createApiKey(name: $name, ownerId: $ownerId) {
+            id
+            name
+            key
+            secret
+            createdAt
+          }
+        }
+      `,
+      { name: "deploy-agent", ownerId },
+    );
+
+    expect(errors).toBeUndefined();
+    const { id, key, secret } = data.createApiKey;
+    expect(id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    expect(secret).toMatch(/^[A-Za-z0-9_-]{26}$/);
+    expect(key).toBe(`bex_${id}_${secret}`);
+
+    const listed = await graphql(
+      "ApiKeys",
+      `
+        query ApiKeys($ownerId: String) {
+          apiKeys(ownerId: $ownerId) {
+            id
+            name
+            createdAt
+            createdBy
+            lastUsedAt
+          }
+        }
+      `,
+      { ownerId },
+    );
+    const row = listed.data.apiKeys.find((candidate) => candidate.id === id);
+    expect(row).toMatchObject({ id, name: "deploy-agent" });
+    expect(row).not.toHaveProperty("key");
+    expect(row).not.toHaveProperty("secret");
+
+    await graphql(
+      "RevokeApiKey",
+      `
+        mutation RevokeApiKey($id: String!, $ownerId: String) {
+          revokeApiKey(id: $id, ownerId: $ownerId)
+        }
+      `,
+      { id, ownerId },
+    );
+  });
+});
