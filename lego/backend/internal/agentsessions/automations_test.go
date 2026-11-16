@@ -414,6 +414,24 @@ func TestAutomationTemplateFailsLikeManualCreate(t *testing.T) {
 	}
 }
 
+// A template missing its task or agent is refused with the code a manual
+// create answers, but the message names the template's own fields: the task
+// sits at the template's top level, not in agentConfig as on a session.
+func TestAutomationTemplateRequiredFieldsNameTheTemplate(t *testing.T) {
+	svc, _ := automationTestService("tea-a", newFakeAutomations())
+	for name, mutate := range map[string]func(*AutomationTemplate){
+		"no task":  func(tpl *AutomationTemplate) { tpl.Task = " " },
+		"no agent": func(tpl *AutomationTemplate) { tpl.AgentConfig.Agent = "" },
+	} {
+		in := automationInput("required-" + strings.ReplaceAll(name, " ", "-"))
+		mutate(in.Template)
+		_, err := svc.CreateAgentAutomation(caller("dev"), "tea-a", in)
+		if !isCode(err, "AGENT_SESSION_INPUT_INVALID") || err.Error() != "template.task and template.agentConfig.agent are required" {
+			t.Errorf("%s = %v", name, err)
+		}
+	}
+}
+
 func TestAutomationPlatformMeteredTemplateNeedsSpendCeiling(t *testing.T) {
 	enablePlatformRoute(t, "tea-a")
 	svc, _ := automationTestService("tea-a", newFakeAutomations())

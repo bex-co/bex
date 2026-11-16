@@ -168,6 +168,15 @@ func (f *fakeAutomations) serve(w http.ResponseWriter, r *http.Request) {
 				writeAPIError(w, http.StatusConflict, codeAutomationConflict, "the automation changed since it was read")
 				return
 			}
+			// The API replaces a PATCHed template whole and refuses one that
+			// lost its task or agent, as a session create does.
+			if tpl, ok := body["template"].(map[string]any); ok {
+				agent, _ := tpl["agentConfig"].(map[string]any)
+				if tpl["task"] == nil || tpl["task"] == "" || agent == nil || agent["agent"] == nil || agent["agent"] == "" {
+					writeAPIError(w, http.StatusBadRequest, "AGENT_SESSION_INPUT_INVALID", "template.task and template.agentConfig.agent are required")
+					return
+				}
+			}
 			for k, v := range body {
 				if k != "ifVersion" {
 					a[k] = v
@@ -655,6 +664,30 @@ func TestApplyNotCreatorPointsToTakeOver(t *testing.T) {
 	_, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--confirm")
 	if code != 1 || !strings.Contains(stderr, "1 of 1 automation(s) could not be applied") {
 		t.Fatalf("exit %d: %s", code, stderr)
+	}
+}
+
+// A file naming only some template fields changes those and keeps the rest:
+// the API replaces a PATCHed template whole, so apply sends the stored
+// template with the file's fields laid over it.
+func TestApplyPartialTemplateKeepsTheStoredFields(t *testing.T) {
+	f := newFakeAutomations(t)
+	f.seed("nightly", daily(), tpl("Old task"))
+	file := filepath.Join(t.TempDir(), "a.yaml")
+	writeFile(t, file, "name: nightly\ntemplate:\n  task: New task\n  agentConfig: {model: gpt-5}\n")
+	stdout, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--dry-run")
+	if code != 0 || !strings.Contains(stdout, `template.task: "Old task" → "New task"`) || strings.Contains(stdout, "repo") {
+		t.Fatalf("plan (exit %d):\n%s%s", code, stdout, stderr)
+	}
+	if _, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--confirm"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	want := `{"agentConfig":{"agent":"claude","model":"gpt-5"},"maxSpendUSD":3,"repo":"acme/api","task":"New task","title":"Old task"}`
+	if got := asJSON(t, f.find("nightly")["template"]); got != want {
+		t.Fatalf("stored template %s, want %s", got, want)
+	}
+	if patch := f.calls(http.MethodPatch)[0].body; patch["triggers"] != nil || patch["notifications"] != nil {
+		t.Fatalf("PATCH %v resent fields the file did not change", patch)
 	}
 }
 

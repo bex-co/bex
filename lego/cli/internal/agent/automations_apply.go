@@ -78,8 +78,8 @@ type planned struct {
 	Result  json.RawMessage `json:"automation,omitempty"`
 
 	def     definition
-	version any
-	diffs   []string // "path: have → want", for --dry-run
+	stored  map[string]any // the automation as the API returned it, for update
+	diffs   []string       // "path: have → want", for --dry-run
 	warning string
 }
 
@@ -98,7 +98,9 @@ func automationApplyCommand(d deps) *cobra.Command {
 			"rest left alone.\n\n" +
 			"apply compares only the fields a file sets (the API fills defaults such\n" +
 			"as the title, and a file without notifications keeps the stored email\n" +
-			"setting); to clear a field, set it empty. apply never deletes: an\n" +
+			"setting), and an update keeps the template fields a file leaves out\n" +
+			"(a file may name only template.task); triggers are replaced as the file\n" +
+			"writes them. To clear a field, set it empty. apply never deletes: an\n" +
 			"automation missing from the files stays. --dry-run prints the plan and\n" +
 			"each changed field without writing.",
 		Example: "  bex agent automations apply -f .bex/automations/ --dry-run\n" +
@@ -391,7 +393,7 @@ func planDefinition(def definition, stored map[string]any) *planned {
 	}
 	normalized, _ := jsonValue(stored)
 	have, _ := normalized.(map[string]any)
-	p.version = have["version"]
+	p.stored = have
 	for _, key := range definitionKeys {
 		want, ok := def.body[key]
 		if !ok || key == "name" {
@@ -429,9 +431,9 @@ func (a workspaceAPI) applyPlanned(p *planned) error {
 	case actionUpdate:
 		patch := map[string]any{}
 		for _, key := range p.Changes {
-			patch[key] = p.def.body[key]
+			patch[key] = overlay(p.stored[key], p.def.body[key])
 		}
-		if raw, err = a.patchAutomation(p.Name, p.version, patch); err != nil {
+		if raw, err = a.patchAutomation(p.Name, p.stored["version"], patch); err != nil {
 			return err
 		}
 	default:
@@ -461,6 +463,24 @@ func (a workspaceAPI) printPlan(plan []*planned, preview bool) error {
 		}
 	}
 	return nil
+}
+
+// overlay is want laid over have: a field want sets replaces have's, and a
+// field it leaves out keeps have's, recursively through objects. The API
+// replaces a PATCHed template or notifications object whole, so sending only
+// the file's fields would clear every stored field the file leaves out.
+// Arrays and scalars are want's as written; triggers stay whole, because a
+// schedule's fields depend on its frequency.
+func overlay(have, want any) any {
+	w, ok := want.(map[string]any)
+	if !ok {
+		return want
+	}
+	out := cloneMap(have)
+	for key, value := range w {
+		out[key] = overlay(out[key], value)
+	}
+	return out
 }
 
 // diffValue lists where want differs from have, looking only at what want

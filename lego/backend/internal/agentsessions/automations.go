@@ -628,6 +628,14 @@ func validateAutomationTriggers(in []AutomationTrigger, now time.Time) ([]Automa
 // applied; the workspace-dependent model resolution is not stored, so a later
 // change of the workspace environment still applies at fire time.
 func (s *Service) validateAutomationTemplate(ctx context.Context, workspaceID string, t AutomationTemplate) (AutomationTemplate, error) {
+	// The session create's own message names its body's fields
+	// (agentConfig.task); a template keeps the task at its top level, so the
+	// refusal names the template's, with the code a manual create answers.
+	if strings.TrimSpace(t.Task) == "" || strings.TrimSpace(t.AgentConfig.Agent) == "" {
+		return AutomationTemplate{}, core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID",
+			"template.task and template.agentConfig.agent are required",
+			map[string]any{"field": "template"})
+	}
 	req := CreateRequest{
 		OwnerID: workspaceID, Repo: t.Repo, Branch: t.Branch,
 		AgentConfig:     AgentConfig{Agent: t.AgentConfig.Agent, Model: t.AgentConfig.Model, Task: t.Task, Template: t.AgentConfig.Template},
