@@ -141,3 +141,21 @@ Refusal reasons, each running the allow-list and suspend rows and then a way out
 - **What waits:** t006, the live walk of DoD items 1–5 on production. The operator change shipped in `1660a95e3`. The production pin at the time, `b9f42ac4648e` (pinned by `bc48eb74e`), predates it.
 - **Release condition:** the newest `chore(deploy): pin platform images to <sha>` commit on `main` names a `<sha>` that contains the fix: `git merge-base --is-ancestor 1660a95e3 <sha>`. The deploy runs on its own schedule, so the gate clears without anyone acting.
 - **Then:** a worker walks DoD 1–5 with the release `bex` CLI in `bex-canary` (free `docker.io/traefik/whoami` fixtures, deleted afterwards with `GET` 404), records the timestamps here, and closes the milestone (t006).
+
+## Live replay over REST (`/qa-find-bugs w4` round 475, 2026-11-16 02:58–03:05 UTC, pin `a0266464aabd`, which carries 1660a95e3)
+
+This replay used the REST routes the CLI calls, with a dashboard session in `bex-canary`, not the release CLI. The CLI walk is still the closeout's.
+
+Fixture: Free `qa-20261116-r475-who` (`srv-dbt72lft052c73c92v30`, `docker.io/traefik/whoami:v1.10`). It was deleted afterwards (`GET` 404).
+
+1. **Refused image: holds.**
+   - `POST …/deploys {"imageUrl":"docker.io/traefik/whoami:v0.0.0-qa-r475-missing"}` opened `dep-dbt74nlhdqoc73dn7gd0`. It closed `update_failed` within 10 s.
+   - The URL kept answering `200`.
+   - Events read `image_pull_failed`, `deploy_ended`, `deploy_started`, `deploy_ended`, `deploy_started`, with no `server_failed`.
+2. **IP allow list: holds**, at the 10 s edge.
+   - `PATCH /v1/services/{id} {"serviceDetails":{"ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"testnet"}]}}` made the URL answer `403` after 5.2 s.
+   - `0.0.0.0/0` brought `200` back after 10.2 s, polling once a second.
+3. **Suspend: holds.** `POST …/suspend` (no body) answered `202`, and the suspended page answered after 6.3 s. `resume` brought `200` back after 24.1 s.
+4. **Saved tag: holds.** `POST …/deploys {}` went `live` on `docker.io/traefik/whoami:v1.10`, answering `200`.
+
+Also seen: the fixture's first deploy took 4 min 24 s to go `live` (02:58:29 → 03:02:53), about 20 min after the pin rolled. It was not repeated.
