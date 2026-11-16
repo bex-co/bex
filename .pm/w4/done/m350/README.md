@@ -1,6 +1,6 @@
 # w4 · m350 — A new image web service whose process listens on a port its image doesn't declare starts twice on its first deploy: the first instance is replaced about a minute in, and Live comes about 45 s later than for the same image on its declared port
 
-**Worker:** worker4 **Goal:** a first deploy rolls one ReplicaSet whichever port the image's HTTP listener turns out to be on. HTTP port discovery changes only the Services and the route, never the pod template, as Render's port scan routes to the port it finds without restarting the instance. **Status:** blocked — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** a first deploy rolls one ReplicaSet whichever port the image's HTTP listener turns out to be on. HTTP port discovery changes only the Services and the route, never the pod template, as Render's port scan routes to the port it finds without restarting the instance. **Status:** done. All five tasks are done; the release gate cleared on 2026-11-16 (production pin `284b83e1f540` contains `5d053738a`) and t005 replayed DoD 1–5 live that day.
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | [t002](done/t002.md) | Keep a first release's pod template independent of HTTP port discovery — **DONE** | 60m | t001 |
 | [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
 | [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
-| [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004 |
+| [t005](done/t005.md) | Closeout (live replay on production) — **DONE** | 30m | t003, t004 |
 
 ## Definition of done
 
@@ -112,3 +112,10 @@ While a first release's HTTP port is being discovered, the pod template carries 
 - **Seen, not filed:**
   - The deploy read `update_in_progress` until 16:46:39, 80 s after traffic had moved, inside the 90 s discovery window (`webHTTPDiscoveryWindow`, w8/m141).
   - The instance-count window's lag is recorded above.
+
+## Unblock record and closing replay, 2026-11-16 21:59–22:06 UTC (`/loopx w4`)
+
+- **Affected:** m350 t005.
+- **Source:** verified evidence. The gate on the board was a release gate for t002's `5d053738a`. `chore(deploy): pin platform images to 284b83e1f540` (`02026e53f`, 21:29Z) contains it (`git merge-base --is-ancestor 5d053738a 284b83e1f540`), and every `bex-system` Deployment runs that pin's `bex-operator@sha256:4d3a9429…` (read-only `kubectl`). The milestone was unblocked on that finding with no user action.
+- **Outcome:** DoD 1–5 hold on that pin, replayed as the QA user in `bex-canary`; the table and per-DoD evidence are in [t005](done/t005.md). DoD 2 needed a control pair: two of three p10k/p80 pairs read +17.5 s and +16.7 s from `createdAt`, all of it pod-creation spread that also appears between two identical port-80 services (8 s); the third pair read −4.6 s, and the port-dependent part (pod Ready → `live`) stayed at 0.6–14 s.
+- **Residual (unchanged):** an edge-cached first release on an undeclared port still keeps the port-bound shape and may roll twice (t002 deviation; ADR004 § "A first web image release rolls once").
