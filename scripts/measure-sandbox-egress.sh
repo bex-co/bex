@@ -56,9 +56,9 @@ meter_before="$(meter_value)"
 # disk first, so what crosses the network is only the upload; wget's own error
 # and exit code are part of the output.
 sink_url="${BEX_MEASURE_UP_URL:-https://speed.cloudflare.com/__up}"
-send_cmd="dd if=/dev/urandom of=/root/up.bin bs=1M count=$((up_bytes / 1048576)) 2>/dev/null; wget -q -T 120 -O /dev/null --post-file=/root/up.bin $sink_url 2>&1; echo \"wget-exit=\$?\"; rm -f /root/up.bin"
+send_cmd="dd if=/dev/urandom of=/root/up.bin bs=1M count=$((up_bytes / 1048576)) 2>&1 | tail -1; ls -l /root/up.bin 2>&1; wget --help 2>&1 | head -1; wget -S -T 120 -O /dev/null --post-file=/root/up.bin $sink_url 2>&1 | head -12; echo \"wget-exit=\${PIPESTATUS[0]}\"; rm -f /root/up.bin"
 sandbox_exec "$sandbox_id" "$send_cmd" "$fixture_dir/send.txt" || true
-measure send-output "$(jq -cn --arg o "$(head -c 300 "$fixture_dir/send.txt" 2>/dev/null | tr '\n' ' ')" --arg s "$(head -c 300 "$fixture_dir/send.sse" 2>/dev/null | tr '\n' ' ')" '{stdout: $o, sse: $s}')"
+measure send-output "$(jq -cn --arg o "$(head -c 900 "$fixture_dir/send.txt" 2>/dev/null | tr '\n' ' ')" --arg s "$(head -c 300 "$fixture_dir/send.sse" 2>/dev/null | tr '\n' ' ')" '{stdout: $o, sse: $s}')"
 sleep 5
 tx_after="$(tx || echo 0)"
 sleep 75 # the meter job's scrape interval and the rule evaluation
