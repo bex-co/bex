@@ -1,6 +1,6 @@
 # w4 · m335 — An autoscaling change that only moves the CPU or memory target reads as a no-op in Events
 
-**Worker:** worker4 **Goal:** an `autoscaling_config_changed` event says what changed on each side, targets included, in Render's `fromConfig`/`toConfig` shape, and a save that changes nothing records no event. **Status:** blocked — t001–t004 and t006–t008 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
+**Worker:** worker4 **Goal:** an `autoscaling_config_changed` event says what changed on each side, targets included, in Render's `fromConfig`/`toConfig` shape, and a save that changes nothing records no event. **Status:** done — DoD replayed live on pin `7aaa8700befa` 2026-11-16 ([t005](done/t005.md))
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | API: Render's `criteria` on REST and MCP, the targets on GraphQL — **DONE** | 20m | t001 |
 | [t003](done/t003.md) | Dashboard: the Events line names each side's targets — **DONE** | 20m | t002 |
 | [t004](done/t004.md) | Docs: ADR018's event rows — **DONE** | 5m | t002 |
-| [t005](t005.md) | Live verification on an owned autoscaled service | 15m | t003 |
+| [t005](done/t005.md) | Live verification on an owned autoscaled service — **DONE** | 15m | t003 |
 | [t006](done/t006.md) | Render parity — **DONE** | 5m | t002 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t004 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 20m | t004 |
-| [t009](t009.md) | Closeout | 5m | t005–t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 5m | t005–t008 |
 
 Nine tasks, 135m (2h15m).
 
@@ -59,3 +59,19 @@ Why: since w4/568 the Events row shows an autoscaling change's before and after.
   - After a disable, the Scaling page's switch pre-fills 1–2 and CPU 60%.
   - Saving it records `fromConfig {"enabled":false,"min":1,"max":2,…cpu 60…}`, and Events reads "Autoscaling Off → 1–2 instances, CPU 60%".
   - A `DELETE` on an already-disabled policy recorded no event.
+
+## Unblock (2026-11-16)
+
+- **Affected:** w4/m335 t005, t009. **Source:** verified evidence (release gate).
+- **Finding:** production runs platform pin `7aaa8700befa` (`546945798`, the latest `chore(deploy): pin platform images` on `origin/main`). `git merge-base --is-ancestor` puts the gate line's `4630a48a7` and the fix commits `0d6acac8e` (w4/m335) and `89ff09783` (w4/597) inside it, so the release gate is clear and no gate remains. Next step: replay t005 live, then close (t009).
+
+## Live verification on pin `7aaa8700befa` (2026-11-16, t005)
+
+QA user via `scripts/qa-login.sh`, workspace `bex-canary`. Fixture: Starter web service `qa-20261116-r335-web` (`srv-dbtm5tnmufrc73b9vkg0`, `traefik/whoami:v1.10.1`), deleted afterwards (DELETE 204, then GET 404).
+
+- **Sequence:** four REST calls at 20:09 UTC on `…/autoscaling`: `PUT` 1–3 with CPU 70% (200), the same with CPU 60% (200), the same CPU 60% body again (200), then `DELETE` (204).
+- **Events:** `GET …/events` lists exactly three `autoscaling_config_changed`; the unchanged save recorded none.
+  - 20:09:32: `fromConfig {"enabled":false,"min":0,"max":0,…}` → `toConfig {"enabled":true,"min":1,"max":3,"criteria":{"cpu":{"enabled":true,"percentage":70},…}}`.
+  - 20:09:35: `fromConfig` cpu 70 → `toConfig` cpu 60, min/max 1/3 on both sides.
+  - 20:09:41: `fromConfig` enabled, 1–3, cpu 60 → `toConfig {"enabled":false,"min":1,"max":3,…cpu 60…}` (w4/597 keeps the settings).
+- **Events tab:** en reads "Autoscaling Off → 1–3 instances, CPU 70%", "Autoscaling 1–3 instances, CPU 70% → 1–3 instances, CPU 60%" and "Autoscaling 1–3 instances, CPU 60% → Off"; zh reads "自动伸缩 关闭 → 1–3 个实例，CPU 70%", "自动伸缩 1–3 个实例，CPU 70% → 1–3 个实例，CPU 60%" and "自动伸缩 1–3 个实例，CPU 60% → 关闭".
