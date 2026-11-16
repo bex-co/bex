@@ -439,7 +439,7 @@ func TestManualIntentNewTriggerDuringAcknowledgementPreemptsUnobservedJob(t *tes
 func TestManualIntentAcknowledgementUsesControlPlaneClient(t *testing.T) {
 	r, app, template := manualIntentFixture(t)
 	r.BuildClient = fake.NewClientBuilder().WithScheme(r.Scheme).WithStatusSubresource(&batchv1.Job{}).Build()
-	if err := r.ensureManualRun(t.Context(), app, template); err != nil {
+	if _, err := r.ensureManualRun(t.Context(), app, template); err != nil {
 		t.Fatal(err)
 	}
 	var stored appv1alpha1.App
@@ -561,7 +561,7 @@ func TestAStaleReconcileDoesNotMaterializeACanceledOrReplacedRun(t *testing.T) {
 			current := stale.DeepCopy()
 			tc.update(current)
 			persistManualIntent(t, r, current)
-			if err := r.ensureManualRun(t.Context(), stale, template); err != nil {
+			if _, err := r.ensureManualRun(t.Context(), stale, template); err != nil {
 				t.Fatal(err)
 			}
 			assertManualJobAbsent(t, r, stale, stale.Spec.RunAt)
@@ -569,7 +569,7 @@ func TestAStaleReconcileDoesNotMaterializeACanceledOrReplacedRun(t *testing.T) {
 	}
 	// Unchanged intent still runs.
 	r, app, template := manualIntentFixture(t)
-	if err := r.ensureManualRun(t.Context(), app, template); err != nil {
+	if _, err := r.ensureManualRun(t.Context(), app, template); err != nil {
 		t.Fatal(err)
 	}
 	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); err != nil {
@@ -656,7 +656,7 @@ func TestManualRunAdoptsAJobNamedByThePreviousRelease(t *testing.T) {
 	if err := r.Create(t.Context(), legacy); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.ensureManualRun(t.Context(), app, template); err != nil {
+	if _, err := r.ensureManualRun(t.Context(), app, template); err != nil {
 		t.Fatal(err)
 	}
 	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); !apierrors.IsNotFound(err) {
@@ -668,5 +668,58 @@ func TestManualRunAdoptsAJobNamedByThePreviousRelease(t *testing.T) {
 	}
 	if stored.Status.ManualRunHandledAt != app.Spec.RunAt {
 		t.Fatal("the adopted run was not acknowledged")
+	}
+}
+
+// w4/m300 t010, production 2026-11-16: a cancel sent 0.3 s after its trigger
+// still started a Pod in 2 of 9 tries, because the operator had created the
+// Job first. A fresh trigger is held, uncreated, for manualRunStartHold, so a
+// cancel sent right after it keeps the run from ever executing.
+func TestAFreshTriggerIsHeldSoAnImmediateCancelNeverStartsIt(t *testing.T) {
+	r, app, template := manualIntentFixture(t)
+	app.Spec.RunAt = time.Now().UTC().Format(time.RFC3339Nano)
+	persistManualIntent(t, r, app)
+	res, err := r.convergeCronRuntime(t.Context(), app, template)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.RequeueAfter <= 0 || res.RequeueAfter > manualRunStartHold {
+		t.Fatalf("requeue = %v, want within (0, %v]", res.RequeueAfter, manualRunStartHold)
+	}
+	assertManualJobAbsent(t, r, app, app.Spec.RunAt)
+
+	// The cancel lands during the hold; once the hold is over the run is
+	// recorded canceled and its Job is never created.
+	if err := r.Get(t.Context(), client.ObjectKeyFromObject(app), app); err != nil {
+		t.Fatal(err)
+	}
+	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt), RequestedAt: time.Now().UTC().Format(time.RFC3339Nano), Unmaterialized: true}
+	persistManualIntent(t, r, app)
+	time.Sleep(res.RequeueAfter)
+	reconcileManualIntent(t, r, app, template)
+	assertManualJobAbsent(t, r, app, app.Spec.RunAt)
+	if i := slicesIndex(app.Status.Runs, app.Spec.CancelRun.Name); i < 0 || app.Status.Runs[i].Status != appv1alpha1.CronRunCanceled {
+		t.Fatalf("runs = %+v, want the held run recorded canceled", app.Status.Runs)
+	}
+}
+
+func TestManualRunHoldRemaining(t *testing.T) {
+	at := time.Date(2026, time.November, 16, 5, 48, 12, 0, time.UTC)
+	runAt := at.Format(time.RFC3339Nano)
+	for _, tc := range []struct {
+		name  string
+		runAt string
+		now   time.Time
+		want  time.Duration
+	}{
+		{"just triggered", runAt, at.Add(300 * time.Millisecond), manualRunStartHold - 300*time.Millisecond},
+		{"hold over", runAt, at.Add(manualRunStartHold), 0},
+		{"long past", runAt, at.Add(time.Hour), 0},
+		{"unparseable is never held", "not-a-time", at, 0},
+		{"a runAt ahead of this clock is held at most the hold", runAt, at.Add(-time.Minute), manualRunStartHold},
+	} {
+		if got := manualRunHoldRemaining(tc.runAt, tc.now); got != tc.want {
+			t.Errorf("%s: hold = %v, want %v", tc.name, got, tc.want)
+		}
 	}
 }

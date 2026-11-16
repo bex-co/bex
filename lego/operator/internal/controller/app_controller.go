@@ -5379,8 +5379,9 @@ func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha
 	// One-off run trigger (spec.runAt, from the API's cron run verb): materialize a
 	// single Job from the same template, named deterministically from runAt so a
 	// re-reconcile of the same value is a no-op. Skipped while suspended.
+	var startHold time.Duration
 	if app.Spec.RunAt != "" && !suspended && !cancelPending && !manualRunSettled(app) {
-		if err := r.ensureManualRun(ctx, app, template); err != nil {
+		if startHold, err = r.ensureManualRun(ctx, app, template); err != nil {
 			return ctrl.Result{}, &stepFailure{reason: "CronRunFailed", err: err}
 		}
 	}
@@ -5397,6 +5398,9 @@ func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha
 	}
 	if cancelPending {
 		return ctrl.Result{RequeueAfter: time.Second}, nil
+	}
+	if startHold > 0 {
+		return ctrl.Result{RequeueAfter: startHold}, nil
 	}
 	if manualRunActive {
 		// The schedule is paused for this run's duration, so converge back
@@ -5637,43 +5641,57 @@ func manualRunSettled(app *appv1alpha1.App) bool {
 	return false
 }
 
-// ensureManualRun creates the one-off Job for the current spec.runAt if it does
-// not already exist. The Job carries labelApp (so it shows up in run history) and
-// is owned by the App (so it is garbage-collected with it).
 // cronRunBackoffLimit is every cron run's Job backoffLimit: a failed run is
 // reported failed and the next tick runs on time, never retried in place.
 const cronRunBackoffLimit = 0
 
-func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.App, template corev1.PodTemplateSpec) error {
+// manualRunStartHold is how long a triggered run waits, from the trigger's
+// runAt, before its Job is created. A Job's Pod starts within a second of its
+// creation, faster than a cancel sent right after the trigger reaches the
+// operator, so without the hold a run canceled at API speed still executed
+// (w4/m300 t010, production 2026-11-16: 2 of 9 cancels sent 0.3 s after the
+// trigger started a Pod). On render.com a run canceled right after its
+// trigger never starts either.
+const manualRunStartHold = 2 * time.Second
+
+// ensureManualRun creates the one-off Job for the current spec.runAt if it does
+// not already exist. The Job carries labelApp (so it shows up in run history) and
+// is owned by the App (so it is garbage-collected with it). A positive duration
+// means the trigger is still inside manualRunStartHold: nothing was created,
+// and the caller requeues after that long.
+func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.App, template corev1.PodTemplateSpec) (time.Duration, error) {
 	if manualRunHandled(app) {
-		return nil
+		return 0, nil
 	}
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 		Name: appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
 	}}
 	err := r.buildPlaneClient().Get(ctx, client.ObjectKeyFromObject(job), job)
 	if err == nil {
-		return r.acknowledgeManualRun(ctx, app)
+		return 0, r.acknowledgeManualRun(ctx, app)
 	}
 	if !apierrors.IsNotFound(err) {
-		return err
+		return 0, err
 	}
 	// The previous release named this run differently (w4/m322); a Job it
 	// created for the same runAt is this run, so it never runs twice.
 	legacy := &batchv1.Job{}
 	err = r.buildPlaneClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.LegacyManualCronRunJobName(app.Name, app.Spec.RunAt)}, legacy)
 	if err == nil && metav1.IsControlledBy(legacy, app) {
-		return r.acknowledgeManualRun(ctx, app)
+		return 0, r.acknowledgeManualRun(ctx, app)
 	}
 	if err != nil && !apierrors.IsNotFound(err) {
-		return err
+		return 0, err
+	}
+	if wait := manualRunHoldRemaining(app.Spec.RunAt, time.Now()); wait > 0 {
+		return wait, nil
 	}
 	// The App was read at the start of a reconcile that may have taken seconds.
 	// A cancel or a replacing trigger that landed since must win: creating the
 	// Job now would execute a run already reported canceled (w4/m300 t010). The
 	// spec update requeues this App, and the next pass sees it.
 	if superseded, err := r.manualRunSuperseded(ctx, app); err != nil || superseded {
-		return err
+		return 0, err
 	}
 	job.Labels = template.Labels
 	job.Annotations = map[string]string{annotationManualRunAt: app.Spec.RunAt}
@@ -5681,12 +5699,25 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 	job.Spec.BackoffLimit = new(int32(cronRunBackoffLimit)) // one execution, like a scheduled run (w8/028)
 	job.Spec.ActiveDeadlineSeconds = new(cronRunActiveDeadlineSeconds)
 	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
-		return err
+		return 0, err
 	}
 	if err := r.buildPlaneClient().Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
-		return err
+		return 0, err
 	}
-	return r.acknowledgeManualRun(ctx, app)
+	return 0, r.acknowledgeManualRun(ctx, app)
+}
+
+// manualRunHoldRemaining is how much of manualRunStartHold is left for a
+// trigger stamped runAt. An unparseable runAt is not held, and a runAt ahead
+// of the operator's clock (skew with bex-api) is held at most
+// manualRunStartHold: the hold only narrows a race and must never keep a run
+// from starting.
+func manualRunHoldRemaining(runAt string, now time.Time) time.Duration {
+	at, err := time.Parse(time.RFC3339Nano, runAt)
+	if err != nil {
+		return 0
+	}
+	return min(max(at.Add(manualRunStartHold).Sub(now), 0), manualRunStartHold)
 }
 
 // manualRunSuperseded re-reads the App past the informer cache and reports
