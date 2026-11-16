@@ -137,6 +137,6 @@ func (c *StripeClient) BillingSnapshot(ctx context.Context, mapping store.Billin
 		EventType: "billing.subscription.reconciled", WorkspaceID: mapping.WorkspaceID,
 		CustomerID: mapping.CustomerID, SubscriptionID: mapping.SubscriptionID, ObjectID: objectID,
 		Livemode: mapping.Livemode, ProviderCreatedAt: observedAt.UTC(), ReceivedAt: observedAt.UTC(),
-		Outcome: outcome, Reason: reason,
+		Outcome: outcome, Reason: reason, CollectionFailed: canceledByCollection(sub),
 	}, nil
 }

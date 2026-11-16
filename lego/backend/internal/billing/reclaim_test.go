@@ -40,6 +40,15 @@ type reclaimFixture struct {
 	missing        bool
 }
 
+// canceledSubscription is a bex Subscription in the state a cancel leaves it:
+// reason is cancellation_details.reason, "cancellation_requested" for an API
+// or Dashboard cancel and "payment_failed" for Stripe's own after dunning.
+func canceledSubscription(workspaceID, customerID, subscriptionID, reason string) string {
+	return fmt.Sprintf(`{"id":%q,"object":"subscription","livemode":false,"customer":%q,"status":"canceled",`+
+		`"cancellation_details":{"comment":null,"feedback":null,"reason":%q},`+
+		`"metadata":{"bex_workspace":%q,"bex_billing_contract":"true"}}`, subscriptionID, customerID, reason, workspaceID)
+}
+
 func (f reclaimFixture) route(method, path string) (int, string) {
 	list := func(object, url, data string) string {
 		return fmt.Sprintf(`{"object":"list","data":[%s],"has_more":false,"url":"%s"}`, data, url)
@@ -77,7 +86,7 @@ func (f reclaimFixture) route(method, path string) (int, string) {
 		}
 		return 200, list("list", "/v1/checkout/sessions", data)
 	case method == http.MethodGet && path == "/v1/subscriptions":
-		return 200, list("list", "/v1/subscriptions", `{"id":"sub_r","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-r"}}`)
+		return 200, list("list", "/v1/subscriptions", fmt.Sprintf(`{"id":"sub_r","object":"subscription","status":"active","metadata":{"bex_workspace":%q}}`, f.owner))
 	case method == http.MethodPost && path == "/v1/invoices/create_preview":
 		total := 0
 		if f.accruedPreview {
@@ -85,7 +94,9 @@ func (f reclaimFixture) route(method, path string) (int, string) {
 		}
 		return 200, fmt.Sprintf(`{"id":"upcoming","object":"invoice","total":%d,"amount_due":%d}`, total, total)
 	case method == http.MethodDelete && path == "/v1/subscriptions/sub_r":
-		return 200, `{"id":"sub_r","object":"subscription","status":"canceled"}`
+		// What Stripe answers to an API cancel, and puts in the
+		// customer.subscription.deleted event it then sends.
+		return 200, canceledSubscription(f.owner, "cus_r", "sub_r", "cancellation_requested")
 	case method == http.MethodDelete && path == "/v1/customers/cus_r":
 		return 200, `{"id":"cus_r","object":"customer","deleted":true}`
 	default:

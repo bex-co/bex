@@ -85,6 +85,8 @@ The dashboard intercepts the paid intent in place: plan pickers and create flows
 
 A card detached or expired after binding leaves the marker stale-true. That is acceptable: the gate's job is to stop _known-cardless_ workspaces from going paid; an actual failed charge lands in the existing dunning lifecycle, which already suspends reversibly. Clearing the marker on `payment_method.detached` / `customer.updated` webhooks is a hardening follow-up, not a correctness requirement.
 
+**A cancellation of a workspace that never bound a card is no payment failure (w21/098, 2026-11-16).** The abandoned-checkout reclaimer ([w3/m172](../.pm/w3/done/m172/README.md)) cancels a cardless workspace's Subscription itself, and the dunning reducer used to read the resulting `customer.subscription.deleted` (or a poll that sees status `canceled`) as a failed payment: 11 workspaces that never owed anything were put in grace, enforced and mailed. The reducer now records such a cancellation but changes no state and queues no notice when the workspace's marker is unset and Stripe did not attribute the cancellation to a failed payment or a dispute (`cancellation_details.reason` is neither `payment_failed` nor `payment_disputed`). A card-bound workspace's cancellation, and a cancellation Stripe itself ends after failed collection whatever the marker says (a mapping from before the marker existed has none), still enter grace.
+
 ---
 
 ## Architecture

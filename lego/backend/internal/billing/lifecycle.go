@@ -144,10 +144,11 @@ func normalizeStripeLifecycleEvent(event *stripe.Event, receivedAt time.Time) (s
 		}
 		e.WorkspaceID, e.CustomerID, e.SubscriptionID, e.ObjectID = sub.Metadata[workspaceMetadataKey], sub.Customer.ID, sub.ID, sub.ID
 		if event.Type == stripe.EventTypeCustomerSubscriptionDeleted {
-			e.Outcome, e.Reason = store.BillingOutcomeFailure, "subscription_canceled"
+			e.Outcome, e.Reason = store.BillingOutcomeFailure, store.BillingReasonSubscriptionCanceled
 		} else {
 			e.Outcome, e.Reason = subscriptionOutcome(sub.Status)
 		}
+		e.CollectionFailed = canceledByCollection(&sub)
 	default:
 		return e, fmt.Errorf("unsupported Stripe lifecycle event %s", event.Type)
 	}
@@ -169,6 +170,21 @@ func invoiceContract(invoice *stripe.Invoice) (workspaceID, subscriptionID strin
 	return workspaceID, subscriptionID, workspaceID != "" && subscriptionID != ""
 }
 
+// canceledByCollection reports whether Stripe itself ended the Subscription
+// after a failed payment or a dispute (cancellation_details.reason). A cancel
+// through the API or Dashboard ("cancellation_requested"), which is what bex's
+// abandoned-checkout reclaimer does, and an absent reason are not (w21/098).
+func canceledByCollection(sub *stripe.Subscription) bool {
+	if sub.CancellationDetails == nil {
+		return false
+	}
+	switch sub.CancellationDetails.Reason {
+	case stripe.SubscriptionCancellationDetailsReasonPaymentFailed, stripe.SubscriptionCancellationDetailsReasonPaymentDisputed:
+		return true
+	}
+	return false
+}
+
 func subscriptionOutcome(status stripe.SubscriptionStatus) (string, string) {
 	switch status {
 	case stripe.SubscriptionStatusActive, stripe.SubscriptionStatusTrialing:
@@ -180,7 +196,7 @@ func subscriptionOutcome(status stripe.SubscriptionStatus) (string, string) {
 	case stripe.SubscriptionStatusPaused:
 		return store.BillingOutcomeFailure, "subscription_paused"
 	case stripe.SubscriptionStatusCanceled:
-		return store.BillingOutcomeFailure, "subscription_canceled"
+		return store.BillingOutcomeFailure, store.BillingReasonSubscriptionCanceled
 	case stripe.SubscriptionStatusIncompleteExpired:
 		return store.BillingOutcomeFailure, "subscription_incomplete_expired"
 	default:

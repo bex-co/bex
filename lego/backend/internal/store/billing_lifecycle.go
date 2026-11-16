@@ -45,6 +45,10 @@ const (
 	// BillingReasonSubscriptionPastDue is a Subscription observed past_due;
 	// during a settle's anchor reset it is not a failure (MarkBillingSettling).
 	BillingReasonSubscriptionPastDue = "subscription_past_due"
+
+	// BillingReasonSubscriptionCanceled is a Subscription observed canceled
+	// (customer.subscription.deleted, or a poll that reads status canceled).
+	BillingReasonSubscriptionCanceled = "subscription_canceled"
 )
 
 // BillingProviderMapping is the durable relationship that lets a signed
@@ -96,6 +100,11 @@ type StripeBillingEvent struct {
 	ReceivedAt        time.Time
 	Outcome           string
 	Reason            string
+	// CollectionFailed is set on a canceled Subscription that Stripe itself
+	// ended after a failed payment or a dispute (cancellation_details.reason).
+	// It is not stored. Without it, a cancellation of a workspace that never
+	// bound a payment method is no failure (cancelsNeverBoundWorkspace).
+	CollectionFailed bool
 }
 
 type BillingEnforcement struct {
@@ -473,10 +482,25 @@ func markStripeBillingEventApplied(ctx context.Context, tx pgx.Tx, e StripeBilli
 	return err
 }
 
+// cancelsNeverBoundWorkspace reports a Subscription cancellation that is no
+// payment failure: the workspace never bound a payment method, so nothing was
+// ever collected from it, and Stripe did not attribute the cancellation to a
+// failed payment or a dispute. That is bex's own abandoned-checkout reclaimer
+// cancelling a cardless Subscription (the 11 workspaces w21/098 found put in
+// grace, enforced and mailed for it). Every other cancellation still enters
+// grace: a card-bound workspace's, and any one Stripe ends after failed
+// collection, whatever the workspace's marker says (a mapping from before
+// payment_method_bound_at existed has none). Stripe cancels after dunning only
+// after invoice.payment_failed and past_due events, which are not touched.
+func cancelsNeverBoundWorkspace(e StripeBillingEvent, bound bool) bool {
+	return e.Outcome == BillingOutcomeFailure && e.Reason == BillingReasonSubscriptionCanceled && !e.CollectionFailed && !bound
+}
+
 // stripeBillingEventGuards seeds and locks the lifecycle row, then applies the
 // no-transition guards. done reports that the locked state should be returned
 // unchanged: a replayed already-applied event, an excluded/comped tenant, or a
-// provider timestamp not newer than the applied source event (which is still
+// provider timestamp not newer than the applied source event, or the
+// cancellation of a workspace that never bound a payment method (both are still
 // stamped applied).
 func stripeBillingEventGuards(ctx context.Context, tx pgx.Tx, e StripeBillingEvent, inserted bool) (BillingLifecycle, bool, error) {
 	if _, err := tx.Exec(ctx, ensureBillingLifecycleSQL, e.WorkspaceID); err != nil {
@@ -497,14 +521,17 @@ func stripeBillingEventGuards(ctx context.Context, tx pgx.Tx, e StripeBillingEve
 			return state, true, nil
 		}
 	}
-	var excluded, comped bool
-	if err := tx.QueryRow(ctx, `SELECT billing_excluded,billing_comped FROM tenants WHERE id=$1`, e.WorkspaceID).Scan(&excluded, &comped); err != nil {
+	var excluded, comped, bound bool
+	if err := tx.QueryRow(ctx, `
+		SELECT t.billing_excluded, t.billing_comped, m.payment_method_bound_at IS NOT NULL
+		FROM tenants t LEFT JOIN billing_provider_mappings m ON m.workspace_id = t.id
+		WHERE t.id=$1`, e.WorkspaceID).Scan(&excluded, &comped, &bound); err != nil {
 		return BillingLifecycle{}, false, err
 	}
 	if excluded || comped || state.Status == BillingExcluded || state.Status == BillingComped {
 		return state, true, nil
 	}
-	if state.SourceEventAt != nil && !e.ProviderCreatedAt.After(*state.SourceEventAt) {
+	if (state.SourceEventAt != nil && !e.ProviderCreatedAt.After(*state.SourceEventAt)) || cancelsNeverBoundWorkspace(e, bound) {
 		if err := markStripeBillingEventApplied(ctx, tx, e); err != nil {
 			return BillingLifecycle{}, false, err
 		}

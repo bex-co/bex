@@ -1163,3 +1163,79 @@ func TestPGStoreSettlingMarkExcusesOnlyTheSettlesPastDue(t *testing.T) {
 		t.Fatalf("past_due after the mark = %+v err=%v, want grace", state, err)
 	}
 }
+
+// The reclaimer cancels a cardless workspace's Subscription itself, and the
+// resulting customer.subscription.deleted is no payment failure: 11 workspaces
+// that never owed anything were put in grace, enforced and mailed for it
+// (w21/098). A cancellation still enters grace when the workspace holds a card
+// (the marker is stamped by checkout.session.completed), and when Stripe
+// itself ended the Subscription after a failed collection, whatever the marker.
+func TestPGStoreSubscriptionCancellationOpensGraceOnlyForAPaymentFailure(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	base := time.Date(2026, 10, 3, 7, 2, 41, 0, time.UTC)
+	for _, tc := range []struct {
+		name             string
+		bound            bool
+		collectionFailed bool
+		reason           string
+		wantGrace        bool
+	}{
+		{name: "reclaimer cancels a cardless workspace", reason: BillingReasonSubscriptionCanceled},
+		{name: "a card-bound workspace's cancellation", bound: true, reason: BillingReasonSubscriptionCanceled, wantGrace: true},
+		{name: "Stripe cancels a cardless workspace after failed collection", collectionFailed: true, reason: BillingReasonSubscriptionCanceled, wantGrace: true},
+		{name: "Stripe cancels a card-bound workspace after failed collection", bound: true, collectionFailed: true, reason: BillingReasonSubscriptionCanceled, wantGrace: true},
+		{name: "a cardless workspace's other failures", reason: "subscription_unpaid", wantGrace: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tenant, err := s.CreateTenant(ctx, "cancel-"+time.Now().Format("150405.000000000"), "hobby")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := s.UpsertBillingProviderMapping(ctx, BillingProviderMapping{WorkspaceID: tenant.ID, CustomerID: "cus_" + tenant.ID, SubscriptionID: "sub_" + tenant.ID}); err != nil {
+				t.Fatal(err)
+			}
+			if tc.bound {
+				if err := s.SetPaymentMethodBound(ctx, tenant.ID, base.Add(-time.Hour)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			state, inserted, changed, err := s.RecordStripeBillingEvent(ctx, StripeBillingEvent{
+				EventID: "evt_cancel_" + tenant.ID, EventType: "customer.subscription.deleted", WorkspaceID: tenant.ID,
+				CustomerID: "cus_" + tenant.ID, SubscriptionID: "sub_" + tenant.ID, ObjectID: "sub_" + tenant.ID,
+				ProviderCreatedAt: base, ReceivedAt: base.Add(time.Second),
+				Outcome: BillingOutcomeFailure, Reason: tc.reason, CollectionFailed: tc.collectionFailed,
+			}, 7*24*time.Hour)
+			if err != nil || !inserted {
+				t.Fatalf("record = state %+v inserted=%v err=%v", state, inserted, err)
+			}
+			var notices, applied int
+			if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM billing_notifications WHERE workspace_id=$1`, tenant.ID).Scan(&notices); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM stripe_billing_events WHERE workspace_id=$1 AND applied_at IS NOT NULL`, tenant.ID).Scan(&applied); err != nil {
+				t.Fatal(err)
+			}
+			if applied != 1 {
+				t.Fatalf("the event is retained and stamped applied %d times, want 1", applied)
+			}
+			if tc.wantGrace {
+				if !changed || state.Status != BillingGrace || state.GraceDeadline == nil || !state.GraceDeadline.Equal(base.Add(7*24*time.Hour)) || notices != 1 {
+					t.Fatalf("a payment failure: state %+v changed=%v notices=%d, want grace with a notice", state, changed, notices)
+				}
+				return
+			}
+			if changed || state.Status != BillingHealthy || state.GraceDeadline != nil || state.TransitionVersion != 0 || state.SourceEventID != "" || notices != 0 {
+				t.Fatalf("a cancellation that is no failure: state %+v changed=%v notices=%d, want healthy, untouched, no notice", state, changed, notices)
+			}
+			// Replaying it (a second delivery, or a poll of the same state) stays a no-op.
+			if state, _, changed, err = s.RecordStripeBillingEvent(ctx, StripeBillingEvent{
+				EventID: "evt_cancel_" + tenant.ID, EventType: "customer.subscription.deleted", WorkspaceID: tenant.ID,
+				CustomerID: "cus_" + tenant.ID, SubscriptionID: "sub_" + tenant.ID, ObjectID: "sub_" + tenant.ID,
+				ProviderCreatedAt: base, ReceivedAt: base.Add(time.Second),
+				Outcome: BillingOutcomeFailure, Reason: tc.reason,
+			}, 7*24*time.Hour); err != nil || changed || state.Status != BillingHealthy {
+				t.Fatalf("replay = state %+v changed=%v err=%v", state, changed, err)
+			}
+		})
+	}
+}

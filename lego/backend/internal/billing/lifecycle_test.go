@@ -81,6 +81,37 @@ func TestLifecycleNormalizesTrustedInvoiceAndSubscriptionEvents(t *testing.T) {
 	}
 }
 
+// Stripe's own cancellation after a failed payment or a dispute is marked, so
+// the store never reads it as bex's reclaimer cancelling a cardless
+// Subscription (w21/098); a cancel through the API or Dashboard, or one with no
+// reason, is not. The `canceled` status of an updated event is read the same way.
+func TestLifecycleMarksCancellationsStripeEndedAfterFailedCollection(t *testing.T) {
+	capture := &lifecycleCapture{}
+	h := &Lifecycle{Store: capture, GracePeriod: time.Hour}
+	for _, tc := range []struct {
+		type_   stripe.EventType
+		details string
+		want    bool
+	}{
+		{stripe.EventTypeCustomerSubscriptionDeleted, `{"reason":"cancellation_requested"}`, false},
+		{stripe.EventTypeCustomerSubscriptionDeleted, `{"reason":"payment_failed"}`, true},
+		{stripe.EventTypeCustomerSubscriptionDeleted, `{"reason":"payment_disputed"}`, true},
+		{stripe.EventTypeCustomerSubscriptionDeleted, `null`, false},
+		{stripe.EventTypeCustomerSubscriptionUpdated, `{"reason":"cancellation_requested"}`, false},
+		{stripe.EventTypeCustomerSubscriptionUpdated, `{"reason":"payment_failed"}`, true},
+	} {
+		object := `{"id":"sub_1","object":"subscription","livemode":false,"customer":"cus_1","status":"canceled","cancellation_details":` + tc.details +
+			`,"metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}`
+		if err := h.HandleStripeEvent(context.Background(), lifecycleEvent("evt_"+string(tc.type_)+tc.details, tc.type_, object)); err != nil {
+			t.Fatalf("%s %s: %v", tc.type_, tc.details, err)
+		}
+		got := capture.events[len(capture.events)-1]
+		if got.Outcome != store.BillingOutcomeFailure || got.Reason != store.BillingReasonSubscriptionCanceled || got.CollectionFailed != tc.want {
+			t.Fatalf("%s %s = %+v, want a subscription_canceled failure with CollectionFailed=%v", tc.type_, tc.details, got, tc.want)
+		}
+	}
+}
+
 func TestLifecycleIgnoresForeignContractsAndRejectsModeMismatch(t *testing.T) {
 	capture := &lifecycleCapture{}
 	h := &Lifecycle{Store: capture, GracePeriod: time.Hour}
