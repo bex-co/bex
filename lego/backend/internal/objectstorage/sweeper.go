@@ -80,7 +80,8 @@ const (
 	// requests in flight to Wasabi: the sweep is a client of a vendor that
 	// publishes no limit for S3 requests and shares the account with the
 	// platform's backups (ADR112 D1), so it takes a few slots, not a burst. The
-	// production measurements behind 4 are in ADR112 D8.
+	// production measurements behind 4 are in ADR112 D8, and when to raise it in
+	// docs/runbooks/object-storage-sweep.md.
 	sweepWorkers = 4
 
 	// sweepLockName is the advisory lock that keeps the pass on one replica.

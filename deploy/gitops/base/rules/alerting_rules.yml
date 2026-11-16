@@ -1837,6 +1837,75 @@ groups:
           summary: "The object storage sweep read {{ $value | humanize }}B of listings in three days"
           description: "The hourly sweep's listings of Wasabi read over 1 GB in the last three days, a pace above the 10 GB a month it is budgeted (ADR112 D8). Wasabi counts what a listing reads as egress, and the account's free egress is its active storage (67 GB when measured on 2026-11-16), shared with the platform's backups. Find the workspaces on the Billing and metering dashboard (Object storage sweep: listing bytes) and in bex-api's logs (the pass line says what its listings read). The sweep already lists a region less often the more objects it held (at most every 72 hours); the next step is keeping object counts incrementally on writes so a listing is only a reconciliation, or a lower object cap, both named in ADR112 D8."
 
+      # w21/096: the sweep itself. Per-bucket usage, the quota gate, `bucket info`,
+      # the lifecycle rules, the purge of a deleted workspace and the storage meter
+      # all ride on a pass that finishes; w21/088 exports how long a pass takes and
+      # when the last one completed, and nothing read them. Both alerts below read
+      # how a pass ENDED, never what it did: since w21/095 a region is listed again
+      # only after a gap of an hour per 100 objects, so a healthy pass can sweep
+      # nothing ("3 fresh") and take a second. Runbook: docs/runbooks/object-storage-sweep.md
+      #
+      # ObjectStorageSweepStale: no pass has completed (reached every workspace
+      # without a failure; a cut-off pass and a pass with a failed workspace do
+      # not) for three hours, which is three missed hourly passes. Every replica
+      # runs a pass on its own hourly tick and the advisory lock only keeps two
+      # from overlapping, so the gauge of whichever replica ran last is the fleet's
+      # and max() reads it. The gauge is process-local and starts at 0, so a plain
+      # `time() - max(gauge)` would read the whole epoch right after every rollout
+      # and, if the first pass of a new pod failed, until its next one an hour
+      # later. The three-hour look-back is the grace for that: the newest value of
+      # any pod that reported inside the window, including a pod that is gone,
+      # stands, so a deploy alone cannot make a healthy sweep look stale and a
+      # sweep that does not recover after one still fires three hours after its
+      # last complete pass. `for: 30m` is what is left to ride out: the seconds a
+      # fleet with no history (a first deploy, Prometheus's data lost) needs for its
+      # first pass, and the scrape gap while both replicas are replaced, far
+      # shorter than a rollout takes to be Ready. A fleet that never completed a
+      # pass has gauges at 0, the whole epoch old, and fires after the same 30m.
+      #
+      # The absent branch is the case the gauge cannot speak for: a bex-api that
+      # exports object storage (the egress gauge, which the same `if` registers
+      # on every replica) but none of the sweep's series, which is how w21/088's
+      # first names, bex_object_storage_sweep_*, were exported by the pods and
+      # stored by nothing (the scrape job's keep-list dropped them). It is gated on
+      # the egress gauge so a fleet without a Wasabi credential, which registers
+      # neither, stays quiet.
+      - alert: ObjectStorageSweepStale
+        expr: |
+          (time() - max(max_over_time(bex_usage_object_storage_sweep_last_complete_timestamp_seconds[3h])) > 10800)
+            or
+          (absent(bex_usage_object_storage_sweep_last_complete_timestamp_seconds)
+            and on() count(bex_usage_object_storage_egress_month_bytes) > 0)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The object storage sweep has not completed a pass in over three hours"
+          description: "No bex-api replica has finished an hourly object storage sweep pass that reached every workspace without a failure in the last three hours, or none exports the sweep's series at all. Usage, the quota gate, bucket info, lifecycle rules, the purge of deleted workspaces and the shadow storage meter are stale for the workspaces it did not reach. Read the 'object storage sweep: pass over N workspaces took T' line in bex-api's logs first (failed and not reached say which half), or no such line on either replica when neither gets the advisory lock; the Billing and metering dashboard has the pass duration, workspaces by result and the age of the last complete pass. Runbook: docs/runbooks/object-storage-sweep.md"
+
+      # ObjectStorageSweepCutOff: the pass is bounded at 50 minutes (and by its
+      # hour) and returns 'pass cut off: n of m workspaces not reached'; the next
+      # pass starts with the workspaces it missed, so one cut-off is the sweep
+      # catching up and two inside three hours is a pool too small or a listing
+      # too slow for the workspaces it has. It warns before ObjectStorageSweepStale
+      # can (a cut-off pass never sets the gauge, so a sweep cut off every hour
+      # fires this about two hours in and that one at three). The count is
+      # increase() summed over replicas (the lock moves between them) of the pass
+      # histogram's count for result="cut_off"; every replica exports the series
+      # at 0 from its start (w21/096, SweepMetrics), so the first cut-off of a pod
+      # that took the lock over is counted. increase() extrapolates to the window's
+      # edges, so one event reads about 1.0 and two about 2.0: the threshold is
+      # 1.5, not 1, which a single cut-off would pass.
+      - alert: ObjectStorageSweepCutOff
+        expr: |
+          sum(increase(bex_usage_object_storage_sweep_pass_duration_seconds_count{result="cut_off"}[3h])) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The object storage sweep was cut off at its deadline more than once in three hours"
+          description: "The hourly sweep pass ran out of its 50 minutes at least twice in the last three hours, so the workspaces it did not reach keep their old usage until a later pass (which starts with them). Read the 'pass over N workspaces took T with 4 workers: ... d not reached' line in bex-api's logs for the count and the Billing and metering dashboard (Object storage sweep: pass duration by result) for how long passes take. A few large workspaces or slow listings are the usual cause; raising sweepWorkers (ADR112 D8) is the lever once the listings of Wasabi are confirmed healthy. Runbook: docs/runbooks/object-storage-sweep.md"
+
       - alert: BillingPermanentReject
         expr: |
           bex_billing_enabled == 1

@@ -7147,6 +7147,85 @@ dashboards:
                  "legendFormat": "{{region}}"
                 }
               ]
+            },
+            {
+             "id": 16,
+             "type": "timeseries",
+             "title": "Object storage sweep: pass duration by result",
+             "description": "Mean wall time of the hourly sweep's passes over the trailing 75 minutes, by how each ended (ADR112 D8): complete (every workspace reached, none failed), failures (every workspace reached, some failed) or cut_off (the deadline came first). The red line is the 50-minute limit a pass has; a cut_off line sits on it. Since w21/095 a region is listed again only after a gap of an hour per 100 objects, so a healthy pass over small regions takes a second or two and the line hugs zero. A gap in a line means no pass ended that way in the window. ObjectStorageSweepCutOff warns on two cut-offs in three hours; the runbook is docs/runbooks/object-storage-sweep.md.",
+             "gridPos": { "h": 9, "w": 8, "x": 8, "y": 63 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "s",
+                 "min": 0,
+                 "custom": { "spanGaps": true, "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 3000 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (result) (increase(bex_usage_object_storage_sweep_pass_duration_seconds_sum[75m])) / sum by (result) (increase(bex_usage_object_storage_sweep_pass_duration_seconds_count[75m]))",
+                 "legendFormat": "{{result}}"
+                }
+              ]
+            },
+            {
+             "id": 17,
+             "type": "timeseries",
+             "title": "Object storage sweep: workspaces by result",
+             "description": "Workspaces by what their turn in a pass came to, per hour, summed over both replicas (each runs a pass on its own hourly tick): swept (listed or purged), fresh (observed within its gap, so left alone: a pass that sweeps nothing is healthy), failed (its sweep returned an error; the bex-api log names it) and not_reached (the pass was cut off first; the next pass starts with them). A nonzero failed or not_reached means the pass did not complete, and ObjectStorageSweepStale fires when none has in three hours.",
+             "gridPos": { "h": 9, "w": 8, "x": 16, "y": 63 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "short", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (result) (increase(bex_usage_object_storage_sweep_workspaces_total[1h]))",
+                 "legendFormat": "{{result}}"
+                }
+              ]
+            },
+            {
+             "id": 18,
+             "type": "timeseries",
+             "title": "Object storage sweep: age of the last complete pass",
+             "description": "How long ago the newest pass that reached every workspace without a failure ended, across both replicas (the gauge restarts at 0 with a pod, so this reads the newest value any pod reported in the last three hours). An hourly sweep keeps it under an hour; the red line is ObjectStorageSweepStale's three hours. No line means no replica exports the sweep's series. Usage, the quota gate, lifecycle rules and the storage meter work from what a pass last wrote.",
+             "gridPos": { "h": 9, "w": 8, "x": 0, "y": 72 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "s",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 10800 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "time() - max(max_over_time(bex_usage_object_storage_sweep_last_complete_timestamp_seconds[3h]))",
+                 "legendFormat": "since the last complete pass"
+                }
+              ]
             }
           ]
         }

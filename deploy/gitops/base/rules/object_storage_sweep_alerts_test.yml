@@ -1,0 +1,301 @@
+# w21/096: the object storage sweep's own health (docs/ADR112-object-storage.md
+# D8, docs/runbooks/object-storage-sweep.md). ObjectStorageSweepStale reads the
+# time the last complete pass ended (a gauge: a Unix time, here the second of the
+# test's own clock, which starts at 0) and ObjectStorageSweepCutOff the count of
+# passes that ended at their deadline. Series are sampled every minute.
+#
+# The gauge is process-local: a new pod exports 0 until its own first complete
+# pass, so the tests that replace the pods feed the zero, and prove that the
+# three-hour look-back, not only the 30 minutes of `for`, is what keeps a rollout
+# from reading as the whole epoch. On a real clock a gauge of 0 is a Unix time of
+# 1970, 1.7e9 seconds old; the test's clock starts at 0, so the same age is a gauge
+# of -1.7e9 here. The counters start at 0 on every pod, as SweepMetrics exports
+# them, so a first cut-off is an increase.
+rule_files:
+- alerting_rules.yml
+evaluation_interval: 1m
+tests:
+# Each replica completes a pass on its own hourly tick, half an hour apart; the
+# fleet's last complete pass is never more than an hour old.
+- name: a sweep that completes a pass every hour on two replicas stays quiet
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-1"}
+    values: -1.7e9x29 1800x59 5400x59 9000x59 12600x59 16200x59 19800x59 23400x59 27000x29
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-2"}
+    values: -1.7e9x59 3600x59 7200x59 10800x59 14400x59 18000x59 21600x59 25200x59
+  alert_rule_test:
+  - eval_time: 2h
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 5h
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 7h50m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 7h50m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+# At 6:00 both pods are replaced. The new ones read 0 and their first pass does not
+# complete (Wasabi refusing the credential, say) until 10:00. The last complete
+# pass before the rollout ended at 5:30, so the alert must stay quiet until 8:30
+# (three hours), fire 30 minutes later, and not fire at once at 6:00 on the zeros:
+# the old pods' values stand for the three-hour look-back.
+- name: a rollout that zeroes the gauge does not look stale, a sweep that stays broken fires three hours after its last complete pass
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-1"}
+    values: -1.7e9x29 1800x59 5400x59 9000x59 12600x59 16200x59 19800x29 _x360
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-2"}
+    values: -1.7e9x59 3600x59 7200x59 10800x59 14400x59 18000x59 _x360
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-3"}
+    values: _x360 -1.7e9x239 36000x119
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-4"}
+    values: _x360 -1.7e9x359
+  alert_rule_test:
+  - eval_time: 6h10m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 7h30m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 8h40m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 9h10m
+    alertname: ObjectStorageSweepStale
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep has not completed a pass in over three hours"
+        description: "No bex-api replica has finished an hourly object storage sweep pass that reached every workspace without a failure in the last three hours, or none exports the sweep's series at all. Usage, the quota gate, bucket info, lifecycle rules, the purge of deleted workspaces and the shadow storage meter are stale for the workspaces it did not reach. Read the 'object storage sweep: pass over N workspaces took T' line in bex-api's logs first (failed and not reached say which half), or no such line on either replica when neither gets the advisory lock; the Billing and metering dashboard has the pass duration, workspaces by result and the age of the last complete pass. Runbook: docs/runbooks/object-storage-sweep.md"
+  - eval_time: 9h50m
+    alertname: ObjectStorageSweepStale
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep has not completed a pass in over three hours"
+        description: "No bex-api replica has finished an hourly object storage sweep pass that reached every workspace without a failure in the last three hours, or none exports the sweep's series at all. Usage, the quota gate, bucket info, lifecycle rules, the purge of deleted workspaces and the shadow storage meter are stale for the workspaces it did not reach. Read the 'object storage sweep: pass over N workspaces took T' line in bex-api's logs first (failed and not reached say which half), or no such line on either replica when neither gets the advisory lock; the Billing and metering dashboard has the pass duration, workspaces by result and the age of the last complete pass. Runbook: docs/runbooks/object-storage-sweep.md"
+  - eval_time: 10h40m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+# Nothing completes after 0:30 (the second replica never does): stale from 3:30,
+# firing 30 minutes later, resolved by the pass that completes at 6:00.
+- name: a sweep whose last complete pass is over three hours old fires after thirty minutes and recovers on the next complete pass
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-1"}
+    values: -1.7e9x29 1800x329 21600x59
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-2"}
+    values: -1.7e9x419
+  alert_rule_test:
+  - eval_time: 3h
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 3h20m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 3h45m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 4h10m
+    alertname: ObjectStorageSweepStale
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep has not completed a pass in over three hours"
+        description: "No bex-api replica has finished an hourly object storage sweep pass that reached every workspace without a failure in the last three hours, or none exports the sweep's series at all. Usage, the quota gate, bucket info, lifecycle rules, the purge of deleted workspaces and the shadow storage meter are stale for the workspaces it did not reach. Read the 'object storage sweep: pass over N workspaces took T' line in bex-api's logs first (failed and not reached say which half), or no such line on either replica when neither gets the advisory lock; the Billing and metering dashboard has the pass duration, workspaces by result and the age of the last complete pass. Runbook: docs/runbooks/object-storage-sweep.md"
+  - eval_time: 5h50m
+    alertname: ObjectStorageSweepStale
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep has not completed a pass in over three hours"
+        description: "No bex-api replica has finished an hourly object storage sweep pass that reached every workspace without a failure in the last three hours, or none exports the sweep's series at all. Usage, the quota gate, bucket info, lifecycle rules, the purge of deleted workspaces and the shadow storage meter are stale for the workspaces it did not reach. Read the 'object storage sweep: pass over N workspaces took T' line in bex-api's logs first (failed and not reached say which half), or no such line on either replica when neither gets the advisory lock; the Billing and metering dashboard has the pass duration, workspaces by result and the age of the last complete pass. Runbook: docs/runbooks/object-storage-sweep.md"
+  - eval_time: 6h10m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+# Every pod exports 0 and no pass ever completes.
+- name: a fleet that never completed a pass fires after thirty minutes
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-1"}
+    values: -1.7e9x359
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-2"}
+    values: -1.7e9x359
+  alert_rule_test:
+  - eval_time: 20m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 40m
+    alertname: ObjectStorageSweepStale
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep has not completed a pass in over three hours"
+        description: "No bex-api replica has finished an hourly object storage sweep pass that reached every workspace without a failure in the last three hours, or none exports the sweep's series at all. Usage, the quota gate, bucket info, lifecycle rules, the purge of deleted workspaces and the shadow storage meter are stale for the workspaces it did not reach. Read the 'object storage sweep: pass over N workspaces took T' line in bex-api's logs first (failed and not reached say which half), or no such line on either replica when neither gets the advisory lock; the Billing and metering dashboard has the pass duration, workspaces by result and the age of the last complete pass. Runbook: docs/runbooks/object-storage-sweep.md"
+  - eval_time: 5h
+    alertname: ObjectStorageSweepStale
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep has not completed a pass in over three hours"
+        description: "No bex-api replica has finished an hourly object storage sweep pass that reached every workspace without a failure in the last three hours, or none exports the sweep's series at all. Usage, the quota gate, bucket info, lifecycle rules, the purge of deleted workspaces and the shadow storage meter are stale for the workspaces it did not reach. Read the 'object storage sweep: pass over N workspaces took T' line in bex-api's logs first (failed and not reached say which half), or no such line on either replica when neither gets the advisory lock; the Billing and metering dashboard has the pass duration, workspaces by result and the age of the last complete pass. Runbook: docs/runbooks/object-storage-sweep.md"
+- name: a fresh fleet whose first pass completes within minutes stays quiet
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-1"}
+    values: -1.7e9x2 180x59 3780x59 7380x59 10980x59 14580x59 18180x56
+  - series: bex_usage_object_storage_sweep_last_complete_timestamp_seconds{job="bex-api",instance="api-2"}
+    values: -1.7e9x359
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 40m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 5h50m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+# The absent branch: object storage is on (the egress gauge, which the same
+# registration exports) but the sweep's series are not scraped or not stored.
+- name: a bex-api that exports the egress gauge and none of the sweep's series fires after thirty minutes
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_egress_month_bytes{job="bex-api",instance="api-1"}
+    values: 0x119
+  - series: bex_usage_object_storage_egress_month_bytes{job="bex-api",instance="api-2"}
+    values: 0x119
+  alert_rule_test:
+  - eval_time: 20m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 40m
+    alertname: ObjectStorageSweepStale
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep has not completed a pass in over three hours"
+        description: "No bex-api replica has finished an hourly object storage sweep pass that reached every workspace without a failure in the last three hours, or none exports the sweep's series at all. Usage, the quota gate, bucket info, lifecycle rules, the purge of deleted workspaces and the shadow storage meter are stale for the workspaces it did not reach. Read the 'object storage sweep: pass over N workspaces took T' line in bex-api's logs first (failed and not reached say which half), or no such line on either replica when neither gets the advisory lock; the Billing and metering dashboard has the pass duration, workspaces by result and the age of the last complete pass. Runbook: docs/runbooks/object-storage-sweep.md"
+  - eval_time: 1h50m
+    alertname: ObjectStorageSweepStale
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep has not completed a pass in over three hours"
+        description: "No bex-api replica has finished an hourly object storage sweep pass that reached every workspace without a failure in the last three hours, or none exports the sweep's series at all. Usage, the quota gate, bucket info, lifecycle rules, the purge of deleted workspaces and the shadow storage meter are stale for the workspaces it did not reach. Read the 'object storage sweep: pass over N workspaces took T' line in bex-api's logs first (failed and not reached say which half), or no such line on either replica when neither gets the advisory lock; the Billing and metering dashboard has the pass duration, workspaces by result and the age of the last complete pass. Runbook: docs/runbooks/object-storage-sweep.md"
+- name: a fleet with no object storage (neither the egress gauge nor the sweep's series) stays quiet
+  interval: 1m
+  input_series:
+  - series: up{job="bex-api",instance="api-1"}
+    values: 1x119
+  - series: bex_billing_enabled{job="bex-api",instance="api-1"}
+    values: 1x119
+  alert_rule_test:
+  - eval_time: 40m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+  - eval_time: 1h50m
+    alertname: ObjectStorageSweepStale
+    exp_alerts: []
+# Passes are cut off at 1:00 and 2:00 on a replica that exports the series at 0 from
+# its start. One cut-off is increase() of about 1, two are about 2: the threshold is
+# 1.5, and the alert waits 10 minutes.
+- name: two cut-off passes in three hours warn, and the alert clears once they are three hours old
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_sweep_pass_duration_seconds_count{job="bex-api",instance="api-1",result="cut_off"}
+    values: 0x59 1x59 2x359
+  - series: bex_usage_object_storage_sweep_pass_duration_seconds_count{job="bex-api",instance="api-1",result="complete"}
+    values: 0x29 1x59 2x59 3x59 4x59 5x59 6x59 7x59 8x29
+  alert_rule_test:
+  - eval_time: 1h20m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+  - eval_time: 2h5m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+  - eval_time: 2h20m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep was cut off at its deadline more than once in three hours"
+        description: "The hourly sweep pass ran out of its 50 minutes at least twice in the last three hours, so the workspaces it did not reach keep their old usage until a later pass (which starts with them). Read the 'pass over N workspaces took T with 4 workers: ... d not reached' line in bex-api's logs for the count and the Billing and metering dashboard (Object storage sweep: pass duration by result) for how long passes take. A few large workspaces or slow listings are the usual cause; raising sweepWorkers (ADR112 D8) is the lever once the listings of Wasabi are confirmed healthy. Runbook: docs/runbooks/object-storage-sweep.md"
+  - eval_time: 3h50m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep was cut off at its deadline more than once in three hours"
+        description: "The hourly sweep pass ran out of its 50 minutes at least twice in the last three hours, so the workspaces it did not reach keep their old usage until a later pass (which starts with them). Read the 'pass over N workspaces took T with 4 workers: ... d not reached' line in bex-api's logs for the count and the Billing and metering dashboard (Object storage sweep: pass duration by result) for how long passes take. A few large workspaces or slow listings are the usual cause; raising sweepWorkers (ADR112 D8) is the lever once the listings of Wasabi are confirmed healthy. Runbook: docs/runbooks/object-storage-sweep.md"
+  - eval_time: 4h30m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+  - eval_time: 6h
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+- name: one cut-off pass, or two more than three hours apart, stays quiet
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_sweep_pass_duration_seconds_count{job="bex-api",instance="api-1",result="cut_off"}
+    values: 0x59 1x239 2x59
+  - series: bex_usage_object_storage_sweep_pass_duration_seconds_count{job="bex-api",instance="api-2",result="cut_off"}
+    values: 0x359
+  alert_rule_test:
+  - eval_time: 1h30m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+  - eval_time: 3h
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+  - eval_time: 5h30m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+- name: cut-offs on two replicas, as the lock moves between them, are summed
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_sweep_pass_duration_seconds_count{job="bex-api",instance="api-1",result="cut_off"}
+    values: 0x59 1x299
+  - series: bex_usage_object_storage_sweep_pass_duration_seconds_count{job="bex-api",instance="api-2",result="cut_off"}
+    values: 0x119 1x239
+  alert_rule_test:
+  - eval_time: 1h30m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+  - eval_time: 2h30m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The object storage sweep was cut off at its deadline more than once in three hours"
+        description: "The hourly sweep pass ran out of its 50 minutes at least twice in the last three hours, so the workspaces it did not reach keep their old usage until a later pass (which starts with them). Read the 'pass over N workspaces took T with 4 workers: ... d not reached' line in bex-api's logs for the count and the Billing and metering dashboard (Object storage sweep: pass duration by result) for how long passes take. A few large workspaces or slow listings are the usual cause; raising sweepWorkers (ADR112 D8) is the lever once the listings of Wasabi are confirmed healthy. Runbook: docs/runbooks/object-storage-sweep.md"
+- name: failures and complete passes never count as cut off
+  interval: 1m
+  input_series:
+  - series: bex_usage_object_storage_sweep_pass_duration_seconds_count{job="bex-api",instance="api-1",result="cut_off"}
+    values: 0x359
+  - series: bex_usage_object_storage_sweep_pass_duration_seconds_count{job="bex-api",instance="api-1",result="failures"}
+    values: 0x59 1x59 2x59 3x59 4x59 5x59
+  - series: bex_usage_object_storage_sweep_pass_duration_seconds_count{job="bex-api",instance="api-1",result="complete"}
+    values: 0x29 1x59 2x59 3x59 4x59 5x89
+  alert_rule_test:
+  - eval_time: 3h
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
+  - eval_time: 5h30m
+    alertname: ObjectStorageSweepCutOff
+    exp_alerts: []
