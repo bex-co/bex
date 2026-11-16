@@ -10,6 +10,7 @@ import {
 import { Checkbox } from "@/common/components/ui/checkbox";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { regionLabel } from "@/common/lib/region-label";
 import { RelativeAge } from "@/common/components/relative-time";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
@@ -218,7 +219,9 @@ function ResourceTableRow({
             )}
           </TableCell>
           <TableCell className="hidden text-muted-foreground lg:table-cell">
-            {row.region ?? (
+            {row.region !== null ? (
+              regionLabel(row.region, t)
+            ) : (
               <UnknownValue notApplicable={row.kind === "envgroup"} />
             )}
           </TableCell>

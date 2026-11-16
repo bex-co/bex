@@ -405,6 +405,10 @@ const SAME_AS_EN = new Set<string>([
   "services.settingsHealthChecksTitle",
   "projects.filterKeyValues",
   "webhooks.idLabel",
+  // US region names German writes exactly as English does (w4/693).
+  "common.regionOhio",
+  "common.regionOregon",
+  "common.regionVirginia",
   // Example commands in input placeholders.
   "agentEnvironment.repoEnvs.setupRunPlaceholder",
   "agentEnvironment.repoEnvs.checkRunPlaceholder",

@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import i18n from "@/i18n/init";
+import i18n, { ensureLanguage } from "@/i18n/init";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 // The card reaches Apollo only through the instance-type catalog; the name row
@@ -181,5 +181,32 @@ describe("DatabaseMetadataCard", () => {
     renderCard(db());
 
     expect(screen.getByText("Available")).toBeInTheDocument();
+  });
+
+  // w4/693: the region is Render's slug on the API; the card names the place,
+  // in the dashboard language, and an unknown slug renders verbatim.
+  describe("region", () => {
+    afterEach(async () => {
+      await i18n.changeLanguage("en");
+    });
+
+    it("names a Render region in English", () => {
+      renderCard(db({ region: "frankfurt" }));
+      expect(screen.getByText("Frankfurt, Germany")).toBeInTheDocument();
+      expect(screen.queryByText("frankfurt")).not.toBeInTheDocument();
+    });
+
+    it("names a Render region in Japanese", async () => {
+      await ensureLanguage("ja");
+      await i18n.changeLanguage("ja");
+      renderCard(db({ region: "frankfurt" }));
+      expect(screen.getByText("フランクフルト（ドイツ）")).toBeInTheDocument();
+      expect(screen.queryByText("frankfurt")).not.toBeInTheDocument();
+    });
+
+    it("shows a region it does not know verbatim", () => {
+      renderCard(db({ region: "fsn1" }));
+      expect(screen.getByText("fsn1")).toBeInTheDocument();
+    });
   });
 });

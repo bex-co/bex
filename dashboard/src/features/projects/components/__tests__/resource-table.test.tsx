@@ -6,6 +6,7 @@ import { ResourceTable } from "../resource-table";
 import type { ResourceRow } from "../../types";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { translator } from "@/test/translator";
+import i18n, { ensureLanguage } from "@/i18n/init";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => (
@@ -203,5 +204,34 @@ describe("ResourceTable", () => {
     expect(screen.getByLabelText("selection")).toHaveTextContent(
       "database:dpg-main,service:srv-api",
     );
+  });
+
+  // w4/693: the Region column names the place in the dashboard language; the
+  // fixture's other rows keep an unknown slug, which renders verbatim.
+  it("names a Render region in the dashboard language", async () => {
+    const frankfurt: ResourceRow[] = [{ ...rows[0], region: "frankfurt" }];
+    const { unmount } = render(
+      <ResourceTable rows={frankfurt} projectMetadata {...commonProps} />,
+    );
+    expect(screen.getByText("Frankfurt, Germany")).toBeInTheDocument();
+    expect(screen.queryByText("frankfurt")).not.toBeInTheDocument();
+    unmount();
+
+    await ensureLanguage("ja");
+
+    await i18n.changeLanguage("ja");
+    try {
+      render(
+        <ResourceTable rows={frankfurt} projectMetadata {...commonProps} />,
+      );
+      expect(screen.getByText("フランクフルト（ドイツ）")).toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+  });
+
+  it("shows a region it does not know verbatim", () => {
+    render(<ResourceTable rows={rows} projectMetadata {...commonProps} />);
+    expect(screen.getAllByText("fsn1").length).toBeGreaterThan(0);
   });
 });

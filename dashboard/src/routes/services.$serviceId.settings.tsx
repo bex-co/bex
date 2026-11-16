@@ -10,6 +10,7 @@ import {
 } from "@/common/components/ui/card";
 import { FieldRowsSkeleton } from "@/common/components/detail-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { regionLabel } from "@/common/lib/region-label";
 import { useServer } from "@/features/services/hooks/use-server";
 import { InstanceTypeRow } from "@/features/services/components/instance-type-row";
 import { IdleTimeoutRow } from "@/features/services/components/idle-timeout-row";
@@ -142,7 +143,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                     <EditableFieldRow
                       label={t("services.regionLabel")}
                       hint={t("services.regionHint")}
-                      value={service.region}
+                      value={regionLabel(service.region, t)}
                       editLabel={t("services.regionLabel")}
                       disabled
                       onSave={async () => false}

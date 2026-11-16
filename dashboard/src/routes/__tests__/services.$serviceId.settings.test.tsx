@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import i18n, { ensureLanguage } from "@/i18n/init";
 import {
   RouterProvider,
   createRouter,
@@ -28,9 +29,8 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions("app");
 });
 
@@ -1057,6 +1057,28 @@ describe("ServiceSettingsPage", () => {
     const region = screen.getByRole("textbox", { name: "Region" });
     expect(region).toHaveValue("fsn1");
     expect(region).toBeDisabled();
+  });
+
+  // w4/693: Render's slug names the place, in the dashboard language.
+  it("names a Render region in English and Japanese", async () => {
+    serverState.service = svc({ region: "frankfurt" });
+    const { unmount } = renderSettings();
+    expect(await screen.findByRole("textbox", { name: "Region" })).toHaveValue(
+      "Frankfurt, Germany",
+    );
+    unmount();
+
+    await ensureLanguage("ja");
+
+    await i18n.changeLanguage("ja");
+    try {
+      renderSettings();
+      expect(
+        await screen.findByRole("textbox", { name: "リージョン" }),
+      ).toHaveValue("フランクフルト（ドイツ）");
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   it("hides the Region row when no region is configured", async () => {

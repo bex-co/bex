@@ -581,6 +581,31 @@ const esCommon: Record<string, TranslationEntry> = {
     message: "Pagar factura",
     description: "Link to Stripe's hosted invoice page, opens in a new tab",
   },
+  "common.regionFrankfurt": {
+    message: "Fráncfort, Alemania",
+    description:
+      "Display name of Render's `frankfurt` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionOhio": {
+    message: "Ohio, EE. UU.",
+    description:
+      "Display name of Render's `ohio` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionOregon": {
+    message: "Oregón, EE. UU.",
+    description:
+      "Display name of Render's `oregon` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionSingapore": {
+    message: "Singapur",
+    description:
+      "Display name of Render's `singapore` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionVirginia": {
+    message: "Virginia, EE. UU.",
+    description:
+      "Display name of Render's `virginia` region, shown where a resource's region is read (w4/693)",
+  },
 };
 
 export default esCommon;

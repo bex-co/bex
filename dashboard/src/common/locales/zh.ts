@@ -546,6 +546,31 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "支付账单",
     description: "Link to Stripe's hosted invoice page, opens in a new tab",
   },
+  "common.regionFrankfurt": {
+    message: "法兰克福（德国）",
+    description:
+      "Display name of Render's `frankfurt` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionOhio": {
+    message: "俄亥俄州（美国）",
+    description:
+      "Display name of Render's `ohio` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionOregon": {
+    message: "俄勒冈州（美国）",
+    description:
+      "Display name of Render's `oregon` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionSingapore": {
+    message: "新加坡",
+    description:
+      "Display name of Render's `singapore` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionVirginia": {
+    message: "弗吉尼亚州（美国）",
+    description:
+      "Display name of Render's `virginia` region, shown where a resource's region is read (w4/693)",
+  },
 };
 
 export default zhCommon;

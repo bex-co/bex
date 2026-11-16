@@ -1,5 +1,6 @@
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MetadataList } from "@/common/components/metadata-list";
+import { regionLabel } from "@/common/lib/region-label";
 import { StatusWithReason } from "@/common/components/status-with-reason";
 import { RelativeAge } from "@/common/components/relative-time";
 import { KeyValueNameRow } from "@/features/keyvalue/components/key-value-name-row";
@@ -84,7 +85,7 @@ export function KeyValueMetadataCard({
           ? [
               {
                 label: t("keyvalue.metaRegion"),
-                value: keyValue.region,
+                value: regionLabel(keyValue.region, t),
               },
             ]
           : []),

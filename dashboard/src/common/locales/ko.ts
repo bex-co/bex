@@ -555,6 +555,31 @@ const koCommon: Record<string, TranslationEntry> = {
     message: "청구서 결제",
     description: "Link to Stripe's hosted invoice page, opens in a new tab",
   },
+  "common.regionFrankfurt": {
+    message: "프랑크푸르트, 독일",
+    description:
+      "Display name of Render's `frankfurt` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionOhio": {
+    message: "오하이오, 미국",
+    description:
+      "Display name of Render's `ohio` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionOregon": {
+    message: "오리건, 미국",
+    description:
+      "Display name of Render's `oregon` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionSingapore": {
+    message: "싱가포르",
+    description:
+      "Display name of Render's `singapore` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionVirginia": {
+    message: "버지니아, 미국",
+    description:
+      "Display name of Render's `virginia` region, shown where a resource's region is read (w4/693)",
+  },
 };
 
 export default koCommon;

@@ -593,6 +593,31 @@ const ruCommon: Record<string, TranslationEntry> = {
     message: "Оплатить счёт",
     description: "Link to Stripe's hosted invoice page, opens in a new tab",
   },
+  "common.regionFrankfurt": {
+    message: "Франкфурт, Германия",
+    description:
+      "Display name of Render's `frankfurt` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionOhio": {
+    message: "Огайо, США",
+    description:
+      "Display name of Render's `ohio` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionOregon": {
+    message: "Орегон, США",
+    description:
+      "Display name of Render's `oregon` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionSingapore": {
+    message: "Сингапур",
+    description:
+      "Display name of Render's `singapore` region, shown where a resource's region is read (w4/693)",
+  },
+  "common.regionVirginia": {
+    message: "Вирджиния, США",
+    description:
+      "Display name of Render's `virginia` region, shown where a resource's region is read (w4/693)",
+  },
 };
 
 export default ruCommon;

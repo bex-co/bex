@@ -1,5 +1,6 @@
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MetadataList } from "@/common/components/metadata-list";
+import { regionLabel } from "@/common/lib/region-label";
 import { StatusWithReason } from "@/common/components/status-with-reason";
 import { RelativeAge } from "@/common/components/relative-time";
 import { DatabaseExpiryValue } from "@/features/databases/components/database-expiry";
@@ -115,7 +116,7 @@ export function DatabaseMetadataCard({
           ? [
               {
                 label: t("databases.metaRegion"),
-                value: database.region,
+                value: regionLabel(database.region, t),
               },
             ]
           : []),
