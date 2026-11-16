@@ -32,7 +32,7 @@ Poll `GET /v1/services/{id}/instances` and `GET /v1/services/{id}/deploys?limit=
 - **Source:** live `/qa-find-bugs w4` loop, round 209, 2026-11-12 16:39–16:53 UTC (`muse.env`, workspace `bex-canary`; pin `ca7fbbe606c8`). It was found during the scaling journey and confirmed with a side-by-side control. The probes are under § Finding.
 - **Governing docs:**
   - [w2/078](../../w2/done/078.md) (done, 2026-11-09) made a first deploy roll once by forcing the HTTP probe only while an earlier release serves (`webImageHTTPSelectionGuardsServing`). Its dev-2 repro used `traefik/whoami` on its declared port 80, so the listener matched the declared port.
-  - [w4/m320](../blocked/m320/README.md) (blocked) covers a later deploy over a serving release.
+  - [w4/m320](../../done/m320/README.md) (done) covers a later deploy over a serving release.
   - w8/m141 covers web-image HTTP port discovery.
 - **Goal linkage:** Render parity for the first deploy of a prebuilt image (ADR018 "Create service"; Render documents a scan for the port a service binds to). This is also the zero-downtime deploy story's first step.
 - **Expected outcome:**
@@ -96,7 +96,7 @@ While a first release's HTTP port is being discovered, the pod template carries 
 ### Dedupe
 
 - [w2/078](../../w2/done/078.md) (done) fixed the first-deploy second roll for a listener on the declared port only. This is the case it didn't cover, not a regression of what it verified.
-- [w4/m320](../blocked/m320/README.md) (blocked) is about a deploy over a serving release.
+- [w4/m320](../../done/m320/README.md) (done) is about a deploy over a serving release.
 - [w4/m323](../blocked/m323/README.md) (blocked) is private services pinned to 10000.
 - `grep -rlE "rolls? (a second|two) ReplicaSet|second ReplicaSet|rolls twice|rolled twice|two ReplicaSets" .pm` finds only those three, w5/m149, w6/m104 and w1/m52, none open for a first deploy.
 - Not deploy lag: `git log ca7fbbe606c8..origin/main -- lego/operator/internal/controller/web_image_http.go lego/operator/internal/controller/deployment_projection.go lego/operator/internal/controller/image_network.go` is empty.

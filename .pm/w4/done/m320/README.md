@@ -1,6 +1,6 @@
 # w4 · m320 — An image web service's deploy takes no traffic until it is the live release: HTTP port discovery doesn't put the candidate in front of users, an image change rolls once, and a canceled deploy never answered
 
-**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** blocked. t001–t005, t007–t009 and t011–t013 are done. On 2026-11-16 the release gate cleared (production deploy on `06cc3b02c`) and the live DoD replay ran. t012 holds live. t013 (one instance per image change) is shipped and waits for the next production deploy. Then t006 re-runs its two open bullets and t010 closes.
+**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** done. All thirteen tasks are done. The release gate for t013 cleared on 2026-11-16 (production pin `14af7282d9ac`, then `971a79648213`, both containing `c18fbeac1`), and t006's two open bullets held live that day.
 
 ## Tasks (in order)
 
@@ -11,14 +11,14 @@
 | [t003](done/t003.md) | Cancel before promotion keeps the serving pods, and the canceled candidate never answered — **DONE** | 30m | t001, t002 |
 | [t004](done/t004.md) | A deploy whose release already holds all traffic reads `live` in the same pass — **DONE** | 40m | t001 |
 | [t005](done/t005.md) | Blast radius: every rollout kind through the Service selector and the discovery hold — **DONE** | 40m | t002, t003, t004 |
-| [t006](t006.md) | Live verification on an owned image web service | 30m | t005, t012, t013 |
+| [t006](done/t006.md) | Live verification on an owned image web service — **DONE** | 30m | t005, t012, t013 |
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
 | [t011](done/t011.md) | Regression of w8/m122: every image change on an image web service goes live without `image.sha`, because the row closes `live` before the operator records the digest — **DONE** | 40m | t004 |
 | [t012](done/t012.md) | Regression of w4/405: a second deploy that arrives after an image release already holds all traffic, but before its row reads `live`, closes that release `canceled`. This includes a first deploy, which leaves the service with no live row. After an image change it also puts an older release back and drops requests — **DONE** | 75m | t004 |
 | [t013](done/t013.md) | One instance per image change: a release over a serving one checks any open port while it discovers its port, so discovery never rolls a second ReplicaSet — **DONE** | 45m | t005 |
-| [t010](t010.md) | Closeout | 10m | t008, t009, t011, t012, t013 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t008, t009, t011, t012, t013 |
 
 Thirteen tasks, 480m (8h). t012 was added in round 156 and widened in round 157; t013 was added in the 2026-11-16 replay. **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
 
@@ -259,3 +259,15 @@ Pin `e7a56b07e0d7` contains `f24e6e7f7`.
 - **Remaining gate (clears by itself):**
   - A production deploy whose pin contains t013's commit, `fix(operator): an image change over a serving web service starts one new instance (w4/m320 t013)`. Check with `git merge-base --is-ancestor <that sha> <deploy commit>`.
   - Then a worker re-runs t006's "One instance per change" and git-built "No early traffic" bullets (Run A plus the hello-go rebuild, counting instances via `GET /v1/logs`) and closes t010 if both hold. No user action.
+
+## Unblock record and closing replay, 2026-11-16 06:36–06:55 UTC (`/loopx w4`)
+
+- **Affected:** m320 t006, t010.
+- **Source:** verified evidence. The gate named on the board held: `chore(deploy): pin platform images to 14af7282d9ac` (`a518fa61f`, live per QA round 486) and the later `971a79648213` (`c307732cd`, live per QA round 490) both contain t013's `c18fbeac1` (`git merge-base --is-ancestor`). The milestone was unblocked on that finding, and t006's two open bullets were re-run on production as the QA user (`scripts/qa-login.sh`; this run's session revoked afterwards).
+- **Fixtures** in `bex-canary`, both deleted (DELETE 204, GET 404): `qa-20261116-m320b-ngx` (`srv-dbta90s22v0c7382u670`, Free, `nginx:1.27-alpine`, no port) and `qa-20261116-m320b-go` (`srv-dbtabadhm8qs73bgl4dg`, Free, `bex-co/bex` `examples/hello-go`, Docker, no `PORT`).
+- **One instance per change: holds.** Two `imageUrl` changes on nginx (`dep-dbta9k422v0c7382u69g` to `1.26-alpine`, `dep-dbtabcthm8qs73bgl4g0` back to `1.27-alpine`) and two git-built rebuilds each started exactly one new instance (`…-loca0ama6rlfalfbl7lb`, `…-peddi4ch8d3fhg85b6eo`, `…-ak51ipvdo447hsgks935`, `…-qaenp5olo680cgc9ebo4`). `GET /v1/logs` for each window names only the serving and the one new instance, and `GET …/instances` (every 3 s) never listed a third. The deploy log keeps "==> Detected HTTP on port 80; serving it" on each nginx deploy.
+- **No early traffic: holds within the projection delay.** Every poll answered `200`, with one switch and no alternation in all four deploys:
+  - nginx: switch at 06:39:24.53, `finishedAt` 06:39:25.29 (0.8 s); switch at 06:42:44.47, `finishedAt` 06:42:45.53 (1.1 s). Within one poll, as on 2026-11-16 02:07.
+  - git-built (`PUT …/env-vars/MESSAGE` + `POST …/deploys {"clearCache":"clear"}`): `m320b-two` first at 06:50:06.89, `finishedAt` 06:50:09.05 (2.2 s); `m320b-three` first at 06:54:44.63, `finishedAt` 06:54:48.29 (3.7 s). Round 123 measured 34 s, and the 02:43 replay 4 s.
+- **Closed with a residual filed separately.** The release now moves traffic once, to one instance, and the operator records it promptly. What is left on the git-built path is the 2–4 s between that switch and the row reading `live`, inside w5/m369's 10 s verdict bound. It is plausibly the control plane's watch-kick spacing (`minWatchPassGap` and `3 × lastPass`, `lego/backend/internal/store/reconciler.go:490-514`), but the cause is not traced. The stricter "the row reads `live` before the new body answers" is filed as [w4/682](../../682.md) rather than holding this milestone, whose traffic and instance mechanism is done.
+- **Checks:** the operator suite and lint ran with t013 (`c18fbeac1`); this closing replay changed no code.
