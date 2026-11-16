@@ -1,6 +1,6 @@
 # .pm/AGENTS.md
 
-Internal PM board — see [README.md](README.md). `/pm` is the only skill that writes here; its conventions live in [.claude/skills/pm/SKILL.md](../.claude/skills/pm/SKILL.md).
+Internal PM board — see [README.md](README.md). `/pm` files and schedules work here, and `/loopx` workers land each item's outcome (done, `blocked/`, delete); no other skill writes here. The conventions live in [.claude/skills/pm/SKILL.md](../.claude/skills/pm/SKILL.md).
 
 ## Evidence lives outside git
 

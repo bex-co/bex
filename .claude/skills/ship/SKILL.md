@@ -4,7 +4,7 @@ description: >-
   Safely bring main up to date, commit intended pending changes, and push to origin/main — resolving any rebase conflicts autonomously and stopping only when a decision genuinely needs a human. Use when the user explicitly asks to ship the current main branch or invokes the repository's ship workflow.
 
 
-allowed-tools: Bash(git status:*), Bash(git pull:*), Bash(git fetch:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git rebase:*), Bash(git show:*), Bash(git checkout:*), Bash(git reset:*), Bash(bash scripts/ship-gates.sh:*), Read, Edit, Grep, Glob
+allowed-tools: Bash(git status:*), Bash(git pull:*), Bash(git fetch:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git rebase:*), Bash(git show:*), Bash(git checkout:*), Bash(git reset:*), Bash(bash scripts/ship-gates.sh:*), Bash(gh run view:*), Bash(gh run rerun:*), Read, Edit, Grep, Glob
 ---
 
 # Task: Ship the current main branch

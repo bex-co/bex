@@ -172,7 +172,7 @@ Do this for every finding, and record the outcome in its record:
 
 ## Phase 6 — Hand over to `/pm` (target `<wN>`, default `w6`)
 
-`/pm` is the **only** skill that writes to `.pm/`. Invoke it; do not hand-edit the board.
+File through `/pm`: invoke it, and do not hand-edit the board.
 
 - **> ~1h across more than one task** → `/pm new milestone <wN> <title>`. Supply: the title, one task per bug with estimate and `depends_on`, a Definition of done written as observable live-verifiable states (one bullet per bug, in the shape `w9/m92`'s DoD uses), and Source + Goal linkage naming this hunt's date, evidence paths, the ADR the surface belongs to, expected outcome, why now, and whether the Render-parity closing task applies (it does whenever a REST/GraphQL/MCP/UI surface changes).
 - **≤ ~1h** → `/pm add <wN> <note>` as an inbox note. Do not inflate small findings into a milestone.
@@ -184,7 +184,7 @@ Do this for every finding, and record the outcome in its record:
 
 ## Phase 7 — `/ship` the scheduled milestone
 
-Invoke `/ship` so the newly scheduled work lands on `main` and is visible to whoever picks it up.
+Invoke `/ship` so the newly scheduled work lands on `main` and is visible to whoever picks it up. Invoking `/qa-find-bugs` is the user's explicit request to ship this filing, and only this filing (`AGENTS.md` Rules).
 
 - Scope the commit to the `.pm/` files this run created. Anything that was already dirty in Phase 0 stays out — surface it to the user instead of sweeping it in.
 - `.playwright-mcp/` is gitignored: evidence stays local and is referenced by path from the milestone, exactly as `w9/m89` does.
@@ -215,6 +215,6 @@ Then report:
 
 - The QA password never enters the transcript, a file, a screenshot, a `.pm` note, or a commit.
 - Production is real: create only in the QA workspace, prefixed, and clean up.
-- Only `/pm` writes `.pm/`; only `/ship` commits.
+- File only through `/pm`; commit only through `/ship`.
 - Bare filenames for screenshots (they land in `.playwright-mcp/`).
 - Prettier every touched markdown file before finishing.

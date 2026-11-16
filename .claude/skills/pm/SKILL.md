@@ -4,12 +4,12 @@ description: >-
   Inspect and maintain the repository's .pm workstreams, inbox notes, milestones, tasks, and routine lists. Use when the user asks for PM board status or requests a supported board mutation such as creating, promoting, adding, or completing work, or scheduling a routine.
 
 
-allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(mv:*), Bash(git rm:*), Bash(npx prettier*:*), Bash(python3 scripts/loopx-guard.py routine-due:*)
+allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*), Bash(mv:*), Bash(git rm:*), Bash(git fetch:*), Bash(git ls-tree:*), Bash(npx prettier*:*), Bash(python3 scripts/pm-board-validate.py:*), Bash(bash scripts/docs-links-validate.sh:*), Bash(python3 scripts/loopx-guard.py routine-due:*)
 ---
 
 # Task: Arrange the `.pm` board
 
-`/pm` is the **only** skill that writes to `.pm/`. It arranges milestones and tasks under the conventions below. `/pm-brainstorm` proposes; `/pm` materializes. This file is the **canonical** definition of the board conventions — hierarchy, sizing rule, quality gate, standing closing tasks, templates. `/pm-brainstorm` reads it at runtime and must not restate or diverge from it. Parse the subcommand from `$ARGUMENTS` (default = `status`).
+`/pm` is the only skill that files and schedules board items: workstreams, notes, milestones, tasks and routines. A `/loopx` worker also lands an item's outcome (done, `blocked/`, or delete) under these same conventions ([`../loopx/worker.md`](../loopx/worker.md#3-land-the-outcome)). No other skill writes to `.pm/`. `/pm` arranges milestones and tasks under the conventions below. `/pm-brainstorm` proposes; `/pm` materializes. This file is the **canonical** definition of the board conventions — hierarchy, sizing rule, quality gate, standing closing tasks, templates. `/pm-brainstorm` reads it at runtime and must not restate or diverge from it. Parse the subcommand from `$ARGUMENTS` (default = `status`).
 
 ## The `.pm` hierarchy
 
