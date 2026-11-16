@@ -386,6 +386,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **688** — [A free service's Scaling tab shifts when its autoscaling read settles: the Autoscaling card's loading block is 56 px taller than the ready card, and the manual-scaling slot is a 126 px generic card where a 210 px Manual Scaling card lands (+124 px at 390)](688.md) (~40m; minor; regresses w9/m63 t003) ← live `/qa-find-bugs w4` round 495, 2026-11-16, pin `3c6654df60a2`
 - [ ] **687** — [A tracking issue keeps its first failure's title: `tracking-issue.sh open` rewrites an open issue's body but never its title, so #167 still reads "Tenant view is broken: 4/4 events" over a body that says the canary was held awake](687.md) (~20m; minor) ← `/qa-find-bugs w4` round 494, 2026-11-16, run `43822245431`; residual of w4/676
 - [ ] **686** — [Account Settings grows ~840 px at 1440 (~1870 px at 390) as its six panels load: each panel's loading state is two bars or one block, so every section below Account moves](686.md) (~1h; minor; regresses w5/m79 t011) ← live `/qa-find-bugs w4` round 493, 2026-11-16, pin `3c6654df60a2`
 - [ ] **685** — [At phone width, Account Settings' API Keys and SSH Public Keys tables squeeze the Name column to 28 px: names stack one or two characters per line, and a two-key table is 874 px tall](685.md) (~45m; minor) ← live `/qa-find-bugs w4` round 493, 2026-11-16, pin `3c6654df60a2`
