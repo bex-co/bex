@@ -581,6 +581,36 @@ const esMetrics: Record<string, TranslationEntry> = {
     description:
       "Custom range validation: the start is before the oldest instant the range may reach (e.g. a log plan's retention)",
   },
+  "metrics.retentionWindow_one": {
+    message: "Las métricas se conservan {count} día en el plan {plan}.",
+    description:
+      "Metrics range picker hint: how many days the workspace plan keeps metrics (w7/m427, from bex-api metricsRetention)",
+  },
+  "metrics.retentionWindow_many": {
+    message: "Las métricas se conservan {count} de días en el plan {plan}.",
+    description:
+      "Metrics range picker hint: how many days the workspace plan keeps metrics (w7/m427, from bex-api metricsRetention)",
+  },
+  "metrics.retentionWindow_other": {
+    message: "Las métricas se conservan {count} días en el plan {plan}.",
+    description:
+      "Metrics range picker hint: how many days the workspace plan keeps metrics (w7/m427, from bex-api metricsRetention)",
+  },
+  "metrics.retentionUpgrade_one": {
+    message: "El plan {plan} las conserva {count} día.",
+    description:
+      "Metrics range picker hint: a plan that keeps metrics longer, and its days; one sentence per longer window (w7/m427)",
+  },
+  "metrics.retentionUpgrade_many": {
+    message: "El plan {plan} las conserva {count} de días.",
+    description:
+      "Metrics range picker hint: a plan that keeps metrics longer, and its days; one sentence per longer window (w7/m427)",
+  },
+  "metrics.retentionUpgrade_other": {
+    message: "El plan {plan} las conserva {count} días.",
+    description:
+      "Metrics range picker hint: a plan that keeps metrics longer, and its days; one sentence per longer window (w7/m427)",
+  },
   "metrics.rangeLabel": {
     message: "Intervalo de tiempo",
     description: "Accessible label for the time-range dropdown",

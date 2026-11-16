@@ -522,6 +522,16 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Custom range validation: the start is before the oldest instant the range may reach (e.g. a log plan's retention)",
   },
+  "metrics.retentionWindow_other": {
+    message: "{plan} 套餐保留 {count} 天的指标。",
+    description:
+      "Metrics range picker hint: how many days the workspace plan keeps metrics (w7/m427, from bex-api metricsRetention)",
+  },
+  "metrics.retentionUpgrade_other": {
+    message: "{plan} 套餐可保留 {count} 天。",
+    description:
+      "Metrics range picker hint: a plan that keeps metrics longer, and its days; one sentence per longer window (w7/m427)",
+  },
   "metrics.rangeLabel": {
     message: "时间范围",
     description: "Accessible label for the time-range dropdown",

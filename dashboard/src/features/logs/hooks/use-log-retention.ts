@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
+import { useRefetchOnFocus } from "@/common/hooks/use-refetch-on-focus";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { RangeBound } from "@/features/metrics/lib/range";
 import { workspacePlanNameKey } from "@/features/workspaces/types";
@@ -25,17 +26,7 @@ export function useLogRetentionBound(resource: string): RangeBound | undefined {
     variables: { resource },
     errorPolicy: "all",
   });
-  useEffect(() => {
-    const onFocus = () => {
-      if (document.visibilityState === "visible") void refetch();
-    };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
-    };
-  }, [refetch]);
+  useRefetchOnFocus(refetch);
 
   const retention = data?.logRetention;
   return useMemo(() => {

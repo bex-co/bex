@@ -8,11 +8,14 @@ import {
 } from "@/common/components/ui/select.tsx";
 import { Button } from "@/common/components/ui/button.tsx";
 import { RangeSelect } from "@/features/metrics/components/range-select";
+import { useMetricsRetentionBound } from "@/features/metrics/hooks/use-metrics-retention";
 import type { RangeSelection } from "@/features/metrics/lib/range";
 import type { EventTimelineFilter } from "@/features/events/lib/timeline";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 interface MetricsFiltersProps {
+  /** The service whose charts the toolbar ranges over. */
+  resource: string;
   range: RangeSelection;
   onRangeChange: (range: RangeSelection) => void;
   eventFilter: EventTimelineFilter;
@@ -27,8 +30,12 @@ interface MetricsFiltersProps {
  * page-level dimension — every chart reads the same range so the numbers
  * always agree; the per-card controls (Percentage/Total, Status Code,
  * Percentile) live on the cards they alter, exactly where Render puts them.
+ * The range reaches back only as far as the workspace plan keeps metrics
+ * (w7/m427): wider presets are disabled and the picker says which plans keep
+ * more.
  */
 export function MetricsFilters({
+  resource,
   range,
   onRangeChange,
   eventFilter,
@@ -37,6 +44,7 @@ export function MetricsFilters({
   onTimelineShownChange,
 }: MetricsFiltersProps) {
   const { t } = useTranslations();
+  const rangeBound = useMetricsRetentionBound(resource);
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -67,7 +75,11 @@ export function MetricsFilters({
         </SelectContent>
       </Select>
 
-      <RangeSelect range={range} onRangeChange={onRangeChange} />
+      <RangeSelect
+        range={range}
+        onRangeChange={onRangeChange}
+        bound={rangeBound}
+      />
 
       <Button
         size="sm"

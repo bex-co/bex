@@ -549,6 +549,26 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Custom range validation: the start is before the oldest instant the range may reach (e.g. a log plan's retention)",
   },
+  "metrics.retentionWindow_one": {
+    message: "Metrics are kept for {count} day on the {plan} plan.",
+    description:
+      "Metrics range picker hint: how many days the workspace plan keeps metrics (w7/m427, from bex-api metricsRetention)",
+  },
+  "metrics.retentionWindow_other": {
+    message: "Metrics are kept for {count} days on the {plan} plan.",
+    description:
+      "Metrics range picker hint: how many days the workspace plan keeps metrics (w7/m427, from bex-api metricsRetention)",
+  },
+  "metrics.retentionUpgrade_one": {
+    message: "The {plan} plan keeps {count} day.",
+    description:
+      "Metrics range picker hint: a plan that keeps metrics longer, and its days; one sentence per longer window (w7/m427)",
+  },
+  "metrics.retentionUpgrade_other": {
+    message: "The {plan} plan keeps {count} days.",
+    description:
+      "Metrics range picker hint: a plan that keeps metrics longer, and its days; one sentence per longer window (w7/m427)",
+  },
   "metrics.rangeLabel": {
     message: "Time range",
     description: "Accessible label for the time-range dropdown",

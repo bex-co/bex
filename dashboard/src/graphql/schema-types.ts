@@ -2019,6 +2019,19 @@ export type MetricsQueryInput = {
   start?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type MetricsRetention = {
+  __typename: 'MetricsRetention';
+  days: Scalars['Int']['output'];
+  plan: Scalars['String']['output'];
+  upgrades: Array<MetricsRetentionUpgrade>;
+};
+
+export type MetricsRetentionUpgrade = {
+  __typename: 'MetricsRetentionUpgrade';
+  days: Scalars['Int']['output'];
+  plan: Scalars['String']['output'];
+};
+
 export type MonthToDateBandwidth = {
   __typename: 'MonthToDateBandwidth';
   degradedSources: Maybe<Array<Maybe<Scalars['String']['output']>>>;
@@ -4196,6 +4209,7 @@ export type Query = {
   metrics: Maybe<Array<Maybe<MetricSeries>>>;
   metricsFilters: Maybe<MetricsFiltersResult>;
   metricsPathFilterSuggestions: Maybe<MetricsPathFilterSuggestions>;
+  metricsRetention: Maybe<MetricsRetention>;
   monthToDateBandwidth: Maybe<MonthToDateBandwidth>;
   notificationDeviceSubscriptions: Maybe<Array<Maybe<NotificationDeviceSubscription>>>;
   notificationInbox: Array<PushNotification>;
@@ -4839,6 +4853,11 @@ export type QueryMetricsFiltersArgs = {
 
 export type QueryMetricsPathFilterSuggestionsArgs = {
   query: MetricsPathFilterSuggestionsInput;
+};
+
+
+export type QueryMetricsRetentionArgs = {
+  resource: Scalars['String']['input'];
 };
 
 

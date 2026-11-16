@@ -6,13 +6,15 @@ export interface RangePreset {
 
 // Render's preset ladder, captured live 2026-07-17 (w5/m42): 30 min / hour /
 // 4 hours / 12 hours / 24 hours / 2 days / 7 days / 14 days, plus "Last 30 days"
-// (w5/m56 — Render plan-gates it; bex offers it ungated). Render's "Custom" is a
-// separate absolute range (see CustomRange). Resolution scales with span so a
-// series stays readable (~120 points, not thousands) while still resolving
-// fine-grained enough to show shape. Display labels live in range-select.tsx's
-// RANGE_LABEL_KEYS (i18n). Ranges beyond Prometheus's retention
-// (deploy/gitops/base/prometheus.yaml) simply show the retained window — same as
-// Render past its own horizon.
+// (w5/m56). Render's "Custom" is a separate absolute range (see CustomRange).
+// Resolution scales with span so a series stays readable (~120 points, not
+// thousands) while still resolving fine-grained enough to show shape. Display
+// labels live in range-select.tsx's RANGE_LABEL_KEYS (i18n).
+//
+// How far back a range may reach follows the workspace plan, as on Render
+// (Hobby 7 days, Pro 14, Scale and Enterprise 30): the Metrics and Logs pickers
+// each pass the window bex-api reports as a RangeBound (w7/m427, w9/m389), so
+// wider presets are disabled, and bex-api floors every read at the same window.
 export const RANGE_PRESETS: RangePreset[] = [
   { id: "30m", spanSeconds: 30 * 60, resolutionSeconds: 15 },
   { id: "1h", spanSeconds: 60 * 60, resolutionSeconds: 30 },

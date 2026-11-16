@@ -80,3 +80,19 @@ query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {
     }
   }
 }
+
+# How far back one resource's metrics reach on its workspace plan (w7/m427, a Bex
+# extension): bex-api floors every chart read at the plan's window (Hobby 7 days,
+# Pro 14, Scale and Enterprise 30, as on Render). `upgrades` lists each longer
+# window, shortest first, with the cheapest plan that has it; empty on the
+# longest. The whole field is null where no plan applies (local dev, no store).
+query MetricsRetention($resource: String!) {
+  metricsRetention(resource: $resource) {
+    plan
+    days
+    upgrades {
+      plan
+      days
+    }
+  }
+}

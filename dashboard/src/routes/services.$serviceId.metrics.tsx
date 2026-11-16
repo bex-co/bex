@@ -114,6 +114,7 @@ export function ServiceMetricsPage({
   return (
     <>
       <MetricsFilters
+        resource={serviceId}
         range={range}
         onRangeChange={setRange}
         eventFilter={eventFilter}
