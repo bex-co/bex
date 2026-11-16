@@ -504,6 +504,12 @@ const deDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_read_refused, w4/566); params are the sentence's values",
   },
+  "deploys.reason.image_registry_unreachable": {
+    message:
+      "die Registry {host} hat {minutes} Minuten lang nicht auf das Lesen des Images {image} geantwortet. Prüfe, ob die Registry erreichbar ist, und deploye dann erneut",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
   "deploys.reason.build_timed_out": {
     message:
       "der Build wurde nicht innerhalb des Build-Zeitfensters beendet; prüfe die Build-Logs",

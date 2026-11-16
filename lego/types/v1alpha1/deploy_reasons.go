@@ -43,9 +43,12 @@ const (
 	DeployReasonImageCredential      = "image_credential_refused"
 	DeployReasonImageAccess          = "image_access_refused"
 	DeployReasonImageRead            = "image_read_refused"
-	DeployReasonBuildTimedOut        = "build_timed_out"
-	DeployReasonPreDeployTimedOut    = "pre_deploy_timed_out"
-	DeployReasonHealthTimedOut       = "health_timed_out"
+	// w4/692: the registry failed every read (a network error, 5xx or 429)
+	// for the deploy's whole rollout budget of {minutes} minutes.
+	DeployReasonImageRegistryUnreachable = "image_registry_unreachable"
+	DeployReasonBuildTimedOut            = "build_timed_out"
+	DeployReasonPreDeployTimedOut        = "pre_deploy_timed_out"
+	DeployReasonHealthTimedOut           = "health_timed_out"
 	// w4/630: the service container was OOM-killed while starting; {memory}
 	// is its instance type's limit, as Render's "Out of memory" names it.
 	DeployReasonStartupOutOfMemory = "startup_out_of_memory"
@@ -154,21 +157,22 @@ const (
 
 // deployReasonTemplates are the sentences, {name} marking a parameter.
 var deployReasonTemplates = map[string]string{
-	DeployReasonHTTPPortWaiting:      "Waiting for the container to start before detecting its HTTP port",
-	DeployReasonHTTPPortDetecting:    "Detecting the container's HTTP port",
-	DeployReasonHTTPPortLimit:        "The detected HTTP port exceeds the service's 75-port limit; set PORT explicitly",
-	DeployReasonHTTPPortDetected:     "Detected HTTP on port {port}; serving it",
-	DeployReasonHTTPPortNotAnswering: "Port {port} accepted a connection but has not answered HTTP yet; continuing to scan while the container starts",
-	DeployReasonHTTPPortNoneYet:      "No port answers HTTP yet; continuing to scan while the container starts",
-	DeployReasonHTTPPortFallback:     "No port answered HTTP; using fallback port {port}. Set PORT to the HTTP listener if it binds elsewhere",
-	DeployReasonImageNotFound:        "the image {image} was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists",
-	DeployReasonImageCredential:      "{host} refused this service's registry credential for the image {image} (HTTP {status}). Check the credential's username and token, or remove the credential from this service to pull a public image anonymously",
-	DeployReasonImageAccess:          "the registry refused access to the image {image}. If the image is private, add a registry credential for {host} to this service",
-	DeployReasonImageRead:            "the registry refused to read the image {image} (HTTP {status}). Check the image URL and tag",
-	DeployReasonBuildTimedOut:        "the build did not finish within the build window; check the build logs",
-	DeployReasonPreDeployTimedOut:    "the pre-deploy command did not finish within its window; check the pre-deploy logs",
-	DeployReasonHealthTimedOut:       "the deploy did not become healthy within the health-gate window; check the service logs",
-	DeployReasonStartupOutOfMemory:   "the instance ran out of memory during startup ({memory} limit on its instance type; exit code {code}) — reduce memory use or choose a larger instance type",
+	DeployReasonHTTPPortWaiting:          "Waiting for the container to start before detecting its HTTP port",
+	DeployReasonHTTPPortDetecting:        "Detecting the container's HTTP port",
+	DeployReasonHTTPPortLimit:            "The detected HTTP port exceeds the service's 75-port limit; set PORT explicitly",
+	DeployReasonHTTPPortDetected:         "Detected HTTP on port {port}; serving it",
+	DeployReasonHTTPPortNotAnswering:     "Port {port} accepted a connection but has not answered HTTP yet; continuing to scan while the container starts",
+	DeployReasonHTTPPortNoneYet:          "No port answers HTTP yet; continuing to scan while the container starts",
+	DeployReasonHTTPPortFallback:         "No port answered HTTP; using fallback port {port}. Set PORT to the HTTP listener if it binds elsewhere",
+	DeployReasonImageNotFound:            "the image {image} was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists",
+	DeployReasonImageCredential:          "{host} refused this service's registry credential for the image {image} (HTTP {status}). Check the credential's username and token, or remove the credential from this service to pull a public image anonymously",
+	DeployReasonImageAccess:              "the registry refused access to the image {image}. If the image is private, add a registry credential for {host} to this service",
+	DeployReasonImageRead:                "the registry refused to read the image {image} (HTTP {status}). Check the image URL and tag",
+	DeployReasonImageRegistryUnreachable: "the registry {host} did not answer the read of the image {image} for {minutes} minutes. Check that the registry is reachable, then deploy again",
+	DeployReasonBuildTimedOut:            "the build did not finish within the build window; check the build logs",
+	DeployReasonPreDeployTimedOut:        "the pre-deploy command did not finish within its window; check the pre-deploy logs",
+	DeployReasonHealthTimedOut:           "the deploy did not become healthy within the health-gate window; check the service logs",
+	DeployReasonStartupOutOfMemory:       "the instance ran out of memory during startup ({memory} limit on its instance type; exit code {code}) — reduce memory use or choose a larger instance type",
 
 	DeployReasonProbeHTTPWaiting:          probeStallHead + ProbeStallWaiting + probeStallHTTP + probeStallPathTail + probeStallHint,
 	DeployReasonProbeHTTPWaitingRestarted: probeStallHead + ProbeStallWaiting + probeStallHTTP + probeStallRestarted + probeStallPathTail + probeStallHint,

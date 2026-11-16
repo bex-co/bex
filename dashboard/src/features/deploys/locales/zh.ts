@@ -484,6 +484,12 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_read_refused, w4/566); params are the sentence's values",
   },
+  "deploys.reason.image_registry_unreachable": {
+    message:
+      "镜像仓库 {host} 在 {minutes} 分钟内未响应镜像 {image} 的读取。请确认镜像仓库可访问，然后重新部署",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
   "deploys.reason.build_timed_out": {
     message: "构建未在构建时限内完成；请查看构建日志",
     description:

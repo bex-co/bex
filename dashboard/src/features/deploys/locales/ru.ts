@@ -521,6 +521,12 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_read_refused, w4/566); params are the sentence's values",
   },
+  "deploys.reason.image_registry_unreachable": {
+    message:
+      "реестр {host} не отвечал на чтение образа {image} в течение {minutes} минут. Проверьте, что реестр доступен, и выполните деплой снова",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
   "deploys.reason.build_timed_out": {
     message: "сборка не завершилась в отведённое время; проверьте логи сборки",
     description:

@@ -683,6 +683,40 @@ func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.
 	return ctrl.Result{RequeueAfter: min(max(transient.RetryAfter, registryRetryDelay(failures)), imageRegistryRetryMax)}, true
 }
 
+// registryWaitExpired reports a registry wait (imageRegistryWait) that has
+// outlasted its deploy's rollout budget, counted from the release's own start
+// (ReleaseStart): the registry failed or turned away every read for as long as
+// a new instance may take to become healthy. Render fails a deploy whose image
+// is "no longer available or reachable" (render.com/docs/rollbacks), so such a
+// wait ends as the deploy's failure, not an open deploy that lasts as long as
+// the outage (w4/692). A release with no start of its own keeps waiting.
+func registryWaitExpired(app *appv1alpha1.App, err error, now time.Time) bool {
+	_, busy := errors.AsType[*registryBusyError](err)
+	_, transient := errors.AsType[*registry.TransientError](err)
+	start := app.Status.ReleaseStart
+	if (!busy && !transient) || start == nil || start.Generation != releaseGeneration(app) {
+		return false
+	}
+	started, perr := time.Parse(time.RFC3339, start.StartedAt)
+	return perr == nil && now.Sub(started) >= time.Duration(rolloutBudgetSeconds)*time.Second
+}
+
+// registryUnreachableError is the failure of a deploy whose registry wait
+// expired (registryWaitExpired), naming the image and its registry. The image
+// could not be pulled, so it fails under ReasonImagePullFailed
+// (imageMetadataFailureReason), as a refused read does.
+func registryUnreachableError(image string) error {
+	return &unreachableRegistryError{msg: appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageRegistryUnreachable,
+		appv1alpha1.DeployReasonParam{Name: "host", Value: imageRegistryHost(image)},
+		appv1alpha1.DeployReasonParam{Name: "image", Value: image},
+		appv1alpha1.DeployReasonParam{Name: "minutes", Value: strconv.Itoa(int(rolloutBudgetSeconds / 60))},
+	)}
+}
+
+type unreachableRegistryError struct{ msg string }
+
+func (e *unreachableRegistryError) Error() string { return e.msg }
+
 // imageRegistryRetry and imageRegistryRetryMax bound a throttled read's
 // requeue, whatever Retry-After the registry names.
 const (
@@ -696,10 +730,14 @@ const (
 // imageMetadataFailureReason is the reason a failed image metadata read fails
 // its deploy under. A registry refusal (missing image or tag, refused
 // credential) is what Render reports as Image Pull Failed, so it fails under
-// ReasonImagePullFailed and bex-api emits image_pull_failed for it (w2/072);
-// any other failure stays ImageMetadataUnavailable.
+// ReasonImagePullFailed and bex-api emits image_pull_failed for it (w2/072),
+// as does a registry that never answered within the deploy's rollout budget
+// (registryUnreachableError, w4/692); any other failure stays
+// ImageMetadataUnavailable.
 func imageMetadataFailureReason(err error) string {
-	if _, refused := errors.AsType[*registry.RefusedError](err); refused {
+	_, refused := errors.AsType[*registry.RefusedError](err)
+	_, unreachable := errors.AsType[*unreachableRegistryError](err)
+	if refused || unreachable {
 		return appv1alpha1.ReasonImagePullFailed
 	}
 	return reasonImageMetadataUnavailable

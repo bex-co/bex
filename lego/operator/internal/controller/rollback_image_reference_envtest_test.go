@@ -268,4 +268,36 @@ var _ = Describe("Rolling back to a registry image's reference (w4/m432)", func(
 		Expect(envtestApp(nn).Status.ActiveRevision).To(Equal(fmt.Sprintf("rev-%d", gen)))
 		serves(digestB)
 	})
+
+	// Past the deploy's rollout budget the wait ends: the rollback fails naming
+	// the registry, as Render fails a rollback whose image is "no longer
+	// available or reachable", and the live release keeps serving (w4/692).
+	It("fails a rollback whose registry stays unreachable past the rollout budget", func() {
+		clock := &fakeClock{now: time.Now()}
+		r.registryReads().now = clock.Now
+		registry.setUnreachable(true)
+		served := envtestDeployment(nn).Spec.Template.DeepCopy()
+		gen := rollback(v1)
+		Expect(envtestApp(nn).Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
+
+		clock.Advance(time.Duration(rolloutBudgetSeconds)*time.Second + time.Second)
+		pass()
+		app := envtestApp(nn)
+		rollout := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
+		Expect(rollout).NotTo(BeNil())
+		Expect(rollout.Status).To(Equal(metav1.ConditionFalse))
+		Expect(rollout.Reason).To(Equal(appv1alpha1.ReasonImagePullFailed))
+		Expect(rollout.ObservedGeneration).To(Equal(gen))
+		Expect(rollout.Message).To(ContainSubstring("the registry docker.io did not answer the read of the image " + v1))
+		Expect(app.Status.Phase).NotTo(Equal(appv1alpha1.PhaseDeploying))
+		Expect(app.Status.ActiveRevision).To(Equal("rev-2"))
+		Expect(equality.Semantic.DeepEqual(*served, envtestDeployment(nn).Spec.Template)).To(BeTrue())
+
+		By("the verdict is final: a registry that answers later does not roll it")
+		registry.setUnreachable(false)
+		clock.Advance(imageRegistryRetryMax + time.Second)
+		pass()
+		Expect(envtestApp(nn).Status.ActiveRevision).To(Equal("rev-2"))
+		Expect(equality.Semantic.DeepEqual(*served, envtestDeployment(nn).Spec.Template)).To(BeTrue())
+	})
 })

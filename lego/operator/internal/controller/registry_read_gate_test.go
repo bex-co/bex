@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -386,5 +387,48 @@ func TestACancelledReadDoesNotOpenTheBreaker(t *testing.T) {
 		t.Fatalf("the host is closed for %v after a read this process cancelled", wait)
 	} else {
 		release(false)
+	}
+}
+
+// A registry wait ends once its release has waited the rollout budget from its
+// own start, whether the registry failed the read or the gate turned it away;
+// a refusal, a success or a start that is another release's never expires it
+// (w4/692).
+func TestRegistryWaitExpiresAtTheRolloutBudget(t *testing.T) {
+	start := time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)
+	budget := time.Duration(rolloutBudgetSeconds) * time.Second
+	transient := registry.NewTransientError(errors.New("connection refused"), 0)
+	busy := &registryBusyError{host: "docker.io", retryAfter: time.Minute}
+	app := func(gen int64) *appv1alpha1.App {
+		a := webImageApp(1)
+		a.Status.ReleaseGeneration = 3
+		a.Status.ReleaseStart = &appv1alpha1.ReleaseStart{Generation: gen, StartedAt: start.Format(time.RFC3339)}
+		return a
+	}
+	for _, tc := range []struct {
+		name    string
+		app     *appv1alpha1.App
+		err     error
+		elapsed time.Duration
+		want    bool
+	}{
+		{"a failed read within the budget", app(3), transient, budget - time.Second, false},
+		{"a failed read at the budget", app(3), transient, budget, true},
+		{"a turned-away read past the budget", app(3), busy, budget + time.Minute, true},
+		{"a refusal past the budget", app(3), &registry.RefusedError{Status: http.StatusNotFound}, 2 * budget, false},
+		{"a success past the budget", app(3), nil, 2 * budget, false},
+		{"another release's start", app(2), transient, 2 * budget, false},
+		{"no start", func() *appv1alpha1.App { a := app(3); a.Status.ReleaseStart = nil; return a }(), transient, 2 * budget, false},
+	} {
+		if got := registryWaitExpired(tc.app, tc.err, start.Add(tc.elapsed)); got != tc.want {
+			t.Errorf("%s: expired = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+	err := registryUnreachableError("ghcr.io/acme/web:v1")
+	if imageMetadataFailureReason(err) != appv1alpha1.ReasonImagePullFailed {
+		t.Errorf("reason = %q, want %q", imageMetadataFailureReason(err), appv1alpha1.ReasonImagePullFailed)
+	}
+	if want := "the registry ghcr.io did not answer the read of the image ghcr.io/acme/web:v1 for 15 minutes"; !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("message = %q, want it to open %q", err.Error(), want)
 	}
 }

@@ -792,6 +792,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		}
 		requested := image
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
+		if registryWaitExpired(&app, err, r.registryReads().now()) {
+			err = registryUnreachableError(requested)
+		}
 		if wait, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
 			return r.holdRegistryWait(ctx, &app, wait), nil
 		}
@@ -7635,10 +7638,11 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 // read waits on a throttled or failing registry (imageRegistryWait), as a build
 // in flight is held: routing, IP allow-lists, replicas and suspension follow
 // the App, and the deploy stays open with the wait's phase and stall message
-// and no verdict, so it still rolls once the registry answers (w32/031). The
-// pass keeps the wait's cadence, not the serving release's, and a hold error
-// is logged rather than retried at once: either way the registry is read no
-// sooner than the wait asks. A save comes back through the watch at once.
+// and no verdict, so it still rolls once the registry answers (w32/031) within
+// the deploy's rollout budget; past it the deploy fails (registryWaitExpired,
+// w4/692). The pass keeps the wait's cadence, not the serving release's, and a
+// hold error is logged rather than retried at once: either way the registry is
+// read no sooner than the wait asks. A save comes back through the watch at once.
 func (r *AppReconciler) holdRegistryWait(ctx context.Context, app *appv1alpha1.App, wait ctrl.Result) ctrl.Result {
 	if _, _, err := r.holdServingRelease(ctx, app, ctrl.Result{}, true); err != nil {
 		logf.FromContext(ctx).Error(err, "serving release not converged while the image registry read waits", "app", app.Name)

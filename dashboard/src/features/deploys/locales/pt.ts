@@ -512,6 +512,12 @@ const ptDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_read_refused, w4/566); params are the sentence's values",
   },
+  "deploys.reason.image_registry_unreachable": {
+    message:
+      "o registry {host} não respondeu à leitura da imagem {image} por {minutes} minutos. Verifique se o registry está acessível e faça o deploy novamente",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
   "deploys.reason.build_timed_out": {
     message:
       "o build não terminou dentro da janela de build; verifique os logs de build",

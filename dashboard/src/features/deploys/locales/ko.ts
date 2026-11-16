@@ -493,6 +493,12 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_read_refused, w4/566); params are the sentence's values",
   },
+  "deploys.reason.image_registry_unreachable": {
+    message:
+      "레지스트리 {host}가 {minutes}분 동안 {image} 이미지 읽기에 응답하지 않았습니다. 레지스트리에 연결할 수 있는지 확인한 후 다시 배포하세요",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
   "deploys.reason.build_timed_out": {
     message: "빌드가 허용 시간 내에 끝나지 않았습니다. 빌드 로그를 확인하세요",
     description:

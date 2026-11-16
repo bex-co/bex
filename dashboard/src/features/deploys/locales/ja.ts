@@ -494,6 +494,12 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_read_refused, w4/566); params are the sentence's values",
   },
+  "deploys.reason.image_registry_unreachable": {
+    message:
+      "レジストリ {host} が {minutes} 分間イメージ {image} の読み取りに応答しませんでした。レジストリに到達できることを確認してから、もう一度デプロイしてください",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
   "deploys.reason.build_timed_out": {
     message:
       "ビルドがビルド時間の上限内に完了しませんでした。ビルドログを確認してください",

@@ -513,6 +513,12 @@ const esDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_read_refused, w4/566); params are the sentence's values",
   },
+  "deploys.reason.image_registry_unreachable": {
+    message:
+      "el registro {host} no respondió a la lectura de la imagen {image} durante {minutes} minutos. Comprueba que el registro sea accesible y vuelve a desplegar",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
   "deploys.reason.build_timed_out": {
     message:
       "el build no terminó dentro de su ventana de tiempo; revisa los logs de build",
