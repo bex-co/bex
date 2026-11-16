@@ -45,7 +45,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 	files "github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
-	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
 )
 
 type Revalidator interface {
@@ -57,7 +56,7 @@ type Revalidator interface {
 type ExecRevalidator struct{ *core.Base }
 
 func (r *ExecRevalidator) RevalidateFiles(ctx context.Context, c files.Claims) error {
-	return (&sandboxsse.ExecRevalidator{Base: r.Base}).RevalidateExec(ctx, sandboxexec.Claims{
+	return (&sshgateway.ExecRevalidator{Base: r.Base}).RevalidateExec(ctx, sandboxexec.Claims{
 		Subject: c.Subject, Workspace: c.Workspace, AgentSessionID: c.AgentSessionID,
 	})
 }

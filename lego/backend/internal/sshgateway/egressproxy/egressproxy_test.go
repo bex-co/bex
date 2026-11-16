@@ -39,7 +39,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
-	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/egressproxy"
 )
 
@@ -51,16 +50,16 @@ const (
 // --- fakes ---------------------------------------------------------------
 
 type fakePods struct {
-	pod agentcred.SessionPod
+	pod sshgateway.SessionPod
 	err error
 }
 
-func (f fakePods) ResolveSessionPod(context.Context, string, string) (agentcred.SessionPod, error) {
+func (f fakePods) ResolveSessionPod(context.Context, string, string) (sshgateway.SessionPod, error) {
 	return f.pod, f.err
 }
 
-func sandboxPod(session string) agentcred.SessionPod {
-	return agentcred.SessionPod{Name: "sbx-1-0", UID: "uid-1", Labels: map[string]string{
+func sandboxPod(session string) sshgateway.SessionPod {
+	return sshgateway.SessionPod{Name: "sbx-1-0", UID: "uid-1", Labels: map[string]string{
 		agentsession.LabelWorkspace: "tea-aaaaaaaaaaaaaaaaaaaa",
 		agentsession.LabelRegime:    agentsession.RegimeSandbox,
 		agentsession.LabelSession:   session,
@@ -384,7 +383,7 @@ func TestTheSourcePodMustBeTheClaimedSessionSandbox(t *testing.T) {
 	for name, pods := range map[string]fakePods{
 		"unknown source IP":   {err: agentsession.ErrForbidden},
 		"sibling session pod": {pod: sandboxPod("ags-other")},
-		"non-sandbox pod": {pod: agentcred.SessionPod{Name: "x", UID: "u", Labels: map[string]string{
+		"non-sandbox pod": {pod: sshgateway.SessionPod{Name: "x", UID: "u", Labels: map[string]string{
 			agentsession.LabelWorkspace: "tea-aaaaaaaaaaaaaaaaaaaa", agentsession.LabelSession: sessionID,
 		}}},
 	} {
@@ -530,7 +529,7 @@ func (p *switchablePods) set(uid string) {
 	p.uid = uid
 }
 
-func (p *switchablePods) ResolveSessionPod(context.Context, string, string) (agentcred.SessionPod, error) {
+func (p *switchablePods) ResolveSessionPod(context.Context, string, string) (sshgateway.SessionPod, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	pod := sandboxPod(sessionID)

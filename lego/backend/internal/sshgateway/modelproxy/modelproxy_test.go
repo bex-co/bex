@@ -31,7 +31,6 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
-	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/modelproxy"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -72,17 +71,17 @@ func (f *fakeStore) GetAgentSession(_ context.Context, id string) (store.AgentSe
 }
 
 type fakePods struct {
-	pod agentcred.SessionPod
+	pod sshgateway.SessionPod
 	err error
 }
 
-func (f fakePods) ResolveSessionPod(context.Context, string, string) (agentcred.SessionPod, error) {
+func (f fakePods) ResolveSessionPod(context.Context, string, string) (sshgateway.SessionPod, error) {
 	return f.pod, f.err
 }
 
 type countingPods struct{ calls int }
 
-func (p *countingPods) ResolveSessionPod(context.Context, string, string) (agentcred.SessionPod, error) {
+func (p *countingPods) ResolveSessionPod(context.Context, string, string) (sshgateway.SessionPod, error) {
 	p.calls++
 	return sandboxPod("ags-one"), nil
 }
@@ -107,8 +106,8 @@ func (c *captureTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // --- harness -------------------------------------------------------------
 
-func sandboxPod(session string) agentcred.SessionPod {
-	return agentcred.SessionPod{Name: "sbx-1-0", UID: "uid-1", Labels: map[string]string{
+func sandboxPod(session string) sshgateway.SessionPod {
+	return sshgateway.SessionPod{Name: "sbx-1-0", UID: "uid-1", Labels: map[string]string{
 		agentsession.LabelWorkspace: "tea-a",
 		agentsession.LabelRegime:    agentsession.RegimeSandbox,
 		agentsession.LabelSession:   session,

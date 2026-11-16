@@ -25,9 +25,11 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-type credentialPodResolver struct{ pods map[string]SessionPod }
+type credentialPodResolver struct {
+	pods map[string]sshgateway.SessionPod
+}
 
-func (r credentialPodResolver) ResolveSessionPod(_ context.Context, _, sourceIP string) (SessionPod, error) {
+func (r credentialPodResolver) ResolveSessionPod(_ context.Context, _, sourceIP string) (sshgateway.SessionPod, error) {
 	return r.pods[sourceIP], nil
 }
 
@@ -105,7 +107,7 @@ func TestGitProxyKeepsTokenOutOfSandboxAndBindsSourcePod(t *testing.T) {
 	audit := &credentialAudit{}
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Pods: credentialPodResolver{pods: map[string]SessionPod{
+		Pods: credentialPodResolver{pods: map[string]sshgateway.SessionPod{
 			"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a", "ags-one", "bex-agent/task-1")},
 			"10.0.0.2": {Name: "sbx-a-0", UID: "uid-b", Labels: credentialLabels(t, "tea-b", "ags-one", "bex-agent/task-1")},
 		}},
@@ -159,10 +161,10 @@ func gitProxyHarness(t *testing.T, upstreamHandler http.HandlerFunc) (*Broker, s
 	// The session pod answers under the synthetic 10.0.0.1 (httptest.NewRequest
 	// callers) and under loopback (tests that must ride a REAL server, e.g. the
 	// abort paths, whose ErrAbortHandler only the server machinery recovers).
-	pod := SessionPod{Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a", "ags-one", "bex-agent/task-1")}
+	pod := sshgateway.SessionPod{Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a", "ags-one", "bex-agent/task-1")}
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Pods: credentialPodResolver{pods: map[string]SessionPod{
+		Pods: credentialPodResolver{pods: map[string]sshgateway.SessionPod{
 			"10.0.0.1": pod, "127.0.0.1": pod, "::1": pod,
 		}},
 		API:            &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()},
@@ -245,7 +247,7 @@ func TestGitProxyReceivePackAllowsOnlyBoundBranch(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { upstreamCalls++; _, _ = io.WriteString(w, "0000") }))
 	defer upstream.Close()
 	broker := &Broker{Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Pods: credentialPodResolver{pods: map[string]SessionPod{"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a", "ags-one", "bex-agent/task-1")}}},
+		Pods: credentialPodResolver{pods: map[string]sshgateway.SessionPod{"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a", "ags-one", "bex-agent/task-1")}}},
 		API:  &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()}, UpstreamOrigin: upstream.URL, HTTP: upstream.Client()}
 	base, _ := agentsession.ProxyRepositoryURL("http://gateway", "tea-a-sandbox", "ags-one", "octo/repo", "bex-agent/task-1")
 	push := func(ref string) int {
@@ -415,13 +417,13 @@ type blockingPodResolver struct {
 	release chan struct{}
 }
 
-func (r *blockingPodResolver) ResolveSessionPod(ctx context.Context, _, _ string) (SessionPod, error) {
+func (r *blockingPodResolver) ResolveSessionPod(ctx context.Context, _, _ string) (sshgateway.SessionPod, error) {
 	r.entered <- struct{}{}
 	select {
 	case <-r.release:
-		return SessionPod{}, agentsession.ErrForbidden
+		return sshgateway.SessionPod{}, agentsession.ErrForbidden
 	case <-ctx.Done():
-		return SessionPod{}, agentsession.ErrForbidden
+		return sshgateway.SessionPod{}, agentsession.ErrForbidden
 	}
 }
 

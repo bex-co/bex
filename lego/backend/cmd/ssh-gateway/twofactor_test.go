@@ -44,7 +44,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 	sandboxfilegateway "github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxfiles"
-	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/twofactor"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -190,7 +189,7 @@ func TestEveryGatewayDoorRefusesAnUnenrolledMemberAndAdmitsAnEnrolledOne(t *test
 	appResolver := &apps.Service{Base: f.base}
 	agentResolver := &agentsessions.SSHResolver{Base: f.base, Store: f.sessions}
 	attach := &agentsessions.AttachRevalidator{Base: f.base, Store: f.sessions}
-	exec := &sandboxsse.ExecRevalidator{Base: f.base}
+	exec := &sshgateway.ExecRevalidator{Base: f.base}
 	files := &sandboxfilegateway.ExecRevalidator{Base: f.base}
 
 	doors := map[string]func(subject string) error{

@@ -58,8 +58,8 @@ func (c freshRevokedChecker) CheckFresh(_ context.Context, subject, relation, _ 
 }
 
 func TestExecRevalidatorRelations(t *testing.T) {
-	base := func(checker core.Checker) *ExecRevalidator {
-		return &ExecRevalidator{Base: &core.Base{Authz: checker}}
+	base := func(checker core.Checker) *sshgateway.ExecRevalidator {
+		return &sshgateway.ExecRevalidator{Base: &core.Base{Authz: checker}}
 	}
 	caller := sandboxexec.Claims{
 		Subject: "id-a", SandboxID: "os-1", Namespace: "tea-a-sandbox",
@@ -138,7 +138,7 @@ func TestSandboxExecRedemptionRecheck(t *testing.T) {
 		Metrics:        sshgateway.NewMetrics(prometheus.NewRegistry()),
 		Limits:         sshgateway.NewSessionLimiter(100, 5),
 		Nonces:         &sshgateway.NonceGuard{},
-		Revalidator:    &ExecRevalidator{Base: &core.Base{Authz: relChecker{}}},
+		Revalidator:    &sshgateway.ExecRevalidator{Base: &core.Base{Authz: relChecker{}}},
 		SessionTimeout: time.Minute,
 	}
 	httpSrv := httptest.NewServer(srv.Handler())

@@ -13,11 +13,11 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 - 2026-11-15 mobile `deploys/deploy-action-eligibility.ts` — implements `RollbackEligible` but not `RollbackActionable`, so it can pick the live deploy; the projection lacks a target id
 - 2026-11-15 mobile `common/apollo/access-link.ts` — hand-maintained verb→relation map (fail-closed; bex-api re-authorizes)
 - 2026-11-14 dashboard spend caps (`agent-sessions/lib/spend-limit.ts`, `agent-environment/lib/spend.ts`), free-DB expiry (`databases/lib/expiry.ts`), Postgres versions and identifiers, push-policy validation, webhook SSRF table — each mirrors a server rule; needs an API answer or a shared corpus family
-- 2026-11-14 `sshgateway/modelproxy` and `egressproxy` → `agentcred`, `sandboxfiles` → `sandboxsse` — transport→transport imports; the shared pieces belong in the `sshgateway` kernel
 - 2026-11-14 `cmd/ssh-gateway` → `internal/api` for `NewTenantService` — move tenancy to a feature package implementing `core.WorkspaceResolver`
 
 ## Skipped
 
+- 2026-11-16 `dashboard/.../usage/lib/charges.ts` — display math on backend-rated totals (parse/format/linear projection); no rate or tier logic
 - 2026-11-15 `common/lib/ip-allow-list.ts` `isAllowAllRule` — display label derived from rules the user sees; matches `core.RestrictsServiceInbound`
 - 2026-11-15 client/server validation parity via `lego/backend/testdata/validation/*.json` and the read-replica name corpus — already guarded by shared fixtures
 - 2026-11-15 a `lego/cli` deny in operator/backend `module-dag` — Go already rejects every such import (`package main` root, `internal/` subpackages)

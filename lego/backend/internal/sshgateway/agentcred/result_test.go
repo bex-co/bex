@@ -67,7 +67,7 @@ func resultHarness(t *testing.T) (*Broker, *recordingResults, *credentialAudit) 
 	audit := &credentialAudit{}
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Pods: credentialPodResolver{pods: map[string]SessionPod{
+		Pods: credentialPodResolver{pods: map[string]sshgateway.SessionPod{
 			"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: repoLessLabels(t, "tea-a", "ags-one")},
 			"10.0.0.2": {Name: "sbx-b-0", UID: "uid-b", Labels: credentialLabels(t, "tea-a", "ags-two", "bex-agent/task-1")},
 			"10.0.0.4": {Name: "sbx-a-0", UID: "uid-d", Labels: credentialLabels(t, "tea-b", "ags-one", "bex-agent/task-1")},
