@@ -620,7 +620,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 		return nil, err
 	}
 	// A whole-set replace decides every variable, a retained literal included.
-	if err := s.adoptRetainedEnv(ctx, a, service); err != nil {
+	if err := s.adoptAllRetained(ctx, a, service); err != nil {
 		return nil, err
 	}
 	env := make(map[string]string, len(vars))
@@ -710,7 +710,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if err := refuseManifestKeys(a, key); err != nil {
 		return EnvVarView{}, err
 	}
-	if err := s.adoptRetainedEnv(ctx, a, service, key); err != nil {
+	if err := s.adoptRetainedKeys(ctx, a, service, key); err != nil {
 		return EnvVarView{}, err
 	}
 	value, err := resolveValue(key, write.Value, write.GenerateValue)
@@ -756,7 +756,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if err := refuseManifestKeys(a, key); err != nil {
 		return err
 	}
-	if err := s.adoptRetainedEnv(ctx, a, service, key); err != nil {
+	if err := s.adoptRetainedKeys(ctx, a, service, key); err != nil {
 		return err
 	}
 	// An invalid-name literal a pre-w8/027 create left on spec.Env is removed

@@ -112,14 +112,12 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	}
 	// A retained literal the patch names, or every one when it replaces the
 	// whole set, joins the store before the write decides it.
-	adopt := slices.DeleteFunc(slices.Clone(keys), func(k string) bool { return k == "" })
 	if patch.Replace {
-		adopt = nil
-	}
-	if patch.Replace || len(adopt) > 0 {
-		if err := s.adoptRetainedEnv(ctx, a, service, adopt...); err != nil {
+		if err := s.adoptAllRetained(ctx, a, service); err != nil {
 			return EnvironmentPatchResult{}, err
 		}
+	} else if err := s.adoptRetainedKeys(ctx, a, service, keys...); err != nil {
+		return EnvironmentPatchResult{}, err
 	}
 	rebuild := patch.SaveMode == SaveModeRebuild
 	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy && !rebuild {

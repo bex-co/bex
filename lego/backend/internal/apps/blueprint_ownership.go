@@ -35,6 +35,7 @@ import (
 	"log"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -329,12 +330,7 @@ func (s *Service) stampBlueprintEnv(ctx context.Context, app *appv1alpha1.App, o
 		return nil
 	}
 	base := app.DeepCopy()
-	annotations := app.GetAnnotations()
-	if annotations == nil {
-		annotations = map[string]string{}
-	}
-	annotations[core.AnnotationBlueprintEnv] = want
-	app.SetAnnotations(annotations)
+	metav1.SetMetaDataAnnotation(&app.ObjectMeta, core.AnnotationBlueprintEnv, want)
 	if err := s.Client.Patch(ctx, app, client.MergeFrom(base)); err != nil {
 		return fmt.Errorf("recording the declared environment on %s/%s: %w", app.GetNamespace(), app.GetName(), err)
 	}

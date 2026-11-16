@@ -711,27 +711,26 @@ type parsedService struct {
 // references, which a sync writes to spec.Env. sync:false, generateValue and
 // fromGroup entries live in the mutable store or a group and are not listed.
 func (p parsedService) ownedEnvNames() []string {
-	names := map[string]struct{}{}
+	var names []string
 	for _, e := range p.req.Env {
-		names[e.Name] = struct{}{}
+		names = append(names, e.Name)
 	}
-	for key := range p.env.literals {
-		names[key] = struct{}{}
-	}
+	names = slices.AppendSeq(names, maps.Keys(p.env.literals))
 	for _, r := range p.env.refVars {
-		names[r.Key] = struct{}{}
+		names = append(names, r.Key)
 	}
 	for _, r := range p.databaseRefs {
-		names[r.Key] = struct{}{}
+		names = append(names, r.Key)
 	}
 	for _, r := range p.kvRefs {
-		names[r.Key] = struct{}{}
+		names = append(names, r.Key)
 	}
 	for _, r := range p.hostRefs {
-		names[r.key] = struct{}{}
+		names = append(names, r.key)
 	}
-	delete(names, "")
-	return slices.Sorted(maps.Keys(names))
+	names = slices.DeleteFunc(names, func(name string) bool { return name == "" })
+	slices.Sort(names)
+	return slices.Compact(names)
 }
 
 // hostRef is a deferred fromService host/hostport/port reference: the env key,

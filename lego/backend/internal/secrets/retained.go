@@ -87,22 +87,30 @@ func dropSpecEnvNames(a *appv1alpha1.App, names map[string]string) {
 	}
 }
 
-// adoptRetainedEnv moves the retained literals a write names into the mutable
-// store, so the write then meets an ordinary stored variable: the literal wins
-// over the store at runtime (the container's env beats envFrom), so a stored
-// edit or delete beside a surviving literal would change nothing. only names
-// the keys to adopt; none adopts every retained literal (a whole-set replace).
-// The value the process holds, the literal's, is what the store keeps. It
-// refreshes a, and does nothing for a service with no retained literal.
-func (s *Service) adoptRetainedEnv(ctx context.Context, a *appv1alpha1.App, service string, only ...string) error {
+// adoptRetainedKeys moves the named retained literals into the mutable store
+// before a write decides them, so the write meets ordinary stored variables.
+func (s *Service) adoptRetainedKeys(ctx context.Context, a *appv1alpha1.App, service string, keys ...string) error {
 	retained := retainedEnv(a)
-	if len(only) > 0 {
-		for name := range retained {
-			if !slices.Contains(only, name) {
-				delete(retained, name)
-			}
+	for name := range retained {
+		if !slices.Contains(keys, name) {
+			delete(retained, name)
 		}
 	}
+	return s.adoptRetained(ctx, a, service, retained)
+}
+
+// adoptAllRetained is adoptRetainedKeys for a whole-set replace, which decides
+// every variable.
+func (s *Service) adoptAllRetained(ctx context.Context, a *appv1alpha1.App, service string) error {
+	return s.adoptRetained(ctx, a, service, retainedEnv(a))
+}
+
+// adoptRetained writes retained into the store and removes the literals from
+// spec.Env in the same locked patch. The literal wins over the store at
+// runtime (the container's env beats envFrom), so a stored edit or delete beside
+// a surviving literal would change nothing; the value the process holds, the
+// literal's, is what the store keeps. It refreshes a.
+func (s *Service) adoptRetained(ctx context.Context, a *appv1alpha1.App, service string, retained map[string]string) error {
 	if len(retained) == 0 {
 		return nil
 	}
