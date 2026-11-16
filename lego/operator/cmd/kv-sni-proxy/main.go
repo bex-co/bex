@@ -67,7 +67,8 @@ const (
 	defaultMaxConnsResource        = 64        // BEX_KV_PROXY_MAX_CONNS_PER_RESOURCE
 	defaultIdleTimeout             = time.Hour // BEX_KV_PROXY_IDLE_TIMEOUT
 	defaultMaxLifetime             = 24 * time.Hour
-	labelWorkspace                 = "app.bex.co/workspace"
+	// labelWorkspace aliases the canonical key in lego/types (v1alpha1).
+	labelWorkspace = appv1alpha1.LabelWorkspace
 )
 
 var scheme = runtime.NewScheme()

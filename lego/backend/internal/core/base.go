@@ -38,15 +38,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/types/renderenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Pod label + container name the controller stamps on an App's pods. Kept in
-// sync by hand: the api layer must not import the operator. The logs and metrics
+// Pod label + container name the controller stamps on an App's pods. The
+// labels alias the operator-visible canonicals in lego/types (v1alpha1), so
+// the stamp and these selectors can never drift apart. The logs and metrics
 // features both select on these, so they live in the shared kernel.
 const (
-	PodLabelApp      = "app.bex.co/app"
-	PodLabelRevision = "app.bex.co/revision"
+	PodLabelApp      = appv1alpha1.LabelApp
+	PodLabelRevision = appv1alpha1.LabelRevision
 	AppContainer     = "app"
 	// PodLabelPreDeploy + PreDeployContainer name the pre-deploy step's Job pod
 	// (w1/m33, lego/operator/internal/predeploy) so the logs feature can read a
@@ -56,8 +58,8 @@ const (
 	// PodLabelComponent marks a pod an App's execution step runs in (the
 	// pre-deploy Job, a build or publish in the App's namespace), which also
 	// carries PodLabelApp; the App's own instances never carry it
-	// (execution.PodLabels in the operator).
-	PodLabelComponent = "app.bex.co/component"
+	// (execution.PodLabels in the operator). Aliases the v1alpha1 canonical.
+	PodLabelComponent = appv1alpha1.LabelComponent
 	// PodLabelCNPGCluster + CNPGPostgresContainer identify CNPG pods for a
 	// managed Postgres. CNPG stamps every cluster pod with cnpg.io/cluster=<cr-name>;
 	// the main postgres container is always named "postgres". The database logs
@@ -210,9 +212,9 @@ const LabelTenant = "bex.co/tenant"
 
 // LabelAppID carries a service's Render-shaped typed id (srv-<xid>). The
 // control-plane store mints it and stamps it on projected App CRs; API-created
-// Apps in store-less mode receive one too. Keeping the label key in core lets
-// every feature resolve a public service id without importing the store.
-const LabelAppID = "bex.co/app-id"
+// Apps in store-less mode receive one too. Aliases the canonical key in
+// lego/types (renderenv) so backend and operator resolve the same label.
+const LabelAppID = renderenv.LabelAppID
 
 // LabelServiceName carries an App CR's PUBLIC name (w4/m19) — the workspace-
 // scoped name a caller creates and reaches it by, as opposed to metadata.Name,
@@ -231,9 +233,9 @@ const LabelServiceName = "bex.co/service-name"
 // underscore). Absent on hand-applied CRs (legacy mode): those run without
 // NetworkPolicy enforcement, consistent with prior behavior.
 //
-// Kept in sync by hand with operator's labelWorkspace — the api layer must not
-// import the operator (same pattern as LabelTenant / store.LabelTenant).
-const LabelWorkspace = "app.bex.co/workspace"
+// Aliases the canonical key in lego/types (v1alpha1), which the operator also
+// reads, so the two sides can never drift apart.
+const LabelWorkspace = appv1alpha1.LabelWorkspace
 
 // LabelProject carries a Database or KeyValue CR's project assignment (w1/m31
 // extension): the owning Project's id (prj-<xid>), or absent when unassigned.
@@ -256,7 +258,7 @@ const LabelProject = "app.bex.co/project-id"
 // environment's boundary selects pods by it. Membership writes stamp it on the
 // App CR synchronously (environments.Service.applyAppEnvironmentLabels, the
 // create and Blueprint paths) as well as through the projector.
-const LabelEnvironment = "app.bex.co/environment-id"
+const LabelEnvironment = appv1alpha1.LabelEnvironment
 
 // LabelBlueprint records the Git-connected Blueprint that manages a Service,
 // Database, or KeyValue (w8/m23): stamped on blueprint create/adopt, cleared
@@ -282,7 +284,7 @@ const AnnotationBlueprintEnv = "bex.co/blueprint-env"
 // the signal, not just its value. Stamped/cleared by environments.Service
 // whenever service membership changes (SetServices) or the isolation flag
 // flips (SetACL). Read by the operator (app_controller.go's
-// reconcileNetworkPolicy, kept in sync by hand, same LabelWorkspace pattern)
+// reconcileNetworkPolicy, which shares this canonical v1alpha1 key)
 // to scope that App's NetworkPolicy to same-environment peers instead of
 // same-workspace ones. Absent: no environment, or the environment has
 // isolation off — the App keeps ordinary same-workspace connectivity.
@@ -296,7 +298,7 @@ const AnnotationBlueprintEnv = "bex.co/blueprint-env"
 // week (w6/m19, w6/m20) landed different semantics: m20's is unconditional
 // membership (App/DB/KV all belong to at most one environment, mirroring
 // LabelProject); m19's is conditional on a policy flag and, today, App-only.
-const LabelNetworkIsolation = "app.bex.co/network-isolation"
+const LabelNetworkIsolation = appv1alpha1.LabelNetworkIsolation
 
 // HasNetworkIsolation reports whether labels carry LabelNetworkIsolation.
 func HasNetworkIsolation(labels map[string]string) bool {

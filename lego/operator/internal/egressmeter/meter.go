@@ -42,11 +42,16 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/bex-co/bex/lego/types/renderenv"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
-	PodLabelApp   = "app.bex.co/app"
-	PodLabelAppID = "bex.co/app-id"
+	// PodLabelApp and PodLabelAppID alias the canonical keys in lego/types
+	// (v1alpha1 and renderenv), which the backend also reads.
+	PodLabelApp   = appv1alpha1.LabelApp
+	PodLabelAppID = renderenv.LabelAppID
 	// PodLabelEgressAppID attributes a pod that must not carry PodLabelAppID
 	// (a pre-deploy Job runs the service's own command but is never a Service
 	// backend) to its service's egress (w4/453).

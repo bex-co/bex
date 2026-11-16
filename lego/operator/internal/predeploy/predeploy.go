@@ -63,9 +63,11 @@ const (
 	LabelService = "app.bex.co/predeploy"
 	// LabelEgressAppID mirrors egressmeter.PodLabelEgressAppID.
 	LabelEgressAppID = "app.bex.co/egress-app-id"
-	LabelComponent   = "app.bex.co/component"
-	ComponentValue   = "predeploy"
-	labelWorkspace   = "app.bex.co/workspace"
+	// LabelComponent and labelWorkspace alias the canonical keys in
+	// lego/types (v1alpha1), which the backend also reads.
+	LabelComponent = appv1alpha1.LabelComponent
+	ComponentValue = "predeploy"
+	labelWorkspace = appv1alpha1.LabelWorkspace
 	// containerName is the Job's single container.
 	containerName = "predeploy"
 )

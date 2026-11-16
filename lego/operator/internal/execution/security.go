@@ -25,7 +25,10 @@ import (
 )
 
 const (
-	LabelApp    = "app.bex.co/app"
+	// LabelApp aliases the canonical App label in lego/types (v1alpha1),
+	// which the backend also reads; like LabelAppUID below it, this name
+	// stays so execution's callers keep their convention.
+	LabelApp    = appv1alpha1.LabelApp
 	LabelAppUID = appv1alpha1.LabelAppUID
 	// LabelContainerPolicy is operator-authored admission evidence, never a
 	// tenant-selected capability list. Only widened-policy (image-v1,
@@ -36,11 +39,12 @@ const (
 	// exact parent lifetime, so a recreated parent never adopts the old Job.
 	LabelDatabaseUID = "app.bex.co/database-uid"
 	LabelKeyValueUID = "app.bex.co/keyvalue-uid"
-	LabelComponent   = "app.bex.co/component"
-	LabelWorkspace   = "app.bex.co/workspace"
+	LabelComponent   = appv1alpha1.LabelComponent
+	LabelWorkspace   = appv1alpha1.LabelWorkspace
 	// LabelEnvironment is a pod's environment id, the identity an isolated
-	// environment's network boundary selects (w4/m342).
-	LabelEnvironment   = "app.bex.co/environment-id"
+	// environment's network boundary selects (w4/m342). Aliases the
+	// canonical key in lego/types (v1alpha1).
+	LabelEnvironment   = appv1alpha1.LabelEnvironment
 	LabelAppNamespace  = "app.bex.co/app-namespace"
 	LabelVerifyImage   = "app.bex.co/verify-image"
 	VerifyImageEnabled = "enabled"

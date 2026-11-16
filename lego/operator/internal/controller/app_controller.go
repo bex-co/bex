@@ -74,6 +74,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
 	"github.com/bex-co/bex/lego/types/k8sname"
+	"github.com/bex-co/bex/lego/types/renderenv"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -180,8 +181,9 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 		rotationRequested || scaledSelection || isolationChanged || cancelStamped
 }
 
-// labelApp marks the workloads bex creates for an App.
-const labelApp = "app.bex.co/app"
+// labelApp marks the workloads bex creates for an App. It aliases the
+// canonical key in lego/types (v1alpha1), which the backend also reads.
+const labelApp = appv1alpha1.LabelApp
 
 // createContainerConfigError is the kubelet pod-condition reason the stuck-pod
 // classifier surfaces as its own App condition (a referenced Secret/ConfigMap
@@ -201,15 +203,15 @@ const imagePullBackOff = "ImagePullBackOff"
 const defaultAppsNamespace = "default"
 
 // labelAppID is the immutable Render-shaped service id propagated from the App
-// CR onto workload pods for node-local egress attribution. Kept in sync with
-// backend/core.LabelAppID without importing the backend.
-const labelAppID = "bex.co/app-id"
+// CR onto workload pods for node-local egress attribution. It aliases the
+// canonical key in lego/types (renderenv), which the backend also reads.
+const labelAppID = renderenv.LabelAppID
 
-// labelRevision ties a pod to the App revision it was created for. The backend
-// keeps the same string as core.PodLabelRevision without importing backend;
+// labelRevision ties a pod to the App revision it was created for. It aliases
+// the canonical key in lego/types (v1alpha1), which the backend also reads;
 // SSH target discovery uses it to exclude a still-Ready old ReplicaSet during
 // a rollout, including same-image restarts where image equality is insufficient.
-const labelRevision = "app.bex.co/revision"
+const labelRevision = appv1alpha1.LabelRevision
 
 // labelHostRedirectOwner marks the per-App Traefik redirect middlewares so a
 // level-triggered reconcile can remove entries whose source host stopped being
@@ -218,10 +220,9 @@ const labelRevision = "app.bex.co/revision"
 const labelHostRedirectOwner = "app.bex.co/host-redirect-owner"
 
 // labelWorkspace carries the owning workspace (tenant) id on pod templates so
-// NetworkPolicy selectors can express "same-workspace" allow rules. Kept in
-// sync by hand with core.LabelWorkspace in the backend — the operator never
-// imports the backend (same pattern as labelApp / core.PodLabelApp).
-const labelWorkspace = "app.bex.co/workspace"
+// NetworkPolicy selectors can express "same-workspace" allow rules. It aliases
+// the canonical key in lego/types (v1alpha1), which the backend also reads.
+const labelWorkspace = appv1alpha1.LabelWorkspace
 
 // appIdentity is the shared-sink identity for app (w2/m75, docs/ADR074).
 func appIdentity(app *appv1alpha1.App) identity.Identity {
@@ -235,17 +236,16 @@ func appIdentity(app *appv1alpha1.App) identity.Identity {
 // labelNetworkIsolation carries an App's environment id (w6/m19 protected-
 // environment ACLs), present on the App CR ONLY when that environment has
 // networkIsolationEnabled=true (environments.Service stamps/clears it —
-// internal/environments/service.go's applyAppEnvironmentLabels). Kept in sync
-// by hand with core.LabelNetworkIsolation in the backend (same pattern as
-// labelWorkspace / core.LabelWorkspace) — a distinct label from
-// labelEnvironment (core.LabelEnvironment, unconditional membership, which
-// App CRs carry too). Since w4/m342 the workspace boundary selects pods by
-// labelEnvironment, so neither label rolls a pod: the template carries only
-// labelEnvironment, held lazily, and relabelAppPods mirrors both onto the
-// running pods in place. This label now marks only the operator's own
-// datastore and build-reach selectors; the per-App policy it once scoped is
-// gone (w4/647).
-const labelNetworkIsolation = "app.bex.co/network-isolation"
+// internal/environments/service.go's applyAppEnvironmentLabels). It aliases
+// the canonical key in lego/types (v1alpha1), which the backend also reads —
+// a distinct label from labelEnvironment (the v1alpha1 unconditional
+// membership key, which App CRs carry too). Since w4/m342 the workspace
+// boundary selects pods by labelEnvironment, so neither label rolls a pod:
+// the template carries only labelEnvironment, held lazily, and relabelAppPods
+// mirrors both onto the running pods in place. This label now marks only the
+// operator's own datastore and build-reach selectors; the per-App policy it
+// once scoped is gone (w4/647).
+const labelNetworkIsolation = appv1alpha1.LabelNetworkIsolation
 
 // labelPlatformAliasPurpose marks the only ExternalName Services the operator
 // may create in tenant namespaces. The API-server admission policy in

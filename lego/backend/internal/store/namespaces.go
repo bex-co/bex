@@ -1009,7 +1009,7 @@ func activatorIngressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy
 						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "bex-system"},
 					},
 					PodSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{"app.bex.co/component": "activator"},
+						MatchLabels: map[string]string{core.PodLabelComponent: "activator"},
 					},
 				}},
 			}},

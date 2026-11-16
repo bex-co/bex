@@ -124,13 +124,13 @@ func run() error {
 		refs[i] = migrate.AppRef{
 			UID:       string(other.UID),
 			Name:      other.Name,
-			Workspace: other.Labels["app.bex.co/workspace"],
+			Workspace: other.Labels[appv1alpha1.LabelWorkspace],
 		}
 	}
 
 	for i := range apps {
 		app := &apps[i]
-		ws := app.Labels["app.bex.co/workspace"]
+		ws := app.Labels[appv1alpha1.LabelWorkspace]
 		if ws == "" {
 			ws = *workspace
 		}
@@ -155,7 +155,7 @@ func run() error {
 		if patch.Labels == nil {
 			patch.Labels = map[string]string{}
 		}
-		patch.Labels["app.bex.co/workspace"] = ws
+		patch.Labels[appv1alpha1.LabelWorkspace] = ws
 		if patch.Annotations == nil {
 			patch.Annotations = map[string]string{}
 		}
