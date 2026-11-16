@@ -127,11 +127,11 @@ repo="$tmp/repo"
 mkdir -p "$repo/scripts" "$repo/dashboard" "$repo/docs" "$repo/.github/scripts" "$repo/.github/workflows" "$repo/lego/operator"
 cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$root/scripts/gitleaks.sh" "$repo/scripts/"
 cp "$root/.github/scripts/native-common-qualify.py" "$repo/.github/scripts/"
-# Stands in for the native custody suites: logs that it ran, fails on demand.
+# Stands in for the native suites: logs that it ran, fails on demand.
 cat >"$repo/.github/scripts/test_native_oci_stub.py" <<PY
 import os, unittest
-class Custody(unittest.TestCase):
-    def test_custody(self):
+class Native(unittest.TestCase):
+    def test_native(self):
         open("$tmp/native.log", "a").write("ran\\n")
         self.assertFalse(os.environ.get("NATIVE_FAIL"))
 PY
@@ -215,24 +215,27 @@ echo more >>"$repo/docs/a.md"
 commit "docs: no marker"
 gate HEAD~1 || fail "a message without a marker failed the gate: $(cat "$tmp/err")"
 
-# The native custody gate (w6/107): a custody-pinned file, a native workflow or
-# a native module runs the custody suites, a failure blocks, and anything else
-# runs nothing.
+# The native gate (w6/107): a file the qualification source inventory names, a
+# native workflow or a native module runs the native suites, a failure blocks,
+# and anything else runs nothing.
 native_gate() { # <path> <expect: ran|skipped> [NATIVE_FAIL]
+  mkdir -p "$(dirname "$repo/$1")"
   echo "$RANDOM" >>"$repo/$1"
   commit "$1"
   rm -f "$tmp/native.log"
   if NATIVE_FAIL="${3:-}" gate HEAD~1; then
-    [ -z "${3:-}" ] || fail "$1: a failing custody suite did not block the push"
+    [ -z "${3:-}" ] || fail "$1: a failing native suite did not block the push"
   else
     [ -n "${3:-}" ] || fail "$1: a passing push failed the gate: $(cat "$tmp/err")"
   fi
   case "$2" in
-    ran) [ -e "$tmp/native.log" ] || fail "$1: the custody suites did not run: $(cat "$tmp/err")" ;;
-    skipped) [ ! -e "$tmp/native.log" ] || fail "$1: an unrelated change ran the custody suites" ;;
+    ran) [ -e "$tmp/native.log" ] || fail "$1: the native suites did not run: $(cat "$tmp/err")" ;;
+    skipped) [ ! -e "$tmp/native.log" ] || fail "$1: an unrelated change ran the native suites" ;;
   esac
 }
 native_gate lego/operator/go.sum ran
+native_gate deploy/native-common/Dockerfile ran
+native_gate lego/operator/internal/build/toolchain-freshness.json ran
 native_gate .github/workflows/native-base-image.yml ran
 native_gate .github/workflows/native-backport-acceptance.yml ran
 native_gate .github/scripts/native-oci-mirror.py ran

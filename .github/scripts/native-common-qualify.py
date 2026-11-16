@@ -12,7 +12,6 @@ import selectors
 import signal
 import shutil
 import subprocess
-import sys
 import tempfile
 import time
 import urllib.parse
@@ -97,19 +96,6 @@ def profile_selection(profile, case):
             "scope": "single-case pilot measurement only; not full-family acceptance or a capacity guarantee"}
 
 
-# A checked-in receipt authorizes TEST-ONLY reuse of one already reviewed image.
-# It does not perform or replace the retained V11 cryptographic/blob review.
-CANDIDATE_PATH = ".github/native-common-test-candidate.json"
-CANDIDATE_SCHEMA = "bex.native-common-test-candidate/v1"
-V11_TOOLS = {
-    "loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
-    "loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
-    "common-v11-adapter.py": "4746a5022ab6df57ed95b6354d56b92eff15976d1737c2aa5a5ca15aa0080a4b",
-}
-# Checked by the adapter PINNED manifest; not an additional executed policy.
-V11_SUPPORT_INPUTS = {
-    "loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
-}
 FACTORY_PATHS = (
     "native-base/bex-native-python-tools", "native-base/fetch-python-tools.py",
     "native-base/install-python-tools.py", "native-base/install.sh", "native-base/node-brotli/check.js",
@@ -124,6 +110,8 @@ SOURCE_PACKAGES = (
     "operator/internal/httpclient", "operator/internal/identity", "operator/internal/publish",
     "operator/internal/registry", "types/k8sname", "types/netutil", "types/v1alpha1",
 )
+# Inside the recorded build tree, and also named: bootstrap reads its BuildKit pin.
+BUILDKIT_POLICY = "lego/operator/internal/build/toolchain-freshness.json"
 SOURCE_FILES = (
     "lego/operator/go.mod", "lego/operator/go.sum", "lego/types/go.mod", "lego/types/go.sum",
     "lego/.dockerignore", "lego/Dockerfile", "deploy/native-base/testdata/archive.dump.b64",
@@ -134,65 +122,9 @@ SOURCE_FILES = (
     ".github/workflows/native-common-image.yml", ".github/scripts/native-common-qualify.py",
     ".github/scripts/test_native_oci_common_qualification.py", ".github/scripts/native-oci-stage.py",
     ".github/scripts/native-oci-mirror.py", "deploy/native-common/matrix.py", "deploy/native-common/upstream.json",
-    "scripts/lib/toolchain-freshness.py", "scripts/install-syft.py",
+    "scripts/lib/toolchain-freshness.py", "scripts/install-syft.py", BUILDKIT_POLICY,
 )
-# These are the common publisher's actual local execution inputs, independent
-# of the generator/qualification code whose baseline may need requalification.
-IMAGE_POLICY_FILES = (
-    ".github/workflows/native-base-image.yml", ".github/scripts/native-oci-stage.py",
-    ".github/scripts/native-oci-mirror.py", "deploy/native-base/check.Dockerfile",
-    "deploy/native-base/check-tools.py", "deploy/native-base/check-brotli.py",
-    "deploy/native-base/check-primary-python.py", "deploy/native-base/testdata/archive.dump.b64",
-    "deploy/native-base/testdata/rows.txt", "deploy/native-common/matrix.py",
-    "deploy/native-common/upstream.json", "scripts/lib/toolchain-freshness.py",
-    "lego/operator/internal/build/toolchain-freshness.json",
-)
-IMAGE_INPUT_PATHS = {"deploy/" + path for path in FACTORY_PATHS} | set(IMAGE_POLICY_FILES)
-
-
-LEGACY_PUBLICATION_GATES = {
-    "verify real native tool transformations without network on both architectures",
-    "scan amd64 candidate", "scan arm64 candidate", "sign and attest the immutable candidate",
-    "expose the fully gated immutable image",
-    "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
-}
-# Historical0941 still must prove every original publication/signature role.
-# D3 changes future production architecture scope, never its executed provenance.
-PUBLICATION_GATES = LEGACY_PUBLICATION_GATES
-
-# One reviewed compatibility transition, not an arbitrary source-policy waiver.
-# Only the exact original0941 proof may cross this exact workflow-byte change;
-# the other32 image inputs, all retained proof bodies and source identities stay exact.
-# Re-pinned 2026-11-09 (owner decision, ADR083 amendment): "after" now also
-# carries the move to GitHub-hosted runners (the amd64 build job on
-# ubuntu-latest plus its disk-cleanup step); no build, gate or proof step changed.
-D3_LEGACY_0941 = {'ref': 'ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0',
- 'producer': '1feba939b4697894e800ed0abb4f25a0bf415641',
- 'verification': '1feba939b4697894e800ed0abb4f25a0bf415641',
- 'approval_inputs_sha256': '822f75fe0b44129c5b4fefa9ec0f30fd5f6e325aaf3674f6234f24f540a20797',
- 'path': '.github/workflows/native-base-image.yml',
- 'before': {'sha256': '0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47',
-            'bytes': 18402,
-            'mode': '100644',
-            'type': 'regular'},
- 'after': {'sha256': '523e15966cebbd7957357fd8b1d26bcf3418d8bc0cd6a6d1159cb66eda27f10c',
-           'bytes': 16179,
-           'mode': '100644',
-           'type': 'regular'}}
-
-
-def image_inputs_compatible(candidate, recorded, current):
-    if recorded == current:
-        return True
-    transition = D3_LEGACY_0941
-    path = transition["path"]
-    return (set(recorded) == set(current) == IMAGE_INPUT_PATHS
-            and all(candidate[key] == transition[key] for key in ("ref", "producer", "verification"))
-            and candidate["approval"]["inputs"]["sha256"] == transition["approval_inputs_sha256"]
-            and recorded[path] == transition["before"] and current[path] == transition["after"]
-            and all(recorded[name] == current[name] for name in IMAGE_INPUT_PATHS - {path}))
-
-UTILITY_GATE = "actual generated offline builds, original replays and exact-default SPDX"
+FIXED_SOURCE_PATHS = frozenset(SOURCE_FILES) | {"deploy/" + path for path in FACTORY_PATHS}
 
 
 def require(condition, message):
@@ -200,154 +132,14 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def unique_object(pairs):
-    result = {}
-    for key, value in pairs:
-        require(key not in result, "duplicate receipt key")
-        result[key] = value
-    return result
-
-
-def json_file(path):
-    require(path.stat().st_size <= 4 * 1024 * 1024, "receipt metadata exceeds bound")
-    return json.loads(path.read_text(), object_pairs_hook=unique_object)
-
-
-def checkout_packet(path):
-    """One literal packet, never an input-supplied Git pattern or shell word."""
-    require(isinstance(path, str) and not re.search(r"[\x00-\x1f\x7f]", path), "invalid checkout evidence path")
-    parts = path.split("/")
-    require(len(parts) >= 5 and parts[:4] == [".pm", "w8", "m91", "evidence"]
-            and all(part not in ("", ".", "..") for part in parts), "checkout evidence must be inside a packet")
-    # Gitignore-style non-cone rules: escape literal metacharacters rather than
-    # imposing a new packet naming convention on otherwise valid evidence.
-    packet = "".join("\\" + char if char in "\\!*?[]# " else char for char in parts[4])
-    return "/.pm/w8/m91/evidence/" + packet + "/**"
-
-
-def checkout_descriptor(descriptor):
-    require(isinstance(descriptor, dict) and set(descriptor) == {"path", "sha256", "bytes"}
-            and isinstance(descriptor["sha256"], str) and re.fullmatch(r"[a-f0-9]{64}", descriptor["sha256"])
-            and type(descriptor["bytes"]) is int and descriptor["bytes"] >= 0, "bad checkout evidence descriptor")
-    return checkout_packet(descriptor["path"])
-
-
-def checkout_evidence_packets(record, custody):
-    """Materialization scope only; existing full validators still decide reuse."""
-    require(isinstance(record, dict) and set(record) == {"schema", "candidate"}
-            and record["schema"] == CANDIDATE_SCHEMA and isinstance(record["candidate"], dict),
-            "missing checkout candidate")
-    candidate = record["candidate"]
-    descriptors = list(candidate["approval"].values()) + [candidate["publication"]["metadata"]]
-    if candidate["source"] is not None:
-        descriptors.append(candidate["source"]["manifest"])
-    packets = {checkout_descriptor(row) for row in descriptors}
-    require(candidate["utilities"] is None or isinstance(candidate["utilities"], dict), "invalid checkout utilities")
-    for utility in (candidate["utilities"] or {}).values():
-        packets.add(checkout_packet(utility["root"]))
-        packets.update(checkout_descriptor(utility[key]) for key in ("metadata", "artifact_metadata", "manifest"))
-    require(isinstance(custody, dict) and isinstance(custody.get("files"), dict), "missing checkout full custody")
-    packets.update(checkout_descriptor(row) for row in custody["files"].values())
-    return sorted(packets)
-
-
-def checkout_evidence(mode):
-    require(mode in ("fresh", "reviewed-candidate"), "unknown checkout source")
-    if mode == "fresh":
-        return  # No prior approval or family baseline is needed to publish fresh.
-    root = Path(__file__).resolve().parents[2]
-    record = json_file(regular_path(root, CANDIDATE_PATH))
-    checkout_evidence_packets(record, {"files": {}})  # Validate every direct path before a Git read.
-    descriptor = record["candidate"]["approval"]["custody"]
-    checkout_descriptor(descriptor)
-    require(descriptor["bytes"] <= 4 * 1024 * 1024, "checkout custody metadata exceeds bound")
-    source = os.environ.get("GITHUB_SHA", "")
-    require(re.fullmatch(r"[a-f0-9]{40}", source), "invalid checkout source SHA")
-    specification = source + ":" + descriptor["path"]
-
-    def git_object(operation, limit, expected_sha256=None):
-        # Retain lossless client diagnostics before evidence is hydrated.
-        result, stdout, stderr = pull_buildkit(
-            ["timeout", "--kill-after=5s", "30s", "git", "-C", str(root), "cat-file", operation, specification],
-            dict(os.environ))
-        complete = (result["exit_code"] == 0 and result["bound"] is None and result["cancel_signal"] is None
-                    and result["direct_child_reaped"] and result["process_group_absent"]
-                    and len(stdout) <= limit and len(stderr) <= 1024 * 1024)
-        if operation == "-s":
-            complete = complete and stdout.strip() == str(descriptor["bytes"]).encode()
-        if expected_sha256 is not None:
-            complete = complete and len(stdout) == descriptor["bytes"] and hashlib.sha256(stdout).hexdigest() == expected_sha256
-        if not complete:
-            print("BEX_CANDIDATE_GIT_READ_FAILURE " + json.dumps({
-                "source": source, "path": descriptor["path"], "operation": operation, "result": result,
-                "stdout_base64": base64.b64encode(stdout).decode("ascii"),
-                "stderr_base64": base64.b64encode(stderr).decode("ascii"),
-            }), file=sys.stderr, flush=True)
-            raise ValueError("bounded checkout custody read failed")
-        return stdout
-
-    git_object("-s", 64)
-    raw = git_object("blob", descriptor["bytes"], descriptor["sha256"])
-    custody = json.loads(raw, object_pairs_hook=unique_object)
-    print("\n".join(checkout_evidence_packets(record, custody)))
-
-
-EVIDENCE_LOCATION = ".github/native-evidence.json"
-
-
-def evidence_location(root):
-    """The one digest-pinned GHCR artifact that holds the retained evidence.
-
-    The evidence left git on 2026-11-04 (#NO-ARTIFACTS-IN-GIT); its file
-    titles are the repository paths below .pm/w8/m91/evidence (w6/m164)."""
-    location = json_file(regular_path(root, EVIDENCE_LOCATION))
-    require(isinstance(location, dict) and set(location) == {"schema", "artifact", "packets"}
-            and location["schema"] == "bex.native-evidence-location/v1"
-            and isinstance(location["artifact"], str)
-            and re.fullmatch(r"ghcr\.io/bex-co/bex-evidence@sha256:[a-f0-9]{64}", location["artifact"])
-            and isinstance(location["packets"], list) and location["packets"]
-            and all(isinstance(p, str) and checkout_packet(p + "/x") for p in location["packets"]),
-            "invalid evidence location")
-    return location
-
-
-def materialize_evidence(mode, root=None):
-    """Pull the pinned evidence artifact and place exactly the packets the
-    reviewed candidate needs; the full validators still check every byte."""
-    require(mode in ("fresh", "reviewed-candidate"), "unknown checkout source")
-    if mode == "fresh":
-        return  # No prior approval or family baseline is needed to publish fresh.
-    root = Path(root) if root is not None else Path(__file__).resolve().parents[2]
-    record = json_file(regular_path(root, CANDIDATE_PATH))
-    checkout_evidence_packets(record, {"files": {}})  # Validate every direct path first.
-    location = evidence_location(root)
-    staging = Path(tempfile.mkdtemp(prefix="bex-evidence-", dir=os.environ.get("RUNNER_TEMP")))
-    try:
-        # --keep-old-files: a title can never replace a file that exists.
-        pulled = subprocess.run(["oras", "pull", "--no-tty", "--keep-old-files", location["artifact"], "-o", str(staging)],
-                                capture_output=True, text=True, timeout=1100)
-        require(pulled.returncode == 0, "evidence artifact pull failed: " + pulled.stderr[-2000:])
-        custody = json_file(evidence_file(staging, record["candidate"]["approval"]["custody"]))
-        needed = {pattern[len("/"):-len("/**")].replace("\\", "") for pattern in checkout_evidence_packets(record, custody)}
-        require(needed <= set(location["packets"]), "the evidence artifact lacks packets: " + ", ".join(sorted(needed - set(location["packets"]))))
-        for packet in sorted(needed):
-            source, target = staging / packet, root / packet
-            require(source.is_dir() and not source.is_symlink(), "evidence artifact lacks " + packet)
-            require(not target.exists(), "evidence packet already present: " + packet)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(source), str(target))
-    finally:
-        shutil.rmtree(staging, ignore_errors=True)
-
-
 def regular_path(root, relative):
     require(isinstance(relative, str) and relative and not relative.startswith("/")
-            and all(x not in ("", ".", "..") for x in relative.split("/")), "invalid retained path")
+            and all(x not in ("", ".", "..") for x in relative.split("/")), "invalid source path")
     path = root
     for part in relative.split("/"):
         path /= part
-        require(not path.is_symlink(), "retained source/evidence symlink")
-    require(path.is_file(), "missing retained source/evidence: " + relative)
+        require(not path.is_symlink(), "qualification source symlink")
+    require(path.is_file(), "missing qualification source: " + relative)
     return path
 
 
@@ -358,8 +150,8 @@ def file_identity(path):
 
 
 def source_inventory(root):
-    """Exact functional set; receipt/evidence/PM prose are deliberately excluded."""
-    paths = set(SOURCE_FILES) | {"deploy/" + path for path in FACTORY_PATHS}
+    """The exact functional source set qualification-source.json records; PM prose is excluded."""
+    paths = set(FIXED_SOURCE_PATHS)
     build = root / "lego/operator/internal/build"
     require(build.is_dir() and not build.is_symlink(), "missing build source root")
     paths.update(str(p.relative_to(root)) for p in build.rglob("*") if not p.is_dir() or p.is_symlink())
@@ -372,230 +164,6 @@ def source_inventory(root):
     return {path: file_identity(regular_path(root, path)) for path in sorted(paths)}
 
 
-def image_source_inventory(root):
-    """Current checked-out image-critical bytes/type/Git mode; no generator gate."""
-    inventory = {}
-    for path in sorted(IMAGE_INPUT_PATHS):
-        observed = file_identity(regular_path(root, path))
-        inventory[path] = {key: observed[key] for key in ("sha256", "bytes", "mode", "type")}
-    return inventory
-
-
-def evidence_file(root, descriptor):
-    require(isinstance(descriptor, dict) and set(descriptor) == {"path", "sha256", "bytes"}, "bad evidence descriptor")
-    require(descriptor["path"].startswith(".pm/w8/m91/evidence/")
-            and re.fullmatch(r"[a-f0-9]{64}", descriptor["sha256"] or "")
-            and type(descriptor["bytes"]) is int and descriptor["bytes"] >= 0, "bad evidence identity")
-    path = regular_path(root, descriptor["path"])
-    require(path.stat().st_size == descriptor["bytes"] and sha(path) == descriptor["sha256"], "retained evidence differs")
-    return path
-
-
-def evidence_json(root, descriptor):
-    return json_file(evidence_file(root, descriptor))
-
-
-def completed_job(root, descriptor, identity, source, name, gates):
-    metadata = evidence_json(root, descriptor)
-    jobs = metadata.get("jobs", [metadata])
-    jobs = [row for row in jobs if row.get("id") == identity["job_id"]]
-    require(len(jobs) == 1, "missing or ambiguous actual job")
-    job = jobs[0]
-    require(all(type(identity[key]) is int and identity[key] > 0 for key in ("run_id", "run_attempt", "job_id")), "bad job identity")
-    require(job.get("run_id") == identity["run_id"] and job.get("run_attempt") == identity["run_attempt"]
-            and job.get("head_sha") == source and job.get("head_branch") == "main"
-            and job.get("name") == name and job.get("status") == "completed" and job.get("conclusion") == "success"
-            and job.get("run_url") == "https://api.github.com/repos/bex-co/bex/actions/runs/" + str(identity["run_id"]),
-            "actual job/source/status differs")
-    rows = job.get("steps", [])
-    steps = {row["name"]: row for row in rows}
-    require(len(steps) == len(rows) and gates <= steps.keys()
-            and all(steps[name].get("status") == "completed" and steps[name].get("conclusion") == "success" for name in gates),
-            "actual required job gate incomplete")
-    return job
-
-
-def validate_image_candidate(root=None):
-    """Existing strict artifact approval; does not authorize a family baseline."""
-    root = Path(root) if root is not None else Path(__file__).resolve().parents[2]
-    record = json_file(regular_path(root, CANDIDATE_PATH))
-    require(set(record) == {"schema", "candidate"} and record["schema"] == CANDIDATE_SCHEMA
-            and isinstance(record["candidate"], dict), "no reviewed test candidate authorization")
-    require(re.fullmatch(r"[a-f0-9]{40}", os.environ.get("GITHUB_SHA", "")), "invalid executing generator SHA")
-    c = record["candidate"]
-    require(set(c) == {"ref", "base", "producer", "verification", "publication", "platforms", "approval", "source", "utilities"},
-            "unknown or missing test candidate fields")
-    require(re.fullmatch(r"ghcr.io/bex-co/bex-cnb-run@sha256:[a-f0-9]{64}", c["ref"])
-            and re.fullmatch(r"buildpack-deps:bookworm@sha256:[a-f0-9]{64}", c["base"])
-            and re.fullmatch(r"[a-f0-9]{40}", c["producer"])
-            and c["producer"] == c["verification"], "invalid immutable common provenance")
-    require(set(c["platforms"]) == {"amd64", "arm64"}, "both actual platforms required")
-    for platform in c["platforms"].values():
-        require(set(platform) == {"manifest_digest", "config_digest"}
-                and all(IMAGE.fullmatch(value) for value in platform.values()), "bad common platform identity")
-    approval = c["approval"]
-    require(set(approval) == {"receipt", "custody", "plan", "inputs"}, "bad retained approval fields")
-    review, custody, fixed = (evidence_json(root, approval[key]) for key in ("receipt", "custody", "plan"))
-    image_inputs = evidence_json(root, approval["inputs"])
-    require(set(image_inputs) == {"source", "files"} and image_inputs["source"] == c["verification"]
-            and image_inputs_compatible(c, image_inputs["files"], image_source_inventory(root)), "stale or wrong verifier-source image-critical inputs")
-    require(review.get("ref") == fixed.get("ref") == c["ref"] and review.get("official_base") == fixed.get("base") == c["base"]
-            and review.get("producer_workflow_sha") == fixed.get("producer_sha") == c["producer"]
-            and review.get("verification_workflow_sha") == fixed.get("verification_sha") == c["verification"], "V11 subject/source/base differs")
-    require(fixed.get("schema") == "bex.native-common-review-plan/v1" and fixed.get("name") == "common-bookworm", "not a common V11 review")
-    factory = {"deploy/" + path: {key: image_inputs["files"]["deploy/" + path][key] for key in ("sha256", "bytes", "mode")} for path in FACTORY_PATHS}
-    selection = {path: {key: image_inputs["files"][path][key] for key in ("sha256", "bytes", "mode")}
-                 for path in ("deploy/native-common/matrix.py", "deploy/native-common/upstream.json")}
-    require(fixed.get("factory_inputs") == factory and fixed.get("selection_inputs") == selection
-            and fixed.get("freshness_sha256") == image_inputs["files"]["scripts/lib/toolchain-freshness.py"]["sha256"], "V11 factory/selection policy differs")
-    require(all(review.get(key) is True for key in ("approved_supplier_candidate", "anonymous_manifest_bytes_sha_verified",
-            "strict_keyless_signature_and_sbom_and_vulnerability_attestations_verified",
-            "strict_actual_Rekor_v2_and_RFC3161_TSA_verified", "wrong_source_and_subject_negative_checks_rejected"))
-            and review.get("anonymous_pull", {}).get("all_unique_config_and_layer_bytes_fully_hashed") is True,
-            "retained strict V11 review incomplete")
-    provenance = review.get("producer_verification_provenance", {})
-    require(provenance.get("producer_sha") == c["producer"] and provenance.get("verification_sha") == c["verification"]
-            and provenance.get("mode") == "fresh-build", "retained producer/verifier relabeled")
-    require(set(review.get("platforms", {})) == {"amd64", "arm64"}
-            and all(all(review["platforms"][arch].get(key) == value for key, value in c["platforms"][arch].items()) for arch in c["platforms"]),
-            "V11 platform identities differ")
-    require(isinstance(custody, dict) and set(custody) == {"files", "support_inputs", "image_inputs"}, "missing portable full custody manifest")
-    files = custody["files"]
-    for descriptor in files.values():
-        evidence_file(root, descriptor)
-    require(approval["inputs"] in files.values(), "image input manifest has no portable custody")
-    retained_image_inputs = custody["image_inputs"]
-    require(isinstance(retained_image_inputs, dict) and set(retained_image_inputs) == IMAGE_INPUT_PATHS,
-            "image-critical source custody set differs")
-    for path, original in retained_image_inputs.items():
-        require(isinstance(original, str) and original in files
-                and all(files[original][key] == image_inputs["files"][path][key] for key in ("sha256", "bytes")),
-                "image-critical source body has no exact portable custody")
-    tools = review.get("evidence_tool_sha256", {})
-    require(isinstance(tools, dict), "missing executed-tool identities")
-    for path, digest in tools.items():
-        require(isinstance(path, str) and re.fullmatch(r"[a-f0-9]{64}", digest or "")
-                and path in files and files[path]["sha256"] == digest, "executed tool/plan has no exact portable custody")
-    for name, digest in V11_TOOLS.items():
-        matches = [path for path in tools if Path(path).name == name]
-        require(len(matches) == 1 and tools[matches[0]] == digest, "retained V11 tool differs")
-    # The actual common adapter reports its fixed plan as an executed input and
-    # records the same byte hash in producer_verification_provenance.
-    plan_entries = [path for path, digest in tools.items()
-                    if digest == approval["plan"]["sha256"] and files[path] == approval["plan"]]
-    require(len(plan_entries) == 1 and provenance.get("common_review_plan_sha256") == approval["plan"]["sha256"],
-            "executed fixed review plan linkage differs")
-    support = custody["support_inputs"]
-    require(isinstance(support, dict) and set(support) == set(V11_SUPPORT_INPUTS), "review support manifest differs")
-    for name, digest in V11_SUPPORT_INPUTS.items():
-        path = support[name]
-        require(isinstance(path, str) and Path(path).name == name and path in files
-                and files[path]["sha256"] == digest and path not in tools,
-                "review support identity differs or is mislabeled as executed")
-    payloads = review.get("signed_payloads", [])
-    required_pairs = {("image-signature", None), ("sbom", "amd64"), ("sbom", "arm64"),
-                      ("vulnerability", "amd64"), ("vulnerability", "arm64")}
-    require(isinstance(payloads, list) and all(isinstance(row, dict) for row in payloads), "invalid signed payload records")
-    pairs = {(row.get("kind"), row.get("architecture")) for row in payloads}
-    require(required_pairs <= pairs and pairs <= required_pairs,
-            "complete supported signed image/SBOM/Trivy set required")
-    for row in payloads:
-        for key in ("full_bundle_gzip", "full_predicate_gzip"):
-            require(row.get(key) in files and files[row[key]]["sha256"] == row.get(key + "_sha256"), "full signed report custody missing")
-    pub = c["publication"]
-    require(set(pub) == {"run_id", "run_attempt", "job_id", "metadata"}, "bad publication identity")
-    ci = review.get("ci_runtime_scan_signing_evidence", {})
-    require(str(pub["run_id"]) == ci.get("run_id") and pub["job_id"] == ci.get("job_id")
-            and fixed.get("run_id") == pub["run_id"] and fixed.get("job_id") == pub["job_id"]
-            and ci.get("job_name", "").startswith("publish / build (common-bookworm, ")
-            and ci.get("job_conclusion") == "success" and LEGACY_PUBLICATION_GATES - {next(x for x in LEGACY_PUBLICATION_GATES if x.startswith("Run "))} <= set(ci.get("verified_steps", [])),
-            "V11 actual publication provenance differs")
-    publication_job = completed_job(root, pub["metadata"], pub, c["verification"], ci["job_name"], LEGACY_PUBLICATION_GATES)
-    recovery = [step for step in publication_job["steps"] if step["name"] == "select a reviewed recovery artifact when its recipe is unchanged"]
-    require(ci.get("recovery_selection_conclusion") in (None, "skipped")
-            and all(step.get("conclusion") == "skipped" for step in recovery), "common recovery is unsupported")
-    return dict(c, receipt_sha256=sha(root / CANDIDATE_PATH), generator_source=os.environ["GITHUB_SHA"],
-                baseline_status="image-only-requalification")
-
-
-def validate_test_candidate(root=None):
-    """D3 family reuse needs the complete current AMD64 utility artifact."""
-    root = Path(root) if root is not None else Path(__file__).resolve().parents[2]
-    c = validate_image_candidate(root)
-    baseline = c["source"]
-    require(isinstance(baseline, dict) and set(baseline) == {"sha", "manifest"} and re.fullmatch(r"[a-f0-9]{40}", baseline["sha"]), "family reuse requires a complete utility baseline source")
-    expected = evidence_json(root, baseline["manifest"])
-    require(set(expected) == {"source", "files"} and expected["source"] == baseline["sha"] and expected["files"] == source_inventory(root), "stale qualification source set/bytes/modes")
-    require(isinstance(c["utilities"], dict) and set(c["utilities"]) == {"amd64"}, "complete original AMD64 utility artifact required")
-    for arch, utility in c["utilities"].items():
-        require(set(utility) == {"run_id", "run_attempt", "job_id", "artifact_id", "artifact_metadata", "metadata", "root", "manifest"}
-                and type(utility["artifact_id"]) is int and utility["artifact_id"] > 0, "bad utility artifact identity")
-        completed_job(root, utility["metadata"], utility, baseline["sha"], "qualify (" + arch + ")", {UTILITY_GATE})
-        archive = evidence_json(root, utility["artifact_metadata"])
-        require(archive.get("id") == utility["artifact_id"]
-                and archive.get("name") == "common-generated-" + baseline["sha"] + "-" + arch + "-" + str(utility["run_attempt"])
-                and archive.get("workflow_run", {}).get("id") == utility["run_id"]
-                and archive.get("workflow_run", {}).get("head_sha") == baseline["sha"], "actual utility artifact provenance differs")
-        prefix = utility["root"] + "/"
-        require(prefix.startswith(".pm/w8/m91/evidence/") and utility["manifest"]["path"] == prefix + "MANIFEST.json", "utility artifact scope differs")
-        artifact = evidence_json(root, utility["manifest"])
-        entries = artifact.get("files", [])
-        retained = {row["path"]: row for row in entries}
-        require(len(retained) == len(entries) and {"inputs.json", "qualification-source.json", "qualification.log", "cleanup.json"} <= retained.keys(), "incomplete original utility artifacts")
-        for path, row in retained.items():
-            evidence_file(root, {"path": prefix + path, "sha256": row["sha256"], "bytes": row["bytes"]})
-        captured_source = retained["qualification-source.json"]
-        require(captured_source["sha256"] == baseline["manifest"]["sha256"]
-                and captured_source["bytes"] == baseline["manifest"]["bytes"]
-                and json_file(regular_path(root, prefix + "qualification-source.json")) == expected,
-                "utility job did not capture this exact baseline source")
-        inputs = json_file(regular_path(root, prefix + "inputs.json"))
-        require(inputs.get("common_image") == c["ref"] and inputs.get("producer") == c["producer"]
-                and inputs.get("verification") == c["verification"] and inputs.get("generator_source") == baseline["sha"]
-                and inputs.get("platform") == "linux/" + arch and inputs.get("run_id") == str(utility["run_id"])
-                and inputs.get("run_attempt") == str(utility["run_attempt"])
-                and inputs.get("selection") == profile_selection("utilities", "all"), "utility inputs/selector/source differ")
-        def proof(suffix):
-            paths = [path for path in retained if path.endswith("/" + suffix)]
-            require(len(paths) == 1, "missing or ambiguous original utility proof: " + suffix)
-            return paths[0], json_file(regular_path(root, prefix + paths[0]))
-
-        default_config = None
-        for case in ("node-compute", "node-static", "python313-original", "python3148-default"):
-            _, actual = proof(case + "/receipt.json")
-            require(actual.get("common_base") == c["ref"] and actual.get("image_platform") == "linux/" + arch
-                    and IMAGE.fullmatch(actual.get("image_config_id", "")) and actual.get("network") == "none"
-                    and actual.get("runtime_command_executed") is (case != "node-static")
-                    and actual.get("static_artifacts_extracted") is (case == "node-static"), "actual generated utility identity differs")
-            if case == "python3148-default":
-                default_config = actual["image_config_id"]
-        for name in ("jq", "rsync", "python-metadata", "python-pip", "python-headers"):
-            _, omission = proof("missing-" + name + "/omission-receipt.json")
-            require(omission.get("removed_supplier") == name and omission.get("common_base") == c["ref"]
-                    and omission.get("healthy_independent_prerequisites_observed") is True
-                    and omission.get("original_command_expected_failure_observed") is True, "original omission control did not pass")
-        originals = json_file(regular_path(root, "lego/operator/internal/build/testdata/native-utilities/original-cases.json"))
-        require(len(originals) == 13 and len({row["mid"] for row in originals}) == 13, "original13 source set differs")
-        for case in originals:
-            name = "node-compute" if case["runtime"] == "node" else "python313-original"
-            mid = str(case["mid"])
-            require(any(path.endswith("/" + name + "/qa-output/build-" + mid + ".log") for path in retained), "original authored build log absent")
-            _, responses = proof(name + "/qa-output/runtime-" + mid + "-runtime.json")
-            require(isinstance(responses, list) and len(responses) == 3 and all(row.get("pass") is True for row in responses), "original runtime HTTP proof incomplete")
-        path, binding = proof("python3148-default/generated-spdx-binding.json")
-        require(binding.get("platform") == "linux/" + arch and binding.get("python") == "3.14.8"
-                and binding.get("image_config_id") == default_config and IMAGE.fullmatch(binding.get("syft_manifest_digest", ""))
-                and binding.get("libbrotli1_versions"), "actual exact-default SPDX binding differs")
-        for kind in ("syft", "spdx"):
-            reports = binding.get("custody", {}).get(kind, {})
-            require(reports.get("roundtrip") is True, "actual complete report custody absent")
-            for form in ("raw", "gzip"):
-                report_path = str(Path(path).parent / reports.get(form + "_file", ""))
-                require(report_path in retained and retained[report_path]["sha256"] == reports.get(form + "_sha256")
-                        and retained[report_path]["bytes"] == reports.get(form + "_bytes"), "full generated report custody differs")
-    return dict(c, baseline_status="current-complete")
-
-
 def plan():
     event = os.environ["GITHUB_EVENT_NAME"]
     profile = os.environ.get("REQUESTED_PROFILE", "utilities")
@@ -603,19 +171,10 @@ def plan():
     if event not in ("push", "workflow_dispatch") or (event == "push" and profile != "utilities"):
         raise ValueError("extra profiles require an explicit manual dispatch")
     selection = profile_selection(profile, case)
-    mode = os.environ.get("REQUESTED_SOURCE", "fresh")
-    require(mode in ("fresh", "reviewed-candidate"), "unknown qualification image source")
-    if mode == "reviewed-candidate":
-        require(event == "workflow_dispatch" and os.environ.get("GITHUB_REF") == "refs/heads/main", "candidate reuse requires explicit manual main qualification")
-        candidate = validate_image_candidate() if profile == "utilities" else validate_test_candidate()
-        selection.update(ref=candidate["ref"], producer=candidate["producer"], verification=candidate["verification"],
-                         receipt_sha256=candidate["receipt_sha256"], baseline_status=candidate["baseline_status"])
-    selection.setdefault("baseline_status", "fresh-execution")
-    selection["source"] = mode
     # Validate everything before opening any output or creating any resources.
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
-        for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes", "source", "ref", "producer", "verification", "receipt_sha256", "baseline_status"):
-            output.write(key + "=" + selection.get(key, "") + "\n")
+        for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes"):
+            output.write(key + "=" + selection[key] + "\n")
 
 
 def profile_environment():
@@ -638,17 +197,9 @@ def initialize():
     ref = os.environ["COMMON_IMAGE"]
     producer, verification = os.environ["PRODUCER_SHA"], os.environ["VERIFICATION_SHA"]
     platform = os.environ["TARGET_PLATFORM"]
-    mode = os.environ.get("QUALIFICATION_SOURCE", "fresh")
-    reuse = None
-    if mode == "reviewed-candidate":
-        require(os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch" and os.environ.get("GITHUB_REF") == "refs/heads/main", "reuse requires explicit manual main qualification")
-        reuse = validate_image_candidate() if selection["profile"] == "utilities" else validate_test_candidate()
-        require((ref, producer, verification, os.environ.get("CANDIDATE_RECEIPT_SHA256")) ==
-                (reuse["ref"], reuse["producer"], reuse["verification"], reuse["receipt_sha256"]), "reuse env differs from reviewed receipt")
-    require(mode in ("fresh", "reviewed-candidate"), "unknown qualification image source")
     if (not re.fullmatch(r"ghcr.io/bex-co/bex-cnb-run@sha256:[a-f0-9]{64}", ref)
             or not all(re.fullmatch(r"[a-f0-9]{40}", x) for x in (producer, verification))
-            or (reuse is None and verification != os.environ["GITHUB_SHA"]) or producer != verification
+            or verification != os.environ["GITHUB_SHA"] or producer != verification
             or platform != "linux/amd64"):
         raise ValueError("qualification requires this source's fully gated immutable common image")
     captured_source = {"source": os.environ["GITHUB_SHA"],
@@ -661,12 +212,6 @@ def initialize():
     dump(root / "inputs.json", {"owner": owner, "common_image": ref, "producer": producer,
                                "verification": verification, "platform": platform,
                                "generator_source": os.environ["GITHUB_SHA"], "selection": selection,
-                               "image_source": mode, "candidate_receipt_sha256": reuse["receipt_sha256"] if reuse else None,
-                               "baseline_status": reuse["baseline_status"] if reuse else "fresh-execution",
-                               "image_approval_inputs_sha256": reuse["approval"]["inputs"]["sha256"] if reuse else None,
-                               "utility_baseline_source": reuse["source"]["sha"] if reuse and selection["profile"] != "utilities" else None,
-                               "utility_jobs": reuse["utilities"] if reuse and selection["profile"] != "utilities" else None,
-                               "previous_baseline_state": ("absent" if reuse["source"] is None or reuse["utilities"] is None else "unvalidated-existing") if reuse and selection["profile"] == "utilities" else None,
                                "docker_config": str(docker_config),
                                "run_id": os.environ["GITHUB_RUN_ID"],
                                "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
@@ -917,7 +462,7 @@ def bootstrap(root):
     docker_config = owned_docker_config(root, inputs)
     if docker_config is None or not docker_config.is_dir():
         raise ValueError("bootstrap requires the existing owned Docker configuration")
-    policy_path = Path(__file__).resolve().parents[2] / "lego/operator/internal/build/toolchain-freshness.json"
+    policy_path = Path(__file__).resolve().parents[2] / BUILDKIT_POLICY
     policy_bytes = policy_path.read_bytes()
     entries = [row for row in json.loads(policy_bytes)["images"] if row.get("id") == "helper-buildkit"]
     if len(entries) != 1 or entries[0].get("kind") != "helper":
@@ -930,7 +475,7 @@ def bootstrap(root):
     deadline = began + BOOTSTRAP_WALL_SECONDS
     command = None  # Actual first argv is recorded only when enough budget remains.
     receipt = {"owner": owner, "image": image,
-               "policy_path": "lego/operator/internal/build/toolchain-freshness.json",
+               "policy_path": BUILDKIT_POLICY,
                "policy_sha256": hashlib.sha256(policy_bytes).hexdigest(),
                "command": command, "maximum_attempts": 3, "retry_delay_seconds": 15,
                "whole_timeout_seconds": BOOTSTRAP_WALL_SECONDS,
@@ -1278,9 +823,7 @@ def main():
     commands.add_parser("init")
     commands.add_parser("plan")
     commands.add_parser("profile-env")
-    commands.add_parser("custody-paths", help="print every byte-pinned path, one per line (scripts/ship-gates.sh)")
-    commands.add_parser("checkout-evidence").add_argument("source", choices=("fresh", "reviewed-candidate"))
-    commands.add_parser("materialize-evidence").add_argument("source", choices=("fresh", "reviewed-candidate"))
+    commands.add_parser("source-paths", help="print the fixed files of the qualification source inventory, one per line (scripts/ship-gates.sh)")
     for name in ("bootstrap", "cleanup", "manifest"):
         commands.add_parser(name).add_argument("root", type=Path)
     observation = commands.add_parser("capacity")
@@ -1294,12 +837,8 @@ def main():
         plan()
     elif args.command == "profile-env":
         profile_environment()
-    elif args.command == "custody-paths":
-        print("\n".join(sorted(set(SOURCE_FILES) | IMAGE_INPUT_PATHS)))
-    elif args.command == "checkout-evidence":
-        checkout_evidence(args.source)
-    elif args.command == "materialize-evidence":
-        materialize_evidence(args.source)
+    elif args.command == "source-paths":
+        print("\n".join(sorted(FIXED_SOURCE_PATHS)))
     elif args.command == "init":
         initialize()
     elif args.command == "bootstrap":

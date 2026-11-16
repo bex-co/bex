@@ -369,12 +369,9 @@ build_caller_violations() {
 checkout_violations() {
   local wf
   for wf in $(collect_workflow_files); do
-    # lego/operator/.github is kubebuilder scaffolding GitHub never runs. The
-    # two native image workflows are byte-pinned by w8/m91's D3 custody
-    # (.github/scripts/native-common-qualify.py), so they keep their checkouts
-    # until that evidence is re-recorded.
+    # lego/operator/.github is kubebuilder scaffolding GitHub never runs.
     case "$wf" in
-      lego/operator/.github/* | */native-base-image.yml | */native-common-image.yml) continue ;;
+      lego/operator/.github/*) continue ;;
     esac
     awk -v file="$wf" '
       function flush() {
@@ -611,18 +608,10 @@ if [ "$canonical_tree" -eq 1 ] || [ "${BOUNDED_JOBS_CHECK:-0}" = 1 ]; then
 import pathlib, re, sys
 # Text scan (no YAML library assumed): jobs sit at two-space indent under
 # `jobs:`, their keys at four.
-# native-base-image.yml is byte-pinned by w8/m91's D3 custody transition
-# (native-common-qualify.py D3_LEGACY_0941 "after"; test_d3_transition_pin_*):
-# a timeout added there broke native-common (run of 759e447ff). Changing those
-# bytes is w8's custody decision, as for check 6b; the 2026-11-09 re-pin
-# carried only the hosted-runner move.
-EXEMPT = {"native-base-image.yml"}
 SECRET = re.compile(r"\$\{\{[^}]*\bsecrets\b|write-all")
 HEADER_WRITE = re.compile(r"^  [A-Za-z0-9_-]+:\s*write\b")
 JOB_CREDENTIAL = re.compile(r"^    environment:|^      [A-Za-z0-9_-]+:\s*write\b")
 for path in sorted(pathlib.Path(sys.argv[1]).glob("*.yml")):
-    if path.name in EXEMPT:
-        continue
     job, in_jobs, header_credential = None, False, False
     def report():
         if job and runs and not bounded and not credential:
@@ -671,9 +660,6 @@ fi
 
 # 2. Reviewed inventory (SHA-pinned; sorted to match third_party_refs). Keep in
 # lockstep with the workflow tree — a Dependabot actions bump updates both.
-# native-base-image.yml is byte-pinned by w8/m91's D3 custody transition
-# (native-common-qualify.py D3_LEGACY_0941 "after"), so a bump must leave that
-# file alone and its older refs stay listed here until w8 re-pins it.
 expected_actions='actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
 actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
@@ -684,10 +670,8 @@ aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
 aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
 azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310
 azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e
-docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
 docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
 docker/login-action@dbcb813823bdd20940b903addbd779551569679f
-docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
 docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
 docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1
 oras-project/setup-oras@005458ad77f1c8facd38a094e4af2e69e5607ff4

@@ -18,7 +18,7 @@ import urllib.request
 # Reviewed releases only; official release checksums and GitHub asset digests
 # agree for every archive below. 1.51.1 is the default (download-syft's former
 # default); 1.55.0 is what native-common and pg-operand pin (native-base-image.yml
-# still uses download-syft: its bytes are pinned by w8/m91's D3 custody).
+# still uses download-syft until w6/m163 moves it here).
 # https://github.com/anchore/syft/releases/tag/v1.51.1
 # https://github.com/anchore/syft/releases/tag/v1.55.0 (checked 2026-11-05)
 VERSION = "1.51.1"

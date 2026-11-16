@@ -23,11 +23,11 @@
 #      1 MiB or a binary/archive under .pm/ (scripts/repo-artifact-guard.sh,
 #      w6/100 D10). Blocks; this is also what stops a stale checkout from
 #      replaying pre-rewrite history.
-#   5. The push changes a native custody-pinned path (native-common-qualify.py
-#      custody-paths), a .github/scripts native module or a native-* workflow,
-#      and the native custody suites fail (about a minute). Blocks: one-line
-#      edits to pinned files passed every local check and turned native-common
-#      red for hours (w6/107).
+#   5. The push changes a file the native qualification records by name
+#      (native-common-qualify.py source-paths), a .github/scripts native module
+#      or a native-* workflow, and the native suites fail (about a minute).
+#      Blocks: one-line native edits passed every local check and turned
+#      native-common red for hours (w6/107).
 #   6. The push changes a test source, a suite workflow or the checker, and a
 #      file a suite's tests read is missing from that suite's trigger paths
 #      (scripts/ci_test_inputs.py). Blocks: a change to the unlisted file would
@@ -151,12 +151,12 @@ go_changed=$(git diff --name-only --diff-filter=ACMR "$base"..HEAD -- 'lego/*.go
 backend_changed=$(git diff --name-only "$base"..HEAD -- lego/backend lego/types deploy/gitops/authz ':(exclude)*.md')
 dashboard_changed=$(git diff --name-only "$base"..HEAD -- dashboard ':(exclude)*.md')
 all_changed=$(git diff --name-only "$base"..HEAD)
-# The suite definitions and the custody list come from their modules (no copy
-# to drift), captured first so a broken module fails the gate closed.
+# The suite definitions and the native source list come from their modules (no
+# copy to drift), captured first so a broken module fails the gate closed.
 suite_inputs_changed=$(python3 -B scripts/ci_test_inputs.py --affected <<<"$all_changed")
-custody=$(python3 -B .github/scripts/native-common-qualify.py custody-paths)
+native_sources=$(python3 -B .github/scripts/native-common-qualify.py source-paths)
 native_changed=$({
-  grep -xF -f <(printf '%s\n' "$custody") <<<"$all_changed"
+  grep -xF -f <(printf '%s\n' "$native_sources") <<<"$all_changed"
   grep -E '^\.github/(scripts/[^/]*native[^/]*|workflows/native-[^/]*)$' <<<"$all_changed"
 } || true)
 
@@ -241,7 +241,7 @@ if [ -n "$dashboard_changed" ]; then
   (cd dashboard && yarn lint && yarn test)
 fi
 if [ -n "$native_changed" ]; then
-  echo "ship-gates: native custody paths changed — running the native custody suites" >&2
+  echo "ship-gates: native qualification sources changed — running the native suites" >&2
   python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'
 fi
 security_rc=0

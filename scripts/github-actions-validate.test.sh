@@ -129,7 +129,7 @@ assert "secret in a push-only workflow passes" 0 "$(job_body "$ARM" "      - env
         run: ./deploy")"
 
 # --- ADR080 F2 / w2/m89: secretless image build ------------------------------
-BUILD_PUSH='docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0'
+BUILD_PUSH='docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0'
 # RED: a deploy-class secret in an image-build job is exfiltratable by any
 # poisoned build input — exactly the pre-split deploy.yml shape.
 assert "deploy secret in image-build job fails" 1 "$(job_body "$ARM" "      - uses: $BUILD_PUSH

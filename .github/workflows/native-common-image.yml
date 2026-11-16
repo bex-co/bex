@@ -18,11 +18,6 @@ on:
       - "lego/operator/internal/build/testdata/native-utilities/**"
   workflow_dispatch:
     inputs:
-      source:
-        description: Fresh publication, or the checked-in reviewed TEST-ONLY candidate
-        type: choice
-        default: fresh
-        options: [fresh, reviewed-candidate]
       profile:
         description: Single AMD64 case after the complete original AMD64 utility cohort
         type: choice
@@ -46,12 +41,6 @@ jobs:
     # Keep the planning job bounded while allowing setup before validation.
     timeout-minutes: 15
     outputs:
-      baseline_status: ${{ steps.selection.outputs.baseline_status }}
-      source: ${{ steps.selection.outputs.source }}
-      ref: ${{ steps.selection.outputs.ref }}
-      producer: ${{ steps.selection.outputs.producer }}
-      verification: ${{ steps.selection.outputs.verification }}
-      receipt_sha256: ${{ steps.selection.outputs.receipt_sha256 }}
       profile: ${{ steps.selection.outputs.profile }}
       case: ${{ steps.selection.outputs.case }}
       job_minutes: ${{ steps.selection.outputs.job_minutes }}
@@ -83,32 +72,16 @@ jobs:
             /lego/.dockerignore
             /scripts/lib/toolchain-freshness.py
             /scripts/install-syft.py
-      - uses: oras-project/setup-oras@005458ad77f1c8facd38a094e4af2e69e5607ff4 # v2.0.2
-        with:
-          version: 1.3.1
-      - name: materialize only complete candidate evidence packets
-        # The evidence left git on 2026-11-04 (#NO-ARTIFACTS-IN-GIT): it is one
-        # digest-pinned GHCR artifact (.github/native-evidence.json); only the
-        # packets the reviewed candidate needs are placed, and the validators
-        # still check every recorded sha256 (w6/m164).
-        timeout-minutes: 22
-        env:
-          CHECKOUT_SOURCE: ${{ inputs.source || 'fresh' }}
-        run: |
-          set -euo pipefail
-          umask 077
-          python3 .github/scripts/native-common-qualify.py materialize-evidence "$CHECKOUT_SOURCE"
       - id: selection
         name: validate the fixed profile and case before publication resources
         env:
-          REQUESTED_SOURCE: ${{ inputs.source || 'fresh' }}
           REQUESTED_PROFILE: ${{ inputs.profile || 'utilities' }}
           REQUESTED_CASE: ${{ inputs.case || 'pilot' }}
         run: python3 .github/scripts/native-common-qualify.py plan
 
   publish:
     needs: plan
-    if: github.ref == 'refs/heads/main' && needs.plan.outputs.source == 'fresh'
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -119,14 +92,10 @@ jobs:
 
   qualify:
     needs: [plan, publish]
-    # Requalify the SAME approved image after a generator fix; image approval
-    # does not require the utility baseline this complete job is about to run.
+    # Qualify the image this run just published.
     if: >-
       ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && needs.plan.result == 'success' &&
-          ((needs.plan.outputs.source == 'fresh' && needs.publish.result == 'success' && needs.publish.outputs.ref != '') ||
-           (github.event_name == 'workflow_dispatch' && needs.plan.outputs.source == 'reviewed-candidate' &&
-            needs.plan.outputs.profile == 'utilities' && needs.plan.outputs.baseline_status == 'image-only-requalification' &&
-            needs.publish.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
+          needs.publish.result == 'success' && needs.publish.outputs.ref != '' }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -202,21 +171,6 @@ jobs:
             /lego/.dockerignore
             /scripts/lib/toolchain-freshness.py
             /scripts/install-syft.py
-      - uses: oras-project/setup-oras@005458ad77f1c8facd38a094e4af2e69e5607ff4 # v2.0.2
-        with:
-          version: 1.3.1
-      - name: materialize only complete candidate evidence packets
-        # The evidence left git on 2026-11-04 (#NO-ARTIFACTS-IN-GIT): it is one
-        # digest-pinned GHCR artifact (.github/native-evidence.json); only the
-        # packets the reviewed candidate needs are placed, and the validators
-        # still check every recorded sha256 (w6/m164).
-        timeout-minutes: 22
-        env:
-          CHECKOUT_SOURCE: ${{ needs.plan.outputs.source }}
-        run: |
-          set -euo pipefail
-          umask 077
-          python3 .github/scripts/native-common-qualify.py materialize-evidence "$CHECKOUT_SOURCE"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
@@ -228,13 +182,11 @@ jobs:
       - id: owned
         name: record gated inputs and assign ownership before creating resources
         env:
-          COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
-          PRODUCER_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.producer || needs.publish.outputs.producer }}
-          VERIFICATION_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.verification || needs.publish.outputs.verification }}
+          COMMON_IMAGE: ${{ needs.publish.outputs.ref }}
+          PRODUCER_SHA: ${{ needs.publish.outputs.producer }}
+          VERIFICATION_SHA: ${{ needs.publish.outputs.verification }}
           QUALIFICATION_PROFILE: utilities
           QUALIFICATION_CASE: all
-          QUALIFICATION_SOURCE: ${{ needs.plan.outputs.source }}
-          CANDIDATE_RECEIPT_SHA256: ${{ needs.plan.outputs.receipt_sha256 }}
           TARGET_PLATFORM: linux/${{ matrix.arch }}
         run: python3 .github/scripts/native-common-qualify.py init
       - id: buildkit
@@ -261,7 +213,7 @@ jobs:
         working-directory: lego/operator
         env:
           BEX_BUILDKIT_INTEGRATION: "1"
-          BEX_NATIVE_TEST_COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
+          BEX_NATIVE_TEST_COMMON_IMAGE: ${{ needs.publish.outputs.ref }}
           BEX_NATIVE_TEST_BUILDER: ${{ steps.owned.outputs.owner }}
           BEX_NATIVE_TEST_OWNER: ${{ steps.owned.outputs.owner }}
           BEX_NATIVE_TEST_PLATFORM: linux/${{ matrix.arch }}
@@ -304,17 +256,13 @@ jobs:
 
   qualify-profile:
     needs: [plan, publish, qualify]
-    # A failed fresh run cannot fall back to a prior candidate. Reuse skips both
-    # fresh jobs only for a fully current family baseline; utility requalification
-    # runs the complete qualify job above and cannot start a family case.
+    # One family case on the image this run published, after its complete
+    # utility cohort passed on that image.
     if: >-
       ${{ always() && !cancelled() && github.ref == 'refs/heads/main' &&
           github.event_name == 'workflow_dispatch' && needs.plan.result == 'success' &&
-          needs.plan.outputs.profile != 'utilities' &&
-          ((needs.plan.outputs.source == 'fresh' && needs.publish.result == 'success' &&
-            needs.qualify.result == 'success' && needs.publish.outputs.ref != '') ||
-           (needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.baseline_status == 'current-complete' && needs.publish.result == 'skipped' &&
-            needs.qualify.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
+          needs.plan.outputs.profile != 'utilities' && needs.publish.result == 'success' &&
+          needs.qualify.result == 'success' && needs.publish.outputs.ref != '' }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -390,21 +338,6 @@ jobs:
             /lego/.dockerignore
             /scripts/lib/toolchain-freshness.py
             /scripts/install-syft.py
-      - uses: oras-project/setup-oras@005458ad77f1c8facd38a094e4af2e69e5607ff4 # v2.0.2
-        with:
-          version: 1.3.1
-      - name: materialize only complete candidate evidence packets
-        # The evidence left git on 2026-11-04 (#NO-ARTIFACTS-IN-GIT): it is one
-        # digest-pinned GHCR artifact (.github/native-evidence.json); only the
-        # packets the reviewed candidate needs are placed, and the validators
-        # still check every recorded sha256 (w6/m164).
-        timeout-minutes: 22
-        env:
-          CHECKOUT_SOURCE: ${{ needs.plan.outputs.source }}
-        run: |
-          set -euo pipefail
-          umask 077
-          python3 .github/scripts/native-common-qualify.py materialize-evidence "$CHECKOUT_SOURCE"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
@@ -421,11 +354,9 @@ jobs:
       - id: owned
         name: record gated inputs and assign ownership before creating resources
         env:
-          COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
-          PRODUCER_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.producer || needs.publish.outputs.producer }}
-          VERIFICATION_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.verification || needs.publish.outputs.verification }}
-          QUALIFICATION_SOURCE: ${{ needs.plan.outputs.source }}
-          CANDIDATE_RECEIPT_SHA256: ${{ needs.plan.outputs.receipt_sha256 }}
+          COMMON_IMAGE: ${{ needs.publish.outputs.ref }}
+          PRODUCER_SHA: ${{ needs.publish.outputs.producer }}
+          VERIFICATION_SHA: ${{ needs.publish.outputs.verification }}
           TARGET_PLATFORM: linux/${{ matrix.arch }}
         run: python3 .github/scripts/native-common-qualify.py init
       - id: buildkit
@@ -448,7 +379,7 @@ jobs:
       - name: measure the selected family case without claiming full-family acceptance
         working-directory: lego/operator
         env:
-          BEX_NATIVE_TEST_COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
+          BEX_NATIVE_TEST_COMMON_IMAGE: ${{ needs.publish.outputs.ref }}
           BEX_NATIVE_TEST_BUILDER: ${{ steps.owned.outputs.owner }}
           BEX_NATIVE_TEST_OWNER: ${{ steps.owned.outputs.owner }}
           BEX_NATIVE_TEST_PLATFORM: linux/${{ matrix.arch }}
@@ -480,7 +411,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.owned.outputs.root != ''
         with:
-          name: common-pilot-${{ needs.plan.outputs.profile }}-${{ needs.plan.outputs.case }}-${{ needs.plan.outputs.source }}-${{ needs.plan.outputs.receipt_sha256 || github.sha }}-${{ matrix.arch }}-${{ github.run_attempt }}
+          name: common-pilot-${{ needs.plan.outputs.profile }}-${{ needs.plan.outputs.case }}-${{ github.sha }}-${{ matrix.arch }}-${{ github.run_attempt }}
           path: ${{ steps.owned.outputs.root }}
           if-no-files-found: error
           # Only this fresh owned evidence root; render-env secrets stay in
@@ -491,7 +422,7 @@ jobs:
   common-arm64-local:
     # D3: one local-development variant, never a runtime-family/production gate.
     needs: plan
-    if: github.ref == 'refs/heads/main' && needs.plan.outputs.source == 'fresh'
+    if: github.ref == 'refs/heads/main'
     continue-on-error: true
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -505,6 +436,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: log in to GHCR with bounded transport retries
         env:

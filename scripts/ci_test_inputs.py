@@ -71,8 +71,8 @@ SUITES = {
             "examples/static-site/render.yaml": "a Blueprint path inside an in-memory fixture repository",
         }),
     ".github/workflows/operator-test.yml": Suite(("lego/operator", "lego/types"), ("_test.go",), {
-        "lego/backend/internal/apps/service.go": "a sample path for the native custody path classifier",
-        ".github/scripts/native-oci-mirror.py": "a sample path for the native custody path classifier",
+        "lego/backend/internal/apps/service.go": "a sample path for the native push-path classifier",
+        ".github/scripts/native-oci-mirror.py": "a sample path for the native push-path classifier",
     }),
     ".github/workflows/dashboard-test.yml": Suite(("dashboard",), (".test.ts", ".test.tsx", ".test.mjs", ".test.js"), {
         "lego/types/tiers/tiers.go": "a tool-call input inside an agent transcript fixture",
