@@ -1,17 +1,17 @@
 # w4 · m342 — Turning an environment's network isolation on or off takes effect at once, restarts nothing, and never cuts the environment's own private traffic
 
-**Worker:** worker4 **Goal:** toggling "Block cross-environment connections" changes only network policy: the boundary holds or lifts within one reconcile, no service in the environment gets a new instance, and services inside the environment keep reaching each other throughout. **Status:** blocked — release gate (t001–t005 done, code shipped 2026-11-14 by `/loopx w4`; t006 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** toggling "Block cross-environment connections" changes only network policy: the boundary holds or lifts within one reconcile, no service in the environment gets a new instance, and services inside the environment keep reaching each other throughout. **Status:** done — DoD 1–6 replayed live on pin `7aaa8700befa` 2026-11-16 ([t006](done/t006.md))
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Every App pod carries its environment's stable id, set at creation and on a move only — **DONE** | 45m | — |
-| [t002](t002.md) | Isolation is policy-only: the toggle edits NetworkPolicies, never a pod template — **DONE** | 75m | t001 |
-| [t003](t003.md) | Datastores and cron pods follow the same identity, and existing pods migrate once — **DONE** | 40m | t002 |
-| [t004](t004.md) | Simplify — **DONE** | 15m | t003 |
-| [t005](t005.md) | Test coverage — **DONE** | 30m | t003 |
-| [t006](t006.md) | Closeout (live replay on production) | 30m | t004, t005 |
+| [t001](done/t001.md) | Every App pod carries its environment's stable id, set at creation and on a move only — **DONE** | 45m | — |
+| [t002](done/t002.md) | Isolation is policy-only: the toggle edits NetworkPolicies, never a pod template — **DONE** | 75m | t001 |
+| [t003](done/t003.md) | Datastores and cron pods follow the same identity, and existing pods migrate once — **DONE** | 40m | t002 |
+| [t004](done/t004.md) | Simplify — **DONE** | 15m | t003 |
+| [t005](done/t005.md) | Test coverage — **DONE** | 30m | t003 |
+| [t006](done/t006.md) | Closeout (live replay on production) — **DONE** | 30m | t004, t005 |
 
 ## Definition of done
 
@@ -93,3 +93,9 @@ Results come from `GET /v1/logs?resource=<id>&text=reach`, split by each line's 
 - w8/m136 introduced the datastore isolation.
 - No open item covers this: `grep -rl -i isolation .pm --include='*.md'` finds no open item about restarts or rollouts.
 - Not deploy lag: the last commit to the isolation path is `f89e1617a` (w4/m185), and nothing after `3d66946c9` touches `environment_network_policy.go`, `namespaces.go` or `syncPolicyLabels`.
+
+## Unblock record (2026-11-16)
+
+- **Affected:** w4/m342 t006. **Source:** verified evidence, no user decision needed.
+- **Finding:** production runs platform pin `7aaa8700befa` (`546945798`, 2026-11-16 16:22Z, the latest pin on `origin/main`). Both m342 code commits are its ancestors: `git merge-base --is-ancestor c9b60e288 7aaa8700befa` and `… 3b4aeba06 7aaa8700befa` exit 0. The release gate is clear.
+- **Next step:** replay DoD 1–6 on production and close. Done the same day; see [t006](done/t006.md).
