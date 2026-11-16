@@ -23,6 +23,8 @@ export const SECURITY_HEADER_NAMES: ReadonlySet<string> = new Set([
 // pinned by scripts/gitops-validate.sh); override with VITE_SHELL_WS_URL.
 export const DEFAULT_SHELL_WS_URL = "wss://ssh.bex.co/shell";
 
+const GOOGLE_TAG_MANAGER = "https://*.googletagmanager.com";
+
 /** The first-party URLs the browser connects to besides the Kratos origin. All
  * come from the build env (vite.config.ts); a relative or missing one is the
  * page's own origin or unknown. */
@@ -30,6 +32,9 @@ export interface ConnectURLs {
   apiURL?: string;
   agentStreamURL?: string;
   shellWsURL?: string;
+  /** GA4 is configured (VITE_GA_MEASUREMENT_ID): Google's documented GA4 CSP
+   * origins join script-src, img-src and the narrowed connect-src. */
+  googleAnalytics?: boolean;
 }
 
 function originOf(url: string | undefined): string | undefined {
@@ -66,6 +71,11 @@ function narrowedConnectSources(
   }
   origins.add("https://api.stripe.com");
   origins.add("https://cloudflareinsights.com");
+  if (connect.googleAnalytics) {
+    origins.add("https://*.google-analytics.com");
+    origins.add("https://*.analytics.google.com");
+    origins.add(GOOGLE_TAG_MANAGER);
+  }
   return `connect-src ${[...origins].join(" ")}`;
 }
 
@@ -88,6 +98,11 @@ export function buildSecurityHeaders(
   if (process.env.NODE_ENV !== "production") {
     scriptOrigins.add(new URL(kratosProxyTarget).origin);
   }
+  const imgOrigins = [new URL(attachmentsOrigin).origin];
+  if (connect.googleAnalytics) {
+    scriptOrigins.add(GOOGLE_TAG_MANAGER);
+    imgOrigins.push("https://*.google-analytics.com", GOOGLE_TAG_MANAGER);
+  }
 
   // TanStack Start SSR injects inline hydration scripts; inline styles come from
   // Tailwind and shadcn/Radix. Outside production, connect-src also allows
@@ -103,7 +118,7 @@ export function buildSecurityHeaders(
       "style-src 'self' 'unsafe-inline'",
       // Agent-session attachment thumbnails load from presigned URLs on the
       // attachments bucket's own origin (ADR095 D7), never from a bex origin.
-      `img-src 'self' data: https://*.stripe.com ${new URL(attachmentsOrigin).origin}`,
+      `img-src 'self' data: https://*.stripe.com ${imgOrigins.join(" ")}`,
       "font-src 'self'",
       connectSrc,
       "frame-src https://js.stripe.com https://hooks.stripe.com",

@@ -14,6 +14,8 @@ declare global {
     readonly VITE_OAUTH_ISSUER?: string;
     /** Per-build id stamped by vite.config.ts; guards the one preload-error reload (w4/651) */
     readonly VITE_BEX_BUILD_ID?: string;
+    /** GA4 measurement ID (G-…); unset loads no Google Analytics */
+    readonly VITE_GA_MEASUREMENT_ID?: string;
   }
 
   interface ImportMeta {
@@ -22,6 +24,8 @@ declare global {
 
   interface Window {
     __THEME__?: "light" | "dark"; // SSR-injected theme (always resolved, never "system")
+    /** GA4 gtag.js, present only when VITE_GA_MEASUREMENT_ID loaded it */
+    gtag?: (...args: unknown[]) => void;
   }
 }
 

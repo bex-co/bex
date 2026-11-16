@@ -76,6 +76,28 @@ describe("buildSecurityHeaders", () => {
     expect(directive(headers, "connect-src")).not.toContain("wasabisys");
     expect(directive(headers, "script-src")).not.toContain("wasabisys");
   });
+
+  it("allows Google Analytics origins only when GA is configured", () => {
+    const off = buildSecurityHeaders(
+      "https://auth.bex.co",
+      "https://auth.bex.co",
+    );
+    expect(directive(off, "script-src")).not.toContain("google");
+    expect(directive(off, "img-src")).not.toContain("google");
+
+    const on = buildSecurityHeaders(
+      "https://auth.bex.co",
+      "https://auth.bex.co",
+      undefined,
+      { googleAnalytics: true },
+    );
+    expect(directive(on, "script-src")).toContain(
+      " https://*.googletagmanager.com",
+    );
+    expect(directive(on, "img-src")).toContain(
+      " https://*.google-analytics.com https://*.googletagmanager.com",
+    );
+  });
 });
 
 // w4/526: signed-in pages carried no Cache-Control at all.
@@ -191,6 +213,19 @@ describe("the report-only narrowed connect-src", () => {
     expect(reportOnly(headers)).not.toMatch(
       /connect-src[^;]* (https|wss):(;| |$)/,
     );
+  });
+
+  it("names GA4's collect origins when GA is configured", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const headers = build({
+      apiURL: "https://api.bex.co/graphql",
+      googleAnalytics: true,
+    } as never);
+    vi.unstubAllEnvs();
+    expect(reportOnly(headers)).toContain(
+      " https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
+    );
+    expect(reportOnly(build())).not.toContain("google");
   });
 
   it("is absent without an API origin to name, and outside production", () => {

@@ -33,6 +33,10 @@ ENV VITE_KRATOS_SSR_URL=$VITE_KRATOS_SSR_URL
 ARG VITE_OAUTH_ISSUER
 ENV VITE_OAUTH_ISSUER=$VITE_OAUTH_ISSUER
 
+# Optional: GA4 measurement ID (public, not a credential); unset loads no GA
+ARG VITE_GA_MEASUREMENT_ID
+ENV VITE_GA_MEASUREMENT_ID=$VITE_GA_MEASUREMENT_ID
+
 # Public signing identities for verified mobile invitation links. Both are
 # optional together: absent keeps the association documents valid but disabled;
 # a partial or malformed configuration fails the build. These values identify

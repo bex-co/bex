@@ -15,6 +15,7 @@ import {
   buildRouteRules,
   buildSecurityHeaders,
 } from "./server/security-headers";
+import { gaMeasurementId } from "./src/common/lib/google-analytics";
 
 // Peel stable, rarely-changing vendor libraries into their own chunks so a
 // tenant/app source change doesn't invalidate the (large) React/Radix/Apollo
@@ -364,6 +365,7 @@ export default defineConfig(({ mode }) => {
       apiURL: env.VITE_API_URL,
       agentStreamURL: env.VITE_AGENT_STREAM_URL,
       shellWsURL: env.VITE_SHELL_WS_URL || undefined,
+      googleAnalytics: gaMeasurementId(env.VITE_GA_MEASUREMENT_ID) !== null,
     },
   );
 

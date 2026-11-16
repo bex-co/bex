@@ -1,4 +1,5 @@
 import { HeadContent, Scripts } from "@tanstack/react-router";
+import { GoogleAnalytics } from "@/common/components/document/google-analytics";
 import { ThemeScript } from "@/common/components/document/theme-script";
 import { useRootContext } from "@/common/hooks/use-root-context";
 import {
@@ -33,6 +34,7 @@ export function ShellComponent({
           />
         ) : null}
         <HeadContent />
+        <GoogleAnalytics />
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
         {children}

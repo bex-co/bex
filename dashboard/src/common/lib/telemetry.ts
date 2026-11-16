@@ -1,9 +1,8 @@
 /**
- * Minimal, no-op-safe event sink (w2/m66). The dashboard has no analytics
- * pipeline yet; this is the single seam a future one wires into. Events carry
- * only bounded, PII-free labels — matching the SSH gateway's no-identifying-
- * labels rule (docs/ADR035-ssh.md) — so adding a real backend later needs no
- * scrub. Until then `trackEvent` is intentionally a no-op.
+ * No-op-safe event sink (w2/m66): forwards to GA4's `gtag` when the document
+ * loaded it (VITE_GA_MEASUREMENT_ID, dashboard/AGENTS.md), else does nothing.
+ * Events carry only bounded, PII-free labels — matching the SSH gateway's
+ * no-identifying-labels rule (docs/ADR035-ssh.md) — so GA needs no scrub.
  *
  * The activation funnel these events describe has a server-side counterpart the
  * gate can't see from the browser (whether the eventual SSH auth succeeds): the
@@ -17,8 +16,6 @@ export function trackEvent(
   event: TelemetryEvent,
   props?: Record<string, string>,
 ): void {
-  // No-op sink. Wire a real telemetry backend here; callers already pass only
-  // bounded, PII-free labels, so no scrubbing is needed at that point.
-  void event;
-  void props;
+  if (typeof window === "undefined") return;
+  window.gtag?.("event", event, props);
 }
