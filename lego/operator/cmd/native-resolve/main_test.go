@@ -62,7 +62,7 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 	bundle := filepath.Join(dir, "render-env")
 	// The real python default base, as the preparer writes it.
 	base := "# syntax=docker/dockerfile:1.7\n" +
-		"FROM python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e\n" +
+		"FROM python:3.13-bookworm@sha256:cc55e4ded9c95f6ce2133b3d096db43f214d280c2a8af65d83e246c8fa7d168c\n" +
 		"RUN true\n"
 	write := func(env string) {
 		if err := os.WriteFile(dockerfile, []byte(base), 0o600); err != nil {
@@ -80,7 +80,7 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
 	const wantPython = "==> Using Python 3.11.9 (from PYTHON_VERSION=3.11.9)\n==> Using Poetry 2.1.3 (default)\n" +
-		"==> Using Node 24.22.1 (default)"
+		"==> Using Node 24.22.3 (default)"
 	if got := strings.TrimSpace(out.String()); got != wantPython {
 		t.Errorf("narration = %q", got)
 	}
@@ -106,7 +106,7 @@ func TestRunNarratesAnOptedInBun(t *testing.T) {
 	dir := t.TempDir()
 	dockerfile, bundle := filepath.Join(dir, "Dockerfile"), filepath.Join(dir, "render-env")
 	base := "# syntax=docker/dockerfile:1.7\n" +
-		"FROM node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea\n" +
+		"FROM node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496\n" +
 		"RUN true\n"
 	if err := os.WriteFile(dockerfile, []byte(base), 0o600); err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestRunNarratesAnOptedInBun(t *testing.T) {
 	if code := run(time.Time{}, "node", dir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	const want = "==> Using Node 24.22.1 (default)\n==> Using Bun 1.3.4 (from BUN_VERSION=1.3.4)"
+	const want = "==> Using Node 24.22.3 (default)\n==> Using Bun 1.3.4 (from BUN_VERSION=1.3.4)"
 	if got := strings.TrimSpace(out.String()); got != want {
 		t.Errorf("narration = %q", got)
 	}

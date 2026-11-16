@@ -177,6 +177,14 @@ const (
 // then builds on what Render gives it.
 var renderDefaults20261103 = time.Date(2026, time.November, 3, 0, 0, 0, 0, time.UTC)
 
+// renderNodeDefault20261021 and renderElixirDefault20250612 are when Render's
+// current Node (24.22.1, render.com/docs/node-version) and Elixir (1.18.4,
+// render.com/docs/elixir-erlang-versions) defaults took effect.
+var (
+	renderNodeDefault20261021   = time.Date(2026, time.October, 21, 0, 0, 0, 0, time.UTC)
+	renderElixirDefault20250612 = time.Date(2025, time.June, 12, 0, 0, 0, 0, time.UTC)
+)
+
 // ResolveNativeVersionAt is ResolveNativeVersion for a service created at
 // created, whose creation date picks the default line where Render's does.
 func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
@@ -204,10 +212,12 @@ type exactDefault struct {
 }
 
 // exactDefaults are Render's default patches by creation date, oldest first
-// (w8/198, w8/217, w4/620). The versions stay exact even where a step equals
-// the line's reviewed patch, so a later line-pin bump never moves a default
-// (the w8/217 regression class).
+// (w8/198, w8/217, w4/620, w6/m291). The versions stay exact even where a step
+// equals the line's reviewed patch, so a later line-pin bump never moves a
+// default (the w8/217 regression class).
 var exactDefaults = map[string][]exactDefault{
+	nativeNodeRuntime:   {{renderNodeDefault20261021, "24.22.1"}},
+	nativeElixirRuntime: {{renderElixirDefault20250612, "1.18.4"}},
 	nativeRubyRuntime: {
 		{rubyDefaultCutoff, rubyDefaultVersion},
 		{renderDefaults20261103, "3.4.12"},
@@ -227,7 +237,9 @@ var exactDefaults = map[string][]exactDefault{
 // the line's reviewed patch, saying so, when it cannot. A default equal to the
 // reviewed patch needs no swap.
 func defaultExact(created time.Time, runtime string, choice NativeChoice) string {
-	if choice.Source != "" || created.IsZero() {
+	// ERLANG_VERSION alone names no Elixir: Render installs its default Elixir
+	// on the requested OTP.
+	if choice.Source != "" && !strings.HasPrefix(choice.Source, "ERLANG_VERSION=") || created.IsZero() {
 		return ""
 	}
 	version := ""

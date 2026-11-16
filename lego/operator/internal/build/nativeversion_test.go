@@ -168,8 +168,8 @@ func TestNativeChoiceNarration(t *testing.T) {
 		t.Errorf("narration = %q", got)
 	}
 	d, _ := ResolveNativeVersion("node", nil, files(nil))
-	if got := d.Narration(); got != "==> Using Node 24.22.1 (default)" {
-		t.Errorf("default narration = %q", got)
+	if node, _ := nativeToolchains[nativeNodeRuntime].find("24"); d.Narration() != "==> Using Node "+node.version+" (default)" {
+		t.Errorf("default narration = %q", d.Narration())
 	}
 }
 

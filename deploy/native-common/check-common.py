@@ -49,7 +49,7 @@ def main():
         if library != "jemalloc":
             ctypes.CDLL(name)
     subprocess.run(["/opt/bex/native-node-tools/node", "-e",
-                    "if(process.versions.node!=='24.22.1')process.exit(1)"], check=True)
+                    "if(process.versions.node!=='24.22.3')process.exit(1)"], check=True)
     print("common Bookworm layout, runtime libraries and complete offline wheel store verified")
 
 

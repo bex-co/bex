@@ -106,7 +106,9 @@ func TestExactErlangBuildsOnTheRequestedOTP(t *testing.T) {
 			release, _, _ = strings.Cut(release, "-debian-")
 			otpEnv := []string{"OTP_VERSION=" + release, "PATH=/usr/local/bin:/usr/bin"}
 			fake.envByImage = map[string]fakeExactMetadata{"erlang:" + tc.erlang + "@" + exactDigest: {otpEnv, commonOTPSyntheticHistory("trixie")}}
-			choices, dockerfile := resolveExact(t, fake, "elixir", tc.env, nil)
+			// A real service has a creation date, which selects Render's
+			// default Elixir when only ERLANG_VERSION is set (w6/m291).
+			choices, dockerfile := resolveExactAt(t, fake, renderElixirDefault20250612.Add(time.Hour), "elixir", tc.env, nil)
 			reviewed, err := ResolveNativeVersion(nativeElixirRuntime, tc.env, files(nil))
 			if err != nil {
 				t.Fatal(err)
@@ -295,7 +297,7 @@ func TestExactErlangTagPartitionAvoidsUnusablePages(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 			resolver := &DockerHubResolver{Client: server.Client(), AuthURL: server.URL + "/token", RegistryURL: server.URL, HubURL: server.URL}
-			choice, err := pinErlangVersion(t.Context(), resolver, NativeChoice{Line: "1.18", erlang: "28.0"})
+			choice, err := pinErlangVersion(t.Context(), resolver, NativeChoice{Exact: "1.18.4", erlang: "28.0"})
 			if failed != "" {
 				if err == nil || !strings.Contains(err.Error(), "tag listing answered 503") || choice.Image != "" || len(heads) != 0 {
 					t.Fatalf("failed required partition did not remain a lookup failure: choice=%+v err=%v", choice, err)

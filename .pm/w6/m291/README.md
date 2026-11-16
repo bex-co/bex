@@ -1,17 +1,17 @@
 # w6 · m291 — Build toolchain digests are fresh again and #105 closes
 
-**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** todo (t001 done, PR #106 closed; the runner-link gate is gone since 2026-11-09 and the w8/m91 D3 custody gate since w6/m422 on 2026-11-16)
+**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** in progress (t001–t003, t005, t006 done, PR #106 closed; t004 waits on the dispatched freshness run, t007 on a production build after deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | [Re-resolve the 25 drifted build-toolchain entries and verify their manifests](done/t001.md) — **DONE** | 45m | — |
-| t002 | [Update every pinned file and the freshness inventory](t002.md) | 45m | t001 |
-| t003 | [Qualify the new toolchain: build hello-go and one Node or Python buildpack app on dev-6](t003.md) | 1h | t002 |
+| t002 | [Update every pinned file and the freshness inventory](done/t002.md) — **DONE** | 45m | t001 |
+| t003 | [Qualify the new toolchain: build hello-go and one Node or Python buildpack app on dev-6](done/t003.md) — **DONE** | 1h | t002 |
 | t004 | [Close PR #106 with the reason and confirm the monitor closes #105](t004.md) | 20m | t002 |
-| t005 | [Simplify](t005.md) | 15m | t003, t004 |
-| t006 | [Test coverage](t006.md) | 20m | t005 |
+| t005 | [Simplify](done/t005.md) — **DONE** | 15m | t003, t004 |
+| t006 | [Test coverage](done/t006.md) — **DONE** | 20m | t005 |
 | t007 | [Closeout](t007.md) | 10m | t006 |
 
 ## Definition of done

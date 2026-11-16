@@ -20,9 +20,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"go.yaml.in/yaml/v3"
 )
 
 func TestLoadToolchainInventory(t *testing.T) {
@@ -62,16 +65,22 @@ func TestParseToolchainInventoryFailsClosed(t *testing.T) {
 	}
 }
 
+// repoRoot is the repository checkout this test file sits in.
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", ".."))
+}
+
 func TestToolchainInventoryMatchesCommittedPins(t *testing.T) {
 	inv, err := LoadToolchainInventory()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", ".."))
+	root := repoRoot(t)
 	for _, img := range inv.Images {
 		digest := img.Digest()
 		if digest == "" {
@@ -87,6 +96,71 @@ func TestToolchainInventoryMatchesCommittedPins(t *testing.T) {
 			if !strings.Contains(string(body), digest) {
 				t.Errorf("%s: digest %s missing from %s", img.ID, digest, rel)
 			}
+		}
+	}
+}
+
+// TestToolchainPinSitesRunThisSuite: the check above reads every file the
+// inventory lists, so a digest edited in one listed file and not another fails
+// it only if editing that file runs this suite. operator-test.yml's paths must
+// therefore cover each one, for pushes and pull requests alike. The paths are
+// read from the inventory at run time, which scripts/ci_test_inputs.py cannot
+// see (w6/m291: deploy/cnb-run, the kpack chart and deploy/hugo were missing).
+func TestToolchainPinSitesRunThisSuite(t *testing.T) {
+	inv, err := LoadToolchainInventory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := repoRoot(t)
+	raw, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "operator-test.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var workflow struct {
+		On map[string]struct {
+			Paths []string `yaml:"paths"`
+		} `yaml:"on"`
+	}
+	if err := yaml.Unmarshal(raw, &workflow); err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range []string{"push", "pull_request"} {
+		paths := workflow.On[event].Paths
+		if len(paths) == 0 {
+			t.Fatalf("operator-test.yml %s has no paths", event)
+		}
+		for _, img := range inv.Images {
+			for _, file := range img.Files {
+				if !slices.ContainsFunc(paths, func(pattern string) bool { return workflowPathMatches(pattern, file) }) {
+					t.Errorf("%s: editing %s does not run operator-test.yml on %s; add it to both paths lists", img.ID, file, event)
+				}
+			}
+		}
+	}
+}
+
+// workflowPathMatches covers the two pattern shapes operator-test.yml uses: an
+// exact file and a directory's `/**`.
+func workflowPathMatches(pattern, file string) bool {
+	if dir, ok := strings.CutSuffix(pattern, "/**"); ok {
+		return strings.HasPrefix(file, dir+"/")
+	}
+	return pattern == file
+}
+
+func TestWorkflowPathMatches(t *testing.T) {
+	for _, tc := range []struct {
+		pattern, file string
+		want          bool
+	}{
+		{"lego/operator/**", "lego/operator/cmd/manager/main.go", true},
+		{"deploy/hugo/**", "deploy/hugo/Dockerfile", true},
+		{"deploy/hugo/**", "deploy/hugo-other/Dockerfile", false},
+		{"lego/Dockerfile", "lego/Dockerfile", true},
+		{"lego/Dockerfile", "lego/Dockerfile.dev", false},
+	} {
+		if got := workflowPathMatches(tc.pattern, tc.file); got != tc.want {
+			t.Errorf("workflowPathMatches(%q, %q) = %v, want %v", tc.pattern, tc.file, got, tc.want)
 		}
 	}
 }

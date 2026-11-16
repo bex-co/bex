@@ -31,8 +31,8 @@ import (
 // toolchain-freshness.json; changing the pin changes the generated Dockerfile
 // and therefore BuildKit's cache key for the pnpm layers.
 var nativePnpm = struct{ version, checksum string }{
-	version:  "10.34.7",
-	checksum: "sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
+	version:  "10.34.9",
+	checksum: "sha256:7e8a946108e7baab119e51d27c24d6178b46545422643dbc91e34e2f1ee32e0f",
 }
 
 // nativeNodeTools is the generated layers that complete a primary Node
@@ -70,8 +70,8 @@ func nativePnpmInstall() string {
 // silent downgrade to an older major. Each checksum is that architecture's
 // tarball sha256, inventoried in toolchain-freshness.json.
 var nativeLegacyPnpm = struct{ amd64, arm64 string }{
-	amd64: "sha256:0ccd4ab9ffee62e9905396dfd9f9c9d67737f58563a4e9199811cf4665965062",
-	arm64: "sha256:e5f004bc5e0b1acab7b6fda01a7d41f77670f07f0ea45ce9e56878938d898292",
+	amd64: "sha256:bd473ea50a48475508dedddb92a6b8e704da867053a112271e9bd9e5ed1256b3",
+	arm64: "sha256:555753d2d2dff1b1b34179926de643150158061c76c26611ed0ca79250f5f472",
 }
 
 // nativeLegacyPnpmLine reports whether a Node line (major or full version)

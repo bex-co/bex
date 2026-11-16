@@ -34,9 +34,7 @@ jobs:
           . scripts/lib/gh-retry.sh
           python3 scripts/lib/toolchain-freshness.py validate
           # Three attempts: one upstream 504 once failed the weekly check (run
-          # 42046392479). The retry lives here, not in toolchain-freshness.py:
-          # that file is a native-common image input (IMAGE_POLICY_FILES), so
-          # changing its bytes stales the qualified candidate (w6/m163).
+          # 42046392479).
           for attempt in 1 2 3; do
             python3 scripts/lib/toolchain-freshness.py resolve > "$RUNNER_TEMP/resolve.json" && break
             [ "$attempt" -lt 3 ] || exit 1

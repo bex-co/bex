@@ -29,7 +29,7 @@ metadata:
   name: bex-kpack-config
   namespace: bex-system
 data:
-  cnbBuilder: paketobuildpacks/builder-jammy-base@sha256:bd03726c07e9e32c45151e211789e707e6a867adaeaacc670140901b190ee125
+  cnbBuilder: paketobuildpacks/builder-jammy-base@sha256:5cd813b834965d9b9daf4d94b35d22bd76f743961dd5cfa7f141804bc4cef815
   clusterBuilderTag: zot.local:5000/bex-cnb-builder:latest
 ---
 # The out-of-band registry bootstrap creates bex-registry-push-kpack as a
@@ -57,7 +57,7 @@ spec:
     namespace: bex-system
   # Replaced from bex-kpack-config by kustomize.
   sources:
-    - image: paketobuildpacks/builder-jammy-base@sha256:bd03726c07e9e32c45151e211789e707e6a867adaeaacc670140901b190ee125
+    - image: paketobuildpacks/builder-jammy-base@sha256:5cd813b834965d9b9daf4d94b35d22bd76f743961dd5cfa7f141804bc4cef815
 ---
 apiVersion: kpack.io/v1alpha2
 kind: ClusterStack
@@ -68,12 +68,12 @@ metadata:
 spec:
   id: io.buildpacks.stacks.jammy
   buildImage:
-    image: paketobuildpacks/build-jammy-base@sha256:2492a2d7dd93179755b4f3706b7931754156aa3711349649ee76bc5d5ac1842c
+    image: paketobuildpacks/build-jammy-base@sha256:5fce29993757b60a84f6b05fce0e24804c2b51f9ff8ab5c1dbe86697bec05a9c
   # bex run image (w1/m169): run-jammy-base plus libatomic1, so current Node
   # majors (25+, which link libatomic.so.1) start. Published and Node-checked by
   # .github/workflows/cnb-run-image.yml; recipe in deploy/cnb-run/Dockerfile.
   runImage:
-    image: ghcr.io/bex-co/bex-cnb-run@sha256:c737a6661e034d564a934c424f01f18b3f139c7beb0d107aa04ca37b59843192
+    image: ghcr.io/bex-co/bex-cnb-run@sha256:77061d60c38fbf20f8b78fc9c8bdd580bc264d6612bbeed6852e3f51e932d8e5
 ---
 # kpack v0.18 does not accept a complete builder image directly on Image.
 # Instead, ClusterStore imports its buildpackages and this ClusterBuilder

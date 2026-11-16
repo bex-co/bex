@@ -5,9 +5,9 @@
       "id": "cnb-builder",
       "kind": "builder",
       "upstream": "docker.io/paketobuildpacks/builder-jammy-base:latest",
-      "committed": "paketobuildpacks/builder-jammy-base@sha256:bd03726c07e9e32c45151e211789e707e6a867adaeaacc670140901b190ee125",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub reviewed 2026-10-28 for CVE-2026-111497: Jammy libbrotli1 1.0.9-2ubuntu0.1; build/run stack package verified on linux/amd64, builder inherits the build stack layers; bex run image rebuilt and Node-checked on amd64/arm64 before publication",
+      "committed": "paketobuildpacks/builder-jammy-base@sha256:5cd813b834965d9b9daf4d94b35d22bd76f743961dd5cfa7f141804bc4cef815",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): builder-jammy-base latest, linux/amd64 manifest as before, stack io.buildpacks.stacks.jammy unchanged, lifecycle 0.21.29 and 79 buildpacks (nodejs 10.16.0 / node-engine 8.12.1, python 2.69.0 / cpython 1.19.0, go 4.23.4 / go-dist 2.11.3)",
       "files": [
         "lego/operator/cmd/manager/main.go",
         "lego/operator/config/manager/manager.yaml",
@@ -18,9 +18,9 @@
       "id": "cnb-stack-build",
       "kind": "stack",
       "upstream": "docker.io/paketobuildpacks/build-jammy-base:latest",
-      "committed": "paketobuildpacks/build-jammy-base@sha256:2492a2d7dd93179755b4f3706b7931754156aa3711349649ee76bc5d5ac1842c",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub reviewed 2026-10-28 for CVE-2026-111497: Jammy libbrotli1 1.0.9-2ubuntu0.1; build/run stack package verified on linux/amd64, builder inherits the build stack layers; bex run image rebuilt and Node-checked on amd64/arm64 before publication",
+      "committed": "paketobuildpacks/build-jammy-base@sha256:5fce29993757b60a84f6b05fce0e24804c2b51f9ff8ab5c1dbe86697bec05a9c",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): Paketo build-jammy-base latest, linux/amd64+arm64 index created 2026-11-16, stack io.buildpacks.stacks.jammy unchanged; paired with the cnb-stack-run base of the same day",
       "files": [
         "deploy/gitops/charts/kpack/platform.yaml"
       ]
@@ -40,9 +40,9 @@
       "id": "cnb-run-image",
       "kind": "stack",
       "upstream": "ghcr.io/bex-co/bex-cnb-run:latest",
-      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:c737a6661e034d564a934c424f01f18b3f139c7beb0d107aa04ca37b59843192",
-      "resolved_at": "2026-10-30T01:07:30Z",
-      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 40790621050 from 63fd10231; both platforms passed Node 26 startup checks, libbrotli1 1.0.9-2ubuntu0.1 and libatomic1 12.3.0-1ubuntu1~22.04.3 verified from digest-authenticated dpkg layers; cosign workflow identity and transparency-log verification passed",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:77061d60c38fbf20f8b78fc9c8bdd580bc264d6612bbeed6852e3f51e932d8e5",
+      "resolved_at": "2026-11-16T11:32:54Z",
+      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 43855831573 from e097d59c0 on run-jammy-base sha256:6031575989ab… (w6/m291, 2026-11-16): both platforms passed the libatomic1 ldconfig gate and Node 26 startup check before the signature and the latest tag; revision label e097d59c0, stack io.buildpacks.stacks.jammy and CNB user 1002:1000 verified on both platforms",
       "files": [
         "deploy/gitops/charts/kpack/platform.yaml"
       ]
@@ -108,9 +108,9 @@
       "id": "native-busybox",
       "kind": "helper",
       "upstream": "docker.io/library/busybox:1.37.0",
-      "committed": "busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e",
-      "resolved_at": "2026-10-11T02:05:00Z",
-      "source": "Docker Hub library/busybox:1.37.0 multi-arch index",
+      "committed": "busybox:1.37.0@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub library/busybox:1.37.0 multi-arch index (linux/amd64 + linux/arm64 included), rebuild reviewed 2026-11-16 (w6/m291)",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -119,9 +119,9 @@
       "id": "native-elixir",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.18",
-      "committed": "elixir:1.18@sha256:17e900a5657265d248499a1525b00c64c33e7f93f9a71c766614c8e910656351",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.1.0-2+deb13u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "elixir:1.18@sha256:16382709b3765b946748714575d8748ea7dcb7cb9a4849730bcdc56533503691",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official elixir:1.18 rebuilt on Debian trixie root @1793827419, same suite as before; ELIXIR_VERSION=1.18.6 (was 1.18.4) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -130,9 +130,9 @@
       "id": "native-go",
       "kind": "native-base",
       "upstream": "docker.io/library/golang:1.27-bookworm",
-      "committed": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "golang:1.27-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official golang:1.27-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; GOLANG_VERSION=1.27.4 (was 1.27.3) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -207,9 +207,9 @@
       "id": "native-hugo-image",
       "kind": "helper",
       "upstream": "ghcr.io/bex-co/bex-hugo:0.111.3",
-      "committed": "ghcr.io/bex-co/bex-hugo:0.111.3@sha256:bd3086eab038804155c0736780102f29efd5cd7731fda72449c49b00981f87e4",
-      "resolved_at": "2026-11-10T10:35:00Z",
-      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64) from hugo-image.yml run 42799436346 at b05e83e1d: the native-hugo-amd64/arm64 tarballs' hugo binary at /hugo; hugo version 0.111.3 extended verified natively on both platforms; cosign workflow identity verified (w8/m148)",
+      "committed": "ghcr.io/bex-co/bex-hugo:0.111.3@sha256:61d72075abce6f36b4d4c24203dca249f352f59afd3848d44e119d8d0880e5d8",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64) from hugo-image.yml run 43576647981 at 3a8a988ba (the 2026-11-14 GitHub Actions bump republished the unchanged recipe): both platforms' single layer is byte-identical to the w8/m148 image (run 42799436346 at b05e83e1d), only the revision label differs; reviewed 2026-11-16 (w6/m291)",
       "files": [
         "lego/operator/internal/build/nativehugo.go"
       ]
@@ -218,9 +218,9 @@
       "id": "native-pnpm",
       "kind": "npm-package",
       "upstream": "registry.npmjs.org/pnpm:latest-10",
-      "committed": "pnpm-10.34.7.tgz@sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
-      "resolved_at": "2026-10-16T10:32:32Z",
-      "source": "npm registry pnpm@latest-10 = 10.34.7 tarball sha256 (registry integrity sha512-fhrmaoOpFDwRjMGUTzfMTyuKzd7aSwAc+niQj25G5F4VKSc5ymydAmQmzHV+kxjMmMVVHWoWwWUJewAouoe05g== verified); pure-JS, engines node>=18.12, installed into every native Node image (w8/m73)",
+      "committed": "pnpm-10.34.9.tgz@sha256:7e8a946108e7baab119e51d27c24d6178b46545422643dbc91e34e2f1ee32e0f",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "npm registry pnpm@latest-10 = 10.34.9 tarball sha256 (registry integrity sha512-9JtajqD97bRLs8DB1ldQkqU8KVDZW3rRXfEfF5dId6LeOgHAfpNOmyjOcW5RwJqUlixzBtCb4uHksYqMh2L9Mg== verified 2026-11-16, w6/m291); pure-JS, no dependencies or install scripts, engines node>=18.12, installed into every native Node image (w8/m73)",
       "files": [
         "lego/operator/internal/build/nativepnpm.go"
       ]
@@ -229,9 +229,9 @@
       "id": "native-pnpm-linux-x64",
       "kind": "npm-package",
       "upstream": "registry.npmjs.org/@pnpm/linux-x64:latest-10",
-      "committed": "linux-x64-10.34.7.tgz@sha256:0ccd4ab9ffee62e9905396dfd9f9c9d67737f58563a4e9199811cf4665965062",
-      "resolved_at": "2026-10-31T21:00:00Z",
-      "source": "npm registry @pnpm/linux-x64@10.34.7 tarball sha256 (registry integrity sha512-D+RMjBPD4XZy9crgZbUfmfe6fxtBHF/s2RWWmVIjVteG9ieklq5o1ZVgtZCp/hPo/g2dW79S4tDCoqL5yCNEdw== verified); pnpm's official standalone build of the native-pnpm release, installed only for native Node 14/16, whose versions the pure-JS package refuses (w8/226)",
+      "committed": "linux-x64-10.34.9.tgz@sha256:bd473ea50a48475508dedddb92a6b8e704da867053a112271e9bd9e5ed1256b3",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "npm registry @pnpm/linux-x64@10.34.9 tarball sha256 (registry integrity sha512-Szrlhj0L/VeKBWEi3ZmPILKwt/gC/e0HT+zTH3N47gyEd6pjyyZKXPwAuFA5GH6jQnWFt1cz3RlLA2Sr9KRWFA== verified 2026-11-16, w6/m291); pnpm's official standalone build of the native-pnpm release, installed only for native Node 14/16, whose versions the pure-JS package refuses (w8/226)",
       "files": [
         "lego/operator/internal/build/nativepnpm.go"
       ]
@@ -240,9 +240,9 @@
       "id": "native-pnpm-linux-arm64",
       "kind": "npm-package",
       "upstream": "registry.npmjs.org/@pnpm/linux-arm64:latest-10",
-      "committed": "linux-arm64-10.34.7.tgz@sha256:e5f004bc5e0b1acab7b6fda01a7d41f77670f07f0ea45ce9e56878938d898292",
-      "resolved_at": "2026-10-31T21:00:00Z",
-      "source": "npm registry @pnpm/linux-arm64@10.34.7 tarball sha256 (registry integrity sha512-LS6s9RkT+WGBITibm3UyjTTkSNQA/XVrLrkqkZbhepBfchpRFJA8M422iv5U9vWj26KC6+OiWAutG6z7DByfEQ== verified); pnpm's official standalone build of the native-pnpm release, installed only for native Node 14/16, whose versions the pure-JS package refuses (w8/226)",
+      "committed": "linux-arm64-10.34.9.tgz@sha256:555753d2d2dff1b1b34179926de643150158061c76c26611ed0ca79250f5f472",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "npm registry @pnpm/linux-arm64@10.34.9 tarball sha256 (registry integrity sha512-h0qqyPkbaZFEn+keoOOgXsCvYjhyBo+UUtFTCUFVOjWfcTHrMzTmmHkzPaqbj7XyN/09zlwMlj5aqUcx/4Fm2Q== verified 2026-11-16, w6/m291); pnpm's official standalone build of the native-pnpm release, installed only for native Node 14/16, whose versions the pure-JS package refuses (w8/226)",
       "files": [
         "lego/operator/internal/build/nativepnpm.go"
       ]
@@ -251,9 +251,9 @@
       "id": "native-node",
       "kind": "native-base",
       "upstream": "docker.io/library/node:24-bookworm",
-      "committed": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official node:24-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; NODE_VERSION=24.22.3 (was 24.22.1) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go",
         "deploy/native-base/Dockerfile",
@@ -264,9 +264,9 @@
       "id": "native-python",
       "kind": "native-base",
       "upstream": "docker.io/library/python:3.13-bookworm",
-      "committed": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "python:3.13-bookworm@sha256:cc55e4ded9c95f6ce2133b3d096db43f214d280c2a8af65d83e246c8fa7d168c",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official python:3.13-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; PYTHON_VERSION=3.13.18 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -275,9 +275,9 @@
       "id": "native-ruby",
       "kind": "native-base",
       "upstream": "docker.io/library/ruby:3.4-bookworm",
-      "committed": "ruby:3.4-bookworm@sha256:8853c6f24866429483fce3a869e61a6a13916beb2720468c6d95c78f41c0f564",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "ruby:3.4-bookworm@sha256:d7c312a48736dd291d7ce043c847f04dfde9bdf7334491ca6a545a4a184395be",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official ruby:3.4-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; RUBY_VERSION=3.4.12 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -286,9 +286,9 @@
       "id": "native-rust",
       "kind": "native-base",
       "upstream": "docker.io/library/rust:1-bookworm",
-      "committed": "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "rust:1-bookworm@sha256:ade39a710ef85f3506cffcfec3e8a24ba090badef1dff2fb798f71d878833fea",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official rust:1-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; RUST_VERSION=1.100.0 (was 1.99.1) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -308,9 +308,9 @@
       "id": "native-python-3-11",
       "kind": "native-base",
       "upstream": "docker.io/library/python:3.11-bookworm",
-      "committed": "python:3.11-bookworm@sha256:84fa927127b46670e768371d1ad1be271d57ba93a6fbb3479045c7c6c452432f",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "python:3.11-bookworm@sha256:726d304906fa5eb468e5531e366548d1903286352f5adb54ef508ac01fbd80c6",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official python:3.11-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; PYTHON_VERSION=3.11.18 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -319,9 +319,9 @@
       "id": "native-python-3-12",
       "kind": "native-base",
       "upstream": "docker.io/library/python:3.12-bookworm",
-      "committed": "python:3.12-bookworm@sha256:a5bab0ff300f91231c2e68bf73a8a8d60762ac39ce1c50eaf6803e4c38a9062b",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "python:3.12-bookworm@sha256:4209fae09a3e20afd863e528bfddc235da5fd5977983e1996cd54cc9a72e6267",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official python:3.12-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; PYTHON_VERSION=3.12.16 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -330,9 +330,9 @@
       "id": "native-python-3-14",
       "kind": "native-base",
       "upstream": "docker.io/library/python:3.14-bookworm",
-      "committed": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "python:3.14-bookworm@sha256:3fe825da0a80fa8e2cd79baadeb76b03c0ddf3d6cdbc8346778a0208b9d6038c",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official python:3.14-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; PYTHON_VERSION=3.14.10 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -341,9 +341,9 @@
       "id": "native-node-22",
       "kind": "native-base",
       "upstream": "docker.io/library/node:22-bookworm",
-      "committed": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "node:22-bookworm@sha256:e13726ca604184d7a91fcacab1fc09eefd642dc28e79ac34e85540dd93b78cfb",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official node:22-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; NODE_VERSION=22.23.5 (was 22.23.4) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -352,9 +352,9 @@
       "id": "native-node-26",
       "kind": "native-base",
       "upstream": "docker.io/library/node:26-bookworm",
-      "committed": "node:26-bookworm@sha256:3b764117159bda01d2396391e7789b6a9106af9729cfd001ef55e98557868310",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "node:26-bookworm@sha256:b7087bc4d973034b30854b378ba107f9fab622b47514cb7e2592e41b8bab8d49",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official node:26-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; NODE_VERSION=26.13.1 (was 26.12.1) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -363,9 +363,9 @@
       "id": "native-ruby-3-3",
       "kind": "native-base",
       "upstream": "docker.io/library/ruby:3.3-bookworm",
-      "committed": "ruby:3.3-bookworm@sha256:0e4ba04b135a870aedf21340f33ce376c7fe0ed2d9a02886420c820acb3e9c50",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "ruby:3.3-bookworm@sha256:ae098d019fd2995e6cb82e16a87529348ba26a7c83ad6189937decc2846b0730",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official ruby:3.3-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; RUBY_VERSION=3.3.13 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -374,9 +374,9 @@
       "id": "native-ruby-4-0",
       "kind": "native-base",
       "upstream": "docker.io/library/ruby:4.0-bookworm",
-      "committed": "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "ruby:4.0-bookworm@sha256:862aacfe5415f2dcb399677d9139963ef4cd989140096cf723a91256ae8a9de3",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official ruby:4.0-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; RUBY_VERSION=4.0.9 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -385,9 +385,9 @@
       "id": "native-elixir-1-17",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.17",
-      "committed": "elixir:1.17@sha256:0ff6cbfc498e86d21d1f8939672f32acaffe9e5be8924da7942ce69fd34e2c68",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.0.9-2+deb12u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "elixir:1.17@sha256:08879d1eff5207a26ecab32ac7a7c5df610fce532b791eccbae7288a4e4b27b3",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official elixir:1.17 rebuilt on Debian bookworm root @1793827419, same suite as before; ELIXIR_VERSION=1.17.3 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -396,9 +396,9 @@
       "id": "native-elixir-1-19",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.19",
-      "committed": "elixir:1.19@sha256:8f40275227054af01252a5a84c725ad2a34e971f8a5343cb132509fc37b61842",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.1.0-2+deb13u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "elixir:1.19@sha256:7e27df3e4a684163e4a18e618eede53badb70e97e0c92a1845ab22e2e1d96da2",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official elixir:1.19 rebuilt on Debian trixie root @1793827419, same suite as before; ELIXIR_VERSION=1.19.7 (was 1.19.6) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -519,9 +519,9 @@
       "id": "native-elixir-1-20",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.20",
-      "committed": "elixir:1.20@sha256:c904ce753c35768c76a3be6f16428a83f8237ca0c402355b49bac99d74da2beb",
-      "resolved_at": "2026-10-28T23:35:54Z",
-      "source": "Docker Hub same-line upstream image; SBOM verified libbrotli1 1.1.0-2+deb13u1 on published architectures (including linux/amd64 and linux/arm64), CVE-2026-111497; runtime version read from image config (w1/136)",
+      "committed": "elixir:1.20@sha256:1b850191faeaae55678b782cd8b34d391f793672f3175b1956d024f794ca321b",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official elixir:1.20 rebuilt on Debian trixie root @1793827419, same suite as before; ELIXIR_VERSION=1.20.5 (was 1.20.4) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -530,9 +530,9 @@
       "id": "native-common-bookworm-source",
       "kind": "native-base",
       "upstream": "docker.io/library/buildpack-deps:bookworm",
-      "committed": "buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6a9d6c2cc76438fae2c0988",
-      "resolved_at": "2026-10-31T10:53:52Z",
-      "source": "Anonymous Docker Hub index and linux/amd64 + linux/arm64 child manifests resolved2026-10-31; common factory input only, no published common candidate or runtime compatibility/adoption claim.",
+      "committed": "buildpack-deps:bookworm@sha256:f53cd4c58cdb96a467b98696cd510a949ef4ccd7d23e07b75107de754773007a",
+      "resolved_at": "2026-11-16T11:10:46Z",
+      "source": "Anonymous Docker Hub index and linux/amd64 + linux/arm64 child manifests resolved 2026-11-16 (w6/m291), Debian bookworm root @1793827419; common factory input only, no published common candidate or runtime compatibility/adoption claim.",
       "files": [
         "deploy/native-common/Dockerfile"
       ]

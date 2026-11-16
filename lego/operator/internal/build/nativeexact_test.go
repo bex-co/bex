@@ -145,10 +145,16 @@ func TestPlatformBackportPreservesExactLookupAndVerifiedFallback(t *testing.T) {
 
 func resolveExact(t *testing.T, fake *fakeExact, runtime string, env, files map[string]string) ([]NativeChoice, string) {
 	t.Helper()
+	return resolveExactAt(t, fake, time.Time{}, runtime, env, files)
+}
+
+// resolveExactAt is resolveExact for a service created at created.
+func resolveExactAt(t *testing.T, fake *fakeExact, created time.Time, runtime string, env, files map[string]string) ([]NativeChoice, string) {
+	t.Helper()
 	o := nativeOptions()
 	o.Runtime = runtime
 	bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
-	choices, err := ResolveNativeBuildExact(context.Background(), fake, time.Time{}, runtime, bundle, dockerfile, src)
+	choices, err := ResolveNativeBuildExact(context.Background(), fake, created, runtime, bundle, dockerfile, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,6 +362,58 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 	choices, err := ResolveNativeBuildExact(context.Background(), missing, rubyDefaultCutoff.Add(time.Hour), "ruby", bundle, dockerfile, src)
 	if err != nil || choices[0].Line != "3.4" || !strings.Contains(choices[0].Narration(), "No official image ruby:3.4.4-bookworm") {
 		t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v %v", choices[0], err)
+	}
+}
+
+// w6/m291: Render's default Node (24.22.1 since 2026-10-21) and Elixir (1.18.4
+// since 2025-06-12) are exact steps, so refreshing a line to a newer patch
+// leaves a new service's default where Render has it. An explicit line request,
+// an older or unknown-age service and a missing tag keep the reviewed patch.
+func TestNodeAndElixirDefaultsAreRendersExactPatch(t *testing.T) {
+	for _, tc := range []struct {
+		runtime, line, exact, tag string
+		from                      time.Time
+		explicit                  map[string]string
+	}{
+		{nativeNodeRuntime, "24", "24.22.1", "node:24.22.1-bookworm", renderNodeDefault20261021, map[string]string{"NODE_VERSION": "24"}},
+		{nativeElixirRuntime, "1.18", "1.18.4", "elixir:1.18.4", renderElixirDefault20250612, map[string]string{"ELIXIR_VERSION": "1.18"}},
+	} {
+		t.Run(tc.runtime, func(t *testing.T) {
+			reviewed, _ := nativeToolchains[tc.runtime].find(tc.line)
+			if reviewed.version == tc.exact {
+				t.Fatalf("the %s line's reviewed patch is Render's default %s again; this test no longer proves a pin bump leaves the default alone", tc.line, tc.exact)
+			}
+			fake := &fakeExact{digests: map[string]string{tc.tag: exactDigest}}
+			run := func(created time.Time, env map[string]string) NativeChoice {
+				t.Helper()
+				choices, dockerfile := resolveExactAt(t, fake, created, tc.runtime, env, nil)
+				if choices[0].Image == tc.tag+"@"+exactDigest {
+					assertExactNativePrimary(t, dockerfile, reviewed.image, choices[0].Image, nil)
+				}
+				return choices[0]
+			}
+
+			got := run(tc.from.Add(time.Hour), nil)
+			want := "==> Using " + nativeToolchains[tc.runtime].label + " " + tc.exact + " (default)"
+			if got.Line != tc.exact || got.Image != tc.tag+"@"+exactDigest || got.Narration() != want {
+				t.Errorf("new service: %+v narration %q, want %q", got, got.Narration(), want)
+			}
+			for name, c := range map[string]NativeChoice{
+				"unknown age":     run(time.Time{}, nil),
+				"explicit line":   run(tc.from.Add(time.Hour), tc.explicit),
+				"before the step": run(tc.from.Add(-time.Hour), nil),
+			} {
+				if c.Line != tc.line || c.Image != reviewed.image {
+					t.Errorf("%s must keep the reviewed %s: %+v", name, reviewed.version, c)
+				}
+			}
+
+			missing := &fakeExact{digests: map[string]string{}}
+			choices, _ := resolveExactAt(t, missing, tc.from.Add(time.Hour), tc.runtime, nil, nil)
+			if choices[0].Line != tc.line || !strings.Contains(choices[0].Narration(), "No official image "+tc.tag) {
+				t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v", choices[0])
+			}
+		})
 	}
 }
 
