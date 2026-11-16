@@ -38,16 +38,15 @@ import (
 //     dev control plane, uses the workspace's own BYO key, and is refused on a
 //     production control plane (EnableDevModelRoute);
 //   - the PLATFORM route (BEX_AGENT_PLATFORM_MODEL_ROUTE) is production-capable
-//     but covers only an explicit workspace allowlist, minus every workspace
-//     that set its own model key; it injects a platform-owned key and pins the
-//     model: the gateway refuses any request body whose top-level "model"
-//     differs.
+//     and covers every workspace except one that set its own model key; it
+//     injects a platform-owned key and pins the model: the gateway refuses any
+//     request body whose top-level "model" differs.
 //
 // A workspace's own model key (BYO, ADR091 D7) wins over the platform route:
 // a workspace whose admin set one is never on the platform route, so it is
 // neither metered, billed nor spend-capped for tokens. Otherwise the platform
-// route wins for its allowlisted workspaces; the dev route covers everything
-// else on a dev control plane; with neither, behaviour is the release
+// route wins when it is active; otherwise the dev route covers every workspace
+// on a dev control plane; with neither, behaviour is the release
 // profile's. Every route decision takes byoKey, the workspace's recorded
 // model_key_set_at flag (store.AgentEnvironment.ModelKeySet).
 
@@ -80,27 +79,25 @@ const (
 )
 
 // modelRoute is one active route. The agent, endpoint, host and path prefix
-// are the openRouter* constants; only the model, scope and key vary.
+// are the openRouter* constants; only the model and key vary. An active route
+// covers every workspace.
 type modelRoute struct {
 	model string
-	// workspaces is the platform route's allowlist; nil (the dev route) covers
-	// every workspace.
-	workspaces map[string]bool
 	// platformKey is the platform-owned credential the mint injects instead of
 	// the workspace BYO key. Empty for the dev route. Never logged or returned
 	// outside ModelMintResponse.Credential.
 	platformKey string
 }
 
-func (r *modelRoute) covers(workspaceID string) bool {
-	return r != nil && (r.workspaces == nil || r.workspaces[workspaceID])
+func (r *modelRoute) active() bool {
+	return r != nil
 }
 
 var (
 	activeDevModelRoute      atomic.Pointer[modelRoute]
 	activePlatformModelRoute atomic.Pointer[modelRoute]
 	// activeMetaRoute serves the profiles on Meta's official API (ADR108 D5,
-	// muse) with a bex-owned key in the workspaces it lists. Unlike the
+	// muse) with a bex-owned key in every workspace. Unlike the
 	// OpenRouter route it never yields to a workspace's own key: those
 	// profiles are platform-only. Its model is each profile's own.
 	activeMetaRoute   atomic.Pointer[modelRoute]
@@ -147,11 +144,10 @@ func resolveDevModelRoute(route, model, controlPlaneIdentity string) (*modelRout
 }
 
 // EnablePlatformModelRoute installs (or, for an empty route, clears) the
-// workspace-allowlisted platform model route. workspaces must be non-empty
-// and key non-empty when route is set; the caller (bex-api's config loader)
-// validates workspace id shape. Errors never include the key.
-func EnablePlatformModelRoute(route, model string, workspaces []string, key string) error {
-	resolved, err := resolvePlatformModelRoute(route, model, workspaces)
+// platform model route for every workspace. key must be non-empty when route
+// is set. Errors never include the key.
+func EnablePlatformModelRoute(route, model, key string) error {
+	resolved, err := resolvePlatformModelRoute(route, model)
 	if err != nil {
 		return err
 	}
@@ -165,16 +161,15 @@ func EnablePlatformModelRoute(route, model string, workspaces []string, key stri
 }
 
 // EnablePlatformMetaRoute installs the Meta route for the profiles on Meta's
-// API in workspaces (the platform model route's allowlist,
-// BEX_AGENT_PLATFORM_MODEL_WORKSPACES) and reports whether it is active: an
-// empty key or allowlist clears it. The key is never logged.
-func EnablePlatformMetaRoute(key string, workspaces []string) bool {
-	key, allow := strings.TrimSpace(key), workspaceSet(workspaces)
-	if key == "" || len(allow) == 0 {
+// API in every workspace and reports whether it is active: an empty key
+// clears it. The key is never logged.
+func EnablePlatformMetaRoute(key string) bool {
+	key = strings.TrimSpace(key)
+	if key == "" {
 		activeMetaRoute.Store(nil)
 		return false
 	}
-	activeMetaRoute.Store(&modelRoute{workspaces: allow, platformKey: key})
+	activeMetaRoute.Store(&modelRoute{platformKey: key})
 	return true
 }
 
@@ -192,32 +187,21 @@ func OnMetaRoute(agent string) bool {
 // metaRouteKey is the bex-owned Meta key that serves agent in workspaceID,
 // or "" when none does.
 func metaRouteKey(workspaceID, agent string) string {
-	if route := activeMetaRoute.Load(); route.covers(workspaceID) && OnMetaRoute(agent) {
+	if route := activeMetaRoute.Load(); route.active() && OnMetaRoute(agent) {
 		return route.platformKey
 	}
 	return ""
 }
 
-// workspaceSet is workspaces' trimmed, non-empty ids as a set.
-func workspaceSet(workspaces []string) map[string]bool {
-	set := map[string]bool{}
-	for _, ws := range workspaces {
-		if ws = strings.TrimSpace(ws); ws != "" {
-			set[ws] = true
-		}
-	}
-	return set
-}
-
-// ValidatePlatformModelRoute checks the route, model and allowlist without
-// the key and without installing anything (bex-api's startup config check;
-// a missing key is a degraded-but-running state the loader handles itself).
-func ValidatePlatformModelRoute(route, model string, workspaces []string) error {
-	_, err := resolvePlatformModelRoute(route, model, workspaces)
+// ValidatePlatformModelRoute checks the route and model without the key and
+// without installing anything (bex-api's startup config check; a missing key
+// is a degraded-but-running state the loader handles itself).
+func ValidatePlatformModelRoute(route, model string) error {
+	_, err := resolvePlatformModelRoute(route, model)
 	return err
 }
 
-func resolvePlatformModelRoute(route, model string, workspaces []string) (*modelRoute, error) {
+func resolvePlatformModelRoute(route, model string) (*modelRoute, error) {
 	if route == "" {
 		return nil, nil
 	}
@@ -228,11 +212,7 @@ func resolvePlatformModelRoute(route, model string, workspaces []string) (*model
 	if err != nil {
 		return nil, err
 	}
-	allow := workspaceSet(workspaces)
-	if len(allow) == 0 {
-		return nil, fmt.Errorf("BEX_AGENT_PLATFORM_MODEL_ROUTE requires a non-empty BEX_AGENT_PLATFORM_MODEL_WORKSPACES allowlist")
-	}
-	return &modelRoute{model: model, workspaces: allow}, nil
+	return &modelRoute{model: model}, nil
 }
 
 func routeModel(env, model string) (string, error) {
@@ -252,20 +232,20 @@ func routeFor(workspaceID, agent string, byoKey bool) *modelRoute {
 	if !PinnedAgent(agent) {
 		return nil
 	}
-	if route := activePlatformModelRoute.Load(); !byoKey && route.covers(workspaceID) {
+	if route := activePlatformModelRoute.Load(); !byoKey && route.active() {
 		return route
 	}
-	if route := activeDevModelRoute.Load(); route.covers(workspaceID) {
+	if route := activeDevModelRoute.Load(); route.active() {
 		return route
 	}
 	return nil
 }
 
-// platformRouteCovers reports whether the platform route's allowlist names
-// workspaceID's agent profile, BEFORE the BYO precedence: the only case in
+// platformRouteCovers reports whether the platform route serves workspaceID's
+// agent profile, BEFORE the BYO precedence: the only case in
 // which the mint must look up whether the workspace set its own key.
 func platformRouteCovers(workspaceID, agent string) bool {
-	return PinnedAgent(agent) && activePlatformModelRoute.Load().covers(workspaceID)
+	return PinnedAgent(agent) && activePlatformModelRoute.Load().active()
 }
 
 // PlatformRouteServes reports whether a bex-owned route supplies agent's
@@ -299,7 +279,7 @@ func ProfileServed(workspaceID, agent string) bool {
 // workspace's BYO key. The platform route only serves the claude profile, and
 // never a workspace with its own key (byoKey).
 func PlatformModelKeyReady(workspaceID string, byoKey bool) bool {
-	return !byoKey && activePlatformModelRoute.Load().covers(workspaceID)
+	return !byoKey && activePlatformModelRoute.Load().active()
 }
 
 // PlatformPinnedModel is the model the platform route pins for workspaceID's
@@ -310,7 +290,7 @@ func PlatformModelKeyReady(workspaceID string, byoKey bool) bool {
 // as read-only (w10/m17).
 func PlatformPinnedModel(workspaceID string, byoKey bool) (string, bool) {
 	route := activePlatformModelRoute.Load()
-	if byoKey || !route.covers(workspaceID) {
+	if byoKey || !route.active() {
 		return "", false
 	}
 	return route.model, true

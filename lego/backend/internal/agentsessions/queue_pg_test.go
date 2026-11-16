@@ -660,9 +660,9 @@ func TestAMessageWaitsOutARefusalAPersonCanFix(t *testing.T) {
 			breaks: func(_ queueEnv, gate *twoFactorGate) { gate.blocked["alice"] = true },
 			fixes:  func(_ queueEnv, gate *twoFactorGate) { delete(gate.blocked, "alice") }},
 		{name: "the agent is not available to the workspace", says: "not available", agent: "muse",
-			breaks: func(_ queueEnv, _ *twoFactorGate) { agentsession.EnablePlatformMetaRoute("", nil) },
+			breaks: func(_ queueEnv, _ *twoFactorGate) { agentsession.EnablePlatformMetaRoute("") },
 			fixes: func(e queueEnv, _ *twoFactorGate) {
-				agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET", []string{e.ws})
+				agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET")
 			}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -670,7 +670,7 @@ func TestAMessageWaitsOutARefusalAPersonCanFix(t *testing.T) {
 			gate := &twoFactorGate{ws: e.ws, blocked: map[string]bool{}}
 			e.svc.Base.TwoFactor = gate
 			if tc.agent != "" {
-				enableMetaRoute(t, e.ws)
+				enableMetaRoute(t)
 				enableMuse(e.svc, e.ws)
 				in := e.input("")
 				in.AgentConfig = AgentConfig{Agent: tc.agent, Task: "fix the tests"}

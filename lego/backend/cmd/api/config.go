@@ -217,20 +217,19 @@ type Config struct {
 	// unless BEX_CP_IDENTITY names a non-production control plane.
 	AgentDevModelRoute string
 	AgentDevModel      string
-	// Workspace-allowlisted PLATFORM model route (ADR090, production-capable):
-	// BEX_AGENT_PLATFORM_MODEL_ROUTE=openrouter runs the claude profile of each
-	// BEX_AGENT_PLATFORM_MODEL_WORKSPACES workspace on OpenRouter with the
+	// PLATFORM model route (ADR090, production-capable):
+	// BEX_AGENT_PLATFORM_MODEL_ROUTE=openrouter runs the claude profile of every
+	// workspace without its own model key on OpenRouter with the
 	// platform-owned BEX_AGENT_PLATFORM_MODEL_KEY, pinned to
 	// BEX_AGENT_PLATFORM_MODEL. A missing key disables the route (warning)
 	// instead of failing startup. AgentPlatformModelKey is a secret: never log
 	// or print it (or this struct).
-	AgentPlatformModelRoute      string
-	AgentPlatformModel           string
-	AgentPlatformModelWorkspaces []string
-	AgentPlatformModelKey        string
+	AgentPlatformModelRoute string
+	AgentPlatformModel      string
+	AgentPlatformModelKey   string
 	// AgentPlatformMetaKey (BEX_AGENT_PLATFORM_META_KEY, a secret: never log
-	// it) runs the platform-only muse profile on Meta's API in the
-	// BEX_AGENT_PLATFORM_MODEL_WORKSPACES workspaces (ADR108); empty ⇒ muse is
+	// it) runs the platform-only muse profile on Meta's API in every
+	// workspace (ADR108); empty ⇒ muse is
 	// offered nowhere. AgentMetaRouteMaxSessions
 	// (BEX_AGENT_META_ROUTE_MAX_SESSIONS) caps live muse sessions across every
 	// workspace on that one key; 0 ⇒ the service default.
@@ -885,39 +884,27 @@ func (p *parser) imageCompatibilityWorkspaces(name string) map[string]bool {
 	return set
 }
 
-// platformModelRoute — policy "fail" for the route, model and allowlist (an
-// unknown route, a malformed model id, an empty allowlist or a non-workspace
-// id refuses startup), but "warn" for a missing key: the key arrives from the
-// optional Secret bex-agent-platform-model, and its absence must not
-// crash-loop bex-api. The route is then disabled and the reason logged. The
+// platformModelRoute — policy "fail" for the route and model (an unknown
+// route or a malformed model id refuses startup), but "warn" for a missing
+// key: the key arrives from the optional Secret bex-agent-platform-model, and
+// its absence must not crash-loop bex-api. The route is then disabled and the reason logged. The
 // key's value is never part of any message.
 func (p *parser) platformModelRoute(cfg *Config) {
-	const routeEnv, workspacesEnv = "BEX_AGENT_PLATFORM_MODEL_ROUTE", "BEX_AGENT_PLATFORM_MODEL_WORKSPACES"
+	const routeEnv = "BEX_AGENT_PLATFORM_MODEL_ROUTE"
 	cfg.AgentPlatformModelRoute = strings.TrimSpace(p.getenv(routeEnv))
 	cfg.AgentPlatformModel = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_MODEL"))
 	cfg.AgentPlatformModelKey = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_MODEL_KEY"))
 	cfg.AgentPlatformMetaKey = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_META_KEY"))
 	cfg.AgentMetaRouteMaxSessions, _ = p.positiveInt("BEX_AGENT_META_ROUTE_MAX_SESSIONS", agentsessions.DefaultMetaRouteMaxSessions)
-	cfg.AgentPlatformModelWorkspaces = nil
-	for _, v := range strings.Split(p.getenv(workspacesEnv), ",") {
-		if v = strings.TrimSpace(v); v == "" {
-			continue
-		}
-		if kind, ok := ids.KindOf(v); !ok || kind != ids.Workspace {
-			p.errorf("%s: %q is not a workspace id", workspacesEnv, v)
-			continue
-		}
-		cfg.AgentPlatformModelWorkspaces = append(cfg.AgentPlatformModelWorkspaces, v)
-	}
 	if cfg.AgentPlatformModelRoute == "" {
 		return
 	}
-	if err := agentsession.ValidatePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModelWorkspaces); err != nil {
+	if err := agentsession.ValidatePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel); err != nil {
 		p.err(err)
 		return
 	}
 	if cfg.AgentPlatformModelKey == "" {
-		p.warnf("ERROR: %s=%s is set but BEX_AGENT_PLATFORM_MODEL_KEY is empty (is Secret bex-agent-platform-model/openrouter-api-key missing?); the platform model route is DISABLED and allowlisted workspaces fall back to their own model key",
+		p.warnf("ERROR: %s=%s is set but BEX_AGENT_PLATFORM_MODEL_KEY is empty (is Secret bex-agent-platform-model/openrouter-api-key missing?); the platform model route is DISABLED and every workspace falls back to its own model key",
 			routeEnv, cfg.AgentPlatformModelRoute)
 		cfg.AgentPlatformModelRoute = ""
 	}

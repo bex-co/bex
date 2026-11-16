@@ -105,7 +105,7 @@ User decisions 2026-11-13: the `muse` profile ([ADR108](ADR108-muse-code-agent.m
 1. Implement D1–D7 and D10.
 2. Create the Stripe meter on test Stripe, then live Stripe.
 3. ~~Set the OpenRouter credit limit.~~ Dropped 2026-11-12 (user decision): the account balance is the cap, watched by `PlatformModelCreditLow`/`PlatformModelCreditCritical` (D5). Top up the account before widening.
-4. Widen `BEX_AGENT_PLATFORM_MODEL_WORKSPACES` to every workspace (`w10/m14` t007), by 2026-11-13 (moved from 2026-11-06 on 2026-11-05 so all of D1–D7 and D10 ship first).
+4. ~~Widen `BEX_AGENT_PLATFORM_MODEL_WORKSPACES` to every workspace~~ Done 2026-11-16 (user decision, `w10/m14` t007): the allowlist is removed and the route covers every workspace. Originally due 2026-11-13 (moved from 2026-11-06 on 2026-11-05 so all of D1–D7 and D10 ship first).
 
 ### D10 — Non-payment and delete-before-invoice protection
 

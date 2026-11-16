@@ -57,7 +57,7 @@ func TestPGSpendCapRefusesTheMintAtThePlanCap(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = pg.DeleteTenant(ctx, tenant.ID) }()
-	enablePlatformRoute(t, tenant.ID)
+	enablePlatformRoute(t)
 	session, err := pg.CreateAgentSession(ctx, store.AgentSession{
 		WorkspaceID: tenant.ID, Repo: "octo/repo", Branch: "bex-agent/task-1",
 		AgentConfig: []byte(`{"agent":"claude","task":"x"}`), InitialPrompt: "x",
@@ -165,7 +165,7 @@ func TestPGBillingBalanceDueRefusesTheMintUntilPaid(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = pg.DeleteTenant(ctx, tenant.ID) }()
-	enablePlatformRoute(t, tenant.ID)
+	enablePlatformRoute(t)
 	session, err := pg.CreateAgentSession(ctx, store.AgentSession{
 		WorkspaceID: tenant.ID, Repo: "octo/repo", Branch: "bex-agent/task-1",
 		AgentConfig: []byte(`{"agent":"claude","task":"x"}`), InitialPrompt: "x",

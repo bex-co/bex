@@ -18,9 +18,6 @@ export interface GrowthBookFeatureDefinition {
 
 export type GrowthBookFeatures = Record<string, GrowthBookFeatureDefinition>;
 
-/** Workspace that may use dashboard agent sessions during the private beta. */
-export const AGENTS_DASHBOARD_BETA_WORKSPACE_ID = "tea-d98210cbbpdc73dcrkvg";
-
 export const ROUTER_DASHBOARD_BETA_WORKSPACE_ID = "tea-d98210cbbpdc73dcrkvg";
 
 export const growthbookFeatures = {
@@ -33,16 +30,11 @@ export const growthbookFeatures = {
       },
     ],
   },
+  // Agent sessions and automations are open to every workspace; the flag is
+  // kept as a kill switch (set defaultValue false to hide them everywhere).
   "dashboard-agents": {
-    defaultValue: false,
-    rules: [
-      {
-        condition: {
-          workspaceId: AGENTS_DASHBOARD_BETA_WORKSPACE_ID,
-        },
-        force: true,
-      },
-    ],
+    defaultValue: true,
+    rules: [],
   },
 } satisfies GrowthBookFeatures;
 
@@ -85,10 +77,14 @@ export function isGrowthBookFeatureEnabled(
   return feature.defaultValue;
 }
 
-/** Whether the current workspace may access dashboard `/agents` routes. */
+/**
+ * Whether the current workspace may access dashboard `/agents` and
+ * `/automations` routes. A workspace must be selected.
+ */
 export function isAgentsDashboardEnabled(
   workspaceId: string | null | undefined,
 ): boolean {
+  if (!workspaceId) return false;
   return isGrowthBookFeatureEnabled(GROWTHBOOK_FEATURE_KEYS.agents, {
     workspaceId,
   });

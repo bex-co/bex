@@ -433,7 +433,7 @@ func TestAutomationTemplateRequiredFieldsNameTheTemplate(t *testing.T) {
 }
 
 func TestAutomationPlatformMeteredTemplateNeedsSpendCeiling(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	svc, _ := automationTestService("tea-a", newFakeAutomations())
 	ctx := caller("dev")
 	in := automationInput("metered")

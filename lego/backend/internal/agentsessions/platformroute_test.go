@@ -32,12 +32,12 @@ const platformKey = "sk-or-v1-PLATFORM-SECRET"
 
 var routeModelVars = []string{"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"}
 
-func enablePlatformRoute(t *testing.T, workspaces ...string) {
+func enablePlatformRoute(t *testing.T) {
 	t.Helper()
-	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", workspaces, platformKey); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", platformKey); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", nil, "") })
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "") })
 }
 
 func assertNoPlatformKey(t *testing.T, lifecycle *fakeLifecycle) {
@@ -52,11 +52,11 @@ func assertNoPlatformKey(t *testing.T, lifecycle *fakeLifecycle) {
 	}
 }
 
-// An allowlisted workspace's new claude session is provisioned against
+// A workspace's new claude session is provisioned against
 // OpenRouter with the pinned model in its driver env — even when the request
 // names api.anthropic.com — while the sandbox holds only the placeholder.
 func TestCreateInPlatformRouteWorkspaceTargetsOpenRouter(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	svc, _, _, lifecycle := fixture()
 	input := createInput()
 	input.AgentConfig = AgentConfig{Agent: "claude", ModelEndpoint: "https://api.anthropic.com/v1", Task: "fix the tests"}
@@ -75,10 +75,9 @@ func TestCreateInPlatformRouteWorkspaceTargetsOpenRouter(t *testing.T) {
 	assertNoPlatformKey(t, lifecycle)
 }
 
-// A non-allowlisted workspace is byte-identical to no route: api.anthropic.com,
-// no model vars, and an explicit OpenRouter endpoint is refused.
-func TestCreateOutsidePlatformRouteAllowlistIsUnchanged(t *testing.T) {
-	enablePlatformRoute(t, "tea-b")
+// With the route off a workspace runs on api.anthropic.com with no model
+// vars, and an explicit OpenRouter endpoint is refused.
+func TestCreateWithoutPlatformRouteIsUnchanged(t *testing.T) {
 	svc, _, _, lifecycle := fixture()
 	input := createInput()
 	input.AgentConfig = AgentConfig{Agent: "claude", Task: "fix the tests"}
@@ -91,22 +90,22 @@ func TestCreateOutsidePlatformRouteAllowlistIsUnchanged(t *testing.T) {
 	}
 	for _, name := range routeModelVars {
 		if _, ok := lifecycle.driverEnv[name]; ok {
-			t.Fatalf("%s set outside the allowlist", name)
+			t.Fatalf("%s set without the route", name)
 		}
 	}
 	assertNoPlatformKey(t, lifecycle)
 
 	input.AgentConfig.ModelEndpoint = "https://openrouter.ai/api"
 	if _, err := svc.Create(caller("alice"), input); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("explicit OpenRouter endpoint outside the allowlist = %v, want bad request", err)
+		t.Fatalf("explicit OpenRouter endpoint without the route = %v, want bad request", err)
 	}
 }
 
 // The route is decided per workspace at dispatch time, not from the stored
 // endpoint: a session created on api.anthropic.com moves onto OpenRouter on
-// its next steer once its workspace is allowlisted.
+// its next steer once the platform route is on.
 func TestSteerSwitchesAnExistingSessionOntoThePlatformRoute(t *testing.T) {
-	_ = agentsession.EnablePlatformModelRoute("", "", nil, "")
+	_ = agentsession.EnablePlatformModelRoute("", "", "")
 	svc, st, _, lifecycle := fixture()
 	input := createInput()
 	input.AgentConfig = AgentConfig{Agent: "claude", Task: "fix the tests"}
@@ -121,7 +120,7 @@ func TestSteerSwitchesAnExistingSessionOntoThePlatformRoute(t *testing.T) {
 	row.Phase = PhaseCompleted
 	st.rows[created.ID] = row
 
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: created.ID, Prompt: "again"}); err != nil {
 		t.Fatal(err)
 	}
@@ -131,26 +130,29 @@ func TestSteerSwitchesAnExistingSessionOntoThePlatformRoute(t *testing.T) {
 	assertNoPlatformKey(t, lifecycle)
 }
 
-// Capabilities: an allowlisted workspace is model-key ready through the
-// platform key without consulting OpenBao; every other workspace still needs
-// its own BYO key.
+// Capabilities: with the platform route on, every workspace is model-key
+// ready through the platform key without consulting OpenBao; with it off a
+// workspace needs its own BYO key.
 func TestCapabilitiesCountPlatformRouteAsModelKeyReady(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	svc, _, _, _ := fixture()
 	svc.GitHub = &fakeGitHub{conn: map[string]github.Connection{
 		"tea-a": {Connected: true}, "tea-b": {Connected: true},
 	}}
-	// A broken store proves the allowlisted path never reads the BYO key.
+	// A broken store proves the routed path never reads the BYO key.
 	svc.ModelKeys = &fakeModelKeys{err: errors.New("openbao unreachable")}
-	caps, err := svc.Capabilities(caller("alice"), "")
-	if err != nil {
-		t.Fatalf("allowlisted capabilities read OpenBao: %v", err)
+	for _, who := range []string{"alice", "bob"} {
+		caps, err := svc.Capabilities(caller(who), "")
+		if err != nil {
+			t.Fatalf("%s: routed capabilities read OpenBao: %v", who, err)
+		}
+		if !caps.ModelKeyReady || !caps.Ready {
+			t.Fatalf("%s: routed workspace not ready: %#v", who, caps)
+		}
 	}
-	if !caps.ModelKeyReady || !caps.Ready {
-		t.Fatalf("allowlisted workspace not ready: %#v", caps)
-	}
+	_ = agentsession.EnablePlatformModelRoute("", "", "")
 	if _, err := svc.Capabilities(caller("bob"), ""); err == nil {
-		t.Fatal("non-allowlisted capabilities skipped its BYO key read")
+		t.Fatal("capabilities without the route skipped its BYO key read")
 	}
 	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{
 		modelKeySecretPath("tea-a"): {sandbox.ModelAPIKeyEnvVar: ""},
@@ -160,7 +162,7 @@ func TestCapabilitiesCountPlatformRouteAsModelKeyReady(t *testing.T) {
 		t.Fatal(err)
 	}
 	if capsB.ModelKeyReady || capsB.Ready {
-		t.Fatalf("non-allowlisted workspace without a BYO key reported ready: %#v", capsB)
+		t.Fatalf("workspace without the route or a BYO key reported ready: %#v", capsB)
 	}
 }
 
@@ -169,7 +171,7 @@ func TestCapabilitiesCountPlatformRouteAsModelKeyReady(t *testing.T) {
 // setting a key makes every profile ready (076 live run: codex was offered as
 // ready and failed on the model proxy).
 func TestCapabilitiesReportModelReadinessPerAgent(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	svc, _, _, _ := fixture()
 	ready := func() map[string]bool {
 		t.Helper()
@@ -235,10 +237,10 @@ func enableMuse(svc *Service, workspaces ...string) {
 	svc.Environments = envs
 }
 
-func enableMetaRoute(t *testing.T, workspaces ...string) {
+func enableMetaRoute(t *testing.T) {
 	t.Helper()
-	agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET", workspaces)
-	t.Cleanup(func() { agentsession.EnablePlatformMetaRoute("", nil) })
+	agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET")
+	t.Cleanup(func() { agentsession.EnablePlatformMetaRoute("") })
 }
 
 func museInput() CreateRequest {
@@ -251,7 +253,7 @@ func museInput() CreateRequest {
 // without a workspace key, runs only its contributor model, never receives
 // the Meta key in the sandbox, and is metered (maxSpendUSD is accepted).
 func TestMuseRunsOnTheMetaRouteWithItsPinnedModel(t *testing.T) {
-	enableMetaRoute(t, "tea-a")
+	enableMetaRoute(t)
 	svc, _, _, lifecycle := fixture()
 	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
 	enableMuse(svc, "tea-a")
@@ -297,7 +299,7 @@ func TestMuseRunsOnTheMetaRouteWithItsPinnedModel(t *testing.T) {
 // One Meta key carries every workspace's muse sessions, so live sessions are
 // capped across workspaces; the session being steered never counts itself.
 func TestMuseSessionsAreCappedAcrossWorkspaces(t *testing.T) {
-	enableMetaRoute(t, "tea-a", "tea-b")
+	enableMetaRoute(t)
 	svc, _, _, _ := fixture()
 	enableMuse(svc, "tea-a", "tea-b")
 	svc.MetaRouteMaxSessions = 2

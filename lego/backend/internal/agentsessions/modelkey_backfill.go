@@ -34,7 +34,7 @@ type ModelKeyFlagMarker interface {
 
 // ModelKeyBackfill counts one BackfillModelKeyFlags pass: workspace entries
 // under agent-sessions/, those holding a model key, flags newly set, keys
-// left unflagged because the platform route covers their workspace, and
+// left unflagged because the platform route is on, and
 // entries whose key or flag could not be read or written.
 type ModelKeyBackfill struct {
 	Workspaces, Keys, Marked, PlatformRouted, Failed int
@@ -47,8 +47,8 @@ type ModelKeyBackfill struct {
 // exists is skipped. bex-api runs it once at startup, in the background;
 // only counts are reported, never a workspace's key.
 //
-// A workspace the platform route covers is skipped too: the route never read
-// its hand-put key, so that key was never in effect and is no admin's choice.
+// While the platform route is on (it covers every workspace) every key is
+// skipped too: the route never read a hand-put key, so that key was never in effect and is no admin's choice.
 // Flagging it would move the workspace off the platform key onto a stale
 // vendor key — every claude session then fails its first model call as
 // vendor-auth-rejected (the 2026-11-06 workspace bex incident). An admin

@@ -68,7 +68,7 @@ func TestModelKeyPG(t *testing.T) {
 	}
 	ws := tenant.ID
 	t.Cleanup(func() { _ = pg.DeleteTenant(ctx, ws) })
-	enablePlatformRoute(t, ws)
+	enablePlatformRoute(t)
 
 	keys := &fakeModelKeys{}
 	config, _ := json.Marshal(map[string]string{"agent": "claude", "modelEndpoint": "https://openrouter.ai/api"})
@@ -235,7 +235,7 @@ func TestModelKeyBackfillKeepsPlatformRoutePG(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = pg.DeleteTenant(ctx, other.ID) })
-	enablePlatformRoute(t, routed.ID)
+	enablePlatformRoute(t)
 
 	const stale = "sk-ant-api03-STALE-HAND-PUT"
 	keys := &fakeModelKeys{data: map[string]map[string]string{

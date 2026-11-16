@@ -106,7 +106,7 @@ func restTrigger(schedule map[string]any) []any {
 // The codes the other refusal tests do not cover (schedule, spend ceiling,
 // unavailable) are the same code and status on REST, GraphQL and MCP.
 func TestAutomationScheduleSpendAndUnavailableCodesAcrossSurfaces(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	a := newAutomationAdapters(t)
 
 	badZone := automationBody("bad-zone")

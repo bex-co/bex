@@ -42,15 +42,15 @@ func (s *sessionSpend) AgentSessionModelSpendMicroUSD(context.Context, string, s
 func mintWithCeiling(t *testing.T, ceiling *int64, spend SessionSpendStore) (ModelMintResponse, error) {
 	t.Helper()
 	config, _ := json.Marshal(map[string]string{"agent": "claude"})
-	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-allow", SandboxID: "sbx-1", Phase: "running", AgentConfig: config, MaxSpendMicroUSD: ceiling}
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running", AgentConfig: config, MaxSpendMicroUSD: ceiling}
 	minter := &ModelMinter{Keys: &recordingKV{memoryKV: memoryKV{}}, Sessions: fakeSessions{session: session}, Spend: &spendLedger{plan: store.PlanPro}, SessionSpend: spend}
-	return minter.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"})
+	return minter.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: "tea-a", PodName: "sbx-1-0", PodUID: "uid-one"})
 }
 
 // ADR094 D8: a session with a ceiling is refused once its recorded platform
 // price reaches it; below it, and without a ceiling, the mint is unchanged.
 func TestMintRefusesAtTheSessionCeiling(t *testing.T) {
-	enablePlatformRoute(t, "tea-allow")
+	enablePlatformRoute(t)
 	ceiling := int64(5_000_000)
 
 	spend := &sessionSpend{spent: 4_999_999}
@@ -84,10 +84,10 @@ func TestMintRefusesAtTheSessionCeiling(t *testing.T) {
 // refusal header and comes back as the session-scoped error; the monthly cap
 // keeps its own header and stays unscoped.
 func TestSessionCeilingRefusalSurvivesTheHTTPBoundary(t *testing.T) {
-	enablePlatformRoute(t, "tea-allow")
+	enablePlatformRoute(t)
 	config, _ := json.Marshal(map[string]string{"agent": "claude"})
 	ceiling := int64(1_000_000)
-	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-allow", SandboxID: "sbx-1", Phase: "running", AgentConfig: config, MaxSpendMicroUSD: &ceiling}
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running", AgentConfig: config, MaxSpendMicroUSD: &ceiling}
 	secret := []byte("gateway-shared-secret")
 	ledger := &spendLedger{plan: store.PlanPro}
 	minter := &ModelMinter{Keys: &recordingKV{memoryKV: memoryKV{}}, Sessions: fakeSessions{session: session}, Spend: ledger, SessionSpend: &sessionSpend{spent: ceiling}}
@@ -96,7 +96,7 @@ func TestSessionCeilingRefusalSurvivesTheHTTPBoundary(t *testing.T) {
 	api := httptest.NewServer(mux)
 	defer api.Close()
 	client := &ModelClient{URL: api.URL + InternalModelMintPath, Secret: secret, HTTP: api.Client()}
-	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"}
+	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-a", PodName: "sbx-1-0", PodUID: "uid-one"}
 
 	_, err := client.Mint(context.Background(), req)
 	if !errors.Is(err, ErrModelSessionSpendCapReached) {
@@ -104,7 +104,7 @@ func TestSessionCeilingRefusalSurvivesTheHTTPBoundary(t *testing.T) {
 	}
 	// The monthly cap takes the unscoped refusal, even with a ceiling set.
 	ledger.used = 1 << 40
-	minter.ForgetSpend("tea-allow")
+	minter.ForgetSpend("tea-a")
 	_, err = client.Mint(context.Background(), req)
 	if !errors.Is(err, ErrModelSpendCapReached) || errors.Is(err, ErrModelSessionSpendCapReached) {
 		t.Fatalf("monthly cap over HTTP = %v, want the unscoped ErrModelSpendCapReached", err)
@@ -149,13 +149,13 @@ func (s *treeSpend) AgentSessionCeilingHeadroom(_ context.Context, _, id string)
 // ADR102 D3: a child, and a session with a ceiling, are checked against the
 // tree's headroom; an unbounded tree and a session outside any tree are not.
 func TestMintChecksTheTreeHeadroom(t *testing.T) {
-	enablePlatformRoute(t, "tea-allow")
+	enablePlatformRoute(t)
 	config, _ := json.Marshal(map[string]string{"agent": "claude"})
 	ceiling := int64(5_000_000)
 	mint := func(session store.AgentSession, spend SessionSpendStore) error {
-		session.ID, session.WorkspaceID, session.SandboxID, session.Phase, session.AgentConfig = "ags-one", "tea-allow", "sbx-1", "running", config
+		session.ID, session.WorkspaceID, session.SandboxID, session.Phase, session.AgentConfig = "ags-one", "tea-a", "sbx-1", "running", config
 		minter := &ModelMinter{Keys: &recordingKV{memoryKV: memoryKV{}}, Sessions: fakeSessions{session: session}, Spend: &spendLedger{plan: store.PlanPro}, SessionSpend: spend}
-		_, err := minter.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"})
+		_, err := minter.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: "tea-a", PodName: "sbx-1-0", PodUID: "uid-one"})
 		return err
 	}
 	child := store.AgentSession{ParentSessionID: "ags-parent"}

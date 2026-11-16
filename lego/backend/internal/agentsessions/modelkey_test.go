@@ -282,7 +282,7 @@ func TestModelKeyStoreFailureLeavesNoFlag(t *testing.T) {
 // no pinned model, no trust-tier count — and is ready without OpenBao.
 // Clearing the key puts it back on the platform route.
 func TestBYOKeyWinsOverThePlatformRoute(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	setAt := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
 	svc, _, lifecycle := sessionWithEnvironment(t, &store.AgentEnvironment{NetworkTier: NetworkTierRegistries, ModelKeySetAt: &setAt})
 	envs := svc.Environments.(*fakeEnvironments)
@@ -335,7 +335,7 @@ func TestBYOKeyWinsOverThePlatformRoute(t *testing.T) {
 // Setting a key lifts the platform pin in the same update, so a pinned
 // workspace may choose its default model together with its own key.
 func TestModelKeyLiftsThePlatformPin(t *testing.T) {
-	enablePlatformRoute(t, "tea-pinned")
+	enablePlatformRoute(t)
 	keys := &fakeModelKeys{}
 	svc, _ := modelKeyService("tea-pinned", keys)
 	if _, err := svc.UpdateEnvironment(caller("admin"), "tea-pinned", EnvironmentInput{DefaultModel: ptr("claude-opus-4-1")}); !isCode(err, "AGENT_ENVIRONMENT_MODEL_PINNED") {
@@ -356,7 +356,7 @@ func TestModelKeyLiftsThePlatformPin(t *testing.T) {
 // workspace default model (or the profile's, with none) against the
 // provider; once the key is cleared again, the pinned model on OpenRouter.
 func TestSteerFollowsTheModelSource(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	svc, st, lifecycle := sessionWithEnvironment(t, &store.AgentEnvironment{NetworkTier: NetworkTierRegistries})
 	envs := svc.Environments.(*fakeEnvironments)
 	input := createInput()

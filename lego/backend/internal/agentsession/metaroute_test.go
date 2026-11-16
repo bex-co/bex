@@ -27,10 +27,10 @@ import (
 
 const testMetaKey = "meta-PLATFORM-SECRET"
 
-func enableMetaRoute(t *testing.T, workspaces ...string) {
+func enableMetaRoute(t *testing.T) {
 	t.Helper()
-	EnablePlatformMetaRoute(testMetaKey, workspaces)
-	t.Cleanup(func() { EnablePlatformMetaRoute("", nil) })
+	EnablePlatformMetaRoute(testMetaKey)
+	t.Cleanup(func() { EnablePlatformMetaRoute("") })
 }
 
 func mintMuse(t *testing.T, workspace string, keys *recordingKV, spend *spendLedger) (ModelMintResponse, error) {
@@ -41,13 +41,13 @@ func mintMuse(t *testing.T, workspace string, keys *recordingKV, spend *spendLed
 	return minter.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: workspace, PodName: "sbx-1-0", PodUID: "uid-one"})
 }
 
-// The muse profile (ADR108) runs on the bex-owned Meta key in an allowlisted
+// The muse profile (ADR108) runs on the bex-owned Meta key in a
 // workspace, pinned to its contributor model, even where the workspace set a
 // key of its own (which is never read for it).
 func TestMetaRouteMintsTheMetaKeyPinnedToTheProfileModel(t *testing.T) {
-	enableMetaRoute(t, "tea-allow")
-	keys := &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-allow"): {ModelKeyField: "workspace-own-key"}}}
-	got, err := mintMuse(t, "tea-allow", keys, &spendLedger{plan: store.PlanPro, byo: true})
+	enableMetaRoute(t)
+	keys := &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-a"): {ModelKeyField: "workspace-own-key"}}}
+	got, err := mintMuse(t, "tea-a", keys, &spendLedger{plan: store.PlanPro, byo: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,27 +58,31 @@ func TestMetaRouteMintsTheMetaKeyPinnedToTheProfileModel(t *testing.T) {
 	if len(keys.reads) != 0 {
 		t.Fatalf("the workspace key was read for muse: %v", keys.reads)
 	}
-	if !PlatformRouteServes("tea-allow", "muse") || !ProfileServed("tea-allow", "muse") || !PlatformRouteMeters("tea-allow", "muse", true) {
-		t.Fatal("an allowlisted workspace must be served and metered for muse, its own key notwithstanding")
+	if !PlatformRouteServes("tea-a", "muse") || !ProfileServed("tea-a", "muse") || !PlatformRouteMeters("tea-a", "muse", true) {
+		t.Fatal("a workspace must be served and metered for muse, its own key notwithstanding")
 	}
 	// The Meta route serves platform-only profiles alone.
-	if PlatformRouteServes("tea-allow", "codex") || PlatformRouteMeters("tea-allow", "codex", false) {
+	if PlatformRouteServes("tea-a", "codex") || PlatformRouteMeters("tea-a", "codex", false) {
 		t.Fatal("the Meta route leaked to a BYO profile")
 	}
 }
 
-func TestMetaRouteNeverReachesOtherWorkspaces(t *testing.T) {
-	enableMetaRoute(t, "tea-allow")
-	_, err := mintMuse(t, "tea-other", &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-other"): {ModelKeyField: "own"}}}, &spendLedger{plan: store.PlanPro})
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("mint outside the allowlist = %v, want forbidden", err)
+// The Meta route covers every workspace; only an empty key turns it off.
+func TestMetaRouteServesEveryWorkspace(t *testing.T) {
+	enableMetaRoute(t)
+	got, err := mintMuse(t, "tea-other", &recordingKV{memoryKV: memoryKV{}}, &spendLedger{plan: store.PlanPro})
+	if err != nil || got.Credential != testMetaKey {
+		t.Fatalf("mint in another workspace = %v, metaKey=%v", err, got.Credential == testMetaKey)
 	}
+	if !PlatformRouteServes("tea-other", "muse") || !ProfileServed("tea-other", "muse") {
+		t.Fatal("muse not served in every workspace")
+	}
+	EnablePlatformMetaRoute("")
 	if PlatformRouteServes("tea-other", "muse") || ProfileServed("tea-other", "muse") {
-		t.Fatal("muse served outside the allowlist")
-	}
-	EnablePlatformMetaRoute("", []string{"tea-allow"})
-	if PlatformRouteServes("tea-allow", "muse") {
 		t.Fatal("a route without a key still serves muse")
+	}
+	if _, err := mintMuse(t, "tea-other", &recordingKV{memoryKV: memoryKV{}}, &spendLedger{plan: store.PlanPro}); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("mint with the route off = %v, want forbidden", err)
 	}
 }
 
@@ -86,14 +90,14 @@ func TestMetaRouteNeverReachesOtherWorkspaces(t *testing.T) {
 // workspace cap and an unpaid balance refuse the exchange before the key is
 // handed out.
 func TestMetaRouteAppliesThePlatformSpendGates(t *testing.T) {
-	enableMetaRoute(t, "tea-allow")
+	enableMetaRoute(t)
 	keys := &recordingKV{memoryKV: memoryKV{}}
 	capUSD := int64(1_000_000)
-	got, err := mintMuse(t, "tea-allow", keys, &spendLedger{plan: store.PlanPro, override: &capUSD, used: capUSD})
+	got, err := mintMuse(t, "tea-a", keys, &spendLedger{plan: store.PlanPro, override: &capUSD, used: capUSD})
 	if !errors.Is(err, ErrModelSpendCapReached) || got.Credential != "" {
 		t.Fatalf("mint at the cap = %+v, %v; want spend cap reached", got, err)
 	}
-	if _, err := mintMuse(t, "tea-allow", keys, &spendLedger{plan: store.PlanPro, err: errors.New("store down")}); err == nil {
+	if _, err := mintMuse(t, "tea-a", keys, &spendLedger{plan: store.PlanPro, err: errors.New("store down")}); err == nil {
 		t.Fatal("an unreadable spend position must fail closed")
 	}
 }

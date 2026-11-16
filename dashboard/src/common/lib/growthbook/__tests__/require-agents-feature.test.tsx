@@ -19,11 +19,12 @@ import { describe, expect, it, vi } from "vitest";
 import type { Session } from "@ory/client-fetch";
 import { AgentsPageSkeleton } from "@/common/components/detail-skeletons";
 import type { RouterContext } from "@/common/types/router-context";
-import { AGENTS_DASHBOARD_BETA_WORKSPACE_ID as BETA } from "@/config/growthbook";
 import type { WorkspacesQuery } from "@/graphql/definitions";
 import { Route as AgentsRoute } from "@/routes/agents";
 import { Route as AgentDetailRoute } from "@/routes/agents_.$agentSessionId";
 import { requireAgentsFeature } from "../require-agents-feature";
+
+const WS = "tea-a";
 
 function membership(ids: string[]): WorkspacesQuery["workspaces"] {
   return ids.map((id) => ({
@@ -64,29 +65,50 @@ function transport() {
 }
 
 describe("agents workspace eligibility", () => {
-  it.each([undefined, null, "tea-deleted", BETA])(
+  it.each([undefined, null, "tea-deleted", WS])(
     "resolves membership before accepting cookie %s and reuses the shared cache",
     async (workspaceId) => {
       const server = transport();
       const context = { client: server.client, workspaceId };
       const pending = requireAgentsFeature()({ context });
       expect(server.request).toHaveBeenCalledOnce();
-      server.reply({ data: { workspaces: membership([BETA]) } });
-      await expect(pending).resolves.toEqual({ workspaceId: BETA });
+      server.reply({ data: { workspaces: membership([WS]) } });
+      await expect(pending).resolves.toEqual({ workspaceId: WS });
 
       await expect(requireAgentsFeature()({ context })).resolves.toEqual({
-        workspaceId: BETA,
+        workspaceId: WS,
       });
       expect(server.request).toHaveBeenCalledOnce();
     },
   );
 
   it.each([
-    { cookie: undefined, memberships: ["tea-other", BETA] },
-    { cookie: "tea-other", memberships: [BETA, "tea-other"] },
-    { cookie: BETA, memberships: ["tea-other"] },
-    { cookie: BETA, memberships: [] },
-  ])("refuses only a confirmed ineligible selection: %o", async (testCase) => {
+    {
+      cookie: undefined,
+      memberships: ["tea-other", WS],
+      workspaceId: "tea-other",
+    },
+    {
+      cookie: "tea-other",
+      memberships: [WS, "tea-other"],
+      workspaceId: "tea-other",
+    },
+    { cookie: WS, memberships: ["tea-other"], workspaceId: "tea-other" },
+  ])("admits every member workspace: %o", async (testCase) => {
+    const server = transport();
+    const pending = requireAgentsFeature()({
+      context: { client: server.client, workspaceId: testCase.cookie },
+    });
+    server.reply({ data: { workspaces: membership(testCase.memberships) } });
+    await expect(pending).resolves.toEqual({
+      workspaceId: testCase.workspaceId,
+    });
+  });
+
+  it.each([
+    { cookie: undefined, memberships: [] },
+    { cookie: WS, memberships: [] },
+  ])("refuses only when no workspace is selectable: %o", async (testCase) => {
     const server = transport();
     const pending = requireAgentsFeature()({
       context: { client: server.client, workspaceId: testCase.cookie },
@@ -100,10 +122,10 @@ describe("agents workspace eligibility", () => {
   it("preserves an eligible explicit selection even when it is not first", async () => {
     const server = transport();
     const pending = requireAgentsFeature()({
-      context: { client: server.client, workspaceId: BETA },
+      context: { client: server.client, workspaceId: WS },
     });
-    server.reply({ data: { workspaces: membership(["tea-other", BETA]) } });
-    await expect(pending).resolves.toEqual({ workspaceId: BETA });
+    server.reply({ data: { workspaces: membership(["tea-other", WS]) } });
+    await expect(pending).resolves.toEqual({ workspaceId: WS });
   });
 
   it.each(["transport", "graphql", "missing membership"])(
@@ -111,7 +133,7 @@ describe("agents workspace eligibility", () => {
     async (failure) => {
       const server = transport();
       const pending = requireAgentsFeature()({
-        context: { client: server.client, workspaceId: BETA },
+        context: { client: server.client, workspaceId: WS },
       });
       if (failure === "transport") server.fail(new Error("offline"));
       else if (failure === "graphql")
@@ -126,11 +148,11 @@ describe("agents workspace eligibility", () => {
       expect(isRedirect(error)).toBe(false);
 
       const recovered = requireAgentsFeature()({
-        context: { client: server.client, workspaceId: BETA },
+        context: { client: server.client, workspaceId: WS },
       });
       expect(server.request).toHaveBeenCalledTimes(2);
-      server.reply({ data: { workspaces: membership([BETA]) } });
-      await expect(recovered).resolves.toEqual({ workspaceId: BETA });
+      server.reply({ data: { workspaces: membership([WS]) } });
+      await expect(recovered).resolves.toEqual({ workspaceId: WS });
     },
   );
 });
@@ -192,12 +214,12 @@ describe.each([
     expect(screen.queryByText("Home")).not.toBeInTheDocument();
 
     await act(async () => {
-      server.reply({ data: { workspaces: membership([BETA]) } });
+      server.reply({ data: { workspaces: membership([WS]) } });
     });
 
     expect(await screen.findByText("Eligible destination")).toBeInTheDocument();
     expect(loader).toHaveBeenCalledOnce();
-    expect(loader.mock.calls[0][0].context.workspaceId).toBe(BETA);
+    expect(loader.mock.calls[0][0].context.workspaceId).toBe(WS);
     expect(router.state.location.href).toBe(initialHref);
   });
 });

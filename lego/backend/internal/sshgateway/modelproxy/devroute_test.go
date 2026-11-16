@@ -105,10 +105,10 @@ func requestBody(t *testing.T, proxy *httptest.Server, body string) *http.Respon
 // top-level "model" is the pinned id, forwards that body byte for byte, and
 // refuses every other model (or an ambiguous body) before reaching upstream.
 func TestProxyPlatformRoutePinsTheModel(t *testing.T) {
-	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", []string{"tea-a"}, platformKey); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", platformKey); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", nil, "") })
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "") })
 	session := store.AgentSession{
 		ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running",
 		AgentConfig: json.RawMessage(`{"agent":"claude","modelEndpoint":"https://api.anthropic.com/v1"}`),
@@ -159,14 +159,11 @@ func TestProxyPlatformRoutePinsTheModel(t *testing.T) {
 	}
 }
 
-// TestProxyPlatformRouteLeavesOtherWorkspacesOnTheirByoKey: with the platform
-// route allowlisting another workspace, tea-a's claude call goes to
-// api.anthropic.com with its own key and no model pin applies.
-func TestProxyPlatformRouteLeavesOtherWorkspacesOnTheirByoKey(t *testing.T) {
-	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", []string{"tea-z"}, platformKey); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", nil, "") })
+// TestProxyWithoutPlatformRouteUsesTheByoKey: with the platform route off,
+// tea-a's claude call goes to api.anthropic.com with its own key and no model
+// pin applies.
+func TestProxyWithoutPlatformRouteUsesTheByoKey(t *testing.T) {
+	_ = agentsession.EnablePlatformModelRoute("", "", "")
 	proxy, capture, _ := harness(t, fakePods{pod: sandboxPod("ags-one")}, liveSession("https://api.anthropic.com/v1"), "sk-ant-api03-BYO")
 	resp := requestBody(t, proxy, `{"model":"claude-opus-4-5"}`)
 	resp.Body.Close()

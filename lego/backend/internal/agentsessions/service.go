@@ -1839,7 +1839,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 	if config.Model != "" && agentsession.PinnedAgent(config.Agent) {
 		env["ANTHROPIC_MODEL"] = config.Model
 	}
-	// Model route (ADR090, dev or workspace-allowlisted platform): the model id
+	// Model route (ADR090, dev or platform): the model id
 	// Claude Code must ask the OpenRouter endpoint for. It overrides the line
 	// above, so a platform-route sandbox always carries the pinned model.
 	for name, value := range agentsession.ModelRouteEnv(record.WorkspaceID, config.Agent, byoKey) {

@@ -147,10 +147,10 @@ func eventually(t *testing.T, cond func() bool) {
 // shipped spend caps (a fresh Hobby workspace: T0, $10).
 func platformHarness(t *testing.T, upstream *cannedTransport) (*httptest.Server, *usageStore) {
 	t.Helper()
-	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", []string{"tea-a"}, platformKey); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", platformKey); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", nil, "") })
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "") })
 	st := &usageStore{
 		session: store.AgentSession{
 			ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running",
@@ -411,8 +411,8 @@ func TestMetaRouteMetersAMuseResponsesExchange(t *testing.T) {
 		`data: {"type":"response.completed","response":{"id":"r","usage":{"input_tokens":1000000,"output_tokens":1000000,"input_tokens_details":{"cached_tokens":0}}}}` + "\n\n"
 	upstream := &cannedTransport{contentType: "text/event-stream", body: stream}
 	proxy, st := platformHarness(t, upstream)
-	agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET", []string{"tea-a"})
-	t.Cleanup(func() { agentsession.EnablePlatformMetaRoute("", nil) })
+	agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET")
+	t.Cleanup(func() { agentsession.EnablePlatformMetaRoute("") })
 	st.mu.Lock()
 	st.session.AgentConfig = json.RawMessage(`{"agent":"muse","modelEndpoint":"https://api.meta.ai/v1"}`)
 	st.mu.Unlock()

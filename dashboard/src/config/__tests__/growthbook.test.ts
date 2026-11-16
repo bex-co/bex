@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  AGENTS_DASHBOARD_BETA_WORKSPACE_ID,
   GROWTHBOOK_FEATURE_KEYS,
   isAgentsDashboardEnabled,
   isRouterDashboardEnabled,
@@ -8,11 +7,9 @@ import {
 } from "../growthbook";
 
 describe("growthbook config", () => {
-  it("enables dashboard agents only for the beta workspace", () => {
-    expect(isAgentsDashboardEnabled(AGENTS_DASHBOARD_BETA_WORKSPACE_ID)).toBe(
-      true,
-    );
-    expect(isAgentsDashboardEnabled("tea-other")).toBe(false);
+  it("enables dashboard agents for every selected workspace", () => {
+    expect(isAgentsDashboardEnabled("tea-other")).toBe(true);
+    expect(isAgentsDashboardEnabled("")).toBe(false);
     expect(isAgentsDashboardEnabled(null)).toBe(false);
     expect(isAgentsDashboardEnabled(undefined)).toBe(false);
   });
@@ -21,7 +18,7 @@ describe("growthbook config", () => {
     expect(
       isGrowthBookFeatureEnabled(
         "missing-feature" as (typeof GROWTHBOOK_FEATURE_KEYS)["agents"],
-        { workspaceId: AGENTS_DASHBOARD_BETA_WORKSPACE_ID },
+        { workspaceId: "tea-other" },
       ),
     ).toBe(false);
   });

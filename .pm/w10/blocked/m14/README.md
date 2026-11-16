@@ -1,6 +1,6 @@
 # w10 · m14 — Platform model key: OpenRouter for an allowlisted workspace now, metered rollout to every workspace
 
-**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** blocked (t001–t006, t012–t015 done; t007 widen, due 2026-11-13, waits only on an OpenRouter top-up (2026-11-12: key limit and Radar rules dropped by user decision, terms published, test-mode e2e check satisfied by the t014 and settle probes); t008–t011 follow t007) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
+**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** blocked (t001–t007, t012–t015 done; t007 widened the route to every workspace on 2026-11-16 by user decision, ahead of the OpenRouter top-up; previously t007 waited only on an OpenRouter top-up (2026-11-12: key limit and Radar rules dropped by user decision, terms published, test-mode e2e check satisfied by the t014 and settle probes); t008–t011 follow t007) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
 
 ## Tasks (in order)
 
@@ -16,7 +16,7 @@
 | t013 | Customer UI: usage line, Settings → Agents spend, composer cap banners, per-turn cost (ADR091 D6) — **DONE** | 2h | t005, t012 |
 | t014 | Tiered threshold billing via a Stripe item threshold; a failed charge stops model spend (ADR091 D10.2–D10.3) — **DONE** | 1.5h | t004, t005 |
 | t015 | Settle before delete; Radar + prepaid-card refusal + card fingerprint dedupe (ADR091 D10.4–D10.6) — **DONE** | 1.5h | t014 |
-| t007 | Widen the platform route to every workspace — **due 2026-11-13** (gate left: user tops up the OpenRouter account, ≈ $8 on 2026-11-12. Test-mode e2e check satisfied 2026-11-12 by the t014 and settle probes. Key limit and Radar rules dropped 2026-11-12, terms published at `/legal/agent-models`) | 30m | t004–t006, t012–t015 |
+| [t007](done/t007.md) | ✅ **done 2026-11-16 (user decision)** Widen the platform route to every workspace — due 2026-11-13 (gate left: user tops up the OpenRouter account. Test-mode e2e check satisfied 2026-11-12 by the t014 and settle probes. Key limit and Radar rules dropped 2026-11-12, terms published at `/legal/agent-models`) | 30m | t004–t006, t012–t015 |
 | t008 | Render parity (capabilities/model-key readiness across REST/GraphQL/MCP/dashboard)    | 20m  | t007       |
 | t009 | Simplify                                                                               | 20m  | t008       |
 | t010 | Test coverage                                                                          | 30m  | t008       |

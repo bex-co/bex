@@ -232,8 +232,9 @@ func exerciseEnvironmentAuthorization(t *testing.T, svc *Service, ws, other stri
 // TestEnvironmentValidationErrorsOnEverySurface: each refusal is a typed 400
 // with the same code on REST, GraphQL and MCP, and writes nothing.
 func TestEnvironmentValidationErrorsOnEverySurface(t *testing.T) {
-	enablePlatformRoute(t, "tea-pinned")
 	exerciseEnvironmentValidation(t, func() (*Service, string) { return environmentService("tea-a", newFakeEnvironments()), "tea-a" })
+
+	enablePlatformRoute(t)
 
 	pinned := environmentService("tea-pinned", newFakeEnvironments())
 	if _, err := pinned.UpdateEnvironment(caller("admin"), "tea-pinned", EnvironmentInput{DefaultModel: ptr("claude-sonnet-4-5")}); !isCode(err, "AGENT_ENVIRONMENT_MODEL_PINNED") {
@@ -547,7 +548,7 @@ func TestCreateUsesTheWorkspaceDefaultModel(t *testing.T) {
 // create — never a gateway 403 mid-turn — and the sandbox always carries the
 // pinned model, including on steer for a session whose stored model differs.
 func TestPlatformRouteModelIsPinnedAtCreateAndSteer(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	svc, st, lifecycle := sessionWithEnvironment(t, nil)
 	input := createInput()
 	input.AgentConfig = AgentConfig{Agent: "claude", Model: "anthropic/claude-sonnet-4.5", Task: "fix the tests"}
@@ -600,9 +601,8 @@ func TestPlatformRouteModelIsPinnedAtCreateAndSteer(t *testing.T) {
 	}
 }
 
-// Outside the allowlist the explicit model passes through unchanged.
-func TestModelOutsideThePlatformRouteIsUnpinned(t *testing.T) {
-	enablePlatformRoute(t, "tea-b")
+// Without the platform route the explicit model passes through unchanged.
+func TestModelWithoutThePlatformRouteIsUnpinned(t *testing.T) {
 	svc, _, lifecycle := sessionWithEnvironment(t, nil)
 	input := createInput()
 	input.AgentConfig = AgentConfig{Agent: "claude", Model: "claude-sonnet-4-5", Task: "fix the tests"}

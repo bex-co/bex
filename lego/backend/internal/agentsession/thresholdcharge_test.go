@@ -51,10 +51,10 @@ func (f *chargerFake) ChargeThreshold(_ context.Context, c ThresholdCharge) (Thr
 // failed, with the spend cap. Without a charger (billing off), or for a
 // workspace bex cannot charge, T0 stops at $10.
 func TestMintChargesTheThresholdInTheRequest(t *testing.T) {
-	enablePlatformRoute(t, "tea-allow")
+	enablePlatformRoute(t)
 	config, _ := json.Marshal(map[string]string{"agent": "claude"})
-	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-allow", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
-	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"}
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
+	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-a", PodName: "sbx-1-0", PodUID: "uid-one"}
 	now := time.Date(2026, 11, 13, 10, 0, 0, 0, time.UTC)
 	ctx := context.Background()
 	minter := func(ledger *spendLedger, charger ThresholdCharger) *ModelMinter {
@@ -75,7 +75,7 @@ func TestMintChargesTheThresholdInTheRequest(t *testing.T) {
 		if err != nil || got.Credential != testPlatformKey {
 			t.Fatalf("mint = %v platformKey=%t, want the request served", err, got.Credential == testPlatformKey)
 		}
-		want := []ThresholdCharge{{WorkspaceID: "tea-allow", At: now, SeenSeq: 0, UnbilledMicroUSD: 10_000_000}}
+		want := []ThresholdCharge{{WorkspaceID: "tea-a", At: now, SeenSeq: 0, UnbilledMicroUSD: 10_000_000}}
 		if !slices.Equal(charger.calls, want) {
 			t.Fatalf("charges = %+v, want %+v", charger.calls, want)
 		}
@@ -125,7 +125,7 @@ func TestMintChargesTheThresholdInTheRequest(t *testing.T) {
 		if got, err := m.Mint(ctx, req); err != nil || got.Credential != testPlatformKey {
 			t.Fatalf("at $9.99: %v", err)
 		}
-		m.ForgetSpend("tea-allow")
+		m.ForgetSpend("tea-a")
 		ledger.used = 10_000_000
 		if _, err := m.Mint(ctx, req); !errors.Is(err, ErrModelSpendCapReached) {
 			t.Fatalf("at $10 with no charger: %v, want the spend cap", err)
@@ -156,7 +156,7 @@ func TestMintChargesTheThresholdInTheRequest(t *testing.T) {
 		ledger := atThreshold()
 		charger := &chargerFake{outcome: ThresholdChargePaid}
 		m := minter(ledger, charger)
-		if status, err := m.platformStatus(ctx, "tea-allow"); err != nil || !status.ChargeDue() {
+		if status, err := m.platformStatus(ctx, "tea-a"); err != nil || !status.ChargeDue() {
 			t.Fatalf("primed status due=%t, %v", status.ChargeDue(), err)
 		}
 		// Another replica's charge paid meanwhile.
@@ -219,15 +219,15 @@ func TestSpendWindowExcludesWhatAnInvoiceBilled(t *testing.T) {
 // invoice billed the meter since the read) is re-read, and the request is
 // served on the narrower window without a charge.
 func TestMintRereadsWhenTheChargeIsNotDue(t *testing.T) {
-	enablePlatformRoute(t, "tea-allow")
+	enablePlatformRoute(t)
 	config, _ := json.Marshal(map[string]string{"agent": "claude"})
-	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-allow", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
 	now := time.Date(2026, 11, 16, 0, 30, 0, 0, time.UTC)
 	ledger := &spendLedger{plan: store.PlanPro, used: 10_000_000, chargeable: true}
 	charger := &chargerFake{outcome: ThresholdChargeNotDue, onCharge: func() { ledger.billed = 9_000_000 }}
 	m := &ModelMinter{Keys: &recordingKV{memoryKV: memoryKV{}}, Sessions: fakeSessions{session: session}, Spend: ledger,
 		Charges: charger, Now: func() time.Time { return now }}
-	got, err := m.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"})
+	got, err := m.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: "tea-a", PodName: "sbx-1-0", PodUID: "uid-one"})
 	if err != nil || got.Credential != testPlatformKey || len(charger.calls) != 1 {
 		t.Fatalf("mint = %v with %d charge calls, want served after one not-due answer", err, len(charger.calls))
 	}
@@ -268,10 +268,10 @@ func TestCreditsPayBeforeTheCard(t *testing.T) {
 // the re-read when the new balance covers the spend; a crossing past the
 // credit charges only what the credit leaves.
 func TestMintReadsTheCreditBeforeCharging(t *testing.T) {
-	enablePlatformRoute(t, "tea-allow")
+	enablePlatformRoute(t)
 	config, _ := json.Marshal(map[string]string{"agent": "claude"})
-	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-allow", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
-	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"}
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
+	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-a", PodName: "sbx-1-0", PodUID: "uid-one"}
 	now := time.Date(2026, 11, 20, 0, 30, 0, 0, time.UTC)
 	ledger := &spendLedger{plan: store.PlanPro, used: 12_000_000, chargeable: true}
 	charger := &chargerFake{outcome: ThresholdChargeNotDue, onCharge: func() { ledger.credit = 10_000_000 }}
@@ -286,7 +286,7 @@ func TestMintReadsTheCreditBeforeCharging(t *testing.T) {
 
 	ledger.used = 25_000_000
 	charger.outcome, charger.onCharge = ThresholdChargePaid, func() { ledger.charged, ledger.trust = 15_000_000, store.BillingTrust{LifetimePaidCents: 1500} }
-	m.ForgetSpend("tea-allow")
+	m.ForgetSpend("tea-a")
 	if got, err := m.Mint(context.Background(), req); err != nil || got.Credential != testPlatformKey || len(charger.calls) != 2 {
 		t.Fatalf("mint = %v with %d charge calls, want served after the charge", err, len(charger.calls))
 	}

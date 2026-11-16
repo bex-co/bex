@@ -2438,7 +2438,7 @@ tests:
         alertname: PlatformModelCreditCritical
         exp_alerts: []
 
-  # Below $5 (the live balance was ~$8 on 2026-11-12) the critical tier fires.
+  # Below $5 the critical tier fires.
   - name: platform model credit balance under 5 USD is critical
     interval: 1m
     input_series:

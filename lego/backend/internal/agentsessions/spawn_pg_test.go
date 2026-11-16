@@ -138,10 +138,10 @@ func TestSpawnSessionParentComesOnlyFromTheVerifiedPod(t *testing.T) {
 
 func TestSpawnSessionLimitsSurfaceTheirNamedCodes(t *testing.T) {
 	e := newLineageEnv(t)
-	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", []string{e.ws}, "sk-platform-test"); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", "sk-platform-test"); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", nil, "") })
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "") })
 	e.keys.data[workspaceSecretPath(e.ws, "STRIPE_KEY")] = map[string]string{agentSecretValueField: stripeValue}
 	in := e.input("")
 	in.AgentConfig = AgentConfig{Agent: "claude", Task: "split the work"}

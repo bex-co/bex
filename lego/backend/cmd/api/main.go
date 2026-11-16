@@ -34,7 +34,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -203,17 +202,16 @@ func main() {
 	}
 	// loadConfig already validated the route and cleared it when the key is
 	// missing; the key itself is never logged.
-	if err := agentsession.EnablePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModelWorkspaces, cfg.AgentPlatformModelKey); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModelKey); err != nil {
 		log.Fatalf("bex-api: %v", err)
 	}
 	if cfg.AgentPlatformModelRoute != "" {
-		log.Printf("bex-api: PLATFORM model route %q active for the claude agent profile in %d allowlisted workspace(s): %s",
-			cfg.AgentPlatformModelRoute, len(cfg.AgentPlatformModelWorkspaces), strings.Join(cfg.AgentPlatformModelWorkspaces, ","))
+		log.Printf("bex-api: PLATFORM model route %q active for the claude agent profile in every workspace", cfg.AgentPlatformModelRoute)
 	}
-	// The muse profile (ADR108) runs only on this bex-owned Meta key, in the
-	// same allowlisted workspaces; the key is never logged.
-	if agentsession.EnablePlatformMetaRoute(cfg.AgentPlatformMetaKey, cfg.AgentPlatformModelWorkspaces) {
-		log.Printf("bex-api: PLATFORM Meta route active for the muse agent profile in %d allowlisted workspace(s)", len(cfg.AgentPlatformModelWorkspaces))
+	// The muse profile (ADR108) runs only on this bex-owned Meta key, in every
+	// workspace; the key is never logged.
+	if agentsession.EnablePlatformMetaRoute(cfg.AgentPlatformMetaKey) {
+		log.Printf("bex-api: PLATFORM Meta route active for the muse agent profile in every workspace")
 	}
 	cpDBURI := cfg.CPDBURI
 	dashboardURL := cfg.DashboardURL

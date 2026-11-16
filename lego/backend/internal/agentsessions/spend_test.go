@@ -276,7 +276,7 @@ func TestSpendCapOverrideWrites(t *testing.T) {
 // a third concurrent session (typed AGENT_SESSION_TRUST_LIMIT); at T1 it can.
 // BYO-key profiles are not limited.
 func TestTrustTierLimitsConcurrentPlatformSessions(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	svc, st, _ := sessionWithEnvironment(t, nil)
 	spend := &fakeSpend{fakeEnvironments: newFakeEnvironments(), plan: store.PlanPro}
 	svc.Spend = spend

@@ -57,7 +57,7 @@ func TestCreateMaxSpendUSDIsRefusedWhereItCannotBeEnforced(t *testing.T) {
 		t.Fatalf("a refused create persisted %d rows / provisioned %q", len(st.rows), lifecycle.modelEndpoint)
 	}
 
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	for _, usd := range []float64{0, -1, 100_001, 1e-9} {
 		input.AgentConfig = AgentConfig{Agent: "claude", Task: "fix the tests"}
 		input.MaxSpendUSD = ptr(usd)
@@ -76,7 +76,7 @@ func TestCreateMaxSpendUSDIsRefusedWhereItCannotBeEnforced(t *testing.T) {
 // With the platform route the ceiling is stored in micro-USD, read back as a
 // decimal string, and part of the idempotent create's identity.
 func TestCreateMaxSpendUSDIsStoredAndIdempotent(t *testing.T) {
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	svc, st, _, _ := fixture()
 	input := createInput()
 	input.AgentConfig = AgentConfig{Agent: "claude", Task: "fix the tests"}
@@ -285,7 +285,7 @@ func TestMaxSpendUSDIsOneInputOnEverySurface(t *testing.T) {
 	}
 
 	// On it: stored and read back the same way.
-	enablePlatformRoute(t, "tea-a")
+	enablePlatformRoute(t)
 	if rec := rest("5.5"); rec.Code != http.StatusCreated || !strings.Contains(rec.Body.String(), `"maxSpendUSD":"5.50"`) {
 		t.Fatalf("REST = %d %s", rec.Code, rec.Body.String())
 	}

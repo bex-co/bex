@@ -50,8 +50,8 @@ func TestPlatformCreditMonitorExportsBalance(t *testing.T) {
 		body    string
 		balance float64
 	}{
-		// The live response shape (2026-11-12).
-		{`{"data":{"total_credits":260,"total_usage":251.875}}`, 8.125},
+		// The live response shape.
+		{`{"data":{"total_credits":120,"total_usage":37.25}}`, 82.75},
 		{`{"data":{"total_credits":0,"total_usage":0}}`, 0},
 		// Usage can overrun the credits; the balance goes negative.
 		{`{"data":{"total_credits":100,"total_usage":100.5}}`, -0.5},
@@ -75,7 +75,7 @@ func TestPlatformCreditMonitorExportsBalance(t *testing.T) {
 	last := gatherCredit(t, reg)[platformCreditLastSuccess]
 	for _, bad := range []string{
 		"", `{"data":{}}`, `not json`,
-		`{"data":{"total_credits":260}}`, `{"data":{"total_usage":1}}`,
+		`{"data":{"total_credits":120}}`, `{"data":{"total_usage":1}}`,
 		`{"data":{"total_credits":-1,"total_usage":1}}`,
 	} {
 		body = bad

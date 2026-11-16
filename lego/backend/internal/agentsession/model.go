@@ -386,8 +386,8 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	if host == OpenRouterHost {
 		pathPrefix = openRouterPathPrefix
 	}
-	// The platform route (ADR090) injects its own key for an allowlisted
-	// workspace without its own key: the workspace's BYO key is not read, and
+	// The platform route (ADR090) injects its own key for a workspace
+	// without its own key: the workspace's BYO key is not read, and
 	// the model is pinned (which also meters and spend-caps the exchange). The
 	// route is resolved for the workspace now, the same decision
 	// modelEndpointHost just made, so the host is OpenRouter here.
