@@ -24,12 +24,6 @@ import (
 	"strings"
 )
 
-// nativeSuppliedBases maps reviewed official bases to their reviewed,
-// immutable supplied derivatives. Publication alone never changes this map.
-// Keep official toolchain pins separate: exact selection and companions must
-// continue to resolve the upstream primary rather than a derivative tag.
-var nativeSuppliedBases = map[string]string{}
-
 // nativeCommonBase is the user-selected single Bookworm system/tools image
 // (2026-10-29): every native build's final stage starts from it, with the
 // selected runtime copied on top. Pin only a digest that one
@@ -85,60 +79,8 @@ func nativeDebianSuite(history []string) (string, error) {
 	return "", fmt.Errorf("native image history does not identify a reviewed Debian root")
 }
 
-// suppliedNativeImage keeps exact OTP on the same Debian suite as its source.
-// Older Elixir/OTP images used Debian's legacy ADD history: the reviewed line
-// carrying that actual OTP major is the compatible candidate, and the generated
-// filesystem check still verifies its suite before any primary is replaced.
-func suppliedNativeImage(reviewedImage string, choice NativeChoice, supplied map[string]string) (string, error) {
-	reviewedSource := cmp.Or(choice.upstream, reviewedImage)
-	selected := reviewedSource
-	if choice.Image != reviewedImage && strings.HasPrefix(reviewedSource, "elixir:") {
-		wantedOTP := ""
-		if choice.imageSuite == "" {
-			for _, entry := range choice.imageEnv {
-				if value, found := strings.CutPrefix(entry, "OTP_VERSION="); found {
-					if !otpRelease.MatchString(value) {
-						return "", fmt.Errorf("legacy native image has an invalid OTP version")
-					}
-					wantedOTP, _, _ = strings.Cut(value, ".")
-				}
-			}
-			if wantedOTP == "" {
-				return "", fmt.Errorf("legacy native image has no verified OTP version")
-			}
-		}
-		matched := false
-		for _, line := range nativeToolchains[nativeElixirRuntime].lines {
-			if line.matchesProvenance(choice.imageSuite, wantedOTP) {
-				if !matched {
-					selected, matched = cmp.Or(line.upstream, line.image), true
-				}
-				if line.image == reviewedImage {
-					selected = reviewedSource
-					break
-				}
-			}
-		}
-		if !matched {
-			return "", fmt.Errorf("no reviewed supplied Elixir base matches the exact image's Debian/OTP provenance")
-		}
-	}
-	image, ok := supplied[selected]
-	if !ok {
-		return "", fmt.Errorf("no reviewed supplied base for %s", selected)
-	}
-	return image, nil
-}
-
-// matchesProvenance reports whether the toolchain line is the reviewed one for
-// a supplied base: the source Debian suite when it is known, else the exact OTP
-// major. The two selectors are mutually exclusive at the call site.
-func (line nativeLine) matchesProvenance(suite, otp string) bool {
-	return (suite != "" && line.debian == suite) || (otp != "" && line.otp == otp)
-}
-
 // pinNativePrimary keeps exact-version fallback behavior while collecting the
-// verified metadata needed to transplant that primary onto a supplied base.
+// verified metadata needed to transplant that primary onto the common base.
 func pinNativePrimary(ctx context.Context, exact ExactImageResolver, runtime string, reviewed NativeChoice) (NativeChoice, error) {
 	choice := reviewed
 	var err error
@@ -154,66 +96,25 @@ func pinNativePrimary(ctx context.Context, exact ExactImageResolver, runtime str
 			return NativeChoice{}, err
 		}
 	}
-	if nativeCommonBase != "" {
-		// The common image has no primary, including when selection kept the
-		// reviewed default. Never substitute another language patch because its
-		// environment could not be read; preserve identity and report the error.
-		return pinCommonNativePrimary(ctx, exact, runtime, choice)
-	}
-	if len(nativeSuppliedBases) == 0 || choice.Image == reviewed.Image {
+	if nativeCommonBase == "" {
 		return choice, nil
 	}
-	requestedImage := choice.Image
-	var history []string
-	choice.imageEnv, history, err = exact.ImageMetadata(ctx, choice.Image)
-	if err == nil && runtime == nativeElixirRuntime {
-		choice.imageSuite, err = nativeDebianSuite(history)
-	}
-	if err == nil {
-		return choice, nil
-	}
-	if choice.erlang != "" {
-		return NativeChoice{}, fmt.Errorf("read exact Erlang image environment: %w", err)
-	}
-	reviewed.note = fmt.Sprintf("==> Could not read the exact image %s environment (%v); using the reviewed %s %s image", requestedImage, err, reviewed.Label, reviewed.Line)
-	return reviewed, nil
+	// The common image has no primary, including when selection kept the
+	// reviewed default. Never substitute another language patch because its
+	// environment could not be read; preserve identity and report the error.
+	return pinCommonNativePrimary(ctx, exact, runtime, choice)
 }
 
-// applyNativeSuppliedBase runs after all language and companion selection.
-// Its primary replacement is prepended ahead of companions so an exact
-// primary cannot erase Node, Ruby, Bun, Poetry, or their links.
-func applyNativeSuppliedBase(dockerfile, reviewedImage string, choice NativeChoice, supplied map[string]string) (string, error) {
-	if nativeCommonBase != "" {
-		return transplantNativePrimary(dockerfile, reviewedImage, nativeCommonBase, choice)
-	}
-	if len(supplied) == 0 {
+// applyNativeCommonBase runs after all language and companion selection. It
+// moves the final stage onto the common image and installs the selected
+// primary, including a reviewed default, ahead of companions and authored
+// commands, so the primary cannot erase Node, Ruby, Bun, Poetry, or their
+// links. Without a common base the recipe keeps the selected official image.
+func applyNativeCommonBase(dockerfile, reviewedImage string, choice NativeChoice) (string, error) {
+	image := nativeCommonBase
+	if image == "" {
 		return dockerfile, nil
 	}
-	image, err := suppliedNativeImage(reviewedImage, choice, supplied)
-	if err != nil {
-		return "", err
-	}
-	if choice.Image == reviewedImage {
-		if err := validateNativeBase(image); err != nil {
-			return "", err
-		}
-		return rewriteNativeBase(dockerfile, choice.Image, image)
-	}
-	return transplantNativePrimary(dockerfile, reviewedImage, image, choice)
-}
-
-func validateNativeBase(image string) error {
-	ref, digest, pinned := strings.Cut(image, "@")
-	if !pinned || ref == "" || strings.ContainsAny(ref, " \t\r\n") || !digestPattern.MatchString(digest) {
-		return fmt.Errorf("supplied native base is not pinned: %s", image)
-	}
-	return nil
-}
-
-// transplantNativePrimary is shared by the common foundation and historical
-// exact-patch supplier path. It always installs the selected primary first,
-// including a reviewed default, before any companion or authored command.
-func transplantNativePrimary(dockerfile, reviewedImage, image string, choice NativeChoice) (string, error) {
 	if err := validateNativeBase(image); err != nil {
 		return "", err
 	}
@@ -251,6 +152,14 @@ func transplantNativePrimary(dockerfile, reviewedImage, image string, choice Nat
 		out, err = prependNativeRuntimeStage(out, image, choice.primaryStage)
 	}
 	return out, err
+}
+
+func validateNativeBase(image string) error {
+	ref, digest, pinned := strings.Cut(image, "@")
+	if !pinned || ref == "" || strings.ContainsAny(ref, " \t\r\n") || !digestPattern.MatchString(digest) {
+		return fmt.Errorf("native base image is not pinned by digest: %s", image)
+	}
+	return nil
 }
 
 func prependNativeRuntimeStage(dockerfile, finalImage, stage string) (string, error) {

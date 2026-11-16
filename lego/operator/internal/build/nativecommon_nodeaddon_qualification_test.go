@@ -130,13 +130,13 @@ func TestLegacyNodeOfflineAddons(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") != "1" {
 		t.Fatal("addon profile also requires BEX_BUILDKIT_INTEGRATION=1")
 	}
-	common, _, _ := nativeUtilityTestImages(t)
+	common := nativeUtilityCommonImage(t)
 	docker := nativeUtilityDockerConfig(t)
 	if common == "" || docker.builder == "" {
 		t.Fatal("addon profile requires an immutable common and explicit owned builder/platform")
 	}
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
 	output := t.TempDir()
 	if requested := os.Getenv("BEX_NATIVE_TEST_OUTPUT"); requested != "" {
 		must(t, os.MkdirAll(requested, 0o700))
@@ -154,7 +154,7 @@ func TestLegacyNodeOfflineAddons(t *testing.T) {
 
 func legacyNodeAddonGeneratedCase(t *testing.T, docker nativeUtilityDocker, common, output string, tc legacyNodeAddonCase) {
 	t.Helper()
-	nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = "", nil, nil
+	nativeCommonBase, nativeRuntimeArtifacts = "", nil
 	if tc.common {
 		// Common routes qualify the published Node14/16 trees production
 		// adopts: compiling Node from source under AMD64 emulation cannot
@@ -205,7 +205,7 @@ func legacyNodeAddonGeneratedCase(t *testing.T, docker nativeUtilityDocker, comm
 		must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.wheels.canonical"), wheelCanonical, 0o600))
 		wheelCustody, err := json.MarshalIndent(map[string]any{"common": base, "main_choices": choices, "auxiliary_choices": wheelChoices,
 			"primary_all_fields_equal": reflect.DeepEqual(choices[0], wheelChoices[0]), "poetry_all_fields_equal": reflect.DeepEqual(choices[1], wheelChoices[1]),
-			"primary_image_env": wheelChoices[0].imageEnv, "primary_image_suite": wheelChoices[0].imageSuite,
+			"primary_image_env":        wheelChoices[0].imageEnv,
 			"primary_runtime_artifact": wheelChoices[0].primaryImage, "primary_stage": wheelChoices[0].primaryStage,
 			"primary_runtime_check": wheelChoices[0].runtimeCheck, "primary_legacy_source": wheelChoices[0].legacySource,
 			"auxiliary_canonical_sha256": fmt.Sprintf("%x", sha256.Sum256(wheelCanonical)), "prerequisite_recipe_sha256": fmt.Sprintf("%x", sha256.Sum256([]byte(prepared))),
@@ -262,14 +262,14 @@ func legacyNodeAddonWheelRecipe(canonical, base string, main, auxiliary []Native
 }
 
 func TestLegacyNodeAddonCanonicalRoutes(t *testing.T) {
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
 	if len(legacyNodeAddonCases()) != 4 {
 		t.Fatal("all three common routes and original historical companion are required")
 	}
 	for _, tc := range legacyNodeAddonCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = "", nil, nil
+			nativeCommonBase, nativeRuntimeArtifacts = "", nil
 			if tc.common {
 				nativeCommonBase = commonFixtureImage
 			}
@@ -326,14 +326,14 @@ func TestLegacyNodeAddonCanonicalRoutes(t *testing.T) {
 }
 
 func TestLegacyNodeAddonWheelAcquisitionDoesNotCompileCompanion(t *testing.T) {
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
 	for _, tc := range legacyNodeAddonCases() {
 		if tc.runtime != nativePythonRuntime {
 			continue
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = "", nil, nil
+			nativeCommonBase, nativeRuntimeArtifacts = "", nil
 			base := ""
 			if tc.common {
 				nativeCommonBase, base = commonFixtureImage, commonFixtureImage
@@ -393,7 +393,6 @@ func TestLegacyNodeAddonWheelAcquisitionDoesNotCompileCompanion(t *testing.T) {
 				"artifact":      func(c *NativeChoice) { c.primaryImage = "wrong" },
 				"stage":         func(c *NativeChoice) { c.primaryStage = "wrong" },
 				"runtime-check": func(c *NativeChoice) { c.runtimeCheck = "wrong" },
-				"suite":         func(c *NativeChoice) { c.imageSuite = "wrong" },
 				"legacy":        func(c *NativeChoice) { c.legacySource = !c.legacySource },
 			} {
 				t.Run(name, func(t *testing.T) {

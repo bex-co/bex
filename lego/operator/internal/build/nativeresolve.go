@@ -163,7 +163,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		}
 		choices = append(choices, bun)
 	}
-	if rewritten, err = applyNativeSuppliedBase(rewritten, reviewed.Image, choice, nativeSuppliedBases); err != nil {
+	if rewritten, err = applyNativeCommonBase(rewritten, reviewed.Image, choice); err != nil {
 		return nil, err
 	}
 	if err := os.WriteFile(dockerfilePath, []byte(rewritten), 0o600); err != nil {

@@ -32,11 +32,9 @@ import (
 const commonFixtureImage = "ghcr.io/bex-co/bex-cnb-run:common-fixture@" + otherDigest
 
 func TestCommonFoundationPreservesDefaultAndExactSelections(t *testing.T) {
-	original, originalSupplied := nativeCommonBase, nativeSuppliedBases
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases = original, originalSupplied })
+	original := nativeCommonBase
+	t.Cleanup(func() { nativeCommonBase = original })
 	nativeCommonBase = commonFixtureImage
-	// The common route cannot silently adopt an unrelated C derivative.
-	nativeSuppliedBases = map[string]string{"unrelated": "invalid-C-candidate"}
 	for _, tc := range []struct {
 		name, runtime, line, version, tag string
 		env                               map[string]string
@@ -403,9 +401,9 @@ func TestCommonNodeBuilderRefusesSystemPythonSubstitution(t *testing.T) {
 // A populated artifact map is a bounded production backport catalog. An empty
 // map deliberately exercises the existing same-patch source qualification.
 func TestCommonNodeRuntimeArtifactPolicy(t *testing.T) {
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
-	nativeCommonBase, nativeSuppliedBases = commonFixtureImage, nil
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
+	nativeCommonBase = commonFixtureImage
 	reviewed, err := commonNodeQualificationArtifacts("1")
 	must(t, err)
 	type policyCase struct {

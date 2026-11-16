@@ -69,10 +69,10 @@ func TestCommonNodeQualificationDonorMode(t *testing.T) {
 }
 
 func TestCommonNodeQualificationDonorCells(t *testing.T) {
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
 	var err error
-	nativeCommonBase, nativeSuppliedBases = commonFixtureImage, nil
+	nativeCommonBase = commonFixtureImage
 	nativeRuntimeArtifacts, err = commonNodeQualificationArtifacts("1")
 	must(t, err)
 	for _, tc := range commonNodeDonorQualificationCases() {
@@ -133,9 +133,9 @@ func TestCommonNodeQualificationDonorCells(t *testing.T) {
 }
 
 func TestCommonNodeQualificationDonorRequiresExactArtifact(t *testing.T) {
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
-	nativeCommonBase, nativeSuppliedBases = commonFixtureImage, nil
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
+	nativeCommonBase = commonFixtureImage
 	for _, runtime := range []string{nativeNodeRuntime, nativeRubyRuntime} {
 		for _, exactDonor := range []bool{false, true} {
 			t.Run(runtime+map[bool]string{false: "-missing", true: "-exact"}[exactDonor], func(t *testing.T) {
@@ -177,9 +177,9 @@ func TestCommonNodeQualificationDonorRequiresExactArtifact(t *testing.T) {
 }
 
 func TestCommonNodeQualificationCanonicalCells(t *testing.T) {
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
-	nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = commonFixtureImage, nil, nil
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
+	nativeCommonBase, nativeRuntimeArtifacts = commonFixtureImage, nil
 	cases := commonNodeQualificationCases()
 	if len(cases) != 8 {
 		t.Fatal("six reviewed cells and two exact representatives are required")
@@ -374,10 +374,9 @@ func TestNativeSourcePrerequisiteNetworkRegression(t *testing.T) {
 // its exact verified metadata inputs without a registry read; this is a recipe
 // equivalence control, never a new image execution or current-source CI claim.
 func TestCommonNodeDonorMatchesDatedPrimaryRecipe(t *testing.T) {
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
 	nativeCommonBase = "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0"
-	nativeSuppliedBases = nil
 	var err error
 	nativeRuntimeArtifacts, err = commonNodeQualificationArtifacts("1")
 	must(t, err)

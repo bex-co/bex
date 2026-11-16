@@ -27,9 +27,9 @@ import (
 )
 
 func TestHistoricalLegacyNodeAddonPythonIsPrivateForPrimaryAndCompanion(t *testing.T) {
-	common, supplied := nativeCommonBase, nativeSuppliedBases
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases = common, supplied })
-	nativeCommonBase, nativeSuppliedBases = "", nil
+	common := nativeCommonBase
+	t.Cleanup(func() { nativeCommonBase = common })
+	nativeCommonBase = ""
 	for _, tc := range []struct {
 		runtime, node, python string
 		private               bool

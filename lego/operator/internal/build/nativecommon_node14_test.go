@@ -115,7 +115,7 @@ func TestCommonNode14OfflineAddon(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("opt-in actual common Node14 offline addon build")
 	}
-	common, _, _ := nativeUtilityTestImages(t)
+	common := nativeUtilityCommonImage(t)
 	tree := os.Getenv("BEX_NATIVE_TEST_NODE14_TREE")
 	if common == "" || tree == "" {
 		t.Fatal("requires immutable BEX_NATIVE_TEST_COMMON_IMAGE and reviewed BEX_NATIVE_TEST_NODE14_TREE")

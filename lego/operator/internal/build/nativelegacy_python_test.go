@@ -98,7 +98,7 @@ func TestNativeLegacyPythonGeneratedImages(t *testing.T) {
 	if !nativeLegacyPythonProfileEnabled() {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION and BEX_NATIVE_LEGACY_PYTHON_INTEGRATION=1 for the separate legacy family profile")
 	}
-	common, _, _ := nativeUtilityTestImages(t)
+	common := nativeUtilityCommonImage(t)
 	docker := nativeUtilityDockerConfig(t)
 	if common == "" || docker.builder == "" {
 		t.Fatal("legacy profile requires an immutable common image and explicitly owned builder/platform")

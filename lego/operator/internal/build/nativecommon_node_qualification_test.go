@@ -190,14 +190,14 @@ func TestCommonNodeGeneratedImages(t *testing.T) {
 	}
 	runtimeArtifacts, err := commonNodeQualificationArtifacts(os.Getenv("BEX_NATIVE_TEST_NODE_DONORS"))
 	must(t, err)
-	common, _, _ := nativeUtilityTestImages(t)
+	common := nativeUtilityCommonImage(t)
 	docker := nativeUtilityDockerConfig(t)
 	if common == "" || docker.builder == "" {
 		t.Fatal("Node profile requires an immutable common image and explicitly owned builder/platform")
 	}
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
-	nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = common, nil, runtimeArtifacts
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
+	nativeCommonBase, nativeRuntimeArtifacts = common, runtimeArtifacts
 	output := t.TempDir()
 	if requested := os.Getenv("BEX_NATIVE_TEST_OUTPUT"); requested != "" {
 		must(t, os.MkdirAll(requested, 0o700))

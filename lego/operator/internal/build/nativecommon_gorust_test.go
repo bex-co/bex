@@ -128,7 +128,7 @@ func TestNativeGoRustGeneratedImages(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") != "1" {
 		t.Fatal("Go/Rust profile also requires BEX_BUILDKIT_INTEGRATION=1")
 	}
-	common, _, _ := nativeUtilityTestImages(t)
+	common := nativeUtilityCommonImage(t)
 	docker := nativeUtilityDockerConfig(t)
 	if common == "" || docker.builder == "" {
 		t.Fatal("Go/Rust profile requires an immutable common image and explicitly owned builder/platform")

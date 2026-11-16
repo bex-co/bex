@@ -210,7 +210,7 @@ func TestCommonNativeInitQualification(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") != "1" {
 		t.Fatal("native-init profile also requires BEX_BUILDKIT_INTEGRATION=1")
 	}
-	common, _, _ := nativeUtilityTestImages(t)
+	common := nativeUtilityCommonImage(t)
 	docker := nativeUtilityDockerConfig(t)
 	if common == "" || docker.builder == "" {
 		t.Fatal("native-init profile requires an immutable reviewed common and explicit owned builder/platform")

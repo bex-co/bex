@@ -1,6 +1,6 @@
 # w8 · m91 — Supply PostgreSQL clients in native builds and runtime
 
-**Worker:** worker8 **Goal:** ordinary native backup-processing commands can use the supplied PostgreSQL client tools. **Status:** blocked — t007, t008 and t001 done; the remaining tasks need a production roll that carries the adopted digest
+**Worker:** worker8 **Goal:** ordinary native backup-processing commands can use the supplied PostgreSQL client tools. **Status:** done (2026-11-16, production pin `7aaa8700befa`)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t007 | [Implement the user-selected common Bookworm foundation](done/t007.md) — **DONE** | 240m | — |
 | t008 | [Adopt the qualified common digest without losing official-image features](done/t008.md) — **DONE** | 360m | t007 |
 | t001 | [Supply reviewed PostgreSQL client programs and libraries](done/t001.md) — **DONE** | 75m | t008 |
-| t002 | [Audit shared native consumers and preserve image boundaries](t002.md) | 40m | t001 |
-| t003 | [Verify Render parity across native authoring surfaces](t003.md) | 20m | t002 |
-| t004 | [Simplify the changed client supplier](t004.md) | 15m | t003 |
-| t005 | [Test real archive processing and shared toolchain neighbors](t005.md) | 40m | t003 |
-| t006 | [Accept fresh native defaults and close the milestone](t006.md) | 15m | t004, t005 |
+| t002 | [Audit shared native consumers and preserve image boundaries](done/t002.md) — **DONE** | 40m | t001 |
+| t003 | [Verify Render parity across native authoring surfaces](done/t003.md) — **DONE** | 20m | t002 |
+| t004 | [Simplify the changed client supplier](done/t004.md) — **DONE** | 15m | t003 |
+| t005 | [Test real archive processing and shared toolchain neighbors](done/t005.md) — **DONE** | 40m | t003 |
+| t006 | [Accept fresh native defaults and close the milestone](done/t006.md) — **DONE** | 15m | t004, t005 |
 
 **Total:** 8 tasks/805m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep402/README.md).
 
@@ -392,7 +392,7 @@ The exact one-file implementation is applied. Focused/full host Go checks pass i
   1. 调整 `native-base-image.yml` / `native-common-image.yml`：每个镜像的 `platforms` 和逐架构的检查、扫描、签名都改为 amd64。公共底额外出一个 arm64 变体，只做轻量检查。同步更新相关 `test_native_oci_*` 测试与 README。
   2. 已经在跑的双架构 run 可以收尾，不必为了改架构而取消；新的精确版本触发（例如 node-14.21.2）应在第 1 步合入后再启动，避免白跑 arm64。
   3. 验收条件改为：同一固定公共底在 amd64 上完成完整 utilities 与实际运行时/companion 资格，arm64 公共底通过轻量检查。其余 DoD 不变。
-- **相关：** D4（为镜像构建拆出 `bex-build` runner 池）在 [w6/m155](../../w6/m155/README.md) 跟进。不阻塞本项，但上线后这些构建不再与生产部署抢 runner。
+- **相关：** D4（为镜像构建拆出 `bex-build` runner 池）在 [w6/m155](../../../w6/done/m155/README.md) 跟进。不阻塞本项，但上线后这些构建不再与生产部署抢 runner。
 
 ## Complete utility evidence for 0b7 and D3 scope — 2026-11-02
 
@@ -534,3 +534,29 @@ The gate above ("w6/100's remaining-work item 2") is built: the retained evidenc
 - runs t002's pre-deploy Job check and t005's live `psql`/`pg_dump` check;
 - runs t003's two-client replay and t006's fresh Free hosted acceptance, signed in through `scripts/qa-login.sh`;
 - runs t004's removal of the unused per-language supplied-base mode.
+
+## Unblocked: the gate holds, and acceptance runs on the live digest — 2026-11-16 (loopx session)
+
+- **Affected:** t002–t006. **Source:** verified evidence; no user decision was needed.
+- **Gate verified.** Deploy run 43903148613 (`workflow_dispatch` on `7aaa8700befa`) wrote the pin `546945798` at 16:22Z and rolled bex at 16:28:12Z. `git merge-base --is-ancestor cfe44cd09 7aaa8700befa` holds, so production native builds start from `sha256:5d6b8139…`.
+- **Which digest the remaining acceptance runs on: the live `5d6b8139…`, now.** The w8/335 re-pin to `sha256:4b809600…` (`71914199f`) is on main but not on production: `7aaa8700befa` does not contain it. The next push-triggered roll is due at about 22:22Z at the earliest, six hours after the 16:22Z pin, and only the user can dispatch an earlier one. Running now is sound for three reasons:
+  - The re-pin's SPDX names the same 864 packages and versions as `5d6b8139` (recorded in `71914199f`). `postgresql-client-18`, `libpq5` and every library under `psql`, `pg_dump` and `pg_restore` are the same packages. The only change is the Python packaging installer that admits 3.15, which no m91 fixture (Node 24) touches.
+  - Families run 43900534897 passed the utility cohort on `4b809600`. That cohort includes the m91 original case: `pg_restore` at build and at network-off runtime, the PostgreSQL 18 archive, and the supplier-removed control. So the digest the next roll brings is covered by the maintained check.
+  - Hosted acceptance tests what production serves. Waiting for a roll that changes nothing under test would only hold the item.
+- **Pin attribution.** Every hosted result below names the pin it ran on.
+
+## Accepted on production and closed — 2026-11-16 (loopx session)
+
+The definition of done holds on production pin `7aaa8700befa` (common image `sha256:5d6b8139…`). Details are in each task's closing record.
+
+- **Both clients' fresh first builds reached Live** without an installer prefix: published bex v0.7.0 and the unmodified same-pin Render CLI, each running the frozen original backup-processing commands on Free Node 24. At build and on six runtime requests, the original PostgreSQL 15 archive converted to SQL. The exact source, archive and three-row proofs passed, and the native app logs show all six requests. The clients are `postgresql-client-18` 18.7 ([t006](done/t006.md)).
+- **Live client-server use.** `psql`, `pg_dump` and `pg_restore` round-tripped rows against a Free PostgreSQL 18.6 server at build and at runtime ([t005](done/t005.md)). The maintained utility cohort keeps the archive, PostgreSQL 18 archive, version, malformed-input and supplier-removed checks on every published digest.
+- **Phases.** Build, pre-deploy and runtime run one image; static sites get the clients at build only ([t002](done/t002.md)). No API, CLI or dashboard surface changed ([t003](done/t003.md)).
+- **Supplied-base mode removed.** The unused per-language supplied-base mode is gone from the operator ([t004](done/t004.md)).
+- **Bounds:**
+  - No hosted pre-deploy run: Free refuses it, and the Job runs the identical image.
+  - ARM64 is out of scope (D3).
+  - Non-Node primaries on production rely on the families run for the same digest.
+  - Servers older than 18 were not exercised live.
+  - The cohort has no live-server leg.
+- **Cleanup.** Every fixture, URL, jar and local credential is gone, and other runs' resources were untouched.

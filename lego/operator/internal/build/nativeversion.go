@@ -72,12 +72,9 @@ type NativeChoice struct {
 	// note is an extra build-log line (an exact version that fell back to the
 	// line's reviewed patch).
 	note string
-	// imageEnv preserves an exact primary's metadata when its installation is
-	// copied onto a supplied system base instead of inheriting its FROM.
+	// imageEnv preserves the selected primary's image environment when its
+	// installation is copied onto the common base instead of inheriting its FROM.
 	imageEnv []string
-	// imageSuite is the Debian suite named by verified official-image history;
-	// empty only for the recognized legacy ADD history without a suite.
-	imageSuite string
 	// narratedVersion is the version the log names when it is not the line: the
 	// Rust toolchain rustup applies inside the line's one image (w8/327).
 	narratedVersion string

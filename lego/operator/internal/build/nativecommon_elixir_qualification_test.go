@@ -170,7 +170,7 @@ func TestCommonElixirOfflineQualification(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" || os.Getenv("BEX_NATIVE_ELIXIR_INTEGRATION") != "1" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 and BEX_NATIVE_ELIXIR_INTEGRATION=1 for actual common Elixir/OTP qualification")
 	}
-	common, _, _ := nativeUtilityTestImages(t)
+	common := nativeUtilityCommonImage(t)
 	if common == "" {
 		t.Fatal("Elixir qualification requires reviewed immutable BEX_NATIVE_TEST_COMMON_IMAGE")
 	}
@@ -178,9 +178,9 @@ func TestCommonElixirOfflineQualification(t *testing.T) {
 	if docker.builder == "" {
 		t.Fatal("Elixir qualification requires an explicitly owned Buildx builder and platform")
 	}
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
-	nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = common, nil, nil
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
+	nativeCommonBase, nativeRuntimeArtifacts = common, nil
 	output := t.TempDir()
 	if requested := os.Getenv("BEX_NATIVE_TEST_OUTPUT"); requested != "" {
 		must(t, os.MkdirAll(requested, 0o700))
@@ -266,9 +266,9 @@ func TestCommonElixirOfflineQualification(t *testing.T) {
 }
 
 func TestCommonElixirQualificationCanonicalRecipes(t *testing.T) {
-	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
-	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
-	nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = commonFixtureImage, nil, nil
+	original, artifacts := nativeCommonBase, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeRuntimeArtifacts = original, artifacts })
+	nativeCommonBase, nativeRuntimeArtifacts = commonFixtureImage, nil
 	for _, tc := range commonElixirCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &fakeExact{digests: map[string]string{}, envByImage: map[string]fakeExactMetadata{}}

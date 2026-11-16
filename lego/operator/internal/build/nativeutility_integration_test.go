@@ -32,25 +32,23 @@ import (
 )
 
 // This opt-in gate runs the actual generator/resolver and independent utility
-// consumers. It never changes the production supplier catalog or publishes.
-// BEX_NATIVE_TEST_COMMON_IMAGE selects one real immutable common foundation;
-// without it, BEX_NATIVE_TEST_NODE_IMAGE names the historical Node24 supplier. Optional
-// BEX_NATIVE_TEST_PYTHON313_IMAGE supplies genuine Python3.13, with an explicitly
-// prepared offline wheel cache for pyvips3.2.0, Django5.2.18 and Poetry2.1.3.
-// Common mode requires BEX_NATIVE_TEST_WHEELHOUSE for Python3.13/3.14; its
-// test-only COPY/pip-config overlay is recorded beside the canonical recipe.
+// consumers. It never changes the production common-base pin or publishes.
+// BEX_NATIVE_TEST_COMMON_IMAGE selects one real immutable common foundation.
+// Python 3.13/3.14 replay requires BEX_NATIVE_TEST_WHEELHOUSE, an explicitly
+// prepared offline wheel cache for pyvips3.2.0, Django5.2.18 and Poetry2.1.3;
+// its test-only COPY/pip-config overlay is recorded beside the canonical recipe.
 // BEX_NATIVE_TEST_OUTPUT retains recipes, command logs and actual output proofs.
 // The original tool replay covers seven Node24 and six primary Python3.13
 // cases; this local gate does not replace the 28 two-client hosted fixtures.
 func TestNativeUtilityGeneratedImages(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
-		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 and BEX_NATIVE_TEST_NODE_IMAGE to an immutable Node24 supplier")
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 and BEX_NATIVE_TEST_COMMON_IMAGE to an immutable common image")
 	}
-	commonImage, nodeImage, pythonImage := nativeUtilityTestImages(t)
+	commonImage := nativeUtilityCommonImage(t)
 	docker := nativeUtilityDockerConfig(t)
 	wheelhouse := os.Getenv("BEX_NATIVE_TEST_WHEELHOUSE")
 	prepareWheels := os.Getenv("BEX_NATIVE_TEST_PREPARE_WHEELS") == "1"
-	if commonImage != "" && wheelhouse == "" && !prepareWheels {
+	if wheelhouse == "" && !prepareWheels {
 		t.Fatal("common Python replay requires an explicit flat BEX_NATIVE_TEST_WHEELHOUSE for Python 3.13 and 3.14 Poetry/fixture dependencies")
 	}
 	output := t.TempDir()
@@ -61,25 +59,16 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 		must(t, err)
 		t.Logf("retained proof directory: %s", output)
 	}
-	original, originalCommon := nativeSuppliedBases, nativeCommonBase
-	t.Cleanup(func() { nativeSuppliedBases, nativeCommonBase = original, originalCommon })
-	node, _ := nativeToolchains[nativeNodeRuntime].find("24")
-	python, _ := nativeToolchains[nativePythonRuntime].find("3.13")
+	originalCommon := nativeCommonBase
+	t.Cleanup(func() { nativeCommonBase = originalCommon })
 	files := nativeUtilityFixtureFiles(t)
-	if commonImage != "" {
-		addCommonDefaultProofFiles(t, files)
-	}
+	addCommonDefaultProofFiles(t, files)
 	resolver := NewDockerHubResolver()
-	for _, tc := range nativeUtilityCases(commonImage, pythonImage) {
+	for _, tc := range nativeUtilityCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			nativeSuppliedBases = nil
 			nativeCommonBase = ""
 			if tc.supplied {
-				if commonImage != "" {
-					nativeCommonBase = commonImage
-				} else {
-					nativeSuppliedBases = map[string]string{node.image: nodeImage, python.image: pythonImage}
-				}
+				nativeCommonBase = commonImage
 			}
 			o := nativeOptions()
 			o.Runtime, o.StaticSite, o.StaticPublishPath = tc.runtime, tc.static, "public"
@@ -109,7 +98,7 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 			must(t, os.WriteFile(filepath.Join(evidence, "resolved-choices.json"), selection, 0o600))
 			must(t, selectionErr)
 			caseWheels := wheelhouse
-			if prepareWheels && tc.runtime == nativePythonRuntime && commonImage != "" {
+			if prepareWheels && tc.runtime == nativePythonRuntime {
 				caseWheels = nativeUtilityPrepareWheels(t, docker, recipe, commonImage, bundle, source, evidence)
 			}
 			recipe, prerequisites, removalProbe := nativeUtilityTestLayers(t, recipe, commonImage, tc, caseWheels, source, evidence)
@@ -194,26 +183,27 @@ type nativeUtilityCase struct {
 	created                                  time.Time
 }
 
-func nativeUtilityCases(common, python string) []nativeUtilityCase {
-	cases := []nativeUtilityCase{
-		{name: "supplier-removed", runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "utility-check.py build"},
-		{name: "node-compute", runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "utility-check.py build && /usr/bin/python3 original-cases.py build node", start: "utility-check.py runtime && /usr/bin/python3 original-cases.py runtime node", supplied: true},
-		{name: "node-static", runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "utility-check.py build", static: true, supplied: true},
+// nativeUtilityCases lists the utility cohort. A supplied case builds on the
+// common image; supplier-removed builds the same Node recipe on the official
+// image, which has no PostgreSQL clients.
+func nativeUtilityCases() []nativeUtilityCase {
+	omissions := []struct{ name, mid, failure string }{
+		{"jq", "98", "jq: command not found"},
+		{"rsync", "98", "rsync: command not found"},
+		{"python-metadata", "103", "No module named 'setuptools'"},
+		{"python-pip", "103", "No module named pip"},
+		{"python-headers", "103", "Python.h: No such file or directory"},
 	}
-	if python != "" || common != "" {
-		cases = append(cases, nativeUtilityCase{name: "python313-original", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "original-cases.py build python", start: "original-cases.py runtime python", supplied: true})
-	}
-	if common != "" {
-		cases = append(cases, nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", expectedPythonVersion: "3.14.8", supplied: true, created: pythonCreationCutoff.Add(time.Second)})
-		for _, omitted := range []struct{ name, mid, failure string }{
-			{"jq", "98", "jq: command not found"},
-			{"rsync", "98", "rsync: command not found"},
-			{"python-metadata", "103", "No module named 'setuptools'"},
-			{"python-pip", "103", "No module named pip"},
-			{"python-headers", "103", "Python.h: No such file or directory"},
-		} {
-			cases = append(cases, nativeUtilityCase{name: "missing-" + omitted.name, runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "original-cases.py build node " + omitted.mid, supplied: true, removal: omitted.name, wantFailure: omitted.failure})
-		}
+	cases := make([]nativeUtilityCase, 0, 5+len(omissions))
+	cases = append(cases,
+		nativeUtilityCase{name: "supplier-removed", runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "utility-check.py build"},
+		nativeUtilityCase{name: "node-compute", runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "utility-check.py build && /usr/bin/python3 original-cases.py build node", start: "utility-check.py runtime && /usr/bin/python3 original-cases.py runtime node", supplied: true},
+		nativeUtilityCase{name: "node-static", runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "utility-check.py build", static: true, supplied: true},
+		nativeUtilityCase{name: "python313-original", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "original-cases.py build python", start: "original-cases.py runtime python", supplied: true},
+		nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", expectedPythonVersion: "3.14.8", supplied: true, created: pythonCreationCutoff.Add(time.Second)},
+	)
+	for _, omitted := range omissions {
+		cases = append(cases, nativeUtilityCase{name: "missing-" + omitted.name, runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "original-cases.py build node " + omitted.mid, supplied: true, removal: omitted.name, wantFailure: omitted.failure})
 	}
 	return cases
 }
@@ -306,20 +296,16 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 	return "RUN --network=none " + command + " && echo BEX_SUPPLIER_REMOVAL_READY " + name + "\n"
 }
 
-func nativeUtilityTestImages(t *testing.T) (common, node, python string) {
+// nativeUtilityCommonImage is the real immutable common image a generated-image
+// gate builds on, from BEX_NATIVE_TEST_COMMON_IMAGE.
+func nativeUtilityCommonImage(t *testing.T) string {
 	t.Helper()
-	common = os.Getenv("BEX_NATIVE_TEST_COMMON_IMAGE")
-	node, python = os.Getenv("BEX_NATIVE_TEST_NODE_IMAGE"), os.Getenv("BEX_NATIVE_TEST_PYTHON313_IMAGE")
-	for name, image := range map[string]string{"common": common, "node": node, "python": python} {
-		if image == "" && (name != "node" || common != "") {
-			continue
-		}
-		ref, digest, pinned := strings.Cut(image, "@")
-		if !pinned || ref == "" || !digestPattern.MatchString(digest) {
-			t.Fatalf("%s test image must name a real immutable supplier", name)
-		}
+	common := os.Getenv("BEX_NATIVE_TEST_COMMON_IMAGE")
+	ref, digest, pinned := strings.Cut(common, "@")
+	if !pinned || ref == "" || !digestPattern.MatchString(digest) {
+		t.Fatal("BEX_NATIVE_TEST_COMMON_IMAGE must name a real immutable common image")
 	}
-	return common, node, python
+	return common
 }
 
 func addCommonDefaultProofFiles(t *testing.T, files map[string]string) {

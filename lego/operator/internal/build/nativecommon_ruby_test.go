@@ -93,7 +93,7 @@ func TestCommonRubyGeneratedImages(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") != "1" {
 		t.Fatal("Ruby profile also requires BEX_BUILDKIT_INTEGRATION=1")
 	}
-	common, _, _ := nativeUtilityTestImages(t)
+	common := nativeUtilityCommonImage(t)
 	if common == "" {
 		t.Fatal("Ruby profile requires immutable BEX_NATIVE_TEST_COMMON_IMAGE")
 	}

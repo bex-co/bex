@@ -189,7 +189,7 @@ func TestExactVersionPinsTheRequestedPatch(t *testing.T) {
 			// The exact tag is looked up first. A supplied or common base then
 			// reads that image's environment; companions read their own after.
 			wantAsked := []string{tc.tag}
-			if len(nativeSuppliedBases) != 0 || nativeCommonBase != "" {
+			if nativeCommonBase != "" {
 				wantAsked = append(wantAsked, "env "+tc.tag+"@"+exactDigest)
 			}
 			asked := fake.asked
