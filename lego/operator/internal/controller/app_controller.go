@@ -768,6 +768,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, r.markBuilt(ctx, &app, image)
 	}
 	if app.Spec.HasImagePorts() {
+		if imageReadFailureRecorded(&app) {
+			if held, res, err := r.holdPendingArtifact(ctx, &app, ctrl.Result{}); held {
+				return res, err
+			}
+		}
 		requested := image
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
 		if res, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
@@ -915,7 +920,7 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 				serving = candidate
 			}
 			if serving == nil || serving.Revision != app.Status.ActiveRevision || serving.Image == "" {
-				return r.fail(ctx, app, "ImageMetadataUnavailable", fmt.Errorf("served release has no matching image network metadata"))
+				return r.fail(ctx, app, reasonImageMetadataUnavailable, fmt.Errorf("served release has no matching image network metadata"))
 			}
 			if heldCandidate {
 				if err := r.pinServedThroughCancel(ctx, app, serving); err != nil {
@@ -7093,7 +7098,10 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 // (w4/533). Over a release that has served, nothing stopped: the prior
 // release keeps serving, so the phase and Ready keep describing it, as for a
 // failed build, and the release's Rollout verdict carries the failure to its
-// deploy row. Without a served release it is an ordinary failure.
+// deploy row. That release also keeps following the App, as after a failed
+// build: its routing, IP allow-lists, replicas and suspension converge on this
+// pass and every later one (w32/m419). Without a served release it is an
+// ordinary failure.
 func (r *AppReconciler) failBeforeDispatch(ctx context.Context, app *appv1alpha1.App, reason string, err error) (ctrl.Result, error) {
 	if apierrors.IsConflict(err) || !releaseHasServed(app) {
 		return r.fail(ctx, app, reason, err)
@@ -7103,7 +7111,15 @@ func (r *AppReconciler) failBeforeDispatch(ctx context.Context, app *appv1alpha1
 		Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reason,
 		Message: shown, ObservedGeneration: releaseGeneration(app),
 	})
-	r.settleFailureOverPriorRelease(ctx, app, "the latest image could not be read")
+	// Durable before the hold: not every exit of the hold writes status, and a
+	// verdict lost there would have the next pass read the registry again.
+	r.updateStatusRetrying(ctx, app, "imageReadFailed")
+	// Held, the verdict is final (imageReadFailureRecorded), so the failure is
+	// not returned for a retry.
+	if held, heldRes, heldErr := r.holdPendingArtifact(ctx, app, ctrl.Result{}); held {
+		return heldRes, heldErr
+	}
+	r.settleFailureOverPriorRelease(ctx, app, imageReadFailed)
 	return ctrl.Result{}, err
 }
 
@@ -7475,12 +7491,13 @@ func scalableRuntime(app *appv1alpha1.App) bool {
 
 // holdPendingArtifact is the pre-deploy hold one stage earlier (w1/m157). While a
 // newer release has no image yet (its build is queued, running, waiting on a
-// registry credential or failed), or a suspended App reuses its serving image
-// instead of building, the prior release's replicas and public routing keep
-// following the App and its pod template stays untouched.
+// registry credential or failed), its image's metadata read failed before
+// dispatch (w32/m419), or a suspended App reuses its serving image instead of
+// building, the prior release's replicas and public routing keep following the
+// App and its pod template stays untouched.
 //
-// buildHalt is the result buildFromSource halted with, zero for a suspended
-// or save pass; its requeue is this pass's cadence. A pass that leaves the phase
+// buildHalt is the result buildFromSource halted with, zero for any other
+// pass; its requeue is this pass's cadence. A pass that leaves the phase
 // Building keeps it: that phase pins the release to its build (releaseInFlight), so
 // the hold neither parks over it nor records a failure in its place.
 //
@@ -7548,8 +7565,11 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 		return true, buildHalt, nil
 	}
 	failed := ""
-	if terminalBuildFailureRecorded(app) {
+	switch {
+	case terminalBuildFailureRecorded(app):
 		failed = "the latest build failed"
+	case imageReadFailureRecorded(app):
+		failed = imageReadFailed
 	}
 	return held(r.settleHeldRuntime(ctx, app, plan, failed, buildHalt.RequeueAfter))
 }

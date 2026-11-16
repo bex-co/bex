@@ -30,6 +30,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -693,7 +694,33 @@ func imageMetadataFailureReason(err error) string {
 	if _, refused := errors.AsType[*registry.RefusedError](err); refused {
 		return appv1alpha1.ReasonImagePullFailed
 	}
-	return "ImageMetadataUnavailable"
+	return reasonImageMetadataUnavailable
+}
+
+// reasonImageMetadataUnavailable is a release whose image metadata is not
+// available: a failed read that is not a registry refusal
+// (imageMetadataFailureReason), or a served release with no recorded network.
+const reasonImageMetadataUnavailable = "ImageMetadataUnavailable"
+
+// imageReadFailed opens the Ready message of a release whose image metadata
+// read failed before dispatch while the prior release serves
+// (failBeforeDispatch).
+const imageReadFailed = "the latest image could not be read"
+
+// imageReadFailureRecorded reports that the current release's image metadata
+// read failed before any of its pods were dispatched, over a release that
+// served, and failBeforeDispatch recorded it as the release's Rollout verdict
+// under a reason imageMetadataFailureReason returns. That verdict makes the
+// release final, as a failed deploy is on Render: a dispatch would only hold
+// it off the pod template (actHoldVerdict). So a later pass neither reads the
+// registry again nor stops at the failure: it holds the serving release
+// (w32/m419). The next deploy is a new release and reads its image afresh.
+func imageReadFailureRecorded(app *appv1alpha1.App) bool {
+	if !failedRolloutOverServed(app) {
+		return false
+	}
+	reason := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout).Reason
+	return reason == appv1alpha1.ReasonImagePullFailed || reason == reasonImageMetadataUnavailable
 }
 
 // imageRefusalError says in plain words why the registry refused an image's

@@ -18,6 +18,7 @@
 
 ## Inbox
 
+- [ ] [031](031.md) — A setting saved while a deploy waits on a throttled or failing image registry (429, 5xx, network) does not reach the serving release until the registry answers: the wait returns before the hold w32/m419 added (~1h) ← w32/m419's Render parity task, 2026-11-16; traced from the code; minor
 - [ ] [030](030.md) — One tenant's directory transfers can hold a gateway's whole archive-index budget and refuse every other tenant's directory copies on that replica with `503 … at capacity` for up to five minutes at a time: the budget has no per-workspace share (~1h) ← w32/025's close, 2026-11-15; traced from the code; minor
 - [ ] [029](029.md) — The checklist marks `ea objects` verified on production, but the released `bex` v0.6.0 refuses every `ea objects` command before sending a request; no CLI release carries the pass-through (~20m plus the release run) ← `/qa-find-bugs-cli` sweeps 47 and 85 2026-11-15: w21/m415 closed on a checkout build and the unmodified `render`; `git tag` still ends at `bex-cli/v0.6.0`; major
 - [ ] [028](028.md) — A static site published without a build command reports a missing branch as `update_failed` (after `update_in_progress`); a repo build reports the same mistake as `build_failed` (~45m) ← `/qa-find-bugs-cli` sweep 37 2026-11-15: the publish Job's clone exits 128, which `failedContainerDetail` does not count as the tenant's (only exit 66 does, w4/493), so `failPublish` closes the row as a rollout; minor

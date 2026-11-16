@@ -1,16 +1,16 @@
 # w32 · m419 — A setting saved after a failed image deploy takes effect: IP allow-list, suspend and routing keep following the service while the previous release serves, as on Render
 
-**Worker:** worker32 **Goal:** on a prebuilt-image web service (or an image-port private service) whose newest deploy failed because the registry refused its image, every later setting that acts without a deploy reaches the running service within seconds, as it does on a healthy one: the IP allow-list blocks and reopens, a suspend stops it, and the failed deploy still reads `update_failed` with no false outage. **Status:** todo
+**Worker:** worker32 **Goal:** on a prebuilt-image web service (or an image-port private service) whose newest deploy failed because the registry refused its image, every later setting that acts without a deploy reaches the running service within seconds, as it does on a healthy one: the IP allow-list blocks and reopens, a suspend stops it, and the failed deploy still reads `update_failed` with no false outage. **Status:** todo (t001–t005 done; t006 waits for a production pin that carries the operator change)
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Hold the serving release when the newest image release is refused before dispatch        | 1h  | —          |
-| t002 | Every setting that acts without a deploy converges over a refused image release (blast radius) | 45m | t001       |
-| t003 | Render parity                                                                             | 15m | t001, t002 |
-| t004 | Simplify                                                                                  | 15m | t003       |
-| t005 | Test coverage                                                                             | 45m | t003       |
+| t001 | Hold the serving release when the newest image release is refused before dispatch — **DONE** | 1h  | —          |
+| t002 | Every setting that acts without a deploy converges over a refused image release (blast radius) — **DONE** | 45m | t001       |
+| t003 | Render parity — **DONE** | 15m | t001, t002 |
+| t004 | Simplify — **DONE** | 15m | t003       |
+| t005 | Test coverage — **DONE** | 45m | t003       |
 | t006 | Closeout (live walk on production)                                                        | 30m | t005       |
 
 ## Definition of done
@@ -104,3 +104,34 @@ The saved-image path (`spec.image`) behaves like the per-deploy override (`spec.
 - `rg -n -i 'suspend.*keeps serving|after a failed (image )?deploy' .pm` → no open item.
 - w4/m418 (filed 2026-11-15 from w4/673; fix `364fff7d4` on `main`, not deployed as of `dfc31e46d`) is a neighbor, not a duplicate. It makes a configuration-only release of an image-backed service rerun the image it is serving instead of the saved tag, through a backend `rollout` helper. This milestone is on the operator side: settings must converge while the saved image is refused. Both pick the image a release runs, so whichever lands second rebases on the other's selection. `364fff7d4` changes only the backend (`rollout.SelectServedImage`, used by environment saves, env-group writes and Blueprint plans). The operator path this milestone fixes (`failBeforeDispatch` before `dispatchRuntime`) is untouched, and so are the settings that act without a release: IP allow-list and suspend. Once deployed, an environment "Save and deploy" after a refused image may run the served image and go live, so t001's regression test should not rely on that path to reproduce the stall.
 - Not deploy lag: `app_controller.go:770-779` and `release_identity.go:720-724` are unchanged in substance on `origin/main` `48c93ceed`; the refactors #158 and #161 only moved lines.
+
+## Implementation (2026-11-16, worker32)
+
+- **t001.** Over a served release, `failBeforeDispatch` records the Rollout verdict as w4/533 did, then holds through `holdPendingArtifact`. The serving release's Services, Ingress and middlewares, replicas, suspension and sleep keep following the App, and the pod template is never touched. `settlePriorRelease` reads "the latest image could not be read; the previously deployed release keeps serving". `imageReadFailureRecorded` (the Rollout verdict for this release, with reason `ImagePullFailed` or `ImageMetadataUnavailable`) sends later passes straight to the hold, so the registry is not read again. The verdict is written before the hold, so no exit of the hold can lose it.
+  - The verdict was already final: `failedRolloutOverServed` holds such a release off the pod template (`actHoldVerdict`), so a retried read that succeeds could never roll it.
+  - A save after the refusal holds too, as w8/289 holds one after a failed build: a `services update --image` back to a good tag leaves the served pod template alone until the next deploy.
+  - With no served release, the refusal stays an ordinary failure (`Failed`, Ready `ImagePullFailed`, nothing dispatched).
+- **Design note** in [ADR004](../../../docs/ADR004-app-deployment.md) § A release without an image does not freeze the serving one either.
+
+### t002 matrix
+
+Every row runs on a served `whoami:v1.10.3` image web service (`PortModeWebImageV1`) whose newest deploy the fake registry refused. The specs are in `lego/operator/internal/controller/refused_image_hold_envtest_test.go` ("Settings over a refused image release (w32/m419)"). Each row asserts that the refused release's Rollout verdict stays at its generation (the deploy row stays `update_failed`), that the phase stays Running or Hibernated with Ready on the serving release (no `server_failed`), and that the pod template stays the served one.
+
+| Row | Result | Spec |
+| --- | --- | --- |
+| Service IP allow-list restrict / reopen | converges: `-ip-allow` Middleware chained, then removed | table, all six entries |
+| Environment layer (`spec.environmentIPAllowList`, w4/m28) | converges: `-env-ip-allow` | "converges every other setting" |
+| Workspace layer (`spec.workspaceIPAllowList`, w9/m388) | converges: `-ws-ip-allow` | same |
+| Suspend / resume | converges: 0 replicas, hosts on the activator's suspended responder (`bex-activator-<app>:8888`), Hibernated; resume brings 1 replica and the route back | table, all six entries |
+| Free-tier auto-sleep / wake | converges: route to the activator, then 0 replicas; a fresh last-active wakes it on the serving release | "sleeps and wakes a free service" |
+| Custom domain add / remove | converges: the Ingress gains and loses the host | "converges every other setting" |
+| `numInstances` | converges: 2, then 1 | same; pserv too |
+| Autoscaling | converges: enabling min 2 / max 3 seeds 2 running; disabling returns to 1 | same |
+| Maintenance mode | converges: the route moves to the maintenance responder and back | same |
+| Edge-cache profile | not an operational setting: `cacheProfile` is release identity (`release_identity.go`, `releaseIdentityInput.CacheProfile`) and bex-api opens a settings-change deploy for it (`apps.SetCacheProfile` → `rollouts().Patch`). That release reads its own image, so over a per-deploy image it deploys the saved tag and goes live | same, last step |
+| Image-port private service | converges: suspend, resume, `numInstances`; the Services keep the serving network's port 80; the next deploy goes live | "holds an image-port private service" |
+
+Refusal reasons, each running the allow-list and suspend rows and then a way out: 404 (`DeployReasonImageNotFound`), 401 after the Bearer exchange and 403 (`ImagePullFailed`, access wording), 400 (`ImagePullFailed`, `DeployReasonImageRead` wording), and an image index without the hosting platform (`ImageMetadataUnavailable`). Paths: a per-deploy `--image` override (404, 401, 400, other) and a bad tag saved with `services update --image` and then deployed (404, 403). For the saved paths, saving the good tag again rolls nothing until the deploy. The way out is the next deploy, or a rollback to the served release (401). Each goes live with its own revision.
+
+- **Proof:** with the operator change reverted and the specs kept, 9 of the 10 fail (the allow-list is never projected, or the refused tag is read again on every pass). The tenth, the first-release guard, passes either way by design.
+- **Production rows** are the closeout walk (t006): DoD items 1–4 cover the service allow-list and suspend on the override path.

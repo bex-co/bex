@@ -367,6 +367,9 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
   - **Asleep.** A service already asleep skips the replica plan entirely, including the traffic query, until a request stamps last-active.
   - **Every other held pass** (a recorded failure, a suspended App, an event) converges the slug Service and the execution-policy removal, and rewrites the Ingress with its middlewares. Custom domains and IP allow-list edits made while a release is held therefore apply, including over a failed pre-deploy step.
 - **Suspended.** A suspended App reuses its serving image instead of building. That pass now parks through the hold, and no longer writes the unbuilt release's config onto the parked template.
+- **An image refused before dispatch (w32/m419).** An image-port service reads its release's image metadata before it dispatches anything. When the registry refuses that read (a tag that does not exist, a refused credential, an image without the hosting platform) over a release that served, `failBeforeDispatch` records the Rollout verdict (w4/533) and then holds through `holdPendingArtifact`, so the serving release keeps following the App like a held build.
+  - Before, every later pass re-read the refused image (`reusableArtifactImage` returns the release's per-deploy image, or the saved one) and stopped at the refusal. An IP allow-list, a suspend or a workspace rule saved after a typo'd tag was never enforced until the next deploy went live.
+  - That verdict makes the release final: a dispatch would only hold it off the pod template (`actHoldVerdict`). So a later pass that finds it recorded (`imageReadFailureRecorded`) goes straight to the hold, without reading the registry again. A save after the refusal holds as well, as w8/289 holds one after a failed build. The next deploy is a new release and reads its image afresh.
 - **Unchanged:**
   - a first release;
   - cron jobs and static sites;
