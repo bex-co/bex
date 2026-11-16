@@ -1,6 +1,6 @@
 # w4 · m329 — In the zh dashboard, the service header's "Slug" label, the CPU unit "cores" and the operator's deploy reason sentences stay English
 
-**Worker:** worker4 **Goal:** a Chinese-language owner reads the service header, the Metrics CPU limit and a deploy's in-progress or failure reason in Chinese, while every API keeps Render's English sentences. **Status:** blocked — t001–t004 and t006–t008 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
+**Worker:** worker4 **Goal:** a Chinese-language owner reads the service header, the Metrics CPU limit and a deploy's in-progress or failure reason in Chinese, while every API keeps Render's English sentences. **Status:** done — DoD replayed live on pin `7aaa8700befa` 2026-11-16 ([t005](done/t005.md))
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Types and operator: the deploy reason sentences as coded templates — **DONE** | 40m | — |
 | [t003](done/t003.md) | Backend: GraphQL `failureReasonTemplate` and `stallReasonTemplate` — **DONE** | 30m | t002 |
 | [t004](done/t004.md) | Dashboard: known templates worded in en and zh on the deploy header, the Deploys list and Events — **DONE** | 40m | t003 |
-| [t005](t005.md) | Live verification on an owned image service | 20m | t004 |
+| [t005](done/t005.md) | Live verification on an owned image service — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 5m | t004 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t004 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 25m | t004 |
-| [t009](t009.md) | Closeout | 10m | t005–t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t005–t008 |
 
 Nine tasks, 200m (3h20m).
 
@@ -91,3 +91,21 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) carries `2a9b373b8`. Fixtures were t
   - REST `failureReason`: "the image docker.io/traefik/whoami:v0.0.0-qa168-nope was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists".
   - The zh Deploys row: "在镜像仓库中找不到镜像 docker.io/traefik/whoami:v0.0.0-qa168-nope：仓库或标签不存在。请检查镜像 URL 和标签，或部署一个存在的镜像摘要". The en row is unchanged.
 - **Not caught:** the Events "部署已开始" row's port-detection line. The deploy went live before the Events tab was opened, and that line shows only while the deploy is open.
+
+## Unblock record (2026-11-16)
+
+- **Affected:** w4/m329 t005, t009. **Source:** verified evidence (release gate).
+- **Finding:** production runs platform pin `7aaa8700befa` (`546945798`, the latest `chore(deploy): pin platform images` on `origin/main`). `git merge-base --is-ancestor` puts the gate line's `4630a48a7` and the fix commits `2a9b373b8` and `63114827e` inside it, so the release gate is clear and no gate remains. Next step: replay t005 live, then close (t009).
+
+## Live verification on pin `7aaa8700befa` (2026-11-16, t005)
+
+QA user via `scripts/qa-login.sh`, workspace `bex-canary`. Fixtures were two Free image services, both deleted afterwards (DELETE 204, then GET 404):
+
+- `qa-20261116-r329-zh` (`srv-dbtm3hoddohc73aivdvg`, `traefik/whoami:v1.10.1`);
+- `qa-20261116-r329-nf` (`srv-dbtm4a8ddohc73aivedg`, the nonexistent tag `whoami:v0.0.0-qa329-nope`).
+
+Results:
+
+- **Events during the first deploy (the line round 168 missed).** `/events?lang=zh` opened 9 s after create read "部署已开始 · 进行中 · 正在等待容器启动，然后检测其 HTTP 端口 · 首次部署" at 20:04:32 UTC; the deploy went `live` at 20:05:04.
+- **Header and Metrics.** zh: "标识（Slug）" and "限额 0.100 核"; en: "Slug" and "Limit 0.100 cores", unchanged.
+- **Image not found.** REST `failureReason` keeps the English sentence ("the image docker.io/traefik/whoami:v0.0.0-qa329-nope was not found in its registry: …"). The zh Deploys row and the zh Events "部署已完成 · 失败" row read "在镜像仓库中找不到镜像 docker.io/traefik/whoami:v0.0.0-qa329-nope：仓库或标签不存在。请检查镜像 URL 和标签，或部署一个存在的镜像摘要". The en rows show the English sentence unchanged.
