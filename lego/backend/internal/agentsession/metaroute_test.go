@@ -58,11 +58,11 @@ func TestMetaRouteMintsTheMetaKeyPinnedToTheProfileModel(t *testing.T) {
 	if len(keys.reads) != 0 {
 		t.Fatalf("the workspace key was read for muse: %v", keys.reads)
 	}
-	if !PlatformRouteServes("tea-a", "muse") || !ProfileServed("tea-a", "muse") || !PlatformRouteMeters("tea-a", "muse", true) {
+	if !PlatformRouteServes("muse") || !ProfileServed("muse") || !PlatformRouteMeters("muse", true) {
 		t.Fatal("a workspace must be served and metered for muse, its own key notwithstanding")
 	}
 	// The Meta route serves platform-only profiles alone.
-	if PlatformRouteServes("tea-a", "codex") || PlatformRouteMeters("tea-a", "codex", false) {
+	if PlatformRouteServes("codex") || PlatformRouteMeters("codex", false) {
 		t.Fatal("the Meta route leaked to a BYO profile")
 	}
 }
@@ -74,11 +74,11 @@ func TestMetaRouteServesEveryWorkspace(t *testing.T) {
 	if err != nil || got.Credential != testMetaKey {
 		t.Fatalf("mint in another workspace = %v, metaKey=%v", err, got.Credential == testMetaKey)
 	}
-	if !PlatformRouteServes("tea-other", "muse") || !ProfileServed("tea-other", "muse") {
+	if !PlatformRouteServes("muse") || !ProfileServed("muse") {
 		t.Fatal("muse not served in every workspace")
 	}
 	EnablePlatformMetaRoute("")
-	if PlatformRouteServes("tea-other", "muse") || ProfileServed("tea-other", "muse") {
+	if PlatformRouteServes("muse") || ProfileServed("muse") {
 		t.Fatal("a route without a key still serves muse")
 	}
 	if _, err := mintMuse(t, "tea-other", &recordingKV{memoryKV: memoryKV{}}, &spendLedger{plan: store.PlanPro}); !errors.Is(err, ErrForbidden) {

@@ -50,7 +50,7 @@ func TestAgentProfilesManifestCoversLegacyAdapters(t *testing.T) {
 				t.Fatalf("gemini runtime = %#v", profile)
 			}
 		}
-		endpoint, err := RegisteredModelEndpoint("tea-a", id, "", false)
+		endpoint, err := RegisteredModelEndpoint(id, "", false)
 		if err != nil {
 			t.Fatalf("RegisteredModelEndpoint(%q) = %v", id, err)
 		}
@@ -201,15 +201,15 @@ func TestMuseProfileContract(t *testing.T) {
 	if profile.SessionConfig["sandbox"] != "disabled" || profile.Env["MUSE_CODE_ACP_ALLOW_YOLO"] != "1" {
 		t.Fatalf("muse sandbox config = %v, env = %v", profile.SessionConfig, profile.Env)
 	}
-	endpoint, err := RegisteredModelEndpoint("tea-a", "muse", "", false)
+	endpoint, err := RegisteredModelEndpoint("muse", "", false)
 	if err != nil || endpoint != "https://"+MetaModelHost+"/v1" {
 		t.Fatalf("muse endpoint = %q, %v", endpoint, err)
 	}
 	// Until a bex-owned route serves it, no workspace can run it.
-	if ProfileServed("tea-a", "muse") {
+	if ProfileServed("muse") {
 		t.Fatal("muse served without a route")
 	}
-	if !ProfileServed("tea-a", "codex") || ProfileServed("tea-a", "unknown") {
+	if !ProfileServed("codex") || ProfileServed("unknown") {
 		t.Fatal("ProfileServed must pass a BYO-capable profile and refuse an unknown one")
 	}
 	// A copy handed out cannot change the release contract.

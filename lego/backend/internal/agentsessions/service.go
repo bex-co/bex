@@ -478,14 +478,14 @@ func (s *Service) modelAPIKey(ctx context.Context, workspaceID string) (string, 
 // model. The refusal names the agent and where to set the key.
 func (s *Service) requireModelCredential(ctx context.Context, workspaceID, agent string, env store.AgentEnvironment) error {
 	if profile, _ := agentsession.LookupAgentProfile(agent); profile.PlatformOnly {
-		if agentsession.PlatformRouteServes(workspaceID, agent) {
+		if agentsession.PlatformRouteServes(agent) {
 			return nil
 		}
 		return core.NewBadRequestError(AgentUnavailableCode,
 			fmt.Sprintf("the %s agent is not available in this workspace", agent),
 			map[string]any{"field": "agentConfig.agent", "agent": agent})
 	}
-	if env.ModelKeySet() || agentsession.PlatformRouteServes(workspaceID, agent) || s.ModelKeys == nil {
+	if env.ModelKeySet() || agentsession.PlatformRouteServes(agent) || s.ModelKeys == nil {
 		return nil
 	}
 	// An unreadable key store defers to the model proxy, which reads the key
@@ -615,7 +615,7 @@ func (s *Service) resolveCreateModel(ctx context.Context, workspaceID string, re
 	if req.AgentConfig.Model, err = sessionModel(workspaceID, req.AgentConfig, env, true); err != nil {
 		return env, nil, err
 	}
-	modelEndpoint, egressAllowlist, err := createEgress(workspaceID, req.AgentConfig, effectiveHosts(env), req.EgressAllowlist, env.ModelKeySet())
+	modelEndpoint, egressAllowlist, err := createEgress(req.AgentConfig, effectiveHosts(env), req.EgressAllowlist, env.ModelKeySet())
 	if err != nil {
 		return env, nil, err
 	}
@@ -685,7 +685,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
-	ceiling, err := parseSessionCeiling(req.MaxSpendUSD, agentsession.PlatformRouteMeters(workspaceID, req.AgentConfig.Agent, env.ModelKeySet()))
+	ceiling, err := parseSessionCeiling(req.MaxSpendUSD, agentsession.PlatformRouteMeters(req.AgentConfig.Agent, env.ModelKeySet()))
 	if err != nil {
 		return View{}, err
 	}
@@ -1083,7 +1083,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	var env store.AgentEnvironment
 	var connection github.Connection
 	var group errgroup.Group
-	routed := agentsession.PlatformModelKeyReady(workspaceID, false)
+	routed := agentsession.PlatformModelKeyReady(false)
 	group.Go(func() error {
 		// The environment decides which agents are offered (w7/m392), so its
 		// read fails the call. The workspace has its own key per the recorded
@@ -1118,13 +1118,13 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	}
 	// Only the agents the workspace's admins left on that it can also run.
 	caps.Agents = slices.DeleteFunc(agentProfiles(), func(profile AgentProfile) bool {
-		return !agentEnabled(env, profile.ID) || !agentsession.ProfileServed(workspaceID, profile.ID)
+		return !agentEnabled(env, profile.ID) || !agentsession.ProfileServed(profile.ID)
 	})
 	caps.ModelKeyReady = ownKey || routed
 	for i := range caps.Agents {
 		// A platform-only agent is listed only where its route serves it, so the
 		// workspace key never decides its readiness.
-		caps.Agents[i].ModelKeyReady = ownKey || agentsession.PlatformRouteServes(workspaceID, caps.Agents[i].ID)
+		caps.Agents[i].ModelKeyReady = ownKey || agentsession.PlatformRouteServes(caps.Agents[i].ID)
 	}
 	if s.GitHub != nil {
 		caps.GitHub = GitHubReadinessView{
@@ -1842,7 +1842,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 	// Model route (ADR090, dev or platform): the model id
 	// Claude Code must ask the OpenRouter endpoint for. It overrides the line
 	// above, so a platform-route sandbox always carries the pinned model.
-	for name, value := range agentsession.ModelRouteEnv(record.WorkspaceID, config.Agent, byoKey) {
+	for name, value := range agentsession.ModelRouteEnv(config.Agent, byoKey) {
 		env[name] = value
 	}
 	return env
@@ -2088,7 +2088,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if config.Model, err = sessionModel(record.WorkspaceID, config, workspaceEnv, false); err != nil {
 		return View{}, err
 	}
-	modelEndpoint, egressAllowlist, err := createEgress(record.WorkspaceID, config, effectiveHosts(workspaceEnv), req.EgressAllowlist, workspaceEnv.ModelKeySet())
+	modelEndpoint, egressAllowlist, err := createEgress(config, effectiveHosts(workspaceEnv), req.EgressAllowlist, workspaceEnv.ModelKeySet())
 	if err != nil {
 		return View{}, err
 	}

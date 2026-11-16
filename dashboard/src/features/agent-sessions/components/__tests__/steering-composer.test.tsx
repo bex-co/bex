@@ -18,7 +18,7 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
 const capabilitiesState = {
   capabilities: {
     enabled: true,
-    modelKeyReady: true,
+    modelKeyReadyAgents: ["claude"],
     github: { connected: true },
     attachments: { enabled: true, maxBytes: 25 * 1024 * 1024, maxPerTurn: 10 },
   },

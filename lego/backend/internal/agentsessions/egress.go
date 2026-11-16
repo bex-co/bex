@@ -23,8 +23,8 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 )
 
-// createEgress resolves the session's model endpoint for workspaceID (whose
-// model route, if any, decides it now; byoKey takes it off the platform
+// createEgress resolves the session's model endpoint (the model route, if
+// any, decides it now; byoKey takes it off the platform
 // route) and the session's tenant widening: the hosts the workspace network
 // tier contributes (workspaceHosts, already validated when the environment
 // was saved) merged with the request's explicit egressAllowlist. The
@@ -33,8 +33,8 @@ import (
 // package-registry catalog is not part of the widening: sessionegress renders
 // it for the registries and custom tiers, in both phases (the full tier
 // renders no FQDN rule at all).
-func createEgress(workspaceID string, config AgentConfig, workspaceHosts, requested []string, byoKey bool) (string, []string, error) {
-	endpoint, err := agentsession.RegisteredModelEndpoint(workspaceID, config.Agent, config.ModelEndpoint, byoKey)
+func createEgress(config AgentConfig, workspaceHosts, requested []string, byoKey bool) (string, []string, error) {
+	endpoint, err := agentsession.RegisteredModelEndpoint(config.Agent, config.ModelEndpoint, byoKey)
 	if err != nil {
 		return "", nil, err
 	}

@@ -184,9 +184,9 @@ func OnMetaRoute(agent string) bool {
 	return err == nil && host == MetaModelHost
 }
 
-// metaRouteKey is the bex-owned Meta key that serves agent in workspaceID,
-// or "" when none does.
-func metaRouteKey(workspaceID, agent string) string {
+// metaRouteKey is the bex-owned Meta key that serves agent, or "" when none
+// does. Routes cover every workspace (w10/m14 t007).
+func metaRouteKey(agent string) string {
 	if route := activeMetaRoute.Load(); route.active() && OnMetaRoute(agent) {
 		return route.platformKey
 	}
@@ -225,10 +225,10 @@ func routeModel(env, model string) (string, error) {
 	return model, nil
 }
 
-// routeFor is the route that applies to agent in workspaceID, or nil. byoKey
+// routeFor is the route that applies to agent, or nil. byoKey
 // (the workspace set its own model key) takes the workspace off the platform
 // route.
-func routeFor(workspaceID, agent string, byoKey bool) *modelRoute {
+func routeFor(agent string, byoKey bool) *modelRoute {
 	if !PinnedAgent(agent) {
 		return nil
 	}
@@ -241,54 +241,54 @@ func routeFor(workspaceID, agent string, byoKey bool) *modelRoute {
 	return nil
 }
 
-// platformRouteCovers reports whether the platform route serves workspaceID's
-// agent profile, BEFORE the BYO precedence: the only case in
+// platformRouteCovers reports whether the platform route serves the agent
+// profile, BEFORE the BYO precedence: the only case in
 // which the mint must look up whether the workspace set its own key.
-func platformRouteCovers(workspaceID, agent string) bool {
+func platformRouteCovers(agent string) bool {
 	return PinnedAgent(agent) && activePlatformModelRoute.Load().active()
 }
 
 // PlatformRouteServes reports whether a bex-owned route supplies agent's
-// model credential in workspaceID when the workspace has no key of its own:
+// model credential when the workspace has no key of its own:
 // the OpenRouter route for the claude profile, the Meta route for a
 // platform-only one. Codex and Gemini need the workspace's key
 // (ModelKeySecretPath) to run at all.
-func PlatformRouteServes(workspaceID, agent string) bool {
-	return PlatformRouteMeters(workspaceID, agent, false)
+func PlatformRouteServes(agent string) bool {
+	return PlatformRouteMeters(agent, false)
 }
 
-// PlatformRouteMeters reports whether agent's sessions in workspaceID run on
+// PlatformRouteMeters reports whether agent's sessions run on
 // a bex-owned key, and so are priced, spend-capped and counted toward the
 // trust tier: the claude profile on the OpenRouter route unless the workspace
 // set its own key (byoKey), and a platform-only profile wherever the Meta
 // route serves it.
-func PlatformRouteMeters(workspaceID, agent string, byoKey bool) bool {
-	return metaRouteKey(workspaceID, agent) != "" || (!byoKey && platformRouteCovers(workspaceID, agent))
+func PlatformRouteMeters(agent string, byoKey bool) bool {
+	return metaRouteKey(agent) != "" || (!byoKey && platformRouteCovers(agent))
 }
 
-// ProfileServed reports whether workspaceID can run agent at all. A
+// ProfileServed reports whether a workspace can run agent at all. A
 // platform-only profile (ADR108 D5) runs only where a bex-owned route serves
 // it; every other profile can also run on the workspace's own key.
-func ProfileServed(workspaceID, agent string) bool {
+func ProfileServed(agent string) bool {
 	profile, ok := LookupAgentProfile(agent)
-	return ok && (!profile.PlatformOnly || PlatformRouteServes(workspaceID, profile.ID))
+	return ok && (!profile.PlatformOnly || PlatformRouteServes(profile.ID))
 }
 
-// PlatformModelKeyReady reports whether workspaceID's model credential is the
+// PlatformModelKeyReady reports whether a workspace's model credential is the
 // platform route's key, so readiness need not (and must not) consult the
 // workspace's BYO key. The platform route only serves the claude profile, and
 // never a workspace with its own key (byoKey).
-func PlatformModelKeyReady(workspaceID string, byoKey bool) bool {
+func PlatformModelKeyReady(byoKey bool) bool {
 	return !byoKey && activePlatformModelRoute.Load().active()
 }
 
-// PlatformPinnedModel is the model the platform route pins for workspaceID's
+// PlatformPinnedModel is the model the platform route pins for a workspace's
 // claude sessions — the gateway refuses any other request model with a 403 —
 // and whether the workspace is on that route at all (never with its own key,
 // byoKey). Session create refuses a different explicit model up front
 // (AGENT_SESSION_MODEL_PINNED) and the workspace agent environment reports it
 // as read-only (w10/m17).
-func PlatformPinnedModel(workspaceID string, byoKey bool) (string, bool) {
+func PlatformPinnedModel(byoKey bool) (string, bool) {
 	route := activePlatformModelRoute.Load()
 	if byoKey || !route.active() {
 		return "", false
@@ -309,20 +309,20 @@ func PinnedAgent(agent string) bool {
 	return strings.ToLower(strings.TrimSpace(agent)) == openRouterAgent
 }
 
-// registeredEndpoint is the endpoint a profile resolves to for workspaceID:
-// the release manifest's, unless a route covers that workspace and profile.
-func registeredEndpoint(workspaceID string, profile AgentProfile, byoKey bool) string {
-	if routeFor(workspaceID, profile.ID, byoKey) != nil {
+// registeredEndpoint is the endpoint a profile resolves to: the release
+// manifest's, unless a route covers the profile.
+func registeredEndpoint(profile AgentProfile, byoKey bool) string {
+	if routeFor(profile.ID, byoKey) != nil {
 		return openRouterEndpoint
 	}
 	return profile.ModelEndpoint
 }
 
-// ModelRouteEnv is the extra sandbox environment a route needs for agent in
-// workspaceID: the model id under every name Claude Code reads. Nil when no
+// ModelRouteEnv is the extra sandbox environment a route needs for agent: the
+// model id under every name Claude Code reads. Nil when no
 // route applies (byoKey: see routeFor).
-func ModelRouteEnv(workspaceID, agent string, byoKey bool) map[string]string {
-	route := routeFor(workspaceID, agent, byoKey)
+func ModelRouteEnv(agent string, byoKey bool) map[string]string {
+	route := routeFor(agent, byoKey)
 	if route == nil {
 		return nil
 	}

@@ -30,7 +30,7 @@ vi.mock(
     useAgentSessionCapabilities: () => ({
       capabilities: {
         enabled: true,
-        modelKeyReady: true,
+        modelKeyReadyAgents: ["claude"],
         github: { connected: true },
         attachments: { enabled: false, maxBytes: 0, maxPerTurn: 0 },
       },

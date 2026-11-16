@@ -425,7 +425,7 @@ func (s *Service) byoKeyAfter(ctx context.Context, workspaceID string, input Env
 	if keyChanged {
 		return key != "", nil
 	}
-	if _, covered := agentsession.PlatformPinnedModel(workspaceID, false); !covered || input.DefaultModel == nil {
+	if _, covered := agentsession.PlatformPinnedModel(false); !covered || input.DefaultModel == nil {
 		return false, nil
 	}
 	current, err := s.workspaceEnvironment(ctx, workspaceID)
@@ -499,7 +499,7 @@ func validateEnvironmentInput(workspaceID string, input EnvironmentInput, byoKey
 			return patch, core.NewBadRequestError("AGENT_ENVIRONMENT_MODEL_INVALID",
 				"defaultModel must be a model id without spaces (at most 255 characters)", map[string]any{"field": "defaultModel"})
 		}
-		if pinned, ok := agentsession.PlatformPinnedModel(workspaceID, byoKey); ok && model != "" && model != pinned {
+		if pinned, ok := agentsession.PlatformPinnedModel(byoKey); ok && model != "" && model != pinned {
 			return patch, core.NewBadRequestError("AGENT_ENVIRONMENT_MODEL_PINNED",
 				"this workspace runs agents on the platform model; its default model cannot be changed",
 				map[string]any{"field": "defaultModel", "pinnedModel": pinned})
@@ -571,7 +571,7 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		model := row.DefaultModel
 		view.DefaultModel = &model
 	}
-	switch pinned, ok := agentsession.PlatformPinnedModel(row.WorkspaceID, row.ModelKeySet()); {
+	switch pinned, ok := agentsession.PlatformPinnedModel(row.ModelKeySet()); {
 	case row.ModelKeySet():
 		view.ModelSource = ModelSourceBYO
 	case ok:
@@ -656,13 +656,13 @@ func sessionModel(workspaceID string, config AgentConfig, env store.AgentEnviron
 		return profile.Model, nil
 	}
 	pinnedAgent := agentsession.PinnedAgent(config.Agent)
-	if pinned, ok := agentsession.PlatformPinnedModel(workspaceID, env.ModelKeySet()); ok && pinnedAgent {
+	if pinned, ok := agentsession.PlatformPinnedModel(env.ModelKeySet()); ok && pinnedAgent {
 		if explicit && config.Model != "" && config.Model != pinned {
 			return "", modelPinnedError("this workspace runs agents on the platform model; omit agentConfig.model or set it to the pinned model", pinned)
 		}
 		return pinned, nil
 	}
-	if routeModel, covered := agentsession.PlatformPinnedModel(workspaceID, false); pinnedAgent && !explicit && covered && config.Model == routeModel {
+	if routeModel, covered := agentsession.PlatformPinnedModel(false); pinnedAgent && !explicit && covered && config.Model == routeModel {
 		return env.DefaultModel, nil
 	}
 	if config.Model != "" {

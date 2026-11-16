@@ -70,7 +70,7 @@ func TestPlatformModelRouteConfigRefusals(t *testing.T) {
 			t.Fatalf("%s: err = %v, want it to name %q", tc.name, err, tc.want)
 		}
 	}
-	if PlatformModelKeyReady("tea-a", false) || ModelRouteEnv("tea-a", "claude", false) != nil {
+	if PlatformModelKeyReady(false) || ModelRouteEnv("claude", false) != nil {
 		t.Fatal("a refused configuration left a route installed")
 	}
 	// Production identity is irrelevant to the platform route (it has none).
@@ -103,20 +103,20 @@ func TestPlatformModelRouteMintsThePlatformKeyForAWorkspace(t *testing.T) {
 	if _, err := mintFor(t, "tea-a", "", &recordingKV{memoryKV: memoryKV{}}); err != nil {
 		t.Fatalf("workspace without a BYO key: %v", err)
 	}
-	if !PlatformModelKeyReady("tea-a", false) {
+	if !PlatformModelKeyReady(false) {
 		t.Fatal("workspace not model-key ready")
 	}
-	env := ModelRouteEnv("tea-a", "claude", false)
+	env := ModelRouteEnv("claude", false)
 	for _, name := range []string{"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"} {
 		if env[name] != DefaultDevModel {
 			t.Fatalf("%s = %q", name, env[name])
 		}
 	}
 	// Other profiles in the workspace are untouched.
-	if got, err := RegisteredModelEndpoint("tea-a", "codex", "", false); err != nil || got != "https://api.openai.com/v1" {
+	if got, err := RegisteredModelEndpoint("codex", "", false); err != nil || got != "https://api.openai.com/v1" {
 		t.Fatalf("codex endpoint = %q err=%v", got, err)
 	}
-	if ModelRouteEnv("tea-a", "codex", false) != nil {
+	if ModelRouteEnv("codex", false) != nil {
 		t.Fatal("route env leaked to codex")
 	}
 }
@@ -125,13 +125,13 @@ func TestPlatformModelRouteMintsThePlatformKeyForAWorkspace(t *testing.T) {
 // key runs claude on OpenRouter with the platform key and the pinned model.
 func TestPlatformModelRouteCoversEveryWorkspace(t *testing.T) {
 	enablePlatformRoute(t)
+	if got, err := RegisteredModelEndpoint("claude", "", false); err != nil || got != openRouterEndpoint {
+		t.Fatalf("endpoint = %q err=%v", got, err)
+	}
+	if !PlatformModelKeyReady(false) || ModelRouteEnv("claude", false)["ANTHROPIC_MODEL"] != DefaultDevModel {
+		t.Fatal("not on the platform route")
+	}
 	for _, ws := range []string{"tea-a", "tea-other"} {
-		if got, err := RegisteredModelEndpoint(ws, "claude", "", false); err != nil || got != openRouterEndpoint {
-			t.Fatalf("%s: endpoint = %q err=%v", ws, got, err)
-		}
-		if !PlatformModelKeyReady(ws, false) || ModelRouteEnv(ws, "claude", false)["ANTHROPIC_MODEL"] != DefaultDevModel {
-			t.Fatalf("%s: not on the platform route", ws)
-		}
 		got, err := mintFor(t, ws, "", &recordingKV{memoryKV: memoryKV{}})
 		if err != nil || got.Credential != testPlatformKey || got.PinnedModel != DefaultDevModel {
 			t.Fatalf("%s: mint = pin %q platformKey=%v err=%v", ws, got.PinnedModel, got.Credential == testPlatformKey, err)
@@ -143,13 +143,13 @@ func TestPlatformModelRouteCoversEveryWorkspace(t *testing.T) {
 // api.anthropic.com, its own BYO key, no pin, no model env — even when the
 // session or request names the OpenRouter endpoint explicitly.
 func TestPlatformModelRouteOffLeavesWorkspacesOnTheirOwnKey(t *testing.T) {
-	if got, err := RegisteredModelEndpoint("tea-other", "claude", "", false); err != nil || got != "https://api.anthropic.com/v1" {
+	if got, err := RegisteredModelEndpoint("claude", "", false); err != nil || got != "https://api.anthropic.com/v1" {
 		t.Fatalf("endpoint = %q err=%v", got, err)
 	}
-	if _, err := RegisteredModelEndpoint("tea-other", "claude", openRouterEndpoint, false); err == nil {
+	if _, err := RegisteredModelEndpoint("claude", openRouterEndpoint, false); err == nil {
 		t.Fatal("an off-route workspace accepted the OpenRouter endpoint")
 	}
-	if ModelRouteEnv("tea-other", "claude", false) != nil || PlatformModelKeyReady("tea-other", false) {
+	if ModelRouteEnv("claude", false) != nil || PlatformModelKeyReady(false) {
 		t.Fatal("route env or readiness without a route")
 	}
 	keys := &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-other"): {ModelKeyField: "sk-ant-api03-BYO"}}}
@@ -186,8 +186,8 @@ func TestPlatformRouteTakesPrecedenceOverDevRoute(t *testing.T) {
 	if got.Credential != "sk-or-v1-BYO" || got.EndpointHost != OpenRouterHost || got.PinnedModel != "" {
 		t.Fatalf("dev-route mint = host %q pin %q platformKey=%v", got.EndpointHost, got.PinnedModel, got.Credential == testPlatformKey)
 	}
-	if ModelRouteEnv("tea-byo", "claude", true)["ANTHROPIC_MODEL"] != "deepseek/dev-model" ||
-		ModelRouteEnv("tea-a", "claude", false)["ANTHROPIC_MODEL"] != DefaultDevModel {
+	if ModelRouteEnv("claude", true)["ANTHROPIC_MODEL"] != "deepseek/dev-model" ||
+		ModelRouteEnv("claude", false)["ANTHROPIC_MODEL"] != DefaultDevModel {
 		t.Fatal("route env did not follow the per-workspace route")
 	}
 	if got, err := mintFor(t, "tea-a", "", &recordingKV{memoryKV: memoryKV{}}); err != nil || got.Credential != testPlatformKey {
@@ -222,10 +222,10 @@ func TestBYOKeyWinsOverThePlatformRouteAtMint(t *testing.T) {
 				stored, got.EndpointHost, got.Scheme, got.PinnedModel, got.PathPrefix, got.Credential == "sk-ant-api03-BYO")
 		}
 	}
-	if PlatformModelKeyReady("tea-a", true) || ModelRouteEnv("tea-a", "claude", true) != nil {
+	if PlatformModelKeyReady(true) || ModelRouteEnv("claude", true) != nil {
 		t.Fatal("a BYO workspace is still on the platform route")
 	}
-	if _, ok := PlatformPinnedModel("tea-a", true); ok {
+	if _, ok := PlatformPinnedModel(true); ok {
 		t.Fatal("a BYO workspace is still pinned")
 	}
 

@@ -100,8 +100,8 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-sessions", () => ({
 const capabilitiesState = {
   capabilities: {
     enabled: true,
-    modelKeyReady: true,
     agents: ["claude", "gemini", "codex"] as string[] | undefined,
+    modelKeyReadyAgents: ["claude", "gemini", "codex", "muse"],
     github: {
       connected: true,
     },
@@ -206,7 +206,12 @@ beforeEach(() => {
   reposState.repos = defaultRepos;
   reposState.loading = false;
   capabilitiesState.capabilities.enabled = true;
-  capabilitiesState.capabilities.modelKeyReady = true;
+  capabilitiesState.capabilities.modelKeyReadyAgents = [
+    "claude",
+    "gemini",
+    "codex",
+    "muse",
+  ];
   capabilitiesState.capabilities.agents = ["claude", "gemini", "codex"];
   capabilitiesState.capabilities.github.connected = true;
   capabilitiesState.loading = false;
@@ -852,7 +857,7 @@ describe("NewSessionComposer", () => {
   });
 
   it("reports a missing model key before submit and blocks every session shape", async () => {
-    capabilitiesState.capabilities.modelKeyReady = false;
+    capabilitiesState.capabilities.modelKeyReadyAgents = [];
     const user = userEvent.setup();
     render(<NewSessionComposer />);
 
@@ -865,6 +870,29 @@ describe("NewSessionComposer", () => {
       screen.getByRole("link", { name: "Open Settings → Agents" }),
     ).toHaveAttribute("href", "/workspace/settings#agents");
     await typeTask(user);
+    expect(
+      screen.getByRole("button", { name: "Start session" }),
+    ).toBeDisabled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  // The platform route serves claude in every workspace (w10/m14 t007), so
+  // the workspace is "ready" for claude while codex still needs its own key:
+  // the gate follows the selected agent, not the workspace.
+  it("gates the model key per selected agent", async () => {
+    capabilitiesState.capabilities.modelKeyReadyAgents = ["claude"];
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+
+    expect(screen.queryByText("Add a model provider key first")).toBeNull();
+    expect(screen.getByRole("button", { name: "Start session" })).toBeEnabled();
+
+    await user.click(screen.getByLabelText("Agent"));
+    await user.click(await screen.findByRole("option", { name: "Codex" }));
+    expect(
+      await screen.findByText("Add a model provider key first"),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Start session" }),
     ).toBeDisabled();

@@ -22,7 +22,7 @@ describe("useAgentEnvironment update", () => {
     });
   });
 
-  // The composer's modelKeyReady comes from the capabilities query, so a key
+  // The composer's per-agent model-key readiness comes from the capabilities query, so a key
   // set or clear refetches it; other saves leave it alone.
   it("refetches the composer capabilities only on a key change", async () => {
     const { result } = renderHook(() => useAgentEnvironment("tea-1"));

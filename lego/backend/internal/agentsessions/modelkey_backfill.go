@@ -73,7 +73,7 @@ func BackfillModelKeyFlags(ctx context.Context, keys core.SecretKV, flags ModelK
 			continue
 		}
 		out.Keys++
-		if agentsession.PlatformModelKeyReady(workspaceID, false) {
+		if agentsession.PlatformModelKeyReady(false) {
 			out.PlatformRouted++
 			continue
 		}

@@ -114,9 +114,9 @@ fragment AgentSessionMintFields on AgentSession {
 query AgentSessionCapabilities($ownerId: String) {
   agentSessionCapabilities(ownerId: $ownerId) {
     enabled
-    modelKeyReady
     agents {
       id
+      modelKeyReady
     }
     github {
       connected

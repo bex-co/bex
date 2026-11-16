@@ -1,6 +1,6 @@
 # w10 · m14 — Platform model key: OpenRouter for an allowlisted workspace now, metered rollout to every workspace
 
-**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** todo (t001–t007, t012–t015 done; t007 widened the route to every workspace on 2026-11-16 by user decision; t008–t011 next) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
+**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** done (all 15 tasks; t007 widened the route to every workspace on 2026-11-16 by user decision; t008 fixed the composer's per-agent model-key gate) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
 
 ## Tasks (in order)
 
@@ -17,10 +17,10 @@
 | t014 | Tiered threshold billing via a Stripe item threshold; a failed charge stops model spend (ADR091 D10.2–D10.3) — **DONE** | 1.5h | t004, t005 |
 | t015 | Settle before delete; Radar + prepaid-card refusal + card fingerprint dedupe (ADR091 D10.4–D10.6) — **DONE** | 1.5h | t014 |
 | [t007](done/t007.md) | ✅ **done 2026-11-16 (user decision)** Widen the platform route to every workspace — due 2026-11-13 (gate left: user tops up the OpenRouter account. Test-mode e2e check satisfied 2026-11-12 by the t014 and settle probes. Key limit and Radar rules dropped 2026-11-12, terms published at `/legal/agent-models`) | 30m | t004–t006, t012–t015 |
-| t008 | Render parity (capabilities/model-key readiness across REST/GraphQL/MCP/dashboard)    | 20m  | t007       |
-| t009 | Simplify                                                                               | 20m  | t008       |
-| t010 | Test coverage                                                                          | 30m  | t008       |
-| t011 | Closeout                                                                               | 10m  | t009, t010 |
+| [t008](done/t008.md) | Render parity (capabilities/model-key readiness across REST/GraphQL/MCP/dashboard) — **DONE** | 20m  | t007       |
+| [t009](done/t009.md) | Simplify — **DONE** | 20m  | t008       |
+| [t010](done/t010.md) | Test coverage — **DONE** | 30m  | t008       |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m  | t009, t010 |
 
 ## Definition of done
 
@@ -41,7 +41,7 @@
 - **Expected outcome:** tenants can start agent sessions without bringing a model key, and the platform recovers the token cost through billing.
 - **Why now:** the production session above is unusable without a model key, and the AGENTS.md rule requires a dated widen-to-every-workspace task for any allowlist.
 - **Render parity included (t008):** model-key readiness is reported on REST/GraphQL/MCP and the dashboard composer.
-- **Pricing decision (2026-10-30):** [ADR091](../../../docs/ADR091-agent-model-pricing.md) — provider cost × 1.3, every plan pays per use, USD spend caps, non-payment protection. Moved out of `blocked/` the same day; t012 absorbs `w10/009`.
+- **Pricing decision (2026-10-30):** [ADR091](../../../../docs/ADR091-agent-model-pricing.md) — provider cost × 1.3, every plan pays per use, USD spend caps, non-payment protection. Moved out of `blocked/` the same day; t012 absorbs `w10/009`.
 - **Rescheduled 2026-11-05 (user decision: "完整的修", the complete fix).** t007 moves from 2026-11-06 to 2026-11-13. All of ADR091 ships before the allowlist widens: pricing (t004), caps and trust tiers (t005), BYO key (t012), UI (t013), threshold billing (t014) and settle-before-delete plus card checks (t015). The Billing label fix that t013 builds on is `w10/011`.
 
 ## Unblocked 2026-11-16 (verified finding)

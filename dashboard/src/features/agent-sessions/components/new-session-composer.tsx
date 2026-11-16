@@ -1,6 +1,6 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AtSign, Loader2 } from "lucide-react";
 import { GithubIcon } from "@/common/components/github-icon";
@@ -135,7 +135,17 @@ export function NewSessionComposer() {
   const showGitHubCallout = githubMissing && Boolean(repo);
   const showExamples = !noRepos && sessions.length === 0;
   const platformUnavailable = capabilities?.enabled === false;
-  const modelKeyMissing = capabilities?.enabled && !capabilities.modelKeyReady;
+  const form = useForm<ComposerValues>({
+    defaultValues: { agent: "claude" },
+  });
+  const {
+    formState: { isSubmitting },
+  } = form;
+  // Readiness is per agent: the platform route serves claude in every
+  // workspace, while codex and gemini still need the workspace's own key.
+  const agent = useWatch({ control: form.control, name: "agent" });
+  const modelKeyMissing =
+    capabilities?.enabled && !capabilities.modelKeyReadyAgents.includes(agent);
   // ADR091 D6: a platform-route workspace at its spend cap (or with an unpaid
   // failed invoice) cannot start a session the model mint would refuse.
   const spendGate = useComposerSpendGate();
@@ -158,12 +168,6 @@ export function NewSessionComposer() {
     [availabilityError, preflightError],
   );
 
-  const form = useForm<ComposerValues>({
-    defaultValues: { agent: "claude" },
-  });
-  const {
-    formState: { isSubmitting },
-  } = form;
   // No new files while a create is in flight: they would miss the send.
   const drop = useAttachmentDropTarget(
     uploads.add,

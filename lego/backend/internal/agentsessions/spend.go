@@ -224,5 +224,5 @@ func withSpend(view Environment, status agentsession.SpendStatus) Environment {
 // workspace set its own key, which takes the claude profile off its route)
 // and the spend store is wired.
 func (s *Service) platformCounted(workspaceID, agent string, byoKey bool) bool {
-	return s.Spend != nil && agentsession.PlatformRouteMeters(workspaceID, agent, byoKey)
+	return s.Spend != nil && agentsession.PlatformRouteMeters(agent, byoKey)
 }

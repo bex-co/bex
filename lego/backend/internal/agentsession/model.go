@@ -64,21 +64,21 @@ const (
 	ModelKeyField = "BEX_AGENT_MODEL_API_KEY"
 )
 
-// RegisteredModelEndpoint resolves a supported agent profile server-side for
-// workspaceID and rejects caller-supplied endpoint overrides. It is shared by
+// RegisteredModelEndpoint resolves a supported agent profile server-side and
+// rejects caller-supplied endpoint overrides. It is shared by
 // create/steer and the credential minter, so legacy rows cannot bypass the
 // registration boundary after a new-create check is deployed. The result is
 // decided by the workspace's model route NOW (byoKey: the workspace set its
 // own model key, which takes it off the platform route), not by the requested
 // (stored) endpoint.
-func RegisteredModelEndpoint(workspaceID, agent, requested string, byoKey bool) (string, error) {
+func RegisteredModelEndpoint(agent, requested string, byoKey bool) (string, error) {
 	profile, ok := LookupAgentProfile(agent)
 	if !ok {
 		return "", core.NewBadRequestError(
 			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
 			"agentConfig.agent has no registered model provider", nil)
 	}
-	expected := registeredEndpoint(workspaceID, profile, byoKey)
+	expected := registeredEndpoint(profile, byoKey)
 	requested = strings.TrimRight(strings.TrimSpace(requested), "/")
 	// The release endpoint stays accepted while a route overrides it, so a
 	// session created before the route covered its workspace keeps steering; it
@@ -87,7 +87,7 @@ func RegisteredModelEndpoint(workspaceID, agent, requested string, byoKey bool) 
 	// the BYO key, so a session created on the platform route keeps steering
 	// after its workspace sets its own key (it then resolves to the release
 	// endpoint).
-	routeEndpoint := requested == openRouterEndpoint && routeFor(workspaceID, profile.ID, false) != nil
+	routeEndpoint := requested == openRouterEndpoint && routeFor(profile.ID, false) != nil
 	if requested != "" && requested != expected && requested != profile.ModelEndpoint && !routeEndpoint {
 		return "", core.NewBadRequestError(
 			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
@@ -354,12 +354,12 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	// position in one cached store read; every other workspace reads its BYO
 	// key below regardless.
 	var status SpendStatus
-	if platformRouteCovers(req.Workspace, agent) {
+	if platformRouteCovers(agent) {
 		if status, err = m.platformStatus(ctx, req.Workspace); err != nil {
 			return ModelMintResponse{}, err
 		}
 	}
-	host, err := modelEndpointHost(req.Workspace, agent, stored, status.ModelKeySet)
+	host, err := modelEndpointHost(agent, stored, status.ModelKeySet)
 	if err != nil {
 		return ModelMintResponse{}, err
 	}
@@ -368,7 +368,7 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	// bex-owned key, pinned to its model and metered like the OpenRouter route below;
 	// it never runs on the workspace's own key, whatever the workspace stored.
 	if profile, _ := LookupAgentProfile(agent); profile.PlatformOnly {
-		key := metaRouteKey(req.Workspace, agent)
+		key := metaRouteKey(agent)
 		if key == "" || host != MetaModelHost {
 			return ModelMintResponse{}, ErrForbidden
 		}
@@ -391,7 +391,7 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	// the model is pinned (which also meters and spend-caps the exchange). The
 	// route is resolved for the workspace now, the same decision
 	// modelEndpointHost just made, so the host is OpenRouter here.
-	if route := routeFor(req.Workspace, agent, status.ModelKeySet); route != nil && route.platformKey != "" && host == OpenRouterHost {
+	if route := routeFor(agent, status.ModelKeySet); route != nil && route.platformKey != "" && host == OpenRouterHost {
 		if err := m.admitPlatformSpend(ctx, req.Workspace, session, status); err != nil {
 			return ModelMintResponse{}, err
 		}
@@ -606,13 +606,13 @@ func decodeModelConfig(config json.RawMessage) (agent, endpoint string, err erro
 }
 
 // modelEndpointHost re-validates the vendor host for a session's agent and
-// stored endpoint in workspaceID. The host comes from the workspace's current
+// stored endpoint. The host comes from the current model
 // route (RegisteredModelEndpoint), the stored endpoint only has to be one the
 // profile accepts; ModelEndpointHost re-applies the SSRF guards (no IP
 // literals, no private/cluster-local names) as defense in depth at
 // credential-release time.
-func modelEndpointHost(workspaceID, agent, stored string, byoKey bool) (string, error) {
-	endpoint, err := RegisteredModelEndpoint(workspaceID, agent, stored, byoKey)
+func modelEndpointHost(agent, stored string, byoKey bool) (string, error) {
+	endpoint, err := RegisteredModelEndpoint(agent, stored, byoKey)
 	if err != nil {
 		return "", err
 	}

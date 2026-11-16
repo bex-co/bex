@@ -18,6 +18,7 @@ package agentsessions
 
 import (
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -193,6 +194,69 @@ func TestCapabilitiesReportModelReadinessPerAgent(t *testing.T) {
 	if got := ready(); !got["claude"] || !got["codex"] || !got["gemini"] {
 		t.Fatalf("workspace with its own key: %v, want every profile ready", got)
 	}
+}
+
+// REST, GraphQL and MCP report the same per-agent model-key readiness (w10/m14
+// t008): with the platform route on and no key of its own, a workspace is
+// ready for claude only, and setting its key makes every profile ready.
+func TestCapabilitiesModelReadinessIsTheSameOnEverySurface(t *testing.T) {
+	enablePlatformRoute(t)
+	svc, _, _, _ := fixture()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	a := &automationAdapters{t: t, svc: svc, mux: mux}
+	surfaces := func() map[string]map[string]bool {
+		t.Helper()
+		readiness := func(name string, agents any) map[string]bool {
+			list, ok := agents.([]any)
+			if !ok || len(list) == 0 {
+				t.Fatalf("%s: agents = %#v", name, agents)
+			}
+			out := map[string]bool{}
+			for _, raw := range list {
+				agent, _ := raw.(map[string]any)
+				id, _ := agent["id"].(string)
+				ready, ok := agent["modelKeyReady"].(bool)
+				if id == "" || !ok {
+					t.Fatalf("%s: agent %#v has no id or modelKeyReady", name, raw)
+				}
+				out[id] = ready
+			}
+			return out
+		}
+		code, rest := a.rest("GET", "/v1/agent-sessions/capabilities", nil, "alice")
+		if code != http.StatusOK {
+			t.Fatalf("REST capabilities = %d %v", code, rest)
+		}
+		gql, gqlErr := a.gql(`{ agentSessionCapabilities { agents { id modelKeyReady } } }`, "alice")
+		if gqlErr != "" {
+			t.Fatalf("GraphQL capabilities: %s", gqlErr)
+		}
+		mcpOut, mcpErr := a.mcp("get_agent_session_capabilities", map[string]any{}, "alice")
+		if mcpErr != "" {
+			t.Fatalf("MCP capabilities: %s", mcpErr)
+		}
+		gqlCaps, _ := gql["agentSessionCapabilities"].(map[string]any)
+		return map[string]map[string]bool{
+			"REST":    readiness("REST", rest["agents"]),
+			"GraphQL": readiness("GraphQL", gqlCaps["agents"]),
+			"MCP":     readiness("MCP", mcpOut["agents"]),
+		}
+	}
+	check := func(label string, want func(id string) bool) {
+		t.Helper()
+		for surface, got := range surfaces() {
+			for id, ready := range got {
+				if ready != want(id) {
+					t.Errorf("%s, %s: %s modelKeyReady = %v, want %v", label, surface, id, ready, want(id))
+				}
+			}
+		}
+	}
+	a.svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
+	check("platform route, no own key", func(id string) bool { return id == "claude" })
+	a.svc.ModelKeys = fixtureModelKeys("tea-a")
+	check("own key", func(string) bool { return true })
 }
 
 // A platform-only agent (ADR108 D5, muse) is offered and created only where a

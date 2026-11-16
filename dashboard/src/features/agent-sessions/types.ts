@@ -108,9 +108,15 @@ export type AgentSessionDeliveryMode = "resume" | "redispatch";
 /** Secret-free workspace readiness returned by agentSessionCapabilities. */
 export interface AgentSessionCapabilitiesView {
   enabled: boolean;
-  modelKeyReady: boolean;
   /** Profile ids this workspace can run (a platform-only one appears only where served). */
   agents: string[];
+  /**
+   * The listed profiles whose model credential is in place: the claude
+   * profile on the platform route, any profile on the workspace's own key.
+   * Codex and Gemini need the workspace's key even where the route serves
+   * claude, so readiness is per profile (AGENT_SESSION_MODEL_KEY_REQUIRED).
+   */
+  modelKeyReadyAgents: string[];
   github: {
     connected: boolean;
   };
