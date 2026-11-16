@@ -221,11 +221,12 @@ func TestLogoutRevokeFailureNamesBex(t *testing.T) {
 }
 
 // w32/009: `logout` names the variable the user set. The launcher fills
-// RENDER_API_KEY from BEX_ACCESS_TOKEN, and upstream's copy named its own
-// variable, which a BEX_ACCESS_TOKEN user cannot find in their environment.
-// A RENDER_API_KEY the user did set keeps upstream's name.
+// RENDER_API_KEY from BEX_API_KEY or BEX_ACCESS_TOKEN (w7/m426), and
+// upstream's copy named its own variable, which such a user cannot find in
+// their environment. A RENDER_API_KEY the user did set keeps upstream's name.
 func TestLogoutNamesTheVariableTheUserSet(t *testing.T) {
 	const (
+		bexKey    = "BEX_API_KEY=bex_test-key-id_test-key-secret"
 		bexToken  = "BEX_ACCESS_TOKEN=test-access-token"
 		renderKey = "RENDER_API_KEY=rnd_user"
 	)
@@ -251,6 +252,21 @@ func TestLogoutNamesTheVariableTheUserSet(t *testing.T) {
 			absent: "RENDER_API_KEY"},
 		{name: "bex token and a stored login, revoke fails", stored: true, revoke: http.StatusNotFound, env: []string{bexToken},
 			want:   "settings#cli-tokens\nNote: BEX_ACCESS_TOKEN is still set in your environment.\n",
+			absent: "RENDER_API_KEY"},
+		{name: "bex api key, no stored login", env: []string{bexKey},
+			want:   "You are authenticated via the BEX_API_KEY environment variable.\n",
+			absent: "RENDER_API_KEY"},
+		{name: "bex api key and bex token: the key is the one in force", env: []string{bexToken, bexKey},
+			want:   "You are authenticated via the BEX_API_KEY environment variable.\n",
+			absent: "BEX_ACCESS_TOKEN"},
+		{name: "bex api key beside the user's own upstream key", env: []string{bexKey, renderKey},
+			want:   "You are authenticated via the RENDER_API_KEY environment variable.\n",
+			absent: "BEX_API_KEY"},
+		{name: "bex api key and a stored login, revoked", stored: true, revoke: http.StatusNoContent, env: []string{bexKey},
+			want:   "OAuth credentials cleared. Note: BEX_API_KEY is still set in your environment.\n",
+			absent: "RENDER_API_KEY"},
+		{name: "bex api key and a stored login, revoke fails", stored: true, revoke: http.StatusNotFound, env: []string{bexKey},
+			want:   "settings#cli-tokens\nNote: BEX_API_KEY is still set in your environment.\n",
 			absent: "RENDER_API_KEY"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

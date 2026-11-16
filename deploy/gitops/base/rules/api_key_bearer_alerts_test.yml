@@ -1,0 +1,62 @@
+# w7/m426: API keys sent as bearers and refused (docs/ADR012-auth.md §8e). A
+# steady rate of refusals warns; a burst and a trickle do not.
+# Run: promtool test rules api_key_bearer_alerts_test.yml (alerting_rules.yml alongside).
+rule_files:
+  - alerting_rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # 1.5 refusals a second, spread over two replicas and three reasons: the rule
+  # sums all of them, since the question is how many attempts fail, not which
+  # replica answered or how.
+  - name: a steady rate of refused keys across replicas and reasons warns
+    interval: 1m
+    input_series:
+      - series: 'bex_api_apikey_bearer_failures_total{reason="refused",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "0+30x60"
+      - series: 'bex_api_apikey_bearer_failures_total{reason="cached",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "0+30x60"
+      - series: 'bex_api_apikey_bearer_failures_total{reason="limited",job="bex-api",instance="10.244.2.7:8091",pod="bex-api-b"}'
+        values: "0+30x60"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ApiKeyBearerFailuresSustained
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: ApiKeyBearerFailuresSustained
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "bex-api is refusing 1.5 API keys a second"
+              description: "More than one API key a second has been sent as a bearer and refused for >15m. Each source is limited to BEX_AUTH_FAILURE_LIMIT failures a minute and each client id to 10 refused exchanges a minute per replica, so guessing cannot succeed, but a rate this steady is either a guessing run or a client deployed with a revoked key. Split it by reason: sum by (reason) (rate(bex_api_apikey_bearer_failures_total[10m])). `refused` and `inactive` reached Hydra; `cached` and `limited` did not. The sources are in the edge access log for 401 and 429 responses. Runbook: docs/ADR012-auth.md#8e-an-api-key-is-a-bearer-token-w7m426"
+
+  # 1,200 refusals in five minutes (4 a second), then nothing: a script that ran
+  # once with a wrong key. The rate is over the threshold for a few minutes and
+  # never for the fifteen the rule waits.
+  - name: a burst of refused keys that stops stays quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_apikey_bearer_failures_total{reason="cached",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "0+240x5 1200x55"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: ApiKeyBearerFailuresSustained
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: ApiKeyBearerFailuresSustained
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: ApiKeyBearerFailuresSustained
+        exp_alerts: []
+
+  # Half a refusal a second for an hour: people mistyping keys on a busy day.
+  - name: a trickle of refused keys under the threshold stays quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_apikey_bearer_failures_total{reason="refused",job="bex-api",instance="10.244.1.5:8091",pod="bex-api-a"}'
+        values: "0+30x60"
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: ApiKeyBearerFailuresSustained
+        exp_alerts: []

@@ -262,6 +262,94 @@ func TestApplyReportsWhatItFilledFromBex(t *testing.T) {
 	}
 }
 
+// w7/m426: an API key is one variable, as RENDER_API_KEY is for Render's CLI.
+// Highest first: the user's own RENDER_API_KEY, BEX_API_KEY, BEX_ACCESS_TOKEN.
+// A blank variable counts as unset at every level.
+func TestApplyCredentialPrecedence(t *testing.T) {
+	home := func() (string, error) { return "/home/alice", nil }
+	for _, tc := range []struct {
+		name       string
+		env        map[string]string
+		wantBearer string // RENDER_API_KEY as upstream reads it
+		wantFilled string // the Bex input FilledFromBex names, "" for none
+	}{
+		{"no credential", map[string]string{}, "", ""},
+		{"only BEX_API_KEY", map[string]string{bexAPIKey: "bex_id_secret"}, "bex_id_secret", bexAPIKey},
+		{"only BEX_ACCESS_TOKEN", map[string]string{bexAccess: "ory_at_token"}, "ory_at_token", bexAccess},
+		{
+			"both: the key wins",
+			map[string]string{bexAPIKey: "bex_id_secret", bexAccess: "ory_at_token"},
+			"bex_id_secret", bexAPIKey,
+		},
+		{
+			"RENDER_API_KEY beside BEX_API_KEY is left untouched",
+			map[string]string{renderAPIKey: "rnd_user", bexAPIKey: "bex_id_secret"},
+			"rnd_user", "",
+		},
+		{
+			"RENDER_API_KEY beside BEX_ACCESS_TOKEN is left untouched",
+			map[string]string{renderAPIKey: "rnd_user", bexAccess: "ory_at_token"},
+			"rnd_user", "",
+		},
+		{
+			"RENDER_API_KEY beside both is left untouched",
+			map[string]string{renderAPIKey: "rnd_user", bexAPIKey: "bex_id_secret", bexAccess: "ory_at_token"},
+			"rnd_user", "",
+		},
+		{
+			"a blank BEX_API_KEY falls through to BEX_ACCESS_TOKEN",
+			map[string]string{bexAPIKey: "", bexAccess: "ory_at_token"},
+			"ory_at_token", bexAccess,
+		},
+		{
+			"a blank BEX_ACCESS_TOKEN beside BEX_API_KEY",
+			map[string]string{bexAPIKey: "bex_id_secret", bexAccess: ""},
+			"bex_id_secret", bexAPIKey,
+		},
+		{
+			"a blank RENDER_API_KEY is filled from BEX_API_KEY",
+			map[string]string{renderAPIKey: "", bexAPIKey: "bex_id_secret", bexAccess: "ory_at_token"},
+			"bex_id_secret", bexAPIKey,
+		},
+		{
+			"a blank RENDER_API_KEY and a blank BEX_API_KEY are filled from BEX_ACCESS_TOKEN",
+			map[string]string{renderAPIKey: "", bexAPIKey: "", bexAccess: "ory_at_token"},
+			"ory_at_token", bexAccess,
+		},
+		{"every credential blank", map[string]string{renderAPIKey: "", bexAPIKey: "", bexAccess: ""}, "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			filled, err := apply(lookupFrom(tc.env), setInto(tc.env), home)
+			if err != nil {
+				t.Fatalf("apply: %v", err)
+			}
+			if got := tc.env[renderAPIKey]; got != tc.wantBearer {
+				t.Errorf("%s = %q, want %q", renderAPIKey, got, tc.wantBearer)
+			}
+			if got := filled[renderAPIKey]; got != tc.wantFilled {
+				t.Errorf("filled[%s] = %q, want %q", renderAPIKey, got, tc.wantFilled)
+			}
+		})
+	}
+}
+
+// The precedence is apply's own: it must not depend on a write to the
+// environment being visible to the next lookup.
+func TestApplyCredentialPrecedenceDoesNotReadItsOwnWrites(t *testing.T) {
+	env := map[string]string{bexAPIKey: "bex_id_secret", bexAccess: "ory_at_token"}
+	written := map[string]string{}
+	filled, err := apply(lookupFrom(env), setInto(written), func() (string, error) { return "/home/alice", nil })
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got, want := written[renderAPIKey], "bex_id_secret"; got != want {
+		t.Errorf("%s = %q, want %q (BEX_ACCESS_TOKEN must not overwrite BEX_API_KEY)", renderAPIKey, got, want)
+	}
+	if got := filled[renderAPIKey]; got != bexAPIKey {
+		t.Errorf("filled[%s] = %q, want %q", renderAPIKey, got, bexAPIKey)
+	}
+}
+
 func TestApplyReportsHomeLookupFailure(t *testing.T) {
 	_, err := apply(lookupFrom(map[string]string{}), setInto(map[string]string{}), func() (string, error) {
 		return "", errors.New("home unavailable")

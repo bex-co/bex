@@ -33,7 +33,13 @@ A named workspace is honored **only after** `WorkspaceResolver.IsMember` confirm
 
 Every route except `GET /healthz` and the two narrowly credential-gated callbacks (`POST /v1/webhooks/git`, authenticated by HMAC, and `GET`/`POST /v1/deploy-hooks/{token}`, authenticated by the secret URL token) requires real, per-client credentials from the auth substrate ([ADR012-auth.md](ADR012-auth.md)) — **there is no shared static token**:
 
-- **API keys (machines)** — an API key _is_ an OAuth2 client (`client_credentials` grant). Exchange it for a short-lived bearer token, then call the API:
+- **API keys (machines)** — an API key is one string, sent as the bearer on every request, as a Render API key is (w7/m426, [ADR012 §8e](ADR012-auth.md#8e-an-api-key-is-a-bearer-token-w7m426)):
+
+  ```sh
+  curl -H "Authorization: Bearer $BEX_API_KEY" https://api.bex.co/v1/services
+  ```
+
+  The key is also an OAuth2 client (`client_credentials` grant), for a caller that wants a token that expires. Its `id` and `secret` exchange for a 15-minute access token, which is a bearer too:
 
   ```sh
   TOKEN=$(curl -s -X POST https://oauth.bex.co/oauth2/token \
@@ -41,9 +47,9 @@ Every route except `GET /healthz` and the two narrowly credential-gated callback
   curl -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services
   ```
 
-  Tokens are introspected at Hydra's admin API (`BEX_HYDRA_ADMIN_URL`, cluster-internal, required — the binary refuses to start without it; positive results cached ≤ 30s). Keys are managed through the API itself: `POST /v1/api-keys` (the secret is returned exactly once), `GET /v1/api-keys`, `DELETE /v1/api-keys/{id}` — with GraphQL (`apiKeys`, `createApiKey`, `revokeApiKey`) and MCP (`create_api_key`, `list_api_keys`, `revoke_api_key`) parity. "API key" means the Hydra clients bex minted (stamped `bex.co/api-key` metadata): list hides and revoke refuses everything else, so platform clients can't be revoked through this endpoint. The **first** key, `bex-bootstrap`, is deliberately such a platform client — seeded and rotated only by [scripts/auth-bootstrap-client.sh](../scripts/auth-bootstrap-client.sh) (CI runs it on every deploy; secret from `.env`'s `BEX_BOOTSTRAP_CLIENT_SECRET`).
+  bex-api does that exchange itself for a key sent as the bearer (`BEX_OAUTH_ISSUER` names the token endpoint) and remembers the token. Tokens are introspected at Hydra's admin API (`BEX_HYDRA_ADMIN_URL`, cluster-internal, required — the binary refuses to start without it; positive results cached ≤ 5s, ADR012 §8d). Keys are managed through the API itself: `POST /v1/api-keys` (the `key`, and the `secret` inside it, are returned exactly once), `GET /v1/api-keys`, `DELETE /v1/api-keys/{id}` — with GraphQL (`apiKeys`, `createApiKey`, `revokeApiKey`) and MCP (`create_api_key`, `list_api_keys`, `revoke_api_key`) parity. "API key" means the Hydra clients bex minted (stamped `bex.co/api-key` metadata): list hides and revoke refuses everything else, so platform clients can't be revoked through this endpoint. The **first** key, `bex-bootstrap`, is deliberately such a platform client — seeded and rotated only by [scripts/auth-bootstrap-client.sh](../scripts/auth-bootstrap-client.sh) (CI runs it on every deploy; secret from `.env`'s `BEX_BOOTSTRAP_CLIENT_SECRET`).
 
-  **Dashboard surface (w4/m8):** a logged-in human mints/lists/revokes keys from Settings → API Keys (`dashboard/src/features/api-keys/`) over this same GraphQL adapter — no separate REST surface for the UI. The list is workspace-shared, not "my keys" (see [ADR012-auth.md](ADR012-auth.md#authorization-openfga) — keys carry no per-user owner), and the secret is shown exactly once at creation, matching the CLI/API contract above.
+  **Dashboard surface (w4/m8):** a logged-in human mints/lists/revokes keys from Settings → API Keys (`dashboard/src/features/api-keys/`) over this same GraphQL adapter — no separate REST surface for the UI. The list is workspace-shared, not "my keys" (see [ADR012-auth.md](ADR012-auth.md#authorization-openfga) — keys carry no per-user owner), and the key is shown exactly once at creation, with a curl example, matching the CLI/API contract above.
 
 - **Sessions (humans)** — with no bearer present, an Ory session (cookie or `X-Session-Token`) is validated via Kratos' `whoami` (`BEX_KRATOS_URL` — optional; unset disables sessions). A present bearer is authoritative: an inactive token is 401 with no session fallthrough.
 

@@ -85,7 +85,7 @@ bex agent
 
 - **Automations stay under `bex agent`, with no top-level `bex automations`.** The root command tree belongs to the pinned Render CLI, and a future pin could add a word there. `bex agent automations` cannot collide with it. It also says what an automation starts, as ADR101's naming rationale asked.
 - **Conventions shared with the shipped group:**
-  - auth through `bex login` or `BEX_ACCESS_TOKEN`;
+  - auth through `bex login`, or `BEX_API_KEY` (an API key, w7/m426) or `BEX_ACCESS_TOKEN` in CI;
   - the active workspace in `X-Bex-Workspace`;
   - `-o text|json|yaml` with the API's own answer on stdout;
   - streamed text on stderr while `-o json` is set;

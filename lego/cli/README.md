@@ -53,6 +53,22 @@ bex logout
 
 `bex agent chat ags-…` attaches to a session live. A message typed while a turn runs is queued on the server (`queued — sends when this turn ends`, several can wait, and a later `chat` lists them), `/stop` ends only the running turn and leaves the session open, `/cancel` cancels after a confirmation, and Ctrl-C or `/quit` leave the session and its queue running; see [`bex agent chat`](../../docs/bex-cli.md#live-sessions-bex-agent-chat). `bex agent send` against a running session queues the message the same way, and with `--wait` or `--follow` waits for that message's own turn (exit 1 if the server dropped it); `bex agent stop ags-…` ends only the running turn from a script (exit 7 when none runs, 8 while it is still starting).
 
+For CI and other non-interactive use, set `BEX_API_KEY` to a bex API key, as `RENDER_API_KEY` is for Render's CLI. Create the key in the dashboard (**Settings → API Keys**) or with `POST /v1/api-keys`. There is no login and no token exchange:
+
+```bash
+BEX_API_KEY=<key> bex services -o json
+```
+
+```yaml
+# GitHub Actions
+- name: Deploy
+  env:
+    BEX_API_KEY: ${{ secrets.BEX_API_KEY }}
+  run: bex deploys create ${{ secrets.BEX_SERVICE_ID }} --wait --confirm -o json
+```
+
+The launcher sends the first of these that is set: `RENDER_API_KEY`, `BEX_API_KEY`, `BEX_ACCESS_TOKEN`, then the stored login. `BEX_ACCESS_TOKEN` still works, for an OAuth access token or a key. The released binary gains `BEX_API_KEY` at the next CLI release (after v0.6.0); with an older binary, `BEX_ACCESS_TOKEN=<key>` (or `RENDER_API_KEY=<key>`) does the same thing, because each is sent as the bearer. A caller that wants a 15-minute token can still exchange the key's id and secret (`client_credentials`); see [CI and automation](../../docs/bex-cli.md#ci-and-automation).
+
 The login uses Bex's device-verification flow. It persists the upstream YAML schema under `~/.bex/cli.yaml` with mode `0600`; it does not touch `~/.render/cli.yaml` in normal use.
 
 Against the default Bex API, `bex services` and `bex deploys list` save `dashboard_url: https://dashboard.bex.co` into a config that has none yet (no login, or an environment credential), so their Dashboard action opens the Bex dashboard. A saved origin, a custom API host and the credential itself are never touched or persisted.

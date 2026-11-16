@@ -106,7 +106,7 @@ run_bex() { # workspace command...
   shift
   PATH="$TMP/bin:$PATH" env \
     -u RENDER_API_KEY -u RENDER_HOST -u RENDER_CLI_CONFIG_PATH -u RENDER_WORKSPACE -u RENDER_OUTPUT \
-    -u BEX_CLI_CONFIG_DIR -u BEX_CLI_CONFIG_PATH -u BEX_ACCESS_TOKEN \
+    -u BEX_CLI_CONFIG_DIR -u BEX_CLI_CONFIG_PATH -u BEX_API_KEY -u BEX_ACCESS_TOKEN \
     HOME="$TMP/home" \
     BEX_HOST="${BEX_API_URL%/}/v1/" \
     BEX_WORKSPACE="$workspace" \

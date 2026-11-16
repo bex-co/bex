@@ -57,7 +57,8 @@ These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable 
 | `BEX_HOST` | REST base URL; default `https://api.bex.co/v1/`. Use e.g. `http://localhost:8090/v1/` for a local API. |
 | `BEX_WORKSPACE` | Active workspace id or name. A name is resolved to its id once per command (one `GET /v1/owners?name=` request; an id costs none). Only a value shaped like an id (`tea-` and 20 characters) is taken for one, so a workspace named `tea-house` is resolved as a name. Only a command that reads the active workspace resolves it. For such a command, an unknown name exits 1 with `no workspace named "<x>"`, and a name shared by several workspaces asks for the id. Help, `--version`, `workspaces`, `whoami`, `workspace set`, `login`/`logout`, completion and an explicit `--workspace` never look the name up. A command whose argument is a typed resource ID (`pg get dpg-…`) tries the name but is not blocked by it, so a stale name never prevents recovery (w8/064). Without a usable login the value passes through and the login error is reported as usual. An explicit `RENDER_WORKSPACE` is never resolved. |
 | `BEX_OUTPUT` | Default output mode accepted by the upstream CLI. |
-| `BEX_ACCESS_TOKEN` | Already-issued, short-lived OAuth bearer token for an unattended invocation. It is not persisted by the bridge. `bex logout` neither revokes nor unsets this environment credential. |
+| `BEX_API_KEY` | A bex API key for non-interactive use, as `RENDER_API_KEY` is for Render's CLI: the launcher sends it as the bearer, with no login and no exchange ([CI and automation](#ci-and-automation)). It outranks `BEX_ACCESS_TOKEN` and a stored login. It is not persisted by the bridge, and `bex logout` neither revokes nor unsets it. Needs a `bex` newer than v0.6.0. |
+| `BEX_ACCESS_TOKEN` | An already-issued OAuth access token for an unattended invocation, used when `BEX_API_KEY` is unset. An API key works here too, because both variables are sent as the bearer. It is not persisted by the bridge. `bex logout` neither revokes nor unsets this environment credential. |
 | `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z` plus a `compatible with Render CLI v2.36.0` line) and checks this repo's `bex-cli/v*` releases for something newer; every hint names the upgrade command for the install channel (`bex upgrade`, or `brew upgrade bex` for a Homebrew-owned binary); a successful `bex login` ends with the same hint (TTY or not — it replaces upstream's banner, which advertised Render CLI releases); after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
 | `BEX_CLI_DISABLE_ANALYTICS` | Any non-empty value disables CLI usage telemetry (see below). Telemetry is otherwise on: one event per invocation to bex-api, never to Render. |
 
@@ -83,31 +84,32 @@ On a fresh machine the imported CLI prints its one-time upstream analytics notic
 
 ## CI and automation
 
-A Bex API key is an OAuth client-credentials pair. Its **secret is not a bearer token** and must never be assigned to `BEX_ACCESS_TOKEN` or written to `cli.yaml`. Exchange the pair at Bex's OAuth token endpoint, retain the returned `access_token` only in the running job, and pass that value to the launcher:
+Non-interactive use is one variable, as `RENDER_API_KEY` is for Render's CLI. Set `BEX_API_KEY` to a bex API key; there is no login and no token exchange:
 
 ```bash
-# Keep BEX_CLIENT_ID/BEX_CLIENT_SECRET in the CI secret store.
-access_token="$({
-  curl --fail --silent --show-error \
-    --data grant_type=client_credentials \
-    --data-urlencode "client_id=$BEX_CLIENT_ID" \
-    --data-urlencode "client_secret=$BEX_CLIENT_SECRET" \
-    "$BEX_OAUTH_TOKEN_URL"
-} | jq -er '.access_token')"
-
-BEX_ACCESS_TOKEN="$access_token" bex services -o json
-unset access_token
+BEX_API_KEY=<key> bex services -o json
 ```
 
-Set `BEX_OAUTH_TOKEN_URL` to the platform's Hydra public token endpoint: `https://oauth.bex.co/oauth2/token` on hosted bex, as named by `https://api.bex.co/.well-known/oauth-protected-resource` and the issuer metadata.
+Create the key in the dashboard (**Settings → API Keys**) or with `POST /v1/api-keys`. A key is one string, `bex_<id>_<secret>`, shown once when it is created. bex-api accepts it as `Authorization: Bearer`, as Render accepts a Render API key. It acts as its workspace's machine identity until it is revoked. The owner of a key created before this form existed composes the same string from the key's id and secret.
 
-- **Send the credentials in the form body.** An API key's OAuth client authenticates with `client_secret_post` (`lego/backend/internal/apikeys/service.go`). HTTP Basic (`curl --user id:secret`) is refused with `401 invalid_client`.
-- **Keep the token secret.** Do not enable shell tracing around this exchange, print the response, or make the token a job artifact.
+In GitHub Actions, keep the key in a repository secret and pass it to the step that runs `bex`, after the steps that install it ([Install](#install); the installer needs cosign on the runner):
+
+```yaml
+- name: Deploy
+  env:
+    BEX_API_KEY: ${{ secrets.BEX_API_KEY }}
+  run: bex deploys create ${{ secrets.BEX_SERVICE_ID }} --wait --confirm -o json
+```
+
+- **Precedence.** The launcher sends the first of these that is set and not empty: `RENDER_API_KEY` (left untouched, as every explicit `RENDER_*` variable is), `BEX_API_KEY`, `BEX_ACCESS_TOKEN`, then the login `bex login` stored.
+- **`BEX_ACCESS_TOKEN` still works.** It carries an OAuth access token. It also takes a key, because both variables are sent as the bearer.
+- **Released binaries.** `BEX_API_KEY` needs a `bex` newer than v0.6.0: the released binary gains it at the next CLI release. With a binary released before that, `BEX_ACCESS_TOKEN=<key>` (or `RENDER_API_KEY=<key>`) does the same thing, because each is sent as the bearer.
+- **Keep the key secret.** Do not print it, enable shell tracing around it, make it a job artifact or write it to `cli.yaml`.
 - **Humans should use device login** in a terminal.
 
-Verified 2026-09-15 on production: a form-body exchange returned a 15-minute token, and `BEX_ACCESS_TOKEN="$access_token" bex logs --resources <cron srv-id> --tail -o text` streamed a cron job's next run live.
+**Short-lived tokens.** A caller that wants a credential that expires can still exchange the key. Send `grant_type=client_credentials` with the key's id as `client_id` and its secret as `client_secret` to the OAuth token endpoint: `https://oauth.bex.co/oauth2/token` on hosted bex, as named by `https://api.bex.co/.well-known/oauth-protected-resource`. The credentials go in the form body (`client_secret_post`); HTTP Basic is refused with `401 invalid_client`. The returned `access_token` lasts 15 minutes and goes in `BEX_ACCESS_TOKEN` (verified on production, 2026-09-15).
 
-`bex logout` manages the stored interactive OAuth session only. For a job that uses `BEX_ACCESS_TOKEN`, unset the variable when the job ends and revoke the issued credential through the authority that minted it when needed.
+`bex logout` manages the stored interactive OAuth session only. It neither revokes nor unsets `BEX_API_KEY` or `BEX_ACCESS_TOKEN`: unset the variable when the job ends, and revoke a key in the dashboard or with `DELETE /v1/api-keys/{id}`.
 
 ## Bex-native commands
 
@@ -151,7 +153,7 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 
 ### Cloud Agents: `bex agent`
 
-`bex agent` drives Cloud Agents, bex's cloud coding agents, from a terminal or a CI job. It is a thin client of the agent-session REST contract ([ADR094](ADR094-coding-agent-mcp.md), attachments [ADR095](ADR095-agent-attachments.md)) and authenticates like every other command (`bex login`, or `BEX_ACCESS_TOKEN` in CI). Sessions are created in the active workspace (`bex workspace set` or `BEX_WORKSPACE`).
+`bex agent` drives Cloud Agents, bex's cloud coding agents, from a terminal or a CI job. It is a thin client of the agent-session REST contract ([ADR094](ADR094-coding-agent-mcp.md), attachments [ADR095](ADR095-agent-attachments.md)) and authenticates like every other command (`bex login`, or `BEX_API_KEY` in CI). Sessions are created in the active workspace (`bex workspace set` or `BEX_WORKSPACE`).
 
 | Command | What it does |
 | --- | --- |
@@ -347,7 +349,7 @@ bex has no bucket command of its own. Cloudflare's `wrangler r2` manages buckets
 
 ```sh
 export CLOUDFLARE_API_BASE_URL=https://objects.onbex.co/cloudflare/client/v4
-export CLOUDFLARE_API_TOKEN=<a bex access token>   # sent as Authorization: Bearer; see "The token" below
+export CLOUDFLARE_API_TOKEN=<a bex API key>        # sent as Authorization: Bearer; see "The token" below
 export CLOUDFLARE_ACCOUNT_ID=<tea-id>              # the workspace id
 
 wrangler r2 bucket create photos
@@ -359,7 +361,7 @@ wrangler r2 bucket lifecycle add photos expire-logs logs/ --expire-days 7
 
 Things to know:
 
-- **The token is an access token, not an API key's secret.** An API key's secret is not a bearer token ([CI and automation](#ci-and-automation)): exchange the key's `client_id` and `client_secret` at `https://oauth.bex.co/oauth2/token` with `grant_type=client_credentials` (credentials in the form body) and give wrangler the returned `access_token`, which lasts 15 minutes, so exchange again for a longer session. A signed-in person can use their own OAuth access token instead. The token needs the workspace's access and, for an object get, the sensitive scope class.
+- **The token is a bex API key.** wrangler sends `CLOUDFLARE_API_TOKEN` as `Authorization: Bearer`, and bex takes an API key there as on every other route ([CI and automation](#ci-and-automation)), so there is nothing to exchange or refresh. A signed-in person can use their own OAuth access token instead; that token needs the sensitive scope class for an object get. Either way the caller needs access to the workspace.
 - **Which host.** `objects.onbex.co` is the host to use: it goes straight to bex's edge, and only the `/cloudflare/client/v4/` routes answer there. `api.bex.co` serves the same routes but sits behind Cloudflare's proxy, which refuses any request body over 100 MiB with its own `413` page (measured on 2026-11-15: 104,857,600 bytes passed and 104,857,601 did not), so a larger object never reaches bex through it.
 - **`--remote` is required.** `wrangler r2 object put|get|delete` defaults to a local simulator and never reaches bex without it. Bucket, CORS and lifecycle commands have no local mode.
 - **The workspace is the account id,** so a key reaches the buckets of its own workspace and no other. A viewer lists buckets, reads their CORS and lifecycle rules and sees their size; reading an object's bytes needs a developer or an admin, and so do put, delete and every change.
@@ -457,9 +459,9 @@ At the current pin (**v2.36.0**, `4fd34231b637`) it yields the following.
 
 Tests: `internal/branding/runtime_test.go` (the reference rule, JSON/YAML/text next-step rewrites, error unwrapping, the product-name phrases, the wizard screen) and `runtime_copy_test.go`. The latter drives the built binary against a stub API: `ea blueprints create` in text, JSON and YAML, `workspace current` with no workspace, and render-shaped data (`render-x`, `render.yaml`, `render.com`, `RENDER_*`) that must survive.
 
-**Run-time copy about a variable names the one the user set (w32/009).** When the upstream variable is unset, the launcher fills `RENDER_API_KEY` from `BEX_ACCESS_TOKEN` and `RENDER_OUTPUT` from `BEX_OUTPUT`. Upstream's messages then name its own variable, which is not in the user's environment. `bridge.FilledFromBex` records what the launcher filled in this process, and `branding.NameBexInputs` renames those variables in upstream's exact phrases:
+**Run-time copy about a variable names the one the user set (w32/009).** When the upstream variable is unset, the launcher fills `RENDER_API_KEY` from `BEX_API_KEY`, or from `BEX_ACCESS_TOKEN` when that is unset too (w7/m426), and `RENDER_OUTPUT` from `BEX_OUTPUT`. Upstream's messages then name its own variable, which is not in the user's environment. `bridge.FilledFromBex` records what the launcher filled in this process, and `branding.NameBexInputs` renames those variables in upstream's exact phrases:
 
-- **`logout` stdout** (`cmd/logout.go:34,73,79`): "via the RENDER_API_KEY environment variable." and both "Note: RENDER_API_KEY is still set in your environment." notes name `BEX_ACCESS_TOKEN`.
+- **`logout` stdout** (`cmd/logout.go:34,73,79`): "via the RENDER_API_KEY environment variable." and both "Note: RENDER_API_KEY is still set in your environment." notes name the variable the launcher used, `BEX_API_KEY` or `BEX_ACCESS_TOKEN`.
 - **The output-format check** (`pkg/command/outputresolver.go:107`): "invalid RENDER_OUTPUT value: …" names `BEX_OUTPUT`. Upstream prints it to stderr from the root `PersistentPreRunE`, before any `RunE`, so neither seam above reaches it. The launcher wraps that hook and rewrites stderr for that call only. It does not validate `BEX_OUTPUT` itself: as with upstream, `--help` still answers when the value is bad.
 
 A `RENDER_*` variable the user set keeps upstream's name, including when the Bex input is set beside it (the upstream variable is the one in force). These are the only upstream messages that name a variable the bridge fills. Check on every pin bump:

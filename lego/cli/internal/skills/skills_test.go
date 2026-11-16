@@ -39,6 +39,11 @@ var userDirecting = regexp.MustCompile(`mcp\.render\.com|dashboard\.render\.com|
 // reads as "your bex v0.x is too old" to an agent (w8/233).
 var renderVersionFloor = regexp.MustCompile(`\bv2\.\d+\.\d+`)
 
+// tokenExchange matches the client_credentials recipe the pack carried while
+// a bex API key could not be sent as a bearer. A key is now one string in
+// BEX_API_KEY, as RENDER_API_KEY is for Render (w7/m426).
+var tokenExchange = regexp.MustCompile(`oauth2/token|client_credentials|grant_type|access_token|BEX_KEY_(ID|SECRET)|BEX_ACCESS_TOKEN`)
+
 func TestPackOperatesBexOnly(t *testing.T) {
 	skills := 0
 	err := fs.WalkDir(pack, "pack/skills", func(path string, d fs.DirEntry, err error) error {
@@ -60,6 +65,9 @@ func TestPackOperatesBexOnly(t *testing.T) {
 			}
 			if m := renderVersionFloor.FindString(line); m != "" {
 				t.Errorf("%s:%d: Render CLI version floor %q in the bex pack", rel, n+1, m)
+			}
+			if m := tokenExchange.FindString(line); m != "" {
+				t.Errorf("%s:%d: token-exchange step %q; an API key is sent as the bearer", rel, n+1, m)
 			}
 		}
 		if strings.HasSuffix(rel, "/SKILL.md") {
@@ -84,6 +92,14 @@ func TestPackOperatesBexOnly(t *testing.T) {
 	mcp, err := pack.ReadFile("pack/skills/bex-mcp/SKILL.md")
 	if err != nil || !strings.Contains(string(mcp), "https://api.bex.co/mcp") {
 		t.Errorf("bex-mcp does not point at https://api.bex.co/mcp: %v", err)
+	}
+	const deploy = `      - name: Deploy
+        env:
+          BEX_API_KEY: ${{ secrets.BEX_API_KEY }}
+        run: bex deploys create ${{ secrets.BEX_SERVICE_ID }} --wait --confirm -o json
+`
+	if cli, err := pack.ReadFile("pack/skills/bex-cli/SKILL.md"); err != nil || !strings.Contains(string(cli), deploy) {
+		t.Errorf("bex-cli's CI example does not deploy with one BEX_API_KEY secret: %v", err)
 	}
 	if license, err := pack.ReadFile("pack/LICENSE"); err != nil || !strings.Contains(string(license), "Copyright (c) 2026 Render") {
 		t.Errorf("pack LICENSE lacks Render's MIT attribution: %v", err)

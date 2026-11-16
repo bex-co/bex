@@ -7,7 +7,7 @@ description: >-
   services non-interactively, or troubleshoot CLI auth issues.
   Trigger terms: bex CLI, bex login, bex deploys, bex logs,
   bex ssh, bex psql, bex blueprints validate, bex skills,
-  BEX_ACCESS_TOKEN, non-interactive, CI/CD deploy.
+  BEX_API_KEY, non-interactive, CI/CD deploy.
 license: MIT
 compatibility: bex CLI (Homebrew, Linux/macOS, direct download)
 metadata:
@@ -81,12 +81,8 @@ jobs:
           bex --version
       - name: Deploy
         env:
-          BEX_KEY_ID: ${{ secrets.BEX_KEY_ID }}
-          BEX_KEY_SECRET: ${{ secrets.BEX_KEY_SECRET }}
-        run: |
-          export BEX_ACCESS_TOKEN="$(curl -fsS -X POST https://oauth.bex.co/oauth2/token \
-            -d "grant_type=client_credentials&client_id=$BEX_KEY_ID&client_secret=$BEX_KEY_SECRET" | jq -r .access_token)"
-          bex deploys create ${{ secrets.BEX_SERVICE_ID }} --wait --confirm -o json
+          BEX_API_KEY: ${{ secrets.BEX_API_KEY }}
+        run: bex deploys create ${{ secrets.BEX_SERVICE_ID }} --wait --confirm -o json
 ```
 
 If reproducible builds require a pinned CLI, select a currently supported release and verify its asset name in the current release documentation instead of copying a version from this skill.

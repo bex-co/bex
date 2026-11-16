@@ -102,7 +102,7 @@ func newAuthMetrics(reg prometheus.Registerer) authMetrics {
 		}, []string{"outcome"}),
 		sheds: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "api", Name: "auth_admission_sheds_total",
-			Help: "Authentication requests answered 429 AUTH_OVERLOADED, by credential kind, the budget that refused them (source, credential, credential_inflight, inflight) and whether this replica had resolved the same credential to an identity in the last 15 minutes (authenticated) or not (unverified).",
+			Help: "Authentication requests answered 429 AUTH_OVERLOADED, by credential kind, the budget that refused them (source, credential, credential_inflight, inflight, or key_id for an API key sent as the bearer) and whether this replica had resolved the same credential to an identity in the last 15 minutes (authenticated) or not (unverified).",
 		}, []string{"credential", "cause", "caller"}),
 		hydra: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "bex", Subsystem: "api", Name: "auth_hydra_introspection_duration_seconds",
@@ -120,6 +120,10 @@ func newAuthMetrics(reg prometheus.Registerer) authMetrics {
 			}
 		}
 	}
+	// Only an API key, which is a bearer, has a per-key-id budget.
+	for _, caller := range []string{callerAuthenticated, callerUnverified} {
+		m.sheds.WithLabelValues(credentialBearer, shedKeyID, caller)
+	}
 	for _, outcome := range []string{hydraOK, hydraError} {
 		m.hydra.WithLabelValues(outcome)
 	}
@@ -136,8 +140,9 @@ func (m *OriginMetrics) observeIntrospectionMiss(outcome string) {
 	m.auth.misses.WithLabelValues(outcome).Inc()
 }
 
-// observeAuthShed counts one 429 AUTH_OVERLOADED. err is what admit returned: a
-// *shedError names the budget, anything else cannot reach here.
+// observeAuthShed counts one 429 AUTH_OVERLOADED. err is what admit, or the
+// API-key path, returned: a *shedError names the budget, anything else cannot
+// reach here.
 func (m *OriginMetrics) observeAuthShed(credential string, err error, authenticated bool) {
 	if m == nil {
 		return

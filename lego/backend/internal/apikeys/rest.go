@@ -24,7 +24,8 @@ import (
 
 // RegisterREST adds the machine-credential endpoints (bex extension — Render
 // manages API keys only via its dashboard; naming follows Render's kebab-case
-// noun style). The secret appears once, in the create response.
+// noun style). The secret, and the bearer `key` that carries it, appear once,
+// in the create response.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/api-keys", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {

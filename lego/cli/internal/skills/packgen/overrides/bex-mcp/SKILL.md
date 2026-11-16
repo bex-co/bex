@@ -46,15 +46,15 @@ claude mcp add --transport http bex https://api.bex.co/mcp
 
 Claude Code discovers bex's OAuth server from the endpoint's 401. Sign in from a session with `/mcp`, or ahead of time with `claude mcp login bex`; both open the bex dashboard login in a browser. Verify with `list_services()`. To replace a stale configuration, run `claude mcp remove bex` before adding it again.
 
-For a headless Claude Code, pass an exchanged API-key token (see `references/bex-access.md`) instead:
+For a headless Claude Code, pass a bex API key (see `references/bex-access.md`) as the bearer token instead:
 
 ```bash
-claude mcp add --transport http bex https://api.bex.co/mcp --header "Authorization: Bearer ${BEX_TOKEN}"
+claude mcp add --transport http bex https://api.bex.co/mcp --header "Authorization: Bearer ${BEX_API_KEY}"
 ```
 
 ### Cursor
 
-Cursor's MCP configuration takes a credential rather than starting OAuth discovery. Add this to `~/.cursor/mcp.json`, where `BEX_TOKEN` holds an exchanged API-key token, restart Cursor, and verify with `list_services()`:
+Cursor's MCP configuration takes a credential rather than starting OAuth discovery. Add this to `~/.cursor/mcp.json`, where `BEX_API_KEY` holds a bex API key, restart Cursor, and verify with `list_services()`:
 
 ```json
 {
@@ -62,18 +62,16 @@ Cursor's MCP configuration takes a credential rather than starting OAuth discove
     "bex": {
       "url": "https://api.bex.co/mcp",
       "headers": {
-        "Authorization": "Bearer ${env:BEX_TOKEN}"
+        "Authorization": "Bearer ${env:BEX_API_KEY}"
       }
     }
   }
 }
 ```
 
-An exchanged token lasts 15 minutes. Refresh it before it expires, by hand or with a wrapper script.
-
 ### Codex and other clients
 
-Follow the current OAuth or token configuration fetched through `references/bex-access.md`. If the configuration reads its bearer token from an environment variable, that variable must be set where the client starts; restart the client after changing it.
+Follow the current OAuth or API-key configuration fetched through `references/bex-access.md`. If the configuration reads its bearer token from an environment variable, that variable must be set where the client starts; restart the client after changing it.
 
 ### Empty results and workspace selection
 

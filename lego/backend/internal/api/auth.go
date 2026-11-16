@@ -31,11 +31,13 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // auth.go is the shared auth gate every HTTP surface sits behind (docs/ADR012-auth.md):
-// a bearer token is introspected at Hydra's admin endpoint; otherwise an Ory
+// a bearer token is introspected at Hydra's admin endpoint, and a bearer that is
+// an API key is first exchanged for one (auth_apikey.go); otherwise an Ory
 // session (cookie or X-Session-Token) is checked via Kratos' whoami. It attaches
 // the resolved core.Identity to the request context, which the feature services'
 // authorize gate reads. Upstream failures fail closed (401 / 503). The one
@@ -201,8 +203,15 @@ type oryAuth struct {
 
 	// metrics counts what the introspection window costs: cache misses by
 	// outcome, admission sheds by cause and the Hydra round trip (authmetrics.go,
-	// w21/091). nil (tests, stdio) records nothing.
+	// w21/091), and the API keys refused as bearers (auth_apikey.go). nil
+	// (tests, stdio) records nothing.
 	metrics *OriginMetrics
+
+	// keys accepts an API key as the bearer by exchanging it at Hydra's token
+	// endpoint (auth_apikey.go, ADR012 §8e). nil when no issuer is configured:
+	// the token endpoint is unknown, so a key-shaped bearer is introspected like
+	// any other string and refused.
+	keys *keyBearer
 }
 
 type cachedIdentity struct {
@@ -234,7 +243,7 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL 
 	if resourceMetadataURL != "" {
 		challenge = `Bearer resource_metadata="` + resourceMetadataURL + `"`
 	}
-	return &oryAuth{
+	a := &oryAuth{
 		hydraAdminURL:   strings.TrimSuffix(hydraAdminURL, "/"),
 		kratosURL:       strings.TrimSuffix(kratosURL, "/"),
 		resource:        resource,
@@ -250,6 +259,10 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL 
 		touch:           touch,
 		apiScope:        apiScope,
 	}
+	if issuer != "" {
+		a.keys = newKeyBearer(issuer, a.client, a.clock)
+	}
+	return a
 }
 
 // setPlatformClientIDs installs the operator-owned client registry. The copy
@@ -326,6 +339,7 @@ func (a *oryAuth) invalidate(token string, identity core.Identity) {
 	a.revocationEpoch.Add(1)
 	a.epochMu.Unlock()
 	a.cache.Delete(token)
+	a.keys.forget(identity)
 	if identity.Method == "oauth2" {
 		a.cache.DeleteIf(func(entry cachedIdentity) bool {
 			cached := entry.Identity
@@ -344,6 +358,8 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 		var id core.Identity
 		var err error
 		credential := presentedCredential(r)
+		// bearer becomes the OAuth access token that proved the caller: the
+		// presented bearer, or the token an API key exchanged for.
 		bearer := credential.value
 		hasBearer := credential.kind == "bearer" && bearer != ""
 		hasBearerHeader := credential.kind == "bearer"
@@ -368,7 +384,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 				a.unauthorized(w)
 				return
 			}
-			id, err = a.introspect(r, bearer)
+			id, bearer, err = a.authenticateBearer(r, bearer)
 		case hasSession:
 			id, err = a.whoami(r)
 		default:
@@ -429,6 +445,17 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
+}
+
+// authenticateBearer resolves a bearer to its identity and to the OAuth access
+// token that proved it. An API key (apikeys.IsBearerKey) is exchanged for its
+// token first; every other bearer is the token.
+func (a *oryAuth) authenticateBearer(r *http.Request, bearer string) (core.Identity, string, error) {
+	if a.keys != nil && apikeys.IsBearerKey(bearer) {
+		return a.authenticateKey(r, bearer)
+	}
+	id, err := a.introspect(r, bearer)
+	return id, bearer, err
 }
 
 // introspectFresh bypasses the positive token cache for durable credential

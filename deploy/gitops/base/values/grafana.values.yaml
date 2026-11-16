@@ -5518,6 +5518,43 @@ dashboards:
                  "legendFormat": "{{outcome}}"
                 }
               ]
+            },
+            {
+             "id": 39,
+             "type": "timeseries",
+             "title": "API keys refused as bearers, by reason",
+             "description": "API keys sent as Authorization: Bearer and not accepted (ADR012 §8e, w7/m426), per second, summed over the replicas. refused and inactive reached Hydra's token endpoint; cached is a refused key repeated within a minute and malformed a string that only carries the key prefix, both answered by bex-api alone; limited is an attempt shed with 429 by a failure budget (the same answers the Admission 429s panel counts by cause). The red line is what ApiKeyBearerFailuresSustained evaluates (more than 1 a second in total for 15m). Neither the key nor its client id is a label: find the sources in the edge access log for 401 and 429.",
+             "gridPos": { "h": 9, "w": 24, "x": 0, "y": 161 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "reqps", "min": 0 },
+               "overrides": [
+                  {
+                   "matcher": { "id": "byName", "options": "alert threshold" },
+                   "properties": [
+                      { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } },
+                      { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }
+                    ]
+                  }
+                ]
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (reason) (rate(bex_api_apikey_bearer_failures_total[10m]))",
+                 "legendFormat": "{{reason}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum(rate(bex_api_apikey_bearer_failures_total[10m]))",
+                 "legendFormat": "all reasons"
+                },
+                {
+                 "refId": "C",
+                 "expr": "vector(1)",
+                 "legendFormat": "alert threshold"
+                }
+              ]
             }
           ]
         }

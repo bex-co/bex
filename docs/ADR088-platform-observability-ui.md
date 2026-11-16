@@ -213,7 +213,7 @@ The gap this section used to record — "bex-api has no first-party per-route re
 | `bex_api_graphql_operation_duration_seconds` | `operation`, `type`, `outcome` | whether a mutation actually worked — GraphQL answers 200 with an `errors` array, so no HTTP metric can say |
 | `bex_api_mcp_tool_duration_seconds` | `tool`, `outcome` | per-tool latency and denial rate for agent traffic (ADR008) |
 | `bex_api_auth_introspection_misses_total` | `outcome` (`active`, `refused`, `error`, `shed`) | what the token introspection window costs: bearer requests that found no cached introspection, so a Hydra round trip and a spent admission budget ([ADR012 §8d](ADR012-auth.md#8d-revocation-latency-w21085), w21/091) |
-| `bex_api_auth_admission_sheds_total` | `credential` (`bearer`, `session`), `cause` (`source`, `credential`, `credential_inflight`, `inflight`), `caller` (`authenticated`, `unverified`) | 429 `AUTH_OVERLOADED` answers, and how many landed on a credential this replica had resolved to an identity in the last 15 minutes |
+| `bex_api_auth_admission_sheds_total` | `credential` (`bearer`, `session`), `cause` (`source`, `credential`, `credential_inflight`, `inflight`, and `key_id` for an API key sent as the bearer, ADR012 §8e), `caller` (`authenticated`, `unverified`) | 429 `AUTH_OVERLOADED` answers, and how many landed on a credential this replica had resolved to an identity in the last 15 minutes |
 | `bex_api_auth_hydra_introspection_duration_seconds` | `outcome` (`ok`, `error`) | bex-api's wait for one Hydra introspection round trip (Hydra's own metrics are not scraped) |
 
 The **label contract** is the load-bearing part, and it is enforced by test (`TestOriginMetricsRouteLabelIsAPatternNeverAnId`), not by convention:

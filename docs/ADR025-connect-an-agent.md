@@ -44,18 +44,24 @@ Cursor's MCP client doesn't do RFC 9728 auto-discovery — it takes a credential
 }
 ```
 
-`BEX_TOKEN` here is an [API-key exchange](#the-api-key-alternative-headless--ci-any-client) token, refreshed by hand or by a wrapper script. bex's side of the OAuth dance is complete (discovery → DCR → login → consent screen), but Cursor's MCP config is header-based rather than discovery-driven, so it never starts that flow — the API-key path stays the practical one for this client until it does.
+`BEX_TOKEN` here is a bex [API key](#the-api-key-alternative-headless--ci-any-client), which is a bearer and does not expire. bex's side of the OAuth dance is complete (discovery → DCR → login → consent screen), but Cursor's MCP config is header-based rather than discovery-driven, so it never starts that flow — the API-key path stays the practical one for this client until it does.
 
 ## The API-key alternative (headless / CI, any client)
 
-An API key _is_ a Hydra `client_credentials` OAuth2 client bex minted — mint one from the dashboard (Settings → API Keys) or `POST /v1/api-keys` (the secret is returned exactly once), then exchange it for a short-lived (15m) bearer token whenever you need one ([ADR006-bex-api.md#auth](ADR006-bex-api.md#auth)):
+Create a key in the dashboard (Settings → API Keys) or with `POST /v1/api-keys`. The answer carries the key once, as one string (`bex_<id>_<secret>`). Send it as the bearer, as a Render API key is sent (w7/m426, [ADR012 §8e](ADR012-auth.md#8e-an-api-key-is-a-bearer-token-w7m426)):
+
+```sh
+curl -H "Authorization: Bearer $BEX_API_KEY" https://api.bex.co/v1/services
+```
+
+The key is also a Hydra `client_credentials` OAuth2 client. A caller that wants a credential that expires can exchange the key's id and secret for a 15-minute access token ([ADR006-bex-api.md#auth](ADR006-bex-api.md#auth)):
 
 ```sh
 TOKEN=$(curl -s -X POST https://oauth.bex.co/oauth2/token \
   -d "grant_type=client_credentials&client_id=$KEY_ID&client_secret=$KEY_SECRET" | yq .access_token)
 ```
 
-It hits the same `/mcp` introspection and OpenFGA authorization path a user-consented token does; the one difference is an empty `aud`, which bex-api accepts by design so plain API keys keep working ([ADR012-auth.md §7](ADR012-auth.md#7-oauth-21-provider-for-agents-one-dashboard-login-first-party-sessions--third-party-clients-w4m9)).
+Either way it hits the same `/mcp` introspection and OpenFGA authorization path a user-consented token does; the one difference is an empty `aud`, which bex-api accepts by design so plain API keys keep working ([ADR012-auth.md §7](ADR012-auth.md#7-oauth-21-provider-for-agents-one-dashboard-login-first-party-sessions--third-party-clients-w4m9)).
 
 ## Local dev: stdio, no auth at all
 
@@ -95,4 +101,4 @@ claude mcp add bex-cloud-agents -- api mcp-stdio --toolset cloud-agents   # or B
 - **The login page asks you to confirm your password even though you're already signed in** — expected on your _first_ authorization. Kratos accepts each login challenge without asking Hydra to remember the login, so Hydra has no session for the browser yet and its login request is not skippable; Kratos answers with a re-authentication flow ("confirm that it is you"). Confirm once — subsequent authorizations pass through with no UI at all ([ADR012-auth.md §7](ADR012-auth.md#7-oauth-21-provider-for-agents-one-dashboard-login-first-party-sessions--third-party-clients-w4m9)).
 - **The login page sits on a loading skeleton and the connect never completes** — a dashboard from before w4/m17. Kratos answers the signed-in browser's flow request with `200 null` (it has already accepted the challenge and there is nothing to render), which the login page rendered as "no flow yet", forever. Fixed by handing the challenge back to Kratos as a browser navigation; if you see this, the dashboard needs updating — signing out first is the workaround.
 - **You want an agent to skip the consent screen entirely** (a first-party CI agent, say) — the operator blesses its `client_id` once: Hydra admin `PATCH` → `skip_consent: true`, or add it to the dashboard's `OAUTH_TRUSTED_CLIENTS`. That is purely a convenience; unblessed clients connect fine, they just ask the user first.
-- **Token works once, then 401s a few minutes later** — expected: access tokens are deliberately short-lived (15m, `ADR012-auth.md §8`). An OAuth-flow token carries a refresh token your client should use silently; an API-key token has none — just re-run the `client_credentials` exchange.
+- **Token works once, then 401s a few minutes later** — expected: access tokens are deliberately short-lived (15m, `ADR012-auth.md §8`). An OAuth-flow token carries a refresh token your client should use silently. A token exchanged from an API key has none: re-run the `client_credentials` exchange, or send the key itself as the bearer, which does not expire (`ADR012-auth.md §8e`).

@@ -102,6 +102,64 @@ func TestBexBinaryUsesBexConfigurationForRequests(t *testing.T) {
 	}
 }
 
+// w7/m426: an API key is one variable, as RENDER_API_KEY is for Render's CLI.
+// The launcher sends it as the bearer with no login and no exchange: the only
+// request is the command's own. Highest first: the user's own RENDER_API_KEY,
+// BEX_API_KEY, BEX_ACCESS_TOKEN, then a stored login.
+func TestBexBinarySendsAnAPIKeyAsTheBearer(t *testing.T) {
+	const (
+		bexKey    = "BEX_API_KEY=bex_test-key-id_test-key-secret"
+		bexToken  = "BEX_ACCESS_TOKEN=test-access-token"
+		renderKey = "RENDER_API_KEY=rnd_user"
+		keyBearer = "Bearer bex_test-key-id_test-key-secret"
+	)
+	for _, tc := range []struct {
+		name   string
+		stored bool // a stored login, which every environment credential outranks
+		env    []string
+		want   string
+	}{
+		{name: "an API key alone", env: []string{bexKey}, want: keyBearer},
+		{name: "an API key outranks a stored login", stored: true, env: []string{bexKey}, want: keyBearer},
+		{name: "an API key outranks an access token", env: []string{bexToken, bexKey}, want: keyBearer},
+		{name: "a blank API key leaves the access token in force", env: []string{bexToken, "BEX_API_KEY="}, want: "Bearer test-access-token"},
+		{name: "the user's own upstream key outranks both", env: []string{bexToken, bexKey, renderKey}, want: "Bearer rnd_user"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests []string
+			api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path+" "+r.Header.Get("Authorization"))
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`[{"owner":{"id":"tea-bex","name":"Bex","email":"bex@example.test","type":"team"}}]`))
+			}))
+			t.Cleanup(api.Close)
+
+			home := t.TempDir()
+			if tc.stored {
+				if err := os.MkdirAll(filepath.Join(home, ".bex"), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(home, ".bex", "cli.yaml"), []byte("version: 1\napi:\n  key: stored-bex-token\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			command := exec.Command(buildBex(), "workspaces", "-o", "json")
+			command.Env = append(withoutRenderEnv(os.Environ()), "HOME="+home, "BEX_HOST="+api.URL+"/v1/", "BEX_CLI_DISABLE_ANALYTICS=1")
+			command.Env = append(command.Env, tc.env...)
+			output, err := command.CombinedOutput()
+			if err != nil {
+				t.Fatalf("bex workspaces: %v\n%s", err, output)
+			}
+			if want := []string{"GET /v1/owners " + tc.want}; !slices.Equal(requests, want) {
+				t.Errorf("requests = %q, want %q", requests, want)
+			}
+			if !strings.Contains(string(output), "tea-bex") {
+				t.Errorf("output did not include the workspace: %s", output)
+			}
+		})
+	}
+}
+
 func TestBexBinaryReadsStoredBexConfig(t *testing.T) {
 	var gotAuthorization string
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -393,10 +451,14 @@ func seedNoticeMarkerIn(t *testing.T, dir string) {
 	}
 }
 
+// withoutRenderEnv drops every RENDER_* variable and the two Bex credential
+// variables, so a test sends only the credential it sets: a developer who
+// exports BEX_API_KEY must not have it outrank a test's BEX_ACCESS_TOKEN or
+// stored login, nor reach a test's stub server.
 func withoutRenderEnv(environment []string) []string {
 	filtered := make([]string, 0, len(environment))
 	for _, item := range environment {
-		if strings.HasPrefix(item, "RENDER_") {
+		if strings.HasPrefix(item, "RENDER_") || strings.HasPrefix(item, "BEX_API_KEY=") || strings.HasPrefix(item, "BEX_ACCESS_TOKEN=") {
 			continue
 		}
 		filtered = append(filtered, item)

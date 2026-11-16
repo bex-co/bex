@@ -44,7 +44,7 @@ var overrides embed.FS
 
 // sharedBlocks are upstream's marked shared sections, replaced whole by bex's
 // text: they carry the access and documentation workflows, where bex differs
-// (OAuth or an exchanged API-key token, bex's own CLI and MCP docs).
+// (its own OAuth sign-in, API keys, and CLI and MCP docs).
 var sharedBlocks = []string{"bex-access", "documentation-retrieval"}
 
 // fileOverrides replace an upstream file whose content is about operating
@@ -66,14 +66,12 @@ var filePatches = map[string][]rule{
 		r(`\nexample\.com IN CAA 0 issue "pki\.goog; cansignhttpexchanges=yes"\nexample\.com IN CAA 0 issuewild "pki\.goog; cansignhttpexchanges=yes"`, ""),
 		r(`\| Cloudflare proxy \+ wildcard without root domain \|[^\n]*\n`, ""),
 	},
-	// A bex access token lasts 15 minutes, so CI stores the API key and
-	// exchanges it per run rather than storing a token (ADR025).
 	"render-cli/SKILL.md": {
-		r(`(?s)      - name: Deploy\n        env:\n          BEX_ACCESS_TOKEN: \$\{\{ secrets\.BEX_ACCESS_TOKEN \}\}\n        run: bex deploys create \$\{\{ secrets\.RENDER_SERVICE_ID \}\}`,
-			"      - name: Deploy\n        env:\n          BEX_KEY_ID: ${{ secrets.BEX_KEY_ID }}\n          BEX_KEY_SECRET: ${{ secrets.BEX_KEY_SECRET }}\n        run: |\n"+
-				"          export BEX_ACCESS_TOKEN=\"$(curl -fsS -X POST https://oauth.bex.co/oauth2/token \\\n"+
-				"            -d \"grant_type=client_credentials&client_id=$$BEX_KEY_ID&client_secret=$$BEX_KEY_SECRET\" | jq -r .access_token)\"\n"+
-				"          bex deploys create ${{ secrets.BEX_SERVICE_ID }}"),
+		// The CI example's Deploy step is upstream's, with the name rules
+		// applied: one BEX_API_KEY secret sent as the bearer, as Render's
+		// RENDER_API_KEY is (w7/m426). Only the secret holding the service ID
+		// needs a bex name.
+		r(`secrets\.RENDER_SERVICE_ID\b`, "secrets.BEX_SERVICE_ID"),
 		r(`sudo sh /tmp/install-bex-cli\.sh`, "sudo BEX_INSTALL_DIR=/usr/local/bin sh /tmp/install-bex-cli.sh"),
 		// install-bex.sh verifies the release signature with cosign >= 2.4.2,
 		// which GitHub-hosted runners do not ship (w32/004). Pinned as
@@ -122,7 +120,8 @@ var nameRules = []rule{
 	r(`\brender CLI\b`, "bex CLI"),
 	r(`brew install render\b`, "brew install bex-co/tap/bex"),
 	r(`~/\.render/cli\.yaml`, "~/.bex/cli.yaml"),
-	r(`RENDER_API_KEY`, "BEX_ACCESS_TOKEN"),
+	// A bex API key is sent as the bearer, as a Render API key is (w7/m426).
+	r(`RENDER_API_KEY`, "BEX_API_KEY"),
 	r(`RENDER_CLI_CONFIG_(PATH|DIR)`, "BEX_CLI_CONFIG_$1"),
 	r(`\bRENDER_WORKSPACE\b`, "BEX_WORKSPACE"),
 	// Skill identities.
@@ -133,6 +132,12 @@ var nameRules = []rule{
 	r(`\bRender(’|')s Dashboard\b`, "the bex dashboard"),
 	r(`\bRender(’|')s\b`, "bex${1}s"),
 	r(`\bRender\b`, "bex"),
+	// The pinned Render CLI's version floors (v2.x) read as "your bex v0.x is
+	// too old" to an agent. Every released bex CLI has the commands they
+	// guard, so the pack states no minimum (w8/233).
+	r(`When bex CLI v\d+\.\d+\.\d+ or later is available`, "When the bex CLI is available"),
+	r(`(bex CLI\s+)v\d+\.\d+\.\d+\+ `, "$1"),
+	r(` \(CLI v\d+\.\d+\.\d+\+\)`, ""),
 }
 
 // keepAsIs protects names that must survive the identity rules.

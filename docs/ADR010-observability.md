@@ -352,6 +352,7 @@ The groups carry actionable descriptions and links to diagnosis procedures:
 | `bex` | `BexApiRestarting` | `bex-api`'s api container restarted at least twice in 15m across its replicas, which `BexApiDown` and `PlatformPodCrashLooping` miss when the replicas die in turn (w4/671) | warning |
 | `bex` | `BexApiOriginHighErrorRate` | >5% of the requests bex-api itself completed on one surface are 5xx for >10m (above a 0.1 req/s floor) — the origin-side sibling of `TraefikHigh5xxRate`, read together with it to place the fault ([ADR088 §6](ADR088-platform-observability-ui.md)) | warning |
 | `bex` | `BexApiOriginLatencyHigh` | bex-api's own p95 on one surface is above the recorded 2.5s baseline for >10m (above the same floor) | warning |
+| `bex` | `ApiKeyBearerFailuresSustained` | more than one API key a second is sent as `Authorization: Bearer` and refused for >15m (`bex_api_apikey_bearer_failures_total`, summed over replicas and reasons): a guessing run, or a client deployed with a revoked key ([ADR012 §8e](ADR012-auth.md#8e-an-api-key-is-a-bearer-token-w7m426)) | warning |
 | `bex` | `WebhookDeliveryAdmissionPressure` | >100 outbound webhook notifications remain capped in rolling 15m windows for >10m | warning |
 | `bex` | `WebhookDeliveryFailing` | >90% of outbound webhook attempts fail for >30m, above a 36-attempts/30m floor | warning |
 | `bex` | `PushDeliveryStale` | push is configured, rows are queued, and no provider operation has succeeded in >2h (for >30m) | warning |

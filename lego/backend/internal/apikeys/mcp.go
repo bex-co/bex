@@ -48,7 +48,7 @@ type revokeAPIKeyResult struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_api_key",
-		Description: "Create a machine credential (OAuth2 client) for the platform API. The secret is returned once — store it. bex extension over Render's MCP.",
+		Description: "Create an API key for the platform API. `key` is returned once — store it and send it as `Authorization: Bearer`. `id` and `secret` are the same credential as an OAuth2 client, for a client_credentials exchange. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createAPIKeyArgs) (*mcp.CallToolResult, APIKey, error) {
 		key, err := s.CreateAPIKey(ctx, core.NamedWorkspace(ctx), in.Name)
 		return nil, key, err

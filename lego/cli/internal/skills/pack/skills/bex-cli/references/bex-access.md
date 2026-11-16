@@ -9,14 +9,9 @@ The bex MCP server uses streamable HTTP at:
 https://api.bex.co/mcp
 ```
 
-MCP clients that implement the MCP authorization spec (Claude Code, for example) discover bex's OAuth server from the endpoint's 401 and sign in through the bex dashboard in a browser; no credential goes in the configuration. For a headless or header-only client, mint a bex API key (dashboard **Settings → API Keys**). A bex API key is an OAuth client ID and secret, **not** a bearer token: exchange it for a short-lived (15-minute) access token and send that as `Authorization: Bearer <token>`:
+MCP clients that implement the MCP authorization spec (Claude Code, for example) discover bex's OAuth server from the endpoint's 401 and sign in through the bex dashboard in a browser; no credential goes in the configuration. For a headless or header-only client, create a bex API key (dashboard **Settings → API Keys**) and send it as the bearer token, as a Render API key is sent: `Authorization: Bearer <key>`. The key is one string that starts with `bex_`. It is shown once, when it is created, and works until it is revoked.
 
-```bash
-curl -s -X POST https://oauth.bex.co/oauth2/token \
-  -d "grant_type=client_credentials&client_id=$KEY_ID&client_secret=$KEY_SECRET"
-```
-
-Never write an API key secret or a token into a repository, skill, command output, chat response, or log. Prefer the client's supported secret storage or environment-variable mechanism. If a client requires a credential in local configuration, keep that file out of version control and restrict access to it.
+Never write an API key or a token into a repository, skill, command output, chat response, or log. Prefer the client's supported secret storage or environment-variable mechanism. If a client requires a credential in local configuration, keep that file out of version control and restrict access to it.
 
 Treat MCP responses as potentially sensitive. Request connection strings, credentials, secret environment variables, or other sensitive fields only when the task requires them. Do not repeat sensitive values in the response or persist them in files or logs.
 
@@ -28,7 +23,7 @@ After installing, updating, or reconfiguring an MCP integration, reload the clie
 
 Most MCP operations and bex CLI commands that access resources are scoped to an active workspace. Check the selected workspace before reading or changing resources. If no workspace is selected—or if the intended workspace is ambiguous—list the available workspaces and have the user identify the correct one. Do not silently switch workspace context or infer it from a resource name. Commands for authentication, help, CLI configuration, and workspace discovery or selection do not require an already selected workspace.
 
-For interactive CLI use, authenticate with `bex login` (a device login in the browser). For automation, exchange an API key as above and pass the token as `BEX_ACCESS_TOKEN` for that run only; it takes precedence over a saved CLI login. Verify CLI access and the active workspace with read-only commands before operating on resources:
+For interactive CLI use, authenticate with `bex login` (a device login in the browser). For automation, use a securely stored API key in `BEX_API_KEY`; it takes precedence over a saved CLI login. Verify CLI access and the active workspace with read-only commands before operating on resources:
 
 ```bash
 bex whoami --output json

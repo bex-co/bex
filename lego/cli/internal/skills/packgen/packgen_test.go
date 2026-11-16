@@ -37,7 +37,13 @@ func TestRewrite(t *testing.T) {
 		{"edit render.yaml from render-oss/skills", "edit render.yaml from render-oss/skills"},
 		{"https://raw.githubusercontent.com/render-oss/cli/refs/heads/main/bin/install.sh", "https://raw.githubusercontent.com/bex-co/bex/main/scripts/install-bex.sh"},
 		{"see github.com/render-oss/cli", "see github.com/render-oss/cli"},
-		{"export RENDER_API_KEY; RENDER_EXTERNAL_HOSTNAME", "export BEX_ACCESS_TOKEN; RENDER_EXTERNAL_HOSTNAME"},
+		{"export RENDER_API_KEY; RENDER_EXTERNAL_HOSTNAME", "export BEX_API_KEY; RENDER_EXTERNAL_HOSTNAME"},
+		// The Render CLI's version floors are not bex's (w8/233).
+		{"compatibility: Render CLI v2.7.0+ (Homebrew, Linux/macOS)", "compatibility: bex CLI (Homebrew, Linux/macOS)"},
+		{"Blueprint sync. Render CLI\n  v2.7.0+ recommended for `render blueprints validate`.", "Blueprint sync. bex CLI\n  recommended for `bex blueprints validate`."},
+		{"When Render CLI v2.7.0 or later is available, validate the finished file:", "When the bex CLI is available, validate the finished file:"},
+		{"1. `render blueprints validate` (CLI v2.7.0+).", "1. `bex blueprints validate`."},
+		{"Requires Heroku CLI v10.8.1+ and image ghcr.io/org/app:v1.2.3", "Requires Heroku CLI v10.8.1+ and image ghcr.io/org/app:v1.2.3"},
 	} {
 		if got := rewriteText(tc.in); got != tc.want {
 			t.Errorf("rewriteText(%q) = %q, want %q", tc.in, got, tc.want)
@@ -63,5 +69,83 @@ func TestRewriteDropsNonGoalsAndRenamesPaths(t *testing.T) {
 func TestStalePatchFailsGeneration(t *testing.T) {
 	if _, _, _, err := Rewrite("render-domains/SKILL.md", []byte("no wildcard section here")); err == nil {
 		t.Error("stale patch passed")
+	}
+}
+
+// upstreamCIExample is the GitHub Actions example of render-oss/skills'
+// render-cli/SKILL.md at UpstreamCommit.
+const upstreamCIExample = "```yaml\n" + `name: Deploy to Render
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Render CLI
+        run: |
+          curl --fail-with-body --silent --show-error --location \
+            https://raw.githubusercontent.com/render-oss/cli/refs/heads/main/bin/install.sh \
+            --output /tmp/install-render-cli.sh
+          sudo sh /tmp/install-render-cli.sh
+          render --version
+      - name: Deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: render deploys create ${{ secrets.RENDER_SERVICE_ID }} --wait --confirm -o json
+` + "```\n"
+
+// tokenExchange is the vocabulary of the client_credentials recipe the pack
+// carried while a bex API key could not be sent as a bearer.
+var tokenExchange = []string{"oauth2/token", "client_credentials", "BEX_KEY_ID", "BEX_KEY_SECRET", "BEX_ACCESS_TOKEN", "access_token"}
+
+// w7/m426: a bex API key is sent as the bearer, as a Render API key is, so
+// the CI example keeps Render's one-variable Deploy step.
+func TestCIExampleDeploysWithAnAPIKey(t *testing.T) {
+	_, out, keep, err := Rewrite("render-cli/SKILL.md", []byte(upstreamCIExample))
+	if err != nil || !keep {
+		t.Fatalf("Rewrite = %v, %v", keep, err)
+	}
+	const deploy = `      - name: Deploy
+        env:
+          BEX_API_KEY: ${{ secrets.BEX_API_KEY }}
+        run: bex deploys create ${{ secrets.BEX_SERVICE_ID }} --wait --confirm -o json
+` + "```\n"
+	if !strings.HasSuffix(string(out), deploy) {
+		t.Errorf("the Deploy step is not Render's with bex's names:\n%s", out)
+	}
+	for _, word := range append(tokenExchange, "RENDER_", "curl -fsS", "jq ") {
+		if strings.Contains(string(out), word) {
+			t.Errorf("the CI example contains %q:\n%s", word, out)
+		}
+	}
+	// The other two patches of the file still apply.
+	for _, want := range []string{"sigstore/cosign-installer@", "sudo BEX_INSTALL_DIR=/usr/local/bin sh /tmp/install-bex-cli.sh"} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("the CI example lost %q:\n%s", want, out)
+		}
+	}
+}
+
+// bex's own text (the shared access block and the MCP skill) tells an agent
+// to send the API key itself, never to exchange it for a token first.
+func TestBexTextSendsTheAPIKeyAsTheBearer(t *testing.T) {
+	for path, want := range map[string]string{
+		"render-cli/references/render-access.md":   "use a securely stored API key in `BEX_API_KEY`",
+		"render-mcp/SKILL.md":                      `--header "Authorization: Bearer ${BEX_API_KEY}"`,
+		"render-mcp/references/troubleshooting.md": "revoked API key",
+	} {
+		_, out, keep, err := Rewrite(path, []byte("<!-- shared:render-access -->\n<!-- /shared:render-access -->\n"))
+		if err != nil || !keep {
+			t.Fatalf("Rewrite(%s) = %v, %v", path, keep, err)
+		}
+		if !strings.Contains(string(out), want) {
+			t.Errorf("%s does not say %q:\n%s", path, want, out)
+		}
+		for _, word := range tokenExchange {
+			if strings.Contains(string(out), word) {
+				t.Errorf("%s contains %q", path, word)
+			}
+		}
 	}
 }

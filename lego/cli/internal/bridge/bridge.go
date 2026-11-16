@@ -18,7 +18,12 @@ const (
 	bexHost       = "BEX_HOST"
 	bexWorkspace  = "BEX_WORKSPACE"
 	bexOutput     = "BEX_OUTPUT"
-	bexAccess     = "BEX_ACCESS_TOKEN"
+	// The credential, sent as `Authorization: Bearer` the way upstream sends
+	// RENDER_API_KEY. BEX_API_KEY holds an API key (`bex_<id>_<secret>`, which
+	// bex-api accepts as a bearer, w7/m426); BEX_ACCESS_TOKEN holds an OAuth
+	// access token. When both are set the key is used.
+	bexAPIKey = "BEX_API_KEY"
+	bexAccess = "BEX_ACCESS_TOKEN"
 	// Bex-owned telemetry opt-out. The imported CLI's analytics sender POSTs
 	// its per-invocation events to the configured API base — which the bridge
 	// above repoints at bex-api, whose `POST /v1/cli-telemetry-events`
@@ -59,9 +64,10 @@ func Apply() error {
 var filledFromBex map[string]string
 
 // FilledFromBex names the upstream variables Apply filled from a Bex input in
-// this process, each with that input: RENDER_API_KEY → BEX_ACCESS_TOKEN when
-// only the latter was set. An upstream variable the user set themselves is
-// absent, so a message about it can keep upstream's name (w32/009).
+// this process, each with that input: RENDER_API_KEY → BEX_API_KEY when that
+// was set, or → BEX_ACCESS_TOKEN when only that was. An upstream variable the
+// user set themselves is absent, so a message about it can keep upstream's
+// name (w32/009).
 func FilledFromBex() map[string]string {
 	return maps.Clone(filledFromBex)
 }
@@ -77,14 +83,17 @@ func apply(lookup lookupEnv, set setEnv, home userHomeDir) (map[string]string, e
 		return nil, err
 	}
 
+	// In order: where two Bex inputs map to one upstream variable, the first
+	// one that is set fills it and the later one is skipped.
 	filled := map[string]string{}
 	for _, mapping := range []struct{ upstream, bex string }{
 		{renderHost, bexHost},
 		{renderWorkspace, bexWorkspace},
 		{renderOutput, bexOutput},
+		{renderAPIKey, bexAPIKey},
 		{renderAPIKey, bexAccess},
 	} {
-		if isSet(lookup, mapping.upstream) {
+		if filled[mapping.upstream] != "" || isSet(lookup, mapping.upstream) {
 			continue
 		}
 		if value, exists := lookup(mapping.bex); exists && value != "" {

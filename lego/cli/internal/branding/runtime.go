@@ -75,11 +75,13 @@ var (
 
 // NameBexInputs makes run-time copy about an environment variable name the
 // one the user set. Upstream names its own: a user who signed in with
-// BEX_ACCESS_TOKEN was told RENDER_API_KEY "is still set", a variable they
-// cannot find to unset (w32/009). filled holds the upstream variables the
-// launcher filled from a Bex input, each with that input's name
-// (bridge.FilledFromBex); a RENDER_* the user set themselves is absent from
-// it and keeps upstream's name. Exact phrases only, as in runtimeProse.
+// BEX_API_KEY or BEX_ACCESS_TOKEN was told RENDER_API_KEY "is still set", a
+// variable they cannot find to unset (w32/009). filled holds the upstream
+// variables the launcher filled from a Bex input, each with that input's name
+// (bridge.FilledFromBex), so the copy names BEX_API_KEY for a user who set
+// that and BEX_ACCESS_TOKEN for one who set only that (w7/m426); a RENDER_*
+// the user set themselves is absent from it and keeps upstream's name. Exact
+// phrases only, as in runtimeProse.
 func NameBexInputs(filled map[string]string) {
 	apiKeyProse = newInputProse(filled, "RENDER_API_KEY",
 		"via the RENDER_API_KEY environment variable.",

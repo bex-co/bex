@@ -24,9 +24,9 @@
 
 ### "Unauthorized" or 401
 
-**Cause:** OAuth sign-in not completed or expired, or a missing or expired bearer token. An exchanged API-key token expires after 15 minutes. An API key secret sent directly as a bearer token is always refused.
+**Cause:** OAuth sign-in not completed or expired, or a missing, mistyped, or revoked API key. The bearer token must be the whole key, the one string that starts with `bex_`; the key's secret alone is refused.
 
-**Fix:** For OAuth, sign in again (`/mcp` or `claude mcp login bex` in Claude Code). For a token setup, exchange the API key for a fresh token as shown in [bex-access.md](bex-access.md), update the configured header or environment variable, restart the client, and verify with `list_services()`. Create a new API key in the bex dashboard (**Settings → API Keys**) only if the old one was deleted.
+**Fix:** For OAuth, sign in again (`/mcp` or `claude mcp login bex` in Claude Code). For an API-key setup, check the configured header or environment variable against [bex-access.md](bex-access.md), restart the client, and verify with `list_services()`. If the key was revoked or lost, create a new one in the bex dashboard (**Settings → API Keys**) and replace the configured bearer token.
 
 ### "Forbidden" or 403
 

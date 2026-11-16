@@ -1433,6 +1433,23 @@ groups:
           summary: "bex-api {{ $labels.surface }} p95 is {{ $value | humanizeDuration }}"
           description: "The 95th percentile of bex-api's own request duration on the {{ $labels.surface }} surface has been above 2.5s for >10m with meaningful traffic. Callers (dashboard, CLI, agents) are seeing timeouts even where the status is 200. Use the bex-api-gateways dashboard's slowest-routes panel to find which route pattern moved, then check the dependency it fans out to: Kubernetes API latency, control-plane Postgres, OpenFGA, Hydra introspection. Runbook: docs/ADR088-platform-observability-ui.md"
 
+      # w7/m426. An API key sent as `Authorization: Bearer` and not accepted
+      # (docs/ADR012-auth.md §8e). `reason` is a closed set (malformed, refused,
+      # cached, inactive, limited); neither the key nor its client id is ever a
+      # label. A person pasting a wrong key makes a handful of failures. A rate
+      # that holds for a quarter of an hour is someone guessing at keys or a
+      # deployed client still holding a revoked one. `cached` and `limited` are
+      # the repeats bex-api answered itself, so this is the rate of attempts,
+      # not the load on Hydra. Summed over the replicas, each its own target.
+      - alert: ApiKeyBearerFailuresSustained
+        expr: sum(rate(bex_api_apikey_bearer_failures_total[10m])) > 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "bex-api is refusing {{ $value | humanize }} API keys a second"
+          description: "More than one API key a second has been sent as a bearer and refused for >15m. Each source is limited to BEX_AUTH_FAILURE_LIMIT failures a minute and each client id to 10 refused exchanges a minute per replica, so guessing cannot succeed, but a rate this steady is either a guessing run or a client deployed with a revoked key. Split it by reason: sum by (reason) (rate(bex_api_apikey_bearer_failures_total[10m])). `refused` and `inactive` reached Hydra; `cached` and `limited` did not. The sources are in the edge access log for 401 and 429 responses. Runbook: docs/ADR012-auth.md#8e-an-api-key-is-a-bearer-token-w7m426"
+
       - alert: WebhookDeliveryAdmissionPressure
         expr: |
           sum(

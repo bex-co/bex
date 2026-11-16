@@ -262,6 +262,10 @@ func TestNameBexInputsRenamesOnlyFilledVariables(t *testing.T) {
 		{map[string]string{"RENDER_API_KEY": "BEX_ACCESS_TOKEN"}, viaEnv, "You are authenticated via the BEX_ACCESS_TOKEN environment variable.\n"},
 		{map[string]string{"RENDER_API_KEY": "BEX_ACCESS_TOKEN"}, stillSet, "OAuth credentials cleared. Note: BEX_ACCESS_TOKEN is still set in your environment.\n"},
 		{map[string]string{"RENDER_API_KEY": "BEX_ACCESS_TOKEN"}, data, data},
+		// w7/m426: an API key in BEX_API_KEY is named as such.
+		{map[string]string{"RENDER_API_KEY": "BEX_API_KEY"}, viaEnv, "You are authenticated via the BEX_API_KEY environment variable.\n"},
+		{map[string]string{"RENDER_API_KEY": "BEX_API_KEY"}, stillSet, "OAuth credentials cleared. Note: BEX_API_KEY is still set in your environment.\n"},
+		{map[string]string{"RENDER_API_KEY": "BEX_API_KEY"}, data, data},
 	} {
 		NameBexInputs(tc.filled)
 		var out bytes.Buffer

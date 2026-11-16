@@ -29,6 +29,14 @@
 # § bex ahead). Reuses JAR_USER (its live Kratos session cookie is exactly what
 # `/api/connected-agents` reads) and leg 13's still-live access token.
 #
+# Since w7/m426: a leg after the test user exists proves an API key is a bearer
+# token against a real Hydra (docs/ADR012-auth.md §8e). A signed-in person mints
+# a key through bex-api, and that one string authenticates REST, GraphQL and
+# MCP; a wrong key gets the answer random text gets; the key's id and secret
+# still exchange for a token; and the revoked key is refused within the
+# documented five seconds. It signs in through Kratos' native flow, so it needs
+# neither the dashboard nor the browser legs.
+#
 # The consent page is a server-rendered HTML form posting back to /auth/consent,
 # so curl drives it exactly as a browser would — no Playwright, no framework-
 # internal RPC serialization to reverse-engineer.
@@ -37,6 +45,7 @@
 # DSNs); the dashboard dev server and bex-api are started if not already up.
 # Requires: docker, curl, python3, go, yarn, kubectl context for bex-api's
 # kube client (any cluster; no auth stack needed on it).
+# Optional: BEX_BIN=<path to a built bex CLI> adds the CLI to the API-key leg.
 #
 # Usage: scripts/auth-oauth21-e2e.sh
 set -euo pipefail
@@ -162,8 +171,10 @@ wait_http "$KRATOS_PUB/health/ready"
 
 echo "-> 3/14 bex-api (issuer + resource configured)..."
 if ! curl -sf -o /dev/null "http://localhost:$API_PORT/healthz"; then
+  # BEX_REQUIRE_VERIFIED_EMAIL=0: this Kratos has no courier, so the test user's
+  # address is never verified, and the gate would refuse every human caller.
   (cd lego/backend && BEX_HYDRA_ADMIN_URL=$HYDRA_ADM BEX_KRATOS_URL=$KRATOS_PUB \
-    BEX_OAUTH_ISSUER=$ISSUER BEX_OAUTH_RESOURCE=$RESOURCE \
+    BEX_OAUTH_ISSUER=$ISSUER BEX_OAUTH_RESOURCE=$RESOURCE BEX_REQUIRE_VERIFIED_EMAIL=0 \
     BEX_API_ADDR=":$API_PORT" nohup go run ./cmd/api >"$TMP/bexapi.log" 2>&1 & echo $! >"$TMP/api.pid")
   API_PID="$(cat "$TMP/api.pid")"
   wait_http "http://localhost:$API_PORT/healthz" 60
@@ -184,7 +195,7 @@ import sys, json
 m = json.load(sys.stdin)
 assert m['resource'] == '$RESOURCE', m
 assert '$ISSUER' in m['authorization_servers'], m
-assert m.get('scopes_supported') == ['bex.read', 'bex.write', 'bex.sensitive'], m
+assert {'bex.read', 'bex.write', 'bex.sensitive'} <= set(m.get('scopes_supported', [])), m
 print('  ✓ metadata advertises the issuer and granular scopes')
 "
 www="$(curl -s -o /dev/null -D - "http://localhost:$API_PORT/mcp" | grep -i '^www-authenticate' | tr -d '\r')"
@@ -415,6 +426,110 @@ curl -sf -X POST -H 'Content-Type: application/json' -d '{
 }' "$KRATOS_ADM/admin/identities" >/dev/null
 echo "  ✓ $TRUSTED_CLIENT trusted, identity created"
 
+echo "-> extra/w7-m426 an API key is a bearer token: mint -> REST, GraphQL, MCP -> wrong key -> exchange -> revoke..."
+API="http://localhost:$API_PORT"
+# with_bearer <name> <bearer> <curl args...> -> the status code; the body lands in $TMP/key.<name>
+with_bearer() {
+  local name="$1" bearer="$2"
+  shift 2
+  curl -s -o "$TMP/key.$name" -w '%{http_code}' -H "Authorization: Bearer $bearer" "$@"
+}
+# surfaces <bearer> -> "REST=<status> GraphQL=<status> MCP=<status>", each reading the key list
+surfaces() {
+  local rest gql mcp
+  rest="$(with_bearer rest "$1" "$API/v1/api-keys")"
+  gql="$(with_bearer gql "$1" -H 'Content-Type: application/json' -d '{"query":"{ apiKeys { id } }"}' "$API/graphql")"
+  mcp="$(with_bearer mcp "$1" -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_api_keys","arguments":{}}}' "$API/mcp")"
+  echo "REST=$rest GraphQL=$gql MCP=$mcp"
+}
+# A person mints the key (a machine credential cannot). Their session comes
+# from Kratos' native login flow, so this leg needs no browser and no leg below.
+login_flow="$(curl -sf "$KRATOS_PUB/self-service/login/api" | python3 -c 'import sys,json; print(json.load(sys.stdin)["ui"]["action"])')"
+SESSION_TOKEN="$(curl -sf -X POST -H 'Content-Type: application/json' \
+  -d '{"method":"password","identifier":"'"$USER_EMAIL"'","password":"'"$USER_PASSWORD"'"}' "$login_flow" |
+  python3 -c 'import sys,json; print(json.load(sys.stdin)["session_token"])')" ||
+  { echo "error: the native Kratos login for the key's owner failed" >&2; exit 1; }
+minted="$(curl -sf -H "X-Session-Token: $SESSION_TOKEN" -H 'Content-Type: application/json' -d '{"name":"e2e bearer key"}' "$API/v1/api-keys")" ||
+  { echo "error: minting an API key with the signed-in session failed" >&2; exit 1; }
+read -r KEY_ID KEY_SECRET API_KEY < <(echo "$minted" |
+  python3 -c 'import sys,json; m = json.load(sys.stdin); print(m["id"], m["secret"], m.get("key", ""))')
+[ -n "$API_KEY" ] && [ "$API_KEY" = "bex_${KEY_ID}_${KEY_SECRET}" ] ||
+  { echo "error: create did not answer the key as bex_<id>_<secret>" >&2; exit 1; }
+echo "  ✓ create answers one key string made of the id and the secret"
+
+got="$(surfaces "$API_KEY")"
+[ "$got" = "REST=200 GraphQL=200 MCP=200" ] || { echo "error: the key as a bearer: $got" >&2; exit 1; }
+for surface in rest gql mcp; do
+  grep -q "$KEY_ID" "$TMP/key.$surface" || { echo "error: $surface did not list the key it authenticated with: $(head -c 300 "$TMP/key.$surface")" >&2; exit 1; }
+done
+if grep -q '"errors"' "$TMP/key.gql" || grep -q '"isError":true' "$TMP/key.mcp"; then
+  echo "error: GraphQL or MCP answered an error for the key: $(head -c 300 "$TMP/key.gql") $(head -c 300 "$TMP/key.mcp")" >&2
+  exit 1
+fi
+assert_bearer_works "$API_KEY"
+echo "  ✓ the key alone authenticates REST, GraphQL and MCP as its own client (real Hydra exchange + introspection)"
+
+# The bex CLI with BEX_BIN set: one variable holding the key, no login and no
+# exchange. A stack with the control-plane store lists the key's workspace's
+# services; without it the CLI still authenticates and stops at the store.
+if [ -n "${BEX_BIN:-}" ]; then
+  workspace="$(with_bearer owners "$API_KEY" "$API/v1/owners" >/dev/null && python3 -c 'import sys,json
+owners = json.load(open(sys.argv[1]))
+print(owners[0]["owner"]["id"] if isinstance(owners, list) and owners else "")' "$TMP/key.owners" 2>/dev/null || true)"
+  cli_out="$(env -u RENDER_API_KEY -u BEX_ACCESS_TOKEN -u RENDER_HOST -u RENDER_WORKSPACE HOME="$TMP/clihome" \
+    BEX_HOST="$API/v1/" BEX_WORKSPACE="${workspace:-none}" BEX_CLI_DISABLE_ANALYTICS=1 BEX_API_KEY="$API_KEY" \
+    "$BEX_BIN" services -o json 2>&1)" && cli_status=0 || cli_status=$?
+  if [ -n "$workspace" ]; then
+    [ "$cli_status" = "0" ] && echo "$cli_out" | python3 -c 'import sys,json; assert isinstance(json.load(sys.stdin), list)' ||
+      { echo "error: BEX_API_KEY=<key> bex services -o json failed ($cli_status): $cli_out" >&2; exit 1; }
+    echo "  ✓ BEX_API_KEY=<key> bex services -o json lists workspace $workspace with no login and no exchange"
+  else
+    echo "$cli_out" | grep -q 'store not configured' ||
+      { echo "error: the bex CLI did not authenticate with BEX_API_KEY ($cli_status): $cli_out" >&2; exit 1; }
+    echo "  ✓ the bex CLI authenticates with BEX_API_KEY alone (this stack has no control-plane store to list from)"
+  fi
+fi
+
+# A wrong secret, an unknown id, a malformed key and random text: one answer.
+refusal=""
+for bad in "${API_KEY}x" "bex_00000000-0000-4000-8000-000000000000_${KEY_SECRET}" "bex_not-a-key" "not-a-key-at-all"; do
+  status="$(with_bearer bad "$bad" "$API/v1/api-keys")"
+  [ "$status" = "401" ] || { echo "error: a bad key answered $status, want 401" >&2; exit 1; }
+  [ -z "$refusal" ] && refusal="$(cat "$TMP/key.bad")"
+  [ "$(cat "$TMP/key.bad")" = "$refusal" ] || { echo "error: bad keys are refused with different bodies" >&2; exit 1; }
+done
+echo "  ✓ a wrong secret, an unknown id, a malformed key and random text get the same 401"
+
+# The exchange a caller does for themselves still works with the same key.
+EXCHANGED="$(curl -s -X POST -d grant_type=client_credentials --data-urlencode "client_id=$KEY_ID" \
+  --data-urlencode "client_secret=$KEY_SECRET" "$ISSUER/oauth2/token" |
+  python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))')"
+[ -n "$EXCHANGED" ] && [ "$(with_bearer exchanged "$EXCHANGED" "$API/v1/api-keys")" = "200" ] ||
+  { echo "error: the client_credentials exchange with the key's id and secret no longer works" >&2; exit 1; }
+echo "  ✓ the key's id and secret still exchange for a working access token"
+
+# Revoked, the key is refused on every surface within the latency ADR012 §8d
+# states. This stack runs without the control-plane store, so there is no
+# shared tombstone and the bound is the 5 s introspection window, plus the poll.
+[ "$(curl -s -o /dev/null -w '%{http_code}' -H "X-Session-Token: $SESSION_TOKEN" -X DELETE "$API/v1/api-keys/$KEY_ID")" = "204" ] ||
+  { echo "error: revoking the key failed" >&2; exit 1; }
+revoked_at="$(python3 -c 'import time; print(time.time())')"
+refused=""
+for _ in $(seq 1 16); do
+  got="$(surfaces "$API_KEY")"
+  if [ "$got" = "REST=401 GraphQL=401 MCP=401" ]; then
+    refused="$(python3 -c "import time; print(round(time.time() - $revoked_at, 1))")"
+    break
+  fi
+  sleep 0.5
+done
+[ -n "$refused" ] || { echo "error: the revoked key still works after 8 s: $got" >&2; exit 1; }
+python3 -c "import sys; sys.exit(0 if $refused <= 6.0 else 1)" ||
+  { echo "error: the revoked key was refused after ${refused}s, want within 5 s (plus the poll)" >&2; exit 1; }
+[ "$(with_bearer exchanged "$EXCHANGED" "$API/v1/api-keys")" = "401" ] || { echo "error: the revoked key's exchanged token still works" >&2; exit 1; }
+echo "  ✓ the revoked key answers 401 on REST, GraphQL and MCP ${refused}s after the revocation"
+
 echo "-> 8/14 trusted client: PKCE authorize -> login -> HEADLESS consent -> token -> Bearer..."
 JAR_TRUSTED="$TMP/trusted.jar"
 final="$(authorize "$TRUSTED_CLIENT" "state-trusted" "$JAR_TRUSTED")"
@@ -557,3 +672,4 @@ echo "  (native challenge accept, from a signed-out AND an already-signed-in bro
 echo "  -> consent (headless for blessed clients, a real user decision for everyone"
 echo "  else: approve / deny / remembered) -> token -> Bearer-authorized bex-api"
 echo "  -> Connected Agents list -> revoke -> the same token 401s at /mcp"
+echo "✓ w7/m426: an API key is a bearer on REST, GraphQL and MCP, and revocable"

@@ -74,6 +74,8 @@ type OriginMetrics struct {
 	// auth is the gate's own telemetry (introspection misses, admission sheds,
 	// the Hydra round trip): authmetrics.go.
 	auth authMetrics
+	// keyFailures counts API keys refused as bearers (auth_apikey.go).
+	keyFailures *prometheus.CounterVec
 }
 
 // Request surfaces — the coarse "which product surface" axis every panel and
@@ -187,10 +189,27 @@ func NewOriginMetrics(reg prometheus.Registerer) *OriginMetrics {
 			Namespace: "bex", Subsystem: "api", Name: "cli_telemetry_events_total",
 			Help: "Stored CLI telemetry events by command path, completion kind, CLI version, and output format.",
 		}, []string{"command", "completion_kind", "cli_version", "output_format"}),
+		// An API key sent as the bearer and not accepted (docs/ADR012-auth.md
+		// §8e, w7/m426). reason is the closed set in auth_apikey.go; neither the
+		// key nor its client id is ever a label, so guessing at keys cannot mint
+		// series. The backing series of ApiKeyBearerFailuresSustained.
+		keyFailures: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "api", Name: "apikey_bearer_failures_total",
+			Help: "API keys sent as Authorization: Bearer and not accepted, by reason (malformed/refused/cached/inactive/limited).",
+		}, []string{"reason"}),
 	}
-	reg.MustRegister(m.duration, m.requests, m.inFlight, m.graphql, m.mcpTools, m.telemetry)
+	reg.MustRegister(m.duration, m.requests, m.inFlight, m.graphql, m.mcpTools, m.telemetry, m.keyFailures)
 	m.auth = newAuthMetrics(reg)
 	return m
+}
+
+// observeAPIKeyFailure counts one API key refused as a bearer. Nil-safe: with
+// metrics off the gate counts nothing.
+func (m *OriginMetrics) observeAPIKeyFailure(reason string) {
+	if m == nil {
+		return
+	}
+	m.keyFailures.WithLabelValues(reason).Inc()
 }
 
 // ObserveTelemetry counts one stored CLI telemetry event (w5/m92). Nil-safe

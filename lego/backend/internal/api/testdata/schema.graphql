@@ -624,6 +624,7 @@ type ApiKey {
   createdAt: String
   createdBy: String
   id: String
+  key: String
   lastUsedAt: String
   name: String
   secret: String

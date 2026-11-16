@@ -35,13 +35,17 @@ import (
 )
 
 // APIKey is a machine credential: an OAuth2 client in the platform's Hydra
-// (docs/ADR012-auth.md). Secret is populated exactly once — on create — and never
-// returned by list. CreatedBy/LastUsedAt are hygiene metadata (w4/m13): who
-// minted the key, and when a token for it was last introspected.
+// (docs/ADR012-auth.md). Secret and Key are populated exactly once — on create —
+// and never returned by list. CreatedBy/LastUsedAt are hygiene metadata
+// (w4/m13): who minted the key, and when a token for it was last introspected.
 type APIKey struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Secret     string `json:"secret,omitempty"` // only on create; store it — it is not retrievable
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Secret string `json:"secret,omitempty"` // only on create; store it — it is not retrievable
+	// Key is the bearer form of the credential (BearerKey: the id and secret in
+	// one string), sent as `Authorization: Bearer` the way a Render API key is
+	// (docs/ADR012-auth.md §8e). Like Secret it exists only on create.
+	Key        string `json:"key,omitempty"`
 	CreatedAt  string `json:"createdAt"`
 	CreatedBy  string `json:"createdBy,omitempty"`  // minting caller's identity subject
 	LastUsedAt string `json:"lastUsedAt,omitempty"` // last introspection (RFC 3339); empty => never used
@@ -219,8 +223,9 @@ func (s *Service) activeKeyQuota() int {
 	return defaultMaxActiveKeys
 }
 
-// CreateAPIKey mints a new machine credential. The returned Secret is shown once,
-// and the caller's identity (IdentityFrom) is stamped as the key's created-by.
+// CreateAPIKey mints a new machine credential. The returned Secret, and the Key
+// that carries it as one bearer string, are shown once, and the caller's
+// identity (IdentityFrom) is stamped as the key's created-by.
 // With the store on, the key is bound to ownerID's tenant (Render's `ownerId`,
 // w6/m18; "" => the caller's default workspace, membership-checked via
 // core.WithWorkspace like every other explicit-target verb) — a mapping row +
@@ -265,7 +270,11 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 		createdBy = id.Subject
 	}
 	if s.Binding == nil {
-		return s.APIKeys.Create(ctx, name, createdBy) // store off — unbound, as before
+		key, err := s.APIKeys.Create(ctx, name, createdBy) // store off — unbound, as before
+		if err != nil {
+			return APIKey{}, err
+		}
+		return withBearerKey(key), nil
 	}
 	tenantID, ok := s.Tenant(ctx)
 	if !ok {
@@ -296,7 +305,15 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 	} else if err := create(); err != nil {
 		return APIKey{}, err
 	}
-	return key, nil
+	return withBearerKey(key), nil
+}
+
+// withBearerKey adds the bearer form to a freshly minted key. Only
+// CreateAPIKey calls it: a key read back from the store has no secret, and so
+// no bearer form to show.
+func withBearerKey(key APIKey) APIKey {
+	key.Key = BearerKey(key.ID, key.Secret)
+	return key
 }
 
 func (s *Service) createBoundAPIKey(ctx context.Context, tenantID, name, createdBy string) (APIKey, error) {

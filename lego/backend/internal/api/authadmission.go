@@ -63,8 +63,10 @@ import (
 // of upstream auth calls in flight. Mapped to 429 + Retry-After.
 var errAuthOverloaded = errors.New("authentication upstream budget exhausted")
 
-// The four budgets that can refuse an upstream auth call. They are the `cause`
-// label of bex_api_auth_admission_sheds_total, so the set is closed.
+// The budgets that can refuse an upstream auth call: the four admit enforces
+// for every credential, and the one the API-key path adds (auth_apikey.go).
+// They are the `cause` label of bex_api_auth_admission_sheds_total, so the set
+// is closed.
 const (
 	// shedSource: the client IP has spent its invalid-credential budget.
 	shedSource = "source"
@@ -77,6 +79,10 @@ const (
 	// shedInflight: the process-wide pool of upstream calls is full
 	// (BEX_AUTH_MAX_INFLIGHT).
 	shedInflight = "inflight"
+	// shedKeyID: Hydra has refused too many exchanges for this API key id
+	// (keyFailuresPerMinute), and this replica does not know the key presented.
+	// Bearer only.
+	shedKeyID = "key_id"
 )
 
 // shedError is errAuthOverloaded carrying the budget that refused the call, so
@@ -93,6 +99,7 @@ var (
 	errShedCredential         = &shedError{cause: shedCredential}
 	errShedCredentialInflight = &shedError{cause: shedCredentialInflight}
 	errShedInflight           = &shedError{cause: shedInflight}
+	errShedKeyID              = &shedError{cause: shedKeyID}
 )
 
 const (
@@ -187,7 +194,7 @@ func (a *AuthAdmission) admit(r *http.Request) (release func(), err error) {
 	if a == nil {
 		return func() {}, nil
 	}
-	if a.failures != nil && a.failures.Bucket(a.sourceKey(r)).Tokens() < 1 {
+	if a.exhausted(r) {
 		return nil, errShedSource
 	}
 	credential := a.credentialFingerprint(r)
@@ -213,6 +220,14 @@ func (a *AuthAdmission) admit(r *http.Request) (release func(), err error) {
 		// upstream deadline while the flood continues. Overload must be visible.
 		return nil, errShedInflight
 	}
+}
+
+// exhausted reports whether r's source has spent its invalid-credential
+// budget. admit reads it before any upstream call; the API-key path
+// (auth_apikey.go) reads it before a refusal it answers from memory, so a
+// repeated wrong key ends in 429 instead of an endless 401.
+func (a *AuthAdmission) exhausted(r *http.Request) bool {
+	return a != nil && a.failures != nil && a.failures.Bucket(a.sourceKey(r)).Tokens() < 1
 }
 
 // sourceKey is the client a per-source budget counts: the IP behind the trusted

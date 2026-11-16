@@ -384,14 +384,14 @@ func TestAuthMetricSeriesAreRegisteredAtZero(t *testing.T) {
 	}
 	for family, want := range map[string]int{
 		"bex_api_auth_introspection_misses_total":           4,
-		"bex_api_auth_admission_sheds_total":                16,
+		"bex_api_auth_admission_sheds_total":                18,
 		"bex_api_auth_hydra_introspection_duration_seconds": 2,
 	} {
 		if got := count(family); got != want {
 			t.Errorf("%s has %d series at start, want %d", family, got, want)
 		}
 	}
-	if got := labelValues(samples, "bex_api_auth_admission_sheds_total", "cause"); strings.Join(got, ",") != "credential,credential_inflight,inflight,source" {
+	if got := labelValues(samples, "bex_api_auth_admission_sheds_total", "cause"); strings.Join(got, ",") != "credential,credential_inflight,inflight,key_id,source" {
 		t.Errorf("shed causes = %v", got)
 	}
 }

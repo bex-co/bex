@@ -23,14 +23,16 @@ import (
 )
 
 // apiKeyGQLType mirrors the REST APIKey object (bex extension; Render's dashboard
-// manages keys outside its public schemas). secret is non-empty only in the
-// createApiKey payload — list resolves it empty.
+// manages keys outside its public schemas). secret and key (the bearer form,
+// docs/ADR012-auth.md §8e) are non-empty only in the createApiKey payload — list
+// resolves them empty.
 var apiKeyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ApiKey",
 	Fields: graphql.Fields{
 		"id":         gqlutil.StrField(func(k APIKey) any { return k.ID }),
 		"name":       gqlutil.StrField(func(k APIKey) any { return k.Name }),
 		"secret":     gqlutil.StrField(func(k APIKey) any { return k.Secret }),
+		"key":        gqlutil.StrField(func(k APIKey) any { return k.Key }),
 		"createdAt":  gqlutil.StrField(func(k APIKey) any { return k.CreatedAt }),
 		"createdBy":  gqlutil.StrField(func(k APIKey) any { return k.CreatedBy }),
 		"lastUsedAt": gqlutil.StrField(func(k APIKey) any { return k.LastUsedAt }),
