@@ -56,9 +56,10 @@ var Default = mustLoad(sheetYAML)
 // Sheet maps metering dimensions to per-unit USD rates. It is immutable after
 // construction.
 type Sheet struct {
-	compute  map[string]float64 // tier ID → $/second for instance_seconds (service)
-	postgres map[string]float64 // tier ID → $/second for instance_seconds (postgres)
-	keyvalue map[string]float64 // tier ID → $/second for instance_seconds (key_value)
+	publicJSON []byte             // GET /pricing's body (public.go)
+	compute    map[string]float64 // tier ID → $/second for instance_seconds (service)
+	postgres   map[string]float64 // tier ID → $/second for instance_seconds (postgres)
+	keyvalue   map[string]float64 // tier ID → $/second for instance_seconds (key_value)
 	// keyvalueMicroUSD is each paid Key Value tier's rate in micro-USD per
 	// second, exact, for the KeyValueCostMeter events.
 	keyvalueMicroUSD map[string]*big.Rat
@@ -675,50 +676,44 @@ func FormatUSD(v float64) string {
 
 // --- YAML loading ---
 
+type tierRate struct {
+	Tier         string  `json:"tier"`
+	USDPerSecond float64 `json:"usdPerSecond"`
+}
+
+type planPrice struct {
+	Plan        string  `json:"plan"`
+	USDPerMonth float64 `json:"usdPerMonth"`
+}
+
+type bandwidthFile struct {
+	USDPerByte float64 `json:"usdPerByte"`
+	IncludedGB []struct {
+		Plan string `json:"plan"`
+		GB   int64  `json:"gb"`
+	} `json:"includedGB"`
+}
+
+type buildFile struct {
+	USDPerSecond    float64 `json:"usdPerSecond"`
+	IncludedMinutes []struct {
+		Plan    string `json:"plan"`
+		Minutes int64  `json:"minutes"`
+	} `json:"includedMinutes"`
+}
+
+type gbSecondRate struct {
+	USDPerGBSecond float64 `json:"usdPerGBSecond"`
+}
+
+type sandboxRate struct {
+	USDPerWeightedSecond float64 `json:"usdPerWeightedSecond"`
+}
+
+// sheetFile is pricing.yaml. Its customer-facing sections are publicSheet
+// (public.go), which GET /pricing serves as they are; the rest stays private.
 type sheetFile struct {
-	Version string `json:"version"`
-	Compute []struct {
-		Tier         string  `json:"tier"`
-		USDPerSecond float64 `json:"usdPerSecond"`
-	} `json:"compute"`
-	Postgres []struct {
-		Tier         string  `json:"tier"`
-		USDPerSecond float64 `json:"usdPerSecond"`
-	} `json:"postgres"`
-	KeyValue []struct {
-		Tier         string  `json:"tier"`
-		USDPerSecond float64 `json:"usdPerSecond"`
-	} `json:"keyvalue"`
-	Bandwidth struct {
-		USDPerByte float64 `json:"usdPerByte"`
-		IncludedGB []struct {
-			Plan string `json:"plan"`
-			GB   int64  `json:"gb"`
-		} `json:"includedGB"`
-	} `json:"bandwidth"`
-	Build struct {
-		USDPerSecond    float64 `json:"usdPerSecond"`
-		IncludedMinutes []struct {
-			Plan    string `json:"plan"`
-			Minutes int64  `json:"minutes"`
-		} `json:"includedMinutes"`
-	} `json:"build"`
-	Storage struct {
-		USDPerGBSecond float64 `json:"usdPerGBSecond"`
-	} `json:"storage"`
-	Sandbox struct {
-		USDPerWeightedSecond float64 `json:"usdPerWeightedSecond"`
-	} `json:"sandbox"`
-	Disk struct {
-		USDPerGBSecond float64 `json:"usdPerGBSecond"`
-	} `json:"disk"`
-	SandboxSnapshot struct {
-		USDPerGBSecond float64 `json:"usdPerGBSecond"`
-	} `json:"sandboxSnapshot"`
-	Workspace []struct {
-		Plan        string  `json:"plan"`
-		USDPerMonth float64 `json:"usdPerMonth"`
-	} `json:"workspace"`
+	publicSheet
 	AgentModel struct {
 		Markup             float64 `json:"markup"`
 		MaxCapMultiplier   float64 `json:"maxCapMultiplier"`
@@ -865,5 +860,10 @@ func parseSheet(raw []byte) (*Sheet, error) {
 	if s.workspace[store.PlanPro] <= 0 || s.workspace[store.PlanScale] <= 0 {
 		return nil, fmt.Errorf("workspace pro and scale usdPerMonth must be positive")
 	}
+	public, err := publicSheetJSON(f)
+	if err != nil {
+		return nil, fmt.Errorf("public sheet: %w", err)
+	}
+	s.publicJSON = public
 	return s, nil
 }

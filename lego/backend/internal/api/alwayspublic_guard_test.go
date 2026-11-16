@@ -112,6 +112,7 @@ func TestWebhookRateLimiterShedsBeforeHandler(t *testing.T) {
 // red, forcing a classification decision rather than a silent outside-gate mount.
 var alwaysPublicInventory = map[string]string{
 	"GET /healthz":                              "liveness probe; no credential; constant-cost, unmetered",
+	"GET /pricing":                              "public price sheet (pricing.yaml's customer-facing rates, for bex.co); no credential; constant bytes built at init, unmetered",
 	"POST /v1/device-grant":                     "RFC 8628 device flow; IP-keyed DeviceRateLimiter (OAuth slow_down 429) + post-admission body cap",
 	"POST /v1/device-token":                     "RFC 8628 device flow; IP-keyed DeviceRateLimiter + post-admission body cap",
 	"POST /v1/token/refresh/":                   "RFC 8628 device flow; IP-keyed DeviceRateLimiter + post-admission body cap",

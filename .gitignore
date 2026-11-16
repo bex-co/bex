@@ -18,6 +18,8 @@ infra/local/stripe-billing-*-fixtures.json
 
 projects-to-deploy
 .tmp
+# Local clones of sibling repos (e.g. .internal/eden-cms-v2) — their own git history.
+/.internal/
 # no env file is ever committed (.env, .cli-key.env, …) — the checked-in
 # mirror is .env.example (different suffix, not matched).
 *.env

@@ -1,0 +1,165 @@
+{
+  "version": "4",
+  "workspace": [
+    {
+      "plan": "hobby",
+      "usdPerMonth": 0
+    },
+    {
+      "plan": "pro",
+      "usdPerMonth": 17.5
+    },
+    {
+      "plan": "scale",
+      "usdPerMonth": 349.3
+    }
+  ],
+  "compute": [
+    {
+      "tier": "free",
+      "usdPerSecond": 0
+    },
+    {
+      "tier": "starter",
+      "usdPerSecond": 0.000001864535768645
+    },
+    {
+      "tier": "standard",
+      "usdPerSecond": 0.000006659056316591
+    },
+    {
+      "tier": "pro",
+      "usdPerSecond": 0.000022640791476408
+    },
+    {
+      "tier": "pro-plus",
+      "usdPerSecond": 0.000046613394216134
+    },
+    {
+      "tier": "pro-max",
+      "usdPerSecond": 0.000059931506849315
+    },
+    {
+      "tier": "pro-ultra",
+      "usdPerSecond": 0.00011986301369863
+    }
+  ],
+  "postgres": [
+    {
+      "tier": "free",
+      "usdPerSecond": 0
+    },
+    {
+      "tier": "basic-256mb",
+      "usdPerSecond": 0.000001598173515982
+    },
+    {
+      "tier": "basic-1gb",
+      "usdPerSecond": 0.000005060882800609
+    },
+    {
+      "tier": "1c-2g",
+      "usdPerSecond": 0.000010654490106545
+    },
+    {
+      "tier": "pro-4gb",
+      "usdPerSecond": 0.000014649923896499
+    },
+    {
+      "tier": "basic-4gb",
+      "usdPerSecond": 0.000019977168949772
+    }
+  ],
+  "keyvalue": [
+    {
+      "tier": "free",
+      "usdPerSecond": 0
+    },
+    {
+      "tier": "starter",
+      "usdPerSecond": 0.000002663622526636
+    },
+    {
+      "tier": "standard",
+      "usdPerSecond": 0.000005327245053272
+    },
+    {
+      "tier": "3g",
+      "usdPerSecond": 0.000015981735159817
+    },
+    {
+      "tier": "pro",
+      "usdPerSecond": 0.000026636225266362
+    },
+    {
+      "tier": "pro_plus",
+      "usdPerSecond": 0.000053272450532725
+    },
+    {
+      "tier": "pro_max",
+      "usdPerSecond": 0.000093226788432268
+    },
+    {
+      "tier": "pro_ultra",
+      "usdPerSecond": 0.000159817351598174
+    },
+    {
+      "tier": "50g",
+      "usdPerSecond": 0.000199771689497717
+    }
+  ],
+  "bandwidth": {
+    "usdPerByte": 1.3969838619232177e-11,
+    "includedGB": [
+      {
+        "plan": "hobby",
+        "gb": 5
+      },
+      {
+        "plan": "pro",
+        "gb": 25
+      },
+      {
+        "plan": "scale",
+        "gb": 1000
+      },
+      {
+        "plan": "enterprise",
+        "gb": 1000
+      }
+    ]
+  },
+  "build": {
+    "usdPerSecond": 0.00005833333333333333,
+    "includedMinutes": [
+      {
+        "plan": "hobby",
+        "minutes": 500
+      },
+      {
+        "plan": "pro",
+        "minutes": 1000
+      },
+      {
+        "plan": "scale",
+        "minutes": 5000
+      },
+      {
+        "plan": "enterprise",
+        "minutes": 5000
+      }
+    ]
+  },
+  "storage": {
+    "usdPerGBSecond": 7.990867579908676e-8
+  },
+  "disk": {
+    "usdPerGBSecond": 6.659056316590564e-8
+  },
+  "sandbox": {
+    "usdPerWeightedSecond": 2.486111111111111e-8
+  },
+  "sandboxSnapshot": {
+    "usdPerGBSecond": 2.13089802130898e-8
+  }
+}

@@ -75,6 +75,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -1524,6 +1525,14 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
+	})
+	// The public price sheet (bex-native; Render publishes prices only as a web
+	// page): bex.co fetches it so its pricing page quotes what bex charges.
+	// Constant bytes built at init, no credential.
+	mux.HandleFunc("GET /pricing", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		_, _ = w.Write(pricing.Default.PublicJSON())
 	})
 	// The official Render CLI starts unauthenticated and speaks Render's wrapper
 	// endpoints rather than Hydra's RFC 8628 paths directly. Mount only those

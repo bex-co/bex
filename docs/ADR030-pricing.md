@@ -22,6 +22,8 @@ The operator already imports `lego/types/tiers/tiers.yaml` for pod resource-sizi
 
 The price sheet therefore lives in the backend module only: `lego/backend/internal/pricing/pricing.yaml` (embedded at build time via `//go:embed`), loaded into an immutable `*Sheet` singleton at `package init`.
 
+**Public read (2026-11-14).** bex-api serves the customer-facing part of the sheet without a credential at `GET /pricing` (`internal/pricing/public.go`). That part is every rate and the plan fees and included amounts. The agent model section (markup, caps, trust tiers, upstream costs) stays private. Its shape is pinned by `internal/pricing/testdata/public_sheet.json`. bex.co (eden-cms-v2) fetches it on `yarn dev`, and its tests check the pricing page against it, so a price change that forgets bex.co fails there.
+
 ### 2. Discount policy
 
 | Meter / SKU | Render rate | bex rate | Discount |
