@@ -67,12 +67,16 @@ for extra in $(seq 1 "$past_gib"); do
   step=$((step + 1))
   fill "$step" || true
   sleep 12
-  phase="$(kubectl -n "$namespace_a" get pod "$pod" -o json 2>/dev/null | jq -c '{phase: .status.phase, reason: .status.reason, message: .status.message}' || echo '{}')"
+  phase="$(kubectl -n "$namespace_a" get pod "$pod" -o json 2>/dev/null | jq -c '{phase: .status.phase, reason: .status.reason, message: .status.message,
+    containers: [.status.containerStatuses[]? | {name, ready, state: (.state | keys[0]), ended: ((.state.terminated // .lastState.terminated) | if . then {reason, exitCode, message} else null end)}]}' || echo '{}')"
   case "$phase" in *Evicted*) evicted=true ;; esac
   measure past-limit-step "$(jq -cn --argjson s "$step" --argjson w "$((step * 2 * 1024 * 1024 * 1024))" --argjson p "${phase:-$empty_object}" --arg st "$(sandbox_status "$sandbox_id")" \
     '{step: $s, writtenBytes: $w, pod: $p, sandboxStatus: $st}')"
   [ "$evicted" = true ] && break
 done
+# What the cluster says happened to the pod (the kubelet's eviction event, or what else ended it).
+measure pod-events "$(kubectl -n "$namespace_a" get events --field-selector "involvedObject.name=$pod" -o json 2>/dev/null \
+  | jq -c '[.items[] | {type, reason, message: (.message | .[0:200]), count}]' 2>/dev/null || echo '[]')"
 for _ in $(seq 1 24); do
   final="$(sandbox_status "$sandbox_id")"
   case "$final" in running | suspending | resuming | creating) sleep 5 ;; *) break ;; esac
