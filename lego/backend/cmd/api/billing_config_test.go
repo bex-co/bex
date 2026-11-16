@@ -57,6 +57,20 @@ func TestStripeBillingGateDefaultsAndParsesEpoch(t *testing.T) {
 	}
 }
 
+// The epoch is normalized to UTC: an operator writing local time with an
+// offset must not shift the emitter floor by hours.
+func TestStripeBillingGateEpochNormalizesToUTC(t *testing.T) {
+	now := time.Date(2026, 7, 26, 12, 0, 0, 0, time.UTC)
+	_, epoch, enabled, err := stripeBillingGate(envGetter(map[string]string{
+		"BEX_STRIPE_SECRET_KEY": "rk_test",
+		"BEX_STRIPE_EPOCH":      "2026-07-01T02:00:00+02:00",
+	}), now)
+	want := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	if err != nil || !enabled || !epoch.Equal(want) || epoch.Location() != time.UTC {
+		t.Fatalf("offset epoch = %v (loc %v) enabled %v err %v, want %v UTC", epoch, epoch.Location(), enabled, err, want)
+	}
+}
+
 func TestPaymentMethodGateDisabledIsByteCompatible(t *testing.T) {
 	for _, value := range []string{"", "0"} {
 		mode, err := paymentMethodGate(envGetter(map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": value}))

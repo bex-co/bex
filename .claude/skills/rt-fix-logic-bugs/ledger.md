@@ -8,4 +8,5 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
-None yet.
+- 2026-11-16 stripeBillingGate future BEX_STRIPE_EPOCH — accepted and pushes the emitter floor forward, permanently skipping pre-epoch windows; rejecting it is validation hardening needing an ADR decision, not a logic fix
+- 2026-11-16 MonthlyEstimate negative StorageGB/seconds inputs — callers clamp to non-negative (plan floors, high-water marks, admitted sizes); unvalidated direct use is out of contract
