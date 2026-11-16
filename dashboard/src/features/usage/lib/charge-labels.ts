@@ -50,3 +50,26 @@ export const CHARGE_LABEL_KEYS: Record<string, string> = {
   agent_model_cache_read_tokens: "usage.chargeAgentModelCacheReadTokens",
   agent_model_cache_write_tokens: "usage.chargeAgentModelCacheWriteTokens",
 };
+
+/**
+ * What bex-api names a workspace's object storage resource: it has none of its
+ * own (one resource per workspace, whose id is the workspace's), so
+ * `usage/service.go` fills the name with this English placeholder
+ * (`objectStorageResourceName`; `charge-labels.test.ts` keeps the two equal).
+ */
+export const OBJECT_STORAGE_PLACEHOLDER_NAME = "Object storage";
+
+/**
+ * Whether a resource is object storage with no name of its own, so its row
+ * reads as the category's translated name rather than the placeholder.
+ */
+export function isUnnamedObjectStorage(resource: {
+  resourceKind: string;
+  serviceName: string;
+}): boolean {
+  return (
+    resource.resourceKind === "object_storage" &&
+    (resource.serviceName === "" ||
+      resource.serviceName === OBJECT_STORAGE_PLACEHOLDER_NAME)
+  );
+}

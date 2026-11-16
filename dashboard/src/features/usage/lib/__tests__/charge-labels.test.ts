@@ -1,8 +1,13 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import i18n, { ensureLanguage } from "@/i18n/init";
 import { SUPPORTED_LANGUAGES } from "@/i18n/config";
-import { goPackageConstants } from "@/test/go-source";
-import { CATEGORY_LABEL_KEYS, CHARGE_LABEL_KEYS } from "../charge-labels";
+import { goPackageConstants, goStringConstant } from "@/test/go-source";
+import {
+  CATEGORY_LABEL_KEYS,
+  CHARGE_LABEL_KEYS,
+  isUnnamedObjectStorage,
+  OBJECT_STORAGE_PLACEHOLDER_NAME,
+} from "../charge-labels";
 import { CATEGORY_ORDER } from "../charges";
 
 // The charge tree names what bex-api meters. bex-api declares the usage kinds
@@ -107,5 +112,39 @@ describe("the charge tree's labels", () => {
         expect.stringMatching(/\S/),
       );
     }
+  });
+});
+
+// bex-api names a workspace's object storage resource "Object storage" because
+// it has none of its own, and the charge tree shows the translated category
+// name instead of that English placeholder (w21/092). The placeholder is read
+// from the Go constant, so a rename there that this file missed fails here
+// instead of leaving the row English in every language again.
+describe("object storage's placeholder name", () => {
+  it("is the one bex-api gives the resource", () => {
+    expect(
+      goStringConstant(
+        "lego/backend/internal/usage/service.go",
+        "objectStorageResourceName",
+      ),
+    ).toBe(OBJECT_STORAGE_PLACEHOLDER_NAME);
+  });
+
+  it("marks only unnamed object storage", () => {
+    const resource = (resourceKind: string, serviceName: string) => ({
+      resourceKind,
+      serviceName,
+    });
+    expect(
+      isUnnamedObjectStorage(resource("object_storage", "Object storage")),
+    ).toBe(true);
+    expect(isUnnamedObjectStorage(resource("object_storage", ""))).toBe(true);
+    // A name someone gave it, or another kind with the same words, is theirs.
+    expect(isUnnamedObjectStorage(resource("object_storage", "media"))).toBe(
+      false,
+    );
+    expect(isUnnamedObjectStorage(resource("service", "Object storage"))).toBe(
+      false,
+    );
   });
 });

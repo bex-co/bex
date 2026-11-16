@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import i18n from "@/i18n/init";
+import i18n, { ensureLanguage } from "@/i18n/init";
 import { describe, expect, it, vi } from "vitest";
 import { act, type ReactElement } from "react";
 import { hydrateRoot } from "react-dom/client";
@@ -582,72 +582,161 @@ describe("ChargesCard", () => {
 
   // w21/086: a workspace's object storage (ADR112 D8) is one resource whose id
   // is the workspace's, with three shadow meters at no charge. The shape is the
-  // one `GET /v1/usage` returned on production.
-  it("labels object storage's category and its three unpriced meters", () => {
+  // one `GET /v1/usage` returned on production. bex-api names it "Object
+  // storage" because it has no name of its own (`usage/service.go`).
+  function objectStorage(over: Partial<ResourceEstimate> = {}) {
+    return resource({
+      serviceId: "tea-d0a1b2c3d4e5f6a7b8c9",
+      serviceName: "Object storage",
+      resourceKind: "object_storage",
+      costUsd: "0.00",
+      charges: [
+        {
+          kind: "object_storage_gb_seconds",
+          tier: "",
+          unit: "GB-mo",
+          rateUsd: "0",
+          quantity: "0.00187",
+          costUsd: "0.00",
+        },
+        {
+          kind: "object_storage_ingress_bytes",
+          tier: "",
+          unit: "GB",
+          rateUsd: "0",
+          quantity: "1.29",
+          costUsd: "0.00",
+        },
+        {
+          kind: "object_storage_egress_bytes",
+          tier: "",
+          unit: "GB",
+          rateUsd: "0",
+          quantity: "0.61",
+          costUsd: "0.00",
+        },
+      ],
+      ...over,
+    });
+  }
+
+  function renderObjectStorage(over: Partial<ResourceEstimate> = {}) {
     render(
       <ChargesCard
-        estimatedCost={estimate(
-          [
-            resource({
-              serviceId: "tea-d0a1b2c3d4e5f6a7b8c9",
-              serviceName: "Object storage",
-              resourceKind: "object_storage",
-              costUsd: "0.00",
-              charges: [
-                {
-                  kind: "object_storage_gb_seconds",
-                  tier: "",
-                  unit: "GB-mo",
-                  rateUsd: "0",
-                  quantity: "0.00187",
-                  costUsd: "0.00",
-                },
-                {
-                  kind: "object_storage_ingress_bytes",
-                  tier: "",
-                  unit: "GB",
-                  rateUsd: "0",
-                  quantity: "1.29",
-                  costUsd: "0.00",
-                },
-                {
-                  kind: "object_storage_egress_bytes",
-                  tier: "",
-                  unit: "GB",
-                  rateUsd: "0",
-                  quantity: "0.61",
-                  costUsd: "0.00",
-                },
-              ],
-            }),
-          ],
-          "0.00",
-        )}
+        estimatedCost={estimate([objectStorage(over)], "0.00")}
         invoicedUsd={null}
         loading={false}
         period=""
         now={MID_JULY}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
-    // The category header and the resource row share the words "Object
-    // storage"; the resource's own row is the second.
-    const [category, row] = screen.getAllByRole("button", {
-      name: /Object storage/,
-    });
-    expect(category).toHaveTextContent("Object storage");
-    fireEvent.click(row!);
+  }
 
-    expect(screen.getByText("Storage")).toBeInTheDocument();
-    expect(screen.getByText("Inbound bandwidth")).toBeInTheDocument();
+  // w21/092: the category opens onto the three lines, in the page's language.
+  // The resource row bex-api names "Object storage" would repeat the category's
+  // words one level down, and in English whatever the language.
+  it.each([
+    [
+      "en",
+      "Object storage",
+      ["Storage", "Inbound bandwidth", "Outbound bandwidth"],
+    ],
+    ["zh", "对象存储", ["存储", "入站带宽", "出站带宽"]],
+    [
+      "de",
+      "Objektspeicher",
+      ["Speicher", "Eingehende Bandbreite", "Ausgehende Bandbreite"],
+    ],
+  ])(
+    "opens object storage's category straight onto its three meters (%s)",
+    async (lng, category, lines) => {
+      await ensureLanguage(lng);
+      await i18n.changeLanguage(lng);
+      try {
+        renderObjectStorage();
+        expect(i18n.t("usage.categoryObjectStorage")).toBe(category);
+        const named = new RegExp(`^${category}`);
+        fireEvent.click(screen.getByRole("button", { name: named }));
+
+        // One button carries the name: the category. No resource row under it.
+        const buttons = screen.getAllByRole("button", { name: named });
+        expect(buttons).toHaveLength(1);
+        expect(buttons[0]).toHaveAttribute("aria-expanded", "true");
+        for (const line of lines) {
+          expect(screen.getByText(line)).toBeInTheDocument();
+        }
+        // The unit and quantity are bex-api's; an unpriced meter reads Included.
+        expect(screen.getByText("0.00187 GB-mo")).toBeInTheDocument();
+        expect(screen.getByText("1.29 GB")).toBeInTheDocument();
+        expect(screen.getByText("0.61 GB")).toBeInTheDocument();
+        expect(screen.getAllByText(i18n.t("usage.chargeFree"))).toHaveLength(3);
+        expect(screen.queryByText(/object_storage/)).not.toBeInTheDocument();
+        // The placeholder is bex-api's English; it never reaches a reader in
+        // another language.
+        if (lng !== "en") {
+          expect(screen.queryByText(/Object storage/)).not.toBeInTheDocument();
+        }
+      } finally {
+        await i18n.changeLanguage("en");
+      }
+    },
+  );
+
+  it("opens object storage whose name is empty the same way", () => {
+    renderObjectStorage({ serviceName: "" });
+    fireEvent.click(screen.getByRole("button", { name: /\$0\.00$/ }));
+    expect(screen.getAllByRole("button", { name: /\$0\.00$/ })).toHaveLength(1);
     expect(screen.getByText("Outbound bandwidth")).toBeInTheDocument();
-    // The unit and quantity are bex-api's; an unpriced meter reads Included.
-    expect(screen.getByText("0.00187 GB-mo")).toBeInTheDocument();
-    expect(screen.getByText("1.29 GB")).toBeInTheDocument();
-    expect(screen.getByText("0.61 GB")).toBeInTheDocument();
-    expect(screen.getAllByText("Included")).toHaveLength(3);
-    expect(screen.queryByText(/object_storage/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("tea-d0a1b2c3d4e5f6a7b8c9"),
+    ).not.toBeInTheDocument();
   });
+
+  // A deleted object storage keeps its row: it carries the "(deleted)" marker.
+  // The row reads in the page's language, not as the placeholder or the id.
+  it.each([
+    ["en", "Object storage", "(deleted)"],
+    ["zh", "对象存储", "（已删除）"],
+  ])(
+    "keeps a deleted object storage's row, named in the page's language (%s)",
+    async (lng, name, marker) => {
+      await ensureLanguage(lng);
+      await i18n.changeLanguage(lng);
+      try {
+        for (const serviceName of ["Object storage", ""]) {
+          const { unmount } = render(
+            <ChargesCard
+              estimatedCost={estimate(
+                [objectStorage({ serviceName, deleted: true })],
+                "0.00",
+              )}
+              invoicedUsd={null}
+              loading={false}
+              period=""
+              now={MID_JULY}
+            />,
+          );
+          fireEvent.click(screen.getByRole("button", { name: `${name}$0.00` }));
+          const row = screen.getByRole("button", {
+            name: `${name} ${marker}$0.00`,
+          });
+          expect(row).toBeInTheDocument();
+          expect(row.querySelector("[title]")).toHaveAttribute(
+            "title",
+            `${name} (tea-d0a1b2c3d4e5f6a7b8c9)`,
+          );
+          if (lng !== "en") {
+            expect(
+              screen.queryByText(/Object storage/),
+            ).not.toBeInTheDocument();
+          }
+          unmount();
+        }
+      } finally {
+        await i18n.changeLanguage("en");
+      }
+    },
+  );
 
   it("totals the estimate and projects month end when there is no invoice", () => {
     render(

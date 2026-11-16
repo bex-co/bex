@@ -232,6 +232,13 @@ type ServiceUsage struct {
 // the exported MonthToDate derives it.
 const AuditVerbMonthToDate = "usage.MonthToDate"
 
+// objectStorageResourceName is the name a workspace's one object storage
+// resource carries in a usage response, which has no name of its own. It is a
+// placeholder, not a label: the dashboard reads it as "unnamed" and shows the
+// category's translated name instead (dashboard charge-labels.ts, which a test
+// keeps equal to this constant), so changing it here changes that file too.
+const objectStorageResourceName = "Object storage"
+
 // monthToDateAt is the implementation used by adapters. now controls both the
 // calendar month (monthStart is derived from it) and the inclusive upper bound
 // of the query. Adapters pass s.Now().UTC() for the live query or the start of
@@ -457,7 +464,7 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 		if svc.ResourceKind == store.ResourceKindObjectStorage && svc.ServiceName == "" {
 			// One resource per workspace, whose id is the workspace's: it has no
 			// name of its own (ADR112 D8).
-			svc.ServiceName = "Object storage"
+			svc.ServiceName = objectStorageResourceName
 		}
 		if svc.ResourceKind == store.ResourceKindSandbox {
 			svc.Deleted = sandboxMetadata[svc.ServiceID].Phase == "terminated"

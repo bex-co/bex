@@ -29,6 +29,7 @@ import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import {
   CATEGORY_LABEL_KEYS,
   CHARGE_LABEL_KEYS,
+  isUnnamedObjectStorage,
 } from "@/features/usage/lib/charge-labels";
 import { periodMonthLabel } from "@/features/usage/lib/period";
 import {
@@ -106,6 +107,17 @@ function ChargeRow({ charge }: { charge: ChargeLine }) {
   );
 }
 
+/** The lines under a resource row, or under a category that has no row. */
+function ChargeLines({ charges }: { charges: ChargeLine[] }) {
+  return (
+    <div className="divide-y border-t bg-muted/20 px-3 py-1 pl-9">
+      {charges.map((c) => (
+        <ChargeRow key={`${c.kind}:${c.tier}`} charge={c} />
+      ))}
+    </div>
+  );
+}
+
 function ResourceRow({
   resource,
   sharedName,
@@ -120,8 +132,14 @@ function ResourceRow({
   // deleted; fall back to the bare id only when no name was ever recorded
   // (a pre-w2/m96 row). The id stays on the row's title either way, so it is
   // still readable and copyable.
-  const named = resource.serviceName !== "";
-  const label = named ? resource.serviceName : resource.serviceId;
+  // A workspace's object storage has no name of its own (bex-api sends an
+  // English placeholder), so a row that is shown (a deleted one) reads as the
+  // category's translated name, never as that placeholder.
+  const name = isUnnamedObjectStorage(resource)
+    ? t("usage.categoryObjectStorage")
+    : resource.serviceName;
+  const named = name !== "";
+  const label = named ? name : resource.serviceId;
   return (
     <div className="border-t first:border-t-0">
       <button
@@ -166,13 +184,7 @@ function ResourceRow({
           {money(usd(resource.costUsd), i18n.language)}
         </span>
       </button>
-      {open && (
-        <div className="divide-y border-t bg-muted/20 px-3 py-1 pl-9">
-          {resource.charges.map((c) => (
-            <ChargeRow key={`${c.kind}:${c.tier}`} charge={c} />
-          ))}
-        </div>
-      )}
+      {open && <ChargeLines charges={resource.charges} />}
     </div>
   );
 }
@@ -188,6 +200,18 @@ function CategoryRow({
   const [open, setOpen] = useState(false);
   const labelKey = CATEGORY_LABEL_KEYS[category.key];
   const expanded = open || expandAll;
+  // A workspace's object storage is one resource with no name of its own, so
+  // its row would repeat the category's words one level down: the category
+  // opens straight onto the charge lines instead (w21/092). A deleted one keeps
+  // its row, which carries the "(deleted)" marker.
+  const [only] = category.resources;
+  const inline =
+    category.resources.length === 1 &&
+    only !== undefined &&
+    isUnnamedObjectStorage(only) &&
+    !only.deleted
+      ? only
+      : undefined;
   return (
     <div className="rounded-md border">
       <button
@@ -210,22 +234,26 @@ function CategoryRow({
           {money(category.totalUsd, i18n.language)}
         </span>
       </button>
-      {expanded && (
-        <div className="border-t">
-          {category.resources.map((r) => (
-            <ResourceRow
-              key={`${r.resourceKind}:${r.serviceId}`}
-              resource={r}
-              sharedName={
-                r.serviceName !== "" &&
-                category.resources.some(
-                  (other) => other !== r && other.serviceName === r.serviceName,
-                )
-              }
-            />
-          ))}
-        </div>
-      )}
+      {expanded &&
+        (inline ? (
+          <ChargeLines charges={inline.charges} />
+        ) : (
+          <div className="border-t">
+            {category.resources.map((r) => (
+              <ResourceRow
+                key={`${r.resourceKind}:${r.serviceId}`}
+                resource={r}
+                sharedName={
+                  r.serviceName !== "" &&
+                  category.resources.some(
+                    (other) =>
+                      other !== r && other.serviceName === r.serviceName,
+                  )
+                }
+              />
+            ))}
+          </div>
+        ))}
     </div>
   );
 }
