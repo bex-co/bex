@@ -11,7 +11,9 @@ export interface AuditEventRowProps {
 
 /** One audit-trail row: when, who (+ how they authenticated), what, whether it
  *  was allowed, and what it acted on — the row-level counterpart of
- *  features/team/components/member-row.tsx. */
+ *  features/team/components/member-row.tsx. Every cell is at most two lines
+ *  (a text-sm line and one truncated text-xs line), the height
+ *  AuditLogTableFrame reserves per placeholder row (w4/684). */
 export function AuditEventRow({ event }: AuditEventRowProps) {
   const { t } = useTranslations();
   const actor = useWorkspaceSubjectLabel(event.actor ?? "");
@@ -26,6 +28,20 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
       : event.envGroupName
         ? t("audit.changeEnvGroup", { name: event.envGroupName })
         : null;
+  // How the actor authenticated, and for a third-party OAuth grant which
+  // client and scopes, share one truncated second line (w4/684): every row
+  // stays the two-line height the loading frame reserves.
+  const actorDetail = [
+    event.actorMethod,
+    event.oauthClientId
+      ? t("audit.oauthDelegation", {
+          client: event.oauthClientId,
+          scopes: event.oauthScopes.join(" ") || "—",
+        })
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <TableRow>
@@ -37,17 +53,12 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
       </TableCell>
       <TableCell className="max-w-[16rem] truncate text-sm">
         {event.actor ? actor : t("audit.actorUnknown")}
-        {event.actorMethod ? (
-          <span className="text-muted-foreground block text-xs">
-            {event.actorMethod}
-          </span>
-        ) : null}
-        {event.oauthClientId ? (
-          <span className="text-muted-foreground block truncate text-xs">
-            {t("audit.oauthDelegation", {
-              client: event.oauthClientId,
-              scopes: event.oauthScopes.join(" ") || "—",
-            })}
+        {actorDetail ? (
+          <span
+            className="text-muted-foreground block truncate text-xs"
+            title={actorDetail}
+          >
+            {actorDetail}
           </span>
         ) : null}
       </TableCell>
@@ -69,16 +80,24 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
         {event.targetName ? (
           <>
             {event.targetName}
-            <span className="block truncate font-mono text-xs">
-              {event.resource}
+            <span
+              className="block truncate text-xs"
+              title={change ? `${event.resource} · ${change}` : event.resource}
+            >
+              <span className="font-mono">{event.resource}</span>
+              {change ? ` · ${change}` : null}
             </span>
           </>
         ) : (
-          <span className="font-mono">{event.resource}</span>
+          <>
+            <span className="font-mono">{event.resource}</span>
+            {change ? (
+              <span className="block truncate text-xs" title={change}>
+                {change}
+              </span>
+            ) : null}
+          </>
         )}
-        {change ? (
-          <span className="block truncate text-xs">{change}</span>
-        ) : null}
       </TableCell>
     </TableRow>
   );

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { AuditLogPanel } from "@/features/audit/components/audit-log-panel";
 import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
 import { formatDateTime } from "@/common/lib/format";
@@ -284,6 +284,46 @@ describe("AuditLogPanel", () => {
     expect(loadMoreButton).toBeInTheDocument();
     loadMoreButton.click();
     expect(loadMore).toHaveBeenCalled();
+  });
+
+  it("keeps every row at two lines, so the loading frame's row height holds (w4/684)", () => {
+    // An OAuth-delegated actor and a renamed, named target: the two cells that
+    // once drew a third line under their first.
+    auditState.events = [
+      {
+        id: "ev-1",
+        timestamp: "2026-07-11T00:00:00Z",
+        actor: "user:alice",
+        actorMethod: "oauth2",
+        action: "update",
+        status: "success",
+        resource: "service:srv-1",
+        targetName: "my-api",
+        displayNameFrom: "api",
+        displayNameTo: "Checkout API",
+        domain: "",
+        envGroupId: "",
+        envGroupName: "",
+        relation: "",
+        oauthClientId: "429024F5-agent",
+        oauthAudience: "https://api.bex.co/mcp",
+        oauthScopes: ["bex.read", "bex.write"],
+      },
+    ];
+    renderPanel();
+
+    const [row] = screen.getAllByRole("row").slice(1);
+    const cells = within(row!).getAllByRole("cell");
+    for (const cell of cells) {
+      // One text-sm first line plus at most one block (second-line) span.
+      expect(cell.querySelectorAll(".block").length).toBeLessThanOrEqual(1);
+    }
+    expect(cells[1]).toHaveTextContent(
+      "oauth2 · 429024F5-agent · bex.read bex.write",
+    );
+    expect(cells[4]).toHaveTextContent(
+      "service:srv-1 · Name api → Checkout API",
+    );
   });
 
   it("hides 'Load more' once the last page is exhausted", () => {
