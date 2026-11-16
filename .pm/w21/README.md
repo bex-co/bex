@@ -110,3 +110,5 @@
 - [x] **082** — `make test` cannot run its codegen step on a machine with Go 1.27.3: controller-gen answers "directory prefix . does not contain modules listed in go.work" → [`082.md`](done/082.md) (~30m) ← from w21/m411 t008, 2026-11-14 — DONE 2026-11-14
 - [ ] **083** — **BLOCKED (needs the production deploy of the report-only CSP header, commit b417940d8; the sweep after it needs only the QA user)** — Enforce the dashboard CSP's narrowed `connect-src` once a QA sweep shows no report-only violation → [`083.md`](blocked/083.md) (~45m, due by 2026-12-14) ← from w21/081, 2026-11-14
 - [x] **084** — The `bex-api` Prometheus job reads one replica's counters, so request panels show about half the traffic → [`done/084.md`](done/084.md)
+- [ ] **090** — An operator who revokes a token or consent session at Hydra has no way to make every bex-api replica refuse it at once → [`090.md`](090.md) (~1h) ← from w21/085, 2026-11-15
+- [ ] **091** — Narrow the 5 s token introspection window once production shows the Hydra and admission headroom → [`091.md`](091.md) (~1h) ← from w21/085, 2026-11-15
