@@ -36,6 +36,9 @@
 #      (scripts/gitleaks.sh over base..HEAD). Blocks: the repository is
 #      public, and this is the last point where it is not yet published
 #      (ADR019 §6).
+#   8. A pushed commit's message carries a skip-CI marker. Blocks: GitHub then
+#      runs no workflow for the whole push, the secret scan and the test
+#      suites included (07a4238f1 did, quoting one in its body).
 #
 # Gates 2, 3, 5 and 6 and the gofmt check run in a detached worktree at HEAD,
 # never in the working tree: a gate run beside an edit in progress tested the
@@ -131,6 +134,12 @@ if [ "$leak_rc" = 1 ]; then
   exit 1
 elif [ "$leak_rc" != 0 ]; then
   echo "ship-gates: the secret scan could not run; unscanned commits are not pushed" >&2
+  exit 1
+fi
+# Captured, not piped: under pipefail an early-exiting grep can SIGPIPE git.
+messages=$(git log --format=%B "$base"..HEAD)
+if grep -qiE '\[(skip ci|ci skip|no ci|skip actions|actions skip)\]' <<<"$messages"; then
+  echo "ship-gates: a commit message in this push carries a skip-CI marker, so GitHub would run no workflow for the push; reword it" >&2
   exit 1
 fi
 

@@ -205,6 +205,16 @@ if gate HEAD~1; then fail "a scan that could not run let the push through"; fi
 grep -q "secret scan could not run" "$tmp/err" || fail "a scanner error was not named: $(cat "$tmp/err")"
 rm "$tmp/scanerr"
 
+# A skip-CI marker anywhere in a pushed commit's message (gate 8) blocks: the
+# push would start no workflow at all.
+echo more >>"$repo/docs/a.md"
+commit "docs: a body that quotes [skip ci] by mistake"
+if gate HEAD~1; then fail "a skip-CI marker in a pushed commit message did not block the push"; fi
+grep -q "skip-CI marker" "$tmp/err" || fail "the skip-CI marker was not named: $(cat "$tmp/err")"
+echo more >>"$repo/docs/a.md"
+commit "docs: no marker"
+gate HEAD~1 || fail "a message without a marker failed the gate: $(cat "$tmp/err")"
+
 # The native custody gate (w6/107): a custody-pinned file, a native workflow or
 # a native module runs the custody suites, a failure blocks, and anything else
 # runs nothing.
