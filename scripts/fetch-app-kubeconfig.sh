@@ -16,8 +16,8 @@
 #                                  read (w1/m66 F7). Unset => trust-on-first-use,
 #                                  as before, with a notice on stderr.
 #         CLUSTER_NAME        cluster name (default bex)
-# Callers: .github/workflows/app-cluster.yml, .github/workflows/deploy.yml,
-#          the deploy-app-from-local runbook, and local operators.
+# Callers: .github/workflows/app-cluster.yml, .github/workflows/deploy.yml
+#          and local operators.
 set -euo pipefail
 
 OUT="${1:?usage: fetch-app-kubeconfig.sh <output-path>}"

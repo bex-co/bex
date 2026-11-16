@@ -2,6 +2,8 @@
 
 > **Status: the manual runbook for the prebuilt-image path.** The **`App` CR is the only interface**: you never touch the Deployment; the operator rewrites it. This laptop-build-and-import runbook is for pushing a **prebuilt image** by hand (`spec.image`).
 >
+> **Retired on production (2026-11-16).** Steps ⓪–⑥ below no longer deploy anything on the production cluster, and the `/deploy-app-from-local` skill that ran them is removed. The operator sets `imagePullPolicy: Always` on every tenant container (w4/426), so the kubelet resolves each image against a registry on every container start and never starts an image that exists only in a node's containerd. bex-api also creates each App in its workspace's namespace ([ADR043](ADR043-tenant-namespace-isolation.md)), not `default`. To run code that is not on the tracked branch, push the commit and let the in-cluster build deploy it, or push the image to a registry and deploy an image-backed service (`runtime: image`). The steps stay as the record of the original path; importing an image into a node still applies to platform images on the local kind/CAPD cluster (`scripts/mock-cluster.sh operator`).
+>
 > **Build-from-git is in-cluster.** Render-native runtimes (`spec.runtime` plus build/start commands) and Dockerfile builds run as BuildKit Jobs confined by Pod user namespaces; the explicit bex `spec.builder: buildpack` extension runs as a kpack Image. The pipeline pushes release-generation-tagged images to Zot and pins the resolved digest — no docker daemon, laptop build, or `ctr` import. A signed git push redeploys them ([ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md), gated on `spec.autoDeploy`). See **[In-cluster builds](#in-cluster-builds-buildkit-kpack--zot)** below.
 >
 > Build concurrency, queueing, and Pod-versus-machine scaling are decided in [ADR034](ADR034-scalable-build-pipeline.md).
@@ -40,7 +42,7 @@ docker build --platform linux/amd64 -t my-app:$(git rev-parse --short HEAD) .
 ```
 
 - **`--platform linux/amd64`** — the Hetzner node is x86_64; an arm64 build won't run.
-- **Fresh, non-`:latest` tag (git sha)** — the operator sets no `imagePullPolicy`, so k8s defaults to `IfNotPresent` for non-latest tags. Reusing an existing tag would silently serve the node's _cached_ image; a new tag is what guarantees the new bits run.
+- **Fresh, non-`:latest` tag (git sha)** — when this runbook was written the operator set no `imagePullPolicy`, so k8s defaulted to `IfNotPresent` and a reused tag silently served the node's _cached_ image. The operator now sets `Always` (see the retirement note above), which is why a node-local image no longer starts.
 
 ### ② Smoke-test locally — _laptop_
 
