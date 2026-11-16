@@ -1,6 +1,6 @@
 # w4 · m347 — A new service's credential for the shared registry works without restarting the registry, so a first build starts in seconds, not minutes
 
-**Worker:** worker4 **Goal:** a new service's per-App registry credential is accepted as soon as it is written. A first build or a first registry-hosted rollout then starts as fast as any later one, and creating a service never restarts the registry that every other tenant is pushing to and pulling from. **Status:** todo — release gate clear 2026-11-16 (t001–t004 done; t005 replays the live DoD)
+**Worker:** worker4 **Goal:** a new service's per-App registry credential is accepted as soon as it is written. A first build or a first registry-hosted rollout then starts as fast as any later one, and creating a service never restarts the registry that every other tenant is pushing to and pulling from. **Status:** done — DoD 1–4 replayed live on 2026-11-16 after `d8e2791e8` let the zot reload nudge through the operator pod-label admission policy ([t005](done/t005.md))
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | [t002](done/t002.md) | Activate a per-App credential without a registry restart, and amend ADR022 — **DONE** | 90m | t001 |
 | [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
 | [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
-| [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004 |
+| [t005](done/t005.md) | Closeout (live replay on production) — **DONE** | 30m | t003, t004 |
 
 ## Outcome (t001–t004, 2026-11-14)
 
@@ -57,7 +57,7 @@ All on production in `bex-canary`:
 ## Source + Goal linkage
 
 - **Source:** live `/qa-find-bugs w4` loop, round 180, 2026-11-12 08:41–08:58 UTC (`muse.env`, workspace `bex-canary`; pin `3d66946c9e16`). The finding is below.
-- **Governing doc:** [ADR022 § Credential activation](../../../docs/ADR022-tenant-isolation.md) (w9/m43). It accepted a rate-limited registry restart per new credential to fix the 2026-07-17 `ImagePullBackOff` incident.
+- **Governing doc:** [ADR022 § Credential activation](../../../../docs/ADR022-tenant-isolation.md) (w9/m43). It accepted a rate-limited registry restart per new credential to fix the 2026-07-17 `ImagePullBackOff` incident.
 - **Goal linkage:** Render parity for the first deploy ("create a service, watch it build") and platform reliability. A shared registry that restarts whenever any tenant creates a service interrupts everyone's pushes and pulls.
 - **Expected outcome:** a new service's first build starts as fast as a repeat build, and the registry restarts only for operator-intended changes.
 - **Why now:** major. On a busy platform a first build waited 6 m 30 s before it even started, still explained only as "Preparing registry credentials" 4 m 46 s in. Every service anyone creates adds another registry restart.
