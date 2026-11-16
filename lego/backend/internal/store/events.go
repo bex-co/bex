@@ -108,6 +108,10 @@ type ServiceEventRow struct {
 	// ClearCache records a deploy opened with clearCache=clear (w4/413);
 	// the started phase only.
 	ClearCache bool
+	// RollbackOf is the deploy a rollback deploy restores (w4/690), Render's
+	// trigger.rollbackTargetDeployId; the started phase and the deploy
+	// trigger facts only, empty for every other deploy.
+	RollbackOf string
 	// End is the structured cause of a failed rollout (w8/m146); the ended
 	// phase of a deploy row only, attached after the page is read.
 	End DeployEnd
@@ -387,6 +391,9 @@ WITH feed AS (
            NULL::integer                       AS fact_exit_code,
            ''::text                            AS fact_run_id,
            d.clear_cache                       AS clear_cache,
+           -- w4/690: the deploy a rollback restores, Render's
+           -- trigger.rollbackTargetDeployId; '' for any other deploy.
+           d.rollback_of                       AS rollback_of,
            NULL::text                          AS disk_id
     FROM deploys d
     WHERE d.app_id = $1 AND '` + EventPhaseStarted + `' = ANY($4)
@@ -439,6 +446,7 @@ WITH feed AS (
            NULL::integer,
            ''::text,
            false,
+           ''::text, -- rollback_of: the started phase only
            NULL::text
     FROM deploys d
     WHERE d.app_id = $1 AND d.finished_at IS NOT NULL AND '` + EventPhaseEnded + `' = ANY($4)
@@ -491,6 +499,7 @@ WITH feed AS (
            NULL::integer,
            ''::text,
            false,
+           ''::text,
            a.disk_id
     FROM audit_events a
     JOIN service_event_index i ON i.source = 'audit' AND i.source_row_id = a.id
@@ -559,6 +568,7 @@ WITH feed AS (
            f.exit_code,
            f.run_id,
            ` + factCarriesDeployTrigger + ` AND COALESCE(dc.clear_cache, false),
+           CASE WHEN ` + factCarriesDeployTrigger + ` THEN COALESCE(dc.rollback_of, '') ELSE '' END,
            NULL::text
     FROM service_event_facts f
     LEFT JOIN deploys dc ON dc.id = f.deploy_id AND f.deploy_id <> ''
@@ -572,7 +582,7 @@ SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, fa
        high_availability_enabled, connection_pool_enabled, disk_size_gb, maxmemory_policy, persistence_mode,
        image, commit_id, commit_message, started_at, finished_at,
        fact_type, reason_code, instance_id, fact_from_count, fact_to_count,
-       branch_from, branch_to, commit_url, fact_status, fact_exit_code, fact_run_id, clear_cache, disk_id
+       branch_from, branch_to, commit_url, fact_status, fact_exit_code, fact_run_id, clear_cache, rollback_of, disk_id
 FROM feed
 WHERE ($5::timestamptz IS NULL OR at >= $5)
   AND ($6::timestamptz IS NULL OR at <= $6)
@@ -869,6 +879,11 @@ SELECT h.event_key AS key,
            WHEN h.source = '` + EventSourceFact + `' AND ` + factCarriesDeployTrigger + ` THEN COALESCE(fd.clear_cache, false)
            ELSE false
        END AS clear_cache,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.rollback_of
+           WHEN h.source = '` + EventSourceFact + `' AND ` + factCarriesDeployTrigger + ` THEN COALESCE(fd.rollback_of, '')
+           ELSE ''
+       END AS rollback_of,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.disk_id END AS disk_id,
        COALESCE(h.app_id, h.service_id),
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(df.leader_id, '') ELSE '' END AS leader_id,
@@ -976,7 +991,7 @@ func serviceEventScanDestinations(r *ServiceEventRow, trailing ...any) []any {
 		&r.HighAvailabilityEnabled, &r.ConnectionPoolEnabled, &r.DiskSizeGB, &r.MaxmemoryPolicy, &r.PersistenceMode,
 		&r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt,
 		&r.FactType, &r.ReasonCode, &r.InstanceID, &r.FromCount, &r.ToCount,
-		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus, &r.FactExitCode, &r.FactRunID, &r.ClearCache, &r.DiskID,
+		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus, &r.FactExitCode, &r.FactRunID, &r.ClearCache, &r.RollbackOf, &r.DiskID,
 	}
 	return append(destinations, trailing...)
 }

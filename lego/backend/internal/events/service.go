@@ -641,6 +641,13 @@ type Trigger struct {
 	DeployedByRender bool
 	ClearCache       bool
 	Rollback         bool
+	// RollbackTargetDeployID is the deploy a rollback restores (w4/690),
+	// Render's "Deploy ID that was rolled back to"; empty unless Rollback.
+	RollbackTargetDeployID string
+	// NewCommit is the commit a git-push redeploy rolls out (w4/690),
+	// Render's "Commit that triggered the deploy"; empty for every other
+	// trigger.
+	NewCommit string
 	// User is the human who triggered the deploy (w4/391), absent for
 	// git-push and deploy-hook triggers.
 	User *UserRef
@@ -1522,6 +1529,12 @@ func deployTrigger(r store.ServiceEventRow) *Trigger {
 		DeployHook:       r.Trigger == store.TriggerDeployHook,
 		Rollback:         r.Trigger == store.TriggerRollback,
 		DeployedByRender: r.Trigger == store.TriggerDeployedByRender,
+	}
+	if t.Rollback {
+		t.RollbackTargetDeployID = r.RollbackOf
+	}
+	if r.Trigger == store.TriggerNewCommit {
+		t.NewCommit = r.CommitID
 	}
 	t.User = callerRef(r.Caller)
 	return t

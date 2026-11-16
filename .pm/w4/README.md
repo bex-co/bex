@@ -389,7 +389,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **690** — [A rollback's `deploy_started` event says `rollback: true` but never names the deploy it rolled back to: Render's `trigger.rollbackTargetDeployId` is never sent, though the deploy row records `rollbackOf`](690.md) (~40m; minor; parity) ← live `/qa-find-bugs w4` round 504, 2026-11-16, pin `f114fdd9f5a6`
+- [x] **690** — [A rollback's `deploy_started` event says `rollback: true` but never names the deploy it rolled back to: Render's `trigger.rollbackTargetDeployId` is never sent, though the deploy row records `rollbackOf`](done/690.md) — **DONE 2026-11-16** (~40m; minor; parity) ← live `/qa-find-bugs w4` round 504, 2026-11-16, pin `f114fdd9f5a6`
 - [x] **691** — [A cron job's run meters about 45 s more `instance_seconds` than it ran, because the meter credits every terminated pod 45 s past its last sample](done/691.md) (>1h; major) ← w4/m322 t004 replay, `/loopx w4` 2026-11-16. A 149 s set of three runs metered 285 s and 270 s. The designed 59 s liveness tail (w5/m111) is the cause. Holds w4/m322's DoD 3 open. — **DONE** 2026-11-16: cron Apps meter their runs' own start-to-finish time.
 - [x] **689** — [A deploy hook called without `key` answers 404; Render answers 401](done/689.md) ← `/pm-brainstorm for one aspect of render parity` (Deploys), 2026-11-16, item 5 — done 2026-11-16 (a missing or empty `key` answers 401 before the limiter; invalid keys stay 404).
 - [ ] **692** — [A rollback (or any image deploy) to an unreachable registry waits until the registry answers; Render fails it](692.md) (~1h; minor; parity) ← w4/m432 t003/t006, `/loopx w4` 2026-11-16.

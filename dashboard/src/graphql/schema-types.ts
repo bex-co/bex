@@ -1543,7 +1543,9 @@ export type DeployTrigger = {
   envUpdated: Maybe<Scalars['Boolean']['output']>;
   firstBuild: Maybe<Scalars['Boolean']['output']>;
   manual: Maybe<Scalars['Boolean']['output']>;
+  newCommit: Maybe<Scalars['String']['output']>;
   rollback: Maybe<Scalars['Boolean']['output']>;
+  rollbackTargetDeployId: Maybe<Scalars['String']['output']>;
   user: Maybe<EventUser>;
 };
 

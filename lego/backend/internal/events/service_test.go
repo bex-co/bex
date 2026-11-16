@@ -118,6 +118,25 @@ func TestViewMapsEverySource(t *testing.T) {
 		wantType:    TypeDeployStarted,
 		wantDetails: Details{DeployID: "dep-4", Trigger: &Trigger{Manual: true, ClearCache: true, User: &UserRef{ID: "user-x"}}, TriggeredByUser: "user-x"},
 	}, {
+		// w4/690: a rollback names the deploy it restores, Render's
+		// trigger.rollbackTargetDeployId.
+		name:        "rollback names its target deploy",
+		row:         store.ServiceEventRow{Key: "dep-rb:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-rb", Trigger: store.TriggerRollback, RollbackOf: "dep-1", Caller: "user-x"},
+		wantType:    TypeDeployStarted,
+		wantDetails: Details{DeployID: "dep-rb", Trigger: &Trigger{Rollback: true, RollbackTargetDeployID: "dep-1", User: &UserRef{ID: "user-x"}}, TriggeredByUser: "user-x"},
+	}, {
+		// w4/690: a git-push redeploy names its commit, Render's
+		// trigger.newCommit; a manual deploy of a commit does not.
+		name:        "git-push redeploy names its commit",
+		row:         store.ServiceEventRow{Key: "dep-push:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-push", Trigger: store.TriggerNewCommit, CommitID: "abc123"},
+		wantType:    TypeDeployStarted,
+		wantDetails: Details{DeployID: "dep-push", CommitID: "abc123", Trigger: &Trigger{NewCommit: "abc123"}},
+	}, {
+		name:        "manual deploy of a commit carries no newCommit",
+		row:         store.ServiceEventRow{Key: "dep-man:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-man", Trigger: store.TriggerManual, CommitID: "abc123", RollbackOf: "dep-stale"},
+		wantType:    TypeDeployStarted,
+		wantDetails: Details{DeployID: "dep-man", CommitID: "abc123", Trigger: &Trigger{Manual: true}},
+	}, {
 		name:        "deploy went live",
 		row:         store.ServiceEventRow{Key: "dep-1:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-1", Status: store.DeployLive, Caller: "user-x"},
 		wantType:    TypeDeployEnded,

@@ -325,6 +325,10 @@ type renderTrigger struct {
 	DeployedByRender bool `json:"deployedByRender"`
 	ClearCache       bool `json:"clearCache"`
 	Rollback         bool `json:"rollback"`
+	// RollbackTargetDeployID and NewCommit are Render's optional trigger
+	// fields (w4/690), omitted when the deploy has none.
+	RollbackTargetDeployID string `json:"rollbackTargetDeployId,omitempty"`
+	NewCommit              string `json:"newCommit,omitempty"`
 	// DeployHook is additive — a Render client ignores the unknown key, and
 	// every Render-named flag keeps its Render meaning. See Trigger.DeployHook.
 	DeployHook bool `json:"deployHook"`
@@ -380,14 +384,16 @@ func toRenderEvent(e Event) renderEvent {
 	}
 	if t := e.Details.Trigger; t != nil {
 		d.Trigger = &renderTrigger{
-			FirstBuild:       t.FirstBuild,
-			EnvUpdated:       t.EnvUpdated,
-			Manual:           t.Manual,
-			DeployedByRender: t.DeployedByRender,
-			ClearCache:       t.ClearCache,
-			Rollback:         t.Rollback,
-			DeployHook:       t.DeployHook,
-			User:             toRenderUser(t.User),
+			FirstBuild:             t.FirstBuild,
+			EnvUpdated:             t.EnvUpdated,
+			Manual:                 t.Manual,
+			DeployedByRender:       t.DeployedByRender,
+			ClearCache:             t.ClearCache,
+			Rollback:               t.Rollback,
+			DeployHook:             t.DeployHook,
+			RollbackTargetDeployID: t.RollbackTargetDeployID,
+			NewCommit:              t.NewCommit,
+			User:                   toRenderUser(t.User),
 		}
 	}
 	if t := e.Details.EdgeCacheTrigger; t != nil {

@@ -54,6 +54,9 @@ var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"deployedByRender": gqlutil.BoolField(func(t Trigger) any { return t.DeployedByRender }),
 		"clearCache":       gqlutil.BoolField(func(t Trigger) any { return t.ClearCache }),
 		"rollback":         gqlutil.BoolField(func(t Trigger) any { return t.Rollback }),
+		// Render's optional trigger fields (w4/690); null when absent.
+		"rollbackTargetDeployId": gqlutil.OptionalStrField(func(t Trigger) any { return t.RollbackTargetDeployID }),
+		"newCommit":              gqlutil.OptionalStrField(func(t Trigger) any { return t.NewCommit }),
 		// bex extension — see Trigger.DeployHook (w4/104).
 		"deployHook": gqlutil.BoolField(func(t Trigger) any { return t.DeployHook }),
 		"user": &graphql.Field{Type: userRefGQLType, Resolve: gqlutil.Field(func(t Trigger) any {

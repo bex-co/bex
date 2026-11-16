@@ -1297,7 +1297,9 @@ type DeployTrigger {
   envUpdated: Boolean
   firstBuild: Boolean
   manual: Boolean
+  newCommit: String
   rollback: Boolean
+  rollbackTargetDeployId: String
   user: EventUser
 }
 
