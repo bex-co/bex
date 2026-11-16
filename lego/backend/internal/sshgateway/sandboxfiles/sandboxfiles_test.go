@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -404,13 +405,20 @@ func TestTheByteBoundIsAnArchivesOnlySizeLimit(t *testing.T) {
 	}
 }
 
+// withIndexBudget gives the archives the test copies an index budget of n
+// bytes of their own.
+func withIndexBudget(t *testing.T, n int64) {
+	t.Helper()
+	saved := archiveIndexMemory
+	archiveIndexMemory = semaphore.NewWeighted(n)
+	t.Cleanup(func() { archiveIndexMemory = saved })
+}
+
 // Every archive in the process draws on one index budget (w32/025): while one
 // holds it all, another is refused as retryable, and the budget returns
 // whole when the first ends.
 func TestArchiveIndexesShareOneBudget(t *testing.T) {
-	saved := archiveIndexMemory
-	archiveIndexMemory = semaphore.NewWeighted(2 * indexReserveChunk)
-	t.Cleanup(func() { archiveIndexMemory = saved })
+	withIndexBudget(t, 2*indexReserveChunk)
 
 	r, w := io.Pipe()
 	defer r.Close()
@@ -443,6 +451,19 @@ func TestArchiveIndexesShareOneBudget(t *testing.T) {
 	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), errGatewayBusy.message) {
 		t.Fatalf("a download while the budget is held = %d %s, want 503 naming capacity", rec.Code, rec.Body)
 	}
+	up := serverFor(func(_ context.Context, _ []string, input io.Reader, _ io.Writer) (int, error) {
+		if input != nil {
+			_, _ = io.Copy(io.Discard, input)
+		}
+		return 0, nil
+	})
+	upload := requestFor(t, http.MethodPut, one)
+	upload.Header.Set("Content-Type", "application/x-tar")
+	rec = httptest.NewRecorder()
+	up.Handler().ServeHTTP(rec, upload)
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), errGatewayBusy.message) {
+		t.Fatalf("an upload while the budget is held = %d %s, want 503 naming capacity", rec.Code, rec.Body)
+	}
 	if err := tw.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -459,11 +480,76 @@ func TestArchiveIndexesShareOneBudget(t *testing.T) {
 	}
 }
 
+// The budget bounds memory only if an index charges at least the heap it
+// holds (w32/025). That depends on Go's map layout and allocation size
+// classes, so the live heap is read here rather than trusted to the measured
+// constants: an archive is refused before its index holds more than the
+// budget, for plain names and for kept symlink targets alike.
+func TestAnArchiveIsRefusedBeforeItsIndexHoldsMoreThanTheBudget(t *testing.T) {
+	const budget = 4 << 20
+	// slack covers what an archive holds besides its index: the copy buffer,
+	// the tar reader and writer, the index's empty maps.
+	const slack = 256 << 10
+	// A 3,457-byte copy takes a 4,096-byte allocation, the most rounding
+	// below files.MaxPathBytes.
+	worstRounded := strings.Repeat("t", 3457)
+	live := func() int64 {
+		var m runtime.MemStats
+		runtime.GC()
+		runtime.ReadMemStats(&m)
+		return int64(m.HeapAlloc)
+	}
+	for _, tc := range []struct {
+		name  string
+		every int // entries between heap reads
+		entry func(i int) *tar.Header
+	}{
+		{"names", 1024, func(i int) *tar.Header {
+			return &tar.Header{Name: fmt.Sprintf("e%d", i), Typeflag: tar.TypeReg, Mode: 0o644}
+		}},
+		{"symlink targets", 8, func(i int) *tar.Header {
+			return &tar.Header{Name: fmt.Sprintf("s%d", i), Typeflag: tar.TypeSymlink, Linkname: worstRounded}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			withIndexBudget(t, budget)
+			base := live()
+			r, w := io.Pipe()
+			done := make(chan error, 1)
+			go func() {
+				_, err := copyArchive(io.Discard, r)
+				_ = r.CloseWithError(err)
+				done <- err
+			}()
+			tw := tar.NewWriter(w)
+			var peak int64
+			// The pipe hands over a header only once copyArchive has
+			// finished the one before, so each read sees every earlier entry
+			// indexed.
+			for i := 0; tw.WriteHeader(tc.entry(i)) == nil; i++ {
+				if i%tc.every == 0 {
+					peak = max(peak, live()-base)
+				}
+			}
+			if err := <-done; !errors.Is(err, errGatewayBusy) {
+				t.Fatalf("copyArchive = %v, want %v", err, errGatewayBusy)
+			}
+			t.Logf("peak index heap %d KiB of a %d KiB budget", peak>>10, budget>>10)
+			if peak > budget+slack {
+				t.Fatalf("the index held %d bytes before the refusal, past the %d-byte budget", peak, budget)
+			}
+			if peak < budget/2 {
+				t.Fatalf("the index held only %d bytes before the refusal: it was refused long before the budget", peak)
+			}
+		})
+	}
+}
+
 // Symlink targets are the tenant's bytes, so an archive keeps a bounded
 // amount of them; only a hard link to a symlink past that is refused.
 func TestAHardLinkToASymlinkPastTheKeptTargetsIsRefused(t *testing.T) {
 	target := strings.Repeat("t", files.MaxPathBytes)
-	kept := maxKeptSymlinkTargets / (len(target) + symlinkEntryOverhead)
+	kept := maxKeptSymlinkTargets / keptSymlinkCost(target)
 	var out bytes.Buffer
 	_, err := copyArchive(&out, streamArchive(t, func(i int) *tar.Header {
 		switch {

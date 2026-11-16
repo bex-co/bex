@@ -731,13 +731,17 @@ type archiveIndex struct {
 type nameKey [2]uint64
 
 // maxKeptSymlinkTargets bounds the symlink targets one archive keeps, each
-// charged symlinkEntryOverhead for its map slot too. A hard link to a symlink
-// past it is refused. Tar writes one only for a symlink with a second name,
-// which is rare.
-const (
-	maxKeptSymlinkTargets = 8 << 20
-	symlinkEntryOverhead  = 96
-)
+// charged keptSymlinkCost. A hard link to a symlink past it is refused. Tar
+// writes one only for a symlink with a second name, which is rare.
+const maxKeptSymlinkTargets = 8 << 20
+
+// keptSymlinkCost is the heap a kept target takes: its copy, which the
+// allocator rounds up to a size class (at most a quarter more from 64 bytes
+// up, as 3,457 bytes take 4,096; symlinkSlotCost absorbs the few bytes below
+// that), and its symlinks slot.
+func keptSymlinkCost(target string) int {
+	return len(target) + len(target)/4 + symlinkSlotCost
+}
 
 // archiveIndexMemory bounds what the indexes of every archive this gateway
 // process copies hold at once (w32/025). One archive's index stays under
@@ -753,6 +757,9 @@ const (
 	// indexEntryCost is one kinds slot with its share of map growth: 524,288
 	// digests took 29.9 MiB of heap (measured 2026-11-14).
 	indexEntryCost = 64
+	// symlinkSlotCost is one symlinks slot, a 32-byte key and string header
+	// against a kinds slot's 24, scaled like indexEntryCost.
+	symlinkSlotCost = 96
 	// indexReserveChunk is how much an index takes from archiveIndexMemory at
 	// a time, so the shared semaphore is not touched per entry.
 	indexReserveChunk = 64 << 10
@@ -793,7 +800,7 @@ func (x *archiveIndex) release() {
 // keepSymlink copies target: archive/tar hands back a PAX linkpath as a
 // substring of its whole PAX block, which can hold a megabyte of padding.
 func (x *archiveIndex) keepSymlink(key nameKey, target string) error {
-	cost := len(target) + symlinkEntryOverhead
+	cost := keptSymlinkCost(target)
 	if x.keptBytes+cost > maxKeptSymlinkTargets {
 		return nil
 	}

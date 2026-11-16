@@ -98,6 +98,10 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["/ssh-gateway"]
           env:
+            # As in lego/operator/config/ssh/deployment.yaml: ramps the GC
+            # before the 512Mi limit below (w32/025).
+            - name: GOMEMLIMIT
+              value: 450MiB
             - name: BEX_SSH_ADDR
               value: ":2222"
             - name: BEX_SSH_METRICS_ADDR
