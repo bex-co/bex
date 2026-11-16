@@ -1,6 +1,6 @@
 # w4 · m355 — Between two linked environment groups, bex gives the key to the group linked last, while Render gives it to the group created last; relinking an older group silently flips the value a service runs
 
-**Worker:** worker4 **Goal:** when two linked environment groups define the same env var or secret file, a service runs the value from the **most recently created** group, as Render documents. Relinking, or linking in a different order, no longer changes the winner. A service's own value still beats every group. **Status:** blocked — release gate (t001–t007 done, code shipped 2026-11-14 by `/loopx w4`; t008 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** when two linked environment groups define the same env var or secret file, a service runs the value from the **most recently created** group, as Render documents. Relinking, or linking in a different order, no longer changes the winner. A service's own value still beats every group. **Status:** done — t001–t007 shipped 2026-11-14 (`901c14723`); t008's live replay passed on 2026-11-16 on production pin `938c5cb36b49`
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t003, t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005 |
-| [t008](t008.md) | Closeout (live replay on production) | 20m | t006, t007 |
+| [t008](done/t008.md) | Closeout (live replay on production) — **DONE** | 20m | t006, t007 |
 
 ## Definition of done
 
@@ -116,3 +116,40 @@ The groups were created from the dashboard's Create environment group dialog, ea
 - None of them had the user's sign-off, and all of them predate the parity-first rule (2026-10-17). This milestone amends their rule. It does not reopen their display work.
 - `grep -rln "most recently created\|created later" .pm` finds no open item about it.
 - Not deploy lag: `git log c328714af1dd..origin/main -- lego/backend/internal/envgroups lego/backend/internal/rollout dashboard/src/features/services/components/env-groups-panel.tsx docs/ADR013-secrets.md` is empty.
+
+## Unblock record (2026-11-16, `/loopx w4`)
+
+- **Affected:** w4/m355 t008. **Source:** verified evidence, no user decision needed.
+- **Finding:** the release gate cleared. Production `bex-system` runs `ghcr.io/bex-co/bex-operator@sha256:ddd7efeb9b3e…` on every platform Deployment, the digest `a24555d5c` pinned as platform pin `938c5cb36b49` (rolled out 2026-11-16 23:11 UTC). `git merge-base --is-ancestor 901c14723 938c5cb36b49` holds, so t001–t003 are live.
+- **Remaining work:** only t008's live replay. Rounds 361, 371 and 372 had already exercised every bullet on pin `c99e7815ebec` through REST links. This replay repeats DoD 1–5 with the links, unlinks and Manual Deploy clicked in the dashboard, as DoD 1 and 4 word them.
+
+## Live replay — 2026-11-16 23:34–23:49 UTC, pin `938c5cb36b49` (all DoD bullets hold)
+
+Workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`), QA user via `scripts/qa-login.sh` (session logged out afterwards). Fixtures came from `POST /v1/services` and `POST /v1/env-groups`; every link, unlink and the Manual Deploy were clicked on the dashboard.
+
+**Fixture:** `qa-20261116-m355-bb` (`srv-dbtp63pntgpc739be87g`), Free, `docker.io/library/busybox:1.36`, service vars `QA_SVC=svc1` and `QA_BOTH=from-service`. Its `dockerCommand` writes `QA_GRP`, `QA_SVC`, `QA_BOTH`, `cat /etc/secrets/qa-grp.txt` and `ls /etc/secrets` into `/w/index.html`, then runs `exec httpd -f -p ${PORT:-10000} -h /w`. Groups, created 4 s apart, linked to nothing at creation:
+
+- A `qa-20261116-m355-ga` (`evg-dbtp651ntgpc739be890`, created 23:34:44.54): `QA_GRP=a`, `QA_BOTH=from-group`, `qa-grp.txt` = `a-file`;
+- B `qa-20261116-m355-gb` (`evg-dbtp661ntgpc739be8a0`, created 23:34:48.90): `QA_GRP=b`, `qa-grp.txt` = `b-file`.
+
+| step (dashboard Environment page, zh) | deploy (`live`) | `curl https://qa-20261116-m355-bb.onbex.co/` |
+| --- | --- | --- |
+| create | `dep-dbtp63pntgpc739be880` | `QA_GRP= QA_SVC=svc1 QA_BOTH=from-service FILE= LS=` |
+| link A | `dep-dbtp6g1ntgpc739be8d0` (23:35:52) | `QA_GRP=a QA_SVC=svc1 QA_BOTH=from-service FILE=a-file LS=qa-grp.txt,` |
+| link B | `dep-dbtp6n306sbc73b97vhg` (23:36:20) | `QA_GRP=b QA_SVC=svc1 QA_BOTH=from-service FILE=b-file LS=qa-grp.txt,` |
+| unlink A (toast 服务已取消关联) | `dep-dbtp719ntgpc739be8fg` (23:37:02) | `QA_GRP=b QA_SVC=svc1 QA_BOTH=from-service FILE=b-file LS=qa-grp.txt,` |
+| link A again | `dep-dbtp7apntgpc739be8h0` (23:37:39) | `QA_GRP=b QA_SVC=svc1 QA_BOTH=from-service FILE=b-file LS=qa-grp.txt,` |
+
+**Fresh fixture, B first:** `qa-20261116-m355-bb2` (`srv-dbtp7nr06sbc73b97vkg`), same spec. Linked B (`dep-dbtp829ntgpc739be8jg`, page `QA_GRP=b … FILE=b-file`), then A (`dep-dbtp8a1ntgpc739be8kg`, live 23:39:43). The page read `QA_GRP=b QA_SVC=svc1 QA_BOTH=from-service FILE=b-file LS=qa-grp.txt,`.
+
+1. **The newer group wins, whatever the link order — holds** for env vars and secret files, after A→B, after unlink and relink of A, and after B→A on a fresh fixture.
+2. **The service's own value still wins — holds:** every page read `QA_SVC=svc1` and `QA_BOTH=from-service`.
+3. **Every surface names the same winner — holds.**
+   - After A→B, after the relink of A, and after B→A on the fresh fixture: `GET /v1/services/<id>` → `linkedEnvGroupIds: ["evg-dbtp651ntgpc739be890","evg-dbtp661ntgpc739be8a0"]` (B last). GraphQL `service { linkedEnvGroupIds }` returned the same list each time.
+   - The Environment page listed B first, then A. In zh it marked A's `QA_GRP` and `qa-grp.txt` "(已被较晚创建的 qa-20261116-m355-gb 覆盖)" and A's `QA_BOTH` "(已被此服务自身的 QA_BOTH 环境变量覆盖)". With `?lang=en`: "(Overridden by qa-20261116-m355-gb, which was created later)" and "(Overridden by this service's own QA_BOTH environment variable)".
+4. **A gated service follows the same rule — holds.**
+   - `qa-20261116-m355-gn` (`srv-dbtp8lj06sbc73b97vn0`), Free Node service from `https://github.com/bex-co/bex` `examples/hello-node`, `autoDeploy: no` (`autoDeployTrigger: off`). First deploy `dep-dbtp8lj06sbc73b97vng` live 23:43:42; the URL served `hello from bex`.
+   - Groups C `qa-20261116-m355-gc` (`evg-dbtp8lhntgpc739be8lg`, created 23:40:06.88, `MESSAGE=a-older`) and D `qa-20261116-m355-gd` (`evg-dbtp8mhntgpc739be8mg`, created 23:40:10.16, `MESSAGE=b-newer`).
+   - Linked D, then C, from the dashboard, 3 s apart. Twenty seconds later the deploy list still held only the create deploy, `linkedEnvGroupIds` read `[C, D]`, the page marked C's `MESSAGE` "(Overridden by qa-20261116-m355-gd, which was created later)", and the URL still served `hello from bex`.
+   - Manual Deploy → Deploy latest commit opened `dep-dbtpapr06sbc73b97vqg` (`trigger: manual`), live 23:48:48. The URL then served `b-newer`.
+5. **Fixtures — holds.** All three services and four groups: `DELETE` 204, then `GET` 404.
