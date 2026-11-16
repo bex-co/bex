@@ -577,11 +577,16 @@ func TestDeployHookBypassesAuthGate(t *testing.T) {
 	for _, path := range []string{
 		"/v1/deploy-hooks/not-a-token",
 		"/v1/deploy-hooks/not/even/one/segment",
-		"/v1/deploy-hooks",
+		"/v1/deploy-hooks?key=not-a-token",
 	} {
 		if w := do(t, h, http.MethodPost, path, "", ""); w.Code != http.StatusNotFound {
 			t.Fatalf("invalid hook %q without OAuth = %d %s, want handler 404", path, w.Code, w.Body.String())
 		}
+	}
+	// A keyless call is the handler's own 401 (Render: a missing key is 401,
+	// w4/689), not the auth gate's: its message names the hook key.
+	if w := do(t, h, http.MethodPost, "/v1/deploy-hooks", "", ""); w.Code != http.StatusUnauthorized || !strings.Contains(w.Body.String(), "deploy hook key is required") {
+		t.Fatalf("keyless hook without OAuth = %d %s, want the handler's 401", w.Code, w.Body.String())
 	}
 	if w := do(t, h, http.MethodGet, "/v1/services", "", ""); w.Code != http.StatusUnauthorized {
 		t.Fatalf("ordinary /v1 route without OAuth = %d, want 401", w.Code)
