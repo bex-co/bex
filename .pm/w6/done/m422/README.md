@@ -1,6 +1,6 @@
 # w6 · m422 — bex-evidence and the reviewed-candidate path it fed are gone
 
-**Worker:** worker6 **Goal:** native-common qualifies only fresh images, nothing in the repository reads or pins the old 0941 evidence, and the `bex-evidence` GHCR package is deleted. **Status:** in progress (t001–t003, t007, t008 done; t004 waits for the push run)
+**Worker:** worker6 **Goal:** native-common qualifies only fresh images, nothing in the repository reads or pins the old 0941 evidence, and the `bex-evidence` GHCR package is deleted. **Status:** done 2026-11-16 (push run [43841677055](https://github.com/bex-co/bex/actions/runs/43841677055) on `e9f27399b` green; `bex-evidence` deleted)
 
 ## Tasks (in order)
 
@@ -9,12 +9,12 @@
 | t001 | [Retire the reviewed-candidate path in the qualifier and the workflow](done/t001.md) — **DONE** | 90m | — |
 | t002 | [Delete the evidence and custody tests; the fresh-path suites stay green](done/t002.md) — **DONE** | 50m | t001 |
 | t003 | [Remove the custody pins and exemptions from the repository checks and docs](done/t003.md) — **DONE** | 60m | t001 |
-| t004 | [The push-triggered fresh native-common run on the shipped SHA passes](t004.md) | 30m | t002, t003 |
-| t005 | [Board: close m164 as superseded, unblock m163, m291 and w8/m91](t005.md) | 40m | t004 |
-| t006 | [Delete the `bex-evidence` GHCR package](t006.md) | 10m | t004 |
+| t004 | [The push-triggered fresh native-common run on the shipped SHA passes](done/t004.md) — **DONE** | 30m | t002, t003 |
+| t005 | [Board: close m164 as superseded, unblock m163, m291 and w8/m91](done/t005.md) — **DONE** | 40m | t004 |
+| t006 | [Delete the `bex-evidence` GHCR package](done/t006.md) — **DONE** | 10m | t004 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t005, t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 20m | t007 |
-| t009 | [Closeout](t009.md) | 10m | t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t008 |
 
 ## Definition of done
 

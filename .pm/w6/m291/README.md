@@ -1,6 +1,6 @@
 # w6 · m291 — Build toolchain digests are fresh again and #105 closes
 
-**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** blocked (t001 done, PR #106 closed; pins gated on w8/m91 D3 custody; the runner-link gate is gone since 2026-11-09)
+**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** todo (t001 done, PR #106 closed; the runner-link gate is gone since 2026-11-09 and the w8/m91 D3 custody gate since w6/m422 on 2026-11-16)
 
 ## Tasks (in order)
 
@@ -94,3 +94,10 @@ These pins live in 8 files: `lego/operator/internal/build/native.go` (17), `nati
 
 - **Gate 2, the runner host's link (#133), is gone.** bex CI runs on GitHub-hosted runners since the user's 2026-11-09 decision (DO_NOT_DO #CI-RUNNERS), so the native-common rebuild no longer waits on the Mac's link.
 - **Gate 1 stands.** `toolchain-freshness.json` and the native inputs are byte-pinned by w8/m91's D3 custody (`IMAGE_POLICY_FILES` in `.github/scripts/native-common-qualify.py`), so re-pinning them is w8's to accept.
+
+## Unblocked — 2026-11-16 (w6/m422)
+
+- **Source:** verified finding. w6/m422 (`e9f27399b`) deleted `image_inputs_compatible`, `D3_LEGACY_0941` and `IMAGE_POLICY_FILES` along with the reviewed-candidate path, at the user's 2026-11-16 request. No retained candidate compares `toolchain-freshness.json` or the native inputs any more.
+- **Gate 1 is cleared.** A pin refresh is now an ordinary change: the push publishes and qualifies a fresh common image, as run [43841677055](https://github.com/bex-co/bex/actions/runs/43841677055) did. Gate 2 was already gone.
+- **Remaining gates:** none.
+- **Next steps (unchanged):** follow "When unblocked" above. Re-run `resolve`, apply the pins and `resolved_at` (t002), qualify on dev-6 (t003), let native-common requalify on the new inputs, and confirm #105 closes (t004).

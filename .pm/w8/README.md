@@ -155,7 +155,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m92** — [Make PostGIS usable in managed Postgres](blocked/m92/README.md) (8 tasks) — **BLOCKED:** actual PG14 complete ordinary-owner Timescale restore fails; needs qualified upstream raw restore capability preserving ADR092 D3. Source and bounded IMMV-sidecar consumer are implemented; no artifact adoption or hosted completion. The single rolling restart is already approved.
 
-- [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](blocked/m91/README.md) (7 tasks;445m) — **BLOCKED (w6/100 remaining-work item 2: `.pm` evidence object store + CI read access; the reviewed-candidate custody chain lost its purged in-repo evidence on the 2026-11-04 rewrite and cannot admit family cases).** Run-100 baseline bound, 7 family cases passed, Node donor route chosen; 27 family cases, adoption and original hosted acceptance remain.
+- [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](m91/README.md) (7 tasks;445m) — next: qualify a fresh common image and run the 27 required AMD64 family cases on it. w6/m422 retired the reviewed-candidate path and `bex-evidence` on 2026-11-16; how one digest shows every family case is w8's design. Run-100 baseline and 7 family cases passed on the retired 0941 candidate (history), and the Node donor route is chosen. 27 family cases, adoption and the original hosted acceptance remain.
 
 - [x] **m90** — [Install Yarn dependencies before static builds](done/m90/README.md) (6 tasks;140m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built with the bare dependency-using command and no installer prefix; exact cleanup (evidence (evidence, purged 2026-11-04)).
 

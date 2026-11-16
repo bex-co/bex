@@ -1,6 +1,6 @@
 # w6 · m163 — Native image workflows install Syft and Trivy with retries
 
-**Worker:** worker6 **Goal:** no workflow depends on a single-attempt Syft or Trivy download. **Status:** blocked (t001 done; t002 done for pg-operand + native-common; native-base gated on w8 D3 custody)
+**Worker:** worker6 **Goal:** no workflow depends on a single-attempt Syft or Trivy download. **Status:** todo (t001 done; t002 done for pg-operand + native-common; the D3 custody gate is cleared by w6/m422, 2026-11-16)
 
 ## Tasks (in order)
 
@@ -16,7 +16,7 @@
 
 ## Definition of done
 
-- `git grep download-syft .github` is empty; the validator, its self-test and w8's 125 custody tests pass.
+- `git grep download-syft .github` is empty; the validator, its self-test and the native suites (`test_native_oci_*.py`) pass.
 - The next run of each changed workflow shows the retrying installers in its log.
 
 ## Source + Goal linkage
@@ -37,3 +37,11 @@
 ## Re-triage — 2026-11-12 (w6/119): unchanged
 
 The gate is that `native-base-image.yml` is byte-pinned by w8/m91's D3 custody (`IMAGE_POLICY_FILES` in `.github/scripts/native-common-qualify.py`). It does not depend on which runners bex uses, so the move to GitHub-hosted runners on 2026-11-09 leaves it in place.
+
+## Unblocked — 2026-11-16 (w6/m422)
+
+- **Source:** verified finding. w6/m422 (`e9f27399b`) retired the reviewed-candidate path at the user's 2026-11-16 request. `D3_LEGACY_0941`, `IMAGE_POLICY_FILES` and every validator exemption for the native workflows are gone. Editing `native-base-image.yml` no longer reopens any pinned baseline: a push publishes and qualifies a fresh image, as run [43841677055](https://github.com/bex-co/bex/actions/runs/43841677055) did.
+- **Already done by m422:** the matrix job has its check-10 timeout and the file left check 10's exemption. `native-base-image.yml` uses the current setup-buildx and build-push refs.
+- **DoD amended:** w8's "125 custody tests" were deleted with the custody chain, so the check is now the native suites.
+- **Remaining gates:** none.
+- **Next steps:** t002 moves `native-base-image.yml` to `python3 scripts/install-syft.py 1.55.0`, then t003 (one `setup-trivy`, `skip-setup-trivy`) and t004 (drop `download-syft` from the inventory). Accept on the next native-common push run showing the retrying installers.
