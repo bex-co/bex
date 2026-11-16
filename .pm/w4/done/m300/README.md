@@ -1,6 +1,6 @@
 # w4 · m300 — A triggered cron run exists from the moment it is acknowledged: readable, cancellable, and canceled (not lost) when a second trigger replaces it, as on Render
 
-**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** blocked — t001–t007, t009, t011 done (shipped); the t010 start-hold fix is live on `7aaa8700befa`; live replay on `7aaa8700befa` (2026-11-16 evening) held P1 and P3, but 3 of 19 rapid cancels still started because bex-api took up to 8 s to land them; the hold is now 10 s, and t010 and t008 close after a replay on a deploy carrying it
+**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** done — every task done; the live DoD holds on pin `938c5cb36b49` (2026-11-16 late replay: 20 of 20 rapid cancels never started, P3 held)
 
 ## Tasks (in order)
 
@@ -14,9 +14,9 @@
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | w4/m300/t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | w4/m300/t005 |
 | [t009](done/t009.md) | A run canceled before it started is announced as "not started yet" in Recent Runs — **DONE** | 15m | w4/m300/t003 |
-| [t010](t010.md) | A run canceled or replaced within a second of its trigger still executes (its pod prints after the row reads `canceled`), and a replaced run reads `finishedAt` before `startedAt` | 60m | w4/m300/t002 |
+| [t010](done/t010.md) | A run canceled or replaced within a second of its trigger still executes (its pod prints after the row reads `canceled`), and a replaced run reads `finishedAt` before `startedAt` — **DONE** | 60m | w4/m300/t002 |
 | [t011](done/t011.md) | A triggered run that has not started yet reads "Running" in Recent Runs — **DONE** | 15m | w4/m300/t003 |
-| [t008](t008.md) | Closeout | 15m | w4/m300/t006, w4/m300/t007, w4/m300/t009, w4/m300/t010, w4/m300/t011 |
+| [t008](done/t008.md) | Closeout — **DONE** | 15m | w4/m300/t006, w4/m300/t007, w4/m300/t009, w4/m300/t010, w4/m300/t011 |
 
 Eleven tasks, 390m (6h30m); t010 added in round 171, t011 in round 244. One finding, major. t009 was added in round 81 of the `/qa-find-bugs w4` loop (2026-11-11). This milestone schedules the work only.
 
@@ -113,7 +113,7 @@ These are work to verify, not DoD facts:
 ### Seen but not filed
 
 - During the first deploy, the header read "Service: Building" while the deploy read Created, then Queued (07:28). This remains one untraced observation; its cause is unverified.
-- `build_started` was stamped 07:27:53, the deploy's `createdAt`, although its `startedAt` was 07:28:57. **Reproduced in round 2 and filed as [w4/535](../535.md)**, a regression of w6/035: `buildStartedAt` treats a `created` row as already dispatched.
+- `build_started` was stamped 07:27:53, the deploy's `createdAt`, although its `startedAt` was 07:28:57. **Reproduced in round 2 and filed as [w4/535](../../blocked/535.md)**, a regression of w6/035: `buildStartedAt` treats a `created` row as already dispatched.
 
 ### Dedupe
 
@@ -209,7 +209,7 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) carries t001–t007. The fixture and
 - **Source:** verified finding. Production's scheduled deploy at 2026-11-15 22:49Z ran on `06cc3b02c`, and `git merge-base --is-ancestor d4d105415 06cc3b02c` holds, so t001–t007 are live. The release gate this milestone was parked on has cleared.
 - **Remaining work:** t009, t010 and t011 were filed after the park (rounds 81, 171, 244) and have no code on main. None of them has an external gate, so the milestone returns to active work.
 - **Next steps:** implement t009 and t011 (dashboard Recent Runs labels) and t010 (a run canceled or replaced before its Job starts never executes), ship them, then replay the live DoD once a production deploy carries them. A deployed version is not proof the DoD passed.
-- **Outcome of this run (2026-11-15).** t009 and t011 are done, and t010's fix is shipped in the commit `fix(cron): … (w4/m300 t009–t011)`; see [t010](t010.md) § Implementation. The milestone is parked again on a gate that clears itself: production's next deploy must run a commit that contains that one (`git log --grep 'w4/m300 t009' origin/main`, then `git merge-base --is-ancestor <sha> <deployed sha>`). Then a worker replays the whole DoD (P1–P4, the adjacent classes, eleven runs later) plus t010's and t011's live checks, and closes t010 and t008. No user action.
+- **Outcome of this run (2026-11-15).** t009 and t011 are done, and t010's fix is shipped in the commit `fix(cron): … (w4/m300 t009–t011)`; see [t010](done/t010.md) § Implementation. The milestone is parked again on a gate that clears itself: production's next deploy must run a commit that contains that one (`git log --grep 'w4/m300 t009' origin/main`, then `git merge-base --is-ancestor <sha> <deployed sha>`). Then a worker replays the whole DoD (P1–P4, the adjacent classes, eleven runs later) plus t010's and t011's live checks, and closes t010 and t008. No user action.
 
 ## Unblock record and live replay (2026-11-16, loopx w4)
 
@@ -240,3 +240,17 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) carries t001–t007. The fixture and
 - **Fix (this run):** `manualRunStartHold` 2 s → 10 s (`lego/operator/internal/controller/app_controller.go`; ADR038 § Manual runs). That covers the 8 s tail observed, and a Render run takes longer than that to start anyway. `TestAFreshTriggerIsHeldSoAnImmediateCancelNeverStartsIt` and `TestManualRunHoldRemaining` follow the constant.
 - **Cleanup.** The fixture was deleted (204, then 404), and only this run's session was revoked.
 - **Remaining gate (clears by itself):** a production deploy whose commit contains the `w4/m300 t010 10 s hold` fix (`git log --grep 'w4/m300 t010 10 s hold' origin/main`, then `git merge-base --is-ancestor <sha> <deployed sha>`). Then replay P2b, at least 19 rapid cancels alternating `runs/{id}/cancel` and `DELETE` (0.3 s after the `POST` answers) and P3, check that none of them has a `cron_job_run_started` or a `cron-demo:` line, and close t010 and t008. No user action.
+
+## Unblock record and closing replay (2026-11-16 late, loopx w4)
+
+- **Affected:** w4/m300 (t008, t010).
+- **Source:** verified finding. Production runs platform pin `938c5cb36b49` (pin commit `a24555d5c`, rolled out 23:11Z), and `git merge-base --is-ancestor e0a94e054 938c5cb36b49` holds, so the `w4/m300 t010 10 s hold` fix is live: `bex-api` and `bex-controller-manager` both run `bex-operator@sha256:ddd7efeb…`, the digest that pin writes (read-only `kubectl get deploy`). The release gate has cleared.
+- **Replay (23:52–23:57Z, `muse.env`, `bex-canary`).** Fixture: Starter `busybox:1.36` cron `qa-20261117-m300-cron` (`srv-dbtpeehntgpc739be8u0`), same command and schedule as before. Full record in [t010](done/t010.md).
+  - **P1 holds**; the Job started about 10 s after the trigger (the hold).
+  - **P2b plus 19 rapid cancels hold: 20 of 20 never started.** Alternating `runs/{id}/cancel` and `DELETE`, each 0.3 s after its `POST` answered; every row `canceled` with no `startedAt`. Cancels answered in 0.30–0.67 s this pass.
+  - **P3 holds.** A `canceled` at once, B ran once, the list holds both.
+  - The service's events hold only two `cron_job_run_started` (P1 and B), and its logs only two `cron-demo:` lines. No row has `startedAt` later than `finishedAt`.
+  - **Running cancel holds** (`sleep 90`, `DELETE` 12 s after start → `canceled`).
+  - **Forbidden callers** (not probed before): every cron run route on another workspace's service answers `404 not_found`, the same as `GET /v1/services/{id}`.
+  - **Cleanup.** Fixture deleted (204, then 404); only this run's sessions were revoked.
+- **Outcome:** t010 and t008 closed; the milestone moves to `w4/done/m300/`.
