@@ -55,6 +55,8 @@ allowed-tools: Bash, Read, Glob, Grep
 
 Report tag and source, workflow URL/verdict, and each channel's verification result. Update release tracking within the user's authorized scope only after verification; do not mark an unfinished release done.
 
+**Docs that wait for a release (CLI, w8/334).** Run `git grep -n -i -E '(newer|later) than v0\.|after v0\.|next CLI release|the latest release' -- docs lego/cli/README.md` on the released source. Each hit names the `bex` version a feature needs, or calls a version the latest. Check every hit against the new tag, for example `git merge-base --is-ancestor <commit it names> bex-cli/vX.Y.Z`. In the report, list each sentence this release made stale as a docs follow-up that says "since vX.Y.Z", to land through `/ship`.
+
 Routine sync, default version selection, normal CI waits, isolated worktrees, and bounded transient retries do not need confirmation. Stop only when there is nothing to release, the component is unsupported, or further progress needs unavailable credentials/approval, a source fix landed through `/ship`, an exact-version decision, or an action that would violate the invariants. Before a blocked stop, complete available diagnosis and reversible preparation, state the concrete remaining action, and cite the applicable boundary. Keep prior authorization; do not ask again for a version already authorized.
 
 ## Mobile
