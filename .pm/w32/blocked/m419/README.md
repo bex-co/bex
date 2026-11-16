@@ -1,6 +1,6 @@
 # w32 · m419 — A setting saved after a failed image deploy takes effect: IP allow-list, suspend and routing keep following the service while the previous release serves, as on Render
 
-**Worker:** worker32 **Goal:** on a prebuilt-image web service (or an image-port private service) whose newest deploy failed because the registry refused its image, every later setting that acts without a deploy reaches the running service within seconds, as it does on a healthy one: the IP allow-list blocks and reopens, a suspend stops it, and the failed deploy still reads `update_failed` with no false outage. **Status:** todo (t001–t005 done; t006 waits for a production pin that carries the operator change)
+**Worker:** worker32 **Goal:** on a prebuilt-image web service (or an image-port private service) whose newest deploy failed because the registry refused its image, every later setting that acts without a deploy reaches the running service within seconds, as it does on a healthy one: the IP allow-list blocks and reopens, a suspend stops it, and the failed deploy still reads `update_failed` with no false outage. **Status:** blocked (t001–t005 done; t006, the production walk, waits for a production pin that contains `1660a95e3`)
 
 ## Tasks (in order)
 
@@ -111,7 +111,7 @@ The saved-image path (`spec.image`) behaves like the per-deploy override (`spec.
   - The verdict was already final: `failedRolloutOverServed` holds such a release off the pod template (`actHoldVerdict`), so a retried read that succeeds could never roll it.
   - A save after the refusal holds too, as w8/289 holds one after a failed build: a `services update --image` back to a good tag leaves the served pod template alone until the next deploy.
   - With no served release, the refusal stays an ordinary failure (`Failed`, Ready `ImagePullFailed`, nothing dispatched).
-- **Design note** in [ADR004](../../../docs/ADR004-app-deployment.md) § A release without an image does not freeze the serving one either.
+- **Design note** in [ADR004](../../../../docs/ADR004-app-deployment.md) § A release without an image does not freeze the serving one either.
 
 ### t002 matrix
 
@@ -135,3 +135,9 @@ Refusal reasons, each running the allow-list and suspend rows and then a way out
 
 - **Proof:** with the operator change reverted and the specs kept, 9 of the 10 fail (the allow-list is never projected, or the refused tag is read again on every pass). The tenth, the first-release guard, passes either way by design.
 - **Production rows** are the closeout walk (t006): DoD items 1–4 cover the service allow-list and suspend on the override path.
+
+## Gate (2026-11-16)
+
+- **What waits:** t006, the live walk of DoD items 1–5 on production. The operator change shipped in `1660a95e3`. The production pin at the time, `b9f42ac4648e` (pinned by `bc48eb74e`), predates it.
+- **Release condition:** the newest `chore(deploy): pin platform images to <sha>` commit on `main` names a `<sha>` that contains the fix: `git merge-base --is-ancestor 1660a95e3 <sha>`. The deploy runs on its own schedule, so the gate clears without anyone acting.
+- **Then:** a worker walks DoD 1–5 with the release `bex` CLI in `bex-canary` (free `docker.io/traefik/whoami` fixtures, deleted afterwards with `GET` 404), records the timestamps here, and closes the milestone (t006).
