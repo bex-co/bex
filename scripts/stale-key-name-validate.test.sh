@@ -86,7 +86,7 @@ d="$(new untracked)"
 printf 'ssh -i ~/.ssh/%s host\n' "$stale" >"$d/docs/new.md"
 assert "a file not yet added to git is scanned too" 1 "$d" "docs/new.md:1"
 
-d="$(new done)"
+d="$(new 'done')"
 printf 'no ~/.ssh/%s here (2026-08-28)\n' "$stale" >"$d/.pm/w9/done/001.md"
 printf 'no ~/.ssh/%s here (2026-08-28)\n' "$stale" >"$d/.pm/w9/done/m1/done/t001.md"
 assert "closed history under .pm/**/done/ is a dated record and passes" 0 "$d"
@@ -97,7 +97,10 @@ assert "a gitignored file (.env) is never read" 0 "$d"
 
 d="$(new message)"
 printf 'x ~/.ssh/%s\n' "$stale" >"$d/docs/runbook.md"
-assert "the failure says what the key is" 1 "$d" "~/.ssh/bex"
+# The message prints the tilde literally, so the pattern must not expand it.
+# shellcheck disable=SC2088
+want='~/.ssh/bex'
+assert "the failure says what the key is" 1 "$d" "$want"
 
 d="$tmp/notgit"
 mkdir -p "$d"
