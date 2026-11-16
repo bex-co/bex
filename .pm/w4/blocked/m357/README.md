@@ -161,3 +161,14 @@ Both read `available` at 10:44:42 and were deleted afterwards (`DELETE` 204, the
 ## Gate — t002's wildcard (user action)
 
 Create a Cloudflare API token, **Zone → DNS → Edit** and **Zone → Zone → Read**, **Zone Resources: Include → Specific zone → `bex.co`** only, no expiry or a long one. Store it as `BEX_DATASTORE_DNS_TOKEN` in `.env` (name added to `.env.example` with the wildcard work) and in the GitHub `production-deploy` environment. Then the remaining t002 work is: a namespaced DNS-01 Issuer plus `*.db.bex.co` and `*.kv.bex.co` Certificates (the ADR093 pattern), the deploy step installing the token Secret, and the operator copying the wildcard Secret into each public datastore's namespace instead of ordering a certificate. Widening the existing `onbex.co` token to `bex.co` would also work but couples the two zones' blast radius.
+
+## Round 508 — still stalled for Key Value (2026-11-16 10:57–11:01 UTC, pin `a82eaeec84dd`)
+
+- **Fixture:** a Free Key Value `qa-20261116-r508-kv` (`red-dbte39nv02nc73ebkqtg`), created over REST with `ipAllowList: [{"cidrBlock":"0.0.0.0/0"}]`. It read `available` in 34 s and was deleted afterwards (`204`, then `404`).
+- **For 4 minutes after Available** (eight reads, 15 s apart), `GET /v1/key-value/<id>/connection-info` answered:
+  - `externalConnectionString: ""`;
+  - `externalCertificate: "failed"`;
+  - `externalCertificateReason: "The certificate authority's issuance rate limit was reached. Issuance is retried automatically."`
+- GraphQL `keyValueConnectionInfo` agreed: the same internal URL and CLI command, and an empty external URL.
+- A TCP connect to the external host was refused, so there is no external listener.
+- So t003's surfaces report the state correctly, and the gate above (t002's DNS-01 wildcard, which needs the user's Cloudflare token) is still what blocks a new public store's external URL.
