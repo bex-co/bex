@@ -27,8 +27,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -270,5 +272,104 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			Expect(k8sClient.Get(ctx, nn, cj)).To(Succeed())
 			Expect(cj.Spec.Suspend).To(HaveValue(BeTrue()))
 		})
+
+		// w10/m420: every Trigger Run and Cancel bumped the generation, and the
+		// gate read that as a release — the cron flipped to Deploying (Ready=False)
+		// for a pass, which bex-api sampled as an outage and mailed "Service
+		// unavailable". Render's run verbs deploy nothing.
+		It("keeps a settled cron Running through a run trigger and cancel, and still deploys a schedule change", func() {
+			rec := &phaseRecorder{Client: k8sClient}
+			r.Client = rec
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Type:     appv1alpha1.TypeCronJob,
+					Schedule: "0 0 1 1 *",
+					Image:    "busybox:1.36", Port: 3000,
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN(r, nn)
+			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+
+			edit := func(mutate func(*appv1alpha1.App)) {
+				Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+				mutate(app)
+				Expect(k8sClient.Update(ctx, app)).To(Succeed())
+				rec.writes = nil
+				reconcileN(r, nn)
+				Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+				Expect(app.Status.ObservedGeneration).To(Equal(app.Generation))
+			}
+
+			By("a trigger writes no Deploying status")
+			const runAt = "2026-11-16T05:48:48Z"
+			edit(func(a *appv1alpha1.App) { a.Spec.RunAt = runAt })
+			Expect(rec.writes).NotTo(BeEmpty(), "the pass records the run, so it writes status")
+			Expect(rec.writes).To(HaveEach("Running/True/Scheduled"))
+
+			By("a cancel writes no Deploying status")
+			edit(func(a *appv1alpha1.App) {
+				a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{
+					Name: appv1alpha1.ManualCronRunJobName(name, runAt), RequestedAt: "2026-11-16T05:48:49Z",
+				}
+			})
+			Expect(rec.writes).To(HaveEach("Running/True/Scheduled"))
+
+			By("a schedule change still passes through Deploying")
+			edit(func(a *appv1alpha1.App) { a.Spec.Schedule = "*/5 * * * *" })
+			Expect(rec.writes).To(ContainElement("Deploying/False/Deploying"))
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+
+			By("a release change (image) still passes through Deploying")
+			edit(func(a *appv1alpha1.App) { a.Spec.Image = "busybox:1.37" })
+			Expect(rec.writes).To(ContainElement("Deploying/False/Deploying"))
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+
+			By("a release change (env) still passes through Deploying")
+			edit(func(a *appv1alpha1.App) { a.Spec.Env = []appv1alpha1.EnvVar{{Name: "GREETING", Value: "hi"}} })
+			Expect(rec.writes).To(ContainElement("Deploying/False/Deploying"))
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+		})
 	})
 })
+
+// phaseRecorder records each App status write as phase/Ready status/Ready
+// reason, so a test can assert on every intermediate status, not just the end
+// state.
+type phaseRecorder struct {
+	client.Client
+	writes []string
+}
+
+func (p *phaseRecorder) Status() client.SubResourceWriter {
+	return &phaseStatusWriter{SubResourceWriter: p.Client.Status(), owner: p}
+}
+
+type phaseStatusWriter struct {
+	client.SubResourceWriter
+	owner *phaseRecorder
+}
+
+func (w *phaseStatusWriter) record(obj client.Object) {
+	app, ok := obj.(*appv1alpha1.App)
+	if !ok {
+		return
+	}
+	entry := string(app.Status.Phase)
+	if ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady); ready != nil {
+		entry += "/" + string(ready.Status) + "/" + ready.Reason
+	}
+	w.owner.writes = append(w.owner.writes, entry)
+}
+
+func (w *phaseStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	w.record(obj)
+	return w.SubResourceWriter.Update(ctx, obj, opts...)
+}
+
+func (w *phaseStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	w.record(obj)
+	return w.SubResourceWriter.Patch(ctx, obj, patch, opts...)
+}

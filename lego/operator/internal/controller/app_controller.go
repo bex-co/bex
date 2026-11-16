@@ -5220,8 +5220,11 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if app.Spec.Suspended {
 		settled = appv1alpha1.PhaseHibernated
 	}
-	if app.Status.Phase != settled ||
-		app.Status.ObservedGeneration != app.Generation || app.Status.Image != image {
+	// A run request (spec.runAt, spec.cancelRun) moves the generation too, but
+	// it deploys nothing: Render's Trigger Run and Cancel run leave the cron
+	// job live, so they must not flip it through Deploying (w10/m420).
+	if app.Status.Phase != settled || app.Status.Image != image ||
+		(app.Status.ObservedGeneration != app.Generation && !r.cronReleaseAndScheduleUnchanged(ctx, app)) {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
 	}
 	labels := map[string]string{labelApp: app.Name, labelAppID: appIDOrName(app)}
@@ -5288,6 +5291,22 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	}
 	logf.FromContext(ctx).Info("cron reconciled (kubernetes)", "name", app.Name, "schedule", app.Spec.Schedule, "runs", len(app.Status.Runs))
 	return res, nil
+}
+
+// cronReleaseAndScheduleUnchanged reports that a cron job's generation moved
+// since its last observation without a new release or schedule: no release
+// was adopted after the observed generation, and the CronJob already carries
+// the schedule. What else moved is operational (a run request, a notification
+// setting) and is converged in place.
+func (r *AppReconciler) cronReleaseAndScheduleUnchanged(ctx context.Context, app *appv1alpha1.App) bool {
+	if app.Status.ObservedGeneration == 0 || app.Status.ReleaseGeneration > app.Status.ObservedGeneration {
+		return false
+	}
+	cj := &batchv1.CronJob{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.CronJobName(app.Name)}, cj); err != nil {
+		return false
+	}
+	return cj.Spec.Schedule == app.Spec.Schedule
 }
 
 // annotationCronUserSuspended marks a CronJob paused by the owner's Suspend,

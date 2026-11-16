@@ -1610,6 +1610,11 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 // instance that kept failing its health check, whose outage reads unhealthy,
 // and every exit of a crash loop after its first.
 func instanceExitFacts(appID string, app *appv1alpha1.App) []ServiceEventFact {
+	// A cron job's runs end through cron_job_run_ended, never as an instance
+	// failure (w10/m420).
+	if app.Spec.Type == appv1alpha1.TypeCronJob {
+		return nil
+	}
 	facts := make([]ServiceEventFact, 0, len(app.Status.InstanceExits))
 	for _, e := range app.Status.InstanceExits {
 		if e.AfterUnready {
@@ -2464,6 +2469,12 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 		// Suspend verb does — so this cleanly separates a real suspension from
 		// free-tier idle auto-hibernation, which scales to 0 without it.
 		Suspended: app.Spec.Suspended,
+	}
+	// A cron job has no instance and no health check, so no availability:
+	// Render reports only its failed runs. Its phase still records, for the
+	// suspend and resume events (w10/m420).
+	if app.Spec.Type == appv1alpha1.TypeCronJob {
+		return obs
 	}
 	if app.Status.Phase == appv1alpha1.PhaseHibernated {
 		obs.AvailabilityObserved = true
