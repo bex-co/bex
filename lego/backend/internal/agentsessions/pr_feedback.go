@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"log"
 	"slices"
 	"strconv"
@@ -65,9 +66,10 @@ type TurnOrigin struct {
 	Author string `json:"author,omitempty"`
 	URL    string `json:"url,omitempty"`
 	// BaseFailingRef is the pull request's base branch when at least one of
-	// a CI failure's checks also failed on its latest commit, so the change
-	// did not cause it; empty otherwise.
-	BaseFailingRef string `json:"baseFailingRef,omitempty" jsonschema:"for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure"`
+	// a CI failure's checks also fails there (its newest passed or failed
+	// run on the branch failed), so the change did not cause it; empty
+	// otherwise.
+	BaseFailingRef string `json:"baseFailingRef,omitempty" jsonschema:"for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure"`
 }
 
 // FeedbackReader lists a session's delivered feedback (*store.PGStore).
@@ -151,7 +153,7 @@ type PRFeedbackGitHub interface {
 	GetReview(ctx context.Context, installationID int64, owner, repo string, number int, reviewID int64) (github.Review, error)
 	ReviewComments(ctx context.Context, installationID int64, owner, repo string, number int, reviewID int64) ([]github.ReviewComment, error)
 	SuiteCheckRuns(ctx context.Context, installationID int64, owner, repo string, suiteID int64) ([]github.CheckRun, error)
-	BranchCheckRuns(ctx context.Context, installationID int64, owner, repo, ref string) ([]github.CheckRun, error)
+	BranchCheckHistory(ctx context.Context, installationID int64, owner, repo, branch string) iter.Seq2[[]github.CheckRun, error]
 	GetPullRequest(ctx context.Context, installationID int64, owner, repo string, number int) (github.PullRequestDetail, error)
 	BranchProtected(ctx context.Context, installationID int64, owner, repo, branch string) (bool, error)
 	AddCommentReaction(ctx context.Context, installationID int64, owner, repo string, commentID int64, inline bool, content string) error
@@ -553,33 +555,62 @@ func (f *PRFeedback) queueCIFailure(ctx context.Context, ev feedbackEvent, works
 	return queued, nil
 }
 
-// failingOnBase reads which of the failed checks also failed on the latest
-// commit of base (a check named the same), mapped to that commit: those are
-// not the pull request's doing (w6/m399). A base the suite does not name, or
-// one that cannot be read, notes nothing.
+// baseReadBudget bounds failingOnBase: the comparison runs inside a GitHub
+// webhook delivery, which GitHub abandons after 10 seconds.
+const baseReadBudget = 4 * time.Second
+
+// failingOnBase reads which of the failed checks also fail on base, mapped
+// to the commit there that failed: those are not the pull request's doing
+// (w6/m399). A check is decided by the newest of base's commits on which a
+// check of the same name passed or failed, so one still queued or running on
+// base's head, cancelled or skipped there, or not run on it at all (a
+// [skip ci] commit, a path filter), is read from the commits before. A base
+// the suite does not name notes nothing; a read that fails or runs out of
+// time keeps what it had decided and notes nothing more.
 func (f *PRFeedback) failingOnBase(ctx context.Context, installationID int64, owner, repo, base string, failed []github.CheckRun) map[string]string {
 	if base == "" || len(failed) == 0 {
 		return nil
 	}
-	runs, err := f.GitHub.BranchCheckRuns(ctx, installationID, owner, repo, base)
-	if err != nil {
-		log.Printf("agent-session CI feedback: read the checks of %s/%s@%s: %v; the failure is not compared with its base", owner, repo, base, err)
-		return nil
-	}
-	names := make(map[string]bool, len(failed))
+	ctx, cancel := context.WithTimeout(ctx, baseReadBudget)
+	defer cancel()
+	open := make(map[string]bool, len(failed))
 	for _, run := range failed {
-		names[run.Name] = true
+		open[run.Name] = true
 	}
 	var out map[string]string
-	for _, run := range runs {
-		if names[run.Name] && CIFailed(run.Conclusion) {
-			if out == nil {
-				out = map[string]string{}
+	for runs, err := range f.GitHub.BranchCheckHistory(ctx, installationID, owner, repo, base) {
+		if err != nil {
+			log.Printf("agent-session CI feedback: read the checks of %s/%s@%s: %v; the failures not yet compared with it are not noted", owner, repo, base, err)
+			break
+		}
+		var decided []string
+		for _, run := range runs {
+			if !open[run.Name] || !checkDecided(run.Conclusion) {
+				continue
 			}
-			out[run.Name] = run.HeadSHA
+			decided = append(decided, run.Name)
+			if CIFailed(run.Conclusion) {
+				if out == nil {
+					out = map[string]string{}
+				}
+				out[run.Name] = run.HeadSHA
+			}
+		}
+		for _, name := range decided { // after the commit: a same-named failure on it counts
+			delete(open, name)
+		}
+		if len(open) == 0 {
+			break
 		}
 	}
 	return out
+}
+
+// checkDecided reports whether a check run says how its check stands on its
+// commit: it passed or failed, rather than being queued, running, cancelled,
+// skipped or stale.
+func checkDecided(conclusion string) bool {
+	return CIFailed(conclusion) || conclusion == "success" || conclusion == "neutral"
 }
 
 // ciFailureBody is a CI-failure steer's text: each failed check with its

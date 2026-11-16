@@ -263,37 +263,95 @@ func TestBexCommandReadsOnlyALeadingBexWord(t *testing.T) {
 	}
 }
 
-// A base branch is read as heads/<branch> with its slashes kept, page by page
-// until a short page (w6/m399).
-func TestBranchCheckRunsAddressesTheBranchAndPages(t *testing.T) {
-	var pages []string
+// A base branch's check history (w6/m399) lists the branch's commits under
+// one token, then reads each commit's latest runs newest first along first
+// parents, so a merged side branch's commits are skipped. It stops at
+// maxBranchHistory commits, when the reader stops, at a first parent past
+// the page, and at a failed read, which it yields.
+func TestBranchCheckHistoryWalksFirstParentsUnderOneToken(t *testing.T) {
+	type commit struct{ sha, parents string }
+	var mints []map[string]any
+	var listed, read []string
+	commits := []commit{{"m3", "m2 s1"}, {"s1", "s0"}, {"m2", "m1"}, {"s0", "m1"}, {"m1", "gone"}}
 	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/app/installations/42/access_tokens" && r.Header.Get("Authorization") != "token ghs_fb" {
+			http.Error(w, "no installation token", http.StatusUnauthorized)
+			return
+		}
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/app/installations/42/access_tokens":
+			var scope map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&scope)
+			mints = append(mints, scope)
 			w.WriteHeader(http.StatusCreated)
-			fmt.Fprint(w, `{"token":"ghs_fb","expires_at":"2026-11-12T13:00:00Z"}`)
-		case r.URL.EscapedPath() == "/repos/octo/repo/commits/heads/release/1.0/check-runs" && r.URL.Query().Get("filter") == "latest":
-			page := r.URL.Query().Get("page")
-			pages = append(pages, page)
-			n := 1
-			if page == "1" {
-				n = 100
+			fmt.Fprint(w, `{"token":"ghs_fb","expires_at":"2026-11-16T13:00:00Z"}`)
+		case r.URL.Path == "/repos/octo/repo/commits":
+			listed = append(listed, r.URL.Query().Get("sha")+" "+r.URL.Query().Get("per_page"))
+			var page []string
+			for _, c := range commits {
+				var parents []string
+				for _, p := range strings.Fields(c.parents) {
+					parents = append(parents, fmt.Sprintf(`{"sha":%q}`, p))
+				}
+				page = append(page, fmt.Sprintf(`{"sha":%q,"parents":[%s]}`, c.sha, strings.Join(parents, ",")))
 			}
-			runs := make([]string, n)
-			for i := range runs {
-				runs[i] = fmt.Sprintf(`{"name":"check-%s-%d","conclusion":"failure","head_sha":"abc"}`, page, i)
+			fmt.Fprintf(w, "[%s]", strings.Join(page, ","))
+		case strings.HasPrefix(r.URL.Path, "/repos/octo/repo/commits/") && strings.HasSuffix(r.URL.Path, "/check-runs") && r.URL.Query().Get("filter") == "latest":
+			sha := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/repos/octo/repo/commits/"), "/check-runs")
+			read = append(read, sha)
+			if sha == "bad" {
+				http.Error(w, `{"message":"No commit found"}`, http.StatusUnprocessableEntity)
+				return
 			}
-			fmt.Fprintf(w, `{"check_runs":[%s]}`, strings.Join(runs, ","))
+			fmt.Fprintf(w, `{"total_count":1,"check_runs":[{"name":"test","status":"completed","conclusion":"failure","head_sha":%q}]}`, sha)
 		default:
 			http.Error(w, "unexpected "+r.Method+" "+r.URL.String(), http.StatusTeapot)
 		}
 	})
 	c := pullsClient(t, api)
-	runs, err := c.BranchCheckRuns(context.Background(), 42, "octo", "repo", "release/1.0")
-	if err != nil || len(runs) != 101 || runs[100].Name != "check-2-0" || runs[0].HeadSHA != "abc" {
-		t.Fatalf("runs = %d %v", len(runs), err)
+	walk := func(branch string, take int) ([]string, error) {
+		var shas []string
+		for runs, err := range c.BranchCheckHistory(context.Background(), 42, "octo", "repo", branch) {
+			if err != nil {
+				return shas, err
+			}
+			shas = append(shas, runs[0].HeadSHA)
+			if len(shas) == take {
+				break
+			}
+		}
+		return shas, nil
 	}
-	if fmt.Sprint(pages) != "[1 2]" {
-		t.Fatalf("pages = %v, want 1 then 2", pages)
+
+	shas, err := walk("release/1.0", 0)
+	if err != nil || fmt.Sprint(shas) != "[m3 m2 m1]" {
+		t.Fatalf("walked %v (%v); want m3 m2 m1 along first parents, ending at a parent past the page", shas, err)
+	}
+	if fmt.Sprint(listed) != "[release/1.0 30]" || fmt.Sprint(read) != "[m3 m2 m1]" {
+		t.Fatalf("listed %v, read %v", listed, read)
+	}
+	if len(mints) != 1 || fmt.Sprint(mints[0]["permissions"]) != "map[checks:read contents:read metadata:read]" {
+		t.Fatalf("minted %v; want one token with checks and contents read", mints)
+	}
+
+	read = nil
+	if shas, err := walk("main", 1); err != nil || fmt.Sprint(shas) != "[m3]" || fmt.Sprint(read) != "[m3]" {
+		t.Fatalf("walked %v, read %v (%v); a reader that stops reads no further", shas, read, err)
+	}
+
+	commits = nil
+	for i := 20; i > 0; i-- {
+		commits = append(commits, commit{fmt.Sprintf("c%02d", i), fmt.Sprintf("c%02d", i-1)})
+	}
+	if shas, err := walk("main", 0); err != nil || len(shas) != maxBranchHistory || shas[maxBranchHistory-1] != "c11" {
+		t.Fatalf("walked %v (%v); want the newest %d commits", shas, err, maxBranchHistory)
+	}
+
+	commits = []commit{{"ok", "bad"}, {"bad", "after"}, {"after", ""}}
+	read = nil
+	shas, err = walk("main", 0)
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusUnprocessableEntity || fmt.Sprint(shas) != "[ok]" || fmt.Sprint(read) != "[ok bad]" {
+		t.Fatalf("walked %v, read %v, err %v; want the failed read yielded and the walk ended", shas, read, err)
 	}
 }

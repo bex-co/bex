@@ -51,7 +51,8 @@ type AgentSessionFeedback struct {
 	// HeadSHA is the commit a CI failure ran on; empty otherwise.
 	HeadSHA string
 	// BaseFailingRef is the pull request's base branch when at least one of
-	// a CI failure's checks also failed on its latest commit; empty otherwise.
+	// a CI failure's checks also fails there (its newest passed or failed
+	// run on the branch failed); empty otherwise.
 	BaseFailingRef string
 	CreatedAt      time.Time
 	DeliveredTurn  *int

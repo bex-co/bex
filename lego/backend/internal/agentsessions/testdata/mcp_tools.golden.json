@@ -539,7 +539,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -1134,7 +1134,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -1852,7 +1852,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -3094,7 +3094,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -4928,7 +4928,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -6025,7 +6025,7 @@
                       "type": "string"
                     },
                     "baseFailingRef": {
-                      "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                      "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                       "type": "string"
                     },
                     "kind": {
@@ -6793,7 +6793,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -8534,7 +8534,7 @@
                       "type": "string"
                     },
                     "baseFailingRef": {
-                      "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                      "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                       "type": "string"
                     },
                     "kind": {
@@ -10070,7 +10070,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -10825,7 +10825,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -11743,7 +11743,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -12481,7 +12481,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -13170,7 +13170,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {
@@ -14051,7 +14051,7 @@
                 "type": "string"
               },
               "baseFailingRef": {
-                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "description": "for ci_failure: the base branch on which at least one of the failing checks also fails (its newest passed or failed run there failed), so the pull request did not cause that failure",
                 "type": "string"
               },
               "kind": {

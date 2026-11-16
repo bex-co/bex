@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"net/http"
 	neturl "net/url"
 	"strconv"
@@ -149,31 +150,57 @@ func (c *Client) SuiteCheckRuns(ctx context.Context, installationID int64, owner
 	return out.CheckRuns, err
 }
 
-// BranchCheckRuns lists the latest check runs on branch's head commit, up to
-// maxCheckRunPages pages of 100. The branch is addressed as heads/<branch>,
-// each segment escaped, so a name such as release/1.0 keeps its slash.
-func (c *Client) BranchCheckRuns(ctx context.Context, installationID int64, owner, repo, branch string) ([]CheckRun, error) {
-	segments := strings.Split(branch, "/")
-	for i, seg := range segments {
-		segments[i] = neturl.PathEscape(seg)
-	}
-	var runs []CheckRun
-	for page := 1; page <= maxCheckRunPages; page++ {
-		var out struct {
-			CheckRuns []CheckRun `json:"check_runs"`
-		}
-		err := c.repoJSON(ctx, installationID, repo, map[string]string{"checks": "read"}, http.MethodGet,
-			c.repoURL(owner, repo)+"/commits/heads/"+strings.Join(segments, "/")+"/check-runs?filter=latest&per_page=100&page="+strconv.Itoa(page),
-			nil, http.StatusOK, &out)
+// BranchCheckHistory bounds: the newest commits of a branch it reads check
+// runs on, and the page of commits it follows their first parents through.
+const (
+	maxBranchHistory  = 10
+	branchHistoryPage = 30
+)
+
+// BranchCheckHistory yields the latest check runs of branch's newest commits,
+// one commit at a time and newest first (CheckRun.HeadSHA is the commit), so
+// a reader can look past a head whose check is still running, or that the
+// check did not run on (w6/m399). It follows first parents, so the commits of
+// a merged side branch, whose runs were a pull request's, are not read, and
+// it stops after maxBranchHistory commits or when the reader does. A failed
+// read yields its error and ends the walk. One token, checks and contents
+// read, serves every request.
+func (c *Client) BranchCheckHistory(ctx context.Context, installationID int64, owner, repo, branch string) iter.Seq2[[]CheckRun, error] {
+	return func(yield func([]CheckRun, error) bool) {
+		token, err := c.repoToken(ctx, installationID, repo, map[string]string{"checks": "read", "contents": "read"})
 		if err != nil {
-			return nil, err
+			yield(nil, err)
+			return
 		}
-		runs = append(runs, out.CheckRuns...)
-		if len(out.CheckRuns) < 100 {
-			break
+		var commits []struct {
+			SHA     string `json:"sha"`
+			Parents []struct {
+				SHA string `json:"sha"`
+			} `json:"parents"`
+		}
+		err = c.tokenJSON(ctx, token, http.MethodGet,
+			c.repoURL(owner, repo)+"/commits?sha="+neturl.QueryEscape(branch)+"&per_page="+strconv.Itoa(branchHistoryPage),
+			nil, http.StatusOK, &commits)
+		if err != nil {
+			yield(nil, err)
+			return
+		}
+		at := make(map[string]int, len(commits))
+		for i, commit := range commits {
+			at[commit.SHA] = i
+		}
+		for i, n := 0, 0; i < len(commits) && n < maxBranchHistory; n++ {
+			runs, err := c.ListCheckRuns(ctx, token, owner, repo, commits[i].SHA)
+			if !yield(runs, err) || err != nil || len(commits[i].Parents) == 0 {
+				return
+			}
+			next, ok := at[commits[i].Parents[0].SHA]
+			if !ok {
+				return // the first parent is past the page
+			}
+			i = next
 		}
 	}
-	return runs, nil
 }
 
 // PullRequestDetail is what a `/bex` takeover and a takeover

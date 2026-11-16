@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"strings"
 	"testing"
@@ -143,16 +144,29 @@ type fakeFeedbackGitHub struct {
 	protected bool
 	reactions []string
 	replies   []string
-	// baseRuns is what BranchCheckRuns returns for a base branch (baseErr fails
-	// it), and baseReads names the refs it read.
-	baseRuns  []github.CheckRun
-	baseErr   error
-	baseReads []string
+	// baseHistory is what BranchCheckHistory yields for a base branch, one
+	// commit's runs at a time, newest first, then baseErr when set.
+	// baseReads names the branches read; baseCommits counts the commits the
+	// reader took.
+	baseHistory [][]github.CheckRun
+	baseErr     error
+	baseReads   []string
+	baseCommits int
 }
 
-func (g *fakeFeedbackGitHub) BranchCheckRuns(_ context.Context, _ int64, _, _, ref string) ([]github.CheckRun, error) {
-	g.baseReads = append(g.baseReads, ref)
-	return g.baseRuns, g.baseErr
+func (g *fakeFeedbackGitHub) BranchCheckHistory(_ context.Context, _ int64, _, _, branch string) iter.Seq2[[]github.CheckRun, error] {
+	g.baseReads = append(g.baseReads, branch)
+	return func(yield func([]github.CheckRun, error) bool) {
+		for _, runs := range g.baseHistory {
+			g.baseCommits++
+			if !yield(runs, nil) {
+				return
+			}
+		}
+		if g.baseErr != nil {
+			yield(nil, g.baseErr)
+		}
+	}
 }
 
 func (g *fakeFeedbackGitHub) BranchProtected(context.Context, int64, string, string, string) (bool, error) {
@@ -425,10 +439,10 @@ func TestPRFeedbackCIFailureQueuesForTheHeadsSession(t *testing.T) {
 	}
 }
 
-// w6/m399: a failed check that also fails on the latest commit of the pull
-// request's base branch is noted in the steer as not caused by the change,
-// and the row records the base branch for the turn origin. A check that
-// fails only on the head is not noted; an unreadable base notes nothing.
+// w6/m399: a failed check that also fails on the pull request's base branch
+// is noted in the steer as not caused by the change, and the row records the
+// base branch for the turn origin. A check that fails only on the head is not
+// noted; an unreadable base notes nothing.
 func TestPRFeedbackCIFailureNotesAChecksFailureOnTheBaseBranch(t *testing.T) {
 	f, st, gh, _ := feedbackFixture()
 	st.headHits = []store.AgentSession{st.session}
@@ -437,16 +451,11 @@ func TestPRFeedbackCIFailureNotesAChecksFailureOnTheBaseBranch(t *testing.T) {
 		{Name: "lint", Conclusion: "failure", URL: "https://github.com/run/2"},
 		{Name: "backend", Conclusion: "success"},
 	}
-	gh.baseRuns = []github.CheckRun{
+	gh.baseHistory = [][]github.CheckRun{{
 		{Name: "scripts (test)", Conclusion: "failure", HeadSHA: "fedcba9876543210fedcba98"},
 		{Name: "lint", Conclusion: "success", HeadSHA: "fedcba9876543210fedcba98"},
-	}
-	ev, _ := json.Marshal(map[string]any{
-		"action": "completed", "installation": map[string]any{"id": 42},
-		"repository": map[string]any{"full_name": "bex-co/app"},
-		"check_suite": map[string]any{"id": 78, "head_sha": "0123456789abcdef0123", "conclusion": "failure",
-			"pull_requests": []any{map[string]any{"number": 7, "base": map[string]any{"ref": "main"}}}},
-	})
+	}}
+	ev := baseSuiteEvent(78)
 	if n, err := f.HandlePRFeedback(context.Background(), "check_suite", ev, []string{"tea-a"}); n != 1 || err != nil {
 		t.Fatalf("queued=%d err=%v", n, err)
 	}
@@ -459,15 +468,108 @@ func TestPRFeedbackCIFailureNotesAChecksFailureOnTheBaseBranch(t *testing.T) {
 		strings.Contains(lint, "also fails on") {
 		t.Fatalf("body = %s; want only scripts (test) noted as failing on main", item.Body)
 	}
+	if gh.baseCommits != 1 {
+		t.Fatalf("read %d base commits; the head decided both checks", gh.baseCommits)
+	}
 
-	st.queued, gh.baseErr = nil, errors.New("rate limited")
-	again := strings.Replace(string(ev), `"id":78`, `"id":79`, 1)
-	if n, err := f.HandlePRFeedback(context.Background(), "check_suite", []byte(again), []string{"tea-a"}); n != 1 || err != nil {
+	st.queued, gh.baseHistory, gh.baseErr = nil, nil, errors.New("rate limited")
+	if n, err := f.HandlePRFeedback(context.Background(), "check_suite", baseSuiteEvent(79), []string{"tea-a"}); n != 1 || err != nil {
 		t.Fatalf("queued=%d err=%v with an unreadable base", n, err)
 	}
 	if item := st.queued[0]; item.BaseFailingRef != "" || strings.Contains(item.Body, "also fails on") {
 		t.Fatalf("unreadable base noted something: %+v", item)
 	}
+
+	// A read that fails part way keeps the checks it had already decided.
+	st.queued, gh.baseErr = nil, context.DeadlineExceeded
+	gh.baseHistory = [][]github.CheckRun{{{Name: "lint", Conclusion: "failure", HeadSHA: "fedcba9876543210fedcba98"}}}
+	if n, err := f.HandlePRFeedback(context.Background(), "check_suite", baseSuiteEvent(81), []string{"tea-a"}); n != 1 || err != nil {
+		t.Fatalf("queued=%d err=%v with a base read cut short", n, err)
+	}
+	scripts, lint, _ = strings.Cut(st.queued[0].Body, `- "lint"`)
+	if strings.Contains(scripts, "also fails on") || !strings.Contains(lint, "It also fails on main at fedcba987654") || st.queued[0].BaseFailingRef != "main" {
+		t.Fatalf("body = %s; want lint noted from the commit read before the failure", st.queued[0].Body)
+	}
+}
+
+// w6/m399 t004, production 2026-11-16 08:29Z: main's "test" failed on
+// 199f64120, but main's head a30d7e24e had that check still queued and the
+// commit before it did not run it, so the steer of bex-co/bex#171 carried no
+// note. A check is decided by the newest base commit on which it passed or
+// failed: queued, running, cancelled and skipped runs, and commits it did not
+// run on, are read past.
+func TestPRFeedbackCIFailureReadsPastABaseHeadWhoseCheckHasNotFinished(t *testing.T) {
+	const failedOnBase = "199f64120aaaabbbbccccdddd"
+	cases := []struct {
+		name    string
+		history [][]github.CheckRun
+		err     error
+		// want is the failing check's commit on main, "" for no note; commits
+		// is how many base commits the read took.
+		want    string
+		commits int
+	}{
+		{name: "queued on the head, not run on the next, failed before", history: [][]github.CheckRun{
+			{{Name: "test", Status: "queued", HeadSHA: "a30d7e24e"}, {Name: "guard", Conclusion: "success", HeadSHA: "a30d7e24e"}},
+			{{Name: "guard", Conclusion: "success", HeadSHA: "b4847d262"}},
+			{{Name: "test", Status: "in_progress", HeadSHA: "ea837ce20"}},
+			{{Name: "test", Conclusion: "cancelled", HeadSHA: "cd9884713"}, {Name: "test-backend", Conclusion: "skipped", HeadSHA: "cd9884713"}},
+			{{Name: "test", Conclusion: "skipped", HeadSHA: "84f34f49c"}},
+			{{Name: "test", Conclusion: "failure", HeadSHA: failedOnBase}},
+			{{Name: "test", Conclusion: "success", HeadSHA: "3ff44a644"}},
+		}, want: failedOnBase, commits: 6},
+		{name: "running on the head, passed before", history: [][]github.CheckRun{
+			{{Name: "test", Status: "in_progress", HeadSHA: "14af9b20a"}},
+			{{Name: "test", Conclusion: "success", HeadSHA: "37ce58067"}},
+			{{Name: "test", Conclusion: "failure", HeadSHA: "2cd28d692"}},
+		}, commits: 2},
+		{name: "neutral counts as passed", history: [][]github.CheckRun{
+			{{Name: "test", Conclusion: "neutral", HeadSHA: "37ce58067"}},
+			{{Name: "test", Conclusion: "failure", HeadSHA: "2cd28d692"}},
+		}, commits: 1},
+		{name: "a check that never runs on main", history: [][]github.CheckRun{
+			{{Name: "guard", Conclusion: "success"}}, {}, {{Name: "guard", Conclusion: "failure"}},
+		}, commits: 3},
+		{name: "a same-named failure on the commit that decides", history: [][]github.CheckRun{
+			{{Name: "test", Conclusion: "success", HeadSHA: failedOnBase}, {Name: "test", Conclusion: "failure", HeadSHA: failedOnBase}},
+		}, want: failedOnBase, commits: 1},
+		{name: "a read that fails before the check is decided", history: [][]github.CheckRun{
+			{{Name: "test", Status: "queued"}},
+		}, err: context.DeadlineExceeded, commits: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f, st, gh, _ := feedbackFixture()
+			st.headHits = []store.AgentSession{st.session}
+			gh.runs = []github.CheckRun{{Name: "test", Conclusion: "failure", URL: "https://github.com/bex-co/bex/actions/runs/43830004568/job/133172786602"}}
+			gh.baseHistory, gh.baseErr = tc.history, tc.err
+			if n, err := f.HandlePRFeedback(context.Background(), "check_suite", baseSuiteEvent(80), []string{"tea-a"}); n != 1 || err != nil {
+				t.Fatalf("queued=%d err=%v; the steer is sent whatever the base says", n, err)
+			}
+			item := st.queued[0]
+			noted := strings.Contains(item.Body, "It also fails on main at "+shortSHA(tc.want)+", so your change did not cause it")
+			if tc.want == "" {
+				noted = strings.Contains(item.Body, "also fails on")
+			}
+			if noted != (tc.want != "") || (item.BaseFailingRef == "main") != (tc.want != "") {
+				t.Fatalf("row base = %q, body = %s; want the note %v", item.BaseFailingRef, item.Body, tc.want != "")
+			}
+			if gh.baseCommits != tc.commits {
+				t.Fatalf("read %d base commits, want %d", gh.baseCommits, tc.commits)
+			}
+		})
+	}
+}
+
+// baseSuiteEvent is a failed check_suite of pull request 7, based on main.
+func baseSuiteEvent(id int) []byte {
+	ev, _ := json.Marshal(map[string]any{
+		"action": "completed", "installation": map[string]any{"id": 42},
+		"repository": map[string]any{"full_name": "bex-co/app"},
+		"check_suite": map[string]any{"id": id, "head_sha": "0123456789abcdef0123", "conclusion": "failure",
+			"pull_requests": []any{map[string]any{"number": 7, "base": map[string]any{"ref": "main"}}}},
+	})
+	return ev
 }
 
 func TestPRFeedbackDeliveryStepsAsTheCommenterOnce(t *testing.T) {
