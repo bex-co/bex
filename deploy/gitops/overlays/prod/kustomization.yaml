@@ -14,6 +14,11 @@ patches:
   # The retained production WAL outgrew the shared 512Mi cap (w4/m144).
   # Reserve a larger working set and bound the recovery attempt; local keeps
   # the base budget. Existing-data replay/query peaks remain a rollout gate.
+  #
+  # The 40Gi volume comes first and alone (w7/m427): production is about to
+  # keep metrics 30 days, the longest plan window, and the claim must be
+  # that size before the retention is raised, so the disk cannot fill
+  # between the two. Local keeps the base's 8Gi (local-path cannot grow).
   - target:
       group: argoproj.io
       version: v1alpha1
@@ -25,6 +30,7 @@ patches:
         value:
           - { name: server.resources.requests.memory, value: 1Gi }
           - { name: server.resources.limits.memory, value: 2Gi }
+          - { name: server.persistentVolume.size, value: 40Gi }
   # The shared controller values retain the local snapshot registry so the CAPD
   # mock remains usable. Production clears it because the secure namespace's
   # baseline PSS blocks the upstream commit Job (ADR042 D5); controller/committer
