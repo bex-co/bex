@@ -129,7 +129,10 @@ def compile_programs(runtime, output):
             command(["cargo", "build", "--offline", "--frozen", "--release", "--jobs", "1", "--target-dir", str(target)], environment)
             for name in ("pure", "native"):
                 shutil.copy2(target / "release" / ("bex-qualify-" + name), output / ("rust-" + name))
-            archives = list(target.glob("release/build/bex-qualify-native-*/out/libbex_probe.a"))
+            # Newer Cargo keeps build-script output in build/<pkg>/<hash>/
+            # rather than build/<pkg>-<hash>/; exactly one archive either way.
+            archives = [*target.glob("release/build/bex-qualify-native-*/out/libbex_probe.a"),
+                        *target.glob("release/build/bex-qualify-native/*/out/libbex_probe.a")]
             require(len(archives) == 1, "Rust native static archive is missing or ambiguous")
             shutil.copy2(archives[0], Path("qa-output") / "rust-static.a")
             require(command(["ar", "t", str(archives[0])]).splitlines() == ["probe.o"], "Rust build did not use the expected C static object")
