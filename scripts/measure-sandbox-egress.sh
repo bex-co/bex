@@ -52,11 +52,13 @@ meter_before="$(meter_value)"
 # The upload is a POST over HTTPS with the image's busybox wget to Cloudflare's
 # public speed-test endpoint (the sandbox image has no curl, and a sandbox's
 # plain port 80 does not reach every public host: speedtest.tele2.net timed out
-# on the first production runs). The 50 MiB body is written to the sandbox's
-# disk first, so what crosses the network is only the upload; wget's own error
-# and exit code are part of the output.
+# on the first production runs). The body is written to the sandbox's disk first
+# as printable bytes: busybox wget reads --post-file as one C string, so a file
+# of random bytes ends at its first NUL and sent only its handshake (3 KB of
+# 50 MiB, production run 43791202887). wget's response and exit code are part of
+# the output.
 sink_url="${BEX_MEASURE_UP_URL:-https://speed.cloudflare.com/__up}"
-send_cmd="dd if=/dev/urandom of=/root/up.bin bs=1M count=$((up_bytes / 1048576)) 2>&1 | tail -1; ls -l /root/up.bin 2>&1; wget --help 2>&1 | head -1; wget -S -T 120 -O /dev/null --post-file=/root/up.bin $sink_url 2>&1 | head -12; echo \"wget-exit=\${PIPESTATUS[0]}\"; rm -f /root/up.bin"
+send_cmd="dd if=/dev/zero bs=1M count=$((up_bytes / 1048576)) 2>/dev/null | tr '\\0' x >/root/up.bin; ls -l /root/up.bin; wget -S -T 120 -O /dev/null --post-file=/root/up.bin $sink_url >/root/wget.out 2>&1; echo \"wget-exit=\$?\"; head -8 /root/wget.out; rm -f /root/up.bin /root/wget.out"
 sandbox_exec "$sandbox_id" "$send_cmd" "$fixture_dir/send.txt" || true
 measure send-output "$(jq -cn --arg o "$(head -c 900 "$fixture_dir/send.txt" 2>/dev/null | tr '\n' ' ')" --arg s "$(head -c 300 "$fixture_dir/send.sse" 2>/dev/null | tr '\n' ' ')" '{stdout: $o, sse: $s}')"
 sleep 5
