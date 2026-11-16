@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/operator/internal/registry"
@@ -67,6 +68,24 @@ func (r *AppReconciler) protectServingImage(ctx context.Context, app *appv1alpha
 	}
 	app.Status.ProtectedImageTag = tag
 	r.refreshStoredImages(ctx, app, true)
+}
+
+// protectPublishedImage runs protectServingImage once the status naming the
+// release active is written, and writes what it records. Tagging and the
+// repository listing are registry round trips, seconds on production, and
+// bex-api closes the deploy row live on that status: run before the write,
+// they held a git-built release's row in progress 2–4 s after its new body
+// answered (w4/682). A prebuilt image returns at once (not the App's own
+// repository), which is why only built releases lagged. A failed write is
+// returned; the next pass protects again, since the tag is recorded only once
+// written.
+func (r *AppReconciler) protectPublishedImage(ctx context.Context, app *appv1alpha1.App) error {
+	tag, stored := app.Status.ProtectedImageTag, app.Status.StoredImages
+	r.protectServingImage(ctx, app)
+	if app.Status.ProtectedImageTag == tag && equality.Semantic.DeepEqual(app.Status.StoredImages, stored) {
+		return nil
+	}
+	return r.writeAppStatus(ctx, app)
 }
 
 // A settled App's repository is read again every storedImagesInterval:

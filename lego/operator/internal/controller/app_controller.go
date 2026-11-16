@@ -3629,7 +3629,8 @@ func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, d
 }
 
 // settleReady is the Running terminal: the release revision active, its image
-// digest recorded and protected from retention, and Ready=True. dep is the
+// digest recorded, and Ready=True; once that is written, the image is
+// protected from retention (protectPublishedImage). dep is the
 // serving Deployment, nil for a build source (which runs none). A settled app
 // re-stamps identical status on every steady-state pass (childHealthRequeue),
 // so the no-op PUT is skipped; written reports whether status was written.
@@ -3642,17 +3643,19 @@ func (r *AppReconciler) settleReady(ctx context.Context, app *appv1alpha1.App, d
 		r.observeServingRevision(ctx, app, dep, specReplicas(dep))
 	}
 	r.recordImageDigest(ctx, app, dep)
-	r.protectServingImage(ctx, app)
 	r.recordInstanceExits(ctx, app, dep)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reason,
 		Message: message, ObservedGeneration: app.Generation,
 		LastTransitionTime: r.wakeReadySince(ctx, app, dep),
 	})
-	if statusUnchanged(ctx, r.Client, app) {
-		return false, nil
+	written := !statusUnchanged(ctx, r.Client, app)
+	if written {
+		if err := r.writeAppStatus(ctx, app); err != nil {
+			return true, err
+		}
 	}
-	return true, r.writeAppStatus(ctx, app)
+	return written, r.protectPublishedImage(ctx, app)
 }
 
 // deleteStaleChildren removes leftover children a type change orphaned.
@@ -3948,7 +3951,7 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	if !servedReleaseOutage(app, dep) {
 		app.Status.Phase = appv1alpha1.PhaseDeploying
 	}
-	notReadyReason := reasonRolloutProgressing
+	notReadyReason, published := reasonRolloutProgressing, false
 	if fullyReady := r.currentRevisionFullyReady(ctx, dep, replicas); fullyReady {
 		notReadyReason, notReadyMessage = reasonRolloutSettling, "current revision fully ready; Deployment status still converging"
 		// w4/405: every pod of this revision is Ready, so the Service already
@@ -3959,12 +3962,13 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 		// traffic until it is promoted, so before that it has not served
 		// (w4/m320). bex-api can close the deploy row live on this very
 		// status, and a row's image digest is fixed when it closes, so the
-		// release's digest is recorded with it (w4/m320 t011, w8/m122), and
-		// its image is protected from retention as settleReady's is.
+		// release's digest is recorded with it (w4/m320 t011, w8/m122). Its
+		// image is protected from retention after the write, as settleReady's
+		// is (w4/682).
 		if rev := dep.Spec.Template.Labels[labelRevision]; rev != "" && rev == releaseRevision(app) && !routesEarly(app) {
 			app.Status.ActiveRevision = rev
 			r.recordImageDigest(ctx, app, dep)
-			r.protectServingImage(ctx, app)
+			published = true
 		}
 	}
 	stampNotReadyCondition(app, notReadyReason, notReadyMessage)
@@ -3977,7 +3981,11 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	}
 	r.observeServingRevision(ctx, app, dep, replicas)
 	// Best-effort progress stamp: the 5s requeue below re-writes it if lost.
-	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
+	err := updateStatusIfChanged(ctx, r.Client, app)
+	if err == nil && published {
+		err = r.protectPublishedImage(ctx, app)
+	}
+	if err != nil {
 		logf.FromContext(ctx).V(1).Info("rollout progress status write failed; requeue re-stamps",
 			"app", app.Name, "error", err.Error())
 	}
