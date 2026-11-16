@@ -94,6 +94,9 @@ spec:
           # :9443 webhook).
           - --metrics-bind-address=:8080
           - --metrics-secure=false
+          # pprof is unauthenticated: loopback only. Reach it with
+          # `kubectl port-forward pod/<manager> 6060`.
+          - --pprof-bind-address=127.0.0.1:6060
         image: controller:latest
         # The Argo override pins the mutable :latest tag, so a running pod must
         # re-pull to pick up a new push; the deploy workflow rollout-restarts this
@@ -335,12 +338,14 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
-        # TODO(user): Configure the resources accordingly based on the project requirements.
-        # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        # cpu 2: at 500m this container was CFS-throttled in 92-99% of its
+        # periods, because it spends CPU in short parallel bursts (w21/m421
+        # t001). Limits only: the platform node has 86% of its memory
+        # requested, and the 96Mi in use grows with the number of Apps.
         resources:
           limits:
-            cpu: 500m
-            memory: 128Mi
+            cpu: "2"
+            memory: 256Mi
           requests:
             cpu: 10m
             memory: 64Mi

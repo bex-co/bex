@@ -121,6 +121,7 @@ func init() {
 // the manager is constructed.
 type managerConfig struct {
 	metricsAddr          string
+	pprofAddr            string
 	metricsCertPath      string
 	metricsCertName      string
 	metricsCertKey       string
@@ -142,6 +143,8 @@ func parseManagerConfig() managerConfig {
 	flag.StringVar(&cfg.metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&cfg.probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&cfg.pprofAddr, "pprof-bind-address", "0", "The address the pprof endpoint binds to; 0 disables it. "+
+		"Bind it to a loopback address and reach it with kubectl port-forward: it is unauthenticated.")
 	flag.BoolVar(&cfg.enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -281,6 +284,7 @@ func main() {
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: cfg.probeAddr,
+		PprofBindAddress:       cfg.pprofAddr,
 		LeaderElection:         cfg.enableLeaderElection,
 		LeaderElectionID:       "36450c48.bex.co",
 		// LeaderElectionReleaseOnCancel: true, // voluntary step-down on stop;

@@ -5810,6 +5810,31 @@ dashboards:
                  "legendFormat": "workers max"
                 }
               ]
+            },
+            {
+             "id": 13,
+             "type": "timeseries",
+             "title": "bex-system CPU throttling: share of periods throttled",
+             "description": "The share of each bex-system container's 100 ms CPU periods in which the kernel stopped it for exceeding its limit. Above the red line for 30 minutes fires BexPlatformContainerCPUThrottled (w21/m421).",
+             "gridPos": { "h": 8, "w": 12, "x": 0, "y": 51 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "percentunit",
+                 "min": 0,
+                 "max": 1,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.5 } ] }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (pod, container) (rate(container_cpu_cfs_throttled_periods_total{namespace=\"bex-system\"}[10m])) / sum by (pod, container) (rate(container_cpu_cfs_periods_total{namespace=\"bex-system\"}[10m]))",
+                 "legendFormat": "{{pod}}/{{container}}"
+                }
+              ]
             }
           ]
         }

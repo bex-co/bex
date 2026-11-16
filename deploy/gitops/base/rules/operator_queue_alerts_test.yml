@@ -83,3 +83,46 @@ tests:
       - eval_time: 60m
         alertname: BexOperatorAppReconcileSlowPasses
         exp_alerts: []
+  # w21/m421 t001: a platform container throttled in over half of its CFS
+  # periods for 30 minutes pages as a warning; a briefly throttled one, a lightly
+  # throttled one and another namespace's container stay quiet.
+  - name: a throttled operator fires after 30 minutes
+    interval: 1m
+    input_series:
+      # 10 periods a second, 9 of them throttled (90%): the production reading.
+      - series: container_cpu_cfs_throttled_periods_total{namespace="bex-system",pod="bex-controller-manager-x",container="manager"}
+        values: 0+540x60
+      - series: container_cpu_cfs_periods_total{namespace="bex-system",pod="bex-controller-manager-x",container="manager"}
+        values: 0+600x60
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: BexPlatformContainerCPUThrottled
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: BexPlatformContainerCPUThrottled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-system
+              pod: bex-controller-manager-x
+              container: manager
+            exp_annotations:
+              summary: "bex-controller-manager-x/manager is CPU-throttled in 90% of its scheduling periods"
+              description: "Over half of this container's 100 ms CFS periods were throttled for 30 minutes: its CPU limit is below its bursts, so it runs slow in wall time while kubectl top looks fine. Raise limits.cpu, or profile it (the operator serves pprof on its pod's loopback :6060). Context: .pm/w21/m421."
+  - name: a lightly throttled container and another namespace stay quiet
+    interval: 1m
+    input_series:
+      # bex-api's normal 5-10%.
+      - series: container_cpu_cfs_throttled_periods_total{namespace="bex-system",pod="bex-api-x",container="api"}
+        values: 0+36x60
+      - series: container_cpu_cfs_periods_total{namespace="bex-system",pod="bex-api-x",container="api"}
+        values: 0+600x60
+      # A tenant pod at 95% is the tenant's own limit, not a platform fault.
+      - series: container_cpu_cfs_throttled_periods_total{namespace="tea-x",pod="app-x",container="app"}
+        values: 0+570x60
+      - series: container_cpu_cfs_periods_total{namespace="tea-x",pod="app-x",container="app"}
+        values: 0+600x60
+    alert_rule_test:
+      - eval_time: 55m
+        alertname: BexPlatformContainerCPUThrottled
+        exp_alerts: []

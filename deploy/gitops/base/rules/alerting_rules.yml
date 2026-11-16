@@ -835,6 +835,24 @@ groups:
           summary: "{{ $value | humanizePercentage }} of App reconciles take over 10 s"
           description: "Over a tenth of the operator's App reconcile passes have taken longer than 10 s for 15 minutes. Each such pass holds one of the few App workers, so every other App's deploy, resume and settings change queues behind it (BexOperatorReconcileQueueSlow follows). A pass that long is waiting on something: a port scan, a registry or metrics read, or a Job it should observe instead. Find the step in the operator log around the slow Apps' reconciles and move it off the pass; raising BEX_APP_RECONCILE_WORKERS only spreads the wait. Context: .pm/w4/done/665.md."
 
+      # A queue that stays long with fast passes (w21/m421 t001): a platform
+      # container whose CPU limit is below its bursts. The operator ran at
+      # limits.cpu 500m with 92-99% of its CFS periods throttled for three days
+      # while no alert fired, because its average use stayed under the limit.
+      # cAdvisor reports these counters only for a container that has a CPU
+      # limit, so an unlimited container never evaluates.
+      - alert: BexPlatformContainerCPUThrottled
+        expr: |
+          sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total{namespace="bex-system"}[10m]))
+          / sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total{namespace="bex-system"}[10m]))
+          > 0.5
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.pod }}/{{ $labels.container }} is CPU-throttled in {{ $value | humanizePercentage }} of its scheduling periods"
+          description: "Over half of this container's 100 ms CFS periods were throttled for 30 minutes: its CPU limit is below its bursts, so it runs slow in wall time while kubectl top looks fine. Raise limits.cpu, or profile it (the operator serves pprof on its pod's loopback :6060). Context: .pm/w21/m421."
+
       # The held half of the same wait (w6/m306, ADR060 D5). A release the
       # cluster ceiling holds, or one waiting on a datastore that is still
       # being created, has no build Job yet, so bex_build_queue_oldest_seconds
