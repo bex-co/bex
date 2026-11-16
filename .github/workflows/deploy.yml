@@ -937,9 +937,9 @@ jobs:
           BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
         run: |
           install -m700 -d "$RUNNER_TEMP/bex-ssh"
-          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
-          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
-          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/bex"
           # Authenticate the control-plane host key (w1/m66 F7): the pin makes
           # the fetch fail closed on an unknown/changed key instead of trusting
           # it on first use and handing every later step an attacker-supplied

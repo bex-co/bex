@@ -22,13 +22,15 @@ This SSHes into a live Hetzner node and patches a running App CR — state a one
 There is no management cluster — `scripts/fetch-app-kubeconfig.sh` discovers a control-plane node via the hcloud API (label `caph-cluster-bex`) and SSH-fetches `/etc/kubernetes/admin.conf`:
 
 ```bash
-# from the bex repo root (where this command runs)
+# from the bex repo root (where this command runs); the script wants HCLOUD_TOKEN in its
+# environment, and its default SSH key is ~/.ssh/bex (BEX_SSH_PRIVATE_KEY_FILE in .env.example)
 set -a; source ./.env; set +a
-# default key is ~/.ssh/id_bex (see scripts/fetch-app-kubeconfig.sh); override only if your key is elsewhere
-BEX_SSH_KEY_PATH=~/.ssh/id_bex bash scripts/fetch-app-kubeconfig.sh /tmp/bex-app.kubeconfig
+bash scripts/fetch-app-kubeconfig.sh /tmp/bex-app.kubeconfig
 export KUBECONFIG=/tmp/bex-app.kubeconfig
 kubectl get app <app-name> -o yaml   # baseline: current image, port, generation, revision
 ```
+
+Run the fetch first, before concluding anything about access. A missing key file under a name an older note gave you is **not** a reason to stop: the key is `~/.ssh/bex` (`ls -l ~/.ssh/bex`), and a worker that read "no production access" off the wrong file name once parked three milestones on a gate that did not exist. Set `BEX_SSH_PRIVATE_KEY_FILE` only if your key really lives elsewhere.
 
 Never print `$HCLOUD_TOKEN` or kubeconfig contents (per repo rules) — only read specific `jsonpath` fields.
 
@@ -61,7 +63,7 @@ Use a **fresh tag** (git sha, never `:latest`) — the operator sets no `imagePu
 ## Step 4 — Import into the app node's containerd — _laptop → app node_ (confirm with user first, see Step 0)
 
 ```bash
-docker save <app-name>:$SHA | ssh -i ~/.ssh/id_bex "root@${APP_NODE_IP}" \
+docker save <app-name>:$SHA | ssh -i ~/.ssh/bex "root@${APP_NODE_IP}" \
   'ctr -n k8s.io images import -'
 ```
 

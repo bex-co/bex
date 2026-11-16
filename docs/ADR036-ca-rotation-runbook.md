@@ -19,8 +19,8 @@ kubeadm renews all component client certs in place. No downtime for running work
 
 ### Prerequisites
 
-- Admin kubeconfig (`KUBECONFIG`) pointing at the app cluster.
-- SSH access to each control-plane node via the `bex` key.
+- Admin kubeconfig (`KUBECONFIG`) pointing at the app cluster. Start with `scripts/fetch-app-kubeconfig.sh <path outside the repo>`: it needs `HCLOUD_TOKEN` in its environment (from `.env`) and uses the `bex` key below by default.
+- SSH access to each control-plane node via the `bex` key, `~/.ssh/bex` (`BEX_SSH_PRIVATE_KEY_FILE` in `.env.example`; `ssh -i ~/.ssh/bex` below). A missing key file under any other name an older note gave is not a reason to stop: check `~/.ssh/bex` and run the fetch first.
 - `BAO_ROOT_TOKEN` in `.env` (the unseal step below is only needed if control-plane nodes are rebooted as part of the maintenance window).
 
 ### Procedure
@@ -30,20 +30,20 @@ kubeadm renews all component client certs in place. No downtime for running work
 CP_IP=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
   "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-bex" \
   | jq -r '[.servers[] | select(.name | startswith("bex-control-plane"))][0].public_net.ipv4.ip')
-ssh -i ~/.ssh/id_bex "root@${CP_IP}" \
+ssh -i ~/.ssh/bex "root@${CP_IP}" \
   "kubeadm certs check-expiration"
 ```
 
 ```sh
 # 2. Renew all client certs on each CP node (rerun this for each CP node).
-ssh -i ~/.ssh/id_bex "root@${CP_IP}" \
+ssh -i ~/.ssh/bex "root@${CP_IP}" \
   "kubeadm certs renew all"
 ```
 
 ```sh
 # 3. Restart kube-scheduler and kube-controller-manager on each CP node
 #    so they pick up the new certs (apiserver does not need a restart).
-ssh -i ~/.ssh/id_bex "root@${CP_IP}" \
+ssh -i ~/.ssh/bex "root@${CP_IP}" \
   "crictl rm -f $(crictl ps -q --label io.kubernetes.container.name=kube-scheduler 2>/dev/null) 2>/dev/null; \
    crictl rm -f $(crictl ps -q --label io.kubernetes.container.name=kube-controller-manager 2>/dev/null) 2>/dev/null; \
    true"
@@ -61,7 +61,7 @@ scripts/operator-kubeconfig.sh ~/.kube/bex-operator.kubeconfig
 
 ```sh
 # 6. Verify cert expiry is now ~1 year out.
-ssh -i ~/.ssh/id_bex "root@${CP_IP}" \
+ssh -i ~/.ssh/bex "root@${CP_IP}" \
   "kubeadm certs check-expiration"
 ```
 
@@ -100,7 +100,7 @@ kubeadm's rotation path for the cluster CA uses a two-phase approach: add the ne
 
 ```sh
 # Phase 0. Prerequisites on the primary CP node.
-ssh -i ~/.ssh/id_bex "root@${CP_IP}" bash -s <<'EOF'
+ssh -i ~/.ssh/bex "root@${CP_IP}" bash -s <<'EOF'
   # Snapshot etcd before touching anything.
   ETCDCTL_API=3 etcdctl snapshot save /tmp/pre-ca-rotation.db \
     --endpoints=https://127.0.0.1:2379 \
@@ -113,7 +113,7 @@ EOF
 
 ```sh
 # Phase 1. Generate a new CA key + cert alongside the old one.
-ssh -i ~/.ssh/id_bex "root@${CP_IP}" bash -s <<'EOF'
+ssh -i ~/.ssh/bex "root@${CP_IP}" bash -s <<'EOF'
   cd /etc/kubernetes/pki
   # Back up existing CA (do not delete yet).
   cp ca.crt ca.crt.old && cp ca.key ca.key.old
@@ -131,7 +131,7 @@ EOF
 ```sh
 # Phase 2. Reissue all component certs signed by the new CA key.
 #          kubeadm handles this via `certs renew` once we place the new key as ca.key.
-ssh -i ~/.ssh/id_bex "root@${CP_IP}" bash -s <<'EOF'
+ssh -i ~/.ssh/bex "root@${CP_IP}" bash -s <<'EOF'
   cd /etc/kubernetes/pki
   # Activate the new key.
   mv ca.key ca.key.old2 && cp ca.key.new ca.key
@@ -151,7 +151,7 @@ EOF
 for worker_ip in $(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
     "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-bex" \
     | jq -r '.servers[] | select(.name | startswith("bex-md-")) | .public_net.ipv4.ip'); do
-  ssh -i ~/.ssh/id_bex "root@${worker_ip}" bash -s <<'EOF'
+  ssh -i ~/.ssh/bex "root@${worker_ip}" bash -s <<'EOF'
     # Copy the combined (old+new) CA cert from the CP.
     # (In practice: scp or a configmap-based distribution before this loop.)
     # Restart kubelet to pick up the new CA bundle and trigger cert rotation.
@@ -163,7 +163,7 @@ done
 
 ```sh
 # Phase 3. Remove the old CA cert from the bundle (after all components verified healthy).
-ssh -i ~/.ssh/id_bex "root@${CP_IP}" bash -s <<'EOF'
+ssh -i ~/.ssh/bex "root@${CP_IP}" bash -s <<'EOF'
   cd /etc/kubernetes/pki
   # Replace the bundle with only the new CA cert.
   cp ca.crt.new ca.crt
@@ -181,8 +181,8 @@ EOF
 # in-cluster copy is stale and must be updated so CAPI can mint future node
 # certs from the new CA.
 kubectl -n bex-capi get secret bex-ca -o json \
-  | jq --arg cert "$(ssh -i ~/.ssh/id_bex "root@${CP_IP}" cat /etc/kubernetes/pki/ca.crt | base64 -w0)" \
-       --arg key  "$(ssh -i ~/.ssh/id_bex "root@${CP_IP}" cat /etc/kubernetes/pki/ca.key  | base64 -w0)" \
+  | jq --arg cert "$(ssh -i ~/.ssh/bex "root@${CP_IP}" cat /etc/kubernetes/pki/ca.crt | base64 -w0)" \
+       --arg key  "$(ssh -i ~/.ssh/bex "root@${CP_IP}" cat /etc/kubernetes/pki/ca.key  | base64 -w0)" \
        '.data["tls.crt"] = $cert | .data["tls.key"] = $key' \
   | kubectl apply -f -
 echo "CAPI bex-ca Secret updated"

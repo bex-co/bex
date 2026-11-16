@@ -94,6 +94,10 @@ jobs:
       # w6/m153: the admin.conf fetch retries only mid-roll host-key failures.
       - name: Kubeconfig fetch mid-roll retry self-test
         run: bash scripts/fetch-app-kubeconfig.test.sh
+      # w21/089: the QA login helper (curl replaced by a scripted mock) decodes the
+      # percent-encoded login challenge Hydra's redirect carries before it encodes it.
+      - name: QA login helper self-test
+        run: python3 -B -m unittest scripts/test_qa_login.py -v
       - name: CSI reviewed pin and scoped rollout guards
         run: |
           bash scripts/install-hcloud-csi.test.sh
@@ -246,6 +250,7 @@ jobs:
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/sandbox-docker-spike.sh scripts/sandbox-docker-spike.test.sh
           scripts/fetch-app-kubeconfig.test.sh
+          scripts/stale-key-name-validate.sh scripts/stale-key-name-validate.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh scripts/lib/helm-isolated.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
           scripts/ci-schedule-drift.sh scripts/ci-schedule-drift.test.sh

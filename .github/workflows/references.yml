@@ -5,7 +5,9 @@ name: references (docs links, .pm board)
 # see each other's checkouts. This runs the two cheap checks that keep both
 # honest: scripts/docs-links-validate.sh (no relative Markdown link points at a
 # file that is gone) and scripts/pm-board-validate.py (no newly added duplicate
-# milestone number, open tasks carry the id their path names).
+# milestone number, open tasks carry the id their path names). It also runs
+# scripts/stale-key-name-validate.sh, which keeps the retired production SSH key
+# name out of runbooks, skills and open notes (w21/089).
 #
 # It is its own workflow because docs.yml excludes `.pm/**` (prettier ignores
 # it), and a milestone closeout moves files in `.pm` and breaks inbound links
@@ -23,6 +25,8 @@ on:
       - "scripts/docs-links-validate.test.sh"
       - "scripts/pm-board-validate.py"
       - "scripts/test_pm_board_validate.py"
+      - "scripts/stale-key-name-validate.sh"
+      - "scripts/stale-key-name-validate.test.sh"
       - ".github/workflows/references.yml"
   push:
     branches: [main]
@@ -59,3 +63,7 @@ jobs:
         run: python3 scripts/pm-board-validate.py --base "$BASE"
       - name: Board validator self-test
         run: python3 -m unittest scripts/test_pm_board_validate.py -v
+      - name: Production SSH key name is current
+        run: bash scripts/stale-key-name-validate.sh
+      - name: Key name gate self-test
+        run: bash scripts/stale-key-name-validate.test.sh

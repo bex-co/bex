@@ -8,6 +8,14 @@
 #   bash scripts/qa-login.sh --login-challenge CHALLENGE [--cookie-jar PATH] [OUT]
 #                                           finish a CLI device OAuth login
 #
+# CHALLENGE is Hydra's login_challenge exactly as the redirect carries it,
+# percent-encoded in the Location query (a base64url value whose "=" padding is
+# "%3D"), or already decoded: the script percent-decodes it before encoding it
+# into the Kratos request, so pasting the raw value no longer double-encodes it
+# (Kratos answered that with 400). It decodes until the value stops changing,
+# and a Hydra challenge never contains "%" once decoded, so a second pass is a
+# no-op. Never pass it through any other decoding that maps "+" to a space.
+#
 # Reads QA_EMAIL/QA_PASSWORD from the environment, .env, or muse.env, completes the
 # Kratos password login against $KRATOS_PUB, and writes OUT: a Playwright
 # storage-state file (cookies only, mode 600) that /qa-find-bugs restores with
@@ -104,6 +112,22 @@ OUT="${OUT:-$DEFAULT_OUT}"
 if [ "$MODE" = logout ] && { [ -n "$LOGIN_CHALLENGE" ] || [ -n "$SEED_JAR" ]; }; then
   echo "error: --login-challenge/--cookie-jar cannot be used with --logout" >&2
   exit 2
+fi
+
+# The bootstrap URL encodes the challenge once, so it must start decoded (see
+# the header). Decode until stable, bounded, so a decoded value is unchanged.
+if [ -n "$LOGIN_CHALLENGE" ]; then
+  LOGIN_CHALLENGE="$(python3 -c '
+import sys
+from urllib.parse import unquote
+value = sys.argv[1]
+for _ in range(3):
+    decoded = unquote(value)
+    if decoded == value:
+        break
+    value = decoded
+sys.stdout.write(value)
+' "$LOGIN_CHALLENGE")"
 fi
 
 load_qa_env() {

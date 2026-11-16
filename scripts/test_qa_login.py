@@ -223,6 +223,17 @@ class QALoginTest(unittest.TestCase):
         ], "--login-challenge", challenge)
         self.assert_state(result)
 
+    def test_challenge_is_decoded_before_it_is_encoded_into_the_bootstrap(self):
+        # Hydra's challenge is base64url, so its "=" padding rides the redirect
+        # as "%3D". Pasting that raw value used to be encoded a second time
+        # ("%253D") and Kratos answered 400; a decoded value must not change.
+        decoded = "abc_-def=="
+        for given in (decoded, "abc_-def%3D%3D", "abc_-def%253D%253D"):
+            with self.subTest(given=given):
+                self.run_login([flow(challenge_url(decoded)), submit(status=307, location=SUCCESS),
+                                {"url": SUCCESS}, whoami()], "--login-challenge", given)
+                (self.root / "calls.json").unlink()  # the mock replays steps by call count
+
     def test_post_307_becomes_get_without_forwarding_credentials(self):
         bootstrap = challenge_url()
         self.run_login([flow(bootstrap), submit(status=307, location=SUCCESS),

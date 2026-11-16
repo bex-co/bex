@@ -35,6 +35,7 @@ All three platform suites + `dashboard/yarn test` must pass before `deploy.yml` 
 - `bash scripts/mock-cluster.sh operator` — build `bex-operator:dev` from the tree, import it on every node, `make deploy`, wait (the bring-up already installs the Traefik edge + CRDs)
 - `scripts/app-apply.sh <bex.yml>` — `render.yaml`-shaped `bex.yml` → App CR (`DRY_RUN=1` preview)
 - `scripts/deploy-sample.sh` / `kubectl get apps.app.bex.co` — deploy + status
+- `HCLOUD_TOKEN="$(grep '^HCLOUD_TOKEN=' .env | cut -d= -f2-)" bash scripts/fetch-app-kubeconfig.sh <path outside the repo>` — the **production** app cluster's admin kubeconfig. The token is in `.env` and the SSH key is `~/.ssh/bex` (`BEX_SSH_PRIVATE_KEY_FILE` in `.env.example`). Run it before you write "no production access": a key file missing under some other name is never a gate.
 
 ## Environment variables
 

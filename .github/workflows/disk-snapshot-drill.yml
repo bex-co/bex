@@ -63,9 +63,9 @@ jobs:
           BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
         run: |
           install -m700 -d "$RUNNER_TEMP/bex-ssh"
-          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" >"$RUNNER_TEMP/bex-ssh/id_bex"
-          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
-          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" >"$RUNNER_TEMP/bex-ssh/bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/bex"
           export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
           if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
             printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" >"$RUNNER_TEMP/bex-ssh/bex_known_hosts"

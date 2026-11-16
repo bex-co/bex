@@ -88,9 +88,9 @@ jobs:
           # at job end, scrubbed again below) — never ~/.ssh or a fixed path
           # (defense in depth; the hosted VM is discarded after the job).
           install -m700 -d "$RUNNER_TEMP/bex-ssh"
-          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
-          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
-          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/bex"
           # Authenticate the control-plane host key when the operator has
           # provisioned it (w1/m66 F7, wired here by w1/m68 F3 — this workflow
           # was the one admin.conf fetcher m66 missed, and the next step hands

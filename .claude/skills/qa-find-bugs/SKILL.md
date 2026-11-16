@@ -57,6 +57,14 @@ Parse `$ARGUMENTS`:
 
 Both login modes also install this run's own 0600 Netscape cookie jar at `.playwright-mcp/qa-session-<run>.jar` (gitignored) and print its absolute path on the second stdout line, `logout <path>`. Keep that path: it is the Phase 8 logout handle, and a path is not a secret, but never put the jar's contents in the transcript. The paths are per run because other sessions may be hunting in the same checkout. A shared jar let one run's logout revoke another run's session (w4/343). So never logout, delete or reuse a jar or state file another run created. The login script's EXIT trap only removes its temp dir; it does **not** revoke the Kratos session (the browser still needs it).
 
+### Approving a CLI device login without a browser
+
+A hunt that needs a human OAuth token for `bex login` (the CLI skill) approves its device request headlessly instead of clicking through the dashboard. After the login above, with a private copy of this run's jar (`JAR`; the walk adds Hydra's cookies to it):
+
+1. `bex login` prints `https://oauth.bex.co/oauth2/device/verify?user_code=…`. Follow it one redirect at a time with `curl -b JAR -c JAR` and no `-L`: it leads to `https://dashboard.bex.co/auth/device?device_challenge=…&user_code=…`. Confirm the pairing the way the page's button does: `POST https://dashboard.bex.co/auth/device` with `Origin: https://dashboard.bex.co` and a form body of those two values. Follow its redirects (Hydra's `/oauth2/device/verify?…device_verifier=…`) until `Location` is `https://dashboard.bex.co/auth/login?login_challenge=<raw>`.
+2. `bash scripts/qa-login.sh --login-challenge '<raw>' --cookie-jar JAR` finishes the consent and prints the same two `ok` / `logout` lines. Pass `<raw>` exactly as the redirect carries it. The challenge is base64url, so its `=` padding arrives as `%3D`; the script decodes it before encoding it into the Kratos request (and leaves an already decoded value alone), so there is no decode step for you. Do not decode it with anything that maps `+` to a space. Before this was fixed, the raw value went out double-encoded (`%253D`) and Kratos answered 400.
+3. `bex login` then completes by polling. Log this run's sessions out as in Phase 8, and revoke the token if you do not need it.
+
 ## Phase 2 — Sweep the hosting features like a real user
 
 Production rules — read them before you click anything destructive:
