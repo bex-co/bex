@@ -1739,7 +1739,7 @@ groups:
       # workspaces, presigned Contract A and B reads and the public pub- host
       # gateway), from the usage_hourly shadow meter, sampled every minute by
       # bex-api. It resets to near zero on the first of the month, so there is
-      # no `increase` window: Prometheus keeps only 3 days.
+      # no `increase` window: Prometheus keeps only 10 days.
       #
       # Thresholds from the production walk (w21/m417 t008, 2026-11-16).
       # Wasabi's free egress is monthly egress at or below the account's active

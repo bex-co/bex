@@ -286,7 +286,15 @@ spec:
           # node loss), local-path on the CAPD mock (node-local) — so history
           # survives a pod restart (and a node loss on prod); with emptyDir a
           # reschedule silently wiped every chart.
-          retention: 3d
+          # Ten days, with a size cap under the volume. Production stored 1.9 GB
+          # for 3.3 days (0.58 GB a day) on a 9.7 GB volume, so ten days is about
+          # 6 GB and the cap is what keeps a growing series count from filling
+          # the disk (it drops the oldest blocks first; the WAL is not counted
+          # and stays under 0.5 GB). Three days could not hold a week-long
+          # measurement: the w21/091 reading of the token introspection window
+          # needs seven days of bex_api_auth_* at once.
+          retention: 10d
+          retentionSize: 7GB
           persistentVolume:
             enabled: true
             size: 8Gi
