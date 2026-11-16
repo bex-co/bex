@@ -339,7 +339,7 @@ bex ea objects get backups/users.ndjson --file ./out.ndjson --region oregon
 bex ea objects delete backups/users.ndjson --region oregon --yes
 ```
 
-bex serves two regions, `oregon` and `frankfurt`; any other region answers 400. The limits are 5 GiB per object, 100 GB and 1,000,000 objects per workspace per region, and keys of 1 to 1024 bytes with no `.` or `..` segment. Render has not published its own limits, so these are bex's, listed with their status in the [object storage row of ADR018](ADR018-render-parity.md). A Render API key reaches every object of its workspace, as on Render. If the platform has no Wasabi credential installed, the commands say that object storage is not offered yet. `--local` stays upstream's filesystem mode under `.render/objects/` and never calls bex.
+bex serves two regions, `oregon` and `frankfurt`; any other region answers 400. The limits are 5 GiB per object, 100 GB and 1,000,000 objects per workspace per region, and keys of 1 to 1024 bytes with no `.` or `..` segment. Render has not published its own limits, so these are bex's, listed with their status in the [object storage row of ADR018](ADR018-render-parity.md). A Render API key reaches every object of its workspace, as on Render. These commands need a `bex` newer than v0.6.0: v0.6.0 refuses each one with `bex does not offer Render's early-access object storage yet` before it sends a request. Run `bex upgrade` once the next release is out; the unmodified `render` CLI works against bex already. If the platform has no Wasabi credential installed, the commands say that object storage is not offered yet. `--local` stays upstream's filesystem mode under `.render/objects/` and never calls bex.
 
 ### Buckets, CORS and lifecycle with `wrangler`
 
