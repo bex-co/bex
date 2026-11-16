@@ -40,10 +40,10 @@ import (
 // network-isolation label, which bumps no generation, so the manager filtered
 // the event and the saved boundary waited for an unrelated reconcile, up to a
 // Free service's 15-minute idle timer. The label edit alone must converge the
-// owned policy and the running pods' labels, well inside the ordinary requeue,
-// and (w4/m342) never touch the pod template.
+// running pods' labels, well inside the ordinary requeue, and (w4/m342) never
+// touch the pod template.
 var _ = Describe("App network isolation label", func() {
-	It("converges the protected policy and pod labels from a label-only edit", func() {
+	It("converges the pod labels from a label-only edit", func() {
 		skipNameValidation := true
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 			Scheme: k8sClient.Scheme(), Metrics: metricsserver.Options{BindAddress: "0"},
@@ -126,9 +126,6 @@ var _ = Describe("App network isolation label", func() {
 
 		generation := setLabel("evm-a")
 		Eventually(func(g Gomega) {
-			np := &networkingv1.NetworkPolicy{}
-			g.Expect(k8sClient.Get(ctx, nn, np)).To(Succeed())
-			g.Expect(np.Spec.PodSelector.MatchLabels).To(HaveKeyWithValue(labelApp, nn.Name))
 			g.Expect(podLabel(g)).To(Equal("evm-a"))
 			templateUnchanged(g)
 			current := &appv1alpha1.App{}
@@ -136,10 +133,13 @@ var _ = Describe("App network isolation label", func() {
 			g.Expect(current.Generation).To(Equal(generation), "a boundary change is not a release")
 		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 
+		// w4/647: bex-api's isolate-<env> policy is the boundary; the
+		// operator never creates a per-App one.
+		err = k8sClient.Get(ctx, nn, &networkingv1.NetworkPolicy{})
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "no per-App policy: %v", err)
+
 		setLabel("")
 		Eventually(func(g Gomega) {
-			err := k8sClient.Get(ctx, nn, &networkingv1.NetworkPolicy{})
-			g.Expect(apierrors.IsNotFound(err)).To(BeTrue(), "policy must be removed: %v", err)
 			g.Expect(podLabel(g)).To(BeEmpty())
 			templateUnchanged(g)
 		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())

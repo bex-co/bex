@@ -319,39 +319,38 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 			Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelEnvironment, "env-testenv0002"))
 		})
 
-		It("allows only same-environment peers for a protected App", func() {
+		// w4/647: bex-api's isolate-<env> policy is the boundary; the operator
+		// creates no per-App policy and deletes one an older release left.
+		It("creates no per-App policy for a protected App and deletes a leftover one", func() {
 			reconcileEnv(r, name)
-
 			np := &networkingv1.NetworkPolicy{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, np)).To(Succeed())
-			Expect(np.Spec.PodSelector.MatchLabels).To(HaveKeyWithValue(labelApp, name))
-			Expect(np.Spec.PolicyTypes).To(ConsistOf(networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress))
-			Expect(np.Spec.Ingress).To(HaveLen(1))
-			Expect(np.Spec.Egress).To(HaveLen(1))
-			for _, rule := range np.Spec.Ingress {
-				Expect(rule.From).To(HaveLen(2))
-				Expect(rule.From[0].PodSelector.MatchLabels).To(HaveKeyWithValue(labelNetworkIsolation, environment))
-				Expect(rule.From[1].PodSelector.MatchLabels).To(HaveKeyWithValue(labelEnvironment, environment))
-			}
-			for _, rule := range np.Spec.Egress {
-				Expect(rule.To).To(HaveLen(2))
-				Expect(rule.To[0].PodSelector.MatchLabels).To(HaveKeyWithValue(labelNetworkIsolation, environment))
-				Expect(rule.To[1].PodSelector.MatchLabels).To(HaveKeyWithValue(labelEnvironment, environment))
-			}
-		})
-
-		It("removes the protected policy when isolation is disabled", func() {
-			reconcileEnv(r, name)
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, np)
+			Expect(errors.IsNotFound(err)).To(BeTrue(), "an isolated App must get no per-App policy")
 
 			app := &appv1alpha1.App{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, app)).To(Succeed())
-			delete(app.Labels, labelNetworkIsolation)
-			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			controller := true
+			leftover := &networkingv1.NetworkPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: envNS, OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: app.Name, UID: app.UID, Controller: &controller,
+				}}},
+				Spec: networkingv1.NetworkPolicySpec{PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{labelEnvironment: environment}}},
+			}
+			Expect(k8sClient.Create(ctx, leftover)).To(Succeed())
 			reconcileEnv(r, name)
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, np)
+			Expect(errors.IsNotFound(err)).To(BeTrue(), "the App's leftover protected policy must be deleted")
+		})
 
-			np := &networkingv1.NetworkPolicy{}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, np)
-			Expect(errors.IsNotFound(err)).To(BeTrue())
+		It("leaves a same-named policy the App does not own", func() {
+			foreign := &networkingv1.NetworkPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: envNS},
+				Spec:       networkingv1.NetworkPolicySpec{PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{"tenant": "own"}}},
+			}
+			Expect(k8sClient.Create(ctx, foreign)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(context.Background(), foreign) })
+			reconcileEnv(r, name)
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, &networkingv1.NetworkPolicy{})).To(Succeed())
 		})
 	})
 })

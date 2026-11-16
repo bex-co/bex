@@ -102,8 +102,11 @@ func appTemplateEnvironmentLabels(app *appv1alpha1.App) map[string]string {
 // relabelAppPods moves the App's running pods to the environment labels its
 // CR carries, in place: environment-id, which the workspace's isolation
 // boundary selects by (bex-api's allow-same-namespace and per-environment
-// policies), and the isolation label, which the per-store policies and the
-// pre-w4/m342 allow-same-namespace still read. Neither ever rolls a pod: the
+// policies), and the isolation label. The isolation label is the only per-pod
+// "isolated" bit the operator's own selectors have: an ordinary App's build
+// reach (buildReachTargets) and a non-isolated Key Value's clients exclude
+// isolated environments by it, since the operator does not know which
+// environments are isolated (w4/647 kept this mirror for that). Neither ever rolls a pod: the
 // Deployment template holds them lazily (holdIsolationLabel), so an isolation
 // toggle or a move restarts nothing, and existing pods gain environment-id
 // here without a fleet-wide rollout. Serving (ReplicaSet), cron run and
@@ -121,42 +124,17 @@ func (r *AppReconciler) relabelAppPods(ctx context.Context, app *appv1alpha1.App
 	})
 }
 
-// reconcileProtectedAppNetworkPolicy narrows a protected App's private
-// connectivity to peers carrying the same immutable environment identity.
-// bex-api's per-environment policies carry the boundary since w4/m342; this
-// per-App twin stays while an operator and a bex-api of different releases
-// may run side by side.
-func reconcileProtectedAppNetworkPolicy(ctx context.Context, cl client.Client, scheme *runtime.Scheme, app *appv1alpha1.App) error {
-	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	env := app.Labels[labelNetworkIsolation]
-	if env == "" {
-		if err := cl.Get(ctx, client.ObjectKeyFromObject(np), np); err != nil {
-			return client.IgnoreNotFound(err)
-		}
-		legacyForApp := np.Spec.PodSelector.MatchLabels[labelApp] == app.Name
-		for _, ref := range np.GetOwnerReferences() {
-			if ref.UID == app.UID && ref.Controller != nil && *ref.Controller {
-				legacyForApp = true
-				break
-			}
-		}
-		if legacyForApp {
-			if err := cl.Delete(ctx, np); err != nil && !apierrors.IsNotFound(err) {
-				return err
-			}
-		}
+// deleteProtectedAppNetworkPolicy removes the per-App policy that narrowed an
+// isolated App to its environment's peers before w4/m342. bex-api's
+// isolate-<env> policies carry that boundary by environment-id (w4/647), so
+// the operator creates none and deletes one an older release left behind.
+func deleteProtectedAppNetworkPolicy(ctx context.Context, cl client.Client, app *appv1alpha1.App) error {
+	np := &networkingv1.NetworkPolicy{}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, np); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+	if np.Spec.PodSelector.MatchLabels[labelApp] != app.Name && !metav1.IsControlledBy(np, app) {
 		return nil
 	}
-	_, err := controllerutil.CreateOrUpdate(ctx, cl, np, func() error {
-		np.Labels = artifactLabels(app, "protected-network-policy")
-		peers := environmentPeers(env)
-		np.Spec = networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}},
-			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
-			Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: peers}},
-			Egress:      []networkingv1.NetworkPolicyEgressRule{{To: peers}},
-		}
-		return controllerutil.SetControllerReference(app, np, scheme)
-	})
-	return err
+	return client.IgnoreNotFound(cl.Delete(ctx, np))
 }

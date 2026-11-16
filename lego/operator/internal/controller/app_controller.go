@@ -239,12 +239,12 @@ func appIdentity(app *appv1alpha1.App) identity.Identity {
 // by hand with core.LabelNetworkIsolation in the backend (same pattern as
 // labelWorkspace / core.LabelWorkspace) — a distinct label from
 // labelEnvironment (core.LabelEnvironment, unconditional membership, which
-// App CRs carry too). reconcileNetworkPolicy scopes the App's NetworkPolicy to
-// same-environment peers instead of same-workspace ones when this label is
-// present. Since w4/m342 the workspace boundary selects pods by
+// App CRs carry too). Since w4/m342 the workspace boundary selects pods by
 // labelEnvironment, so neither label rolls a pod: the template carries only
 // labelEnvironment, held lazily, and relabelAppPods mirrors both onto the
-// running pods in place.
+// running pods in place. This label now marks only the operator's own
+// datastore and build-reach selectors; the per-App policy it once scoped is
+// gone (w4/647).
 const labelNetworkIsolation = "app.bex.co/network-isolation"
 
 // labelPlatformAliasPurpose marks the only ExternalName Services the operator
@@ -3024,7 +3024,7 @@ func (r *AppReconciler) convergeSharedChildren(ctx context.Context, app *appv1al
 	}
 	// The isolation boundary is operational, not part of a release: converge
 	// it on every pass, held and prior-release passes included (w4/m185).
-	if err := r.reconcileNetworkPolicy(ctx, app); err != nil {
+	if err := deleteProtectedAppNetworkPolicy(ctx, r.Client, app); err != nil {
 		return &stepFailure{reason: "NetworkPolicyFailed", err: err}
 	}
 	return nil
@@ -7945,13 +7945,6 @@ func syncTemplateLabel(tpl *corev1.PodTemplateSpec, key, want string) bool {
 	}
 	tpl.Labels[key] = want
 	return true
-}
-
-// reconcileNetworkPolicy converges the protected-environment exception. The
-// namespace-wide same-namespace policy deliberately excludes protected pods;
-// this per-App policy is therefore the only private path for an isolated App.
-func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1alpha1.App) error {
-	return reconcileProtectedAppNetworkPolicy(ctx, r.Client, r.Scheme, app)
 }
 
 // reconcileExecutionNetworkPolicy removes the legacy per-App execution-egress

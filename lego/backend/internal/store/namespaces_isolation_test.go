@@ -235,9 +235,9 @@ func testIsolationToggleRewritesPoliciesOnly(t *testing.T, h *isolationHarness) 
 	h.setIsolation("evm-open", false)
 	h.ensure(t)
 	inA := map[string]string{core.LabelEnvironment: "evm-iso"}
-	inA2 := map[string]string{core.LabelEnvironment: "evm-iso"}
-	// A pod from before w4/m342: the isolation label alone.
-	legacyA := map[string]string{core.LabelNetworkIsolation: "evm-iso"}
+	// The operator still mirrors the isolation label onto running pods; the
+	// boundary must not depend on it.
+	inA2 := map[string]string{core.LabelEnvironment: "evm-iso", core.LabelNetworkIsolation: "evm-iso"}
 	open := map[string]string{core.LabelEnvironment: "evm-open"}
 	bare := map[string]string{}
 
@@ -247,8 +247,8 @@ func testIsolationToggleRewritesPoliciesOnly(t *testing.T, h *isolationHarness) 
 
 	h.setIsolation("evm-iso", true)
 	h.ensure(t)
-	if h.policy(t, "isolate-evm-iso") == nil || h.policy(t, "isolate-evm-iso-legacy") == nil {
-		t.Fatal("turning isolation on must create the environment's boundary policies")
+	if h.policy(t, "isolate-evm-iso") == nil {
+		t.Fatal("turning isolation on must create the environment's boundary policy")
 	}
 	for _, pair := range []struct {
 		what     string
@@ -256,12 +256,10 @@ func testIsolationToggleRewritesPoliciesOnly(t *testing.T, h *isolationHarness) 
 		want     bool
 	}{
 		{"inside to inside", inA, inA2, true},
-		{"legacy inside to inside", legacyA, inA, true},
-		{"inside to legacy inside", inA, legacyA, true},
+		{"mirrored inside to inside", inA2, inA, true},
 		{"outside environment to inside", open, inA, false},
 		{"inside to outside environment", inA, open, false},
 		{"no environment to inside", bare, inA, false},
-		{"no environment to legacy inside", bare, legacyA, false},
 		{"outside environments still reach each other", open, bare, true},
 	} {
 		if got := h.reachable(t, pair.from, pair.to); got != pair.want {
@@ -276,10 +274,10 @@ func testIsolationToggleRewritesPoliciesOnly(t *testing.T, h *isolationHarness) 
 
 	h.setIsolation("evm-iso", false)
 	h.ensure(t)
-	if h.policy(t, "isolate-evm-iso") != nil || h.policy(t, "isolate-evm-iso-legacy") != nil {
-		t.Fatal("turning isolation off must delete the boundary policies")
+	if h.policy(t, "isolate-evm-iso") != nil {
+		t.Fatal("turning isolation off must delete the boundary policy")
 	}
-	if !h.reachable(t, open, inA) || !h.reachable(t, inA, open) || !h.reachable(t, open, legacyA) {
+	if !h.reachable(t, open, inA) || !h.reachable(t, inA, open) || !h.reachable(t, open, inA2) {
 		t.Error("turning isolation off must readmit the environment, stale isolation labels included")
 	}
 	widen := slices.Index(h.writes, "update allow-same-namespace")
@@ -292,6 +290,37 @@ func testIsolationToggleRewritesPoliciesOnly(t *testing.T, h *isolationHarness) 
 	}
 }
 
+// w4/647: the "-legacy" twin w4/m342 kept for pods from before environment-id
+// is retired, and a converge deletes one an older bex-api left behind.
+func TestLeftoverLegacyBoundaryIsPruned(t *testing.T) {
+	bothConverges(t, testLeftoverLegacyBoundaryIsPruned)
+}
+
+func testLeftoverLegacyBoundaryIsPruned(t *testing.T, h *isolationHarness) {
+	h.setIsolation("evm-iso", true)
+	h.ensure(t)
+	ns := WorkspaceNamespace(h.tenant.ID)
+	meta := npMeta(ns, "isolate-evm-iso-legacy")
+	meta.Labels[isolatedEnvironmentLabel] = "evm-iso"
+	if err := h.cl.Create(context.Background(), &networkingv1.NetworkPolicy{ObjectMeta: meta}); err != nil {
+		t.Fatal(err)
+	}
+	h.ensure(t)
+	if h.policy(t, "isolate-evm-iso-legacy") != nil {
+		t.Errorf("a leftover -legacy boundary must be pruned, writes: %v", h.writes)
+	}
+	if h.policy(t, "isolate-evm-iso") == nil {
+		t.Error("the environment's own boundary must stay")
+	}
+	// Only environment-id decides: the isolation label alone no longer
+	// admits a pod to the environment or keeps it out of the workspace.
+	isolationOnly := map[string]string{core.LabelNetworkIsolation: "evm-iso"}
+	inside := map[string]string{core.LabelEnvironment: "evm-iso"}
+	if h.reachable(t, isolationOnly, inside) {
+		t.Error("a pod without environment-id must not reach an isolated environment")
+	}
+}
+
 func TestDeletedIsolatedEnvironmentLeavesTheBoundaryList(t *testing.T) {
 	bothConverges(t, testDeletedIsolatedEnvironmentLeavesTheBoundaryList)
 }
@@ -301,14 +330,14 @@ func testDeletedIsolatedEnvironmentLeavesTheBoundaryList(t *testing.T, h *isolat
 	h.setIsolation("evm-b", true)
 	h.ensure(t)
 	got := h.policy(t, "allow-same-namespace").Spec.PodSelector.MatchExpressions
-	if len(got) != 2 || !slices.Equal(got[0].Values, []string{"evm-a", "evm-b"}) || got[0].Operator != metav1.LabelSelectorOpNotIn {
+	if len(got) != 1 || got[0].Key != core.LabelEnvironment || !slices.Equal(got[0].Values, []string{"evm-a", "evm-b"}) || got[0].Operator != metav1.LabelSelectorOpNotIn {
 		t.Fatalf("allow-same-namespace must exclude both isolated environments, got %+v", got)
 	}
 
 	h.st.environments = h.st.environments[1:] // evm-a deleted
 	h.ensure(t)
 	got = h.policy(t, "allow-same-namespace").Spec.PodSelector.MatchExpressions
-	if len(got) != 2 || !slices.Equal(got[1].Values, []string{"evm-b"}) {
+	if len(got) != 1 || !slices.Equal(got[0].Values, []string{"evm-b"}) {
 		t.Fatalf("a deleted environment must leave the NotIn list, got %+v", got)
 	}
 	if h.policy(t, "isolate-evm-a") != nil || h.policy(t, "isolate-evm-b") == nil {

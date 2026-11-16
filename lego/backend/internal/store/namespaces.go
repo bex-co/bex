@@ -862,21 +862,17 @@ func npMeta(namespace, name string) metav1.ObjectMeta {
 // A pod belongs to an environment by its environment-id label, which App,
 // Postgres and Key Value pods carry whether or not the environment is
 // isolated, so an isolation toggle rewrites this selector and never a pod
-// (w4/m342). The network-isolation clause keeps out a pod that predates
-// environment-id and carries only the isolation label; NotIn, unlike the
-// DoesNotExist it replaced, makes a stale isolation label of an environment
-// no longer isolated harmless. With nothing isolated the selector is empty
-// (every pod), since NotIn with no values is invalid. Each isolated
+// (w4/m342). NotIn admits a pod without environment-id, and makes a stale
+// network-isolation pod label harmless. With nothing isolated the selector is
+// empty (every pod), since NotIn with no values is invalid. Each isolated
 // environment's own pods reach each other through
 // environmentIsolationPolicies instead.
 func sameNamespaceNetworkPolicy(namespace string, isolated []string) *networkingv1.NetworkPolicy {
 	ordinary := &metav1.LabelSelector{}
 	if len(isolated) > 0 {
-		for _, key := range []string{core.LabelEnvironment, core.LabelNetworkIsolation} {
-			ordinary.MatchExpressions = append(ordinary.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key: key, Operator: metav1.LabelSelectorOpNotIn, Values: slices.Clone(isolated),
-			})
-		}
+		ordinary.MatchExpressions = []metav1.LabelSelectorRequirement{{
+			Key: core.LabelEnvironment, Operator: metav1.LabelSelectorOpNotIn, Values: slices.Clone(isolated),
+		}}
 	}
 	inNamespace := []networkingv1.NetworkPolicyPeer{{PodSelector: ordinary}}
 	return &networkingv1.NetworkPolicy{
@@ -895,34 +891,26 @@ func sameNamespaceNetworkPolicy(namespace string, isolated []string) *networking
 const isolatedEnvironmentLabel = "app.bex.co/isolated-environment"
 
 // environmentIsolationPolicies is the private network of each isolated
-// environment: its pods admit traffic from, and send it to, only that
-// environment's pods. "isolate-<env>" selects them by environment-id; its
-// "-legacy" twin selects a pod that predates environment-id by its isolation
-// label, until every such pod has been relabelled or replaced.
+// environment: "isolate-<env>" selects its pods by environment-id, and they
+// admit traffic from, and send it to, only that environment's pods. The
+// "-legacy" twin w4/m342 kept for pods from before environment-id is gone
+// (w4/647); the boundary prune deletes a leftover one.
 func environmentIsolationPolicies(namespace string, isolated []string) []*networkingv1.NetworkPolicy {
-	policies := make([]*networkingv1.NetworkPolicy, 0, 2*len(isolated))
+	policies := make([]*networkingv1.NetworkPolicy, 0, len(isolated))
 	for _, env := range isolated {
-		selectors := []metav1.LabelSelector{
-			{MatchLabels: map[string]string{core.LabelEnvironment: env}},
-			{MatchLabels: map[string]string{core.LabelNetworkIsolation: env}},
-		}
-		peers := make([]networkingv1.NetworkPolicyPeer, len(selectors))
-		for i := range selectors {
-			peers[i] = networkingv1.NetworkPolicyPeer{PodSelector: &selectors[i]}
-		}
-		for i, suffix := range []string{"", "-legacy"} {
-			meta := npMeta(namespace, "isolate-"+env+suffix)
-			meta.Labels[isolatedEnvironmentLabel] = env
-			policies = append(policies, &networkingv1.NetworkPolicy{
-				ObjectMeta: meta,
-				Spec: networkingv1.NetworkPolicySpec{
-					PodSelector: selectors[i],
-					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
-					Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: peers}},
-					Egress:      []networkingv1.NetworkPolicyEgressRule{{To: peers}},
-				},
-			})
-		}
+		selector := metav1.LabelSelector{MatchLabels: map[string]string{core.LabelEnvironment: env}}
+		peers := []networkingv1.NetworkPolicyPeer{{PodSelector: &selector}}
+		meta := npMeta(namespace, "isolate-"+env)
+		meta.Labels[isolatedEnvironmentLabel] = env
+		policies = append(policies, &networkingv1.NetworkPolicy{
+			ObjectMeta: meta,
+			Spec: networkingv1.NetworkPolicySpec{
+				PodSelector: selector,
+				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+				Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: peers}},
+				Egress:      []networkingv1.NetworkPolicyEgressRule{{To: peers}},
+			},
+		})
 	}
 	return policies
 }
