@@ -1,6 +1,6 @@
 # w4 · m431 — Deploying a specific commit from the dashboard or a deploy hook turns auto-deploy off in the same write and records `manual_deploy`, as on Render
 
-**Worker:** worker4 **Goal:** a commit pinned through the dashboard or a deploy hook's `ref` stays pinned: the same write turns auto-deploy off, the event reads Render's `manual_deploy`, and REST and MCP triggers keep auto-deploy as Render's API does. **Status:** blocked (t001–t003, t005–t007 done; t004 waits for the production deploy carrying this change)
+**Worker:** worker4 **Goal:** a commit pinned through the dashboard or a deploy hook's `ref` stays pinned: the same write turns auto-deploy off, the event reads Render's `manual_deploy`, and REST and MCP triggers keep auto-deploy as Render's API does. **Status:** done — all eight tasks done; the live DoD passed on production pin `7aaa8700befa` (2026-11-16)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | One trigger verb that pins a commit and turns auto-deploy off in the same write, recording `manual_deploy` — **DONE** | 45m | — |
 | t002 | A deploy hook called with `ref` pins the commit and turns auto-deploy off — **DONE** | 25m | t001 |
 | t003 | GraphQL `triggerDeploy(disableAutoDeploy:)` and the dashboard's Deploy a specific commit in one mutation — **DONE** | 40m | t001 |
-| t004 | REST and MCP keep auto-deploy; live check on production | 30m | t002, t003 |
+| t004 | REST and MCP keep auto-deploy; live check on production — **DONE** | 30m | t002, t003 |
 | t005 | Render parity — **DONE** | 20m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 30m | t005 |
-| t008 | Closeout | 10m | t006, t007 |
+| t008 | Closeout — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -32,3 +32,9 @@
 - **Expected outcome:** a CI job that pins a commit through a deploy hook is not overwritten by the next push, and the event reads as it does on Render.
 - **Why now:** w3/m317 left this as the one Render reason bex never writes, and rollback already has the same one-write mechanism to reuse.
 - **Render parity:** included: the change touches the deploy-hook REST route, GraphQL, the events read on REST/GraphQL/MCP, and the dashboard.
+
+## Unblock record (2026-11-16, loopx worker)
+
+- **Affected:** w4/m431 t004, t008. **Source:** verified evidence, not a user decision.
+- **Finding:** the gate cleared by itself. Production runs pin `7aaa8700befa` (pin commit `546945798`, live 16:27Z), which carries b47e3584c, and the live GraphQL schema lists `triggerDeploy(disableAutoDeploy: Boolean = false)`.
+- **Outcome:** t004 ran live the same day and every Definition of done item holds (evidence in `done/t004.md`), so the milestone closed instead of returning to the open queue. One deviation: the "later push opens no deploy" leg ran in workspace `bex`, because `bex-canary` has no GitHub connection and no push reaches its services.
