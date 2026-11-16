@@ -28,7 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/common/model"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -211,7 +210,7 @@ func TestInstanceCountQueryIsLivenessGated(t *testing.T) {
 	req := ResourceMetricsRangeRequest{Namespace: "default", App: "web", Metric: MetricInstanceCount, Resolution: 5 * time.Minute}
 	q := promResourceQueryFor(req)
 
-	if !strings.Contains(q, "count_over_time(") || !strings.Contains(q, "["+instanceLivenessWindow+"]") {
+	if !strings.Contains(q, "count_over_time(") || !strings.Contains(q, fmt.Sprintf("[%ds]", instanceLivenessSeconds)) {
 		t.Fatalf("instance_count must count over a bounded range selector, got %q", q)
 	}
 	if !strings.Contains(q, ") > 0)") {
@@ -221,19 +220,46 @@ func TestInstanceCountQueryIsLivenessGated(t *testing.T) {
 	// and does not scale with the caller's resolution: the production reading
 	// decayed over exactly one lookback, and a resolution-sized window would
 	// reintroduce it at resolution >= 5m (the Metrics page's own default).
-	window, err := model.ParseDuration(instanceLivenessWindow)
-	if err != nil {
-		t.Fatalf("instanceLivenessWindow: %v", err)
-	}
-	if time.Duration(window) >= 5*time.Minute {
-		t.Errorf("instanceLivenessWindow %s is not tighter than Prometheus's 5m lookback", instanceLivenessWindow)
+	window := time.Duration(instanceLivenessSeconds) * time.Second
+	if window >= 5*time.Minute {
+		t.Errorf("instanceLivenessSeconds %s is not tighter than Prometheus's 5m lookback", window)
 	}
 	// 15s cAdvisor scrapes: the window must still tolerate a couple of misses.
-	if time.Duration(window) < 45*time.Second {
-		t.Errorf("instanceLivenessWindow %s leaves no slack for missed 15s scrapes", instanceLivenessWindow)
+	if window < 45*time.Second {
+		t.Errorf("instanceLivenessSeconds %s leaves no slack for missed 15s scrapes", window)
 	}
 	if strings.Contains(q, fmt.Sprintf("[%ds]", stepSeconds(req.Resolution))) {
 		t.Errorf("instance_count window must not follow the caller's resolution, got %q", q)
+	}
+}
+
+// TestCoarseStepReadsTheWholeStep is w4/m322 t010, found live on production:
+// a cron job's three ~50s manual runs charted CPU on the Metrics page's
+// 12-hour default (a 300s step) but Memory and Total Instances read "No data
+// in range" whenever no 300s evaluation point fell within 90s of a run, since
+// both read only the trailing 90s. At a coarse step both must cover the whole
+// step; at a step finer than the liveness window both stay exactly as before.
+func TestCoarseStepReadsTheWholeStep(t *testing.T) {
+	matchers := `namespace="default",pod=~"web-[a-z0-9]+-[a-z0-9]{5}|web-[a-z0-9]{59}",container!=""`
+	gated := `count(sum by (pod) (count_over_time(container_memory_working_set_bytes{` + matchers + `}[90s])) > 0)`
+	for _, tc := range []struct {
+		res             time.Duration
+		memory, instCnt string
+	}{
+		{30 * time.Second, `[90s]`, gated},
+		{90 * time.Second, `[90s]`, gated},
+		{5 * time.Minute, `[300s]`, `max_over_time((` + gated + `)[300s:15s])`},
+		{time.Hour, `[3600s]`, `max_over_time((` + gated + `)[3600s:15s])`},
+	} {
+		req := ResourceMetricsRangeRequest{Namespace: "default", App: "web", Resolution: tc.res, Metric: MetricMemory}
+		want := `sum by (pod) (max by (pod, container) (last_over_time(container_memory_working_set_bytes{` + matchers + `}` + tc.memory + `)))`
+		if got := promResourceQueryFor(req); got != want {
+			t.Errorf("memory at %s:\n got %q\nwant %q", tc.res, got, want)
+		}
+		req.Metric = MetricInstanceCount
+		if got := promResourceQueryFor(req); got != tc.instCnt {
+			t.Errorf("instance_count at %s:\n got %q\nwant %q", tc.res, got, tc.instCnt)
+		}
 	}
 }
 

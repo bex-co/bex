@@ -241,16 +241,25 @@ func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRa
 // for every service whose object name crossed that threshold). Like the Traefik
 // service selector this is a reconstruction from names, but fully anchored, so
 // app "web" never matches a "web-api-…-…" pod.
-// instanceLivenessWindow is how recently a pod must have reported a cAdvisor
+// instanceLivenessSeconds is how recently a pod must have reported a cAdvisor
 // sample to count as a live instance. The kubernetes-cadvisor job scrapes every
 // 15s (deploy/gitops/base/prometheus.yaml), so 90s tolerates several missed
 // scrapes while keeping a terminated pod out of the count roughly 3.3x sooner
 // than Prometheus's 5m lookback did.
-const instanceLivenessWindow = "90s"
+const instanceLivenessSeconds = 90
+
+// bucketWindow is the range a memory or coarse instance-count point covers: the
+// liveness window, or the step once the step is coarser, so no part of a step
+// goes unread (a short cron run between two 300s points charted nothing,
+// w4/m322 t010). Widening only past the liveness window keeps w4/644's fix: a
+// stopped pod still draws at most the one point whose step it ran in.
+func bucketWindow(res time.Duration) int64 {
+	return max(stepSeconds(res), instanceLivenessSeconds)
+}
 
 // podCreatedLookback is how far back a pod's creation is read. A deleted pod's
 // kube_pod_created series ends with it while its last cAdvisor samples still
-// answer for Prometheus's 5m lookback (and instanceLivenessWindow), so the
+// answer for Prometheus's 5m lookback (and instanceLivenessSeconds), so the
 // window must outlast both. Limit: pod names come from generated suffixes; a
 // same-named pod recreated inside the window (a StatefulSet's -0) would also
 // match the predecessor's earlier creation and be dropped until it ages out.
@@ -277,7 +286,7 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 		// container series to one series per pod, so counting pods is unaffected
 		// by the restart double-count below — no per-container max needed here.
 		//
-		// Count only pods that actually reported inside instanceLivenessWindow,
+		// Count only pods that actually reported inside instanceLivenessSeconds,
 		// never pods merely carried forward by Prometheus's 5m lookback (w4/m110
 		// t002). An instant selector at each range step resolves every series
 		// whose LAST sample is up to 5 minutes old, so for five minutes after any
@@ -288,8 +297,15 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 		// Unlike the per-pod cpu/memory gauges — where a stale point merely
 		// extends a line — staleness on a *count* invents instances, so this is
 		// the one query that must be liveness-gated.
-		return fmt.Sprintf(`count(%s)`, own(fmt.Sprintf(`sum by (pod) (count_over_time(container_memory_working_set_bytes{%s}[%s])) > 0`,
-			matchers, instanceLivenessWindow)))
+		live := fmt.Sprintf(`count(%s)`, own(fmt.Sprintf(`sum by (pod) (count_over_time(container_memory_working_set_bytes{%s}[%ds])) > 0`,
+			matchers, instanceLivenessSeconds)))
+		// A coarse step reports the most instances live at once inside it, not
+		// a count over the whole step: sequential runs in one step never add up
+		// to instances that did not run together.
+		if window := bucketWindow(req.Resolution); window > instanceLivenessSeconds {
+			return fmt.Sprintf(`max_over_time((%s)[%ds:%ds])`, live, window, scrapeSubstep)
+		}
+		return live
 	}
 	return own(resourceUsageQuery(MetricCPU, matchers, req.Resolution, req.CPUAggregation))
 }
@@ -300,7 +316,7 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 //
 // cpuAgg ("" | MAX | MIN) is Render's interval aggregation (MetricQuery.
 // CPUAggregation): a minRateLookback rate is sampled every
-// cpuAggregationSubstep across each resolution step and the step reports its
+// scrapeSubstep across each resolution step and the step reports its
 // max or min. "" keeps the plain rate, whose value averages the step.
 func resourceUsageQuery(metric, matchers string, resolution time.Duration, cpuAgg string) string {
 	switch metric {
@@ -324,8 +340,8 @@ func resourceUsageQuery(metric, matchers string, resolution time.Duration, cpuAg
 		// value for Prometheus's five-minute lookback after every rollout
 		// (w4/644). A range selector has no lookback, and sharing the instance
 		// count's window keeps the memory lines and Total Instances in step.
-		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (last_over_time(container_memory_working_set_bytes{%s}[%s])))`,
-			matchers, instanceLivenessWindow)
+		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (last_over_time(container_memory_working_set_bytes{%s}[%ds])))`,
+			matchers, bucketWindow(resolution))
 	default: // cpu
 		// Same cAdvisor restart double-count guard as memory: dedupe a container's
 		// overlapping instances before summing across containers (w4/050).
@@ -338,14 +354,14 @@ func resourceUsageQuery(metric, matchers string, resolution time.Duration, cpuAg
 		// already averaged over the whole step has no peak left to find, and
 		// the subquery's cost would grow with step × step instead of linearly.
 		return fmt.Sprintf(`%s((`+usage+`)[%ds:%ds])`, fn, matchers, minRateLookback,
-			max(stepSeconds(resolution), cpuAggregationSubstep), cpuAggregationSubstep)
+			max(stepSeconds(resolution), scrapeSubstep), scrapeSubstep)
 	}
 }
 
-// cpuAggregationSubstep is the subquery resolution of a MAX/MIN cpu read: the
-// cAdvisor scrape interval (deploy/gitops/base/prometheus.yaml), the finest
-// grain a rate sample can change at.
-const cpuAggregationSubstep = 15
+// scrapeSubstep is the subquery resolution of a MAX/MIN cpu read and a coarse
+// instance-count read: the cAdvisor scrape interval
+// (deploy/gitops/base/prometheus.yaml), the finest grain a sample can change at.
+const scrapeSubstep = 15
 
 // cpuAggregationFunc maps a CPUAggregation onto its PromQL range function.
 func cpuAggregationFunc(agg string) string {

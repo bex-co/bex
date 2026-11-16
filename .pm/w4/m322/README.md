@@ -1,6 +1,6 @@
 # w4 · m322 — A cron job's manually triggered runs, and every run of a cron job named 28–30 characters, chart no CPU, memory or instances and meter no instance time
 
-**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** blocked — t001–t003, t005–t007 and t009 done (shipped); t004's live replay waits for a production deploy carrying t009's fix, then t008 closes
+**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** todo — t001–t003, t005–t007 and t009 done (shipped); t004's live replay is unblocked (pin `3c6654df60a2` carries t009), then t008 closes
 
 ## Tasks (in order)
 
@@ -10,13 +10,14 @@
 | [t002](done/t002.md) | Blast radius: the three matcher callers, sibling-App isolation and regression tests on the shapes that work today — **DONE** | 30m | t001 |
 | [t003](done/t003.md) | A cron App that ran in a window but meters zero is a degraded read, not an honest zero — **DONE** | 30m | t001 |
 | [t009](done/t009.md) | A long-named cron job's run pods are not truncated (`<cronjob>-<minute>-<5>`, `<cronjob>-r<8 hex>-<5>`, 67–68 characters), so t001's single-segment alternative matches none and the job still charts nothing — **DONE** | 40m | t001 |
-| [t004](t004.md) | Live verification in `bex-canary` | 30m | t002, t003, t009 |
+| [t010](done/t010.md) | On a coarse step (the 12-hour default), a cron job's short run charts CPU but Memory and Total Instances read "No data in range" — **DONE** | 30m | t009 |
+| [t004](t004.md) | Live verification in `bex-canary` | 30m | t002, t003, t009, t010 |
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007, t009 |
+| [t008](t008.md) | Closeout | 10m | t006, t007, t009, t010 |
 
-Nine tasks, 255m (4h15m); t009 added in round 166.
+Ten tasks, 285m (4h45m); t009 added in round 166, t010 in t004's replay on 2026-11-16.
 
 **Major.** The Metrics page reads "No data in range" for runs that ran, and the usage meter, which bills cron jobs per second of run time, records none of that time.
 
@@ -131,9 +132,9 @@ Signed in to `bex-canary` after the release pins this build, with owned Starter 
 
 - **Source:** the finding above (round 81 of the `/qa-find-bugs w4` loop, 2026-11-11). The durable evidence is the probe record above; no screenshot was kept.
 - **Goal linkage:**
-  - [ADR038](../../../../docs/ADR038-cron-jobs.md) (cron jobs) and [ADR010](../../../../docs/ADR010-observability.md) (the metrics selector).
-  - ADR023/[ADR040](../../../../docs/ADR040-billing-metronome.md) (usage metering and billing) and [ADR030](../../../../docs/ADR030-pricing.md).
-  - [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first).
+  - [ADR038](../../../docs/ADR038-cron-jobs.md) (cron jobs) and [ADR010](../../../docs/ADR010-observability.md) (the metrics selector).
+  - ADR023/[ADR040](../../../docs/ADR040-billing-metronome.md) (usage metering and billing) and [ADR030](../../../docs/ADR030-pricing.md).
+  - [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first).
 - **Expected outcome:** a cron job's Metrics and usage describe the runs it actually executed. A manually triggered run, the normal way to test a cron job, is charted and billed like a scheduled one.
 - **Why now:**
   - A user debugging a cron job reaches for Trigger Run first, then sees "No data in range" for the run they just watched succeed.
@@ -160,3 +161,9 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `c1cc477b8`. Fixtures are i
 - **Finding.** Production's scheduled deploy at 2026-11-15 22:49Z ran on `06cc3b02c`. `git merge-base --is-ancestor c1cc477b8 06cc3b02c` holds, so t001–t003's fix is live. But t009, filed in round 166 after DoD 2 failed live, had never been implemented, so a replay on `06cc3b02c` would fail DoD 2 again for the same reason. The replay was not run.
 - **Done instead.** t009 was implemented (see [its outcome](done/t009.md#outcome-2026-11-15-loopx-w4)): tenant run pods are named by the operator's instance-id webhook without the 58-character cut, and the selector now matches that shape under the hashed CronJob name.
 - **Remaining gate (clears by itself).** A production deploy whose commit contains the t009 fix commit (`git merge-base --is-ancestor <t009 sha> <deployed sha>`). Then a worker replays DoD 1–4 (t004) and closes out (t008). No user action.
+
+## Unblock record (2026-11-16, `/loopx w4`): the release gate holds for t009
+
+- **Affected:** t004, t008. **Source:** verified evidence.
+- **Finding.** The newest `chore(deploy): pin platform images` commit, `d3e0b99e4` (2026-11-16 06:42Z), pins `3c6654df60a2` (earlier pin `14af7282d9ac`). `git merge-base --is-ancestor 3183cafcf 3c6654df60a2` holds, so t009's fix (and t001's `c1cc477b8`) is in the pinned build.
+- **Next.** A worker replays DoD 1–4 live (t004) as the QA user in `bex-canary`, then closes out (t008). DoD 3 needs the hourly usage rollup after the runs.

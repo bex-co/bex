@@ -1354,7 +1354,7 @@ const instanceSampleStepSeconds = 15
 // second short keeps the bound off the 15 s grid, so Prometheus 2.x's closed
 // range and 3.x's left-open range agree. Any bound from 45 to 59 s credits a
 // terminated pod the same three steps, so this one costs nothing over 50 s.
-// It is deliberately tighter than the Metrics page's 90 s instanceLivenessWindow
+// It is deliberately tighter than the Metrics page's 90 s instanceLivenessSeconds
 // (metrics/source.go): a chart wants continuity across scrape gaps, a meter
 // wants a terminated pod billed at most 45 s past its last sample.
 const instanceLivenessSeconds = 4*instanceSampleStepSeconds - 1
