@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { isValidCIDR } from "@/common/lib/cidr";
 import {
   ALLOW_ALL_ENTRIES,
@@ -50,6 +51,22 @@ interface IPAllowListRow {
   entry: IPAllowListEntryDraft;
 }
 
+/**
+ * One editable rule row of the editor (two inputs, three icon buttons) at the
+ * ready row's geometry, for a list that has not loaded yet.
+ */
+export function RuleRowSkeleton() {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border p-2">
+      <Skeleton className="h-9 w-full max-w-xs min-w-0" />
+      <Skeleton className="h-9 w-full max-w-xs min-w-0" />
+      <Skeleton className="size-8" />
+      <Skeleton className="size-8" />
+      <Skeleton className="size-8" />
+    </div>
+  );
+}
+
 /** Shared ordered CIDR + description editor for service and datastore ACLs. */
 export function IPAllowListEditor({
   entries,
@@ -59,6 +76,7 @@ export function IPAllowListEditor({
   clearOnly,
   readOnly,
   emptyBlocks,
+  pendingRows,
 }: {
   entries: IPAllowListEntryDraft[];
   labels: IPAllowListEditorLabels;
@@ -84,6 +102,13 @@ export function IPAllowListEditor({
    * allow-all rule) instead of an empty list.
    */
   emptyBlocks?: { open: string; allowAll?: IPAllowListEntryDraft[] };
+  /**
+   * The list is still loading: show this many rule-row placeholders where the
+   * rules go and keep every input and action disabled, instead of drawing the
+   * empty text ("No IP rules") for a list that is not known to be empty
+   * (w4/m315). The caller remounts the editor when the list arrives.
+   */
+  pendingRows?: number;
 }) {
   // Keep keys independent of editable values and positions so typing, moving
   // and removing rows preserve the surviving inputs' focus and caret.
@@ -222,7 +247,13 @@ export function IPAllowListEditor({
   return (
     <section className="space-y-2">
       <p className="text-xs text-muted-foreground">{labels.hint}</p>
-      {draft.length === 0 ? (
+      {pendingRows ? (
+        <div className="space-y-2" aria-hidden data-preview="ip-rule-rows">
+          {Array.from({ length: pendingRows }, (_, index) => (
+            <RuleRowSkeleton key={index} />
+          ))}
+        </div>
+      ) : draft.length === 0 ? (
         empty
       ) : (
         <div className="space-y-2">
@@ -299,6 +330,7 @@ export function IPAllowListEditor({
           placeholder="203.0.113.0/24"
           aria-label={labels.cidr}
           aria-invalid={invalid}
+          disabled={!!pendingRows}
           className="max-w-xs"
         />
         <Input
@@ -309,6 +341,7 @@ export function IPAllowListEditor({
           }
           aria-label={labels.description}
           placeholder={labels.descriptionPlaceholder}
+          disabled={!!pendingRows}
           className="max-w-xs"
         />
         <Button

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { buttonVariants } from "@/common/components/ui/button";
+import { RuleRowSkeleton } from "@/common/components/ip-allow-list-editor";
 import {
   Card,
   CardContent,
@@ -32,19 +33,6 @@ function TextBar({
     >
       {children}
     </span>
-  );
-}
-
-/** One editable rule row of IPAllowListEditor: two inputs and three icon buttons. */
-function RuleRowSkeleton() {
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border p-2">
-      <Skeleton className="h-9 w-full max-w-xs min-w-0" />
-      <Skeleton className="h-9 w-full max-w-xs min-w-0" />
-      <Skeleton className="size-8" />
-      <Skeleton className="size-8" />
-      <Skeleton className="size-8" />
-    </div>
   );
 }
 

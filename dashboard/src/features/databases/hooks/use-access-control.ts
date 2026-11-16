@@ -185,6 +185,11 @@ export function useAccessControl(id: string) {
   return {
     allowList,
     isPublic: allowListQuery.data?.database?.public,
+    // The page's database read settles before this panel's own allowlist
+    // read, which is batched with the slower insight queries. Until it lands
+    // the list is unknown, not empty (w4/m315).
+    allowListPending:
+      allowListQuery.loading && allowListQuery.data?.database == null,
     credentials,
     loading: allowListQuery.loading || credentialsQuery.loading,
     savingAllowList,

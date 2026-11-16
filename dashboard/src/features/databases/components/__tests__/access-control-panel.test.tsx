@@ -15,6 +15,8 @@ const resetPooled = vi.fn();
 const mutate = vi.hoisted(() => vi.fn());
 let credentials: { username: string; default: boolean }[] = [];
 let pooled: { internal: string; external: string } | null = null;
+let allowList: { cidrBlock: string; description: string }[] = [];
+let allowListPending = false;
 
 // Only the connection-pool toggle writes through Apollo here; the access
 // controls' own reads and writes come from the mocked useAccessControl.
@@ -31,7 +33,8 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
 }));
 vi.mock("@/features/databases/hooks/use-access-control", () => ({
   useAccessControl: () => ({
-    allowList: [],
+    allowList,
+    allowListPending,
     credentials,
     loading: false,
     savingAllowList: false,
@@ -55,6 +58,8 @@ beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   credentials = [];
   pooled = null;
+  allowList = [];
+  allowListPending = false;
 });
 
 type PanelOverrides = Partial<AccessControlPanelProps["database"]> & {
@@ -226,6 +231,51 @@ describe("AccessControlPanel credentials", () => {
     expect(
       screen.getByRole("textbox", { name: "New rule description" }),
     ).toBeInTheDocument();
+  });
+});
+
+// w4/m315: the allowlist read lands after the page's database read. Until it
+// does, the list is unknown: the panel must not say a public database has no
+// rules (Render reads an empty list as external access blocked).
+describe("AccessControlPanel IP allowlist", () => {
+  it("previews rule rows instead of the empty text while the list loads", () => {
+    allowListPending = true;
+    const { container } = renderPanel();
+
+    expect(screen.queryByText(/No IP rules/)).toBeNull();
+    const rows = container.querySelector('[data-preview="ip-rule-rows"]');
+    expect(rows?.children).toHaveLength(2);
+    expect(
+      screen.getByRole("textbox", { name: "New CIDR block" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save allowlist" }),
+    ).toBeDisabled();
+  });
+
+  it("lists the effective rules once they arrive", () => {
+    allowList = [
+      { cidrBlock: "0.0.0.0/0", description: "" },
+      { cidrBlock: "::/0", description: "" },
+    ];
+    const { container } = renderPanel();
+
+    expect(
+      screen.getByRole("textbox", { name: "CIDR block for rule 1" }),
+    ).toHaveValue("0.0.0.0/0");
+    expect(
+      screen.getByRole("textbox", { name: "CIDR block for rule 2" }),
+    ).toHaveValue("::/0");
+    expect(container.querySelector('[data-preview="ip-rule-rows"]')).toBeNull();
+    expect(
+      screen.getByRole("textbox", { name: "New CIDR block" }),
+    ).toBeEnabled();
+  });
+
+  it("says a loaded empty list has no rules", () => {
+    renderPanel();
+
+    expect(screen.getByText(/No IP rules/)).toBeInTheDocument();
   });
 });
 

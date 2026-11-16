@@ -1,6 +1,6 @@
 # w4 · m315 — A public datastore with no IP rules reads back as public on every surface: REST, GraphQL, MCP and the dashboard return its effective unrestricted rules, not an empty list that Render clients read as blocked
 
-**Worker:** worker4 **Goal:** every read of a Key Value or Postgres allowlist reports the store's _effective_ external access. A public store with no saved rules reads `0.0.0.0/0` + `::/0`, the rule the Blueprint export already uses. A Render client therefore never sees "external connections blocked" for a store that accepts outside connections, and writing back what it read never cuts access. **Status:** blocked — t001, t002, t004, t005 and t006 done (shipped); t003's live replay ran in QA loop round 409 (2026-11-15, pin `89ac87445bec`) and DoD 1–5 hold. Round 414 confirmed the zh rule rows; the skeleton check holds for the private stores the previews assume, while a public store's Networking card and the default public Postgres's Details card change shape on load by the documented w4/298 and w4/303 choices (see t003); t003 can close on that record, then t007 closes
+**Worker:** worker4 **Goal:** every read of a Key Value or Postgres allowlist reports the store's _effective_ external access. A public store with no saved rules reads `0.0.0.0/0` + `::/0`, the rule the Blueprint export already uses. A Render client therefore never sees "external connections blocked" for a store that accepts outside connections, and writing back what it read never cuts access. **Status:** blocked — t001, t002, t004, t005, t006 and t008 done (shipped). t003's live replay on the 06cc3b02c deploy (2026-11-16) holds DoD 1–4, the CLI and the MCP steps, and the en/zh rule rows. It found the Postgres Access control pending frame saying "No IP rules" for a public store while its allowlist loads, which t008 fixes. t003 needs only that pending frame re-checked live after a production deploy carries t008; then t007 closes
 
 ## Tasks (in order)
 
@@ -8,13 +8,14 @@
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | One effective-access projection for every datastore allowlist read (REST, GraphQL, MCP, Blueprint export) — **DONE** | 50m | — |
 | [t002](done/t002.md) | Dashboard Key Value Networking and Postgres Access control list the effective rules — **DONE** | 35m | t001 |
-| [t003](t003.md) | Live verification on owned public Free Key Value and Postgres stores | 25m | t002 |
+| [t008](done/t008.md) | Postgres Access control previews its rule rows while the allowlist loads, instead of saying "No IP rules" — **DONE** | 30m | t002 |
+| [t003](t003.md) | Live verification on owned public Free Key Value and Postgres stores | 25m | t002, t008 |
 | [t004](done/t004.md) | Render parity — **DONE** | 20m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
 | [t007](t007.md) | Closeout | 10m | t005, t006 |
 
-Seven tasks, 185m (3h05m). Major: the readback states network exposure wrongly in the unsafe direction (it says blocked while the store is open), and a no-op read-then-write disables access.
+Eight tasks, 215m (3h35m). Major: the readback states network exposure wrongly in the unsafe direction (it says blocked while the store is open), and a no-op read-then-write disables access.
 
 ## Finding
 

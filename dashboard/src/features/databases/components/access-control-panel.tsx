@@ -94,6 +94,9 @@ function AllowListSection({ access }: { access: Access }) {
       ) : null}
       <IPAllowListEditor
         entries={access.allowList}
+        // A dashboard-created database is public by default, so its unknown
+        // list previews the effective allow-all pair (0.0.0.0/0, ::/0).
+        pendingRows={access.allowListPending ? 2 : undefined}
         saving={access.savingAllowList}
         onSave={access.saveAllowList}
         labels={{

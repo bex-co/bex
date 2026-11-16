@@ -4,9 +4,10 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const createCredentialMut = vi.fn();
 const writeQuery = vi.fn();
+let queryState: { data?: unknown; loading?: boolean } = {};
 vi.mock("@apollo/client/react", () => ({
   useApolloClient: () => ({ cache: { writeQuery } }),
-  useQuery: () => ({ data: undefined, refetch: vi.fn() }),
+  useQuery: () => ({ data: undefined, ...queryState, refetch: vi.fn() }),
   useMutation: () => [createCredentialMut, { loading: false }],
 }));
 
@@ -22,6 +23,34 @@ import { useAccessControl } from "@/features/databases/hooks/use-access-control"
 beforeEach(() => {
   createCredentialMut.mockReset();
   toastError.mockReset();
+  queryState = {};
+});
+
+// w4/m315: an allowlist still loading is unknown, not empty, so the panel
+// previews rows instead of saying the database has no rules.
+describe("useAccessControl allowListPending", () => {
+  it("is pending only while the first allowlist read is in flight", () => {
+    queryState = { loading: true };
+    expect(
+      renderHook(() => useAccessControl("dpg-1")).result.current
+        .allowListPending,
+    ).toBe(true);
+
+    queryState = {
+      loading: true,
+      data: { database: { id: "dpg-1", public: true, ipAllowListEntries: [] } },
+    };
+    expect(
+      renderHook(() => useAccessControl("dpg-1")).result.current
+        .allowListPending,
+    ).toBe(false);
+
+    queryState = { loading: false };
+    expect(
+      renderHook(() => useAccessControl("dpg-1")).result.current
+        .allowListPending,
+    ).toBe(false);
+  });
 });
 
 describe("useAccessControl createCredential", () => {
