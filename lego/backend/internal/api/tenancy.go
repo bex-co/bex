@@ -141,13 +141,12 @@ const (
 // one tenant (the store's unique owner_identity_id gate). The owner is granted
 // admin on workspace:tea-<id> so it can authorize its own resources — verified,
 // not just attempted, on every cache-miss call (ensureGranted), not only a fresh
-// mint: OpenFGA's /write errors on a tuple that already exists, so a naive "grant
-// only on fresh mint" would permanently skip the grant if the very first attempt
-// failed after the tenant row had already committed — the caller's every retry
-// would then find "already onboarded" and never regrant, a silent lockout from
-// its own workspace. ensureGranted checks first, so both a returning caller
-// (grant already succeeded) and a genuine retry (grant still missing) are handled
-// by the same path.
+// mint: a naive "grant only on fresh mint" would permanently skip the grant if
+// the very first attempt failed after the tenant row had already committed — the
+// caller's every retry would then find "already onboarded" and never regrant, a
+// silent lockout from its own workspace. ensureGranted checks first, so both a
+// returning caller (grant already succeeded) and a genuine retry (grant still
+// missing) are handled by the same path.
 //
 // The personal tenant is resolved by OWNER identity (owner_identity_id), NOT by
 // membership: once a caller can be a member of workspaces it does not own (w4/m12
@@ -374,9 +373,9 @@ func (t *tenantService) revokeOtherRoles(ctx context.Context, checker core.Check
 }
 
 // ensureGranted makes identityID admin of workspace:tenantID unless it already
-// is. The check is what makes this safe to call on every cache-miss (not just
-// a fresh mint) — OpenFGA errors on a duplicate write, so re-granting blindly
-// would fail every call after the first success. A Check error (e.g. OpenFGA
+// is. The check keeps every cache-miss from writing a tuple that is already
+// there (a write of an existing tuple is accepted as a no-op, authz.writeTuple),
+// and tells granted apart from "was already admin". A Check error (e.g. OpenFGA
 // unreachable) falls through to attempting the grant, which fails the same
 // way — fail closed either way, never a silent skip. granted reports whether it
 // wrote the tuple.
@@ -531,8 +530,8 @@ func (t *tenantService) TenantForKey(ctx context.Context, clientID string) (stri
 // normal retry could no longer finish revoking (codex finding-4, CWE-613). Now a
 // failed revoke leaves BOTH intact: the caller (RevokeAPIKey) withholds the
 // Hydra delete and a retry re-resolves the tenant and completes. Revoke is
-// idempotent, so once the tuple is gone the subsequent local delete — or its
-// retry — converges cleanly with no orphaned authority.
+// idempotent (authz.writeTuple), so once the tuple is gone the subsequent local
+// delete — or its retry — converges cleanly with no orphaned authority.
 func (t *tenantService) UnbindKey(ctx context.Context, clientID string) error {
 	// Resolve the tenant while its binding still exists, then revoke the FGA
 	// tuple, then drop the local row.

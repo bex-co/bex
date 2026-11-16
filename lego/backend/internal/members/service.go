@@ -1464,8 +1464,9 @@ func (s *Service) guardLastAdmin(ctx context.Context, workspaceID, currentRole, 
 }
 
 // grantRole writes a member's role tuple, skipping the write when it already
-// exists (OpenFGA errors on a duplicate) — the same check-before-grant that
-// keeps tenancy.ensureGranted idempotent, so a retried role change converges.
+// exists — the same check-before-grant as tenancy.ensureGranted. A write that
+// races the check is still accepted (authz.writeTuple ignores a duplicate), so
+// a retried role change converges.
 func (s *Service) grantRole(ctx context.Context, tenantID, subject, relation string) error {
 	if s.Granter == nil {
 		return nil

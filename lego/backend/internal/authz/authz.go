@@ -165,10 +165,22 @@ type writeRequest struct {
 
 type tupleBatch struct {
 	TupleKeys []tupleKey `json:"tuple_keys"`
+	// OnDuplicate (writes) and OnMissing (deletes) are "ignore" on every batch
+	// bex sends. Without them OpenFGA answers 400 write_failed_due_to_invalid_input
+	// to a write of a tuple that already exists and to a delete of one that does
+	// not, so a retried grant or revoke failed the same way forever (w21/099).
+	OnDuplicate string `json:"on_duplicate,omitempty"`
+	OnMissing   string `json:"on_missing,omitempty"`
 }
 
+// ignoreConflict is the value both options take: the tuple is already in the
+// state the write asks for.
+const ignoreConflict = "ignore"
+
 // writeTuple sends one add (delete=false) or remove (delete=true) to OpenFGA's
-// /write — the shared path for every grant/revoke membership write.
+// /write — the shared path for every grant/revoke membership write, idempotent
+// on both sides (see tupleBatch). Production runs OpenFGA v1.18.1 and the
+// backend suite v1.18.3; both honor the options.
 func (o *openfgaChecker) writeTuple(ctx context.Context, del bool, tk tupleKey) error {
 	storeID, err := o.store(ctx)
 	if err != nil {
@@ -176,9 +188,9 @@ func (o *openfgaChecker) writeTuple(ctx context.Context, del bool, tk tupleKey) 
 	}
 	var req writeRequest
 	if del {
-		req.Deletes = &tupleBatch{TupleKeys: []tupleKey{tk}}
+		req.Deletes = &tupleBatch{TupleKeys: []tupleKey{tk}, OnMissing: ignoreConflict}
 	} else {
-		req.Writes = &tupleBatch{TupleKeys: []tupleKey{tk}}
+		req.Writes = &tupleBatch{TupleKeys: []tupleKey{tk}, OnDuplicate: ignoreConflict}
 	}
 	body, _ := json.Marshal(req)
 	return core.DoJSON(ctx, o.client, http.MethodPost, o.baseURL+"/stores/"+storeID+"/write", o.token, body, http.StatusOK, nil)
@@ -231,8 +243,8 @@ func (o *openfgaChecker) GrantAgentSessionWorkspace(ctx context.Context, session
 // API-key revoke (w1/m9: the bound client stops authorizing, subject to
 // bex-api's ≤30s positive-check cache). relation is the member's role ("admin"
 // for a workspace owner, "developer" for a bound key; w4/m12's roles revoke
-// through the same path). A tuple that's already gone is not an error to
-// OpenFGA's delete, so a retried revoke/delete is idempotent.
+// through the same path). A tuple that's already gone is not an error, so a
+// retried revoke/delete is idempotent (writeTuple).
 func (o *openfgaChecker) RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error {
 	if err := o.writeTuple(ctx, true, tupleKey{User: subject, Relation: relation, Object: "workspace:" + tenantID}); err != nil {
 		return err
