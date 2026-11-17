@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -159,5 +160,72 @@ func TestStaticPublishBuildVerdictClosesRowAndEventsThroughTheReconciler(t *test
 				t.Fatalf("build_ended = %+v (present %v), want failed", fact, ok)
 			}
 		})
+	}
+}
+
+// w32/034: a direct publish whose clone fails before the operator first looks
+// (a missing branch fails its Job within about 16 s) is first seen already
+// failed, so its row goes from queued straight to build_failed. The operator
+// records the clone step's window as status.buildRun, and through the
+// reconciler that window becomes the row's started_at and its
+// build_started/build_ended pair, as a repo build's does (w6/m123). Without it
+// the row reports no build at all.
+func TestDirectPublishFirstSeenFailedReportsTheCloneAsItsBuild(t *testing.T) {
+	const gen = int64(3)
+	const said = `could not fetch "qa-r475-no-such-branch" from this service's repository — check that the branch or commit exists and that bex still has access to the repo`
+	start := time.Date(2026, 11, 16, 3, 6, 1, 0, time.UTC)
+	finish := start.Add(14 * time.Second)
+	firstPublish := republishedStaticSite(gen, said)
+	firstPublish.Status.Phase = appv1alpha1.PhaseFailed
+	firstPublish.Status.ActiveRevision, firstPublish.Status.Image = "", ""
+	firstPublish.Status.Conditions[0] = metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+		Reason: appv1alpha1.ReasonBuildFailedUserError, Message: said, ObservedGeneration: gen,
+	}
+	for name, app := range map[string]*appv1alpha1.App{
+		"first publish":         firstPublish,
+		"over a served release": republishedStaticSite(gen, said),
+	} {
+		for _, recorded := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s, window recorded %v", name, recorded), func(t *testing.T) {
+				ctx := context.Background()
+				m := newMemStore()
+				m.deploys["dep-1"] = Deploy{
+					ID: "dep-1", AppID: "srv-1", Generation: gen, Status: DeployQueued, CreatedAt: start.Add(-5 * time.Second),
+				}
+				r := &Reconciler{Store: m, DeployGateTimeout: 18 * time.Minute}
+				cur := app.DeepCopy()
+				if recorded {
+					cur.Status.BuildRun = &appv1alpha1.BuildRunStatus{
+						Generation: gen, StartedAt: start.Format(time.RFC3339), FinishedAt: finish.Format(time.RFC3339),
+					}
+				}
+				desired := DesiredApp{App: App{Repo: "https://github.com/bex-co/bex", Type: appv1alpha1.TypeStaticSite}}
+
+				r.recordDeploy(ctx, desired, m.deploys["dep-1"], cur)
+
+				got := m.deploys["dep-1"]
+				if got.Status != DeployBuildFailed || got.FailureReason != said {
+					t.Fatalf("row = %q / %q, want build_failed with the clone's sentence", got.Status, got.FailureReason)
+				}
+				started, hasStarted := m.eventFacts["deploy:dep-1:build_started"]
+				ended, hasEnded := m.eventFacts["deploy:dep-1:build_ended"]
+				if !recorded {
+					if got.StartedAt != nil || hasStarted || hasEnded {
+						t.Fatalf("no window: started_at %v, build facts %+v / %+v; want no build reported", got.StartedAt, started, ended)
+					}
+					return
+				}
+				if got.StartedAt == nil || !got.StartedAt.Equal(start) {
+					t.Errorf("started_at = %v, want the clone's start %v", got.StartedAt, start)
+				}
+				if !hasStarted || !started.At.Equal(start) {
+					t.Errorf("build_started = %+v (present %v), want it at the clone's start %v", started, hasStarted, start)
+				}
+				if !hasEnded || ended.Status != EventStatusFailed || !ended.At.Equal(finish) {
+					t.Errorf("build_ended = %+v (present %v), want failed at the clone's finish %v", ended, hasEnded, finish)
+				}
+			})
+		}
 	}
 }

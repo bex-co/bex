@@ -75,3 +75,38 @@ func TestImageRestartWithUnknownStartNarratesNoStartBanner(t *testing.T) {
 		t.Fatalf("observed-start narration = %v, want the image banner at %s", got, observed)
 	}
 }
+
+// TestDirectPublishFirstSeenFailedNarratesItsClone is the w32/034 log half: a
+// static site with no build command whose clone failed before the operator
+// first looked closed queued → build_failed, and its build log read
+// "==> Deploy queued" before "==> Build failed". The operator now records the
+// clone's window, so the row has a start and a build_started fact (Built) and
+// its log tells the clone as the build, as on the path the operator observed.
+func TestDirectPublishFirstSeenFailedNarratesItsClone(t *testing.T) {
+	const said = `could not fetch "qa-r475-no-such-branch" from this service's repository — check that the branch or commit exists and that bex still has access to the repo`
+	app := sampleApp("site")
+	app.Spec.Type = "static_site"
+	app.Spec.Repo, app.Spec.Branch = "https://github.com/bex-co/bex", "qa-r475-no-such-branch"
+	created := time.Date(2026, 11, 16, 3, 5, 58, 0, time.UTC)
+	row := DeployProgress{
+		ID: "dep-1", Generation: 3, Status: "build_failed", FailureReason: said, Built: true,
+		CreatedAt: created, StartedAt: created.Add(3 * time.Second), FinishedAt: created.Add(18 * time.Second),
+	}
+	narrate := func(d DeployProgress) []string {
+		var out []string
+		for _, e := range progressLines(d, newProgressContext(app)) {
+			out = append(out, e.Message)
+		}
+		return out
+	}
+	want := []string{"==> Build queued", "==> Building from https://github.com/bex-co/bex@qa-r475-no-such-branch", "==> Build failed: " + said}
+	if got := narrate(row); !slices.Equal(got, want) {
+		t.Errorf("with the clone's window = %q, want %q", got, want)
+	}
+
+	// No window on record: no start and no build fact, the log round 475 read.
+	row.Built, row.StartedAt = false, time.Time{}
+	if got := narrate(row); !slices.Equal(got, []string{"==> Deploy queued", "==> Build failed: " + said}) {
+		t.Errorf("without a window = %q, want the queued deploy and the build failure only", got)
+	}
+}

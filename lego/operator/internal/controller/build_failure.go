@@ -126,19 +126,20 @@ func platformFetchMessage(f build.PlatformFetch) string {
 	return "bex could not download its " + f.Tool + how + "; this is a platform problem, not a problem with your code — trigger a new deploy to retry, and contact support if it keeps happening"
 }
 
-// stampBuildRun records a failed build's execution window on the App status
-// (w6/m123). Called just before r.fail so it rides the same status update as
-// the Build condition — the two can never be observed apart. A window the Job
-// never reported writes nothing: bex-api treats an absent window as "start
-// unknown" and leaves the deploy row's started_at honestly null rather than
-// fabricating one at observation time.
-func stampBuildRun(app *appv1alpha1.App, obs build.Observation) {
-	if obs.StartedAt.IsZero() || obs.FinishedAt.IsZero() {
+// stampBuildRun records a failed build's execution window on the App status:
+// a build Job's (w6/m123), or a direct static publish's clone step (w32/034).
+// Called just before r.fail so it rides the same status update as the Build
+// condition — the two can never be observed apart. A window the Job never
+// reported writes nothing: bex-api treats an absent window as "start unknown"
+// and leaves the deploy row's started_at honestly null rather than fabricating
+// one at observation time.
+func stampBuildRun(app *appv1alpha1.App, start, finish time.Time) {
+	if start.IsZero() || finish.IsZero() {
 		return
 	}
 	app.Status.BuildRun = &appv1alpha1.BuildRunStatus{
 		Generation: releaseGeneration(app),
-		StartedAt:  obs.StartedAt.UTC().Format(time.RFC3339),
-		FinishedAt: obs.FinishedAt.UTC().Format(time.RFC3339),
+		StartedAt:  start.UTC().Format(time.RFC3339),
+		FinishedAt: finish.UTC().Format(time.RFC3339),
 	}
 }

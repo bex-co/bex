@@ -149,7 +149,7 @@ func TestStampBuildRun(t *testing.T) {
 	app.Generation = 4
 	app.Status.ReleaseGeneration = 3
 
-	stampBuildRun(app, build.Observation{StartedAt: start, FinishedAt: finish})
+	stampBuildRun(app, start, finish)
 	br := app.Status.BuildRun
 	if br == nil || br.Generation != 3 {
 		t.Fatalf("BuildRun = %+v, want release-generation 3 attribution", br)
@@ -162,7 +162,7 @@ func TestStampBuildRun(t *testing.T) {
 
 	// An unknown window must not clobber nothing onto the status either way.
 	fresh := &appv1alpha1.App{}
-	stampBuildRun(fresh, build.Observation{})
+	stampBuildRun(fresh, time.Time{}, time.Time{})
 	if fresh.Status.BuildRun != nil {
 		t.Fatalf("zero window stamped %+v, want nil", fresh.Status.BuildRun)
 	}

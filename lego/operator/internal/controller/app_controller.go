@@ -1383,7 +1383,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		// and PodFailurePolicy internals to the tenant).
 		logf.FromContext(ctx).Info("build failed",
 			"app", app.Name, "fault", string(obs.Fault), "step", obs.FailedStep, "jobMessage", obs.Message)
-		stampBuildRun(app, obs)
+		stampBuildRun(app, obs.StartedAt, obs.FinishedAt)
 		return halt(r.fail(ctx, app, view.reason, errors.New(buildFailureMessage(view, obs))))
 	case build.PhaseWaiting:
 		// Dispatched, but no pod placed yet — capacity wait. Report BuildQueued so
@@ -4875,6 +4875,9 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 			// durable Build condition bex-api closes the row build_failed from,
 			// and over a release that already served it keeps that release
 			// serving (settleFailureOverPriorRelease), so m155's guarantee holds.
+			// The clone's own window rides the same write, so a publish first
+			// seen already failed still reports the build it ran (w32/034).
+			stampBuildRun(app, obs.StartedAt, obs.FinishedAt)
 			return r.fail(ctx, app, appv1alpha1.ReasonBuildFailedUserError, errors.New(obs.Message))
 		}
 		return r.failPublish(ctx, app, errors.New(obs.Message))

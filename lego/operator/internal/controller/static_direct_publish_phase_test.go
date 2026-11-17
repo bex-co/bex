@@ -17,6 +17,8 @@ limitations under the License.
 package controller
 
 import (
+	"time"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,9 +41,10 @@ import (
 var _ = Describe("a direct static publish (w32/028)", func() {
 	const ns = "default"
 	const name = "site-direct-build-phase"
+	const repo = "https://github.com/bex-co/bex"
 	nn := types.NamespacedName{Name: name, Namespace: ns}
 
-	reconcileN := func() {
+	reconcileN := func(nn types.NamespacedName) {
 		r := &AppReconciler{
 			Client: k8sClient, Scheme: k8sClient.Scheme(),
 			Mode: ModeKubernetes, BaseDomain: "onbex.co", ClusterIssuer: "letsencrypt-prod",
@@ -52,7 +55,7 @@ var _ = Describe("a direct static publish (w32/028)", func() {
 			_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 		}
 	}
-	expectPhase := func(phase appv1alpha1.AppPhase, reason, says string) {
+	expectPhase := func(nn types.NamespacedName, phase appv1alpha1.AppPhase, reason, says string) {
 		app := envtestApp(nn)
 		Expect(app.Status.Phase).To(Equal(phase))
 		ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
@@ -62,8 +65,8 @@ var _ = Describe("a direct static publish (w32/028)", func() {
 	}
 	// job is the current release's publish Job (envtest has no Job controller
 	// and no kubelet, so the test plays both).
-	job := func() *batchv1.Job {
-		jobNN := types.NamespacedName{Name: publish.JobName(name, releaseRevision(envtestApp(nn))), Namespace: ns}
+	job := func(nn types.NamespacedName) *batchv1.Job {
+		jobNN := types.NamespacedName{Name: publish.JobName(nn.Name, releaseRevision(envtestApp(nn))), Namespace: ns}
 		var j batchv1.Job
 		Eventually(func() error { return k8sClient.Get(ctx, jobNN, &j) }, "30s", "250ms").Should(Succeed())
 		return &j
@@ -81,15 +84,18 @@ var _ = Describe("a direct static publish (w32/028)", func() {
 		DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
 		return pod
 	}
-	endClone := func(pod *corev1.Pod, exit int32, said string) {
+	endClone := func(pod *corev1.Pod, exit int32, said string, started, finished metav1.Time) {
 		pod.Status.InitContainerStatuses = []corev1.ContainerStatus{{
-			Name:  "clone",
-			State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: exit, Message: said}},
+			Name: "clone",
+			State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: exit, Message: said, StartedAt: started, FinishedAt: finished,
+			}},
 		}}
 		Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
 	}
-
-	It("reports the clone as the build and fails the build for a branch it cannot fetch", func() {
+	// createSite creates a static site with no build command, so it publishes
+	// straight from a clone, plus the object-store credential its publish reads.
+	createSite := func(nn types.NamespacedName, branch string) {
 		credential := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "static-s3", Namespace: ns},
 			Data:       map[string][]byte{"AWS_ACCESS_KEY_ID": []byte("a"), "AWS_SECRET_ACCESS_KEY": []byte("s")},
@@ -99,35 +105,39 @@ var _ = Describe("a direct static publish (w32/028)", func() {
 		} else {
 			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
 		}
-		const repo = "https://github.com/bex-co/bex"
 		app := &appv1alpha1.App{
-			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: ns},
 			Spec: appv1alpha1.AppSpec{
-				Type: appv1alpha1.TypeStaticSite, Repo: repo,
+				Type: appv1alpha1.TypeStaticSite, Repo: repo, Branch: branch,
 				RootDir: "examples/static-site", PublishPath: ".", Expose: true,
 			},
 		}
 		Expect(k8sClient.Create(ctx, app)).To(Succeed())
 		DeferCleanup(func() { _ = k8sClient.Delete(ctx, app) })
+	}
+	const said = `could not fetch "no-such-branch-b97f" from this service's repository — check that the branch or commit exists and that bex still has access to the repo`
+
+	It("reports the clone as the build and fails the build for a branch it cannot fetch", func() {
+		createSite(nn, "")
 
 		By("queueing the build until the publish pod is on a node")
-		reconcileN()
-		expectPhase(appv1alpha1.PhaseBuilding, reasonBuildQueued, "waiting for its build pod to be created")
+		reconcileN(nn)
+		expectPhase(nn, appv1alpha1.PhaseBuilding, reasonBuildQueued, "waiting for its build pod to be created")
 
 		By("building while the clone step runs")
-		first := job()
+		first := job(nn)
 		pod := placePod(first)
-		reconcileN()
-		expectPhase(appv1alpha1.PhaseBuilding, reasonBuilding, "Building the site from "+repo)
+		reconcileN(nn)
+		expectPhase(nn, appv1alpha1.PhaseBuilding, reasonBuilding, "Building the site from "+repo)
 
 		By("rolling out once the clone step exited 0")
-		endClone(pod, 0, "")
-		reconcileN()
-		expectPhase(appv1alpha1.PhaseDeploying, reasonPublishing, "Publishing static output")
+		endClone(pod, 0, "", metav1.Now(), metav1.Now())
+		reconcileN(nn)
+		expectPhase(nn, appv1alpha1.PhaseDeploying, reasonPublishing, "Publishing static output")
 
 		By("serving the published release")
 		completeEnvtestJob(first, metav1.Now())
-		reconcileN()
+		reconcileN(nn)
 		served := envtestApp(nn)
 		Expect(served.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
 		servedRev := served.Status.ActiveRevision
@@ -137,14 +147,13 @@ var _ = Describe("a direct static publish (w32/028)", func() {
 		latest := envtestApp(nn)
 		latest.Spec.Branch = "no-such-branch-b97f"
 		Expect(k8sClient.Update(ctx, latest)).To(Succeed())
-		reconcileN()
+		reconcileN(nn)
 		failedGen := releaseGeneration(envtestApp(nn))
-		replacement := job()
+		replacement := job(nn)
 		Expect(replacement.Name).NotTo(Equal(first.Name))
-		const said = `could not fetch "no-such-branch-b97f" from this service's repository — check that the branch or commit exists and that bex still has access to the repo`
-		endClone(placePod(replacement), 66, said+"\n")
+		endClone(placePod(replacement), 66, said+"\n", metav1.Now(), metav1.Now())
 		failEnvtestJob(replacement, "BackoffLimitExceeded", "")
-		reconcileN()
+		reconcileN(nn)
 		failed := envtestApp(nn)
 		Expect(failed.Status.ActiveRevision).To(Equal(servedRev), "the failed revision must never become active")
 		build := meta.FindStatusCondition(failed.Status.Conditions, appv1alpha1.ConditionBuild)
@@ -154,6 +163,39 @@ var _ = Describe("a direct static publish (w32/028)", func() {
 		Expect(build.ObservedGeneration).To(Equal(failedGen))
 		Expect(meta.FindStatusCondition(failed.Status.Conditions, appv1alpha1.ConditionRollout)).To(BeNil(),
 			"a clone failure is the build's verdict, not the rollout's")
-		expectPhase(appv1alpha1.PhaseRunning, reasonPriorReleaseServing, "the latest build failed")
+		expectPhase(nn, appv1alpha1.PhaseRunning, reasonPriorReleaseServing, "the latest build failed")
+	})
+
+	// w32/034: a reconcile of the App that comes later than the publish Job's
+	// whole life (a missing branch fails it within about 16 s) first sees the
+	// Job already failed. The clone step's own window still reaches
+	// status.buildRun for the release, in the same write as the Build verdict,
+	// so bex-api reports the build it never saw running.
+	It("records the clone's window as the build when it first sees the publish already failed", func() {
+		late := types.NamespacedName{Name: "site-direct-build-window", Namespace: ns}
+		createSite(late, "no-such-branch-b97f")
+		reconcileN(late)
+		expectPhase(late, appv1alpha1.PhaseBuilding, reasonBuildQueued, "waiting for its build pod to be created")
+		gen := releaseGeneration(envtestApp(late))
+		Expect(envtestApp(late).Status.BuildRun).To(BeNil())
+
+		By("cloning, failing and ending the Job between two reconciles")
+		started := metav1.NewTime(time.Date(2026, 11, 16, 3, 6, 1, 0, time.UTC))
+		finished := metav1.NewTime(started.Add(14 * time.Second))
+		publishJob := job(late)
+		endClone(placePod(publishJob), 66, said+"\n", started, finished)
+		failEnvtestJob(publishJob, "BackoffLimitExceeded", "")
+		reconcileN(late)
+
+		failed := envtestApp(late)
+		build := meta.FindStatusCondition(failed.Status.Conditions, appv1alpha1.ConditionBuild)
+		Expect(build).NotTo(BeNil())
+		Expect(build.Reason).To(Equal(appv1alpha1.ReasonBuildFailedUserError))
+		Expect(build.ObservedGeneration).To(Equal(gen))
+		Expect(failed.Status.BuildRun).To(Equal(&appv1alpha1.BuildRunStatus{
+			Generation: gen,
+			StartedAt:  "2026-11-16T03:06:01Z",
+			FinishedAt: "2026-11-16T03:06:15Z",
+		}), "the clone step's window is the build the deploy reports")
 	})
 })

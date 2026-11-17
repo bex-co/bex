@@ -240,6 +240,11 @@ type Observation struct {
 	// fault (upload, store). The reconciler closes the deploy build_failed for
 	// it, as Render fails the build for either.
 	UserError bool
+	// StartedAt/FinishedAt are a failed direct publish's clone window (see
+	// cloneWindow), the build bex-api reports when it never saw the clone
+	// running (w32/034). Zero when no pod recorded a finished clone step.
+	StartedAt  time.Time
+	FinishedAt time.Time
 }
 
 // Ensure dispatches the publish Job if absent and returns its CURRENT state
@@ -266,8 +271,18 @@ func Ensure(ctx context.Context, o Options) (Observation, error) {
 	case execution.JobHasCondition(cur, batchv1.JobComplete):
 		return Observation{Phase: PhaseSucceeded}, nil
 	case execution.JobHasCondition(cur, batchv1.JobFailed):
-		msg, userErr := failureMessage(ctx, o.Client, cur)
-		return Observation{Phase: PhaseFailed, Message: msg, UserError: userErr}, nil
+		// Best effort: a listing error or a pod already swept leaves the
+		// Job-level reason and no clone window.
+		pods, err := jobPods(ctx, o.Client, cur)
+		if err != nil {
+			pods = nil
+		}
+		msg, userErr := failureMessage(cur, pods)
+		obs := Observation{Phase: PhaseFailed, Message: msg, UserError: userErr}
+		if o.Repo != "" {
+			obs.StartedAt, obs.FinishedAt = cloneWindow(pods)
+		}
+		return obs, nil
 	}
 	if o.Repo != "" {
 		return cloneProgress(ctx, o.Client, cur), nil
@@ -332,11 +347,35 @@ const maxFailureDetail = 512
 //
 // The Job-level reason remains the fallback: a Job reaped by
 // activeDeadlineSeconds has no failed container to quote.
-func failureMessage(ctx context.Context, cl client.Client, job *batchv1.Job) (string, bool) {
-	if detail, userErr := failedContainerDetail(ctx, cl, job); detail != "" {
+func failureMessage(job *batchv1.Job, pods []corev1.Pod) (string, bool) {
+	if detail, userErr := failedContainerDetail(pods); detail != "" {
 		return detail, userErr
 	}
 	return execution.JobFailureMessage(job, "unknown publish failure"), false
+}
+
+// cloneWindow is when a direct publish's clone steps ran: from the earliest
+// attempt's start to the latest one's finish, read off the pods' own container
+// statuses, never the operator's observation clock (w32/034). Render counts
+// the clone as the site's build, so this is the build window a deploy first
+// observed already failed reports, as a build Job's own window is (w6/m123).
+// Zero when no pod recorded a finished clone step.
+func cloneWindow(pods []corev1.Pod) (start, finish time.Time) {
+	for i := range pods {
+		for _, cs := range pods[i].Status.InitContainerStatuses {
+			term := cs.State.Terminated
+			if cs.Name != cloneStep || term == nil || term.StartedAt.IsZero() || term.FinishedAt.IsZero() {
+				continue
+			}
+			if start.IsZero() || term.StartedAt.Time.Before(start) {
+				start = term.StartedAt.Time
+			}
+			if term.FinishedAt.After(finish) {
+				finish = term.FinishedAt.Time
+			}
+		}
+	}
+	return start, finish
 }
 
 // userSourceExit is the exit code a publish step uses when the tenant's own
@@ -353,14 +392,10 @@ var failUserSource = "fail " + strconv.Itoa(userSourceExit)
 // the first container of the Job's pods that terminated non-zero, or "" when
 // nothing usable is recorded. A failure the tenant's source caused (exit
 // userSourceExit) returns just what the step said, with no container name or
-// exit code, and reports userErr. Best effort by construction: a listing error or a
-// pod already swept leaves the caller on the Job-level reason rather than
-// failing the observation.
-func failedContainerDetail(ctx context.Context, cl client.Client, job *batchv1.Job) (detail string, userErr bool) {
-	pods, err := jobPods(ctx, cl, job)
-	if err != nil {
-		return "", false
-	}
+// exit code, and reports userErr. Best effort by construction: no pods (a
+// listing error, or pods already swept) leaves the caller on the Job-level
+// reason rather than failing the observation.
+func failedContainerDetail(pods []corev1.Pod) (detail string, userErr bool) {
 	for i := range pods {
 		statuses := append(
 			append([]corev1.ContainerStatus{}, pods[i].Status.InitContainerStatuses...),

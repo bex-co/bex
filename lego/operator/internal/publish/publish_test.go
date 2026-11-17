@@ -21,6 +21,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -905,6 +906,73 @@ func TestMissingPublishDirectoryIsAUserSourceError(t *testing.T) {
 	killed := failedPublishObservation(t, cloneStep, 137, "")
 	if killed.UserError || !strings.Contains(killed.Message, "(exit 137)") {
 		t.Errorf("killed clone = %+v, want an unflagged platform message", killed)
+	}
+}
+
+// w32/034: a failed direct publish says when its clone steps ran, from the
+// first attempt's start to the last one's finish, read off the pods' own
+// statuses, so a deploy first observed already failed still reports the build
+// it ran. A clone that recorded no times, and an extract publish, date nothing.
+func TestFailedDirectPublishReportsItsCloneWindow(t *testing.T) {
+	ctx := context.Background()
+	at := func(sec int) metav1.Time { return metav1.NewTime(time.Date(2026, 11, 16, 3, 6, sec, 0, time.UTC)) }
+	ended := func(container string, started, finished metav1.Time) *corev1.ContainerStatus {
+		return &corev1.ContainerStatus{Name: container, State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+			ExitCode: userSourceExit, Message: `could not fetch "gone" from this service's repository`, StartedAt: started, FinishedAt: finished,
+		}}}
+	}
+	// failed dispatches o's Job and fails it; observe reads it back.
+	failed := func(o Options) *batchv1.Job {
+		t.Helper()
+		if _, err := Ensure(ctx, o); err != nil {
+			t.Fatalf("Ensure: %v", err)
+		}
+		job := &batchv1.Job{}
+		if err := o.Client.Get(ctx, client.ObjectKeyFromObject(PublishJob(o)), job); err != nil {
+			t.Fatalf("get dispatched Job: %v", err)
+		}
+		job.Status.Conditions = []batchv1.JobCondition{{Type: batchv1.JobFailed, Status: corev1.ConditionTrue, Reason: "BackoffLimitExceeded"}}
+		if err := o.Client.Status().Update(ctx, job); err != nil {
+			t.Fatalf("fail Job: %v", err)
+		}
+		return job
+	}
+	observe := func(o Options) Observation {
+		t.Helper()
+		obs, err := Ensure(ctx, o)
+		if err != nil || obs.Phase != PhaseFailed {
+			t.Fatalf("Ensure = %+v, %v; want a failed observation", obs, err)
+		}
+		return obs
+	}
+
+	o := testOptions()
+	o.Image, o.Repo = "", "https://github.com/bex-co/site"
+	cl := fake.NewClientBuilder().Build()
+	o.Client = cl
+	job := failed(o)
+	if obs := observe(o); !obs.StartedAt.IsZero() || !obs.FinishedAt.IsZero() {
+		t.Fatalf("no pod = %+v, want no window", obs)
+	}
+	addJobPod(t, cl, job, "unrecorded", "node-3", ended(cloneStep, metav1.Time{}, metav1.Time{}))
+	if obs := observe(o); !obs.UserError || !obs.StartedAt.IsZero() || !obs.FinishedAt.IsZero() {
+		t.Fatalf("a clone with no recorded times = %+v, want a user error with no window", obs)
+	}
+	addJobPod(t, cl, job, "attempt-a", "node-2", ended(cloneStep, at(12), at(15)))
+	addJobPod(t, cl, job, "attempt-b", "node-1", ended(cloneStep, at(1), at(2)))
+	addJobPod(t, cl, job, "initializing", "node-1", &corev1.ContainerStatus{
+		Name: cloneStep, State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "PodInitializing"}},
+	})
+	obs := observe(o)
+	if !obs.UserError || !obs.StartedAt.Equal(at(1).Time) || !obs.FinishedAt.Equal(at(15).Time) {
+		t.Fatalf("two clone attempts = %+v, want a user error from the first start %v to the last finish %v", obs, at(1), at(15))
+	}
+
+	extract := testOptions()
+	extract.Client = fake.NewClientBuilder().Build()
+	addJobPod(t, extract.Client, failed(extract), "extract", "node-1", ended("extract", at(1), at(2)))
+	if obs := observe(extract); !obs.UserError || !obs.StartedAt.IsZero() || !obs.FinishedAt.IsZero() {
+		t.Fatalf("extract publish = %+v, want a user error with no clone window", obs)
 	}
 }
 
