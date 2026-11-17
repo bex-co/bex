@@ -18,13 +18,16 @@ package apps
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -587,12 +590,10 @@ func TestServiceCreateLinkedDockerCommand(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
-	// Not validated(): a linked service's response omits Render's required
-	// serviceDetails.runtime and env whatever its command (w3/070).
 	create := func(name, typ, source, details string) *httptest.ResponseRecorder {
 		body := `{"ownerId":"tea-a","name":"` + name + `","type":"` + typ + `","serviceDetails":{"buildSourceId":"` + source + `",` + details + `}}`
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)).WithContext(ctx))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)).WithContext(ctx))
 		return rec
 	}
 	for _, tc := range []struct{ name, typ, details string }{
@@ -617,5 +618,120 @@ func TestServiceCreateLinkedDockerCommand(t *testing.T) {
 	}
 	if rec := create("api", "web_service", native.ID, `"envSpecificDetails":{"startCommand":"node api.js"}`); rec.Code != http.StatusCreated {
 		t.Fatalf("startCommand on a native source = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+// w3/070: a service linked to a build source reads the source's runtime as
+// Render's required serviceDetails.runtime and env, on create, get and list
+// alike, and its envSpecificDetails takes that runtime's shape: the source's
+// build settings around the service's own command, in the field the link rule
+// takes it (startCommand for a native source, dockerCommand for a Docker or
+// image one, and a cron's startCommand, the field the pinned client reads a
+// cron's command from). A list reads each build source once.
+func TestLinkedServiceReadsItsBuildSourceRuntime(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	native, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	docker, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{OwnerID: "tea-a", Name: "Docker", Git: &BuildSourceGit{
+		RepoURL: "https://github.com/acme/mono", Branch: "main", Runtime: "docker", RootDir: "backend", DockerfilePath: "api.Dockerfile",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	image, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{OwnerID: "tea-a", Name: "Img", Image: &BuildSourceImage{ImageURL: "busybox:1.36.1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reads := map[string]int{}
+	svc.Client = interceptor.NewClient(svc.Client.(client.WithWatch), interceptor.Funcs{
+		List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+			var o client.ListOptions
+			o.ApplyOptions(opts)
+			if o.LabelSelector != nil {
+				if id, ok := o.LabelSelector.RequiresExactMatch(core.LabelAppID); ok && strings.HasPrefix(id, "bds-") {
+					reads[id]++
+				}
+			}
+			return c.List(ctx, list, opts...)
+		},
+	})
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	serve := func(method, path, body string) []byte {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(ctx))
+		if rec.Code != http.StatusOK && rec.Code != http.StatusCreated {
+			t.Fatalf("%s %s = %d %s", method, path, rec.Code, rec.Body.String())
+		}
+		return rec.Body.Bytes()
+	}
+	// The bare mux's services share one fake id, so each is read by name.
+	type service struct {
+		Name           string         `json:"name"`
+		ServiceDetails map[string]any `json:"serviceDetails"`
+	}
+	dockerGit := docker.Git
+	for _, tc := range []struct {
+		name, typ, source, details string
+		runtime                    string
+		env                        map[string]any
+	}{
+		{"api", "web_service", native.ID, `"envSpecificDetails":{"startCommand":"node api.js"}`, "node",
+			map[string]any{"buildCommand": "npm ci && npm run build", "startCommand": "node api.js", "preDeployCommand": ""}},
+		{"job", "cron_job", native.ID, `"schedule":"0 3 * * *","envSpecificDetails":{"startCommand":"node job.js"}`, "node",
+			map[string]any{"buildCommand": "npm ci && npm run build", "startCommand": "node job.js", "preDeployCommand": ""}},
+		{"dweb", "web_service", docker.ID, `"envSpecificDetails":{"dockerCommand":"./serve"}`, "docker",
+			map[string]any{"dockerCommand": "./serve", "dockerContext": dockerGit.DockerContext, "dockerfilePath": dockerGit.DockerfilePath}},
+		{"iweb", "web_service", image.ID, `"envSpecificDetails":{"dockerCommand":"httpd -f -p 10000"}`, "image",
+			map[string]any{"dockerCommand": "httpd -f -p 10000"}},
+		{"ijob", "cron_job", image.ID, `"schedule":"0 3 * * *","envSpecificDetails":{"dockerCommand":"date"}`, "image",
+			map[string]any{"startCommand": "date"}},
+	} {
+		var created struct {
+			Service service `json:"service"`
+		}
+		body := `{"ownerId":"tea-a","name":"` + tc.name + `","type":"` + tc.typ + `","serviceDetails":{"buildSourceId":"` + tc.source + `",` + tc.details + `}}`
+		if err := json.Unmarshal(serve(http.MethodPost, "/v1/services", body), &created); err != nil {
+			t.Fatal(err)
+		}
+		var got service
+		if err := json.Unmarshal(serve(http.MethodGet, "/v1/services/"+tc.name, ""), &got); err != nil {
+			t.Fatal(err)
+		}
+		for surface, details := range map[string]map[string]any{"create": created.Service.ServiceDetails, "get": got.ServiceDetails} {
+			if details["runtime"] != tc.runtime || details["env"] != tc.runtime || !reflect.DeepEqual(details["envSpecificDetails"], tc.env) {
+				t.Errorf("%s %s: runtime %v, env %v, envSpecificDetails %v; want %s and %v",
+					surface, tc.name, details["runtime"], details["env"], details["envSpecificDetails"], tc.runtime, tc.env)
+			}
+		}
+	}
+	if dockerGit.DockerfilePath != "api.Dockerfile" || dockerGit.DockerContext == "" {
+		t.Fatalf("docker build source git = %+v, want its own paths for the linked service to read", dockerGit)
+	}
+
+	clear(reads)
+	var page []struct {
+		Service service `json:"service"`
+	}
+	if err := json.Unmarshal(serve(http.MethodGet, "/v1/services", ""), &page); err != nil {
+		t.Fatal(err)
+	}
+	if len(page) != 5 {
+		t.Fatalf("list = %d services, want 5", len(page))
+	}
+	for _, item := range page {
+		var got service
+		if err := json.Unmarshal(serve(http.MethodGet, "/v1/services/"+item.Service.Name, ""), &got); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(item.Service.ServiceDetails, got.ServiceDetails) {
+			t.Errorf("list %s serviceDetails = %v, want get's %v", item.Service.Name, item.Service.ServiceDetails, got.ServiceDetails)
+		}
+	}
+	if want := map[string]int{native.ID: 1 + 2, docker.ID: 1 + 1, image.ID: 1 + 2}; !reflect.DeepEqual(reads, want) {
+		t.Errorf("build source reads = %v, want one per source for the list, then one per get: %v", reads, want)
 	}
 }

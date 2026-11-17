@@ -41,8 +41,9 @@ import (
 // metadata Sources retired the fixture-only metadata entries, and serviceDetails
 // gained buildPlan and healthCheckPath; then to 34 (fixture plan, publishPath
 // and disk id; ADR018 § Production-shaped fixtures), then to 32 (a Postgres
-// create stores its default major, w4/m378 t013).
-const allowlistSize = 32
+// create stores its default major, w4/m378 t013), then to 30 (a service
+// linked to a build source reads the source's runtime, w3/070).
+const allowlistSize = 30
 
 func TestAllowlistOnlyShrinks(t *testing.T) {
 	n := 0

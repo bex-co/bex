@@ -28,6 +28,8 @@ import (
 	"strings"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -952,6 +954,53 @@ func sourceForImageRules(spec appv1alpha1.AppSpec, carrier *appv1alpha1.App) app
 	source.Repo, source.Image = carrier.Spec.Repo, carrier.Spec.Image
 	source.Runtime, source.Builder = carrier.Spec.Runtime, carrier.Spec.Builder
 	return source
+}
+
+// linkedBuildView is app as a REST read states it: a service linked to a
+// build source reads the source's runtime, which Render's serviceDetails
+// requires as runtime and env and which "the build source provides"
+// (Render's create-service), and the source's build settings, which the
+// service's own spec has cleared (linkBuildSourceSpec). envSpecificDetails
+// then takes that runtime's shape around the service's own command (w3/070).
+// carriers caches each build source for a page; one that cannot be read
+// leaves app as it is.
+func (s *Service) linkedBuildView(ctx context.Context, app AppView, carriers map[string]*appv1alpha1.App) AppView {
+	if app.BuildSourceID == "" {
+		return app
+	}
+	key := app.OwnerID + "/" + app.BuildSourceID
+	carrier, seen := carriers[key]
+	if !seen {
+		carrier = s.linkedBuildSource(ctx, app.OwnerID, app.BuildSourceID)
+		carriers[key] = carrier
+	}
+	if carrier == nil {
+		return app
+	}
+	app.Runtime = core.EffectiveRuntime(carrier.Spec, carrier.Spec.Type)
+	app.BuildCommand = carrier.Spec.BuildCommand
+	app.DockerContext, app.DockerfilePath = viewDockerContext(carrier.Spec), carrier.Spec.DockerfilePath
+	return app
+}
+
+// linkedBuildSource is the carrier of build source id in workspace ownerID,
+// nil when there is none to read.
+func (s *Service) linkedBuildSource(ctx context.Context, ownerID, id string) *appv1alpha1.App {
+	labels := client.MatchingLabels{core.LabelAppID: id}
+	if ownerID != "" {
+		labels[core.LabelTenant] = ownerID
+	}
+	var list appv1alpha1.AppList
+	if err := s.Client.List(ctx, &list, labels); err != nil {
+		log.Printf("apps: read build source %s of a linked service: %v", id, err)
+		return nil
+	}
+	for i := range list.Items {
+		if core.IsBuildSource(&list.Items[i]) {
+			return &list.Items[i]
+		}
+	}
+	return nil
 }
 
 // buildSourceStartRule is Render's command rule for a service linked to build

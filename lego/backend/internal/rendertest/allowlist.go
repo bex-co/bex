@@ -80,7 +80,6 @@ var Allowlist = map[string][]Divergence{
 	),
 	"update-service": join(
 		details(SuiteAPI, "envSpecificDetails", "url"),
-		details(SuiteApps, "env", "runtime"),
 		imageCommands(SuiteApps),
 	),
 

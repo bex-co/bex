@@ -729,7 +729,8 @@ func (s *Service) renderService(a AppView) renderService {
 }
 
 // restServices enriches a whole page through one owner batch lookup (one
-// ResolveResourceOwners call) and one registry-credential batch query.
+// ResolveResourceOwners call), one registry-credential batch query and one
+// read per linked build source (linkedBuildView).
 func (s *Service) restServices(ctx context.Context, apps []AppView) []renderService {
 	ownerIDs := make([]string, 0, len(apps))
 	for _, app := range apps {
@@ -737,9 +738,10 @@ func (s *Service) restServices(ctx context.Context, apps []AppView) []renderServ
 	}
 	owners := resourcemeta.ResolveOwners(ctx, s.Owners, ownerIDs)
 	credNames := s.resolveCredentialNames(ctx, apps)
+	carriers := map[string]*appv1alpha1.App{}
 	out := make([]renderService, 0, len(apps))
 	for _, app := range apps {
-		rendered := s.renderService(app)
+		rendered := s.renderService(s.linkedBuildView(ctx, app, carriers))
 		if owner, ok := owners[app.OwnerID]; ok {
 			rendered.Owner = ownerToRender(owner)
 		}
