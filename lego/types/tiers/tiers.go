@@ -103,7 +103,8 @@ type PostgresTier struct {
 	Backup bool `json:"backup"`
 	// MaxConnections is Render's connection limit for the plan, PostgreSQL's
 	// max_connections: the client connections a database accepts before the
-	// server refuses the next (w6/m457).
+	// server refuses the next (w6/m457). The operator sets it on the server,
+	// where no declared parameter can change it (w6/134).
 	MaxConnections int32 `json:"maxConnections"`
 }
 

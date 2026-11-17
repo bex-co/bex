@@ -645,6 +645,8 @@ func TestOperatorManagedParameterNames(t *testing.T) {
 		"extwlist.extensions", "extwlist.restrict_to_database_owner",
 		"local_preload_libraries", "session_preload_libraries",
 		"timescaledb.license", "duckdb.enable_external_access",
+		// The plan's connection limit (w6/134).
+		"max_connections",
 	}
 	for _, name := range managed {
 		if got := operatorManagedParameterNames(map[string]string{name: "x", "work_mem": "8MB"}); len(got) != 1 || got[0] != name {
@@ -657,7 +659,7 @@ func TestOperatorManagedParameterNames(t *testing.T) {
 	}
 	// Ordinary tuning is the tenant's and must not be stripped.
 	for _, name := range []string{"work_mem", "maintenance_work_mem", "shared_buffers", "effective_cache_size",
-		"max_connections", "random_page_cost", "statement_timeout", "idle_in_transaction_session_timeout",
+		"random_page_cost", "statement_timeout", "idle_in_transaction_session_timeout",
 		"default_statistics_target", "autovacuum_vacuum_scale_factor", "max_parallel_workers", "timezone"} {
 		if got := operatorManagedParameterNames(map[string]string{name: "x"}); len(got) != 0 {
 			t.Errorf("%q wrongly treated as platform-managed: %v", name, got)

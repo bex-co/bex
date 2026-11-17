@@ -217,7 +217,8 @@ type clusterParams struct {
 	currentInstances int64
 	// parameters are additional postgresql.conf key-value overrides from
 	// Database.spec.parameters. Merged on top of the built-in defaults;
-	// shared_preload_libraries is always forced to include pg_stat_statements.
+	// shared_preload_libraries is always forced to include pg_stat_statements,
+	// and max_connections is always the plan's.
 	parameters map[string]string
 	// serverAltDNSNames are public SNI names that CNPG must include in its
 	// generated server certificate. Without these SANs, verify-full clients
@@ -621,10 +622,19 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		"log_lock_waits":           "on",
 	}
 	for k, v := range p.parameters {
-		if !strings.EqualFold(strings.TrimSpace(k), "shared_preload_libraries") && !managedExtensionParameter(k) {
+		name := strings.ToLower(strings.TrimSpace(k))
+		if name != "shared_preload_libraries" && name != "max_connections" && !managedExtensionParameter(name) {
 			pgParams[k] = v
 		}
 	}
+	// max_connections is the plan's connection limit, Render's figure for the
+	// plan (tiers maxConnections, w6/134). It is the platform's: a legacy
+	// declared value of any spelling is dropped above, because PgBouncer's
+	// pool (maxConnections - 10) and the SNI proxies' route admission are
+	// sized from the same figure. Changing it needs a PostgreSQL restart,
+	// which CNPG rolls. PostgreSQL's default is 100, every current plan's, so
+	// an existing cluster adopts the setting on a reload, without one.
+	pgParams["max_connections"] = strconv.Itoa(int(p.plan.MaxConnections))
 	preload := []any{"pg_stat_statements"}
 	// A bex operand's extension allowlist (ADR092 D3) is only projected with
 	// the image that carries it: on any other image these libraries do not

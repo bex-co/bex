@@ -310,7 +310,8 @@ type DatabaseSpec struct {
 	// Key is the parameter name (e.g. "log_min_duration_statement"), value is
 	// the string setting. Changes take effect on the next CNPG reconcile;
 	// parameters requiring a restart trigger a rolling restart.
-	// shared_preload_libraries is always overridden to include pg_stat_statements.
+	// shared_preload_libraries is always overridden to include pg_stat_statements,
+	// and max_connections is always the plan's connection limit.
 	// +optional
 	Parameters map[string]string `json:"parameters,omitempty"`
 }

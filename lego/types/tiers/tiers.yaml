@@ -34,8 +34,9 @@
 #             maxConnections is Render's connection limit for the plan
 #             (render.com/docs/compute-plans, read 2026-11-17: 100 up to
 #             4 GB, 200 at 8 GB, 400 at 16 GB, 500 from 32 GB), PostgreSQL's
-#             max_connections; the external front door admits each route up
-#             to it (w6/m457, ADR009).
+#             max_connections, which the operator sets on the server
+#             (w6/134); the external front door admits each route up to it
+#             (w6/m457, ADR009).
 #
 #   valkey:   managed key-value (Valkey) instance types (the KeyValue CRD's
 #             spec.plan), the Redis-compatible sibling of the postgres family —

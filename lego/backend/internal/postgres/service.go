@@ -1689,6 +1689,10 @@ var operatorManagedParameters = map[string]bool{
 	// session, and a tenant library list would replace it or load another.
 	"local_preload_libraries":   true,
 	"session_preload_libraries": true,
+	// The plan's connection limit, Render's figure (w6/134). The operator
+	// sets it from the plan and ignores a declared value, so a recovery does
+	// not carry one in as a declaration that never applies.
+	"max_connections": true,
 }
 
 // operatorManagedParameterPrefixes match whole families, so a knob the exact
