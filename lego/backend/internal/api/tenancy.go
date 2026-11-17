@@ -99,6 +99,10 @@ type tenantService struct {
 	// map would let membership churn evict every caller's default-workspace
 	// resolution, sending them all back to Postgres.
 	members *core.TTLCache[string]
+	// recent remembers each person's personal workspace for recentTenantTTL
+	// after onboarding last resolved it, so a transient store or OpenFGA fault
+	// on a cache miss serves that workspace instead of a 503 (w32/m446).
+	recent *core.TTLCache[string]
 	// Audit records the members.AcceptInvite row for each login-time invite
 	// redemption (w1/m33) — the one membership mutation that happens outside a
 	// feature verb's authorize interception. Nil => unrecorded (store-off /
@@ -119,7 +123,67 @@ func NewTenantService(s TenantStore, granter store.MembershipGranter) *tenantSer
 	if s == nil {
 		return nil
 	}
-	return &tenantService{store: s, granter: granter, cache: core.NewTTLCache[string](), members: core.NewTTLCache[string]()}
+	return &tenantService{store: s, granter: granter, cache: core.NewTTLCache[string](), members: core.NewTTLCache[string](), recent: core.NewTTLCache[string]()}
+}
+
+// recentTenantTTL bounds how long after a successful onboarding a person's
+// personal workspace can stand in for a cache-miss resolution that failed.
+const recentTenantTTL = 10 * time.Minute
+
+// The kinds of dependency an onboarding step reads or writes, named in the 503
+// a caller gets when the step fails.
+const (
+	depStore = "workspace store"
+	depAuthz = "authorization service"
+)
+
+// The onboarding steps that can fail a request. Each names what it was doing,
+// in the log line and in the 503 body.
+const (
+	stepTombstone = "account deletion check"
+	stepOwnerRead = "personal workspace lookup"
+	stepCreate    = "personal workspace creation"
+	stepGrant     = "workspace admin grant"
+	stepReread    = "personal workspace re-read"
+	stepRevoke    = "admin revoke after the workspace binding ended"
+)
+
+// onboardingStepError is an EnsureTenant failure that names its step and the
+// dependency behind it (w32/m446). The auth gate logs the whole error and
+// answers onboardingUnavailableMessage, which carries the step and dependency
+// but never the cause's own text: a store error can carry SQL or a connection
+// string.
+type onboardingStepError struct {
+	step, dependency string
+	err              error
+}
+
+func (e *onboardingStepError) Error() string {
+	return e.step + " failed (" + e.dependency + "): " + e.err.Error()
+}
+
+func (e *onboardingStepError) Unwrap() error { return e.err }
+
+// stepFailed tags err with the step that produced it. A coded refusal (account
+// deletion pending) is a public answer of its own and passes through as is.
+func stepFailed(step, dependency string, err error) error {
+	var coded *core.CodedError
+	if err == nil || errors.As(err, &coded) {
+		return err
+	}
+	return &onboardingStepError{step: step, dependency: dependency, err: err}
+}
+
+// onboardingUnavailableMessage is the 503 body for an onboarding failure that is
+// not a coded refusal: which step failed against which dependency, when the
+// error says.
+func onboardingUnavailableMessage(err error) string {
+	const msg = "tenant onboarding unavailable"
+	var step *onboardingStepError
+	if errors.As(err, &step) {
+		return msg + ": " + step.step + " failed (" + step.dependency + ")"
+	}
+	return msg
 }
 
 // cacheKey namespaces the resolver cache by auth method so a Kratos identity id
@@ -159,17 +223,22 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 	// ADR086: the tombstone wins over even a positive tenant cache entry. It is
 	// checked before invite redemption and tenant creation so cleanup can never
 	// race a request into reminting the personal workspace.
+	//
+	// A tombstone that cannot be read fails the request closed, cache or no
+	// cache: an unreadable tombstone could be a deletion in progress, and only
+	// the tombstone keeps a deleted account from being served (w32/m446 t003).
+	key := cacheKey(methodSession, identityID)
 	if deletions, ok := t.store.(accountDeletionReader); ok {
 		pending, err := deletions.AccountDeletionTombstoned(ctx, identityID)
 		if err != nil {
-			return "", err
+			return "", stepFailed(stepTombstone, depStore, err)
 		}
 		if pending {
-			t.cache.Delete(cacheKey(methodSession, identityID))
+			t.cache.Delete(key)
+			t.recent.Delete(key)
 			return "", core.NewAccountDeletionPendingError()
 		}
 	}
-	key := cacheKey(methodSession, identityID)
 	if tid, ok := t.cache.Get(key); ok {
 		return tid, nil
 	}
@@ -186,11 +255,41 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 		tenant, err = t.personalTenant(ctx, identityID)
 	}
 	if err != nil {
-		return "", err
+		return t.servedThroughFault(identityID, tenant, err)
 	}
 	t.nameSignupWorkspace(ctx, tenant, email)
-	t.cache.Put(key, tenant.ID, time.Now().Add(core.PositiveTTL))
+	now := time.Now()
+	t.cache.Put(key, tenant.ID, now.Add(core.PositiveTTL))
+	t.recent.Put(key, tenant.ID, now.Add(recentTenantTTL))
 	return tenant.ID, nil
+}
+
+// servedThroughFault answers a cache-miss onboarding failure. A person whose
+// personal workspace onboarding resolved within recentTenantTTL keeps that
+// workspace through a transient fault, instead of a 503, when nothing says the
+// workspace stopped being theirs: the owner lookup itself failed, or the admin
+// grant failed on that same workspace. The workspace goes back in the cache for
+// core.PositiveTTL, as a hit would have served it, and the fault is logged.
+//
+// Serving it grants nothing: every verb still authorizes against OpenFGA. A
+// first-ever caller has no recent workspace and still gets the error, and so
+// does a failure after a grant this request wrote (the re-read that decides
+// whether to take the grant back), a creation (the old binding is gone) or a
+// tombstone read, which runs before this.
+func (t *tenantService) servedThroughFault(identityID string, tenant store.Tenant, err error) (string, error) {
+	var step *onboardingStepError
+	if !errors.As(err, &step) {
+		return "", err
+	}
+	key := cacheKey(methodSession, identityID)
+	recent, ok := t.recent.Get(key)
+	if !ok || !(step.step == stepOwnerRead || step.step == stepGrant && tenant.ID == recent) {
+		return "", err
+	}
+	log.Printf("tenancy: serving %s its personal workspace %s, resolved within %s, through a failed onboarding: %v",
+		identityID, recent, recentTenantTTL, err)
+	t.cache.Put(key, recent, time.Now().Add(core.PositiveTTL))
+	return recent, nil
 }
 
 // errOwnerBindingEnded reports that the caller's personal-workspace binding
@@ -221,28 +320,30 @@ func (t *tenantService) personalTenant(ctx context.Context, identityID string) (
 	case errors.Is(err, store.ErrNotFound):
 		tenant, err = t.store.CreateTenantWithMember(ctx, identityID, store.PlanHobby)
 		if errors.Is(err, store.ErrAccountDeletionPending) {
-			t.cache.Delete(cacheKey(methodSession, identityID))
+			key := cacheKey(methodSession, identityID)
+			t.cache.Delete(key)
+			t.recent.Delete(key)
 			return store.Tenant{}, core.NewAccountDeletionPendingError()
 		}
 		if err != nil {
-			return store.Tenant{}, err
+			return store.Tenant{}, stepFailed(stepCreate, depStore, err)
 		}
 	default:
-		return store.Tenant{}, err
+		return store.Tenant{}, stepFailed(stepOwnerRead, depStore, err)
 	}
 	granted, err := t.ensureGranted(ctx, tenant.ID, identityID)
 	if err != nil || !granted {
-		return tenant, err
+		return tenant, stepFailed(stepGrant, depAuthz, err)
 	}
 	again, err := t.store.TenantForOwner(ctx, identityID)
 	switch {
 	case err == nil && again.ID == tenant.ID:
 		return tenant, nil
 	case err != nil && !errors.Is(err, store.ErrNotFound):
-		return store.Tenant{}, err
+		return store.Tenant{}, stepFailed(stepReread, depStore, err)
 	}
 	if err := t.granter.RevokeWorkspaceMember(ctx, tenant.ID, "user:"+identityID, "admin"); err != nil {
-		return store.Tenant{}, fmt.Errorf("revoke admin granted after the owner binding ended: %w", err)
+		return store.Tenant{}, stepFailed(stepRevoke, depAuthz, err)
 	}
 	return store.Tenant{}, errOwnerBindingEnded
 }
@@ -374,23 +475,32 @@ func (t *tenantService) revokeOtherRoles(ctx context.Context, checker core.Check
 
 // ensureGranted makes identityID admin of workspace:tenantID unless it already
 // is. The check keeps every cache-miss from writing a tuple that is already
-// there (a write of an existing tuple is accepted as a no-op, authz.writeTuple),
-// and tells granted apart from "was already admin". A Check error (e.g. OpenFGA
-// unreachable) falls through to attempting the grant, which fails the same
-// way — fail closed either way, never a silent skip. granted reports whether it
-// wrote the tuple.
+// there, and tells granted apart from "was already admin". A Check error (e.g.
+// OpenFGA unreachable) is logged and falls through to the grant: a write of a
+// tuple that is already there is a no-op (authz.writeTuple), so an existing
+// admin is still served, and an OpenFGA that cannot take the write either fails
+// the request closed, never a silent skip. granted reports whether it wrote the
+// tuple, which a no-op write also reports, so personalTenant's re-read runs.
+//
+// The Check gets no retry of its own (w32/m446 t002): the transport already
+// resends one that lands on a dropped keep-alive connection (w4/695), and the
+// grant answers for any other Check error.
 func (t *tenantService) ensureGranted(ctx context.Context, tenantID, identityID string) (granted bool, err error) {
 	if t.granter == nil {
 		return false, nil
 	}
 	subject := "user:" + identityID
 	if checker, ok := t.granter.(core.Checker); ok {
-		if allowed, err := checker.Check(ctx, subject, "admin", "workspace:"+tenantID); err == nil && allowed {
+		allowed, err := checker.Check(ctx, subject, "admin", "workspace:"+tenantID)
+		if err == nil && allowed {
 			return false, nil
+		}
+		if err != nil {
+			log.Printf("tenancy: admin check of %s on workspace %s failed, so the grant is written again: %v", identityID, tenantID, err)
 		}
 	}
 	if err := t.granter.GrantWorkspaceAdmin(ctx, tenantID, subject); err != nil {
-		return false, fmt.Errorf("grant workspace admin: %w", err)
+		return false, err
 	}
 	return true, nil
 }
@@ -458,9 +568,13 @@ func (t *tenantService) IsMember(ctx context.Context, id core.Identity, tenantID
 // return the caller's OTHER workspaces regardless (m13 live-verify finding:
 // the dashboard's workspace switcher went blank for up to 30s after a
 // self-delete even though the account still owned a second workspace).
+//
+// It also forgets the person's recently resolved workspace, so a store fault
+// right after the membership changed never serves the workspace they just left.
 func (t *tenantService) InvalidateTenant(subject string) {
 	t.cache.Delete(cacheKey(methodSession, subject))
 	t.cache.Delete(cacheKey(methodOAuth2, subject))
+	t.recent.Delete(cacheKey(methodSession, subject))
 }
 
 // InvalidateMembership evicts subject's cached POSITIVE membership in one

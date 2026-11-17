@@ -41,12 +41,17 @@ type fakeTenantStore struct {
 	invites  []store.Invite    // outstanding invites (seeded via invite())
 	n        int
 	deleting bool
+	// tombstoneErr fails every tombstone read; ownerFail, when set, is asked
+	// before each TenantForOwner and fails that read when it returns an error.
+	// How the w32/m446 tests model a store fault.
+	tombstoneErr error
+	ownerFail    func() error
 }
 
 func (f *fakeTenantStore) AccountDeletionTombstoned(context.Context, string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.deleting, nil
+	return f.deleting, f.tombstoneErr
 }
 
 func newFakeTenantStore() *fakeTenantStore {
@@ -76,6 +81,11 @@ func (f *fakeTenantStore) IsMember(_ context.Context, subject, tenantID string) 
 func (f *fakeTenantStore) TenantForOwner(_ context.Context, identityID string) (store.Tenant, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.ownerFail != nil {
+		if err := f.ownerFail(); err != nil {
+			return store.Tenant{}, err
+		}
+	}
 	tid, ok := f.ownerOf[identityID]
 	if !ok {
 		return store.Tenant{}, store.ErrNotFound
@@ -164,6 +174,8 @@ type fakeGranter struct {
 	tuples     map[string]bool // "relation:tenantID:subject" -> live
 	granted    []string        // successful grants, in call order
 	revoked    []string
+	checkErr   error // when set, every Check fails with it (an OpenFGA fault)
+	checks     int
 }
 
 func newFakeGranter() *fakeGranter { return &fakeGranter{tuples: map[string]bool{}} }
@@ -217,6 +229,10 @@ func (g *fakeGranter) RevokeWorkspaceMember(_ context.Context, tenantID, subject
 func (g *fakeGranter) Check(_ context.Context, subject, relation, object string) (bool, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.checks++
+	if g.checkErr != nil {
+		return false, g.checkErr
+	}
 	tenantID := strings.TrimPrefix(object, "workspace:")
 	return g.tuples[relation+":"+tenantID+":"+subject], nil
 }

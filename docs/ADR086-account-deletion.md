@@ -75,7 +75,7 @@ Every operation is idempotent and a worker resumes from stored state after Postg
 
 Two ordering invariants are absolute:
 
-1. Intent commits before cleanup. `EnsureTenant` consults the tombstone before cache use, invite redemption, or personal-workspace creation and returns `ACCOUNT_DELETION_PENDING`. This prevents workspace resurrection while the identity can still present a session.
+1. Intent commits before cleanup. `EnsureTenant` consults the tombstone before cache use, invite redemption, or personal-workspace creation and returns `ACCOUNT_DELETION_PENDING`. This prevents workspace resurrection while the identity can still present a session. A tombstone that cannot be read fails the request closed with `503 tenant onboarding unavailable: account deletion check failed (workspace store)`, even for a person whose workspace is cached or recently resolved, because it could be a deletion in progress (w32/m446, [ADR012 §8f](ADR012-auth.md#8f-what-the-gate-answers-when-a-dependency-fails-w32m446)).
 2. Kratos identity deletion is last. Before it, every failure is recoverable by the durable worker without asking the user to authenticate again. Kratos delete treats both `204` and `404` as success; afterward no cleanup remains. The `done` tombstone survives so the old subject can never be onboarded again.
 
 ### Data disposition

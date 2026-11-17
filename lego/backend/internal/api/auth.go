@@ -410,6 +410,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			// authentication work than its source is budgeted for.
 			writeAuthOverloaded(w, r)
 		case err != nil: // Ory unreachable/broken — fail closed, honestly
+			logGateFailure(r, "auth upstream unavailable", credential.kind, err)
 			core.WriteErrStatus(w, http.StatusServiceUnavailable, "auth upstream unavailable")
 		case id == core.Identity{}:
 			a.unauthorized(w)
@@ -434,7 +435,8 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 						core.WriteErr(w, err)
 						return
 					}
-					core.WriteErrStatus(w, http.StatusServiceUnavailable, "tenant onboarding unavailable")
+					logGateFailure(r, "tenant onboarding unavailable", id.Method, err)
+					core.WriteErrStatus(w, http.StatusServiceUnavailable, onboardingUnavailableMessage(err))
 					return
 				}
 			}
@@ -464,6 +466,18 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
+}
+
+// logGateFailure records the cause of a 503 the gate answers, with the edge's
+// request id (Rndr-Id, which the caller also gets back) so one failed call can
+// be traced to its line (w32/m446). It names the route and the kind of
+// credential, never the credential, the person or their email.
+func logGateFailure(r *http.Request, answer, credentialKind string, err error) {
+	requestID := r.Header.Get("Rndr-Id")
+	if requestID == "" {
+		requestID = "-"
+	}
+	log.Printf("auth: %s: rndr-id=%q %s %s credential=%s: %v", answer, requestID, r.Method, r.URL.Path, credentialKind, err)
 }
 
 // authenticateBearer resolves a bearer to its identity and to the OAuth access
@@ -564,6 +578,11 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	// Introspection only reads, so a call that lands on a keep-alive connection
+	// Hydra's side already dropped is resent on a fresh one instead of
+	// answering 503 auth upstream unavailable (w32/m446, as w4/695 did for
+	// OpenFGA Checks).
+	core.MarkReplayable(req)
 	started := time.Now()
 	resp, err := a.client.Do(req)
 	if err != nil {

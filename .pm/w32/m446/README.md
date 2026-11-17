@@ -1,14 +1,14 @@
 # w32 · m446 — A signed-in request never fails with `503 tenant onboarding unavailable` because a workspace is busy
 
-**Worker:** worker32 **Goal:** a returning person's authenticated request on any surface is answered by its own handler. A transient fault in the per-request onboarding check (`EnsureTenant`) no longer turns into `503 tenant onboarding unavailable`, and the fault that does reach a caller is logged with its cause. **Status:** todo
+**Worker:** worker32 **Goal:** a returning person's authenticated request on any surface is answered by its own handler. A transient fault in the per-request onboarding check (`EnsureTenant`) no longer turns into `503 tenant onboarding unavailable`, and the fault that does reach a caller is logged with its cause. **Status:** todo (t002, t003 done)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                 | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Log the cause of every onboarding 503 and name the failing call on production                         | 30m | —          |
-| t002 | An OpenFGA check that errors still serves an existing admin, now that grant writes are idempotent | 20m | t001 |
-| t003 | A returning person whose workspace is already known is served through a transient onboarding fault    | 45m | t001, t002 |
+| t002 | An OpenFGA check that errors still serves an existing admin, now that grant writes are idempotent — **DONE** | 20m | t001 |
+| t003 | A returning person whose workspace is already known is served through a transient onboarding fault — **DONE** | 45m | t001, t002 |
 | t004 | Production: the CLI's create, deploy and `--wait` journey sees no onboarding 503                      | 30m | t003       |
 | t005 | Render parity                                                                                         | 15m | t004       |
 | t006 | Simplify                                                                                              | 15m | t005       |

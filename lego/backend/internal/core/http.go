@@ -693,6 +693,15 @@ func DoJSONRead(ctx context.Context, client *http.Client, endpoint, bearer strin
 	return doJSON(ctx, client, http.MethodPost, endpoint, bearer, body, want, out, true)
 }
 
+// MarkReplayable lets the transport resend a POST that only reads (an OpenFGA
+// Check, a Hydra token introspection) when it fails on a pooled keep-alive
+// connection the peer has already dropped. net/http replays a non-idempotent
+// method on a reused connection only when the request carries an
+// Idempotency-Key; a nil value marks it without sending the header. The body
+// must be rewindable (http.NewRequest sets GetBody for the usual readers).
+// Never use it for a write.
+func MarkReplayable(req *http.Request) { req.Header["Idempotency-Key"] = nil }
+
 func doJSON(ctx context.Context, client *http.Client, method, endpoint, bearer string, body []byte, want int, out any, replayable bool) error {
 	var rdr io.Reader
 	if body != nil {
@@ -709,10 +718,7 @@ func doJSON(ctx context.Context, client *http.Client, method, endpoint, bearer s
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if replayable {
-		// net/http retries a non-idempotent method on a reused connection only
-		// when the request carries an Idempotency-Key; a nil value marks it
-		// without sending the header.
-		req.Header["Idempotency-Key"] = nil
+		MarkReplayable(req)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
