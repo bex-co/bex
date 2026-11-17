@@ -799,7 +799,9 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 }
 
 // DeleteEnvVar removes one variable (Render's DELETE .../env-vars/{key}),
-// re-projecting the reduced set. Unknown key => core.NotFound("env var") (w4/154).
+// re-projecting the reduced set. Unknown key => core.NotFound("env var") (w4/154),
+// which changes nothing: no App patch, no deploy and no saved change, unless the
+// derived Secret still carries the key (see deleteMapKeyAfterProjection).
 func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
@@ -814,8 +816,9 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	// An invalid-name literal a pre-w8/027 create left on spec.Env is removed
 	// from the App itself — it was never in the env store. An inadmissible key
 	// that IS in the store (an over-long one stored before the 253-character
-	// cap, w4/m168) falls through to the store delete below.
-	if !core.ValidEnvKey(key) {
+	// cap, w4/m168) falls through to the store delete below. The App is patched
+	// only when there is a literal to strip.
+	if !core.ValidEnvKey(key) && dropInvalidSpecEnv(a.DeepCopy(), func(name string) bool { return name == key }) {
 		stripped := false
 		if err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
 			stripped = dropInvalidSpecEnv(a, func(name string) bool { return name == key })
@@ -831,7 +834,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 			return nil
 		}
 	}
-	keyFound, err := s.deleteMapKeyAfterProjection(ctx, envPath(service), key, len(moved) > 0, func(current map[string]string, revision sourceRevision) error {
+	keyFound, err := s.deleteMapKeyAfterProjection(ctx, a, envProjection, envPath(service), key, len(moved) > 0, func(current map[string]string, revision sourceRevision) error {
 		return s.materializeEnvEditing(holdMovedRetained(ctx, moved), a, admissible(current, core.ValidEnvKey), revision, retainedEdit(moved))
 	})
 	if err != nil {
@@ -1274,12 +1277,26 @@ func (s *Service) restoreMap(ctx context.Context, path string, w mapWrite) (rest
 // from ordinary writes: first remove the value from the Kubernetes projection
 // and roll the workload, then commit the reduced OpenBao map. OpenBao therefore
 // remains the durable retry anchor if either the derived Secret update or App
-// patch fails. A retry also re-projects an already-absent key before returning
-// not-found, repairing an older attempt that committed its source CAS first.
+// patch fails.
+//
+// A key the map does not hold is a DELETE of something that is not there: Render
+// answers 404 and changes nothing ("Delete a particular environment variable
+// from a particular service", 404 documented,
+// api-docs.render.com/reference/delete-env-var), so it opens no deploy and
+// leaves no saved change (w21/109). The one exception is a key the derived
+// Secret still carries, which an older release's delete left behind when it
+// committed its source CAS before the projection: that retry re-projects the
+// reduced set and rolls the workload, so the revoked value stops reaching the
+// pods, and still answers not-found. A Secret that does not carry the key, or
+// that does not exist, has nothing to repair.
 //
 // Versioned stores retain the existing lost-update guarantee. A racing writer
 // makes PutCAS conflict; the loop re-reads its map, removes only this key, and
-// projects the fresh desired set before trying again.
+// projects the fresh desired set before trying again. A writer that commits
+// the key between this read of the map and this read of the Secret leaves the
+// key in the Secret at a later revision than the one read here, so the repair
+// below is refused as superseded and the writer's key survives; the delete
+// answers not-found, as it would had it run first.
 //
 // The projection carries the revision the commit below will create, the path's
 // next version, marked provisional (w5/m127). Nothing older replaces it, so a
@@ -1292,7 +1309,7 @@ func (s *Service) restoreMap(ctx context.Context, path string, w mapWrite) (rest
 // alsoHeld says the key is held outside the map too (a retained literal on the
 // App, which project removes in its own patch): deleting it is a change, and so
 // a commit, even when the map does not hold it.
-func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key string, alsoHeld bool, project func(current map[string]string, revision sourceRevision) error) (bool, error) {
+func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, a *appv1alpha1.App, kind projectionKind, path, key string, alsoHeld bool, project func(current map[string]string, revision sourceRevision) error) (bool, error) {
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
 		current, err := s.readMap(ctx, path)
@@ -1302,6 +1319,11 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 		_, found := current[key]
 		found = found || alsoHeld
 		delete(current, key)
+		if !found {
+			if stale, err := s.projectionHolds(ctx, a, kind, key); err != nil || !stale {
+				return false, err
+			}
+		}
 		if err := project(current, sourceRevision{}); err != nil {
 			return found, err
 		}
@@ -1323,6 +1345,11 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 		_, found := current[key]
 		found = found || alsoHeld
 		delete(current, key)
+		if !found {
+			if stale, err := s.projectionHolds(ctx, a, kind, key); err != nil || !stale {
+				return false, err
+			}
+		}
 		revision := committedAt(snapshot.Version)
 		if found {
 			revision = provisionalAt(snapshot.Version + 1)
@@ -1345,6 +1372,24 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 		return true, nil
 	}
 	return false, secretChanged()
+}
+
+// projectionHolds reports whether a's derived Secret of kind carries key: the
+// one thing that can still be repaired when the store no longer holds it. A
+// Secret that does not exist carries nothing. Any other read failure is
+// returned, since the delete cannot tell whether a revoked value is still
+// reaching the pods.
+func (s *Service) projectionHolds(ctx context.Context, a *appv1alpha1.App, kind projectionKind, key string) (bool, error) {
+	sec := &corev1.Secret{}
+	err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: kind.secretName(a.Name)}, sec)
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	_, held := sec.Data[key]
+	return held, nil
 }
 
 // envVarViews renders an env map as a key-sorted slice.

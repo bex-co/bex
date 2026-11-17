@@ -109,16 +109,11 @@ func retainedWithStore(stored map[string]string) (*Service, *recordingDeploys, *
 }
 
 // requireNothingMoved fails unless the refused write left the service as it was:
-// the literal on spec.Env, nothing saved for a deploy, nothing stored, and, for
-// every refusal but the DELETE of a name that is not there, no App patch, no
-// release rolled and no deploy opened.
-//
-// That DELETE still runs the repair of a stale projection (a Secret key the
-// store no longer holds, pinned by TestDeleteEnvVarAlreadyAbsentRepairsStaleProjection),
-// which patches the App, and rolls a release on GraphQL and MCP. It is the
-// verb's own behavior for any service, retained variable or not (filed as its
-// own note), so what is asserted of it is what w21/108 owns: it moves no
-// literal and saves no change that waits for a deploy.
+// the literal on spec.Env, nothing saved for a deploy, nothing stored, no App
+// patch, no release rolled and no deploy opened. That holds for the DELETE of a
+// name that is not there too: it repairs a projection only when the derived
+// Secret still carries the name (w21/109, TestDeleteOfAnAbsentNameChangesNothing
+// and TestDeleteEnvVarAlreadyAbsentRepairsStaleProjection).
 func requireNothingMoved(t *testing.T, tc refusedRetainedWrite, svc *Service, rec *recordingDeploys, kv *versionedFakeSecretStore, counting *patchCountingClient) {
 	t.Helper()
 	app := getApp(t, svc.Client, "bp")
@@ -133,9 +128,6 @@ func requireNothingMoved(t *testing.T, tc refusedRetainedWrite, svc *Service, re
 	}
 	if kv.casCalls != 0 {
 		t.Errorf("the refused write made %d store writes, want none", kv.casCalls)
-	}
-	if tc.method == http.MethodDelete {
-		return
 	}
 	if app.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "" || app.Spec.RestartedAt != "" || app.Spec.EnvFromSecret != "" {
 		t.Errorf("the refused write rolled a release: generation %q, restartedAt %q, envFromSecret %q",

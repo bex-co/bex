@@ -655,13 +655,14 @@ func NewCreateSecretsSeeder(service *Service) CreateSecretsSeeder {
 }
 
 // DeleteSecretFile removes one file (Render's DELETE .../secret-files/{name}),
-// re-projecting the reduced set. Unknown file => core.NotFound("secret file"), after the service authorized (w4/154).
+// re-projecting the reduced set. Unknown file => core.NotFound("secret file"), after the service authorized (w4/154),
+// and, as for a variable, it changes nothing unless the derived Secret still carries the file (w21/109).
 func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) error {
 	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}
-	nameFound, err := s.deleteMapKeyAfterProjection(ctx, filesPath(service), name, false, func(current map[string]string, revision sourceRevision) error {
+	nameFound, err := s.deleteMapKeyAfterProjection(ctx, a, filesProjection, filesPath(service), name, false, func(current map[string]string, revision sourceRevision) error {
 		return s.materializeFiles(ctx, a, admissible(current, core.ValidSecretFileName), revision)
 	})
 	if err != nil {
