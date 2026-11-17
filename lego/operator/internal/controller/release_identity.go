@@ -518,6 +518,11 @@ func prepareAppReleaseDecision(app *appv1alpha1.App, view *appv1alpha1.AppSpec) 
 		if releaseInFlight(held) && (view != nil || releaseSourceFixed(app)) {
 			return pinnedReleaseDecision(app)
 		}
+		// The release settled. A newer generation the pending slot coalesced
+		// while it ran is the save itself, which only a deploy consumes, so it
+		// is owed nothing: left there it requeued the settled release every
+		// second until the next deploy (w8/m460).
+		app.Status.PendingReleaseGeneration = 0
 		pinned := appReleaseIdentity{
 			artifact: app.Status.ArtifactFingerprint,
 			release:  app.Status.ReleaseFingerprint,

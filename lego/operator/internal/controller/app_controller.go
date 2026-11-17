@@ -1032,10 +1032,24 @@ func (r *AppReconciler) observeCanceledPreDeploy(ctx context.Context, app *appv1
 // prior release held while the new one has no image), so the caller must return
 // (res, err) instead of dispatching.
 func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1.App, decision appReleaseDecision, port int) (image string, res ctrl.Result, halted bool, err error) {
-	// A direct-static release has no image to reuse, and a never-deployed service
-	// has no active artifact yet. In both cases Update Source must simply wait;
-	// the next deploy annotation re-enters with sourcePending=false.
+	// A never-deployed service has no active artifact yet, so Update Source must
+	// simply wait; the next deploy annotation re-enters with sourcePending=false.
+	// A static site has no served image to reuse when its release is a direct
+	// publish, or is its first, which records status.image only once its host
+	// is handed over. Halting it here stranded that deploy in Deploying, its
+	// host on the activator with no IP allow-list (w8/m460), so its release
+	// finishes on its own publication, and a served one's routing keeps
+	// following the App.
 	if decision.sourcePending && app.Status.Image == "" {
+		if app.Spec.Type == appv1alpha1.TypeStaticSite && r.Mode == ModeKubernetes {
+			if staticReleaseFinishing(app) {
+				res, err := r.reconcileKubernetes(ctx, app, app.Status.ArtifactImage, port)
+				return "", res, true, err
+			}
+			if held, res, err := r.holdPendingStaticArtifact(ctx, app, ctrl.Result{}); held {
+				return "", res, true, err
+			}
+		}
 		return "", ctrl.Result{}, true, nil
 	}
 	// A save after a failed build leaves the release generation on the failed
@@ -3459,9 +3473,14 @@ func (r *AppReconciler) writeFirstRoute(ctx context.Context, app *appv1alpha1.Ap
 	}
 	// Only the first route: once the Ingress exists, the release path owns its
 	// backend with the Deployment's real readiness, so a pass that halts here
-	// never flips a ready first release back to the activator.
-	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &networkingv1.Ingress{}); !apierrors.IsNotFound(err) {
-		return err
+	// never flips a ready first release back to the activator. A static site
+	// has no Deployment, and its host stays here until its first publish hands
+	// it over, so this route keeps following its IP allow-list through the
+	// build and the publish (w8/m460); a suspended one's is the suspended path's.
+	if !static || app.Spec.Suspended {
+		if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &networkingv1.Ingress{}); !apierrors.IsNotFound(err) {
+			return err
+		}
 	}
 	svc, port, err := r.ingressBackend(ctx, app, 0, false, false)
 	if err != nil {
@@ -4975,6 +4994,12 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	if app.Status.ActiveRevision != rev {
 		res, err := r.publishStaticRevision(ctx, app, image, rev)
 		if err != nil || res.RequeueAfter > 0 {
+			// The revision that serves keeps following the App, its IP
+			// allow-list among it, while this one publishes or after its
+			// publish failed (w8/m460).
+			if _, _, holdErr := r.holdPendingStaticArtifact(ctx, app, ctrl.Result{}); holdErr != nil && err == nil {
+				err = holdErr
+			}
 			return res, err
 		}
 		if err := r.recordStaticPublications(ctx, app, rev); err != nil {
@@ -7848,6 +7873,22 @@ func (r *AppReconciler) holdPendingStaticArtifact(ctx context.Context, app *appv
 		return true, ctrl.Result{}, err
 	}
 	return true, buildHalt, nil
+}
+
+// staticReleaseFinishing reports a static site's current release that serves,
+// or whose publish (a direct publish's clone or upload) is still in flight with
+// its artifact resolved: a saved change waiting for a deploy lets it finish on
+// what it started with (w8/m460). A failed release, one never dispatched, and
+// one whose build has not produced its image are not finishing: publishing
+// that with no image would upload the raw repository.
+func staticReleaseFinishing(app *appv1alpha1.App) bool {
+	if releaseRevision(app) == app.Status.ActiveRevision {
+		return true
+	}
+	phase := app.Status.Phase
+	return (phase == appv1alpha1.PhaseBuilding || phase == appv1alpha1.PhaseDeploying) &&
+		app.Status.ReleaseGeneration > successfulReleaseGeneration(app) &&
+		app.Status.ArtifactFingerprint == app.Status.ReleaseArtifactFingerprint
 }
 
 // holdPendingCronArtifact keeps operational controls and run history converging

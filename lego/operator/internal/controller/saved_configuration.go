@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -94,9 +95,11 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 	staged := app.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != ""
 	// Static publications do not retain build-input configuration records. They
 	// cannot use pod-release comparison to claim their artifact's inputs match,
-	// so only a staged link marks them.
+	// so only a staged link, or a saved release change that waits for a deploy,
+	// marks them.
 	if app.Spec.Type == appv1alpha1.TypeStaticSite {
-		return ctrl.Result{}, r.recordUndeployedChanges(ctx, app, staged, false, undeployedChangesReason(app, staged, false))
+		different := staged || staticSaveWaits(app)
+		return ctrl.Result{}, r.recordUndeployedChanges(ctx, app, different, false, undeployedChangesReason(app, different, false))
 	}
 	different, imageOnly, compareErr := r.servingConfigurationDiffers(ctx, app)
 	applying := false
@@ -117,6 +120,18 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 		result.RequeueAfter = time.Minute
 	}
 	return result, compareErr
+}
+
+// staticSaveWaits reports a static site whose saved settings would publish a
+// different release than its current one, saved without a deploy (a Render
+// Update Service PATCH) after that release was requested: the publish
+// directory or root directory saved during its first build, for one (w8/m460).
+// A save that nets out to the release's own settings waits for nothing. Only a
+// release-v2 fingerprint can be compared.
+func staticSaveWaits(app *appv1alpha1.App) bool {
+	fp := app.Status.ReleaseFingerprint
+	return releaseHasServed(app) && sourceUpdatePending(app) &&
+		strings.HasPrefix(fp, releaseIdentityVersion+":") && desiredAppReleaseIdentity(app.Spec).release != fp
 }
 
 // recordUndeployedChanges writes the saved-configuration status when it moved.

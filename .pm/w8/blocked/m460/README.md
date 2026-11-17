@@ -1,18 +1,18 @@
 # w8 · m460 — A static site's first deploy goes live when a publish setting is saved during its build, and an IP rule saved meanwhile takes effect
 
-**Worker:** worker8 **Goal:** saving a static site's publish directory or root directory while its first deploy builds no longer hangs that deploy for ~21 minutes and fails it with a health-gate message. The deploy goes live on the settings it started with, and an IP rule saved in the meantime blocks within seconds, as Render's do. **Status:** todo
+**Worker:** worker8 **Goal:** saving a static site's publish directory or root directory while its first deploy builds no longer hangs that deploy for ~21 minutes and fails it with a health-gate message. The deploy goes live on the settings it started with, and an IP rule saved in the meantime blocks within seconds, as Render's do. **Status:** blocked (t001–t007 done; t008 replays the definition of done on production once a roll carries the fix)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                            | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Reproduce the hang in a test and name the exact mechanism                                                                        | 45m | —          |
-| t002 | A static site's first deploy settles on its own release when a release input is saved during the build                          | 45m | t001       |
-| t003 | An IP rule saved while a static site's first deploy is unsettled or failed takes effect on the content it serves within seconds | 30m | t001       |
-| t004 | Blast radius: other release inputs, service types, save surfaces and the owed release                                           | 30m | t002, t003 |
-| t005 | Render parity                                                                                                                    | 20m | t004       |
-| t006 | Simplify                                                                                                                         | 15m | t005       |
-| t007 | Test coverage                                                                                                                    | 30m | t005       |
+| t001 | Reproduce the hang in a test and name the exact mechanism — **DONE**                                                                        | 45m | —          |
+| t002 | A static site's first deploy settles on its own release when a release input is saved during the build — **DONE**                          | 45m | t001       |
+| t003 | An IP rule saved while a static site's first deploy is unsettled or failed takes effect on the content it serves within seconds — **DONE** | 30m | t001       |
+| t004 | Blast radius: other release inputs, service types, save surfaces and the owed release — **DONE**                                           | 30m | t002, t003 |
+| t005 | Render parity — **DONE**                                                                                                                    | 20m | t004       |
+| t006 | Simplify — **DONE**                                                                                                                         | 15m | t005       |
+| t007 | Test coverage — **DONE**                                                                                                                    | 30m | t005       |
 | t008 | Closeout                                                                                                                         | 15m | t007       |
 
 ## Definition of done
@@ -76,16 +76,19 @@ Fresh static sites from the same repo, each with one change:
 
 A native web service's first deploy took mid-build saves of root directory, branch and source in sweep `0594` and went live. So the hang needs a static site, its first release, and a mid-build save of a publish input.
 
-### Cause (unverified, t001)
+### Cause (verified, t001, 2026-11-17)
 
-- Publish path and root directory are release identity inputs: `lego/operator/internal/controller/release_identity.go:62,152` (`RootDir`) and `:89,207` (`PublishPath`). A save of either, or a set-and-clear of either, bumps the App's generation during the first release.
-- `reconcileStaticSite` (`app_controller.go:4942-5045`):
-  - publishes `rev-1`;
-  - records it, then requeues for the first-publish handover (`:5020-5027`);
-  - reaches `PhaseRunning`, `ObservedGeneration` and `convergeStaticRouting` only at `:5029-5037`.
-- The App stayed `Deploying` on `rev-1` while serving it. So a later pass returns before `:5029`. One lead is the first-release and pending-slot rules in `release_identity.go:743-786` (`sourceUpdatePending`, `firstReleaseReadsSavedSource`, `pendingReleaseOwed`, `requestedReleaseGeneration`). A newer release generation may be owed or required that no deploy request will ever bring, because settings saves don't deploy.
-- The IP middleware for a static host converges in `convergeStaticRouting`, which the stuck pass never reaches. ADR018's w32/m419 entry promises that a rule saved over a failed deploy "takes effect within seconds on the release that still serves" for web services. The static path has no equivalent.
-- The deploy row is closed by bex-api's gate, not the operator. It gives the generic line `types/v1alpha1/deploy_reasons.go:174` through `failureReasonFor` (`lego/backend/internal/store/reconciler.go:2296`), because the App reports no specific verdict.
+The early return is `resolveDeployImage`'s first guard, `if decision.sourcePending && app.Status.Image == "" { return "", ctrl.Result{}, true, nil }` (`lego/operator/internal/controller/app_controller.go:1038` at pin `21762a1df1fb` and at `7a1530a7f`). t001's envtest (`static_first_release_save_envtest_test.go`) reproduces it with one save, or with `rootDir` set and cleared, and fails on that code with the production state: phase `Deploying`, Ready reason `Publishing`, `activeRevision: rev-1`, `image: ""`, `observedGeneration: 0`.
+
+Pass by pass (create stamps `release-generation: 1`; each save stamps `pending-source-generation` one past its generation):
+
+1. **Build:** gen-1 runs in `Building`. `releaseSourceFixed` is false (`status.buildRun` is written only for a failed build), so `firstReleaseReadsSavedSource` holds and `sourceUpdatePending` is false. The release in flight is pinned (`releaseInFlight`, release_identity.go:540) and builds its adopted view. A save that does not net out coalesces its generation into `pendingReleaseGeneration` (2 after one publish-directory save; the root-directory set-and-clear nets back to 0).
+2. **Publish:** phase `Deploying`. `releaseSourceFixed` is now true, so `sourceUpdatePending` is true, but the release is still in flight (`releaseGeneration` 1 > `successfulReleaseGeneration` 0) and stays pinned (release_identity.go:518).
+3. **First publish done:** `reconcileStaticSite` records `activeRevision: rev-1` and requeues for the host handover (app_controller.go:5020-5027). A static site writes `status.image` only after the handover, at :5034.
+4. **Every pass after:** the release is no longer in flight (1 == 1), so the decision is `{sourcePending}` (release_identity.go:521-525), and `resolveDeployImage` returns at :1038 because `status.image` is empty. `reconcileStaticSite` never reaches `convergeStaticRouting`, `PhaseRunning` or `observedGeneration`. The host stays on the activator, which proxies a served static site to the static-server (w4/636), behind the middleware set the first route was written with (`writeFirstRoute` writes the first route only once, app_controller.go:3460). That is why the site answered 200 and ignored the IP rule.
+5. bex-api's gate then closes the row `update_failed` with the generic health-gate line, because the App reports no verdict.
+
+A direct publish (no build command) halts at the same line one step earlier, on a save during its upload, and a served direct site halted there on every pass while any save waited, so its routing (IP rules, suspension) stopped following the App. A web service records `status.image` before it serves, so the same saves never stranded it (t001 step 3; its envtest settles `Running` on `rev-1`).
 
 ### Render
 
@@ -100,13 +103,25 @@ A native web service's first deploy took mid-build saves of root directory, bran
 - **w21/051** (done): a first release that has not started building reads the saved source.
 - No open item matches (`rg` over `.pm` for static first-deploy hangs, `update_in_progress` with static, and mid-build publish saves). No newer operator commit touches static first releases since pin `21762a1df1fb`.
 
-### Unverified
+### Blast radius (t004, envtest, 2026-11-17)
 
-- The exact early return (t001).
-- Whether other release inputs reproduce it on a static site: environment variables, branch, headers or routes saved mid-build. Headers and routes are read live, so they probably don't.
-- Whether a Blueprint sync or a dashboard save during the build hangs it the same way.
-- Whether the workspace and environment IP rule layers are also unenforced on a stuck static site.
-- Not filed: an absolute (`/etc`) or `../` publish path is accepted on a built site. The extract step already runs the tenant's own image (`publish.go:614-630`), the publish pod mounts no service-account token, and the guard for the clone-only path sits in `publish.go:466-471`.
+Each row is a fresh static site whose first build is running when the change lands (`static_first_release_save_envtest_test.go`). "Save" is the save-only shape (CLI and REST `PATCH /v1/services`, the dashboard's Settings save, REST env-var writes: `pending-source-generation`). "Deploy" is the shape that stamps a release (a Blueprint sync, GraphQL or MCP env-var writes, deploy verbs). "Operational" stamps nothing.
+
+| Change during the first build | Shape | Before the fix | After |
+| --- | --- | --- | --- |
+| publish directory | save | stuck `Deploying` | `live` on `out`; `undeployedChanges: saved`; the next deploy publishes `out2` |
+| root directory set, then cleared | save | stuck `Deploying` | `live`; nothing owed |
+| environment variable, env-group link, secret file, branch, build command | save | stuck `Deploying` (same branch: every release input) | `live` on `rev-1`; nothing builds until a deploy |
+| IP rule + publish directory | save | stuck; rule unenforced until a manual deploy | rule on the activator's route within a pass, kept through publish and after `live` |
+| build filter, auto-deploy, headers and routes, IP rule alone, rename | operational | `live` (control) | `live` |
+| publish directory | deploy (Blueprint sync) | `live`, then the owed deploy republishes `out2` from gen-1's image (no rebuild) | unchanged |
+| direct publish: a save during its first upload | save | stuck `Deploying`, nothing served | `live` |
+| direct publish, served: a save, then an IP rule | save + operational | rule never enforced while the save waited | rule enforced, `Running`, nothing republished |
+| web service: a root-directory save during its first build | save | `live`, but the settled release requeued every second while the save waited (`pendingReleaseGeneration`) | `live`, nothing owed |
+
+Workspace and environment IP rule layers converge through the same `reconcileIPAllowListMiddleware` call, so they follow the service rule. Private services and background workers record their image before serving like web services; their first releases are unaffected (the operator's full suite covers them).
+
+Not filed: an absolute (`/etc`) or `../` publish path is accepted on a built site. The extract step already runs the tenant's own image (`publish.go:614-630`), the publish pod mounts no service-account token, and the guard for the clone-only path sits in `publish.go:466-471`.
 
 ## Source + Goal linkage
 
@@ -115,3 +130,10 @@ A native web service's first deploy took mid-build saves of root directory, bran
 - **Expected outcome:** editing a new static site's settings while it first builds is safe. The deploy goes live in minutes, the edit applies on the next deploy, and an IP rule protects the site within seconds.
 - **Why now:** a first deploy is exactly when people adjust a new site's publish directory. Today that hides the site's real state behind a false health-gate failure for ~21 minutes. Meanwhile it ignores an access rule the owner believes is in force.
 - **Render parity included:** the deploy status reaches REST, GraphQL, MCP and the dashboard, and IP rules are a Render-documented behavior.
+
+## Gate (2026-11-17)
+
+t001–t007 shipped together (`fix(operator): … (w8/m460 t001–t007)`). Only t008 remains: replaying the definition of done in `bex-canary` needs a production roll that carries that commit. No decision or credential is owed; the gate clears by itself.
+
+- **When:** production rolled to pin `db48cde2bae9` at 12:08 UTC on 2026-11-17, and `deploy.yml` rolls the first push (or its hourly cron) once the pin is at least 6 hours old, so not before about 18:08 UTC.
+- **Check:** `git log origin/main --grep 'pin platform images'` names a pin at or after the fix commit (`git merge-base --is-ancestor <fix> <pin>`). Then t008 runs the definition of done's five steps with the newest bex CLI release, records each command and answer here, deletes every fixture by ID, and closes the milestone.
