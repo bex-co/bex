@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"os"
 	"slices"
@@ -171,7 +172,11 @@ func TestCloseIdleUsageSourceStreamsKeepsCoverageHealthy(t *testing.T) {
 		}
 	}
 	gone := month.Add(time.Hour)
-	if err := st.CloseIdleUsageSourceStreams(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, []string{"srv-kept"}, gone); err != nil {
+	if err := st.UpsertUsageWindow(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, gone, []HourlyRow{{
+		WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: "srv-kept",
+		Kind: UsageKindDiskGBSeconds, WindowStart: gone, Quantity: 3600,
+		SourceHealth: []UsageSourceObservation{{Source: UsageSourceDisk, State: UsageSourceHealthy}},
+	}}); err != nil {
 		t.Fatal(err)
 	}
 	var through *time.Time
@@ -203,7 +208,7 @@ func TestCloseIdleUsageSourceStreamsKeepsCoverageHealthy(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.CloseIdleUsageSourceStreams(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, nil, month.Add(10*time.Hour)); err != nil {
+	if err := st.UpsertUsageWindow(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, month.Add(10*time.Hour), nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = 'srv-late' AND workspace_id = $1`, tenant.ID).Scan(&through); err != nil || through == nil || !through.Equal(gone) {
@@ -223,6 +228,87 @@ func TestCloseIdleUsageSourceStreamsKeepsCoverageHealthy(t *testing.T) {
 	var from time.Time
 	if err := pool.QueryRow(ctx, `SELECT expected_from, expected_through FROM usage_source_streams WHERE service_id = 'srv-late' AND workspace_id = $1`, tenant.ID).Scan(&from, &through); err != nil || !from.Equal(readded) || through != nil {
 		t.Fatalf("re-added disk stream = from %s through %v (err %v), want open from %s", from, through, err, readded)
+	}
+}
+
+// w6/132: the disk meter resumes after its newest row, so a window must
+// commit whole or not at all. A row that fails after another succeeded leaves
+// no row, no health and no idle close behind, and the retry writes the window.
+func TestUsageWindowCommitsWholeOrNotAtAll(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	tenant, err := st.CreateTenant(ctx, "usage-window-atomic", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenant.ID) })
+
+	first := time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)
+	cut := first.Add(time.Hour)
+	diskRow := func(service string, window time.Time) HourlyRow {
+		return HourlyRow{
+			WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: service,
+			Kind: UsageKindDiskGBSeconds, WindowStart: window, Quantity: 3600,
+			SourceHealth: []UsageSourceObservation{{Source: UsageSourceDisk, State: UsageSourceHealthy}},
+		}
+	}
+	// srv-gone's disk is deleted after the first window: the cut window's
+	// idle close is what would end its stream.
+	if err := st.UpsertUsageWindow(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, first, []HourlyRow{
+		diskRow("srv-w-1", first), diskRow("srv-w-2", first), diskRow("srv-gone", first),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	broken := diskRow("srv-w-2", cut)
+	broken.SourceHealth = []UsageSourceObservation{{Source: "not-a-source", State: UsageSourceHealthy}}
+	if err := st.UpsertUsageWindow(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, cut, []HourlyRow{
+		diskRow("srv-w-1", cut), broken,
+	}); err == nil {
+		t.Fatal("a window with a failing second row committed")
+	}
+	var rows, health int
+	if err := pool.QueryRow(ctx, `
+		SELECT (SELECT COUNT(*) FROM usage_hourly WHERE workspace_id = $1 AND window_start = $2),
+		       (SELECT COUNT(*) FROM usage_source_health WHERE workspace_id = $1 AND window_start = $2)`,
+		tenant.ID, cut).Scan(&rows, &health); err != nil || rows != 0 || health != 0 {
+		t.Fatalf("the failed window left %d rows and %d health rows (err %v); want none", rows, health, err)
+	}
+	var through *time.Time
+	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = 'srv-gone' AND workspace_id = $1`, tenant.ID).Scan(&through); err != nil || through != nil {
+		t.Fatalf("the failed window closed srv-gone's stream at %v (err %v); want it left open", through, err)
+	}
+
+	if err := st.UpsertUsageWindow(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, cut, []HourlyRow{
+		diskRow("srv-w-1", cut), diskRow("srv-w-2", cut),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		SELECT (SELECT COUNT(*) FROM usage_hourly WHERE workspace_id = $1 AND window_start = $2),
+		       (SELECT COUNT(*) FROM usage_source_health WHERE workspace_id = $1 AND window_start = $2 AND state = $3)`,
+		tenant.ID, cut, UsageSourceHealthy).Scan(&rows, &health); err != nil || rows != 2 || health != 2 {
+		t.Fatalf("the retried window has %d rows and %d healthy readings (err %v); want 2 and 2", rows, health, err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = 'srv-gone' AND workspace_id = $1`, tenant.ID).Scan(&through); err != nil || through == nil || !through.Equal(cut) {
+		t.Fatalf("srv-gone's stream ends %v (err %v), want %s", through, err, cut)
+	}
+
+	// A row from another meter or window is a caller bug, refused before any write.
+	if err := st.UpsertUsageWindow(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, cut.Add(time.Hour), []HourlyRow{diskRow("srv-w-1", cut)}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("a row outside the window = %v, want ErrInvalid", err)
 	}
 }
 

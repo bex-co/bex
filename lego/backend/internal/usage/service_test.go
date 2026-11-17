@@ -85,7 +85,7 @@ type memUsageStore struct {
 	// CloseUsageSourceStreams call.
 	retired []store.RetiredUsageResource
 	closed  map[store.UsageResourceRef]time.Time
-	// idleClosed captures each CloseIdleUsageSourceStreams call.
+	// idleClosed captures the idle stream close of each UpsertUsageWindow.
 	idleClosed []idleStreamClose
 	// egressIdentities captures the last RecordAppEgressIdentity per App;
 	// egressIdentityErr makes every record fail.
@@ -135,10 +135,25 @@ type idleStreamClose struct {
 	through      time.Time
 }
 
-func (m *memUsageStore) CloseIdleUsageSourceStreams(_ context.Context, kind, source string, active []string, through time.Time) error {
+// UpsertUsageWindow mirrors PGStore's single transaction: the upsert hook
+// sees every row before any is written, so one failure writes none of them
+// and closes no stream.
+func (m *memUsageStore) UpsertUsageWindow(_ context.Context, kind, source string, window time.Time, rows []store.HourlyRow) error {
+	var active []string
+	for _, row := range rows {
+		if m.upsert != nil {
+			if err := m.upsert(row); err != nil {
+				return err
+			}
+		}
+		active = append(active, row.ServiceID)
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.idleClosed = append(m.idleClosed, idleStreamClose{kind, source, active, through})
+	for _, row := range rows {
+		m.putRowLocked(row)
+	}
+	m.idleClosed = append(m.idleClosed, idleStreamClose{kind, source, active, window})
 	return nil
 }
 
@@ -360,6 +375,11 @@ func (m *memUsageStore) UpsertUsageHourly(_ context.Context, row store.HourlyRow
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.putRowLocked(row)
+	return nil
+}
+
+func (m *memUsageStore) putRowLocked(row store.HourlyRow) {
 	row.ResourceKind = store.NormalizeResourceKind(row.ResourceKind)
 	k := usageKey{row.ResourceKind, row.ServiceID, row.Kind, row.Tier, row.WindowStart.UTC().Truncate(time.Hour)}
 	m.rows[k] = row
@@ -367,7 +387,6 @@ func (m *memUsageStore) UpsertUsageHourly(_ context.Context, row store.HourlyRow
 	if row.WindowStart.After(m.latestBy[resourceID]) {
 		m.latestBy[resourceID] = row.WindowStart
 	}
-	return nil
 }
 
 func (m *memUsageStore) LatestUsageWindow(_ context.Context, resourceKind, serviceID, kind string) (time.Time, error) {

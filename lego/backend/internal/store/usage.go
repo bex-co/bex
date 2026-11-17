@@ -223,13 +223,59 @@ type UsageCompaction struct {
 // (resource_kind, service_id, kind, tier, window_start) key already exists.
 // The ON CONFLICT … DO UPDATE makes the rollup loop idempotent.
 func (s *PGStore) UpsertUsageHourly(ctx context.Context, row HourlyRow) error {
-	rk := NormalizeResourceKind(row.ResourceKind)
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err = tx.Exec(ctx, `
+	if err = upsertUsageHourly(ctx, tx, row); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// UpsertUsageWindow writes one meter's whole window: every service row with
+// its source health, then the end of each open kind/source stream of a
+// service it wrote no row for (closeIdleUsageSourceStreams). It is one
+// transaction, so a pass cut off mid-window (a rollout, a failed upsert)
+// commits none of it. The disk meter needs that because it resumes after its
+// newest row (LatestUsageWindowForKind): rows committed one by one let the
+// next pass skip the services a cut-off pass had not reached, unbilled for
+// good (w6/132).
+func (s *PGStore) UpsertUsageWindow(ctx context.Context, kind, source string, window time.Time, rows []HourlyRow) error {
+	window = window.UTC().Truncate(time.Hour)
+	active := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if row.Kind != kind || NormalizeResourceKind(row.ResourceKind) != ResourceKindService || !row.WindowStart.Equal(window) {
+			return fmt.Errorf("%w: %s row for %s at %s outside the %s window %s",
+				ErrInvalid, row.Kind, row.ServiceID, row.WindowStart.UTC().Format(time.RFC3339), kind, window.Format(time.RFC3339))
+		}
+		active = append(active, row.ServiceID)
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	for _, row := range rows {
+		if err = upsertUsageHourly(ctx, tx, row); err != nil {
+			return err
+		}
+	}
+	if err = closeIdleUsageSourceStreams(ctx, tx, kind, source, active, window); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+type usageSourceExecer interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+// upsertUsageHourly is UpsertUsageHourly inside the caller's transaction.
+func upsertUsageHourly(ctx context.Context, exec usageSourceExecer, row HourlyRow) error {
+	rk := NormalizeResourceKind(row.ResourceKind)
+	if _, err := exec.Exec(ctx, `
 		INSERT INTO usage_hourly (workspace_id, service_id, kind, tier, resource_kind, window_start, quantity)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (resource_kind, service_id, kind, tier, window_start)
@@ -238,18 +284,14 @@ func (s *PGStore) UpsertUsageHourly(ctx context.Context, row HourlyRow) error {
 		return err
 	}
 	for _, observation := range row.SourceHealth {
-		if err = upsertUsageSourceObservation(ctx, tx, UsageSourceRecord{
+		if err := upsertUsageSourceObservation(ctx, exec, UsageSourceRecord{
 			WorkspaceID: row.WorkspaceID, ResourceKind: rk, ServiceID: row.ServiceID,
 			Kind: row.Kind, WindowStart: row.WindowStart, UsageSourceObservation: observation,
 		}); err != nil {
 			return err
 		}
 	}
-	return tx.Commit(ctx)
-}
-
-type usageSourceExecer interface {
-	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	return nil
 }
 
 func upsertUsageSourceObservation(ctx context.Context, exec usageSourceExecer, record UsageSourceRecord) error {
@@ -358,8 +400,9 @@ func (s *PGStore) ReconcileUsageSourceStreams(ctx context.Context, active []Usag
 func (s *PGStore) CloseUsageSourceStreams(ctx context.Context, ref UsageResourceRef, through time.Time) error {
 	_, err := s.Pool.Exec(ctx,
 		// LEAST: a stream that already ended earlier (a disk deleted before its
-		// App, closed by CloseIdleUsageSourceStreams) keeps that end, rather
-		// than being stretched to the deletion hour it has no rows for.
+		// App, its stream closed by the disk meter's UpsertUsageWindow) keeps
+		// that end, rather than being stretched to the deletion hour it has no
+		// rows for.
 		`UPDATE usage_source_streams SET expected_through = LEAST(COALESCE(expected_through, $3), $3) WHERE resource_kind = $1 AND service_id = $2`,
 		NormalizeResourceKind(ref.ResourceKind), ref.ServiceID, through.UTC().Truncate(time.Hour))
 	return err
@@ -388,19 +431,19 @@ func (s *PGStore) CloseUsageSourceStreamsAtLastReading(ctx context.Context, ref 
 	return err
 }
 
-// CloseIdleUsageSourceStreams ends every open service stream of kind and
+// closeIdleUsageSourceStreams ends every open service stream of kind and
 // source whose service is not in active, an hour after its last observed
 // window before through (or at through, with none). A meter that writes no
 // row for a resource that no longer exists — a disk deleted from a live
 // service (w4/575) — would otherwise leave its stream expecting rows, which
 // reads as a degraded source once the catch-up window has passed. A later row
 // reopens the stream from that row's window.
-func (s *PGStore) CloseIdleUsageSourceStreams(ctx context.Context, kind, source string, active []string, through time.Time) error {
+func closeIdleUsageSourceStreams(ctx context.Context, exec usageSourceExecer, kind, source string, active []string, through time.Time) error {
 	if active == nil {
 		active = []string{}
 	}
 	through = through.UTC().Truncate(time.Hour)
-	_, err := s.Pool.Exec(ctx, `
+	_, err := exec.Exec(ctx, `
 		UPDATE usage_source_streams AS stream
 		SET expected_through = GREATEST(stream.expected_from, COALESCE((
 			SELECT MAX(health.window_start) + interval '1 hour'

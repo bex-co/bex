@@ -18,6 +18,7 @@ package usage
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -200,4 +201,62 @@ func TestDiskMeterClosesTheStreamOfADeletedDisk(t *testing.T) {
 	if got := st.idleClosed[len(st.idleClosed)-2:]; !reflect.DeepEqual(got, want) {
 		t.Fatalf("idle closes = %+v, want %+v", got, want)
 	}
+}
+
+// w6/132: a pass cut off between two of a window's rows (a rollout, a failed
+// upsert) must leave nothing for that window, because the next pass resumes
+// after the newest disk row. Production's 2026-11-17 02:00Z window kept 4 of
+// its 8 disks this way and the next pass started at 03:00Z.
+func TestDiskMeterRetriesAWindowCutOffMidPass(t *testing.T) {
+	cut, next := hourWindow(-2), hourWindow(-1)
+	disks := func(gbSeconds int64) []store.DiskUsageRow {
+		return []store.DiskUsageRow{
+			{TenantID: "tea-1", AppID: "srv-1", GBSeconds: gbSeconds},
+			{TenantID: "tea-1", AppID: "srv-2", GBSeconds: gbSeconds},
+			{TenantID: "tea-2", AppID: "srv-3", GBSeconds: gbSeconds},
+		}
+	}
+	st := &memUsageStore{
+		rows:     map[usageKey]store.HourlyRow{},
+		latestBy: map[string]time.Time{},
+		diskRows: map[time.Time][]store.DiskUsageRow{cut: disks(36000), next: disks(36000)},
+	}
+	failed := false
+	st.upsert = func(row store.HourlyRow) error {
+		if row.ServiceID == "srv-2" && row.WindowStart.Equal(cut) && !failed {
+			failed = true
+			return errors.New("bex-api rolled out mid-window")
+		}
+		return nil
+	}
+	svc := diskMeterService(st, "")
+	// Seed the cursor just below the cut window, as the 01:00Z rows did.
+	st.diskRows[hourWindow(-3)] = disks(36000)
+	svc.catchUpDisksThrough(context.Background(), hourWindow(-3))
+
+	svc.catchUpDisksThrough(context.Background(), next)
+	if !failed {
+		t.Fatal("the cut-off was never reached")
+	}
+	for _, service := range []string{"srv-1", "srv-2", "srv-3"} {
+		if row, ok := st.rows[diskRowKey(service, cut)]; ok {
+			t.Fatalf("the cut-off pass committed %s's row %+v; the window must be written whole or not at all", service, row)
+		}
+	}
+	if got := st.idleClosed[len(st.idleClosed)-1].through; !got.Before(cut) {
+		t.Fatalf("the cut-off pass closed idle disk streams through %s; it must close none for %s", got, cut)
+	}
+
+	svc.catchUpDisksThrough(context.Background(), next)
+	for _, window := range []time.Time{cut, next} {
+		for _, service := range []string{"srv-1", "srv-2", "srv-3"} {
+			if row, ok := st.rows[diskRowKey(service, window)]; !ok || row.Quantity != 36000 {
+				t.Fatalf("%s at %s = %+v (present=%v), want the next pass to meter 36000 GB-seconds", service, window, row, ok)
+			}
+		}
+	}
+}
+
+func diskRowKey(service string, window time.Time) usageKey {
+	return usageKey{resourceKind: store.ResourceKindService, serviceID: service, kind: store.UsageKindDiskGBSeconds, windowStart: window}
 }
