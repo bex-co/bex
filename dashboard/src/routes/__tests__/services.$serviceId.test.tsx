@@ -277,9 +277,22 @@ function renderPendingAt(initialPath: string) {
     path: "metrics",
     component: ProbeTab,
   });
+  // The Deploys tab's real id, "/services/$serviceId/deploys/".
+  const deploysRoute = createRoute({
+    getParentRoute: () => layoutRoute,
+    path: "deploys",
+  });
+  const deploysIndexRoute = createRoute({
+    getParentRoute: () => deploysRoute,
+    path: "/",
+    component: ProbeTab,
+  });
   const router = createRouter({
     routeTree: rootRoute.addChildren([
-      layoutRoute.addChildren([metricsRoute]),
+      layoutRoute.addChildren([
+        metricsRoute,
+        deploysRoute.addChildren([deploysIndexRoute]),
+      ]),
     ]),
     history: createMemoryHistory({ initialEntries: [initialPath] }),
     context: { client: {} as never, session: null },
@@ -376,12 +389,61 @@ describe("service-detail layout routing", () => {
     await act(async () => {
       resolveLoader({});
     });
-    expect(
-      await screen.findByText("Application Metrics"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Application Metrics")).toBeInTheDocument();
     expect(screen.getAllByText("Application Metrics")).toHaveLength(1);
     expect(probeMounts).toEqual(["mount"]);
   });
+
+  // w3/064: a tab switch paints this frame before the Deploys route's own
+  // skeleton, so it shows the banner the ready page will from the cached
+  // service. Without it the list dropped by the banner's height on the swap
+  // (production, 2026-11-17).
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    "the pending frame on Deploys mirrors the page's auto-deploy-off banner (autoDeploy %s: banner %s)",
+    async (autoDeploy, banner) => {
+      probeMounts.length = 0;
+      serverState.service = svc({
+        repo: "https://github.com/acme/app",
+        branch: "main",
+        autoDeploy,
+      });
+      const { resolveLoader } = renderPendingAt("/services/app/deploys");
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      // Still the layout's frame: its header is the skeleton, the tab unmounted.
+      expect(
+        document.querySelector('[data-skeleton-region="service-header"]'),
+      ).not.toBeNull();
+      expect(probeMounts).toEqual([]);
+      const tab = document.querySelector('[data-skeleton-region="active-tab"]');
+      expect(
+        tab?.querySelector('[data-route-skeleton="deploys-list"]'),
+      ).not.toBeNull();
+      const shown = tab?.querySelector(
+        '[data-testid="auto-deploy-off-banner"]',
+      );
+      if (banner) {
+        expect(shown).toHaveTextContent(
+          "Pushes to main don't deploy this service",
+        );
+        expect(shown?.querySelector("a")).toHaveAttribute(
+          "href",
+          "/services/app/settings",
+        );
+      } else {
+        expect(shown).toBeNull();
+      }
+
+      await act(async () => {
+        resolveLoader({});
+      });
+    },
+  );
 
   it("shows a retryable error instead of not-found when the service query fails", async () => {
     serverState.service = null;

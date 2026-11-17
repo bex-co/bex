@@ -3079,10 +3079,15 @@ const SERVICE_ROUTE_SKELETON_BY_ID = {
 export function ServiceRouteContentSkeleton({
   base,
   serviceType = null,
+  deploys,
 }: {
   base: "/services" | "/static";
   /** The service's type when already known (cache), for type-shaped tabs. */
   serviceType?: string | null;
+  /** The deploy history's own pending state, drawn from the cached service
+   *  (its auto-deploy-off banner, w3/064), so this frame and the route's
+   *  skeleton that replaces it match. */
+  deploys?: React.ReactNode;
 }) {
   const routeId = useRouterState({
     select: (state) => state.matches.at(-1)?.routeId,
@@ -3100,13 +3105,15 @@ export function ServiceRouteContentSkeleton({
       return <DeployDetailSkeleton />;
     case "deploys":
       return (
-        <DeploysListSkeleton
-          titleKey={
-            routeId === "/services/$serviceId/builds"
-              ? "deploys.buildsTitle"
-              : undefined
-          }
-        />
+        deploys ?? (
+          <DeploysListSkeleton
+            titleKey={
+              routeId === "/services/$serviceId/builds"
+                ? "deploys.buildsTitle"
+                : undefined
+            }
+          />
+        )
       );
     case "disk":
       return <ServiceDiskSkeleton />;

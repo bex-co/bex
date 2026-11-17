@@ -27,6 +27,7 @@ import {
   ServiceDetailHeaderSkeleton,
 } from "@/features/services/components/service-detail-header";
 import { ServiceRouteContentSkeleton } from "@/common/components/route-skeletons";
+import { DeployHistorySkeleton } from "@/features/deploys/components/deploy-history-skeleton";
 
 /**
  * Shared chrome for every per-service page (Render's service-detail shape): the
@@ -193,7 +194,12 @@ export function ServiceDetailLayout({
   );
 }
 
-/** Before the server read lands, the list cache may already know the type. */
+/**
+ * Before the server read lands, the list cache may already know the type. The
+ * deploy history draws its route's own skeleton, which shows the
+ * auto-deploy-off banner from the cached service as the ready page does
+ * (w3/064): a tab switch paints this frame first, then that skeleton.
+ */
 function PendingTabContent({
   serviceId,
   base,
@@ -205,6 +211,7 @@ function PendingTabContent({
     <ServiceRouteContentSkeleton
       base={base}
       serviceType={useCachedServiceType(serviceId)}
+      deploys={<DeployHistorySkeleton />}
     />
   );
 }
