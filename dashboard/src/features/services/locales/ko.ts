@@ -4606,6 +4606,11 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Accessible label for the number of visible service events (plural)",
   },
+  "services.eventsCountAtLeast_other": {
+    message: "최근 이벤트 {count}개 이상",
+    description:
+      "Accessible label for the event count badge while older events remain unread (plural)",
+  },
   "services.eventsEmptyTitle": {
     message: "아직 활동이 없습니다",
     description: "Events tab empty-state title",

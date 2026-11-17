@@ -4599,6 +4599,16 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Accessible label for the number of visible service events (plural)",
   },
+  "services.eventsCountAtLeast_one": {
+    message: "At least {count} recent event",
+    description:
+      "Accessible label for the event count badge while older events remain unread (singular)",
+  },
+  "services.eventsCountAtLeast_other": {
+    message: "At least {count} recent events",
+    description:
+      "Accessible label for the event count badge while older events remain unread (plural)",
+  },
   "services.eventsEmptyTitle": {
     message: "No activity yet",
     description: "Events tab empty-state title",

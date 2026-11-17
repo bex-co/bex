@@ -4657,6 +4657,26 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Accessible label for the number of visible service events (plural)",
   },
+  "services.eventsCountAtLeast_one": {
+    message: "Как минимум {count} недавнее событие",
+    description:
+      "Accessible label for the event count badge while older events remain unread (singular)",
+  },
+  "services.eventsCountAtLeast_few": {
+    message: "Как минимум {count} недавних события",
+    description:
+      "Accessible label for the event count badge while older events remain unread (plural)",
+  },
+  "services.eventsCountAtLeast_many": {
+    message: "Как минимум {count} недавних событий",
+    description:
+      "Accessible label for the event count badge while older events remain unread (plural)",
+  },
+  "services.eventsCountAtLeast_other": {
+    message: "Как минимум {count} недавнего события",
+    description:
+      "Accessible label for the event count badge while older events remain unread (plural)",
+  },
   "services.eventsEmptyTitle": {
     message: "Активности пока нет",
     description: "Events tab empty-state title",

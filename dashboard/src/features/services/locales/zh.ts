@@ -4497,6 +4497,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "最近 {count} 条事件",
     description: "Accessible label for the number of visible service events",
   },
+  "services.eventsCountAtLeast_other": {
+    message: "最近至少 {count} 条事件",
+    description:
+      "Accessible label for the event count badge while older events remain unread",
+  },
   "services.eventsEmptyTitle": {
     message: "暂无活动",
     description: "Events tab empty-state title",

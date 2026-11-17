@@ -4639,6 +4639,11 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Accessible label for the number of visible service events (plural)",
   },
+  "services.eventsCountAtLeast_other": {
+    message: "最近のイベント {count} 件以上",
+    description:
+      "Accessible label for the event count badge while older events remain unread (plural)",
+  },
   "services.eventsEmptyTitle": {
     message: "アクティビティはまだありません",
     description: "Events tab empty-state title",

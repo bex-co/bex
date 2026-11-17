@@ -1039,9 +1039,7 @@ describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
     expect(
       await screen.findByText("Service settings changed"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("No events match this filter"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("No matching events")).not.toBeInTheDocument();
   });
 
   it("filters one build setting by its own name while the feed title stays generic (w4/223)", async () => {
@@ -1081,9 +1079,7 @@ describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
     expect(
       screen.getAllByText("Build and deploy settings changed"),
     ).toHaveLength(1);
-    expect(
-      screen.queryByText("No events match this filter"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("No matching events")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Filter events/ }));
     await user.click(
@@ -1117,7 +1113,10 @@ describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
 
     renderEvents("app");
 
-    expect(await screen.findByText("3")).toBeInTheDocument();
+    // A window that fits in one page is read whole: the exact count, no "+".
+    expect(await screen.findByLabelText("3 recent events")).toHaveTextContent(
+      /^3$/,
+    );
 
     // Hiding a group narrows the list but not the badge: the badge answers
     // "how much happened", the list answers "what am I looking at".
@@ -1136,6 +1135,111 @@ describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
     // The uncatalogued row survives a catalog-group deselection — it is not a
     // member of any catalog group, so nothing in the catalog can hide it.
     expect(screen.getByText("Service settings changed")).toBeInTheDocument();
+  });
+});
+
+// w4/700: the page reads 20 events at a time, so on a busy service the badge
+// counted the pages read so far — 20, then 40, then 60 — while the window held
+// 261. While older events remain, it states a floor, never a total.
+describe("ServiceEventsPage — the count badge never states a total it has not read (w4/700)", () => {
+  function domainEvent(n: number) {
+    const id = `evt-${String(n).padStart(3, "0")}`;
+    return {
+      id,
+      type: "custom_domain_added",
+      timestamp: new Date(
+        Date.UTC(2026, 10, 16, 12, 0, 0) - n * 60_000,
+      ).toISOString(),
+      cursor: `cursor-${id}`,
+      details: { actor: "dev@localhost", domain: `d${n}.example.com` },
+    };
+  }
+
+  // A feed whose first page is full (the hook asks for 20) and whose next
+  // page is the window's last: `fetchMore` merges it the way Apollo would.
+  function pagedFeed(firstPage: number, olderPage: number) {
+    let data = {
+      serviceEvents: Array.from({ length: firstPage }, (_, i) =>
+        domainEvent(i),
+      ),
+    };
+    const older = Array.from({ length: olderPage }, (_, i) =>
+      domainEvent(firstPage + i),
+    );
+    const fetchMore = vi.fn(
+      async ({
+        updateQuery,
+      }: {
+        updateQuery: (
+          previous: typeof data,
+          input: { fetchMoreResult: typeof data },
+        ) => typeof data;
+      }) => {
+        data = updateQuery(data, { fetchMoreResult: { serviceEvents: older } });
+        return { data: { serviceEvents: older } };
+      },
+    );
+    mockUseQuery.mockImplementation(() => ({
+      data,
+      loading: false,
+      error: undefined,
+      fetchMore,
+      refetch: vi.fn(),
+    }));
+    return fetchMore;
+  }
+
+  it("reads 20+ while older events remain, and the exact total once the history is read", async () => {
+    const fetchMore = pagedFeed(20, 5);
+    renderEvents("app");
+
+    const badge = await screen.findByLabelText("At least 20 recent events");
+    expect(badge).toHaveTextContent(/^20\+$/);
+    expect(screen.queryByText("20")).not.toBeInTheDocument();
+
+    // Hiding every row changes the list, not the count.
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Filter events" }));
+    await user.click(screen.getByRole("checkbox", { name: "Configuration" }));
+    await user.keyboard("{Escape}");
+    expect(screen.getByText("No matching events")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("At least 20 recent events"),
+    ).toHaveTextContent(/^20\+$/);
+    await user.click(screen.getByRole("button", { name: /Filter events/ }));
+    await user.click(screen.getByRole("checkbox", { name: "Configuration" }));
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Load older events" }));
+    expect(fetchMore).toHaveBeenCalledTimes(1);
+
+    // The older page was short: the window is read to its end, so the badge
+    // states the total, with no "+".
+    const total = await screen.findByLabelText("25 recent events");
+    expect(total).toHaveTextContent(/^25$/);
+    expect(
+      screen.queryByLabelText(/At least \d+ recent events/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You've reached the beginning of this service's history.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("words the floor in zh", async () => {
+    pagedFeed(20, 0);
+    renderEvents("app");
+    await screen.findByLabelText("At least 20 recent events");
+
+    await act(() => i18n.changeLanguage("zh"));
+    try {
+      expect(
+        await screen.findByLabelText("最近至少 20 条事件"),
+      ).toHaveTextContent(/^20\+$/);
+    } finally {
+      await act(() => i18n.changeLanguage("en"));
+    }
   });
 });
 

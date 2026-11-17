@@ -192,17 +192,22 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
               <div className="min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
                   <CardTitle>{t("services.eventsTitle")}</CardTitle>
-                  {/* Counts what the API returned for the window, not the
-                      post-filter subset: the badge answers "how much happened",
-                      while the list below answers "what am I looking at". */}
+                  {/* Counts the feed read so far, not the post-filter subset:
+                      the badge answers "how much happened", while the list
+                      below answers "what am I looking at". The feed is read a
+                      page at a time, so while older events remain it states a
+                      floor, "20+", never a total it has not read (w4/700). */}
                   {!loading && !error && events.length > 0 ? (
                     <Badge
                       variant="secondary"
-                      aria-label={t("services.eventsCount", {
-                        count: events.length,
-                      })}
+                      aria-label={t(
+                        hasMore
+                          ? "services.eventsCountAtLeast"
+                          : "services.eventsCount",
+                        { count: events.length },
+                      )}
                     >
-                      {events.length}
+                      {hasMore ? `${events.length}+` : events.length}
                     </Badge>
                   ) : null}
                 </div>
