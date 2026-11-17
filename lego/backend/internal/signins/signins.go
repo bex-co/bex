@@ -123,6 +123,11 @@ func (r *Recorder) ObserveSession(ctx context.Context, subject string, s Session
 	go func() {
 		defer r.pending.Done()
 		_, err := seen.Load(ctx, s.ID, ttl, func(ctx context.Context) (struct{}, error) {
+			// A request that missed the cache just before an earlier flight
+			// stored the session starts a flight of its own after it ended.
+			if _, ok := seen.Get(s.ID); ok {
+				return struct{}{}, nil
+			}
 			return struct{}{}, r.recordSignIn(ctx, subject, s)
 		})
 		if err != nil {
