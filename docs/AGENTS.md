@@ -102,6 +102,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 
 - [ADR010-observability.md](ADR010-observability.md) — logs (query + live-tail) + metrics
 - [ADR088-platform-observability-ui.md](ADR088-platform-observability-ui.md) — Grafana at `obs.bex.co` (GitOps, monitoring ns), OIDC via Hydra, ops-workspace gate at consent; §6 = per-dashboard SLI/metric baseline, every-alert-gets-a-panel rule, and the tenant-facing surface coverage table (alert / scheduled probe / waiver per surface)
+- [ADR113-cli-usage-telemetry.md](ADR113-cli-usage-telemetry.md) — CLI usage telemetry: how Render instruments its CLI (one event per command, disclosure gate, opt-out, backoff), bex's shipped parity (w5/m92–m97: events to bex-api, `cli_analytics.events`, the `bex-cli-usage` board), and D5–D9: Bex-owned disclosure, server-side coverage counter, extended-`bex`-command coverage contract, closed labels + ingest alerts, audience column; ends with the SRE dashboard inventory
 - [ADR023-usage-metering.md](ADR023-usage-metering.md) — hourly rollup + `GET /v1/usage`
 - [ADR040-billing-metronome.md](ADR040-billing-metronome.md) — Stripe Billing: `usage_hourly` → Customers/Subscriptions, `BEX_STRIPE_SECRET_KEY`
 - [ADR030-pricing.md](ADR030-pricing.md) — price sheet + `estimatedCost` (advisory; invoices = ADR040)

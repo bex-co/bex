@@ -1,0 +1,218 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="980" viewBox="0 0 1440 980" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#1f2328">
+  <title>ADR113 — CLI usage telemetry: the imported Render CLI's analytics sender, running inside the bex launcher, posts one event per command to bex-api, which attributes and stores it; a restricted view feeds the CLI usage board on obs.bex.co</title>
+  <desc>Top band: on the developer's machine a command produces an execution result, passes the eligibility, disclosure, consent and backoff gates, becomes Render's 18-field event in a state file, and is posted once by a subprocess. Bex-native commands that replace the process report themselves, and a transport wrapper adds the bex release header. Middle band: bex-api authenticates, rate-limits, attributes the event to the caller's identity and stores it in the control-plane Postgres, counting it in Prometheus. Bottom band: a read-only view and reader role feed the Grafana CLI usage board for business and operations. Amber marks what ADR113 adds: a Bex-owned disclosure, the extended-CLI coverage contract, audience and exit-code columns, a coverage panel and ingest alerts. The dashed box lists what is never collected.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#57606a"/>
+    </marker>
+    <style>
+      .t { font-weight: 600; font-size: 14px; }
+      .s { fill: #57606a; font-size: 12px; }
+      .m { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; }
+      .lane { font-weight: 700; font-size: 12px; letter-spacing: .08em; fill: #57606a; }
+      .warn { fill: #9a6700; font-size: 12px; font-weight: 600; }
+      .ln { stroke: #57606a; stroke-width: 1.6; fill: none; marker-end: url(#a); }
+      .lbl { font-size: 11px; fill: #57606a; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .cli { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.4; }
+      .api { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.4; }
+      .core { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.4; }
+      .data { fill: #fbefff; stroke: #8250df; stroke-width: 1.4; }
+      .chg { fill: #fff8c5; stroke: #bf8700; stroke-width: 1.8; }
+      .ng { fill: #ffffff; stroke: #8c959f; stroke-width: 1.4; stroke-dasharray: 6 4; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="1439" height="979" rx="14" fill="#ffffff" stroke="#d0d7de"/>
+
+  <text x="30" y="40" font-size="22" font-weight="700">ADR113 — CLI usage telemetry</text>
+  <text x="30" y="64" class="s">How Render instruments its CLI (pin v2.36.0), where bex sends, stores and reads those events, and what this ADR adds.</text>
+
+  <rect x="924" y="28" width="16" height="12" rx="3" class="cli"/>
+  <text x="946" y="39" class="s">other colors: shipped (w5/m92–m97)</text>
+  <rect x="1172" y="28" width="16" height="12" rx="3" class="chg"/>
+  <text x="1194" y="39" class="s">new in ADR113</text>
+  <rect x="1296" y="28" width="16" height="12" rx="3" class="ng"/>
+  <text x="1318" y="39" class="s">never collected</text>
+
+  <!-- ================= Band A: client ================= -->
+  <text x="30" y="108" class="lane">DEVELOPER MACHINE — bex LAUNCHER (render-oss/cli pkg/analytics, imported unchanged)</text>
+
+  <rect class="cli" x="30" y="122" width="250" height="150" rx="10"/>
+  <text x="44" y="144" class="t">1 · Command runs</text>
+  <text x="44" y="164" class="m">cobra → ExecutionResult</text>
+  <text x="44" y="184" class="s">command path (names only)</text>
+  <text x="44" y="202" class="s">completion kind (8 values)</text>
+  <text x="44" y="220" class="s">exit code · duration</text>
+  <text x="44" y="238" class="s">output format · TUI launched</text>
+
+  <rect class="cli" x="310" y="122" width="260" height="150" rx="10"/>
+  <text x="324" y="144" class="t">2 · Gates (all must pass)</text>
+  <text x="324" y="166" class="s">eligible command</text>
+  <text x="324" y="184" class="s">disclosure shown (CI bypasses)</text>
+  <text x="324" y="202" class="s">consent: DO_NOT_TRACK and</text>
+  <text x="324" y="218" class="s">*_CLI_DISABLE_ANALYTICS unset</text>
+  <text x="324" y="238" class="s">no backoff in effect</text>
+
+  <rect class="cli" x="600" y="122" width="260" height="150" rx="10"/>
+  <text x="614" y="144" class="t">3 · Event: Render's 18 fields</text>
+  <text x="614" y="166" class="s">+ TTY ×3, TERM=dumb</text>
+  <text x="614" y="184" class="s">+ agent / CI env names (not values)</text>
+  <text x="614" y="202" class="s">+ installation id, workspace</text>
+  <text x="614" y="220" class="s">+ CLI version, OS/arch, started_at</text>
+  <text x="614" y="242" class="m">→ events/event-&lt;uuid&gt;.json</text>
+
+  <rect class="cli" x="890" y="122" width="250" height="150" rx="10"/>
+  <text x="904" y="144" class="t">4 · Sender subprocess</text>
+  <text x="904" y="164" class="m">bex analytics send &lt;file&gt;</text>
+  <text x="904" y="184" class="s">detached · sync in CI (≤ 3 s)</text>
+  <text x="904" y="202" class="s">removes the file, then one POST</text>
+  <text x="904" y="220" class="s">no retry: a failed send is dropped</text>
+  <text x="904" y="238" class="s">429 · 503 · 404 → backoff file</text>
+
+  <rect class="data" x="1170" y="122" width="240" height="150" rx="10"/>
+  <text x="1184" y="144" class="t">State: ~/.bex/state</text>
+  <text x="1184" y="166" class="m">installation-id.txt</text>
+  <text x="1184" y="186" class="m">analytics/notice-shown</text>
+  <text x="1184" y="206" class="m">analytics/events/</text>
+  <text x="1184" y="226" class="m">analytics/backoff.json</text>
+  <text x="1184" y="250" class="s">UUID per machine, not per user</text>
+
+  <path class="ln" d="M280,197 L308,197"/>
+  <path class="ln" d="M570,197 L598,197"/>
+  <path class="ln" d="M860,197 L888,197"/>
+  <path class="ln" d="M1140,197 L1168,197"/>
+
+  <rect class="cli" x="30" y="292" width="400" height="92" rx="10"/>
+  <text x="44" y="314" class="t">Bex-native self-reports (w5/m94)</text>
+  <text x="44" y="334" class="s">EmitLaunch before exec: code · glm · muse · kimi ·</text>
+  <text x="44" y="351" class="s">deepseek · edit · agent open · agent ssh</text>
+  <text x="44" y="368" class="s">EmitVersion: bex --version</text>
+
+  <rect class="cli" x="450" y="292" width="240" height="92" rx="10"/>
+  <text x="464" y="314" class="t">Transport wrapper</text>
+  <text x="464" y="334" class="m">X-Bex-CLI-Version: 0.3.x</text>
+  <text x="464" y="352" class="s">on every request to the bex host,</text>
+  <text x="464" y="369" class="s">the send subprocess included</text>
+
+  <rect class="chg" x="710" y="292" width="390" height="92" rx="10"/>
+  <text x="724" y="314" class="t">D5 — Bex-owned disclosure (new)</text>
+  <text x="724" y="334" class="s">The launcher prints a Bex notice and owns the marker;</text>
+  <text x="724" y="351" class="s">the notice run sends nothing, as on Render.</text>
+  <text x="724" y="368" class="s">install-bex.sh shows it for headless installs.</text>
+
+  <path class="ln" d="M380,292 L615,274"/>
+  <path class="ln" d="M640,292 L905,274"/>
+
+  <!-- POST -->
+  <path class="ln" d="M1125,272 L1125,408 L155,408 L155,440"/>
+  <text x="640" y="403" text-anchor="middle" class="lbl">POST /v1/cli-telemetry-events · Authorization: Bearer … · X-Bex-CLI-Version · body = Render's CliTelemetryEventPOSTInput</text>
+
+  <!-- ================= Band B: ingest ================= -->
+  <text x="180" y="431" class="lane">bex-api :8090 — INGEST</text>
+
+  <rect class="api" x="30" y="442" width="250" height="150" rx="10"/>
+  <text x="44" y="464" class="t">Gate</text>
+  <text x="44" y="486" class="s">bearer: OAuth token or API key</text>
+  <text x="44" y="504" class="s">op class write · identity rate limit</text>
+  <text x="44" y="522" class="s">body size cap</text>
+  <text x="44" y="544" class="s">401 · 403 · 429: event dropped</text>
+  <text x="44" y="562" class="s">(429 also starts a 5 min backoff)</text>
+
+  <rect class="api" x="310" y="442" width="260" height="150" rx="10"/>
+  <text x="324" y="464" class="m" font-weight="600">POST /v1/cli-telemetry-events</text>
+  <text x="324" y="486" class="s">Render's body, field for field</text>
+  <text x="324" y="504" class="s">unknown fields ignored (liberal)</text>
+  <text x="324" y="522" class="s">X-Bex-CLI-Version read here</text>
+  <text x="324" y="544" class="s">202 {id} · 503 while store is off</text>
+
+  <rect class="core" x="600" y="442" width="260" height="150" rx="10"/>
+  <text x="614" y="464" class="t">clitelemetry.Service.Record</text>
+  <text x="614" y="486" class="s">subject + workspace from the auth</text>
+  <text x="614" y="503" class="s">identity, never from the payload</text>
+  <text x="614" y="524" class="s">fields truncated, never rejected</text>
+  <text x="614" y="544" class="s">blank command → 400</text>
+
+  <rect class="data" x="890" y="442" width="250" height="150" rx="10"/>
+  <text x="904" y="464" class="m" font-weight="600">cli_telemetry_events</text>
+  <text x="904" y="486" class="s">control-plane Postgres</text>
+  <text x="904" y="504" class="s">purged by the audit sweep (90 d)</text>
+  <text x="904" y="524" class="s">account deletion removes the</text>
+  <text x="904" y="541" class="s">reporter's rows</text>
+
+  <rect class="data" x="1170" y="442" width="240" height="150" rx="10"/>
+  <text x="1184" y="464" class="t">Prometheus</text>
+  <text x="1184" y="486" class="m">…http_requests_total{route}</text>
+  <text x="1184" y="505" class="m">…http_request_duration_seconds</text>
+  <text x="1184" y="524" class="m">…cli_telemetry_events_total</text>
+  <text x="1184" y="550" class="warn">D8: closed labels, ingest alerts</text>
+  <text x="1184" y="568" class="warn">D6: CLI request counter</text>
+
+  <path class="ln" d="M280,517 L308,517"/>
+  <path class="ln" d="M570,517 L598,517"/>
+  <path class="ln" d="M860,517 L888,517"/>
+  <path class="ln" d="M730,442 L730,432 L1290,432 L1290,440"/>
+  <text x="1010" y="428" text-anchor="middle" class="lbl">counted after a successful insert</text>
+
+  <!-- ================= Band C: read side ================= -->
+  <text x="180" y="647" class="lane">READ SIDE — obs.bex.co (Grafana, ops workspace only, ADR088)</text>
+  <path class="ln" d="M1015,592 L1015,624 L155,624 L155,660"/>
+  <text x="640" y="619" text-anchor="middle" class="lbl">read only through the projection</text>
+
+  <rect class="data" x="30" y="662" width="250" height="150" rx="10"/>
+  <text x="44" y="684" class="m" font-weight="600">cli_analytics.events (view)</text>
+  <text x="44" y="706" class="s">the only relation the reader sees</text>
+  <text x="44" y="724" class="s">derived: outcome · failed ·</text>
+  <text x="44" y="741" class="s">duration_mode · both versions</text>
+  <text x="44" y="766" class="warn">D7 · D9: + exit_code,</text>
+  <text x="44" y="783" class="warn">command_family, audience</text>
+
+  <rect class="api" x="310" y="662" width="260" height="150" rx="10"/>
+  <text x="324" y="684" class="t">Reader + datasource</text>
+  <text x="324" y="706" class="m">role bex_cli_analytics</text>
+  <text x="324" y="724" class="s">read-only · 10 s timeouts · 6 conns</text>
+  <text x="324" y="744" class="m">Grafana uid cli-analytics</text>
+  <text x="324" y="766" class="s">probe → AnalyticsDatasourceProbeStale</text>
+
+  <rect class="core" x="600" y="662" width="540" height="150" rx="10"/>
+  <text x="614" y="684" class="t">Board: CLI usage — obs.bex.co/d/bex-cli-usage (24 panels)</text>
+  <text x="614" y="706" class="s">Business — adoption: commands, active installations and workspaces, 1 / 7 / 30-day</text>
+  <text x="614" y="724" class="s">retention: first-seen vs returning, next-week return of mature cohorts</text>
+  <text x="614" y="742" class="s">reliability: failure share, per-command reach · failures · p50/p95 duration</text>
+  <text x="614" y="760" class="s">mix: agent / CI signals, OS, output format, TUI, upstream + bex release</text>
+  <text x="614" y="784" class="s">Operations — last event age · ingest rate · rejection share · ingest p95</text>
+
+  <rect class="chg" x="1170" y="662" width="240" height="150" rx="10"/>
+  <text x="1184" y="684" class="t">New panels (D6–D9)</text>
+  <text x="1184" y="706" class="s">telemetry coverage: stored events</text>
+  <text x="1184" y="723" class="s">per CLI API request</text>
+  <text x="1184" y="744" class="s">ingest alerts: failing · silent</text>
+  <text x="1184" y="764" class="s">audience filter (customer / QA)</text>
+  <text x="1184" y="784" class="s">agent outcomes by exit code</text>
+
+  <path class="ln" d="M280,737 L308,737"/>
+  <path class="ln" d="M570,737 L598,737"/>
+  <path class="ln" d="M1210,592 L1210,640 L1100,640 L1100,660"/>
+  <path class="ln" d="M1330,592 L1330,660"/>
+
+  <!-- ================= Bottom row ================= -->
+  <rect class="chg" x="30" y="836" width="540" height="124" rx="10"/>
+  <text x="44" y="858" class="t">D7 — Extended bex CLI: one event per native command</text>
+  <text x="44" y="879" class="s">returns through cobra → upstream hook · replaces the process → EmitLaunch;</text>
+  <text x="44" y="896" class="s">a test fails on any process-replacing call site that does not report</text>
+  <text x="44" y="917" class="s">bex agent exit codes (3 failed turn · 4 canceled · 6 no session · 124 timeout)</text>
+  <text x="44" y="934" class="s">are outcomes, not CLI faults; waits and chats get their own duration class</text>
+
+  <rect class="core" x="600" y="836" width="540" height="124" rx="10"/>
+  <text x="614" y="858" class="t">Second source, no client change: creation surface</text>
+  <text x="614" y="878" class="m">product_activity_events.surface = 'cli'</text>
+  <text x="614" y="897" class="s">set server-side from User-Agent render-cli/… (w5/m97); board Product adoption:</text>
+  <text x="614" y="914" class="s">Creations by surface per day · Agent-driven share of creations</text>
+  <text x="614" y="938" class="warn">D7: extend to agent sessions, automations and sandboxes</text>
+
+  <rect class="ng" x="1170" y="836" width="240" height="124" rx="10"/>
+  <text x="1184" y="858" class="t" fill="#57606a">Never collected</text>
+  <text x="1184" y="879" class="s">arguments and flag values</text>
+  <text x="1184" y="897" class="s">resource names or ids</text>
+  <text x="1184" y="915" class="s">environment values, output</text>
+  <text x="1184" y="933" class="s">logged-out runs (no identity)</text>
+</svg>
