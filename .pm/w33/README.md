@@ -14,3 +14,4 @@
 - [ ] [003](003.md) — The deploy button falls back to the referring page when `repo` is absent, as Render documents (~45m) ← same brainstorm, item 5
 - [ ] [004](004.md) — Capture what Render does with an `initialDeployHook` that fails, that is added late, and that outruns a timeout (~1h with a Render workspace) ← follow-up from w33/m435 t001 and t008, 2026-11-16; three of the hook's rules are bex's choices until captured
 - [ ] [005](005.md) — `scripts/mock-cluster.sh` says so when the host's inotify limit cannot hold the cluster, instead of cycling workers forever (~1h) ← follow-up from w33/m435 t007, 2026-11-16; the local cluster has been half up for days on a host at the kernel default
+- [ ] [006](006.md) — A Blueprint's estimate and paid-intent check price an existing resource whose file omits `plan` at the create default, not at the plan the sync keeps (~1h) ← follow-up from w33/m436 t005, 2026-11-16; shared by services, databases and Key Value
