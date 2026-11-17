@@ -400,7 +400,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "Linking or unlinking changes service configuration. A repo-backed service with auto-deploy off picks the change up with its next deploy; every other service deploys it now.",
+      "Linking a service deploys it now with the group's values, whatever its auto-deploy setting. Unlinking changes its configuration: a repo-backed service with auto-deploy off picks that up with its next deploy; every other service deploys it now.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -481,8 +481,13 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.linkChangeNote": {
     message:
+      "The service deploys now with the group's values, whatever its auto-deploy setting.",
+    description: "Env-group link success toast detail",
+  },
+  "envGroups.unlinkChangeNote": {
+    message:
       "The service's configuration changed. A repo-backed service with auto-deploy off picks it up with its next deploy; any other service deploys it now.",
-    description: "Env-group link/unlink success toast detail",
+    description: "Env-group unlink success toast detail",
   },
   "envGroups.createSuccess": {
     message: "Created {name}",

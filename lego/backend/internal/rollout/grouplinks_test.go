@@ -75,6 +75,34 @@ func TestSortGroupRefsMovesOnlyGroupRefs(t *testing.T) {
 	}
 }
 
+// A writer that puts a group in or out of the spec itself drops only that
+// group's staged change, so the release it mints cannot fold it back over the
+// write; another group's staged change is left for that release (w32/m423).
+func TestDropStagedGroupLinkForgetsOnlyThatGroup(t *testing.T) {
+	a := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{
+		EnvFromSecrets: []string{olderGroup + "-env"}, FilesFromSecrets: []string{olderGroup + "-files"},
+	}}
+	StageGroupLink(a, olderGroup+"-env", olderGroup+"-files", false) // an unlink waiting
+	StageGroupLink(a, newerGroup+"-env", newerGroup+"-files", true)  // a link waiting
+
+	DropStagedGroupLink(a, olderGroup+"-env", olderGroup+"-files")
+	PrepareGroupRefsForRelease(a)
+	if want := []string{olderGroup + "-env", newerGroup + "-env"}; !slices.Equal(a.Spec.EnvFromSecrets, want) {
+		t.Fatalf("envFromSecrets = %v, want %v: the dropped unlink rode the release, or the other link did not", a.Spec.EnvFromSecrets, want)
+	}
+	if want := []string{olderGroup + "-files", newerGroup + "-files"}; !slices.Equal(a.Spec.FilesFromSecrets, want) {
+		t.Fatalf("filesFromSecrets = %v, want %v", a.Spec.FilesFromSecrets, want)
+	}
+
+	// Dropping the last staged change clears the annotation.
+	b := &appv1alpha1.App{}
+	StageGroupLink(b, newerGroup+"-env", newerGroup+"-files", true)
+	DropStagedGroupLink(b, newerGroup+"-env", newerGroup+"-files")
+	if raw, ok := b.Annotations[appv1alpha1.AnnotationPendingGroupLinks]; ok {
+		t.Fatalf("annotation left behind: %q", raw)
+	}
+}
+
 // A staged link on an Auto-Deploy-off service folds into creation order at the
 // next release, and the effective refs already report that order.
 func TestStagedLinkFoldsIntoCreationOrder(t *testing.T) {

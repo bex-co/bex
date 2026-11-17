@@ -1,18 +1,18 @@
 # w32 · m423 — Linking an environment group deploys the service even with Auto-Deploy off, as Render documents
 
-**Worker:** worker32 **Goal:** a link to a repo-backed service whose Auto-Deploy is off deploys it at once with a recorded deploy, as Render does; unlinks and group edits keep waiting for the owner's next deploy. **Status:** todo
+**Worker:** worker32 **Goal:** a link to a repo-backed service whose Auto-Deploy is off deploys it at once with a recorded deploy, as Render does; unlinks and group edits keep waiting for the owner's next deploy. **Status:** todo (t001–t006 done; [t007](t007.md) walks the definition of done on production once the production pin carries the change)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | A link deploys every service it links, Auto-Deploy on or off | 60m | — |
-| t002 | Surfaces and copy say a link deploys now | 45m | t001 |
-| t003 | ADR013 rule 3 and the ADR018 env-groups row describe the link rule | 20m | t001 |
-| t004 | Render parity | 20m | t002, t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 40m | t004 |
-| t007 | Closeout (live replay on production) | 45m | t005, t006 |
+| [t001](done/t001.md) | A link deploys every service it links, Auto-Deploy on or off — **DONE** | 60m | — |
+| [t002](done/t002.md) | Surfaces and copy say a link deploys now — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | ADR013 rule 3 and the ADR018 env-groups row describe the link rule — **DONE** | 20m | t001 |
+| [t004](done/t004.md) | Render parity — **DONE** | 20m | t002, t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
+| [t007](t007.md) | Closeout (live replay on production) | 45m | t005, t006 |
 
 ## Definition of done
 

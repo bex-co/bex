@@ -410,7 +410,7 @@ const deEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "Das Verknüpfen oder Trennen ändert die Service-Konfiguration. Ein Repository-basierter Service mit deaktiviertem Auto-Deploy übernimmt die Änderung bei seinem nächsten Deployment; jeder andere Service deployt sie sofort.",
+      "Das Verknüpfen deployt den Service sofort mit den Werten der Gruppe, unabhängig von seiner Auto-Deploy-Einstellung. Das Trennen ändert seine Konfiguration: Ein Repository-basierter Service mit deaktiviertem Auto-Deploy übernimmt das bei seinem nächsten Deployment; jeder andere Service deployt es sofort.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -491,8 +491,13 @@ const deEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.linkChangeNote": {
     message:
+      "Der Service wird jetzt mit den Werten der Gruppe deployt, unabhängig von seiner Auto-Deploy-Einstellung.",
+    description: "Env-group link success toast detail",
+  },
+  "envGroups.unlinkChangeNote": {
+    message:
       "Die Konfiguration des Services hat sich geändert. Ein Repository-basierter Service mit deaktiviertem Auto-Deploy übernimmt sie bei seinem nächsten Deployment; jeder andere Service deployt sie sofort.",
-    description: "Env-group link/unlink success toast detail",
+    description: "Env-group unlink success toast detail",
   },
   "envGroups.createSuccess": {
     message: "{name} erstellt",

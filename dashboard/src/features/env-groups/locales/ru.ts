@@ -414,7 +414,7 @@ const ruEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "Связывание и отвязывание меняют конфигурацию сервиса. Сервис из репозитория с отключённым автодеплоем применит изменение при следующем деплое; остальные сервисы развернутся сейчас.",
+      "Связывание сразу разворачивает сервис со значениями группы, независимо от настройки автодеплоя. Отвязывание меняет конфигурацию сервиса: сервис из репозитория с отключённым автодеплоем применит изменение при следующем деплое; остальные сервисы развернутся сейчас.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -495,8 +495,13 @@ const ruEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.linkChangeNote": {
     message:
+      "Сервис разворачивается сейчас со значениями группы, независимо от настройки автодеплоя.",
+    description: "Env-group link success toast detail",
+  },
+  "envGroups.unlinkChangeNote": {
+    message:
       "Конфигурация сервиса изменена. Сервис из репозитория с отключённым автодеплоем применит её при следующем деплое; любой другой сервис развернётся сейчас.",
-    description: "Env-group link/unlink success toast detail",
+    description: "Env-group unlink success toast detail",
   },
   "envGroups.createSuccess": {
     message: "Создано: {name}",

@@ -400,7 +400,7 @@ const jaEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "リンクまたはリンク解除すると、サービスの設定が変更されます。自動デプロイがオフのリポジトリ連携サービスには次回のデプロイで反映され、それ以外のサービスはすぐにデプロイされます。",
+      "リンクすると、自動デプロイの設定にかかわらず、サービスはグループの値ですぐにデプロイされます。リンクを解除するとサービスの設定が変更されます。自動デプロイがオフのリポジトリ連携サービスには次回のデプロイで反映され、それ以外のサービスはすぐにデプロイされます。",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -481,8 +481,13 @@ const jaEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.linkChangeNote": {
     message:
+      "自動デプロイの設定にかかわらず、サービスはグループの値ですぐにデプロイされます。",
+    description: "Env-group link success toast detail",
+  },
+  "envGroups.unlinkChangeNote": {
+    message:
       "サービスの設定が変更されました。自動デプロイがオフのリポジトリ連携サービスには次回のデプロイで反映され、それ以外のサービスはすぐにデプロイされます。",
-    description: "Env-group link/unlink success toast detail",
+    description: "Env-group unlink success toast detail",
   },
   "envGroups.createSuccess": {
     message: "{name} を作成しました",

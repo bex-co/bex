@@ -234,10 +234,11 @@ type EnvGroupView struct {
 	// (empty) so a stranded group cannot poison the workspace list (w4/m98).
 	Availability string `json:"availability,omitempty"`
 	// PendingServiceIDs is set ONLY on the create-with-services result, naming
-	// the services that were linked without a deploy because their Auto-Deploy
-	// is off. It is a write-result field, never part of a group read, so a list
-	// or get always omits it. Same meaning as
-	// EnvironmentPatchResult.PendingServiceIDs.
+	// the services the link did not deploy: a suspended service, whose link
+	// waits for its resume and next deploy (w4/m234). A link deploys every
+	// other service, whatever its Auto-Deploy setting (w32/m423). It is a
+	// write-result field, never part of a group read, so a list or get always
+	// omits it. Same meaning as EnvironmentPatchResult.PendingServiceIDs.
 	PendingServiceIDs []string `json:"pendingServiceIds,omitempty"`
 	// writtenContents carries the exact contents a create just wrote, so its
 	// REST response can reveal them without re-reading the store (w4/m242):
@@ -610,9 +611,8 @@ func (s *Service) findCreateService(ctx context.Context, serviceID, workspace st
 // included — triggers compensation. A crash before the insert leaves only
 // unreferenced maps, which no read reaches.
 //
-// It returns the ids of services that were linked without a deploy because
-// their Auto-Deploy is off (autoDeployGated), so the caller can name them on
-// the create result, and the inserted row.
+// It returns the ids of services the link did not deploy (rollLinked), so the
+// caller can name them on the create result, and the inserted row.
 func (s *Service) persistCreate(
 	ctx context.Context,
 	g store.EnvGroup,
@@ -667,7 +667,7 @@ func (s *Service) persistCreate(
 	stamp := s.now()
 	for _, a := range services {
 		before := a.DeepCopy()
-		skipped, err := s.rollLinked(ctx, a, stamp, gid, true)
+		skipped, err := s.rollLinked(ctx, a, stamp, gid, ownerLink)
 		if err != nil {
 			return nil, store.EnvGroup{}, rollback(err)
 		}
@@ -1066,15 +1066,16 @@ func (s *Service) LinkService(ctx context.Context, gid, service string) error {
 	if err != nil {
 		return err
 	}
-	return s.linkFetched(ctx, gid, a)
+	return s.linkFetched(ctx, gid, a, ownerLink)
 }
 
 // linkFetched is LinkService's post-authorize body, shared with LinkEnvGroup (the
 // blueprint seam) so the two link paths authorize + audit exactly once each. It
-// appends the group's Secret refs to the already-fetched App, rolls it, and
-// records the service in the group's link set by compare-and-set so a
-// concurrent link to another service is preserved (w4/m97).
-func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.App) error {
+// appends the group's Secret refs to the already-fetched App, rolls it as w
+// says (rollLinked), and records the service in the group's link set by
+// compare-and-set so a concurrent link to another service is preserved
+// (w4/m97).
+func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.App, w groupLinkWrite) error {
 	g, err := s.fetchGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
 		return err
@@ -1111,7 +1112,7 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 	if err := validateGroupServiceEnvironment(g.EnvironmentID, key, serviceEnv); err != nil {
 		return err
 	}
-	if _, err := s.rollLinked(ctx, a, s.now(), gid, true); err != nil {
+	if _, err := s.rollLinked(ctx, a, s.now(), gid, w); err != nil {
 		return err
 	}
 	_, err = s.mutateGroup(ctx, gid, func(cur *store.EnvGroup) error {
@@ -1189,23 +1190,55 @@ func autoDeployGated(a *appv1alpha1.App) bool {
 	return a.Spec.Repo != "" && !a.Spec.AutoDeploy
 }
 
-// rollLinked links (or, with link false, unlinks) group gid on an
-// already-fetched service, behind the auto-deploy gate. A gated service's
-// change is only staged (rollout.StageGroupLink): the group's Secret refs are
-// release identity, so writing them would make the operator ship a release no
-// deploy row records. The pod keeps serving its current release, and the
-// owner's next deploy mints the release that carries the change. A service
-// that is not gated gets the refs and spec.restartedAt in one recorded
-// rollout. It reports whether it skipped, so callers can name the untouched
-// services back to the API client.
-func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp, gid string, link bool) (bool, error) {
-	if autoDeployGated(a) {
+// groupLinkWrite is the change rollLinked makes to a service's group refs and
+// who asked for it, which decides whether it deploys now or waits.
+type groupLinkWrite int
+
+const (
+	// ownerLink is a link an owner made: REST, GraphQL, MCP and the
+	// dashboard, and a create with serviceIds. Render: "That's it! Render
+	// kicks off a new deploy of your service to incorporate the values from
+	// the linked environment group" (render.com/docs/configure-environment-variables
+	// § Linking a group to a service, read 2026-11-16). Render names no
+	// Auto-Deploy condition, so the link deploys the service whatever its
+	// Auto-Deploy setting (w32/m423). Only a build source waits (w2/m254).
+	ownerLink groupLinkWrite = iota
+	// syncLink is a link a Blueprint sync made (LinkEnvGroup). Render
+	// documents nothing for it, so it keeps the Auto-Deploy gate (w4/m239).
+	syncLink
+	// unlinkGroup drops the group, for an unlink or a group delete. Render's
+	// modify rule covers a delete ("including deleting it": only services
+	// with autodeploys enabled deploy) and documents nothing for an unlink,
+	// so both keep the Auto-Deploy gate.
+	unlinkGroup
+)
+
+// waits reports whether w on a waits for a's next deploy instead of deploying.
+func (w groupLinkWrite) waits(a *appv1alpha1.App) bool {
+	if w == ownerLink {
+		return core.IsBuildSource(a)
+	}
+	return autoDeployGated(a)
+}
+
+// rollLinked links or unlinks group gid on an already-fetched service, as w
+// says. A change that waits is only staged (rollout.StageGroupLink): the
+// group's Secret refs are release identity, so writing them would make the
+// operator ship a release no deploy row records. The pod keeps serving its
+// current release, and the owner's next deploy mints the release that carries
+// the change. Otherwise the service gets the refs and spec.restartedAt in one
+// recorded rollout, which the rollout tracker holds for the next deploy on a
+// suspended service (w4/m234). It reports whether the change did not deploy,
+// so callers can name those services back to the API client.
+func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp, gid string, w groupLinkWrite) (bool, error) {
+	link := w != unlinkGroup
+	if w.waits(a) {
 		return true, rollout.PatchAppLocked(ctx, s.Client, a, func(a *appv1alpha1.App) error {
 			rollout.StageGroupLink(a, envSecretName(gid), filesSecretName(gid), link)
 			return nil
 		})
 	}
-	return false, s.rollLinkedService(ctx, a, store.TriggerConfigChange, func(a *appv1alpha1.App) {
+	if err := s.rollLinkedService(ctx, a, store.TriggerConfigChange, func(a *appv1alpha1.App) {
 		if link {
 			a.Spec.EnvFromSecrets = rollout.InsertGroupRef(a.Spec.EnvFromSecrets, envSecretName(gid))
 			a.Spec.FilesFromSecrets = rollout.InsertGroupRef(a.Spec.FilesFromSecrets, filesSecretName(gid))
@@ -1213,8 +1246,14 @@ func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp, gid
 			a.Spec.EnvFromSecrets = removeString(a.Spec.EnvFromSecrets, envSecretName(gid))
 			a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, filesSecretName(gid))
 		}
+		rollout.DropStagedGroupLink(a, envSecretName(gid), filesSecretName(gid))
 		a.Spec.RestartedAt = stamp
-	})
+	}); err != nil {
+		return false, err
+	}
+	// a is the App written: on a suspended one the tracker held the release
+	// for the next deploy (rollout.Snapshot.Stamp), so the link is pending.
+	return a.Spec.Suspended, nil
 }
 
 // UnlinkService reverses LinkService: drop the group's Secret refs from the
@@ -1320,7 +1359,7 @@ func (s *Service) detachOnce(ctx context.Context, gid, service string) (*appv1al
 // already holds the App it authorized — reusing it rather than fetching (and
 // authorizing, and auditing) a second time.
 func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.App) error {
-	_, err := s.rollLinked(ctx, a, s.now(), gid, false)
+	_, err := s.rollLinked(ctx, a, s.now(), gid, unlinkGroup)
 	return err
 }
 
@@ -1630,7 +1669,7 @@ func (s *Service) LinkEnvGroup(ctx context.Context, name, service string) error 
 	if !found {
 		return fmt.Errorf("%w: env group %q does not exist", core.ErrBadRequest, name)
 	}
-	return s.linkFetched(ctx, g.ID, a)
+	return s.linkFetched(ctx, g.ID, a, syncLink)
 }
 
 // findGroupByName resolves an env group by its display name WITHIN THE ACTING

@@ -326,7 +326,9 @@ describe("useEnvGroupMutations", () => {
     expect(toastError).toHaveBeenCalledWith("Couldn't create shared");
   });
 
-  it("links a service with the staged-deploy link-change copy", async () => {
+  // A link deploys the service whatever its auto-deploy setting, as on
+  // Render; an unlink keeps the auto-deploy-off hold (w32/m423).
+  it("links a service with the deploys-now link copy", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockImplementation(() => [mutate]);
 
@@ -344,12 +346,12 @@ describe("useEnvGroupMutations", () => {
       "Service linked",
       expect.objectContaining({
         description:
-          "The service's configuration changed. A repo-backed service with auto-deploy off picks it up with its next deploy; any other service deploys it now.",
+          "The service deploys now with the group's values, whatever its auto-deploy setting.",
       }),
     );
   });
 
-  it("unlinks a service with the same link-change warning", async () => {
+  it("unlinks a service with the auto-deploy-off hold", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockImplementation(() => [mutate]);
 

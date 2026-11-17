@@ -387,7 +387,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "关联或取消关联会更改服务配置。基于代码仓库且已关闭自动部署的服务会在下一次部署时应用更改；其他服务会立即部署此更改。",
+      "关联后，无论自动部署设置如何，服务都会立即使用该组的值进行部署。取消关联会更改服务配置：基于代码仓库且已关闭自动部署的服务会在下一次部署时应用更改；其他服务会立即部署此更改。",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -465,9 +465,13 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group write rollout toast detail",
   },
   "envGroups.linkChangeNote": {
+    message: "无论自动部署设置如何，服务都会立即使用该组的值进行部署。",
+    description: "Env-group link success toast detail",
+  },
+  "envGroups.unlinkChangeNote": {
     message:
       "服务配置已更改。基于代码仓库且已关闭自动部署的服务会在下一次部署时应用更改；其他服务会立即部署此更改。",
-    description: "Env-group link/unlink success toast detail",
+    description: "Env-group unlink success toast detail",
   },
   "envGroups.createSuccess": {
     message: "已创建 {name}",

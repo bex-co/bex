@@ -23,7 +23,9 @@ import zh from "../zh";
  *
  * w4/176's link restart copy was superseded by w4/m239: gated links are
  * staged until the owner's next deploy, so LINK_KEYS state that rule
- * (w4/390).
+ * (w4/390). w32/m423 then split the rule as Render documents it: a link
+ * deploys the service whatever its auto-deploy setting, and only an unlink
+ * waits for an auto-deploy-off service's next deploy.
  */
 const REDEPLOY_KEYS = [
   "envGroups.varDeleteConfirmBody",
@@ -33,10 +35,16 @@ const REDEPLOY_KEYS = [
   "envGroups.rolloutNote",
 ] as const;
 
-// Link/unlink copy: the card description and the success-toast detail.
+// Copy that describes a link: the card description and the link toast.
 const LINK_KEYS = [
   "envGroups.servicesDescription",
   "envGroups.linkChangeNote",
+] as const;
+
+// Copy that describes an unlink: the card description and the unlink toast.
+const UNLINK_KEYS = [
+  "envGroups.servicesDescription",
+  "envGroups.unlinkChangeNote",
 ] as const;
 
 const CATALOGS = [
@@ -108,13 +116,43 @@ describe("env-group redeploy copy names the auto-deploy gate", () => {
   });
 });
 
-// Since w4/m239 a gated link is staged until the owner's next deploy, so
-// link copy states that rule instead of the old restart warning (w4/390).
-// The gate is only a repo-backed service's: an image-backed one deploys the
-// change now, though its auto-deploy reads off (w4/554).
-describe("env-group link copy states the staged-deploy rule", () => {
+// Render: "Render kicks off a new deploy of your service to incorporate the
+// values from the linked environment group", with no auto-deploy condition
+// (render.com/docs/configure-environment-variables, read 2026-11-16). So link
+// copy says the service deploys now, whatever its auto-deploy setting
+// (w32/m423), and never that the link waits for a next deploy.
+describe("env-group link copy says a link deploys now", () => {
   describe.each(CATALOGS)("$name", ({ name, catalog }) => {
-    it.each(LINK_KEYS)("%s states the next-deploy rule", (key) => {
+    it.each(LINK_KEYS)("%s says the link deploys now", (key) => {
+      const message = catalog[key]?.message;
+      expect(message, `${name} is missing ${key}`).toBeTruthy();
+      const states =
+        name === "en"
+          ? /deploys (it )?now/i.test(message!) &&
+            /whatever its auto-deploy setting/i.test(message!)
+          : /无论自动部署设置如何/.test(message!) && /立即/.test(message!);
+      expect(states, `${name} ${key} does not say a link deploys now`).toBe(
+        true,
+      );
+    });
+
+    it("the link toast does not say the link waits", () => {
+      const message = catalog["envGroups.linkChangeNote"]!.message;
+      const waits =
+        name === "en"
+          ? /next deploy/i.test(message)
+          : /下一次部署/.test(message);
+      expect(waits, `${name} link toast says the link waits`).toBe(false);
+    });
+  });
+});
+
+// An unlink keeps the auto-deploy gate (w4/m239): Render documents no deploy
+// for it. The gate is only a repo-backed service's: an image-backed one
+// deploys the change now, though its auto-deploy reads off (w4/554).
+describe("env-group unlink copy states the staged-deploy rule", () => {
+  describe.each(CATALOGS)("$name", ({ name, catalog }) => {
+    it.each(UNLINK_KEYS)("%s states the next-deploy rule", (key) => {
       const message = catalog[key]?.message;
       expect(message, `${name} is missing ${key}`).toBeTruthy();
       const states =

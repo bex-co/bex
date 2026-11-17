@@ -327,7 +327,7 @@ export function useEnvGroupMutations(
         await unlinkEnvGroup({ variables: { id, serviceId } });
         await bestEffortRefetch(refetch);
         toast.success(t("envGroups.unlinkSuccess"), {
-          description: t("envGroups.linkChangeNote"),
+          description: t("envGroups.unlinkChangeNote"),
         });
         return true;
       } catch (err) {

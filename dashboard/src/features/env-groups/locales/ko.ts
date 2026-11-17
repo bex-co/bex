@@ -395,7 +395,7 @@ const koEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "연결하거나 연결을 해제하면 서비스 구성이 변경됩니다. 자동 배포가 꺼진 저장소 기반 서비스는 다음 배포 때 변경 사항을 적용하고, 그 외 모든 서비스는 지금 배포됩니다.",
+      "연결하면 자동 배포 설정과 관계없이 서비스가 그룹의 값으로 지금 배포됩니다. 연결을 해제하면 서비스 구성이 변경됩니다. 자동 배포가 꺼진 저장소 기반 서비스는 다음 배포 때 변경 사항을 적용하고, 그 외 모든 서비스는 지금 배포됩니다.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -476,8 +476,13 @@ const koEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.linkChangeNote": {
     message:
+      "자동 배포 설정과 관계없이 서비스가 그룹의 값으로 지금 배포됩니다.",
+    description: "Env-group link success toast detail",
+  },
+  "envGroups.unlinkChangeNote": {
+    message:
       "서비스 구성이 변경되었습니다. 자동 배포가 꺼진 저장소 기반 서비스는 다음 배포 때 적용하고, 그 외 서비스는 지금 배포됩니다.",
-    description: "Env-group link/unlink success toast detail",
+    description: "Env-group unlink success toast detail",
   },
   "envGroups.createSuccess": {
     message: "{name} 생성 완료",

@@ -25,15 +25,18 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Env-group links on an Auto-Deploy-off service (w4/m239).
+// Env-group links that wait for a service's next deploy (w4/m239).
 //
 // spec.envFromSecrets and spec.filesFromSecrets are release identity, so
 // writing a group's Secret refs into them makes the operator adopt a new
 // release — one no deploy row records, and one that strands the owner's next
-// deploy. Render deploys an environment-group change only for services with
-// Auto-Deploy on, so for the others the change waits: it is staged in the
-// AnnotationPendingGroupLinks annotation (metadata, outside the identity) and
-// folded into the spec by the next rolling write, which is a recorded deploy.
+// deploy. Render deploys a group change, a delete included, only for
+// services with Auto-Deploy on. So on an Auto-Deploy-off service an unlink, a
+// group delete and a Blueprint sync's link wait, as does any link to a build
+// source; an owner's link deploys (w32/m423). A change that waits is staged in
+// the AnnotationPendingGroupLinks annotation (metadata, outside the identity)
+// and folded into the spec by the next rolling write, which is a recorded
+// deploy.
 
 // refDelta is the pending change to one Secret-ref list.
 type refDelta struct {
@@ -78,9 +81,15 @@ func (d refDelta) settle(list []string) refDelta {
 	}
 }
 
-func (d refDelta) stage(name string, link bool) refDelta {
+// drop forgets any staged change to name.
+func (d refDelta) drop(name string) refDelta {
 	d.Add = slices.DeleteFunc(slices.Clone(d.Add), func(v string) bool { return v == name })
 	d.Remove = slices.DeleteFunc(slices.Clone(d.Remove), func(v string) bool { return v == name })
+	return d
+}
+
+func (d refDelta) stage(name string, link bool) refDelta {
+	d = d.drop(name)
 	if link {
 		d.Add = append(d.Add, name)
 	} else {
@@ -108,6 +117,17 @@ func writeGroupLinks(a *appv1alpha1.App, g groupLinks) {
 func StageGroupLink(a *appv1alpha1.App, envSecret, filesSecret string, link bool) {
 	g := readGroupLinks(a)
 	g.Env, g.Files = g.Env.stage(envSecret, link), g.Files.stage(filesSecret, link)
+	writeGroupLinks(a, g)
+}
+
+// DropStagedGroupLink forgets a link or unlink of a's group Secrets
+// (envSecret, filesSecret) still staged for the next release. A writer that
+// links or unlinks the group in the spec itself calls it, so the release it
+// mints does not fold the older staged change back over it (w32/m423). Other
+// groups' staged changes stay, for that release to carry.
+func DropStagedGroupLink(a *appv1alpha1.App, envSecret, filesSecret string) {
+	g := readGroupLinks(a)
+	g.Env, g.Files = g.Env.drop(envSecret), g.Files.drop(filesSecret)
 	writeGroupLinks(a, g)
 }
 

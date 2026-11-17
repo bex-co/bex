@@ -153,7 +153,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_env_group",
-		Description: "Delete an environment group; it is unlinked from every service first, and linked services roll.",
+		Description: "Delete an environment group; it is unlinked from every service first, and linked services roll, except a repo-backed service with Auto-Deploy off, which drops the group at its next deploy.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.DeleteEnvGroup(ctx, in.ID)
 		return nil, okResult{OK: err == nil}, err
@@ -261,7 +261,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "link_env_group",
-		Description: "Link an environment group to a service: the service gains the group's env vars + secret files and rolls.",
+		Description: "Link an environment group to a service: the service gains the group's env vars + secret files and deploys, whatever its Auto-Deploy setting.",
 	}, mcputil.Scoped(s.ScopeBuildSourceID, func(in linkEnvGroupArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.LinkService(ctx, in.ID, in.ServiceID)
 		return nil, okResult{OK: err == nil}, err
@@ -269,7 +269,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "unlink_env_group",
-		Description: "Unlink an environment group from a service: the group's vars + files are removed from the service and it rolls.",
+		Description: "Unlink an environment group from a service: the group's vars + files are removed from the service and it rolls, except a repo-backed service with Auto-Deploy off, which drops them at its next deploy.",
 	}, mcputil.Scoped(s.ScopeBuildSourceID, func(in linkEnvGroupArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.UnlinkService(ctx, in.ID, in.ServiceID)
 		return nil, okResult{OK: err == nil}, err

@@ -154,11 +154,12 @@ func TestGroupWriteStillDeploysAnImageBackedService(t *testing.T) {
 	}
 }
 
-// Linking is still honored for a gated service, but only as a staged request:
+// A link a Blueprint sync makes on a gated service is only a staged request:
 // the group's Secret refs are release identity, so writing them would make the
 // operator ship a release no deploy row records (w4/m239). The link reaches the
-// spec with the owner's next release.
-func TestLinkAndUnlinkSkipTheDeployOnAnAutoDeployOffService(t *testing.T) {
+// spec with the owner's next release, and an unlink before then cancels it. An
+// owner's link deploys instead (w32/m423, link_deploys_test.go).
+func TestASyncLinkAndUnlinkLeaveAnAutoDeployOffServicesSpecAlone(t *testing.T) {
 	ctx := testCtx()
 	svc := newService(newFakeStore(), repoApp("off", false))
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
@@ -167,7 +168,7 @@ func TestLinkAndUnlinkSkipTheDeployOnAnAutoDeployOffService(t *testing.T) {
 	}
 	original := getApp(t, svc.Client, "off")
 
-	if err := svc.LinkService(ctx, group.ID, "off"); err != nil {
+	if err := svc.LinkEnvGroup(ctx, "shared", "off"); err != nil {
 		t.Fatalf("link: %v", err)
 	}
 	linked := getApp(t, svc.Client, "off")
@@ -221,27 +222,28 @@ func TestUnlinkAndGroupDeleteOnARunningGatedServiceAreStaged(t *testing.T) {
 	}
 }
 
-// Create-with-services links at create time, so it needs the same gate, and its
+// Create-with-services is an owner's link (w32/m423): it deploys every service
+// it links, Auto-Deploy on or off, and names only a suspended one pending. Its
 // result is the group view rather than a patch result.
-func TestCreateWithServicesNamesTheAutoDeployOffServices(t *testing.T) {
+func TestCreateWithServicesDeploysEveryLinkedService(t *testing.T) {
 	ctx := testCtx()
-	svc := newService(newFakeStore(), repoApp("on", true), repoApp("off", false))
-	before := restartedAt(t, svc, "off")
+	asleep := repoApp("asleep", true)
+	asleep.Spec.Suspended = true
+	svc := newService(newFakeStore(), repoApp("on", true), repoApp("off", false), asleep)
 
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
-		Name: "shared", ServiceIDs: []string{"on", "off"},
+		Name: "shared", ServiceIDs: []string{"on", "off", "asleep"},
 	})
 	if err != nil {
 		t.Fatalf("create group: %v", err)
 	}
-	if !slices.Equal(group.PendingServiceIDs, []string{"off"}) {
-		t.Fatalf("create pendingServiceIds = %v, want [off]", group.PendingServiceIDs)
+	if !slices.Equal(group.PendingServiceIDs, []string{"asleep"}) {
+		t.Fatalf("create pendingServiceIds = %v, want [asleep]", group.PendingServiceIDs)
 	}
-	if got := restartedAt(t, svc, "off"); got != before {
-		t.Fatalf("create-with-services rolled an auto-deploy-off service: %q -> %q", before, got)
-	}
-	if restartedAt(t, svc, "on") == "" {
-		t.Fatal("create-with-services should still roll an auto-deploy-on service")
+	for _, name := range []string{"on", "off"} {
+		if restartedAt(t, svc, name) == "" {
+			t.Fatalf("create-with-services should roll %s", name)
+		}
 	}
 	// A read of the group must not carry the write-only field.
 	read, err := svc.GetEnvGroup(ctx, group.ID)

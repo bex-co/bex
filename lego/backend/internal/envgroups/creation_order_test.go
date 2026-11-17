@@ -79,15 +79,15 @@ func TestLinkServiceKeepsGroupsInCreationOrder(t *testing.T) {
 	wantCreationOrder(t, a.Spec.EnvFromSecrets, a.Spec.FilesFromSecrets, older, newer)
 }
 
-// An Auto-Deploy-off service stages both links (w4/m239), and the release that
-// ships them puts the newer group last.
+// A Blueprint sync stages both links on an Auto-Deploy-off service (w4/m239),
+// and the release that ships them puts the newer group last.
 func TestStagedLinksOnAGatedServiceShipInCreationOrder(t *testing.T) {
 	ctx := testCtx()
 	svc := newService(newFakeStore(), repoApp("off", false))
 	older, newer := twoGroups(t, svc)
-	for _, gid := range []string{newer, older} {
-		if err := svc.LinkService(ctx, gid, "off"); err != nil {
-			t.Fatalf("link %s: %v", gid, err)
+	for _, name := range []string{"b", "a"} { // newer first
+		if err := svc.LinkEnvGroup(ctx, name, "off"); err != nil {
+			t.Fatalf("link %s: %v", name, err)
 		}
 	}
 	a := getApp(t, svc.Client, "off")

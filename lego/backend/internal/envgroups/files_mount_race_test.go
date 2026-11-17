@@ -71,7 +71,8 @@ func TestALinkThatLosesTheAppRaceKeepsTheServicesFilesMount(t *testing.T) {
 			if err := svc.LinkService(ctx, group.ID, "web"); err != nil {
 				t.Fatalf("link: %v", err)
 			}
-			// An Auto-Deploy-off link is staged, not in the spec (w4/m239).
+			// Both links deploy, as on Render (w32/m423); read what the
+			// service will run either way.
 			_, files := rollout.EffectiveGroupSecrets(getApp(t, svc.Client, "web"))
 			if !slices.Contains(files, "web-files") || !slices.Contains(files, filesSecretName(group.ID)) {
 				t.Fatalf("files = %v, want the service's own Secret kept beside the group's", files)

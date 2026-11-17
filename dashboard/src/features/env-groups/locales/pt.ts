@@ -412,7 +412,7 @@ const ptEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "Vincular ou desvincular altera a configuração do serviço. Um serviço baseado em repositório com deploy automático desativado aplica a mudança no próximo deploy; os demais serviços fazem o deploy agora.",
+      "Vincular um serviço faz o deploy dele agora com os valores do grupo, qualquer que seja sua configuração de deploy automático. Desvincular altera a configuração do serviço: um serviço baseado em repositório com deploy automático desativado aplica a mudança no próximo deploy; os demais serviços fazem o deploy agora.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -493,8 +493,13 @@ const ptEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.linkChangeNote": {
     message:
+      "O serviço faz o deploy agora com os valores do grupo, qualquer que seja sua configuração de deploy automático.",
+    description: "Env-group link success toast detail",
+  },
+  "envGroups.unlinkChangeNote": {
+    message:
       "A configuração do serviço mudou. Um serviço baseado em repositório com deploy automático desativado a aplica no próximo deploy; qualquer outro serviço faz o deploy agora.",
-    description: "Env-group link/unlink success toast detail",
+    description: "Env-group unlink success toast detail",
   },
   "envGroups.createSuccess": {
     message: "{name} criado",
