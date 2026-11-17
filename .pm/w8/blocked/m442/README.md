@@ -1,6 +1,6 @@
 # w8 · m442 — Render contract round 8: logs take a `build` filter, an env group read omits the values a caller cannot see, and a sandbox build name cannot start with `sbb-`
 
-**Worker:** worker8 **Goal:** bex answers the three operations Render changed in its public API on or before 2026-11-16 as Render now does, and the pinned spec matches Render's again, so the daily drift check is green. **Status:** todo (t001–t007 done; t008 replays the definition of done on production)
+**Worker:** worker8 **Goal:** bex answers the three operations Render changed in its public API on or before 2026-11-16 as Render now does, and the pinned spec matches Render's again, so the daily drift check is green. **Status:** blocked (release gate: t001–t007 done and shipped in `9c58dd1ac`; t008 replays the definition of done on production once the platform image pin contains it, and the drift job also needs `w22/m444`)
 
 ## Tasks (in order)
 
