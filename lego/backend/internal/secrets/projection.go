@@ -179,24 +179,21 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 		out.ExistedBefore = !replaced
 		project := data
 		if current, known := projectedRevision(sec, kind); known && !predecessor {
-			if current.after(revision) {
+			verdict, narrowed := judgeRecordedRevision(sec.Data, current, revision, data)
+			switch verdict {
+			case recordSuperseded:
 				out.Superseded, out.HoldsData = true, len(sec.Data) > 0
 				if revision.provisional {
 					return out, errProjectionConflict
 				}
 				return out, nil
-			}
-			if current == revision {
-				if !equalSecretData(sec.Data, data) {
-					if !revision.provisional {
-						return out, errProjectionConflict
-					}
-					project = keptByBoth(sec.Data, data)
-				}
-				if equalSecretData(sec.Data, project) {
-					out.HoldsData = len(project) > 0
-					return out, nil
-				}
+			case recordConflict:
+				return out, errProjectionConflict
+			case recordNoop:
+				out.HoldsData = len(narrowed) > 0
+				return out, nil
+			case recordProject:
+				project = narrowed
 			}
 		}
 		if err := s.stampProjection(a, sec, kind, project, revision); err != nil {
@@ -210,6 +207,46 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 		return out, err
 	}
 	return out, errProjectionConflict
+}
+
+// recordedVerdict is what the revision a Secret already records says about a
+// projection of data at revision: the Secret already carries it (recordNoop),
+// a newer revision owns it (recordSuperseded), it holds another map at the
+// same revision (recordConflict), or the projection goes on stamping
+// (recordProject) the returned map — data, or what two deletes that read one
+// revision both keep.
+type recordedVerdict int
+
+const (
+	recordProject recordedVerdict = iota
+	recordNoop
+	recordSuperseded
+	recordConflict
+)
+
+// judgeRecordedRevision reads the revision sec records for kind the way
+// projectSource's update path does: a newer record owns the Secret, the same
+// record with the same data is already projected, and with other data it is a
+// conflict the committing write reports — except a delete's provisional
+// projection, which narrows to what both keep instead.
+func judgeRecordedRevision(secData map[string][]byte, current, revision sourceRevision, data map[string]string) (recordedVerdict, map[string]string) {
+	if current.after(revision) {
+		return recordSuperseded, nil
+	}
+	if current != revision {
+		return recordProject, data
+	}
+	if equalSecretData(secData, data) {
+		return recordNoop, data
+	}
+	if !revision.provisional {
+		return recordConflict, nil
+	}
+	narrowed := keptByBoth(secData, data)
+	if equalSecretData(secData, narrowed) {
+		return recordNoop, narrowed
+	}
+	return recordProject, narrowed
 }
 
 // nothingToProject reports whether a write that stored nothing new has nothing
