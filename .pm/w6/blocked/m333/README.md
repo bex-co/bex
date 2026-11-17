@@ -1,6 +1,6 @@
 # w6 · m333 — Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed
 
-**Worker:** worker6 **Goal:** A deleted service's bandwidth is metered through its deletion hour, and neither a deleted service nor a deleted disk leaves the month's coverage degraded or behind. **Status:** todo — t001–t007 done and verified on production; t008 reads the disk clause on production after the 2026-11-16 user authorization of a short-lived paid fixture in `bex-canary` (see 解除阻塞 — 2026-11-16).
+**Worker:** worker6 **Goal:** A deleted service's bandwidth is metered through its deletion hour, and neither a deleted service nor a deleted disk leaves the month's coverage degraded or behind. **Status:** blocked — t001–t007 done and verified on production; t008's fixture disk was deleted from a live service on 2026-11-17 and its 50 h read is due at 2026-11-19 06:00Z (see BLOCKED — 2026-11-17).
 
 ## Tasks (in order)
 
@@ -47,3 +47,18 @@
 - **对标依据：** Render 删除磁盘后停止计费，账单上也不出现额外的说明；本项只差这条在生产上的验收。
 - **worker 下一步：** 建好并删除测试磁盘后，磁盘删除满 50 小时之前按 loopx 规则把 m333 停回 `blocked/`，门槛写成「删除时间 + 50 h 到点后，worker 自己就能读」。到点后读 `bex-canary` 的 `degradedSources`：`disk` 不在其中，DoD 第 2 条即成立，t008 关闭 milestone。
 - **剩余门槛：** 无用户门槛。
+
+## BLOCKED — 2026-11-17: the fixture disk's 50 h read
+
+- **No organic case.** Read-only on production's `bex-db` at 02:55Z. Every deleted disk had gone with its service: each closed `disk_gb_seconds` stream ended in the same hour as its service's other streams, and no disk stream had ever closed while its service's `instance_seconds` stream stayed open.
+- **The fixture (authorized 2026-11-16).** In `bex-canary`, `POST /v1/services` created the `starter` image service `qa-m333-disk` (`srv-dbts58fa12vs7398m010`, `traefik/whoami`) at 02:57:38Z with the 1 GB disk `dsk-dbts58fa12vs7398m020`. Its deploy went live.
+  - The disk stream started at about 03:43Z with window 02:00Z healthy.
+  - `DELETE /v1/disks/dsk-dbts58fa12vs7398m020` answered 204 at 03:43:14Z and the disk's `GET` answered 404. The service stayed live (`disk: null`).
+  - Window 03:00Z metered the disk's last 43 min (2,595 GB-s). At about 05:40Z the disk meter's pass for window 04:00Z closed the disk stream at 04:00Z through `CloseIdleUsageSourceStreams` (the w4/575 path), while the instance stream stayed open and was metered through 04:00Z.
+  - Then `DELETE /v1/services/srv-dbts58fa12vs7398m010` answered 204 at 05:41:41Z. The service's and the disk's `GET` both answer 404, `usage_retired_resources` holds it, and no App CR is left. Cost: under 3 h of `starter` plus 46 min of 1 GB.
+- **`bex-canary`'s November `degradedSources` already lists `disk`, so the workspace read alone cannot pass this month.** The cause is an older stream, `srv-dbpcja9pjd2c73f0qqjg`. Its disk lived for 30 s on 2026-11-10 07:40Z, and its service was deleted the next hour. The stream expects [07:00Z, 09:00Z) and has no row at 08:00Z, a hole settled since 2026-11-12. It predates both w4/575 (2026-11-11) and m333's rule that a close never extends a stream that already ended (2026-11-12), and it is the only disk hole in `bex-canary`. Coverage is month-scoped, so it leaves on 2026-12-01, but so does the fixture. The read therefore checks the fixture's own stream and attributes the workspace's `disk` entry.
+- **Found on the way: w6/132.** A disk meter pass cut off mid-window (bex-api rolled out three times between 02:49Z and 03:48Z) left window 2026-11-17 02:00Z unmetered for three live disks in `bex`. The cursor is the newest disk row overall, so that window is never retried. The fixture's stream is not exposed to it: its windows 02:00Z and 03:00Z were both written, and the idle close ends a stream after its last written window.
+- **Gate (no user gate; clears by itself): at or after 2026-11-19 06:00Z.** That is the disk deletion plus 50 h, rounded up to the first hour at which the stream's first disk-less window (2026-11-17 04:00Z) is past the 49 h settled edge (`usageSettledBefore`). A stream left open would read `disk` degraded from then on. Then t008:
+  1. Reads `GET /v1/usage?ownerId=tea-daif693dqjvc73e7as3g` signed in as the QA user, and records `coverage.degradedSources`.
+  2. On `bex-db`, read-only, checks that the fixture's stream `(service, srv-dbts58fa12vs7398m010, disk_gb_seconds, disk)` still expects [2026-11-17 02:00Z, 04:00Z) with both windows `healthy`. It also checks that the only missing or non-healthy window in any `bex-canary` disk stream this month is `srv-dbpcja9pjd2c73f0qqjg`'s 2026-11-10 08:00Z.
+  3. If both hold, the deleted disk did not make `disk` a degraded source: DoD clause 2 holds. Verify clauses 1 and 3 again, then close the milestone.
