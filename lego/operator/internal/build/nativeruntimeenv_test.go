@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -99,20 +100,22 @@ func TestNativeNodeImageRuntimeEnvironment(t *testing.T) {
 const nativeBuildRun = "\nRUN --mount=type=secret,id=render-env"
 
 // Elixir builds and runs with MIX_ENV=prod (w8/112), Python with Render's
-// Gunicorn flags (w8/113) and forwarding trust (w8/116), and Ruby with
-// RAILS_ENV=production (w8/114), Render's Bundler settings (w8/117) and the
-// rest of Render's Ruby defaults (w5/162): each
+// Gunicorn flags (w8/113, their bind w32/m424) and forwarding trust (w8/116),
+// and Ruby with RAILS_ENV=production (w8/114), Render's Bundler settings
+// (w8/117) and the rest of Render's Ruby defaults (w5/162, w32/m424): each
 // default precedes the build RUN once on
 // every reviewed line and for an explicit static build of that runtime, and
 // no other runtime gets it.
 func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
 	for _, tc := range []struct{ runtime, versionEnv, versionFile, want, name string }{
 		{"elixir", "ELIXIR_VERSION", "", "ENV MIX_ENV=prod\n", "MIX_ENV"},
-		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n", "GUNICORN_CMD_ARGS"},
+		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV GUNICORN_CMD_ARGS="--preload --access-logfile - --bind=0.0.0.0:10000"` + "\n", "GUNICORN_CMD_ARGS"},
 		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV FORWARDED_ALLOW_IPS="*"` + "\n", "FORWARDED_ALLOW_IPS"},
 		{nativeRubyRuntime, "", ".ruby-version", "ENV RAILS_ENV=production RAILS_SERVE_STATIC_FILES=true RAILS_LOG_TO_STDOUT=true\n", "RAILS_SERVE_STATIC_FILES"},
 		{nativeRubyRuntime, "", ".ruby-version", "ENV MALLOC_ARENA_MAX=2 PIDFILE=/tmp/puma-server.pid\n", "MALLOC_ARENA_MAX"},
 		{nativeRubyRuntime, "", ".ruby-version", "ENV PASSENGER_ENGINE=builtin PASSENGER_ENVIRONMENT=production\n", "PASSENGER_ENGINE"},
+		{nativeRubyRuntime, "", ".ruby-version", `ENV PASSENGER_PORT="10000"` + "\n", "PASSENGER_PORT"},
+		{nativeRubyRuntime, "", ".ruby-version", "ENV GEM_PATH=/opt/render/project/.gems GEM_HOME=/usr/local/lib/ruby/gems/${RUBY_VERSION%.*}.0\n", "GEM_PATH"},
 		{nativeRubyRuntime, "", ".ruby-version",
 			"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=/opt/render/project/.gems BUNDLE_BIN=/opt/render/project/.gems/bin" +
 				" BUNDLE_APP_CONFIG=/opt/render/project/.gems\n", "BUNDLE_DEPLOYMENT"},
@@ -148,6 +151,30 @@ func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
 			if df := nativeDockerfile(other); strings.Contains(df, tc.name) {
 				t.Errorf("%s gained %s:\n%s", runtime, tc.name, df)
 			}
+		}
+	}
+}
+
+// w32/m424: GEM_HOME is the selected Ruby's Gem.default_dir, which the
+// Dockerfile frontend derives from the image's RUBY_VERSION. On the common
+// base that variable is replayed from the selected Ruby image, so on every
+// reviewed line it is set, as a full x.y.z, before GEM_HOME, and trimming its
+// patch names the line's own gem directory.
+func TestNativeRubyGemHomeIsTheSelectedRubysDefaultDir(t *testing.T) {
+	o := nativeOptions()
+	o.Runtime = nativeRubyRuntime
+	replayed := regexp.MustCompile(`\nENV RUBY_VERSION="(\d+\.\d+\.\d+)"\n`)
+	for _, line := range nativeToolchains[nativeRubyRuntime].lines {
+		df := resolvedDockerfileFrom(t, o, nil, map[string]string{".ruby-version": line.version + "\n"})
+		home := strings.Index(df, " GEM_HOME="+nativeRubyGemHome+"\n")
+		m := replayed.FindStringSubmatchIndex(df)
+		if home < 0 || m == nil || m[0] > home {
+			t.Fatalf("ruby %s: RUBY_VERSION is not replayed before GEM_HOME:\n%s", line.line, df)
+		}
+		version := df[m[2]:m[3]]
+		got := strings.Replace(nativeRubyGemHome, "${RUBY_VERSION%.*}", version[:strings.LastIndex(version, ".")], 1)
+		if want := "/usr/local/lib/ruby/gems/" + line.line + ".0"; got != want {
+			t.Errorf("ruby %s: GEM_HOME expands to %s, want %s", line.line, got, want)
 		}
 	}
 }
@@ -199,6 +226,10 @@ func TestNativeElixirImageMixEnvironment(t *testing.T) {
 	}
 }
 
+// renderGunicornFlags is Render's GUNICORN_CMD_ARGS, the Python image's
+// default (w8/113, w32/m424).
+const renderGunicornFlags = "--preload --access-logfile - --bind=0.0.0.0:10000"
+
 // pythonGunicornImage builds Render's Flask shape as a plain WSGI app — pip
 // install, then a bare `gunicorn app:app` — answering with the Gunicorn flags
 // the build and the runtime saw and the URL scheme the request arrived with.
@@ -233,8 +264,8 @@ func TestNativePythonImageGunicornAccessLog(t *testing.T) {
 		name, env, body string
 		accessLine      bool
 	}{
-		{"default", "", "build=--preload --access-logfile - runtime=--preload --access-logfile - scheme=http", true},
-		{"explicit empty", "GUNICORN_CMD_ARGS=", "build=--preload --access-logfile - runtime= scheme=http", false},
+		{"default", "", "build=" + renderGunicornFlags + " runtime=" + renderGunicornFlags + " scheme=http", true},
+		{"explicit empty", "GUNICORN_CMD_ARGS=", "build=" + renderGunicornFlags + " runtime= scheme=http", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			args := []string{"--network", "none"}
@@ -290,6 +321,144 @@ func TestNativePythonImageTrustsTheIngressScheme(t *testing.T) {
 				"http://"+containerIP(t, name)+":10000/").Output()
 			if err != nil || !strings.HasSuffix(string(out), " scheme="+tc.scheme) {
 				t.Fatalf("forwarded request = %q (%v), want scheme=%s", out, err, tc.scheme)
+			}
+		})
+	}
+}
+
+// TestNativePythonImageGunicornBindsRendersPort is w32/m424's execution gate
+// on a real Gunicorn: an app whose gunicorn.conf.py binds 0.0.0.0:8000,
+// started with a bare `gunicorn app:app`, listens on Render's 10000 under the
+// image default, because Gunicorn reads GUNICORN_CMD_ARGS after its config
+// file, and on the serving port the operator gives a web service's pod. An
+// explicitly empty value lets the config file's bind stand, and a -b on the
+// start command still wins over the default. Opt-in: needs Docker and
+// network for PyPI.
+func TestNativePythonImageGunicornBindsRendersPort(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	o := nativeOptions()
+	o.Runtime, o.BuildEnv = nativePythonRuntime, nil
+	o.BuildCommand = "pip install --no-cache-dir --disable-pip-version-check -q gunicorn==23.0.0"
+	o.StartCommand = "gunicorn app:app"
+	src := map[string]string{
+		"gunicorn.conf.py": "bind = \"0.0.0.0:8000\"\n",
+		"app.py": `def app(environ, start_response):
+    start_response("200 OK", [("Content-Type", "text/plain")])
+    return [environ["SERVER_PORT"].encode()]
+`,
+	}
+	tag := buildResolvedImage(t, o, map[string]string{"PYTHON_VERSION": "3.12"}, src, fmt.Sprintf("bex-native-gunicorn-bind-it:%d", os.Getpid()))
+	_, operatorValue := NativeServingPortEnv(nativePythonRuntime, 9000)
+	for i, tc := range []struct {
+		name     string
+		env, cmd []string // docker run flags; a start command replacing the image's
+		listen   string
+	}{
+		{"default", nil, nil, "10000"},
+		{"the operator's serving-port value", []string{"-e", "GUNICORN_CMD_ARGS=" + operatorValue}, nil, "9000"},
+		{"explicit empty", []string{"-e", "GUNICORN_CMD_ARGS="}, nil, "8000"},
+		{"start command bind", nil, NativeStartArgv("gunicorn -b 0.0.0.0:7000 app:app"), "7000"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			name := fmt.Sprintf("bex-native-gunicorn-bind-it-%d-%d", i, os.Getpid())
+			args := append(append(append([]string{"--network", "none"}, tc.env...), tag), tc.cmd...)
+			body, readLogs := runServingCommand(t, name, "http://127.0.0.1:"+tc.listen+"/", args...)
+			if body != tc.listen {
+				t.Fatalf("served %q on %s, want %q:\n%s", body, tc.listen, tc.listen, readLogs())
+			}
+			for _, other := range []string{"10000", "9000", "8000", "7000"} {
+				if other == tc.listen {
+					continue
+				}
+				// curl exits 7 when the connection is refused: nothing listens there.
+				err := exec.Command("docker", "exec", name, "curl", "-s", "-o", "/dev/null", "http://127.0.0.1:"+other+"/").Run()
+				var exit *exec.ExitError
+				if !errors.As(err, &exit) || exit.ExitCode() != 7 {
+					t.Fatalf("port %s answered too (%v), want only %s:\n%s", other, err, tc.listen, readLogs())
+				}
+			}
+		})
+	}
+}
+
+// TestNativeRubyImagePassengerPort is w32/m424's execution gate on a real
+// Passenger Standalone (builtin engine, Render's PASSENGER_ENGINE): an app
+// started with `bundle exec passenger start` and no port configuration
+// listens on Render's 10000, not Passenger's own 3000, and a PASSENGER_PORT
+// the service or the operator sets wins. Opt-in: needs Docker and network
+// for RubyGems and Passenger's agent.
+func TestNativeRubyImagePassengerPort(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	o := nativeOptions()
+	o.Runtime, o.BuildEnv = nativeRubyRuntime, nil
+	// Locked at build time only because this fixture commits no Gemfile.lock.
+	o.BuildCommand = "BUNDLE_DEPLOYMENT=false bundle lock >/dev/null && bundle install --quiet && " +
+		"bundle exec passenger-config install-standalone-runtime --auto >/dev/null"
+	o.StartCommand = "bundle exec passenger start"
+	src := map[string]string{
+		"Gemfile":   "source \"https://rubygems.org\"\ngem \"passenger\", \"6.1.0\"\ngem \"rack\", \"3.1.8\"\n",
+		"config.ru": "run ->(env) { [200, {}, [ENV[\"PASSENGER_PORT\"].to_s]] }\n",
+	}
+	tag := buildResolvedImage(t, o, nil, src, fmt.Sprintf("bex-native-passenger-it:%d", os.Getpid()))
+	for i, tc := range []struct {
+		name, port string
+		args       []string
+	}{
+		{"default", "10000", nil},
+		{"its own PASSENGER_PORT", "9000", []string{"-e", "PASSENGER_PORT=9000"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			name := fmt.Sprintf("bex-native-passenger-it-%d-%d", i, os.Getpid())
+			body, readLogs := runServing(t, tag, name, "http://127.0.0.1:"+tc.port+"/", append([]string{"--network", "none"}, tc.args...)...)
+			if body != tc.port {
+				t.Fatalf("served %q, want PASSENGER_PORT %s:\n%s", body, tc.port, readLogs())
+			}
+			// curl exits 7 when the connection is refused: nothing listens there.
+			err := exec.Command("docker", "exec", name, "curl", "-s", "-o", "/dev/null", "http://127.0.0.1:3000/").Run()
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) || exit.ExitCode() != 7 {
+				t.Fatalf("Passenger's own 3000 answered too (%v):\n%s", err, readLogs())
+			}
+		})
+	}
+}
+
+// TestNativeRubyImageGemPath is w32/m424's execution gate for GEM_PATH on
+// the oldest, default and newest Ruby lines: the build and the started
+// service read Render's GEM_PATH, Ruby's own gems (minitest, rake and the
+// image's rake executable) still load outside the bundle, a gem the build
+// installs with `gem install` is loadable at runtime, and the service's own
+// GEM_PATH wins. Opt-in: needs Docker and network for RubyGems.
+func TestNativeRubyImageGemPath(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	report := `ruby -e 'require "minitest"; require "rake"; require "rack"; print ENV["GEM_PATH"], " home=", Gem.dir == Gem.default_dir'` +
+		` && printf ' %s' "$(/usr/local/bin/rake --version | cut -d, -f1)"`
+	ruby := nativeToolchains[nativeRubyRuntime]
+	for _, line := range []string{ruby.lines[0].line, ruby.defaultLine, ruby.lines[len(ruby.lines)-1].line} {
+		t.Run(line, func(t *testing.T) {
+			o := nativeOptions()
+			o.Runtime, o.BuildEnv = nativeRubyRuntime, nil
+			o.BuildCommand = "gem install --no-document rack -v 3.1.8 >/dev/null && (" + report + ") > build.txt"
+			o.StartCommand = `echo "build $(cat build.txt) runtime $(` + report + `)"`
+			tag := buildResolvedImage(t, o, nil, map[string]string{".ruby-version": line + "\n"},
+				fmt.Sprintf("bex-native-ruby-gempath-it-%s:%d", strings.ReplaceAll(line, ".", "-"), os.Getpid()))
+			for _, tc := range []struct {
+				name, want string
+				args       []string
+			}{
+				{"default", "runtime /opt/render/project/.gems home=true rake", nil},
+				{"its own GEM_PATH", "runtime /opt/render/project/.gems:/srv/gems home=true rake", []string{"-e", "GEM_PATH=/opt/render/project/.gems:/srv/gems"}},
+			} {
+				out, err := exec.Command("docker", append(append([]string{"run", "--rm", "--network", "none"}, tc.args...), tag)...).CombinedOutput()
+				if want := "build /opt/render/project/.gems home=true rake " + tc.want; err != nil || !strings.Contains(string(out), want) {
+					t.Fatalf("%s: run = %v\n%s; want %q", tc.name, err, out, want)
+				}
 			}
 		})
 	}
@@ -378,7 +547,14 @@ end
 // body and a reader of the container's log.
 func runServing(t *testing.T, tag, name, url string, args ...string) (string, func() string) {
 	t.Helper()
-	if out, err := exec.Command("docker", append(append([]string{"run", "-d", "--name", name}, args...), tag)...).CombinedOutput(); err != nil {
+	return runServingCommand(t, name, url, append(args, tag)...)
+}
+
+// runServingCommand is runServing for a full `docker run` argument list:
+// flags, the image, and the command that replaces its CMD, if any.
+func runServingCommand(t *testing.T, name, url string, args ...string) (string, func() string) {
+	t.Helper()
+	if out, err := exec.Command("docker", append([]string{"run", "-d", "--name", name}, args...)...).CombinedOutput(); err != nil {
 		t.Fatalf("run: %v\n%s", err, out)
 	}
 	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })

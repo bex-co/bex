@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // NativeEnvNoneRevision is the stable BuildKit cache key when a native build
@@ -155,8 +156,12 @@ const (
 	nativeRubyRuntime   = "ruby"
 	nativeElixirRuntime = "elixir"
 	nativeRustRuntime   = "rust"
-	// nativeRubyGems is Render's BUNDLE_PATH, beside the source tree.
+	// nativeRubyGems is Render's BUNDLE_PATH and GEM_PATH, beside the source
+	// tree.
 	nativeRubyGems = "/opt/render/project/.gems"
+	// nativeRubyGemHome is the selected Ruby's Gem.default_dir, resolved by
+	// the Dockerfile frontend from the image's RUBY_VERSION (nativeBuildDefaults).
+	nativeRubyGemHome = "/usr/local/lib/ruby/gems/${RUBY_VERSION%.*}.0"
 	// Render's GOPATH, CARGO_HOME and RUSTUP_HOME (nativeBuildDefaults).
 	nativeGoPath     = "/opt/render/project/go"
 	nativeCargoHome  = "/opt/render/project/.cargo"
@@ -491,10 +496,11 @@ const nativeWorkdir = "/opt/render/project/src"
 // binstubs first on PATH — deployment mode alone would install into the
 // app's vendor/bundle, where a static site publishing its root or a Jekyll
 // build would pick the gems up, and a bare `puma` would no longer resolve.
-// Python gets Render's Gunicorn flags, preloading the app and writing access
-// lines to stdout (w8/113). Render's --bind is left out: Gunicorn binds the
-// platform's PORT by default, which a bind in gunicorn.conf.py or on the
-// command line still replaces, as it would without these flags. It also gets
+// Python gets Render's Gunicorn flags, preloading the app, writing access
+// lines to stdout (w8/113) and binding Render's port (w32/m424): Gunicorn
+// reads the variable after gunicorn.conf.py and before the command line, so
+// its --bind replaces a bind in the config file, as on Render, while a -b on
+// the start command still wins. It also gets
 // Render's FORWARDED_ALLOW_IPS=* (w8/116): requests arrive from the ingress,
 // never loopback, so without it Gunicorn (and Uvicorn, which reads the same
 // variable) ignores X-Forwarded-Proto and an HTTPS request reaches the app
@@ -512,9 +518,13 @@ const nativeWorkdir = "/opt/render/project/src"
 //     paths. Those are links to where the toolchain image keeps them: the
 //     paths exist and hold the toolchain, and nothing is copied.
 //
-// ROCKET_PORT is not an image default: it has to follow the port the service
-// is routed on, so the operator sets it on the pod (rocketPortDefault,
-// w8/273). Elixir gets RELEASE_DISTRIBUTION=name (w8/272): a release starts
+// Render pins each runtime's own port variable to its default port 10000
+// (NativeServingPortEnv). Python's GUNICORN_CMD_ARGS and Ruby's
+// PASSENGER_PORT are image defaults at that port, as on Render, and the
+// operator replaces them on a web or private service's pod with the port it
+// is routed on (servingPortDefault, w32/m424). ROCKET_PORT is set on the pod
+// only, as Render sets it at runtime only (w8/273). Elixir gets
+// RELEASE_DISTRIBUTION=name (w8/272): a release starts
 // its node with a long name, which needs a hostname with a domain, so the
 // operator gives an Elixir service's pods one (elixirNodeSubdomain). Python
 // gets Render's virtualenv (w8/274): one at /opt/render/project/src/.venv,
@@ -539,7 +549,7 @@ func nativeBuildDefaults(o Options) string {
 		return "RUN python3 -m venv " + nativePythonVenv + "\n" +
 			"ENV VIRTUAL_ENV=" + nativePythonVenv + " VENV_ROOT=" + nativePythonVenv + "\n" +
 			"ENV PATH=" + nativePythonVenv + "/bin:$PATH\n" +
-			`ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n" +
+			nativeServingPortDefault(nativePythonRuntime) +
 			`ENV FORWARDED_ALLOW_IPS="*"` + "\n" +
 			"ENV PIPENV_YES=true\n" +
 			"ARG CI=true\n"
@@ -547,19 +557,60 @@ func nativeBuildDefaults(o Options) string {
 		// Render's Ruby defaults, build and runtime alike (w5/162): Rails
 		// serves its own assets and logs to stdout only when told to, so
 		// without these a migrated app 404s its CSS/JS and its log lines
-		// never reach the Logs tab. PASSENGER_PORT is left out: Render pins it
-		// to its own default port, while a bex service's port is PORT. So is
-		// GEM_PATH: setting it drops RubyGems' default directory, hiding the
-		// gems Ruby ships (rake, minitest), and BUNDLE_PATH already decides
-		// where Bundler installs.
+		// never reach the Logs tab. PASSENGER_PORT makes Passenger Standalone
+		// bind the platform's port instead of its own 3000 (w32/m424).
+		//
+		// GEM_PATH is Render's too (w32/m424). Set alone it would hide the
+		// gems Ruby ships (rake, minitest): RubyGems searches GEM_PATH plus
+		// GEM_HOME only, and the docker-library images set GEM_HOME to
+		// /usr/local/bundle, away from Ruby's own directory. So GEM_HOME is
+		// Ruby's Gem.default_dir, /usr/local/lib/ruby/gems/<major.minor>.0
+		// (RUBY_VERSION is every reviewed image's full x.y.z), which is what
+		// RubyGems uses when GEM_HOME is unset, as on Render. Measured on the
+		// 3.0, 3.4 and 4.0 lines: `require "minitest"`, `require "rake"` and
+		// the image's own rake work outside the bundle as they did before, and
+		// `gem install` lands in Ruby's directory, on Gem.path. Inside
+		// `bundle exec` Bundler sets both itself, from BUNDLE_PATH.
 		return "ENV RAILS_ENV=production RAILS_SERVE_STATIC_FILES=true RAILS_LOG_TO_STDOUT=true\n" +
 			"ENV MALLOC_ARENA_MAX=2 PIDFILE=/tmp/puma-server.pid\n" +
 			"ENV PASSENGER_ENGINE=builtin PASSENGER_ENVIRONMENT=production\n" +
+			nativeServingPortDefault(nativeRubyRuntime) +
 			"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=" + nativeRubyGems + " BUNDLE_BIN=" + nativeRubyGems + "/bin" +
 			" BUNDLE_APP_CONFIG=" + nativeRubyGems + "\n" +
+			"ENV GEM_PATH=" + nativeRubyGems + " GEM_HOME=" + nativeRubyGemHome + "\n" +
 			"ENV PATH=" + nativeRubyGems + "/bin:$PATH\n"
 	}
 	return ""
+}
+
+// NativeServingPortEnv is the variable through which a native runtime's usual
+// server learns the port to bind, and its value for port; "" for a runtime
+// with none. Render sets it to 10000 (render.com/docs/environment-variables,
+// read 2026-11-16): Gunicorn's flags with --bind=0.0.0.0:10000 for Python,
+// Passenger Standalone's PASSENGER_PORT for Ruby (its own default is 3000),
+// and Rocket's ROCKET_PORT for Rust (w8/273). On bex the port a service is
+// routed on can be a configured or a detected one, so the operator gives a
+// web or private service's pod the value for that port, which is Render's
+// wherever the port is the default (w32/m424).
+func NativeServingPortEnv(runtime string, port int) (name, value string) {
+	p := strconv.Itoa(port)
+	switch runtime {
+	case nativePythonRuntime:
+		return "GUNICORN_CMD_ARGS", "--preload --access-logfile - --bind=0.0.0.0:" + p
+	case nativeRubyRuntime:
+		return "PASSENGER_PORT", p
+	case nativeRustRuntime:
+		return "ROCKET_PORT", p
+	}
+	return "", ""
+}
+
+// nativeServingPortDefault is runtime's NativeServingPortEnv at Render's
+// default port as an image ENV line, its value quoted for the spaces in
+// Gunicorn's flags.
+func nativeServingPortDefault(runtime string) string {
+	name, value := NativeServingPortEnv(runtime, appv1alpha1.DefaultPort)
+	return fmt.Sprintf("ENV %s=%q\n", name, value)
 }
 
 // nativeRuntimeDefaults is the environment Render gives a native runtime's

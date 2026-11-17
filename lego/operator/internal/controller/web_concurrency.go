@@ -27,6 +27,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/types/renderenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -105,44 +106,49 @@ func (r *AppReconciler) configuredEnv(ctx context.Context, app *appv1alpha1.App,
 	return "", false, nil
 }
 
-// withWebConcurrency adds the default just before PORT, which appEnv always
-// appends last.
+// withWebConcurrency adds the default just before PORT.
 func withWebConcurrency(env []corev1.EnvVar, n int) []corev1.EnvVar {
-	if n <= 0 || len(env) == 0 {
+	if n <= 0 {
 		return env
 	}
-	v := corev1.EnvVar{Name: webConcurrencyEnvName, Value: strconv.Itoa(n)}
+	return beforePort(env, corev1.EnvVar{Name: webConcurrencyEnvName, Value: strconv.Itoa(n)})
+}
+
+// beforePort inserts v just before PORT, which appEnv always appends last.
+func beforePort(env []corev1.EnvVar, v corev1.EnvVar) []corev1.EnvVar {
+	if len(env) == 0 {
+		return env
+	}
 	return append(env[:len(env)-1:len(env)-1], v, env[len(env)-1])
 }
 
-// ROCKET_PORT is the port Rocket binds. Render sets it to its default port on
-// every Rust service, at runtime only, so a Rocket app listens where the
-// platform routes with no configuration (w8/273). On bex the routed port can
-// be a configured or a detected one, and a fixed 10000 would move a Rocket app
-// off it, so the default follows the serving port: equal to Render's value
-// wherever the port is the default.
-const rocketPortEnvName = "ROCKET_PORT"
-
-// rocketPortDefault reports whether the app container gets ROCKET_PORT. Like
-// WEB_CONCURRENCY it must yield to every value the service configures, because
-// a container env entry beats every envFrom key.
-func (r *AppReconciler) rocketPortDefault(ctx context.Context, app *appv1alpha1.App) (bool, error) {
-	if app.Spec.Runtime != rustRuntime || !app.Spec.InternallyAddressable() {
+// servingPortDefault reports whether the app container gets its runtime's
+// port variable (build.NativeServingPortEnv): Gunicorn's flags with their
+// bind for Python, PASSENGER_PORT for Ruby, ROCKET_PORT for Rust. Render pins
+// each to its default port 10000, so a Gunicorn config-file bind, a Passenger
+// app or a Rocket app listens where the platform routes with no
+// configuration (w8/273, w32/m424). On bex the routed port can be a
+// configured or a detected one, and a fixed 10000 would move the app off it,
+// so the value follows the serving port: Render's wherever the port is the
+// default. Only a web or private service is routed; a worker or cron job
+// keeps the image's default, as on Render. Like WEB_CONCURRENCY it must yield
+// to every value the service configures, an explicit empty one included,
+// because a container env entry beats every envFrom key.
+func (r *AppReconciler) servingPortDefault(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	name, _ := build.NativeServingPortEnv(app.Spec.Runtime, 0)
+	if name == "" || !app.Spec.InternallyAddressable() {
 		return false, nil
 	}
-	_, set, err := r.configuredEnv(ctx, app, rocketPortEnvName)
+	_, set, err := r.configuredEnv(ctx, app, name)
 	return !set && err == nil, err
 }
 
-// rustRuntime is AppSpec.Runtime for a native Rust service.
-const rustRuntime = "rust"
-
-// withRocketPort adds the default, the serving port, just before PORT, which
-// appEnv always appends last.
-func withRocketPort(env []corev1.EnvVar, port int, add bool) []corev1.EnvVar {
-	if !add || len(env) == 0 {
+// withServingPortDefault adds runtime's port variable, valued for the
+// serving port, just before PORT.
+func withServingPortDefault(env []corev1.EnvVar, runtime string, port int, add bool) []corev1.EnvVar {
+	if !add {
 		return env
 	}
-	v := corev1.EnvVar{Name: rocketPortEnvName, Value: strconv.Itoa(port)}
-	return append(env[:len(env)-1:len(env)-1], v, env[len(env)-1])
+	name, value := build.NativeServingPortEnv(runtime, port)
+	return beforePort(env, corev1.EnvVar{Name: name, Value: value})
 }

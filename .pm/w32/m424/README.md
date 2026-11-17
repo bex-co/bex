@@ -1,18 +1,18 @@
 # w32 · m424 — Native Ruby and Python get the port defaults Render pins to 10000, and `GEM_PATH`, as Render documents
 
-**Worker:** worker32 **Goal:** a native Ruby or Python service gets Render's `PASSENGER_PORT`, `GUNICORN_CMD_ARGS` (with `--bind`) and `GEM_PATH`, closing the three unsigned divergences ADR018 lists for them. **Status:** todo
+**Worker:** worker32 **Goal:** a native Ruby or Python service gets Render's `PASSENGER_PORT`, `GUNICORN_CMD_ARGS` (with `--bind`) and `GEM_PATH`, closing the three unsigned divergences ADR018 lists for them. **Status:** todo (t001–t006 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | `PASSENGER_PORT` follows the serving port on native Ruby services | 40m | — |
-| t002 | `GUNICORN_CMD_ARGS` carries Render's `--bind`, at the serving port | 45m | — |
-| t003 | `GEM_PATH` is Render's `/opt/render/project/.gems`, and Ruby's own gems stay visible | 40m | — |
-| t004 | ADR018 and ADR060 replace the ⚠️ list with what shipped | 15m | t001, t002, t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 40m | t004 |
-| t007 | Closeout (live replay on production) | 40m | t005, t006 |
+| [t001](done/t001.md) | `PASSENGER_PORT` follows the serving port on native Ruby services — **DONE** | 40m | — |
+| [t002](done/t002.md) | `GUNICORN_CMD_ARGS` carries Render's `--bind`, at the serving port — **DONE** | 45m | — |
+| [t003](done/t003.md) | `GEM_PATH` is Render's `/opt/render/project/.gems`, and Ruby's own gems stay visible — **DONE** | 40m | — |
+| [t004](done/t004.md) | ADR018 and ADR060 replace the ⚠️ list with what shipped — **DONE** | 15m | t001, t002, t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
+| [t007](t007.md) | Closeout (live replay on production) | 40m | t005, t006 |
 
 ## Definition of done
 
