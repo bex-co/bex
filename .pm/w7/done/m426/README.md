@@ -1,6 +1,6 @@
 # w7 · m426 — A bex API key works as a bearer token, as a Render API key does
 
-**Worker:** worker7 **Goal:** one bex API key string, sent as `Authorization: Bearer`, authenticates REST, GraphQL and MCP as a Render API key does, so Render's clients work with only the host and the key changed; the `client_credentials` exchange keeps working. **Status:** blocked — release gate, no user action (t001–t005 and t007–t009 done and shipped; t006 walked on production on 2026-11-17 and holds except one check: a repeated wrong key never reached 429 behind Cloudflare. The fix is the commit whose message carries `w7/m426 t006`; t006 re-runs that one check, then t010, once the production pin carries it)
+**Worker:** worker7 **Goal:** one bex API key string, sent as `Authorization: Bearer`, authenticates REST, GraphQL and MCP as a Render API key does, so Render's clients work with only the host and the key changed; the `client_credentials` exchange keeps working. **Status:** done (2026-11-17: every definition-of-done item held on production; the last one, a repeated wrong key answering 429 behind Cloudflare, at pin `e0a5ba20aac8`)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | Create answers one key string, and the dashboard shows it with a curl example — **DONE** | 75m | t002 |
 | t004 | Failed key attempts are rate-limited, counted and never logged — **DONE** | 45m | t002 |
 | t005 | The CLI and the skills pack use an API key directly — **DONE** | 60m | t002 |
-| t006 | Live check on production: curl, the `render` CLI, `/mcp` and the Terraform provider with one key | 45m | t003, t004, t005 |
+| t006 | Live check on production: curl, the `render` CLI, `/mcp` and the Terraform provider with one key — **DONE** | 45m | t003, t004, t005 |
 | t007 | Render parity — **DONE** | 20m | t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 45m | t007 |
-| t010 | Closeout | 10m | t008, t009 |
+| t010 | Closeout — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -88,6 +88,18 @@ On production, as the QA user in `bex-canary`, with an owned key that is revoked
   ```
 
 - **Then:** t006's one remaining check. As the QA user in `bex-canary`, mint a key, repeat one wrong key (`bex_<its id>_<a wrong secret>`) against `GET /v1/services` until it answers 429. With a budget of 60 a minute per replica and two replicas, 300 attempts sent 10 at a time should reach it within seconds. Check that the 429 body says nothing about the key, revoke the key, and log the session out. Then run t010.
+
+**2026-11-17 (later), unblocked by verified evidence, the last check passed, closed.**
+
+- **The release gate cleared** (source: verified evidence, `/pm unblock w7/m426`). The newest pin on main, `e36296ae8` `chore(deploy): pin platform images to e0a5ba20aac8`, carries the fix `2ef6af0c8` (`git merge-base --is-ancestor 2ef6af0c8 e0a5ba20aac8` succeeds). Deploy run 44145201758 built `e0a5ba20aac8`, and its `deploy` job succeeded at 18:39 UTC. The pin moved bex-api to `bex-operator@sha256:f7b06e9cccd7…`.
+  - The pods were not read. `scripts/fetch-app-kubeconfig.sh` failed host-key verification on this machine: `~/.ssh/known_hosts` holds an older key for one control-plane address. Strict checking was left as it is.
+  - The walk below is the proof that production serves the fix: the same repeat that never reached 429 at `db48cde2bae9` now does.
+- **t006's remaining check**, 21:25 UTC, as the QA user in `bex-canary`. One key was minted over REST (201), and the key as the bearer answered 200 on `GET /v1/services`.
+  - One wrong key (`bex_<its id>_<a random secret>`) was sent 300 times, 10 at a time, to `GET /v1/services`, in 10 s. The first 127 answered 401, then 429. In total 138 answered 401 and 162 answered 429; the 401s after the first 429 are the two replicas' buckets refilling.
+  - The 429 body is `{"id":"auth_overloaded","message":"authentication upstream overloaded; see Retry-After header"}` with `Retry-After: 1`. It is the body random text gets from the same source, and it names nothing about the key. **Definition-of-done item 4 holds.**
+  - While the source was shed, the QA session's own revoke also answered 429 once, then 204 five seconds later. That is the per-source budget w1/m67 designed: a source that has spent its invalid-credential budget waits before any further upstream credential check.
+  - After the revoke, the key answered 401. The session was logged out with `qa-login.sh --logout`, and the API answered 401 to its cookie afterwards. No key material is recorded.
+- **t010, closeout.** Definition-of-done items 1, 2, 3 and 5 hold from the walk above at `db48cde2bae9`, and item 4 from this one. Item 6: ADR012 §8e and ADR018's API-key row describe the bearer key, and no dashboard locale says a key is "not a bearer token" (`bearer-key-copy.test.ts` pins it). Item 7: on main, `backend-test` and `go-lint` passed at `dc9c9b772`, `cli-test` at `7bf6115cc` and `dashboard-test` at `dc9c9b772`, all after this milestone's commits.
 
 ## Source + Goal linkage
 
