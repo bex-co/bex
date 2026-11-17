@@ -45,6 +45,11 @@
 #      the push while the image moves only at the next pin, so the running
 #      binary exits on the unknown flag (f114fdd9f crash-looped the manager for
 #      about 35 minutes, w8/331).
+#  10. The push adds a backend migration numbered at or below the highest one
+#      on the base (scripts/migration_order_guard.py). Blocks: a database
+#      already past that number, production included, skips it for good while
+#      every fresh CI database applies it (0283 landed below a live 0284, and
+#      the audit log answered 500 until a repair migration, w4/701).
 #
 # Gates 2, 3, 5 and 6 and the gofmt check run in a detached worktree at HEAD,
 # never in the working tree: a gate run beside an edit in progress tested the
@@ -149,6 +154,7 @@ if grep -qiE '\[(skip ci|ci skip|no ci|skip actions|actions skip)\]' <<<"$messag
   exit 1
 fi
 python3 -B scripts/manifest_flag_guard.py "$base" HEAD
+python3 -B scripts/migration_order_guard.py "$base" HEAD
 
 # Which gates this push needs, from git objects only. Captured, not piped into
 # grep: under pipefail an early-exiting grep can SIGPIPE git and make a large

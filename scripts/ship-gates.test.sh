@@ -125,7 +125,7 @@ if bash "$root/scripts/ship-gates.sh" 2>/dev/null; then fail "a missing base ref
 # and a push without dashboard changes runs nothing.
 repo="$tmp/repo"
 mkdir -p "$repo/scripts" "$repo/dashboard" "$repo/docs" "$repo/.github/scripts" "$repo/.github/workflows" "$repo/lego/operator"
-cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$root/scripts/gitleaks.sh" "$root/scripts/manifest_flag_guard.py" "$root/scripts/deploy_latency.py" "$repo/scripts/"
+cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$root/scripts/gitleaks.sh" "$root/scripts/manifest_flag_guard.py" "$root/scripts/migration_order_guard.py" "$root/scripts/deploy_latency.py" "$repo/scripts/"
 cp "$root/.github/scripts/native-common-qualify.py" "$repo/.github/scripts/"
 # Stands in for the native suites: logs that it ran, fails on demand.
 cat >"$repo/.github/scripts/test_native_oci_stub.py" <<PY
@@ -278,5 +278,20 @@ commit "an unformatted go file"
 if fmt_gate HEAD~1; then fail "a file the pinned gofmt rejects passed the gate"; fi
 grep -q "run $tmp/goroot/bin/gofmt -w on them" "$tmp/err" || fail "the refusal did not name the pinned gofmt: $(cat "$tmp/err")"
 grep -qx "lego/x.go" "$tmp/err" || fail "the refusal did not name the file: $(cat "$tmp/err")"
+
+# The migration order gate (gate 10, w4/701): a migration numbered below the
+# base's highest blocks before any suite runs, naming the file and the rule.
+# The passing side is scripts/test_migration_order_guard.py's (a passing
+# backend change would start the real-DB suite here).
+migrations="$repo/lego/backend/internal/store/migrations"
+mkdir -p "$migrations"
+echo 'SELECT 1;' >"$migrations/0284_cron_minimum.up.sql"
+commit "a live migration"
+echo 'SELECT 1;' >"$migrations/0283_audit_source_ip_user_agent.up.sql"
+commit "a migration rebased below it"
+if gate HEAD~1; then fail "a migration numbered below the base's highest passed the gate"; fi
+grep -q "0283_audit_source_ip_user_agent.up.sql numbers at or below 0284_cron_minimum.up.sql" "$tmp/err" || fail "the low migration was not named: $(cat "$tmp/err")"
+grep -q "renumber above 0284" "$tmp/err" || fail "the refusal did not say how to fix it: $(cat "$tmp/err")"
+grep -q "testing " "$tmp/err" && fail "the backend suite was reached before the migration order refused the push"
 
 echo "ship-gates.test: ok"

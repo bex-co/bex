@@ -37,6 +37,7 @@ on:
       - "scripts/stripe_orphan_audit.py"
       - "scripts/test_stripe_orphan_audit.py"
       - "scripts/ci-fetch-verified.sh"
+      - "scripts/migration_order_guard.py"
       - ".github/workflows/backend-test.yml"
   push:
     branches: [main]
@@ -68,6 +69,7 @@ on:
       - "scripts/stripe_orphan_audit.py"
       - "scripts/test_stripe_orphan_audit.py"
       - "scripts/ci-fetch-verified.sh"
+      - "scripts/migration_order_guard.py"
       - ".github/workflows/backend-test.yml"
   workflow_call: {}
 
@@ -110,6 +112,24 @@ jobs:
       - name: trigger paths cover the files the tests read
         if: github.workflow == 'test (backend)'
         run: python3 -B scripts/ci_test_inputs.py .github/workflows/backend-test.yml
+      # A migration this change adds must number above every migration on its
+      # base: a database already past a number skips a lower one for good,
+      # while this job's fresh database applies it and stays green (w4/701:
+      # 0283 landed below production's 0284). The base is the pull request's
+      # base branch tip or the pushed range's start. Only in this workflow's
+      # own runs, like the trigger-path check: deploy.yml's call carries no
+      # range of its own.
+      - name: new migrations number above the base's highest
+        if: github.workflow == 'test (backend)'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE" ] || [ -z "${BASE//0/}" ]; then
+            echo "no base commit to compare against"
+            exit 0
+          fi
+          git fetch --no-tags --depth=1 --filter=blob:none origin "$BASE"
+          python3 -B scripts/migration_order_guard.py "$BASE" HEAD
       # The runner's Docker Hub pulls intermittently time out on
       # registry-1.docker.io (run 39504771495: three postgres pulls in under a
       # minute, then the job failed). A `services:` container is pulled before

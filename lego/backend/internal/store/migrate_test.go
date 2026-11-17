@@ -18,14 +18,19 @@ package store
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
@@ -975,6 +980,15 @@ func TestPushDatastoreEventsMigrationRoundTrips(t *testing.T) {
 // directory listing), so it runs on every `go test ./...`, not just the
 // opt-in BEX_TEST_DB_URI path — the two prior incidents both shipped through
 // review because nothing checked for the collision until a live database hit it.
+//
+// It cannot catch the other half of the class: a migration whose number is
+// unique but BELOW one main already carries. A branch that rebases over a
+// newer migration keeps its lower number, every fresh database (CI, dev-N)
+// applies both in order, and a database already past the higher one skips the
+// lower one for good (w4/701: 0283 landed after 0284 was live, and production
+// never ran it). scripts/migration_order_guard.py refuses that in
+// scripts/ship-gates.sh and backend-test.yml: a migration a push adds must
+// number above every migration on its base.
 func TestMigrationNumbersAreUnique(t *testing.T) {
 	entries, err := migrationsFS.ReadDir("migrations")
 	if err != nil {
@@ -1003,6 +1017,101 @@ func TestMigrationNumbersAreUnique(t *testing.T) {
 	if len(seen) == 0 {
 		t.Fatal("no migration files found — the embed pattern or directory is broken")
 	}
+}
+
+// TestAuditOriginReachesADatabaseThatSkipped0283 reproduces w4/701 on
+// production's own history: it ran 0284_cron_minimum before
+// 0283_audit_source_ip_user_agent reached main, recorded 284, and then
+// Migrate() never ran 0283 (golang-migrate applies only versions above the
+// recorded one). audit_events had no source_ip or user_agent, so every audit
+// write and the audit log's only read failed. The database here gets that
+// history in a throwaway database of its own (the shared one cannot move
+// back), then the real Migrate() must leave a row recorded with its origin
+// readable through the audit log.
+func TestAuditOriginReachesADatabaseThatSkipped0283(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	dbURI := throwawayDatabase(t, ctx, uri)
+
+	src, err := iofs.New(migrationsFS, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := migrate.NewWithSourceInstance("iofs", src, pgx5URL(dbURI))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Migrate(282); err != nil {
+		t.Fatalf("migrate to 0282: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, dbURI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	up0284, err := migrationsFS.ReadFile("migrations/0284_cron_minimum.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, string(up0284)); err != nil {
+		t.Fatalf("apply 0284 ahead of 0283: %v", err)
+	}
+	if err := m.Force(284); err != nil {
+		t.Fatalf("record version 284: %v", err)
+	}
+	if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
+		t.Fatalf("close migrate: %v, %v", srcErr, dbErr)
+	}
+
+	if err := Migrate(dbURI); err != nil {
+		t.Fatalf("Migrate() past 284: %v", err)
+	}
+	st := &PGStore{Pool: pool}
+	workspace := ids.New(ids.Workspace)
+	if err := st.Record(ctx, core.AuditEvent{
+		Caller: "kratos-a", CallerMethod: "session", Verb: core.AuditVerbViewEnvVarValues,
+		Resource: core.WorkspaceObject(workspace), Target: core.ServiceTarget("srv-1"),
+		Outcome: core.AuditAllowed, At: time.Now().UTC(), SourceIP: "198.51.100.23", UserAgent: "render-cli/2.27.0",
+	}); err != nil {
+		t.Fatalf("record an audit row after the repair: %v", err)
+	}
+	rows, err := st.ListAuditEvents(ctx, workspace, AuditFilter{})
+	if err != nil {
+		t.Fatalf("read the audit log after the repair: %v", err)
+	}
+	if len(rows) != 1 || rows[0].SourceIP != "198.51.100.23" || rows[0].UserAgent != "render-cli/2.27.0" {
+		t.Fatalf("audit rows = %+v, want one from 198.51.100.23 / render-cli/2.27.0", rows)
+	}
+}
+
+// throwawayDatabase creates an empty database beside the one uri names, drops
+// it when t ends, and returns its URI.
+func throwawayDatabase(t *testing.T, ctx context.Context, uri string) string {
+	t.Helper()
+	admin, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(admin.Close)
+	raw := "bex_" + strings.ReplaceAll(ids.New(ids.Workspace), "-", "_")
+	name := pgx.Identifier{raw}.Sanitize()
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+name); err != nil {
+		t.Fatalf("create throwaway database: %v", err)
+	}
+	t.Cleanup(func() {
+		if _, err := admin.Exec(context.Background(), "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)"); err != nil {
+			t.Errorf("drop throwaway database: %v", err)
+		}
+	})
+	u, err := url.Parse(uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.Path = "/" + raw
+	return u.String()
 }
 
 func TestBlueprintPathDefaultMigrationUsesCanonicalRenderFilename(t *testing.T) {
