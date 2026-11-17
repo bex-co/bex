@@ -408,10 +408,17 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 	// noop (w5/m117). An omitted builder is preserved, as before.
 	if applies("runtime", "builder") {
 		next := *dst
-		if applies("runtime") {
+		// A probe of either half judges the pair the file declares, not the
+		// half alone: a Dockerfile build switching to the buildpack spelling
+		// (runtime docker beside x-bex.builder buildpack) moves the strategy
+		// only jointly, so an isolated probe would read a Dockerfile build
+		// either way and the plan would name nothing. Presence, not scope,
+		// decides each half: an undeclared half keeps the live value, as the
+		// whole apply does.
+		if present("runtime") {
 			next.Runtime = want.Runtime
 		}
-		if applies("builder") {
+		if present("builder") {
 			next.Builder = want.Builder
 		}
 		// A source-kind switch takes the declared strategy even where the

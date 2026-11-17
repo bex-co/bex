@@ -260,7 +260,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		}
 		if changed {
 			action.Operation = BlueprintPlanUpdate
-			action.ChangedFields = blueprintPlanFieldChanges(blueprintServiceProbePaths(resource.Fields), func(name string) (bool, error) {
+			// The probes run over the applied set, as the build-source plan
+			// does: x-bex.builder is lifted onto svc.fields and never a
+			// top-level resource field, so probing the raw set could move
+			// the strategy without naming the builder.
+			action.ChangedFields = blueprintPlanFieldChanges(blueprintServiceProbePaths(svc.fields), func(name string) (bool, error) {
 				probe := *served.DeepCopy()
 				return probeBlueprintServiceSpec(&probe, want, svc.fields, name)
 			})

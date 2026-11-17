@@ -18,6 +18,7 @@ package apps
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -417,4 +418,34 @@ func applyBlueprintDatabaseSpecForTest(dst *appv1alpha1.DatabaseSpec, want appv1
 	changed, err := ApplyBlueprintDatabaseSpec(db, want, fields, blueprintTestNow)
 	*dst = db.Spec
 	return changed, err
+}
+
+// A Dockerfile-built service switched to the buildpack spelling (runtime
+// docker beside x-bex.builder buildpack) changes the build strategy, but
+// neither half alone does: the runtime probe still reads a Dockerfile build
+// with the live builder, the builder probe still reads one with the live
+// runtime, and x-bex itself applies nothing. The plan named an update with
+// no changed fields beside it; it names the strategy's fields.
+func TestBlueprintServicePlanNamesABuildpackSwitch(t *testing.T) {
+	const deployed = `services:
+  - name: api
+    type: web
+    runtime: docker
+    repo: https://github.com/bex-co/api
+    branch: main
+`
+	const planned = `services:
+  - name: api
+    type: web
+    runtime: docker
+    repo: https://github.com/bex-co/api
+    branch: main
+    x-bex:
+      builder: buildpack
+`
+	svc, ctx := newRefsPlanService(t, deployed)
+	api := planAction(t, planActionsForTest(ctx, t, svc, planned), "api")
+	if api.Operation != BlueprintPlanUpdate || !slices.Equal(fieldPaths(api.ChangedFields), []string{"builder", "runtime"}) {
+		t.Fatalf("api plan = %+v, want an update of builder and runtime", api)
+	}
 }
