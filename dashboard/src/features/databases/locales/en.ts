@@ -780,6 +780,14 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Download",
     description: "Download an available logical database export",
   },
+  "databases.recoveryDownloadUnavailable": {
+    message: "This export is no longer available for download.",
+    description: "Toast when Download finds the export is no longer available",
+  },
+  "databases.recoveryDownloadError": {
+    message: "Couldn't get the download link. Please try again.",
+    description: "Toast when the download link of an export cannot be fetched",
+  },
   "databases.recoveryExportInProgress": {
     message: "An export is already in progress.",
     description: "Reason the create-export button is disabled",

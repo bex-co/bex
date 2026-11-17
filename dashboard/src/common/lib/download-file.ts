@@ -16,3 +16,16 @@ export function downloadTextFile(
   anchor.click();
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Hands a ready-made download URL (a presigned object-store link) to the
+ * browser as a named file. The link is a bearer capability, so the anchor sends
+ * no referrer and opens no window that could reach this page.
+ */
+export function openDownloadURL(url: string, filename?: string | null): void {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  if (filename) anchor.download = filename;
+  anchor.rel = "noopener noreferrer";
+  anchor.click();
+}

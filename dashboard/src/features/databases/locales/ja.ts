@@ -772,6 +772,15 @@ const jaDatabases: Record<string, TranslationEntry> = {
     message: "ダウンロード",
     description: "Download an available logical database export",
   },
+  "databases.recoveryDownloadUnavailable": {
+    message: "このエクスポートはダウンロードできなくなりました。",
+    description: "Toast when Download finds the export is no longer available",
+  },
+  "databases.recoveryDownloadError": {
+    message:
+      "ダウンロードリンクを取得できませんでした。もう一度お試しください。",
+    description: "Toast when the download link of an export cannot be fetched",
+  },
   "databases.recoveryExportInProgress": {
     message: "エクスポートはすでに実行中です。",
     description: "Reason the create-export button is disabled",

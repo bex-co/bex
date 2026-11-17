@@ -44,6 +44,7 @@ bex matches the observable shape and makes the following explicit decisions wher
 
 - `GET /v1/postgres/{id}/export`, GraphQL `databaseExports`, and MCP `list_postgres_exports` require `can_view_sensitive`, because a dump contains the entire database.
 - An available export gets a fresh S3-compatible presigned URL on each authorized list read. The URL is never stored; it expires after 15 minutes or at the artifact deadline, whichever comes first.
+- A list that returns at least one URL records one `DownloadDatabaseBackupEvent` audit row (w21/105; [audit-logs-api.md](audit-logs-api.md)), on REST, GraphQL and MCP alike. GraphQL mints URLs only for a query that selects `url`, so a status read costs no URL and no row.
 - The shared export object is a safe superset of Render's schema: `id`, `createdAt`, and optional `url`, plus `status`, `urlExpiresAt`, `expiresAt`, `filename`, and `failureReason` for an honest UI/agent lifecycle.
 - Status progresses `created` → `running` → `available` or `failed`; expiry uses `expiring` → `expired` and is not marked complete until the object-delete Job succeeds.
 - The operator runs version-compatible `pg_dump --format=directory`, packages the output as `.dir.tar.gz`, and uploads it below `<BEX_DB_BACKUP_DESTINATION>/logical-exports/<database>/<export-id>/`. Dump bytes never transit bex-api.

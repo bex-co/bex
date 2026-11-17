@@ -203,6 +203,8 @@ var renderEvents = map[string]string{
 	core.AuditVerbUpdatePaymentMethod:       "UpdateWorkspacePaymentMethodEvent",
 	core.AuditVerbViewEnvVarValues:          "ViewEnvVarValuesEvent",
 	core.AuditVerbViewConnectionInfo:        "ViewConnectionInfoEvent",
+	// A list that handed out a Postgres logical backup's download URL (w21/105).
+	core.AuditVerbDownloadDatabaseBackup: "DownloadDatabaseBackupEvent",
 }
 
 func renderEvent(verb string) string {

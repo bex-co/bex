@@ -775,6 +775,14 @@ const ruDatabases: Record<string, TranslationEntry> = {
     message: "Скачать",
     description: "Download an available logical database export",
   },
+  "databases.recoveryDownloadUnavailable": {
+    message: "Этот экспорт больше недоступен для скачивания.",
+    description: "Toast when Download finds the export is no longer available",
+  },
+  "databases.recoveryDownloadError": {
+    message: "Не удалось получить ссылку для скачивания. Повторите попытку.",
+    description: "Toast when the download link of an export cannot be fetched",
+  },
   "databases.recoveryExportInProgress": {
     message: "Экспорт уже выполняется.",
     description: "Reason the create-export button is disabled",

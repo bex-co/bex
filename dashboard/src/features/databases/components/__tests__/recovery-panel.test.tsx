@@ -16,6 +16,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const createExport = vi.fn();
+const downloadExport = vi.fn();
 const recover = vi.fn();
 
 function windowInfo(): RecoveryInfo {
@@ -32,11 +33,13 @@ const state: {
   exportInProgress: boolean;
   info: RecoveryInfo;
   error: Error | undefined;
+  downloadingExportId: string | null;
 } = {
   exports: [],
   exportInProgress: false,
   info: windowInfo(),
   error: undefined,
+  downloadingExportId: null,
 };
 
 vi.mock("@/features/databases/hooks/use-recovery", () => ({
@@ -49,6 +52,8 @@ vi.mock("@/features/databases/hooks/use-recovery", () => ({
     exporting: false,
     recovering: false,
     createExport,
+    downloadExport,
+    downloadingExportId: state.downloadingExportId,
     recover,
   }),
 }));
@@ -58,7 +63,9 @@ beforeEach(() => {
   state.exportInProgress = false;
   state.info = windowInfo();
   state.error = undefined;
+  state.downloadingExportId = null;
   createExport.mockReset();
+  downloadExport.mockReset();
   recover.mockReset();
   navigate.mockReset();
 });
@@ -130,14 +137,12 @@ describe("RecoveryPanel restore window", () => {
 });
 
 describe("RecoveryPanel logical exports", () => {
-  it("renders an available export as a real download and a failed reason honestly", () => {
+  it("renders an available export with a Download button and a failed reason honestly", async () => {
     state.exports = [
       {
         id: "exp-available",
         status: "available",
         createdAt: "2026-07-14T11:00:00Z",
-        url: "https://objects.example.com/signed-export",
-        urlExpiresAt: "2026-07-14T12:15:00Z",
         expiresAt: "2026-07-21T11:00:00Z",
         filename: "2026-07-14T11_00Z.dir.tar.gz",
         failureReason: null,
@@ -146,8 +151,6 @@ describe("RecoveryPanel logical exports", () => {
         id: "exp-failed",
         status: "failed",
         createdAt: "2026-07-14T10:00:00Z",
-        url: null,
-        urlExpiresAt: null,
         expiresAt: "2026-07-21T10:00:00Z",
         filename: "2026-07-14T10_00Z.dir.tar.gz",
         failureReason: "S3 credentials were rejected",
@@ -156,20 +159,45 @@ describe("RecoveryPanel logical exports", () => {
 
     render(<RecoveryPanel id="db" />);
 
-    const download = screen.getByRole("link", { name: "Download" });
-    expect(download).toHaveAttribute(
-      "href",
-      "https://objects.example.com/signed-export",
+    // The list holds no URL: pressing Download is what asks for one, and what
+    // bex-api records as a download (w21/105). A link with an href would have
+    // been minted by every poll.
+    expect(screen.queryByRole("link", { name: "Download" })).toBeNull();
+    const download = screen.getAllByRole("button", { name: "Download" })[0]!;
+    expect(download).toBeEnabled();
+    expect(downloadExport).not.toHaveBeenCalled();
+    await userEvent.setup().click(download);
+    expect(downloadExport).toHaveBeenCalledTimes(1);
+    expect(downloadExport).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "exp-available" }),
     );
-    expect(download).toHaveAttribute(
-      "download",
-      "2026-07-14T11_00Z.dir.tar.gz",
-    );
+    // The failed export's Download stays disabled and says why.
+    expect(
+      screen.getAllByRole("button", { name: "Download" })[1],
+    ).toBeDisabled();
     expect(screen.getByText("Available")).toBeInTheDocument();
     expect(screen.getByText("Failed")).toBeInTheDocument();
     expect(
       screen.getByText("Export failed: S3 credentials were rejected"),
     ).toBeInTheDocument();
+  });
+
+  it("disables the Download that is fetching its link", () => {
+    state.downloadingExportId = "exp-available";
+    state.exports = [
+      {
+        id: "exp-available",
+        status: "available",
+        createdAt: "2026-07-14T11:00:00Z",
+        expiresAt: "2026-07-21T11:00:00Z",
+        filename: "2026-07-14T11_00Z.dir.tar.gz",
+        failureReason: null,
+      },
+    ];
+
+    render(<RecoveryPanel id="db" />);
+
+    expect(screen.getByRole("button", { name: "Download" })).toBeDisabled();
   });
 
   it("disables creating and downloading while another export is running", () => {
@@ -179,8 +207,6 @@ describe("RecoveryPanel logical exports", () => {
         id: "exp-running",
         status: "running",
         createdAt: "2026-07-14T11:00:00Z",
-        url: null,
-        urlExpiresAt: null,
         expiresAt: "2026-07-21T11:00:00Z",
         filename: "2026-07-14T11_00Z.dir.tar.gz",
         failureReason: null,

@@ -758,6 +758,14 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "下载",
     description: "Download an available logical database export",
   },
+  "databases.recoveryDownloadUnavailable": {
+    message: "此导出已无法下载。",
+    description: "Toast when Download finds the export is no longer available",
+  },
+  "databases.recoveryDownloadError": {
+    message: "无法获取下载链接，请重试。",
+    description: "Toast when the download link of an export cannot be fetched",
+  },
   "databases.recoveryExportInProgress": {
     message: "已有导出正在进行。",
     description: "Reason the create-export button is disabled",

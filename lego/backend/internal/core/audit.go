@@ -313,6 +313,14 @@ const (
 	AuditVerbViewEnvVarValues   = "secrets.ViewEnvVarValues"
 	AuditVerbViewConnectionInfo = "datastores.ViewConnectionInfo"
 
+	// AuditVerbDownloadDatabaseBackup is Render's DownloadDatabaseBackupEvent, "a
+	// logical backup of a Render Postgres database was downloaded" (w21/105).
+	// bex's download is a presigned URL straight from the object store, so the one
+	// moment bex-api sees it is the list that mints the URL: Service.ListExports
+	// writes this row once per request that returned at least one URL, through
+	// RecordSecretsViewed, and none for a list that returned none.
+	AuditVerbDownloadDatabaseBackup = "postgres.DownloadDatabaseBackup"
+
 	AuditVerbLinkService      = "envgroups.LinkService"
 	AuditVerbUnlinkService    = "envgroups.UnlinkService"
 	AuditVerbLinkEnvGroup     = "envgroups.LinkEnvGroup"
@@ -1084,11 +1092,11 @@ func (b *Base) RecordAllowedWrite(ctx context.Context, verb, relation, workspace
 }
 
 // RecordSecretsViewed records one successful read that returned secret values
-// (AuditVerbViewEnvVarValues, AuditVerbViewConnectionInfo) of target, in the
-// workspace that owns it: one row per request, never one per value, and only
-// once the read has succeeded. A denied read is already its authorization's
-// row. verb must be one of auditedViews (audit_object.go), the closed set of
-// reads that record a success.
+// or a bearer download URL (AuditVerbViewEnvVarValues, AuditVerbViewConnectionInfo,
+// AuditVerbDownloadDatabaseBackup) of target, in the workspace that owns it: one
+// row per request, never one per value or URL, and only once the read has
+// succeeded. A denied read is already its authorization's row. verb must be one of
+// auditedViews (audit_object.go), the closed set of reads that record a success.
 func (b *Base) RecordSecretsViewed(ctx context.Context, verb, workspaceID, target, targetName string) {
 	b.recordView(ctx, verb, workspaceID, target, targetName)
 }

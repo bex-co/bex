@@ -62,6 +62,8 @@ export function RecoveryPanel({
     exporting,
     recovering,
     createExport,
+    downloadExport,
+    downloadingExportId,
     recover,
   } = useRecovery(id);
   const [restoreOpen, setRestoreOpen] = useState(false);
@@ -195,6 +197,8 @@ export function RecoveryPanel({
               title={t("databases.recoveryExports")}
               items={exports}
               emptyText={t("databases.recoveryNoExports")}
+              downloadingId={downloadingExportId}
+              onDownload={downloadExport}
             />
           </>
         )}
@@ -271,10 +275,14 @@ function ExportList({
   title,
   items,
   emptyText,
+  downloadingId,
+  onDownload,
 }: {
   title: string;
   items: ExportItem[];
   emptyText: string;
+  downloadingId: string | null;
+  onDownload: (item: ExportItem) => Promise<void>;
 }) {
   const { t } = useTranslations();
   return (
@@ -305,15 +313,19 @@ function ExportList({
                     <Badge variant="outline">
                       {exportStatusLabel(item.status, t)}
                     </Badge>
-                    {item.status === "available" && item.url ? (
-                      <Button asChild size="sm" variant="outline">
-                        <a
-                          href={item.url}
-                          download={item.filename ?? undefined}
-                        >
+                    {item.status === "available" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={downloadingId === item.id}
+                        onClick={() => void onDownload(item)}
+                      >
+                        {downloadingId === item.id ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
                           <Download />
-                          {t("databases.recoveryDownloadExport")}
-                        </a>
+                        )}
+                        {t("databases.recoveryDownloadExport")}
                       </Button>
                     ) : (
                       <Button

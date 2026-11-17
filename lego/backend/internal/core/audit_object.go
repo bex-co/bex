@@ -41,7 +41,8 @@ import (
 const (
 	// AuditVerbGetObject is a download of an object's bytes: Render's wire has no
 	// such event, but Render audits the downloads of customer data it has
-	// (DownloadDatabaseBackupEvent, DocumentDownloadEvent), once per request.
+	// (DownloadDatabaseBackupEvent, DocumentDownloadEvent), once per request;
+	// bex's own Postgres export download is the same shape (w21/105).
 	// RecordObjectViewed writes it once the object opened.
 	AuditVerbGetObject = "objectstorage.GetObject"
 
@@ -58,16 +59,18 @@ const (
 
 // auditedViews are the verbs of a read that records a row when it SUCCEEDS,
 // against the rule that a successful read stays unrecorded (readRelations): a view
-// of secret values, a view of connection info and a download of an object. It is
-// closed on purpose. Each is a read Render audits as a view or a download of
-// customer data, once per request (ViewEnvVarValuesEvent, ViewConnectionInfoEvent,
-// DownloadDatabaseBackupEvent), or the object store's twin of it. recordView
-// refuses any other verb, and the audit sweeps in internal/api fail an allowed
-// read that records a row under a verb that is not listed here.
+// of secret values, a view of connection info, a download of a Postgres logical
+// backup and a download of an object. It is closed on purpose. Each is a read
+// Render audits as a view or a download of customer data, once per request
+// (ViewEnvVarValuesEvent, ViewConnectionInfoEvent, DownloadDatabaseBackupEvent),
+// or the object store's twin of it. recordView refuses any other verb, and the
+// audit sweeps in internal/api fail an allowed read that records a row under a
+// verb that is not listed here.
 var auditedViews = map[string]bool{
-	AuditVerbViewEnvVarValues:   true,
-	AuditVerbViewConnectionInfo: true,
-	AuditVerbGetObject:          true,
+	AuditVerbViewEnvVarValues:       true,
+	AuditVerbViewConnectionInfo:     true,
+	AuditVerbDownloadDatabaseBackup: true,
+	AuditVerbGetObject:              true,
 }
 
 // AuditedViewVerbs lists the verbs of auditedViews, sorted.

@@ -1,9 +1,10 @@
-import { useCallback, useEffect } from "react";
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useCallback, useEffect, useState } from "react";
+import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
   DatabaseRecoveryInfoDocument,
   DatabaseExportsDocument,
+  DatabaseExportLinksDocument,
   CreateDatabaseExportDocument,
   RecoverDatabaseDocument,
   type DatabaseExportsQuery,
@@ -15,6 +16,7 @@ import {
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { nonNull } from "@/common/lib/non-null";
+import { openDownloadURL } from "@/common/lib/download-file";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { placementErrorMessage } from "@/features/environments/lib/placement";
 
@@ -24,9 +26,13 @@ export interface BackupItem {
   createdAt: string | null;
 }
 
+/**
+ * One export as the status poll reads it. It carries no download URL: bex-api
+ * mints one only for a request that asks, and each such request is one recorded
+ * download of the database (w21/105), so `downloadExport` asks when a person
+ * presses Download and the 25-second poll never does.
+ */
 export interface ExportItem extends BackupItem {
-  url: string | null;
-  urlExpiresAt: string | null;
   expiresAt: string | null;
   filename: string | null;
   failureReason: string | null;
@@ -53,8 +59,6 @@ function mapExports(nodes: ExportNodes | undefined): ExportItem[] {
     id: item.id ?? "",
     status: item.status ?? "",
     createdAt: item.createdAt ?? null,
-    url: item.url ?? null,
-    urlExpiresAt: item.urlExpiresAt ?? null,
     expiresAt: item.expiresAt ?? null,
     filename: item.filename ?? null,
     failureReason: item.failureReason ?? null,
@@ -106,6 +110,10 @@ export function useRecovery(id: string) {
     startPolling,
     stopPolling,
   } = exportsQuery;
+  const client = useApolloClient();
+  const [downloadingExportId, setDownloadingExportId] = useState<string | null>(
+    null,
+  );
   const [createExportMut, { loading: exporting }] = useMutation(
     CreateDatabaseExportDocument,
   );
@@ -154,6 +162,37 @@ export function useRecovery(id: string) {
     }
   }, [createExportMut, id, refetchExports, t]);
 
+  // Mints this export's fresh 15-minute URL and hands it to the browser. Every
+  // press is its own request (network-only), so it is one recorded download and
+  // a URL that has expired is never reused from the cache.
+  const downloadExport = useCallback(
+    async (item: ExportItem) => {
+      setDownloadingExportId(item.id);
+      try {
+        const { data } = await client.query({
+          query: DatabaseExportLinksDocument,
+          variables: { id },
+          fetchPolicy: "network-only",
+          errorPolicy: "none",
+        });
+        const url = data?.databaseExports?.find((e) => e?.id === item.id)?.url;
+        if (!url) {
+          toast.error(t("databases.recoveryDownloadUnavailable"));
+          void refetchExports();
+          return;
+        }
+        openDownloadURL(url, item.filename);
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(err, t("databases.recoveryDownloadError")),
+        );
+      } finally {
+        setDownloadingExportId(null);
+      }
+    },
+    [client, id, refetchExports, t],
+  );
+
   const recover = useCallback(
     async (input: RecoverInput): Promise<string | null> => {
       try {
@@ -189,6 +228,8 @@ export function useRecovery(id: string) {
     exporting,
     recovering,
     createExport,
+    downloadExport,
+    downloadingExportId,
     recover,
   };
 }

@@ -276,21 +276,23 @@ func checkSweptVerbs(t *testing.T, surface, route string, events []core.AuditEve
 }
 
 // renderAuditedViews are the reads whose success an audit row records
-// (ViewEnvVarValuesEvent and ViewConnectionInfoEvent in Render's log, and bex's
-// download of an object, w21/094): the only verbs an allowed read may record a
-// success row under. TestTheAuditedReadAllowlistIsPinned holds it to core's list.
+// (ViewEnvVarValuesEvent, ViewConnectionInfoEvent and DownloadDatabaseBackupEvent
+// in Render's log, and bex's download of an object, w21/094): the only verbs an
+// allowed read may record a success row under. TestTheAuditedReadAllowlistIsPinned
+// holds it to core's list.
 var renderAuditedViews = map[string]bool{
-	core.AuditVerbViewEnvVarValues:   true,
-	core.AuditVerbViewConnectionInfo: true,
-	objectstorage.AuditVerbGetObject: true,
+	core.AuditVerbViewEnvVarValues:       true,
+	core.AuditVerbViewConnectionInfo:     true,
+	core.AuditVerbDownloadDatabaseBackup: true,
+	objectstorage.AuditVerbGetObject:     true,
 }
 
 // TestTheAuditedReadAllowlistIsPinned is w21/094's guard that the rule "a successful
-// read records nothing" is overridden for exactly these three verbs: the sweep's
+// read records nothing" is overridden for exactly these four verbs: the sweep's
 // own list and core's closed set (core.AuditedViewVerbs, which the one writer of a
-// view row, core.recordView, refuses to widen) must name the same verbs, and the
-// object verb is the one this item added. A fourth verb is a decision with its own
-// ADR line, not a line here.
+// view row, core.recordView, refuses to widen) must name the same verbs. The object
+// verb is the one w21/094 added and the backup download the one w21/105 added. A
+// fifth verb is a decision with its own ADR line, not a line here.
 func TestTheAuditedReadAllowlistIsPinned(t *testing.T) {
 	var swept []string
 	for verb := range renderAuditedViews {
@@ -300,7 +302,7 @@ func TestTheAuditedReadAllowlistIsPinned(t *testing.T) {
 	if got := core.AuditedViewVerbs(); !slices.Equal(got, swept) {
 		t.Errorf("core records a success under %v, the sweep allows %v", got, swept)
 	}
-	want := []string{"datastores.ViewConnectionInfo", "objectstorage.GetObject", "secrets.ViewEnvVarValues"}
+	want := []string{"datastores.ViewConnectionInfo", "objectstorage.GetObject", "postgres.DownloadDatabaseBackup", "secrets.ViewEnvVarValues"}
 	if !slices.Equal(swept, want) {
 		t.Errorf("the verbs an allowed read may record a success under are %v, want exactly %v", swept, want)
 	}

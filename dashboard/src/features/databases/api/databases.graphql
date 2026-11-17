@@ -126,16 +126,27 @@ query DatabaseRecoveryInfo($id: String!) {
   }
 }
 
+# The Recovery tab's status poll. It selects no `url`: bex-api mints a download
+# URL only for a query that selects it, and every such query is one recorded
+# download of the database (Render's DownloadDatabaseBackupEvent, w21/105), so
+# a poll that asked for it would write an audit row every 25 seconds.
 query DatabaseExports($id: String!) {
   databaseExports(id: $id) {
     id
     status
     createdAt
-    url
-    urlExpiresAt
     expiresAt
     filename
     failureReason
+  }
+}
+
+# The download itself: run once, when a person presses Download.
+query DatabaseExportLinks($id: String!) {
+  databaseExports(id: $id) {
+    id
+    url
+    urlExpiresAt
   }
 }
 

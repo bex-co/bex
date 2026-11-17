@@ -782,6 +782,15 @@ const deDatabases: Record<string, TranslationEntry> = {
     message: "Herunterladen",
     description: "Download an available logical database export",
   },
+  "databases.recoveryDownloadUnavailable": {
+    message: "Dieser Export steht nicht mehr zum Download bereit.",
+    description: "Toast when Download finds the export is no longer available",
+  },
+  "databases.recoveryDownloadError": {
+    message:
+      "Der Download-Link konnte nicht abgerufen werden. Bitte versuche es erneut.",
+    description: "Toast when the download link of an export cannot be fetched",
+  },
   "databases.recoveryExportInProgress": {
     message: "Ein Export läuft bereits.",
     description: "Reason the create-export button is disabled",

@@ -139,7 +139,9 @@ var databaseBackupGQLType = graphql.NewObject(graphql.ObjectConfig{
 })
 
 // databaseExportGQLType is one Render-shaped logical export. url is freshly
-// presigned on every list read after can_view_sensitive authorization.
+// presigned on every list read that selects it, after can_view_sensitive
+// authorization, and each such read records one download (w21/105); a read that
+// does not select url mints no URL, and urlExpiresAt is then empty.
 var databaseExportGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseExport",
 	Fields: graphql.Fields{
@@ -491,10 +493,22 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type:    graphql.NewList(databaseInstanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
 		},
-		"databaseRecoveryInfo": gqlutil.IDVerb(databaseRecoveryInfoGQLType, s.RecoveryInfo),                   // PITR window + backup list
-		"databaseExports":      gqlutil.IDVerb(graphql.NewList(databaseExportGQLType), s.ListExports),         // logical pg_dump exports
-		"databaseUsers":        gqlutil.IDVerb(graphql.NewList(databaseUserGQLType), s.ListUsers),             // additional managed login roles
-		"databaseCredentials":  gqlutil.IDVerb(graphql.NewList(databaseCredentialGQLType), s.ListCredentials), // Render credentials, default marked (w5/m265)
+		"databaseRecoveryInfo": gqlutil.IDVerb(databaseRecoveryInfoGQLType, s.RecoveryInfo), // PITR window + backup list
+		// logical pg_dump exports. The status poll selects no url and so mints none and
+		// records no download; a query that selects url is the download (w21/105).
+		"databaseExports": &graphql.Field{
+			Type: graphql.NewList(databaseExportGQLType),
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				ctx := p.Context
+				if !gqlutil.Selects(p, "url") {
+					ctx = withoutExportURLs(ctx)
+				}
+				return s.ListExports(ctx, p.Args["id"].(string))
+			},
+		},
+		"databaseUsers":       gqlutil.IDVerb(graphql.NewList(databaseUserGQLType), s.ListUsers),             // additional managed login roles
+		"databaseCredentials": gqlutil.IDVerb(graphql.NewList(databaseCredentialGQLType), s.ListCredentials), // Render credentials, default marked (w5/m265)
 		"databaseIpAllowList": &graphql.Field{ // external-endpoint CIDR allowlist (strings; the Database type's ipAllowListEntries carries descriptions)
 			Type: graphql.NewList(graphql.String),
 			Args: gqlutil.IDArg(),

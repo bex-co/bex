@@ -768,6 +768,14 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "다운로드",
     description: "Download an available logical database export",
   },
+  "databases.recoveryDownloadUnavailable": {
+    message: "이 내보내기는 더 이상 다운로드할 수 없습니다.",
+    description: "Toast when Download finds the export is no longer available",
+  },
+  "databases.recoveryDownloadError": {
+    message: "다운로드 링크를 가져오지 못했습니다. 다시 시도하세요.",
+    description: "Toast when the download link of an export cannot be fetched",
+  },
   "databases.recoveryExportInProgress": {
     message: "이미 내보내기가 진행 중입니다.",
     description: "Reason the create-export button is disabled",

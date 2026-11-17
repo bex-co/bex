@@ -775,6 +775,14 @@ const ptDatabases: Record<string, TranslationEntry> = {
     message: "Baixar",
     description: "Download an available logical database export",
   },
+  "databases.recoveryDownloadUnavailable": {
+    message: "Esta exportação não está mais disponível para download.",
+    description: "Toast when Download finds the export is no longer available",
+  },
+  "databases.recoveryDownloadError": {
+    message: "Não foi possível obter o link de download. Tente novamente.",
+    description: "Toast when the download link of an export cannot be fetched",
+  },
   "databases.recoveryExportInProgress": {
     message: "Já há uma exportação em andamento.",
     description: "Reason the create-export button is disabled",

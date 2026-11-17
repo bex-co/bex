@@ -37,7 +37,7 @@ import (
 // with its own vocabulary guard (internal/events/vocabulary_test.go). Each
 // mapped verb must name a real method on its feature package's *Service,
 // except the synthetic verbs core emits by constant (maintenance, payment
-// method, and the secret-view reads, w4/m321).
+// method, the secret-view reads, w4/m321, and the backup download, w21/105).
 func TestRenderEventVerbsExist(t *testing.T) {
 	synthetic := map[string]bool{
 		core.AuditVerbMaintenanceModeEnabled:    true,
@@ -45,6 +45,7 @@ func TestRenderEventVerbsExist(t *testing.T) {
 		core.AuditVerbUpdatePaymentMethod:       true,
 		core.AuditVerbViewEnvVarValues:          true,
 		core.AuditVerbViewConnectionInfo:        true,
+		core.AuditVerbDownloadDatabaseBackup:    true,
 		core.AuditVerbProjectServiceMoved:       true,
 		core.AuditVerbEnvironmentServiceMoved:   true,
 	}

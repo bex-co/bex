@@ -430,17 +430,27 @@ func inheritBoundary(src, dst *appv1alpha1.Database, environment core.Environmen
 // ListExports lists logical pg_dump exports newest first. A dump is the entire
 // database, so even listing it (Render's list response contains the download
 // URL) is gated by can_view_sensitive rather than ordinary can_view.
+//
+// A request that returned at least one download URL is a download of a logical
+// backup, Render's DownloadDatabaseBackupEvent, and records one row once every
+// URL was minted (w21/105): the URL points at the object store, so this list is
+// the one moment bex-api sees the download. A list that minted none (no export
+// is available yet, or each has expired) records none, and a refused one is the
+// denial its authorization already recorded.
 func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, error) {
 	d, err := s.fetchDatabaseForRead(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
 		return nil, err
 	}
-	// codex round-9 #7: every available row below is presigned into a fresh
-	// 15-minute bearer download URL — a bearer-capability mint. Reassert
-	// can_view_sensitive uncached so a revocation inside PositiveTTL cannot
-	// ride a cached positive to one last full-dump URL.
-	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, d); err != nil {
-		return nil, err
+	withURLs := !exportURLsWithheld(ctx)
+	if withURLs {
+		// codex round-9 #7: every available row below is presigned into a fresh
+		// 15-minute bearer download URL — a bearer-capability mint. Reassert
+		// can_view_sensitive uncached so a revocation inside PositiveTTL cannot
+		// ride a cached positive to one last full-dump URL.
+		if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, d); err != nil {
+			return nil, err
+		}
 	}
 	statusByID := make(map[string]appv1alpha1.DatabaseExportStatus, len(d.Status.Exports))
 	for _, status := range d.Status.Exports {
@@ -448,6 +458,7 @@ func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, e
 	}
 	now := s.Now().UTC()
 	out := make([]ExportView, 0, len(d.Spec.Exports))
+	minted := false
 	for i := len(d.Spec.Exports) - 1; i >= 0; i-- {
 		request := d.Spec.Exports[i]
 		status, ok := statusByID[request.ID]
@@ -472,7 +483,7 @@ func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, e
 		if status.Phase == appv1alpha1.DatabaseExportAvailable {
 			if expiresAt, parseErr := time.Parse(time.RFC3339, status.ExpiresAt); parseErr == nil && !now.Before(expiresAt) {
 				view.Status = string(appv1alpha1.DatabaseExportExpired)
-			} else {
+			} else if withURLs {
 				ttl := ExportURLTTL
 				if !expiresAt.IsZero() && expiresAt.Sub(now) < ttl {
 					ttl = expiresAt.Sub(now)
@@ -485,11 +496,32 @@ func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, e
 					return nil, fmt.Errorf("presign export %s: %w", status.ID, err)
 				}
 				view.URLExpiresAt = now.Add(ttl).Format(time.RFC3339)
+				minted = true
 			}
 		}
 		out = append(out, view)
 	}
+	if minted {
+		s.RecordSecretsViewed(ctx, core.AuditVerbDownloadDatabaseBackup, d.Labels[core.LabelTenant], core.DatabaseTarget(d.Name), d.Spec.Name)
+	}
 	return out, nil
+}
+
+// exportURLsKey marks a context whose ListExports must mint no download URL.
+type exportURLsKey struct{}
+
+// withoutExportURLs asks ListExports for the exports' status alone: no URL is
+// minted, so no download is recorded. GraphQL's databaseExports uses it for a
+// query that does not select url, the dashboard's 25-second status poll, which
+// would otherwise write a DownloadDatabaseBackupEvent for every poll of an open
+// Recovery tab (the env var list's Selects(p, "value") is the precedent, w4/m321).
+func withoutExportURLs(ctx context.Context) context.Context {
+	return context.WithValue(ctx, exportURLsKey{}, true)
+}
+
+func exportURLsWithheld(ctx context.Context) bool {
+	withheld, _ := ctx.Value(exportURLsKey{}).(bool)
+	return withheld
 }
 
 // maxTerminalExportHistory bounds how many TERMINAL exports (failed/expired)

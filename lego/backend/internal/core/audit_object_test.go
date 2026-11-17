@@ -203,16 +203,18 @@ func TestRecordObjectViewedWritesOneRow(t *testing.T) {
 }
 
 // w21/094 overrides the rule that a successful read records nothing for exactly
-// the three views Render audits as views or downloads of customer data, and for
-// no other verb. The set is pinned here by name: widening it is a decision with
-// its own ADR line, so this test fails until the line is written and listed.
+// the views Render audits as views or downloads of customer data (and bex's own
+// download of an object), and for no other verb; w21/105 added the download of a
+// Postgres logical backup. The set is pinned here by name: widening it is a
+// decision with its own ADR line, so this test fails until the line is written and
+// listed.
 func TestOnlyTheAuditedViewsRecordASuccessfulRead(t *testing.T) {
-	want := []string{AuditVerbGetObject, AuditVerbViewConnectionInfo, AuditVerbViewEnvVarValues}
+	want := []string{AuditVerbDownloadDatabaseBackup, AuditVerbGetObject, AuditVerbViewConnectionInfo, AuditVerbViewEnvVarValues}
 	slices.Sort(want)
 	if got := AuditedViewVerbs(); !slices.Equal(got, want) {
 		t.Fatalf("the audited views are %v, want exactly %v", got, want)
 	}
-	want = []string{"datastores.ViewConnectionInfo", "objectstorage.GetObject", "secrets.ViewEnvVarValues"}
+	want = []string{"datastores.ViewConnectionInfo", "objectstorage.GetObject", "postgres.DownloadDatabaseBackup", "secrets.ViewEnvVarValues"}
 	if got := AuditedViewVerbs(); !slices.Equal(got, want) {
 		t.Fatalf("the audited views are %v, want exactly %v", got, want)
 	}
