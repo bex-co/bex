@@ -193,6 +193,7 @@ func nativeUtilityCases() []nativeUtilityCase {
 		{"rsync", "98", "rsync: command not found", nativeNodeRuntime},
 		{"pandoc", "93", "pandoc: command not found", nativeNodeRuntime},
 		{"sqlite3", "94", "sqlite3: command not found", nativePythonRuntime},
+		{"libvips", "95", "cannot load library 'libvips.so.42'", nativePythonRuntime},
 		{"python-metadata", "103", "No module named 'setuptools'", nativeNodeRuntime},
 		{"python-pip", "103", "No module named pip", nativeNodeRuntime},
 		{"python-headers", "103", "Python.h: No such file or directory", nativeNodeRuntime},
@@ -301,6 +302,10 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		// Only the program goes: the shared libsqlite3 must still answer SQL,
 		// so the original command fails on the missing CLI alone.
 		command = `sqlite3 -version && rm /usr/bin/sqlite3 && test ! -e /usr/bin/sqlite3 && hash -r && ! command -v sqlite3 && /usr/bin/python3 -c 'import sqlite3; print(sqlite3.connect(":memory:").execute("SELECT sqlite_version()").fetchone()[0])'`
+	case "libvips":
+		// Only the shared library goes; the tools' packages, headers and
+		// pkg-config stay, so PyVips fails on the missing libvips.so.42 alone.
+		command = `vips --version && rm $(dpkg -L libvips42 | grep '/libvips\.so\.42') && ldconfig && ! ldconfig -p | grep -q 'libvips\.so\.42' && /usr/bin/python3 -c 'import ctypes.util; assert ctypes.util.find_library("vips") is None' && test -f /usr/include/vips/vips.h && pkg-config --exists vips`
 	case "python-metadata":
 		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/setuptools && test ! -e /usr/lib/python3/dist-packages/setuptools && /usr/bin/python3 -m pip --version && test -f /usr/include/python3.11/Python.h"
 	case "python-pip":
