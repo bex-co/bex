@@ -92,15 +92,10 @@ func cnpgOperandImage(version string) (image string, bexOperand bool) {
 	return cnpgExportImages[version], false
 }
 
-// cnpgDefaultMajor is the major of the default operand image of the
-// CloudNativePG release bex pins (1.30: 18). An unversioned Database is created
-// on it. Bump it with the CNPG chart when the default major moves.
-const cnpgDefaultMajor = "18"
-
 func effectivePostgresVersion(spec, observed string, creating bool) string {
 	version := cmp.Or(spec, observed)
 	if version == "" && creating {
-		version = cnpgDefaultMajor
+		version = appv1alpha1.DefaultPostgresVersion
 	}
 	return version
 }

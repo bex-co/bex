@@ -21,6 +21,7 @@ limitations under the License.
 package postgres
 
 import (
+	"cmp"
 	"context"
 	"crypto/x509"
 	"encoding/pem"
@@ -950,6 +951,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err != nil {
 		return PostgresView{}, err
 	}
+	// Render's postgres object requires version, so an unversioned create
+	// stores (and answers) the major the operator will run.
+	version := cmp.Or(req.Version, appv1alpha1.DefaultPostgresVersion)
 	d := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.TenantNamespace(tenantID)},
 		Spec: appv1alpha1.DatabaseSpec{
@@ -957,7 +961,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			DatabaseName:     req.DatabaseName,
 			DatabaseUser:     req.DatabaseUser,
 			Plan:             req.Plan,
-			Version:          req.Version,
+			Version:          version,
 			StorageGB:        req.DiskSizeGB,
 			DiskAutoscaling:  req.EnableDiskAutoscaling,
 			Public:           req.Public,

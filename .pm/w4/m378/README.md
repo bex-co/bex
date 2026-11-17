@@ -1,6 +1,6 @@
 # w4 · m378 — Sixteen of Render's shared MCP tools answer in bex's own shapes, not what Render's server returns: list envelopes, `list_logs`/`get_metrics` series, service creates without `deployId`, datastores without `owner`/`options`, and `query_render_postgres` rows without column names
 
-**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** blocked — the round 408 replay (2026-11-15) found DoD 1–5 and 7 hold on production, but DoD 6's 6 MB truncation call answers the edge's 502 ([t012](t012.md)), and `create_postgres` omits `version` ([t013](t013.md)); both block the closeout. Previously: release gate (t001–t011 done, code shipped 2026-11-14 by `/loopx w4`)
+**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** todo — t001–t006, t008–t013 done; t007 (live replay of the whole DoD on a pin carrying t013) pending. Previously: blocked on t012/t013 after the round 408 replay (2026-11-15), unblocked 2026-11-16 (§ Unblock record)
 
 ## Tasks (in order)
 
@@ -16,8 +16,8 @@
 | [t004](done/t004.md) — **DONE** | Render parity | 20m | t003 |
 | [t005](done/t005.md) — **DONE** | Simplify | 15m | t004 |
 | [t006](done/t006.md) — **DONE** | Test coverage | 30m | t004 |
-| [t012](t012.md) | A 6 MB `query_render_postgres` answers Cloudflare's `error code: 502` on production, not the truncated rows and notice (found by the round 408 replay; cause unverified, possibly w4/671's) | 1h | — |
-| [t013](t013.md) | `create_postgres` with no version answers without Render's required `version` (found by the round 408 replay) | 20m | — |
+| [t012](done/t012.md) — **DONE** | A 6 MB `query_render_postgres` answers Cloudflare's `error code: 502` on production, not the truncated rows and notice (found by the round 408 replay; cause unverified, possibly w4/671's) | 1h | — |
+| [t013](done/t013.md) — **DONE** | `create_postgres` with no version answers without Render's required `version` (found by the round 408 replay) | 20m | — |
 | [t007](t007.md) | Closeout (live replay on production) | 20m | t005, t006, t012, t013 |
 
 ## Definition of done
@@ -219,3 +219,12 @@ Remaining known differences, all deliberate: an empty `list_services`/`list_depl
 
 - Applied: `mcputil.RenderListWithCursor` shared by `list_events` and `list_deploys`; `mcputil.RenderText` for every array/text answer; MCP `list_logs` uses REST's `toRenderLogList` (`mcpLogEntries` deleted); one `renderStatusCodeLabel` for REST and MCP metrics; `queryRowValues` shared by both row collectors; one `queryFrontend(maxBodyLen)`; `mcputil.AddExactJSONTool` deleted (no caller left).
 - Declined: encoding query rows once. The collector measures each row to stop reading at 5 MB and the tool re-encodes at most 5 MB for its text; keeping the cut in the renderer too lets the text be tested with a fake executor.
+
+## Unblock record (2026-11-16, `/loopx w4`, verified evidence)
+
+- **Affected:** t012, t013, t007. **Source:** verified evidence, no user decision.
+- **Gate check:** production runs pin `ef7e65cd3f46` (bex-system digest `79d9db9f…`). The m378 code commits `b808e7347` and `e1612d068`, and w4/671's `d56ade4bf`, are all ancestors of it.
+- **t012:** the 502 was bex-api OOM-killed at its old 128Mi limit (w4/671); with 671's fix live, the 6 MB call answers the truncated rows and Render's notice on production (2026-11-16 17:39 UTC, details in [t012](done/t012.md)). Done with no code.
+- **t013:** still reproduced on the live pin; fixed in code ([t013](done/t013.md)).
+- **Next:** once a production pin carries the t013 commit, replay DoD 1–9 on production (t007) and close.
+

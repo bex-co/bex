@@ -291,3 +291,34 @@ func pgGQLNewService() (*Service, client.Client) {
 	svc, cl := newService()
 	return svc, cl
 }
+
+// TestCreatePostgresAnswersTheMajorItWillRun pins w4/m378 t013: version is in
+// Render's postgres schema's required list, so a create that names no version
+// answers the default major the cluster will run, on REST and MCP alike, and
+// stores it in spec.version. A named major is kept.
+func TestCreatePostgresAnswersTheMajorItWillRun(t *testing.T) {
+	svc, cl := pgGQLNewService()
+	rest := serveREST(svc, http.MethodPost, "/v1/postgres", `{"name":"rest-default"}`)
+	if rest.Code != http.StatusCreated {
+		t.Fatalf("REST create = %d: %s", rest.Code, rest.Body.String())
+	}
+	var restBody map[string]any
+	if err := json.Unmarshal(rest.Body.Bytes(), &restBody); err != nil {
+		t.Fatal(err)
+	}
+	if restBody["version"] != appv1alpha1.DefaultPostgresVersion {
+		t.Fatalf("REST create version = %v, want %s", restBody["version"], appv1alpha1.DefaultPostgresVersion)
+	}
+	if cr := getDatabase(t, cl, restBody["id"].(string)); cr.Spec.Version != appv1alpha1.DefaultPostgresVersion {
+		t.Fatalf("spec.version = %q, want %s", cr.Spec.Version, appv1alpha1.DefaultPostgresVersion)
+	}
+
+	call, cleanup := pgMCPClient(t, svc)
+	defer cleanup()
+	if got := call("create_postgres", map[string]any{"name": "mcp-default"}); got["version"] != appv1alpha1.DefaultPostgresVersion {
+		t.Fatalf("MCP create version = %v, want %s", got["version"], appv1alpha1.DefaultPostgresVersion)
+	}
+	if got := call("create_postgres", map[string]any{"name": "mcp-sixteen", "version": "16"}); got["version"] != "16" {
+		t.Fatalf("MCP create naming 16 answered version %v", got["version"])
+	}
+}

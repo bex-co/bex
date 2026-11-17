@@ -101,6 +101,14 @@ func (s DatabaseSpec) EffectiveDatabaseUser(resourceID string) string {
 	return DefaultPostgresDatabaseName(resourceID) + "_user"
 }
 
+// DefaultPostgresVersion is the major an unversioned Database runs: the
+// default operand of the CloudNativePG release bex pins (1.30: 18). bex-api
+// writes it into spec.version when a create names no version, so the create
+// answers the major it will run, as Render's does (w4/m378 t013); the operator
+// uses it for an unversioned Database it creates. Bump it with the CNPG chart
+// when the default major moves.
+const DefaultPostgresVersion = "18"
+
 // DatabaseSpec is the desired state of a managed PostgreSQL — the Render-style
 // "add a Postgres" unit. The operator projects it to a CloudNativePG Cluster in
 // the same namespace; the plan sets resources/storage. See
