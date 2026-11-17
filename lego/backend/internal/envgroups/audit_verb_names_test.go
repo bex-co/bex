@@ -60,8 +60,10 @@ func TestEnvGroupClosurePathsRecordNamedVerbs(t *testing.T) {
 	svc.Audit = rows
 	svc.Authz = refuseRelation{relation: core.RelCanViewSensitive}
 
-	if rec := serveREST(svc, http.MethodGet, "/v1/env-groups/"+id, ""); rec.Code != http.StatusForbidden {
-		t.Fatalf("a viewer's GET = %d %s, want 403", rec.Code, rec.Body)
+	// A viewer's read is answered without values (w8/m442), so the reveal a
+	// write's reply makes is the closure that is refused.
+	if rec := serveREST(svc, http.MethodPatch, "/v1/env-groups/"+id, `{"name":"renamed"}`); rec.Code != http.StatusOK {
+		t.Fatalf("a viewer's rename = %d %s, want 200", rec.Code, rec.Body)
 	}
 	denied := ""
 	for _, ev := range rows.events {

@@ -550,8 +550,8 @@ var unsupportedLogFilters = []struct{ name, reason string }{
 }
 
 // parseLogParams maps Render's logs query string onto resources + a LogQuery.
-// Every filter Render documents (level/instance/host/statusCode/method/path,
-// repeatable) is parsed into the query and honored downstream; a value the
+// Every filter Render documents (level/instance/host/statusCode/method/path/
+// build, repeatable) is parsed into the query and honored downstream; a value the
 // vocabulary doesn't contain — an unknown `type` or `direction` — is a 400 naming
 // it, and so is a filter bex has no streams for (unsupportedLogFilters), never a
 // silently widened query. Shared by /v1/logs, /v1/logs/values and
@@ -578,6 +578,7 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 		StatusCode: v["statusCode"],
 		Method:     v["method"],
 		Path:       v["path"],
+		Build:      v["build"],
 	}
 
 	types, err := NormalizeTypes(v["type"])

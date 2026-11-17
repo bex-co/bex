@@ -126,12 +126,26 @@ type revealedEnvGroup struct {
 // decides whether a REST response carries a group's values and file contents.
 const AuditVerbRevealEnvGroup = "envgroups.RevealEnvGroup"
 
+// retrieved is the group a REST read answers. Render's envGroup omits envVars
+// and secretFiles "if the caller doesn't have the permission to read the
+// environment group's secret values" (its 2026-11-16 contract, w8/m442), so a
+// caller refused can_view_sensitive gets the group without them, from a probe
+// that records nothing: nothing is revealed or denied. Every other caller goes
+// through revealedOne's audited, fresh check, so a check that cannot be answered
+// still fails the read rather than hiding values that exist.
+func (s *Service) retrieved(ctx context.Context, group renderEnvGroup) (any, error) {
+	if s.CanDecisionOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(group.OwnerID)).Outcome == core.DecisionDenied {
+		return envGroupMeta(group), nil
+	}
+	return s.revealedOne(ctx, group, false)
+}
+
 // revealGroups fills each group's values and file contents from the store, for
 // the REST read shapes. It is a sensitive read: every group is authorized for
 // can_view_sensitive and re-asserted uncached, like the per-key reveals, and a
-// caller without it is refused the whole read rather than served a masked body.
-// A read (not a write's response) of a group's values records Render's
-// ViewEnvVarValuesEvent for it (w4/m321).
+// caller without it is refused (retrieved serves a read's caller without it
+// the group with no values instead). A read (not a write's response) of a
+// group's values records Render's ViewEnvVarValuesEvent for it (w4/m321).
 func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup, read bool) ([]revealedEnvGroup, error) {
 	// REST's reads and write responses reach this from route closures, whose names
 	// a derived verb would record (w21/093).

@@ -473,6 +473,9 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 	if m := excludeJobsMatcher(q.excludeJobs); m != "" {
 		matchers = append(matchers, m)
 	}
+	if m := includeJobsMatcher(q); m != "" {
+		matchers = append(matchers, m)
+	}
 	add(lokiLabelFor(LabelMethod), q.Method)
 	// statusCode is the one filter with a class shorthand (`4xx`), expanded here —
 	// at the filter that owns the vocabulary, not inside labelMatcher, which would
@@ -489,11 +492,7 @@ func excludeJobsMatcher(jobs []string) string {
 	if len(jobs) == 0 {
 		return ""
 	}
-	alts := make([]string, 0, len(jobs))
-	for _, job := range jobs {
-		alts = append(alts, regexp.QuoteMeta(job))
-	}
-	return fmt.Sprintf("%s!~%q", lokiLabelFor(LabelInstance), "^("+strings.Join(alts, "|")+")-[^-]+$")
+	return fmt.Sprintf("%s!~%q", lokiLabelFor(LabelInstance), jobPodPattern(jobs))
 }
 
 // lokiTypeMatcher selects the streams a query's `type` asks for. App logs are

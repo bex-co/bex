@@ -1904,6 +1904,7 @@ export type KeyValueLogEntry = {
 
 export type LogEntry = {
   __typename: 'LogEntry';
+  build: Maybe<Scalars['String']['output']>;
   host: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   instance: Maybe<Scalars['String']['output']>;
@@ -4812,6 +4813,7 @@ export type QueryKeyValuesArgs = {
 
 
 export type QueryLogLabelValuesArgs = {
+  build?: InputMaybe<Array<Scalars['String']['input']>>;
   direction?: InputMaybe<Scalars['String']['input']>;
   endTime?: InputMaybe<Scalars['String']['input']>;
   host?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -4835,6 +4837,7 @@ export type QueryLogRetentionArgs = {
 
 
 export type QueryLogsArgs = {
+  build?: InputMaybe<Array<Scalars['String']['input']>>;
   deployId?: InputMaybe<Scalars['String']['input']>;
   direction?: InputMaybe<Scalars['String']['input']>;
   endTime?: InputMaybe<Scalars['String']['input']>;

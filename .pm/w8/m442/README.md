@@ -1,18 +1,18 @@
 # w8 · m442 — Render contract round 8: logs take a `build` filter, an env group read omits the values a caller cannot see, and a sandbox build name cannot start with `sbb-`
 
-**Worker:** worker8 **Goal:** bex answers the three operations Render changed in its public API on or before 2026-11-16 as Render now does, and the pinned spec matches Render's again, so the daily drift check is green. **Status:** todo
+**Worker:** worker8 **Goal:** bex answers the three operations Render changed in its public API on or before 2026-11-16 as Render now does, and the pinned spec matches Render's again, so the daily drift check is green. **Status:** todo (t001–t007 done; t008 replays the definition of done on production)
 
 ## Tasks (in order)
 
 | id   | title | est | depends_on |
 | ---- | ----- | --- | ---------- |
-| t001 | `GET /logs`, `/logs/subscribe` and `/logs/values` accept Render's `build` filter, and build lines carry a `build` label | 1h | — |
-| t002 | `GET /env-groups/{id}` serves a caller without the secret-read permission the group with `envVars` and `secretFiles` omitted, not a refusal | 45m | — |
-| t003 | A sandbox build `name` starting with `sbb-` is refused, as Render refuses it | 15m | — |
-| t004 | Re-pin `render-public-api-1.json` to Render's 2026-11-16 spec and record round 8 in ADR018 | 20m | t001, t002, t003 |
-| t005 | Render parity | 20m | t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 30m | t005 |
+| t001 | `GET /logs`, `/logs/subscribe` and `/logs/values` accept Render's `build` filter, and build lines carry a `build` label — **DONE** | 1h | — |
+| t002 | `GET /env-groups/{id}` serves a caller without the secret-read permission the group with `envVars` and `secretFiles` omitted, not a refusal — **DONE** | 45m | — |
+| t003 | A sandbox build `name` starting with `sbb-` is refused, as Render refuses it — **DONE** | 15m | — |
+| t004 | Re-pin `render-public-api-1.json` to Render's 2026-11-16 spec and record round 8 in ADR018 — **DONE** | 20m | t001, t002, t003 |
+| t005 | Render parity — **DONE** | 20m | t004 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 30m | t005 |
 | t008 | Closeout | 10m | t007 |
 
 ## Definition of done
@@ -21,7 +21,7 @@
 - **Logs:**
   - `GET /v1/logs?ownerId=<tea>&resource=<srv>&build=<id>&limit=5` answers 200 with only that build's lines, and an unknown build answers an empty page.
   - `/logs/subscribe` with `build` streams only that build.
-  - `/logs/values?label=build` lists build IDs.
+  - `/logs/values?label=instance&build=<id>` lists only that build's instances. `label=build` stays Render's 400: Render's 2026-11-16 values `label` enum did not gain `build`, which the filing misread (amended by w8/m442 t001, 2026-11-16).
   - On production pin `7aaa8700befa` all three answer 400 (`unsupported query parameter "build" for list-logs`; `label must be one of instance|host|statusCode|method|level|type`).
 - **Env groups:**
   - A workspace member without `can_view_sensitive` reads a group and gets 200 with its metadata, with `envVars` and `secretFiles` absent.
@@ -60,3 +60,11 @@ GET /v1/logs/values?ownerId=<tea>&resource=<srv>&label=build             → 400
 - **The ID a "service build" carries on Render.** The spec's only build ID pattern is the sandbox one (`^sbb-[0-9a-v]{20}$`). bex's `bld-` kind is a Blueprint build-source build (`internal/id/id.go:157`), and a service's build lines are keyed by deploy today. t001 must decide which ID a service build's `build` label carries, and record the choice in ADR018 as bex's choice until Render's value is observed.
 - **Which roles lack the secret-read permission on Render** (the spec says only "the permission"), and whether GraphQL and MCP env-group reads should mirror the REST omission. That is t005's question.
 - **Render's exact 400 code for a reserved `sbb-` name.**
+
+### Resolved by t001–t005 (2026-11-16)
+
+- **A service build's ID:** its deploy's `dep-` id, as bex's choice until Render's value is observed (ADR018 round 8, Build logs row).
+- **Roles without the secret-read permission in bex:** viewer, contributor and billing (`can_view_sensitive: developer or admin`). GraphQL and MCP group reads already answered them with names and no values, so they keep the names (ADR018 Environment groups row).
+- **Render's 400 code for an `sbb-` name:** none. Render's create documents a message only, so bex answers `SANDBOX_IMAGE_INVALID` with a message naming the prefix.
+- **Upstream moved again after filing:** a Workflows step-attempt read (`getFlowRunStepAttempt`), now an omission, and render-oss/cli v2.37.0. The CLI bump is `w22/m444`, and the drift job stays red on its CLI check until that lands.
+

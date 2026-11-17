@@ -42,14 +42,14 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(renderOpenAPISource); got != 472245 {
-		t.Fatalf("snapshot size = %d, want 472245", got)
+	if got := len(renderOpenAPISource); got != 474339 {
+		t.Fatalf("snapshot size = %d, want 474339", got)
 	}
 	if got := contract.document.OpenAPI; got != "3.0.2" {
 		t.Fatalf("OpenAPI = %q, want 3.0.2", got)
 	}
-	if got := contract.document.Paths.Len(); got != 164 {
-		t.Fatalf("paths = %d, want 164", got)
+	if got := contract.document.Paths.Len(); got != 165 {
+		t.Fatalf("paths = %d, want 165", got)
 	}
 	if got := len(contract.document.Components.Schemas); got != 170 {
 		t.Fatalf("schemas = %d, want 170", got)
@@ -65,8 +65,8 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 	}
 	// The pin declares 74 request bodies; the runtime contract adds one more,
 	// renderRequestBodyExtensions' connect-sandbox-run body (round 7).
-	if operations != 263 || requestBodies != 74+len(renderRequestBodyExtensions) {
-		t.Fatalf("operations/request bodies = %d/%d, want 263/%d", operations, requestBodies, 74+len(renderRequestBodyExtensions))
+	if operations != 264 || requestBodies != 74+len(renderRequestBodyExtensions) {
+		t.Fatalf("operations/request bodies = %d/%d, want 264/%d", operations, requestBodies, 74+len(renderRequestBodyExtensions))
 	}
 	if len(contract.document.Servers) != 0 {
 		t.Fatalf("runtime contract retained upstream servers: %#v", contract.document.Servers)
@@ -1056,5 +1056,34 @@ func TestSandboxListQueryExtensionsPassTheGate(t *testing.T) {
 		if rec.Code != want {
 			t.Errorf("GET /v1/sandboxes%s = %d %s, want %d", query, rec.Code, rec.Body, want)
 		}
+	}
+}
+
+// w8/m442: Render's 2026-11-16 contract (round 8) adds the `build` filter to
+// list-logs, subscribe-logs and list-logs-values, so the gate admits it on all
+// three. Its values `label` enum did not gain `build`: label=build is still
+// Render's 400.
+func TestRenderRequestValidatorAdmitsTheLogsBuildFilter(t *testing.T) {
+	mux := http.NewServeMux()
+	for _, pattern := range []string{"GET /v1/logs", "GET /v1/logs/values", "GET /v1/logs/subscribe"} {
+		mux.HandleFunc(pattern, func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
+	}
+	h, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{
+		"/v1/logs?ownerId=tea-x&resource=srv-x&build=dep-a&build=dep-b&limit=5",
+		"/v1/logs/subscribe?ownerId=tea-x&resource=srv-x&build=dep-a",
+		"/v1/logs/values?ownerId=tea-x&resource=srv-x&label=instance&build=dep-a",
+	} {
+		if w := requestOpenAPITest(t, h, http.MethodGet, path, "", ""); w.Code != http.StatusNoContent {
+			t.Errorf("%s = %d %s, want admitted", path, w.Code, w.Body)
+		}
+	}
+	if w := requestOpenAPITest(t, h, http.MethodGet, "/v1/logs/values?ownerId=tea-x&resource=srv-x&label=build", "", ""); w.Code != http.StatusBadRequest {
+		t.Errorf("label=build = %d %s, want Render's 400", w.Code, w.Body)
 	}
 }

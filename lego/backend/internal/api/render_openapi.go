@@ -41,13 +41,16 @@ import (
 )
 
 const (
-	renderOpenAPISHA256 = "6229bc62f2329a2a011c8b9e03547df46941e43074476c79e0c4fcb55cb31628"
+	renderOpenAPISHA256 = "77508de048718a1e5c4d09ebd0da6f43aa693b3241fae2b94949d8d0912115cf"
 	renderAPIPrefix     = "/v1"
 )
 
 // renderOpenAPISource is Render's complete, unversioned public contract,
-// fetched on 2026-11-13 (round-7 drift, w3/m367: 255 -> 263 operations, the
-// sandbox build delete and sandbox-group credentials; round 6 on 2026-11-08
+// fetched on 2026-11-16 (round-8 drift, w8/m442: 263 -> 264 operations,
+// the Workflows step-attempt read, the logs build filter, an envGroup read's
+// optional values and the reserved sbb- build name; round 7 on 2026-11-13,
+// w3/m367: 255 -> 263, the sandbox build delete and sandbox-group
+// credentials; round 6 on 2026-11-08
 // added sandbox builds, round 5 on 2026-11-02 was w2/m251: 208 -> 252, and the
 // 2026-09-11 pin came from w6/073). It is embedded by the leaf asset
 // package so the test-only response validator (internal/rendertest) reads the

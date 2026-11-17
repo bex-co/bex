@@ -51,6 +51,7 @@ var renderOperationOmissions = map[string]string{
 	"getFlow":                                "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"getFlowRun":                             "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"getFlowRunStep":                         "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
+	"getFlowRunStepAttempt":                  "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"getOwnerMetricsStream":                  "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
 	"getTask":                                "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"getTaskRun":                             "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",

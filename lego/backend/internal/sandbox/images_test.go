@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -39,6 +40,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -252,6 +254,8 @@ func TestImportRefusesImagesASandboxCannotRun(t *testing.T) {
 		{fmt.Sprintf(`{"name":"gone","sourceImage":%q}`, hostOf(f.source)+"/acme/missing:1"), CodeSandboxImageUnavailable, "could not serve"},
 		{`{"name":"bad","sourceImage":"UPPER/Case::x"}`, CodeSandboxImageInvalid, "not an image reference"},
 		{fmt.Sprintf(`{"name":"","sourceImage":%q}`, arm), CodeSandboxImageInvalid, "name must be"},
+		// Render reserves the build-id prefix (w8/m442).
+		{fmt.Sprintf(`{"name":"sbb-anything","sourceImage":%q}`, big), CodeSandboxImageInvalid, "the prefix reserved for build IDs"},
 	} {
 		code, body := f.importImage(t, tc.body)
 		if code != http.StatusBadRequest || errCode(body) != tc.code || !strings.Contains(body, tc.mentions) {
@@ -525,5 +529,29 @@ func TestImportRefusesAPrivateSource(t *testing.T) {
 	code, body := f.importImage(t, fmt.Sprintf(`{"name":"py","sourceImage":%q}`, ref))
 	if code != http.StatusBadRequest || errCode(body) != CodeSandboxImageUnavailable {
 		t.Fatalf("import from loopback = %d %s, want 400 %s", code, body, CodeSandboxImageUnavailable)
+	}
+}
+
+// w8/m442: Render reserves the build-id prefix, so a name that starts with it
+// is refused with a message naming the prefix; a name that merely contains it,
+// or spells it in another case, is still a name.
+func TestAnImageNameMayNotStartWithTheBuildIDPrefix(t *testing.T) {
+	for name, refused := range map[string]bool{
+		"sbb-anything":          true,
+		"sbb-":                  true,
+		"sbb-d4e5f6g7h8i9j0k1l": true,
+		"my-sbb-image":          false,
+		"sbb":                   false,
+		"sbbx-image":            false,
+		"SBB-image":             false,
+	} {
+		err := validateImageName(name)
+		var coded *core.CodedError
+		switch {
+		case !refused && err != nil:
+			t.Errorf("validateImageName(%q) = %v, want accepted", name, err)
+		case refused && (!errors.As(err, &coded) || coded.Code != CodeSandboxImageInvalid || !strings.Contains(err.Error(), `"sbb-"`)):
+			t.Errorf("validateImageName(%q) = %v, want %s naming the reserved prefix", name, err, CodeSandboxImageInvalid)
+		}
 	}
 }

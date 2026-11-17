@@ -74,20 +74,22 @@ type metaGroupWithCursor struct {
 func envGroupMetaList(groups []renderEnvGroup) []metaGroupWithCursor {
 	out := make([]metaGroupWithCursor, 0, len(groups))
 	for _, group := range groups {
-		links := group.ServiceLinks
-		if links == nil {
-			links = []serviceLink{}
-		}
-		out = append(out, metaGroupWithCursor{
-			EnvGroup: renderEnvGroupMeta{
-				ID: group.ID, Name: group.Name, OwnerID: group.OwnerID,
-				EnvironmentID: group.EnvironmentID, CreatedAt: group.CreatedAt,
-				UpdatedAt: group.UpdatedAt, ServiceLinks: links,
-			},
-			Cursor: group.ID,
-		})
+		out = append(out, metaGroupWithCursor{EnvGroup: envGroupMeta(group), Cursor: group.ID})
 	}
 	return out
+}
+
+// envGroupMeta is group without its envVars and secretFiles.
+func envGroupMeta(group renderEnvGroup) renderEnvGroupMeta {
+	links := group.ServiceLinks
+	if links == nil {
+		links = []serviceLink{}
+	}
+	return renderEnvGroupMeta{
+		ID: group.ID, Name: group.Name, OwnerID: group.OwnerID,
+		EnvironmentID: group.EnvironmentID, CreatedAt: group.CreatedAt,
+		UpdatedAt: group.UpdatedAt, ServiceLinks: links,
+	}
 }
 
 // rest.go is the env-groups REST fragment (Render's /v1/env-groups): group CRUD,
@@ -136,7 +138,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.revealedOne(ctx, group, false)
+		return s.retrieved(ctx, group)
 	}))
 	mux.HandleFunc("PATCH /v1/env-groups/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[struct {

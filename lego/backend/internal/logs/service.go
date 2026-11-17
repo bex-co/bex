@@ -306,6 +306,10 @@ type LogQuery struct {
 	// extension (Render's REST contract has no deploy filter); only the
 	// service's own deploys are consulted, so it cannot reach another tenant.
 	Deploy string
+	// Build is Render's `build` filter (w8/m442): the builds whose lines to
+	// keep, OR within the filter. Only build lines carry a build (LabelBuild),
+	// so it narrows a read to them (narrowToBuilds).
+	Build []string
 
 	// appID and notBefore scope an App read to its own incarnation (w8/m124):
 	// a service recreated under a deleted one's name has a new id, and nothing
@@ -324,6 +328,9 @@ type LogQuery struct {
 	// a pod this cannot attribute (a kpack buildpack build) stays visible
 	// rather than the page going empty.
 	excludeJobs []string
+	// includeJobs are the build Jobs of the builds Build names; set by
+	// scopeToBuilds, never by a caller.
+	includeJobs []string
 
 	levelFilter *regexp.Regexp // pod-line severity matcher (datastore, App tail), compiled once per query
 	// textMatchers are Search's compiled terms, built by normalized().
@@ -511,6 +518,10 @@ func (q LogQuery) liveSubscribable() (LogQuery, error) {
 	// filter per line (compileLevelFilter), so its own contract decides.
 	if core.IsDatastoreResource(q.App) {
 		return q, q.datastoreFilters(q.App)
+	}
+	// A build filter follows build lines alone, the only lines with a build.
+	if !q.narrowToBuilds() {
+		return q, fmt.Errorf("%w: %s filters %s logs, which type=%v does not include — add type=%s or drop the filter", core.ErrBadRequest, LabelBuild, LogTypeBuild, q.Types, LogTypeBuild)
 	}
 	var routed []string
 	if filters := q.requestFilters(); len(filters) > 0 {
@@ -701,7 +712,7 @@ func (s *Service) ownPods(ctx context.Context, namespace string, q LogQuery) ([]
 }
 
 func (q LogQuery) keepPod(pod string) bool {
-	if q.excludesPod(pod) {
+	if q.excludesPod(pod) || !q.inBuilds(pod) {
 		return false
 	}
 	if len(q.Instance) == 0 {
@@ -710,16 +721,10 @@ func (q LogQuery) keepPod(pod string) bool {
 	return slices.Contains(q.Instance, pod)
 }
 
-// excludesPod reports whether pod belongs to a Job a Deploy-scoped read drops:
-// the Job's name plus the controller's one dash-free random suffix, so
-// `bld-x-gen-1` never takes `bld-x-gen-12`'s pod.
+// excludesPod reports whether pod belongs to a Job a Deploy-scoped read drops
+// (isJobPod).
 func (q LogQuery) excludesPod(pod string) bool {
-	for _, job := range q.excludeJobs {
-		if rest, ok := strings.CutPrefix(pod, job+"-"); ok && rest != "" && !strings.Contains(rest, "-") {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(q.excludeJobs, func(job string) bool { return isJobPod(pod, job) })
 }
 
 // scopeToDeploy turns q.Deploy into the Jobs to drop: every other deploy's
@@ -940,11 +945,18 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
+	if !q.narrowToBuilds() {
+		return []LogEntry{}, nil // a build filter over lines that carry no build
+	}
 	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
 	s.scopeToDeploy(ctx, resource, app, &q)
+	builds, err := s.scopeToBuilds(ctx, resource, &q)
+	if err != nil {
+		return nil, err
+	}
 	// Pre-deploy step logs (w1/m33): a distinct LIVE source (the migration Job's
 	// pod), read directly from the App's own namespace — the Job is co-located
 	// with the App (ADR043 D8), not in the build namespace — never the durable
@@ -964,10 +976,11 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		// The store applies every filter (labels + line) server-side and returns
 		// oldest-first, capped at q.Limit.
 		entries, err := s.queryHistory(ctx, appNS, q, resource, newProgressContext(app))
-		if err != nil {
-			return labelHistory(nil, err, resource)
+		var partial *ScanIncompleteError
+		if errors.As(err, &partial) {
+			partial.Entries = builds.label(partial.Entries)
 		}
-		return setLogResource(entries, resource), nil
+		return labelHistory(builds.label(entries), err, resource)
 	}
 	if q.needsStore() {
 		return nil, core.ErrLogStoreUnavailable
@@ -1209,7 +1222,7 @@ func isKeyValueResource(resource string) bool {
 // filters are service concepts; refusing them is safer than silently dropping
 // them. resource names the datastore family in the refusal.
 func (q LogQuery) datastoreFilters(resource string) error {
-	if len(q.Types) > 0 || q.Deploy != "" || len(q.requestFilters()) > 0 {
+	if len(q.Types) > 0 || q.Deploy != "" || len(q.Build) > 0 || len(q.requestFilters()) > 0 {
 		family := "Key Value"
 		if isPostgresResource(resource) {
 			family = "Postgres"
@@ -1283,8 +1296,16 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	if dropStaticSiteRequests(app, &q) && len(q.Types) > 0 && !slices.ContainsFunc(q.Types, q.wants) {
 		return []string{}, nil
 	}
+	if !q.narrowToBuilds() {
+		return []string{}, nil // a build filter over lines that carry no build
+	}
 	if s.LabelValues == nil {
 		return nil, core.ErrLogStoreUnavailable
+	}
+	if len(q.Build) > 0 {
+		if _, err := s.scopeToBuilds(ctx, resource, &q); err != nil {
+			return nil, err
+		}
 	}
 	if q.noRequest && (label == LabelStatusCode || label == LabelMethod) {
 		// Request-only labels: a plan without HTTP request logs has none to
@@ -1411,6 +1432,11 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	}
 	if err := s.applyWorkspacePlan(ctx, app, &q, false); err != nil {
 		return err
+	}
+	if len(q.Build) > 0 {
+		if _, err := s.scopeToBuilds(ctx, resource, &q); err != nil {
+			return err
+		}
 	}
 	// A static site's tail without type=build stays open on keepalives, as a
 	// cron job's does between runs: nothing arrives, as on Render.
@@ -2043,6 +2069,10 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 	if err != nil {
 		return err
 	}
+	// The pod's build, read as the tail attaches to it: a tail outlives the
+	// deploys that existed when it opened. Labels are best-effort.
+	index, _ := s.buildIndexOf(ctx, resource, q.App)
+	build := index.buildOf(pod.Name)
 	prog.follow()
 	// A phase that ended before the tail's lower bound ran before it; any
 	// other is followed once seen, ended or not, from that bound. A fast phase
@@ -2153,6 +2183,9 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 				continue
 			}
 			setLogEntryResource(&e, resource)
+			if build != "" {
+				e.Labels[LabelBuild] = build
+			}
 			if err := emit(e); err != nil {
 				return err
 			}

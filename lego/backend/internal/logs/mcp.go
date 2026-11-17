@@ -51,6 +51,7 @@ type logFilters struct {
 	StatusCode []string `json:"statusCode,omitempty" jsonschema:"filter request logs by status code (e.g. 404 or the class 4xx); * wildcards and /regex/ supported"`
 	Method     []string `json:"method,omitempty" jsonschema:"filter request logs by HTTP method; * wildcards and /regex/ supported"`
 	Path       []string `json:"path,omitempty" jsonschema:"filter request logs by their path; * wildcards and /regex/ supported"`
+	Build      []string `json:"build,omitempty" jsonschema:"bex extension, Render's REST build filter — filter build logs by build ID (a service build's ID is its deploy's dep- id)"`
 	Text       []string `json:"text,omitempty" jsonschema:"case-insensitive literal substrings, * wildcards or /regex/ (RE2); match any nonempty value"`
 	TextMode   string   `json:"textMode,omitempty" jsonschema:"bex extension — what text matches: raw (default, the stored message bytes) | display (the text a terminal shows, ANSI styling and overwritten text excluded); returned messages stay raw either way"`
 	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower time bound (inclusive)"`
@@ -99,6 +100,7 @@ func (f logFilters) query() (LogQuery, error) {
 		StatusCode: f.StatusCode,
 		Method:     f.Method,
 		Path:       f.Path,
+		Build:      f.Build,
 		Direction:  f.Direction,
 	}
 	if f.StartTime != "" {

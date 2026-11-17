@@ -258,7 +258,8 @@ func digitsOnly(s string) bool {
 	return true
 }
 
-// progressEntry is one platform line of the deploy deployID, stamped at t.
+// progressEntry is one platform line of the deploy deployID, stamped at t. The
+// deploy is also its build (LabelBuild).
 func progressEntry(deployID string, t time.Time, msg string) LogEntry {
 	return LogEntry{
 		Timestamp: t.UTC().Format(time.RFC3339Nano),
@@ -266,6 +267,7 @@ func progressEntry(deployID string, t time.Time, msg string) LogEntry {
 		Labels: map[string]string{
 			LabelType:     LogTypeBuild,
 			LabelInstance: deployID,
+			LabelBuild:    deployID,
 			"container":   progressContainer,
 		},
 	}

@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m442** — [Render contract round 8: logs take a `build` filter, an env group read omits the values a caller cannot see, and a sandbox build name cannot start with `sbb-`](m442/README.md) (8 tasks, ~3h35m) ← `/qa-find-bugs-cli` sweep f50c 2026-11-16, from the red `render-schema-drift.yml` run (15:59 UTC). bex answers `build` with 400 `unsupported query parameter` today.
+- [ ] **m442** — [Render contract round 8: logs take a `build` filter, an env group read omits the values a caller cannot see, and a sandbox build name cannot start with `sbb-`](m442/README.md) (8 tasks, ~3h35m) ← `/qa-find-bugs-cli` sweep f50c 2026-11-16, from the red `render-schema-drift.yml` run (15:59 UTC). bex answered `build` with 400 `unsupported query parameter`. t001–t007 done 2026-11-16; t008 replays the definition of done on production.
 
 - [ ] **m161** — [A Node build reuses its dependencies between builds, and `NODE_MODULES_CACHE` switches it](blocked/m161/README.md) (7 tasks) **BLOCKED (the build plane must be exercised on a cluster before the dependency cache ships: the user raises this host's inotify limits with `sudo sysctl -w fs.inotify.max_user_instances=512 fs.inotify.max_user_watches=524288` so the mock cluster comes up)** — promoted from w8/275 2026-11-12; design in the README.
 

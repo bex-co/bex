@@ -43,7 +43,9 @@ import (
 // message, as Render's does. The order is Render's, captured on an app line
 // (resource, instance, level, type) and a request line (resource, method,
 // statusCode, host, path, level, type) (w4/m325,
-// docs/render-artifacts/request-logs.md).
+// docs/render-artifacts/request-logs.md). A build line's build (w8/m442) goes
+// before its type, where Render's label enum puts it; Render's order on a
+// live build line is not captured yet.
 var renderLabels = []struct{ name, key string }{
 	{"resource", "service"},
 	{LabelInstance, LabelInstance},
@@ -52,6 +54,7 @@ var renderLabels = []struct{ name, key string }{
 	{LabelHost, LabelHost},
 	{LabelPath, LabelPath},
 	{LabelLevel, LabelLevel},
+	{LabelBuild, LabelBuild},
 	{LabelType, LabelType},
 }
 

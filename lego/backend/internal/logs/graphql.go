@@ -47,6 +47,8 @@ var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"path": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelPath] }),
 		// A request line's edge-minted Rndr-Id (w8/m125); empty for app lines.
 		"requestId": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelRequestID] }),
+		// A build line's build (w8/m442): its deploy's id; empty for other lines.
+		"build": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelBuild] }),
 	},
 })
 
@@ -109,7 +111,9 @@ func logFilterArgs() graphql.FieldConfigArgument {
 		"statusCode": list,
 		"method":     list,
 		"path":       list,
-		"direction":  gqlutil.Arg(graphql.String),
+		// build (w8/m442): Render's build filter, as REST takes it.
+		"build":     list,
+		"direction": gqlutil.Arg(graphql.String),
 		// startTime/endTime (w9/m1/t002): the RFC3339 window REST (?startTime=…&
 		// endTime=…) and MCP (list_logs) already accept — the deploy detail page
 		// scopes its log query to a deploy's createdAt..finishedAt window. Absent
@@ -210,6 +214,7 @@ func logQueryFromArgs(args map[string]any) (LogQuery, error) {
 	q.StatusCode = gqlutil.StringList(args["statusCode"])
 	q.Method = gqlutil.StringList(args["method"])
 	q.Path = gqlutil.StringList(args["path"])
+	q.Build = gqlutil.StringList(args["build"])
 	startTime, _ := args["startTime"].(string)
 	endTime, _ := args["endTime"].(string)
 	since, end, err := core.ParseTimeWindow(startTime, endTime)

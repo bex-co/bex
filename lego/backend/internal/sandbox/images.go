@@ -379,12 +379,20 @@ func (s *Service) requireImages() error {
 }
 
 func validateImageName(n string) error {
-	if labelOK(n, maxImageName) {
-		return nil
+	if !labelOK(n, maxImageName) {
+		return core.NewBadRequestError(CodeSandboxImageInvalid,
+			fmt.Sprintf("name must be 1 to %d characters, with no leading or trailing space and no control characters", maxImageName),
+			map[string]any{"field": "name", "maxLength": maxImageName})
 	}
-	return core.NewBadRequestError(CodeSandboxImageInvalid,
-		fmt.Sprintf("name must be 1 to %d characters, with no leading or trailing space and no control characters", maxImageName),
-		map[string]any{"field": "name", "maxLength": maxImageName})
+	// Render's 2026-11-16 create: a name "can't start with `sbb-`, the prefix
+	// reserved for build IDs" (w8/m442), so a name never reads as a build's id.
+	// Render names no code for it, only a message.
+	if prefix := ids.SandboxBuild.Prefix() + "-"; strings.HasPrefix(n, prefix) {
+		return core.NewBadRequestError(CodeSandboxImageInvalid,
+			fmt.Sprintf("name can't start with %q, the prefix reserved for build IDs", prefix),
+			map[string]any{"field": "name", "reservedPrefix": prefix})
+	}
+	return nil
 }
 
 // ValidateBuildListQuery is the part of Render's list-sandbox-builds request
