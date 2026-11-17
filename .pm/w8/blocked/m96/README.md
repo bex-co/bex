@@ -1,6 +1,6 @@
 # w8 · m96 — Supply GNU gettext for native message compilation
 
-**Worker:** worker8 **Goal:** ordinary native internationalized apps can compile and use their message catalogs without installing promised system tools in tenant code. **Status:** blocked — common qualification/adoption dependency; original hosted acceptance remains open
+**Worker:** worker8 **Goal:** ordinary native internationalized apps can compile and use their message catalogs without installing promised system tools in tenant code. **Status:** blocked — m91 gate cleared; the unblock worker did not reach a verified outcome (leftovers in stash `loopx/w8/m96`); original hosted acceptance remains open
 
 ## Tasks (in order)
 
@@ -46,3 +46,16 @@ The explicit2026-10-29 user choice of one common Bookworm tools foundation overr
 **Blocked on w8/m91/t007, owned by the native build worker.** The common supplier and meaningful generated behavior/error harnesses are implemented. The current source audit and historical simplify/utility evidence are mapped in [the shared evidence-to-task record](../m91/evidence/original28-free-contract-20261102/capsule/EVIDENCE-TO-TASK-MAP.json); [ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md#d7-addendum--shared-native-utility-versions-and-limits-w8m91-2026-11-01) now records chosen versions, phase/ABI and feature limits. This finishes the independent source/documentation preparation, not this milestone's acceptance.
 
 Release this dependency after complete current-source common qualification on both architectures, the remaining runtime/companion/legacy/exact-donor cases, actual pre-deploy/required phase checks and reviewed production adoption. Then the same worker must run this milestone's unchanged original two-client hosted cases, shared readbacks, logs and exact cleanup/baseline/quota checks. The new e6a2386 AMD64 cohort passes; ARM64 is still running at this disposition. No original DoD or task acceptance is removed, and no task is marked done merely because supplier code or a test harness exists. No new architecture decision or user permission is needed.
+
+## Drain disposition — 2026-11-17
+
+The m91 gate cleared (m91 shipped in d66e4897e, and production runs the common Bookworm image). The `/loopx` unblock worker then did not reach a verified outcome. It hung mid-step twice. After the second stop at 10:46 UTC, its SendMessage resume never ran.
+
+When it stopped, it was mutation-checking a 12-line `utility-check.py` addition (ITS data removed; C locale in place of C.UTF-8). It left these uncommitted:
+
+- that addition;
+- a 6-line `nativeutility_integration_test.go` change;
+- a 1-line ADR060 edit;
+- a half-done board move to `done/` that left every task `status: blocked`.
+
+They are kept in the named stash `loopx/w8/m96`. **Gate:** `worker did not reach a verified outcome: no LOOPX-RESULT, leftovers uncommitted; needs a fresh worker to restore stash loopx/w8/m96, finish the mutation checks and the original two-client hosted acceptance, then ship or park`.
