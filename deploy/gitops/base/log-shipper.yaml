@@ -108,10 +108,11 @@
 # untrusted code that may print secrets it was given. That covers a private
 # key's BEGIN/END lines and its base64 body lines, an Authorization or Cookie
 # header, a key=/token=/password= value, known token shapes and a URL with
-# userinfo. Retention cost against Loki's 21 days (loki.yaml, 60Gi): a driver
+# userinfo. Retention cost against Loki's 30 days (loki.yaml, 20Gi): a driver
 # logs a few lines per turn, so real volume is KiBs per session; the rate cap
 # bounds a runaway pod at ~150 MiB/day of raw lines (~15-30 MiB in Loki
-# chunks), so even 10 pods flooding for the whole window stay under ~7 GiB.
+# chunks), so even 10 pods flooding for the whole window stay under ~9 GiB,
+# beside the ~3 GB every other stream keeps.
 # The SSH gateway and opensandbox-system ship with the other platform pods.
 #
 # NOTE (the cluster-specific knobs, like prometheus.yaml's): the App pod-label

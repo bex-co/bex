@@ -1753,17 +1753,23 @@ if [ -f "$LOGSHIP" ]; then
   fi
 fi
 
-# Loki retention for the registry/static migration clean window (w2/m93): at
-# least 14 days of searchable history plus evaluation buffer (504h = 21d) and a
-# PVC sized for the extra Zot/static-server platform streams.
+# Loki keeps Render's longest log window (w9/m389) on the claim production has
+# (w7/067). A StatefulSet's claim template never resizes a claim that already
+# exists, so the size production renders must be the live claim's,
+# monitoring/storage-loki-0: grow that claim first, then change this value,
+# loki.yaml and ADR010 § Durability & retention together.
 LOKI_APP="deploy/gitops/base/loki.yaml"
+LOKI_LIVE_CLAIM="20Gi"
 if [ -f "$LOKI_APP" ]; then
-  echo "==> $LOKI_APP retention holds Render's longest plan window (w9/m389)"
-  loki_vals="$(yq '.spec.source.helm.values' "$LOKI_APP")"
+  echo "==> $LOKI_APP keeps Render's longest log window on production's live claim (w9/m389, w7/067)"
+  loki_prod="$(yq -N 'select(.kind == "Application" and .metadata.name == "loki")' "$tmp/prod-apps.yaml")"
+  loki_vals="$(yq '.spec.source.helm.values' <<<"$loki_prod")"
   grep -qF 'retention_period: 720h' <<<"$loki_vals" \
     || { echo "FAIL: loki.yaml must retain 30d (720h), Render's Scale/Enterprise log window; bex-api floors reads per plan (ADR010)" >&2; fail=1; }
-  grep -qE 'size: 60Gi' <<<"$loki_vals" \
-    || { echo "FAIL: loki.yaml PVC must be sized for 21d + zot/static-server evidence (60Gi)" >&2; fail=1; }
+  loki_size="$(yq '.spec.source.helm.parameters[] | select(.name == "singleBinary.persistence.size") | .value' <<<"$loki_prod")"
+  [ -n "$loki_size" ] || loki_size="$(yq '.singleBinary.persistence.size' <<<"$loki_vals")"
+  [ "$loki_size" = "$LOKI_LIVE_CLAIM" ] \
+    || { echo "FAIL: production renders a $loki_size Loki claim, but the live claim monitoring/storage-loki-0 is $LOKI_LIVE_CLAIM; a StatefulSet's claim template never resizes an existing claim, so grow the live claim first and change loki.yaml, this guard and ADR010 § Durability & retention together (w7/067)" >&2; fail=1; }
 fi
 
 # Metrics retention (w7/m427): production Prometheus keeps the longest plan

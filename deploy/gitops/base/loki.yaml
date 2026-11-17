@@ -13,15 +13,14 @@
 # (log-shipper.yaml) tails App pod logs into it, labelled namespace/app/pod/
 # container so bex-api can select on the App's namespace+name.
 #
-# Retention is 21 days (504h) — 14-day registry/static migration clean window
-# (w2/m93, docs/runbooks/registry-static-identity-migration.md Phase 4) plus a
-# week of evaluation buffer, still within Render's Pro/Scale searchable range
-# (docs/ADR010-observability.md). Raise/lower with the PVC. Like prometheus.yaml's
-# PV and etcd/OpenBao's Raft volumes, the PVC rides the cluster's default
-# StorageClass: hcloud-volumes on prod (a Hetzner Cloud Volume — a network volume
-# that survives a node rebuild/loss), local-path on the disposable CAPD mock
-# (node-local, so a node loss loses it there). History always survives a pod
-# restart; on prod it survives a node loss too.
+# Retention is 30 days (720h), Render's longest plan window; bex-api floors each
+# read at the workspace plan's own window (w9/m389, docs/ADR010-observability.md).
+# Raise it with the PVC. Like prometheus.yaml's PV and etcd/OpenBao's Raft
+# volumes, the PVC rides the cluster's default StorageClass: hcloud-volumes on
+# prod (a Hetzner Cloud Volume — a network volume that survives a node
+# rebuild/loss), local-path on the disposable CAPD mock (node-local, so a node
+# loss loses it there). History always survives a pod restart; on prod it
+# survives a node loss too.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -67,17 +66,19 @@ spec:
           pattern_ingester: { enabled: false }
         singleBinary:
           replicas: 1
-          # The user-facing durable window: sized for 21d of tenant App +
-          # platform (zot/static-server) logs at platform scale. local overlay
+          # The user-facing durable window. 20Gi is production's live claim
+          # (monitoring/storage-loki-0); 30 days of every stream is about 3 GB
+          # (measured 2026-11-17, ADR010 § Durability & retention). local overlay
           # shrinks this to CAPD scale. The PVC rides the cluster default
           # StorageClass — hcloud-volumes on prod (network volume, survives a
           # node loss), local-path on the CAPD mock (node-local) — so history
           # survives a pod restart (and a node loss on prod), the whole point.
-          # StatefulSet volumeClaimTemplates are immutable: grow an existing
-          # claim online out of band, then ignore the template size below.
+          # StatefulSet volumeClaimTemplates never resize an existing claim:
+          # patch the live claim first (hcloud-volumes grows it online), then
+          # change this value, the gitops-validate.sh guard and ADR010 together.
           persistence:
             enabled: true
-            size: 60Gi
+            size: 20Gi
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { cpu: "1", memory: 1Gi }
