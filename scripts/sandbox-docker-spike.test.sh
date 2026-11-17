@@ -124,6 +124,75 @@ EOF
 expect 4 "has no CiliumNetworkPolicy" "--isolation exits 4 when the namespace has no Cilium policy" \
   -- --isolation --k8s-namespace ns --k8s-pod p --target-node elsewhere
 
+# --- a pod run through stubs: the pod-mode skip and the node observer ---------
+# kubectl answers as a cluster with one Cilium policy and a pod whose every exec
+# succeeds, except a spoofing probe: its script carries the MANUAL verdict text,
+# and STUB_SEND says whether the runtime accepted the send (exit 2) or refused it.
+cat >"$STUBS/kubectl" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+  *"config current-context"*) echo stub-context ;;
+  *"get nodes"*) exit 0 ;;
+  *"get pod"*) echo throwaway-node ;;
+  *"ciliumnetworkpolicies"*) echo ciliumnetworkpolicy.cilium.io/sandbox-egress-stub ;;
+  *" exec "*)
+    case "$*" in
+      *"MANUAL: the send was accepted"*)
+        if [ "${STUB_SEND:-accepted}" = refused ]; then echo "SEND FAILED: [Errno 95] Not supported"; exit 0; fi
+        echo "sent SYN src=10.255.255.254 dst=203.0.113.9:443"; echo "MANUAL: the send was accepted. Observer: ..."; exit 2 ;;
+    esac
+    exit 0 ;;
+  *) exit 1 ;;
+esac
+EOF
+# The observer stub is the node: it has tcpdump unless STUB_NO_TCPDUMP=1, and
+# its capture is whatever STUB_CAPTURE holds.
+cat >"$STUBS/observer" <<'EOF'
+#!/usr/bin/env bash
+case "$1" in
+  *"command -v tcpdump"*) [ "${STUB_NO_TCPDUMP:-0}" = 1 ] && exit 1; exit 0 ;;
+  *"cat /tmp/spike-obs.txt"*) printf '%s' "${STUB_CAPTURE:-}" ;;
+esac
+exit 0
+EOF
+chmod +x "$STUBS/observer"
+POD_ARGS=(--k8s-namespace ns --k8s-pod p --target-node throwaway-node)
+ISO_ARGS=("${POD_ARGS[@]}" --isolation --only none --allowed-fqdn a.example --denied-fqdn d.example)
+DROPPED=$'19:19:43.1 lxcd55dad89ace8 In  ifindex 29 26:3e:51:dc:e4:a1 ethertype IPv4 (0x0800), length 60: 10.255.255.254.24912 > 203.0.113.9.443: Flags [S]\n'
+FORWARDED="$DROPPED"$'19:19:43.2 eth0 Out ifindex 2 52:55:55:ce:08:30 ethertype IPv4 (0x0800), length 60: 10.255.255.254.24912 > 203.0.113.9.443: Flags [S]\n'
+SECOND_DEVICE="$DROPPED"$'19:19:43.2 lxc28fa477c70f2 In  ifindex 20 c2:de:33:dc:5f:d0 ethertype IPv4 (0x0800), length 60: 10.255.255.254.24912 > 203.0.113.9.443: Flags [S]\n'
+
+expect 0 "SKIP    published_port_from_outside" "a pod run skips the outer-daemon check instead of failing it" \
+  -- "${POD_ARGS[@]}" --only published_port_from_outside
+expect 0 "MANUAL  spoof_src_ip" "without --observer an accepted forged send stays MANUAL" \
+  -- "${ISO_ARGS[@]}"
+expect 0 "dropped where it entered the node" "--observer passes a forged packet seen only where it entered the node" \
+  STUB_CAPTURE="$DROPPED" -- "${ISO_ARGS[@]}" --observer observer
+expect 1 "FORGED PACKET FORWARDED" "--observer fails a forged packet that leaves an interface" \
+  STUB_CAPTURE="$FORWARDED" -- "${ISO_ARGS[@]}" --observer observer
+expect 1 "FORGED PACKET FORWARDED" "--observer fails a forged packet seen on a second interface" \
+  STUB_CAPTURE="$SECOND_DEVICE" -- "${ISO_ARGS[@]}" --observer observer
+expect 0 "the node saw no such packet" "--observer passes when the node never saw the packet" \
+  STUB_CAPTURE="" -- "${ISO_ARGS[@]}" --observer observer
+expect 0 "the runtime refused the send" "--observer passes a send the runtime refused, whatever the capture says" \
+  STUB_SEND=refused STUB_CAPTURE="$FORWARDED" -- "${ISO_ARGS[@]}" --observer observer
+expect 0 "MANUAL  spoof_arp" "an observer node without tcpdump leaves the check MANUAL, never PASS" \
+  STUB_NO_TCPDUMP=1 STUB_CAPTURE="$DROPPED" -- "${ISO_ARGS[@]}" --observer observer
+
+# The FQDN check runs after the raw-packet probes, which delete the SNAT rules:
+# it must put them back and require its control, or "blocked" means nothing.
+out="$(env PATH="$STUBS:$PATH" bash "$SCRIPT" --dry-run --isolation --lab-no-cilium --allowed-fqdn a.example --denied-fqdn d.example 2>&1)"
+plan="$(printf '%s\n' "$out" | sed -n '/^PLAN  fqdn_sni_bypass/,$p')"
+snat_line="$(printf '%s\n' "$plan" | grep -n -- '-j SNAT' | head -1 | cut -d: -f1)"
+control_line="$(printf '%s\n' "$plan" | grep -n 'CONTROL FAILED' | head -1 | cut -d: -f1)"
+denied_line="$(printf '%s\n' "$plan" | grep -n 'REACHED d.example' | head -1 | cut -d: -f1)"
+if [ -n "$snat_line" ] && [ -n "$control_line" ] && [ -n "$denied_line" ] && [ "$snat_line" -lt "$control_line" ] && [ "$control_line" -lt "$denied_line" ]; then
+  echo "ok   the FQDN check restores SNAT, then requires its control, before any denied name"
+else
+  echo "FAIL the FQDN check order: SNAT line '$snat_line', control line '$control_line', denied line '$denied_line'"
+  FAILURES=$((FAILURES + 1))
+fi
+
 if [ "$FAILURES" -ne 0 ]; then
   echo "$FAILURES failed" >&2
   exit 1

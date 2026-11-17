@@ -37,13 +37,22 @@
 # passed. With no reachable kubectl context there is nothing to compare against;
 # the script says so and goes on (a local VM is the intended case).
 #
-# ISOLATION CHECKS (`--isolation`) are OPT-IN, never run by default, and have
-# NOT been run on a Cilium node: they were written from the ADR104 D6 spec and
-# only their packet-crafting mechanics were exercised on a local VM
-# (`--lab-no-cilium`). They need a Kubernetes pod and a namespace that carries a
-# Cilium policy, and exit 4 with a message when no Cilium policy is present.
-# Under `--lab-no-cilium` they say REACHED or BLOCKED about what the sandbox can
-# do; those lines are not isolation results.
+# ISOLATION CHECKS (`--isolation`) are OPT-IN and never run by default. They
+# need a Kubernetes pod and a namespace that carries a Cilium policy, and exit 4
+# with a message when no Cilium policy is present. They ran on 2026-11-16 on a
+# throwaway single-node k3s with Cilium 1.19.5 and bex's sandbox policies: a
+# local VM, never a bex node (ADR104 D6). Under `--lab-no-cilium` they say
+# REACHED or BLOCKED about what the sandbox can do; those lines are not
+# isolation results.
+#
+# The spoofing checks only send. Whether a forged packet got past the pod is
+# decided on the node, so without `--observer` they end MANUAL. With
+# `--observer CMD` (a command that runs one sh script as root on the pod's node,
+# which needs tcpdump) the script captures on every interface of the node while
+# the probe runs and decides itself: a forged packet seen on a second interface,
+# or leaving any interface, is a FAIL.
+#   --observer 'ssh root@NODE'
+#   --observer 'colima ssh -p gvisor-spike -- sudo sh -c'
 #
 # Exit codes: 0 every check passed (or --dry-run), 1 a check failed, 2 usage,
 # 3 refused by the production-pool guard, 4 isolation preconditions missing.
@@ -78,6 +87,7 @@ DENIED_TARGETS=()
 EGRESS_TIMEOUT=120
 ONLY=""
 GUARD_ONLY=0
+OBSERVER=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -109,8 +119,10 @@ production guard
   --i-know-this-is-production
                             run even when the guard matches. Never set the runsc flags on the production pool.
 
-isolation checks (opt-in, NOT run by default, never validated on a Cilium node)
+isolation checks (opt-in, NOT run by default)
   --isolation               run them; needs --k8s-namespace, --k8s-pod and a Cilium policy in that namespace
+  --observer CMD            runs one sh script as root on the pod's node (which needs tcpdump), for example
+                            'ssh root@NODE'; with it the spoofing checks judge themselves instead of ending MANUAL
   --lab-no-cilium           run them against the docker sandbox with no Cilium: REACHED/BLOCKED, not PASS/FAIL
   --denied-target HOST:PORT a platform-floor or denied target (repeatable); the metadata endpoint is always probed
   --allowed-target HOST:PORT an allowed destination (control for the raw-packet probe; must answer a TCP SYN)
@@ -145,6 +157,7 @@ while [ $# -gt 0 ]; do
     --i-know-this-is-production) I_KNOW_PROD=1; shift ;;
     --isolation) ISOLATION=1; shift ;;
     --lab-no-cilium) ISOLATION=1; LAB_NO_CILIUM=1; shift ;;
+    --observer) OBSERVER="${2:?}"; shift 2 ;;
     --denied-target) DENIED_TARGETS+=("${2:?}"); shift 2 ;;
     --allowed-target) ALLOWED_TARGET="${2:?}"; shift 2 ;;
     --allowed-fqdn) ALLOWED_FQDN="${2:?}"; shift 2 ;;
@@ -702,13 +715,24 @@ body_fqdn_sni_bypass() {
     echo 'echo "needs --allowed-fqdn and --denied-fqdn"; exit 2'
     return
   fi
+  # The raw-packet probes before this one delete the bootstrap's SNAT rules. Without them a bridge
+  # container's packets leave with a 172.17.0.0/16 source, which Cilium drops, and every line below
+  # would read "blocked" for the wrong reason. Put them back, and require the control to succeed.
   cat <<EOF
+dev=\$(ip route | sed -n 's/^default .* dev \([^ ]*\).*/\1/p' | head -1)
+addr=\$(ip -4 addr show dev "\$dev" | sed -n 's/.*inet \([0-9.]*\)\/.*/\1/p' | head -1)
+ipt=iptables; command -v iptables-legacy >/dev/null 2>&1 && ipt=iptables-legacy
+\$ipt -t nat -F POSTROUTING
+\$ipt -t nat -A POSTROUTING -o "\$dev" -j SNAT --to-source "\$addr" -p tcp
+\$ipt -t nat -A POSTROUTING -o "\$dev" -j SNAT --to-source "\$addr" -p udp
 run() { docker run --rm \$1 $CURL_IMAGE -sS -o /dev/null -m 10 -w '%{http_code}' "\$2" 2>&1; }
 rc=0
-echo "control (allowed name, bridge DNS): \$(run '' https://$ALLOWED_FQDN/)"
-for net in "" "--network host"; do
+ctl=\$(run '' https://$ALLOWED_FQDN/) || { echo "CONTROL FAILED: the allowed name $ALLOWED_FQDN did not answer from a bridge container (\$ctl), so a blocked line below proves nothing"; exit 2; }
+echo "control (allowed name, bridge DNS): \$ctl"
+for net in "" "--network host" "--dns 8.8.8.8" "--network host --dns 1.1.1.1"; do
   out=\$(run "\$net" https://$DENIED_FQDN/) && { echo "REACHED $DENIED_FQDN (\$net) -> \$out"; rc=1; } || echo "blocked $DENIED_FQDN (\$net)"
 done
+nslookup -timeout=3 $DENIED_FQDN 8.8.8.8 >/dev/null 2>&1 && { echo "REACHED a public resolver directly (8.8.8.8:53)"; rc=1; } || echo "blocked: a public resolver asked directly"
 ip=\$(docker run --rm $CURL_IMAGE getent hosts $ALLOWED_FQDN 2>/dev/null | head -1 | cut -d' ' -f1)
 if [ -n "\$ip" ]; then
   out=\$(docker run --rm $CURL_IMAGE -sS -o /dev/null -m 10 -w '%{http_code}' --resolve $DENIED_FQDN:443:\$ip https://$DENIED_FQDN/ 2>&1) \
@@ -741,9 +765,16 @@ run_check() { # id [mode]   mode: functional | isolation
     fi
     return 0
   fi
+  if [ "$id" = published_port_from_outside ] && [ -n "$K8S_POD" ]; then
+    # needs a sibling container on the outer docker daemon; a pod has none
+    SKIPPED=$((SKIPPED + 1)); report SKIP "$id" "not applicable to --k8s-pod: call the published port from a peer pod"
+    return 0
+  fi
   start=$SECONDS
   if [ "$id" = published_port_from_outside ]; then
     out="$(published_port_from_outside 2>&1)"; rc=$?
+  elif [ -n "$OBSERVER" ] && [ -n "$(observer_filter "$id")" ]; then
+    out="$(observed_spoof "$id" 2>&1)"; rc=$?
   else
     body="$("body_$id")"
     out="$(sbx "$body" 2>&1)"; rc=$?
@@ -752,16 +783,62 @@ run_check() { # id [mode]   mode: functional | isolation
   case "$mode:$rc" in
     functional:0) PASSED=$((PASSED + 1)); report PASS "$id" "$desc" "$took" ;;
     functional:*) FAILED=$((FAILED + 1)); report FAIL "$id" "$desc" "$took"; printf '%s\n' "$out" | tail -15 | sed 's/^/      | /' ;;
-    isolation:0) if [ "$LAB_NO_CILIUM" = 1 ]; then report BLOCKED "$id" "$desc" "$took"; else PASSED=$((PASSED + 1)); report PASS "$id" "$desc" "$took"; fi ;;
+    isolation:0) if [ "$LAB_NO_CILIUM" = 1 ]; then report BLOCKED "$id" "$desc" "$took"; else PASSED=$((PASSED + 1)); report PASS "$id" "$desc" "$took"; fi; printf '%s\n' "$out" | tail -15 | sed 's/^/      | /' ;;
     isolation:2) SKIPPED=$((SKIPPED + 1)); report MANUAL "$id" "$desc" "$took"; printf '%s\n' "$out" | tail -15 | sed 's/^/      | /' ;;
     isolation:*) if [ "$LAB_NO_CILIUM" = 1 ]; then report REACHED "$id" "$desc" "$took"; else FAILED=$((FAILED + 1)); report FAIL "$id" "$desc" "$took"; fi; printf '%s\n' "$out" | tail -15 | sed 's/^/      | /' ;;
+  esac
+}
+
+# --- node-side observer for the spoofing checks (--observer) -------------------
+# observer_filter prints the tcpdump filter that matches a check's forged packet,
+# and nothing for a check the observer does not judge.
+observer_filter() {
+  case "$1" in
+    spoof_src_ip) echo "src host $(default_spoof)" ;;
+    spoof_arp) echo "arp and arp src host $(default_spoof)" ;;
+    spoof_ndp) echo "icmp6 and ip6[40] == 136 and ip6 src host fe80::1" ;;
+  esac
+}
+
+node_sh() {
+  # shellcheck disable=SC2086
+  $OBSERVER "$1"
+}
+
+# observer_verdict reads `tcpdump -ni any -e` lines (time, interface, direction,
+# ...) on stdin. The pod's own host-side device is where the packet enters the
+# node; a forged packet got past the pod when it shows on a second interface or
+# leaves any interface.
+observer_verdict() {
+  awk 'NF >= 4 { n++; seen[$2] = 1; if ($3 == "Out") out++ }
+    END {
+      for (i in seen) ifaces++
+      if (n == 0) { print "the node saw no such packet on any interface"; exit 0 }
+      if (out > 0 || ifaces > 1) { printf "FORGED PACKET FORWARDED: %d captures on %d interfaces, %d leaving one\n", n, ifaces, out; exit 1 }
+      printf "dropped where it entered the node: %d captures, 1 interface, none leaving\n", n
+    }'
+}
+
+# The send runs under a capture on every interface of the node. A refused send
+# passes; an accepted one is judged by where the node saw the packet.
+observed_spoof() {
+  local id="$1" filter out rc cap
+  filter="$(observer_filter "$id")"
+  node_sh "command -v tcpdump >/dev/null" || { echo "the observer cannot run tcpdump on the node"; return 2; }
+  node_sh "rm -f /tmp/spike-obs.txt; (timeout 60 tcpdump -ni any -l -e '$filter' > /tmp/spike-obs.txt 2>/dev/null & echo \$! > /tmp/spike-obs.pid); sleep 2"
+  out="$(sbx "$("body_$id")" 2>&1)"; rc=$?
+  cap="$(node_sh 'sleep 2; kill "$(cat /tmp/spike-obs.pid)" 2>/dev/null; sleep 1; cat /tmp/spike-obs.txt')"
+  printf '%s\n' "$out" | grep -v -e '^MANUAL' -e '^command terminated'
+  case "$rc" in
+    0) echo "the runtime refused the send"; return 0 ;;
+    2) printf '%s\n' "$cap" | observer_verdict; return $? ;;
+    *) return 1 ;;
   esac
 }
 
 published_port_from_outside() {
   # The compose stack of compose_published_port was torn down by its trap, so
   # bring up a one-container publisher, then call it from a sibling on the outer daemon.
-  [ -z "$K8S_POD" ] || { echo "not applicable to --k8s-pod: call the published port from a peer pod"; return 1; }
   sbx "docker rm -f outside-web >/dev/null 2>&1; docker run -d --rm --name outside-web -p 8083:8080 busybox:1.36 sh -c 'mkdir -p /www && echo hello-outside > /www/index.html && exec httpd -f -p 8080 -h /www' >/dev/null" || return 1
   sleep 2
   local ip out
@@ -853,7 +930,7 @@ main() {
     fi
     [ "$v" != pod ] && stop_sandbox
   done
-  say "== summary: $PASSED passed, $FAILED failed, $SKIPPED manual"
+  say "== summary: $PASSED passed, $FAILED failed, $SKIPPED manual or skipped"
   [ "$FAILED" -eq 0 ]
 }
 
