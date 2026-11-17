@@ -225,11 +225,11 @@ func pitrRetentionDays(plan string) int64 {
 	return int64(core.PITRRetention(plan) / (24 * time.Hour))
 }
 
-// The board items a followUp names. Each is an inbox note filed by w7/m429
-// t005 for a row bex does not apply yet.
+// The board items a followUp names: inbox notes for rows bex does not apply
+// yet, filed by w7/m429 t005 (w7/071) and w7/070 (w7/077).
 const (
-	followUpWorkspaces2FA = "w7/070 (workspaces per plan and enforced 2FA on Pro and higher)"
 	followUpHIPAALinks    = "w7/071 (HIPAA-enabled workspaces and AWS private links have no recorded disposition)"
+	followUpOrganizations = "w7/077 (Render's Scale and Enterprise organizations hold unlimited workspaces under one plan fee)"
 )
 
 // planDispositions is bex's answer to every captured row.
@@ -314,9 +314,9 @@ var planDispositions = map[string]planDisposition{
 	"pricing: OpenTelemetry metrics stream": nonGoal("DO_NOT_DO: external log/metric drains; ADR018 Metric streams"),
 	// Platform Access & Security
 	"pricing: Team seats":                 numbered("limit", "store.LimitsFor MaxMembers", leadingNumber, func(p string) int64 { return unlimitedAtZero(store.LimitsFor(p).MaxMembers) }),
-	"pricing: Workspaces":                 followUp(followUpWorkspaces2FA),
+	"pricing: Workspaces":                 {kind: "followUp", ref: followUpOrganizations + "; per user, store.LimitsFor MaxWorkspacesPerUser", check: checkWorkspaces},
 	"pricing: 2FA & Google login":         same("ADR012"),
-	"pricing: Enforce 2FA & Google login": followUp(followUpWorkspaces2FA),
+	"pricing: Enforce 2FA & Google login": gate(core.FeatureTwoFactorEnforcement),
 	"pricing: Workspace user roles":       {kind: "limit", ref: "store.LimitsFor AllowedRoles", check: checkWorkspaceRoles},
 	"pricing: Organization user roles":    nonGoal("ADR018 Render audit-log paths: bex has no organization scope"),
 	"pricing: SAML SSO":                   nonGoal("DO_NOT_DO: SSO/SAML · SCIM; ADR018 SSO / SAML · SCIM"),
@@ -424,6 +424,41 @@ func checkCustomDomains(t reporter, row planRow) {
 		}
 		if got, want := Default.customDomain*monthSeconds, render*0.70; math.Abs(got-want) > 1e-9 {
 			t.Errorf("%s on %s: bex charges $%.4f a domain-month, want Render's $%.2f × 0.70 = $%.4f", row.key, renderPlans[i], got, render, want)
+		}
+	}
+}
+
+// organizationPlans are the plans whose workspaces sit in a Render
+// organization: "With a Render Scale or Enterprise plan, you can manage all of
+// your team's users" in one org, and "An org can contain unlimited workspaces
+// at no additional cost" (render.com/docs/organizations, read 2026-11-17).
+var organizationPlans = []string{store.PlanScale, store.PlanEnterprise}
+
+// checkWorkspaces reads the pricing table's "Workspaces: 1 | 1 | Unlimited |
+// Unlimited" row as what it counts on Render (w7/070): the workspaces one
+// plan's account holds, a standalone workspace on Hobby and Pro and an
+// organization's unlimited workspaces on Scale and Enterprise. bex has no
+// organizations (w7/077), so the row binds nothing in bex yet; a change to it
+// fails here, to be read again. How many workspaces one user may create is
+// render.com/docs/team-members' rule (read 2026-11-17: "You can have up to
+// five Hobby workspaces", "You can create an unlimited number of paid
+// workspaces"), which store.LimitsFor applies.
+func checkWorkspaces(t reporter, row planRow) {
+	t.Helper()
+	for i, plan := range renderPlans {
+		want := "1"
+		if slices.Contains(organizationPlans, plan) {
+			want = "Unlimited"
+		}
+		if row.values[i] != want {
+			t.Errorf("%s on %s: Render now shows %q, where bex read %q as an organization's workspace count: read the row again", row.key, plan, row.values[i], want)
+		}
+		perUser := 0 // unlimited
+		if plan == store.PlanHobby {
+			perUser = 5
+		}
+		if got := store.LimitsFor(plan).MaxWorkspacesPerUser; got != perUser {
+			t.Errorf("%s on %s: bex lets a user own %d (0 = unlimited), Render's team-members page %d", row.key, plan, got, perUser)
 		}
 	}
 }

@@ -529,6 +529,12 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "只有工作区管理员可以更改此设置。",
     description: "Hint shown to a non-admin in place of the switch",
   },
+  "workspaces.twoFactorProPlanOnly": {
+    message:
+      "强制启用两步验证需要 Pro 或更高套餐。已经强制启用的工作区会保留该设置，直到管理员将其关闭。",
+    description:
+      "Notice on the two-factor card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table, w7/070)",
+  },
   "workspaces.twoFactorEnabledToast": {
     message: "{name} 现已要求使用两步验证",
     description: "Toast after an admin turns the 2FA requirement on",

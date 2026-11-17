@@ -543,6 +543,12 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
       "Somente administradores do workspace podem alterar esta configuração.",
     description: "Hint shown to a non-admin in place of the switch",
   },
+  "workspaces.twoFactorProPlanOnly": {
+    message:
+      "Exigir autenticação em duas etapas requer o plano Pro ou superior. Um workspace que já a exige continua exigindo até que um administrador a desative.",
+    description:
+      "Notice on the two-factor card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table, w7/070)",
+  },
   "workspaces.twoFactorEnabledToast": {
     message: "A autenticação em duas etapas agora é exigida em {name}",
     description: "Toast after an admin turns the 2FA requirement on",

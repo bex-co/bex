@@ -23,6 +23,7 @@ vi.mock("@apollo/client/react", () => ({
 }));
 
 const toastSuccess = vi.hoisted(() => vi.fn());
+const changePlan = vi.fn();
 vi.mock("sonner", () => ({
   toast: { success: toastSuccess, error: vi.fn() },
 }));
@@ -74,11 +75,17 @@ beforeEach(() => {
   mutate.mockReset();
   mutate.mockResolvedValue({ data: {} });
   toastSuccess.mockReset();
+  changePlan.mockReset();
 });
 
 describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
   it("explains the enforcement in Render's terms", async () => {
-    await renderCard(<WorkspaceTwoFactorCard workspace={WORKSPACE} />);
+    await renderCard(
+      <WorkspaceTwoFactorCard
+        workspace={WORKSPACE}
+        onChangePlan={changePlan}
+      />,
+    );
 
     expect(
       screen.getByRole("heading", { name: "Two-factor authentication" }),
@@ -99,7 +106,12 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
 
   it("turns the requirement on with the switch and says so", async () => {
     const user = userEvent.setup();
-    await renderCard(<WorkspaceTwoFactorCard workspace={WORKSPACE} />);
+    await renderCard(
+      <WorkspaceTwoFactorCard
+        workspace={WORKSPACE}
+        onChangePlan={changePlan}
+      />,
+    );
 
     const toggle = screen.getByRole("switch", {
       name: "Enforce two-factor authentication (2FA)",
@@ -122,6 +134,7 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
     await renderCard(
       <WorkspaceTwoFactorCard
         workspace={{ ...WORKSPACE, requireTwoFactor: true }}
+        onChangePlan={changePlan}
       />,
     );
 
@@ -146,7 +159,12 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
       codedGraphQLError("WORKSPACE_2FA_ADMIN_NOT_ENROLLED"),
     );
     const user = userEvent.setup();
-    await renderCard(<WorkspaceTwoFactorCard workspace={WORKSPACE} />);
+    await renderCard(
+      <WorkspaceTwoFactorCard
+        workspace={WORKSPACE}
+        onChangePlan={changePlan}
+      />,
+    );
 
     await user.click(screen.getByRole("switch"));
 
@@ -167,7 +185,12 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
   it("shows the unavailable refusal without an enroll link", async () => {
     mutate.mockRejectedValue(codedGraphQLError("WORKSPACE_2FA_UNAVAILABLE"));
     const user = userEvent.setup();
-    await renderCard(<WorkspaceTwoFactorCard workspace={WORKSPACE} />);
+    await renderCard(
+      <WorkspaceTwoFactorCard
+        workspace={WORKSPACE}
+        onChangePlan={changePlan}
+      />,
+    );
 
     await user.click(screen.getByRole("switch"));
 
@@ -182,7 +205,12 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
   it("falls back to the generic message for a failure with no answer", async () => {
     mutate.mockRejectedValue(new Error("Failed to fetch"));
     const user = userEvent.setup();
-    await renderCard(<WorkspaceTwoFactorCard workspace={WORKSPACE} />);
+    await renderCard(
+      <WorkspaceTwoFactorCard
+        workspace={WORKSPACE}
+        onChangePlan={changePlan}
+      />,
+    );
 
     await user.click(screen.getByRole("switch"));
 
@@ -196,7 +224,12 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
       codedGraphQLError("WORKSPACE_2FA_UNAVAILABLE"),
     );
     const user = userEvent.setup();
-    await renderCard(<WorkspaceTwoFactorCard workspace={WORKSPACE} />);
+    await renderCard(
+      <WorkspaceTwoFactorCard
+        workspace={WORKSPACE}
+        onChangePlan={changePlan}
+      />,
+    );
 
     await user.click(screen.getByRole("switch"));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
@@ -208,12 +241,110 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
   });
 });
 
+// Render's plan table keeps "Enforce 2FA & Google login" to Pro and higher.
+describe("WorkspaceTwoFactorCard — below Pro (w7/070)", () => {
+  const HOBBY: WorkspaceView = { ...WORKSPACE, plan: "hobby" };
+  const PLAN_NOTICE =
+    "Enforcing two-factor authentication requires the Pro plan or higher.";
+
+  it("keeps an admin's switch off and offers the plan change", async () => {
+    const user = userEvent.setup();
+    await renderCard(
+      <WorkspaceTwoFactorCard workspace={HOBBY} onChangePlan={changePlan} />,
+    );
+
+    const toggle = screen.getByRole("switch", {
+      name: "Enforce two-factor authentication (2FA)",
+    });
+    expect(toggle).toBeDisabled();
+    expect(screen.getByText(new RegExp(PLAN_NOTICE))).toBeInTheDocument();
+    await user.click(toggle);
+    expect(mutate).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Change plan" }));
+    expect(changePlan).toHaveBeenCalledOnce();
+  });
+
+  it("lets an admin turn off a requirement the workspace already has", async () => {
+    const user = userEvent.setup();
+    await renderCard(
+      <WorkspaceTwoFactorCard
+        workspace={{ ...HOBBY, requireTwoFactor: true }}
+        onChangePlan={changePlan}
+      />,
+    );
+
+    const toggle = screen.getByRole("switch");
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeEnabled();
+    expect(
+      screen.getByText(/keeps it until an admin turns it off/),
+    ).toBeInTheDocument();
+    await user.click(toggle);
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { workspaceId: "tea-acme", enabled: false },
+    });
+  });
+
+  it("tells a member why, without the plan change", async () => {
+    asRole("developer");
+    await renderCard(
+      <WorkspaceTwoFactorCard workspace={HOBBY} onChangePlan={changePlan} />,
+    );
+
+    expect(screen.getByText(new RegExp(PLAN_NOTICE))).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Change plan" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says nothing about the plan on Pro", async () => {
+    await renderCard(
+      <WorkspaceTwoFactorCard
+        workspace={WORKSPACE}
+        onChangePlan={changePlan}
+      />,
+    );
+
+    expect(screen.queryByText(new RegExp(PLAN_NOTICE))).not.toBeInTheDocument();
+    expect(screen.getByRole("switch")).toBeEnabled();
+  });
+
+  it("reads the server's plan refusal by its code", async () => {
+    mutate.mockRejectedValue(
+      codedGraphQLError("PLAN_FEATURE_REQUIRED", {
+        feature: "twoFactorEnforcement",
+        plan: "hobby",
+        requiredPlan: "pro",
+      }),
+    );
+    const user = userEvent.setup();
+    await renderCard(
+      <WorkspaceTwoFactorCard
+        workspace={WORKSPACE}
+        onChangePlan={changePlan}
+      />,
+    );
+
+    await user.click(screen.getByRole("switch"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(PLAN_NOTICE);
+    expect(alert).not.toHaveTextContent("reworded by the server");
+  });
+});
+
 describe("WorkspaceTwoFactorCard — everyone else (w22/m402)", () => {
   it.each(["developer", "viewer", "billing", "contributor"])(
     "shows a %s the state without a control",
     async (role) => {
       asRole(role);
-      await renderCard(<WorkspaceTwoFactorCard workspace={WORKSPACE} />);
+      await renderCard(
+        <WorkspaceTwoFactorCard
+          workspace={WORKSPACE}
+          onChangePlan={changePlan}
+        />,
+      );
 
       expect(screen.queryByRole("switch")).not.toBeInTheDocument();
       expect(screen.getByText("Not required")).toBeInTheDocument();
@@ -228,6 +359,7 @@ describe("WorkspaceTwoFactorCard — everyone else (w22/m402)", () => {
     await renderCard(
       <WorkspaceTwoFactorCard
         workspace={{ ...WORKSPACE, requireTwoFactor: true }}
+        onChangePlan={changePlan}
       />,
     );
 
@@ -241,7 +373,10 @@ describe("WorkspaceTwoFactorCard — everyone else (w22/m402)", () => {
       mockCapabilities({ role: null, canManage: false, loading: true }),
     );
     const { container } = await renderCard(
-      <WorkspaceTwoFactorCard workspace={WORKSPACE} />,
+      <WorkspaceTwoFactorCard
+        workspace={WORKSPACE}
+        onChangePlan={changePlan}
+      />,
     );
 
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
@@ -257,7 +392,10 @@ describe("WorkspaceTwoFactorCard — everyone else (w22/m402)", () => {
 describe("WorkspaceTwoFactorCardSkeleton matches the card (w22/m402)", () => {
   async function renderReady(workspace: WorkspaceView) {
     const { container } = await renderCard(
-      <WorkspaceTwoFactorCard workspace={workspace} />,
+      <WorkspaceTwoFactorCard
+        workspace={workspace}
+        onChangePlan={changePlan}
+      />,
     );
     return container.querySelector<HTMLElement>('[data-slot="card"]')!;
   }

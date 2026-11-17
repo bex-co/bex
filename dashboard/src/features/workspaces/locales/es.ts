@@ -544,6 +544,12 @@ const esWorkspaces: Record<string, TranslationEntry> = {
       "Solo los administradores del espacio de trabajo pueden cambiar este ajuste.",
     description: "Hint shown to a non-admin in place of the switch",
   },
+  "workspaces.twoFactorProPlanOnly": {
+    message:
+      "Exigir la autenticación de dos factores requiere el plan Pro o superior. Un espacio de trabajo que ya la exige la mantiene hasta que un administrador la desactive.",
+    description:
+      "Notice on the two-factor card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table, w7/070)",
+  },
   "workspaces.twoFactorEnabledToast": {
     message: "Ahora se requiere autenticación de dos factores en {name}",
     description: "Toast after an admin turns the 2FA requirement on",

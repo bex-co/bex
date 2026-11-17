@@ -10,9 +10,11 @@ import {
 import type { WorkspaceView } from "@/features/workspaces/types";
 
 /**
- * The mutation's coded 409 refusals (docs/ADR012-auth.md 9a), each with its own
- * locale string: the server's wording is not what the dashboard decides by or
- * shows for these two.
+ * The mutation's coded refusals, each with its own locale string: the server's
+ * wording is not what the dashboard decides by or shows for these. The two
+ * 409s are docs/ADR012-auth.md 9a's; PLAN_FEATURE_REQUIRED is a workspace below
+ * Pro turning it on (w7/070), which the card's disabled switch only meets when
+ * the plan changed under it.
  */
 const CODED_REFUSALS: Record<
   string,
@@ -24,6 +26,10 @@ const CODED_REFUSALS: Record<
   },
   WORKSPACE_2FA_UNAVAILABLE: {
     messageKey: "workspaces.twoFactorErrorUnavailable",
+    needsEnrollment: false,
+  },
+  PLAN_FEATURE_REQUIRED: {
+    messageKey: "workspaces.twoFactorProPlanOnly",
     needsEnrollment: false,
   },
 };

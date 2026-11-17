@@ -542,6 +542,12 @@ const deWorkspaces: Record<string, TranslationEntry> = {
     message: "Nur Workspace-Admins können diese Einstellung ändern.",
     description: "Hint shown to a non-admin in place of the switch",
   },
+  "workspaces.twoFactorProPlanOnly": {
+    message:
+      "Das Erzwingen der Zwei-Faktor-Authentifizierung erfordert den Tarif Pro oder höher. Ein Workspace, der sie bereits erzwingt, behält sie, bis ein Admin sie ausschaltet.",
+    description:
+      "Notice on the two-factor card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table, w7/070)",
+  },
   "workspaces.twoFactorEnabledToast": {
     message: "Zwei-Faktor-Authentifizierung ist in {name} jetzt erforderlich",
     description: "Toast after an admin turns the 2FA requirement on",

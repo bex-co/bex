@@ -534,6 +534,12 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     message: "워크스페이스 관리자만 이 설정을 변경할 수 있습니다.",
     description: "Hint shown to a non-admin in place of the switch",
   },
+  "workspaces.twoFactorProPlanOnly": {
+    message:
+      "2단계 인증 강제는 Pro 요금제 이상에서 사용할 수 있습니다. 이미 강제하고 있는 워크스페이스는 관리자가 끌 때까지 계속 적용됩니다.",
+    description:
+      "Notice on the two-factor card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table, w7/070)",
+  },
   "workspaces.twoFactorEnabledToast": {
     message: "{name}에서 이제 2단계 인증이 필수입니다",
     description: "Toast after an admin turns the 2FA requirement on",

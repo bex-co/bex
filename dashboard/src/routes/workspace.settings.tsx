@@ -206,7 +206,10 @@ function WorkspaceSettingsPage() {
               id="two-factor"
               className={SECTION_NAVIGATION_TARGET_CLASS}
             >
-              <WorkspaceTwoFactorCard workspace={currentWorkspace} />
+              <WorkspaceTwoFactorCard
+                workspace={currentWorkspace}
+                onChangePlan={() => setChangePlanOpen(true)}
+              />
             </section>
             {/* Team management lives here (w1/m33/t006) — members are
                     workspace-scoped objects, and this is where Render puts them;

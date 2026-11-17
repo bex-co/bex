@@ -1162,7 +1162,10 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 // authorization decision.
 //
 // A change that changes nothing writes nothing and records nothing. Enabling
-// is refused while the acting admin has no second factor themselves (409
+// needs the Pro plan or higher (Render's pricing table, w7/070: 400
+// PLAN_FEATURE_REQUIRED); a Hobby workspace that already enforces it keeps
+// it, can re-send it and can turn it off (ADR030 §9). Enabling is also
+// refused while the acting admin has no second factor themselves (409
 // WORKSPACE_2FA_ADMIN_NOT_ENROLLED, so the setting cannot lock out its only
 // actor), when the deployment has no identity lookup to enforce it with, and for
 // the default workspace, which the gate never enforces (both 409
@@ -1189,6 +1192,9 @@ func (s *Service) SetRequireTwoFactor(ctx context.Context, id string, enabled bo
 		return view(t, "admin"), nil // already there — nothing to write
 	}
 	if enabled {
+		if !core.PlanAllows(t.Plan, core.FeatureTwoFactorEnforcement) {
+			return WorkspaceView{}, core.NewPlanFeatureError("", t.Plan, core.FeatureTwoFactorEnforcement)
+		}
 		if err := s.requireEnrolledActor(ctx); err != nil {
 			return WorkspaceView{}, err
 		}

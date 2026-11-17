@@ -48,6 +48,9 @@ const (
 	FeatureAuditLogs        PlanFeature = "audit logs"
 	FeatureLatencyMetrics   PlanFeature = "response latency metrics"
 	FeatureAutoscaling      PlanFeature = "autoscaling"
+	// FeatureTwoFactorEnforcement is a workspace requiring two-factor
+	// authentication of its members (ADR012 §9a).
+	FeatureTwoFactorEnforcement PlanFeature = "2FA enforcement"
 )
 
 // planFeatures is the one table of each gated feature's lowest plan and its
@@ -67,6 +70,10 @@ var planFeatures = map[PlanFeature]struct {
 	// render.com/docs/scaling (read 2026-11-16): "Autoscaling: Available only
 	// for Pro workspaces and higher" (w7/m429).
 	FeatureAutoscaling: {minimum: planPro, key: "autoscaling", singular: true},
+	// render.com/pricing's "Enforce 2FA & Google login" row (read
+	// 2026-11-16): "— | ✓ | ✓ | ✓". render.com/docs/login-settings names no
+	// plan for it; the table is the only source that states one (w7/070).
+	FeatureTwoFactorEnforcement: {minimum: planPro, key: "twoFactorEnforcement", singular: true},
 }
 
 // Machine codes for the workspace-plan refusals (w8/m138 t013), on REST's

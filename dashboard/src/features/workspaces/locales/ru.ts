@@ -542,6 +542,12 @@ const ruWorkspaces: Record<string, TranslationEntry> = {
       "Изменить эту настройку могут только администраторы рабочего пространства.",
     description: "Hint shown to a non-admin in place of the switch",
   },
+  "workspaces.twoFactorProPlanOnly": {
+    message:
+      "Обязательная двухфакторная аутентификация доступна на тарифе Pro и выше. Рабочее пространство, где она уже включена, сохраняет её, пока администратор её не отключит.",
+    description:
+      "Notice on the two-factor card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table, w7/070)",
+  },
   "workspaces.twoFactorEnabledToast": {
     message: "В {name} теперь требуется двухфакторная аутентификация",
     description: "Toast after an admin turns the 2FA requirement on",

@@ -540,6 +540,12 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     message: "この設定を変更できるのはワークスペースの管理者のみです。",
     description: "Hint shown to a non-admin in place of the switch",
   },
+  "workspaces.twoFactorProPlanOnly": {
+    message:
+      "二要素認証の強制には、Pro プラン以上が必要です。すでに強制しているワークスペースは、管理者がオフにするまで引き続き適用されます。",
+    description:
+      "Notice on the two-factor card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table, w7/070)",
+  },
   "workspaces.twoFactorEnabledToast": {
     message: "{name} で二要素認証が必須になりました",
     description: "Toast after an admin turns the 2FA requirement on",

@@ -230,6 +230,55 @@ func TestSetRequireTwoFactor_AnAdminWithoutASecondFactorCannotLockThemselvesOut(
 	}
 }
 
+// w7/070: Render's plan table keeps "Enforce 2FA & Google login" to Pro and
+// higher. Turning it on below Pro is the coded plan refusal on every surface
+// (GraphQL is the only one with the mutation), and a Hobby workspace that
+// already enforces it keeps it, may re-send it and may turn it off (ADR030 §9),
+// but cannot turn it back on.
+func TestSetRequireTwoFactor_EnforcingItNeedsProAndAHobbyWorkspaceKeepsWhatItHas(t *testing.T) {
+	f := newTwoFactorFixture(t)
+	ctx := ctxAs("admin-1")
+	for _, plan := range []string{store.PlanPro, store.PlanScale, store.PlanEnterprise} {
+		f.store.tenants[f.workspace] = store.Tenant{ID: f.workspace, Name: "acme", Plan: plan}
+		if w, err := f.svc.SetRequireTwoFactor(ctx, f.workspace, true); err != nil || !w.RequireTwoFactor {
+			t.Fatalf("enable on %s = (%+v, %v), want allowed", plan, w, err)
+		}
+	}
+
+	f.store.tenants[f.workspace] = store.Tenant{ID: f.workspace, Name: "acme", Plan: store.PlanHobby}
+	allowedBefore, changedBefore := len(f.audit.verbs(core.AuditAllowed)), len(f.changed)
+	_, err := f.svc.SetRequireTwoFactor(ctx, f.workspace, true)
+	var coded *core.CodedError
+	if !isCoded(err, core.ErrBadRequest, core.PlanFeatureRequiredCode) || !errors.As(err, &coded) ||
+		!reflect.DeepEqual(coded.Params, map[string]any{"plan": "hobby", "feature": "twoFactorEnforcement", "requiredPlan": "pro"}) ||
+		err.Error() != "bad request: 2FA enforcement requires the Pro plan or higher; this workspace is on Hobby" {
+		t.Fatalf("enable on Hobby = %v, want the coded PLAN_FEATURE_REQUIRED refusal", err)
+	}
+	// The plan is the first refusal: an unenrolled admin hears about the plan,
+	// which no second factor of theirs would change.
+	if _, err := f.svc.SetRequireTwoFactor(ctxAs("admin-2"), f.workspace, true); !isCoded(err, core.ErrBadRequest, core.PlanFeatureRequiredCode) {
+		t.Fatalf("enable on Hobby as an unenrolled admin = %v, want the plan refusal", err)
+	}
+	if got, _ := f.store.GetTenant(ctx, f.workspace); got.RequireTwoFactor {
+		t.Fatal("a refused enable changed the setting")
+	}
+	if len(f.audit.verbs(core.AuditAllowed)) != allowedBefore || len(f.changed) != changedBefore {
+		t.Fatalf("a refused enable recorded an allowed row or invalidated the cache")
+	}
+
+	// A workspace that enforced it before moving to Hobby keeps enforcing it.
+	f.store.tenants[f.workspace] = store.Tenant{ID: f.workspace, Name: "acme", Plan: store.PlanHobby, RequireTwoFactor: true}
+	if w, err := f.svc.SetRequireTwoFactor(ctx, f.workspace, true); err != nil || !w.RequireTwoFactor {
+		t.Fatalf("re-sending the kept setting on Hobby = (%+v, %v), want the no-op", w, err)
+	}
+	if w, err := f.svc.SetRequireTwoFactor(ctx, f.workspace, false); err != nil || w.RequireTwoFactor {
+		t.Fatalf("turning the kept setting off on Hobby = (%+v, %v), want allowed", w, err)
+	}
+	if _, err := f.svc.SetRequireTwoFactor(ctx, f.workspace, true); !isCoded(err, core.ErrBadRequest, core.PlanFeatureRequiredCode) {
+		t.Fatalf("turning it back on on Hobby = %v, want the plan refusal", err)
+	}
+}
+
 func TestSetRequireTwoFactor_TheGuardSpeaksForAKeysCreator(t *testing.T) {
 	f := newTwoFactorFixture(t)
 	f.svc.KeyOwners = fakeKeyOwners{"key-by-enrolled": "admin-1", "key-by-unenrolled": "admin-2"}
@@ -545,6 +594,14 @@ func TestWorkspaceGraphQL_RequireTwoFactorFieldAndMutation(t *testing.T) {
 	missing := run("admin-1", fmt.Sprintf(`mutation { setWorkspaceRequireTwoFactor(workspaceId: %q) { id } }`, f.workspace))
 	if len(missing.Errors) == 0 {
 		t.Fatal("enabled is required: a call without it must be a validation error")
+	}
+
+	// Below Pro the refusal is the plan's, coded in the extensions (w7/070).
+	f.store.tenants[f.workspace] = store.Tenant{ID: f.workspace, Name: "acme", Plan: store.PlanHobby}
+	hobby := run("admin-1", mutation)
+	if len(hobby.Errors) != 1 || hobby.Errors[0].Extensions["code"] != core.PlanFeatureRequiredCode ||
+		hobby.Errors[0].Extensions["feature"] != "twoFactorEnforcement" || hobby.Errors[0].Extensions["requiredPlan"] != "pro" {
+		t.Fatalf("a Hobby admin's mutation = %+v, want the %s error naming twoFactorEnforcement", hobby.Errors, core.PlanFeatureRequiredCode)
 	}
 }
 

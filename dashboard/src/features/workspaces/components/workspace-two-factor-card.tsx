@@ -12,13 +12,17 @@ import {
   AlertTitle,
 } from "@/common/components/ui/alert";
 import { Badge } from "@/common/components/ui/badge";
+import { Button } from "@/common/components/ui/button";
 import { Label } from "@/common/components/ui/label";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useSetWorkspaceRequireTwoFactor } from "@/features/workspaces/hooks/use-set-workspace-require-two-factor";
-import type { WorkspaceView } from "@/features/workspaces/types";
+import {
+  proFeaturesPlan,
+  type WorkspaceView,
+} from "@/features/workspaces/types";
 
 /**
  * Workspace Settings -> Two-factor authentication (w22/m402), Render's
@@ -39,16 +43,24 @@ import type { WorkspaceView } from "@/features/workspaces/types";
  * list reports "admin" for every membership, so a developer was shown a live
  * switch that could only answer 403 (found by the w22/m402 live check). While
  * the capability check is in flight the control is the skeleton's placeholder.
+ *
+ * Enforcing it needs the Pro plan or higher, as in Render's plan table (w7/070).
+ * Below Pro every member reads why, and an admin's switch cannot turn it on; a
+ * workspace that already enforces it keeps it, and its admin can turn it off.
  */
 export function WorkspaceTwoFactorCard({
   workspace,
+  onChangePlan,
 }: {
   workspace: WorkspaceView;
+  /** Opens the change-plan dialog on this page (`?plan=change`). */
+  onChangePlan: () => void;
 }) {
   const { t } = useTranslations();
   const { setRequired, busy, error } =
     useSetWorkspaceRequireTwoFactor(workspace);
   const { canManage: isAdmin, loading: roleLoading } = useCapabilities();
+  const belowPro = !proFeaturesPlan(workspace.plan);
 
   return (
     <Card>
@@ -67,7 +79,7 @@ export function WorkspaceTwoFactorCard({
             <Switch
               id="workspace-two-factor"
               checked={workspace.requireTwoFactor}
-              disabled={busy}
+              disabled={busy || (belowPro && !workspace.requireTwoFactor)}
               onCheckedChange={(next) => void setRequired(next)}
             />
           ) : roleLoading ? (
@@ -87,6 +99,24 @@ export function WorkspaceTwoFactorCard({
             </Badge>
           )}
         </div>
+        {belowPro ? (
+          <p className="text-muted-foreground text-xs">
+            {t("workspaces.twoFactorProPlanOnly")}
+            {isAdmin ? (
+              <>
+                {" "}
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-xs"
+                  onClick={onChangePlan}
+                >
+                  {t("workspaces.changePlanTrigger")}
+                </Button>
+              </>
+            ) : null}
+          </p>
+        ) : null}
         {error ? (
           <Alert variant="destructive">
             <AlertTitle>{t("workspaces.twoFactorErrorTitle")}</AlertTitle>

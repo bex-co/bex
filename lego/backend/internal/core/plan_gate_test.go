@@ -107,6 +107,9 @@ func TestPlanFeatureTable(t *testing.T) {
 		{FeatureInboundIPRules, "hobby", false}, {FeatureInboundIPRules, "pro", false},
 		{FeatureInboundIPRules, "scale", true}, {FeatureInboundIPRules, "enterprise", true},
 		{FeatureAutoscaling, "hobby", false}, {FeatureAutoscaling, "pro", true}, {FeatureAutoscaling, "enterprise", true},
+		// w7/070: render.com/pricing's "Enforce 2FA & Google login" row.
+		{FeatureTwoFactorEnforcement, "hobby", false}, {FeatureTwoFactorEnforcement, "pro", true},
+		{FeatureTwoFactorEnforcement, "scale", true}, {FeatureTwoFactorEnforcement, "enterprise", true},
 		{FeatureWebhooks, "future-plan", true},
 	} {
 		if got := PlanAllows(tc.plan, tc.feature); got != tc.want {
@@ -117,6 +120,9 @@ func TestPlanFeatureTable(t *testing.T) {
 		t.Errorf("message = %q", got)
 	}
 	if got := PlanFeatureMessage("hobby", FeatureAutoscaling); got != "autoscaling requires the Pro plan or higher; this workspace is on Hobby" {
+		t.Errorf("message = %q", got)
+	}
+	if got := PlanFeatureMessage("hobby", FeatureTwoFactorEnforcement); got != "2FA enforcement requires the Pro plan or higher; this workspace is on Hobby" {
 		t.Errorf("message = %q", got)
 	}
 	// w7/m429: render.com/pricing's Instant rollbacks and Custom domains rows.
