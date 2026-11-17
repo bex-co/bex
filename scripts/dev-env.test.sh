@@ -111,6 +111,9 @@ assert "agent-stub-off recreates the gateway without strategic-patch residue" \
   "sed -n '/cmd_agent_stub_off()/,/cmd_agent_down()/p' scripts/dev-env.sh | grep -q 'delete deploy bex-ssh-gateway'"
 assert "agent-down removes model-stub resources" \
   "sed -n '/cmd_agent_down()/,/entrypoint/p' scripts/dev-env.sh | grep -q 'deploy/model-stub'"
+# w22/m403 t011: a turn has to stay running to be queued behind and stopped.
+assert "the model stub holds a turn on stub-hold:<seconds> and answers anything else at once" \
+  "python3 -B scripts/dev-env/agent/model_stub_test.py"
 assert "the live verifier supports the local gateway stream origin" \
   "grep -q 'BEX_VERIFY_STREAM_URL' scripts/agent-session-verify.sh"
 
