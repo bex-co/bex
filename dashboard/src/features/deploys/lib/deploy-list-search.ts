@@ -1,3 +1,7 @@
+/** One page of deploy history; the list's loading frame reserves this many
+ *  rows (w4/702). */
+export const DEPLOYS_PAGE_SIZE = 20;
+
 // The status filter's vocabulary: the deploy-status enum the store writes
 // (store.Deploy*), labeled by the same keys the badges use.
 export const DEPLOY_STATUS_FILTERS = [

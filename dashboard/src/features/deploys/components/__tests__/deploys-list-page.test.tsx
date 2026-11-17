@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -16,7 +17,8 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { DeploysListPage } from "../deploys-list-page";
-import { serverRendered } from "@/test/hydration";
+import { DeploysListSkeleton } from "@/common/components/route-skeletons";
+import { hydrateAcrossBoundary, serverRendered } from "@/test/hydration";
 import type { DeployRow, UseDeploysResult } from "../../hooks/use-deploys";
 
 const state: UseDeploysResult = {
@@ -114,6 +116,34 @@ function pageRouter() {
 
 function renderPage() {
   return render(<RouterProvider router={pageRouter()} />);
+}
+
+function headers(root: ParentNode) {
+  return [...root.querySelectorAll("thead th")].map((th) => [
+    th.textContent,
+    th.className,
+  ]);
+}
+
+/**
+ * A deploy cell's lines, top to bottom: each line's top margin, its height
+ * and whether only the narrow card draws it. A ready line's height comes from
+ * its status badge (22 px) or its type (text-sm 20 px, text-xs 16 px); a
+ * placeholder's from its bar, so the two compare directly.
+ */
+function lineShape(cell: Element) {
+  return [...cell.children].map((line) => {
+    const classes = line.getAttribute("class") ?? "";
+    let height: number | null = null;
+    if (line.querySelector("[data-slot='badge'], .h-\\[22px\\]")) height = 22;
+    else if (/\b(text-sm|h-5)\b/.test(classes)) height = 20;
+    else if (/\b(text-xs|h-4)\b/.test(classes)) height = 16;
+    return {
+      margin: classes.match(/\bmt-\d\b/)?.[0] ?? null,
+      height,
+      narrowOnly: line.classList.contains("@3xl/deploys:hidden"),
+    };
+  });
 }
 
 // Row times are elapsed ("Deployed 3 hours ago"), so every test pins the
@@ -506,6 +536,131 @@ describe("DeploysListPage", () => {
     expect(screen.getByText(/Broken startup/)).toBeInTheDocument();
   });
 
+  // w4/702: while the first page loads, the card draws the ready table's
+  // frame — its column headers, a full page of rows at a ready row's line
+  // heights, the Load more slot and the count line's slot — and the route
+  // skeleton draws the same card, so neither swap moves the page below.
+  it("frames a full first page while it loads, as the route skeleton does (w4/702)", async () => {
+    state.deploys = Array.from({ length: 20 }, (_, i) =>
+      row({ id: `dep-${i}` }),
+    );
+    state.hasMore = true;
+    const ready = renderPage();
+    await screen.findByText("20 deploys loaded");
+    const readyHeaders = headers(ready.container);
+    expect(ready.container.querySelectorAll("tbody tr")).toHaveLength(20);
+    const readyLines = lineShape(ready.container.querySelector("tbody td")!);
+    expect(readyLines).toEqual([
+      { margin: null, height: 22, narrowOnly: false },
+      { margin: "mt-1", height: 20, narrowOnly: false },
+      { margin: "mt-1", height: 16, narrowOnly: false },
+      { margin: "mt-2", height: 16, narrowOnly: true },
+    ]);
+    const readyLoadMore = screen.getByRole("button", { name: "Load more" });
+    expect(readyLoadMore.parentElement).toHaveClass("mt-4");
+    ready.unmount();
+
+    state.deploys = [];
+    state.hasMore = false;
+    state.loading = true;
+    const pending = renderPage();
+    const frame = await waitFor(() => {
+      const found = pending.container.querySelector(
+        "[data-testid='deploys-table-frame']",
+      );
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(headers(pending.container)).toEqual(readyHeaders);
+    const placeholders = frame.querySelectorAll(
+      "tbody tr[data-testid='deploy-row-placeholder']",
+    );
+    expect(placeholders).toHaveLength(20);
+    for (const placeholder of placeholders) {
+      expect(lineShape(placeholder.querySelector("td")!)).toEqual(readyLines);
+    }
+    // The Load more slot sits where the ready button does, at its size.
+    const loadMoreSlot = frame.lastElementChild!;
+    expect(loadMoreSlot).toHaveClass("mt-4");
+    expect(loadMoreSlot).toHaveTextContent("Load more");
+    expect(loadMoreSlot.querySelector("[data-slot='skeleton']")).not.toBeNull();
+    // The count line keeps its text-xs line in the title row.
+    expect(screen.getByTestId("deploys-count-slot")).toHaveClass("text-xs");
+    // The search and filter stay usable while the list loads.
+    expect(
+      screen.getByRole("textbox", {
+        name: "Search loaded deploys and commits",
+      }),
+    ).toBeInTheDocument();
+    pending.unmount();
+
+    const skeleton = render(<DeploysListSkeleton />);
+    expect(headers(skeleton.container)).toEqual(readyHeaders);
+    expect(
+      skeleton.container.querySelectorAll(
+        "tbody tr[data-testid='deploy-row-placeholder']",
+      ),
+    ).toHaveLength(20);
+    expect(
+      skeleton.container.querySelector("[data-testid='deploys-count-slot']"),
+    ).not.toBeNull();
+    expect(
+      skeleton.container.querySelector("[data-slot='card-title']"),
+    ).toHaveTextContent("Deploys");
+  });
+
+  it("frames an image-backed service's rows without a commit line (w4/702)", async () => {
+    serverState.repo = null;
+    state.loading = true;
+    const { container } = renderPage();
+    const placeholder = await waitFor(() => {
+      const found = container.querySelector(
+        "[data-testid='deploy-row-placeholder'] td",
+      );
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(lineShape(placeholder).map((line) => line.height)).toEqual([
+      22, 16, 16,
+    ]);
+  });
+
+  it("keeps every line of a row to one line, so the frame's row height holds at any width (w4/702)", async () => {
+    // A long rollback trigger and a pre-deploy status: the lines that wrapped
+    // at phone width.
+    state.deploys = [
+      row({
+        id: "dep-d4fk2l0gjchc73a1b2c0",
+        trigger: "rollback",
+        rollbackOf: "dep-d4fk2l0gjchc73a1b2c9",
+        preDeployStatus: "failed",
+      }),
+    ];
+    renderPage();
+    const id = await screen.findByTitle("dep-d4fk2l0gjchc73a1b2c0");
+    const cell = id.closest("td")!;
+    expect(cell.querySelector(".flex-wrap")).toBeNull();
+    // Each line is a no-wrap grid whose giving track is minmax(0, auto): the
+    // id truncates beside the badge, the pre-deploy status beside the time,
+    // and the rollback trigger before its duration, instead of wrapping.
+    const lines = [id.parentElement!, ...cell.querySelectorAll(":scope > div")];
+    expect(lines).toHaveLength(3);
+    for (const line of lines) {
+      expect(line).toHaveClass("grid");
+      expect(line.className).toMatch(/grid-cols-\[[^\]]*minmax\(0,auto\)/);
+    }
+    for (const line of lines.slice(1)) {
+      expect(line).toHaveClass("whitespace-nowrap");
+    }
+    for (const giving of [
+      id,
+      within(cell).getByText("Pre-deploy command failed"),
+      within(cell).getByText("Rollback to dep-d4fk2l0gjchc73a1b2c9"),
+    ]) {
+      expect(giving).toHaveClass("truncate");
+    }
+  });
+
   it("uses a complete count only after pagination is exhausted", async () => {
     state.deploys = [row()];
     state.hasMore = false;
@@ -515,6 +670,17 @@ describe("DeploysListPage", () => {
     expect(await screen.findByText("1 deploy")).toBeInTheDocument();
     expect(screen.queryByText(/loaded/)).not.toBeInTheDocument();
   });
+});
+
+// w4/702 (as w4/686): the loading frame's reserved text sits in a <p>, so
+// every bar there must be phrasing content or a direct load fails hydration.
+it("hydrates the route's loading frame without a mismatch (w4/702)", () => {
+  const probe = hydrateAcrossBoundary(<DeploysListSkeleton />, {
+    serverNow: NOW,
+    clientNow: NOW,
+  });
+  expect(probe.html).toContain("deploys-table-frame");
+  expect(probe.recovered).toEqual([]);
 });
 
 // w4/m219 (a841): a query typed into the server-rendered history search before

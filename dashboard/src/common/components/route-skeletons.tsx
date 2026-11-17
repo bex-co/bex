@@ -98,6 +98,7 @@ import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/com
 import { NotificationOverridesCardSkeleton } from "@/features/notifications/components/notification-overrides-card-skeleton";
 import { RegistryCredentialsPanelSkeleton } from "@/features/registry-credentials/components/registry-credentials-panel-skeleton";
 import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
+import { DeploysListCardSkeleton } from "@/features/deploys/components/deploys-list-frame";
 import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
 import { InstanceTypePickerCardSkeleton } from "@/features/services/components/instance-type-groups";
 import {
@@ -1880,17 +1881,24 @@ export function ServiceCreatePageSkeleton() {
 
 export function DeploysListSkeleton({
   banner,
+  titleKey,
+  commits,
 }: {
   /** The auto-deploy-off banner the ready page shows above the list
    *  (w3/064): its own content is already known, so the pending state shows
    *  it as is and matches at every width. */
   banner?: React.ReactNode;
+  /** A cron job's history is titled Builds (w2/m360). */
+  titleKey?: "deploys.listTitle" | "deploys.buildsTitle";
+  /** False when the cached service is image-backed: no commit lines. */
+  commits?: boolean;
 } = {}) {
   return (
     <PendingFrame route="deploys-list" className="space-y-4">
       {banner ? <Region name="auto-deploy-off-banner">{banner}</Region> : null}
       <Region name="deploys-table">
-        <TableCardSkeleton rows={3} columns={4} controls />
+        {/* The page's own card and loading frame (w4/702). */}
+        <DeploysListCardSkeleton titleKey={titleKey} commits={commits} />
       </Region>
     </PendingFrame>
   );
@@ -3029,7 +3037,15 @@ export function ServiceRouteContentSkeleton({
     case "deploy-detail":
       return <DeployDetailSkeleton />;
     case "deploys":
-      return <DeploysListSkeleton />;
+      return (
+        <DeploysListSkeleton
+          titleKey={
+            routeId === "/services/$serviceId/builds"
+              ? "deploys.buildsTitle"
+              : undefined
+          }
+        />
+      );
     case "disk":
       return <ServiceDiskSkeleton />;
     case "environment":

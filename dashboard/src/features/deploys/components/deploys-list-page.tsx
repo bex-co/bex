@@ -7,18 +7,12 @@ import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useNow } from "@/common/hooks/use-now";
 import { useUrlEcho } from "@/common/hooks/use-url-echo";
 import { formatTimeAgo } from "@/common/lib/format";
+import { cn } from "@/common/lib/utils/utils";
 import { EmptyState } from "@/common/components/empty-state";
 import { InstantTooltip } from "@/common/components/instant-tooltip";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -30,8 +24,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/common/components/ui/table";
 import { useServer } from "@/features/services/hooks/use-server";
@@ -58,6 +50,12 @@ import {
 } from "../lib/deploy-presentation";
 import { DeployActions } from "./deploy-actions";
 import { DeployFailureReason } from "./deploy-failure-reason";
+import {
+  DeploysCountSlot,
+  DeploysListCard,
+  DeploysTableFrame,
+  DeploysTableHeader,
+} from "./deploys-list-frame";
 
 // Radix Select can't hold "" — the log-filter-bar's "all" sentinel idiom.
 const ALL = "all";
@@ -170,13 +168,9 @@ export function DeploysListPage({
       />
     );
   } else if (loading) {
-    body = (
-      <div className="space-y-3">
-        {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-14 w-full" />
-        ))}
-      </div>
-    );
+    // The ready table's frame (w4/702); an image-backed service's deploys
+    // carry no commit line.
+    body = <DeploysTableFrame commits={!service || Boolean(repo)} />;
   } else if (deploys.length === 0) {
     body = (
       <p className="text-sm text-muted-foreground">
@@ -192,20 +186,7 @@ export function DeploysListPage({
   } else {
     body = (
       <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("deploys.columnDeploy")}</TableHead>
-            <TableHead className="hidden whitespace-nowrap @3xl/deploys:table-cell">
-              {t("deploys.columnTrigger")}
-            </TableHead>
-            <TableHead className="hidden whitespace-nowrap @3xl/deploys:table-cell">
-              {t("deploys.columnDuration")}
-            </TableHead>
-            <TableHead className="w-0 whitespace-nowrap text-right">
-              <span className="sr-only">{t("deploys.columnActions")}</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
+        <DeploysTableHeader />
         <TableBody>
           {visibleDeploys.map((d) => {
             const preDeploy = preDeployStatusKey(d.preDeployStatus);
@@ -220,6 +201,7 @@ export function DeploysListPage({
             });
             const commitUrl =
               repo && d.commitId ? repoCommitUrl(repo, d.commitId) : null;
+            const triggerLabel = deployTriggerLabel(d.trigger, d.rollbackOf, t);
             // A previous deploy whose build the registry no longer holds
             // cannot be rolled back to, so it gets no action (w8/m156).
             const hasListAction =
@@ -230,13 +212,18 @@ export function DeploysListPage({
                 <TableCell className="min-w-0 align-top">
                   {/* The detail link wraps only the identity line: the commit
                       SHA below is its own link (to the diff) and the timestamp
-                      is a tooltip trigger, and neither may nest in an anchor. */}
+                      is a tooltip trigger, and neither may nest in an anchor.
+                      Each line of the cell is one line tall at any width, so
+                      the loading frame's rows match (w4/702). Its lines are
+                      grids whose last-to-give track is minmax(0, auto): that
+                      text truncates instead of wrapping, and it never widens
+                      the column past what its other content needs. */}
                   <Link
                     to="/services/$serviceId/deploys/$deployId"
                     params={{ serviceId, deployId: d.id }}
-                    className="inline-block max-w-full rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="flex w-fit max-w-full rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <div className="grid grid-cols-[auto_minmax(0,auto)] items-center gap-2">
                       <Badge variant={deployStatusVariant(d.status)}>
                         {t(
                           deployStatusKey(d.status) as Parameters<typeof t>[0],
@@ -303,7 +290,7 @@ export function DeploysListPage({
                       ) : null}
                     </p>
                   ) : null}
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <div className="mt-1 grid grid-cols-[auto_minmax(0,auto)] justify-start gap-x-3 whitespace-nowrap text-xs text-muted-foreground">
                     {rowStamp.iso && ago ? (
                       <InstantTooltip value={rowStamp.iso}>
                         {t(rowStamp.key as Parameters<typeof t>[0], {
@@ -313,11 +300,10 @@ export function DeploysListPage({
                     ) : null}
                     {preDeploy ? (
                       <span
-                        className={
-                          d.preDeployStatus === "failed"
-                            ? "text-destructive"
-                            : undefined
-                        }
+                        className={cn(
+                          "truncate",
+                          d.preDeployStatus === "failed" && "text-destructive",
+                        )}
                       >
                         {t(preDeploy as Parameters<typeof t>[0])}
                       </span>
@@ -325,16 +311,16 @@ export function DeploysListPage({
                   </div>
                   {/* Until the card is wide enough for the full table, fold
                       Trigger/Duration under the deploy identity instead. */}
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground @3xl/deploys:hidden">
-                    <span>
-                      {deployTriggerLabel(d.trigger, d.rollbackOf, t)}
+                  <div className="mt-2 grid grid-cols-[minmax(0,auto)_auto_auto] items-center justify-start gap-x-2 whitespace-nowrap text-xs text-muted-foreground @3xl/deploys:hidden">
+                    <span className="truncate" title={triggerLabel}>
+                      {triggerLabel}
                     </span>
                     <span aria-hidden="true">·</span>
                     <span className="tabular-nums">{durationLabel(d, t)}</span>
                   </div>
                 </TableCell>
                 <TableCell className="hidden whitespace-nowrap align-top text-sm text-muted-foreground @3xl/deploys:table-cell">
-                  {deployTriggerLabel(d.trigger, d.rollbackOf, t)}
+                  {triggerLabel}
                 </TableCell>
                 <TableCell className="hidden whitespace-nowrap align-top tabular-nums text-sm text-muted-foreground @3xl/deploys:table-cell">
                   {durationLabel(d, t)}
@@ -368,19 +354,21 @@ export function DeploysListPage({
   }
 
   return (
-    <Card className="@container/deploys">
-      <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <CardTitle>{t(titleKey)}</CardTitle>
-          {!loading ? (
-            <p className="text-xs text-muted-foreground" aria-live="polite">
-              {t(countKey, {
-                count: visibleDeploys.length,
-              })}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+    <DeploysListCard
+      title={t(titleKey)}
+      count={
+        loading ? (
+          <DeploysCountSlot />
+        ) : (
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {t(countKey, {
+              count: visibleDeploys.length,
+            })}
+          </p>
+        )
+      }
+      controls={
+        <>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -416,23 +404,22 @@ export function DeploysListPage({
               ))}
             </SelectContent>
           </Select>
+        </>
+      }
+    >
+      {body}
+      {hasMore && deploys.length > 0 && (
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={loadingMore}
+            onClick={loadMore}
+          >
+            {t("deploys.listLoadMore")}
+          </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        {body}
-        {hasMore && deploys.length > 0 && (
-          <div className="mt-4 flex justify-center">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={loadingMore}
-              onClick={loadMore}
-            >
-              {t("deploys.listLoadMore")}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </DeploysListCard>
   );
 }

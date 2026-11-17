@@ -70,14 +70,19 @@ export function DeployHistorySkeleton() {
   const { serviceId = "" } = useParams({ strict: false }) as {
     serviceId?: string;
   };
-  const base: ServiceBase = useRouterState({
+  const pathname = useRouterState({
     select: (state) => state.location.pathname,
-  }).startsWith("/static/")
+  });
+  const base: ServiceBase = pathname.startsWith("/static/")
     ? "/static"
     : "/services";
   const { service } = useServer(serviceId, { poll: false });
   return (
     <DeploysListSkeleton
+      titleKey={
+        pathname.endsWith("/builds") ? "deploys.buildsTitle" : undefined
+      }
+      commits={!service || Boolean(service.repo)}
       banner={
         autoDeployOff(service) ? (
           <AutoDeployOffBanner

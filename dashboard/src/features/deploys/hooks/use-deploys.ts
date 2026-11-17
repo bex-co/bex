@@ -16,8 +16,7 @@ import {
   type AppendRequest,
   type AppendedPages,
 } from "@/common/lib/appended-pages";
-
-const PAGE_SIZE = 20;
+import { DEPLOYS_PAGE_SIZE } from "@/features/deploys/lib/deploy-list-search";
 
 /** Unit separator — keeps filterKey unambiguous without a null byte. */
 const FILTER_SEP = "\u001f";
@@ -127,7 +126,7 @@ export function useDeploys(
   const { data, loading, error, startPolling, stopPolling } = useQuery(
     DeploysDocument,
     {
-      variables: { serviceId, status, limit: PAGE_SIZE },
+      variables: { serviceId, status, limit: DEPLOYS_PAGE_SIZE },
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
       skipPollAttempt: skipPollWhenHidden,
@@ -144,7 +143,7 @@ export function useDeploys(
     hasMore,
     next,
   } = useMemo(
-    () => joinAppendedPages(firstPage, appended, filterKey, PAGE_SIZE),
+    () => joinAppendedPages(firstPage, appended, filterKey, DEPLOYS_PAGE_SIZE),
     [appended, filterKey, firstPage],
   );
   // Not yet loaded counts as converging, matching useLatestDeploy.
@@ -166,7 +165,7 @@ export function useDeploys(
           serviceId,
           status,
           cursor: request.cursor,
-          limit: PAGE_SIZE,
+          limit: DEPLOYS_PAGE_SIZE,
         },
         fetchPolicy: "network-only",
         errorPolicy: "all",
