@@ -368,7 +368,7 @@ audit_kv() {
   local component kind
   for component in keyvalue-backup keyvalue-backup-purge; do
     for kind in cronjobs jobs pods; do
-      cnt=$(k8s_count "$APPS_NS" "$kind" "app.bex.co/keyvalue=$name,app.bex.co/component=$component")
+      cnt=$(k8s_count "$APPS_NS" "$kind" "app.bex.co/keyvalue-job=$name,app.bex.co/component=$component")
       if [ "$cnt" = "0" ]; then
         ok "no $component $kind remain for $name"
       else

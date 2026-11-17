@@ -45,9 +45,12 @@ const (
 	kvFinalizer                = "app.bex.co/kv-finalizer"
 	annotKVBackupPurgeComplete = "app.bex.co/kv-backup-purge-complete"
 	// kvPreserveBackupsTrue is the only value the cutover annotation honors.
-	kvPreserveBackupsTrue         = "true"
-	keyValueBackupComponent       = "keyvalue-backup"
-	keyValueBackupPurgeComponent  = "keyvalue-backup-purge"
+	kvPreserveBackupsTrue        = "true"
+	keyValueBackupComponent      = "keyvalue-backup"
+	keyValueBackupPurgeComponent = "keyvalue-backup-purge"
+	// labelKeyValueJob names the store a backup or purge Job and its pod belong
+	// to, in place of labelKeyValue (keyValueBackupLabels).
+	labelKeyValueJob              = "app.bex.co/keyvalue-job"
 	keyValueBackupRetention       = 7
 	keyValueBackupDeadlineSeconds = int64(15 * time.Minute / time.Second)
 	// keyValueBackupBusyboxImage compresses the plaintext RDB (round-14 #5):
@@ -125,9 +128,14 @@ func keyValueBackupSchedule(name string) string {
 	return fmt.Sprintf("%d 3 * * *", 20+int(sum[0])%20)
 }
 
+// keyValueBackupLabels label the backup and purge Jobs and their pods. They
+// never include labelKeyValue, the whole selector of <id> and <id>-backend: a
+// backup pod is Ready while it uploads, and with that label it became an
+// endpoint of both on ports where nothing listens, so about half of the
+// store's new connections were reset during every nightly backup (w6/139).
 func keyValueBackupLabels(kv *appv1alpha1.KeyValue, component string) map[string]string {
 	labels := map[string]string{
-		labelKeyValue:              kv.Name,
+		labelKeyValueJob:           kv.Name,
 		execution.LabelComponent:   component,
 		execution.LabelKeyValueUID: string(kv.UID),
 	}
@@ -445,8 +453,9 @@ func (r *KeyValueReconciler) kvDeletionPending(ctx context.Context, kv *appv1alp
 
 func (r *KeyValueReconciler) deleteKeyValueBackupJobs(ctx context.Context, kv *appv1alpha1.KeyValue) (bool, error) {
 	var jobs batchv1.JobList
+	// By the parent-UID label, which Jobs from before w6/139 carry too.
 	if err := r.List(ctx, &jobs, client.InNamespace(kv.Namespace), client.MatchingLabels{
-		labelKeyValue:              kv.Name,
+		execution.LabelKeyValueUID: string(kv.UID),
 		appv1alpha1.LabelComponent: keyValueBackupComponent,
 	}); err != nil {
 		return false, fmt.Errorf("list KeyValue backup Jobs: %w", err)

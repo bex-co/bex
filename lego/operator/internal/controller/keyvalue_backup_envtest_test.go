@@ -94,7 +94,7 @@ var _ = Describe("KeyValue backup reconciliation events", func() {
 		Eventually(func(g Gomega) {
 			var jobs batchv1.JobList
 			g.Expect(k8sClient.List(ctx, &jobs, client.InNamespace(paidNN.Namespace), client.MatchingLabels{
-				labelKeyValue: paidNN.Name, execution.LabelComponent: keyValueBackupPurgeComponent,
+				labelKeyValueJob: paidNN.Name, execution.LabelComponent: keyValueBackupPurgeComponent,
 			})).To(Succeed())
 			g.Expect(jobs.Items).To(HaveLen(1))
 			purge = jobs.Items[0]
@@ -146,7 +146,7 @@ var _ = Describe("KeyValue backup reconciliation events", func() {
 		}, 15*time.Second, 100*time.Millisecond).Should(BeTrue())
 		var jobs batchv1.JobList
 		Expect(k8sClient.List(ctx, &jobs, client.InNamespace(nn.Namespace), client.MatchingLabels{
-			labelKeyValue: nn.Name, execution.LabelComponent: keyValueBackupPurgeComponent,
+			labelKeyValueJob: nn.Name, execution.LabelComponent: keyValueBackupPurgeComponent,
 		})).To(Succeed())
 		Expect(jobs.Items).To(BeEmpty(), "a preserve-annotated delete must never create a purge Job")
 	})

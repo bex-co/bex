@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -37,11 +38,13 @@ import (
 // lazy-adoption rule applyDeploymentSpec follows), and the running pod is
 // relabelled in place by syncKeyValuePodIsolation.
 
-// keyValueJobPeer selects the store's own backup and purge Jobs, which carry no
-// isolation label and must still reach it.
+// keyValueJobPeer selects the store's own backup and purge Job pods, which
+// carry no isolation label and must still reach it. It keys on the parent-UID
+// label they all carry, from before w6/139 took labelKeyValue off them as well
+// as after, so a backup that runs across that operator upgrade keeps its path.
 func keyValueJobPeer(kv *appv1alpha1.KeyValue) *metav1.LabelSelector {
 	return &metav1.LabelSelector{
-		MatchLabels: map[string]string{labelKeyValue: kv.Name},
+		MatchLabels: map[string]string{execution.LabelKeyValueUID: string(kv.UID)},
 		MatchExpressions: []metav1.LabelSelectorRequirement{{
 			Key:      appv1alpha1.LabelComponent,
 			Operator: metav1.LabelSelectorOpIn,

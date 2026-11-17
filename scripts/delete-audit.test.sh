@@ -103,7 +103,7 @@ elif scenario == "request-owner":
                           "name": certificate, "uid": "owned-certificate-uid"}]))
 elif scenario == "backup-orphan":
     resources.append(resource("jobs", kv + "-backup-123",
-        labels={"app.bex.co/keyvalue": kv, "app.bex.co/component": "keyvalue-backup"}))
+        labels={"app.bex.co/keyvalue-job": kv, "app.bex.co/component": "keyvalue-backup"}))
 elif scenario == "app-helper-orphan":
     resources.append(resource("jobs", kv + "-build",
         labels={"app.bex.co/app": kv}))

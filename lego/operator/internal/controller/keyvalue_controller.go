@@ -114,7 +114,9 @@ const (
 	// rolls the StatefulSets.
 	kvExporterImage = "oliver006/redis_exporter:alpine@sha256:d4e0a0ad55fa4f968eea4519b518b16dac887debd06c790a6be2f60940538d82"
 	// labelKeyValue marks the workload/Service a KeyValue creates, and is the
-	// StatefulSet selector + Service selector so the two stay coupled. It
+	// StatefulSet selector + Service selector so the two stay coupled. No
+	// other pod may carry it, or it becomes an endpoint of the store's
+	// Services (w6/139): the backup and purge Jobs carry labelKeyValueJob. It
 	// aliases the canonical key in lego/types (v1alpha1), which bex-api also
 	// reads.
 	labelKeyValue    = appv1alpha1.LabelKeyValue
@@ -628,9 +630,9 @@ func (r *KeyValueReconciler) reconcileKeyValuePlatformCredential(ctx context.Con
 // resolve the Valkey Service (DNS "Try again") and no backup ever uploads
 // (w5/039). This k8s NetworkPolicy is additive — the Cilium deny still wins for
 // the node/metadata ranges — and is a harmless no-op where a namespace-wide allow
-// already covers these pods. It is scoped to the Job pods (app.bex.co/component in
-// {keyvalue-backup, keyvalue-backup-purge}); the Valkey server pods, which never
-// dial out, keep their default-deny egress untouched.
+// already covers these pods. It is scoped to the Job pods (keyValueJobPeer); the
+// Valkey server pods, which never dial out, keep their default-deny egress
+// untouched.
 func (r *KeyValueReconciler) reconcileKeyValueBackupNetworkPolicy(ctx context.Context, kv *appv1alpha1.KeyValue) error {
 	udp, tcp := corev1.ProtocolUDP, corev1.ProtocolTCP
 	dnsPort := intstr.FromInt(53)
@@ -639,14 +641,7 @@ func (r *KeyValueReconciler) reconcileKeyValueBackupNetworkPolicy(ctx context.Co
 	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-backup-egress", Namespace: kv.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, np, func() error {
 		np.Spec = networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{labelKeyValue: kv.Name},
-				MatchExpressions: []metav1.LabelSelectorRequirement{{
-					Key:      appv1alpha1.LabelComponent,
-					Operator: metav1.LabelSelectorOpIn,
-					Values:   []string{keyValueBackupComponent, keyValueBackupPurgeComponent},
-				}},
-			},
+			PodSelector: *keyValueJobPeer(kv),
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
 			Egress: []networkingv1.NetworkPolicyEgressRule{
 				{

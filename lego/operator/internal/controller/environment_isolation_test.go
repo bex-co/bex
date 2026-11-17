@@ -162,7 +162,7 @@ func TestEnvironmentPeerPolicyOnlyWhileIsolatedAndAdmitsOwnJobs(t *testing.T) {
 	if len(peers) != 3 || peers[0].PodSelector.MatchLabels[labelNetworkIsolation] != "env-a" || peers[1].PodSelector.MatchLabels[labelEnvironment] != "env-a" {
 		t.Fatalf("peers = %+v, want the environment's pods and the store's Jobs", peers)
 	}
-	if peers[2].PodSelector.MatchLabels[labelKeyValue] != "cache" || len(peers[2].PodSelector.MatchExpressions) != 1 {
+	if !equality.Semantic.DeepEqual(peers[2].PodSelector, keyValueJobPeer(kv)) {
 		t.Fatalf("job peer = %+v", peers[2].PodSelector)
 	}
 
@@ -222,6 +222,8 @@ func TestKeyValueInternalProxyLabelsKeepTheBackendSeparate(t *testing.T) {
 func TestKeyValueInternalProxyPolicyProtectsBothConnectionHops(t *testing.T) {
 	scheme := keyValueBackupTestScheme(t)
 	kv := isolatedKV("env-a")
+	otherKV := isolatedKV("")
+	otherKV.Name, otherKV.UID = "other", "other-uid"
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).Build()
 	r := &KeyValueReconciler{Client: cl, Scheme: scheme}
 	get := func(suffix string) *networkingv1.NetworkPolicy {
@@ -261,8 +263,8 @@ func TestKeyValueInternalProxyPolicyProtectsBothConnectionHops(t *testing.T) {
 			{"env-b client by environment id", kv.Namespace, map[string]string{labelEnvironment: "env-b"}, env == "env-b" || env == ""},
 			{"env-c client still isolated", kv.Namespace, map[string]string{labelEnvironment: "env-c", labelNetworkIsolation: "env-c"}, false},
 			{"ordinary client", kv.Namespace, map[string]string{}, env == ""},
-			{"own backup", kv.Namespace, map[string]string{labelKeyValue: kv.Name, "app.bex.co/component": keyValueBackupComponent}, true},
-			{"other backup", kv.Namespace, map[string]string{labelKeyValue: "other", "app.bex.co/component": keyValueBackupComponent}, env == ""},
+			{"own backup", kv.Namespace, keyValueBackupLabels(kv, keyValueBackupComponent), true},
+			{"other backup", kv.Namespace, keyValueBackupLabels(otherKV, keyValueBackupComponent), env == ""},
 			{"other workspace", "tea-other", map[string]string{labelNetworkIsolation: env}, false},
 		} {
 			t.Run(env+"/"+tc.name, func(t *testing.T) {

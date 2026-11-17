@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -41,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/types/k8sname"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -230,6 +232,86 @@ func TestKeyValueBackupCronJobSpec(t *testing.T) {
 	if got := r.keyValueBackupPurgeJob(longKV).Name; len(got) > 63 {
 		t.Fatalf("bounded purge Job name is %d bytes: %q", len(got), got)
 	}
+}
+
+// w6/139: a backup pod is Ready while its upload container runs. Carrying
+// labelKeyValue, the whole selector of <id> and <id>-backend, it became an
+// endpoint of both on ports where nothing listens, and about half of the
+// store's new connections were reset during every nightly backup.
+func TestKeyValueBackupPodsAreNeverAnEndpointOfTheStore(t *testing.T) {
+	ctx := context.Background()
+	scheme := keyValueBackupTestScheme(t)
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "red-endpoints", Namespace: "tea-a", UID: "endpoints-uid",
+			Labels: map[string]string{labelWorkspace: "tea-a", labelEnvironment: "env-a"},
+		},
+		Spec: appv1alpha1.KeyValueSpec{Plan: "starter", PersistenceMode: appv1alpha1.KeyValuePersistenceOff},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, Backup: testKeyValueBackupStore, InternalProxyImage: "bex@sha256:fixture"}
+	plan, storage := resolveKVPlan(kv.Spec)
+	intent := keyValueIntentFor(kv, plan, storage, "", false, false)
+	intent.authSecretName = "auth"
+
+	sts := &appsv1.StatefulSet{}
+	applyKeyValueStatefulSet(sts, kv, intent)
+	server := sts.Spec.Template.Labels
+	cron := r.keyValueBackupCronJobSpec(kv, plan, "platform")
+	purge := r.keyValueBackupPurgeJob(kv)
+	jobPods := map[string]map[string]string{
+		"backup": cron.JobTemplate.Spec.Template.Labels,
+		"purge":  purge.Spec.Template.Labels,
+	}
+
+	// <id> before the proxy is ready (it selects the server), and <id>-backend.
+	if err := r.reconcileKeyValueService(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{kv.Name, keyValueInternalBackendName(kv)} {
+		svc := &corev1.Service{}
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: kv.Namespace, Name: name}, svc); err != nil {
+			t.Fatal(err)
+		}
+		selector := k8slabels.SelectorFromSet(svc.Spec.Selector)
+		if !selector.Matches(k8slabels.Set(server)) {
+			t.Fatalf("Service %s selector %v misses the Valkey pod %v", name, svc.Spec.Selector, server)
+		}
+		for job, labels := range jobPods {
+			if selector.Matches(k8slabels.Set(labels)) {
+				t.Fatalf("Service %s selector %v makes the %s pod %v an endpoint", name, svc.Spec.Selector, job, labels)
+			}
+		}
+	}
+
+	// The Job pods' own selector reaches them, and pre-w6/139 Job pods too,
+	// so a backup running across the operator upgrade keeps its network path.
+	peer, err := metav1.LabelSelectorAsSelector(keyValueJobPeer(kv))
+	if err != nil {
+		t.Fatal(err)
+	}
+	jobPods["pre-w6/139 backup"] = preW6139JobLabels(kv, keyValueBackupComponent)
+	jobPods["pre-w6/139 purge"] = preW6139JobLabels(kv, keyValueBackupPurgeComponent)
+	for job, labels := range jobPods {
+		if !peer.Matches(k8slabels.Set(labels)) {
+			t.Fatalf("the Job peer misses the %s pod %v", job, labels)
+		}
+	}
+	if peer.Matches(k8slabels.Set(server)) {
+		t.Fatal("the Job peer selects the Valkey pod")
+	}
+}
+
+// preW6139JobLabels are a backup or purge Job's labels as the operator wrote
+// them before w6/139.
+func preW6139JobLabels(kv *appv1alpha1.KeyValue, component string) map[string]string {
+	labels := keyValueBackupLabels(kv, component)
+	delete(labels, labelKeyValueJob)
+	labels[labelKeyValue] = kv.Name
+	return labels
 }
 
 func TestKeyValueBackupEncryptStepDisabledByDefault(t *testing.T) {
@@ -426,7 +508,10 @@ func TestKeyValueDeletionWaitsForBackupJobsAndPurge(t *testing.T) {
 	labels := keyValueBackupLabels(kv, keyValueBackupComponent)
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: keyValueBackupName(kv.Name), Namespace: kv.Namespace}}
 	backupJob := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: "kv-backup-running", Namespace: kv.Namespace, Labels: labels}}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, cron, backupJob).
+	// A Job created before w6/139 carries labelKeyValue instead of
+	// labelKeyValueJob, and must be waited for all the same.
+	legacyJob := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: "kv-backup-legacy", Namespace: kv.Namespace, Labels: preW6139JobLabels(kv, keyValueBackupComponent)}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, cron, backupJob, legacyJob).
 		WithStatusSubresource(&appv1alpha1.KeyValue{}, &batchv1.Job{}).Build()
 	r := &KeyValueReconciler{Client: cl, Scheme: scheme, Backup: testKeyValueBackupStore}
 	ctx := context.Background()
@@ -438,15 +523,19 @@ func TestKeyValueDeletionWaitsForBackupJobsAndPurge(t *testing.T) {
 	if err := cl.Get(ctx, client.ObjectKeyFromObject(cron), &batchv1.CronJob{}); !apierrors.IsNotFound(err) {
 		t.Fatalf("backup CronJob survived teardown: %v", err)
 	}
-	if err := cl.Get(ctx, client.ObjectKeyFromObject(backupJob), &batchv1.Job{}); err != nil {
-		t.Fatalf("backup Job was removed before the CronJob absence was observed: %v", err)
+	for _, job := range []*batchv1.Job{backupJob, legacyJob} {
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(job), &batchv1.Job{}); err != nil {
+			t.Fatalf("backup Job %s was removed before the CronJob absence was observed: %v", job.Name, err)
+		}
 	}
 
 	if _, err := r.Reconcile(ctx, req); err != nil {
 		t.Fatal(err)
 	}
-	if err := cl.Get(ctx, client.ObjectKeyFromObject(backupJob), &batchv1.Job{}); !apierrors.IsNotFound(err) {
-		t.Fatalf("backup Job survived teardown: %v", err)
+	for _, job := range []*batchv1.Job{backupJob, legacyJob} {
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(job), &batchv1.Job{}); !apierrors.IsNotFound(err) {
+			t.Fatalf("backup Job %s survived teardown: %v", job.Name, err)
+		}
 	}
 	if _, err := r.Reconcile(ctx, req); err != nil {
 		t.Fatal(err)
@@ -590,13 +679,17 @@ func TestKeyValueBackupNetworkPolicyRestoresJobEgress(t *testing.T) {
 	if len(np.Spec.PolicyTypes) != 1 || np.Spec.PolicyTypes[0] != networkingv1.PolicyTypeEgress {
 		t.Fatalf("policy must be egress-only, got %v", np.Spec.PolicyTypes)
 	}
-	// Scoped to the Job pods (which carry app.bex.co/component), not the Valkey
-	// server pods (which never dial out and keep their default-deny egress).
-	sel := np.Spec.PodSelector
-	if sel.MatchLabels[labelKeyValue] != kv.Name || len(sel.MatchExpressions) != 1 ||
-		sel.MatchExpressions[0].Key != "app.bex.co/component" ||
-		sel.MatchExpressions[0].Operator != metav1.LabelSelectorOpIn {
-		t.Fatalf("selector must scope to this KeyValue's backup/purge Jobs: %#v", sel)
+	// Scoped to the Job pods, not the Valkey server pods (which never dial out
+	// and keep their default-deny egress).
+	sel, err := metav1.LabelSelectorAsSelector(&np.Spec.PodSelector)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := keyValueIntentFor(kv, tiers.ValkeyTier{}, 1, "", false, false).podLabels
+	if !sel.Matches(k8slabels.Set(keyValueBackupLabels(kv, keyValueBackupComponent))) ||
+		!sel.Matches(k8slabels.Set(keyValueBackupLabels(kv, keyValueBackupPurgeComponent))) ||
+		sel.Matches(k8slabels.Set(server)) {
+		t.Fatalf("selector must scope to this KeyValue's backup/purge Jobs: %#v", np.Spec.PodSelector)
 	}
 
 	var dns, valkey, internet bool
