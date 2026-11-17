@@ -1200,6 +1200,11 @@ func TestMonthToDateBandwidthSourceSplitsEndedHoursFromTheCurrentHour(t *testing
 			if !strings.Contains(r.query, fmt.Sprintf("[%ds:3600s]", hours*3600)) || r.at != fmt.Sprint(hourStart.Unix()) {
 				t.Errorf("ended-hours read %q at %s, want %d hours evaluated on the hour %d", r.query, r.at, hours, hourStart.Unix())
 			}
+			// w6/m455: each ended hour is what the meter billed for it, so a
+			// router series that started inside the hour counts from zero.
+			if !strings.Contains(r.query, `unless last_over_time(traefik_router_responses_bytes_total`) {
+				t.Errorf("ended-hours read %q does not sum the billed per-hour figure", r.query)
+			}
 		case strings.Contains(r.query, "offset 2400s"):
 			sawPartial = true
 		}

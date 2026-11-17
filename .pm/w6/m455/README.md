@@ -1,15 +1,15 @@
 # w6 · m455 — A new service's first bytes of egress are billed: a router series that starts inside the hour counts from zero
 
-**Worker:** worker6 **Goal:** the hourly egress meter bills the bytes a Traefik router series counted before its first scrape, without ever billing more than was served, and billing switches to that rule only after an old-versus-new comparison on recorded production hours proves it. **Status:** todo
+**Worker:** worker6 **Goal:** the hourly egress meter bills the bytes a Traefik router series counted before its first scrape, without ever billing more than was served, and billing switches to that rule only after an old-versus-new comparison on recorded production hours proves it. **Status:** todo (t001–t004 done: Traefik restarts a series from zero once a successful scrape has missed it; old against new on 97 production hours differs only on new series; billing and the month-to-date read use the rule)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Verify Traefik's router-metric cleanup: a removed router's series goes away, and a recreated one counts from zero](t001.md) | 45m | — |
-| t002 | [The new-series rule in `egressquery`, proven in Prometheus's engine](t002.md) | 1h30m | t001 |
-| t003 | [Old against new on recorded production hours](t003.md) | 1h30m | t002 |
-| t004 | [Switch the egress meter and the month-to-date read to the rule; ADR023 records it](t004.md) | 45m | t003 |
+| t001 | [Verify Traefik's router-metric cleanup: a removed router's series goes away, and a recreated one counts from zero](done/t001.md) — **DONE** | 45m | — |
+| t002 | [The new-series rule in `egressquery`, proven in Prometheus's engine](done/t002.md) — **DONE** | 1h30m | t001 |
+| t003 | [Old against new on recorded production hours](done/t003.md) — **DONE** | 1h30m | t002 |
+| t004 | [Switch the egress meter and the month-to-date read to the rule; ADR023 records it](done/t004.md) — **DONE** | 45m | t003 |
 | t005 | [Re-run the m333 probe on production: 10,000,000 bytes bill about 10,000,570](t005.md) | 45m | t004 |
 | t006 | [Render parity](t006.md) | 30m | t005 |
 | t007 | [Simplify](t007.md) | 15m | t006 |

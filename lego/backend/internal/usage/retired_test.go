@@ -46,7 +46,7 @@ func retiredProm(t *testing.T, appPods string) *httptest.Server {
 		ran := r.URL.Query().Get("time") == ranAt
 		v := "0"
 		switch {
-		case strings.Contains(q, "healthy") || strings.Contains(q, `up{job=`):
+		case isEgressHealthQuery(q):
 			v = "1"
 		case ran && strings.Contains(q, "container_memory_working_set_bytes") && strings.Contains(q, appPods):
 			v = "22"
@@ -234,7 +234,7 @@ func TestRetiredAppMetersItsDeletionHourEgressFromItsRecordedIdentity(t *testing
 		ran := r.URL.Query().Get("time") == ranAt
 		v := "0"
 		switch {
-		case strings.Contains(q, "healthy") || strings.Contains(q, `up{job=`):
+		case isEgressHealthQuery(q):
 			v = "1"
 		case ran && strings.Contains(q, "traefik_router_responses_bytes_total") && strings.Contains(q, router):
 			v = "40"

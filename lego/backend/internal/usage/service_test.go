@@ -499,7 +499,7 @@ func (m *memUsageStore) compactCalls() []time.Time {
 func fakeProm(value float64) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		v := "0"
-		if strings.Contains(r.URL.Query().Get("query"), "healthy") || strings.Contains(r.URL.Query().Get("query"), `up{job=`) {
+		if isEgressHealthQuery(r.URL.Query().Get("query")) {
 			v = "1"
 		} else if value > 0 {
 			v = strconv.FormatFloat(value, 'f', -1, 64)
@@ -576,6 +576,14 @@ func publicAppMeterClient(t *testing.T, app store.App, crName, backend string, h
 	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(projected, ingress).Build()
 }
 
+// isEgressHealthQuery tells a fake Prometheus an egress health product from a
+// byte read: every health product takes a min_over_time, and no byte read
+// does (the HTTP byte read names up{job="traefik"} too, for its new-series
+// guard, w6/m455).
+func isEgressHealthQuery(query string) bool {
+	return strings.Contains(query, "min_over_time(")
+}
+
 func TestQueryEgressBytesUsesExactRoutersForSharedBackend(t *testing.T) {
 	var mu sync.Mutex
 	var gotQueries []string
@@ -616,8 +624,13 @@ func TestQueryEgressBytesUsesExactRoutersForSharedBackend(t *testing.T) {
 			t.Errorf("query %q is missing exact router %q", gotQuery, exact)
 		}
 	}
-	if !strings.Contains(gotQuery, `sum(increase(traefik_router_responses_bytes_total`) {
+	if !strings.Contains(gotQuery, `increase(traefik_router_responses_bytes_total`) {
 		t.Errorf("query does not use Prometheus reset-safe increase(): %q", gotQuery)
+	}
+	// w6/m455: the meter bills a router series that starts inside the hour
+	// from zero (egressquery.Billed), guarded by a scrape of its target.
+	if !strings.Contains(gotQuery, `[30s] offset 3600s)) and on(instance) (max_over_time(up{job="traefik"}[30s] offset 3600s) == 1)`) {
+		t.Errorf("the HTTP source is not billed with the new-series rule: %q", gotQuery)
 	}
 	if strings.Contains(gotQuery, `service=~`) || strings.Contains(gotQuery, `.*`) {
 		t.Errorf("query retained a broad service matcher: %q", gotQuery)
@@ -626,7 +639,7 @@ func TestQueryEgressBytesUsesExactRoutersForSharedBackend(t *testing.T) {
 
 func TestQueryEgressBytesEmptyVectorIsSuccessfulZero(t *testing.T) {
 	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if query := r.URL.Query().Get("query"); strings.Contains(query, "healthy") || strings.Contains(query, `up{job=`) {
+		if query := r.URL.Query().Get("query"); isEgressHealthQuery(query) {
 			_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"1"]}]}}`))
 			return
 		}
@@ -920,7 +933,7 @@ func TestEgressCatchUpRecordsUnhealthyHoursAsZerosButRetriesTransportGaps(t *tes
 		}
 		healthy := queryAt.Equal(created.Add(3*time.Hour)) || queryAt.Equal(created.Add(5*time.Hour))
 		value := "0"
-		if strings.Contains(r.URL.Query().Get("query"), "healthy") || strings.Contains(r.URL.Query().Get("query"), `up{job=`) {
+		if isEgressHealthQuery(r.URL.Query().Get("query")) {
 			if healthy {
 				value = "1"
 			}

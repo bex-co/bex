@@ -43,6 +43,13 @@ type Spec struct {
 	Job           string
 	HealthMetric  string
 	ProcessMetric string
+	// NewSeriesFromZero marks a counter whose exporter creates each series at
+	// zero, writes every series it holds on every scrape, and deletes a series
+	// for good when it goes away, so a later series with the same labels
+	// starts from zero again. Billed counts such a series from zero when it
+	// first appears inside the window. Traefik's router counters are verified
+	// to behave this way (w6/m455 t001); no other source is.
+	NewSeriesFromZero bool
 }
 
 func App(appID string, routers []string, direct bool) []Spec {
@@ -50,7 +57,7 @@ func App(appID string, routers []string, direct bool) []Spec {
 	if matcher := routerMatcher(routers); matcher != "" {
 		out = append(out, Spec{
 			Source: HTTP, Counter: "traefik_router_responses_bytes_total", Matchers: fmt.Sprintf(`router=~%q`, matcher),
-			Job: "traefik", ProcessMetric: `process_start_time_seconds{job="traefik"}`,
+			Job: "traefik", ProcessMetric: `process_start_time_seconds{job="traefik"}`, NewSeriesFromZero: true,
 		})
 		// static_site has a router but no tenant connection to hijack and the
 		// operator deliberately does not install the WebSocket middleware.
@@ -165,15 +172,53 @@ func Increase(spec Spec, seconds int64) string {
 	return fmt.Sprintf(`sum(increase(%s{%s}[%ds]))`, spec.Counter, spec.Matchers, seconds)
 }
 
-// CompletedHoursIncrease is the sum of Increase over each whole UTC hour in
-// the window ending at the hour-aligned instant it is evaluated at: the
-// subquery steps on absolute hour boundaries, so every hour's term is a fixed
-// window whose value no longer changes once the hour has ended. Reading a long
-// window as one increase() instead extrapolates over a span that grows with
-// each read, so a flat counter's total shrinks between reads (w4/468). A
-// source with no samples yet contributes 0.
+// newSeriesGuard is how far before a window Billed looks for a successful
+// scrape of a series' target: two of the 15 s scrape intervals.
+const newSeriesGuard = 30
+
+// Billed is the bytes a source bills over the `seconds` ending at the instant
+// it is evaluated at (ADR023 § New series count from zero, w6/m455). For a
+// source without NewSeriesFromZero it is Increase.
+//
+// For one with it, a series that first appears inside the window counts from
+// zero: it bills its last value in the window. increase() reads only the growth
+// after a series' first sample, so it drops what a new service's router served
+// before its first scrape (w6/123: 5.4 MB of a 10 MB probe). A series is new
+// only when its target was scraped successfully in the 30 s before the window
+// and that scrape did not carry it: the exporter writes every series it holds
+// on every scrape, so the series did not exist then and started from zero
+// after it. A series missing at the start for any other reason (its target
+// not scraped, a failed scrape) keeps increase(), so an old cumulative value
+// is never billed as new bytes, and every series that is not new bills exactly
+// what Increase bills. A series gone stale before the window ends (a deleted
+// service) still counts through its last sample. The health gate is
+// unchanged: a reset anywhere in the window still skips the whole source.
+func Billed(spec Spec, seconds int64) string {
+	if !spec.NewSeriesFromZero {
+		return Increase(spec, seconds)
+	}
+	// `or` keeps every new series and adds increase() for the label sets it
+	// does not already hold.
+	return fmt.Sprintf(`(sum(%s or increase(%s{%s}[%ds])) or vector(0))`, newSeries(spec, seconds), spec.Counter, spec.Matchers, seconds)
+}
+
+// newSeries selects, at its last value, every series Billed counts from zero.
+func newSeries(spec Spec, seconds int64) string {
+	series := fmt.Sprintf(`%s{%s}`, spec.Counter, spec.Matchers)
+	return fmt.Sprintf(`((last_over_time(%[1]s[%[2]ds]) unless last_over_time(%[1]s[%[3]ds] offset %[2]ds)) and on(instance) (max_over_time(up{job=%[4]q}[%[3]ds] offset %[2]ds) == 1))`,
+		series, seconds, newSeriesGuard, spec.Job)
+}
+
+// CompletedHoursIncrease is the sum of Billed over each whole UTC hour in the
+// window ending at the hour-aligned instant it is evaluated at, so it reads
+// what the hourly meter bills: the subquery steps on absolute hour boundaries,
+// so every hour's term is a fixed window whose value no longer changes once
+// the hour has ended. Reading a long window as one increase() instead
+// extrapolates over a span that grows with each read, so a flat counter's
+// total shrinks between reads (w4/468). A source with no samples yet
+// contributes 0.
 func CompletedHoursIncrease(spec Spec, hours int64) string {
-	return fmt.Sprintf(`(sum_over_time(sum(increase(%s{%s}[3600s]))[%ds:3600s]) or vector(0))`, spec.Counter, spec.Matchers, hours*3600)
+	return fmt.Sprintf(`(sum_over_time((%s)[%ds:3600s]) or vector(0))`, Billed(spec, 3600), hours*3600)
 }
 
 // ExactDelta is the bytes counted over the last `seconds` as the counter's value

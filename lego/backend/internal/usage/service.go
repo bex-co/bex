@@ -1703,7 +1703,7 @@ func (s *Service) queryEgressSourcesEvidence(ctx context.Context, resourceID str
 				results <- result{source: spec.Source, skipped: true}
 				return
 			}
-			value, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, egressquery.Increase(spec, seconds), end)
+			value, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, egressquery.Billed(spec, seconds), end)
 			results <- result{source: spec.Source, value: value, err: err}
 		}()
 	}
