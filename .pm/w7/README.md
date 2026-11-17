@@ -159,6 +159,8 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 ## Inbox
 
+- [ ] **074** — [`scripts/auth-obs-e2e.sh` fails at its ALLOW leg: the consent route's verified-email gate refuses the ops operator](074.md) (45m) ← found by w7/065, 2026-11-16
+- [ ] **073** — [Under production's Kratos v26.2.0, a signed-in browser connecting an agent is asked for its password again](073.md) (60m) ← found by w7/065, 2026-11-16
 - [ ] **072** — [The Postgres, Key Value and service Disk metrics panels read a fixed hour, with no range picker](072.md) (60m) ← found by w7/m430, 2026-11-16
 - [ ] **071** — [HIPAA-enabled workspaces and AWS private links have no recorded disposition](071.md) (needs a user decision) ← found by w7/m429, 2026-11-16
 - [ ] **070** — [Render's plan table limits workspaces per plan and keeps enforced 2FA to Pro and higher; bex does neither](070.md) (60m) ← found by w7/m429, 2026-11-16
