@@ -570,3 +570,52 @@ func TestBuildSourceUpdateJudgesAndStoresDockerPaths(t *testing.T) {
 		}
 	}
 }
+
+// w3/069: REST create's envSpecificDetails.dockerCommand beside buildSourceId
+// follows the Blueprint's rule. A Docker or image source runs it as the
+// service's container command; a native source refuses it, wanting
+// startCommand, and still takes a startCommand.
+func TestServiceCreateLinkedDockerCommand(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	native, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	image, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{OwnerID: "tea-a", Name: "Img", Image: &BuildSourceImage{ImageURL: "busybox:1.36.1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	// Not validated(): a linked service's response omits Render's required
+	// serviceDetails.runtime and env whatever its command (w3/070).
+	create := func(name, typ, source, details string) *httptest.ResponseRecorder {
+		body := `{"ownerId":"tea-a","name":"` + name + `","type":"` + typ + `","serviceDetails":{"buildSourceId":"` + source + `",` + details + `}}`
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)).WithContext(ctx))
+		return rec
+	}
+	for _, tc := range []struct{ name, typ, details string }{
+		{"web", "web_service", `"envSpecificDetails":{"dockerCommand":"httpd -f -p 10000"}`},
+		{"job", "cron_job", `"schedule":"0 3 * * *","envSpecificDetails":{"dockerCommand":"httpd -f -p 10000"}`},
+	} {
+		if rec := create(tc.name, tc.typ, image.ID, tc.details); rec.Code != http.StatusCreated {
+			t.Fatalf("%s dockerCommand on an image source = %d %s", tc.typ, rec.Code, rec.Body.String())
+		}
+		app := getTenantApp(t, svc.Client, "tea-a", tc.name)
+		command := app.Spec.StartCommand
+		if app.Spec.Type == appv1alpha1.TypeCronJob {
+			command = cronCommand(app.Spec)
+		}
+		if app.Spec.BuildSource == nil || command != "httpd -f -p 10000" {
+			t.Fatalf("%s spec = %+v, want linked and running the dockerCommand", tc.typ, app.Spec)
+		}
+	}
+	rec := create("api", "web_service", native.ID, `"envSpecificDetails":{"dockerCommand":"node api.js"}`)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "takes startCommand, not dockerCommand") {
+		t.Fatalf("dockerCommand on a native source = %d %s, want 400", rec.Code, rec.Body.String())
+	}
+	if rec := create("api", "web_service", native.ID, `"envSpecificDetails":{"startCommand":"node api.js"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("startCommand on a native source = %d %s", rec.Code, rec.Body.String())
+	}
+}

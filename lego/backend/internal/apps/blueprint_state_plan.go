@@ -217,6 +217,19 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			return BlueprintPlanAction{}, err
 		}
 		want.BuildSource = desiredBuildSourceLink(svc, r.links)
+		// The sync checks an existing service's link to a workspace build
+		// source as PATCH buildSourceId does (blueprintServiceLink), so the
+		// plan refuses what the sync would. A source this file declares was
+		// checked at parse against its declared runtime (w3/069).
+		if carrier := r.links[svc.req.blueprintBuildSource]; carrier != nil && r.service != nil {
+			if _, declared := parsedBlueprintBuildSource(r.parsed, svc.req.blueprintBuildSource); !declared {
+				req := svc.req
+				req.BuildSourceID = core.AppPublicID(carrier)
+				if _, err := r.service.blueprintServiceLink(ctx, req, svc.fields, r.services[resource.Name]); err != nil {
+					return BlueprintPlanAction{}, blueprintResourceErrors{{kind: resource.Kind, name: resource.Name, err: err}}
+				}
+			}
+		}
 		// The sync's own hook reconciliation, so a completed legacy hook does
 		// not plan a change the apply never makes (w8/m63).
 		initialDeployHookState(svc.req, r.services[resource.Name], &want)

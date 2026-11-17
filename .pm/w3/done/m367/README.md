@@ -84,4 +84,4 @@ Production pin `db48cde2bae9`. Signed in as the QA user (session cookie) in `bex
   - The Blueprint schema still matches this milestone's pin (`6c6721a6…`). The REST pin, now at 264 operations after w8/m442's round 8, matches too.
   - `render-schema-drift.sh` is red only on the Render CLI v2.37.0 release, which w22/m444 owns.
   - `render-mcp-drift.sh` is red because upstream added `run_cron_job` and `cancel_cron_job_run` after the 2026-11-16 run. Both are newer than round 7. They are filed as [068](../../068.md).
-- **Filed:** [069](../../069.md). A Blueprint `dockerCommand` beside a Docker or image `buildSource` is refused, though Render's schema allows it. The cron above therefore uses its image's default command.
+- **Filed:** [069](../069.md). A Blueprint `dockerCommand` beside a Docker or image `buildSource` is refused, though Render's schema allows it. The cron above therefore uses its image's default command.

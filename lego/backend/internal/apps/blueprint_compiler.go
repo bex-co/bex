@@ -351,6 +351,9 @@ func blueprintServiceRuntimeProblems(object map[string]any, path []string, locat
 		return nil
 	}
 	_, hasImage := object["image"]
+	// Beside buildSource the service declares no runtime: the build source's
+	// decides, so the link judges dockerCommand (buildSourceStartRule, w3/069).
+	_, linked := object["buildSource"]
 	// runtime docker beside x-bex.builder: buildpack is a buildpack build
 	// (w5/m117), so only runtime docker without it reads a Dockerfile.
 	extension, _ := object["x-bex"].(map[string]any)
@@ -369,7 +372,7 @@ func blueprintServiceRuntimeProblems(object map[string]any, path []string, locat
 		},
 		{
 			field:   "dockerCommand",
-			invalid: !blueprintReadsDockerCommand(runtime, builder),
+			invalid: !linked && !blueprintReadsDockerCommand(runtime, builder),
 			message: "dockerCommand requires a Dockerfile build or a prebuilt image: runtime docker, without x-bex.builder buildpack, or runtime image; a native or buildpack build takes startCommand",
 		},
 		// The prebuilt-image policy already refuses a dockerfilePath beside an

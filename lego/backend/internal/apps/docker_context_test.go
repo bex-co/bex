@@ -121,7 +121,7 @@ func TestBlueprintExportReportsRootDirRelativeDockerContext(t *testing.T) {
 		a := dockerRepoApp("web")
 		a.Spec.RootDir, a.Spec.DockerContext = "backend", tc.stored
 		svc, _ := newService(nil, a)
-		entry, err := svc.generateServiceEntry(context.Background(), a, nil, nil, nil, nil)
+		entry, err := svc.generateServiceEntry(context.Background(), a, nil, nil, nil, nil, nil)
 		if err != nil {
 			t.Fatalf("generateServiceEntry: %v", err)
 		}

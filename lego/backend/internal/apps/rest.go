@@ -573,6 +573,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	rootDir := r.RootDir
 	subdomainPolicy := r.RenderSubdomainPolicy
 	var runtime, region, buildCommand, startCommand, dockerfilePath, dockerContext string
+	var startIsDockerCommand bool
 	var nestedRegistryCredentialID json.RawMessage
 	preDeploy := r.PreDeployCommand
 	var replicas int32
@@ -614,6 +615,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 			docker := dockerDetails{runtime: runtime, builder: r.Builder, image: imagePath,
 				startCommand: d.StartCommand, dockerCommand: d.DockerCommand, dockerContext: d.DockerContext}
 			startCommand, _, dockerContext = docker.resolve()
+			startIsDockerCommand = docker.startIsDockerCommand()
 			dockerfilePath = docker.dockerfileOnly(d.DockerfilePath)
 		}
 		if r.ServiceDetails.BuildCommand != "" {
@@ -745,6 +747,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		Autoscaling:             autoscaling,
 		IPAllowList:             ipAllowList,
 		DryRun:                  r.DryRun,
+		startIsDockerCommand:    startIsDockerCommand,
 	}, nil
 }
 

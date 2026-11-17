@@ -177,12 +177,13 @@ func parsedBlueprintBuildSource(st parsedStack, name string) (parsedBuildSource,
 	return parsedBuildSource{}, false
 }
 
-// checkDeclaredBuildSourceLink applies Render's start-command rule to a
-// service linked to a build source this Blueprint declares: a native source
-// needs the service's start command, a Docker or image one takes none.
+// checkDeclaredBuildSourceLink applies Render's command rule to a service
+// linked to a build source this Blueprint declares: a native source needs the
+// service's startCommand, a Docker or image one takes an optional
+// dockerCommand instead (buildSourceStartRule).
 func checkDeclaredBuildSourceLink(svc parsedService, b parsedBuildSource) error {
 	start := linkStartCommand(svc.req.Type, svc.req.StartCommand, svc.req.Command)
-	if err := buildSourceStartRule(b.native, strings.TrimSpace(start), b.name); err != nil {
+	if err := buildSourceStartRule(b.native, strings.TrimSpace(start), svc.req.startIsDockerCommand, b.name); err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
 	return nil
@@ -460,15 +461,17 @@ func (r *blueprintActionResolver) planBlueprintBuildSource(ctx context.Context, 
 
 // blueprintServiceLink is the build source link an existing service's
 // buildSource wants, checked as a PATCH buildSourceId is: the service type,
-// and the start-command rule against the declared or current command.
+// and the command rule against the declared or current command.
 func (s *Service) blueprintServiceLink(ctx context.Context, req CreateRequest, fields map[string]BlueprintField, existing *appv1alpha1.App) (*appv1alpha1.BuildSourceLink, error) {
 	current := linkStartCommand(existing.Spec.Type, existing.Spec.StartCommand, existing.Spec.Command)
 	var start *string
-	if _, declared := fields["startCommand"]; declared {
+	_, startDeclared := fields["startCommand"]
+	_, dockerDeclared := fields["dockerCommand"]
+	if startDeclared || dockerDeclared {
 		command := linkStartCommand(existing.Spec.Type, req.StartCommand, req.Command)
 		start = &command
 	}
-	link, _, _, err := s.buildSourceLink(ctx, existing.Labels[core.LabelTenant], req.BuildSourceID, existing.Spec.Type, start, current)
+	link, _, _, err := s.buildSourceLink(ctx, existing.Labels[core.LabelTenant], req.BuildSourceID, existing.Spec.Type, start, dockerDeclared, current)
 	if err != nil {
 		return nil, fmt.Errorf("service %q: %w", req.Name, err)
 	}

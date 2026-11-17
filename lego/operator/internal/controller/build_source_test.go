@@ -340,6 +340,29 @@ func TestCronLinkedToANativeSourceRunsUnderItsEntrypoint(t *testing.T) {
 	}
 }
 
+// w3/069: a Blueprint stores the dockerCommand of a service linked to a Docker
+// or image build source as its StartCommand, a cron's included. The container
+// runs it through the shell in place of the image's command.
+func TestServiceLinkedToADockerSourceRunsItsDockerCommand(t *testing.T) {
+	const command = "httpd -f -p 10000"
+	link := &appv1alpha1.BuildSourceLink{Name: "src", Image: "docker.io/library/busybox:1.36.1"}
+	web := projectionApp(func(a *appv1alpha1.App) {
+		a.Spec = appv1alpha1.AppSpec{StartCommand: command, BuildSource: link}
+	})
+	p := webParams()
+	p.image = link.Image
+	if c := appContainerOf(t, project(web, p)); !slices.Equal(c.Command, shellCommand(command)) || len(c.Args) != 0 {
+		t.Fatalf("web command %q args %q, want the shell override", c.Command, c.Args)
+	}
+	cron := projectionApp(func(a *appv1alpha1.App) {
+		a.Spec = appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, StartCommand: command, BuildSource: link}
+	})
+	c := (&AppReconciler{}).cronPodSpec(cron, link.Image, 0, nil, launchUnknown, "").Spec.Containers[0]
+	if !slices.Equal(c.Command, shellCommand(command)) || len(c.Args) != 0 {
+		t.Fatalf("cron command %q args %q, want the shell Command", c.Command, c.Args)
+	}
+}
+
 // w9/m180: a web service linked to an image-backed source gets the carrier's
 // image-port mode, so its network is read from the source's image — the
 // image the service deploys — not refused for lacking an own build (the

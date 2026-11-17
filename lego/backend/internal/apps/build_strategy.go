@@ -175,6 +175,12 @@ func blueprintReadsDockerCommand(runtime, builder string) bool {
 	return runtime == "image" || (runtime == "docker" && !strings.EqualFold(builder, buildBuildpack))
 }
 
+// startIsDockerCommand reports that resolve's start command is the
+// dockerCommand: the build reads one and it is not blank.
+func (d dockerDetails) startIsDockerCommand() bool {
+	return d.commandApplies() && strings.TrimSpace(d.dockerCommand) != ""
+}
+
 // resolve folds the details the build reads onto the create's commands and
 // build context: a non-blank dockerCommand is the start command, and also a
 // cron's run command when none is given; the context applies to a Dockerfile
@@ -182,7 +188,7 @@ func blueprintReadsDockerCommand(runtime, builder string) bool {
 func (d dockerDetails) resolve() (startCommand, command, context string) {
 	startCommand, command = d.startCommand, d.command
 	context = d.dockerfileOnly(d.dockerContext)
-	if d.commandApplies() && strings.TrimSpace(d.dockerCommand) != "" {
+	if d.startIsDockerCommand() {
 		startCommand = d.dockerCommand
 		if command == "" {
 			command = d.dockerCommand

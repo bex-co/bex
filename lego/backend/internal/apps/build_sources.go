@@ -304,7 +304,7 @@ func (s *Service) checkBuildSourceCreateLinks(ctx context.Context, serviceIDs []
 			return nil, err
 		}
 		existing := linkStartCommand(a.Spec.Type, a.Spec.StartCommand, a.Spec.Command)
-		if _, err := buildSourceLinkCommand(native, nil, existing, "being created"); err != nil {
+		if _, err := buildSourceLinkCommand(native, nil, false, existing, "being created"); err != nil {
 			return nil, fmt.Errorf("service %s: %w", id, err)
 		}
 	}
@@ -887,13 +887,15 @@ var buildSourceLinkTypes = []string{"", appv1alpha1.TypeWebService, appv1alpha1.
 
 // buildSourceLink resolves a svcType service's link to build source id in
 // tenantID: the carrier, the build the service deploys (its current one, or
-// none until it has built) and the service's start command. start nil keeps
+// none until it has built) and the service's command. start nil keeps
 // existing for a native source and drops it for a Docker or image one, which
-// takes none; a native source requires one (Render).
+// takes no startCommand; a native source requires one (Render). docker reports
+// that start was given as dockerCommand, which only a Docker or image source
+// takes (buildSourceStartRule).
 //
 // It also returns the carrier, whose source fields the image rules read for
 // the linked service (sourceForImageRules).
-func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType string, start *string, existing string) (*appv1alpha1.BuildSourceLink, string, *appv1alpha1.App, error) {
+func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType string, start *string, docker bool, existing string) (*appv1alpha1.BuildSourceLink, string, *appv1alpha1.App, error) {
 	if err := linkableType(svcType); err != nil {
 		return nil, "", nil, err
 	}
@@ -907,7 +909,7 @@ func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType str
 	if tenantID != "" && carrier.Labels[core.LabelTenant] != tenantID {
 		return nil, "", nil, fmt.Errorf("%w: buildSourceId %s names no build source in this workspace", core.ErrBadRequest, id)
 	}
-	command, err := buildSourceLinkCommand(buildSourceNative(carrier.Spec), start, existing, id)
+	command, err := buildSourceLinkCommand(buildSourceNative(carrier.Spec), start, docker, existing, id)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -920,18 +922,18 @@ func buildSourceNative(carrier appv1alpha1.AppSpec) bool {
 	return carrier.Image == "" && blueprintNativeRuntime(carrier.Runtime)
 }
 
-// buildSourceLinkCommand is the start command a service linked to build
-// source ref runs: start when given, else existing for a native source and
-// none for a Docker or image one, checked against Render's start-command rule.
-func buildSourceLinkCommand(native bool, start *string, existing, ref string) (string, error) {
+// buildSourceLinkCommand is the command a service linked to build source ref
+// runs: start when given, else existing for a native source and none for a
+// Docker or image one, checked against Render's command rule.
+func buildSourceLinkCommand(native bool, start *string, docker bool, existing, ref string) (string, error) {
 	command := ""
 	switch {
 	case start != nil:
 		command = strings.TrimSpace(*start)
 	case native:
-		command = existing
+		command, docker = existing, false
 	}
-	if err := buildSourceStartRule(native, command, ref); err != nil {
+	if err := buildSourceStartRule(native, command, docker, ref); err != nil {
 		return "", err
 	}
 	return command, nil
@@ -952,15 +954,25 @@ func sourceForImageRules(spec appv1alpha1.AppSpec, carrier *appv1alpha1.App) app
 	return source
 }
 
-// buildSourceStartRule is Render's start-command rule for a service linked to
-// build source ref: a native source needs the service's start command, a
-// Docker or image one takes none.
-func buildSourceStartRule(native bool, command, ref string) error {
+// buildSourceStartRule is Render's command rule for a service linked to build
+// source ref. A native source needs the service's startCommand and takes no
+// dockerCommand. A Docker or image one takes no startCommand, and its optional
+// dockerCommand overrides the image's command: Render's schema allows
+// dockerCommand beside buildSource, and its REST link refuses a start command
+// for such a source (w3/069). docker reports that command was given as
+// dockerCommand. A refusal names the field at fault, where a Blueprint
+// locates it.
+func buildSourceStartRule(native bool, command string, docker bool, ref string) error {
+	refuse := func(field, format string) error {
+		return core.NewBadRequestError("BUILD_SOURCE_COMMAND_INCOMPATIBLE", fmt.Sprintf(format, ref), map[string]any{"field": field})
+	}
 	switch {
+	case native && docker && command != "":
+		return refuse("dockerCommand", "build source %s builds with a native runtime, so the service takes startCommand, not dockerCommand")
 	case native && command == "":
-		return fmt.Errorf("%w: build source %s builds with a native runtime, so the service needs a startCommand", core.ErrBadRequest, ref)
-	case !native && command != "":
-		return fmt.Errorf("%w: build source %s uses a Docker or image runtime, which takes no startCommand", core.ErrBadRequest, ref)
+		return refuse("startCommand", "build source %s builds with a native runtime, so the service needs a startCommand")
+	case !native && !docker && command != "":
+		return refuse("startCommand", "build source %s uses a Docker or image runtime, which takes no startCommand; set dockerCommand to override the image's command")
 	}
 	return nil
 }
@@ -1017,7 +1029,7 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 	}
 	cron := a.Spec.Type == appv1alpha1.TypeCronJob
 	existing := linkStartCommand(a.Spec.Type, a.Spec.StartCommand, a.Spec.Command)
-	link, start, _, err := s.buildSourceLink(ctx, a.Labels[core.LabelTenant], buildSourceID, a.Spec.Type, startCommand, existing)
+	link, start, _, err := s.buildSourceLink(ctx, a.Labels[core.LabelTenant], buildSourceID, a.Spec.Type, startCommand, false, existing)
 	if err != nil {
 		return AppView{}, err
 	}

@@ -204,19 +204,22 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 		if err != nil {
 			return GenerateBlueprintResult{}, err
 		}
-		entry, err := s.generateServiceEntry(ctx, a, dbDisplayByID, kvDisplayByID, selectedGroups, groupCache)
-		if err != nil {
-			return GenerateBlueprintResult{}, err
-		}
-		services = append(services, entry)
+		var carrier *appv1alpha1.App
 		if id := core.BuildSourceIDOf(a); id != "" {
-			carrier := carriersByID[id]
+			carrier = carriersByID[id]
 			if carrier == nil {
 				if _, carrier, err = s.buildSourceApp(ctx, core.RelCanViewSensitive, id); err != nil {
 					return GenerateBlueprintResult{}, err
 				}
 				carriersByID[id] = carrier
 			}
+		}
+		entry, err := s.generateServiceEntry(ctx, a, carrier, dbDisplayByID, kvDisplayByID, selectedGroups, groupCache)
+		if err != nil {
+			return GenerateBlueprintResult{}, err
+		}
+		services = append(services, entry)
+		if carrier != nil {
 			entry["buildSource"] = buildSourceName(carrier)
 			carriers[buildSourceName(carrier)] = carrier
 		}
@@ -372,7 +375,7 @@ func generateEnvGroupEntry(eg exportedEnvGroup) map[string]any {
 	return map[string]any{"name": eg.name, "envVars": vars}
 }
 
-func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, dbDisplayByID, kvDisplayByID map[string]string, selectedGroups map[string]exportedEnvGroup, groupCache map[string]exportedEnvGroup) (map[string]any, error) {
+func (s *Service) generateServiceEntry(ctx context.Context, a, carrier *appv1alpha1.App, dbDisplayByID, kvDisplayByID map[string]string, selectedGroups map[string]exportedEnvGroup, groupCache map[string]exportedEnvGroup) (map[string]any, error) {
 	svcType := effectiveType(a.Spec.Type)
 	entry := map[string]any{
 		// The manifest-facing PUBLIC name, never the tenant-prefixed CR object
@@ -400,7 +403,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		}
 	}
 	if a.Spec.StartCommand != "" && !static {
-		entry[blueprintCommandField(a.Spec)] = a.Spec.StartCommand
+		entry[blueprintCommandField(a.Spec, carrier)] = a.Spec.StartCommand
 	}
 	// A legacy free service of a paid-only type keeps running, but no valid
 	// Blueprint can declare it: name it and the remedy instead of exporting a
@@ -419,7 +422,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		entry["schedule"] = a.Spec.Schedule
 		// A cron's command override lives in Spec.Command (the PATCH path).
 		if a.Spec.Command != "" {
-			entry[blueprintCommandField(a.Spec)] = a.Spec.Command
+			entry[blueprintCommandField(a.Spec, carrier)] = a.Spec.Command
 		}
 	}
 	if a.Spec.HealthCheckPath != "" && svcType == appv1alpha1.TypeWebService {
@@ -952,10 +955,15 @@ func allowListEntries(entries []appv1alpha1.IPAllowEntry) []map[string]any {
 
 // blueprintCommandField is how render.yaml spells a service's command: a
 // container's (readsDockerCommand) is dockerCommand, a native runtime's is
-// startCommand (w5/080), as is a service linked to a build source, which only
-// a native source gives one (ADR097 § Blueprints).
-func blueprintCommandField(spec appv1alpha1.AppSpec) string {
-	if spec.BuildSource == nil && readsDockerCommand(buildStrategy(spec)) {
+// startCommand (w5/080). A service linked to carrier, its build source, takes
+// the spelling the link's command rule takes: startCommand from a native
+// source, dockerCommand from a Docker or image one (w3/069).
+func blueprintCommandField(spec appv1alpha1.AppSpec, carrier *appv1alpha1.App) string {
+	docker := spec.BuildSource == nil && readsDockerCommand(buildStrategy(spec))
+	if carrier != nil {
+		docker = !buildSourceNative(carrier.Spec)
+	}
+	if docker {
 		return "dockerCommand"
 	}
 	return "startCommand"

@@ -629,3 +629,119 @@ func TestGenerateBlueprintExportsACronBuildSource(t *testing.T) {
 		}
 	}
 }
+
+// w3/069: Render's schema lets a service linked to a build source set
+// dockerCommand. A Docker or image source runs it as the service's container
+// command, and the export writes it back as dockerCommand, re-planning as a
+// no-op. These are the two Blueprints the w3/m367 closeout saw refused.
+func TestBlueprintLinkedServiceTakesADockerCommand(t *testing.T) {
+	const imageWeb = `buildSources:
+  - name: s
+    image:
+      url: docker.io/library/busybox:1.36.1
+services:
+  - type: web
+    name: web
+    buildSource: s
+    dockerCommand: httpd -f -p 10000
+`
+	const dockerCron = `buildSources:
+  - name: s
+    git:
+      repo: https://github.com/acme/jobs
+      runtime: docker
+services:
+  - type: cron
+    name: job
+    buildSource: s
+    schedule: "0 3 * * *"
+    dockerCommand: echo hi
+`
+	for name, tc := range map[string]struct{ manifest, service, command string }{
+		"web on an image source":      {imageWeb, "web", "httpd -f -p 10000"},
+		"cron on a Docker git source": {dockerCron, "job", "echo hi"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, problems := CompileBlueprintSource(tc.manifest); len(problems) > 0 {
+				t.Fatalf("compile: %+v", problems)
+			}
+			svc, _, ctx := newBuildSourceService(t)
+			ctx = core.WithWorkspace(ctx, "tea-a")
+			if v, err := svc.ValidateBlueprint(ctx, "tea-a", tc.manifest, ""); err != nil || !v.Valid {
+				t.Fatalf("validate = %+v, %v", v, err)
+			}
+			if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: tc.manifest}); err != nil {
+				t.Fatalf("DeployStack: %v", err)
+			}
+			app := getTenantApp(t, svc.Client, "tea-a", tc.service)
+			command := app.Spec.StartCommand
+			if app.Spec.Type == appv1alpha1.TypeCronJob {
+				command = cronCommand(app.Spec)
+			}
+			if app.Spec.BuildSource == nil || command != tc.command {
+				t.Fatalf("spec = %+v, want linked and running %q", app.Spec, tc.command)
+			}
+
+			out, err := svc.GenerateBlueprint(ctx, GenerateBlueprintRequest{OwnerID: "tea-a", ServiceIDs: []string{tc.service}})
+			if err != nil {
+				t.Fatalf("GenerateBlueprint: %v", err)
+			}
+			if !strings.Contains(out.Manifest, "dockerCommand: "+tc.command) || strings.Contains(out.Manifest, "startCommand") {
+				t.Fatalf("export does not write the command as dockerCommand:\n%s", out.Manifest)
+			}
+			v, err := svc.ValidateBlueprint(ctx, "tea-a", out.Manifest, "")
+			if err != nil || !v.Valid || v.Plan == nil {
+				t.Fatalf("validate export = %+v, %v", v, err)
+			}
+			for _, a := range v.Plan.Actions {
+				if a.Operation != BlueprintPlanNoop {
+					t.Errorf("export re-plans %s %s as %s %v", a.Kind, a.Name, a.Operation, a.ChangedFields)
+				}
+			}
+		})
+	}
+}
+
+// w3/069: a native build source still takes startCommand only, and a Docker
+// or image one no startCommand. Each refusal is located at the field at fault,
+// whether the Blueprint declares the source, the workspace already has it, or
+// the service already exists.
+func TestBlueprintLinkedCommandRefusalsNameTheirField(t *testing.T) {
+	nativeDocker := strings.Replace(buildSourceBlueprint, "    startCommand: node api.js\n", "    dockerCommand: node api.js\n", 1)
+	imageStart := "buildSources:\n  - name: s\n    image:\n      url: docker.io/library/busybox:1.36.1\n" +
+		"services:\n  - type: cron\n    name: job\n    buildSource: s\n    schedule: \"0 3 * * *\"\n    startCommand: echo hi\n"
+	existingNative := "services:\n  - type: web\n    name: api\n    buildSource: Mono\n    dockerCommand: node api.js\n"
+	for name, tc := range map[string]struct {
+		manifest, path string
+		existing       bool
+	}{
+		"dockerCommand on a declared native source":  {manifest: nativeDocker, path: "services[0].dockerCommand"},
+		"startCommand on a declared image source":    {manifest: imageStart, path: "services[0].startCommand"},
+		"dockerCommand on a workspace native source": {manifest: existingNative, path: "services[0].dockerCommand"},
+		"dockerCommand linking an existing service":  {manifest: existingNative, path: "services[0].dockerCommand", existing: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc, _, ctx := newBuildSourceService(t)
+			ctx = core.WithWorkspace(ctx, "tea-a")
+			if _, err := svc.CreateBuildSource(ctx, monorepoSource); err != nil { // "Mono", node
+				t.Fatal(err)
+			}
+			if tc.existing {
+				if _, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: "api", Type: appv1alpha1.TypeWebService, Image: "nginx:1"}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			v, err := svc.ValidateBlueprint(ctx, "tea-a", tc.manifest, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if v.Valid || len(v.Errors) != 1 || v.Errors[0].Path == nil || *v.Errors[0].Path != tc.path ||
+				v.Errors[0].Code != "BUILD_SOURCE_COMMAND_INCOMPATIBLE" {
+				t.Fatalf("validate = %+v, want one BUILD_SOURCE_COMMAND_INCOMPATIBLE at %s", v.Errors, tc.path)
+			}
+			if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: tc.manifest}); !errors.Is(err, core.ErrBadRequest) {
+				t.Fatalf("DeployStack = %v, want a bad request", err)
+			}
+		})
+	}
+}

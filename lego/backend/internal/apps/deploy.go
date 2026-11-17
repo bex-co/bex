@@ -3272,6 +3272,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Routes:                  a.Routes,
 		Headers:                 a.Headers,
 		blueprintBuildSource:    strings.TrimSpace(a.BuildSource),
+		startIsDockerCommand:    a.DockerCommand != "",
 	}, se, nil
 }
 
@@ -3343,11 +3344,13 @@ func manifestPlanAndMaintenance(a bexService) (string, *MaintenanceModeView, err
 // deprecated autoDeploy bool). dockerCommand stands in for startCommand where
 // the build runs a container command (w5/080). Elsewhere a create ignores it
 // as inert, and a Blueprint refuses it as it does its other inert fields: on a
-// buildpack build too, which declares runtime docker (w5/102).
+// buildpack build too, which declares runtime docker (w5/102). Beside
+// buildSource the service declares no runtime: the link judges it against the
+// build source's (buildSourceStartRule, w3/069).
 func manifestStartAndAutoDeploy(a bexService) (string, *bool, *bool, error) {
 	startCommand := a.StartCommand
 	if a.DockerCommand != "" {
-		if !blueprintReadsDockerCommand(a.Runtime, extensionBuilder(a.XBex)) {
+		if a.BuildSource == "" && !blueprintReadsDockerCommand(a.Runtime, extensionBuilder(a.XBex)) {
 			return "", nil, nil, fmt.Errorf("%w: service %q dockerCommand requires a Dockerfile build or a prebuilt image; a native or buildpack build takes startCommand", core.ErrBadRequest, a.Name)
 		}
 		if startCommand != "" {

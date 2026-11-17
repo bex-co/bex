@@ -1990,6 +1990,11 @@ type CreateRequest struct {
 	// the apply resolves to BuildSourceID before any write (ADR097 §
 	// Blueprints).
 	blueprintBuildSource string
+	// startIsDockerCommand reports that StartCommand (a cron's Command) was
+	// given as Render's dockerCommand, the container command, rather than
+	// startCommand. Only a build source link reads it: a Docker or image
+	// source takes that spelling and a native one refuses it (w3/069).
+	startIsDockerCommand bool
 	// Blueprint-only group names; never decoded from public create input.
 	initialEnvGroups []string
 	// initialSeedEnv is a new Blueprint service's env-store content, written
@@ -2304,7 +2309,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		if desired.Type == appv1alpha1.TypeCronJob {
 			start = req.Command
 		}
-		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, desired.Type, &start, "")
+		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, desired.Type, &start, req.startIsDockerCommand, "")
 		if err != nil {
 			return AppView{}, err
 		}
@@ -2756,7 +2761,7 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 	var carrier *appv1alpha1.App
 	if req.BuildSourceID != "" {
 		start := linkStartCommand(a.Spec.Type, req.StartCommand, req.Command)
-		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, a.Spec.Type, &start, "")
+		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, a.Spec.Type, &start, req.startIsDockerCommand, "")
 		if err != nil {
 			return stackAppPlan{}, err
 		}
