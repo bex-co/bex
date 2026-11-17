@@ -1,7 +1,26 @@
+import type { ReactNode } from "react";
 import { describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { AutoscalingSection } from "../autoscaling-section";
 import type { UseAutoscalingResult } from "@/features/services/hooks/use-autoscaling";
+
+// The plan notice links to Billing; render the router Link as its anchor.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: ({
+    to,
+    children,
+    className,
+  }: {
+    to: string;
+    children: ReactNode;
+    className?: string;
+  }) => (
+    <a href={to} className={className}>
+      {children}
+    </a>
+  ),
+}));
 
 function storedFreeConfig(
   overrides: Partial<UseAutoscalingResult> = {},
@@ -112,10 +131,125 @@ describe("AutoscalingSection while utilization metrics are unavailable (w4/m364)
   it("shows no notice when autoscaling is off", () => {
     render(
       <AutoscalingSection
-        autoscaling={storedFreeConfig({ enabled: false, metricsUnavailable: true })}
+        autoscaling={storedFreeConfig({
+          enabled: false,
+          metricsUnavailable: true,
+        })}
         plan="starter"
       />,
     );
     expect(screen.queryByText(/Autoscaling is paused/)).not.toBeInTheDocument();
+  });
+});
+
+// w7/m429: Render offers autoscaling on Pro workspaces and higher. On Hobby
+// the card says so with a Billing link instead of letting the user fill the
+// form and receive a 400; a policy already on keeps running and can only be
+// turned off.
+describe("AutoscalingSection on a Hobby workspace (w7/m429)", () => {
+  const notice =
+    "Autoscaling is available on the Pro workspace plan and higher. This workspace is on Hobby.";
+
+  it("shows the plan notice and holds the switch off", () => {
+    const as = storedFreeConfig({ enabled: false });
+    render(
+      <AutoscalingSection
+        autoscaling={as}
+        plan="starter"
+        workspacePlan="hobby"
+      />,
+    );
+
+    expect(screen.getByText("Autoscaling off")).toBeInTheDocument();
+    expect(screen.getByText(notice, { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Billing" })).toHaveAttribute(
+      "href",
+      "/billing",
+    );
+    expect(screen.getByRole("switch")).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Save Changes" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a running policy read-only, and turning it off still works", async () => {
+    const as = storedFreeConfig({ maxInstances: 3, targetCPUPercent: 60 });
+    render(
+      <AutoscalingSection
+        autoscaling={as}
+        plan="starter"
+        workspacePlan="hobby"
+      />,
+    );
+
+    expect(screen.getByText("Autoscaling on")).toBeInTheDocument();
+    expect(
+      screen.getByText(/the policy below keeps running and can be turned off/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Number of Instances: 1–3/)).toBeInTheDocument();
+    // No editor: a change would be refused by the plan.
+    expect(
+      screen.queryByRole("button", { name: "Save Changes" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(await screen.findByRole("button", { name: "Disable" }));
+    expect(as.disable).toHaveBeenCalledOnce();
+    expect(as.save).not.toHaveBeenCalled();
+  });
+
+  it("draws the notice in the loading frame too, so the ready card does not shift", () => {
+    const { unmount } = render(
+      <AutoscalingSection
+        autoscaling={storedFreeConfig({ loading: true, enabled: false })}
+        plan="starter"
+        workspacePlan="hobby"
+      />,
+    );
+    const loading = screen.getByTestId("autoscaling-loading");
+    expect(
+      within(loading).getByText(notice, { exact: false }),
+    ).toBeInTheDocument();
+    unmount();
+  });
+
+  it("leaves Pro and higher unchanged", () => {
+    for (const workspacePlan of ["pro", "scale", "enterprise", undefined]) {
+      const { unmount } = render(
+        <AutoscalingSection
+          autoscaling={storedFreeConfig({ enabled: false })}
+          plan="starter"
+          workspacePlan={workspacePlan}
+        />,
+      );
+      expect(
+        screen.queryByText(notice, { exact: false }),
+      ).not.toBeInTheDocument();
+      const toggle = screen.getByRole("switch");
+      expect(toggle).toBeEnabled();
+      fireEvent.click(toggle);
+      expect(
+        screen.getByRole("button", { name: "Save Changes" }),
+      ).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("keeps the Free-instance rule first on a Hobby workspace", () => {
+    render(
+      <AutoscalingSection
+        autoscaling={storedFreeConfig({ enabled: false })}
+        plan="free"
+        workspacePlan="hobby"
+      />,
+    );
+    expect(
+      screen.getByText(
+        "Autoscaling is available on paid plans. Upgrade to enable it.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(notice, { exact: false }),
+    ).not.toBeInTheDocument();
   });
 });

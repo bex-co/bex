@@ -673,6 +673,18 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
   },
+  "services.scalingProPlanOnly": {
+    message:
+      "オートスケーリングは Pro 以上のワークスペースプランで利用できます。このワークスペースは Hobby です。",
+    description:
+      "Autoscaling card notice on a Hobby workspace, followed by an Open Billing link (w7/m429)",
+  },
+  "services.scalingProPlanOnlyRunning": {
+    message:
+      "オートスケーリングは Pro 以上のワークスペースプランで利用できます。このワークスペースは Hobby のため、下のポリシーは動作し続け、オフにできますが、変更や再度オンにするには Pro が必要です。",
+    description:
+      "Autoscaling card notice on a Hobby workspace whose service already autoscales, followed by an Open Billing link (w7/m429)",
+  },
   "services.scalingMetricsUnavailableTitle": {
     message:
       "オートスケーリングは一時停止中です: 使用率メトリクスを取得できません",

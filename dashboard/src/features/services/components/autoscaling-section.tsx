@@ -12,6 +12,7 @@ import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { Slider } from "@/common/components/ui/slider";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
+import { PlanBillingLink } from "@/common/components/plan-billing-link";
 import {
   Card,
   CardHeader,
@@ -21,6 +22,7 @@ import {
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { UseAutoscalingResult } from "@/features/services/hooks/use-autoscaling";
+import { proFeaturesPlan } from "@/features/workspaces/types";
 
 // Render uses 1–100 for instance count and 1–90 for utilization targets, with
 // 60% as the first-enable default target (live capture 2026-07-16, w7/m43).
@@ -196,10 +198,17 @@ function RangeSliderInput({
 export function AutoscalingSection({
   autoscaling: as,
   plan,
+  workspacePlan,
 }: {
   autoscaling: UseAutoscalingResult;
   /** Render offers autoscaling on paid plans only; free caps at one instance. */
   plan?: string | null;
+  /**
+   * The workspace plan: Render offers autoscaling on Pro workspaces and
+   * higher (w7/m429). Unknown (still loading) reads as included; the API
+   * enforces the rule either way.
+   */
+  workspacePlan?: string | null;
 }) {
   const { t } = useTranslations();
 
@@ -244,9 +253,16 @@ export function AutoscalingSection({
   // carry a stored config (written before the gate, or left by a downgrade):
   // it reads as saved-but-inactive below with a working turn-off, never as
   // a plain Off that hides settings nobody can remove.
+  //
+  // A Hobby workspace cannot turn autoscaling on (w7/m429; Render: Pro and
+  // higher), so the switch is held off with the plan notice and a Billing
+  // link. A policy it already runs keeps running: it reads as on, with its
+  // settings, and the switch can only turn it off.
   const eligible = plan !== "free";
-  const storedInactive = !eligible && as.enabled;
-  const enabled = eligible && (draft != null || as.enabled);
+  const planGated = eligible && !proFeaturesPlan(workspacePlan);
+  const locked = !eligible || planGated;
+  const storedLocked = locked && as.enabled;
+  const enabled = !locked && (draft != null || as.enabled);
   const form = draft ?? serverForm;
 
   function patch(partial: Partial<FormState>) {
@@ -255,8 +271,8 @@ export function AutoscalingSection({
   }
 
   function handleMainToggle(checked: boolean) {
-    if (!eligible) {
-      // On free the switch can only turn a stored config off.
+    if (locked) {
+      // On free, or below Pro, the switch can only turn a stored config off.
       if (!checked && as.enabled) setConfirmDisable(true);
       return;
     }
@@ -313,6 +329,32 @@ export function AutoscalingSection({
     </CardHeader>
   );
 
+  // Why the switch is held off. Both plans are known before the autoscaling
+  // read settles, so the loading frame shows the same notice as the ready card.
+  const lockedNotice = (
+    <p className="text-sm text-muted-foreground">
+      {planGated ? (
+        <>
+          {t("services.scalingProPlanOnly")} <PlanBillingLink />
+        </>
+      ) : (
+        t("services.scalingPaidOnly")
+      )}
+    </p>
+  );
+  const switchedOn = enabled || storedLocked;
+
+  // A stored policy the switch can only turn off: its settings, read-only.
+  const storedSummary = (
+    <p className="text-sm">
+      {t("services.scalingInstancesTitle")}: {as.minInstances}–{as.maxInstances}
+      {as.targetCPUPercent != null &&
+        ` · ${t("services.scalingCPUTitle")}: ${as.targetCPUPercent}%`}
+      {as.targetMemoryPercent != null &&
+        ` · ${t("services.scalingMemoryTitle")}: ${as.targetMemoryPercent}%`}
+    </p>
+  );
+
   if (as.loading) {
     // Draw the autoscaling-off frame — the common ready state, and the only
     // one a free plan can show besides a stored-but-inactive config. The
@@ -335,13 +377,7 @@ export function AutoscalingSection({
             </Skeleton>
           </>,
         )}
-        {!eligible && (
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {t("services.scalingPaidOnly")}
-            </p>
-          </CardContent>
-        )}
+        {locked && <CardContent>{lockedNotice}</CardContent>}
       </Card>
     );
   }
@@ -352,38 +388,34 @@ export function AutoscalingSection({
         <>
           <Switch
             id="autoscaling-enabled"
-            checked={enabled || storedInactive}
-            disabled={as.saving || (!eligible && !as.enabled)}
+            checked={switchedOn}
+            disabled={as.saving || (locked && !as.enabled)}
             onCheckedChange={handleMainToggle}
           />
           <Label htmlFor="autoscaling-enabled" className="text-sm">
-            {enabled || storedInactive
-              ? t("services.scalingOn")
-              : t("services.scalingOff")}
+            {switchedOn ? t("services.scalingOn") : t("services.scalingOff")}
           </Label>
         </>,
       )}
 
-      {!eligible && (
+      {locked && (
         <CardContent>
-          {storedInactive ? (
+          {storedLocked ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                {t("services.scalingPaidOnlyInactive")}
+                {planGated ? (
+                  <>
+                    {t("services.scalingProPlanOnlyRunning")}{" "}
+                    <PlanBillingLink />
+                  </>
+                ) : (
+                  t("services.scalingPaidOnlyInactive")
+                )}
               </p>
-              <p className="text-sm">
-                {t("services.scalingInstancesTitle")}: {as.minInstances}–
-                {as.maxInstances}
-                {as.targetCPUPercent != null &&
-                  ` · ${t("services.scalingCPUTitle")}: ${as.targetCPUPercent}%`}
-                {as.targetMemoryPercent != null &&
-                  ` · ${t("services.scalingMemoryTitle")}: ${as.targetMemoryPercent}%`}
-              </p>
+              {storedSummary}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              {t("services.scalingPaidOnly")}
-            </p>
+            lockedNotice
           )}
         </CardContent>
       )}

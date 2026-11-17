@@ -1798,6 +1798,14 @@ export type IncludedBandwidth = {
   used: Maybe<Scalars['Float']['output']>;
 };
 
+/** The workspace's verified custom domains now against the count its plan includes (w7/m429): 2 on Hobby, 15 on Pro, 25 on Scale; unlimited on Enterprise. Each domain above it is charged per domain-month, prorated, as the custom_domain_seconds line of estimatedCost; a domain is never refused for the count. */
+export type IncludedCustomDomains = {
+  __typename: 'IncludedCustomDomains';
+  included: Scalars['Int']['output'];
+  unlimited: Scalars['Boolean']['output'];
+  used: Scalars['Int']['output'];
+};
+
 export type IndexSizeInfo = {
   __typename: 'IndexSizeInfo';
   name: Maybe<Scalars['String']['output']>;
@@ -5692,6 +5700,7 @@ export type UsageSummary = {
   billing: Maybe<Billing>;
   buildMinutes: BuildMinutes;
   coverage: UsageCoverage;
+  customDomains: Maybe<IncludedCustomDomains>;
   estimatedCost: Maybe<EstimatedCost>;
   freeInstanceHours: FreeInstanceHours;
   includedBandwidth: IncludedBandwidth;

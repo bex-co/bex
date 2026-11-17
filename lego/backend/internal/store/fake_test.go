@@ -393,7 +393,7 @@ func (m *memStore) ListDesiredApps(context.Context) ([]DesiredApp, error) {
 	defer m.mu.Unlock()
 	out := make([]DesiredApp, 0, len(m.apps))
 	for _, a := range m.apps {
-		d := DesiredApp{App: a, TenantName: m.tenants[a.TenantID].Name}
+		d := DesiredApp{App: a, TenantName: m.tenants[a.TenantID].Name, TenantPlan: m.tenants[a.TenantID].Plan}
 		for _, disk := range m.disks {
 			if disk.AppID == a.ID && disk.DeletedAt == nil {
 				d.Disk = &disk

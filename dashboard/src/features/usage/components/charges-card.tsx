@@ -29,7 +29,7 @@ import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import {
   CATEGORY_LABEL_KEYS,
   CHARGE_LABEL_KEYS,
-  isUnnamedObjectStorage,
+  isUnnamedWorkspaceResource,
 } from "@/features/usage/lib/charge-labels";
 import { periodMonthLabel } from "@/features/usage/lib/period";
 import {
@@ -132,12 +132,15 @@ function ResourceRow({
   // deleted; fall back to the bare id only when no name was ever recorded
   // (a pre-w2/m96 row). The id stays on the row's title either way, so it is
   // still readable and copyable.
-  // A workspace's object storage has no name of its own (bex-api sends an
-  // English placeholder), so a row that is shown (a deleted one) reads as the
-  // category's translated name, never as that placeholder.
-  const name = isUnnamedObjectStorage(resource)
-    ? t("usage.categoryObjectStorage")
-    : resource.serviceName;
+  // A workspace's object storage and its custom domain line have no name of
+  // their own (bex-api sends an English placeholder), so a row that is shown
+  // (a deleted one) reads as the category's translated name, never as that
+  // placeholder.
+  const categoryKey = CATEGORY_LABEL_KEYS[resource.resourceKind];
+  const name =
+    isUnnamedWorkspaceResource(resource) && categoryKey
+      ? t(categoryKey)
+      : resource.serviceName;
   const named = name !== "";
   const label = named ? name : resource.serviceId;
   return (
@@ -200,15 +203,16 @@ function CategoryRow({
   const [open, setOpen] = useState(false);
   const labelKey = CATEGORY_LABEL_KEYS[category.key];
   const expanded = open || expandAll;
-  // A workspace's object storage is one resource with no name of its own, so
-  // its row would repeat the category's words one level down: the category
-  // opens straight onto the charge lines instead (w21/092). A deleted one keeps
-  // its row, which carries the "(deleted)" marker.
+  // A workspace's object storage (and its custom domain line, w7/m429) is one
+  // resource with no name of its own, so its row would repeat the category's
+  // words one level down: the category opens straight onto the charge lines
+  // instead (w21/092). A deleted one keeps its row, which carries the
+  // "(deleted)" marker.
   const [only] = category.resources;
   const inline =
     category.resources.length === 1 &&
     only !== undefined &&
-    isUnnamedObjectStorage(only) &&
+    isUnnamedWorkspaceResource(only) &&
     !only.deleted
       ? only
       : undefined;

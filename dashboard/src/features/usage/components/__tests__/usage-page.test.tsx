@@ -70,6 +70,7 @@ function summary(over: Partial<UsageSummary> = {}): UsageSummary {
     freeInstanceHours: { used: 0, included: 750 },
     buildMinutes: { used: 0, included: 500 },
     includedBandwidth: { used: 0, included: 5 },
+    customDomains: null,
     agentModel: { monthToDateUsd: "0.00", models: [] },
     estimatedCost: { totalUsd: "0.00", resources: [] },
     billing: null,
@@ -107,6 +108,18 @@ describe("UsagePage", () => {
     expect(screen.getByTestId("payment-method-card")).toBeInTheDocument();
     expect(screen.getByTestId("included-usage")).toBeInTheDocument();
     expect(screen.getByText("Charges")).toBeInTheDocument();
+  });
+
+  // w7/m429: the included custom domains sit with the other included usage.
+  it("shows the custom domains against the plan's included count", () => {
+    mockUseUsage.mockReturnValue(
+      state({ customDomains: { used: 3, included: 2, unlimited: false } }),
+    );
+    render(<UsagePage />);
+
+    expect(
+      screen.getByText("3 of 2 included custom domains in use"),
+    ).toBeInTheDocument();
   });
 
   it("no longer renders the four per-meter usage tables it replaced", () => {

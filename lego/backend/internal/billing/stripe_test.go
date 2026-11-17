@@ -311,6 +311,9 @@ func TestStripeMeterEventMapping(t *testing.T) {
 		{"object storage egress shadow meter skipped", Event{EventType: "object_storage_egress_bytes", Properties: map[string]string{"resource_kind": "object_storage", "value": "5368709120"}}, "", "", true},
 		// A suspended sandbox's retained image bills on its own GB-hour meter.
 		{"sandbox snapshot storage re-based to GB-hours", Event{EventType: "sandbox_snapshot_gb_seconds", Properties: map[string]string{"resource_kind": "sandbox", "value": "864000"}}, "sandbox_snapshot_gb_hours", "240", false},
+		// w7/m429: the custom domains above the plan's included count, re-based
+		// to domain-hours (an hour of one domain over the count is 1).
+		{"custom domains re-based to domain-hours", Event{EventType: "custom_domain_seconds", Properties: map[string]string{"resource_kind": "custom_domains", "value": "5400"}}, "custom_domain_hours", "1.5", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1282,5 +1285,33 @@ func TestCardHelpersTolerateUnexpandedAndNonCard(t *testing.T) {
 				t.Fatalf("want no card description, got %q ···%q", out.PaymentMethodBrand, out.PaymentMethodLast4)
 			}
 		})
+	}
+}
+
+// w7/m429 (docs/ADR030 §16): the custom domain meter is held, like the agent
+// model meter was, until BEX_STRIPE_CUSTOM_DOMAIN_METER=1 says its live Price
+// exists: its lookup key stays off every Subscription (so resolvePriceIDs never
+// demands a missing Price) and its usage kind stays pending in the outbox.
+func TestHeldMetersHoldEachUnconfirmedPrice(t *testing.T) {
+	for _, tc := range []struct {
+		agentModel, customDomain bool
+		want                     HeldMeterSet
+	}{
+		{false, false, HeldMeterSet{
+			LookupKeys: []string{"agent_model_cost_microusd", "custom_domain_hours"},
+			Kinds:      []string{"agent_model_cost_microusd", "custom_domain_seconds"},
+		}},
+		{true, false, HeldMeterSet{LookupKeys: []string{"custom_domain_hours"}, Kinds: []string{"custom_domain_seconds"}}},
+		{false, true, HeldMeterSet{LookupKeys: []string{"agent_model_cost_microusd"}, Kinds: []string{"agent_model_cost_microusd"}}},
+		{true, true, HeldMeterSet{}},
+	} {
+		if got := HeldMeters(tc.agentModel, tc.customDomain); fmt.Sprint(got) != fmt.Sprint(tc.want) {
+			t.Errorf("HeldMeters(%v, %v) = %+v, want %+v", tc.agentModel, tc.customDomain, got, tc.want)
+		}
+	}
+	for _, key := range HeldMeters(false, false).LookupKeys {
+		if _, ok := billableMeterNames[key]; !ok {
+			t.Errorf("held lookup key %s is not a catalog meter", key)
+		}
 	}
 }

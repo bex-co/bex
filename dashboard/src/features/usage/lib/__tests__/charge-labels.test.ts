@@ -5,7 +5,8 @@ import { goPackageConstants, goStringConstant } from "@/test/go-source";
 import {
   CATEGORY_LABEL_KEYS,
   CHARGE_LABEL_KEYS,
-  isUnnamedObjectStorage,
+  CUSTOM_DOMAINS_PLACEHOLDER_NAME,
+  isUnnamedWorkspaceResource,
   OBJECT_STORAGE_PLACEHOLDER_NAME,
 } from "../charge-labels";
 import { CATEGORY_ORDER } from "../charges";
@@ -136,14 +137,52 @@ describe("object storage's placeholder name", () => {
       serviceName,
     });
     expect(
-      isUnnamedObjectStorage(resource("object_storage", "Object storage")),
+      isUnnamedWorkspaceResource(resource("object_storage", "Object storage")),
     ).toBe(true);
-    expect(isUnnamedObjectStorage(resource("object_storage", ""))).toBe(true);
-    // A name someone gave it, or another kind with the same words, is theirs.
-    expect(isUnnamedObjectStorage(resource("object_storage", "media"))).toBe(
-      false,
+    expect(isUnnamedWorkspaceResource(resource("object_storage", ""))).toBe(
+      true,
     );
-    expect(isUnnamedObjectStorage(resource("service", "Object storage"))).toBe(
+    // A name someone gave it, or another kind with the same words, is theirs.
+    expect(
+      isUnnamedWorkspaceResource(resource("object_storage", "media")),
+    ).toBe(false);
+    expect(
+      isUnnamedWorkspaceResource(resource("service", "Object storage")),
+    ).toBe(false);
+  });
+});
+
+// w7/m429: a workspace's custom domain line is likewise one resource keyed by
+// the workspace id, which bex-api names "Custom domains"; the charge tree shows
+// the translated category instead, and opens straight onto its line.
+describe("the custom domain line's placeholder name", () => {
+  it("is the one bex-api gives the resource", () => {
+    expect(
+      goStringConstant(
+        "lego/backend/internal/usage/service.go",
+        "customDomainsResourceName",
+      ),
+    ).toBe(CUSTOM_DOMAINS_PLACEHOLDER_NAME);
+  });
+
+  it("marks only the unnamed per-workspace resources", () => {
+    const resource = (resourceKind: string, serviceName: string) => ({
+      resourceKind,
+      serviceName,
+    });
+    expect(
+      isUnnamedWorkspaceResource(resource("custom_domains", "Custom domains")),
+    ).toBe(true);
+    expect(isUnnamedWorkspaceResource(resource("custom_domains", ""))).toBe(
+      true,
+    );
+    expect(
+      isUnnamedWorkspaceResource(resource("object_storage", "Object storage")),
+    ).toBe(true);
+    expect(
+      isUnnamedWorkspaceResource(resource("service", "Custom domains")),
+    ).toBe(false);
+    expect(isUnnamedWorkspaceResource(resource("custom_domains", "web"))).toBe(
       false,
     );
   });

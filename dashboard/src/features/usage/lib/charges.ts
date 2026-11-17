@@ -23,6 +23,7 @@ export const CATEGORY_ORDER = [
   "postgres",
   "key_value",
   "object_storage",
+  "custom_domains",
   "sandbox",
   "agent_session",
 ] as const;

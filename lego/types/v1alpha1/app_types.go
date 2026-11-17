@@ -87,6 +87,15 @@ const LabelOverlappingDeployPolicy = "app.bex.co/overlapping-deploy-policy"
 // OverlappingDeployPolicyOverride is LabelOverlappingDeployPolicy's one value.
 const OverlappingDeployPolicyOverride = "override"
 
+// LabelKeptBuilds carries how many of the App's most recent builds its
+// workspace plan keeps for rollback, as a decimal count (w7/m429; Render's
+// "Instant rollbacks" row: 5 on Hobby, 15 on Pro, 30 on Scale and
+// Enterprise). bex-api projects it from the workspace plan, and absent when
+// the plan is unknown. The operator's registry retention keeps that many of
+// the repository's newest live- builds in place of its default; anything
+// that is not a positive count is read as absent.
+const LabelKeptBuilds = "app.bex.co/kept-builds"
+
 // AnnotationReleaseConfigScaled records an explicit scale during a selected
 // historical release. Its value is that release generation, so even scaling to
 // the already-saved count supersedes the initial historical instance count

@@ -228,6 +228,16 @@ var includedBandwidthGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var includedCustomDomainsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "IncludedCustomDomains",
+	Description: "The workspace's verified custom domains now against the count its plan includes (w7/m429): 2 on Hobby, 15 on Pro, 25 on Scale; unlimited on Enterprise. Each domain above it is charged per domain-month, prorated, as the custom_domain_seconds line of estimatedCost; a domain is never refused for the count.",
+	Fields: graphql.Fields{
+		"used":      gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(d CustomDomains) any { return d.Used }),
+		"included":  gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(d CustomDomains) any { return d.Included }),
+		"unlimited": gqlutil.Typed(graphql.NewNonNull(graphql.Boolean), func(d CustomDomains) any { return d.Unlimited }),
+	},
+})
+
 var agentModelBreakdownGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "AgentModelUsageBreakdown",
 	Description: "One model's share of the period's platform-route agent model spend (ADR091 D6). Token counts are display only; costUsd is what is billed.",
@@ -265,6 +275,15 @@ var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"buildMinutes": gqlutil.Typed(graphql.NewNonNull(buildMinutesGQLType), func(s Summary) any { return s.BuildMinutes }),
 		// includedBandwidth is the monthly included outbound bandwidth (w6/m319).
 		"includedBandwidth": gqlutil.Typed(graphql.NewNonNull(includedBandwidthGQLType), func(s Summary) any { return s.IncludedBandwidth }),
+		// customDomains is the verified custom domains now against the plan's
+		// included count (w7/m429); null for a past period and where no plan
+		// applies.
+		"customDomains": &graphql.Field{Type: includedCustomDomainsGQLType, Resolve: gqlutil.Field(func(s Summary) any {
+			if s.CustomDomains == nil {
+				return nil
+			}
+			return *s.CustomDomains
+		})},
 		// agentModel is the platform-route agent model spend (ADR091 D6).
 		"agentModel": gqlutil.Typed(graphql.NewNonNull(agentModelSummaryGQLType), func(s Summary) any { return s.AgentModel }),
 		// billing is the real Stripe cost/invoices (m48/m50); null ⇒ estimate-only.

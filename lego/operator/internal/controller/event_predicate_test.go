@@ -77,6 +77,19 @@ func TestGenerationOrDeletionPredicate(t *testing.T) {
 		}
 	})
 
+	// w7/m429: a plan change relabels the builds kept, and the pass carries
+	// the count into the registry's retention.
+	t.Run("admits a change of the builds kept", func(t *testing.T) {
+		updated := old.DeepCopy()
+		updated.Labels = map[string]string{appv1alpha1.LabelKeptBuilds: "30"}
+		if !p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: updated}) {
+			t.Fatal("a kept-builds change was filtered")
+		}
+		if p.Update(event.UpdateEvent{ObjectOld: updated, ObjectNew: updated.DeepCopy()}) {
+			t.Fatal("an unchanged kept-builds label was admitted")
+		}
+	})
+
 	t.Run("filters unrelated annotation updates", func(t *testing.T) {
 		updated := old.DeepCopy()
 		updated.Annotations = map[string]string{"example.com/noise": "changed"}

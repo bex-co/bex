@@ -650,6 +650,18 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
   },
+  "services.scalingProPlanOnly": {
+    message:
+      "自动伸缩仅在 Pro 及更高的工作区套餐中提供。此工作区为 Hobby 套餐。",
+    description:
+      "Autoscaling card notice on a Hobby workspace, followed by an Open Billing link (w7/m429)",
+  },
+  "services.scalingProPlanOnlyRunning": {
+    message:
+      "自动伸缩仅在 Pro 及更高的工作区套餐中提供。此工作区为 Hobby 套餐：下方的策略会继续运行，也可以关闭，但修改或重新开启需要 Pro 套餐。",
+    description:
+      "Autoscaling card notice on a Hobby workspace whose service already autoscales, followed by an Open Billing link (w7/m429)",
+  },
   "services.scalingMetricsUnavailableTitle": {
     message: "自动伸缩已暂停：无法获取资源利用率指标",
     description:

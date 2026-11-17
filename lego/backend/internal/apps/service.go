@@ -2289,6 +2289,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if err := s.requireServiceInboundRules(ctx, tenantID, desired, nil); err != nil {
 		return AppView{}, err
 	}
+	if err := s.requireAutoscalingPlan(ctx, tenantID, desired.Autoscaling, nil, ""); err != nil {
+		return AppView{}, err
+	}
 	var carrier *appv1alpha1.App
 	if req.BuildSourceID != "" {
 		start := req.StartCommand
@@ -6581,7 +6584,7 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
-	as, err := checkAutoscaling(a, req)
+	as, err := s.checkAutoscaling(ctx, a, req)
 	if err != nil {
 		return AutoscalingView{}, err
 	}

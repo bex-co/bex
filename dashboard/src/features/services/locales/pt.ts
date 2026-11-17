@@ -674,6 +674,18 @@ const ptServices: Record<string, TranslationEntry> = {
     description:
       "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
   },
+  "services.scalingProPlanOnly": {
+    message:
+      "O escalonamento automático está disponível no plano de workspace Pro e superiores. Este workspace está no plano Hobby.",
+    description:
+      "Autoscaling card notice on a Hobby workspace, followed by an Open Billing link (w7/m429)",
+  },
+  "services.scalingProPlanOnlyRunning": {
+    message:
+      "O escalonamento automático está disponível no plano de workspace Pro e superiores. Este workspace está no plano Hobby: a política abaixo continua em execução e pode ser desativada, mas alterá-la ou reativá-la exige o Pro.",
+    description:
+      "Autoscaling card notice on a Hobby workspace whose service already autoscales, followed by an Open Billing link (w7/m429)",
+  },
   "services.scalingMetricsUnavailableTitle": {
     message:
       "O escalonamento automático está pausado: as métricas de utilização não estão disponíveis",

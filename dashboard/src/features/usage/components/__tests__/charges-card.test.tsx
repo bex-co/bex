@@ -738,6 +738,64 @@ describe("ChargesCard", () => {
     },
   );
 
+  // w7/m429: a workspace's custom domains beyond its plan are one line keyed by
+  // the workspace id, which bex-api names "Custom domains". Like object storage,
+  // the category opens straight onto its priced line, in the page's language.
+  it.each([
+    ["en", "Custom domains", "Custom domains beyond the plan"],
+    ["zh", "自定义域名", "超出套餐的自定义域名"],
+  ])(
+    "opens the custom domain category straight onto its priced line (%s)",
+    async (lng, category, line) => {
+      await ensureLanguage(lng);
+      await i18n.changeLanguage(lng);
+      try {
+        render(
+          <ChargesCard
+            estimatedCost={estimate(
+              [
+                resource({
+                  serviceId: "tea-d0a1b2c3d4e5f6a7b8c9",
+                  serviceName: "Custom domains",
+                  resourceKind: "custom_domains",
+                  costUsd: "0.18",
+                  charges: [
+                    {
+                      kind: "custom_domain_seconds",
+                      tier: "",
+                      unit: "domain-mo",
+                      rateUsd: "0.175",
+                      quantity: "1.00",
+                      costUsd: "0.18",
+                    },
+                  ],
+                }),
+              ],
+              "0.18",
+            )}
+            invoicedUsd={null}
+            loading={false}
+            period=""
+            now={MID_JULY}
+          />,
+        );
+        const named = new RegExp(`^${category}`);
+        fireEvent.click(screen.getByRole("button", { name: named }));
+        const buttons = screen.getAllByRole("button", { name: named });
+        expect(buttons).toHaveLength(1);
+        expect(screen.getByText(line)).toBeInTheDocument();
+        expect(screen.getByText("$0.175/domain-mo")).toBeInTheDocument();
+        expect(screen.getByText("1.00 domain-mo")).toBeInTheDocument();
+        expect(
+          screen.queryByText("tea-d0a1b2c3d4e5f6a7b8c9"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/custom_domain/)).not.toBeInTheDocument();
+      } finally {
+        await i18n.changeLanguage("en");
+      }
+    },
+  );
+
   it("totals the estimate and projects month end when there is no invoice", () => {
     render(
       <ChargesCard

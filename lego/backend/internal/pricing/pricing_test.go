@@ -101,6 +101,11 @@ func TestBillableMeterNamesArePinned(t *testing.T) {
 	want := []string{
 		"agent_model_cost_microusd",
 		"build_seconds",
+		// Custom domains above the plan's included count (w7/m429). Held off
+		// every Subscription until BEX_STRIPE_CUSTOM_DOMAIN_METER=1 says the
+		// setup script created its Price (billing.HeldMeters), so new
+		// subscriptions keep resolving before the live run.
+		"custom_domain_hours",
 		"disk_gb_hours",
 		"egress_gib",
 		"instance_seconds.postgres.1c-2g",

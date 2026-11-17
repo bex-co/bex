@@ -270,6 +270,14 @@ spec:
             # dropped) if the catalog Price were ever retired.
             - name: BEX_STRIPE_AGENT_MODEL_METER
               value: "1"
+            # docs/ADR030 §16 (w7/m429): the custom_domain_hours Price does not
+            # exist on live Stripe yet, so the meter is held: off every
+            # Subscription, its custom_domain_seconds rows pending in the outbox
+            # (never dropped, shipped within the backfill horizon once
+            # released). Set "1" in the change that follows a
+            # `python3 scripts/stripe-billing-setup.py --live` run.
+            - name: BEX_STRIPE_CUSTOM_DOMAIN_METER
+              value: "0"
             - name: BEX_SANDBOX_SNAPSHOT_REGISTRY_URL
               value: http://zot.bex-registry.svc:5000
             # The sandbox storage meter's Zot users (w22/m321): the operator mints

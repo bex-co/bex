@@ -126,8 +126,9 @@ type Emitter struct {
 	FastInterval time.Duration
 	// HoldKinds are kinds kept pending in the outbox and never exported: a
 	// meter whose Stripe catalog Price is not provisioned yet
-	// (BEX_STRIPE_AGENT_MODEL_METER unset). Releasing the hold ships the
-	// backlog, so held usage is delayed, never dropped.
+	// (BEX_STRIPE_AGENT_MODEL_METER or BEX_STRIPE_CUSTOM_DOMAIN_METER unset).
+	// Releasing the hold ships the backlog, so held usage is delayed, never
+	// dropped.
 	HoldKinds []string
 	// Plans reads workspace plans for their included build minutes
 	// (docs/ADR030 §13): only the part of a month's build minutes above them

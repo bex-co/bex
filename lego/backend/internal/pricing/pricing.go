@@ -76,7 +76,10 @@ type Sheet struct {
 	// sandboxSnapshot is $/GB-second of a suspended sandbox's retained image for
 	// sandbox_snapshot_gb_seconds.
 	sandboxSnapshot float64
-	sandbox         float64 // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
+	// customDomain is $/domain-second for custom_domain_seconds, the verified
+	// custom domains above a plan's included count (docs/ADR030 §16).
+	customDomain float64
+	sandbox      float64 // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
 	// sandboxUSD is the same rate, exact, for pricing one session's compute
 	// (SandboxComputeMicroUSD).
 	sandboxUSD *big.Rat
@@ -151,6 +154,11 @@ func (s *Sheet) AgentModelMarkup() float64 {
 // image bills on: sandbox_snapshot_gb_seconds re-based to GB-hours, like
 // storage_gb_hours, at the sandboxSnapshot rate (w22/m313, ADR023).
 const SandboxSnapshotMeter = "sandbox_snapshot_gb_hours"
+
+// CustomDomainMeter is the Stripe dimension the custom domains above a plan's
+// included count bill on: custom_domain_seconds re-based to domain-hours, like
+// disk_gb_hours, at the customDomains rate (w7/m429, docs/ADR030 §16).
+const CustomDomainMeter = "custom_domain_hours"
 
 // KeyValueCostMeter is the single Stripe dimension every paid Key Value tier
 // bills on: the tier's instance seconds rated at its pricing.yaml rate, in
@@ -239,6 +247,9 @@ func (s *Sheet) BillableMeterNames() []string {
 	}
 	if s.sandboxSnapshot > 0 {
 		names = append(names, SandboxSnapshotMeter)
+	}
+	if s.customDomain > 0 {
+		names = append(names, CustomDomainMeter)
 	}
 	// Always billable: agentModel.markup is validated to [1, 10] at load.
 	names = append(names, store.UsageKindAgentModelCostMicroUSD)
@@ -559,13 +570,15 @@ func unitFor(kind string) meterUnit {
 		return meterUnit{"min", 60}
 	case store.UsageKindStorageGBSeconds, store.UsageKindDiskGBSeconds, store.UsageKindSandboxSnapshotGBSeconds,
 		store.UsageKindObjectStorageGBSeconds:
-		return meterUnit{"GB-mo", 2628000}
+		return meterUnit{"GB-mo", MonthSeconds}
 	case store.UsageKindObjectStorageIngressBytes, store.UsageKindObjectStorageEgressBytes:
 		return meterUnit{"GB", BytesPerGiB}
 	case store.UsageKindSandboxMemoryGBSeconds:
 		return meterUnit{"GiB-hr", 3600}
 	case store.UsageKindSandboxComputeSeconds:
 		return meterUnit{"vCPU-hr", 3600000}
+	case store.UsageKindCustomDomainSeconds:
+		return meterUnit{"domain-mo", MonthSeconds}
 	case store.UsageKindAgentModelInputTokens, store.UsageKindAgentModelOutputTokens,
 		store.UsageKindAgentModelCacheReadTokens, store.UsageKindAgentModelCacheWriteTokens:
 		return meterUnit{"1M tokens", tokensPerMillion}
@@ -652,6 +665,12 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 		if resourceKind == store.ResourceKindService {
 			return s.disk
 		}
+	case store.UsageKindCustomDomainSeconds:
+		// The meter writes only the domains above the plan's included count,
+		// so every domain-second is charged (docs/ADR030 §16).
+		if resourceKind == store.ResourceKindCustomDomains {
+			return s.customDomain
+		}
 	case store.UsageKindAgentModelCostMicroUSD:
 		// The row already carries the marked-up customer price (ADR091 D1);
 		// the token rows beside it are display only and rate $0.
@@ -714,6 +733,10 @@ type sandboxRate struct {
 // (public.go), which GET /pricing serves as they are; the rest stays private.
 type sheetFile struct {
 	publicSheet
+	// CustomDomains stays private until bex.co quotes it (public.go).
+	CustomDomains struct {
+		USDPerDomainSecond float64 `json:"usdPerDomainSecond"`
+	} `json:"customDomains"`
 	AgentModel struct {
 		Markup             float64 `json:"markup"`
 		MaxCapMultiplier   float64 `json:"maxCapMultiplier"`
@@ -752,6 +775,7 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		sandbox:         f.Sandbox.USDPerWeightedSecond,
 		disk:            f.Disk.USDPerGBSecond,
 		sandboxSnapshot: f.SandboxSnapshot.USDPerGBSecond,
+		customDomain:    f.CustomDomains.USDPerDomainSecond,
 		workspace:       make(map[string]float64, len(f.Workspace)),
 
 		agentModelMarkup: f.AgentModel.Markup,
@@ -762,6 +786,9 @@ func parseSheet(raw []byte) (*Sheet, error) {
 			return nil, fmt.Errorf("sandbox has a non-finite rate")
 		}
 		s.sandboxUSD = r
+	}
+	if rate := f.CustomDomains.USDPerDomainSecond; math.IsNaN(rate) || math.IsInf(rate, 0) || rate < 0 {
+		return nil, fmt.Errorf("customDomains.usdPerDomainSecond %v must be a non-negative rate", rate)
 	}
 	if m := f.AgentModel.Markup; math.IsNaN(m) || m < minAgentModelMarkup || m > maxAgentModelMarkup {
 		return nil, fmt.Errorf("agentModel.markup %v must be between %d and %d", m, minAgentModelMarkup, maxAgentModelMarkup)

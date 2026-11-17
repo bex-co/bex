@@ -492,6 +492,10 @@ func setupAppReconciler(
 			Registry:       env.Or("BEX_REGISTRY", "127.0.0.1:5050"),
 			KpackRegistry:  os.Getenv("BEX_KPACK_REGISTRY"),
 			RetentionCount: positiveEnvInt("BEX_ZOT_RETENTION_COUNT", 0),
+			// Each App's workspace plan sets how many builds its repository
+			// keeps (app.bex.co/kept-builds, w7/m429). Apps are in the manager's
+			// cache, so every config write reads the whole list from memory.
+			Apps: mgr.GetClient(),
 			// Legacy-repository dual-read is off unless an operator opts in for a
 			// supervised registry migration (round-21 finding 4): the compatibility
 			// grant is keyed by the bare App name with no ownership check, so leaving

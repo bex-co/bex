@@ -13,11 +13,20 @@ retention, and asserts what a running service and a rollback need:
   - of the builds that never went live, the five newest are there.
 
 Runs only disposable Docker containers.
-  python3 scripts/verify-zot-retention.py            # the rules as bex renders them
-  python3 scripts/verify-zot-retention.py --legacy   # catch-all first: reproduces the loss
+  python3 scripts/verify-zot-retention.py               # the rules as bex renders them
+  python3 scripts/verify-zot-retention.py --legacy      # catch-all first: reproduces the loss
+  python3 scripts/verify-zot-retention.py --kept-builds # a plan's count ahead of the catch-all
 
 With --legacy it passes when the old order loses every build that went live,
 which is the defect; any other outcome fails.
+
+With --kept-builds (w7/m429) the repository carries its workspace plan's count
+as bex renders it (lego/operator/internal/registry/kept_builds.go): a policy of
+its own naming the repository exactly, listed ahead of the "**" catch-all.
+Zot applies the FIRST policy whose repositories match (pkg/retention
+getRepoPolicy), so that repository keeps only its plan's newest live- builds,
+while a second repository the same builds are pushed to stays on the
+catch-all's ten.
 """
 
 import hashlib
@@ -43,6 +52,10 @@ LIVE = {"patterns": ["^live-.*"], "mostRecentlyPushedCount": 10}
 PUSHED = {"patterns": [".*"], "mostRecentlyPushedCount": 5}
 LIVE_BUILDS, LATER_BUILDS = 12, 6
 REPO = "tea-fixture/web"
+# --kept-builds: REPO's own policy keeps fewer live- builds than the catch-all,
+# so the run tells which policy Zot applied. OTHER stays on the catch-all.
+KEPT = {"patterns": ["^live-.*"], "mostRecentlyPushedCount": 3}
+OTHER = "tea-other/web"
 
 
 def docker(*args, check=True):
@@ -53,7 +66,17 @@ def docker(*args, check=True):
 
 def main():
     legacy = "--legacy" in sys.argv[1:]
+    kept_builds = "--kept-builds" in sys.argv[1:]
+    assert not (legacy and kept_builds), "--legacy and --kept-builds are separate runs"
     keep_tags = [PUSHED, LIVE] if legacy else [LIVE, PUSHED]
+    policies = [{"repositories": ["**"], "deleteUntagged": True, "keepTags": keep_tags}]
+    live_kept = {REPO: LIVE["mostRecentlyPushedCount"]}
+    if kept_builds:
+        policies.insert(0, {
+            "repositories": [REPO], "deleteUntagged": True, "keepTags": [KEPT, PUSHED],
+        })
+        live_kept = {REPO: KEPT["mostRecentlyPushedCount"], OTHER: LIVE["mostRecentlyPushedCount"]}
+    repos = list(live_kept)
     name = "bex-w8-retention-" + uuid.uuid4().hex[:10]
     with tempfile.TemporaryDirectory(prefix="bex-zot-retention-") as directory:
         root = Path(directory)
@@ -68,11 +91,7 @@ def main():
                 "gc": True,
                 "gcDelay": "5s",
                 "gcInterval": "5s",
-                "retention": {"policies": [{
-                    "repositories": ["**"],
-                    "deleteUntagged": True,
-                    "keepTags": keep_tags,
-                }]},
+                "retention": {"policies": policies},
             },
             "http": {"address": "0.0.0.0", "port": "5000"},
             "log": {"level": "debug"},
@@ -111,9 +130,9 @@ def main():
                 assert time.monotonic() < deadline, "registry did not become ready"
                 time.sleep(0.25)
 
-            def blob(data):
+            def blob(repo, data):
                 digest = "sha256:" + hashlib.sha256(data).hexdigest()
-                code, headers, _ = request(f"/v2/{REPO}/blobs/uploads/", "POST", b"")
+                code, headers, _ = request(f"/v2/{repo}/blobs/uploads/", "POST", b"")
                 assert code == 202, ("start blob upload", code)
                 location = headers["Location"]
                 separator = "&" if "?" in location else "?"
@@ -125,22 +144,25 @@ def main():
                 return {"digest": digest, "size": len(data)}
 
             def build(number, live):
-                """Push build <number> as gen-<n>, and as live-<n> when it went live."""
-                manifest = json.dumps({
-                    "schemaVersion": 2,
-                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "config": {**blob(b"{}"), "mediaType": "application/vnd.oci.image.config.v1+json"},
-                    "layers": [{
-                        **blob(f"build {number}".encode()),
-                        "mediaType": "application/vnd.oci.image.layer.v1.tar",
-                    }],
-                }).encode()
+                """Push build <number> to every repository as gen-<n>, and as
+                live-<n> when it went live. The manifest is the same in each."""
+                for repo in repos:
+                    manifest = json.dumps({
+                        "schemaVersion": 2,
+                        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                        "config": {**blob(repo, b"{}"), "mediaType": "application/vnd.oci.image.config.v1+json"},
+                        "layers": [{
+                            **blob(repo, f"build {number}".encode()),
+                            "mediaType": "application/vnd.oci.image.layer.v1.tar",
+                        }],
+                    }).encode()
                 for tag in [f"gen-{number}"] + ([f"live-{number}"] if live else []):
-                    code, _, _ = request(
-                        f"/v2/{REPO}/manifests/{tag}", "PUT", manifest,
-                        "application/vnd.oci.image.manifest.v1+json",
-                    )
-                    assert code == 201, ("manifest push", tag, code)
+                    for repo in repos:
+                        code, _, _ = request(
+                            f"/v2/{repo}/manifests/{tag}", "PUT", manifest,
+                            "application/vnd.oci.image.manifest.v1+json",
+                        )
+                        assert code == 201, ("manifest push", repo, tag, code)
                     time.sleep(1.1)  # distinct push times, as real builds have
                 return "sha256:" + hashlib.sha256(manifest).hexdigest()
 
@@ -150,34 +172,52 @@ def main():
             for number in range(LIVE_BUILDS + 1, LIVE_BUILDS + LATER_BUILDS + 1):
                 digests[number] = build(number, live=False)
 
-            def stored(number):
-                return request(f"/v2/{REPO}/manifests/{digests[number]}")[0] == 200
+            def stored(repo, number):
+                return request(f"/v2/{repo}/manifests/{digests[number]}")[0] == 200
 
-            want_kept = set(range(LIVE_BUILDS - LIVE["mostRecentlyPushedCount"] + 1, LIVE_BUILDS + 1))
-            want_kept |= set(range(
+            # The newest live- builds the repository's policy keeps, and the
+            # five newest of the builds that never went live.
+            pushed_kept = set(range(
                 LIVE_BUILDS + LATER_BUILDS - PUSHED["mostRecentlyPushedCount"] + 1,
                 LIVE_BUILDS + LATER_BUILDS + 1,
             ))
+            want = {
+                repo: set(range(LIVE_BUILDS - count + 1, LIVE_BUILDS + 1)) | pushed_kept
+                for repo, count in live_kept.items()
+            }
+            want_kept = want[REPO]
             want_gone = set(digests) - want_kept
 
             # The old order keeps the five newest pushes of any kind.
-            legacy_kept = set(range(
-                LIVE_BUILDS + LATER_BUILDS - PUSHED["mostRecentlyPushedCount"] + 1,
-                LIVE_BUILDS + LATER_BUILDS + 1,
-            ))
-            settled = legacy_kept if legacy else want_kept
+            legacy_kept = pushed_kept
+            settled = {REPO: legacy_kept} if legacy else want
 
             # Retention has run once nothing it should drop is left; then wait
             # two more GC cycles, in which nothing else may go.
+            def holdings():
+                return {repo: {number for number in digests if stored(repo, number)} for repo in repos}
+
             deadline = time.monotonic() + 150
             while time.monotonic() < deadline:
-                kept = {number for number in digests if stored(number)}
-                if kept <= settled:
+                if all(held <= settled[repo] for repo, held in holdings().items()):
                     break
                 time.sleep(3)
             time.sleep(12)
-            kept = {number for number in digests if stored(number)}
+            held = holdings()
+            kept = held[REPO]
             order = "catch-all first (legacy)" if legacy else "live- first"
+            if kept_builds:
+                for repo in repos:
+                    print(f"{repo} ({live_kept[repo]} live kept): builds stored after retention: {sorted(held[repo])}")
+                for repo in repos:
+                    missing, extra = sorted(want[repo] - held[repo]), sorted(held[repo] - want[repo])
+                    assert not missing, f"{repo}: builds {missing} are gone"
+                    assert not extra, f"{repo}: builds {extra} should have been removed"
+                print(
+                    f"PASS: {REPO}'s own policy, listed first, kept its {live_kept[REPO]} newest live- builds; "
+                    f"{OTHER} stayed on the catch-all's {live_kept[OTHER]}"
+                )
+                return
             print(f"{order}: builds stored after retention: {sorted(kept)}")
             if legacy:
                 assert kept == legacy_kept, (

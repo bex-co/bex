@@ -47,18 +47,26 @@ const (
 	FeatureRequestLogs      PlanFeature = "HTTP request logs"
 	FeatureAuditLogs        PlanFeature = "audit logs"
 	FeatureLatencyMetrics   PlanFeature = "response latency metrics"
+	FeatureAutoscaling      PlanFeature = "autoscaling"
 )
 
 // planFeatures is the one table of each gated feature's lowest plan and its
 // stable machine name (a PLAN_FEATURE_REQUIRED refusal's params.feature). A
-// feature absent from it is open on every plan.
-var planFeatures = map[PlanFeature]struct{ minimum, key string }{
-	FeatureInboundIPRules:   {planScale, "inboundIPRules"},
-	FeatureNetworkIsolation: {planPro, "networkIsolation"},
-	FeatureWebhooks:         {planPro, "webhooks"},
-	FeatureRequestLogs:      {planPro, "requestLogs"},
-	FeatureAuditLogs:        {planPro, "auditLogs"},
-	FeatureLatencyMetrics:   {planPro, "latencyMetrics"},
+// feature absent from it is open on every plan. singular marks a feature
+// named by a mass noun, which the refusal sentence reads with "requires".
+var planFeatures = map[PlanFeature]struct {
+	minimum, key string
+	singular     bool
+}{
+	FeatureInboundIPRules:   {minimum: planScale, key: "inboundIPRules"},
+	FeatureNetworkIsolation: {minimum: planPro, key: "networkIsolation"},
+	FeatureWebhooks:         {minimum: planPro, key: "webhooks"},
+	FeatureRequestLogs:      {minimum: planPro, key: "requestLogs"},
+	FeatureAuditLogs:        {minimum: planPro, key: "auditLogs"},
+	FeatureLatencyMetrics:   {minimum: planPro, key: "latencyMetrics"},
+	// render.com/docs/scaling (read 2026-11-16): "Autoscaling: Available only
+	// for Pro workspaces and higher" (w7/m429).
+	FeatureAutoscaling: {minimum: planPro, key: "autoscaling", singular: true},
 }
 
 // Machine codes for the workspace-plan refusals (w8/m138 t013), on REST's
@@ -105,7 +113,12 @@ func PlanAllows(plan string, feature PlanFeature) bool {
 // plan does not include.
 func PlanFeatureMessage(plan string, feature PlanFeature) string {
 	title := func(p string) string { return strings.ToUpper(p[:1]) + p[1:] }
-	return fmt.Sprintf("%s require the %s plan or higher; this workspace is on %s", feature, title(planFeatures[feature].minimum), title(plan))
+	gate := planFeatures[feature]
+	verb := "require"
+	if gate.singular {
+		verb = "requires"
+	}
+	return fmt.Sprintf("%s %s the %s plan or higher; this workspace is on %s", feature, verb, title(gate.minimum), title(plan))
 }
 
 // MaxEnvironmentsPerProject is Render's per-project environment cap for a plan:
@@ -128,6 +141,45 @@ func WebhookDestinationLimit(plan string) int {
 	default:
 		return 100
 	}
+}
+
+// keptBuilds is how many of a service's most recent builds each plan keeps
+// for rollback (w7/m429; render.com/pricing's "Instant rollbacks" row, read
+// 2026-11-16: 5, 15, 30 and 30 builds retained). bex-api projects the count
+// onto every App of the workspace (appv1alpha1.LabelKeptBuilds) and the
+// operator's registry retention keeps that many live builds per repository.
+var keptBuilds = map[string]int{
+	planHobby:      5,
+	planPro:        15,
+	planScale:      30,
+	planEnterprise: 30,
+}
+
+// KeptBuilds is how many of a service's most recent builds plan keeps for
+// rollback. ok is false for an unknown plan, which leaves the registry's
+// default retention in place.
+func KeptBuilds(plan string) (n int, ok bool) {
+	n, ok = keptBuilds[plan]
+	return n, ok
+}
+
+// includedCustomDomains is how many custom domains each plan includes before
+// they are metered (w7/m429; render.com/pricing's "Custom domains" row, read
+// 2026-11-16: "2 included then $0.25/domain/month" on Hobby, 15 on Pro, 25 on
+// Scale, custom on Enterprise). Enterprise is absent: its domains are all
+// included.
+var includedCustomDomains = map[string]int{
+	planHobby: 2,
+	planPro:   15,
+	planScale: 25,
+}
+
+// IncludedCustomDomains is how many custom domains plan includes. unlimited
+// is true for Enterprise and for an unknown plan, which are never metered
+// (an unknown plan never reaches here: tenants.plan's CHECK keeps it out).
+func IncludedCustomDomains(plan string) (n int, unlimited bool) {
+	n, ok := includedCustomDomains[plan]
+	return n, !ok
 }
 
 // planRetention is how far back each plan's reads of one kind reach. Logs and
@@ -381,11 +433,11 @@ func (b *Base) WorkspacePlanOf(ctx context.Context, workspaceID string) (plan st
 
 // RequirePlanFeature refuses a workspace whose plan does not include feature.
 func (b *Base) RequirePlanFeature(ctx context.Context, workspaceID string, feature PlanFeature) error {
-	return b.requirePlanFeature(ctx, workspaceID, "", feature)
+	return b.RequirePlanFeatureAt(ctx, workspaceID, "", feature)
 }
 
-// requirePlanFeature is RequirePlanFeature with the refusal naming field.
-func (b *Base) requirePlanFeature(ctx context.Context, workspaceID, field string, feature PlanFeature) error {
+// RequirePlanFeatureAt is RequirePlanFeature with the refusal naming field.
+func (b *Base) RequirePlanFeatureAt(ctx context.Context, workspaceID, field string, feature PlanFeature) error {
 	plan, ok, err := b.WorkspacePlanOf(ctx, workspaceID)
 	if err != nil || !ok || PlanAllows(plan, feature) {
 		return err
@@ -405,7 +457,7 @@ func (b *Base) RequireWorkspaceInboundIPRules(ctx context.Context, workspaceID s
 	if !RestrictsInbound(next) || slices.Equal(next, current) {
 		return nil
 	}
-	return b.requirePlanFeature(ctx, workspaceID, "ipAllowList", FeatureInboundIPRules)
+	return b.RequirePlanFeatureAt(ctx, workspaceID, "ipAllowList", FeatureInboundIPRules)
 }
 
 // RequireNetworkIsolation refuses turning environment network isolation on

@@ -108,6 +108,41 @@ const zhUsage: Record<string, TranslationEntry> = {
       "包含的流量已用尽。超出部分按 GB 计费；如果没有付款方式，工作区的服务将停止运行，直到下月初。",
     description: "Notice once the included bandwidth is spent (w6/m319)",
   },
+  "usage.customDomainsTitle": {
+    message: "自定义域名",
+    description:
+      "Title of the included custom domains card on the billing page (w7/m429)",
+  },
+  "usage.customDomainsDescription": {
+    message:
+      "你的套餐包含一定数量的已验证自定义域名。超出的每个域名按月计费，按其验证的时长计算。添加域名不会因数量而被拒绝。",
+    description:
+      "Explains the plan's included custom domains and how domains beyond them are billed (w7/m429)",
+  },
+  "usage.customDomainsUsed": {
+    message: "已使用 {used} 个自定义域名，套餐包含 {included} 个",
+    description:
+      "Verified custom domains now against the count the plan includes (w7/m429)",
+  },
+  "usage.customDomainsNear": {
+    message: "你即将用完套餐包含的自定义域名。超出的每个域名按月计费。",
+    description:
+      "Note once the verified custom domains reach 80 percent of the included count (w7/m429)",
+  },
+  "usage.customDomainsSpent": {
+    message: "套餐包含的自定义域名已全部使用。之后每个已验证的域名按月计费。",
+    description: "Notice once every included custom domain is in use (w7/m429)",
+  },
+  "usage.categoryCustomDomains": {
+    message: "自定义域名",
+    description:
+      "Charge-tree category for a workspace's custom domains beyond its plan (w7/m429)",
+  },
+  "usage.chargeCustomDomains": {
+    message: "超出套餐的自定义域名",
+    description:
+      "Charge line for custom domains beyond the plan's included count, billed per domain-month (w7/m429)",
+  },
   "usage.chargeIncluded": {
     message: "其中 {included} 为套餐包含",
     description:

@@ -16,6 +16,7 @@ import {
 import { ScalingRecentMetrics } from "@/features/services/components/scaling-recent-metrics";
 import { useAutoscaling } from "@/features/services/hooks/use-autoscaling";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useWorkspace } from "@/features/workspaces/context";
 import { supportsScaling } from "@/features/services/lib/service-type";
 import { runsInstances } from "@/features/services/lib/status";
 import { ServiceScalingSkeleton } from "@/common/components/route-skeletons";
@@ -53,6 +54,7 @@ export function ServiceScalingPage({ serviceId }: { serviceId: string }) {
   // One hook instance for the page: the card renders from it and the manual
   // card's exclusion gate reads it, so `saving`/`enabled` can never disagree.
   const autoscaling = useAutoscaling(serviceId);
+  const { currentWorkspace } = useWorkspace();
 
   const scalable = service != null && supportsScaling(service);
   const ineligible = service != null && !supportsScaling(service);
@@ -73,7 +75,11 @@ export function ServiceScalingPage({ serviceId }: { serviceId: string }) {
   return (
     <div className="space-y-6">
       {scalable ? (
-        <AutoscalingSection autoscaling={autoscaling} plan={service.plan} />
+        <AutoscalingSection
+          autoscaling={autoscaling}
+          plan={service.plan}
+          workspacePlan={currentWorkspace?.plan}
+        />
       ) : null}
       {/* Reserve the manual-card slot at that card's own geometry while
           autoscaling state resolves, so nothing shifts when it settles

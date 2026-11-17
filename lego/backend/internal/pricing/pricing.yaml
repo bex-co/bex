@@ -10,6 +10,7 @@
 #   build_seconds    → build.usdPerSecond
 #   storage_gb_seconds → storage.usdPerGBSecond
 #   sandbox_compute_seconds → sandbox.usdPerWeightedSecond
+#   custom_domain_seconds → customDomains.usdPerDomainSecond
 #   agent_model_cost_microusd → $0.000001 per unit (the row already carries
 #                           upstream cost × agentModel.markup, ADR091 D1)
 #   agent_model_{input,output,cache_read,cache_write}_tokens → $0 (display only)
@@ -153,6 +154,18 @@ sandbox:
 # Policy: docs/ADR082-persistent-disks.md D8.
 disk:
   usdPerGBSecond: 0.000000066590563165905631659056   # $0.175 / 2,628,000 GB-seconds
+
+# custom_domain_seconds rate: $0.175 per custom domain-month above the
+# workspace plan's included count (Render's "$0.25/domain/month" × 0.70;
+# render.com/pricing and render.com/docs/custom-domains, read 2026-11-16).
+# The included counts — 2 Hobby, 15 Pro, 25 Scale, Enterprise unlimited — are
+# core.IncludedCustomDomains; the meter writes only the domains above them, so
+# every unit here is charged. One pricing month is 730 h = 2,628,000 seconds,
+# so a domain verified for part of a month pays for that part, by the second.
+# Stripe meter custom_domain_hours (seconds re-based to hours). Policy:
+# docs/ADR030-pricing.md §16.
+customDomains:
+  usdPerDomainSecond: 0.000000066590563165905631659056   # $0.175 / 2,628,000 domain-seconds
 
 # sandbox_snapshot_gb_seconds rate: $0.056/GB-month of a suspended sandbox's
 # retained image (Render's snapshot storage $0.08/GB-month × 0.70; Render's

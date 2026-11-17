@@ -405,11 +405,39 @@ func (s *Service) checkCronJob(ctx context.Context, a *appv1alpha1.App, name str
 	return nil
 }
 
-func checkAutoscaling(a *appv1alpha1.App, req SetAutoscalingRequest) (appv1alpha1.AutoscalingSpec, error) {
+// checkAutoscaling validates req as a's new autoscaling settings, then the
+// workspace plan (requireAutoscalingPlan): the request is refused before any
+// write, on every surface that turns autoscaling on.
+func (s *Service) checkAutoscaling(ctx context.Context, a *appv1alpha1.App, req SetAutoscalingRequest) (appv1alpha1.AutoscalingSpec, error) {
 	if a.Spec.Disk != nil {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: detach the disk before enabling autoscaling", core.ErrBadRequest)
 	}
-	return autoscalingSpec(req, a.Spec.Type, a.Spec.Tier)
+	as, err := autoscalingSpec(req, a.Spec.Type, a.Spec.Tier)
+	if err != nil {
+		return as, err
+	}
+	return as, s.requireAutoscalingPlan(ctx, a.Labels[core.LabelTenant], &as, a, "")
+}
+
+// requireAutoscalingPlan refuses turning autoscaling on below the Pro plan
+// (w7/m429; render.com/docs/scaling: "Available only for Pro workspaces and
+// higher") with PLAN_FEATURE_REQUIRED, params.feature "autoscaling". next is
+// the settings the write would save, and current the App it changes, nil on
+// create.
+// Turning a policy off, and re-sending an enabled policy exactly as stored,
+// are always accepted, so a downgraded workspace's running policy keeps
+// working and can be turned off, but not changed or turned back on (ADR030
+// §9: existing state is never silently removed). field names the authored
+// field in the refusal (a Blueprint's "scaling"); empty for the API's own
+// autoscaling settings.
+func (s *Service) requireAutoscalingPlan(ctx context.Context, tenantID string, next *appv1alpha1.AutoscalingSpec, current *appv1alpha1.App, field string) error {
+	if !autoscalingOn(next) {
+		return nil
+	}
+	if current != nil && autoscalingOn(current.Spec.Autoscaling) && !autoscalingChanged(current.Spec.Autoscaling, *next) {
+		return nil
+	}
+	return s.RequirePlanFeatureAt(ctx, tenantID, field, core.FeatureAutoscaling)
 }
 
 // checkPlan resolves the requested Render plan to its tier and runs every

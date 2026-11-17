@@ -2714,6 +2714,14 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp, identity string) bool {
 		override = appv1alpha1.OverlappingDeployPolicyOverride
 	}
 	setOptional(appv1alpha1.LabelOverlappingDeployPolicy, override)
+	// The builds the workspace plan keeps for rollback (w7/m429,
+	// core.KeptBuilds). The operator's registry retention follows it; an
+	// unknown plan leaves the label off and the registry on its default.
+	kept := ""
+	if n, ok := core.KeptBuilds(d.TenantPlan); ok {
+		kept = strconv.Itoa(n)
+	}
+	setOptional(appv1alpha1.LabelKeptBuilds, kept)
 	return changed
 }
 

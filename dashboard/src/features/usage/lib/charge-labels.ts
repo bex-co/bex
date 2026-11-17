@@ -27,6 +27,7 @@ export const CATEGORY_LABEL_KEYS: Record<string, string> = {
   postgres: "usage.categoryPostgres",
   key_value: "usage.categoryKeyValue",
   object_storage: "usage.categoryObjectStorage",
+  custom_domains: "usage.categoryCustomDomains",
   sandbox: "usage.categorySandboxes",
   agent_session: "usage.categoryAgentSessions",
 };
@@ -44,6 +45,7 @@ export const CHARGE_LABEL_KEYS: Record<string, string> = {
   object_storage_ingress_bytes: "usage.chargeObjectStorageIngress",
   object_storage_egress_bytes: "usage.chargeObjectStorageEgress",
   disk_gb_seconds: "usage.chargeDisk",
+  custom_domain_seconds: "usage.chargeCustomDomains",
   agent_model_cost_microusd: "usage.chargeAgentModelCost",
   agent_model_input_tokens: "usage.chargeAgentModelInputTokens",
   agent_model_output_tokens: "usage.chargeAgentModelOutputTokens",
@@ -60,16 +62,32 @@ export const CHARGE_LABEL_KEYS: Record<string, string> = {
 export const OBJECT_STORAGE_PLACEHOLDER_NAME = "Object storage";
 
 /**
- * Whether a resource is object storage with no name of its own, so its row
- * reads as the category's translated name rather than the placeholder.
+ * What bex-api names a workspace's custom domain line (w7/m429): one per
+ * workspace, keyed by the workspace id, with no name of its own, so
+ * `usage/service.go` fills the name with this English placeholder
+ * (`customDomainsResourceName`; `charge-labels.test.ts` keeps the two equal).
  */
-export function isUnnamedObjectStorage(resource: {
+export const CUSTOM_DOMAINS_PLACEHOLDER_NAME = "Custom domains";
+
+/** The placeholder name of each resource a workspace has exactly one of. */
+const WORKSPACE_RESOURCE_PLACEHOLDERS: Record<string, string> = {
+  object_storage: OBJECT_STORAGE_PLACEHOLDER_NAME,
+  custom_domains: CUSTOM_DOMAINS_PLACEHOLDER_NAME,
+};
+
+/**
+ * Whether a resource is one a workspace has exactly one of and that has no name
+ * of its own (its object storage, its custom domain line), so its row reads as
+ * the category's translated name and a category holding only it opens straight
+ * onto its charge lines.
+ */
+export function isUnnamedWorkspaceResource(resource: {
   resourceKind: string;
   serviceName: string;
 }): boolean {
+  const placeholder = WORKSPACE_RESOURCE_PLACEHOLDERS[resource.resourceKind];
   return (
-    resource.resourceKind === "object_storage" &&
-    (resource.serviceName === "" ||
-      resource.serviceName === OBJECT_STORAGE_PLACEHOLDER_NAME)
+    placeholder !== undefined &&
+    (resource.serviceName === "" || resource.serviceName === placeholder)
   );
 }

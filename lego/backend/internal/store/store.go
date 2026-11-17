@@ -527,9 +527,13 @@ type DesiredApp struct {
 	// OverlapOverride. The projector labels an Override App so the operator
 	// holds no release in flight for it.
 	OverlappingDeployPolicy string
-	PrimaryHost             string
-	Hosts                   []string
-	HostRedirects           map[string]string
+	// TenantPlan is the workspace's plan. The projector labels each App with
+	// the number of builds that plan keeps for rollback (core.KeptBuilds), so
+	// a plan change reaches the registry's retention within one pass.
+	TenantPlan    string
+	PrimaryHost   string
+	Hosts         []string
+	HostRedirects map[string]string
 	// EnvironmentIPAllowList is the member's environment inbound-IP layer
 	// (w4/m28), projected from the environments row at read time (the
 	// EnvironmentLayerCIDRs shape member CRs carry) so a projector-created CR
@@ -1854,7 +1858,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	// projector (re)creates, keeping the fallback-create path consistent with
 	// the environments fan-out.
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+appColumns+`, t.name, e.ip_allow_list, a.source_revision, t.overlapping_deploy_policy FROM apps a JOIN tenants t ON t.id = a.tenant_id
+		`SELECT `+appColumns+`, t.name, e.ip_allow_list, a.source_revision, t.overlapping_deploy_policy, t.plan FROM apps a JOIN tenants t ON t.id = a.tenant_id
 		 LEFT JOIN environments e ON e.id = a.environment_id ORDER BY a.created_at`)
 	if err != nil {
 		return nil, err
@@ -1868,7 +1872,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
 			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.DisplayName,
-			&d.BuildSourceID, &d.BuildSourceImage, &d.ScopeProjectID, &d.ObjectName, &d.TenantName, &envRules, &d.SourceRevision, &d.OverlappingDeployPolicy)
+			&d.BuildSourceID, &d.BuildSourceImage, &d.ScopeProjectID, &d.ObjectName, &d.TenantName, &envRules, &d.SourceRevision, &d.OverlappingDeployPolicy, &d.TenantPlan)
 		if err != nil {
 			return nil, err
 		}

@@ -106,6 +106,7 @@ func TestPlanFeatureTable(t *testing.T) {
 		{FeatureLatencyMetrics, "hobby", false}, {FeatureLatencyMetrics, "pro", true}, {FeatureLatencyMetrics, "scale", true},
 		{FeatureInboundIPRules, "hobby", false}, {FeatureInboundIPRules, "pro", false},
 		{FeatureInboundIPRules, "scale", true}, {FeatureInboundIPRules, "enterprise", true},
+		{FeatureAutoscaling, "hobby", false}, {FeatureAutoscaling, "pro", true}, {FeatureAutoscaling, "enterprise", true},
 		{FeatureWebhooks, "future-plan", true},
 	} {
 		if got := PlanAllows(tc.plan, tc.feature); got != tc.want {
@@ -114,6 +115,28 @@ func TestPlanFeatureTable(t *testing.T) {
 	}
 	if got := PlanFeatureMessage("hobby", FeatureNetworkIsolation); got != "network-isolated environments require the Pro plan or higher; this workspace is on Hobby" {
 		t.Errorf("message = %q", got)
+	}
+	if got := PlanFeatureMessage("hobby", FeatureAutoscaling); got != "autoscaling requires the Pro plan or higher; this workspace is on Hobby" {
+		t.Errorf("message = %q", got)
+	}
+	// w7/m429: render.com/pricing's Instant rollbacks and Custom domains rows.
+	for plan, want := range map[string]int{"hobby": 5, "pro": 15, "scale": 30, "enterprise": 30} {
+		if got, ok := KeptBuilds(plan); !ok || got != want {
+			t.Errorf("KeptBuilds(%q) = %d, %v, want %d", plan, got, ok, want)
+		}
+	}
+	if _, ok := KeptBuilds("future-plan"); ok {
+		t.Error("an unknown plan must leave the registry's default retention")
+	}
+	for plan, want := range map[string]int{"hobby": 2, "pro": 15, "scale": 25} {
+		if got, unlimited := IncludedCustomDomains(plan); unlimited || got != want {
+			t.Errorf("IncludedCustomDomains(%q) = %d, %v, want %d", plan, got, unlimited, want)
+		}
+	}
+	for _, plan := range []string{"enterprise", "future-plan"} {
+		if _, unlimited := IncludedCustomDomains(plan); !unlimited {
+			t.Errorf("IncludedCustomDomains(%q) must be unlimited", plan)
+		}
 	}
 	for plan, want := range map[string]int{"hobby": 2, "pro": 0, "scale": 0} {
 		if got := MaxEnvironmentsPerProject(plan); got != want {

@@ -74,6 +74,12 @@ type Creds struct {
 	KpackRegistry  string // optional alias used by containerd on nodes (e.g. "zot.local:5000")
 	RetentionCount int    // mostRecentlyPushedCount in baseZotConfig; 0 defaults to 5
 
+	// Apps, when set, lists every App (the manager's cache) so that each one's
+	// workspace plan sets how many of its builds its repository keeps
+	// (appv1alpha1.LabelKeptBuilds, w7/m429; kept_builds.go). Nil keeps every
+	// repository on the catch-all retention policy.
+	Apps client.Reader
+
 	// DualReadEnabled opens the legacy-repository compatibility grant (round-21
 	// finding 4). The legacy repo is keyed by the bare App name with NO workspace
 	// component, and grantZotRepoUser performs no ownership check, so with
@@ -101,6 +107,12 @@ type Creds struct {
 	baseOnce    sync.Once
 	baseJSON    []byte
 	baseStorage map[string]any
+
+	// keptPolicies and keptStorage memoize desiredStorage's last block, so a
+	// reconcile whose Apps' counts have not moved reuses it.
+	keptMu       sync.Mutex
+	keptPolicies []zotRetentionPolicy
+	keptStorage  map[string]any
 
 	mu         sync.Mutex
 	apps       map[string]activation
@@ -472,8 +484,9 @@ func (c *Creds) removeHTPasswdEntry(ctx context.Context, username string) (bool,
 // -- Zot config Secret --------------------------------------------------------
 
 // ensureZotConfigEntry grants zotUser exactly actions on each of repos, and
-// brings the operator-owned storage and platform-builder policies up to
-// canonical while it holds the document. The builder migration matters for
+// brings the operator-owned storage block (desiredStorage: GC, and retention
+// with the per-plan policies) and platform-builder policies up to canonical
+// while it holds the document. The builder migration matters for
 // configs created before per-App ACLs: Zot applies only the longest repository
 // match, so an exact per-App rule shadows the builder's ** rule. Bootstraps the
 // Secret from the canonical base config when it does not exist.
@@ -492,13 +505,14 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, zotUser string, action
 // any other user's grant there: a repository name this user once claimed that
 // another App may own.
 func (c *Creds) ensureZotConfigEntryReleasing(ctx context.Context, zotUser string, actions []string, grant, release []string) (bool, error) {
+	storage := c.desiredStorage(ctx)
 	return c.mutateSecretKey(ctx, c.ConfigName, zotConfigKey, c.baseZotConfig,
 		func(current []byte) ([]byte, bool, error) {
 			data, err := decodeZotConfig(current)
 			if err != nil {
 				return nil, false, err
 			}
-			changed := setZotStorage(data, c.canonicalStorage())
+			changed := storage != nil && setZotStorage(data, storage)
 			if !zotHasBuilderAdminPolicy(data) {
 				setZotBuilderAdminPolicy(data)
 				changed = true
@@ -538,15 +552,18 @@ func (c *Creds) removeZotConfigEntry(ctx context.Context, repos ...string) (bool
 
 // removeZotConfigEntryReleasing is removeZotConfigEntry dropping remove's
 // entries that also takes zotUser off each of release in the same document
-// hold, leaving any other user's grant there.
+// hold, leaving any other user's grant there. It converges the storage block
+// too, so a deleted App's retention policy leaves with its grant even when it
+// was the last App to write.
 func (c *Creds) removeZotConfigEntryReleasing(ctx context.Context, zotUser string, remove, release []string) (bool, error) {
+	storage := c.desiredStorage(ctx)
 	removed, err := c.mutateSecretKey(ctx, c.ConfigName, zotConfigKey, nil,
 		func(current []byte) ([]byte, bool, error) {
 			data, err := decodeZotConfig(current)
 			if err != nil {
 				return nil, false, err
 			}
-			changed := false
+			changed := storage != nil && setZotStorage(data, storage)
 			for _, repo := range remove {
 				// A colliding App's deletion must not strip the platform rule.
 				if repo == platformBuilderRepository || !zotHasRepo(data, repo) {

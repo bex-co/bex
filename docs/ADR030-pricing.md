@@ -137,15 +137,62 @@ Render's [features-by-plan page](https://render.com/docs/platform-features-by-pl
 | HTTP request logs | Pro | explicit `type=request` refused; all-types queries and label discovery drop request lines and request-only values |
 | Audit logs | Pro | events are still recorded on Hobby; reading them is refused |
 | Response latency metrics | Pro | `http_latency` refused; request counts and bandwidth stay open |
+| Autoscaling | Pro | turning it on is refused on every write path (w7/m429); a policy already on keeps running, re-sends unchanged and can be turned off |
 | Inbound IP rules on services, static sites and environments | Scale | Postgres and Key Value rules stay on every plan |
 
 **Free datastores (w4/m241):** every workspace, on any plan, may hold one free Postgres and one free Key Value (Render's free rule); paid instances never count toward it. Admission enforces it by instance plan (`FREE_INSTANCE_LIMIT`), and Hobby's total datastore quota is the paid ceiling (25/25) so a paid create is never refused for holding a free one. A terminating free instance still holds its free slot until deletion finishes.
 
-**Machine codes (w8/m138 t013):** a count cap answers `PLAN_LIMIT` (`params {plan, limit, field}`: members, environments per project) and a missing feature `PLAN_FEATURE_REQUIRED` (`params {plan, feature, requiredPlan[, field]}`, `feature` one of `networkIsolation`, `requestLogs`, `auditLogs`, `latencyMetrics`), on REST `code`/`params`, GraphQL `extensions` and the MCP message prefix. Webhooks keep their earlier `WEBHOOK_PLAN_LIMIT`. Messages are unchanged. Blueprint validate reports the environment cap and network isolation at the authored entry with the code.
+**Machine codes (w8/m138 t013):** a count cap answers `PLAN_LIMIT` (`params {plan, limit, field}`: members, environments per project) and a missing feature `PLAN_FEATURE_REQUIRED` (`params {plan, feature, requiredPlan[, field]}`, `feature` one of `networkIsolation`, `requestLogs`, `auditLogs`, `latencyMetrics`, `autoscaling`), on REST `code`/`params`, GraphQL `extensions` and the MCP message prefix. Webhooks keep their earlier `WEBHOOK_PLAN_LIMIT`. Messages are unchanged. Blueprint validate reports the environment cap and network isolation at the authored entry with the code, and autoscaling at the service's `scaling` (w7/m429).
 
 **Inventory (w8/m138 t006, 2026-10-29):** production held 64 Hobby, 2 Scale and 1 Enterprise workspaces, and no Hobby workspace had a project with three or more environments, an isolated environment or a webhook endpoint, so no migration was needed.
 
 Existing state is never silently removed: a Hobby workspace keeps its third environment, isolated environments, webhook endpoints and IP rules working, and only new uses are refused. An unreadable plan fails the write; an unwired plan reader (store-off) leaves every feature open. Render's exact refusal wording and its request-log behavior on Hobby are unverified (no Render account); bex takes the documented 400 with the plan named.
+
+**Every row of Render's plan tables has a disposition (w7/m429 t005, 2026-11-16).** Render publishes its plan differences twice: the comparison table on render.com/pricing (93 rows) and [platform-features-by-plan](https://render.com/docs/platform-features-by-plan) (27 lines). Both are captured row by row in [render-artifacts/pricing.md](render-artifacts/pricing.md) and as fixtures in `lego/backend/internal/pricing/testdata/`. `TestEveryRenderPlanRowHasADisposition` (`plan_table_test.go`) maps each row to exactly one disposition below. It fails on a captured row with none and on a disposition whose row is gone. Where the disposition is a number or a gate, it compares Render's value with the code's on every plan. To take in a change to Render's tables, re-capture the fixture, then give every new row its disposition here and in the test.
+
+Besides the gates in the table above, two limits follow the plan since w7/m429: the builds kept for rollback (Hobby 5, Pro 15, Scale and Enterprise 30, `core.KeptBuilds`, [ADR060](ADR060-build-worker-reliability-and-performance.md)) and the custom domains included before they are metered (Hobby 2, Pro 15, Scale 25, Enterprise all, `core.IncludedCustomDomains`).
+
+| Disposition | Rows (table) | Where bex records it |
+| --- | --- | --- |
+| Gate (`core.planFeatures`) | Horizontal autoscaling (pricing), Autoscaling (features by plan) | core.planFeatures autoscaling |
+| Gate (`core.planFeatures`) | Inbound IP rules (pricing), Expanded inbound IP rules (features by plan) | core.planFeatures inbound IP rules |
+| Gate (`core.planFeatures`) | Network-isolated environments (pricing), Network-isolated environments (features by plan) | core.planFeatures network-isolated environments |
+| Gate (`core.planFeatures`) | HTTP request logs (pricing), HTTP request logs (features by plan) | core.planFeatures HTTP request logs |
+| Gate (`core.planFeatures`) | Audit logs (pricing), Audit logs (features by plan) | core.planFeatures audit logs |
+| Gate (`core.planFeatures`) | Response latency metrics (features by plan) | core.planFeatures response latency metrics |
+| Gate (`core.planFeatures`) | Webhooks (features by plan) | core.planFeatures webhooks, core.WebhookDestinationLimit |
+| Limit | Maximum services (pricing), Unlimited services (features by plan) | store.LimitsFor MaxServices |
+| Limit | Instant rollbacks (pricing) | ADR060, core.KeptBuilds |
+| Limit | Environments (pricing), Unlimited projects and environments (features by plan) | core.MaxEnvironmentsPerProject |
+| Limit | Team seats (pricing), Unlimited workspace members (features by plan) | store.LimitsFor MaxMembers |
+| Limit | Workspace user roles (pricing), Additional member roles (features by plan) | store.LimitsFor AllowedRoles |
+| Limit | Increased number of included custom domains (features by plan) | core.IncludedCustomDomains |
+| Limit | Increased retention of past builds for rollbacks (features by plan) | core.KeptBuilds |
+| Included, then metered | Bandwidth (pricing) | ADR030 §14, pricing.yaml bandwidth.includedGB |
+| Included, then metered | Custom domains (pricing) | ADR030 §16, core.IncludedCustomDomains, pricing.yaml customDomains |
+| Included, then metered | Standard build pipeline (pricing) | ADR030 §13, pricing.yaml build.includedMinutes |
+| Included, then metered | Increased monthly included amounts of pipeline minutes and bandwidth usage (features by plan) | ADR030 §13, §14 |
+| Retention window | Log retention (pricing) | core.logRetention (w9/m389) |
+| Retention window | Increased retention of historical service metrics and logs (features by plan) | core.logRetention, core.metricsRetention |
+| Same on every plan | Compute (pricing), Static Sites (pricing), Standard services (pricing), Web services (pricing), Private services (pricing), Background workers (pricing), Persistent disks (pricing), Postgres databases (pricing), Expandable storage (pricing), Read-only replicas (pricing), High availability (pricing), Key-value (Redis-compatible) (pricing), Cron jobs (pricing), Sandboxes (pricing), Maximum session length (pricing), Snapshot storage (pricing), Service scaling (pricing), Vertical scaling (pricing), Automatic private networking (pricing), Global regions (pricing), Zero-config CDN (pricing), Edge caching for web services (pricing), Automatic TLS (pricing), Wildcard domains (pricing), WebSockets (pricing), Service discovery (pricing), Automatic DDoS mitigation (pricing), Firewall (pricing), HTTPS only (pricing), Automatic builds (pricing), Native runtimes (pricing), Docker builds (pricing), Environment variables & secret files (pricing), Monorepo support (pricing), Deploy orchestration (pricing), Auto-deploys (pricing), Zero-downtime deploys (pricing), Deploy hooks (pricing), Pre-deploy command (pricing), Projects (pricing), Protected environments (pricing), Infrastructure as code (pricing), SSH access (pricing), Health checks (pricing), Service metrics (pricing), Notifications (pricing), 2FA & Google login (pricing) | per row in `plan_table_test.go` |
+| Non-goal | Workflows (pricing) | DO_NOT_DO: Workflows & tasks; ADR018 Workflows & tasks |
+| Non-goal | Parallel task compute (pricing), New task compute per minute (pricing), Increased per-minute task provisioning for Render Workflows (features by plan) | DO_NOT_DO: Workflows & tasks |
+| Non-goal | Dedicated IPs (pricing) | DO_NOT_DO: dedicated outbound IPs; ADR018 Dedicated outbound IPs |
+| Non-goal | Previews (pricing), Single-service previews (pricing), Full-stack preview environments (pricing), Preview environments (features by plan) | DO_NOT_DO: PR preview environments |
+| Non-goal | Log streams (pricing) | DO_NOT_DO: external log/metric drains; ADR018 Log streams |
+| Non-goal | OpenTelemetry metrics stream (pricing) | DO_NOT_DO: external log/metric drains; ADR018 Metric streams |
+| Non-goal | Organization user roles (pricing), Org-level audit logs (features by plan) | ADR018 Render audit-log paths: bex has no organization scope |
+| Non-goal | SAML SSO (pricing), SCIM (pricing) | DO_NOT_DO: SSO/SAML · SCIM; ADR018 SSO / SAML · SCIM |
+| Non-goal | Dedicated outbound IPs (features by plan) | DO_NOT_DO: dedicated outbound IPs |
+| Non-goal | Metrics streaming (features by plan), Log stream overrides (features by plan) | DO_NOT_DO: external log/metric drains |
+| Non-goal | SAML SSO and SCIM (features by plan) | DO_NOT_DO: SSO/SAML · SCIM |
+| Open gap | Performance build pipeline (pricing), Performance build pipeline (features by plan) | ADR018 Performance pipeline tier, w6/m310 |
+| Open gap | OIDC authentication (pricing), OIDC (features by plan) | ADR018 Managed OIDC for AI providers |
+| Not applied yet: filed | Point-in-time recovery window (pricing) | w7/068 (Postgres point-in-time recovery window by plan) |
+| Not applied yet: filed | Default concurrent sandboxes (pricing) | w7/069 (default concurrent sandboxes by plan) |
+| Not applied yet: filed | AWS private links (pricing), Private link outbound bandwidth (pricing), HIPAA BAA (pricing), Private links (features by plan), HIPAA-enabled workspaces (features by plan) | w7/071 (HIPAA-enabled workspaces and AWS private links have no recorded disposition) |
+| Not applied yet: filed | Workspaces (pricing), Enforce 2FA & Google login (pricing) | w7/070 (workspaces per plan and enforced 2FA on Pro and higher) |
+| Commercial term, not a product surface | GDPR DPA (pricing), SOC 2 Type II (pricing), ISO 27001 (pricing), SOC 2 & ISO documentation (pricing), Email (pricing), Chat (pricing), Premium support (pricing), Private Slack channel (pricing), Dedicated technical account team (pricing), Support response SLAs (pricing), Migration assistance & architecture review (pricing), Compliance documentation (features by plan) | per row in `plan_table_test.go` |
 
 ### 10. Free web services share 750 instance hours per workspace per month (w8/m139)
 
@@ -217,6 +264,29 @@ Render bills a running sandbox for used CPU plus allocated memory and a suspende
 - **Storage, now (`w22/m313`).** `sandbox_snapshot_gb_seconds` is decimal GB × seconds a suspended sandbox's retained image is kept, at **$0.056 per GB-month** (Render's $0.08 × 0.70, `pricing.yaml` `sandboxSnapshot`, 730-hour month), re-based to GB-hours for Stripe (`sandbox_snapshot_gb_hours`). A workspace whose only sandbox sat suspended for a month with a 10 GB image previews $0.56 and no compute. The bytes are the compressed OCI manifest size read from the registry, and what is double-counted is stated in [ADR023 § Sandbox snapshot storage](ADR023-usage-metering.md#sandbox-snapshot-storage-w22m313-adr104-d8). The Price exists on the live Stripe account (created 2026-11-10 by `scripts/stripe-billing-setup.py --live`) and the meter is not held: a new Stripe account must run that script before bex-api starts against it. Agent-session sandboxes are not metered for storage (their cost is the session's, ADR047 D6).
 - **Memory, recorded, not billed (`w22/m313`).** `sandbox_memory_gb_seconds` (allocated GiB × running seconds) is recorded beside the weighted `sandbox_compute_seconds` charge, which already includes memory at the AgentCore reference ratio, and is shown on the usage surfaces at a rate of $0. Billing switches to memory plus used CPU in one step when the used-CPU meter lands (`w22/m314`); until then the compute charge is unchanged, and so is an agent session's `outcome.cost`.
 - **Hobby.** Whether Hobby workspaces pay for sandbox usage is still open ([ADR104](ADR104-sandbox-render-parity.md) D8): `pricing.yaml` keeps Hobby plans free, and Render's pages do not say.
+
+### 16. Included custom domains: 2, 15 and 25 by plan, then metered, as on Render (w7/m429 t004)
+
+Render's plan table (render.com/pricing, read 2026-11-16) has the row "Custom domains: 2 included then $0.25/domain/month" on Hobby, 15 on Pro, 25 on Scale and "Custom" on Enterprise. [render.com/docs/custom-domains](https://render.com/docs/custom-domains) (read 2026-11-16): "Your workspace includes an amount of custom domains based on its plan" and "Each custom domain you add beyond this amount costs $0.25 per month." Render charges past the count; it does not refuse. Until w7/m429 bex had no included count and no price. bex now follows Render:
+
+- **Included count.** One table, `core.IncludedCustomDomains`: Hobby 2, Pro 15, Scale 25. Enterprise includes every domain until a contract says otherwise. As for every allowance (§13), a workspace without a plan (the default tenant) is not metered.
+- **What counts.** One counted domain is one verified `domains` row that bex did not generate:
+  - _Verified only._ An unverified claim never routes and is reclaimed after 48 hours (ADR005), so it is not counted.
+  - _A `www`/apex pair counts once._ bex stores the pair as two rows, and the half bex adds (Render adds it automatically, `redirect_for_name` set) is not counted. A sibling the customer adds explicitly loses its redirect and counts as its own domain.
+  - _A wildcard counts as one domain._ `*.example.com` is one row.
+  - _Suspended services count_: their domains stay configured. The service's own `<slug>.onbex.co` host is never a claim, so it never counts.
+- **Meter.** `custom_domain_seconds` ([ADR023 § Custom domains above the included count](ADR023-usage-metering.md#custom-domains-above-the-included-count-w7m429)): each hour, one row per workspace with the domains above its count × the seconds each was verified in that hour. At any moment the domains above the count are the most recently verified ones. Only those are written, so every unit is charged. The hour uses the plan in force when it is metered.
+- **Price.** **$0.175 per domain-month** (Render's $0.25 × 0.70, §2), prorated by the second over the 730-hour month: `pricing.yaml` `customDomains.usdPerDomainSecond`. A Hobby workspace with three verified domains all month previews $0.18. The section stays out of the public `GET /pricing` sheet until bex.co quotes it.
+- **Never refused for the count.** Only the abuse caps refuse a domain (`BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE` 100 and `_PER_WORKSPACE` 500, `CUSTOM_DOMAIN_LIMIT`). The included count gates nothing.
+- **Surfaces.** For the current month, REST `GET /v1/usage`, GraphQL `usage` and MCP `get_usage` carry `customDomains {used, included, unlimited}` (`unlimited` on Enterprise). It is omitted for a past month, because the count is the present inventory, and where no plan applies. `estimatedCost` carries the `custom_domain_seconds` line under resource kind `custom_domains` (one per workspace, keyed by its id, named "Custom domains"), in domain-months at $0.175. The Billing page's included usage shows a "Custom domains" card ("3 of 2 included custom domains in use"), and the charge tree shows the line.
+- **Stripe.** The `custom_domain_hours` meter carries domain-seconds ÷ 3,600 at 0.023972602740¢ per domain-hour. The live Price does not exist yet: the user creates it with `python3 scripts/stripe-billing-setup.py --live` (the agent may not write live Stripe, `w2/blocked/070`). Until then bex-api holds the meter, as it held the agent model meter (ADR091 D3): it is on no Subscription and its rows stay pending in the outbox. No card is charged for domains, though the estimate shows them. After the live run, `BEX_STRIPE_CUSTOM_DOMAIN_METER` goes to `"1"` in `lego/operator/config/api/deployment.yaml`. Held rows inside the 34-day backfill horizon then ship, and `EnsureContract` adds the item to existing Subscriptions. The meter brings the catalog to 20 dimensions, Stripe's maximum per Subscription: one more needs a contract redesign (`TestCatalogFitsOneSubscription`).
+- **Decision state.** This charge is a recommendation resting on ADR008's Render parity first, not a recorded user decision. Keeping extra domains free would be a divergence that needs the user's sign-off in ADR018.
+- **Unverified against Render.**
+  - Whether the automatically added `www`/apex sibling counts. Render's docs say "each custom domain you add".
+  - Whether an unverified domain counts.
+  - How a wildcard counts. Render's plan-table data carries a hidden "$0.25 per domain per month" in the check cells of its "Wildcard domains" row on every plan, which the page does not normally show. Whether Render bills wildcards outside the included count is unknown; bex counts a wildcard as one domain toward it.
+  - What a plan downgrade does to domains already above the new count. bex keeps them and charges them, by ADR030 §9's rule that existing state is never removed.
+  - How Render prorates within a month. bex prorates by the second, like its other monthly prices.
 
 ## Consequences
 

@@ -93,6 +93,8 @@ describe("useUsage", () => {
       // buildMinutes absent from the response ⇒ none used, no allowance.
       buildMinutes: { used: 0, included: 0 },
       includedBandwidth: { used: 0, included: 0 },
+      // customDomains absent from the response ⇒ null: no count to show (w7/m429).
+      customDomains: null,
       estimatedCost: {
         totalUsd: "4.92",
         resources: [

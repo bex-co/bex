@@ -673,6 +673,18 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
   },
+  "services.scalingProPlanOnly": {
+    message:
+      "Автомасштабирование доступно на тарифе рабочего пространства Pro и выше. Это рабочее пространство на тарифе Hobby.",
+    description:
+      "Autoscaling card notice on a Hobby workspace, followed by an Open Billing link (w7/m429)",
+  },
+  "services.scalingProPlanOnlyRunning": {
+    message:
+      "Автомасштабирование доступно на тарифе рабочего пространства Pro и выше. Это рабочее пространство на тарифе Hobby: политика ниже продолжает работать и её можно выключить, но чтобы изменить её или включить снова, нужен Pro.",
+    description:
+      "Autoscaling card notice on a Hobby workspace whose service already autoscales, followed by an Open Billing link (w7/m429)",
+  },
   "services.scalingMetricsUnavailableTitle": {
     message: "Автомасштабирование приостановлено: метрики загрузки недоступны",
     description:

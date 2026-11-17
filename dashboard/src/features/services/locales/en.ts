@@ -666,6 +666,18 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
   },
+  "services.scalingProPlanOnly": {
+    message:
+      "Autoscaling is available on the Pro workspace plan and higher. This workspace is on Hobby.",
+    description:
+      "Autoscaling card notice on a Hobby workspace, followed by an Open Billing link (w7/m429)",
+  },
+  "services.scalingProPlanOnlyRunning": {
+    message:
+      "Autoscaling is available on the Pro workspace plan and higher. This workspace is on Hobby: the policy below keeps running and can be turned off, but changing it or turning it back on needs Pro.",
+    description:
+      "Autoscaling card notice on a Hobby workspace whose service already autoscales, followed by an Open Billing link (w7/m429)",
+  },
   "services.scalingMetricsUnavailableTitle": {
     message: "Autoscaling is paused: utilization metrics are unavailable",
     description:

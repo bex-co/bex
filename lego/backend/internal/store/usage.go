@@ -66,6 +66,12 @@ const (
 	// not, because that is what Render charges for and what Hetzner charges
 	// bex for; see docs/ADR082-persistent-disks.md D8/D9.
 	UsageKindDiskGBSeconds = "disk_gb_seconds"
+	// UsageKindCustomDomainSeconds is each verified custom domain above the
+	// workspace plan's included count (core.IncludedCustomDomains) multiplied
+	// by the seconds it was verified in the hour: Render's "2 included then
+	// $0.25/domain/month" (w7/m429, docs/ADR030 §16). Its rows carry
+	// ResourceKindCustomDomains and the workspace id as service_id.
+	UsageKindCustomDomainSeconds = "custom_domain_seconds"
 )
 
 // Usage source-health vocabulary. Keep this closed and presentation-safe: the
@@ -116,6 +122,10 @@ const (
 	// ResourceKindObjectStorage is a workspace's object storage (ADR112): one
 	// resource per workspace, service_id the workspace id (`tea-…`).
 	ResourceKindObjectStorage = "object_storage"
+	// ResourceKindCustomDomains is a workspace's custom domains beyond its
+	// plan's included count (w7/m429): one resource per workspace, service_id
+	// the workspace id (`tea-…`).
+	ResourceKindCustomDomains = "custom_domains"
 )
 
 // HourlyRow is one window of usage for one resource + meter kind.

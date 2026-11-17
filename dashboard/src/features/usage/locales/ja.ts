@@ -109,6 +109,44 @@ const jaUsage: Record<string, TranslationEntry> = {
       "含まれる帯域幅を使い切りました。それを超えた分は GB 単位で課金されます。お支払い方法がない場合、ワークスペースのサービスは来月の初めまでスピンダウンします。",
     description: "Notice once the included bandwidth is spent (w6/m319)",
   },
+  "usage.customDomainsTitle": {
+    message: "カスタムドメイン",
+    description:
+      "Title of the included custom domains card on the billing page (w7/m429)",
+  },
+  "usage.customDomainsDescription": {
+    message:
+      "プランには一定数の検証済みカスタムドメインが含まれます。それを超える各ドメインは、検証されている期間に応じて 1 件ごとに月単位で課金されます。件数を理由にドメインの追加が拒否されることはありません。",
+    description:
+      "Explains the plan's included custom domains and how domains beyond them are billed (w7/m429)",
+  },
+  "usage.customDomainsUsed": {
+    message:
+      "プランに含まれる {included} 件中 {used} 件のカスタムドメインを使用中です",
+    description:
+      "Verified custom domains now against the count the plan includes (w7/m429)",
+  },
+  "usage.customDomainsNear": {
+    message:
+      "プランに含まれるカスタムドメインの件数に近づいています。超過したドメインは 1 件ごとに月単位で課金されます。",
+    description:
+      "Note once the verified custom domains reach 80 percent of the included count (w7/m429)",
+  },
+  "usage.customDomainsSpent": {
+    message:
+      "プランに含まれるカスタムドメインはすべて使用中です。追加で検証されたドメインは 1 件ごとに月単位で課金されます。",
+    description: "Notice once every included custom domain is in use (w7/m429)",
+  },
+  "usage.categoryCustomDomains": {
+    message: "カスタムドメイン",
+    description:
+      "Charge-tree category for a workspace's custom domains beyond its plan (w7/m429)",
+  },
+  "usage.chargeCustomDomains": {
+    message: "プラン超過分のカスタムドメイン",
+    description:
+      "Charge line for custom domains beyond the plan's included count, billed per domain-month (w7/m429)",
+  },
   "usage.chargeIncluded": {
     message: "{included} 含まれる",
     description:

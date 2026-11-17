@@ -113,6 +113,44 @@ const deUsage: Record<string, TranslationEntry> = {
       "Die enthaltene Bandbreite ist aufgebraucht. Weitere Bandbreite wird pro GB abgerechnet; ohne Zahlungsmethode werden die Services deines Workspace bis zum Beginn des nächsten Monats heruntergefahren.",
     description: "Notice once the included bandwidth is spent (w6/m319)",
   },
+  "usage.customDomainsTitle": {
+    message: "Benutzerdefinierte Domains",
+    description:
+      "Title of the included custom domains card on the billing page (w7/m429)",
+  },
+  "usage.customDomainsDescription": {
+    message:
+      "Dein Plan enthält eine Anzahl verifizierter benutzerdefinierter Domains. Jede weitere Domain wird pro Monat berechnet, für die Zeit, in der sie verifiziert ist. Das Hinzufügen einer Domain wird nie wegen der Anzahl abgelehnt.",
+    description:
+      "Explains the plan's included custom domains and how domains beyond them are billed (w7/m429)",
+  },
+  "usage.customDomainsUsed": {
+    message:
+      "{used} von {included} enthaltenen benutzerdefinierten Domains in Verwendung",
+    description:
+      "Verified custom domains now against the count the plan includes (w7/m429)",
+  },
+  "usage.customDomainsNear": {
+    message:
+      "Du näherst dich den in deinem Plan enthaltenen benutzerdefinierten Domains. Jede weitere Domain wird pro Monat berechnet.",
+    description:
+      "Note once the verified custom domains reach 80 percent of the included count (w7/m429)",
+  },
+  "usage.customDomainsSpent": {
+    message:
+      "Die in deinem Plan enthaltenen benutzerdefinierten Domains sind in Verwendung. Jede weitere verifizierte Domain wird pro Monat berechnet.",
+    description: "Notice once every included custom domain is in use (w7/m429)",
+  },
+  "usage.categoryCustomDomains": {
+    message: "Benutzerdefinierte Domains",
+    description:
+      "Charge-tree category for a workspace's custom domains beyond its plan (w7/m429)",
+  },
+  "usage.chargeCustomDomains": {
+    message: "Benutzerdefinierte Domains über den Plan hinaus",
+    description:
+      "Charge line for custom domains beyond the plan's included count, billed per domain-month (w7/m429)",
+  },
   "usage.chargeIncluded": {
     message: "{included} enthalten",
     description:

@@ -1,0 +1,32 @@
+# Render's platform features by plan: render.com/docs/platform-features-by-plan,
+# read 2026-11-16 (every feature row and every "Increased limits and retention"
+# line). Columns: category, feature, the lowest plan that includes it.
+# Captured in full in docs/render-artifacts/pricing.md; the guard is
+# plan_table_test.go (w7/m429).
+Service ops	Autoscaling	pro
+Service ops	Preview environments	pro
+Service ops	Performance build pipeline	pro
+Networking	Dedicated outbound IPs	pro
+Networking	Network-isolated environments	pro
+Networking	Private links	pro
+Networking	Expanded inbound IP rules	scale
+Observability	HTTP request logs	pro
+Observability	Response latency metrics	pro
+Observability	Metrics streaming	pro
+Observability	Log stream overrides	pro
+Observability	Webhooks	pro
+Compliance and governance	Compliance documentation	pro
+Compliance and governance	Audit logs	pro
+Compliance and governance	OIDC	pro
+Compliance and governance	SAML SSO and SCIM	scale
+Compliance and governance	Org-level audit logs	scale
+Compliance and governance	Additional member roles	scale
+Compliance and governance	HIPAA-enabled workspaces	scale
+Increased limits and retention	Unlimited workspace members	pro
+Increased limits and retention	Unlimited services	pro
+Increased limits and retention	Unlimited projects and environments	pro
+Increased limits and retention	Increased number of included custom domains	pro
+Increased limits and retention	Increased monthly included amounts of pipeline minutes and bandwidth usage	pro
+Increased limits and retention	Increased retention of past builds for rollbacks	pro
+Increased limits and retention	Increased retention of historical service metrics and logs	pro
+Increased limits and retention	Increased per-minute task provisioning for Render Workflows	pro

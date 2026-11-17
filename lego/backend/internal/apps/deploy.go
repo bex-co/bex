@@ -1911,6 +1911,9 @@ func (s *Service) validateBlueprintService(ctx context.Context, svc parsedServic
 	if err := s.requireServiceInboundRules(ctx, s.resolveTenantID(ctx), desired, appsByName[svc.req.Name]); err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
+	if err := s.requireAutoscalingPlan(ctx, s.resolveTenantID(ctx), desired.Autoscaling, appsByName[svc.req.Name], "scaling"); err != nil {
+		return fmt.Errorf("service %q: %w", svc.req.Name, err)
+	}
 	if err := s.previewBlueprintHosts(ctx, svc.req.Name, desired, appsByName[svc.req.Name]); err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
@@ -3806,6 +3809,9 @@ func (s *Service) applyStackService(ctx context.Context, req CreateRequest, fiel
 		}
 	}
 	if err := s.requireServiceInboundRules(ctx, s.resolveTenantID(ctx), desired, existing); err != nil {
+		return AppView{}, nil, err
+	}
+	if err := s.requireAutoscalingPlan(ctx, s.resolveTenantID(ctx), desired.Autoscaling, existing, "scaling"); err != nil {
 		return AppView{}, nil, err
 	}
 	if existing == nil {

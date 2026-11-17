@@ -161,6 +161,19 @@ export interface IncludedBandwidth {
   included: number;
 }
 
+/**
+ * The workspace's verified custom domains now against the count its plan
+ * includes (w7/m429; bex-api's `core.IncludedCustomDomains`), `unlimited` on
+ * Enterprise.
+ * Each domain above it is charged per domain-month (the
+ * `custom_domain_seconds` charge line); none is refused for the count.
+ */
+export interface CustomDomainsUsage {
+  used: number;
+  included: number;
+  unlimited: boolean;
+}
+
 /** One model's share of the period's agent model spend (ADR091 D6). */
 export interface AgentModelBreakdown {
   model: string;
@@ -187,6 +200,8 @@ export interface UsageSummary {
   freeInstanceHours: FreeInstanceHours;
   buildMinutes: BuildMinutes;
   includedBandwidth: IncludedBandwidth;
+  /** null for a past period (the count is the present one) and where no plan applies. */
+  customDomains: CustomDomainsUsage | null;
   agentModel: AgentModelUsage | null;
   estimatedCost: EstimatedCost | null;
   billing: Billing | null;
@@ -243,6 +258,13 @@ export function useUsage(period?: string): UseUsageResult {
               used: raw.includedBandwidth?.used ?? 0,
               included: raw.includedBandwidth?.included ?? 0,
             },
+            customDomains: raw.customDomains
+              ? {
+                  used: raw.customDomains.used,
+                  included: raw.customDomains.included,
+                  unlimited: raw.customDomains.unlimited,
+                }
+              : null,
             agentModel: raw.agentModel
               ? {
                   monthToDateUsd: raw.agentModel.monthToDateUsd,

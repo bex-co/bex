@@ -108,6 +108,142 @@ $0.005 per build-minute above the plan's included build-minute allowance.
 
 ---
 
+## Workspace plan comparison table (read 2026-11-16, w7/m429)
+
+Source: render.com/pricing, the workspace plan comparison table, read from the page's embedded table data on 2026-11-16: every row and every column as the page displays it ("✓" a tick, "—" a blank cell, a cell's footnote after it). The same rows are the fixture `lego/backend/internal/pricing/testdata/render-plan-table.tsv`, and `plan_table_test.go` fails while any row has no disposition in bex ([ADR030 §9](../ADR030-pricing.md#9-workspace-plans-gate-renders-plan-features-w8m137-w8m138)). One cell the page does not display: the Wildcard domains row's ticks carry the text "$0.25 per domain per month" on every plan in the data, so whether Render bills a wildcard domain outside the included count is unverified.
+
+| Section | Row | Hobby | Pro | Scale | Enterprise |
+| --- | --- | --- | --- | --- | --- |
+| Render Services & Storage | Compute | per instance type (render.com/pricing#compute) |  |  |  |
+| Render Services & Storage | Maximum services | 25 | Unlimited | Unlimited | Unlimited |
+| Render Services & Storage | Static Sites | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Standard services | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Web services | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Private services | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Background workers | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Persistent disks | $0.25 per GB per month | $0.25 per GB per month | $0.25 per GB per month | $0.25 per GB per month |
+| Render Services & Storage | Postgres databases | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Expandable storage | $0.30 per GB | $0.30 per GB | $0.30 per GB | $0.30 per GB |
+| Render Services & Storage | Point-in-time recovery window | 3 days | 7 days | 7 days | 7 days |
+| Render Services & Storage | Read-only replicas | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | High availability | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Key-value (Redis-compatible) | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Cron jobs | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Workflows | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Parallel task compute | 10,000 CPU 40,000 GB RAM | 10,000 CPU 40,000 GB RAM | 10,000 CPU 40,000 GB RAM | Custom |
+| Render Services & Storage | New task compute per minute | 16 CPU 64 GB RAM | 32 CPU 128 GB RAM | 32 CPU 128 GB RAM | Custom |
+| Render Services & Storage | Sandboxes | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Default concurrent sandboxes | 100 | 1,000 Up to 5,000 on request | 1,000 Up to 10,000 on request | Custom |
+| Render Services & Storage | Maximum session length | No limit | No limit | No limit | No limit |
+| Render Services & Storage | Snapshot storage | $0.08 per GB per month | $0.08 per GB per month | $0.08 per GB per month | $0.08 per GB per month |
+| Render Services & Storage | Service scaling | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Vertical scaling | ✓ | ✓ | ✓ | ✓ |
+| Render Services & Storage | Horizontal autoscaling | — | ✓ | ✓ | ✓ |
+| Networking | Automatic private networking | ✓ | ✓ | ✓ | ✓ |
+| Networking | Bandwidth | 5 GB included per month then $0.15 per GB | 25 GB included per month then $0.15 per GB | 1 TB included per month then $0.15 per GB | Custom |
+| Networking | Global regions | ✓ | ✓ | ✓ | ✓ |
+| Networking | Zero-config CDN | ✓ | ✓ | ✓ | ✓ |
+| Networking | Edge caching for web services | ✓ | ✓ | ✓ | ✓ |
+| Networking | Custom domains | 2 included then $0.25/domain/month | 15 included then $0.25/domain/month | 25 included then $0.25/domain/month | Custom |
+| Networking | Automatic TLS | ✓ | ✓ | ✓ | ✓ |
+| Networking | Wildcard domains | ✓ | ✓ | ✓ | ✓ |
+| Networking | WebSockets | ✓ | ✓ | ✓ | ✓ |
+| Networking | Service discovery | ✓ | ✓ | ✓ | ✓ |
+| Networking | Dedicated IPs | — | $100 per month for each IP set | $100 per month for each IP set | Custom |
+| Networking | AWS private links | — | $30 per month Includes up to 3 links | $30 per month Includes up to 3 links | Custom |
+| Networking | Private link outbound bandwidth | — | $0.03 per GB | $0.03 per GB | Custom |
+| Protection | Automatic DDoS mitigation | ✓ | ✓ | ✓ | ✓ |
+| Protection | Firewall | ✓ | ✓ | ✓ | ✓ |
+| Protection | HTTPS only | ✓ | ✓ | ✓ | ✓ |
+| Protection | Inbound IP rules | Datastores only Postgres and Key Value | Datastores only Postgres and Key Value | ✓ | ✓ |
+| Protection | Network-isolated environments | — | ✓ | ✓ | ✓ |
+| Build & Deploy | Automatic builds | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Standard build pipeline | 500 mins per month then $5 per 1K mins | 1K mins per month then $5 per 1K mins | 5K mins per workspace per mo. then $5 per 1K mins | Custom |
+| Build & Deploy | Performance build pipeline | — | $25 per 1000 mins | $25 per 1000 mins | Custom |
+| Build & Deploy | Native runtimes | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Docker builds | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Environment variables & secret files | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Monorepo support | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Previews | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Single-service previews | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Full-stack preview environments | — | ✓ | ✓ | ✓ |
+| Build & Deploy | Deploy orchestration | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Auto-deploys | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Zero-downtime deploys | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Deploy hooks | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Pre-deploy command | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Instant rollbacks | 5 builds retained | 15 builds retained | 30 builds retained | 30 builds retained |
+| Build & Deploy | Projects | Unlimited | Unlimited | Unlimited | Unlimited |
+| Build & Deploy | Environments | 2 per project | Unlimited | Unlimited | Unlimited |
+| Build & Deploy | Protected environments | ✓ | ✓ | ✓ | ✓ |
+| Build & Deploy | Infrastructure as code | ✓ | ✓ | ✓ | ✓ |
+| Monitoring | SSH access | ✓ | ✓ | ✓ | ✓ |
+| Monitoring | Health checks | ✓ | ✓ | ✓ | ✓ |
+| Monitoring | Service metrics | ✓ | ✓ | ✓ | ✓ |
+| Monitoring | Notifications | ✓ | ✓ | ✓ | ✓ |
+| Monitoring | Log retention | 7 days | 14 days | 30 days | 30 days |
+| Monitoring | Log streams | ✓ | ✓ | ✓ | ✓ |
+| Monitoring | HTTP request logs | — | ✓ | ✓ | ✓ |
+| Monitoring | OpenTelemetry metrics stream | — | ✓ | ✓ | ✓ |
+| Platform Access & Security | Team seats | 1 | Unlimited | Unlimited | Unlimited |
+| Platform Access & Security | Workspaces | 1 | 1 | Unlimited | Unlimited |
+| Platform Access & Security | 2FA & Google login | ✓ | ✓ | ✓ | ✓ |
+| Platform Access & Security | Enforce 2FA & Google login | — | ✓ | ✓ | ✓ |
+| Platform Access & Security | Workspace user roles | — | Admin, Developer | Admin, Developer, Contributor, Viewer, Billing | Admin, Developer, Contributor, Viewer, Billing |
+| Platform Access & Security | Organization user roles | — | — | Owner, Member, Guest | Owner, Member, Guest |
+| Platform Access & Security | SAML SSO | — | — | ✓ | ✓ |
+| Platform Access & Security | SCIM | — | — | ✓ | ✓ |
+| Platform Access & Security | OIDC authentication | — | ✓ | ✓ | ✓ |
+| Platform Access & Security | Audit logs | — | Workspace | Workspace and organization | Workspace and organization |
+| Compliance | GDPR DPA | ✓ | ✓ | ✓ | ✓ |
+| Compliance | SOC 2 Type II | ✓ | ✓ | ✓ | ✓ |
+| Compliance | ISO 27001 | ✓ | ✓ | ✓ | ✓ |
+| Compliance | SOC 2 & ISO documentation | — | ✓ | ✓ | ✓ |
+| Compliance | HIPAA BAA | — | — | 20% compute premium for enabled workspaces | 20% compute premium for enabled workspaces |
+| Support | Email | ✓ | ✓ | ✓ | ✓ |
+| Support | Chat | ✓ | ✓ | ✓ | ✓ |
+| Support | Premium support | — | Add-on | Add-on | ✓ |
+| Support | Private Slack channel | — | Add-on | Add-on | ✓ |
+| Support | Dedicated technical account team | — | Add-on | Add-on | ✓ |
+| Support | Support response SLAs | — | Add-on | Add-on | ✓ |
+| Support | Migration assistance & architecture review | — | Add-on | Add-on | ✓ |
+
+## Platform features by plan (read 2026-11-16, w7/m429)
+
+Source: render.com/docs/platform-features-by-plan, read 2026-11-16: every feature row and every "Increased limits and retention" line, with the lowest plan that includes it. Fixture: `lego/backend/internal/pricing/testdata/render-features-by-plan.tsv`, guarded by the same test.
+
+| Category | Feature | Lowest plan |
+| --- | --- | --- |
+| Service ops | Autoscaling | Pro |
+| Service ops | Preview environments | Pro |
+| Service ops | Performance build pipeline | Pro |
+| Networking | Dedicated outbound IPs | Pro |
+| Networking | Network-isolated environments | Pro |
+| Networking | Private links | Pro |
+| Networking | Expanded inbound IP rules | Scale |
+| Observability | HTTP request logs | Pro |
+| Observability | Response latency metrics | Pro |
+| Observability | Metrics streaming | Pro |
+| Observability | Log stream overrides | Pro |
+| Observability | Webhooks | Pro |
+| Compliance and governance | Compliance documentation | Pro |
+| Compliance and governance | Audit logs | Pro |
+| Compliance and governance | OIDC | Pro |
+| Compliance and governance | SAML SSO and SCIM | Scale |
+| Compliance and governance | Org-level audit logs | Scale |
+| Compliance and governance | Additional member roles | Scale |
+| Compliance and governance | HIPAA-enabled workspaces | Scale |
+| Increased limits and retention | Unlimited workspace members | Pro |
+| Increased limits and retention | Unlimited services | Pro |
+| Increased limits and retention | Unlimited projects and environments | Pro |
+| Increased limits and retention | Increased number of included custom domains | Pro |
+| Increased limits and retention | Increased monthly included amounts of pipeline minutes and bandwidth usage | Pro |
+| Increased limits and retention | Increased retention of past builds for rollbacks | Pro |
+| Increased limits and retention | Increased retention of historical service metrics and logs | Pro |
+| Increased limits and retention | Increased per-minute task provisioning for Render Workflows | Pro |
+
+---
+
 ## Notes
 
 - All prices in USD.

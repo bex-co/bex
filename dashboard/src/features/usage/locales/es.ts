@@ -112,6 +112,43 @@ const esUsage: Record<string, TranslationEntry> = {
       "El ancho de banda incluido se ha agotado. El ancho de banda adicional se factura por GB; sin un método de pago, los servicios de tu espacio de trabajo pasan a reposo hasta el inicio del próximo mes.",
     description: "Notice once the included bandwidth is spent (w6/m319)",
   },
+  "usage.customDomainsTitle": {
+    message: "Dominios personalizados",
+    description:
+      "Title of the included custom domains card on the billing page (w7/m429)",
+  },
+  "usage.customDomainsDescription": {
+    message:
+      "Tu plan incluye una cantidad de dominios personalizados verificados. Cada dominio adicional se cobra por mes, según el tiempo que esté verificado. Nunca se rechaza añadir un dominio por la cantidad.",
+    description:
+      "Explains the plan's included custom domains and how domains beyond them are billed (w7/m429)",
+  },
+  "usage.customDomainsUsed": {
+    message: "{used} de {included} dominios personalizados incluidos en uso",
+    description:
+      "Verified custom domains now against the count the plan includes (w7/m429)",
+  },
+  "usage.customDomainsNear": {
+    message:
+      "Estás cerca de los dominios personalizados incluidos en tu plan. Cada dominio adicional se cobra por mes.",
+    description:
+      "Note once the verified custom domains reach 80 percent of the included count (w7/m429)",
+  },
+  "usage.customDomainsSpent": {
+    message:
+      "Los dominios personalizados incluidos en tu plan están en uso. Cada dominio verificado adicional se cobra por mes.",
+    description: "Notice once every included custom domain is in use (w7/m429)",
+  },
+  "usage.categoryCustomDomains": {
+    message: "Dominios personalizados",
+    description:
+      "Charge-tree category for a workspace's custom domains beyond its plan (w7/m429)",
+  },
+  "usage.chargeCustomDomains": {
+    message: "Dominios personalizados fuera del plan",
+    description:
+      "Charge line for custom domains beyond the plan's included count, billed per domain-month (w7/m429)",
+  },
   "usage.chargeIncluded": {
     message: "{included} incluidos",
     description:

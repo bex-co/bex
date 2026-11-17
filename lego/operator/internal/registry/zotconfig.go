@@ -52,7 +52,9 @@ const (
 	// liveRetentionCount of them per repository on top of the pushed window,
 	// so a run of builds that never go live cannot evict the image a running
 	// service needs to reschedule (2026-10-24 beancount.io outage), and recent
-	// rollback targets survive with it.
+	// rollback targets survive with it. An App whose workspace plan sets how
+	// many builds it keeps (appv1alpha1.LabelKeptBuilds, w7/m429) has that
+	// count in place of liveRetentionCount (keptBuildsPolicies).
 	//
 	// Its keepTags entry must come BEFORE the catch-all (zotKeepTags). Zot
 	// gives a tag to the first entry whose pattern matches and counts inside
@@ -360,17 +362,40 @@ func setZotPlatformBuilderPolicy(data map[string]any) {
 	}
 }
 
-// zotKeepTags is a repository's retention: the newest liveRetentionCount
-// live- tags, then the newest retentionCount of every other tag. The order is
-// the rule (see LiveTagPrefix).
-func zotKeepTags(retentionCount int) []zotKeepTag {
+// zotKeepTags is a repository's retention: the newest live live- tags, then
+// the newest retentionCount of every other tag. The order is the rule (see
+// LiveTagPrefix). Both counts must be positive: Zot reads a zero count as no
+// count rule at all and keeps every tag the pattern matches.
+func zotKeepTags(live, retentionCount int) []zotKeepTag {
 	return []zotKeepTag{{
 		Patterns:                []string{"^" + LiveTagPrefix + ".*"},
-		MostRecentlyPushedCount: liveRetentionCount,
+		MostRecentlyPushedCount: live,
 	}, {
 		Patterns:                []string{".*"},
 		MostRecentlyPushedCount: retentionCount,
 	}}
+}
+
+// zotStorageFor is the operator-owned storage block: GC, and retention with
+// kept (the per-plan policies, keptBuildsPolicies) ahead of the catch-all
+// "**" policy every other repository falls to. Zot applies to a repository
+// the FIRST policy one of whose globs matches it (pkg/retention
+// policyManager.getRepoPolicy), so the catch-all must come last.
+func zotStorageFor(retentionCount int, kept []zotRetentionPolicy) zotStorage {
+	return zotStorage{
+		RootDirectory: "/var/lib/registry",
+		Dedupe:        true,
+		GC:            true,
+		GCDelay:       ZotGCDelay,
+		GCInterval:    zotGCInterval,
+		Retention: zotRetention{
+			Policies: append(slices.Clone(kept), zotRetentionPolicy{
+				Repositories:   []string{"**"},
+				DeleteUntagged: true,
+				KeepTags:       zotKeepTags(liveRetentionCount, retentionCount),
+			}),
+		},
+	}
 }
 
 // setZotStorage replaces the operator-owned storage block, reporting whether
@@ -472,32 +497,24 @@ func (c *Creds) canonicalStorage() map[string]any {
 	return c.baseStorage
 }
 
+// retentionCount is the pushed window of every repository's retention:
+// RetentionCount (BEX_ZOT_RETENTION_COUNT), or defaultRetentionCount.
+func (c *Creds) retentionCount() int {
+	if c.RetentionCount == 0 {
+		return defaultRetentionCount
+	}
+	return c.RetentionCount
+}
+
 // buildBaseZotConfig renders the canonical document once per process. Its only
 // input is RetentionCount, fixed at construction, and it would otherwise be
 // rebuilt and re-marshalled on every reconcile of every App.
 func (c *Creds) buildBaseZotConfig() {
-	retentionCount := c.RetentionCount
-	if retentionCount == 0 {
-		retentionCount = defaultRetentionCount
-	}
 	builderGrant := zotPolicy{Users: []string{zotBuilderUser}, Actions: zotReadWriteActions}
 
 	c.baseJSON, _ = json.Marshal(zotDocument{
 		DistSpecVersion: "1.1.0",
-		Storage: zotStorage{
-			RootDirectory: "/var/lib/registry",
-			Dedupe:        true,
-			GC:            true,
-			GCDelay:       ZotGCDelay,
-			GCInterval:    zotGCInterval,
-			Retention: zotRetention{
-				Policies: []zotRetentionPolicy{{
-					Repositories:   []string{"**"},
-					DeleteUntagged: true,
-					KeepTags:       zotKeepTags(retentionCount),
-				}},
-			},
-		},
+		Storage:         zotStorageFor(c.retentionCount(), nil),
 		// Scrub re-verifies blob digests against their content, so silent
 		// corruption surfaces as a log line rather than as a deploy pulling a
 		// corrupt layer. Single-replica Zot's integrity tripwire (ADR060 D4).

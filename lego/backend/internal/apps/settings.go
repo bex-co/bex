@@ -610,8 +610,8 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"Autoscaling"},
 		present:  func(p ServicePatch) bool { return p.Autoscaling != nil },
 		relation: canOperate,
-		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			as, err := checkAutoscaling(probe, *p.Autoscaling)
+		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			as, err := s.checkAutoscaling(ctx, probe, *p.Autoscaling)
 			probe.Spec.Autoscaling = &as
 			return err
 		},

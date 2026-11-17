@@ -668,6 +668,18 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
   },
+  "services.scalingProPlanOnly": {
+    message:
+      "자동 확장은 Pro 이상의 워크스페이스 요금제에서 사용할 수 있습니다. 이 워크스페이스는 Hobby 요금제입니다.",
+    description:
+      "Autoscaling card notice on a Hobby workspace, followed by an Open Billing link (w7/m429)",
+  },
+  "services.scalingProPlanOnlyRunning": {
+    message:
+      "자동 확장은 Pro 이상의 워크스페이스 요금제에서 사용할 수 있습니다. 이 워크스페이스는 Hobby 요금제이므로 아래 정책은 계속 실행되며 끌 수 있지만, 변경하거나 다시 켜려면 Pro가 필요합니다.",
+    description:
+      "Autoscaling card notice on a Hobby workspace whose service already autoscales, followed by an Open Billing link (w7/m429)",
+  },
   "services.scalingMetricsUnavailableTitle": {
     message: "자동 확장이 일시 중지됨: 사용률 메트릭을 사용할 수 없습니다",
     description:

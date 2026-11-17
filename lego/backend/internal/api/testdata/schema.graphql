@@ -1525,6 +1525,12 @@ type IncludedBandwidth {
   used: Float
 }
 
+type IncludedCustomDomains {
+  included: Int!
+  unlimited: Boolean!
+  used: Int!
+}
+
 type IndexSizeInfo {
   name: String
   schema: String
@@ -2791,6 +2797,7 @@ type UsageSummary {
   billing: Billing
   buildMinutes: BuildMinutes!
   coverage: UsageCoverage!
+  customDomains: IncludedCustomDomains
   estimatedCost: EstimatedCost
   freeInstanceHours: FreeInstanceHours!
   includedBandwidth: IncludedBandwidth!

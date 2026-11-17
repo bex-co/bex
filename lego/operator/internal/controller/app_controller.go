@@ -177,8 +177,13 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 	cancelStamped := e.ObjectNew != nil && e.ObjectOld != nil &&
 		(e.ObjectNew.GetAnnotations()[appv1alpha1.AnnotationCanceledReleaseGeneration] != e.ObjectOld.GetAnnotations()[appv1alpha1.AnnotationCanceledReleaseGeneration] ||
 			e.ObjectNew.GetAnnotations()[appv1alpha1.AnnotationSurvivingReleaseGeneration] != e.ObjectOld.GetAnnotations()[appv1alpha1.AnnotationSurvivingReleaseGeneration])
+	// A workspace plan change relabels the builds its Apps keep (w7/m429),
+	// which bumps no generation either; the pass's registry credential write
+	// carries the new count into the registry's retention.
+	keptBuildsChanged := e.ObjectNew != nil && e.ObjectOld != nil &&
+		e.ObjectNew.GetLabels()[appv1alpha1.LabelKeptBuilds] != e.ObjectOld.GetLabels()[appv1alpha1.LabelKeptBuilds]
 	return p.generationDeletionOrFinalizerPredicate.Update(e) ||
-		rotationRequested || scaledSelection || isolationChanged || cancelStamped
+		rotationRequested || scaledSelection || isolationChanged || cancelStamped || keptBuildsChanged
 }
 
 // labelApp marks the workloads bex creates for an App. It aliases the

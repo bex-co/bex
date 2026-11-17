@@ -69,6 +69,10 @@ type usageResponse struct {
 	// IncludedBandwidth is the period's outbound bandwidth against the plan's
 	// included bandwidth, in GB as billed (w6/m319, docs/ADR030 §14).
 	IncludedBandwidth usageIncluded `json:"includedBandwidth"`
+	// CustomDomains is the workspace's verified custom domains now against
+	// the count its plan includes (w7/m429, docs/ADR030 §16); omitted for a
+	// past period and where no plan applies.
+	CustomDomains *CustomDomains `json:"customDomains,omitempty"`
 	// AgentModel is the platform-route agent model spend by model and token
 	// kind (ADR091 D6), billed at the provider's cost + 30%.
 	AgentModel AgentModelSummary `json:"agentModel"`
@@ -139,6 +143,7 @@ func toUsageResponse(sum Summary) usageResponse {
 		FreeInstanceHours: usageIncluded{Used: sum.FreeInstanceHours.Used, Included: sum.FreeInstanceHours.Included},
 		BuildMinutes:      usageIncluded{Used: sum.BuildMinutes.Used, Included: sum.BuildMinutes.Included},
 		IncludedBandwidth: usageIncluded{Used: sum.IncludedBandwidth.Used, Included: sum.IncludedBandwidth.Included},
+		CustomDomains:     sum.CustomDomains,
 		AgentModel:        sum.AgentModel,
 	}
 }

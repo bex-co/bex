@@ -48,6 +48,16 @@ query Usage($period: String, $ownerId: String) {
       used
       included
     }
+    # customDomains: the verified custom domains now against the count the
+    # workspace plan includes (w7/m429; bex-api's core.IncludedCustomDomains),
+    # unlimited on Enterprise. Each one above it is charged per domain-month (the
+    # custom_domain_seconds charge line); none is refused for the count. null
+    # for a past period and where no plan applies.
+    customDomains {
+      used
+      included
+      unlimited
+    }
     # agentModel: the period's platform-route agent model spend (ADR091 D6),
     # billed at the model provider's cost + 30%, by model and token kind.
     agentModel {

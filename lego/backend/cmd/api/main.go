@@ -1086,13 +1086,11 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 	if stripeEnabled {
 		publishableKey := cfg.StripePublishableKey
 		billingMetrics.SetEnabled(true)
-		// ADR091 D3: until the Stripe catalog carries the agent model cost
-		// Price, hold that meter so neither Subscriptions nor the outbox
-		// reference a Price that does not exist; held rows ship once released.
-		var heldMeters []string
-		if !cfg.StripeAgentModelMeter {
-			heldMeters = []string{store.UsageKindAgentModelCostMicroUSD}
-		}
+		// ADR091 D3, docs/ADR030 §16: until the Stripe catalog carries the
+		// agent model cost Price (or the custom domain Price), hold that meter
+		// so neither Subscriptions nor the outbox reference a Price that does
+		// not exist; held rows ship once released.
+		held := billing.HeldMeters(cfg.StripeAgentModelMeter, cfg.StripeCustomDomainMeter)
 		thresholds := &billing.AgentModelThresholds{Store: st, Interval: cfg.StripeReconcileInterval, Metrics: billingMetrics}
 		stripeClient := billing.NewStripe(billing.StripeConfig{
 			SecretKey:             stripeSecretKey,
@@ -1108,7 +1106,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			Cards:                 st,
 			Audit:                 st,
 			Metrics:               billingMetrics,
-			HeldMeters:            heldMeters,
+			HeldMeters:            held.LookupKeys,
 			AgentModelThreshold:   thresholds.Want,
 		})
 		thresholds.Stripe = stripeClient
@@ -1149,7 +1147,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		// hour closes, so it ships ~5 min after the hour instead of after the
 		// 48h seal — what lets a Stripe usage threshold charge promptly.
 		emitter.FastKinds = []string{store.UsageKindAgentModelCostMicroUSD}
-		emitter.HoldKinds = heldMeters
+		emitter.HoldKinds = held.Kinds
 		// docs/ADR030 §13: each plan's included pipeline minutes are free, so
 		// only the build minutes above them reach Stripe.
 		emitter.Plans = base

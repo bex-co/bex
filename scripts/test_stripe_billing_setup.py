@@ -37,7 +37,7 @@ class StripeBillingSetupTest(TestCase):
     def test_pricing_catalog_has_expected_paid_dimensions(self):
         dimensions = SETUP.parse_pricing()
         names = {name for name, _, _ in dimensions}
-        self.assertEqual(19, len(dimensions))
+        self.assertEqual(20, len(dimensions))
         self.assertIn("instance_seconds.service.starter", names)
         self.assertIn("instance_seconds.postgres.basic-1gb", names)
         for tier in ("1c-2g", "pro-4gb", "basic-4gb"):  # w2/m171 HA-eligible plans
@@ -50,6 +50,8 @@ class StripeBillingSetupTest(TestCase):
         self.assertIn("disk_gb_hours", names)
         self.assertIn("sandbox_compute_seconds", names)
         self.assertIn("sandbox_snapshot_gb_hours", names)  # w22/m313
+        self.assertIn("custom_domain_hours", names)  # w7/m429: domains beyond the plan
+        self.assertNotIn("custom_domain_seconds", names)
         self.assertNotIn("sandbox_memory_gb_hours", names)  # shadow meter: no Stripe meter
         self.assertNotIn("sandbox_memory_gb_seconds", names)
         self.assertFalse(any(name.endswith(".free") for name in names))
@@ -63,13 +65,24 @@ class StripeBillingSetupTest(TestCase):
         unpriced = sheet.replace("  markup: 1.30\n", "  markup: 0\n")
         self.assertFalse(any(name.startswith("agent_model_") for name, _, _ in SETUP.parse_pricing(unpriced)))
 
+    def test_custom_domains_bill_per_domain_hour(self):
+        # w7/m429: the dimension exists only while pricing.yaml prices it, and
+        # rebases seconds to hours exactly as billing/stripe.go does.
+        dims = {name: cents for name, _, cents in SETUP.parse_pricing()}
+        rate = SETUP.dec("0.000000066590563165905631659056")
+        self.assertEqual(SETUP.q12(rate * SETUP.SECONDS_PER_HOUR * 100), dims["custom_domain_hours"])
+        sheet = SETUP.PRICING.read_text()
+        self.assertIn("customDomains:\n  usdPerDomainSecond: 0.000000066590563165905631659056", sheet)
+        without = sheet.replace("customDomains:\n  usdPerDomainSecond:", "customDomains:\n  unknownKey:")
+        self.assertNotIn("custom_domain_hours", {name for name, _, _ in SETUP.parse_pricing(without)})
+
     def test_key_value_bills_through_one_cost_meter(self):
         dims = {name: cents for name, _, cents in SETUP.parse_pricing() if "key_value" in name}
         self.assertEqual({"key_value_cost_microusd": Decimal("0.000100000000")}, dims)
 
     def test_workspace_plan_fees_are_not_usage_meters(self):
         names = {name for name, _, _ in SETUP.parse_pricing()}
-        self.assertEqual(19, len(names))
+        self.assertEqual(20, len(names))
         self.assertTrue(all("workspace" not in name for name in names))
         sheet = SETUP.PRICING.read_text()
         self.assertIn("usdPerMonth: 17.50", sheet)
@@ -106,6 +119,13 @@ class StripeBillingSetupTest(TestCase):
         self.assertEqual(
             Decimal("0.21"),
             storage_dollars_per_month.quantize(Decimal("0.01")),
+        )
+        # w7/m429: a custom domain beyond the plan's included count is $0.175 a
+        # domain-month (Render's $0.25 × 0.70), billed per domain-hour.
+        domain_dollars_per_month = dimensions["custom_domain_hours"] * Decimal(730) / Decimal(100)
+        self.assertEqual(
+            Decimal("0.175"),
+            domain_dollars_per_month.quantize(Decimal("0.001")),
         )
         sandbox_dollars_per_vcpu_hour = (
             dimensions["sandbox_compute_seconds"] * Decimal(1000 * 3600) / Decimal(100)

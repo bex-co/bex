@@ -75,6 +75,11 @@ type UsageStore interface {
 	// cluster, so it needs its own window integration and its own cursor.
 	DiskUsageForWindow(ctx context.Context, from, to time.Time) ([]store.DiskUsageRow, error)
 	LatestUsageWindowForKind(ctx context.Context, kind string) (time.Time, bool, error)
+	// The custom domain meter (w7/m429) reads verified domain rows and keeps
+	// its own cursor: a workspace within its included count writes no row.
+	CountedCustomDomains(ctx context.Context, before time.Time, workspaceID string) ([]store.CustomDomainUsage, error)
+	UsageMeterCursor(ctx context.Context, kind string) (time.Time, bool, error)
+	AdvanceUsageMeterCursor(ctx context.Context, kind string, window time.Time) error
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error)
 	CompactUsage(ctx context.Context, before time.Time) (store.UsageCompaction, error)
 	// The retained-name record (w2/m96): billing lines outlive their resources,
@@ -173,6 +178,11 @@ type Summary struct {
 	// IncludedBandwidth is the period's outbound bandwidth against the plan's
 	// included bandwidth (w6/m319, docs/ADR030 §14), in GB as billed.
 	IncludedBandwidth IncludedUsage
+	// CustomDomains is the workspace's verified custom domains now against
+	// the count its plan includes (w7/m429, docs/ADR030 §16); the estimate
+	// prices the domain-seconds above it. nil for a past period (the count is
+	// the present inventory, not a period total) and where no plan applies.
+	CustomDomains *CustomDomains
 	// AgentModel is the period's platform-route agent model spend by model
 	// and token kind (ADR091 D6).
 	AgentModel AgentModelSummary
@@ -241,6 +251,20 @@ const AuditVerbMonthToDate = "usage.MonthToDate"
 // keeps equal to this constant), so changing it here changes that file too.
 const objectStorageResourceName = "Object storage"
 
+// customDomainsResourceName is the same kind of placeholder for a workspace's
+// custom domain line (w7/m429): one resource per workspace, keyed by the
+// workspace id, with no name of its own (charge-labels.ts keeps a copy, which a
+// test holds equal to this constant).
+const customDomainsResourceName = "Custom domains"
+
+// workspaceResourceNames is the placeholder name of each resource a workspace
+// has exactly one of, keyed by the workspace id with no name of its own:
+// object storage (ADR112 D8) and the custom domain line.
+var workspaceResourceNames = map[string]string{
+	store.ResourceKindObjectStorage: objectStorageResourceName,
+	store.ResourceKindCustomDomains: customDomainsResourceName,
+}
+
 // monthToDateAt is the implementation used by adapters. now controls both the
 // calendar month (monthStart is derived from it) and the inclusive upper bound
 // of the query. Adapters pass s.Now().UTC() for the live query or the start of
@@ -306,6 +330,9 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 			}
 			sum.Coverage.Through = evidence.Through
 			sum.Coverage.DegradedSources = append([]string(nil), evidence.DegradedSources...)
+		}
+		if sum.CustomDomains, err = s.customDomains(ctx, tenantID, current); err != nil {
+			return Summary{}, fmt.Errorf("usage custom domains: %w", err)
 		}
 	}
 	return sum, nil
@@ -463,10 +490,8 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 			capture = append(capture, store.ResourceDisplayName{Kind: svc.ResourceKind, ID: svc.ServiceID, Name: svc.ServiceName})
 		}
 		svc.Deleted = known[svc.ResourceKind] && !live[key]
-		if svc.ResourceKind == store.ResourceKindObjectStorage && svc.ServiceName == "" {
-			// One resource per workspace, whose id is the workspace's: it has no
-			// name of its own (ADR112 D8).
-			svc.ServiceName = objectStorageResourceName
+		if placeholder, ok := workspaceResourceNames[svc.ResourceKind]; ok && svc.ServiceName == "" {
+			svc.ServiceName = placeholder
 		}
 		if svc.ResourceKind == store.ResourceKindSandbox {
 			svc.Deleted = sandboxMetadata[svc.ServiceID].Phase == "terminated"
@@ -871,6 +896,7 @@ func (s *Service) catchUp(ctx context.Context) {
 	now := time.Now().UTC()
 	last := now.Truncate(time.Hour).Add(-time.Hour)
 	s.catchUpDisksThrough(ctx, last)
+	s.catchUpCustomDomainsThrough(ctx, last)
 	if s.PromBase == "" {
 		return
 	}
@@ -898,6 +924,7 @@ func (s *Service) catchUp(ctx context.Context) {
 func (s *Service) rollup(ctx context.Context, t time.Time) {
 	window := t.UTC().Truncate(time.Hour).Add(-time.Hour)
 	s.catchUpDisksThrough(ctx, window)
+	s.catchUpCustomDomainsThrough(ctx, window)
 	if s.PromBase == "" {
 		return
 	}

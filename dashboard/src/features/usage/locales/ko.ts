@@ -109,6 +109,44 @@ const koUsage: Record<string, TranslationEntry> = {
       "포함된 대역폭을 모두 사용했습니다. 추가 대역폭은 GB 단위로 청구되며, 결제 수단이 없으면 다음 달 초까지 워크스페이스의 서비스가 절전 상태가 됩니다.",
     description: "Notice once the included bandwidth is spent (w6/m319)",
   },
+  "usage.customDomainsTitle": {
+    message: "사용자 지정 도메인",
+    description:
+      "Title of the included custom domains card on the billing page (w7/m429)",
+  },
+  "usage.customDomainsDescription": {
+    message:
+      "플랜에는 일정 수의 인증된 사용자 지정 도메인이 포함됩니다. 이를 초과하는 도메인은 인증된 기간만큼 도메인당 매월 청구됩니다. 도메인 수 때문에 추가가 거부되지는 않습니다.",
+    description:
+      "Explains the plan's included custom domains and how domains beyond them are billed (w7/m429)",
+  },
+  "usage.customDomainsUsed": {
+    message:
+      "플랜에 포함된 {included}개 중 {used}개의 사용자 지정 도메인 사용 중",
+    description:
+      "Verified custom domains now against the count the plan includes (w7/m429)",
+  },
+  "usage.customDomainsNear": {
+    message:
+      "플랜에 포함된 사용자 지정 도메인 수에 가까워지고 있습니다. 초과하는 도메인은 도메인당 매월 청구됩니다.",
+    description:
+      "Note once the verified custom domains reach 80 percent of the included count (w7/m429)",
+  },
+  "usage.customDomainsSpent": {
+    message:
+      "플랜에 포함된 사용자 지정 도메인을 모두 사용 중입니다. 추가로 인증된 도메인은 도메인당 매월 청구됩니다.",
+    description: "Notice once every included custom domain is in use (w7/m429)",
+  },
+  "usage.categoryCustomDomains": {
+    message: "사용자 지정 도메인",
+    description:
+      "Charge-tree category for a workspace's custom domains beyond its plan (w7/m429)",
+  },
+  "usage.chargeCustomDomains": {
+    message: "플랜 초과 사용자 지정 도메인",
+    description:
+      "Charge line for custom domains beyond the plan's included count, billed per domain-month (w7/m429)",
+  },
   "usage.chargeIncluded": {
     message: "{included} 포함",
     description:

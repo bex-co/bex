@@ -33,6 +33,7 @@ import { useUsage } from "../hooks/use-usage";
 import { WorkspaceResourceCaps } from "./resource-caps";
 import { BuildMinutesCard } from "./build-minutes-card";
 import { IncludedBandwidthCard } from "./included-bandwidth-card";
+import { CustomDomainsCard } from "./custom-domains-card";
 import { FreeHoursCard } from "./free-hours-card";
 import { PlanCard } from "./plan-card";
 import { PaymentMethodCard } from "./payment-method-card";
@@ -145,6 +146,7 @@ export function UsagePage() {
           <IncludedBandwidthCard
             bandwidth={summary?.includedBandwidth ?? null}
           />
+          <CustomDomainsCard domains={summary?.customDomains ?? null} />
         </section>
         <section id="charges" className={SECTION_NAVIGATION_TARGET_CLASS}>
           <ChargesCard

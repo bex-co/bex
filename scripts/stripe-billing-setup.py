@@ -34,6 +34,11 @@
 #                      suspended sandbox's retained image (w22/m313, docs/ADR023).
 #                      sandbox_memory_gb_seconds has NO Stripe meter: it is a shadow
 #                      meter until the used-CPU cutover (w22/m314).
+#   custom_domain_seconds → re-based to per-domain-hour  event=custom_domain_hours
+#                      value = domain_seconds/3600, price = usdPerDomainSecond×3600×100.
+#                      Only the verified custom domains above the plan's included count
+#                      (docs/ADR030 §16). bex-api holds it until
+#                      BEX_STRIPE_CUSTOM_DOMAIN_METER=1.
 #   agent_model_cost_microusd → one model-agnostic meter  event=agent_model_cost_microusd
 #                      value = customer price in micro-USD (upstream cost × agentModel.markup,
 #                      half-up per request), price = 0.0001 cents/unit ($0.000001);
@@ -144,7 +149,8 @@ def parse_pricing(text=None):
             if key == "tier":
                 tier = val
                 continue
-            if key not in ("usdPerSecond", "usdPerByte", "usdPerGBSecond", "usdPerWeightedSecond"):
+            if key not in ("usdPerSecond", "usdPerByte", "usdPerGBSecond", "usdPerWeightedSecond",
+                           "usdPerDomainSecond"):
                 continue  # skip version:, workspace usdPerMonth (licensed SKU, not a meter), etc.
             rate = dec(val)
             if section == "keyvalue":  # one cost meter for every paid tier
@@ -171,6 +177,9 @@ def parse_pricing(text=None):
                              q12(rate * SECONDS_PER_HOUR * 100)))
             elif section == "sandbox":
                 dims.append(("sandbox_compute_seconds", "bex sandbox compute (weighted second)", q12(rate * 100)))
+            elif section == "customDomains":
+                dims.append(("custom_domain_hours", "bex custom domains beyond the plan (per domain-hour)",
+                             q12(rate * SECONDS_PER_HOUR * 100)))
     return dims
 
 

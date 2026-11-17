@@ -79,6 +79,31 @@ var billableMeterNames = func() map[string]struct{} {
 	return out
 }()
 
+// HeldMeterSet is what bex-api holds until the Stripe catalog carries a
+// meter's Price: the lookup keys StripeConfig.HeldMeters leaves off every
+// Subscription and the usage kinds Emitter.HoldKinds keeps pending.
+type HeldMeterSet struct {
+	LookupKeys []string
+	Kinds      []string
+}
+
+// HeldMeters is the hold for the meters whose live Price is not yet
+// confirmed: agent_model_cost_microusd unless agentModelLive (ADR091 D3,
+// BEX_STRIPE_AGENT_MODEL_METER) and custom_domain_hours unless
+// customDomainLive (docs/ADR030 §16, BEX_STRIPE_CUSTOM_DOMAIN_METER).
+func HeldMeters(agentModelLive, customDomainLive bool) HeldMeterSet {
+	var held HeldMeterSet
+	if !agentModelLive {
+		held.LookupKeys = append(held.LookupKeys, store.UsageKindAgentModelCostMicroUSD)
+		held.Kinds = append(held.Kinds, store.UsageKindAgentModelCostMicroUSD)
+	}
+	if !customDomainLive {
+		held.LookupKeys = append(held.LookupKeys, pricing.CustomDomainMeter)
+		held.Kinds = append(held.Kinds, store.UsageKindCustomDomainSeconds)
+	}
+	return held
+}
+
 // StripeConfig configures NewStripe. SecretKey is the only required field; empty
 // ⇒ the billing sink is disabled (NewStripe returns nil), byte-identical.
 type StripeConfig struct {
@@ -123,8 +148,10 @@ type StripeConfig struct {
 	Metrics *Metrics
 	// HeldMeters are catalog lookup keys left out of every Subscription until
 	// their Stripe Price is provisioned: the agent model cost meter while
-	// BEX_STRIPE_AGENT_MODEL_METER is unset (ADR091 D3). The emitter holds the
-	// same kinds pending, so a held meter is never billed against a missing Price.
+	// BEX_STRIPE_AGENT_MODEL_METER is unset (ADR091 D3), custom_domain_hours
+	// while BEX_STRIPE_CUSTOM_DOMAIN_METER is (docs/ADR030 §16). The emitter
+	// holds their usage kinds pending, so a held meter is never billed against
+	// a missing Price.
 	HeldMeters []string
 	// AgentModelThreshold returns a workspace's agent-model charge threshold
 	// in micro-USD (nil = none, tier T4) for the agent-model item's
@@ -535,6 +562,15 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 			return "", "", true
 		}
 		return pricing.SandboxSnapshotMeter, scaleDown(e.Properties["value"], secondsPerHour), false
+	case store.UsageKindCustomDomainSeconds:
+		// The custom domains above the plan's included count, re-based to
+		// domain-hours like disk_gb_hours (docs/ADR030 §16). Held until the
+		// live Price exists (BEX_STRIPE_CUSTOM_DOMAIN_METER); an unpriced
+		// sheet has no meter, so nothing is owed.
+		if _, ok := billableMeterNames[pricing.CustomDomainMeter]; !ok {
+			return "", "", true
+		}
+		return pricing.CustomDomainMeter, scaleDown(e.Properties["value"], secondsPerHour), false
 	case store.UsageKindAgentModelInputTokens, store.UsageKindAgentModelOutputTokens,
 		store.UsageKindAgentModelCacheReadTokens, store.UsageKindAgentModelCacheWriteTokens:
 		// Platform-route tokens are the per-model usage breakdown only

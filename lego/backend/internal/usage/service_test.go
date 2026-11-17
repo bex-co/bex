@@ -92,6 +92,10 @@ type memUsageStore struct {
 	// CloseUsageSourceStreamsAtLastReading call.
 	holes        []store.UsageHole
 	closedAtLast []store.UsageResourceRef
+	// domains is the custom domain meter's source (w7/m429), one entry per
+	// counted domain; meterCursors is usage_meter_cursors.
+	domains      []countedDomain
+	meterCursors map[string]time.Time
 }
 
 func (m *memUsageStore) CloseUsageSourceStreamsAtLastReading(_ context.Context, ref store.UsageResourceRef) error {

@@ -113,6 +113,44 @@ const ruUsage: Record<string, TranslationEntry> = {
       "Включённый трафик исчерпан. Дополнительный трафик оплачивается за ГБ; без способа оплаты сервисы вашего рабочего пространства остановлены до начала следующего месяца.",
     description: "Notice once the included bandwidth is spent (w6/m319)",
   },
+  "usage.customDomainsTitle": {
+    message: "Пользовательские домены",
+    description:
+      "Title of the included custom domains card on the billing page (w7/m429)",
+  },
+  "usage.customDomainsDescription": {
+    message:
+      "Ваш тариф включает определённое число подтверждённых пользовательских доменов. Каждый домен сверх них оплачивается помесячно за время, пока он подтверждён. Добавление домена никогда не отклоняется из-за их числа.",
+    description:
+      "Explains the plan's included custom domains and how domains beyond them are billed (w7/m429)",
+  },
+  "usage.customDomainsUsed": {
+    message:
+      "Используется {used} из {included} включённых пользовательских доменов",
+    description:
+      "Verified custom domains now against the count the plan includes (w7/m429)",
+  },
+  "usage.customDomainsNear": {
+    message:
+      "Вы приближаетесь к числу пользовательских доменов, включённых в тариф. Каждый домен сверх него оплачивается помесячно.",
+    description:
+      "Note once the verified custom domains reach 80 percent of the included count (w7/m429)",
+  },
+  "usage.customDomainsSpent": {
+    message:
+      "Все пользовательские домены, включённые в тариф, используются. Каждый следующий подтверждённый домен оплачивается помесячно.",
+    description: "Notice once every included custom domain is in use (w7/m429)",
+  },
+  "usage.categoryCustomDomains": {
+    message: "Пользовательские домены",
+    description:
+      "Charge-tree category for a workspace's custom domains beyond its plan (w7/m429)",
+  },
+  "usage.chargeCustomDomains": {
+    message: "Пользовательские домены сверх тарифа",
+    description:
+      "Charge line for custom domains beyond the plan's included count, billed per domain-month (w7/m429)",
+  },
   "usage.chargeIncluded": {
     message: "{included} включено",
     description:
