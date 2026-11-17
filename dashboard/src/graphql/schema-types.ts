@@ -818,6 +818,7 @@ export type AuditLog = {
   domain: Maybe<Scalars['String']['output']>;
   envGroupId: Maybe<Scalars['String']['output']>;
   envGroupName: Maybe<Scalars['String']['output']>;
+  envVarKeys: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   id: Maybe<Scalars['String']['output']>;
   metadata: Maybe<AuditLogMetadata>;
   oauthAudience: Maybe<Scalars['String']['output']>;

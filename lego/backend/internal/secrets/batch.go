@@ -486,7 +486,7 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 	if err != nil {
 		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 	}
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbPatchEnvironment)
+	s.RecordEnvVarWrite(ctx, a, core.AuditVerbPatchEnvironment, envChanges(txn.env, txn.moved, env), txn.files.changed)
 	// save_only stages the projection references without touching release
 	// identity, so only the deploying mode rolls out (and rollApp opens its
 	// deploy row) — exactly the rollout the user just asked for, and nothing for

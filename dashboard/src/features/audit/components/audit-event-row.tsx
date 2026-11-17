@@ -22,7 +22,8 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
   // still does after they left the workspace's member list (w9/m450).
   const actor = useWorkspaceSubjectLabel(event.actor ?? "", event.actorEmail);
   const client = shortUserAgent(event.userAgent);
-  // What a rename, a custom-domain verb or an env-group link changed (w5/183).
+  // What a rename, a custom-domain verb, an env-group link (w5/183) or an env
+  // var row (w9/m449) changed.
   const change = event.displayNameTo
     ? t("audit.changeRename", {
         from: event.displayNameFrom,
@@ -32,7 +33,9 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
       ? t("audit.changeDomain", { domain: event.domain })
       : event.envGroupName
         ? t("audit.changeEnvGroup", { name: event.envGroupName })
-        : null;
+        : event.envVarKeys.length > 0
+          ? t("audit.changeEnvVars", { keys: event.envVarKeys.join(", ") })
+          : null;
   // How the actor authenticated, and for a third-party OAuth grant which
   // client and scopes, share one truncated second line (w4/684): every row
   // stays the two-line height the loading frame reserves.

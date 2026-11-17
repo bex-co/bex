@@ -178,3 +178,39 @@ func TestAutoDeployAuditCarriesRendersTriggerAndReason(t *testing.T) {
 		t.Fatalf("auto-deploy audit rows = %q, want %q", got, want)
 	}
 }
+
+// w9/m449: a change between two triggers that both deploy is Render's
+// UpdateAutoDeployTriggerEvent in the workspace audit log, while the service
+// feed and webhooks keep reading it as auto-deploy enabled with the new
+// trigger from a feed_only apps.SetAutoDeploy row. Turning it off or on stays
+// one visible apps.SetAutoDeploy row (UpdateAutoDeployEvent).
+func TestAutoDeployTriggerChangeIsRendersTriggerEvent(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"},
+		Spec:       appv1alpha1.AppSpec{Repo: "https://github.com/x/app", AutoDeploy: true, AutoDeployTrigger: checksPassTrigger},
+	}
+	svc, _ := newService(nil, app)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	ctx := context.Background()
+	for _, trigger := range []string{"commit", "off", "commit"} {
+		if _, err := svc.SetAutoDeployTrigger(ctx, "web", trigger); err != nil {
+			t.Fatalf("set %s: %v", trigger, err)
+		}
+	}
+	var got []string
+	for _, ev := range sink.events {
+		if ev.Outcome == core.AuditAllowed {
+			got = append(got, fmt.Sprintf("%s %v %v feedOnly=%v", ev.Verb, ptrValue(ev.AutoDeployEnabled), ptrValue(ev.AutoDeployTrigger), ev.FeedOnly))
+		}
+	}
+	want := []string{
+		"apps.SetAutoDeploy true commit feedOnly=true",
+		"apps.SetAutoDeployTrigger <nil> commit feedOnly=false",
+		"apps.SetAutoDeploy false commit feedOnly=false",
+		"apps.SetAutoDeploy true commit feedOnly=false",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("auto-deploy audit rows =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}

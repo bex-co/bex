@@ -99,9 +99,17 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"domain":          gqlutil.StrField(func(e Event) any { return e.Domain }),
 		"envGroupId":      gqlutil.StrField(func(e Event) any { return e.EnvGroupID }),
 		"envGroupName":    gqlutil.StrField(func(e Event) any { return e.EnvGroupName }),
-		"relation":        gqlutil.StrField(func(e Event) any { return emptyAsNil(e.Relation) }),
-		"oauthClientId":   gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthClientID) }),
-		"oauthAudience":   gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthAudience) }),
+		// The variables an env var row created, changed or deleted, REST's
+		// metadata.envVarKeys (w9/m449); null on every other row.
+		"envVarKeys": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e Event) any {
+			if len(e.EnvVarKeys) == 0 {
+				return nil
+			}
+			return e.EnvVarKeys
+		})},
+		"relation":      gqlutil.StrField(func(e Event) any { return emptyAsNil(e.Relation) }),
+		"oauthClientId": gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthClientID) }),
+		"oauthAudience": gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthAudience) }),
 		"oauthScopes": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e Event) any {
 			if len(e.OAuthScopes) == 0 {
 				return nil

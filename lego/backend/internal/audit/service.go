@@ -114,6 +114,9 @@ type Event struct {
 	// migration 0283); empty when no request of the actor caused the row.
 	SourceIP  string
 	UserAgent string
+	// EnvVarKeys are the variable names an env var row created, changed or
+	// deleted (w9/m449); nil on every other row.
+	EnvVarKeys []string
 	// ActorID and ActorEmail are Render's actor.id and actor.email, resolved
 	// at read time (resolveActors): a person's usr- id and current email.
 	// Empty for every other actor, whose id is its stored subject (Caller).
@@ -149,6 +152,7 @@ func view(r store.AuditRow) Event {
 		TwoFactorRequiredTo: r.TwoFactorRequiredTo,
 		SourceIP:            r.SourceIP,
 		UserAgent:           r.UserAgent,
+		EnvVarKeys:          r.EnvVarKeys,
 	}
 }
 
@@ -198,8 +202,7 @@ var renderEvents = map[string]string{
 
 	// The verbs every surface actually calls, and the rest of Render's 1:1
 	// actions (w4/m321). A project or environment delete and a service move
-	// record one row each; env var writes other than a delete keep bex's
-	// names, since one patch can create, update and delete (ADR018).
+	// record one row each.
 	"projects.CreateWithEnvironments":     "CreateProjectEvent",
 	"projects.DeleteIfEmpty":              "DeleteProjectEvent",
 	"environments.CreateWithACL":          "CreateEnvironmentEvent",
@@ -228,6 +231,49 @@ var renderEvents = map[string]string{
 	core.AuditVerbViewConnectionInfo:        "ViewConnectionInfoEvent",
 	// A list that handed out a Postgres logical backup's download URL (w21/105).
 	core.AuditVerbDownloadDatabaseBackup: "DownloadDatabaseBackupEvent",
+
+	// The rest of Render's workspace events bex has the action for (w9/m449;
+	// renderWorkspaceEvents is the inventory). A member leaving is Render's
+	// removal too: Render documents no leave event, and the actor (the member
+	// themselves) tells the two apart. Resending or revoking an invite and
+	// verifying a domain have no Render event and keep bex's names.
+	core.AuditVerbMemberInvited:     "InviteToTeamEvent",
+	core.AuditVerbInviteAccepted:    "AcceptTeamInviteEvent",
+	core.AuditVerbMemberRoleChanged: "ChangeTeamMemberRoleEvent",
+	core.AuditVerbMemberRemoved:     "RemoveUserFromTeamEvent",
+	core.AuditVerbMemberLeft:        "RemoveUserFromTeamEvent",
+	core.AuditVerbCreateCronJob:     "CreateCronJobEvent",
+	core.AuditVerbDeleteCronJob:     "DeleteCronJobEvent",
+	core.AuditVerbAddDomain:         "CreateCustomDomainEvent",
+	core.AuditVerbDeleteDomain:      "DeleteCustomDomainEvent",
+	// Auto-deploy turned on or off; a change between two triggers that both
+	// deploy, and a build filter change, are its trigger settings.
+	core.AuditVerbSetAutoDeploy:             "UpdateAutoDeployEvent",
+	core.AuditVerbSetAutoDeployTrigger:      "UpdateAutoDeployTriggerEvent",
+	core.AuditVerbSetBuildFilter:            "UpdateAutoDeployTriggerEvent",
+	core.AuditVerbLinkBuildSource:           "UpdateServiceBuildSourceEvent",
+	core.AuditVerbLinkBuildSourceEnvGroup:   "LinkBuildSourceEnvGroupEvent",
+	core.AuditVerbUnlinkBuildSourceEnvGroup: "UnlinkBuildSourceEnvGroupEvent",
+	// One env var save's per-kind rows, each naming its keys; the save's own
+	// secrets.* row is feed_only (core.RecordEnvVarWrite).
+	core.AuditVerbCreateEnvVars:             "CreateEnvVarsEvent",
+	core.AuditVerbUpdateEnvVars:             "UpdateEnvVarsEvent",
+	core.AuditVerbDeleteEnvVars:             "DeleteEnvVarsEvent",
+	core.AuditVerbSetEnvironmentProtection:  "ChangeEnvironmentProtectionEvent",
+	core.AuditVerbSetEnvironmentIsolation:   "UpdateEnvironmentIsolatedEvent",
+	core.AuditVerbSetEnvironmentIPAllowList: "UpdateIPAllowListEvent",
+}
+
+// docsOnlyEvents are Render events render.com/docs/audit-logs (read
+// 2026-11-16) documents that the pinned OpenAPI enum does not carry yet. bex
+// emits them as it emits a bex verb outside the enum, a documented extension
+// (docs/render-artifacts/audit-logs-api.md).
+var docsOnlyEvents = map[string]bool{
+	"UpdateAutoDeployEvent":          true,
+	"UpdateAutoDeployTriggerEvent":   true,
+	"CreateCustomDomainEvent":        true,
+	"DeleteCustomDomainEvent":        true,
+	"UpdateEnvironmentIsolatedEvent": true,
 }
 
 func renderEvent(verb string) string {

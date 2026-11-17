@@ -17,10 +17,14 @@ limitations under the License.
 package apps
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"slices"
 	"sync/atomic"
 	"testing"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -67,6 +71,41 @@ func TestCreateRecordsOneNamedRowOnlyForACreateThatHappened(t *testing.T) {
 	rows := createRows(sink)
 	if len(rows) != 2 || rows[1].Outcome != core.AuditDenied {
 		t.Fatalf("a denied create must still record its denial: %+v", rows)
+	}
+}
+
+// w9/m449: a cron job's create and delete record Render's CreateCronJobEvent
+// and DeleteCronJobEvent verbs, and a web service's keep CreateServerEvent's
+// and DeleteServerEvent's; each delete's row lands once the service is gone.
+func TestCronJobCreateAndDeleteRecordRendersCronJobVerbs(t *testing.T) {
+	sink := &captureAuditSink{}
+	svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
+	svc.Audit = sink
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	cron, err := svc.Create(ctx, CreateRequest{Name: "nightly", Type: appv1alpha1.TypeCronJob,
+		Image: "busybox:1.37", Schedule: "0 3 * * *", StartCommand: "echo hi"})
+	if err != nil {
+		t.Fatalf("create cron job: %v", err)
+	}
+	web, err := svc.Create(ctx, CreateRequest{Name: "web", Image: "img:1"})
+	if err != nil {
+		t.Fatalf("create web service: %v", err)
+	}
+	for _, id := range []string{cmp.Or(cron.ID, cron.Name), cmp.Or(web.ID, web.Name)} {
+		if err := svc.Delete(core.WithConfirm(ctx, "confirm"), id); err != nil {
+			t.Fatalf("delete %s: %v", id, err)
+		}
+	}
+	var got []string
+	for _, ev := range sink.events {
+		if ev.Outcome == core.AuditAllowed {
+			got = append(got, ev.Verb+" "+ev.TargetName)
+		}
+	}
+	want := []string{core.AuditVerbCreateCronJob + " nightly", "apps.Create web", core.AuditVerbDeleteCronJob + " nightly", "apps.Delete web"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("allowed rows = %q, want %q", got, want)
 	}
 }
 

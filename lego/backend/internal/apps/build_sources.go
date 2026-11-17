@@ -1057,6 +1057,6 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 			log.Printf("apps: clear clone secret for %s after linking a build source: %v", a.Name, err)
 		}
 	}
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSourceAndRegistryCredential)
+	s.RecordServiceBuildSourceLinked(ctx, a)
 	return updated, nil
 }

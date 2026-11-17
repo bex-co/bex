@@ -683,6 +683,49 @@ func TestRenderMetadataKeepsTheRelationOnlyOnADenial(t *testing.T) {
 	}
 }
 
+// w9/m449: REST answers Render's event for each member, cron job, domain,
+// auto-deploy, build-source, env var and environment verb; the actions Render
+// has no event for (resending or revoking an invite, verifying a domain) keep
+// bex's names. An env var row names its keys in metadata.
+func TestRESTAnswersRendersWorkspaceEventNames(t *testing.T) {
+	for verb, want := range map[string]string{
+		core.AuditVerbMemberInvited:             "InviteToTeamEvent",
+		core.AuditVerbInviteAccepted:            "AcceptTeamInviteEvent",
+		core.AuditVerbMemberRoleChanged:         "ChangeTeamMemberRoleEvent",
+		core.AuditVerbMemberRemoved:             "RemoveUserFromTeamEvent",
+		core.AuditVerbMemberLeft:                "RemoveUserFromTeamEvent",
+		"members.ResendInvite":                  "members.ResendInvite",
+		"members.RevokeInvite":                  "members.RevokeInvite",
+		core.AuditVerbCreateCronJob:             "CreateCronJobEvent",
+		core.AuditVerbDeleteCronJob:             "DeleteCronJobEvent",
+		"apps.Create":                           "CreateServerEvent",
+		core.AuditVerbAddDomain:                 "CreateCustomDomainEvent",
+		core.AuditVerbDeleteDomain:              "DeleteCustomDomainEvent",
+		core.AuditVerbVerifyDomain:              core.AuditVerbVerifyDomain,
+		core.AuditVerbSetAutoDeploy:             "UpdateAutoDeployEvent",
+		core.AuditVerbSetAutoDeployTrigger:      "UpdateAutoDeployTriggerEvent",
+		core.AuditVerbSetBuildFilter:            "UpdateAutoDeployTriggerEvent",
+		core.AuditVerbLinkBuildSource:           "UpdateServiceBuildSourceEvent",
+		core.AuditVerbLinkBuildSourceEnvGroup:   "LinkBuildSourceEnvGroupEvent",
+		core.AuditVerbUnlinkBuildSourceEnvGroup: "UnlinkBuildSourceEnvGroupEvent",
+		core.AuditVerbCreateEnvVars:             "CreateEnvVarsEvent",
+		core.AuditVerbUpdateEnvVars:             "UpdateEnvVarsEvent",
+		core.AuditVerbDeleteEnvVars:             "DeleteEnvVarsEvent",
+		core.AuditVerbSetEnvironmentProtection:  "ChangeEnvironmentProtectionEvent",
+		core.AuditVerbSetEnvironmentIsolation:   "UpdateEnvironmentIsolatedEvent",
+		core.AuditVerbSetEnvironmentIPAllowList: "UpdateIPAllowListEvent",
+	} {
+		if got := toRenderAuditLog(Event{Verb: verb, Outcome: string(core.AuditAllowed)}).Event; got != want {
+			t.Errorf("%s answers %q, want %q", verb, got, want)
+		}
+	}
+	row := toRenderAuditLog(Event{Verb: core.AuditVerbUpdateEnvVars, Outcome: string(core.AuditAllowed),
+		Target: core.ServiceTarget("srv-1"), EnvVarKeys: []string{"A", "B"}})
+	if row.Metadata["envVarKeys"] != "A,B" || row.Metadata["service"] != "srv-1" {
+		t.Errorf("env var row metadata = %v, want envVarKeys A,B on service srv-1", row.Metadata)
+	}
+}
+
 // w4/m321 t011: GraphQL's resource is the row's target when it names one, so
 // the dashboard's Resource column names a created or deleted service rather
 // than its workspace; a workspace-wide row keeps the workspace object.

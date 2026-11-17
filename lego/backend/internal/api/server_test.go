@@ -31,6 +31,7 @@ import (
 	"path/filepath"
 	"reflect"
 	goruntime "runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -1504,13 +1505,17 @@ func TestAuditNeverCarriesSecretValues(t *testing.T) {
 	if _, err := svc.SetEnvVar(ctx, "web", "API_KEY", secrets.EnvVarWrite{Value: secretValue}); err != nil {
 		t.Fatalf("SetEnvVar: %v", err)
 	}
-	if len(sink.events) != 1 {
-		t.Fatalf("got %d audit events, want exactly 1", len(sink.events))
+	// The write's own row and its CreateEnvVarsEvent row, which names the key
+	// and never its value (w9/m449).
+	if len(sink.events) != 2 {
+		t.Fatalf("got %d audit events, want exactly 2: %+v", len(sink.events), sink.events)
 	}
-	ev := sink.events[0]
-	for _, field := range []string{ev.Verb, ev.Resource, ev.Caller, ev.CallerMethod, string(ev.Outcome)} {
-		if strings.Contains(field, secretValue) {
-			t.Fatalf("audit event field %q contains the secret value — event: %+v", field, ev)
+	if keys := sink.events[1].EnvVarKeys; !slices.Equal(keys, []string{"API_KEY"}) {
+		t.Fatalf("the CreateEnvVarsEvent row names %v, want [API_KEY]", keys)
+	}
+	for _, ev := range sink.events {
+		if dump := fmt.Sprintf("%+v", ev); strings.Contains(dump, secretValue) {
+			t.Fatalf("an audit event contains the secret value: %s", dump)
 		}
 	}
 }

@@ -32,6 +32,9 @@ export interface AuditEvent {
   /** The env group a link or unlink changed; "" on every other row. */
   envGroupId: string;
   envGroupName: string;
+  /** The variables an env var row created, changed or deleted, names only
+   *  (w9/m449); empty on every other row. */
+  envVarKeys: string[];
   /** RelCan… the decision was made against; "" on pre-0088 and system rows. */
   relation: string;
   /** Verified OAuth client id; "" on session/machine/pre-0088 rows. */

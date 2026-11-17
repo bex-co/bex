@@ -35,6 +35,7 @@ query AuditLogs(
     domain
     envGroupId
     envGroupName
+    envVarKeys
     relation
     oauthClientId
     oauthAudience

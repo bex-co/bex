@@ -189,6 +189,16 @@ type AuditEvent struct {
 	// sweeps, webhooks, operator commands, workers.
 	SourceIP  string
 	UserAgent string
+	// EnvVarKeys are the variable names an env var row created, changed or
+	// deleted (Render's CreateEnvVarsEvent, UpdateEnvVarsEvent and
+	// DeleteEnvVarsEvent, w9/m449), sorted. Names only: a value never enters
+	// an audit row. Nil for every other verb.
+	EnvVarKeys []string
+	// FeedOnly marks a row a service's activity feed and webhooks read but the
+	// workspace audit log skips, because Render's own rows written beside it
+	// report the same change there (w9/m449): an env var save's per-kind rows,
+	// an auto-deploy trigger change, a service linked to a build source.
+	FeedOnly bool
 }
 
 // MaxAuditUserAgentBytes bounds the user agent an audit row stores. Browsers
@@ -406,6 +416,44 @@ const (
 	// change (w9/m388), recorded once after the rules are saved — Render's
 	// UpdateIPAllowListEvent.
 	AuditVerbSetWorkspaceIPAllowList = "workspaces.SetIPAllowList"
+	// Render's per-kind env var rows (w9/m449): one env var save records
+	// CreateEnvVarsEvent for the keys it added, UpdateEnvVarsEvent for the keys
+	// whose value it changed and DeleteEnvVarsEvent for the keys it removed,
+	// each naming its keys, beside the save's own feed_only row
+	// (RecordEnvVarWrite). Fixed vocabulary, not methods.
+	AuditVerbCreateEnvVars = "secrets.CreateEnvVars"
+	AuditVerbUpdateEnvVars = "secrets.UpdateEnvVars"
+	AuditVerbDeleteEnvVars = "secrets.DeleteEnvVars"
+	// AuditVerbCreateCronJob / AuditVerbDeleteCronJob are apps.Create and
+	// apps.Delete for a cron job, Render's CreateCronJobEvent and
+	// DeleteCronJobEvent (w9/m449); every other service type keeps apps.Create
+	// and apps.Delete (CreateServerEvent, DeleteServerEvent).
+	AuditVerbCreateCronJob = "apps.CreateCronJob"
+	AuditVerbDeleteCronJob = "apps.DeleteCronJob"
+	// AuditVerbSetAutoDeployTrigger is an auto-deploy trigger change that left
+	// auto-deploy on (commit ⇄ checksPass), Render's UpdateAutoDeployTriggerEvent
+	// (w9/m449). It names the real apps.Service method, whose denials carry it.
+	// The change's apps.SetAutoDeploy row stays the service feed's and
+	// webhooks' record of it (feed_only).
+	AuditVerbSetAutoDeployTrigger = "apps.SetAutoDeployTrigger"
+	// AuditVerbLinkBuildSource is a service linked to a build source, Render's
+	// UpdateServiceBuildSourceEvent (w9/m449), named after the real method. The
+	// link's apps.SetSourceAndRegistryCredential row stays the feed's (feed_only).
+	AuditVerbLinkBuildSource = "apps.LinkBuildSource"
+	// AuditVerbLinkBuildSourceEnvGroup / AuditVerbUnlinkBuildSourceEnvGroup are
+	// an env group linked to or unlinked from a build source, Render's
+	// LinkBuildSourceEnvGroupEvent and UnlinkBuildSourceEnvGroupEvent (w9/m449).
+	// A build source has no service feed, so nothing reads envgroups.LinkService
+	// for it.
+	AuditVerbLinkBuildSourceEnvGroup   = "envgroups.LinkBuildSource"
+	AuditVerbUnlinkBuildSourceEnvGroup = "envgroups.UnlinkBuildSource"
+	// An environment's three access settings (w9/m449), one row per setting a
+	// save changed: protection (Render's ChangeEnvironmentProtectionEvent),
+	// network isolation (UpdateEnvironmentIsolatedEvent) and the IP allow list
+	// (UpdateIPAllowListEvent).
+	AuditVerbSetEnvironmentProtection  = "environments.SetProtection"
+	AuditVerbSetEnvironmentIsolation   = "environments.SetNetworkIsolation"
+	AuditVerbSetEnvironmentIPAllowList = "environments.SetIPAllowList"
 	// AuditVerbSetPlanEdgeCache is apps.SetPlan's edge-cache effect (w9/088),
 	// and that of a Blueprint sync or deploy that changes the plan (w9/091).
 	// Edge caching needs a paid plan, so a plan change to Free turns a saved
@@ -538,6 +586,11 @@ var keyValueAuditVerbs = map[KeyValueAuditEffect]string{
 func WithDeferredAllowedWriteAudit(ctx context.Context) context.Context {
 	return context.WithValue(ctx, deferAllowedWriteAuditKey{}, true)
 }
+
+// DefersAllowedWriteAudit reports whether ctx defers allowed-write rows: a
+// verb that records its own row once its write lands skips it when its caller
+// deferred them, since that caller records the action it is part of.
+func DefersAllowedWriteAudit(ctx context.Context) bool { return defersAllowedWriteAudit(ctx) }
 
 func defersAllowedWriteAudit(ctx context.Context) bool {
 	deferred, _ := ctx.Value(deferAllowedWriteAuditKey{}).(bool)
@@ -778,6 +831,38 @@ func (b *Base) recordAutoDeploy(ctx context.Context, app *appv1alpha1.App, enabl
 	b.recordAudit(ctx, ev)
 }
 
+// RecordAutoDeployTriggerChanged records a trigger change that left
+// auto-deploy on (commit ⇄ checksPass), with the trigger now in force
+// (w9/m449). The service feed and webhooks still read it as
+// auto_deploy_enabled with that trigger, from a feed_only apps.SetAutoDeploy
+// row; the workspace audit log reads Render's UpdateAutoDeployTriggerEvent
+// from the apps.SetAutoDeployTrigger row beside it.
+func (b *Base) RecordAutoDeployTriggerChanged(ctx context.Context, app *appv1alpha1.App, newTrigger string) {
+	row, ok := b.appRows(ctx, app, "auto-deploy")
+	if !ok {
+		return
+	}
+	enabled := true
+	feed := row(AuditVerbSetAutoDeploy)
+	feed.AutoDeployEnabled, feed.AutoDeployTrigger, feed.FeedOnly = &enabled, &newTrigger, true
+	changed := row(AuditVerbSetAutoDeployTrigger)
+	changed.AutoDeployTrigger = &newTrigger
+	b.recordAudits(ctx, feed, changed)
+}
+
+// appRows resolves app's workspace once and returns a builder of rows that
+// name app as their target; false, logged, when the workspace cannot be
+// resolved.
+func (b *Base) appRows(ctx context.Context, app *appv1alpha1.App, what string) (func(verb string) AuditEvent, bool) {
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve %s resource: %v", what, err)
+		return nil, false
+	}
+	target := canonicalAppTarget(app)
+	return func(verb string) AuditEvent { return b.verbAuditEvent(ctx, verb, resource, target) }, true
+}
+
 // RecordDomainEffect records one custom-domain verb that actually changed a
 // claim. The caller authorizes under WithDeferredAllowedWriteAudit, so nothing
 // is written at authorize time; this is the only path that produces the row,
@@ -923,14 +1008,99 @@ func (b *Base) RecordCacheProfileChanged(ctx context.Context, app *appv1alpha1.A
 // unlink, naming the group (w4/563): the Link and Unlink controls, a group
 // created with services, a Blueprint fromGroup, and a group deleted while
 // linked.
+//
+// A build source's link or unlink records Render's build-source verbs instead
+// (w9/m449): a build source has no service feed to keep envgroups.LinkService.
 func (b *Base) RecordEnvGroupLinkChanged(ctx context.Context, app *appv1alpha1.App, verb, groupID, groupName string) {
 	if verb != AuditVerbLinkService && verb != AuditVerbUnlinkService {
 		log.Printf("audit: refusing to record %q as an env-group link", verb)
 		return
 	}
+	if IsBuildSource(app) {
+		verb = map[string]string{
+			AuditVerbLinkService:   AuditVerbLinkBuildSourceEnvGroup,
+			AuditVerbUnlinkService: AuditVerbUnlinkBuildSourceEnvGroup,
+		}[verb]
+	}
 	b.recordAppConfig(ctx, app, verb, func(ev *AuditEvent) {
 		ev.EnvGroupID, ev.EnvGroupName = groupID, groupName
 	})
+}
+
+// EnvVarChanges is what one env var write did to a service's variables: the
+// keys it added, the keys whose value it changed and the keys it removed, each
+// sorted. Names only.
+type EnvVarChanges struct{ Created, Updated, Deleted []string }
+
+// DiffEnvVars is the EnvVarChanges that turned prior into next.
+func DiffEnvVars(prior, next map[string]string) EnvVarChanges {
+	var c EnvVarChanges
+	for _, key := range SortedKeys(next) {
+		old, ok := prior[key]
+		switch {
+		case !ok:
+			c.Created = append(c.Created, key)
+		case old != next[key]:
+			c.Updated = append(c.Updated, key)
+		}
+	}
+	for _, key := range SortedKeys(prior) {
+		if _, ok := next[key]; !ok {
+			c.Deleted = append(c.Deleted, key)
+		}
+	}
+	return c
+}
+
+// RecordEnvVarWrite records a completed env var write of app (w9/m449): verb's
+// own row, which the service's activity feed reads, and one Render row per kind
+// of change, CreateEnvVarsEvent, UpdateEnvVarsEvent and DeleteEnvVarsEvent,
+// each naming its keys. The verb's row is feed_only, so the workspace audit
+// log shows only Render's rows and a save that changed nothing shows none,
+// unless filesChanged: Render has no secret-file event, so a save that changed
+// a secret file keeps its own row there too. The rows land together.
+func (b *Base) RecordEnvVarWrite(ctx context.Context, app *appv1alpha1.App, verb string, changes EnvVarChanges, filesChanged bool) {
+	if !appConfigVerbs[verb] {
+		log.Printf("audit: refusing to record %q as an env var write", verb)
+		return
+	}
+	row, ok := b.appRows(ctx, app, verb)
+	if !ok {
+		return
+	}
+	own := row(verb)
+	own.FeedOnly = !filesChanged
+	evs := []AuditEvent{own}
+	for _, kind := range []struct {
+		verb string
+		keys []string
+	}{
+		{AuditVerbCreateEnvVars, changes.Created},
+		{AuditVerbUpdateEnvVars, changes.Updated},
+		{AuditVerbDeleteEnvVars, changes.Deleted},
+	} {
+		if len(kind.keys) == 0 {
+			continue
+		}
+		ev := row(kind.verb)
+		ev.EnvVarKeys = kind.keys
+		evs = append(evs, ev)
+	}
+	b.recordAudits(ctx, evs...)
+}
+
+// RecordServiceBuildSourceLinked records app linked to a build source
+// (w9/m449): the source change it is, apps.SetSourceAndRegistryCredential, as
+// the feed's feed_only row, and Render's UpdateServiceBuildSourceEvent row
+// for the workspace audit log.
+func (b *Base) RecordServiceBuildSourceLinked(ctx context.Context, app *appv1alpha1.App) {
+	row, ok := b.appRows(ctx, app, "build source link")
+	if !ok {
+		return
+	}
+	feed := row(AuditVerbSetSourceAndRegistryCredential)
+	feed.FeedOnly = true
+	b.recordAudits(ctx, feed, row(AuditVerbLinkBuildSource))
 }
 
 // RecordDiskChanged records a disk verb that completed with Render's disk

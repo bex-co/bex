@@ -30,6 +30,9 @@ export function toAuditEvents(
       domain: e.domain ?? "",
       envGroupId: e.envGroupId ?? "",
       envGroupName: e.envGroupName ?? "",
+      envVarKeys: (e.envVarKeys ?? []).filter(
+        (key): key is string => typeof key === "string" && key !== "",
+      ),
       relation: e.relation ?? "",
       oauthClientId: e.oauthClientId ?? "",
       oauthAudience: e.oauthAudience ?? "",

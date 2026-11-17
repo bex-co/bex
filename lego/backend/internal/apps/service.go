@@ -2253,7 +2253,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 		return v, err
 	}
 	if !req.DryRun {
-		s.RecordAllowedWrite(ctx, "apps.Create", core.RelCanCreate, s.WorkspaceOrDefault(ctx),
+		s.RecordAllowedWrite(ctx, createVerb(v.Type), core.RelCanCreate, s.WorkspaceOrDefault(ctx),
 			core.ServiceTarget(cmp.Or(v.ID, v.Name)), cmp.Or(label, req.Name))
 	}
 	if label == "" {
@@ -3312,7 +3312,9 @@ func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1al
 // cert-manager TLS Secret (documented in docs/ADR006-bex-api.md). Unknown id =>
 // core.ErrNotFound; unauthorized => core.ErrForbidden.
 func (s *Service) Delete(ctx context.Context, name string) error {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	// The allowed row waits for the delete, which names it by the service's
+	// type (deleteVerb, w9/m449); a refusal still records at once.
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
@@ -3372,7 +3374,34 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	// IgnoreNotFound: the CR may already be gone (a racing projector pass, or a
 	// store-managed App whose row delete triggered a Kick) — the end state is
 	// what matters.
-	return client.IgnoreNotFound(s.Client.Delete(ctx, a))
+	if err := client.IgnoreNotFound(s.Client.Delete(ctx, a)); err != nil {
+		return err
+	}
+	// A caller that deferred allowed rows (a build source's delete) records
+	// the action itself.
+	if !core.DefersAllowedWriteAudit(ctx) {
+		s.RecordAllowedWrite(ctx, deleteVerb(a.Spec.Type), core.RelCanCreate,
+			cmp.Or(a.Labels[core.LabelTenant], core.DefaultTenant), core.ServiceTarget(core.AppPublicID(a)), core.AppPublicName(a))
+	}
+	return nil
+}
+
+// createVerb and deleteVerb name a service's create and delete in the audit
+// log: a cron job's are Render's CreateCronJobEvent and DeleteCronJobEvent,
+// every other type's CreateServerEvent and DeleteServerEvent (w9/m449).
+func createVerb(serviceType string) string {
+	return cronOr(serviceType, core.AuditVerbCreateCronJob, "apps.Create")
+}
+
+func deleteVerb(serviceType string) string {
+	return cronOr(serviceType, core.AuditVerbDeleteCronJob, "apps.Delete")
+}
+
+func cronOr(serviceType, cronVerb, verb string) string {
+	if serviceType == appv1alpha1.TypeCronJob {
+		return cronVerb
+	}
+	return verb
 }
 
 // egressIdentityRecorder is an optional IntentStore extension, implemented by
@@ -5547,9 +5576,14 @@ func (s *Service) setAutoDeployFetched(ctx context.Context, a *appv1alpha1.App, 
 // trigger now in force, or auto_deploy_disabled with the one it turned off.
 // An unchanged trigger changes nothing Render would announce. SetAutoDeploy,
 // SetAutoDeployTrigger and a Blueprint apply (w9/092) all record through it.
+// A change between two triggers that both deploy is Render's
+// UpdateAutoDeployTriggerEvent in the workspace audit log, and turning it on
+// or off its UpdateAutoDeployEvent (w9/m449).
 func (s *Service) recordAutoDeployChange(ctx context.Context, a *appv1alpha1.App, from, to string) {
 	switch {
 	case to == from:
+	case from != core.AutoDeployTriggerOff && to != core.AutoDeployTriggerOff:
+		s.RecordAutoDeployTriggerChanged(ctx, a, to)
 	case to != core.AutoDeployTriggerOff:
 		s.RecordAutoDeployEnabled(ctx, a, to)
 	default:

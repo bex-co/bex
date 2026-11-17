@@ -19,6 +19,7 @@ package secrets
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/graphql-go/graphql"
@@ -70,22 +71,27 @@ func auditCtx() context.Context {
 func TestWriteVerbsRecordTheirOwnAuditVerbName(t *testing.T) {
 	for _, tc := range []struct {
 		want string
+		// perKind is the Render row an env var write records beside its own
+		// feed_only row (w9/m449); "" for a secret-file write, which records
+		// its own row alone.
+		perKind string
 		// setup runs first and its events are discarded, so the assertion below
 		// can demand EXACTLY ONE event from the verb under test — which also
 		// catches a verb that authorizes twice.
 		setup func(*Service, context.Context) error
 		call  func(*Service, context.Context) error
 	}{
-		{want: "secrets.SetEnvVar", call: func(s *Service, ctx context.Context) error {
+		{want: "secrets.SetEnvVar", perKind: core.AuditVerbCreateEnvVars, call: func(s *Service, ctx context.Context) error {
 			_, err := s.SetEnvVar(ctx, "web", "K", EnvVarWrite{Value: "v"})
 			return err
 		}},
-		{want: "secrets.SetEnvVars", call: func(s *Service, ctx context.Context) error {
+		{want: "secrets.SetEnvVars", perKind: core.AuditVerbCreateEnvVars, call: func(s *Service, ctx context.Context) error {
 			_, err := s.SetEnvVars(ctx, "web", []EnvVarView{{Key: "K", Value: "v"}})
 			return err
 		}},
 		{
-			want: "secrets.DeleteEnvVar",
+			want:    "secrets.DeleteEnvVar",
+			perKind: core.AuditVerbDeleteEnvVars,
 			setup: func(s *Service, ctx context.Context) error {
 				_, err := s.SetEnvVar(ctx, "web", "K", EnvVarWrite{Value: "v"})
 				return err
@@ -94,7 +100,7 @@ func TestWriteVerbsRecordTheirOwnAuditVerbName(t *testing.T) {
 				return s.DeleteEnvVar(ctx, "web", "K")
 			},
 		},
-		{want: "secrets.SeedEnvVars", call: func(s *Service, ctx context.Context) error {
+		{want: "secrets.SeedEnvVars", perKind: core.AuditVerbCreateEnvVars, call: func(s *Service, ctx context.Context) error {
 			return s.SeedEnvVars(ctx, "web", map[string]string{"K": "v"}, nil)
 		}},
 		{want: "secrets.SetSecretFile", call: func(s *Service, ctx context.Context) error {
@@ -118,7 +124,7 @@ func TestWriteVerbsRecordTheirOwnAuditVerbName(t *testing.T) {
 				return s.DeleteSecretFile(ctx, "web", "cert.pem")
 			},
 		},
-		{want: "secrets.PatchEnvironment", call: func(s *Service, ctx context.Context) error {
+		{want: "secrets.PatchEnvironment", perKind: core.AuditVerbCreateEnvVars, call: func(s *Service, ctx context.Context) error {
 			_, err := s.PatchEnvironment(ctx, "web", EnvironmentPatch{
 				SaveMode: SaveModeOnly,
 				EnvVars:  []EnvVarPatch{{Key: "K", Value: "v"}},
@@ -139,10 +145,26 @@ func TestWriteVerbsRecordTheirOwnAuditVerbName(t *testing.T) {
 			if err := tc.call(svc, ctx); err != nil {
 				t.Fatalf("verb returned %v", err)
 			}
-			if len(sink.events) != 1 {
-				t.Fatalf("recorded %d audit events, want exactly 1: %+v", len(sink.events), sink.events)
+			want := 1
+			if tc.perKind != "" {
+				want = 2
+			}
+			if len(sink.events) != want {
+				t.Fatalf("recorded %d audit events, want exactly %d: %+v", len(sink.events), want, sink.events)
 			}
 			ev := sink.events[0]
+			// An env var write's own row is the feed's, and the workspace audit
+			// log reads Render's per-kind row beside it, naming the key.
+			if tc.perKind != "" {
+				if !ev.FeedOnly {
+					t.Errorf("%s row is not feed_only: the audit log would show it beside %s", tc.want, tc.perKind)
+				}
+				if kind := sink.events[1]; kind.Verb != tc.perKind || !slices.Equal(kind.EnvVarKeys, []string{"K"}) || kind.FeedOnly {
+					t.Errorf("per-kind row = %s keys %v feedOnly %v, want %s keys [K] in the audit log", kind.Verb, kind.EnvVarKeys, kind.FeedOnly, tc.perKind)
+				}
+			} else if ev.FeedOnly {
+				t.Errorf("%s row is feed_only, but no Render row reports it", tc.want)
+			}
 			if ev.Verb != tc.want {
 				t.Errorf("recorded verb = %q, want %q — the events feed is keyed off this name", ev.Verb, tc.want)
 			}

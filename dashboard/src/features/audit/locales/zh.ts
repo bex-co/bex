@@ -50,6 +50,11 @@ const zhAudit: Record<string, TranslationEntry> = {
     description:
       "Audit log Resource cell: the environment group a link or unlink changed (w5/183)",
   },
+  "audit.changeEnvVars": {
+    message: "变量 {keys}",
+    description:
+      "Audit log Resource cell: the environment variable names an env var row created, changed or deleted, never their values (w9/m449)",
+  },
   "audit.statusAllowed": {
     message: "已允许",
     description: "Audit Log status badge for a successful action",

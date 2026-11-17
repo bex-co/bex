@@ -138,6 +138,7 @@ describe("AuditLogPanel", () => {
       domain: "",
       envGroupId: "",
       envGroupName: "",
+      envVarKeys: [],
       relation: "",
       oauthClientId: "",
       oauthAudience: "",
@@ -238,6 +239,7 @@ describe("AuditLogPanel", () => {
         domain: "",
         envGroupId: "",
         envGroupName: "",
+        envVarKeys: [],
         relation: "",
         oauthClientId: "",
         oauthAudience: "",
@@ -261,6 +263,7 @@ describe("AuditLogPanel", () => {
         domain: "",
         envGroupId: "",
         envGroupName: "",
+        envVarKeys: [],
         relation: "can_operate",
         oauthClientId: "dcr-agent",
         oauthAudience: "https://api.bex.co/mcp",
@@ -317,6 +320,7 @@ describe("AuditLogPanel", () => {
         domain: "",
         envGroupId: "",
         envGroupName: "",
+        envVarKeys: [],
         relation: "",
         oauthClientId: "429024F5-agent",
         oauthAudience: "https://api.bex.co/mcp",
@@ -364,6 +368,7 @@ describe("AuditLogPanel", () => {
         domain: "",
         envGroupId: "",
         envGroupName: "",
+        envVarKeys: [],
         relation: "",
         oauthClientId: "",
         oauthAudience: "",
@@ -387,6 +392,7 @@ describe("AuditLogPanel", () => {
         domain: "",
         envGroupId: "",
         envGroupName: "",
+        envVarKeys: [],
         relation: "",
         oauthClientId: "",
         oauthAudience: "",
@@ -406,6 +412,40 @@ describe("AuditLogPanel", () => {
     // Still two lines at most, the loading frame's row height.
     expect(cells[2]!.querySelectorAll(".block").length).toBeLessThanOrEqual(1);
     expect(within(system!).getAllByRole("cell")[2]).toHaveTextContent(/^—$/);
+  });
+
+  it("names the variables an env var row changed, under Render's event (w9/m449)", () => {
+    auditState.events = [
+      {
+        id: "ev-1",
+        timestamp: "2026-07-11T00:00:00Z",
+        actor: "user:alice",
+        actorMethod: "session",
+        actorId: "",
+        actorEmail: "",
+        sourceIp: "",
+        userAgent: "",
+        action: "UpdateEnvVarsEvent",
+        status: "success",
+        resource: "service:srv-1",
+        targetName: "my-api",
+        displayNameFrom: "",
+        displayNameTo: "",
+        domain: "",
+        envGroupId: "",
+        envGroupName: "",
+        envVarKeys: ["API_KEY", "DB_URL"],
+        relation: "",
+        oauthClientId: "",
+        oauthAudience: "",
+        oauthScopes: [],
+      },
+    ];
+    renderPanel();
+
+    const cells = within(screen.getAllByRole("row")[1]!).getAllByRole("cell");
+    expect(cells[3]).toHaveTextContent("UpdateEnvVarsEvent");
+    expect(cells[5]).toHaveTextContent("Variables API_KEY, DB_URL");
   });
 
   it("hides 'Load more' once the last page is exhausted", () => {
@@ -428,6 +468,7 @@ describe("AuditLogPanel", () => {
         domain: "",
         envGroupId: "",
         envGroupName: "",
+        envVarKeys: [],
         relation: "",
         oauthClientId: "",
         oauthAudience: "",

@@ -99,6 +99,7 @@ function metadata(event: AuditEvent): string {
     ["domain", event.domain],
     ["envGroupId", event.envGroupId],
     ["envGroupName", event.envGroupName],
+    ["envVarKeys", event.envVarKeys.join(",")],
     ["actorMethod", event.actorMethod],
     // Render's own keys for where the actor acted from (w9/m450).
     ["source_ip", event.sourceIp],

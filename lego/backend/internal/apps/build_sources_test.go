@@ -383,6 +383,8 @@ func (b *buildSourceStore) DeleteApp(ctx context.Context, id string) error {
 // ride along — and, like Render, is saved without deploying.
 func TestServicePatchLinksABuildSource(t *testing.T) {
 	svc, st, ctx := newBuildSourceService(t)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
 	source, err := svc.CreateBuildSource(ctx, monorepoSource)
 	if err != nil {
 		t.Fatal(err)
@@ -421,6 +423,15 @@ func TestServicePatchLinksABuildSource(t *testing.T) {
 	}
 	if len(st.linked) != 1 {
 		t.Fatalf("store links = %v, want one", st.linked)
+	}
+	// The link is Render's UpdateServiceBuildSourceEvent in the workspace audit
+	// log, and stays the source change it is in the service's feed (w9/m449).
+	linked, feed := allowedRows(sink, core.AuditVerbLinkBuildSource), allowedRows(sink, core.AuditVerbSetSourceAndRegistryCredential)
+	if len(linked) != 1 || linked[0].FeedOnly || linked[0].Target != core.ServiceTarget(web.ID) {
+		t.Errorf("link rows = %+v, want one audit-log row naming the service", linked)
+	}
+	if len(feed) != 1 || !feed[0].FeedOnly {
+		t.Errorf("source-change rows = %+v, want one feed_only row", feed)
 	}
 }
 

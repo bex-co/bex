@@ -48,6 +48,20 @@ func TestRenderEventVerbsExist(t *testing.T) {
 		core.AuditVerbDownloadDatabaseBackup:    true,
 		core.AuditVerbProjectServiceMoved:       true,
 		core.AuditVerbEnvironmentServiceMoved:   true,
+		// w9/m449: a member leaving, a cron job's create and delete, an env
+		// var save's per-kind rows, a build source's env-group links and an
+		// environment's per-setting rows.
+		core.AuditVerbMemberLeft:                true,
+		core.AuditVerbCreateCronJob:             true,
+		core.AuditVerbDeleteCronJob:             true,
+		core.AuditVerbCreateEnvVars:             true,
+		core.AuditVerbUpdateEnvVars:             true,
+		core.AuditVerbDeleteEnvVars:             true,
+		core.AuditVerbLinkBuildSourceEnvGroup:   true,
+		core.AuditVerbUnlinkBuildSourceEnvGroup: true,
+		core.AuditVerbSetEnvironmentProtection:  true,
+		core.AuditVerbSetEnvironmentIsolation:   true,
+		core.AuditVerbSetEnvironmentIPAllowList: true,
 	}
 	methodsByPkg := map[string]map[string]bool{}
 	for verb := range renderEvents {
@@ -99,7 +113,10 @@ func serviceMethods(t *testing.T, dir string) map[string]bool {
 // TestRenderEventNamesAreInThePinnedEnum keeps renderEvents' values honest the
 // other way round: each must be a value of Render's pinned auditLog.event enum,
 // so a mapping is never a guessed Render name (w2/067 added
-// UpdateWorkspacePaymentMethodEvent this way).
+// UpdateWorkspacePaymentMethodEvent this way). The one exception is an event
+// render.com/docs/audit-logs documents that the enum has not caught up with
+// (docsOnlyEvents, w9/m449), which must then not be in the enum either, so the
+// exception lapses the day the enum carries it.
 func TestRenderEventNamesAreInThePinnedEnum(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "api", "openapi", "render-public-api-1.json"))
 	if err != nil {
@@ -126,8 +143,13 @@ func TestRenderEventNamesAreInThePinnedEnum(t *testing.T) {
 		t.Fatal("pinned auditLog.event enum not found")
 	}
 	for verb, event := range renderEvents {
-		if !slices.Contains(enum, event) {
+		if !slices.Contains(enum, event) && !docsOnlyEvents[event] {
 			t.Errorf("renderEvents[%q] = %q, not in Render's pinned auditLog.event enum", verb, event)
+		}
+	}
+	for event := range docsOnlyEvents {
+		if slices.Contains(enum, event) {
+			t.Errorf("docsOnlyEvents lists %q, which the pinned enum now carries: drop it from docsOnlyEvents", event)
 		}
 	}
 }

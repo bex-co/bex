@@ -26,6 +26,7 @@ const event = (overrides: Partial<AuditEvent> = {}): AuditEvent => ({
   domain: "",
   envGroupId: "",
   envGroupName: "",
+  envVarKeys: [],
   relation: "",
   oauthClientId: "",
   oauthAudience: "",
@@ -53,6 +54,16 @@ describe("auditEventsToCSV", () => {
     const [, rename, domain] = csv.trimEnd().split("\r\n");
     expect(rename).toContain('""from"":""api"",""to"":""Checkout API""');
     expect(domain).toContain('""domain"":""app.example.com""');
+  });
+
+  // w9/m449: an env var row names its variables, never their values.
+  it("names an env var row's variables in the metadata", () => {
+    const csv = auditEventsToCSV([
+      event({ action: "UpdateEnvVarsEvent", envVarKeys: ["API_KEY", "DB_URL"] }),
+    ]);
+    expect(csv.trimEnd().split("\r\n")[1]).toContain(
+      '""envVarKeys"":""API_KEY,DB_URL""',
+    );
   });
 
   // w9/m450: Render's actor column is the person's email, or a deleted

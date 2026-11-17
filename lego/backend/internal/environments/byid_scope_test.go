@@ -122,11 +122,22 @@ func TestEnvironmentWritesRecordOneDecision(t *testing.T) {
 	}
 	once(audit, core.RelCanCreate, core.AuditAllowed)
 
+	// An allowed SetACL records one row per setting it changed (w9/m449): it
+	// protects the environment and empties its default IP allow list.
 	admin, audit = member(allowChecker{})
 	if _, err := admin.SetACL(ctx, env.ID, ProtectedStatusProtected, false, nil); err != nil {
 		t.Fatalf("SetACL as admin: %v", err)
 	}
-	once(audit, core.RelCanManage, core.AuditAllowed)
+	var verbs []string
+	for _, ev := range audit.events {
+		if ev.Resource != core.WorkspaceObject("tea-b") || ev.Relation != core.RelCanManage || ev.Outcome != core.AuditAllowed {
+			t.Fatalf("SetACL row = %s %s %s, want can_manage allowed on workspace:tea-b", ev.Relation, ev.Outcome, ev.Resource)
+		}
+		verbs = append(verbs, ev.Verb)
+	}
+	if want := []string{core.AuditVerbSetEnvironmentProtection, core.AuditVerbSetEnvironmentIPAllowList}; !slices.Equal(verbs, want) {
+		t.Fatalf("SetACL recorded %v, want %v", verbs, want)
+	}
 
 	developer, audit := member(developerChecker{})
 	if _, err := developer.SetACL(ctx, env.ID, ProtectedStatusUnprotected, false, nil); !errors.Is(err, core.ErrForbidden) {
@@ -205,4 +216,36 @@ func TestListEnvironmentsAnswersNotFoundInANamedWorkspaceThatDoesNotHoldTheProje
 	if got, err := svc.List(core.WithWorkspace(ctx, "tea-b"), "prj-b"); err != nil || len(got) != 1 {
 		t.Fatalf("List naming tea-b = %+v, %v", got, err)
 	}
+}
+
+// w9/m449: each access setting a save changed is its own Render row, and a
+// save that changed nothing records no allowed row.
+func TestEnvironmentACLChangesRecordOneRowPerSetting(t *testing.T) {
+	st := newFakeStore()
+	env, err := st.CreateEnvironment(context.Background(), "prj-b", "tea-b", "staging")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	audit := &recordingSink{}
+	admin := &Service{Base: &core.Base{Authz: allowChecker{}, Audit: audit, Workspace: coretest.Workspaces{"tea-a", "tea-b"}}, Store: st}
+	allowList := core.DefaultEnvironmentAllowList()
+	verbs := func(step string, patch EnvironmentPatch, want ...string) {
+		t.Helper()
+		audit.events = nil
+		if _, err := admin.Update(ctx, env.ID, patch); err != nil {
+			t.Fatalf("%s: %v", step, err)
+		}
+		var got []string
+		for _, ev := range audit.events {
+			got = append(got, ev.Verb)
+		}
+		if !slices.Equal(got, want) {
+			t.Fatalf("%s recorded %v, want %v", step, got, want)
+		}
+	}
+	isolated, protected := true, ProtectedStatusProtected
+	verbs("isolation only", EnvironmentPatch{NetworkIsolationEnabled: &isolated}, core.AuditVerbSetEnvironmentIsolation)
+	verbs("protection only", EnvironmentPatch{ProtectedStatus: &protected}, core.AuditVerbSetEnvironmentProtection)
+	verbs("the same settings again", EnvironmentPatch{ProtectedStatus: &protected, NetworkIsolationEnabled: &isolated, IPAllowList: &allowList})
 }

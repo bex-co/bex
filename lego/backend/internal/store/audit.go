@@ -89,6 +89,9 @@ type AuditRow struct {
 	// w9/m450); empty on rows no request of the actor caused and older rows.
 	SourceIP  string
 	UserAgent string
+	// EnvVarKeys are the variable names an env var row created, changed or
+	// deleted (migration 0285, w9/m449); nil on every other row.
+	EnvVarKeys []string
 }
 
 // AuditFilter narrows ListAuditEvents: Since/Until bound At inclusively
@@ -159,8 +162,9 @@ func insertAuditEvent(ctx context.Context, q interface {
 		    env_group_id, env_group_name,
 		    autoscaling_cpu_from, autoscaling_cpu_to, autoscaling_memory_from, autoscaling_memory_to,
 		    display_name_from, display_name_to, domain, autoscaling_enabled_from, edge_cache_enabled_to,
-		    two_factor_required_to, read_replicas_from, read_replicas_to, source_ip, user_agent)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59)
+		    two_factor_required_to, read_replicas_from, read_replicas_to, source_ip, user_agent,
+		    env_var_keys, feed_only)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61)
 		ON CONFLICT DO NOTHING`,
 		auditID(ev), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, ev.TargetName, string(ev.Outcome), ev.At,
 		ev.MaintenanceModeTo,
@@ -176,7 +180,8 @@ func insertAuditEvent(ctx context.Context, q interface {
 		nullIfEmpty(ev.EnvGroupID), nullIfEmpty(ev.EnvGroupName),
 		ev.AutoscalingCPUFrom, ev.AutoscalingCPUTo, ev.AutoscalingMemoryFrom, ev.AutoscalingMemoryTo,
 		nullIfEmpty(ev.DisplayNameFrom), nullIfEmpty(ev.DisplayNameTo), nullIfEmpty(ev.Domain), ev.AutoscalingEnabledFrom, ev.EdgeCacheEnabledTo,
-		ev.TwoFactorRequiredTo, ev.ReadReplicasFrom, ev.ReadReplicasTo, nullIfEmpty(ev.SourceIP), nullIfEmpty(ev.UserAgent))
+		ev.TwoFactorRequiredTo, ev.ReadReplicasFrom, ev.ReadReplicasTo, nullIfEmpty(ev.SourceIP), nullIfEmpty(ev.UserAgent),
+		nullIfEmptyScopes(ev.EnvVarKeys), ev.FeedOnly)
 	return err
 }
 
@@ -205,13 +210,13 @@ func nullIfEmptyScopes(scopes []string) []string {
 }
 
 const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at, maintenance_mode_to, role_from, role_to, revoked_key_count, relation, oauth_client_id, oauth_audience, oauth_scopes,
-	display_name_from, display_name_to, domain, env_group_id, env_group_name, two_factor_required_to, source_ip, user_agent`
+	display_name_from, display_name_to, domain, env_group_id, env_group_name, two_factor_required_to, source_ip, user_agent, env_var_keys`
 
 func scanAuditRow(row pgx.Row) (AuditRow, error) {
 	var r AuditRow
 	var relation, oauthClientID, oauthAudience, nameFrom, nameTo, domain, groupID, groupName, sourceIP, userAgent *string
 	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.TargetName, &r.Outcome, &r.At, &r.MaintenanceModeTo, &r.RoleFrom, &r.RoleTo, &r.RevokedKeyCount, &relation, &oauthClientID, &oauthAudience, &r.OAuthScopes,
-		&nameFrom, &nameTo, &domain, &groupID, &groupName, &r.TwoFactorRequiredTo, &sourceIP, &userAgent)
+		&nameFrom, &nameTo, &domain, &groupID, &groupName, &r.TwoFactorRequiredTo, &sourceIP, &userAgent, &r.EnvVarKeys)
 	if err != nil {
 		return AuditRow{}, err
 	}
@@ -236,7 +241,9 @@ func (s *PGStore) ListAuditEvents(ctx context.Context, workspaceID string, filte
 	if limit < 1 || limit > MaxAuditPageSize {
 		limit = DefaultAuditPageSize
 	}
-	query := `SELECT ` + auditColumns + ` FROM audit_events WHERE workspace_id = $1`
+	// A feed_only row's change is reported by the Render-named rows recorded
+	// beside it (w9/m449).
+	query := `SELECT ` + auditColumns + ` FROM audit_events WHERE workspace_id = $1 AND NOT feed_only`
 	args := []any{workspaceID}
 	if !filter.Since.IsZero() {
 		args = append(args, filter.Since)

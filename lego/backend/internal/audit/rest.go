@@ -160,6 +160,11 @@ func renderMetadata(e Event) map[string]string {
 			md[key] = value
 		}
 	}
+	// The variables an env var row created, changed or deleted (w9/m449):
+	// names only, comma-separated. Render's key for them was never captured.
+	if len(e.EnvVarKeys) > 0 {
+		md["envVarKeys"] = strings.Join(e.EnvVarKeys, ",")
+	}
 	if denied(e) {
 		md["outcome"] = "denied"
 	}

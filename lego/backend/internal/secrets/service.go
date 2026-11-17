@@ -725,7 +725,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	}); err != nil {
 		return nil, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVars)
+	s.RecordEnvVarWrite(ctx, a, core.AuditVerbSetEnvVars, envChanges(envWrite, moved, env), false)
 	// No manifest keys can be present: SetEnvVars refuses a write that names
 	// one, so everything it wrote is store-owned and editable.
 	return envVarViews(env, "", nil), nil
@@ -794,7 +794,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if err := s.materializeEnvEditing(holdMovedRetained(ctx, moved), a, env, committedAt(envWrite.version), retainedEdit(moved)); err != nil {
 		return EnvVarView{}, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVar)
+	s.RecordEnvVarWrite(ctx, a, core.AuditVerbSetEnvVar, envChanges(envWrite, moved, env), false)
 	return EnvVarView{Key: key, Value: value}, nil
 }
 
@@ -827,7 +827,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 			return err
 		}
 		if stripped {
-			s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteEnvVar)
+			s.RecordEnvVarWrite(ctx, a, core.AuditVerbDeleteEnvVar, core.EnvVarChanges{Deleted: []string{key}}, false)
 			return nil
 		}
 	}
@@ -840,7 +840,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if !keyFound {
 		return core.NotFound("env var")
 	}
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteEnvVar)
+	s.RecordEnvVarWrite(ctx, a, core.AuditVerbDeleteEnvVar, core.EnvVarChanges{Deleted: []string{key}}, false)
 	return nil
 }
 
@@ -916,7 +916,7 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 	}
 	// Past seed-once's "every key already present" return above, so a blueprint
 	// re-apply that seeded nothing records nothing.
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSeedEnvVars)
+	s.RecordEnvVarWrite(ctx, a, core.AuditVerbSeedEnvVars, envChanges(envWrite, nil, env), false)
 	return nil
 }
 
@@ -1219,6 +1219,22 @@ func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(cur
 		return current, mapWrite{prior: snapshot.Data, version: version, changed: true}, nil
 	}
 	return nil, mapWrite{}, secretChanged()
+}
+
+// envChanges is what w did to a service's variables, which it left as next:
+// nothing when it wrote nothing (w9/m449). The retained literals it moved into
+// the store were the service's before it, so a move alone creates nothing.
+func envChanges(w mapWrite, moved, next map[string]string) core.EnvVarChanges {
+	if !w.changed {
+		return core.EnvVarChanges{}
+	}
+	prior := w.prior
+	if len(moved) > 0 {
+		prior = map[string]string{}
+		maps.Copy(prior, w.prior)
+		maps.Copy(prior, moved)
+	}
+	return core.DiffEnvVars(prior, next)
 }
 
 // mapWrite is what a write did to one source map, for compensation to undo:

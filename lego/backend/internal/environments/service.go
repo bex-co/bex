@@ -24,6 +24,7 @@ limitations under the License.
 package environments
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -843,7 +844,10 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	if hasACL {
 		relation = core.RelCanManage
 	}
-	if err := s.Authorize(ctx, relation); err != nil {
+	// The allowed rows wait for the writes: a rename's own, and one per access
+	// setting the patch changed (w9/m449). A refusal records at once.
+	authCtx := core.WithDeferredAllowedWriteAudit(ctx)
+	if err := s.Authorize(authCtx, relation); err != nil {
 		return EnvironmentView{}, err
 	}
 	if patch.Name == nil && !hasACL {
@@ -857,7 +861,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 		}
 		name = trimmed
 	}
-	e, err := s.requireEnvironment(ctx, relation, id)
+	e, err := s.requireEnvironment(authCtx, relation, id)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -876,6 +880,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 			return EnvironmentView{}, conflictOrMapError(err, name)
 		}
 		e.Name = name
+		s.RecordAllowedWrite(ctx, "environments.Update", relation, e.TenantID, environmentTarget(e), e.Name)
 	}
 	if !hasACL {
 		return s.toFullView(ctx, e)
@@ -896,7 +901,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	if err := validateACL(status, allowList); err != nil {
 		return EnvironmentView{}, err
 	}
-	return s.applyACL(ctx, e, status, isolated, allowList)
+	return s.applyACLRecorded(ctx, e, status, isolated, allowList)
 }
 
 // ProjectMemberClearer adapts Service to the projects feature's
@@ -1510,13 +1515,16 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	// its gate is can_manage (admin), not the can_create a developer holds.
 	// scopeEnvironment has routed ctx to the environment's own workspace, so
 	// this is the binding check.
-	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+	//
+	// Its allowed rows wait for the write, one per setting it changed (w9/m449).
+	authCtx := core.WithDeferredAllowedWriteAudit(ctx)
+	if err := s.Authorize(authCtx, core.RelCanManage); err != nil {
 		return EnvironmentView{}, err
 	}
 	if err := validateACL(protectedStatus, ipAllowList); err != nil {
 		return EnvironmentView{}, err
 	}
-	e, err := s.requireEnvironment(ctx, core.RelCanManage, id)
+	e, err := s.requireEnvironment(authCtx, core.RelCanManage, id)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -1526,7 +1534,37 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	if err := s.RequireNetworkIsolation(ctx, e.TenantID, networkIsolationEnabled, e.NetworkIsolationEnabled); err != nil {
 		return EnvironmentView{}, err
 	}
-	return s.applyACL(ctx, e, protectedStatus, networkIsolationEnabled, ipAllowList)
+	return s.applyACLRecorded(ctx, e, protectedStatus, networkIsolationEnabled, ipAllowList)
+}
+
+// applyACLRecorded is applyACL for a change to an existing environment
+// (SetACL, Update): once the settings are saved it records one row per setting
+// that changed, Render's ChangeEnvironmentProtectionEvent,
+// UpdateEnvironmentIsolatedEvent and UpdateIPAllowListEvent (w9/m449). A save
+// that changed nothing records none.
+func (s *Service) applyACLRecorded(ctx context.Context, e store.Environment, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) (EnvironmentView, error) {
+	v, err := s.applyACL(ctx, e, protectedStatus, networkIsolationEnabled, ipAllowList)
+	if err != nil {
+		return v, err
+	}
+	for _, changed := range []struct {
+		verb string
+		is   bool
+	}{
+		{core.AuditVerbSetEnvironmentProtection, cmp.Or(e.ProtectedStatus, ProtectedStatusUnprotected) != protectedStatus},
+		{core.AuditVerbSetEnvironmentIsolation, e.NetworkIsolationEnabled != networkIsolationEnabled},
+		{core.AuditVerbSetEnvironmentIPAllowList, !slices.Equal(e.IPAllowList, ipAllowList)},
+	} {
+		if changed.is {
+			s.RecordAllowedWrite(ctx, changed.verb, core.RelCanManage, e.TenantID, environmentTarget(e), e.Name)
+		}
+	}
+	return v, nil
+}
+
+// environmentTarget is e's audit target.
+func environmentTarget(e store.Environment) string {
+	return core.EnvironmentTarget(ids.EnvironmentPublicID(e.ID))
 }
 
 // applyACL is SetACL's post-authorization body and CreateWithACL's second
