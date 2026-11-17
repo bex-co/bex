@@ -57,17 +57,7 @@ func NewLokiRequestMetricsSource(base string, hc *http.Client) RequestMetricsSou
 		if query == "" {
 			return []MetricSeries{}, nil
 		}
-		// Loki's query_range takes nanosecond bounds (like NewLokiSource) and a
-		// step in seconds; the metric reply is a Prometheus-shaped matrix.
-		step := stepSeconds(req.Resolution)
-		start, end := lokiStepBounds(req.Start, req.End, step)
-		u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
-			"query": {query},
-			"start": {strconv.FormatInt(start, 10)},
-			"end":   {strconv.FormatInt(end, 10)},
-			"step":  {strconv.FormatInt(step, 10)},
-		}.Encode())
-		series, err := queryRangeMatrix(ctx, hc, u, "loki")
+		series, err := lokiQueryRange(ctx, hc, base, query, req.Start, req.End, req.Resolution)
 		if err != nil {
 			return nil, err
 		}
@@ -87,6 +77,21 @@ func NewLokiRequestMetricsSource(base string, hc *http.Client) RequestMetricsSou
 		}
 		return series, nil
 	}
+}
+
+// lokiQueryRange runs one LogQL metric query_range. Loki takes nanosecond
+// bounds (like NewLokiSource), rounded up to the step, and a step in seconds;
+// the reply is a Prometheus-shaped matrix.
+func lokiQueryRange(ctx context.Context, hc *http.Client, base, query string, start, end time.Time, resolution time.Duration) ([]MetricSeries, error) {
+	step := stepSeconds(resolution)
+	from, to := lokiStepBounds(start, end, step)
+	u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
+		"query": {query},
+		"start": {strconv.FormatInt(from, 10)},
+		"end":   {strconv.FormatInt(to, 10)},
+		"step":  {strconv.FormatInt(step, 10)},
+	}.Encode())
+	return queryRangeMatrix(ctx, hc, u, "loki")
 }
 
 // lokiStepBounds rounds a read's bounds UP to the step, in nanoseconds (w4/m175).

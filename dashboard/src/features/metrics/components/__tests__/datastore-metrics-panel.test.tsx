@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DatastoreMetricsPanel } from "../datastore-metrics-panel";
+import { DatastoreMetricsSkeleton } from "@/common/components/route-skeletons";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
 
 vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
@@ -41,6 +42,32 @@ function seriesResult(unit: string, values: number[], instance?: string) {
     error: undefined,
     degradedSources: [],
   };
+}
+
+/** One series per (instance, direction), as bex-api answers a two-series graph. */
+function directionResult(
+  unit: string,
+  instances: string[],
+): ReturnType<typeof useDatastoreMetrics> {
+  return {
+    ...emptyResult(),
+    series: instances.flatMap((instance) =>
+      // Write first: the panel orders read before write itself.
+      ["write", "read"].map((direction) => ({
+        unit,
+        labels: { instance, direction },
+        points: [
+          { timestamp: new Date(1_751_800_000_000).toISOString(), value: 4 },
+        ],
+      })),
+    ),
+  };
+}
+
+function headings(container: HTMLElement) {
+  return Array.from(container.querySelectorAll(".text-sm.font-medium")).map(
+    (el) => el.textContent,
+  );
 }
 
 function errorResult() {
@@ -322,4 +349,167 @@ describe("DatastoreMetricsPanel", () => {
       screen.getByText("Metrics source not configured"),
     ).toBeInTheDocument();
   });
+
+  // w7/m430: Render's database Metrics page — disk storage, then database
+  // activity, in Render's order.
+  it("charts Render's five database-activity and disk graphs for a Postgres", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+
+    const { container } = render(
+      <DatastoreMetricsPanel kind="database" resource="pg" />,
+    );
+
+    expect(headings(container)).toEqual([
+      "Disk",
+      "Disk Activity",
+      "Disk Operations",
+      "CPU",
+      "Memory",
+      "Active Connections",
+      "Network Activity",
+      "Transaction Volume",
+      "Replication Lag",
+      "Lock-Delayed Queries",
+    ]);
+    for (const metric of [
+      "network_activity",
+      "transaction_volume",
+      "lock_delayed_queries",
+      "disk_operations",
+    ]) {
+      expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+        "database",
+        "pg",
+        metric,
+        { skip: false },
+      );
+    }
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "database",
+      "pg",
+      "disk_activity",
+    );
+  });
+
+  it("gives a Key Value Disk Activity and none of Postgres's activity graphs", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+
+    const { container } = render(
+      <DatastoreMetricsPanel kind="keyvalue" resource="red-x" />,
+    );
+
+    expect(headings(container)).toEqual([
+      "Disk",
+      "Disk Activity",
+      "CPU",
+      "Memory",
+      "Connections",
+    ]);
+    for (const metric of [
+      "network_activity",
+      "transaction_volume",
+      "lock_delayed_queries",
+      "disk_operations",
+    ]) {
+      expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+        "keyvalue",
+        "red-x",
+        metric,
+        { skip: true },
+      );
+    }
+  });
+
+  it("gives a service's disk Disk Activity and Disk Operations beside its usage", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+
+    const { container } = render(
+      <DatastoreMetricsPanel kind="service" resource="srv-x" />,
+    );
+
+    expect(headings(container)).toEqual([
+      "Disk",
+      "Disk Activity",
+      "Disk Operations",
+    ]);
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "service",
+      "srv-x",
+      "disk_operations",
+      { skip: false },
+    );
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "service",
+      "srv-x",
+      "network_activity",
+      { skip: true },
+    );
+  });
+
+  it("draws the two-series graphs as Read and Write, per instance once there are several", () => {
+    let instances = ["pg-1"];
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) =>
+      metric === "disk_activity"
+        ? directionResult("bytes", instances)
+        : emptyResult(),
+    );
+    const { rerender } = render(
+      <DatastoreMetricsPanel kind="database" resource="pg" />,
+    );
+    // One instance: the legend names only the direction, read first.
+    const legend = () =>
+      Array.from(document.querySelectorAll(".mt-1 > span")).map(
+        (el) => el.textContent,
+      );
+    expect(legend()).toEqual(["Read", "Write"]);
+
+    instances = ["pg-2", "pg-1"];
+    rerender(<DatastoreMetricsPanel kind="database" resource="pg" />);
+    expect(legend()).toEqual([
+      "pg-1 · Read",
+      "pg-1 · Write",
+      "pg-2 · Read",
+      "pg-2 · Write",
+    ]);
+  });
+
+  it("says Lock-Delayed Queries needs the log store, not that the read failed", () => {
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) =>
+      metric === "lock_delayed_queries"
+        ? { ...emptyResult(), storeUnavailable: true }
+        : emptyResult(),
+    );
+
+    render(<DatastoreMetricsPanel kind="database" resource="pg" />);
+
+    expect(
+      screen.getByText("Lock-delayed queries need the log store"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Host and Path filters/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows an empty window as no data, for counts and bytes alike", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+
+    render(<DatastoreMetricsPanel kind="database" resource="pg" />);
+
+    // Every chart section without data says so; none is an error.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText("No data in range").length,
+    ).toBeGreaterThanOrEqual(9);
+  });
+
+  // The route skeleton previews this panel: the same sections in the same
+  // order, so nothing moves when the panel replaces it.
+  it.each(["database", "keyvalue"] as const)(
+    "matches its %s skeleton section for section",
+    (kind) => {
+      mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+      const ready = render(<DatastoreMetricsPanel kind={kind} resource="r" />);
+      const pending = render(<DatastoreMetricsSkeleton kind={kind} />);
+      expect(headings(pending.container)).toEqual(headings(ready.container));
+    },
+  );
 });

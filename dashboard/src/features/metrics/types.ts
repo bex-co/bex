@@ -49,13 +49,21 @@ export const DATASTORE_METRIC_IDS = [
   "cpu_limit",
   "memory",
   "memory_limit",
+  // Render's database-activity and disk graphs (w7/m430): per-bucket bytes or
+  // counts; network and the disk graphs carry a `direction` (read | write).
+  "network_activity",
+  "transaction_volume",
+  "lock_delayed_queries",
+  "disk_activity",
+  "disk_operations",
 ] as const;
 
 export type DatastoreMetricId = (typeof DATASTORE_METRIC_IDS)[number];
 
 // "service" reads the persistent disk attached to a service (ADR082 D6) —
-// only `disk`/`disk_capacity` apply to it, since a service has no datastore
-// process. It rides the datastore verb because what it measures is a PVC.
+// only its disk graphs (`disk`, `disk_capacity`, `disk_activity`,
+// `disk_operations`) apply to it, since a service has no datastore process. It
+// rides the datastore verb because what it measures is a PVC.
 export type DatastoreKind = "database" | "keyvalue" | "service";
 
 // Mirrors lego/backend/internal/metrics/graphql.go's datastoreMetricNames.
@@ -70,6 +78,11 @@ export const RENDER_DATASTORE_METRIC_NAMES: Record<DatastoreMetricId, string> =
     cpu_limit: "CPU_LIMIT",
     memory: "MEMORY",
     memory_limit: "MEMORY_LIMIT",
+    network_activity: "NETWORK_ACTIVITY",
+    transaction_volume: "TRANSACTION_VOLUME",
+    lock_delayed_queries: "LOCK_DELAYED_QUERIES",
+    disk_activity: "DISK_ACTIVITY",
+    disk_operations: "DISK_OPERATIONS",
   };
 
 // A metric point with guaranteed (non-null) fields — what charts consume.

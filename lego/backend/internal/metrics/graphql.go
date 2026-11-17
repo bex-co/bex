@@ -64,6 +64,12 @@ var datastoreMetricNames = map[string]string{
 	"MEMORY":          MetricMemory,
 	"MEMORY_LIMIT":    MetricMemoryLimit,
 	"CONNECTIONS":     MetricKVConnections, // key-value only
+	// Render's database-activity and disk graphs (w7/m430).
+	"NETWORK_ACTIVITY":     MetricNetworkActivity,
+	"TRANSACTION_VOLUME":   MetricTransactionVolume,
+	"LOCK_DELAYED_QUERIES": MetricLockDelayedQueries,
+	"DISK_ACTIVITY":        MetricDiskActivity,
+	"DISK_OPERATIONS":      MetricDiskOperations,
 }
 
 // datastoreMetricsQueryInputType is datastoreMetrics' query input — the

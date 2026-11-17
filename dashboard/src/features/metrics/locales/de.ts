@@ -332,6 +332,51 @@ const deMetrics: Record<string, TranslationEntry> = {
     description:
       "Datastore metrics panel: Postgres replication-lag chart section title",
   },
+  "metrics.diskActivityTitle": {
+    message: "Disk-Aktivität",
+    description:
+      "Datastore metrics panel: Render's Disk Activity chart title — bytes read from and written to the data volume per bucket (Postgres, Key Value, a service's disk; w7/m430)",
+  },
+  "metrics.diskOperationsTitle": {
+    message: "Disk-Operationen",
+    description:
+      "Datastore metrics panel: Render's Disk Operations chart title — read and write operations on the data volume per bucket (Postgres, a service's disk; w7/m430)",
+  },
+  "metrics.networkActivityTitle": {
+    message: "Netzwerkaktivität",
+    description:
+      "Datastore metrics panel: Render's Network Activity chart title — bytes a Postgres read from and wrote to the network per bucket (w7/m430)",
+  },
+  "metrics.transactionVolumeTitle": {
+    message: "Transaktionsvolumen",
+    description:
+      "Datastore metrics panel: Render's Transaction Volume chart title — transactions a Postgres executed per bucket (w7/m430)",
+  },
+  "metrics.lockDelayedQueriesTitle": {
+    message: "Durch Sperren verzögerte Abfragen",
+    description:
+      "Datastore metrics panel: Render's Lock-Delayed Queries chart title — completed queries that waited a second or more on a lock (w7/m430)",
+  },
+  "metrics.directionRead": {
+    message: "Lesen",
+    description:
+      "Legend entry of the read half of a two-series chart (data read from disk or the network)",
+  },
+  "metrics.directionWrite": {
+    message: "Schreiben",
+    description:
+      "Legend entry of the write half of a two-series chart (data written to disk or the network)",
+  },
+  "metrics.seriesInstanceDirection": {
+    message: "{instance} · {direction}",
+    description:
+      "Legend entry of a two-series chart when the datastore has several instances: the instance id, then Read or Write",
+  },
+  "metrics.lockDelayedStoreUnavailable": {
+    message: "Durch Sperren verzögerte Abfragen benötigen den Log-Speicher",
+    description:
+      "Shown instead of the Lock-Delayed Queries chart on a deployment with no durable log store (503): the count comes from Postgres log lines",
+  },
   "metrics.replicationLagPendingHA": {
     message:
       "Nicht verfügbar — kein Replikat (aktiviere High Availability, um die Replikationsverzögerung zu sehen)",

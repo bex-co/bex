@@ -325,8 +325,24 @@ func TestDatastoreMetricsTakeThePlanFloor(t *testing.T) {
 		starts = append(starts, req.Start)
 		return point, nil
 	}
+	svc.DatastoreActivity = func(_ context.Context, req DatastoreActivityRequest) ([]MetricSeries, error) {
+		starts = append(starts, req.Start)
+		return point, nil
+	}
+	svc.LockWaits = func(_ context.Context, req LockWaitsRequest) ([]MetricSeries, error) {
+		starts = append(starts, req.Start)
+		return point, nil
+	}
 
 	reads := map[string]func(){
+		// Render's database-activity graphs (w7/m430), from Prometheus and
+		// from the log store.
+		"REST disk-activity": func() {
+			restStamps(t, svc, "/v1/metrics/disk-activity?resource="+kvID+"&"+window.Encode())
+		},
+		"REST lock-delayed-queries": func() {
+			restStamps(t, svc, "/v1/metrics/lock-delayed-queries?resource="+pgID+"&"+window.Encode())
+		},
 		"REST db-connections": func() {
 			restStamps(t, svc, "/v1/metrics/db-connections?resource="+pgID+"&"+window.Encode())
 		},

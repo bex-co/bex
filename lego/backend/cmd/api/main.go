@@ -735,6 +735,9 @@ func wireObservability(deps *api.Deps, cfg *Config) {
 		// access log in Loki (w5/m58) — the only store with a per-request
 		// host/path axis; unset => a host/path-filtered metrics read 503s.
 		deps.RequestLogMetrics = metrics.NewLokiRequestMetricsSource(lokiURL, nil)
+		// Lock-delayed queries are counted from the Postgres log lines
+		// (w7/m430); unset => that graph answers LOG_STORE_UNAVAILABLE.
+		deps.LockWaits = metrics.NewLokiLockWaitsSource(lokiURL, nil)
 	}
 	// Prometheus-backed history, wired only when BEX_PROM_URL is set: request
 	// metrics (http_requests/latency/bandwidth via Traefik's counters — unwired
@@ -756,6 +759,7 @@ func wireObservability(deps *api.Deps, cfg *Config) {
 		deps.ReplicationLag = metrics.NewPrometheusReplicationLagSource(promURL, nil)
 		deps.KeyValueStats = metrics.NewPrometheusKeyValueStatsSource(promURL, nil)
 		deps.DatastoreResource = metrics.NewPrometheusDatastoreResourceSource(promURL, nil)
+		deps.DatastoreActivity = metrics.NewPrometheusDatastoreActivitySource(promURL, nil)
 	}
 }
 

@@ -614,8 +614,14 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// dedicated spec.postgresql.shared_preload_libraries field — inside
 	// `parameters` it is a "fixed configuration parameter" the admission webhook
 	// rejects outright.
+	// log_lock_waits logs a wait that outlasts deadlock_timeout (1s) and, once
+	// the lock is granted, a second "acquired … after N ms" line: the event
+	// the Lock-Delayed Queries graph counts from the log store (w7/m430). It
+	// is reloadable, so an existing database adopts it without a restart, and
+	// it sits under the tenant's parameters so a legacy declared value wins.
 	pgParams := map[string]any{
 		"pg_stat_statements.track": "all",
+		"log_lock_waits":           "on",
 	}
 	for k, v := range p.parameters {
 		if !strings.EqualFold(strings.TrimSpace(k), "shared_preload_libraries") && !managedExtensionParameter(k) {

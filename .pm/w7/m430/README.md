@@ -1,20 +1,20 @@
 # w7 · m430 — A database's Metrics page charts Render's database activity: network, transactions, lock-delayed queries, disk activity and disk operations
 
-**Worker:** worker7 **Goal:** a Postgres's metrics show the five graphs Render's database Metrics page has and bex lacks (Network Activity, Transaction Volume, Lock-Delayed Queries, Disk Activity, Disk Operations), a Key Value shows Disk Activity, and a service with a disk shows Disk Activity and Disk Operations, with the same series on REST, GraphQL, MCP and the dashboard. **Status:** todo
+**Worker:** worker7 **Goal:** a Postgres's metrics show the five graphs Render's database Metrics page has and bex lacks (Network Activity, Transaction Volume, Lock-Delayed Queries, Disk Activity, Disk Operations), a Key Value shows Disk Activity, and a service with a disk shows Disk Activity and Disk Operations, with the same series on REST, GraphQL, MCP and the dashboard. **Status:** in progress (t001, t003–t005 and t007–t009 done; t002's scrape change is written and its production read waits for the GitOps sync; t006 and t010 need production to serve the commit)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Render's database Metrics page as a contract, with a source for each graph | 45m | — |
+| t001 | Render's database Metrics page as a contract, with a source for each graph — **DONE** | 45m | — |
 | t002 | Scrape the series: transactions, network and data-volume I/O for datastore and disk-bearing pods | 90m | t001 |
-| t003 | A source for lock-delayed queries | 75m | t001 |
-| t004 | The core verb and REST, GraphQL and MCP serve the new metrics | 90m | t002, t003 |
-| t005 | Dashboard: the graphs on the Postgres, Key Value and service Disk pages | 90m | t004 |
+| t003 | A source for lock-delayed queries — **DONE** | 75m | t001 |
+| t004 | The core verb and REST, GraphQL and MCP serve the new metrics — **DONE** | 90m | t002, t003 |
+| t005 | Dashboard: the graphs on the Postgres, Key Value and service Disk pages — **DONE** | 90m | t004 |
 | t006 | Live check on production: load and a one-second lock wait on a canary Postgres | 45m | t005 |
-| t007 | Render parity | 20m | t006 |
-| t008 | Simplify | 15m | t007 |
-| t009 | Test coverage | 45m | t007 |
+| t007 | Render parity — **DONE** | 20m | t006 |
+| t008 | Simplify — **DONE** | 15m | t007 |
+| t009 | Test coverage — **DONE** | 45m | t007 |
 | t010 | Closeout | 10m | t008, t009 |
 
 ## Definition of done

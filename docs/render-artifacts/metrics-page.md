@@ -163,3 +163,44 @@ Render's own sources, fetched 2026-10-20:
 - MCP (`render-oss/render-mcp-server` `pkg/metrics/tools.go`, commit `c6b8bb1`): `cpuUsageAggregationMethod` — "Method for aggregating metric values over time intervals. Only supported for CPU usage metrics. Options: AVG, MAX, MIN. Defaults to AVG." `aggregateHttpRequestCountsBy` — "Field to aggregate HTTP request metrics by. Only supported for http_request_count metric. Options: host (aggregate by request host), statusCode (aggregate by HTTP status code). When not specified, returns total request counts." `pkg/metrics/repo.go` passes both straight to REST `aggregationMethod`/`aggregateBy`, and only on the cpu and request-count reads.
 
 **Decision.** The two Render wordings describe one parameter (the MCP server forwards it unchanged), so bex implements the MCP server's documented meaning on every surface: **interval aggregation**. MAX/MIN report, per instance, the highest/lowest CPU rate sampled inside each resolution step; AVG (the default, also when omitted) is the plain rate, which already averages its lookback window, so it is byte-identical to the pre-m140 query. It composes with bex's `aggregateAllMethod` (cross-instance, applied after): MAX then `aggregateAllMethod=MAX` is the peak of the hottest instance. MCP applies it to the cpu metric type only and reads other types in the same call unaggregated, as Render's server does; REST and GraphQL refuse it on any other metric. The host breakdown labels each series `host`, and when the request-log store is unavailable it answers the host filter's 503 `LOG_STORE_UNAVAILABLE` rather than the host-less Traefik counter.
+
+## Database activity and disk graphs (w7/m430, 2026-11-16)
+
+Render's [Service metrics](https://render.com/docs/service-metrics) page (read 2026-11-16) charts these five graphs, which bex lacked. Each is a bex datastore metric on the shared `DatastoreMetrics` verb (`lego/backend/internal/metrics/datastore.go`), so REST, GraphQL `datastoreMetrics` and MCP `get_datastore_metrics` answer the same series. Render publishes no REST path for any of them (the pinned OpenAPI's `/metrics/*` has none), so the REST paths and MCP ids are bex extensions named after the graphs.
+
+| Graph | Render's sentence | Unit, series | Shown for | bex id · REST · GraphQL | bex source |
+| --- | --- | --- | --- | --- | --- |
+| Disk Activity | "The amount of data your service has read from and written to disk" | bytes per bucket, `direction` read and write, per instance | Postgres, Key Value, a service with a disk | `disk_activity` · `/v1/metrics/disk-activity` · `DISK_ACTIVITY` | cAdvisor `container_fs_{reads,writes}_bytes_total` of the resource's pods on every device but the node's boot disk |
+| Disk Operations | "The number of read and write operations your service has performed on its disk" | operations per bucket, read and write | Postgres, a service with a disk | `disk_operations` · `/v1/metrics/disk-operations` · `DISK_OPERATIONS` | cAdvisor `container_fs_{reads,writes}_total`, same selection |
+| Network Activity | "The amount of data your database has read from and written to the network" | bytes per bucket, read (received) and write (sent) | Postgres | `network_activity` · `/v1/metrics/network-activity` · `NETWORK_ACTIVITY` | cAdvisor `container_network_{receive,transmit}_bytes_total` on the instance pod's `eth0` |
+| Transaction Volume | "The number of transactions executed by your database" | transactions per bucket | Postgres | `transaction_volume` · `/v1/metrics/transaction-volume` · `TRANSACTION_VOLUME` | CNPG exporter `cnpg_pg_stat_database_xact_commit` + `_rollback`, the tenant's databases only |
+| Lock-Delayed Queries | "The number of recently completed database queries that were delayed by another operation holding a lock for one second or longer. Queries appear on this graph after they've completed." | queries per bucket | Postgres | `lock_delayed_queries` · `/v1/metrics/lock-delayed-queries` · `LOCK_DELAYED_QUERIES` | `log_lock_waits` "acquired … after N ms" lines with N ≥ 1000, counted in the log store |
+
+A kind that does not show a graph on Render is refused by name (a 400 on every surface), as `db_connections` on a Key Value always was. Every value is a per-bucket sum, so a series adds up to the window's total, as `http_requests` has since w4/m108.
+
+### What the live pods carry (production, 2026-11-17T01:55Z)
+
+Read on the production app cluster before anything was changed:
+
+- **Disk.** cAdvisor already stores `container_fs_{reads,writes}{_bytes,}_total` for every container, one series per block device the container did I/O on (1,388 series cluster-wide). Every node boots from `/dev/sda`. A datastore's volume is a further `sd` device: `dpg-d9nqg95cavls73fp8m20-1`'s `postgres` container wrote 25.6 GB to `/dev/sdb` and 45 KB to `/dev/sda`, and its `plugin-barman-cloud` (WAL archiving) sidecar 272 MB to the same `/dev/sdb`; `red-d9p49kdrtmes73c34ovg-0`'s `valkey` wrote 14 GB to `/dev/sdc`. A service disk is LUKS-encrypted (`hcloud-volumes-luks`), and its I/O is charged to both the `dm` mapping and the `sd` device under it, with equal values (one production service disk: 257,103,949,824 bytes written on `/dev/dm-0` and the same on `/dev/sdb`). So the disk graphs take the resource's pods' containers, drop `/dev/sda`, take each container's largest device (one copy of a LUKS volume's bytes), and add the containers up. No new series is scraped for them.
+- **Network.** A pod's network counters exist only on its pod-level row (`container=""`, `interface="eth0"`), which the cAdvisor job dropped with every other pod-level row. The scrape now keeps the two byte counters of that row for Postgres instance pods (`dpg-<id>-<n>`) only. The traffic is the pod's: client connections, replication between instances, WAL archiving to object storage, and the exporter's scrapes.
+- **Transactions.** The CNPG exporter serves `cnpg_pg_stat_database_xact_commit` and `_rollback` per `datname`: the tenant's database (16.5M commits on `dpg_d9nqg95cavls73fp8m20`), `postgres` (1.3M, the instance manager's and exporter's own queries), `template0`, `template1` and the shared row `""`. The scrape keeps the pair for tenant instance pods and drops those four `datname`s, so the graph is the tenant's own work.
+- **Lock waits.** `log_lock_waits` was `off` and `deadlock_timeout` `1000` (default) on PostgreSQL 18.4. The operator now sets `log_lock_waits=on` for every tenant database. On the local CAPD cluster (CNPG 1.30.1, the production version) adding it reloaded the server without a restart (same postmaster start time and pod uid, restart count 0), and a three-second row-lock wait logged `process 228 still waiting for ShareLock on transaction 761 after 1000.191 ms` at one second and `process 228 acquired ShareLock on transaction 761 after 2500.040 ms` when it ended, while a 0.4-second wait logged nothing. Only the "acquired" line is counted, so a wait counts once, after it ends, and never while it lasts.
+
+### Not captured from Render, and bex's choice
+
+No Render database was available to compare against (a Render account is `w10/blocked/002`). Each open point and the choice bex made:
+
+| Point | bex |
+| --- | --- |
+| The graphs' resolution | The request's step, as every bex chart (default 60 s; the datastore panel reads the last hour). A step finer than four scrapes spreads the counter's rate over the bucket: four cAdvisor scrapes (60 s) for network and disk, four CNPG scrapes (240 s) for transactions. |
+| Transaction Volume: commits only, or commits and rollbacks | Both: a rolled-back transaction was executed. |
+| Network Activity: client traffic only, or all of the database's | All of the instance pod's traffic, including replication and WAL archiving. |
+| Disk Activity: page-cache hits | Not counted: the counters are block I/O. |
+| Lock-Delayed Queries: a wait that ends in a deadlock or a cancel | Not counted: PostgreSQL logs "acquired" only when the lock is granted. A wait counts in the bucket where it ended. A `deadlock_timeout` raised above one second by a legacy declared parameter misses the waits between one second and that timeout; one lowered below it is held to one second by the line's own duration. |
+| Disk Activity on a Free Key Value | Shown: bex's Free Key Value has a disk (ADR018 Key Value row); Render's Free tier has none and hides it. |
+| A cluster whose volumes share the boot disk | The local CAPD mock's `local-path` volumes do; their disk graphs are empty there. |
+
+### Series growth
+
+The new series are the network pair per Postgres instance pod and the transaction pair per tenant database per instance pod. Production head series before the rollout: 121,049 (2026-11-17T01:55Z), with 4 tenant Postgres instance pods holding one tenant database each, so about 16 new series. The measured growth after the rollout is recorded in w7/m430.

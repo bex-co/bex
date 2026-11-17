@@ -305,7 +305,7 @@ type getDatastoreMetricsArgs struct {
 	ResourceID        string   `json:"resourceId,omitempty" jsonschema:"the Database, KeyValue, or service id (dpg-…/red-…/srv-…) — Render-shaped alias of resource"`
 	Resource          string   `json:"resource,omitempty" jsonschema:"legacy spelling of resourceId — the CR name, not the display name; ignored when resourceId is also set"`
 	Kind              string   `json:"kind,omitempty" jsonschema:"database|keyvalue|service; omit to infer it from the id prefix (red- keyvalue, srv- service, otherwise database); service reads the disk attached to a service (ADR082)"`
-	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database, KeyValue, or a service with an attached disk) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22) | kv_memory|kv_connections (KeyValue only) | cpu|memory|cpu_limit|memory_limit (Database or KeyValue: the datastore's own container; a KeyValue's memory is kv_memory)"`
+	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database, KeyValue, or a service with an attached disk) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22) | kv_memory|kv_connections (KeyValue only) | cpu|memory|cpu_limit|memory_limit (Database or KeyValue: the datastore's own container; a KeyValue's memory is kv_memory) | network_activity|transaction_volume|lock_delayed_queries (Database only; per-bucket bytes or counts, network split by direction read|write; lock_delayed_queries needs the log store) | disk_activity (Database, KeyValue, or a service with a disk; bytes read and written per bucket, by direction) | disk_operations (Database or a service with a disk; read and write operations per bucket, by direction)"`
 	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window"`
 	EndTime           string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window"`
 	Resolution        *int64   `json:"resolution,omitempty" jsonschema:"step in seconds — Render-shaped alias of resolutionSeconds"`
@@ -326,7 +326,7 @@ func (a getDatastoreMetricsArgs) resolutionSeconds() int64 {
 func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_datastore_metrics",
-		Description: "Get disk usage, cpu/memory and their limits, active-connections, replication-lag (Postgres), and connections (Key Value) metrics for one managed Postgres or Key Value instance — or, with kind=service, the used/capacity bytes of the persistent disk attached to a service (ADR082) — as Render-shaped time-series. bex extension (no Render equivalent).",
+		Description: "Get disk usage, disk activity and operations, cpu/memory and their limits, active-connections, replication-lag, network activity, transaction volume and lock-delayed queries (Postgres), and connections (Key Value) metrics for one managed Postgres or Key Value instance — or, with kind=service, the used/capacity bytes of the persistent disk attached to a service (ADR082) — as Render-shaped time-series. bex extension (no Render equivalent).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDatastoreMetricsArgs) (*mcp.CallToolResult, datastoreMetricsResult, error) {
 		resource, err := in.resource()
 		if err != nil {

@@ -146,4 +146,31 @@ describe("useDatastoreMetrics", () => {
     expect(result.current.error).toBeUndefined();
     expect(result.current.series).toEqual([]);
   });
+
+  // w7/m430: Lock-Delayed Queries is counted from Postgres log lines, so a
+  // deployment without the log store answers LOG_STORE_UNAVAILABLE. That is a
+  // state of its own, not a failed read and not "no metrics source".
+  it("reports storeUnavailable for a log-store 503, not an error", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: false,
+      error: codedGraphQLError("LOG_STORE_UNAVAILABLE"),
+    });
+
+    const { result } = renderHook(() =>
+      useDatastoreMetrics("database", "pg", "lock_delayed_queries"),
+    );
+
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          query: expect.objectContaining({ name: "LOCK_DELAYED_QUERIES" }),
+        }),
+      }),
+    );
+    expect(result.current.storeUnavailable).toBe(true);
+    expect(result.current.unavailable).toBe(false);
+    expect(result.current.error).toBeUndefined();
+  });
 });

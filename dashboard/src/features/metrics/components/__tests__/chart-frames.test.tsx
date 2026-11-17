@@ -48,9 +48,16 @@ describe("chart frames share the populated chart's ratio", () => {
 });
 
 describe("Key Value metrics preview", () => {
-  it("previews the real panel: headings, four ratio plots, no filter row", () => {
+  it("previews the real panel: headings, five ratio plots, no filter row", () => {
     const { container } = render(<DatastoreMetricsSkeleton kind="keyvalue" />);
-    for (const heading of ["Metrics", "Disk", "CPU", "Memory", "Connections"]) {
+    for (const heading of [
+      "Metrics",
+      "Disk",
+      "Disk Activity",
+      "CPU",
+      "Memory",
+      "Connections",
+    ]) {
       expect(
         screen.getAllByText(new RegExp(`^${heading}`)).length,
       ).toBeGreaterThan(0);
@@ -60,23 +67,28 @@ describe("Key Value metrics preview", () => {
         "[data-slot=skeleton], .animate-pulse",
       ),
     ).filter((el) => el.style.aspectRatio === RATIO);
-    expect(plots).toHaveLength(4);
+    expect(plots).toHaveLength(5);
     expect(container.querySelector(".h-9")).toBeNull(); // no phantom filter controls
   });
 });
 
 describe("Postgres metrics preview", () => {
-  it("previews the real panel's five sections in order", () => {
+  it("previews the real panel's ten sections in order", () => {
     const { container } = render(<DatastoreMetricsSkeleton kind="database" />);
     const headings = Array.from(
       container.querySelectorAll(".text-sm.font-medium"),
     ).map((el) => el.textContent);
     expect(headings).toEqual([
       "Disk",
+      "Disk Activity",
+      "Disk Operations",
       "CPU",
       "Memory",
       "Active Connections",
+      "Network Activity",
+      "Transaction Volume",
       "Replication Lag",
+      "Lock-Delayed Queries",
     ]);
   });
 });

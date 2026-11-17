@@ -367,6 +367,11 @@ type Deps struct {
 	// DatastoreResource backs a datastore's own cpu/memory and their limits
 	// (w1/m180). nil => ErrMetricsUnavailable.
 	DatastoreResource metrics.DatastoreResourceSource
+	// DatastoreActivity (Prometheus) and LockWaits (Loki) back Render's
+	// database-activity and disk graphs (w7/m430). nil => ErrMetricsUnavailable
+	// and ErrLogStoreUnavailable respectively.
+	DatastoreActivity metrics.DatastoreActivitySource
+	LockWaits         metrics.LockWaitsSource
 	APIKeys           apikeys.APIKeyStore
 	// Account deletion is durable control-plane orchestration. These seams are
 	// nil in DB-less mode, leaving the stable API available but unavailable.
@@ -1223,6 +1228,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 			ReplicationLag:             d.ReplicationLag,
 			KeyValueStats:              d.KeyValueStats,
 			DatastoreResource:          d.DatastoreResource,
+			DatastoreActivity:          d.DatastoreActivity,
+			LockWaits:                  d.LockWaits,
 		},
 		APIKeys:            apiKeysSvc,
 		Accounts:           accountSvc,

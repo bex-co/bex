@@ -2816,19 +2816,26 @@ export function DatastoreLogsSkeleton() {
   );
 }
 
+// DatastoreMetricsPanel's sections, in its order.
 const DATASTORE_METRIC_SECTIONS = {
   keyvalue: [
     "metrics.diskTitle",
+    "metrics.diskActivityTitle",
     "metrics.datastoreCpuTitle",
     "metrics.memoryTitle",
     "metrics.kvConnectionsTitle",
   ],
   database: [
     "metrics.diskTitle",
+    "metrics.diskActivityTitle",
+    "metrics.diskOperationsTitle",
     "metrics.datastoreCpuTitle",
     "metrics.memoryTitle",
     "metrics.connectionsTitle",
+    "metrics.networkActivityTitle",
+    "metrics.transactionVolumeTitle",
     "metrics.replicationLagTitle",
+    "metrics.lockDelayedQueriesTitle",
   ],
 } as const;
 

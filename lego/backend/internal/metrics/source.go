@@ -267,17 +267,7 @@ const podCreatedLookback = "10m"
 
 func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
-	// Pod names cannot tell an App from an earlier one of the same name, but
-	// kube-state-metrics knows each pod's creation: drop the pods known to
-	// predate the App (w8/m124). `unless`, not `and`, so a pod KSM has no
-	// series for still charts rather than vanishing. The creation is read over
-	// podCreatedLookback, so a predecessor deleted moments ago stays out.
-	own := func(perPod string) string {
-		if req.NotBefore.IsZero() {
-			return perPod
-		}
-		return fmt.Sprintf(`(%s) unless on(pod) (last_over_time(kube_pod_created{namespace=%q}[%s]) < %d)`, perPod, req.Namespace, podCreatedLookback, req.NotBefore.Unix())
-	}
+	own := func(perPod string) string { return excludePodsBefore(perPod, req.Namespace, req.NotBefore) }
 	switch req.Metric {
 	case MetricMemory, MetricCPU:
 		return own(resourceUsageQuery(req.Metric, matchers, req.Resolution, req.CPUAggregation))
@@ -308,6 +298,20 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 		return live
 	}
 	return own(resourceUsageQuery(MetricCPU, matchers, req.Resolution, req.CPUAggregation))
+}
+
+// excludePodsBefore drops from a per-pod expression the pods created before
+// notBefore. Pod names cannot tell an App from an earlier one of the same
+// name, but kube-state-metrics knows each pod's creation: drop the pods known
+// to predate the App (w8/m124). `unless`, not `and`, so a pod KSM has no
+// series for still charts rather than vanishing. The creation is read over
+// podCreatedLookback, so a predecessor deleted moments ago stays out. A zero
+// notBefore keeps every pod.
+func excludePodsBefore(perPod, namespace string, notBefore time.Time) string {
+	if notBefore.IsZero() {
+		return perPod
+	}
+	return fmt.Sprintf(`(%s) unless on(pod) (last_over_time(kube_pod_created{namespace=%q}[%s]) < %d)`, perPod, namespace, podCreatedLookback, notBefore.Unix())
 }
 
 // resourceUsageQuery is the per-pod cpu (cores) or memory (bytes) usage over
@@ -745,24 +749,33 @@ func promDatastoreResourceQuery(req DatastoreResourceRequest) string {
 }
 
 // promInstanceQuery runs a query_range for a datastore-instance-scoped metric
-// and relabels each series onto Core's vocabulary (pod => instance, plus the
-// datastore's resource tag) with the given unit — the shared scaffold behind
-// the CNPG, Key Value and datastore resource sources, which differ only in
-// their PromQL and unit.
+// and relabels each series onto Core's vocabulary with the given unit — the
+// shared scaffold behind the CNPG, Key Value, datastore resource and activity
+// sources, which differ only in their PromQL and unit.
 func promInstanceQuery(ctx context.Context, hc *http.Client, base, query, resource, unit string, start, end time.Time, step int64) ([]MetricSeries, error) {
 	series, err := promQueryRange(ctx, hc, base, query, start, end, step)
 	if err != nil {
 		return nil, err
 	}
+	relabelInstanceSeries(series, resource, unit)
+	return series, nil
+}
+
+// relabelInstanceSeries keeps only Core's labels on a per-instance series —
+// the resource tag, pod (or Loki's pod stream label) => instance, and a
+// two-series graph's direction — and stamps the unit.
+func relabelInstanceSeries(series []MetricSeries, resource, unit string) {
 	for i := range series {
 		labels := map[string]string{"resource": resource}
 		if pod := series[i].Labels["pod"]; pod != "" {
 			labels["instance"] = pod
 		}
+		if d := series[i].Labels[LabelDirection]; d != "" {
+			labels[LabelDirection] = d
+		}
 		series[i].Labels = labels
 		series[i].Unit = unit
 	}
-	return series, nil
 }
 
 // NewPrometheusDBConnectionsSource returns the production DBConnectionsSource —

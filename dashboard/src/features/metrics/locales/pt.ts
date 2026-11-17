@@ -350,6 +350,52 @@ const ptMetrics: Record<string, TranslationEntry> = {
     description:
       "Datastore metrics panel: Postgres replication-lag chart section title",
   },
+  "metrics.diskActivityTitle": {
+    message: "Atividade de disco",
+    description:
+      "Datastore metrics panel: Render's Disk Activity chart title — bytes read from and written to the data volume per bucket (Postgres, Key Value, a service's disk; w7/m430)",
+  },
+  "metrics.diskOperationsTitle": {
+    message: "Operações de disco",
+    description:
+      "Datastore metrics panel: Render's Disk Operations chart title — read and write operations on the data volume per bucket (Postgres, a service's disk; w7/m430)",
+  },
+  "metrics.networkActivityTitle": {
+    message: "Atividade de rede",
+    description:
+      "Datastore metrics panel: Render's Network Activity chart title — bytes a Postgres read from and wrote to the network per bucket (w7/m430)",
+  },
+  "metrics.transactionVolumeTitle": {
+    message: "Volume de transações",
+    description:
+      "Datastore metrics panel: Render's Transaction Volume chart title — transactions a Postgres executed per bucket (w7/m430)",
+  },
+  "metrics.lockDelayedQueriesTitle": {
+    message: "Consultas atrasadas por bloqueios",
+    description:
+      "Datastore metrics panel: Render's Lock-Delayed Queries chart title — completed queries that waited a second or more on a lock (w7/m430)",
+  },
+  "metrics.directionRead": {
+    message: "Leitura",
+    description:
+      "Legend entry of the read half of a two-series chart (data read from disk or the network)",
+  },
+  "metrics.directionWrite": {
+    message: "Gravação",
+    description:
+      "Legend entry of the write half of a two-series chart (data written to disk or the network)",
+  },
+  "metrics.seriesInstanceDirection": {
+    message: "{instance} · {direction}",
+    description:
+      "Legend entry of a two-series chart when the datastore has several instances: the instance id, then Read or Write",
+  },
+  "metrics.lockDelayedStoreUnavailable": {
+    message:
+      "As consultas atrasadas por bloqueios exigem o armazenamento de logs",
+    description:
+      "Shown instead of the Lock-Delayed Queries chart on a deployment with no durable log store (503): the count comes from Postgres log lines",
+  },
   "metrics.replicationLagPendingHA": {
     message:
       "N/D — sem réplica (ative a Alta Disponibilidade para ver o atraso de replicação)",

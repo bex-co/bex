@@ -13,12 +13,16 @@ import {
   EmptyChart,
   type LineSeriesInput,
 } from "@/features/metrics/components/svg-line-chart";
+import { SvgBarChart } from "@/features/metrics/components/svg-bar-chart";
 import { MetricSection } from "@/features/metrics/components/metric-section";
 import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
 import { MetricError } from "@/features/metrics/components/metric-error";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
-import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  useTranslations,
+  type Translate,
+} from "@/common/hooks/use-translations";
 import {
   formatDiskCapacity,
   formatMetricValue,
@@ -36,6 +40,42 @@ function toLineSeries(series: ChartSeries[]): LineSeriesInput[] {
     color: seriesColor(i),
     label: s.labels["instance"],
   }));
+}
+
+/**
+ * The two-series graphs (Network Activity, Disk Activity, Disk Operations,
+ * w7/m430): each instance's read series before its write series, named by
+ * direction, and by instance too once there is more than one.
+ */
+function toDirectionSeries(
+  series: ChartSeries[],
+  t: Translate,
+): LineSeriesInput[] {
+  const instances = new Set(series.map((s) => s.labels["instance"]));
+  const rank = (s: ChartSeries) => (s.labels["direction"] === "write" ? 1 : 0);
+  return [...series]
+    .sort(
+      (a, b) =>
+        (a.labels["instance"] ?? "").localeCompare(
+          b.labels["instance"] ?? "",
+        ) || rank(a) - rank(b),
+    )
+    .map((s, i) => {
+      const direction = t(
+        rank(s) ? "metrics.directionWrite" : "metrics.directionRead",
+      );
+      return {
+        points: s.points,
+        color: seriesColor(i),
+        label:
+          instances.size > 1
+            ? t("metrics.seriesInstanceDirection", {
+                instance: s.labels["instance"] ?? "",
+                direction,
+              })
+            : direction,
+      };
+    });
 }
 
 interface DatastoreMetricsPanelProps {
@@ -68,9 +108,14 @@ interface DatastoreMetricsPanelProps {
  * active-connections and replication-lag for Postgres only, and
  * connected-clients for Key Value only.
  *
- * kind="service" (w1/m86) renders just the disk section for the persistent disk
- * attached to a service: a service has no datastore process, so every other
- * chart is already gated off by isDatabase/isKeyValue.
+ * Render's database-activity and disk graphs (w7/m430) sit where Render puts
+ * them: Disk Activity under disk usage for all three kinds, Disk Operations for
+ * Postgres and a service's disk, and Network Activity, Transaction Volume and
+ * Lock-Delayed Queries among Postgres's database activity.
+ *
+ * kind="service" (w1/m86) renders just the disk sections for the persistent
+ * disk attached to a service: a service has no datastore process, so every
+ * other chart is already gated off by isDatabase/isKeyValue.
  */
 export function DatastoreMetricsPanel({
   kind,
@@ -119,6 +164,33 @@ export function DatastoreMetricsPanel({
     skip: !isDatabase,
     pollIntervalMs: LIMIT_POLL_MS,
   });
+  // Render's disk and database-activity graphs (w7/m430). A Key Value has
+  // Disk Activity only; the database-activity graphs are Postgres's.
+  const diskActivity = useDatastoreMetrics(kind, resource, "disk_activity");
+  const diskOperations = useDatastoreMetrics(
+    kind,
+    resource,
+    "disk_operations",
+    { skip: isKeyValue },
+  );
+  const networkActivity = useDatastoreMetrics(
+    kind,
+    resource,
+    "network_activity",
+    { skip: !isDatabase },
+  );
+  const transactionVolume = useDatastoreMetrics(
+    kind,
+    resource,
+    "transaction_volume",
+    { skip: !isDatabase },
+  );
+  const lockDelayedQueries = useDatastoreMetrics(
+    kind,
+    resource,
+    "lock_delayed_queries",
+    { skip: !isDatabase },
+  );
 
   const diskSeries = useMemo(() => toLineSeries(disk.series), [disk.series]);
   const diskCapacityValue = latestValue(diskCapacity.series);
@@ -147,6 +219,27 @@ export function DatastoreMetricsPanel({
   const kvConnectionSeries = useMemo(
     () => toLineSeries(kvConnections.series),
     [kvConnections.series],
+  );
+
+  const diskActivitySeries = useMemo(
+    () => toDirectionSeries(diskActivity.series, t),
+    [diskActivity.series, t],
+  );
+  const diskOperationSeries = useMemo(
+    () => toDirectionSeries(diskOperations.series, t),
+    [diskOperations.series, t],
+  );
+  const networkSeries = useMemo(
+    () => toDirectionSeries(networkActivity.series, t),
+    [networkActivity.series, t],
+  );
+  const transactionSeries = useMemo(
+    () => toLineSeries(transactionVolume.series),
+    [transactionVolume.series],
+  );
+  const lockDelayedSeries = useMemo(
+    () => toLineSeries(lockDelayedQueries.series),
+    [lockDelayedQueries.series],
   );
 
   const replicationLagSeries = useMemo<LineSeriesInput[]>(
@@ -201,6 +294,30 @@ export function DatastoreMetricsPanel({
           <ChartLegend entries={diskSeries} />
         </MetricSection>
 
+        <MetricSection
+          title={t("metrics.diskActivityTitle")}
+          result={diskActivity}
+        >
+          <SvgLineChart
+            unit={diskActivity.series[0]?.unit ?? "bytes"}
+            series={diskActivitySeries}
+          />
+          <ChartLegend entries={diskActivitySeries} />
+        </MetricSection>
+
+        {!isKeyValue && (
+          <MetricSection
+            title={t("metrics.diskOperationsTitle")}
+            result={diskOperations}
+          >
+            <SvgLineChart
+              unit={diskOperations.series[0]?.unit ?? "count"}
+              series={diskOperationSeries}
+            />
+            <ChartLegend entries={diskOperationSeries} />
+          </MetricSection>
+        )}
+
         {isDatastore && (
           <>
             <MetricSection
@@ -244,6 +361,28 @@ export function DatastoreMetricsPanel({
               <ChartLegend entries={connectionSeries} />
             </MetricSection>
 
+            <MetricSection
+              title={t("metrics.networkActivityTitle")}
+              result={networkActivity}
+            >
+              <SvgLineChart
+                unit={networkActivity.series[0]?.unit ?? "bytes"}
+                series={networkSeries}
+              />
+              <ChartLegend entries={networkSeries} />
+            </MetricSection>
+
+            <MetricSection
+              title={t("metrics.transactionVolumeTitle")}
+              result={transactionVolume}
+            >
+              <SvgLineChart
+                unit={transactionVolume.series[0]?.unit ?? "count"}
+                series={transactionSeries}
+              />
+              <ChartLegend entries={transactionSeries} />
+            </MetricSection>
+
             <div>
               <div className="mb-2 text-sm font-medium text-foreground">
                 {t("metrics.replicationLagTitle")}
@@ -263,6 +402,19 @@ export function DatastoreMetricsPanel({
                 />
               )}
             </div>
+
+            {/* Counted when a wait ends, so its bars are events, not a level. */}
+            <MetricSection
+              title={t("metrics.lockDelayedQueriesTitle")}
+              result={lockDelayedQueries}
+              storeUnavailableMessage={t("metrics.lockDelayedStoreUnavailable")}
+            >
+              <SvgBarChart
+                unit={lockDelayedQueries.series[0]?.unit ?? "count"}
+                series={lockDelayedSeries}
+              />
+              <ChartLegend entries={lockDelayedSeries} />
+            </MetricSection>
           </>
         )}
 

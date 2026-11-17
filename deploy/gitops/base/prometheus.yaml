@@ -495,10 +495,23 @@ spec:
                     target_label: node
                 metric_relabel_configs:
                   # keep only real-container series; drop the pod-sandbox/aggregate
-                  # rows (container="") that would double-count sum-by-pod queries
-                  - source_labels: [container]
-                    regex: ""
+                  # rows (container="") that would double-count sum-by-pod queries.
+                  # One exception: a pod's network counters exist only on that
+                  # pod-level row, and a tenant Postgres's Network Activity graph
+                  # reads them (w7/m430). Kept for CNPG instance pods (the
+                  # Database CR's immutable dpg- id plus the instance ordinal) on
+                  # eth0 only, two series a pod, so every other pod's rows still
+                  # drop. The datastore's container rows carry its disk I/O
+                  # (container_fs_*) already.
+                  - source_labels: [__name__, pod, interface]
+                    regex: container_network_(receive|transmit)_bytes_total;dpg-[0-9a-z]+-[0-9]+;eth0
+                    target_label: __tmp_datastore_network
+                    replacement: "1"
+                  - source_labels: [container, __tmp_datastore_network]
+                    regex: ";"
                     action: drop
+                  - regex: __tmp_datastore_network
+                    action: labeldrop
               # The alert pipeline watches itself (w3/m174).
               - job_name: prometheus
                 static_configs:
@@ -895,9 +908,24 @@ spec:
                   # probe (w5/175): segments waiting in archive_status/*.ready
                   # with nothing archived, which CNPG still reports as
                   # ContinuousArchiving=True.
+                  # The xact pair is the Transaction Volume graph (w7/m430),
+                  # kept for a tenant Postgres's instance pods (the Database
+                  # CR's dpg- id plus the ordinal; the auth namespace's
+                  # platform clusters this job also scrapes keep none) and
+                  # its own databases: postgres and the templates hold the
+                  # instance manager's and this exporter's queries.
                   - source_labels: [__name__]
-                    regex: cnpg_backends_total|cnpg_pg_replication_.*|cnpg_collector_pg_wal_archive_status|cnpg_pg_stat_archiver_seconds_since_last_archival
+                    regex: cnpg_backends_total|cnpg_pg_replication_.*|cnpg_collector_pg_wal_archive_status|cnpg_pg_stat_archiver_seconds_since_last_archival|cnpg_pg_stat_database_xact_(commit|rollback)
                     action: keep
+                  - source_labels: [__name__, pod]
+                    regex: cnpg_pg_stat_database_xact_(commit|rollback);dpg-[0-9a-z]+-[0-9]+
+                    target_label: __tmp_tenant_xact
+                    replacement: "1"
+                  - source_labels: [__name__, __tmp_tenant_xact, datname]
+                    regex: cnpg_pg_stat_database_xact_(commit|rollback);(;.*|1;(postgres|template0|template1)?)
+                    action: drop
+                  - regex: __tmp_tenant_xact
+                    action: labeldrop
               # Managed Key Value (Valkey) instances: the redis_exporter sidecar
               # the operator attaches to every KeyValue StatefulSet pod (w5/011),
               # scraped on :9121 across all namespaces (a KeyValue lives in its

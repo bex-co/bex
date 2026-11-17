@@ -48,6 +48,18 @@
       "level": "info"
     },
     {
+      "name": "lock wait still waiting, statement and context dropped (w7/m430)",
+      "line": "{\"level\":\"info\",\"ts\":\"2026-11-17T01:37:06.400068173Z\",\"logger\":\"postgres\",\"msg\":\"record\",\"logging_pod\":\"dpg-m430lockwait-1\",\"record\":{\"log_time\":\"2026-11-17 01:37:06.399 UTC\",\"user_name\":\"postgres\",\"database_name\":\"postgres\",\"process_id\":\"228\",\"connection_from\":\"[local]\",\"session_id\":\"6afbafc1.e4\",\"session_line_num\":\"1\",\"command_tag\":\"UPDATE waiting\",\"session_start_time\":\"2026-11-17 01:37:05 UTC\",\"virtual_transaction_id\":\"24/5\",\"transaction_id\":\"762\",\"error_severity\":\"LOG\",\"sql_state_code\":\"00000\",\"message\":\"process 228 still waiting for ShareLock on transaction 761 after 1000.191 ms\",\"detail\":\"Process holding the lock: 226. Wait queue: 228.\",\"context\":\"while updating tuple (0,1) in relation \\\"t\\\"\",\"query\":\"update t set v=v+10 where id=1;\",\"application_name\":\"psql\",\"backend_type\":\"client backend\",\"query_id\":\"-7921437448842505931\"}}",
+      "message": "2026-11-17 01:37:06.399 UTC [228] LOG:  process 228 still waiting for ShareLock on transaction 761 after 1000.191 ms DETAIL:  Process holding the lock: 226. Wait queue: 228.",
+      "level": "info"
+    },
+    {
+      "name": "lock wait acquired, statement and context dropped (w7/m430)",
+      "line": "{\"level\":\"info\",\"ts\":\"2026-11-17T01:37:07.899875674Z\",\"logger\":\"postgres\",\"msg\":\"record\",\"logging_pod\":\"dpg-m430lockwait-1\",\"record\":{\"log_time\":\"2026-11-17 01:37:07.899 UTC\",\"user_name\":\"postgres\",\"database_name\":\"postgres\",\"process_id\":\"228\",\"connection_from\":\"[local]\",\"session_id\":\"6afbafc1.e4\",\"session_line_num\":\"2\",\"command_tag\":\"UPDATE waiting\",\"session_start_time\":\"2026-11-17 01:37:05 UTC\",\"virtual_transaction_id\":\"24/5\",\"transaction_id\":\"762\",\"error_severity\":\"LOG\",\"sql_state_code\":\"00000\",\"message\":\"process 228 acquired ShareLock on transaction 761 after 2500.040 ms\",\"context\":\"while updating tuple (0,1) in relation \\\"t\\\"\",\"query\":\"update t set v=v+10 where id=1;\",\"application_name\":\"psql\",\"backend_type\":\"client backend\",\"query_id\":\"-7921437448842505931\"}}",
+      "message": "2026-11-17 01:37:07.899 UTC [228] LOG:  process 228 acquired ShareLock on transaction 761 after 2500.040 ms",
+      "level": "info"
+    },
+    {
       "name": "fatal with detail",
       "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":77,\"error_severity\":\"FATAL\",\"message\":\"password authentication failed for user \\\"app\\\"\",\"detail\":\"Connection matched pg_hba.conf line 5\"}}",
       "message": "t [77] FATAL:  password authentication failed for user \"app\" DETAIL:  Connection matched pg_hba.conf line 5",

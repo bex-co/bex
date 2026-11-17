@@ -285,6 +285,13 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/metrics/filters/http":        true,
 	"GET /v1/metrics/filters/path":        true,
 	"GET /v1/metrics/bandwidth-sources":   true, // resource named in the query; Metrics authorizes it (w8/190)
+	// Render's database-activity and disk graphs (w7/m430): the same
+	// query-string resource, authorized by DatastoreMetrics.
+	"GET /v1/metrics/network-activity":     true,
+	"GET /v1/metrics/transaction-volume":   true,
+	"GET /v1/metrics/lock-delayed-queries": true,
+	"GET /v1/metrics/disk-activity":        true,
+	"GET /v1/metrics/disk-operations":      true,
 }
 
 // restMatrixFixture builds the mux from the guarded canonical service inventory

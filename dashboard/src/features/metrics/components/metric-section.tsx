@@ -26,6 +26,9 @@ interface MetricSectionProps {
   /** A service chart's event-marker lane sits above the plot; every frame
    *  standing in for the chart reserves it too (w4/446). */
   eventLane?: boolean;
+  /** What the no-log-store state says for this section; defaults to the
+   *  host/path filters' wording. */
+  storeUnavailableMessage?: string;
   children: React.ReactNode;
 }
 
@@ -45,6 +48,7 @@ export function MetricSection({
   errorMessage,
   planFeature,
   eventLane = false,
+  storeUnavailableMessage,
   children,
 }: MetricSectionProps) {
   const { t } = useTranslations();
@@ -76,7 +80,9 @@ export function MetricSection({
   const body = planRefused ? (
     <MetricUnavailable message={planFeature.message} />
   ) : result.storeUnavailable ? (
-    <MetricUnavailable message={t("metrics.hostPathStoreUnavailable")} />
+    <MetricUnavailable
+      message={storeUnavailableMessage ?? t("metrics.hostPathStoreUnavailable")}
+    />
   ) : result.unavailable ? (
     <MetricUnavailable />
   ) : loadingEmpty ? (

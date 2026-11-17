@@ -161,6 +161,73 @@ def verify_log_metric_filtering(alloy, loki):
     assert retained(loki, dict(identity, __name__="loki_ingester_wal_discarded_samples_total", reason="duplicate")) is None
 
 
+def relabel(rules, labels):
+    """Apply metric_relabel_configs as Prometheus does, for the actions the
+    datastore scrapes use; returns the stored label set, or None if dropped.
+    Their regexes share Python/RE2 syntax and Prometheus anchors them."""
+    labels = dict(labels)
+    for rule in rules:
+        action = rule.get("action", "replace")
+        regex = rule.get("regex", "(.*)")
+        value = rule.get("separator", ";").join(labels.get(k, "") for k in rule.get("source_labels", []))
+        if action == "keep":
+            if re.fullmatch(regex, value) is None:
+                return None
+        elif action == "drop":
+            if re.fullmatch(regex, value) is not None:
+                return None
+        elif action == "replace":
+            match = re.fullmatch(regex, value)
+            if match is not None:
+                labels[rule["target_label"]] = match.expand(
+                    re.sub(r"\$\{?(\d+)\}?", r"\\\1", rule.get("replacement", "$1")))
+        elif action == "labeldrop":
+            labels = {k: v for k, v in labels.items() if re.fullmatch(regex, k) is None}
+        else:
+            raise AssertionError(f"Unexercised metric relabel action: {action}")
+    return labels
+
+
+def verify_datastore_activity_scrapes(prometheus):
+    """The series behind Render's database-activity and disk graphs (w7/m430)
+    are stored for tenant datastores only: a Postgres pod's network row and its
+    tenant databases' transaction counters, nothing for any other pod."""
+    jobs = {job["job_name"]: job for job in prometheus["scrape_configs"]}
+    cadvisor = jobs["kubernetes-cadvisor"]["metric_relabel_configs"]
+    network = {"namespace": "tea-a", "container": "", "interface": "eth0", "id": "/kubepods/pod1", "name": "abc"}
+    for name in ("container_network_receive_bytes_total", "container_network_transmit_bytes_total"):
+        row = dict(network, __name__=name, pod="dpg-d9nqg95cavls73fp8m20-1")
+        assert relabel(cadvisor, row) == row, "A Postgres pod's network row must be stored unchanged"
+        for pod in ("tea-a-web-6b7f9c-x2k4p", "red-d9p49kdrtmes73c34ovg-0", "dpg-d9nqg95cavls73fp8m20-1-initdb-abcde",
+                    "dpg-d9nqg95cavls73fp8m20-1x"):
+            assert relabel(cadvisor, dict(row, pod=pod)) is None, f"{pod}'s pod-level row must still drop"
+        assert relabel(cadvisor, dict(row, interface="lo")) is None, "Only eth0 is kept"
+    for name in ("container_network_receive_packets_total", "container_memory_working_set_bytes", "container_fs_writes_bytes_total"):
+        assert relabel(cadvisor, dict(network, __name__=name, pod="dpg-d9nqg95cavls73fp8m20-1")) is None, \
+            f"Only the two byte counters of a pod-level row are kept, not {name}"
+    for pod in ("tea-a-web-6b7f9c-x2k4p", "dpg-d9nqg95cavls73fp8m20-1"):
+        disk = {"__name__": "container_fs_writes_bytes_total", "namespace": "tea-a", "pod": pod,
+                "container": "app", "device": "/dev/sdb", "id": "/kubepods/pod1/c1"}
+        assert relabel(cadvisor, disk) == disk, "Container rows (disk I/O, cpu, memory) are stored as before"
+
+    cnpg = jobs["cnpg-tenant-db"]["metric_relabel_configs"]
+    identity = {"namespace": "tea-a", "pod": "dpg-d9nqg95cavls73fp8m20-1", "cnpg_io_cluster": "dpg-d9nqg95cavls73fp8m20"}
+    for name in ("cnpg_pg_stat_database_xact_commit", "cnpg_pg_stat_database_xact_rollback"):
+        row = dict(identity, __name__=name, datname="app")
+        assert relabel(cnpg, row) == row, f"{name} for the tenant's database must be stored unchanged"
+        for system in ("postgres", "template0", "template1", ""):
+            assert relabel(cnpg, dict(row, datname=system)) is None, f"{name} for {system!r} must drop"
+        platform = {"namespace": "auth", "pod": "kratos-db-1", "cnpg_io_cluster": "kratos-db"}
+        assert relabel(cnpg, dict(platform, __name__=name, datname="kratos")) is None, \
+            "The auth namespace's platform clusters keep no transaction series"
+        platform_backends = dict(platform, __name__="cnpg_backends_total", datname="kratos")
+        assert relabel(cnpg, platform_backends) == platform_backends
+    for name in ("cnpg_pg_stat_database_tup_inserted", "cnpg_pg_stat_database_blks_read"):
+        assert relabel(cnpg, dict(identity, __name__=name, datname="dpg_x")) is None, f"{name} is not kept"
+    backends = dict(identity, __name__="cnpg_backends_total", datname="dpg_x")
+    assert relabel(cnpg, backends) == backends, "The existing connection series is unchanged"
+
+
 def verify_filesystem_collector(resources, prometheus, environment):
     objects = yaml_objects(resources)
     daemonset = next(obj for obj in objects if obj["kind"] == "DaemonSet"
@@ -387,6 +454,7 @@ def main():
                 "__name__", "job", "instance", "reason", "retention_hours", "format", "is_internal_stream", "status_code",
             }
             verify_log_metric_filtering(alloy, loki)
+            verify_datastore_activity_scrapes(prometheus)
             (temporary / "platform_gitops_expected.yml").write_text(config["platform_gitops_expected.yml"])
             fixture = {
                 "rule_files": ["platform_gitops_expected.yml"],

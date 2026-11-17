@@ -5,6 +5,7 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { isThrottledError } from "@/common/lib/graphql-error";
+import { isLogStoreUnavailable } from "@/features/logs/lib/log-store";
 import { DatastoreMetricsDocument } from "@/graphql/definitions";
 import {
   RENDER_DATASTORE_METRIC_NAMES,
@@ -22,8 +23,9 @@ import type {
 } from "@/features/metrics/hooks/use-metrics";
 
 /**
- * Reads one bex-api datastore metric (disk/db_connections/replication_lag)
- * for one managed Postgres or Key Value instance via GraphQL — the
+ * Reads one bex-api datastore metric (disk, connections, replication lag,
+ * the database-activity and disk graphs, …) for one managed Postgres, Key
+ * Value or service disk via GraphQL — the
  * Database/KeyValue-scoped sibling of useMetrics (w3/m10). Unlike useMetrics'
  * RESOURCE filter array, datastoreMetrics names one resource + kind directly.
  */
@@ -66,6 +68,11 @@ export function useDatastoreMetrics(
   });
 
   const unavailable = isMetricsUnavailable(error);
+  // Lock-Delayed Queries is counted from Postgres log lines (w7/m430), so it
+  // answers LOG_STORE_UNAVAILABLE on a deployment without the log store.
+  const storeUnavailable = !unavailable && isLogStoreUnavailable(error);
+  const throttled =
+    !unavailable && !storeUnavailable && isThrottledError(error);
 
   const series: ChartSeries[] = useMemo(
     () => toChartSeries(data?.datastoreMetrics),
@@ -76,14 +83,9 @@ export function useDatastoreMetrics(
     series,
     loading,
     unavailable,
-    // Datastore metrics take no host/path filter, so the log-store-unavailable
-    // state (w5/m58) never applies here.
-    storeUnavailable: false,
-    throttled: !unavailable && isThrottledError(error),
-    error:
-      unavailable || (!unavailable && isThrottledError(error))
-        ? undefined
-        : error,
+    storeUnavailable,
+    throttled,
+    error: unavailable || storeUnavailable || throttled ? undefined : error,
     // Datastore metrics never carry the bandwidth degraded_sources label.
     degradedSources: EMPTY_DEGRADED,
   };

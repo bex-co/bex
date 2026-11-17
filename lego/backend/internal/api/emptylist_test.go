@@ -101,6 +101,12 @@ var emptyListCases = []emptyListCase{
 	{route: "GET /v1/metrics/replication-lag", path: "/v1/metrics/replication-lag?resource=pg1", withApp: true},
 	{route: "GET /v1/metrics/disk-usage", path: "/v1/metrics/disk-usage?resource=pg1", withApp: true},
 	{route: "GET /v1/metrics/disk", path: "/v1/metrics/disk?resource=pg1", withApp: true},
+	// Render's database-activity and disk graphs (w7/m430).
+	{route: "GET /v1/metrics/network-activity", path: "/v1/metrics/network-activity?resource=pg1", withApp: true},
+	{route: "GET /v1/metrics/transaction-volume", path: "/v1/metrics/transaction-volume?resource=pg1", withApp: true},
+	{route: "GET /v1/metrics/lock-delayed-queries", path: "/v1/metrics/lock-delayed-queries?resource=pg1", withApp: true},
+	{route: "GET /v1/metrics/disk-activity", path: "/v1/metrics/disk-activity?resource=pg1", withApp: true},
+	{route: "GET /v1/metrics/disk-operations", path: "/v1/metrics/disk-operations?resource=pg1", withApp: true},
 	{route: "GET /v1/metrics/filters/path", path: "/v1/metrics/filters/path?resource=web", withApp: true},
 
 	// --- arrays NESTED in a response object. These are past core.WriteJSON's
@@ -307,6 +313,12 @@ func emptyListFixture(t *testing.T, withApp bool) (http.Handler, *Server) {
 			return nil, nil
 		},
 		KeyValueStats: func(context.Context, metrics.KeyValueStatsRequest) ([]metrics.MetricSeries, error) {
+			return nil, nil
+		},
+		DatastoreActivity: func(context.Context, metrics.DatastoreActivityRequest) ([]metrics.MetricSeries, error) {
+			return nil, nil
+		},
+		LockWaits: func(context.Context, metrics.LockWaitsRequest) ([]metrics.MetricSeries, error) {
 			return nil, nil
 		},
 		MetricsFilterValues: func(context.Context, metrics.MetricsFilterValuesRequest) ([]string, error) {

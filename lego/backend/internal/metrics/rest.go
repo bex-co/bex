@@ -58,6 +58,14 @@ var datastoreMetricPaths = map[string]string{
 	"replication-lag": MetricReplicationLag,
 	"kv-memory":       MetricKVMemory,      // key-value only
 	"kv-connections":  MetricKVConnections, // key-value only
+	// Render's database-activity and disk graphs (w7/m430). Render publishes
+	// no REST path for them, so these are bex extensions named after the
+	// graphs.
+	"network-activity":     MetricNetworkActivity,    // Postgres only
+	"transaction-volume":   MetricTransactionVolume,  // Postgres only
+	"lock-delayed-queries": MetricLockDelayedQueries, // Postgres only
+	"disk-activity":        MetricDiskActivity,       // Postgres, Key Value, a service's disk
+	"disk-operations":      MetricDiskOperations,     // Postgres, a service's disk
 }
 
 // RegisterREST mounts the Render metrics endpoints plus bex's datastore-metric

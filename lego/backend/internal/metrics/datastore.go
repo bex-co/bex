@@ -77,6 +77,30 @@ const (
 	MetricKVConnections = "kv_connections"
 )
 
+// Render's database-activity and disk graphs (w7/m430,
+// docs/render-artifacts/metrics-page.md § Database activity and disk graphs).
+// Each value is a per-bucket sum, so a series adds up to the window's total.
+// The two-series graphs label each series `direction`: read or write, Render's
+// own words for both the network and the disk. Render publishes none of these
+// on its REST API, so their REST and MCP names are bex extensions.
+const (
+	// MetricNetworkActivity is a Postgres instance's bytes received (read)
+	// and sent (write) on its pod network (cAdvisor).
+	MetricNetworkActivity = "network_activity"
+	// MetricTransactionVolume is a Postgres instance's committed plus rolled
+	// back transactions in its tenant databases (CNPG's pg_stat_database).
+	MetricTransactionVolume = "transaction_volume"
+	// MetricLockDelayedQueries counts a Postgres instance's lock waits of one
+	// second or longer that ended with the lock granted (log_lock_waits lines
+	// in the log store).
+	MetricLockDelayedQueries = "lock_delayed_queries"
+	// MetricDiskActivity is the bytes read and written on a resource's data
+	// volume; MetricDiskOperations is the read and write operations on it
+	// (cAdvisor's per-container block I/O).
+	MetricDiskActivity   = "disk_activity"
+	MetricDiskOperations = "disk_operations"
+)
+
 // DiskUsageRequest is the backend-neutral disk-USED ask for a managed datastore's
 // backing PVC(s). Capacity no longer routes here (w4/m91): disk_capacity reports
 // the datastore's logical/billed size, computed from its spec, not the physical
@@ -246,7 +270,8 @@ func logicalDiskCapacitySeries(resource string, storageGB int32, now time.Time) 
 }
 
 // DatastoreMetrics is the disk/db_connections/replication_lag/kv/cpu/memory
-// read — the Database/KeyValue-scoped sibling of Metrics. It fails with core.ErrNotFound
+// read, plus Render's database-activity and disk graphs (w7/m430) — the
+// Database/KeyValue-scoped sibling of Metrics. It fails with core.ErrNotFound
 // for an unknown resource, core.ErrForbidden for a metric the resource kind
 // doesn't support (e.g. db_connections on a KeyValue), and returns
 // Render-shaped series.
@@ -276,6 +301,9 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	// workspaceID is the resource's own workspace, whose plan floors the read
 	// (w7/m427).
 	var workspaceID string
+	// notBefore drops a same-named earlier service's pods from its disk I/O,
+	// as it does from the service's CPU and memory (w8/m124).
+	var notBefore time.Time
 	switch q.Kind {
 	case DatastoreDatabase:
 		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, q.Resource)
@@ -312,8 +340,13 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		if q.Metric == MetricMemory {
 			q.Metric = MetricKVMemory
 		}
-		if q.Metric == MetricDBConnections || q.Metric == MetricReplicationLag {
+		// Render's Key Value Metrics page has Disk Activity and none of the
+		// database-activity graphs.
+		switch q.Metric {
+		case MetricDBConnections, MetricReplicationLag, MetricNetworkActivity, MetricTransactionVolume, MetricLockDelayedQueries:
 			return nil, fmt.Errorf("%w: metric %q is Postgres-only, not valid for a key-value resource", core.ErrBadRequest, q.Metric)
+		case MetricDiskOperations:
+			return nil, fmt.Errorf("%w: metric %q is not valid for a key-value resource; its disk graph is disk_activity", core.ErrBadRequest, q.Metric)
 		}
 	case DatastoreService:
 		// A service disk is read against the SERVICE — the App CR is the
@@ -327,12 +360,15 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		namespace = app.Namespace
 		resource = app.Name
 		workspaceID = app.Labels[core.LabelTenant]
+		notBefore = core.AppNotBefore(app)
 		// Every other datastore metric describes a datastore process. A
 		// service has none — its cpu/memory/instances live on the App-metrics
-		// verb — so anything but the two PVC series is a caller error, named
+		// verb — so anything but its disk's series is a caller error, named
 		// rather than silently answered with an empty series.
-		if q.Metric != MetricDisk && q.Metric != MetricDiskCapacity {
-			return nil, fmt.Errorf("%w: metric %q is not valid for a service resource; only disk and disk_capacity are", core.ErrBadRequest, q.Metric)
+		switch q.Metric {
+		case MetricDisk, MetricDiskCapacity, MetricDiskActivity, MetricDiskOperations:
+		default:
+			return nil, fmt.Errorf("%w: metric %q is not valid for a service resource; only disk, disk_capacity, disk_activity and disk_operations are", core.ErrBadRequest, q.Metric)
 		}
 		// A service without a disk has no claim to measure. Report absence as
 		// an empty series, not an error: the Disk tab asks for the graph
@@ -430,6 +466,27 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		series, err := s.KeyValueStats(ctx, KeyValueStatsRequest{
 			Namespace: namespace, Resource: resource, Dimension: dimension,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
+		})
+		projectInstanceLabels(q.Resource, series)
+		return series, err
+	case MetricNetworkActivity, MetricTransactionVolume, MetricDiskActivity, MetricDiskOperations:
+		if s.DatastoreActivity == nil {
+			return nil, core.ErrMetricsUnavailable
+		}
+		series, err := s.DatastoreActivity(ctx, DatastoreActivityRequest{
+			Kind: q.Kind, Namespace: namespace, Resource: resource, NotBefore: notBefore, Metric: q.Metric,
+			Start: q.Start, End: q.End, Resolution: q.Resolution,
+		})
+		projectInstanceLabels(q.Resource, series)
+		return series, err
+	case MetricLockDelayedQueries:
+		// Counted from log lines, so it needs the log store as a host or path
+		// filter does (w5/m58), and says so rather than reading as zero.
+		if s.LockWaits == nil {
+			return nil, core.ErrLogStoreUnavailable
+		}
+		series, err := s.LockWaits(ctx, LockWaitsRequest{
+			Namespace: namespace, Database: resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 		projectInstanceLabels(q.Resource, series)
 		return series, err

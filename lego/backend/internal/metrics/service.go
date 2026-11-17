@@ -376,6 +376,14 @@ type Service struct {
 	// container cpu/memory and their limits (w1/m180). nil =>
 	// ErrMetricsUnavailable.
 	DatastoreResource DatastoreResourceSource
+	// DatastoreActivity reads network activity, transaction volume and data
+	// volume I/O (w7/m430, Prometheus). nil => those report
+	// ErrMetricsUnavailable.
+	DatastoreActivity DatastoreActivitySource
+	// LockWaits counts a Postgres instance's lock-delayed queries from its
+	// log lines (w7/m430, Loki). nil (BEX_LOKI_URL unset) =>
+	// lock_delayed_queries reports core.ErrLogStoreUnavailable.
+	LockWaits LockWaitsSource
 	// MaxQueryHours, when positive, caps the start–end window accepted by every
 	// metrics read. Enforced in the shared service (Metrics/DatastoreMetrics),
 	// so REST, GraphQL, and MCP cannot drift (codex r7 #13 — it previously
