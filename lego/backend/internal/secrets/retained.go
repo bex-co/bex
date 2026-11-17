@@ -38,13 +38,17 @@ import (
 // literal outside that record is retained, listed as an ordinary variable, and
 // moved into the mutable store when a write names it.
 //
-// The environment patch (PatchEnvironment) makes that move inside its own
-// compare-and-set write: the store takes the literal with the patch's edit in
-// one revision, checked against the revision the caller listed, and the same
-// locked App patch removes the literal from spec.Env. A move in a write of its
-// own would advance the revision under a caller that checked one, and refuse
-// its first save as stale (w21/103). The single-variable verbs and the bulk
-// replace check no revision, so they adopt first (adoptRetainedKeys).
+// Every write that names one makes that move inside its own write: the store
+// takes the literal with the write's edit, and the same locked App patch removes
+// the literal from spec.Env (dropMovedRetained). The environment patch
+// (PatchEnvironment) does it in its compare-and-set revision, so a caller that
+// checked the revision it listed lands its first save (w21/103); the
+// single-variable verbs and the bulk replace do it in their own store write and
+// App patch (w21/108). Nothing is moved before the write is accepted: a write
+// the API refuses (a value that is both given and generated, an aggregate-quota
+// breach, a name that is not there to delete) leaves the literal where it was and
+// no saved change waiting for a deploy, and each verb makes one store write and
+// one App patch.
 
 // declaredBlueprintEnv is the set of names the App's Blueprint declared at its
 // last sync, and whether a sync has recorded one at all.
@@ -97,12 +101,6 @@ func dropSpecEnvNames(a *appv1alpha1.App, names map[string]string) {
 	}
 }
 
-// adoptRetainedKeys moves the named retained literals into the mutable store
-// before a write decides them, so the write meets ordinary stored variables.
-func (s *Service) adoptRetainedKeys(ctx context.Context, a *appv1alpha1.App, service string, keys ...string) error {
-	return s.adoptRetained(ctx, a, service, retainedEnvNamed(a, keys...))
-}
-
 // retainedEnvNamed is retainedEnv narrowed to the named variables.
 func retainedEnvNamed(a *appv1alpha1.App, names ...string) map[string]string {
 	retained := retainedEnv(a)
@@ -145,56 +143,21 @@ func dropMovedRetained(a *appv1alpha1.App, moved map[string]string) error {
 	return nil
 }
 
-// adoptAllRetained is adoptRetainedKeys for a whole-set replace, which decides
-// every variable.
-func (s *Service) adoptAllRetained(ctx context.Context, a *appv1alpha1.App, service string) error {
-	return s.adoptRetained(ctx, a, service, retainedEnv(a))
+// retainedEdit is the App edit a verb's write makes inside its own locked patch:
+// removing the literals it moved into the store from spec.Env.
+func retainedEdit(moved map[string]string) func(*appv1alpha1.App) error {
+	return func(a *appv1alpha1.App) error { return dropMovedRetained(a, moved) }
 }
 
-// adoptRetained writes retained into the store and removes the literals from
-// spec.Env in the same locked patch. The literal wins over the store at
-// runtime (the container's env beats envFrom), so a stored edit or delete beside
-// a surviving literal would change nothing; the value the process holds, the
-// literal's, is what the store keeps. It refreshes a.
-//
-// Removing a literal from spec.Env changes the pod template, which rolls a
-// release, so the patch is held for the next deploy (rollout.WithSaveOnly) and
-// never rolls one itself: the verb's own write follows, and it is the only
-// rollout the caller asked for. A staged write (REST: Render's env-var writes
-// "will not be deployed automatically") asks for none, so it opens no deploy; a
-// deploying one (GraphQL, MCP) rolls once and consumes the hold with its stamp.
-//
-// The patch refuses a name a Blueprint sync re-declared since the verb read the
-// App (dropMovedRetained), and the refusal rolls the store write back.
-func (s *Service) adoptRetained(ctx context.Context, a *appv1alpha1.App, service string, retained map[string]string) error {
-	if len(retained) == 0 {
-		return nil
+// holdMovedRetained is the context a verb's App patch runs in. Removing a
+// literal from spec.Env changes the pod template, which rolls a release. A staged
+// write (REST: Render's env-var writes "will not be deployed automatically")
+// asks for no rollout, so the removal is held for the next deploy
+// (rollout.WithSaveOnly), which takes it with the stored value; a deploying write
+// (GraphQL, MCP) rolls once, in the patch that carries the removal.
+func holdMovedRetained(ctx context.Context, moved map[string]string) context.Context {
+	if len(moved) > 0 && stagedWrite(ctx) {
+		return rollout.WithSaveOnly(ctx)
 	}
-	var quota error
-	env, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
-		changed := false
-		for name, value := range retained {
-			if v, ok := current[name]; !ok || v != value {
-				current[name], changed = value, true
-			}
-		}
-		if err := envMapWithinQuota(current); err != nil {
-			quota = err
-			return false
-		}
-		return changed
-	})
-	if err != nil {
-		return err
-	}
-	if quota != nil {
-		return quota
-	}
-	original := a.DeepCopy()
-	if err := s.materializeEnvEditing(rollout.WithSaveOnly(ctx), a, env, committedAt(envWrite.version), func(a *appv1alpha1.App) error {
-		return dropMovedRetained(a, retained)
-	}); err != nil {
-		return s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
-	}
-	return nil
+	return ctx
 }

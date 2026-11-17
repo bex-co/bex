@@ -661,7 +661,7 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 	if err != nil {
 		return err
 	}
-	nameFound, err := s.deleteMapKeyAfterProjection(ctx, filesPath(service), name, func(current map[string]string, revision sourceRevision) error {
+	nameFound, err := s.deleteMapKeyAfterProjection(ctx, filesPath(service), name, false, func(current map[string]string, revision sourceRevision) error {
 		return s.materializeFiles(ctx, a, admissible(current, core.ValidSecretFileName), revision)
 	})
 	if err != nil {

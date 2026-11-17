@@ -36,13 +36,13 @@ import (
 // Render's env-var REST writes are saved and not deployed ("Changes will not be
 // deployed automatically. Instead you must call the deploy API"). A variable a
 // Blueprint dropped stays on spec.Env, and the single-variable verbs and the
-// bulk replace first move it into the store in a write of its own that removes
-// the literal from the pod template. That write used to roll a release and open
-// a deploy row of its own, for a staged (REST) write that asked for none and,
-// with the verb's own roll after it, a second one for a deploying (GraphQL,
-// MCP) write (w21/106). These tests run the verbs on a control-plane service
-// with a deploy recorder and a clock that moves, as a real one does: the
-// verb's own roll is a restartedAt that differs from the adoption's.
+// bulk replace move it into the store inside their own write, in the same locked
+// App patch that removes the literal from the pod template (w21/108). That
+// removal rolls a release: a staged (REST) write asks for none, so it is held for
+// the next deploy and opens none, and a deploying (GraphQL, MCP) write rolls
+// exactly once (w21/106). These tests run the verbs on a control-plane service
+// with a deploy recorder and a clock that moves, as a real one does, and count
+// what each verb writes: one store write and one App patch.
 
 // retainedVerb is one write of the retained MESSAGE, through each surface.
 type retainedVerb struct {
@@ -91,8 +91,9 @@ var retainedVerbs = []retainedVerb{
 }
 
 // retainedTracked is a control-plane Blueprint service whose sync dropped
-// MESSAGE, with a deploy recorder and a clock that moves between reads.
-func retainedTracked() (*Service, *recordingDeploys, *versionedFakeSecretStore) {
+// MESSAGE, with a deploy recorder, a clock that moves between reads and a count
+// of the App patches that land.
+func retainedTracked() (*Service, *recordingDeploys, *versionedFakeSecretStore, *patchCountingClient) {
 	rec := &recordingDeploys{}
 	kv := newVersionedFakeSecretStore()
 	svc := newService(kv, retainedManagedApp("bp"))
@@ -102,7 +103,21 @@ func retainedTracked() (*Service, *recordingDeploys, *versionedFakeSecretStore) 
 		now = now.Add(time.Second)
 		return now
 	}
-	return svc, rec, kv
+	counting := &patchCountingClient{Client: svc.Client}
+	svc.Client = counting
+	return svc, rec, kv, counting
+}
+
+// requireOneWrite fails unless the verb wrote the store once and patched the App
+// once: the move rides the verb's own write.
+func requireOneWrite(t *testing.T, verb retainedVerb, kv *versionedFakeSecretStore, counting *patchCountingClient) {
+	t.Helper()
+	if kv.casCalls != 1 || kv.versions[envPath("bp")] != 1 {
+		t.Errorf("%s made %d store writes, reaching revision %d, want one write to revision 1", verb.name, kv.casCalls, kv.versions[envPath("bp")])
+	}
+	if counting.patches != 1 {
+		t.Errorf("%s patched the App %d times, want once", verb.name, counting.patches)
+	}
 }
 
 // A staged (REST) write of a retained variable opens no deploy and rolls
@@ -114,11 +129,12 @@ func TestAStagedWriteOfARetainedLiteralOpensNoDeploy(t *testing.T) {
 	ctx := context.Background()
 	for _, verb := range retainedVerbs {
 		t.Run(verb.name, func(t *testing.T) {
-			svc, rec, kv := retainedTracked()
+			svc, rec, kv, counting := retainedTracked()
 			w := serveREST(svc, verb.method, verb.path, verb.body)
 			if w.Code != http.StatusOK && w.Code != http.StatusNoContent {
 				t.Fatalf("%s %s = %d: %s", verb.method, verb.path, w.Code, w.Body.String())
 			}
+			requireOneWrite(t, verb, kv, counting)
 			if len(rec.rows) != 0 {
 				t.Fatalf("the staged %s opened %d deploys (%+v), want none: Render's env-var writes deploy nothing", verb.name, len(rec.rows), rec.rows)
 			}
@@ -171,12 +187,13 @@ func TestAStagedWriteOfARetainedLiteralOpensNoDeploy(t *testing.T) {
 }
 
 // A deploying write (GraphQL, MCP, and a Service caller with no staged context)
-// rolls the release it asked for exactly once: the adoption's own write is held,
-// and the verb's write stamps the release and consumes the hold.
+// rolls the release it asked for exactly once: the one App patch that removes the
+// literal is the one that stamps the release, so nothing is held behind it.
 func TestADeployingWriteOfARetainedLiteralRollsOnce(t *testing.T) {
 	ctx := context.Background()
-	check := func(t *testing.T, svc *Service, rec *recordingDeploys, kv *versionedFakeSecretStore, verb retainedVerb) {
+	check := func(t *testing.T, svc *Service, rec *recordingDeploys, kv *versionedFakeSecretStore, counting *patchCountingClient, verb retainedVerb) {
 		t.Helper()
+		requireOneWrite(t, verb, kv, counting)
 		if len(rec.rows) != 1 || rec.rows[0].Trigger != store.TriggerConfigChange {
 			t.Fatalf("%s opened %+v, want exactly one config_change deploy", verb.name, rec.rows)
 		}
@@ -184,6 +201,9 @@ func TestADeployingWriteOfARetainedLiteralRollsOnce(t *testing.T) {
 		if app.Annotations[appv1alpha1.AnnotationReleaseGeneration] == "" || app.Spec.RestartedAt == "" || app.Spec.EnvFromSecret != "bp-env" {
 			t.Errorf("%s did not roll the release it asked for: release generation %q, restartedAt %q, envFromSecret %q",
 				verb.name, app.Annotations[appv1alpha1.AnnotationReleaseGeneration], app.Spec.RestartedAt, app.Spec.EnvFromSecret)
+		}
+		if held := app.Annotations[appv1alpha1.AnnotationPendingSourceGeneration]; held != "" {
+			t.Errorf("%s left the literal's removal held (pending-source-generation %q) behind the release it rolled", verb.name, held)
 		}
 		if got := specEnvNames(app); len(got) != 1 || got["KEEPME"] != "1" {
 			t.Errorf("spec.Env = %v, want only the declared KEEPME", got)
@@ -197,14 +217,14 @@ func TestADeployingWriteOfARetainedLiteralRollsOnce(t *testing.T) {
 	}
 	for _, verb := range retainedVerbs {
 		t.Run(verb.name+"/service", func(t *testing.T) {
-			svc, rec, kv := retainedTracked()
+			svc, rec, kv, counting := retainedTracked()
 			if err := verb.call(ctx, svc); err != nil {
 				t.Fatal(err)
 			}
-			check(t, svc, rec, kv, verb)
+			check(t, svc, rec, kv, counting, verb)
 		})
 		t.Run(verb.name+"/GraphQL", func(t *testing.T) {
-			svc, rec, kv := retainedTracked()
+			svc, rec, kv, counting := retainedTracked()
 			schema, err := graphql.NewSchema(graphql.SchemaConfig{
 				Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: graphql.Fields{"ok": &graphql.Field{Type: graphql.Boolean}}}),
 				Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
@@ -215,76 +235,92 @@ func TestADeployingWriteOfARetainedLiteralRollsOnce(t *testing.T) {
 			if res := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: verb.graphql}); res.HasErrors() {
 				t.Fatal(res.Errors)
 			}
-			check(t, svc, rec, kv, verb)
+			check(t, svc, rec, kv, counting, verb)
 		})
 		t.Run(verb.name+"/MCP", func(t *testing.T) {
-			svc, rec, kv := retainedTracked()
+			svc, rec, kv, counting := retainedTracked()
 			res, err := mcpSession(t, svc).CallTool(ctx, &mcp.CallToolParams{Name: verb.mcpTool, Arguments: verb.mcpArgs})
 			if err != nil || res.IsError {
 				t.Fatalf("call %s: err=%v isErr=%v", verb.mcpTool, err, res != nil && res.IsError)
 			}
-			check(t, svc, rec, kv, verb)
+			check(t, svc, rec, kv, counting, verb)
 		})
 	}
 }
 
 // A Blueprint sync that re-declares the name after the verb read the App but
-// before the adoption's App patch lands is not overwritten, as it is not on the
-// environment patch: the verb is refused and rolled back, the manifest's literal
-// stays what the sync wrote, and nothing is stored beside it that the process
-// would never see. The verb used to drop the literal the manifest had just
-// written.
+// before the verb's App patch lands is not overwritten, as it is not on the
+// environment patch: the verb is refused and the store write rolled back, the
+// manifest's literal stays what the sync wrote, and nothing is stored beside it
+// that the process would never see. The verb used to drop the literal the
+// manifest had just written. The sync lands in each gap the verb has: right after
+// its read of the store, and (the verbs that write the store before the App) right
+// after the store has taken the write. A DELETE patches the App first and commits
+// the store last, so the second gap does not exist for it.
 func TestAVerbDoesNotDropALiteralTheManifestRedeclaredMeanwhile(t *testing.T) {
 	ctx := context.Background()
 	for _, verb := range retainedVerbs {
-		for _, staged := range []bool{true, false} {
-			name := verb.name + "/deploying"
-			if staged {
-				name = verb.name + "/staged"
+		for _, gap := range []string{"after the read", "after the store write"} {
+			if gap == "after the store write" && verb.method == http.MethodDelete {
+				continue
 			}
-			t.Run(name, func(t *testing.T) {
-				svc, rec, kv := retainedTracked()
-				kv.m[envPath("bp")] = map[string]string{"OTHER": "2"}
-				kv.versions[envPath("bp")] = 1
-				// The sync lands as soon as the store has taken the adoption.
-				kv.afterCAS = func(string, uint64) {
-					a := getApp(t, svc.Client, "bp")
-					a.Annotations[core.AnnotationBlueprintEnv] = "KEEPME,MESSAGE"
-					a.Spec.Env[0].Value = "manifest wins"
-					if err := svc.Client.Update(ctx, a); err != nil {
-						t.Error(err)
-					}
-				}
-				callCtx := ctx
+			for _, staged := range []bool{true, false} {
+				name := verb.name + "/" + gap + "/deploying"
 				if staged {
-					callCtx = WithStagedWrite(ctx)
+					name = verb.name + "/" + gap + "/staged"
 				}
-				err := verb.call(callCtx, svc)
-				var coded *core.CodedError
-				if !errors.As(err, &coded) || coded.Code != CodeEnvVarManifestManaged {
-					t.Fatalf("%s the manifest overtook = %v, want %s", verb.name, err, CodeEnvVarManifestManaged)
-				}
-				if got := specEnvNames(getApp(t, svc.Client, "bp")); got["MESSAGE"] != "manifest wins" || got["KEEPME"] != "1" {
-					t.Errorf("spec.Env = %v, want the manifest's literals as the sync left them", got)
-				}
-				if got := kv.m[envPath("bp")]; !maps.Equal(got, map[string]string{"OTHER": "2"}) {
-					t.Errorf("the store holds %v, want what it held before the refused write", got)
-				}
-				if len(rec.rows) != 0 {
-					t.Errorf("the refused write opened %d deploys", len(rec.rows))
-				}
-			})
+				t.Run(name, func(t *testing.T) {
+					svc, rec, kv, _ := retainedTracked()
+					kv.m[envPath("bp")] = map[string]string{"OTHER": "2"}
+					kv.versions[envPath("bp")] = 1
+					sync := func() {
+						a := getApp(t, svc.Client, "bp")
+						a.Annotations[core.AnnotationBlueprintEnv] = "KEEPME,MESSAGE"
+						a.Spec.Env[0].Value = "manifest wins"
+						if err := svc.Client.Update(ctx, a); err != nil {
+							t.Error(err)
+						}
+					}
+					if gap == "after the read" {
+						kv.afterGet = sync
+					} else {
+						kv.afterCAS = func(string, uint64) { sync() }
+					}
+					callCtx := ctx
+					if staged {
+						callCtx = WithStagedWrite(ctx)
+					}
+					err := verb.call(callCtx, svc)
+					var coded *core.CodedError
+					if !errors.As(err, &coded) || coded.Code != CodeEnvVarManifestManaged {
+						t.Fatalf("%s the manifest overtook = %v, want %s", verb.name, err, CodeEnvVarManifestManaged)
+					}
+					app := getApp(t, svc.Client, "bp")
+					if got := specEnvNames(app); got["MESSAGE"] != "manifest wins" || got["KEEPME"] != "1" {
+						t.Errorf("spec.Env = %v, want the manifest's literals as the sync left them", got)
+					}
+					if app.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] != "" {
+						t.Errorf("the refused write left a saved change waiting for a deploy: %v", app.Annotations)
+					}
+					if got := kv.m[envPath("bp")]; !maps.Equal(got, map[string]string{"OTHER": "2"}) {
+						t.Errorf("the store holds %v, want what it held before the refused write", got)
+					}
+					if len(rec.rows) != 0 {
+						t.Errorf("the refused write opened %d deploys", len(rec.rows))
+					}
+				})
+			}
 		}
 	}
 }
 
-// A failure of the adoption's App patch leaves the literal where it was and the
+// A failure of the verb's App patch leaves the literal where it was and the
 // store as it was, and opens no deploy, whatever the verb.
-func TestAFailedAdoptionOfARetainedLiteralLeavesItWhereItWas(t *testing.T) {
+func TestAFailedWriteOfARetainedLiteralLeavesItWhereItWas(t *testing.T) {
 	ctx := context.Background()
 	for _, verb := range retainedVerbs {
 		t.Run(verb.name, func(t *testing.T) {
-			svc, rec, kv := retainedTracked()
+			svc, rec, kv, _ := retainedTracked()
 			kv.m[envPath("bp")] = map[string]string{"OTHER": "2"}
 			kv.versions[envPath("bp")] = 1
 			svc.Client = &patchCountingClient{Client: svc.Client, fail: errors.New("injected App patch failure")}
@@ -295,11 +331,71 @@ func TestAFailedAdoptionOfARetainedLiteralLeavesItWhereItWas(t *testing.T) {
 			if got := kv.m[envPath("bp")]; !maps.Equal(got, map[string]string{"OTHER": "2"}) {
 				t.Errorf("the store holds %v, want what it held before the failed write", got)
 			}
-			if got := specEnvNames(getApp(t, svc.Client, "bp")); got["MESSAGE"] != "hello from bex" {
+			app := getApp(t, svc.Client, "bp")
+			if got := specEnvNames(app); got["MESSAGE"] != "hello from bex" {
 				t.Errorf("spec.Env = %v, want the literal kept", got)
+			}
+			if app.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] != "" {
+				t.Errorf("the failed write left a saved change waiting for a deploy: %v", app.Annotations)
 			}
 			if len(rec.rows) != 0 {
 				t.Errorf("the failed write opened %d deploys", len(rec.rows))
+			}
+		})
+	}
+}
+
+// A write that leaves the stored map as it was still moves the literal: the
+// store already held a value for the name (a stored duplicate beside the literal,
+// which shadowed it), and the write sets that same value, replaces the set with
+// itself or deletes a name only the literal held. The store is still written once
+// (the revision advances, as every moved literal advances it) and the literal
+// leaves spec.Env.
+func TestAWriteThatLeavesTheStoredMapAsItWasStillMovesTheLiteral(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name   string
+		stored map[string]string
+		call   func(svc *Service) error
+		want   map[string]string
+	}{
+		{"PUT one of the stored value", map[string]string{"MESSAGE": "hello from bex"}, func(svc *Service) error {
+			_, err := svc.SetEnvVar(ctx, "bp", "MESSAGE", EnvVarWrite{Value: "hello from bex"})
+			return err
+		}, map[string]string{"MESSAGE": "hello from bex"}},
+		{"PUT all of the stored set", map[string]string{"MESSAGE": "hello from bex"}, func(svc *Service) error {
+			_, err := svc.SetEnvVars(ctx, "bp", []EnvVarView{{Key: "MESSAGE", Value: "hello from bex"}})
+			return err
+		}, map[string]string{"MESSAGE": "hello from bex"}},
+		{"PUT all of nothing over an empty store", nil, func(svc *Service) error {
+			_, err := svc.SetEnvVars(ctx, "bp", nil)
+			return err
+		}, map[string]string{}},
+		{"DELETE of a name only the literal held", map[string]string{"OTHER": "2"}, func(svc *Service) error {
+			return svc.DeleteEnvVar(ctx, "bp", "MESSAGE")
+		}, map[string]string{"OTHER": "2"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _, kv, counting := retainedTracked()
+			if tc.stored != nil {
+				kv.m[envPath("bp")] = maps.Clone(tc.stored)
+				kv.versions[envPath("bp")] = 3
+			}
+			if err := tc.call(svc); err != nil {
+				t.Fatal(err)
+			}
+			want := uint64(1)
+			if tc.stored != nil {
+				want = 4
+			}
+			if kv.casCalls != 1 || kv.versions[envPath("bp")] != want || counting.patches != 1 {
+				t.Errorf("%d store writes to revision %d and %d App patches, want one write to revision %d and one patch", kv.casCalls, kv.versions[envPath("bp")], counting.patches, want)
+			}
+			if got := kv.m[envPath("bp")]; !maps.Equal(got, tc.want) {
+				t.Errorf("the store holds %v, want %v", got, tc.want)
+			}
+			if got := specEnvNames(getApp(t, svc.Client, "bp")); len(got) != 1 || got["KEEPME"] != "1" {
+				t.Errorf("spec.Env = %v, want the literal gone and the declared KEEPME kept", got)
 			}
 		})
 	}

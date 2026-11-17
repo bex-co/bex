@@ -676,10 +676,6 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err := refuseManifestKeys(a, keys...); err != nil {
 		return nil, err
 	}
-	// A whole-set replace decides every variable, a retained literal included.
-	if err := s.adoptAllRetained(ctx, a, service); err != nil {
-		return nil, err
-	}
 	env := make(map[string]string, len(vars))
 	for _, v := range vars {
 		key := strings.TrimSpace(v.Key)
@@ -698,10 +694,16 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err := envMapWithinQuota(env); err != nil {
 		return nil, err
 	}
+	// A whole-set replace decides every variable, so every retained literal moves
+	// into the store with it, inside this write: what the request names is stored
+	// and the rest is replaced away with the literal (see retained.go).
+	moved := retainedEnv(a)
 	// Render's PUT replaces the whole set, last writer wins; the CAS write is
 	// what lets a failed projection's restore tell a later write apart.
 	_, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
-		if maps.Equal(current, env) {
+		// A move is a change even when the stored map ends up as it was: the App
+		// loses an env entry.
+		if len(moved) == 0 && maps.Equal(current, env) {
 			return false
 		}
 		clear(current)
@@ -714,23 +716,13 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	original := a.DeepCopy()
 	// A whole-set replace also clears invalid-name debris from spec.Env, or
 	// `PUT []` answered [] while the list still showed it (w8/027).
-	replaceAll := func() error {
-		if stagedWrite(ctx) {
-			return s.stageEnvWrite(ctx, a, env, committedAt(envWrite.version), func(a *appv1alpha1.App) error {
-				dropInvalidSpecEnv(a, func(string) bool { return true })
-				return nil
-			})
+	if err := s.materializeEnvEditing(holdMovedRetained(ctx, moved), a, env, committedAt(envWrite.version), func(a *appv1alpha1.App) error {
+		if err := dropMovedRetained(a, moved); err != nil {
+			return err
 		}
-		return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
-			if err := s.projectEnv(ctx, a, env, committedAt(envWrite.version)); err != nil {
-				return err
-			}
-			dropInvalidSpecEnv(a, func(string) bool { return true })
-			s.bumpRestart(a)
-			return nil
-		})
-	}
-	if err := replaceAll(); err != nil {
+		dropInvalidSpecEnv(a, func(string) bool { return true })
+		return nil
+	}); err != nil {
 		return nil, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVars)
@@ -768,19 +760,21 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if err := refuseManifestKeys(a, key); err != nil {
 		return EnvVarView{}, err
 	}
-	if err := s.adoptRetainedKeys(ctx, a, service, key); err != nil {
-		return EnvVarView{}, err
-	}
 	value, err := resolveValue(key, write.Value, write.GenerateValue)
 	if err != nil {
 		return EnvVarView{}, err
 	}
+	// A retained literal of this name moves into the store with this write, and
+	// only when the write is accepted (see retained.go).
+	moved := retainedEnvNamed(a, key)
 	// Round-11 #6: enforce the aggregate quota inside the CAS mutate so it is
 	// re-checked against the fresh map on every retry; a quota breach mutates
 	// nothing (changed=false) and surfaces after the loop.
 	var quota error
 	env, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
-		if v, ok := current[key]; ok && v == value {
+		// A move is a change even when the store already held the value: the App
+		// loses an env entry.
+		if v, ok := current[key]; ok && v == value && len(moved) == 0 {
 			return false // no change
 		}
 		current[key] = value
@@ -797,7 +791,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 		return EnvVarView{}, quota
 	}
 	original := a.DeepCopy()
-	if err := s.materializeEnv(ctx, a, env, committedAt(envWrite.version)); err != nil {
+	if err := s.materializeEnvEditing(holdMovedRetained(ctx, moved), a, env, committedAt(envWrite.version), retainedEdit(moved)); err != nil {
 		return EnvVarView{}, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVar)
@@ -814,9 +808,9 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if err := refuseManifestKeys(a, key); err != nil {
 		return err
 	}
-	if err := s.adoptRetainedKeys(ctx, a, service, key); err != nil {
-		return err
-	}
+	// A retained literal of this name is removed with this delete, in the same
+	// App patch that projects the reduced set (see retained.go).
+	moved := retainedEnvNamed(a, key)
 	// An invalid-name literal a pre-w8/027 create left on spec.Env is removed
 	// from the App itself — it was never in the env store. An inadmissible key
 	// that IS in the store (an over-long one stored before the 253-character
@@ -837,8 +831,8 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 			return nil
 		}
 	}
-	keyFound, err := s.deleteMapKeyAfterProjection(ctx, envPath(service), key, func(current map[string]string, revision sourceRevision) error {
-		return s.materializeEnv(ctx, a, admissible(current, core.ValidEnvKey), revision)
+	keyFound, err := s.deleteMapKeyAfterProjection(ctx, envPath(service), key, len(moved) > 0, func(current map[string]string, revision sourceRevision) error {
+		return s.materializeEnvEditing(holdMovedRetained(ctx, moved), a, admissible(current, core.ValidEnvKey), revision, retainedEdit(moved))
 	})
 	if err != nil {
 		return err
@@ -1278,7 +1272,11 @@ func (s *Service) restoreMap(ctx context.Context, path string, w mapWrite) (rest
 // of that version or a later one already in the Secret refuses this one before
 // the workload rolls, since the commit could only conflict. Either way the
 // loop re-reads. An absent key's repair projects the revision it read.
-func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key string, project func(current map[string]string, revision sourceRevision) error) (bool, error) {
+//
+// alsoHeld says the key is held outside the map too (a retained literal on the
+// App, which project removes in its own patch): deleting it is a change, and so
+// a commit, even when the map does not hold it.
+func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key string, alsoHeld bool, project func(current map[string]string, revision sourceRevision) error) (bool, error) {
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
 		current, err := s.readMap(ctx, path)
@@ -1286,6 +1284,7 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 			return false, err
 		}
 		_, found := current[key]
+		found = found || alsoHeld
 		delete(current, key)
 		if err := project(current, sourceRevision{}); err != nil {
 			return found, err
@@ -1306,6 +1305,7 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 			current = map[string]string{}
 		}
 		_, found := current[key]
+		found = found || alsoHeld
 		delete(current, key)
 		revision := committedAt(snapshot.Version)
 		if found {

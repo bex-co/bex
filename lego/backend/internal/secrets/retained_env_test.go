@@ -544,7 +544,7 @@ func TestAFailedSaveOfARetainedLiteralLeavesItWhereItWas(t *testing.T) {
 }
 
 // The single-variable verbs and the bulk replace of REST check no revision and
-// adopt the literal first, as before: each lands, and takes the literal off
+// move the literal inside their own write: each lands, and takes the literal off
 // spec.Env, whatever store backs them.
 func TestRESTWritesOfARetainedLiteralStillLand(t *testing.T) {
 	for _, tc := range []struct {
