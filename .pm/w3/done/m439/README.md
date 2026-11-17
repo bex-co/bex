@@ -1,6 +1,6 @@
 # w3 · m439 — The CLI usage board counts customers, product areas and agent outcomes (ADR113 D7 read side + D9)
 
-**Worker:** worker3 **Goal:** the CLI usage view and board learn audience, command family, exit codes and long waits, and ADR018 records the telemetry surface. **Status:** in progress (t001–t005 done)
+**Worker:** worker3 **Goal:** the CLI usage view and board learn audience, command family, exit codes and long waits, and ADR018 records the telemetry surface. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,10 +11,10 @@
 | [t003](done/t003.md) | Audience and family filters and the business panels — **DONE** | 75m | t001 |
 | [t004](done/t004.md) | Operations SQL panels: delivery lag, retained window, clients by release — **DONE** | 30m | t003 |
 | [t005](done/t005.md) | Docs: runbook definitions, ADR018 row, ADR088 board row, ADR113 status — **DONE** | 30m | t003, t004 |
-| [t006](t006.md) | Apply on production and classify bex's own workspaces | 45m | t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 30m | t007 |
-| [t009](t009.md) | Closeout | 10m | t008 |
+| [t006](done/t006.md) | Apply on production and classify bex's own workspaces — **DONE** | 45m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t007 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008 |
 
 ## Definition of done
 
