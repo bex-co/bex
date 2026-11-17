@@ -423,8 +423,9 @@ type Deps struct {
 	// SandboxMaxGroups caps a workspace's groups (BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE,
 	// Render's 10; 0 = uncapped), SandboxMaxGroupConcurrency is the ceiling and
 	// default of a group's concurrencyLimit (BEX_SANDBOX_MAX_GROUP_CONCURRENCY,
-	// Render's 1,000; 0 = none) and SandboxMaxActive caps a workspace's active
-	// sandboxes across its groups (BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE; 0 = none).
+	// Render's 1,000; 0 = none) and SandboxMaxActive is a ceiling on the plan's
+	// cap on a workspace's active sandboxes across its groups
+	// (BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE; 0 = none, the plan's number applies).
 	SandboxMaxGroups           int
 	SandboxMaxGroupConcurrency int
 	SandboxMaxActive           int

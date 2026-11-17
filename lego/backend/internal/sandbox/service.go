@@ -194,9 +194,11 @@ type Service struct {
 	// MaxGroupConcurrency is the ceiling and default of a group's concurrencyLimit
 	// (Render: 1,000; 0 = no ceiling). A higher requested value is capped to it.
 	MaxGroupConcurrency int
-	// MaxActive caps the active sandboxes of one workspace across all its groups
-	// (bex's own bound, ADR104 D11; 0 = uncapped), past which a create or resume
-	// answers 429.
+	// MaxActive is a platform ceiling on the active sandboxes of one workspace
+	// across all its groups (0 = none). The workspace's plan sets the cap
+	// (core.ConcurrentSandboxes, Render's 100 on Hobby and 1,000 on Pro and
+	// higher); a ceiling only lowers it. Past the cap a create or resume answers
+	// 429 (workspaceLimit).
 	MaxActive int
 	// Storage reads a workspace's retained image bytes for the storage cap, and
 	// MaxStorageBytes is that cap (bex's own bound, ADR104 D11; 0 = uncapped):

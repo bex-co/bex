@@ -182,6 +182,32 @@ func IncludedCustomDomains(plan string) (n int, unlimited bool) {
 	return n, !ok
 }
 
+// concurrentSandboxes is how many sandboxes a workspace on each plan may have
+// active at once across all of its sandbox groups (w7/069; render.com/pricing's
+// "Default concurrent sandboxes" row, read 2026-11-16: 100 on Hobby, 1,000 on
+// Pro and Scale, custom on Enterprise). It is the workspace's total, not a
+// group's default: Render's "Render Sandboxes vs Vercel Sandboxes" (2026-11-06)
+// reads "Render Pro defaults to 1,000 per workspace", and
+// render.com/docs/sandboxes-limits documents a group's own 1,000 separately.
+// Enterprise gets Scale's number, as it does for kept builds; Render's raise
+// "on request" is a support action, not a product surface.
+var concurrentSandboxes = map[string]int{
+	planHobby:      100,
+	planPro:        1000,
+	planScale:      1000,
+	planEnterprise: 1000,
+}
+
+// ConcurrentSandboxes is how many sandboxes a workspace on plan may have active
+// at once across its groups. An unknown plan, or none (no plan reader, the
+// default tenant), gets the smallest, Hobby's.
+func ConcurrentSandboxes(plan string) int {
+	if n, ok := concurrentSandboxes[plan]; ok {
+		return n
+	}
+	return concurrentSandboxes[planHobby]
+}
+
 // planRetention is how far back each plan's reads of one kind reach. Logs,
 // metrics and Postgres point-in-time recovery each have their own table:
 // Render documents them separately.

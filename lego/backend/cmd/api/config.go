@@ -38,7 +38,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
-	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 )
@@ -285,8 +284,9 @@ type Config struct {
 
 	AgentMaxLiveSandboxesPerWorkspace int
 	// Sandbox groups (w22/m311): the group cap per workspace, the ceiling and
-	// default of a group's concurrency limit, and the workspace-wide cap on
-	// active sandboxes across groups. 0 disables each.
+	// default of a group's concurrency limit, and a ceiling on the plan's cap on
+	// active sandboxes across a workspace's groups (w7/069). 0 disables each; the
+	// plan's cap applies whatever the ceiling.
 	SandboxMaxGroupsPerWorkspace int
 	SandboxMaxGroupConcurrency   int
 	SandboxMaxActivePerWorkspace int
@@ -669,11 +669,12 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.MaxBlueprintGroupings = p.zeroableInt("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
 	// Render's sandbox numbers (render.com/docs/sandboxes-limits, read
 	// 2026-11-10) are targets, not capacity (ADR104 D7): 10 groups per workspace
-	// and 1,000 concurrent sandboxes per group, plus bex's own workspace-wide
-	// bound across groups (ADR104 D11; 100 is a recorded guess, not Render's).
+	// and 1,000 concurrent sandboxes per group. The workspace-wide cap across
+	// groups is the plan's (core.ConcurrentSandboxes: 100 on Hobby, 1,000 on Pro
+	// and higher, w7/069); the variable only lowers it, and is unset by default.
 	cfg.SandboxMaxGroupsPerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE", sandbox.RenderMaxSandboxGroups)
 	cfg.SandboxMaxGroupConcurrency = p.zeroableInt("BEX_SANDBOX_MAX_GROUP_CONCURRENCY", sandbox.RenderMaxGroupConcurrency)
-	cfg.SandboxMaxActivePerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE", store.DefaultSandboxMaxActivePerWorkspace)
+	cfg.SandboxMaxActivePerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE", 0)
 	cfg.SandboxSnapshotRegistryURL = strings.TrimRight(strings.TrimSpace(getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_URL")), "/")
 	if u := cfg.SandboxSnapshotRegistryURL; u != "" {
 		if parsed, err := url.Parse(u); err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {

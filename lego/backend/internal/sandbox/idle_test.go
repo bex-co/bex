@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -231,8 +232,21 @@ func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/sandboxes")
 	if r.Method == http.MethodGet && path == "" {
 		out := []osSandbox{}
-		for id, b := range f.boxes {
-			out = append(out, f.view(id, b))
+		for _, id := range slices.Sorted(maps.Keys(f.boxes)) {
+			out = append(out, f.view(id, f.boxes[id]))
+		}
+		// More than one page (a workspace at Pro's 1,000 sandboxes) is answered
+		// in OpenSandbox's paged shape, which the client needs to read it all.
+		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+		size, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
+		if size > 0 && len(out) > size {
+			from := min(max(page-1, 0)*size, len(out))
+			to := min(from+size, len(out))
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"items":      out[from:to],
+				"pagination": listPagination{TotalItems: len(out), HasNextPage: to < len(out)},
+			})
+			return
 		}
 		_ = json.NewEncoder(w).Encode(out)
 		return

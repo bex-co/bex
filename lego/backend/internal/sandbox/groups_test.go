@@ -728,6 +728,70 @@ func TestWorkspaceCapSpansGroups(t *testing.T) {
 	}
 }
 
+// w7/069: the workspace cap is the plan's, Render's "Default concurrent
+// sandboxes" (100 on Hobby, 1,000 on Pro and Scale), read from the workspace's
+// stored plan at each admission; a platform ceiling only lowers it, and a plan
+// that cannot be read admits nothing.
+func TestWorkspaceCapFollowsThePlan(t *testing.T) {
+	f := newGroupFixture(t)
+	f.svc.Base.Plans = f.st     // the fixture's workspace is on Hobby
+	f.createGroup(t, "default") // the first group is the default, where unbound sandboxes count
+	g := f.createGroup(t, "g")
+	refusedAt := func(t *testing.T, want int) {
+		t.Helper()
+		code, body := f.create(t, g.ID)
+		var out struct {
+			Code   string         `json:"code"`
+			Params map[string]int `json:"params"`
+		}
+		_ = json.Unmarshal([]byte(body), &out)
+		if code != http.StatusTooManyRequests || out.Code != CodeSandboxWorkspaceConcurrencyLimit || out.Params["limit"] != want {
+			t.Fatalf("create past the workspace cap = %d %s, want 429 %s with limit %d", code, body, CodeSandboxWorkspaceConcurrencyLimit, want)
+		}
+	}
+	running := func() int { return f.os.count("Running") }
+	filled := 0
+	fill := func(n int) { // unbound sandboxes count in the default group
+		for range n {
+			filled++
+			f.addBox(fmt.Sprintf("os-fill-%04d", filled), "Running")
+		}
+	}
+
+	hobby := core.ConcurrentSandboxes(store.PlanHobby)
+	fill(hobby - 1)
+	f.mustCreate(t, g.ID)
+	refusedAt(t, hobby)
+
+	// The same workspace on Pro has room up to 1,000, the default group's own
+	// limit not reached by the 997 it holds.
+	plan := store.PlanPro
+	f.svc.Base.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return plan, nil })
+	pro := core.ConcurrentSandboxes(store.PlanPro)
+	f.mustCreate(t, g.ID)
+	fill(pro - running() - 1)
+	f.mustCreate(t, g.ID)
+	refusedAt(t, pro)
+
+	// A ceiling below the plan's number lowers it; one above changes nothing.
+	f.svc.MaxActive = 500
+	refusedAt(t, 500)
+	f.svc.MaxActive = 5000
+	refusedAt(t, pro)
+
+	// A workspace whose plan cannot be read is not admitted on a guess.
+	f.svc.Base.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) {
+		return "", errors.New("plan store down")
+	})
+	before := running()
+	if code, body := f.create(t, g.ID); code < http.StatusInternalServerError {
+		t.Fatalf("create with an unreadable plan = %d %s, want a 5xx", code, body)
+	}
+	if running() != before {
+		t.Fatal("a create with an unreadable plan started a sandbox")
+	}
+}
+
 func TestCountSlots(t *testing.T) {
 	now := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
 	future, past := now.Add(time.Minute), now.Add(-time.Minute)

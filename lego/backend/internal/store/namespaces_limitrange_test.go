@@ -21,11 +21,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // The sandbox regime's LimitRange admits Render's 40 GB writable layer, the
-// hosting regime keeps its 32Gi ladder, and a workspace's ephemeral-storage
-// quota still holds the default 100 active sandboxes at that size (w22/008).
+// hosting regime keeps its 32Gi ladder, and a Hobby workspace's
+// ephemeral-storage quota still holds its plan's 100 active sandboxes at that
+// size (w22/008, w7/069).
 func TestSandboxRegimeLimitRangeAdmitsTheSandboxWritableLayer(t *testing.T) {
 	max := func(regime string) resource.Quantity {
 		return limitRangeFor("ns", regime).Spec.Limits[0].Max[corev1.ResourceEphemeralStorage]
@@ -40,13 +43,13 @@ func TestSandboxRegimeLimitRangeAdmitsTheSandboxWritableLayer(t *testing.T) {
 	if got, want := sandbox.Default[corev1.ResourceEphemeralStorage], resource.MustParse("10Gi"); got.Cmp(want) != 0 {
 		t.Errorf("sandbox LimitRange ephemeral default = %s, want the unchanged %s", got.String(), want.String())
 	}
-	// The default active-sandbox cap is the config default, not a copy of it.
-	quota := quotaForPlan("starter")[corev1.ResourceLimitsEphemeralStorage]
+	// The Hobby cap is the plan table's, not a copy of it.
+	quota := quotaForPlan(PlanHobby)[corev1.ResourceLimitsEphemeralStorage]
 	each := resource.MustParse(SandboxEphemeralMax)
 	holds := quota.Value() / each.Value()
-	if holds < DefaultSandboxMaxActivePerWorkspace {
-		t.Errorf("workspace ephemeral-storage limit quota %s holds %d sandboxes of %s, below the default cap of %d",
-			quota.String(), holds, SandboxEphemeralMax, DefaultSandboxMaxActivePerWorkspace)
+	if want := core.ConcurrentSandboxes(PlanHobby); holds < int64(want) {
+		t.Errorf("Hobby ephemeral-storage limit quota %s holds %d sandboxes of %s, below the plan's cap of %d",
+			quota.String(), holds, SandboxEphemeralMax, want)
 	}
 }
 

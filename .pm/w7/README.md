@@ -160,13 +160,14 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 ## Inbox
 
+- [ ] **076** — [A Pro workspace's sandbox quota stops at 116 sandboxes, below the 1,000 its plan allows](076.md) (60m) ← found by w7/069, 2026-11-17
 - [ ] **075** — [Capture Render's answers where its PITR docs are silent: stalled backups, the refusal wording, a downgrade](075.md) (needs a Render account) ← found by w7/m453 t007, 2026-11-16
 - [ ] **074** — [`scripts/auth-obs-e2e.sh` fails at its ALLOW leg: the consent route's verified-email gate refuses the ops operator](074.md) (45m) ← found by w7/065, 2026-11-16
 - [ ] **073** — [Under production's Kratos v26.2.0, a signed-in browser connecting an agent is asked for its password again](073.md) (60m) ← found by w7/065, 2026-11-16
 - [ ] **072** — [The Postgres, Key Value and service Disk metrics panels read a fixed hour, with no range picker](072.md) (60m) ← found by w7/m430, 2026-11-16
 - [ ] **071** — [HIPAA-enabled workspaces and AWS private links have no recorded disposition](071.md) (needs a user decision) ← found by w7/m429, 2026-11-16
 - [ ] **070** — [Render's plan table limits workspaces per plan and keeps enforced 2FA to Pro and higher; bex does neither](070.md) (60m) ← found by w7/m429, 2026-11-16
-- [ ] **069** — [The default number of concurrent sandboxes does not follow the workspace plan](069.md) (60m) ← found by w7/m429, 2026-11-16
+- [x] **069** — [The default number of concurrent sandboxes does not follow the workspace plan](done/069.md) (60m) ← found by w7/m429, 2026-11-16 — **DONE 2026-11-17:** a workspace's active sandboxes across its groups are capped by its plan, as on Render: 100 on Hobby, 1,000 on Pro and higher (`core.ConcurrentSandboxes`); `BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE` is only a ceiling
 - [x] **068** — [A Postgres point-in-time recovery window does not follow the workspace plan](done/068.md) (milestone-sized) ← found by w7/m429, 2026-11-16 — promoted to [m453](blocked/m453/README.md)
 - [x] **067** — [Loki's production volume is 20Gi while the manifest and its guard say 60Gi](done/067.md) (45m) ← found by w7/m427, 2026-11-16 — **DONE 2026-11-17:** `loki.yaml` declares the live 20Gi (30 days measured at about 3 GB), the guard checks the size production renders against the live claim, ADR010 records the measurement
 - [x] **066** — [The local Go format gates use whichever gofmt is first on PATH, not the toolchain CI formats with](done/066.md) (45m) ← found by w7/m427, 2026-11-16 — **DONE 2026-11-16:** `ship-gates.sh` and `make fmt-check` take `gofmt` from `lego/cli/go.mod`'s toolchain, as CI's go lint does, and name it in the refusal. The dead-code analyzer is built and cached per lint toolchain. With Go 1.26.5 first on PATH, a CI-formatted `scope_matrix_ops.go` push passes the gate and `make lint` exits 0

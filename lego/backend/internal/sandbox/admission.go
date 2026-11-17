@@ -129,10 +129,27 @@ const (
 	// sandbox's group is at its concurrencyLimit.
 	CodeSandboxGroupConcurrencyLimit = "SANDBOX_GROUP_CONCURRENCY_LIMIT"
 	// CodeSandboxWorkspaceConcurrencyLimit is a create or resume refused because
-	// the workspace is at its cap on active sandboxes across all its groups, bex's
-	// own bound (ADR104 D11, BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE).
+	// the workspace is at its cap on active sandboxes across all its groups
+	// (workspaceLimit).
 	CodeSandboxWorkspaceConcurrencyLimit = "SANDBOX_WORKSPACE_CONCURRENCY_LIMIT"
 )
+
+// workspaceLimit is how many sandboxes the workspace may have active at once
+// across its groups: its plan's number, Render's "Default concurrent
+// sandboxes" (core.ConcurrentSandboxes: 100 on Hobby, 1,000 on Pro and higher;
+// w7/069), lowered to the platform ceiling MaxActive when one is set. It is
+// read before the admission lock, so the lock never waits on a plan read.
+func (s *Service) workspaceLimit(ctx context.Context, workspace string) (int, error) {
+	plan, _, err := s.WorkspacePlanOf(ctx, workspace)
+	if err != nil {
+		return 0, err
+	}
+	limit := core.ConcurrentSandboxes(plan)
+	if s.MaxActive > 0 {
+		limit = min(limit, s.MaxActive)
+	}
+	return limit, nil
+}
 
 // admit takes a slot for sandboxID in group, or refuses with a 429, as one
 // critical section under the workspace's admission lock: the live OpenSandbox
@@ -144,6 +161,10 @@ const (
 // when this call took a new slot, which the caller must give back if the work
 // that slot was for then fails.
 func (s *Service) admit(ctx context.Context, key, workspace string, group, defaultGroup store.SandboxGroup, sandboxID, op string, lease time.Duration) (acquired bool, err error) {
+	workspaceLimit, err := s.workspaceLimit(ctx, workspace)
+	if err != nil {
+		return false, err
+	}
 	err = s.Groups.WithSandboxAdmission(ctx, workspace, func(adm store.SandboxAdmission) error {
 		members, err := adm.Members(ctx)
 		if err != nil {
@@ -164,9 +185,9 @@ func (s *Service) admit(ctx context.Context, key, workspace string, group, defau
 				s.Metrics.observeRefusal("group", op)
 				return s.groupConcurrencyError(group, limit, active)
 			}
-			if limit := s.MaxActive; limit > 0 && ledger.workspace >= limit {
+			if ledger.workspace >= workspaceLimit {
 				s.Metrics.observeRefusal("workspace", op)
-				return s.workspaceConcurrencyError(limit, ledger.workspace)
+				return s.workspaceConcurrencyError(workspaceLimit, ledger.workspace)
 			}
 			acquired = true
 		}

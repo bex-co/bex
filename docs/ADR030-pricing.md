@@ -154,7 +154,7 @@ Existing state is never silently removed: a Hobby workspace keeps its third envi
 
 **Every row of Render's plan tables has a disposition (w7/m429 t005, 2026-11-16).** Render publishes its plan differences twice: the comparison table on render.com/pricing (93 rows) and [platform-features-by-plan](https://render.com/docs/platform-features-by-plan) (27 lines). Both are captured row by row in [render-artifacts/pricing.md](render-artifacts/pricing.md) and as fixtures in `lego/backend/internal/pricing/testdata/`. `TestEveryRenderPlanRowHasADisposition` (`plan_table_test.go`) maps each row to exactly one disposition below. It fails on a captured row with none and on a disposition whose row is gone. Where the disposition is a number or a gate, it compares Render's value with the code's on every plan. To take in a change to Render's tables, re-capture the fixture, then give every new row its disposition here and in the test.
 
-Besides the gates in the table above, two limits follow the plan since w7/m429: the builds kept for rollback (Hobby 5, Pro 15, Scale and Enterprise 30, `core.KeptBuilds`, [ADR060](ADR060-build-worker-reliability-and-performance.md)) and the custom domains included before they are metered (Hobby 2, Pro 15, Scale 25, Enterprise all, `core.IncludedCustomDomains`).
+Besides the gates in the table above, two limits follow the plan since w7/m429: the builds kept for rollback (Hobby 5, Pro 15, Scale and Enterprise 30, `core.KeptBuilds`, [ADR060](ADR060-build-worker-reliability-and-performance.md)) and the custom domains included before they are metered (Hobby 2, Pro 15, Scale 25, Enterprise all, `core.IncludedCustomDomains`). A third since w7/069: the sandboxes a workspace may have active at once across its groups (Hobby 100, Pro and higher 1,000, `core.ConcurrentSandboxes`, [ADR042 § Sandbox groups](ADR042-sandbox-cluster-substrate.md#sandbox-groups-w22m311)).
 
 | Disposition | Rows (table) | Where bex records it |
 | --- | --- | --- |
@@ -172,6 +172,7 @@ Besides the gates in the table above, two limits follow the plan since w7/m429: 
 | Limit | Workspace user roles (pricing), Additional member roles (features by plan) | store.LimitsFor AllowedRoles |
 | Limit | Increased number of included custom domains (features by plan) | core.IncludedCustomDomains |
 | Limit | Increased retention of past builds for rollbacks (features by plan) | core.KeptBuilds |
+| Limit | Default concurrent sandboxes (pricing) | core.ConcurrentSandboxes (w7/069): 100 on Hobby, 1,000 on Pro and higher, across a workspace's sandbox groups |
 | Included, then metered | Bandwidth (pricing) | ADR030 §14, pricing.yaml bandwidth.includedGB |
 | Included, then metered | Custom domains (pricing) | ADR030 §16, core.IncludedCustomDomains, pricing.yaml customDomains |
 | Included, then metered | Standard build pipeline (pricing) | ADR030 §13, pricing.yaml build.includedMinutes |
@@ -193,7 +194,6 @@ Besides the gates in the table above, two limits follow the plan since w7/m429: 
 | Non-goal | SAML SSO and SCIM (features by plan) | DO_NOT_DO: SSO/SAML · SCIM |
 | Open gap | Performance build pipeline (pricing), Performance build pipeline (features by plan) | ADR018 Performance pipeline tier, w6/m310 |
 | Open gap | OIDC authentication (pricing), OIDC (features by plan) | ADR018 Managed OIDC for AI providers |
-| Not applied yet: filed | Default concurrent sandboxes (pricing) | w7/069 (default concurrent sandboxes by plan) |
 | Not applied yet: filed | AWS private links (pricing), Private link outbound bandwidth (pricing), HIPAA BAA (pricing), Private links (features by plan), HIPAA-enabled workspaces (features by plan) | w7/071 (HIPAA-enabled workspaces and AWS private links have no recorded disposition) |
 | Not applied yet: filed | Workspaces (pricing), Enforce 2FA & Google login (pricing) | w7/070 (workspaces per plan and enforced 2FA on Pro and higher) |
 | Commercial term, not a product surface | GDPR DPA (pricing), SOC 2 Type II (pricing), ISO 27001 (pricing), SOC 2 & ISO documentation (pricing), Email (pricing), Chat (pricing), Premium support (pricing), Private Slack channel (pricing), Dedicated technical account team (pricing), Support response SLAs (pricing), Migration assistance & architecture review (pricing), Compliance documentation (features by plan) | per row in `plan_table_test.go` |

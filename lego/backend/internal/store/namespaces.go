@@ -759,14 +759,6 @@ const SandboxEphemeralMax = "40Gi"
 // hostingEphemeralMax matches the compute ladder's largest tier (pro-ultra).
 const hostingEphemeralMax = "32Gi"
 
-// DefaultSandboxMaxActivePerWorkspace is BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE's
-// default (cmd/api config). A sandbox namespace's ephemeral-storage limit quota
-// (quotaForPlan: the 4Ti plan budget plus the datastore room, 15,121Gi) holds
-// it at SandboxEphemeralMax each with room to spare: 378 sandboxes of 40Gi. A
-// configured cap above that, or 0 (disabled), reaches the quota before the 429
-// does, and the pod is then refused at admission.
-const DefaultSandboxMaxActivePerWorkspace = 100
-
 // SandboxDefaultCPULimit is the CPU limit a container in a sandbox namespace
 // gets when it names none: the smallest sandbox plan's CPU (starter, half a
 // core). The one such container is the OpenSandbox server's `execd-installer`

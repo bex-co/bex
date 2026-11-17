@@ -138,6 +138,13 @@ func TestPlanFeatureTable(t *testing.T) {
 			t.Errorf("IncludedCustomDomains(%q) must be unlimited", plan)
 		}
 	}
+	// w7/069: render.com/pricing's Default concurrent sandboxes row. A plan the
+	// table does not know, or none, gets Hobby's, never a larger cap.
+	for plan, want := range map[string]int{"hobby": 100, "pro": 1000, "scale": 1000, "enterprise": 1000, "": 100, "future-plan": 100} {
+		if got := ConcurrentSandboxes(plan); got != want {
+			t.Errorf("ConcurrentSandboxes(%q) = %d, want %d", plan, got, want)
+		}
+	}
 	for plan, want := range map[string]int{"hobby": 2, "pro": 0, "scale": 0} {
 		if got := MaxEnvironmentsPerProject(plan); got != want {
 			t.Errorf("MaxEnvironmentsPerProject(%q) = %d, want %d", plan, got, want)

@@ -193,6 +193,10 @@ func keptBuilds(plan string) int64 {
 	return int64(n)
 }
 
+func concurrentSandboxes(plan string) int64 {
+	return int64(core.ConcurrentSandboxes(plan))
+}
+
 func includedDomains(plan string) int64 {
 	n, unlimited := core.IncludedCustomDomains(plan)
 	if unlimited {
@@ -224,7 +228,6 @@ func pitrRetentionDays(plan string) int64 {
 // The board items a followUp names. Each is an inbox note filed by w7/m429
 // t005 for a row bex does not apply yet.
 const (
-	followUpSandboxes     = "w7/069 (default concurrent sandboxes by plan)"
 	followUpWorkspaces2FA = "w7/070 (workspaces per plan and enforced 2FA on Pro and higher)"
 	followUpHIPAALinks    = "w7/071 (HIPAA-enabled workspaces and AWS private links have no recorded disposition)"
 )
@@ -251,7 +254,7 @@ var planDispositions = map[string]planDisposition{
 	"pricing: Parallel task compute":         nonGoal("DO_NOT_DO: Workflows & tasks"),
 	"pricing: New task compute per minute":   nonGoal("DO_NOT_DO: Workflows & tasks"),
 	"pricing: Sandboxes":                     same("ADR104"),
-	"pricing: Default concurrent sandboxes":  followUp(followUpSandboxes),
+	"pricing: Default concurrent sandboxes":  numbered("limit", "core.ConcurrentSandboxes", leadingNumber, concurrentSandboxes),
 	"pricing: Maximum session length":        same("ADR104"),
 	"pricing: Snapshot storage":              same("ADR030 §15"),
 	"pricing: Service scaling":               same("ADR018 Scaling"),
@@ -559,7 +562,7 @@ func TestPlanTableGuardComparesNumbers(t *testing.T) {
 	if kept.failed || !moved.failed {
 		t.Fatalf("the guard must pass on bex's counts (failed=%v) and fail on a count off Render's (failed=%v)", kept.failed, moved.failed)
 	}
-	for cell, want := range map[string]int64{"2 included then $0.25/domain/month": 2, "1K mins per month then $5 per 1K mins": 1000, "1 TB included per month then $0.15 per GB": 1000, "Unlimited": -1, "2 per project": 2} {
+	for cell, want := range map[string]int64{"2 included then $0.25/domain/month": 2, "1K mins per month then $5 per 1K mins": 1000, "1 TB included per month then $0.15 per GB": 1000, "Unlimited": -1, "2 per project": 2, "1,000 Up to 5,000 on request": 1000} {
 		if got, ok := leadingNumber(cell); !ok || got != want {
 			t.Errorf("leadingNumber(%q) = %d, %v, want %d", cell, got, ok, want)
 		}
