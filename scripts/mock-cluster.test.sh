@@ -913,7 +913,7 @@ code="$(sed -e 's/^[[:space:]]*#.*//' scripts/mock-cluster.sh)"
 check "the bring-up recovers before it creates or reads the mgmt cluster" \
   "$(awk '/^recover_after_docker_restart$/{r=NR} /^kind get clusters/{k=NR} END{print (r && k && r<k) ? "ordered" : "unordered"}' scripts/mock-cluster.sh)" "ordered"
 check "reprovision deletes, then falls through to the bring-up" \
-  "$(awk '/^reprovision\)/,/;;/' scripts/mock-cluster.sh | grep -cE 'reprovision_clusters|exit')" "1"
+  "$(awk '/^reprovision\)/,/;;/' scripts/mock-cluster.sh | grep -v 'inotify_preflight' | grep -cE 'reprovision_clusters|exit')" "1"
 check "the bring-up takes the lock only when reprovision did not" "$(grep -c '^\[ -n "\$LOCK_HELD" \] || acquire_lock$' scripts/mock-cluster.sh)" "1"
 check "the bring-up seeds /kind/kubeadm.conf once the kubeconfig is published" \
   "$(awk '/^publish_kubeconfig$/{p=NR} /^require "control-plane \/kind\/kubeadm.conf" seed_kind_kubeadm_conf$/{s=NR} END{print (p && s && p<s) ? "ordered" : "unordered"}' scripts/mock-cluster.sh)" "ordered"
@@ -1068,6 +1068,107 @@ check "the bring-up installs the store after the build boundary" \
   "$(awk '/^require "build boundary/{b=NR} /^require "static-site store/{s=NR} END{print (b && s && b<s) ? "ordered" : "unordered"}' scripts/mock-cluster.sh)" "ordered"
 check "the end-state verification probes the bucket" "$(grep -c 'check "static store bucket' scripts/mock-cluster.sh)" "1"
 check "the operator prerequisites include MinIO" "$(awk '/^operator_prereqs\(\)/,/^}$/' scripts/mock-cluster.sh | grep -c 'get deploy minio')" "1"
+
+echo "host inotify limits (w33/005):"
+# Fresh definitions, no stubs left over from the sections above.
+unset -f docker kubectl wl_kubectl mgmt_kubectl
+# shellcheck source=/dev/null
+. scripts/mock-cluster.sh
+trap 'rm -rf "$tmp"' EXIT
+sysdir="$tmp/sysctl"
+mkdir -p "$sysdir"
+limits() { printf '%s\n' "$1" >"$sysdir/max_user_instances"; printf '%s\n' "$2" >"$sysdir/max_user_watches"; }
+INOTIFY_SYSCTL_DIR="$sysdir"
+raise='sudo sysctl -w fs.inotify.max_user_instances=1024 fs.inotify.max_user_watches=1048576'
+# 20. The topology the check sizes for is cluster.yaml's.
+capd=infra/clusterapi/overlays/local-capd/cluster.yaml
+check "cluster.yaml: one control plane, a platform pool of max 1, a tenant pool of max TENANT_POOL_MAX" \
+  "$(yq ea -N '[select(.kind == "Cluster")] | .[0].spec.topology | [.controlPlane.replicas] + [.workers.machineDeployments[] | .name + "=" + .metadata.annotations["cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size"]] | join(" ")' "$capd")" \
+  "1 worker-0=1 tenant-0=$TENANT_POOL_MAX"
+check "the bring-up sizes for mgmt + control plane + platform + the tenant max" "$(local_node_count)" "8"
+check "scale 3 keeps the tenant max" "$(local_node_count "$(tenant_pool_max 3)")" "8"
+check "scale 9 raises the tenant max to 9" "$(local_node_count "$(tenant_pool_max 9)")" "12"
+# 21. The kernel default is refused, naming the sysctl and the command.
+limits 128 65536
+set +e; out=$(inotify_preflight 8 2>&1); rc=$?; set -e
+check "a host at 128 instances is refused" "$rc" "1"
+check "the refusal names fs.inotify.max_user_instances, its value and the need" \
+  "$(grep -c 'fs.inotify.max_user_instances = 128 (needs >= 512)' <<<"$out")" "1"
+check "the refusal prints the command that raises it" "$(grep -cxF "         $raise" <<<"$out")" "1"
+limits 1024 1048576
+set +e; out=$(inotify_preflight 8 2>&1); rc=$?; set -e
+check "a host at 1024 passes, silently" "$rc:$out" "0:"
+check "1024 instances hold scale 13 (16 nodes)" "$(inotify_preflight 16 2>/dev/null && echo pass || echo refused)" "pass"
+check "1024 instances refuse scale 14 (17 nodes)" "$(inotify_preflight 17 2>/dev/null && echo pass || echo refused)" "refused"
+limits 1024 8192
+set +e; out=$(inotify_preflight 8 2>&1); rc=$?; set -e
+check "too few watches alone is refused" "$rc:$(grep -c 'fs.inotify.max_user_watches   = 8192 (needs >= 32768)' <<<"$out")" "1:1"
+rm -f "$sysdir"/*
+check "a host whose sysctls cannot be read (macOS) is not refused here" \
+  "$(inotify_preflight 8 2>&1 && echo pass || echo refused)" "pass"
+# 22. End to end, in a copy of the script so no lock or kubeconfig under this
+#     checkout is touched, with every cluster tool stubbed to record its call.
+#     At 128 each entry point that makes nodes stops in seconds with nothing
+#     touched; at 1024 the bring-up goes on to its first Docker call.
+e2e="$tmp/repo"
+mkdir -p "$e2e/scripts" "$e2e/stub"
+cp -R scripts/mock-cluster.sh scripts/lib "$e2e/scripts/"
+e2e_calls="$tmp/e2e-calls"
+for t in docker kind kubectl clusterctl; do
+  printf '#!/bin/sh\necho "%s $*" >>"%s"\nexit 97\n' "$t" "$e2e_calls" >"$e2e/stub/$t"
+  chmod +x "$e2e/stub/$t"
+done
+run_e2e() { env -u BEX_MOCK_CLUSTER_LIB PATH="$e2e/stub:$PATH" BEX_INOTIFY_SYSCTL_DIR="$sysdir" bash "$e2e/scripts/mock-cluster.sh" "$@" 2>&1; }
+limits 128 65536
+for args in "" reprovision "scale 3"; do
+  : >"$e2e_calls"
+  started=$SECONDS
+  set +e
+  # shellcheck disable=SC2086 # "" means no argument; "scale 3" is two
+  out=$(run_e2e $args); rc=$?
+  set -e
+  label="mock-cluster.sh${args:+ $args} at 128"
+  check "$label exits 1" "$rc" "1"
+  check "$label names the sysctl and the command" \
+    "$(grep -c 'fs.inotify.max_user_instances = 128' <<<"$out"):$(grep -cxF "         $raise" <<<"$out")" "1:1"
+  check "$label touches no container or cluster" "$(wc -l <"$e2e_calls" | tr -d ' ')" "0"
+  check "$label takes no lock" "$([ -e "$e2e/infra/local/.mock-cluster.lock" ] && echo taken || echo untouched)" "untouched"
+  check "$label answers within seconds" "$([ $((SECONDS - started)) -le 5 ] && echo fast || echo slow)" "fast"
+done
+limits 1024 1048576
+: >"$e2e_calls"
+set +e; out=$(run_e2e); rc=$?; set -e
+check "at 1024 the bring-up proceeds to Docker (the stub's 97)" "$rc" "97"
+check "at 1024 the bring-up's first call is unchanged (the restart check)" \
+  "$(head -1 "$e2e_calls")" "docker inspect -f {{.State.Status}} bex-mgmt-control-plane"
+check "at 1024 nothing mentions inotify" "$(grep -c inotify <<<"$out" || true)" "0"
+# 23. A Machine that has not joined: the node's containerd journal names the
+#     limit. A fake Docker host with a control plane, a joined platform worker
+#     and a tenant worker whose CRI plugin failed.
+docker() {
+  case $1 in
+  ps) printf 'external-load-balancer|2026-11-16 10:00:00|bex-lb\ncontrol-plane|2026-11-16 10:00:01|bex-cp\nworker|2026-11-16 10:00:02|bex-worker-0\nworker|2026-11-16 10:00:03|bex-tenant-0\n' ;;
+  inspect) echo running ;;
+  exec)
+    [ "$2 $3 $4" = "bex-tenant-0 journalctl -u" ] || { echo 'level=info msg="loading plugin" id=io.containerd.grpc.v1.cri'; return 0; }
+    # Long enough that a grep -q exiting early would SIGPIPE this side.
+    seq 1 20000 | sed 's/^/level=info msg="noise" n=/'
+    echo 'level=warning msg="failed to load plugin" error="failed to create CRI service: failed to create cni conf monitor for default: failed to create fsnotify watcher: too many open files" id=io.containerd.grpc.v1.cri'
+    seq 1 20000 | sed 's/^/level=info msg="noise" n=/' ;;
+  esac
+}
+check "only the starved node is named" "$(inotify_starved_nodes | tr '\n' ' ')" "bex-tenant-0 "
+limits 128 65536
+set +e; out=$(inotify_join_check 2>&1); rc=$?; set -e
+check "the join check stops the run" "$rc" "1"
+check "the join check names the node, the limit and the command" \
+  "$(grep -c -- '- bex-tenant-0' <<<"$out"):$(grep -c 'fs.inotify.max_user_instances (128) is used up' <<<"$out"):$(grep -cxF "         $raise" <<<"$out")" "1:1:1"
+docker() { case $1 in ps) printf 'control-plane|2026-11-16 10:00:01|bex-cp\n' ;; inspect) echo running ;; exec) echo 'level=info msg="serving..."' ;; esac; }
+set +e; out=$(inotify_join_check 2>&1); rc=$?; set -e
+check "with no starved node the join check returns for the caller's own report" "$rc:$out" "0:"
+unset -f docker
+check "the bring-up runs the join check when a Machine has not joined, before its own report" \
+  "$(awk '/\|\| inotify_join_check$/{j=NR} /reached Running within 8m/{e=NR} END{print (j && e && j<e) ? "ordered" : "unordered"}' scripts/mock-cluster.sh)" "ordered"
 
 echo
 if [ "$fails" -ne 0 ]; then

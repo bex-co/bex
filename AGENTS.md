@@ -32,6 +32,7 @@ All three platform suites + `dashboard/yarn test` must pass before `deploy.yml` 
 
 - `bash scripts/mock-cluster.sh` — kind infra + CAPI + CAPD app cluster; kubeconfig `infra/local/bex.kubeconfig` (gitignored)
 - `bash scripts/mock-cluster.sh scale N` — add/remove workers
+- Host requirement: `fs.inotify.max_user_instances` ≥ 512 and `fs.inotify.max_user_watches` ≥ 32768. The kernel default of 128 instances leaves workers cycling forever. The script refuses below that and prints `sudo sysctl -w fs.inotify.max_user_instances=1024 fs.inotify.max_user_watches=1048576`, which needs root on the host ([infra/local/README.md](infra/local/README.md#host-requirement-inotify-limits))
 - `bash scripts/mock-cluster.sh operator` — build `bex-operator:dev` from the tree, import it on every node, `make deploy`, wait (the bring-up already installs the Traefik edge + CRDs)
 - `scripts/app-apply.sh <render.yaml>` — applies a Blueprint through bex-api (`BEX_API_URL` + `BEX_API_TOKEN`; `DRY_RUN=1` validates only)
 - `scripts/deploy-sample.sh` / `kubectl get apps.app.bex.co` — deploy + status

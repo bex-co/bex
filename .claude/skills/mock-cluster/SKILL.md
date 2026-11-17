@@ -17,4 +17,6 @@ Otherwise, run the full bring-up:
 2. `bash scripts/mock-cluster.sh operator` — builds `bex-operator:dev` from `lego/Dockerfile`, imports it into containerd on every node, runs `GOWORK=off make -C lego/operator deploy IMG=bex-operator:dev`, applies `deploy/gitops/base/operator-apps-rbac.yaml`, sets `imagePullPolicy: IfNotPresent` on every bex-system workload running the image, restarts them, and waits for `bex-controller-manager`. Each step names itself on failure. Re-run it after changing operator code. `BEX_OPERATOR_IMG` overrides the tag.
 3. Use the workload kubeconfig for every following command: `export KUBECONFIG=$PWD/infra/local/bex.kubeconfig` (or `--kubeconfig`). Never print its contents. For the mgmt cluster use `kubectl --kubeconfig infra/local/bex-mgmt.kubeconfig --context kind-bex-mgmt`.
 
+If any run exits naming `fs.inotify.max_user_instances` or `fs.inotify.max_user_watches`, stop there. Re-running and `reprovision` cannot help, and raising the limit needs root on the host. Report the `sudo sysctl -w …` command the script printed to the user ([infra/local/README.md](../../../infra/local/README.md#host-requirement-inotify-limits)).
+
 Finish by reporting: node list, operator pod status, and the one-liners to deploy an App (`/deploy-app`) and to scale machines (`/mock-cluster scale N`).

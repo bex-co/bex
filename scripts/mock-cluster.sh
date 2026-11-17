@@ -166,7 +166,7 @@ publish_kubeconfig() {
 # enforces against the autoscaler. The array patch also clears any stale
 # replicas field, handing ownership back to the autoscaler.
 scale() {
-  local n=$1 max=5; [ "$n" -gt 5 ] && max=$n
+  local n=$1 max; max=$(tenant_pool_max "$n")
   mgmt_kubectl patch cluster bex --type merge \
     -p "{\"spec\":{\"topology\":{\"workers\":{\"machineDeployments\":[{\"name\":\"worker-0\",\"class\":\"default-worker\",\"metadata\":{\"annotations\":{\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size\":\"1\",\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size\":\"1\"}}},{\"name\":\"tenant-0\",\"class\":\"tenant-worker\",\"metadata\":{\"annotations\":{\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size\":\"$n\",\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size\":\"$max\"}}}]}}}}"
   echo "tenant worker floor -> $n machine(s) (min-size $n / max-size $max; platform stays at 1)"
@@ -193,6 +193,100 @@ wait_nodes_ready() {
     [ "$SECONDS" -lt "$deadline" ] || return 1
     sleep "${BEX_NODE_POLL_SECONDS:-5}"
   done
+}
+
+# --- Host inotify limits (w33/005) -------------------------------------------
+# Every node container runs as root on the Docker host, and the kernel's
+# inotify limits are per user, so the kind mgmt node, every CAPD node and the
+# host's own root daemons share one fs.inotify.max_user_instances. Past it, a
+# new node cannot start containerd's CRI plugin ("failed to create fsnotify
+# watcher: too many open files"), its Machine never joins, and the
+# MachineHealthCheck replaces it every few minutes. At the kernel default of
+# 128 the local cluster sat as a control plane with no CNI for days, and the
+# bring-up said nothing (w33/m435 t007). Measured 2026-11-16: the mgmt node
+# held 63 instances and 269 watches, the workload control plane 36 and 128
+# before its CNI. 64 instances and 4096 watches per node container cover that
+# with headroom for the pods a worker runs; kind's own guidance is 512.
+INOTIFY_SYSCTL_DIR=${BEX_INOTIFY_SYSCTL_DIR:-/proc/sys/fs/inotify}
+INOTIFY_INSTANCES_PER_NODE=64
+INOTIFY_WATCHES_PER_NODE=4096
+INOTIFY_RAISE_CMD="sudo sysctl -w fs.inotify.max_user_instances=1024 fs.inotify.max_user_watches=1048576"
+INOTIFY_CRI_FAILURE="failed to create fsnotify watcher: too many open files"
+# The tenant pool's autoscaler max-size in
+# infra/clusterapi/overlays/local-capd/cluster.yaml (the test guards the copy).
+TENANT_POOL_MAX=5
+
+# tenant_pool_max N — the tenant pool's max-size once `scale N` sets its floor.
+tenant_pool_max() { if [ "$1" -gt "$TENANT_POOL_MAX" ]; then echo "$1"; else echo "$TENANT_POOL_MAX"; fi; }
+
+# local_node_count [TENANT_MAX] — the node containers that run containerd: the
+# kind mgmt node, cluster bex's control plane and platform worker, and the
+# tenant pool at the size the autoscaler may grow it to.
+local_node_count() { echo $((3 + ${1:-$TENANT_POOL_MAX})); }
+
+inotify_remedy() {
+  echo "       Raise the limits on the Docker host (needs root; on macOS, inside the Docker VM), then re-run:"
+  echo "         $INOTIFY_RAISE_CMD"
+  echo "       To keep them across reboots, put the same two settings in /etc/sysctl.d/."
+}
+
+# inotify_preflight NODES refuses, before any node container is created or
+# scaled, a topology the host's limits cannot hold: in seconds, instead of a
+# bring-up that waits 18 minutes for Machines that never join. Where the
+# sysctls cannot be read (macOS keeps them in the Docker VM) it passes, and
+# inotify_join_check names the cause once a Machine fails to join.
+inotify_preflight() {
+  local nodes=$1 instances watches need_i need_w
+  instances=$(cat "$INOTIFY_SYSCTL_DIR/max_user_instances" 2>/dev/null) || return 0
+  watches=$(cat "$INOTIFY_SYSCTL_DIR/max_user_watches" 2>/dev/null) || return 0
+  need_i=$((nodes * INOTIFY_INSTANCES_PER_NODE))
+  need_w=$((nodes * INOTIFY_WATCHES_PER_NODE))
+  [ "$instances" -ge "$need_i" ] 2>/dev/null && [ "$watches" -ge "$need_w" ] 2>/dev/null && return 0
+  {
+    echo "error: this host's inotify limits cannot hold the local cluster's $nodes node containers:"
+    echo "         fs.inotify.max_user_instances = $instances (needs >= $need_i)"
+    echo "         fs.inotify.max_user_watches   = $watches (needs >= $need_w)"
+    echo "       Node containers run as root and the limit is per user, so a node past it cannot"
+    echo "       start containerd's CRI plugin: its Machine never joins and CAPI replaces it forever."
+    inotify_remedy
+  } >&2
+  return 1
+}
+
+# inotify_starved_nodes prints each running node container of cluster bex
+# whose containerd journal shows the CRI plugin failing on the inotify limit.
+# grep reads the whole journal (no -q): an early exit would SIGPIPE journalctl
+# and pipefail would then report a match as a miss.
+inotify_starved_nodes() {
+  local role name
+  while read -r role name; do
+    case $role in control-plane | worker) ;; *) continue ;; esac
+    [ "$(container_state "$name")" = running ] || continue
+    if docker exec "$name" journalctl -u containerd --no-pager -o cat 2>/dev/null |
+      grep -F "$INOTIFY_CRI_FAILURE" >/dev/null; then
+      echo "$name"
+    fi
+  done < <(wl_containers)
+}
+
+# inotify_join_check runs when a Machine has not joined after its startup
+# window. If a node's containerd hit the inotify limit, it says so, with the
+# command that raises it, and exits; otherwise it returns for the caller's own
+# report.
+inotify_join_check() {
+  local starved instances
+  starved=$(inotify_starved_nodes)
+  [ -n "$starved" ] || return 0
+  instances=$(cat "$INOTIFY_SYSCTL_DIR/max_user_instances" 2>/dev/null) || instances="unreadable here"
+  {
+    echo
+    echo "error: containerd cannot start its CRI plugin on these node containers, so their Machines never join:"
+    printf '%s\n' "$starved" | sed 's/^/         - /'
+    echo "       Their containerd journal says \"$INOTIFY_CRI_FAILURE\":"
+    echo "       the Docker host's fs.inotify.max_user_instances ($instances) is used up."
+    inotify_remedy
+  } >&2
+  exit 1
 }
 
 # --- Verify before claiming success (w7/m148 t004) ---------------------------
@@ -1425,11 +1519,15 @@ apply_cluster_yaml() {
 
 if [ -n "${BEX_MOCK_CLUSTER_LIB:-}" ]; then return 0 2>/dev/null || exit 0; fi
 
+# Every path that creates or scales node containers first checks that the
+# host's inotify limits can hold them (w33/005); `operator` creates none.
 case "${1:-}" in
 scale)
+  n=${2:?usage: scale N}
+  inotify_preflight "$(local_node_count "$(tenant_pool_max "$n")")" || exit 1
   acquire_lock
   require "mgmt kubeconfig (kind get kubeconfig)" refresh_mgmt_kubeconfig
-  scale "${2:?usage: scale N}"
+  scale "$n"
   exit 0
   ;;
 operator)
@@ -1438,11 +1536,13 @@ operator)
   exit 0
   ;;
 reprovision)
-  # Delete both local clusters, then fall through to the full bring-up.
+  # Delete both local clusters, then fall through to the full bring-up. A
+  # host that cannot hold the cluster cannot rebuild it: refuse before deleting.
+  inotify_preflight "$(local_node_count)" || exit 1
   acquire_lock
   require "deleting the local clusters" reprovision_clusters
   ;;
-'') ;;
+'') inotify_preflight "$(local_node_count)" || exit 1 ;;
 *)
   echo "usage: bash scripts/mock-cluster.sh [scale N | operator | reprovision]" >&2
   exit 2
@@ -1503,7 +1603,13 @@ for _ in $(seq 1 60); do
 done
 # Required: clusterctl cannot produce a usable kubeconfig for a cluster whose
 # machines never came up, and every stage below depends on that kubeconfig.
-machines_running=$(mgmt_kubectl get machines --no-headers 2>/dev/null | grep -c Running || true)
+machines=$(mgmt_kubectl get machines --no-headers 2>/dev/null || true)
+machines_running=$(grep -c Running <<<"$machines" || true)
+machines_total=$(grep -c . <<<"$machines" || true)
+# A Machine that has not joined by now: when its node's containerd hit the
+# host's inotify limit, say that and stop (w33/005) — CAPI would otherwise
+# replace it forever, even once two Machines run.
+[ "${machines_running:-0}" -ge "${machines_total:-0}" ] || inotify_join_check
 if [ "${machines_running:-0}" -lt 2 ]; then
   echo >&2
   echo "error: only ${machines_running:-0} CAPI machine(s) reached Running within 8m (need 2)." >&2
