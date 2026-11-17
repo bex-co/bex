@@ -49,7 +49,7 @@ for key in DEV_NS DEV_AUTH_NS BEX_CP_IDENTITY KUBECONFIG_FILE \
   DASHBOARD_PORT KRATOS_PUBLIC_PORT KRATOS_ADMIN_PORT HYDRA_ADMIN_PORT \
   HYDRA_PUBLIC_PORT MAILPIT_HTTP_PORT MAILPIT_SMTP_PORT BEX_API_PORT \
   BEX_DB_PORT BEX_CP_PORT LOKI_PORT PROM_PORT \
-  OPENSANDBOX_PORT AGENT_ATTACH_PORT OPENFGA_PORT OPENBAO_PORT SANDBOX_EXEC_PORT; do
+  OPENSANDBOX_PORT AGENT_ATTACH_PORT OPENFGA_PORT OPENBAO_PORT SANDBOX_EXEC_PORT ZOT_PORT; do
   values=""
   for n in 1 2 3 4 5 6 7 8 9 10; do values+="$(value_of "$n" "$key")"$'\n'; done
   distinct="$(printf '%s' "$values" | sort -u | wc -l | tr -d ' ')"
@@ -78,6 +78,28 @@ assert "agent attach uses the per-N gateway forward" \
   "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_AGENT_SESSION_GATEWAY_URL=\"http://localhost:\$AGENT_ATTACH_PORT\"'"
 assert "sandbox exec uses the per-N gateway forward" \
   "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_SANDBOX_EXEC_URL=\"http://localhost:\$SANDBOX_EXEC_PORT/sandbox-exec\"'"
+# A stopped turn's disk is kept in the snapshot registry (ADR047 D12, w22/m413).
+# Without these every stopped turn on dev-N read "lost: save_failed".
+assert "agent mode gives bex-api the snapshot registry on the per-N forward" \
+  "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_SANDBOX_SNAPSHOT_REGISTRY_URL=\"http://localhost:\$ZOT_PORT\"'"
+assert "agent mode reads the operator-minted registry Secret" \
+  "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET=\"bex-registry/bex-sandbox-registry\"'"
+assert "the retention time can be shortened for a run" \
+  "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_AGENT_INTERRUPT_RETENTION=\"\$DEV_AGENT_INTERRUPT_RETENTION\"'"
+agent_up_block="$(sed -n '/^cmd_agent_up()/,/^}/p' scripts/dev-env.sh)"
+for flag in registry=zot.bex-registry.svc:5000/snapshots snapshotPushSecret=bex-snapshot-push \
+  resumePullSecret=bex-snapshot-pull jobNamespace=opensandbox-snapshot; do
+  assert "agent-up sets the controller's snapshot.$flag, as production does" \
+    "printf '%s' \"\$agent_up_block\" | grep -q -- '--set controller.snapshot.$flag '"
+done
+assert "agent-up runs the commit Job on production's pinned committer image" \
+  "sed -n '/^agent_image_committer()/,/^}/p' scripts/dev-env.sh | grep -q 'deploy/gitops/base/values/opensandbox-controller.values.yaml' && yq -r .controller.snapshot.imageCommitterImage deploy/gitops/base/values/opensandbox-controller.values.yaml | grep -q '@sha256:'"
+assert "agent-up forwards the registry on the port the nodes are told about" \
+  "printf '%s' \"\$agent_up_block\" | grep -q 'forward zot zot \"\$ZOT_PORT:5000\" bex-registry' && grep -q \"certs.d/localhost:\\\$ZOT_PORT/hosts.toml\" scripts/dev-env.sh"
+assert "the nodes pull with the read-only registry user, never bex-builder" \
+  "sed -n '/^agent_snapshot_registry()/,/^}/p' scripts/dev-env.sh | grep -q 'reader-username' && ! sed -n '/^agent_snapshot_registry()/,/^}/p' scripts/dev-env.sh | grep -q 'Basic \$password'"
+assert "agent-down removes the nodes' registry entry and its forward" \
+  "sed -n '/^cmd_agent_down()/,/^}/p' scripts/dev-env.sh | grep -q 'agent_snapshot_registry_off' && sed -n '/^cmd_agent_down()/,/^}/p' scripts/dev-env.sh | grep -q 'openbao zot; do'"
 assert "agent mode does not set BEX_ALLOW_INSECURE_AUTHZ" \
   "! printf '%s' \"\$agent_env_block\" | grep -q 'BEX_ALLOW_INSECURE_AUTHZ'"
 assert "real GitHub App OAuth credentials are forwarded to bex-api" \

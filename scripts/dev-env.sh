@@ -95,6 +95,10 @@ derive() {
   # The 1000-blocks above run out at 65535, so Prometheus takes the free block
   # below them.
   PROM_PORT=$((48000 + off))
+  # The shared cluster's Zot, forwarded for the agent leg's snapshot registry
+  # (see agent_snapshot_registry). The same host:port names the registry on the
+  # host and on every node, so an image reference bex-api writes pulls there.
+  ZOT_PORT=$((47000 + off))
   AGENT_HOST_API_HOST="bex-dev-host-api.kube-system.svc.cluster.local"
   AGENT_HOST_API_PORT=8091
   KUBECONFIG_FILE="$ENVDIR/.kubeconfig"
@@ -138,6 +142,7 @@ AGENT_ATTACH_PORT=$AGENT_ATTACH_PORT
 OPENFGA_PORT=$OPENFGA_PORT
 OPENBAO_PORT=$OPENBAO_PORT
 SANDBOX_EXEC_PORT=$SANDBOX_EXEC_PORT
+ZOT_PORT=$ZOT_PORT
 AGENT_HOST_API_HOST=$AGENT_HOST_API_HOST
 AGENT_HOST_API_PORT=$AGENT_HOST_API_PORT
 EOF
@@ -679,7 +684,17 @@ start_api() {
       BEX_SHELL_TICKET_SECRET="$(agent_secret shell-ticket.secret)"
       BEX_SANDBOX_EXEC_SECRET="$(agent_secret sandbox-exec.secret)"
       BEX_SANDBOX_EXEC_URL="http://localhost:$SANDBOX_EXEC_PORT/sandbox-exec"
+      # The snapshot registry (agent_snapshot_registry): a stopped turn's disk
+      # is kept there (ADR047 D12), and a paused sandbox's image is sized there.
+      # The Secret is the one the shared cluster's operator mints.
+      BEX_SANDBOX_SNAPSHOT_REGISTRY_URL="http://localhost:$ZOT_PORT"
+      BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET="bex-registry/bex-sandbox-registry"
     )
+    # How long a stopped turn's disk is kept; set it short (e.g. 2m) to watch a
+    # retention expire. Unset keeps bex-api's default.
+    if [ -n "${DEV_AGENT_INTERRUPT_RETENTION:-}" ]; then
+      env_args+=(BEX_AGENT_INTERRUPT_RETENTION="$DEV_AGENT_INTERRUPT_RETENTION")
+    fi
     # Dev-only OpenRouter model route (ADR090), switched on by
     # `agent-openrouter`. bex-api refuses it unless BEX_CP_IDENTITY is a dev
     # identity, which it always is here. DEV_AGENT_MODEL overrides the model.
@@ -1224,7 +1239,16 @@ cmd_agent_up() {
     --set-string 'controller.nodeSelector.node-role\.kubernetes\.io/control-plane=' \
     --set 'controller.tolerations[0].key=node-role.kubernetes.io/control-plane' \
     --set 'controller.tolerations[0].effect=NoSchedule' \
+    --set controller.snapshot.registry=zot.bex-registry.svc:5000/snapshots \
+    --set controller.snapshot.registryInsecure=true \
+    --set controller.snapshot.snapshotPushSecret=bex-snapshot-push \
+    --set controller.snapshot.resumePullSecret=bex-snapshot-pull \
+    --set controller.snapshot.jobNamespace=opensandbox-snapshot \
+    --set controller.snapshot.containerdSocketPath=/run/containerd/containerd.sock \
+    --set-string "controller.snapshot.imageCommitterImage=$(agent_image_committer)" \
     --wait --timeout 5m >/dev/null
+  echo "==> snapshot registry (the shared Zot: a paused sandbox's disk, a stopped turn's retained image)"
+  agent_snapshot_registry
   kubectl label ns opensandbox-system "app.bex.co/dev-env=$DEV_NS" --overwrite >/dev/null
   # The control-plane token is substituted here rather than in render() so it
   # never reaches a template that any other manifest path renders.
@@ -1253,6 +1277,7 @@ cmd_agent_up() {
   refresh_agent_gateway_forwards
   forward openfga openfga "$OPENFGA_PORT:8080"
   forward openbao openbao "$OPENBAO_PORT:8200"
+  forward zot zot "$ZOT_PORT:5000" bex-registry
   sleep 4
 
   echo "==> OpenFGA store + authorization model"
@@ -1285,6 +1310,78 @@ Still required before a real repository session can run (per workspace):
 
 Check readiness: GET /v1/agent-sessions/capabilities?ownerId=<workspaceId>
 EOF
+}
+
+# agent_image_committer — the image of the controller's commit Job, the one
+# production pins (deploy/gitops/base/values/opensandbox-controller.values.yaml).
+agent_image_committer() {
+  yq -r '.controller.snapshot.imageCommitterImage' deploy/gitops/base/values/opensandbox-controller.values.yaml
+}
+
+# agent_snapshot_nodes — the CAPD node containers, one per line.
+agent_snapshot_nodes() {
+  kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
+}
+
+# agent_snapshot_registry — wire the leg to the shared cluster's Zot, as
+# production's snapshot transport is wired (ADR042 D5), so a sandbox can be
+# paused and a stopped turn's disk kept (ADR047 D12, w22/m413). Without it
+# bex-api has no sandbox registry and every stopped turn reads "lost".
+#
+#  1. The commit Job's push credential, in the Job namespace the chart made:
+#     bex-builder's, which mock-cluster.sh keeps in bex-build/bex-registry-push.
+#  2. One registry name for the host and the nodes. bex-api runs on the host,
+#     where zot.bex-registry.svc does not resolve, and it writes the registry's
+#     host into the image reference a continued turn boots from. So bex-api is
+#     given localhost:$ZOT_PORT (a port-forward), and every node's containerd is
+#     told that the same name is its own Zot NodePort.
+#  3. The pull credential rides in that containerd entry: the pod's
+#     bex-snapshot-pull Secret is keyed by the in-cluster name and does not
+#     match localhost. It is the operator-minted read-only user of snapshots/**.
+#     Local only: a node-wide read credential is what production's
+#     per-namespace Secret exists to avoid.
+agent_snapshot_registry() {
+  local password reader node
+  password="$(kubectl -n bex-build get secret bex-registry-push -o json |
+    jq -r '.data["config.json"] // empty | @base64d | fromjson | .auths["zot.bex-registry.svc:5000"].password // empty')"
+  if [ -z "$password" ]; then
+    echo "error: bex-build/bex-registry-push has no bex-builder password — re-run 'bash scripts/mock-cluster.sh'" >&2
+    return 1
+  fi
+  printf '%s' "$password" | jq -Rs '{auths: {"zot.bex-registry.svc:5000": {username: "bex-builder", password: .,
+      auth: ("bex-builder:" + . | @base64)}}}' |
+    kubectl -n opensandbox-snapshot create secret generic bex-snapshot-push \
+      --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson=/dev/stdin \
+      --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+
+  reader="$(kubectl -n bex-registry get secret bex-sandbox-registry -o json |
+    jq -r '.data | select(."reader-username" and ."reader-password") |
+      (."reader-username" | @base64d) + ":" + (."reader-password" | @base64d) | @base64')"
+  if [ -z "$reader" ]; then
+    echo "error: bex-registry/bex-sandbox-registry has no reader user — the shared operator mints it (BEX_SANDBOX_METER_CREDS)" >&2
+    return 1
+  fi
+  while IFS= read -r node; do
+    [ -n "$node" ] || continue
+    docker exec -i "$node" sh -c "mkdir -p '/etc/containerd/certs.d/localhost:$ZOT_PORT' && umask 077 && cat >'/etc/containerd/certs.d/localhost:$ZOT_PORT/hosts.toml'" <<EOF
+server = "http://127.0.0.1:30500"
+[host."http://127.0.0.1:30500"]
+  skip_verify = true
+  capabilities = ["pull", "resolve"]
+  [host."http://127.0.0.1:30500".header]
+    Authorization = "Basic $reader"
+EOF
+  done < <(agent_snapshot_nodes)
+}
+
+# agent_snapshot_registry_off — remove the nodes' registry entry (and the
+# credential in it). The Job namespace and its Secret go with the chart.
+agent_snapshot_registry_off() {
+  local node
+  while IFS= read -r node; do
+    [ -n "$node" ] || continue
+    docker exec "$node" rm -rf "/etc/containerd/certs.d/localhost:$ZOT_PORT" 2>/dev/null || true
+  done < <(agent_snapshot_nodes 2>/dev/null)
 }
 
 # agent_build_images — build what the leg runs. Only the OpenSandbox server needs
@@ -1750,9 +1847,10 @@ cmd_agent_down() {
     exit 1
   fi
   local name
-  for name in opensandbox agent-attach sandbox-exec openfga openbao; do
+  for name in opensandbox agent-attach sandbox-exec openfga openbao zot; do
     kill_if_running "$ENVDIR/.pids/pf-$name.pid"
   done
+  agent_snapshot_registry_off
   helm uninstall opensandbox-controller -n opensandbox-system >/dev/null 2>&1 || true
   kubectl delete ns opensandbox-system --ignore-not-found >/dev/null
   kubectl -n "$DEV_NS" delete deploy/model-stub svc/model-stub \

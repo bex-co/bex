@@ -31,6 +31,16 @@ user message of a streaming request contains `stub-hold:<seconds>`, the stub
 streams one `tick <n>` line a second for that long before it finishes, so a
 person or a script has a live turn to queue behind and to stop, and the
 transcript shows how far the reply got. Anything else is answered at once.
+
+A second directive lets a turn touch its disk (w22/m413 t008: a stopped turn's
+uncommitted work is there in the next turn). When the newest user message of a
+streaming request that offers the engine's `Bash` tool contains
+`stub-run:<command>` (the rest of that line), the stub answers with one call of
+that tool. The engine runs the command in the sandbox and sends its output
+back; the stub then replies with that output, and holds the turn if the same
+prompt also carries `stub-hold`. So `stub-run:echo hi > kept.txt` followed by
+`stub-hold:300` is a turn that has written a file and is still running, and
+`stub-run:cat kept.txt` in a later turn puts the file's content in the reply.
 """
 
 import http.server
@@ -45,6 +55,10 @@ REPLY = "1\n2\n3\n4\n5"
 # The longest a held turn may run. A typo must not pin a sandbox for a day.
 MAX_HOLD_SECONDS = 900
 HOLD_DIRECTIVE = re.compile(r"stub-hold:(\d+)")
+RUN_DIRECTIVE = re.compile(r"stub-run:([^\n]+)")
+# The engine's shell tool (Claude Code's name for it). A request that does not
+# offer it, a title or summary side request for one, is never answered with a call.
+RUN_TOOL = "Bash"
 # A later turn runs in a fresh process, and the driver primes it by putting the
 # earlier prompts and replies in front of the new prompt, inside these tags
 # (lego/agent-image/driver/src/continuity.ts). They are history, not the request.
@@ -53,32 +67,79 @@ REPLAYED_CONTEXT = re.compile(r"<session-context>.*</session-context>", re.DOTAL
 TICK_SECONDS = 1.0
 
 
-def hold_seconds(body: dict) -> int:
-    """How long the newest user message asks the turn to be held, 0 for not at all.
+def _blocks(message: dict, kind: str) -> list:
+    content = message.get("content")
+    if not isinstance(content, list):
+        return []
+    return [b for b in content if isinstance(b, dict) and b.get("type") == kind]
 
-    Only the newest user message counts, and in it only what follows the
-    replayed earlier conversation: a directive in an earlier prompt must not
-    hold every later turn.
+
+def _text(message: dict) -> str:
+    content = message.get("content")
+    if isinstance(content, str):
+        return content
+    return "\n".join(block.get("text") or "" for block in _blocks(message, "text"))
+
+
+def _user_messages(body: dict) -> list:
+    return [
+        m for m in body.get("messages") or []
+        if isinstance(m, dict) and m.get("role") == "user"
+    ]
+
+
+def prompt_text(body: dict) -> str:
+    """The text of the turn's prompt: the newest user message a person wrote.
+
+    A user message that carries a tool's result is the engine reporting back
+    inside the same turn, so it is skipped. Of the prompt only what follows the
+    replayed earlier conversation counts: a directive in an earlier prompt must
+    not act on every later turn.
     """
-    for message in reversed(body.get("messages") or []):
-        if not isinstance(message, dict) or message.get("role") != "user":
+    for message in reversed(_user_messages(body)):
+        if _blocks(message, "tool_result"):
             continue
-        content = message.get("content")
-        if isinstance(content, str):
-            text = content
-        elif isinstance(content, list):
-            text = "\n".join(
-                block.get("text") or ""
-                for block in content
-                if isinstance(block, dict) and block.get("type") == "text"
-            )
-        else:
-            text = ""
-        found = HOLD_DIRECTIVE.findall(REPLAYED_CONTEXT.sub("", text))
-        if not found:
-            return 0
-        return min(int(found[-1]), MAX_HOLD_SECONDS)
-    return 0
+        return REPLAYED_CONTEXT.sub("", _text(message))
+    return ""
+
+
+def hold_seconds(body: dict) -> int:
+    """How long the turn's prompt asks the turn to be held, 0 for not at all."""
+    found = HOLD_DIRECTIVE.findall(prompt_text(body))
+    if not found:
+        return 0
+    return min(int(found[-1]), MAX_HOLD_SECONDS)
+
+
+def tool_output(body: dict):
+    """The output of the command the stub asked for, None before it has run."""
+    users = _user_messages(body)
+    if not users:
+        return None
+    results = _blocks(users[-1], "tool_result")
+    if not results:
+        return None
+    content = results[-1].get("content")
+    if isinstance(content, list):
+        content = "\n".join(
+            b.get("text") or "" for b in content if isinstance(b, dict) and b.get("type") == "text"
+        )
+    return content if isinstance(content, str) else ""
+
+
+def run_command(body: dict) -> str:
+    """The command the turn's prompt asks the engine to run, "" for none.
+
+    Empty once the command has run (the engine's newest message is its result)
+    and for a request that does not offer the shell tool.
+    """
+    if tool_output(body) is not None:
+        return ""
+    tools = body.get("tools") or []
+    if not any(isinstance(t, dict) and t.get("name") == RUN_TOOL for t in tools):
+        return ""
+    found = RUN_DIRECTIVE.findall(prompt_text(body))
+    return found[-1].strip() if found else ""
 
 
 def sse(event: str, data: dict) -> bytes:
@@ -118,7 +179,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if body.get("stream"):
             try:
-                self._stream(model, hold_seconds(body))
+                command = run_command(body)
+                if command:
+                    self._stream_tool_call(model, command)
+                else:
+                    self._stream(model, hold_seconds(body), tool_output(body))
             except (BrokenPipeError, ConnectionResetError):
                 # A stopped turn kills the engine, which drops this request.
                 sys.stderr.write("model-stub: the client went away mid-stream\n")
@@ -152,7 +217,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
-    def _stream(self, model: str, hold: int = 0):
+    def _stream_start(self, model: str):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
@@ -176,6 +241,44 @@ class Handler(http.server.BaseHTTPRequestHandler):
             },
         }
         self.wfile.write(sse("message_start", start))
+
+    def _stream_end(self, stop_reason: str):
+        self.wfile.write(sse("content_block_stop", {"type": "content_block_stop", "index": 0}))
+        self.wfile.write(
+            sse(
+                "message_delta",
+                {"type": "message_delta",
+                 "delta": {"stop_reason": stop_reason, "stop_sequence": None},
+                 "usage": {"output_tokens": 9}},
+            )
+        )
+        self.wfile.write(sse("message_stop", {"type": "message_stop"}))
+        self.wfile.flush()
+
+    def _stream_tool_call(self, model: str, command: str):
+        """One call of the engine's shell tool, which the engine then runs."""
+        sys.stderr.write("model-stub: asking the engine to run a command\n")
+        self._stream_start(model)
+        self.wfile.write(
+            sse(
+                "content_block_start",
+                {"type": "content_block_start", "index": 0,
+                 "content_block": {"type": "tool_use", "id": f"toolu_devstub{time.time_ns()}",
+                                   "name": RUN_TOOL, "input": {}}},
+            )
+        )
+        arguments = json.dumps({"command": command, "description": "dev stub command"})
+        self.wfile.write(
+            sse(
+                "content_block_delta",
+                {"type": "content_block_delta", "index": 0,
+                 "delta": {"type": "input_json_delta", "partial_json": arguments}},
+            )
+        )
+        self._stream_end("tool_use")
+
+    def _stream(self, model: str, hold: int = 0, output=None):
+        self._stream_start(model)
         self.wfile.write(
             sse(
                 "content_block_start",
@@ -183,10 +286,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                  "content_block": {"type": "text", "text": ""}},
             )
         )
-        chunks = REPLY.split("\n")
+        # After a command the reply is its output; otherwise the fixed reply.
+        chunks = REPLY.split("\n") if output is None else ["ran:", *output.rstrip("\n").split("\n")]
         if hold > 0:
             sys.stderr.write(f"model-stub: holding the turn for {hold}s\n")
-            chunks = [f"tick {n}" for n in range(1, hold + 1)] + ["done"]
+            ticks = [f"tick {n}" for n in range(1, hold + 1)] + ["done"]
+            chunks = ticks if output is None else ["\n".join(chunks), *ticks]
         for position, chunk in enumerate(chunks):
             if hold > 0 and position > 0:
                 time.sleep(TICK_SECONDS)
@@ -198,17 +303,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 )
             )
             self.wfile.flush()
-        self.wfile.write(sse("content_block_stop", {"type": "content_block_stop", "index": 0}))
-        self.wfile.write(
-            sse(
-                "message_delta",
-                {"type": "message_delta",
-                 "delta": {"stop_reason": "end_turn", "stop_sequence": None},
-                 "usage": {"output_tokens": 9}},
-            )
-        )
-        self.wfile.write(sse("message_stop", {"type": "message_stop"}))
-        self.wfile.flush()
+        self._stream_end("end_turn")
 
 
 def main():

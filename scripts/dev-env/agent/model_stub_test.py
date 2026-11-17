@@ -68,6 +68,46 @@ class HoldDirective(unittest.TestCase):
         )
 
 
+def bash_result(output):
+    return {"role": "user", "content": [
+        {"type": "tool_result", "tool_use_id": "toolu_devstub1", "content": output}]}
+
+
+BASH = [{"name": "Read"}, {"name": "Bash"}]
+
+
+class RunDirective(unittest.TestCase):
+    def test_the_rest_of_the_line_is_the_command(self):
+        body = {"tools": BASH, "messages": [user("stub-run:echo kept > kept.txt \nstub-hold:300")]}
+        self.assertEqual(stub.run_command(body), "echo kept > kept.txt")
+        self.assertEqual(stub.hold_seconds(body), 300)
+
+    def test_no_directive_or_no_shell_tool_runs_nothing(self):
+        self.assertEqual(stub.run_command({"tools": BASH, "messages": [user("say hi")]}), "")
+        self.assertEqual(stub.run_command({"messages": [user("stub-run:id")]}), "")
+        self.assertEqual(
+            stub.run_command({"tools": [{"name": "Read"}], "messages": [user("stub-run:id")]}), "")
+
+    def test_a_command_runs_once_and_its_output_is_the_reply(self):
+        messages = [user("stub-run:cat kept.txt\nstub-hold:5")]
+        self.assertIsNone(stub.tool_output({"tools": BASH, "messages": messages}))
+        messages += [{"role": "assistant", "content": [{"type": "tool_use"}]}, bash_result("kept\n")]
+        body = {"tools": BASH, "messages": messages}
+        self.assertEqual(stub.run_command(body), "")
+        self.assertEqual(stub.tool_output(body), "kept\n")
+        # The hold still comes from the prompt, not from the tool's result.
+        self.assertEqual(stub.hold_seconds(body), 5)
+        blocks = bash_result([{"type": "text", "text": "a"}, {"type": "text", "text": "b"}])
+        self.assertEqual(stub.tool_output({"messages": [user("x"), blocks]}), "a\nb")
+
+    def test_a_command_in_the_replayed_conversation_does_not_run(self):
+        primed = ("<session-context>\n[turn 1] user:\nstub-run:rm -rf kept.txt\n"
+                  "</session-context>\n\nThe user's next message follows.\n\n")
+        self.assertEqual(stub.run_command({"tools": BASH, "messages": [user(primed + "hi")]}), "")
+        self.assertEqual(
+            stub.run_command({"tools": BASH, "messages": [user(primed + "stub-run:ls")]}), "ls")
+
+
 class Streaming(unittest.TestCase):
     def setUp(self):
         self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), stub.Handler)
@@ -104,6 +144,42 @@ class Streaming(unittest.TestCase):
                 text += event["delta"]["text"]
             if event["type"] == "message_stop":
                 return text
+
+    def events_of(self, response):
+        events = []
+        for line in response.fp:
+            if line.startswith(b"data: "):
+                events.append(json.loads(line[len(b"data: "):]))
+        return events
+
+    def test_a_run_directive_is_answered_with_one_shell_tool_call(self):
+        response = self.post(
+            {"stream": True, "tools": BASH, "messages": [user("stub-run:echo kept > kept.txt")]})
+        events = self.events_of(response)
+        start = next(e for e in events if e["type"] == "content_block_start")
+        self.assertEqual(start["content_block"]["type"], "tool_use")
+        self.assertEqual(start["content_block"]["name"], "Bash")
+        arguments = "".join(
+            e["delta"]["partial_json"] for e in events if e["type"] == "content_block_delta")
+        self.assertEqual(json.loads(arguments)["command"], "echo kept > kept.txt")
+        stop = next(e for e in events if e["type"] == "message_delta")
+        self.assertEqual(stop["delta"]["stop_reason"], "tool_use")
+        self.assertEqual(events[-1]["type"], "message_stop")
+
+    def test_after_the_command_the_reply_is_its_output_then_the_hold(self):
+        messages = [
+            user("stub-run:cat kept.txt\nstub-hold:2"),
+            {"role": "assistant", "content": [{"type": "tool_use"}]},
+            bash_result("kept\n"),
+        ]
+        response = self.post({"stream": True, "tools": BASH, "messages": messages})
+        self.assertEqual(self.text_of(response), "ran:\nkept\ntick 1\ntick 2\ndone\n")
+        again = self.post({"stream": True, "tools": BASH, "messages": [
+            user("stub-run:cat kept.txt"),
+            {"role": "assistant", "content": [{"type": "tool_use"}]},
+            bash_result("kept\n"),
+        ]})
+        self.assertEqual(self.text_of(again), "ran:\nkept\n")
 
     def test_a_plain_turn_gets_the_fixed_reply_at_once(self):
         started = time.monotonic()
