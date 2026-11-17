@@ -79,6 +79,12 @@ const (
 	// $0.25/domain/month" (w7/m429, docs/ADR030 §16). Its rows carry
 	// ResourceKindCustomDomains and the workspace id as service_id.
 	UsageKindCustomDomainSeconds = "custom_domain_seconds"
+	// UsageKindCronMinimumMicroUSD is what a cron job active in a calendar
+	// month owes on top of its runs to reach the cron job minimum (Render's
+	// "$1 per cron job service" × 0.70, w9/m448, docs/ADR030), in micro-USD.
+	// One row per cron job and month, written once the month's run time is
+	// final, in the month's last hour; ResourceKindService, the cron job's id.
+	UsageKindCronMinimumMicroUSD = "cron_minimum_microusd"
 )
 
 // Usage source-health vocabulary. Keep this closed and presentation-safe: the

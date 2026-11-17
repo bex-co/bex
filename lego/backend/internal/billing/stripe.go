@@ -388,6 +388,14 @@ func (c *StripeClient) ExpectedLivemode() bool { return !c.testMode }
 func (c *StripeClient) IngestBatch(ctx context.Context, events []Event) IngestResult {
 	result := IngestResult{}
 	for _, e := range events {
+		if e.EventType == store.UsageKindCronMinimumMicroUSD {
+			if failure := c.addCronMinimumItem(ctx, e); failure != nil {
+				result.Failed = append(result.Failed, *failure)
+			} else {
+				result.Accepted = append(result.Accepted, e.TransactionID)
+			}
+			continue
+		}
 		eventName, value, skip := stripeMeterEvent(e)
 		if skip {
 			// Free/zero-rate rows are intentionally accounted locally without a
@@ -588,6 +596,10 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 		store.UsageKindAgentModelCacheReadTokens, store.UsageKindAgentModelCacheWriteTokens:
 		// Platform-route tokens are the per-model usage breakdown only
 		// (ADR091 D3): accounted locally at zero, never a Stripe meter.
+		return "", "", true
+	case store.UsageKindCronMinimumMicroUSD:
+		// Not a meter event: IngestBatch bills it as a "Cron job minimum"
+		// invoice item (cron_minimum.go), and no meter's aggregation is awaited.
 		return "", "", true
 	case store.UsageKindAgentModelCostMicroUSD:
 		// The customer price in micro-USD (cost × markup, ADR091 D1), on one

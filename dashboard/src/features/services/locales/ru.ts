@@ -1663,14 +1663,15 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "Этот тип инстанса стоит ${price} за минуту работы, оплата посекундная на время выполнения запуска.",
+      "Этот тип инстанса стоит ${price} за минуту работы, оплата посекундная на время выполнения запуска. Минимальная плата — ${minimum} в месяц за каждый Cron Job.",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
-    message: "Cron Job оплачивается посекундно на время выполнения запуска.",
+    message:
+      "Cron Job оплачивается посекундно на время выполнения запуска. Минимальная плата — ${minimum} в месяц за каждый Cron Job.",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
     message: "Этот тип инстанса стоит ${price} в месяц.",

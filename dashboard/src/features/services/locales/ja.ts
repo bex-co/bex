@@ -1666,14 +1666,15 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "このインスタンスタイプは、実行時間 1 分あたり ${price} で、実行中は秒単位で課金されます。",
+      "このインスタンスタイプは、実行時間 1 分あたり ${price} で、実行中は秒単位で課金されます。Cron Job 1 件あたりの最低料金は月額 ${minimum} です。",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
-    message: "Cron Job は、実行中は秒単位で課金されます。",
+    message:
+      "Cron Job は、実行中は秒単位で課金されます。Cron Job 1 件あたりの最低料金は月額 ${minimum} です。",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
     message: "このインスタンスタイプは月額 ${price} です。",

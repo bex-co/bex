@@ -13,6 +13,8 @@
 #   sandbox_cpu_seconds     → sandboxUsage.usdPerCPUSecond
 #   sandbox_memory_gb_seconds → sandboxUsage.usdPerMemoryGBSecond
 #   custom_domain_seconds → customDomains.usdPerDomainSecond
+#   cron_minimum_microusd → $0.000001 per unit (the row already carries the
+#                           top-up to cronJob.minimumUsdPerMonth)
 #   agent_model_cost_microusd → $0.000001 per unit (the row already carries
 #                           upstream cost × agentModel.markup, ADR091 D1)
 #   agent_model_{input,output,cache_read,cache_write}_tokens → $0 (display only)
@@ -168,6 +170,17 @@ disk:
 # docs/ADR030-pricing.md §16.
 customDomains:
   usdPerDomainSecond: 0.000000066590563165905631659056   # $0.175 / 2,628,000 domain-seconds
+
+# The cron job minimum: $0.70 per cron job per calendar month (Render's
+# "minimum monthly charge of $1 per cron job service" × 0.70;
+# render.com/docs/cronjobs, read 2026-11-16). A cron job active in a month
+# whose runs cost less than this is charged the difference, once the month's
+# run time is final (usage_hourly cron_minimum_microusd). Not a Stripe meter:
+# the catalog is at Stripe's 20 items per Subscription, so the top-up is a
+# "Cron job minimum" invoice item on the workspace's Subscription. Policy:
+# docs/ADR030-pricing.md § Cron job minimum (w9/m448).
+cronJob:
+  minimumUsdPerMonth: 0.70   # Render $1.00 × 0.70
 
 # sandbox_snapshot_gb_seconds rate: $0.056/GB-month of a suspended sandbox's
 # retained image (Render's snapshot storage $0.08/GB-month × 0.70; Render's

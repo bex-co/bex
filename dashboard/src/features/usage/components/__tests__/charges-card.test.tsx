@@ -504,6 +504,63 @@ describe("ChargesCard", () => {
     for (const model of models) expect(model).not.toHaveClass("capitalize");
   });
 
+  // w9/m448: a cron job whose runs cost less than the cron job minimum in a
+  // month gets the difference as its own line, labeled and rated as a minimum.
+  it.each([
+    ["en", "Cron job minimum", "$0.70/month minimum"],
+    ["zh", "定时任务最低收费", "每月最低 $0.70"],
+  ])("labels the cron job minimum line (%s)", async (lng, line, rate) => {
+    const category = lng === "en" ? /Services/ : /服务/;
+    await ensureLanguage(lng);
+    await i18n.changeLanguage(lng);
+    try {
+      render(
+        <ChargesCard
+          estimatedCost={estimate(
+            [
+              resource({
+                serviceId: "crn-nightly",
+                serviceName: "nightly",
+                costUsd: "0.70",
+                charges: [
+                  {
+                    kind: "instance_seconds",
+                    tier: "starter",
+                    unit: "hr",
+                    rateUsd: "0.0067",
+                    quantity: "0.10",
+                    costUsd: "0.00",
+                  },
+                  {
+                    kind: "cron_minimum_microusd",
+                    tier: "",
+                    unit: "USD",
+                    rateUsd: "0.000001",
+                    quantity: "0.70",
+                    costUsd: "0.70",
+                  },
+                ],
+              }),
+            ],
+            "0.70",
+          )}
+          invoicedUsd={null}
+          loading={false}
+          period=""
+          now={MID_JULY}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: category }));
+      fireEvent.click(screen.getByRole("button", { name: /nightly/ }));
+      expect(screen.getByText(line)).toBeInTheDocument();
+      expect(screen.getByText(rate)).toBeInTheDocument();
+      expect(screen.queryByText(/cron_minimum/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/0\.000001/)).not.toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+  });
+
   it("labels a service disk charge instead of its meter name", () => {
     render(
       <ChargesCard

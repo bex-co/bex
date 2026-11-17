@@ -325,7 +325,10 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 			event.Properties["value"] = strconv.FormatInt(billed, 10)
 		}
 		eventName, _, skip := stripeMeterEvent(event)
-		if skip {
+		switch {
+		case r.Kind == store.UsageKindCronMinimumMicroUSD:
+			eventName = cronMinimumEventName
+		case skip:
 			eventName = "local_zero_rate"
 		}
 		attempt.EventName = eventName

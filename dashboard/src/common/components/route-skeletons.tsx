@@ -1,4 +1,5 @@
 import { InvitationFrame } from "@/features/invites/invitation-frame";
+import { CRON_MINIMUM_USD } from "@/common/lib/cron-minimum";
 import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
 import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-table-header";
 import { WebhooksPageHeader } from "@/features/webhooks/components/webhooks-panel";
@@ -1810,7 +1811,9 @@ export function ServiceCreatePageSkeleton() {
                 <Skeleton className="h-4 w-28" />
                 {cron ? (
                   <p className="text-muted-foreground text-xs">
-                    {t("services.createFieldPlanCronHint")}
+                    {t("services.createFieldPlanCronHint", {
+                      minimum: CRON_MINIMUM_USD,
+                    })}
                   </p>
                 ) : null}
                 <PlanTierSlots

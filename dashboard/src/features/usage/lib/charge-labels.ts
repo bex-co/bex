@@ -47,6 +47,7 @@ export const CHARGE_LABEL_KEYS: Record<string, string> = {
   object_storage_egress_bytes: "usage.chargeObjectStorageEgress",
   disk_gb_seconds: "usage.chargeDisk",
   custom_domain_seconds: "usage.chargeCustomDomains",
+  cron_minimum_microusd: "usage.chargeCronMinimum",
   agent_model_cost_microusd: "usage.chargeAgentModelCost",
   agent_model_input_tokens: "usage.chargeAgentModelInputTokens",
   agent_model_output_tokens: "usage.chargeAgentModelOutputTokens",

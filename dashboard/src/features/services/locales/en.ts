@@ -1654,14 +1654,15 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "This instance type costs ${price} per minute of run time, billed per second while a run executes.",
+      "This instance type costs ${price} per minute of run time, billed per second while a run executes. The minimum charge is ${minimum} a month per cron job.",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
-    message: "A cron job is billed per second while a run executes.",
+    message:
+      "A cron job is billed per second while a run executes. The minimum charge is ${minimum} a month per cron job.",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
     message: "This instance type costs ${price}/month.",

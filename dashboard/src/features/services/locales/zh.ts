@@ -1618,14 +1618,16 @@ const zhServices: Record<string, TranslationEntry> = {
       "Plan-change confirm body for a service that has never gone live (w4/548)",
   },
   "services.planPickerConfirmRunPrice": {
-    message: "此实例类型每分钟运行时间费用为 ${price}，运行期间按秒计费。",
+    message:
+      "此实例类型每分钟运行时间费用为 ${price}，运行期间按秒计费。每个定时任务每月最低收费 ${minimum}。",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
-    message: "定时任务仅在运行期间按秒计费。",
+    message:
+      "定时任务仅在运行期间按秒计费。每个定时任务每月最低收费 ${minimum}。",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
     message: "此实例类型每月费用为 ${price}。",

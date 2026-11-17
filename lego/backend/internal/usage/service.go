@@ -80,6 +80,11 @@ type UsageStore interface {
 	CountedCustomDomains(ctx context.Context, before time.Time, workspaceID string) ([]store.CustomDomainUsage, error)
 	UsageMeterCursor(ctx context.Context, kind string) (time.Time, bool, error)
 	AdvanceUsageMeterCursor(ctx context.Context, kind string, window time.Time) error
+	// The cron job minimum (w9/m448) records the cron jobs active each month,
+	// since a deleted one's apps row is gone when its month is charged.
+	RecordActiveCronJobs(ctx context.Context, month time.Time) error
+	CronJobMonths(ctx context.Context, month time.Time) ([]store.CronJobMonth, error)
+	InsertCronMinimum(ctx context.Context, row store.HourlyRow) error
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error)
 	CompactUsage(ctx context.Context, before time.Time) (store.UsageCompaction, error)
 	// The retained-name record (w2/m96): billing lines outlive their resources,
@@ -901,6 +906,7 @@ func (s *Service) catchUp(ctx context.Context) {
 	last := now.Truncate(time.Hour).Add(-time.Hour)
 	s.catchUpDisksThrough(ctx, last)
 	s.catchUpCustomDomainsThrough(ctx, last)
+	s.chargeCronMinimums(ctx, now)
 	if s.PromBase == "" {
 		return
 	}
@@ -929,6 +935,7 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 	window := t.UTC().Truncate(time.Hour).Add(-time.Hour)
 	s.catchUpDisksThrough(ctx, window)
 	s.catchUpCustomDomainsThrough(ctx, window)
+	s.chargeCronMinimums(ctx, t)
 	if s.PromBase == "" {
 		return
 	}

@@ -524,7 +524,7 @@ it("previews a cron job's plan billing hint", async () => {
     return region as HTMLElement;
   });
   expect(picker).toHaveTextContent(
-    "A cron job is billed per second while a run executes.",
+    "A cron job is billed per second while a run executes. The minimum charge is $0.70 a month per cron job.",
   );
 });
 

@@ -43,6 +43,7 @@ import {
   usd,
   type ChargeCategory,
 } from "@/features/usage/lib/charges";
+import { CRON_MINIMUM_USD } from "@/common/lib/cron-minimum";
 import type {
   ChargeLine,
   Coverage,
@@ -65,9 +66,15 @@ const isAgentModelCharge = (kind: string) => kind.startsWith("agent_model_");
 /** The rate column. A zero rate is "Included" only for plan-priced meters: an
  * agent-model token line is a usage breakdown that ADR091's cost line bills,
  * never a plan allowance, so it shows no rate instead of claiming one. */
-function chargeRate(charge: ChargeLine, t: (key: string) => string): string {
+function chargeRate(
+  charge: ChargeLine,
+  t: (key: string, params?: Record<string, string>) => string,
+): string {
   if (charge.kind === "agent_model_cost_microusd") {
     return t("usage.chargeAgentModelRate");
+  }
+  if (charge.kind === "cron_minimum_microusd") {
+    return t("usage.chargeCronMinimumRate", { minimum: CRON_MINIMUM_USD });
   }
   if (isAgentModelCharge(charge.kind)) return "—";
   return charge.rateUsd === "0"

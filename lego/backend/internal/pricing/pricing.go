@@ -64,8 +64,11 @@ type Sheet struct {
 	// keyvalueMicroUSD is each paid Key Value tier's rate in micro-USD per
 	// second, exact, for the KeyValueCostMeter events.
 	keyvalueMicroUSD map[string]*big.Rat
-	bandwidth        float64 // $/byte for egress_bytes
-	build            float64 // $/second for build_seconds
+	// computeMicroUSD is the same for each paid App service tier, for the
+	// cron job minimum (ServiceInstanceMicroUSD).
+	computeMicroUSD map[string]*big.Rat
+	bandwidth       float64 // $/byte for egress_bytes
+	build           float64 // $/second for build_seconds
 	// buildIncluded is plan → build_seconds a month the plan includes before
 	// build_seconds is charged (docs/ADR030 §13).
 	buildIncluded map[string]int64
@@ -90,6 +93,9 @@ type Sheet struct {
 	sandboxMemory     float64
 	sandboxUsageFrom  time.Time
 	sandboxUsageUnits map[string]*big.Rat
+	// cronMinimumMicroUSD is what a cron job active in a calendar month is
+	// charged at least, in micro-USD (cronJob.minimumUsdPerMonth, w9/m448).
+	cronMinimumMicroUSD int64
 	// sandboxUSD is the same rate, exact, for pricing one session's compute
 	// (SandboxComputeMicroUSD).
 	sandboxUSD *big.Rat
@@ -241,6 +247,26 @@ func (s *Sheet) SandboxUsageWeightedUnits(kind, quantity string) (string, bool) 
 		return "", false
 	}
 	return TrimDecimal(n.Mul(n, s.sandboxUsageUnits[kind]), 12), true
+}
+
+// CronMinimumMicroUSD is what a cron job active in a calendar month is charged
+// at least, in micro-USD: Render's $1 minimum per cron job × 0.70 (w9/m448).
+func (s *Sheet) CronMinimumMicroUSD() int64 {
+	if s == nil {
+		return 0
+	}
+	return s.cronMinimumMicroUSD
+}
+
+// ServiceInstanceMicroUSD prices seconds of an App service's instance tier in
+// micro-USD, exact rational on the rate's shortest decimal spelling (its
+// pricing.yaml literal); a free or unknown tier costs nothing.
+func (s *Sheet) ServiceInstanceMicroUSD(tier string, seconds int64) *big.Rat {
+	rate := s.computeMicroUSD[tier]
+	if rate == nil || seconds <= 0 {
+		return new(big.Rat)
+	}
+	return new(big.Rat).Mul(rate, big.NewRat(seconds, 1))
 }
 
 // TrimDecimal renders r rounded to places decimals without trailing zeros.
@@ -663,7 +689,7 @@ func unitFor(kind string) meterUnit {
 	case store.UsageKindAgentModelInputTokens, store.UsageKindAgentModelOutputTokens,
 		store.UsageKindAgentModelCacheReadTokens, store.UsageKindAgentModelCacheWriteTokens:
 		return meterUnit{"1M tokens", tokensPerMillion}
-	case store.UsageKindAgentModelCostMicroUSD:
+	case store.UsageKindAgentModelCostMicroUSD, store.UsageKindCronMinimumMicroUSD:
 		return meterUnit{"USD", microUSDPerUSD}
 	}
 	return meterUnit{"", 1}
@@ -761,6 +787,12 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 		if resourceKind == store.ResourceKindCustomDomains {
 			return s.customDomain
 		}
+	case store.UsageKindCronMinimumMicroUSD:
+		// The row already carries the top-up to the cron job minimum
+		// (w9/m448), in micro-USD.
+		if resourceKind == store.ResourceKindService {
+			return 1.0 / microUSDPerUSD
+		}
 	case store.UsageKindAgentModelCostMicroUSD:
 		// The row already carries the marked-up customer price (ADR091 D1);
 		// the token rows beside it are display only and rate $0.
@@ -837,6 +869,9 @@ type sheetFile struct {
 	CustomDomains struct {
 		USDPerDomainSecond float64 `json:"usdPerDomainSecond"`
 	} `json:"customDomains"`
+	CronJob struct {
+		MinimumUSDPerMonth float64 `json:"minimumUsdPerMonth"`
+	} `json:"cronJob"`
 	AgentModel struct {
 		Markup             float64 `json:"markup"`
 		MaxCapMultiplier   float64 `json:"maxCapMultiplier"`
@@ -924,6 +959,11 @@ func parseSheet(raw []byte) (*Sheet, error) {
 	if rate := f.CustomDomains.USDPerDomainSecond; math.IsNaN(rate) || math.IsInf(rate, 0) || rate < 0 {
 		return nil, fmt.Errorf("customDomains.usdPerDomainSecond %v must be a non-negative rate", rate)
 	}
+	if usd := f.CronJob.MinimumUSDPerMonth; math.IsNaN(usd) || math.IsInf(usd, 0) || usd < 0 {
+		return nil, fmt.Errorf("cronJob.minimumUsdPerMonth %v must be a non-negative amount", usd)
+	} else {
+		s.cronMinimumMicroUSD = int64(math.Round(usd * microUSDPerUSD))
+	}
 	if m := f.AgentModel.Markup; math.IsNaN(m) || m < minAgentModelMarkup || m > maxAgentModelMarkup {
 		return nil, fmt.Errorf("agentModel.markup %v must be between %d and %d", m, minAgentModelMarkup, maxAgentModelMarkup)
 	}
@@ -947,6 +987,16 @@ func parseSheet(raw []byte) (*Sheet, error) {
 			return nil, fmt.Errorf("compute entry has empty tier")
 		}
 		s.compute[e.Tier] = e.USDPerSecond
+		if e.USDPerSecond > 0 {
+			r, ok := new(big.Rat).SetString(strconv.FormatFloat(e.USDPerSecond, 'f', -1, 64))
+			if !ok {
+				return nil, fmt.Errorf("compute tier %s has a non-finite rate", e.Tier)
+			}
+			if s.computeMicroUSD == nil {
+				s.computeMicroUSD = map[string]*big.Rat{}
+			}
+			s.computeMicroUSD[e.Tier] = r.Mul(r, big.NewRat(1_000_000, 1))
+		}
 	}
 	for _, e := range f.Postgres {
 		if e.Tier == "" {

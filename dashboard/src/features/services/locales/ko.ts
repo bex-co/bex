@@ -1653,14 +1653,15 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "이 인스턴스 유형은 실행 시간 1분당 ${price}이며, 실행되는 동안 초 단위로 청구됩니다.",
+      "이 인스턴스 유형은 실행 시간 1분당 ${price}이며, 실행되는 동안 초 단위로 청구됩니다. Cron Job당 최소 요금은 월 ${minimum}입니다.",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
-    message: "Cron Job은 실행되는 동안 초 단위로 청구됩니다.",
+    message:
+      "Cron Job은 실행되는 동안 초 단위로 청구됩니다. Cron Job당 최소 요금은 월 ${minimum}입니다.",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
     message: "이 인스턴스 유형은 월 ${price}입니다.",

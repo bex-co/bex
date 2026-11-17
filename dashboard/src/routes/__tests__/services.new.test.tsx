@@ -1089,7 +1089,7 @@ describe("NewServicePage", () => {
       expect(await screen.findByText("$0.00011/min")).toBeInTheDocument();
       expect(
         screen.getByText(
-          "A cron job is billed per second while a run executes.",
+          "A cron job is billed per second while a run executes. The minimum charge is $0.70 a month per cron job.",
         ),
       ).toBeInTheDocument();
       expect(screen.queryByText("$4.90/month")).not.toBeInTheDocument();
@@ -1358,9 +1358,7 @@ describe("NewServicePage", () => {
     it("keeps a private service's declared primary as its $PORT", async () => {
       await selectTypeThenImageTab(/Private Service/i);
       expect(screen.getByText(/becomes \$PORT/)).toBeInTheDocument();
-      expect(
-        screen.queryByText(/\$PORT stays 10000/),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/\$PORT stays 10000/)).not.toBeInTheDocument();
     });
   });
 

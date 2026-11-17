@@ -1682,15 +1682,15 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "Dieser Instanztyp kostet ${price} pro Minute Laufzeit, sekundengenau abgerechnet, solange ein Lauf ausgeführt wird.",
+      "Dieser Instanztyp kostet ${price} pro Minute Laufzeit, sekundengenau abgerechnet, solange ein Lauf ausgeführt wird. Der Mindestbetrag liegt bei ${minimum} pro Monat und Cron Job.",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
     message:
-      "Ein Cron Job wird sekundengenau abgerechnet, solange ein Lauf ausgeführt wird.",
+      "Ein Cron Job wird sekundengenau abgerechnet, solange ein Lauf ausgeführt wird. Der Mindestbetrag liegt bei ${minimum} pro Monat und Cron Job.",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
     message: "Dieser Instanztyp kostet ${price}/Monat.",

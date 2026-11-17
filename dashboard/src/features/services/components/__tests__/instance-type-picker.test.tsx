@@ -257,9 +257,24 @@ describe("InstanceTypePicker", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(
-        /costs \$0\.0014 per minute of run time, billed per second while a run executes\./,
+        /costs \$0\.0014 per minute of run time, billed per second while a run executes\. The minimum charge is \$0\.70 a month per cron job\./,
       ),
     ).toBeInTheDocument();
+  });
+
+  // w9/m448: the Plan page states the cron job minimum above a cron job's
+  // instance types, as the create form does, and never for another type.
+  it("states the cron job minimum on a cron job's Plan page only", async () => {
+    const view = renderPicker("standard", "cron_job");
+    expect(
+      await screen.findByText(
+        "A cron job is billed per second while a run executes. The minimum charge is $0.70 a month per cron job.",
+      ),
+    ).toBeInTheDocument();
+    view.unmount();
+    renderPicker("standard", "web_service");
+    await screen.findByRole("radiogroup");
+    expect(screen.queryByText(/minimum charge/)).not.toBeInTheDocument();
   });
 
   // w4/548: the resize confirmation promises a rolling replacement only when

@@ -26,6 +26,7 @@ import {
   offeredInstanceTypes,
 } from "@/features/services/lib/instance-type";
 import {
+  CronBillingHint,
   INSTANCE_TYPE_CARD_FRAME,
   InstanceTypeCardBody,
   InstanceTypeGroup,
@@ -33,6 +34,7 @@ import {
   LegacyFreeNotice,
 } from "@/features/services/components/instance-type-groups";
 import { cn } from "@/common/lib/utils/utils.ts";
+import { CRON_MINIMUM_USD } from "@/common/lib/cron-minimum";
 
 export interface InstanceTypePickerProps {
   serviceId: string;
@@ -123,6 +125,7 @@ export function InstanceTypePicker({
           serviceType={serviceType}
           currentPlan={currentPlan}
         />
+        <CronBillingHint serviceType={serviceType} />
         {loading && instanceTypes.length === 0 ? (
           <InstanceTypeGroupsSkeleton serviceType={serviceType} />
         ) : (
@@ -211,6 +214,7 @@ export function InstanceTypePicker({
             ? selectedType?.usdPerMinute &&
               t("services.planPickerConfirmRunPrice", {
                 price: selectedType.usdPerMinute,
+                minimum: CRON_MINIMUM_USD,
               })
             : selectedType?.monthlyUsd &&
               t("services.planPickerConfirmPrice", {

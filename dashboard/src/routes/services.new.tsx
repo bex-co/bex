@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { CRON_MINIMUM_USD } from "@/common/lib/cron-minimum";
 import { HydrationFieldset } from "@/common/components/hydration-fieldset";
 import { Loader2, ArrowUpRight } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -558,7 +559,9 @@ export function NewServicePage() {
                     <Label>{t("services.createFieldPlan")}</Label>
                     {shape.isCronType ? (
                       <p className="text-muted-foreground text-xs">
-                        {t("services.createFieldPlanCronHint")}
+                        {t("services.createFieldPlanCronHint", {
+                          minimum: CRON_MINIMUM_USD,
+                        })}
                       </p>
                     ) : null}
                     {instanceTypes.length === 0 && !catalog.loading ? (

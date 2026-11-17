@@ -1672,15 +1672,15 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "Este tipo de instância custa ${price} por minuto de execução, cobrado por segundo enquanto uma execução está em andamento.",
+      "Este tipo de instância custa ${price} por minuto de execução, cobrado por segundo enquanto uma execução está em andamento. A cobrança mínima é de ${minimum} por mês por Cron Job.",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
     message:
-      "Um Cron Job é cobrado por segundo enquanto uma execução está em andamento.",
+      "Um Cron Job é cobrado por segundo enquanto uma execução está em andamento. A cobrança mínima é de ${minimum} por mês por Cron Job.",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
     message: "Este tipo de instância custa ${price}/mês.",

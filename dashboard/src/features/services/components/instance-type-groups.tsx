@@ -8,6 +8,8 @@ import {
   offersFreeTier,
 } from "@/features/services/lib/instance-type";
 import { cn } from "@/common/lib/utils/utils.ts";
+import { CRON_MINIMUM_USD } from "@/common/lib/cron-minimum";
+import { isCronType } from "@/features/services/lib/service-type";
 
 // The picker's group/card layout, shared by its ready state and its loading
 // skeletons so the two cannot drift apart.
@@ -152,6 +154,25 @@ export function LegacyFreeNotice({
 }
 
 /** The whole picker card — title, notice, groups and Cancel/Save slot. */
+/**
+ * How a cron job is billed (w4/546) and its monthly minimum (w9/m448), above
+ * its instance types: drawn by the picker and its skeleton alike, so the
+ * pending card has the ready card's height. Nothing for any other type.
+ */
+export function CronBillingHint({
+  serviceType,
+}: {
+  serviceType: string | null;
+}) {
+  const { t } = useTranslations();
+  if (serviceType === null || !isCronType(serviceType)) return null;
+  return (
+    <p className="text-xs text-muted-foreground">
+      {t("services.createFieldPlanCronHint", { minimum: CRON_MINIMUM_USD })}
+    </p>
+  );
+}
+
 export function InstanceTypePickerCardSkeleton({
   serviceType,
   currentPlan,
@@ -167,6 +188,7 @@ export function InstanceTypePickerCardSkeleton({
       </CardHeader>
       <CardContent className="space-y-6">
         <LegacyFreeNotice serviceType={serviceType} currentPlan={currentPlan} />
+        <CronBillingHint serviceType={serviceType} />
         <InstanceTypeGroupsSkeleton serviceType={serviceType} />
         <div className="flex justify-end gap-2 border-t pt-4">
           <Skeleton className="h-9 w-20" />

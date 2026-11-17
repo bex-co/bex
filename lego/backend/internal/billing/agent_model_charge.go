@@ -295,9 +295,9 @@ func (c *StripeClient) agentModelChargeInvoice(ctx context.Context, charge store
 	return invoice, nil
 }
 
-// agentModelChargeTax applies the configured tax behavior and code to an
+// invoiceItemTax applies the configured tax behavior and code to an invoice
 // item on an automatically taxed invoice, as the catalog Prices carry them.
-func (c *StripeClient) agentModelChargeTax(params *stripe.InvoiceItemParams) {
+func (c *StripeClient) invoiceItemTax(params *stripe.InvoiceItemParams) {
 	if c.taxBehavior != "" {
 		params.TaxBehavior = stripe.String(c.taxBehavior)
 	}
@@ -320,7 +320,7 @@ func (c *StripeClient) addAgentModelChargeItem(ctx context.Context, charge store
 		Metadata:    agentModelChargeMetadata(charge),
 	}
 	if invoice.AutomaticTax != nil && invoice.AutomaticTax.Enabled {
-		c.agentModelChargeTax(params)
+		c.invoiceItemTax(params)
 	}
 	params.Context = ctx
 	params.SetIdempotencyKey(agentModelChargeKey(charge, "item", true))
@@ -365,7 +365,7 @@ func (c *StripeClient) NetAgentModelCharge(ctx context.Context, charge store.Age
 		Metadata:     metadata,
 	}
 	if sub.AutomaticTax != nil && sub.AutomaticTax.Enabled {
-		c.agentModelChargeTax(params)
+		c.invoiceItemTax(params)
 	}
 	params.Context = ctx
 	params.SetIdempotencyKey(agentModelChargeKey(charge, "net", false))

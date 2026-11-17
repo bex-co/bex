@@ -1,6 +1,6 @@
 # ADR030 — Price sheet + estimated spend
 
-**Status:** Accepted · 2026-07-13 · revised 2026-08-19 (workspace plan fees at 30% off Render) · revised 2026-07-26 by w7/m50 · revised 2026-09-06 (§7 paid-only Background Workers, w6/025) · revised 2026-10-15 (§7 paid-only Cron Jobs, w8/048) **Author:** w8/m7
+**Status:** Accepted · 2026-07-13 · revised 2026-08-19 (workspace plan fees at 30% off Render) · revised 2026-07-26 by w7/m50 · revised 2026-09-06 (§7 paid-only Background Workers, w6/025) · revised 2026-10-15 (§7 paid-only Cron Jobs, w8/048) · revised 2026-11-16 (§18 cron job minimum, w9/m448) **Author:** w8/m7
 
 ---
 
@@ -105,7 +105,7 @@ This is exact Render parity: Render's free instance types do not support horizon
 
 **Extended to Private Services 2026-09-28 (w1/111).** Render sells a private service only on paid instances too ([explore other service types](https://render.com/docs/your-first-deploy#explore-other-service-types), checked 2026-09-28), and the 2026-09-06 decision left the sibling type accepting free purely because `normalizeTierForType` special-cased one constant. Live evidence of the resulting split: on 2026-09-26 a plan-less `private_service` was created on **`free`** while a plan-less `background_worker` was created on **`starter`**, from the same function, in the same pass. The rule is an **allowlist** (`paidOnlyServiceType`), not "everything but web"; a static site runs no instance at all.
 
-**Extended to Cron Jobs 2026-10-15 (w8/048, user decision: match Render).** The earlier premise that "Render sells both that way" for web services and cron jobs was false for cron. Render's public API types `cronJobDetailsPOST.plan` and `cronJobDetailsPATCH.plan` as `paidPlan`, with no `free`, exactly as for workers and private services. render.com/docs/free lists no free cron instance, and render.com/docs/cronjobs states a $1/month minimum charge per cron job. A cron job is now refused `free` on create, plan change and Blueprint. A plan-less cron already defaulted to `starter` under §8. Blueprint `plan: free` on a cron is refused by the pinned upstream `cronPlan` enum: the bex schema overlay that admitted it (ADR049) is removed. Only web services keep Free. bex's per-second compute billing applies as for any paid service; it adds no $1 monthly floor.
+**Extended to Cron Jobs 2026-10-15 (w8/048, user decision: match Render).** The earlier premise that "Render sells both that way" for web services and cron jobs was false for cron. Render's public API types `cronJobDetailsPOST.plan` and `cronJobDetailsPATCH.plan` as `paidPlan`, with no `free`, exactly as for workers and private services. render.com/docs/free lists no free cron instance, and render.com/docs/cronjobs states a $1/month minimum charge per cron job. A cron job is now refused `free` on create, plan change and Blueprint. A plan-less cron already defaulted to `starter` under §8. Blueprint `plan: free` on a cron is refused by the pinned upstream `cronPlan` enum: the bex schema overlay that admitted it (ADR049) is removed. Only web services keep Free. bex's per-second compute billing applies as for any paid service. **Amended 2026-11-16 (w9/m448):** the earlier closing clause, that bex added no monthly floor, was a divergence ADR018 never recorded and the user never signed. A cron job now has a monthly minimum, §18.
 
 **A cron job's price is per minute of run time (w4/546, 2026-11-11).** A cron job is billed per second only while a run executes ("Billing is prorated by the second, based on active running time during a given month", render.com/docs/cronjobs), so its create form, its Plan page and the plan-change confirm show each instance type's rate per minute of run time ("$0.00011/min of run time" for Starter), with "billed per second while a run executes". The always-on monthly figure would overstate a nightly 30-second job about a thousandfold. The rate comes from the same price sheet (`pricing.Sheet.InstanceUSDPerMinute`, GraphQL `InstanceType.usdPerMinute`, two significant digits), so the client never divides a rounded monthly string. Other service types keep $/month, and the Blueprint estimate keeps excluding cron as a variable cost. Render's own per-minute wording is unverified.
 
@@ -307,6 +307,30 @@ From **2026-11-18T00:00:00Z**, in every workspace and with no allowlist, a runni
 - **Agent sessions.** An agent session's sandbox keeps `sandbox_compute_seconds`, the basis of its `outcome.cost` (ADR047 D6).
 - **Not on bex.co yet.** `sandboxUsage` is withheld from `GET /pricing` until bex.co quotes it, like `customDomains`.
 - **Hobby** stays open, as in §15.
+
+### 18. Each cron job has a monthly minimum, as on Render (w9/m448, 2026-11-16)
+
+[render.com/docs/cronjobs](https://render.com/docs/cronjobs) (read 2026-11-16): "Billing is prorated by the second, based on active running time during a given month." and "There is a minimum monthly charge of $1 per cron job service." bex now charges the same floor:
+
+- **Amount.** **$0.70 per cron job per calendar month**: Render's $1 × 0.70 under §2, as every Render-derived price on this sheet is, flat fees included (disk, snapshot storage, custom domains). A cron job's bex charge is then Render's charge for the same runs × 0.70, the minimum included. `pricing.yaml` `cronJob.minimumUsdPerMonth`.
+- **Rule.** A cron job active in a month whose runs there cost less than the minimum is charged the difference: max(0, $0.70 − its run charge), where the run charge is its `instance_seconds` in the month at each tier's rate, in exact micro-USD. A cron job whose runs cost $0.70 or more owes nothing extra.
+- **Who owes it.** Every cron job the hourly sweep sees active (created and not suspended) at any point in the month owes it once. The sweep records each one (`cron_minimum_months`), because a deleted cron job's row is gone when its month is charged.
+  - _Deleted mid-month:_ it owes the full minimum, unprorated.
+  - _Created mid-month:_ the same.
+  - _Suspended all month:_ it owes nothing. Render staff say suspending a service stops its billing.
+  - _The default tenant_ (no plan) is not charged, as for every plan charge.
+- **Period.** The calendar month (UTC), Render's "given month" and the month bex's included allowances use (§13, §14). It is not the Stripe subscription period.
+- **When.** Once the month's run time is final: 49 hours after the month ends, past the usage rollup's 48-hour rewrite window. Each top-up is one `cron_minimum_microusd` usage row under the cron job (resource kind `service`, window = the month's last hour). Its own meter cursor records the month, and a row is never rewritten. A second pass, a second replica or a manual `SettleWorkspace` charges nothing more. Exclusions follow the outbox: a `billing_excluded` workspace is never exported, and a card-less one waits for its card.
+- **Stripe.** The minimum is **not a meter**. The catalog already has 20 dimensions, Stripe's maximum per Subscription (§16). The emitter therefore sends each row as one pending invoice item on the workspace's live Subscription, described "Cron job minimum: <cron job name>, <Month YYYY>", in cents rounded half up. The row's deterministic identifier is the idempotency key. Settle before delete awaits no meter for it. It needs no new Price and no live-Stripe step: the item lands on the Subscription's next invoice.
+- **Surfaces.** REST `GET /v1/usage`, GraphQL `usage` and MCP `get_usage` carry the row as a `cron_minimum_microusd` line of `estimatedCost` under the cron job, priced at $0.000001 a unit, once the month is charged. The Billing page's charge tree labels it "Cron job minimum" with the rate "$0.70/month minimum". The New Cron Job form, a cron job's Plan page and the plan-change confirm say a cron job is billed per second while a run executes, with a $0.70 monthly minimum, in all eight dashboard languages. The current month's estimate does not project the minimum before the month ends.
+- **Decision state.** This is a recommendation under ADR008's Render parity first, not a recorded user decision. Two variants would need the user:
+  - _No floor at all_ would be a divergence, and it needs the user's sign-off in ADR018.
+  - _Charging Render's $1 unscaled_ would make this the one Render price §2 does not discount. Changing it is a one-line `pricing.yaml` edit.
+- **Unverified against Render.** Render publishes nothing on four points, and bex takes the literal reading of each:
+  - whether the minimum is prorated for a cron job created or deleted mid-month (bex: no);
+  - whether a suspended cron job owes it (bex: not if it was suspended the whole month);
+  - what the invoice line is called (bex: "Cron job minimum");
+  - whether it counts against any included usage (bex: no; no plan includes compute).
 
 ## Consequences
 

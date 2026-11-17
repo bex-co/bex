@@ -146,6 +146,16 @@ const ruUsage: Record<string, TranslationEntry> = {
     description:
       "Charge-tree category for a workspace's custom domains beyond its plan (w7/m429)",
   },
+  "usage.chargeCronMinimum": {
+    message: "Минимальная плата за Cron Job",
+    description:
+      "Charge line under a cron job: what its runs in a month cost short of the cron job minimum, charged once the month ends (w9/m448)",
+  },
+  "usage.chargeCronMinimumRate": {
+    message: "Минимум ${minimum}/мес.",
+    description:
+      "Rate column value for the cron job minimum line; minimum is the USD amount without the currency symbol (w9/m448)",
+  },
   "usage.chargeCustomDomains": {
     message: "Пользовательские домены сверх тарифа",
     description:

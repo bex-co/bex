@@ -142,6 +142,16 @@ const jaUsage: Record<string, TranslationEntry> = {
     description:
       "Charge-tree category for a workspace's custom domains beyond its plan (w7/m429)",
   },
+  "usage.chargeCronMinimum": {
+    message: "Cron Job の最低料金",
+    description:
+      "Charge line under a cron job: what its runs in a month cost short of the cron job minimum, charged once the month ends (w9/m448)",
+  },
+  "usage.chargeCronMinimumRate": {
+    message: "月額最低 ${minimum}",
+    description:
+      "Rate column value for the cron job minimum line; minimum is the USD amount without the currency symbol (w9/m448)",
+  },
   "usage.chargeCustomDomains": {
     message: "プラン超過分のカスタムドメイン",
     description:
