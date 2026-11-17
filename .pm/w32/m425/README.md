@@ -1,12 +1,12 @@
 # w32 · m425 — A production capture of Render's default environment variables, by service type, runtime and phase
 
-**Worker:** worker32 **Goal:** ADR018's ✅ for default environment variables rests on a committed production capture of every variable Render documents, and the acceptance checks still owed for w8/272 and w8/202 are closed. **Status:** todo
+**Worker:** worker32 **Goal:** ADR018's ✅ for default environment variables rests on a committed production capture of every variable Render documents, and the acceptance checks still owed for w8/272 and w8/202 are closed. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Probe fixtures and capture plan | 30m | — |
+| [t001](done/t001.md) | Probe fixtures and capture plan — **DONE** | 30m | — |
 | t002 | Deploy and capture on production | 75m | t001 |
 | t003 | Record the capture as `docs/render-artifacts/default-env-live.md` | 30m | t002 |
 | t004 | Fix the small mismatches, file the rest | 45m | t003 |
@@ -30,3 +30,32 @@
 - **Expected outcome:** a committed matrix that any later default-variable change can be checked against, and two owed acceptance checks closed.
 - **Why now:** default-variable changes shipped between 2026-11-11 and 2026-11-14 (w8/256, w8/272, w8/273, w8/274, w4/386, w21/076), and w32/m424 adds three more. Run it after w32/m424's code is on production so the capture sees those three; if m424 is still waiting on its production pin, mark those cells pending rather than waiting.
 - **Render parity:** omitted: a verification milestone whose fixes are runtime-environment only. If t004 changes a REST, GraphQL, MCP or dashboard surface, add the Render parity task with `/pm add-task`.
+
+## Triage (2026-11-17, `/loopx w32`)
+
+**Work now; the m424 cells wait.** The production pin is `55c120858af0` (`9c79201b4`), which does not contain w32/m424's `f1cdd052b`. The next batched deploy builds main only once that pin is 6 h old (`deploy.yml`, ~13:47Z), or on a dispatch. Between `55c120858af0` and `main` only `f1cdd052b` touches `lego/types/renderenv`, `lego/operator/internal/build` or `lego/operator/internal/controller`, so the capture differs only in the cells m424 changes: Python's `GUNICORN_CMD_ARGS` and Ruby's `PASSENGER_PORT` and `GEM_PATH`. As this README's Why-now says, those cells are captured as the current pin has them and marked pending. Every other cell, w8/272's owed acceptance and w8/202's are not gated, so t001–t006 run now. The pending cells are filled from m424's own production walk (t007 there checks exactly those three on production), and this milestone's closeout waits for it.
+
+## Capture plan (t001)
+
+**Probe.** [`examples/default-env-probe`](../../../examples/default-env-probe/README.md): `probe.sh` prints, by name only, the 43 variables render.com/docs/environment-variables lists (15 for every runtime; Elixir 2, Go 2, Node 2, Python 5, Ruby 13, Rust 4) plus `PORT`, as `DEFAULT_ENV <phase> NAME=value` or `… NAME unset`. It runs first in each build command and each start command, so a fixture prints the whole list in both phases, and a runtime's variables showing up on another runtime would show too. None of the names is a secret, and the fixtures set no variables of their own (the Elixir one's throwaway `SECRET_KEY_BASE` is never printed).
+
+**Fixtures** (`bex-canary`, prefix `qa-20261117-m425-`, Auto-Deploy off, free where the type allows):
+
+| Fixture | Source | Type | Captures |
+| --- | --- | --- | --- |
+| `node` | native Node | web (free) | every-runtime and Node cells, build and runtime; w8/202 (listens on 3000, `PORT` stays 10000) |
+| `py` | native Python | web (free) | Python cells (`GUNICORN_CMD_ARGS` pending m424) |
+| `rb` | native Ruby | web (free) | Ruby cells (`PASSENGER_PORT`, `GEM_PATH` pending m424) |
+| `go` | native Go | web (free) | Go cells |
+| `rs` | native Rust | web (free) | Rust cells (w8/273 reused for a service's own `ROCKET_PORT`) |
+| `ex` | native Elixir, `render-examples/phoenix_hello` | web (free) | Elixir cells; w8/272: `node()` long by default, short with the service's `RELEASE_DISTRIBUTION=sname` |
+| `dk` | Dockerfile | web (free) | which defaults reach a Docker build as build args, and the container's runtime set |
+| `img` | prebuilt `busybox:1.37.0` | web (free) | runtime set of an image service (no build) |
+| `ps` | native Node | private (starter) | the type cells for `pserv` |
+| `wk` | native Node | worker (starter) | the type cells for `worker` |
+| `cr` | native Node | cron (starter, one triggered run) | the type cells for `cron` |
+| `st` | native static build | static (free) | the type cells for `static` (build only) |
+
+**Cells.** Each variable × phase (build, runtime) for every fixture. The every-runtime set is compared on all twelve; a runtime's own defaults on its web fixture and, for Node, on the private, worker, cron and static fixtures too. A type-dependent variable (`RENDER_SERVICE_TYPE`, `RENDER_EXTERNAL_HOSTNAME`/`_URL`, `RENDER_DISCOVERY_SERVICE`, `RENDER_WEB_CONCURRENCY`, `WEB_CONCURRENCY`, `PORT`) is compared across the five types. Reused rather than redone: w8/273 (a service's own `ROCKET_PORT` wins, sweep `81af`) and w8/274 (Python's virtualenv, sweep `11ae`).
+
+**Read back** with `GET /v1/logs?resource=<id>&type=build|app&text=DEFAULT_ENV` as the QA user; Elixir's `node()` with `bin/phoenix_hello rpc` in the instance (`kubectl exec` on the control plane). Every fixture is deleted afterwards with a by-id `GET` 404.
