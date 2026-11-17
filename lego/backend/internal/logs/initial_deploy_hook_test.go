@@ -198,7 +198,7 @@ func TestInitialDeployHookLinesBelongToTheDeployThatWentLiveUnderTheRun(t *testi
 // A deploy-scoped read keeps its own hook's pod and drops the other deploys',
 // in the durable build stream and in the live pre-deploy read alike. A service
 // with no hook has no such Jobs, and its selector names none
-// (TestDeployScopeExcludesOtherDeploysBuildPods).
+// (TestDeployScopeExcludesOtherDeploysJobPods).
 func TestDeployScopeKeepsItsOwnHookPodAndDropsOtherDeploys(t *testing.T) {
 	var build LogQuery
 	svc := hookService(hookRows(), nil, func(q LogQuery) []LogEntry { build = q; return nil })

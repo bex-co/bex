@@ -19,10 +19,14 @@ package logs
 import (
 	"context"
 	"errors"
+	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
@@ -104,29 +108,109 @@ func TestDeployScopeKeepsOnlyThatDeploysPlatformLines(t *testing.T) {
 	}
 }
 
-// The build pod's lines carry only its pod name, which the operator derives
-// from the release generation, so every OTHER deploy's Job is excluded from the
-// store selector.
-func TestDeployScopeExcludesOtherDeploysBuildPods(t *testing.T) {
+// A build or pre-deploy pod's lines carry only its pod name, which the
+// operator derives from the release generation, so every OTHER deploy's build
+// and pre-deploy Jobs are excluded from the store selector.
+func TestDeployScopeExcludesOtherDeploysJobPods(t *testing.T) {
 	var got LogQuery
 	svc := scopeService(scopeRows(), func(q LogQuery) { got = q })
 	scopeRead(t, svc, "dep-second")
 
 	want := []string{
 		appv1alpha1.BuildJobName("web", appv1alpha1.BuildRevision(4)),
+		appv1alpha1.PreDeployJobName("web", appv1alpha1.BuildRevision(4)),
 		appv1alpha1.BuildJobName("web", appv1alpha1.BuildRevision(3)),
+		appv1alpha1.PreDeployJobName("web", appv1alpha1.BuildRevision(3)),
 	}
 	if !slices.Equal(got.excludeJobs, want) {
 		t.Fatalf("excluded Jobs = %v, want %v (the other deploys', never its own gen-5)", got.excludeJobs, want)
 	}
 	selector := lokiSelectorFor("default", got)
-	wantMatcher := `pod!~"^(bld-web-gen-4|bld-web-gen-3)-[^-]+$"`
+	wantMatcher := `pod!~"^(bld-web-gen-4|predeploy-web-gen-4|bld-web-gen-3|predeploy-web-gen-3)-[^-]+$"`
 	if !strings.Contains(selector, wantMatcher) {
 		t.Fatalf("selector %s lacks %s", selector, wantMatcher)
 	}
 	// An unscoped read keeps the selector as it was.
 	if unscoped := lokiSelectorFor("default", LogQuery{App: "web", Types: []string{LogTypeBuild}}); strings.Contains(unscoped, "pod!~") {
 		t.Fatalf("an unscoped selector excludes pods: %s", unscoped)
+	}
+}
+
+// w33/008: the shipper files every pre-deploy pod under build (ADR010), so on
+// production the first of three quick deploys' build read returned its own
+// pre-deploy marker and the next two deploys' as well. Both reads a deploy page
+// makes keep only the deploy's own step.
+func TestDeployScopeDropsOtherDeploysPreDeployOutputFromBothReads(t *testing.T) {
+	at := time.Date(2026, 11, 17, 5, 27, 0, 0, time.UTC)
+	var rows []DeployProgress
+	type step struct{ pod, marker, at string }
+	var steps []step
+	for gen := int64(1); gen <= 3; gen++ {
+		created := at.Add(time.Duration(gen-1) * 2 * time.Minute)
+		rows = append([]DeployProgress{{ID: fmt.Sprintf("dep-%d", gen), Generation: gen, Status: "live",
+			CreatedAt: created, StartedAt: created.Add(time.Second), FinishedAt: created.Add(40 * time.Second)}}, rows...)
+		steps = append(steps, step{
+			pod:    appv1alpha1.PreDeployJobName("web", appv1alpha1.BuildRevision(gen)) + "-x7k2p",
+			marker: fmt.Sprintf("pre-deploy marker %d", gen),
+			at:     created.Add(10 * time.Second).Format(time.RFC3339Nano),
+		})
+	}
+	markers := func(entries []LogEntry) []string {
+		var out []string
+		for _, e := range entries {
+			if strings.HasPrefix(e.Message, "pre-deploy marker") {
+				out = append(out, e.Message)
+			}
+		}
+		return out
+	}
+
+	// The durable build read: the store holds every step under build and
+	// drops the pods the selector's negative pod matcher names, as Loki does.
+	svc := scopeService(rows, nil)
+	svc.History = func(_ context.Context, _ string, q LogQuery) ([]LogEntry, error) {
+		var out []LogEntry
+		for _, s := range steps {
+			if len(q.excludeJobs) > 0 && regexp.MustCompile(jobPodPattern(q.excludeJobs)).MatchString(s.pod) {
+				continue
+			}
+			out = append(out, LogEntry{Timestamp: s.at, Message: s.marker,
+				Labels: map[string]string{LabelType: LogTypeBuild, LabelInstance: s.pod, "container": core.PreDeployContainer}})
+		}
+		return out, nil
+	}
+	build := func(deploy string) []string {
+		entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}, Deploy: deploy, Since: at})
+		if err != nil {
+			t.Fatalf("QueryLogs: %v", err)
+		}
+		return markers(entries)
+	}
+	if got := build(""); len(got) != 3 {
+		t.Fatalf("unscoped build read = %q, want every deploy's step", got)
+	}
+	if got := build("dep-1"); !slices.Equal(got, []string{"pre-deploy marker 1"}) {
+		t.Fatalf("the first deploy's build read = %q, want only its own pre-deploy step", got)
+	}
+	if got := build("dep-3"); !slices.Equal(got, []string{"pre-deploy marker 3"}) {
+		t.Fatalf("the last deploy's build read = %q, want only its own pre-deploy step", got)
+	}
+
+	// The live pre-deploy read of the App's own pods.
+	logs := map[string][]string{}
+	objs := []client.Object{sampleApp("web")}
+	for _, s := range steps {
+		logs[s.pod] = []string{s.at + " " + s.marker}
+		objs = append(objs, preDeployPod("web", s.pod))
+	}
+	live := newService(logs, objs...)
+	live.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) { return rows, nil }
+	entries, err := live.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypePreDeploy}, Deploy: "dep-1"})
+	if err != nil {
+		t.Fatalf("QueryLogs: %v", err)
+	}
+	if got := markers(entries); !slices.Equal(got, []string{"pre-deploy marker 1"}) {
+		t.Fatalf("the first deploy's pre-deploy read = %q, want only its own step", got)
 	}
 }
 

@@ -321,8 +321,8 @@ type LogQuery struct {
 	// zero where no plan applies or the read cannot reach it.
 	retentionFloor time.Time
 
-	// excludeJobs are the Job names of the OTHER deploys' builds (or pre-deploy
-	// steps) and initial deploy hooks a Deploy-scoped read drops; set by
+	// excludeJobs are the Job names of the OTHER deploys' builds, pre-deploy
+	// steps and initial deploy hooks a Deploy-scoped read drops; set by
 	// scopeToDeploy, never by a caller. Only lines positively attributed to
 	// another deploy are dropped, so
 	// a pod this cannot attribute (a kpack buildpack build) stays visible
@@ -728,7 +728,7 @@ func (q LogQuery) excludesPod(pod string) bool {
 }
 
 // scopeToDeploy turns q.Deploy into the Jobs to drop: every other deploy's
-// build (or pre-deploy) Job, named from its release generation as the operator
+// build and pre-deploy Jobs, named from its release generation as the operator
 // names them. It fails open — no source, a failed read, or a deploy not among
 // the service's recent rows leaves the read as the window alone cut it — because
 // a missing scope costs a stray line while a wrong one would hide real output.
@@ -744,29 +744,26 @@ func (s *Service) scopeToDeploy(ctx context.Context, resource string, app *appv1
 	if target < 0 {
 		return
 	}
-	jobName := appv1alpha1.BuildJobName
-	if slices.Contains(q.Types, LogTypePreDeploy) {
-		jobName = appv1alpha1.PreDeployJobName
-	}
-	// Either read also carries the initial deploy hook's output (the shipper
-	// files the pre-deploy plane's pods under build), and a hook runs after
-	// its deploy is live, inside the next deploy's window (w33/m435). Only a
-	// service with a hook has such Jobs to name.
+	// The shipper files the pre-deploy plane's pods under build, so a build
+	// read carries every deploy's pre-deploy step as well as its build: both
+	// Job families of every other deploy are dropped, whichever type the read
+	// asks for (w33/008). Their names never collide. Either read also carries
+	// the initial deploy hook's output, and a hook runs after its deploy is
+	// live, inside the next deploy's window (w33/m435). Only a service with a
+	// hook has such Jobs to name.
 	hooked := strings.TrimSpace(app.Spec.InitialDeployHook) != "" || app.Status.InitialDeployHook != nil
 	seen := map[int64]bool{rows[target].Generation: true}
-	var hooks []string
 	for _, d := range rows {
 		if d.Generation <= 0 || seen[d.Generation] {
 			continue
 		}
 		seen[d.Generation] = true
 		revision := appv1alpha1.BuildRevision(d.Generation)
-		q.excludeJobs = append(q.excludeJobs, jobName(app.Name, revision))
+		q.excludeJobs = append(q.excludeJobs, appv1alpha1.BuildJobName(app.Name, revision), appv1alpha1.PreDeployJobName(app.Name, revision))
 		if hooked {
-			hooks = append(hooks, appv1alpha1.InitialDeployHookJobName(app.Name, revision))
+			q.excludeJobs = append(q.excludeJobs, appv1alpha1.InitialDeployHookJobName(app.Name, revision))
 		}
 	}
-	q.excludeJobs = append(q.excludeJobs, hooks...)
 }
 
 // capToLimit keeps q.Limit entries from the end the direction asks for: the
