@@ -55,6 +55,7 @@ type putKind struct {
 	storePath  string
 	secretName string
 	stored     map[string]string
+	projection projectionKind
 	// refer and unrefer point the App at the derived Secret, or away from it.
 	refer, unrefer func(a *appv1alpha1.App)
 	// referenced reports what a staged write leaves, which holds the reference
@@ -73,7 +74,7 @@ type putKind struct {
 
 var putKinds = []putKind{
 	{
-		name: "PUT one variable", storePath: envPath("bp"), secretName: "bp-env", stored: map[string]string{"KEEP": "1"},
+		name: "PUT one variable", storePath: envPath("bp"), secretName: "bp-env", stored: map[string]string{"KEEP": "1"}, projection: envProjection,
 		refer:   func(a *appv1alpha1.App) { a.Spec.EnvFromSecret = "bp-env" },
 		unrefer: func(a *appv1alpha1.App) { a.Spec.EnvFromSecret = "" },
 		referenced: func(a *appv1alpha1.App) bool {
@@ -94,7 +95,7 @@ var putKinds = []putKind{
 		},
 	},
 	{
-		name: "PUT the whole variable set", storePath: envPath("bp"), secretName: "bp-env", stored: map[string]string{"KEEP": "1"},
+		name: "PUT the whole variable set", storePath: envPath("bp"), secretName: "bp-env", stored: map[string]string{"KEEP": "1"}, projection: envProjection,
 		refer:   func(a *appv1alpha1.App) { a.Spec.EnvFromSecret = "bp-env" },
 		unrefer: func(a *appv1alpha1.App) { a.Spec.EnvFromSecret = "" },
 		referenced: func(a *appv1alpha1.App) bool {
@@ -115,7 +116,7 @@ var putKinds = []putKind{
 		},
 	},
 	{
-		name: "PUT one secret file", storePath: filesPath("bp"), secretName: "bp-files", stored: map[string]string{"keep.txt": "1"},
+		name: "PUT one secret file", storePath: filesPath("bp"), secretName: "bp-files", stored: map[string]string{"keep.txt": "1"}, projection: filesProjection,
 		refer:   func(a *appv1alpha1.App) { a.Spec.FilesFromSecrets = []string{"bp-files"} },
 		unrefer: func(a *appv1alpha1.App) { a.Spec.FilesFromSecrets = nil },
 		referenced: func(a *appv1alpha1.App) bool {
@@ -136,7 +137,7 @@ var putKinds = []putKind{
 		},
 	},
 	{
-		name: "PUT the whole secret-file set", storePath: filesPath("bp"), secretName: "bp-files", stored: map[string]string{"keep.txt": "1"},
+		name: "PUT the whole secret-file set", storePath: filesPath("bp"), secretName: "bp-files", stored: map[string]string{"keep.txt": "1"}, projection: filesProjection,
 		refer:   func(a *appv1alpha1.App) { a.Spec.FilesFromSecrets = []string{"bp-files"} },
 		unrefer: func(a *appv1alpha1.App) { a.Spec.FilesFromSecrets = nil },
 		referenced: func(a *appv1alpha1.App) bool {
@@ -185,11 +186,17 @@ func (r *absentRig) editApp(t *testing.T, edit func(a *appv1alpha1.App)) {
 // earlier write left, and rebases.
 func (r *absentRig) editSecret(t *testing.T, edit func(data map[string][]byte)) {
 	t.Helper()
+	r.editSecretObject(t, func(sec *corev1.Secret) { edit(sec.Data) })
+}
+
+// editSecretObject is editSecret for a change to more than the data.
+func (r *absentRig) editSecretObject(t *testing.T, edit func(sec *corev1.Secret)) {
+	t.Helper()
 	sec := &corev1.Secret{}
 	if err := r.patches.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: r.kind.secretName}, sec); err != nil {
 		t.Fatal(err)
 	}
-	edit(sec.Data)
+	edit(sec)
 	if err := r.patches.Client.Update(context.Background(), sec); err != nil {
 		t.Fatal(err)
 	}
@@ -475,6 +482,15 @@ func TestAnIdenticalPutRepairsAProjectionAnEarlierAttemptLeftBehind(t *testing.T
 						}
 					})
 				}},
+				{"a Secret an earlier revision projected", func(t *testing.T, r *absentRig) {
+					// The state a write that committed the store and died before its
+					// projection leaves: the store is ahead of the Secret.
+					r.kv.versions[k.storePath] = 3
+					r.editSecretObject(t, func(sec *corev1.Secret) {
+						sec.Data["REVOKED"] = []byte("stale")
+						setProjectedRevision(sec, k.projection, committedAt(2))
+					})
+				}},
 				{"an App that does not refer to the Secret", func(t *testing.T, r *absentRig) { r.editApp(t, k.unrefer) }},
 			} {
 				for _, staged := range []bool{true, false} {
@@ -520,6 +536,28 @@ func TestAnIdenticalPutRepairsAProjectionAnEarlierAttemptLeftBehind(t *testing.T
 				}
 			}
 		}
+	}
+}
+
+// A Secret at the store's own revision that holds another map is a projection
+// that lost to a concurrent write, not a retry's to overwrite: one revision holds
+// one map. The PUT answers the conflict, as it did, and changes nothing.
+func TestAnIdenticalPutOverASecretAtTheStoresRevisionWithOtherDataConflicts(t *testing.T) {
+	for _, k := range putKinds {
+		t.Run(k.name, func(t *testing.T) {
+			r := k.rig(t, false)
+			r.editSecretObject(t, func(sec *corev1.Secret) {
+				sec.Data["REVOKED"] = []byte("other")
+				setProjectedRevision(sec, k.projection, committedAt(1))
+			})
+			err := k.call(context.Background(), r.svc, "1")
+			if !errors.Is(err, core.ErrConflict) {
+				t.Fatalf("the PUT = %v, want a conflict", err)
+			}
+			if r.patches.patches != 0 || len(r.rec.rows) != 0 || r.kv.casCalls != 0 {
+				t.Errorf("the refused PUT made %d App patches, %d deploys and %d store writes, want none", r.patches.patches, len(r.rec.rows), r.kv.casCalls)
+			}
+		})
 	}
 }
 
