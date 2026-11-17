@@ -17,11 +17,22 @@ fail() {
 }
 # head closing the pipe ends tr with SIGPIPE, which pipefail would report.
 rand() { LC_ALL=C tr -dc "$1" </dev/urandom | head -c "$2" || true; }
-# A key the generic rule must report: gitleaks drops a candidate that contains
-# a dictionary stopword, which an alphanumeric draw does about one run in three
-# (the "a generic API key gave exit 0" failures of 2026-11-16). With no vowel
-# no English word, stopword included, can occur in it.
-rand_key() { rand 'B-DF-HJ-NP-TV-Zb-df-hj-np-tv-z0-9' "$1"; }
+# A key the generic rule must report. gitleaks drops a candidate that contains
+# one of its stopwords (case-insensitive) or has no digit. An alphanumeric draw
+# hit a stopword about one run in three (the "a generic API key gave exit 0"
+# failures of 2026-11-16); a vowel-free one still did about one draw in 200,
+# on vpn, md5, xmpp, sync or no digit at all (the "a key beside an allowlisted
+# id gave exit 0" failure of 2026-11-17). A consonant alternating with a digit
+# always carries a digit, and no stopword alternates letters and digits. At 40
+# characters its entropy stays clear of the rule's 3.5 floor (lowest of 1.5M
+# simulated draws: 3.7; at 32 it came within 0.07).
+rand_key() {
+  local letters digits key='' i
+  letters=$(rand 'B-DF-HJ-NP-TV-Zb-df-hj-np-tv-z' "$(($1 / 2))")
+  digits=$(rand 0-9 "$(($1 / 2))")
+  for ((i = 0; i < $1 / 2; i++)); do key+=${letters:i:1}${digits:i:1}; done
+  echo "$key"
+}
 
 repo="$tmp/repo"
 mkdir -p "$repo/scripts"
@@ -45,7 +56,7 @@ commit allowlisted
 scan HEAD~1..HEAD || fail "an allowlisted shape was reported: $(cat "$tmp/out")"
 
 # A generic API key and a GitHub token are reported, redacted.
-key=$(rand_key 32)
+key=$(rand_key 40)
 echo "api_key = \"$key\"" >"$repo/config.py"
 commit generic
 rc=0
@@ -59,7 +70,7 @@ scan HEAD~1..HEAD || rc=$?
 [ "$rc" = 1 ] || fail "a GitHub token gave exit $rc, not 1: $(cat "$tmp/out")"
 
 # The allowlisted id shape does not hide another value on the same line.
-echo "credential rgc-$(rand 0-9a-v 20) api_key = \"$(rand_key 32)\"" >"$repo/mixed.md"
+echo "credential rgc-$(rand 0-9a-v 20) api_key = \"$(rand_key 40)\"" >"$repo/mixed.md"
 commit mixed
 rc=0
 scan HEAD~1..HEAD || rc=$?
