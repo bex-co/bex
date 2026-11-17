@@ -661,13 +661,16 @@ func buildBex() string {
 }
 
 // telemetryStub records POST /cli-telemetry-events bodies while serving the
-// minimal workspace list the CLI needs to complete a command.
+// minimal workspace list the CLI needs to complete a command, plus any routes
+// a test scripts (an agent session, an automation run).
 type telemetryStub struct {
 	mu sync.Mutex
 	// headers records the release header seen on every request, telemetry or
 	// not, so a test can prove the stamp reaches both request classes.
 	headers []string
 	bodies  []string
+	// routes answers each path with its JSON body; set before the server starts.
+	routes map[string]string
 }
 
 func (s *telemetryStub) handler() http.Handler {
@@ -687,7 +690,12 @@ func (s *telemetryStub) handler() http.Handler {
 			w.WriteHeader(http.StatusAccepted)
 			_, _ = w.Write([]byte(`{"id":"cte-test"}`))
 		default:
-			http.NotFound(w, r)
+			body, ok := s.routes[r.URL.Path]
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			_, _ = w.Write([]byte(body))
 		}
 	})
 }

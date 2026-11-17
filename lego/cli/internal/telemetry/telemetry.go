@@ -3,11 +3,14 @@
 //
 // Upstream fires exactly one hook after Cobra finishes an execution
 // (render-oss/cli cmd/execution.go), which covers every imported command and
-// also bex's native `upgrade` — verified, not assumed. Two bex paths escape it:
+// also bex's native `upgrade` — verified, not assumed. Two kinds of bex path
+// escape it:
 //
-//   - `bex code` / `bex glm` and the other provider launchers replace the
-//     process with syscall.Exec, so the execution never "finishes" and the hook
-//     never runs;
+//   - the commands that replace the process with syscall.Exec (`bex glm` and
+//     the other provider launchers, `bex edit`, `bex agent open` into bex
+//     desktop, `bex agent ssh`), so the execution never "finishes" and the
+//     hook never runs. lego/cli/telemetry_coverage_test.go lists every such
+//     call site with the test proving it reports once (ADR113 D7);
 //   - root `--version` answers and exits before cmd.Execute() is reached.
 //
 // Sending is delegated to upstream's own Sender, so consent resolution
@@ -73,7 +76,8 @@ var send = func(result command.ExecutionResult, stderr io.Writer) {
 	analytics.New(apiClient).Send(result, stderr)
 }
 
-// EmitLaunch reports one provider launch (`bex glm`, `bex code`, …).
+// EmitLaunch reports one launch that replaces this process (`bex glm`,
+// `bex edit`, `bex agent ssh`, …).
 //
 // It must be called immediately before the exec that replaces this process, and
 // the sender outlives that exec: delivery itself is a detached subprocess, not
