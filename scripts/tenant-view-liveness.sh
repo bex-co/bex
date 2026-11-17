@@ -65,6 +65,8 @@
 # Exit:    0 pass · 2 config error · 3 wake · 4 logs · 5 metrics · 6 events
 #          7 held awake: stage 4 could not run because a repeating caller never
 #            lets the fixture sleep, so its feed is empty by design (w4/676)
+#          8 events unreachable: no events read answered within the stage-4
+#            budget (transport errors only; one that fails is retried, w4/704)
 #
 # Nothing secret is printed: the API key is exchanged through a private file and
 # the bearer rides in curl's -K header file (scripts/lib/canary-api.sh).
@@ -283,25 +285,50 @@ fi
 echo "  ok: cpu and memory both carry samples (after ${waited}s)"
 
 # --- Stage 4: the events feed advanced -----------------------------------------
+# fetch_events — one read of the feed into events.json. A read that fails to
+# complete (connect or read timeout, reset, DNS) returns non-zero and leaves
+# curl's own error in events.err, so the caller retries inside its budget as
+# stages 2 and 3 do (w4/704). The body lands through a scratch file, so a
+# half-written answer never replaces the last good one.
 fetch_events() {
-  if ! acurl -o "$TMP_DIR/events.json" --get "$API/v1/services/$SERVICE_ID/events" \
+  if acurl -o "$TMP_DIR/events.part" --get "$API/v1/services/$SERVICE_ID/events" \
     --data-urlencode "startTime=$EVENTS_START" \
-    --data-urlencode "limit=20" 2>/dev/null; then
-    echo "FAIL(4/4 events): GET /v1/services/$SERVICE_ID/events failed"
-    exit 6
+    --data-urlencode "limit=20" 2>"$TMP_DIR/events.err"; then
+    mv -f "$TMP_DIR/events.part" "$TMP_DIR/events.json"
+    events_read=1
+    return 0
   fi
+  events_failed=$((events_failed + 1))
+  return 1
 }
 # poll_events <jq args…> — re-reads the feed until the jq program prints a
 # timestamp or WOKEN_BUDGET runs out; leaves it in $hit and the wait in $waited.
+# A failed read is an empty tick. Exit 8 only when no read answered at all in
+# the budget: that is an unreachable feed, not one that did not advance (6).
 poll_events() {
   waited=0
+  events_read=""
+  events_failed=0
   while :; do
-    fetch_events
-    hit="$(jq -r "$@" "$TMP_DIR/events.json")"
-    if [ -n "$hit" ] || [ "$waited" -ge "$WOKEN_BUDGET" ]; then return; fi
+    hit=""
+    if fetch_events; then
+      hit="$(jq -r "$@" "$TMP_DIR/events.json")"
+    fi
+    if [ -n "$hit" ] || [ "$waited" -ge "$WOKEN_BUDGET" ]; then break; fi
     sleep "$POLL"
     waited=$((waited + POLL))
   done
+  if [ -z "$events_read" ]; then
+    echo "FAIL(4/4 events): GET /v1/services/$SERVICE_ID/events never answered:"
+    echo "      ${events_failed} reads over ${waited}s all failed to complete. The last error:"
+    sed 's/^/        /' "$TMP_DIR/events.err"
+    echo "      This is the read itself (network, edge or bex-api availability),"
+    echo "      not a feed that answered and did not advance."
+    exit 8
+  fi
+  if [ "$events_failed" -gt 0 ]; then
+    echo "  note: ${events_failed} events read(s) failed to complete and were retried"
+  fi
 }
 # held_awake_check — exit 7 when the window's request logs show a caller that
 # never let the fixture go IDLE_WINDOW without a request; return otherwise.

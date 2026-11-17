@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Self-test for scripts/tenant-view-liveness.sh stage 4 (w6/110, issue #134; w4/676): an
+# Self-test for scripts/tenant-view-liveness.sh stage 4 (w6/110, issue #134; w4/676; w4/704): an
 # activator-held wake answers 200 once after ~14s with no retry, and the probe
 # must still treat it as a wake and poll for that wake's service_woken instead
 # of reading the events feed once and losing the race with the projection. A
@@ -16,7 +16,8 @@ cat >"$tmp/bin/curl" <<'STUB'
 #!/usr/bin/env bash
 # Stub: the canary host (-w http_code) sleeps STUB_HOLD then answers 200; the
 # API writes canned JSON to -o. Events answer [] for the first
-# STUB_EVENTS_EMPTY calls, then one STUB_EVENT_TYPE event stamped now.
+# STUB_EVENTS_EMPTY calls, then one STUB_EVENT_TYPE event stamped now; the
+# first STUB_EVENTS_FAIL of those calls fail as a curl transport error.
 out="" url="" wfmt=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -47,7 +48,11 @@ case "$url" in
   */events*)
     n=$(($(cat "$STUB_STATE" 2>/dev/null || echo 0) + 1))
     echo "$n" >"$STUB_STATE"
-    if [ "$n" -le "${STUB_EVENTS_EMPTY:-0}" ]; then
+    if [ "$n" -le "${STUB_EVENTS_FAIL:-0}" ]; then
+      # w4/704: a read that never completes, as curl reports one.
+      echo "curl: (28) Operation timed out after 60001 milliseconds with 0 bytes received" >&2
+      exit 28
+    elif [ "$n" -le "${STUB_EVENTS_EMPTY:-0}" ]; then
       body='[]'
     else
       body='[{"event":{"type":"'"$STUB_EVENT_TYPE"'","timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}}]'
@@ -114,6 +119,21 @@ run "fast 200, empty feed, no other requests is a stall" 6 "no event in the last
 run "fast 200, empty feed, a 20-minute gap is a stall" 6 "no event in the last" \
   STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=1 \
   STUB_REQ_GAPS="60 60 1200 60 60"
+
+# w4/704: one events read that fails to complete is retried inside the budget,
+# on both stage-4 paths, instead of failing the run as a stalled feed.
+run "held 200, one failed events read is retried" 0 "ok: service_woken" \
+  STUB_HOLD=1 STUB_EVENTS_FAIL=1 STUB_EVENTS_EMPTY=1 STUB_EVENT_TYPE=service_woken BEX_CANARY_WOKEN_BUDGET=10
+run "fast 200, one failed events read is retried" 0 "ok: newest event" \
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_FAIL=1 STUB_EVENTS_EMPTY=1 STUB_EVENT_TYPE=server_available BEX_CANARY_WOKEN_BUDGET=10
+# A read that never answers in the budget is its own failure (8) and quotes curl.
+run "fast 200, an events read that never answers exits 8" 8 "curl: (28) Operation timed out" \
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_FAIL=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=2
+run "held 200, an events read that never answers exits 8" 8 "never answered" \
+  STUB_HOLD=1 STUB_EVENTS_FAIL=99 STUB_EVENT_TYPE=service_woken BEX_CANARY_WOKEN_BUDGET=2
+# Reads that fail and then answer with a stalled feed are still a stall (6).
+run "fast 200, failed reads then a stalled feed is still 6" 6 "no event in the last" \
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_FAIL=1 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=2
 
 [ "$fails" -eq 0 ] || exit 1
 echo "PASS: tenant-view-liveness stage 4"
