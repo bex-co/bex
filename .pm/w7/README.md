@@ -159,6 +159,10 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 ## Inbox
 
+- [ ] **071** — [HIPAA-enabled workspaces and AWS private links have no recorded disposition](071.md) (needs a user decision) ← found by w7/m429, 2026-11-16
+- [ ] **070** — [Render's plan table limits workspaces per plan and keeps enforced 2FA to Pro and higher; bex does neither](070.md) (60m) ← found by w7/m429, 2026-11-16
+- [ ] **069** — [The default number of concurrent sandboxes does not follow the workspace plan](069.md) (60m) ← found by w7/m429, 2026-11-16
+- [ ] **068** — [A Postgres point-in-time recovery window does not follow the workspace plan](068.md) (milestone-sized) ← found by w7/m429, 2026-11-16
 - [ ] **067** — [Loki's production volume is 20Gi while the manifest and its guard say 60Gi](067.md) (45m) ← found by w7/m427, 2026-11-16
 - [ ] **066** — [The local Go format gates use whichever gofmt is first on PATH, not the toolchain CI formats with](066.md) (45m) ← found by w7/m427, 2026-11-16
 - [ ] **065** — [`scripts/auth-oauth21-e2e.sh` fails at its trusted-client leg and leaves its servers running](065.md) (60m) ← found by w7/m426, 2026-11-16
