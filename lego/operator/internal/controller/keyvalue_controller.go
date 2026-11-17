@@ -790,7 +790,7 @@ func (r *KeyValueReconciler) reconcileKeyValueService(ctx context.Context, kv *a
 		usingProxy := svc.Spec.Selector[labelKeyValueInternalProxy] == kv.Name
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
 		svc.Spec.Selector = intent.labels
-		if !kv.Spec.InternalAuth && (intent.internalProxy || usingProxy) {
+		if intent.internalProxy || usingProxy {
 			svc.Spec.Selector = map[string]string{labelKeyValueInternalProxy: kv.Name}
 		}
 		svc.Spec.Ports = []corev1.ServicePort{{Port: kvPort, TargetPort: intstr.FromInt(kvPort), Name: keyValueContainerName}}
@@ -1207,7 +1207,7 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
 	reason, message := appv1alpha1.ReasonProvisioning, "waiting for the current Valkey StatefulSet revision"
 	if !proxyReady {
-		message = "waiting for authenticated internal Key Value access"
+		message = "waiting for the internal Key Value proxy"
 	}
 	if rolloutReady && !podsReady {
 		reason, message = appv1alpha1.ReasonPodUnready, "a current Valkey pod is not Ready"

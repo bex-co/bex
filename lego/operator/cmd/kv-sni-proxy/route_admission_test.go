@@ -120,7 +120,7 @@ func TestAStoreAtItsLimitAnswersTheNextExternalClientWithValkeysRefusal(t *testi
 	}
 	go func() {
 		_ = kvinternalauth.Serve(ctx, internal, kvinternalauth.Config{
-			Upstream: tlsUpstream(t, certificate).Addr().String(), Passthrough: true,
+			Upstream: tlsUpstream(t, certificate).Addr().String(), Mode: kvinternalauth.TLSPassthrough,
 			Budget: kvinternalauth.NewBudget(limit), TLSCertFile: certFile, TLSKeyFile: keyFile,
 		})
 	}()

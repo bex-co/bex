@@ -23,7 +23,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -46,6 +45,9 @@ func keyValueInternalBackendName(kv *appv1alpha1.KeyValue) string { return kv.Na
 // reconcileKeyValueInternalProxy leaves the Valkey pod template and data alone.
 // The stable Service switches only after an authenticated readiness check; the
 // backend Service always selects the original server, never the proxy itself.
+// Every store has one: it holds the plan's connection limit (w6/m456), and it
+// authenticates internal clients unless the store requires them to
+// authenticate themselves (spec.internalAuth, w6/m463).
 func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context, kv *appv1alpha1.KeyValue, intent keyValueIntent) (bool, error) {
 	if r.InternalProxyImage == "" {
 		return false, nil
@@ -88,6 +90,13 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 			kvSecretEnv(kvPasswordEnv, intent.authSecretName),
 			// The plan's limit, one budget across both listeners (w6/m456).
 			{Name: "BEX_KV_MAX_CONNECTIONS", Value: strconv.Itoa(int(intent.plan.ConnectionLimit))},
+		}
+		if kv.Spec.InternalAuth {
+			// The plain listener forwards the client's own AUTH (w6/m463).
+			// Enabling internal auth rolls only this proxy, closing its old
+			// pod's unauthenticated connections; set only then, so the
+			// operator upgrade rolls no other store's proxy.
+			env = append(env, corev1.EnvVar{Name: "BEX_KV_INTERNAL_AUTH", Value: "client"})
 		}
 		ports := []corev1.ContainerPort{{Name: keyValueContainerName, ContainerPort: kvPort}}
 		var mounts []corev1.VolumeMount
@@ -154,7 +163,7 @@ func keyValueInternalDeploymentReady(dep *appsv1.Deployment) bool {
 }
 
 func (r *KeyValueReconciler) keyValueInternalProxyReady(ctx context.Context, kv *appv1alpha1.KeyValue) bool {
-	if r.InternalProxyImage == "" || kv.Spec.InternalAuth {
+	if r.InternalProxyImage == "" {
 		return true
 	}
 	dep := &appsv1.Deployment{}
@@ -165,19 +174,13 @@ func (r *KeyValueReconciler) keyValueInternalProxyReady(ctx context.Context, kv 
 	return reader.Get(ctx, client.ObjectKey{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}, dep) == nil && keyValueInternalDeploymentReady(dep)
 }
 
-// reconcileKeyValueInternalRoute points the stable Service at the
-// password-less proxy once it is ready (w8/204) or, with internal auth enabled
-// (w5/m268), straight at Valkey — then retires the proxy, dropping the
-// connections it carried unauthenticated, as Render's restart does.
+// reconcileKeyValueInternalRoute points the stable Service at the store's
+// internal proxy once it is ready (w8/204) and keeps it there, so every tenant
+// connection meets the plan's limit (w6/m456). With internal auth enabled
+// (w5/m268) the proxy forwards each client's own AUTH (w6/m463): enabling it
+// rolls the proxy, whose old pod drops the connections it authenticated, as
+// Render's restart does, and the internal URL carries the password again.
 func (r *KeyValueReconciler) reconcileKeyValueInternalRoute(ctx context.Context, kv *appv1alpha1.KeyValue, intent *keyValueIntent) error {
-	if kv.Spec.InternalAuth {
-		kv.Status.InternalAuthOptional = false
-		intent.internalProxy = false
-		if err := r.reconcileKeyValueService(ctx, kv, *intent); err != nil {
-			return err
-		}
-		return r.retireKeyValueInternalProxy(ctx, kv)
-	}
 	proxyReady, err := r.reconcileKeyValueInternalProxy(ctx, kv, *intent)
 	if err != nil {
 		return err
@@ -186,25 +189,6 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalRoute(ctx context.Context,
 	if err := r.reconcileKeyValueService(ctx, kv, *intent); err != nil {
 		return err
 	}
-	if proxyReady {
-		kv.Status.InternalAuthOptional = true
-	}
-	return nil
-}
-
-// retireKeyValueInternalProxy removes the password-less front of a store whose
-// internal auth was enabled: its Deployment, backend Service and the two
-// NetworkPolicies that existed only for it.
-func (r *KeyValueReconciler) retireKeyValueInternalProxy(ctx context.Context, kv *appv1alpha1.KeyValue) error {
-	for _, obj := range []client.Object{
-		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}},
-		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: keyValueInternalBackendName(kv), Namespace: kv.Namespace}},
-		&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-internal-proxy-environment-ingress", Namespace: kv.Namespace}},
-		&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-internal-proxy-backend-ingress", Namespace: kv.Namespace}},
-	} {
-		if _, err := deleteAndWait(ctx, r.Client, obj); err != nil {
-			return err
-		}
-	}
+	kv.Status.InternalAuthOptional = intent.internalProxy && !kv.Spec.InternalAuth
 	return nil
 }

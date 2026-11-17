@@ -14,8 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Command kv-internal-proxy fronts a single managed Key Value store. Internal
-// clients inherit the tenant default ACL; external TLS remains end to end.
+// Command kv-internal-proxy fronts a single managed Key Value store and holds
+// its plan's connection limit. Internal clients inherit the tenant default ACL
+// unless BEX_KV_INTERNAL_AUTH=client (the store requires internal
+// authentication), when they authenticate themselves; external TLS remains end
+// to end.
 package main
 
 import (
@@ -47,7 +50,12 @@ func run(ctx context.Context, getenv func(string) string, check bool) error {
 	if upstream == "" || password == "" {
 		return errors.New("kv-internal-proxy: BEX_KV_UPSTREAM_ADDR and VALKEY_PASSWORD are required")
 	}
+	mode, err := internalMode(getenv("BEX_KV_INTERNAL_AUTH"))
+	if err != nil {
+		return err
+	}
 	if check {
+		// Authenticated in both modes (kvinternalauth.Check).
 		return kvinternalauth.Check(ctx, kvinternalauth.Config{Upstream: upstream, Password: password})
 	}
 	// One budget for both listeners: the store's plan limit (w6/m456).
@@ -86,13 +94,13 @@ func run(ctx context.Context, getenv func(string) string, check bool) error {
 		count++
 		go func() {
 			results <- kvinternalauth.Serve(ctx, listener, kvinternalauth.Config{
-				Upstream: tlsUpstream, Passthrough: true, Budget: budget,
+				Upstream: tlsUpstream, Mode: kvinternalauth.TLSPassthrough, Budget: budget,
 				TLSCertFile: getenv("BEX_KV_TLS_CERT_FILE"), TLSKeyFile: getenv("BEX_KV_TLS_KEY_FILE"),
 			})
 		}()
 	}
 	go func() {
-		results <- kvinternalauth.Serve(ctx, internal, kvinternalauth.Config{Upstream: upstream, Password: password, Budget: budget})
+		results <- kvinternalauth.Serve(ctx, internal, kvinternalauth.Config{Upstream: upstream, Password: password, Mode: mode, Budget: budget})
 	}()
 	var result error
 	for range count {
@@ -102,4 +110,17 @@ func run(ctx context.Context, getenv func(string) string, check bool) error {
 		cancel()
 	}
 	return result
+}
+
+// internalMode is the plain listener's mode: the proxy authenticates its
+// clients (unset, w8/204) or they authenticate themselves ("client": the store
+// requires internal authentication, w6/m463). Anything else fails closed.
+func internalMode(value string) (kvinternalauth.Mode, error) {
+	switch value {
+	case "":
+		return kvinternalauth.InjectAuth, nil
+	case "client":
+		return kvinternalauth.PlainPassthrough, nil
+	}
+	return 0, errors.New(`kv-internal-proxy: BEX_KV_INTERNAL_AUTH must be unset or "client"`)
 }

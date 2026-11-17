@@ -376,8 +376,8 @@ func TestKeyValueBackupSnapshotBypassesTheTenantBudget(t *testing.T) {
 		want         string
 	}{
 		{"bex@sha256:fixture", false, "red-kv-backend"},
-		{"bex@sha256:fixture", true, "red-kv"}, // no proxy: the store is the server
-		{"", false, "red-kv"},                  // legacy embedding without a proxy
+		{"bex@sha256:fixture", true, "red-kv-backend"}, // the proxy fronts it too (w6/m463)
+		{"", false, "red-kv"},                          // legacy embedding without a proxy
 	} {
 		r := &KeyValueReconciler{InternalProxyImage: c.image}
 		kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-kv", Namespace: "tea-test"}, Spec: appv1alpha1.KeyValueSpec{Plan: "starter", InternalAuth: c.internalAuth}}

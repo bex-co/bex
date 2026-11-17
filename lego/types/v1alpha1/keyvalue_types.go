@@ -100,9 +100,10 @@ type KeyValueSpec struct {
 	// InternalAuth requires authentication on internal (private-network)
 	// connections too — Render's "Enable Internal Authentication" (w5/m268).
 	// Off, internal clients connect without a password through the
-	// auth-injecting proxy (w8/204); on, the internal Service routes straight
-	// to Valkey, which always requires AUTH, and the internal URL carries the
-	// password. Like Render's, it is enable-only.
+	// auth-injecting proxy (w8/204); on, the same proxy forwards each client's
+	// own AUTH to Valkey, which always requires it, and the internal URL
+	// carries the password (w6/m463). Either way the proxy holds the plan's
+	// connection limit. Like Render's, it is enable-only.
 	// +optional
 	InternalAuth bool `json:"internalAuth,omitempty"`
 

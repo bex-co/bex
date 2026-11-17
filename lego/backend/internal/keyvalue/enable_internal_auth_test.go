@@ -66,8 +66,8 @@ func TestEnableInternalAuth(t *testing.T) {
 }
 
 // Once internal auth is enabled the internal URL carries the password even
-// while status still says the proxy cutover happened: the Service may already
-// route straight to Valkey, which requires AUTH.
+// while status still says the proxy cutover happened: the proxy may already
+// forward clients' own AUTH to Valkey, which requires it (w6/m463).
 func TestConnectionInfoCarriesThePasswordOnceInternalAuthIsEnabled(t *testing.T) {
 	password := []byte("controller-owned-secret")
 	kv := &appv1alpha1.KeyValue{

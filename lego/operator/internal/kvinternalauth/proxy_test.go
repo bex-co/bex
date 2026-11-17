@@ -301,7 +301,7 @@ func TestTLSPassthroughDoesNotInjectOrConsumeBytes(t *testing.T) {
 		_, err := conn.Write(response)
 		return err
 	})
-	addr, _ := startProxy(t, Config{Upstream: upstream, Passthrough: true})
+	addr, _ := startProxy(t, Config{Upstream: upstream, Mode: TLSPassthrough})
 	conn := dialProxy(t, addr)
 	if _, err := conn.Write(hello); err != nil {
 		t.Fatal(err)
@@ -362,7 +362,7 @@ func TestBudgetIsSharedAndRefusesInsideTLS(t *testing.T) {
 	})
 	budget := NewBudget(1)
 	plain, _ := startProxy(t, Config{Upstream: upstream, Password: testPassword, Budget: budget})
-	tlsAddr, _ := startProxy(t, Config{Upstream: "127.0.0.1:1", Passthrough: true, Budget: budget, TLSCertFile: certFile, TLSKeyFile: keyFile})
+	tlsAddr, _ := startProxy(t, Config{Upstream: "127.0.0.1:1", Mode: TLSPassthrough, Budget: budget, TLSCertFile: certFile, TLSKeyFile: keyFile})
 	first := dialProxy(t, plain)
 	awaitSignal(t, authenticated)
 
@@ -384,7 +384,7 @@ func TestTLSRefusalWithoutCertificateCloses(t *testing.T) {
 	if !budget.acquire() {
 		t.Fatal("empty budget refused")
 	}
-	addr, _ := startProxy(t, Config{Upstream: "127.0.0.1:1", Passthrough: true, Budget: budget})
+	addr, _ := startProxy(t, Config{Upstream: "127.0.0.1:1", Mode: TLSPassthrough, Budget: budget})
 	conn := dialProxy(t, addr)
 	if got, err := io.ReadAll(conn); err != nil || len(got) != 0 {
 		t.Fatalf("read %q (%v), want a bare close", got, err)
@@ -550,30 +550,120 @@ func writeTestCertificate(t *testing.T) (certFile, keyFile string, roots *x509.C
 	return certFile, keyFile, roots
 }
 
+// The check is an authenticated PING in every mode: a proxy whose clients
+// authenticate themselves still reports a loading server unready (w6/m463).
 func TestCheckRequiresAuthenticatedPong(t *testing.T) {
-	for _, response := range []string{"+PONG\r\n", "-LOADING dataset\r\n"} {
-		t.Run(strings.TrimSpace(response), func(t *testing.T) {
+	for _, mode := range []Mode{InjectAuth, PlainPassthrough} {
+		for _, response := range []string{"+PONG\r\n", "-LOADING dataset\r\n"} {
+			t.Run(fmt.Sprintf("%d/%s", mode, strings.TrimSpace(response)), func(t *testing.T) {
+				upstream, finish := scriptedUpstream(t, func(conn net.Conn) error {
+					if err := readExact(conn, authFrame()); err != nil {
+						return err
+					}
+					if _, err := io.WriteString(conn, "+OK\r\n"); err != nil {
+						return err
+					}
+					if err := readExact(conn, "*1\r\n$4\r\nPING\r\n"); err != nil {
+						return err
+					}
+					_, err := io.WriteString(conn, response)
+					return err
+				})
+				err := Check(t.Context(), Config{Upstream: upstream, Password: testPassword, Mode: mode})
+				if (err == nil) != (response == "+PONG\r\n") {
+					t.Fatalf("response=%q err=%v", response, err)
+				}
+				if err != nil && bytes.Contains([]byte(err.Error()), []byte(testPassword)) {
+					t.Fatal("check error exposed credentials")
+				}
+				finish()
+			})
+		}
+	}
+}
+
+// A store with internal authentication (w6/m463): the plain listener writes
+// nothing of its own upstream, even holding the password for its check, so
+// the client's own AUTH decides its access, and Valkey's answers, including
+// its NOAUTH and its own maxclients refusal, reach the client unchanged.
+func TestPlainPassthroughForwardsTheClientsOwnAuth(t *testing.T) {
+	for _, c := range []struct {
+		name, client, upstream string
+	}{
+		{"unauthenticated", "PING\r\n", "-NOAUTH Authentication required.\r\n"},
+		{"authenticated", authFrame() + "PING\r\n", "+OK\r\n+PONG\r\n"},
+		{"upstream full", "PING\r\n", maxClientsReply},
+	} {
+		t.Run(c.name, func(t *testing.T) {
 			upstream, finish := scriptedUpstream(t, func(conn net.Conn) error {
-				if err := readExact(conn, authFrame()); err != nil {
+				if c.upstream == maxClientsReply {
+					// Valkey refuses on accept, before it reads anything.
+					_, err := io.WriteString(conn, maxClientsReply)
 					return err
 				}
-				if _, err := io.WriteString(conn, "+OK\r\n"); err != nil {
+				if err := readExact(conn, c.client); err != nil {
 					return err
 				}
-				if err := readExact(conn, "*1\r\n$4\r\nPING\r\n"); err != nil {
-					return err
-				}
-				_, err := io.WriteString(conn, response)
+				_, err := io.WriteString(conn, c.upstream)
 				return err
 			})
-			err := Check(t.Context(), Config{Upstream: upstream, Password: testPassword})
-			if (err == nil) != (response == "+PONG\r\n") {
-				t.Fatalf("response=%q err=%v", response, err)
+			addr, _ := startProxy(t, Config{Upstream: upstream, Password: testPassword, Mode: PlainPassthrough})
+			conn := dialProxy(t, addr)
+			if _, err := io.WriteString(conn, c.client); err != nil {
+				t.Fatal(err)
 			}
-			if err != nil && bytes.Contains([]byte(err.Error()), []byte(testPassword)) {
-				t.Fatal("check error exposed credentials")
+			if err := readExact(conn, c.upstream); err != nil {
+				t.Fatal(err)
 			}
 			finish()
 		})
+	}
+}
+
+// The plain passthrough and TLS listeners in front of a store with internal
+// authentication draw on one budget, and the client past it reads Valkey's
+// refusal in plain text on the plain listener and inside TLS on the TLS one.
+func TestPlainPassthroughSharesTheBudgetAndRefusesInPlainText(t *testing.T) {
+	certFile, keyFile, roots := writeTestCertificate(t)
+	connected := make(chan struct{})
+	upstream, finish := scriptedUpstream(t, func(conn net.Conn) error {
+		if err := readExact(conn, "PING\r\n"); err != nil {
+			return err
+		}
+		close(connected)
+		var b [1]byte
+		_, _ = conn.Read(b[:])
+		return nil
+	})
+	budget := NewBudget(1)
+	plain, _ := startProxy(t, Config{Upstream: upstream, Password: testPassword, Mode: PlainPassthrough, Budget: budget})
+	tlsAddr, _ := startProxy(t, Config{Upstream: "127.0.0.1:1", Mode: TLSPassthrough, Budget: budget, TLSCertFile: certFile, TLSKeyFile: keyFile})
+	first := dialProxy(t, plain)
+	if _, err := io.WriteString(first, "PING\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	awaitSignal(t, connected)
+
+	if got, err := io.ReadAll(dialProxy(t, plain)); err != nil || string(got) != maxClientsReply {
+		t.Fatalf("plain client past the budget read %q (%v), want Valkey's refusal in plain text", got, err)
+	}
+	client := tls.Client(dialProxy(t, tlsAddr), &tls.Config{ServerName: "kv.example.test", RootCAs: roots, MinVersion: tls.VersionTLS12})
+	if err := client.Handshake(); err != nil {
+		t.Fatalf("the refused TLS client could not verify the store's certificate: %v", err)
+	}
+	if got, err := io.ReadAll(client); err != nil || string(got) != maxClientsReply {
+		t.Fatalf("TLS client past the budget read %q (%v), want Valkey's refusal", got, err)
+	}
+	_ = first.Close()
+	finish()
+}
+
+func TestConfigRefusesAnUnknownMode(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Serve(t.Context(), listener, Config{Upstream: "127.0.0.1:1", Password: testPassword, Mode: TLSPassthrough + 1}); err == nil {
+		t.Fatal("served an unknown mode")
 	}
 }

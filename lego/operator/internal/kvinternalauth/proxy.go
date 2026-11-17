@@ -14,8 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package kvinternalauth gives a workspace's internal Key Value connections
-// the default user's ACL without asking internal clients for a password. The
+// Package kvinternalauth fronts one managed Key Value store. It holds the
+// store's plan limit across its listeners (w6/m456) and, unless the store
+// requires internal authentication (w5/m268, w6/m463), gives its internal
+// connections the default user's ACL without asking for a password. The
 // external TLS listener remains an unmodified, authenticated Valkey stream.
 package kvinternalauth
 
@@ -65,18 +67,34 @@ func (b *Budget) acquire() bool {
 
 func (b *Budget) release() { <-b.slots }
 
-// Config identifies a single store and transport. Passthrough is exclusively
-// for the external TLS path: its bytes, including client authentication, are
-// forwarded without interpretation.
+// Mode is what a listener does with its clients' bytes.
+type Mode int
+
+const (
+	// InjectAuth authenticates each upstream connection as the default user
+	// before forwarding the client's bytes, so internal clients need no
+	// password (w8/204).
+	InjectAuth Mode = iota
+	// PlainPassthrough forwards a plain client's bytes unchanged, so the
+	// client's own AUTH decides its access: the internal listener of a store
+	// with internal authentication (w5/m268, w6/m463).
+	PlainPassthrough
+	// TLSPassthrough forwards a TLS client's bytes unchanged, including its
+	// authentication: TLS ends in Valkey (the external path).
+	TLSPassthrough
+)
+
+// Config identifies a single store and transport.
 type Config struct {
-	Upstream    string
-	Password    string
-	Passthrough bool
+	Upstream string
+	// Password is the default user's, which only InjectAuth writes upstream.
+	Password string
+	Mode     Mode
 	// Budget is shared by every listener in front of the store; nil gives
 	// this listener a budget of its own (NewBudget(0)).
 	Budget *Budget
 	// TLSCertFile and TLSKeyFile are the store's own certificate. A
-	// passthrough listener completes the handshake with it only to answer a
+	// TLSPassthrough listener completes the handshake with it only to answer a
 	// client past the budget with Valkey's refusal, which Valkey itself cannot
 	// do before a handshake. They are read at each refusal, so a renewed
 	// certificate applies at once; without them the client is closed.
@@ -89,8 +107,14 @@ func (c Config) normalized() (Config, error) {
 	if _, _, err := net.SplitHostPort(c.Upstream); err != nil {
 		return c, errors.New("kv-internal-proxy: upstream must be a host:port")
 	}
-	if !c.Passthrough && c.Password == "" {
-		return c, errors.New("kv-internal-proxy: internal password is required")
+	switch c.Mode {
+	case InjectAuth:
+		if c.Password == "" {
+			return c, errors.New("kv-internal-proxy: internal password is required")
+		}
+	case PlainPassthrough, TLSPassthrough:
+	default:
+		return c, errors.New("kv-internal-proxy: unknown listener mode")
 	}
 	if c.Budget == nil {
 		c.Budget = NewBudget(0)
@@ -175,15 +199,18 @@ func Serve(ctx context.Context, listener net.Listener, config Config) error {
 	}
 }
 
-// Check verifies that the upstream accepts the same default-user credentials
-// the internal front injects and can serve a command, rather than just TCP.
+// Check verifies that the upstream accepts the default user's credentials and
+// can serve a command, rather than just TCP: an authenticated PING must read
+// +PONG, so a loading server (-LOADING) is not ready (w1/m166). Every mode
+// checks this way, so a proxy whose clients authenticate themselves still
+// holds the password, for this check only (w6/m463): Valkey answers an
+// unauthenticated PING with -NOAUTH before it looks at loading, so a check
+// without it could not tell a loading server from a ready one.
 func Check(ctx context.Context, config Config) error {
+	config.Mode = InjectAuth
 	config, err := config.normalized()
 	if err != nil {
 		return err
-	}
-	if config.Passthrough {
-		return errors.New("kv-internal-proxy: a check requires internal authentication")
 	}
 	ctx, cancel := context.WithTimeout(ctx, config.HandshakeTimeout)
 	defer cancel()
@@ -223,7 +250,7 @@ func connect(ctx context.Context, config Config) (net.Conn, error) {
 			_ = upstream.Close()
 		}
 	}()
-	if !config.Passthrough {
+	if config.Mode == InjectAuth {
 		deadline, _ := handshake.Deadline()
 		if err := upstream.SetDeadline(deadline); err != nil {
 			return nil, errors.New("kv-internal-proxy: upstream authentication failed")
@@ -268,7 +295,9 @@ func upstreamFull(upstream net.Conn, head []byte) bool {
 }
 
 // refuse answers a client past the budget as Valkey answers one past its
-// maxclients, then closes it. Inside TLS that needs the store's certificate.
+// maxclients, then closes it: in plain text on a plain listener, whether the
+// proxy or the client authenticates, and inside TLS, which needs the store's
+// certificate, on a TLS one.
 func refuse(ctx context.Context, conn net.Conn, config Config) {
 	defer func() { _ = conn.Close() }()
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
@@ -277,7 +306,7 @@ func refuse(ctx context.Context, conn net.Conn, config Config) {
 		return
 	}
 	reply := conn
-	if config.Passthrough {
+	if config.Mode == TLSPassthrough {
 		if config.TLSCertFile == "" {
 			return
 		}

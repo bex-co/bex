@@ -196,11 +196,12 @@ func (r *KeyValueReconciler) reconcileKeyValueBackup(
 }
 
 // keyValueBackupHost is the Service the snapshot dials: the store's backend
-// while the internal proxy fronts it, so a snapshot uses the server's platform
+// while the internal proxy fronts it, as it fronts every store with or without
+// internal authentication (w6/m463), so a snapshot uses the server's platform
 // reserve and never one of the tenant's connections (w6/m456), else the store
 // itself.
 func (r *KeyValueReconciler) keyValueBackupHost(kv *appv1alpha1.KeyValue) string {
-	if r.InternalProxyImage != "" && !kv.Spec.InternalAuth {
+	if r.InternalProxyImage != "" {
 		return keyValueInternalBackendName(kv)
 	}
 	return kv.Name

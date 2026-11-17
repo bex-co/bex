@@ -771,10 +771,11 @@ func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
 
 // EnableInternalAuth requires the password on internal (private-network)
 // connections too — Render's "Enable Internal Authentication". Like Render's
-// it is enable-only: the operator routes the internal Service straight to
-// Valkey and retires the password-less proxy, so open unauthenticated
-// connections drop and the internal URL carries the password again. Linked
-// services read the new URL on their next deploy.
+// it is enable-only: the operator rolls the store's internal proxy to forward
+// each client's own AUTH instead of supplying it (w6/m463), so open
+// unauthenticated connections drop and the internal URL carries the password
+// again, while the plan's connection limit still holds. Linked services read
+// the new URL on their next deploy.
 func (s *Service) EnableInternalAuth(ctx context.Context, name string) (KeyValueView, error) {
 	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
 	if err != nil {
