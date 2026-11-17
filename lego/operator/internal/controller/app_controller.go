@@ -282,7 +282,9 @@ const (
 // requests go straight to its own Service and never pass the activator. A free
 // web app auto-hibernates once the window passes after this stamp with no
 // newer traffic.
-const annotLastActive = "app.bex.co/last-active"
+// annotLastActive aliases the canonical annotation in lego/types (v1alpha1),
+// shared with the activator, which stamps it on wake.
+const annotLastActive = appv1alpha1.AnnotationLastActive
 
 // annotReleaseWakeGeneration records the release generation a sleeping App was
 // last woken to roll out (w6/076), so each release wakes it at most once.
