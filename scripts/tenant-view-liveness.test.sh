@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Self-test for scripts/tenant-view-liveness.sh stage 4 (w6/110, issue #134; w4/676; w4/704): an
+# Self-test for scripts/tenant-view-liveness.sh stage 4 (w6/110, issue #134; w4/676; w4/704; w4/705): an
 # activator-held wake answers 200 once after ~14s with no retry, and the probe
 # must still treat it as a wake and poll for that wake's service_woken instead
 # of reading the events feed once and losing the race with the projection. A
@@ -17,7 +17,9 @@ cat >"$tmp/bin/curl" <<'STUB'
 # Stub: the canary host (-w http_code) sleeps STUB_HOLD then answers 200; the
 # API writes canned JSON to -o. Events answer [] for the first
 # STUB_EVENTS_EMPTY calls, then one STUB_EVENT_TYPE event stamped now; the
-# first STUB_EVENTS_FAIL of those calls fail as a curl transport error.
+# first STUB_EVENTS_FAIL of those calls fail as a curl transport error, or,
+# with STUB_EVENTS_FAIL_BODY set, answer that body instead (curl -sS without
+# -f completes a 502 page like any other answer).
 out="" url="" wfmt=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -48,7 +50,10 @@ case "$url" in
   */events*)
     n=$(($(cat "$STUB_STATE" 2>/dev/null || echo 0) + 1))
     echo "$n" >"$STUB_STATE"
-    if [ "$n" -le "${STUB_EVENTS_FAIL:-0}" ]; then
+    if [ "$n" -le "${STUB_EVENTS_FAIL:-0}" ] && [ -n "${STUB_EVENTS_FAIL_BODY:-}" ]; then
+      # w4/705: an answer that is not an events list (an edge's error page).
+      body="$STUB_EVENTS_FAIL_BODY"
+    elif [ "$n" -le "${STUB_EVENTS_FAIL:-0}" ]; then
       # w4/704: a read that never completes, as curl reports one.
       echo "curl: (28) Operation timed out after 60001 milliseconds with 0 bytes received" >&2
       exit 28
@@ -134,6 +139,22 @@ run "held 200, an events read that never answers exits 8" 8 "never answered" \
 # Reads that fail and then answer with a stalled feed are still a stall (6).
 run "fast 200, failed reads then a stalled feed is still 6" 6 "no event in the last" \
   STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_FAIL=1 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=2
+
+# w4/705: an answer that is not an events list is a failed read too, not a jq
+# crash under set -e that the workflow labels "3/4 metrics" (exit 5).
+html502='<html><head><title>502 Bad Gateway</title></head></html>'
+run "held 200, one HTML error page is retried" 0 "ok: service_woken" \
+  STUB_HOLD=1 STUB_EVENTS_FAIL=1 STUB_EVENTS_FAIL_BODY="$html502" STUB_EVENTS_EMPTY=1 \
+  STUB_EVENT_TYPE=service_woken BEX_CANARY_WOKEN_BUDGET=10
+run "fast 200, an HTML error page on every read exits 8 naming it" 8 \
+  "not an events list: <html><head><title>502 Bad Gateway" \
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_FAIL=99 STUB_EVENTS_FAIL_BODY="$html502" \
+  STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=2
+# A JSON error body is a failed read as well; the feed that answers after it
+# and stays empty is still the stall (6), not an unreachable feed (8).
+run "fast 200, a JSON error body then a stalled feed is still 6" 6 "no event in the last" \
+  STUB_HOLD=0 BEX_CANARY_WAKE_THRESHOLD=5 STUB_EVENTS_FAIL=1 STUB_EVENTS_FAIL_BODY='{"message":"internal error"}' \
+  STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=2
 
 [ "$fails" -eq 0 ] || exit 1
 echo "PASS: tenant-view-liveness stage 4"

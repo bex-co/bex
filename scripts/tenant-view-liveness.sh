@@ -65,8 +65,9 @@
 # Exit:    0 pass · 2 config error · 3 wake · 4 logs · 5 metrics · 6 events
 #          7 held awake: stage 4 could not run because a repeating caller never
 #            lets the fixture sleep, so its feed is empty by design (w4/676)
-#          8 events unreachable: no events read answered within the stage-4
-#            budget (transport errors only; one that fails is retried, w4/704)
+#          8 events unreachable: no events read answered with an events list
+#            within the stage-4 budget (a transport error, an edge's error page
+#            or an API error body; one that fails is retried, w4/704, w4/705)
 #
 # Nothing secret is printed: the API key is exchanged through a private file and
 # the bearer rides in curl's -K header file (scripts/lib/canary-api.sh).
@@ -288,15 +289,25 @@ echo "  ok: cpu and memory both carry samples (after ${waited}s)"
 # fetch_events — one read of the feed into events.json. A read that fails to
 # complete (connect or read timeout, reset, DNS) returns non-zero and leaves
 # curl's own error in events.err, so the caller retries inside its budget as
-# stages 2 and 3 do (w4/704). The body lands through a scratch file, so a
-# half-written answer never replaces the last good one.
+# stages 2 and 3 do (w4/704). So does an answer that is not an events list,
+# with its first 200 bytes as the error (w4/705): acurl has no -f, so an edge's
+# 502 page completes like any other answer, and jq on it would end the run under
+# set -e as exit 5, which the workflow labels a metrics failure. The body lands
+# through a scratch file, so a half-written or non-list answer never replaces
+# the last good one.
 fetch_events() {
+  local snippet
+  rm -f -- "$TMP_DIR/events.part"
   if acurl -o "$TMP_DIR/events.part" --get "$API/v1/services/$SERVICE_ID/events" \
     --data-urlencode "startTime=$EVENTS_START" \
     --data-urlencode "limit=20" 2>"$TMP_DIR/events.err"; then
-    mv -f "$TMP_DIR/events.part" "$TMP_DIR/events.json"
-    events_read=1
-    return 0
+    if jq -e 'type == "array"' "$TMP_DIR/events.part" >/dev/null 2>&1; then
+      mv -f "$TMP_DIR/events.part" "$TMP_DIR/events.json"
+      events_read=1
+      return 0
+    fi
+    snippet="$(head -c 200 "$TMP_DIR/events.part" 2>/dev/null | tr -s '\r\n\t' ' ' || true)"
+    echo "the answer is not an events list: ${snippet:-(an empty answer)}" >"$TMP_DIR/events.err"
   fi
   events_failed=$((events_failed + 1))
   return 1
@@ -320,14 +331,14 @@ poll_events() {
   done
   if [ -z "$events_read" ]; then
     echo "FAIL(4/4 events): GET /v1/services/$SERVICE_ID/events never answered:"
-    echo "      ${events_failed} reads over ${waited}s all failed to complete. The last error:"
+    echo "      ${events_failed} reads over ${waited}s all failed or answered no events list. The last error:"
     sed 's/^/        /' "$TMP_DIR/events.err"
     echo "      This is the read itself (network, edge or bex-api availability),"
     echo "      not a feed that answered and did not advance."
     exit 8
   fi
   if [ "$events_failed" -gt 0 ]; then
-    echo "  note: ${events_failed} events read(s) failed to complete and were retried"
+    echo "  note: ${events_failed} events read(s) failed or answered no events list and were retried"
   fi
 }
 # held_awake_check — exit 7 when the window's request logs show a caller that

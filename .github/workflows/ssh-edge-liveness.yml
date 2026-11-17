@@ -434,9 +434,11 @@ jobs:
             # fixture problem, not a broken tenant view, and the title says so.
             7) stage="canary fixture held awake by a repeating caller (the events stage could not run)"
                title="Tenant-view canary cannot run" ;;
-            # w4/704: no events read completed within the budget; one failed
-            # read is retried, so this is the read, not a stalled feed.
-            8) stage="4/4 events (the events read never answered)" ;;
+            # w4/704, w4/705: no events read completed with an events list
+            # within the budget (a transport error, an edge's error page or an
+            # API error body); one failed read is retried, so this is the read,
+            # not a stalled feed.
+            8) stage="4/4 events (the events read never answered with an events list)" ;;
             *) stage="configuration/probe error" ;;
           esac
           echo "title=$title: $stage" >> "$GITHUB_OUTPUT"
