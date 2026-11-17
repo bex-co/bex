@@ -713,6 +713,15 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err != nil {
 		return nil, err
 	}
+	unchanged, err := s.nothingToProject(ctx, a, envProjection, envWrite, env)
+	if err != nil {
+		return nil, err
+	}
+	// Clearing invalid-name debris from spec.Env is a change of the App even when
+	// the store's map is as it was.
+	if unchanged && !dropInvalidSpecEnv(a.DeepCopy(), func(string) bool { return true }) {
+		return envVarViews(env, "", nil), nil
+	}
 	original := a.DeepCopy()
 	// A whole-set replace also clears invalid-name debris from spec.Env, or
 	// `PUT []` answered [] while the list still showed it (w8/027).
@@ -789,6 +798,13 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	}
 	if quota != nil {
 		return EnvVarView{}, quota
+	}
+	unchanged, err := s.nothingToProject(ctx, a, envProjection, envWrite, env)
+	if err != nil {
+		return EnvVarView{}, err
+	}
+	if unchanged {
+		return EnvVarView{Key: key, Value: value}, nil
 	}
 	original := a.DeepCopy()
 	if err := s.materializeEnvEditing(holdMovedRetained(ctx, moved), a, env, committedAt(envWrite.version), retainedEdit(moved)); err != nil {
@@ -1380,16 +1396,22 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, a *appv1alpha
 // returned, since the delete cannot tell whether a revoked value is still
 // reaching the pods.
 func (s *Service) projectionHolds(ctx context.Context, a *appv1alpha1.App, kind projectionKind, key string) (bool, error) {
-	sec := &corev1.Secret{}
-	err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: kind.secretName(a.Name)}, sec)
-	if apierrors.IsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
+	sec, err := s.derivedSecret(ctx, a, kind)
+	if sec == nil || err != nil {
 		return false, err
 	}
 	_, held := sec.Data[key]
 	return held, nil
+}
+
+// derivedSecret reads a's derived Secret of kind: nil when it does not exist.
+func (s *Service) derivedSecret(ctx context.Context, a *appv1alpha1.App, kind projectionKind) (*corev1.Secret, error) {
+	sec := &corev1.Secret{}
+	err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: kind.secretName(a.Name)}, sec)
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	return sec, err
 }
 
 // envVarViews renders an env map as a key-sorted slice.

@@ -183,6 +183,13 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 	if quota != nil {
 		return SecretFileView{}, quota
 	}
+	unchanged, err := s.nothingToProject(ctx, a, filesProjection, filesWrite, files)
+	if err != nil {
+		return SecretFileView{}, err
+	}
+	if unchanged {
+		return SecretFileView{Name: name, Content: content}, nil
+	}
 	original := a.DeepCopy()
 	if err := s.materializeFiles(ctx, a, files, committedAt(filesWrite.version)); err != nil {
 		return SecretFileView{}, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, files: filesWrite}, err)
@@ -226,15 +233,22 @@ func (s *Service) SetSecretFiles(ctx context.Context, service string, in []Secre
 	if err != nil {
 		return nil, err
 	}
+	out := make([]SecretFileView, 0, len(next))
+	for _, name := range core.SortedKeys(next) {
+		out = append(out, SecretFileView{Name: name, Content: next[name]})
+	}
+	unchanged, err := s.nothingToProject(ctx, a, filesProjection, filesWrite, stored)
+	if err != nil {
+		return nil, err
+	}
+	if unchanged {
+		return out, nil
+	}
 	original := a.DeepCopy()
 	if err := s.materializeFiles(ctx, a, stored, committedAt(filesWrite.version)); err != nil {
 		return nil, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, files: filesWrite}, err)
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSecretFiles)
-	out := make([]SecretFileView, 0, len(next))
-	for _, name := range core.SortedKeys(next) {
-		out = append(out, SecretFileView{Name: name, Content: next[name]})
-	}
 	return out, nil
 }
 

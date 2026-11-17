@@ -19,6 +19,7 @@ package secrets
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -47,15 +48,26 @@ const (
 var errProjectionConflict = errors.New("the projection lost to a concurrent write")
 
 // projectionKind is one derived Secret a service's store map projects into:
-// its name and the annotation that records the store revision it holds.
+// its name, the annotation that records the store revision it holds, and
+// whether the App refers to it (referenced), as the release that consumes it or,
+// for a save that is only held for the next deploy, the pending reference.
 type projectionKind struct {
 	secretName func(app string) string
 	annotation string
+	referenced func(a *appv1alpha1.App) bool
 }
 
 var (
-	envProjection   = projectionKind{secretName: envSecretName, annotation: envProjectionRevisionAnnotation}
-	filesProjection = projectionKind{secretName: filesSecretName, annotation: filesProjectionRevisionAnnotation}
+	envProjection = projectionKind{secretName: envSecretName, annotation: envProjectionRevisionAnnotation,
+		referenced: func(a *appv1alpha1.App) bool {
+			name := envSecretName(a.Name)
+			return a.Spec.EnvFromSecret == name || a.Annotations[appv1alpha1.PendingEnvSecretAnnotation] == name
+		}}
+	filesProjection = projectionKind{secretName: filesSecretName, annotation: filesProjectionRevisionAnnotation,
+		referenced: func(a *appv1alpha1.App) bool {
+			name := filesSecretName(a.Name)
+			return slices.Contains(a.Spec.FilesFromSecrets, name) || a.Annotations[appv1alpha1.PendingFilesSecretAnnotation] == name
+		}}
 )
 
 // sourceRevision is the store revision a projection carries (w5/m127). A
@@ -198,6 +210,52 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 		return out, err
 	}
 	return out, errProjectionConflict
+}
+
+// nothingToProject reports whether a write that stored nothing new has nothing
+// left to do either, so the verb answers as it did and writes no more: no App
+// patch (so, over REST, no saved-config-revision; over GraphQL and MCP, no
+// restartedAt bump, release generation or deploy row), no Secret write and no
+// event (w21/110). Render documents no effect for a write of what is already
+// saved: its env-var and secret-file PUTs answer 200 (201 for a secret file)
+// with the saved value and deploy nothing ("Changes will not be deployed
+// automatically", api-docs.render.com/reference/update-env-vars-for-service),
+// and the dashboard's Environment form offers no Save while nothing is edited.
+// PatchEnvironment has skipped an unchanged environment since w4/m122.
+//
+// w is the verb's write of the store map and data is that map. A retained
+// literal the write moves into the store is a change even when the store's bytes
+// are equal: the verbs' mutate callbacks report it, so w.changed is true and the
+// verb goes on (w21/108).
+//
+// The one other reason to go on is something to repair, as in w21/109's delete: a
+// write commits the store before its projection, so a retry of the same write is
+// how a map an earlier attempt committed and could not project converges. That is
+// the case when the derived Secret is not the store's map (projectionCurrent). A
+// Secret that cannot be read fails the verb, since it cannot tell which case it
+// is in.
+func (s *Service) nothingToProject(ctx context.Context, a *appv1alpha1.App, kind projectionKind, w mapWrite, data map[string]string) (bool, error) {
+	if w.changed {
+		return false, nil
+	}
+	return s.projectionCurrent(ctx, a, kind, data)
+}
+
+// projectionCurrent reports whether a's derived Secret of kind already carries
+// exactly data and, for a map that holds anything, the App refers to it: what
+// projecting data would otherwise write. A Secret that does not exist carries an
+// empty map. The revision the Secret records is not compared: the same bytes at
+// another revision change nothing a pod sees, and a revision a later write
+// stamped means that write already projected its own map.
+func (s *Service) projectionCurrent(ctx context.Context, a *appv1alpha1.App, kind projectionKind, data map[string]string) (bool, error) {
+	sec, err := s.derivedSecret(ctx, a, kind)
+	switch {
+	case err != nil:
+		return false, err
+	case sec == nil:
+		return len(data) == 0, nil
+	}
+	return equalSecretData(sec.Data, data) && (len(data) == 0 || kind.referenced(a)), nil
 }
 
 // keptByBoth is what two deletes that read one revision both keep: the

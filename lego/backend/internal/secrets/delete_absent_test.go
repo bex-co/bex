@@ -175,23 +175,30 @@ func newAbsentRig(t *testing.T, k absentKind, retained, projected bool, stale ..
 // no store write and no Secret write.
 func (r *absentRig) requireNothingChanged(t *testing.T) {
 	t.Helper()
+	r.requireNothingChangedBy(t, "the DELETE of a name that is not there")
+}
+
+// requireNothingChangedBy is requireNothingChanged for any call that must leave
+// the service as it was, which what names in its failure messages.
+func (r *absentRig) requireNothingChangedBy(t *testing.T, what string) {
+	t.Helper()
 	after := getApp(t, r.svc.Client, "bp")
 	if !equality.Semantic.DeepEqual(after.Spec, r.before.Spec) || !maps.Equal(after.Annotations, r.before.Annotations) {
-		t.Errorf("the DELETE of a name that is not there changed the App: restartedAt %q, envFromSecret %q, release generation %q, saved-config-revision %q, pending-env-secret %q, annotations %v",
-			after.Spec.RestartedAt, after.Spec.EnvFromSecret, after.Annotations[appv1alpha1.AnnotationReleaseGeneration],
+		t.Errorf("%s changed the App: restartedAt %q, envFromSecret %q, release generation %q, saved-config-revision %q, pending-env-secret %q, annotations %v",
+			what, after.Spec.RestartedAt, after.Spec.EnvFromSecret, after.Annotations[appv1alpha1.AnnotationReleaseGeneration],
 			after.Annotations[appv1alpha1.AnnotationSavedConfigRevision], after.Annotations[appv1alpha1.PendingEnvSecretAnnotation], after.Annotations)
 	}
 	if r.patches.patches != 0 {
-		t.Errorf("the DELETE of a name that is not there patched the App %d times, want none", r.patches.patches)
+		t.Errorf("%s patched the App %d times, want none", what, r.patches.patches)
 	}
 	if len(r.rec.rows) != 0 {
-		t.Errorf("the DELETE of a name that is not there opened %d deploys (%+v), want none", len(r.rec.rows), r.rec.rows)
+		t.Errorf("%s opened %d deploys (%+v), want none", what, len(r.rec.rows), r.rec.rows)
 	}
 	if r.storeWrites() != 0 || !maps.Equal(r.storeMap(), r.kind.stored) {
-		t.Errorf("the DELETE of a name that is not there wrote the store (%d writes, now %v)", r.storeWrites(), r.storeMap())
+		t.Errorf("%s wrote the store (%d writes, now %v)", what, r.storeWrites(), r.storeMap())
 	}
 	if r.secrets.writes != 0 {
-		t.Errorf("the DELETE of a name that is not there wrote the derived Secret %d times, want none", r.secrets.writes)
+		t.Errorf("%s wrote the derived Secret %d times, want none", what, r.secrets.writes)
 	}
 }
 
