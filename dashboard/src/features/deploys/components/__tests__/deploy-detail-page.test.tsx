@@ -33,6 +33,8 @@ const deployState: {
     startedAt: null,
     finishedAt: "2026-07-14T00:01:00Z",
     preDeployStatus: "",
+    initialDeployHookStatus: "",
+    initialDeployHookFinishedAt: null,
     failureReason: "",
     cancelReason: "",
     stallReason: "",
@@ -53,7 +55,10 @@ vi.mock("../../hooks/use-deploy", () => ({
 }));
 // The canceled-step window has its own real-Apollo suite
 // (deploy-detail-canceled-step.test.tsx); these deploys never need it.
-vi.mock("../../hooks/use-canceled-step-end", () => ({
+vi.mock("../../hooks/use-canceled-step-end", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../hooks/use-canceled-step-end")
+  >()),
   useCanceledStepEnd: () => ({ status: "none" }),
 }));
 vi.mock("../deploy-header", () => ({
@@ -71,12 +76,22 @@ let panelMounts = 0;
 vi.mock("../deploy-log-panel", async () => {
   const { useState } = await import("react");
   return {
-    DeployLogPanel: ({ followBuild }: { followBuild: boolean }) => {
+    DeployLogPanel: ({
+      followBuild,
+      endTime,
+      hasPreDeploy,
+    }: {
+      followBuild: boolean;
+      endTime: string | undefined;
+      hasPreDeploy: boolean;
+    }) => {
       const [mount] = useState(() => ++panelMounts);
       return (
         <div
           data-testid="build-log"
           data-follow-build={String(followBuild)}
+          data-end-time={endTime ?? "open"}
+          data-has-pre-deploy={String(hasPreDeploy)}
           data-mount={mount}
         />
       );
@@ -90,6 +105,8 @@ beforeEach(() => {
     id: "dep-1",
     status: "live",
     finishedAt: "2026-07-14T00:01:00Z",
+    initialDeployHookStatus: "",
+    initialDeployHookFinishedAt: null,
   };
   deployState.loading = false;
   deployState.error = undefined;
@@ -134,6 +151,43 @@ describe("DeployDetailPage", () => {
       "true",
     );
   });
+
+  // w33/m435: the Blueprint's one-time initialDeployHook runs after the
+  // deploy is live, so its output is past the deploy's own end.
+  it("closes a live deploy's log window at its own end when no hook ran", () => {
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+
+    const panel = screen.getByTestId("build-log");
+    expect(panel).toHaveAttribute("data-end-time", "2026-07-14T00:01:00Z");
+    expect(panel).toHaveAttribute("data-has-pre-deploy", "false");
+  });
+
+  it("keeps the log window open, and the live pod read on, while the hook runs", () => {
+    deployState.deploy.initialDeployHookStatus = "running";
+
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+
+    const panel = screen.getByTestId("build-log");
+    expect(panel).toHaveAttribute("data-end-time", "open");
+    expect(panel).toHaveAttribute("data-has-pre-deploy", "true");
+    // The deploy is live, not building: only the window follows the hook.
+    expect(panel).toHaveAttribute("data-follow-build", "false");
+  });
+
+  it.each(["succeeded", "failed"])(
+    "ends the log window where a %s hook ended",
+    (status) => {
+      deployState.deploy.initialDeployHookStatus = status;
+      deployState.deploy.initialDeployHookFinishedAt = "2026-07-14T00:01:08Z";
+
+      render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+
+      expect(screen.getByTestId("build-log")).toHaveAttribute(
+        "data-end-time",
+        "2026-07-14T00:01:09.000Z",
+      );
+    },
+  );
 
   it("redirects a dead deploy id to the service's Deploys tab (w9/m55)", async () => {
     deployState.deploy = null as never;

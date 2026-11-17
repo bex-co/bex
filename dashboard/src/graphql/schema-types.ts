@@ -1504,6 +1504,8 @@ export type Deploy = {
   id: Maybe<Scalars['String']['output']>;
   image: Maybe<Scalars['String']['output']>;
   imageSha: Maybe<Scalars['String']['output']>;
+  initialDeployHookFinishedAt: Maybe<Scalars['String']['output']>;
+  initialDeployHookStatus: Maybe<Scalars['String']['output']>;
   preDeployStatus: Maybe<Scalars['String']['output']>;
   rollbackOf: Maybe<Scalars['String']['output']>;
   serviceId: Maybe<Scalars['String']['output']>;

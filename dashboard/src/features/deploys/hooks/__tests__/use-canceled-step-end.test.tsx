@@ -90,6 +90,8 @@ const canceled = (over: Partial<DeployView> = {}): DeployView => ({
   startedAt: "2026-10-11T04:08:41.494919Z",
   finishedAt: "2026-10-11T04:09:01.5668Z",
   preDeployStatus: "succeeded",
+  initialDeployHookStatus: "",
+  initialDeployHookFinishedAt: null,
   failureReason: "",
   cancelReason: "",
   stallReason: "",

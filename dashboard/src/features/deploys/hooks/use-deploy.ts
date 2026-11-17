@@ -50,6 +50,14 @@ export interface DeployView {
   startedAt: string | null;
   finishedAt: string | null;
   preDeployStatus: string;
+  /**
+   * The Blueprint's one-time initialDeployHook, which runs after this deploy
+   * went live (w33/m435): "running" | "succeeded" | "failed", or "" when it
+   * did not run for this deploy. It never changes `status`.
+   */
+  initialDeployHookStatus: string;
+  /** When that run ended; null while it runs or when there was none. */
+  initialDeployHookFinishedAt: string | null;
   /** Actionable cause of a failed deploy (w9/011); "" unless it failed. */
   failureReason: string;
   /** Neutral cause of a non-user cancel (w4/089); "" unless superseded. */
@@ -83,8 +91,10 @@ export interface UseDeployResult {
  * detail page's header data. Polls every 3s while the deploy is non-terminal
  * so the header/log window follows each observed phase, and stops once it is
  * terminal — except a canceled deploy whose pre-deploy step may still settle
- * its verdict, which is read for that step's bounded lifetime (w4/m198), and a
- * Live deploy, which a later deploy will replace (w4/262).
+ * its verdict, which is read for that step's bounded lifetime (w4/m198), a
+ * Live deploy, which a later deploy will replace (w4/262), and a deploy whose
+ * initial deploy hook is still running, which a later deploy does not stop
+ * (w33/m435).
  */
 export function useDeploy(
   serviceId: string,
@@ -111,12 +121,15 @@ export function useDeploy(
 
   const status = deploy?.status ?? "";
   const preDeployStatus = deploy?.preDeployStatus ?? "";
+  const hookRunning = deploy?.initialDeployHookStatus === "running";
   const finishedAt = deploy?.finishedAt ?? null;
   useEffect(() => {
     if (!isTerminalDeployStatus(status)) return;
     // Live ends the rollout, not the record: the next deploy turns it
-    // Deactivated (and so rollbackable), so keep reading at the baseline.
-    if (status === "live") {
+    // Deactivated (and so rollbackable), so keep reading at the baseline. A
+    // deploy replaced while its initial deploy hook runs is read on until the
+    // hook ends: the log window stays open exactly that long.
+    if (status === "live" || hookRunning) {
       startPolling(RESOURCE_POLL_INTERVAL_MS);
       return;
     }
@@ -129,7 +142,14 @@ export function useDeploy(
       }
     }
     stopPolling();
-  }, [status, preDeployStatus, finishedAt, startPolling, stopPolling]);
+  }, [
+    status,
+    preDeployStatus,
+    hookRunning,
+    finishedAt,
+    startPolling,
+    stopPolling,
+  ]);
 
   return {
     deploy,
@@ -160,6 +180,8 @@ function toDeployView(
     startedAt: d.startedAt ?? null,
     finishedAt: d.finishedAt ?? null,
     preDeployStatus: d.preDeployStatus ?? "",
+    initialDeployHookStatus: d.initialDeployHookStatus ?? "",
+    initialDeployHookFinishedAt: d.initialDeployHookFinishedAt || null,
     failureReason: d.failureReason ?? "",
     cancelReason: d.cancelReason ?? "",
     stallReason: d.stallReason ?? "",

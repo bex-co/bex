@@ -19,6 +19,11 @@ query Deploy($serviceId: String!, $deployId: String!) {
     startedAt
     finishedAt
     preDeployStatus
+    # The Blueprint's one-time initialDeployHook, which runs after the deploy
+    # is live (w33/m435): its state, and when it ended. The log panel keeps
+    # its window open through the run.
+    initialDeployHookStatus
+    initialDeployHookFinishedAt
     failureReason
     cancelReason
     stallReason

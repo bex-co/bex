@@ -102,6 +102,62 @@ describe("useDeploy", () => {
     expect(stopPolling).toHaveBeenCalledTimes(1);
   });
 
+  // w33/m435: the Blueprint's one-time initialDeployHook runs after the
+  // deploy is live, and a later deploy does not stop it. A deploy replaced
+  // while its hook runs must still learn that the hook ended, or its log
+  // window would stay open, polling, for as long as the page is.
+  it("keeps reading a deactivated deploy whose initial deploy hook is still running", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        deploy: deploy({
+          status: "deactivated",
+          finishedAt: "2026-07-14T00:01:00Z",
+          initialDeployHookStatus: "running",
+        }),
+      },
+      loading: false,
+      error: undefined,
+      previousData: undefined,
+      startPolling,
+      stopPolling,
+    });
+
+    const { result } = renderHook(() => useDeploy("web", "dep-1"));
+
+    expect(startPolling).toHaveBeenCalledWith(25_000);
+    expect(stopPolling).not.toHaveBeenCalled();
+    expect(result.current.deploy?.initialDeployHookStatus).toBe("running");
+    expect(result.current.deploy?.initialDeployHookFinishedAt).toBeNull();
+  });
+
+  it.each(["succeeded", "failed"])(
+    "stops reading a deactivated deploy once its hook %s",
+    (hook) => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          deploy: deploy({
+            status: "deactivated",
+            finishedAt: "2026-07-14T00:01:00Z",
+            initialDeployHookStatus: hook,
+            initialDeployHookFinishedAt: "2026-07-14T00:01:08Z",
+          }),
+        },
+        loading: false,
+        error: undefined,
+        previousData: undefined,
+        startPolling,
+        stopPolling,
+      });
+
+      const { result } = renderHook(() => useDeploy("web", "dep-1"));
+
+      expect(stopPolling).toHaveBeenCalledTimes(1);
+      expect(result.current.deploy?.initialDeployHookFinishedAt).toBe(
+        "2026-07-14T00:01:08Z",
+      );
+    },
+  );
+
   it("reports notFound once resolved with no deploy — never a phantom deploy", () => {
     mockUseQuery.mockReturnValue({
       data: { deploy: null },

@@ -20,6 +20,8 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     startedAt: null,
     finishedAt: "2026-07-14T00:02:00Z",
     preDeployStatus: "",
+    initialDeployHookStatus: "",
+    initialDeployHookFinishedAt: null,
     failureReason: "",
     cancelReason: "",
     stallReason: "",

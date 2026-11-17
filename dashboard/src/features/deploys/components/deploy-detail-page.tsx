@@ -9,6 +9,7 @@ import { useServiceBase } from "@/features/services/lib/service-base";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useDeploy } from "../hooks/use-deploy";
 import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
+import { hookWindowEnd } from "../lib/hook-window";
 import { rangeStart, type LogRange } from "../lib/log-range";
 import { DeployHeader } from "./deploy-header";
 import { DeployLogPanel } from "./deploy-log-panel";
@@ -80,10 +81,11 @@ export function DeployDetailPage({
     stepEnd.status === "checking"
       ? undefined
       : (deploy?.createdAt ?? undefined);
+  // The Blueprint's one-time initialDeployHook runs after the deploy is live
+  // (w33/m435), so its output is past `finishedAt`: the window stays open
+  // while it runs and closes where it ended.
   const deployEnd =
-    stepEnd.status === "found"
-      ? stepEnd.end
-      : (deploy?.finishedAt ?? undefined);
+    stepEnd.status === "found" ? stepEnd.end : hookWindowEnd(deploy);
 
   const limitedWindow =
     stepEnd.status === "error"
@@ -152,7 +154,9 @@ export function DeployDetailPage({
         deployId={deployId}
         startTime={window ? window.start : deployStart}
         endTime={window ? window.end : deployEnd}
-        hasPreDeploy={!!deploy?.preDeployStatus}
+        hasPreDeploy={
+          !!deploy?.preDeployStatus || !!deploy?.initialDeployHookStatus
+        }
         followBuild={deploy?.status === "build_in_progress"}
         range={range}
         onRangeChange={onRangeChange}
