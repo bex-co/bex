@@ -90,3 +90,65 @@ func TestRESTCreatePostgresParameterOverridesAndDecodeErrors(t *testing.T) {
 		t.Fatalf("unknown field => %d %s, want it named", rec.Code, rec.Body)
 	}
 }
+
+// w4/697: Render's pinned spec declares suspend, resume and restart as a 202
+// with no content, so bex answers each with an empty body (as failover does),
+// while the verb still takes effect and an error keeps its JSON shape.
+func TestRESTPostgresLifecycleVerbsAnswerBodiless202(t *testing.T) {
+	raw, err := os.ReadFile("../api/openapi/render-public-api-1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var spec struct {
+		Paths map[string]map[string]json.RawMessage `json:"paths"`
+	}
+	if err := json.Unmarshal(raw, &spec); err != nil {
+		t.Fatal(err)
+	}
+	verbs := []string{"suspend", "resume", "restart"}
+	for _, verb := range verbs {
+		var op struct {
+			Responses map[string]map[string]json.RawMessage `json:"responses"`
+		}
+		if err := json.Unmarshal(spec.Paths["/postgres/{postgresId}/"+verb]["post"], &op); err != nil {
+			t.Fatalf("spec %s: %v", verb, err)
+		}
+		accepted, ok := op.Responses["202"]
+		if !ok {
+			t.Fatalf("spec has no 202 for %s", verb)
+		}
+		if _, hasContent := accepted["content"]; hasContent {
+			t.Fatalf("spec now declares a %s body; revisit w4/697", verb)
+		}
+	}
+
+	svc, _ := newService()
+	created := serveREST(svc, http.MethodPost, "/v1/postgres", `{"name":"pg-life","plan":"free"}`)
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create => %d: %s", created.Code, created.Body.String())
+	}
+	var pg struct{ ID string }
+	if err := json.Unmarshal(created.Body.Bytes(), &pg); err != nil || pg.ID == "" {
+		t.Fatalf("create body has no id: %s", created.Body.String())
+	}
+	for _, verb := range verbs {
+		rec := serveREST(svc, http.MethodPost, "/v1/postgres/"+pg.ID+"/"+verb, "")
+		if rec.Code != http.StatusAccepted || rec.Body.Len() != 0 {
+			t.Fatalf("%s => %d %q, want 202 with an empty body", verb, rec.Code, rec.Body.String())
+		}
+		if ct := rec.Header().Get("Content-Type"); ct != "" {
+			t.Fatalf("%s Content-Type = %q, want none for an empty body", verb, ct)
+		}
+		if verb == "suspend" {
+			got := serveREST(svc, http.MethodGet, "/v1/postgres/"+pg.ID, "")
+			if !strings.Contains(got.Body.String(), `"suspended":"suspended"`) {
+				t.Fatalf("suspend did not take effect: %s", got.Body.String())
+			}
+		}
+	}
+
+	missing := serveREST(svc, http.MethodPost, "/v1/postgres/dpg-missing/suspend", "")
+	if missing.Code != http.StatusNotFound || !json.Valid(missing.Body.Bytes()) {
+		t.Fatalf("missing suspend => %d %q, want a JSON 404", missing.Code, missing.Body.String())
+	}
+}

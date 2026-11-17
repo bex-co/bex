@@ -29,7 +29,7 @@ import (
 
 // metadata_rest_test.go is w9/m41/t005's REST-boundary metadata-parity test:
 // every response body a Postgres REST handler can write (list/get/create/
-// update/suspend/resume) must carry the same nested `owner`/`region`/
+// update; suspend/resume answer Render's bodiless 202, w4/697) must carry the same nested `owner`/`region`/
 // `dashboardUrl`/`updatedAt` shape internal/apps and internal/keyvalue also
 // promise (resourcemeta.Config, docs/ADR006-bex-api.md § Resource metadata
 // contract). It is deliberately NOT a snapshot: it decodes each response into
@@ -101,8 +101,8 @@ func assertNonEmptyString(t *testing.T, step string, body map[string]any, key st
 	}
 }
 
-// TestRESTPostgresMetadataParity_Present exercises create/list/get/update/
-// suspend/resume with a resolvable owner and a configured region + dashboard
+// TestRESTPostgresMetadataParity_Present exercises create/list/get/update and
+// the get after suspend/resume with a resolvable owner and a configured region + dashboard
 // base URL, and checks owner/region/dashboardUrl/updatedAt on every one.
 func TestRESTPostgresMetadataParity_Present(t *testing.T) {
 	svc, _ := newService()
@@ -159,13 +159,13 @@ func TestRESTPostgresMetadataParity_Present(t *testing.T) {
 	if suspendRec.Code != http.StatusAccepted {
 		t.Fatalf("suspend => %d: %s", suspendRec.Code, suspendRec.Body.String())
 	}
-	check("suspend", decodeMap(t, suspendRec.Body.Bytes()))
+	check("get after suspend", decodeMap(t, serveREST(svc, "GET", "/v1/postgres/"+id, "").Body.Bytes()))
 
 	resumeRec := serveREST(svc, "POST", "/v1/postgres/"+id+"/resume", "")
 	if resumeRec.Code != http.StatusAccepted {
 		t.Fatalf("resume => %d: %s", resumeRec.Code, resumeRec.Body.String())
 	}
-	check("resume", decodeMap(t, resumeRec.Body.Bytes()))
+	check("get after resume", decodeMap(t, serveREST(svc, "GET", "/v1/postgres/"+id, "").Body.Bytes()))
 }
 
 // TestRESTPostgresMetadataParity_OmittedWhenUnresolved is the omission half:
@@ -216,11 +216,11 @@ func TestRESTPostgresMetadataParity_OmittedWhenUnresolved(t *testing.T) {
 	if suspendRec.Code != http.StatusAccepted {
 		t.Fatalf("suspend => %d: %s", suspendRec.Code, suspendRec.Body.String())
 	}
-	check("suspend", decodeMap(t, suspendRec.Body.Bytes()))
+	check("get after suspend", decodeMap(t, serveREST(svc, "GET", "/v1/postgres/"+id, "").Body.Bytes()))
 
 	resumeRec := serveREST(svc, "POST", "/v1/postgres/"+id+"/resume", "")
 	if resumeRec.Code != http.StatusAccepted {
 		t.Fatalf("resume => %d: %s", resumeRec.Code, resumeRec.Body.String())
 	}
-	check("resume", decodeMap(t, resumeRec.Body.Bytes()))
+	check("get after resume", decodeMap(t, serveREST(svc, "GET", "/v1/postgres/"+id, "").Body.Bytes()))
 }

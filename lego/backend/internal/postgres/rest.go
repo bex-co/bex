@@ -180,15 +180,15 @@ func (s *Service) respondPostgres(w http.ResponseWriter, r *http.Request, status
 // RegisterREST adds the managed-Postgres endpoints, Render-shaped (/v1/postgres)
 // using Render's canonical /v1/postgres noun.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	// verb maps a lifecycle action to a handler with a Render-accurate status code
-	// (suspend/resume/restart 202, as Render answers all three; a service restart
-	// is 200, w4/m379).
-	verb := func(status int, fn func(context.Context, string) (PostgresView, error)) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
+	// lifecycle maps suspend/resume/restart to Render's answer: 202 Accepted with
+	// no body (the pinned spec declares no content for any of them, w4/697; a
+	// service restart is 200, w4/m379). Errors keep their mapped shapes.
+	lifecycle := func(fn func(context.Context, string) (PostgresView, error)) http.HandlerFunc {
+		return core.HandleNoBody(http.StatusAccepted, func(r *http.Request) error {
 			ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
-			pg, err := fn(ctx, r.PathValue("id"))
-			s.respondPostgres(w, r, status, pg, err)
-		}
+			_, err := fn(ctx, r.PathValue("id"))
+			return err
+		})
 	}
 	const base = "/v1/postgres"
 	mux.HandleFunc("GET "+base, core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
@@ -272,10 +272,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	// --- lifecycle (Render: POST /postgres/{id}/{suspend,resume,restart,failover}) ---
-	mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
-	mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
-	mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusAccepted, s.Restart))
-	// Render: failover => 202 Accepted, no response body.
+	// Render: all four answer 202 Accepted with no response body.
+	mux.HandleFunc("POST "+base+"/{id}/suspend", lifecycle(s.Suspend))
+	mux.HandleFunc("POST "+base+"/{id}/resume", lifecycle(s.Resume))
+	mux.HandleFunc("POST "+base+"/{id}/restart", lifecycle(s.Restart))
 	mux.HandleFunc("POST "+base+"/{id}/failover", core.HandleNoBody(http.StatusAccepted, func(r *http.Request) error {
 		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
 		return s.Failover(ctx, r.PathValue("id"))
