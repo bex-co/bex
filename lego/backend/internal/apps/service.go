@@ -2887,20 +2887,22 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 // Resolve creation defaults before dry-run or any durable write. Existing
 // services never pass through this helper during Blueprint synchronization.
 //
-// Two independent decisions (ADR089 § Port slice decisions, w6/m148): a new
-// Docker private service — Git-built or prebuilt (w6/095) — publishes its
-// image's TCP ports in every workspace unless BEX_PRIVATE_IMAGE_PORTS=off,
-// while the render-v1 container policy follows BEX_IMAGE_COMPATIBILITY_WORKSPACES.
+// Two independent decisions (ADR089 § Port slice decisions, w6/m148): every
+// new service but a static site, native runtimes included (w32/m462), gets the
+// render-v1 container policy where BEX_IMAGE_COMPATIBILITY_WORKSPACES admits
+// its workspace, while only a new Docker or image web or private service —
+// Git-built or prebuilt (w6/095) — serves on its image's TCP ports, in every
+// workspace unless BEX_PRIVATE_IMAGE_PORTS=off.
 //
 // source carries the fields that decide it (repo, image, runtime, builder):
 // spec itself, or for a service linked to a build source its carrier's
 // (sourceForImageRules).
 func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv1alpha1.AppSpec, source appv1alpha1.AppSpec, explicitPort bool) error {
-	if !runsContainerPolicy(source) {
-		return nil
-	}
-	if s.imageCompatibilityAdmits(ctx) {
+	if runsContainerPolicy(source) && s.imageCompatibilityAdmits(ctx) {
 		spec.ContainerPolicy = appv1alpha1.ContainerPolicyRenderV1
+	}
+	if !followsImagePortRules(source) {
+		return nil
 	}
 	if spec.Type == appv1alpha1.TypePrivateService && (source.Repo != "" || source.Image != "") && !s.PrivateImagePortsDisabled {
 		spec.PortMode = appv1alpha1.PortModeImageV1
@@ -2928,9 +2930,19 @@ func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv
 }
 
 // runsContainerPolicy is the one predicate for which services a widened
-// container policy applies to: Docker and image services, never static sites
-// or native runtimes. Creation and the operator-run migration share it.
+// container policy applies to: every service but a static site, whose files
+// bex serves itself. Docker and image services run it since w6/m149, native
+// runtimes since w32/m462: Render runs both under its measured capability set,
+// and Passenger Standalone's watchdog cannot start without SETGID. Creation
+// and the operator-run migration share it.
 func runsContainerPolicy(spec appv1alpha1.AppSpec) bool {
+	return spec.Type != appv1alpha1.TypeStaticSite
+}
+
+// followsImagePortRules is whether a new web or private service serves on its
+// image's ports (ADR089 § Port slice decisions): Docker and image services
+// only. A native runtime keeps its configured port, as on Render.
+func followsImagePortRules(spec appv1alpha1.AppSpec) bool {
 	return spec.Type != appv1alpha1.TypeStaticSite &&
 		(spec.Image != "" || spec.Runtime == "docker" || spec.Builder == "dockerfile")
 }

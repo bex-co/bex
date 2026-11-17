@@ -1,18 +1,18 @@
 # w32 · m462 — Passenger Standalone starts on a native Ruby service: native runtimes run `render-v1`, Render's measured capability set
 
-**Worker:** worker32 **Goal:** every native runtime service (web, private, worker and cron, with their pre-deploy and one-off jobs) runs under `render-v1`, the capability set ADR089 measured on Render, as Docker and image services already do. `bundle exec passenger start`, and any other server that lowers its privileges while running as root, then starts on bex as it does on Render. **Status:** todo
+**Worker:** worker32 **Goal:** every native runtime service (web, private, worker and cron, with their pre-deploy and one-off jobs) runs under `render-v1`, the capability set ADR089 measured on Render, as Docker and image services already do. `bundle exec passenger start`, and any other server that lowers its privileges while running as root, then starts on bex as it does on Render. **Status:** in progress (t001–t007 done; t008 waits for a production pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | New native runtime services get `render-v1` on every creation path | 45m | — |
-| [t002](t002.md) | Native workloads under `render-v1`: the operator projection, and the Passenger image under the pod's real security context | 45m | — |
-| [t003](t003.md) | The operator-run migration moves existing native services, one at a time or all at once | 45m | t001 |
-| [t004](t004.md) | ADR089, ADR022 and ADR018 bring native runtimes into `render-v1`'s scope | 25m | t001, t002, t003 |
-| [t005](t005.md) | Render parity | 30m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 40m | t005 |
+| [t001](done/t001.md) | New native runtime services get `render-v1` on every creation path — **DONE** | 45m | — |
+| [t002](done/t002.md) | Native workloads under `render-v1`: the operator projection, and the Passenger image under the pod's real security context — **DONE** | 45m | — |
+| [t003](done/t003.md) | The operator-run migration moves existing native services, one at a time or all at once — **DONE** | 45m | t001 |
+| [t004](done/t004.md) | ADR089, ADR022 and ADR018 bring native runtimes into `render-v1`'s scope — **DONE** | 25m | t001, t002, t003 |
+| [t005](done/t005.md) | Render parity — **DONE** | 30m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005 |
 | [t008](t008.md) | Closeout (production: migrate existing native services, walk the Passenger fixture, unblock w32/m424) | 60m | t006, t007 |
 
 ## Definition of done

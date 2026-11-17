@@ -32,70 +32,90 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
+// policySources are the App sources a container policy projects the same way
+// for: an image service and, since w32/m462, a native runtime service (the
+// policy keys on the App's policy, never its runtime).
+var policySources = map[string]func(*appv1alpha1.App){
+	"image": func(a *appv1alpha1.App) { a.Spec.Image = "nginx:1" },
+	"native": func(a *appv1alpha1.App) {
+		a.Spec.Repo, a.Spec.Runtime, a.Spec.Builder = "https://github.com/example/app", "ruby", "native"
+		a.Spec.BuildCommand, a.Spec.StartCommand = "bundle install", "bundle exec passenger start"
+	},
+}
+
 func TestApplicationContainerPolicies(t *testing.T) {
 	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1} {
-		t.Run(policy, func(t *testing.T) {
-			app := projectionApp(func(a *appv1alpha1.App) { a.Spec.ContainerPolicy = policy })
-			dep := project(app, webParams())
-			cron := (&AppReconciler{}).cronPodSpec(app, "image", 8123, nil, launchUnknown, "")
-			app.Spec.PreDeployCommand = "true"
-			app.UID = "policy-test"
-			scheme := datastoreSecretScheme(t)
-			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-				WithStatusSubresource(&appv1alpha1.App{}).Build()
-			r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: scheme}
-			if _, _, err := r.reconcilePreDeploy(t.Context(), app, "image", 8123); err != nil {
-				t.Fatal(err)
-			}
-			var jobs batchv1.JobList
-			if err := cl.List(t.Context(), &jobs); err != nil || len(jobs.Items) != 1 {
-				t.Fatalf("pre-deploy jobs = %d, error = %v", len(jobs.Items), err)
-			}
-			for _, pod := range []corev1.PodSpec{dep.Spec.Template.Spec, cron.Spec, jobs.Items[0].Spec.Template.Spec} {
-				if pod.AutomountServiceAccountToken == nil || *pod.AutomountServiceAccountToken {
-					t.Fatal("service account token exposed")
-				}
-				if pod.HostNetwork || pod.HostPID || pod.HostIPC {
-					t.Fatal("host namespace exposed")
-				}
-				security := pod.Containers[0].SecurityContext
-				if security.AllowPrivilegeEscalation == nil || *security.AllowPrivilegeEscalation {
-					t.Fatal("privilege escalation enabled")
-				}
-				if security.Privileged != nil && *security.Privileged {
-					t.Fatal("privileged container")
-				}
-				// Literal path, not the shared helper: render-v1 runs bex's
-				// Localhost profile (w6/m150); every other policy RuntimeDefault.
-				if policy == appv1alpha1.ContainerPolicyRenderV1 {
-					if security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeLocalhost ||
-						security.SeccompProfile.LocalhostProfile == nil || *security.SeccompProfile.LocalhostProfile != "profiles/bex-render-v1.json" {
-						t.Fatalf("render-v1 seccomp = %+v, want the bex Localhost profile", security.SeccompProfile)
-					}
-				} else if security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
-					t.Fatal("seccomp disabled")
-				}
-				if !reflect.DeepEqual(security.Capabilities.Drop, []corev1.Capability{"ALL"}) {
-					t.Fatal("default capabilities retained")
-				}
-				// Literal lists, not the shared table: a table edit must fail here.
-				var want []corev1.Capability
-				switch policy {
-				case appv1alpha1.ContainerPolicyImageV1:
-					want = []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "SETUID", "SETGID"}
-				case appv1alpha1.ContainerPolicyRenderV1:
-					// Render's measured set (ADR089 § Privilege slice decisions).
-					want = []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID", "SYS_CHROOT"}
-				}
-				if !reflect.DeepEqual(security.Capabilities.Add, want) {
-					t.Fatalf("capabilities = %v, want %v", security.Capabilities.Add, want)
-				}
-			}
-		})
+		for source, withSource := range policySources {
+			t.Run(source+"/"+policy, func(t *testing.T) {
+				testApplicationContainerPolicy(t, policy, withSource)
+			})
+		}
 	}
 	// Platform helpers must not inherit application-image compatibility.
 	if len(execution.RestrictedContainerSecurityContext().Capabilities.Add) != 0 {
 		t.Fatal("platform security policy widened")
+	}
+}
+
+// testApplicationContainerPolicy checks policy's projection on every path
+// that runs the App's image: the Deployment, the CronJob template (which the
+// manual run reuses) and the pre-deploy Job.
+func testApplicationContainerPolicy(t *testing.T, policy string, withSource func(*appv1alpha1.App)) {
+	app := projectionApp(withSource, func(a *appv1alpha1.App) { a.Spec.ContainerPolicy = policy })
+	dep := project(app, webParams())
+	cron := (&AppReconciler{}).cronPodSpec(app, "image", 8123, nil, launchUnknown, "")
+	app.Spec.PreDeployCommand = "true"
+	app.UID = "policy-test"
+	scheme := datastoreSecretScheme(t)
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: scheme}
+	if _, _, err := r.reconcilePreDeploy(t.Context(), app, "image", 8123); err != nil {
+		t.Fatal(err)
+	}
+	var jobs batchv1.JobList
+	if err := cl.List(t.Context(), &jobs); err != nil || len(jobs.Items) != 1 {
+		t.Fatalf("pre-deploy jobs = %d, error = %v", len(jobs.Items), err)
+	}
+	for _, pod := range []corev1.PodSpec{dep.Spec.Template.Spec, cron.Spec, jobs.Items[0].Spec.Template.Spec} {
+		if pod.AutomountServiceAccountToken == nil || *pod.AutomountServiceAccountToken {
+			t.Fatal("service account token exposed")
+		}
+		if pod.HostNetwork || pod.HostPID || pod.HostIPC {
+			t.Fatal("host namespace exposed")
+		}
+		security := pod.Containers[0].SecurityContext
+		if security.AllowPrivilegeEscalation == nil || *security.AllowPrivilegeEscalation {
+			t.Fatal("privilege escalation enabled")
+		}
+		if security.Privileged != nil && *security.Privileged {
+			t.Fatal("privileged container")
+		}
+		// Literal path, not the shared helper: render-v1 runs bex's
+		// Localhost profile (w6/m150); every other policy RuntimeDefault.
+		if policy == appv1alpha1.ContainerPolicyRenderV1 {
+			if security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeLocalhost ||
+				security.SeccompProfile.LocalhostProfile == nil || *security.SeccompProfile.LocalhostProfile != "profiles/bex-render-v1.json" {
+				t.Fatalf("render-v1 seccomp = %+v, want the bex Localhost profile", security.SeccompProfile)
+			}
+		} else if security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+			t.Fatal("seccomp disabled")
+		}
+		if !reflect.DeepEqual(security.Capabilities.Drop, []corev1.Capability{"ALL"}) {
+			t.Fatal("default capabilities retained")
+		}
+		// Literal lists, not the shared table: a table edit must fail here.
+		var want []corev1.Capability
+		switch policy {
+		case appv1alpha1.ContainerPolicyImageV1:
+			want = []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "SETUID", "SETGID"}
+		case appv1alpha1.ContainerPolicyRenderV1:
+			// Render's measured set (ADR089 § Privilege slice decisions).
+			want = []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID", "SYS_CHROOT"}
+		}
+		if !reflect.DeepEqual(security.Capabilities.Add, want) {
+			t.Fatalf("capabilities = %v, want %v", security.Capabilities.Add, want)
+		}
 	}
 }
 
@@ -201,24 +221,31 @@ func TestAdmissionCapabilityListsMatchTheTable(t *testing.T) {
 func TestRenderV1UserNamespacesSwitch(t *testing.T) {
 	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1} {
 		for _, on := range []bool{false, true} {
-			app := projectionApp(func(a *appv1alpha1.App) { a.Spec.ContainerPolicy = policy })
-			params := webParams()
-			params.userNamespaces = on
-			dep := project(app, params)
-			var set map[string]bool
-			if on {
-				set = map[string]bool{"*": true}
+			for source, withSource := range policySources {
+				testRenderV1UserNamespaces(t, source, policy, on, withSource)
 			}
-			cron := (&AppReconciler{RenderV1UserNamespaces: set}).cronPodSpec(app, "image", 8123, nil, launchUnknown, "")
-			want := on && policy == appv1alpha1.ContainerPolicyRenderV1
-			for name, got := range map[string]*bool{"deployment": dep.Spec.Template.Spec.HostUsers, "cron": cron.Spec.HostUsers} {
-				if want && (got == nil || *got) {
-					t.Errorf("%q on=%t %s: hostUsers = %v, want false", policy, on, name, got)
-				}
-				if !want && got != nil {
-					t.Errorf("%q on=%t %s: hostUsers = %v, want unset", policy, on, name, *got)
-				}
-			}
+		}
+	}
+}
+
+func testRenderV1UserNamespaces(t *testing.T, source, policy string, on bool, withSource func(*appv1alpha1.App)) {
+	t.Helper()
+	app := projectionApp(withSource, func(a *appv1alpha1.App) { a.Spec.ContainerPolicy = policy })
+	params := webParams()
+	params.userNamespaces = on
+	dep := project(app, params)
+	var set map[string]bool
+	if on {
+		set = map[string]bool{"*": true}
+	}
+	cron := (&AppReconciler{RenderV1UserNamespaces: set}).cronPodSpec(app, "image", 8123, nil, launchUnknown, "")
+	want := on && policy == appv1alpha1.ContainerPolicyRenderV1
+	for name, got := range map[string]*bool{"deployment": dep.Spec.Template.Spec.HostUsers, "cron": cron.Spec.HostUsers} {
+		if want && (got == nil || *got) {
+			t.Errorf("%s %q on=%t %s: hostUsers = %v, want false", source, policy, on, name, got)
+		}
+		if !want && got != nil {
+			t.Errorf("%s %q on=%t %s: hostUsers = %v, want unset", source, policy, on, name, *got)
 		}
 	}
 }

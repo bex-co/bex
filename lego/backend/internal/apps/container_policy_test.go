@@ -34,6 +34,15 @@ import (
 )
 
 func TestImageCompatibilityCreationPolicy(t *testing.T) {
+	repo := "https://github.com/example/app"
+	native := func(typ string) CreateRequest {
+		req := CreateRequest{Name: "app", Type: typ, Repo: repo, Runtime: "ruby", BuildCommand: "bundle install", StartCommand: "bundle exec passenger start"}
+		if typ == appv1alpha1.TypeCronJob {
+			req.Schedule = "0 0 * * *"
+		}
+		return req
+	}
+	all := map[string]bool{"*": true}
 	for _, tc := range []struct {
 		name       string
 		workspaces map[string]bool
@@ -41,9 +50,17 @@ func TestImageCompatibilityCreationPolicy(t *testing.T) {
 		want       string
 	}{
 		{"disabled", nil, CreateRequest{Name: "app", Image: "nginx:1"}, ""},
-		{"image", map[string]bool{"*": true}, CreateRequest{Name: "app", Image: "nginx:1"}, appv1alpha1.ContainerPolicyRenderV1},
-		{"docker", map[string]bool{"*": true}, CreateRequest{Name: "app", Repo: "https://github.com/example/app", Runtime: "docker"}, appv1alpha1.ContainerPolicyRenderV1},
-		{"native", map[string]bool{"*": true}, CreateRequest{Name: "app", Repo: "https://github.com/example/app", Runtime: "go", BuildCommand: "go build .", StartCommand: "./app"}, ""},
+		{"image", all, CreateRequest{Name: "app", Image: "nginx:1"}, appv1alpha1.ContainerPolicyRenderV1},
+		{"docker", all, CreateRequest{Name: "app", Repo: repo, Runtime: "docker"}, appv1alpha1.ContainerPolicyRenderV1},
+		// w32/m462: native runtimes run Render's measured set too, so a
+		// server that lowers its privileges as root (Passenger) starts.
+		{"native", all, CreateRequest{Name: "app", Repo: repo, Runtime: "go", BuildCommand: "go build .", StartCommand: "./app"}, appv1alpha1.ContainerPolicyRenderV1},
+		{"native web", all, native(appv1alpha1.TypeWebService), appv1alpha1.ContainerPolicyRenderV1},
+		{"native private", all, native(appv1alpha1.TypePrivateService), appv1alpha1.ContainerPolicyRenderV1},
+		{"native worker", all, native(appv1alpha1.TypeBackgroundWorker), appv1alpha1.ContainerPolicyRenderV1},
+		{"native cron", all, native(appv1alpha1.TypeCronJob), appv1alpha1.ContainerPolicyRenderV1},
+		{"native disabled", nil, native(appv1alpha1.TypeWebService), ""},
+		{"static site", all, CreateRequest{Name: "app", Type: appv1alpha1.TypeStaticSite, Repo: repo, PublishPath: "dist", BuildCommand: "make"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			service, client := newService(nil)
@@ -55,6 +72,31 @@ func TestImageCompatibilityCreationPolicy(t *testing.T) {
 				t.Fatalf("policy = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// A native service runs render-v1 (w32/m462) but keeps its configured port:
+// image port discovery stays a Docker and image rule, in every workspace the
+// policy admits and with an explicit port or none.
+func TestNativeServicesKeepConfiguredPortsUnderRenderV1(t *testing.T) {
+	for _, typ := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService} {
+		for _, port := range []int32{0, 9000} {
+			t.Run(fmt.Sprintf("%s/%d", typ, port), func(t *testing.T) {
+				service, client := newService(nil)
+				service.ImageCompatibilityWorkspaces = map[string]bool{"*": true}
+				_, err := service.Create(t.Context(), CreateRequest{
+					Name: "app", Type: typ, Repo: "https://github.com/example/app", Runtime: "node",
+					BuildCommand: "npm ci", StartCommand: "node server.js", Port: port,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				app := getApp(t, client, "app")
+				if app.Spec.ContainerPolicy != appv1alpha1.ContainerPolicyRenderV1 || app.Spec.PortMode != "" {
+					t.Fatalf("policy=%q mode=%q, want render-v1 and the configured port", app.Spec.ContainerPolicy, app.Spec.PortMode)
+				}
+			})
+		}
 	}
 }
 
@@ -108,6 +150,33 @@ func TestPrivateImagePortRejectsReservedCreationWithoutWrites(t *testing.T) {
 					}
 				})
 			}
+		}
+	}
+}
+
+// A Blueprint creates its native services under render-v1 as every other
+// creation path does (w32/m462), keeps their configured ports, and leaves a
+// static site strict.
+func TestBlueprintCreatesNativeServicesUnderRenderV1(t *testing.T) {
+	manifest := `services:
+  - {name: web, type: web, runtime: ruby, repo: "https://github.com/example/app", buildCommand: bundle install, startCommand: bundle exec passenger start}
+  - {name: pserv, type: pserv, runtime: python, repo: "https://github.com/example/app", buildCommand: pip install -r requirements.txt, startCommand: "gunicorn app:app"}
+  - {name: worker, type: worker, runtime: node, repo: "https://github.com/example/app", buildCommand: npm ci, startCommand: node worker.js}
+  - {name: cron, type: cron, runtime: node, schedule: "0 0 * * *", repo: "https://github.com/example/app", buildCommand: npm ci, startCommand: node job.js}
+  - {name: site, type: web, runtime: static, repo: "https://github.com/example/app", buildCommand: make, staticPublishPath: dist}
+`
+	service, client := newService(nil)
+	service.ImageCompatibilityWorkspaces = map[string]bool{"*": true}
+	if _, err := service.DeployStack(t.Context(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{
+		"web": appv1alpha1.ContainerPolicyRenderV1, "pserv": appv1alpha1.ContainerPolicyRenderV1,
+		"worker": appv1alpha1.ContainerPolicyRenderV1, "cron": appv1alpha1.ContainerPolicyRenderV1, "site": "",
+	} {
+		app := getApp(t, client, name)
+		if app.Spec.ContainerPolicy != want || app.Spec.PortMode != "" {
+			t.Errorf("%s: policy=%q mode=%q, want %q and the configured port", name, app.Spec.ContainerPolicy, app.Spec.PortMode, want)
 		}
 	}
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -41,15 +42,16 @@ type ContainerPolicyMigration struct {
 	Applied      bool     `json:"applied"`
 }
 
-// MigrateContainerPolicy moves one existing Docker/image service onto
-// render-v1, Render's measured capability set (ADR089 § Privilege slice
-// decisions, w6/m149 t008). Upgrades, Blueprint syncs and redeploys never
-// migrate a service; this operator-run step is the only way, one service id
-// at a time. Without apply it only plans. Applied, it persists the row and
-// rolls the service once as a tracked settings_change deploy, under the App's
-// optimistic lock; a refusal found under the lock restores the row. No
-// ownership step is needed: a policy change keeps the pod's UID mapping
-// (t002).
+// MigrateContainerPolicy moves one existing service (anything but a static
+// site) onto render-v1, Render's measured capability set (ADR089 § Privilege
+// slice decisions, w6/m149 t008; native runtimes since w32/m462). Upgrades,
+// Blueprint syncs and redeploys never migrate a service; this operator-run
+// step is the only way, one service id at a time or every native service
+// through MigrateNativeContainerPolicies. Without apply it only plans.
+// Applied, it persists the row and rolls the service once as a tracked
+// settings_change deploy, under the App's optimistic lock; a refusal found
+// under the lock restores the row. No ownership step is needed: a policy
+// change keeps the pod's UID mapping (t002).
 func (s *Service) MigrateContainerPolicy(ctx context.Context, serviceID string, apply bool) (ContainerPolicyMigration, error) {
 	a, err := s.appByServiceID(ctx, serviceID)
 	if err != nil {
@@ -99,6 +101,86 @@ func (s *Service) MigrateContainerPolicy(ctx context.Context, serviceID string, 
 	return plan, nil
 }
 
+// ContainerPolicyMigrationLine is one service of a bulk run: its plan or
+// outcome, or why it was refused.
+type ContainerPolicyMigrationLine struct {
+	ContainerPolicyMigration
+	Refused string `json:"refused,omitempty"`
+}
+
+// ContainerPolicyMigrationSummary counts a bulk run: Planned services would
+// move (a dry run), Migrated moved, NoOp already ran render-v1, and Refused
+// were left as they were.
+type ContainerPolicyMigrationSummary struct {
+	Planned  int `json:"planned"`
+	Migrated int `json:"migrated"`
+	NoOp     int `json:"noOp"`
+	Refused  int `json:"refused"`
+}
+
+// MigrateNativeContainerPolicies runs MigrateContainerPolicy for every native
+// runtime service, in its own workspace namespace, in service id order, one at
+// a time (w32/m462): a linked service is judged by its build source's runtime,
+// and build sources themselves never run. Each service's line goes to emit as
+// it settles. A refusal (suspended, a deploy in flight, a change pending, no
+// control-plane row) is reported and the run goes on; only failing to list
+// the services stops it.
+func (s *Service) MigrateNativeContainerPolicies(ctx context.Context, apply bool, emit func(ContainerPolicyMigrationLine)) (ContainerPolicyMigrationSummary, error) {
+	var summary ContainerPolicyMigrationSummary
+	ids, err := s.nativeServiceIDs(ctx)
+	if err != nil {
+		return summary, err
+	}
+	for _, id := range ids {
+		// By id, not the listed App: each service is re-read just before it
+		// moves, so a run over many services judges each one as it is then.
+		plan, err := s.MigrateContainerPolicy(ctx, id, apply)
+		line := ContainerPolicyMigrationLine{ContainerPolicyMigration: plan}
+		line.ServiceID = id
+		switch {
+		case err != nil:
+			line.Refused = err.Error()
+			summary.Refused++
+		case plan.NoOp:
+			summary.NoOp++
+		case plan.Applied:
+			summary.Migrated++
+		default:
+			summary.Planned++
+		}
+		emit(line)
+	}
+	return summary, nil
+}
+
+// nativeServiceIDs is every native runtime service's public id, sorted.
+func (s *Service) nativeServiceIDs(ctx context.Context) ([]string, error) {
+	var list appv1alpha1.AppList
+	if err := s.Client.List(ctx, &list); err != nil {
+		return nil, err
+	}
+	var ids []string
+	services := core.ServiceApps(list.Items)
+	for i := range services {
+		a := &services[i]
+		id := a.Labels[core.LabelAppID]
+		if id == "" || !core.AppInOwnWorkspaceNamespace(a) || !runsContainerPolicy(a.Spec) {
+			continue
+		}
+		carrier, err := s.linkedCarrier(ctx, a)
+		if err != nil {
+			// MigrateContainerPolicy reports the missing build source.
+			ids = append(ids, id)
+			continue
+		}
+		if buildSourceNative(sourceForImageRules(a.Spec, carrier)) {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	return slices.Compact(ids), nil
+}
+
 // appByServiceID resolves the operator's argument without a caller identity:
 // the App with this public id in its own workspace namespace, ignoring a stray
 // same-id copy elsewhere (core.AppInOwnWorkspaceNamespace).
@@ -134,7 +216,7 @@ func (s *Service) linkedCarrier(ctx context.Context, a *appv1alpha1.App) (*appv1
 // source's runtime (sourceForImageRules).
 func containerPolicyMigratable(a, carrier *appv1alpha1.App) error {
 	if !runsContainerPolicy(sourceForImageRules(a.Spec, carrier)) {
-		return fmt.Errorf("%w: only Docker and image services run a container policy", core.ErrBadRequest)
+		return fmt.Errorf("%w: a static site runs no container policy", core.ErrBadRequest)
 	}
 	if a.Spec.Suspended {
 		return fmt.Errorf("%w: resume the service before migrating it", core.ErrConflict)

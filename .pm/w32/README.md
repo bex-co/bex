@@ -23,6 +23,7 @@
 
 ## Inbox
 
+- [ ] [039](039.md) — Measure whether Render runs native runtime services as root (`id`, `CapEff` in a Render shell); gated on a Render account (~30m) ← from w32/m462 t004, 2026-11-17
 - [ ] [037](037.md) — A Phoenix release on a free web service never serves: port detection adopts its `epmd` (4369) before Phoenix binds `PORT`, so the deploy goes live and the URL answers 502 (~1h) ← w32/m425's production capture, 2026-11-17: Render's own `render-examples/phoenix_hello` on pin `55c120858af0`; the native bound-port scan adopts any lone TCP listener, where w8/205 gave image ports an HTTP check; major
 - [ ] [036](036.md) — A first image deploy that fails after its 15-minute registry wait records `image_pull_failed` at the deploy's start, 15 minutes before the pull failed (~45m) ← `/qa-find-bugs-cli` loop sweep 182, 2026-11-16: seen with released `bex` v0.7.0 on pin `284b83e1f540` (an image from a `.invalid` registry); `observedImagePullFailure` dates the fact with Ready's `LastTransitionTime`, which a False-to-False reason change keeps; minor
 - [ ] [035](035.md) — The docs say a CLI sandbox upload keeps hard links, but the released CLI's upload stores each hard-linked name as a separate file; ADR018's "Links in a copied directory" row and `ea-sandbox.md` need the exception (~15m) ← `/qa-find-bugs-cli` loop sweep 158, 2026-11-16: seen with released `bex` v0.7.0 on pin `bf2ab888d7dc`; the pinned client's upload archiver never writes a hard-link entry (upstream behavior, as on Render); minor, docs only

@@ -179,7 +179,8 @@ func TestBuildSourceNamesAreUnique(t *testing.T) {
 
 // w9/m180 t003: a service linked to a Docker or image build source serves on
 // its image's port with the render-v1 policy, as one built from that image
-// itself does; a service linked to a native source keeps the native rules.
+// itself does; a service linked to a native source keeps its configured port
+// and, since w32/m462, runs render-v1 too.
 func TestServiceLinkedToImageSourceGetsImageRules(t *testing.T) {
 	svc, _, ctx := newBuildSourceService(t)
 	svc.ImageCompatibilityWorkspaces = map[string]bool{"*": true}
@@ -211,7 +212,16 @@ func TestServiceLinkedToImageSourceGetsImageRules(t *testing.T) {
 			portMode: appv1alpha1.PortModeImageV1, policy: appv1alpha1.ContainerPolicyRenderV1, migratable: true,
 		},
 		"web on a native source": {
-			req: CreateRequest{Name: "native-web", Type: appv1alpha1.TypeWebService, BuildSourceID: native.ID, StartCommand: "node server.js"},
+			req:    CreateRequest{Name: "native-web", Type: appv1alpha1.TypeWebService, BuildSourceID: native.ID, StartCommand: "node server.js"},
+			policy: appv1alpha1.ContainerPolicyRenderV1, migratable: true,
+		},
+		"private on a native source": {
+			req:    CreateRequest{Name: "native-pserv", Type: appv1alpha1.TypePrivateService, BuildSourceID: native.ID, StartCommand: "node server.js"},
+			policy: appv1alpha1.ContainerPolicyRenderV1, migratable: true,
+		},
+		"worker on a native source": {
+			req:    CreateRequest{Name: "native-worker", Type: appv1alpha1.TypeBackgroundWorker, BuildSourceID: native.ID, StartCommand: "node worker.js"},
+			policy: appv1alpha1.ContainerPolicyRenderV1, migratable: true,
 		},
 	} {
 		tc.req.OwnerID = "tea-a"

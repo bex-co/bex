@@ -17,6 +17,7 @@ limitations under the License.
 package build
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -26,6 +27,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // A primary Node serving image defaults NODE_ENV=production after its build
@@ -387,8 +390,10 @@ func TestNativePythonImageGunicornBindsRendersPort(t *testing.T) {
 // Passenger Standalone (builtin engine, Render's PASSENGER_ENGINE): an app
 // started with `bundle exec passenger start` and no port configuration
 // listens on Render's 10000, not Passenger's own 3000, and a PASSENGER_PORT
-// the service or the operator sets wins. Opt-in: needs Docker and network
-// for RubyGems and Passenger's agent.
+// the service or the operator sets wins. runServing runs it under render-v1,
+// the security context a native service's pod gets (w32/m462); the strict
+// case shows why. Opt-in: needs Docker and network for RubyGems and
+// Passenger's agent.
 func TestNativeRubyImagePassengerPort(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
@@ -425,6 +430,50 @@ func TestNativeRubyImagePassengerPort(t *testing.T) {
 			}
 		})
 	}
+	// Why native services need render-v1: under the strict policy (no
+	// capability at all) Passenger's watchdog, running as root, cannot
+	// lower its privilege to root's own (initgroups needs SETGID), and the
+	// server exits. A Passenger that stops needing it fails this case.
+	t.Run("strict policy", func(t *testing.T) {
+		name := fmt.Sprintf("bex-native-passenger-it-strict-%d", os.Getpid())
+		args := append([]string{"run", "-d", "--name", name, "--network", "none"}, podSecurityRunArgs(t, appv1alpha1.ContainerPolicyStrictV1)...)
+		if out, err := exec.Command("docker", append(args, tag)...).CombinedOutput(); err != nil {
+			t.Fatalf("run: %v\n%s", err, out)
+		}
+		t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+		defer cancel()
+		out, err := exec.CommandContext(ctx, "docker", "wait", name).Output()
+		logs, _ := exec.Command("docker", "logs", name).CombinedOutput()
+		if code := strings.TrimSpace(string(out)); err != nil || code == "0" {
+			t.Fatalf("strict Passenger exited %q (%v), want a failure:\n%s", code, err, logs)
+		}
+		if want := "Daemon 'PassengerAgent watchdog' failed to start"; !strings.Contains(string(logs), want) {
+			t.Fatalf("strict Passenger failed for another reason, want %q:\n%s", want, logs)
+		}
+	})
+}
+
+// podSecurityRunArgs are `docker run` flags reproducing the container
+// security context the operator gives a pod under policy (appSecCtx): every
+// capability dropped but the policy's own, read from the table the operator
+// projects, no new privileges, and the policy's seccomp profile: bex's
+// Localhost profile for render-v1, Docker's default (RuntimeDefault's
+// equivalent) otherwise.
+func podSecurityRunArgs(t *testing.T, policy string) []string {
+	t.Helper()
+	args := []string{"--cap-drop", "ALL", "--security-opt", "no-new-privileges"}
+	for _, capability := range appv1alpha1.ContainerPolicyCapabilities(policy) {
+		args = append(args, "--cap-add", capability)
+	}
+	if profile := appv1alpha1.ContainerPolicySeccompProfile(policy); profile != "" {
+		path, err := filepath.Abs(filepath.Join("../../../../deploy/gitops/base/seccomp", filepath.Base(profile)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		args = append(args, "--security-opt", "seccomp="+path)
+	}
+	return args
 }
 
 // TestNativeRubyImageGemPath is w32/m424's execution gate for GEM_PATH on
@@ -551,10 +600,14 @@ func runServing(t *testing.T, tag, name, url string, args ...string) (string, fu
 }
 
 // runServingCommand is runServing for a full `docker run` argument list:
-// flags, the image, and the command that replaces its CMD, if any.
+// flags, the image, and the command that replaces its CMD, if any. The
+// container runs under render-v1, the security context the operator gives a
+// native service's pod (w32/m462), not Docker's default capabilities, which
+// hid that Passenger could not start under the strict policy.
 func runServingCommand(t *testing.T, name, url string, args ...string) (string, func() string) {
 	t.Helper()
-	if out, err := exec.Command("docker", append([]string{"run", "-d", "--name", name}, args...)...).CombinedOutput(); err != nil {
+	run := append([]string{"run", "-d", "--name", name}, podSecurityRunArgs(t, appv1alpha1.ContainerPolicyRenderV1)...)
+	if out, err := exec.Command("docker", append(run, args...)...).CombinedOutput(); err != nil {
 		t.Fatalf("run: %v\n%s", err, out)
 	}
 	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })

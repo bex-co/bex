@@ -154,21 +154,27 @@ func TestRequireCPAuth(t *testing.T) {
 
 func TestParseMigrateContainerPolicyArgs(t *testing.T) {
 	for _, tc := range []struct {
-		args  []string
-		id    string
-		apply bool
-		ok    bool
+		args []string
+		want migrateContainerPolicyArgs
+		ok   bool
 	}{
-		{[]string{"srv-a"}, "srv-a", false, true},
-		{[]string{"srv-a", "--apply"}, "srv-a", true, true},
-		{[]string{"--apply", "srv-a"}, "srv-a", true, true},
-		{nil, "", false, false},
-		{[]string{"srv-a", "srv-b"}, "", false, false},
-		{[]string{"srv-a", "--force"}, "", false, false},
+		{[]string{"srv-a"}, migrateContainerPolicyArgs{serviceID: "srv-a"}, true},
+		{[]string{"srv-a", "--apply"}, migrateContainerPolicyArgs{serviceID: "srv-a", apply: true}, true},
+		{[]string{"--apply", "srv-a"}, migrateContainerPolicyArgs{serviceID: "srv-a", apply: true}, true},
+		// w32/m462: every native runtime service at once.
+		{[]string{"--all-native"}, migrateContainerPolicyArgs{allNative: true}, true},
+		{[]string{"--apply", "--all-native"}, migrateContainerPolicyArgs{allNative: true, apply: true}, true},
+		{nil, migrateContainerPolicyArgs{}, false},
+		{[]string{"--apply"}, migrateContainerPolicyArgs{}, false},
+		{[]string{"srv-a", "srv-b"}, migrateContainerPolicyArgs{}, false},
+		{[]string{"srv-a", "--force"}, migrateContainerPolicyArgs{}, false},
+		// One service or all of them, never both.
+		{[]string{"srv-a", "--all-native"}, migrateContainerPolicyArgs{}, false},
+		{[]string{"--all-native", "srv-a"}, migrateContainerPolicyArgs{}, false},
 	} {
-		id, apply, err := parseMigrateContainerPolicyArgs(tc.args)
-		if (err == nil) != tc.ok || id != tc.id || apply != tc.apply {
-			t.Errorf("%v: id=%q apply=%t err=%v", tc.args, id, apply, err)
+		got, err := parseMigrateContainerPolicyArgs(tc.args)
+		if (err == nil) != tc.ok || got != tc.want {
+			t.Errorf("%v: %+v err=%v", tc.args, got, err)
 		}
 	}
 }
