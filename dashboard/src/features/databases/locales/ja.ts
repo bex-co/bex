@@ -1067,6 +1067,16 @@ const jaDatabases: Record<string, TranslationEntry> = {
     message: "外部プール接続",
     description: "Access panel pooled-string label (public)",
   },
+  "databases.accessPoolerReplicaInternal": {
+    message: "内部プール接続(リードレプリカ {name})",
+    description:
+      "Access panel pooled-string label for a read replica's in-cluster pooled connection (w6/m458)",
+  },
+  "databases.accessPoolerReplicaExternal": {
+    message: "外部プール接続(リードレプリカ {name})",
+    description:
+      "Access panel pooled-string label for a read replica's public pooled connection (w6/m458)",
+  },
   "databases.accessPoolerError": {
     message: "プール接続文字列を読み込めませんでした。",
     description: "Toast when revealing pooled strings fails",

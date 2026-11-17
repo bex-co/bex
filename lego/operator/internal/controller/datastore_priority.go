@@ -134,20 +134,34 @@ func sameQuantity(x, y any) bool {
 	return qx.Cmp(qy) == 0
 }
 
-// poolerTemplate is the CNPG Pooler pod-template override carrying only the
-// datastore class. CNPG merges it with its own PgBouncer container by name,
-// so the empty container list (required by the CRD schema) changes nothing
-// else about the Pod.
+// poolerTemplate is the CNPG Pooler pod-template override: the datastore
+// class and the PgBouncer container's resources. CNPG merges the container
+// into its own by name, so nothing else about the Pod changes.
+//
+// The resources are sized for Render's 30,000 clients (w6/m458), measured on
+// PgBouncer 1.25.2 with TLS clients: 23 MiB of cgroup memory idle, 143 MiB
+// with 3,000 clients connected (about 42 KB each), so about 1.2 GiB at 30,000.
+// The limit leaves room above that; the request holds about 5,000 clients and
+// is what a quiet pooler reserves on its node. PgBouncer is single-threaded,
+// so it never uses more than one of its two cores; the container's file limit
+// (524,288 on the tenant nodes) already exceeds the clients.
 func poolerTemplate() map[string]any {
 	return map[string]any{"spec": map[string]any{
-		"containers":        []any{},
+		"containers": []any{map[string]any{
+			"name": "pgbouncer",
+			"resources": map[string]any{
+				"requests": map[string]any{string(corev1.ResourceCPU): "100m", string(corev1.ResourceMemory): "256Mi"},
+				"limits":   map[string]any{string(corev1.ResourceCPU): "2", string(corev1.ResourceMemory): "2Gi"},
+			},
+		}},
 		"priorityClassName": appv1alpha1.DatastorePriorityClassName,
 	}}
 }
 
 // poolerAdoptsDatastorePriority reports whether a Pooler's desired spec should
-// carry the class: when it is new, already does, or its Cluster carries it. A
-// Pooler's own spec never changes after create, so the Cluster adopting the
+// carry the template: when it is new, already carries the class, or its
+// Cluster carries it. PgBouncer's settings follow the plan by reload, never
+// through the pod template, so the Cluster adopting the
 // class (a resize, upgrade, restart or added instance, which already
 // reconnects every client) is the event an existing PgBouncer rolls with.
 func poolerAdoptsDatastorePriority(live, cluster *unstructured.Unstructured) bool {

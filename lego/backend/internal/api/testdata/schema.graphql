@@ -2353,7 +2353,9 @@ type Query {
 
 type ReadReplicaConnectionInfo {
   externalHost: String
+  externalPoolHost: String
   internalHost: String
+  internalPoolHost: String
 }
 
 type ReadReplicaView {
@@ -2375,7 +2377,9 @@ type RegistryCredential {
 }
 
 type ReplicaConnectionStrings {
+  externalConnectionPoolString: String
   externalConnectionString: String
+  internalConnectionPoolString: String
   internalConnectionString: String
   name: String
 }

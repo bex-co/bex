@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -120,7 +121,7 @@ func TestUpsertOwnedPreservesDefaultedSpecs(t *testing.T) {
 		defaults []string
 		value    any
 	}{
-		{"pooler", cnpgPoolerGVK, poolerSpec("source"), []string{"pgbouncer", "parameters", "max_client_conn"}, "1000"},
+		{"pooler", cnpgPoolerGVK, poolerSpec("source", poolerTypePrimary, tiers.Postgres.Default()), []string{"pgbouncer", "parameters", "query_wait_timeout"}, "120"},
 		{"scheduled-backup", cnpgScheduledBackupGVK, scheduledBackupSpec("source"), []string{"suspend"}, false},
 		{"backup", cnpgBackupGVK, onDemandBackupSpec("source"), []string{"target"}, "prefer-standby"},
 		{"middleware", traefikHTTPMiddlewareGVK, cidrMiddlewareSpec([]string{"10.0.0.0/8"}), []string{"ipAllowList", "ipStrategy", "depth"}, int64(0)},

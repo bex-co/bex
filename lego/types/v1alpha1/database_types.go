@@ -836,9 +836,20 @@ type DatabaseReadReplicaStatus struct {
 	// +optional
 	InternalHost string `json:"internalHost,omitempty"`
 	// ExternalHost is the per-replica public SNI hostname
-	// ("<db>-<name>.<BEX_DB_DOMAIN>") when the Database is Public.
+	// ("<db>-ro-<name>.<BEX_DB_DOMAIN>") when the Database is Public.
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`
+	// PoolerHost is the in-cluster host of the read replicas' PgBouncer
+	// ("<db>-pooler-ro.<ns>.svc", served on PoolerPort) when Pooler is set:
+	// Render pools every replica of a pooled database (w6/m458). Like
+	// InternalHost, it is shared across the named replicas.
+	// +optional
+	PoolerHost string `json:"poolerHost,omitempty"`
+	// PoolerExternalHost is the public SNI hostname of the read replicas'
+	// PgBouncer ("<db>-pool-ro.<BEX_DB_DOMAIN>") when the Database is Public
+	// and pooled.
+	// +optional
+	PoolerExternalHost string `json:"poolerExternalHost,omitempty"`
 }
 
 // +kubebuilder:object:root=true

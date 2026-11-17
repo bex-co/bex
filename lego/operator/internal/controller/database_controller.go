@@ -682,22 +682,57 @@ func onDemandBackupSpec(clusterName string) map[string]any {
 	}
 }
 
+// The CNPG Pooler types: the primary's PgBouncer fronts the cluster's
+// read-write Service, the read replicas' fronts its read-only Service.
+const (
+	poolerTypePrimary  = "rw"
+	poolerTypeReplicas = "ro"
+)
+
+// poolerName is the CNPG Pooler, and so the Service, behind a pooled URL:
+// "<db>-pooler" for the primary, "<db>-pooler-ro" for the read replicas.
+func poolerName(db, poolerType string) string {
+	if poolerType == poolerTypeReplicas {
+		return db + "-pooler-ro"
+	}
+	return db + "-pooler"
+}
+
 // poolerSpec builds a CNPG Pooler .spec: a single-instance PgBouncer in
-// transaction mode fronting the cluster's read-write endpoint. CNPG creates a
-// Service named after the Pooler ("<db>-pooler") that the pooled URLs target.
-// Its template adds appv1alpha1.PoolerPort onto PgBouncer's named container
-// port. CNPG adds its default `pgbouncer`/5432 port unless the template already
-// names one `pgbouncer`, so the Service serves both.
-func poolerSpec(clusterName string) map[string]any {
+// transaction mode fronting the cluster's read-write (rw) or read-only (ro)
+// endpoint, with Render's settings for the plan (pgbouncerParameters). CNPG
+// creates a Service named after the Pooler (poolerName) that the pooled URLs
+// target. Its template adds appv1alpha1.PoolerPort onto PgBouncer's named
+// container port. CNPG adds its default `pgbouncer`/5432 port unless the
+// template already names one `pgbouncer`, so the Service serves both.
+func poolerSpec(clusterName, poolerType string, plan tiers.PostgresTier) map[string]any {
 	return map[string]any{
 		cnpgClusterRef: map[string]any{"name": clusterName},
 		"instances":    int64(1),
-		"type":         "rw",
-		"pgbouncer":    map[string]any{"poolMode": "transaction"},
+		"type":         poolerType,
+		"pgbouncer":    map[string]any{"poolMode": "transaction", "parameters": pgbouncerParameters(plan)},
 		"template":     poolerTemplate(),
 		"serviceTemplate": map[string]any{"spec": map[string]any{"ports": []any{
 			map[string]any{"name": "pgbouncer-pooled", "port": int64(appv1alpha1.PoolerPort), "protocol": "TCP", "targetPort": "pgbouncer"},
 		}}},
+	}
+}
+
+// pgbouncerParameters are Render's managed PgBouncer settings
+// (render.com/docs/postgresql-connection-pooling, read 2026-11-17, w6/m458):
+// 30,000 clients on few server connections, a pool of the plan's
+// max_connections minus the 10 Render reserves, an idle client closed after a
+// day, and a failed server login retried after 2 s. Every one is reloadable:
+// CNPG rewrites pgbouncer.ini and issues RELOAD, so a plan change resizes the
+// pool without dropping a client.
+func pgbouncerParameters(plan tiers.PostgresTier) map[string]any {
+	pool := strconv.Itoa(int(plan.PoolerPoolSize()))
+	return map[string]any{
+		"max_client_conn":     strconv.Itoa(tiers.PostgresPoolerMaxClientConn),
+		"default_pool_size":   pool,
+		"max_db_connections":  pool,
+		"client_idle_timeout": "86400",
+		"server_login_retry":  "2",
 	}
 }
 
@@ -1031,8 +1066,18 @@ func databaseServerAltDNSNames(db *appv1alpha1.Database, domain string) []string
 	for _, replica := range db.Spec.ReadReplicas {
 		names = append(names, fmt.Sprintf("%s-ro-%s.%s", db.Name, replica.Name, domain))
 	}
+	if db.Spec.Pooler && len(db.Spec.ReadReplicas) > 0 {
+		names = append(names, fmt.Sprintf("%s.%s", replicaPoolerLabel(db.Name), domain))
+	}
 	return names
 }
+
+// replicaPoolerLabel is the public hostname label of a database's read
+// replica PgBouncer, "<db>-pool-ro" (w6/m458). One label serves every named
+// replica, as their -ro Service does. It cannot be "<db>-ro-pool", which a
+// replica named "pool" already claims, nor a per-replica "<db>-ro-<name>-pool",
+// which outgrows a DNS label for the longest names a replica may have.
+func replicaPoolerLabel(db string) string { return db + "-pool-ro" }
 
 // databaseBackupIntent is what one reconcile resolved about this Database's
 // backups: whether a store exists at all, whether this cluster gets its own
@@ -1359,8 +1404,17 @@ func (r *DatabaseReconciler) settleSuspended(ctx context.Context, db *appv1alpha
 // yet and reconciliation should retry. cluster is the live CNPG Cluster, whose
 // datastore class the Pooler follows (poolerAdoptsDatastorePriority).
 func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured) (bool, error) {
+	// Render pools every read replica of a pooled database ("Render
+	// automatically enables it for all of that database's read replicas",
+	// w6/m458). bex's named replicas share one reader Service, so they share
+	// one reader PgBouncer, sized as one replica's pool.
+	if !db.Spec.Pooler || len(db.Spec.ReadReplicas) == 0 {
+		if err := deleteOwned(ctx, r.Client, db, cnpgPoolerGVK, poolerName(db.Name, poolerTypeReplicas)); err != nil {
+			return false, fmt.Errorf("remove read replica pooler: %w", err)
+		}
+	}
 	if !db.Spec.Pooler {
-		if err := deleteOwned(ctx, r.Client, db, cnpgPoolerGVK, db.Name+"-pooler"); err != nil {
+		if err := deleteOwned(ctx, r.Client, db, cnpgPoolerGVK, poolerName(db.Name, poolerTypePrimary)); err != nil {
 			return false, fmt.Errorf("remove pooler: %w", err)
 		}
 		if err := r.deletePoolerConnectionSecret(ctx, db); err != nil {
@@ -1369,33 +1423,46 @@ func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha
 		db.Status.PoolerHost = ""
 		return false, nil
 	}
-	pooler := &unstructured.Unstructured{}
-	pooler.SetGroupVersionKind(cnpgPoolerGVK)
-	pooler.SetName(db.Name + "-pooler")
-	pooler.SetNamespace(db.Namespace)
-	if err := r.Get(ctx, client.ObjectKeyFromObject(pooler), pooler); err != nil && !apierrors.IsNotFound(err) {
-		return false, fmt.Errorf("read pooler: %w", err)
-	}
-	spec := poolerSpec(db.Name)
-	if !poolerAdoptsDatastorePriority(pooler, cluster) {
-		delete(spec, "template")
-	}
 	digest, err := r.servedCertificateDigest(ctx, db.Namespace, cluster)
 	if err != nil {
 		return false, fmt.Errorf("read served certificate: %w", err)
 	}
-	if digest != "" {
-		stampPoolerCertificate(spec, pooler, digest)
-	}
-	if err := upsertOwnedObject(ctx, r.Client, r.Scheme, db, pooler, spec); err != nil {
+	plan, _ := resolvePlan(db.Spec)
+	if err := r.upsertPooler(ctx, db, cluster, poolerTypePrimary, plan, digest); err != nil {
 		return false, fmt.Errorf("create pooler: %w", err)
 	}
-	db.Status.PoolerHost = fmt.Sprintf("%s-pooler.%s.svc", db.Name, db.Namespace)
+	if len(db.Spec.ReadReplicas) > 0 {
+		if err := r.upsertPooler(ctx, db, cluster, poolerTypeReplicas, plan, digest); err != nil {
+			return false, fmt.Errorf("create read replica pooler: %w", err)
+		}
+	}
+	db.Status.PoolerHost = fmt.Sprintf("%s.%s.svc", poolerName(db.Name, poolerTypePrimary), db.Namespace)
 	ready, err := r.reconcilePoolerConnectionSecret(ctx, db)
 	if err != nil {
 		return false, fmt.Errorf("project pooler credentials: %w", err)
 	}
 	return !ready, nil
+}
+
+// upsertPooler creates or updates one of the Database's CNPG Poolers. Its
+// template follows the Cluster's datastore class and the certificate it
+// serves (digest; "" for CNPG's own), so only those roll PgBouncer.
+func (r *DatabaseReconciler) upsertPooler(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, poolerType string, plan tiers.PostgresTier, digest string) error {
+	pooler := &unstructured.Unstructured{}
+	pooler.SetGroupVersionKind(cnpgPoolerGVK)
+	pooler.SetName(poolerName(db.Name, poolerType))
+	pooler.SetNamespace(db.Namespace)
+	if err := r.Get(ctx, client.ObjectKeyFromObject(pooler), pooler); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("read pooler: %w", err)
+	}
+	spec := poolerSpec(db.Name, poolerType, plan)
+	if !poolerAdoptsDatastorePriority(pooler, cluster) {
+		delete(spec, "template")
+	}
+	if digest != "" {
+		stampPoolerCertificate(spec, pooler, digest)
+	}
+	return upsertOwnedObject(ctx, r.Client, r.Scheme, db, pooler, spec)
 }
 
 // reconcilePoolerConnectionSecret projects the default credential
@@ -1996,38 +2063,34 @@ func (r *DatabaseReconciler) triggerCNPGSwitchover(ctx context.Context, cluster 
 // updateExternalAddressStatus publishes status hostnames for the metered Postgres
 // SNI proxy. The proxy watches the same Database CR and owns exact
 // endpoint/allowlist routing; internal CNPG Services are never gated.
-// InternalHost for replicas is always set.
+// InternalHost for replicas is always set, and PoolerHost when the database is
+// pooled (reconcilePooler created the reader PgBouncer before this runs).
 func (r *DatabaseReconciler) updateExternalAddressStatus(db *appv1alpha1.Database) {
 	public := db.Spec.Public && r.DBDomain != ""
 
 	roInternal := fmt.Sprintf("%s-ro.%s.svc", db.Name, db.Namespace)
-	newStatuses := make([]appv1alpha1.DatabaseReadReplicaStatus, 0, len(db.Spec.ReadReplicas))
-	if !public {
-		db.Status.ExternalHost = ""
-		db.Status.PoolerExternalHost = ""
-		for _, rep := range db.Spec.ReadReplicas {
-			newStatuses = append(newStatuses, appv1alpha1.DatabaseReadReplicaStatus{
-				Name: rep.Name, InternalHost: roInternal,
-			})
-		}
-		db.Status.ReadReplicaStatuses = newStatuses
-		return
-	}
-
-	rwHost := fmt.Sprintf("%s.%s", db.Name, r.DBDomain)
-	db.Status.ExternalHost = rwHost
-
+	roPooler, roPoolerExternal := "", ""
 	if db.Spec.Pooler {
-		db.Status.PoolerExternalHost = fmt.Sprintf("%s-pool.%s", db.Name, r.DBDomain)
-	} else {
-		db.Status.PoolerExternalHost = ""
+		roPooler = fmt.Sprintf("%s.%s.svc", poolerName(db.Name, poolerTypeReplicas), db.Namespace)
+	}
+	db.Status.ExternalHost, db.Status.PoolerExternalHost = "", ""
+	if public {
+		db.Status.ExternalHost = fmt.Sprintf("%s.%s", db.Name, r.DBDomain)
+		if db.Spec.Pooler {
+			db.Status.PoolerExternalHost = fmt.Sprintf("%s-pool.%s", db.Name, r.DBDomain)
+			roPoolerExternal = fmt.Sprintf("%s.%s", replicaPoolerLabel(db.Name), r.DBDomain)
+		}
 	}
 
+	newStatuses := make([]appv1alpha1.DatabaseReadReplicaStatus, 0, len(db.Spec.ReadReplicas))
 	for _, rep := range db.Spec.ReadReplicas {
-		roHost := fmt.Sprintf("%s-ro-%s.%s", db.Name, rep.Name, r.DBDomain)
-		newStatuses = append(newStatuses, appv1alpha1.DatabaseReadReplicaStatus{
-			Name: rep.Name, InternalHost: roInternal, ExternalHost: roHost,
-		})
+		status := appv1alpha1.DatabaseReadReplicaStatus{
+			Name: rep.Name, InternalHost: roInternal, PoolerHost: roPooler, PoolerExternalHost: roPoolerExternal,
+		}
+		if public {
+			status.ExternalHost = fmt.Sprintf("%s-ro-%s.%s", db.Name, rep.Name, r.DBDomain)
+		}
+		newStatuses = append(newStatuses, status)
 	}
 	db.Status.ReadReplicaStatuses = newStatuses
 }

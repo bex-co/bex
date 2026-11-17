@@ -24,6 +24,11 @@ import {
 export interface PooledStrings {
   internal: string;
   external: string;
+  /**
+   * Each read replica's pooled strings: Render pools every replica of a
+   * pooled database (w6/m458). Only replicas whose pooler is published.
+   */
+  replicas: { name: string; internal: string; external: string }[];
 }
 
 /**
@@ -170,6 +175,17 @@ export function useAccessControl(id: string) {
       setPooled({
         internal: ci?.internalConnectionPoolString ?? "",
         external: ci?.externalConnectionPoolString ?? "",
+        replicas: (ci?.readReplicaConnectionStrings ?? []).flatMap((r) =>
+          r?.internalConnectionPoolString || r?.externalConnectionPoolString
+            ? [
+                {
+                  name: r.name ?? "",
+                  internal: r.internalConnectionPoolString ?? "",
+                  external: r.externalConnectionPoolString ?? "",
+                },
+              ]
+            : [],
+        ),
       });
     } catch (err) {
       toast.error(mutationErrorMessage(err, t("databases.accessPoolerError")));

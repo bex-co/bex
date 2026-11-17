@@ -1059,6 +1059,16 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "외부 풀링 연결",
     description: "Access panel pooled-string label (public)",
   },
+  "databases.accessPoolerReplicaInternal": {
+    message: "내부 풀링 연결, 읽기 복제본 {name}",
+    description:
+      "Access panel pooled-string label for a read replica's in-cluster pooled connection (w6/m458)",
+  },
+  "databases.accessPoolerReplicaExternal": {
+    message: "외부 풀링 연결, 읽기 복제본 {name}",
+    description:
+      "Access panel pooled-string label for a read replica's public pooled connection (w6/m458)",
+  },
   "databases.accessPoolerError": {
     message: "풀링된 연결 문자열을 불러오지 못했습니다.",
     description: "Toast when revealing pooled strings fails",

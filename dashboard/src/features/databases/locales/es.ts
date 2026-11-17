@@ -1093,6 +1093,16 @@ const esDatabases: Record<string, TranslationEntry> = {
     message: "Conexión agrupada externa",
     description: "Access panel pooled-string label (public)",
   },
+  "databases.accessPoolerReplicaInternal": {
+    message: "Conexión agrupada interna, réplica de lectura {name}",
+    description:
+      "Access panel pooled-string label for a read replica's in-cluster pooled connection (w6/m458)",
+  },
+  "databases.accessPoolerReplicaExternal": {
+    message: "Conexión agrupada externa, réplica de lectura {name}",
+    description:
+      "Access panel pooled-string label for a read replica's public pooled connection (w6/m458)",
+  },
   "databases.accessPoolerError": {
     message: "No se pudieron cargar las cadenas de conexión agrupadas.",
     description: "Toast when revealing pooled strings fails",

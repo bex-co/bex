@@ -108,6 +108,12 @@ query DatabasePooledConnection($id: String!) {
   databaseConnectionInfo(id: $id) {
     internalConnectionPoolString
     externalConnectionPoolString
+    # A pooled database's read replicas are pooled too, as on Render (w6/m458).
+    readReplicaConnectionStrings {
+      name
+      internalConnectionPoolString
+      externalConnectionPoolString
+    }
   }
 }
 

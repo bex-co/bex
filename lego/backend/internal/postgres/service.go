@@ -235,11 +235,14 @@ func ReadReplicaID(primaryID, name string) string {
 }
 
 // ReadReplicaConnectionInfo holds the internal (and optionally external)
-// read-only connection string hosts for a named read replica. The full strings
-// (with password) are only available through PostgresConnectionInfo.
+// read-only connection string hosts for a named read replica, and the hosts of
+// its PgBouncer when the database is pooled (w6/m458). The full strings (with
+// password) are only available through PostgresConnectionInfo.
 type ReadReplicaConnectionInfo struct {
-	InternalHost string `json:"internalHost,omitempty"`
-	ExternalHost string `json:"externalHost,omitempty"`
+	InternalHost     string `json:"internalHost,omitempty"`
+	ExternalHost     string `json:"externalHost,omitempty"`
+	InternalPoolHost string `json:"internalPoolHost,omitempty"`
+	ExternalPoolHost string `json:"externalPoolHost,omitempty"`
 }
 
 // ReadReplicaInput is one item in CreatePostgresRequest.ReadReplicas.
@@ -280,11 +283,16 @@ type PostgresConnectionInfo struct {
 }
 
 // ReplicaConnectionStrings is the full internal + optional external read-only
-// connection string for one named replica (including password).
+// connection string for one named replica (including password). A pooled
+// database's replicas are pooled too, as on Render ("Render automatically
+// enables it for all of that database's read replicas", w6/m458), so the
+// pooled variants appear beside them, named as on PostgresConnectionInfo.
 type ReplicaConnectionStrings struct {
-	Name                     string `json:"name"`
-	InternalConnectionString string `json:"internalConnectionString,omitempty"`
-	ExternalConnectionString string `json:"externalConnectionString,omitempty"`
+	Name                         string `json:"name"`
+	InternalConnectionString     string `json:"internalConnectionString,omitempty"`
+	ExternalConnectionString     string `json:"externalConnectionString,omitempty"`
+	InternalConnectionPoolString string `json:"internalConnectionPoolString,omitempty"`
+	ExternalConnectionPoolString string `json:"externalConnectionPoolString,omitempty"`
 }
 
 // CreatePostgresRequest is the POST /v1/postgres body (bex subset of Render's).
@@ -1199,6 +1207,17 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 					"postgresql://%s:%s@%s:5432/%s%s",
 					user, pass, rs.ExternalHost, dbn, tlsQuery)
 			}
+			// The replicas' pooled strings take the primary's ports: 6432
+			// inside, 5432 at the edge, where the -pool-ro host selects them.
+			if rs.PoolerHost != "" {
+				rc.InternalConnectionPoolString = fmt.Sprintf(
+					"postgresql://%s:%s@%s:%d/%s", user, pass, rs.PoolerHost, appv1alpha1.PoolerPort, dbn)
+			}
+			if rs.PoolerExternalHost != "" {
+				rc.ExternalConnectionPoolString = fmt.Sprintf(
+					"postgresql://%s:%s@%s:5432/%s%s",
+					user, pass, rs.PoolerExternalHost, dbn, tlsQuery)
+			}
 			rcs = append(rcs, rc)
 		}
 		info.ReadReplicaConnectionStrings = rcs
@@ -1772,7 +1791,10 @@ func readReplicaViews(d *appv1alpha1.Database) []ReadReplicaView {
 	for _, r := range d.Spec.ReadReplicas {
 		rv := ReadReplicaView{ID: ReadReplicaID(d.Name, r.Name), Name: r.Name}
 		if rs := hosts[r.Name]; rs.InternalHost != "" || rs.ExternalHost != "" {
-			rv.ConnectionInfo = &ReadReplicaConnectionInfo{InternalHost: rs.InternalHost, ExternalHost: rs.ExternalHost}
+			rv.ConnectionInfo = &ReadReplicaConnectionInfo{
+				InternalHost: rs.InternalHost, ExternalHost: rs.ExternalHost,
+				InternalPoolHost: rs.PoolerHost, ExternalPoolHost: rs.PoolerExternalHost,
+			}
 		}
 		out = append(out, rv)
 	}

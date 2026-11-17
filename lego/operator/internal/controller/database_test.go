@@ -95,9 +95,21 @@ func TestDatabaseServerAltDNSNames(t *testing.T) {
 			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "analytics"}},
 		},
 	}
-	want := []string{"dpg-orders.db.example", "dpg-orders-pool.db.example", "dpg-orders-ro-analytics.db.example"}
+	want := []string{"dpg-orders.db.example", "dpg-orders-pool.db.example", "dpg-orders-ro-analytics.db.example", "dpg-orders-pool-ro.db.example"}
 	if got := databaseServerAltDNSNames(db, "db.example"); !reflect.DeepEqual(got, want) {
 		t.Fatalf("server alt DNS names = %v, want %v", got, want)
+	}
+	// The read replicas' pooler has a name only while the database is pooled
+	// and has replicas (w6/m458).
+	unpooled := db.DeepCopy()
+	unpooled.Spec.Pooler = false
+	if got, want := databaseServerAltDNSNames(unpooled, "db.example"), []string{"dpg-orders.db.example", "dpg-orders-ro-analytics.db.example"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("unpooled server alt DNS names = %v, want %v", got, want)
+	}
+	noReplicas := db.DeepCopy()
+	noReplicas.Spec.ReadReplicas = nil
+	if got, want := databaseServerAltDNSNames(noReplicas, "db.example"), []string{"dpg-orders.db.example", "dpg-orders-pool.db.example"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("replica-less server alt DNS names = %v, want %v", got, want)
 	}
 	if got := cnpgClusterSpec(clusterParams{serverAltDNSNames: want})["certificates"]; got == nil {
 		t.Fatal("public CNPG cluster omitted serverAltDNSNames")
@@ -545,12 +557,17 @@ func TestVersionedBackupServerName(t *testing.T) {
 }
 
 func TestPoolerSpec(t *testing.T) {
-	p := poolerSpec("mydb")
+	plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb"})
+	p := poolerSpec("mydb", poolerTypePrimary, plan)
 	if p["cluster"].(map[string]any)["name"] != "mydb" || p["type"] != "rw" {
 		t.Errorf("pooler = %v", p)
 	}
 	if p["pgbouncer"].(map[string]any)["poolMode"] != "transaction" {
 		t.Errorf("poolMode = %v", p["pgbouncer"])
+	}
+	if replicas := poolerSpec("mydb", poolerTypeReplicas, plan); replicas["type"] != "ro" ||
+		!reflect.DeepEqual(replicas["pgbouncer"], p["pgbouncer"]) {
+		t.Errorf("read replica pooler = %v, want type ro with the primary's settings", replicas)
 	}
 	// The extra port must not be named `pgbouncer`: CNPG would then drop its
 	// default 5432 port, and every pooled URI already handed out would stop
@@ -792,18 +809,30 @@ func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 	if db.Status.ExternalHost != "orders.db.example.test" || db.Status.PoolerExternalHost != "orders-pool.db.example.test" {
 		t.Fatalf("public status hosts = %q / %q", db.Status.ExternalHost, db.Status.PoolerExternalHost)
 	}
-	if got := db.Status.ReadReplicaStatuses; len(got) != 1 || got[0].ExternalHost != "orders-ro-analytics.db.example.test" {
-		t.Fatalf("read replica status = %#v", got)
+	wantReplica := appv1alpha1.DatabaseReadReplicaStatus{
+		Name: "analytics", InternalHost: "orders-ro.default.svc", ExternalHost: "orders-ro-analytics.db.example.test",
+		PoolerHost: "orders-pooler-ro.default.svc", PoolerExternalHost: "orders-pool-ro.db.example.test",
+	}
+	if got := db.Status.ReadReplicaStatuses; len(got) != 1 || got[0] != wantReplica {
+		t.Fatalf("read replica status = %#v, want %#v", got, wantReplica)
 	}
 	before := db.DeepCopy()
 	db.Spec.Public = false
 	db.Spec.IPAllowList = nil
 	r.updateExternalAddressStatus(db)
-	if db.Status.ExternalHost != "" || db.Status.PoolerExternalHost != "" || db.Status.ReadReplicaStatuses[0].ExternalHost != "" {
+	if db.Status.ExternalHost != "" || db.Status.PoolerExternalHost != "" || db.Status.ReadReplicaStatuses[0].ExternalHost != "" ||
+		db.Status.ReadReplicaStatuses[0].PoolerExternalHost != "" {
 		t.Fatal("external disable retained a primary, pooler or replica hostname")
 	}
 	if db.Status.Host != before.Status.Host || db.Status.Port != before.Status.Port || db.Status.SecretName != before.Status.SecretName ||
-		db.Status.PoolerHost != before.Status.PoolerHost || db.Status.ReadReplicaStatuses[0].InternalHost != before.Status.ReadReplicaStatuses[0].InternalHost {
+		db.Status.PoolerHost != before.Status.PoolerHost || db.Status.ReadReplicaStatuses[0].InternalHost != before.Status.ReadReplicaStatuses[0].InternalHost ||
+		db.Status.ReadReplicaStatuses[0].PoolerHost != before.Status.ReadReplicaStatuses[0].PoolerHost {
 		t.Fatal("external disable changed internal connection information")
+	}
+	// Turning pooling off withdraws the replicas' pooled hosts with the primary's.
+	db.Spec.Public, db.Spec.Pooler = true, false
+	r.updateExternalAddressStatus(db)
+	if got := db.Status.ReadReplicaStatuses[0]; got.PoolerHost != "" || got.PoolerExternalHost != "" || got.ExternalHost == "" {
+		t.Fatalf("unpooled read replica status = %#v, want its direct hosts only", got)
 	}
 }

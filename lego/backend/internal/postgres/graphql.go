@@ -93,8 +93,10 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 var readReplicaConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ReadReplicaConnectionInfo",
 	Fields: graphql.Fields{
-		"internalHost": gqlutil.StrField(func(v ReadReplicaConnectionInfo) any { return v.InternalHost }),
-		"externalHost": gqlutil.StrField(func(v ReadReplicaConnectionInfo) any { return v.ExternalHost }),
+		"internalHost":     gqlutil.StrField(func(v ReadReplicaConnectionInfo) any { return v.InternalHost }),
+		"externalHost":     gqlutil.StrField(func(v ReadReplicaConnectionInfo) any { return v.ExternalHost }),
+		"internalPoolHost": gqlutil.StrField(func(v ReadReplicaConnectionInfo) any { return v.InternalPoolHost }),
+		"externalPoolHost": gqlutil.StrField(func(v ReadReplicaConnectionInfo) any { return v.ExternalPoolHost }),
 	},
 })
 
@@ -122,9 +124,11 @@ var readReplicaViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 var replicaConnectionStringsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ReplicaConnectionStrings",
 	Fields: graphql.Fields{
-		"name":                     gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.Name }),
-		"internalConnectionString": gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.InternalConnectionString }),
-		"externalConnectionString": gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.ExternalConnectionString }),
+		"name":                         gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.Name }),
+		"internalConnectionString":     gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.InternalConnectionString }),
+		"externalConnectionString":     gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.ExternalConnectionString }),
+		"internalConnectionPoolString": gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.InternalConnectionPoolString }),
+		"externalConnectionPoolString": gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.ExternalConnectionPoolString }),
 	},
 })
 

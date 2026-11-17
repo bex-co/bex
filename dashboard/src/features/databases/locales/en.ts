@@ -1085,6 +1085,16 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "External pooled connection",
     description: "Access panel pooled-string label (public)",
   },
+  "databases.accessPoolerReplicaInternal": {
+    message: "Internal pooled connection, read replica {name}",
+    description:
+      "Access panel pooled-string label for a read replica's in-cluster pooled connection (w6/m458)",
+  },
+  "databases.accessPoolerReplicaExternal": {
+    message: "External pooled connection, read replica {name}",
+    description:
+      "Access panel pooled-string label for a read replica's public pooled connection (w6/m458)",
+  },
   "databases.accessPoolerError": {
     message: "Couldn't load the pooled connection strings.",
     description: "Toast when revealing pooled strings fails",

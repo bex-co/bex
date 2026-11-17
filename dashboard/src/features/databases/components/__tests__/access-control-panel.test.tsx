@@ -8,13 +8,14 @@ import {
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 import { codedGraphQLError } from "@/test/mocks/apollo";
+import type { PooledStrings } from "@/features/databases/hooks/use-access-control";
 
 const createCredential = vi.fn();
 const deleteCredential = vi.fn();
 const resetPooled = vi.fn();
 const mutate = vi.hoisted(() => vi.fn());
 let credentials: { username: string; default: boolean }[] = [];
-let pooled: { internal: string; external: string } | null = null;
+let pooled: PooledStrings | null = null;
 let allowList: { cidrBlock: string; description: string }[] = [];
 let allowListPending = false;
 let credentialsPending = false;
@@ -313,7 +314,7 @@ describe("AccessControlPanel IP allowlist", () => {
 
 describe("AccessControlPanel connection pooling", () => {
   it("explains the plan restriction instead of offering a refused enable call", () => {
-    pooled = { internal: "", external: "" };
+    pooled = { internal: "", external: "", replicas: [] };
     renderPanel();
     expect(
       screen.getByText(/This plan does not support connection pooling/),
@@ -341,7 +342,7 @@ describe("AccessControlPanel connection pooling", () => {
     expect(
       screen.getByRole("button", { name: "Reveal pooled strings" }),
     ).toBeEnabled();
-    pooled = { internal: "", external: "" };
+    pooled = { internal: "", external: "", replicas: [] };
     view.rerender(panel({ plan: "basic-1gb", poolerEnabled: true }));
     expect(
       screen.getByText(/Connection pooling is starting/),
@@ -357,7 +358,7 @@ describe("AccessControlPanel connection pooling", () => {
   it("masks the password in the pooled strings until it is shown", async () => {
     const internal = "postgresql://app_user:s3cretPw@pool-internal:5432/app";
     const external = "postgresql://app_user:s3cretPw@pool.db.bex.co:5432/app";
-    pooled = { internal, external };
+    pooled = { internal, external, replicas: [] };
     renderPanel({ plan: "basic-1gb", poolerEnabled: true });
     expect(screen.queryByText(/s3cretPw/)).not.toBeInTheDocument();
     expect(
@@ -374,8 +375,51 @@ describe("AccessControlPanel connection pooling", () => {
     expect(screen.queryByText(/s3cretPw/)).not.toBeInTheDocument();
   });
 
+  // w6/m458: Render pools every read replica of a pooled database, so the
+  // reveal lists each replica's pooled strings beside the primary's, masked
+  // the same way.
+  it("lists each read replica's pooled strings, masked until shown", async () => {
+    const replicaInternal =
+      "postgresql://app_user:s3cretPw@app-pooler-ro.ns.svc:6432/app";
+    const replicaExternal =
+      "postgresql://app_user:s3cretPw@app-pool-ro.db.bex.co:5432/app";
+    pooled = {
+      internal: "postgresql://app_user:s3cretPw@app-pooler.ns.svc:6432/app",
+      external: "",
+      replicas: [
+        {
+          name: "analytics",
+          internal: replicaInternal,
+          external: replicaExternal,
+        },
+      ],
+    };
+    renderPanel({ plan: "basic-1gb", poolerEnabled: true });
+    expect(
+      screen.getByText("Internal pooled connection, read replica analytics"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("External pooled connection, read replica analytics"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/s3cretPw/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "postgresql://app_user:••••••••@app-pool-ro.db.bex.co:5432/app",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Show password" }),
+    );
+    expect(screen.getByText(replicaInternal)).toBeInTheDocument();
+    expect(screen.getByText(replicaExternal)).toBeInTheDocument();
+  });
+
   it("keeps existing pooled connections visible on an unsupported plan", () => {
-    pooled = { internal: "postgresql://existing-pool", external: "" };
+    pooled = {
+      internal: "postgresql://existing-pool",
+      external: "",
+      replicas: [],
+    };
     renderPanel({ poolerEnabled: true });
     expect(screen.getByText("postgresql://existing-pool")).toBeVisible();
     expect(

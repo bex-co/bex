@@ -4,9 +4,10 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const createCredentialMut = vi.fn();
 const writeQuery = vi.fn();
+const clientQuery = vi.fn();
 let queryState: { data?: unknown; loading?: boolean } = {};
 vi.mock("@apollo/client/react", () => ({
-  useApolloClient: () => ({ cache: { writeQuery } }),
+  useApolloClient: () => ({ cache: { writeQuery }, query: clientQuery }),
   useQuery: () => ({ data: undefined, ...queryState, refetch: vi.fn() }),
   useMutation: () => [createCredentialMut, { loading: false }],
 }));
@@ -22,6 +23,7 @@ import { useAccessControl } from "@/features/databases/hooks/use-access-control"
 
 beforeEach(() => {
   createCredentialMut.mockReset();
+  clientQuery.mockReset();
   toastError.mockReset();
   queryState = {};
 });
@@ -50,6 +52,52 @@ describe("useAccessControl allowListPending", () => {
       renderHook(() => useAccessControl("dpg-1")).result.current
         .allowListPending,
     ).toBe(false);
+  });
+});
+
+// w6/m458: Render pools every read replica of a pooled database, so the
+// pooled reveal carries each replica whose pooler the operator published.
+describe("useAccessControl revealPooled", () => {
+  it("reads the primary's and each pooled replica's strings", async () => {
+    clientQuery.mockResolvedValue({
+      data: {
+        databaseConnectionInfo: {
+          internalConnectionPoolString: "postgresql://u:p@db-pooler:6432/d",
+          externalConnectionPoolString: null,
+          readReplicaConnectionStrings: [
+            {
+              name: "analytics",
+              internalConnectionPoolString:
+                "postgresql://u:p@db-pooler-ro:6432/d",
+              externalConnectionPoolString:
+                "postgresql://u:p@db-pool-ro.db.bex.co:5432/d",
+            },
+            // Not pooled yet: the operator has not published its pooler.
+            {
+              name: "reports",
+              internalConnectionPoolString: null,
+              externalConnectionPoolString: null,
+            },
+            null,
+          ],
+        },
+      },
+    });
+    const { result } = renderHook(() => useAccessControl("dpg-1"));
+    await act(async () => {
+      await result.current.revealPooled();
+    });
+    expect(result.current.pooled).toEqual({
+      internal: "postgresql://u:p@db-pooler:6432/d",
+      external: "",
+      replicas: [
+        {
+          name: "analytics",
+          internal: "postgresql://u:p@db-pooler-ro:6432/d",
+          external: "postgresql://u:p@db-pool-ro.db.bex.co:5432/d",
+        },
+      ],
+    });
   });
 });
 

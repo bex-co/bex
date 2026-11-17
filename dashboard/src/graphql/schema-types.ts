@@ -5246,7 +5246,9 @@ export type QueryWorkspaceSeatUsageArgs = {
 export type ReadReplicaConnectionInfo = {
   __typename: 'ReadReplicaConnectionInfo';
   externalHost: Maybe<Scalars['String']['output']>;
+  externalPoolHost: Maybe<Scalars['String']['output']>;
   internalHost: Maybe<Scalars['String']['output']>;
+  internalPoolHost: Maybe<Scalars['String']['output']>;
 };
 
 export type ReadReplicaView = {
@@ -5271,7 +5273,9 @@ export type RegistryCredential = {
 
 export type ReplicaConnectionStrings = {
   __typename: 'ReplicaConnectionStrings';
+  externalConnectionPoolString: Maybe<Scalars['String']['output']>;
   externalConnectionString: Maybe<Scalars['String']['output']>;
+  internalConnectionPoolString: Maybe<Scalars['String']['output']>;
   internalConnectionString: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
 };

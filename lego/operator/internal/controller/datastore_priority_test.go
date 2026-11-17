@@ -48,7 +48,7 @@ func TestNewDatastoresCarryTheDatastorePriorityClass(t *testing.T) {
 	if got := spec["priorityClassName"]; got != appv1alpha1.DatastorePriorityClassName {
 		t.Errorf("Cluster priorityClassName = %v", got)
 	}
-	pooler := &unstructured.Unstructured{Object: map[string]any{"spec": poolerSpec("db")}}
+	pooler := &unstructured.Unstructured{Object: map[string]any{"spec": poolerSpec("db", poolerTypePrimary, plan)}}
 	if got, _, _ := unstructured.NestedString(pooler.Object, "spec", "template", "spec", "priorityClassName"); got != appv1alpha1.DatastorePriorityClassName {
 		t.Errorf("Pooler template priorityClassName = %q", got)
 	}

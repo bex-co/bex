@@ -321,6 +321,19 @@ func (t PostgresTier) SupportsConnectionPooling() bool { return t.paid() }
 // pooled route's connection limit at the external front door (w6/m457).
 const PostgresPoolerMaxClientConn = 30000
 
+// PostgresPoolerReservedConnections are the server connections a managed
+// PgBouncer leaves to everything else: "Render Postgres reserves 10
+// connections for direct database connections and internal operations"
+// (render.com/docs/postgresql-connection-pooling, read 2026-11-17, w6/m458).
+const PostgresPoolerReservedConnections = 10
+
+// PoolerPoolSize is the server connections the plan's managed PgBouncer opens
+// to one database, Render's default_pool_size and max_db_connections: the
+// plan's max_connections minus PostgresPoolerReservedConnections.
+func (t PostgresTier) PoolerPoolSize() int32 {
+	return t.MaxConnections - PostgresPoolerReservedConnections
+}
+
 const (
 	PostgresReadReplicaMinCPU             = "0.5"
 	PostgresMaxReadReplicas               = 5

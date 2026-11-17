@@ -1042,6 +1042,16 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "外部连接池连接",
     description: "Access panel pooled-string label (public)",
   },
+  "databases.accessPoolerReplicaInternal": {
+    message: "内部连接池连接(只读副本 {name})",
+    description:
+      "Access panel pooled-string label for a read replica's in-cluster pooled connection (w6/m458)",
+  },
+  "databases.accessPoolerReplicaExternal": {
+    message: "外部连接池连接(只读副本 {name})",
+    description:
+      "Access panel pooled-string label for a read replica's public pooled connection (w6/m458)",
+  },
   "databases.accessPoolerError": {
     message: "无法加载连接池字符串。",
     description: "Toast when revealing pooled strings fails",

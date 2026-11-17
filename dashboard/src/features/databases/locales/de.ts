@@ -1092,6 +1092,16 @@ const deDatabases: Record<string, TranslationEntry> = {
     message: "Externe gepoolte Verbindung",
     description: "Access panel pooled-string label (public)",
   },
+  "databases.accessPoolerReplicaInternal": {
+    message: "Interne gepoolte Verbindung, Lesereplikat {name}",
+    description:
+      "Access panel pooled-string label for a read replica's in-cluster pooled connection (w6/m458)",
+  },
+  "databases.accessPoolerReplicaExternal": {
+    message: "Externe gepoolte Verbindung, Lesereplikat {name}",
+    description:
+      "Access panel pooled-string label for a read replica's public pooled connection (w6/m458)",
+  },
   "databases.accessPoolerError": {
     message: "Die gepoolten Verbindungs-Strings konnten nicht geladen werden.",
     description: "Toast when revealing pooled strings fails",

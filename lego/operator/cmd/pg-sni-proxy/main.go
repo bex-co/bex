@@ -105,13 +105,14 @@ type dbRouter struct {
 	mu     sync.RWMutex
 	domain string                    // BEX_DB_DOMAIN, e.g. "db.bex.co"
 	table  map[string]dbRoutingEntry // dbname → exact public routing intent
-	// hosts maps every public hostname VARIANT (rw, -pool, -ro-<replica>) to
-	// the routes that can serve it, each with its backend precomputed. resolve()
-	// is then an O(1) map hit per unauthenticated handshake instead of an
-	// O(global database count) table scan under the read lock — an unknown-SNI
-	// flood used to pay the full scan before route-scoped admission applied
-	// (codex-security round 12, finding 9; the sibling kv-sni-proxy always
-	// resolved this way). A slice per key keeps the (rare, degenerate) case
+	// hosts maps every public hostname VARIANT (rw, -pool, -ro-<replica>,
+	// -pool-ro) to the routes that can serve it, each with its backend
+	// precomputed. resolve() is then an O(1) map hit per unauthenticated
+	// handshake instead of an O(global database count) table scan under the
+	// read lock — an unknown-SNI flood used to pay the full scan before
+	// route-scoped admission applied (codex-security round 12, finding 9; the
+	// sibling kv-sni-proxy always resolved this way). A slice per key keeps the
+	// (rare, degenerate) case
 	// where two databases claim the same host label — e.g. "x" with pooler and
 	// a database literally named "x-pool" — falling through like the scan did.
 	hosts   map[string][]hostRoute
@@ -189,7 +190,7 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 // -ro service, so all -ro-<replica> labels carry the same backend. Each label
 // is its own admission bucket, sized from the server behind it: the plan's
 // max_connections for the primary and each replica (Render limits each
-// replica like its primary), PgBouncer's client limit for the pooler.
+// replica like its primary), PgBouncer's client limit for either pooler.
 func (r *dbRouter) indexLocked(name string, entry dbRoutingEntry) {
 	r.dropIndexLocked(name)
 	add := func(label, service string, limit int32) {
@@ -203,6 +204,10 @@ func (r *dbRouter) indexLocked(name string, entry dbRoutingEntry) {
 	add(name, "rw", entry.maxConnections)
 	if entry.pooler {
 		add(name+"-pool", "pooler", tiers.PostgresPoolerMaxClientConn)
+		// The read replicas' PgBouncer, one for every named replica (w6/m458).
+		if len(entry.replicas) > 0 {
+			add(name+"-pool-ro", "pooler-ro", tiers.PostgresPoolerMaxClientConn)
+		}
 	}
 	for replica := range entry.replicas {
 		add(name+"-ro-"+replica, "ro", entry.maxConnections)
@@ -253,6 +258,7 @@ func (r *dbRouter) healthy() bool {
 //   - <dbname>.<domain>           → <dbname>-rw.<ns>.svc.cluster.local:5432
 //   - <dbname>-pool.<domain>      → <dbname>-pooler.<ns>.svc.cluster.local:5432
 //   - <dbname>-ro-<rep>.<domain>  → <dbname>-ro.<ns>.svc.cluster.local:5432
+//   - <dbname>-pool-ro.<domain>   → <dbname>-pooler-ro.<ns>.svc.cluster.local:5432
 func (r *dbRouter) resolve(sni string, source netip.Addr) (dbRoute, bool) {
 	if r.domain == "" {
 		return dbRoute{}, false

@@ -287,8 +287,16 @@ function PoolerSection({
   const pooledPassword = connectionURLPassword(
     access.pooled?.internal || access.pooled?.external || "",
   );
-  const pooledDisplay = (value: string) =>
-    passwordShown ? value : maskSecret(value, pooledPassword);
+  const pooledField = (label: string, value: string) => (
+    <ConnectionField
+      key={label}
+      label={label}
+      value={value}
+      displayValue={passwordShown ? value : maskSecret(value, pooledPassword)}
+      copiedText={t("databases.copied")}
+      copyErrorText={t("databases.copyError")}
+    />
+  );
 
   async function handleToggle(enabled: boolean) {
     if (await updateConnectionPool(id, name, enabled)) {
@@ -334,22 +342,30 @@ function PoolerSection({
               </Button>
             </div>
           ) : null}
-          <ConnectionField
-            label={t("databases.accessPoolerInternal")}
-            value={access.pooled.internal}
-            displayValue={pooledDisplay(access.pooled.internal)}
-            copiedText={t("databases.copied")}
-            copyErrorText={t("databases.copyError")}
-          />
-          {access.pooled.external ? (
-            <ConnectionField
-              label={t("databases.accessPoolerExternal")}
-              value={access.pooled.external}
-              displayValue={pooledDisplay(access.pooled.external)}
-              copiedText={t("databases.copied")}
-              copyErrorText={t("databases.copyError")}
-            />
-          ) : null}
+          {pooledField(
+            t("databases.accessPoolerInternal"),
+            access.pooled.internal,
+          )}
+          {access.pooled.external
+            ? pooledField(
+                t("databases.accessPoolerExternal"),
+                access.pooled.external,
+              )
+            : null}
+          {access.pooled.replicas.flatMap(({ name, internal, external }) => [
+            internal
+              ? pooledField(
+                  t("databases.accessPoolerReplicaInternal", { name }),
+                  internal,
+                )
+              : null,
+            external
+              ? pooledField(
+                  t("databases.accessPoolerReplicaExternal", { name }),
+                  external,
+                )
+              : null,
+          ])}
         </div>
       ) : !poolerEnabled ? (
         <p className="text-sm text-muted-foreground">
