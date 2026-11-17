@@ -160,6 +160,7 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 ## Inbox
 
+- [ ] **079** — [A person signed in at the dashboard must retype their password the first time a browser connects an agent or approves `bex login`; Render asks for nothing](079.md) (needs a user decision) ← found by w7/073, 2026-11-17
 - [ ] **078** — [A workspace cannot require its members to sign in with Google, as a Render workspace can](078.md) (milestone-sized) ← found by w7/070, 2026-11-17
 - [ ] **077** — [Render's Scale and Enterprise plans cover an organization's unlimited workspaces with one fee; bex charges each workspace its own plan](077.md) (needs a user decision) ← found by w7/070, 2026-11-17
 - [ ] **076** — [A Pro workspace's sandbox quota stops at 116 sandboxes, below the 1,000 its plan allows](076.md) (60m) ← found by w7/069, 2026-11-17
