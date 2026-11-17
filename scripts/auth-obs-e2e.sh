@@ -147,9 +147,9 @@ for port in 4444 4445 4433 4434 "$FGA_PORT" "$API_PORT" "$CP_PORT" "$DASH_PORT";
 done
 
 echo "-> 1/12 hydra (in-memory, login/consent -> dashboard :$DASH_PORT)..."
-# v26, not auth-oauth21-e2e.sh's v2.2.0: auth-bootstrap-client.sh asserts the
-# per-client device-grant lifespan round-trips, a field neither v2.2.0 nor
-# v2.3.0 has (the assertion exits "hydra too old") — the script itself
+# v26, not v2.2.0: auth-bootstrap-client.sh asserts the per-client
+# device-grant lifespan round-trips, a field neither v2.2.0 nor v2.3.0 has
+# (the assertion exits "hydra too old") — the script itself
 # documents its redirect behavior as "verified on Hydra v26", the production
 # line.
 docker network create "$NET" >/dev/null 2>&1 || true

@@ -43,8 +43,14 @@
 #
 # Self-contained: Hydra + Kratos run as throwaway Docker containers (in-memory
 # DSNs); the dashboard dev server and bex-api are started if not already up.
-# Requires: docker, curl, python3, go, yarn, kubectl context for bex-api's
-# kube client (any cluster; no auth stack needed on it).
+# bex-api runs on a throwaway control-plane Postgres, as in production: leg 14's
+# revoke records its marker there, and the dashboard refuses a revoke it cannot
+# propagate (w7/065), so a DB-free bex-api can never pass it.
+# Requires: docker, curl, python3, go, yarn, and a kubectl context for bex-api's
+# kube client carrying the bex CRDs (no auth stack needed on it). The store
+# provisions a namespace for the test user's workspace there, so prefer a
+# throwaway cluster: `kind create cluster --name bexoauth-e2e` and
+# `kubectl apply -f lego/operator/config/crd/bases`.
 # Optional: BEX_BIN=<path to a built bex CLI> adds the CLI to the API-key leg.
 #
 # Usage: scripts/auth-oauth21-e2e.sh
@@ -54,6 +60,11 @@ cd "$(dirname "$0")/.."
 NET=bexoauth-e2e
 HYDRA=bexoauth-e2e-hydra
 KRATOS=bexoauth-e2e-kratos
+DB=bexoauth-e2e-db
+# The digest the backend CI suite runs (.github/workflows/backend-test.yml).
+DB_IMAGE=postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296
+DB_PORT=${DB_PORT:-25499}
+CP_PORT=${CP_PORT:-8191} # bex-api's internal listener; 8091 is the dev stacks'
 DASH_PORT=${DASH_PORT:-5199}
 API_PORT=${API_PORT:-8090}
 ISSUER=${ISSUER:-http://localhost:4444}
@@ -66,14 +77,40 @@ CALLBACK=http://127.0.0.1:9876/cb
 USER_EMAIL=agent-user@bex.co
 USER_PASSWORD='e2e-password-123!'
 TMP="$(mktemp -d)"
-DASH_PID=""
-API_PID=""
+DASH_PGID=""
+API_PGID=""
+
+# Start a server as its own process group (job control on for the launch), so
+# cleanup stops the whole tree, yarn's node, vite and esbuild children included,
+# and no stale bex-api is left for the next run to test (w7/065). Sets LAUNCHED
+# to the group's id, its leader's PID.
+launch() { # log dir command...
+  local log="$1" dir="$2"
+  shift 2
+  set -m
+  (cd "$dir" && exec "$@") </dev/null >"$log" 2>&1 &
+  LAUNCHED=$!
+  set +m
+}
+
+# TERM the group, TERM it again (bex-api drains for ~15s on the first, still
+# holding its port, and force-exits on the second), then KILL what is left.
+stop_group() { # pgid
+  local signal
+  for signal in TERM TERM KILL; do
+    kill -"$signal" -- "-$1" 2>/dev/null || return 0
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      kill -0 -- "-$1" 2>/dev/null || return 0
+      sleep 0.5
+    done
+  done
+}
 
 cleanup() {
-  docker rm -f "$HYDRA" "$KRATOS" >/dev/null 2>&1 || true
+  docker rm -f "$HYDRA" "$KRATOS" "$DB" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
-  [ -n "$DASH_PID" ] && kill "$DASH_PID" 2>/dev/null || true
-  [ -n "$API_PID" ] && kill "$API_PID" 2>/dev/null || true
+  if [ -n "$DASH_PGID" ]; then stop_group "$DASH_PGID"; fi
+  if [ -n "$API_PGID" ]; then stop_group "$API_PGID"; fi
   rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -88,6 +125,10 @@ wait_http() { # url [attempts]
 }
 
 echo "-> 1/14 hydra (in-memory, DCR on, login/consent -> dashboard :$DASH_PORT)..."
+# Production's Hydra, v26.2.0 (ADR012 §8d). Not v2.2.0, the earlier pin
+# (w7/065): its in-memory store answers a read or write that overlaps another
+# with 400 "Unable to serialize access due to a concurrent update", which
+# reached bex-api's key list as a 500 in about one run in three.
 docker network create "$NET" >/dev/null 2>&1 || true
 docker rm -f "$HYDRA" >/dev/null 2>&1 || true
 docker run -d --name "$HYDRA" --network "$NET" --network-alias hydra \
@@ -98,7 +139,7 @@ docker run -d --name "$HYDRA" --network "$NET" --network-alias hydra \
   -e URLS_CONSENT=$DASH/auth/consent \
   -e OIDC_DYNAMIC_CLIENT_REGISTRATION_ENABLED=true \
   -e SECRETS_SYSTEM=e2e-only-system-secret-32-chars-x \
-  oryd/hydra:v2.2.0 serve all --dev >/dev/null
+  oryd/hydra:v26.2.0 serve all --dev >/dev/null
 wait_http "$HYDRA_ADM/health/ready"
 
 echo "-> 2/14 kratos (in-memory, native oauth2_provider -> hydra admin)..."
@@ -162,6 +203,9 @@ secrets:
   cookie: [e2e-only-cookie-secret-32-chars-xx]
   cipher: [e2e-only-cipher-secret-32-chars!]
 YAML
+# Still v1.3.1, not production's v26.2.0: there, a browser already holding a
+# session gets a refresh login flow for a login challenge instead of v1.3.1's
+# `null`, so leg 13's signed-in path asks for the password again (w7/073).
 docker rm -f "$KRATOS" >/dev/null 2>&1 || true
 docker run -d --name "$KRATOS" --network "$NET" --network-alias kratos \
   -p 4433:4433 -p 4434:4434 \
@@ -170,21 +214,40 @@ docker run -d --name "$KRATOS" --network "$NET" --network-alias kratos \
 wait_http "$KRATOS_PUB/health/ready"
 
 echo "-> 3/14 bex-api (issuer + resource configured)..."
-if ! curl -sf -o /dev/null "http://localhost:$API_PORT/healthz"; then
+if curl -sf -o /dev/null "http://localhost:$API_PORT/healthz"; then
+  # Deliberate: a bex-api already on the port (one with the control-plane store,
+  # say) is the one under test. Say so, since nothing here configured it.
+  echo "  ! reusing the bex-api already listening on :$API_PORT (not started by this run)"
+else
+  docker rm -f "$DB" >/dev/null 2>&1 || true
+  docker run -d --name "$DB" -e POSTGRES_PASSWORD=pw -p "$DB_PORT:5432" "$DB_IMAGE" >/dev/null
+  # Built meanwhile, so the readiness wait below times the start, not a compile.
+  (cd lego/backend && go build -o "$TMP/bex-api" ./cmd/api)
+  for _ in $(seq 1 30); do docker exec "$DB" pg_isready -U postgres -h 127.0.0.1 >/dev/null 2>&1 && break; sleep 1; done
   # BEX_REQUIRE_VERIFIED_EMAIL=0: this Kratos has no courier, so the test user's
   # address is never verified, and the gate would refuse every human caller.
-  (cd lego/backend && BEX_HYDRA_ADMIN_URL=$HYDRA_ADM BEX_KRATOS_URL=$KRATOS_PUB \
-    BEX_OAUTH_ISSUER=$ISSUER BEX_OAUTH_RESOURCE=$RESOURCE BEX_REQUIRE_VERIFIED_EMAIL=0 \
-    BEX_API_ADDR=":$API_PORT" nohup go run ./cmd/api >"$TMP/bexapi.log" 2>&1 & echo $! >"$TMP/api.pid")
-  API_PID="$(cat "$TMP/api.pid")"
+  # BEX_ALLOW_INSECURE_AUTHZ=1: no OpenFGA here, and the store refuses to start
+  # without it otherwise; the one test user is its workspace's only member.
+  launch "$TMP/bexapi.log" lego/backend env BEX_HYDRA_ADMIN_URL="$HYDRA_ADM" BEX_KRATOS_URL="$KRATOS_PUB" \
+    BEX_OAUTH_ISSUER="$ISSUER" BEX_OAUTH_RESOURCE="$RESOURCE" BEX_REQUIRE_VERIFIED_EMAIL=0 \
+    BEX_CP_DB_URI="postgres://postgres:pw@127.0.0.1:$DB_PORT/postgres?sslmode=disable" \
+    BEX_CP_ADDR=":$CP_PORT" BEX_CP_TOKEN="e2e-cp-$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+    BEX_ALLOW_INSECURE_AUTHZ=1 BEX_API_ADDR=":$API_PORT" "$TMP/bex-api"
+  API_PGID="$LAUNCHED"
   wait_http "http://localhost:$API_PORT/healthz" 60
 fi
 
 echo "-> 4/14 dashboard dev server (consent route) on :$DASH_PORT..."
-if ! curl -sf -o /dev/null "$DASH/"; then
-  (cd dashboard && VITE_KRATOS_PUBLIC_URL=$KRATOS_PUB VITE_API_URL=http://localhost:$API_PORT/graphql \
-    HYDRA_ADMIN_URL=$HYDRA_ADM nohup yarn dev --port $DASH_PORT >"$TMP/dash.log" 2>&1 & echo $! >"$TMP/dash.pid")
-  DASH_PID="$(cat "$TMP/dash.pid")"
+if curl -sf -o /dev/null "$DASH/"; then
+  echo "  ! reusing the dashboard already serving $DASH (not started by this run)"
+else
+  # BEX_REQUIRE_VERIFIED_EMAIL=0 for the same unverified user: the consent
+  # route runs the same gate before any accept, trusted clients included, and
+  # answers it with error=access_denied on the agent's callback (w7/065).
+  launch "$TMP/dash.log" dashboard env VITE_KRATOS_PUBLIC_URL="$KRATOS_PUB" \
+    VITE_API_URL="http://localhost:$API_PORT/graphql" HYDRA_ADMIN_URL="$HYDRA_ADM" \
+    BEX_REQUIRE_VERIFIED_EMAIL=0 yarn dev --port "$DASH_PORT"
+  DASH_PGID="$LAUNCHED"
   wait_http "$DASH/auth/consent" 90 || true
 fi
 
@@ -203,7 +266,7 @@ echo "$www" | grep -q 'resource_metadata=' || { echo "error: 401 lacks resource_
 echo "  ✓ 401 WWW-Authenticate carries resource_metadata"
 
 # --- the browser, in shell -----------------------------------------------------
-# Hydra 2.x serves DCR at /oauth2/register (the pinned image above).
+# Hydra serves DCR at /oauth2/register (the pinned image above).
 REG_EP="$ISSUER/oauth2/register"
 VERIFIER="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 CHALLENGE="E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
@@ -384,8 +447,17 @@ expect_at() { # expected-url-prefix actual-url what-went-wrong
   exit 1
 }
 
-exchange() { # code client_id -> access token on stdout
-  curl -s -X POST -d "grant_type=authorization_code&code=$1&redirect_uri=$CALLBACK&client_id=$2&code_verifier=$VERIFIER" \
+# Hydra answers a refused consent on the same callback (error=access_denied), so
+# a callback without a code fails here with its reason, not at Hydra as
+# invalid_grant for an empty code (w7/065).
+exchange() { # callback_url client_id -> access token on stdout
+  local code
+  code="$(qparam "$1" code)"
+  [ -n "$code" ] || {
+    echo "error: the callback carries no code: error=$(qparam "$1" error) ($(qparam "$1" error_description))" >&2
+    return 1
+  }
+  curl -s -X POST -d "grant_type=authorization_code&code=$code&redirect_uri=$CALLBACK&client_id=$2&code_verifier=$VERIFIER" \
     "$ISSUER/oauth2/token" | python3 -c "
 import sys, json
 t = json.loads(sys.stdin.read() or '{}')
@@ -510,8 +582,9 @@ EXCHANGED="$(curl -s -X POST -d grant_type=client_credentials --data-urlencode "
 echo "  ✓ the key's id and secret still exchange for a working access token"
 
 # Revoked, the key is refused on every surface within the latency ADR012 §8d
-# states. This stack runs without the control-plane store, so there is no
-# shared tombstone and the bound is the 5 s introspection window, plus the poll.
+# states. With the control-plane store the shared tombstone refuses it at the
+# next request; a reused DB-free bex-api has none, so the bound is the 5 s
+# introspection window, plus the poll.
 [ "$(curl -s -o /dev/null -w '%{http_code}' -H "X-Session-Token: $SESSION_TOKEN" -X DELETE "$API/v1/api-keys/$KEY_ID")" = "204" ] ||
   { echo "error: revoking the key failed" >&2; exit 1; }
 revoked_at="$(python3 -c 'import time; print(time.time())')"
@@ -535,7 +608,7 @@ JAR_TRUSTED="$TMP/trusted.jar"
 final="$(authorize "$TRUSTED_CLIENT" "state-trusted" "$JAR_TRUSTED")"
 expect_at "$CALLBACK" "$final" "trusted flow did not reach the agent callback (consent was not headless)"
 [ "$(qparam "$final" state)" = "state-trusted" ] || { echo "error: state mismatch: $final" >&2; exit 1; }
-ACCESS="$(exchange "$(qparam "$final" code)" "$TRUSTED_CLIENT")"
+ACCESS="$(exchange "$final" "$TRUSTED_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ consent auto-accepted headlessly -> token -> bex-api 200 (unchanged by m16)"
 
@@ -552,7 +625,7 @@ echo "-> 10/14 the human approves -> code -> token -> bex-api..."
 final="$(consent_decide approve "$JAR_USER")"
 expect_at "$CALLBACK" "$final" "approve did not reach the agent callback"
 [ "$(qparam "$final" state)" = "state-consent" ] || { echo "error: state mismatch: $final" >&2; exit 1; }
-ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
+ACCESS="$(exchange "$final" "$CONSENT_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ user-consented token passes bex-api introspection + audience check, exactly like a blessed client's"
 
@@ -574,7 +647,7 @@ echo "-> 12/14 remembered consent: a fresh browser, same user+client -> no conse
 JAR_AGAIN="$TMP/again.jar"
 final="$(authorize "$CONSENT_CLIENT" "state-again" "$JAR_AGAIN")"
 expect_at "$CALLBACK" "$final" "the remembered grant re-prompted for consent"
-ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
+ACCESS="$(exchange "$final" "$CONSENT_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ inside the remember window the consent page is skipped -> token straight through"
 
@@ -597,7 +670,7 @@ mode="$(cat "$TMP/login_mode")"
 }
 expect_at "$CALLBACK" "$final" "the signed-in authorization did not reach the agent callback"
 [ "$(qparam "$final" state)" = "state-signedin" ] || { echo "error: state mismatch: $final" >&2; exit 1; }
-ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
+ACCESS="$(exchange "$final" "$CONSENT_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ already signed in -> no login form, no consent page -> token (this used to dead-end)"
 
@@ -654,10 +727,12 @@ LEGACY_CLIENT="$(dcr 'legacy umbrella (e2e)' 'openid offline_access bex.api')"
 JAR_LEGACY="$TMP/legacy.jar"
 final="$(authorize "$LEGACY_CLIENT" "state-legacy" "$JAR_LEGACY" "openid+offline_access+bex.api")"
 expect_at "$DASH/auth/consent" "$final" "legacy bex.api client did not stop at consent"
-grep -q 'invalid_scope' "$TMP/page.html" || { echo "error: bex.api umbrella was not refused: $(head -c 400 "$TMP/page.html")" >&2; exit 1; }
+# The page renders the refusal in the reader's language since 10ded69c8; the
+# route's own verdict, `scope_required`, rides its loader data in every one.
+grep -q '"scope_required"' "$TMP/page.html" || { echo "error: bex.api umbrella was not refused: $(head -c 400 "$TMP/page.html")" >&2; exit 1; }
 grep -q 'bex.read' "$TMP/page.html" || { echo "error: refusal did not name bex.read: $(head -c 400 "$TMP/page.html")" >&2; exit 1; }
 [ -z "$(qparam "$final" code)" ] || { echo "error: refused bex.api flow still delivered a code: $final" >&2; exit 1; }
-echo "  ✓ third-party bex.api is invalid_scope at consent (no code)"
+echo "  ✓ third-party bex.api is refused at consent as scope_required (no code)"
 
 if [ -n "${HOLD:-}" ]; then
   echo
