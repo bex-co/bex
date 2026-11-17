@@ -1,6 +1,6 @@
 # w6 · m455 — A new service's first bytes of egress are billed: a router series that starts inside the hour counts from zero
 
-**Worker:** worker6 **Goal:** the hourly egress meter bills the bytes a Traefik router series counted before its first scrape, without ever billing more than was served, and billing switches to that rule only after an old-versus-new comparison on recorded production hours proves it. **Status:** todo — t001–t004, t007 and t008 done; the deploy carrying `f0fe4be41` ran (pin `db48cde2bae9`, see Unblock — 2026-11-17); t005 re-runs the probe next
+**Worker:** worker6 **Goal:** the hourly egress meter bills the bytes a Traefik router series counted before its first scrape, without ever billing more than was served, and billing switches to that rule only after an old-versus-new comparison on recorded production hours proves it. **Status:** done — 2026-11-17: on production a new probe service that served 10,000,000 body bytes and was deleted bills 10,000,000 for its hour, the same on REST, GraphQL and MCP
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | [The new-series rule in `egressquery`, proven in Prometheus's engine](done/t002.md) — **DONE** | 1h30m | t001 |
 | t003 | [Old against new on recorded production hours](done/t003.md) — **DONE** | 1h30m | t002 |
 | t004 | [Switch the egress meter and the month-to-date read to the rule; ADR023 records it](done/t004.md) — **DONE** | 45m | t003 |
-| t005 | [Re-run the m333 probe on production: the bytes served are the bytes billed](t005.md) | 45m | t004 |
-| t006 | [Render parity](t006.md) | 30m | t005 |
+| t005 | [Re-run the m333 probe on production: the bytes served are the bytes billed](done/t005.md) — **DONE** | 45m | t004 |
+| t006 | [Render parity](done/t006.md) — **DONE** | 30m | t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -25,7 +25,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** w6/123 ([done/123.md](../done/123.md)), found by w6/m333 t005; the user's `/unblock` decision of 2026-11-16 (D2, "授权修复，先验证再切换": authorize the fix, verify before switching), recorded in that note.
+- **Source:** w6/123 ([done/123.md](../123.md)), found by w6/m333 t005; the user's `/unblock` decision of 2026-11-16 (D2, "授权修复，先验证再切换": authorize the fix, verify before switching), recorded in that note.
 - **Goal linkage:** ADR008 Render parity first. Render bills all outbound bandwidth ([outbound bandwidth](https://render.com/docs/outbound-bandwidth), ADR030 §14), and ADR023's rule is "undercount, never invent".
 - **Expected outcome:** a new service's first responses, and a router's first response with a new status code, are billed. In m333's probe that was 5.4 MB of 10 MB.
 - **Why now:** every new service and every short-lived one undercounts today. m333 now bills a deleted service's last hours, so the first-scrape gap is the largest known undercount left in egress.
@@ -52,3 +52,13 @@
 - **Out of scope here.** w6/133 (`e0c68862d`) extended the same rule to Postgres, Key Value and WebSocket egress; this milestone reads only the HTTP source.
 - **Remaining gates:** none.
 - **Next.** t005 re-runs the probe and reads its billed hour (10,000,000 bytes). t006 reads that hour on REST, GraphQL and MCP. t009 closes the milestone.
+
+## Closeout — 2026-11-17
+
+- **Definition of done.**
+  - The `promtool` test is t002's `TestBilledOnPrometheus`.
+  - Old against new on 97 recorded production hours is t003: +0.0325%, and the hours differ only on new series.
+  - ADR023 § New series count from zero records the rule, its guard and the comparison (t004).
+  - On production, t005's probe `qa-20261117-m455-egress-b` served 10,000,000 body bytes and was deleted, and its hour bills 10,000,000. `increase()` reads 3,000,000 for that hour. t006 read the same 10,000,000 on REST, GraphQL and MCP, and the Billing page shows its 0.00931 GB line.
+- **Probe cleanup.** Both probe services (`srv-dbu1hnlikg6s738lasr0`, `srv-dbu9i28gt2jc73dje0g0`) are deleted, and `GET` answers 404. No API key was created, and the QA session was logged out.
+
