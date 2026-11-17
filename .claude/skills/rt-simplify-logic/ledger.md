@@ -8,4 +8,6 @@ None yet.
 
 ## Skipped
 
-None yet.
+- 2026-11-17 lego/backend/internal/apps/blueprint_plan.go probeBlueprintServiceSpec — long but already table-driven (appliers + applies/omits); restructuring risks the plan/apply parity it guards.
+- 2026-11-17 lego/backend/internal/agenttranscript/coalesce.go toolChunk — big switch is a chunk-type dispatch with linear cases, not convoluted logic.
+- 2026-11-17 lego/backend/internal/apps/deploy.go currentStateCopyProblems — deep-looking nesting is loop guards with continue; already in early-exit style.
