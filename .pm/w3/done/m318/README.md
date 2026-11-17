@@ -1,6 +1,6 @@
 # w3 · m318 — Terminated and errored sandboxes stay readable, as on Render
 
-**Worker:** worker3 **Goal:** an ended sandbox answers `GET` with `status: terminated` and `terminatedAt`, lists under `status=terminated`, terminates idempotently, keeps its execution history readable, and refuses a connect-token mint with 409 — on REST, GraphQL and MCP **Status:** blocked — t001–t007 done; t008 Closeout waits on the production deploy and its live check
+**Worker:** worker3 **Goal:** an ended sandbox answers `GET` with `status: terminated` and `terminatedAt`, lists under `status=terminated`, terminates idempotently, keeps its execution history readable, and refuses a connect-token mint with 409 — on REST, GraphQL and MCP **Status:** done — t001–t008 done; live on pin `db48cde2bae9` (2026-11-17)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE** | 30m | t004 |
 | t006 | Simplify — **DONE** | 20m | t005 |
 | t007 | Test coverage — **DONE** | 45m | t005 |
-| t008 | Closeout | 15m | t006, t007 |
+| t008 | Closeout — **DONE** | 15m | t006, t007 |
 
 ## Definition of done
 
@@ -45,3 +45,27 @@
 - **Lifetime-expiry path fails the DoD for a sandbox younger than ten minutes:** `--timeout 60` sandbox `sbx-dbqnb0qibtfs738vkrb0` answered `404 SANDBOX_NOT_FOUND` from 08:16:02 to 08:24:56 UTC, then read `terminated` with `terminatedAt` 08:25:09, nine minutes after it ended. Cause and fix: [w32/017](../../../w32/done/017.md) (`EndAbsentSandboxes`' ten-minute guard and sweep-time stamp).
 - **t008 Closeout waits for w32/017**, because the first DoD bullet names "a lifetime expiry".
 - **2026-11-12 (`/loopx w32`):** w32/017 is fixed in code ([done/017](../../../w32/done/017.md)); t008's lifetime-expiry check can run once a deploy carries it.
+
+## Unblock — 2026-11-17 (`/loopx w3`)
+
+- **Affected:** t008. **Source:** verified evidence, no user decision needed (the gate was a deploy).
+- **Finding:** production pin `db48cde2bae9` (`fc4fbf28a`) contains this milestone's `c2eee0472` and w32/017's fix `b3c448e38`. The production bex-api Deployment runs the pin's `bex-operator@sha256:ced89914…` on 2/2 ready pods (kubectl against the CAPH `bex` cluster, TLS verified against its CA).
+- **Next step:** run t008's live check on that deploy. Its results follow.
+
+## Closeout live check — 2026-11-17 (`/loopx w3`, t008)
+
+QA user, human device login, `bex-canary` (`tea-daif693dqjvc73e7as3g`), the `bex` launcher built from `59ca04834` (`compatible with Render CLI v2.36.0`, upstream unmodified), `https://api.bex.co/v1/`.
+
+- **Terminate path** (`sbx-dbu5msggt2jc73djdl50`, created 13:49:38Z, one `exec` run):
+  - `sandboxes stop --confirm` exits 0, and a repeat stop exits 0. A raw repeat `POST …/terminate` answers 204.
+  - `GET` answers 200 `terminated`, `terminatedAt` 13:49:49.33Z. It is absent from the default list and present under `status=terminated` (REST with `ownerId`, CLI `--status terminated`).
+  - `runs/{sync,stream}/token` and `files/{upload,download}/token` answer 409 `sandbox … was terminated at 2026-11-17T13:49:49Z`. `GET …/execs` still lists the one run.
+  - The CLI's `sandboxes exec … -- true` prints `Error: sandbox sbx-dbu5msggt2jc73djdl50 was terminated at 2026-11-17T13:49:49Z` and exits 1.
+  - GraphQL `sandbox` reads `terminated` with `terminatedAt`, and `sandboxes(ownerId, status: ["terminated"])` lists it. MCP `list_sandboxes` (`status: ["terminated"]`, `workspaceId`) lists it.
+- **Lifetime-expiry path:**
+  - `sbx-dbu5mq6ggh5s73emee8g` was created with `--timeout 60` at 13:49:28.87Z. At +146 s it reads 200 `terminated` with `terminatedAt` 13:50:28.87Z, exactly createdAt + 60 s.
+  - Its mints answer 409 and `exec` prints `was terminated at 2026-11-17T13:50:28Z`. It is listed under `status=terminated` on REST, the CLI, GraphQL and MCP, and absent by default.
+  - A second 60 s sandbox `sbx-dbu5o48gt2jc73djdlgg` was polled every second across its deadline. It reads `running` until −0.2 s, `404 SANDBOX_NOT_FOUND` for about 8.5 s, then `terminated` at +8.3 s with `terminatedAt` exactly at its deadline. Its one run stays listed.
+  - The 404 window is w32/017's unfiled optional step 3: one sweep interval at most, and inside its +90 s acceptance. The nine-minute gap from 2026-11-12 is gone.
+- **30-day retention** (DoD bullet 3): no record is 30 days old yet, because migration 0224 deployed 2026-11-12. The expiry stays covered by `TestSweeperEndsAbsentSandboxesAndExpiresOldRecords`. ADR018 records the window as an assumption to re-check.
+- **Cleanup:** all three fixtures ended by termination or lifetime. `bex-canary` lists 0 live sandboxes, as at the baseline. The CLI logged out, and this run's Kratos session was revoked.
