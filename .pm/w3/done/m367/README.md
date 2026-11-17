@@ -1,6 +1,6 @@
 # w3 · m367 — Render contract round 7: Blueprint cron jobs take `buildSource`, sandbox builds can be deleted, and the pins match Render's 2026-11-12 contracts
 
-**Worker:** worker3 **Goal:** the Blueprint schema, OpenAPI and MCP pins match what Render publishes today. A `render.yaml` that gives a cron job a `buildSource` deploys on bex as it does on Render. `DELETE /v1/sandbox-groups/{id}/builds/{buildId}` deletes an imported image as on Render. The remaining new operations (sandbox-group credentials) are refused by name and recorded. **Status:** blocked (t008: the DoD's production delete check waits on the batched deploy carrying `d8c71580b`; the production pin is batched (`deploy.yml` pins only when the current pin is ≥ 6 h old; the pin was `4c3c68e6b` at 05:33Z, so the next is ~11:33Z 2026-11-13 or later). Then a worker, as the QA user in `bex-canary`, imports a small image into a sandbox group, deletes it (204, gone from list/get/create-by-name, 204 again), and sees a dependent sandbox refuse a delete with 409 `image_in_use` — no user decision needed)
+**Worker:** worker3 **Goal:** the Blueprint schema, OpenAPI and MCP pins match what Render publishes today. A `render.yaml` that gives a cron job a `buildSource` deploys on bex as it does on Render. `DELETE /v1/sandbox-groups/{id}/builds/{buildId}` deletes an imported image as on Render. The remaining new operations (sandbox-group credentials) are refused by name and recorded. **Status:** done (2026-11-17: the production checks passed on pin `db48cde2bae9`; see Closeout)
 
 ## Tasks (in order)
 
@@ -16,7 +16,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t004, t009, t010, t011 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
@@ -53,3 +53,35 @@
   - `429RateLimit` and sandbox error responses were restructured or redescribed.
   - The snapshot `name` filter and `ttlSeconds` apply to snapshots, which bex refuses by name (`sandbox/notoffered.go:50-54`, w32/m285).
 - **Tasks:** t009–t011 were added before the closing tasks, and t005 now depends on them. Total ~5h45m.
+
+## Unblock — 2026-11-17 (`/loopx w3`)
+
+- **Affected:** t008. **Source:** verified evidence. The gate was a deploy, so no user decision was needed.
+- **Finding:**
+  - The latest production pin on `origin/main` is `db48cde2bae9` (`fc4fbf28a`, 12:08Z), and `git merge-base --is-ancestor d8c71580b db48cde2bae9` holds.
+  - bex-api (2/2), the controller manager and the other platform Deployments in `bex-system` run that pin's `bex-operator@sha256:ced89914…`.
+  - kubectl reached the CAPH `bex` cluster through its Hetzner `bex-kube-apiserver` load balancer (labelled `caph-cluster-bex: owned`), with TLS verified against the cluster CA. `scripts/fetch-app-kubeconfig.sh` hit stale `known_hosts` entries, so this session used a teammate's kubeconfig for that endpoint.
+- **Next step:** run t008's production checks in `bex-canary` as the QA user. The results follow.
+
+## Closeout — 2026-11-17 (`/loopx w3`, t008)
+
+Production pin `db48cde2bae9`. Signed in as the QA user (session cookie) in `bex-canary` (`tea-daif693dqjvc73e7as3g`). Details, ids and times are in [t008](done/t008.md).
+
+- **Sandbox build delete (REST):**
+  - Group `sbg-dbu6b1ggt2jc73djdn10` imported `busybox:1.36.1` as `sbb-dbu6b2eggh5s73emefg0` (`succeeded` in 2 s), and its registry tag `image` was present.
+  - A sandbox started from it by name. The delete answered 409 `image_in_use`, naming that sandbox, and did so again while the sandbox was suspended.
+  - After the sandbox was terminated, the delete answered 204. Get-by-id answered 404 `build_not_found`, the list and the list by name were empty, and a sandbox create by `buildName` or `buildId` answered 404. A repeated delete answered 204.
+  - The registry manifest then answered 404, and the repository listed no tags.
+- **GraphQL and MCP:** `deleteSandboxImage` and `delete_sandbox_image` each returned true twice. The image then read as not found and its registry tag was gone.
+- **Credentials:** all seven sandbox-group credential operations answered 404 `SANDBOX_CREDENTIALS_UNSUPPORTED`.
+- **Blueprint cron `buildSource`:** this was walked on production rather than dev-3.
+  - A `render.yaml` declared an image build source (`hello-world:latest`) and a `type: cron` with `buildSource:`, no `runtime` and `* * * * *`. Validate planned two creates. `POST /v1/blueprints/deploy` created `srv-dbu6d3ogt2jc73djdn90`, linked to `bds-dbu6d3ggt2jc73djdn70`.
+  - The 14:38 and 14:39 runs were `successful`. Their logs carry hello-world's output, and the CronJob's image is `docker.io/library/hello-world:latest`.
+  - The export (`POST /v1/blueprints/generate`) writes `buildSources` and the cron's `buildSource:`, and re-validates as a no-op plan.
+  - `runtime`, `rootDir` and `dockerfilePath` beside the cron's `buildSource`, and `rootDir` beside a web service's, were each refused with the schema path.
+  - Every fixture was deleted (204, then 404). `bex-canary` again holds only `hello-go` and its Default sandbox group, and no m367 Kubernetes objects remain.
+- **Drift scripts:**
+  - The Blueprint schema still matches this milestone's pin (`6c6721a6…`). The REST pin, now at 264 operations after w8/m442's round 8, matches too.
+  - `render-schema-drift.sh` is red only on the Render CLI v2.37.0 release, which w22/m444 owns.
+  - `render-mcp-drift.sh` is red because upstream added `run_cron_job` and `cancel_cron_job_run` after the 2026-11-16 run. Both are newer than round 7. They are filed as [068](../../068.md).
+- **Filed:** [069](../../069.md). A Blueprint `dockerCommand` beside a Docker or image `buildSource` is refused, though Render's schema allows it. The cron above therefore uses its image's default command.
