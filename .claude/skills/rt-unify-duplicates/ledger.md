@@ -4,7 +4,7 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Deferred
 
-- 2026-11-16 Pre-deploy label key (`app.bex.co/predeploy`) — hand-spelled in backend `core.PodLabelPreDeploy` and operator `predeploy.LabelService`; same unify-to-`lego/types` class as the 2026-11-16 App-label fix, left out to keep that change to its 7 scoped keys
+(none)
 
 ## Skipped
 

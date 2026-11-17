@@ -52,8 +52,8 @@ const (
 	AppContainer     = "app"
 	// PodLabelPreDeploy + PreDeployContainer name the pre-deploy step's Job pod
 	// (w1/m33, lego/operator/internal/predeploy) so the logs feature can read a
-	// migration's output. Kept in sync by hand, like PodLabelApp above.
-	PodLabelPreDeploy  = "app.bex.co/predeploy"
+	// migration's output. Aliases the v1alpha1 canonical.
+	PodLabelPreDeploy  = appv1alpha1.LabelPreDeploy
 	PreDeployContainer = "predeploy"
 	// PodLabelComponent marks a pod an App's execution step runs in (the
 	// pre-deploy Job, a build or publish in the App's namespace), which also

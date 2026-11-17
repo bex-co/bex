@@ -67,8 +67,10 @@ import (
 // Pod/Job labels. The predeploy label carries the service name (like build's
 // "app.bex.co/build") so the backend can find the step's pod for its logs; the
 // component label lets a namespace-wide list distinguish pre-deploy Jobs.
+// LabelService aliases the canonical key in lego/types (v1alpha1), which the
+// backend also reads.
 const (
-	LabelService = "app.bex.co/predeploy"
+	LabelService = appv1alpha1.LabelPreDeploy
 	// LabelEgressAppID mirrors egressmeter.PodLabelEgressAppID.
 	LabelEgressAppID = "app.bex.co/egress-app-id"
 	// LabelComponent and labelWorkspace alias the canonical keys in
