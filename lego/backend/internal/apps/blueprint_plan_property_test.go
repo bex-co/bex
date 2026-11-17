@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"reflect"
 	"strconv"
@@ -607,6 +608,66 @@ func TestApplyBlueprintDatabaseSpecIdempotentAndAgrees(t *testing.T) {
 		}
 		blueprintDatabaseAgreement(t, live, appv1alpha1.DatabaseSpec{StorageGB: 15}, map[string]BlueprintField{"diskSizeGB": {}})
 	})
+}
+
+// A database's name and owner role are immutable identities: the stored value,
+// or, for a database created without one, the default the operator derived
+// from its resource id. The plan must refuse exactly what applyDatabase
+// refuses, so the truth table below crosses the stored value (named, unnamed)
+// with the declaration (the stored identity, the derived default, another
+// name): only another name is refused, and an accepted declaration never
+// rewrites the spec. Until this was pinned the plan judged only a non-empty
+// stored value, so a database created without a databaseName planned an
+// update for any declared name and the apply then refused it.
+func TestApplyBlueprintDatabaseSpecIdentityTruthTable(t *testing.T) {
+	t.Parallel()
+	const resourceID = "dpg-abc"
+	derivedName := appv1alpha1.DefaultPostgresDatabaseName(resourceID)
+	derivedUser := derivedName + "_user"
+	for _, tc := range []struct {
+		name               string
+		storedName, stored string
+		declaredName       string
+		declaredUser       string
+		refused            string
+	}{
+		{name: "named: same identity", storedName: "orders_db", stored: "orders_user", declaredName: "orders_db", declaredUser: "orders_user"},
+		{name: "named: another name", storedName: "orders_db", stored: "orders_user", declaredName: "other", declaredUser: "orders_user", refused: "databaseName"},
+		{name: "named: another user", storedName: "orders_db", stored: "orders_user", declaredName: "orders_db", declaredUser: "other", refused: "user"},
+		{name: "named: the derived default is another name", storedName: "orders_db", stored: "orders_user", declaredName: derivedName, declaredUser: "orders_user", refused: "databaseName"},
+		{name: "unnamed: the derived identity", declaredName: derivedName, declaredUser: derivedUser},
+		{name: "unnamed: another name", declaredName: "other", declaredUser: derivedUser, refused: "databaseName"},
+		{name: "unnamed: another user", declaredName: derivedName, declaredUser: "other", refused: "user"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			live := &appv1alpha1.Database{
+				ObjectMeta: metav1.ObjectMeta{Name: resourceID, Namespace: "default"},
+				Spec:       appv1alpha1.DatabaseSpec{Name: "orders", Plan: "basic-256mb", DatabaseName: tc.storedName, DatabaseUser: tc.stored},
+			}
+			// applyDatabase's own guard, which the plan must agree with.
+			applyRefuses := tc.declaredName != live.Spec.EffectiveDatabaseName(live.Name) ||
+				tc.declaredUser != live.Spec.EffectiveDatabaseUser(live.Name)
+			if applyRefuses != (tc.refused != "") {
+				t.Fatalf("model error: applyDatabase refuses=%v, table expects %q", applyRefuses, tc.refused)
+			}
+			want := appv1alpha1.DatabaseSpec{DatabaseName: tc.declaredName, DatabaseUser: tc.declaredUser}
+			fields := map[string]BlueprintField{"databaseName": {}, "user": {}}
+			probe := live.DeepCopy()
+			changed, err := ApplyBlueprintDatabaseSpec(probe, want, fields, blueprintTestNow)
+			if tc.refused != "" {
+				var conflict *BlueprintFieldConflictError
+				if !errors.As(err, &conflict) || conflict.Path != tc.refused {
+					t.Fatalf("want a %s conflict, got changed=%v err=%v", tc.refused, changed, err)
+				}
+				return
+			}
+			if err != nil || changed || !reflect.DeepEqual(probe.Spec, live.Spec) {
+				t.Fatalf("declaring the database's own identity: changed=%v err=%v spec=%#v", changed, err, probe.Spec)
+			}
+			blueprintDatabaseAgreement(t, live, want, fields)
+		})
+	}
 }
 
 // blueprintKeyValueAgreement is the key-value twin of blueprintDatabaseAgreement.

@@ -549,17 +549,16 @@ func ApplyBlueprintDatabaseSpec(db *appv1alpha1.Database, want appv1alpha1.Datab
 	before := *db.Spec.DeepCopy()
 	dst := before.DeepCopy()
 	present := func(name string) bool { _, ok := fields[name]; return ok }
-	if present("databaseName") {
-		if dst.DatabaseName != "" && want.DatabaseName != dst.DatabaseName {
-			return false, &BlueprintFieldConflictError{Path: "databaseName", Message: "is immutable after creation"}
-		}
-		dst.DatabaseName = want.DatabaseName
+	// databaseName and user name the database and role the cluster already
+	// runs: the stored value, or, when a create named none, the default the
+	// operator derived from the resource id. A declaration of either is a
+	// no-op; anything else is refused, as applyDatabase refuses it, so the
+	// plan never offers an update the apply would refuse.
+	if present("databaseName") && want.DatabaseName != dst.DatabaseName && want.DatabaseName != dst.EffectiveDatabaseName(db.Name) {
+		return false, &BlueprintFieldConflictError{Path: "databaseName", Message: "is immutable after creation"}
 	}
-	if present("user") {
-		if dst.DatabaseUser != "" && want.DatabaseUser != dst.DatabaseUser {
-			return false, &BlueprintFieldConflictError{Path: "user", Message: "is immutable after creation"}
-		}
-		dst.DatabaseUser = want.DatabaseUser
+	if present("user") && want.DatabaseUser != dst.DatabaseUser && want.DatabaseUser != dst.EffectiveDatabaseUser(db.Name) {
+		return false, &BlueprintFieldConflictError{Path: "user", Message: "is immutable after creation"}
 	}
 	if present("plan") {
 		dst.Plan = want.Plan
