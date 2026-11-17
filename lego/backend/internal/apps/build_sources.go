@@ -956,12 +956,13 @@ func sourceForImageRules(spec appv1alpha1.AppSpec, carrier *appv1alpha1.App) app
 	return source
 }
 
-// linkedBuildView is app as a REST read states it: a service linked to a
+// linkedBuildView is app as a REST or MCP read states it: a service linked to a
 // build source reads the source's runtime, which Render's serviceDetails
 // requires as runtime and env and which "the build source provides"
 // (Render's create-service), and the source's build settings, which the
 // service's own spec has cleared (linkBuildSourceSpec). envSpecificDetails
-// then takes that runtime's shape around the service's own command (w3/070).
+// then takes that runtime's shape around the service's own command (w3/070;
+// MCP since w3/071).
 // carriers caches each build source for a page; one that cannot be read
 // leaves app as it is.
 func (s *Service) linkedBuildView(ctx context.Context, app AppView, carriers map[string]*appv1alpha1.App) AppView {

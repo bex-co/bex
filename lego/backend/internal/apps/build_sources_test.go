@@ -26,10 +26,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -734,4 +737,178 @@ func TestLinkedServiceReadsItsBuildSourceRuntime(t *testing.T) {
 	if want := map[string]int{native.ID: 1 + 2, docker.ID: 1 + 1, image.ID: 1 + 2}; !reflect.DeepEqual(reads, want) {
 		t.Errorf("build source reads = %v, want one per source for the list, then one per get: %v", reads, want)
 	}
+}
+
+// linkedMCPBlueprint links services to a native, a Docker and an image build
+// source, as the MCP deploy tool creates them (w3/071).
+const linkedMCPBlueprint = `
+buildSources:
+  - name: mono
+    git:
+      repo: https://github.com/acme/mono
+      branch: main
+      runtime: node
+      buildCommand: npm ci && npm run build
+  - name: dock
+    git:
+      repo: https://github.com/acme/mono
+      branch: main
+      runtime: docker
+      rootDir: backend
+      dockerfilePath: api.Dockerfile
+  - name: img
+    image:
+      url: docker.io/library/busybox:1.36.1
+services:
+  - type: web
+    name: api
+    buildSource: mono
+    startCommand: node api.js
+  - type: cron
+    name: job
+    buildSource: mono
+    schedule: "0 3 * * *"
+    startCommand: node job.js
+  - type: web
+    name: dweb
+    buildSource: dock
+    dockerCommand: ./serve
+  - type: web
+    name: iweb
+    buildSource: img
+    dockerCommand: httpd -f -p 10000
+  - type: cron
+    name: ijob
+    buildSource: img
+    schedule: "0 3 * * *"
+    dockerCommand: date
+`
+
+// w3/071: MCP's service results state a linked service's build source runtime
+// as REST does. The deploy tool that creates linked services, get_service,
+// list_services and link_service_to_build_source answer the same
+// serviceDetails runtime, env and envSpecificDetails as REST's GET, for a
+// native, a Docker and an image build source. A list reads each source once.
+func TestLinkedServiceMCPReadsMatchREST(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	svc.Metadata = resourcemeta.Config{Region: "fsn1", DashboardBaseURL: "https://dashboard.bex.co"}
+	reads := map[string]int{}
+	svc.Client = interceptor.NewClient(svc.Client.(client.WithWatch), interceptor.Funcs{
+		List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+			var o client.ListOptions
+			o.ApplyOptions(opts)
+			if o.LabelSelector != nil {
+				if id, ok := o.LabelSelector.RequiresExactMatch(core.LabelAppID); ok && strings.HasPrefix(id, "bds-") {
+					reads[id]++
+				}
+			}
+			return c.List(ctx, list, opts...)
+		},
+	})
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	restDetails := func(name string) map[string]any {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+name, nil).WithContext(ctx))
+		var got struct {
+			ServiceDetails map[string]any `json:"serviceDetails"`
+		}
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &got) != nil {
+			t.Fatalf("REST GET %s = %d %s", name, rec.Code, rec.Body.String())
+		}
+		return got.ServiceDetails
+	}
+	server := mcp.NewServer(&mcp.Implementation{Name: "w3-071", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	a, b := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(ctx, a, nil); err != nil {
+		t.Fatal(err)
+	}
+	session, err := mcp.NewClient(&mcp.Implementation{Name: "w3-071", Version: "0"}, nil).Connect(context.Background(), b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	call := func(tool string, args map[string]any, out any) {
+		t.Helper()
+		res, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: tool, Arguments: args})
+		if err != nil || res.IsError || len(res.Content) == 0 {
+			t.Fatalf("%s = %+v, %v", tool, res, err)
+		}
+		if err := json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), out); err != nil {
+			t.Fatalf("%s text: %v", tool, err)
+		}
+		if tool == "get_service" || tool == "list_services" {
+			rendertest.AssertRenderMCPResult(t, tool, res)
+		}
+	}
+	type service struct {
+		Name           string         `json:"name"`
+		ServiceDetails map[string]any `json:"serviceDetails"`
+	}
+	runtimes := map[string]string{"api": "node", "job": "node", "dweb": "docker", "iweb": "image", "ijob": "image"}
+	same := func(surface string, got service) {
+		t.Helper()
+		want := restDetails(got.Name)
+		if want["runtime"] != runtimes[got.Name] {
+			t.Fatalf("REST %s runtime = %v, want %s", got.Name, want["runtime"], runtimes[got.Name])
+		}
+		for _, field := range []string{"runtime", "env", "envSpecificDetails"} {
+			if !reflect.DeepEqual(got.ServiceDetails[field], want[field]) {
+				t.Errorf("MCP %s %s serviceDetails.%s = %v, want REST's %v", surface, got.Name, field, got.ServiceDetails[field], want[field])
+			}
+		}
+	}
+
+	var stack struct {
+		Services     []service              `json:"services"`
+		BuildSources []StackBuildSourceView `json:"buildSources"`
+	}
+	call("deploy", map[string]any{"bexYaml": linkedMCPBlueprint}, &stack)
+	if len(stack.Services) != len(runtimes) {
+		t.Fatalf("deploy services = %d, want %d", len(stack.Services), len(runtimes))
+	}
+	for _, s := range stack.Services {
+		same("deploy", s)
+	}
+	for name := range runtimes {
+		var got service
+		call("get_service", map[string]any{"serviceId": name}, &got)
+		same("get_service", got)
+	}
+
+	clear(reads)
+	var page []service
+	call("list_services", map[string]any{}, &page)
+	if len(page) != len(runtimes) {
+		t.Fatalf("list_services = %d services, want %d", len(page), len(runtimes))
+	}
+	if len(reads) != 3 {
+		t.Errorf("list_services read build sources %v, want each of the three", reads)
+	}
+	for id, n := range reads {
+		if n != 1 {
+			t.Errorf("list_services read build source %s %d times, want once", id, n)
+		}
+	}
+	for _, s := range page {
+		same("list_services", s)
+	}
+
+	// Linking an existing service answers with the source's runtime too.
+	if _, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: "solo", Repo: "https://github.com/acme/solo", Runtime: "python",
+		BuildCommand: "pip install -r requirements.txt", StartCommand: "python app.py"}); err != nil {
+		t.Fatal(err)
+	}
+	var mono string
+	for _, source := range stack.BuildSources {
+		if source.Name == "mono" {
+			mono = source.ID
+		}
+	}
+	runtimes["solo"] = "node"
+	var linked service
+	call("link_service_to_build_source", map[string]any{"serviceId": "solo", "buildSourceId": mono, "startCommand": "node solo.js"}, &linked)
+	same("link_service_to_build_source", linked)
 }

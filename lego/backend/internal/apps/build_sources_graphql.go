@@ -347,7 +347,7 @@ func (s *Service) registerBuildSourceTools(srv *mcp.Server) {
 		Name:        "link_service_to_build_source",
 		Description: "Make a service build from a build source, as Render's update-service buildSourceId does: its own repo or image is cleared, and the link is saved without deploying (trigger a deploy to use it). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in linkBuildSourceArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.LinkBuildSource(ctx, in.ServiceID, in.BuildSourceID, in.StartCommand, in.DryRun))
+		return s.renderServiceResult(ctx)(s.LinkBuildSource(ctx, in.ServiceID, in.BuildSourceID, in.StartCommand, in.DryRun))
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_build_source",

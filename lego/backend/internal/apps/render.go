@@ -936,16 +936,6 @@ func toRenderHeaderObjects(serviceID string, headers []StaticHeaderView) []rende
 		})
 }
 
-// toRenderServices maps a slice of AppViews to bare Render service objects (no
-// cursor envelope) — the shape the MCP list_services tool returns.
-func toRenderServices(apps []AppView) []renderService {
-	out := make([]renderService, 0, len(apps))
-	for _, a := range apps {
-		out = append(out, toRenderService(a))
-	}
-	return out
-}
-
 func (s *Service) restServiceList(ctx context.Context, apps []AppView, cursorOf func(AppView) string) []serviceWithCursor {
 	rendered := s.restServices(ctx, apps)
 	out := make([]serviceWithCursor, 0, len(apps))

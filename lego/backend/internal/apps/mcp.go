@@ -451,8 +451,8 @@ type renderStack struct {
 }
 
 // toRenderStack maps a StackResult onto the MCP deploy result shape.
-func toRenderStack(res StackResult) renderStack {
-	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases, KeyValues: res.KeyValues, EnvGroups: res.EnvGroups, BuildSources: res.BuildSources}
+func (s *Service) toRenderStack(ctx context.Context, res StackResult) renderStack {
+	return renderStack{Services: s.mcpServices(ctx, res.Services), Databases: res.Databases, KeyValues: res.KeyValues, EnvGroups: res.EnvGroups, BuildSources: res.BuildSources}
 }
 
 // validateBlueprintArgs is validate_bex_yml's input; the wire name remains
@@ -710,7 +710,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 			return nil, nil, err
 		}
 		// Render's text: the bare service array (pkg/service/tools.go).
-		return mcputil.RenderText(toRenderServices(apps))
+		return mcputil.RenderText(s.mcpServices(ctx, apps))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -737,7 +737,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		if err != nil {
 			return nil, serviceAndDeploy{}, err
 		}
-		return createdServiceResult(s.Create(ctx, req))
+		return s.createdServiceResult(ctx)(s.Create(ctx, req))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -748,7 +748,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		if err != nil {
 			return nil, serviceAndDeploy{}, err
 		}
-		return createdServiceResult(s.Create(ctx, req))
+		return s.createdServiceResult(ctx)(s.Create(ctx, req))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -759,7 +759,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		if err != nil {
 			return nil, serviceAndDeploy{}, err
 		}
-		return createdServiceResult(s.Create(ctx, req))
+		return s.createdServiceResult(ctx)(s.Create(ctx, req))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -837,7 +837,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		if err != nil {
 			return nil, renderStack{}, err
 		}
-		return nil, toRenderStack(res), nil
+		return nil, s.toRenderStack(ctx, res), nil
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -857,7 +857,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		Name:        "suspend_service",
 		Description: "Suspend a service: scale to zero, keeping host and certificates. In a protectedStatus=protected Environment only a workspace Admin may suspend (w8/187); no confirm phrase is needed. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.Suspend(core.WithConfirm(ctx, in.Confirm), in.ServiceID))
+		return s.renderServiceResult(ctx)(s.Suspend(core.WithConfirm(ctx, in.Confirm), in.ServiceID))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -869,14 +869,14 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		Name:        "scale_service",
 		Description: "Scale a service to a specific number of running instances (numInstances, 1-100). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in scaleArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.Scale(ctx, in.ServiceID, in.NumInstances))
+		return s.renderServiceResult(ctx)(s.Scale(ctx, in.ServiceID, in.NumInstances))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_service",
 		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (repo, image, branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). Changes are saved without deploying, as Render's Update Service: the service reports undeployedChanges until you call trigger_deploy, which applies every saved change together (repo or image switches the source kind; rootDir and dockerfilePath take effect as a fresh build). A plan change is the exception and applies at once. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to check any update and preview its result without writes. Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateServiceArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.applyServicePatch(core.WithConfirm(ctx, in.Confirm), in))
+		return s.renderServiceResult(ctx)(s.applyServicePatch(core.WithConfirm(ctx, in.Confirm), in))
 	})
 
 }
@@ -1160,31 +1160,51 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 // verb handlers use, so the surfaces stay identical.
 func (s *Service) serviceTool(fn func(context.Context, string) (AppView, error)) mcp.ToolHandlerFor[serviceArgs, renderService] {
 	return func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(fn(ctx, in.ServiceID))
+		return s.renderServiceResult(ctx)(fn(ctx, in.ServiceID))
 	}
 }
 
-// renderServiceResult adapts a service verb's (AppView, error) return into the
-// MCP tool result shape — serviceTool's value-level sibling for handlers that
-// take extra arguments.
-func renderServiceResult(app AppView, err error) (*mcp.CallToolResult, renderService, error) {
-	if err != nil {
-		return nil, renderService{}, err
+// mcpServices projects apps as MCP's service results. A service linked to a
+// build source reads the source's runtime and build settings, as REST's
+// restServices does (linkedBuildView, one read per build source; w3/071).
+func (s *Service) mcpServices(ctx context.Context, apps []AppView) []renderService {
+	carriers := map[string]*appv1alpha1.App{}
+	out := make([]renderService, 0, len(apps))
+	for _, app := range apps {
+		out = append(out, toRenderService(s.linkedBuildView(ctx, app, carriers)))
 	}
-	out := toRenderService(app)
-	return mcputil.WithWarning(out, core.ProxiedAllowListWarning(app.IPAllowListProxiedDomains)), out, nil
+	return out
+}
+
+func (s *Service) mcpService(ctx context.Context, app AppView) renderService {
+	return s.mcpServices(ctx, []AppView{app})[0]
+}
+
+// renderServiceResult adapts a service verb's (AppView, error) return into the
+// MCP tool result shape, read in ctx — serviceTool's value-level sibling for
+// handlers that take extra arguments: s.renderServiceResult(ctx)(s.Scale(…)).
+func (s *Service) renderServiceResult(ctx context.Context) func(AppView, error) (*mcp.CallToolResult, renderService, error) {
+	return func(app AppView, err error) (*mcp.CallToolResult, renderService, error) {
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		out := s.mcpService(ctx, app)
+		return mcputil.WithWarning(out, core.ProxiedAllowListWarning(app.IPAllowListProxiedDomains)), out, nil
+	}
 }
 
 // createdServiceResult is the create tools' result: Render's ServiceAndDeploy
 // ({service, deployId}), the envelope its MCP server and bex's REST create both
 // return (w4/m378), so an agent learns the first deploy without list_deploys.
 // A dry run mints no deploy, so its deployId is omitted.
-func createdServiceResult(app AppView, err error) (*mcp.CallToolResult, serviceAndDeploy, error) {
-	if err != nil {
-		return nil, serviceAndDeploy{}, err
+func (s *Service) createdServiceResult(ctx context.Context) func(AppView, error) (*mcp.CallToolResult, serviceAndDeploy, error) {
+	return func(app AppView, err error) (*mcp.CallToolResult, serviceAndDeploy, error) {
+		if err != nil {
+			return nil, serviceAndDeploy{}, err
+		}
+		out := serviceAndDeploy{Service: s.mcpService(ctx, app), DeployID: app.LatestDeployID}
+		return mcputil.WithWarning(out, core.ProxiedAllowListWarning(app.IPAllowListProxiedDomains)), out, nil
 	}
-	out := serviceAndDeploy{Service: toRenderService(app), DeployID: app.LatestDeployID}
-	return mcputil.WithWarning(out, core.ProxiedAllowListWarning(app.IPAllowListProxiedDomains)), out, nil
 }
 
 // customDomainResult is renderServiceResult's twin for the domain verbs.
