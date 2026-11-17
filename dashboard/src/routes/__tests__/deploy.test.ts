@@ -7,7 +7,10 @@ function redirectFor(
   referrer = "",
 ): { to?: string; search?: Record<string, string> } {
   vi.spyOn(document, "referrer", "get").mockReturnValue(referrer);
-  const beforeLoad = DeployRoute.options.beforeLoad as (ctx: {
+  // Through unknown: the router's full BeforeLoadContextOptions is not
+  // comparable to this one-key context on every checker (it failed `yarn
+  // typecheck` on macOS while Linux CI passed), and the hook reads only search.
+  const beforeLoad = DeployRoute.options.beforeLoad as unknown as (ctx: {
     search: { repo?: string; path?: string };
   }) => void;
   try {
