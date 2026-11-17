@@ -1,6 +1,6 @@
 # w22 · m413 — A Stop turn keeps its work: the interrupted turn's disk is retained and the next message continues from it, as on Devin
 
-**Worker:** worker22 **Goal:** after a user stops a turn, the agent's uncommitted and unpushed work is still in the checkout when the next message starts, for a bounded time and with the user told how long, and Stop shows within seconds. **Status:** todo (t001–t007 done; t008's live check is unblocked 2026-11-16 by the user's decision D4, see "解阻记录 2026-11-16"; t009 closes after it)
+**Worker:** worker22 **Goal:** after a user stops a turn, the agent's uncommitted and unpushed work is still in the checkout when the next message starts, for a bounded time and with the user told how long, and Stop shows within seconds. **Status:** done (2026-11-17: the live check ran on `dev-10` with the `agent-stub` test double and on production through the isolation matrix, run 44042279676; see "Live check 2026-11-17")
 
 ## Tasks (in order)
 
@@ -13,8 +13,8 @@
 | t005 | Render parity (Devin) — **DONE** | 30m | t003, t004 |
 | t006 | Simplify — **DONE** | 20m | t005 |
 | t007 | Test coverage — **DONE** | 45m | t005 |
-| t008 | Live check: an interrupted turn's uncommitted work is there in the next turn | 1h | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t008 | Live check: an interrupted turn's uncommitted work is there in the next turn — **DONE** | 1h | t006 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -26,13 +26,39 @@
 ## Source + Goal linkage
 
 - **Source:** inbox note w22/012 (promoted 2026-11-14 by `/loopx w22`), user decision D3 of `/unblock w22` on 2026-11-14 (option A: keep the interrupted turn's work by retaining the sandbox's disk, no change to ADR090's Git custody), and the sandbox lifecycle map of the same day, which showed that a literal OpenSandbox resume keeps the old prompt, secrets and stale status files, so the worker chose to retain the disk as an image and boot the next turn's sandbox from it. Devin: a sleeping session's machine is kept and can be resumed for 14 days ([release notes](https://docs.devin.ai/release-notes/2026), 2026-09-25, 2026-10-05, 2026-10-09).
-- **Goal linkage:** ADR008's AI-native thesis and pillar 5 (agent sessions); the reference product is Devin ([ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md)).
+- **Goal linkage:** ADR008's AI-native thesis and pillar 5 (agent sessions); the reference product is Devin ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md)).
 - **Expected outcome:** a customer who stops an agent mid-task and says "continue" keeps the half-written code, instead of finding it gone.
 - **Why now:** w22/m403 shipped Stop turn on 2026-11-14 with this as its largest known gap, and the user chose the fix the same day.
 - **Render parity included (reference product: Devin):** REST, GraphQL, MCP, the dashboard and the CLI change.
 - **Deviation from the decision's wording, stated:** the decision said "suspend the sandbox and resume it". The mechanism here is "retain the disk as an image and start the next sandbox from it", with the same outcome for the customer (the work survives, ADR090 untouched, bounded retention, absorbed cost), because a resumed pod would keep the old turn's env and files.
 
-## Gate: t008 (the live check) — cleared 2026-11-16, see "解阻记录 2026-11-16"
+## Live check 2026-11-17 (t008, /loopx w22)
+
+Run on `dev-10` (w22 has no slot) on the local kind/CAPD cluster with the agent leg and the `agent-stub` test double: bex-api, the SSH gateway and the driver from this tree, a real OpenSandbox pod per turn, the controller's commit Job and the cluster's Zot. No model was called locally. Then once on production through the isolation matrix. The sessions had no repository (the throwaway GitHub App cannot mint tokens), so "an unpushed commit" is a commit in a repository made in the working directory. `dev-10`, its agent leg and its tenant namespaces are removed; the cluster and colima are left running.
+
+**Why every stopped turn read `lost`, `save_failed` on `dev-10` before (the m403 record):** the dev agent leg had no sandbox registry. bex-api ran without `BEX_SANDBOX_SNAPSHOT_REGISTRY_URL` and the OpenSandbox controller without its snapshot flags, so the save stopped at "repository environment images need the sandbox registry". It was the test stack, not the product. `agent-up` now wires both to the cluster's Zot as production does (`9525122ec`), and with that the same code kept the disk.
+
+**Step 1, the disk is kept and the next turn starts from it (REST, session token):**
+
+1. Turn 1's prompt had the stub run `echo m413-uncommitted > m413-kept.txt`, `git init` and an empty commit in `/workspace`, then hold. The file was on the sandbox's root filesystem.
+2. Stop turn: `202`. The session read `completed` and steerable at the first read 5 s later; the turn's `completedAt` is 2 s after the request. The turn read `interrupted: true`, `retention: saving`.
+3. The commit Job ran 29 s. 38 s after the Stop the turn read `retention: kept`, `retainedUntil` 24 h ahead, and bex-api logged the image at 1.01 GB.
+4. A follow-up message: `200`, a new sandbox Ready in 6 s whose image is `…/snapshots/<ws>-sandbox/images/ari-…@sha256:…`. Its shell printed `m413-uncommitted`, the commit `m413-unpushed-commit`, and `?? m413-kept.txt` (still uncommitted). Turn 1 then read `retention: continued`.
+5. A minute later the registry listed no tag for the retained image and none for the stopped sandbox's pause snapshot.
+
+**Step 2, the retention expires (`BEX_AGENT_INTERRUPT_RETENTION=90s`):** the turn read `kept` with `retainedUntil` 90 s after the save, and `lost` with `retentionLostReason: expired` at the first read after that time (4 s). bex-api logged "released 1 retained images" and the registry listed no tag. The follow-up message ran in a fresh sandbox: `ls -a` showed an empty `/workspace` and `cat m413-kept.txt` answered "No such file or directory". The session's `deliveryNote` was empty: the loss is told on the stopped turn (`lost`, `expired`), not on the next one.
+
+**Cancel:** a session canceled while its turn read `kept` read `lost`, `canceled` 3 s later, and the image's tags were gone.
+
+**Production (isolation-matrix run 44042279676, 2026-11-17, `verify_agent_driver` and `verify_agent_retention`):** on a disposable workspace with a placeholder key and the turn held (no model request left the cluster), the probe wrote a file in the agent sandbox's `/workspace`, stopped the turn, saw `interrupted` and `kept` with a retention time, sent a message, found the new gVisor sandbox running the retained image and holding the file, canceled the session, and found no retained image and no pause snapshot of that sandbox in production's registry. All three lines passed. The run's leftover audit listed no probe namespace; it listed the App `verify-iso-b`, a fixture of the tenant matrix, as run 43687264273 did before this probe existed. The probe is `scripts/lib/verify-agent-retention.sh` (`47647638e`), opt-in on a dispatch. Run against `dev-10` first, it passed with retention on and failed in seconds with `BEX_AGENT_INTERRUPT_RETENTION=0`.
+
+**The definition of done, as verified:** seen live: the disk kept and continued from, the retention time and its expiry, deletion on expiry, on Cancel and after a continuation, a Stop that settles in 2 s. Covered by the automated tests of t002 to t007 only, not run live: GraphQL, MCP, the dashboard note and `bex agent` (the live reads were REST), deletion on delete, archive and workspace purge, the storage cap, a failed pause, and a session with a real repository and a pushed branch. ADR090 is unchanged: nothing was committed or pushed by the driver or bex-api in any run.
+
+**What it took, beyond m402's and m403's notes:** the agent image is 4.6 GB and is loaded onto all three nodes, so the colima VM's disk went from 26 to 21 GiB free; the Mac's data volume, which the 25 GiB guard is about, had 87 GiB free. The stub gained `stub-run:<command>`: it answers with one call of the engine's shell tool and then replies with the output.
+
+**To repeat:** bring up as in m402's record, `agent-stub`, seed a placeholder model key, create a session with a task of `stub-run:echo x > kept.txt` on one line and `stub-hold:600` on the next, `POST …/interrupt`, read `GET …/transcript` until `turns[0].retention` is `kept`, then `POST …/steer` with `stub-run:cat kept.txt`. For the expiry, `DEV_AGENT_INTERRUPT_RETENTION=90s bash scripts/dev-env.sh <N> up`. On production: `gh workflow run isolation-matrix.yml -f verify_agent_retention=true`.
+
+## Gate: t008 (the live check) — cleared 2026-11-16, see "解阻记录 2026-11-16"; done 2026-11-17
 
 (The gate as it stood on 2026-11-15, kept for history.) **BLOCKED — needs, from the user or infra, a running stack with a sandbox cluster, or the user's authorization for one production agent probe.** Everything shipped is verified against fakes, real Postgres and the CLI, dashboard and API contract tests; nothing has yet watched a real sandbox keep its disk through a Stop and boot the next turn from it. As of 2026-11-15 the machine this ran on has `docker` (colima, 4 CPUs, 7.7 GiB) but no `kind` or `clusterctl`, so `scripts/dev-env.sh <N> up` with the agent leg cannot bring up the shared kind/CAPD cluster (the same gate as [m403 t011](../m403/README.md) and m402 t006; one environment clears all three).
 

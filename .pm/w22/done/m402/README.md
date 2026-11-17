@@ -103,7 +103,7 @@ Run on `dev-10` (w22 has no slot) with the agent leg, because only that leg has 
 
 ## 解阻记录 2026-11-16（/unblock w22）
 
-- **来源：** 用户决定 **D4**（2026-11-16）：对"本机搭建 + 生产探针"的推荐项回复 "ok, approve"。完整范围和复核证据记在 [m413 的同名记录](../../m413/README.md)；本项只用其中的**本机部分**，**没有生产探针**：不要在生产的 workspace 上开 2FA 强制（原来的路径 2 里"这一点未验证"仍然成立，用户没有批准）。
+- **来源：** 用户决定 **D4**（2026-11-16）：对"本机搭建 + 生产探针"的推荐项回复 "ok, approve"。完整范围和复核证据记在 [m413 的同名记录](../m413/README.md)；本项只用其中的**本机部分**，**没有生产探针**：不要在生产的 workspace 上开 2FA 强制（原来的路径 2 里"这一点未验证"仍然成立，用户没有批准）。
 - **本机部分（已批准）：**
   1. 装 `kind`、`clusterctl`（brew，或带 sha256 校验的二进制放进 scratchpad，worker 选）。
   2. colima 默认 profile 改成 8 CPU / 16 GiB 并启动（现在是停止的，4 CPU / 8 GiB；`bex-w21` 共用这个 Docker，启动前看一眼 `docker ps`）。

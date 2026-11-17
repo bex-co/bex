@@ -43,7 +43,7 @@
 
 ## 解阻记录 2026-11-16（/unblock w22）
 
-- **来源：** 用户决定 **D4**（2026-11-16）：对"本机搭建 + 生产探针"的推荐项回复 "ok, approve"。提问里这一项写的是"让 m312 先试免费的本地 gVisor+Cilium 节点"；完整的本机范围和复核证据记在 [m413 的同名记录](../../m413/README.md)。
+- **来源：** 用户决定 **D4**（2026-11-16）：对"本机搭建 + 生产探针"的推荐项回复 "ok, approve"。提问里这一项写的是"让 m312 先试免费的本地 gVisor+Cilium 节点"；完整的本机范围和复核证据记在 [m413 的同名记录](../m413/README.md)。
 - **批准的范围：**
   1. 先在本机试一台一次性的 Kubernetes 节点：一个单独的、用完即删的 colima VM profile（像 2026-11-10 的 `gvisor-spike`：Apple VZ、Ubuntu、runsc），在里面起单节点 Kubernetes（k3s 或 kind，worker 选）加 Cilium 和 runsc，不碰 dev-N 栈用的默认 profile。
   2. 两个 VM 不同时跑：这台 Mac 32 GiB，dev-N 栈的 VM 占 16 GiB。先做 m402、m403、m413 的实机检查，停掉默认 profile，再做本项。
