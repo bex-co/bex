@@ -1482,8 +1482,13 @@ groups:
       # under the telemetry route, so CLITelemetryIngestFailing cannot see
       # them, and each one silences that CLI for an hour), a fleet-wide
       # backoff, or a release that stops sending. "In use" is at least 30 CLI
-      # requests over the two hours with some in the last 30 minutes, so a
-      # burst that already stopped is not "continuing". "Stored none" does not
+      # requests over the two hours, some in each hour of them and some in the
+      # last 30 minutes. A burst that already stopped is not "continuing", and
+      # neither is one long command: `deploys create --wait` or `agent wait`
+      # polls for up to an hour and reports its one event only when it ends, so
+      # in a quiet night it alone would otherwise look like hours of requests
+      # with nothing stored (first seen on production 2026-11-17, a deploy
+      # being polled with no event yet). "Stored none" does not
       # rest on increase() alone: an event stored on a replica before its first
       # scrape is a series that first appears above 0, which increase() reads
       # as nothing, so a series that appeared within the window and is above 0
@@ -1491,6 +1496,8 @@ groups:
       - alert: CLITelemetryIngestSilent
         expr: |
           sum(increase(bex_api_cli_requests_total[2h])) >= 30
+          and on()
+          sum(increase(bex_api_cli_requests_total[1h] offset 1h)) > 0
           and on()
           sum(increase(bex_api_cli_requests_total[30m])) > 0
           unless on()

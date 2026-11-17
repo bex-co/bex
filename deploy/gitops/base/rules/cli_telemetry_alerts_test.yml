@@ -212,6 +212,25 @@ tests:
         alertname: CLITelemetryIngestSilent
         exp_alerts: []
 
+  # A quiet stretch, then one command polls a deploy for an hour (a request a
+  # minute from minute 150) and reports its event only when it ends. Sixty
+  # requests and nothing stored in two hours, but all of them in the last hour:
+  # one long command, not CLI use continuing.
+  - name: one command polling for an hour in a quiet stretch stays quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-a",client="bex"}'
+        values: "0x150 1+1x59 60x30"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="json"}'
+        values: "0+1x30 30x179 31x30"
+    alert_rule_test:
+      - eval_time: 195m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+      - eval_time: 209m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+
   # --- CLIExecutionErrorShareHigh --------------------------------------------
   # The baseline reads whatever of the last seven days exists; a day of history
   # keeps these tests fast and exercises the same arithmetic.
