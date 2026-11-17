@@ -880,7 +880,7 @@ func TestABillingNoticeReadsItsOwnersAtOnce(t *testing.T) {
 	emails := &countingEmails{fakeIdentities: fakeIdentities{"alice": "alice@example.com"}}
 	svc := newTestService(newBillingOwners("alice", "carol"), nil, mailer, emails)
 
-	if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err != nil {
+	if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}, true); err != nil {
 		t.Errorf("notifyBilling = %v, want the notice complete without carol, who has no address", err)
 	}
 	if len(emails.batches) != 1 || len(mailer.sent) != 1 || mailer.sent[0].to != "alice@example.com" {
@@ -915,7 +915,7 @@ func TestABillingNoticeStillRetriesWhatARetryCanFix(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			svc := newTestService(newBillingOwners("alice", "carol"), nil, tc.mailer, tc.emails)
-			if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err == nil {
+			if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}, true); err == nil {
 				t.Fatal("notifyBilling succeeded, want a failure the worker retries")
 			}
 		})
@@ -949,11 +949,11 @@ func TestABillingNoticeRetryMailsOnlyTheOwnersItMissed(t *testing.T) {
 			owners := newBillingOwners("alice", "carol")
 			svc := newTestService(owners, nil, tc.mailer, tc.emails)
 			notice := store.BillingNotification{WorkspaceID: "tea-a", TransitionVersion: 3}
-			if err := svc.notifyBilling(context.Background(), notice); err == nil {
+			if err := svc.notifyBilling(context.Background(), notice, true); err == nil {
 				t.Fatal("first tick succeeded, want carol retried")
 			}
 			notice.MailedTo = slices.Clone(*owners.mailed)
-			_ = svc.notifyBilling(context.Background(), notice)
+			_ = svc.notifyBilling(context.Background(), notice, true)
 			var toAlice int
 			for _, sent := range tc.mailer.sent {
 				if sent.to == "alice@example.com" {
@@ -975,12 +975,12 @@ func TestABillingNoticeRetryMailsOnlyTheOwnersItMissed(t *testing.T) {
 func TestABillingNoticeStopsOnAPermanentRejection(t *testing.T) {
 	mailer := &rejecting{code: 550, addr: "carol@example.com"}
 	svc := newTestService(newBillingOwners("alice", "carol"), nil, mailer, fakeIdentities{"alice": "alice@example.com", "carol": "carol@example.com"})
-	if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err != nil {
+	if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}, true); err != nil {
 		t.Fatalf("notifyBilling = %v, want the notice complete without the rejected carol", err)
 	}
 	for _, code := range []int{451, 535} {
 		mailer.code = code
-		if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err == nil {
+		if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}, true); err == nil {
 			t.Fatalf("a %d reply completed the notice, want it retried", code)
 		}
 	}

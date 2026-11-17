@@ -1178,7 +1178,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			// ADR088 §4: dunning must never suspend the pinned ops workspace.
 			enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS, OpsWorkspaceID: cfg.OpsWorkspace}
-			stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
+			stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			log.Printf("bex-api Stripe dunning enabled (livemode %t, grace %s, reconcile %s)", stripeClient.ExpectedLivemode(), grace, reconcileEvery)
 		}

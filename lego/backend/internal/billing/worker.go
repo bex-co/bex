@@ -53,18 +53,24 @@ type WorkerStore interface {
 	PurgeAgentModelWriteOffs(context.Context, time.Time) (int64, error)
 }
 
+// BillingNotifier delivers one durable notice. livemode is the Stripe mode the
+// platform's key runs in, which every notice is labeled with (w21/104).
 type BillingNotifier interface {
-	NotifyBilling(context.Context, store.BillingNotification) error
+	NotifyBilling(ctx context.Context, notice store.BillingNotification, livemode bool) error
 }
 
 type Worker struct {
-	Store     WorkerStore
-	Enforcer  ResourceEnforcer
-	Notifier  BillingNotifier
-	Interval  time.Duration
-	Lease     time.Duration
-	Clock     func() time.Time
-	lastPurge time.Time
+	Store    WorkerStore
+	Enforcer ResourceEnforcer
+	Notifier BillingNotifier
+	// ExpectedLivemode is the Stripe mode the platform's key runs in, like the
+	// Lifecycle's and the Reconciler's; the notices are labeled with it, never
+	// with a mode guessed from a workspace's provider mapping.
+	ExpectedLivemode bool
+	Interval         time.Duration
+	Lease            time.Duration
+	Clock            func() time.Time
+	lastPurge        time.Time
 }
 
 func (w *Worker) now() time.Time {
@@ -155,7 +161,7 @@ func (w *Worker) drainNotifications(ctx context.Context, now time.Time, lease ti
 	}
 	var rowErrs []error
 	for _, n := range notifications {
-		if err := w.Notifier.NotifyBilling(ctx, n); err != nil {
+		if err := w.Notifier.NotifyBilling(ctx, n, w.ExpectedLivemode); err != nil {
 			if n.AttemptCount >= store.MaxBillingNotificationAttempts {
 				log.Printf("billing: notice %d for %s abandoned after %d attempts: %v", n.TransitionVersion, n.WorkspaceID, n.AttemptCount, err)
 			}

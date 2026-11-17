@@ -49,6 +49,17 @@ const (
 	// BillingReasonSubscriptionCanceled is a Subscription observed canceled
 	// (customer.subscription.deleted, or a poll that reads status canceled).
 	BillingReasonSubscriptionCanceled = "subscription_canceled"
+
+	// BillingReasonNothingRestored is the reason of a healthy notice for an
+	// operator-driven recovery that restored nothing: the workspace never bound
+	// a payment method and billing never suspended one of its resources. The
+	// notice says so instead of "Payment recovered … restored" (w21/104).
+	BillingReasonNothingRestored = "nothing_restored"
+
+	// billingOperatorReasonPrefix starts every reason an operator override
+	// writes (ForceBillingRecovery, SetBillingException); a payment-driven
+	// transition never carries it.
+	billingOperatorReasonPrefix = "operator_"
 )
 
 // BillingProviderMapping is the durable relationship that lets a signed
@@ -122,7 +133,6 @@ type BillingNotification struct {
 	Status            string
 	Reason            string
 	GraceDeadline     *time.Time
-	Livemode          bool
 	AttemptCount      int
 	// MailedTo lists the owner subjects this notice already reached, so a
 	// retry mails only the rest (w5/m136).
@@ -355,28 +365,33 @@ func normalizeBillingOverride(actor, reason string) (string, string, error) {
 }
 
 // insertBillingNotification enqueues one status-change notification row; the
-// conflict guard keeps a transition version's notification single-shot.
-// billingProviderLivemode is the Stripe mode a workspace's billing notice is
-// labeled with. A lifecycle row can outlive the workspace's provider mapping (a
-// reclaimed card-less workspace loses it), and a missing mapping used to fail
-// the completion with a bare ErrNoRows after the enforcement had run, leaving
-// the row enforcing and aborting every tick (w21/m336). The notice goes to the
-// workspace's owners either way, so a missing mapping reads as test mode.
-func billingProviderLivemode(ctx context.Context, tx pgx.Tx, workspaceID string) (bool, error) {
-	var livemode bool
-	err := tx.QueryRow(ctx, `SELECT livemode FROM billing_provider_mappings WHERE workspace_id=$1`, workspaceID).Scan(&livemode)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
-	}
-	return livemode, err
+// conflict guard keeps a transition version's notification single-shot. It
+// records no Stripe mode: the mail labels the platform's configured one when it
+// is sent (w21/104), so a workspace with no provider mapping, which cannot say
+// which mode it was in, is no longer guessed to be in test mode (w21/m336).
+func insertBillingNotification(ctx context.Context, tx pgx.Tx, workspaceID string, version int64, status, reason string, deadline *time.Time, at time.Time) error {
+	_, err := tx.Exec(ctx, `INSERT INTO billing_notifications
+		(workspace_id, transition_version, status, reason, grace_deadline, next_attempt_at)
+		VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
+		workspaceID, version, status, reason, deadline, at)
+	return err
 }
 
-func insertBillingNotification(ctx context.Context, tx pgx.Tx, workspaceID string, version int64, status, reason string, deadline *time.Time, livemode bool, at time.Time) error {
-	_, err := tx.Exec(ctx, `INSERT INTO billing_notifications
-		(workspace_id, transition_version, status, reason, grace_deadline, livemode, next_attempt_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`,
-		workspaceID, version, status, reason, deadline, livemode, at)
-	return err
+// healthyNoticeReason is the reason the healthy notice of an operator-driven
+// recovery carries: BillingReasonNothingRestored when the workspace never bound
+// a payment method (the marker is never cleared, ADR046 §7) and no
+// billing_enforcements row exists for it, recovered or not (the enforcer writes
+// the row before it suspends anything), and "" otherwise. The sender then says
+// what is true: nothing was suspended, so nothing was restored (w21/104).
+func healthyNoticeReason(ctx context.Context, tx pgx.Tx, workspaceID string) (string, error) {
+	var restoredSomething bool
+	err := tx.QueryRow(ctx, `SELECT
+		EXISTS(SELECT 1 FROM billing_provider_mappings WHERE workspace_id=$1 AND payment_method_bound_at IS NOT NULL)
+		OR EXISTS(SELECT 1 FROM billing_enforcements WHERE workspace_id=$1)`, workspaceID).Scan(&restoredSomething)
+	if err != nil || restoredSomething {
+		return "", err
+	}
+	return BillingReasonNothingRestored, nil
 }
 
 // insertBillingOverrideAudit records one operator billing override in the
@@ -572,7 +587,7 @@ func applyStripeBillingTransition(ctx context.Context, tx pgx.Tx, state BillingL
 		return BillingLifecycle{}, false, err
 	}
 	if changed && notifyBillingStatus(previous, next) {
-		if err := insertBillingNotification(ctx, tx, e.WorkspaceID, version, next, reason, deadline, e.Livemode, e.ReceivedAt); err != nil {
+		if err := insertBillingNotification(ctx, tx, e.WorkspaceID, version, next, reason, deadline, e.ReceivedAt); err != nil {
 			return BillingLifecycle{}, false, err
 		}
 	}
@@ -751,11 +766,15 @@ func (s *PGStore) CompleteBillingLifecycleWork(ctx context.Context, workspaceID 
 			return err
 		}
 		if notifyBillingStatus(current.Status, status) {
-			livemode, err := billingProviderLivemode(ctx, tx, workspaceID)
-			if err != nil {
-				return err
+			noticeReason := reason
+			// An operator's recovery says what it restored; a payment's keeps the
+			// payment recovery wording whatever the workspace's marker says.
+			if status == BillingHealthy && strings.HasPrefix(current.Reason, billingOperatorReasonPrefix) {
+				if noticeReason, err = healthyNoticeReason(ctx, tx, workspaceID); err != nil {
+					return err
+				}
 			}
-			if err := insertBillingNotification(ctx, tx, workspaceID, version, status, reason, deadline, livemode, now); err != nil {
+			if err := insertBillingNotification(ctx, tx, workspaceID, version, status, noticeReason, deadline, now); err != nil {
 				return err
 			}
 		}
@@ -842,7 +861,7 @@ func (s *PGStore) ClaimBillingNotifications(ctx context.Context, now time.Time, 
 		ORDER BY next_attempt_at,workspace_id LIMIT $2 FOR UPDATE SKIP LOCKED
 	) UPDATE billing_notifications n SET claimed_until=$3, attempt_count=n.attempt_count+1
 	  FROM due WHERE n.workspace_id=due.workspace_id AND n.transition_version=due.transition_version
-	  RETURNING n.workspace_id,n.transition_version,n.status,n.reason,n.grace_deadline,n.livemode,n.attempt_count,n.mailed_to`,
+	  RETURNING n.workspace_id,n.transition_version,n.status,n.reason,n.grace_deadline,n.attempt_count,n.mailed_to`,
 		now, limit, now.Add(lease), MaxBillingNotificationAttempts)
 	if err != nil {
 		return nil, err
@@ -851,7 +870,7 @@ func (s *PGStore) ClaimBillingNotifications(ctx context.Context, now time.Time, 
 	var out []BillingNotification
 	for rows.Next() {
 		var n BillingNotification
-		if err := rows.Scan(&n.WorkspaceID, &n.TransitionVersion, &n.Status, &n.Reason, &n.GraceDeadline, &n.Livemode, &n.AttemptCount, &n.MailedTo); err != nil {
+		if err := rows.Scan(&n.WorkspaceID, &n.TransitionVersion, &n.Status, &n.Reason, &n.GraceDeadline, &n.AttemptCount, &n.MailedTo); err != nil {
 			return nil, err
 		}
 		out = append(out, n)
@@ -962,7 +981,7 @@ func billingExceptionTransition(state BillingLifecycle, exception string, enable
 	if active || state.Status == BillingEnforced || state.Status == BillingEnforcing || state.Status == BillingRecovering {
 		next, target = BillingRecovering, desired
 	}
-	nextReason := "operator_" + exception
+	nextReason := billingOperatorReasonPrefix + exception
 	if enabled {
 		nextReason += ": " + reason
 	} else {
@@ -1057,11 +1076,13 @@ func (s *PGStore) SetBillingException(ctx context.Context, workspaceID, exceptio
 		}
 		state = st
 		if out.next != BillingRecovering && out.stateChanged {
-			livemode, err := billingProviderLivemode(ctx, tx, workspaceID)
-			if err != nil {
-				return err
+			noticeReason := out.reason
+			if out.next == BillingHealthy {
+				if noticeReason, err = healthyNoticeReason(ctx, tx, workspaceID); err != nil {
+					return err
+				}
 			}
-			if err := insertBillingNotification(ctx, tx, workspaceID, out.version, out.next, out.reason, nil, livemode, at); err != nil {
+			if err := insertBillingNotification(ctx, tx, workspaceID, out.version, out.next, noticeReason, nil, at); err != nil {
 				return err
 			}
 		}
@@ -1112,7 +1133,7 @@ func (s *PGStore) ForceBillingRecovery(ctx context.Context, workspaceID, actor, 
 			return classify("billing lifecycle", err)
 		}
 		var err error
-		state, err = scanBillingLifecycle(tx.QueryRow(ctx, `UPDATE billing_lifecycles SET status='recovering',reason=$2,recovery_target='healthy',grace_deadline=NULL,transition_version=transition_version+1,attempt_count=0,retry_at=NULL,claimed_until=NULL,last_error='',updated_at=$3 WHERE workspace_id=$1 AND status IN ('grace','enforcing','enforced','recovering') RETURNING `+billingLifecycleColumns, workspaceID, "operator_recovery: "+reason, at))
+		state, err = scanBillingLifecycle(tx.QueryRow(ctx, `UPDATE billing_lifecycles SET status='recovering',reason=$2,recovery_target='healthy',grace_deadline=NULL,transition_version=transition_version+1,attempt_count=0,retry_at=NULL,claimed_until=NULL,last_error='',updated_at=$3 WHERE workspace_id=$1 AND status IN ('grace','enforcing','enforced','recovering') RETURNING `+billingLifecycleColumns, workspaceID, billingOperatorReasonPrefix+"recovery: "+reason, at))
 		if err != nil {
 			return classify("billing lifecycle", err)
 		}

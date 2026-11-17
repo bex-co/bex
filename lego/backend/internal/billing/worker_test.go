@@ -106,10 +106,14 @@ func (e *enforcerCapture) Recover(_ context.Context, state store.BillingLifecycl
 	return nil
 }
 
-type notifierCapture struct{ calls int }
+type notifierCapture struct {
+	calls     int
+	livemodes []bool
+}
 
-func (n *notifierCapture) NotifyBilling(_ context.Context, _ store.BillingNotification) error {
+func (n *notifierCapture) NotifyBilling(_ context.Context, _ store.BillingNotification, livemode bool) error {
 	n.calls++
+	n.livemodes = append(n.livemodes, livemode)
 	if n.calls == 1 {
 		return errors.New("temporary SMTP failure")
 	}
@@ -149,6 +153,26 @@ func TestWorkerRetriesIndependentlyAndCompletesRecoveryTarget(t *testing.T) {
 	}
 	if !stateStore.purgeBefore.Equal(now.Add(-90 * 24 * time.Hour)) {
 		t.Fatalf("purge before = %s", stateStore.purgeBefore)
+	}
+}
+
+// Every notice is handed the Stripe mode the platform's key runs in, whatever
+// the notice's workspace has for a provider mapping (w21/104): live in
+// production, test on a test key.
+func TestWorkerLabelsNoticesWithItsConfiguredStripeMode(t *testing.T) {
+	now := time.Date(2026, 11, 16, 2, 0, 0, 0, time.UTC)
+	for _, livemode := range []bool{true, false} {
+		stateStore := &workerCapture{notifications: []store.BillingNotification{
+			{WorkspaceID: "tea-a", TransitionVersion: 1}, {WorkspaceID: "tea-b", TransitionVersion: 2},
+		}}
+		notifier := &notifierCapture{calls: 1} // the first-call failure is spent
+		w := &Worker{Store: stateStore, Enforcer: &enforcerCapture{}, Notifier: notifier, ExpectedLivemode: livemode, Clock: func() time.Time { return now }}
+		if err := w.RunOnce(context.Background()); err != nil {
+			t.Fatalf("RunOnce: %v", err)
+		}
+		if !slices.Equal(notifier.livemodes, []bool{livemode, livemode}) {
+			t.Fatalf("configured livemode=%v: notices were labeled %v, want the configured mode each time", livemode, notifier.livemodes)
+		}
 	}
 }
 

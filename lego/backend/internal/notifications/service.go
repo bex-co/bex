@@ -164,18 +164,19 @@ func (s *Service) webPushTransportAvailable() bool {
 // mistake an internal worker callback for a public API verb.
 type BillingNotifier struct{ Service *Service }
 
-func (n BillingNotifier) NotifyBilling(ctx context.Context, notice store.BillingNotification) error {
+func (n BillingNotifier) NotifyBilling(ctx context.Context, notice store.BillingNotification, livemode bool) error {
 	if n.Service == nil {
 		return fmt.Errorf("billing notifier unavailable")
 	}
-	return n.Service.notifyBilling(ctx, notice)
+	return n.Service.notifyBilling(ctx, notice, livemode)
 }
 
 // notifyBilling sends the lifecycle notice. Billing notices are
 // mandatory operational messages to workspace admins, independent of deploy
 // notification preferences. The durable billing worker owns deduplication and
 // retry; this method returns delivery errors but never runs on a webhook path.
-func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification) error {
+// livemode is the platform's configured Stripe mode, which labels the mail.
+func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification, livemode bool) error {
 	owners, ok := s.Store.(billingOwnerStore)
 	if !ok {
 		return fmt.Errorf("billing owner store unavailable")
@@ -196,7 +197,7 @@ func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification
 	if len(pending) == 0 {
 		return nil
 	}
-	subject, msg := billingEmail(n, s.DashboardBaseURL)
+	subject, msg := billingEmail(n, livemode, s.DashboardBaseURL)
 	return s.mailOwners(ctx, fmt.Sprintf("billing %s for %s", n.Status, n.WorkspaceID), pending, subject, msg,
 		func(owner string) error {
 			return owners.RecordBillingNotificationMailed(ctx, n.WorkspaceID, n.TransitionVersion, owner)
@@ -277,9 +278,13 @@ func permanentRejection(err error) bool {
 	return errors.As(err, &reply) && (reply.Code == 550 || reply.Code == 551 || reply.Code == 553)
 }
 
-func billingEmail(n store.BillingNotification, dashboardBaseURL string) (string, email.Message) {
+// billingEmail composes one lifecycle notice. livemode is the platform's
+// configured Stripe mode (BEX_STRIPE_SECRET_KEY), the same for every notice and
+// every workspace: a workspace with no provider mapping used to read as test
+// mode, so production's live-mode owners were mailed "Stripe Test Mode" (w21/104).
+func billingEmail(n store.BillingNotification, livemode bool, dashboardBaseURL string) (string, email.Message) {
 	mode := "Live Mode"
-	if !n.Livemode {
+	if !livemode {
 		mode = "Test Mode"
 	}
 	title, paragraph := "Billing status updated", "Your workspace billing status changed to "+n.Status+"."
@@ -296,6 +301,14 @@ func billingEmail(n store.BillingNotification, dashboardBaseURL string) (string,
 	case store.BillingHealthy:
 		title = "Billing recovered"
 		paragraph = "Payment recovered and resources changed by billing enforcement were restored. Independently suspended resources remain suspended."
+		if n.Reason == store.BillingReasonNothingRestored {
+			// An operator's recovery of a workspace that never paid and that billing
+			// never suspended anything of: nothing was recovered or restored, and the
+			// owner was told a payment failed or a suspension began, so the mail
+			// retracts that without claiming either happened (w21/104).
+			title = "Billing status is healthy"
+			paragraph = "Your workspace billing status is healthy. Billing enforcement did not suspend any resource in this workspace, so there was nothing to restore. If you received a billing notice about a failed payment or a suspension for this workspace, it no longer applies."
+		}
 	case store.BillingExcluded:
 		title = "Workspace excluded from collection"
 		paragraph = "An operator excluded this workspace from Stripe collection."
