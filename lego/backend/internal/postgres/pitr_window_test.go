@@ -22,11 +22,13 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -164,32 +166,149 @@ func TestRecoveryInfoStartsAtThePlanFloorOnEverySurface(t *testing.T) {
 	}
 }
 
-// w7/m453: when the last base backup is older than the plan's floor (nightly
-// backups stalled for longer than the window), no restore point inside the
-// plan's window can be vouched for: recovery info reports no window
-// (BACKUP_NOT_READY) and recover refuses before any billing gate or create.
-// The same ObjectStore on Pro, whose floor is older, stays available.
-func TestRecoveryWithBackupsStalledPastThePlanFloor(t *testing.T) {
+// seedFinishedBackup adds a CNPG Backup of dpg-src in phase that finished at
+// stoppedAt (empty: none recorded yet).
+func seedFinishedBackup(t *testing.T, cl client.Client, name, phase, stoppedAt string) {
+	t.Helper()
+	seedCNPGBackup(t, cl, "dpg-src", name, phase)
+	if stoppedAt == "" {
+		return
+	}
+	b := &unstructured.Unstructured{}
+	b.SetGroupVersionKind(cnpgBackupGVK)
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, b); err != nil {
+		t.Fatal(err)
+	}
+	if err := unstructured.SetNestedField(b.Object, stoppedAt, "status", "stoppedAt"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Update(context.Background(), b); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// nightly is the time of day bex's ScheduledBackup finishes in these tests.
+const nightly = 3*time.Hour + 5*time.Minute
+
+// pitrNightly is the nightly base backup that finished d days before pitrNow's
+// day, as the API reports it.
+func pitrNightly(days int) string {
+	return pitrNow.Truncate(pitrDay).Add(nightly - time.Duration(days)*pitrDay).Format(time.RFC3339)
+}
+
+// w7/075: Render starts a plan's window at the newest base backup completed at
+// or before the floor (captured 2026-11-17: 7 days 20 hours back on a Pro
+// workspace, docs/render-artifacts/postgres-recovery-window.md), not at now
+// minus the plan's days. With nightly backups, every surface starts there; a
+// failed backup, or one still running, is no restore point. Recover reads the
+// same start: a target between it and the floor goes on to the billing gate,
+// and one before it is refused naming it.
+func TestThePlanWindowStartsAtTheNewestBackupAtOrBeforeTheFloor(t *testing.T) {
+	keptAt := pitrNow.Add(-pitrDay) // a Hobby -> Pro upgrade a day ago keeps T-3d
+	for _, tc := range []struct {
+		name  string
+		plans core.WorkspacePlanReader
+		want  string
+	}{
+		{"hobby", pitrPlans{plan: "hobby"}, pitrNightly(3)},
+		{"pro", pitrPlans{plan: "pro"}, pitrNightly(7)},
+		{"pro after a hobby upgrade", pitrPlans{plan: "pro", visibleFrom: keptAt.Add(-3 * pitrDay)}, pitrNightly(4)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl, gate := pitrSource(t, tc.plans, pitrAgo(30*pitrDay), pitrNightly(0))
+			for days := 0; days <= 10; days++ {
+				seedFinishedBackup(t, cl, "nightly-"+strconv.Itoa(days), "completed", pitrNightly(days))
+			}
+			// Between each floor and the nightly backup before it.
+			seedFinishedBackup(t, cl, "failed", "failed", pitrAgo(3*pitrDay+time.Hour))
+			seedFinishedBackup(t, cl, "failed-pro", "failed", pitrAgo(7*pitrDay+time.Hour))
+			seedFinishedBackup(t, cl, "running", "running", "")
+
+			rest, gql, mcpOut := recoveryInfoOnEverySurface(t, svc)
+			if rest["recoveryStatus"] != "AVAILABLE" || rest["startsAt"] != tc.want {
+				t.Errorf("REST = %v, want AVAILABLE from %s", rest, tc.want)
+			}
+			if gql["earliestRecoveryTime"] != tc.want || mcpOut["earliestRecoveryTime"] != tc.want {
+				t.Errorf("GraphQL earliest = %v, MCP earliest = %v; want %s on both", gql["earliestRecoveryTime"], mcpOut["earliestRecoveryTime"], tc.want)
+			}
+
+			start, _ := time.Parse(time.RFC3339, tc.want)
+			if _, err := svc.Recover(context.Background(), "dpg-src", RecoverRequest{Name: "restored", TargetTime: start.Add(time.Hour).Format(time.RFC3339)}); !errors.Is(err, core.ErrPaymentRequired) {
+				t.Errorf("an hour after the start => %v, want it to pass the window and reach the payment gate", err)
+			}
+			if code, params := recoverOnSurface(t, svc, "REST", start.Add(-time.Second).Format(time.RFC3339)); code != "RECOVERY_TARGET_BEFORE_WINDOW" || params["earliestRecoveryTime"] != tc.want {
+				t.Errorf("a second before the start => %s %v, want RECOVERY_TARGET_BEFORE_WINDOW naming %s", code, params, tc.want)
+			}
+			if len(gate.calls) != 1 || countDatabases(t, cl) != 1 {
+				t.Errorf("payment gate calls = %v, databases = %d; want the one target inside the window to reach it", gate.calls, countDatabases(t, cl))
+			}
+		})
+	}
+}
+
+// w7/075: a database whose base backups stopped before the plan's floor keeps
+// a window from its last base backup, the newest one at or before the floor.
+// Render answers AVAILABLE there (a database suspended in August, captured in
+// November, docs/render-artifacts/postgres-recovery-window.md), not
+// BACKUP_NOT_READY, and so does bex on every surface; recover takes a target
+// after that backup and refuses one before it, before any billing gate. The
+// same ObjectStore on Pro, whose floor is older, starts at the floor.
+func TestRecoveryWithBackupsStoppedBeforeThePlanFloor(t *testing.T) {
 	svc, cl, gate := pitrSource(t, pitrPlans{plan: "hobby"}, pitrAgo(30*pitrDay), pitrAgo(4*pitrDay))
 	rest, gql, mcpOut := recoveryInfoOnEverySurface(t, svc)
-	if rest["recoveryStatus"] != "BACKUP_NOT_READY" || rest["startsAt"] != nil {
-		t.Errorf("REST = %v, want BACKUP_NOT_READY with no start", rest)
+	if rest["recoveryStatus"] != "AVAILABLE" || rest["startsAt"] != pitrAgo(4*pitrDay) {
+		t.Errorf("REST = %v, want AVAILABLE from the last base backup %s", rest, pitrAgo(4*pitrDay))
 	}
-	// GraphQL answers an empty string for no window, as it always has.
-	if gql["earliestRecoveryTime"] != "" || gql["latestRecoveryTime"] != "" || mcpOut["earliestRecoveryTime"] != nil {
-		t.Errorf("GraphQL = %v, MCP = %v; want no window", gql, mcpOut)
+	for _, surface := range []map[string]any{gql, mcpOut} {
+		if surface["earliestRecoveryTime"] != pitrAgo(4*pitrDay) || surface["latestRecoveryTime"] != pitrAgo(4*pitrDay) {
+			t.Errorf("window = %v, want the last base backup on both bounds", surface)
+		}
 	}
-	_, err := svc.Recover(context.Background(), "dpg-src", RecoverRequest{Name: "restored"})
-	if !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("recover with stalled backups => %v, want ErrBadRequest", err)
+	if code, _ := recoverOnSurface(t, svc, "REST", pitrAgo(5*pitrDay)); code != "RECOVERY_TARGET_BEFORE_WINDOW" {
+		t.Errorf("before the last base backup => %q, want RECOVERY_TARGET_BEFORE_WINDOW", code)
 	}
 	if len(gate.calls) != 0 || countDatabases(t, cl) != 1 {
 		t.Fatalf("a refused recovery reached the payment gate (%v) or created a database (%d)", gate.calls, countDatabases(t, cl))
+	}
+	for _, target := range []string{pitrAgo(4 * pitrDay), pitrAgo(2 * pitrDay), ""} {
+		if _, err := svc.Recover(context.Background(), "dpg-src", RecoverRequest{Name: "restored", TargetTime: target}); !errors.Is(err, core.ErrPaymentRequired) {
+			t.Errorf("target %q => %v, want it to pass the window and reach the payment gate", target, err)
+		}
 	}
 
 	pro, _, _ := pitrSource(t, pitrPlans{plan: "pro"}, pitrAgo(30*pitrDay), pitrAgo(4*pitrDay))
 	if rest, _, _ := recoveryInfoOnEverySurface(t, pro); rest["recoveryStatus"] != "AVAILABLE" || rest["startsAt"] != pitrAgo(7*pitrDay) {
 		t.Errorf("the same backups on Pro = %v, want AVAILABLE from now-7d", rest)
+	}
+}
+
+// flooredAt on its own: the newest completed backup at or before the floor,
+// never one after it or before the ObjectStore's first point, the last backup
+// counted as one, and the floor itself when none qualifies.
+func TestFlooredAtStartsAtTheNewestBackupAtOrBeforeTheFloor(t *testing.T) {
+	at := func(d time.Duration) time.Time { return pitrNow.Add(-d) }
+	floor := at(7 * pitrDay)
+	window := recoveryWindowBounds{earliest: pitrAgo(30 * pitrDay), latest: pitrAgo(9 * time.Hour)}
+	for _, tc := range []struct {
+		name      string
+		window    recoveryWindowBounds
+		floor     time.Time
+		completed []time.Time
+		want      string
+	}{
+		{"no plan", window, time.Time{}, []time.Time{at(8 * pitrDay)}, pitrAgo(30 * pitrDay)},
+		{"younger than the window", recoveryWindowBounds{earliest: pitrAgo(pitrDay), latest: pitrAgo(9 * time.Hour)}, floor, nil, pitrAgo(pitrDay)},
+		{"newest at or before the floor", window, floor, []time.Time{at(9 * pitrDay), at(8 * pitrDay), at(6 * pitrDay)}, pitrAgo(8 * pitrDay)},
+		{"exactly at the floor", window, floor, []time.Time{at(8 * pitrDay), floor}, pitrAgo(7 * pitrDay)},
+		{"only after the floor", window, floor, []time.Time{at(6 * pitrDay)}, pitrAgo(7 * pitrDay)},
+		{"before the first point", recoveryWindowBounds{earliest: pitrAgo(10 * pitrDay), latest: pitrAgo(9 * time.Hour)}, floor, []time.Time{at(11 * pitrDay)}, pitrAgo(7 * pitrDay)},
+		{"the last backup before the floor", recoveryWindowBounds{earliest: pitrAgo(30 * pitrDay), latest: pitrAgo(9 * pitrDay)}, floor, []time.Time{at(12 * pitrDay)}, pitrAgo(9 * pitrDay)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.window.flooredAt(tc.floor, tc.completed); got.earliest != tc.want || got.latest != tc.window.latest {
+				t.Errorf("flooredAt = %+v, want earliest %s and latest %s", got, tc.want, tc.window.latest)
+			}
+		})
 	}
 }
 

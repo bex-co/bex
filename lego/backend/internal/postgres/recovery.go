@@ -78,8 +78,9 @@ type RecoveryInfoView struct {
 	Enabled bool `json:"enabled"`
 	// EarliestRecoveryTime / LatestRecoveryTime bound the restorable window
 	// (RFC3339), as reported by the Barman Cloud ObjectStore for this database's
-	// exact backup server name. The earliest bound starts no earlier than the
-	// workspace plan's recovery floor (w7/m453, core.PITRFloor).
+	// exact backup server name. Where the workspace plan's recovery floor
+	// (w7/m453, core.PITRFloor) cuts the window, the earliest bound is the
+	// newest base backup completed at or before it, as on Render (w7/075).
 	EarliestRecoveryTime string `json:"earliestRecoveryTime,omitempty"`
 	LatestRecoveryTime   string `json:"latestRecoveryTime,omitempty"`
 	// Backups is the visible backup history (base backups in object storage).
@@ -140,33 +141,53 @@ type RecoverRequest struct {
 type recoveryWindowBounds struct {
 	earliest string
 	latest   string
-	// stale marks a window the plan's floor emptied: the last base backup is
-	// older than the floor (flooredAt).
-	stale bool
 }
 
 func (w recoveryWindowBounds) established() bool {
 	return w.earliest != "" && w.latest != ""
 }
 
-// flooredAt starts w no earlier than floor, the workspace plan's recovery
-// floor (w7/m453); a zero floor leaves w as it is. A database younger than
-// the plan's window keeps its own first recoverability point. A window whose
-// last base backup is older than floor (nightly backups stalled for longer
-// than the plan's window) holds no restore point bex-api can vouch for inside
-// the plan's window, so it is not established: recovery info reports no
-// window and recover refuses, until the next base backup completes.
-func (w recoveryWindowBounds) flooredAt(floor time.Time) recoveryWindowBounds {
+// cutBy reports whether floor, the workspace plan's recovery floor (w7/m453),
+// starts w later than the ObjectStore does; a zero floor never does.
+func (w recoveryWindowBounds) cutBy(floor time.Time) bool {
 	if floor.IsZero() || !w.established() {
+		return false
+	}
+	earliest, err := time.Parse(time.RFC3339, w.earliest)
+	return err != nil || earliest.Before(floor)
+}
+
+// flooredAt starts w where Render starts a plan's window (w7/075, captured
+// 2026-11-17, docs/render-artifacts/postgres-recovery-window.md): at the newest
+// base backup completed at or before the floor, the first of the backups every
+// point since the floor restores from. So the start can lie up to one backup
+// interval before the floor, and a database whose base backups stopped before
+// the floor keeps a window from its last one (Render answers AVAILABLE there,
+// not BACKUP_NOT_READY). completed are the database's base backup completion
+// instants; the ObjectStore's last backup counts as one, and one before its
+// first point does not. With none at or before the floor, the window starts at
+// the floor. A window the floor does not cut (cutBy) is w itself.
+func (w recoveryWindowBounds) flooredAt(floor time.Time, completed []time.Time) recoveryWindowBounds {
+	if !w.cutBy(floor) {
 		return w
 	}
-	if latest, err := time.Parse(time.RFC3339, w.latest); err == nil && latest.Before(floor) {
-		return recoveryWindowBounds{stale: true}
+	earliest, _ := time.Parse(time.RFC3339, w.earliest)
+	var start time.Time
+	keep := func(at time.Time) {
+		if !at.After(floor) && !at.Before(earliest) && at.After(start) {
+			start = at
+		}
 	}
-	if earliest, err := time.Parse(time.RFC3339, w.earliest); err == nil && !earliest.Before(floor) {
-		return w
+	for _, at := range completed {
+		keep(at)
 	}
-	return recoveryWindowBounds{earliest: floor.UTC().Format(time.RFC3339), latest: w.latest}
+	if latest, err := time.Parse(time.RFC3339, w.latest); err == nil {
+		keep(latest)
+	}
+	if start.IsZero() {
+		start = floor
+	}
+	return recoveryWindowBounds{earliest: start.UTC().Format(time.RFC3339), latest: w.latest}
 }
 
 // pitrWindow is the workspace plan's recovery window for one database
@@ -217,6 +238,7 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	}
 	var window recoveryWindowBounds
 	var backups []BackupView
+	var completed []time.Time
 	var pitr pitrWindow
 	group, readCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
@@ -226,11 +248,8 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	})
 	group.Go(func() error {
 		var backupErr error
-		backups, backupErr = s.listBackups(readCtx, d.Namespace, d.Name)
-		if backupErr != nil {
-			return fmt.Errorf("list backups for %q: %w", d.Name, backupErr)
-		}
-		return nil
+		backups, completed, backupErr = s.listBackups(readCtx, d.Namespace, d.Name)
+		return backupErr
 	})
 	group.Go(func() error {
 		var planErr error
@@ -240,7 +259,7 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	if err := group.Wait(); err != nil {
 		return RecoveryInfoView{}, err
 	}
-	window = window.flooredAt(pitr.floor)
+	window = window.flooredAt(pitr.floor, completed)
 	info.EarliestRecoveryTime = window.earliest
 	info.LatestRecoveryTime = window.latest
 	info.Backups = backups
@@ -268,28 +287,38 @@ func (s *Service) recoveryWindow(ctx context.Context, d *appv1alpha1.Database) (
 }
 
 // listBackups lists the CNPG Backup objects for a database, mapping each to a
-// BackupView. A failed List is returned as an ERROR, never a silent empty list:
-// an empty result must mean "this database has no backups", not "I could not read
-// them" (w6/m117). With CNPG installed and the read RBAC granted, a database that
-// genuinely has none simply lists zero items.
-func (s *Service) listBackups(ctx context.Context, namespace, name string) ([]BackupView, error) {
+// BackupView, plus the completion instants (status.stoppedAt) of the completed
+// ones, which start a plan's window (flooredAt). A failed List is returned as an
+// ERROR, never a silent empty list: an empty result must mean "this database has
+// no backups", not "I could not read them" (w6/m117). With CNPG installed and the
+// read RBAC granted, a database that genuinely has none simply lists zero items.
+func (s *Service) listBackups(ctx context.Context, namespace, name string) ([]BackupView, []time.Time, error) {
 	sel := client.MatchingLabels{labelCNPGCluster: name}
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(cnpgBackupGVK)
 	if err := s.Client.List(ctx, list, client.InNamespace(namespace), sel); err != nil {
-		return nil, err
+		return nil, nil, fmt.Errorf("list backups for %q: %w", name, err)
 	}
 	out := make([]BackupView, 0, len(list.Items))
+	var completed []time.Time
 	for i := range list.Items {
 		b := &list.Items[i]
 		phase, _, _ := unstructured.NestedString(b.Object, "status", "phase")
+		status := backupStatus(phase)
 		out = append(out, BackupView{
 			ID:        b.GetName(),
-			Status:    backupStatus(phase),
+			Status:    status,
 			CreatedAt: b.GetCreationTimestamp().UTC().Format(time.RFC3339),
 		})
+		if status != "completed" {
+			continue
+		}
+		stoppedAt, _, _ := unstructured.NestedString(b.Object, "status", "stoppedAt")
+		if at, err := time.Parse(time.RFC3339, stoppedAt); err == nil {
+			completed = append(completed, at)
+		}
 	}
-	return out, nil
+	return out, completed, nil
 }
 
 // backupStatus collapses CNPG's Backup phase onto a small stable enum.
@@ -347,15 +376,18 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		return PostgresView{}, err
 	}
 	// The workspace plan's floor bounds the window as recovery info reports it
-	// (w7/m453), so a target the picker never offered is refused here too.
+	// (w7/m453, w7/075), so a target the picker never offered is refused here
+	// too. The base backups are read only when the floor cuts the window.
 	pitr, err := s.pitrWindowOf(ctx, src)
 	if err != nil {
 		return PostgresView{}, err
 	}
-	window = window.flooredAt(pitr.floor)
-	if window.stale {
-		return PostgresView{}, fmt.Errorf("%w: %q has no backup completed since %s, the earliest point its workspace plan can restore to; recovery becomes available once its next backup completes",
-			core.ErrBadRequest, name, pitr.floor.UTC().Format(time.RFC3339))
+	if window.cutBy(pitr.floor) {
+		_, completed, err := s.listBackups(ctx, src.Namespace, src.Name)
+		if err != nil {
+			return PostgresView{}, err
+		}
+		window = window.flooredAt(pitr.floor, completed)
 	}
 	if !window.established() {
 		return PostgresView{}, fmt.Errorf("%w: %q has no restore point yet; recovery becomes available once its first backup completes", core.ErrBadRequest, name)

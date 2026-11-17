@@ -329,11 +329,12 @@ var metricsRetention = planRetention{
 // pitrRetention is how far back each plan may restore a Postgres to a point in
 // time (w7/m453; render.com/docs/postgresql-backups, read 2026-11-16: "Past 3
 // days" on Hobby, "Past 7 days" on Pro or higher; render.com/pricing's
-// "Point-in-time recovery window: 3 days | 7 days | 7 days | 7 days"). Every
-// recovery-info answer starts no earlier than it and every recovery before it
-// is refused, on every surface. The tenant backup store must keep at least
-// the longest window: a backend test reads its chart value against
-// LongestPITRRetention, so change the two together.
+// "Point-in-time recovery window: 3 days | 7 days | 7 days | 7 days"). Where
+// it cuts a database's backups, every recovery-info answer starts at the
+// newest base backup completed at or before it, as Render's does (w7/075), and
+// every recovery before that start is refused, on every surface. The tenant
+// backup store must keep at least the longest window: a backend test reads its
+// chart value against LongestPITRRetention, so change the two together.
 var pitrRetention = planRetention{
 	planHobby:      3 * 24 * time.Hour,
 	planPro:        7 * 24 * time.Hour,
