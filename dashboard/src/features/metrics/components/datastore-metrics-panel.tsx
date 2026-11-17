@@ -109,6 +109,14 @@ interface DatastoreMetricsPanelProps {
    */
   title?: string;
   description?: string;
+  /**
+   * The picked time range, threaded from the host route's URL in the w6/065
+   * shape (`range`, `rangeStart`/`rangeEnd`) so it survives a reload and a
+   * copied link, as service Metrics does (w4/703). A host that does not
+   * persist it (unit tests) falls back to local state.
+   */
+  range?: RangeSelection;
+  onRangeChange?: (range: RangeSelection) => void;
 }
 
 /**
@@ -141,6 +149,8 @@ export function DatastoreMetricsPanel({
   connectionLimit,
   title,
   description,
+  range: rangeProp,
+  onRangeChange,
 }: DatastoreMetricsPanelProps) {
   const { t, i18n } = useTranslations();
   const isDatabase = kind === "database";
@@ -148,7 +158,10 @@ export function DatastoreMetricsPanel({
   // A service's disk has no datastore process, so no CPU or memory.
   const isDatastore = isDatabase || isKeyValue;
 
-  const [range, setRange] = useState<RangeSelection>(DEFAULT_RANGE_PRESET);
+  const [localRange, setLocalRange] =
+    useState<RangeSelection>(DEFAULT_RANGE_PRESET);
+  const range = rangeProp ?? localRange;
+  const setRange = onRangeChange ?? setLocalRange;
   const rangeBound = useMetricsRetentionBound(resource);
   // ONE live window for every read, as on the service Metrics page: its tick
   // refetches by moving start/end, so Apollo's own poll timer stays off. The

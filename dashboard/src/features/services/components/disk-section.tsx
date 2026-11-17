@@ -25,6 +25,7 @@ import {
 } from "@/features/services/hooks/use-disks";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
+import type { RangeSelection } from "@/features/metrics/lib/range";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { LocalDateTime } from "@/common/components/local-time";
 import { useLocalDateTime } from "@/common/hooks/use-local-date";
@@ -87,10 +88,15 @@ export function DiskSection({
   serviceId,
   plan,
   serviceType,
+  range,
+  onRangeChange,
 }: {
   serviceId: string;
   plan: string | null;
   serviceType: string | null;
+  /** The disk chart's URL-persisted range, threaded from the route (w4/703). */
+  range?: RangeSelection;
+  onRangeChange?: (range: RangeSelection) => void;
 }) {
   const { t } = useTranslations();
   const { disk, loading, error, refetch } = useDisk(serviceId);
@@ -183,6 +189,8 @@ export function DiskSection({
           <DatastoreMetricsPanel
             kind="service"
             resource={serviceId}
+            range={range}
+            onRangeChange={onRangeChange}
             title={t("services.diskUsageTitle")}
             description={t("services.diskUsageDescription")}
             diskHeaderExtra={

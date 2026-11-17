@@ -37,6 +37,12 @@ import { KeyValuePersistenceModeSection } from "@/features/keyvalue/components/k
 import { KeyValueDetailNavigation } from "@/features/keyvalue/components/key-value-detail-navigation";
 import { DatastoreLogViewer } from "@/features/logs/components/datastore-log-viewer";
 import {
+  DEFAULT_RANGE_PRESET,
+  rangeFromSearch,
+  rangeToSearch,
+  type RangeSelection,
+} from "@/features/metrics/lib/range";
+import {
   datastoreLogSearchProps,
   parseDatastoreLogSearch,
   type DatastoreLogSearch,
@@ -81,9 +87,10 @@ export const Route = createFileRoute("/keyvalue/$keyValueId")({
       search.tab === "logs" || search.tab === "metrics"
         ? search.tab
         : undefined,
-    // The Logs tab's time range persists in the shared `range`/`rangeStart`/
-    // `rangeEnd` URL shape (w6/065), and its text/instance filters beside it
-    // (w4/228), so a filtered view survives a reload and is shareable.
+    // The Logs and Metrics time ranges persist in the shared `range`/
+    // `rangeStart`/`rangeEnd` URL shape (w6/065, w4/703), and the Logs
+    // text/instance filters beside them (w4/228), so a filtered view survives
+    // a reload and is shareable.
     ...parseDatastoreLogSearch(search),
   }),
   loader: ({ context, params, cause }) =>
@@ -114,6 +121,23 @@ export function KeyValueDetailPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const router = useRouter();
+  // Functional form: committed verbatim, so a patch's explicit undefineds
+  // actually clear stale keys (w7/m42); the spread keeps `tab` and the
+  // untouched keys in place.
+  const writeSearch = (patch: DatastoreLogSearch) =>
+    void navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, ...patch }),
+      replace: true,
+    });
+  // The Metrics range lives in the same w6/065 URL keys as the Logs tab's, so
+  // a picked window survives a reload and a copied link (w4/703). Each tab
+  // link resets the search, so one tab's range never leaks into the other.
+  const metricsRange = {
+    range: rangeFromSearch(search, DEFAULT_RANGE_PRESET),
+    onRangeChange: (range: RangeSelection) =>
+      writeSearch(rangeToSearch(range)),
+  };
   const { keyValue: loaded, loading, error, refetch } = useKeyValue(keyValueId);
   // Judge this page's controls in the store's own workspace (w4/641, as
   // w6/091 for services): until it is the selection, the skeleton stays up so
@@ -197,23 +221,12 @@ export function KeyValueDetailPage() {
               <DatastoreLogViewer
                 kind="keyvalue"
                 resource={keyValue.id}
-                {...datastoreLogSearchProps(
-                  search,
-                  (patch) =>
-                    // Functional form: committed verbatim, so a patch's explicit
-                    // undefineds actually clear stale keys (w7/m42); the spread
-                    // keeps `tab: "logs"` and the untouched keys in place.
-                    void navigate({
-                      to: ".",
-                      search: (prev) => ({ ...prev, ...patch }),
-                      replace: true,
-                    }),
-                )}
+                {...datastoreLogSearchProps(search, writeSearch)}
               />
             </div>
           ) : keyValue && tab === "metrics" ? (
             <div className="mx-auto w-full max-w-5xl space-y-6">
-              <KeyValueMetrics keyValue={keyValue} />
+              <KeyValueMetrics keyValue={keyValue} {...metricsRange} />
             </div>
           ) : keyValue ? (
             <div className={cn("mx-auto max-w-5xl", SECTIONED_GRID_CLASS)}>
@@ -311,12 +324,22 @@ export function KeyValueDetailPage() {
  * connection limit beside its title (w6/m459), from the same cache-first
  * catalog the Overview's plan cards read.
  */
-function KeyValueMetrics({ keyValue }: { keyValue: KeyValueView }) {
+function KeyValueMetrics({
+  keyValue,
+  range,
+  onRangeChange,
+}: {
+  keyValue: KeyValueView;
+  range: RangeSelection;
+  onRangeChange: (range: RangeSelection) => void;
+}) {
   const { instanceTypes } = useKeyValueInstanceTypes();
   return (
     <DatastoreMetricsPanel
       kind="keyvalue"
       resource={keyValue.id}
+      range={range}
+      onRangeChange={onRangeChange}
       connectionLimit={
         instanceTypes.find((it) => it.id === keyValue.plan)?.connectionLimit
       }

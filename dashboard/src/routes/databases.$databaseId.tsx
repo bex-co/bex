@@ -37,6 +37,12 @@ import { DatabaseDetailNavigation } from "@/features/databases/components/databa
 import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
 import { DatastoreLogViewer } from "@/features/logs/components/datastore-log-viewer";
 import {
+  DEFAULT_RANGE_PRESET,
+  rangeFromSearch,
+  rangeToSearch,
+  type RangeSelection,
+} from "@/features/metrics/lib/range";
+import {
   datastoreLogSearchProps,
   parseDatastoreLogSearch,
   type DatastoreLogSearch,
@@ -116,9 +122,10 @@ export const Route = createFileRoute("/databases/$databaseId")({
     search: Record<string, unknown>,
   ): { tab?: "logs" } & DatastoreLogSearch => ({
     tab: search.tab === "logs" ? "logs" : undefined,
-    // The Logs tab's time range persists in the shared `range`/`rangeStart`/
-    // `rangeEnd` URL shape (w6/065), and its text/instance filters beside it
-    // (w4/228), so a filtered view survives a reload and is shareable.
+    // The Logs and Metrics time ranges persist in the shared `range`/
+    // `rangeStart`/`rangeEnd` URL shape (w6/065, w4/703), and the Logs
+    // text/instance filters beside them (w4/228), so a filtered view survives
+    // a reload and is shareable.
     ...parseDatastoreLogSearch(search),
   }),
   loader: ({ context, params, cause }) =>
@@ -149,6 +156,23 @@ function DatabaseDetailPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const router = useRouter();
+  // Functional form: committed verbatim, so a patch's explicit undefineds
+  // actually clear stale keys (w7/m42); the spread keeps `tab` and the
+  // untouched keys in place.
+  const writeSearch = (patch: DatastoreLogSearch) =>
+    void navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, ...patch }),
+      replace: true,
+    });
+  // The Metrics range lives in the same w6/065 URL keys as the Logs tab's, so
+  // a picked window survives a reload and a copied link (w4/703). Each tab
+  // link resets the search, so one tab's range never leaks into the other.
+  const metricsRange = {
+    range: rangeFromSearch(search, DEFAULT_RANGE_PRESET),
+    onRangeChange: (range: RangeSelection) =>
+      writeSearch(rangeToSearch(range)),
+  };
   const { database: loaded, loading, error, refetch } = useDatabase(databaseId);
   const lifecycle = useDatabaseLifecycle({ refetch });
   // Judge this page's controls in the database's own workspace (w4/641, as
@@ -237,18 +261,7 @@ function DatabaseDetailPage() {
               <DatastoreLogViewer
                 kind="databases"
                 resource={database.id}
-                {...datastoreLogSearchProps(
-                  search,
-                  (patch) =>
-                    // Functional form: committed verbatim, so a patch's explicit
-                    // undefineds actually clear stale keys (w7/m42); the spread
-                    // keeps `tab: "logs"` and the untouched keys in place.
-                    void navigate({
-                      to: ".",
-                      search: (prev) => ({ ...prev, ...patch }),
-                      replace: true,
-                    }),
-                )}
+                {...datastoreLogSearchProps(search, writeSearch)}
               />
             </div>
           ) : database ? (
@@ -315,6 +328,7 @@ function DatabaseDetailPage() {
                       <DatastoreMetricsPanel
                         kind="database"
                         resource={database.id}
+                        {...metricsRange}
                         highAvailabilityEnabled={
                           database.highAvailabilityEnabled
                         }

@@ -5,7 +5,10 @@ import { DatastoreMetricsPanel } from "../datastore-metrics-panel";
 import { DatastoreMetricsSkeleton } from "@/common/components/route-skeletons";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
 import { useMetricsRetentionBound } from "@/features/metrics/hooks/use-metrics-retention";
-import type { RangeBound } from "@/features/metrics/lib/range";
+import {
+  RANGE_PRESETS,
+  type RangeBound,
+} from "@/features/metrics/lib/range";
 
 vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
   useDatastoreMetrics: vi.fn(),
@@ -577,6 +580,43 @@ describe("DatastoreMetricsPanel", () => {
           { span: 7 * 24 * HOUR_MS, step: 5040, poll: 0 },
         ]);
       }
+    });
+
+    // w4/703: a host route threads the URL-persisted range in, so the panel
+    // shows and reads the range it is given and hands a pick back to it.
+    it("follows a host-controlled range and hands each pick back to the host", async () => {
+      const user = userEvent.setup();
+      const onRangeChange = vi.fn();
+      mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+      render(
+        <DatastoreMetricsPanel
+          kind="keyvalue"
+          resource="red-abc"
+          range={RANGE_PRESETS[2]}
+          onRangeChange={onRangeChange}
+        />,
+      );
+
+      expect(
+        screen.getByRole("combobox", { name: "Time range" }),
+      ).toHaveTextContent("Last 4 hours");
+      for (const [metric, window] of readWindows()) {
+        expect([metric, window]).toEqual([
+          metric,
+          { span: 4 * HOUR_MS, step: 120, poll: 0 },
+        ]);
+      }
+
+      await user.click(screen.getByRole("combobox", { name: "Time range" }));
+      await user.click(screen.getByRole("option", { name: "Last 7 days" }));
+
+      expect(onRangeChange).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "7d" }),
+      );
+      // The host owns the range: until it passes the new one, the panel stays.
+      expect(
+        screen.getByRole("combobox", { name: "Time range" }),
+      ).toHaveTextContent("Last 4 hours");
     });
 
     it("bounds the picker by the plan's metrics window and names the plans that keep more", async () => {
