@@ -37,6 +37,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR012-auth.md](ADR012-auth.md) — Ory Kratos + Hydra on CNPG; OAuth 2.1; a token revoked at Hydra is refused within 5 s, at the next request when revoked with the operator command ([runbooks/oauth-grant-cutoff.md](runbooks/oauth-grant-cutoff.md), §8d)
 - [ADR027-sso.md](ADR027-sso.md) — social OIDC via Kratos; enterprise SAML deferred
 - [ADR024-members.md](ADR024-members.md) — workspace members & roles, OpenFGA tuples
+- [ADR115-organizations.md](ADR115-organizations.md) — accepted (2026-11-17, w7/m464) Render's organizations: a Scale or Enterprise workspace is the primary of an org holding unlimited workspaces under its one plan fee, Owner/Member/Guest (an Owner is no implicit workspace admin; `admin from org` removed), Public/Invite-only workspaces, at most two Billing members, Render's downgrade preconditions, and the org audit log at `GET /v1/organizations/{orgId}/audit-logs`; a parity recommendation, not a user decision
 - [ADR086-account-deletion.md](ADR086-account-deletion.md) — durable self-delete, workspace offboarding, credential cleanup
 - [ADR026-github-integration.md](ADR026-github-integration.md) — self-hosted GitHub App, deploy keys
 - [ADR078-github-workspace-connections.md](ADR078-github-workspace-connections.md) — workspace↔installation is N:N, each binding separately proved; why per-user credentials stay rejected
