@@ -159,6 +159,7 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 ## Inbox
 
+- [ ] **072** — [The Postgres, Key Value and service Disk metrics panels read a fixed hour, with no range picker](072.md) (60m) ← found by w7/m430, 2026-11-16
 - [ ] **071** — [HIPAA-enabled workspaces and AWS private links have no recorded disposition](071.md) (needs a user decision) ← found by w7/m429, 2026-11-16
 - [ ] **070** — [Render's plan table limits workspaces per plan and keeps enforced 2FA to Pro and higher; bex does neither](070.md) (60m) ← found by w7/m429, 2026-11-16
 - [ ] **069** — [The default number of concurrent sandboxes does not follow the workspace plan](069.md) (60m) ← found by w7/m429, 2026-11-16
