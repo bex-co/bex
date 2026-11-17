@@ -1,6 +1,6 @@
 # w32 · m285 — Sandbox filesystem snapshots, as on Render (the runtime kind follows w2/m322)
 
-**Worker:** worker32 **Goal:** users capture a filesystem snapshot of a running sandbox and start new sandboxes from it by id or name, with Render's lifecycle (status, 30-day expiry, delete), while `--kind runtime` answers a named 400 until w2/m322's memory checkpoint exists, recorded as a temporary difference (user decision D1=A, 2026-11-11) **Status:** blocked — t001–t007 done; t008's production walk passed every check but one, which needs production cluster read; it also found t009 (§ Blocked — 2026-11-17, after the walk)
+**Worker:** worker32 **Goal:** users capture a filesystem snapshot of a running sandbox and start new sandboxes from it by id or name, with Render's lifecycle (status, 30-day expiry, delete), while `--kind runtime` answers a named 400 until w2/m322's memory checkpoint exists, recorded as a temporary difference (user decision D1=A, 2026-11-11) **Status:** blocked — t001–t007 done; t009 found the failed captures' cause and shipped its fix, which awaits a production deploy and a live check; t008's registry check passed (§ Blocked — 2026-11-17, t009's fix awaits its deploy)
 
 ## Tasks (in order)
 
@@ -13,8 +13,8 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t003, t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t009](t009.md) | Captures failed in the minutes after a platform deploy: find why and make them survive it — **BLOCKED** (production logs) | 1h30m | t007 |
-| [t008](t008.md) | Closeout (live walk on production) — **BLOCKED** (registry check, t009) | 40m | t006, t007, t009 |
+| [t009](t009.md) | Captures failed in the minutes after a platform deploy: find why and make them survive it — **BLOCKED** (its fix awaits a deploy) | 1h30m | t007 |
+| [t008](t008.md) | Closeout (live walk on production) — **BLOCKED** (t009) | 40m | t006, t007, t009 |
 
 ## Definition of done
 
@@ -125,3 +125,25 @@ Every fixture is gone: the snapshots, the three sandboxes, the second group, the
   - Then change ADR018's capture row from 🚧 to ✅.
 - **t009, the failed captures:** their reasons are only in bex-api's logs, so the same access is needed. A capture run across the next production deploy can reproduce the failures without that access, but it cannot explain them.
 - **Not a gate:** everything else in the definition of done holds on production (§ Production walk — 2026-11-17).
+
+## Unblock — 2026-11-17, production cluster read (`/loopx w32`, verified evidence)
+
+- **Affected:** w32/m285 t008 and t009. No user decision was needed or taken: the gate was access, and it now works.
+- **Gate cleared: production cluster read from this host.** `~/.ssh/bex` exists (a link the user made at 22:53 PST on 2026-11-16 to the production control-plane key). `ssh -i ~/.ssh/bex root@167.233.216.116 'kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes'` lists all 15 nodes, and the same route reads pod logs, Secrets' key names, Loki (port-forward to `monitoring/loki`) and the in-cluster Zot. `scripts/fetch-app-kubeconfig.sh` still stops here only because this host has no local `kubectl`; running `kubectl` on the control plane over that SSH is the read path. No kubeconfig or credential is copied off the node or recorded.
+- **Remaining gates:** none known. **Next (worker):** t009 reads the three failures' reasons and fixes their cause; t008 checks Zot for the expired and deleted snapshots' tags, then closes the milestone once t009's live check holds.
+
+## Blocked — 2026-11-17, t009's fix awaits its deploy (`/loopx w32`)
+
+- **Done in this run (with production cluster read):**
+  - **t008's registry check holds.** Zot holds no `snapshot` tag for any expired or deleted snapshot of the walk, nor a commit tag in the source repositories, and no bex-api pod logged a reap error ([t008 § Registry purge](t008.md)). Every definition-of-done check except t009's now holds on production.
+  - **t009's cause is known, and the fix is in bex-api.** The three captures failed because the OpenSandbox server's Kubernetes client lost its API connection under its create of the `SandboxSnapshot` object (`snapshot_runtime_create_failed`, `RemoteDisconnected`). Its client never repeats a POST, and nothing had been created. The deploy did not cause it: the same error failed five sandbox creates over the previous day. bex-api now requests such a capture again, up to three requests per snapshot (migration 0286), with a regression test. Details: [t009 § Cause](t009.md).
+- **Gate: a production deploy carrying the fix. It clears by itself, and no decision is needed.** Production runs the bex-api image of the newest `chore(deploy): pin platform images to <sha>` commit on `main`. The next deploy.yml run that pins platform images after the fix lands carries it. The pin at parking time, `21762a1df1fb` (`2806a07b8`), was rolled at 06:53 UTC on 2026-11-17. Check:
+
+```bash
+git fetch origin main
+fix=$(git log origin/main --grep='^fix(sandbox): a capture the OpenSandbox server could not start' -1 --format=%H)
+pin=$(git log origin/main --grep='^chore(deploy): pin platform images to' -1 --format=%s | sed -E 's/.*images to ([0-9a-f]+).*/\1/')
+git merge-base --is-ancestor "$fix" "$pin" && echo "pinned: run t009's production check"
+```
+
+- **Then:** t009's § Production check (12 or more captures in `bex-canary` all reach `available`; every `snapshot_runtime_create_failed` since the deploy is followed by `requested again as`). Then regrade the two checklist rows and ADR018's capture row, close t009, and close the milestone with t008.

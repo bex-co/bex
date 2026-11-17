@@ -271,6 +271,20 @@ func (s *PGStore) SetSandboxSnapshotRuntimeID(ctx context.Context, id, runtimeID
 	return tag.RowsAffected() == 1, err
 }
 
+// TakeSandboxSnapshotCaptureAttempt counts one more request of a capture in
+// flight, when it has made fewer than maxAttempts, and returns which request
+// that is; 0 when it has made maxAttempts, or is no longer creating.
+func (s *PGStore) TakeSandboxSnapshotCaptureAttempt(ctx context.Context, id string, maxAttempts int) (int, error) {
+	var attempt int
+	err := s.Pool.QueryRow(ctx, `UPDATE sandbox_snapshots SET capture_attempts = capture_attempts + 1
+		WHERE id = $1 AND status = 'creating' AND deleted_at IS NULL AND capture_attempts < $2
+		RETURNING capture_attempts`, id, maxAttempts).Scan(&attempt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	return attempt, err
+}
+
 // ClaimCreatingSandboxSnapshots hands this caller up to limit captures in
 // flight that no other replica holds at now, oldest first, and holds each for
 // hold. A claim left by a replica that died expires by itself.

@@ -91,8 +91,9 @@ type fakeOpenSandbox struct {
 }
 
 // fakeCapture is one OpenSandbox snapshot: a commit of a running sandbox.
+// reason is its status.reason once it settles.
 type fakeCapture struct {
-	sandbox, name, state string
+	sandbox, name, state, reason string
 }
 
 func newFakeOpenSandbox(t *testing.T) (*fakeOpenSandbox, *Client) {
@@ -356,7 +357,11 @@ func (f *fakeOpenSandbox) serveCapture(w http.ResponseWriter, r *http.Request, i
 	}
 	switch r.Method {
 	case http.MethodGet:
-		_, _ = fmt.Fprintf(w, `{"id":%q,"sandboxId":%q,"name":%q,"status":{"state":%q,"reason":"r","message":"m"}}`, id, c.sandbox, c.name, c.state)
+		reason := c.reason
+		if reason == "" {
+			reason = "r"
+		}
+		_, _ = fmt.Fprintf(w, `{"id":%q,"sandboxId":%q,"name":%q,"status":{"state":%q,"reason":%q,"message":"m"}}`, id, c.sandbox, c.name, c.state, reason)
 	case http.MethodDelete:
 		f.calls = append(f.calls, "delete snapshot "+id)
 		if c.state == osSnapshotCreating {
@@ -375,6 +380,13 @@ func (f *fakeOpenSandbox) settleCapture(id, state string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.captures[id].state = state
+}
+
+// failCapture fails a capture with the server's reason.
+func (f *fakeOpenSandbox) failCapture(id, reason string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.captures[id].state, f.captures[id].reason = osSnapshotFailed, reason
 }
 
 // captureIDs is the captures the server still holds.

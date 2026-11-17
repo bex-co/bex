@@ -619,6 +619,115 @@ func TestFailedCapturesAndRestoreRefusals(t *testing.T) {
 	}
 }
 
+// A capture the server could not start (`snapshot_runtime_create_failed`: its
+// Kubernetes client lost the API connection under the create, as three
+// production captures did on 2026-11-17, w32/m285 t009) is requested again
+// and still settles available. The requests are bounded, a sandbox that
+// stopped running meanwhile fails the snapshot, and a request the server does
+// not answer is retried at the next sweep within the same bound. Any other
+// failure is not retried.
+func TestACaptureTheServerCouldNotStartIsRequestedAgain(t *testing.T) {
+	f := newSnapshotFixture(t)
+	status := func(snap Snapshot) Snapshot {
+		t.Helper()
+		_, got, _ := f.get(t, f.group.ID, snap.ID)
+		return got
+	}
+	runtimeID := func(snap Snapshot) string {
+		t.Helper()
+		id := f.row(t, snap.ID).RuntimeID
+		if id == nil {
+			t.Fatalf("snapshot %s has no capture: %+v", snap.ID, status(snap))
+		}
+		return *id
+	}
+
+	// Requested again, then committed: available, with nothing left behind.
+	sb := f.sandbox(t, "")
+	snap := f.mustCapture(t, sb.ID, `{"kind":"filesystem","name":"again"}`)
+	first := runtimeID(snap)
+	f.os.failCapture(first, osSnapshotNotStarted)
+	f.sweep(t)
+	second := runtimeID(snap)
+	if got := status(snap); got.Status != store.SandboxSnapshotCreating || second == first {
+		t.Fatalf("after a capture that did not start: %+v with capture %s (was %s), want creating on a new capture", got, second, first)
+	}
+	f.os.mu.Lock()
+	again, ok := f.os.captures[second]
+	f.os.mu.Unlock()
+	if !ok || again.sandbox != f.os.idOf(sb.ID) || again.name != snap.ID {
+		t.Fatalf("the new capture = %+v, want one of %s named %s", again, f.os.idOf(sb.ID), snap.ID)
+	}
+	if ids := f.os.captureIDs(); !slices.Equal(ids, []string{second}) {
+		t.Fatalf("captures = %v, want only %s: the failed one is deleted", ids, second)
+	}
+	f.commit(t, snap)
+	f.sweep(t)
+	if got := status(snap); got.Status != store.SandboxSnapshotAvailable || got.Error != nil {
+		t.Fatalf("the requested-again capture settled %+v, want available", got)
+	}
+	if code, body := f.restore(t, `"snapshotName":"again"`); code != http.StatusCreated {
+		t.Fatalf("restore from it = %d %s", code, body)
+	}
+
+	// Three captures that do not start fail the snapshot, which keeps none.
+	bounded := f.mustCapture(t, f.sandbox(t, "").ID, `{"kind":"filesystem"}`)
+	for range snapshotCaptureAttempts {
+		f.os.failCapture(runtimeID(bounded), osSnapshotNotStarted)
+		f.sweep(t)
+	}
+	if got := status(bounded); got.Status != store.SandboxSnapshotFailed || got.Error == nil || !strings.Contains(*got.Error, "could not be committed") {
+		t.Fatalf("after %d captures that did not start: %+v, want failed", snapshotCaptureAttempts, got)
+	}
+	if ids := f.os.captureIDs(); len(ids) != 0 {
+		t.Fatalf("a failed snapshot left captures %v", ids)
+	}
+
+	// A sandbox no longer running fails the snapshot instead.
+	stopped := f.sandbox(t, "")
+	gone := f.mustCapture(t, stopped.ID, `{"kind":"filesystem"}`)
+	f.os.failCapture(runtimeID(gone), osSnapshotNotStarted)
+	f.os.set(f.os.idOf(stopped.ID), func(b *fakeBox) { b.state = "Paused" })
+	f.sweep(t)
+	if got := status(gone); got.Status != store.SandboxSnapshotFailed {
+		t.Fatalf("a capture of a paused sandbox that did not start = %+v, want failed", got)
+	}
+
+	// A request the server does not answer counts, and the next sweep tries again.
+	flaky := f.mustCapture(t, f.sandbox(t, "").ID, `{"kind":"filesystem"}`)
+	failed := runtimeID(flaky)
+	f.os.failCapture(failed, osSnapshotNotStarted)
+	f.os.mu.Lock()
+	f.os.captureStatus = http.StatusServiceUnavailable
+	f.os.mu.Unlock()
+	if err := f.svc.sweepSnapshots(context.Background()); err == nil {
+		t.Fatal("a sweep whose capture request went unanswered reported no error")
+	}
+	f.os.mu.Lock()
+	f.os.captureStatus = 0
+	f.os.mu.Unlock()
+	if got := status(flaky); got.Status != store.SandboxSnapshotCreating || runtimeID(flaky) != failed {
+		t.Fatalf("after an unanswered request: %+v, want creating on the failed capture", got)
+	}
+	f.sweep(t)
+	if runtimeID(flaky) == failed {
+		t.Fatal("the next sweep did not request the capture again")
+	}
+	f.os.failCapture(runtimeID(flaky), osSnapshotNotStarted)
+	f.sweep(t) // the unanswered request was its second, so this was its last
+	if got := status(flaky); got.Status != store.SandboxSnapshotFailed {
+		t.Fatalf("after %d requests: %+v, want failed", snapshotCaptureAttempts, got)
+	}
+
+	// Any other failure is the commit's own and is not retried.
+	broken := f.mustCapture(t, f.sandbox(t, "").ID, `{"kind":"filesystem"}`)
+	f.os.failCapture(runtimeID(broken), "snapshot_commit_failed")
+	f.sweep(t)
+	if got := status(broken); got.Status != store.SandboxSnapshotFailed {
+		t.Fatalf("a failed commit = %+v, want failed without another request", got)
+	}
+}
+
 // Deleting a group deletes its snapshots with their images and captures, and
 // a deleted workspace's snapshots leave the registry with it.
 func TestGroupAndWorkspaceDeletesTakeTheirSnapshots(t *testing.T) {

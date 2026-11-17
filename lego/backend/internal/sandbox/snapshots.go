@@ -115,6 +115,9 @@ const (
 	snapshotClaimHold   = 6 * time.Minute
 	snapshotSweepEvery  = 3 * time.Second
 	snapshotSweepBatch  = 20
+	// snapshotCaptureAttempts bounds the captures requested for one snapshot
+	// when the substrate cannot start them (recapture).
+	snapshotCaptureAttempts = 3
 	// snapshotReapTimeout bounds the cleanup a delete does after its answer
 	// is decided.
 	snapshotReapTimeout = 30 * time.Second
@@ -174,6 +177,7 @@ type SnapshotStore interface {
 	SandboxSnapshots(ctx context.Context, workspaceID, groupID, name string, statuses []string, now time.Time) ([]store.SandboxSnapshot, error)
 	NewestAvailableSandboxSnapshot(ctx context.Context, workspaceID, groupID, name string, now time.Time) (store.SandboxSnapshot, error)
 	SetSandboxSnapshotRuntimeID(ctx context.Context, id, runtimeID string) (bool, error)
+	TakeSandboxSnapshotCaptureAttempt(ctx context.Context, id string, maxAttempts int) (int, error)
 	ClaimCreatingSandboxSnapshots(ctx context.Context, now time.Time, hold time.Duration, limit int) ([]store.SandboxSnapshot, error)
 	ReleaseSandboxSnapshotClaim(ctx context.Context, id string) error
 	MarkSandboxSnapshotAvailable(ctx context.Context, id, imageDigest string, sizeBytes int64, capturedAt time.Time) (bool, error)
@@ -789,9 +793,13 @@ func (s *Service) settleSnapshot(ctx context.Context, snap store.SandboxSnapshot
 	}
 	switch capture.Status.State {
 	case osSnapshotFailed:
-		reason := "the sandbox's filesystem could not be committed"
 		log.Printf("sandbox snapshots: capture of %s failed: %s: %s", snap.ID, capture.Status.Reason, capture.Status.Message)
-		_, err := st.FailSandboxSnapshot(ctx, snap.ID, reason)
+		if capture.Status.Reason == osSnapshotNotStarted {
+			if again, err := s.recapture(ctx, key, snap); again || err != nil {
+				return release(err)
+			}
+		}
+		_, err := st.FailSandboxSnapshot(ctx, snap.ID, "the sandbox's filesystem could not be committed")
 		return err
 	case osSnapshotReady:
 	default:
@@ -826,6 +834,38 @@ func (s *Service) settleSnapshot(ctx context.Context, snap store.SandboxSnapshot
 		return s.Snapshots.dropImage(ctx, snap, capturedAt)
 	}
 	return nil
+}
+
+// recapture requests a capture again in place of one the server could not
+// start, while the snapshot has attempts left, and reports whether it did.
+// false with no error means the capture is to fail: its attempts are spent, or
+// the sandbox is no longer running. An error leaves the failed capture
+// recorded, so the next sweep tries again with the attempts that remain.
+func (s *Service) recapture(ctx context.Context, key string, snap store.SandboxSnapshot) (bool, error) {
+	st := s.Snapshots.Store
+	attempt, err := st.TakeSandboxSnapshotCaptureAttempt(ctx, snap.ID, snapshotCaptureAttempts)
+	if err != nil || attempt == 0 {
+		return false, err
+	}
+	next, err := s.Client.CreateSnapshot(ctx, key, snap.SourceRef, snap.ID)
+	switch {
+	case errors.Is(err, errOpenSandboxConflict), errors.Is(err, errOpenSandboxNotFound):
+		return false, nil
+	case err != nil:
+		return true, err
+	}
+	log.Printf("sandbox snapshots: capture of %s requested again as %s (attempt %d of %d)", snap.ID, next.ID, attempt, snapshotCaptureAttempts)
+	if _, err := st.SetSandboxSnapshotRuntimeID(ctx, snap.ID, next.ID); err != nil {
+		// The row still names the failed capture, deleted below, so the next
+		// sweep fails it as lost rather than start a second commit of the
+		// sandbox while this one runs unrecorded, as in CreateSnapshot.
+		log.Printf("sandbox snapshots: record the capture %s of %s: %v", next.ID, snap.ID, err)
+	}
+	// The failed capture made nothing but the server's record of it.
+	if err := s.Client.DeleteSnapshot(ctx, key, *snap.RuntimeID); err != nil {
+		log.Printf("sandbox snapshots: delete the failed capture %s of %s: %v", *snap.RuntimeID, snap.ID, err)
+	}
+	return true, nil
 }
 
 // snapshotTooLargeError is a capture whose image is past the size cap.

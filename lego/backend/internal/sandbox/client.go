@@ -531,6 +531,13 @@ const (
 	osSnapshotFailed   = "Failed"
 )
 
+// osSnapshotNotStarted is the server's reason (status.reason) for a Failed
+// snapshot whose SandboxSnapshot object it could not create, so nothing froze
+// or committed the sandbox. Its Kubernetes client gives this when the API
+// server drops the connection under the create, which it does not repeat
+// (w32/m285 t009).
+const osSnapshotNotStarted = "snapshot_runtime_create_failed"
+
 // osSnapshot is the OpenSandbox server's snapshot (a subset): a standalone
 // commit of a running sandbox's root filesystem, which leaves the sandbox
 // running (the server's `POST /sandboxes/{id}/snapshots`, w32/m285). Its id is
