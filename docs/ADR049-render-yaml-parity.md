@@ -51,7 +51,7 @@ The alias is filename compatibility only. It is not a separate bex dialect and m
 [![Deploy to bex](https://dashboard.bex.co/images/deploy-to-bex-button.svg)](https://dashboard.bex.co/deploy?repo=https://github.com/OWNER/REPO)
 ```
 
-`repo` must be an `https://` clone URL; a trailing `/tree/<branch>` selects the branch, otherwise the repository's default branch is used. An optional `path=` names a Blueprint file other than `render.yaml`. The link signs the user in if needed, then opens the Blueprint review with everything prefilled; approval still happens on that page.
+`repo` must be an `https://` clone URL; a trailing `/tree/<branch>` selects the branch, otherwise the repository's default branch is used. An optional `path=` names a Blueprint file other than `render.yaml`. The link signs the user in if needed, then opens the Blueprint review with everything prefilled; approval still happens on that page. As on Render, a link with no `repo` deploys the repository page that linked to it when the browser sends that page's full URL (w33/003); browsers send another site only the origin by default, so write `repo`.
 
 **Create refusals leave no row (w8/166, 2026-10-21).** `POST /v1/blueprints` (and GraphQL/MCP create) runs the per-service create checks that `blueprints validate` reports before admitting the Blueprint, so a manifest those checks refuse answers 400 with nothing created. A failure that only the apply itself can find (a platform fault or a workspace race) still leaves the admitted Blueprint in `error`; clients should list Blueprints after a non-validation error.
 

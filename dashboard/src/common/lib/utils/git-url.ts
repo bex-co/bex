@@ -39,7 +39,8 @@ export function parseGitHubPage(url: string): GitHubPage | null {
   };
 }
 
-function decodePathPart(part: string): string {
+/** One URL path segment decoded, or left as is when it is not valid escaping. */
+export function decodePathPart(part: string): string {
   try {
     return decodeURIComponent(part);
   } catch {
