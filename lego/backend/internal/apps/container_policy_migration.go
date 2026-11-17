@@ -46,8 +46,8 @@ type ContainerPolicyMigration struct {
 // site) onto render-v1, Render's measured capability set (ADR089 § Privilege
 // slice decisions, w6/m149 t008; native runtimes since w32/m462). Upgrades,
 // Blueprint syncs and redeploys never migrate a service; this operator-run
-// step is the only way, one service id at a time or every native service
-// through MigrateNativeContainerPolicies. Without apply it only plans.
+// step is the only way, one service id at a time or many at once through
+// MigrateContainerPolicies. Without apply it only plans.
 // Applied, it persists the row and rolls the service once as a tracked
 // settings_change deploy, under the App's optimistic lock; a refusal found
 // under the lock restores the row. No ownership step is needed: a policy
@@ -118,16 +118,28 @@ type ContainerPolicyMigrationSummary struct {
 	Refused  int `json:"refused"`
 }
 
-// MigrateNativeContainerPolicies runs MigrateContainerPolicy for every native
-// runtime service, in its own workspace namespace, in service id order, one at
-// a time (w32/m462): a linked service is judged by its build source's runtime,
-// and build sources themselves never run. Each service's line goes to emit as
-// it settles. A refusal (suspended, a deploy in flight, a change pending, no
-// control-plane row) is reported and the run goes on; only failing to list
-// the services stops it.
-func (s *Service) MigrateNativeContainerPolicies(ctx context.Context, apply bool, emit func(ContainerPolicyMigrationLine)) (ContainerPolicyMigrationSummary, error) {
+// ContainerPolicyMigrationScope is the services a bulk run moves.
+type ContainerPolicyMigrationScope int
+
+const (
+	// MigrationScopeNative is every native runtime service (`--all-native`,
+	// w32/m462): a linked service is judged by its build source's runtime.
+	MigrationScopeNative ContainerPolicyMigrationScope = iota + 1
+	// MigrationScopeAll is every service but a static site (`--all`,
+	// w32/040): Docker, image and native runtime services, the set the
+	// creation default gives render-v1 (runsContainerPolicy).
+	MigrationScopeAll
+)
+
+// MigrateContainerPolicies runs MigrateContainerPolicy for every service in
+// scope, in its own workspace namespace, in service id order, one at a time
+// (w32/m462, w32/040); build sources themselves never run. Each service's
+// line goes to emit as it settles. A refusal (suspended, a deploy in flight,
+// a change pending, no control-plane row) is reported and the run goes on;
+// only failing to list the services stops it.
+func (s *Service) MigrateContainerPolicies(ctx context.Context, scope ContainerPolicyMigrationScope, apply bool, emit func(ContainerPolicyMigrationLine)) (ContainerPolicyMigrationSummary, error) {
 	var summary ContainerPolicyMigrationSummary
-	ids, err := s.nativeServiceIDs(ctx)
+	ids, err := s.migrationServiceIDs(ctx, scope)
 	if err != nil {
 		return summary, err
 	}
@@ -153,8 +165,11 @@ func (s *Service) MigrateNativeContainerPolicies(ctx context.Context, apply bool
 	return summary, nil
 }
 
-// nativeServiceIDs is every native runtime service's public id, sorted.
-func (s *Service) nativeServiceIDs(ctx context.Context) ([]string, error) {
+// migrationServiceIDs is the public id of every service in scope, sorted.
+func (s *Service) migrationServiceIDs(ctx context.Context, scope ContainerPolicyMigrationScope) ([]string, error) {
+	if scope != MigrationScopeNative && scope != MigrationScopeAll {
+		return nil, fmt.Errorf("%w: unknown container policy migration scope %d", core.ErrBadRequest, scope)
+	}
 	var list appv1alpha1.AppList
 	if err := s.Client.List(ctx, &list); err != nil {
 		return nil, err
@@ -164,7 +179,13 @@ func (s *Service) nativeServiceIDs(ctx context.Context) ([]string, error) {
 	for i := range services {
 		a := &services[i]
 		id := a.Labels[core.LabelAppID]
+		// A linked service keeps its own type, so its build source never
+		// changes whether it runs a container policy at all.
 		if id == "" || !core.AppInOwnWorkspaceNamespace(a) || !runsContainerPolicy(a.Spec) {
+			continue
+		}
+		if scope == MigrationScopeAll {
+			ids = append(ids, id)
 			continue
 		}
 		carrier, err := s.linkedCarrier(ctx, a)

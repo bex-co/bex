@@ -173,10 +173,10 @@ func TestMigrateContainerPolicyMovesANativeService(t *testing.T) {
 	}
 }
 
-// The bulk mode selects native runtime services only — a linked service by
+// The native bulk mode (--all-native) selects native runtime services only — a linked service by
 // its build source's runtime — and moves each one, reporting a refusal and
 // going on to the next service.
-func TestMigrateNativeContainerPoliciesSelectsAndContinuesPastRefusals(t *testing.T) {
+func TestMigrateContainerPoliciesNativeSelectsAndContinuesPastRefusals(t *testing.T) {
 	carrier := nativeApp("carrier", "", func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeBuildSource })
 	imageCarrier := migratableApp("", func(a *appv1alpha1.App) {
 		a.Name, a.Labels[core.LabelAppID], a.Spec.Type = "img-carrier", "srv-img-carrier", appv1alpha1.TypeBuildSource
@@ -207,7 +207,7 @@ func TestMigrateNativeContainerPoliciesSelectsAndContinuesPastRefusals(t *testin
 		rec := &recordingStore{}
 		svc, cl := newTenantStoreService(fakeWorkspace{}, rec, deepCopies(apps)...)
 		var lines []ContainerPolicyMigrationLine
-		summary, err := svc.MigrateNativeContainerPolicies(t.Context(), apply, func(l ContainerPolicyMigrationLine) { lines = append(lines, l) })
+		summary, err := svc.MigrateContainerPolicies(t.Context(), MigrationScopeNative, apply, func(l ContainerPolicyMigrationLine) { lines = append(lines, l) })
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -250,9 +250,107 @@ func TestMigrateNativeContainerPoliciesSelectsAndContinuesPastRefusals(t *testin
 	}
 }
 
+// namedApp is migratableApp (an image service) named name with public id
+// "srv-"+name in tea-qa.
+func namedApp(name, policy string, mutate ...func(*appv1alpha1.App)) *appv1alpha1.App {
+	return migratableApp(policy, append([]func(*appv1alpha1.App){func(a *appv1alpha1.App) {
+		a.Name, a.Labels[core.LabelAppID] = name, "srv-"+name
+	}}, mutate...)...)
+}
+
+// w32/040: the all mode (--all) selects every service but a static site —
+// Docker, image, native and a legacy auto-built one, and a linked service
+// whatever its build source — and moves each one as the native mode does,
+// reporting a refusal and going on to the next service.
+func TestMigrateContainerPoliciesAllSelectsEveryServiceButAStaticSite(t *testing.T) {
+	imageCarrier := namedApp("img-carrier", "", func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeBuildSource })
+	stray := namedApp("stray", "")
+	stray.Namespace = "default"
+	noID := namedApp("no-id", "")
+	delete(noID.Labels, core.LabelAppID)
+	repo := func(runtime, builder string) func(*appv1alpha1.App) {
+		return func(a *appv1alpha1.App) {
+			a.Spec.Image, a.Spec.Repo, a.Spec.Runtime, a.Spec.Builder = "", "https://github.com/example/app", runtime, builder
+		}
+	}
+	apps := []*appv1alpha1.App{
+		namedApp("a-image", ""),
+		namedApp("b-docker", appv1alpha1.ContainerPolicyStrictV1, repo("docker", "dockerfile")),
+		nativeApp("c-native", appv1alpha1.ContainerPolicyStrictV1),
+		namedApp("d-legacy", "", repo("", "auto")),
+		namedApp("e-linked", "", func(a *appv1alpha1.App) {
+			a.Spec.Image = ""
+			a.Spec.BuildSource = &appv1alpha1.BuildSourceLink{Name: imageCarrier.Name}
+		}),
+		namedApp("f-done", appv1alpha1.ContainerPolicyRenderV1),
+		namedApp("g-suspended", "", func(a *appv1alpha1.App) { a.Spec.Suspended = true }),
+		namedApp("h-unmanaged", "", func(a *appv1alpha1.App) { delete(a.Labels, store.LabelManagedBy) }),
+		// Not selected: a static site, a build source, a stray copy, an App
+		// with no public id.
+		namedApp("site", "", func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeStaticSite }),
+		imageCarrier, stray, noID,
+	}
+	for _, apply := range []bool{false, true} {
+		rec := &recordingStore{}
+		svc, cl := newTenantStoreService(fakeWorkspace{}, rec, deepCopies(apps)...)
+		var lines []ContainerPolicyMigrationLine
+		summary, err := svc.MigrateContainerPolicies(t.Context(), MigrationScopeAll, apply, func(l ContainerPolicyMigrationLine) { lines = append(lines, l) })
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ids []string
+		for _, l := range lines {
+			ids = append(ids, l.ServiceID)
+		}
+		want := []string{"srv-a-image", "srv-b-docker", "srv-c-native", "srv-d-legacy", "srv-e-linked", "srv-f-done", "srv-g-suspended", "srv-h-unmanaged"}
+		if !slices.Equal(ids, want) {
+			t.Fatalf("apply=%t: selected %v, want %v", apply, ids, want)
+		}
+		if !lines[5].NoOp || lines[6].Refused == "" {
+			t.Fatalf("apply=%t: already render-v1 %+v, suspended %+v", apply, lines[5], lines[6])
+		}
+		if !apply {
+			if summary != (ContainerPolicyMigrationSummary{Planned: 6, NoOp: 1, Refused: 1}) || len(rec.policyCalls) != 0 || len(rec.deployCalls) != 0 {
+				t.Fatalf("dry run: summary %+v, row writes %v, deploys %d", summary, rec.policyCalls, len(rec.deployCalls))
+			}
+			continue
+		}
+		if lines[7].Refused == "" {
+			t.Fatalf("a service with no control-plane row migrated: %+v", lines[7])
+		}
+		if summary != (ContainerPolicyMigrationSummary{Migrated: 5, NoOp: 1, Refused: 2}) {
+			t.Fatalf("summary = %+v", summary)
+		}
+		for name, policy := range map[string]string{
+			"a-image": appv1alpha1.ContainerPolicyRenderV1, "b-docker": appv1alpha1.ContainerPolicyRenderV1,
+			"c-native": appv1alpha1.ContainerPolicyRenderV1, "d-legacy": appv1alpha1.ContainerPolicyRenderV1,
+			"e-linked": appv1alpha1.ContainerPolicyRenderV1, "g-suspended": "", "h-unmanaged": "",
+			"site": "", "img-carrier": "", "no-id": "",
+		} {
+			if got := policyOfApp(t, cl, name); got != policy {
+				t.Errorf("%s: policy %q, want %q", name, got, policy)
+			}
+		}
+		if len(rec.deployCalls) != 5 {
+			t.Fatalf("deploys = %d, want one rollout per migrated service", len(rec.deployCalls))
+		}
+	}
+}
+
+// A bulk run with no scope is refused before it lists anything, rather than
+// falling back to one.
+func TestMigrateContainerPoliciesRefusesAnUnknownScope(t *testing.T) {
+	rec := &recordingStore{}
+	svc, _ := newTenantStoreService(fakeWorkspace{}, rec, namedApp("a-image", ""))
+	called := false
+	if _, err := svc.MigrateContainerPolicies(t.Context(), 0, true, func(ContainerPolicyMigrationLine) { called = true }); !errors.Is(err, core.ErrBadRequest) || called || len(rec.policyCalls) != 0 {
+		t.Fatalf("err = %v, emitted %t, row writes %v", err, called, rec.policyCalls)
+	}
+}
+
 // A refusal found under the App's lock (the service was suspended between the
 // plan and the patch) restores the persisted row, and the bulk run goes on.
-func TestMigrateNativeContainerPoliciesRestoresARowRefusedUnderTheLock(t *testing.T) {
+func TestMigrateContainerPoliciesRestoresARowRefusedUnderTheLock(t *testing.T) {
 	rec := &recordingStore{}
 	svc, cl := newTenantStoreService(fakeWorkspace{}, rec, nativeApp("a-raced", appv1alpha1.ContainerPolicyStrictV1), nativeApp("b-web", ""))
 	raced := false
@@ -273,7 +371,7 @@ func TestMigrateNativeContainerPoliciesRestoresARowRefusedUnderTheLock(t *testin
 		},
 	})
 	var lines []ContainerPolicyMigrationLine
-	summary, err := svc.MigrateNativeContainerPolicies(t.Context(), true, func(l ContainerPolicyMigrationLine) { lines = append(lines, l) })
+	summary, err := svc.MigrateContainerPolicies(t.Context(), MigrationScopeNative, true, func(l ContainerPolicyMigrationLine) { lines = append(lines, l) })
 	if err != nil {
 		t.Fatal(err)
 	}

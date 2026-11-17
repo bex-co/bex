@@ -25,6 +25,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -162,8 +163,11 @@ func TestParseMigrateContainerPolicyArgs(t *testing.T) {
 		{[]string{"srv-a", "--apply"}, migrateContainerPolicyArgs{serviceID: "srv-a", apply: true}, true},
 		{[]string{"--apply", "srv-a"}, migrateContainerPolicyArgs{serviceID: "srv-a", apply: true}, true},
 		// w32/m462: every native runtime service at once.
-		{[]string{"--all-native"}, migrateContainerPolicyArgs{allNative: true}, true},
-		{[]string{"--apply", "--all-native"}, migrateContainerPolicyArgs{allNative: true, apply: true}, true},
+		{[]string{"--all-native"}, migrateContainerPolicyArgs{scope: apps.MigrationScopeNative}, true},
+		{[]string{"--apply", "--all-native"}, migrateContainerPolicyArgs{scope: apps.MigrationScopeNative, apply: true}, true},
+		// w32/040: every service but a static site at once.
+		{[]string{"--all"}, migrateContainerPolicyArgs{scope: apps.MigrationScopeAll}, true},
+		{[]string{"--all", "--apply"}, migrateContainerPolicyArgs{scope: apps.MigrationScopeAll, apply: true}, true},
 		{nil, migrateContainerPolicyArgs{}, false},
 		{[]string{"--apply"}, migrateContainerPolicyArgs{}, false},
 		{[]string{"srv-a", "srv-b"}, migrateContainerPolicyArgs{}, false},
@@ -171,6 +175,12 @@ func TestParseMigrateContainerPolicyArgs(t *testing.T) {
 		// One service or all of them, never both.
 		{[]string{"srv-a", "--all-native"}, migrateContainerPolicyArgs{}, false},
 		{[]string{"--all-native", "srv-a"}, migrateContainerPolicyArgs{}, false},
+		{[]string{"srv-a", "--all"}, migrateContainerPolicyArgs{}, false},
+		{[]string{"--all", "srv-a"}, migrateContainerPolicyArgs{}, false},
+		// One bulk scope, once.
+		{[]string{"--all", "--all-native"}, migrateContainerPolicyArgs{}, false},
+		{[]string{"--all-native", "--all"}, migrateContainerPolicyArgs{}, false},
+		{[]string{"--all", "--all"}, migrateContainerPolicyArgs{}, false},
 	} {
 		got, err := parseMigrateContainerPolicyArgs(tc.args)
 		if (err == nil) != tc.ok || got != tc.want {

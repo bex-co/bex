@@ -82,7 +82,7 @@ This repair can ship independently under ADR049. It must not be advertised as su
 - **Lifecycle.**
   - The creation default is `render-v1` for workspaces in `BEX_IMAGE_COMPATIBILITY_WORKSPACES`. Production widened it to `*` (every workspace) on 2026-10-21 after the `bex` canary (w6/m149 t009).
   - Existing `strict-v1`/`image-v1` rows never change on upgrade, Blueprint sync or redeploy.
-  - Moving one existing service is an explicit operator-run migration (w6/m149 t008). `migrate-container-policy --all-native` runs the same migration for every native runtime service, one at a time, in one operator run (w32/m462).
+  - Moving one existing service is an explicit operator-run migration (w6/m149 t008). `migrate-container-policy --all-native` runs the same migration for every native runtime service, one at a time, in one operator run (w32/m462), and `--all` for every service but a static site: Docker, image and native alike (w32/040).
   - Rollback reverts only the creation default; it never migrates services already created.
 
 The rest of this section is the original 2026-09-29 proposal. It still holds except where the amendment above replaces it.
@@ -278,5 +278,5 @@ These decisions split D3/D4 (ports and references) from D2 (capabilities). They 
    - New Docker/image/Dockerfile services get `render-v1`, and since 2026-11-17 so do new native runtime services (w32/m462); static sites do not. The creation default applies to workspaces in `BEX_IMAGE_COMPATIBILITY_WORKSPACES`, which is `*` in production since 2026-10-21 (w6/m149 t009) and when unset (w6/090).
    - **Native runtimes, 2026-11-17 (w32/m462).** The 2026-10-19 scope left native runtimes strict. Under item 1 that was a divergence: Render's measured set includes `SETGID`, and Passenger Standalone's watchdog cannot start without it when it runs as root. The basis needs no new decision: item 1, and D2's "under Render parity first the allowlist widens to Render's measured set". Render's set was measured on a Docker image ([container-privileges.md](render-artifacts/container-privileges.md)); whether Render runs native services as root is unmeasured, and w32/039 measures it. If Render runs them as a non-root user, running bex's as that user is a stricter variant for a separate decision; `render-v1` is parity-sufficient either way.
    - `strict-v1` and `image-v1` rows never change on upgrade, Blueprint sync or redeploy.
-   - Moving an existing service is an explicit operator-run migration of one service (w6/m149 t008), or of every native runtime service in one run with `--all-native`, each still migrated and rolled one at a time (w32/m462).
+   - Moving an existing service is an explicit operator-run migration of one service (w6/m149 t008), of every native runtime service in one run with `--all-native` (w32/m462), or of every service but a static site with `--all` (w32/040), each still migrated and rolled one at a time.
    - Rollback reverts the creation default only.

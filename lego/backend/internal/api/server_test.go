@@ -1188,12 +1188,12 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 		return false
 	}
 	// The operator-run container-policy migration (w6/m149 t008), one service
-	// or every native one (w32/m462), is reached only through
+	// or every native one (w32/m462) or every one (w32/040), is reached only through
 	// `/api migrate-container-policy` inside the bex-api pod, never a tenant
 	// transport, so it has no caller identity to authorize. Its dry-run,
 	// refusal and rollback contracts live in
 	// apps/container_policy_migration_test.go.
-	if recv == reflect.TypeFor[*apps.Service]() && (m.Name == "MigrateContainerPolicy" || m.Name == "MigrateNativeContainerPolicies") {
+	if recv == reflect.TypeFor[*apps.Service]() && (m.Name == "MigrateContainerPolicy" || m.Name == "MigrateContainerPolicies") {
 		return false
 	}
 	// The store reconciler's build fan-out hook (ADR097 §5): it runs when a

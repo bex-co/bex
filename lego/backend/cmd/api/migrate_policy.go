@@ -30,40 +30,50 @@ import (
 
 // migrateContainerPolicyCommand is the operator-run move of existing services
 // onto render-v1 (w6/m149 t008), run inside the bex-api pod, one service at a
-// time or every native runtime service at once (w32/m462):
+// time, every native runtime service at once (w32/m462), or every service but
+// a static site at once (w32/040):
 //
 //	kubectl -n bex-system exec deploy/bex-api -- /api migrate-container-policy srv-… [--apply]
 //	kubectl -n bex-system exec deploy/bex-api -- /api migrate-container-policy --all-native [--apply]
+//	kubectl -n bex-system exec deploy/bex-api -- /api migrate-container-policy --all [--apply]
 //
 // Without --apply it prints the plan and writes nothing.
 const migrateContainerPolicyCommand = "migrate-container-policy"
 
+// migrateContainerPolicyBulkFlags maps each bulk flag to the services it
+// moves.
+var migrateContainerPolicyBulkFlags = map[string]apps.ContainerPolicyMigrationScope{
+	"--all-native": apps.MigrationScopeNative,
+	"--all":        apps.MigrationScopeAll,
+}
+
 // migrateContainerPolicyArgs is the command's parsed arguments: one service
-// id, or allNative.
+// id, or a bulk scope.
 type migrateContainerPolicyArgs struct {
 	serviceID string
-	allNative bool
+	scope     apps.ContainerPolicyMigrationScope
 	apply     bool
 }
 
-// parseMigrateContainerPolicyArgs reads `<srv-id> [--apply]` or
-// `--all-native [--apply]`.
+// parseMigrateContainerPolicyArgs reads `<srv-id> [--apply]`,
+// `--all-native [--apply]` or `--all [--apply]`.
 func parseMigrateContainerPolicyArgs(args []string) (migrateContainerPolicyArgs, error) {
 	var parsed migrateContainerPolicyArgs
-	usage := fmt.Errorf("usage: %s (<srv-id> | --all-native) [--apply]", migrateContainerPolicyCommand)
+	usage := fmt.Errorf("usage: %s (<srv-id> | --all-native | --all) [--apply]", migrateContainerPolicyCommand)
 	for _, arg := range args {
+		scope, bulk := migrateContainerPolicyBulkFlags[arg]
 		switch {
 		case arg == "--apply":
 			parsed.apply = true
-		case arg == "--all-native" && parsed.serviceID == "":
-			parsed.allNative = true
-		case parsed.serviceID == "" && !parsed.allNative && len(arg) > 0 && arg[0] != '-':
+		case bulk && parsed.serviceID == "" && parsed.scope == 0:
+			parsed.scope = scope
+		case parsed.serviceID == "" && parsed.scope == 0 && len(arg) > 0 && arg[0] != '-':
 			parsed.serviceID = arg
 		default:
 			return migrateContainerPolicyArgs{}, usage
 		}
 	}
-	if parsed.serviceID == "" && !parsed.allNative {
+	if parsed.serviceID == "" && parsed.scope == 0 {
 		return migrateContainerPolicyArgs{}, usage
 	}
 	return parsed, nil
@@ -91,8 +101,8 @@ func runMigrateContainerPolicy(ctx context.Context, cpDBURI string, base *core.B
 		}
 	}
 	enc := json.NewEncoder(out)
-	if parsed.allNative {
-		summary, err := svc.MigrateNativeContainerPolicies(ctx, parsed.apply, func(line apps.ContainerPolicyMigrationLine) {
+	if parsed.scope != 0 {
+		summary, err := svc.MigrateContainerPolicies(ctx, parsed.scope, parsed.apply, func(line apps.ContainerPolicyMigrationLine) {
 			logApplied(line.ContainerPolicyMigration)
 			_ = enc.Encode(line)
 		})
