@@ -155,20 +155,24 @@ func TestClientIPBehindProductionEdge(t *testing.T) {
 	}
 }
 
-// TestSourceIPBehindProductionEdge is w9/m450's address: api.bex.co sits
-// behind Cloudflare, so the X-Forwarded-For entry Traefik vouches for is a
-// Cloudflare edge, and the person is the True-Client-IP bex's edge plugin set
-// (CF-Connecting-IP from a Cloudflare peer). That header, like
-// X-Forwarded-For, is believed only from a trusted proxy.
-func TestSourceIPBehindProductionEdge(t *testing.T) {
+// TestClientIPBehindCloudflare: api.bex.co sits behind Cloudflare, so the
+// X-Forwarded-For entry Traefik vouches for is a Cloudflare edge, and the
+// person is the True-Client-IP bex's edge plugin set (CF-Connecting-IP from a
+// Cloudflare peer). Audit rows record that person (w9/m450), and every
+// IP-keyed budget counts them: keyed on the edge, one client's failures were
+// spread over a bucket per Cloudflare edge and never reached a 429 on
+// production (w7/m426). The header, like X-Forwarded-For, is believed only
+// from a trusted proxy.
+func TestClientIPBehindCloudflare(t *testing.T) {
 	p := mustTrustedProxies(t, "10.244.0.0/16")
 	const traefikPod, cloudflareEdge = "10.244.3.17:52114", "172.70.1.2"
 	cases := []struct{ name, peer, xff, trueClient, want string }{
 		{"the edge's client wins over the Cloudflare hop", traefikPod, cloudflareEdge, "198.51.100.23", "198.51.100.23"},
+		{"another Cloudflare hop is the same client", traefikPod, "172.71.9.8", "198.51.100.23", "198.51.100.23"},
 		{"a v6 client normalizes", traefikPod, cloudflareEdge, "2001:0db8::0007", "2001:db8::7"},
 		{"a v4-mapped client unmaps", traefikPod, cloudflareEdge, "::ffff:198.51.100.23", "198.51.100.23"},
-		{"no edge header falls back to ClientIP", traefikPod, "198.51.100.23", "", "198.51.100.23"},
-		{"a malformed edge header falls back to ClientIP", traefikPod, "198.51.100.23", "not-an-ip", "198.51.100.23"},
+		{"no edge header falls back to the X-Forwarded-For walk", traefikPod, "198.51.100.23", "", "198.51.100.23"},
+		{"a malformed edge header falls back to the X-Forwarded-For walk", traefikPod, "198.51.100.23", "not-an-ip", "198.51.100.23"},
 		// An untrusted peer (a client reaching bex-api past the edge) names
 		// whatever it likes in both headers; neither is believed.
 		{"an untrusted peer's spoofed headers are ignored", "192.0.2.1:443", "203.0.113.9", "203.0.113.10", "192.0.2.1"},
@@ -180,7 +184,7 @@ func TestSourceIPBehindProductionEdge(t *testing.T) {
 			if tc.trueClient != "" {
 				r.Header.Set("True-Client-IP", tc.trueClient)
 			}
-			if got := p.SourceIP(r); got != tc.want {
+			if got := p.ClientIP(r); got != tc.want {
 				t.Errorf("peer %s XFF %q True-Client-IP %q: got %q, want %q", tc.peer, tc.xff, tc.trueClient, got, tc.want)
 			}
 		})
@@ -189,7 +193,7 @@ func TestSourceIPBehindProductionEdge(t *testing.T) {
 	var none TrustedProxies
 	r := reqFrom("10.0.0.1:1234", "203.0.113.9", "")
 	r.Header.Set("True-Client-IP", "203.0.113.10")
-	if got := none.SourceIP(r); got != "10.0.0.1" {
+	if got := none.ClientIP(r); got != "10.0.0.1" {
 		t.Errorf("no trusted proxies: got %q, want the peer", got)
 	}
 }

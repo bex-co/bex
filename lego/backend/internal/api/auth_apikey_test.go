@@ -651,6 +651,49 @@ func TestAPIKeyBearerRepeatedFailuresAreRateLimited(t *testing.T) {
 	}
 }
 
+// TestAPIKeyBearerFailuresBehindCloudflareAddUp is the production shape of the
+// test above. api.bex.co sits behind Cloudflare, and Cloudflare reaches the
+// origin from many edges, so one client's attempts arrive through a Traefik pod
+// with a different Cloudflare address in X-Forwarded-For each time and the same
+// client in the edge's True-Client-IP. On production (w7/m426 t006, pin
+// db48cde2bae9) 550 repeats of one wrong key from one client all answered 401:
+// the budget keyed on the Cloudflare hop, a bucket per edge. Keyed on the
+// client, the repeats spend one budget and end in 429, and another client
+// behind the same edges keeps its own.
+func TestAPIKeyBearerFailuresBehindCloudflareAddUp(t *testing.T) {
+	hydra := newKeyHydra(t)
+	key := hydra.add(keyClientA)
+	const budget = 4
+	admission := NewAuthAdmission(60, budget, 0, 0)
+	trusted, err := core.ParseTrustedProxies("10.244.0.0/16")
+	if err != nil {
+		t.Fatal(err)
+	}
+	admission.TrustedProxies = trusted
+	gate := keyGate(hydra, newStepClock(), admission)
+	viaEdge := func(bearer, edge, client string) int {
+		r := bearerRequest(bearer, "10.244.3.17") // a Traefik pod
+		r.Header.Set("X-Forwarded-For", edge)
+		r.Header.Set("True-Client-IP", client)
+		w := httptest.NewRecorder()
+		gate.middleware(echoIdentity).ServeHTTP(w, r)
+		return w.Code
+	}
+	const client, neighbour = "2001:db8:45f0:963f::131", "198.51.100.23"
+	wrongSecret := key + "x"
+	for i := range budget {
+		if code := viaEdge(wrongSecret, fmt.Sprintf("172.70.%d.2", i), client); code != http.StatusUnauthorized {
+			t.Fatalf("attempt %d = %d, want 401 inside the budget", i, code)
+		}
+	}
+	if code := viaEdge(wrongSecret, "172.71.200.9", client); code != http.StatusTooManyRequests {
+		t.Fatalf("the client's next attempt through a new Cloudflare edge = %d, want 429: the budget is the client's, not the edge's", code)
+	}
+	if code := viaEdge(key, "172.70.0.2", neighbour); code != http.StatusOK {
+		t.Fatalf("another client behind the same edge = %d, want 200", code)
+	}
+}
+
 // TestAPIKeyBearerGuessesAtOneClientAreBounded: distinct wrong secrets for one
 // client id, each from a new source so no source budget stops them, reach
 // Hydra keyFailuresPerMinute times and are then shed with 429 before it. The

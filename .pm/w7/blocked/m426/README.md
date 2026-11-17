@@ -1,6 +1,6 @@
 # w7 · m426 — A bex API key works as a bearer token, as a Render API key does
 
-**Worker:** worker7 **Goal:** one bex API key string, sent as `Authorization: Bearer`, authenticates REST, GraphQL and MCP as a Render API key does, so Render's clients work with only the host and the key changed; the `client_credentials` exchange keeps working. **Status:** blocked — release gate, no user action (t001–t005, t008 and t009 done and shipped: `8227312bc` server, CLI and docs, `956e920d0` dashboard; t006, t007 and t010 wait for the production pin to carry `956e920d0`)
+**Worker:** worker7 **Goal:** one bex API key string, sent as `Authorization: Bearer`, authenticates REST, GraphQL and MCP as a Render API key does, so Render's clients work with only the host and the key changed; the `client_credentials` exchange keeps working. **Status:** blocked — release gate, no user action (t001–t005 and t007–t009 done and shipped; t006 walked on production on 2026-11-17 and holds except one check: a repeated wrong key never reached 429 behind Cloudflare. The fix is the commit whose message carries `w7/m426 t006`; t006 re-runs that one check, then t010, once the production pin carries it)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Failed key attempts are rate-limited, counted and never logged — **DONE** | 45m | t002 |
 | t005 | The CLI and the skills pack use an API key directly — **DONE** | 60m | t002 |
 | t006 | Live check on production: curl, the `render` CLI, `/mcp` and the Terraform provider with one key | 45m | t003, t004, t005 |
-| t007 | Render parity | 20m | t006 |
+| t007 | Render parity — **DONE** | 20m | t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 45m | t007 |
 | t010 | Closeout | 10m | t008, t009 |
@@ -63,6 +63,31 @@ On production, as the QA user in `bex-canary`, with an owned key that is revoked
 **Found on the way, filed:** `w7/064` (a DB-free bex-api crashes at start once Hydra holds an API key) and `w7/065` (`scripts/auth-oauth21-e2e.sh` fails at its older leg 8 and leaves its servers running).
 
 **For t007.** One thing to weigh there, seen locally: the 401 is one REST-shaped body on all three surfaces, while the 429 is REST-shaped on REST and MCP and a GraphQL `errors` envelope on `/graphql`. That is how `auth_overloaded` has answered since w4/m100 for every credential, not something this milestone introduced.
+
+**2026-11-17, unblocked by verified evidence, walked on production, parked again on a new release gate.**
+
+- **The release gate cleared** (source: verified evidence, `/pm unblock w7/m426`). The newest pin on main, `fc4fbf28a` `chore(deploy): pin platform images to db48cde2bae9`, carries `956e920d0` (`git merge-base --is-ancestor 956e920d0 db48cde2bae9` succeeds). Both bex-api pods ran the pinned image (`bex-operator@sha256:ced899147db9…`), and the dashboard ran the pinned `sha256:16bd3deae0b4…`.
+- **t006, the production walk**, 14:42–14:53 UTC, as the QA user in `bex-canary` (`tea-daif693dqjvc73e7as3g`). One key was minted over REST and revoked at the end. Neither the key nor its id is recorded here.
+  - _Definition-of-done item 1 holds._ The key as the bearer answered 200 on `GET /v1/services`, a GraphQL `services` query and an MCP `tools/call` of `list_services`. A create and a delete of an env group made with it are audit rows whose actor is `rest_api` with the key's id.
+  - _Item 2 holds._ The unmodified Render CLI v2.36.0 (checksum-verified darwin/arm64 release binary), with `RENDER_HOST=https://api.bex.co/v1/`, `RENDER_API_KEY=<key>` and an isolated config, ran `workspace set` and `services list -o json`, which listed `hello-go`. Terraform 1.17.2 with `render-oss/render` v1.9.1, `RENDER_HOST`, `RENDER_API_KEY` and `RENDER_OWNER_ID`, ran `terraform plan` on a `render_web_service` data source for `srv-dbkq3hdhhjfs73eiahe0`. It read the service (`hello-go`, `https://hello-go.onbex.co`) and exited 0.
+  - _Item 3 holds._ The key was warmed on both replicas (12 requests), then `DELETE /v1/api-keys/{id}` answered 204 at 14:52:24. The very next request answered 401 on each surface: REST 0.45 s after the delete returned, GraphQL 0.75 s, MCP 1.27 s, and the token exchanged in item 5 1.55 s. Afterwards the CLI printed its 401 message and `terraform plan` failed `unauthorized`.
+  - _Item 5 holds._ The key's id and secret exchanged at `https://oauth.bex.co/oauth2/token` (200, `expires_in` 899, empty scope), and the token answered 200 on all three surfaces. After the revoke the same exchange answered `invalid_client`.
+  - _Item 4, the one answer, holds._ A wrong secret, an unknown id, a malformed key and random text each got the same 401 body on REST, GraphQL and MCP (one SHA-256), with the same `WWW-Authenticate` challenge.
+  - _Item 4, the 429, does not hold for a repeated wrong key._ 250 sequential repeats of one wrong key and then 300 more at 30 a second all answered 401. Each replica counted about 275 `cached` refusals and no shed. The reason: bex-api keyed every per-source budget on the `X-Forwarded-For` entry, which behind Cloudflare is a Cloudflare edge address that changes from request to request, so one client's failures spread over a bucket per edge. The audit rows already recorded the person through the edge's `True-Client-IP`. The two bounds that do not depend on the address worked on production: 20 distinct wrong secrets for the key's id answered 429 `auth_overloaded` with `Retry-After: 1` from the 20th (10 per replica), and 200 repeats of one random string answered 130 times 401 and then 429.
+  - _Fixed in the same commit as this record_ (commit message carries `w7/m426 t006`). `core.TrustedProxies.ClientIP` now takes the edge's `True-Client-IP` from a trusted peer before the `X-Forwarded-For` walk. `SourceIP`, which did that for audit rows only, is gone, and its callers use `ClientIP`. That also keys the anonymous rate limit and the device endpoints on the client, which had the same defect. ADR012 §8e and ADR006 say so. `TestAPIKeyBearerFailuresBehindCloudflareAddUp` (one client through several Cloudflare edges ends in 429, and a neighbour keeps its budget) and `TestClientIPBehindCloudflare` fail on the old code. The backend suite and `make lint` pass, and `/simplify` found nothing to change, so t008 and t009 need no other pass.
+  - _Cleanup._ The two other keys minted for t007 were revoked too. `bex-canary` holds only its two `bex-canary-probes` keys, as before, and the env group is deleted. The QA session was logged out, and the API answered 401 to its cookie afterwards.
+  - _ADR018's API-key row_ now records the production check (date, pin, the five clients, the revocation).
+- **t007 (Render parity) is done**; its record is in `done/t007.md`.
+- **The new gate clears by itself.** The deploy workflow builds main and commits the next pin; nothing is needed from anyone. The check that proves it cleared:
+
+  ```bash
+  git fetch origin main
+  fix=$(git log -1 --format=%H --grep='w7/m426 t006' origin/main)
+  pin=$(git log origin/main --grep='pin platform images to' -1 --format=%s | sed -E 's/.*pin platform images to ([0-9a-f]+).*/\1/')
+  git merge-base --is-ancestor "$fix" "$pin" && echo "the pin carries the fix"
+  ```
+
+- **Then:** t006's one remaining check. As the QA user in `bex-canary`, mint a key, repeat one wrong key (`bex_<its id>_<a wrong secret>`) against `GET /v1/services` until it answers 429. With a budget of 60 a minute per replica and two replicas, 300 attempts sent 10 at a time should reach it within seconds. Check that the 429 body says nothing about the key, revoke the key, and log the session out. Then run t010.
 
 ## Source + Goal linkage
 

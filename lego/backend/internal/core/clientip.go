@@ -76,21 +76,40 @@ func (p TrustedProxies) TrustsPeer(r *http.Request) bool {
 	return err == nil && p.trusted(addr)
 }
 
-// ClientIP derives the client IP for rate-limit keying. When the immediate
-// peer (RemoteAddr) is NOT a trusted proxy — or no proxies are configured —
-// the peer IP is returned and the forwarding headers are ignored, so a spoofed
-// X-Forwarded-For from an untrusted peer can never influence the key. When the
-// peer IS trusted, the client is the first untrusted X-Forwarded-For entry
+// trueClientIPHeader is the header bex's own edge sets on every request (the
+// Traefik clientipheaders plugin, deploy/gitops/charts/traefik-plugins): the
+// real client, which is Cloudflare's CF-Connecting-IP when the TCP peer is a
+// Cloudflare edge and the peer itself otherwise. The plugin deletes whatever
+// value a caller sent before setting its own. The dashboard's SSR forwards the
+// browser request's value.
+const trueClientIPHeader = "True-Client-IP"
+
+// ClientIP is the client a request came from: the key of every IP-keyed
+// budget (the per-source failure budget, the anonymous rate limit, the device
+// endpoints) and the address an audit row records (w9/m450). When the
+// immediate peer (RemoteAddr) is NOT a trusted proxy — or no proxies are
+// configured — the peer IP is returned and the forwarding headers are ignored,
+// so a spoofed header from an untrusted peer can never influence the answer.
+//
+// When the peer IS trusted, the edge's True-Client-IP wins. api.bex.co sits
+// behind Cloudflare, so the X-Forwarded-For entry the walk below reaches names
+// a Cloudflare edge, and Cloudflare reaches the origin from many of them: keyed
+// on that entry, one client's failures spread over a bucket per edge and never
+// added up to a 429 (seen on production, w7/m426). Without a usable
+// True-Client-IP the client is the first untrusted X-Forwarded-For entry
 // walking rightmost-to-leftmost (the entry the outermost trusted proxy vouches
 // for; entries the client itself prepended sit left of it and are skipped); if
 // every entry is trusted the leftmost is the best available answer. X-Real-IP
 // is the fallback when X-Forwarded-For is absent, and the peer IP is the last
-// resort when neither header carries a usable address.
+// resort when no header carries a usable address.
 func (p TrustedProxies) ClientIP(r *http.Request) string {
 	peer := PeerIP(r.RemoteAddr)
 	peerAddr, err := netip.ParseAddr(peer)
 	if err != nil || !p.trusted(peerAddr) {
 		return peer
+	}
+	if addr, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get(trueClientIPHeader))); err == nil {
+		return addr.Unmap().WithZone("").String()
 	}
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.Split(xff, ",")
@@ -112,29 +131,6 @@ func (p TrustedProxies) ClientIP(r *http.Request) string {
 		}
 	}
 	return peer
-}
-
-// trueClientIPHeader is the header bex's own edge sets on every request (the
-// Traefik clientipheaders plugin, deploy/gitops/charts/traefik-plugins): the
-// real client, which is Cloudflare's CF-Connecting-IP when the TCP peer is a
-// Cloudflare edge and the peer itself otherwise. The plugin deletes whatever
-// value a caller sent before setting its own.
-const trueClientIPHeader = "True-Client-IP"
-
-// SourceIP is the client address an audit row records (w9/m450): who acted,
-// from where. api.bex.co sits behind Cloudflare, so the X-Forwarded-For entry
-// ClientIP walks to names a Cloudflare edge; the edge's True-Client-IP names
-// the person. That header is believed only from a trusted proxy, exactly as
-// ClientIP believes X-Forwarded-For, so an untrusted peer that sends it (or a
-// spoofed X-Forwarded-For) is recorded as itself. Without a usable header the
-// answer is ClientIP's.
-func (p TrustedProxies) SourceIP(r *http.Request) string {
-	if p.TrustsPeer(r) {
-		if addr, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get(trueClientIPHeader))); err == nil {
-			return addr.Unmap().WithZone("").String()
-		}
-	}
-	return p.ClientIP(r)
 }
 
 // PeerIP extracts the host part of a host:port remote address, returning the

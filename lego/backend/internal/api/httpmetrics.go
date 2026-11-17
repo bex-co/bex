@@ -611,7 +611,7 @@ func RequestOriginMiddleware(proxies core.TrustedProxies, next http.Handler) htt
 		next.ServeHTTP(w, r.WithContext(core.WithRequestOrigin(r.Context(), core.RequestOrigin{
 			Transport: publicSurface(r),
 			UserAgent: r.Header.Get("User-Agent"),
-			SourceIP:  proxies.SourceIP(r),
+			SourceIP:  proxies.ClientIP(r),
 		})))
 	})
 }

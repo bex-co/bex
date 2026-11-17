@@ -252,13 +252,14 @@ func (s *Server) serveWebSocket(w http.ResponseWriter, r *http.Request) {
 		return // Upgrade already wrote the error response.
 	}
 	defer conn.Close()
+	clientIP := s.TrustedProxies.ClientIP(r)
 	remoteAddress := r.RemoteAddr
-	if clientIP := s.TrustedProxies.ClientIP(r); clientIP != core.PeerIP(r.RemoteAddr) {
+	if clientIP != core.PeerIP(r.RemoteAddr) {
 		remoteAddress = clientIP
 	}
 	// Where the browser connected from, for the workspace audit log's shell
 	// rows and any refusal the resolver records (w9/m451).
-	origin := core.RequestOrigin{SourceIP: s.TrustedProxies.SourceIP(r), UserAgent: r.UserAgent()}
+	origin := core.RequestOrigin{SourceIP: clientIP, UserAgent: r.UserAgent()}
 	s.runWebSocketSession(r.Context(), &wsConn{conn: conn}, claims, remoteAddress, origin)
 }
 
