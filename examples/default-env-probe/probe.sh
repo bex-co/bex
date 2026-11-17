@@ -9,7 +9,6 @@
 # service's own variables and secrets stay out of the log. Run it as the first
 # step of a build command (`sh probe.sh build`) and of a start command
 # (`sh probe.sh runtime && exec …`). It is POSIX sh, so dash and busybox run it.
-# w32/m425's capture: docs/render-artifacts/default-env-live.md.
 phase=${1:?usage: sh probe.sh build|runtime}
 for name in \
   IS_PULL_REQUEST RENDER RENDER_CPU_COUNT RENDER_DISCOVERY_SERVICE \
