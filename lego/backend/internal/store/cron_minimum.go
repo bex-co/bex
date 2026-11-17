@@ -45,7 +45,7 @@ func (s *PGStore) RecordActiveCronJobs(ctx context.Context, month time.Time) err
 		INSERT INTO cron_minimum_months (service_id, workspace_id, month)
 		SELECT a.id, a.tenant_id, $2::date
 		FROM apps a
-		WHERE a.type = $1 AND NOT a.suspended AND NOT a.creation_pending
+		WHERE a.type = $1 AND `+serviceAppsOnly+` AND NOT a.suspended AND NOT a.creation_pending
 		ON CONFLICT DO NOTHING`, appv1alpha1.TypeCronJob, monthDate(month))
 	return err
 }
