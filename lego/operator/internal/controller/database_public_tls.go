@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -97,8 +98,9 @@ const (
 	// restart (t001: the old serial was still served after 85s).
 	cnpgReloadLabel = "cnpg.io/reload"
 	// labelDatabaseUID binds the cert-manager-written Secret to this Database's
-	// lifetime: only a Secret carrying this Database's UID is ever deleted.
-	labelDatabaseUID        = "app.bex.co/database-uid"
+	// lifetime: only a Secret carrying this Database's UID is ever deleted. It
+	// aliases execution.LabelDatabaseUID, shared with the cleanup Job selector.
+	labelDatabaseUID        = execution.LabelDatabaseUID
 	publicTLSPendingRequeue = 30 * time.Second
 	publicTLSSettleRequeue  = 5 * time.Second
 )

@@ -67,7 +67,7 @@ func reconcileEnvironmentPeerPolicy(ctx context.Context, cl client.Client, schem
 		return nil
 	}
 	_, err := controllerutil.CreateOrUpdate(ctx, cl, np, func() error {
-		np.Labels = map[string]string{"app.bex.co/managed-by": "bex-operator"}
+		np.Labels = map[string]string{execution.ManagedByLabel: execution.ManagedByOperator}
 		peers := environmentPeers(env)
 		for _, job := range jobs {
 			peers = append(peers, networkingv1.NetworkPolicyPeer{PodSelector: job})

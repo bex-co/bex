@@ -38,6 +38,13 @@ const (
 // pod template, so a purge restarts the cache with the pods, as a deploy does.
 const CachePurgedAtAnnotation = "app.bex.co/cache-purged-at"
 
+// AnnotationLastActive records when the App last served (or received) traffic.
+// The activator stamps it on wake; the operator advances it while the App is
+// awake. A free web app auto-hibernates once the window passes after this
+// stamp with no newer traffic. It lives here so the stamp and the read can
+// never drift apart.
+const AnnotationLastActive = "app.bex.co/last-active"
+
 // CacheProfile values (AppSpec.CacheProfile).
 const (
 	CacheProfileNone   = "no-cache"

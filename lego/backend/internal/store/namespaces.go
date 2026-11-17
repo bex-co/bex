@@ -53,10 +53,11 @@ const (
 	// RegimeLabel distinguishes a workspace's hosting namespace from its sandbox
 	// namespace (ADR043 D2 — both untrusted, opposite default network postures).
 	// RegimeLabel also rides OpenSandbox create metadata, selecting the resulting
-	// BatchSandbox and Pod for sandbox-only network policy.
-	RegimeLabel   = "app.bex.co/regime"
-	RegimeHosting = "hosting"
-	RegimeSandbox = "sandbox"
+	// BatchSandbox and Pod for sandbox-only network policy. All three alias the
+	// canonical keys in lego/types (v1alpha1), which the operator also reads.
+	RegimeLabel   = appv1alpha1.LabelRegime
+	RegimeHosting = appv1alpha1.RegimeHosting
+	RegimeSandbox = appv1alpha1.RegimeSandbox
 
 	// sandboxSuffix names the sandbox regime namespace for a workspace.
 	sandboxSuffix = "-sandbox"

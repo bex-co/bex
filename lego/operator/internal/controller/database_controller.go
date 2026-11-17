@@ -1156,7 +1156,7 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 		// Mark CNPG-managed pods as tenant databases so the node log shipper can
 		// exclude platform/auth CNPG clusters. Propagate workspace identity through
 		// the same bounded inheritedMetadata label map for NetworkPolicy selection.
-		inheritedLabels := map[string]any{"app.bex.co/component": "database"}
+		inheritedLabels := map[string]any{appv1alpha1.LabelComponent: "database"}
 		if ws := db.Labels[labelWorkspace]; ws != "" {
 			inheritedLabels[labelWorkspace] = ws
 		}

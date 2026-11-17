@@ -24,6 +24,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 // ErrConflictRequeue is returned when a Kubernetes write conflict persists
@@ -73,7 +75,7 @@ func (c *Creds) mutateSecretKey(
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: c.ZotNamespace,
-					Labels:    map[string]string{"app.bex.co/managed-by": "bex-operator"},
+					Labels:    map[string]string{execution.ManagedByLabel: execution.ManagedByOperator},
 				},
 				Data: map[string][]byte{key: value},
 			}

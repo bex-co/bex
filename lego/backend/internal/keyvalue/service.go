@@ -269,8 +269,9 @@ func kvStatus(kv *appv1alpha1.KeyValue) string {
 // (a rename, an eviction-policy change, or an external-access change with the
 // TLS listener already running) lands at, so the status does not read
 // config_restart while the operator catches up to a change that restarts
-// nothing (w4/m233, w4/m330).
-const annotationRestartFreeGeneration = "app.bex.co/restart-free-generation"
+// nothing (w4/m233, w4/m330). It aliases the canonical key in core, shared
+// with the postgres service.
+const annotationRestartFreeGeneration = core.AnnotationRestartFreeGeneration
 
 // restartFreePending reports a Ready store whose only unobserved generation is
 // one bex-api wrote as restart-free. The operator keeps a serving store Ready

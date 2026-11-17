@@ -71,8 +71,9 @@ const (
 	// Value store. The KeyValue reconciler stamps app.bex.co/keyvalue=<name> on
 	// every StatefulSet pod template; the main Valkey server container is always
 	// named "valkey". The keyvalue logs feature (w3/m30) uses these for exact
-	// pod fallback and Loki instance discovery.
-	PodLabelKeyValue = "app.bex.co/keyvalue"
+	// pod fallback and Loki instance discovery. The label aliases the canonical
+	// key in lego/types (v1alpha1), which the operator stamps.
+	PodLabelKeyValue = appv1alpha1.LabelKeyValue
 	ValkeyContainer  = "valkey"
 )
 
@@ -403,6 +404,13 @@ const AnnotCrashLoopSuspended = "app.bex.co/crashloop-suspended"
 // window, which the Ready condition alone cannot do (it stays False while a
 // service is suspended, keeping its old transition time).
 const AnnotCrashLoopObserved = "app.bex.co/crashloop-observed"
+
+// AnnotationRestartFreeGeneration names the generation a restart-free write
+// (a rename, an allow-list or external-access change that restarts nothing)
+// lands at, so the datastore status does not read config_restart while the
+// operator catches up. Stamped and read by bex-api on Database and KeyValue
+// CRs; both datastore services alias this instead of hand-writing the key.
+const AnnotationRestartFreeGeneration = "app.bex.co/restart-free-generation"
 
 // SuspendersFor is Suspenders for an App the platform may have suspended
 // rather than its owner: for a spent monthly allowance (billing), or for a

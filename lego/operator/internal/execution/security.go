@@ -48,6 +48,13 @@ const (
 	LabelAppNamespace  = "app.bex.co/app-namespace"
 	LabelVerifyImage   = "app.bex.co/verify-image"
 	VerifyImageEnabled = "enabled"
+	// ManagedByLabel marks objects the operator (not a tenant) owns: the
+	// NetworkPolicies its reconcilers CreateOrUpdate and the registry Secrets
+	// they mint. ManagedByOperator is its only value. The controllers and the
+	// registry alias these instead of hand-writing the key, so a rename cannot
+	// orphan the objects from their owner.
+	ManagedByLabel    = "app.bex.co/managed-by"
+	ManagedByOperator = "bex-operator"
 	// LabelFreePlan marks the pods of a free-plan App. The platform's
 	// deny-free-plan-smtp-egress policy (deploy/gitops/base/tenant-node-egress.yaml)
 	// selects it to refuse outbound TCP 25/465/587, as Render does for free

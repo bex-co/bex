@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -103,7 +104,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxyPolicy(ctx context.Co
 	for _, policy := range policies {
 		np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + policy.suffix, Namespace: kv.Namespace}}
 		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, np, func() error {
-			np.Labels = map[string]string{"app.bex.co/managed-by": "bex-operator"}
+			np.Labels = map[string]string{execution.ManagedByLabel: execution.ManagedByOperator}
 			np.Spec = policy.spec
 			return controllerutil.SetControllerReference(kv, np, r.Scheme)
 		}); err != nil {

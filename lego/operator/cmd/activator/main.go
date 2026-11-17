@@ -55,7 +55,9 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-const annotLastActive = "app.bex.co/last-active"
+// annotLastActive aliases the canonical annotation in lego/types (v1alpha1),
+// shared with the App controller, which advances it while the App is awake.
+const annotLastActive = appv1alpha1.AnnotationLastActive
 
 // annotWakeStarted records when a request woke the App from Hibernated (w8/216).
 // The wake patch moves the phase on, and the activator runs as more than one

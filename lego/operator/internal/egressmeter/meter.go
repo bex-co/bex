@@ -54,8 +54,10 @@ const (
 	PodLabelAppID = renderenv.LabelAppID
 	// PodLabelEgressAppID attributes a pod that must not carry PodLabelAppID
 	// (a pre-deploy Job runs the service's own command but is never a Service
-	// backend) to its service's egress (w4/453).
-	PodLabelEgressAppID = "app.bex.co/egress-app-id"
+	// backend) to its service's egress (w4/453). It aliases the canonical key
+	// in lego/types (v1alpha1), shared with the predeploy step, which cannot
+	// import this package (eBPF).
+	PodLabelEgressAppID = appv1alpha1.LabelEgressAppID
 	// PodLabelSandboxID is the public id (`sbx-...`) bex-api stamps on a
 	// /v1/sandboxes sandbox and OpenSandbox persists as a pod label (the
 	// per-sandbox Cilium allow-list policy selects pods by it). The operator

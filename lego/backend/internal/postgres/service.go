@@ -519,8 +519,9 @@ func (req CreatePostgresRequest) validatePhysicalIdentifiers() error {
 // an external-access or display-name change restarts nothing — CNPG re-signs
 // the server certificate and reloads, and the SNI proxy re-reads its routes —
 // so the status must not read config_restart while the operator catches up
-// to that generation (w4/364).
-const annotationRestartFreeGeneration = "app.bex.co/restart-free-generation"
+// to that generation (w4/364). It aliases the canonical key in core, shared
+// with the keyvalue service.
+const annotationRestartFreeGeneration = core.AnnotationRestartFreeGeneration
 
 // restartFreePending reports a Ready database whose only unobserved
 // generation is one bex-api wrote as restart-free.

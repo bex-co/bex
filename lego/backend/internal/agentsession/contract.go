@@ -30,6 +30,7 @@ import (
 	"unicode"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
@@ -61,13 +62,16 @@ const (
 	// Pod metadata is the authorization record until the durable session table
 	// (w3/m39) lands. OpenSandbox copies create metadata to labels, so the repo and
 	// branch use fixed-size digests while their exact values arrive in the request.
-	LabelWorkspace    = "bex.co/workspace"
-	LabelRegime       = "app.bex.co/regime"
+	LabelWorkspace = "bex.co/workspace"
+	// LabelRegime and RegimeSandbox alias the canonical regime keys in
+	// lego/types (v1alpha1), which bex-api's NamespaceReconciler stamps and
+	// the operator also reads.
+	LabelRegime       = appv1alpha1.LabelRegime
 	LabelSession      = "bex.co/agent-session"
 	LabelDispatchTurn = "bex.co/agent-dispatch-turn"
 	LabelRepository   = "bex.co/agent-repository"
 	LabelBranch       = "bex.co/agent-branch"
-	RegimeSandbox     = "sandbox"
+	RegimeSandbox     = appv1alpha1.RegimeSandbox
 
 	BranchPrefix = "bex-agent/"
 )

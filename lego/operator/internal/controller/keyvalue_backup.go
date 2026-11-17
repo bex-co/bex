@@ -445,8 +445,8 @@ func (r *KeyValueReconciler) kvDeletionPending(ctx context.Context, kv *appv1alp
 func (r *KeyValueReconciler) deleteKeyValueBackupJobs(ctx context.Context, kv *appv1alpha1.KeyValue) (bool, error) {
 	var jobs batchv1.JobList
 	if err := r.List(ctx, &jobs, client.InNamespace(kv.Namespace), client.MatchingLabels{
-		labelKeyValue:          kv.Name,
-		"app.bex.co/component": keyValueBackupComponent,
+		labelKeyValue:              kv.Name,
+		appv1alpha1.LabelComponent: keyValueBackupComponent,
 	}); err != nil {
 		return false, fmt.Errorf("list KeyValue backup Jobs: %w", err)
 	}
