@@ -23,6 +23,7 @@
 
 ## Inbox
 
+- [ ] [041](041.md) — The TypeScript SDK can upload a sandbox file as `application/gzip`, and bex's gateway refuses it with 415; settle what Render does and match it or record the divergence (~30m) ← w32/035's worker, 2026-11-17: released Render TS SDK v1.8.0 `SandboxUploadContentType` includes `application/gzip`; `sshgateway/sandboxfiles` admits only `application/octet-stream` and `application/x-tar`
 - [ ] [040](040.md) — Move the existing Docker (2) and image (6) services still on the strict policy onto `render-v1` with a bulk operator run (~1h) ← from w32/m462 t003 step 4, 2026-11-17
 - [ ] [039](039.md) — Measure whether Render runs native runtime services as root (`id`, `CapEff` in a Render shell); gated on a Render account (~30m) ← from w32/m462 t004, 2026-11-17
 - [ ] [037](037.md) — A Phoenix release on a free web service never serves: port detection adopts its `epmd` (4369) before Phoenix binds `PORT`, so the deploy goes live and the URL answers 502 (~1h) ← w32/m425's production capture, 2026-11-17: Render's own `render-examples/phoenix_hello` on pin `55c120858af0`; the native bound-port scan adopts any lone TCP listener, where w8/205 gave image ports an HTTP check; major
