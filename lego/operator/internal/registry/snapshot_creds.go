@@ -69,7 +69,7 @@ func (c *Creds) EnsureSnapshotCreds(ctx context.Context, namespace string) error
 	// as per-App reg-pull Secrets). Secrets minted before round-11 #1 lack it;
 	// ensurePullSecret best-effort backfills when the RoleBinding grants patch.
 	password, err := c.ensurePullSecret(ctx, namespace, SnapshotPullSecretName, zotUser, map[string]string{
-		"app.bex.co/component":                    "snapshot-pull",
+		appv1alpha1.LabelComponent:                "snapshot-pull",
 		appv1alpha1.LabelProtectedFromTenantMount: appv1alpha1.ProtectedFromTenantMount,
 	})
 	if err != nil {

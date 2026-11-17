@@ -8,6 +8,8 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-17 `bex.co/*` OpenSandbox metadata vocabulary (`owner`, `workspace`, `network-policy`, `sandbox-id`, `agent-session`, `plan`, …) repeated across backend `agentsession`/`sandbox`/`sessionegress` and operator `egressmeter` — the operator repeats are deliberate per-code comments (operator cannot import backend); unifying needs a dedicated vocabulary move, not a const swap
+- 2026-11-17 agentsession/sandbox `bex.co/workspace` vs `v1alpha1.LabelWorkspace` (`app.bex.co/workspace`) — different domains (OpenSandbox create metadata vs App CR labels), not copies
 - 2026-11-16 `*_test.go` fixtures hand-writing the unified label values — fixtures model external input; aliases keep same-package tests compiling unchanged
 - 2026-11-16 `lego/operator/config/*` YAML hand-writing label values (`app.bex.co/component` etc.) — manifests cannot import Go constants
 - 2026-11-15 `backend/internal/id` vs `operator/internal/identity` — different domains (minted typed resource ids vs workspace-scoped sink names)

@@ -82,7 +82,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 			},
 		}
 		dep.Spec.Template.Labels = keyValueInternalProxyPodLabels(kv)
-		dep.Spec.Template.Annotations = map[string]string{"app.bex.co/credential-revision": intent.credentialRevision}
+		dep.Spec.Template.Annotations = map[string]string{credentialRevisionAnnotation: intent.credentialRevision}
 		env := []corev1.EnvVar{
 			{Name: "BEX_KV_UPSTREAM_ADDR", Value: fmt.Sprintf("%s.%s.svc:%d", backend.Name, kv.Namespace, kvPort)},
 			kvSecretEnv(kvPasswordEnv, intent.authSecretName),

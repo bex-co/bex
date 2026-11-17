@@ -43,6 +43,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
@@ -200,7 +202,7 @@ func (c *Creds) ensureSandboxMeterSecret(ctx context.Context) (map[string]string
 		sec = corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: SandboxMeterSecretName, Namespace: c.ZotNamespace,
-				Labels: map[string]string{"app.bex.co/component": "sandbox-meter-registry"},
+				Labels: map[string]string{appv1alpha1.LabelComponent: "sandbox-meter-registry"},
 			},
 			Type: corev1.SecretTypeOpaque,
 		}

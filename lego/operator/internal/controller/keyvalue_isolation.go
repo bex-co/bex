@@ -43,7 +43,7 @@ func keyValueJobPeer(kv *appv1alpha1.KeyValue) *metav1.LabelSelector {
 	return &metav1.LabelSelector{
 		MatchLabels: map[string]string{labelKeyValue: kv.Name},
 		MatchExpressions: []metav1.LabelSelectorRequirement{{
-			Key:      "app.bex.co/component",
+			Key:      appv1alpha1.LabelComponent,
 			Operator: metav1.LabelSelectorOpIn,
 			Values:   []string{keyValueBackupComponent, keyValueBackupPurgeComponent},
 		}},
