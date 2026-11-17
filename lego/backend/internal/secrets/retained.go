@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -155,6 +156,16 @@ func (s *Service) adoptAllRetained(ctx context.Context, a *appv1alpha1.App, serv
 // runtime (the container's env beats envFrom), so a stored edit or delete beside
 // a surviving literal would change nothing; the value the process holds, the
 // literal's, is what the store keeps. It refreshes a.
+//
+// Removing a literal from spec.Env changes the pod template, which rolls a
+// release, so the patch is held for the next deploy (rollout.WithSaveOnly) and
+// never rolls one itself: the verb's own write follows, and it is the only
+// rollout the caller asked for. A staged write (REST: Render's env-var writes
+// "will not be deployed automatically") asks for none, so it opens no deploy; a
+// deploying one (GraphQL, MCP) rolls once and consumes the hold with its stamp.
+//
+// The patch refuses a name a Blueprint sync re-declared since the verb read the
+// App (dropMovedRetained), and the refusal rolls the store write back.
 func (s *Service) adoptRetained(ctx context.Context, a *appv1alpha1.App, service string, retained map[string]string) error {
 	if len(retained) == 0 {
 		return nil
@@ -180,8 +191,8 @@ func (s *Service) adoptRetained(ctx context.Context, a *appv1alpha1.App, service
 		return quota
 	}
 	original := a.DeepCopy()
-	if err := s.materializeEnvEditing(ctx, a, env, committedAt(envWrite.version), func(a *appv1alpha1.App) {
-		dropSpecEnvNames(a, retained)
+	if err := s.materializeEnvEditing(rollout.WithSaveOnly(ctx), a, env, committedAt(envWrite.version), func(a *appv1alpha1.App) error {
+		return dropMovedRetained(a, retained)
 	}); err != nil {
 		return s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}

@@ -716,8 +716,9 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	// `PUT []` answered [] while the list still showed it (w8/027).
 	replaceAll := func() error {
 		if stagedWrite(ctx) {
-			return s.stageEnvWrite(ctx, a, env, committedAt(envWrite.version), func(a *appv1alpha1.App) {
+			return s.stageEnvWrite(ctx, a, env, committedAt(envWrite.version), func(a *appv1alpha1.App) error {
 				dropInvalidSpecEnv(a, func(string) bool { return true })
+				return nil
 			})
 		}
 		return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
@@ -1359,7 +1360,7 @@ func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env ma
 
 // materializeEnvEditing is materializeEnv with an edit of the App inside the
 // same locked patch, for a write that also changes spec.Env.
-func (s *Service) materializeEnvEditing(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision, edit func(*appv1alpha1.App)) error {
+func (s *Service) materializeEnvEditing(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision, edit func(*appv1alpha1.App) error) error {
 	if stagedWrite(ctx) {
 		return s.stageEnvWrite(ctx, a, env, revision, edit)
 	}
@@ -1368,7 +1369,9 @@ func (s *Service) materializeEnvEditing(ctx context.Context, a *appv1alpha1.App,
 			return err
 		}
 		if edit != nil {
-			edit(a)
+			if err := edit(a); err != nil {
+				return err
+			}
 		}
 		s.bumpRestart(a)
 		return nil

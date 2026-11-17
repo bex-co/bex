@@ -50,8 +50,9 @@ func stagedWrite(ctx context.Context) bool {
 // Secret is updated, the App's references stay as they are (a release that
 // never consumed the Secret gets it on its next deploy), and a fresh
 // notification wakes the status comparison with the serving release. edit
-// adjusts the App inside the locked patch.
-func (s *Service) stageEnvWrite(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision, edit func(*appv1alpha1.App)) error {
+// adjusts the App inside the locked patch, and refuses the write by returning an
+// error.
+func (s *Service) stageEnvWrite(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision, edit func(*appv1alpha1.App) error) error {
 	// Projected once, before the locked patch, which can run again on a
 	// re-read App (see finalizeEnvironmentPatch).
 	if err := s.projectEnv(ctx, a.DeepCopy(), env, revision); err != nil {
@@ -61,7 +62,9 @@ func (s *Service) stageEnvWrite(ctx context.Context, a *appv1alpha1.App, env map
 		read := a.DeepCopy()
 		a.Spec.EnvFromSecret = envSecretName(a.Name)
 		if edit != nil {
-			edit(a)
+			if err := edit(a); err != nil {
+				return err
+			}
 		}
 		stagePendingProjectionReferences(a, read, env, true, false)
 		notifySavedConfig(a)
