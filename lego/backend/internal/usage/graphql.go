@@ -41,6 +41,9 @@ var usageRowGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// routinely exceed that, so expose the int64 quantity through Float;
 		// IEEE-754 remains exact for every realistic monthly counter here.
 		"total": gqlutil.FloatField(func(r store.UsageSummaryRow) any { return r.Total }),
+		// unbilled marks sandbox CPU or memory recorded before
+		// estimatedCost.sandboxUsageBilledFrom: shown, never charged (w22/m314).
+		"unbilled": gqlutil.BoolField(func(r store.UsageSummaryRow) any { return r.Unbilled }),
 	},
 })
 
@@ -77,6 +80,9 @@ var chargeLineGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// covered; empty when none did (docs/ADR030 §13).
 		"included": gqlutil.StrField(func(c pricing.ChargeLine) any { return c.Included }),
 		"costUsd":  gqlutil.StrField(func(c pricing.ChargeLine) any { return c.CostUSD }),
+		// unbilled marks a sandbox CPU or memory line recorded before
+		// EstimatedCost.sandboxUsageBilledFrom: its rate is 0 (w22/m314).
+		"unbilled": gqlutil.BoolField(func(c pricing.ChargeLine) any { return c.Unbilled }),
 	},
 })
 
@@ -101,6 +107,11 @@ var estimatedCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// resources is the same total grouped by the resource that incurred it
 		// — what a bill needs to answer "which service costs me money".
 		"resources": gqlutil.Typed(graphql.NewList(resourceEstimateGQLType), func(e pricing.EstimatedCost) any { return e.Resources }),
+		// sandboxUsageBilledFrom is the RFC 3339 instant from which a running
+		// sandbox is billed for used CPU and allocated memory instead of the
+		// weighted sandbox compute charge; empty for a period with no sandbox
+		// usage (w22/m314).
+		"sandboxUsageBilledFrom": gqlutil.StrField(func(e pricing.EstimatedCost) any { return e.SandboxUsageBilledFrom }),
 	},
 })
 

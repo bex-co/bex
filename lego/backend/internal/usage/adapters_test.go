@@ -469,7 +469,7 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	}
 	gql := graphql.Do(graphql.Params{
 		Schema:        schema,
-		RequestString: `{ usage { coverage { state through degradedSources } services { serviceId serviceName resourceKind rows { kind tier total } } } }`,
+		RequestString: `{ usage { coverage { state through degradedSources } services { serviceId serviceName resourceKind rows { kind tier total unbilled } } } }`,
 		Context:       ctx,
 	})
 	if len(gql.Errors) > 0 {
@@ -496,9 +496,10 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 		for _, rawRow := range s["rows"].([]any) {
 			row := rawRow.(map[string]any)
 			entry.Rows = append(entry.Rows, usageRow{
-				Kind:  row["kind"].(string),
-				Tier:  row["tier"].(string),
-				Total: int64(row["total"].(float64)),
+				Kind:     row["kind"].(string),
+				Tier:     row["tier"].(string),
+				Total:    int64(row["total"].(float64)),
+				Unbilled: row["unbilled"].(bool),
 			})
 		}
 		gqlEntries = append(gqlEntries, entry)
@@ -896,5 +897,140 @@ func TestRetainedNamesAgreeAcrossAdapters(t *testing.T) {
 	}
 	if !reflect.DeepEqual(mcpNamed, restNamed) {
 		t.Errorf("MCP differs from REST:\nREST: %+v\nMCP: %+v", restNamed, mcpNamed)
+	}
+}
+
+// w22/m314 t004, t006: a sandbox billed on use reads the same on REST, GraphQL
+// and MCP: the CPU and memory recorded before the switch as unbilled rows and
+// lines at a rate of 0, the hours after it priced, and the switch instant
+// beside them. Nothing is charged on the weighted meter for the hours after.
+func TestSandboxBilledOnUseAcrossAdapters(t *testing.T) {
+	st := newMemUsageStore()
+	billedFrom := time.Date(2026, 7, 12, 8, 0, 0, 0, time.UTC)
+	st.sandboxUsageBilledFrom = billedFrom
+	put := func(kind string, window time.Time, quantity int64) {
+		t.Helper()
+		if err := st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+			WorkspaceID: "tea-use", ServiceID: "sbx-1", ResourceKind: store.ResourceKindSandbox,
+			Kind: kind, Tier: "1c-2g", WindowStart: window, Quantity: quantity,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	before := billedFrom.Add(-time.Hour)
+	put(store.UsageKindSandboxComputeSeconds, before, 1211*3600) // the hour before: the weighted charge
+	put(store.UsageKindSandboxMemoryGBSeconds, before, 2*3600)   // recorded beside it
+	put(store.UsageKindSandboxCPUSeconds, before, 600)
+	put(store.UsageKindSandboxMemoryGBSeconds, billedFrom, 2*3600) // the hour after: billed on use
+	put(store.UsageKindSandboxCPUSeconds, billedFrom, 600)
+	svc := svcWithTenant(st, "tea-use")
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest("GET", "/v1/usage", nil).WithContext(ctx))
+	if w.Code != http.StatusOK {
+		t.Fatalf("REST: status %d: %s", w.Code, w.Body.String())
+	}
+	var rest usageResponse
+	if err := json.NewDecoder(w.Body).Decode(&rest); err != nil {
+		t.Fatal(err)
+	}
+	if got := rest.EstimatedCost.SandboxUsageBilledFrom; got != pricing.Default.SandboxUsageBilledFrom().Format(time.RFC3339) {
+		t.Errorf("REST sandboxUsageBilledFrom = %q, want the price sheet's switch instant", got)
+	}
+	wantRows := []usageRow{
+		{Kind: store.UsageKindSandboxComputeSeconds, Tier: "1c-2g", Total: 1211 * 3600},
+		{Kind: store.UsageKindSandboxCPUSeconds, Tier: "1c-2g", Total: 600, Unbilled: true},
+		{Kind: store.UsageKindSandboxCPUSeconds, Tier: "1c-2g", Total: 600},
+		{Kind: store.UsageKindSandboxMemoryGBSeconds, Tier: "1c-2g", Total: 7200, Unbilled: true},
+		{Kind: store.UsageKindSandboxMemoryGBSeconds, Tier: "1c-2g", Total: 7200},
+	}
+	if len(rest.Services) != 1 || !reflect.DeepEqual(rest.Services[0].Rows, wantRows) {
+		t.Fatalf("REST rows = %+v, want %+v", rest.Services, wantRows)
+	}
+	if len(rest.EstimatedCost.Resources) != 1 {
+		t.Fatalf("REST resources = %+v", rest.EstimatedCost.Resources)
+	}
+	type line struct {
+		kind, rate, cost string
+		unbilled         bool
+	}
+	wantLines := []line{
+		{store.UsageKindSandboxComputeSeconds, "0.0895", "0.11", false},
+		{store.UsageKindSandboxCPUSeconds, "0", "0.00", true},
+		{store.UsageKindSandboxCPUSeconds, "0.084", "0.01", false},
+		{store.UsageKindSandboxMemoryGBSeconds, "0", "0.00", true},
+		{store.UsageKindSandboxMemoryGBSeconds, "0.0133", "0.03", false},
+	}
+	var restLines []line
+	for _, c := range rest.EstimatedCost.Resources[0].Charges {
+		restLines = append(restLines, line{c.Kind, c.RateUSD, c.CostUSD, c.Unbilled})
+	}
+	if !reflect.DeepEqual(restLines, wantLines) {
+		t.Errorf("REST charge lines = %+v, want %+v", restLines, wantLines)
+	}
+	if rest.EstimatedCost.TotalUSD != "0.15" { // $0.1084 weighted + $0.014 CPU + $0.0266 memory
+		t.Errorf("REST total = %s, want 0.15", rest.EstimatedCost.TotalUSD)
+	}
+
+	schema, err := buildTestSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gql := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `{ usage {
+		services { rows { kind tier total unbilled } }
+		estimatedCost { totalUsd sandboxUsageBilledFrom resources { charges { kind rateUsd costUsd unbilled } } } } }`})
+	if len(gql.Errors) > 0 {
+		t.Fatalf("GraphQL errors: %v", gql.Errors)
+	}
+	usageData := gql.Data.(map[string]any)["usage"].(map[string]any)
+	est := usageData["estimatedCost"].(map[string]any)
+	if est["sandboxUsageBilledFrom"] != rest.EstimatedCost.SandboxUsageBilledFrom || est["totalUsd"] != rest.EstimatedCost.TotalUSD {
+		t.Errorf("GraphQL estimate = %v, want REST's %q and %s", est, rest.EstimatedCost.SandboxUsageBilledFrom, rest.EstimatedCost.TotalUSD)
+	}
+	var gqlLines []line
+	for _, raw := range est["resources"].([]any)[0].(map[string]any)["charges"].([]any) {
+		c := raw.(map[string]any)
+		gqlLines = append(gqlLines, line{c["kind"].(string), c["rateUsd"].(string), c["costUsd"].(string), c["unbilled"].(bool)})
+	}
+	if !reflect.DeepEqual(gqlLines, wantLines) {
+		t.Errorf("GraphQL charge lines = %+v, want REST's %+v", gqlLines, wantLines)
+	}
+	var gqlRows []usageRow
+	for _, raw := range usageData["services"].([]any)[0].(map[string]any)["rows"].([]any) {
+		r := raw.(map[string]any)
+		gqlRows = append(gqlRows, usageRow{Kind: r["kind"].(string), Tier: r["tier"].(string), Total: int64(r["total"].(float64)), Unbilled: r["unbilled"].(bool)})
+	}
+	if !reflect.DeepEqual(gqlRows, wantRows) {
+		t.Errorf("GraphQL rows = %+v, want REST's %+v", gqlRows, wantRows)
+	}
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "usage-test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "usage-test-client", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cs.Close()
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_usage"})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP get_usage: err=%v result=%+v", err, result)
+	}
+	rawMCP, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var viaMCP usageResponse
+	if err := json.Unmarshal(rawMCP, &viaMCP); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(viaMCP.EstimatedCost, rest.EstimatedCost) || !reflect.DeepEqual(viaMCP.Services, rest.Services) {
+		t.Errorf("MCP differs from REST:\nREST: %+v %+v\nMCP: %+v %+v", rest.Services, rest.EstimatedCost, viaMCP.Services, viaMCP.EstimatedCost)
 	}
 }

@@ -2,7 +2,7 @@
 # Production measurement leg for w22/m314 t001: does cAdvisor report usable
 # per-sandbox CPU for a gVisor (runsc) pod, as the figure a "billed on use"
 # meter would read from Prometheus? The thresholds are fixed in
-# .pm/w22/m314/t001.md before any measurement:
+# the board item w22/m314 t001 before any measurement:
 #
 #   accuracy  a one-core busy load must read its CPU-seconds within +-5%;
 #   idle      an idle running sandbox must read at most 2% of one core;
@@ -147,4 +147,4 @@ else
 fi
 kubectl -n "$ref_ns" delete pod "$ref" --ignore-not-found --wait=false >/dev/null 2>&1 || true
 
-pass "cpu leg measured pod $pod on $node (read the MEASURE lines against the thresholds in .pm/w22/m314/t001.md)"
+pass "cpu leg measured pod $pod on $node (read the MEASURE lines against the thresholds in the board item w22/m314 t001)"

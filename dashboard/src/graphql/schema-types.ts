@@ -1240,6 +1240,7 @@ export type ChargeLine = {
   quantity: Maybe<Scalars['String']['output']>;
   rateUsd: Maybe<Scalars['String']['output']>;
   tier: Maybe<Scalars['String']['output']>;
+  unbilled: Maybe<Scalars['Boolean']['output']>;
   unit: Maybe<Scalars['String']['output']>;
 };
 
@@ -1725,6 +1726,7 @@ export type EstimatedCost = {
   __typename: 'EstimatedCost';
   meters: Maybe<Array<Maybe<MeterEstimate>>>;
   resources: Maybe<Array<Maybe<ResourceEstimate>>>;
+  sandboxUsageBilledFrom: Maybe<Scalars['String']['output']>;
   totalUsd: Maybe<Scalars['String']['output']>;
 };
 
@@ -5694,6 +5696,7 @@ export type UsageRow = {
   kind: Maybe<Scalars['String']['output']>;
   tier: Maybe<Scalars['String']['output']>;
   total: Maybe<Scalars['Float']['output']>;
+  unbilled: Maybe<Scalars['Boolean']['output']>;
 };
 
 export type UsageSummary = {

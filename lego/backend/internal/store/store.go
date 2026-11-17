@@ -821,6 +821,13 @@ type PGStore struct {
 	// workspace as blocked rather than delete (its teardown would lock every
 	// operator out of the observability UI). Empty (unset) => both guards inert.
 	OpsWorkspaceID string
+	// SandboxUsageBilledFrom is the instant sandbox billing switches from the
+	// weighted allocated-shape meter to used CPU plus allocated memory, as
+	// Render bills (w22/m314, ADR104 D8): the sandbox meter writes by it and
+	// the usage reads mark the CPU and memory recorded before it as shown, not
+	// billed. An hour boundary; the composition root sets it from the price
+	// sheet. Zero means the switch never happens.
+	SandboxUsageBilledFrom time.Time
 	// gitWebhookReplayInstance identifies this API process's signing-epoch
 	// leases. It is process-local and never exposed as a public resource id.
 	gitWebhookReplayInstance string

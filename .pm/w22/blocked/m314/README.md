@@ -1,19 +1,19 @@
 # w22 · m314 — Sandbox CPU billed on use, as on Render: a gVisor accuracy spike, then the cutover
 
-**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** todo (t001 done: verdict **fail** on the ±5% line, recorded unchanged; unblocked 2026-11-16 by `/unblock w22` under the standing parity rule: bill the measured CPU, see "解阻记录 2026-11-16")
+**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** blocked (clears by itself: the production check needs the deploy carrying the w22/m314 commit and, for t005, the switch at 2026-11-18T00:00:00Z; t001, t002, t004, t006, t007 and t008 done; t003 implemented and shipped, its production acceptance open; see "实施记录 2026-11-17")
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Spike: does gVisor report usable per-sandbox CPU? Fix the thresholds, run, record the verdict — **DONE (verdict: fail)** | 1h30m | — |
-| t002 | Record the pod name on every running interval | 1h | t001 |
+| t002 | Record the pod name on every running interval — **DONE** | 1h | t001 |
 | t003 | Meter used CPU from Prometheus: sandbox_cpu_seconds | 2h | t001, t002, w22/m313/t002 |
-| t004 | Bill on use: price CPU and memory, stop billing the folded meter (or take the recorded fallback) | 1h30m | t003, w22/m313/t005 |
+| t004 | Bill on use: price CPU and memory, stop billing the folded meter (or take the recorded fallback) — **DONE** | 1h30m | t003, w22/m313/t005 |
 | t005 | Production check with a known load, and amend ADR023, ADR030 and ADR104 | 1h30m | t004 |
-| t006 | Render parity | 30m | t005 |
-| t007 | Simplify | 20m | t006 |
-| t008 | Test coverage | 40m | t006 |
+| t006 | Render parity — **DONE** | 30m | t005 |
+| t007 | Simplify — **DONE** | 20m | t006 |
+| t008 | Test coverage — **DONE** | 40m | t006 |
 | t009 | Closeout | 10m | t007, t008 |
 
 ## Definition of done
@@ -26,7 +26,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [docs/ADR104-sandbox-render-parity.md](../../../docs/ADR104-sandbox-render-parity.md), whose gap table is the proposal (no separate `/pm-brainstorm` run), filed by `/pmx adr104 to w22` on 2026-11-10; gap 8 (CPU meter and cutover)
+- **Source:** [docs/ADR104-sandbox-render-parity.md](../../../../docs/ADR104-sandbox-render-parity.md), whose gap table is the proposal (no separate `/pm-brainstorm` run), filed by `/pmx adr104 to w22` on 2026-11-10; gap 8 (CPU meter and cutover)
 - **Goal linkage:** Render parity first (ADR008): Render bills actively-used CPU plus allocated memory; usage metering and billing (ADR023, ADR030, ADR040); pillar 5 sandboxes
 - **Expected outcome:** An idle running sandbox stops costing as much as a busy one, and the bill for a known load matches the work done
 - **Why now:** An idle-but-running sandbox costs the same as a busy one on bex today, the most visible billing difference from Render; it depends on w22/m313's meters and on a spike whose result decides the branch.
@@ -79,3 +79,34 @@
   4. t005：生产已知负载检查，数字记入任务，容差按 t001 实测的比值（见任务里的修订），文档修订，另开选项 2 的 inbox 笔记。
 - **验收：** 见各任务；DoD 第 1 条的修订见上。
 
+## 实施记录 2026-11-17（/loopx w22，UTC）
+
+- **已发布：** 用量计费的代码、抓取配置、测试和文档（t002、t004、t006–t008 完成；t003 已实现并发布）。**生效时间点是 2026-11-18T00:00:00Z**，所有 workspace 同一时刻，没有 allowlist。在此之前账单不变：新的 CPU 和内存用量只记录、显示为"不计费"。
+- **客户会看到的：**
+  - 生效后，通过 sandbox API 创建的 sandbox 运行时按实际用的 CPU（$0.084 每 CPU 小时）加分配的内存（$0.0133 每 GiB 小时）计费，不再有按规格的加权计费行。空闲一小时的 `1c-2g` 约 $0.027（以前 $0.108）。
+  - agent session 的 sandbox 不变，继续按加权规格计费，所以 `outcome.cost` 与账单一致。
+  - Stripe 发票上仍是一行 sandbox compute（目录已到 Stripe 每个订阅 20 项的上限，CPU 和内存折算成等价的加权单位记到这一行）；用量页和 API 分开显示 CPU 与内存。不需要新的 Stripe Price，也不需要任何凭据。
+- **t004 第 0 步的结论（生产上读到的）：pod 的 CPU 上限不会把账单封顶在套餐规格上。** init 容器 `execd-installer` 取命名空间 LimitRange 的默认 2 CPU，pod 的有效上限是"各容器之和"与"最大 init 容器"中较大的一个，gVisor 下 sentry 和工作负载共用 pod 的 cgroup。所以 `starter` 和 `1c-2g` 最多按 2 核计费：`1c-2g` 最坏一小时 $0.195（以前 $0.108），纯 CPU 负载 $0.111。t001 里 syscall 重负载读到的 2.00 核就是这个配额，不是倍数。修复另开为 w22/020。**这比 2026-11-16 解阻记录里"若封顶则永远不比今天贵"的假设更差，用户如果因此想改主意（选项 2 或 3），请在 2026-11-18T00:00:00Z 之前说。** 改时间点只需改 `pricing.yaml` 的 `sandboxUsage.billedFrom` 并发布。
+- **与任务原文的偏离：** t004 写的是"加 Stripe 行"，实际是复用现有的一行（原因见上）。`sandboxUsage` 的费率暂不出现在 `GET /pricing`（bex.co 还没有对应的展示）。
+- **未做、需要部署之后才能做：**
+  1. t003 的生产验收：部署完成后跑 `gh workflow run sandbox-measure.yml -f leg=usage -f usage_idle_seconds=600`（一次性、不计费的 workspace，两个 sandbox，约 25 分钟）。生效前用量行是"不计费"的，所以**可以也应该在 2026-11-18T00:00:00Z 之前跑**，这样计量有问题能在计费切换前发现。把 `MEASURE busy` 里的比值记进 t003。
+  2. t005 的第 1、2 步：2026-11-18T00:00:00Z 之后再跑一次（默认空闲一小时），它会检查计费行的费率和金额。数字记进 t005 和 ADR104 D8。
+  3. t009 收尾。
+- **证明闸门已清的检查：** `gh run list --workflow deploy.yml --limit 5` 里有包含本次提交的成功运行；Prometheus 里 `sandbox_pod_cpu_usage_seconds_total` 有序列；上面两次 `usage` 运行都是 PASS。
+- **如果生效前的那次运行失败：** 把 `sandboxUsage.billedFrom` 往后推并发布是安全的退路（之前的用量保持加权计费），然后修计量。
+
+## Render parity, 2026-11-17 (t006)
+
+REST, GraphQL and MCP return the same rows, lines, `unbilled` flags and `sandboxUsageBilledFrom`; the dashboard reads the GraphQL fields. Render's public API has no usage endpoint, so the comparison is against its documented billing (launch post and comparison article, re-read 2026-11-17). Drift, all recorded:
+
+| Render | bex from 2026-11-18T00:00:00Z | Where it is recorded |
+| --- | --- | --- |
+| CPU billed on active use, on Firecracker | Billed on use at the pod's cgroup, which under gVisor includes the sentry: +9.8% on a pure CPU load | ADR104 D8, ADR030 §17; the overhead-factor variant is w22/019 |
+| A plan names its CPU; whether a sandbox can exceed it is not documented | A pod below 2 CPU can use and be billed for up to 2 cores | ADR104 D8, ADR030 §17; fix filed as w22/020 |
+| Memory billed while running, on allocation | Same | none |
+| Suspended: snapshot storage only | Same (w22/m313) | none |
+| Invoice layout for sandboxes: not established | One sandbox compute line on the Stripe invoice; CPU and memory apart on the usage page and API | ADR104 D8, ADR040 |
+| Whether Hobby pays for sandbox usage: not stated | Open, as before | ADR030 §15, ADR104 D8 |
+| Prices are in an article, not on render.com/pricing | The rates are in `pricing.yaml` and ADR030, not yet on `GET /pricing` or bex.co | ADR030 §17 |
+
+An agent session's sandbox keeps the weighted meter (ADR047 D6); Devin's pricing page gives no per-CPU reference (read 2026-11-17).

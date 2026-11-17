@@ -41,6 +41,36 @@ type fakeMeterStore struct {
 	accrueCalls int
 	pruneCalls  int
 	stats       store.SandboxStorageStats
+
+	cpuWindows  []store.SandboxCPUWindow
+	cpuAccrued  map[string]float64 // sandbox id -> CPU-seconds added
+	cpuDeferred []string
+	cpuStats    store.SandboxCPUStats
+}
+
+func (f *fakeMeterStore) ClaimSandboxCPUWindows(context.Context, time.Time, time.Time, int) ([]store.SandboxCPUWindow, error) {
+	return f.cpuWindows, nil
+}
+
+func (f *fakeMeterStore) AccrueSandboxCPUWindow(_ context.Context, w store.SandboxCPUWindow, seconds float64) (bool, error) {
+	if f.cpuAccrued == nil {
+		f.cpuAccrued = map[string]float64{}
+	}
+	f.cpuAccrued[w.SandboxID] += seconds
+	return true, nil
+}
+
+func (f *fakeMeterStore) DeferSandboxCPUWindow(_ context.Context, w store.SandboxCPUWindow, _ time.Time) error {
+	f.cpuDeferred = append(f.cpuDeferred, w.SandboxID)
+	return nil
+}
+
+func (f *fakeMeterStore) SandboxCPUStats(context.Context) (store.SandboxCPUStats, error) {
+	return f.cpuStats, nil
+}
+
+func (f *fakeMeterStore) PruneSandboxIntervals(context.Context, time.Time, int) (int64, error) {
+	return 0, nil
 }
 
 func (f *fakeMeterStore) ClaimUnsizedSandboxStorage(context.Context, time.Time, int) ([]store.SandboxStorageObject, error) {

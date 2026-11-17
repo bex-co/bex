@@ -32,8 +32,13 @@
 #   sandbox_snapshot_gb_seconds → re-based to per-GB-hour  event=sandbox_snapshot_gb_hours
 #                      value = gb_seconds/3600, price = usdPerGBSecond×3600×100. A
 #                      suspended sandbox's retained image (w22/m313, docs/ADR023).
-#                      sandbox_memory_gb_seconds has NO Stripe meter: it is a shadow
-#                      meter until the used-CPU cutover (w22/m314).
+#   sandbox_cpu_seconds, sandbox_memory_gb_seconds → NO Stripe meter of their own.
+#                      A sandbox billed on use (w22/m314, pricing.yaml sandboxUsage)
+#                      is exported on the sandbox_compute_seconds meter above:
+#                      value = quantity × its rate ÷ usdPerWeightedSecond, the
+#                      weighted units that cost the same. The catalog is at
+#                      Stripe's 20 items per Subscription, so this script creates
+#                      nothing for the sandboxUsage section.
 #   custom_domain_seconds → re-based to per-domain-hour  event=custom_domain_hours
 #                      value = domain_seconds/3600, price = usdPerDomainSecond×3600×100.
 #                      Only the verified custom domains above the plan's included count

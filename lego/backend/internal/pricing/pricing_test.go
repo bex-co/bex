@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -225,15 +227,17 @@ func TestEstimateSuspendedSandboxPaysSnapshotStorageOnly(t *testing.T) {
 	}
 }
 
-// The memory meter is shown and not billed (w22/m313): recording it beside the
-// weighted compute charge, which already includes memory, must not change the
-// estimate, and its line reads at a rate of 0.
+// Memory recorded before the switch to billing on use is shown and not billed
+// (w22/m313, w22/m314): beside the weighted compute charge, which already
+// includes memory, it must not change the estimate, and its line reads at a
+// rate of 0.
 func TestMemoryShadowMeterIsShownAndNeverBilled(t *testing.T) {
 	compute := store.UsageSummaryRow{
 		ServiceID: "sbx-1", Kind: store.UsageKindSandboxComputeSeconds, ResourceKind: store.ResourceKindSandbox, Total: 1211 * 3600,
 	}
 	memory := store.UsageSummaryRow{
 		ServiceID: "sbx-1", Kind: store.UsageKindSandboxMemoryGBSeconds, ResourceKind: store.ResourceKindSandbox, Total: 2 * 3600,
+		Unbilled: true, // recorded before the switch (w22/m314)
 	}
 	without := Default.Estimate([]store.UsageSummaryRow{compute})
 	with := Default.Estimate([]store.UsageSummaryRow{compute, memory})
@@ -869,5 +873,157 @@ func TestSandboxComputeMicroUSD(t *testing.T) {
 	}
 	if got := (&Sheet{}).SandboxComputeMicroUSD(3_600_000); got != 0 {
 		t.Errorf("unpriced sheet = %d, want 0", got)
+	}
+}
+
+// w22/m314 t004 (ADR104 D8): a sandbox that ran for an hour with 2 GiB and
+// used 600 CPU-seconds is billed for exactly that: $0.014 of CPU ($0.084 per
+// CPU-hour used) and $0.027 of memory ($0.0133 per GiB-hour allocated), and
+// nothing on the weighted meter. An idle hour of the same sandbox costs its
+// memory only.
+func TestEstimateSandboxBilledOnUse(t *testing.T) {
+	rows := []store.UsageSummaryRow{
+		{ServiceID: "sbx-1", Kind: store.UsageKindSandboxCPUSeconds, Tier: "1c-2g", ResourceKind: store.ResourceKindSandbox, Total: 600},
+		{ServiceID: "sbx-1", Kind: store.UsageKindSandboxMemoryGBSeconds, Tier: "1c-2g", ResourceKind: store.ResourceKindSandbox, Total: 2 * 3600},
+	}
+	est := Default.Estimate(rows)
+	if len(est.Resources) != 1 || len(est.Resources[0].Charges) != 2 {
+		t.Fatalf("estimate = %+v, want one sandbox with a CPU and a memory line", est)
+	}
+	cpu, memory := est.Resources[0].Charges[0], est.Resources[0].Charges[1]
+	if cpu.Kind != store.UsageKindSandboxCPUSeconds || cpu.Unit != "CPU-hr" || cpu.RateUSD != "0.084" || cpu.Quantity != "0.167" || cpu.Unbilled {
+		t.Errorf("CPU line = %+v, want 0.167 CPU-hr at $0.084", cpu)
+	}
+	if memory.Kind != store.UsageKindSandboxMemoryGBSeconds || memory.Unit != "GiB-hr" || memory.RateUSD != "0.0133" || memory.Quantity != "2.00" || memory.Unbilled {
+		t.Errorf("memory line = %+v, want 2 GiB-hr at $0.0133", memory)
+	}
+	cpuUSD := Default.rateFor(store.UsageKindSandboxCPUSeconds, "1c-2g", store.ResourceKindSandbox) * 600
+	memUSD := Default.rateFor(store.UsageKindSandboxMemoryGBSeconds, "1c-2g", store.ResourceKindSandbox) * 2 * 3600
+	if math.Abs(cpuUSD-0.014) > 1e-9 || math.Abs(memUSD-0.0266) > 1e-9 {
+		t.Errorf("CPU = $%.6f, memory = $%.6f, want $0.014 and $0.0266", cpuUSD, memUSD)
+	}
+	if est.TotalUSD != "0.04" || est.Resources[0].CostUSD != "0.04" {
+		t.Errorf("total = %s / %s, want 0.04 (0.014 + 0.0266)", est.TotalUSD, est.Resources[0].CostUSD)
+	}
+	if est.SandboxUsageBilledFrom != "2026-11-18T00:00:00Z" {
+		t.Errorf("SandboxUsageBilledFrom = %q, want the dated switch", est.SandboxUsageBilledFrom)
+	}
+	// The same rates never price another resource kind's rows.
+	other := Default.Estimate([]store.UsageSummaryRow{
+		{ServiceID: "srv-1", Kind: store.UsageKindSandboxCPUSeconds, ResourceKind: store.ResourceKindService, Total: 3600 * 1000},
+	})
+	if other.TotalUSD != "0.00" || other.SandboxUsageBilledFrom != "" {
+		t.Errorf("a non-sandbox resource was priced for sandbox CPU: %+v", other)
+	}
+	// An idle running hour: about no CPU, the memory in full.
+	idle := Default.Estimate([]store.UsageSummaryRow{
+		{ServiceID: "sbx-1", Kind: store.UsageKindSandboxCPUSeconds, ResourceKind: store.ResourceKindSandbox, Total: 16},
+		{ServiceID: "sbx-1", Kind: store.UsageKindSandboxMemoryGBSeconds, ResourceKind: store.ResourceKindSandbox, Total: 2 * 3600},
+	})
+	if idle.TotalUSD != "0.03" {
+		t.Errorf("an idle hour costs %s, want 0.03 (memory only)", idle.TotalUSD)
+	}
+}
+
+// What was recorded before the switch stays a line of its own, at a rate of 0,
+// beside the billed line of the same kind; it enters no total.
+func TestEstimateKeepsUnbilledSandboxUsageApart(t *testing.T) {
+	rows := []store.UsageSummaryRow{
+		{ServiceID: "sbx-1", Kind: store.UsageKindSandboxComputeSeconds, ResourceKind: store.ResourceKindSandbox, Total: 1211 * 3600},
+		{ServiceID: "sbx-1", Kind: store.UsageKindSandboxCPUSeconds, ResourceKind: store.ResourceKindSandbox, Total: 3600, Unbilled: true},
+		{ServiceID: "sbx-1", Kind: store.UsageKindSandboxCPUSeconds, ResourceKind: store.ResourceKindSandbox, Total: 3600},
+	}
+	est := Default.Estimate(rows)
+	if est.TotalUSD != "0.19" { // $0.108 weighted + $0.084 CPU
+		t.Fatalf("total = %s, want 0.19: the unbilled CPU-hour must not be charged", est.TotalUSD)
+	}
+	charges := est.Resources[0].Charges
+	if len(charges) != 3 || !charges[1].Unbilled || charges[1].RateUSD != "0" || charges[1].CostUSD != "0.00" || charges[1].Quantity != "1.00" ||
+		charges[2].Unbilled || charges[2].CostUSD != "0.08" {
+		t.Fatalf("charges = %+v, want the unbilled CPU-hour at 0 and the billed one at $0.08", charges)
+	}
+	for _, m := range est.Meters {
+		if m.Kind == store.UsageKindSandboxCPUSeconds && m.CostUSD != "0.08" {
+			t.Errorf("the CPU meter total includes unbilled usage: %+v", m)
+		}
+	}
+}
+
+// Billed CPU and memory are exported on the weighted sandbox meter as the
+// number of its units that costs the same, so the Stripe line charges what the
+// estimate shows without a second and third catalog item.
+func TestSandboxUsageWeightedUnitsCostTheSame(t *testing.T) {
+	for _, tc := range []struct {
+		kind     string
+		quantity int64
+	}{{store.UsageKindSandboxCPUSeconds, 600}, {store.UsageKindSandboxMemoryGBSeconds, 7200}, {store.UsageKindSandboxCPUSeconds, 1}} {
+		units, ok := Default.SandboxUsageWeightedUnits(tc.kind, strconv.FormatInt(tc.quantity, 10))
+		if !ok {
+			t.Fatalf("%s: not convertible", tc.kind)
+		}
+		n, err := strconv.ParseFloat(units, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		viaStripe := n * Default.rateFor(store.UsageKindSandboxComputeSeconds, "", store.ResourceKindSandbox)
+		direct := float64(tc.quantity) * Default.rateFor(tc.kind, "", store.ResourceKindSandbox)
+		if math.Abs(viaStripe-direct) > 1e-12 {
+			t.Errorf("%s x %d: %s weighted units cost $%.15f, the estimate $%.15f", tc.kind, tc.quantity, units, viaStripe, direct)
+		}
+		if i := strings.IndexByte(units, '.'); i >= 0 && len(units)-i-1 > 12 {
+			t.Errorf("%s: %q has more than the 12 decimals Stripe accepts", tc.kind, units)
+		}
+	}
+	if _, ok := Default.SandboxUsageWeightedUnits(store.UsageKindSandboxComputeSeconds, "1"); ok {
+		t.Error("the weighted meter's own kind was converted")
+	}
+	if _, ok := Default.SandboxUsageWeightedUnits(store.UsageKindSandboxCPUSeconds, "x"); ok {
+		t.Error("a non-numeric quantity was converted")
+	}
+}
+
+// The switch is one instant on an hour boundary, and the sheet refuses a
+// section that could bill an hour on two models or has nothing to export on.
+func TestSandboxUsageSwitchInstant(t *testing.T) {
+	from := Default.SandboxUsageBilledFrom()
+	if want := time.Date(2026, 11, 18, 0, 0, 0, 0, time.UTC); !from.Equal(want) {
+		t.Fatalf("SandboxUsageBilledFrom = %s, want %s", from, want)
+	}
+	if Default.SandboxUsageBilledAt(from.Add(-time.Hour)) || !Default.SandboxUsageBilledAt(from) || !Default.SandboxUsageBilledAt(from.Add(time.Hour)) {
+		t.Error("an hour is billed on use exactly when it starts at or after the switch")
+	}
+	sheet := string(sheetYAML)
+	edit := func(old, new string) string {
+		t.Helper()
+		if strings.Count(sheet, old) != 1 {
+			t.Fatalf("pricing.yaml no longer has exactly one %q", old)
+		}
+		return strings.Replace(sheet, old, new, 1)
+	}
+	const instant = `billedFrom: "2026-11-18T00:00:00Z"`
+	for name, raw := range map[string]string{
+		"not on the hour": edit(instant, `billedFrom: "2026-11-18T00:30:00Z"`),
+		"no instant":      edit(instant, ""),
+		"a free kind":     edit("usdPerCPUSecond: 0.000023333333333333333333333333", "usdPerCPUSecond: 0"),
+		"no weighted":     edit("usdPerWeightedSecond: 0.000000024861111111111111111111", "usdPerWeightedSecond: 0"),
+	} {
+		if _, err := parseSheet([]byte(raw)); err == nil || !strings.Contains(err.Error(), "sandboxUsage") {
+			t.Errorf("%s: err = %v, want the sandboxUsage section refused", name, err)
+		}
+	}
+	// A sheet without the section never switches and prices neither kind.
+	start := strings.Index(sheet, "\nsandboxUsage:\n")
+	end := strings.Index(sheet, "usdPerMemoryGBSecond:")
+	if start < 0 || end < start {
+		t.Fatal("pricing.yaml has no sandboxUsage section")
+	}
+	end += strings.IndexByte(sheet[end:], '\n')
+	plain, err := parseSheet([]byte(sheet[:start] + sheet[end:]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plain.SandboxUsageBilledFrom().IsZero() || plain.SandboxUsageBilledAt(time.Now()) ||
+		plain.rateFor(store.UsageKindSandboxCPUSeconds, "", store.ResourceKindSandbox) != 0 {
+		t.Error("a sheet without sandboxUsage switched or priced sandbox CPU")
 	}
 }

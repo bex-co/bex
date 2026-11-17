@@ -264,7 +264,7 @@ Until `w6/m319`, bex priced every egress byte from the first. bex now follows Re
 Render bills a running sandbox for used CPU plus allocated memory and a suspended one for its snapshot storage only. Render's launch post and its comparison article (render.com/articles/render-sandboxes-vs-vercel-sandboxes, published 2026-11-06) give the model and the rate; `render.com/pricing` and `/docs/sandboxes` carry no sandbox prices, so re-read the article before changing a figure. bex adopts the model in two steps:
 
 - **Storage, now (`w22/m313`).** `sandbox_snapshot_gb_seconds` is decimal GB × seconds a suspended sandbox's retained image is kept, at **$0.056 per GB-month** (Render's $0.08 × 0.70, `pricing.yaml` `sandboxSnapshot`, 730-hour month), re-based to GB-hours for Stripe (`sandbox_snapshot_gb_hours`). A workspace whose only sandbox sat suspended for a month with a 10 GB image previews $0.56 and no compute. The bytes are the compressed OCI manifest size read from the registry, and what is double-counted is stated in [ADR023 § Sandbox snapshot storage](ADR023-usage-metering.md#sandbox-snapshot-storage-w22m313-adr104-d8). The Price exists on the live Stripe account (created 2026-11-10 by `scripts/stripe-billing-setup.py --live`) and the meter is not held: a new Stripe account must run that script before bex-api starts against it. Agent-session sandboxes are not metered for storage (their cost is the session's, ADR047 D6).
-- **Memory, recorded, not billed (`w22/m313`).** `sandbox_memory_gb_seconds` (allocated GiB × running seconds) is recorded beside the weighted `sandbox_compute_seconds` charge, which already includes memory at the AgentCore reference ratio, and is shown on the usage surfaces at a rate of $0. Billing switches to memory plus used CPU in one step when the used-CPU meter lands (`w22/m314`); until then the compute charge is unchanged, and so is an agent session's `outcome.cost`.
+- **Memory, recorded, not billed until the switch (`w22/m313`).** `sandbox_memory_gb_seconds` (allocated GiB × running seconds) was recorded beside the weighted `sandbox_compute_seconds` charge, which already includes memory at the AgentCore reference ratio, and shown on the usage surfaces at a rate of $0. Billing switched to memory plus used CPU in one step with the used-CPU meter (`w22/m314`, §17).
 - **Hobby.** Whether Hobby workspaces pay for sandbox usage is still open ([ADR104](ADR104-sandbox-render-parity.md) D8): `pricing.yaml` keeps Hobby plans free, and Render's pages do not say.
 
 ### 16. Included custom domains: 2, 15 and 25 by plan, then metered, as on Render (w7/m429 t004)
@@ -289,6 +289,24 @@ Render's plan table (render.com/pricing, read 2026-11-16) has the row "Custom do
   - How a wildcard counts. Render's plan-table data carries a hidden "$0.25 per domain per month" in the check cells of its "Wildcard domains" row on every plan, which the page does not normally show. Whether Render bills wildcards outside the included count is unknown; bex counts a wildcard as one domain toward it.
   - What a plan downgrade does to domains already above the new count. bex keeps them and charges them, by ADR030 §9's rule that existing state is never removed.
   - How Render prorates within a month. bex prorates by the second, like its other monthly prices.
+
+### 17. A running sandbox pays for used CPU and allocated memory, as on Render (effective 2026-11-18T00:00:00Z; [ADR104](ADR104-sandbox-render-parity.md) D8, shipped in `w22/m314`)
+
+From **2026-11-18T00:00:00Z**, in every workspace and with no allowlist, a running sandbox is billed as Render bills one:
+
+| Meter | Render | bex (× 0.70) | `pricing.yaml` |
+| --- | --- | --- | --- |
+| `sandbox_cpu_seconds`, CPU actually used | $0.12 per active CPU hour | **$0.084 per CPU-hour** | `sandboxUsage.usdPerCPUSecond` |
+| `sandbox_memory_gb_seconds`, memory allocated while running | $0.038 per hour per 2 GB, about $0.019 per GB-hour | **$0.0133 per GiB-hour** | `sandboxUsage.usdPerMemoryGBSecond` |
+
+- **Source and date of the read.** Render's launch post (render.com/blog/introducing-render-sandboxes, published 2026-11-04) gives the model: "billed for actively-used CPU (not simply provisioned CPU)" and for "memory allocated to it", and nothing for CPU or memory while suspended. Its comparison article (render.com/articles/render-sandboxes-vs-vercel-sandboxes, published 2026-11-06) gives the rates. **Both were re-read on 2026-11-17** and say what they said on 2026-11-10; `render.com/pricing` still carries no sandbox prices. Re-read the article before changing a figure.
+- **What a sandbox costs.** One that ran for an hour with 2 GiB and used 600 CPU-seconds previews $0.014 of CPU and $0.027 of memory. An idle running hour of the same sandbox previews its memory, $0.027, and about no CPU (0.45% of a core measured, $0.0004). The weighted charge it replaces was $0.108 for that hour whatever the sandbox did.
+- **The measured CPU is billed, with no subtraction.** The figure is the pod's cgroup counter, which under gVisor includes the sentry: +9.8% over what a pure CPU load itself used (w22/m314 t001). At 0.70 of Render's rate a unit of real work still costs about 23% less than on Render ($0.084 × 1.098 ≈ $0.092 against $0.12). A syscall-heavy load reads higher, up to the pod's CPU quota, which is the larger of the plan's CPU and 2 cores (ADR104 D8): on `1c-2g` the worst hour is 2 × $0.084 + $0.027 = $0.195, against $0.108 before. A variant that divides by an overhead factor is a separate follow-up (w22/019), and so is capping the pod at the plan's CPU (w22/020).
+- **The switch.** `sandboxUsage.billedFrom` is one instant on a UTC hour boundary. Sandbox usage before it stays on `sandbox_compute_seconds` and is not re-priced; the CPU and memory recorded before it are shown as unbilled lines. `estimatedCost.sandboxUsageBilledFrom` on REST, GraphQL and MCP carries the instant whenever a period has sandbox usage, and the dashboard prints it under the charge tree.
+- **Stripe.** No new Price: the catalog is at Stripe's 20 items per Subscription, so billed CPU and memory are exported on the existing `sandbox_compute_seconds` meter as the weighted units that cost the same ([ADR023 § Sandbox CPU billed on use](ADR023-usage-metering.md#sandbox-cpu-billed-on-use-w22m314-adr104-d8)). The invoice shows one sandbox compute line; the usage page shows CPU and memory apart.
+- **Agent sessions.** An agent session's sandbox keeps `sandbox_compute_seconds`, the basis of its `outcome.cost` (ADR047 D6).
+- **Not on bex.co yet.** `sandboxUsage` is withheld from `GET /pricing` until bex.co quotes it, like `customDomains`.
+- **Hobby** stays open, as in §15.
 
 ## Consequences
 

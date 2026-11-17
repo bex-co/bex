@@ -40,11 +40,18 @@ const (
 	UsageKindSandboxComputeSeconds = "sandbox_compute_seconds"
 	// UsageKindSandboxMemoryGBSeconds is a sandbox's ALLOCATED memory in GiB
 	// multiplied by the seconds it ran: the memory half of Render's billing
-	// model, split out of the weighted meter above (w22/m313, ADR104 D8). It is
-	// recorded beside sandbox_compute_seconds and billed only once the used-CPU
-	// meter lets billing switch in one step (w22/m314); until then it is shown
-	// and never emitted.
+	// model, split out of the weighted meter above (w22/m313, ADR104 D8). Rows
+	// before PGStore.SandboxUsageBilledFrom were recorded beside
+	// sandbox_compute_seconds, which already charged for the memory, and are
+	// shown and never billed; from that instant a sandbox billed on use writes
+	// this kind instead of the weighted one, and it is billed (w22/m314).
 	UsageKindSandboxMemoryGBSeconds = "sandbox_memory_gb_seconds"
+	// UsageKindSandboxCPUSeconds is the CPU-seconds a sandbox's pod used while
+	// the sandbox ran, read from Prometheus per running interval: the CPU half
+	// of Render's billing model (w22/m314, ADR104 D8, ADR023 § Sandbox CPU
+	// billed on use). Like the memory kind it is shown and not billed before
+	// PGStore.SandboxUsageBilledFrom.
+	UsageKindSandboxCPUSeconds = "sandbox_cpu_seconds"
 	// UsageKindSandboxSnapshotGBSeconds is a suspended sandbox's retained image
 	// in decimal GB multiplied by the seconds it is retained: Render's snapshot
 	// storage (w22/m313, ADR023 § Sandbox snapshot storage).
@@ -191,6 +198,11 @@ type UsageSummaryRow struct {
 	Tier         string // non-empty only for instance_seconds
 	ResourceKind string // ResourceKindService / ResourceKindPostgres / ResourceKindKeyValue
 	Total        int64
+	// Unbilled marks sandbox CPU and memory recorded before
+	// PGStore.SandboxUsageBilledFrom: shown, never charged, because the
+	// weighted compute meter billed those hours (w22/m314). Such usage is a
+	// row of its own beside the billed one of the same kind.
+	Unbilled bool
 }
 
 // UsageCompaction reports what one CompactUsage pass did — the operational
@@ -672,26 +684,32 @@ func (s *PGStore) LatestUsageWindow(ctx context.Context, resourceKind, serviceID
 // a month caught mid-transition (partially compacted at the 48 h clamp) has
 // both — the UNION ALL sum is exact in every state, so period queries never
 // depend on whether compaction has run yet.
+//
+// Sandbox CPU and memory recorded before SandboxUsageBilledFrom come back as
+// rows of their own with Unbilled set. usage_monthly holds none of them:
+// CompactUsage drops them instead of folding them in.
 func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error) {
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	rows, err := s.Pool.Query(ctx, `
-		SELECT service_id, kind, tier, resource_kind, SUM(quantity)
+		SELECT service_id, kind, tier, resource_kind, unbilled, SUM(quantity)
 		FROM (
-			SELECT service_id, kind, tier, resource_kind, quantity
+			SELECT service_id, kind, tier, resource_kind, quantity,
+			       (kind = ANY($4::text[]) AND ($5::timestamptz IS NULL OR window_start < $5)) AS unbilled
 			FROM usage_hourly
 			WHERE workspace_id = $1
 			  AND window_start >= $2
 			  AND window_start < $3
 			UNION ALL
-			SELECT service_id, kind, tier, resource_kind, quantity
+			SELECT service_id, kind, tier, resource_kind, quantity,
+			       (kind = ANY($4::text[]) AND $5::timestamptz IS NULL) AS unbilled
 			FROM usage_monthly
 			WHERE workspace_id = $1
 			  AND month = ($2::timestamptz AT TIME ZONE 'UTC')::date
 		) u
-		GROUP BY service_id, kind, tier, resource_kind
+		GROUP BY service_id, kind, tier, resource_kind, unbilled
 		HAVING kind = 'instance_seconds' OR SUM(quantity) <> 0
-		ORDER BY service_id, kind, tier, resource_kind`,
-		workspaceID, monthStart, now)
+		ORDER BY service_id, kind, tier, resource_kind, unbilled DESC`,
+		workspaceID, monthStart, now, sandboxUsageKinds, s.sandboxUsageBilledFrom())
 	if err != nil {
 		return nil, err
 	}
@@ -699,12 +717,26 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 	var out []UsageSummaryRow
 	for rows.Next() {
 		var r UsageSummaryRow
-		if err := rows.Scan(&r.ServiceID, &r.Kind, &r.Tier, &r.ResourceKind, &r.Total); err != nil {
+		if err := rows.Scan(&r.ServiceID, &r.Kind, &r.Tier, &r.ResourceKind, &r.Unbilled, &r.Total); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// sandboxUsageKinds are the two meters of Render's sandbox billing model. Their
+// rows before SandboxUsageBilledFrom are shown and never billed.
+var sandboxUsageKinds = []string{UsageKindSandboxCPUSeconds, UsageKindSandboxMemoryGBSeconds}
+
+// sandboxUsageBilledFrom is SandboxUsageBilledFrom as a query argument: NULL
+// when the switch never happens.
+func (s *PGStore) sandboxUsageBilledFrom() *time.Time {
+	if s.SandboxUsageBilledFrom.IsZero() {
+		return nil
+	}
+	at := s.SandboxUsageBilledFrom.UTC()
+	return &at
 }
 
 // AgentModelEventRetentionMonths is how long agent_model_usage_events outlive
@@ -718,7 +750,9 @@ const AgentModelEventRetentionMonths = 13
 // (UTC calendar months) before the boundary. A single statement, so purge and
 // aggregate are atomic and a re-run is a no-op; the additive ON CONFLICT means
 // a straggler row compacted on a later pass adds to its month rather than
-// overwriting it.
+// overwriting it. Sandbox CPU and memory recorded before
+// SandboxUsageBilledFrom were never billed and are purged without being
+// folded in, so a compacted month holds billed usage only.
 func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageCompaction, error) {
 	var res UsageCompaction
 	err := s.Pool.QueryRow(ctx, `
@@ -746,6 +780,7 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 			       date_trunc('month', window_start AT TIME ZONE 'UTC')::date,
 			       SUM(quantity)
 			FROM purged
+			WHERE NOT (kind = ANY($3::text[]) AND ($4::timestamptz IS NULL OR window_start < $4))
 			GROUP BY workspace_id, service_id, kind, tier, resource_kind,
 			         date_trunc('month', window_start AT TIME ZONE 'UTC')
 			ON CONFLICT (resource_kind, service_id, kind, tier, month)
@@ -754,7 +789,7 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 		)
 		SELECT (SELECT COUNT(*) FROM purged),
 		       (SELECT COUNT(DISTINCT month) FROM compacted)`,
-		before, AgentModelEventRetentionMonths,
+		before, AgentModelEventRetentionMonths, sandboxUsageKinds, s.sandboxUsageBilledFrom(),
 	).Scan(&res.HourlyRows, &res.Months)
 	return res, err
 }

@@ -74,6 +74,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/opsrole"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
@@ -375,6 +376,9 @@ func main() {
 		defer pool.Close()
 
 		st = store.NewPGStore(pool)
+		// One instant for every workspace: the sandbox meter writes by it and
+		// the usage reads price by it (w22/m314).
+		st.SandboxUsageBilledFrom = pricing.Default.SandboxUsageBilledFrom()
 		// ADR088 §4 store-level guards: invite redemption into the pinned ops
 		// workspace skips seat/plan gating, and account-deletion disposition
 		// classifies a sole-member ops workspace blocked instead of delete.
@@ -1544,6 +1548,12 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			deps.SandboxKeys = sandboxKeyProvider{st}
 			deps.SandboxStorage = st
 			deps.SandboxMeter = &sandbox.Meter{Client: deps.SandboxClient, Store: st, StorageMetrics: sandbox.NewStorageMetrics(reg)}
+			// A sandbox billed on use pays for the CPU its pod used, read from
+			// Prometheus. Without Prometheus nothing is read and nothing billed.
+			deps.SandboxMeter.CPUMetrics = sandbox.NewCPUMetrics(reg)
+			if cfg.PromURL != "" {
+				deps.SandboxMeter.CPU = sandbox.PrometheusCPU{Base: cfg.PromURL}
+			}
 			// The reaper's registry client: the meter deletes a gone sandbox's images
 			// with it, the workspace purge a deleted workspace's suspended ones, and
 			// the orphan sweep what a deleted workspace left (w22/017).

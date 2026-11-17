@@ -53,8 +53,17 @@ type SandboxMeterObservation struct {
 	// polled `suspended` opens the sandbox's storage object: a request-path
 	// `suspended` is recorded when the pause is accepted, before its image commit
 	// has succeeded and while the registry holds no image to size.
-	Polled     bool
-	ObservedAt time.Time
+	Polled bool
+	// PodName is the pod running the sandbox, in the workspace's sandbox
+	// namespace. A running sample with a pod name opens (or continues) the
+	// sandbox's running interval, which the used-CPU meter reads by pod name
+	// (w22/m314); empty records no interval.
+	PodName string
+	// UsageBilled marks a sandbox billed as Render bills one: used CPU plus
+	// allocated memory. False keeps the weighted allocated-shape meter (an
+	// agent-session sandbox, whose cost is its session's, ADR047 D6).
+	UsageBilled bool
+	ObservedAt  time.Time
 }
 
 // retainsImage reports whether a phase holds a suspend image the storage meter
@@ -106,6 +115,7 @@ type sandboxMeterState struct {
 	phase, tier     string
 	weight          int64
 	memoryMiB       int64
+	usageBilled     bool
 	observedAt      time.Time
 	remainder       int64
 	memoryRemainder int64
@@ -115,11 +125,11 @@ type sandboxMeterState struct {
 // false for a sandbox the meter has not seen.
 func loadSandboxMeterState(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID string) (st sandboxMeterState, found bool, err error) {
 	err = tx.QueryRow(ctx, `
-		SELECT phase, tier, weight_milli, memory_mib, observed_at, remainder_nanos, memory_remainder
+		SELECT phase, tier, weight_milli, memory_mib, usage_billed, observed_at, remainder_nanos, memory_remainder
 		FROM sandbox_meter_states
 		WHERE workspace_id = $1 AND sandbox_id = $2
 		FOR UPDATE`, workspaceID, sandboxID,
-	).Scan(&st.phase, &st.tier, &st.weight, &st.memoryMiB, &st.observedAt, &st.remainder, &st.memoryRemainder)
+	).Scan(&st.phase, &st.tier, &st.weight, &st.memoryMiB, &st.usageBilled, &st.observedAt, &st.remainder, &st.memoryRemainder)
 	if err == pgx.ErrNoRows {
 		return st, false, nil
 	}
@@ -155,10 +165,13 @@ func (s *PGStore) ObserveSandboxMeter(ctx context.Context, obs SandboxMeterObser
 	if !found {
 		_, err = tx.Exec(ctx, `
 			INSERT INTO sandbox_meter_states
-			    (workspace_id, sandbox_id, phase, tier, weight_milli, memory_mib, observed_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-			obs.WorkspaceID, obs.SandboxID, obs.Phase, obs.Tier, obs.WeightMilli, obs.MemoryMiB, obs.ObservedAt.UTC())
+			    (workspace_id, sandbox_id, phase, tier, weight_milli, memory_mib, usage_billed, observed_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			obs.WorkspaceID, obs.SandboxID, obs.Phase, obs.Tier, obs.WeightMilli, obs.MemoryMiB, obs.UsageBilled, obs.ObservedAt.UTC())
 		if err != nil {
+			return err
+		}
+		if err := syncSandboxInterval(ctx, tx, obs); err != nil {
 			return err
 		}
 		if err := syncSandboxStorage(ctx, tx, obs, ""); err != nil {
@@ -171,18 +184,21 @@ func (s *PGStore) ObserveSandboxMeter(ctx context.Context, obs SandboxMeterObser
 	}
 
 	if prior.phase == "running" {
-		if err := accrueSandboxInterval(ctx, tx, obs.WorkspaceID, obs.SandboxID, &prior, obs.ObservedAt.UTC()); err != nil {
+		if err := accrueSandboxInterval(ctx, tx, obs.WorkspaceID, obs.SandboxID, &prior, obs.ObservedAt.UTC(), s.SandboxUsageBilledFrom); err != nil {
 			return err
 		}
 	}
 	_, err = tx.Exec(ctx, `
 		UPDATE sandbox_meter_states
 		SET phase = $3, tier = $4, weight_milli = $5, memory_mib = $6, observed_at = $7,
-		    remainder_nanos = $8, memory_remainder = $9
+		    remainder_nanos = $8, memory_remainder = $9, usage_billed = $10
 		WHERE workspace_id = $1 AND sandbox_id = $2`,
 		obs.WorkspaceID, obs.SandboxID, obs.Phase, obs.Tier, obs.WeightMilli, obs.MemoryMiB, obs.ObservedAt.UTC(),
-		prior.remainder, prior.memoryRemainder)
+		prior.remainder, prior.memoryRemainder, obs.UsageBilled)
 	if err != nil {
+		return err
+	}
+	if err := syncSandboxInterval(ctx, tx, obs); err != nil {
 		return err
 	}
 	if err := syncSandboxStorage(ctx, tx, obs, prior.phase); err != nil {
@@ -242,7 +258,7 @@ func (s *PGStore) terminateSandboxMeter(ctx context.Context, workspaceID, sandbo
 		return tx.Commit(ctx)
 	}
 	if prior.phase == "running" {
-		if err := accrueSandboxInterval(ctx, tx, workspaceID, sandboxID, &prior, observedAt.UTC()); err != nil {
+		if err := accrueSandboxInterval(ctx, tx, workspaceID, sandboxID, &prior, observedAt.UTC(), s.SandboxUsageBilledFrom); err != nil {
 			return err
 		}
 	}
@@ -252,6 +268,9 @@ func (s *PGStore) terminateSandboxMeter(ctx context.Context, workspaceID, sandbo
 		WHERE workspace_id = $1 AND sandbox_id = $2`,
 		workspaceID, sandboxID, observedAt.UTC(), prior.remainder, prior.memoryRemainder)
 	if err != nil {
+		return err
+	}
+	if err := endSandboxIntervalTx(ctx, tx, workspaceID, sandboxID, observedAt.UTC()); err != nil {
 		return err
 	}
 	// A sandbox that vanished (terminated, or expired at pause + 30 days) no
@@ -325,18 +344,35 @@ func addSandboxUsage(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID, kin
 }
 
 // accrueSandboxInterval adds the running interval prior.observedAt..end to the
-// weighted compute meter and, when the sandbox's memory is known, to the memory
-// meter, and advances prior's remainders. Both land in the caller's transaction
-// with the cursor update.
-func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID string, prior *sandboxMeterState, end time.Time) error {
-	chunks, remainder := sandboxIntervalChunks(prior.weight, sandboxWeightDivisor, prior.observedAt, end, prior.remainder)
-	total, err := addSandboxUsage(ctx, tx, workspaceID, sandboxID, UsageKindSandboxComputeSeconds, prior.tier, chunks)
-	if err != nil {
-		return err
+// sandbox's meters and advances prior's remainders. Both land in the caller's
+// transaction with the cursor update.
+//
+// billedFrom is the instant sandbox billing switches to Render's model
+// (SandboxUsageBilledFrom; zero is never). Before it every sandbox writes the
+// weighted compute meter, which is billed, and its allocated memory, which is
+// shown. From it on a sandbox billed on use writes memory only (billed; its
+// CPU comes from the used-CPU meter, AccrueSandboxCPUWindow) and any other
+// sandbox writes the weighted meter only, so no second is billed on two meters.
+func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID string, prior *sandboxMeterState, end, billedFrom time.Time) error {
+	weightedEnd, memoryEnd := end, end
+	if !billedFrom.IsZero() && billedFrom.Before(end) {
+		if prior.usageBilled {
+			weightedEnd = billedFrom
+		} else {
+			memoryEnd = billedFrom
+		}
 	}
-	prior.remainder = remainder
-	if prior.memoryMiB > 0 {
-		memChunks, memRemainder := sandboxIntervalChunks(prior.memoryMiB, sandboxMemoryDivisor, prior.observedAt, end, prior.memoryRemainder)
+	var total int64
+	if prior.observedAt.Before(weightedEnd) {
+		chunks, remainder := sandboxIntervalChunks(prior.weight, sandboxWeightDivisor, prior.observedAt, weightedEnd, prior.remainder)
+		var err error
+		if total, err = addSandboxUsage(ctx, tx, workspaceID, sandboxID, UsageKindSandboxComputeSeconds, prior.tier, chunks); err != nil {
+			return err
+		}
+		prior.remainder = remainder
+	}
+	if prior.memoryMiB > 0 && prior.observedAt.Before(memoryEnd) {
+		memChunks, memRemainder := sandboxIntervalChunks(prior.memoryMiB, sandboxMemoryDivisor, prior.observedAt, memoryEnd, prior.memoryRemainder)
 		if _, err := addSandboxUsage(ctx, tx, workspaceID, sandboxID, UsageKindSandboxMemoryGBSeconds, prior.tier, memChunks); err != nil {
 			return err
 		}
@@ -344,7 +380,8 @@ func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxI
 	}
 	// The session that owns this sandbox, if any, carries a running total for
 	// its outcome.cost (w9/m178); a sandbox no session adopted updates nothing.
-	// It stays on the weighted compute basis: the memory meter never enters it.
+	// It stays on the weighted compute basis: the memory and CPU meters never
+	// enter it, and a session's sandbox is never billed on use.
 	if total > 0 {
 		if _, err := tx.Exec(ctx, `
 			UPDATE agent_session_sandboxes

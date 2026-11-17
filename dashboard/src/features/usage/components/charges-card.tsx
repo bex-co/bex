@@ -29,6 +29,7 @@ import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import {
   CATEGORY_LABEL_KEYS,
   CHARGE_LABEL_KEYS,
+  UNBILLED_CHARGE_LABEL_KEYS,
   isUnnamedWorkspaceResource,
 } from "@/features/usage/lib/charge-labels";
 import { periodMonthLabel } from "@/features/usage/lib/period";
@@ -76,7 +77,9 @@ function chargeRate(charge: ChargeLine, t: (key: string) => string): string {
 
 function ChargeRow({ charge }: { charge: ChargeLine }) {
   const { t, i18n } = useTranslations();
-  const labelKey = CHARGE_LABEL_KEYS[charge.kind];
+  const labelKey =
+    (charge.unbilled ? UNBILLED_CHARGE_LABEL_KEYS[charge.kind] : undefined) ??
+    CHARGE_LABEL_KEYS[charge.kind];
   return (
     <div className="grid gap-x-4 gap-y-1 py-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-baseline">
       <span className="text-sm">
@@ -112,7 +115,10 @@ function ChargeLines({ charges }: { charges: ChargeLine[] }) {
   return (
     <div className="divide-y border-t bg-muted/20 px-3 py-1 pl-9">
       {charges.map((c) => (
-        <ChargeRow key={`${c.kind}:${c.tier}`} charge={c} />
+        <ChargeRow
+          key={`${c.kind}:${c.tier}:${c.unbilled ? "unbilled" : "billed"}`}
+          charge={c}
+        />
       ))}
     </div>
   );
@@ -414,6 +420,16 @@ export function ChargesCard({
     day: "numeric",
     timeZone: "UTC",
   });
+  // When sandbox billing switched to used CPU plus allocated memory (w22/m314).
+  // The period's tree can carry both models, and lines the old one charged for.
+  // A fixed instant formatted in UTC, so SSR and the client agree.
+  const sandboxSwitchAt = estimatedCost?.sandboxUsageBilledFrom
+    ? new Date(estimatedCost.sandboxUsageBilledFrom)
+    : null;
+  const sandboxSwitch =
+    sandboxSwitchAt && !Number.isNaN(sandboxSwitchAt.getTime())
+      ? sandboxSwitchAt
+      : null;
   const projected =
     !hydrated || !isCurrentMonth
       ? null
@@ -473,6 +489,17 @@ export function ChargesCard({
                 <CategoryRow key={c.key} category={c} expandAll={expandAll} />
               ))}
             </div>
+            {sandboxSwitch && (
+              <p className="text-xs text-muted-foreground">
+                {t("usage.sandboxUsageBilledFromNote", {
+                  date: new Intl.DateTimeFormat(i18n.language || "en", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                    timeZone: "UTC",
+                  }).format(sandboxSwitch),
+                })}
+              </p>
+            )}
           </>
         )}
 

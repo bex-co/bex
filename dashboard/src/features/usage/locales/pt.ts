@@ -633,9 +633,30 @@ const ptUsage: Record<string, TranslationEntry> = {
     description: "Charge line for metered sandbox compute",
   },
   "usage.chargeSandboxMemory": {
+    message: "Memória de sandbox",
+    description:
+      "Charge line for the memory a running sandbox was allocated, billed per GiB-hour since billing switched to use",
+  },
+  "usage.chargeSandboxMemoryUnbilled": {
     message: "Memória de sandbox (incluída na computação)",
     description:
-      "Charge line for the allocated memory a sandbox ran with; recorded beside sandbox compute, which already includes it, so it is shown and not billed separately",
+      "Charge line for the allocated memory a sandbox ran with before billing switched to use; recorded beside sandbox compute, which already includes it, so it is shown and not billed separately",
+  },
+  "usage.chargeSandboxCpu": {
+    message: "CPU de sandbox",
+    description:
+      "Charge line for the CPU a running sandbox used, billed per CPU-hour used",
+  },
+  "usage.chargeSandboxCpuUnbilled": {
+    message: "CPU de sandbox (incluída na computação)",
+    description:
+      "Charge line for the CPU a sandbox used before billing switched to use; recorded beside sandbox compute, which already charged for it, so it is shown and not billed separately",
+  },
+  "usage.sandboxUsageBilledFromNote": {
+    message:
+      "Desde {date} UTC, um sandbox em execução é cobrado pela CPU que usa e pela memória alocada. O uso anterior foi cobrado como computação de sandbox.",
+    description:
+      "Note under the charge tree of a period with sandbox usage; date is the instant billing switched, formatted in UTC",
   },
   "usage.chargeSandboxSnapshotStorage": {
     message: "Armazenamento de snapshots de sandbox",

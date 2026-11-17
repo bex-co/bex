@@ -280,6 +280,7 @@ func TestStripeIngestBatchEmitsMeterEvents(t *testing.T) {
 }
 
 func TestStripeMeterEventMapping(t *testing.T) {
+	sandboxSwitch := pricing.Default.SandboxUsageBilledFrom()
 	cases := []struct {
 		name              string
 		e                 Event
@@ -300,9 +301,16 @@ func TestStripeMeterEventMapping(t *testing.T) {
 		{"storage rounded to Stripe precision", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"value": "1"}}, "storage_gb_hours", "0.000277777778", false},
 		{"build unchanged", Event{EventType: "build_seconds", Properties: map[string]string{"value": "120"}}, "build_seconds", "120", false},
 		{"sandbox weighted seconds unchanged", Event{EventType: "sandbox_compute_seconds", Properties: map[string]string{"value": "1990800"}}, "sandbox_compute_seconds", "1990800", false},
-		// w22/m313: a kind with no rate in pricing.yaml is skipped, never sent to
-		// Stripe under its own name (the default branch would), where no meter exists.
-		{"sandbox memory shadow meter skipped", Event{EventType: "sandbox_memory_gb_seconds", Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "", "", true},
+		// w22/m314: sandbox CPU and memory recorded before billing switched to
+		// use were charged by the weighted meter and are never sent. From the
+		// switch on both ride that meter as the weighted units that cost the
+		// same ($0.014 for 600 CPU-seconds, $0.0266 for 2 GiB-hours), never
+		// under their own names, where no Stripe meter exists.
+		{"sandbox memory before the switch skipped", Event{EventType: "sandbox_memory_gb_seconds", Timestamp: sandboxSwitch.Add(-time.Hour), Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "", "", true},
+		{"sandbox cpu before the switch skipped", Event{EventType: "sandbox_cpu_seconds", Timestamp: sandboxSwitch.Add(-time.Hour), Properties: map[string]string{"resource_kind": "sandbox", "value": "600"}}, "", "", true},
+		{"sandbox memory with no window skipped", Event{EventType: "sandbox_memory_gb_seconds", Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "", "", true},
+		{"sandbox cpu billed on the weighted meter", Event{EventType: "sandbox_cpu_seconds", Timestamp: sandboxSwitch, Properties: map[string]string{"resource_kind": "sandbox", "value": "600"}}, "sandbox_compute_seconds", "563128.491620111725", false},
+		{"sandbox memory billed on the weighted meter", Event{EventType: "sandbox_memory_gb_seconds", Timestamp: sandboxSwitch.Add(48 * time.Hour), Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "sandbox_compute_seconds", "1069944.134078212383", false},
 		// ADR112 D8: the object storage meters are shadow meters. They are skipped,
 		// never sent to Stripe under their own names (the default branch would),
 		// whatever the quantity.

@@ -36,6 +36,9 @@ type usageRow struct {
 	Kind  string `json:"kind"`
 	Tier  string `json:"tier,omitempty"`
 	Total int64  `json:"total"`
+	// Unbilled marks sandbox CPU or memory recorded before
+	// estimatedCost.sandboxUsageBilledFrom: shown, never charged (w22/m314).
+	Unbilled bool `json:"unbilled,omitempty"`
 }
 
 // usageServiceEntry is one service's contribution in the REST/MCP response.
@@ -119,7 +122,7 @@ func toUsageResponse(sum Summary) usageResponse {
 	for _, svc := range sum.Services {
 		rows := make([]usageRow, 0, len(svc.Rows))
 		for _, r := range svc.Rows {
-			rows = append(rows, usageRow{Kind: r.Kind, Tier: r.Tier, Total: r.Total})
+			rows = append(rows, usageRow{Kind: r.Kind, Tier: r.Tier, Total: r.Total, Unbilled: r.Unbilled})
 		}
 		svcs = append(svcs, usageServiceEntry{ServiceID: svc.ServiceID, ServiceName: svc.ServiceName, Deleted: svc.Deleted, ResourceKind: svc.ResourceKind, Rows: rows})
 	}

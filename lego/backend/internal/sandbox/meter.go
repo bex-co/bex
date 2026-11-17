@@ -56,6 +56,11 @@ type MeterStore interface {
 	ListReapableSandboxStorage(context.Context, int) ([]store.SandboxStorageObject, error)
 	MarkSandboxStorageReaped(ctx context.Context, workspaceID, objectID string, startedAt time.Time) error
 	PruneSandboxStorage(ctx context.Context, now time.Time, limit int) (int64, error)
+	ClaimSandboxCPUWindows(ctx context.Context, now, readyBefore time.Time, limit int) ([]store.SandboxCPUWindow, error)
+	AccrueSandboxCPUWindow(ctx context.Context, w store.SandboxCPUWindow, cpuSeconds float64) (bool, error)
+	DeferSandboxCPUWindow(ctx context.Context, w store.SandboxCPUWindow, now time.Time) error
+	SandboxCPUStats(context.Context) (store.SandboxCPUStats, error)
+	PruneSandboxIntervals(ctx context.Context, now time.Time, limit int) (int64, error)
 }
 
 // Meter observes OpenSandbox's authoritative lifecycle state and advances the
@@ -79,6 +84,12 @@ type Meter struct {
 	Reaper ImageReaper
 	// StorageMetrics, when set, reports the storage meter's health.
 	StorageMetrics *StorageMetrics
+	// CPU reads the CPU a sandbox's pod used, for the used-CPU meter
+	// (cpu_meter.go). Nil turns the meter off: running intervals are recorded
+	// and never read, so nothing is billed for CPU until it is configured.
+	CPU CPUReader
+	// CPUMetrics, when set, reports the used-CPU meter's health.
+	CPUMetrics *CPUMetrics
 }
 
 const (
@@ -227,6 +238,10 @@ func meterObservation(raw osSandbox, observedAt time.Time) (store.SandboxMeterOb
 		WeightMilli: weight,
 		MemoryMiB:   sandboxMemoryMiB(raw),
 		StorageRef:  storageRef(raw),
+		PodName:     sandboxPodName(raw),
+		// A Render sandbox is billed on use; an agent session's keeps the
+		// weighted meter its outcome.cost is priced on (ADR047 D6).
+		UsageBilled: idleTracked(raw),
 		ObservedAt:  observedAt.UTC(),
 	}, true
 }
@@ -350,6 +365,7 @@ func (m *Meter) poll(ctx context.Context) {
 		}
 	}
 	m.settleStorage(ctx)
+	m.settleCPU(ctx)
 }
 
 // settleStorage sizes the images the polls found retained, adds the seconds

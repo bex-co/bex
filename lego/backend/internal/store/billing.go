@@ -239,7 +239,10 @@ type ExportedUsageTotal struct {
 // ExportedUsageTotals sums the workspace's usage rows stamped emitted whose
 // window starts in [from, to), per meter dimension. Settle before delete
 // (ADR091 D10.4) compares it with Stripe's meter event summaries before it
-// invoices. Served by the (workspace_id, window_start) index.
+// invoices. Served by the (workspace_id, window_start) index. Sandbox CPU and
+// memory recorded before SandboxUsageBilledFrom are left out: they are stamped
+// emitted without ever being sent (w22/m314), so every total returned for those
+// kinds was exported.
 func (s *PGStore) ExportedUsageTotals(ctx context.Context, workspaceID string, from, to, recentSince time.Time) ([]ExportedUsageTotal, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT kind, tier, resource_kind, sum(COALESCE(billing_export_quantity, quantity))::bigint,
@@ -247,8 +250,9 @@ func (s *PGStore) ExportedUsageTotals(ctx context.Context, workspaceID string, f
 		FROM usage_hourly
 		WHERE workspace_id = $1 AND window_start >= $2 AND window_start < $3
 		  AND billing_export_state = 'emitted'
+		  AND NOT (kind = ANY($5::text[]) AND ($6::timestamptz IS NULL OR window_start < $6))
 		GROUP BY kind, tier, resource_kind`,
-		workspaceID, from.UTC(), to.UTC(), recentSince.UTC())
+		workspaceID, from.UTC(), to.UTC(), recentSince.UTC(), sandboxUsageKinds, s.sandboxUsageBilledFrom())
 	if err != nil {
 		return nil, err
 	}

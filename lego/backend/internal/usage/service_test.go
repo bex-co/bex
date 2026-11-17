@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,8 +59,11 @@ type memUsageStore struct {
 	upsert      func(store.HourlyRow) error
 	coverage    store.UsageCoverage
 	coverageErr error
-	cronRuns    map[string][]store.CronRunRecord // appID -> finished runs
-	cronRunsErr error
+	// sandboxUsageBilledFrom mirrors PGStore.SandboxUsageBilledFrom: sandbox CPU
+	// and memory in an earlier hour (every hour, when zero) read as unbilled.
+	sandboxUsageBilledFrom time.Time
+	cronRuns               map[string][]store.CronRunRecord // appID -> finished runs
+	cronRunsErr            error
 	// diskRows is the provisioned-disk meter's source: GB-seconds per window
 	// start, so a test can assert exactly which windows got metered.
 	diskRows map[time.Time][]store.DiskUsageRow
@@ -378,7 +382,10 @@ func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	type summaryKey struct{ svc, kind, tier, resourceKind string }
+	type summaryKey struct {
+		svc, kind, tier, resourceKind string
+		unbilled                      bool
+	}
 	totals := map[summaryKey]int64{}
 	for k, row := range m.rows {
 		if row.WorkspaceID != workspaceID {
@@ -388,14 +395,16 @@ func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, 
 		if ws.Before(monthStart) || !ws.Before(now) {
 			continue
 		}
-		key := summaryKey{k.serviceID, k.kind, k.tier, row.ResourceKind}
+		sandboxUsage := k.kind == store.UsageKindSandboxCPUSeconds || k.kind == store.UsageKindSandboxMemoryGBSeconds
+		unbilled := sandboxUsage && (m.sandboxUsageBilledFrom.IsZero() || ws.Before(m.sandboxUsageBilledFrom))
+		key := summaryKey{k.serviceID, k.kind, k.tier, row.ResourceKind, unbilled}
 		totals[key] += row.Quantity
 	}
 	for k, v := range m.monthly {
 		if v.workspaceID != workspaceID || !k.month.Equal(monthStart) {
 			continue
 		}
-		key := summaryKey{k.serviceID, k.kind, k.tier, v.resourceKind}
+		key := summaryKey{k.serviceID, k.kind, k.tier, v.resourceKind, false}
 		totals[key] += v.quantity
 	}
 	out := make([]store.UsageSummaryRow, 0, len(totals))
@@ -409,8 +418,24 @@ func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, 
 			Tier:         key.tier,
 			ResourceKind: key.resourceKind,
 			Total:        total,
+			Unbilled:     key.unbilled,
 		})
 	}
+	// PGStore's ORDER BY, so a test reads lines in the order production does.
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		switch {
+		case a.ServiceID != b.ServiceID:
+			return a.ServiceID < b.ServiceID
+		case a.Kind != b.Kind:
+			return a.Kind < b.Kind
+		case a.Tier != b.Tier:
+			return a.Tier < b.Tier
+		case a.ResourceKind != b.ResourceKind:
+			return a.ResourceKind < b.ResourceKind
+		}
+		return a.Unbilled && !b.Unbilled
+	})
 	return out, nil
 }
 

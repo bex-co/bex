@@ -572,7 +572,11 @@ func summarise(workspaceID string, rows []store.UsageSummaryRow) Summary {
 		if a.Kind != b.Kind {
 			return a.Kind < b.Kind
 		}
-		return a.Tier < b.Tier
+		if a.Tier != b.Tier {
+			return a.Tier < b.Tier
+		}
+		// What was recorded before billing switched comes first (w22/m314).
+		return a.Unbilled && !b.Unbilled
 	})
 	type resourceKey struct {
 		serviceID, resourceKind string

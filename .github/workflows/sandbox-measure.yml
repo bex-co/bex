@@ -18,15 +18,20 @@ on:
   workflow_dispatch:
     inputs:
       leg:
-        description: "Which measurement: kubelet (w22/008, w22/002), storage (w22/m321 t005, w22/m313 t006) cpu (w22/m314 t001) ephemeral (w22/008 proof) or egress (w22/m414)"
+        description: "Which measurement: kubelet (w22/008, w22/002), storage (w22/m321 t005, w22/m313 t006) cpu (w22/m314 t001) usage (w22/m314 t005) ephemeral (w22/008 proof) or egress (w22/m414)"
         type: choice
         options:
           - kubelet
           - storage
           - cpu
+          - usage
           - ephemeral
           - egress
         required: true
+      usage_idle_seconds:
+        description: "usage leg only: how long the idle sandbox runs before it is paused (seconds)"
+        type: string
+        default: "3600"
 
 permissions:
   contents: read
@@ -45,6 +50,7 @@ jobs:
     env:
       BEX_API_URL: ${{ vars.BEX_API_URL || 'https://api.bex.co' }}
       BEX_MEASURE_LEG: ${{ inputs.leg }}
+      BEX_MEASURE_USAGE_IDLE_SECONDS: ${{ inputs.usage_idle_seconds }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -544,12 +544,25 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 			return "", "", true
 		}
 		return store.UsageKindSandboxComputeSeconds, e.Properties["value"], false
-	case store.UsageKindSandboxMemoryGBSeconds:
-		// A shadow meter (w22/m313): recorded and shown, never exported until the
-		// used-CPU meter lets billing switch from the weighted charge, whose price
-		// already includes memory (w22/m314). The default branch below would send
-		// it to Stripe under its own name, where no meter exists.
-		return "", "", true
+	case store.UsageKindSandboxCPUSeconds, store.UsageKindSandboxMemoryGBSeconds:
+		// A sandbox's used CPU and allocated memory (w22/m314). Rows from
+		// before the switch were recorded beside the weighted charge, which
+		// already billed those hours, and are never exported. From the switch
+		// on both ride the sandbox_compute_seconds meter as the weighted units
+		// that cost the same: the catalog has no room for two more items, and
+		// the default branch below would send each under its own name, where
+		// no meter exists.
+		if !pricing.Default.SandboxUsageBilledAt(e.Timestamp) {
+			return "", "", true
+		}
+		if _, ok := billableMeterNames[store.UsageKindSandboxComputeSeconds]; !ok {
+			return "", "", true
+		}
+		units, ok := pricing.Default.SandboxUsageWeightedUnits(e.EventType, e.Properties["value"])
+		if !ok {
+			return "", "", true
+		}
+		return store.UsageKindSandboxComputeSeconds, units, false
 	case store.UsageKindObjectStorageGBSeconds, store.UsageKindObjectStorageIngressBytes, store.UsageKindObjectStorageEgressBytes:
 		// The object storage shadow meters (ADR112 D8): recorded and shown at $0,
 		// with no Stripe meter and no Price until the user sets one. The default

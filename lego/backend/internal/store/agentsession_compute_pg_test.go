@@ -116,6 +116,18 @@ func TestAgentSessionComputeAttributionPG(t *testing.T) {
 		t.Fatalf("across two turns' sandboxes: %d, want 30000 (20000 + 5 s x 2000)", got)
 	}
 
+	// w22/m314: the switch of sandbox billing to used CPU leaves a session's
+	// total alone. Its sandbox is not billed on use, so an interval that spans
+	// the switch still counts in full, on the same weighted basis.
+	st.SandboxUsageBilledFrom = t0.Add(time.Hour)
+	adopt(session.ID, "os-turn3")
+	observe("os-turn3", 1000, t0.Add(time.Hour-10*time.Second))
+	observe("os-turn3", 1000, t0.Add(time.Hour+10*time.Second))
+	if got := total(session.ID); got != 50_000 {
+		t.Fatalf("across the billing switch: %d, want 50000 (30000 + 20 s x 1000)", got)
+	}
+	st.SandboxUsageBilledFrom = time.Time{}
+
 	// A sandbox no session adopted stays unattributed, and another session
 	// reads only its own.
 	observe("os-orphan", 1000, t0)
@@ -124,7 +136,7 @@ func TestAgentSessionComputeAttributionPG(t *testing.T) {
 	if got := total(other.ID); got != 0 {
 		t.Fatalf("a session with no sandbox: %d, want 0", got)
 	}
-	if got := total(session.ID); got != 30_000 {
+	if got := total(session.ID); got != 50_000 {
 		t.Fatalf("an orphan sandbox leaked into the session: %d", got)
 	}
 	var orphanRows int

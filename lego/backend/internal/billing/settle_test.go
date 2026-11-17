@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"sync/atomic"
 	"testing"
@@ -133,5 +134,30 @@ func TestAwaitMeteredUsageHonorsALongerCallerWait(t *testing.T) {
 	}
 	if DefaultSettleWait+settleChargeReserve > 25*time.Second {
 		t.Fatalf("DefaultSettleWait %v plus the charge reserve no longer fits a request under the 30 s write timeout", DefaultSettleWait)
+	}
+}
+
+// w22/m314: sandbox CPU and memory billed on use were exported on the weighted
+// sandbox meter, so the settle expects them there, in its units, beside the
+// weighted usage itself. (ExportedUsageTotals leaves out what was recorded
+// before the switch, which was never sent.)
+func TestSettleExpectsSandboxUsageOnTheWeightedMeter(t *testing.T) {
+	summary := 0.0
+	c, _ := settleMeterClient(t, &summary)
+	c.priceIDs = []string{"price_sandbox"}
+	c.priceByKey = map[string]string{store.UsageKindSandboxComputeSeconds: "price_sandbox"}
+	c.priceMeters = map[string]string{"price_sandbox": "mtr_sandbox"}
+	targets, err := c.meterTargets(context.Background(), []store.ExportedUsageTotal{
+		{Kind: store.UsageKindSandboxComputeSeconds, ResourceKind: store.ResourceKindSandbox, Quantity: 1000, Recent: 1000},
+		{Kind: store.UsageKindSandboxCPUSeconds, Tier: "1c-2g", ResourceKind: store.ResourceKindSandbox, Quantity: 600},
+		{Kind: store.UsageKindSandboxMemoryGBSeconds, Tier: "1c-2g", ResourceKind: store.ResourceKindSandbox, Quantity: 7200, Recent: 7200},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := targets["mtr_sandbox"]
+	const cpu, memory = 563128.491620111725, 1069944.134078212383
+	if len(targets) != 1 || got == nil || math.Abs(got.sent-(1000+cpu+memory)) > 1e-6 || math.Abs(got.recent-(1000+memory)) > 1e-6 {
+		t.Fatalf("targets = %+v (%+v), want one sandbox meter expecting %.6f sent and %.6f recent", targets, got, 1000+cpu+memory, 1000+memory)
 	}
 }

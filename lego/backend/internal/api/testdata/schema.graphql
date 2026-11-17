@@ -1021,6 +1021,7 @@ type ChargeLine {
   quantity: String
   rateUsd: String
   tier: String
+  unbilled: Boolean
   unit: String
 }
 
@@ -1463,6 +1464,7 @@ input EnvironmentSecretFilePatchInput {
 type EstimatedCost {
   meters: [MeterEstimate]
   resources: [ResourceEstimate]
+  sandboxUsageBilledFrom: String
   totalUsd: String
 }
 
@@ -2792,6 +2794,7 @@ type UsageRow {
   kind: String
   tier: String
   total: Float
+  unbilled: Boolean
 }
 
 type UsageSummary {

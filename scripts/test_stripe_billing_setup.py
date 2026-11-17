@@ -52,8 +52,11 @@ class StripeBillingSetupTest(TestCase):
         self.assertIn("sandbox_snapshot_gb_hours", names)  # w22/m313
         self.assertIn("custom_domain_hours", names)  # w7/m429: domains beyond the plan
         self.assertNotIn("custom_domain_seconds", names)
-        self.assertNotIn("sandbox_memory_gb_hours", names)  # shadow meter: no Stripe meter
+        # w22/m314: a sandbox billed on use rides the sandbox_compute_seconds
+        # meter; the catalog is at 20 items, so sandboxUsage adds none.
+        self.assertNotIn("sandbox_memory_gb_hours", names)
         self.assertNotIn("sandbox_memory_gb_seconds", names)
+        self.assertNotIn("sandbox_cpu_seconds", names)
         self.assertFalse(any(name.endswith(".free") for name in names))
 
     def test_agent_model_bills_through_one_cost_meter(self):

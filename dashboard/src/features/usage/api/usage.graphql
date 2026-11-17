@@ -1,10 +1,13 @@
 # Workspace-scoped usage (bex extension, no Render equivalent).
 # Kinds: instance_seconds (compute), egress_bytes (bandwidth),
 # build_seconds (CI/build), storage_gb_seconds (managed datastore storage),
-# sandbox_compute_seconds (weighted hosted-sandbox compute),
-# sandbox_memory_gb_seconds (a sandbox's allocated memory; shown, not billed
-# separately until the used-CPU cutover), sandbox_snapshot_gb_seconds (the
-# image a suspended sandbox retains), and the object storage meters
+# sandbox_compute_seconds (weighted hosted-sandbox compute: every sandbox
+# before estimatedCost.sandboxUsageBilledFrom, an agent session's sandbox
+# after), sandbox_cpu_seconds (the CPU a running sandbox used) and
+# sandbox_memory_gb_seconds (the memory it was allocated), which replace the
+# weighted charge from that instant (w22/m314; what was recorded before it is
+# an `unbilled` line), sandbox_snapshot_gb_seconds (the image a suspended
+# sandbox retains), and the object storage meters
 # (object_storage_gb_seconds, object_storage_ingress_bytes and
 # object_storage_egress_bytes, shown at $0 until Render publishes a price).
 # resourceKind distinguishes App services, managed Postgres/KeyValue instances,
@@ -73,6 +76,11 @@ query Usage($period: String, $ownerId: String) {
     }
     estimatedCost {
       totalUsd
+      # sandboxUsageBilledFrom: the RFC 3339 instant from which a running
+      # sandbox is billed for used CPU and allocated memory instead of the
+      # weighted sandbox compute charge (w22/m314); empty when the period has
+      # no sandbox usage.
+      sandboxUsageBilledFrom
       # resources is the same total grouped by the resource that incurred it,
       # each with the charge lines behind it (rate x quantity = cost, all in
       # one display unit). This is what the billing page's charge tree renders;
@@ -97,6 +105,10 @@ query Usage($period: String, $ownerId: String) {
           # covered; costUsd prices only the rest.
           included
           costUsd
+          # unbilled: sandbox CPU or memory recorded before
+          # sandboxUsageBilledFrom, shown at a rate of 0 because the sandbox
+          # compute line charged for those hours.
+          unbilled
         }
       }
     }

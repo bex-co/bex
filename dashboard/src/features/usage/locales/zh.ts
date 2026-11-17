@@ -617,9 +617,30 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Charge line for metered sandbox compute",
   },
   "usage.chargeSandboxMemory": {
+    message: "沙箱内存",
+    description:
+      "Charge line for the memory a running sandbox was allocated, billed per GiB-hour since billing switched to use",
+  },
+  "usage.chargeSandboxMemoryUnbilled": {
     message: "沙箱内存(已含在计算中)",
     description:
-      "Charge line for the allocated memory a sandbox ran with; recorded beside sandbox compute, which already includes it, so it is shown and not billed separately",
+      "Charge line for the allocated memory a sandbox ran with before billing switched to use; recorded beside sandbox compute, which already includes it, so it is shown and not billed separately",
+  },
+  "usage.chargeSandboxCpu": {
+    message: "沙箱 CPU",
+    description:
+      "Charge line for the CPU a running sandbox used, billed per CPU-hour used",
+  },
+  "usage.chargeSandboxCpuUnbilled": {
+    message: "沙箱 CPU(已含在计算中)",
+    description:
+      "Charge line for the CPU a sandbox used before billing switched to use; recorded beside sandbox compute, which already charged for it, so it is shown and not billed separately",
+  },
+  "usage.sandboxUsageBilledFromNote": {
+    message:
+      "自 {date} UTC 起，运行中的沙箱按实际使用的 CPU 和分配的内存计费。此前的用量按沙箱计算计费。",
+    description:
+      "Note under the charge tree of a period with sandbox usage; date is the instant billing switched, formatted in UTC",
   },
   "usage.chargeSandboxSnapshotStorage": {
     message: "沙箱快照存储",

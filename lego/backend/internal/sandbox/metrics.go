@@ -300,3 +300,56 @@ func (m *StorageMetrics) orphanSweepFailed() {
 	}
 	m.orphanFailures.Inc()
 }
+
+// CPUMetrics reports the used-CPU meter's health. A nil *CPUMetrics is a
+// working no-op.
+type CPUMetrics struct {
+	intervals    *prometheus.GaugeVec
+	readFailures prometheus.Counter
+	abandoned    prometheus.Counter
+}
+
+// NewCPUMetrics registers the used-CPU meter's series. The state label is a
+// closed set: pending (running intervals with CPU still to read, the open ones
+// included) and deferred (those of them waiting for Prometheus, whose usage is
+// partial until it answers).
+func NewCPUMetrics(reg prometheus.Registerer) *CPUMetrics {
+	m := &CPUMetrics{
+		intervals: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bex_sandbox_cpu_meter_intervals",
+			Help: "Sandbox running intervals the used-CPU meter still has to read, by state: pending (CPU left to read) and deferred (waiting for a Prometheus reading; their usage is partial).",
+		}, []string{"state"}),
+		readFailures: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "bex_sandbox_cpu_meter_read_failures_total",
+			Help: "Failed reads of a sandbox pod's CPU from Prometheus, or failed writes of one; each window is retried on a later meter poll.",
+		}),
+		abandoned: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "bex_sandbox_cpu_meter_windows_abandoned_total",
+			Help: "Windows of a running sandbox closed unbilled because Prometheus held no sample of its pod 36 hours later: CPU that was used and never charged.",
+		}),
+	}
+	reg.MustRegister(m.intervals, m.readFailures, m.abandoned)
+	return m
+}
+
+func (m *CPUMetrics) set(s store.SandboxCPUStats) {
+	if m == nil {
+		return
+	}
+	m.intervals.WithLabelValues("pending").Set(float64(s.Pending))
+	m.intervals.WithLabelValues("deferred").Set(float64(s.Deferred))
+}
+
+func (m *CPUMetrics) readFailed() {
+	if m == nil {
+		return
+	}
+	m.readFailures.Inc()
+}
+
+func (m *CPUMetrics) windowAbandoned() {
+	if m == nil {
+		return
+	}
+	m.abandoned.Inc()
+}

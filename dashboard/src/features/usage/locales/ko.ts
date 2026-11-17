@@ -625,9 +625,30 @@ const koUsage: Record<string, TranslationEntry> = {
     description: "Charge line for metered sandbox compute",
   },
   "usage.chargeSandboxMemory": {
+    message: "샌드박스 메모리",
+    description:
+      "Charge line for the memory a running sandbox was allocated, billed per GiB-hour since billing switched to use",
+  },
+  "usage.chargeSandboxMemoryUnbilled": {
     message: "샌드박스 메모리(컴퓨팅에 포함)",
     description:
-      "Charge line for the allocated memory a sandbox ran with; recorded beside sandbox compute, which already includes it, so it is shown and not billed separately",
+      "Charge line for the allocated memory a sandbox ran with before billing switched to use; recorded beside sandbox compute, which already includes it, so it is shown and not billed separately",
+  },
+  "usage.chargeSandboxCpu": {
+    message: "샌드박스 CPU",
+    description:
+      "Charge line for the CPU a running sandbox used, billed per CPU-hour used",
+  },
+  "usage.chargeSandboxCpuUnbilled": {
+    message: "샌드박스 CPU(컴퓨팅에 포함)",
+    description:
+      "Charge line for the CPU a sandbox used before billing switched to use; recorded beside sandbox compute, which already charged for it, so it is shown and not billed separately",
+  },
+  "usage.sandboxUsageBilledFromNote": {
+    message:
+      "{date} UTC부터 실행 중인 샌드박스는 사용한 CPU와 할당된 메모리에 대해 요금이 청구됩니다. 그 이전 사용량은 샌드박스 컴퓨팅으로 청구되었습니다.",
+    description:
+      "Note under the charge tree of a period with sandbox usage; date is the instant billing switched, formatted in UTC",
   },
   "usage.chargeSandboxSnapshotStorage": {
     message: "샌드박스 스냅샷 스토리지",

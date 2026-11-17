@@ -228,6 +228,40 @@ def verify_datastore_activity_scrapes(prometheus):
     assert relabel(cnpg, backends) == backends, "The existing connection series is unchanged"
 
 
+def verify_sandbox_pod_cpu_scrape(prometheus):
+    """A gVisor sandbox's CPU exists only on its pod-level cAdvisor row, which
+    the used-CPU meter bills on (w22/m314). That one row is stored for sandbox
+    namespaces under its own name; every query over
+    container_cpu_usage_seconds_total reads what it read before."""
+    jobs = {job["job_name"]: job for job in prometheus["scrape_configs"]}
+    cadvisor = jobs["kubernetes-cadvisor"]["metric_relabel_configs"]
+    # The label sets cAdvisor reports for a runsc pod on production (2026-11-17).
+    slice_id = "/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod200cec43_9b48_42f7_8de1_7c38c1b26433.slice"
+    pod_row = {"__name__": "container_cpu_usage_seconds_total", "namespace": "tea-d98210cbbpdc73dcrkvg-sandbox",
+               "pod": "3f0448fd-4758-4607-8edf-31ceecdfa8bd-0", "container": "", "cpu": "total", "id": slice_id,
+               "image": "", "name": ""}
+    assert relabel(cadvisor, pod_row) == dict(pod_row, __name__="sandbox_pod_cpu_usage_seconds_total"), \
+        "A sandbox pod's pod-level CPU row must be stored, renamed, with its pod and namespace"
+    pause = dict(pod_row, id=slice_id + "/cri-containerd-a9b5f64f.scope", name="a9b5f64f", image="registry.k8s.io/pause:3.10")
+    assert relabel(cadvisor, pause) is None, "The pause container's row repeats the pod's CPU and must drop"
+    for namespace in ("tea-d98210cbbpdc73dcrkvg", "bex-system", "opensandbox-system", "sandbox"):
+        assert relabel(cadvisor, dict(pod_row, namespace=namespace)) is None, \
+            f"A pod-level CPU row outside a sandbox namespace ({namespace}) must still drop"
+    for name in ("container_memory_working_set_bytes", "container_cpu_cfs_throttled_seconds_total",
+                 "container_cpu_user_seconds_total", "container_network_receive_bytes_total"):
+        assert relabel(cadvisor, dict(pod_row, __name__=name)) is None, f"Only the CPU usage counter is kept, not {name}"
+    container = dict(pod_row, container="sandbox", name="c1", id=slice_id + "/cri-containerd-c1.scope")
+    assert relabel(cadvisor, container) == container, "A container's own CPU row is stored under its own name, as before"
+    app = {"__name__": "container_cpu_usage_seconds_total", "namespace": "tea-a", "pod": "tea-a-web-6b7f9c-x2k4p",
+           "container": "app", "cpu": "total", "id": "/kubepods/pod1/c1", "image": "x", "name": "c1"}
+    assert relabel(cadvisor, app) == app, "App CPU rows are unchanged"
+    assert not any(rule.get("target_label", "").startswith("__tmp") and rule.get("action", "replace") != "replace"
+                   for rule in cadvisor)
+    # Nothing but the meter may read the renamed series through the old name.
+    stored = relabel(cadvisor, pod_row)
+    assert "__tmp_sandbox_pod_cpu" not in stored and "__tmp_datastore_network" not in stored
+
+
 def verify_filesystem_collector(resources, prometheus, environment):
     objects = yaml_objects(resources)
     daemonset = next(obj for obj in objects if obj["kind"] == "DaemonSet"
@@ -455,6 +489,7 @@ def main():
             }
             verify_log_metric_filtering(alloy, loki)
             verify_datastore_activity_scrapes(prometheus)
+            verify_sandbox_pod_cpu_scrape(prometheus)
             (temporary / "platform_gitops_expected.yml").write_text(config["platform_gitops_expected.yml"])
             fixture = {
                 "rule_files": ["platform_gitops_expected.yml"],

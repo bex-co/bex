@@ -556,6 +556,7 @@ describe("ChargesCard", () => {
                 rateUsd: "0",
                 quantity: "2.00",
                 costUsd: "0.00",
+                unbilled: true,
               },
             ],
           }),
@@ -578,6 +579,97 @@ describe("ChargesCard", () => {
     expect(
       screen.queryByText("sandbox_memory_gb_seconds"),
     ).not.toBeInTheDocument();
+  });
+
+  // w22/m314: from the switch a running sandbox is billed for the CPU it used
+  // and the memory it was allocated. A month that spans the switch shows what
+  // was recorded before it as lines the compute charge already covered, the
+  // billed lines beside them, and when the switch happened.
+  it("tells billed sandbox CPU and memory from what compute already covered", () => {
+    const line = (
+      kind: string,
+      unit: string,
+      rateUsd: string,
+      costUsd: string,
+      unbilled: boolean,
+    ) => ({
+      kind,
+      tier: "1c-2g",
+      unit,
+      rateUsd,
+      quantity: "2.00",
+      costUsd,
+      unbilled,
+    });
+    render(
+      <ChargesCard
+        estimatedCost={{
+          ...estimate([
+            resource({
+              resourceKind: "sandbox",
+              costUsd: "0.15",
+              charges: [
+                line(
+                  "sandbox_compute_seconds",
+                  "vCPU-hr",
+                  "0.0895",
+                  "0.11",
+                  false,
+                ),
+                line("sandbox_cpu_seconds", "CPU-hr", "0", "0.00", true),
+                line("sandbox_cpu_seconds", "CPU-hr", "0.084", "0.01", false),
+                line("sandbox_memory_gb_seconds", "GiB-hr", "0", "0.00", true),
+                line(
+                  "sandbox_memory_gb_seconds",
+                  "GiB-hr",
+                  "0.0133",
+                  "0.03",
+                  false,
+                ),
+              ],
+            }),
+          ]),
+          sandboxUsageBilledFrom: "2026-11-18T00:00:00Z",
+        }}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    fireEvent.click(screen.getByRole("button", { name: /api/ }));
+    // Five lines, none swallowed by a shared key.
+    expect(screen.getByText("Sandbox compute")).toBeInTheDocument();
+    expect(screen.getByText("Sandbox CPU")).toBeInTheDocument();
+    expect(screen.getByText("Sandbox memory")).toBeInTheDocument();
+    expect(
+      screen.getByText("Sandbox CPU (included in compute)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Sandbox memory (included in compute)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("$0.084/CPU-hr")).toBeInTheDocument();
+    expect(screen.getByText("$0.0133/GiB-hr")).toBeInTheDocument();
+    expect(screen.queryByText("sandbox_cpu_seconds")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Since Nov 18, 2026, 12:00 AM UTC, a running sandbox is billed for the CPU it uses and the memory it is allocated. Sandbox usage before then was billed as sandbox compute.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing about the sandbox switch in a period with no sandbox usage", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource()])}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    expect(screen.queryByText(/a running sandbox is billed/)).toBeNull();
   });
 
   // w21/086: a workspace's object storage (ADR112 D8) is one resource whose id

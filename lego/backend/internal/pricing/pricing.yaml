@@ -10,6 +10,8 @@
 #   build_seconds    → build.usdPerSecond
 #   storage_gb_seconds → storage.usdPerGBSecond
 #   sandbox_compute_seconds → sandbox.usdPerWeightedSecond
+#   sandbox_cpu_seconds     → sandboxUsage.usdPerCPUSecond
+#   sandbox_memory_gb_seconds → sandboxUsage.usdPerMemoryGBSecond
 #   custom_domain_seconds → customDomains.usdPerDomainSecond
 #   agent_model_cost_microusd → $0.000001 per unit (the row already carries
 #                           upstream cost × agentModel.markup, ADR091 D1)
@@ -176,6 +178,30 @@ customDomains:
 # Policy: docs/ADR104-sandbox-render-parity.md D8, docs/ADR023-usage-metering.md.
 sandboxSnapshot:
   usdPerGBSecond: 0.0000000213089802130898   # $0.056 / 2,628,000 GB-seconds
+
+# Sandboxes billed on use (w22/m314, docs/ADR104-sandbox-render-parity.md D8,
+# docs/ADR030-pricing.md §17). From billedFrom, in every workspace, a running
+# sandbox pays for the CPU it uses and the memory it is allocated, as on Render,
+# instead of the weighted allocated-shape charge above:
+#   sandbox_cpu_seconds        $0.084 per CPU-hour used (Render's $0.12 per
+#                              active CPU-hour × 0.70), measured at the pod's
+#                              cgroup with no subtraction for gVisor's overhead;
+#   sandbox_memory_gb_seconds  $0.0133 per GiB-hour allocated while running
+#                              (Render's about $0.019 per GB-hour × 0.70).
+# Render's rates are from its comparison article
+# render.com/articles/render-sandboxes-vs-vercel-sandboxes (published
+# 2026-11-06, read 2026-11-17); render.com/pricing carries no sandbox prices,
+# so re-read the article before changing these. CPU and memory recorded before
+# billedFrom are shown and never billed, and nothing is re-priced. billedFrom
+# is a UTC hour boundary. An agent session's sandbox keeps the weighted meter
+# (ADR047 D6). Neither kind has a Stripe meter of its own: the catalog is at
+# Stripe's 20 items per Subscription, so both are exported on the
+# sandbox_compute_seconds meter as the number of weighted units that costs the
+# same (rate ÷ sandbox.usdPerWeightedSecond).
+sandboxUsage:
+  billedFrom: "2026-11-18T00:00:00Z"
+  usdPerCPUSecond: 0.000023333333333333333333333333        # $0.084 / 3,600
+  usdPerMemoryGBSecond: 0.000003694444444444444444444444   # $0.0133 / 3,600
 
 # Platform model route (ADR091 D1–D3, ADR090 § Platform
 # OpenRouter route). Every platform-key exchange is priced at its upstream

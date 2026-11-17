@@ -39,6 +39,7 @@ export const CHARGE_LABEL_KEYS: Record<string, string> = {
   build_seconds: "usage.chargeBuild",
   storage_gb_seconds: "usage.chargeStorage",
   sandbox_compute_seconds: "usage.chargeSandboxCompute",
+  sandbox_cpu_seconds: "usage.chargeSandboxCpu",
   sandbox_memory_gb_seconds: "usage.chargeSandboxMemory",
   sandbox_snapshot_gb_seconds: "usage.chargeSandboxSnapshotStorage",
   object_storage_gb_seconds: "usage.chargeObjectStorage",
@@ -51,6 +52,16 @@ export const CHARGE_LABEL_KEYS: Record<string, string> = {
   agent_model_output_tokens: "usage.chargeAgentModelOutputTokens",
   agent_model_cache_read_tokens: "usage.chargeAgentModelCacheReadTokens",
   agent_model_cache_write_tokens: "usage.chargeAgentModelCacheWriteTokens",
+};
+
+/**
+ * Sandbox CPU and memory recorded before billing switched to use (w22/m314)
+ * are `unbilled` lines: the sandbox compute line charged for those hours, so
+ * they say so instead of reading as a second charge.
+ */
+export const UNBILLED_CHARGE_LABEL_KEYS: Record<string, string> = {
+  sandbox_cpu_seconds: "usage.chargeSandboxCpuUnbilled",
+  sandbox_memory_gb_seconds: "usage.chargeSandboxMemoryUnbilled",
 };
 
 /**

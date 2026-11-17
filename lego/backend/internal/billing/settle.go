@@ -28,6 +28,7 @@ import (
 	stripe "github.com/stripe/stripe-go/v86"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -269,7 +270,10 @@ func (c *StripeClient) meterTargets(ctx context.Context, totals []store.Exported
 	}
 	targets := map[string]*meterTarget{}
 	for _, total := range totals {
-		row := store.HourlyRow{Kind: total.Kind, Tier: total.Tier, ResourceKind: total.ResourceKind}
+		// The totals of sandbox CPU and memory are the hours billed on use
+		// only (ExportedUsageTotals), which the mapper tells by the window.
+		row := store.HourlyRow{Kind: total.Kind, Tier: total.Tier, ResourceKind: total.ResourceKind,
+			WindowStart: pricing.Default.SandboxUsageBilledFrom()}
 		row.Quantity = total.Quantity
 		name, sent, skip := stripeMeterEvent(toEvent(row))
 		if skip {

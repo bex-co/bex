@@ -38,6 +38,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -80,6 +81,15 @@ type Sheet struct {
 	// custom domains above a plan's included count (docs/ADR030 §16).
 	customDomain float64
 	sandbox      float64 // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
+	// sandboxCPU and sandboxMemory are $/CPU-second used and $/GiB-second
+	// allocated for sandbox_cpu_seconds and sandbox_memory_gb_seconds, billed
+	// from sandboxUsageFrom (w22/m314). sandboxUsageUnits is, per kind, how many
+	// weighted sandbox_compute_seconds units cost what one unit of it does: the
+	// Stripe meter both are exported on.
+	sandboxCPU        float64
+	sandboxMemory     float64
+	sandboxUsageFrom  time.Time
+	sandboxUsageUnits map[string]*big.Rat
 	// sandboxUSD is the same rate, exact, for pricing one session's compute
 	// (SandboxComputeMicroUSD).
 	sandboxUSD *big.Rat
@@ -198,6 +208,41 @@ func (s *Sheet) SandboxComputeMicroUSD(milliSeconds int64) int64 {
 	return n.Int64()
 }
 
+// SandboxUsageBilledFrom is the instant sandbox billing switches to used CPU
+// plus allocated memory in every workspace (sandboxUsage.billedFrom); zero
+// when the sheet prices neither.
+func (s *Sheet) SandboxUsageBilledFrom() time.Time {
+	if s == nil {
+		return time.Time{}
+	}
+	return s.sandboxUsageFrom
+}
+
+// SandboxUsageBilledAt reports whether sandbox CPU and memory metered in the
+// hour starting at window are billed: the switch has happened by then.
+func (s *Sheet) SandboxUsageBilledAt(window time.Time) bool {
+	from := s.SandboxUsageBilledFrom()
+	return !from.IsZero() && !window.Before(from)
+}
+
+// SandboxUsageWeightedUnits converts quantity (an integer string) of
+// sandbox_cpu_seconds or sandbox_memory_gb_seconds into the number of weighted
+// sandbox_compute_seconds units that cost the same, to the 12 decimals Stripe
+// accepts in a meter event. Both kinds are exported on that one Stripe meter
+// (the catalog is at Stripe's 20 items per Subscription). The arithmetic is
+// exact rational on the rates' shortest decimal spellings; ok is false for
+// another kind or an unpriced sheet.
+func (s *Sheet) SandboxUsageWeightedUnits(kind, quantity string) (string, bool) {
+	if s == nil || s.sandboxUsageUnits[kind] == nil {
+		return "", false
+	}
+	n, ok := new(big.Rat).SetString(quantity)
+	if !ok {
+		return "", false
+	}
+	return TrimDecimal(n.Mul(n, s.sandboxUsageUnits[kind]), 12), true
+}
+
 // TrimDecimal renders r rounded to places decimals without trailing zeros.
 func TrimDecimal(r *big.Rat, places int) string {
 	out := strings.TrimRight(strings.TrimRight(r.FloatString(places), "0"), ".")
@@ -284,6 +329,13 @@ type EstimatedCost struct {
 	// is also the only place a reader sees *how much* was consumed. Always a
 	// non-nil slice.
 	Resources []ResourceEstimate `json:"resources"`
+	// SandboxUsageBilledFrom is the instant (RFC 3339, UTC) from which a
+	// running sandbox is billed for the CPU it uses and the memory it is
+	// allocated instead of the weighted sandbox_compute_seconds charge
+	// (w22/m314). Present only when the period has sandbox usage: it is what
+	// explains a period that carries both, and the unbilled CPU and memory
+	// lines recorded before it.
+	SandboxUsageBilledFrom string `json:"sandboxUsageBilledFrom,omitempty"`
 }
 
 // ResourceEstimate is one resource's estimated cost for the period, with the
@@ -330,6 +382,10 @@ type ChargeLine struct {
 	// CostUSD is RateUSD × Quantity, formatted to cents. "0.00" is a real and
 	// common value (free tiers, sub-cent usage) and is never omitted.
 	CostUSD string `json:"costUsd"`
+	// Unbilled marks sandbox CPU or memory recorded before
+	// EstimatedCost.SandboxUsageBilledFrom: shown at a rate of 0, because the
+	// sandbox compute line charged for those hours.
+	Unbilled bool `json:"unbilled,omitempty"`
 }
 
 // MeterEstimate is one meter dimension's contribution to the estimated total.
@@ -420,12 +476,26 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 	type key struct{ kind, tier, resourceKind string }
 	byKey := map[key]int64{}
 	var order []key
+	sandboxUsage := false
 	for _, r := range rows {
+		if r.ResourceKind == store.ResourceKindSandbox && r.Total != 0 {
+			switch r.Kind {
+			case store.UsageKindSandboxComputeSeconds, store.UsageKindSandboxCPUSeconds, store.UsageKindSandboxMemoryGBSeconds:
+				sandboxUsage = true
+			}
+		}
+		if r.Unbilled {
+			continue // shown on its resource's lines, never part of a total
+		}
 		k := key{r.Kind, r.Tier, r.ResourceKind}
 		if _, seen := byKey[k]; !seen {
 			order = append(order, k)
 		}
 		byKey[k] += r.Total
+	}
+	billedFrom := ""
+	if from := s.SandboxUsageBilledFrom(); sandboxUsage && !from.IsZero() {
+		billedFrom = from.UTC().Format(time.RFC3339)
 	}
 
 	var totalRaw float64
@@ -452,6 +522,8 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 		TotalUSD:  FormatUSD(totalRaw),
 		Meters:    meters,
 		Resources: s.resourceEstimates(rows, covered),
+
+		SandboxUsageBilledFrom: billedFrom,
 	}
 }
 
@@ -492,7 +564,10 @@ func applyIncluded(rows []store.UsageSummaryRow, included Included) ([]store.Usa
 // deterministic for a deterministic query.
 func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[coveredKey]int64) []ResourceEstimate {
 	type resKey struct{ serviceID, resourceKind string }
-	type lineKey struct{ kind, tier string }
+	type lineKey struct {
+		kind, tier string
+		unbilled   bool
+	}
 
 	lines := map[resKey]map[lineKey]int64{}
 	var resOrder []resKey
@@ -506,7 +581,7 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 			lines[rk] = map[lineKey]int64{}
 			resOrder = append(resOrder, rk)
 		}
-		lk := lineKey{r.Kind, r.Tier}
+		lk := lineKey{r.Kind, r.Tier, r.Unbilled}
 		if _, seen := lines[rk][lk]; !seen {
 			lineOrder[rk] = append(lineOrder[rk], lk)
 		}
@@ -520,6 +595,9 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 		for _, lk := range lineOrder[rk] {
 			qty := lines[rk][lk]
 			rate := s.rateFor(lk.kind, lk.tier, rk.resourceKind)
+			if lk.unbilled {
+				rate = 0
+			}
 			cost := rate * float64(qty)
 			resRaw += cost
 			unit := unitFor(lk.kind)
@@ -530,6 +608,7 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 				RateUSD:  formatRate(rate * unit.per),
 				Quantity: formatQuantity(float64(qty) / unit.per),
 				CostUSD:  FormatUSD(cost),
+				Unbilled: lk.unbilled,
 			}
 			if free := covered[coveredKey{rk.serviceID, rk.resourceKind, lk.kind}]; free > 0 {
 				// Quantity stays what was used; the plan's allowance covered
@@ -575,6 +654,8 @@ func unitFor(kind string) meterUnit {
 		return meterUnit{"GB", BytesPerGiB}
 	case store.UsageKindSandboxMemoryGBSeconds:
 		return meterUnit{"GiB-hr", 3600}
+	case store.UsageKindSandboxCPUSeconds:
+		return meterUnit{"CPU-hr", 3600}
 	case store.UsageKindSandboxComputeSeconds:
 		return meterUnit{"vCPU-hr", 3600000}
 	case store.UsageKindCustomDomainSeconds:
@@ -650,12 +731,21 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 		if resourceKind == store.ResourceKindSandbox {
 			return s.sandbox
 		}
+	case store.UsageKindSandboxCPUSeconds:
+		// Used CPU and allocated memory, as Render bills a sandbox (w22/m314).
+		// What was recorded before the switch reaches the estimate as an
+		// Unbilled row, which is rated 0 whatever this returns.
+		if resourceKind == store.ResourceKindSandbox {
+			return s.sandboxCPU
+		}
+	case store.UsageKindSandboxMemoryGBSeconds:
+		if resourceKind == store.ResourceKindSandbox {
+			return s.sandboxMemory
+		}
 	case store.UsageKindSandboxSnapshotGBSeconds:
-		// The memory kind (sandbox_memory_gb_seconds) has no case: it is shown at
-		// $0 until the used-CPU meter lets billing switch (w22/m314), because the
-		// weighted compute charge above already includes memory. The three object
-		// storage kinds have none either: Render has published no price, so they
-		// are shadow meters shown at $0 (ADR112 D8) until the user sets one.
+		// The three object storage kinds have no case: Render has published no
+		// price, so they are shadow meters shown at $0 (ADR112 D8) until the
+		// user sets one.
 		if resourceKind == store.ResourceKindSandbox {
 			return s.sandboxSnapshot
 		}
@@ -729,10 +819,20 @@ type sandboxRate struct {
 	USDPerWeightedSecond float64 `json:"usdPerWeightedSecond"`
 }
 
+// sandboxUsage is pricing.yaml's sandboxUsage section: the used-CPU and
+// allocated-memory rates and the instant they replace the weighted charge.
+type sandboxUsage struct {
+	BilledFrom           string  `json:"billedFrom"`
+	USDPerCPUSecond      float64 `json:"usdPerCPUSecond"`
+	USDPerMemoryGBSecond float64 `json:"usdPerMemoryGBSecond"`
+}
+
 // sheetFile is pricing.yaml. Its customer-facing sections are publicSheet
 // (public.go), which GET /pricing serves as they are; the rest stays private.
 type sheetFile struct {
 	publicSheet
+	// SandboxUsage stays private until bex.co quotes it (public.go).
+	SandboxUsage sandboxUsage `json:"sandboxUsage"`
 	// CustomDomains stays private until bex.co quotes it (public.go).
 	CustomDomains struct {
 		USDPerDomainSecond float64 `json:"usdPerDomainSecond"`
@@ -747,6 +847,37 @@ type sheetFile struct {
 		TrustTiers     []tierFile      `json:"trustTiers"`
 		UpstreamPrices []upstreamPrice `json:"upstreamPrices"`
 	} `json:"agentModel"`
+}
+
+// parseSandboxUsage loads the sandboxUsage section. An absent section prices
+// neither kind and never switches. A priced one needs billedFrom on a UTC hour
+// boundary (usage is kept by the hour, so no hour is billed on two models) and
+// the weighted rate, whose Stripe meter both kinds are exported on.
+func (s *Sheet) parseSandboxUsage(f sandboxUsage) error {
+	if f == (sandboxUsage{}) {
+		return nil
+	}
+	from, err := time.Parse(time.RFC3339, f.BilledFrom)
+	if err != nil || !from.Equal(from.Truncate(time.Hour)) {
+		return fmt.Errorf("sandboxUsage.billedFrom %q must be an RFC 3339 instant on an hour boundary", f.BilledFrom)
+	}
+	if s.sandboxUSD == nil {
+		return fmt.Errorf("sandboxUsage needs sandbox.usdPerWeightedSecond: its Stripe meter carries both kinds")
+	}
+	s.sandboxUsageFrom = from.UTC()
+	s.sandboxCPU, s.sandboxMemory = f.USDPerCPUSecond, f.USDPerMemoryGBSecond
+	s.sandboxUsageUnits = map[string]*big.Rat{}
+	for kind, rate := range map[string]float64{
+		store.UsageKindSandboxCPUSeconds:      f.USDPerCPUSecond,
+		store.UsageKindSandboxMemoryGBSeconds: f.USDPerMemoryGBSecond,
+	} {
+		if math.IsNaN(rate) || math.IsInf(rate, 0) || rate <= 0 {
+			return fmt.Errorf("sandboxUsage rate for %s must be positive, got %v", kind, rate)
+		}
+		r, _ := new(big.Rat).SetString(strconv.FormatFloat(rate, 'f', -1, 64))
+		s.sandboxUsageUnits[kind] = r.Quo(r, s.sandboxUSD)
+	}
+	return nil
 }
 
 func mustLoad(raw []byte) *Sheet {
@@ -786,6 +917,9 @@ func parseSheet(raw []byte) (*Sheet, error) {
 			return nil, fmt.Errorf("sandbox has a non-finite rate")
 		}
 		s.sandboxUSD = r
+	}
+	if err := s.parseSandboxUsage(f.SandboxUsage); err != nil {
+		return nil, err
 	}
 	if rate := f.CustomDomains.USDPerDomainSecond; math.IsNaN(rate) || math.IsInf(rate, 0) || rate < 0 {
 		return nil, fmt.Errorf("customDomains.usdPerDomainSecond %v must be a non-negative rate", rate)

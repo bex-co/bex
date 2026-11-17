@@ -43,6 +43,7 @@ describe("useUsage", () => {
           workspaceId: "ws-abc123",
           estimatedCost: {
             totalUsd: "4.92",
+            sandboxUsageBilledFrom: "2026-11-18T00:00:00Z",
             resources: [
               {
                 serviceId: "srv-cms",
@@ -65,6 +66,7 @@ describe("useUsage", () => {
                     rateUsd: "0.015",
                     quantity: "1.00",
                     costUsd: "0.02",
+                    unbilled: true,
                   },
                 ],
               },
@@ -97,6 +99,8 @@ describe("useUsage", () => {
       customDomains: null,
       estimatedCost: {
         totalUsd: "4.92",
+        // When sandbox billing switched to use (w22/m314); "" when absent.
+        sandboxUsageBilledFrom: "2026-11-18T00:00:00Z",
         resources: [
           {
             serviceId: "srv-cms",
@@ -113,6 +117,8 @@ describe("useUsage", () => {
                 quantity: "730.00",
                 included: "",
                 costUsd: "4.90",
+                // `unbilled` absent from the response ⇒ a billed line.
+                unbilled: false,
               },
               {
                 kind: "egress_bytes",
@@ -122,6 +128,7 @@ describe("useUsage", () => {
                 quantity: "1.00",
                 included: "",
                 costUsd: "0.02",
+                unbilled: true,
               },
             ],
           },
