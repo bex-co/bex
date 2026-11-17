@@ -727,6 +727,10 @@ type keyValueIntent struct {
 	persistenceLegacyPod *corev1.Pod
 	skipPersistenceInit  bool
 	internalProxy        bool
+	// heldMaxclients, when set, is the --maxclients ("" for none) an existing
+	// template keeps because CONFIG SET can bring its server to the plan's
+	// (applyKeyValueStatefulSet).
+	heldMaxclients *string
 }
 
 func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageGB int32, kvDomain string, listening, tlsRuntime bool) keyValueIntent {
@@ -911,6 +915,9 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 	passwordEnv := kvSecretEnv(kvPasswordEnv, intent.authSecretName)
 	platformPasswordEnv := kvSecretEnv(kvPlatformPasswordEnv, intent.platformSecretName)
 	serverArgs := valkeyArgs(kv.Spec, intent.plan)
+	if intent.heldMaxclients != nil {
+		serverArgs = withValkeyArg(serverArgs, "--maxclients", *intent.heldMaxclients)
+	}
 	// Install the ephemeral Off directory with the handoff, never by rolling an
 	// unchanged legacy cache merely because the operator was upgraded.
 	if kv.Spec.PersistenceMode == "off" && !intent.skipPersistenceInit {

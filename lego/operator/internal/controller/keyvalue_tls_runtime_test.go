@@ -92,7 +92,7 @@ type runtimeTLSFixture struct {
 	result   reconcile.Result
 	calls    []bool
 	template *corev1.PodTemplateSpec
-	version  string
+	spec     *appsv1.StatefulSetSpec
 }
 
 func newRuntimeTLSFixture(t *testing.T) *runtimeTLSFixture {
@@ -176,7 +176,7 @@ func (f *runtimeTLSFixture) startPod() {
 	}
 	f.reconcileTwice()
 	sts = f.statefulSet()
-	f.template, f.version = sts.Spec.Template.DeepCopy(), sts.ResourceVersion
+	f.template, f.spec = sts.Spec.Template.DeepCopy(), sts.Spec.DeepCopy()
 }
 
 // issueCertificate stands in for cert-manager writing the Secret.
@@ -197,12 +197,13 @@ func (f *runtimeTLSFixture) certificateErr() error {
 	return f.cl.Get(f.ctx, types.NamespacedName{Name: keyValueTLSName(f.kv), Namespace: "default"}, c)
 }
 
-// unrolled fails the test if the StatefulSet changed since the pod started:
-// any template change restarts the store and empties a Persistence Off one.
+// unrolled fails the test if the StatefulSet's spec changed since the pod
+// started: any template change restarts the store and empties a Persistence
+// Off one. Its metadata may change: a record there restarts nothing.
 func (f *runtimeTLSFixture) unrolled(step string) {
 	f.t.Helper()
 	sts := f.statefulSet()
-	if !equality.Semantic.DeepEqual(sts.Spec.Template, *f.template) || sts.ResourceVersion != f.version {
+	if !equality.Semantic.DeepEqual(sts.Spec, *f.spec) {
 		f.t.Fatalf("%s changed the StatefulSet, which restarts the store:\nbefore %+v\nafter  %+v", step, f.template.Spec, sts.Spec.Template.Spec)
 	}
 }

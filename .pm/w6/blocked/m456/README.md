@@ -1,6 +1,6 @@
 # w6 · m456 — Key Value connections stop at the plan's limit, as on Render (free 50 … 50g 50,000)
 
-**Worker:** worker6 **Goal:** every Key Value instance accepts exactly the connections its plan allows on Render, no fewer (a paid store is capped at 1,024 by its internal proxy today) and no more (a free store takes 1,024 where Render's takes 50), and the client past the limit receives Valkey's own `ERR max number of clients reached`. **Status:** blocked: t001–t005, t008 and t009 done, t006's ADR records written. The production checks wait for the batched production deploy carrying `0eed45bcb` (see BLOCKED — 2026-11-17).
+**Worker:** worker6 **Goal:** every Key Value instance accepts exactly the connections its plan allows on Render, no fewer (a paid store is capped at 1,024 by its internal proxy today) and no more (a free store takes 1,024 where Render's takes 50), and the client past the limit receives Valkey's own `ERR max number of clients reached`. **Status:** blocked: t001–t009 done. t006's production checks passed and found two defects in the rollout, fixed in the same ship. t011 checks the fixed operator on production once the deploy carrying the fix lands (see BLOCKED — 2026-11-17, second).
 
 ## Tasks (in order)
 
@@ -11,17 +11,18 @@
 | t003 | [`valkey-server` starts with `--maxclients` from its plan](done/t003.md) — **DONE** | 1h | t001 |
 | t004 | [The limit reaches running servers and plan upgrades with `CONFIG SET`](done/t004.md) — **DONE** | 45m | t003 |
 | t005 | [kv-internal-proxy admits the plan's limit and lets Valkey answer the refusal](done/t005.md) — **DONE** | 1h | t003 |
-| t006 | [Ship, verify on production, and record the limits in ADR021 and ADR018](t006.md) | 45m | t002, t004, t005 |
-| t007 | [Render parity](t007.md) | 30m | t006 |
+| t006 | [Ship, verify on production, and record the limits in ADR021 and ADR018](done/t006.md) — **DONE** | 45m | t002, t004, t005 |
+| t011 | [Production check of the fixed rollout: the limit's record lands, and a store waiting on another deferred change does not roll](t011.md) | 30m | t006 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 30m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t008, t009 |
+| t010 | [Closeout](t010.md) | 10m | t008, t009, t011 |
 
 ## Definition of done
 
 - On production, a free Key Value accepts 50 concurrent client connections and the 51st receives `ERR max number of clients reached`; a `standard` store accepts 1,000; upgrading the free store to `starter` raises its limit to 250. _(Amended 2026-11-17, t003–t005: the upgrade restarts `valkey-server` as Render's does, "Upgrading requires a restart" ([Key Value](https://render.com/docs/key-value), read 2026-11-17), because it changes the pod's CPU and memory; the restarted server starts with the new limit, and the limit adds no restart of its own. The original "without restarting" could not hold on bex or on Render.)_
 - A `pro` store's internal proxy admits its 5,000 (a test proves it no longer refuses at 1,024), and at every store's limit the refusal is Valkey's error on both the plain and the TLS listener, never a closed connection.
-- Every existing store adopted its limit without a Valkey pod restart.
+- Every existing store adopted its limit without a Valkey pod restart. _(Amended 2026-11-17, t006: the first rollout did not meet this. Two of the three production stores restarted once at 12:10Z because the limit's hold did not compose with the priority-class and environment-label holds, and nothing can undo those restarts. t006 fixed the defect, and the bullet now requires the fixed operator to adopt the limit with no restart on production: t011's drill of a store waiting on another deferred change, and the third store's record landing with no restart.)_
 - A guard test pins every Valkey plan id and alias bex accepts to Render's figure; ADR021 and ADR018 record the limits; t002's stores over their new limit are reported.
 
 ## Source + Goal linkage
@@ -100,3 +101,28 @@ ADR021 § 9 and ADR018 (the "Datastore connection limits by plan" row and a gap-
     - delete the probes.
   - t007 reads REST, GraphQL, MCP and the dashboard on production.
   - t010 closes.
+
+## UNBLOCKED — 2026-11-17: the production deploy carrying `0eed45bcb` landed
+
+- **Affected:** w6/m456 t006, t007, t010. **Source:** verified evidence, read by the `/loopx w6` worker at 16:55Z.
+- **The pin.** `fc4fbf28a` ("pin platform images to db48cde2bae9", 12:08Z) is on `origin/main`, and `git merge-base --is-ancestor 0eed45bcb db48cde2bae9` holds. Production's `bex-system` Deployments run `bex-operator@sha256:ced89914…`, the digest that pin wrote to `deploy/gitops/base/bex.yaml`.
+- **The env.** All three production `<id>-internal` Deployments (`red-d9p49kdrtmes73c34ovg`, `red-dbnukk1ngmjs739tgulg`, `red-dbpf5q5me2kc73f2l0og`, all `starter`) carry `BEX_KV_MAX_CONNECTIONS=250` and are Available at their latest generation. The BLOCKED section's check command selects nothing: the Deployments carry no `app.bex.co/keyvalue-internal-proxy` label. `kubectl get deploy -A | grep -- -internal` finds them.
+- **Remaining gates:** none. **Next:** t006 steps 1, 2 and 4 in `bex-canary`, t007, t010, as listed under BLOCKED — Then.
+
+## Production checks — 2026-11-17 (t006, t007)
+
+- **Limits hold on production** (t006, `bex-canary` probes, all deleted with `GET` 404 afterwards):
+  - free: 50 admitted, and the 51st reads `-ERR max number of clients reached` on the internal URL and inside TLS on the external URL;
+  - `standard`: 1,000 admitted, the 1,001st refused;
+  - free upgraded to `starter`: the restarted server runs `maxclients` 260, 250 are admitted and the 251st is refused.
+- **The existing stores (t002's three):** none sees refusals; their peaks since the deploy are 17, 33 and 1 against 250. The checks found two defects in the rollout:
+  - **A refused record.** `red-dbpf5q5me2kc73f2l0og` adopted 260 by `CONFIG SET` with no restart, but production's `bex-operator-pod-labels` admission policy refused the pod annotation recording it on every pass.
+  - **Two restarts.** `red-d9p49kdrtmes73c34ovg` and `red-dbnukk1ngmjs739tgulg` restarted once at 12:10Z. The limit's hold did not compose with the deferred priority-class and environment-label holds those stores were waiting on.
+  - Both are fixed in the commit `git log origin/main --grep 'w6/m456 t006'` names, with regression tests that fail against the old code. The DoD's existing-store bullet is amended accordingly. Details: [t006](done/t006.md).
+- **Render parity** (t007): the figure and the refusal match Render's. REST, MCP, production GraphQL and the deployed dashboard state nothing that contradicts the limit. The dashboard display is w6/m459's, which is filed and waiting for its own deploy. Details: [t007](done/t007.md).
+
+## BLOCKED — 2026-11-17 (second): the production deploy carrying t006's fix
+
+- **Done.** t001–t009. The limits hold on production, and t006's fix is shipped (`git log origin/main --grep 'w6/m456 t006'`).
+- **Gate (time, clears by itself).** A production pin whose producer contains the fix: `git log origin/main --grep "pin platform images"`, then `git merge-base --is-ancestor <fix> <producer>`. The pin at 12:08Z makes a push or scheduled `deploy.yml` run deploy `main` from 18:08Z.
+- **Then.** t011 (the fixture's record lands with no restart; a free probe store edited to a pre-m456, pre-priority-class template adopts 60 without a second roll; the probe is deleted), then t010.

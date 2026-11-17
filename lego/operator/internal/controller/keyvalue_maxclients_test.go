@@ -88,7 +88,7 @@ func TestKeyValueTemplateHoldsItsClientLimit(t *testing.T) {
 	}
 	preM456 := func(plan string) *appsv1.StatefulSet {
 		sts := template(plan, nil, &appsv1.StatefulSet{})
-		setValkeyArg(sts.Spec.Template.Spec.Containers, "--maxclients", "")
+		dropValkeyMaxclients(sts)
 		sts.ResourceVersion = "7"
 		return sts
 	}
@@ -122,6 +122,61 @@ func TestKeyValueTemplateHoldsItsClientLimit(t *testing.T) {
 	}
 }
 
+// dropValkeyMaxclients makes sts's template one a pre-m456 operator wrote:
+// its server starts without --maxclients.
+func dropValkeyMaxclients(sts *appsv1.StatefulSet) {
+	for i, c := range sts.Spec.Template.Spec.Containers {
+		if c.Name == keyValueContainerName {
+			sts.Spec.Template.Spec.Containers[i].Args = withValkeyArg(c.Args, "--maxclients", "")
+		}
+	}
+}
+
+// t006: on production the operator upgrade that added the limit rolled the two
+// oldest stores. One still waited to adopt the datastore priority class, the
+// other its environment label, and each hold read the other's pending change
+// as a reason to roll. Every change that rolls nothing holds together, and a
+// change that rolls anyway still brings all of them.
+func TestKeyValueClientLimitHoldsBesideTheOtherDeferredChanges(t *testing.T) {
+	for name, pending := range map[string]func(*appv1alpha1.KeyValue, *appsv1.StatefulSet){
+		"priority class":    func(_ *appv1alpha1.KeyValue, sts *appsv1.StatefulSet) { sts.Spec.Template.Spec.PriorityClassName = "" },
+		"environment label": func(kv *appv1alpha1.KeyValue, _ *appsv1.StatefulSet) { kv.Labels[labelEnvironment] = "env-b" },
+		"isolation label":   func(kv *appv1alpha1.KeyValue, _ *appsv1.StatefulSet) { kv.Labels[labelNetworkIsolation] = "env-a" },
+		"all three": func(kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet) {
+			sts.Spec.Template.Spec.PriorityClassName = ""
+			kv.Labels[labelEnvironment] = "env-b"
+			kv.Labels[labelNetworkIsolation] = "env-b"
+		},
+	} {
+		kv := isolatedKV("")
+		kv.Spec.Plan = "starter"
+		apply := func(sts *appsv1.StatefulSet) {
+			plan, storage := resolveKVPlan(kv.Spec)
+			applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "", false, true))
+		}
+		sts := &appsv1.StatefulSet{}
+		apply(sts)
+		sts.CreationTimestamp = metav1.Now()
+		dropValkeyMaxclients(sts)
+		pending(kv, sts)
+		old := sts.Spec.Template.DeepCopy()
+
+		apply(sts)
+		if !equality.Semantic.DeepEqual(sts.Spec.Template, *old) {
+			t.Errorf("%s: the upgrade rolled a pre-m456 store waiting on it: limit %q, class %q, labels %v", name,
+				valkeyArgValue(sts.Spec.Template.Spec.Containers, "--maxclients"), sts.Spec.Template.Spec.PriorityClassName, sts.Spec.Template.Labels)
+			continue
+		}
+		kv.Spec.Plan = "standard"
+		apply(sts)
+		if got := valkeyArgValue(sts.Spec.Template.Spec.Containers, "--maxclients"); got != "1010" ||
+			sts.Spec.Template.Spec.PriorityClassName != appv1alpha1.DatastorePriorityClassName ||
+			!inPlaceLabelsEqual(sts.Spec.Template.Labels, kv.Labels) {
+			t.Errorf("%s: a plan change rolls anyway but left limit %q, class %q, labels %v", name, got, sts.Spec.Template.Spec.PriorityClassName, sts.Spec.Template.Labels)
+		}
+	}
+}
+
 // t004: a running pre-m456 store adopts its plan's limit with CONFIG SET and
 // no roll; a settled store is not dialed again until its container restarts
 // from the held template; a refused change is retried soon.
@@ -148,7 +203,7 @@ func TestKeyValueMaxclientsReachesRunningServer(t *testing.T) {
 
 	// The store as the operator upgrade finds it: started without the flag.
 	sts := f.statefulSet()
-	setValkeyArg(sts.Spec.Template.Spec.Containers, "--maxclients", "")
+	dropValkeyMaxclients(sts)
 	if err := f.cl.Update(f.ctx, sts); err != nil {
 		t.Fatal(err)
 	}
@@ -157,14 +212,18 @@ func TestKeyValueMaxclientsReachesRunningServer(t *testing.T) {
 	if got := valkeyArgValue(f.template.Spec.Containers, "--maxclients"); got != "" {
 		t.Fatalf("the upgrade wrote --maxclients %q into a running store's template", got)
 	}
-	// annotation is the pod's record and the record that names its running
-	// process with limit.
+	// annotation is the StatefulSet's record and the record that names the
+	// pod's running process with limit. The pod itself is never annotated: the
+	// bex-operator-pod-labels admission policy refuses it.
 	annotation := func(limit string) (got, want string) {
 		pod := &corev1.Pod{}
 		if err := f.cl.Get(f.ctx, client.ObjectKey{Namespace: "default", Name: "cache-kv-0"}, pod); err != nil {
 			t.Fatal(err)
 		}
-		return pod.Annotations[annotKVMaxclients], limit + "/" + persistenceProcess(pod)
+		if _, ok := pod.Annotations[annotKVMaxclients]; ok {
+			t.Fatalf("the record was written on the pod: %v", pod.Annotations)
+		}
+		return f.statefulSet().Annotations[annotKVMaxclients], limit + "/" + persistenceProcess(pod)
 	}
 	if got, want := annotation("60"); !slices.Equal(calls, []string{"60"}) || got != want {
 		t.Fatalf("CONFIG SET calls %v, record %q; want free's 60 once, recorded as %q", calls, got, want)

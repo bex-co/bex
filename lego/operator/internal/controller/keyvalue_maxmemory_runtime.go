@@ -64,6 +64,12 @@ func valkeyArgsMaxmemoryPolicy(containers []corev1.Container) string {
 // one without the platform user that could take the CONFIG SET, differs
 // anyway and takes the current values. It is a pure function of (sts, kv,
 // intent) so the workload shape is testable without a client.
+//
+// The held values go through the write itself, so the priority class and
+// in-place label holds inside it compare against a template that already keeps
+// them. Every change that rolls nothing then holds together: a pre-m456 store
+// still waiting to adopt its priority class or environment label does not roll
+// for the limit either (w6/m456 t006: two production stores did).
 func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
 	heldPolicy := valkeyArgsMaxmemoryPolicy(sts.Spec.Template.Spec.Containers)
 	heldClients := valkeyArgValue(sts.Spec.Template.Spec.Containers, "--maxclients")
@@ -75,10 +81,11 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 	before := sts.DeepCopy()
 	holding := kv.DeepCopy()
 	holding.Spec.MaxmemoryPolicy = heldPolicy
-	writeKeyValueStatefulSet(sts, holding, intent)
+	held := intent
 	if holdClients {
-		setValkeyArg(sts.Spec.Template.Spec.Containers, "--maxclients", heldClients)
+		held.heldMaxclients = &heldClients
 	}
+	writeKeyValueStatefulSet(sts, holding, held)
 	if apiequality.Semantic.DeepEqual(sts.Spec.Template, before.Spec.Template) {
 		return
 	}
@@ -86,19 +93,19 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 	writeKeyValueStatefulSet(sts, kv, intent)
 }
 
-// setValkeyArg sets flag's value in the Valkey container's args, or removes
-// the flag when value is "" (a server started without it).
-func setValkeyArg(containers []corev1.Container, flag, value string) {
-	for i := range containers {
-		args := containers[i].Args
-		at := slices.Index(args, flag)
-		switch {
-		case containers[i].Name != keyValueContainerName || at < 0 || at+1 >= len(args):
-		case value == "":
-			containers[i].Args = slices.Delete(args, at, at+2)
-		default:
-			args[at+1] = value
-		}
+// withValkeyArg returns args with flag's value set, or with the flag removed
+// when value is "" (a server started without it).
+func withValkeyArg(args []string, flag, value string) []string {
+	at := slices.Index(args, flag)
+	switch {
+	case at < 0 || at+1 >= len(args):
+		return args
+	case value == "":
+		return slices.Concat(args[:at], args[at+2:])
+	default:
+		args = slices.Clone(args)
+		args[at+1] = value
+		return args
 	}
 }
 

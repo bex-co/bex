@@ -58,9 +58,11 @@ const (
 	// --maxclients runs. Valkey then lowers its own open-files limit to it
 	// (plus 32), so CONFIG SET can lower that server's limit but not raise it.
 	valkeyDefaultMaxclients = 10000
-	// annotKVMaxclients records on the Valkey pod the limit CONFIG SET gave
+	// annotKVMaxclients records on the StatefulSet the limit CONFIG SET gave
 	// its server and that server's process (persistenceProcess), so a settled
 	// store is not dialed again until the server restarts from its template.
+	// Not on the pod: the bex-operator-pod-labels admission policy lets the
+	// operator change no pod annotation (w6/m456 t006).
 	annotKVMaxclients = "app.bex.co/valkey-maxclients"
 )
 
@@ -110,7 +112,7 @@ func (r *KeyValueReconciler) reconcileKeyValueMaxclients(ctx context.Context, kv
 		return false
 	}
 	applied := want + "/" + persistenceProcess(pod)
-	if pod.Annotations[annotKVMaxclients] == applied {
+	if sts.Annotations[annotKVMaxclients] == applied {
 		return false
 	}
 	setMaxclients := r.setMaxclients
@@ -122,12 +124,12 @@ func (r *KeyValueReconciler) reconcileKeyValueMaxclients(ctx context.Context, kv
 		logf.FromContext(ctx).Info("Valkey client limit change did not complete; retrying", "name", kv.Name, "maxclients", want, "error", err.Error())
 		return true
 	}
-	patch := client.MergeFrom(pod.DeepCopy())
-	if pod.Annotations == nil {
-		pod.Annotations = map[string]string{}
+	patch := client.MergeFrom(sts.DeepCopy())
+	if sts.Annotations == nil {
+		sts.Annotations = map[string]string{}
 	}
-	pod.Annotations[annotKVMaxclients] = applied
-	if err := r.Patch(ctx, pod, patch); err != nil {
+	sts.Annotations[annotKVMaxclients] = applied
+	if err := r.Patch(ctx, sts, patch); err != nil {
 		// The server runs want; without the record the next pass checks again.
 		logf.FromContext(ctx).Info("Valkey client limit applied but not recorded", "name", kv.Name, "error", err.Error())
 	}

@@ -109,7 +109,7 @@ func (f *runtimeTLSFixture) settleRollout() {
 	}
 	f.reconcileTwice()
 	sts = f.statefulSet()
-	f.template, f.version = sts.Spec.Template.DeepCopy(), sts.ResourceVersion
+	f.template, f.spec = sts.Spec.Template.DeepCopy(), sts.Spec.DeepCopy()
 }
 
 func (f *runtimeTLSFixture) templatePolicy() string {
