@@ -274,6 +274,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **139** — [A Key Value backup pod becomes an endpoint of its store's backend Service](139.md) (~1h) ← filed by w6/m463 t003 2026-11-17: while a paid store's nightly backup uploads, about half of its new connections through the proxy are reset
 - [ ] **138** — [Render's Postgres Active Connections chart: does it read the plan's limit?](138.md) (~45m, needs a live Render dashboard session to capture the chart) ← filed by w6/m459 t006 2026-11-17: Render's Key Value chart reads "Limit 250", and no capture shows the Postgres one
 - [ ] **137** — [Each read replica has its own endpoint and connection pool, as on Render](137.md) (likely > 1h: promote before working) ← filed by w6/m458 t004 2026-11-17: bex's named replicas share one reader Service, so pooled replicas share one pool of `max_connections` − 10
 - [x] **134** — [Postgres `max_connections` follows Render's plan table, set explicitly](done/134.md) (~45m) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-17, item 2, filed by `/pm them to w6` — **done 2026-11-17**: the operator sets each plan's `max_connections` on the server, where no declared parameter can change it; existing databases adopt it without a restart (dev-6, every current plan).
