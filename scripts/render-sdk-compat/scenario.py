@@ -27,6 +27,7 @@ from render.experimental.sandbox import (
     SandboxGroupDefaultNotDeletableError,
     SandboxNotFoundError,
     SnapshotNotFoundError,
+    SnapshotNotReadyError,
 )
 from render.experimental.sandbox.types import SandboxExecExit, SandboxExecOutput
 from render.public_api.api.sandboxes import (
@@ -380,22 +381,82 @@ def unknown_image():
     )
 
 
-def snapshots_refused():
+def runtime_refused():
+    # bex captures the filesystem only until w2/m322; Render's default kind is
+    # runtime, so an omitted kind is refused by the same name (ADR018).
     said = []
-    for name, fn in [
-        ("create", lambda: sandboxes.snapshots.create(state["grouped"])),
-        ("list", lambda: sandboxes.snapshots.list(sandbox_group_id=state["group"])),
-        ("from_id", lambda: sandboxes.snapshots.from_id(sandbox_group_id=state["group"], snapshot_id=missing_snapshot)),
-        ("delete", lambda: sandboxes.snapshots.delete(sandbox_group_id=state["group"], snapshot_id=missing_snapshot)),
-        ("create(snapshot_id)", lambda: sandboxes.create(snapshot_id=missing_snapshot)),
-    ]:
+    for label, kind in [("default kind", None), ("kind=runtime", "runtime")]:
         try:
-            fn()
-        except (ClientError, SnapshotNotFoundError) as exc:
-            said.append(f"{name}: {type(exc).__name__} {getattr(exc, 'code', None)}")
+            sandboxes.snapshots.create(state["grouped"], kind=kind)
+        except ClientError as exc:
+            assert "SANDBOX_SNAPSHOT_RUNTIME_UNSUPPORTED" in f"{getattr(exc, 'code', '')} {exc}", exc
+            said.append(f"{label}: 400 SANDBOX_SNAPSHOT_RUNTIME_UNSUPPORTED")
             continue
-        raise AssertionError(f"snapshots.{name} was not refused")
+        raise AssertionError(f"a {label} snapshot was not refused")
     return "; ".join(said)
+
+
+def snapshot_create():
+    out, code = run_command(state["grouped"], f"printf {run} > $HOME/sdk-compat-marker.txt")
+    assert code == 0, (out, code)
+    snap = sandboxes.snapshots.create(state["grouped"], kind="filesystem", name=f"sdk-compat-{run}", wait=True)
+    state["snapshot"] = snap.id
+    assert snap.status == "available" and snap.kind == "filesystem" and snap.size_bytes and snap.captured_at, snap
+    assert snap.sandbox_group_id == state["group"] and snap.source_sandbox_id == state["grouped"], snap
+    box = sandboxes.from_id(state["grouped"])
+    assert box.status == "running", box.status
+    return f"{snap.id} {snap.size_bytes} B, the sandbox kept running"
+
+
+def snapshot_read():
+    snap = sandboxes.snapshots.from_id(sandbox_group_id=state["group"], snapshot_id=state["snapshot"])
+    assert snap.id == state["snapshot"] and snap.name == f"sdk-compat-{run}", snap
+    listed = [s.id for s in sandboxes.snapshots.list(sandbox_group_id=state["group"]).snapshots]
+    available = [s.id for s in sandboxes.snapshots.list(sandbox_group_id=state["group"], status="available").snapshots]
+    assert state["snapshot"] in listed and state["snapshot"] in available, (listed, available)
+    return f"{len(listed)} listed"
+
+
+def snapshot_restore():
+    said = []
+    for label, source in [("snapshot_id", {"snapshot_id": state["snapshot"]}), ("snapshot_name", {"snapshot_name": f"sdk-compat-{run}"})]:
+        box = sandboxes.create(sandbox_group_id=state["group"], timeout_seconds=600, wait=True, **source)
+        created.append(box.id)
+        out, code = run_command(box.id, "cat $HOME/sdk-compat-marker.txt")
+        assert (out, code) == (run, 0), (label, out, code)
+        assert box.network_policy.type == "deny-all", box.network_policy
+        # The group's concurrency limit is 3 (update_group): make room again.
+        sandboxes.terminate(box.id)
+        created.remove(box.id)
+        said.append(f"{label}: marker back")
+    sandboxes.snapshots.from_id(sandbox_group_id=state["group"], snapshot_id=state["snapshot"])
+    return "; ".join(said) + "; the snapshot remains"
+
+
+def snapshot_delete_creating():
+    snap = sandboxes.snapshots.create(state["grouped"], kind="filesystem")
+    said = raises(
+        SnapshotNotReadyError,
+        lambda: sandboxes.snapshots.delete(sandbox_group_id=state["group"], snapshot_id=snap.id),
+    )
+    sandboxes.snapshots.wait_until_available(sandbox_group_id=state["group"], snapshot_id=snap.id)
+    sandboxes.snapshots.delete(sandbox_group_id=state["group"], snapshot_id=snap.id)
+    return said
+
+
+def snapshot_delete():
+    group, snap = state["group"], state["snapshot"]
+    sandboxes.snapshots.delete(sandbox_group_id=group, snapshot_id=snap)
+    raises(SnapshotNotFoundError, lambda: sandboxes.snapshots.from_id(sandbox_group_id=group, snapshot_id=snap))
+    sandboxes.snapshots.delete(sandbox_group_id=group, snapshot_id=snap)  # 204 again
+    raises(SnapshotNotFoundError, lambda: sandboxes.create(sandbox_group_id=group, snapshot_id=snap))
+    listed = [s.id for s in sandboxes.snapshots.list(sandbox_group_id=group).snapshots]
+    assert snap not in listed, listed
+    return "reads, restores and lists as gone; a second delete succeeds"
+
+
+def snapshot_unknown():
+    return raises(SnapshotNotFoundError, lambda: sandboxes.snapshots.from_id(sandbox_group_id=state["group"], snapshot_id=missing_snapshot))
 
 
 def credentials_refused():
@@ -472,7 +533,14 @@ if "id" in state:
             step("builds.create / builds.from_id (deprecated)", builds_deprecated)
         step("create with unknown image", unknown_image)
         if "grouped" in state:
-            step("snapshots refused by name", snapshots_refused)
+            step("snapshots.create runtime kind refused", runtime_refused)
+            step("snapshots.create(filesystem, wait=True)", snapshot_create)
+            if "snapshot" in state:
+                step("snapshots.from_id / list", snapshot_read)
+                step("create(snapshot_id) / create(snapshot_name)", snapshot_restore)
+                step("snapshots.delete while creating", snapshot_delete_creating)
+                step("snapshots.delete / gone afterwards", snapshot_delete)
+            step("snapshots.from_id unknown", snapshot_unknown)
         step("group credentials refused by name", credentials_refused)
         step("delete_group", delete_group)
     step("terminate", terminate)

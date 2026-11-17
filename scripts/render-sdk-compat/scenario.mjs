@@ -12,6 +12,7 @@ import {
   SandboxGroupDefaultNotDeletableError,
   SandboxImageNotFoundError,
   SandboxSnapshotNotFoundError,
+  SandboxSnapshotNotReadyError,
 } from "@renderinc/sdk";
 
 const render = new Render({ baseUrl: process.env.BEX_API_URL });
@@ -218,27 +219,86 @@ if (state.id) {
       ),
     );
     if (state.grouped) {
-      await step("snapshots refused by name", async () => {
+      const group = state.group;
+      const snapshotName = `sdk-compat-${run}`;
+      // bex captures the filesystem only until w2/m322; Render's default kind
+      // is runtime, so an omitted kind is refused by the same name (ADR018).
+      await step("snapshots.create runtime kind refused", async () => {
         const said = [];
-        const missing = "snp-d0000000000000000000";
-        for (const [name, fn] of [
-          ["create", () => sandboxes.snapshots.create({ sandboxId: state.grouped })],
-          ["list", () => sandboxes.snapshots.list({ sandboxGroupId: state.group })],
-          ["get", () => sandboxes.snapshots.get({ sandboxGroupId: state.group, snapshotId: missing })],
-          ["delete", () => sandboxes.snapshots.delete({ sandboxGroupId: state.group, snapshotId: missing })],
-          ["create({snapshotId})", () => sandboxes.create({ snapshotId: missing })],
+        for (const [label, input] of [
+          ["default kind", { sandboxId: state.grouped }],
+          ["kind runtime", { sandboxId: state.grouped, kind: "runtime" }],
         ]) {
-          try {
-            await fn();
-          } catch (err) {
-            if (!(err instanceof ClientError || err instanceof SandboxSnapshotNotFoundError)) throw err;
-            said.push(`${name}: ${err.constructor.name} ${err.code ?? ""}`.trim());
-            continue;
-          }
-          throw new Error(`snapshots ${name} was not refused`);
+          const got = await raises(ClientError, () => sandboxes.snapshots.create(input));
+          assert(/ 400/.test(got), got);
+          said.push(`${label}: ${got}`);
         }
         return said.join("; ");
       });
+      await step("snapshots.create(filesystem, wait)", async () => {
+        const { code } = await runCommand(state.grouped, `printf ${run} > $HOME/sdk-compat-marker.txt`);
+        assert(code === 0, code);
+        const snap = await sandboxes.snapshots.create({ sandboxId: state.grouped, kind: "filesystem", name: snapshotName, wait: true });
+        state.snapshot = snap.id;
+        assert(snap.status === "available" && snap.kind === "filesystem" && snap.sizeBytes && snap.capturedAt, snap);
+        assert(snap.sandboxGroupId === group && snap.sourceSandboxId === state.grouped, snap);
+        const box = await sandboxes.get(state.grouped);
+        assert(box.status === "running", box.status);
+        return `${snap.id} ${snap.sizeBytes} B, the sandbox kept running`;
+      });
+      if (state.snapshot) {
+        await step("snapshots.get / list", async () => {
+          const snap = await sandboxes.snapshots.get({ sandboxGroupId: group, snapshotId: state.snapshot });
+          assert(snap.id === state.snapshot && snap.name === snapshotName, snap);
+          const listed = (await sandboxes.snapshots.list({ sandboxGroupId: group })).map((it) => it.snapshot.id);
+          const available = (await sandboxes.snapshots.list({ sandboxGroupId: group, status: ["available"] })).map((it) => it.snapshot.id);
+          assert(listed.includes(state.snapshot) && available.includes(state.snapshot), { listed, available });
+          return `${listed.length} listed`;
+        });
+        await step("create({snapshotId}) / create({snapshotName})", async () => {
+          const said = [];
+          for (const [label, source] of [
+            ["snapshotId", { snapshotId: state.snapshot }],
+            ["snapshotName", { snapshotName }],
+          ]) {
+            const box = await sandboxes.create({ sandboxGroupId: group, timeoutSeconds: 600, wait: true, ...source });
+            created.add(box.id);
+            const { out, code } = await runCommand(box.id, "cat $HOME/sdk-compat-marker.txt");
+            assert(out === run && code === 0, { label, out, code });
+            assert(box.networkPolicy.type === "deny-all", box.networkPolicy);
+            // The group's concurrency limit is 3 (updateGroup): make room again.
+            await sandboxes.terminate(box.id);
+            created.delete(box.id);
+            said.push(`${label}: marker back`);
+          }
+          await sandboxes.snapshots.get({ sandboxGroupId: group, snapshotId: state.snapshot });
+          return `${said.join("; ")}; the snapshot remains`;
+        });
+        await step("snapshots.delete while creating", async () => {
+          const snap = await sandboxes.snapshots.create({ sandboxId: state.grouped, kind: "filesystem" });
+          const said = await raises(SandboxSnapshotNotReadyError, () =>
+            sandboxes.snapshots.delete({ sandboxGroupId: group, snapshotId: snap.id }),
+          );
+          await sandboxes.snapshots.waitUntilAvailable({ sandboxGroupId: group, snapshotId: snap.id });
+          await sandboxes.snapshots.delete({ sandboxGroupId: group, snapshotId: snap.id });
+          return said;
+        });
+        await step("snapshots.delete / gone afterwards", async () => {
+          const ref = { sandboxGroupId: group, snapshotId: state.snapshot };
+          await sandboxes.snapshots.delete(ref);
+          await raises(SandboxSnapshotNotFoundError, () => sandboxes.snapshots.get(ref));
+          await sandboxes.snapshots.delete(ref); // 204 again
+          await raises(SandboxSnapshotNotFoundError, () => sandboxes.create({ sandboxGroupId: group, snapshotId: state.snapshot }));
+          const listed = (await sandboxes.snapshots.list({ sandboxGroupId: group })).map((it) => it.snapshot.id);
+          assert(!listed.includes(state.snapshot), listed);
+          return "reads, restores and lists as gone; a second delete succeeds";
+        });
+      }
+      await step("snapshots.get unknown", () =>
+        raises(SandboxSnapshotNotFoundError, () =>
+          sandboxes.snapshots.get({ sandboxGroupId: group, snapshotId: "snp-d0000000000000000000" }),
+        ),
+      );
     }
     await step("deleteGroup", async () => {
       await sandboxes.deleteGroup(state.group);
