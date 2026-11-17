@@ -172,3 +172,13 @@ Create a Cloudflare API token, **Zone → DNS → Edit** and **Zone → Zone →
 - GraphQL `keyValueConnectionInfo` agreed: the same internal URL and CLI command, and an empty external URL.
 - A TCP connect to the external host was refused, so there is no external listener.
 - So t003's surfaces report the state correctly, and the gate above (t002's DNS-01 wildcard, which needs the user's Cloudflare token) is still what blocks a new public store's external URL.
+
+## Round 573 — the issuance rate limit still holds 16 h later (2026-11-17 02:43–02:44 UTC, pin `ef7e65cd3f46`)
+
+- **Fixture:** a Free Key Value `qa-20261117-r573-kv` (`red-dbtrulc2dnvc73adrelg`), created over REST with `ipAllowList: [{"cidrBlock":"0.0.0.0/0"}]`. It read `available` in 48 s and was deleted afterwards (`204`, then `404`).
+- Once it was available, `GET /v1/key-value/<id>/connection-info` answered:
+  - `externalCertificate: "failed"`;
+  - `externalCertificateReason: "The certificate authority's issuance rate limit was reached. Issuance is retried automatically."`;
+  - an empty `externalConnectionString`.
+- **Control:** `qa-20261110-81b5-kv` (`red-dbpf5q5me2kc73f2l0og`, created 2026-11-10, before the limit was hit) reads `externalCertificate: "publiclyTrusted"` on REST, GraphQL and MCP `get_key_value`. So only stores created after the limit are affected.
+- The same state as round 508, about 16 h earlier. Every public datastore created since then has no external URL. The gate above (t002's DNS-01 wildcard, which needs the user's Cloudflare token) is unchanged.
