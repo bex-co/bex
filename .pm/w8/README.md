@@ -441,7 +441,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **336** — [Native runtimes lack `prince` (PrinceXML), which Render's native tools table lists as available at build and runtime in every native runtime](336.md) (~1h after a licence decision, minor) ← `/qa-find-bugs-cli` sweep d40a 2026-11-16
+- [ ] **336** — [Native runtimes lack `prince` (PrinceXML), which Render's native tools table lists as available at build and runtime in every native runtime](blocked/336.md) (~1h after a licence decision, minor) ← `/qa-find-bugs-cli` sweep d40a 2026-11-16. **BLOCKED (user decision plus a YesLogic contract: Prince's EULA §3 and licence FAQ require an OEM/CSO agreement to redistribute Prince in a product or SaaS, at a negotiated price; no free licence allows it. Pick one: (1) sign an OEM/CSO agreement; (2) get YesLogic's written permission to preinstall it with tenants bringing their own licence; (3) download it in each build, which means accepting legal risk; or (4) sign an ADR018 divergence with Docker or a tenant-side install as the route. Evidence and costs are in the note; discuss through `/unblock w8`.)** Prince 17 ships Debian 12 amd64 and arm64 `.deb` packages, so the image change stays ~1h once licensed.
   - **bex (pin `7aaa8700befa`):** a probe of all 38 tools in Render's table finds `prince` missing at build and runtime. The other misses are covered: `bun` (opt-in, w8/m86), `magick` (IM6 ships `convert`) and the PG 12–14 clients (ADR060 D7 scope).
   - **Cause:** w8/m91's tool milestones never mapped `princexml`.
   - **Decision needed:** Prince is commercial (YesLogic), so pick a licence or edition, or record a signed divergence.
