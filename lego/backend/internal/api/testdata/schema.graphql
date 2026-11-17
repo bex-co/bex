@@ -633,6 +633,8 @@ type ApiKey {
 type AuditLog {
   action: String
   actor: String
+  actorEmail: String
+  actorId: String
   actorMethod: String
   displayNameFrom: String
   displayNameTo: String
@@ -646,9 +648,11 @@ type AuditLog {
   oauthScopes: [String]
   relation: String
   resource: String
+  sourceIp: String
   status: String
   targetName: String
   timestamp: String
+  userAgent: String
 }
 
 type AuditLogMetadata {

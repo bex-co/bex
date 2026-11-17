@@ -7,7 +7,8 @@ import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
 import type { ReactNode } from "react";
 
 vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
-  useWorkspaceSubjectLabel: (subject: string) => subject,
+  useWorkspaceSubjectLabel: (subject: string, known?: string | null) =>
+    known || subject,
 }));
 
 vi.mock("@/features/audit/components/audit-log-export", () => ({
@@ -114,7 +115,7 @@ describe("AuditLogPanel", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  // w4/684: the first page's frame is the ready table's — its five headers, a
+  // w4/684: the first page's frame is the ready table's — its six headers, a
   // full page of rows and the Load more slot — so nothing below the card
   // moves when an active workspace's 20 events arrive. The route and inline
   // skeleton draw the same frame under their export row.
@@ -124,6 +125,10 @@ describe("AuditLogPanel", () => {
       timestamp: "2026-07-11T00:00:00Z",
       actor: "user:alice",
       actorMethod: "session",
+      actorId: "",
+      actorEmail: "",
+      sourceIp: "",
+      userAgent: "",
       action: "apps.UpdateService",
       status: "success" as const,
       resource: "service:srv-1",
@@ -156,19 +161,15 @@ describe("AuditLogPanel", () => {
         "tbody tr[data-testid='audit-log-row-placeholder']",
       ),
     ).toHaveLength(readyRows);
-    // Each placeholder row is two lines tall in its actor and resource cells,
-    // as an event row with an auth method and a named target is.
+    // Each placeholder row is two lines tall in its actor, source and
+    // resource cells, as an event row with an auth method, an address and
+    // agent, and a named target is.
     const firstRow = pending.container.querySelector("tbody tr")!;
-    expect(
-      firstRow
-        .querySelectorAll("td")[1]
-        .querySelectorAll("[data-slot='skeleton']"),
-    ).toHaveLength(2);
-    expect(
-      firstRow
-        .querySelectorAll("td")[4]
-        .querySelectorAll("[data-slot='skeleton']"),
-    ).toHaveLength(2);
+    const placeholderCells = firstRow.querySelectorAll("td");
+    for (const twoLineCell of [1, 2, 5]) {
+      const cell = placeholderCells[twoLineCell];
+      expect(cell.querySelectorAll("[data-slot='skeleton']")).toHaveLength(2);
+    }
     // The Load more slot follows the table.
     const frame = pending.container.querySelector(
       "[data-testid='audit-log-table-frame']",
@@ -224,6 +225,10 @@ describe("AuditLogPanel", () => {
         timestamp: "2026-07-11T00:00:00Z",
         actor: "user:alice",
         actorMethod: "session",
+        actorId: "",
+        actorEmail: "",
+        sourceIp: "",
+        userAgent: "",
         action: "update",
         status: "success",
         resource: "workspace:tea-1",
@@ -243,6 +248,10 @@ describe("AuditLogPanel", () => {
         timestamp: "2026-07-10T00:00:00Z",
         actor: "user:alice",
         actorMethod: "oauth2",
+        actorId: "",
+        actorEmail: "",
+        sourceIp: "",
+        userAgent: "",
         action: "delete",
         status: "denied",
         resource: "service:srv-1",
@@ -295,6 +304,10 @@ describe("AuditLogPanel", () => {
         timestamp: "2026-07-11T00:00:00Z",
         actor: "user:alice",
         actorMethod: "oauth2",
+        actorId: "",
+        actorEmail: "",
+        sourceIp: "",
+        userAgent: "",
         action: "update",
         status: "success",
         resource: "service:srv-1",
@@ -321,9 +334,78 @@ describe("AuditLogPanel", () => {
     expect(cells[1]).toHaveTextContent(
       "oauth2 · 429024F5-agent · bex.read bex.write",
     );
-    expect(cells[4]).toHaveTextContent(
+    expect(cells[5]).toHaveTextContent(
       "service:srv-1 · Name api → Checkout API",
     );
+  });
+
+  // w9/m450: who acted is named by the email the row carries, and where from
+  // by the address and the client in short, the full agent one hover away. A
+  // row no request caused (the system's own) has no source.
+  it("names who acted and from where (w9/m450)", () => {
+    const chrome =
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+    auditState.events = [
+      {
+        id: "ev-1",
+        timestamp: "2026-07-11T00:00:00Z",
+        actor: "0b7f0e5c-4ad7-4b1f-9d5e-0d1f2a3b4c5d",
+        actorMethod: "session",
+        actorId: "usr-00000000000000000007",
+        actorEmail: "ada@example.com",
+        sourceIp: "198.51.100.23",
+        userAgent: chrome,
+        action: "ViewEnvVarValuesEvent",
+        status: "success",
+        resource: "service:srv-1",
+        targetName: "my-api",
+        displayNameFrom: "",
+        displayNameTo: "",
+        domain: "",
+        envGroupId: "",
+        envGroupName: "",
+        relation: "",
+        oauthClientId: "",
+        oauthAudience: "",
+        oauthScopes: [],
+      },
+      {
+        id: "ev-2",
+        timestamp: "2026-07-10T00:00:00Z",
+        actor: "",
+        actorMethod: "",
+        actorId: "",
+        actorEmail: "",
+        sourceIp: "",
+        userAgent: "",
+        action: "UpdateWorkspacePaymentMethodEvent",
+        status: "success",
+        resource: "workspace:tea-primary",
+        targetName: "",
+        displayNameFrom: "",
+        displayNameTo: "",
+        domain: "",
+        envGroupId: "",
+        envGroupName: "",
+        relation: "",
+        oauthClientId: "",
+        oauthAudience: "",
+        oauthScopes: [],
+      },
+    ];
+    renderPanel();
+
+    const [person, system] = screen.getAllByRole("row").slice(1);
+    const cells = within(person!).getAllByRole("cell");
+    expect(cells[1]).toHaveTextContent("ada@example.com");
+    expect(cells[2]).toHaveTextContent("198.51.100.23");
+    expect(within(cells[2]!).getByText("Chrome 131 · macOS")).toHaveAttribute(
+      "title",
+      chrome,
+    );
+    // Still two lines at most, the loading frame's row height.
+    expect(cells[2]!.querySelectorAll(".block").length).toBeLessThanOrEqual(1);
+    expect(within(system!).getAllByRole("cell")[2]).toHaveTextContent(/^—$/);
   });
 
   it("hides 'Load more' once the last page is exhausted", () => {
@@ -333,6 +415,10 @@ describe("AuditLogPanel", () => {
         timestamp: "2026-07-11T00:00:00Z",
         actor: "user:alice",
         actorMethod: "session",
+        actorId: "",
+        actorEmail: "",
+        sourceIp: "",
+        userAgent: "",
         action: "update",
         status: "success",
         resource: "workspace:tea-1",

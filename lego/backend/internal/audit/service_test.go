@@ -19,6 +19,7 @@ package audit
 import (
 	"context"
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -515,32 +516,86 @@ func (f fakeUserIDs) LookupOwnerIDs(_ context.Context, subjects []string) (map[s
 	return out, nil
 }
 
-// w5/m277: on Render's REST audit log a human actor's id is the usr- id the
-// members list answers for that person; API-key and system actors keep theirs.
-func TestRenderAuditLogUserActorsCarryTheirUsrID(t *testing.T) {
+type fakeEmails struct {
+	emails map[string]string
+	err    error
+	asked  []string
+}
+
+func (f *fakeEmails) LookupEmails(_ context.Context, subjects []string) (map[string]string, error) {
+	f.asked = append(f.asked, subjects...)
+	out := map[string]string{}
+	for _, s := range subjects {
+		if email, ok := f.emails[s]; ok {
+			out[s] = email
+		}
+	}
+	return out, f.err
+}
+
+// w5/m277 + w9/m450: on Render's REST audit log a human actor's id is the
+// usr- id the members list answers for that person and its email is the
+// person's; API-key and system actors keep their subject and have no email,
+// and a deleted user (no identity left) keeps the usr- id alone.
+func TestRenderAuditLogUserActorsCarryTheirUsrIDAndEmail(t *testing.T) {
 	events := []Event{
 		{ID: "aud-1", Caller: "kratos-a", CallerMethod: "session"},
 		{ID: "aud-2", Caller: "client-1", CallerMethod: "oauth2"},
 		{ID: "aud-3", Caller: "", CallerMethod: ""},
+		{ID: "aud-4", Caller: "deleted:own-00000000000000000009", CallerMethod: "session"},
+		// The same human subject through an OAuth token is a rest_api actor:
+		// no email, even though the person has one.
+		{ID: "aud-5", Caller: "kratos-a", CallerMethod: "oauth2"},
 	}
-	svc := &Service{UserIDs: fakeUserIDs{"kratos-a": "own-00000000000000000007", "client-1": "own-00000000000000000008"}}
-	userIDs, err := svc.userIDs(context.Background(), events)
-	if err != nil {
+	emails := &fakeEmails{emails: map[string]string{"kratos-a": "a@example.com", "client-1": "never@example.com"}}
+	svc := &Service{
+		UserIDs: fakeUserIDs{"kratos-a": "own-00000000000000000007", "client-1": "own-00000000000000000008", "deleted:own-00000000000000000009": "own-00000000000000000009"},
+		Emails:  emails,
+	}
+	if err := svc.resolveActors(context.Background(), events); err != nil {
 		t.Fatal(err)
 	}
-	list := toAuditLogList(events, userIDs)
-	if got := list[0].AuditLog.Actor; got.Type != "user" || got.ID != "usr-00000000000000000007" {
-		t.Errorf("user actor = %+v, want usr- id", got)
+	list := toAuditLogList(events)
+	if got := list[0].AuditLog.Actor; got != (renderAuditActor{Type: "user", ID: "usr-00000000000000000007", Email: "a@example.com"}) {
+		t.Errorf("user actor = %+v, want usr- id and email", got)
 	}
-	if got := list[1].AuditLog.Actor; got.Type != "rest_api" || got.ID != "client-1" {
-		t.Errorf("API actor = %+v, want its subject unchanged", got)
+	if got := list[1].AuditLog.Actor; got != (renderAuditActor{Type: "rest_api", ID: "client-1"}) {
+		t.Errorf("API actor = %+v, want its subject and no email", got)
 	}
-	if got := list[2].AuditLog.Actor; got.Type != "system" || got.ID != "" {
+	if got := list[2].AuditLog.Actor; got != (renderAuditActor{Type: "system"}) {
 		t.Errorf("system actor = %+v", got)
 	}
-	// Without a resolver the subject stays, as before.
-	if got := toAuditLogList(events, nil)[0].AuditLog.Actor.ID; got != "kratos-a" {
-		t.Errorf("no resolver: id = %q", got)
+	if got := list[3].AuditLog.Actor; got != (renderAuditActor{Type: "user", ID: "usr-00000000000000000009"}) {
+		t.Errorf("deleted user actor = %+v, want the usr- id alone", got)
+	}
+	if got := list[4].AuditLog.Actor; got != (renderAuditActor{Type: "rest_api", ID: "kratos-a"}) {
+		t.Errorf("human OAuth actor = %+v, want rest_api with no email", got)
+	}
+	// One batched read of the page's people, each once; never an API client.
+	if want := []string{"kratos-a", "deleted:own-00000000000000000009"}; !slices.Equal(emails.asked, want) {
+		t.Errorf("emails asked for %q, want %q", emails.asked, want)
+	}
+	// Without resolvers the subject stays, as before.
+	if got := toAuditLogList([]Event{{Caller: "kratos-a", CallerMethod: "session"}})[0].AuditLog.Actor; got != (renderAuditActor{Type: "user", ID: "kratos-a"}) {
+		t.Errorf("no resolver: actor = %+v", got)
+	}
+}
+
+// An identity outage costs the emails it could not read, never the log.
+func TestResolveActorsKeepsTheLogWhenEmailsFail(t *testing.T) {
+	events := []Event{
+		{ID: "aud-1", Caller: "kratos-a", CallerMethod: "session"},
+		{ID: "aud-2", Caller: "kratos-b", CallerMethod: "session"},
+	}
+	svc := &Service{
+		UserIDs: fakeUserIDs{"kratos-a": "own-00000000000000000007", "kratos-b": "own-00000000000000000008"},
+		Emails:  &fakeEmails{emails: map[string]string{"kratos-a": "a@example.com"}, err: errors.New("kratos down")},
+	}
+	if err := svc.resolveActors(context.Background(), events); err != nil {
+		t.Fatalf("an email failure failed the log: %v", err)
+	}
+	if events[0].ActorEmail != "a@example.com" || events[1].ActorEmail != "" || events[1].ActorID != "usr-00000000000000000008" {
+		t.Errorf("partial resolution = %+v", events)
 	}
 }
 

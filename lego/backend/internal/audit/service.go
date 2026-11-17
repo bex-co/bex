@@ -55,9 +55,21 @@ type Service struct {
 	// UserIDs resolves a human actor's subject to its user id, which the
 	// Render REST adapter answers as usr- (w5/m277). Nil leaves the subject.
 	UserIDs core.UserIDLookup
+	// Emails resolves a human actor's subject to the email of the identity it
+	// names today (Render's actor.email, w9/m450). The row stores only the
+	// subject; a deleted user's identity is gone, so its rows answer the usr-
+	// id alone. Nil resolves no email.
+	Emails EmailLookup
 	// RetentionDays is how long an event survives before the sweep purges it
 	// (BEX_AUDIT_RETENTION_DAYS). <1 means DefaultRetentionDays.
 	RetentionDays int
+}
+
+// EmailLookup resolves identity subjects to their current emails in one
+// batched read (workspaces.KratosIdentities). A subject with no identity is
+// absent.
+type EmailLookup interface {
+	LookupEmails(ctx context.Context, subjects []string) (map[string]string, error)
 }
 
 // Event is the neutral projection of a store.AuditRow the adapters render in
@@ -98,6 +110,15 @@ type Event struct {
 	// TwoFactorRequiredTo is the value a workspace admin set the two-factor
 	// requirement TO (w22/m402, migration 0261); nil for every other verb.
 	TwoFactorRequiredTo *bool
+	// SourceIP and UserAgent are where the actor acted from (w9/m450,
+	// migration 0283); empty when no request of the actor caused the row.
+	SourceIP  string
+	UserAgent string
+	// ActorID and ActorEmail are Render's actor.id and actor.email, resolved
+	// at read time (resolveActors): a person's usr- id and current email.
+	// Empty for every other actor, whose id is its stored subject (Caller).
+	ActorID    string
+	ActorEmail string
 }
 
 func view(r store.AuditRow) Event {
@@ -126,6 +147,8 @@ func view(r store.AuditRow) Event {
 		EnvGroupName:      r.EnvGroupName,
 
 		TwoFactorRequiredTo: r.TwoFactorRequiredTo,
+		SourceIP:            r.SourceIP,
+		UserAgent:           r.UserAgent,
 	}
 }
 

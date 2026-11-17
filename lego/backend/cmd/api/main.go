@@ -425,6 +425,11 @@ func main() {
 		// cadence/shape as usage's compaction loop above. The write side is
 		// base.Audit (wired above); this Service is the read verb + sweep only.
 		auditSvc := &audit.Service{Base: base, Store: st, UserIDs: st}
+		// A person's email in the log (w9/m450) comes from Kratos' admin API;
+		// unset, rows answer the usr- id alone.
+		if deps.Identities != nil {
+			auditSvc.Emails = deps.Identities
+		}
 		if cfg.AuditRetentionSet {
 			auditSvc.RetentionDays = cfg.AuditRetention
 		}
@@ -713,7 +718,7 @@ func main() {
 	// everything else, and unlike the metrics wrapper it is unconditional:
 	// product-analytics attribution must not depend on whether metrics are
 	// enabled (w5/m97).
-	httpSrv := newHTTPServer(addr, originMetrics.Middleware(api.RequestOriginMiddleware(root)))
+	httpSrv := newHTTPServer(addr, originMetrics.Middleware(api.RequestOriginMiddleware(cfg.TrustedProxies, root)))
 	log.Printf("bex-api listening on %s (namespace %s)", addr, base.Namespace)
 	// Serve in a goroutine and block on ctx (SIGTERM/SIGINT via
 	// ctrl.SetupSignalHandler above) so the process shuts the server down

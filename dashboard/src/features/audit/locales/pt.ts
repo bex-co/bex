@@ -18,6 +18,11 @@ const ptAudit: Record<string, TranslationEntry> = {
     message: "Autor",
     description: "Audit Log table column header — who performed the action",
   },
+  "audit.columnSource": {
+    message: "Origem",
+    description:
+      "Audit Log table column header — the client address and user agent the actor acted from (w9/m450)",
+  },
   "audit.columnAction": {
     message: "Ação",
     description: "Audit Log table column header — the verb performed",

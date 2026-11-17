@@ -15,7 +15,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { AUDIT_PAGE_SIZE } from "@/features/audit/lib/audit-events";
 import { useAuditPlanKnownMissing } from "@/features/audit/hooks/use-audit-plan-known-missing";
 
-/** The audit table's five column headers, shared by the ready table and its
+/** The audit table's six column headers, shared by the ready table and its
  *  loading frame so the two never drift apart. */
 export function AuditLogTableHeader() {
   const { t } = useTranslations();
@@ -24,6 +24,7 @@ export function AuditLogTableHeader() {
       <TableRow>
         <TableHead>{t("audit.columnTimestamp")}</TableHead>
         <TableHead>{t("audit.columnActor")}</TableHead>
+        <TableHead>{t("audit.columnSource")}</TableHead>
         <TableHead>{t("audit.columnAction")}</TableHead>
         <TableHead>{t("audit.columnStatus")}</TableHead>
         <TableHead>{t("audit.columnResource")}</TableHead>
@@ -33,7 +34,7 @@ export function AuditLogTableHeader() {
 }
 
 /** A cell's text line (`text-sm`, 20 px) over its `text-xs` sub-line (16 px),
- *  as AuditEventRow's actor and resource cells draw them. */
+ *  as AuditEventRow's actor, source and resource cells draw them. */
 function TwoLines({ width }: { width: string }) {
   return (
     <>
@@ -44,9 +45,9 @@ function TwoLines({ width }: { width: string }) {
 }
 
 /**
- * The first page's frame while it loads (w4/684): the five headers, one
+ * The first page's frame while it loads (w4/684): the six headers, one
  * placeholder per event of a full first page at AuditEventRow's height (its
- * actor and resource cells are two lines), and the Load more slot. An active
+ * actor, source and resource cells are two lines), and the Load more slot. An active
  * admin workspace fills that page, so the swap moves nothing below the card.
  */
 export function AuditLogTableFrame() {
@@ -62,6 +63,9 @@ export function AuditLogTableFrame() {
               </TableCell>
               <TableCell>
                 <TwoLines width="w-32" />
+              </TableCell>
+              <TableCell>
+                <TwoLines width="w-28" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-5 w-40" />

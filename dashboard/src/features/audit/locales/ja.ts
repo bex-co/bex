@@ -18,6 +18,11 @@ const jaAudit: Record<string, TranslationEntry> = {
     message: "実行者",
     description: "Audit Log table column header — who performed the action",
   },
+  "audit.columnSource": {
+    message: "送信元",
+    description:
+      "Audit Log table column header — the client address and user agent the actor acted from (w9/m450)",
+  },
   "audit.columnAction": {
     message: "操作",
     description: "Audit Log table column header — the verb performed",

@@ -22,6 +22,10 @@ query AuditLogs(
     timestamp
     actor
     actorMethod
+    actorId
+    actorEmail
+    sourceIp
+    userAgent
     action
     status
     resource

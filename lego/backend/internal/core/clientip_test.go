@@ -154,3 +154,42 @@ func TestClientIPBehindProductionEdge(t *testing.T) {
 		})
 	}
 }
+
+// TestSourceIPBehindProductionEdge is w9/m450's address: api.bex.co sits
+// behind Cloudflare, so the X-Forwarded-For entry Traefik vouches for is a
+// Cloudflare edge, and the person is the True-Client-IP bex's edge plugin set
+// (CF-Connecting-IP from a Cloudflare peer). That header, like
+// X-Forwarded-For, is believed only from a trusted proxy.
+func TestSourceIPBehindProductionEdge(t *testing.T) {
+	p := mustTrustedProxies(t, "10.244.0.0/16")
+	const traefikPod, cloudflareEdge = "10.244.3.17:52114", "172.70.1.2"
+	cases := []struct{ name, peer, xff, trueClient, want string }{
+		{"the edge's client wins over the Cloudflare hop", traefikPod, cloudflareEdge, "198.51.100.23", "198.51.100.23"},
+		{"a v6 client normalizes", traefikPod, cloudflareEdge, "2001:0db8::0007", "2001:db8::7"},
+		{"a v4-mapped client unmaps", traefikPod, cloudflareEdge, "::ffff:198.51.100.23", "198.51.100.23"},
+		{"no edge header falls back to ClientIP", traefikPod, "198.51.100.23", "", "198.51.100.23"},
+		{"a malformed edge header falls back to ClientIP", traefikPod, "198.51.100.23", "not-an-ip", "198.51.100.23"},
+		// An untrusted peer (a client reaching bex-api past the edge) names
+		// whatever it likes in both headers; neither is believed.
+		{"an untrusted peer's spoofed headers are ignored", "192.0.2.1:443", "203.0.113.9", "203.0.113.10", "192.0.2.1"},
+		{"the load balancer is not a trusted proxy", "10.10.0.7:40000", "203.0.113.9", "203.0.113.10", "10.10.0.7"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := reqFrom(tc.peer, tc.xff, "")
+			if tc.trueClient != "" {
+				r.Header.Set("True-Client-IP", tc.trueClient)
+			}
+			if got := p.SourceIP(r); got != tc.want {
+				t.Errorf("peer %s XFF %q True-Client-IP %q: got %q, want %q", tc.peer, tc.xff, tc.trueClient, got, tc.want)
+			}
+		})
+	}
+	// No trusted proxies configured: the peer, whatever the headers say.
+	var none TrustedProxies
+	r := reqFrom("10.0.0.1:1234", "203.0.113.9", "")
+	r.Header.Set("True-Client-IP", "203.0.113.10")
+	if got := none.SourceIP(r); got != "10.0.0.1" {
+		t.Errorf("no trusted proxies: got %q, want the peer", got)
+	}
+}

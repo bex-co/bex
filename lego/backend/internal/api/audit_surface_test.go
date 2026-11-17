@@ -56,6 +56,30 @@ func (f *fakeAuditStore) PurgeCLITelemetryEvents(context.Context, time.Time) (in
 	return 0, nil
 }
 
+type auditUserIDs map[string]string
+
+func (f auditUserIDs) LookupOwnerIDs(_ context.Context, subjects []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, s := range subjects {
+		if id, ok := f[s]; ok {
+			out[s] = id
+		}
+	}
+	return out, nil
+}
+
+type auditEmails map[string]string
+
+func (f auditEmails) LookupEmails(_ context.Context, subjects []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, s := range subjects {
+		if email, ok := f[s]; ok {
+			out[s] = email
+		}
+	}
+	return out, nil
+}
+
 // TestAuditSurfaceParity is w4/m10's t007: REST's GET
 // /v1/owners/{ownerId}/audit-logs and GraphQL's auditLogs(ownerId: …) both
 // delegate to audit.Service.List, so the same store data must render
@@ -65,11 +89,14 @@ func TestAuditSurfaceParity(t *testing.T) {
 	at := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	maintenanceDisabled := false
 	fakeStore := &fakeAuditStore{rows: []store.AuditRow{
-		{ID: "aud-1", WorkspaceID: "tea-a", Caller: "user-x", CallerMethod: "session", Verb: "apps.SetMaintenanceMode", Resource: "workspace:tea-a", Outcome: string(core.AuditAllowed), At: at, MaintenanceModeTo: &maintenanceDisabled},
+		{ID: "aud-1", WorkspaceID: "tea-a", Caller: "user-x", CallerMethod: "session", Verb: "apps.SetMaintenanceMode", Resource: "workspace:tea-a", Outcome: string(core.AuditAllowed), At: at, MaintenanceModeTo: &maintenanceDisabled,
+			SourceIP: "198.51.100.23", UserAgent: "Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0"},
 		{ID: "aud-2", WorkspaceID: "tea-a", Caller: "user-y", CallerMethod: "oauth2", Verb: "workspaces.Delete", Resource: "workspace:tea-other", Outcome: string(core.AuditDenied), At: at.Add(-time.Minute)},
 	}}
 	base := &core.Base{Client: fakeClient(), Namespace: "default", Authz: &fakeChecker{allow: true}}
-	auditSvc := &audit.Service{Base: base, Store: fakeStore}
+	auditSvc := &audit.Service{Base: base, Store: fakeStore,
+		UserIDs: auditUserIDs{"user-x": "own-00000000000000000007"},
+		Emails:  auditEmails{"user-x": "ada@example.com", "user-y": "never@example.com"}}
 	h, _ := serverWith(t, base, Deps{Audit: auditSvc})
 
 	restBody := do(t, h, "GET", "/v1/owners/tea-a/audit-logs", testToken, "")
@@ -88,8 +115,9 @@ func TestAuditSurfaceParity(t *testing.T) {
 			Event     string `json:"event"`
 			Status    string `json:"status"`
 			Actor     struct {
-				Type string `json:"type"`
-				ID   string `json:"id"`
+				Type  string `json:"type"`
+				ID    string `json:"id"`
+				Email string `json:"email"`
 			} `json:"actor"`
 			Metadata map[string]string `json:"metadata"`
 			Resource string            `json:"resource"`
@@ -103,7 +131,7 @@ func TestAuditSurfaceParity(t *testing.T) {
 		t.Fatalf("REST list = %d events, want 2", len(restList))
 	}
 
-	gqlData := gql(t, h, `{ auditLogs(ownerId: "tea-a") { id timestamp actor actorMethod action status resource metadata { to } } }`)
+	gqlData := gql(t, h, `{ auditLogs(ownerId: "tea-a") { id timestamp actor actorMethod actorId actorEmail sourceIp userAgent action status resource metadata { to } } }`)
 	gqlList, ok := gqlData["auditLogs"].([]any)
 	if !ok || len(gqlList) != 2 {
 		t.Fatalf("GraphQL auditLogs = %v, want 2 events", gqlData["auditLogs"])
@@ -118,8 +146,21 @@ func TestAuditSurfaceParity(t *testing.T) {
 			rest.AuditLog.Resource != g["resource"] {
 			t.Errorf("event %d diverges: REST=%+v GraphQL=%+v", i, rest.AuditLog, g)
 		}
-		if rest.AuditLog.Actor.ID != g["actor"] || rest.AuditLog.Actor.Type != wantActorType[g["actorMethod"].(string)] {
-			t.Errorf("event %d actor mapping: REST=%+v GraphQL actor=%v method=%v", i, rest.AuditLog.Actor, g["actor"], g["actorMethod"])
+		if rest.AuditLog.Actor.ID != g["actorId"] || rest.AuditLog.Actor.Type != wantActorType[g["actorMethod"].(string)] {
+			t.Errorf("event %d actor mapping: REST=%+v GraphQL actorId=%v method=%v", i, rest.AuditLog.Actor, g["actorId"], g["actorMethod"])
+		}
+		// Who and from where agree (w9/m450): GraphQL's null is REST's absent key.
+		for _, pair := range []struct {
+			rendered string
+			graph    any
+		}{
+			{rest.AuditLog.Actor.Email, g["actorEmail"]},
+			{rest.AuditLog.Metadata["source_ip"], g["sourceIp"]},
+			{rest.AuditLog.Metadata["user_agent"], g["userAgent"]},
+		} {
+			if want, _ := pair.graph.(string); pair.rendered != want {
+				t.Errorf("event %d: REST %q, GraphQL %v", i, pair.rendered, pair.graph)
+			}
 		}
 		if rest.AuditLog.Status != wantRESTStatus[g["status"].(string)] {
 			t.Errorf("event %d status mapping: REST=%q GraphQL=%q", i, rest.AuditLog.Status, g["status"])
@@ -128,6 +169,18 @@ func TestAuditSurfaceParity(t *testing.T) {
 	if restList[0].AuditLog.Metadata["to"] != "false" ||
 		gqlList[0].(map[string]any)["metadata"].(map[string]any)["to"] != false {
 		t.Fatalf("maintenance metadata.to=false diverges: REST=%+v GraphQL=%+v", restList[0].AuditLog.Metadata, gqlList[0])
+	}
+	// A person answers their usr- id and email and the request's origin; an
+	// API key's row (a denial with no origin here) has its subject and no email.
+	if a := restList[0].AuditLog; a.Actor.ID != "usr-00000000000000000007" || a.Actor.Email != "ada@example.com" ||
+		a.Metadata["source_ip"] != "198.51.100.23" || a.Metadata["user_agent"] != "Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0" {
+		t.Errorf("session row = %+v, want usr- id, email, source_ip and user_agent", a)
+	}
+	if a := restList[1].AuditLog; a.Actor.ID != "user-y" || a.Actor.Email != "" || a.Metadata["source_ip"] != "" || a.Metadata["user_agent"] != "" {
+		t.Errorf("API-key row = %+v, want its subject and nothing else", a)
+	}
+	if g := gqlList[0].(map[string]any); g["actor"] != "user-x" {
+		t.Errorf("GraphQL actor = %v, want the stored subject the dashboard resolves", g["actor"])
 	}
 	if restList[0].AuditLog.Event != "MaintenanceModeEnabledEvent" {
 		t.Fatalf("maintenance audit event = %q, want Render event name", restList[0].AuditLog.Event)

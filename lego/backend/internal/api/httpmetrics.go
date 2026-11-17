@@ -601,11 +601,17 @@ func mcpErrorOutcome(err error) string {
 // correct for telemetry and would be quietly wrong here: analytics attribution
 // must not depend on whether a Prometheus registry happens to be wired. It
 // reuses the same publicSurface classification so the two axes cannot drift.
-func RequestOriginMiddleware(next http.Handler) http.Handler {
+//
+// It also records where the request came from, which every audit row the
+// caller's own request causes carries (w9/m450): the client address through
+// proxies (BEX_TRUSTED_PROXY_CIDRS, the same trust list the rate limiters use)
+// and the User-Agent.
+func RequestOriginMiddleware(proxies core.TrustedProxies, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r.WithContext(core.WithRequestOrigin(r.Context(), core.RequestOrigin{
 			Transport: publicSurface(r),
 			UserAgent: r.Header.Get("User-Agent"),
+			SourceIP:  proxies.SourceIP(r),
 		})))
 	})
 }

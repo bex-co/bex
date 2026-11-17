@@ -23,6 +23,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -177,6 +179,61 @@ type AuditEvent struct {
 	// requirement TO (w22/m402): true = required, false = no longer required.
 	// Nil for every other verb.
 	TwoFactorRequiredTo *bool
+	// SourceIP and UserAgent are where the actor acted from (Render's
+	// source_ip and user_agent metadata, w9/m450): the trusted-proxy client
+	// address and the User-Agent of the request that caused the row, bounded
+	// by AuditUserAgent. A writer that knows them (the SSH gateway's session
+	// rows) sets them; otherwise the sink path fills them from the request in
+	// ctx when the row's caller is that request's own caller
+	// (attachRequestOrigin). Empty on every row no request of the actor caused:
+	// sweeps, webhooks, operator commands, workers.
+	SourceIP  string
+	UserAgent string
+}
+
+// MaxAuditUserAgentBytes bounds the user agent an audit row stores. Browsers
+// send about 150 bytes; nothing a reader needs is past this.
+const MaxAuditUserAgentBytes = 512
+
+// AuditUserAgent is ua as an audit row stores it: valid UTF-8 (an invalid byte
+// is replaced, never left for Postgres to refuse the whole row over), with no
+// control characters, and cut at a rune boundary to MaxAuditUserAgentBytes.
+func AuditUserAgent(ua string) string {
+	ua = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, strings.ToValidUTF8(ua, "\uFFFD"))
+	if len(ua) <= MaxAuditUserAgentBytes {
+		return ua
+	}
+	cut := MaxAuditUserAgentBytes
+	for cut > 0 && !utf8.RuneStart(ua[cut]) {
+		cut--
+	}
+	return ua[:cut]
+}
+
+// attachRequestOrigin fills ev's SourceIP/UserAgent from the request in ctx
+// (WithRequestOrigin), only when ev's caller is the identity that request
+// authenticated: a row the actor's own request caused. A system row (no
+// caller), a row naming someone other than the requester (a webhook that
+// attributes a portal change to the person who opened it), and a row written
+// outside an HTTP request (no origin) keep both empty. A writer that set
+// either field keeps its own.
+func attachRequestOrigin(ctx context.Context, ev *AuditEvent) {
+	if ev.Caller == "" || ev.SourceIP != "" || ev.UserAgent != "" {
+		return
+	}
+	origin, ok := ctx.Value(requestOriginKey{}).(RequestOrigin)
+	if !ok {
+		return
+	}
+	if id, ok := IdentityFrom(ctx); !ok || id.Subject != ev.Caller {
+		return
+	}
+	ev.SourceIP, ev.UserAgent = origin.SourceIP, AuditUserAgent(origin.UserAgent)
 }
 
 type deferAllowedWriteAuditKey struct{}
@@ -1583,6 +1640,9 @@ func (b *Base) recordAudits(ctx context.Context, evs ...AuditEvent) {
 		}
 		return
 	}
+	for i := range evs {
+		attachRequestOrigin(ctx, &evs[i])
+	}
 	recordCtx, cancel := context.WithTimeout(ctx, auditRecordTimeout)
 	defer cancel()
 	if err := sink.RecordAll(recordCtx, evs); err != nil {
@@ -1598,6 +1658,7 @@ func RecordAuditEvent(ctx context.Context, sink AuditSink, ev AuditEvent) {
 	if sink == nil {
 		sink = NoopAuditSink
 	}
+	attachRequestOrigin(ctx, &ev)
 	recordCtx, cancel := context.WithTimeout(ctx, auditRecordTimeout)
 	defer cancel()
 	if err := sink.Record(recordCtx, ev); err != nil {

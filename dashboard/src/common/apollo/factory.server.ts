@@ -67,20 +67,40 @@ const errorOnlyLink = new ApolloLink((operation, forward) => {
   });
 });
 
+/** The browser request's headers an SSR query carries to bex-api. */
+const FORWARDED_HEADERS = [
+  ["cookie", "Cookie"],
+  ["user-agent", "User-Agent"],
+  ["true-client-ip", "True-Client-IP"],
+] as const;
+
 /**
- * Create an Apollo client for server-side rendering. Forwards the incoming
- * request's Cookie header to bex-api so the ory_kratos_session cookie reaches
- * Kratos whoami and authenticated SSR queries return real data on first paint
- * (docs/ADR012-auth.md). When there is no session cookie the header is omitted
- * and bex-api sees an unauthenticated request — no crash, correct public-route
- * behavior.
+ * What an SSR query tells bex-api about the browser request it renders: the
+ * Cookie, so the ory_kratos_session cookie reaches Kratos whoami and
+ * authenticated SSR queries return real data on first paint
+ * (docs/ADR012-auth.md), and where the person is (w9/m450), so an audit row an
+ * SSR query causes names their client and not the dashboard pod: the
+ * User-Agent, and the True-Client-IP bex's edge set on this request. bex-api
+ * believes that header only from a trusted proxy, which the dashboard pod is.
+ * An absent header is omitted: no cookie is an unauthenticated request.
  */
+export function ssrForwardedHeaders(
+  header: (name: string) => string | undefined,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [incoming, outgoing] of FORWARDED_HEADERS) {
+    const value = header(incoming);
+    if (value) out[outgoing] = value;
+  }
+  return out;
+}
+
+/** Create an Apollo client for server-side rendering. */
 export function createApolloSsrClient() {
-  const cookieHeader = getRequestHeader("cookie");
   const httpLink = new HttpLink({
     uri: config.ssrApiUrl,
     fetch,
-    headers: cookieHeader ? { Cookie: cookieHeader } : {},
+    headers: ssrForwardedHeaders((name) => getRequestHeader(name)),
   });
   // Retry transient read failures (w1/m52 t003) on the SSR side too, so a
   // page rendered mid-roll dehydrates data instead of a stranded error state.

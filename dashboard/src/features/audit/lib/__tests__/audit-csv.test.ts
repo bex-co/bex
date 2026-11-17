@@ -13,6 +13,10 @@ const event = (overrides: Partial<AuditEvent> = {}): AuditEvent => ({
   timestamp: "2026-11-10T09:00:00Z",
   actor: "admin@example.com",
   actorMethod: "session",
+  actorId: "",
+  actorEmail: "",
+  sourceIp: "",
+  userAgent: "",
   action: "apps.Suspend",
   status: "success",
   resource: "srv-1",
@@ -49,6 +53,33 @@ describe("auditEventsToCSV", () => {
     const [, rename, domain] = csv.trimEnd().split("\r\n");
     expect(rename).toContain('""from"":""api"",""to"":""Checkout API""');
     expect(domain).toContain('""domain"":""app.example.com""');
+  });
+
+  // w9/m450: Render's actor column is the person's email, or a deleted
+  // user's id; where they acted from rides the metadata in Render's keys.
+  it("writes the actor's email, else the id, and where they acted from", () => {
+    const csv = auditEventsToCSV([
+      event({
+        actor: "0b7f0e5c-4ad7-4b1f-9d5e-0d1f2a3b4c5d",
+        actorId: "usr-00000000000000000007",
+        actorEmail: "ada@example.com",
+        sourceIp: "198.51.100.23",
+        userAgent: "render-cli/2.27.0",
+      }),
+      event({
+        actor: "deleted:own-00000000000000000009",
+        actorId: "usr-00000000000000000009",
+      }),
+      event({ actor: "", actorMethod: "" }),
+    ]);
+    const [, person, deleted, system] = csv.trimEnd().split("\r\n");
+    expect(person).toMatch(/^2026-11-10T09:00:00Z,ada@example\.com,/);
+    expect(person).toContain(
+      '""source_ip"":""198.51.100.23"",""user_agent"":""render-cli/2.27.0""',
+    );
+    expect(deleted).toMatch(/^2026-11-10T09:00:00Z,usr-00000000000000000009,/);
+    expect(deleted).not.toContain("source_ip");
+    expect(system).toMatch(/^2026-11-10T09:00:00Z,,apps\.Suspend,/);
   });
 
   it("quotes commas, quotes and newlines", () => {

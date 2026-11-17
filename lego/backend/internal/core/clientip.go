@@ -114,6 +114,29 @@ func (p TrustedProxies) ClientIP(r *http.Request) string {
 	return peer
 }
 
+// trueClientIPHeader is the header bex's own edge sets on every request (the
+// Traefik clientipheaders plugin, deploy/gitops/charts/traefik-plugins): the
+// real client, which is Cloudflare's CF-Connecting-IP when the TCP peer is a
+// Cloudflare edge and the peer itself otherwise. The plugin deletes whatever
+// value a caller sent before setting its own.
+const trueClientIPHeader = "True-Client-IP"
+
+// SourceIP is the client address an audit row records (w9/m450): who acted,
+// from where. api.bex.co sits behind Cloudflare, so the X-Forwarded-For entry
+// ClientIP walks to names a Cloudflare edge; the edge's True-Client-IP names
+// the person. That header is believed only from a trusted proxy, exactly as
+// ClientIP believes X-Forwarded-For, so an untrusted peer that sends it (or a
+// spoofed X-Forwarded-For) is recorded as itself. Without a usable header the
+// answer is ClientIP's.
+func (p TrustedProxies) SourceIP(r *http.Request) string {
+	if p.TrustsPeer(r) {
+		if addr, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get(trueClientIPHeader))); err == nil {
+			return addr.Unmap().WithZone("").String()
+		}
+	}
+	return p.ClientIP(r)
+}
+
 // PeerIP extracts the host part of a host:port remote address, returning the
 // raw value when it is not one (or the host is empty) — the exact fallback
 // semantics the rate limiters had before trusted-proxy support.

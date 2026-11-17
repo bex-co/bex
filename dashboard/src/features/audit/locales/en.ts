@@ -18,6 +18,11 @@ const enAudit: Record<string, TranslationEntry> = {
     message: "Actor",
     description: "Audit Log table column header — who performed the action",
   },
+  "audit.columnSource": {
+    message: "Source",
+    description:
+      "Audit Log table column header — the client address and user agent the actor acted from (w9/m450)",
+  },
   "audit.columnAction": {
     message: "Action",
     description: "Audit Log table column header — the verb performed",

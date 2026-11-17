@@ -18,6 +18,11 @@ const ruAudit: Record<string, TranslationEntry> = {
     message: "Исполнитель",
     description: "Audit Log table column header — who performed the action",
   },
+  "audit.columnSource": {
+    message: "Источник",
+    description:
+      "Audit Log table column header — the client address and user agent the actor acted from (w9/m450)",
+  },
   "audit.columnAction": {
     message: "Действие",
     description: "Audit Log table column header — the verb performed",

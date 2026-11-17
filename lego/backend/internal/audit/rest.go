@@ -17,6 +17,7 @@ limitations under the License.
 package audit
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 	"net/url"
@@ -52,12 +53,14 @@ type renderAuditLog struct {
 
 // renderAuditActor is Render's actor object. type is the closed
 // user|rest_api|system enum (actorType); id is a user's usr- id (w5/m277) and
-// otherwise bex's caller subject.
-// email is omitted: the audit row deliberately stores only the subject
-// (redaction-by-structure), and Render marks the field optional.
+// otherwise bex's caller subject; email is a user's current email (w9/m450).
+// The row stores only the subject (redaction-by-structure): the email is
+// resolved when the log is read (resolveActors), so a deleted user's rows
+// answer the id alone, and an API key or the system has none.
 type renderAuditActor struct {
-	Type string `json:"type"`
-	ID   string `json:"id,omitempty"`
+	Type  string `json:"type"`
+	ID    string `json:"id,omitempty"`
+	Email string `json:"email,omitempty"`
 }
 
 // actorType maps bex's stored caller method onto Render's closed actor.type
@@ -160,6 +163,14 @@ func renderMetadata(e Event) map[string]string {
 	if denied(e) {
 		md["outcome"] = "denied"
 	}
+	// Where the actor acted from, in Render's own keys (w9/m450): present only
+	// on a row the actor's own request caused.
+	if e.SourceIP != "" {
+		md["source_ip"] = e.SourceIP
+	}
+	if e.UserAgent != "" {
+		md["user_agent"] = e.UserAgent
+	}
 	return md
 }
 
@@ -169,7 +180,7 @@ func toRenderAuditLog(e Event) renderAuditLog {
 		Timestamp: e.At.UTC().Format(time.RFC3339),
 		Event:     renderEvent(e.Verb),
 		Status:    renderStatus(e),
-		Actor:     renderAuditActor{Type: actorType(e.CallerMethod), ID: e.Caller},
+		Actor:     renderAuditActor{Type: actorType(e.CallerMethod), ID: e.actorID(), Email: e.ActorEmail},
 		Metadata:  renderMetadata(e),
 		Resource:  e.Resource,
 	}
@@ -184,32 +195,61 @@ type auditLogWithCursor struct {
 	Cursor   string         `json:"cursor"`
 }
 
-// toAuditLogList renders a page; userIDs maps a human actor's subject to its
-// public usr- id (Service.userIDs).
-func toAuditLogList(events []Event, userIDs map[string]string) []auditLogWithCursor {
+// person reports whether e's actor is a person (Render's "user" actor), the
+// only actor resolveActors gives a usr- id and an email.
+func (e Event) person() bool { return e.Caller != "" && actorType(e.CallerMethod) == "user" }
+
+// actorID is Render's actor.id: the usr- id resolveActors found for a person,
+// else the stored subject.
+func (e Event) actorID() string { return cmp.Or(e.ActorID, e.Caller) }
+
+// toAuditLogList renders a page whose actors resolveActors resolved.
+func toAuditLogList(events []Event) []auditLogWithCursor {
 	out := make([]auditLogWithCursor, 0, len(events))
 	for _, e := range events {
-		log := toRenderAuditLog(e)
-		if id, ok := userIDs[e.Caller]; ok {
-			log.Actor.ID = id
-		}
-		out = append(out, auditLogWithCursor{AuditLog: log, Cursor: e.ID})
+		out = append(out, auditLogWithCursor{AuditLog: toRenderAuditLog(e), Cursor: e.ID})
 	}
 	return out
 }
 
-// userIDs resolves the page's human actors to the usr- id the members list
-// and GET /v1/users answer for them (w5/m277), in one read.
-func (s *Service) userIDs(ctx context.Context, events []Event) (map[string]string, error) {
-	seen := map[string]struct{}{}
+// resolveActors fills a page's ActorID and ActorEmail (Render's actor.id and
+// actor.email) for both adapters, in one read of each: a person (a session
+// actor) answers the usr- id the members list and GET /v1/users show for them
+// (w5/m277) and the email of their identity today (w9/m450). Every other actor
+// keeps its subject and has no email. A failed or partial email read leaves
+// the missing emails empty and never fails the log: the id still says who
+// acted.
+func (s *Service) resolveActors(ctx context.Context, events []Event) error {
+	seen := map[string]bool{}
 	var subjects []string
 	for _, e := range events {
-		if _, dup := seen[e.Caller]; !dup && e.Caller != "" && actorType(e.CallerMethod) == "user" {
-			seen[e.Caller] = struct{}{}
+		if e.person() && !seen[e.Caller] {
+			seen[e.Caller] = true
 			subjects = append(subjects, e.Caller)
 		}
 	}
-	return core.PublicUserIDs(ctx, s.UserIDs, subjects)
+	if len(subjects) == 0 {
+		return nil
+	}
+	userIDs, err := core.PublicUserIDs(ctx, s.UserIDs, subjects)
+	if err != nil {
+		return err
+	}
+	var emails map[string]string
+	if s.Emails != nil {
+		emails, _ = s.Emails.LookupEmails(ctx, subjects)
+	}
+	for i := range events {
+		e := &events[i]
+		if !e.person() {
+			continue
+		}
+		if id, ok := userIDs[e.Caller]; ok {
+			e.ActorID = id
+		}
+		e.ActorEmail = emails[e.Caller]
+	}
+	return nil
 }
 
 // filterFromQuery translates Render's startTime/endTime/direction/cursor/
@@ -246,11 +286,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		userIDs, err := s.userIDs(r.Context(), events)
-		if err != nil {
+		if err := s.resolveActors(r.Context(), events); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toAuditLogList(events, userIDs))
+		core.WriteJSON(w, http.StatusOK, toAuditLogList(events))
 	})
 }

@@ -109,6 +109,7 @@ The opaque deleted marker is `deleted:<own-id>`. It retains event correlation bu
 | `registry_credentials.created_by`, `webhook_endpoints.created_by` | anonymize for surviving workspace; cascade otherwise | workspace resources continue without exposing subject |
 | `audit_events.caller` and email-valued `target_name` | anonymize | retain security history with identity and address severed |
 | `audit_events.caller_method`, `.oauth_client_id` | retain for the audit retention window | method is a category; OAuth application provenance does not restore the anonymized human caller |
+| `audit_events.source_ip`, `.user_agent` | retain for the audit retention window; the 90-day sweep purges them with the row | where an action came from is security history (w9/m450), kept as `ssh_sessions.remote_address` is; with the caller anonymized the row names no account, and the address and agent leave with the row when `BEX_AUDIT_RETENTION_DAYS` passes |
 | `billing_export_issues.actor` | retain on account deletion; workspace cascade on workspace deletion | internal control-plane callers supply an operator label for financial repair provenance; it is not an authenticated customer identity binding |
 | Hydra API-key clients marked `bex.co/created-by` | unbind from workspace/OpenFGA, then delete | remove subject-owned machine credentials safely |
 | Hydra grants, access/refresh tokens, consent/login sessions | revoke/delete through Hydra admin | delegated access must stop independently of Kratos |

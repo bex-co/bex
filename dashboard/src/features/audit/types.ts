@@ -8,6 +8,16 @@ export interface AuditEvent {
   timestamp: string;
   actor: string;
   actorMethod: string;
+  /** Render's actor.id: a person's usr- id (which a deleted user keeps), else
+   *  the stored subject (w9/m450). */
+  actorId: string;
+  /** A person's current email (Render's actor.email); "" for an API key, the
+   *  system and a deleted user. */
+  actorEmail: string;
+  /** Where the actor acted from (Render's source_ip / user_agent metadata);
+   *  "" on a row no request of the actor caused. */
+  sourceIp: string;
+  userAgent: string;
   action: string;
   status: "success" | "denied";
   resource: string;

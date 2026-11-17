@@ -62,7 +62,7 @@ func TestRequestOriginMiddlewareClassifiesEveryProductSurface(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var got string
-			handler := RequestOriginMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			handler := RequestOriginMiddleware(nil, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				ctx := r.Context()
 				if tc.identity != nil {
 					ctx = core.WithIdentity(ctx, *tc.identity)
@@ -91,7 +91,7 @@ func TestRequestOriginMiddlewareRunsWithoutMetrics(t *testing.T) {
 	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got = core.ProductSurface(r.Context())
 	})
-	handler := metrics.Middleware(RequestOriginMiddleware(inner))
+	handler := metrics.Middleware(RequestOriginMiddleware(nil, inner))
 	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 	if got != core.SurfaceMCP {
@@ -104,7 +104,7 @@ func TestRequestOriginMiddlewareRunsWithoutMetrics(t *testing.T) {
 // bounded write, which preserves values but is worth pinning.
 func TestRequestOriginSurvivesContextDerivation(t *testing.T) {
 	var got string
-	handler := RequestOriginMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+	handler := RequestOriginMiddleware(nil, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got = core.ProductSurface(context.WithoutCancel(r.Context()))
 	}))
 	req := httptest.NewRequest(http.MethodPost, "/v1/services", nil)

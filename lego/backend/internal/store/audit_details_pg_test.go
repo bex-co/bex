@@ -391,3 +391,49 @@ func TestPGEnvGroupLinkNamesItsGroup(t *testing.T) {
 		t.Fatalf("by-id changes = %+v, want the group named", lookup.Event.AuditChanges)
 	}
 }
+
+// TestPGAuditRecordsWhereTheActorActedFrom pins w9/m450: a row a request caused
+// keeps the client address and user agent through both the single and the
+// batch insert, and a system row stores NULL for both, which reads back empty.
+func TestPGAuditRecordsWhereTheActorActedFrom(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	t.Cleanup(pool.Close)
+	workspace := ids.New(ids.Workspace)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, workspace)
+	})
+	at := time.Now().UTC().Truncate(time.Second)
+	row := func(i int, caller, ip, agent string) core.AuditEvent {
+		return core.AuditEvent{
+			Caller: caller, CallerMethod: "session", Verb: core.AuditVerbViewEnvVarValues,
+			Resource: core.WorkspaceObject(workspace), Target: core.ServiceTarget("srv-1"),
+			Outcome: core.AuditAllowed, At: at.Add(time.Duration(i) * time.Minute), SourceIP: ip, UserAgent: agent,
+		}
+	}
+	if err := st.Record(ctx, row(0, "kratos-a", "2001:db8::7", "Mozilla/5.0")); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.RecordAll(ctx, []core.AuditEvent{row(1, "client-1", "198.51.100.23", "render-cli/2.27.0"), row(2, "", "", "")}); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := st.ListAuditEvents(ctx, workspace, AuditFilter{OldestFirst: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("audit rows = %+v, want 3", rows)
+	}
+	for i, want := range [][2]string{{"2001:db8::7", "Mozilla/5.0"}, {"198.51.100.23", "render-cli/2.27.0"}, {"", ""}} {
+		if rows[i].SourceIP != want[0] || rows[i].UserAgent != want[1] {
+			t.Errorf("row %d = %q / %q, want %q / %q", i, rows[i].SourceIP, rows[i].UserAgent, want[0], want[1])
+		}
+	}
+	var nulls int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE workspace_id = $1 AND source_ip IS NULL AND user_agent IS NULL`, workspace).Scan(&nulls); err != nil {
+		t.Fatal(err)
+	}
+	if nulls != 1 {
+		t.Errorf("system rows stored with NULL origin = %d, want 1", nulls)
+	}
+}

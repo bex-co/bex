@@ -810,6 +810,8 @@ export type AuditLog = {
   __typename: 'AuditLog';
   action: Maybe<Scalars['String']['output']>;
   actor: Maybe<Scalars['String']['output']>;
+  actorEmail: Maybe<Scalars['String']['output']>;
+  actorId: Maybe<Scalars['String']['output']>;
   actorMethod: Maybe<Scalars['String']['output']>;
   displayNameFrom: Maybe<Scalars['String']['output']>;
   displayNameTo: Maybe<Scalars['String']['output']>;
@@ -823,9 +825,11 @@ export type AuditLog = {
   oauthScopes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   relation: Maybe<Scalars['String']['output']>;
   resource: Maybe<Scalars['String']['output']>;
+  sourceIp: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   targetName: Maybe<Scalars['String']['output']>;
   timestamp: Maybe<Scalars['String']['output']>;
+  userAgent: Maybe<Scalars['String']['output']>;
 };
 
 export type AuditLogMetadata = {

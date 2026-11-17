@@ -75,6 +75,10 @@ type RequestOrigin struct {
 	// Transport is one of the Transport* constants above.
 	Transport string
 	UserAgent string
+	// SourceIP is the client's address through the trusted proxies
+	// (TrustedProxies.SourceIP), which an audit row records with UserAgent
+	// (w9/m450).
+	SourceIP string
 }
 
 type requestOriginKey struct{}

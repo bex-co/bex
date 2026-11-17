@@ -5,7 +5,8 @@ import { toAuditEvents } from "@/features/audit/lib/audit-events";
 
 // Render's audit-log export (render.com/docs/audit-logs): a workspace admin
 // picks a start and end date, at most 90 days apart, and downloads a CSV of
-// timestamp, actor, event, status and metadata (w3/m305).
+// timestamp, actor, event, status and metadata (w3/m305). The actor is the
+// person's email, or a deleted user's id, as on Render (w9/m450).
 
 /** Render's longest export range, in days. */
 export const MAX_EXPORT_DAYS = 90;
@@ -99,6 +100,9 @@ function metadata(event: AuditEvent): string {
     ["envGroupId", event.envGroupId],
     ["envGroupName", event.envGroupName],
     ["actorMethod", event.actorMethod],
+    // Render's own keys for where the actor acted from (w9/m450).
+    ["source_ip", event.sourceIp],
+    ["user_agent", event.userAgent],
     ["relation", event.relation],
     ["oauthClientId", event.oauthClientId],
     ["oauthAudience", event.oauthAudience],
@@ -109,13 +113,21 @@ function metadata(event: AuditEvent): string {
   );
 }
 
+/**
+ * Render's actor column: a person's email, else the id REST answers (a
+ * deleted user's usr- id, an API key's client id), else the stored subject.
+ */
+function csvActor(event: AuditEvent): string {
+  return event.actorEmail || event.actorId || event.actor;
+}
+
 /** Render's export columns: timestamp, actor, event, status, metadata. */
 export function auditEventsToCSV(events: AuditEvent[]): string {
   const rows = [["timestamp", "actor", "event", "status", "metadata"]];
   for (const event of events) {
     rows.push([
       event.timestamp,
-      event.actor,
+      csvActor(event),
       event.action,
       event.status,
       metadata(event),

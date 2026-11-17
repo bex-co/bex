@@ -18,6 +18,11 @@ const koAudit: Record<string, TranslationEntry> = {
     message: "수행자",
     description: "Audit Log table column header — who performed the action",
   },
+  "audit.columnSource": {
+    message: "출처",
+    description:
+      "Audit Log table column header — the client address and user agent the actor acted from (w9/m450)",
+  },
   "audit.columnAction": {
     message: "작업",
     description: "Audit Log table column header — the verb performed",
