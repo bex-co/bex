@@ -1,20 +1,20 @@
 # w3 · m437 — The bex CLI shows its own telemetry notice and sends nothing before it does (ADR113 D5)
 
-**Worker:** worker3 **Goal:** a `bex` user is told that Bex, not Render, receives CLI usage data before any event is stored; Render's notice never prints; the launcher's self-reports pass the same gate; installers show the notice. **Status:** todo
+**Worker:** worker3 **Goal:** a `bex` user is told that Bex, not Render, receives CLI usage data before any event is stored; Render's notice never prints; the launcher's self-reports pass the same gate; installers show the notice. **Status:** todo (t001–t004 and t006–t009 done; t005 waits only for ADR113's Status line to name the shipped commit)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Launcher gate: a Bex marker, upstream's marker pre-written, and an undisclosed run sends nothing | 75m | — |
-| [t002](t002.md) | Print the Bex notice after an eligible terminal run and record that it was shown | 45m | t001 |
-| [t003](t003.md) | Launcher self-reports wait for the same gate | 30m | t001 |
-| [t004](t004.md) | The installer and the Homebrew formula show the same notice | 45m | t002 |
+| [t001](done/t001.md) | Launcher gate: a Bex marker, upstream's marker pre-written, and an undisclosed run sends nothing | 75m | — — **DONE** |
+| [t002](done/t002.md) | Print the Bex notice after an eligible terminal run and record that it was shown | 45m | t001 — **DONE** |
+| [t003](done/t003.md) | Launcher self-reports wait for the same gate | 30m | t001 — **DONE** |
+| [t004](done/t004.md) | The installer and the Homebrew formula show the same notice | 45m | t002 — **DONE** |
 | [t005](t005.md) | Docs: CLI guide, analytics runbook, pin-bump checklist, compatibility checklist, ADR113 status | 30m | t002, t003, t004 |
-| [t006](t006.md) | Live check: a tree-built bex against api.bex.co | 30m | t005 |
-| [t007](t007.md) | Render parity | 30m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 30m | t008 |
+| [t006](done/t006.md) | Live check: a tree-built bex against api.bex.co | 30m | t005 — **DONE** |
+| [t007](done/t007.md) | Render parity | 30m | t006 — **DONE** |
+| [t008](done/t008.md) | Simplify | 15m | t007 — **DONE** |
+| [t009](done/t009.md) | Test coverage | 30m | t008 — **DONE** |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 ## Definition of done

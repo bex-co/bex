@@ -198,6 +198,24 @@ D7 extends that recorder to the extended products: `resource_type` gains `agent_
 | Commands Render does not have | — | One event each, by the coverage contract (D7) |
 | Release identity | `cli_version` | `cli_version` (the pin) plus `X-Bex-CLI-Version` (the bex release) |
 
+### The disclosure gate, case by case (D5, checked 2026-11-16)
+
+Render's column is the pinned v2.36.0 source (`cmd/execution.go:28-69`, `internal/analyticsnotice`, `pkg/analytics/consent.go`). Bex's column is the shipped launcher (`lego/cli/internal/disclosure`), each row pinned by a test in `lego/cli` (`disclosure_test.go`, `internal/disclosure`). Only the recipient and the text differ, except root `--version` (the w5/m94 extension) and `analytics notice` (a D5 decision).
+
+| Case | Render | bex |
+| --- | --- | --- |
+| `CI=true` or `CI=1` | Sends; no notice; no marker | The same |
+| No terminal on stderr, notice never shown | No notice, no marker, never sends | The same, with the Bex marker |
+| First terminal run | Prints the notice on stderr after the output, writes the marker, sends nothing | The same; stdout stays the command's own |
+| Opted out | The opted-out variant, naming `DO_NOT_TRACK` or `RENDER_CLI_DISABLE_ANALYTICS` | The same, naming the variable the user set, `BEX_CLI_DISABLE_ANALYTICS` included |
+| `login`, `logout` | Show the notice, never send | The same |
+| Shell completion, the hidden `analytics` tree | Never show it | The same |
+| Setup failed before the API client existed | No notice | The same |
+| Root `--version` | No notice, no event | No notice; one `version` event once the notice was shown (the w5/m94 extension) |
+| A command that replaces the process (`bex glm`, `bex edit`, `bex agent ssh`) | — | No notice; nothing sent until a later run shows it |
+| A machine that saw Render's notice before | — | Sees the Bex notice once; that run sends nothing |
+| Hidden `analytics notice` | Prints only on a terminal outside CI | **Bex decision (D5, headless installs):** prints with or without a terminal, also in CI, so an install log discloses before anything is sent |
+
 ## Phasing
 
 1. **P1 — D5.** The disclosure is a truthfulness fix, so it goes into the next `bex-cli/v*` release. Verify on a clean `BEX_CLI_CONFIG_DIR`: the first terminal run prints the Bex notice and stores no event; the second run stores one; a run with `CI=true` on a clean directory stores one and prints nothing; a run of `bex --version` on a clean directory stores nothing.

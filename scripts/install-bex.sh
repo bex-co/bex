@@ -139,3 +139,10 @@ case ":$PATH:" in
   export PATH=\"${install_dir}:\$PATH\"" ;;
 esac
 "${install_dir}/bex" -v || true
+# The bex CLI's telemetry notice (ADR113 D5): an install log is a disclosure a
+# headless user can read, so the installed bex may report from its next run
+# instead of waiting for a terminal to show it. It is captured so a release
+# without the Bex notice prints nothing here, and it never fails the install.
+if notice="$("${install_dir}/bex" analytics notice 2>&1)" && [ -n "$notice" ]; then
+  printf '\n%s\n' "$notice"
+fi

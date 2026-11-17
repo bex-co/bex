@@ -8368,6 +8368,25 @@ dashboards:
            "from": "now-7d",
            "to": "now"
           },
+         "annotations": {
+           "list": [
+              {
+               "name": "Bex releases",
+               "datasource": {
+                 "type": "grafana-postgresql-datasource",
+                 "uid": "cli-analytics"
+                },
+               "enable": true,
+               "iconColor": "purple",
+               "target": {
+                 "editorMode": "code",
+                 "format": "table",
+                 "rawQuery": true,
+                 "rawSql": "SELECT min(received_at) AS time, 'bex ' || bex_version AS text, 'release' AS tags FROM cli_analytics.events WHERE bex_version ~ '^[0-9]+\\.[0-9]+\\.[0-9]+$' GROUP BY bex_version ORDER BY 1"
+                }
+              }
+            ]
+          },
          "templating": {
            "list": [
               {

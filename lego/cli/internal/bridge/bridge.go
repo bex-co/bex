@@ -65,9 +65,10 @@ var filledFromBex map[string]string
 
 // FilledFromBex names the upstream variables Apply filled from a Bex input in
 // this process, each with that input: RENDER_API_KEY → BEX_API_KEY when that
-// was set, or → BEX_ACCESS_TOKEN when only that was. An upstream variable the
-// user set themselves is absent, so a message about it can keep upstream's
-// name (w32/009).
+// was set, or → BEX_ACCESS_TOKEN when only that was, and
+// RENDER_CLI_DISABLE_ANALYTICS → BEX_CLI_DISABLE_ANALYTICS. An upstream
+// variable the user set themselves is absent, so a message about it can keep
+// upstream's name (w32/009).
 func FilledFromBex() map[string]string {
 	return maps.Clone(filledFromBex)
 }
@@ -119,6 +120,7 @@ func apply(lookup lookupEnv, set setEnv, home userHomeDir) (map[string]string, e
 			if err := set(renderDisableAnalytics, "1"); err != nil {
 				return nil, fmt.Errorf("set %s: %w", renderDisableAnalytics, err)
 			}
+			filled[renderDisableAnalytics] = bexDisableAnalytics
 		}
 	}
 	return filled, nil

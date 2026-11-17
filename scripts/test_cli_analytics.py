@@ -128,6 +128,21 @@ class CLIAnalyticsTest(unittest.TestCase):
                     self.query(panel_id)
         for variable in self.board["templating"]["list"]:
             self.psql("SET ROLE bex_cli_analytics; " + variable["query"])
+        for annotation in self.board["annotations"]["list"]:
+            with self.subTest(annotation=annotation["name"]):
+                self.read_as_reader(annotation["target"]["rawSql"])
+
+    def test_release_annotation_marks_where_each_release_first_reported(self):
+        # Releases change what is collected (ADR113 D5's disclosure gate makes
+        # every machine start one run later), so the board marks each bex
+        # release where it first reported. Builds with no release header are
+        # not releases.
+        [annotation] = [a for a in self.board["annotations"]["list"] if a["name"] == "Bex releases"]
+        self.assertEqual(annotation["datasource"]["uid"], "cli-analytics")
+        self.assertEqual(self.read_as_reader(annotation["target"]["rawSql"]), [
+            {"time": "2026-08-17T12:00:00+00:00", "text": "bex 0.2.1", "tags": "release"},
+            {"time": "2026-09-03T12:00:00+00:00", "text": "bex 0.2.2", "tags": "release"},
+        ])
 
     def test_counts_and_failure_denominator(self):
         self.assertEqual(self.query(2), [{"Observed commands": 10}])

@@ -84,8 +84,9 @@ func TestEmitVersionUsesTheVersionCompletionKind(t *testing.T) {
 // immediately before the process is replaced by the launched agent, and on
 // `--version` — so an opted-out user must not reach it at all.
 func TestSendChecksConsentBeforeBuildingAClient(t *testing.T) {
-	originalConsent, originalClient := consentGranted, newAPIClient
-	t.Cleanup(func() { consentGranted, newAPIClient = originalConsent, originalClient })
+	originalConsent, originalGate, originalClient := consentGranted, gateOpen, newAPIClient
+	t.Cleanup(func() { consentGranted, gateOpen, newAPIClient = originalConsent, originalGate, originalClient })
+	gateOpen = func() bool { return true }
 
 	built := 0
 	newAPIClient = func() (*client.ClientWithResponses, error) {
@@ -103,5 +104,32 @@ func TestSendChecksConsentBeforeBuildingAClient(t *testing.T) {
 	send(command.ExecutionResult{CommandPath: "bex glm"}, io.Discard)
 	if built != 1 {
 		t.Fatalf("built %d clients while opted in, want 1", built)
+	}
+}
+
+// TestSendWaitsForTheDisclosureGate: a consenting user on a machine that has
+// not seen the Bex notice (and is not CI) reports nothing, and pays no client
+// construction for it (ADR113 D5).
+func TestSendWaitsForTheDisclosureGate(t *testing.T) {
+	originalConsent, originalGate, originalClient := consentGranted, gateOpen, newAPIClient
+	t.Cleanup(func() { consentGranted, gateOpen, newAPIClient = originalConsent, originalGate, originalClient })
+
+	built := 0
+	newAPIClient = func() (*client.ClientWithResponses, error) {
+		built++
+		return nil, errors.New("stop before sending")
+	}
+	consentGranted = func() bool { return true }
+
+	gateOpen = func() bool { return false }
+	send(command.ExecutionResult{CommandPath: "bex glm"}, io.Discard)
+	if built != 0 {
+		t.Fatalf("built %d clients before the notice was shown, want 0", built)
+	}
+
+	gateOpen = func() bool { return true }
+	send(command.ExecutionResult{CommandPath: "bex glm"}, io.Discard)
+	if built != 1 {
+		t.Fatalf("built %d clients once the notice was shown, want 1", built)
 	}
 }

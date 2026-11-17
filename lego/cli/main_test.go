@@ -441,13 +441,18 @@ func TestBexBinaryRelocatesStateWithConfigDirNotBesideExactPath(t *testing.T) {
 	}
 }
 
+// seedNoticeMarkerIn records, under the analytics state dir, that both the
+// upstream and the Bex telemetry notices were shown, so a run outside CI
+// passes the disclosure gate (ADR113 D5).
 func seedNoticeMarkerIn(t *testing.T, dir string) {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "notice-shown"), nil, 0o600); err != nil {
-		t.Fatal(err)
+	for _, marker := range []string{"notice-shown", "bex-notice-shown"} {
+		if err := os.WriteFile(filepath.Join(dir, marker), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -693,9 +698,9 @@ func (s *telemetryStub) count() int {
 	return len(s.bodies)
 }
 
-// seedNoticeMarker pre-creates the upstream one-time-notice marker under the
-// test HOME so a headless run proceeds to the send path: without a TTY the
-// sender skips delivery until a marker proves the notice was shown once.
+// seedNoticeMarker pre-creates the one-time-notice markers under the test
+// HOME so a headless run proceeds to the send path: outside CI nothing is sent
+// until a marker proves the Bex notice was shown once.
 func seedNoticeMarker(t *testing.T, home string) {
 	t.Helper()
 	seedNoticeMarkerIn(t, filepath.Join(home, ".bex", "state", "analytics"))
@@ -803,10 +808,14 @@ func awaitEvents(t *testing.T, stub *telemetryStub, want int) []map[string]any {
 
 // telemetryEnv is the child environment for a launcher run that is allowed to
 // report: BEX_CLI_DISABLE_ANALYTICS="" re-enables sending past TestMain's
-// harness-wide opt-out (blank counts as unset in the bridge).
+// harness-wide opt-out (blank counts as unset in the bridge). CI is dropped,
+// because it bypasses the disclosure gate and runners set it: a test that
+// wants CI passes it in extra.
 func telemetryEnv(t *testing.T, home, apiURL string, extra ...string) []string {
 	t.Helper()
-	return append(append(withoutRenderEnv(os.Environ()),
+	inherited := withoutRenderEnv(os.Environ())
+	inherited = slices.DeleteFunc(inherited, func(item string) bool { return strings.HasPrefix(item, "CI=") })
+	return append(append(inherited,
 		"HOME="+home,
 		"BEX_HOST="+apiURL+"/v1/",
 		"BEX_ACCESS_TOKEN=test-access-token",
@@ -875,9 +884,9 @@ func TestBexVersionEmitsExactlyOneVersionEvent(t *testing.T) {
 	seedNoticeMarker(t, home)
 
 	command := exec.Command(buildBex(), "--version")
-	// CI=1 keeps the release-channel update check off the network without
-	// touching the telemetry path.
-	command.Env = telemetryEnv(t, home, api.URL, "CI=1")
+	// Keeps the release-channel update check off the network. CI would too,
+	// but it also bypasses the disclosure gate this run must pass.
+	command.Env = telemetryEnv(t, home, api.URL, "BEX_NO_UPDATE_NOTIFIER=1")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("bex --version: %v\n%s", err, output)
 	}
@@ -960,7 +969,7 @@ func TestBexOptOutSuppressesLauncherNativeTelemetry(t *testing.T) {
 			seedNoticeMarker(t, home)
 
 			version := exec.Command(buildBex(), "--version")
-			version.Env = telemetryEnv(t, home, api.URL, "CI=1", optOut)
+			version.Env = telemetryEnv(t, home, api.URL, "BEX_NO_UPDATE_NOTIFIER=1", optOut)
 			if output, err := version.CombinedOutput(); err != nil {
 				t.Fatalf("bex --version: %v\n%s", err, output)
 			}

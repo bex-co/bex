@@ -179,11 +179,16 @@ func TestApplySendsTelemetryToBexByDefault(t *testing.T) {
 
 func TestApplyMapsBexAnalyticsOptOut(t *testing.T) {
 	env := map[string]string{bexDisableAnalytics: "1"}
-	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+	filled, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil })
+	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if got, want := env[renderDisableAnalytics], "1"; got != want {
 		t.Errorf("%s = %q, want %q (Bex opt-out mapped through)", renderDisableAnalytics, got, want)
+	}
+	// The opted-out telemetry notice names the variable the user set (ADR113 D5).
+	if got := filled[renderDisableAnalytics]; got != bexDisableAnalytics {
+		t.Errorf("filled[%s] = %q, want %q", renderDisableAnalytics, got, bexDisableAnalytics)
 	}
 }
 
@@ -241,7 +246,8 @@ func TestApplyReportsWhatItFilledFromBex(t *testing.T) {
 		},
 		{
 			"the user's own upstream variable wins and is not reported",
-			map[string]string{bexAccess: "token", renderAPIKey: "rnd_user", bexOutput: "json", renderOutput: "yaml"},
+			map[string]string{bexAccess: "token", renderAPIKey: "rnd_user", bexOutput: "json", renderOutput: "yaml",
+				bexDisableAnalytics: "1", renderDisableAnalytics: "0"},
 			map[string]string{},
 		},
 		{

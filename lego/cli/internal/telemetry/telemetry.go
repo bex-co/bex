@@ -16,21 +16,19 @@
 // installation identity, and the detached send subprocess all behave exactly as
 // they do for an imported command. None of that policy is reimplemented here.
 //
-// One gate is genuinely not applied: upstream's post-run hook additionally waits
-// for its one-time disclosure notice to have been shown, and that check lives in
-// an unexported package inside Cobra's post-run path — which, by definition,
-// neither of these paths reaches. So a machine whose very first bex invocation
-// is `bex glm` or `bex --version` can report before that notice has printed.
-// The divergence is deliberate and recorded in docs/runbooks/cli-analytics.md
-// and docs/bex-cli.md; bex's own disclosure is the documentation, not Render's
-// notice copy, which the compatibility checklist explicitly tells users not to
-// act on.
+// Both paths also pass the disclosure gate every imported command passes (ADR113
+// D5): nothing is sent until the Bex notice was shown on this machine, except
+// in CI. A machine whose very first bex invocation is `bex glm` or
+// `bex --version` therefore reports nothing; neither path can show the notice
+// itself (one replaces the process, the other exits before Cobra runs), so it
+// waits for a later run that does.
 package telemetry
 
 import (
 	"io"
 	"time"
 
+	"github.com/bex-co/bex/lego/cli/internal/disclosure"
 	"github.com/render-oss/cli/pkg/analytics"
 	"github.com/render-oss/cli/pkg/client"
 	"github.com/render-oss/cli/pkg/command"
@@ -41,6 +39,7 @@ import (
 // neither.
 var (
 	consentGranted = func() bool { return analytics.ResolveConsent().Granted }
+	gateOpen       = disclosure.CanSend
 	newAPIClient   = client.NewDefaultClient
 )
 
@@ -55,6 +54,12 @@ var send = func(result command.ExecutionResult, stderr io.Writer) {
 	// (it reads only environment variables) means an opted-out user pays
 	// nothing at all.
 	if !consentGranted() {
+		return
+	}
+	// The disclosure gate is checked here rather than inherited from the
+	// launcher's consent override, which is lifted before a command runs so
+	// it cannot leak into the process the launch replaces this one with.
+	if !gateOpen() {
 		return
 	}
 	// The ingest endpoint is authenticated, so an unauthenticated invocation

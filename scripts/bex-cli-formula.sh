@@ -26,6 +26,10 @@ sha_for() {
 # The release tag contains a slash; GitHub encodes it as %2F in asset URLs.
 base="https://github.com/bex-co/bex/releases/download/bex-cli%2Fv${VERSION}"
 
+# The caveats are the bex CLI's telemetry notice (ADR113 D5), verbatim:
+# TestFormulaCaveatsAreTheBexNotice (lego/cli/disclosure_test.go) fails when they
+# differ from what `bex analytics notice` prints.
+
 # Resolve every platform before rendering: a failing $(…) inside the heredoc
 # would not abort the script, and a partial formula must never be emitted.
 sha_darwin_arm64="$(sha_for darwin-arm64)"
@@ -67,6 +71,20 @@ class Bex < Formula
     # Homebrew strips a sole top-level archive directory during staging, so
     # the binary is usually at the root; fall back to the nested layout.
     bin.install(File.exist?("bex") ? "bex" : Dir["bex-*/bex"].fetch(0))
+  end
+
+  # The bex CLI's telemetry notice. Homebrew cannot record that it was shown,
+  # so the first terminal run shows it again, and bex sends nothing until then.
+  def caveats
+    <<~'NOTICE'
+      The bex CLI collects usage data on commands and performance to help improve it.
+      The data goes to Bex, not to Render.
+      It records command names, outcomes, durations and environment signals, never arguments or values.
+      No data has been sent yet.
+
+      To opt out, set BEX_CLI_DISABLE_ANALYTICS=1 or DO_NOT_TRACK=1.
+      Learn more: https://github.com/bex-co/bex/blob/main/docs/bex-cli.md#cli-usage-telemetry
+    NOTICE
   end
 
   test do

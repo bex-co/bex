@@ -23,6 +23,11 @@ cleanup() {
   rm -rf "$tmp"
 }
 trap cleanup EXIT
+# The installed fixture writes its notice marker under $HOME/.bex unless a test
+# sets BEX_CLI_CONFIG_DIR; keep that away from the real home directory.
+export HOME="$tmp/home"
+mkdir -p "$HOME"
+unset BEX_CLI_CONFIG_DIR
 
 os="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "$(uname -m)" in
@@ -36,7 +41,25 @@ artifact="bex-${version}-${os}-${arch}"
 srv="$tmp/srv"
 release_dir="$srv/dl/bex-cli/v${version}" # %2F in the URL decodes to this path
 mkdir -p "$release_dir" "$srv/repos/bex-co/bex" "$tmp/pkg/$artifact"
-printf '#!/bin/sh\necho "bex v%s (fixture)"\n' "$version" > "$tmp/pkg/$artifact/bex"
+# The fixture answers `analytics notice` the way bex does (ADR113 D5): the
+# notice on stderr and the marker under the config directory, once.
+# FIXTURE_NOTICE=fail makes it fail; FIXTURE_NOTICE=silent prints nothing, as a
+# release without the Bex notice does on a pipe.
+cat > "$tmp/pkg/$artifact/bex" <<FIXTURE
+#!/bin/sh
+if [ "\${1:-}" = analytics ] && [ "\${2:-}" = notice ]; then
+  case "\${FIXTURE_NOTICE:-}" in
+    fail) echo "Error: fixture notice failure" >&2; exit 1 ;;
+    silent) exit 0 ;;
+  esac
+  marker="\${BEX_CLI_CONFIG_DIR:-\$HOME/.bex}/state/analytics/bex-notice-shown"
+  [ -e "\$marker" ] && exit 0
+  mkdir -p "\$(dirname "\$marker")" && : > "\$marker"
+  echo "The data goes to Bex, not to Render. (fixture notice)" >&2
+  exit 0
+fi
+echo "bex v${version} (fixture)"
+FIXTURE
 chmod +x "$tmp/pkg/$artifact/bex"
 tar -C "$tmp/pkg" -czf "$release_dir/$artifact.tar.gz" "$artifact"
 if command -v sha256sum >/dev/null; then
@@ -97,6 +120,25 @@ out="$(BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin
 [ -x "$tmp/bin1/bex" ] || fail "installer (latest) did not install bex"
 "$tmp/bin1/bex" | grep -q "bex v$version (fixture)" || fail "installed binary is not the fixture"
 echo "$out" | grep -q "v$version" || fail "installer output missing resolved version:\n$out"
+
+# ── installer: shows the bex telemetry notice once, honoring BEX_CLI_CONFIG_DIR
+# (ADR113 D5) ─────────────────────────────────────────────────────────────────
+echo "$out" | grep -q "The data goes to Bex, not to Render." || fail "installer did not print the telemetry notice:\n$out"
+[ -e "$HOME/.bex/state/analytics/bex-notice-shown" ] || fail "installer did not record the notice under \$HOME/.bex"
+out="$(BEX_CLI_CONFIG_DIR="$tmp/cfg" BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin-notice" sh "$INSTALL" 2>&1)" ||
+  fail "installer (BEX_CLI_CONFIG_DIR) exited nonzero:\n$out"
+echo "$out" | grep -q "The data goes to Bex" || fail "installer skipped the notice for a fresh BEX_CLI_CONFIG_DIR:\n$out"
+[ -e "$tmp/cfg/state/analytics/bex-notice-shown" ] || fail "notice marker not written under BEX_CLI_CONFIG_DIR"
+out="$(BEX_CLI_CONFIG_DIR="$tmp/cfg" BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin-notice" sh "$INSTALL" 2>&1)" ||
+  fail "installer (upgrade) exited nonzero:\n$out"
+echo "$out" | grep -q "The data goes to Bex" && fail "an upgrade showed the notice again:\n$out"
+# A failing or silent notice command never fails the install, and prints nothing.
+for mode in fail silent; do
+  out="$(FIXTURE_NOTICE="$mode" BEX_CLI_CONFIG_DIR="$tmp/cfg-$mode" BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin-notice-$mode" sh "$INSTALL" 2>&1)" ||
+    fail "installer failed because the notice command did ($mode):\n$out"
+  [ -x "$tmp/bin-notice-$mode/bex" ] || fail "installer ($mode notice) did not install bex"
+  echo "$out" | grep -q "Error:" && fail "installer surfaced the notice command's output ($mode):\n$out"
+done
 
 # ── installer: pinned version skips the API entirely ────────────────────────
 mv "$srv/repos" "$tmp/repos-hidden"
@@ -193,7 +235,7 @@ formula="$(VERSION=0.1.0 bash "$FORMULA" "$tmp/checksums.txt")" || fail "formula
 for want in 'version "0.1.0"' 'bex-cli%2Fv0.1.0' \
   1111111111111111111111111111111111111111111111111111111111111111 \
   4444444444444444444444444444444444444444444444444444444444444444 \
-  'class Bex < Formula' 'bin.install'; do
+  'class Bex < Formula' 'bin.install' 'def caveats' 'The data goes to Bex, not to Render.'; do
   echo "$formula" | grep -qF "$want" || fail "formula missing: $want"
 done
 

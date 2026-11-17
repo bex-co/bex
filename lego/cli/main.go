@@ -19,6 +19,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/bridge"
 	"github.com/bex-co/bex/lego/cli/internal/code"
 	"github.com/bex-co/bex/lego/cli/internal/desktop"
+	"github.com/bex-co/bex/lego/cli/internal/disclosure"
 	"github.com/bex-co/bex/lego/cli/internal/pgtrust"
 	"github.com/bex-co/bex/lego/cli/internal/skills"
 	"github.com/bex-co/bex/lego/cli/internal/telemetry"
@@ -42,6 +43,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "bex: configure upstream CLI: %v\n", err)
 		os.Exit(1)
 	}
+	// Bex owns the telemetry disclosure (ADR113 D5): until the Bex notice was
+	// shown on this machine (or in CI), this run sends nothing. Must follow
+	// Apply, which places the state directory and maps the Bex opt-out, and
+	// precede cmd.Execute, which builds upstream's sender.
+	gate := disclosure.Begin(bridge.FilledFromBex())
 	// Must follow Apply, which resolves the control-plane host this stamps
 	// against. It covers the detached analytics sender too: that subprocess
 	// re-executes this binary, so it runs main and installs the same wrapper.
@@ -72,8 +78,13 @@ func main() {
 	// command, including __complete, runs (w2/043). The BEX_WORKSPACE name
 	// resolves here too, once the complete tree can name the invoked command:
 	// cobra skips initializers for --help/--version, and workspaceUse spares
-	// the commands that never read the active workspace (w8/064).
+	// the commands that never read the active workspace (w8/064). Upstream's
+	// sender exists by now, so the disclosure gate hands the command the
+	// user's own consent environment, and `analytics notice`, also registered
+	// during Execute, prints Bex's notice.
 	cobra.OnInitialize(func() {
+		gate.Release()
+		gate.AdoptNoticeCommand(cmd.RootCmd)
 		branding.Refresh(cmd.RootCmd)
 		if err := bridge.ResolveWorkspaceName(workspaceUse(cmd.RootCmd, os.Args[1:])); err != nil {
 			fmt.Fprintf(os.Stderr, "bex: %v\n", err)
@@ -114,6 +125,9 @@ func main() {
 	}
 	notice := startUpdateCheck(ttyGate)
 	exitCode := cmd.Execute()
+	// Where upstream would draw its own notice: after the command's output,
+	// before anything else the launcher prints.
+	gate.ShowIfNeeded(cmd.RootCmd, os.Args[1:], os.Stderr, stderrIsTTY())
 	releaseTrust()
 	if login == nil || loginCompleted(login, exitCode) {
 		printUpdateNotice(os.Stderr, notice)

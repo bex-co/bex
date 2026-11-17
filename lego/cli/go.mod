@@ -6,6 +6,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/creack/pty v1.1.24
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/render-oss/cli v1.1.3-0.20261106232710-4fd34231b637
 	github.com/sigstore/protobuf-specs v0.5.2
