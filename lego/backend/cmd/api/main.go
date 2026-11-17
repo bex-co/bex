@@ -1999,13 +1999,6 @@ func nonceStoreOrNil(st *store.PGStore) sshgateway.NonceStore {
 	return st
 }
 
-// machineMembershipStore is the slice of the control-plane store the
-// machine-binding reconcile needs (w5/m103). *store.PGStore satisfies it; a
-// DB-less run leaves it nil and the reconcile is skipped.
-type machineMembershipStore interface {
-	MarkMachineMemberships(ctx context.Context, clientIDs []string) (int64, error)
-}
-
 // backfillMachineMemberships reclassifies the tenant_members rows of existing
 // API keys as kind='machine' — the one-time reconcile w5/m103's migration
 // cannot do in SQL, because Hydra is the only registry that knows which
@@ -2015,9 +2008,12 @@ type machineMembershipStore interface {
 // Team surface and holding a seat, which is precisely the pre-m103 behavior, so
 // a failure here degrades to the status quo rather than to anything broken. It
 // is logged, never fatal, and retried on the next start.
-func backfillMachineMemberships(ctx context.Context, st any, keys apikeys.APIKeyStore) {
-	marker, ok := st.(machineMembershipStore)
-	if !ok || keys == nil {
+//
+// A DB-less run (st nil) has nothing to reclassify and returns before asking
+// Hydra for the keys. st stays typed: inside an interface a nil *PGStore is not
+// nil (w7/064).
+func backfillMachineMemberships(ctx context.Context, st *store.PGStore, keys apikeys.APIKeyStore) {
+	if st == nil || keys == nil {
 		return
 	}
 	list, err := keys.List(ctx)
@@ -2029,7 +2025,7 @@ func backfillMachineMemberships(ctx context.Context, st any, keys apikeys.APIKey
 	for _, k := range list {
 		ids = append(ids, k.ID)
 	}
-	n, err := marker.MarkMachineMemberships(ctx, ids)
+	n, err := st.MarkMachineMemberships(ctx, ids)
 	if err != nil {
 		log.Printf("bex-api: machine-membership backfill: %v (retrying next start)", err)
 		return
