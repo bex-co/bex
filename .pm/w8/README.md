@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m442** — [Render contract round 8: logs take a `build` filter, an env group read omits the values a caller cannot see, and a sandbox build name cannot start with `sbb-`](m442/README.md) (8 tasks, ~3h35m) ← `/qa-find-bugs-cli` sweep f50c 2026-11-16, from the red `render-schema-drift.yml` run (15:59 UTC). bex answers `build` with 400 `unsupported query parameter` today.
+
 - [ ] **m161** — [A Node build reuses its dependencies between builds, and `NODE_MODULES_CACHE` switches it](blocked/m161/README.md) (7 tasks) **BLOCKED (the build plane must be exercised on a cluster before the dependency cache ships: the user raises this host's inotify limits with `sudo sysctl -w fs.inotify.max_user_instances=512 fs.inotify.max_user_watches=524288` so the mock cluster comes up)** — promoted from w8/275 2026-11-12; design in the README.
 
 - [ ] **m160** — [A cancel that races the traffic switch: the canceled release never serves, or the deploy is live](blocked/m160/README.md) (7 tasks) **BLOCKED (t003, one decider for the switch, needs a cluster where the Deployment's traffic switch and the operator's status write can be timed: the user raises this host's inotify limits with `sudo sysctl -w fs.inotify.max_user_instances=512 fs.inotify.max_user_watches=524288` so the mock cluster comes up; t006's envtest and t007's production replay follow)** — t001 (a cancel of a release that already serves answers 409 `already live` and stamps nothing), t002 (the operator wakes on the cancel stamp), t004 (ADR018) and t005 done 2026-11-12. Promoted from w8/265 (`/qa-find-bugs-cli` sweep 2ba7, major).
@@ -438,6 +440,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - Static byte-range acceptance and scoped rollout recheck (evidence, purged 2026-11-04) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
+
+- [ ] **336** — [Native runtimes lack `prince` (PrinceXML), which Render's native tools table lists as available at build and runtime in every native runtime](336.md) (~1h after a licence decision, minor) ← `/qa-find-bugs-cli` sweep d40a 2026-11-16
+  - **bex (pin `7aaa8700befa`):** a probe of all 38 tools in Render's table finds `prince` missing at build and runtime. The other misses are covered: `bun` (opt-in, w8/m86), `magick` (IM6 ships `convert`) and the PG 12–14 clients (ADR060 D7 scope).
+  - **Cause:** w8/m91's tool milestones never mapped `princexml`.
+  - **Decision needed:** Prince is commercial (YesLogic), so pick a licence or edition, or record a signed divergence.
 
 - [x] **335** — [`PYTHON_VERSION=3.15.2` fails the build ("not a supported Python version"), though Python 3.15 was released on 2026-10-09 and Render takes "any released version from 3.7.3 onward"](done/335.md) (~1h, major) ← `/qa-find-bugs-cli` sweep 0596 2026-11-16 **DONE 2026-11-16:** a reviewed Python 3.15 line (3.15.2, `93b1d057b`) and a common image whose packaging installer takes 3.15. Families run 43900534897 passed all 37 cases on that image, and `nativeCommonBase` now pins it. The freshness resolve flags the next released Python or Node line. The production check runs after the roll that carries the re-pin.
   - **bex (pin `bf2ab888d7dc`):** the build fails at version selection with "supported Python lines are 3.7 … 3.14"; the `3.14.10` control goes live.
