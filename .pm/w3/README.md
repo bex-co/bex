@@ -107,6 +107,8 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 
 ## Inbox
 
+- [ ] **069** — [A Blueprint service linked to a Docker or image build source can set `dockerCommand`, as Render's schema allows](069.md) (~1h) ← w3/m367 closeout 2026-11-17 (production validate refuses it at `services[0].dockerCommand`)
+- [ ] **068** — [Render's MCP now ships `run_cron_job` and `cancel_cron_job_run`; bex's same-named tools take different arguments](068.md) (~1h) ← w3/m367 closeout 2026-11-17 (`render-mcp-drift.sh` against upstream `a18ef3ee8667`)
 - [x] **067** — **done 2026-11-17** ([done/067.md](done/067.md)): Account Settings' route skeleton draws each section's heading over its cards' own loading frames, the Kratos flow as Ory's six cards with Ory's copy reserved; Account matches ready to the pixel at 1440 and 390, the rest differ only by table rows.
 - [x] **066** — **done 2026-11-17** ([done/066.md](done/066.md)): `pendingComponent` stays in the route's reference file, so a loader-less route's skeleton paints while its chunk loads; the page-as-pending detail routes, `router` and the `automations` routes keep it in the page's chunk with a per-route `codeSplitGroupings`.
 - [x] **065** — **done 2026-11-13** ([done/065.md](done/065.md)): a sandbox run connect token minted without a command, as Render's round-7 mint allows, runs the command its single redeem names, re-gated under the minter and recorded in the execution history. Bound tokens keep the exact-command rule.
