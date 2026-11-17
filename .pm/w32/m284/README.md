@@ -1,6 +1,6 @@
 # w32 · m284 — Render SDK v1.8.0 sandbox compatibility: the unmodified SDKs drive bex sandboxes, each method graded
 
-**Worker:** worker32 **Goal:** a user's unmodified Render Python or TypeScript SDK script, pointed at bex with `base_url`, creates, runs commands in, copies files to and from, and terminates a bex sandbox, and every SDK sandbox method has a recorded grade **Status:** blocked — t001 done; t003 static fixes shipped and deployed (`2d453686f`, 2026-11-08 12:41 UTC); t002 live walk waits on a working QA sign-in
+**Worker:** worker32 **Goal:** a user's unmodified Render Python or TypeScript SDK script, pointed at bex with `base_url`, creates, runs commands in, copies files to and from, and terminates a bex sandbox, and every SDK sandbox method has a recorded grade **Status:** todo — t001 done; t003 static fixes shipped and deployed (`2d453686f`, 2026-11-08 12:41 UTC); unblocked 2026-11-16, t002 live walk next
 
 ## Tasks (in order)
 
@@ -40,3 +40,12 @@
 - **Release condition:** `bash scripts/qa-login.sh` prints `ok …` again (fix the QA credentials in `.env`/`muse.env`, or remove the second factor from the QA account), **or** an already-authorized QA OAuth token is supplied privately as `BEX_ACCESS_TOKEN`. Then `/unblock w32` and run t002.
 - **Walk recipe once unblocked:** isolated `BEX_CLI_CONFIG_PATH` + `BEX_HOST=https://api.bex.co/v1/` → `bex login` (device URL) → with the QA session jar, open the device URL and POST the dashboard's `/auth/device` confirmation, then `qa-login.sh --login-challenge` for the login challenge → read the token into `RENDER_API_KEY` without printing it → `BEX_API_URL=https://api.bex.co RENDER_WORKSPACE_ID=<QA workspace> bash scripts/render-sdk-compat.sh`. Record the PASS/FAIL lines here and regrade `docs/cli-compatibility-checklist.md` § Render SDK.
 - **Already true without the walk:** the t003 fixes are covered by unit tests (`internal/sandbox/sdk_compat_test.go`, the `internal/sshgateway/sandboxsse` keep-alive test, the `internal/sshgateway/sandboxfiles` `file_not_found` test) and are deployed.
+
+## Unblocked — 2026-11-16 (`/loopx w32`, `/pm unblock`)
+
+- **Affected:** w32/m284 t002–t007.
+- **Source:** verified evidence, no new user decision. The `/loopx w32` orchestrator ran `bash scripts/qa-login.sh <scratch path>` at 2026-11-16 18:50 PST (2026-11-17 02:50 UTC): it exited 0 with `ok <path>`, so a Kratos session was established, and it was logged out right after. The same day, `/qa-find-bugs-cli` sweeps 158 and 182 (w32/035, w32/036) signed in on production through the QA human device login with released `bex` v0.7.0.
+- **Gate:** the 2026-11-08 release condition ("`bash scripts/qa-login.sh` prints `ok …` again") holds. No gate remains.
+- **Scope:** unchanged. The definition of done still names the pinned v1.8.0 SDKs. Render released SDK v1.9.0 on 2026-11-16 (breaking: typed error classes); w22/m445 (todo) owns its contract and may retarget this walk once it lands.
+- **Next:** t002 runs the walk recipe above on production. This host has no Playwright browser (`npx` is missing), so the device approval goes over curl with the QA session jar, and `qa-login.sh --login-challenge` answers the login challenge. The session and the device token are revoked when the walk ends.
+
