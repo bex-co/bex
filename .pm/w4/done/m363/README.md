@@ -114,5 +114,5 @@ QA user signed in through `scripts/qa-login.sh`, in workspace `bex-canary` (`tea
 
 - **§ Regression repo-build fixture.** Static site `qa-20261117-m363-static` (`srv-dbtu3tfok1cs73a3mt40`): `bex-co/bex` `main`, `examples/static-site`, with a build command that writes `wc -c < /etc/secrets/qa-build.txt` to `out/check.txt`.
   - With a 21-byte secret file, deploy `dep-dbtu5q7ok1cs73a3mtfg` built and went live, and `/check.txt` reads `21`. w32/027's acceptance holds.
-  - With a 614,400-byte file, the first deploy ended `build_failed`: `secret bex-file-0 too big. max size 500KiB`. BuildKit caps each `--secret` at 500 KiB, and none of DoD 1–5 covers builds. Filed as [w4/699](../../699.md) (shipped `b81cef240`).
+  - With a 614,400-byte file, the first deploy ended `build_failed`: `secret bex-file-0 too big. max size 500KiB`. BuildKit caps each `--secret` at 500 KiB, and none of DoD 1–5 covers builds. Filed as [w4/699](../699.md) (shipped `b81cef240`).
 - **Cleanup.** Both services and the group were deleted (`DELETE` 204 each, then `GET` 404 each). The QA session was logged out (`--logout` → `ok logged-out`), and its jar and the upload fixture were removed.
