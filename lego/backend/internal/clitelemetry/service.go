@@ -30,6 +30,7 @@ package clitelemetry
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -48,8 +49,9 @@ type TelemetryStore interface {
 // TelemetryMetrics is the Service's seam to the origin metrics registry.
 // *api.OriginMetrics satisfies it (declared here so the dependency points
 // api -> clitelemetry, never back). nil => metrics off, silently skipped.
+// Every argument is already clamped to its closed set (MetricLabels).
 type TelemetryMetrics interface {
-	ObserveTelemetry(command, completionKind, cliVersion, outputFormat string)
+	ObserveTelemetry(completionKind, outputFormat, client string)
 }
 
 // Service ingests CLI telemetry events over the injected control-plane
@@ -86,6 +88,72 @@ const (
 // is what makes a one-sided rename fail loudly instead of silently dropping the
 // release axis.
 const BexVersionHeader = "X-Bex-CLI-Version"
+
+// IngestRoute is the one route this package mounts. The origin metrics read it
+// to leave the telemetry deliveries out of the CLI request count they are
+// compared against (ADR113 D6).
+const IngestRoute = "POST /v1/cli-telemetry-events"
+
+// The CLI client axis (ADR113 D6, D8): the bex launcher, which adds
+// BexVersionHeader to every request it sends to bex, or an unmodified Render
+// CLI pointed at bex, which does not.
+const (
+	ClientBex       = "bex"
+	ClientRenderCLI = "render-cli"
+)
+
+// Clients is the closed client axis, for callers that export every series at
+// zero.
+var Clients = []string{ClientBex, ClientRenderCLI}
+
+// Client names the CLI client from the value of BexVersionHeader.
+func Client(bexVersionHeader string) string {
+	if strings.TrimSpace(bexVersionHeader) != "" {
+		return ClientBex
+	}
+	return ClientRenderCLI
+}
+
+// CompletionKinds is the closed completion_kind axis of the stored-events
+// counter: the eight kinds the pinned sender emits (upstream
+// pkg/command/execution.go) and CompletionKindOther for anything else.
+var CompletionKinds = []string{
+	"success", "help", "version", "discovery_error", "validation_error",
+	"setup_error", "execution_error", "explicit_exit", CompletionKindOther,
+}
+
+// OutputFormats is the closed output_format axis: the four formats a command
+// resolves to (upstream pkg/command/formatter.go) plus OutputFormatUnknown,
+// which upstream itself sends for a run that ended before command setup
+// (pkg/analytics/analytics.go).
+var OutputFormats = []string{"interactive", "json", "yaml", "text", OutputFormatUnknown}
+
+// The fallbacks for a value outside the closed sets.
+const (
+	CompletionKindOther = "other"
+	OutputFormatUnknown = "unknown"
+)
+
+// MetricLabels clamps a delivery to the stored-events counter's closed label
+// sets (ADR113 D8). Nothing from the body reaches a label verbatim, so a client
+// cannot mint series: the counter holds at most
+// len(CompletionKinds) * len(OutputFormats) * len(Clients) of them. The command
+// and the version are deliberately not labels: they are open sets, answered
+// from the stored rows, and a closed set is what lets the counter export every
+// series at zero, so increase() sees the first event after a restart instead
+// of a series born at 1.
+func MetricLabels(in EventInput) (completionKind, outputFormat, client string) {
+	return clamp(in.CompletionKind, CompletionKinds, CompletionKindOther),
+		clamp(in.OutputFormat, OutputFormats, OutputFormatUnknown),
+		Client(in.BexVersion)
+}
+
+func clamp(v string, set []string, fallback string) string {
+	if slices.Contains(set, v) {
+		return v
+	}
+	return fallback
+}
 
 // EventInput is the validated ingest shape. JSON names mirror Render's
 // CliTelemetryEventPOSTInput one-for-one (see rest.go); unknown future
@@ -173,7 +241,7 @@ func (s *Service) Record(ctx context.Context, in EventInput) (string, error) {
 	// Count only stored events: rejections stay on the origin request
 	// counter's status axis instead of double-appearing here.
 	if s.Metrics != nil {
-		s.Metrics.ObserveTelemetry(ev.Command, ev.CompletionKind, ev.CLIVersion, ev.OutputFormat)
+		s.Metrics.ObserveTelemetry(MetricLabels(in))
 	}
 	return eventID, nil
 }

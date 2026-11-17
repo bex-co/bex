@@ -1,15 +1,15 @@
 # w3 · m438 — Operators can tell a quiet CLI week from a broken telemetry pipeline (ADR113 D6 + D8)
 
-**Worker:** worker3 **Goal:** a server-side count of CLI requests to compare telemetry against, a telemetry counter with closed labels, and three warning-tier alerts with their panels. **Status:** todo
+**Worker:** worker3 **Goal:** a server-side count of CLI requests to compare telemetry against, a telemetry counter with closed labels, and three warning-tier alerts with their panels. **Status:** in progress (t001–t004 done; t005 production check next)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Count CLI API requests by client on the server | 45m | — |
-| [t002](t002.md) | Close the telemetry counter's labels | 45m | — |
-| [t003](t003.md) | Three warning-tier alerts with promtool tests | 60m | t001, t002 |
-| [t004](t004.md) | Collection-health panels on the CLI usage board | 45m | t003 |
+| [t001](done/t001.md) | Count CLI API requests by client on the server | 45m | — — **DONE** |
+| [t002](done/t002.md) | Close the telemetry counter's labels | 45m | — — **DONE** |
+| [t003](done/t003.md) | Three warning-tier alerts with promtool tests | 60m | t001, t002 — **DONE** |
+| [t004](done/t004.md) | Collection-health panels on the CLI usage board | 45m | t003 — **DONE** |
 | [t005](t005.md) | Docs and production check | 30m | t004 |
 | [t006](t006.md) | Simplify | 15m | t005 |
 | [t007](t007.md) | Test coverage | 30m | t006 |

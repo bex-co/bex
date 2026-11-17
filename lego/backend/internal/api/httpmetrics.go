@@ -31,6 +31,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/bex-co/bex/lego/backend/internal/clitelemetry"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -71,6 +72,9 @@ type OriginMetrics struct {
 	graphql   *prometheus.HistogramVec
 	mcpTools  *prometheus.HistogramVec
 	telemetry *prometheus.CounterVec
+	// cliRequests counts the REST requests the CLI sends (ADR113 D6): what
+	// the stored telemetry events are compared against.
+	cliRequests *prometheus.CounterVec
 	// auth is the gate's own telemetry (introspection misses, admission sheds,
 	// the Hydra round trip): authmetrics.go.
 	auth authMetrics
@@ -176,19 +180,24 @@ func NewOriginMetrics(reg prometheus.Registerer) *OriginMetrics {
 			Buckets: originDurationBuckets,
 		}, []string{"tool", "outcome"}),
 		// Stored CLI telemetry events only (w5/m92) — rejections stay on
-		// http_requests_total's status axis instead. Labels are bounded by
-		// construction: command paths come from the CLI's fixed subcommand
-		// tree (~dozens), completion_kind is the sender's small enum,
-		// cli_version changes per release, output_format has four values.
-		// Workspace/installation/user identity NEVER becomes a label — that
-		// split lives in Postgres behind the retention window, per the
-		// cardinality rule. Abuse is contained one layer down: the endpoint
-		// is authenticated and identity-rate-limited, so a hostile client
-		// can mint series no faster than it can write retained rows.
+		// http_requests_total's status axis instead. Every label is a closed
+		// set that clitelemetry.MetricLabels clamps the body into (ADR113 D8):
+		// nothing a client sends becomes a series. The command, the version and
+		// every identity live in Postgres behind the retention window.
 		telemetry: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "api", Name: "cli_telemetry_events_total",
-			Help: "Stored CLI telemetry events by command path, completion kind, CLI version, and output format.",
-		}, []string{"command", "completion_kind", "cli_version", "output_format"}),
+			Help: "Stored CLI telemetry events by completion kind, output format, and client (bex or render-cli). Each label is clamped to a closed set.",
+		}, []string{"completion_kind", "output_format", "client"}),
+		// CLI requests (ADR113 D6): a REST request whose User-Agent is the
+		// CLI's, by client — bex when the launcher's release header is present,
+		// render-cli without it. The telemetry deliveries are left out, so
+		// stored events per CLI request reads as coverage: a drop toward zero
+		// while CLI requests continue is a broken collector, not a quiet week.
+		// No command, path, version or identity is a label.
+		cliRequests: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "api", Name: "cli_requests_total",
+			Help: "bex-api REST requests sent by the CLI (User-Agent render-cli/...), excluding telemetry deliveries, by client: bex (X-Bex-CLI-Version present) or render-cli.",
+		}, []string{"client"}),
 		// An API key sent as the bearer and not accepted (docs/ADR012-auth.md
 		// §8e, w7/m426). reason is the closed set in auth_apikey.go; neither the
 		// key nor its client id is ever a label, so guessing at keys cannot mint
@@ -198,8 +207,21 @@ func NewOriginMetrics(reg prometheus.Registerer) *OriginMetrics {
 			Help: "API keys sent as Authorization: Bearer and not accepted, by reason (malformed/refused/cached/inactive/limited).",
 		}, []string{"reason"}),
 	}
-	reg.MustRegister(m.duration, m.requests, m.inFlight, m.graphql, m.mcpTools, m.telemetry, m.keyFailures)
+	reg.MustRegister(m.duration, m.requests, m.inFlight, m.graphql, m.mcpTools, m.telemetry, m.cliRequests, m.keyFailures)
 	m.auth = newAuthMetrics(reg)
+	// Every series of the two CLI counters exists from the start, at 0
+	// (ADR113 D8): a series that first appears at 1 is invisible to increase()
+	// and rate(), and each replica starts empty after every rollout, which on
+	// production lost the first stored events of every new pod (w3/m438). Both
+	// label sets are closed, so this is all of them.
+	for _, client := range clitelemetry.Clients {
+		m.cliRequests.WithLabelValues(client)
+		for _, kind := range clitelemetry.CompletionKinds {
+			for _, format := range clitelemetry.OutputFormats {
+				m.telemetry.WithLabelValues(kind, format, client)
+			}
+		}
+	}
 	return m
 }
 
@@ -212,21 +234,32 @@ func (m *OriginMetrics) observeAPIKeyFailure(reason string) {
 	m.keyFailures.WithLabelValues(reason).Inc()
 }
 
-// ObserveTelemetry counts one stored CLI telemetry event (w5/m92). Nil-safe
-// like observeMCPTool: the ingest service calls it only after a successful
-// insert, and a nil receiver (metrics off) is a silent no-op.
-func (m *OriginMetrics) ObserveTelemetry(command, completionKind, cliVersion, outputFormat string) {
+// ObserveTelemetry counts one stored CLI telemetry event (w5/m92), with labels
+// clitelemetry.MetricLabels has already clamped. Nil-safe like observeMCPTool:
+// the ingest service calls it only after a successful insert, and a nil
+// receiver (metrics off) is a silent no-op.
+func (m *OriginMetrics) ObserveTelemetry(completionKind, outputFormat, client string) {
 	if m == nil {
 		return
 	}
-	m.telemetry.WithLabelValues(command, completionKind, cliVersion, outputFormat).Inc()
+	m.telemetry.WithLabelValues(completionKind, outputFormat, client).Inc()
 }
 
 // Middleware meters the public listener, deriving the surface from the request
 // path. It is the OUTERMOST wrapper on that listener so a request shed by the
 // auth gate, a rate limiter, or the body cap is still counted — those rejections
 // are exactly what an origin error-ratio panel must show.
+//
+// The public listener is where the CLI telemetry ingest route is mounted, so
+// the route's answers that its alerts and backoff panel read (202 stored, 429
+// rate limited, 500 and 503 failed) are created here at 0, for the same reason
+// as the CLI counters in NewOriginMetrics: a replica's first 503 must count.
 func (m *OriginMetrics) Middleware(next http.Handler) http.Handler {
+	if m != nil {
+		for _, status := range []int{http.StatusAccepted, http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusServiceUnavailable} {
+			m.requests.WithLabelValues(surfaceREST, clitelemetry.IngestRoute, http.MethodPost, strconv.Itoa(status))
+		}
+	}
 	return m.middleware(publicSurface, next)
 }
 
@@ -243,6 +276,7 @@ func (m *OriginMetrics) middleware(surfaceOf func(*http.Request) string, next ht
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		surface := surfaceOf(r)
+		cliClient := cliRequestClient(surface, r)
 		// The recorder travels in the CONTEXT, not on the request struct: the
 		// auth gate and several handlers clone the request (r.WithContext /
 		// r.Clone), so an inner mux sets r.Pattern on a copy this middleware
@@ -265,6 +299,9 @@ func (m *OriginMetrics) middleware(surfaceOf func(*http.Request) string, next ht
 		status := strconv.Itoa(sw.statusCode())
 		method := requestMethod(r.Method)
 		m.requests.WithLabelValues(surface, pattern, method, status).Inc()
+		if cliClient != "" {
+			m.cliRequests.WithLabelValues(cliClient).Inc()
+		}
 		if !sw.streamed {
 			m.duration.WithLabelValues(surface, pattern, method, status).Observe(elapsed.Seconds())
 		}
@@ -309,6 +346,23 @@ func publicSurface(r *http.Request) string {
 		// /healthz, /readyz — lifecycle endpoints, not the product surface.
 		return surfaceInternal
 	}
+}
+
+// cliRequestClient names the CLI client behind a request for the CLI request
+// counter, or returns "" when the request is not counted: anything but REST
+// (the CLI's device-flow routes are the auth surface), a User-Agent other than
+// the CLI's, and the telemetry deliveries themselves, which are what this
+// count is compared against. The ingest route is matched on the request, not
+// on the pattern it resolved to, so a delivery is left out even when the route
+// is missing and it falls into "unmatched".
+func cliRequestClient(surface string, r *http.Request) string {
+	if surface != surfaceREST || !core.IsCLIUserAgent(r.Header.Get("User-Agent")) {
+		return ""
+	}
+	if r.Method+" "+r.URL.Path == clitelemetry.IngestRoute {
+		return ""
+	}
+	return clitelemetry.Client(r.Header.Get(clitelemetry.BexVersionHeader))
 }
 
 func requestMethod(method string) string {

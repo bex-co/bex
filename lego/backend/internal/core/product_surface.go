@@ -47,6 +47,14 @@ const (
 // separate header (w5/m94) precisely so this stays a truthful client marker.
 const cliUserAgentPrefix = "render-cli/"
 
+// IsCLIUserAgent reports whether a User-Agent is the CLI's: the imported
+// Render CLI, whether or not the bex launcher wraps it. The creation surface
+// below and the origin metrics' CLI request counter (ADR113 D6) both read it,
+// so the two cannot disagree about what a CLI request is.
+func IsCLIUserAgent(userAgent string) bool {
+	return strings.HasPrefix(userAgent, cliUserAgentPrefix)
+}
+
 // Transports are the API layer's own closed request classification, declared
 // here rather than there because both the origin-metrics labels and the surface
 // derivation below switch on them. One symbol per value is what actually keeps
@@ -114,7 +122,7 @@ func ProductSurface(ctx context.Context) string {
 	case TransportMCP:
 		return SurfaceMCP
 	case TransportREST:
-		if strings.HasPrefix(origin.UserAgent, cliUserAgentPrefix) {
+		if IsCLIUserAgent(origin.UserAgent) {
 			return SurfaceCLI
 		}
 		return SurfaceAPI

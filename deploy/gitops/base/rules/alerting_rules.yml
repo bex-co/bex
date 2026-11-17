@@ -1453,6 +1453,100 @@ groups:
           summary: "bex-api {{ $labels.surface }} p95 is {{ $value | humanizeDuration }}"
           description: "The 95th percentile of bex-api's own request duration on the {{ $labels.surface }} surface has been above 2.5s for >10m with meaningful traffic. Callers (dashboard, CLI, agents) are seeing timeouts even where the status is 200. Use the bex-api-gateways dashboard's slowest-routes panel to find which route pattern moved, then check the dependency it fans out to: Kubernetes API latency, control-plane Postgres, OpenFGA, Hydra introspection. Runbook: docs/ADR088-platform-observability-ui.md"
 
+      # w3/m438 (ADR113 D8). CLI telemetry ingest. A CLI answered 503 stops
+      # sending for 30 minutes (429: 5 minutes, 404: an hour; upstream
+      # pkg/analytics/backoff.go), so a short outage loses far more than its own
+      # length. The ingest route's 202/429/500/503 series and both CLI counters
+      # are exported at 0 by every replica (lego/backend/internal/api/
+      # httpmetrics.go), so a pod's first failure is counted rather than born
+      # at 1 where increase() cannot see it. The window is shorter than `for`,
+      # so one burst of failures cannot fire on its own; the floor of two
+      # failed deliveries per window keeps a single error at low volume quiet.
+      - alert: CLITelemetryIngestFailing
+        expr: |
+          (
+            sum(increase(bex_api_http_requests_total{route="POST /v1/cli-telemetry-events", status=~"5.."}[10m]))
+            / sum(increase(bex_api_http_requests_total{route="POST /v1/cli-telemetry-events"}[10m]))
+          ) > 0.05
+          and on()
+          sum(increase(bex_api_http_requests_total{route="POST /v1/cli-telemetry-events", status=~"5.."}[10m])) >= 2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "bex-api answers {{ $value | humanizePercentage }} of CLI telemetry deliveries with 5xx"
+          description: "More than 5% of POST /v1/cli-telemetry-events deliveries have been answered 5xx for >15m. Each CLI answered 503 stops sending for 30 minutes, so every minute of this loses half an hour of that CLI's usage data. Split by status on the CLI usage board (Telemetry ingest rate, Backoff-causing answers): 503 is the control-plane store being off (BEX_CP_DB_URI unset, core.ErrCLITelemetryUnavailable), 500 is the insert failing: kubectl -n bex-system logs deploy/bex-api | grep cli-telemetry, then the bex-db primary. Runbook: docs/runbooks/cli-analytics.md#collection-health"
+
+      # w3/m438 (ADR113 D6, D8). The CLI is in use and nothing is being stored:
+      # a missing or renamed route (its 404s land under route="unmatched", never
+      # under the telemetry route, so CLITelemetryIngestFailing cannot see
+      # them, and each one silences that CLI for an hour), a fleet-wide
+      # backoff, or a release that stops sending. "In use" is at least 30 CLI
+      # requests over the two hours with some in the last 30 minutes, so a
+      # burst that already stopped is not "continuing". "Stored none" does not
+      # rest on increase() alone: an event stored on a replica before its first
+      # scrape is a series that first appears above 0, which increase() reads
+      # as nothing, so a series that appeared within the window and is above 0
+      # also counts as a stored event.
+      - alert: CLITelemetryIngestSilent
+        expr: |
+          sum(increase(bex_api_cli_requests_total[2h])) >= 30
+          and on()
+          sum(increase(bex_api_cli_requests_total[30m])) > 0
+          unless on()
+          (
+            sum(increase(bex_api_cli_telemetry_events_total[2h])) > 0
+            or on()
+            count(
+              (max_over_time(bex_api_cli_telemetry_events_total[2h]) unless bex_api_cli_telemetry_events_total offset 2h) > 0
+            )
+          )
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanize }} CLI requests in 2h and no CLI telemetry event stored"
+          description: "The CLI keeps calling bex-api (bex_api_cli_requests_total) and no telemetry event has been stored for 2 hours. Check, in order: the route is still mounted (curl -s -o /dev/null -w '%{http_code}' -X POST https://api.bex.co/v1/cli-telemetry-events answers 401, not 404; a 404 silences each CLI for an hour); CLITelemetryIngestFailing and the Backoff-causing answers panel (a fleet-wide 503/429 backoff); a bex CLI release in the last day that changed the disclosure gate (ADR113 D5: a machine whose runs have no terminal and no CI=true sends nothing until the notice was shown once). Opted-out or never-disclosed clients still make requests, so a population that never sends can trip this on its own: the Telemetry coverage panel splits it by client. Runbook: docs/runbooks/cli-analytics.md#collection-health"
+
+      # w3/m438 (ADR113 D8). What CLIExecutionErrorShareHigh compares, recorded
+      # so the alert and the CLI usage board read the same numbers and neither
+      # re-reads every replica's raw counters for a week on each evaluation or
+      # panel refresh: stored events per second by kind and client, the
+      # execution_error share of the last 30 minutes, and the 7-day share. The
+      # raw series are exported at 0, so every kind is present whenever bex-api
+      # is scraped and the average over time weighs every minute alike.
+      - record: bex:cli_telemetry_events:rate5m
+        expr: sum by (completion_kind, client) (rate(bex_api_cli_telemetry_events_total[5m]))
+      - record: bex:cli_telemetry_execution_error_share:ratio30m
+        expr: |
+          sum(increase(bex_api_cli_telemetry_events_total{completion_kind="execution_error"}[30m]))
+          / sum(increase(bex_api_cli_telemetry_events_total[30m]))
+      - record: bex:cli_telemetry_execution_error_share:avg7d
+        expr: |
+          sum(avg_over_time(bex:cli_telemetry_events:rate5m{completion_kind="execution_error"}[7d]))
+          / sum(avg_over_time(bex:cli_telemetry_events:rate5m[7d]))
+
+      # w3/m438 (ADR113 D8). A server change that breaks a CLI command shows up
+      # as execution_error events before a user reports it. Relative to the
+      # last week's share, because QA sweeps and agents run failing commands on
+      # purpose and the absolute share drifts with who is using the CLI. Floors:
+      # ten stored events and five execution errors in the half hour, so one
+      # failure at low volume, or against a week without any, stays quiet.
+      - alert: CLIExecutionErrorShareHigh
+        expr: |
+          bex:cli_telemetry_execution_error_share:ratio30m
+          > 3 * bex:cli_telemetry_execution_error_share:avg7d
+          and on()
+          sum(increase(bex_api_cli_telemetry_events_total[30m])) >= 10
+          and on()
+          sum(increase(bex_api_cli_telemetry_events_total{completion_kind="execution_error"}[30m])) >= 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of stored CLI commands failed in execution over 30m, over 3x the 7-day share"
+          description: "The execution_error share of stored CLI telemetry events over the last 30 minutes is more than three times its 7-day share, with at least 10 events and 5 execution errors. Find the command on the CLI usage board (Commands — reach, failures and non-interactive duration; filter the last hour) or in SQL: SELECT command, count(*) FROM cli_analytics.events WHERE received_at > now() - interval '1 hour' AND completion_kind = 'execution_error' GROUP BY 1 ORDER BY 2 DESC. Then compare that command's REST route on the bex-api-gateways board (origin 5xx by route) and the last bex-api deploy. One workspace running a failing command in a loop (a QA sweep, an agent) is also this: check workspace_id before rolling back. Runbook: docs/runbooks/cli-analytics.md#collection-health"
+
       # w7/m426. An API key sent as `Authorization: Bearer` and not accepted
       # (docs/ADR012-auth.md §8e). `reason` is a closed set (malformed, refused,
       # cached, inactive, limited); neither the key nor its client id is ever a

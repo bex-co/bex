@@ -36,7 +36,7 @@ The default range is seven days, refresh is five minutes, and daily/cohort bound
 | Command duration | Nonnegative duration for success, execution-error or explicit-exit events. The main command table uses non-interactive, non-streaming samples only. The duration table separates interactive, non-interactive and session/stream lifetimes (logs, ssh, shell, psql); it shows sample counts and p50/p95. Flags are not collected, so wait modes cannot be split further. |
 | Agents / CI | Presence of reported environment-marker names; neither absence nor terminal attachment proves human use. Agent and CI shares overlap. Multiple markers for the same family/provider count once per invocation. Generic CI appears only without a more specific marker; multiple different families/providers can count the same invocation. |
 | Environment / versions | Observed OS/architecture, output format, TUI-launched state and upstream Render CLI version. An installation can appear in multiple categories over time; category counts are not additive. |
-| Collection health | Global server-observed ingest rate, rejection share and p95 ingest latency from Prometheus, plus age of the newest retained SQL event. No requests is not proof of collector health, and quiet CLI usage is not proof of an outage. |
+| Collection health | Global, from Prometheus: ingest rate, rejection share, p95 ingest latency, telemetry coverage, stored events by completion kind and backoff-causing answers, plus the age of the newest retained SQL event. Quiet CLI usage is not an outage; telemetry coverage tells the two apart (see [Collection health](#collection-health)). |
 
 ## Collection boundaries
 
@@ -47,6 +47,27 @@ Opt-outs, missing authentication, early setup failures, sender backoff and deliv
 The release that ships this gate makes every machine start one run later, including machines that had already seen Render's notice and so sent before, and `--version` and provider launches stop reporting on machines that never saw it. Counts dip at that release. The board's "Bex releases" annotation marks where each launcher release first reported, so the dip lines up with a marker rather than looking like an outage. Root version requests are now reported with completion kind `version`, and a successful `bex code` / `bex glm` / `muse` / `kimi` / `deepseek` launch reports itself immediately before it replaces the process (w5/m94); both carry only the command path, never the arguments handed to the launched agent. What the launched agent then does is the provider's session, not a bex command, and is never collected.
 
 Rows follow audit retention (90 days by default) and the account-deletion cleanup. Counts and cohorts describe remaining retained observations, not permanent install history or billing-grade usage.
+
+## Collection health
+
+The bottom row of the board answers "is the collector quiet or broken?" (ADR113 D6, D8). Two Prometheus counters feed it, and neither carries a value a client sent:
+
+- `bex_api_cli_requests_total{client}` counts the REST requests whose `User-Agent` is the CLI's (`render-cli/…`), excluding the telemetry deliveries themselves. `client` is `bex` when the launcher's `X-Bex-CLI-Version` header is present and `render-cli` for an unmodified Render CLI pointed at bex. It is counted on the server, so it includes opted-out clients and machines that never passed the disclosure gate.
+- `bex_api_cli_telemetry_events_total{completion_kind, output_format, client}` counts stored events. Each label is clamped to a closed set (the eight upstream kinds plus `other`, the four formats plus `unknown`, the two clients). Commands and versions are not labels: ask the retained rows.
+
+Every replica exports all of their series, and the ingest route's `202`, `429`, `500` and `503` answers, at 0 when it starts. A series that first appears at 1 is invisible to `increase()`, and each rollout starts both replicas empty, so without this the first events and the first failure on every new pod went uncounted.
+
+| Panel | What it shows | Alert |
+| --- | --- | --- |
+| Telemetry coverage | Stored events per CLI request over the last hour, by client, against the requests themselves. The level depends on how many API calls a command makes; read the trend. A drop toward zero while requests continue means collection stopped. | `CLITelemetryIngestSilent` |
+| Stored events by completion kind | Events per hour by kind, the execution_error share of the last 30 minutes (`bex:cli_telemetry_execution_error_share:ratio30m`), and the alert line at three times the 7-day share (`bex:cli_telemetry_execution_error_share:avg7d`), the rules the alert itself reads. | `CLIExecutionErrorShareHigh` |
+| Backoff-causing answers | Deliveries answered 429 (the CLI stops sending for 5 minutes) or 503 (30 minutes). A 404 (an hour) is counted under `route="unmatched"` and cannot appear here. | `CLITelemetryIngestFailing` |
+
+All three alerts are warning tier: they reach the daily digest, never a page.
+
+- **`CLITelemetryIngestFailing`**: more than 5% of deliveries answered 5xx for 15 minutes, with at least two failed deliveries in each 10-minute window. `503` means the control-plane store is off (`BEX_CP_DB_URI` unset); `500` means the insert failed. Read `kubectl -n bex-system logs deploy/bex-api`, then the `bex-db` primary. Every minute of it costs each affected CLI half an hour of events.
+- **`CLITelemetryIngestSilent`**: at least 30 CLI requests in two hours, some in the last 30 minutes, and no event stored in two hours. In order: the route is still mounted (`curl -s -o /dev/null -w '%{http_code}' -X POST https://api.bex.co/v1/cli-telemetry-events` answers `401`, not `404`); a fleet-wide backoff (the failing alert and the backoff panel); a launcher release in the last day that changed what is sent. A population of clients that never sends (opted out, or headless and never shown the notice) can trip it on its own: the coverage panel splits by client.
+- **`CLIExecutionErrorShareHigh`**: the execution_error share of the last 30 minutes is over three times its 7-day share, with at least 10 events and 5 execution errors. Find the command in SQL (`SELECT command, workspace_id, count(*) FROM cli_analytics.events WHERE received_at > now() - interval '1 hour' AND completion_kind = 'execution_error' GROUP BY 1, 2 ORDER BY 3 DESC`), then its REST route on the bex-api gateways board and the last bex-api deploy. One workspace running a failing command in a loop (a QA sweep, an agent) also trips it; check the workspace before rolling anything back.
 
 ## Verification
 

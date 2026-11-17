@@ -56,7 +56,7 @@ type telemetryEventRequest struct {
 // answers 202 on store and maps every failure to the shared error dialect —
 // a rejection never breaks the CLI, it just stops that one event.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	mux.HandleFunc("POST /v1/cli-telemetry-events", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(IngestRoute, func(w http.ResponseWriter, r *http.Request) {
 		var req telemetryEventRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)

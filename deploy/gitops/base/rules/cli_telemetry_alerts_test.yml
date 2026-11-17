@@ -1,0 +1,314 @@
+# w3/m438 (ADR113 D8): the CLI telemetry pipeline warns when ingest fails, when
+# the CLI is in use and nothing is stored, and when the execution_error share
+# jumps over its week. Every replica exports the series these rules read at 0
+# (lego/backend/internal/api/httpmetrics.go), so the inputs below start at 0
+# rather than appearing at their first increment.
+# Run: promtool test rules cli_telemetry_alerts_test.yml (alerting_rules.yml alongside).
+rule_files:
+  - alerting_rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # --- CLITelemetryIngestFailing ---------------------------------------------
+
+  # Both replicas answer a third of the deliveries 503 from minute 30 on: the
+  # control-plane store went away. The share holds for the quarter hour the
+  # rule waits.
+  - name: a third of deliveries answered 503 on both replicas warns
+    interval: 1m
+    input_series:
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-a",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="202"}'
+        values: "0+2x90"
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-a",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="503"}'
+        values: "0x30 1+1x59"
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-b",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="202"}'
+        values: "0+2x90"
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-b",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="503"}'
+        values: "0x30 1+1x59"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+      # Failing since minute 31, not yet for 15 minutes.
+      - eval_time: 40m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "bex-api answers 33.33% of CLI telemetry deliveries with 5xx"
+              description: "More than 5% of POST /v1/cli-telemetry-events deliveries have been answered 5xx for >15m. Each CLI answered 503 stops sending for 30 minutes, so every minute of this loses half an hour of that CLI's usage data. Split by status on the CLI usage board (Telemetry ingest rate, Backoff-causing answers): 503 is the control-plane store being off (BEX_CP_DB_URI unset, core.ErrCLITelemetryUnavailable), 500 is the insert failing: kubectl -n bex-system logs deploy/bex-api | grep cli-telemetry, then the bex-db primary. Runbook: docs/runbooks/cli-analytics.md#collection-health"
+
+  # Ten 500s in one minute during a database failover, then nothing. The share
+  # is high for the ten minutes the burst stays in the window, never for the
+  # fifteen the rule waits.
+  - name: a burst of 500s that stops stays quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-a",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="202"}'
+        values: "0+5x60"
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-a",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="500"}'
+        values: "0x20 10x40"
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+      - eval_time: 38m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+
+  # One delivery in forty answered 503, for an hour: 2.5%, under the 5% line.
+  - name: a low failure share stays quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-a",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="202"}'
+        values: "0+19.5x60"
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-a",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="503"}'
+        values: "0+0.5x60"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+      - eval_time: 55m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+
+  # A delivery every other minute and one 503 every nine minutes, for an hour.
+  # Every window holds about a sixth failed, but only ever one failed delivery,
+  # under the floor of two.
+  - name: one failure at a time at low volume stays quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-a",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="202"}'
+        values: "0+0.5x60"
+      - series: 'bex_api_http_requests_total{job="bex-api",pod="bex-api-a",surface="rest",route="POST /v1/cli-telemetry-events",method="POST",status="503"}'
+        values: "0x5 1x8 2x8 3x8 4x8 5x8 6x8 7"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+      - eval_time: 58m
+        alertname: CLITelemetryIngestFailing
+        exp_alerts: []
+
+  # --- CLITelemetryIngestSilent ----------------------------------------------
+
+  # A CLI request a minute on each replica throughout; the last event is stored
+  # at minute 60. Two hours later nothing has been stored in the window.
+  - name: CLI requests continue and nothing is stored for two hours warns
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-a",client="bex"}'
+        values: "0+1x300"
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-b",client="bex"}'
+        values: "0+1x300"
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-a",client="render-cli"}'
+        values: "0x300"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="json"}'
+        values: "0+1x60 60x240"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-b",client="bex",completion_kind="success",output_format="json"}'
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 170m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+      - eval_time: 200m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "240 CLI requests in 2h and no CLI telemetry event stored"
+              description: "The CLI keeps calling bex-api (bex_api_cli_requests_total) and no telemetry event has been stored for 2 hours. Check, in order: the route is still mounted (curl -s -o /dev/null -w '%{http_code}' -X POST https://api.bex.co/v1/cli-telemetry-events answers 401, not 404; a 404 silences each CLI for an hour); CLITelemetryIngestFailing and the Backoff-causing answers panel (a fleet-wide 503/429 backoff); a bex CLI release in the last day that changed the disclosure gate (ADR113 D5: a machine whose runs have no terminal and no CI=true sends nothing until the notice was shown once). Opted-out or never-disclosed clients still make requests, so a population that never sends can trip this on its own: the Telemetry coverage panel splits it by client. Runbook: docs/runbooks/cli-analytics.md#collection-health"
+
+  # A quiet stretch: a handful of CLI requests and no events. Quiet usage is not
+  # an outage.
+  - name: a few CLI requests and no events stay quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-a",client="bex"}'
+        values: "0+0.1x300"
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-b",client="render-cli"}'
+        values: "0+0.1x300"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="json"}'
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 200m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+      - eval_time: 290m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+
+  # Busy CLI traffic and an event every twenty minutes: collection is working.
+  - name: events stored while the CLI is busy stay quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-a",client="bex"}'
+        values: "0+3x300"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="json"}'
+        values: "0+0.05x300"
+    alert_rule_test:
+      - eval_time: 200m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+      - eval_time: 290m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+
+  # A rollout at minute 120 replaces bex-api-a with bex-api-b. One event reaches
+  # the new pod before its first scrape, so its series first appears at 1 and
+  # never moves: increase() reads nothing on any series, yet an event was
+  # stored. Once that series is older than the window, the silence is real.
+  - name: an event stored before a new replica's first scrape counts as stored
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-a",client="bex"}'
+        values: "0+1x120 stale"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="json"}'
+        values: "0+1x60 60x60 stale"
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-b",client="bex"}'
+        values: "_x121 0+1x240"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-b",client="bex",completion_kind="success",output_format="json"}'
+        values: "_x125 1x236"
+    alert_rule_test:
+      - eval_time: 200m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+      - eval_time: 290m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "120 CLI requests in 2h and no CLI telemetry event stored"
+              description: "The CLI keeps calling bex-api (bex_api_cli_requests_total) and no telemetry event has been stored for 2 hours. Check, in order: the route is still mounted (curl -s -o /dev/null -w '%{http_code}' -X POST https://api.bex.co/v1/cli-telemetry-events answers 401, not 404; a 404 silences each CLI for an hour); CLITelemetryIngestFailing and the Backoff-causing answers panel (a fleet-wide 503/429 backoff); a bex CLI release in the last day that changed the disclosure gate (ADR113 D5: a machine whose runs have no terminal and no CI=true sends nothing until the notice was shown once). Opted-out or never-disclosed clients still make requests, so a population that never sends can trip this on its own: the Telemetry coverage panel splits it by client. Runbook: docs/runbooks/cli-analytics.md#collection-health"
+
+  # Events until minute 120, then a burst of 200 CLI requests that ends at 140.
+  # From minute 240 the window holds no event and still most of the burst, but
+  # the requests stopped long ago.
+  - name: CLI requests that already stopped are not continuing
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_requests_total{job="bex-api",pod="bex-api-a",client="bex"}'
+        values: "0x120 10+10x19 200x220"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="json"}'
+        values: "0+0.1x120 12x240"
+    alert_rule_test:
+      - eval_time: 150m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+      - eval_time: 252m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+      - eval_time: 330m
+        alertname: CLITelemetryIngestSilent
+        exp_alerts: []
+
+  # --- CLIExecutionErrorShareHigh --------------------------------------------
+  # The baseline reads whatever of the last seven days exists; a day of history
+  # keeps these tests fast and exercises the same arithmetic.
+
+  # A day at 5% execution errors, then every other command fails for an hour.
+  - name: execution errors jumping far over the week's share warn
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="json"}'
+        values: "0+1x1560"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="execution_error",output_format="json"}'
+        values: "0+0.05x1440 73+1x119"
+    alert_rule_test:
+      - eval_time: 1440m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts: []
+      # Above the line from about minute 1445, not yet for ten minutes.
+      - eval_time: 1448m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts: []
+      - eval_time: 1470m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "50% of stored CLI commands failed in execution over 30m, over 3x the 7-day share"
+              description: "The execution_error share of stored CLI telemetry events over the last 30 minutes is more than three times its 7-day share, with at least 10 events and 5 execution errors. Find the command on the CLI usage board (Commands — reach, failures and non-interactive duration; filter the last hour) or in SQL: SELECT command, count(*) FROM cli_analytics.events WHERE received_at > now() - interval '1 hour' AND completion_kind = 'execution_error' GROUP BY 1 ORDER BY 2 DESC. Then compare that command's REST route on the bex-api-gateways board (origin 5xx by route) and the last bex-api deploy. One workspace running a failing command in a loop (a QA sweep, an agent) is also this: check workspace_id before rolling back. Runbook: docs/runbooks/cli-analytics.md#collection-health"
+
+  # A fifth of commands fail all day, then two in five for an hour: the share
+  # doubles, which is under three times the week's.
+  - name: an execution error share doubling over the week's stays quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="json"}'
+        values: "0+1x1560"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="execution_error",output_format="json"}'
+        values: "0+0.25x1440 360.6667+0.6667x119"
+    alert_rule_test:
+      - eval_time: 1470m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts: []
+      - eval_time: 1550m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts: []
+
+  # One command in a hundred fails all day, then four in twenty for an hour:
+  # twenty times the share and enough events, but four execution errors is
+  # under the floor of five.
+  - name: four execution errors in half an hour stay quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="text"}'
+        values: "0+0.5x1560"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="execution_error",output_format="text"}'
+        values: "0+0.005x1440 7.3333+0.1333x119"
+    alert_rule_test:
+      - eval_time: 1470m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts: []
+      - eval_time: 1550m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts: []
+
+  # Five execution errors and four successes in each half hour: more than half
+  # failing, but nine events is under the floor of ten.
+  - name: five errors in nine events stay quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="success",output_format="text"}'
+        values: "0+0.1333x1560"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="bex",completion_kind="execution_error",output_format="text"}'
+        values: "0+0.001x1440 1.6067+0.1667x119"
+    alert_rule_test:
+      - eval_time: 1470m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts: []
+      - eval_time: 1550m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts: []
+
+  # A day without a single execution error, then six in half an hour: three
+  # times nothing is nothing, so the floors alone decide.
+  - name: against a week without execution errors, six in half an hour warn
+    interval: 1m
+    input_series:
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="render-cli",completion_kind="success",output_format="interactive"}'
+        values: "0+1x1560"
+      - series: 'bex_api_cli_telemetry_events_total{job="bex-api",pod="bex-api-a",client="render-cli",completion_kind="execution_error",output_format="interactive"}'
+        values: "0x1440 0.2+0.2x119"
+    alert_rule_test:
+      - eval_time: 1460m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts: []
+      - eval_time: 1490m
+        alertname: CLIExecutionErrorShareHigh
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "16.67% of stored CLI commands failed in execution over 30m, over 3x the 7-day share"
+              description: "The execution_error share of stored CLI telemetry events over the last 30 minutes is more than three times its 7-day share, with at least 10 events and 5 execution errors. Find the command on the CLI usage board (Commands — reach, failures and non-interactive duration; filter the last hour) or in SQL: SELECT command, count(*) FROM cli_analytics.events WHERE received_at > now() - interval '1 hour' AND completion_kind = 'execution_error' GROUP BY 1 ORDER BY 2 DESC. Then compare that command's REST route on the bex-api-gateways board (origin 5xx by route) and the last bex-api deploy. One workspace running a failing command in a loop (a QA sweep, an agent) is also this: check workspace_id before rolling back. Runbook: docs/runbooks/cli-analytics.md#collection-health"

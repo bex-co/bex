@@ -9733,6 +9733,141 @@ dashboards:
                  "show": false
                 }
               }
+            },
+            {
+             "id": 26,
+             "type": "timeseries",
+             "title": "Telemetry coverage",
+             "description": "Quiet or broken? Stored telemetry events per CLI API request over the last hour, by client (left axis), against the CLI requests themselves (bars, right axis). bex is the launcher, which adds X-Bex-CLI-Version; render-cli is an unmodified Render CLI pointed at bex. The level depends on how many API calls a command makes, so read it as a trend: a drop toward zero while the bars continue means collection stopped (a missing route, a fleet-wide backoff, a release that stopped sending, an opt-out wave), and CLITelemetryIngestSilent warns after two hours of it. Requests are counted on the server, so they include opted-out and never-disclosed clients (ADR113 D6). Global, independent of product filters.",
+             "gridPos": {
+               "x": 0,
+               "y": 82,
+               "w": 8,
+               "h": 8
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0
+                },
+               "overrides": [
+                  {
+                   "matcher": { "id": "byFrameRefID", "options": "B" },
+                   "properties": [
+                      { "id": "custom.axisPlacement", "value": "right" },
+                      { "id": "custom.drawStyle", "value": "bars" },
+                      { "id": "custom.fillOpacity", "value": 30 }
+                    ]
+                  }
+                ]
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (client) (avg_over_time(bex:cli_telemetry_events:rate5m[1h])) / sum by (client) (rate(bex_api_cli_requests_total[1h]))",
+                 "legendFormat": "events per request: {{client}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum by (client) (increase(bex_api_cli_requests_total[1h]))",
+                 "legendFormat": "CLI requests per hour: {{client}}"
+                }
+              ]
+            },
+            {
+             "id": 27,
+             "type": "timeseries",
+             "title": "Stored events by completion kind",
+             "description": "In near real time, is the error share moving? Stored telemetry events per hour by completion kind (left axis), from the Prometheus counter rather than the retained rows the SQL panels read every five minutes. Right axis: the execution_error share of the last 30 minutes and, dashed red, CLIExecutionErrorShareHigh's line at three times the 7-day share, both drawn from the rules the alert reads. The alert also needs 10 events and 5 execution errors in the half hour, and warns after 10 minutes above the line. Find the failing command with the Commands panel above, filtered to the last hour. Global, independent of product filters.",
+             "gridPos": {
+               "x": 8,
+               "y": 82,
+               "w": 8,
+               "h": 8
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0
+                },
+               "overrides": [
+                  {
+                   "matcher": { "id": "byFrameRefID", "options": "B" },
+                   "properties": [
+                      { "id": "custom.axisPlacement", "value": "right" },
+                      { "id": "unit", "value": "percentunit" }
+                    ]
+                  },
+                  {
+                   "matcher": { "id": "byFrameRefID", "options": "C" },
+                   "properties": [
+                      { "id": "custom.axisPlacement", "value": "right" },
+                      { "id": "unit", "value": "percentunit" },
+                      { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } },
+                      { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }
+                    ]
+                  }
+                ]
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "3600 * sum by (completion_kind) (avg_over_time(bex:cli_telemetry_events:rate5m[1h]))",
+                 "legendFormat": "{{completion_kind}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "bex:cli_telemetry_execution_error_share:ratio30m",
+                 "legendFormat": "execution_error share (30m)"
+                },
+                {
+                 "refId": "C",
+                 "expr": "3 * bex:cli_telemetry_execution_error_share:avg7d",
+                 "legendFormat": "alert line (3x the 7-day share)"
+                }
+              ]
+            },
+            {
+             "id": 28,
+             "type": "timeseries",
+             "title": "Backoff-causing answers",
+             "description": "Telemetry deliveries answered 429 or 503 per hour. Each one silences that CLI's telemetry: 5 minutes after a 429, 30 minutes after a 503 (upstream pkg/analytics/backoff.go, honoring a valid Retry-After), so a short outage costs far more events than its own length. 503 is the control-plane store being off; CLITelemetryIngestFailing warns when 5xx answers pass 5% for 15 minutes. A 404 costs an hour but cannot appear here: an unrouted delivery is counted under route=unmatched, which is why CLITelemetryIngestSilent exists. Global, independent of product filters.",
+             "gridPos": {
+               "x": 16,
+               "y": 82,
+               "w": 8,
+               "h": 8
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0,
+                 "custom": {
+                   "drawStyle": "bars",
+                   "fillOpacity": 60
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (status) (increase(bex_api_http_requests_total{route=\"POST /v1/cli-telemetry-events\", status=~\"429|503\"}[1h]))",
+                 "legendFormat": "{{status}}"
+                }
+              ]
             }
           ]
         }

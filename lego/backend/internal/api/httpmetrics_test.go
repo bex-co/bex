@@ -19,11 +19,13 @@ package api
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -32,7 +34,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/bex-co/bex/lego/backend/internal/clitelemetry"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // meteredServer builds the same stack cmd/api serves: the composed product
@@ -149,6 +153,8 @@ func TestOriginMetricsFamiliesAppearOnAScrape(t *testing.T) {
 		"bex_api_http_in_flight_requests",
 		"bex_api_graphql_operation_duration_seconds",
 		"bex_api_mcp_tool_duration_seconds",
+		"bex_api_cli_requests_total",
+		"bex_api_cli_telemetry_events_total",
 	} {
 		if !strings.Contains(scrape, family) {
 			t.Errorf("scrape is missing %s", family)
@@ -161,23 +167,21 @@ func TestOriginMetricsFamiliesAppearOnAScrape(t *testing.T) {
 	}
 }
 
-// TestOriginMetricsTelemetrySeries is the cardinality companion to
-// TestOriginMetricsRouteLabelIsAPatternNeverAnId for the CLI usage counter
-// (w5/m92): stored events only, bounded labels, and identity dimensions
-// absent by construction.
+// TestOriginMetricsTelemetrySeries pins the exposition of the CLI usage
+// counter (w5/m92, ADR113 D8): stored events by completion kind, output format
+// and client, the names the alert rules and the CLI usage board read.
 func TestOriginMetricsTelemetrySeries(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	m := NewOriginMetrics(reg)
-	m.ObserveTelemetry("bex services", "success", "2.27.0", "json")
-	m.ObserveTelemetry("bex services", "execution_error", "2.27.0", "text")
+	m.ObserveTelemetry("success", "json", clitelemetry.ClientBex)
+	m.ObserveTelemetry("execution_error", "text", clitelemetry.ClientRenderCLI)
 
-	w := httptest.NewRecorder()
-	promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metrics", nil))
-	scrape := w.Body.String()
+	scrape := scrapeText(t, reg)
 	// NB: exposition sorts label names alphabetically, not in declaration order.
 	for _, series := range []string{
-		`bex_api_cli_telemetry_events_total{cli_version="2.27.0",command="bex services",completion_kind="success",output_format="json"} 1`,
-		`bex_api_cli_telemetry_events_total{cli_version="2.27.0",command="bex services",completion_kind="execution_error",output_format="text"} 1`,
+		`bex_api_cli_telemetry_events_total{client="bex",completion_kind="success",output_format="json"} 1`,
+		`bex_api_cli_telemetry_events_total{client="render-cli",completion_kind="execution_error",output_format="text"} 1`,
+		`bex_api_cli_telemetry_events_total{client="bex",completion_kind="execution_error",output_format="text"} 0`,
 	} {
 		if !strings.Contains(scrape, series) {
 			t.Errorf("scrape is missing %s", series)
@@ -185,7 +189,171 @@ func TestOriginMetricsTelemetrySeries(t *testing.T) {
 	}
 	// Nil-safe: metrics-off ingest must not panic.
 	var off *OriginMetrics
-	off.ObserveTelemetry("bex services", "success", "2.27.0", "json")
+	off.ObserveTelemetry("success", "json", clitelemetry.ClientBex)
+}
+
+// TestOriginMetricsExportCLISeriesAtZero: a series that first appears at 1 is
+// invisible to increase(), and on production every rollout started both
+// replicas empty, so the first stored events of each new pod never reached a
+// rate (w3/m438). Every series the CLI telemetry alerts read exists at 0
+// before anything happens.
+func TestOriginMetricsExportCLISeriesAtZero(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	m := NewOriginMetrics(reg)
+	m.Middleware(http.NotFoundHandler())
+
+	scrape := scrapeText(t, reg)
+	for _, client := range clitelemetry.Clients {
+		if want := `bex_api_cli_requests_total{client="` + client + `"} 0`; !strings.Contains(scrape, want) {
+			t.Errorf("scrape is missing %s", want)
+		}
+		for _, kind := range clitelemetry.CompletionKinds {
+			for _, format := range clitelemetry.OutputFormats {
+				want := fmt.Sprintf(`bex_api_cli_telemetry_events_total{client=%q,completion_kind=%q,output_format=%q} 0`, client, kind, format)
+				if !strings.Contains(scrape, want) {
+					t.Errorf("scrape is missing %s", want)
+				}
+			}
+		}
+	}
+	for _, status := range []string{"202", "429", "500", "503"} {
+		want := `bex_api_http_requests_total{method="POST",route="POST /v1/cli-telemetry-events",status="` + status + `",surface="rest"} 0`
+		if !strings.Contains(scrape, want) {
+			t.Errorf("scrape is missing %s", want)
+		}
+	}
+	// The internal listener does not serve the ingest route, so it creates
+	// none of its series.
+	internal := prometheus.NewRegistry()
+	NewOriginMetrics(internal).InternalMiddleware(http.NotFoundHandler())
+	if got := scrapeText(t, internal); strings.Contains(got, "cli-telemetry-events") {
+		t.Errorf("the internal listener created ingest route series:\n%s", got)
+	}
+}
+
+// TestOriginMetricsCountsCLIRequestsByClient pins ADR113 D6: the REST requests
+// the CLI sends, split by whether the bex launcher sent them, are the
+// denominator the stored telemetry is read against. Anything else, and the
+// telemetry deliveries themselves, are not counted.
+func TestOriginMetricsCountsCLIRequestsByClient(t *testing.T) {
+	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}
+	h, reg, _ := meteredServer(t, base, Deps{})
+	const cliUA = "render-cli/2.36.0 (macOS - 15.1)"
+	send := func(method, path, userAgent, bexVersion, body string) {
+		t.Helper()
+		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r.Header.Set("Authorization", "Bearer "+testToken)
+		r.Header.Set("User-Agent", userAgent)
+		if bexVersion != "" {
+			r.Header.Set(clitelemetry.BexVersionHeader, bexVersion)
+		}
+		h.ServeHTTP(httptest.NewRecorder(), r)
+	}
+
+	// Counted: the launcher (prefix and release header) and an unmodified
+	// Render CLI (prefix alone), whatever the answer — an unrouted path is
+	// still a CLI request.
+	send(http.MethodGet, "/v1/services", cliUA, "0.3.0", "")
+	send(http.MethodPost, "/v1/services/web/restart", cliUA, "0.3.0", "")
+	send(http.MethodGet, "/v1/services", cliUA, "", "")
+	send(http.MethodGet, "/v1/does-not-exist", cliUA, "", "")
+
+	// Not counted.
+	send(http.MethodGet, "/v1/services", "Mozilla/5.0 (Macintosh)", "", "")
+	send(http.MethodGet, "/v1/services", "", "0.3.0", "")
+	send(http.MethodGet, "/v1/services", "curl/8.4 render-cli/2.36.0", "", "")
+	send(http.MethodPost, "/graphql", cliUA, "0.3.0", `{"query":"{ services { id } }"}`)
+	send(http.MethodPost, "/mcp", cliUA, "0.3.0", `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
+	send(http.MethodPost, "/v1/device-grant", cliUA, "0.3.0", `{}`)
+	send(http.MethodPost, "/v1/cli-telemetry-events", cliUA, "0.3.0", `{"command":"services"}`)
+	send(http.MethodPost, "/v1/cli-telemetry-events", cliUA, "", `{"command":"services"}`)
+
+	for client, want := range map[string]float64{clitelemetry.ClientBex: 2, clitelemetry.ClientRenderCLI: 2} {
+		if got := counterValue(t, reg, "bex_api_cli_requests_total", map[string]string{"client": client}); got != want {
+			t.Errorf("cli requests{client=%q} = %v, want %v", client, got, want)
+		}
+	}
+	if got := labelValues(gatherSamples(t, reg), "bex_api_cli_requests_total", "client"); len(got) != 2 {
+		t.Errorf("client label values = %v, want exactly the two clients", got)
+	}
+}
+
+// TestCLITelemetryCounterHoldsOnlyClosedSeries is ADR113 D8's acceptance test:
+// fifty deliveries, each with a different garbage command, version, kind and
+// format, are all stored, and the counter still holds only the series its
+// closed label sets allow — no value from a body became a label.
+func TestCLITelemetryCounterHoldsOnlyClosedSeries(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	metrics := NewOriginMetrics(reg)
+	st := &recordingTelemetryStore{}
+	svc := &clitelemetry.Service{Base: &core.Base{}, Store: st, Metrics: metrics}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	for i := range 50 {
+		body, _ := json.Marshal(map[string]any{
+			"command":         fmt.Sprintf("services list --garbage-%d", i),
+			"cli_version":     fmt.Sprintf("9.9.%d-evil", i),
+			"completion_kind": fmt.Sprintf("kind_%d", i),
+			"output_format":   fmt.Sprintf("format_%d", i),
+		})
+		r := httptest.NewRequest(http.MethodPost, "/v1/cli-telemetry-events", strings.NewReader(string(body)))
+		if i%2 == 0 {
+			r.Header.Set(clitelemetry.BexVersionHeader, fmt.Sprintf("0.%d.0", i))
+		}
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, r)
+		if w.Code != http.StatusAccepted {
+			t.Fatalf("delivery %d = %d: %s", i, w.Code, w.Body)
+		}
+	}
+
+	if len(st.rows) != 50 {
+		t.Fatalf("stored rows = %d, want 50", len(st.rows))
+	}
+	const family = "bex_api_cli_telemetry_events_total"
+	samples := gatherSamples(t, reg)
+	var series int
+	for _, s := range samples {
+		if s.family != family {
+			continue
+		}
+		series++
+		if len(s.labels) != 3 {
+			t.Errorf("series %v has labels beyond completion_kind, output_format and client", s)
+		}
+		if !slices.Contains(clitelemetry.CompletionKinds, s.labels["completion_kind"]) ||
+			!slices.Contains(clitelemetry.OutputFormats, s.labels["output_format"]) ||
+			!slices.Contains(clitelemetry.Clients, s.labels["client"]) {
+			t.Errorf("series %v carries a value outside the closed sets", s)
+		}
+	}
+	if want := len(clitelemetry.CompletionKinds) * len(clitelemetry.OutputFormats) * len(clitelemetry.Clients); series != want {
+		t.Errorf("counter holds %d series, want the %d the closed sets allow", series, want)
+	}
+	for client, want := range map[string]float64{clitelemetry.ClientBex: 25, clitelemetry.ClientRenderCLI: 25} {
+		labels := map[string]string{"completion_kind": clitelemetry.CompletionKindOther, "output_format": clitelemetry.OutputFormatUnknown, "client": client}
+		if got := counterValue(t, reg, family, labels); got != want {
+			t.Errorf("%s%v = %v, want %v", family, labels, got, want)
+		}
+	}
+}
+
+type recordingTelemetryStore struct{ rows []store.CLITelemetryEvent }
+
+func (r *recordingTelemetryStore) InsertCLITelemetryEvent(_ context.Context, ev store.CLITelemetryEvent) error {
+	r.rows = append(r.rows, ev)
+	return nil
+}
+
+func scrapeText(t *testing.T, reg *prometheus.Registry) string {
+	t.Helper()
+	w := httptest.NewRecorder()
+	promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("/metrics = %d", w.Code)
+	}
+	return w.Body.String()
 }
 
 // TestOriginMetricsRouteLabelIsAPatternNeverAnId is the cardinality guard: ids

@@ -47,13 +47,13 @@ func (f *fakeStore) InsertCLITelemetryEvent(_ context.Context, ev store.CLITelem
 
 type fakeMetrics struct {
 	mu    sync.Mutex
-	calls [][4]string
+	calls [][3]string
 }
 
-func (f *fakeMetrics) ObserveTelemetry(command, completionKind, cliVersion, outputFormat string) {
+func (f *fakeMetrics) ObserveTelemetry(completionKind, outputFormat, client string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.calls = append(f.calls, [4]string{command, completionKind, cliVersion, outputFormat})
+	f.calls = append(f.calls, [3]string{completionKind, outputFormat, client})
 }
 
 func newTestService() (*Service, *fakeStore) {
@@ -178,20 +178,70 @@ func TestRecordObservesStoredEventsOnce(t *testing.T) {
 	fm := &fakeMetrics{}
 	s.Metrics = fm
 	in := sampleInput()
-	in.CLIVersion = strings.Repeat("v", maxTelemetryFieldBytes+10)
+	in.BexVersion = "0.2.1"
 	if _, err := s.Record(context.Background(), in); err != nil {
 		t.Fatalf("Record: %v", err)
 	}
 	if len(fm.calls) != 1 {
 		t.Fatalf("observe calls = %d, want 1", len(fm.calls))
 	}
-	got := fm.calls[0]
-	// Labels carry the stored (truncated) values, so the series matches the row.
-	if got[0] != "services list" || got[1] != "success" || got[3] != "json" {
-		t.Errorf("labels = %q", got)
+	if got, want := fm.calls[0], [3]string{"success", "json", ClientBex}; got != want {
+		t.Errorf("labels = %q, want %q", got, want)
 	}
-	if len(got[2]) != maxTelemetryFieldBytes {
-		t.Errorf("cli_version label len = %d, want truncated %d", len(got[2]), maxTelemetryFieldBytes)
+}
+
+// TestMetricLabelsAreClosedSets pins ADR113 D8: each label of the stored-events
+// counter is one of a fixed list, whatever the body says, while the stored row
+// keeps what was sent (TestRecordStoresGarbageVerbatimButCountsItClamped).
+func TestMetricLabelsAreClosedSets(t *testing.T) {
+	for _, tc := range []struct {
+		name                 string
+		in                   EventInput
+		kind, format, client string
+	}{
+		{"every field known, bex launcher", EventInput{CompletionKind: "execution_error", OutputFormat: "yaml", BexVersion: "0.2.1"}, "execution_error", "yaml", ClientBex},
+		{"render CLI without the release header", EventInput{CompletionKind: "explicit_exit", OutputFormat: "interactive"}, "explicit_exit", "interactive", ClientRenderCLI},
+		{"upstream's own unknown format", EventInput{CompletionKind: "setup_error", OutputFormat: "unknown"}, "setup_error", "unknown", ClientRenderCLI},
+		{"a kind a newer CLI may add", EventInput{CompletionKind: "interrupted", OutputFormat: "json"}, CompletionKindOther, "json", ClientRenderCLI},
+		{"case is not normalized into a known value", EventInput{CompletionKind: "SUCCESS", OutputFormat: "JSON"}, CompletionKindOther, OutputFormatUnknown, ClientRenderCLI},
+		{"blank fields", EventInput{}, CompletionKindOther, OutputFormatUnknown, ClientRenderCLI},
+		{"a blank release header is no header", EventInput{CompletionKind: "help", OutputFormat: "text", BexVersion: "   "}, "help", "text", ClientRenderCLI},
+		{"any release header names the launcher", EventInput{CompletionKind: "version", OutputFormat: "text", BexVersion: "not a version"}, "version", "text", ClientBex},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			kind, format, client := MetricLabels(tc.in)
+			if kind != tc.kind || format != tc.format || client != tc.client {
+				t.Errorf("MetricLabels = (%q, %q, %q), want (%q, %q, %q)", kind, format, client, tc.kind, tc.format, tc.client)
+			}
+		})
+	}
+	// Every upstream kind passes through unchanged, so the counter splits the
+	// outcomes exactly as the stored rows do.
+	for _, kind := range CompletionKinds {
+		if got, _, _ := MetricLabels(EventInput{CompletionKind: kind}); got != kind {
+			t.Errorf("known kind %q became %q", kind, got)
+		}
+	}
+}
+
+// TestRecordStoresGarbageVerbatimButCountsItClamped: the row is the record and
+// keeps what the client sent (w5/m92's truncate-never-reject rule); only the
+// counter's labels are clamped.
+func TestRecordStoresGarbageVerbatimButCountsItClamped(t *testing.T) {
+	s, st := newTestService()
+	fm := &fakeMetrics{}
+	s.Metrics = fm
+	in := sampleInput()
+	in.CompletionKind, in.OutputFormat, in.CLIVersion = "kind-from-the-future", "html", "2.99.0 beta"
+	if _, err := s.Record(context.Background(), in); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	row := st.rows[0]
+	if row.CompletionKind != "kind-from-the-future" || row.OutputFormat != "html" || row.CLIVersion != "2.99.0 beta" {
+		t.Errorf("stored row = kind %q, format %q, version %q, want the values sent", row.CompletionKind, row.OutputFormat, row.CLIVersion)
+	}
+	if got, want := fm.calls[0], [3]string{CompletionKindOther, OutputFormatUnknown, ClientRenderCLI}; got != want {
+		t.Errorf("labels = %q, want %q", got, want)
 	}
 }
 

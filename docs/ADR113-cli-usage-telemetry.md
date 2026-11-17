@@ -1,6 +1,6 @@
 # ADR113 — CLI usage telemetry: Render parity, the bex extensions, and the boards that read it
 
-**Status:** D1–D4 accepted and shipped (w5/m92, m93, m94, m97; 2026-09-10 onward) · D5 shipped (w3/m437, `ddf27afb8`, 2026-11-16; it reaches users with the next `bex-cli/v*` release) · D6–D9 proposed (2026-11-16) and scheduled as [w3/m438–m441](../.pm/w3/README.md) · **Date:** 2026-11-16 · **Extends:** [ADR018](ADR018-render-parity.md) (parity ledger), [ADR088](ADR088-platform-observability-ui.md) (Grafana at `obs.bex.co`), [bex-cli.md § CLI usage telemetry](bex-cli.md#cli-usage-telemetry), [runbooks/cli-analytics.md](runbooks/cli-analytics.md) · **CLI pin:** Render CLI v2.36.0, `render-oss/cli@4fd34231b637` (`lego/cli/go.mod`)
+**Status:** D1–D4 accepted and shipped (w5/m92, m93, m94, m97; 2026-09-10 onward) · D5 shipped (w3/m437, `ddf27afb8`, 2026-11-16; it reaches users with the next `bex-cli/v*` release) · D6 and D8 shipped (w3/m438, 2026-11-16) · D7 and D9 proposed (2026-11-16) and scheduled as [w3/m439–m441](../.pm/w3/README.md) · **Date:** 2026-11-16 · **Extends:** [ADR018](ADR018-render-parity.md) (parity ledger), [ADR088](ADR088-platform-observability-ui.md) (Grafana at `obs.bex.co`), [bex-cli.md § CLI usage telemetry](bex-cli.md#cli-usage-telemetry), [runbooks/cli-analytics.md](runbooks/cli-analytics.md) · **CLI pin:** Render CLI v2.36.0, `render-oss/cli@4fd34231b637` (`lego/cli/go.mod`)
 
 ![ADR113 architecture: on the developer's machine a command produces an execution result, passes the eligibility, disclosure, consent and backoff gates, becomes Render's 18-field event in a state file and is posted once by a subprocess; Bex-native commands that replace the process report themselves and a transport wrapper adds the bex release header. bex-api authenticates, rate-limits, attributes the event to the caller and stores it in the control-plane Postgres, counting it in Prometheus. A read-only view and reader role feed the CLI usage board on obs.bex.co. Amber marks what this ADR adds: a Bex-owned disclosure, the extended-CLI coverage contract, new view columns, a coverage panel and ingest alerts.](assets/ADR113-cli-usage-telemetry.svg)
 
@@ -56,7 +56,7 @@ All references are to the pinned source.
 | Ingest: handler | Liberal decode (unknown fields ignored), `202 {"id"}` on store, `503` while the control-plane store is off | `lego/backend/internal/clitelemetry/rest.go:59` |
 | Ingest: attribution | Subject and workspace come from the auth identity, never from the payload. The payload's workspace is kept as `reported_workspace_id`. Fields are truncated, never rejected; only a blank `command` is a 400 | `clitelemetry/service.go` `Record` |
 | Store | `cli_telemetry_events` in the control-plane Postgres (migrations 0113, 0116). Rows are purged with the audit retention window, 90 days by default. Deleting an account deletes its rows | `store/clitelemetry.go`, `audit/service.go:354`, `store/accounts.go:393` |
-| Counter | `bex_api_cli_telemetry_events_total{command, completion_kind, cli_version, output_format}`, incremented after a successful insert | `api/httpmetrics.go:188` |
+| Counter | `bex_api_cli_telemetry_events_total{completion_kind, output_format, client}`, incremented after a successful insert, every label clamped to a closed set (D8). `bex_api_cli_requests_total{client}` counts the CLI's REST requests beside it (D6) | `api/httpmetrics.go`, `clitelemetry.MetricLabels` |
 | Read path | View `cli_analytics.events` projects the table and derives `outcome`, `failed`, `duration_mode`, `upstream_version` and `bex_version`. Role `bex_cli_analytics` can read only that view: read-only transactions, 10-second timeouts, 6 connections | `scripts/cli-analytics.sql`, `scripts/cli-analytics-bootstrap.sh` |
 | Board | Grafana datasource `cli-analytics` and the board "CLI usage" (`bex-cli-usage`, 24 panels), behind the ops-workspace gate | `deploy/gitops/base/values/grafana.values.yaml`; [runbook](runbooks/cli-analytics.md) |
 | Second source | Every created hosting resource records its creation surface, and `cli` is set server-side from the `User-Agent: render-cli/…` prefix. No client telemetry is involved | `core/product_surface.go`, migration 0117 (w5/m97) |
@@ -120,6 +120,8 @@ bex-api already knows when a request comes from the CLI: `core.ProductSurface` r
 
 The counter is server-side, so it also sees users who opted out or never passed the gate. It records only that a CLI request arrived: no command, no identity.
 
+**As shipped (w3/m438).** A request is counted on the REST surface whatever its answer, so an unrouted CLI request still counts; the telemetry deliveries are left out by method and path, not by the pattern they resolved to, so a delivery to a missing route is left out too. Both clients are exported at 0 when the process starts (see D8).
+
 ### D7 — Extended bex CLI: one event per native command, read as what it is
 
 The full section is [Extended bex CLI](#extended-bex-cli). In short:
@@ -130,11 +132,16 @@ The full section is [Extended bex CLI](#extended-bex-cli). In short:
 
 ### D8 — Ingest guardrails: closed labels and three alerts
 
-- **Closed labels.** `bex_api_cli_telemetry_events_total` drops the `command` label and gains `client` (`bex`, `render-cli`). `completion_kind` is clamped to the eight known values plus `other`, `output_format` to its four plus `unknown`, and `cli_version` to a release-tag shape, the rule `sanitizeVersion` already applies to the bex release. Per-command questions stay in Postgres, where they are answered today. No panel reads the counter yet (G7), so nothing breaks.
+- **Closed labels.** `bex_api_cli_telemetry_events_total` drops the `command` and `cli_version` labels and gains `client` (`bex`, `render-cli`). `completion_kind` is clamped to the eight known values plus `other` and `output_format` to its four plus `unknown` (upstream itself sends `unknown` for a run that ended before setup). Per-command and per-version questions stay in Postgres, where they are answered today. No panel read the counter (G7), so nothing broke.
+- **Every series exists at 0 (amended 2026-11-16, w3/m438).** This decision first kept `cli_version`, clamped to a release-tag shape. Production showed why it cannot stay: a counter series that first appears at 1 is invisible to `increase()` and `rate()`, every bex-api rollout starts both replicas empty, and 23 minutes after a rollout the counter held one series. A version label cannot be created in advance, so every new version on every new pod would lose its first event. Without it the label set is closed (9 × 5 × 2 = 90 series), each replica creates all of them, and both `bex_api_cli_requests_total` clients, at 0 when it starts. The ingest route's `202`, `429`, `500` and `503` answers on `bex_api_http_requests_total` are created at 0 on the public listener for the same reason, so a replica's first `503` counts. The release-tag rule (`sanitizeVersion`) still guards the stored `bex_version`.
 - **Alerts**, all in the warning tier (daily digest, [ADR010](ADR010-observability.md) three tiers), each with a panel ([ADR088 §6](ADR088-platform-observability-ui.md)):
   - `CLITelemetryIngestFailing`: more than 5 % of deliveries answered 5xx for 15 minutes. A `503` costs every affected CLI a 30-minute backoff, so a short outage loses much more than its own duration.
   - `CLITelemetryIngestSilent`: CLI requests continue (D6) and no event has been stored for 2 hours. This is the only alert that catches a missing route, because a 404 is counted under the `unmatched` route and not under the telemetry route.
   - `CLIExecutionErrorShareHigh`: the `execution_error` share of stored events is above three times its 7-day baseline for 30 minutes. A server change that breaks a CLI command shows up here before a user reports it.
+- **As shipped (w3/m438)**, in `deploy/gitops/base/rules/alerting_rules.yml` with fire and no-fire tests in `cli_telemetry_alerts_test.yml`:
+  - Failing: the 5xx share over 10 minutes, held for 15, with at least two failed deliveries per window. The window is shorter than the wait, so one burst cannot fire on its own.
+  - Silent: at least 30 CLI requests in 2 hours, some in the last 30 minutes, and nothing stored in 2 hours. "Nothing stored" does not rest on `increase()` alone: a series that appeared within the window above 0 (an event stored before a replica's first scrape) also counts as stored.
+  - Error share: `bex:cli_telemetry_execution_error_share:ratio30m` against three times `bex:cli_telemetry_execution_error_share:avg7d`, both recorded (the week from a 5-minute rate by kind and client, 18 series), so the alert and the board draw the same numbers. Floors: 10 events and 5 execution errors in the half hour. On the week to 2026-11-16 the rule would have warned twice: about 18 and 74 execution errors in half an hour, the second one workspace's `bex logs` failing in a loop.
 
 ### D9 — Audience on the read side, and the ledger row
 
@@ -306,12 +313,12 @@ The board's filters apply to every product panel: command, upstream version, bex
 | Panel | Status | Question it answers | Source | Alert |
 | --- | --- | --- | --- | --- |
 | Last event received — global | ✅ | When did the newest event arrive, whatever the filters? | `cli_analytics.events` | — |
-| Telemetry ingest rate (by status) | ✅ | Are deliveries arriving, and how are they answered? | `bex_api_http_requests_total{route="POST /v1/cli-telemetry-events"}` | `CLITelemetryIngestFailing` 🆕 D8 |
+| Telemetry ingest rate (by status) | ✅ | Are deliveries arriving, and how are they answered? | `bex_api_http_requests_total{route="POST /v1/cli-telemetry-events"}` | `CLITelemetryIngestFailing` ✅ D8 |
 | Ingest rejection share | ✅ | What share is refused (auth, scope, rate limit, store off)? | same | same |
 | Ingest latency p95 | ✅ | Is the insert slow? A climbing p95 points at the control-plane database. In CI the send is synchronous, so this latency is added to every command | `bex_api_http_request_duration_seconds` | covered by `BexApiOriginLatencyHigh` ✅ |
-| **Telemetry coverage** | 🆕 D6 | Is the collector quiet or broken? Stored events per CLI API request, by client | `bex_api_cli_telemetry_events_total` ÷ `bex_api_cli_requests_total` | `CLITelemetryIngestSilent` 🆕 D8 |
-| **Stored events by completion kind** | 🆕 D8 | In near real time, is the error share moving? The SQL panels refresh every 5 minutes and read retained rows; this one reads the counter | `bex_api_cli_telemetry_events_total{completion_kind}` | `CLIExecutionErrorShareHigh` 🆕 D8 |
-| **Backoff-causing answers** | ➕ | How many `429`, `503` answers did we give? Each one silences a CLI for 5 or 30 minutes | `bex_api_http_requests_total{route=…, status=~"429\|503"}` | — |
+| **Telemetry coverage** | ✅ D6 | Is the collector quiet or broken? Stored events per CLI API request, by client | `bex_api_cli_telemetry_events_total` ÷ `bex_api_cli_requests_total` | `CLITelemetryIngestSilent` ✅ D8 |
+| **Stored events by completion kind** | ✅ D8 | In near real time, is the error share moving? The SQL panels refresh every 5 minutes and read retained rows; this one reads the counter | `bex_api_cli_telemetry_events_total{completion_kind}` | `CLIExecutionErrorShareHigh` ✅ D8 |
+| **Backoff-causing answers** | ✅ | How many `429`, `503` answers did we give? Each one silences a CLI for 5 or 30 minutes | `bex_api_http_requests_total{route=…, status=~"429\|503"}` | — |
 | **Delivery lag** | 🆕 D7 | How long after the command started was the event received (p50/p95)? It exposes clock skew and slow synchronous sends | `received_at − started_at` | — |
 | **Retained window** | ➕ | Is the purge running? The oldest retained event should stay near 90 days, and the row count should stop growing | `min(received_at)`, `count(*)` | — |
 | **Clients by release, last 24 h** | ➕ | After a release, are new versions reporting at all? A release with requests and no events has a broken sender | `bex_version` × D6 counter | — |
@@ -338,5 +345,5 @@ Telemetry is best effort by design, so these are warning-tier objectives that fe
 
 | Series | Labels (closed sets) | Upper bound |
 | --- | --- | --- |
-| `bex_api_cli_requests_total` | `client` (2) | 2 |
-| `bex_api_cli_telemetry_events_total` (relabeled) | `completion_kind` (9), `output_format` (5), `client` (2), `cli_version` (release-shaped, a handful live at once) | about 90 per live version |
+| `bex_api_cli_requests_total` | `client` (2) | 2 per replica, exported at 0 |
+| `bex_api_cli_telemetry_events_total` (relabeled) | `completion_kind` (9), `output_format` (5), `client` (2) | 90 per replica, all exported at 0 |
