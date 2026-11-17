@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // tenancy_fault_test.go pins how onboarding answers a transient store or
@@ -208,6 +209,72 @@ func TestEnsureTenantDoesNotServeARecentWorkspaceThroughEveryFault(t *testing.T)
 		st.ownerFail = func() error { return errStoreReset }
 		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != stepOwnerRead {
 			t.Fatalf("after InvalidateTenant = %v, want the store fault, not the forgotten workspace", err)
+		}
+	})
+
+	t.Run("grant fails on a workspace that is not the recent one", func(t *testing.T) {
+		st := newFakeTenantStore()
+		granter := newFakeGranter()
+		ts := NewTenantService(st, granter)
+		recent := onboardThenExpire(t, ts)
+		// The binding moved after the recent workspace resolved (the old one
+		// deleted, a new personal workspace minted): the owner read answers a
+		// DIFFERENT workspace than the one remembered, and its grant fails.
+		st.mu.Lock()
+		delete(st.ownerOf, faultPerson)
+		delete(st.members, faultPerson)
+		st.mu.Unlock()
+		minted, err := st.CreateTenantWithMember(context.Background(), faultPerson, "hobby")
+		if err != nil {
+			t.Fatalf("rebind: %v", err)
+		}
+		if minted.ID == recent {
+			t.Fatalf("rebind minted %q, want a workspace other than the recent one", recent)
+		}
+		granter.failNext = 1
+		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != stepGrant {
+			t.Fatalf("grant on %q with recent %q = %v, want a %q failure, never the old workspace", minted.ID, recent, err, stepGrant)
+		}
+	})
+
+	t.Run("creation fails after the binding ended", func(t *testing.T) {
+		st := newFakeTenantStore()
+		ts := NewTenantService(st, newFakeGranter())
+		onboardThenExpire(t, ts)
+		// The binding ended (a removal) and the replacement mint cannot be
+		// written: the fault is on the creation, not on a workspace that is
+		// still the person's own.
+		st.mu.Lock()
+		delete(st.ownerOf, faultPerson)
+		delete(st.members, faultPerson)
+		st.mu.Unlock()
+		st.createFail = func() error { return errStoreReset }
+		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != stepCreate {
+			t.Fatalf("failed creation = %v, want a %q failure", err, stepCreate)
+		}
+	})
+
+	t.Run("revoke fails after the binding ended", func(t *testing.T) {
+		st := newFakeTenantStore()
+		granter := newFakeGranter()
+		ts := NewTenantService(st, granter)
+		tid := onboardThenExpire(t, ts)
+		// The admin tuple is gone (a demotion's revoke), so this request writes
+		// a grant; the binding ends before the re-read, and taking the grant
+		// back fails too. Nothing may be served: the workspace just stopped
+		// being the person's own.
+		delete(granter.tuples, "admin:"+tid+":user:"+faultPerson)
+		granter.failRevoke = true
+		reads := 0
+		st.ownerFail = func() error {
+			reads++
+			if reads == 2 {
+				return store.ErrNotFound
+			}
+			return nil
+		}
+		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != stepRevoke {
+			t.Fatalf("a failed revoke after a written grant = %v, want a %q failure", err, stepRevoke)
 		}
 	})
 }
