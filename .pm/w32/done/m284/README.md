@@ -1,18 +1,18 @@
 # w32 · m284 — Render SDK v1.8.0 sandbox compatibility: the unmodified SDKs drive bex sandboxes, each method graded
 
-**Worker:** worker32 **Goal:** a user's unmodified Render Python or TypeScript SDK script, pointed at bex with `base_url`, creates, runs commands in, copies files to and from, and terminates a bex sandbox, and every SDK sandbox method has a recorded grade **Status:** todo — t001 done; t003 static fixes shipped and deployed (`2d453686f`, 2026-11-08 12:41 UTC); unblocked 2026-11-16, t002 live walk next
+**Worker:** worker32 **Goal:** a user's unmodified Render Python or TypeScript SDK script, pointed at bex with `base_url`, creates, runs commands in, copies files to and from, and terminates a bex sandbox, and every SDK sandbox method has a recorded grade **Status:** done — production walk 2026-11-17 (both SDKs, every method graded)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Harness: unmodified Render SDK v1.8.0 (Python and TypeScript) pointed at bex-api — **DONE** | 1h | — |
-| t002 | Walk every SDK sandbox method against bex and grade it | 1.5h | t001 |
-| t003 | Fix the bex-api wire gaps the SDK walk found | 1.5h | t002 |
-| t004 | Render parity | 15m | t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 30m | t004 |
-| t007 | Closeout | 10m | t005, t006 |
+| t002 | Walk every SDK sandbox method against bex and grade it — **DONE** | 1.5h | t001 |
+| t003 | Fix the bex-api wire gaps the SDK walk found — **DONE** | 1.5h | t002 |
+| t004 | Render parity — **DONE** | 15m | t003 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 30m | t004 |
+| t007 | Closeout — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 
@@ -49,3 +49,16 @@
 - **Scope:** unchanged. The definition of done still names the pinned v1.8.0 SDKs. Render released SDK v1.9.0 on 2026-11-16 (breaking: typed error classes); w22/m445 (todo) owns its contract and may retarget this walk once it lands.
 - **Next:** t002 runs the walk recipe above on production. This host has no Playwright browser (`npx` is missing), so the device approval goes over curl with the QA session jar, and `qa-login.sh --login-challenge` answers the login challenge. The session and the device token are revoked when the walk ends.
 
+## Closed — 2026-11-17 (`/loopx w32`)
+
+- **Live walk (t002):** `scripts/render-sdk-compat.sh` ran against `https://api.bex.co` from 02:55 to 03:23 UTC, with main's deploy pin at `c48bc47fc59d`.
+  - It ran as the QA user in `bex-canary`, with a human OAuth token from a headless device login of released `bex` v0.7.0 (qa-find-bugs § Approving a CLI device login without a browser). The device session and both Kratos sessions were revoked afterwards: the token answers 401.
+  - The last run passed all 64 steps, 35 Python and 29 TypeScript. They cover create with every input, wait, get, list filters and paging, exec (exit code, env, `$HOME`, a 50 s silent command), file round trips (absolute, home-relative, a directory with a symlink), groups, an image import and a sandbox started from it, the deprecated builds, execution history, the async client, terminate, and the refusals.
+  - With `SDK_COMPAT_SUSPEND=1`, an idle-suspended sandbox resumed on a download in 5 s.
+  - Nothing was left in the workspace: no live sandbox, and only the `Default` group.
+- **Not bex's (graded, owned):**
+  - Snapshots are refused by name until w32/m285. The Python SDK reports `snapshots.create`'s 404 as `SandboxNotFoundError`.
+  - Group credentials are refused by name (Render early access).
+  - TypeScript v1.8.0's `SandboxEndedError` wraps only a 404, but Render's pinned contract answers an ended sandbox with `409 sandbox_not_running`. v1.9.0 is w22/m445's.
+- **Flake, recorded:** one Python run failed two downloads on a 5 s TLS handshake timeout from this client. Every other run of the same steps passed, and none of 100 handshakes to `api.bex.co` afterwards took over 1 s.
+- **Follow-up for w22/m445:** its t006 still plans to `/pm unblock w32/m284` and retarget the walk to v1.9.0. m284 is now done, so that step becomes a v1.9.0 run of `scripts/render-sdk-compat.sh` (the harness pins its versions at the top).

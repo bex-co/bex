@@ -12,8 +12,15 @@ set -euo pipefail
 #   RENDER_WORKSPACE_ID   the workspace (tea-…) to create the fixture sandbox in
 # Optional:
 #   SDK_COMPAT_ONLY=python|typescript   run one SDK
+#   SDK_COMPAT_IMAGE                    public linux/amd64 image to import
+#                                       (default docker.io/library/alpine:3.20)
+#   SDK_COMPAT_SUSPEND=1                also wait out an idle suspension (~6 min)
+#                                       and resume through the Python SDK
+#   SDK_COMPAT_TRACE=1                  print each failure's traceback
 #
-# Creates one short-lived deny-all sandbox per SDK and terminates it.
+# Walks every sandbox method of both SDKs (see the scenario files): creates
+# short-lived deny-all sandboxes, a sandbox group and an imported image, and
+# removes them all at the end.
 
 cd "$(dirname "$0")/.."
 : "${BEX_API_URL:?set BEX_API_URL to the bex-api origin}"

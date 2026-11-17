@@ -5,7 +5,7 @@
 ## Milestones
 
 - [x] **m283** — [Sandbox network policy as on Render: allow-all by default, plus an HTTPS hostname allow-list](done/m283/README.md) (8 tasks) — **DONE 2026-11-08**: verified on production (isolation matrix 42482375396)
-- [ ] **m284** — [Render SDK v1.8.0 sandbox compatibility](m284/README.md) (7 tasks; t001 done, t003 static fixes deployed; t002 live walk next) — unblocked 2026-11-16: `scripts/qa-login.sh` signs the QA user in again (`ok`, 18:50 PST)
+- [x] **m284** — [Render SDK v1.8.0 sandbox compatibility](done/m284/README.md) (7 tasks) — **DONE 2026-11-17**: production walk of the unmodified Python and TypeScript SDKs passed all 64 steps (`scripts/render-sdk-compat.sh`), and every method is graded in the checklist; snapshots stay with w32/m285 and v1.9.0 with w22/m445
 - [ ] **m285** — [Sandbox filesystem snapshots, as on Render](m285/README.md) (8 tasks; none started) — unblocked 2026-11-16: w2/m278 closed after its production walk, and D1=A funds the memory checkpoint as w2/m322, so `--kind runtime` is refused by name until that ships; t001 next
 - [x] **m297** — [Sandbox environment variables, as on Render](done/m297/README.md) (9 tasks) — **DONE 2026-11-10**: verified on production (isolation matrix 42741929387) ← from `/pm-brainstorm more for w32` 2026-11-09, item 1
 - [x] **m298** — [Sandbox execution history (`/sandboxes/{id}/execs`), as on Render](done/m298/README.md) (9 tasks) — **DONE 2026-11-10**: verified on production (isolation matrix 42741929387) ← from `/pm-brainstorm more for w32` 2026-11-09, item 2 (reopens executions from the ADR018 `—` row; groups stay a non-goal)

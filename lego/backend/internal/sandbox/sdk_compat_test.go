@@ -26,39 +26,82 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/getkin/kin-openapi/openapi3"
 )
 
+// renderSandboxSchemas loads Render's pinned sandbox schema (the create, get
+// and list item body) and its list item, which the SDK's generated models
+// decode every sandbox read against. The id keeps bex's 20-character sbx- ids
+// beside Render's 25, as the request gate widens it (renderSandboxIDPattern,
+// ADR018 round 5); neither SDK checks the id's shape.
+func renderSandboxSchemas(t *testing.T) (sandbox, listItem *openapi3.Schema) {
+	t.Helper()
+	spec, err := openapi3.NewLoader().LoadFromFile("../api/openapi/render-public-api-1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sandbox = spec.Paths.Find("/sandboxes").Post.Responses.Status(http.StatusCreated).Value.Content.Get("application/json").Schema.Value
+	sandbox.Properties["id"] = openapi3.NewStringSchema().WithPattern(`^sbx-[0-9a-v]{20}(?:[0-9a-v]{5})?$`).NewRef()
+	return sandbox, spec.Components.Schemas["sandboxWithCursor"].Value
+}
+
 // The Render SDK v1.8 Python client validates every sandbox it reads against
-// Render's schema, which requires region and createdAt on a sandbox and cursor
-// on each list item (w32/m284). A response missing one made create, get and
-// list raise even though the call succeeded.
+// Render's schema, whose required fields include region and createdAt, and
+// cursor on each list item (w32/m284). A response missing one made create, get
+// and list raise even though the call succeeded. The production walk of
+// scripts/render-sdk-compat.sh (t002) decoded every read; this pins it against
+// the pinned schema, so a field the next pin makes required fails here.
 func TestSandboxReadsCarryRenderRequiredFields(t *testing.T) {
 	up := &policyUpstream{}
 	svc := stubServer(t, up.handler(t))
 	svc.Region = "frankfurt"
+	svc.Names = &memNames{}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
-
-	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(`{"template":"node"}`)).WithContext(callerCtx()))
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("create = %d %s", rec.Code, rec.Body)
+	sandboxSchema, itemSchema := renderSandboxSchemas(t)
+	conforms := func(step string, schema *openapi3.Schema, doc any) {
+		t.Helper()
+		if err := schema.VisitJSON(doc); err != nil {
+			t.Errorf("%s is not Render's shape: %v", step, err)
+		}
 	}
+	read := func(method, path, body string, status int) []byte {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(callerCtx()))
+		if rec.Code != status {
+			t.Fatalf("%s %s = %d %s", method, path, rec.Code, rec.Body)
+		}
+		return rec.Body.Bytes()
+	}
+
 	var created map[string]any
-	_ = json.Unmarshal(rec.Body.Bytes(), &created)
+	_ = json.Unmarshal(read(http.MethodPost, "/v1/sandboxes", `{"template":"node","name":"sdk","networkPolicy":{"type":"deny-all"}}`, http.StatusCreated), &created)
 	if created["region"] != "frankfurt" || created["createdAt"] == nil {
-		t.Fatalf("create body lacks region/createdAt: %s", rec.Body)
+		t.Fatalf("create body lacks region/createdAt: %v", created)
+	}
+	conforms("create", sandboxSchema, created)
+	id, _ := created["id"].(string)
+
+	var got map[string]any
+	_ = json.Unmarshal(read(http.MethodGet, "/v1/sandboxes/"+id, "", http.StatusOK), &got)
+	conforms("get", sandboxSchema, got)
+
+	var items []map[string]any
+	if err := json.Unmarshal(read(http.MethodGet, "/v1/sandboxes", "", http.StatusOK), &items); err != nil || len(items) != 1 {
+		t.Fatalf("list = %v (%v)", items, err)
+	}
+	conforms("list item", itemSchema, items[0])
+	sb, _ := items[0]["sandbox"].(map[string]any)
+	if items[0]["cursor"] != id || sb["region"] != "frankfurt" {
+		t.Fatalf("list item = %v, want cursor = id and the platform region", items[0])
 	}
 
-	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/sandboxes", nil).WithContext(callerCtx()))
-	var items []map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &items); err != nil || len(items) != 1 {
-		t.Fatalf("list = %d %s", rec.Code, rec.Body)
-	}
-	sb, _ := items[0]["sandbox"].(map[string]any)
-	if items[0]["cursor"] != created["id"] || sb["region"] != "frankfurt" {
-		t.Fatalf("list item = %v, want cursor = id and the platform region", items[0])
+	// The check is real: a read without a required field is refused.
+	delete(got, "createdAt")
+	if sandboxSchema.VisitJSON(got) == nil {
+		t.Fatal("a sandbox without createdAt validated; the schema check is vacuous")
 	}
 }
 
