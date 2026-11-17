@@ -2774,30 +2774,34 @@ func (idx *stackIndex) classifyRefs(svc parsedService, refVars []envRef) (parsed
 
 // classifyRef files one deferred reference onto svc, or refuses it.
 func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
+	// Every branch below re-derives the same FromService shape, so bind it
+	// once: ref is nil exactly when this is not a fromService reference.
+	ref := r.FromService
 	if r.FromDatabase != nil {
-		if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
+		missingPooler := idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name]
+		if missingPooler {
 			return envRefError(svc.req.Name, r.Key, poolerRequirement(r.FromDatabase.Name))
 		}
 		svc.databaseRefs = append(svc.databaseRefs, r.bexEnvVar)
 		return nil
 	}
-	if r.FromService != nil && isKeyValueType(r.FromService.Type) {
+	if ref != nil && isKeyValueType(ref.Type) {
 		svc.kvRefs = append(svc.kvRefs, r.bexEnvVar)
 		return nil
 	}
 	// One target-existence check for every remaining fromService form
 	// (host/hostport/port/envVarKey), so the message lives in one place.
-	allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
+	allowExistingServiceHost := ref != nil && ref.EnvVarKey == "" && ref.Property == serviceRefPropertyHost
 	// serviceTypes holds every declared service and nothing else, so a
 	// same-named database or Key Value never satisfies a service reference.
-	declaredService := r.FromService != nil && idx.serviceTypes[r.FromService.Name] != ""
-	if r.FromService != nil && !declaredService && !allowExistingServiceHost {
-		return envRefError(svc.req.Name, r.Key, fmt.Errorf("fromService references unknown service %q (declare it under services: in the same file)", r.FromService.Name))
+	declaredService := ref != nil && idx.serviceTypes[ref.Name] != ""
+	if ref != nil && !declaredService && !allowExistingServiceHost {
+		return envRefError(svc.req.Name, r.Key, fmt.Errorf("fromService references unknown service %q (declare it under services: in the same file)", ref.Name))
 	}
 	// A supplied type must describe the declared target, or a reference
 	// meant for a worker silently resolves against a web service (w8/096).
 	if declaredService {
-		if err := serviceRefTypeError(svc.req.Name, r.Key, r.FromService.Type, r.FromService.Name, idx.serviceTypes[r.FromService.Name]); err != nil {
+		if err := serviceRefTypeError(svc.req.Name, r.Key, ref.Type, ref.Name, idx.serviceTypes[ref.Name]); err != nil {
 			return err
 		}
 	}
@@ -2812,19 +2816,21 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	// port (known only once it exists, and for an image-port private service
 	// only after its first build), so resolution is deferred to apply like
 	// databaseRefs above (w6/m148).
-	if r.FromService != nil && r.FromService.EnvVarKey == "" && serviceRefProperty[r.FromService.Property] {
-		if targetType := idx.serviceTypes[r.FromService.Name]; declaredService && !idx.addressableServices[r.FromService.Name] && !takesStaticHost(targetType, r.FromService.Property) {
+	namesNetworkAddress := ref != nil && ref.EnvVarKey == "" && serviceRefProperty[ref.Property]
+	if namesNetworkAddress {
+		if targetType := idx.serviceTypes[ref.Name]; declaredService && !idx.addressableServices[ref.Name] && !takesStaticHost(targetType, ref.Property) {
 			if targetType == appv1alpha1.TypeStaticSite {
-				return serviceRefStaticPort(svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+				return serviceRefStaticPort(svc.req.Name, r.Key, ref.Property, ref.Name)
 			}
-			return serviceRefUnaddressable(svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+			return serviceRefUnaddressable(svc.req.Name, r.Key, ref.Property, ref.Name)
 		}
-		if declaredService && r.FromService.Name != svc.req.Name && idx.freeServices[r.FromService.Name] && refersToPrivateAddress(r.FromService.Property) {
-			return serviceRefFreePlan(svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+		freePrivateRef := declaredService && ref.Name != svc.req.Name && idx.freeServices[ref.Name] && refersToPrivateAddress(ref.Property)
+		if freePrivateRef {
+			return serviceRefFreePlan(svc.req.Name, r.Key, ref.Property, ref.Name)
 		}
 		svc.hostRefs = append(svc.hostRefs, hostRef{
-			key: r.Key, target: r.FromService.Name, property: r.FromService.Property,
-			refType: r.FromService.Type, index: r.index,
+			key: r.Key, target: ref.Name, property: ref.Property,
+			refType: ref.Type, index: r.index,
 		})
 		return nil
 	}
@@ -2833,7 +2839,7 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	// as Render's templates expect (w5/m148). A variable the sibling defines
 	// itself is copied as written instead, and the per-deploy commit and
 	// per-instance id have no single value to copy.
-	if ref := r.FromService; ref != nil && ref.EnvVarKey != "" && declaredService && renderenv.IsPlatformName(ref.EnvVarKey) {
+	if ref != nil && ref.EnvVarKey != "" && declaredService && renderenv.IsPlatformName(ref.EnvVarKey) {
 		if _, defined := idx.serviceKnownEnv[ref.Name][ref.EnvVarKey]; !defined && !idx.serviceGenerated[ref.Name][ref.EnvVarKey] {
 			if ref.EnvVarKey == renderenv.GitCommit || ref.EnvVarKey == renderenv.InstanceID {
 				return envRefError(svc.req.Name, r.Key, fmt.Errorf("copies %s's %s, which differs per deploy or instance, so it has no single value to copy", ref.Name, ref.EnvVarKey))
@@ -2852,8 +2858,8 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	// mints the source, then writes the same value into this service's store,
 	// on every sync, as Render re-copies (w1/m175). A sibling's sync:false
 	// value is copied the same way once the user has answered it (w5/170).
-	prompt := r.FromService != nil && idx.servicePrompts[r.FromService.Name][r.FromService.EnvVarKey]
-	if ref := r.FromService; ref != nil && ref.EnvVarKey != "" && (idx.serviceGenerated[ref.Name][ref.EnvVarKey] || prompt) {
+	prompt := ref != nil && idx.servicePrompts[ref.Name][ref.EnvVarKey]
+	if ref != nil && ref.EnvVarKey != "" && (idx.serviceGenerated[ref.Name][ref.EnvVarKey] || prompt) {
 		// The copy lives in this service's store, where any other declaration
 		// of the key would shadow it (container env wins) or be refused as
 		// manifest-owned when the copy is written.
@@ -2868,7 +2874,7 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	if err != nil {
 		return envRefError(svc.req.Name, r.Key, err)
 	}
-	if ref := r.FromService; ref != nil && ref.EnvVarKey != "" {
+	if ref != nil && ref.EnvVarKey != "" {
 		if v := idx.serviceKnownEnv[ref.Name][ref.EnvVarKey]; v.seed || v.group != "" {
 			svc.stateCopies = append(svc.stateCopies, stateCopy{key: r.Key, index: r.index, source: ref.Name, sourceKey: ref.EnvVarKey})
 		}
