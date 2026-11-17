@@ -48,7 +48,7 @@ describe("chart frames share the populated chart's ratio", () => {
 });
 
 describe("Key Value metrics preview", () => {
-  it("previews the real panel: headings, five ratio plots, no filter row", () => {
+  it("previews the real panel: headings, its range slot, five ratio plots, no other controls", () => {
     const { container } = render(<DatastoreMetricsSkeleton kind="keyvalue" />);
     for (const heading of [
       "Metrics",
@@ -68,6 +68,10 @@ describe("Key Value metrics preview", () => {
       ),
     ).filter((el) => el.style.aspectRatio === RATIO);
     expect(plots).toHaveLength(5);
+    // The range picker (w7/072) is the panel's one control.
+    expect(
+      container.querySelectorAll("[data-skeleton-region=metrics-range] > *"),
+    ).toHaveLength(1);
     expect(container.querySelector(".h-9")).toBeNull(); // no phantom filter controls
   });
 });

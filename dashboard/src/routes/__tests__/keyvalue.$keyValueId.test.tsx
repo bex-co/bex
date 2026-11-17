@@ -112,6 +112,15 @@ vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
     };
   },
 }));
+// Its range picker's plan bound (w7/072) is an Apollo read too; the id it is
+// asked for is recorded for the same typed-id check.
+const metricsRetentionCalls: string[] = [];
+vi.mock("@/features/metrics/hooks/use-metrics-retention", () => ({
+  useMetricsRetentionBound: (resource: string) => {
+    metricsRetentionCalls.push(resource);
+    return undefined;
+  },
+}));
 
 // KeyValuePlanSection (m16) calls useKeyValueInstanceTypes (Apollo) and
 // useUpdateKeyValuePlan (Apollo) — same pattern as DatastoreMetricsPanel above.
@@ -219,6 +228,7 @@ beforeEach(() => {
   reveal.mockReset();
   savePersistence.mockReset();
   datastoreMetricsCalls.length = 0;
+  metricsRetentionCalls.length = 0;
 });
 
 describe("key value detail tab search contract", () => {
@@ -426,6 +436,8 @@ describe("KeyValueDetailPage", () => {
     for (const call of datastoreMetricsCalls) {
       expect(call).toEqual({ kind: "keyvalue", resource: "red-sessions" });
     }
+    expect(metricsRetentionCalls.length).toBeGreaterThan(0);
+    expect(new Set(metricsRetentionCalls)).toEqual(new Set(["red-sessions"]));
   });
 
   it("does not render the metrics panel on the Overview tab", async () => {

@@ -1,14 +1,32 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { DatastoreMetricsPanel } from "../datastore-metrics-panel";
 import { DatastoreMetricsSkeleton } from "@/common/components/route-skeletons";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
+import { useMetricsRetentionBound } from "@/features/metrics/hooks/use-metrics-retention";
+import type { RangeBound } from "@/features/metrics/lib/range";
 
 vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
   useDatastoreMetrics: vi.fn(),
 }));
+// The plan's window is bex-api's `metricsRetention` (Apollo); its own hook
+// test covers the read, so the panel's tests set the bound it hands over.
+vi.mock("@/features/metrics/hooks/use-metrics-retention", () => ({
+  useMetricsRetentionBound: vi.fn(),
+}));
 
 const mockUseDatastoreMetrics = vi.mocked(useDatastoreMetrics);
+const mockUseMetricsRetentionBound = vi.mocked(useMetricsRetentionBound);
+
+// Radix Select leans on APIs jsdom doesn't implement.
+beforeAll(() => {
+  Element.prototype.hasPointerCapture ??= () => false;
+  Element.prototype.releasePointerCapture ??= () => {};
+  Element.prototype.scrollIntoView ??= () => {};
+});
+
+const HOUR_MS = 60 * 60 * 1000;
 
 function emptyResult() {
   return {
@@ -77,6 +95,7 @@ function errorResult() {
 describe("DatastoreMetricsPanel", () => {
   beforeEach(() => {
     mockUseDatastoreMetrics.mockReset();
+    mockUseMetricsRetentionBound.mockReset();
   });
 
   // w9/m86 / w5/045: a failed metrics query must render a distinct error card,
@@ -105,17 +124,19 @@ describe("DatastoreMetricsPanel", () => {
       "keyvalue",
       "sessions-cache",
       "disk",
+      expect.not.objectContaining({ skip: true }),
     );
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
       "keyvalue",
       "sessions-cache",
       "disk_capacity",
+      expect.not.objectContaining({ skip: true }),
     );
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
       "keyvalue",
       "sessions-cache",
       "db_connections",
-      { skip: true },
+      expect.objectContaining({ skip: true }),
     );
     // No Postgres connections/replication-lag chart sections for a keyvalue.
     expect(screen.queryByText("Active Connections")).not.toBeInTheDocument();
@@ -127,7 +148,7 @@ describe("DatastoreMetricsPanel", () => {
       "keyvalue",
       "sessions-cache",
       "memory",
-      { skip: false },
+      expect.objectContaining({ skip: false }),
     );
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
       "keyvalue",
@@ -139,7 +160,7 @@ describe("DatastoreMetricsPanel", () => {
       "keyvalue",
       "sessions-cache",
       "kv_connections",
-      { skip: false },
+      expect.objectContaining({ skip: false }),
     );
     expect(screen.getByText("Memory")).toBeInTheDocument();
     expect(screen.getByText("Connections")).toBeInTheDocument();
@@ -154,7 +175,7 @@ describe("DatastoreMetricsPanel", () => {
       "database",
       "pg",
       "kv_connections",
-      { skip: true },
+      expect.objectContaining({ skip: true }),
     );
     // A database's Memory is its container's (w1/m180), not the Key Value
     // used-memory series, and the Key Value Connections section stays out.
@@ -162,7 +183,7 @@ describe("DatastoreMetricsPanel", () => {
       "database",
       "pg",
       "memory",
-      { skip: false },
+      expect.objectContaining({ skip: false }),
     );
     expect(screen.getByText("Memory")).toBeInTheDocument();
     expect(screen.queryByText("Connections")).not.toBeInTheDocument();
@@ -294,7 +315,7 @@ describe("DatastoreMetricsPanel", () => {
       "database",
       "pg",
       "replication_lag",
-      { skip: true },
+      expect.objectContaining({ skip: true }),
     );
   });
 
@@ -317,7 +338,7 @@ describe("DatastoreMetricsPanel", () => {
       "database",
       "pg",
       "replication_lag",
-      { skip: false },
+      expect.objectContaining({ skip: false }),
     );
   });
 
@@ -381,13 +402,14 @@ describe("DatastoreMetricsPanel", () => {
         "database",
         "pg",
         metric,
-        { skip: false },
+        expect.objectContaining({ skip: false }),
       );
     }
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
       "database",
       "pg",
       "disk_activity",
+      expect.not.objectContaining({ skip: true }),
     );
   });
 
@@ -415,7 +437,7 @@ describe("DatastoreMetricsPanel", () => {
         "keyvalue",
         "red-x",
         metric,
-        { skip: true },
+        expect.objectContaining({ skip: true }),
       );
     }
   });
@@ -436,13 +458,13 @@ describe("DatastoreMetricsPanel", () => {
       "service",
       "srv-x",
       "disk_operations",
-      { skip: false },
+      expect.objectContaining({ skip: false }),
     );
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
       "service",
       "srv-x",
       "network_activity",
-      { skip: true },
+      expect.objectContaining({ skip: true }),
     );
   });
 
@@ -501,6 +523,85 @@ describe("DatastoreMetricsPanel", () => {
     ).toBeGreaterThanOrEqual(9);
   });
 
+  // w7/072: the panel has the service Metrics page's range picker, and every
+  // read (graphs, limits, capacity) covers the range it shows. It used to send
+  // no range at all, so every chart was bex-api's default last hour.
+  describe("time range", () => {
+    /** Each metric's read window from its latest call: span, step and poll. */
+    function readWindows() {
+      const latest = new Map<string, unknown>();
+      for (const [, , metric, opts] of mockUseDatastoreMetrics.mock.calls) {
+        latest.set(metric, {
+          span: Date.parse(opts!.endTime!) - Date.parse(opts!.startTime!),
+          step: opts!.resolutionSeconds,
+          poll: opts!.pollIntervalMs,
+        });
+      }
+      return latest;
+    }
+
+    it("reads every metric over Render's 12-hour default, refreshed by the window's own tick", () => {
+      mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+      render(<DatastoreMetricsPanel kind="database" resource="dpg-abc" />);
+
+      expect(
+        screen.getByRole("combobox", { name: "Time range" }),
+      ).toHaveTextContent("Last 12 hours");
+      const windows = readWindows();
+      expect(windows.size).toBe(14);
+      for (const [metric, window] of windows) {
+        expect([metric, window]).toEqual([
+          metric,
+          { span: 12 * HOUR_MS, step: 300, poll: 0 },
+        ]);
+      }
+    });
+
+    it("moves every read, limits and capacity included, to the range picked", async () => {
+      const user = userEvent.setup();
+      mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+      render(<DatastoreMetricsPanel kind="keyvalue" resource="red-abc" />);
+
+      await user.click(screen.getByRole("combobox", { name: "Time range" }));
+      await user.click(screen.getByRole("option", { name: "Last 7 days" }));
+
+      expect(
+        screen.getByRole("combobox", { name: "Time range" }),
+      ).toHaveTextContent("Last 7 days");
+      for (const [metric, window] of readWindows()) {
+        expect([metric, window]).toEqual([
+          metric,
+          { span: 7 * 24 * HOUR_MS, step: 5040, poll: 0 },
+        ]);
+      }
+    });
+
+    it("bounds the picker by the plan's metrics window and names the plans that keep more", async () => {
+      const user = userEvent.setup();
+      const bound: RangeBound = {
+        maxSpanSeconds: 7 * 24 * 60 * 60,
+        hint: "Metrics are kept for 7 days on the Hobby plan.",
+      };
+      mockUseMetricsRetentionBound.mockReturnValue(bound);
+      mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+      render(<DatastoreMetricsPanel kind="service" resource="srv-x" />);
+
+      // The window is the resource's own workspace plan's, read by its id.
+      expect(mockUseMetricsRetentionBound).toHaveBeenCalledWith("srv-x");
+      await user.click(screen.getByRole("combobox", { name: "Time range" }));
+      expect(
+        screen.getByRole("option", { name: "Last 7 days" }),
+      ).not.toHaveAttribute("aria-disabled");
+      for (const name of ["Last 14 days", "Last 30 days"]) {
+        expect(screen.getByRole("option", { name })).toHaveAttribute(
+          "aria-disabled",
+          "true",
+        );
+      }
+      expect(screen.getByText(bound.hint!)).toBeInTheDocument();
+    });
+  });
+
   // The route skeleton previews this panel: the same sections in the same
   // order, so nothing moves when the panel replaces it.
   it.each(["database", "keyvalue"] as const)(
@@ -510,6 +611,22 @@ describe("DatastoreMetricsPanel", () => {
       const ready = render(<DatastoreMetricsPanel kind={kind} resource="r" />);
       const pending = render(<DatastoreMetricsSkeleton kind={kind} />);
       expect(headings(pending.container)).toEqual(headings(ready.container));
+
+      // Both open with the range row, and the skeleton's slot is the small
+      // w-40 trigger's size (h-8 is the trigger's sm size).
+      const rangeRow = (root: HTMLElement) =>
+        root.querySelector("[data-slot=card-content]")!.firstElementChild!;
+      expect(rangeRow(pending.container).className).toBe(
+        rangeRow(ready.container).className,
+      );
+      const trigger = rangeRow(ready.container).querySelector(
+        "[role=combobox]",
+      );
+      expect(trigger).toHaveClass("w-40");
+      expect(trigger).toHaveAttribute("data-size", "sm");
+      expect(
+        rangeRow(pending.container).querySelector("[data-slot=skeleton]"),
+      ).toHaveClass("h-8", "w-40");
     },
   );
 });

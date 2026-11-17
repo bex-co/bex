@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Card,
   CardContent,
@@ -17,8 +17,11 @@ import { SvgBarChart } from "@/features/metrics/components/svg-bar-chart";
 import { MetricSection } from "@/features/metrics/components/metric-section";
 import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
 import { MetricError } from "@/features/metrics/components/metric-error";
+import { RangeSelect } from "@/features/metrics/components/range-select";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
+import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
+import { useMetricsRetentionBound } from "@/features/metrics/hooks/use-metrics-retention";
 import {
   useTranslations,
   type Translate,
@@ -27,11 +30,12 @@ import {
   formatDiskCapacity,
   formatMetricValue,
 } from "@/features/metrics/lib/format";
+import {
+  DEFAULT_RANGE_PRESET,
+  type RangeSelection,
+} from "@/features/metrics/lib/range";
 import { latestValue } from "@/features/metrics/lib/series";
 import type { ChartSeries, DatastoreKind } from "@/features/metrics/types";
-
-/** Configured limits change only with the plan, so they poll every 5 minutes. */
-const LIMIT_POLL_MS = 300_000;
 
 /** Maps a ChartSeries list onto the line chart's per-instance input shape. */
 function toLineSeries(series: ChartSeries[]): LineSeriesInput[] {
@@ -116,6 +120,11 @@ interface DatastoreMetricsPanelProps {
  * kind="service" (w1/m86) renders just the disk sections for the persistent
  * disk attached to a service: a service has no datastore process, so every
  * other chart is already gated off by isDatabase/isKeyValue.
+ *
+ * Time is the panel's one control, as it is the service Metrics page's
+ * (w7/072): Render's preset ladder from the 12-hour default, bounded by how
+ * far back the workspace plan keeps metrics (w7/m427), and every read covers
+ * the chosen range.
  */
 export function DatastoreMetricsPanel({
   kind,
@@ -131,65 +140,86 @@ export function DatastoreMetricsPanel({
   // A service's disk has no datastore process, so no CPU or memory.
   const isDatastore = isDatabase || isKeyValue;
 
-  const disk = useDatastoreMetrics(kind, resource, "disk");
-  const diskCapacity = useDatastoreMetrics(kind, resource, "disk_capacity");
+  const [range, setRange] = useState<RangeSelection>(DEFAULT_RANGE_PRESET);
+  const rangeBound = useMetricsRetentionBound(resource);
+  // ONE live window for every read, as on the service Metrics page: its tick
+  // refetches by moving start/end, so Apollo's own poll timer stays off. The
+  // limit and capacity reads take it too, so a past custom range labels the
+  // limit that applied then.
+  const live = { ...useLiveRange(range), pollIntervalMs: 0 };
+
+  const disk = useDatastoreMetrics(kind, resource, "disk", live);
+  const diskCapacity = useDatastoreMetrics(
+    kind,
+    resource,
+    "disk_capacity",
+    live,
+  );
   const connections = useDatastoreMetrics(kind, resource, "db_connections", {
+    ...live,
     skip: !isDatabase,
   });
   const replicationLag = useDatastoreMetrics(
     kind,
     resource,
     "replication_lag",
-    { skip: !isDatabase || !highAvailabilityEnabled },
+    { ...live, skip: !isDatabase || !highAvailabilityEnabled },
   );
   // Key Value only: connected-clients count (w5/011).
   const kvConnections = useDatastoreMetrics(kind, resource, "kv_connections", {
+    ...live,
     skip: !isKeyValue,
   });
   // CPU and memory (w1/m180): Postgres's own container; a Key Value's memory
   // is its used memory (w5/011). Its container limit is no line for that
-  // chart: under a maxmemory policy Valkey evicts at 80% of it. Limits barely
-  // move, so they poll slowly.
+  // chart: under a maxmemory policy Valkey evicts at 80% of it.
   const cpu = useDatastoreMetrics(kind, resource, "cpu", {
+    ...live,
     skip: !isDatastore,
   });
   const cpuLimit = useDatastoreMetrics(kind, resource, "cpu_limit", {
+    ...live,
     skip: !isDatastore,
-    pollIntervalMs: LIMIT_POLL_MS,
   });
   const memory = useDatastoreMetrics(kind, resource, "memory", {
+    ...live,
     skip: !isDatastore,
   });
   const memoryLimit = useDatastoreMetrics(kind, resource, "memory_limit", {
+    ...live,
     skip: !isDatabase,
-    pollIntervalMs: LIMIT_POLL_MS,
   });
   // Render's disk and database-activity graphs (w7/m430). A Key Value has
   // Disk Activity only; the database-activity graphs are Postgres's.
-  const diskActivity = useDatastoreMetrics(kind, resource, "disk_activity");
+  const diskActivity = useDatastoreMetrics(
+    kind,
+    resource,
+    "disk_activity",
+    live,
+  );
   const diskOperations = useDatastoreMetrics(
     kind,
     resource,
     "disk_operations",
-    { skip: isKeyValue },
+    { ...live, skip: isKeyValue },
   );
   const networkActivity = useDatastoreMetrics(
     kind,
     resource,
     "network_activity",
-    { skip: !isDatabase },
+    { ...live, skip: !isDatabase },
   );
   const transactionVolume = useDatastoreMetrics(
     kind,
     resource,
     "transaction_volume",
-    { skip: !isDatabase },
+    { ...live, skip: !isDatabase },
   );
   const lockDelayedQueries = useDatastoreMetrics(
     kind,
     resource,
     "lock_delayed_queries",
-    { skip: !isDatabase },
+    { ...live, skip: !isDatabase },
   );
 
   const diskSeries = useMemo(() => toLineSeries(disk.series), [disk.series]);
@@ -261,6 +291,17 @@ export function DatastoreMetricsPanel({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* A wrapping row, not the header's action slot: an applied custom
+            range widens the trigger and adds its Edit button, which the
+            header's fixed column cannot hold at phone width. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <RangeSelect
+            range={range}
+            onRangeChange={setRange}
+            bound={rangeBound}
+          />
+        </div>
+
         <MetricSection
           title={t("metrics.diskTitle")}
           result={disk}

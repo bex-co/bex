@@ -2886,8 +2886,8 @@ const DATASTORE_METRIC_SECTIONS = {
 
 /**
  * DatastoreMetricsPanel before its resource resolves (w4/m209): the panel's
- * real title, description and section headings, no filter row (the panel
- * has none), and each plot at the populated chart's responsive 600:180 ratio,
+ * real title, description and section headings, its range picker's slot
+ * (w7/072), and each plot at the populated chart's responsive 600:180 ratio,
  * so nothing moves when the panel and then its series arrive.
  */
 export function DatastoreMetricsSkeleton({
@@ -2910,6 +2910,12 @@ export function DatastoreMetricsSkeleton({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <Region
+              name="metrics-range"
+              className="flex flex-wrap items-center gap-3"
+            >
+              <Skeleton className="h-8 w-40" />
+            </Region>
             {DATASTORE_METRIC_SECTIONS[kind].map((titleKey) => (
               <div key={titleKey}>
                 <div className="mb-2 flex items-center justify-between gap-2">

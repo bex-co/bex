@@ -33,6 +33,10 @@ const mockUseDatastoreMetrics = vi.fn();
 vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
   useDatastoreMetrics: (...args: unknown[]) => mockUseDatastoreMetrics(...args),
 }));
+// Its range picker's plan bound is an Apollo read too (w7/072): unbounded here.
+vi.mock("@/features/metrics/hooks/use-metrics-retention", () => ({
+  useMetricsRetentionBound: () => undefined,
+}));
 
 import { DiskSection } from "@/features/services/components/disk-section";
 import { formatDateTime } from "@/common/lib/format";
