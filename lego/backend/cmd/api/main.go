@@ -82,6 +82,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/serve"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
+	"github.com/bex-co/bex/lego/backend/internal/signins"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/twofactor"
@@ -938,6 +939,9 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	if cfg.HydraAdminURL != "" {
 		deps.OAuthAccess = &oauthgrant.Access{HydraAdminURL: cfg.HydraAdminURL, Workspaces: st, Audit: st}
 	}
+	// A member's sign-ins and sign-outs, audited in each of their workspaces
+	// (w9/m452).
+	deps.SignIns = &signins.Recorder{Workspaces: st, Audit: st}
 	deps.AccountStore = st
 	deps.RouterMembers = st
 	deps.SSHKeysStore = st // identity-scoped SSH public-key registry

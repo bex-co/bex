@@ -83,6 +83,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/router"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/signins"
 	"github.com/bex-co/bex/lego/backend/internal/sshkeys"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
@@ -194,6 +195,11 @@ type Server struct {
 	// OAuthAccess audits the dashboard's OAuth consent approvals and Connected
 	// agents revocations (w4/m454); nil records neither.
 	OAuthAccess cliauth.OAuthAccessRecorder
+	// SignIns records a member's sign-ins (the auth gate's first sight of a
+	// new Kratos session) and sign-outs (the dashboard's recordSignOut and the
+	// CLI's logout) as Render's LoginEvent and LogoutEvent (w9/m452); nil
+	// records neither and leaves recordSignOut unmounted.
+	SignIns *signins.Recorder
 
 	// TrustedProxies (BEX_TRUSTED_PROXY_CIDRS) are the edge proxies whose
 	// forwarding headers this process may believe. Set by the composition root
@@ -676,6 +682,8 @@ type Deps struct {
 	// OAuthAccess: see Server.OAuthAccess. Built with the control-plane store
 	// and Hydra's admin URL.
 	OAuthAccess cliauth.OAuthAccessRecorder
+	// SignIns: see Server.SignIns. Built with the control-plane store.
+	SignIns *signins.Recorder
 	// Usage is the month-to-date usage verb (w8/m2), built with the
 	// control-plane store. nil => NewServer mounts it store-less, answering
 	// core.ErrUsageUnavailable (503).
@@ -1304,6 +1312,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Onboard:          d.Onboard,
 		OAuthRevocations: d.OAuthRevocations,
 		OAuthAccess:      d.OAuthAccess,
+		SignIns:          d.SignIns,
 		// main.go builds Usage and Audit only with the control-plane store.
 		// Without it they mount store-less and answer 503 (w5/113).
 		Usage:         cmp.Or(d.Usage, &usage.Service{Base: base}),
@@ -1463,6 +1472,7 @@ func (s *Server) features() []any {
 	out = appendFeature(out, s.Webhooks)
 	out = appendFeature(out, s.Jobs)
 	out = appendFeature(out, s.RenderObjects)
+	out = appendFeature(out, s.SignIns)
 	return out
 }
 
@@ -1564,6 +1574,9 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	cliAuth.Refreshes = s.CLIRefreshes
 	cliAuth.Revocations = s.OAuthRevocations
 	cliAuth.Access = s.OAuthAccess
+	if s.SignIns != nil {
+		cliAuth.SignOuts = s.SignIns
+	}
 	cliAuth.RegisterPublic(mux, bodyLimit)
 	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern
@@ -1755,6 +1768,9 @@ func (s *Server) newAuthGate() (*oryAuth, error) {
 	gate.metrics = s.OriginMetrics
 	gate.requireVerifiedEmail = s.RequireVerifiedEmail
 	gate.emailVerified = s.EmailVerified
+	if s.SignIns != nil {
+		gate.signIns = s.SignIns
+	}
 	// The durable-credential mint verbs' class gate (round-7 F3) resolves
 	// platform clients through the same operator-owned registry the audience rule
 	// uses. Every feature service shares this one Base.

@@ -751,3 +751,56 @@ func TestDeviceRateLimit429IsOAuthDialect(t *testing.T) {
 		})
 	}
 }
+
+// signOuts records the logouts reported to it, failing when told to.
+type signOuts struct {
+	subjects []string
+	methods  []string
+	err      error
+}
+
+func (s *signOuts) RecordSignOut(_ context.Context, subject, method string) error {
+	s.subjects = append(s.subjects, subject)
+	s.methods = append(s.methods, method)
+	return s.err
+}
+
+// A human's CLI or mobile logout is Render's LogoutEvent (w9/m452): one report
+// once Hydra revoked the grant, none when Hydra refused it or for an API key's
+// self-revocation, and a failed audit never fails the logout.
+func TestLogoutRecordsTheSignOut(t *testing.T) {
+	status := http.StatusOK
+	hydra := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(status) }))
+	defer hydra.Close()
+	logout := func(svc *Service, id core.Identity) int {
+		req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
+		req.Header.Set("Authorization", "Bearer access-a")
+		req = req.WithContext(core.WithIdentity(req.Context(), id))
+		rec := httptest.NewRecorder()
+		http.HandlerFunc(svc.revoke).ServeHTTP(rec, req)
+		return rec.Code
+	}
+	human := core.Identity{Subject: "kratos-user-a", Method: core.MethodOAuth2, ClientID: RenderCLIClientID, Human: true}
+
+	rec := &signOuts{}
+	svc := New(hydra.URL, &fakeRevoker{}, nil)
+	svc.SignOuts = rec
+	if code := logout(svc, human); code != http.StatusNoContent {
+		t.Fatalf("logout = %d", code)
+	}
+	if len(rec.subjects) != 1 || rec.subjects[0] != "kratos-user-a" || rec.methods[0] != core.MethodOAuth2 {
+		t.Errorf("sign-outs = %v %v, want one for kratos-user-a", rec.subjects, rec.methods)
+	}
+	if code := logout(svc, core.Identity{Subject: "api-key-1", Method: core.MethodOAuth2, ClientID: "api-key-1"}); code != http.StatusNoContent || len(rec.subjects) != 1 {
+		t.Errorf("an API key's self-revocation = %d and recorded %v, want 204 and no sign-out", code, rec.subjects)
+	}
+	status = http.StatusUnauthorized
+	if code := logout(svc, human); code != http.StatusServiceUnavailable || len(rec.subjects) != 1 {
+		t.Errorf("a refused revocation = %d and recorded %v, want 503 and no sign-out", code, rec.subjects)
+	}
+	status = http.StatusOK
+	rec.err = errors.New("database down")
+	if code := logout(svc, human); code != http.StatusNoContent {
+		t.Errorf("a logout whose audit failed = %d, want 204", code)
+	}
+}

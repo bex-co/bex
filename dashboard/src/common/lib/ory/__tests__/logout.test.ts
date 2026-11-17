@@ -1,13 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { endBrowserSession } from "../logout";
 
-const { createBrowserLogoutFlow, toSession, clearStore, invalidateSessionCache } =
-  vi.hoisted(() => ({
-    createBrowserLogoutFlow: vi.fn(),
-    toSession: vi.fn(),
-    clearStore: vi.fn(),
-    invalidateSessionCache: vi.fn(),
-  }));
+const {
+  createBrowserLogoutFlow,
+  toSession,
+  clearStore,
+  invalidateSessionCache,
+  reportSignOut,
+} = vi.hoisted(() => ({
+  createBrowserLogoutFlow: vi.fn(),
+  toSession: vi.fn(),
+  clearStore: vi.fn(),
+  invalidateSessionCache: vi.fn(),
+  reportSignOut: vi.fn(),
+}));
+
+vi.mock("@/common/lib/ory/report-sign-out", () => ({ reportSignOut }));
 
 vi.mock("@/common/lib/ory/frontend", () => ({
   createFrontendApi: () => ({ createBrowserLogoutFlow, toSession }),
@@ -27,7 +35,25 @@ describe("endBrowserSession", () => {
     toSession.mockReset();
     clearStore.mockReset();
     invalidateSessionCache.mockReset();
+    reportSignOut.mockReset();
+    reportSignOut.mockResolvedValue(undefined);
     vi.stubGlobal("fetch", vi.fn());
+  });
+
+  it("reports the sign-out to bex-api before ending the Kratos session", async () => {
+    createBrowserLogoutFlow.mockResolvedValue({
+      logout_url: "https://auth.example/logout?token=abc",
+    });
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 204 }));
+    clearStore.mockResolvedValue(undefined);
+
+    await endBrowserSession();
+
+    expect(reportSignOut).toHaveBeenCalledOnce();
+    expect(reportSignOut.mock.invocationCallOrder[0]).toBeLessThan(
+      createBrowserLogoutFlow.mock.invocationCallOrder[0],
+    );
+    expect(clearStore).toHaveBeenCalledOnce();
   });
 
   it("fetches the Kratos logout URL then drops cached session data", async () => {
@@ -42,9 +68,12 @@ describe("endBrowserSession", () => {
     expect(createBrowserLogoutFlow).toHaveBeenCalledWith({
       returnTo: `${window.location.origin}/`,
     });
-    expect(fetch).toHaveBeenCalledWith("https://auth.example/logout?token=abc", {
-      credentials: "include",
-    });
+    expect(fetch).toHaveBeenCalledWith(
+      "https://auth.example/logout?token=abc",
+      {
+        credentials: "include",
+      },
+    );
     expect(invalidateSessionCache).toHaveBeenCalledOnce();
     expect(clearStore).toHaveBeenCalledOnce();
   });
@@ -99,7 +128,9 @@ describe("endBrowserSession", () => {
       logout_url: "https://auth.example/logout?token=abc",
     });
     vi.mocked(fetch).mockRejectedValue(new TypeError("Failed to fetch"));
-    toSession.mockRejectedValue({ response: new Response(null, { status: 401 }) });
+    toSession.mockRejectedValue({
+      response: new Response(null, { status: 401 }),
+    });
     clearStore.mockResolvedValue(undefined);
 
     await endBrowserSession();

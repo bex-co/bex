@@ -33,6 +33,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/signins"
 )
 
 // auth.go is the shared auth gate every HTTP surface sits behind (docs/ADR012-auth.md):
@@ -207,11 +208,22 @@ type oryAuth struct {
 	// (tests, stdio) records nothing.
 	metrics *OriginMetrics
 
+	// signIns records a member's sign-in the first time a new Kratos session
+	// reaches this gate (w9/m452). nil (no control-plane store) records none.
+	signIns SignInObserver
+
 	// keys accepts an API key as the bearer by exchanging it at Hydra's token
 	// endpoint (auth_apikey.go, ADR012 §8e). nil when no issuer is configured:
 	// the token endpoint is unknown, so a key-shaped bearer is introspected like
 	// any other string and refused.
 	keys *keyBearer
+}
+
+// SignInObserver is told of every authenticated Kratos session request, and
+// records the ones that are a new sign-in. *signins.Recorder is the production
+// implementation; it returns at once.
+type SignInObserver interface {
+	ObserveSession(ctx context.Context, subject string, s signins.Session)
 }
 
 type cachedIdentity struct {
@@ -356,6 +368,7 @@ func (a *oryAuth) invalidate(token string, identity core.Identity) {
 func (a *oryAuth) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var id core.Identity
+		var session signins.Session
 		var err error
 		credential := presentedCredential(r)
 		// bearer becomes the OAuth access token that proved the caller: the
@@ -386,7 +399,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			}
 			id, bearer, err = a.authenticateBearer(r, bearer)
 		case hasSession:
-			id, err = a.whoami(r)
+			id, session, err = a.whoami(r)
 		default:
 			a.unauthorized(w)
 			return
@@ -423,6 +436,12 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 					}
 					core.WriteErrStatus(w, http.StatusServiceUnavailable, "tenant onboarding unavailable")
 					return
+				}
+			}
+			if hasSession && session.ID != "" {
+				ctx = signins.WithSessionID(ctx, session.ID)
+				if a.signIns != nil {
+					a.signIns.ObserveSession(ctx, id.Subject, signInSession(ctx, session))
 				}
 			}
 			if hasBearer {
@@ -696,18 +715,18 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 // whoami validates an Ory session at Kratos' public API, forwarding the caller's
 // session credential (cookie or X-Session-Token). Returns the zero Identity for a
 // missing/expired session, an error when Kratos is unreachable.
-func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
+func (a *oryAuth) whoami(r *http.Request) (core.Identity, signins.Session, error) {
 	// Kratos sessions are not positively cached here, so every session request is
 	// an upstream call and is metered as one (w1/m67 F1).
 	release, admitErr := a.admission.admit(r)
 	if admitErr != nil {
 		a.metrics.observeAuthShed(credentialSession, admitErr, a.admission.wasAuthenticated(r))
-		return core.Identity{}, admitErr
+		return core.Identity{}, signins.Session{}, admitErr
 	}
 	defer release()
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, a.kratosURL+"/sessions/whoami", nil)
 	if err != nil {
-		return core.Identity{}, err
+		return core.Identity{}, signins.Session{}, err
 	}
 	if c := r.Header.Get("Cookie"); c != "" {
 		req.Header.Set("Cookie", c)
@@ -717,7 +736,7 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	}
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return core.Identity{}, err
+		return core.Identity{}, signins.Session{}, err
 	}
 	defer core.DrainClose(resp)
 	switch {
@@ -726,11 +745,19 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 		// dashboard SSR pod, whose users all share its IP, is never charged
 		// because its sessions authenticate.
 		a.admission.penalize(r)
-		return core.Identity{}, nil
+		return core.Identity{}, signins.Session{}, nil
 	case resp.StatusCode != http.StatusOK:
-		return core.Identity{}, core.Err("kratos whoami returned " + resp.Status)
+		return core.Identity{}, signins.Session{}, core.Err("kratos whoami returned " + resp.Status)
 	}
 	var out struct {
+		// The session's own id, when it authenticated and the device it
+		// authenticated from: a new session is a sign-in (w9/m452).
+		ID              string `json:"id"`
+		AuthenticatedAt string `json:"authenticated_at"`
+		Devices         []struct {
+			IPAddress string `json:"ip_address"`
+			UserAgent string `json:"user_agent"`
+		} `json:"devices"`
 		Identity struct {
 			ID     string `json:"id"`
 			Traits struct {
@@ -747,10 +774,10 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 		} `json:"identity"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return core.Identity{}, err
+		return core.Identity{}, signins.Session{}, err
 	}
 	if out.Identity.ID == "" {
-		return core.Identity{}, nil
+		return core.Identity{}, signins.Session{}, nil
 	}
 	a.admission.markAuthenticated(r)
 	// traits.email is the standard Kratos identity schema's email field — the key
@@ -764,6 +791,12 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 			break
 		}
 	}
+	// An unreadable time records no sign-in; it never fails the request.
+	authenticatedAt, _ := time.Parse(time.RFC3339Nano, out.AuthenticatedAt)
+	session := signins.Session{ID: out.ID, AuthenticatedAt: authenticatedAt}
+	if len(out.Devices) > 0 {
+		session.SourceIP, session.UserAgent = out.Devices[0].IPAddress, out.Devices[0].UserAgent
+	}
 	return core.Identity{
 		Subject:       out.Identity.ID,
 		Method:        "session",
@@ -773,7 +806,18 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 		Name:          out.Identity.Traits.Name,
 		// CanonicalScopes / AcceptedAudience / PlatformClient stay zero: a
 		// Kratos session is not a human-delegation OAuth grant.
-	}, nil
+	}, session, nil
+}
+
+// signInSession is session as its sign-in row records it: from where the
+// request that first carried it came, through the trusted proxies like every
+// other audit row (w9/m450), and from the device Kratos recorded only when
+// the request says nothing.
+func signInSession(ctx context.Context, session signins.Session) signins.Session {
+	if origin, ok := core.RequestOriginFrom(ctx); ok && (origin.SourceIP != "" || origin.UserAgent != "") {
+		session.SourceIP, session.UserAgent = origin.SourceIP, origin.UserAgent
+	}
+	return session
 }
 
 // unauthorized answers 401 with the precomputed WWW-Authenticate challenge

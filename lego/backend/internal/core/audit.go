@@ -244,7 +244,7 @@ func attachRequestOrigin(ctx context.Context, ev *AuditEvent) {
 	if ev.Caller == "" || ev.SourceIP != "" || ev.UserAgent != "" {
 		return
 	}
-	origin, ok := ctx.Value(requestOriginKey{}).(RequestOrigin)
+	origin, ok := RequestOriginFrom(ctx)
 	if !ok {
 		return
 	}
@@ -552,6 +552,13 @@ const (
 	// AuditVerbRevokeOAuthAccess too, once, in the ops workspace.
 	AuditVerbGrantOAuthAccess  = "oauth.GrantAccess"
 	AuditVerbRevokeOAuthAccess = "oauth.RevokeAccess"
+	// AuditVerbLogin and AuditVerbLogout are a member signing in and out
+	// (w9/m452), Render's LoginEvent and LogoutEvent, each recorded once in
+	// every workspace the member belongs to by internal/signins: a sign-in
+	// when bex-api first sees a new Kratos session, a sign-out when the
+	// dashboard or the CLI reports one.
+	AuditVerbLogin  = "auth.Login"
+	AuditVerbLogout = "auth.Logout"
 )
 
 // EdgeCacheToggleVerbs are the verbs whose rows record which way they turned
@@ -1864,14 +1871,25 @@ func RecordAuditEvents(ctx context.Context, sink AuditSink, evs ...AuditEvent) {
 		}
 		return
 	}
+	if err := RecordAuditBatch(ctx, batch, evs...); err != nil {
+		log.Printf("audit: record %d rows (%s %s first): %v", len(evs), evs[0].Verb, evs[0].Resource, err)
+	}
+}
+
+// RecordAuditBatch is RecordAuditEvents' batch path with the error returned
+// instead of logged, for a writer that retries a fact whose rows did not land
+// (a sign-in, w9/m452). It is as bounded as every other sink path, and fills
+// each row's origin from the request in ctx the same way.
+func RecordAuditBatch(ctx context.Context, sink AuditBatchSink, evs ...AuditEvent) error {
+	if len(evs) == 0 {
+		return nil
+	}
 	for i := range evs {
 		attachRequestOrigin(ctx, &evs[i])
 	}
 	recordCtx, cancel := context.WithTimeout(ctx, auditRecordTimeout)
 	defer cancel()
-	if err := batch.RecordAll(recordCtx, evs); err != nil {
-		log.Printf("audit: record %d rows (%s %s first): %v", len(evs), evs[0].Verb, evs[0].Resource, err)
-	}
+	return sink.RecordAll(recordCtx, evs)
 }
 
 // RecordAuditEvent writes ev through sink with the same bounded, fail-open

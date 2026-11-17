@@ -70,6 +70,9 @@ func TestRenderEventVerbsExist(t *testing.T) {
 		// w9/m451: the SSH gateway's shell session rows.
 		core.AuditVerbStartShell: true,
 		core.AuditVerbEndShell:   true,
+		// w9/m452: a member's sign-in and sign-out, by internal/signins.
+		core.AuditVerbLogin:  true,
+		core.AuditVerbLogout: true,
 	}
 	methodsByPkg := map[string]map[string]bool{}
 	for verb := range renderEvents {

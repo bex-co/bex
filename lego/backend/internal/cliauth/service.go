@@ -96,6 +96,12 @@ type OAuthAccessRecorder interface {
 	RecordRevoke(ctx context.Context, subject, clientID string) error
 }
 
+// SignOutRecorder records a member's sign-out in the audit log (w9/m452).
+// *signins.Recorder is the production implementation.
+type SignOutRecorder interface {
+	RecordSignOut(ctx context.Context, subject, method string) error
+}
+
 // errOAuthAccessUnavailable answers the grant report when bex-api has no
 // Hydra admin URL or no control-plane store to check and record it with.
 var errOAuthAccessUnavailable = core.Unavailable("oauth access audit unavailable")
@@ -120,6 +126,9 @@ type Service struct {
 	// revocations (w4/m454). nil records neither: the grant report answers
 	// 503 and a revocation still advances its marker.
 	Access OAuthAccessRecorder
+	// SignOuts records a human's CLI or mobile logout as Render's LogoutEvent
+	// in each of their workspaces (w9/m452). nil records none.
+	SignOuts SignOutRecorder
 	// RateLimiter guards the three public device-flow routes (w4/m31/t002).
 	// nil (the New default) disables limiting — set post-construction from
 	// the composition root once BEX_DEVICE_RATE_LIMIT is known, the same
@@ -285,6 +294,13 @@ func (s *Service) revoke(w http.ResponseWriter, r *http.Request) {
 		if err != nil || status != http.StatusOK {
 			core.WriteErr(w, core.ErrLogoutUnavailable)
 			return
+		}
+		// Render's LogoutEvent (w9/m452). The grant is already revoked, so a
+		// failed audit never fails the logout.
+		if s.SignOuts != nil {
+			if err := s.SignOuts.RecordSignOut(r.Context(), id.Subject, id.Method); err != nil {
+				log.Printf("cliauth: audit the logout of %s: %v", id.Subject, err)
+			}
 		}
 	case !id.Human && id.ClientID != "" && id.Subject == id.ClientID:
 		if s.apiKeys == nil {

@@ -282,6 +282,10 @@ var renderEvents = map[string]string{
 	// ever recorded, so their rows are always StartShellEvent with status
 	// error). An agent-session sandbox's SSH authorizes through agentsessions
 	// and records neither.
+	// A member signing in and out (w9/m452), recorded once in each of their
+	// workspaces by internal/signins.
+	core.AuditVerbLogin:       "LoginEvent",
+	core.AuditVerbLogout:      "LogoutEvent",
 	core.AuditVerbStartShell:  "StartShellEvent",
 	core.AuditVerbEndShell:    "EndShellEvent",
 	"apps.ResolveSSHSession":  "StartShellEvent",

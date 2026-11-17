@@ -2,6 +2,7 @@ import type { FrontendApi } from "@ory/client-fetch";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
 import { invalidateSessionCache } from "@/common/server-fn/session";
 import { getClient } from "@/common/apollo/client";
+import { reportSignOut } from "@/common/lib/ory/report-sign-out";
 
 /**
  * True when Kratos refuses the logout flow because there is already no
@@ -56,8 +57,12 @@ async function sessionIsGone(api: FrontendApi): Promise<boolean> {
  * network error on the first attempt, and the retry "worked" only because
  * createBrowserLogoutFlow then 401'd. Any failure of the logout fetch is
  * therefore confirmed against `whoami` before reporting an error.
+ *
+ * The sign-out is reported to bex-api first, while the session still
+ * authenticates the report (`reportSignOut`, w9/m452).
  */
 export async function endBrowserSession(): Promise<void> {
+  await reportSignOut();
   const api = createFrontendApi();
   let logoutUrl: string;
   try {

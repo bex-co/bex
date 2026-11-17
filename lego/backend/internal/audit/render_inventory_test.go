@@ -44,8 +44,8 @@ var renderWorkspaceEvents = map[string]renderWorkspaceEvent{
 	"ChangeTeamMemberRoleEvent":          {verbs: []string{core.AuditVerbMemberRoleChanged}},
 	"ChangeTeamAllowedLoginMethodsEvent": {nonGoal: "bex has no allowed-login-methods setting"},
 	"ChangeTeam2FAEnforcementEvent":      {verbs: []string{core.AuditVerbSetRequireTwoFactor}},
-	"LoginEvent":                         {notYet: "w9/m452"},
-	"LogoutEvent":                        {notYet: "w9/m452"},
+	"LoginEvent":                         {verbs: []string{core.AuditVerbLogin}},
+	"LogoutEvent":                        {verbs: []string{core.AuditVerbLogout}},
 	// Apps and services.
 	"CreateServerEvent":              {verbs: []string{"apps.Create"}},
 	"SuspendServiceEvent":            {verbs: []string{"apps.Suspend"}},

@@ -96,6 +96,13 @@ func WithRequestOrigin(ctx context.Context, origin RequestOrigin) context.Contex
 	return context.WithValue(ctx, requestOriginKey{}, origin)
 }
 
+// RequestOriginFrom is the origin WithRequestOrigin recorded on ctx, and
+// whether there is one.
+func RequestOriginFrom(ctx context.Context) (RequestOrigin, bool) {
+	origin, ok := ctx.Value(requestOriginKey{}).(RequestOrigin)
+	return origin, ok
+}
+
 // WithBlueprintApply marks a context as executing a Blueprint apply, so every
 // resource created underneath it is attributed to the Blueprint rather than to
 // whichever transport happened to trigger the sync. That matters because the
@@ -137,7 +144,7 @@ func ProductSurface(ctx context.Context) string {
 	if fire, ok := ctx.Value(automationFireKey{}).(bool); ok && fire {
 		return SurfaceAutomation
 	}
-	origin, ok := ctx.Value(requestOriginKey{}).(RequestOrigin)
+	origin, ok := RequestOriginFrom(ctx)
 	if !ok {
 		return SurfaceUnknown
 	}
