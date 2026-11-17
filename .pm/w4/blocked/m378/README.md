@@ -1,6 +1,6 @@
 # w4 · m378 — Sixteen of Render's shared MCP tools answer in bex's own shapes, not what Render's server returns: list envelopes, `list_logs`/`get_metrics` series, service creates without `deployId`, datastores without `owner`/`options`, and `query_render_postgres` rows without column names
 
-**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** todo — t001–t006, t008–t013 done; t007 (live replay of the whole DoD on a pin carrying t013) pending. Previously: blocked on t012/t013 after the round 408 replay (2026-11-15), unblocked 2026-11-16 (§ Unblock record)
+**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** blocked — release gate: t001–t006, t008–t013 done; t007 replays the whole DoD on production once the live pin carries `983e88883` (t013, plus `93586111d`). Check with `git merge-base --is-ancestor 983e88883 <live pin>`. No user action. Previously: unblocked 2026-11-16 (§ Unblock record) after the round 408 replay
 
 ## Tasks (in order)
 
