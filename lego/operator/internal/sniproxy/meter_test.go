@@ -19,6 +19,7 @@ package sniproxy
 import (
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -94,4 +95,27 @@ func TestByteMeterExportsProcessStartForBoundaryResetDetection(t *testing.T) {
 		}
 	}
 	t.Fatal("process-start metric was not registered")
+}
+
+// Billing counts a series that first appears inside an hour from zero
+// (w6/133), so a resource's series must be absent until its first copied
+// bytes and then stay, at its running total, in every later scrape.
+func TestByteMeterSeriesAppearsAtFirstBytesAndStays(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	meter := NewByteMeter(registry, "series_proxy", "postgres")
+	const name = "bex_series_proxy_egress_bytes_total"
+	meter.Add("dpg-one", "postgres", 0)
+	if got := testutil.CollectAndCount(meter.responseBytes, name); got != 0 {
+		t.Fatalf("%d series before any bytes were copied, want 0", got)
+	}
+	meter.Add("dpg-one", "postgres", 5737)
+	for range 3 {
+		if err := testutil.GatherAndCompare(registry, strings.NewReader(`
+# HELP bex_series_proxy_egress_bytes_total Bytes copied from a managed datastore backend to a public client.
+# TYPE bex_series_proxy_egress_bytes_total counter
+bex_series_proxy_egress_bytes_total{resource_id="dpg-one",resource_kind="postgres"} 5737
+`), name); err != nil {
+			t.Fatal(err)
+		}
+	}
 }

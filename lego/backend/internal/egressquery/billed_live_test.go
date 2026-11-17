@@ -33,20 +33,23 @@ import (
 )
 
 // TestBilledAgainstIncreaseOnRecordedHours replays the billing rule against
-// Increase on every whole hour a live Prometheus still holds, read-only
-// (w6/m455 t003, the comparison the user asked for before billing switched).
-// It reads the whole Traefik fleet as one source, so every router series is
-// compared. It fails unless, in every hour, Billed minus Increase is exactly
-// the new series' last values minus their own increase(): the two differ only
-// on the series newSeries selects.
+// Increase on every whole hour a live Prometheus still holds, read-only, for
+// every source with NewSeriesFromZero (w6/m455 t003 for Traefik, w6/133 for
+// the WebSocket plugin and the datastore proxies: the comparison the user
+// asked for before billing switches). It reads each source's whole fleet as
+// one source, so every series is compared. It fails unless, in every hour,
+// Billed minus Increase is exactly the new series' last values minus their
+// own increase(): the two differ only on the series newSeries selects.
 //
 // It also reports two things for the record. A new series that was present
-// earlier in retention is checked against the value and request count it
-// left with: a series that carried its old counter on could only come back
-// at or above both, so a lower value, a lower request count, or more bytes
-// for the same requests shows it restarted from zero. And it sums what the
-// guard kept out: series missing at the hour's start whose target was not
-// scraped then, which a rule without the guard would have counted from zero.
+// earlier in retention is checked against the value it left with, and against
+// the request count it left with where the source has one: a series that
+// carried its old counter on could only come back at or above both, so a
+// lower value or a lower request count shows it restarted from zero, and so
+// do more bytes for the same requests where every byte belongs to a finished
+// request. And it sums what the guard kept out: series missing at the hour's
+// start whose target was not scraped then, which a rule without the guard
+// would have counted from zero.
 //
 // Run it with a port-forward to the production Prometheus:
 //
@@ -56,15 +59,44 @@ func TestBilledAgainstIncreaseOnRecordedHours(t *testing.T) {
 	if base == "" {
 		t.Skip("set BEX_TEST_EGRESS_PROM_URL to replay the egress billing rule on a live Prometheus's recorded hours")
 	}
-	spec := App("fleet", []string{"fleet"}, false)[0]
-	spec.Matchers = `router=~".+"`
+	// fleet reads a source's every series: id is the label that names its
+	// resource; requests, when set, is a counter with the same labels and
+	// lifetime that counts the resource's requests; requestBound says every
+	// byte is counted with a finished request.
+	fleet := map[Source]struct {
+		matchers, id, requests string
+		requestBound           bool
+	}{
+		HTTP:      {`router=~".+"`, "router", "traefik_router_requests_total", true},
+		WebSocket: {`app_id=~".+"`, "app_id", "bex_http_request_starts_total", false},
+		Postgres:  {`resource_id=~".+",resource_kind="postgres"`, "resource_id", "", false},
+		KeyValue:  {`resource_id=~".+",resource_kind="key_value"`, "resource_id", "", false},
+	}
+	specs := append(App("fleet", []string{"fleet"}, true), Datastore("fleet", "postgres", true)...)
+	specs = append(specs, Datastore("fleet", "key_value", true)...)
+	for _, spec := range specs {
+		if !spec.NewSeriesFromZero {
+			continue
+		}
+		f, ok := fleet[spec.Source]
+		if !ok {
+			t.Fatalf("%s counts new series from zero but has no fleet-wide replay", spec.Source)
+		}
+		spec.Matchers = f.matchers
+		t.Run(string(spec.Source), func(t *testing.T) {
+			replayRecordedHours(t, base, spec, f.id, f.requests, f.requestBound)
+		})
+	}
+}
+
+func replayRecordedHours(t *testing.T, base string, spec Spec, id, requests string, requestBound bool) {
 	series := fmt.Sprintf("%s{%s}", spec.Counter, spec.Matchers)
 	now := time.Now().UTC()
 	lowest := mustInstant(t, base, "min(prometheus_tsdb_lowest_timestamp_seconds)", now)
 	retention := time.Unix(int64(lowest), 0).UTC()
 	from := retention.Truncate(time.Hour).Add(2 * time.Hour) // the first hour whose guard is inside retention
-	var hours, freshCount, returned, restarted, guarded int
-	var oldTotal, newTotal, firstTotal, untold, guardedBytes float64
+	var hours, healthy, freshCount, returned, restarted, guarded int
+	var oldTotal, newTotal, oldHealthy, newHealthy, firstTotal, untold, guardedBytes float64
 	for end := from; !end.After(now.Truncate(time.Hour)); end = end.Add(time.Hour) {
 		at := end.Format(time.RFC3339)
 		oldBytes := mustInstant(t, base, Increase(spec, 3600), end)
@@ -78,11 +110,23 @@ func TestBilledAgainstIncreaseOnRecordedHours(t *testing.T) {
 		if got, want := newBytes-oldBytes, freshLast-freshIncrease; math.Abs(got-want) > 1e-6*math.Max(1, math.Abs(newBytes)) {
 			t.Errorf("%s: Billed-Increase = %.0f, but the new series account for %.0f", at, got, want)
 		}
-		for _, s := range liveVector(t, base, fmt.Sprintf("(last_over_time(%[1]s[3600s]) unless last_over_time(%[1]s[%[2]ds] offset 3600s)) unless %[3]s", series, newSeriesGuard, newSeries(spec, 3600)), end) {
-			guarded++
-			guardedBytes += s.value
-		}
 		hours++
+		ok := mustInstant(t, base, Health(spec, 3600), end) == 1
+		if ok {
+			healthy++
+			oldHealthy += oldBytes
+			newHealthy += newBytes
+		}
+		kept := liveVector(t, base, fmt.Sprintf("(last_over_time(%[1]s[3600s]) unless last_over_time(%[1]s[%[2]ds] offset 3600s)) unless %[3]s", series, newSeriesGuard, newSeries(spec, 3600)), end)
+		var keptBytes float64
+		for _, s := range kept {
+			keptBytes += s.value
+		}
+		if len(kept) > 0 {
+			t.Logf("%s: the guard kept %d series (%.0f bytes) on increase(); the health gate passes the hour: %t", at, len(kept), keptBytes, ok)
+		}
+		guarded += len(kept)
+		guardedBytes += keptBytes
 		freshCount += len(fresh)
 		oldTotal += oldBytes
 		newTotal += newBytes
@@ -92,21 +136,21 @@ func TestBilledAgainstIncreaseOnRecordedHours(t *testing.T) {
 		// first: each new series' earliest value in the hour (a new series
 		// with no reset in its first hour starts at its minimum); prior: its
 		// last value anywhere earlier in retention.
-		routers := map[string]bool{}
+		ids := map[string]bool{}
 		for _, s := range fresh {
-			routers[regexp.QuoteMeta(s.metric["router"])] = true
+			ids[regexp.QuoteMeta(s.metric[id])] = true
 		}
-		names := make([]string, 0, len(routers))
-		for r := range routers {
+		names := make([]string, 0, len(ids))
+		for r := range ids {
 			names = append(names, r)
 		}
 		sort.Strings(names)
-		matcher := fmt.Sprintf("{router=~%q}", "^("+strings.Join(names, "|")+")$")
+		matcher := fmt.Sprintf("{%s=~%q}", id, "^("+strings.Join(names, "|")+")$")
 		before := end.Add(-time.Hour - newSeriesGuard*time.Second)
 		span := int64(before.Sub(retention) / time.Second)
 		read := func(metric, fn string, window int64, when time.Time) map[string]float64 {
 			out := map[string]float64{}
-			if window > 0 {
+			if window > 0 && metric != "" {
 				for _, s := range liveVector(t, base, fmt.Sprintf("%s(%s%s[%ds])", fn, metric, matcher, window), when) {
 					out[s.key()] = s.value
 				}
@@ -114,7 +158,7 @@ func TestBilledAgainstIncreaseOnRecordedHours(t *testing.T) {
 			return out
 		}
 		first, prior := read(spec.Counter, "min_over_time", 3600, end), read(spec.Counter, "last_over_time", span, before)
-		firstReqs, priorReqs := read("traefik_router_requests_total", "min_over_time", 3600, end), read("traefik_router_requests_total", "last_over_time", span, before)
+		firstReqs, priorReqs := read(requests, "min_over_time", 3600, end), read(requests, "last_over_time", span, before)
 		for _, s := range fresh {
 			k := s.key()
 			firstTotal += first[k]
@@ -124,7 +168,7 @@ func TestBilledAgainstIncreaseOnRecordedHours(t *testing.T) {
 			}
 			returned++
 			b, r, pr := first[k], firstReqs[k], priorReqs[k]
-			if b < p || r < pr || (b > p && r == pr) {
+			if b < p || r < pr || (requestBound && b > p && r == pr) {
 				restarted++
 				continue
 			}
@@ -133,13 +177,15 @@ func TestBilledAgainstIncreaseOnRecordedHours(t *testing.T) {
 		}
 		t.Logf("%s old %.0f new %.0f (+%.0f): %d new series", at, oldBytes, newBytes, newBytes-oldBytes, len(fresh))
 	}
-	t.Logf("%d hours ending %s..%s: old %.0f new %.0f bytes (+%.0f, +%.4f%%); %d new series, first scraped at %.0f bytes in total",
-		hours, from.Format(time.RFC3339), now.Truncate(time.Hour).Format(time.RFC3339), oldTotal, newTotal, newTotal-oldTotal,
+	t.Logf("%s: %d hours ending %s..%s: old %.0f new %.0f bytes (+%.0f, +%.4f%%); %d new series, first scraped at %.0f bytes in total",
+		spec.Source, hours, from.Format(time.RFC3339), now.Truncate(time.Hour).Format(time.RFC3339), oldTotal, newTotal, newTotal-oldTotal,
 		100*(newTotal-oldTotal)/math.Max(oldTotal, 1), freshCount, firstTotal)
-	t.Logf("%d of the new series were present earlier in retention: %d show a restart from zero, the values of the rest cannot tell (%.0f bytes at most)",
-		returned, restarted, untold)
-	t.Logf("the guard kept %d series missing at an hour's start with no scrape of their target on increase(): %.0f bytes a rule without it would have counted from zero",
-		guarded, guardedBytes)
+	t.Logf("%s: the %d hours the health gate passes (the hours the meter bills): old %.0f new %.0f bytes (+%.0f)",
+		spec.Source, healthy, oldHealthy, newHealthy, newHealthy-oldHealthy)
+	t.Logf("%s: %d of the new series were present earlier in retention: %d show a restart from zero, the values of the rest cannot tell (%.0f bytes at most)",
+		spec.Source, returned, restarted, untold)
+	t.Logf("%s: the guard kept %d series missing at an hour's start with no scrape of their target on increase(): %.0f bytes a rule without it would have counted from zero",
+		spec.Source, guarded, guardedBytes)
 }
 
 type liveSample struct {

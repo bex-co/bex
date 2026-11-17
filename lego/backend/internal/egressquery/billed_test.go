@@ -18,6 +18,7 @@ package egressquery
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,40 +29,59 @@ import (
 )
 
 // Only a source whose exporter is verified to recreate a series from zero
-// gets the new-series rule; every other source bills Increase unchanged.
-func TestBilledCountsNewSeriesOnlyForTraefikRouters(t *testing.T) {
+// gets the new-series rule, each guarded by a scrape of its own target; the
+// direct meter restores a checkpointed counter and bills Increase unchanged.
+func TestBilledCountsNewSeriesFromZeroForEveryVerifiedSource(t *testing.T) {
 	specs := App("srv-one", []string{"r@kubernetes"}, true)
 	specs = append(specs, Datastore("dpg-one", "postgres", true)[0], Datastore("kv-one", "key_value", true)[0])
+	ruled := map[Source]bool{}
 	for _, spec := range specs {
 		got := Billed(spec, 3600)
-		if spec.Source != HTTP {
+		if spec.Source == Direct {
 			if spec.NewSeriesFromZero || got != Increase(spec, 3600) {
 				t.Errorf("%s bills %q, want Increase", spec.Source, got)
 			}
 			continue
 		}
+		ruled[spec.Source] = spec.NewSeriesFromZero
+		series := fmt.Sprintf("%s{%s}", spec.Counter, spec.Matchers)
 		for _, want := range []string{
-			`last_over_time(traefik_router_responses_bytes_total{router=~"^(r@kubernetes)$"}[3600s])`,
-			`unless last_over_time(traefik_router_responses_bytes_total{router=~"^(r@kubernetes)$"}[30s] offset 3600s)`,
-			`and on(instance) (max_over_time(up{job="traefik"}[30s] offset 3600s) == 1)`,
+			fmt.Sprintf("last_over_time(%s[3600s])", series),
+			fmt.Sprintf("unless last_over_time(%s[30s] offset 3600s)", series),
+			fmt.Sprintf("and on(instance) (max_over_time(up{job=%q}[30s] offset 3600s) == 1)", spec.Job),
 		} {
 			if !strings.Contains(got, want) {
-				t.Errorf("HTTP billed query missing %q: %s", want, got)
+				t.Errorf("%s billed query missing %q: %s", spec.Source, want, got)
 			}
 		}
+	}
+	if want := map[Source]bool{HTTP: true, WebSocket: true, Postgres: true, KeyValue: true}; !maps.Equal(ruled, want) {
+		t.Errorf("sources counting new series from zero = %v, want %v", ruled, want)
 	}
 }
 
 // TestBilledOnPrometheus evaluates the billing expression in Prometheus's own
-// engine via `promtool test rules`, like TestInstanceSecondsQueryOnPrometheus.
-// Each group is one 15 s-scraped Traefik target over two hours; the billed
-// hour is (3600 s, 7200 s], evaluated at its end.
+// engine via `promtool test rules`, like TestInstanceSecondsQueryOnPrometheus,
+// for every source that counts new series from zero. Each group is one
+// 15 s-scraped target of that source over two hours; the billed hour is
+// (3600 s, 7200 s], evaluated at its end.
 func TestBilledOnPrometheus(t *testing.T) {
 	promtool, err := exec.LookPath("promtool")
 	if err != nil {
 		testenv.Skip(t, "promtool not on PATH")
 	}
-	spec := App("srv-one", []string{"r@kubernetes"}, false)[0]
+	app := App("srv-one", []string{"r@kubernetes"}, true)
+	// Each source's counter labels: base on every series, variant added to a
+	// group's default series (a router series is one status code's).
+	sources := []struct {
+		spec          Spec
+		base, variant string
+	}{
+		{app[0], `router="r@kubernetes",method="GET",protocol="http"`, `code="200"`},
+		{app[1], `app_id="srv-one"`, ""},
+		{Datastore("dpg-one", "postgres", true)[0], `resource_id="dpg-one",resource_kind="postgres"`, ""},
+		{Datastore("kv-one", "key_value", true)[0], `resource_id="kv-one",resource_kind="key_value"`, ""},
+	}
 	const steps = 481 // 0..7200 s
 	// values renders one sample per step; at returns "" for no sample.
 	values := func(at func(step int) string) string {
@@ -106,108 +126,146 @@ func TestBilledOnPrometheus(t *testing.T) {
 			return "10000570"
 		}
 	})
-	billed, increase := Billed(spec, 3600), Increase(spec, 3600)
-	diff := fmt.Sprintf("(%s) - (%s)", billed, increase)
-	type expect struct {
-		expr string
-		want string
-	}
-	groups := []struct {
-		name   string
-		up     string
-		series map[string]string // code -> values
-		checks []expect
-	}{
-		{"a new series counts from zero, through its last sample after it went stale (the m333 probe)", always("1"),
-			map[string]string{"200": probe},
-			[]expect{{billed, "10000570"}, {"round(" + increase + ")", "4571429"}, {Health(spec, 3600), "1"}}},
-		{"a new series still live at the hour's end", always("1"),
-			map[string]string{"200": counter(300, steps, 500, 10)},
-			[]expect{{billed, "2300"}}},
-		{"a series present at the start bills exactly what increase() bills", always("1"),
-			map[string]string{"200": counter(0, steps, 0, 1000)},
-			[]expect{{billed, "240000"}, {diff, "0"}}},
-		{"an old series and a new status code on the same router", always("1"),
-			map[string]string{"200": counter(0, steps, 0, 1000), "503": counter(400, steps, 216, 0)},
-			[]expect{{billed, "240216"}}},
-		{"a router deleted in the last hour and recreated counts its new life from zero", always("1"),
-			map[string]string{"200": values(func(i int) string {
-				switch {
-				case i < 200:
-					return fmt.Sprint(90000 + 100*i)
-				case i == 200:
-					return "stale"
-				case i < 300:
-					return ""
-				default:
-					return fmt.Sprint(700 + 5*(i-300))
+	// A short public datastore connection or WebSocket session that ended
+	// before its series' first scrape: the proxies add a connection's bytes
+	// when it closes, so the first sample is already the whole session.
+	session := counter(310, steps, 52000, 0)
+	for _, src := range sources {
+		spec := src.spec
+		t.Run(string(spec.Source), func(t *testing.T) {
+			billed, increase := Billed(spec, 3600), Increase(spec, 3600)
+			diff := fmt.Sprintf("(%s) - (%s)", billed, increase)
+			type expect struct {
+				expr string
+				want string
+			}
+			groups := []struct {
+				name   string
+				only   Source // "" for every source
+				up     string
+				series map[string]string // extra labels ("" for the source's variant) -> values
+				checks []expect
+			}{
+				{"everything counted before the first scrape counts from zero, where increase() bills nothing", "", always("1"),
+					map[string]string{"": session},
+					[]expect{{billed, "52000"}, {increase, "0"}, {Health(spec, 3600), "1"}}},
+				{"a new series counts from zero, through its last sample after it went stale (the m333 probe)", HTTP, always("1"),
+					map[string]string{"": probe},
+					[]expect{{billed, "10000570"}, {"round(" + increase + ")", "4571429"}, {Health(spec, 3600), "1"}}},
+				{"a new series still live at the hour's end", "", always("1"),
+					map[string]string{"": counter(300, steps, 500, 10)},
+					[]expect{{billed, "2300"}}},
+				{"a series present at the start bills exactly what increase() bills", "", always("1"),
+					map[string]string{"": counter(0, steps, 0, 1000)},
+					[]expect{{billed, "240000"}, {diff, "0"}}},
+				{"an old series and a new status code on the same router", HTTP, always("1"),
+					map[string]string{`code="200"`: counter(0, steps, 0, 1000), `code="503"`: counter(400, steps, 216, 0)},
+					[]expect{{billed, "240216"}}},
+				{"a router deleted in the last hour and recreated counts its new life from zero", HTTP, always("1"),
+					map[string]string{"": values(func(i int) string {
+						switch {
+						case i < 200:
+							return fmt.Sprint(90000 + 100*i)
+						case i == 200:
+							return "stale"
+						case i < 300:
+							return ""
+						default:
+							return fmt.Sprint(700 + 5*(i-300))
+						}
+					})},
+					[]expect{{billed, "1600"}, {Health(spec, 3600), "1"}}},
+				{"a series missing at the start because its target was not scraped keeps increase()", "",
+					values(func(i int) string {
+						if i > 225 && i < 246 {
+							return ""
+						}
+						return "1"
+					}),
+					map[string]string{"": values(func(i int) string {
+						if i > 225 && i < 246 {
+							return ""
+						}
+						return fmt.Sprint(50000 + 10*i)
+					})},
+					[]expect{{diff, "0"}, {"(" + billed + ") < bool 10000", "1"}}},
+				{"a series missing at the start because the scrapes failed keeps increase()", "",
+					values(func(i int) string {
+						if i >= 238 && i <= 240 {
+							return "0"
+						}
+						return "1"
+					}),
+					map[string]string{"": values(func(i int) string {
+						if i >= 238 && i <= 240 {
+							return ""
+						}
+						return fmt.Sprint(50000 + 10*i)
+					})},
+					[]expect{{diff, "0"}, {"(" + billed + ") < bool 10000", "1"}}},
+				{"a new series that resets fails the hour's health gate", "", always("1"),
+					map[string]string{"": values(func(i int) string {
+						switch {
+						case i < 300:
+							return ""
+						case i < 400:
+							return fmt.Sprint(1000 * (i - 299))
+						default:
+							return fmt.Sprint(10 * (i - 399))
+						}
+					})},
+					[]expect{{Health(spec, 3600), "0"}}},
+				{"the month-to-date read sums the billed hours", "", always("1"),
+					map[string]string{"": session},
+					[]expect{{CompletedHoursIncrease(spec, 2), "52000"}}},
+			}
+			// onTarget adds the scrape target's labels, and a counter's base
+			// labels, to a selector made only of equality matchers, so it can
+			// serve as a promtool input series.
+			onTarget := func(selector string) string {
+				name, labels, _ := strings.Cut(strings.TrimSuffix(selector, "}"), "{")
+				parts := []string{`instance="10.0.0.1:9100"`, `pod="exporter-a"`}
+				if !strings.Contains(labels, "job=") {
+					parts = append(parts, fmt.Sprintf("job=%q", spec.Job))
 				}
-			})},
-			[]expect{{billed, "1600"}, {Health(spec, 3600), "1"}}},
-		{"a series missing at the start because its target was not scraped keeps increase()",
-			values(func(i int) string {
-				if i > 225 && i < 246 {
-					return ""
+				if name == spec.Counter {
+					parts = append(parts, src.base)
 				}
-				return "1"
-			}),
-			map[string]string{"200": values(func(i int) string {
-				if i > 225 && i < 246 {
-					return ""
+				if labels != "" {
+					parts = append(parts, labels)
 				}
-				return fmt.Sprint(50000 + 10*i)
-			})},
-			[]expect{{diff, "0"}, {"(" + billed + ") < bool 10000", "1"}}},
-		{"a series missing at the start because the scrapes failed keeps increase()",
-			values(func(i int) string {
-				if i >= 238 && i <= 240 {
-					return "0"
+				return name + "{" + strings.Join(parts, ",") + "}"
+			}
+			var b strings.Builder
+			b.WriteString("rule_files: []\nevaluation_interval: 15s\ntests:\n")
+			for _, g := range groups {
+				if g.only != "" && g.only != spec.Source {
+					continue
 				}
-				return "1"
-			}),
-			map[string]string{"200": values(func(i int) string {
-				if i >= 238 && i <= 240 {
-					return ""
+				fmt.Fprintf(&b, "  # %s\n  - interval: 15s\n    input_series:\n", g.name)
+				fmt.Fprintf(&b, "      - series: '%s'\n        values: '%s'\n", onTarget("up"), g.up)
+				if spec.HealthMetric != "" {
+					fmt.Fprintf(&b, "      - series: '%s'\n        values: '%s'\n", onTarget(spec.HealthMetric), always("1"))
 				}
-				return fmt.Sprint(50000 + 10*i)
-			})},
-			[]expect{{diff, "0"}, {"(" + billed + ") < bool 10000", "1"}}},
-		{"a new series that resets fails the hour's health gate", always("1"),
-			map[string]string{"200": values(func(i int) string {
-				switch {
-				case i < 300:
-					return ""
-				case i < 400:
-					return fmt.Sprint(1000 * (i - 299))
-				default:
-					return fmt.Sprint(10 * (i - 399))
+				fmt.Fprintf(&b, "      - series: '%s'\n        values: '%s'\n", onTarget(spec.ProcessMetric), always("0"))
+				for labels, v := range g.series {
+					if labels == "" {
+						labels = src.variant
+					}
+					fmt.Fprintf(&b, "      - series: '%s'\n        values: '%s'\n", onTarget(spec.Counter+"{"+labels+"}"), v)
 				}
-			})},
-			[]expect{{Health(spec, 3600), "0"}}},
-		{"the month-to-date read sums the billed hours", always("1"),
-			map[string]string{"200": probe},
-			[]expect{{CompletedHoursIncrease(spec, 2), "10000570"}}},
-	}
-	var b strings.Builder
-	b.WriteString("rule_files: []\nevaluation_interval: 15s\ntests:\n")
-	const target = `instance="10.0.0.1:9100",job="traefik",pod="traefik-a"`
-	for _, g := range groups {
-		fmt.Fprintf(&b, "  # %s\n  - interval: 15s\n    input_series:\n", g.name)
-		fmt.Fprintf(&b, "      - series: 'up{%s}'\n        values: '%s'\n", target, g.up)
-		fmt.Fprintf(&b, "      - series: 'process_start_time_seconds{%s}'\n        values: '%s'\n", target, always("0"))
-		for code, v := range g.series {
-			fmt.Fprintf(&b, "      - series: 'traefik_router_responses_bytes_total{router=\"r@kubernetes\",code=%q,method=\"GET\",protocol=\"http\",%s}'\n        values: '%s'\n", code, target, v)
-		}
-		b.WriteString("    promql_expr_test:\n")
-		for _, c := range g.checks {
-			fmt.Fprintf(&b, "      - expr: '%s'\n        eval_time: 7200s\n        exp_samples:\n          - labels: '{}'\n            value: %s\n", c.expr, c.want)
-		}
-	}
-	path := filepath.Join(t.TempDir(), "billed.yml")
-	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if out, err := exec.Command(promtool, "test", "rules", path).CombinedOutput(); err != nil {
-		t.Fatalf("promtool: %v\n%s", err, out)
+				b.WriteString("    promql_expr_test:\n")
+				for _, c := range g.checks {
+					fmt.Fprintf(&b, "      - expr: '%s'\n        eval_time: 7200s\n        exp_samples:\n          - labels: '{}'\n            value: %s\n", c.expr, c.want)
+				}
+			}
+			path := filepath.Join(t.TempDir(), "billed.yml")
+			if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if out, err := exec.Command(promtool, "test", "rules", path).CombinedOutput(); err != nil {
+				t.Fatalf("promtool: %v\n%s", err, out)
+			}
+		})
 	}
 }

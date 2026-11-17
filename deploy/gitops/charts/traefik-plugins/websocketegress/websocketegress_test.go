@@ -377,3 +377,38 @@ type failingHijackWriter struct {
 func (w failingHijackWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, w.err
 }
+
+// Billing counts a series that first appears inside an hour from zero
+// (w6/133, ADR023 § New series count from zero), so an App's counter must
+// appear at zero when its router's middleware is built, and survive Traefik
+// rebuilding that middleware on every configuration change: a rebuild that
+// replaced or dropped the counter would bring the series back without the
+// bytes it had already exported, or carrying an old value.
+func TestAppCounterStartsAtZeroAndSurvivesMiddlewareRebuilds(t *testing.T) {
+	next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+	const appID = "srv-series-lifetime"
+	build := func() *middleware {
+		handler, err := New(t.Context(), next, &Config{AppID: appID, MetricsAddr: "127.0.0.1:0"}, appID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return handler.(*middleware)
+	}
+	first := build()
+	// Process-wide counters outlive a test run (-count=N): start from its value.
+	start := first.counter.Load()
+	line := func(v uint64) string {
+		return fmt.Sprintf("bex_websocket_egress_bytes_total{app_id=%q} %d\n", appID, v)
+	}
+	if body := metricsBody(); !strings.Contains(body, line(start)) {
+		t.Fatalf("metrics body missing %q right after the middleware was built:\n%s", line(start), body)
+	}
+	first.counter.Add(4100)
+	rebuilt := build()
+	if rebuilt.counter != first.counter {
+		t.Fatal("a rebuilt middleware counts into a new counter, so the App's series would restart")
+	}
+	if body := metricsBody(); !strings.Contains(body, line(start+4100)) || strings.Count(body, fmt.Sprintf("{app_id=%q}", appID)) != 3 {
+		t.Fatalf("metrics body after a rebuild, want one egress series at %d:\n%s", start+4100, body)
+	}
+}

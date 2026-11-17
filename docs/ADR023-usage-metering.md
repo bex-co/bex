@@ -64,7 +64,15 @@ The node meter pins its IPv4/IPv6 netfilter links and maps in bpffs. A process r
 
 **The gap (w6/123).** `increase()` counts only the growth after a series' first sample in its range. Traefik creates a router series at the first response it counts, so everything a series counted before its first scrape was lost: a new service's first responses, and a router's first response with a new status code. w6/m333's probe served 10,000,570 bytes from a new service in one hour and was billed 4,571,645.
 
-**The rule (user decision 2026-11-16, `/unblock` D2: authorize the fix, verify before switching).** For the HTTP source, a series that first appears inside the billed hour counts from zero: it bills its last value in the hour, so a series gone stale before the hour ends (a deleted service) still counts. A series is new only when its Traefik target (`instance`) was scraped successfully (`up == 1`) in the 30 s before the hour and that scrape did not carry it. Every other series keeps `increase()`, byte for byte, and the per-source health gate is unchanged, so a reset anywhere in the hour still skips the source. `egressquery.Billed` builds it. The hourly meter bills it, and the month-to-date read sums the same per-hour figure, so the Outbound Bandwidth footer and the bill agree. The chart keeps `increase()`. The WebSocket, Postgres and Key Value sources keep `increase()` because their exporters are not verified. The direct meter keeps it because its per-app counters persist across meter restarts.
+**The rule (user decision 2026-11-16, `/unblock` D2: authorize the fix, verify before switching).** For every source it covers, a series that first appears inside the billed hour counts from zero: it bills its last value in the hour, so a series gone stale before the hour ends (a deleted service) still counts. A series is new only when its scrape target (`instance`) was scraped successfully (`up == 1`) in the 30 s before the hour and that scrape did not carry it. Every other series keeps `increase()`, byte for byte, and the per-source health gate is unchanged, so a reset anywhere in the hour still skips the source. `egressquery.Billed` builds it. The hourly meter bills it, and the month-to-date read sums the same per-hour figure, so the Outbound Bandwidth footer and the bill agree. The chart keeps `increase()`.
+
+**Sources it covers.**
+
+- **HTTP**: Traefik's router counters (w6/m455).
+- **WebSocket**: the `websocketegress` Traefik plugin (w6/133).
+- **Postgres** and **Key Value**: the public SNI proxies (w6/133).
+
+The direct meter keeps `increase()`. Its per-app counters persist across meter restarts, and a restored checkpoint brings a series back carrying an old value.
 
 **Why the guard makes it safe (t001).** Traefik v3.7.17 (`pkg/observability/metrics/prometheus.go`) writes every series it holds on every scrape. After that scrape it deletes the series of a router or service removed from its configuration. A later request creates the series again at zero. A local run of the production image confirmed both: a removed router was scraped once more at 300,000 bytes and then disappeared. Re-added, it read 1,000 after one 1,000-byte response. A router removed and re-added between two scrapes stayed one continuous series. So a series absent from a successful scrape did not exist then, and whatever it reads later was counted after that scrape. A series can be missing from Prometheus while Traefik still holds it only when nothing was scraped. Production shows that case: when Prometheus restarted on 2026-11-16 at 12:57Z and 15:13Z, 1,526 router series came back after a scrape gap, and 1,179 of them came back at or above the value they had left with. One of them carried 11.7 GB. The guard keeps every such series on `increase()`. Across retention, 152 series came back after a successful scrape that did not carry them. 99 came back lower. The other 53 left at no more than 4,644 bytes.
 
@@ -76,6 +84,29 @@ The node meter pins its IPv4/IPv6 netfilter links and maps in bpffs. A process r
 - **What the guard kept out.** It kept 145 series on `increase()` in one hour, 2026-11-14 02:00Z, when Traefik rolled out. The health gate skips that hour under both rules.
 
 **A real probe before the switch deployed (t005, 2026-11-17).** A new free service in `bex-canary` served five 2,000,000-byte bodies (10,000,000 bytes) in 8 s and was deleted. Its traffic went through both Traefik pods, and each pod's series was first scraped already at its final value: 6,000,000 and 4,000,000. Read on production Prometheus with the production builders, `increase()` bills that hour 0 bytes and the rule bills 10,000,000. The billed row after the deploy is still to be read (w6/m455 t005).
+
+**The WebSocket and datastore sources (w6/133, 2026-11-17).** bex exports these counters itself, each in process memory, and never deletes a series:
+
+- **The SNI proxies** (`lego/operator/internal/sniproxy/meter.go`) keep one counter vector in a process-local registry. A resource's series appears when its first public connection closes, carrying that connection's backend→client bytes, and stays in every scrape until the process exits. A connection's bytes are added when it closes, so a short connection's series is first scraped already at its final value, and `increase()` billed none of it.
+- **The WebSocket plugin** creates an App's counter at zero when Traefik builds the App's middleware, keeps the same counter across every rebuild, and writes every counter it holds on every scrape. Any change to `websocketegress.go` rolls Traefik, because the plugin ConfigMap's name carries a hash of the file. So this contract is written here and in the plugin's test, not in the file.
+- **Every target is scraped per pod** (`instance` is the pod IP). A successful scrape without a series means that process did not hold it yet. A restarted process starts every series from zero, and the process-start term already skips its hour.
+
+`TestByteMeterSeriesAppearsAtFirstBytesAndStays` and `TestAppCounterStartsAtZeroAndSurvivesMiddlewareRebuilds` pin both exporters' side. `TestBilledOnPrometheus` runs the shared cases for each source in Prometheus's engine. They include a session that ended before its series' first scrape: `increase()` bills it 0 and the rule 52,000 bytes.
+
+**Old against new before the switch (w6/133).** `TestBilledAgainstIncreaseOnRecordedHours` replayed the three sources, read-only, over the 104 hours ending 2026-11-13T08:00Z through 2026-11-17T15:00Z, each source's whole fleet read as one source. In every hour, for every source, the difference is exactly the series the rule counts from zero. None of those series had been present earlier in retention.
+
+| source | new series | `increase()` | rule | hours the gate passes: `increase()` → rule | the guard kept |
+| --- | --: | --: | --: | --: | --: |
+| WebSocket | 998 | 2,792 B | 2,790 B | 103: 2,792 → 2,790 B | 50 series, 0 B |
+| Postgres | 25 | 100,350 B | 215,696 B | 68: 91,121 → 184,775 B | 4 series, 24,797 B |
+| Key Value | 11 | 82,113 B | 149,956 B | 68: 82,113 → 149,956 B | 2 series, 12,616 B |
+
+- **WebSocket.** Every new series was first scraped at 0, so nothing was lost before. The rule bills 2 B less in total: a new series' exact value in place of `increase()`'s extrapolation.
+- **Postgres and Key Value.** The rule bills about twice as much. Almost every public connection in retention was short and was first scraped at its final value. In the hour ending 2026-11-13T15:00Z, two Postgres connections of 5,737 B and 5,654 B were billed 0 and now bill 11,391 B. Those sizes match one TLS session (the live matrix below measured 6,031 B).
+- **The gate.** The proxies roll with every operator image, so only 68 of the 104 hours pass the process-start term.
+- **What the guard kept out.** It kept series on `increase()` in five hours: one WebSocket hour (ending 2026-11-14 03:00Z, as Traefik rolled out), three Postgres hours and one Key Value hour. In each, the series' target had no successful scrape in the 30 s before the hour, and the health gate skips all five hours under both rules.
+
+The replay ran twice, before and after its guard report gained the per-hour health, and read the same figures both times. To reproduce it, port-forward `svc/prometheus-server` in `monitoring` and run `BEX_TEST_EGRESS_PROM_URL=http://127.0.0.1:19090 go test ./internal/egressquery -run 'OnRecordedHours/(websocket|postgres|key_value)' -v -timeout 60m` from `lego/backend`.
 
 ### Live Cilium traffic matrix (2026-07-15)
 

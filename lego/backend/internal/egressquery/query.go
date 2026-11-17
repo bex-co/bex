@@ -47,8 +47,11 @@ type Spec struct {
 	// zero, writes every series it holds on every scrape, and deletes a series
 	// for good when it goes away, so a later series with the same labels
 	// starts from zero again. Billed counts such a series from zero when it
-	// first appears inside the window. Traefik's router counters are verified
-	// to behave this way (w6/m455 t001); no other source is.
+	// first appears inside the window. Verified for Traefik's router counters
+	// (w6/m455 t001) and for the process-local counters bex exports itself:
+	// the WebSocket plugin and the Postgres and Key Value SNI proxies never
+	// delete a series while their process lives (w6/133). The direct meter is
+	// not: it restores a checkpointed counter after a restart.
 	NewSeriesFromZero bool
 }
 
@@ -65,7 +68,7 @@ func App(appID string, routers []string, direct bool) []Spec {
 			out = append(out, Spec{
 				Source: WebSocket, Counter: "bex_websocket_egress_bytes_total", Matchers: fmt.Sprintf(`app_id=%q`, appID),
 				Job: "traefik-websocket-meter", HealthMetric: "bex_websocket_meter_healthy",
-				ProcessMetric: "bex_websocket_meter_process_start_time_seconds",
+				ProcessMetric: "bex_websocket_meter_process_start_time_seconds", NewSeriesFromZero: true,
 			})
 		}
 	}
@@ -84,13 +87,13 @@ func Datastore(resourceID, kind string, public bool) []Spec {
 		return []Spec{{
 			Source: Postgres, Counter: "bex_pg_proxy_egress_bytes_total", Matchers: fmt.Sprintf(`resource_id=%q,resource_kind="postgres"`, resourceID),
 			Job: "bex-pg-proxy", HealthMetric: `bex_pg_proxy_healthy{resource_kind="postgres"}`,
-			ProcessMetric: `bex_pg_proxy_process_start_time_seconds{resource_kind="postgres"}`,
+			ProcessMetric: `bex_pg_proxy_process_start_time_seconds{resource_kind="postgres"}`, NewSeriesFromZero: true,
 		}}
 	case "key_value":
 		return []Spec{{
 			Source: KeyValue, Counter: "bex_kv_proxy_egress_bytes_total", Matchers: fmt.Sprintf(`resource_id=%q,resource_kind="key_value"`, resourceID),
 			Job: "bex-kv-proxy", HealthMetric: `bex_kv_proxy_healthy{resource_kind="key_value"}`,
-			ProcessMetric: `bex_kv_proxy_process_start_time_seconds{resource_kind="key_value"}`,
+			ProcessMetric: `bex_kv_proxy_process_start_time_seconds{resource_kind="key_value"}`, NewSeriesFromZero: true,
 		}}
 	default:
 		return nil

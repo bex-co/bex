@@ -71,6 +71,12 @@ func (m *ByteMeter) SetHealthy(healthy bool) {
 	m.healthy.Set(0)
 }
 
+// Add counts a closed connection's backend→client bytes. A resource's series
+// first appears with its first connection's bytes and then stays in every
+// scrape for the life of the process, which is what lets billing count a
+// series that first appears inside an hour from zero (ADR023 § New series
+// count from zero, w6/133). Never delete or reset a series while the process
+// runs: one that came back carrying its old value would be billed twice.
 func (m *ByteMeter) Add(resourceID, resourceKind string, bytes int64) {
 	if bytes > 0 {
 		m.responseBytes.WithLabelValues(resourceID, resourceKind).Add(float64(bytes))
