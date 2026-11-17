@@ -1,6 +1,6 @@
 # w6 · m291 — Build toolchain digests are fresh again and #105 closes
 
-**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** blocked (t001–t006 done, #105 closed by the monitor; only t007 remains: its production-build check waits on the next production deploy, which carries `a86820a2c`)
+**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | [Close PR #106 with the reason and confirm the monitor closes #105](done/t004.md) — **DONE** | 20m | t002 |
 | t005 | [Simplify](done/t005.md) — **DONE** | 15m | t003, t004 |
 | t006 | [Test coverage](done/t006.md) — **DONE** | 20m | t005 |
-| t007 | [Closeout](t007.md) | 10m | t006 |
+| t007 | [Closeout](done/t007.md) — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -121,3 +121,14 @@ These pins live in 8 files: `lego/operator/internal/build/native.go` (17), `nati
   - Signed in as the QA user (`bash scripts/qa-login.sh`), a new native Node or Python service from `bex-co/bex` `examples/hello-python` builds, and its log names the new pins: `Using Python 3.14.10 (default)` and `Using Node 24.22.3 (default)`. It answers 200 at its `onbex.co` URL.
   - The kpack ClusterBuilder is Ready on the new builder (`bex_build_clusterbuilder_ready` is 1, and `ClusterBuilderNotReady` is not firing).
   - Then run t007.
+
+## Unblocked — 2026-11-17 (the production deploy carries `a86820a2c`)
+
+- **Affected:** w6/m291 t007 (Closeout) and the DoD's "after deploy, a production build succeeds".
+- **Source:** verified evidence. The production pin commit `fc4fbf28a` ("chore(deploy): pin platform images to db48cde2bae9", 2026-11-17 12:08Z) is on main, and `db48cde2bae9` descends from `a86820a2c` (`git merge-base --is-ancestor`). On the production app cluster every bex-operator Deployment (manager, api, activator, …) runs the pinned `bex-operator@sha256:ced899147db9…` and the manager's rollout is complete; its `BEX_CNB_BUILDER` is the reviewed `builder-jammy-base@sha256:5cd813b83496…`.
+- **Gate cleared:** the deploy gate. No other gate remains.
+- **Next steps:** the rest of the "Check that releases it" list above, on production: a QA-user native build from `examples/hello-python` that logs `Using Python 3.14.10 (default)` and `Using Node 24.22.3 (default)` and answers 200; the ClusterBuilder Ready on the new builder with `bex_build_clusterbuilder_ready` 1 and `ClusterBuilderNotReady` not firing. Then t007. Delete the probe service by ID and confirm `GET` answers 404.
+
+## Closed — 2026-11-17
+
+The definition of done holds on production. A QA-user native Python build from `examples/hello-python` logged `Using Python 3.14.10 (default)` and `Using Node 24.22.3 (default)` and answered 200 at its `onbex.co` URL, and the kpack ClusterBuilder is Ready on the new builder with `bex_build_clusterbuilder_ready` 1 and no `ClusterBuilderNotReady` alert. Details are in [t007](done/t007.md); the probe service was deleted (`GET` 404).
