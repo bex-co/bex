@@ -40,8 +40,9 @@ import (
 // w10/m373 lowered it from 109 to 40: stamped managedFields and Wrap's
 // metadata Sources retired the fixture-only metadata entries, and serviceDetails
 // gained buildPlan and healthCheckPath; then to 34 (fixture plan, publishPath
-// and disk id; ADR018 § Production-shaped fixtures).
-const allowlistSize = 34
+// and disk id; ADR018 § Production-shaped fixtures), then to 32 (a Postgres
+// create stores its default major, w4/m378 t013).
+const allowlistSize = 32
 
 func TestAllowlistOnlyShrinks(t *testing.T) {
 	n := 0

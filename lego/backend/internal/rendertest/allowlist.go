@@ -88,8 +88,8 @@ var Allowlist = map[string][]Divergence{
 	// RowMetadata row.
 	"list-postgres":     missing(RowMetadata, SuiteAPI, "version"),
 	"retrieve-postgres": missing(RowMetadata, SuiteAPI, "version", "project"),
-	"create-postgres":   missing(RowMetadata, SuiteAPI, "version", "project"),
-	"update-postgres":   missing(RowMetadata, SuiteAPI, "version", "project"),
+	"create-postgres":   missing(RowMetadata, SuiteAPI, "project"),
+	"update-postgres":   missing(RowMetadata, SuiteAPI, "project"),
 	"recover-postgres":  missing(RowMetadata, SuiteAPI, "version", "project"),
 	"create-key-value":  dryRun(),
 	// Render's deprecated /redis spelling of the same Key Value (w3/m274).
