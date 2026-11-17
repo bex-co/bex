@@ -36,7 +36,7 @@ func (c carrierCountingStore) CountBuildSourcesForTenant(context.Context, string
 func TestAppCountQuotaMakesRoomForBuildSources(t *testing.T) {
 	for _, carriers := range []int{0, 3} {
 		r := &NamespaceReconciler{Store: carrierCountingStore{carriers: carriers}}
-		quotas := r.baseResourceQuotas("tea-hobby", Tenant{ID: "tea-hobby", Plan: PlanHobby})
+		quotas := r.baseResourceQuotas("tea-hobby", Tenant{ID: "tea-hobby", Plan: PlanHobby}, RegimeHosting)
 		if err := r.roomForBuildSources(context.Background(), "tea-hobby", quotas); err != nil {
 			t.Fatal(err)
 		}

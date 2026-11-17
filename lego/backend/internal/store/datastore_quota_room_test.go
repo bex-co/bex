@@ -158,7 +158,7 @@ func keyValue() []quotaCharge {
 func hobbyQuotas(t *testing.T) []*corev1.ResourceQuota {
 	t.Helper()
 	r, _, _ := newTestNamespaceReconciler(t)
-	return r.baseResourceQuotas("tea-hobby", Tenant{ID: "tea-hobby", Plan: PlanHobby})
+	return r.baseResourceQuotas("tea-hobby", Tenant{ID: "tea-hobby", Plan: PlanHobby}, RegimeHosting)
 }
 
 // TestHobbyDatastoreCountCapsBindFirst is the w2/056 acceptance: a Hobby

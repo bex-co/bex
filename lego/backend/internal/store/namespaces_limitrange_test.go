@@ -44,7 +44,7 @@ func TestSandboxRegimeLimitRangeAdmitsTheSandboxWritableLayer(t *testing.T) {
 		t.Errorf("sandbox LimitRange ephemeral default = %s, want the unchanged %s", got.String(), want.String())
 	}
 	// The Hobby cap is the plan table's, not a copy of it.
-	quota := quotaForPlan(PlanHobby)[corev1.ResourceLimitsEphemeralStorage]
+	quota := quotaForRegime(PlanHobby, RegimeSandbox)[corev1.ResourceLimitsEphemeralStorage]
 	each := resource.MustParse(SandboxEphemeralMax)
 	holds := quota.Value() / each.Value()
 	if want := core.ConcurrentSandboxes(PlanHobby); holds < int64(want) {

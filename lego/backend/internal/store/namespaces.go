@@ -219,7 +219,7 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 	if err := r.applyObject(ctx, r.workspaceNamespaceObject(name, t, regime)); err != nil {
 		return fmt.Errorf("namespace: %w", err)
 	}
-	quotas := r.baseResourceQuotas(name, t)
+	quotas := r.baseResourceQuotas(name, t, regime)
 	if regime == RegimeHosting {
 		if err := r.roomForBuildSources(ctx, t.ID, quotas); err != nil {
 			return err
@@ -566,8 +566,8 @@ func (r *NamespaceReconciler) workspaceNamespaceObject(name string, t Tenant, re
 // Compute comes first so a namespace being migrated from an older shape is
 // never without a CPU or pod cap: the scoped quota exists before the update
 // that drops those keys from tenant-quota.
-func (r *NamespaceReconciler) baseResourceQuotas(namespace string, t Tenant) []*corev1.ResourceQuota {
-	compute, rest := splitComputeQuota(quotaForPlan(t.Plan))
+func (r *NamespaceReconciler) baseResourceQuotas(namespace string, t Tenant, regime string) []*corev1.ResourceQuota {
+	compute, rest := splitComputeQuota(quotaForRegime(t.Plan, regime))
 	return []*corev1.ResourceQuota{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      core.TenantComputeQuotaName,
@@ -616,12 +616,64 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 }
 
 // SandboxComputeLimits is the aggregate CPU and memory limit a workspace's
-// namespaces (its `<ws>-sandbox` one included) allow under plan: the limits
-// side of the tenant compute quota. A sandbox create that times out can only
-// be the quota's doing when the workspace's sandboxes already fill it.
+// `<ws>-sandbox` namespace allows under plan: the limits side of its compute
+// quota (quotaForRegime). A sandbox create that times out can only be the
+// quota's doing when the workspace's sandboxes already fill it.
 func SandboxComputeLimits(plan string) (cpu, memory resource.Quantity) {
-	quota := quotaForPlan(plan)
+	quota := quotaForRegime(plan, RegimeSandbox)
 	return quota[corev1.ResourceLimitsCPU], quota[corev1.ResourceLimitsMemory]
+}
+
+// quotaForRegime is a namespace's quota: the plan's (quotaForPlan), and in the
+// sandbox regime that plus sandboxQuotaRoom, so the quota never refuses a
+// sandbox the plan's concurrent-sandbox cap admits (w7/076).
+func quotaForRegime(plan, regime string) corev1.ResourceList {
+	quota := quotaForPlan(plan)
+	if regime == RegimeSandbox {
+		addQuota(quota, sandboxQuotaRoom(plan))
+	}
+	return quota
+}
+
+// SandboxPodQuotaMax is the most one Render sandbox's pod charges its
+// namespace's quota: the largest sandbox plan, `8c-16g`, with its requests at
+// a quarter of its limits and Render's 40 GB writable layer (the sandbox
+// package's requestFor and ephemeralRequestFor). The pod's init container,
+// which takes the sandbox LimitRange's defaults, charges less on every key,
+// and every plan fits inside it (both pinned by tests).
+func SandboxPodQuotaMax() corev1.ResourceList {
+	return corev1.ResourceList{
+		corev1.ResourceLimitsCPU:                resource.MustParse("8"),
+		corev1.ResourceLimitsMemory:             resource.MustParse("16Gi"),
+		corev1.ResourceRequestsCPU:              resource.MustParse("2"),
+		corev1.ResourceRequestsMemory:           resource.MustParse("4Gi"),
+		corev1.ResourceLimitsEphemeralStorage:   resource.MustParse(SandboxEphemeralMax),
+		corev1.ResourceRequestsEphemeralStorage: resource.MustParse("2Gi"),
+		corev1.ResourcePods:                     resource.MustParse("1"),
+	}
+}
+
+// sandboxQuotaRoom is the room a workspace's sandbox namespace gets on top of
+// its plan's quota: its plan's concurrent sandboxes (core.ConcurrentSandboxes:
+// Render's 100 on Hobby, 1,000 on Pro and higher) at SandboxPodQuotaMax each.
+// Render caps sandboxes by count alone, and bex-api's admission enforces that
+// count with a coded 429, so the quota must not refuse a pod first: it did at
+// 66 `1c-2g` sandboxes on every plan, whose pods charge 4Gi of memory limits
+// through the init container's default, and the create then failed after the
+// pod-ready wait (w7/076). The plan's own budget stays under the room and
+// holds the agent-session sandboxes, which the count does not include.
+//
+// This is a ceiling, not capacity: the sandbox node pool bounds what runs,
+// and its size is a separate decision (ADR104 § Numbers are targets, not
+// capacity; ADR105).
+func sandboxQuotaRoom(plan string) corev1.ResourceList {
+	n := int64(core.ConcurrentSandboxes(plan))
+	room := corev1.ResourceList{}
+	for key, each := range SandboxPodQuotaMax() {
+		each.Mul(n)
+		room[key] = each
+	}
+	return room
 }
 
 // quotaForPlan maps a workspace plan to aggregate resource caps: compute/pod
@@ -743,12 +795,17 @@ func quotaForPlan(plan string) corev1.ResourceList {
 		DatabasesQuotaCountKey:                  *resource.NewQuantity(caps.Postgres, resource.DecimalSI),
 		KeyValuesQuotaCountKey:                  *resource.NewQuantity(caps.KeyValues, resource.DecimalSI),
 	}
-	for key, room := range datastoreQuotaRoom(caps) {
+	addQuota(quota, datastoreQuotaRoom(caps))
+	return quota
+}
+
+// addQuota adds room to quota, key by key.
+func addQuota(quota, room corev1.ResourceList) {
+	for key, extra := range room {
 		total := quota[key]
-		total.Add(room)
+		total.Add(extra)
 		quota[key] = total
 	}
-	return quota
 }
 
 // SandboxEphemeralMax is the largest writable layer a sandbox may be given: the

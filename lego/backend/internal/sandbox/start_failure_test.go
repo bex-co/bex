@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // timeoutWithListing answers every create with the OpenSandbox pod-ready
@@ -75,9 +76,11 @@ func TestPodReadyTimeoutWithRoomIsAPlatformFailure(t *testing.T) {
 }
 
 // When the live sandboxes already fill the plan's limits, capacity is the
-// honest answer.
+// honest answer. Two sandboxes each the size of the whole sandbox quota's CPU
+// fill it whatever the quota is.
 func TestPodReadyTimeoutAtTheLimitStaysACapacityRefusal(t *testing.T) {
-	rec := restCreate(t, timeoutWithListing(t, 2, "100"))
+	quotaCPU, _ := store.SandboxComputeLimits("")
+	rec := restCreate(t, timeoutWithListing(t, 2, quotaCPU.String()))
 	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), CodeSandboxCapacityLimit) {
 		t.Fatalf("create = %d %s, want 409 + %s", rec.Code, rec.Body.String(), CodeSandboxCapacityLimit)
 	}
