@@ -1,6 +1,6 @@
 # w6 · m455 — A new service's first bytes of egress are billed: a router series that starts inside the hour counts from zero
 
-**Worker:** worker6 **Goal:** the hourly egress meter bills the bytes a Traefik router series counted before its first scrape, without ever billing more than was served, and billing switches to that rule only after an old-versus-new comparison on recorded production hours proves it. **Status:** blocked — t001–t004, t007 and t008 done; billing switched in `f0fe4be41`, which waits for the batched production deploy (see BLOCKED — 2026-11-17)
+**Worker:** worker6 **Goal:** the hourly egress meter bills the bytes a Traefik router series counted before its first scrape, without ever billing more than was served, and billing switches to that rule only after an old-versus-new comparison on recorded production hours proves it. **Status:** todo — t001–t004, t007 and t008 done; the deploy carrying `f0fe4be41` ran (pin `db48cde2bae9`, see Unblock — 2026-11-17); t005 re-runs the probe next
 
 ## Tasks (in order)
 
@@ -43,3 +43,12 @@
 - **Gate (time, clears by itself).** `deploy.yml` batches deploys: it deploys main only once the production pin is 6 h old. At 09:04Z the pin was 1.3 h old, so the deploy carrying `f0fe4be41` is the hourly run at about 14:17Z on 2026-11-17.
 - **How to check it cleared.** `gh run list --workflow deploy.yml` shows a successful run whose `deploy` job ran on a head containing `f0fe4be41`.
 - **Then.** t005 re-runs the probe and reads its billed hour. t006 reads that hour on REST, GraphQL and MCP. t009 closes the milestone.
+
+## Unblock — the deploy carrying the switch ran (2026-11-17)
+
+- **Affected:** t005, t006, t009.
+- **Source:** verified evidence, `/loopx w6` worker.
+- **Finding.** Production pin commit `fc4fbf28a` ("pin platform images to db48cde2bae9", 12:08Z) carries the switch: `git merge-base --is-ancestor f0fe4be41 db48cde2bae9` exits 0. Its `deploy.yml` run 44076479949 (`workflow_dispatch` on `db48cde2bae9`) passed every job, and its `deploy` job succeeded 12:07:50Z–12:13:20Z. At 18:10Z both production `bex-api` pods run that pin's image (`bex-operator@sha256:ced89914…`), started 12:12Z. The earlier pins `5bcfe8939f5b` (09:41Z), `19103ba12f70` and `6984548a30f8` also carry `f0fe4be41`.
+- **Out of scope here.** w6/133 (`e0c68862d`) extended the same rule to Postgres, Key Value and WebSocket egress; this milestone reads only the HTTP source.
+- **Remaining gates:** none.
+- **Next.** t005 re-runs the probe and reads its billed hour (10,000,000 bytes). t006 reads that hour on REST, GraphQL and MCP. t009 closes the milestone.
