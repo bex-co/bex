@@ -125,10 +125,13 @@ describe("fetchAuditRange", () => {
     expect(logs).toHaveLength(1003);
     expect(logs[0]).toEqual(page(0, 1)[0].auditLog);
     expect(fetch).toHaveBeenCalledTimes(2);
-    const first = new URL(fetch.mock.calls[0][0] as string);
-    expect(first.origin + first.pathname).toBe(
-      `${config.apiBaseUrl}/v1/owners/tea-1/audit-logs`,
-    );
+    // The API base is empty when VITE_API_URL is unset (CI), so read the URL
+    // against a placeholder origin and check its prefix separately.
+    const url = (call: number) => fetch.mock.calls[call][0] as string;
+    expect(
+      url(0).startsWith(`${config.apiBaseUrl}/v1/owners/tea-1/audit-logs?`),
+    ).toBe(true);
+    const first = new URL(url(0), "http://api.invalid");
     expect(Object.fromEntries(first.searchParams)).toEqual({
       startTime: "2026-11-01T00:00:00Z",
       endTime: "2026-11-10T23:59:59.999999Z",
@@ -138,7 +141,7 @@ describe("fetchAuditRange", () => {
       credentials: "include",
       cache: "no-store",
     });
-    const second = new URL(fetch.mock.calls[1][0] as string);
+    const second = new URL(url(1), "http://api.invalid");
     expect(second.searchParams.get("cursor")).toBe("aud-999");
   });
 
