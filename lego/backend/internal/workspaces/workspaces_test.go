@@ -110,6 +110,21 @@ func (f *fakeStore) SetTenantRequireTwoFactor(_ context.Context, id string, enab
 	return t, true, nil
 }
 
+func (f *fakeStore) SetTenantRequireGoogleLogin(_ context.Context, id string, enabled bool) (store.Tenant, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	t, ok := f.tenants[id]
+	if !ok {
+		return store.Tenant{}, false, fmt.Errorf("workspace: %w", store.ErrNotFound)
+	}
+	if t.RequireGoogleLogin == enabled {
+		return t, false, nil
+	}
+	t.RequireGoogleLogin = enabled
+	f.tenants[id] = t
+	return t, true, nil
+}
+
 func (f *fakeStore) UpdateTenantPlan(_ context.Context, id, plan string) (store.Tenant, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

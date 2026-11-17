@@ -2302,6 +2302,7 @@ export type Mutation = {
   setWorkspaceOverlappingDeployPolicy: Maybe<Workspace>;
   /** Set an organization workspace's privacy, public or invite_only (workspace admins). */
   setWorkspacePrivacy: Maybe<Workspace>;
+  setWorkspaceRequireGoogleLogin: Maybe<Workspace>;
   setWorkspaceRequireTwoFactor: Maybe<Workspace>;
   steerAgentSession: Maybe<AgentSession>;
   suspendDatabase: Maybe<Database>;
@@ -3718,6 +3719,12 @@ export type MutationSetWorkspaceOverlappingDeployPolicyArgs = {
 
 export type MutationSetWorkspacePrivacyArgs = {
   privacy: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationSetWorkspaceRequireGoogleLoginArgs = {
+  enabled: Scalars['Boolean']['input'];
   workspaceId: Scalars['String']['input'];
 };
 
@@ -6005,6 +6012,7 @@ export type Workspace = {
   plan: Maybe<Scalars['String']['output']>;
   primary: Scalars['Boolean']['output'];
   privacy: Maybe<Scalars['String']['output']>;
+  requireGoogleLogin: Maybe<Scalars['Boolean']['output']>;
   requireTwoFactor: Maybe<Scalars['Boolean']['output']>;
   role: Maybe<Scalars['String']['output']>;
   slug: Maybe<Scalars['String']['output']>;

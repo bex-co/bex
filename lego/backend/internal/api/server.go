@@ -709,6 +709,10 @@ type Deps struct {
 	// (w22/m402). cmd/api wires it to twofactor.Gate.Invalidate; nil when
 	// nothing enforces.
 	TwoFactorChanged func(workspaceID string)
+	// GoogleLogin is the Google-login setting's lock-out guard (w7/m465):
+	// twofactor.Gate's own check for the acting admin. Nil when the gate
+	// cannot look up Google accounts, which refuses turning the setting on.
+	GoogleLogin workspaces.GoogleLoginChecker
 	// Audit backs the audit-log read verb (w4/m10). cmd/api/main.go builds it
 	// and starts its retention loop when BEX_CP_DB_URI is set. nil => NewServer
 	// mounts it store-less, answering core.ErrAuditUnavailable (503).
@@ -889,6 +893,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Settler:               d.WorkspaceSettler,
 		Identities:            d.Identities,
 		TwoFactorChanged:      d.TwoFactorChanged,
+		GoogleLogin:           d.GoogleLogin,
 		// APIKeys satisfies workspaces.KeyOwnerReader structurally (KeyOwner has
 		// the identical signature) — no adapter, and no cache: the lookup runs at
 		// most once per GET /v1/users (cold path), only for API-key callers.

@@ -548,6 +548,18 @@ const zhAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.settingsGuardEmailChangeRefused": {
+    message:
+      "你属于要求使用 Google 登录的工作区，因此无法更改邮箱地址。请先离开这些工作区：{workspaces}。",
+    description:
+      "Account settings refusal of an email change (Kratos message 4100001) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
+  "auth.settingsGuardUnlinkRefused": {
+    message:
+      "你属于要求使用 Google 登录的工作区，因此无法断开登录方式。请先离开这些工作区：{workspaces}。",
+    description:
+      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
 };
 
 export default zhAuth;

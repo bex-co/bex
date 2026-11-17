@@ -47,8 +47,8 @@ func TestPGTenantRequireTwoFactor(t *testing.T) {
 	if ws.RequireTwoFactor {
 		t.Fatalf("a new workspace requires 2FA: %+v — the migration default is off", ws)
 	}
-	if on, err := st.RequireTwoFactor(ctx, ws.ID); err != nil || on {
-		t.Fatalf("RequireTwoFactor on a new workspace = (%v, %v), want (false, nil)", on, err)
+	if r, err := st.LoginRequirements(ctx, ws.ID); err != nil || r.Any() {
+		t.Fatalf("LoginRequirements on a new workspace = (%+v, %v), want none", r, err)
 	}
 
 	set, changed, err := st.SetTenantRequireTwoFactor(ctx, ws.ID, true)
@@ -60,8 +60,8 @@ func TestPGTenantRequireTwoFactor(t *testing.T) {
 	if again, changed, err := st.SetTenantRequireTwoFactor(ctx, ws.ID, true); err != nil || changed || !again.RequireTwoFactor {
 		t.Fatalf("enable again = (%+v, changed=%v, %v), want the row and changed=false", again, changed, err)
 	}
-	if on, err := st.RequireTwoFactor(ctx, ws.ID); err != nil || !on {
-		t.Fatalf("RequireTwoFactor after enabling = (%v, %v)", on, err)
+	if r, err := st.LoginRequirements(ctx, ws.ID); err != nil || r != (core.LoginRequirements{TwoFactor: true}) {
+		t.Fatalf("LoginRequirements after enabling = (%+v, %v), want 2FA alone", r, err)
 	}
 	if got, err := st.GetTenant(ctx, ws.ID); err != nil || !got.RequireTwoFactor {
 		t.Fatalf("GetTenant = (%+v, %v)", got, err)
@@ -83,8 +83,8 @@ func TestPGTenantRequireTwoFactor(t *testing.T) {
 	}
 
 	// A workspace that does not exist requires nothing, and cannot be set.
-	if on, err := st.RequireTwoFactor(ctx, "tea-missing-"+stamp); err != nil || on {
-		t.Fatalf("RequireTwoFactor of a missing workspace = (%v, %v), want (false, nil)", on, err)
+	if r, err := st.LoginRequirements(ctx, "tea-missing-"+stamp); err != nil || r.Any() {
+		t.Fatalf("LoginRequirements of a missing workspace = (%+v, %v), want none", r, err)
 	}
 	if _, _, err := st.SetTenantRequireTwoFactor(ctx, "tea-missing-"+stamp, true); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("enabling a missing workspace = %v, want ErrNotFound", err)
@@ -125,6 +125,128 @@ func TestPGAuditRowCarriesTheTwoFactorValue(t *testing.T) {
 		rows[1].TwoFactorRequiredTo == nil || *rows[1].TwoFactorRequiredTo ||
 		rows[2].TwoFactorRequiredTo != nil {
 		t.Fatalf("two_factor_required_to = %v, %v, %v; want true, false, NULL", rows[0].TwoFactorRequiredTo, rows[1].TwoFactorRequiredTo, rows[2].TwoFactorRequiredTo)
+	}
+}
+
+// w7/m465 (migration 0294, docs/ADR012-auth.md §9b): "require Google login"
+// defaults to off, is written by its own conditional setter independently of
+// 2FA, comes back on every tenant read and the enforcement point's read, and
+// names the workspaces a member must leave before changing their email.
+func TestPGTenantRequireGoogleLogin(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	defer pool.Close()
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+
+	owner := "gl-owner-" + stamp
+	ws, err := st.CreateTenantWithMember(ctx, owner, PlanPro)
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
+	other, err := st.CreateWorkspace(ctx, "gl-other-"+stamp, PlanPro, owner)
+	if err != nil {
+		t.Fatalf("create second workspace: %v", err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), other.ID) })
+	if ws.RequireGoogleLogin {
+		t.Fatalf("a new workspace requires Google login: %+v", ws)
+	}
+	if names, err := st.GoogleLoginWorkspaces(ctx, owner); err != nil || len(names) != 0 {
+		t.Fatalf("GoogleLoginWorkspaces before any = (%v, %v), want none", names, err)
+	}
+
+	set, changed, err := st.SetTenantRequireGoogleLogin(ctx, ws.ID, true)
+	if err != nil || !changed || !set.RequireGoogleLogin || set.RequireTwoFactor {
+		t.Fatalf("enable = (%+v, changed=%v, %v), want Google login alone", set, changed, err)
+	}
+	if again, changed, err := st.SetTenantRequireGoogleLogin(ctx, ws.ID, true); err != nil || changed || !again.RequireGoogleLogin {
+		t.Fatalf("enable again = (%+v, changed=%v, %v), want changed=false", again, changed, err)
+	}
+	if r, err := st.LoginRequirements(ctx, ws.ID); err != nil || r != (core.LoginRequirements{GoogleLogin: true}) {
+		t.Fatalf("LoginRequirements = (%+v, %v), want Google login alone", r, err)
+	}
+	// The two settings are independent columns.
+	if _, _, err := st.SetTenantRequireTwoFactor(ctx, ws.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := st.LoginRequirements(ctx, ws.ID); err != nil || r != (core.LoginRequirements{TwoFactor: true, GoogleLogin: true}) {
+		t.Fatalf("LoginRequirements with both = (%+v, %v)", r, err)
+	}
+	if got, err := st.TenantForIdentity(ctx, owner); err != nil || got.ID == ws.ID && !got.RequireGoogleLogin {
+		t.Fatalf("TenantForIdentity = (%+v, %v)", got, err)
+	}
+	list, err := st.ListTenantsForSubject(ctx, owner)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("ListTenantsForSubject = (%+v, %v)", list, err)
+	}
+	for _, tn := range list {
+		if tn.RequireGoogleLogin != (tn.ID == ws.ID) {
+			t.Fatalf("ListTenantsForSubject row %s RequireGoogleLogin = %v", tn.ID, tn.RequireGoogleLogin)
+		}
+	}
+	if renamed, err := st.SetTenantDisplayName(ctx, ws.ID, "Acme Google"); err != nil || !renamed.RequireGoogleLogin {
+		t.Fatalf("rename = (%+v, %v), want the setting kept", renamed, err)
+	}
+	// Only the enforcing workspace is named, by its display name; a stranger
+	// belongs to none.
+	if names, err := st.GoogleLoginWorkspaces(ctx, owner); err != nil || len(names) != 1 || names[0] != "Acme Google" {
+		t.Fatalf("GoogleLoginWorkspaces = (%v, %v), want [Acme Google]", names, err)
+	}
+	if names, err := st.GoogleLoginWorkspaces(ctx, "gl-stranger-"+stamp); err != nil || len(names) != 0 {
+		t.Fatalf("a non-member's GoogleLoginWorkspaces = (%v, %v)", names, err)
+	}
+
+	off, changed, err := st.SetTenantRequireGoogleLogin(ctx, ws.ID, false)
+	if err != nil || !changed || off.RequireGoogleLogin || !off.RequireTwoFactor {
+		t.Fatalf("disable = (%+v, changed=%v, %v), want 2FA kept", off, changed, err)
+	}
+	if _, _, err := st.SetTenantRequireGoogleLogin(ctx, "tea-missing-"+stamp, true); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("enabling a missing workspace = %v, want ErrNotFound", err)
+	}
+
+	// The audit row of the change carries the value it was set to.
+	on := true
+	if err := st.Record(ctx, core.AuditEvent{
+		Caller: owner, CallerMethod: "session", Verb: core.AuditVerbSetRequireGoogleLogin, Resource: core.WorkspaceObject(ws.ID),
+		Outcome: core.AuditAllowed, At: time.Now().UTC(), Relation: core.RelCanManage, GoogleLoginRequiredTo: &on,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := st.ListAuditEvents(ctx, ws.ID, AuditFilter{OldestFirst: true})
+	if err != nil || len(rows) != 1 || rows[0].GoogleLoginRequiredTo == nil || !*rows[0].GoogleLoginRequiredTo || rows[0].TwoFactorRequiredTo != nil {
+		t.Fatalf("audit rows = (%+v, %v), want one google_login_required_to=true", rows, err)
+	}
+}
+
+// w7/m465: an SSH key records how its owner was signed in when it was added;
+// a key added before the column existed reads as unrecorded (exempt from the
+// Google-login requirement), never as Google.
+func TestPGSSHKeyCreatedSignIn(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	defer pool.Close()
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	subject := "gl-ssh-" + stamp
+	created, err := st.CreateSSHKey(ctx, SSHKey{ID: ids.New(ids.SSHKey), Subject: subject, Name: "laptop",
+		PublicKey: "ssh-ed25519 AAAA" + stamp, Fingerprint: "SHA256:google-" + stamp, CreatedSignIn: core.SignInGoogle})
+	if err != nil || created.CreatedSignIn != core.SignInGoogle {
+		t.Fatalf("create = (%+v, %v), want the Google stamp back", created, err)
+	}
+	legacy, err := st.CreateSSHKey(ctx, SSHKey{ID: ids.New(ids.SSHKey), Subject: subject, Name: "old",
+		PublicKey: "ssh-ed25519 BBBB" + stamp, Fingerprint: "SHA256:legacy-" + stamp})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = st.DeleteSSHKey(context.Background(), subject, created.ID)
+		_ = st.DeleteSSHKey(context.Background(), subject, legacy.ID)
+	})
+	if got, err := st.SSHKeyByFingerprint(ctx, created.Fingerprint); err != nil || got.CreatedSignIn != core.SignInGoogle {
+		t.Fatalf("SSHKeyByFingerprint = (%+v, %v), want the Google stamp", got, err)
+	}
+	if got, err := st.SSHKeyByFingerprint(ctx, legacy.Fingerprint); err != nil || got.CreatedSignIn != core.SignInUnrecorded {
+		t.Fatalf("an unstamped key = (%+v, %v), want unrecorded", got, err)
 	}
 }
 

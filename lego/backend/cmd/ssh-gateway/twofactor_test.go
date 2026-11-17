@@ -69,8 +69,8 @@ func (k kratosFake) MFAEnrolled(_ context.Context, subject string) (bool, bool, 
 
 type settingFake map[string]bool
 
-func (s settingFake) RequireTwoFactor(_ context.Context, workspaceID string) (bool, error) {
-	return s[workspaceID], nil
+func (s settingFake) LoginRequirements(_ context.Context, workspaceID string) (core.LoginRequirements, error) {
+	return core.LoginRequirements{TwoFactor: s[workspaceID]}, nil
 }
 
 type sessionRows map[string]store.AgentSession

@@ -568,6 +568,18 @@ const ruAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.settingsGuardEmailChangeRefused": {
+    message:
+      "Вы не можете изменить адрес электронной почты, пока состоите в рабочем пространстве, где требуется вход через Google. Сначала покиньте эти рабочие пространства: {workspaces}.",
+    description:
+      "Account settings refusal of an email change (Kratos message 4100001) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
+  "auth.settingsGuardUnlinkRefused": {
+    message:
+      "Вы не можете отключить способ входа, пока состоите в рабочем пространстве, где требуется вход через Google. Сначала покиньте эти рабочие пространства: {workspaces}.",
+    description:
+      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
 };
 
 export default ruAuth;

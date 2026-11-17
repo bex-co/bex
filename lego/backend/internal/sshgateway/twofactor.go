@@ -29,8 +29,8 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// Workspace-enforced two-factor authentication at the gateway
-// (docs/ADR012-auth.md §9a). Native public-key SSH never passes bex-api's
+// Workspace login requirements at the gateway: two-factor authentication
+// (docs/ADR012-auth.md §9a) and Google login (§9b, w7/m465). Native public-key SSH never passes bex-api's
 // middleware and the gateway's tickets are redeemed and revalidated here, so
 // the gateway's own core.Base carries a core.TwoFactorGate. The gateway has no
 // Kratos client and its Postgres role cannot read the workspace setting, so the
@@ -47,11 +47,13 @@ import (
 const TwoFactorCacheTTL = 30 * time.Second
 
 // TwoFactorAsker asks bex-api whether the Kratos subject, authenticated by the
-// gateway as method, may act in a workspace. required=false means the workspace
-// has no requirement and the answer holds for every member. An error means the
-// answer could not be had. *agentsession.TwoFactorClient satisfies it.
+// gateway as method (and, for a native SSH key, the key's creation sign-in),
+// may act in a workspace. required=false means the workspace has no
+// requirement and the answer holds for every member. refusal is the refusal's
+// code, "" when allowed. An error means the answer could not be had.
+// *agentsession.TwoFactorClient satisfies it.
 type TwoFactorAsker interface {
-	Ask(ctx context.Context, workspaceID, subject, method string) (required, allowed bool, err error)
+	Ask(ctx context.Context, workspaceID, subject, method string, signIn core.SignIn) (required bool, refusal string, err error)
 }
 
 // TwoFactorSessions names the workspace an agent session belongs to ("" when
@@ -79,11 +81,13 @@ type TwoFactorGate struct {
 
 	once sync.Once
 	// off holds workspaces that require nothing: one answer for every member
-	// and method. member holds a member's verdict (true = refused) on a
-	// workspace that does require 2FA, keyed by workspace and subject. session
-	// holds a session's workspace.
+	// and method. member holds a principal's verdict (the refusal code, "" =
+	// allowed) on a workspace that does require something, keyed by
+	// workspace, subject, method and sign-in: a member's SSH keys can differ
+	// in how they were created, and a ticket in what it asks. session holds a
+	// session's workspace.
 	off     core.TTLCache[struct{}]
-	member  core.TTLCache[bool]
+	member  core.TTLCache[string]
 	session core.TTLCache[string]
 	// Concurrent misses for one key share one question or lookup.
 	askFlight, sessionFlight singleflight.Group
@@ -95,7 +99,10 @@ var (
 )
 
 // twoFactorAnswer is bex-api's reply to one question.
-type twoFactorAnswer struct{ required, allowed bool }
+type twoFactorAnswer struct {
+	required bool
+	refusal  string
+}
 
 // Check implements core.TwoFactorGate. A setting-off workspace is answered once
 // per TTL for every member and method, so it costs the hot path no round trip
@@ -105,30 +112,33 @@ func (g *TwoFactorGate) Check(ctx context.Context, workspaceID string, id core.I
 	if _, ok := g.off.Get(workspaceID); ok {
 		return nil
 	}
-	memberKey := workspaceID + "\x00" + id.Subject
-	if refused, ok := g.member.Get(memberKey); ok {
-		return g.verdict(workspaceID, refused)
+	memberKey := strings.Join([]string{workspaceID, id.Subject, id.Method, string(id.SignIn)}, "\x00")
+	if refusal, ok := g.member.Get(memberKey); ok {
+		return g.verdict(workspaceID, refusal)
 	}
 	if g.Asker == nil {
 		return g.unavailable(errors.New("no way to ask bex-api"))
 	}
 	answer, err := core.SingleFlight(ctx, &g.askFlight, memberKey, func(ctx context.Context) (twoFactorAnswer, error) {
-		required, allowed, err := g.Asker.Ask(ctx, workspaceID, id.Subject, id.Method)
+		required, refusal, err := g.Asker.Ask(ctx, workspaceID, id.Subject, id.Method, id.SignIn)
 		if err != nil {
 			return twoFactorAnswer{}, err
 		}
 		expires := g.now().Add(TwoFactorCacheTTL)
 		if required {
-			g.member.Put(memberKey, !allowed, expires)
+			g.member.Put(memberKey, refusal, expires)
 		} else {
 			g.off.Put(workspaceID, struct{}{}, expires)
 		}
-		return twoFactorAnswer{required: required, allowed: allowed}, nil
+		return twoFactorAnswer{required: required, refusal: refusal}, nil
 	})
 	if err != nil {
 		return g.unavailable(err)
 	}
-	return g.verdict(workspaceID, answer.required && !answer.allowed)
+	if !answer.required {
+		return nil
+	}
+	return g.verdict(workspaceID, answer.refusal)
 }
 
 // ObjectWorkspace implements core.TwoFactorObjectResolver: an agent session's
@@ -156,9 +166,15 @@ func (g *TwoFactorGate) ObjectWorkspace(ctx context.Context, object string) (str
 	})
 }
 
-func (g *TwoFactorGate) verdict(workspaceID string, refused bool) error {
-	if !refused {
+// verdict turns bex-api's refusal code into the same coded 403 bex-api
+// itself answers: "" allows.
+func (g *TwoFactorGate) verdict(workspaceID, refusal string) error {
+	switch refusal {
+	case "":
 		return nil
+	case core.CodeWorkspaceGoogleLoginRequired:
+		g.Metrics.TwoFactorRefusal(twoFactorNotGoogle)
+		return core.NewWorkspaceGoogleLoginRequiredError(workspaceID)
 	}
 	g.Metrics.TwoFactorRefusal(twoFactorNotEnrolled)
 	return core.NewWorkspaceTwoFactorRequiredError(workspaceID)

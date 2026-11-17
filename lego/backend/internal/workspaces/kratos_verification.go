@@ -18,6 +18,7 @@ package workspaces
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -51,14 +52,90 @@ func (k *KratosIdentities) EmailVerification(ctx context.Context, subject string
 // closed on). Only webauthn is included: TOTP is presence-based, and asking for
 // its config would load its secret (w5/127).
 func (k *KratosIdentities) MFAEnrolled(ctx context.Context, subject string) (enrolled, human bool, err error) {
+	id, human, err := k.humanIdentity(ctx, subject, "?include_credential=webauthn")
+	return human && id.attrs().MFAEnabled, human, err
+}
+
+// GoogleAccountMatches answers the workspace Google-login gate's account
+// question (w7/m465, docs/ADR012-auth.md §9b): has this Kratos identity linked
+// a Google account whose email is its own email trait? Render: "Team members
+// must sign in with the Google account that matches the invited email
+// address", and an invite is redeemed against that trait. The Google email is
+// the one in the ID token Kratos stored when the account was linked (the
+// oidc credential's initial_id_token; Kratos verified it then, so only its
+// payload is read). The tokens Kratos returns beside it are never kept. Like
+// MFAEnrolled it keeps "not a Kratos identity" (human=false) apart from
+// "Kratos could not answer" (an error).
+func (k *KratosIdentities) GoogleAccountMatches(ctx context.Context, subject string) (matches, human bool, err error) {
+	id, human, err := k.humanIdentity(ctx, subject, "?include_credential=oidc")
+	return human && id.googleAccountMatches(), human, err
+}
+
+// SettingsFacts is what the Kratos settings guard (internal/settingsguard,
+// w7/m465) compares a settings change against: the stored email trait, and
+// whether a Google account is linked. The oidc identifiers are listed without
+// including the credential's tokens.
+func (k *KratosIdentities) SettingsFacts(ctx context.Context, subject string) (email string, googleLinked, found bool, err error) {
+	id, found, err := k.humanIdentity(ctx, subject, "")
+	if !found {
+		return "", false, false, err
+	}
+	for _, identifier := range id.Credentials["oidc"].Identifiers {
+		if strings.HasPrefix(identifier, googleOIDCProvider+":") {
+			googleLinked = true
+		}
+	}
+	return id.Traits.Email, googleLinked, true, nil
+}
+
+// googleAccountMatches reports whether one of the identity's linked Google
+// accounts has the identity's email: the ID token's email equal to the trait
+// (case-insensitively), and not marked unverified by Google.
+func (id kratosIdentity) googleAccountMatches() bool {
+	if id.Traits.Email == "" {
+		return false
+	}
+	for _, p := range id.Credentials["oidc"].Config.Providers {
+		if p.Provider != googleOIDCProvider {
+			continue
+		}
+		claims, ok := idTokenClaims(p.InitialIDToken)
+		if ok && claims.Email != "" && strings.EqualFold(claims.Email, id.Traits.Email) &&
+			(claims.EmailVerified == nil || *claims.EmailVerified) {
+			return true
+		}
+	}
+	return false
+}
+
+// idTokenClaims reads the email claims of a JWT's payload without checking its
+// signature: the token comes from Kratos's admin API, which verified it when
+// the account was linked.
+func idTokenClaims(token string) (claims struct {
+	Email         string `json:"email"`
+	EmailVerified *bool  `json:"email_verified"`
+}, ok bool) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return claims, false
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(parts[1], "="))
+	if err != nil {
+		return claims, false
+	}
+	return claims, json.Unmarshal(payload, &claims) == nil
+}
+
+// humanIdentity is adminIdentity for a subject that may not be a Kratos
+// identity at all: a subject that is not a UUID (a named platform client) is
+// "not human" without asking Kratos, like a 404. human is false whenever err
+// is set.
+func (k *KratosIdentities) humanIdentity(ctx context.Context, subject, query string) (id kratosIdentity, human bool, err error) {
 	if _, perr := uuid.Parse(subject); perr != nil {
-		return false, false, nil
+		return kratosIdentity{}, false, nil
 	}
-	id, found, err := k.adminIdentity(ctx, subject, "?include_credential=webauthn")
-	if err != nil || !found {
-		return false, false, err
-	}
-	return id.attrs().MFAEnabled, true, nil
+	id, human, err = k.adminIdentity(ctx, subject, query)
+	return id, human && err == nil, err
 }
 
 // adminIdentity reads one identity from the admin API: found=false is Kratos'

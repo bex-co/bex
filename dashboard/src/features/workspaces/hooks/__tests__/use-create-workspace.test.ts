@@ -57,6 +57,7 @@ describe("useCreateWorkspace", () => {
       role: "admin",
       createdAt: "2026-07-09T00:00:00Z",
       requireTwoFactor: false,
+      requireGoogleLogin: false,
       organization: null,
       primary: false,
       privacy: null,

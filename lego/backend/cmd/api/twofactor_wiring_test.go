@@ -36,7 +36,7 @@ import (
 // does not carry KeyCreator.
 type noCreatorKeys struct{}
 
-func (noCreatorKeys) Create(context.Context, string, string) (apikeys.APIKey, error) {
+func (noCreatorKeys) Create(context.Context, string, string, core.SignIn) (apikeys.APIKey, error) {
 	return apikeys.APIKey{}, nil
 }
 func (noCreatorKeys) List(context.Context) ([]apikeys.APIKey, error)  { return nil, nil }

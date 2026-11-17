@@ -561,6 +561,18 @@ const enAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.settingsGuardEmailChangeRefused": {
+    message:
+      "You can't change your email address while you belong to a workspace that requires Google login. Leave these workspaces first: {workspaces}.",
+    description:
+      "Account settings refusal of an email change (Kratos message 4100001) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
+  "auth.settingsGuardUnlinkRefused": {
+    message:
+      "You can't disconnect a sign-in provider while you belong to a workspace that requires Google login. Leave these workspaces first: {workspaces}.",
+    description:
+      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
 };
 
 export default enAuth;

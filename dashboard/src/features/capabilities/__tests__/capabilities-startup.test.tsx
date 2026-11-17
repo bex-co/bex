@@ -44,6 +44,7 @@ const workspaces = ["tea-first", "tea-second"].map((id) => ({
   role: "admin",
   createdAt: null,
   requireTwoFactor: false,
+  requireGoogleLogin: false,
   organization: null,
   primary: false,
   privacy: null

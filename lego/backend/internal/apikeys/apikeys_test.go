@@ -43,10 +43,10 @@ type fakeKeyStore struct {
 
 func newFakeKeyStore() *fakeKeyStore { return &fakeKeyStore{keys: map[string]APIKey{}} }
 
-func (f *fakeKeyStore) Create(_ context.Context, name, createdBy string) (APIKey, error) {
+func (f *fakeKeyStore) Create(_ context.Context, name, createdBy string, signIn core.SignIn) (APIKey, error) {
 	f.n++
-	k := APIKey{ID: fmt.Sprintf("key-%d", f.n), Name: name, Secret: "s3cret", CreatedAt: "2026-01-01T00:00:00Z", CreatedBy: createdBy}
-	f.keys[k.ID] = APIKey{ID: k.ID, Name: k.Name, CreatedAt: k.CreatedAt, CreatedBy: createdBy} // stored without secret
+	k := APIKey{ID: fmt.Sprintf("key-%d", f.n), Name: name, Secret: "s3cret", CreatedAt: "2026-01-01T00:00:00Z", CreatedBy: createdBy, CreatedSignIn: signIn}
+	f.keys[k.ID] = APIKey{ID: k.ID, Name: k.Name, CreatedAt: k.CreatedAt, CreatedBy: createdBy, CreatedSignIn: signIn} // stored without secret
 	return k, nil
 }
 
@@ -160,8 +160,8 @@ func (b *lockingBinder) WithTenantAdvisoryLock(_ context.Context, _ string, fn f
 
 func TestAccountTeardownUnbindsOwnedKeysBeforeDelete(t *testing.T) {
 	keys := newFakeKeyStore()
-	owned, _ := keys.Create(context.Background(), "owned", "identity-a")
-	other, _ := keys.Create(context.Background(), "other", "identity-b")
+	owned, _ := keys.Create(context.Background(), "owned", "identity-a", core.SignInPassword)
+	other, _ := keys.Create(context.Background(), "other", "identity-b", core.SignInPassword)
 	binder := newFakeBinder()
 	binder.bound[owned.ID] = "tea-a"
 	binder.bound[other.ID] = "tea-b"
@@ -205,6 +205,33 @@ func TestCreateAPIKeyBindsToCallerTenant(t *testing.T) {
 	}
 	if binder.bound[created.ID] != "tea-a" {
 		t.Errorf("bound[%s] = %q, want tea-a", created.ID, binder.bound[created.ID])
+	}
+}
+
+// w7/m465 (docs/ADR012-auth.md §9b): a key records how its creator was signed
+// in, which a workspace that requires Google login reads; a creator with no
+// recorded sign-in stamps "other", so no new key reads as one that predates
+// the stamp.
+func TestCreateAPIKeyStampsTheCreatorsSignIn(t *testing.T) {
+	for signIn, want := range map[core.SignIn]core.SignIn{
+		core.SignInGoogle:     core.SignInGoogle,
+		core.SignInPassword:   core.SignInPassword,
+		core.SignInUnrecorded: core.SignInOther,
+	} {
+		store := newFakeKeyStore()
+		svc := &Service{
+			Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}},
+			APIKeys: store,
+			Binding: newFakeBinder(),
+		}
+		ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session", Human: true, SignIn: signIn})
+		created, err := svc.CreateAPIKey(ctx, "", "agent")
+		if err != nil {
+			t.Fatalf("CreateAPIKey: %v", err)
+		}
+		if got := store.keys[created.ID].CreatedSignIn; got != want {
+			t.Errorf("a key created signed in as %q is stamped %q, want %q", signIn, got, want)
+		}
 	}
 }
 
@@ -809,9 +836,16 @@ func TestHydraAPIKeysStore(t *testing.T) {
 	store := NewHydraAPIKeys(fakeHydraAdmin(t).URL)
 	ctx := context.Background()
 
-	created, err := store.Create(ctx, "agent-1", "user:minter")
+	created, err := store.Create(ctx, "agent-1", "user:minter", core.SignInGoogle)
 	if err != nil || created.ID == "" || created.Secret == "" || created.Name != "agent-1" {
 		t.Fatalf("Create: %v %+v", err, created)
+	}
+	// w7/m465: the creator's sign-in is stamped on the Hydra client beside the
+	// creator, and read back by the gate.
+	if creator, signIn, isKey, err := store.(interface {
+		KeyCreator(context.Context, string) (string, core.SignIn, bool, error)
+	}).KeyCreator(ctx, created.ID); err != nil || !isKey || creator != "user:minter" || signIn != core.SignInGoogle {
+		t.Fatalf("KeyCreator of a new key = (%q, %q, %v, %v), want the creator and its Google sign-in", creator, signIn, isKey, err)
 	}
 	keys, err := store.List(ctx)
 	if err != nil || len(keys) != 1 || keys[0].Secret != "" || keys[0].ID != created.ID {
@@ -867,7 +901,7 @@ func TestAPIKeyMintGrantsNoCapabilityScope(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	created, err := NewHydraAPIKeys(srv.URL).Create(context.Background(), "qa-key", "user:qa")
+	created, err := NewHydraAPIKeys(srv.URL).Create(context.Background(), "qa-key", "user:qa", core.SignInPassword)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -892,7 +926,7 @@ func TestAPIKeyRoundTripListRevokeTouch(t *testing.T) {
 	store := NewHydraAPIKeys(fakeHydraAdmin(t).URL)
 	ctx := context.Background()
 
-	created, err := store.Create(ctx, "round-trip", "user:qa")
+	created, err := store.Create(ctx, "round-trip", "user:qa", core.SignInPassword)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -959,7 +993,7 @@ func TestHydraStoreMetadata(t *testing.T) {
 	store := NewHydraAPIKeys(fakeHydraAdmin(t).URL)
 	ctx := context.Background()
 
-	created, err := store.Create(ctx, "agent-1", "user:minter")
+	created, err := store.Create(ctx, "agent-1", "user:minter", core.SignInPassword)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -1019,7 +1053,7 @@ type recordingStore struct {
 	touchCh chan time.Time
 }
 
-func (recordingStore) Create(context.Context, string, string) (APIKey, error) {
+func (recordingStore) Create(context.Context, string, string, core.SignIn) (APIKey, error) {
 	return APIKey{}, nil
 }
 func (recordingStore) List(context.Context) ([]APIKey, error)          { return nil, nil }
@@ -1277,6 +1311,10 @@ func TestHydraKeyCreatorDistinguishesKeysPlatformClientsAndUnstampedKeys(t *test
 		"platform-client": {ClientID: "platform-client"},
 		"stamped":         {ClientID: "stamped", Metadata: map[string]any{apiKeyMarker: true, createdByKey: "user-7"}},
 		"unstamped":       {ClientID: "unstamped", Metadata: map[string]any{apiKeyMarker: true}},
+		// w7/m465: the sign-in stamp rides beside the creator; a value outside
+		// the vocabulary reads as "other", never Google.
+		"google":  {ClientID: "google", Metadata: map[string]any{apiKeyMarker: true, createdByKey: "user-7", createdSignInKey: "oidc:google"}},
+		"garbled": {ClientID: "garbled", Metadata: map[string]any{apiKeyMarker: true, createdByKey: "user-7", createdSignInKey: "oidc:google "}},
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/admin/clients/broken" {
@@ -1292,23 +1330,26 @@ func TestHydraKeyCreatorDistinguishesKeysPlatformClientsAndUnstampedKeys(t *test
 	}))
 	t.Cleanup(srv.Close)
 	store := NewHydraAPIKeys(srv.URL).(interface {
-		KeyCreator(context.Context, string) (string, bool, error)
+		KeyCreator(context.Context, string) (string, core.SignIn, bool, error)
 	})
 
 	for name, want := range map[string]struct {
 		creator string
+		signIn  core.SignIn
 		isKey   bool
 		err     bool
 	}{
 		"stamped":         {creator: "user-7", isKey: true},
 		"unstamped":       {isKey: true},
+		"google":          {creator: "user-7", signIn: core.SignInGoogle, isKey: true},
+		"garbled":         {creator: "user-7", signIn: core.SignInOther, isKey: true},
 		"platform-client": {}, // not a bex API key
 		"unknown":         {}, // not a client at all: nothing to attribute
 		"broken":          {err: true},
 	} {
-		creator, isKey, err := store.KeyCreator(context.Background(), name)
-		if (err != nil) != want.err || creator != want.creator || isKey != want.isKey {
-			t.Errorf("%s: got (%q, %v, %v), want %+v", name, creator, isKey, err, want)
+		creator, signIn, isKey, err := store.KeyCreator(context.Background(), name)
+		if (err != nil) != want.err || creator != want.creator || signIn != want.signIn || isKey != want.isKey {
+			t.Errorf("%s: got (%q, %q, %v, %v), want %+v", name, creator, signIn, isKey, err, want)
 		}
 	}
 }

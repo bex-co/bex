@@ -184,6 +184,9 @@ type AuditEvent struct {
 	// requirement TO (w22/m402): true = required, false = no longer required.
 	// Nil for every other verb.
 	TwoFactorRequiredTo *bool
+	// GoogleLoginRequiredTo is the value a workspace admin set the Google-login
+	// requirement TO (w7/m465). Nil for every other verb.
+	GoogleLoginRequiredTo *bool
 	// SourceIP and UserAgent are where the actor acted from (Render's
 	// source_ip and user_agent metadata, w9/m450): the trusted-proxy client
 	// address and the User-Agent of the request that caused the row, bounded
@@ -379,6 +382,12 @@ const (
 	// authorizeAndAudit derives from the call stack carry the same verb as the
 	// allowed row RecordTwoFactorEnforcement writes.
 	AuditVerbSetRequireTwoFactor = "workspaces.SetRequireTwoFactor"
+
+	// AuditVerbSetRequireGoogleLogin is a workspace admin turning the
+	// Google-login requirement on or off (w7/m465), Render's
+	// ChangeTeamAllowedLoginMethodsEvent. Like AuditVerbSetRequireTwoFactor it
+	// names the real workspaces.Service method.
+	AuditVerbSetRequireGoogleLogin = "workspaces.SetRequireGoogleLogin"
 
 	// AuditVerbViewEnvVarValues and AuditVerbViewConnectionInfo are the reads
 	// Render audits (w4/m321): ViewEnvVarValuesEvent "logs when environment

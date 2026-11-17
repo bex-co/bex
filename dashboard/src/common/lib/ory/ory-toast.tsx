@@ -1,11 +1,8 @@
 import { useIntl } from "react-intl";
 import { XIcon } from "lucide-react";
 import { toast } from "sonner";
-import {
-  messageTestId,
-  uiTextToFormattedMessage,
-  type OryToastProps,
-} from "@ory/elements-react";
+import { messageTestId, type OryToastProps } from "@ory/elements-react";
+import { useOryMessageText } from "@/common/lib/ory/ory-message-text";
 import { cn } from "@/common/lib/utils/utils.ts";
 
 /**
@@ -17,10 +14,14 @@ import { cn } from "@/common/lib/utils/utils.ts";
  * `.ory-elements` ancestor — so none of those rules match and it rendered as
  * an unthemed light box with near-invisible text in dark mode. This version
  * uses the app's own popover tokens, so it follows the light/dark theme like
- * every other toast. Copy and test ids mirror Ory's original.
+ * every other toast. Copy and test ids mirror Ory's original; the message
+ * itself goes through `useOryMessageText`, so a flow-level refusal of the
+ * settings guard (disconnecting a sign-in provider, w7/m465) reads in the
+ * dashboard's language.
  */
 export function OryToast({ message, id }: OryToastProps) {
   const intl = useIntl();
+  const text = useOryMessageText(message);
   const title =
     message.type === "error"
       ? intl.formatMessage({
@@ -60,9 +61,7 @@ export function OryToast({ message, id }: OryToastProps) {
           <XIcon className="size-4" />
         </button>
       </div>
-      <p className="text-muted-foreground">
-        {uiTextToFormattedMessage(message, intl)}
-      </p>
+      <p className="text-muted-foreground">{text}</p>
     </div>
   );
 }

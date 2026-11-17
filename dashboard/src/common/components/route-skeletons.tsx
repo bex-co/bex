@@ -93,7 +93,7 @@ import {
 } from "@/features/team/components/team-panel-skeleton";
 import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
 import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/workspace-ip-rules-card-skeleton";
-import { WorkspaceTwoFactorCardSkeleton } from "@/features/workspaces/components/workspace-two-factor-card-skeleton";
+import { WorkspaceLoginRequirementCardSkeleton } from "@/features/workspaces/components/workspace-login-requirement-card-skeleton";
 import { WorkspacePrivacyCardSkeleton } from "@/features/workspaces/components/workspace-privacy-card-skeleton";
 import { OverlappingDeployPolicyCardSkeleton } from "@/features/workspaces/components/overlapping-deploy-policy-card-skeleton";
 import { WorkspaceDetailsCardSkeleton } from "@/features/workspaces/components/workspace-details-card-skeleton";
@@ -1430,9 +1430,19 @@ export function WorkspaceSettingsSkeletonSections({
       <Region name="inbound-ip-rules">
         <WorkspaceIPRulesCardSkeleton />
       </Region>
-      {/* Two-factor authentication (w22/m402): every member sees the card. */}
+      {/* Two-factor authentication (w22/m402) and Google login (w7/m465):
+          every member sees both cards. */}
       <Region name="two-factor">
-        <WorkspaceTwoFactorCardSkeleton />
+        <WorkspaceLoginRequirementCardSkeleton
+          requirement="twoFactor"
+          belowPro={sections.belowPro}
+        />
+      </Region>
+      <Region name="google-login">
+        <WorkspaceLoginRequirementCardSkeleton
+          requirement="googleLogin"
+          belowPro={sections.belowPro}
+        />
       </Region>
       <Region name="team">
         <TeamPanelSkeleton />

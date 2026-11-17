@@ -85,6 +85,13 @@ type kratosIdentity struct {
 		Identifiers []string `json:"identifiers"`
 		Config      struct {
 			Credentials []json.RawMessage `json:"credentials"`
+			// Providers is an oidc credential's linked accounts, with the ID
+			// token each was linked with; present only when the oidc
+			// credential is included (GoogleAccountMatches).
+			Providers []struct {
+				Provider       string `json:"provider"`
+				InitialIDToken string `json:"initial_id_token"`
+			} `json:"providers"`
 		} `json:"config"`
 	} `json:"credentials"`
 }
@@ -208,6 +215,10 @@ func (id kratosIdentity) attrs() IdentityAttrs {
 // githubOIDCProvider is the Kratos provider id of "Sign in with GitHub"
 // (ADR012 §10, scripts/auth-secrets.sh); its subject is the GitHub user id.
 const githubOIDCProvider = "github"
+
+// googleOIDCProvider is the Kratos provider id of "Sign in with Google"
+// (ADR012 §10, w7/m465, scripts/lib/kratos-oidc-fragment.sh).
+const googleOIDCProvider = "google"
 
 // GitHubUserIDs resolves which of subjects signed in with GitHub to their
 // numeric GitHub user ids (ADR047 D11 links a PR commenter to a member this

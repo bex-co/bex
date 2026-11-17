@@ -520,19 +520,20 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Label of the switch that requires 2FA of every member (Render's control name)",
   },
-  "workspaces.twoFactorStatusRequired": {
+  "workspaces.loginRequirementStatusRequired": {
     message: "Required",
     description:
-      "Read-only status shown to a non-admin when the workspace requires 2FA",
+      "Read-only status shown to a non-admin when the workspace requires 2FA or Google login",
   },
-  "workspaces.twoFactorStatusNotRequired": {
+  "workspaces.loginRequirementStatusNotRequired": {
     message: "Not required",
     description:
-      "Read-only status shown to a non-admin when the workspace does not require 2FA",
+      "Read-only status shown to a non-admin when the workspace does not require 2FA or Google login",
   },
-  "workspaces.twoFactorAdminOnly": {
+  "workspaces.loginRequirementAdminOnly": {
     message: "Only workspace admins can change this setting.",
-    description: "Hint shown to a non-admin in place of the switch",
+    description:
+      "Last sentence of the 2FA and Google login cards' descriptions: who can change the setting",
   },
   "workspaces.twoFactorProPlanOnly": {
     message:
@@ -593,18 +594,95 @@ const enWorkspaces: Record<string, TranslationEntry> = {
       "After you turn on 2FA, it can take up to a minute for access to return.",
     description: "Hint under the blocked page's check-again button",
   },
-  "workspaces.twoFactorBlockedSwitchLabel": {
+  "workspaces.loginBlockedSwitchLabel": {
     message: "Switch to another workspace",
-    description: "Label of the workspace picker on the blocked page",
+    description:
+      "Label of the workspace picker on the 2FA and Google login blocked pages",
   },
-  "workspaces.twoFactorBlockedSwitchPlaceholder": {
+  "workspaces.loginBlockedSwitchPlaceholder": {
     message: "Choose a workspace",
-    description: "Placeholder of the workspace picker on the blocked page",
+    description:
+      "Placeholder of the workspace picker on the 2FA and Google login blocked pages",
   },
-  "workspaces.twoFactorBlockedNoOtherWorkspaces": {
+  "workspaces.loginBlockedNoOtherWorkspaces": {
     message: "No other workspaces",
     description:
-      "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
+      "Placeholder of the blocked pages' workspace picker when the member belongs to no other workspace",
+  },
+  "workspaces.googleLoginTitle": {
+    message: "Google login",
+    description:
+      "Title of the Google login card on the workspace settings page, and its quick-nav label (w7/m465)",
+  },
+  "workspaces.googleLoginDescription": {
+    message:
+      "Members who don't sign in with the Google account of their bex email address can't access this workspace's resources or settings. API keys and SSH keys created while signed in another way are blocked too.",
+    description:
+      "Description under the Google login card title; follows Render's login-settings wording",
+  },
+  "workspaces.googleLoginSwitchLabel": {
+    message: "Enforce Google login",
+    description:
+      "Label of the switch that requires every member to sign in with Google (Render's control name)",
+  },
+  "workspaces.googleLoginProPlanOnly": {
+    message:
+      "Enforcing Google login requires the Pro plan or higher. A workspace that already enforces it keeps it until an admin turns it off.",
+    description:
+      "Notice on the Google login card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table)",
+  },
+  "workspaces.googleLoginEnabledToast": {
+    message: "Google login is now required in {name}",
+    description: "Toast after an admin turns the Google login requirement on",
+  },
+  "workspaces.googleLoginDisabledToast": {
+    message: "Google login is no longer required in {name}",
+    description: "Toast after an admin turns the Google login requirement off",
+  },
+  "workspaces.googleLoginErrorTitle": {
+    message: "Couldn't change the Google login setting",
+    description:
+      "Title of the inline error when the Google login switch is refused",
+  },
+  "workspaces.googleLoginError": {
+    message: "Couldn't change the Google login setting. Try again.",
+    description:
+      "Generic message when the Google login switch fails without a recognised code",
+  },
+  "workspaces.googleLoginErrorAdminNotSignedIn": {
+    message:
+      "Sign in with the Google account of your bex email address before requiring Google login in this workspace, or you would lock yourself out.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN: the acting admin is not signed in with Google",
+  },
+  "workspaces.googleLoginErrorUnavailable": {
+    message:
+      "Google login enforcement is unavailable on this installation, so it can't be turned on.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE: the deployment cannot look up Google accounts",
+  },
+  "workspaces.googleLoginSignIn": {
+    message: "Sign in with Google",
+    description:
+      "Button that signs the session in again with Google and returns to the page: on the blocked page and in the admin's lock-out refusal",
+  },
+  "workspaces.googleLoginSignInError": {
+    message: "Couldn't start signing in with Google. Try again.",
+    description: "Shown when Kratos did not start the Google sign-in",
+  },
+  "workspaces.googleLoginBlockedTitle": {
+    message: "{workspace} requires Google login",
+    description:
+      "Heading of the page a member who did not sign in with Google sees (w7/m465)",
+  },
+  "workspaces.googleLoginBlockedBody": {
+    message:
+      "An admin of this workspace requires every member to sign in with Google. Until you sign in with the Google account of your bex email address, you can't access this workspace's resources or settings, and API keys and SSH keys you created while signed in another way can't be used with it.",
+    description: "Why the Google login blocked page is shown",
+  },
+  "workspaces.googleLoginBlockedHint": {
+    message: "You'll come back to this page once you've signed in.",
+    description: "Hint under the blocked page's Sign in with Google button",
   },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "Overlapping Deploy Policy",

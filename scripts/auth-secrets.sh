@@ -21,12 +21,22 @@
 #     Written into the kratos Secret under the chart key `smtpConnectionURI`; the
 #     courier is enabled in the values, so the key must exist (docs/ADR012-auth.md §11).
 #
-# Optional (Sign in with GitHub via Kratos oidc — docs/ADR012-auth.md § Social login).
-# When BOTH are set, the kratos Secret gains an `oidc.yaml` fragment enabling the
-# GitHub provider; unset ⇒ the fragment is written disabled (a valid no-op), so
-# flipping social login on is purely `.env` + a re-run, no git change:
+# Optional (social sign-in via Kratos oidc — docs/ADR012-auth.md §10). Each pair
+# enables its provider in the kratos Secret's `oidc.yaml` fragment on its own;
+# neither set ⇒ the fragment is written disabled (a valid no-op), so flipping
+# social login on is purely `.env` + a re-run, no git change:
 #   BEX_GITHUB_OIDC_CLIENT_ID     GitHub OAuth app client id
 #   BEX_GITHUB_OIDC_CLIENT_SECRET GitHub OAuth app client secret
+#   BEX_GOOGLE_OIDC_CLIENT_ID     Google OAuth client id (w7/m465)
+#   BEX_GOOGLE_OIDC_CLIENT_SECRET Google OAuth client secret
+#
+# The workspace Google-login settings guard (w7/m465, docs/ADR012-auth.md §9b):
+# the fragment also wires Kratos's settings flow to bex-api's internal settings
+# guard. Its bearer is minted here once and kept in bex-system/
+# bex-kratos-settings-guard (BEX_KRATOS_SETTINGS_GUARD_TOKEN, read back on every
+# run; ROTATE=1 mints a new one), which bex-api's Deployment reads. Nothing to
+# set in .env. KRATOS_SETTINGS_GUARD_URL overrides where Kratos calls bex-api
+# (default: the in-cluster bex-api internal listener).
 #
 # The DSNs are composed from the CNPG-generated DB credentials (Secrets
 # kratos-db-app / hydra-db-app / openfga-db-app, created by the Clusters in
@@ -40,6 +50,8 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(dirname "$0")/.."
 # shellcheck source=lib/secret-install.sh
 . "$script_dir/lib/secret-install.sh"
+# shellcheck source=lib/kratos-oidc-fragment.sh
+. "$script_dir/lib/kratos-oidc-fragment.sh"
 
 NS=auth
 
@@ -79,80 +91,25 @@ case "$KRATOS_COURIER_SMTP_URI" in
   *) echo "error: KRATOS_COURIER_SMTP_URI must be an smtp:// or smtps:// URI" >&2; exit 1 ;;
 esac
 
-# Kratos OIDC provider fragment (a SECOND `--config` file the kratos Deployment
-# loads via deployment.extraArgs; the client_secret must not live in git, so it
-# rides this out-of-band Secret). Always emitted — enabled with the GitHub
-# provider when both BEX_GITHUB_OIDC_* are set, else a valid `enabled: false` no-op
-# so the mounted file always exists and Kratos never crashloops on a missing
-# --config target. The Jsonnet claims→traits mapper is inlined via base64:// so
-# no extra file mount is needed (docs/ADR012-auth.md § Social login).
-oidc_fragment() {
-  if [ -n "${BEX_GITHUB_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GITHUB_OIDC_CLIENT_SECRET:-}" ]; then
-    local mapper
-    # Maps email always and the display name when GitHub supplies one (w4/m25:
-    # the optional `name` identity trait) — social-login users get the same
-    # populated name as password registrations, from one ingestion point.
-    mapper="$(printf '%s' \
-      'local claims = std.extVar('"'"'claims'"'"'); { identity: { traits: { email: claims.email } + (if std.objectHas(claims, '"'"'name'"'"') && claims.name != null then { name: claims.name } else {}) } }' \
-      | base64 | tr -d '\n')"
-    cat <<YAML
-selfservice:
-  methods:
-    oidc:
-      enabled: true
-      config:
-        providers:
-          - id: github
-            provider: github
-            client_id: "${BEX_GITHUB_OIDC_CLIENT_ID}"
-            client_secret: "${BEX_GITHUB_OIDC_CLIENT_SECRET}"
-            mapper_url: "base64://${mapper}"
-            scope:
-              - user:email
-  flows:
-    login:
-      # ADR075 D8 (w6/m42, revised 2026-08-20): mirror the base password flow's
-      # BACKSTOP — a returning unverified OIDC identity gets no session at
-      # login. The Jsonnet mapper above maps only traits and marks nothing
-      # verified; whether a GitHub address arrives verified is Kratos's provider
-      # claims handling (email_verified). A provider-verified address passes
-      # this hook untouched; an unverified one completes the same emailed-code
-      # verification flow.
-      after:
-        oidc:
-          hooks:
-            - hook: require_verified_address
-    registration:
-      # Mirror the base password flow (keep in lockstep): show_verification_ui
-      # routes a fresh signup with an UNVERIFIED address into the verification
-      # flow (it emits nothing when the provider-verified address created no
-      # verification flow — the common GitHub case), and session signs the new
-      # identity in so verification is a seamless in-product step, not a
-      # re-login.
-      after:
-        oidc:
-          hooks:
-            - hook: show_verification_ui
-            - hook: session
-YAML
-  else
-    cat <<'YAML'
-selfservice:
-  methods:
-    oidc:
-      enabled: false
-YAML
-  fi
-}
+# The Kratos OIDC fragment (a SECOND `--config` file the kratos Deployment loads
+# via deployment.extraArgs; its client secrets and bearer must not live in git,
+# so it rides this out-of-band Secret) is scripts/lib/kratos-oidc-fragment.sh's
+# kratos_oidc_fragment, pinned by scripts/kratos-oidc-fragment.test.sh.
+KRATOS_SETTINGS_GUARD_URL="${KRATOS_SETTINGS_GUARD_URL:-http://bex-api.bex-system.svc.cluster.local:8091}"
 
 if [ "${DRY_RUN:-}" = "1" ]; then
-  if [ -n "${BEX_GITHUB_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GITHUB_OIDC_CLIENT_SECRET:-}" ]; then
-    echo "would apply secret $NS/kratos oidc.yaml key: GitHub provider ENABLED"
+  providers=""
+  [ -n "${BEX_GITHUB_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GITHUB_OIDC_CLIENT_SECRET:-}" ] && providers="$providers github"
+  [ -n "${BEX_GOOGLE_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GOOGLE_OIDC_CLIENT_SECRET:-}" ] && providers="$providers google"
+  if [ -n "$providers" ]; then
+    echo "would apply secret $NS/kratos oidc.yaml key: providers ENABLED:$providers"
   else
-    echo "would apply secret $NS/kratos oidc.yaml key: oidc disabled (BEX_GITHUB_OIDC_* unset)"
+    echo "would apply secret $NS/kratos oidc.yaml key: oidc disabled (BEX_GITHUB_OIDC_* and BEX_GOOGLE_OIDC_* unset)"
   fi
+  echo "would apply secret $NS/kratos oidc.yaml key: settings guard -> $KRATOS_SETTINGS_GUARD_URL/internal/kratos/settings-guard"
   echo "would ensure namespace $NS"
   echo "would apply secret $NS/kratos (keys: dsn secretsDefault secretsCookie secretsCipher smtpConnectionURI oidc.yaml)"
+  echo "would apply secret bex-system/bex-kratos-settings-guard (keys: BEX_KRATOS_SETTINGS_GUARD_TOKEN)"
   echo "would apply secret $NS/hydra (keys: dsn secretsSystem secretsCookie oidcPairwiseSalt)"
   echo "would apply secret $NS/openfga (keys: uri keys)"
   exit 0
@@ -171,13 +128,30 @@ dsn() {
 
 kubectl get namespace "$NS" >/dev/null 2>&1 || kubectl create namespace "$NS" >/dev/null
 
+# The settings guard's bearer: kept once minted, so Kratos and bex-api agree
+# across runs. Never printed.
+KRATOS_SETTINGS_GUARD_TOKEN=""
+if [ "${ROTATE:-0}" != "1" ]; then
+  KRATOS_SETTINGS_GUARD_TOKEN="$(kubectl -n bex-system get secret bex-kratos-settings-guard \
+    -o jsonpath='{.data.BEX_KRATOS_SETTINGS_GUARD_TOKEN}' 2>/dev/null | base64 --decode 2>/dev/null || true)"
+fi
+if [ -z "$KRATOS_SETTINGS_GUARD_TOKEN" ]; then
+  command -v openssl >/dev/null || { echo "error: openssl is required to mint the settings guard bearer" >&2; exit 1; }
+  KRATOS_SETTINGS_GUARD_TOKEN="$(openssl rand -hex 32)"
+  echo "minted a new Kratos settings guard bearer"
+fi
+kubectl get namespace bex-system >/dev/null 2>&1 || kubectl create namespace bex-system >/dev/null
+apply_secret bex-system bex-kratos-settings-guard Opaque \
+  BEX_KRATOS_SETTINGS_GUARD_TOKEN "$KRATOS_SETTINGS_GUARD_TOKEN"
+export KRATOS_SETTINGS_GUARD_URL KRATOS_SETTINGS_GUARD_TOKEN
+
 apply_secret "$NS" kratos Opaque \
   dsn "$(dsn kratos-db kratos)" \
   secretsDefault "$KRATOS_SECRETS_DEFAULT" \
   secretsCookie "$KRATOS_SECRETS_COOKIE" \
   secretsCipher "$KRATOS_SECRETS_CIPHER" \
   smtpConnectionURI "$KRATOS_COURIER_SMTP_URI" \
-  oidc.yaml "$(oidc_fragment)"
+  oidc.yaml "$(kratos_oidc_fragment)"
 
 apply_secret "$NS" hydra Opaque \
   dsn "$(dsn hydra-db hydra)" \

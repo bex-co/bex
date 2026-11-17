@@ -376,6 +376,37 @@ spec:
           port: 8091
 
 ---
+# allow-kratos-settings-guard-to-cp-api (w7/m465, docs/ADR012-auth.md §9b):
+# Kratos's settings flow calls bex-api's cluster-internal settings guard
+# (:8091, POST /internal/kratos/settings-guard) before it saves a profile change
+# or an oidc link or unlink, so a member of a workspace that requires Google
+# login cannot change their email or disconnect Google. Kratos fails the flow
+# when the hook cannot answer, so without this every such change would be
+# refused. Scoped tightly: only the Kratos pods, only the CP port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kratos-settings-guard-to-cp-api
+  namespace: bex-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: bex-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: auth
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kratos
+      ports:
+        - protocol: TCP
+          port: 8091
+
+---
 # bex-registry: zot OCI registry on :5000
 # Allowed: bex-system (operator registry administration), bex-build (scoped
 #   build/publish registry access),

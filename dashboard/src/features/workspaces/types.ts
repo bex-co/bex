@@ -20,6 +20,12 @@ export interface WorkspaceView {
    */
   requireTwoFactor: boolean;
   /**
+   * Whether an admin requires every member to sign in with Google, using the
+   * Google account of their bex email (w7/m465, docs/ADR012-auth.md 9b).
+   * Readable by every member, on the same exempt list as `requireTwoFactor`.
+   */
+  requireGoogleLogin: boolean;
+  /**
    * The organization the workspace belongs to (w7/m464,
    * docs/ADR115-organizations.md): Scale and Enterprise workspaces are an
    * org's primary or one of its secondaries; null for a standalone workspace.

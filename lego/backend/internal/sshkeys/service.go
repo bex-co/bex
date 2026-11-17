@@ -130,6 +130,9 @@ func (s *Service) Create(ctx context.Context, name, rawPublicKey string) (store.
 	key, err := s.Store.CreateSSHKey(ctx, store.SSHKey{
 		ID: ids.New(ids.SSHKey), Subject: subject, Name: name,
 		PublicKey: canonical, Fingerprint: fingerprint,
+		// How the caller is signed in now: a workspace that requires Google
+		// login admits the key only when this is Google (w7/m465).
+		CreatedSignIn: core.KeySignInStamp(ctx),
 	})
 	if errors.Is(err, store.ErrConflict) {
 		return store.SSHKey{}, core.NewConflictError("SSH_KEY_EXISTS", "SSH public key is already registered", nil)

@@ -103,6 +103,17 @@ func gate(feature core.PlanFeature) planDisposition {
 	}}
 }
 
+// gateBoth is gate for a row that names two settings bex gates apart (w7/m465:
+// "Enforce 2FA & Google login"): each must follow the row.
+func gateBoth(first, second core.PlanFeature) planDisposition {
+	a, b := gate(first), gate(second)
+	return planDisposition{kind: "gate", ref: a.ref + "; " + b.ref, check: func(t reporter, row planRow) {
+		t.Helper()
+		a.check(t, row)
+		b.check(t, row)
+	}}
+}
+
 // minimumGate checks a features-by-plan row's lowest plan against
 // core.PlanAllows.
 func minimumGate(feature core.PlanFeature) planDisposition {
@@ -313,7 +324,7 @@ var planDispositions = map[string]planDisposition{
 	"pricing: Team seats":                 numbered("limit", "store.LimitsFor MaxMembers", leadingNumber, func(p string) int64 { return unlimitedAtZero(store.LimitsFor(p).MaxMembers) }),
 	"pricing: Workspaces":                 {kind: "limit", ref: "core.OrganizationPlan (ADR115, w7/m464); per user, store.LimitsFor MaxWorkspacesPerUser", check: checkWorkspaces},
 	"pricing: 2FA & Google login":         same("ADR012"),
-	"pricing: Enforce 2FA & Google login": gate(core.FeatureTwoFactorEnforcement),
+	"pricing: Enforce 2FA & Google login": gateBoth(core.FeatureTwoFactorEnforcement, core.FeatureGoogleLoginEnforcement),
 	"pricing: Workspace user roles":       {kind: "limit", ref: "store.LimitsFor AllowedRoles", check: checkWorkspaceRoles},
 	"pricing: Organization user roles":    {kind: "limit", ref: "core.OrganizationRoles, store.OrgRoles (ADR115 D4)", check: checkOrganizationRoles},
 	"pricing: SAML SSO":                   nonGoal("DO_NOT_DO: SSO/SAML · SCIM; ADR018 SSO / SAML · SCIM"),

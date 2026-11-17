@@ -141,6 +141,10 @@ type Config struct {
 	// unset leaves that route unregistered (the internal mux's normal 404).
 	OpsWorkspace string // BEX_OPS_WORKSPACE — the pinned tea-* ops workspace id
 	OpsRoleToken string // BEX_OPS_ROLE_TOKEN — static bearer for the ops-role verb
+	// KratosSettingsGuardToken (BEX_KRATOS_SETTINGS_GUARD_TOKEN) is the bearer
+	// Kratos's settings web hook presents to the Google-login settings guard
+	// (internal/settingsguard, w7/m465). Unset leaves the verb unmounted.
+	KratosSettingsGuardToken string
 
 	// Tenant secrets (docs/ADR013-secrets.md).
 	OpenBaoURL string
@@ -488,6 +492,8 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	if (cfg.OpsWorkspace == "") != (cfg.OpsRoleToken == "") {
 		p.warnf("WARNING: exactly one of BEX_OPS_WORKSPACE/BEX_OPS_ROLE_TOKEN is set — the internal ops-role verb (docs/ADR088-platform-observability-ui.md §4) stays disabled until both are (BEX_OPS_ROLE_TOKEN alone still mounts the identity-claims verb); the ops-workspace lifecycle guards key on BEX_OPS_WORKSPACE alone")
 	}
+
+	cfg.KratosSettingsGuardToken = getenv("BEX_KRATOS_SETTINGS_GUARD_TOKEN")
 
 	// Secrets.
 	cfg.OpenBaoURL = getenv("BEX_OPENBAO_URL")

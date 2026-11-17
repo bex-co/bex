@@ -457,7 +457,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 					if fresh == (core.Identity{}) || fresh.Method != validatedID.Method || fresh.Subject != validatedID.Subject ||
 						fresh.ClientID != validatedID.ClientID || fresh.Human != validatedID.Human ||
 						fresh.CanonicalScopes != validatedID.CanonicalScopes || fresh.AcceptedAudience != validatedID.AcceptedAudience ||
-						fresh.PlatformClient != validatedID.PlatformClient {
+						fresh.PlatformClient != validatedID.PlatformClient || fresh.SignIn != validatedID.SignIn {
 						return core.ErrForbidden
 					}
 					return nil
@@ -603,6 +603,13 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 		Exp      float64  `json:"exp"`
 		Aud      []string `json:"aud"`
 		Scope    string   `json:"scope"`
+		// Ext is the access token's session claims, set only by the
+		// dashboard's consent acceptor (it holds Hydra admin); a client can
+		// never write them. bex_sign_in is how the browser session that
+		// consented signed in (w7/m465, docs/ADR012-auth.md §9b).
+		Ext struct {
+			SignIn string `json:"bex_sign_in"`
+		} `json:"ext"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return err
@@ -691,6 +698,9 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 		id.CanonicalScopes = grant.Scopes
 		id.AcceptedAudience = grant.AcceptedAudience
 		id.PlatformClient = platform
+		// A machine key's sign-in is its Hydra client's stamp, read by the
+		// gate; only a human token carries the consenting session's.
+		id.SignIn = core.ParseSignIn(out.Ext.SignIn)
 	}
 
 	// Record last-used on the key this token was minted for (w4/m13). Keyed on
@@ -773,7 +783,11 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, signins.Session, error
 		// authenticated from: a new session is a sign-in (w9/m452).
 		ID              string `json:"id"`
 		AuthenticatedAt string `json:"authenticated_at"`
-		Devices         []struct {
+		// How the session signed in (w7/m465): a workspace that requires
+		// Google login reads it, and a key this session creates is stamped
+		// with it (docs/ADR012-auth.md §9b).
+		AuthenticationMethods []core.KratosAuthMethod `json:"authentication_methods"`
+		Devices               []struct {
 			IPAddress string `json:"ip_address"`
 			UserAgent string `json:"user_agent"`
 		} `json:"devices"`
@@ -823,6 +837,7 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, signins.Session, error
 		Email:         email,
 		EmailVerified: emailVerified,
 		Name:          out.Identity.Traits.Name,
+		SignIn:        core.SignInFromKratos(out.AuthenticationMethods),
 		// CanonicalScopes / AcceptedAudience / PlatformClient stay zero: a
 		// Kratos session is not a human-delegation OAuth grant.
 	}, session, nil

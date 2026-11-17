@@ -14,16 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package twofactor is the policy behind a workspace's "require two-factor
-// authentication" setting (docs/ADR012-auth.md §9a): who is checked,
-// what counts as enrolled, and the caches that keep the check off the hot
-// path. core.Base calls it through core.TwoFactorGate after every positive
-// authorization decision, so REST, GraphQL and MCP share one enforcement
-// point; this package holds no routes of its own.
+// Package twofactor is the policy behind a workspace's login requirements:
+// "require two-factor authentication" (docs/ADR012-auth.md §9a) and "require
+// Google login" (§9b, w7/m465), Render's "Enforce 2FA & Google login". It
+// decides who is checked, what counts as enrolled or as signed in with Google,
+// and holds the caches that keep the check off the hot path. core.Base calls
+// it through core.TwoFactorGate after every positive authorization decision,
+// so REST, GraphQL and MCP share one enforcement point; this package holds no
+// routes of its own.
 package twofactor
 
 import (
 	"context"
+	"errors"
 	"log"
 	"strings"
 	"time"
@@ -34,17 +37,18 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// TTL bounds how stale an answer may be: the enrollment fact per identity, the
-// setting per workspace and a key's creator are each cached this long. It is
-// the documented bound on "access returns after enrolling" and on "blocked
-// after enabling, or after removing the last factor" (another replica can lag
-// by up to the TTL; a local change invalidates this replica at once).
+// TTL bounds how stale an answer may be: the enrollment fact and the Google
+// account per identity, the settings per workspace and a key's creator are
+// each cached this long. It is the documented bound on "access returns after
+// enrolling" and on "blocked after enabling, or after removing the last
+// factor" (another replica can lag by up to the TTL; a local change
+// invalidates this replica at once).
 const TTL = 60 * time.Second
 
-// Settings reads whether a workspace requires 2FA. *store.PGStore satisfies it
-// through the thin adapter in cmd/api.
+// Settings reads a workspace's login requirements. *store.PGStore satisfies
+// it.
 type Settings interface {
-	RequireTwoFactor(ctx context.Context, workspaceID string) (bool, error)
+	LoginRequirements(ctx context.Context, workspaceID string) (core.LoginRequirements, error)
 }
 
 // Enrollment reports whether a Kratos identity has an enrolled second factor
@@ -56,12 +60,22 @@ type Enrollment interface {
 	MFAEnrolled(ctx context.Context, subject string) (enrolled, human bool, err error)
 }
 
-// KeyCreators resolves an OAuth client id to the identity that created it.
-// isKey=false means the client is not a bex API key at all (an
-// operator-provisioned platform client); isKey with an empty creator is a key
-// minted before the created-by stamp existed.
+// GoogleAccounts reports whether a Kratos identity has a linked Google account
+// whose email is the identity's own email trait (Render: "Team members must
+// sign in with the Google account that matches the invited email address").
+// human=false means the subject is not a Kratos identity; an error means
+// Kratos could not answer. workspaces.KratosIdentities satisfies it.
+type GoogleAccounts interface {
+	GoogleAccountMatches(ctx context.Context, subject string) (matches, human bool, err error)
+}
+
+// KeyCreators resolves an OAuth client id to the identity that created it and
+// how that identity was signed in when it did. isKey=false means the client is
+// not a bex API key at all (an operator-provisioned platform client); isKey
+// with an empty creator is a key minted before the created-by stamp existed,
+// and an unrecorded signIn one minted before the sign-in stamp (w7/m465).
 type KeyCreators interface {
-	KeyCreator(ctx context.Context, clientID string) (creator string, isKey bool, err error)
+	KeyCreator(ctx context.Context, clientID string) (creator string, signIn core.SignIn, isKey bool, err error)
 }
 
 // Sessions names the workspace an agent session belongs to ("" when there is
@@ -70,12 +84,14 @@ type Sessions interface {
 	AgentSessionWorkspace(ctx context.Context, sessionID string) (string, error)
 }
 
-// Config wires a Gate. Settings is required; a nil Enrollment (no
+// Config wires a Gate. Settings is required; a nil Enrollment or Google (no
 // BEX_KRATOS_ADMIN_URL) or nil Keys can answer no question, so a workspace
-// that requires 2FA fails closed for the principals they would have decided.
+// that requires 2FA or Google login fails closed for the principals they would
+// have decided.
 type Config struct {
 	Settings   Settings
 	Enrollment Enrollment
+	Google     GoogleAccounts
 	Keys       KeyCreators
 	Sessions   Sessions
 	// Now supplies the current time for the caches; injectable for tests.
@@ -97,13 +113,15 @@ const (
 	reasonNotEnrolled       = "not_enrolled"
 	reasonUnattributedKey   = "unattributed_key"
 	reasonLookupUnavailable = "lookup_unavailable"
+	reasonNotGoogle         = "not_google"
+	reasonKeyNotGoogle      = "key_not_google"
 )
 
 // NewMetrics registers the refusal counter on registerer.
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
 	m := &Metrics{refusals: prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "bex", Subsystem: "workspace_two_factor", Name: "refusals_total",
-		Help: "Calls the workspace two-factor gate refused, by reason: a member or an API key's creator with no second factor (not_enrolled), an API key with no recorded creator (unattributed_key), or a lookup that could not answer for a workspace that requires 2FA (lookup_unavailable, failed closed).",
+		Help: "Calls the workspace login-requirements gate refused, by reason: a member or an API key's creator with no second factor (not_enrolled), an API key with no recorded creator (unattributed_key), a member not signed in with the Google account of their email where Google login is required (not_google), an API key or SSH key not created in such a sign-in (key_not_google), or a lookup that could not answer for a workspace that requires either (lookup_unavailable, failed closed).",
 	}, []string{"reason"})}
 	registerer.MustRegister(m.refusals)
 	return m
@@ -121,8 +139,9 @@ func (m *Metrics) refused(reason string) {
 type Gate struct {
 	cfg        Config
 	now        func() time.Time
-	settings   core.TTLCache[bool]
+	settings   core.TTLCache[core.LoginRequirements]
 	enrollment core.TTLCache[enrollment]
+	google     core.TTLCache[googleAccount]
 	keys       core.TTLCache[keyCreator]
 	sessions   core.TTLCache[string]
 	// sessionFlight collapses concurrent session lookups. Sessions has its own
@@ -132,8 +151,11 @@ type Gate struct {
 
 type enrollment struct{ enrolled, human bool }
 
+type googleAccount struct{ matches, human bool }
+
 type keyCreator struct {
 	creator string
+	signIn  core.SignIn
 	isKey   bool
 }
 
@@ -143,7 +165,7 @@ func New(cfg Config) *Gate {
 	if g.now == nil {
 		g.now = time.Now
 	}
-	g.settings.Now, g.enrollment.Now, g.keys.Now, g.sessions.Now = g.now, g.now, g.now, g.now
+	g.settings.Now, g.enrollment.Now, g.google.Now, g.keys.Now, g.sessions.Now = g.now, g.now, g.now, g.now, g.now
 	return g
 }
 
@@ -152,53 +174,83 @@ func New(cfg Config) *Gate {
 // other replicas within TTL.
 func (g *Gate) Invalidate(workspaceID string) { g.settings.Delete(workspaceID) }
 
-// Required reports whether workspaceID requires 2FA, through the same cache
+// Required reports workspaceID's login requirements, through the same cache
 // Check reads. The SSH gateway's verb (agentsession.TwoFactorHandler) uses it
-// to answer "this workspace never asked" once for every member. An unreadable
-// setting is core.ErrAuthzUnavailable, never "not required".
-func (g *Gate) Required(ctx context.Context, workspaceID string) (bool, error) {
+// to answer "this workspace requires nothing" once for every member. An
+// unreadable setting is core.ErrAuthzUnavailable, never "not required".
+func (g *Gate) Required(ctx context.Context, workspaceID string) (core.LoginRequirements, error) {
 	if workspaceID == "" || workspaceID == core.DefaultTenant {
-		return false, nil // the default workspace is the legacy/bootstrap tenant: it has no setting
+		return core.LoginRequirements{}, nil // the default workspace is the legacy/bootstrap tenant: it has no setting
 	}
 	required, err := g.required(ctx, workspaceID)
 	if err != nil {
 		log.Printf("twofactor: reading workspace setting: %v", err)
 		g.cfg.Metrics.refused(reasonLookupUnavailable)
-		return false, core.ErrAuthzUnavailable
+		return core.LoginRequirements{}, core.ErrAuthzUnavailable
 	}
 	return required, nil
 }
 
-// Check implements core.TwoFactorGate. A false answer from Required implies
-// allowed, so a workspace that never asked costs no principal or enrollment
-// lookup.
+// Check implements core.TwoFactorGate. A workspace that requires nothing costs
+// no principal, enrollment or account lookup. A principal that fails both
+// requirements gets the Google-login refusal: signing in again is the step
+// that comes first (docs/ADR012-auth.md §9b).
 func (g *Gate) Check(ctx context.Context, workspaceID string, id core.Identity) error {
 	required, err := g.Required(ctx, workspaceID)
-	if err != nil || !required {
+	if err != nil || !required.Any() {
 		return err
 	}
-	subject, viaKey, err := g.principal(ctx, id)
+	p, err := g.principal(ctx, id)
 	if err != nil {
-		log.Printf("twofactor: resolving principal: %v", err)
-		g.cfg.Metrics.refused(reasonLookupUnavailable)
-		return core.ErrAuthzUnavailable
+		return g.unavailable("resolving principal", err)
 	}
-	if subject == "" {
-		if viaKey {
+	if required.GoogleLogin {
+		if err := g.checkGoogle(ctx, workspaceID, id, p); err != nil {
+			return err
+		}
+	}
+	if required.TwoFactor {
+		return g.checkTwoFactor(ctx, workspaceID, p)
+	}
+	return nil
+}
+
+// SignedInWithGoogle reports whether id would meet a Google-login requirement
+// right now: the lock-out guard of the setting's own mutation, so an admin
+// cannot turn on a requirement that refuses them. It is the same check Check
+// runs. An error means the answer could not be established.
+func (g *Gate) SignedInWithGoogle(ctx context.Context, id core.Identity) (bool, error) {
+	p, err := g.principal(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	err = g.checkGoogle(ctx, "", id, p)
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, core.ErrForbidden):
+		return false, nil
+	}
+	return false, err
+}
+
+// checkTwoFactor is the 2FA requirement (§9a): the principal's subject has an
+// enrolled second factor.
+func (g *Gate) checkTwoFactor(ctx context.Context, workspaceID string, p principal) error {
+	if p.subject == "" {
+		if p.viaKey {
 			return g.unattributed(workspaceID)
 		}
 		return nil // nobody to check: a platform principal
 	}
-	e, err := g.enrollmentOf(ctx, subject)
+	e, err := g.enrollmentOf(ctx, p.subject)
 	if err != nil {
-		log.Printf("twofactor: reading enrollment: %v", err)
-		g.cfg.Metrics.refused(reasonLookupUnavailable)
-		return core.ErrAuthzUnavailable
+		return g.unavailable("reading enrollment", err)
 	}
 	switch {
 	case e.enrolled:
 		return nil
-	case !e.human && viaKey:
+	case !e.human && p.viaKey:
 		// The key's creator is no longer a Kratos identity (a deleted account),
 		// so no second factor can ever be shown for it. Exempting it would let an
 		// orphaned key bypass the setting; refuse it like a key with no creator.
@@ -210,6 +262,79 @@ func (g *Gate) Check(ctx context.Context, workspaceID string, id core.Identity) 
 	}
 	g.cfg.Metrics.refused(reasonNotEnrolled)
 	return core.NewWorkspaceTwoFactorRequiredError(workspaceID)
+}
+
+// checkGoogle is the Google-login requirement (§9b). What decides depends on
+// how the credential is held:
+//
+//   - A key — an API key (its Hydra client's sign-in stamp) or a native SSH
+//     key (the stamp the gateway read off ssh_keys) — counts when it was
+//     created in a Google sign-in and its creator's Google account still
+//     matches their email. A key with no stamp predates the setting and is
+//     exempt, as Render exempts API keys created before it shipped.
+//   - An interactive sign-in — a Kratos session, or a human OAuth token
+//     carrying the browser session it was consented from — counts when that
+//     sign-in was Google and the Google account matches the email. A human
+//     token with no recorded sign-in (minted before the stamp) does not count:
+//     signing in again is cheap.
+//   - Anything else — background work acting as a member, a gateway ticket —
+//     has no sign-in of its own. Each ticket was minted by a call that passed
+//     this check, so what is left to ask is the member's account: a linked
+//     Google account that matches their email. A subject Kratos does not know
+//     is a platform principal and is exempt.
+func (g *Gate) checkGoogle(ctx context.Context, workspaceID string, id core.Identity, p principal) error {
+	refuse, platformExempt := g.refuseMember, false
+	switch {
+	case p.viaKey || id.Method == core.MethodSSH:
+		stamp := p.keySignIn
+		if !p.viaKey {
+			stamp = id.SignIn
+		}
+		if stamp == core.SignInUnrecorded {
+			return nil
+		}
+		refuse = g.refuseKey
+		if stamp != core.SignInGoogle || p.subject == "" {
+			return refuse(workspaceID)
+		}
+	case id.Method == core.MethodSession && id.SignIn != core.SignInUnrecorded,
+		id.Method == core.MethodOAuth2 && id.Human:
+		if id.SignIn != core.SignInGoogle {
+			return refuse(workspaceID)
+		}
+	default:
+		if p.subject == "" {
+			return nil // a platform principal: nobody to check
+		}
+		platformExempt = true
+	}
+	a, err := g.googleAccountOf(ctx, p.subject)
+	switch {
+	case err != nil:
+		return g.unavailable("reading the Google account", err)
+	case !a.human && platformExempt:
+		return nil // Kratos does not know this subject: a platform principal
+	case !a.human || !a.matches:
+		return refuse(workspaceID)
+	}
+	return nil
+}
+
+func (g *Gate) refuseMember(workspaceID string) error {
+	g.cfg.Metrics.refused(reasonNotGoogle)
+	return core.NewWorkspaceGoogleLoginRequiredError(workspaceID)
+}
+
+func (g *Gate) refuseKey(workspaceID string) error {
+	g.cfg.Metrics.refused(reasonKeyNotGoogle)
+	return core.NewWorkspaceGoogleLoginKeyError(workspaceID)
+}
+
+// unavailable fails closed: an answer that cannot be had is never an allow.
+func (g *Gate) unavailable(what string, err error) error {
+	log.Printf("twofactor: %s: %v", what, err)
+	g.cfg.Metrics.refused(reasonLookupUnavailable)
+	return core.ErrAuthzUnavailable
 }
 
 // unattributed refuses an API key whose creator's second factor cannot be
@@ -245,45 +370,52 @@ func (g *Gate) ObjectWorkspace(ctx context.Context, object string) (string, erro
 	})
 }
 
-func (g *Gate) required(ctx context.Context, workspaceID string) (bool, error) {
+func (g *Gate) required(ctx context.Context, workspaceID string) (core.LoginRequirements, error) {
 	if g.cfg.Settings == nil {
-		return false, nil
+		return core.LoginRequirements{}, nil
 	}
-	return g.settings.Load(ctx, workspaceID, TTL, func(ctx context.Context) (bool, error) {
-		return g.cfg.Settings.RequireTwoFactor(ctx, workspaceID)
+	return g.settings.Load(ctx, workspaceID, TTL, func(ctx context.Context) (core.LoginRequirements, error) {
+		return g.cfg.Settings.LoginRequirements(ctx, workspaceID)
 	})
 }
 
-// principal is whose second factor decides for id. It keys on how the
-// credential is held, never on Identity.Human or Method "session": background
-// work (agentsessions/spawn.go, automation_scheduler.go) builds Method
-// "session" identities and runs as the member who started it, the subject
-// this check is meant to see.
+// principal is whose account decides for id. It keys on how the credential
+// is held, never on Identity.Human or Method "session": background work
+// (agentsessions/spawn.go, automation_scheduler.go) builds Method "session"
+// identities and runs as the member who started it, the subject this check is
+// meant to see.
 //
 //   - A machine API key (id.IsAPIKey) borrows its creator's: the creator, read
-//     from the Hydra client's created-by stamp, and viaKey is true. A client
-//     that is not a bex API key is a platform client and is exempt (subject
-//     "", viaKey false). A bex key with no creator, or a token naming no client
-//     at all, is unattributable, which would be a hole around the setting, so
-//     it comes back as subject "" with viaKey true for refusal.
+//     from the Hydra client's created-by stamp, with the sign-in stamp beside
+//     it, and viaKey true. A client that is not a bex API key is a platform
+//     client and is exempt (subject "", viaKey false). A bex key with no
+//     creator, or a token naming no client at all, is unattributable, which
+//     would be a hole around the 2FA setting, so it comes back as subject ""
+//     with viaKey true for refusal.
 //   - Everything else — a Kratos session, a human OAuth token, a gateway or
 //     ticket identity — is its own Subject.
-func (g *Gate) principal(ctx context.Context, id core.Identity) (subject string, viaKey bool, err error) {
+type principal struct {
+	subject   string
+	viaKey    bool
+	keySignIn core.SignIn
+}
+
+func (g *Gate) principal(ctx context.Context, id core.Identity) (principal, error) {
 	if !id.IsAPIKey() {
-		return id.Subject, false, nil
+		return principal{subject: id.Subject}, nil
 	}
 	clientID := id.KeyClientID()
 	if clientID == "" {
-		return "", true, nil
+		return principal{viaKey: true}, nil
 	}
 	k, err := g.keyCreatorOf(ctx, clientID)
 	switch {
 	case err != nil:
-		return "", false, err
+		return principal{}, err
 	case !k.isKey:
-		return "", false, nil
+		return principal{}, nil
 	}
-	return k.creator, true, nil
+	return principal{subject: k.creator, viaKey: true, keySignIn: k.signIn}, nil
 }
 
 func (g *Gate) keyCreatorOf(ctx context.Context, clientID string) (keyCreator, error) {
@@ -291,8 +423,8 @@ func (g *Gate) keyCreatorOf(ctx context.Context, clientID string) (keyCreator, e
 		if g.cfg.Keys == nil {
 			return keyCreator{}, errNoLookup
 		}
-		creator, isKey, err := g.cfg.Keys.KeyCreator(ctx, clientID)
-		return keyCreator{creator: creator, isKey: isKey}, err
+		creator, signIn, isKey, err := g.cfg.Keys.KeyCreator(ctx, clientID)
+		return keyCreator{creator: creator, signIn: signIn, isKey: isKey}, err
 	})
 }
 
@@ -303,6 +435,16 @@ func (g *Gate) enrollmentOf(ctx context.Context, subject string) (enrollment, er
 		}
 		enrolled, human, err := g.cfg.Enrollment.MFAEnrolled(ctx, subject)
 		return enrollment{enrolled: enrolled, human: human}, err
+	})
+}
+
+func (g *Gate) googleAccountOf(ctx context.Context, subject string) (googleAccount, error) {
+	return g.google.Load(ctx, subject, TTL, func(ctx context.Context) (googleAccount, error) {
+		if g.cfg.Google == nil {
+			return googleAccount{}, errNoLookup
+		}
+		matches, human, err := g.cfg.Google.GoogleAccountMatches(ctx, subject)
+		return googleAccount{matches: matches, human: human}, err
 	})
 }
 

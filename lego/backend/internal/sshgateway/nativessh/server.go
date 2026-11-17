@@ -144,27 +144,52 @@ var errUnverifiedOwner = errors.New("public key rejected: verify your bex accoun
 // message reveals nothing to a key that is not a member with access. The SSH
 // client prints the banner while authenticating; a channel refused later
 // carries the reason in its open-failure description.
+//
+// The Google-login refusal (w7/m465, §9b) is told the same way: a key that was
+// not added while its owner was signed in with Google, or an owner whose
+// Google account no longer matches their email, gets its own banner.
 const (
-	twoFactorBanner        = "bex: this workspace requires two-factor authentication. Enable it in your account settings, then connect again.\n"
-	twoFactorChannelReason = "this workspace requires two-factor authentication"
-	reauthorizeFailed      = "authorization no longer valid"
+	twoFactorBanner          = "bex: this workspace requires two-factor authentication. Enable it in your account settings, then connect again.\n"
+	twoFactorChannelReason   = "this workspace requires two-factor authentication"
+	googleLoginBanner        = "bex: this workspace requires signing in with Google. Sign in to bex with Google, add this SSH key again, then connect again.\n"
+	googleLoginChannelReason = "this workspace requires signing in with Google"
+	reauthorizeFailed        = "authorization no longer valid"
 )
 
-var errTwoFactorRequired = errors.New("public key rejected: this workspace requires two-factor authentication")
-
-// isTwoFactorRefusal reports whether err is the funnel's coded
-// WORKSPACE_2FA_REQUIRED refusal, however a resolver wrapped it.
-func isTwoFactorRefusal(err error) bool {
+// loginRefusal is how the client is told about a workspace login-requirement
+// refusal, however a resolver wrapped it. ok is false for every other error.
+func loginRefusal(err error) (r refusal, ok bool) {
 	var coded *core.CodedError
-	return errors.As(err, &coded) && coded.Code == core.CodeWorkspaceTwoFactorRequired
+	if !errors.As(err, &coded) {
+		return refusal{}, false
+	}
+	switch coded.Code {
+	case core.CodeWorkspaceTwoFactorRequired:
+		return refusal{banner: twoFactorBanner, reason: twoFactorChannelReason, metric: "rejected_two_factor"}, true
+	case core.CodeWorkspaceGoogleLoginRequired:
+		return refusal{banner: googleLoginBanner, reason: googleLoginChannelReason, metric: "rejected_google_login"}, true
+	}
+	return refusal{}, false
 }
+
+// refusal is one login-requirement refusal as the SSH client sees it: the
+// banner while authenticating, the reason a refused channel carries, and the
+// authentications_total result it is counted under.
+type refusal struct{ banner, reason, metric string }
 
 // channelRefusal is the description a refused channel open carries.
 func channelRefusal(err error) string {
-	if isTwoFactorRefusal(err) {
-		return twoFactorChannelReason
+	if r, ok := loginRefusal(err); ok {
+		return r.reason
 	}
 	return reauthorizeFailed
+}
+
+// keyIdentity is the identity a registered key authenticates as: its owner,
+// with the sign-in the key was added under, which a workspace that requires
+// Google login reads (w7/m465).
+func keyIdentity(key store.SSHKey) core.Identity {
+	return core.Identity{Subject: key.Subject, Method: core.MethodSSH, SignIn: key.CreatedSignIn}
 }
 
 // verifiedOwner applies EmailVerified under the handshake deadline.
@@ -250,17 +275,17 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 		}
 		// The origin rides the authorization, so a refusal's denied row (the
 		// audit log's StartShellEvent error) says where the caller connected from.
-		authCtx := core.WithIdentity(core.WithRequestOrigin(ctx, core.RequestOrigin{SourceIP: sourceIP(conn.RemoteAddr())}), core.Identity{Subject: subject, Method: core.MethodSSH})
+		authCtx := core.WithIdentity(core.WithRequestOrigin(ctx, core.RequestOrigin{SourceIP: sourceIP(conn.RemoteAddr())}), keyIdentity(registered))
 		authCtx, cancel := context.WithTimeout(authCtx, s.HandshakeTimeout)
 		defer cancel()
 		target, err := s.Apps.ResolveSSHSession(authCtx, conn.User())
 		if err != nil {
-			if isTwoFactorRefusal(err) {
-				s.Metrics.Authentication("rejected_two_factor")
+			if r, ok := loginRefusal(err); ok {
+				s.Metrics.Authentication(r.metric)
 				if pre, ok := conn.(ssh.ServerPreAuthConn); ok {
-					_ = pre.SendAuthBanner(twoFactorBanner)
+					_ = pre.SendAuthBanner(r.banner)
 				}
-				return nil, errTwoFactorRequired
+				return nil, errors.New("public key rejected: " + r.reason)
 			}
 			s.Metrics.Authentication("rejected_target")
 			return nil, errors.New("public key rejected")
@@ -645,7 +670,7 @@ func (s *Server) reauthorize(ctx context.Context, subject, fingerprint, connUser
 		s.Metrics.Reauthorization("rejected")
 		return apps.SSHInstanceTarget{}, errUnverifiedOwner
 	}
-	authCtx := core.WithIdentity(lookupCtx, core.Identity{Subject: subject, Method: core.MethodSSH})
+	authCtx := core.WithIdentity(lookupCtx, keyIdentity(registered))
 	target, err := s.Apps.ResolveSSHSession(authCtx, sticky.Get().ID)
 	if errors.Is(err, core.ErrNotFound) {
 		target, err = s.Apps.ResolveSSHSession(authCtx, connUser)

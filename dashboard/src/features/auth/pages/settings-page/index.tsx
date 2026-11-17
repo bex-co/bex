@@ -8,7 +8,6 @@ import {
   useOryConfig,
   oryHideSettingsPageHeader,
 } from "@/common/lib/ory/config";
-import { OryToast } from "@/common/lib/ory/ory-toast";
 import { orySettingsFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -27,7 +26,6 @@ const settingsRoute = getRouteApi("/settings");
 const settingsComponents: OryFlowComponentOverrides = {
   ...oryHideSettingsPageHeader,
   ...orySettingsFormOverrides,
-  Message: { Toast: OryToast },
 };
 
 /**

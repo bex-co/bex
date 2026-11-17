@@ -516,17 +516,17 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Label of the switch that requires 2FA of every member (Render's control name)",
   },
-  "workspaces.twoFactorStatusRequired": {
+  "workspaces.loginRequirementStatusRequired": {
     message: "已要求",
     description:
       "Read-only status shown to a non-admin when the workspace requires 2FA",
   },
-  "workspaces.twoFactorStatusNotRequired": {
+  "workspaces.loginRequirementStatusNotRequired": {
     message: "未要求",
     description:
       "Read-only status shown to a non-admin when the workspace does not require 2FA",
   },
-  "workspaces.twoFactorAdminOnly": {
+  "workspaces.loginRequirementAdminOnly": {
     message: "只有工作区管理员可以更改此设置。",
     description: "Hint shown to a non-admin in place of the switch",
   },
@@ -587,18 +587,92 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "启用两步验证后，最多需要一分钟才能恢复访问。",
     description: "Hint under the blocked page's check-again button",
   },
-  "workspaces.twoFactorBlockedSwitchLabel": {
+  "workspaces.loginBlockedSwitchLabel": {
     message: "切换到其他工作区",
     description: "Label of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedSwitchPlaceholder": {
+  "workspaces.loginBlockedSwitchPlaceholder": {
     message: "选择工作区",
     description: "Placeholder of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedNoOtherWorkspaces": {
+  "workspaces.loginBlockedNoOtherWorkspaces": {
     message: "没有其他工作区",
     description:
       "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
+  },
+  "workspaces.googleLoginTitle": {
+    message: "Google 登录",
+    description:
+      "Title of the Google login card on the workspace settings page, and its quick-nav label (w7/m465)",
+  },
+  "workspaces.googleLoginDescription": {
+    message:
+      "未使用其 bex 邮箱对应的 Google 账号登录的成员无法访问此工作区的资源或设置。以其他方式登录时创建的 API 密钥和 SSH 密钥也会被阻止。",
+    description:
+      "Description under the Google login card title; follows Render's login-settings wording",
+  },
+  "workspaces.googleLoginSwitchLabel": {
+    message: "强制使用 Google 登录",
+    description:
+      "Label of the switch that requires every member to sign in with Google (Render's control name)",
+  },
+  "workspaces.googleLoginProPlanOnly": {
+    message:
+      "强制使用 Google 登录需要 Pro 或更高套餐。已经强制启用的工作区会保留该设置，直到管理员将其关闭。",
+    description:
+      "Notice on the Google login card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table)",
+  },
+  "workspaces.googleLoginEnabledToast": {
+    message: "{name} 现已要求使用 Google 登录",
+    description: "Toast after an admin turns the Google login requirement on",
+  },
+  "workspaces.googleLoginDisabledToast": {
+    message: "{name} 不再要求使用 Google 登录",
+    description: "Toast after an admin turns the Google login requirement off",
+  },
+  "workspaces.googleLoginErrorTitle": {
+    message: "无法更改 Google 登录设置",
+    description:
+      "Title of the inline error when the Google login switch is refused",
+  },
+  "workspaces.googleLoginError": {
+    message: "无法更改 Google 登录设置，请重试。",
+    description:
+      "Generic message when the Google login switch fails without a recognised code",
+  },
+  "workspaces.googleLoginErrorAdminNotSignedIn": {
+    message:
+      "请先使用你的 bex 邮箱对应的 Google 账号登录，再在此工作区中要求使用 Google 登录，否则你会把自己锁在门外。",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN: the acting admin is not signed in with Google",
+  },
+  "workspaces.googleLoginErrorUnavailable": {
+    message: "此部署不支持强制 Google 登录，因此无法开启。",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE: the deployment cannot look up Google accounts",
+  },
+  "workspaces.googleLoginSignIn": {
+    message: "使用 Google 登录",
+    description:
+      "Button that signs the session in again with Google and returns to the page: on the blocked page and in the admin's lock-out refusal",
+  },
+  "workspaces.googleLoginSignInError": {
+    message: "无法开始使用 Google 登录，请重试。",
+    description: "Shown when Kratos did not start the Google sign-in",
+  },
+  "workspaces.googleLoginBlockedTitle": {
+    message: "{workspace} 要求使用 Google 登录",
+    description:
+      "Heading of the page a member who did not sign in with Google sees (w7/m465)",
+  },
+  "workspaces.googleLoginBlockedBody": {
+    message:
+      "此工作区的管理员要求每位成员使用 Google 登录。在你使用 bex 邮箱对应的 Google 账号登录之前，你无法访问此工作区的资源或设置，你以其他方式登录时创建的 API 密钥和 SSH 密钥也无法在其中使用。",
+    description: "Why the Google login blocked page is shown",
+  },
+  "workspaces.googleLoginBlockedHint": {
+    message: "登录后你会回到此页面。",
+    description: "Hint under the blocked page's Sign in with Google button",
   },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "重叠部署策略",

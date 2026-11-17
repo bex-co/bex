@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // SSHKey is one identity-owned public key. Private key material never enters
@@ -33,13 +35,20 @@ type SSHKey struct {
 	PublicKey   string    `json:"publicKey"`
 	Fingerprint string    `json:"fingerprint"`
 	CreatedAt   time.Time `json:"createdAt"`
+	// CreatedSignIn is how the key's owner was signed in when they added it
+	// (w7/m465, docs/ADR012-auth.md §9b): what a workspace that requires
+	// Google login reads for the key. SignInUnrecorded on a key added before
+	// the stamp existed, which that requirement exempts.
+	CreatedSignIn core.SignIn `json:"-"`
 }
 
-const sshKeyColumns = `id, subject, name, public_key, fingerprint, created_at`
+const sshKeyColumns = `id, subject, name, public_key, fingerprint, created_at, COALESCE(created_sign_in, '')`
 
 func scanSSHKey(row pgx.Row) (SSHKey, error) {
 	var key SSHKey
-	err := row.Scan(&key.ID, &key.Subject, &key.Name, &key.PublicKey, &key.Fingerprint, &key.CreatedAt)
+	var signIn string
+	err := row.Scan(&key.ID, &key.Subject, &key.Name, &key.PublicKey, &key.Fingerprint, &key.CreatedAt, &signIn)
+	key.CreatedSignIn = core.ParseSignIn(signIn)
 	return key, err
 }
 
@@ -56,10 +65,10 @@ func (s *PGStore) CreateSSHKey(ctx context.Context, key SSHKey) (SSHKey, error) 
 		}
 		var err error
 		created, err = scanSSHKey(tx.QueryRow(ctx, `
-			INSERT INTO ssh_keys (id, subject, name, public_key, fingerprint)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO ssh_keys (id, subject, name, public_key, fingerprint, created_sign_in)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING `+sshKeyColumns,
-			key.ID, key.Subject, key.Name, key.PublicKey, key.Fingerprint))
+			key.ID, key.Subject, key.Name, key.PublicKey, key.Fingerprint, nullIfEmpty(string(key.CreatedSignIn))))
 		return err
 	})
 	if err != nil {

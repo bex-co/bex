@@ -575,6 +575,18 @@ const esAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.settingsGuardEmailChangeRefused": {
+    message:
+      "No puedes cambiar tu dirección de correo electrónico mientras pertenezcas a un espacio de trabajo que exige iniciar sesión con Google. Sal primero de estos espacios de trabajo: {workspaces}.",
+    description:
+      "Account settings refusal of an email change (Kratos message 4100001) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
+  "auth.settingsGuardUnlinkRefused": {
+    message:
+      "No puedes desconectar un proveedor de inicio de sesión mientras pertenezcas a un espacio de trabajo que exige iniciar sesión con Google. Sal primero de estos espacios de trabajo: {workspaces}.",
+    description:
+      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
 };
 
 export default esAuth;

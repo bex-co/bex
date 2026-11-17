@@ -527,17 +527,17 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Label of the switch that requires 2FA of every member (Render's control name)",
   },
-  "workspaces.twoFactorStatusRequired": {
+  "workspaces.loginRequirementStatusRequired": {
     message: "必須",
     description:
       "Read-only status shown to a non-admin when the workspace requires 2FA",
   },
-  "workspaces.twoFactorStatusNotRequired": {
+  "workspaces.loginRequirementStatusNotRequired": {
     message: "必須ではない",
     description:
       "Read-only status shown to a non-admin when the workspace does not require 2FA",
   },
-  "workspaces.twoFactorAdminOnly": {
+  "workspaces.loginRequirementAdminOnly": {
     message: "この設定を変更できるのはワークスペースの管理者のみです。",
     description: "Hint shown to a non-admin in place of the switch",
   },
@@ -600,18 +600,95 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
       "2FA を有効にしてから、アクセスが回復するまで最大 1 分かかることがあります。",
     description: "Hint under the blocked page's check-again button",
   },
-  "workspaces.twoFactorBlockedSwitchLabel": {
+  "workspaces.loginBlockedSwitchLabel": {
     message: "別のワークスペースに切り替え",
     description: "Label of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedSwitchPlaceholder": {
+  "workspaces.loginBlockedSwitchPlaceholder": {
     message: "ワークスペースを選択",
     description: "Placeholder of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedNoOtherWorkspaces": {
+  "workspaces.loginBlockedNoOtherWorkspaces": {
     message: "他のワークスペースはありません",
     description:
       "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
+  },
+  "workspaces.googleLoginTitle": {
+    message: "Google ログイン",
+    description:
+      "Title of the Google login card on the workspace settings page, and its quick-nav label (w7/m465)",
+  },
+  "workspaces.googleLoginDescription": {
+    message:
+      "bex のメールアドレスの Google アカウントでログインしていないメンバーは、このワークスペースのリソースや設定にアクセスできません。ほかの方法でログインしているときに作成された API キーと SSH キーもブロックされます。",
+    description:
+      "Description under the Google login card title; follows Render's login-settings wording",
+  },
+  "workspaces.googleLoginSwitchLabel": {
+    message: "Google ログインを必須にする",
+    description:
+      "Label of the switch that requires every member to sign in with Google (Render's control name)",
+  },
+  "workspaces.googleLoginProPlanOnly": {
+    message:
+      "Google ログインの強制には、Pro プラン以上が必要です。すでに強制しているワークスペースは、管理者がオフにするまで引き続き適用されます。",
+    description:
+      "Notice on the Google login card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table)",
+  },
+  "workspaces.googleLoginEnabledToast": {
+    message: "{name} で Google ログインが必須になりました",
+    description: "Toast after an admin turns the Google login requirement on",
+  },
+  "workspaces.googleLoginDisabledToast": {
+    message: "{name} で Google ログインは必須ではなくなりました",
+    description: "Toast after an admin turns the Google login requirement off",
+  },
+  "workspaces.googleLoginErrorTitle": {
+    message: "Google ログインの設定を変更できませんでした",
+    description:
+      "Title of the inline error when the Google login switch is refused",
+  },
+  "workspaces.googleLoginError": {
+    message:
+      "Google ログインの設定を変更できませんでした。もう一度お試しください。",
+    description:
+      "Generic message when the Google login switch fails without a recognised code",
+  },
+  "workspaces.googleLoginErrorAdminNotSignedIn": {
+    message:
+      "このワークスペースで Google ログインを必須にする前に、bex のメールアドレスの Google アカウントでログインしてください。そうしないと、ご自身がアクセスできなくなります。",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN: the acting admin is not signed in with Google",
+  },
+  "workspaces.googleLoginErrorUnavailable": {
+    message:
+      "この環境では Google ログインの強制を利用できないため、有効にできません。",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE: the deployment cannot look up Google accounts",
+  },
+  "workspaces.googleLoginSignIn": {
+    message: "Google でログイン",
+    description:
+      "Button that signs the session in again with Google and returns to the page: on the blocked page and in the admin's lock-out refusal",
+  },
+  "workspaces.googleLoginSignInError": {
+    message:
+      "Google でのログインを開始できませんでした。もう一度お試しください。",
+    description: "Shown when Kratos did not start the Google sign-in",
+  },
+  "workspaces.googleLoginBlockedTitle": {
+    message: "{workspace} では Google ログインが必須です",
+    description:
+      "Heading of the page a member who did not sign in with Google sees (w7/m465)",
+  },
+  "workspaces.googleLoginBlockedBody": {
+    message:
+      "このワークスペースの管理者が、すべてのメンバーに Google でのログインを求めています。bex のメールアドレスの Google アカウントでログインするまで、このワークスペースのリソースや設定にはアクセスできず、ほかの方法でログインしているときに作成した API キーと SSH キーも使用できません。",
+    description: "Why the Google login blocked page is shown",
+  },
+  "workspaces.googleLoginBlockedHint": {
+    message: "ログインすると、このページに戻ります。",
+    description: "Hint under the blocked page's Sign in with Google button",
   },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "重複デプロイポリシー",

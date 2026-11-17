@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { Configuration, OAuth2Api } from "@ory/client-fetch";
-import type { OAuth2ConsentRequest } from "@ory/client-fetch";
+import type { OAuth2ConsentRequest, Session } from "@ory/client-fetch";
 import { fetchSession } from "@/common/server-fn/session";
 import type { SessionState } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
@@ -347,8 +347,9 @@ type ProfileIdTokenClaims = {
 type IdTokenClaims = OpsIdTokenClaims | ProfileIdTokenClaims;
 
 type OpsGateResult =
-  /** Not an ops-gated client: its accept body must stay byte-identical to the
-   * pre-ADR088 shape — no claims, not even an empty `session` key. */
+  /** Not an ops-gated client: its accept body carries no ops claims, and no
+   * `session` key at all unless another stamp (profile claims, the sign-in)
+   * applies. */
   | { verdict: "ungated" }
   | { verdict: "allow"; idToken: OpsIdTokenClaims }
   | { verdict: "deny" };
@@ -510,6 +511,52 @@ function acceptedIdToken(
   return subjectGate.verdict === "pass" ? subjectGate.idToken : undefined;
 }
 
+/**
+ * How a browser session signed in, in bex-api's closed vocabulary
+ * (`core.SignIn`, lego/backend/internal/core/signin.go): what the Google-login
+ * requirement reads off a human OAuth token (w7/m465, docs/ADR012-auth.md 9b).
+ */
+type BexSignIn = "oidc:google" | "oidc:github" | "password" | "other";
+
+/**
+ * The sign-in of a Kratos session, from its `authentication_methods`. A
+ * session that used Google at any point (its first factor, or a later
+ * re-authentication) signed in with Google; a second factor on top does not
+ * change the answer.
+ */
+function signInOf(session: Session): BexSignIn {
+  const methods = session.authentication_methods ?? [];
+  const used = (method: string, provider?: string) =>
+    methods.some(
+      (m) =>
+        m.method === method &&
+        (provider === undefined || m.provider === provider),
+    );
+  if (used("oidc", "google")) return "oidc:google";
+  if (used("oidc", "github")) return "oidc:github";
+  if (used("password")) return "password";
+  return "other";
+}
+
+/**
+ * The `bex_sign_in` claim a consent stamps into the access token (w7/m465):
+ * how the browser session that consents signed in. bex-api reads it from
+ * Hydra's introspection (`ext.bex_sign_in`, internal/api/auth.go) to decide
+ * whether the token's human signed in with Google. Only the request's own
+ * session counts, and only when it is the challenge's subject; otherwise
+ * (none, another identity's, or a whoami that failed, which `fetchSession`
+ * reports as no session) the claim is left out, which bex-api reads as not
+ * signed in with Google. It never fails the consent itself.
+ */
+function consentSignIn(
+  consent: OAuth2ConsentRequest,
+  session: Session | null,
+): BexSignIn | undefined {
+  if (!session || !consent.subject) return undefined;
+  if (session.identity?.id !== consent.subject) return undefined;
+  return signInOf(session);
+}
+
 /** Grant the recognized vocabulary (dropping unknown strings and, for a
  *  third-party client, the bex.api umbrella alias), remembered for the window.
  *  The one accept call in the codebase — the headless (trusted) and
@@ -519,8 +566,18 @@ async function acceptConsent(
   hydra: OAuth2Api,
   consentChallenge: string,
   consent: OAuth2ConsentRequest,
-  idToken?: IdTokenClaims,
+  idToken: IdTokenClaims | undefined,
+  signIn: BexSignIn | undefined,
 ): Promise<string> {
+  // Only an ops-gated or profile-claims accept carries id_token claims
+  // (docs/ADR088 §4), and only a consent with its subject's browser session
+  // behind it carries the sign-in (w7/m465). Each is spread conditionally,
+  // never an always-present key, and `session` is left out when neither is
+  // set: no empty `session` field for Hydra to interpret.
+  const session = {
+    ...(idToken ? { id_token: idToken } : {}),
+    ...(signIn ? { access_token: { bex_sign_in: signIn } } : {}),
+  };
   const { redirect_to } = await hydra.acceptOAuth2ConsentRequest({
     consentChallenge,
     acceptOAuth2ConsentRequest: {
@@ -532,11 +589,7 @@ async function acceptConsent(
         consent.requested_access_token_audience ?? [],
       remember: true,
       remember_for: REMEMBER_FOR_SECONDS,
-      // Only an ops-gated or profile-claims accept carries id_token claims
-      // (docs/ADR088 §4) — spread conditionally, never an always-present key,
-      // so every other client's accept body stays byte-identical to the
-      // pre-ADR088 wire shape (no empty `session` field for Hydra to interpret).
-      ...(idToken ? { session: { id_token: idToken } } : {}),
+      ...(Object.keys(session).length > 0 ? { session } : {}),
     },
   });
   return redirect_to;
@@ -713,6 +766,9 @@ export async function handleConsent(
   }
 
   if (isTrusted(consent)) {
+    // No consent page, so no session was needed until now: the sign-in
+    // stamp asks Kratos for the request's own.
+    const signIn = consentSignIn(consent, (await sessionFor(request)).session);
     let redirectTo: string;
     try {
       redirectTo = await acceptConsent(
@@ -720,6 +776,7 @@ export async function handleConsent(
         consentChallenge,
         consent,
         acceptedIdToken(opsGate, subjectGate),
+        signIn,
       );
     } catch {
       return { errorCode: "headless_accept_failed" };
@@ -896,6 +953,7 @@ export async function handleConsentDecision(
           consentChallenge,
           consent,
           acceptedIdToken(opsGate, subjectGate),
+          consentSignIn(consent, session),
         );
   } catch {
     return retry();

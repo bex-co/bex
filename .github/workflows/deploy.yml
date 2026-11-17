@@ -1188,9 +1188,13 @@ jobs:
           HYDRA_OIDC_PAIRWISE_SALT: ${{ secrets.HYDRA_OIDC_PAIRWISE_SALT }}
           OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
           # Optional social login (docs/ADR012-auth.md § Social login) — unset secrets
-          # resolve empty, so auth-secrets.sh writes the oidc.yaml fragment disabled.
+          # resolve empty, so auth-secrets.sh leaves that provider out (both
+          # unset: the oidc.yaml fragment is written disabled).
           BEX_GITHUB_OIDC_CLIENT_ID: ${{ secrets.BEX_GITHUB_OIDC_CLIENT_ID }}
           BEX_GITHUB_OIDC_CLIENT_SECRET: ${{ secrets.BEX_GITHUB_OIDC_CLIENT_SECRET }}
+          # Sign in with Google (w7/m465): the same shape, its own pair.
+          BEX_GOOGLE_OIDC_CLIENT_ID: ${{ secrets.BEX_GOOGLE_OIDC_CLIENT_ID }}
+          BEX_GOOGLE_OIDC_CLIENT_SECRET: ${{ secrets.BEX_GOOGLE_OIDC_CLIENT_SECRET }}
           # Shared SMTP relay (docs/ADR012-auth.md §11): the courier URI (required — the
           # courier is enabled) into the kratos Secret, and the bex-api invite
           # mailer's credentials into bex-system/bex-smtp.

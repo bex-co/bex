@@ -61,13 +61,25 @@ vi.mock("@/features/workspaces/components/workspace-ip-rules-card", () => ({
   ),
 }));
 
-// Two-factor authentication (w22/m402): the card is every member's; its own
-// admin/non-admin behavior is tested beside it.
-vi.mock("@/features/workspaces/components/workspace-two-factor-card", () => ({
-  WorkspaceTwoFactorCard: ({ workspace }: { workspace: WorkspaceView }) => (
-    <div>Two-factor card {workspace.id}</div>
-  ),
-}));
+// Two-factor authentication (w22/m402) and Google login (w7/m465): both cards
+// are every member's; their own admin/non-admin behavior is tested beside them.
+vi.mock(
+  "@/features/workspaces/components/workspace-login-requirement-card",
+  () => ({
+    WorkspaceLoginRequirementCard: ({
+      requirement,
+      workspace,
+    }: {
+      requirement: "twoFactor" | "googleLogin";
+      workspace: WorkspaceView;
+    }) => (
+      <div>
+        {requirement === "twoFactor" ? "Two-factor" : "Google login"} card{" "}
+        {workspace.id}
+      </div>
+    ),
+  }),
+);
 
 // Workspace privacy (w7/m464): the card's own behavior is pinned in its test;
 // here only who sees it and where.
@@ -204,6 +216,7 @@ const primaryWorkspace: WorkspaceView = {
   role: "admin",
   createdAt: null,
   requireTwoFactor: false,
+  requireGoogleLogin: false,
   organization: null,
   primary: false,
   privacy: null,
@@ -315,6 +328,30 @@ describe("WorkspaceSettingsPage", () => {
     expect(
       screen.getByRole("link", { name: "Two-factor authentication" }),
     ).toHaveAttribute("href", "#two-factor");
+  });
+
+  it("renders the Google login card after Two-factor and before Team, for every role (w7/m465)", async () => {
+    workspaceState.currentWorkspace = {
+      ...primaryWorkspace,
+      role: "developer",
+    };
+    await renderPage();
+
+    const card = screen.getByText("Google login card tea-primary");
+    expect(card.closest("section")).toHaveAttribute("id", "google-login");
+    expect(
+      screen
+        .getByText("Two-factor card tea-primary")
+        .compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      card.compareDocumentPosition(screen.getByText("Team panel")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Google login" })).toHaveAttribute(
+      "href",
+      "#google-login",
+    );
   });
 
   it("renders the Notifications section for the current workspace (w3/m271)", async () => {

@@ -499,7 +499,9 @@ func TestExemptReadsLeakNothingAboutAWorkspaceToABlockedMember(t *testing.T) {
 	}
 	// OrganizationID and Privacy say which org the workspace is in and whether
 	// its org Members may join it (w7/m464): org placement, not contents.
-	if got, want := fieldNames(WorkspaceView{}), []string{"ID", "Name", "Slug", "Plan", "Role", "CreatedAt", "IPAllowList", "RequireTwoFactor", "OverlappingDeployPolicy", "OrganizationID", "Privacy", "Organization"}; !slices.Equal(got, want) {
+	// RequireGoogleLogin, like RequireTwoFactor, is what a blocked member needs
+	// to see why (w7/m465).
+	if got, want := fieldNames(WorkspaceView{}), []string{"ID", "Name", "Slug", "Plan", "Role", "CreatedAt", "IPAllowList", "RequireTwoFactor", "RequireGoogleLogin", "OverlappingDeployPolicy", "OrganizationID", "Privacy", "Organization"}; !slices.Equal(got, want) {
 		t.Errorf("WorkspaceView fields = %v, want %v: List is exempt from the 2FA requirement", got, want)
 	}
 	if got, want := fieldNames(UserView{}), []string{"ID", "Email", "Name"}; !slices.Equal(got, want) {
@@ -510,9 +512,9 @@ func TestExemptReadsLeakNothingAboutAWorkspaceToABlockedMember(t *testing.T) {
 // storeSettings reads the workspace setting like cmd/api's adapter over the store.
 type storeSettings struct{ *fakeStore }
 
-func (s storeSettings) RequireTwoFactor(ctx context.Context, id string) (bool, error) {
+func (s storeSettings) LoginRequirements(ctx context.Context, id string) (core.LoginRequirements, error) {
 	t, err := s.GetTenant(ctx, id)
-	return t.RequireTwoFactor, err
+	return core.LoginRequirements{TwoFactor: t.RequireTwoFactor, GoogleLogin: t.RequireGoogleLogin}, err
 }
 
 // ADR012 §9a: an admin who removes their last second factor on an enforcing

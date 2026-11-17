@@ -5,6 +5,7 @@ import {
   KeyRound,
   Layers,
   Lock,
+  LogIn,
   Network,
   ScrollText,
   Settings2,
@@ -74,6 +75,11 @@ export function WorkspaceSettingsNavigation({
       href: "#two-factor",
       label: t("workspaces.twoFactorTitle"),
       icon: ShieldCheck,
+    },
+    {
+      href: "#google-login",
+      label: t("workspaces.googleLoginTitle"),
+      icon: LogIn,
     },
     { href: "#team", label: t("team.title"), icon: Users },
     {

@@ -18,8 +18,7 @@ import {
   useTranslations,
   type Translate,
 } from "@/common/hooks/use-translations";
-import { dashboardLanguage } from "@/common/lib/format/language";
-import { LANGUAGE_TAGS } from "@/i18n/config";
+import { conjunctionList } from "@/common/lib/format/language";
 import {
   useChangeWorkspacePlan,
   type DowngradePrecondition,
@@ -128,12 +127,7 @@ export function ChangePlanDialog({
   const canSubmit = plan !== workspace.plan && !busy;
   const deletesOrganization =
     organizationPrimary(workspace) && !organizationPlan(plan);
-  const list =
-    preconditions.length > 0
-      ? new Intl.ListFormat(LANGUAGE_TAGS[dashboardLanguage(i18n.language)], {
-          type: "conjunction",
-        })
-      : null;
+  const list = preconditions.length > 0 ? conjunctionList(i18n.language) : null;
 
   async function handleSubmit() {
     if (!canSubmit) return;

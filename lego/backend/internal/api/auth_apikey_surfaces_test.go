@@ -47,7 +47,7 @@ type hydraKeys struct {
 	live  map[string]apikeys.APIKey
 }
 
-func (s *hydraKeys) Create(_ context.Context, name, createdBy string) (apikeys.APIKey, error) {
+func (s *hydraKeys) Create(_ context.Context, name, createdBy string, _ core.SignIn) (apikeys.APIKey, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	id := s.next[0]
@@ -297,7 +297,7 @@ func TestAPIKeyBearerLogoutRevokesTheKey(t *testing.T) {
 	revocations := &memoryRevocations{}
 	workspaces := &keyWorkspaces{of: map[string]string{}, revocations: revocations}
 	store := &hydraKeys{hydra: hydra, next: []string{keyClientA}}
-	minted, err := store.Create(context.Background(), "ci", "identity-1")
+	minted, err := store.Create(context.Background(), "ci", "identity-1", core.SignInPassword)
 	if err != nil {
 		t.Fatal(err)
 	}

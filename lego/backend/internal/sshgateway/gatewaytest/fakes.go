@@ -199,17 +199,39 @@ func (f *FakeExecutor) Execute(ctx context.Context, target apps.SSHInstanceTarge
 	return f.Code, f.Err
 }
 
-// FakeTwoFactor plays bex-api's two-factor verb (agentsession.TwoFactorHandler
-// over the real twofactor.Gate) for the gateway's TwoFactorGate: workspaces
-// that Require 2FA admit only Enrolled subjects. It counts every question and
-// remembers the last one's method. Safe to flip while server goroutines run.
+// FakeTwoFactor plays bex-api's login-requirements verb
+// (agentsession.TwoFactorHandler over the real twofactor.Gate) for the
+// gateway's TwoFactorGate: workspaces that Require 2FA admit only Enrolled
+// subjects, and workspaces that RequireGoogle admit only questions carrying
+// the Google sign-in (a native SSH key added while signed in with Google). It
+// counts every question and remembers each one's method and sign-in. Safe to
+// flip while server goroutines run.
 type FakeTwoFactor struct {
 	mu       sync.Mutex
 	required map[string]bool
+	google   map[string]bool
 	enrolled map[string]bool
 	err      error
 	asked    int
 	methods  []string
+	signIns  []core.SignIn
+}
+
+// RequireGoogle sets whether a workspace requires Google login (w7/m465).
+func (f *FakeTwoFactor) RequireGoogle(workspaceID string, on bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.google == nil {
+		f.google = map[string]bool{}
+	}
+	f.google[workspaceID] = on
+}
+
+// SignIns returns the sign-in of every question, in order.
+func (f *FakeTwoFactor) SignIns() []core.SignIn {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]core.SignIn(nil), f.signIns...)
 }
 
 // Require sets whether a workspace requires 2FA.
@@ -239,20 +261,26 @@ func (f *FakeTwoFactor) Fail(err error) {
 	f.err = err
 }
 
-// Ask answers like the verb: not required => (false, true), else the subject's
-// enrollment.
-func (f *FakeTwoFactor) Ask(_ context.Context, workspaceID, subject, method string) (required, allowed bool, err error) {
+// Ask answers like the verb: not required => (false, ""), else the Google
+// refusal first, then the subject's enrollment.
+func (f *FakeTwoFactor) Ask(_ context.Context, workspaceID, subject, method string, signIn core.SignIn) (required bool, refusal string, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.asked++
 	f.methods = append(f.methods, method)
+	f.signIns = append(f.signIns, signIn)
 	if f.err != nil {
-		return false, false, f.err
+		return false, "", f.err
 	}
-	if !f.required[workspaceID] {
-		return false, true, nil
+	switch {
+	case !f.required[workspaceID] && !f.google[workspaceID]:
+		return false, "", nil
+	case f.google[workspaceID] && signIn != core.SignInGoogle:
+		return true, core.CodeWorkspaceGoogleLoginRequired, nil
+	case f.required[workspaceID] && !f.enrolled[subject]:
+		return true, core.CodeWorkspaceTwoFactorRequired, nil
 	}
-	return true, f.enrolled[subject], nil
+	return true, "", nil
 }
 
 // Questions is how many times the gateway asked.

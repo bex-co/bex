@@ -442,11 +442,12 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
   it.each([
     // The test setup grants every capability, so the pending rail adds Build
     // Pipeline (billing managers', w6/m309) and Audit Logs (reserved until the
-    // role loads) to the every-member sections (w3/m305).
+    // role loads) to the every-member sections (w3/m305), Google login
+    // (w7/m465) among them.
     [
       <WorkspaceSettingsPageSkeleton key="workspace" />,
       "workspace-settings",
-      11,
+      12,
     ],
     [<AccountSettingsPageSkeleton key="account" />, "account-settings", 5],
     [<BillingPageSkeleton key="billing" />, "billing", 7],

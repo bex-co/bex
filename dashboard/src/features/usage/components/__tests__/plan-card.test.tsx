@@ -27,6 +27,7 @@ const PRIMARY: WorkspaceView = {
   role: "admin",
   createdAt: null,
   requireTwoFactor: false,
+  requireGoogleLogin: false,
   organization: {
     id: "org-1",
     name: "Acme",

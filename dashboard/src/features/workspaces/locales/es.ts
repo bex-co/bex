@@ -530,17 +530,17 @@ const esWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Label of the switch that requires 2FA of every member (Render's control name)",
   },
-  "workspaces.twoFactorStatusRequired": {
+  "workspaces.loginRequirementStatusRequired": {
     message: "Requerida",
     description:
       "Read-only status shown to a non-admin when the workspace requires 2FA",
   },
-  "workspaces.twoFactorStatusNotRequired": {
+  "workspaces.loginRequirementStatusNotRequired": {
     message: "No requerida",
     description:
       "Read-only status shown to a non-admin when the workspace does not require 2FA",
   },
-  "workspaces.twoFactorAdminOnly": {
+  "workspaces.loginRequirementAdminOnly": {
     message:
       "Solo los administradores del espacio de trabajo pueden cambiar este ajuste.",
     description: "Hint shown to a non-admin in place of the switch",
@@ -605,18 +605,95 @@ const esWorkspaces: Record<string, TranslationEntry> = {
       "Después de activar 2FA, puede tardar hasta un minuto en volver el acceso.",
     description: "Hint under the blocked page's check-again button",
   },
-  "workspaces.twoFactorBlockedSwitchLabel": {
+  "workspaces.loginBlockedSwitchLabel": {
     message: "Cambiar a otro espacio de trabajo",
     description: "Label of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedSwitchPlaceholder": {
+  "workspaces.loginBlockedSwitchPlaceholder": {
     message: "Elige un espacio de trabajo",
     description: "Placeholder of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedNoOtherWorkspaces": {
+  "workspaces.loginBlockedNoOtherWorkspaces": {
     message: "No hay otros espacios de trabajo",
     description:
       "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
+  },
+  "workspaces.googleLoginTitle": {
+    message: "Inicio de sesión con Google",
+    description:
+      "Title of the Google login card on the workspace settings page, and its quick-nav label (w7/m465)",
+  },
+  "workspaces.googleLoginDescription": {
+    message:
+      "Los miembros que no inician sesión con la cuenta de Google de su correo electrónico de bex no pueden acceder a los recursos ni a la configuración de este espacio de trabajo. Las claves de API y claves SSH creadas con otro inicio de sesión también quedan bloqueadas.",
+    description:
+      "Description under the Google login card title; follows Render's login-settings wording",
+  },
+  "workspaces.googleLoginSwitchLabel": {
+    message: "Exigir inicio de sesión con Google",
+    description:
+      "Label of the switch that requires every member to sign in with Google (Render's control name)",
+  },
+  "workspaces.googleLoginProPlanOnly": {
+    message:
+      "Exigir el inicio de sesión con Google requiere el plan Pro o superior. Un espacio de trabajo que ya lo exige lo mantiene hasta que un administrador lo desactive.",
+    description:
+      "Notice on the Google login card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table)",
+  },
+  "workspaces.googleLoginEnabledToast": {
+    message: "Ahora se requiere iniciar sesión con Google en {name}",
+    description: "Toast after an admin turns the Google login requirement on",
+  },
+  "workspaces.googleLoginDisabledToast": {
+    message: "Ya no se requiere iniciar sesión con Google en {name}",
+    description: "Toast after an admin turns the Google login requirement off",
+  },
+  "workspaces.googleLoginErrorTitle": {
+    message: "No se pudo cambiar el ajuste de inicio de sesión con Google",
+    description:
+      "Title of the inline error when the Google login switch is refused",
+  },
+  "workspaces.googleLoginError": {
+    message:
+      "No se pudo cambiar el ajuste de inicio de sesión con Google. Inténtalo de nuevo.",
+    description:
+      "Generic message when the Google login switch fails without a recognised code",
+  },
+  "workspaces.googleLoginErrorAdminNotSignedIn": {
+    message:
+      "Inicia sesión con la cuenta de Google de tu correo electrónico de bex antes de exigirlo en este espacio de trabajo, o te quedarías fuera.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN: the acting admin is not signed in with Google",
+  },
+  "workspaces.googleLoginErrorUnavailable": {
+    message:
+      "La exigencia de inicio de sesión con Google no está disponible en esta instalación, así que no se puede activar.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE: the deployment cannot look up Google accounts",
+  },
+  "workspaces.googleLoginSignIn": {
+    message: "Iniciar sesión con Google",
+    description:
+      "Button that signs the session in again with Google and returns to the page: on the blocked page and in the admin's lock-out refusal",
+  },
+  "workspaces.googleLoginSignInError": {
+    message:
+      "No se pudo empezar a iniciar sesión con Google. Inténtalo de nuevo.",
+    description: "Shown when Kratos did not start the Google sign-in",
+  },
+  "workspaces.googleLoginBlockedTitle": {
+    message: "{workspace} requiere iniciar sesión con Google",
+    description:
+      "Heading of the page a member who did not sign in with Google sees (w7/m465)",
+  },
+  "workspaces.googleLoginBlockedBody": {
+    message:
+      "Un administrador de este espacio de trabajo exige que todos los miembros inicien sesión con Google. Hasta que inicies sesión con la cuenta de Google de tu correo electrónico de bex, no puedes acceder a los recursos ni a la configuración de este espacio de trabajo, y las claves de API y claves SSH que creaste con otro inicio de sesión no se pueden usar con él.",
+    description: "Why the Google login blocked page is shown",
+  },
+  "workspaces.googleLoginBlockedHint": {
+    message: "Volverás a esta página después de iniciar sesión.",
+    description: "Hint under the blocked page's Sign in with Google button",
   },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "Política de despliegues superpuestos",

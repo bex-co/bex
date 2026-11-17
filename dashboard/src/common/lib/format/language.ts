@@ -20,6 +20,13 @@ export function dashboardLanguage(
   );
 }
 
+/** "A, B and C" in the dashboard language an i18n language string names. */
+export function conjunctionList(language: string | undefined): Intl.ListFormat {
+  return new Intl.ListFormat(LANGUAGE_TAGS[dashboardLanguage(language)], {
+    type: "conjunction",
+  });
+}
+
 // date-fns' distance tokens and the Intl.RelativeTimeFormat unit each words.
 const DISTANCE_UNITS: Partial<
   Record<FormatDistanceToken, Intl.RelativeTimeFormatUnit>

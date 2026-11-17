@@ -58,6 +58,7 @@ describe("useWorkspaces", () => {
         role: "admin",
         createdAt: "2026-06-01T00:00:00Z",
         requireTwoFactor: false,
+        requireGoogleLogin: false,
         organization: null,
         primary: false,
         privacy: null,
@@ -65,9 +66,9 @@ describe("useWorkspaces", () => {
     ]);
   });
 
-  // w22/m402: the setting rides the workspaces list, which the server exempts
-  // from enforcement so a blocked member can still read why.
-  it("carries requireTwoFactor, and reads a missing value as not required", () => {
+  // w22/m402 and w7/m465: both settings ride the workspaces list, which the
+  // server exempts from enforcement so a blocked member can still read why.
+  it("carries requireTwoFactor and requireGoogleLogin, and reads a missing value as not required", () => {
     mockUseQuery.mockReturnValue({
       data: {
         workspaces: [
@@ -79,6 +80,7 @@ describe("useWorkspaces", () => {
             role: "admin",
             createdAt: null,
             requireTwoFactor: true,
+            requireGoogleLogin: true,
           },
           {
             __typename: "Workspace",
@@ -88,6 +90,7 @@ describe("useWorkspaces", () => {
             role: "admin",
             createdAt: null,
             requireTwoFactor: null,
+            requireGoogleLogin: null,
           },
         ],
       },
@@ -98,6 +101,10 @@ describe("useWorkspaces", () => {
 
     const { result } = renderHook(() => useWorkspaces());
     expect(result.current.workspaces.map((w) => w.requireTwoFactor)).toEqual([
+      true,
+      false,
+    ]);
+    expect(result.current.workspaces.map((w) => w.requireGoogleLogin)).toEqual([
       true,
       false,
     ]);

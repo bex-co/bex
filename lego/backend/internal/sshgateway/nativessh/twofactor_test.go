@@ -262,22 +262,69 @@ func TestNewChannelIsRefusedWithAReasonAfterTheMemberStopsBeingCompliant(t *test
 
 // The refusal is recognized by its code, so any resolver that surfaces the
 // funnel's coded 403 gets the message, and nothing else does.
-func TestOnlyTheTwoFactorCodeGetsTheMessage(t *testing.T) {
+func TestOnlyTheLoginRequirementCodesGetTheirMessage(t *testing.T) {
 	for name, tc := range map[string]struct {
 		err  error
-		want bool
+		want string // the channel reason; "" = not a login-requirement refusal
 	}{
-		"the coded refusal":    {core.NewWorkspaceTwoFactorRequiredError("tea-x"), true},
-		"wrapped":              {errors.Join(errors.New("resolve"), core.NewWorkspaceTwoFactorRequiredError("tea-x")), true},
-		"plain forbidden":      {core.ErrForbidden, false},
-		"another coded 403":    {core.NewEmailVerificationRequiredError(), false},
-		"outage":               {core.ErrAuthzUnavailable, false},
-		"not found":            {store.ErrNotFound, false},
-		"unrelated plain text": {errors.New(core.CodeWorkspaceTwoFactorRequired), false},
+		"the coded 2FA refusal":    {core.NewWorkspaceTwoFactorRequiredError("tea-x"), twoFactorChannelReason},
+		"wrapped":                  {errors.Join(errors.New("resolve"), core.NewWorkspaceTwoFactorRequiredError("tea-x")), twoFactorChannelReason},
+		"the coded Google refusal": {core.NewWorkspaceGoogleLoginKeyError("tea-x"), googleLoginChannelReason},
+		"plain forbidden":          {core.ErrForbidden, ""},
+		"another coded 403":        {core.NewEmailVerificationRequiredError(), ""},
+		"outage":                   {core.ErrAuthzUnavailable, ""},
+		"not found":                {store.ErrNotFound, ""},
+		"unrelated plain text":     {errors.New(core.CodeWorkspaceTwoFactorRequired), ""},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if got := isTwoFactorRefusal(tc.err); got != tc.want {
-				t.Fatalf("isTwoFactorRefusal(%v) = %v, want %v", tc.err, got, tc.want)
+			r, ok := loginRefusal(tc.err)
+			if ok != (tc.want != "") || r.reason != tc.want {
+				t.Fatalf("loginRefusal(%v) = (%+v, %v), want reason %q", tc.err, r, ok, tc.want)
+			}
+		})
+	}
+}
+
+// w7/m465 (docs/ADR012-auth.md §9b): a native SSH key carries the sign-in its
+// owner had when adding it. On a workspace that requires Google login, a key
+// added while signed in with a password is refused with a banner naming the
+// requirement; one added while signed in with Google connects.
+func TestAKeyNotAddedInAGoogleSignInIsRefusedWhereGoogleLoginIsRequired(t *testing.T) {
+	for name, tc := range map[string]struct {
+		stamp core.SignIn
+		allow bool
+	}{
+		"added signed in with a password": {stamp: core.SignInPassword},
+		"added signed in with Google":     {stamp: core.SignInGoogle, allow: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := startTwoFactorGateway(t, false, false, nil)
+			h.asker.RequireGoogle(twoFactorWorkspace, true)
+			h.store.Key.CreatedSignIn = tc.stamp
+			client, banner, err := dialWithBanner(h.addr, "srv-abcdeabcdeabcdeabcde", h.signer)
+			if tc.allow {
+				if err != nil {
+					t.Fatalf("a key added in a Google sign-in was refused: %v (banner %q)", err, banner)
+				}
+				client.Close()
+			} else {
+				if err == nil {
+					client.Close()
+					t.Fatal("a key added in a password sign-in authenticated where Google login is required")
+				}
+				if !strings.Contains(banner, "signing in with Google") {
+					t.Fatalf("banner = %q, want it to name the Google-login requirement", banner)
+				}
+				if got := h.metric("bex_ssh_gateway_authentications_total", map[string]string{"result": "rejected_google_login"}, t); got != 1 {
+					t.Fatalf("rejected_google_login authentications = %v, want 1", got)
+				}
+				if got := h.metric("bex_ssh_gateway_two_factor_refusals_total", map[string]string{"result": "not_google"}, t); got < 1 {
+					t.Fatalf("the refusal was not counted under not_google: %v", got)
+				}
+			}
+			signIns := h.asker.SignIns()
+			if len(signIns) == 0 || signIns[0] != tc.stamp {
+				t.Fatalf("the gateway asked with sign-ins %v, want the key's stamp %q", signIns, tc.stamp)
 			}
 		})
 	}

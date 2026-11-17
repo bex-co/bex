@@ -35,17 +35,19 @@ import (
 // (core/twofactor_test.go); the surfaces are internal/api's.
 
 type fakeSettings struct {
-	mu    sync.Mutex
-	on    map[string]bool
-	err   error
-	calls int
+	mu sync.Mutex
+	on map[string]bool
+	// google holds the workspaces that require Google login (w7/m465).
+	google map[string]bool
+	err    error
+	calls  int
 }
 
-func (f *fakeSettings) RequireTwoFactor(_ context.Context, workspaceID string) (bool, error) {
+func (f *fakeSettings) LoginRequirements(_ context.Context, workspaceID string) (core.LoginRequirements, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++
-	return f.on[workspaceID], f.err
+	return core.LoginRequirements{TwoFactor: f.on[workspaceID], GoogleLogin: f.google[workspaceID]}, f.err
 }
 
 func (f *fakeSettings) set(workspaceID string, on bool) {
@@ -116,24 +118,26 @@ func (f *fakeEnrollment) total() int {
 	return n
 }
 
-// fakeKeys maps an API key's client id to its creator. A client absent from
-// creators and from keys is not a bex API key at all (a platform client).
+// fakeKeys maps an API key's client id to its creator and the sign-in it was
+// created in. A client absent from creators and from keys is not a bex API key
+// at all (a platform client).
 type fakeKeys struct {
 	creators map[string]string
+	signIns  map[string]core.SignIn
 	keys     map[string]bool
 	err      error
 	calls    int
 }
 
-func (f *fakeKeys) KeyCreator(_ context.Context, clientID string) (string, bool, error) {
+func (f *fakeKeys) KeyCreator(_ context.Context, clientID string) (string, core.SignIn, bool, error) {
 	f.calls++
 	if f.err != nil {
-		return "", false, f.err
+		return "", "", false, f.err
 	}
 	if c, ok := f.creators[clientID]; ok {
-		return c, true, nil
+		return c, f.signIns[clientID], true, nil
 	}
-	return "", f.keys[clientID], nil
+	return "", f.signIns[clientID], f.keys[clientID], nil
 }
 
 type fakeSessions map[string]string
@@ -157,9 +161,9 @@ type fixture struct {
 
 func newFixture() *fixture {
 	f := &fixture{
-		settings:   &fakeSettings{on: map[string]bool{"tea-on": true}},
+		settings:   &fakeSettings{on: map[string]bool{"tea-on": true}, google: map[string]bool{}},
 		enrollment: newEnrollment("human-unenrolled", "human-enrolled"),
-		keys:       &fakeKeys{creators: map[string]string{}, keys: map[string]bool{}},
+		keys:       &fakeKeys{creators: map[string]string{}, signIns: map[string]core.SignIn{}, keys: map[string]bool{}},
 		clock:      &clock{t: time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)},
 	}
 	f.enrollment.enroll("human-enrolled")
@@ -474,7 +478,7 @@ func TestRequiredReadsTheSettingThroughTheSameCacheAsCheck(t *testing.T) {
 	f := newFixture()
 	ctx := context.Background()
 	for workspace, want := range map[string]bool{"tea-on": true, "tea-off": false, core.DefaultTenant: false, "": false} {
-		if got, err := f.gate.Required(ctx, workspace); err != nil || got != want {
+		if got, err := f.gate.Required(ctx, workspace); err != nil || got.TwoFactor != want || got.GoogleLogin {
 			t.Fatalf("Required(%q) = (%v, %v), want (%v, nil)", workspace, got, err, want)
 		}
 	}
@@ -491,7 +495,7 @@ func TestRequiredReadsTheSettingThroughTheSameCacheAsCheck(t *testing.T) {
 
 	f.settings.err = errors.New("db down")
 	f.clock.advance(TTL + time.Second)
-	if got, err := f.gate.Required(ctx, "tea-on"); !errors.Is(err, core.ErrAuthzUnavailable) || got {
+	if got, err := f.gate.Required(ctx, "tea-on"); !errors.Is(err, core.ErrAuthzUnavailable) || got.Any() {
 		t.Fatalf("Required with the setting unreadable = (%v, %v), want (false, ErrAuthzUnavailable): never \"not required\"", got, err)
 	}
 }
@@ -691,7 +695,7 @@ func TestTheDefaultWorkspaceIsNeverEnforcedEvenIfItsSettingIsOn(t *testing.T) {
 		if err := f.gate.Check(ctx, workspace, session("human-unenrolled")); err != nil {
 			t.Fatalf("Check(%q) = %v, want allowed: no workspace to enforce in", workspace, err)
 		}
-		if on, err := f.gate.Required(ctx, workspace); err != nil || on {
+		if on, err := f.gate.Required(ctx, workspace); err != nil || on.Any() {
 			t.Fatalf("Required(%q) = (%v, %v), want (false, nil)", workspace, on, err)
 		}
 	}

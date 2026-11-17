@@ -521,17 +521,17 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Label of the switch that requires 2FA of every member (Render's control name)",
   },
-  "workspaces.twoFactorStatusRequired": {
+  "workspaces.loginRequirementStatusRequired": {
     message: "필수",
     description:
       "Read-only status shown to a non-admin when the workspace requires 2FA",
   },
-  "workspaces.twoFactorStatusNotRequired": {
+  "workspaces.loginRequirementStatusNotRequired": {
     message: "필수 아님",
     description:
       "Read-only status shown to a non-admin when the workspace does not require 2FA",
   },
-  "workspaces.twoFactorAdminOnly": {
+  "workspaces.loginRequirementAdminOnly": {
     message: "워크스페이스 관리자만 이 설정을 변경할 수 있습니다.",
     description: "Hint shown to a non-admin in place of the switch",
   },
@@ -592,18 +592,93 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     message: "2FA를 켠 후 접근이 복구되기까지 최대 1분이 걸릴 수 있습니다.",
     description: "Hint under the blocked page's check-again button",
   },
-  "workspaces.twoFactorBlockedSwitchLabel": {
+  "workspaces.loginBlockedSwitchLabel": {
     message: "다른 워크스페이스로 전환",
     description: "Label of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedSwitchPlaceholder": {
+  "workspaces.loginBlockedSwitchPlaceholder": {
     message: "워크스페이스 선택",
     description: "Placeholder of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedNoOtherWorkspaces": {
+  "workspaces.loginBlockedNoOtherWorkspaces": {
     message: "다른 워크스페이스 없음",
     description:
       "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
+  },
+  "workspaces.googleLoginTitle": {
+    message: "Google 로그인",
+    description:
+      "Title of the Google login card on the workspace settings page, and its quick-nav label (w7/m465)",
+  },
+  "workspaces.googleLoginDescription": {
+    message:
+      "bex 이메일 주소의 Google 계정으로 로그인하지 않은 멤버는 이 워크스페이스의 리소스나 설정에 접근할 수 없습니다. 다른 방법으로 로그인한 상태에서 만든 API 키와 SSH 키도 차단됩니다.",
+    description:
+      "Description under the Google login card title; follows Render's login-settings wording",
+  },
+  "workspaces.googleLoginSwitchLabel": {
+    message: "Google 로그인 강제",
+    description:
+      "Label of the switch that requires every member to sign in with Google (Render's control name)",
+  },
+  "workspaces.googleLoginProPlanOnly": {
+    message:
+      "Google 로그인 강제는 Pro 요금제 이상에서 사용할 수 있습니다. 이미 강제하고 있는 워크스페이스는 관리자가 끌 때까지 계속 적용됩니다.",
+    description:
+      "Notice on the Google login card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table)",
+  },
+  "workspaces.googleLoginEnabledToast": {
+    message: "{name}에서 이제 Google 로그인이 필수입니다",
+    description: "Toast after an admin turns the Google login requirement on",
+  },
+  "workspaces.googleLoginDisabledToast": {
+    message: "{name}에서 더 이상 Google 로그인이 필수가 아닙니다",
+    description: "Toast after an admin turns the Google login requirement off",
+  },
+  "workspaces.googleLoginErrorTitle": {
+    message: "Google 로그인 설정을 변경하지 못했습니다",
+    description:
+      "Title of the inline error when the Google login switch is refused",
+  },
+  "workspaces.googleLoginError": {
+    message: "Google 로그인 설정을 변경하지 못했습니다. 다시 시도하세요.",
+    description:
+      "Generic message when the Google login switch fails without a recognised code",
+  },
+  "workspaces.googleLoginErrorAdminNotSignedIn": {
+    message:
+      "이 워크스페이스에서 Google 로그인을 요구하기 전에 먼저 bex 이메일 주소의 Google 계정으로 로그인하세요. 그렇지 않으면 본인이 접근할 수 없게 됩니다.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN: the acting admin is not signed in with Google",
+  },
+  "workspaces.googleLoginErrorUnavailable": {
+    message:
+      "이 설치에서는 Google 로그인 강제를 사용할 수 없어 켤 수 없습니다.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE: the deployment cannot look up Google accounts",
+  },
+  "workspaces.googleLoginSignIn": {
+    message: "Google로 로그인",
+    description:
+      "Button that signs the session in again with Google and returns to the page: on the blocked page and in the admin's lock-out refusal",
+  },
+  "workspaces.googleLoginSignInError": {
+    message: "Google 로그인을 시작하지 못했습니다. 다시 시도하세요.",
+    description: "Shown when Kratos did not start the Google sign-in",
+  },
+  "workspaces.googleLoginBlockedTitle": {
+    message: "{workspace}에서 Google 로그인을 요구합니다",
+    description:
+      "Heading of the page a member who did not sign in with Google sees (w7/m465)",
+  },
+  "workspaces.googleLoginBlockedBody": {
+    message:
+      "이 워크스페이스의 관리자가 모든 멤버에게 Google 로그인을 요구합니다. bex 이메일 주소의 Google 계정으로 로그인하기 전에는 이 워크스페이스의 리소스나 설정에 접근할 수 없으며, 다른 방법으로 로그인한 상태에서 만든 API 키와 SSH 키도 이 워크스페이스에서 사용할 수 없습니다.",
+    description: "Why the Google login blocked page is shown",
+  },
+  "workspaces.googleLoginBlockedHint": {
+    message: "로그인하면 이 페이지로 돌아옵니다.",
+    description: "Hint under the blocked page's Sign in with Google button",
   },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "중복 배포 정책",

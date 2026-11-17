@@ -3,7 +3,7 @@ import { RootProvider } from "@/common/providers/root-provider";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { PaymentSetupGate } from "@/features/onboarding/components/payment-setup-gate";
 import { EmailVerificationGate } from "@/features/onboarding/components/email-verification-gate";
-import { WorkspaceTwoFactorGate } from "@/features/workspaces/components/workspace-two-factor-gate";
+import { WorkspaceLoginGate } from "@/features/workspaces/components/workspace-login-gate";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Outlet, useRouter, useMatches } from "@tanstack/react-router";
 import { useLanguageHydrationSync } from "@/i18n/use-language-hydration-sync";
@@ -29,10 +29,11 @@ export const RootComponent = () => {
   // unverified session (ADR075 D8 revision, w2/m168) goes to
   // /auth/verification before any chrome or app content renders. It shares
   // the same chrome-only mount, so the bare routes stay ungated.
-  // `WorkspaceTwoFactorGate` is the outermost gate around the routed
-  // content, inside the shell: a workspace that requires two-factor
-  // authentication of a member who has none is replaced by one explanatory
-  // page there, while the sidebar's workspace switcher stays usable.
+  // `WorkspaceLoginGate` is the outermost gate around the routed content,
+  // inside the shell: a workspace whose login requirement the member does
+  // not meet (two-factor authentication, or a Google sign-in) is replaced by
+  // one explanatory page there, while the sidebar's workspace switcher stays
+  // usable.
   const chrome = useMatches({
     select: (matches) => matches.some((m) => m.staticData?.chrome),
   });
@@ -58,11 +59,11 @@ export const RootComponent = () => {
       {chrome ? (
         <EmailVerificationGate>
           <DashboardLayout>
-            <WorkspaceTwoFactorGate>
+            <WorkspaceLoginGate>
               <PaymentSetupGate>
                 <Outlet />
               </PaymentSetupGate>
-            </WorkspaceTwoFactorGate>
+            </WorkspaceLoginGate>
           </DashboardLayout>
         </EmailVerificationGate>
       ) : (

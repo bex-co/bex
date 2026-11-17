@@ -99,6 +99,15 @@ type Identity struct {
 	// for bex.sensitive, never leaves the toolset, and never grants more than
 	// the caller's OpenFGA relations — the scope is a narrowing, not a grant.
 	CloudAgentsToolset bool
+	// SignIn is how this credential's person signed in (docs/ADR012-auth.md
+	// §9b, w7/m465): a Kratos session's own methods, the bex_sign_in claim
+	// the consent acceptor stamps on a human OAuth token, or, for a native SSH
+	// key, the session the key was created in. SignInUnrecorded for API keys
+	// (their stamp is on the Hydra client, read by the gate), background
+	// identities and gateway tickets. Read by the workspace Google-login gate
+	// and stamped on the keys this caller creates; never an authorization
+	// input anywhere else.
+	SignIn SignIn
 }
 
 // IsAPIKey reports whether the caller is a machine API key: an OAuth2 token

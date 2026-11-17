@@ -528,17 +528,17 @@ const ruWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Label of the switch that requires 2FA of every member (Render's control name)",
   },
-  "workspaces.twoFactorStatusRequired": {
+  "workspaces.loginRequirementStatusRequired": {
     message: "Требуется",
     description:
       "Read-only status shown to a non-admin when the workspace requires 2FA",
   },
-  "workspaces.twoFactorStatusNotRequired": {
+  "workspaces.loginRequirementStatusNotRequired": {
     message: "Не требуется",
     description:
       "Read-only status shown to a non-admin when the workspace does not require 2FA",
   },
-  "workspaces.twoFactorAdminOnly": {
+  "workspaces.loginRequirementAdminOnly": {
     message:
       "Изменить эту настройку могут только администраторы рабочего пространства.",
     description: "Hint shown to a non-admin in place of the switch",
@@ -603,18 +603,94 @@ const ruWorkspaces: Record<string, TranslationEntry> = {
       "После включения 2FA восстановление доступа может занять до минуты.",
     description: "Hint under the blocked page's check-again button",
   },
-  "workspaces.twoFactorBlockedSwitchLabel": {
+  "workspaces.loginBlockedSwitchLabel": {
     message: "Перейти в другое рабочее пространство",
     description: "Label of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedSwitchPlaceholder": {
+  "workspaces.loginBlockedSwitchPlaceholder": {
     message: "Выберите рабочее пространство",
     description: "Placeholder of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedNoOtherWorkspaces": {
+  "workspaces.loginBlockedNoOtherWorkspaces": {
     message: "Других рабочих пространств нет",
     description:
       "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
+  },
+  "workspaces.googleLoginTitle": {
+    message: "Вход через Google",
+    description:
+      "Title of the Google login card on the workspace settings page, and its quick-nav label (w7/m465)",
+  },
+  "workspaces.googleLoginDescription": {
+    message:
+      "Участники, которые не входят через аккаунт Google своего адреса электронной почты в bex, не могут получить доступ к ресурсам и настройкам этого рабочего пространства. API-ключи и SSH-ключи, созданные при входе другим способом, тоже блокируются.",
+    description:
+      "Description under the Google login card title; follows Render's login-settings wording",
+  },
+  "workspaces.googleLoginSwitchLabel": {
+    message: "Требовать вход через Google",
+    description:
+      "Label of the switch that requires every member to sign in with Google (Render's control name)",
+  },
+  "workspaces.googleLoginProPlanOnly": {
+    message:
+      "Обязательный вход через Google доступен на тарифе Pro и выше. Рабочее пространство, где он уже включён, сохраняет его, пока администратор его не отключит.",
+    description:
+      "Notice on the Google login card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table)",
+  },
+  "workspaces.googleLoginEnabledToast": {
+    message: "В {name} теперь требуется вход через Google",
+    description: "Toast after an admin turns the Google login requirement on",
+  },
+  "workspaces.googleLoginDisabledToast": {
+    message: "В {name} вход через Google больше не требуется",
+    description: "Toast after an admin turns the Google login requirement off",
+  },
+  "workspaces.googleLoginErrorTitle": {
+    message: "Не удалось изменить настройку входа через Google",
+    description:
+      "Title of the inline error when the Google login switch is refused",
+  },
+  "workspaces.googleLoginError": {
+    message:
+      "Не удалось изменить настройку входа через Google. Повторите попытку.",
+    description:
+      "Generic message when the Google login switch fails without a recognised code",
+  },
+  "workspaces.googleLoginErrorAdminNotSignedIn": {
+    message:
+      "Войдите через аккаунт Google своего адреса электронной почты в bex, прежде чем требовать вход через Google в этом рабочем пространстве, иначе вы потеряете к нему доступ.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN: the acting admin is not signed in with Google",
+  },
+  "workspaces.googleLoginErrorUnavailable": {
+    message:
+      "Обязательный вход через Google недоступен в этой установке, поэтому включить его нельзя.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE: the deployment cannot look up Google accounts",
+  },
+  "workspaces.googleLoginSignIn": {
+    message: "Войти через Google",
+    description:
+      "Button that signs the session in again with Google and returns to the page: on the blocked page and in the admin's lock-out refusal",
+  },
+  "workspaces.googleLoginSignInError": {
+    message: "Не удалось начать вход через Google. Повторите попытку.",
+    description: "Shown when Kratos did not start the Google sign-in",
+  },
+  "workspaces.googleLoginBlockedTitle": {
+    message: "{workspace} требует вход через Google",
+    description:
+      "Heading of the page a member who did not sign in with Google sees (w7/m465)",
+  },
+  "workspaces.googleLoginBlockedBody": {
+    message:
+      "Администратор этого рабочего пространства требует, чтобы все участники входили через Google. Пока вы не войдёте через аккаунт Google своего адреса электронной почты в bex, вы не сможете получить доступ к ресурсам и настройкам этого рабочего пространства, а API-ключи и SSH-ключи, созданные вами при входе другим способом, нельзя будет с ним использовать.",
+    description: "Why the Google login blocked page is shown",
+  },
+  "workspaces.googleLoginBlockedHint": {
+    message: "После входа вы вернётесь на эту страницу.",
+    description: "Hint under the blocked page's Sign in with Google button",
   },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "Политика перекрывающихся деплоев",

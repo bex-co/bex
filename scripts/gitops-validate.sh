@@ -231,6 +231,9 @@ bash scripts/analytics-bootstrap.test.sh || { echo "FAIL: analytics reader Seale
 echo "==> onbex DNS-01 token installation safety gates"
 bash scripts/onbex-dns01-token-secret.test.sh || { echo "FAIL: onbex DNS-01 token installation safety gates" >&2; fail=1; }
 
+echo "==> Kratos oidc.yaml fragment: social providers and the Google-login settings guard (w7/m465)"
+bash scripts/kratos-oidc-fragment.test.sh || { echo "FAIL: Kratos oidc.yaml fragment" >&2; fail=1; }
+
 for dir in deploy/opensandbox deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/; do
   [ -f "$dir/kustomization.yaml" ] || continue # e.g. charts/opensandbox-controller is a Helm chart
   echo "==> kustomize build $dir"

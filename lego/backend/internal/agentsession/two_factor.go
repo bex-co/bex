@@ -26,7 +26,8 @@ import (
 )
 
 // InternalTwoFactorPath is the gateway's "may this principal act in this
-// workspace, given its two-factor requirement" question (docs/ADR012-auth.md §9a). The SSH gateway has no Kratos client and its
+// workspace, given its login requirements" question (docs/ADR012-auth.md §9a,
+// §9b: two-factor authentication and Google login). The SSH gateway has no Kratos client and its
 // Postgres role cannot read the workspace setting, so native public-key SSH and
 // every ticket it redeems or revalidates ask bex-api, which runs the real
 // twofactor.Gate. Like InternalEmailVerificationPath it lives only on bex-api's
@@ -48,11 +49,15 @@ var twoFactorMethods = map[string]bool{
 
 // TwoFactorRequest is the question: may the Kratos subject (authenticated by
 // the gateway as Method) act in WorkspaceID. It carries no other identity
-// field, so the gateway cannot name an API key or a client.
+// field, so the gateway cannot name an API key or a client. SignIn is the
+// native SSH key's creation stamp (store.SSHKey.CreatedSignIn, w7/m465), ""
+// for a key that predates it and for every ticket method; it must be one of
+// core.SignIn's values.
 type TwoFactorRequest struct {
 	WorkspaceID string `json:"workspaceId"`
 	Subject     string `json:"subject"`
 	Method      string `json:"method"`
+	SignIn      string `json:"signIn,omitempty"`
 	Nonce       string `json:"nonce"`
 }
 
@@ -61,19 +66,22 @@ type TwoFactorRequest struct {
 // cache it per workspace instead of per member. Required=true answers for the
 // one subject asked about. A refusal is a 200 with Allowed=false, never an HTTP
 // error, so the gateway can tell "this member has no second factor" from "the
-// answer could not be had" (which it must fail closed on).
+// answer could not be had" (which it must fail closed on). Code names the
+// refusal (core.CodeWorkspaceTwoFactorRequired or
+// core.CodeWorkspaceGoogleLoginRequired) when Allowed is false.
 type TwoFactorResponse struct {
 	WorkspaceID string `json:"workspaceId"`
 	Subject     string `json:"subject"`
 	Required    bool   `json:"required"`
 	Allowed     bool   `json:"allowed"`
+	Code        string `json:"code,omitempty"`
 }
 
 // TwoFactorPolicy is the decision the verb serves: *twofactor.Gate. Required
-// reads the workspace's setting; Check is core.TwoFactorGate. Either returns
+// reads the workspace's settings; Check is core.TwoFactorGate. Either returns
 // an error when the answer cannot be established, which fails the verb closed.
 type TwoFactorPolicy interface {
-	Required(ctx context.Context, workspaceID string) (bool, error)
+	Required(ctx context.Context, workspaceID string) (core.LoginRequirements, error)
 	core.TwoFactorGate
 }
 
@@ -94,21 +102,26 @@ func (h *TwoFactorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TwoFactorHandler) answer(ctx context.Context, req TwoFactorRequest) (TwoFactorResponse, error) {
-	if req.WorkspaceID == "" || req.Subject == "" || !twoFactorMethods[req.Method] {
+	if req.WorkspaceID == "" || req.Subject == "" || !twoFactorMethods[req.Method] ||
+		string(core.ParseSignIn(req.SignIn)) != req.SignIn || (req.SignIn != "" && req.Method != core.MethodSSH) {
 		return TwoFactorResponse{}, ErrInvalidRequest
 	}
 	required, err := h.Policy.Required(ctx, req.WorkspaceID)
 	if err != nil {
 		return TwoFactorResponse{}, err
 	}
-	out := TwoFactorResponse{WorkspaceID: req.WorkspaceID, Subject: req.Subject, Required: required, Allowed: true}
-	if !required {
+	out := TwoFactorResponse{WorkspaceID: req.WorkspaceID, Subject: req.Subject, Required: required.Any(), Allowed: true}
+	if !out.Required {
 		return out, nil
 	}
-	switch err := h.Policy.Check(ctx, req.WorkspaceID, core.Identity{Subject: req.Subject, Method: req.Method}); {
+	id := core.Identity{Subject: req.Subject, Method: req.Method, SignIn: core.SignIn(req.SignIn)}
+	switch err := h.Policy.Check(ctx, req.WorkspaceID, id); {
 	case err == nil:
 	case errors.Is(err, core.ErrForbidden):
-		out.Allowed = false
+		out.Allowed, out.Code = false, core.CodeWorkspaceTwoFactorRequired
+		if coded := (*core.CodedError)(nil); errors.As(err, &coded) {
+			out.Code = coded.Code
+		}
 	default:
 		return TwoFactorResponse{}, err
 	}
@@ -124,19 +137,27 @@ type TwoFactorClient struct {
 }
 
 // Ask returns the verb's answer for subject, authenticated by the gateway as
-// method. Any error means the answer could not be obtained, and callers refuse
-// on it: a transport failure, a non-200, a bad signature and a malformed or
-// mismatched body are all the same "cannot tell".
-func (c *TwoFactorClient) Ask(ctx context.Context, workspaceID, subject, method string) (required, allowed bool, err error) {
-	req := TwoFactorRequest{WorkspaceID: workspaceID, Subject: subject, Method: method, Nonce: newNonce()}
+// method (signIn is a native SSH key's creation stamp, "" otherwise): whether
+// the workspace requires anything, and, when it refuses, the refusal's code
+// ("" when allowed). Any error means the answer could not be obtained, and
+// callers refuse on it: a transport failure, a non-200, a bad signature and a
+// malformed or mismatched body are all the same "cannot tell".
+func (c *TwoFactorClient) Ask(ctx context.Context, workspaceID, subject, method string, signIn core.SignIn) (required bool, refusal string, err error) {
+	req := TwoFactorRequest{WorkspaceID: workspaceID, Subject: subject, Method: method, SignIn: string(signIn), Nonce: newNonce()}
 	out, err := postSignedMint(ctx, c.URL, c.Secret, c.now(), c.HTTP, req, func(out TwoFactorResponse) bool {
 		// Not required implies allowed: a body saying otherwise is not an answer.
 		return out.WorkspaceID == workspaceID && out.Subject == subject && (out.Required || out.Allowed)
 	})
 	if err != nil {
-		return false, false, err
+		return false, "", err
 	}
-	return out.Required, out.Allowed, nil
+	if out.Allowed {
+		return out.Required, "", nil
+	}
+	if out.Code != core.CodeWorkspaceGoogleLoginRequired {
+		out.Code = core.CodeWorkspaceTwoFactorRequired // an older bex-api names no code: its only refusal is 2FA
+	}
+	return out.Required, out.Code, nil
 }
 
 func (h *TwoFactorHandler) now() time.Time {

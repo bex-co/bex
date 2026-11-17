@@ -33,7 +33,7 @@ import (
 // diverge (t007 asserts this).
 
 // auditMetadataGQLType stays deliberately closed to the `to` flag a toggle
-// records (maintenance mode, a workspace's two-factor requirement): REST's richer kind-keyed target metadata (w4/m26) is not mirrored
+// records (maintenance mode, a workspace's two-factor or Google-login requirement): REST's richer kind-keyed target metadata (w4/m26) is not mirrored
 // here — the dashboard's one target need, the display name, ships as the
 // flat `targetName` field on AuditLog below (w10/m5, the consumer the
 // original scope cut waited for).
@@ -46,6 +46,8 @@ var auditMetadataGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return *e.MaintenanceModeTo
 			case e.TwoFactorRequiredTo != nil:
 				return *e.TwoFactorRequiredTo
+			case e.GoogleLoginRequiredTo != nil:
+				return *e.GoogleLoginRequiredTo
 			}
 			return nil
 		})},
@@ -127,7 +129,7 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// other row.
 		"oauthGrantScopes": gqlutil.StrsField(func(e Event) any { return emptyListAsNil(e.OAuthGrantScopes) }),
 		"metadata": &graphql.Field{Type: auditMetadataGQLType, Resolve: gqlutil.Field(func(e Event) any {
-			if e.MaintenanceModeTo == nil && e.TwoFactorRequiredTo == nil && e.Verb != core.AuditVerbMaintenanceModeURIUpdated {
+			if e.MaintenanceModeTo == nil && e.TwoFactorRequiredTo == nil && e.GoogleLoginRequiredTo == nil && e.Verb != core.AuditVerbMaintenanceModeURIUpdated {
 				return nil
 			}
 			return e

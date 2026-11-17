@@ -28,10 +28,18 @@ if [ -z "$frag" ]; then
   echo "  ✗ no oidc.yaml key in the kratos Secret — run scripts/auth-secrets.sh (deploy.yml does this)"
   fail=1
 elif printf '%s' "$frag" | grep -q 'enabled: true'; then
-  prov="$(printf '%s' "$frag" | grep -oE 'provider: [a-z]+' | head -1 | awk '{print $2}')"
-  echo "  ✓ oidc.yaml present and ENABLED (provider: ${prov:-?})"
+  prov="$(printf '%s' "$frag" | grep -oE '^ *- id: [a-z]+' | awk '{print $3}' | tr '\n' ' ')"
+  echo "  ✓ oidc.yaml present and ENABLED (providers: ${prov:-?})"
 else
-  echo "  • oidc.yaml present but DISABLED (enabled: false) — set BEX_GITHUB_OIDC_* and re-run auth-secrets.sh"
+  echo "  • oidc.yaml present but DISABLED (enabled: false) — set BEX_GITHUB_OIDC_* or BEX_GOOGLE_OIDC_* and re-run auth-secrets.sh"
+fi
+# The Google-login settings guard (w7/m465) rides the same fragment whether or
+# not a provider is on.
+if printf '%s' "$frag" | grep -q '/internal/kratos/settings-guard?method=profile'; then
+  echo "  ✓ oidc.yaml wires the Google-login settings guard"
+elif [ -n "$frag" ]; then
+  echo "  ✗ oidc.yaml has no settings guard — re-run scripts/auth-secrets.sh"
+  fail=1
 fi
 
 echo "-> 2/4 kratos Deployment loads it as a second --config..."

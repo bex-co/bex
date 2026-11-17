@@ -2,6 +2,7 @@ import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities"
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   organizationPlanOwner,
+  proFeaturesPlan,
   type OrganizationPlanOwner,
 } from "@/features/workspaces/types";
 
@@ -14,6 +15,9 @@ export interface WorkspaceSettingsPendingSections {
   /** The General card's org-plan note on a secondary workspace (w7/m464). */
   planOwner: OrganizationPlanOwner | null;
   workspaceName: string | undefined;
+  /** The workspace is known to be below Pro, so the 2FA and Google login
+   *  cards carry their plan notice (w7/070, w7/m465). */
+  belowPro: boolean;
 }
 
 /** Which of Workspace Settings' conditional sections a pending frame
@@ -39,5 +43,7 @@ export function useWorkspaceSettingsSkeletonSections(): WorkspaceSettingsPending
       (capabilities.canManage || capabilities.loading),
     planOwner: organizationPlanOwner(currentWorkspace, workspaces),
     workspaceName: currentWorkspace?.name,
+    belowPro:
+      currentWorkspace != null && !proFeaturesPlan(currentWorkspace.plan),
   };
 }

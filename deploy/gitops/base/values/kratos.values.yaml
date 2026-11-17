@@ -192,6 +192,12 @@ kratos:
           # changing security-sensitive settings; password-only users keep
           # aal1. Matches session.whoami.required_aal below (w4/m11).
           required_aal: highest_available
+          # The settings guard (w7/m465, docs/ADR012-auth.md §9b): its
+          # after.profile and after.oidc web_hooks carry a bearer, so they live
+          # in the out-of-band oidc.yaml fragment (deployment.extraArgs below,
+          # scripts/lib/kratos-oidc-fragment.sh), not here. Kratos merges them
+          # over these values; nothing here may define settings.after hooks of
+          # its own, or the merge would replace the guard's.
         verification:
           # Enabled (w4/m7): registration now triggers a verification email
           # (docs/ADR012-auth.md §11). The dashboard's /auth/verification page
@@ -257,12 +263,15 @@ deployment:
   tolerations:
     - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
   # Social login (w4/003, docs/ADR012-auth.md § Social login): load a SECOND Kratos
-  # config file carrying the `oidc` method's GitHub provider. Its client_secret
-  # is secret material, so it can't live in these git-committed values — instead
-  # scripts/auth-secrets.sh writes an `oidc.yaml` fragment into the out-of-band
-  # `kratos` Secret (always present: the GitHub provider when BEX_GITHUB_OIDC_* are
-  # set in .env, else `enabled: false`), which Kratos merges over the main
-  # config. Kratos accepts repeated --config flags and deep-merges them.
+  # config file carrying the `oidc` method's providers (GitHub, and Google since
+  # w7/m465) and the Google-login settings guard's web_hooks. Their client
+  # secrets and the guard's bearer are secret material, so they can't live in
+  # these git-committed values — instead scripts/auth-secrets.sh writes an
+  # `oidc.yaml` fragment (scripts/lib/kratos-oidc-fragment.sh) into the
+  # out-of-band `kratos` Secret (always present: each provider whose
+  # BEX_*_OIDC_* pair is set in .env, else `enabled: false`; the guard always),
+  # which Kratos merges over the main config. Kratos accepts repeated --config
+  # flags and deep-merges them.
   extraArgs:
     - --config
     - /etc/config-oidc/oidc.yaml

@@ -41,13 +41,15 @@ type fakeTwoFactorPolicy struct {
 	required    map[string]bool
 	verdict     map[string]error
 	requiredErr error
+	// google holds the workspaces that require Google login (w7/m465).
+	google map[string]bool
 
 	mu      sync.Mutex
 	checked []core.Identity
 }
 
-func (p *fakeTwoFactorPolicy) Required(_ context.Context, workspaceID string) (bool, error) {
-	return p.required[workspaceID], p.requiredErr
+func (p *fakeTwoFactorPolicy) Required(_ context.Context, workspaceID string) (core.LoginRequirements, error) {
+	return core.LoginRequirements{TwoFactor: p.required[workspaceID], GoogleLogin: p.google[workspaceID]}, p.requiredErr
 }
 
 func (p *fakeTwoFactorPolicy) Check(_ context.Context, _ string, id core.Identity) error {
@@ -91,22 +93,23 @@ func TestTwoFactorRoundTrip(t *testing.T) {
 	client := &TwoFactorClient{URL: srv.URL, Secret: []byte("exec-secret")}
 
 	for name, tc := range map[string]struct {
-		workspace, subject        string
-		wantRequired, wantAllowed bool
-		wantChecks                int
+		workspace, subject string
+		wantRequired       bool
+		wantRefusal        string
+		wantChecks         int
 	}{
-		"setting off":       {workspace: "tea-off", subject: "unenrolled", wantRequired: false, wantAllowed: true, wantChecks: 0},
-		"enrolled member":   {workspace: "tea-on", subject: "enrolled", wantRequired: true, wantAllowed: true, wantChecks: 1},
-		"unenrolled member": {workspace: "tea-on", subject: "unenrolled", wantRequired: true, wantAllowed: false, wantChecks: 1},
+		"setting off":       {workspace: "tea-off", subject: "unenrolled", wantRequired: false, wantChecks: 0},
+		"enrolled member":   {workspace: "tea-on", subject: "enrolled", wantRequired: true, wantChecks: 1},
+		"unenrolled member": {workspace: "tea-on", subject: "unenrolled", wantRequired: true, wantRefusal: core.CodeWorkspaceTwoFactorRequired, wantChecks: 1},
 	} {
 		t.Run(name, func(t *testing.T) {
 			policy.reset()
-			required, allowed, err := client.Ask(context.Background(), tc.workspace, tc.subject, "ssh")
+			required, refusal, err := client.Ask(context.Background(), tc.workspace, tc.subject, "ssh", "")
 			if err != nil {
 				t.Fatalf("Ask: %v", err)
 			}
-			if required != tc.wantRequired || allowed != tc.wantAllowed {
-				t.Fatalf("Ask = (required %v, allowed %v), want (%v, %v)", required, allowed, tc.wantRequired, tc.wantAllowed)
+			if required != tc.wantRequired || refusal != tc.wantRefusal {
+				t.Fatalf("Ask = (required %v, refusal %q), want (%v, %q)", required, refusal, tc.wantRequired, tc.wantRefusal)
 			}
 			if got := len(policy.identities()); got != tc.wantChecks {
 				t.Fatalf("policy.Check ran %d times, want %d", got, tc.wantChecks)
@@ -115,8 +118,8 @@ func TestTwoFactorRoundTrip(t *testing.T) {
 	}
 	t.Run("a gate that cannot decide is an error, never an allow", func(t *testing.T) {
 		policy.reset()
-		if required, allowed, err := client.Ask(context.Background(), "tea-on", "kratos-out", "ssh"); err == nil || allowed {
-			t.Fatalf("Ask = (%v, %v, %v), want an error", required, allowed, err)
+		if required, refusal, err := client.Ask(context.Background(), "tea-on", "kratos-out", "ssh", ""); err == nil {
+			t.Fatalf("Ask = (%v, %q, %v), want an error", required, refusal, err)
 		}
 	})
 	t.Run("an unreadable setting is an error, never an allow", func(t *testing.T) {
@@ -124,10 +127,67 @@ func TestTwoFactorRoundTrip(t *testing.T) {
 		srv := httptest.NewServer(twoFactorHandler(broken))
 		t.Cleanup(srv.Close)
 		client := &TwoFactorClient{URL: srv.URL, Secret: []byte("exec-secret")}
-		if required, allowed, err := client.Ask(context.Background(), "tea-on", "enrolled", "ssh"); err == nil || allowed {
-			t.Fatalf("Ask = (%v, %v, %v), want an error", required, allowed, err)
+		if required, refusal, err := client.Ask(context.Background(), "tea-on", "enrolled", "ssh", ""); err == nil {
+			t.Fatalf("Ask = (%v, %q, %v), want an error", required, refusal, err)
 		}
 	})
+}
+
+// w7/m465: the verb carries a native SSH key's creation sign-in to the gate
+// and the refusal's code back, so the gateway answers the same coded 403 as
+// bex-api; an older bex-api that names no code is read as the 2FA refusal.
+func TestTwoFactorVerbCarriesTheSignInAndTheRefusalCode(t *testing.T) {
+	policy := &fakeTwoFactorPolicy{
+		google: map[string]bool{"tea-google": true},
+		verdict: map[string]error{
+			"password-key-owner": core.NewWorkspaceGoogleLoginKeyError("tea-google"),
+		},
+	}
+	srv := httptest.NewServer(twoFactorHandler(policy))
+	t.Cleanup(srv.Close)
+	client := &TwoFactorClient{URL: srv.URL, Secret: []byte("exec-secret")}
+	required, refusal, err := client.Ask(context.Background(), "tea-google", "password-key-owner", "ssh", core.SignInPassword)
+	if err != nil || !required || refusal != core.CodeWorkspaceGoogleLoginRequired {
+		t.Fatalf("Ask = (%v, %q, %v), want the Google-login refusal", required, refusal, err)
+	}
+	got := policy.identities()
+	if len(got) != 1 || got[0] != (core.Identity{Subject: "password-key-owner", Method: "ssh", SignIn: core.SignInPassword}) {
+		t.Fatalf("policy saw %+v, want the SSH key's sign-in carried", got)
+	}
+
+	// A bex-api from before w7/m465 refuses with no code: its only refusal is 2FA.
+	old := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req TwoFactorRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		WriteNoStoreJSON(w, http.StatusOK, map[string]any{"workspaceId": req.WorkspaceID, "subject": req.Subject, "required": true, "allowed": false})
+	}))
+	t.Cleanup(old.Close)
+	oldClient := &TwoFactorClient{URL: old.URL, Secret: []byte("exec-secret")}
+	if _, refusal, err := oldClient.Ask(context.Background(), "tea-on", "member", "ssh", ""); err != nil || refusal != core.CodeWorkspaceTwoFactorRequired {
+		t.Fatalf("an older bex-api's refusal = (%q, %v), want the 2FA code", refusal, err)
+	}
+}
+
+// A sign-in outside the vocabulary, or one on a ticket method, never reaches
+// the gate: only a native SSH key carries a stamp.
+func TestTwoFactorVerbRefusesASignInItCannotRead(t *testing.T) {
+	secret := []byte("exec-secret")
+	now := time.Unix(1_700_000_000, 0)
+	for name, body := range map[string]TwoFactorRequest{
+		"unknown sign-in":    {WorkspaceID: "tea-google", Subject: "member", Method: "ssh", SignIn: "oidc:google ", Nonce: newNonce()},
+		"sign-in on a shell": {WorkspaceID: "tea-google", Subject: "member", Method: "shell", SignIn: "oidc:google", Nonce: newNonce()},
+	} {
+		t.Run(name, func(t *testing.T) {
+			policy := &fakeTwoFactorPolicy{google: map[string]bool{"tea-google": true}}
+			handler := &TwoFactorHandler{Secret: secret, Policy: policy, Now: func() time.Time { return now }}
+			if rec := postTwoFactor(t, handler, secret, body, now); rec.Code == http.StatusOK {
+				t.Fatalf("code = %d, want a refusal", rec.Code)
+			}
+			if got := policy.identities(); len(got) != 0 {
+				t.Fatalf("the gate was asked about %+v", got)
+			}
+		})
+	}
 }
 
 // Every way the verb can fail to answer must refuse, never allow.
@@ -145,8 +205,8 @@ func TestTwoFactorVerbFailsClosed(t *testing.T) {
 			srv := httptest.NewServer(tc.handler)
 			t.Cleanup(srv.Close)
 			client := &TwoFactorClient{URL: srv.URL, Secret: []byte(tc.clientSecret)}
-			if _, allowed, err := client.Ask(context.Background(), "tea-on", "member", "ssh"); err == nil || allowed {
-				t.Fatalf("Ask = (allowed %v, err %v) without a trustworthy answer", allowed, err)
+			if _, refusal, err := client.Ask(context.Background(), "tea-on", "member", "ssh", ""); err == nil {
+				t.Fatalf("Ask = (refusal %q, err %v) without a trustworthy answer", refusal, err)
 			}
 		})
 	}
@@ -155,8 +215,8 @@ func TestTwoFactorVerbFailsClosed(t *testing.T) {
 		url := srv.URL
 		srv.Close()
 		client := &TwoFactorClient{URL: url, Secret: []byte("exec-secret")}
-		if _, allowed, err := client.Ask(context.Background(), "tea-on", "member", "ssh"); err == nil || allowed {
-			t.Fatalf("Ask = (allowed %v, err %v) against an unreachable bex-api", allowed, err)
+		if _, refusal, err := client.Ask(context.Background(), "tea-on", "member", "ssh", ""); err == nil {
+			t.Fatalf("Ask = (refusal %q, err %v) against an unreachable bex-api", refusal, err)
 		}
 	})
 }
@@ -296,8 +356,8 @@ func TestTwoFactorClientRejectsAnswersThatDoNotMatchTheQuestion(t *testing.T) {
 			}))
 			t.Cleanup(srv.Close)
 			client := &TwoFactorClient{URL: srv.URL, Secret: []byte("exec-secret")}
-			if _, allowed, err := client.Ask(context.Background(), "tea-on", "member", "ssh"); err == nil || allowed {
-				t.Fatalf("Ask = (allowed %v, err %v), want an error for a mismatched answer", allowed, err)
+			if _, refusal, err := client.Ask(context.Background(), "tea-on", "member", "ssh", ""); err == nil {
+				t.Fatalf("Ask = (refusal %q, err %v), want an error for a mismatched answer", refusal, err)
 			}
 		})
 	}

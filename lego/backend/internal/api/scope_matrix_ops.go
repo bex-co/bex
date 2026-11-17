@@ -217,6 +217,7 @@ var classifiedOps = map[string]string{
 	"GQL Mutation.setWorkspaceOverlappingDeployPolicy":       core.OpClassWrite,
 	"GQL Mutation.setWorkspacePrivacy":                       core.OpClassWrite,
 	"GQL Mutation.setWorkspaceRequireTwoFactor":              core.OpClassWrite,
+	"GQL Mutation.setWorkspaceRequireGoogleLogin":            core.OpClassWrite,
 	"GQL Mutation.steerAgentSession":                         core.OpClassWrite,
 	"GQL Mutation.suspendDatabase":                           core.OpClassWrite,
 	"GQL Mutation.suspendKeyValue":                           core.OpClassWrite,

@@ -5,7 +5,7 @@ import {
   createAuthErrorLink,
   isEmailVerificationRequiredError,
   isUnauthenticatedError,
-  workspaceTwoFactorRequiredIds,
+  workspaceLoginRefusals,
 } from "../auth-error-link";
 
 const QUERY = gql`
@@ -263,10 +263,11 @@ describe("createAuthErrorLink — verification backstop (w2/m168)", () => {
   });
 });
 
-// w22/m402: bex-api refuses a member with no second factor in a workspace that
-// requires one from inside a resolver, so on /graphql it is a GraphQL error
-// whose extensions carry {code, workspaceId}: never a transport status.
-describe("createAuthErrorLink — workspace two-factor (w22/m402)", () => {
+// w22/m402 and w7/m465: bex-api refuses a member who does not meet a
+// workspace's login requirement (no second factor, or a sign-in that was not
+// Google) from inside a resolver, so on /graphql it is a GraphQL error whose
+// extensions carry {code, workspaceId}: never a transport status.
+describe("createAuthErrorLink — workspace login requirements (w22/m402, w7/m465)", () => {
   function refused(
     errors: Array<{ message: string; extensions?: Record<string, unknown> }>,
   ): ApolloLink {
@@ -279,12 +280,12 @@ describe("createAuthErrorLink — workspace two-factor (w22/m402)", () => {
     );
   }
 
-  async function runTwoFactor(terminal: ApolloLink) {
+  async function runLogin(terminal: ApolloLink) {
     const onUnauthorized = vi.fn();
     const onVerify = vi.fn();
-    const onTwoFactor = vi.fn();
+    const onLogin = vi.fn();
     const chain = ApolloLink.from([
-      createAuthErrorLink(onUnauthorized, onVerify, onTwoFactor),
+      createAuthErrorLink(onUnauthorized, onVerify, onLogin),
       terminal,
     ]);
     const outcome = await new Promise<{ result?: unknown; error?: unknown }>(
@@ -299,28 +300,35 @@ describe("createAuthErrorLink — workspace two-factor (w22/m402)", () => {
         });
       },
     );
-    return { ...outcome, onUnauthorized, onVerify, onTwoFactor };
+    return { ...outcome, onUnauthorized, onVerify, onLogin };
   }
 
-  it("reports the refused workspace and passes the result on untouched", async () => {
-    const errors = [
-      {
-        message: "this workspace requires two-factor authentication",
-        extensions: { code: "WORKSPACE_2FA_REQUIRED", workspaceId: "tea-acme" },
-      },
-    ];
-    const { result, onTwoFactor, onUnauthorized, onVerify } =
-      await runTwoFactor(refused(errors));
+  it.each([
+    ["WORKSPACE_2FA_REQUIRED", "twoFactor"],
+    ["WORKSPACE_GOOGLE_LOGIN_REQUIRED", "googleLogin"],
+  ])(
+    "reports %s with its workspace and requirement, and passes the result on untouched",
+    async (code, requirement) => {
+      const errors = [
+        {
+          message: "this workspace refuses you",
+          extensions: { code, workspaceId: "tea-acme" },
+        },
+      ];
+      const { result, onLogin, onUnauthorized, onVerify } = await runLogin(
+        refused(errors),
+      );
 
-    expect(onTwoFactor).toHaveBeenCalledTimes(1);
-    expect(onTwoFactor).toHaveBeenCalledWith("tea-acme");
-    expect(result).toEqual({ data: null, errors });
-    expect(onUnauthorized).not.toHaveBeenCalled();
-    expect(onVerify).not.toHaveBeenCalled();
-  });
+      expect(onLogin).toHaveBeenCalledTimes(1);
+      expect(onLogin).toHaveBeenCalledWith("tea-acme", requirement);
+      expect(result).toEqual({ data: null, errors });
+      expect(onUnauthorized).not.toHaveBeenCalled();
+      expect(onVerify).not.toHaveBeenCalled();
+    },
+  );
 
-  it("reports each refused workspace of one result", async () => {
-    const { onTwoFactor } = await runTwoFactor(
+  it("reports each refused workspace of one result, with its own requirement", async () => {
+    const { onLogin } = await runLogin(
       refused([
         {
           message: "a",
@@ -328,39 +336,50 @@ describe("createAuthErrorLink — workspace two-factor (w22/m402)", () => {
         },
         {
           message: "b",
-          extensions: { code: "WORKSPACE_2FA_REQUIRED", workspaceId: "tea-b" },
+          extensions: {
+            code: "WORKSPACE_GOOGLE_LOGIN_REQUIRED",
+            workspaceId: "tea-b",
+          },
         },
       ]),
     );
-    expect(onTwoFactor.mock.calls).toEqual([["tea-a"], ["tea-b"]]);
+    expect(onLogin.mock.calls).toEqual([
+      ["tea-a", "twoFactor"],
+      ["tea-b", "googleLogin"],
+    ]);
   });
 
   it("ignores every other refusal, including other 403s", async () => {
-    // Another GraphQL code, even one that names a workspace.
-    const forbidden = await runTwoFactor(
-      refused([
-        {
-          message: "forbidden",
-          extensions: { code: "FORBIDDEN", workspaceId: "tea-acme" },
-        },
-      ]),
-    );
-    expect(forbidden.onTwoFactor).not.toHaveBeenCalled();
+    // Another GraphQL code, even one that names a workspace, and the Google
+    // setting's own coded mutation refusals, which are not a block.
+    for (const code of [
+      "FORBIDDEN",
+      "WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN",
+      "WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE",
+      "toString",
+    ]) {
+      const other = await runLogin(
+        refused([
+          { message: "forbidden", extensions: { code, workspaceId: "tea-a" } },
+        ]),
+      );
+      expect(other.onLogin).not.toHaveBeenCalled();
+    }
 
     // A transport 403, even one whose body carries a code.
-    const transport = await runTwoFactor(
-      terminalError(
-        serverErrorWithBody(
-          403,
-          JSON.stringify({ code: "WORKSPACE_2FA_REQUIRED" }),
-        ),
-      ),
-    );
-    expect(transport.onTwoFactor).not.toHaveBeenCalled();
-    expect(transport.onUnauthorized).not.toHaveBeenCalled();
+    for (const code of [
+      "WORKSPACE_2FA_REQUIRED",
+      "WORKSPACE_GOOGLE_LOGIN_REQUIRED",
+    ]) {
+      const transport = await runLogin(
+        terminalError(serverErrorWithBody(403, JSON.stringify({ code }))),
+      );
+      expect(transport.onLogin).not.toHaveBeenCalled();
+      expect(transport.onUnauthorized).not.toHaveBeenCalled();
+    }
 
     // The unverified-email wall keeps its own handler.
-    const verification = await runTwoFactor(
+    const verification = await runLogin(
       refused([
         {
           message: "verify",
@@ -369,29 +388,31 @@ describe("createAuthErrorLink — workspace two-factor (w22/m402)", () => {
       ]),
     );
     expect(verification.onVerify).toHaveBeenCalledTimes(1);
-    expect(verification.onTwoFactor).not.toHaveBeenCalled();
+    expect(verification.onLogin).not.toHaveBeenCalled();
 
     // A message that merely mentions it, and no errors at all.
-    const wording = await runTwoFactor(
-      refused([{ message: "WORKSPACE_2FA_REQUIRED" }]),
+    const wording = await runLogin(
+      refused([
+        { message: "WORKSPACE_2FA_REQUIRED" },
+        { message: "WORKSPACE_GOOGLE_LOGIN_REQUIRED" },
+      ]),
     );
-    expect(wording.onTwoFactor).not.toHaveBeenCalled();
-    expect(
-      (await runTwoFactor(terminalOk())).onTwoFactor,
-    ).not.toHaveBeenCalled();
+    expect(wording.onLogin).not.toHaveBeenCalled();
+    expect((await runLogin(terminalOk())).onLogin).not.toHaveBeenCalled();
   });
 
   it("does not wall a workspace it cannot name", () => {
-    for (const workspaceId of [undefined, "", 7, null, { id: "tea-a" }]) {
-      expect(
-        workspaceTwoFactorRequiredIds({
-          errors: [
-            {
-              extensions: { code: "WORKSPACE_2FA_REQUIRED", workspaceId },
-            },
-          ],
-        }),
-      ).toEqual([]);
+    for (const code of [
+      "WORKSPACE_2FA_REQUIRED",
+      "WORKSPACE_GOOGLE_LOGIN_REQUIRED",
+    ]) {
+      for (const workspaceId of [undefined, "", 7, null, { id: "tea-a" }]) {
+        expect(
+          workspaceLoginRefusals({
+            errors: [{ extensions: { code, workspaceId } }],
+          }),
+        ).toEqual([]);
+      }
     }
   });
 });

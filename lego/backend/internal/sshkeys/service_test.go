@@ -271,3 +271,25 @@ func TestNormalizePublicKeyRejectsWeakRSA(t *testing.T) {
 		t.Fatalf("weak RSA key = %v, want bad request", err)
 	}
 }
+
+// w7/m465 (docs/ADR012-auth.md §9b): a key records how its owner was signed
+// in when they added it, which a workspace that requires Google login reads at
+// the gateway; an owner with no recorded sign-in stamps "other".
+func TestCreateStampsTheOwnersSignIn(t *testing.T) {
+	for signIn, want := range map[core.SignIn]core.SignIn{
+		core.SignInGoogle:     core.SignInGoogle,
+		core.SignInPassword:   core.SignInPassword,
+		core.SignInUnrecorded: core.SignInOther,
+	} {
+		st := &memoryStore{keys: map[string]store.SSHKey{}}
+		svc := &Service{Base: &core.Base{}, Store: st}
+		ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "session", Human: true, SignIn: signIn})
+		created, err := svc.Create(ctx, "laptop", publicKey(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := st.keys[created.ID].CreatedSignIn; got != want {
+			t.Errorf("a key added signed in as %q is stamped %q, want %q", signIn, got, want)
+		}
+	}
+}

@@ -66,6 +66,12 @@ kratos:
           ui_url: http://localhost:__DASHBOARD_PORT__/auth/forgot-password
         settings:
           ui_url: http://localhost:__DASHBOARD_PORT__/settings
+          # No Google-login settings guard here (w7/m465): dev-N's Kratos runs
+          # in the cluster and its bex-api on the host, which a cluster Pod
+          # cannot reach, so scripts/dev-env.sh writes the oidc.yaml fragment
+          # disabled and without the guard's hooks. The guard's Kratos side is
+          # proven by scripts/auth-oidc-e2e.sh against the production Kratos
+          # version; its bex-api side by internal/settingsguard's tests.
         verification:
           enabled: true
           ui_url: http://localhost:__DASHBOARD_PORT__/auth/verification

@@ -18,6 +18,8 @@ package workspaces
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -116,5 +118,119 @@ func TestKratosMFAEnrolled(t *testing.T) {
 	}
 	if len(asked) != 0 {
 		t.Errorf("a non-UUID subject reached Kratos: %v", asked)
+	}
+}
+
+// idToken is an unsigned JWT carrying claims, the shape of the
+// initial_id_token Kratos stores beside a linked oidc account.
+func idToken(t *testing.T, claims map[string]any) string {
+	t.Helper()
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return "eyJhbGciOiJSUzI1NiJ9." + base64.RawURLEncoding.EncodeToString(payload) + ".c2ln"
+}
+
+// w7/m465 (docs/ADR012-auth.md §9b): a Google sign-in counts only with the
+// Google account of the member's own email, Render's "the Google account that
+// matches the invited email address". The email is read from the ID token
+// Kratos stored when the account was linked.
+func TestKratosGoogleAccountMatches(t *testing.T) {
+	const (
+		matching   = "11111111-1111-4111-8111-111111111111"
+		gmail      = "22222222-2222-4222-8222-222222222222"
+		github     = "33333333-3333-4333-8333-333333333333"
+		unverified = "44444444-4444-4444-8444-444444444444"
+		password   = "55555555-5555-4555-8555-555555555555"
+		missing    = "66666666-6666-4666-8666-666666666666"
+		broken     = "77777777-7777-4777-8777-777777777777"
+		garbled    = "88888888-8888-4888-8888-888888888888"
+	)
+	provider := func(name string, claims map[string]any) map[string]any {
+		return map[string]any{"provider": name, "subject": "sub", "initial_id_token": idToken(t, claims)}
+	}
+	identity := func(email string, providers ...map[string]any) []byte {
+		raw, _ := json.Marshal(map[string]any{
+			"traits":      map[string]any{"email": email},
+			"credentials": map[string]any{"oidc": map[string]any{"type": "oidc", "config": map[string]any{"providers": providers}}},
+		})
+		return raw
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query()["include_credential"]; len(got) != 1 || got[0] != "oidc" {
+			t.Errorf("%s includes %v, want only oidc", r.URL, got)
+		}
+		switch r.URL.Path {
+		case "/admin/identities/" + matching:
+			_, _ = w.Write(identity("Person@Acme.example", provider("github", map[string]any{"email": "person@acme.example"}), provider("google", map[string]any{"email": "person@acme.example", "email_verified": true})))
+		case "/admin/identities/" + gmail:
+			_, _ = w.Write(identity("person@acme.example", provider("google", map[string]any{"email": "person@gmail.com", "email_verified": true})))
+		case "/admin/identities/" + github:
+			_, _ = w.Write(identity("person@acme.example", provider("github", map[string]any{"email": "person@acme.example"})))
+		case "/admin/identities/" + unverified:
+			_, _ = w.Write(identity("person@acme.example", provider("google", map[string]any{"email": "person@acme.example", "email_verified": false})))
+		case "/admin/identities/" + password:
+			_, _ = w.Write([]byte(`{"traits":{"email":"person@acme.example"},"credentials":{"password":{"type":"password"}}}`))
+		case "/admin/identities/" + garbled:
+			_, _ = w.Write(identity("person@acme.example", map[string]any{"provider": "google", "initial_id_token": "not.a-jwt"}))
+		case "/admin/identities/" + broken:
+			http.Error(w, "boom", http.StatusInternalServerError)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	k := NewKratosIdentities(srv.URL)
+	for name, tc := range map[string]struct {
+		subject                 string
+		matches, human, wantErr bool
+	}{
+		"the Google account of the member's email": {subject: matching, matches: true, human: true},
+		"a personal Gmail account":                 {subject: gmail, human: true},
+		"GitHub only":                              {subject: github, human: true},
+		"Google says the email is unverified":      {subject: unverified, human: true},
+		"password only":                            {subject: password, human: true},
+		"a token that is not a JWT":                {subject: garbled, human: true},
+		"not a Kratos identity":                    {subject: missing},
+		"not a UUID":                               {subject: "bex-bootstrap"},
+		"Kratos down":                              {subject: broken, wantErr: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			matches, human, err := k.GoogleAccountMatches(context.Background(), tc.subject)
+			if (err != nil) != tc.wantErr || matches != tc.matches || human != tc.human {
+				t.Fatalf("GoogleAccountMatches = (%v, %v, %v), want (%v, %v, err=%v)", matches, human, err, tc.matches, tc.human, tc.wantErr)
+			}
+		})
+	}
+}
+
+// The settings guard reads the stored email and whether Google is linked from
+// the oidc identifiers, without asking Kratos for the credential's tokens.
+func TestKratosSettingsFacts(t *testing.T) {
+	const linked, unlinked = "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.RawQuery != "" {
+			t.Errorf("%s asks for %q, want no credential included", r.URL.Path, r.URL.RawQuery)
+		}
+		switch r.URL.Path {
+		case "/admin/identities/" + linked:
+			_, _ = w.Write([]byte(`{"traits":{"email":"person@acme.example"},"credentials":{"oidc":{"type":"oidc","identifiers":["github:1","google:abc"]}}}`))
+		case "/admin/identities/" + unlinked:
+			_, _ = w.Write([]byte(`{"traits":{"email":"other@acme.example"},"credentials":{"oidc":{"type":"oidc","identifiers":["github:1"]}}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	k := NewKratosIdentities(srv.URL)
+	if email, google, found, err := k.SettingsFacts(context.Background(), linked); err != nil || !found || !google || email != "person@acme.example" {
+		t.Fatalf("linked = (%q, %v, %v, %v)", email, google, found, err)
+	}
+	if email, google, found, err := k.SettingsFacts(context.Background(), unlinked); err != nil || !found || google || email != "other@acme.example" {
+		t.Fatalf("unlinked = (%q, %v, %v, %v)", email, google, found, err)
+	}
+	if _, _, found, err := k.SettingsFacts(context.Background(), "33333333-3333-4333-8333-333333333333"); err != nil || found {
+		t.Fatalf("missing = (found %v, %v), want not found", found, err)
 	}
 }

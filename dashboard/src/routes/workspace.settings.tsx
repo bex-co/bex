@@ -6,7 +6,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace-details-card";
 import { WorkspaceIPRulesCard } from "@/features/workspaces/components/workspace-ip-rules-card";
-import { WorkspaceTwoFactorCard } from "@/features/workspaces/components/workspace-two-factor-card";
+import { WorkspaceLoginRequirementCard } from "@/features/workspaces/components/workspace-login-requirement-card";
 import { WorkspacePrivacyCard } from "@/features/workspaces/components/workspace-privacy-card";
 import { BuildPipelineCard } from "@/features/usage/components/build-pipeline-card";
 import { OverlappingDeployPolicyCard } from "@/features/workspaces/components/overlapping-deploy-policy-card";
@@ -164,11 +164,24 @@ function WorkspaceSettingsPage() {
                 onChangePlan={() => setChangePlanOpen(true)}
               />
             </section>
+            {/* Render's "Enforce 2FA & Google login" (w22/m402, w7/m465):
+                    every member reads both settings and Admins change them. */}
             <section
               id="two-factor"
               className={SECTION_NAVIGATION_TARGET_CLASS}
             >
-              <WorkspaceTwoFactorCard
+              <WorkspaceLoginRequirementCard
+                requirement="twoFactor"
+                workspace={currentWorkspace}
+                onChangePlan={() => setChangePlanOpen(true)}
+              />
+            </section>
+            <section
+              id="google-login"
+              className={SECTION_NAVIGATION_TARGET_CLASS}
+            >
+              <WorkspaceLoginRequirementCard
+                requirement="googleLogin"
                 workspace={currentWorkspace}
                 onChangePlan={() => setChangePlanOpen(true)}
               />

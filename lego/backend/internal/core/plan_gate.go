@@ -51,6 +51,10 @@ const (
 	// FeatureTwoFactorEnforcement is a workspace requiring two-factor
 	// authentication of its members (ADR012 §9a).
 	FeatureTwoFactorEnforcement PlanFeature = "2FA enforcement"
+	// FeatureGoogleLoginEnforcement is a workspace requiring its members to
+	// sign in with Google (ADR012 §9b, w7/m465), the other half of the same
+	// pricing row. Its own key so a refusal names the setting it refuses.
+	FeatureGoogleLoginEnforcement PlanFeature = "Google login enforcement"
 	// FeatureOrganizations is a Render organization (w7/m464, ADR115): "With
 	// a Render Scale or Enterprise plan, you can manage all of your team's
 	// users, workspaces, and services in a single organization"
@@ -79,8 +83,9 @@ var planFeatures = map[PlanFeature]struct {
 	// render.com/pricing's "Enforce 2FA & Google login" row (read
 	// 2026-11-16): "— | ✓ | ✓ | ✓". render.com/docs/login-settings names no
 	// plan for it; the table is the only source that states one (w7/070).
-	FeatureTwoFactorEnforcement: {minimum: planPro, key: "twoFactorEnforcement", singular: true},
-	FeatureOrganizations:        {minimum: planScale, key: "organizations"},
+	FeatureTwoFactorEnforcement:   {minimum: planPro, key: "twoFactorEnforcement", singular: true},
+	FeatureGoogleLoginEnforcement: {minimum: planPro, key: "googleLoginEnforcement", singular: true},
+	FeatureOrganizations:          {minimum: planScale, key: "organizations"},
 }
 
 // Machine codes for the workspace-plan refusals (w8/m138 t013), on REST's

@@ -148,6 +148,10 @@ func renderMetadata(e Event) map[string]string {
 	if e.TwoFactorRequiredTo != nil {
 		md["to"] = strconv.FormatBool(*e.TwoFactorRequiredTo)
 	}
+	// What a workspace's Google-login requirement was set to (w7/m465).
+	if e.GoogleLoginRequiredTo != nil {
+		md["to"] = strconv.FormatBool(*e.GoogleLoginRequiredTo)
+	}
 	// The invited/changed role pair (w1/m33).
 	if e.RoleFrom != nil {
 		md["roleFrom"] = *e.RoleFrom

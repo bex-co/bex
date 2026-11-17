@@ -52,6 +52,10 @@ func (s *Service) workspaceType() *graphql.Object {
 				// authentication" setting, readable by every member so a blocked
 				// member can see why.
 				"requireTwoFactor": gqlutil.BoolField(func(w WorkspaceView) any { return w.RequireTwoFactor }),
+				// requireGoogleLogin is the workspace's "require Google login"
+				// setting (w7/m465), readable by every member like
+				// requireTwoFactor.
+				"requireGoogleLogin": gqlutil.BoolField(func(w WorkspaceView) any { return w.RequireGoogleLogin }),
 				// ipAllowList is the workspace's inbound IP rules (w9/m388),
 				// Render's owner.ipAllowList: what an Admin saved, or the seeded
 				// allow-all for a workspace that never saved any; an empty list
@@ -62,7 +66,7 @@ func (s *Service) workspaceType() *graphql.Object {
 					Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryType))),
 					Resolve: func(p graphql.ResolveParams) (any, error) {
 						w, _ := p.Source.(WorkspaceView)
-						if w.RequireTwoFactor {
+						if w.requiresLogin() {
 							if err := s.CheckTwoFactor(p.Context, w.ID); err != nil {
 								return nil, err
 							}
@@ -313,6 +317,19 @@ func (s *Service) workspaceGraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetRequireTwoFactor(p.Context, p.Args["workspaceId"].(string), p.Args["enabled"].(bool))
+			},
+		},
+		// setWorkspaceRequireGoogleLogin turns "require Google login" on or
+		// off for a workspace (w7/m465); admin-only, GraphQL-only like the 2FA
+		// setting.
+		"setWorkspaceRequireGoogleLogin": &graphql.Field{
+			Type: s.workspaceType(),
+			Args: graphql.FieldConfigArgument{
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"enabled":     gqlutil.ReqArg(graphql.Boolean),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetRequireGoogleLogin(p.Context, p.Args["workspaceId"].(string), p.Args["enabled"].(bool))
 			},
 		},
 		// setWorkspaceOverlappingDeployPolicy sets the workspace's Overlapping

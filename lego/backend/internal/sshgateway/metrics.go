@@ -95,7 +95,7 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 		}, []string{"result"}),
 		twoFactor: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "two_factor_refusals_total",
-			Help: "Gateway authorizations (native SSH, web shell, agent attach, sandbox exec and files) refused by a workspace's two-factor requirement, by bounded result: not_enrolled, or unavailable (bex-api could not answer, failed closed). No workspace or subject label.",
+			Help: "Gateway authorizations (native SSH, web shell, agent attach, sandbox exec and files) refused by a workspace's login requirements, by bounded result: not_enrolled (two-factor), not_google (Google login, w7/m465), or unavailable (bex-api could not answer, failed closed). No workspace or subject label.",
 		}, []string{"result"}),
 		gitUpstream: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "git_proxy_upstream_failures_total",
@@ -190,17 +190,19 @@ func (m *Metrics) Reauthorization(result string) {
 	}
 }
 
-// The two refusal results of the gateway's workspace two-factor check, the
+// The refusal results of the gateway's workspace login-requirements check, the
 // whole vocabulary of the two_factor_refusals_total result label.
 const (
 	twoFactorNotEnrolled = "not_enrolled"
+	twoFactorNotGoogle   = "not_google"
 	twoFactorUnavailable = "unavailable"
 )
 
 // TwoFactorRefusal records one authorization the gateway refused because of a
-// workspace's two-factor requirement: twoFactorNotEnrolled for a member with no
-// second factor, twoFactorUnavailable when bex-api could not answer (failed
-// closed).
+// workspace's login requirements: twoFactorNotEnrolled for a member with no
+// second factor, twoFactorNotGoogle for one not signed in with Google (or a
+// key not created so), twoFactorUnavailable when bex-api could not answer
+// (failed closed).
 func (m *Metrics) TwoFactorRefusal(result string) {
 	if m != nil {
 		m.twoFactor.WithLabelValues(result).Inc()

@@ -24,6 +24,7 @@ const WORKSPACE: WorkspaceView = {
   role: "admin",
   createdAt: null,
   requireTwoFactor: false,
+  requireGoogleLogin: false,
   organization: null,
   primary: false,
   privacy: null,

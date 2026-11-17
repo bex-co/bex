@@ -52,13 +52,25 @@ function consentRequest(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function session(identityID = SUBJECT) {
+function session(
+  identityID = SUBJECT,
+  authenticationMethods: ReadonlyArray<{
+    method: string;
+    provider?: string;
+    aal?: string;
+  }> = [{ method: "password", aal: "aal1" }],
+) {
   return {
     id: SESSION_ID,
     active: true,
     identity: { id: identityID, schema_id: "default", traits: {} },
+    authentication_methods: authenticationMethods,
   };
 }
+
+/** The sign-in stamp a consent from the default (password) session carries
+ * (w7/m465): bex-api reads it back as `ext.bex_sign_in`. */
+const PASSWORD_SIGN_IN = { access_token: { bex_sign_in: "password" } };
 
 /**
  * Mock the two upstreams this module talks to: Hydra's admin API (consent
@@ -74,6 +86,8 @@ function mockUpstreams(opts: {
   sessionOk?: boolean;
   /** Overrides the whoami status — e.g. 403, a live session owing a second factor. */
   sessionStatus?: number;
+  /** Simulates a network-level failure reaching Kratos's whoami. */
+  sessionUnreachable?: boolean;
   /** ADR088 §4 ops-role verb: its response body (default: non-member). */
   opsBody?: unknown;
   /** Overrides the verb's status — e.g. 500, bex-api erroring. */
@@ -99,6 +113,7 @@ function mockUpstreams(opts: {
     vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
       if (url.includes("/sessions/whoami")) {
+        if (opts.sessionUnreachable) throw new TypeError("fetch failed");
         return new Response(JSON.stringify(opts.sessionBody ?? session()), {
           status: opts.sessionStatus ?? (opts.sessionOk === false ? 401 : 200),
         });
@@ -1115,6 +1130,7 @@ describe("ops-workspace gate (ADR088 §4)", () => {
           name: "Op Erator",
           ops_role: opsRole,
         },
+        ...PASSWORD_SIGN_IN,
       });
       expect(rejects(calls)).toHaveLength(0);
     });
@@ -1134,6 +1150,7 @@ describe("ops-workspace gate (ADR088 §4)", () => {
           name: "Op Erator",
           ops_role: opsRole,
         },
+        ...PASSWORD_SIGN_IN,
       });
       expect(rejects(calls)).toHaveLength(0);
     });
@@ -1289,10 +1306,10 @@ describe("ops-workspace gate (ADR088 §4)", () => {
     expect(opsCalls(calls)).toHaveLength(0);
   });
 
-  // The byte-identical guarantee: a client outside OAUTH_OPS_CLIENTS gets the
-  // exact pre-ADR088 accept body — no session key, not even an empty one — and
-  // its flow never touches (so never depends on) the ops verb.
-  it("keeps a non-ops client's headless accept body byte-identical, even with the verb down", async () => {
+  // A client outside OAUTH_OPS_CLIENTS gets the pre-ADR088 accept body plus
+  // only the sign-in stamp (w7/m465): no id_token claims, not even an empty
+  // object, and its flow never touches (so never depends on) the ops verb.
+  it("keeps a non-ops client's headless accept body free of ops claims, even with the verb down", async () => {
     const calls = mockUpstreams({
       lookupBody: consentRequest({ skip: true }),
       opsUnreachable: true,
@@ -1305,8 +1322,8 @@ describe("ops-workspace gate (ADR088 §4)", () => {
       grant_access_token_audience: ["https://api.bex.co/mcp"],
       remember: true,
       remember_for: 3600,
+      session: PASSWORD_SIGN_IN,
     });
-    expect("session" in body).toBe(false);
     expect(opsCalls(calls)).toHaveLength(0);
   });
 
@@ -1318,7 +1335,7 @@ describe("ops-workspace gate (ADR088 §4)", () => {
     const res = await handleConsentDecision(decisionReq(approve));
     expect(res.status).toBe(303);
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect("session" in body).toBe(false);
+    expect(body.session).toEqual(PASSWORD_SIGN_IN);
     expect(opsCalls(calls)).toHaveLength(0);
   });
 });
@@ -1483,10 +1500,10 @@ describe("verified-email gate (ADR075 D8 revision, w2/m168)", () => {
     );
     expect(claimsCalls(calls)).toHaveLength(1);
     expect(rejects(calls)).toHaveLength(0);
-    // The accept body is unchanged: no claims are stamped by this gate.
-    expect(
-      "session" in JSON.parse(accepts(calls)[0].init?.body as string),
-    ).toBe(false);
+    // No id_token claims are stamped by this gate (only the sign-in is).
+    expect(JSON.parse(accepts(calls)[0].init?.body as string).session).toEqual(
+      PASSWORD_SIGN_IN,
+    );
   });
 
   it("passes a verified subject through to the consent card and the approve (GET + POST)", async () => {
@@ -1710,7 +1727,10 @@ describe("profile-claims clients", () => {
     );
     expect(res.status).toBe(303);
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect(body.session).toEqual({ id_token: VERIFIED_CLAIMS });
+    expect(body.session).toEqual({
+      id_token: VERIFIED_CLAIMS,
+      ...PASSWORD_SIGN_IN,
+    });
   });
 
   it("stamps only the claims the requested scopes cover", async () => {
@@ -1721,6 +1741,7 @@ describe("profile-claims clients", () => {
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
     expect(body.session).toEqual({
       id_token: { email: VERIFIED_CLAIMS.email, email_verified: true },
+      ...PASSWORD_SIGN_IN,
     });
   });
 
@@ -1734,6 +1755,7 @@ describe("profile-claims clients", () => {
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
     expect(body.session).toEqual({
       id_token: { ...VERIFIED_CLAIMS, email_verified: false },
+      ...PASSWORD_SIGN_IN,
     });
   });
 
@@ -1768,10 +1790,186 @@ describe("profile-claims clients", () => {
     expect(accepts(calls)).toHaveLength(0);
   });
 
-  it("leaves an unlisted client's accept body without a session key", async () => {
+  it("leaves an unlisted client's accept body without id_token claims", async () => {
     const calls = mockUpstreams({ lookupBody: consentRequest({ skip: true }) });
     await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect("session" in body).toBe(false);
+    expect(body.session).toEqual(PASSWORD_SIGN_IN);
+  });
+});
+
+// w7/m465 t003: every accept stamps how the consenting browser session signed
+// in, `session.access_token.bex_sign_in`, which bex-api reads from Hydra's
+// introspection (`ext.bex_sign_in`) for the Google-login requirement. Only the
+// request's own session counts, and only when it is the challenge's subject;
+// otherwise the claim is left out, and the consent goes on either way.
+describe("sign-in stamp (w7/m465)", () => {
+  const whoamiCalls = (calls: { url: string; init?: RequestInit }[]) =>
+    calls.filter((c) => c.url.includes("/sessions/whoami"));
+  const acceptBody = (calls: { url: string; init?: RequestInit }[]) =>
+    JSON.parse(accepts(calls)[0].init?.body as string);
+  const GOOGLE = [
+    { method: "password", aal: "aal1" },
+    { method: "oidc", provider: "google", aal: "aal1" },
+  ];
+
+  it("stamps a headless accept from the request's own session", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({ skip: true }),
+      sessionBody: session(SUBJECT, GOOGLE),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(
+      "https://oauth.bex.co/continue",
+    );
+    expect(acceptBody(calls).session).toEqual({
+      access_token: { bex_sign_in: "oidc:google" },
+    });
+    // Kratos was asked with the browser's cookie, never on another's behalf.
+    expect(whoamiCalls(calls)).toHaveLength(1);
+    expect(new Headers(whoamiCalls(calls)[0].init?.headers).get("cookie")).toBe(
+      "ory_session=live",
+    );
+  });
+
+  it("stamps the human approve from the session the decision already checked", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest(),
+      sessionBody: session(SUBJECT, GOOGLE),
+    });
+    const res = await handleConsentDecision(
+      decisionReq({
+        consent_challenge: CHALLENGE,
+        decision: "approve",
+        csrf_token: csrf(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    expect(acceptBody(calls).session).toEqual({
+      access_token: { bex_sign_in: "oidc:google" },
+    });
+    expect(whoamiCalls(calls)).toHaveLength(1);
+  });
+
+  it.each([
+    ["Google at any point", GOOGLE, "oidc:google"],
+    [
+      "Google with a second factor on top",
+      [
+        { method: "oidc", provider: "google" },
+        { method: "totp", aal: "aal2" },
+      ],
+      "oidc:google",
+    ],
+    ["GitHub", [{ method: "oidc", provider: "github" }], "oidc:github"],
+    [
+      "GitHub before a password re-authentication",
+      [{ method: "password" }, { method: "oidc", provider: "github" }],
+      "oidc:github",
+    ],
+    [
+      "a password and a second factor",
+      [{ method: "password" }, { method: "webauthn", aal: "aal2" }],
+      "password",
+    ],
+    [
+      "another oidc provider",
+      [{ method: "oidc", provider: "gitlab" }],
+      "other",
+    ],
+    ["a one-time code", [{ method: "code" }], "other"],
+    ["no recorded method", [], "other"],
+  ])(
+    "reads a session that signed in with %s as %s",
+    async (_, methods, want) => {
+      const calls = mockUpstreams({
+        lookupBody: consentRequest({ skip: true }),
+        sessionBody: session(SUBJECT, methods),
+      });
+      await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expect(acceptBody(calls).session).toEqual({
+        access_token: { bex_sign_in: want },
+      });
+    },
+  );
+
+  it("leaves the claim out, and the session key with it, when the request has no cookie", async () => {
+    const calls = mockUpstreams({ lookupBody: consentRequest({ skip: true }) });
+    const res = await handleConsent(
+      req(`?consent_challenge=${CHALLENGE}`, null),
+    );
+    expect((res as Response).headers.get("Location")).toBe(
+      "https://oauth.bex.co/continue",
+    );
+    expect("session" in acceptBody(calls)).toBe(false);
+    expect(whoamiCalls(calls)).toHaveLength(0);
+  });
+
+  it("leaves the claim out when the browser's session belongs to someone else", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({ skip: true }),
+      sessionBody: session("another-identity", GOOGLE),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(
+      "https://oauth.bex.co/continue",
+    );
+    expect("session" in acceptBody(calls)).toBe(false);
+  });
+
+  it.each([
+    ["answers 401", { sessionOk: false }],
+    ["answers 500", { sessionStatus: 500 }],
+    ["owes a second factor", { sessionStatus: 403 }],
+    ["is unreachable", { sessionUnreachable: true }],
+  ])(
+    "never fails a headless consent when whoami %s: it only leaves the claim out",
+    async (_, opts) => {
+      const calls = mockUpstreams({
+        lookupBody: consentRequest({ skip: true }),
+        ...opts,
+      });
+      const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expect((res as Response).status).toBe(302);
+      expect((res as Response).headers.get("Location")).toBe(
+        "https://oauth.bex.co/continue",
+      );
+      expect("session" in acceptBody(calls)).toBe(false);
+    },
+  );
+
+  it("keeps a profile-claims client's id_token claims beside the sign-in in one session", async () => {
+    process.env.OAUTH_PROFILE_CLAIMS_CLIENTS = "first-party-rp";
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        requested_scope: ["openid", "email"],
+        requested_access_token_audience: [],
+        client: { client_id: "first-party-rp", skip_consent: true },
+      }),
+      sessionBody: session(SUBJECT, GOOGLE),
+    });
+    await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(acceptBody(calls).session).toEqual({
+      id_token: { email: VERIFIED_CLAIMS.email, email_verified: true },
+      access_token: { bex_sign_in: "oidc:google" },
+    });
+  });
+
+  it("stamps nothing on a refusal: a reject carries no session", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest(),
+      sessionBody: session(SUBJECT, GOOGLE),
+    });
+    await handleConsentDecision(
+      decisionReq({
+        consent_challenge: CHALLENGE,
+        decision: "deny",
+        csrf_token: csrf(),
+      }),
+    );
+    expect(accepts(calls)).toHaveLength(0);
+    expect(
+      "session" in JSON.parse(rejects(calls)[0].init?.body as string),
+    ).toBe(false);
   });
 });

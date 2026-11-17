@@ -43,9 +43,10 @@ import (
 
 const twoFactorCode = "WORKSPACE_2FA_REQUIRED"
 
-type surfaceSettings map[string]bool
+// surfaceSettings maps a workspace to its login requirements.
+type surfaceSettings map[string]core.LoginRequirements
 
-func (s surfaceSettings) RequireTwoFactor(_ context.Context, workspaceID string) (bool, error) {
+func (s surfaceSettings) LoginRequirements(_ context.Context, workspaceID string) (core.LoginRequirements, error) {
 	return s[workspaceID], nil
 }
 
@@ -58,14 +59,15 @@ func (e surfaceEnrollment) MFAEnrolled(_ context.Context, subject string) (bool,
 
 type surfaceKeys struct {
 	creators  map[string]string
+	signIns   map[string]core.SignIn
 	unstamped map[string]bool
 }
 
-func (k surfaceKeys) KeyCreator(_ context.Context, clientID string) (string, bool, error) {
+func (k surfaceKeys) KeyCreator(_ context.Context, clientID string) (string, core.SignIn, bool, error) {
 	if c, ok := k.creators[clientID]; ok {
-		return c, true, nil
+		return c, k.signIns[clientID], true, nil
 	}
-	return "", k.unstamped[clientID], nil
+	return "", "", k.unstamped[clientID], nil
 }
 
 // twoFactorSurfaces is a server whose workspace "tea-1" requires 2FA and whose
@@ -84,7 +86,7 @@ func twoFactorSurfaces(t *testing.T) (*Server, string, string) {
 	st.tenants[0].RequireTwoFactor = true
 
 	gate := twofactor.New(twofactor.Config{
-		Settings:   surfaceSettings{on.ID: true},
+		Settings:   surfaceSettings{on.ID: {TwoFactor: true}},
 		Enrollment: surfaceEnrollment{"unenrolled": false, "enrolled": true},
 		Keys: surfaceKeys{
 			creators:  map[string]string{"key-by-unenrolled": "unenrolled", "key-by-enrolled": "enrolled"},

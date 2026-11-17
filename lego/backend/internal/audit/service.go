@@ -113,6 +113,10 @@ type Event struct {
 	// TwoFactorRequiredTo is the value a workspace admin set the two-factor
 	// requirement TO (w22/m402, migration 0261); nil for every other verb.
 	TwoFactorRequiredTo *bool
+	// GoogleLoginRequiredTo is the value a workspace admin set the
+	// Google-login requirement TO (w7/m465, migration 0294); nil for every
+	// other verb.
+	GoogleLoginRequiredTo *bool
 	// SourceIP and UserAgent are where the actor acted from (w9/m450,
 	// migration 0283); empty when no request of the actor caused the row.
 	SourceIP  string
@@ -156,11 +160,12 @@ func view(r store.AuditRow) Event {
 		EnvGroupID:        r.EnvGroupID,
 		EnvGroupName:      r.EnvGroupName,
 
-		TwoFactorRequiredTo: r.TwoFactorRequiredTo,
-		SourceIP:            r.SourceIP,
-		UserAgent:           r.UserAgent,
-		InstanceID:          r.InstanceID,
-		EnvVarKeys:          r.EnvVarKeys,
+		TwoFactorRequiredTo:   r.TwoFactorRequiredTo,
+		GoogleLoginRequiredTo: r.GoogleLoginRequiredTo,
+		SourceIP:              r.SourceIP,
+		UserAgent:             r.UserAgent,
+		InstanceID:            r.InstanceID,
+		EnvVarKeys:            r.EnvVarKeys,
 	}
 }
 
@@ -217,8 +222,11 @@ var renderEvents = map[string]string{
 	// Render's workspace "require two-factor authentication" enforcement
 	// (w22/m402); the entry carries the value it was set to.
 	core.AuditVerbSetRequireTwoFactor: "ChangeTeam2FAEnforcementEvent",
-	"environments.Create":             "CreateEnvironmentEvent",
-	"environments.Delete":             "DeleteEnvironmentEvent",
+	// Render's workspace Google-login enforcement (w7/m465), its allowed
+	// login methods; the entry carries the value it was set to.
+	core.AuditVerbSetRequireGoogleLogin: "ChangeTeamAllowedLoginMethodsEvent",
+	"environments.Create":               "CreateEnvironmentEvent",
+	"environments.Delete":               "DeleteEnvironmentEvent",
 
 	// The verbs every surface actually calls, and the rest of Render's 1:1
 	// actions (w4/m321). A project or environment delete and a service move

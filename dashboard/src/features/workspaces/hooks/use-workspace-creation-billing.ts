@@ -195,6 +195,7 @@ export function useWorkspaceCreationBilling(
           role: workspace.role ?? "admin",
           createdAt: workspace.createdAt,
           requireTwoFactor: workspace.requireTwoFactor ?? false,
+          requireGoogleLogin: workspace.requireGoogleLogin ?? false,
           organization: workspace.organization ?? null,
           primary: workspace.primary,
           privacy: toWorkspacePrivacy(workspace.privacy),

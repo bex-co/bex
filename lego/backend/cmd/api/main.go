@@ -82,6 +82,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/serve"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
+	"github.com/bex-co/bex/lego/backend/internal/settingsguard"
 	"github.com/bex-co/bex/lego/backend/internal/signins"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -460,7 +461,7 @@ func main() {
 		// ADR112 D4: the public bucket gateway's two verbs, mounted on :8091 when
 		// BEX_OBJECT_STORAGE_GATEWAY_TOKEN is set.
 		objectGateway := (&objectgw.Verbs{Token: cfg.ObjectGatewayToken, Service: deps.ObjectStorage, BaseDomain: cfg.BaseDomain}).Handler()
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, twoFactorGate, opsRole, identityClaims, platformRebuild, shareFiles, agentResults, agentSpawns, objectGateway, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, twoFactorGate, opsRole, identityClaims, settingsGuardHandler(cfg, st, deps.Identities), platformRebuild, shareFiles, agentResults, agentSpawns, objectGateway, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -918,11 +919,16 @@ func wireGitHubApp(deps *api.Deps, cfg *Config) *github.Client {
 }
 
 // Wires the gate onto core.Base and returns it so :8091 can serve the gateway
-// verb. A nil Enrollment fails a requiring workspace closed.
+// verb. A nil Enrollment or Google lookup fails a requiring workspace closed.
 func wireTwoFactor(deps *api.Deps, base *core.Base, st *store.PGStore, registerer prometheus.Registerer) *twofactor.Gate {
 	cfg := twofactor.Config{Settings: st, Sessions: st, Metrics: twofactor.NewMetrics(registerer)}
 	if deps.Identities != nil {
 		cfg.Enrollment = deps.Identities
+	}
+	// The Google-login half (w7/m465) reads each member's linked Google
+	// account through the same Kratos admin reader.
+	if google, ok := deps.Identities.(twofactor.GoogleAccounts); ok {
+		cfg.Google = google
 	}
 	if keys, ok := deps.APIKeys.(twofactor.KeyCreators); ok {
 		cfg.Keys = keys
@@ -933,6 +939,9 @@ func wireTwoFactor(deps *api.Deps, base *core.Base, st *store.PGStore, registere
 	gate := twofactor.New(cfg)
 	base.TwoFactor = gate
 	deps.TwoFactorChanged = gate.Invalidate
+	if cfg.Google != nil {
+		deps.GoogleLogin = gate
+	}
 	return gate
 }
 
@@ -1277,7 +1286,7 @@ func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsessi
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, twoFactor *twofactor.Gate, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles, agentResults, agentSpawns, objectGateway http.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, twoFactor *twofactor.Gate, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, settingsGuard *settingsguard.Handler, platformRebuild, shareFiles, agentResults, agentSpawns, objectGateway http.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -1406,6 +1415,9 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	opsrole.Register(internalRoot, opsRole)
 	// The identity-claims verb rides the same internal-only rule and bearer.
 	identityclaims.Register(internalRoot, identityClaims)
+	// The Google-login settings guard (w7/m465): Kratos's settings web hook,
+	// behind its own bearer.
+	settingsguard.Register(internalRoot, settingsGuard)
 	// The fleet rebuild verb (platform-rebuild) shares this listener and the
 	// control-plane bearer: like the projection API it writes across tenants.
 	internalRoot.Handle("POST "+deploys.PlatformRebuildPath, platformRebuild)
@@ -1464,6 +1476,22 @@ func identityClaimsHandler(cfg *Config, identities workspaces.IdentityReader) *i
 			attrs, ok := identities.Lookup(ctx, subject)
 			return identityclaims.Claims{Email: attrs.Email, EmailVerified: attrs.EmailVerified, Name: attrs.Name}, ok
 		}
+	}
+	return h
+}
+
+// settingsGuardHandler builds the Google-login settings guard (w7/m465) when
+// BEX_KRATOS_SETTINGS_GUARD_TOKEN is set; nil otherwise, so Register leaves
+// the route unmounted.
+func settingsGuardHandler(cfg *Config, st *store.PGStore, identities workspaces.IdentityReader) *settingsguard.Handler {
+	if cfg.KratosSettingsGuardToken == "" {
+		return nil
+	}
+	h := &settingsguard.Handler{Token: cfg.KratosSettingsGuardToken, Workspaces: st}
+	if facts, ok := identities.(settingsguard.Identities); ok {
+		h.Identities = facts
+	} else {
+		log.Printf("WARNING: BEX_KRATOS_SETTINGS_GUARD_TOKEN is set but there is no Kratos admin reader (BEX_KRATOS_ADMIN_URL), so the settings guard is not mounted and Kratos's settings hook fails closed")
 	}
 	return h
 }

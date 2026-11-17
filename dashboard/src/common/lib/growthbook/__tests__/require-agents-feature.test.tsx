@@ -36,6 +36,7 @@ function membership(ids: string[]): WorkspacesQuery["workspaces"] {
     plan: "hobby",
     createdAt: null,
     requireTwoFactor: false,
+    requireGoogleLogin: false,
     organization: null,
     primary: false,
     privacy: null

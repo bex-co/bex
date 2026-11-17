@@ -1976,6 +1976,7 @@ type Mutation {
   setWorkspaceIPAllowList(id: String!, ipAllowList: [IPAllowListEntryInput!]!): Workspace
   setWorkspaceOverlappingDeployPolicy(id: String!, policy: String!): Workspace
   setWorkspacePrivacy(privacy: String!, workspaceId: String!): Workspace
+  setWorkspaceRequireGoogleLogin(enabled: Boolean!, workspaceId: String!): Workspace
   setWorkspaceRequireTwoFactor(enabled: Boolean!, workspaceId: String!): Workspace
   steerAgentSession(attachmentIds: [String!], egressAllowlist: [String!], id: String!, idempotencyKey: String, outputRequired: Boolean, outputSchema: String, prompt: String!, secretNames: [String!], secrets: [AgentSessionSecretInput!], skills: [AgentSessionSkillInput!]): AgentSession
   suspendDatabase(confirm: String, id: String!): Database
@@ -2970,6 +2971,7 @@ type Workspace {
   plan: String
   primary: Boolean!
   privacy: String
+  requireGoogleLogin: Boolean
   requireTwoFactor: Boolean
   role: String
   slug: String

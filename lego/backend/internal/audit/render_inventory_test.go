@@ -41,7 +41,7 @@ var renderWorkspaceEvents = map[string]renderWorkspaceEvent{
 	"RemoveUserFromTeamEvent":            {verbs: []string{core.AuditVerbMemberRemoved, core.AuditVerbMemberLeft}},
 	"AcceptTeamInviteEvent":              {verbs: []string{core.AuditVerbInviteAccepted}},
 	"ChangeTeamMemberRoleEvent":          {verbs: []string{core.AuditVerbMemberRoleChanged}},
-	"ChangeTeamAllowedLoginMethodsEvent": {nonGoal: "bex has no allowed-login-methods setting"},
+	"ChangeTeamAllowedLoginMethodsEvent": {verbs: []string{core.AuditVerbSetRequireGoogleLogin}},
 	"ChangeTeam2FAEnforcementEvent":      {verbs: []string{core.AuditVerbSetRequireTwoFactor}},
 	"LoginEvent":                         {verbs: []string{core.AuditVerbLogin}},
 	"LogoutEvent":                        {verbs: []string{core.AuditVerbLogout}},

@@ -197,7 +197,7 @@ func (s *Service) withIPAllowLists(ctx context.Context, views []WorkspaceView) (
 		// The workspaces list is exempt from the 2FA requirement so a blocked
 		// member can see why, but the inbound IP rules are the workspace's
 		// configuration: they are left out for a workspace that blocks the caller.
-		if views[i].RequireTwoFactor && s.CheckTwoFactor(ctx, views[i].ID) != nil {
+		if views[i].requiresLogin() && s.CheckTwoFactor(ctx, views[i].ID) != nil {
 			continue
 		}
 		if entries, ok := stored[views[i].ID]; ok {

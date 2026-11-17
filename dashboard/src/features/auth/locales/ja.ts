@@ -570,6 +570,18 @@ const jaAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.settingsGuardEmailChangeRefused": {
+    message:
+      "Google ログインが必須のワークスペースに所属している間は、メールアドレスを変更できません。先に次のワークスペースから退出してください: {workspaces}。",
+    description:
+      "Account settings refusal of an email change (Kratos message 4100001) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
+  "auth.settingsGuardUnlinkRefused": {
+    message:
+      "Google ログインが必須のワークスペースに所属している間は、ログイン方法の連携を解除できません。先に次のワークスペースから退出してください: {workspaces}。",
+    description:
+      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
 };
 
 export default jaAuth;

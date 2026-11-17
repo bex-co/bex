@@ -142,8 +142,21 @@ type Service struct {
 	// TwoFactorChanged is told which workspace's "require two-factor" setting
 	// just changed, so the enforcement point (internal/twofactor) drops this
 	// replica's cached copy at once instead of within its TTL. Nil when nothing
-	// enforces.
+	// enforces. It is told about the Google-login setting too: the gate caches
+	// both settings as one.
 	TwoFactorChanged func(workspaceID string)
+	// GoogleLogin answers the Google-login setting's lock-out guard: would the
+	// acting admin meet the requirement right now (*twofactor.Gate). Nil when
+	// the deployment cannot look up Google accounts, which refuses turning the
+	// setting on (409 WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE).
+	GoogleLogin GoogleLoginChecker
+}
+
+// GoogleLoginChecker is the Google-login gate's own check for one caller,
+// run without a workspace (twofactor.Gate.SignedInWithGoogle). An error means
+// the answer could not be established.
+type GoogleLoginChecker interface {
+	SignedInWithGoogle(ctx context.Context, id core.Identity) (bool, error)
 }
 
 // MemberMutator is the members service's role change and removal, keyed by
@@ -205,6 +218,9 @@ type WorkspaceStore interface {
 	// authentication" setting on or off. changed=false means it already held
 	// enabled, so of two admins toggling at once only one changes it.
 	SetTenantRequireTwoFactor(ctx context.Context, id string, enabled bool) (t store.Tenant, changed bool, err error)
+	// SetTenantRequireGoogleLogin is the same for "require Google login"
+	// (w7/m465).
+	SetTenantRequireGoogleLogin(ctx context.Context, id string, enabled bool) (t store.Tenant, changed bool, err error)
 	UpdateTenantPlan(ctx context.Context, id, plan string) (store.Tenant, error)
 	DeleteTenant(ctx context.Context, id string) error
 	ListTenantsForSubject(ctx context.Context, subject string) ([]store.Tenant, error)
@@ -361,6 +377,10 @@ type WorkspaceView struct {
 	// must be able to see why. A bex extension (Render has no workspace
 	// settings API), so the Render owner shape does not carry it.
 	RequireTwoFactor bool `json:"requireTwoFactor"`
+	// RequireGoogleLogin is the workspace's "require Google login" setting
+	// (w7/m465), readable by every member like RequireTwoFactor, and like it
+	// a bex extension the Render owner shape does not carry.
+	RequireGoogleLogin bool `json:"requireGoogleLogin"`
 	// OverlappingDeployPolicy is the workspace's Overlapping Deploy Policy
 	// (w4/653), "wait" or "override": GraphQL reads it when the field is
 	// selected. Render's REST owner has no such field, so it is never encoded.
@@ -376,13 +396,17 @@ type WorkspaceView struct {
 	Organization *store.Organization `json:"-"`
 }
 
+// requiresLogin reports whether the workspace has any login requirement, so a
+// read of its configuration must ask the gate whether the caller may see it.
+func (w WorkspaceView) requiresLogin() bool { return w.RequireTwoFactor || w.RequireGoogleLogin }
+
 func view(t store.Tenant, role string) WorkspaceView {
 	created := ""
 	if !t.CreatedAt.IsZero() {
 		created = t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
 	}
 	v := WorkspaceView{ID: t.ID, Name: t.Label(), Slug: t.Name, Plan: t.Plan, Role: role, CreatedAt: created, RequireTwoFactor: t.RequireTwoFactor,
-		OrganizationID: t.OrganizationID}
+		RequireGoogleLogin: t.RequireGoogleLogin, OrganizationID: t.OrganizationID}
 	if t.OrganizationID != "" {
 		v.Privacy = t.Privacy // a standalone workspace has no privacy setting
 	}
@@ -1196,28 +1220,82 @@ func (s *Service) SetRequireTwoFactor(ctx context.Context, id string, enabled bo
 	if err != nil {
 		return WorkspaceView{}, err
 	}
+	return s.setLoginRequirement(ctx, id, enabled, twoFactorSetting)
+}
+
+// SetRequireGoogleLogin turns a workspace's "require Google login" setting on
+// or off (docs/ADR012-auth.md §9b, w7/m465; Render's
+// ChangeTeamAllowedLoginMethodsEvent), with SetRequireTwoFactor's rules: admin
+// only, Pro and higher to turn on (400 PLAN_FEATURE_REQUIRED), a no-op records
+// nothing. Turning it on is refused while the acting admin would not meet it
+// themselves — signed in with Google, with the Google account of their email
+// (409 WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN) — when the deployment
+// cannot look up Google accounts, and for the default workspace (both 409
+// WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE).
+func (s *Service) SetRequireGoogleLogin(ctx context.Context, id string, enabled bool) (WorkspaceView, error) {
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	id, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, id)
+	if err != nil {
+		return WorkspaceView{}, err
+	}
+	return s.setLoginRequirement(ctx, id, enabled, googleLoginSetting)
+}
+
+// loginSetting is one of a workspace's login requirements, as its mutation
+// sees it: the stored value, the plan feature that gates turning it on, the
+// refusals and lock-out guard of turning it on, the write and the audit row.
+type loginSetting struct {
+	current          func(store.Tenant) bool
+	feature          core.PlanFeature
+	defaultWorkspace func() *core.CodedError
+	guard            func(*Service, context.Context) error
+	write            func(WorkspaceStore, context.Context, string, bool) (store.Tenant, bool, error)
+	record           func(*Service, context.Context, string, bool)
+}
+
+var twoFactorSetting = loginSetting{
+	current:          func(t store.Tenant) bool { return t.RequireTwoFactor },
+	feature:          core.FeatureTwoFactorEnforcement,
+	defaultWorkspace: core.NewWorkspaceTwoFactorDefaultWorkspaceError,
+	guard:            (*Service).requireEnrolledActor,
+	write:            WorkspaceStore.SetTenantRequireTwoFactor,
+	record:           func(s *Service, ctx context.Context, id string, on bool) { s.RecordTwoFactorEnforcement(ctx, id, on) },
+}
+
+var googleLoginSetting = loginSetting{
+	current:          func(t store.Tenant) bool { return t.RequireGoogleLogin },
+	feature:          core.FeatureGoogleLoginEnforcement,
+	defaultWorkspace: core.NewWorkspaceGoogleLoginDefaultWorkspaceError,
+	guard:            (*Service).requireGoogleSignedInActor,
+	write:            WorkspaceStore.SetTenantRequireGoogleLogin,
+	record:           func(s *Service, ctx context.Context, id string, on bool) { s.RecordGoogleLoginEnforcement(ctx, id, on) },
+}
+
+// setLoginRequirement is the body both mutations share, once the caller is
+// authorized as the workspace's admin.
+func (s *Service) setLoginRequirement(ctx context.Context, id string, enabled bool, setting loginSetting) (WorkspaceView, error) {
 	if s.Store == nil {
 		return WorkspaceView{}, core.ErrWorkspacesUnavailable
 	}
 	if enabled && id == core.DefaultTenant {
-		return WorkspaceView{}, core.NewWorkspaceTwoFactorDefaultWorkspaceError()
+		return WorkspaceView{}, setting.defaultWorkspace()
 	}
 	t, err := s.Store.GetTenant(ctx, id)
 	if err != nil {
 		return WorkspaceView{}, mapStoreErr(err)
 	}
-	if t.RequireTwoFactor == enabled {
+	if setting.current(t) == enabled {
 		return view(t, "admin"), nil // already there — nothing to write
 	}
 	if enabled {
-		if !core.PlanAllows(t.Plan, core.FeatureTwoFactorEnforcement) {
-			return WorkspaceView{}, core.NewPlanFeatureError("", t.Plan, core.FeatureTwoFactorEnforcement)
+		if !core.PlanAllows(t.Plan, setting.feature) {
+			return WorkspaceView{}, core.NewPlanFeatureError("", t.Plan, setting.feature)
 		}
-		if err := s.requireEnrolledActor(ctx); err != nil {
+		if err := setting.guard(s, ctx); err != nil {
 			return WorkspaceView{}, err
 		}
 	}
-	t, changed, err := s.Store.SetTenantRequireTwoFactor(ctx, id, enabled)
+	t, changed, err := setting.write(s.Store, ctx, id, enabled)
 	if err != nil {
 		return WorkspaceView{}, mapStoreErr(err)
 	}
@@ -1227,7 +1305,7 @@ func (s *Service) SetRequireTwoFactor(ctx context.Context, id string, enabled bo
 	if s.TwoFactorChanged != nil {
 		s.TwoFactorChanged(id)
 	}
-	s.RecordTwoFactorEnforcement(ctx, id, enabled)
+	setting.record(s, ctx, id, enabled)
 	return view(t, "admin"), nil
 }
 
@@ -1257,6 +1335,28 @@ func (s *Service) requireEnrolledActor(ctx context.Context) error {
 	}
 	if !human || !enrolled {
 		return core.NewWorkspaceTwoFactorAdminNotEnrolledError()
+	}
+	return nil
+}
+
+// requireGoogleSignedInActor is the Google-login setting's lock-out guard: the
+// admin turning it on must meet it right now, by the gate's own check. A
+// caller with no identity (a platform worker) never does.
+func (s *Service) requireGoogleSignedInActor(ctx context.Context) error {
+	if s.GoogleLogin == nil {
+		return core.NewWorkspaceGoogleLoginUnavailableError()
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return core.NewWorkspaceGoogleLoginAdminNotSignedInError()
+	}
+	signedIn, err := s.GoogleLogin.SignedInWithGoogle(ctx, id)
+	if err != nil {
+		log.Printf("workspaces: Google-login guard could not check the acting admin: %v", err)
+		return core.ErrAuthzUnavailable
+	}
+	if !signedIn {
+		return core.NewWorkspaceGoogleLoginAdminNotSignedInError()
 	}
 	return nil
 }

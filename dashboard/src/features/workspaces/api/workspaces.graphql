@@ -13,10 +13,11 @@ query Workspaces {
     plan
     role
     createdAt
-    # Workspace Settings -> Two-factor authentication (w22/m402). Readable by
-    # every member, and the list is exempt from enforcement, so a blocked member
-    # can still read it.
+    # Workspace Settings -> Two-factor authentication (w22/m402) and Google
+    # login (w7/m465). Readable by every member, and the list is exempt from
+    # enforcement, so a blocked member can still read them.
     requireTwoFactor
+    requireGoogleLogin
     # The org the workspace belongs to (w7/m464, ADR115): null, false and
     # null for a standalone workspace. The switcher groups by it; plan
     # surfaces read primary.
@@ -39,6 +40,7 @@ mutation CreateWorkspace($name: String!, $plan: String) {
     role
     createdAt
     requireTwoFactor
+    requireGoogleLogin
     organization {
       id
       name
@@ -104,6 +106,7 @@ mutation FinalizeWorkspaceCreation($attemptId: String!) {
     role
     createdAt
     requireTwoFactor
+    requireGoogleLogin
     organization {
       id
       name
@@ -127,6 +130,7 @@ mutation RenameWorkspace($id: String!, $name: String!) {
     role
     createdAt
     requireTwoFactor
+    requireGoogleLogin
   }
 }
 
@@ -186,6 +190,20 @@ mutation SetWorkspaceRequireTwoFactor(
   setWorkspaceRequireTwoFactor(workspaceId: $workspaceId, enabled: $enabled) {
     id
     requireTwoFactor
+  }
+}
+
+# Workspace Settings -> Google login (w7/m465, docs/ADR012-auth.md 9b): Render's
+# "Enforce Google login". Admin-only, Pro plan or higher. The mutation can
+# refuse with the coded 409s WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN and
+# WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE, and below Pro with PLAN_FEATURE_REQUIRED.
+mutation SetWorkspaceRequireGoogleLogin(
+  $workspaceId: String!
+  $enabled: Boolean!
+) {
+  setWorkspaceRequireGoogleLogin(workspaceId: $workspaceId, enabled: $enabled) {
+    id
+    requireGoogleLogin
   }
 }
 

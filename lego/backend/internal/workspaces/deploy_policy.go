@@ -44,7 +44,7 @@ type deployPolicyStore interface {
 func (s *Service) overlappingDeployPolicy(ctx context.Context, w WorkspaceView) (string, error) {
 	// Like the inbound IP rules, this is workspace configuration the 2FA-exempt
 	// workspaces list must not hand a member the workspace blocks (w22/m402).
-	if w.RequireTwoFactor {
+	if w.requiresLogin() {
 		if err := s.CheckTwoFactor(ctx, w.ID); err != nil {
 			return "", err
 		}

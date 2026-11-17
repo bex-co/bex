@@ -17,6 +17,8 @@ describe("WorkspaceSettingsNavigation", () => {
       ["Inbound IP Rules", "#inbound-ip-rules"],
       // w22/m402: every member sees the two-factor card, so every rail has it.
       ["Two-factor authentication", "#two-factor"],
+      // w7/m465: and the Google login card beside it.
+      ["Google login", "#google-login"],
       ["Team", "#team"],
       ["Notifications", "#notifications"],
       ["Agents", "#agents"],

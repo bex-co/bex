@@ -218,6 +218,18 @@ spec:
                   name: bex-ops
                   key: BEX_OPS_ROLE_TOKEN
                   optional: true
+            # The bearer Kratos's settings web hook presents to the Google-login
+            # settings guard on :8091 (w7/m465, docs/ADR012-auth.md §9b).
+            # scripts/auth-secrets.sh mints it once into bex-kratos-settings-guard
+            # and writes the same value into Kratos's oidc.yaml fragment.
+            # Absent => the route is not mounted and Kratos fails profile and
+            # oidc settings changes closed.
+            - name: BEX_KRATOS_SETTINGS_GUARD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bex-kratos-settings-guard
+                  key: BEX_KRATOS_SETTINGS_GUARD_TOKEN
+                  optional: true
             # Direct Stripe Billing (w7/m50, docs/ADR040-billing-metronome.md):
             # all values arrive together in the out-of-band bex-stripe Secret
             # installed by scripts/stripe-billing-secret.sh. Every reference is

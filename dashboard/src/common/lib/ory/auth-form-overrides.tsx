@@ -6,6 +6,8 @@ import type {
 } from "@ory/elements-react";
 import { Eye, EyeOff } from "lucide-react";
 import { oryHideCardLogo } from "@/common/lib/ory/config";
+import { OryMessageContent } from "@/common/lib/ory/ory-message-content";
+import { OryToast } from "@/common/lib/ory/ory-toast";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 
@@ -281,9 +283,19 @@ function SettingsNodeInput(props: OryNodeInputProps) {
   );
 }
 
+/**
+ * The Settings flow's overrides: its inputs (above), and its messages.
+ * Ory renders a field's own messages through `Message.Content` (its default
+ * label lists `node.messages` under the field: the settings guard's refusal of
+ * an email change sits on `traits.email`) and the flow-level ones through
+ * `Message.Toast` (its settings card toasts `ui.messages`: the guard's refusal
+ * of a disconnect). Both word the guard's refusals in the dashboard's
+ * language (w7/m465).
+ */
 // eslint-disable-next-line react-refresh/only-export-components -- Ory override map, not a component
 export const orySettingsFormOverrides: OryFlowComponentOverrides = {
   Node: { Input: SettingsNodeInput },
+  Message: { Content: OryMessageContent, Toast: OryToast },
 };
 
 /**

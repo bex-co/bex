@@ -68,6 +68,7 @@ export function useCreateWorkspace(): UseCreateWorkspaceResult {
           role: w.role ?? "admin",
           createdAt: w.createdAt,
           requireTwoFactor: w.requireTwoFactor ?? false,
+          requireGoogleLogin: w.requireGoogleLogin ?? false,
           organization: w.organization ?? null,
           primary: w.primary,
           privacy: toWorkspacePrivacy(w.privacy),

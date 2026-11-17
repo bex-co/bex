@@ -171,15 +171,27 @@ func (s *PGStore) SetTenantDisplayName(ctx context.Context, id, name string) (Te
 
 // SetTenantRequireTwoFactor turns a workspace's "require two-factor
 // authentication" setting on or off and returns the row (ErrNotFound when the
-// id doesn't exist). Enforcement reads it through RequireTwoFactor; this write
-// is the admin mutation's. changed is false when the row already held enabled:
-// the write is conditional, so of two admins toggling at once exactly one gets
-// changed=true and the other must not audit or announce a change it did not make.
+// id doesn't exist). Enforcement reads it through LoginRequirements; this
+// write is the admin mutation's. changed is false when the row already held
+// enabled: the write is conditional, so of two admins toggling at once exactly
+// one gets changed=true and the other must not audit or announce a change it
+// did not make.
 func (s *PGStore) SetTenantRequireTwoFactor(ctx context.Context, id string, enabled bool) (t Tenant, changed bool, err error) {
-	t, err = scanTenant(s.Pool.QueryRow(ctx,
-		`UPDATE tenants SET require_two_factor = $2, updated_at = now()
+	return s.setTenantLoginRequirement(ctx, `UPDATE tenants SET require_two_factor = $2, updated_at = now()
 		 WHERE id = $1 AND require_two_factor <> $2
-		 RETURNING `+tenantColumns, id, enabled))
+		 RETURNING `+tenantColumns, id, enabled)
+}
+
+// SetTenantRequireGoogleLogin is SetTenantRequireTwoFactor for the "require
+// Google login" setting (w7/m465), with the same conditional write.
+func (s *PGStore) SetTenantRequireGoogleLogin(ctx context.Context, id string, enabled bool) (t Tenant, changed bool, err error) {
+	return s.setTenantLoginRequirement(ctx, `UPDATE tenants SET require_google_login = $2, updated_at = now()
+		 WHERE id = $1 AND require_google_login <> $2
+		 RETURNING `+tenantColumns, id, enabled)
+}
+
+func (s *PGStore) setTenantLoginRequirement(ctx context.Context, update, id string, enabled bool) (t Tenant, changed bool, err error) {
+	t, err = scanTenant(s.Pool.QueryRow(ctx, update, id, enabled))
 	if errors.Is(err, pgx.ErrNoRows) {
 		t, err = s.GetTenant(ctx, id) // already there, or no such workspace (ErrNotFound)
 		return t, false, err
@@ -190,19 +202,36 @@ func (s *PGStore) SetTenantRequireTwoFactor(ctx context.Context, id string, enab
 	return t, true, nil
 }
 
-// RequireTwoFactor reads only the setting — the enforcement point's question,
-// asked at most once a minute per workspace (internal/twofactor). A workspace
-// that does not exist requires nothing: false, no error.
-func (s *PGStore) RequireTwoFactor(ctx context.Context, id string) (bool, error) {
-	var required bool
-	err := s.Pool.QueryRow(ctx, `SELECT require_two_factor FROM tenants WHERE id = $1`, id).Scan(&required)
+// LoginRequirements reads only the login settings — the enforcement point's
+// question, asked at most once a minute per workspace (internal/twofactor). A
+// workspace that does not exist requires nothing: the zero value, no error.
+func (s *PGStore) LoginRequirements(ctx context.Context, id string) (core.LoginRequirements, error) {
+	var r core.LoginRequirements
+	err := s.Pool.QueryRow(ctx, `SELECT require_two_factor, require_google_login FROM tenants WHERE id = $1`, id).
+		Scan(&r.TwoFactor, &r.GoogleLogin)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return core.LoginRequirements{}, nil
 	}
 	if err != nil {
-		return false, classify("workspace", err)
+		return core.LoginRequirements{}, classify("workspace", err)
 	}
-	return required, nil
+	return r, nil
+}
+
+// GoogleLoginWorkspaces lists the workspaces subject belongs to that require
+// Google login, by name: the Kratos settings guard refuses an email change or
+// a Google unlink while it is non-empty, and names them so the member knows
+// which to leave (w7/m465).
+func (s *PGStore) GoogleLoginWorkspaces(ctx context.Context, subject string) ([]string, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT COALESCE(NULLIF(t.display_name, ''), t.name)
+		 FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id
+		 WHERE m.subject = $1 AND m.kind = 'user' AND t.require_google_login
+		 ORDER BY t.created_at, t.id`, subject)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
 }
 
 // SetTenantDisplayNameIfUnset gives a workspace its first display name and
@@ -359,7 +388,7 @@ func (s *PGStore) DeleteTenant(ctx context.Context, id string) error {
 // first — the caller's workspace list (the dashboard switcher / owners list).
 func (s *PGStore) ListTenantsForSubject(ctx context.Context, subject string) ([]Tenant, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT t.id, t.name, t.plan, t.created_at, t.display_name, t.require_two_factor, COALESCE(t.organization_id, ''), t.privacy
+		`SELECT t.id, t.name, t.plan, t.created_at, t.display_name, t.require_two_factor, t.require_google_login, COALESCE(t.organization_id, ''), t.privacy
 		 FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id
 		 WHERE m.subject = $1 ORDER BY t.created_at`, subject)
 	if err != nil {

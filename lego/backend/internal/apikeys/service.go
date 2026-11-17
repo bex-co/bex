@@ -49,13 +49,19 @@ type APIKey struct {
 	CreatedAt  string `json:"createdAt"`
 	CreatedBy  string `json:"createdBy,omitempty"`  // minting caller's identity subject
 	LastUsedAt string `json:"lastUsedAt,omitempty"` // last introspection (RFC 3339); empty => never used
+	// CreatedSignIn is how the minting caller was signed in (w7/m465,
+	// docs/ADR012-auth.md §9b): the stamp a workspace that requires Google
+	// login reads. Unrecorded on keys minted before the stamp existed, which
+	// that requirement exempts. Internal: never on the wire.
+	CreatedSignIn core.SignIn `json:"-"`
 }
 
 // APIKeyStore is the Service's seam to the OAuth2 client registry — Hydra's admin
 // API in production (NewHydraAPIKeys), a fake in tests. nil => the api-key verbs
 // report core.ErrAPIKeysUnavailable.
 type APIKeyStore interface {
-	Create(ctx context.Context, name, createdBy string) (APIKey, error)
+	// Create mints a key stamped with its creator's subject and sign-in.
+	Create(ctx context.Context, name, createdBy string, signIn core.SignIn) (APIKey, error)
 	List(ctx context.Context) ([]APIKey, error)
 	Delete(ctx context.Context, id string) error
 	// Touch stamps the key `id` as used at `at`. Best-effort, called off the
@@ -270,7 +276,7 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 		createdBy = id.Subject
 	}
 	if s.Binding == nil {
-		key, err := s.APIKeys.Create(ctx, name, createdBy) // store off — unbound, as before
+		key, err := s.APIKeys.Create(ctx, name, createdBy, core.KeySignInStamp(ctx)) // store off — unbound, as before
 		if err != nil {
 			return APIKey{}, err
 		}
@@ -337,7 +343,7 @@ func (s *Service) createBoundAPIKey(ctx context.Context, tenantID, name, created
 			map[string]any{"ownerId": tenantID, "limit": s.activeKeyQuota()},
 		)
 	}
-	key, err := s.APIKeys.Create(ctx, name, createdBy)
+	key, err := s.APIKeys.Create(ctx, name, createdBy, core.KeySignInStamp(ctx))
 	if err != nil {
 		return APIKey{}, err
 	}
@@ -596,9 +602,10 @@ type hydraClient struct {
 // listed away, revoked, or stamped here. createdByKey/lastUsedKey are the w4/m13
 // hygiene fields.
 const (
-	apiKeyMarker = "bex.co/api-key"
-	createdByKey = "bex.co/created-by"
-	lastUsedKey  = "bex.co/last-used"
+	apiKeyMarker     = "bex.co/api-key"
+	createdByKey     = "bex.co/created-by"
+	lastUsedKey      = "bex.co/last-used"
+	createdSignInKey = "bex.co/created-sign-in"
 )
 
 func isAPIKey(c hydraClient) bool {
@@ -617,13 +624,19 @@ func apiKeyFromHydra(c hydraClient) APIKey {
 	if v, ok := c.Metadata[lastUsedKey].(string); ok {
 		k.LastUsedAt = v
 	}
+	if v, ok := c.Metadata[createdSignInKey].(string); ok {
+		k.CreatedSignIn = core.ParseSignIn(v)
+	}
 	return k
 }
 
-func (h *hydraAPIKeys) Create(ctx context.Context, name, createdBy string) (APIKey, error) {
+func (h *hydraAPIKeys) Create(ctx context.Context, name, createdBy string, signIn core.SignIn) (APIKey, error) {
 	meta := map[string]any{apiKeyMarker: true}
 	if createdBy != "" {
 		meta[createdByKey] = createdBy
+	}
+	if signIn != core.SignInUnrecorded {
+		meta[createdSignInKey] = string(signIn)
 	}
 	body, _ := json.Marshal(hydraClient{
 		ClientName: name,
@@ -803,22 +816,24 @@ func (h *hydraAPIKeys) KeyOwner(ctx context.Context, id string) (string, bool) {
 	return k.CreatedBy, k.CreatedBy != ""
 }
 
-// KeyCreator is KeyOwner for the workspace two-factor gate (docs/ADR012-auth.md
-// §9a), which must tell three cases apart that KeyOwner
-// flattens into ok=false: a client that is not a bex API key (a platform
-// client: isKey=false, exempt), a bex key with no created-by stamp (minted
-// before it existed: isKey with an empty creator, refused where 2FA is
+// KeyCreator is KeyOwner for the workspace login-requirements gate
+// (docs/ADR012-auth.md §9a, §9b), which must tell three cases apart that
+// KeyOwner flattens into ok=false: a client that is not a bex API key (a
+// platform client: isKey=false, exempt), a bex key with no created-by stamp
+// (minted before it existed: isKey with an empty creator, refused where 2FA is
 // required) and Hydra being unable to answer (an error, which the gate fails
-// closed on). One uncached admin GET, cached by the gate.
-func (h *hydraAPIKeys) KeyCreator(ctx context.Context, id string) (creator string, isKey bool, err error) {
+// closed on). signIn is the key's sign-in stamp, unrecorded on a key minted
+// before it existed. One uncached admin GET, cached by the gate.
+func (h *hydraAPIKeys) KeyCreator(ctx context.Context, id string) (creator string, signIn core.SignIn, isKey bool, err error) {
 	c, err := h.getAPIKey(ctx, id)
 	if errors.Is(err, core.ErrNotFound) {
-		return "", false, nil
+		return "", core.SignInUnrecorded, false, nil
 	}
 	if err != nil {
-		return "", false, err
+		return "", core.SignInUnrecorded, false, err
 	}
-	return apiKeyFromHydra(c).CreatedBy, true, nil
+	k := apiKeyFromHydra(c)
+	return k.CreatedBy, k.CreatedSignIn, true, nil
 }
 
 // jsonPointerEscape escapes a metadata key for use as a JSON Pointer path segment

@@ -265,10 +265,10 @@ type holdingAsker struct {
 	asked   atomic.Int32
 }
 
-func (a *holdingAsker) Ask(context.Context, string, string, string) (bool, bool, error) {
+func (a *holdingAsker) Ask(context.Context, string, string, string, core.SignIn) (bool, string, error) {
 	a.asked.Add(1)
 	<-a.release
-	return true, true, nil
+	return true, "", nil
 }
 
 // Concurrent checks of one member on one workspace put one question to bex-api,
@@ -319,5 +319,34 @@ func TestTwoFactorGateCollapsesConcurrentQuestionsForOneMember(t *testing.T) {
 	// A different member is a different question.
 	if err := gate.Check(context.Background(), "tea-on", sshIdentity("other")); err != nil || asker.asked.Load() != 2 {
 		t.Fatalf("another member = %v with %d questions, want their own", err, asker.asked.Load())
+	}
+}
+
+// w7/m465: bex-api's Google-login refusal comes back as the same coded 403,
+// and two keys of one member are cached apart: one added in a Google sign-in
+// must not ride the other's refusal, or the reverse.
+func TestTwoFactorGateAnswersGoogleLoginPerKeySignIn(t *testing.T) {
+	f := newTwoFactorFixture()
+	f.asker.RequireGoogle("tea-google", true)
+	ctx := context.Background()
+	password := core.Identity{Subject: "member", Method: "ssh", SignIn: core.SignInPassword}
+	google := core.Identity{Subject: "member", Method: "ssh", SignIn: core.SignInGoogle}
+	err := f.gate.Check(ctx, "tea-google", password)
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrForbidden) || !errors.As(err, &coded) || coded.Code != core.CodeWorkspaceGoogleLoginRequired || coded.Params["workspaceId"] != "tea-google" {
+		t.Fatalf("a key added in a password sign-in = %v, want the coded %s 403", err, core.CodeWorkspaceGoogleLoginRequired)
+	}
+	if err := f.gate.Check(ctx, "tea-google", google); err != nil {
+		t.Fatalf("a key added in a Google sign-in = %v, want allowed", err)
+	}
+	// Both answers are cached: no further question within the TTL.
+	asked := f.asker.Questions()
+	_ = f.gate.Check(ctx, "tea-google", password)
+	_ = f.gate.Check(ctx, "tea-google", google)
+	if f.asker.Questions() != asked {
+		t.Fatalf("questions = %d, want the two cached answers reused", f.asker.Questions())
+	}
+	if got := gatewaytest.MetricValue(t, f.reg, "bex_ssh_gateway_two_factor_refusals_total", map[string]string{"result": "not_google"}); got != 2 {
+		t.Fatalf("not_google refusals = %v, want 2 (the fresh one and the cached one)", got)
 	}
 }

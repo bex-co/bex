@@ -529,17 +529,17 @@ const deWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Label of the switch that requires 2FA of every member (Render's control name)",
   },
-  "workspaces.twoFactorStatusRequired": {
+  "workspaces.loginRequirementStatusRequired": {
     message: "Erforderlich",
     description:
       "Read-only status shown to a non-admin when the workspace requires 2FA",
   },
-  "workspaces.twoFactorStatusNotRequired": {
+  "workspaces.loginRequirementStatusNotRequired": {
     message: "Nicht erforderlich",
     description:
       "Read-only status shown to a non-admin when the workspace does not require 2FA",
   },
-  "workspaces.twoFactorAdminOnly": {
+  "workspaces.loginRequirementAdminOnly": {
     message: "Nur Workspace-Admins können diese Einstellung ändern.",
     description: "Hint shown to a non-admin in place of the switch",
   },
@@ -604,18 +604,96 @@ const deWorkspaces: Record<string, TranslationEntry> = {
       "Nach dem Aktivieren von 2FA kann es bis zu eine Minute dauern, bis der Zugriff zurückkehrt.",
     description: "Hint under the blocked page's check-again button",
   },
-  "workspaces.twoFactorBlockedSwitchLabel": {
+  "workspaces.loginBlockedSwitchLabel": {
     message: "Zu einem anderen Workspace wechseln",
     description: "Label of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedSwitchPlaceholder": {
+  "workspaces.loginBlockedSwitchPlaceholder": {
     message: "Workspace auswählen",
     description: "Placeholder of the workspace picker on the blocked page",
   },
-  "workspaces.twoFactorBlockedNoOtherWorkspaces": {
+  "workspaces.loginBlockedNoOtherWorkspaces": {
     message: "Keine anderen Workspaces",
     description:
       "Placeholder of the blocked page's workspace picker when the member belongs to no other workspace",
+  },
+  "workspaces.googleLoginTitle": {
+    message: "Google-Anmeldung",
+    description:
+      "Title of the Google login card on the workspace settings page, and its quick-nav label (w7/m465)",
+  },
+  "workspaces.googleLoginDescription": {
+    message:
+      "Mitglieder, die sich nicht mit dem Google-Konto ihrer bex-E-Mail-Adresse anmelden, können nicht auf die Ressourcen oder Einstellungen dieses Workspace zugreifen. API-Schlüssel und SSH-Schlüssel, die bei einer anderen Anmeldung erstellt wurden, sind ebenfalls gesperrt.",
+    description:
+      "Description under the Google login card title; follows Render's login-settings wording",
+  },
+  "workspaces.googleLoginSwitchLabel": {
+    message: "Google-Anmeldung erzwingen",
+    description:
+      "Label of the switch that requires every member to sign in with Google (Render's control name)",
+  },
+  "workspaces.googleLoginProPlanOnly": {
+    message:
+      "Das Erzwingen der Google-Anmeldung erfordert den Tarif Pro oder höher. Ein Workspace, der sie bereits erzwingt, behält sie, bis ein Admin sie ausschaltet.",
+    description:
+      "Notice on the Google login card below the Pro plan, and the refusal for code PLAN_FEATURE_REQUIRED (Render's plan table)",
+  },
+  "workspaces.googleLoginEnabledToast": {
+    message: "Google-Anmeldung ist in {name} jetzt erforderlich",
+    description: "Toast after an admin turns the Google login requirement on",
+  },
+  "workspaces.googleLoginDisabledToast": {
+    message: "Google-Anmeldung ist in {name} nicht mehr erforderlich",
+    description: "Toast after an admin turns the Google login requirement off",
+  },
+  "workspaces.googleLoginErrorTitle": {
+    message:
+      "Die Einstellung zur Google-Anmeldung konnte nicht geändert werden",
+    description:
+      "Title of the inline error when the Google login switch is refused",
+  },
+  "workspaces.googleLoginError": {
+    message:
+      "Die Einstellung zur Google-Anmeldung konnte nicht geändert werden. Versuche es erneut.",
+    description:
+      "Generic message when the Google login switch fails without a recognised code",
+  },
+  "workspaces.googleLoginErrorAdminNotSignedIn": {
+    message:
+      "Melde dich mit dem Google-Konto deiner bex-E-Mail-Adresse an, bevor du die Google-Anmeldung in diesem Workspace erzwingst, sonst sperrst du dich selbst aus.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN: the acting admin is not signed in with Google",
+  },
+  "workspaces.googleLoginErrorUnavailable": {
+    message:
+      "Die Erzwingung der Google-Anmeldung ist in dieser Installation nicht verfügbar und kann daher nicht aktiviert werden.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE: the deployment cannot look up Google accounts",
+  },
+  "workspaces.googleLoginSignIn": {
+    message: "Mit Google anmelden",
+    description:
+      "Button that signs the session in again with Google and returns to the page: on the blocked page and in the admin's lock-out refusal",
+  },
+  "workspaces.googleLoginSignInError": {
+    message:
+      "Die Anmeldung mit Google konnte nicht gestartet werden. Versuche es erneut.",
+    description: "Shown when Kratos did not start the Google sign-in",
+  },
+  "workspaces.googleLoginBlockedTitle": {
+    message: "{workspace} erfordert die Google-Anmeldung",
+    description:
+      "Heading of the page a member who did not sign in with Google sees (w7/m465)",
+  },
+  "workspaces.googleLoginBlockedBody": {
+    message:
+      "Ein Admin dieses Workspace verlangt von jedem Mitglied die Anmeldung mit Google. Bis du dich mit dem Google-Konto deiner bex-E-Mail-Adresse anmeldest, kannst du nicht auf die Ressourcen oder Einstellungen dieses Workspace zugreifen, und API-Schlüssel und SSH-Schlüssel, die du bei einer anderen Anmeldung erstellt hast, können dafür nicht verwendet werden.",
+    description: "Why the Google login blocked page is shown",
+  },
+  "workspaces.googleLoginBlockedHint": {
+    message: "Nach der Anmeldung kommst du zu dieser Seite zurück.",
+    description: "Hint under the blocked page's Sign in with Google button",
   },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "Richtlinie für überlappende Deployments",

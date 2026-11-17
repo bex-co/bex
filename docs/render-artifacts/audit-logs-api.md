@@ -42,7 +42,7 @@ Every **workspace** event [render.com/docs/audit-logs](https://render.com/docs/a
 | `RemoveUserFromTeamEvent` | `members.Remove`, `members.Leave` | recorded (a member leaving is the actor removing themselves) |
 | `AcceptTeamInviteEvent` | `members.AcceptInvite` | recorded |
 | `ChangeTeamMemberRoleEvent` | `members.ChangeRole` | recorded |
-| `ChangeTeamAllowedLoginMethodsEvent` | — | non-goal: bex has no allowed-login-methods setting |
+| `ChangeTeamAllowedLoginMethodsEvent` | `workspaces.SetRequireGoogleLogin` | recorded (w7/m465: the Google-login requirement, `metadata.to`) |
 | `ChangeTeam2FAEnforcementEvent` | `workspaces.SetRequireTwoFactor` | recorded |
 | `LoginEvent`, `LogoutEvent` | `auth.Login`, `auth.Logout` | recorded (w9/m452): once in each of the member's workspaces, a sign-in at the first sight of a new Kratos session, a sign-out from the dashboard's `recordSignOut` and the CLI's logout; `metadata.source_ip` and `user_agent`; an expired session records no sign-out |
 | `CreateServerEvent` | `apps.Create` | recorded |

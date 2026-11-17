@@ -559,6 +559,18 @@ const koAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.settingsGuardEmailChangeRefused": {
+    message:
+      "Google 로그인을 요구하는 워크스페이스에 속해 있는 동안에는 이메일 주소를 변경할 수 없습니다. 먼저 다음 워크스페이스에서 나가세요: {workspaces}.",
+    description:
+      "Account settings refusal of an email change (Kratos message 4100001) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
+  "auth.settingsGuardUnlinkRefused": {
+    message:
+      "Google 로그인을 요구하는 워크스페이스에 속해 있는 동안에는 로그인 수단의 연결을 해제할 수 없습니다. 먼저 다음 워크스페이스에서 나가세요: {workspaces}.",
+    description:
+      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+  },
 };
 
 export default koAuth;
