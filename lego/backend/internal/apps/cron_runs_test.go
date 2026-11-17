@@ -206,7 +206,7 @@ func TestTriggerCronRunReturnsPendingRunAndCancelsActive(t *testing.T) {
 	cl := &cronPatchCountingClient{Client: svc.Client}
 	svc.Client = cl
 	svc.Clock = func() time.Time { return fixed }
-	run, err := svc.TriggerCronRun(context.Background(), "nightly")
+	run, _, err := svc.TriggerCronRun(context.Background(), "nightly", true)
 	if err != nil {
 		t.Fatalf("trigger: %v", err)
 	}
@@ -242,7 +242,7 @@ func TestTriggerCronRunRejectsSuspendedWithoutWritingIntent(t *testing.T) {
 	svc.Billing = billing
 	svc.Clock = func() time.Time { return time.Date(2026, 7, 14, 12, 5, 0, 0, time.UTC) }
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "cron-operator", Method: "session"})
-	if _, err := svc.TriggerCronRun(ctx, "nightly"); !errors.Is(err, core.ErrConflict) {
+	if _, _, err := svc.TriggerCronRun(ctx, "nightly", true); !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("trigger suspended cron = %v, want conflict", err)
 	}
 	if authz.calls != 1 {
@@ -412,8 +412,9 @@ func TestCronRunGraphQLAndMCPAdapters(t *testing.T) {
 	if mcpGet["id"] != mcpFirst["id"] || mcpGet["status"] != "pending" {
 		t.Fatalf("MCP get = %v", mcpGet)
 	}
+	// runId is bex's optional extension of Render's cancel_cron_job_run.
 	mcpCancel := call("cancel_cron_job_run", map[string]any{"serviceId": "nightly", "runId": mcpFirst["id"]})
-	if mcpCancel["status"] != "canceled" {
+	if run, _ := mcpCancel["run"].(map[string]any); mcpCancel["canceled"] != true || run["id"] != mcpFirst["id"] || run["status"] != "canceled" {
 		t.Fatalf("MCP cancel = %v", mcpCancel)
 	}
 }
@@ -614,7 +615,7 @@ func TestAcknowledgedCronRunIsReadableCancellableAndNeverLost(t *testing.T) {
 	svc.Clock = func() time.Time { return now }
 
 	// P1: get-by-id and the list find it pending at once, with no startedAt.
-	a, err := svc.TriggerCronRun(ctx, "nightly")
+	a, _, err := svc.TriggerCronRun(ctx, "nightly", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -629,7 +630,7 @@ func TestAcknowledgedCronRunIsReadableCancellableAndNeverLost(t *testing.T) {
 
 	// P3: a second trigger cancels the first, which reads canceled, not 404.
 	now = now.Add(300 * time.Millisecond)
-	b, err := svc.TriggerCronRun(ctx, "nightly")
+	b, _, err := svc.TriggerCronRun(ctx, "nightly", true)
 	if err != nil {
 		t.Fatal(err)
 	}

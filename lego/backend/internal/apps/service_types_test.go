@@ -161,7 +161,7 @@ func cronApp(name string) *appv1alpha1.App {
 
 func TestTriggerCronRunBumpsRunAt(t *testing.T) {
 	svc, cl := newService(nil, cronApp("nightly"))
-	if _, err := svc.TriggerCronRun(context.Background(), "nightly"); err != nil {
+	if _, _, err := svc.TriggerCronRun(context.Background(), "nightly", true); err != nil {
 		t.Fatalf("TriggerCronRun: %v", err)
 	}
 	if ra := getApp(t, cl, "nightly").Spec.RunAt; ra == "" {
@@ -171,7 +171,7 @@ func TestTriggerCronRunBumpsRunAt(t *testing.T) {
 
 func TestTriggerCronRunRejectsNonCron(t *testing.T) {
 	svc, _ := newService(nil, sampleApp("web"))
-	_, err := svc.TriggerCronRun(context.Background(), "web")
+	_, _, err := svc.TriggerCronRun(context.Background(), "web", true)
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("run on non-cron => ErrBadRequest, got %v", err)
 	}

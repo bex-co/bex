@@ -66,7 +66,7 @@ Render's cron service details include `lastSuccessfulRunAt` as an RFC3339 date-t
 
 ## MCP
 
-Render's official MCP server currently exposes cron creation but no run trigger/list/get/cancel tools. bex's `run_cron_job`, `list_cron_job_runs`, `get_cron_job_run`, and `cancel_cron_job_run` are documented extensions over the same service-layer verbs used by REST and GraphQL.
+Render's official MCP server added `run_cron_job` and `cancel_cron_job_run` on 2026-11-16 (render-mcp-server #268, pinned at `a18ef3e` by w3/068). Its `run_cron_job` takes `serviceId` and an optional `cancelActiveRun`: it reads the cron job's recent `cron_job_run_started`/`_ended` events and refuses while the latest run has not ended unless `cancelActiveRun` is true, then calls `POST .../runs` and answers `{run, canceledRun?, warning?}`. Its `cancel_cron_job_run` takes only `serviceId`, calls `DELETE .../runs` and answers `{serviceId, canceled: true}`; with no run in progress it returns whatever the API returns. bex's tools of those names take that contract over the same service-layer verbs REST and GraphQL use: `run_cron_job` refuses with `CRON_RUN_ACTIVE` unless `cancelActiveRun` is true, and `cancel_cron_job_run` given only `serviceId` cancels the run in progress, a conflict when none is, as bex's `DELETE` answers. Its optional `runId` (cancel one pending run) and the canceled `run` in its answer are bex extensions. `list_cron_job_runs` and `get_cron_job_run` remain extensions; Render's server has no run reads.
 
 ## Dashboard (w5/m60)
 

@@ -226,6 +226,44 @@ type cronJobRunArgs struct {
 	RunID     string `json:"runId" jsonschema:"the crr- run id, as returned by list_cron_job_runs"`
 }
 
+// runCronJobArgs is Render's run_cron_job input (render-mcp-server #268).
+type runCronJobArgs struct {
+	ServiceID       string `json:"serviceId" jsonschema:"the cron job service id, as returned by list_services"`
+	CancelActiveRun bool   `json:"cancelActiveRun,omitempty" jsonschema:"whether to cancel a run already in progress so the new run can start. Defaults to false, which refuses and names the run in progress. Set it to true only after the user agrees to cancel that run; canceling can leave the job's work half done"`
+}
+
+// runCronJobResult is Render's run_cron_job answer (its CronJobRunResult):
+// the new run, and the run it canceled when one was in progress. Render's
+// warning is never set: bex's new run is readable, and so refused by the next
+// call, the moment this returns.
+type runCronJobResult struct {
+	Run         renderCronJobRun  `json:"run"`
+	CanceledRun *activeCronJobRun `json:"canceledRun,omitempty"`
+}
+
+// activeCronJobRun is Render's ActiveCronJobRun. startedAt is omitted for a
+// run canceled before its Job started, where Render's (which only sees
+// started runs) always carries one.
+type activeCronJobRun struct {
+	ID        string `json:"id"`
+	StartedAt string `json:"startedAt,omitempty"`
+}
+
+// cancelCronJobRunArgs is Render's cancel_cron_job_run input, plus bex's
+// optional runId.
+type cancelCronJobRunArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the cron job service id, as returned by list_services"`
+	RunID     string `json:"runId,omitempty" jsonschema:"bex extension: the crr- id of one pending run to cancel, as returned by list_cron_job_runs. Omit it to cancel the run in progress, as on Render"`
+}
+
+// cancelCronJobRunResult is Render's {serviceId, canceled} answer, plus the
+// canceled run (a bex extension).
+type cancelCronJobRunResult struct {
+	ServiceID string           `json:"serviceId"`
+	Canceled  bool             `json:"canceled"`
+	Run       renderCronJobRun `json:"run"`
+}
+
 type listCronJobRunsResult struct {
 	CronJobRuns []renderCronJobRun `json:"cronJobRuns"`
 	Cursor      string             `json:"cursor"`
@@ -725,11 +763,20 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
-		Name:        "run_cron_job",
-		Description: "Trigger a one-off run of a cron job now, canceling an active run first like Render. Returns the deterministic pending run. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
-		run, err := s.TriggerCronRun(ctx, in.ServiceID)
-		return nil, toRenderCronJobRun(run), err
+		Name: "run_cron_job",
+		Description: "Start a run of a cron job now, outside its schedule. The run uses the cron job's currently deployed build, command and environment; it does not deploy new code (use trigger_deploy for that). " +
+			"A cron job runs one run at a time and starting a new run cancels the one in progress, so this tool refuses while a run is in progress unless cancelActiveRun is true. " +
+			"Returns {run, canceledRun?}: the new pending run and, if one was canceled, the run it replaced. Follow the run with get_cron_job_run or list_logs. Tracks Render's MCP tool.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in runCronJobArgs) (*mcp.CallToolResult, runCronJobResult, error) {
+		run, canceled, err := s.TriggerCronRun(ctx, in.ServiceID, in.CancelActiveRun)
+		if err != nil {
+			return nil, runCronJobResult{}, err
+		}
+		out := runCronJobResult{Run: toRenderCronJobRun(run)}
+		if canceled != nil {
+			out.CanceledRun = &activeCronJobRun{ID: canceled.ID, StartedAt: canceled.StartedAt}
+		}
+		return nil, out, nil
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -763,11 +810,23 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
-		Name:        "cancel_cron_job_run",
-		Description: "bex extension: cancel one pending cron job run by crr- id. The operator terminates its Kubernetes Job; a terminal run returns a conflict instead of silently succeeding.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cronJobRunArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
-		run, err := s.CancelCronRun(ctx, in.ServiceID, in.RunID)
-		return nil, toRenderCronJobRun(run), err
+		Name: "cancel_cron_job_run",
+		Description: "Cancel the in-progress run of a cron job. Canceling stops the run partway, which can leave its work half done, so confirm with the user first. It does not pause the schedule: the next scheduled run still starts on time. " +
+			"With no run in progress it returns a conflict. Pass runId (a bex extension) to cancel one pending run by its crr- id instead; a run that already ended returns a conflict. " +
+			"Returns {serviceId, canceled: true, run}, where run is the canceled run. Tracks Render's MCP tool.",
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: new(true), IdempotentHint: true, OpenWorldHint: new(true)},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cancelCronJobRunArgs) (*mcp.CallToolResult, cancelCronJobRunResult, error) {
+		var run CronRunView
+		var err error
+		if in.RunID == "" {
+			run, err = s.CancelCurrentCronRun(ctx, in.ServiceID)
+		} else {
+			run, err = s.CancelCronRun(ctx, in.ServiceID, in.RunID)
+		}
+		if err != nil {
+			return nil, cancelCronJobRunResult{}, err
+		}
+		return nil, cancelCronJobRunResult{ServiceID: in.ServiceID, Canceled: true, Run: toRenderCronJobRun(run)}, nil
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{

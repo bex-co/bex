@@ -1627,7 +1627,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"runCronJob": &graphql.Field{
 			Type: cronRunGQLType, Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.TriggerCronRun(p.Context, p.Args["id"].(string))
+				run, _, err := s.TriggerCronRun(p.Context, p.Args["id"].(string), true)
+				return run, err
 			},
 		},
 		"cancelCronJobRun": &graphql.Field{

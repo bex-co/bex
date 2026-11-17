@@ -243,7 +243,7 @@ func TestCronRunActorStoreFailures(t *testing.T) {
 	// exists without its recorded caller.
 	svc, actors := cronWithActors(t)
 	actors.err = errors.New("db down")
-	if _, err := svc.TriggerCronRun(asUser(context.Background(), "id-alice"), "nightly"); err == nil {
+	if _, _, err := svc.TriggerCronRun(asUser(context.Background(), "id-alice"), "nightly", true); err == nil {
 		t.Fatal("trigger with a failing actor store succeeded")
 	}
 	if app := getApp(t, svc.Client, "nightly"); app.Spec.RunAt != "" || app.Spec.CancelRun != nil {
@@ -261,7 +261,7 @@ func TestCronRunActorStoreFailures(t *testing.T) {
 	}
 	// Store-less mode records and names nothing.
 	svc.CronRunActors = nil
-	run, err := svc.TriggerCronRun(asUser(context.Background(), "id-alice"), "nightly")
+	run, _, err := svc.TriggerCronRun(asUser(context.Background(), "id-alice"), "nightly", true)
 	if err != nil || run.TriggeredBy != "" {
 		t.Fatalf("store-less trigger = %+v (%v)", run, err)
 	}

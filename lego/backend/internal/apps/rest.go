@@ -1269,7 +1269,8 @@ func (s *Service) registerCronRunRoutes(mux *http.ServeMux) {
 	// deterministic pending run is returned immediately; if another run is active,
 	// the same intent patch asks the operator to cancel it before replacement.
 	runCron := core.HandleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
-		return s.TriggerCronRun(r.Context(), r.PathValue("id"))
+		run, _, err := s.TriggerCronRun(r.Context(), r.PathValue("id"), true)
+		return run, err
 	}, toRenderCronJobRun)
 	listCronRuns := core.HandleMapped(http.StatusOK, func(r *http.Request) ([]CronRunView, error) {
 		cursor, limit := core.PageParams(r.URL.Query())

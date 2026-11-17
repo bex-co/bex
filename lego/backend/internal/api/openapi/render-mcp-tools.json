@@ -1,6 +1,6 @@
 {
   "pin": {
-    "capturedAt": "2026-11-13",
+    "capturedAt": "2026-11-17",
     "capturedBy": "scripts/render-mcp-capture.py --ref main (MCP stdio tools/list)",
     "latestRelease": {
       "tag": "v0.3.0",
@@ -34,14 +34,15 @@
       "verbatim; only this 'pin' block and 'source' are hand-maintained.",
       "w5/m145 (2026-10-20): re-captured at the same upstream commit with each argument's JSON type (and enum) and the tools' behavior hints (readOnly/destructive/idempotent/openWorld), which a client acts on; descriptions and annotation titles stay out.",
       "w5/m283 (2026-11-07): re-captured at 16fe2e9 (2026-11-06). Upstream added create_blueprint (plans without applying), plan_blueprint, approve_blueprint, get_blueprint and update_blueprint (#205, #218, #221, #222, #224, #230); bex implements all five to this contract. No other tool moved.",
-      "w3/m367 (2026-11-13): re-captured at 23fb336 (2026-11-12). Upstream added 20 Workflows tools (create_workflow, the workflow version, run and task reads, list_flows, get_flow, start_flow_run, cancel_flow_run and the flow-run reads; render-mcp-server #189), a deliberate non-goal (.pm/DO_NOT_DO.md), recorded in mcpKnownUpstreamOnly; list_logs gained the Workflows task/taskRun filters. No other tool moved."
+      "w3/m367 (2026-11-13): re-captured at 23fb336 (2026-11-12). Upstream added 20 Workflows tools (create_workflow, the workflow version, run and task reads, list_flows, get_flow, start_flow_run, cancel_flow_run and the flow-run reads; render-mcp-server #189), a deliberate non-goal (.pm/DO_NOT_DO.md), recorded in mcpKnownUpstreamOnly; list_logs gained the Workflows task/taskRun filters. No other tool moved.",
+      "w3/068 (2026-11-17): re-captured at a18ef3e (2026-11-16). Upstream added run_cron_job (serviceId, optional cancelActiveRun: refuses while a run is in progress unless true) and cancel_cron_job_run (serviceId only: cancels the run in progress) (0c4d3f4, #268). bex's same-named tools now take that contract; cancel_cron_job_run keeps runId as an optional bex extension. No other tool moved."
     ]
   },
   "source": {
     "repo": "github.com/render-oss/render-mcp-server",
-    "ref": "main",
-    "commit": "23fb336069482a3844dbbf76215de815f1b04e7f",
-    "commitDate": "2026-11-12T23:21:19Z"
+    "ref": "a18ef3ee866716933710fa5054323fd5c1ed0eb1",
+    "commit": "a18ef3ee866716933710fa5054323fd5c1ed0eb1",
+    "commitDate": "2026-11-16T17:33:18Z"
   },
   "tools": [
     {
@@ -68,6 +69,30 @@
       "annotations": {
         "destructiveHint": true,
         "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "cancel_cron_job_run",
+      "args": [
+        "serviceId",
+        "workspaceId"
+      ],
+      "required": [
+        "serviceId"
+      ],
+      "argTypes": {
+        "serviceId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
         "openWorldHint": true,
         "readOnlyHint": false
       }
@@ -1801,6 +1826,34 @@
         "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": true
+      }
+    },
+    {
+      "name": "run_cron_job",
+      "args": [
+        "cancelActiveRun",
+        "serviceId",
+        "workspaceId"
+      ],
+      "required": [
+        "serviceId"
+      ],
+      "argTypes": {
+        "cancelActiveRun": {
+          "type": "boolean"
+        },
+        "serviceId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
       }
     },
     {

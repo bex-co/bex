@@ -166,6 +166,8 @@ def normalize(tools):
 # objects are keyed by the caller's own columns).
 RESULT_FORMS = {
     "approve_blueprint": {"form": "object"},
+    # json.Marshal of map[string]any{"serviceId": ..., "canceled": true}, no named type.
+    "cancel_cron_job_run": {"form": "object"},
     "create_blueprint": {"form": "object"},
     "create_cron_job": {"form": "object", "type": "ServiceAndDeploy"},
     "create_key_value": {"form": "object", "type": "KeyValueDetail"},
@@ -188,6 +190,7 @@ RESULT_FORMS = {
     "list_workspaces": {"form": "array", "type": "Owner"},
     "plan_blueprint": {"form": "object"},
     "query_render_postgres": {"form": "array", "type": None},
+    "run_cron_job": {"form": "object", "type": "CronJobRunResult"},
     "trigger_deploy": {"form": "object", "type": "Deploy"},
     "update_blueprint": {"form": "object"},
     "update_environment_variables": {"form": "text"},
@@ -196,6 +199,9 @@ RESULT_FORMS = {
 # RESULT_TYPES names where each recorded Go type is declared, and which of its
 # fields hold another recorded type (an array field's items, or an object).
 RESULT_TYPES = {
+    "ActiveCronJobRun": ("pkg/service/repo.go", {}),
+    "CronJobRun": ("pkg/client/types_gen.go", {}),
+    "CronJobRunResult": ("pkg/service/repo.go", {"canceledRun": "ActiveCronJobRun", "run": "CronJobRun"}),
     "Deploy": ("pkg/client/types_gen.go", {}),
     "KeyValue": ("pkg/client/types_gen.go", {"owner": "Owner", "options": "KeyValueOptions"}),
     "KeyValueDetail": ("pkg/client/types_gen.go", {"owner": "Owner", "options": "KeyValueOptions"}),

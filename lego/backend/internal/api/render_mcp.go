@@ -46,7 +46,7 @@ var renderMCPToolsSource []byte
 // renderMCPToolsSHA256 pins the embedded capture the way renderOpenAPISHA256
 // pins the REST spec: a hand-edit or a truncated file fails loudly at load
 // rather than silently weakening every parity assertion built on it.
-const renderMCPToolsSHA256 = "f904b273adb164138d09f5878c0223b73b098fccb37beda3b674029fdaa75e17"
+const renderMCPToolsSHA256 = "bae2ae48124780374740411e15455e01e460709bb01f76f7cd97e74fe8c67e3d"
 
 // renderMCPTool is one upstream tool reduced to its contractual surface.
 type renderMCPTool struct {

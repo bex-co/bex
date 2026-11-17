@@ -1,12 +1,15 @@
 {
   "source": {
     "repo": "github.com/render-oss/render-mcp-server",
-    "ref": "23fb336069482a3844dbbf76215de815f1b04e7f",
-    "commit": "23fb336069482a3844dbbf76215de815f1b04e7f",
-    "commitDate": "2026-11-12T23:21:19Z"
+    "ref": "a18ef3ee866716933710fa5054323fd5c1ed0eb1",
+    "commit": "a18ef3ee866716933710fa5054323fd5c1ed0eb1",
+    "commitDate": "2026-11-16T17:33:18Z"
   },
   "tools": {
     "approve_blueprint": {
+      "form": "object"
+    },
+    "cancel_cron_job_run": {
       "form": "object"
     },
     "create_blueprint": {
@@ -95,6 +98,10 @@
     "query_render_postgres": {
       "form": "array"
     },
+    "run_cron_job": {
+      "form": "object",
+      "type": "CronJobRunResult"
+    },
     "trigger_deploy": {
       "form": "object",
       "type": "Deploy"
@@ -107,6 +114,38 @@
     }
   },
   "types": {
+    "ActiveCronJobRun": {
+      "required": [
+        "id",
+        "startedAt"
+      ],
+      "optional": []
+    },
+    "CronJobRun": {
+      "required": [
+        "id",
+        "status"
+      ],
+      "optional": [
+        "canceledBy",
+        "finishedAt",
+        "startedAt",
+        "triggeredBy"
+      ]
+    },
+    "CronJobRunResult": {
+      "required": [
+        "run"
+      ],
+      "optional": [
+        "canceledRun",
+        "warning"
+      ],
+      "fields": {
+        "canceledRun": "ActiveCronJobRun",
+        "run": "CronJobRun"
+      }
+    },
     "Deploy": {
       "required": [
         "id"

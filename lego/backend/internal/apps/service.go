@@ -455,6 +455,9 @@ const (
 	CronErrorSuspended   = "CRON_SUSPENDED"
 	CronErrorRunNotFound = "CRON_RUN_NOT_FOUND"
 	CronErrorRunTerminal = "CRON_RUN_TERMINAL"
+	// CronErrorRunActive is MCP run_cron_job's refusal while a run is in
+	// progress and the caller did not pass cancelActiveRun (w3/068).
+	CronErrorRunActive = "CRON_RUN_ACTIVE"
 )
 
 // ServiceInstanceView is Render's complete public service-instance shape. It
@@ -4380,25 +4383,40 @@ func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
 // run. The operator materializes the deterministic Job and owns cancellation.
 // The pending run object can be returned synchronously because both its public
 // crr- id and backing Job name are deterministic functions of runAt.
-func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView, error) {
+//
+// REST and GraphQL always replace an active run (cancelActive true). Render
+// MCP's run_cron_job (render-mcp-server #268) passes its cancelActiveRun:
+// without it, a run in progress refuses with CRON_RUN_ACTIVE instead of being
+// replaced. replaced is the run the trigger canceled, if any, which
+// run_cron_job reports as canceledRun.
+func (s *Service) TriggerCronRun(ctx context.Context, name string, cancelActive bool) (run CronRunView, replaced *CronRunView, err error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
 	if err != nil {
-		return CronRunView{}, err
+		return CronRunView{}, nil, err
 	}
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
-		return CronRunView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
+		return CronRunView{}, nil, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
 	}
 	if a.Spec.Suspended {
-		return CronRunView{}, core.NewConflictError(
+		return CronRunView{}, nil, core.NewConflictError(
 			CronErrorSuspended,
 			fmt.Sprintf("cron job %q is suspended", name),
 			map[string]any{"serviceId": name},
 		)
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
-		return CronRunView{}, err
+		return CronRunView{}, nil, err
 	}
 	now := s.Now().UTC()
+	if active, ok := pendingCronRun(a, now); ok && !cancelActive {
+		return CronRunView{}, nil, core.NewConflictError(
+			CronErrorRunActive,
+			fmt.Sprintf("cron job %q already has a run in progress (run %s). Starting a new run cancels it. "+
+				"Wait for it to finish, or, if the user agrees to cancel it, call run_cron_job again with cancelActiveRun set to true",
+				name, active.ID),
+			map[string]any{"serviceId": name, "runId": active.ID},
+		)
+	}
 	runAt := now.Format(time.RFC3339Nano)
 	jobName := appv1alpha1.ManualCronRunJobName(a.Name, runAt)
 	runID := ids.Derive(ids.CronRun, jobName)
@@ -4407,29 +4425,28 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 	// for a run that never existed, which nothing reads.
 	appID := a.Labels[store.LabelAppID]
 	if err := s.recordCronRunTrigger(ctx, appID, runID); err != nil {
-		return CronRunView{}, err
+		return CronRunView{}, nil, err
 	}
-	preempted := ""
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		preempted = ""
-		if run, ok := pendingCronRun(a, now); ok {
-			a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: runAt, Unmaterialized: unmaterializedRun(a, run.Name)}
-			preempted = run.ID
+		replaced = nil
+		if active, ok := pendingCronRun(a, now); ok {
+			a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: active.Name, RequestedAt: runAt, Unmaterialized: unmaterializedRun(a, active.Name)}
+			replaced = &active
 		}
 		a.Spec.RunAt = runAt
 	})
 	if err != nil {
-		return CronRunView{}, err
+		return CronRunView{}, nil, err
 	}
 	// The trigger's caller canceled the run it replaced (ADR038). The trigger
 	// has landed, so a failure here costs only that run's canceledBy.
-	if preempted != "" {
-		if err := s.recordCronRunCancel(ctx, appID, preempted); err != nil {
-			log.Printf("apps: cron %s: record preempting cancel of %s: %v", name, preempted, err)
+	if replaced != nil {
+		if err := s.recordCronRunCancel(ctx, appID, replaced.ID); err != nil {
+			log.Printf("apps: cron %s: record preempting cancel of %s: %v", name, replaced.ID, err)
 		}
 	}
-	run := CronRunView{ID: runID, Name: jobName, Status: cronRunPending}
-	return s.withCronRunActors(ctx, appID, []CronRunView{run})[0], nil
+	run = CronRunView{ID: runID, Name: jobName, Status: cronRunPending}
+	return s.withCronRunActors(ctx, appID, []CronRunView{run})[0], replaced, nil
 }
 
 // ListCronRuns returns a cron_job's first-class run history, newest first. The
