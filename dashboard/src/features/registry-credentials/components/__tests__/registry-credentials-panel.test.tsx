@@ -73,6 +73,30 @@ describe("RegistryCredentialsPanel", () => {
     expect(screen.getByText("No registry credentials")).toBeInTheDocument();
   });
 
+  // w3/m305: production's Workspace Settings grew 132 px (152 at 390) when the
+  // list settled from two bars into the empty state; the frame is now that
+  // state's own box, its copy reserved invisibly so it wraps the same way.
+  it("keeps the empty state's frame while its first read loads", () => {
+    const empty = render(<RegistryCredentialsPanel />);
+    const settled = empty.getByText("No registry credentials").parentElement!;
+    const settledShape = {
+      className: settled.className,
+      children: [...settled.children].map((child) => child.tagName),
+    };
+    empty.unmount();
+
+    state.loading = true;
+    render(<RegistryCredentialsPanel />);
+    const frame = screen.getByTestId("registry-credentials-loading-frame");
+    expect({
+      className: frame.className,
+      children: [...frame.children].map((child) => child.tagName),
+    }).toEqual({ ...settledShape, children: ["DIV", "P", "P"] });
+    expect(settledShape.children).toEqual(["DIV", "P", "P"]);
+    expect(frame).toHaveTextContent("No registry credentials");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
   it("shows a forbidden state and not the table when the query 403s", () => {
     state.error = codedGraphQLError("FORBIDDEN");
     render(<RegistryCredentialsPanel />);

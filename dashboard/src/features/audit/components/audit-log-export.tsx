@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
-import { useApolloClient } from "@apollo/client/react";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
@@ -9,7 +8,7 @@ import { downloadTextFile } from "@/common/lib/download-file";
 import {
   AuditExportTooLargeError,
   MAX_EXPORT_DAYS,
-  auditEventsToCSV,
+  auditLogsToCSV,
   exportRangeDays,
   fetchAuditRange,
 } from "@/features/audit/lib/audit-csv";
@@ -26,7 +25,6 @@ function utcDay(date: Date): string {
  */
 export function AuditLogExport({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
-  const client = useApolloClient();
   const startId = useId();
   const endId = useId();
   const messageId = useId();
@@ -57,8 +55,7 @@ export function AuditLogExport({ ownerId }: { ownerId: string }) {
     setExporting(true);
     setFailure(null);
     try {
-      const events = await fetchAuditRange(
-        client,
+      const logs = await fetchAuditRange(
         ownerId,
         start,
         end,
@@ -66,7 +63,7 @@ export function AuditLogExport({ ownerId }: { ownerId: string }) {
       );
       downloadTextFile(
         `audit-logs-${ownerId}-${start}-${end}.csv`,
-        auditEventsToCSV(events),
+        auditLogsToCSV(logs),
         "text/csv;charset=utf-8",
       );
     } catch (err) {

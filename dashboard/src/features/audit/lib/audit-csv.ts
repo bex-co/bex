@@ -1,17 +1,16 @@
-import type { ApolloClient } from "@apollo/client";
-import { AuditLogsDocument } from "@/graphql/definitions";
-import type { AuditEvent } from "@/features/audit/types";
-import { toAuditEvents } from "@/features/audit/lib/audit-events";
+import { config } from "@/config/config";
 
 // Render's audit-log export (render.com/docs/audit-logs): a workspace admin
 // picks a start and end date, at most 90 days apart, and downloads a CSV of
-// timestamp, actor, event, status and metadata (w3/m305). The actor is the
-// person's email, or a deleted user's id, as on Render (w9/m450).
+// timestamp, actor, event, status and metadata (w3/m305). Its rows are the
+// REST list's own (`GET /v1/owners/{ownerId}/audit-logs`, Render's shape), so
+// the status column is Render's success|error and the metadata is Render's
+// string map: a denial is `error` with `metadata.outcome: "denied"`.
 
 /** Render's longest export range, in days. */
 export const MAX_EXPORT_DAYS = 90;
 
-/** auditLogs' per-call cap (internal/audit, Render's audit-specific 1000). */
+/** The REST list's per-call cap (internal/audit, Render's audit-specific 1000). */
 const EXPORT_PAGE_SIZE = 1000;
 
 /** Pages read before an export gives up and asks for a shorter range. */
@@ -42,38 +41,56 @@ export function exportRangeTimes(
   };
 }
 
+/** One row of Render's audit-log list, as bex-api's REST answers it. */
+export interface RenderAuditLog {
+  timestamp: string;
+  event: string;
+  status: string;
+  actor: { type: string; id?: string; email?: string };
+  metadata: Record<string, string>;
+}
+
 /**
- * Every event of ownerId inside the range, newest first, paged past the last
- * id as the table's own "Load more" does.
+ * Every row of ownerId inside the range, newest first, from Render's REST list
+ * paged by its cursor. The session cookie authorizes it, as it does GraphQL.
  */
 export async function fetchAuditRange(
-  client: ApolloClient,
   ownerId: string,
   start: string,
   end: string,
   signal?: AbortSignal,
-): Promise<AuditEvent[]> {
+): Promise<RenderAuditLog[]> {
   const { startTime, endTime } = exportRangeTimes(start, end);
-  const events: AuditEvent[] = [];
+  const logs: RenderAuditLog[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < MAX_EXPORT_PAGES; page++) {
-    const { data } = await client.query({
-      query: AuditLogsDocument,
-      variables: {
-        ownerId,
-        startTime,
-        endTime,
-        cursor,
-        limit: EXPORT_PAGE_SIZE,
-      },
-      // An export is read once; it must not fill the cache with every row.
-      fetchPolicy: "no-cache",
+    const query = new URLSearchParams({
+      startTime,
+      endTime,
+      limit: String(EXPORT_PAGE_SIZE),
     });
+    if (cursor) query.set("cursor", cursor);
+    const response = await fetch(
+      `${config.apiBaseUrl}/v1/owners/${encodeURIComponent(ownerId)}/audit-logs?${query}`,
+      {
+        credentials: "include",
+        headers: { Accept: "application/json" },
+        // An export is read once; it must not fill the HTTP cache either.
+        cache: "no-store",
+        signal,
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`audit export read failed (${response.status})`);
+    }
+    const batch = (await response.json()) as {
+      cursor: string;
+      auditLog: RenderAuditLog;
+    }[];
     signal?.throwIfAborted();
-    const batch = toAuditEvents(data?.auditLogs);
-    events.push(...batch);
-    if (batch.length < EXPORT_PAGE_SIZE) return events;
-    cursor = batch[batch.length - 1].id;
+    logs.push(...batch.map((item) => item.auditLog));
+    if (batch.length < EXPORT_PAGE_SIZE) return logs;
+    cursor = batch[batch.length - 1].cursor;
   }
   throw new AuditExportTooLargeError();
 }
@@ -89,52 +106,24 @@ function csvCell(value: string): string {
   return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
-/** The event's fields beyond Render's four columns, as one JSON object. */
-function metadata(event: AuditEvent): string {
-  const entries: [string, string | string[]][] = [
-    ["resource", event.resource],
-    ["targetName", event.targetName],
-    ["from", event.displayNameFrom],
-    ["to", event.displayNameTo],
-    ["domain", event.domain],
-    ["envGroupId", event.envGroupId],
-    ["envGroupName", event.envGroupName],
-    ["envVarKeys", event.envVarKeys.join(",")],
-    // The instance a shell session ran on, Render's key (w9/m451).
-    ["instance", event.instance],
-    ["actorMethod", event.actorMethod],
-    // Render's own keys for where the actor acted from (w9/m450).
-    ["source_ip", event.sourceIp],
-    ["user_agent", event.userAgent],
-    ["relation", event.relation],
-    ["oauthClientId", event.oauthClientId],
-    ["oauthAudience", event.oauthAudience],
-    ["oauthScopes", event.oauthScopes],
-    ["oauthGrantScopes", event.oauthGrantScopes],
-  ];
-  return JSON.stringify(
-    Object.fromEntries(entries.filter(([, value]) => value.length > 0)),
-  );
-}
-
 /**
- * Render's actor column: a person's email, else the id REST answers (a
- * deleted user's usr- id, an API key's client id), else the stored subject.
+ * Render's actor column: a person's email, else the id REST answers (a deleted
+ * user's usr- id, an API key's client id); a system row has neither.
  */
-function csvActor(event: AuditEvent): string {
-  return event.actorEmail || event.actorId || event.actor;
+function csvActor(log: RenderAuditLog): string {
+  return log.actor.email || log.actor.id || "";
 }
 
 /** Render's export columns: timestamp, actor, event, status, metadata. */
-export function auditEventsToCSV(events: AuditEvent[]): string {
+export function auditLogsToCSV(logs: RenderAuditLog[]): string {
   const rows = [["timestamp", "actor", "event", "status", "metadata"]];
-  for (const event of events) {
+  for (const log of logs) {
     rows.push([
-      event.timestamp,
-      csvActor(event),
-      event.action,
-      event.status,
-      metadata(event),
+      log.timestamp,
+      csvActor(log),
+      log.event,
+      log.status,
+      JSON.stringify(log.metadata ?? {}),
     ]);
   }
   return rows.map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";

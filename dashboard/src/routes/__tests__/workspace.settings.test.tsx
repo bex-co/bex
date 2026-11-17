@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "../workspace.settings";
+import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
 const workspaceState: {
@@ -127,7 +128,9 @@ vi.mock(
 vi.mock(
   "@/features/registry-credentials/components/registry-credentials-panel",
   () => ({
-    RegistryCredentialsPanel: () => <div>Registry credentials panel</div>,
+    RegistryCredentialsPanel: () => (
+      <div id="registry-credentials">Registry credentials panel</div>
+    ),
   }),
 );
 
@@ -166,6 +169,24 @@ vi.mock(
   }),
 );
 
+/** The rail's section anchors, in order. */
+function railSections(container: HTMLElement): string[] {
+  return [...container.querySelectorAll("nav a[href^='#']")].map((link) =>
+    link.getAttribute("href")!.slice(1),
+  );
+}
+
+/** A pending frame's sections: its outermost regions below the header and
+ *  the rail, in order. */
+function frameSections(container: HTMLElement): string[] {
+  return [...container.querySelectorAll<HTMLElement>("[data-skeleton-region]")]
+    .filter(
+      (region) => !region.parentElement?.closest("[data-skeleton-region]"),
+    )
+    .map((region) => region.dataset.skeletonRegion!)
+    .filter((name) => name !== "page-header" && name !== "navigation");
+}
+
 const primaryWorkspace: WorkspaceView = {
   id: "tea-primary",
   name: "primary",
@@ -176,8 +197,7 @@ const primaryWorkspace: WorkspaceView = {
   requireTwoFactor: false,
 };
 
-async function renderPage() {
-  const WorkspaceSettingsPage = Route.options.component;
+async function renderPage(WorkspaceSettingsPage = Route.options.component) {
   if (!WorkspaceSettingsPage) {
     throw new Error("workspace settings route component is missing");
   }
@@ -439,6 +459,52 @@ describe("WorkspaceSettingsPage", () => {
     expect(screen.getByRole("link", { name: "Danger Zone" })).toHaveAttribute(
       "href",
       "#danger-zone",
+    );
+  });
+
+  // w3/m305: the production side-by-side check found the pending rail
+  // without Build Pipeline (the inline one also without Audit Log), and the
+  // pending danger zone without the Delete card the ready page draws.
+  it.each([
+    ["a billing-manager admin with another workspace", "admin", true, true],
+    ["a member with one workspace", "developer", false, false],
+  ] as const)(
+    "previews the ready sections, rail and danger zone for %s",
+    async (_, role, billing, another) => {
+      const workspace = { ...primaryWorkspace, role };
+      workspaceState.currentWorkspace = workspace;
+      workspaceState.workspaces = another
+        ? [workspace, { ...workspace, id: "tea-secondary", name: "secondary" }]
+        : [workspace];
+      capabilityState.canManageBilling = billing;
+      const ready = await renderPage();
+      const readyRail = railSections(ready.container);
+      for (const id of readyRail) {
+        expect(ready.container.querySelector(`#${id}`)).not.toBeNull();
+      }
+      const readyDanger =
+        ready.container.querySelector("#danger-zone")!.children.length;
+      ready.unmount();
+
+      const pending = await renderPage(WorkspaceSettingsPageSkeleton);
+      expect(railSections(pending.container)).toEqual(readyRail);
+      expect(frameSections(pending.container)).toEqual(readyRail);
+      expect(
+        pending.container.querySelector('[data-skeleton-region="danger-zone"]')!
+          .children,
+      ).toHaveLength(readyDanger);
+    },
+  );
+
+  it("lists in the loading branch's rail exactly the sections it draws", async () => {
+    workspaceState.currentWorkspace = null;
+    workspaceState.workspaces = [];
+    workspaceState.loading = true;
+    const { container } = await renderPage();
+
+    expect(railSections(container)).toEqual(frameSections(container));
+    expect(railSections(container)).toEqual(
+      expect.arrayContaining(["build-pipeline", "audit-logs"]),
     );
   });
 });

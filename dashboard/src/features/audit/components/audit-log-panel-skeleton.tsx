@@ -1,5 +1,12 @@
-import { LockKeyhole } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
+import { Download, LockKeyhole } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/common/components/ui/card";
+import { Label } from "@/common/components/ui/label";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Table,
@@ -10,9 +17,14 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { PanelCenteredState } from "@/common/components/panel-states";
+import {
+  ReservedButton,
+  ReservedText,
+} from "@/common/components/reserved-skeleton";
 import { PlanBillingLink } from "@/common/components/plan-billing-link";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AUDIT_PAGE_SIZE } from "@/features/audit/lib/audit-events";
+import { MAX_EXPORT_DAYS } from "@/features/audit/lib/audit-csv";
 import { useAuditPlanKnownMissing } from "@/features/audit/hooks/use-audit-plan-known-missing";
 
 /** The audit table's six column headers, shared by the ready table and its
@@ -44,6 +56,9 @@ function TwoLines({ width }: { width: string }) {
   );
 }
 
+/** An address as wide as most the source cell shows. */
+const PLACEHOLDER_ADDRESS = "203.0.113.10";
+
 /**
  * The first page's frame while it loads (w4/684): the six headers, one
  * placeholder per event of a full first page at AuditEventRow's height (its
@@ -64,8 +79,14 @@ export function AuditLogTableFrame() {
               <TableCell>
                 <TwoLines width="w-32" />
               </TableCell>
-              <TableCell>
-                <TwoLines width="w-28" />
+              {/* The source cell's address is a font-mono run inside the
+                  text-sm line, whose line box is half a pixel taller than a
+                  plain one: reserving the same run keeps the row's height. */}
+              <TableCell className="max-w-[12rem] text-sm">
+                <span className="relative font-mono">
+                  <ReservedText>{PLACEHOLDER_ADDRESS}</ReservedText>
+                </span>
+                <Skeleton className="h-4 w-20" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-5 w-40" />
@@ -101,16 +122,43 @@ export function AuditLogPlanNotice() {
   );
 }
 
-/** AuditLogPanel's frame while it loads: title, description, the export's
- *  two dates, button and hint, then the table frame — or, for a workspace
- *  known to be below Pro, the plan notice the panel settles to (w4/684). */
+/** AuditLogExport's frame (w3/m305): its static labels and hint, the date
+ *  fields' boxes and the Export as CSV button's box, so the row wraps as the
+ *  ready one does at every width. */
+function AuditLogExportFrame() {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-2" data-testid="audit-log-export-frame">
+      <div className="flex flex-wrap items-end gap-3">
+        {[t("audit.exportStart"), t("audit.exportEnd")].map((label) => (
+          <div key={label} className="space-y-1">
+            <Label>{label}</Label>
+            <Skeleton className="h-9 w-40" />
+          </div>
+        ))}
+        <ReservedButton variant="outline">
+          <Download />
+          {t("audit.exportCSV")}
+        </ReservedButton>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {t("audit.exportHint", { days: MAX_EXPORT_DAYS })}
+      </p>
+    </div>
+  );
+}
+
+/** AuditLogPanel's frame while it loads: its static title and description,
+ *  the export's frame, then the table frame — or, for a workspace known to be
+ *  below Pro, the plan notice the panel settles to (w4/684). */
 export function AuditLogPanelSkeleton() {
+  const { t } = useTranslations();
   const belowPlan = useAuditPlanKnownMissing();
   return (
     <Card aria-hidden="true">
-      <CardHeader className="gap-2">
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-4 w-96 max-w-full" />
+      <CardHeader>
+        <CardTitle>{t("audit.title")}</CardTitle>
+        <CardDescription>{t("audit.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {belowPlan ? (
@@ -119,19 +167,7 @@ export function AuditLogPanelSkeleton() {
           </div>
         ) : (
           <>
-            <div className="space-y-2" data-testid="audit-log-export-frame">
-              <div className="flex flex-wrap items-end gap-3">
-                {[0, 1].map((field) => (
-                  <div key={field} className="space-y-1">
-                    {/* Label: text-sm leading-none, 14 px. */}
-                    <Skeleton className="h-3.5 w-24" />
-                    <Skeleton className="h-9 w-40" />
-                  </div>
-                ))}
-                <Skeleton className="h-9 w-36" />
-              </div>
-              <Skeleton className="h-4 w-80 max-w-full" />
-            </div>
+            <AuditLogExportFrame />
             <AuditLogTableFrame />
           </>
         )}

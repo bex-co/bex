@@ -87,6 +87,12 @@ import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pip
 import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/workspace-ip-rules-card-skeleton";
 import { WorkspaceTwoFactorCardSkeleton } from "@/features/workspaces/components/workspace-two-factor-card-skeleton";
 import { OverlappingDeployPolicyCardSkeleton } from "@/features/workspaces/components/overlapping-deploy-policy-card-skeleton";
+import { WorkspaceDetailsCardSkeleton } from "@/features/workspaces/components/workspace-details-card-skeleton";
+import { DeleteWorkspaceCardSkeleton } from "@/features/workspaces/components/delete-workspace-card-skeleton";
+import {
+  useWorkspaceSettingsSkeletonSections,
+  type WorkspaceSettingsPendingSections,
+} from "@/features/workspaces/hooks/use-workspace-settings-skeleton-sections";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { NotificationOverridesCardSkeleton } from "@/features/notifications/components/notification-overrides-card-skeleton";
@@ -1382,26 +1388,24 @@ export function WorkspaceCreatePageSkeleton() {
   );
 }
 
-export function WorkspaceSettingsPageSkeleton() {
-  const { t } = useTranslations();
+/** Workspace Settings' sections while the page or its workspace loads: the
+ *  route's pending frame and the page's own inline skeleton draw this one
+ *  body, so the two cannot drift apart. */
+export function WorkspaceSettingsSkeletonSections({
+  sections,
+}: {
+  sections: WorkspaceSettingsPendingSections;
+}) {
   return (
-    <PageFrame
-      pending="workspace-settings"
-      header={
-        <PageHeader
-          title={t("workspaces.settingsTitle")}
-          description={t("workspaces.settingsDescription")}
-        />
-      }
-      navigation={<WorkspaceSettingsNavigation showDangerZone />}
-    >
+    <>
       <Region name="general">
-        <CardSkeleton rows={5} />
+        <WorkspaceDetailsCardSkeleton />
       </Region>
-      {/* Build Pipeline (w6/m309): billing managers only, like Audit Logs below. */}
-      <Region name="build-pipeline">
-        <BuildPipelineCardSkeleton />
-      </Region>
+      {sections.buildPipeline ? (
+        <Region name="build-pipeline">
+          <BuildPipelineCardSkeleton />
+        </Region>
+      ) : null}
       {/* Overlapping Deploy Policy (w4/653): every member reads it. */}
       <Region name="overlapping-deploy-policy">
         <OverlappingDeployPolicyCardSkeleton />
@@ -1430,12 +1434,42 @@ export function WorkspaceSettingsPageSkeleton() {
       <Region name="registry-credentials">
         <RegistryCredentialsPanelSkeleton />
       </Region>
-      <Region name="audit-logs">
-        <AuditLogPanelSkeleton />
+      {sections.auditLogs ? (
+        <Region name="audit-logs">
+          <AuditLogPanelSkeleton />
+        </Region>
+      ) : null}
+      <Region name="danger-zone" className="space-y-6">
+        <LeaveWorkspaceCardSkeleton workspaceName={sections.workspaceName} />
+        {sections.deleteWorkspace ? (
+          <DeleteWorkspaceCardSkeleton workspaceName={sections.workspaceName} />
+        ) : null}
       </Region>
-      <Region name="danger-zone">
-        <LeaveWorkspaceCardSkeleton />
-      </Region>
+    </>
+  );
+}
+
+export function WorkspaceSettingsPageSkeleton() {
+  const { t } = useTranslations();
+  const sections = useWorkspaceSettingsSkeletonSections();
+  return (
+    <PageFrame
+      pending="workspace-settings"
+      header={
+        <PageHeader
+          title={t("workspaces.settingsTitle")}
+          description={t("workspaces.settingsDescription")}
+        />
+      }
+      navigation={
+        <WorkspaceSettingsNavigation
+          showDangerZone
+          showAuditLogs={sections.auditLogs}
+          showBuildPipeline={sections.buildPipeline}
+        />
+      }
+    >
+      <WorkspaceSettingsSkeletonSections sections={sections} />
     </PageFrame>
   );
 }

@@ -1,15 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AuditLogExport } from "@/features/audit/components/audit-log-export";
+import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
 
 const fetchAuditRange = vi.fn();
 vi.mock("@/features/audit/lib/audit-csv", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/audit/lib/audit-csv")>()),
   fetchAuditRange: (...args: unknown[]) => fetchAuditRange(...args),
-}));
-vi.mock("@apollo/client/react", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@apollo/client/react")>()),
-  useApolloClient: () => ({ client: true }),
 }));
 
 const createObjectURL = vi.fn(() => "blob:audit");
@@ -46,8 +43,16 @@ describe("AuditLogExport", () => {
     );
   });
 
-  it("downloads the range as Render's CSV", async () => {
-    fetchAuditRange.mockResolvedValue([]);
+  it("downloads the range's REST rows as Render's CSV", async () => {
+    fetchAuditRange.mockResolvedValue([
+      {
+        timestamp: "2026-11-02T10:00:00Z",
+        event: "apps.Get",
+        status: "error",
+        actor: { type: "user", id: "usr-1", email: "ada@example.com" },
+        metadata: { outcome: "denied" },
+      },
+    ]);
     render(<AuditLogExport ownerId="tea-1" />);
     fireEvent.change(field("Start date"), { target: { value: "2026-11-01" } });
     fireEvent.change(field("End date"), { target: { value: "2026-11-10" } });
@@ -55,19 +60,22 @@ describe("AuditLogExport", () => {
 
     await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
     expect(fetchAuditRange).toHaveBeenCalledWith(
-      { client: true },
       "tea-1",
       "2026-11-01",
       "2026-11-10",
       expect.any(AbortSignal),
     );
     const blob = (createObjectURL.mock.calls[0] as unknown as [Blob])[0];
-    expect(await blob.text()).toBe("timestamp,actor,event,status,metadata\r\n");
+    expect(await blob.text()).toBe(
+      "timestamp,actor,event,status,metadata\r\n" +
+        '2026-11-02T10:00:00Z,ada@example.com,apps.Get,error,"{""outcome"":""denied""}"\r\n',
+    );
   });
 
   it("says so when the range has too many events", async () => {
-    const { AuditExportTooLargeError } =
-      await import("@/features/audit/lib/audit-csv");
+    const { AuditExportTooLargeError } = await import(
+      "@/features/audit/lib/audit-csv"
+    );
     fetchAuditRange.mockRejectedValue(new AuditExportTooLargeError());
     render(<AuditLogExport ownerId="tea-1" />);
     fireEvent.click(screen.getByRole("button", { name: /export as csv/i }));
@@ -75,5 +83,26 @@ describe("AuditLogExport", () => {
       "Choose a shorter range",
     );
     expect(click).not.toHaveBeenCalled();
+  });
+
+  // w3/m305: the page skeleton previews this row with its own labels, button
+  // and hint, so it wraps as the ready row does (production at 390 px: the
+  // bars' 144 px row became the ready 208 px one).
+  it("is previewed by the page skeleton with its own labels, button and hint", () => {
+    const parts = (root: HTMLElement) => ({
+      labels: [...root.querySelectorAll("label")].map((l) => l.textContent),
+      action: (root.querySelector("button") ?? root.querySelector(".invisible"))
+        ?.textContent,
+      hint: root.querySelector("p")?.textContent,
+    });
+    const ready = render(<AuditLogExport ownerId="tea-1" />);
+    const readyParts = parts(ready.container);
+    ready.unmount();
+
+    render(<AuditLogPanelSkeleton />);
+    expect(parts(screen.getByTestId("audit-log-export-frame"))).toEqual(
+      readyParts,
+    );
+    expect(readyParts.labels).toEqual(["Start date (UTC)", "End date (UTC)"]);
   });
 });

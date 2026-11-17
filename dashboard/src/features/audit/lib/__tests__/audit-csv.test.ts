@@ -1,148 +1,79 @@
-import { describe, expect, it, vi } from "vitest";
-import type { AuditEvent } from "@/features/audit/types";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AuditExportTooLargeError,
-  auditEventsToCSV,
+  auditLogsToCSV,
   exportRangeDays,
   exportRangeTimes,
   fetchAuditRange,
+  type RenderAuditLog,
 } from "@/features/audit/lib/audit-csv";
+import { config } from "@/config/config";
 
-const event = (overrides: Partial<AuditEvent> = {}): AuditEvent => ({
-  id: "aud-1",
+const log = (overrides: Partial<RenderAuditLog> = {}): RenderAuditLog => ({
   timestamp: "2026-11-10T09:00:00Z",
-  actor: "admin@example.com",
-  actorMethod: "session",
-  actorId: "",
-  actorEmail: "",
-  sourceIp: "",
-  userAgent: "",
-  instance: "",
-  action: "apps.Suspend",
+  event: "SuspendServiceEvent",
   status: "success",
-  resource: "srv-1",
-  targetName: "web",
-  displayNameFrom: "",
-  displayNameTo: "",
-  domain: "",
-  envGroupId: "",
-  envGroupName: "",
-  envVarKeys: [],
-  relation: "",
-  oauthClientId: "",
-  oauthAudience: "",
-  oauthScopes: [],
-  oauthGrantScopes: [],
+  actor: { type: "user", id: "usr-1", email: "admin@example.com" },
+  metadata: { service: "srv-1", targetName: "web" },
   ...overrides,
 });
 
-// w3/m305: Render's audit export — timestamp, actor, event, status, metadata.
-describe("auditEventsToCSV", () => {
-  it("writes Render's five columns with the rest of the event as JSON metadata", () => {
-    const csv = auditEventsToCSV([event()]);
+// w3/m305: Render's audit export — timestamp, actor, event, status, metadata —
+// written from the REST list's own rows, so the file equals what
+// GET /v1/owners/{ownerId}/audit-logs answers for the range.
+describe("auditLogsToCSV", () => {
+  it("writes Render's five columns, with REST's metadata map as JSON", () => {
+    const csv = auditLogsToCSV([log()]);
     const [header, row] = csv.trimEnd().split("\r\n");
     expect(header).toBe("timestamp,actor,event,status,metadata");
     expect(row).toBe(
-      '2026-11-10T09:00:00Z,admin@example.com,apps.Suspend,success,"{""resource"":""srv-1"",""targetName"":""web"",""actorMethod"":""session""}"',
+      '2026-11-10T09:00:00Z,admin@example.com,SuspendServiceEvent,success,"{""service"":""srv-1"",""targetName"":""web""}"',
     );
   });
 
-  // w5/183: what a rename, a domain verb or a link changed rides the metadata.
-  it("carries a rename's names and a domain in the metadata", () => {
-    const csv = auditEventsToCSV([
-      event({ displayNameFrom: "api", displayNameTo: "Checkout API" }),
-      event({ domain: "app.example.com" }),
-    ]);
-    const [, rename, domain] = csv.trimEnd().split("\r\n");
-    expect(rename).toContain('""from"":""api"",""to"":""Checkout API""');
-    expect(domain).toContain('""domain"":""app.example.com""');
-  });
-
-  // w9/m449: an env var row names its variables, never their values.
-  it("names an env var row's variables in the metadata", () => {
-    const csv = auditEventsToCSV([
-      event({
-        action: "UpdateEnvVarsEvent",
-        envVarKeys: ["API_KEY", "DB_URL"],
+  // The live check on production (2026-11-17) found the GraphQL-built file
+  // writing `denied` where REST and Render's enum say `error`.
+  it("keeps a denial as Render's error, with the outcome in the metadata", () => {
+    const csv = auditLogsToCSV([
+      log({
+        event: "apps.Get",
+        status: "error",
+        metadata: { outcome: "denied", relation: "can_view" },
       }),
     ]);
-    expect(csv.trimEnd().split("\r\n")[1]).toContain(
-      '""envVarKeys"":""API_KEY,DB_URL""',
+    expect(csv.trimEnd().split("\r\n")[1]).toBe(
+      '2026-11-10T09:00:00Z,admin@example.com,apps.Get,error,"{""outcome"":""denied"",""relation"":""can_view""}"',
     );
   });
 
   // w9/m450: Render's actor column is the person's email, or a deleted
-  // user's id; where they acted from rides the metadata in Render's keys.
-  it("writes the actor's email, else the id, and where they acted from", () => {
-    const csv = auditEventsToCSV([
-      event({
-        actor: "0b7f0e5c-4ad7-4b1f-9d5e-0d1f2a3b4c5d",
-        actorId: "usr-00000000000000000007",
-        actorEmail: "ada@example.com",
-        sourceIp: "198.51.100.23",
-        userAgent: "render-cli/2.27.0",
-      }),
-      event({
-        actor: "deleted:own-00000000000000000009",
-        actorId: "usr-00000000000000000009",
-      }),
-      event({ actor: "", actorMethod: "" }),
+  // user's id; a system row names nobody.
+  it("writes the actor's email, else the id, else nothing", () => {
+    const csv = auditLogsToCSV([
+      log(),
+      log({ actor: { type: "user", id: "usr-00000000000000000009" } }),
+      log({ actor: { type: "system" } }),
     ]);
     const [, person, deleted, system] = csv.trimEnd().split("\r\n");
-    expect(person).toMatch(/^2026-11-10T09:00:00Z,ada@example\.com,/);
-    expect(person).toContain(
-      '""source_ip"":""198.51.100.23"",""user_agent"":""render-cli/2.27.0""',
-    );
+    expect(person).toMatch(/^2026-11-10T09:00:00Z,admin@example\.com,/);
     expect(deleted).toMatch(/^2026-11-10T09:00:00Z,usr-00000000000000000009,/);
-    expect(deleted).not.toContain("source_ip");
-    expect(system).toMatch(/^2026-11-10T09:00:00Z,,apps\.Suspend,/);
-  });
-
-  // w4/m454: an OAuth access grant carries its client and the scopes it gave.
-  it("carries an OAuth access grant's client and granted scopes", () => {
-    const csv = auditEventsToCSV([
-      event({
-        action: "GrantOAuthAccessEvent",
-        resource: "oauth-client:dcr-claude",
-        targetName: "Claude Code",
-        oauthGrantScopes: ["openid", "bex.read"],
-      }),
-    ]);
-    const [, grant] = csv.trimEnd().split("\r\n");
-    expect(grant).toContain(
-      '""resource"":""oauth-client:dcr-claude"",""targetName"":""Claude Code""',
-    );
-    expect(grant).toContain('""oauthGrantScopes"":[""openid"",""bex.read""]');
-  });
-
-  // w9/m451: a shell session row names its instance in Render's key.
-  it("names the instance a shell session ran on in the metadata", () => {
-    const csv = auditEventsToCSV([
-      event({
-        action: "EndShellEvent",
-        resource: "service:srv-1",
-        instance: "srv-1-pod01",
-        sourceIp: "198.51.100.23",
-      }),
-    ]);
-    const row = csv.trimEnd().split("\r\n")[1];
-    expect(row).toContain(",EndShellEvent,success,");
-    expect(row).toContain('""instance"":""srv-1-pod01""');
-    expect(row).toContain('""source_ip"":""198.51.100.23""');
+    expect(system).toMatch(/^2026-11-10T09:00:00Z,,SuspendServiceEvent,/);
   });
 
   it("quotes commas, quotes and newlines", () => {
-    const csv = auditEventsToCSV([event({ actor: 'a,"b"\nc' })]);
+    const csv = auditLogsToCSV([
+      log({ actor: { type: "user", email: 'a,"b"\nc' } }),
+    ]);
     expect(csv).toContain('"a,""b""\nc"');
   });
 
   it("keeps a tenant-named cell that a spreadsheet would run as a formula as text", () => {
-    const csv = auditEventsToCSV([
-      event({ actor: "=HYPERLINK(1)", action: "+1", status: "denied" }),
+    const csv = auditLogsToCSV([
+      log({ actor: { type: "user", email: "=HYPERLINK(1)" }, event: "+1" }),
     ]);
     const row = csv.trimEnd().split("\r\n")[1];
     expect(
-      row.startsWith("2026-11-10T09:00:00Z,'=HYPERLINK(1),'+1,denied,"),
+      row.startsWith("2026-11-10T09:00:00Z,'=HYPERLINK(1),'+1,success,"),
     ).toBe(true);
   });
 });
@@ -162,76 +93,84 @@ describe("export range", () => {
   });
 });
 
-const page = (from: number, size: number) => ({
-  data: {
-    auditLogs: Array.from({ length: size }, (_, i) => ({
-      __typename: "AuditEvent",
-      ...event({ id: `aud-${from + i}` }),
-    })),
-  },
+const page = (from: number, size: number) =>
+  Array.from({ length: size }, (_, i) => ({
+    cursor: `aud-${from + i}`,
+    auditLog: log({
+      timestamp: `2026-11-10T09:00:${String(i % 60).padStart(2, "0")}Z`,
+    }),
+  }));
+
+const respond = (body: unknown, status = 200) =>
+  Promise.resolve(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("fetchAuditRange", () => {
-  it("pages past the last id until a short page, with the range on every call", async () => {
-    const query = vi
+  it("pages REST's list by its cursor until a short page, with the range on every call", async () => {
+    const fetch = vi
       .fn()
-      .mockResolvedValueOnce(page(0, 1000))
-      .mockResolvedValueOnce(page(1000, 3));
-    const events = await fetchAuditRange(
-      { query } as never,
-      "tea-1",
-      "2026-11-01",
-      "2026-11-10",
-    );
+      .mockReturnValueOnce(respond(page(0, 1000)))
+      .mockReturnValueOnce(respond(page(1000, 3)));
+    vi.stubGlobal("fetch", fetch);
+    const logs = await fetchAuditRange("tea-1", "2026-11-01", "2026-11-10");
 
-    expect(events).toHaveLength(1003);
-    expect(query).toHaveBeenCalledTimes(2);
-    expect(query.mock.calls[0][0].variables).toEqual({
-      ownerId: "tea-1",
+    expect(logs).toHaveLength(1003);
+    expect(logs[0]).toEqual(page(0, 1)[0].auditLog);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const first = new URL(fetch.mock.calls[0][0] as string);
+    expect(first.origin + first.pathname).toBe(
+      `${config.apiBaseUrl}/v1/owners/tea-1/audit-logs`,
+    );
+    expect(Object.fromEntries(first.searchParams)).toEqual({
       startTime: "2026-11-01T00:00:00Z",
       endTime: "2026-11-10T23:59:59.999999Z",
-      cursor: undefined,
-      limit: 1000,
+      limit: "1000",
     });
-    expect(query.mock.calls[1][0].variables.cursor).toBe("aud-999");
+    expect(fetch.mock.calls[0][1]).toMatchObject({
+      credentials: "include",
+      cache: "no-store",
+    });
+    const second = new URL(fetch.mock.calls[1][0] as string);
+    expect(second.searchParams.get("cursor")).toBe("aud-999");
   });
 
-  it("reads every page with no-cache, so an export leaves nothing in the cache", async () => {
-    const query = vi.fn().mockResolvedValueOnce(page(0, 1));
-    await fetchAuditRange(
-      { query } as never,
-      "tea-1",
-      "2026-11-01",
-      "2026-11-10",
+  it("fails on a refused read instead of writing a partial file", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockReturnValue(respond({ message: "forbidden" }, 403)),
     );
-    expect(query.mock.calls[0][0].fetchPolicy).toBe("no-cache");
+    await expect(
+      fetchAuditRange("tea-1", "2026-11-01", "2026-11-10"),
+    ).rejects.toThrow("403");
   });
 
   it("stops reading once aborted", async () => {
     const controller = new AbortController();
-    const query = vi.fn().mockImplementation(() => {
+    const fetch = vi.fn().mockImplementation(() => {
       controller.abort();
-      return Promise.resolve(page(0, 1000));
+      return respond(page(0, 1000));
     });
+    vi.stubGlobal("fetch", fetch);
     await expect(
-      fetchAuditRange(
-        { query } as never,
-        "tea-1",
-        "2026-11-01",
-        "2026-11-10",
-        controller.signal,
-      ),
+      fetchAuditRange("tea-1", "2026-11-01", "2026-11-10", controller.signal),
     ).rejects.toThrow();
-    expect(query).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("gives up with a named error past its row budget", async () => {
-    const query = vi
-      .fn()
-      .mockImplementation(() => Promise.resolve(page(0, 1000)));
+    const fetch = vi.fn().mockImplementation(() => respond(page(0, 1000)));
+    vi.stubGlobal("fetch", fetch);
     await expect(
-      fetchAuditRange({ query } as never, "tea-1", "2026-11-01", "2026-11-10"),
+      fetchAuditRange("tea-1", "2026-11-01", "2026-11-10"),
     ).rejects.toBeInstanceOf(AuditExportTooLargeError);
-    expect(query).toHaveBeenCalledTimes(20);
+    expect(fetch).toHaveBeenCalledTimes(20);
   });
 });

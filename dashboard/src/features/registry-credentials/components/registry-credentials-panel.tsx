@@ -16,7 +16,6 @@ import {
 } from "@/common/components/ui/table";
 import {
   PanelCenteredState,
-  PanelTableSkeleton,
   TableActionsHead,
 } from "@/common/components/panel-states";
 import { isForbiddenError } from "@/common/lib/graphql-error";
@@ -25,6 +24,7 @@ import { useRegistryCredentials } from "@/features/registry-credentials/hooks/us
 import { useDeleteRegistryCredential } from "@/features/registry-credentials/hooks/use-delete-registry-credential";
 import { RegistryCredentialRow } from "@/features/registry-credentials/components/registry-credential-row";
 import { CreateRegistryCredentialDialog } from "@/features/registry-credentials/components/create-registry-credential-dialog";
+import { RegistryCredentialsLoadingFrame } from "@/features/registry-credentials/components/registry-credentials-panel-skeleton";
 import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 
 /**
@@ -74,7 +74,7 @@ export function RegistryCredentialsPanel() {
             )}
           />
         ) : initialLoading ? (
-          <PanelTableSkeleton />
+          <RegistryCredentialsLoadingFrame />
         ) : credentials.length === 0 ? (
           <PanelCenteredState
             icon={<KeyRound />}
