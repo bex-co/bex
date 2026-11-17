@@ -1,6 +1,6 @@
 # w6 · m456 — Key Value connections stop at the plan's limit, as on Render (free 50 … 50g 50,000)
 
-**Worker:** worker6 **Goal:** every Key Value instance accepts exactly the connections its plan allows on Render, no fewer (a paid store is capped at 1,024 by its internal proxy today) and no more (a free store takes 1,024 where Render's takes 50), and the client past the limit receives Valkey's own `ERR max number of clients reached`. **Status:** blocked: t001–t009 done. t006's production checks passed and found two defects in the rollout, fixed in the same ship. t011 checks the fixed operator on production once the deploy carrying the fix lands (see BLOCKED — 2026-11-17, second).
+**Worker:** worker6 **Goal:** every Key Value instance accepts exactly the connections its plan allows on Render, no fewer (a paid store is capped at 1,024 by its internal proxy today) and no more (a free store takes 1,024 where Render's takes 50), and the client past the limit receives Valkey's own `ERR max number of clients reached`. **Status:** done (2026-11-17): every task done, and the definition of done holds on production (see Closeout).
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | t004 | [The limit reaches running servers and plan upgrades with `CONFIG SET`](done/t004.md) — **DONE** | 45m | t003 |
 | t005 | [kv-internal-proxy admits the plan's limit and lets Valkey answer the refusal](done/t005.md) — **DONE** | 1h | t003 |
 | t006 | [Ship, verify on production, and record the limits in ADR021 and ADR018](done/t006.md) — **DONE** | 45m | t002, t004, t005 |
-| t011 | [Production check of the fixed rollout: the limit's record lands, and a store waiting on another deferred change does not roll](t011.md) | 30m | t006 |
+| t011 | [Production check of the fixed rollout: the limit's record lands, and a store waiting on another deferred change does not roll](done/t011.md) — **DONE** | 30m | t006 |
 | t007 | [Render parity](done/t007.md) — **DONE** | 30m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t008, t009, t011 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t008, t009, t011 |
 
 ## Definition of done
 
@@ -126,3 +126,18 @@ ADR021 § 9 and ADR018 (the "Datastore connection limits by plan" row and a gap-
 - **Done.** t001–t009. The limits hold on production, and t006's fix is shipped (`git log origin/main --grep 'w6/m456 t006'`).
 - **Gate (time, clears by itself).** A production pin whose producer contains the fix: `git log origin/main --grep "pin platform images"`, then `git merge-base --is-ancestor <fix> <producer>`. The pin at 12:08Z makes a push or scheduled `deploy.yml` run deploy `main` from 18:08Z.
 - **Then.** t011 (the fixture's record lands with no restart; a free probe store edited to a pre-m456, pre-priority-class template adopts 60 without a second roll; the probe is deleted), then t010.
+
+## UNBLOCKED — 2026-11-17 (second): the production deploy carrying t006's fix landed
+
+- **Affected:** w6/m456 t011, t010. **Source:** verified evidence, read by the `/loopx w6` worker at 19:53Z.
+- **The pin.** `e36296ae8` ("pin platform images to e0a5ba20aac8", 18:33Z) is on `origin/main`, and `git merge-base --is-ancestor cba5b9b5a e0a5ba20aac8` holds (`cba5b9b5a` is t006's fix). Production's `bex-system` Deployments run `bex-operator@sha256:f7b06e9c…`, the digest that pin wrote to `deploy/gitops/base/bex.yaml`; the `bex-controller-manager` pod started at 18:38:07Z.
+- **Remaining gates:** none. **Next:** t011 on production, then t010.
+
+## Closeout — 2026-11-17 (t011, t010)
+
+- **t011 on production** (pin `e36296ae8`, carrying t006's fix `cba5b9b5a`): `red-dbpf5q5me2kc73f2l0og`'s StatefulSet records `260/<its valkey container>`, its server is still the process started on 2026-11-12, and the operator no longer logs "applied but not recorded". A free probe edited to a template with no `--maxclients` and no priority class rolled once for the edit, then ran `maxclients` 60 by `CONFIG SET` with the record on its StatefulSet, the same pod and no new ControllerRevision across 7 minutes of reconciles. The probe was deleted by ID (`GET` 404). Details: [t011](done/t011.md).
+- **Definition of done.**
+  - Free admits 50 and refuses the 51st with Valkey's error, `standard` admits 1,000, and the upgrade to `starter` runs 260 and admits 250 (t006, production).
+  - The proxy admits 5,000 (`TestBudgetAdmitsPastTheOld1024Cap`), and the refusal is Valkey's error on the plain and the TLS listener (t005; t006 on production).
+  - The fixed operator adopts the limit with no restart (t011), as the amended existing-store bullet requires. The first rollout's two restarts (t006) stand.
+  - `TestValkeyConnectionLimitsMatchRender` pins every plan id and alias. ADR021 § 9 and ADR018 record the limits and now the production verification. t002 found no store over its new limit.
