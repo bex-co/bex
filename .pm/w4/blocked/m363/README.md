@@ -1,6 +1,6 @@
 # w4 · m363 — A service's or environment group's secret files hold Render's 1 MB combined, not 512 KiB
 
-**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** blocked — release gate: t001–t007 and t009 are done and shipped. [t009](done/t009.md) (2026-11-17) keeps a map that a single OpenBao raft entry cannot hold in chunk entries. t008 replays the live DoD once a production pin carries t009's commit (see § Unblock 2026-11-17).
+**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** blocked — release gate: t001–t007 and t009 are done and shipped. [t009](done/t009.md) (2026-11-17) keeps a map that a single OpenBao raft entry cannot hold in chunk entries. t008 replays the live DoD once a production pin carries t009's commit `bdf45a69e` (see § Unblock 2026-11-17).
 
 ## Tasks (in order)
 
@@ -88,5 +88,5 @@ Filed as [w32/027](../../../w32/027.md). This milestone's build change, the `pro
 
 - **Gate checked.** Production runs pin `ef7e65cd3f46`, rolled out 2026-11-17 00:04Z. It carries this milestone's code `4e6c15481` and w32/027's admission fix `ca40b50cc`: `git merge-base --is-ancestor <sha> ef7e65cd3f46` holds for both.
 - **The release gate was not the last gate.** t009, the 500 at the bound found by round 393, was open code work. It was unblocked and done here; see [t009](done/t009.md).
-- **Remaining gate.** A production deploy whose pin carries t009's commit. It clears by itself (deploys run at 19:00, 00:00 and 05:00 UTC); `git merge-base --is-ancestor <t009 commit> <pin>` proves it.
+- **Remaining gate.** A production deploy whose pin carries t009's commit `bdf45a69e`. It clears by itself (deploys run at 19:00, 00:00 and 05:00 UTC); `git merge-base --is-ancestor bdf45a69e <pin>` proves it.
 - **Then.** t008 replays DoD 1–5 on production, including DoD 2 at exactly 1,048,576 bytes and at one byte over, with no bisection. It adds the repo-build fixture with a secret file that § Regression asks for.
