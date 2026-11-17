@@ -151,3 +151,151 @@ func TestBlueprintAliasRegistryRejectsUnreviewedTargets(t *testing.T) {
 		t.Fatal("unreviewed alias target accepted")
 	}
 }
+
+// w33/m435: Render documents afterFirstDeployCommand as "a deprecated alias
+// for" initialDeployHook. The pinned schema has no such property and the
+// compiler is fail-closed, so a file using it was refused as an unknown field.
+func TestBlueprintAfterFirstDeployCommandAlias(t *testing.T) {
+	for _, kind := range []string{"web", "pserv", "worker"} {
+		t.Run(kind, func(t *testing.T) {
+			manifest := "services:\n  - type: " + kind + "\n    name: app\n    runtime: image\n    image: {url: nginx:1}\n" +
+				"    preDeployCommand: npm run migrate\n    afterFirstDeployCommand: npm run seed\n"
+			source, ir, problems := CompileBlueprintIR(manifest)
+			if len(problems) != 0 {
+				t.Fatalf("alias rejected: %+v", problems)
+			}
+			fields := ir.Resources[0].Fields
+			if _, exists := fields["afterFirstDeployCommand"]; exists {
+				t.Fatal("alias leaked into canonical IR")
+			}
+			if hook, exists := fields["initialDeployHook"]; !exists || hook.Location.Line != 7 {
+				t.Fatalf("initialDeployHook presence/location lost: %+v", hook)
+			}
+			if _, err := decodeCompiledBlueprintManifest(source); err != nil {
+				t.Fatal(err)
+			}
+			stack, err := parseStack(DeployRequest{Manifest: manifest})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if req := stack.services[0].req; req.InitialDeployHook != "npm run seed" || req.PreDeployCommand != "npm run migrate" {
+				t.Fatalf("hook %q, pre-deploy %q; want the alias to carry the hook beside the pre-deploy command", req.InitialDeployHook, req.PreDeployCommand)
+			}
+		})
+	}
+}
+
+// A valid file's plan carries the hook under its canonical name, with a
+// warning located at the deprecated key.
+func TestBlueprintAfterFirstDeployCommandValidatesWithADeprecationWarning(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	manifest := "services:\n  - type: web\n    name: app\n    runtime: image\n    image: {url: nginx:1}\n    afterFirstDeployCommand: npm run seed\n"
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+	if err != nil || !v.Valid || len(v.Errors) != 0 || v.Plan == nil || len(v.Plan.Actions) != 1 {
+		t.Fatalf("ValidateBlueprint = %+v, %v; want valid with one create action", v, err)
+	}
+	if len(v.warnings) != 1 || v.warnings[0].Path == nil || *v.warnings[0].Path != "services[0].afterFirstDeployCommand" ||
+		v.warnings[0].Line == nil || *v.warnings[0].Line != 6 ||
+		v.warnings[0].Error != "afterFirstDeployCommand is deprecated; use initialDeployHook" {
+		t.Fatalf("warnings = %+v, want one deprecation located at services[0].afterFirstDeployCommand line 6", v.warnings)
+	}
+	notices := blueprintWarningNotices(v)
+	if len(notices) != 1 || notices[0].Severity != "warning" || notices[0].Path == nil || *notices[0].Path != "services[0].afterFirstDeployCommand" {
+		t.Fatalf("plan notices = %+v, want the deprecation as a located warning", notices)
+	}
+
+	// The canonical spelling earns none.
+	canonical, err := svc.ValidateBlueprint(context.Background(), "", strings.Replace(manifest, "afterFirstDeployCommand", "initialDeployHook", 1), "")
+	if err != nil || !canonical.Valid || len(canonical.warnings) != 0 {
+		t.Fatalf("canonical spelling = %+v, %v; want valid with no warning", canonical, err)
+	}
+
+	// Applied, the service carries the hook exactly as the canonical spelling does.
+	service, client := newService(nil)
+	if _, err := service.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	var apps appv1alpha1.AppList
+	if err := client.List(context.Background(), &apps); err != nil {
+		t.Fatal(err)
+	}
+	if len(apps.Items) != 1 || apps.Items[0].Spec.InitialDeployHook != "npm run seed" || apps.Items[0].Spec.PreDeployCommand != "" {
+		t.Fatalf("created services = %+v, want one carrying the hook and no pre-deploy command", apps.Items)
+	}
+}
+
+// Both spellings on one service are refused at the deprecated key, whether or
+// not their values agree; unlike env/runtime, nothing says which would win.
+func TestBlueprintAfterFirstDeployCommandWithInitialDeployHookIsRefused(t *testing.T) {
+	for name, fields := range map[string]string{
+		"different values": "initialDeployHook: npm run seed\n    afterFirstDeployCommand: npm run other",
+		"equal values":     "initialDeployHook: npm run seed\n    afterFirstDeployCommand: npm run seed",
+		"alias first":      "afterFirstDeployCommand: npm run seed\n    initialDeployHook: npm run seed",
+	} {
+		t.Run(name, func(t *testing.T) {
+			manifest := "services:\n  - type: web\n    name: app\n    runtime: image\n    image: {url: nginx:1}\n    " + fields + "\n"
+			_, problems := CompileBlueprintSource(manifest)
+			if len(problems) != 1 || problems[0].Code != "BLUEPRINT_ALIAS_CONFLICT" ||
+				problems[0].Path != "#/services/0/afterFirstDeployCommand" || problems[0].Line < 6 ||
+				!strings.Contains(problems[0].Message, "afterFirstDeployCommand is the deprecated alias of initialDeployHook") {
+				t.Fatalf("problems = %+v, want one alias conflict located at the deprecated key", problems)
+			}
+			svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+			v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+			if err != nil || v.Valid || len(v.Errors) != 1 || v.Errors[0].Path == nil || *v.Errors[0].Path != "services[0].afterFirstDeployCommand" {
+				t.Fatalf("ValidateBlueprint = %+v, %v; want one refusal at services[0].afterFirstDeployCommand", v, err)
+			}
+		})
+	}
+}
+
+// Render offers the hook on web and private services and background workers
+// only: a cron job or a static site refuses either spelling.
+func TestBlueprintAfterFirstDeployCommandStaysRefusedWhereTheHookIs(t *testing.T) {
+	for name, service := range map[string]string{
+		"cron":   "{type: cron, name: job, runtime: image, image: {url: nginx:1}, schedule: '0 * * * *', %s: npm run seed}",
+		"static": "{type: web, name: site, runtime: static, buildCommand: npm run build, staticPublishPath: dist, %s: npm run seed}",
+	} {
+		for _, field := range []string{"afterFirstDeployCommand", "initialDeployHook"} {
+			t.Run(name+"/"+field, func(t *testing.T) {
+				manifest := "services: [" + strings.Replace(service, "%s", field, 1) + "]"
+				_, problems := CompileBlueprintSource(manifest)
+				if len(problems) == 0 {
+					t.Fatalf("%s accepted on a %s service", field, name)
+				}
+				for _, p := range problems {
+					if strings.HasPrefix(p.Path, "#/services/0/"+field) {
+						return
+					}
+				}
+				t.Fatalf("no diagnostic at the authored key: %+v", problems)
+			})
+		}
+	}
+}
+
+// The registry accepts exactly the reviewed aliases: one more, one fewer or a
+// retargeted one fails the load.
+func TestBlueprintAliasRegistryMatchesTheReviewedSet(t *testing.T) {
+	registry := decodeCapabilityRegistry(t)
+	if got, want := len(registry.Aliases), len(reviewedBlueprintAliases); got != want || want != 4 {
+		t.Fatalf("registered aliases = %d, reviewed = %d; want 4 of each", got, want)
+	}
+	hook := "#/definitions/serverService/properties/afterFirstDeployCommand"
+	for _, kind := range []string{"cronService", "staticService"} {
+		if _, ok := registry.Aliases["#/definitions/"+kind+"/properties/afterFirstDeployCommand"]; ok {
+			t.Fatalf("the hook alias is registered on %s, which refuses the hook", kind)
+		}
+	}
+	alias := registry.Aliases[hook]
+	alias.Target = "#/definitions/serverService/properties/preDeployCommand"
+	registry.Aliases[hook] = alias
+	if err := validateRenderBlueprintCapabilityRegistry(renderBlueprintSchemaSource, &registry); err == nil {
+		t.Fatal("a hook alias retargeted at preDeployCommand was accepted")
+	}
+	registry = decodeCapabilityRegistry(t)
+	delete(registry.Aliases, hook)
+	if err := validateRenderBlueprintCapabilityRegistry(renderBlueprintSchemaSource, &registry); err == nil {
+		t.Fatal("a registry without the hook alias was accepted")
+	}
+}

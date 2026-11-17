@@ -110,8 +110,45 @@ type progressContext struct {
 	branch      string
 	serviceType string
 	wait        buildWait
+	hook        hookRun
 	namespace   string
 	name        string
+}
+
+// hookRun is the App's latest initialDeployHook run (status.initialDeployHook,
+// w33/m435): the one-time command the operator starts after a release is
+// live. The zero value is no run.
+type hookRun struct {
+	generation int64 // the release generation that was live when it started
+	status     string
+	message    string
+	startedAt  time.Time
+	finishedAt time.Time // zero while it runs
+}
+
+// appHookRun reads the App's recorded hook run; a record with no start time
+// narrates nothing.
+func appHookRun(app *appv1alpha1.App) hookRun {
+	run := app.Status.InitialDeployHook
+	if run == nil {
+		return hookRun{}
+	}
+	started, err := time.Parse(time.RFC3339, run.StartedAt)
+	if err != nil {
+		return hookRun{}
+	}
+	out := hookRun{generation: run.Generation, status: run.Status, message: run.Message, startedAt: started}
+	if finished, err := time.Parse(time.RFC3339, run.FinishedAt); err == nil {
+		out.finishedAt = finished
+	}
+	return out
+}
+
+// ranFor reports whether the run belongs to d: the hook starts only once d's
+// release is live, so only a row that went live under the run's generation.
+func (h hookRun) ranFor(d DeployProgress) bool {
+	return h.generation > 0 && h.generation == d.Generation && !d.FinishedAt.IsZero() &&
+		(d.Status == "live" || d.Status == "deactivated")
 }
 
 // newProgressContext snapshots an App CR for narration.
@@ -124,6 +161,7 @@ func newProgressContext(app *appv1alpha1.App) progressContext {
 		branch:      app.Spec.Branch,
 		serviceType: app.Spec.Type,
 		wait:        appBuildWait(app),
+		hook:        appHookRun(app),
 		namespace:   app.Namespace,
 		name:        app.Name,
 	}
@@ -220,6 +258,19 @@ func digitsOnly(s string) bool {
 	return true
 }
 
+// progressEntry is one platform line of the deploy deployID, stamped at t.
+func progressEntry(deployID string, t time.Time, msg string) LogEntry {
+	return LogEntry{
+		Timestamp: t.UTC().Format(time.RFC3339Nano),
+		Message:   msg,
+		Labels: map[string]string{
+			LabelType:     LogTypeBuild,
+			LabelInstance: deployID,
+			"container":   progressContainer,
+		},
+	}
+}
+
 // progressLines renders the platform lines a deploy row has earned so far.
 // Only observed moments produce lines — no invented clone/checkout stages
 // (those arrive as real BuildKit stdout once the pod runs). `deactivated`
@@ -254,17 +305,7 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		built = built && d.Built
 	}
 	var out []LogEntry
-	add := func(t time.Time, msg string) {
-		out = append(out, LogEntry{
-			Timestamp: t.UTC().Format(time.RFC3339Nano),
-			Message:   msg,
-			Labels: map[string]string{
-				LabelType:     LogTypeBuild,
-				LabelInstance: d.ID,
-				"container":   progressContainer,
-			},
-		})
-	}
+	add := func(t time.Time, msg string) { out = append(out, progressEntry(d.ID, t, msg)) }
 	if !d.CreatedAt.IsZero() {
 		if built {
 			add(d.CreatedAt, "==> Build queued")
@@ -312,6 +353,65 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		}
 	}
 	return out
+}
+
+// The initial deploy hook's narration (w33/m435). Render runs the hook after
+// the first successful deploy, so its lines follow the deploy's live line, and
+// a failure is a line in the log, never the deploy's status.
+const (
+	hookLineRunning   = "==> Running the initial deploy hook"
+	hookLineSucceeded = "==> Initial deploy hook succeeded"
+	hookLineFailed    = "==> Initial deploy hook failed"
+	hookLineRetry     = "==> The deploy stays live. The hook runs again after the next deploy goes live."
+)
+
+// hookLines renders the lines d earned from the initial deploy hook that ran
+// once it was live: one when it started, and how it ended. The operator stamps
+// both moments in whole seconds, so the start is held just after the row's
+// live line and the end at the close of its second: the hook's own output,
+// which the pod stamps in nanoseconds, then reads between the two.
+func hookLines(d DeployProgress, h hookRun) []LogEntry {
+	if !h.ranFor(d) {
+		return nil
+	}
+	var out []LogEntry
+	add := func(t time.Time, msg string) { out = append(out, progressEntry(d.ID, t, msg)) }
+	started := h.startedAt
+	if live := d.FinishedAt.Add(time.Millisecond); started.Before(live) {
+		started = live
+	}
+	add(started, hookLineRunning)
+	if h.finishedAt.IsZero() {
+		return out
+	}
+	finished := h.finishedAt.Add(time.Second - time.Nanosecond)
+	if finished.Before(started) {
+		finished = started
+	}
+	switch h.status {
+	case appv1alpha1.PreDeploySucceeded:
+		add(finished, hookLineSucceeded)
+	case appv1alpha1.PreDeployFailed:
+		line := hookLineFailed
+		if msg := strings.TrimSpace(h.message); msg != "" {
+			line += ": " + msg
+		}
+		add(finished, line)
+		add(finished, hookLineRetry)
+	}
+	return out
+}
+
+// hookEnd is when d's story ends once its hook is counted: the hook's end, the
+// zero time while it runs, else d's own finish.
+func hookEnd(d DeployProgress, h hookRun) time.Time {
+	if !h.ranFor(d) {
+		return d.FinishedAt
+	}
+	if h.finishedAt.IsZero() {
+		return time.Time{}
+	}
+	return h.finishedAt.Add(time.Second)
 }
 
 // terminalLines maps a terminal deploy status to its closing line(s). An empty
@@ -390,8 +490,9 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource s
 	merged := entries
 	for i, d := range rows {
 		// Skip rows that ended before the window opened; per-line keep()
-		// applies the exact bounds below.
-		if !q.Since.IsZero() && !d.FinishedAt.IsZero() && d.FinishedAt.Before(q.Since) {
+		// applies the exact bounds below. A row's initial deploy hook runs
+		// after the row itself closed, so it ends when the hook does.
+		if ended := hookEnd(d, pc.hook); !q.Since.IsZero() && !ended.IsZero() && ended.Before(q.Since) {
 			continue
 		}
 		if !q.keepPod(d.ID) || (q.Deploy != "" && d.ID != q.Deploy) {
@@ -403,7 +504,7 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource s
 			// only belong to the newest row; an older row must never borrow it.
 			rowPC.wait = buildWait{}
 		}
-		for _, e := range progressLines(d, rowPC) {
+		for _, e := range append(progressLines(d, rowPC), hookLines(d, pc.hook)...) {
 			if q.keep(e) {
 				merged = append(merged, e)
 			}

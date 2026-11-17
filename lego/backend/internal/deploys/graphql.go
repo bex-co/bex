@@ -66,6 +66,12 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// when no pre-deploy step ran. Distinguishes a migration failure from a
 		// health-check failure (both status=update_failed).
 		"preDeployStatus": gqlutil.StrField(func(d DeployView) any { return d.PreDeployStatus }),
+		// The Blueprint's one-time initialDeployHook, run after this deploy
+		// went live (w33/m435): "running"|"succeeded"|"failed", empty when it
+		// did not run for this deploy. It never changes status. FinishedAt is
+		// where the deploy's log ends once the hook has.
+		"initialDeployHookStatus":     gqlutil.StrField(func(d DeployView) any { return d.InitialDeployHookStatus }),
+		"initialDeployHookFinishedAt": gqlutil.TimeField(func(d DeployView) any { return d.InitialDeployHookFinishedAt }),
 		// Actionable cause of a failed deploy (w9/011): the operator's diagnosis
 		// (crash loop with the $PORT hint, image-pull failure, build error) or a
 		// health-gate-timeout line. Empty unless the deploy failed.

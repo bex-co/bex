@@ -701,6 +701,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err := r.relabelAppPods(ctx, &app); err != nil {
 		return ctrl.Result{}, err
 	}
+	// A running initial deploy hook gates nothing, so no later step of the
+	// pass waits on it; its end is read here, on every pass, live or not.
+	r.observeInitialDeployHook(ctx, &app)
 
 	// Adopt the release identity before any validation/convergence gate can fail.
 	// Those gates write a Ready=False condition against this metadata generation;
@@ -1014,9 +1017,9 @@ func (r *AppReconciler) observeCanceledPreDeploy(ctx context.Context, app *appv1
 		return childHealthRequeue
 	}
 	app.Status.PreDeploy = &ended
-	// A canceled release left to finish may have been the one running the
-	// initial hook; its success still completes it (w8/m63).
-	if _, initial := app.PreDeployStepCommand(); initial && ended.Status == appv1alpha1.PreDeploySucceeded {
+	// A canceled release left to finish may be one whose step an older
+	// operator ran as the initial hook; its success still completes the hook.
+	if ended.Status == appv1alpha1.PreDeploySucceeded && ranHookAsStep(app, job) {
 		app.Status.InitialDeployHookCompleted = true
 	}
 	return 0
@@ -3004,7 +3007,12 @@ func (r *AppReconciler) reconcileKubernetesRuntime(ctx context.Context, app *app
 		return res, err
 	}
 
-	return r.runningRequeue(ctx, app, plan.autoscaleRequeue)
+	// The release is live: the one-time initial deploy hook, if still owed,
+	// starts now and never before (w33/m435).
+	hookPoll := r.reconcileInitialDeployHook(ctx, app, dep, image)
+	res, err = r.runningRequeue(ctx, app, plan.autoscaleRequeue)
+	res.RequeueAfter = soonerRequeue(res.RequeueAfter, hookPoll)
+	return res, err
 }
 
 // convergeSharedChildren converges what every type's pass owns before its
@@ -3920,10 +3928,12 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 		"name", app.Name, "image", image, "replicas", replicas); err != nil {
 		return ctrl.Result{}, err
 	}
+	// Live: start the initial deploy hook if it is still owed (w33/m435).
+	hookPoll := r.reconcileInitialDeployHook(ctx, app, dep, image)
 	if res, owed := owedReleaseRequeue(app); owed {
 		return res, nil
 	}
-	return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
+	return ctrl.Result{RequeueAfter: soonerRequeue(childHealthRequeue, hookPoll)}, nil
 }
 
 // stampNotReadyCondition stamps the shared Ready=False shape for a rollout that
@@ -7367,8 +7377,12 @@ func (r *AppReconciler) settlePriorRelease(ctx context.Context, app *appv1alpha1
 // already passed or failed for the same revision. That terminal bookkeeping also
 // guards against re-creating the Job after its TTL reap.
 func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, bool, error) {
-	command, initialHook := app.PreDeployStepCommand()
-	if command == "" || canceledOverServed(app) {
+	command := app.PreDeployStepCommand()
+	// carried: the release has no command of its own, but an older operator
+	// recorded the initial hook as its step. That step is watched to its end
+	// and never started again (legacyHookStep).
+	carried := legacyHookStep(app)
+	if (command == "" && !carried) || canceledOverServed(app) {
 		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
 			return ctrl.Result{}, true, err
 		}
@@ -7412,23 +7426,31 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	ns := app.Namespace
 	rev := appv1alpha1.BuildRevision(gen)
 	jobName := predeploy.JobName(app.Name, rev)
-	failedPD := func(job, msg string) *appv1alpha1.PreDeployStatus {
-		return &appv1alpha1.PreDeployStatus{
-			Job: job, Generation: gen, Status: appv1alpha1.PreDeployFailed,
-			StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: msg,
-		}
+	notStarted := func(err error) (ctrl.Result, bool, error) {
+		return r.failPreDeploy(ctx, app, failedStep(jobName, gen, started, preDeployNotStarted(ctx, app, err)))
 	}
 
-	// A pre-deploy run is a pipeline task too (docs/ADR030 §13): out of build
-	// minutes, none starts this month. One whose Job already exists (its
-	// status write lost) runs on.
-	if firstForGen && appv1alpha1.BuildMinutesExhaustedIn(app, time.Now()) {
-		err := r.Get(ctx, client.ObjectKey{Namespace: ns, Name: jobName}, &batchv1.Job{})
+	if carried {
+		job := &batchv1.Job{}
+		err := r.Get(ctx, client.ObjectKey{Namespace: ns, Name: recordedJob}, job)
 		if apierrors.IsNotFound(err) {
-			return r.failPreDeploy(ctx, app, failedPD(jobName, appv1alpha1.BuildMinutesExhaustedMessage))
+			// Reaped before anyone read its end: nothing gates this release,
+			// and the hook, still owed, runs once the release is live.
+			app.Status.PreDeploy = nil
+			return ctrl.Result{}, false, nil
 		}
 		if err != nil {
-			return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(ctx, app, err)))
+			return ctrl.Result{}, true, err
+		}
+		return r.settlePreDeployJob(ctx, app, job, gen, started)
+	}
+
+	if firstForGen {
+		switch refused, err := r.outOfBuildMinutes(ctx, app, jobName); {
+		case err != nil:
+			return notStarted(err)
+		case refused:
+			return r.failPreDeploy(ctx, app, failedStep(jobName, gen, started, appv1alpha1.BuildMinutesExhaustedMessage))
 		}
 	}
 
@@ -7444,7 +7466,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	// 0 exists to prevent.
 	if firstForGen || (recordedJob != "" && recordedJob != jobName) {
 		if err := predeploy.CancelSuperseded(ctx, app.Name, string(app.UID), ns, jobName, r.Client); err != nil {
-			return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(ctx, app, err)))
+			return notStarted(err)
 		}
 	}
 
@@ -7462,65 +7484,53 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	}
 	pullSecrets := r.withLinkedSourcePullSecret(ctx, app, image, r.imagePullSecrets(app, image))
 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
-		return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(ctx, app, err)))
+		return notStarted(err)
 	}
-	job, err := predeploy.Ensure(ctx, predeploy.Options{
-		Name:             app.Name,
-		AppUID:           string(app.UID),
-		Namespace:        ns,
-		Workspace:        app.Labels[labelWorkspace],
-		Environment:      app.Labels[labelEnvironment],
-		AppNamespace:     app.Namespace,
-		VerifyImage:      r.TenantSignKeySecret != "",
-		Image:            image,
-		Command:          preDeployArgv(app, image, command),
-		Revision:         rev,
-		Generation:       gen,
-		Env:              withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)})),
-		EnvFrom:          envFromSources(release),
-		ImagePullSecrets: pullSecrets,
-		SecurityContext:  appSecCtx(app.Spec),
-		ContainerPolicy:  app.Spec.ContainerPolicy,
-		FreePlan:         isFreeApp(app),
-		EgressAppID:      appIDOrName(app),
-		Resources:        resourcesForTier(app.Spec.Tier),
-		ServingPool:      tiers.Compute.ServingPool(app.Spec.Tier),
-		Volumes:          vols,
-		VolumeMounts:     mounts,
-		Client:           r.Client,
-	})
+	opts := r.stepJobOptions(app, gen)
+	opts.Image = image
+	opts.Command = preDeployArgv(app, image, command)
+	opts.Env = withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)}))
+	opts.EnvFrom = envFromSources(release)
+	opts.ImagePullSecrets = pullSecrets
+	opts.SecurityContext = appSecCtx(app.Spec)
+	opts.Resources = resourcesForTier(app.Spec.Tier)
+	opts.Volumes, opts.VolumeMounts = vols, mounts
+	job, err := predeploy.Ensure(ctx, opts)
 	if err != nil {
 		// A transient API error (create/get) — requeue without marking the deploy
 		// failed; the migration itself hasn't reported an outcome.
 		return ctrl.Result{}, true, err
 	}
+	return r.settlePreDeployJob(ctx, app, job, gen, started)
+}
 
-	running := appv1alpha1.PreDeployStatus{
-		Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeployRunning, StartedAt: started,
-	}
+// settlePreDeployJob reads the release's pre-deploy Job once: an ended Job is
+// the step's verdict, a running one holds the rollout. halt is as for
+// reconcilePreDeploy.
+func (r *AppReconciler) settlePreDeployJob(ctx context.Context, app *appv1alpha1.App, job *batchv1.Job, gen int64, started string) (ctrl.Result, bool, error) {
+	running := runningStep(job.Name, gen, started)
 	if ended, ok := preDeployEnded(ctx, r.Client, job, running); ok {
 		if ended.Status == appv1alpha1.PreDeployFailed {
 			return r.failPreDeploy(ctx, app, &ended)
 		}
 		app.Status.PreDeploy = &ended
-		if initialHook {
-			// Its one success completes the hook: no later release selects it.
+		if ranHookAsStep(app, job) {
+			// An older operator ran the hook as this step: its one success
+			// completes the hook, so no second run starts once the release
+			// is live (w33/m435).
 			app.Status.InitialDeployHookCompleted = true
 		}
 		r.updateStatusRetrying(ctx, app, "predeploy-succeeded")
 		logf.FromContext(ctx).Info("pre-deploy succeeded", "name", app.Name, "job", job.Name)
 		return ctrl.Result{}, false, nil // proceed to the rollout
 	}
-	// Pending/Running — keep the old revision serving and requeue.
-	// A malformed reference fails immediately; permanent pull errors wait
-	// through the retry grace window. Delete the Job before recording failure
-	// so a late pull cannot run the migration after that verdict. A failed
-	// delete retries rather than recording a verdict it can't back.
-	if msg := predeploy.PullFailure(ctx, r.Client, job, time.Now()); msg != "" {
-		if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); client.IgnoreNotFound(err) != nil {
-			return ctrl.Result{}, true, err
-		}
-		return r.failPreDeploy(ctx, app, failedPD(job.Name, msg))
+	// Pending/Running — keep the old revision serving and requeue, unless its
+	// image can never be pulled.
+	switch msg, err := r.endedByPullFailure(ctx, job); {
+	case err != nil:
+		return ctrl.Result{}, true, err
+	case msg != "":
+		return r.failPreDeploy(ctx, app, failedStep(job.Name, gen, started, msg))
 	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	app.Status.PreDeploy = &running
@@ -7530,6 +7540,75 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	})
 	r.updateStatusRetrying(ctx, app, "predeploy-running")
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, true, nil
+}
+
+// outOfBuildMinutes reports that the first run of the pre-deploy plane Job
+// jobName must not start: a run is a pipeline task (docs/ADR030 §13), and out
+// of build minutes none starts this month. One whose Job already exists (its
+// status write lost) runs on.
+func (r *AppReconciler) outOfBuildMinutes(ctx context.Context, app *appv1alpha1.App, jobName string) (bool, error) {
+	if !appv1alpha1.BuildMinutesExhaustedIn(app, time.Now()) {
+		return false, nil
+	}
+	err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: jobName}, &batchv1.Job{})
+	if apierrors.IsNotFound(err) {
+		return true, nil
+	}
+	return false, err
+}
+
+// endedByPullFailure is why a pending pre-deploy plane Job can never start
+// its command, "" while it still may: a malformed reference at once, a
+// permanent pull error after the retry grace window. The Job is deleted
+// before the message is returned, so a late pull cannot run the command after
+// its failure is on record; a failed delete is an error, never a verdict it
+// cannot back.
+func (r *AppReconciler) endedByPullFailure(ctx context.Context, job *batchv1.Job) (string, error) {
+	msg := predeploy.PullFailure(ctx, r.Client, job, time.Now())
+	if msg == "" {
+		return "", nil
+	}
+	if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); client.IgnoreNotFound(err) != nil {
+		return "", err
+	}
+	return msg, nil
+}
+
+// runningStep is the record of a pre-deploy plane command running as job for
+// release gen.
+func runningStep(job string, gen int64, started string) appv1alpha1.PreDeployStatus {
+	return appv1alpha1.PreDeployStatus{Job: job, Generation: gen, Status: appv1alpha1.PreDeployRunning, StartedAt: started}
+}
+
+// failedStep is the record of a pre-deploy plane command (the step or the
+// initial hook) that failed or could not start for release gen.
+func failedStep(job string, gen int64, started, msg string) *appv1alpha1.PreDeployStatus {
+	return &appv1alpha1.PreDeployStatus{
+		Job: job, Generation: gen, Status: appv1alpha1.PreDeployFailed,
+		StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: msg,
+	}
+}
+
+// stepJobOptions is what every pre-deploy plane Job of app shares for release
+// gen: its identity, labels, admission policy and placement. The caller adds
+// the container (image, command, env, mounts).
+func (r *AppReconciler) stepJobOptions(app *appv1alpha1.App, gen int64) predeploy.Options {
+	return predeploy.Options{
+		Name:            app.Name,
+		AppUID:          string(app.UID),
+		Namespace:       app.Namespace,
+		Workspace:       app.Labels[labelWorkspace],
+		Environment:     app.Labels[labelEnvironment],
+		AppNamespace:    app.Namespace,
+		VerifyImage:     r.TenantSignKeySecret != "",
+		Revision:        appv1alpha1.BuildRevision(gen),
+		Generation:      gen,
+		ContainerPolicy: app.Spec.ContainerPolicy,
+		FreePlan:        isFreeApp(app),
+		EgressAppID:     appIDOrName(app),
+		ServingPool:     tiers.Compute.ServingPool(app.Spec.Tier),
+		Client:          r.Client,
+	}
 }
 
 // preDeployEnded is step settled to how its Job ended, dated by the Job's own
@@ -7591,8 +7670,9 @@ func preDeployNotStarted(ctx context.Context, app *appv1alpha1.App, err error) s
 // against the served image — as a Job for the served generation, since the gen-2
 // verdict never matches it — and held the service in Deploying until it finished.
 func hasPreDeployStep(app *appv1alpha1.App) bool {
-	command, _ := app.PreDeployStepCommand()
-	return strings.TrimSpace(command) != "" && scalableRuntime(app) && !canceledOverServed(app)
+	// Both selections are empty for a type that rolls no Deployment.
+	owed := strings.TrimSpace(app.PreDeployStepCommand()) != "" || legacyHookStep(app)
+	return owed && !canceledOverServed(app)
 }
 
 // preDeployArgv launches a pre-deploy command the way its service launches a
@@ -7634,11 +7714,7 @@ type replicaPlan struct {
 // can scale: web and private services and background workers. Cron jobs and
 // static sites have none.
 func scalableRuntime(app *appv1alpha1.App) bool {
-	switch app.Spec.Type {
-	case appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite, appv1alpha1.TypeBuildSource:
-		return false
-	}
-	return true
+	return app.RollsDeployment()
 }
 
 // holdPendingArtifact is holdServingRelease for every halt but a registry wait,

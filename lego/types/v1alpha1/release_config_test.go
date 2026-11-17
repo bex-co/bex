@@ -58,7 +58,7 @@ func TestRuntimeSpecRunsTheSelectionsRecordedSettings(t *testing.T) {
 	if spec.Port != 3000 || spec.MaxShutdownDelaySeconds != nil || spec.PreDeployCommand != "echo one" {
 		t.Fatalf("selected runtime = port %d delay %v pre-deploy %q, want the recorded 3000, default, echo one", spec.Port, spec.MaxShutdownDelaySeconds, spec.PreDeployCommand)
 	}
-	if command, _ := app.PreDeployStepCommand(); command != "echo one" || app.ServingPort() != 3000 {
+	if command := app.PreDeployStepCommand(); command != "echo one" || app.ServingPort() != 3000 {
 		t.Fatalf("readers see pre-deploy %q, port %d", command, app.ServingPort())
 	}
 	if app.Spec.Port != 9000 || *app.Spec.MaxShutdownDelaySeconds != 40 {

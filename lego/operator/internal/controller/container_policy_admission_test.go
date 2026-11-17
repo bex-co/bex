@@ -29,6 +29,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
@@ -839,7 +840,23 @@ func admissionTierWorkloads(namespace, policy, tier string) []client.Object {
 	var migrations batchv1.JobList
 	Expect(r.List(ctx, &migrations)).To(Succeed())
 	Expect(migrations.Items).To(HaveLen(1))
-	return append(workloads, &migrations.Items[0])
+	workloads = append(workloads, &migrations.Items[0])
+	// The initial deploy hook's Job (w33/m435), copied from the live release's
+	// template: it mounts the service's disk beside the instance, in the
+	// instance's own user namespace setting and off the tenant-pool selector.
+	r, app = newApp("hook", appv1alpha1.TypeWebService)
+	app.Spec.InitialDeployHook = "true"
+	app.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
+	Expect(r.Update(ctx, app)).To(Succeed())
+	live := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	Expect(r.applyServingDeployment(ctx, app, live, webParams(), nil)).To(Succeed())
+	app.Status.ActiveRevision = releaseRevision(app)
+	r.reconcileInitialDeployHook(ctx, app, live, "busybox:latest")
+	hook := &batchv1.Job{}
+	Expect(r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: predeploy.HookJobName(app.Name, releaseBuildRevision(app))}, hook)).To(Succeed())
+	Expect(hook.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("VolumeSource.PersistentVolumeClaim", Not(BeNil()))),
+		"the hook Job under admission must be the disk-sharing one")
+	return append(workloads, hook)
 }
 
 // admissionEdgeCacheWorkloads is the real Deployment of a paid image-port web

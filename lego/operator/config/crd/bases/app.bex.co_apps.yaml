@@ -613,10 +613,12 @@ spec:
               initialDeployHook:
                 description: |-
                   InitialDeployHook is Render's Blueprint initialDeployHook: a one-time
-                  command the operator runs in place of preDeployCommand for releases until
-                  one has run it to success (status.initialDeployHookCompleted), after which
-                  every release runs preDeployCommand alone (w8/m63). Keeping it separate
-                  leaves the regular command recoverable, even when the two are equal.
+                  command the operator runs as its own Job after the service's first
+                  release is live, beside preDeployCommand and never in its place
+                  (w33/m435). A failed run leaves the deploy live and is retried after the
+                  next release goes live; one success sets
+                  status.initialDeployHookCompleted and nothing selects it again. See
+                  docs/ADR004-app-deployment.md § Initial deploy hook.
                 maxLength: 4096
                 type: string
               ipAllowList:
@@ -1420,6 +1422,45 @@ spec:
                     type: string
                 required:
                 - image
+                type: object
+              initialDeployHook:
+                description: |-
+                  InitialDeployHook is the latest run of spec.initialDeployHook, in the
+                  pre-deploy step's shape: its Job, the release generation that was live
+                  when it started, and how it ended. It is separate from preDeploy because
+                  the hook runs after that release's rollout and never gates or fails a
+                  deploy (w33/m435). Nil until the hook first starts.
+                properties:
+                  finishedAt:
+                    description: FinishedAt is when it completed or failed (RFC3339);
+                      empty while running.
+                    type: string
+                  generation:
+                    description: |-
+                      Generation is the spec generation this pre-deploy step ran for, so a stale
+                      status from an earlier revision is distinguishable from the current one.
+                    format: int64
+                    type: integer
+                  job:
+                    description: |-
+                      Job is the Kubernetes Job name backing this pre-deploy run
+                      ("pre-<name>-gen-<generation>"); the API reads its pod logs from it.
+                    type: string
+                  message:
+                    description: Message is a short human-readable detail, e.g. the
+                      failure reason.
+                    type: string
+                  startedAt:
+                    description: StartedAt is when the pre-deploy Job began (RFC3339);
+                      empty before it starts.
+                    type: string
+                  status:
+                    description: 'Status is the step outcome: Running, Succeeded,
+                      or Failed.'
+                    type: string
+                required:
+                - job
+                - status
                 type: object
               initialDeployHookCompleted:
                 description: |-

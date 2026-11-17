@@ -83,6 +83,14 @@ type renderDeploy struct {
 	// Distinguishes a migration failure from a health-check failure (both
 	// status=update_failed). Logs: GET /v1/logs?service=<id>&type=predeploy.
 	PreDeployStatus string `json:"preDeployStatus,omitempty"`
+	// InitialDeployHookStatus is how the Blueprint's one-time
+	// initialDeployHook ran after this deploy went live (bex extra, w33/m435):
+	// "running" | "succeeded" | "failed"; omitted when it did not run for this
+	// deploy. It never changes status: the deploy is live before the hook
+	// starts and stays live whatever it does. InitialDeployHookFinishedAt is
+	// when the run ended. Its output: GET /v1/logs?resource=<id>&type=build.
+	InitialDeployHookStatus     string `json:"initialDeployHookStatus,omitempty"`
+	InitialDeployHookFinishedAt string `json:"initialDeployHookFinishedAt,omitempty"`
 	// FailureReason is the actionable cause of a failed deploy (bex extra,
 	// w9/011): the operator's diagnosis (crash loop with the $PORT hint,
 	// image-pull failure, an unresolvable Secret/ConfigMap reference naming the
@@ -139,6 +147,9 @@ func toRenderDeploy(d DeployView) renderDeploy {
 		FailureReason:   d.FailureReason,
 		CancelReason:    d.CancelReason,
 		StallReason:     d.StallReason,
+
+		InitialDeployHookStatus:     d.InitialDeployHookStatus,
+		InitialDeployHookFinishedAt: formatTimePtr(d.InitialDeployHookFinishedAt),
 	}
 	if d.Image != "" {
 		out.Image = &renderDeployImage{Ref: d.Image, Sha: d.ImageSHA}

@@ -236,6 +236,11 @@ func (in *AppStatus) DeepCopyInto(out *AppStatus) {
 		*out = new(PreDeployStatus)
 		**out = **in
 	}
+	if in.InitialDeployHook != nil {
+		in, out := &in.InitialDeployHook, &out.InitialDeployHook
+		*out = new(PreDeployStatus)
+		**out = **in
+	}
 	if in.BuildRun != nil {
 		in, out := &in.BuildRun, &out.BuildRun
 		*out = new(BuildRunStatus)

@@ -67,7 +67,8 @@ type MCPResultType struct {
 // not in Render's type fails AssertRenderMCPResult; add one only with its
 // ADR018 record.
 var MCPResultExtensions = map[string][]string{
-	"Deploy": {"bexTrigger", "cancelReason", "failureReason", "preDeployStatus", "rollbackOf", "serviceId", "stallReason"},
+	"Deploy": {"bexTrigger", "cancelReason", "failureReason", "initialDeployHookFinishedAt", "initialDeployHookStatus",
+		"preDeployStatus", "rollbackOf", "serviceId", "stallReason"},
 	"KeyValue": {"blueprintId", "externalHost", "internalAuth", "projectId", "public", "statusReason", "statusReasonCode",
 		"suspended"},
 	"KeyValueDetail": {"blueprintId", "dashboardUrl", "externalHost", "internalAuth", "projectId", "public", "statusReason",

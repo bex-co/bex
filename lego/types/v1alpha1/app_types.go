@@ -904,10 +904,12 @@ type AppSpec struct {
 	PreDeployCommand string `json:"preDeployCommand,omitempty"`
 
 	// InitialDeployHook is Render's Blueprint initialDeployHook: a one-time
-	// command the operator runs in place of preDeployCommand for releases until
-	// one has run it to success (status.initialDeployHookCompleted), after which
-	// every release runs preDeployCommand alone (w8/m63). Keeping it separate
-	// leaves the regular command recoverable, even when the two are equal.
+	// command the operator runs as its own Job after the service's first
+	// release is live, beside preDeployCommand and never in its place
+	// (w33/m435). A failed run leaves the deploy live and is retried after the
+	// next release goes live; one success sets
+	// status.initialDeployHookCompleted and nothing selects it again. See
+	// docs/ADR004-app-deployment.md § Initial deploy hook.
 	// +optional
 	// +kubebuilder:validation:MaxLength=4096
 	InitialDeployHook string `json:"initialDeployHook,omitempty"`
@@ -1571,7 +1573,9 @@ type ReleaseStart struct {
 
 // PreDeployStatus records the outcome of the pre-deploy command
 // (spec.preDeployCommand) for the revision the operator is currently rolling
-// out, or for a canceled release whose step was left to finish (w5/085). It is
+// out, or for a canceled release whose step was left to finish (w5/085).
+// status.initialDeployHook records the one-time hook's run in the same shape.
+// It is
 // populated only when a pre-deploy step is configured, and lets the
 // deploy record show that step's progress — and tell a pre-deploy failure apart
 // from a health-check failure — without a client having to list Jobs. Mirrors
@@ -1896,6 +1900,14 @@ type AppStatus struct {
 	// success, so no later release selects it again. Set only by the operator.
 	// +optional
 	InitialDeployHookCompleted bool `json:"initialDeployHookCompleted,omitempty"`
+
+	// InitialDeployHook is the latest run of spec.initialDeployHook, in the
+	// pre-deploy step's shape: its Job, the release generation that was live
+	// when it started, and how it ended. It is separate from preDeploy because
+	// the hook runs after that release's rollout and never gates or fails a
+	// deploy (w33/m435). Nil until the hook first starts.
+	// +optional
+	InitialDeployHook *PreDeployStatus `json:"initialDeployHook,omitempty"`
 
 	// BuildRun is the execution window of the most recent terminal source
 	// build, read off the build Job's own status timestamps (w6/m123). It is

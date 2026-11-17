@@ -35,12 +35,19 @@ limitations under the License.
 // supplies the container's image, command, and the same env/secrets the app pod
 // gets (appEnv/envFromSources/imagePullSecrets), so "what a migration can reach"
 // stays defined next to the app container, not duplicated here.
+//
+// The plane runs a second command in the same Job shape: Render's one-time
+// initialDeployHook (StepInitialDeployHook, w33/m435). It differs in when the
+// controller starts it (after the first release is live, never before a
+// rollout), in what it may mount (the service's persistent disk) and in that a
+// newer release never cancels it.
 package predeploy
 
 import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +55,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,6 +78,23 @@ const (
 	labelWorkspace = appv1alpha1.LabelWorkspace
 	// containerName is the Job's single container.
 	containerName = "predeploy"
+)
+
+// LabelStep says which of the plane's two commands a Job and its pod run
+// (w33/m435). A Job without it was created by an operator that ran the hook
+// as the pre-deploy step.
+const LabelStep = "app.bex.co/predeploy-step"
+
+// Step is a LabelStep value.
+type Step string
+
+const (
+	// StepPreDeploy is a release's preDeployCommand, run before every rollout.
+	// The zero Step means it.
+	StepPreDeploy Step = "pre-deploy"
+	// StepInitialDeployHook is the service's one-time initialDeployHook, run
+	// after the first release is live.
+	StepInitialDeployHook Step = "initial-deploy-hook"
 )
 
 // predeployTimeout bounds a single pre-deploy Job's wall-clock (its Job
@@ -118,6 +143,7 @@ type Options struct {
 	Command      []string // argv the controller chose for App.spec.preDeployCommand (shell launch rule: w8/172)
 	Revision     string   // deterministic per-revision tag, e.g. "gen-7" (names the Job)
 	Generation   int64    // release generation this step gates (stamped on the pod for traceability)
+	Step         Step     // which command this is; empty means StepPreDeploy
 
 	Env              []corev1.EnvVar
 	EnvFrom          []corev1.EnvFromSource
@@ -137,10 +163,31 @@ type Options struct {
 	ServingPool string
 	// Volumes/VolumeMounts carry the app pod's /etc/secrets projection so a
 	// migration can read the same secret files; nil when the app has none.
+	//
+	// A claim among them is the service's persistent disk, which only the
+	// initial deploy hook mounts (Render: "downloading files to a persistent
+	// disk"; its pre-deploy command has no disk access). The volume is
+	// ReadWriteOnce, so that Job's pod sits on the instance's node
+	// (sharesDisk), and it mounts the volume as the instance does: HostUsers
+	// is the instance pod's own setting, since a pod user namespace needs an
+	// idmappable filesystem, which the local-path class is not.
 	Volumes      []corev1.Volume
 	VolumeMounts []corev1.VolumeMount
+	HostUsers    *bool
 
 	Client client.Client
+}
+
+// sharesDisk reports a Job that mounts the service's persistent disk.
+func (o Options) sharesDisk() bool {
+	return slices.ContainsFunc(o.Volumes, func(v corev1.Volume) bool { return v.PersistentVolumeClaim != nil })
+}
+
+func (o Options) step() Step {
+	if o.Step == "" {
+		return StepPreDeploy
+	}
+	return o.Step
 }
 
 // JobName is the deterministic per-revision pre-deploy Job name: re-reconciling
@@ -149,6 +196,20 @@ type Options struct {
 // skip the second one's migration entirely.
 func JobName(name, revision string) string {
 	return appv1alpha1.PreDeployJobName(name, revision)
+}
+
+// HookJobName is the initial deploy hook's Job name for the release that was
+// live when it started. One Job per release generation, like JobName: a hook
+// that ended for a release is never run again for it.
+func HookJobName(name, revision string) string {
+	return appv1alpha1.InitialDeployHookJobName(name, revision)
+}
+
+func (o Options) jobName() string {
+	if o.step() == StepInitialDeployHook {
+		return HookJobName(o.Name, o.Revision)
+	}
+	return JobName(o.Name, o.Revision)
 }
 
 // Job constructs the pre-deploy Job for o (a pure function — no cluster access —
@@ -183,11 +244,13 @@ func Job(o Options) *batchv1.Job {
 	}
 	labels := execution.PodLabels(o.Name, o.AppUID, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
 	labels[LabelService] = o.Name
+	labels[LabelStep] = string(o.step())
 	// The release revision, as on build Jobs: bex-api meters pre-deploy runs as
 	// build minutes and exempts the platform's own rebuilds by it (w6/m307).
 	labels[appv1alpha1.LabelBuildRevision] = o.Revision
 	podLabels := execution.PodLabels(o.Name, o.AppUID, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
 	podLabels[LabelService] = o.Name
+	podLabels[LabelStep] = string(o.step())
 	// Every widened policy (image-v1, render-v1) carries its admission marker;
 	// strict pre-deploy pods stay unlabeled.
 	if len(appv1alpha1.ContainerPolicyCapabilities(o.ContainerPolicy)) > 0 {
@@ -224,10 +287,14 @@ func Job(o Options) *batchv1.Job {
 	}
 	execution.HardenPod(&podSpec)
 	execution.PlaceOnServingPool(&podSpec, o.ServingPool)
+	if o.sharesDisk() {
+		placeBesideInstance(&podSpec, o.Name, o.HostUsers)
+		podSpec.Containers[0].Resources = spareCapacityResources(o.Resources)
+	}
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            JobName(o.Name, o.Revision),
+			Name:            o.jobName(),
 			Namespace:       o.Namespace,
 			Labels:          labels,
 			OwnerReferences: owners,
@@ -249,6 +316,60 @@ func Job(o Options) *batchv1.Job {
 			},
 		},
 	}
+}
+
+// placeBesideInstance pins a disk-sharing pod to the node the service's own
+// instance runs on. A ReadWriteOnce volume mounts a second time only there;
+// anywhere else the pod waits on Multi-Attach until the Job's deadline. Only
+// the service's instances carry a revision label (Job pods carry the app label
+// alone), so the term never matches this pod or a sibling Job's. The pool
+// selector HardenPod set is dropped: the instance's node is the one node this
+// pod can run on, whatever pool it is in.
+func placeBesideInstance(spec *corev1.PodSpec, service string, hostUsers *bool) {
+	spec.HostUsers = hostUsers
+	spec.NodeSelector = nil
+	if spec.Affinity == nil {
+		spec.Affinity = &corev1.Affinity{}
+	}
+	spec.Affinity.PodAffinity = &corev1.PodAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{execution.LabelApp: service},
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key: appv1alpha1.LabelRevision, Operator: metav1.LabelSelectorOpExists,
+				}},
+			},
+			TopologyKey: corev1.LabelHostname,
+		}},
+	}
+}
+
+// spareCapacityMemory is what a disk-sharing pod reserves of its node's
+// memory, as the disk snapshot Job does.
+var spareCapacityMemory = resource.MustParse("64Mi")
+
+// spareCapacityResources keeps r's limits and reserves next to nothing. A
+// disk-sharing pod can run on one node only, the instance's, and bin-packing
+// fills nodes to their last millicores: a pod requesting the tier's full size
+// there would wait out its Job's deadline unscheduled, and no autoscaler can
+// add room to a node. So it runs on that node's spare capacity, up to the
+// tier's limits (the disk snapshot Job's rule, learned the same way). Each
+// zero is explicit: an absent request defaults to its limit.
+func spareCapacityResources(r corev1.ResourceRequirements) corev1.ResourceRequirements {
+	if len(r.Limits) == 0 {
+		return r
+	}
+	requests := make(corev1.ResourceList, len(r.Limits))
+	for name := range r.Limits {
+		requests[name] = resource.MustParse("0")
+	}
+	if limit, ok := r.Limits[corev1.ResourceMemory]; ok {
+		requests[corev1.ResourceMemory] = spareCapacityMemory
+		if limit.Cmp(spareCapacityMemory) < 0 {
+			requests[corev1.ResourceMemory] = limit
+		}
+	}
+	return corev1.ResourceRequirements{Limits: r.Limits, Requests: requests}
 }
 
 // Ensure creates the pre-deploy Job if it does not already exist, returning the
@@ -284,6 +405,32 @@ func Observe(j *batchv1.Job) State {
 // for a command that never started. Its own sentences are worded from the
 // shared templates, which the dashboard words in its own language (w4/591).
 func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) string {
+	return wordedFor(j, failureMessage(ctx, cl, j))
+}
+
+// isHook reports a Job that runs the initial deploy hook.
+func isHook(j *batchv1.Job) bool {
+	return j.Labels[LabelStep] == string(StepInitialDeployHook)
+}
+
+// hookWording turns a pre-deploy failure sentence into the hook's: the same
+// diagnosis names the command that failed, and the hook's output is in the
+// deploy's log, not behind a "pre-deploy logs" filter.
+var hookWording = strings.NewReplacer(
+	"the pre-deploy command", "the initial deploy hook",
+	"; check the pre-deploy logs", "",
+	"there are no pre-deploy logs", "it wrote no output",
+)
+
+// wordedFor is msg for j's own command: a hook Job's failure names the hook.
+func wordedFor(j *batchv1.Job, msg string) string {
+	if msg == "" || !isHook(j) {
+		return msg
+	}
+	return hookWording.Replace(msg)
+}
+
+func failureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) string {
 	// A pod that never got its image never ran the command: no log to point
 	// at, and the deadline only measured the pull retries (w8/m44).
 	if w, _ := pullFailure(ctx, cl, j); w != nil {
@@ -346,7 +493,7 @@ func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time
 	if !PermanentPullFailure(w, created, now) {
 		return ""
 	}
-	return pullFailureMessage(w)
+	return wordedFor(j, pullFailureMessage(w))
 }
 
 // PermanentPullFailure is shared by pre-deploy Jobs and rollout pods. Malformed
@@ -432,7 +579,9 @@ func jobPods(ctx context.Context, cl client.Reader, j *batchv1.Job) []corev1.Pod
 // the named service EXCEPT keep (the current revision's Job). This is the
 // newest-wins policy — a new revision supersedes an older revision's in-flight
 // migration — without disturbing the current one. Not-found on delete is
-// tolerated (concurrent GC).
+// tolerated (concurrent GC). An initial deploy hook's Job is never superseded:
+// a one-time seed stopped halfway is worse than one that finishes, and its
+// outcome gates nothing.
 //
 // appUID scopes the selection to this App's immutable, globally-unique UID
 // (round-5 finding 5): the Job name derives from the workspace-local service
@@ -450,7 +599,7 @@ func CancelSuperseded(ctx context.Context, name, appUID, namespace, keep string,
 	}
 	for i := range jobs.Items {
 		j := &jobs.Items[i]
-		if j.Name == keep {
+		if j.Name == keep || isHook(j) {
 			continue
 		}
 		if execution.JobFinished(j) {

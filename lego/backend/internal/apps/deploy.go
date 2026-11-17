@@ -50,10 +50,11 @@ const (
 	// command on the App CR so reads can echo it back. CR-annotation-only: the
 	// operator need not know about it, keeping the feature CRD-neutral.
 	initialDeployHookAnnotation = "bex.co/initial-deploy-hook"
-	// initialDeployHookRanAnnotation is set to "true" after the hook's pre-deploy
-	// Job succeeded on the first deploy. Its presence gates subsequent blueprint
-	// syncs so the hook never reruns (w2/m45).
-	initialDeployHookRanAnnotation = "bex.co/initial-deploy-hook-ran"
+	// initialDeployHookRanAnnotation is set to "true" once the hook has run to
+	// success. Its presence gates subsequent blueprint syncs so the hook never
+	// reruns (w2/m45), and the operator reads it as a completion marker beside
+	// status.initialDeployHookCompleted (w33/m435).
+	initialDeployHookRanAnnotation = appv1alpha1.AnnotationInitialDeployHookRan
 )
 
 // deployAuthorityKey carries the Blueprint DeployRequest on the apply context
@@ -406,7 +407,7 @@ type bexService struct {
 	Schedule                string              `json:"schedule"`                // cron expression, required when type is cron
 	MaxShutdownDelaySeconds *int32              `json:"maxShutdownDelaySeconds"` // Render's graceful SIGTERM window (1-300; default 30)
 	PreDeployCommand        string              `json:"preDeployCommand"`        // render.yaml Pre-Deploy Command (spec.preDeployCommand)
-	InitialDeployHook       string              `json:"initialDeployHook"`       // render.yaml one-time first-deploy command (w2/m45)
+	InitialDeployHook       string              `json:"initialDeployHook"`       // render.yaml one-time command, run after the first successful deploy (w2/m45, w33/m435)
 	Scaling                 *bexScaling         `json:"scaling"`                 // render.yaml autoscaling block (w2/m49)
 	MaintenanceMode         *bexMaintenanceMode `json:"maintenanceMode"`         // Render: paid web services only; uri optional
 	AutoDeploy              *bool               `json:"autoDeploy"`              // deprecated render.yaml bool; nil => default
@@ -4405,8 +4406,9 @@ func (s *Service) recordBlueprintRedeploy(ctx context.Context, existing *appv1al
 
 // initialDeployHookState reconciles a re-applied initialDeployHook with an
 // existing service (w2/m45, w8/m63). The operator owns completion
-// (status.initialDeployHookCompleted) and runs spec.initialDeployHook until
-// then. A service created before that split carried the hook injected as its
+// (status.initialDeployHookCompleted) and runs spec.initialDeployHook after a
+// release is live until one run succeeds (w33/m435). A service created before
+// the w8/m63 split carried the hook injected as its
 // preDeployCommand: if that hook already succeeded, it is never reintroduced,
 // and desired keeps the regular command either way. markHookRan reports the
 // ran-once annotation should be set now; hookChanged reports a not-yet-run

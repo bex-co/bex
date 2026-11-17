@@ -664,14 +664,11 @@ func diskRestoreName(appName string) string {
 // It reports whether the App is mid-restore, which halts the rest of the
 // reconcile so nothing scales the service back up while the Job is running.
 func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alpha1.App) (bool, error) {
-	if app.Spec.Disk == nil || app.Spec.Disk.RestoreSnapshot == "" {
+	if !diskRestoreOwed(app) {
 		return false, nil
 	}
 	requested := app.Spec.Disk.RestoreSnapshot
 	request := diskRestoreRequest(app)
-	if app.Annotations[annotDiskRestored] == request {
-		return false, nil // already served this request
-	}
 	if !r.DiskSnapshots.restorable() || r.BackupHelperImage == "" {
 		// Never start a restore that cannot finish: the Job wipes the volume
 		// before it extracts, so one that fails to start correctly would
@@ -694,6 +691,13 @@ func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alph
 		}
 		if ready, err := r.diskDetachedFromService(ctx, app); err != nil || !ready {
 			setDiskCondition(app, false, "DiskRestorePending", "stopping the service before restoring its disk")
+			return true, err
+		}
+		// An initial deploy hook still running mounts the same volume beside
+		// the service's node. It is left to finish, like an earlier restore:
+		// the restore starts once it has let go (w33/m435).
+		if held, err := r.initialDeployHookHoldsDisk(ctx, app); err != nil || held {
+			setDiskCondition(app, false, "DiskRestorePending", "waiting for the initial deploy hook to finish before restoring the disk")
 			return true, err
 		}
 		return true, r.createDiskRestoreJob(ctx, app, requested, request)
@@ -790,6 +794,13 @@ func (r *AppReconciler) diskDetachedFromService(ctx context.Context, app *appv1a
 	// Status.Replicas counts pods the Deployment still owns, terminating ones
 	// included, so it goes to zero exactly when the volume is released.
 	return dep.Status.Replicas == 0, nil
+}
+
+// diskRestoreOwed reports a restore the owner requested that no completed
+// restore has served yet.
+func diskRestoreOwed(app *appv1alpha1.App) bool {
+	return app.Spec.Disk != nil && app.Spec.Disk.RestoreSnapshot != "" &&
+		app.Annotations[annotDiskRestored] != diskRestoreRequest(app)
 }
 
 // diskRestoreRequest identifies the owner's current restore request: the

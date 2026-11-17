@@ -2632,15 +2632,16 @@ func preDeployStatusFor(app *appv1alpha1.App) string {
 // a pre-deploy step that has not passed: the operator runs that step (status
 // .preDeploy, read by preDeployStatusFor) before it rolls the release, so the
 // row's next phase is pre_deploy_in_progress, never update_in_progress
-// (w4/670).
+// (w4/670). The step is the release's preDeployCommand alone: an owed
+// initialDeployHook runs after the release is live and holds no deploy open
+// (w33/m435).
 func awaitingPreDeploy(open Deploy, app *appv1alpha1.App) bool {
 	switch open.Status {
 	case DeployCreated, DeployQueued, DeployBuildInProgress, DeployPreDeployInProgress:
 	default:
 		return false
 	}
-	command, _ := app.PreDeployStepCommand()
-	return strings.TrimSpace(command) != "" && open.Generation == appReleaseGeneration(app) &&
+	return strings.TrimSpace(app.PreDeployStepCommand()) != "" && open.Generation == appReleaseGeneration(app) &&
 		preDeployStatusFor(app) != PreDeploySucceeded
 }
 
@@ -2652,7 +2653,14 @@ func preDeployStatusAt(app *appv1alpha1.App, generation int64) string {
 	if pd == nil || pd.Generation != generation {
 		return ""
 	}
-	switch pd.Status {
+	return PreDeployRowStatus(pd.Status)
+}
+
+// PreDeployRowStatus spells a pre-deploy plane status as the operator records
+// it (status.preDeploy, status.initialDeployHook) in the deploy record's
+// lowercase vocabulary; "" for a status it does not know.
+func PreDeployRowStatus(status string) string {
+	switch status {
 	case appv1alpha1.PreDeployRunning:
 		return PreDeployRunning
 	case appv1alpha1.PreDeploySucceeded:

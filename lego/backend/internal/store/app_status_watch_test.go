@@ -205,6 +205,7 @@ func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 		"URLs":                       "read by service views, not recorded",
 		"Disk":                       "disk facts come from the disk verbs and the usage sampler",
 		"InitialDeployHookCompleted": "operator bookkeeping",
+		"InitialDeployHook":          "the hook runs after a deploy is live and changes no deploy row; read by deploy views and the log's progress lines",
 		"ProtectedImageTag":          "operator bookkeeping",
 		"StoredImages":               "operator bookkeeping",
 		"ArtifactFingerprint":        "operator bookkeeping",

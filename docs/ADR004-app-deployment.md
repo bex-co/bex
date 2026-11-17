@@ -286,7 +286,7 @@ Mechanism (`internal/predeploy`, dispatched from `reconcileKubernetes`'s `reconc
 3. The operator observes the Job **non-blocking** — one `Get` per reconcile, then `RequeueAfter` — so the App CR reports the step `Running`/`Succeeded`/`Failed` on `status.preDeploy` while it runs; the Deployment is **not created or updated** until the step succeeds, which is what keeps the old revision live.
 4. The step is gated **per release generation**, so it runs once per rollout, exactly like Render, and never runs for scale/routing/suspension or re-runs a migration that already passed or failed for the same revision (which also guards against re-creating the Job after its TTL reap).
 
-Skipped when there is no rollout to gate (suspended / auto-hibernating, both scaling to 0) and for `cron_job`/`static_site` (a cron runs its own `command`; a static site has no running container). Unset `preDeployCommand` is byte-identical to prior behavior — no Job, no gate.
+Skipped when there is no rollout to gate (suspended / auto-hibernating, both scaling to 0) and for `cron_job`/`static_site` (a cron runs its own `command`; a static site has no running container). Unset `preDeployCommand` is byte-identical to prior behavior — no Job, no gate. It runs on every release, the first included: a Blueprint's one-time `initialDeployHook` is a separate command that runs after the first release is live and never in the step's place (w33/m435, [§ Initial deploy hook](#initial-deploy-hook-once-after-the-first-release-is-live--w33m435)).
 
 The step's outcome and logs are visible on the deploy record: `preDeployStatus` (`internal/store`/`internal/deploys`) distinguishes a migration failure from a health-check failure, and the `predeploy` log type ([ADR006](ADR006-bex-api.md), [ADR010](ADR010-observability.md)) reads the Job pod's logs, each record labelled `type: predeploy`.
 
@@ -381,6 +381,55 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
   - a first release;
   - cron jobs and static sites;
   - a build failure recorded only in the legacy Ready marker (written before w6/m100). It stays on the halt, so no status write can erase the marker and dispatch the build again.
+
+## Initial deploy hook (once, after the first release is live) — w33/m435
+
+A Blueprint's `initialDeployHook` (`App.spec.initialDeployHook`) is Render's one-time command. Render's Blueprint spec ([render.com/docs/blueprint-spec](https://render.com/docs/blueprint-spec#initialdeployhook), read 2026-11-16) says: "Web services, private services, and background workers only. Render runs this command after a service's _first_ successful deploy. Useful for one-time initialization tasks such as seeding a database or downloading files to a persistent disk." and "This command runs only once per service instance (including in preview environments). For commands that should run before _every_ deploy, use `preDeployCommand` instead."
+
+Before w33/m435 bex ran the hook **as** the pre-deploy step until one release completed it (w2/m45, then w8/m63). Three things followed, none of them Render's:
+
+- the hook ran before the first rollout, not after it;
+- the first release never ran its own `preDeployCommand`, so a seed ran in place of the migration it depends on;
+- a failing hook failed the first deploy.
+
+**What runs when.** `App.PreDeployStepCommand` is the release's `preDeployCommand` and nothing else, so every release runs it before its rollout, the first included. `App.OwedInitialDeployHook` selects the hook while it is owed: it is set, and neither `status.initialDeployHookCompleted` nor the older `bex.co/initial-deploy-hook-ran` annotation marks it done. The operator starts an owed hook in the pass that finds the current release live (`reconcileInitialDeployHook`, called after the web and worker paths mark the release Running) and at no other point.
+
+**Mechanism.**
+
+1. The hook is a Job of the pre-deploy plane, `predeploy-<name>-gen-<release-generation>-hook` (`appv1alpha1.InitialDeployHookJobName`), in the App's own namespace. It keeps what the cluster keys on for a pre-deploy Job: the `predeploy-` name prefix and the single `predeploy` container the workload admission policy admits a widened container policy for, the `app.bex.co/component=predeploy` and `app.bex.co/predeploy=<name>` labels the log shipper, the environment boundary and the build-minutes meter select, and the release's revision label. `app.bex.co/predeploy-step` tells the two apart: `initial-deploy-hook` here, `pre-deploy` on the step's Job. No Service selects either (w4/m181).
+2. Its container is copied from the pod template the Deployment serves the release with: the same image, env, `envFrom`, image-pull secrets, security context and resources, the `/etc/secrets` projection, and the service's disk (below). The command is launched by the pre-deploy step's rule (`preDeployArgv`). Reading the live template, not the saved spec, is what makes "the app pod's env" true for a release running a selected or held configuration.
+3. It runs once per release generation and never retries (`BackoffLimit 0`), under the pre-deploy step's 30-minute deadline. Render documents no timeout for the hook; the bound is bex's.
+4. The run is recorded in `status.initialDeployHook` (Job, release generation, `Running`/`Succeeded`/`Failed`, start, end, message), apart from `status.preDeploy`, which stays the step's own verdict. The operator reads a running hook's Job on every pass, live or not (`observeInitialDeployHook`), so a hook left running through a suspend or a newer release's build has its end read before the Job's one-hour TTL reaps it.
+5. One success sets `status.initialDeployHookCompleted`, and nothing selects the hook again: not a later deploy, a Blueprint re-sync, a restart or a rollback.
+
+**A failed hook never fails the deploy (bex's choice).** Render documents no failure rule for the hook, and no Render workspace was available to capture one (the capture is filed as w33/004). bex's rule: the release is live before the hook starts and stays live whatever the hook does. The phase, the `Ready` condition and the deploy's status do not change; the failure is recorded on `status.initialDeployHook` with the pod's own cause ("the initial deploy hook exited with code 3", an out-of-memory kill, the 30-minute window, a program the image does not have, an image that cannot be pulled). The hook stays owed and runs again after the **next** release goes live. A hook that ended for a release is never started again for that release, even after its Job is reaped. Only a run whose Job is gone before its end was ever read (an operator down for the Job's whole one-hour TTL) is started again, as an unread pre-deploy step is. Two more endings are failures of the same kind: a workspace out of build minutes starts no hook that month, as it starts no pre-deploy command (ADR030 §13), and a Job the API server refuses is recorded with the platform-error sentence (w9/090) instead of being retried every few seconds.
+
+**The hook sees the service's disk.** A disk-bearing service's claim is `ReadWriteOnce` (ADR082), and that access mode decides the design: a second pod can mount the volume only on the node it is already attached to. So the hook Job mounts the same claim at `spec.disk.mountPath` and carries a **required** pod affinity to the service's own instance on `kubernetes.io/hostname` (the selector takes the app label plus the revision label only instances carry, so it never matches the hook's own pod or another Job's). It also mounts the volume the way the instance does: the pod takes the instance template's `hostUsers` instead of the pre-deploy plane's pod user namespace, and drops the tenant-pool node selector, because the instance's node is the only one that can mount the volume and the local `local-path` class refuses an idmapped mount ([container-privileges.md](render-artifacts/container-privileges.md)). A file the hook writes under the mount path is therefore owned as the service would own it and is there for the running instance to read. Because that one node is bin-packed like any other and no autoscaler can add room to it, a disk-sharing hook keeps the tier's limits but requests next to nothing (CPU 0, memory 64Mi), the disk snapshot Job's rule: it runs on the node's spare capacity instead of waiting out its deadline unscheduled. The alternative, running the hook inside the live instance, was rejected: it needs `pods/exec` on the operator, and it leaves no Job to bound, record or read logs from. A service without a disk runs the hook in the pre-deploy pod shape unchanged. The pre-deploy command still mounts no disk, as on Render.
+
+The hook stays off a disk that something else owns: it does not start while a restore the owner requested is unserved or a snapshot purge is pending (`diskBusy`), and a restore waits for a hook that still mounts the volume, as it waits for an earlier restore (`initialDeployHookHoldsDisk`).
+
+**Edge cases.**
+
+- **Suspended.** A suspended service starts no hook. It starts once the resumed release is live. A hook already running when the service is suspended is left to finish.
+- **Canceled first release.** A release canceled before it went live never reaches the hook. A cancel that settles back onto a served release starts none either: no release went live.
+- **Rollback, restart.** Each is a release. If the hook is still owed when it goes live, it runs then, on that release's image.
+- **A newer release while the hook runs.** The newer release's pre-deploy step cancels an older step still in flight (newest wins) but never the hook: a one-time seed stopped halfway is worse than one that finishes. No second hook starts beside a running one. When it ends, a success completes the hook, and a failure lets the release that is live by then run it.
+- **Scale.** Once per service, whatever its instance count. bex reads Render's "once per service instance" as once per service; preview environments, where that sentence would matter, are a recorded non-goal.
+- **Cron jobs, static sites, build sources.** They run neither command, and the Blueprint compiler refuses the field on a cron job or a static site.
+- **A hook added to a service that has already deployed** is owed like any other and runs after the next release goes live. Render's sentence reads as "never" for that case; it is uncaptured and filed with the failure rule (w33/004).
+
+**Tenant surfaces.**
+
+- **Deploy log.** The hook pod's output is shipped as `type=build` and read live as `type=predeploy`, like a pre-deploy command's ([ADR010](ADR010-observability.md)). bex-api adds the platform lines from `status.initialDeployHook` on the deploy that went live under the run's release: `==> Running the initial deploy hook` after `==> Your service is live 🎉`, then `==> Initial deploy hook succeeded`, or `==> Initial deploy hook failed: <cause>` and a line saying the deploy stays live and the hook runs again after the next deploy. A deploy-scoped read drops the other deploys' hook pods, since a hook runs inside the next deploy's window.
+- **Deploy record.** `initialDeployHookStatus` (`running`, `succeeded`, `failed`) and `initialDeployHookFinishedAt` on REST, GraphQL and MCP, both bex extras, read from the App's status for the deploy that went live under the run's release. They never change `status`: a deploy with a failed hook is `live`. The dashboard's deploy page keeps its log window open while the hook runs and closes it where the hook ended. The App keeps the latest run only, so once a later deploy retries a failed hook the earlier deploy reads no hook status; its output stays in the log store.
+- **No event, no notification.** REST event types stay inside Render's enum (ADR018, Service events), so the hook records none.
+- **bex-api's awaiting-pre-deploy read** (w4/670) follows `PreDeployStepCommand`: a release that owes only a hook is not awaiting a pre-deploy step and reads `update_in_progress`.
+
+**Services from before w33/m435.** No stored App needs an edit.
+
+- A hook already completed, by either marker, never runs again.
+- A first release that failed on the hook as its pre-deploy step keeps that verdict (`legacyHookStep`): an operator upgrade does not roll a failed release. Its next release runs its own `preDeployCommand`, goes live, then runs the hook.
+- A release whose hook an older operator is still running as its step is watched to the end. The older operator stamped no `app.bex.co/predeploy-step` label, which is how its Job is recognized (`ranHookAsStep`): no second run starts, and its success counts as the hook's completion. If that Job is gone unread, the release rolls and the hook, still owed, runs once it is live.
 
 ## Deploy commit provenance (w9/001, public-repo fallbacks w4/m108 t004 + w8/209)
 

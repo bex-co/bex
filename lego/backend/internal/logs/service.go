@@ -57,7 +57,9 @@ const (
 	// than from a Loki `predeploy` stream, so it is requested alone (validate()
 	// rejects mixing it with app/request/build). The same Job's stdout is also
 	// shipped into Loki as LogTypeBuild by the Alloy build_pods pipeline
-	// (w5/m100) for Render-compatible clients.
+	// (w5/m100) for Render-compatible clients. The one-time initialDeployHook
+	// runs as a Job of the same plane (w33/m435), so both sources carry its
+	// output too: its pod is named predeploy-<service>-gen-<n>-hook-<suffix>.
 	LogTypePreDeploy = "predeploy"
 
 	// logTypeApplicationAlias is the long spelling of LogTypeApp that bex's own
@@ -316,8 +318,9 @@ type LogQuery struct {
 	retentionFloor time.Time
 
 	// excludeJobs are the Job names of the OTHER deploys' builds (or pre-deploy
-	// steps) a Deploy-scoped read drops; set by scopeToDeploy, never by a
-	// caller. Only lines positively attributed to another deploy are dropped, so
+	// steps) and initial deploy hooks a Deploy-scoped read drops; set by
+	// scopeToDeploy, never by a caller. Only lines positively attributed to
+	// another deploy are dropped, so
 	// a pod this cannot attribute (a kpack buildpack build) stays visible
 	// rather than the page going empty.
 	excludeJobs []string
@@ -724,7 +727,7 @@ func (q LogQuery) excludesPod(pod string) bool {
 // names them. It fails open — no source, a failed read, or a deploy not among
 // the service's recent rows leaves the read as the window alone cut it — because
 // a missing scope costs a stray line while a wrong one would hide real output.
-func (s *Service) scopeToDeploy(ctx context.Context, resource, appName string, q *LogQuery) {
+func (s *Service) scopeToDeploy(ctx context.Context, resource string, app *appv1alpha1.App, q *LogQuery) {
 	if q.Deploy == "" || s.DeployProgress == nil {
 		return
 	}
@@ -740,14 +743,25 @@ func (s *Service) scopeToDeploy(ctx context.Context, resource, appName string, q
 	if slices.Contains(q.Types, LogTypePreDeploy) {
 		jobName = appv1alpha1.PreDeployJobName
 	}
+	// Either read also carries the initial deploy hook's output (the shipper
+	// files the pre-deploy plane's pods under build), and a hook runs after
+	// its deploy is live, inside the next deploy's window (w33/m435). Only a
+	// service with a hook has such Jobs to name.
+	hooked := strings.TrimSpace(app.Spec.InitialDeployHook) != "" || app.Status.InitialDeployHook != nil
 	seen := map[int64]bool{rows[target].Generation: true}
+	var hooks []string
 	for _, d := range rows {
 		if d.Generation <= 0 || seen[d.Generation] {
 			continue
 		}
 		seen[d.Generation] = true
-		q.excludeJobs = append(q.excludeJobs, jobName(appName, appv1alpha1.BuildRevision(d.Generation)))
+		revision := appv1alpha1.BuildRevision(d.Generation)
+		q.excludeJobs = append(q.excludeJobs, jobName(app.Name, revision))
+		if hooked {
+			hooks = append(hooks, appv1alpha1.InitialDeployHookJobName(app.Name, revision))
+		}
 	}
+	q.excludeJobs = append(q.excludeJobs, hooks...)
 }
 
 // capToLimit keeps q.Limit entries from the end the direction asks for: the
@@ -930,7 +944,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
-	s.scopeToDeploy(ctx, resource, app.Name, &q)
+	s.scopeToDeploy(ctx, resource, app, &q)
 	// Pre-deploy step logs (w1/m33): a distinct LIVE source (the migration Job's
 	// pod), read directly from the App's own namespace — the Job is co-located
 	// with the App (ADR043 D8), not in the build namespace — never the durable

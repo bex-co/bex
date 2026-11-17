@@ -861,7 +861,7 @@ func (s *Service) blueprintValidationWithSuffix(ctx context.Context, repo, branc
 			plan.TotalActions = len(actionPlan.Actions)
 		}
 		return BlueprintValidation{Valid: true, Plan: &plan, EstimatedPricing: blueprintEstimatedPricing(st),
-			warnings: blueprintIgnoredGroupVars(source, ir, st)}, nil
+			warnings: append(blueprintAliasWarnings(source), blueprintIgnoredGroupVars(source, ir, st)...)}, nil
 	}
 	// Per-resource refusals (a host another site serves is a 409, w8/055) are
 	// located entries whatever their sentinel.

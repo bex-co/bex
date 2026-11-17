@@ -734,7 +734,7 @@
       "state": "translated",
       "handler": "parseCompiledStack",
       "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter onto App.spec.initialDeployHook: one run after the service's first release is live, beside preDeployCommand, with the service's disk (ADR004 Initial deploy hook, w33/m435)"
     },
     "#/definitions/serverService/properties/ipAllowList": {
       "state": "translated",
@@ -2406,6 +2406,14 @@
       "reason": "Render documents env as the deprecated spelling of runtime; normalize before canonical validation (ADR049, ADR089).",
       "target": "#/definitions/staticService/properties/runtime",
       "documentation": "https://render.com/docs/blueprint-spec#runtime"
+    },
+    "#/definitions/serverService/properties/afterFirstDeployCommand": {
+      "state": "deprecated",
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/blueprint_aliases_test.go:TestBlueprintAfterFirstDeployCommandAlias",
+      "reason": "Render documents afterFirstDeployCommand as a deprecated alias for initialDeployHook; normalize before canonical validation, refuse a service that declares both, and warn in the plan (ADR049, w33/m435).",
+      "target": "#/definitions/serverService/properties/initialDeployHook",
+      "documentation": "https://render.com/docs/blueprint-spec#initialdeployhook"
     }
   }
 }

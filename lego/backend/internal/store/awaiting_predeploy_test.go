@@ -81,14 +81,19 @@ func TestAwaitingPreDeployCases(t *testing.T) {
 		{"no pre-deploy command goes straight to the rollout", DeployCreated, func(a *appv1alpha1.App) {
 			a.Spec.PreDeployCommand = "  "
 		}, DeployUpdateInProgress},
-		{"a pending initial deploy hook is a pre-deploy step", DeployCreated, func(a *appv1alpha1.App) {
+		// w33/m435: the hook runs after the release is live, as Render runs
+		// it, so a release that owes only a hook awaits no pre-deploy step.
+		{"an owed initial deploy hook is no pre-deploy step", DeployCreated, func(a *appv1alpha1.App) {
 			a.Spec.PreDeployCommand = ""
+			a.Spec.InitialDeployHook = "./seed"
+		}, DeployUpdateInProgress},
+		{"beside a hook, the first release still awaits its own pre-deploy command", DeployCreated, func(a *appv1alpha1.App) {
 			a.Spec.InitialDeployHook = "./seed"
 		}, DeployPreDeployInProgress},
-		{"a completed initial deploy hook is not", DeployCreated, func(a *appv1alpha1.App) {
+		{"a running hook holds no later deploy in pre-deploy", DeployCreated, func(a *appv1alpha1.App) {
 			a.Spec.PreDeployCommand = ""
 			a.Spec.InitialDeployHook = "./seed"
-			a.Status.InitialDeployHookCompleted = true
+			a.Status.InitialDeployHook = &appv1alpha1.PreDeployStatus{Job: "predeploy-web-gen-1-hook", Generation: gen - 1, Status: appv1alpha1.PreDeployRunning}
 		}, DeployUpdateInProgress},
 		{"a background worker runs the step too", DeployCreated, func(a *appv1alpha1.App) {
 			a.Spec.Type = appv1alpha1.TypeBackgroundWorker

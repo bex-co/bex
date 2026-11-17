@@ -2109,10 +2109,13 @@ type CreateRequest struct {
 	// means no pre-deploy step. Ignored for cron_job/static_site.
 	PreDeployCommand string
 	// InitialDeployHook is Render's initialDeployHook (w2/m45): a blueprint-only
-	// command that runs exactly once, on the first successful deploy. REST/GraphQL/MCP
-	// callers leave this empty; it is populated only by the blueprint parse path.
-	// Gated by the bex.co/initial-deploy-hook-ran annotation on the App CR; after it
-	// runs, subsequent deploys and blueprint re-syncs use PreDeployCommand instead.
+	// command that runs exactly once, after the service's first successful
+	// deploy, beside PreDeployCommand and never in its place (w33/m435).
+	// REST/GraphQL/MCP callers leave this empty; it is populated only by the
+	// blueprint parse path. The operator records its completion
+	// (status.initialDeployHookCompleted, mirrored by the
+	// bex.co/initial-deploy-hook-ran annotation); no later deploy or blueprint
+	// re-sync runs it again.
 	InitialDeployHook string
 	// PublishPath is the built output directory a static_site serves (Render's
 	// "Publish Directory", spec.publishPath). Required when Type is static_site,
@@ -2760,8 +2763,8 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 		return stackAppPlan{}, err
 	}
 	// Persist the initialDeployHook command for echo-back on reads (w2/m45).
-	// The ran-once annotation is added by applyCreate once the first pre-deploy
-	// Job succeeds; planStackApp only stores the command.
+	// The ran-once annotation is added by a later apply once the operator has
+	// recorded the hook's success; planStackApp only stores the command.
 	if req.InitialDeployHook != "" {
 		if a.Annotations == nil {
 			a.Annotations = map[string]string{}
@@ -3532,8 +3535,8 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		NotifyOnFail:      notifyOnFail,
 		SubdomainPolicy:   subdomainPolicy,
 		PreDeployCommand:  commandText(req.PreDeployCommand),
-		// The one-time hook keeps its own role; the operator runs it in place of
-		// preDeployCommand until it succeeds (w8/m63).
+		// The one-time hook keeps its own role (w8/m63): the operator runs it
+		// after the first release is live, beside preDeployCommand (w33/m435).
 		InitialDeployHook: commandText(req.InitialDeployHook),
 		// A web service and a static site are public: expose them at
 		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom

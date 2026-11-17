@@ -56,6 +56,18 @@ func PreDeployJobName(appName, revision string) string {
 	return RevisionJobName("predeploy-", appName, revision)
 }
 
+// InitialDeployHookJobName is the one-time initialDeployHook Job's identity
+// for the release that was live when it started (w33/m435). It keeps the
+// pre-deploy plane's prefix, so the admission policy, the log shipper and the
+// build-minutes meter treat it as they treat a pre-deploy Job, and a suffix no
+// pre-deploy Job name ends in, so the two never share a name.
+func InitialDeployHookJobName(appName, revision string) string {
+	if revision == "" {
+		revision = DefaultRevision
+	}
+	return RevisionJobName("predeploy-", appName, revision+"-hook")
+}
+
 // BuildRevision spells a generation as the revision the build plane names Jobs
 // by. It is the other half of BuildJobName's cross-boundary contract: the
 // operator derives it from the App's release generation, and bex-api must

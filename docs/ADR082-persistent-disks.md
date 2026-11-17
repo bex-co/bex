@@ -89,6 +89,7 @@ Behavior table (Render → bex):
 | Scaling | single instance, no manual scale, no autoscaling | same: `replicas ≤ 1`, `autoscaling` must be off — CRD CEL + API 400 |
 | Deploys | stop-then-start, few seconds downtime | same: Deployment strategy flips to `Recreate` (§ D3) |
 | Build / pre-deploy | no disk access (separate compute) | same by construction: build and pre-deploy Jobs never mount the PVC |
+| Initial deploy hook | runs after the first deploy; "downloading files to a persistent disk" is a named use | the hook's Job mounts the claim at `mountPath`, beside the instance on its node, and stays off a disk with a pending restore or purge (w33/m435, [ADR004](ADR004-app-deployment.md#initial-deploy-hook-once-after-the-first-release-is-live--w33m435)) |
 | Cross-service access | none; no detach/move | same: one RWO PVC, namespace- and App-bound |
 | Attach | triggers a deploy; available when live | same |
 | Suspend | state retained; storage billed (inferred) | same, explicit: PVC survives `suspended`, disk billing continues |

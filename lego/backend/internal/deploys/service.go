@@ -147,6 +147,17 @@ type DeployView struct {
 	// client tells the two apart. Its logs are retrievable via the logs surface
 	// (`type=predeploy`).
 	PreDeployStatus string
+	// InitialDeployHookStatus is how the service's one-time initialDeployHook
+	// ran after this deploy went live (w33/m435): "" (it did not run for this
+	// deploy) | "running" | "succeeded" | "failed". It never changes Status: a
+	// deploy is live before the hook starts and stays live whatever it does.
+	// Read off the App's status, which keeps the latest run only, so a deploy
+	// whose failed run a later deploy retried reads "" again. Its output is in
+	// the deploy's log. A bex extra beyond Render's deploy shape.
+	InitialDeployHookStatus string
+	// InitialDeployHookFinishedAt is when that run ended, nil while it runs:
+	// where this deploy's log ends, after FinishedAt.
+	InitialDeployHookFinishedAt *time.Time
 	// FailureReason is the actionable cause of a failed deploy (w9/011) — the
 	// operator's diagnosis (crash loop with the $PORT hint, image-pull failure,
 	// build error) or a health-gate-timeout line. Empty unless Status is a
@@ -173,27 +184,48 @@ func view(a *appv1alpha1.App, d store.Deploy) DeployView {
 	if core.GitBacked(a, d.Commit) {
 		image, sha = "", ""
 	}
+	hookStatus, hookFinishedAt := initialDeployHookRun(a, d)
 	return DeployView{
-		ID:              d.ID,
-		ServiceID:       d.AppID,
-		Status:          d.Status,
-		Image:           image,
-		ImageSHA:        sha,
-		Trigger:         d.Trigger,
-		RollbackOf:      d.RollbackOf,
-		CommitID:        d.Commit,
-		CommitMessage:   d.CommitMessage,
-		BuildID:         d.BuildID,
-		CommitAuthorAt:  d.CommitAuthorAt,
-		CreatedAt:       d.CreatedAt,
-		UpdatedAt:       d.UpdatedAt,
-		StartedAt:       d.StartedAt,
-		FinishedAt:      d.FinishedAt,
-		PreDeployStatus: d.PreDeployStatus,
-		FailureReason:   d.FailureReason,
-		CancelReason:    d.CancelReason,
-		StallReason:     d.StallReason,
+		ID:                          d.ID,
+		ServiceID:                   d.AppID,
+		Status:                      d.Status,
+		Image:                       image,
+		ImageSHA:                    sha,
+		Trigger:                     d.Trigger,
+		RollbackOf:                  d.RollbackOf,
+		CommitID:                    d.Commit,
+		CommitMessage:               d.CommitMessage,
+		BuildID:                     d.BuildID,
+		CommitAuthorAt:              d.CommitAuthorAt,
+		CreatedAt:                   d.CreatedAt,
+		UpdatedAt:                   d.UpdatedAt,
+		StartedAt:                   d.StartedAt,
+		FinishedAt:                  d.FinishedAt,
+		PreDeployStatus:             d.PreDeployStatus,
+		InitialDeployHookStatus:     hookStatus,
+		InitialDeployHookFinishedAt: hookFinishedAt,
+		FailureReason:               d.FailureReason,
+		CancelReason:                d.CancelReason,
+		StallReason:                 d.StallReason,
 	}
+}
+
+// initialDeployHookRun is the App's latest initialDeployHook run when it ran
+// for d: the hook starts only once d's release is live, so only a deploy that
+// went live under the run's release generation carries it.
+func initialDeployHookRun(a *appv1alpha1.App, d store.Deploy) (status string, finishedAt *time.Time) {
+	if a == nil || a.Status.InitialDeployHook == nil || d.Generation <= 0 {
+		return "", nil
+	}
+	run := a.Status.InitialDeployHook
+	if run.Generation != d.Generation || (d.Status != store.DeployLive && d.Status != store.DeployDeactivated) {
+		return "", nil
+	}
+	// A running hook records no end, so its FinishedAt does not parse.
+	if at, err := time.Parse(time.RFC3339, run.FinishedAt); err == nil {
+		finishedAt = &at
+	}
+	return store.PreDeployRowStatus(run.Status), finishedAt
 }
 
 // imageSHA is the digest d's image resolved to when d went live, "" while

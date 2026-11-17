@@ -1262,6 +1262,8 @@ type Deploy {
   id: String
   image: String
   imageSha: String
+  initialDeployHookFinishedAt: String
+  initialDeployHookStatus: String
   preDeployStatus: String
   rollbackOf: String
   serviceId: String
