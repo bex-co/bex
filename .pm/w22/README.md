@@ -22,6 +22,7 @@
 - [ ] **m443** — [Sandbox API rate limits match Render's per-operation table](m443/README.md) (10 tasks, ~5h35m) ← from `/pm-brainstorm one aspect of render parity for w22` 2026-11-16, filed by `/pmx 1,3,4,5 to w22`; render.com/docs/sandboxes-limits § API rate limits (create 100, exec 1,000 … per user per minute) against bex-api's single 500 per minute
 - [ ] **m444** — [Render CLI v2.37.0: adopt it, with images list and delete and the interactive sandboxes list](m444/README.md) (10 tasks, ~5h15m) ← from `/pm-brainstorm one aspect of render parity for w22` 2026-11-16, filed by `/pmx 1,3,4,5 to w22`; the pin is v2.36.0 (w3/m303); ADR104 gaps 10 and 15
 - [ ] **m445** — [Render SDK v1.9.0's sandbox contract holds on bex: its typed errors fire and its new calls are answered](m445/README.md) (10 tasks, ~5h50m) ← from `/pm-brainstorm one aspect of render parity for w22` 2026-11-16, filed by `/pmx 1,3,4,5 to w22`; SDK v1.9.0 (2026-11-16) raises a named error per API code; ADR104 D9, gaps 5 and 15; needs no QA credentials (the live walk stays w32/m284)
+- [ ] **m447** — [The default sandbox image runs Render's three official agent templates](m447/README.md) (10 tasks, ~6h25m) ← from `/pm-brainstorm one aspect of render parity for w22` 2026-11-16, item 2, filed by `/pm 2 to w22 as well`; the default image is Alpine `bash:5.3` with no `curl`, and Render's Claude, Cursor and OpenAI templates install a prebuilt executor with `curl`; ADR104 open question 5
 
 ## Inbox
 
