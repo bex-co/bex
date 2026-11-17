@@ -61,12 +61,12 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// REST's actor.id and actor.email (w9/m450): a person's usr- id and
 		// current email, else the subject and null. A deleted user's row keeps
 		// its usr- id, which Render's export names in place of an email.
-		"actorId":    gqlutil.StrField(func(e Event) any { return emptyAsNil(e.actorID()) }),
-		"actorEmail": gqlutil.StrField(func(e Event) any { return emptyAsNil(e.ActorEmail) }),
+		"actorId":    gqlutil.OptionalStrField(func(e Event) any { return e.actorID() }),
+		"actorEmail": gqlutil.OptionalStrField(func(e Event) any { return e.ActorEmail }),
 		// Where the actor acted from, REST's metadata.source_ip and
 		// metadata.user_agent; null on a row no request of the actor caused.
-		"sourceIp":  gqlutil.StrField(func(e Event) any { return emptyAsNil(e.SourceIP) }),
-		"userAgent": gqlutil.StrField(func(e Event) any { return emptyAsNil(e.UserAgent) }),
+		"sourceIp":  gqlutil.OptionalStrField(func(e Event) any { return e.SourceIP }),
+		"userAgent": gqlutil.OptionalStrField(func(e Event) any { return e.UserAgent }),
 		"action":    gqlutil.StrField(func(e Event) any { return renderEvent(e.Verb) }),
 		// status keeps bex's richer denied value here: GraphQL is bex's own
 		// dialect (Render has no public GraphQL), and the dashboard's badge
