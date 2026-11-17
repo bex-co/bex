@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import type { CronRunView } from "@/features/services/types";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
+import { formatShortDateTime } from "@/common/lib/format";
 
 // The run detail's logs link (w2/m360): rendered as a plain anchor carrying
 // its target, so the test reads the window it opens without a router.
@@ -376,7 +377,9 @@ describe("CronRunsSection", () => {
   // w4/m300: never by the run id — ties name the row number, and a run that
   // has not started says so.
   it("names each run's detail toggle by its own start, with the row for ties and a not-started run", () => {
-    const at = (iso: string) => new Date(iso).toLocaleString();
+    // The page's own format in the test language, never the host's locale: a
+    // machine whose default locale is not en-US renders the same en text.
+    const at = (iso: string) => formatShortDateTime(iso, "en");
     runs = [
       {
         id: "crr-a",
