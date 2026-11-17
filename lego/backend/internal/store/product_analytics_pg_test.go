@@ -194,6 +194,44 @@ func TestPGProductActivityRecordsTheCreatingSurface(t *testing.T) {
 	}
 }
 
+// TestPGProductActivityRecordsTheExtendedProducts writes ADR113 D7's facts
+// through the real recorder: agent sessions, automations and sandboxes land
+// under their own resource types, an automation-fired session lands as
+// 'automation', and a replayed create stays one row.
+func TestPGProductActivityRecordsTheExtendedProducts(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	at := time.Now().UTC()
+	base := &core.Base{ProductActivity: st.RecordProductActivity, Clock: func() time.Time { return at }}
+	cli := core.WithRequestOrigin(ctx, core.RequestOrigin{Transport: core.TransportREST, UserAgent: "render-cli/2.36.0"})
+	fired := core.WithAutomationFire(core.WithIdentity(ctx, core.Identity{Subject: "user-automation", Method: "session"}))
+
+	for _, tc := range []struct {
+		ctx                    context.Context
+		resource, kind, wanted string
+	}{
+		{cli, "ags-pa-cli", "agent_session", core.SurfaceCLI},
+		{fired, "ags-pa-automation", "agent_session", core.SurfaceAutomation},
+		{cli, "aut-pa-cli", "agent_automation", core.SurfaceCLI},
+		{cli, "sbx-pa-cli", "sandbox", core.SurfaceCLI},
+	} {
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM product_activity_events WHERE resource_id=$1`, tc.resource)
+		})
+		fact := core.ProductActivity{WorkspaceID: tenant.ID, ResourceID: tc.resource, ResourceType: tc.kind, EventType: "created", At: at}
+		base.ObserveProductActivity(tc.ctx, fact)
+		base.ObserveProductActivity(tc.ctx, fact)
+		var kind, surface string
+		var rows int
+		if err := pool.QueryRow(ctx, `SELECT min(resource_type), min(surface), count(*) FROM product_activity_events WHERE resource_id=$1`, tc.resource).Scan(&kind, &surface, &rows); err != nil {
+			t.Fatalf("%s: read back: %v", tc.resource, err)
+		}
+		if rows != 1 || kind != tc.kind || surface != tc.wanted {
+			t.Errorf("%s: %d rows of %q from %q, want one %q from %q", tc.resource, rows, kind, surface, tc.kind, tc.wanted)
+		}
+	}
+}
+
 // TestPGProductActivityUnsetSurfaceIsNormalizedNotRejected covers the path that
 // bypasses ObserveProductActivity. The column's CHECK is strict, and this write
 // sits behind a completed resource creation, so an unset surface has to become

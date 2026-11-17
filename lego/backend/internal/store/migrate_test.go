@@ -1292,6 +1292,100 @@ func TestProductActivitySurfaceMigrationAppliesAndRollsBack(t *testing.T) {
 	}
 }
 
+// TestProductActivityExtendedProductsMigrationAppliesAndRollsBack pins
+// migration 0291 (ADR113 D7) in both directions: the up path admits agent
+// sessions, automations and sandboxes and the 'automation' surface while still
+// refusing anything outside the closed sets, and the down path drops the facts
+// the older sets cannot hold before restoring them.
+func TestProductActivityExtendedProductsMigrationAppliesAndRollsBack(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+	up, err := migrationsFS.ReadFile("migrations/0291_product_activity_extended_products.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0291_product_activity_extended_products.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	// The table as 0114, 0117 and 0188 left it, reduced to the columns the
+	// constraints read.
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0291_products;
+		SET LOCAL search_path TO migration_0291_products;
+		CREATE TABLE product_activity_events (
+			source_key text PRIMARY KEY,
+			resource_type text NOT NULL CHECK (resource_type IN ('workspace', 'web_service', 'static_site', 'private_service', 'background_worker', 'cron_job', 'postgres', 'keyvalue', 'domain', 'build_source')),
+			surface text NOT NULL DEFAULT 'unknown');
+		ALTER TABLE product_activity_events ADD CONSTRAINT product_activity_events_surface_check
+			CHECK (surface IN ('dashboard', 'cli', 'mcp', 'api', 'blueprint', 'unknown'));
+		INSERT INTO product_activity_events VALUES ('created:srv-1', 'web_service', 'cli'), ('created:bld-1', 'build_source', 'dashboard');
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply migration 0291: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO product_activity_events VALUES
+		('created:ags-1', 'agent_session', 'cli'), ('created:ags-2', 'agent_session', 'automation'),
+		('created:aut-1', 'agent_automation', 'dashboard'), ('created:sbx-1', 'sandbox', 'mcp'),
+		('created:srv-3', 'web_service', 'automation')`); err != nil {
+		t.Fatalf("the extended products were refused after 0291: %v", err)
+	}
+	for _, probe := range []string{
+		`INSERT INTO product_activity_events VALUES ('created:x-1', 'tenant-chosen', 'cli')`,
+		`INSERT INTO product_activity_events VALUES ('created:x-2', 'sandbox', 'tenant-chosen')`,
+	} {
+		if _, err := tx.Exec(ctx, `SAVEPOINT check_probe`); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tx.Exec(ctx, probe); err == nil {
+			t.Errorf("accepted outside the closed sets: %s", probe)
+		}
+		if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT check_probe`); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("roll back migration 0291: %v", err)
+	}
+	var kept string
+	if err := tx.QueryRow(ctx, `SELECT string_agg(source_key || '=' || surface, ' ' ORDER BY source_key) FROM product_activity_events`).Scan(&kept); err != nil {
+		t.Fatal(err)
+	}
+	// Only the hosting facts survive, and one the older surface set cannot
+	// name reads as the honest unknown rather than blocking the rollback.
+	if kept != "created:bld-1=dashboard created:srv-1=cli created:srv-3=unknown" {
+		t.Errorf("rows after the down migration = %q, want the hosting facts with automation read as unknown", kept)
+	}
+	if _, err := tx.Exec(ctx, `SAVEPOINT down_probe`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO product_activity_events VALUES ('created:sbx-2', 'sandbox', 'cli')`); err == nil {
+		t.Error("a sandbox fact was accepted after the down migration")
+	}
+	if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT down_probe`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO product_activity_events VALUES ('created:srv-2', 'web_service', 'automation')`); err == nil {
+		t.Error("the automation surface was accepted after the down migration")
+	}
+}
+
 // TestClosedDeployPreDeploySettledMigration pins migration 0142 (w5/m114):
 // rows closed while their pre-deploy step still read 'running' settle by the
 // deploy's own outcome, open rows keep theirs, the CHECK then refuses a closed

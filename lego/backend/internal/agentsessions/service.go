@@ -774,6 +774,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		log.Printf("agent-session create: establish authorization failed (session=%s workspace=%s): %v", record.ID, workspaceID, err)
 		return View{}, core.NewAgentSessionDependencyUnavailableError()
 	}
+	// The session is now a reachable resource. Recorded only here, past every
+	// compensating delete above and never on a replay, which returned earlier
+	// (ADR113 D7).
+	s.ObserveProductActivity(ctx, core.ProductActivity{WorkspaceID: workspaceID, ResourceID: record.ID, ResourceType: "agent_session", EventType: "created"})
 	modelAPIKey := agentsession.ModelKeyPlaceholder(record.ID)
 	spec := dispatchSpec{
 		template:      strings.TrimSpace(req.AgentConfig.Template),

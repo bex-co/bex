@@ -19,7 +19,8 @@ MIGRATIONS = ["0001_core", "0005_deploys", "0035_domain_redirect_for_name",
               "0086_domain_claim_state", "0095_apps_service_type",
               "0114_product_analytics", "0115_product_inventory",
               "0117_product_activity_surface",
-              "0124_inventory_states_observed"]
+              "0124_inventory_states_observed",
+              "0291_product_activity_extended_products"]
 
 
 # Each view's column list as previously released, in order. CREATE OR REPLACE
@@ -84,6 +85,16 @@ class ProductAnalyticsTest(unittest.TestCase):
             ('created:a2','w1','a2','web_service','created','2026-09-04','user-one','human','mcp'),
             ('created:a3','w2','a3','web_service','created','2026-09-04','api-key','machine','mcp'),
             ('created:qa-app','internal','qa-app','static_site','created','2026-09-04','qa-user','human','cli');
+          -- The extended products (ADR113 D7). Seeded for every test, so each
+          -- hosting assertion also proves those panels leave them out.
+          INSERT INTO product_activity_events(source_key,workspace_id,resource_id,resource_type,event_type,at,actor_id,actor_type,surface) VALUES
+            ('created:ags-cli','w1','ags-cli','agent_session','created','2026-09-06','user-two','human','cli'),
+            ('created:ags-auto','w1','ags-auto','agent_session','created','2026-09-07','user-one','human','automation'),
+            ('created:ags-mcp','w2','ags-mcp','agent_session','created','2026-09-07','api-key','machine','mcp'),
+            ('created:ags-cli2','w2','ags-cli2','agent_session','created','2026-09-08','user-three','human','cli'),
+            ('created:aut-dash','w1','aut-dash','agent_automation','created','2026-09-06','user-one','human','dashboard'),
+            ('created:sbx-cli','w2','sbx-cli','sandbox','created','2026-09-08','user-three','human','cli'),
+            ('created:sbx-qa','internal','sbx-qa','sandbox','created','2026-09-08','qa-user','human','cli');
           INSERT INTO deploys(id,app_id,trigger,status,created_at,started_at,finished_at) VALUES
             ('d1','a1','create','live','2026-09-03','2026-09-04 12:00','2026-09-04 12:01'),
             ('d2','a2','create','build_failed','2026-09-04','2026-09-05 12:00','2026-09-05 12:01:30'),
@@ -465,6 +476,41 @@ class ProductAnalyticsTest(unittest.TestCase):
         # And a range entirely before collection began is unscorable, not 0%.
         before = self.query(17, start="2026-08-01T00:00:00Z", end="2026-08-20T00:00:00Z")
         self.assertIsNone(before[0]["Agent-driven share"])
+
+    def test_extended_products_by_surface(self):
+        # ADR113 D7: which surface started agent sessions, automations and
+        # sandboxes. Default audience excludes the qa workspace's sandbox.
+        rows = [(r["Product"], r["Surface"], r["Created"], r["Workspaces"]) for r in self.query(18)]
+        self.assertEqual(rows, [
+            ("Agent sessions", "cli", 2, 2),
+            ("Agent sessions", "automation", 1, 1),
+            ("Agent sessions", "mcp", 1, 1),
+            ("Automations", "dashboard", 1, 1),
+            ("Sandboxes", "cli", 1, 1),
+        ])
+        # The audience filter applies; the hosting-only resource-type filter
+        # does not.
+        self.assertEqual([(r["Product"], r["Surface"], r["Created"]) for r in self.query(18, audience="'qa'")],
+                         [("Sandboxes", "cli", 1)])
+        self.assertEqual(self.query(18, kind="web_service"), self.query(18))
+        self.assertEqual(self.query(18, audience="'not-an-audience'"), [])
+        late = [(r["Product"], r["Surface"], r["Created"]) for r in self.query(18, start="2026-09-08")]
+        self.assertEqual(late, [("Agent sessions", "cli", 1), ("Sandboxes", "cli", 1)])
+
+    def test_hosting_panels_leave_out_the_extended_products(self):
+        # Their history keeps its meaning: an agent session, automation or
+        # sandbox is not a hosting resource, so no hosting panel counts one.
+        hosting = {"static_site", "web_service", "private_service", "background_worker",
+                   "cron_job", "postgres", "keyvalue", "domain"}
+        self.assertEqual(self.query(2), [{"Creator accounts": 1}])
+        self.assertTrue({r["metric"] for r in self.query(7)} <= hosting)
+        creating = {r["time"][:10]: r["Creating"] for r in self.query(8)}
+        self.assertEqual((creating["2026-09-06"], creating["2026-09-07"], creating["2026-09-08"]), (0, 0, 0))
+        self.assertEqual(sum(r["Creation events"] for r in self.query(15)), 4)
+        self.assertEqual({r["metric"] for r in self.query(16)}, {"dashboard", "mcp"})
+        self.assertAlmostEqual(self.query(17)[0]["Agent-driven share"], 2 / 3)
+        rows = self.query(14, start="2026-08-31", end="2026-09-30")
+        self.assertEqual([(r["Workspaces"], r["Returned"]) for r in rows], [(2, 0)])
 
     def test_dashboard_geometry_and_provisioning(self):
         for i, left in enumerate(self.board["panels"]):

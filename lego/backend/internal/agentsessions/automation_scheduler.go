@@ -207,6 +207,9 @@ func (s *Service) decideAutomationRun(ctx context.Context, verb string, c store.
 	}
 	ctx = core.WithIdentity(ctx, core.Identity{Subject: a.CreatedBy, Method: "session"})
 	ctx = core.WithWorkspace(ctx, a.WorkspaceID)
+	// The session it creates is the automation's work, whether the scheduler or
+	// a member's run-now fired it (ADR113 D7).
+	ctx = core.WithAutomationFire(ctx)
 	if _, err := s.AuthorizeWorkspaceAs(ctx, verb, core.RelCanCreate, a.WorkspaceID); err != nil {
 		if errors.Is(err, core.ErrForbidden) {
 			return store.AutomationRunDenied, "", "the creator can no longer create sessions in this workspace", nil

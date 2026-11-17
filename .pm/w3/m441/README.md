@@ -1,18 +1,18 @@
 # w3 · m441 — Agent sessions, automations and sandboxes record which surface created them (ADR113 D7 server facts)
 
-**Worker:** worker3 **Goal:** creation-surface facts for the extended CLI's products, answered on the server instead of by collecting more on the client. **Status:** todo
+**Worker:** worker3 **Goal:** creation-surface facts for the extended CLI's products, answered on the server instead of by collecting more on the client. **Status:** in progress (t001–t004, t006, t007 done; t005 production check pending)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Widen product activity resource types for agent sessions, automations and sandboxes | 30m | — |
-| [t002](t002.md) | Record created facts for agent sessions, automations and sandboxes | 60m | t001 |
-| [t003](t003.md) | Automation-fired sessions are attributed to the automation surface | 45m | t002 |
-| [t004](t004.md) | Product adoption panel and SQL tests | 45m | t002, t003 |
+| [t001](done/t001.md) | Widen product activity resource types for agent sessions, automations and sandboxes — **DONE** | 30m | — |
+| [t002](done/t002.md) | Record created facts for agent sessions, automations and sandboxes — **DONE** | 60m | t001 |
+| [t003](done/t003.md) | Automation-fired sessions are attributed to the automation surface — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | Product adoption panel and SQL tests — **DONE** | 45m | t002, t003 |
 | [t005](t005.md) | Docs and production check | 30m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 30m | t006 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t006 |
 | [t008](t008.md) | Closeout | 10m | t007 |
 
 ## Definition of done

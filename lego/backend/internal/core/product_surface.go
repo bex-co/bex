@@ -39,7 +39,11 @@ const (
 	SurfaceMCP       = "mcp"
 	SurfaceAPI       = "api"
 	SurfaceBlueprint = "blueprint"
-	SurfaceUnknown   = "unknown"
+	// SurfaceAutomation is a session an agent automation started (w3/m441):
+	// the scheduler is not a request, and a run-now only asks the automation
+	// to do what it declares, so neither carries the surface of the work.
+	SurfaceAutomation = "automation"
+	SurfaceUnknown    = "unknown"
 )
 
 // cliUserAgentPrefix is what the imported Render CLI sends, and what the bex
@@ -83,6 +87,7 @@ type RequestOrigin struct {
 
 type requestOriginKey struct{}
 type blueprintApplyKey struct{}
+type automationFireKey struct{}
 
 // WithRequestOrigin records how a request arrived. Set once, at the edge, by
 // middleware that runs for every request — not by the metrics middleware, whose
@@ -100,23 +105,37 @@ func WithBlueprintApply(ctx context.Context) context.Context {
 	return context.WithValue(ctx, blueprintApplyKey{}, true)
 }
 
+// WithAutomationFire marks a context as firing an agent automation, so the
+// session it creates is attributed to the automation rather than to the
+// scheduler's empty context or to the run-now request that asked for it. The
+// automation is the declared intent, as a Blueprint is for its resources.
+func WithAutomationFire(ctx context.Context) context.Context {
+	return context.WithValue(ctx, automationFireKey{}, true)
+}
+
 // ProductSurface resolves the surface for the request in ctx.
 //
 // Precedence is meaningful, not incidental:
 //
 //  1. A Blueprint apply wins over its trigger — the user declared intent in a
 //     manifest; the transport that kicked it off is an implementation detail.
-//  2. MCP is agent traffic by construction, whatever client library is used.
-//  3. On REST, the CLI identifies itself in User-Agent.
-//  4. On GraphQL, a browser session is the dashboard; GraphQL is the surface
+//  2. An automation fire wins the same way, for the same reason: the session's
+//     definition was declared once, and the schedule or run-now that fires it
+//     is not how the work was started.
+//  3. MCP is agent traffic by construction, whatever client library is used.
+//  4. On REST, the CLI identifies itself in User-Agent.
+//  5. On GraphQL, a browser session is the dashboard; GraphQL is the surface
 //     the dashboard uses and sessions are how it authenticates.
-//  5. Anything else that is still a product request is direct API use.
+//  6. Anything else that is still a product request is direct API use.
 //
 // Nothing here infers from workspace, plan, or actor type: a wrong attribution
 // is worse than an honest unknown on a panel that exists to be believed.
 func ProductSurface(ctx context.Context) string {
 	if apply, ok := ctx.Value(blueprintApplyKey{}).(bool); ok && apply {
 		return SurfaceBlueprint
+	}
+	if fire, ok := ctx.Value(automationFireKey{}).(bool); ok && fire {
+		return SurfaceAutomation
 	}
 	origin, ok := ctx.Value(requestOriginKey{}).(RequestOrigin)
 	if !ok {
@@ -147,7 +166,7 @@ func ProductSurface(ctx context.Context) string {
 // failed resource creation — the one thing this recorder must never cause.
 func validSurface(surface string) string {
 	switch surface {
-	case SurfaceDashboard, SurfaceCLI, SurfaceMCP, SurfaceAPI, SurfaceBlueprint:
+	case SurfaceDashboard, SurfaceCLI, SurfaceMCP, SurfaceAPI, SurfaceBlueprint, SurfaceAutomation:
 		return surface
 	default:
 		return SurfaceUnknown

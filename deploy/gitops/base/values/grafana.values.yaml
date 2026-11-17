@@ -1589,7 +1589,7 @@ dashboards:
                       },
                      "format": "table",
                      "rawQuery": true,
-                     "rawSql": "SELECT count(DISTINCT actor_id) AS \"Creator accounts\" FROM product_analytics.events WHERE $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) AND event_type IN ('created','domain_added') AND resource_type<>'workspace' AND actor_type='human' AND actor_id<>''"
+                     "rawSql": "SELECT count(DISTINCT actor_id) AS \"Creator accounts\" FROM product_analytics.events WHERE $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) AND event_type IN ('created','domain_added') AND resource_type NOT IN ('workspace','agent_session','agent_automation','sandbox') AND actor_type='human' AND actor_id<>''"
                     }
                   ],
                  "options": {
@@ -1639,7 +1639,7 @@ dashboards:
                       },
                      "format": "table",
                      "rawQuery": true,
-                     "rawSql": "SELECT count(DISTINCT workspace_id) AS \"Creating workspaces\" FROM product_analytics.events WHERE $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) AND event_type IN ('created','domain_added') AND resource_type<>'workspace'"
+                     "rawSql": "SELECT count(DISTINCT workspace_id) AS \"Creating workspaces\" FROM product_analytics.events WHERE $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) AND event_type IN ('created','domain_added') AND resource_type NOT IN ('workspace','agent_session','agent_automation','sandbox')"
                     }
                   ],
                  "options": {
@@ -1879,7 +1879,7 @@ dashboards:
                       },
                      "format": "time_series",
                      "rawQuery": true,
-                     "rawSql": "SELECT date_trunc('day',at) AS time,resource_type AS metric,count(*) AS value FROM product_analytics.events WHERE event_type='created' AND resource_type<>'workspace' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
+                     "rawSql": "SELECT date_trunc('day',at) AS time,resource_type AS metric,count(*) AS value FROM product_analytics.events WHERE event_type='created' AND resource_type NOT IN ('workspace','agent_session','agent_automation','sandbox') AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
                     }
                   ],
                  "options": {
@@ -1926,7 +1926,7 @@ dashboards:
                       },
                      "format": "time_series",
                      "rawQuery": true,
-                     "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day',$__timeFrom()::timestamptz),date_trunc('day',$__timeTo()::timestamptz),interval '1 day') AS time), creators AS (SELECT date_trunc('day',at) AS time,count(DISTINCT workspace_id) AS n FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type<>'workspace' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1), hosts AS (SELECT day::timestamptz AS time,count(DISTINCT workspace_id) FILTER(WHERE was_live) AS n FROM product_analytics.hosting WHERE day >= ($__timeFrom()::timestamptz AT TIME ZONE 'UTC')::date AND day <= ($__timeTo()::timestamptz AT TIME ZONE 'UTC')::date AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1) SELECT d.time,COALESCE(c.n,0) AS \"Creating\",CASE WHEN d.time::date >= (SELECT started_at::date FROM product_analytics.collection) THEN h.n END AS \"Hosting\" FROM days d LEFT JOIN creators c USING(time) LEFT JOIN hosts h USING(time) ORDER BY 1"
+                     "rawSql": "WITH days AS (SELECT generate_series(date_trunc('day',$__timeFrom()::timestamptz),date_trunc('day',$__timeTo()::timestamptz),interval '1 day') AS time), creators AS (SELECT date_trunc('day',at) AS time,count(DISTINCT workspace_id) AS n FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type NOT IN ('workspace','agent_session','agent_automation','sandbox') AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1), hosts AS (SELECT day::timestamptz AS time,count(DISTINCT workspace_id) FILTER(WHERE was_live) AS n FROM product_analytics.hosting WHERE day >= ($__timeFrom()::timestamptz AT TIME ZONE 'UTC')::date AND day <= ($__timeTo()::timestamptz AT TIME ZONE 'UTC')::date AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1) SELECT d.time,COALESCE(c.n,0) AS \"Creating\",CASE WHEN d.time::date >= (SELECT started_at::date FROM product_analytics.collection) THEN h.n END AS \"Hosting\" FROM days d LEFT JOIN creators c USING(time) LEFT JOIN hosts h USING(time) ORDER BY 1"
                     }
                   ],
                  "options": {
@@ -2525,7 +2525,7 @@ dashboards:
                       },
                      "format": "table",
                      "rawQuery": true,
-                     "rawSql": "WITH firsts AS (SELECT workspace_id,date_trunc('week',min(at)) AS cohort FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type<>'workspace' AND provenance='observed' AND at<=$__timeTo()::timestamptz AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY workspace_id), activity AS (SELECT DISTINCT workspace_id,date_trunc('week',at) AS week FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type<>'workspace' AND provenance='observed' AND at<=$__timeTo()::timestamptz AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))) SELECT f.cohort AS \"Cohort\",count(*) AS \"Workspaces\",count(a.workspace_id) AS \"Returned\",count(a.workspace_id)::float/NULLIF(count(*),0) AS \"Return share\" FROM firsts f LEFT JOIN activity a ON a.workspace_id=f.workspace_id AND a.week=f.cohort+interval '7 days' WHERE f.cohort>=date_trunc('week',$__timeFrom()::timestamptz) AND f.cohort+interval '14 days'<=$__timeTo()::timestamptz GROUP BY 1 ORDER BY 1"
+                     "rawSql": "WITH firsts AS (SELECT workspace_id,date_trunc('week',min(at)) AS cohort FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type NOT IN ('workspace','agent_session','agent_automation','sandbox') AND provenance='observed' AND at<=$__timeTo()::timestamptz AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY workspace_id), activity AS (SELECT DISTINCT workspace_id,date_trunc('week',at) AS week FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type NOT IN ('workspace','agent_session','agent_automation','sandbox') AND provenance='observed' AND at<=$__timeTo()::timestamptz AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))) SELECT f.cohort AS \"Cohort\",count(*) AS \"Workspaces\",count(a.workspace_id) AS \"Returned\",count(a.workspace_id)::float/NULLIF(count(*),0) AS \"Return share\" FROM firsts f LEFT JOIN activity a ON a.workspace_id=f.workspace_id AND a.week=f.cohort+interval '7 days' WHERE f.cohort>=date_trunc('week',$__timeFrom()::timestamptz) AND f.cohort+interval '14 days'<=$__timeTo()::timestamptz GROUP BY 1 ORDER BY 1"
                     }
                   ],
                  "options": {
@@ -2574,7 +2574,7 @@ dashboards:
                       },
                      "format": "table",
                      "rawQuery": true,
-                     "rawSql": "SELECT provenance AS \"History\",actor_type AS \"Actor\",count(*) AS \"Creation events\",count(DISTINCT workspace_id) AS \"Workspaces\" FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type<>'workspace' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
+                     "rawSql": "SELECT provenance AS \"History\",actor_type AS \"Actor\",count(*) AS \"Creation events\",count(DISTINCT workspace_id) AS \"Workspaces\" FROM product_analytics.events WHERE event_type IN ('created','domain_added') AND resource_type NOT IN ('workspace','agent_session','agent_automation','sandbox') AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
                     }
                   ],
                  "options": {
@@ -2589,7 +2589,7 @@ dashboards:
                  "id": 16,
                  "title": "Creations by surface per day",
                  "type": "timeseries",
-                 "description": "Which surface created each resource — dashboard, CLI, MCP, direct API, or Blueprint (w5/m97). Categories are mutually exclusive, so these do sum, unlike the overlapping feature lines above. A Blueprint apply is attributed to the Blueprint, not to whichever transport triggered the sync. 'unknown' is a real population, not a gap: legacy backfill predates collection, and anything recorded outside a classified request is labelled rather than guessed at. This is a different question from actor type, which records human-vs-machine credential and cannot tell a dashboard click from a CLI invocation.",
+                 "description": "Which surface created each hosting resource — dashboard, CLI, MCP, direct API, or Blueprint (w5/m97). Agent sessions, automations and sandboxes are counted in their own panel below, so this history keeps its meaning. Categories are mutually exclusive, so these do sum, unlike the overlapping feature lines above. A Blueprint apply is attributed to the Blueprint, not to whichever transport triggered the sync. 'unknown' is a real population, not a gap: legacy backfill predates collection, and anything recorded outside a classified request is labelled rather than guessed at. This is a different question from actor type, which records human-vs-machine credential and cannot tell a dashboard click from a CLI invocation.",
                  "gridPos": {
                    "x": 0,
                    "y": 132,
@@ -2619,7 +2619,7 @@ dashboards:
                       },
                      "format": "time_series",
                      "rawQuery": true,
-                     "rawSql": "SELECT date_trunc('day',at) AS time,surface AS metric,count(*) AS value FROM product_analytics.events WHERE event_type='created' AND resource_type<>'workspace' AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
+                     "rawSql": "SELECT date_trunc('day',at) AS time,surface AS metric,count(*) AS value FROM product_analytics.events WHERE event_type='created' AND resource_type NOT IN ('workspace','agent_session','agent_automation','sandbox') AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring})) GROUP BY 1,2 ORDER BY 1,2"
                     }
                   ],
                  "options": {
@@ -2636,7 +2636,7 @@ dashboards:
                  "id": 17,
                  "title": "Agent-driven share of creations",
                  "type": "stat",
-                 "description": "Share of successful resource creations that arrived over MCP — the agent-native measurement ADR008's thesis rests on (w5/m97). Scored only over the part of the range that surface attribution actually covers: creations predating it all default to 'unknown', so counting them would quietly understate the share. A range entirely before collection began reads null, as does an empty one — an absence of evidence, not evidence of no agent usage. Deliberately narrow: it counts only MCP, because that is the surface agents demonstrably use. An agent driving the CLI is indistinguishable from a person driving it without joining CLI telemetry, which this board does not do, so that usage lands under 'cli' and is understated here rather than guessed at.",
+                 "description": "Share of successful hosting resource creations that arrived over MCP — the agent-native measurement ADR008's thesis rests on (w5/m97). Scored only over the part of the range that surface attribution actually covers: creations predating it all default to 'unknown', so counting them would quietly understate the share. A range entirely before collection began reads null, as does an empty one — an absence of evidence, not evidence of no agent usage. Deliberately narrow: it counts only MCP, because that is the surface agents demonstrably use. An agent driving the CLI is indistinguishable from a person driving it without joining CLI telemetry, which this board does not do, so that usage lands under 'cli' and is understated here rather than guessed at.",
                  "gridPos": {
                    "x": 12,
                    "y": 132,
@@ -2677,7 +2677,7 @@ dashboards:
                       },
                      "format": "table",
                      "rawQuery": true,
-                     "rawSql": "SELECT count(*) FILTER (WHERE surface='mcp')::float8 / NULLIF(count(*),0) AS \"Agent-driven share\" FROM product_analytics.events WHERE event_type='created' AND resource_type<>'workspace' AND at >= (SELECT surface_started_at FROM product_analytics.collection) AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))"
+                     "rawSql": "SELECT count(*) FILTER (WHERE surface='mcp')::float8 / NULLIF(count(*),0) AS \"Agent-driven share\" FROM product_analytics.events WHERE event_type='created' AND resource_type NOT IN ('workspace','agent_session','agent_automation','sandbox') AND at >= (SELECT surface_started_at FROM product_analytics.collection) AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) AND ('__all' IN (${kind:sqlstring}) OR resource_type IN (${kind:sqlstring}))"
                     }
                   ],
                  "options": {
@@ -2691,6 +2691,54 @@ dashboards:
                    "textMode": "auto",
                    "colorMode": "value",
                    "graphMode": "none"
+                  }
+                },
+                {
+                 "id": 18,
+                 "title": "Agent sessions, automations and sandboxes by surface",
+                 "type": "table",
+                 "description": "Which surface created each agent session, automation and sandbox (ADR113 D7): does the extended CLI start real work, compared with the dashboard and MCP? Same closed surface set as the hosting panels, plus automation: a session an agent automation started, whether its schedule or a member's run-now fired it. A child session an agent starts from inside its sandbox is mcp. Surfaces are mutually exclusive, so each product's rows sum to its creations. Workspaces are distinct per row and do not sum. The Audience filter applies; the Resource type filter does not, because it lists hosting types only. Collected since migration 0291; earlier creations of these products were never recorded.",
+                 "gridPos": {
+                   "x": 0,
+                   "y": 140,
+                   "w": 24,
+                   "h": 9
+                  },
+                 "datasource": {
+                   "type": "grafana-postgresql-datasource",
+                   "uid": "product-analytics"
+                  },
+                 "fieldConfig": {
+                   "defaults": {
+                     "unit": "short",
+                     "noValue": "No creations in range",
+                     "color": {
+                       "mode": "palette-classic"
+                      },
+                     "custom": {
+                       "minWidth": 60
+                      }
+                    },
+                   "overrides": []
+                  },
+                 "targets": [
+                    {
+                     "refId": "A",
+                     "datasource": {
+                       "type": "grafana-postgresql-datasource",
+                       "uid": "product-analytics"
+                      },
+                     "format": "table",
+                     "rawQuery": true,
+                     "rawSql": "SELECT CASE resource_type WHEN 'agent_session' THEN 'Agent sessions' WHEN 'agent_automation' THEN 'Automations' ELSE 'Sandboxes' END AS \"Product\",surface AS \"Surface\",count(*) AS \"Created\",count(DISTINCT workspace_id) AS \"Workspaces\" FROM product_analytics.events WHERE event_type='created' AND resource_type IN ('agent_session','agent_automation','sandbox') AND $__timeFilter(at) AND ('__all' IN (${audience:sqlstring}) OR audience IN (${audience:sqlstring})) GROUP BY resource_type,surface ORDER BY array_position(ARRAY['agent_session','agent_automation','sandbox'],resource_type),count(*) DESC,surface"
+                    }
+                  ],
+                 "options": {
+                   "showHeader": true,
+                   "cellHeight": "sm",
+                   "footer": {
+                     "show": false
+                    }
                   }
                 }
               ]

@@ -342,6 +342,7 @@ func (s *Service) CreateAgentAutomation(ctx context.Context, ownerID string, in 
 	if err != nil {
 		return AgentAutomation{}, err
 	}
+	s.ObserveProductActivity(ctx, core.ProductActivity{WorkspaceID: workspaceID, ResourceID: created.ID, ResourceType: "agent_automation", EventType: "created"})
 	return automationView(created)
 }
 

@@ -71,6 +71,24 @@ func TestBlueprintApplyOutranksItsTrigger(t *testing.T) {
 	}
 }
 
+// TestAutomationFireOutranksItsTrigger is the Blueprint rule for agent
+// automations (ADR113 D7): the scheduler fires with no request at all, and a
+// run-now arrives on whatever transport the member used. Either way the session
+// is the automation's work, so neither may scatter it across surfaces.
+func TestAutomationFireOutranksItsTrigger(t *testing.T) {
+	for _, transport := range []string{"rest", "graphql", "mcp", "internal"} {
+		t.Run(transport, func(t *testing.T) {
+			ctx := WithAutomationFire(WithIdentity(originCtx(transport, "render-cli/2.36.0"), Identity{Subject: "u-1", Method: "session"}))
+			if got := ProductSurface(ctx); got != SurfaceAutomation {
+				t.Errorf("ProductSurface = %q over %s, want automation", got, transport)
+			}
+		})
+	}
+	if got := ProductSurface(WithAutomationFire(context.Background())); got != SurfaceAutomation {
+		t.Errorf("ProductSurface = %q for the scheduler's context-less fire, want automation", got)
+	}
+}
+
 // TestMCPOutranksTheClientUserAgent covers the other collision: an agent
 // driving MCP through a CLI-shaped client is still MCP traffic.
 func TestMCPOutranksTheClientUserAgent(t *testing.T) {
@@ -97,7 +115,7 @@ func TestSurfaceIsIndependentOfActorType(t *testing.T) {
 // value its CHECK would reject — which would turn an analytics detail into a
 // failed resource creation, the one thing this path must never cause.
 func TestValidSurfaceClamps(t *testing.T) {
-	for _, ok := range []string{SurfaceDashboard, SurfaceCLI, SurfaceMCP, SurfaceAPI, SurfaceBlueprint} {
+	for _, ok := range []string{SurfaceDashboard, SurfaceCLI, SurfaceMCP, SurfaceAPI, SurfaceBlueprint, SurfaceAutomation} {
 		if got := validSurface(ok); got != ok {
 			t.Errorf("validSurface(%q) = %q, want it preserved", ok, got)
 		}

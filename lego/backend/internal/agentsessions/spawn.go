@@ -160,6 +160,10 @@ func (s *Service) SpawnSession(ctx context.Context, envelope agentsession.SpawnE
 	if err != nil {
 		return agentsession.SpawnResponse{}, err
 	}
+	// The agent asked through its sandbox's bex MCP server (spawn_session),
+	// which the gateway relays to the internal listener, where no request
+	// records an origin. The child is agent work over MCP (ADR113 D7).
+	ctx = core.WithRequestOrigin(ctx, core.RequestOrigin{Transport: core.TransportMCP})
 	content := envelope.Spawn
 	view, err := s.SpawnChild(ctx, parent.ID, SpawnRequest{
 		Task: content.Task, Repo: content.Repo, Branch: content.Branch, Title: content.Title, Tags: content.Tags,

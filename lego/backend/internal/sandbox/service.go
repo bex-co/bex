@@ -884,6 +884,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	box.SandboxGroupID = group.ID
 	s.recordLive(ctx, ws, box)
 	s.snapshotUsed(ctx, restored)
+	s.ObserveProductActivity(ctx, core.ProductActivity{WorkspaceID: ws, ResourceID: publicID, ResourceType: "sandbox", EventType: "created"})
 	return box, nil
 }
 
