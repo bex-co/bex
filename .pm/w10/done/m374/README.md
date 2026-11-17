@@ -1,6 +1,6 @@
 # w10 · m374 — A service's Metrics and Logs count every request and show only what its type can have
 
-**Worker:** worker10 **Goal:** Response Times includes every request the request log records, wakes included; a worker, cron job or private service is never offered request views it can never fill; the Network filters show their values in full; and a datastore's Logs tab keeps an ended custom range closed to the live tail, as service Logs do. **Status:** blocked — release gate (t001–t007 done; DoD 1, 2 and 4 replayed live on pin `284b83e1f540` 2026-11-16 and hold; DoD 3 failed on a selected long Host, fixed in the follow-up commit that shipped with this park. t008 rechecks the Host trigger once a production pin carries it; no user action)
+**Worker:** worker10 **Goal:** Response Times includes every request the request log records, wakes included; a worker, cron job or private service is never offered request views it can never fill; the Network filters show their values in full; and a datastore's Logs tab keeps an ended custom range closed to the live tail, as service Logs do. **Status:** done (DoD 1, 2 and 4 replayed live on pin `284b83e1f540`, DoD 3 on pin `ef7e65cd3f46`, 2026-11-16/17)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t001, t002, t003, t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005, t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 Total: **8 tasks, about 3h45m**.
 
@@ -80,3 +80,18 @@ Fixtures, all `qa-20261116-m374-*` and deleted afterwards (DELETE 204, then GET 
 **Verdict:** DoD 1, 2 and 4 hold on pin `284b83e1f540`. DoD 3 holds except for a selected long Host, which is fixed in code.
 
 **Release condition (clears by itself, no user action):** a production pin that carries the Host fix commit. Then t008 rechecks only DoD 3's Host case: select a host longer than the trigger at 1600 and 1024 px, in en and zh, and see "…" and the full host in `title`. If that holds, the milestone closes.
+
+## Unblock record (2026-11-16, second; `/loopx w10` worker; verified evidence)
+
+- **Affected:** w10/m374 t008 (t001–t007 stay done).
+- **Source:** verified evidence, no user decision needed.
+- **Release gate — clear.** Production runs pin `ef7e65cd3f46` (pin commit `ce71ee9b0`, 2026-11-16 23:59Z; `deploy.yml` on `ef7e65cd3`: the push run succeeded 23:41Z with its jobs skipped, and dispatch run `43981423473` built, pinned and later rolled it — see the recheck below). `git merge-base --is-ancestor 9dbe63711 ef7e65cd3f46` holds, and `9dbe63711` is the Host ellipsis fix.
+- **Remaining gate:** none. t008 returns to `todo` to recheck only DoD 3's Host case: a selected host longer than the trigger, at 1600 and 1024 px, in en and zh, as the QA user, ends in "…" with the full host in `title`. If that holds, the milestone closes.
+
+## Live recheck — pin `ef7e65cd3f46` (2026-11-17 00:02–00:40Z, QA user, `bex-canary`)
+
+- **Deploy timing.** The `push` run on `ef7e65cd3` skipped its jobs; the build and roll ran in `workflow_dispatch` run `43981423473`, whose `deploy` job was still waiting on the OpenSandbox control plane when the pin commit landed. Until it finished, the live bundle still rendered a bare `SelectValue` and the Host value clipped (`text-overflow: clip`). The run completed with success, and the recheck below is on the rolled dashboard.
+- **Fixture:** a Free `traefik/whoami:v1.10.1` web service `qa-20261117-m374-host-ellipsis-recheck` (`srv-dbtpj1b5ufus73fhajlg`, host `qa-20261117-m374-host-e-9f294c.onbex.co`), sent six requests, deleted afterwards (DELETE 204, then GET 404). The language was reset to en and the session logged out.
+- **DoD 3, Host case — holds.** With that host selected on Metrics, at 1600 and 1024 px, in en and zh, the value is its own `span.truncate` (200/291 px in en, 202/291 in zh) with computed `text-overflow: ellipsis`, and it draws "qa-20261117-m374-host-e-…" ("…host-e-9…" in zh at 1024). The trigger is 288 px (`max-w-72`), and its `title` is the full host.
+
+**Verdict:** DoD 1, 2 and 4 held on pin `284b83e1f540` and DoD 3 now holds on pin `ef7e65cd3f46`. The milestone is done.
