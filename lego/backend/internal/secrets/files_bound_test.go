@@ -19,6 +19,8 @@ package secrets
 import (
 	"context"
 	"errors"
+	"maps"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -46,7 +48,58 @@ func TestEveryFilesWriterTakesExactlyTheContentsBound(t *testing.T) {
 			{Name: second, Content: strings.Repeat("d", total-614_400)},
 		}
 	}
-	writers := map[string]func(*Service, []SecretFileView) error{
+	for name, write := range filesWriters(ctx) {
+		t.Run(name+"/at the bound", func(t *testing.T) {
+			store := newVersionedFakeSecretStore()
+			if err := write(newService(store, sampleApp("web")), split(maxSecretFilesBytes)); err != nil {
+				t.Fatalf("a map of exactly %d content bytes = %v, want accepted", maxSecretFilesBytes, err)
+			}
+			if name != "CheckCreateSecrets" && contentBytes(store.m[filesPath("web")]) != maxSecretFilesBytes {
+				t.Fatalf("stored %d content bytes, want %d", contentBytes(store.m[filesPath("web")]), maxSecretFilesBytes)
+			}
+		})
+		t.Run(name+"/one byte over", func(t *testing.T) {
+			store := newVersionedFakeSecretStore()
+			err := write(newService(store, sampleApp("web")), split(maxSecretFilesBytes+1))
+			if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), filesOverQuota) {
+				t.Fatalf("one byte past the bound = %v, want a bad request naming %q", err, filesOverQuota)
+			}
+			if contentBytes(store.m[filesPath("web")]) > maxSecretFilesBytes {
+				t.Fatal("a refused write stored an over-bound map")
+			}
+		})
+	}
+}
+
+// w4/m363 t009: the same writers, at the same bound, through the OpenBao
+// adapter and a KV fake with raft's entry cap. Before chunking, the stored
+// map passed the cap and every writer answered 500 below the stated bound.
+func TestEveryFilesWriterStoresTheBoundUnderTheRaftEntryCap(t *testing.T) {
+	ctx := context.Background()
+	for _, pem := range []bool{false, true} {
+		files := filesAtBound(pem)
+		view := []SecretFileView{{Name: "qa-big1.txt", Content: files["qa-big1.txt"]}, {Name: "qa-fill.txt", Content: files["qa-fill.txt"]}}
+		for name, write := range filesWriters(ctx) {
+			if name == "CheckCreateSecrets" {
+				continue // checks only, stores nothing
+			}
+			t.Run(name+"/pem="+strconv.FormatBool(pem), func(t *testing.T) {
+				store, _ := newRaftKV(t)
+				if err := write(newService(store, sampleApp("web")), view); err != nil {
+					t.Fatalf("a map of exactly %d content bytes = %v, want accepted", maxSecretFilesBytes, err)
+				}
+				got, err := store.Get(ctx, filesPath("web"))
+				if err != nil || !maps.Equal(got, files) {
+					t.Fatalf("stored %d content bytes (err=%v), want the map written", contentBytes(got), err)
+				}
+			})
+		}
+	}
+}
+
+// filesWriters is every service files writer, each storing files on "web".
+func filesWriters(ctx context.Context) map[string]func(*Service, []SecretFileView) error {
+	return map[string]func(*Service, []SecretFileView) error{
 		"SetSecretFile": func(s *Service, files []SecretFileView) error {
 			for _, f := range files {
 				if _, err := s.SetSecretFile(ctx, "web", f.Name, f.Content); err != nil {
@@ -81,27 +134,6 @@ func TestEveryFilesWriterTakesExactlyTheContentsBound(t *testing.T) {
 			_, err := s.PatchEnvironment(ctx, "web", patch)
 			return err
 		},
-	}
-	for name, write := range writers {
-		t.Run(name+"/at the bound", func(t *testing.T) {
-			store := newVersionedFakeSecretStore()
-			if err := write(newService(store, sampleApp("web")), split(maxSecretFilesBytes)); err != nil {
-				t.Fatalf("a map of exactly %d content bytes = %v, want accepted", maxSecretFilesBytes, err)
-			}
-			if name != "CheckCreateSecrets" && contentBytes(store.m[filesPath("web")]) != maxSecretFilesBytes {
-				t.Fatalf("stored %d content bytes, want %d", contentBytes(store.m[filesPath("web")]), maxSecretFilesBytes)
-			}
-		})
-		t.Run(name+"/one byte over", func(t *testing.T) {
-			store := newVersionedFakeSecretStore()
-			err := write(newService(store, sampleApp("web")), split(maxSecretFilesBytes+1))
-			if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), filesOverQuota) {
-				t.Fatalf("one byte past the bound = %v, want a bad request naming %q", err, filesOverQuota)
-			}
-			if contentBytes(store.m[filesPath("web")]) > maxSecretFilesBytes {
-				t.Fatal("a refused write stored an over-bound map")
-			}
-		})
 	}
 }
 

@@ -177,28 +177,39 @@ func isNotFound(err error) bool {
 // Get returns the map stored at path, or an empty map when it was never written or
 // has been soft-deleted (a 404 is not an error — the caller treats "unset" as empty).
 func (s *openBaoStore) Get(ctx context.Context, path string) (map[string]string, error) {
-	var out struct {
-		Data struct {
-			Data map[string]string `json:"data"`
-		} `json:"data"`
+	data, _, err := s.readAssembled(ctx, path, func() (map[string]string, uint64, error) {
+		return s.getRaw(ctx, path)
+	})
+	if err == nil && data == nil {
+		data = map[string]string{}
 	}
-	err := s.kv(ctx, http.MethodGet, s.dataURL(ctx, path), nil, &out)
-	if isNotFound(err) {
-		return map[string]string{}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	if out.Data.Data == nil {
-		return map[string]string{}, nil
-	}
-	return out.Data.Data, nil
+	return data, err
 }
 
 // GetVersioned atomically reads a KV-v2 value and its current version. An
 // absent key has version zero, matching OpenBao's CAS=0 create-only contract.
 // The version remains backend metadata; callers encode it before exposing it.
 func (s *openBaoStore) GetVersioned(ctx context.Context, path string) (core.SecretKVSnapshot, error) {
+	data, version, err := s.readAssembled(ctx, path, func() (map[string]string, uint64, error) {
+		data, version, err := s.getRaw(ctx, path)
+		if err == nil && version == 0 && data != nil {
+			err = core.Err("openbao versioned read returned no version")
+		}
+		return data, version, err
+	})
+	if err != nil {
+		return core.SecretKVSnapshot{}, sanitizeVersionedStoreError("read", err)
+	}
+	if data == nil {
+		data = map[string]string{}
+	}
+	return core.SecretKVSnapshot{Data: data, Version: version}, nil
+}
+
+// getRaw reads the entry stored at path as written, chunk manifest included,
+// with its version. An absent path is a nil map at version zero; a present
+// one is never nil.
+func (s *openBaoStore) getRaw(ctx context.Context, path string) (map[string]string, uint64, error) {
 	var out struct {
 		Data struct {
 			Data     map[string]string `json:"data"`
@@ -209,24 +220,30 @@ func (s *openBaoStore) GetVersioned(ctx context.Context, path string) (core.Secr
 	}
 	err := s.kv(ctx, http.MethodGet, s.dataURL(ctx, path), nil, &out)
 	if isNotFound(err) {
-		return core.SecretKVSnapshot{Data: map[string]string{}}, nil
+		return nil, 0, nil
 	}
 	if err != nil {
-		return core.SecretKVSnapshot{}, sanitizeVersionedStoreError("read", err)
-	}
-	if out.Data.Metadata.Version == 0 {
-		return core.SecretKVSnapshot{}, core.Err("openbao versioned read returned no version")
+		return nil, 0, err
 	}
 	if out.Data.Data == nil {
 		out.Data.Data = map[string]string{}
 	}
-	return core.SecretKVSnapshot{Data: out.Data.Data, Version: out.Data.Metadata.Version}, nil
+	return out.Data.Data, out.Data.Metadata.Version, nil
 }
 
 // Put replaces the whole map at path.
 func (s *openBaoStore) Put(ctx context.Context, path string, data map[string]string) error {
-	body, _ := json.Marshal(map[string]any{"data": data})
-	return s.kv(ctx, http.MethodPost, s.dataURL(ctx, path), body, nil)
+	_, err := s.writeMap(ctx, path, data, func(stored map[string]string) (uint64, error) {
+		body, _ := json.Marshal(map[string]any{"data": stored})
+		var out struct {
+			Data struct {
+				Version uint64 `json:"version"`
+			} `json:"data"`
+		}
+		err := s.kv(ctx, http.MethodPost, s.dataURL(ctx, path), body, &out)
+		return out.Data.Version, err
+	})
+	return err
 }
 
 // PutCAS replaces the whole KV-v2 value only when expectedVersion is current.
@@ -235,37 +252,48 @@ func (s *openBaoStore) Put(ctx context.Context, path string, data map[string]str
 // message. The response body is never read on failure, preserving do's
 // structural redaction guarantee.
 func (s *openBaoStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
-	body, _ := json.Marshal(struct {
-		Options struct {
-			CAS uint64 `json:"cas"`
-		} `json:"options"`
-		Data map[string]string `json:"data"`
-	}{
-		Options: struct {
-			CAS uint64 `json:"cas"`
-		}{CAS: expectedVersion},
-		Data: data,
-	})
-	var out struct {
-		Data struct {
-			Version uint64 `json:"version"`
-		} `json:"data"`
-	}
-	if err := s.kv(ctx, http.MethodPost, s.dataURL(ctx, path), body, &out); err != nil {
-		var se *core.HTTPStatusError
-		if errors.As(err, &se) && (se.Code == http.StatusBadRequest || se.Code == http.StatusConflict) {
-			return 0, secretChanged()
+	return s.writeMap(ctx, path, data, func(stored map[string]string) (uint64, error) {
+		body, _ := json.Marshal(struct {
+			Options struct {
+				CAS uint64 `json:"cas"`
+			} `json:"options"`
+			Data map[string]string `json:"data"`
+		}{
+			Options: struct {
+				CAS uint64 `json:"cas"`
+			}{CAS: expectedVersion},
+			Data: stored,
+		})
+		var out struct {
+			Data struct {
+				Version uint64 `json:"version"`
+			} `json:"data"`
 		}
-		return 0, sanitizeVersionedStoreError("write", err)
-	}
-	if out.Data.Version == 0 {
-		return 0, core.Err("openbao compare-and-set returned no version")
-	}
-	return out.Data.Version, nil
+		if err := s.kv(ctx, http.MethodPost, s.dataURL(ctx, path), body, &out); err != nil {
+			var se *core.HTTPStatusError
+			if errors.As(err, &se) && (se.Code == http.StatusBadRequest || se.Code == http.StatusConflict) {
+				return 0, secretChanged()
+			}
+			return 0, sanitizeVersionedStoreError("write", err)
+		}
+		if out.Data.Version == 0 {
+			return 0, core.Err("openbao compare-and-set returned no version")
+		}
+		return out.Data.Version, nil
+	})
 }
 
-// Delete removes the path (and all its versions); an already-absent path is a no-op.
+// Delete removes the path (and all its versions), with any chunks its maps
+// stored; an already-absent path is a no-op.
 func (s *openBaoStore) Delete(ctx context.Context, path string) error {
+	if err := s.deleteEntry(ctx, path); err != nil {
+		return err
+	}
+	return s.deleteAllChunks(ctx, path)
+}
+
+// deleteEntry removes one KV entry and all its versions; absent is a no-op.
+func (s *openBaoStore) deleteEntry(ctx context.Context, path string) error {
 	err := s.kv(ctx, http.MethodDelete, s.metadataURL(ctx, path), nil, nil)
 	if isNotFound(err) {
 		return nil
@@ -300,11 +328,14 @@ func (s *openBaoStore) Retire(ctx context.Context, path string) error {
 	for v := oldest; v < out.Data.Version; v++ {
 		older = append(older, v)
 	}
-	if len(older) == 0 {
-		return nil
+	if len(older) > 0 {
+		body, _ = json.Marshal(map[string]any{"versions": older})
+		if err := s.kv(ctx, http.MethodPost, s.destroyURL(ctx, path), body, nil); err != nil {
+			return sanitizeVersionedStoreError("retire", err)
+		}
 	}
-	body, _ = json.Marshal(map[string]any{"versions": older})
-	return sanitizeVersionedStoreError("retire", s.kv(ctx, http.MethodPost, s.destroyURL(ctx, path), body, nil))
+	// No version left names a chunk.
+	return sanitizeVersionedStoreError("retire", s.deleteAllChunks(ctx, path))
 }
 
 // oldestVersion is the oldest version KV v2 still keeps for path, or 0 for an
@@ -451,7 +482,12 @@ func (s *openBaoStore) do(ctx context.Context, method, url, token string, body [
 		// misbehaving store) cannot allocate unbounded memory. Legit payloads
 		// are far under the bound (aggregate quotas cap tenant maps at
 		// 512 KiB); a truncated value fails JSON parsing naturally.
-		return json.NewDecoder(io.LimitReader(resp.Body, maxStoreResponseBytes)).Decode(out)
+		// An empty body (204) decodes to nothing: out keeps its zero value.
+		err := json.NewDecoder(io.LimitReader(resp.Body, maxStoreResponseBytes)).Decode(out)
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
 	}
 	return nil
 }

@@ -1,6 +1,6 @@
 # w4 · m363 — A service's or environment group's secret files hold Render's 1 MB combined, not 512 KiB
 
-**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** blocked — the round 393 closeout replay (2026-11-15) found DoD 2 failing at the bound: [t009](t009.md) is open and blocks the closeout. Previously: — release gate (t001–t007 done, code shipped 2026-11-14 by `/loopx w4`; t008 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** blocked — release gate: t001–t007 and t009 are done and shipped. [t009](done/t009.md) (2026-11-17) keeps a map that a single OpenBao raft entry cannot hold in chunk entries. t008 replays the live DoD once a production pin carries t009's commit (see § Unblock 2026-11-17).
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t002, t003, t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t009](t009.md) | A files map whose contents reach the promised 1 MiB answers 500 — OpenBao's raft entry cap stops the stored map about 254 bytes short (found by the round 393 replay) | 1h | — |
+| [t009](done/t009.md) | A files map whose contents reach the promised 1 MiB answers 500 — OpenBao's raft entry cap stops the stored map about 254 bytes short (found by the round 393 replay) — **DONE** | 1h | — |
 | [t008](t008.md) | Closeout (live replay on production) | 20m | t006, t007, t009 |
 
 ## Definition of done
@@ -83,3 +83,10 @@ Settled by t002 (2026-11-14): the apiserver refuses only `> MaxSecretSize`, so e
 ## Regression found after the deploy (`/qa-find-bugs-cli` sweep 27, 2026-11-15, pin `2d9bbae6bb8d`)
 
 Filed as [w32/027](../../../w32/027.md). This milestone's build change, the `projected` secret-files volume (`build.go:1369-1370`), is denied by `bex-build-job-shape`, which admits only `emptyDir` and `secret` volumes in `bex-build` (`deploy/gitops/base/operator-workload-admission.yaml:658-660`). Since this deploy, every repo-backed build with a secret file has ended `build_failed` with the platform-error sentence. A static site and a native Go web service both failed this way; their controls without the file built. t008's fixture is an image service with no build, so it would not see this. Close this milestone only after w32/027's acceptance holds, and add one repo-build fixture with a secret file to the replay.
+
+## Unblock 2026-11-17 (`/loopx w4`, verified evidence)
+
+- **Gate checked.** Production runs pin `ef7e65cd3f46`, rolled out 2026-11-17 00:04Z. It carries this milestone's code `4e6c15481` and w32/027's admission fix `ca40b50cc`: `git merge-base --is-ancestor <sha> ef7e65cd3f46` holds for both.
+- **The release gate was not the last gate.** t009, the 500 at the bound found by round 393, was open code work. It was unblocked and done here; see [t009](done/t009.md).
+- **Remaining gate.** A production deploy whose pin carries t009's commit. It clears by itself (deploys run at 19:00, 00:00 and 05:00 UTC); `git merge-base --is-ancestor <t009 commit> <pin>` proves it.
+- **Then.** t008 replays DoD 1–5 on production, including DoD 2 at exactly 1,048,576 bytes and at one byte over, with no bisection. It adds the repo-build fixture with a secret file that § Regression asks for.
