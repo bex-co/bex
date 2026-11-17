@@ -35,6 +35,10 @@ const (
 	// pre-deploy Job, a build or publish in the App's namespace), which
 	// also carries LabelApp; the App's own instances never carry it.
 	LabelComponent = "app.bex.co/component"
+	// LabelPreDeploy carries the service name on a pre-deploy Job and its
+	// pod (like build's "app.bex.co/build"), so the backend can find the
+	// step's pod for its logs.
+	LabelPreDeploy = "app.bex.co/predeploy"
 	// LabelEnvironment is a pod's environment id, the identity an isolated
 	// environment's network boundary selects.
 	LabelEnvironment = "app.bex.co/environment-id"
