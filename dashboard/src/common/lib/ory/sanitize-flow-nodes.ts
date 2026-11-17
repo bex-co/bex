@@ -19,16 +19,30 @@ import type { UiNode } from "@ory/client-fetch";
  * (`createFrontendApi`), regardless of which response path carries the dupes.
  */
 
+/**
+ * Input nodes are told apart by name/type/value. Image, text and script nodes
+ * carry none of those, only an `id`: the settings flow's TOTP group holds the
+ * QR image (`totp_qr`) and the secret text (`totp_secret_key`) side by side.
+ * Without the node type and id in the key the secret was dropped as a
+ * duplicate of the QR, and Ory Elements renders the enrollment form only when
+ * it finds both, so nobody could enroll an authenticator app (w22/m402 t006).
+ */
 function nodeKey(node: UiNode): string {
   const attrs = node.attributes as
-    | { name?: string; type?: string; value?: unknown }
-    | undefined;
-  return [node.group, attrs?.name, attrs?.type, JSON.stringify(attrs?.value)]
+    { id?: string; name?: string; type?: string; value?: unknown } | undefined;
+  return [
+    node.group,
+    node.type,
+    attrs?.id,
+    attrs?.name,
+    attrs?.type,
+    JSON.stringify(attrs?.value),
+  ]
     .map((part) => String(part))
     .join("|");
 }
 
-/** Drops exact duplicate ui nodes (same group/name/type/value), keeping the first. */
+/** Drops exact duplicate ui nodes (same group/node type/id/name/type/value), keeping the first. */
 export function dedupeUiNodes(nodes: UiNode[]): UiNode[] {
   const seen = new Set<string>();
   return nodes.filter((node) => {

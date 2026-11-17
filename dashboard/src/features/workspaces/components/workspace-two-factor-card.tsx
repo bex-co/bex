@@ -13,8 +13,10 @@ import {
 } from "@/common/components/ui/alert";
 import { Badge } from "@/common/components/ui/badge";
 import { Label } from "@/common/components/ui/label";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useSetWorkspaceRequireTwoFactor } from "@/features/workspaces/hooks/use-set-workspace-require-two-factor";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
@@ -31,6 +33,12 @@ import type { WorkspaceView } from "@/features/workspaces/types";
  * The enforcement itself is server-side: this switch only writes the setting,
  * and the server's coded 409 refusals (the admin has no second factor, or the
  * deployment cannot look factors up) are shown beside it.
+ *
+ * Who is an admin comes from the capability check (`can_manage`), as on the
+ * sibling settings cards. `workspace.role` cannot decide it: the workspace
+ * list reports "admin" for every membership, so a developer was shown a live
+ * switch that could only answer 403 (found by the w22/m402 live check). While
+ * the capability check is in flight the control is the skeleton's placeholder.
  */
 export function WorkspaceTwoFactorCard({
   workspace,
@@ -40,7 +48,7 @@ export function WorkspaceTwoFactorCard({
   const { t } = useTranslations();
   const { setRequired, busy, error } =
     useSetWorkspaceRequireTwoFactor(workspace);
-  const isAdmin = workspace.role === "admin";
+  const { canManage: isAdmin, loading: roleLoading } = useCapabilities();
 
   return (
     <Card>
@@ -61,6 +69,11 @@ export function WorkspaceTwoFactorCard({
               checked={workspace.requireTwoFactor}
               disabled={busy}
               onCheckedChange={(next) => void setRequired(next)}
+            />
+          ) : roleLoading ? (
+            <Skeleton
+              data-skeleton-region="two-factor-control"
+              className="h-5 w-9 shrink-0 rounded-full"
             />
           ) : (
             <Badge

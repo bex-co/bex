@@ -65,6 +65,52 @@ describe("dedupeUiNodes", () => {
     expect(dedupeUiNodes(nodes)).toHaveLength(2);
   });
 
+  // The settings flow's TOTP group, as a live Kratos returns it (w22/m402
+  // t006): the QR image and the secret text have no name, type or value.
+  // Ory Elements shows the enrollment form only when it finds both.
+  it("keeps the TOTP QR image and the secret text, which differ only in node type and id", () => {
+    const qr = {
+      group: "totp",
+      type: "img",
+      attributes: {
+        node_type: "img",
+        id: "totp_qr",
+        src: "data:image/png;base64,AAAA",
+      },
+      messages: [],
+      meta: {},
+    } as unknown as UiNode;
+    const secret = {
+      group: "totp",
+      type: "text",
+      attributes: {
+        node_type: "text",
+        id: "totp_secret_key",
+        text: { id: 1050006, text: "JBSWY3DPEHPK3PXP", type: "info" },
+      },
+      messages: [],
+      meta: {},
+    } as unknown as UiNode;
+    const nodes = [
+      qr,
+      secret,
+      inputNode("totp", "totp_code", "text"),
+      inputNode("totp", "method", "submit", "totp"),
+    ];
+    expect(dedupeUiNodes(nodes)).toEqual(nodes);
+  });
+
+  it("still drops a non-input node repeated with the same id", () => {
+    const secret = {
+      group: "totp",
+      type: "text",
+      attributes: { node_type: "text", id: "totp_secret_key" },
+      messages: [],
+      meta: {},
+    } as unknown as UiNode;
+    expect(dedupeUiNodes([secret, { ...secret }])).toHaveLength(1);
+  });
+
   it("returns the input untouched when there are no duplicates", () => {
     const nodes = [
       inputNode("default", "csrf_token", "hidden", "tok"),

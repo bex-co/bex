@@ -96,6 +96,13 @@ assert "OpenSandbox uses the in-cluster reverse-hop Service" \
   "grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__' scripts/dev-env/agent/sandbox-local.toml"
 assert "ssh-gateway uses the in-cluster reverse-hop Service" \
   "grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__' scripts/dev-env/agent/ssh-gateway.yaml"
+# w22/m402 t006: bex-api is a host process here, so a callback the gateway
+# leaves at its default (the in-cluster bex-api Service) is never answered.
+# The email-verification question failing closed refused every native SSH login.
+assert "ssh-gateway asks the host bex-api whether an SSH key's owner is verified" \
+  "grep -A1 'name: BEX_IDENTITY_VERIFICATION_API_URL' scripts/dev-env/agent/ssh-gateway.yaml | grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/identity-email-verification'"
+assert "ssh-gateway asks the host bex-api about workspace two-factor" \
+  "grep -A1 'name: BEX_WORKSPACE_TWO_FACTOR_API_URL' scripts/dev-env/agent/ssh-gateway.yaml | grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/workspace-two-factor'"
 assert "local sandboxes co-locate with the gateway on the control-plane node" \
   "grep -q 'node-role.kubernetes.io/control-plane' scripts/dev-env/agent/batchsandbox-template.local.yaml"
 assert "agent-stub refreshes both gateway forwards after its rollout" \

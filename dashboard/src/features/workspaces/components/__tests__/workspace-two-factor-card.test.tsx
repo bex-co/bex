@@ -10,6 +10,8 @@ import {
 } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { codedGraphQLError } from "@/test/mocks/apollo";
+import { mockCapabilities } from "@/test/mocks/capabilities";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { shape } from "@/test/card-shape";
 import { WorkspaceTwoFactorCard } from "@/features/workspaces/components/workspace-two-factor-card";
 import { WorkspaceTwoFactorCardSkeleton } from "@/features/workspaces/components/workspace-two-factor-card-skeleton";
@@ -25,6 +27,9 @@ vi.mock("sonner", () => ({
   toast: { success: toastSuccess, error: vi.fn() },
 }));
 
+// `role` is "admin" for every membership the workspace list returns, whatever
+// the member's real role (a live developer's workspace says "admin"), so the
+// card must decide from the capability check, never from this field.
 const WORKSPACE: WorkspaceView = {
   id: "tea-acme",
   name: "Acme",
@@ -52,7 +57,20 @@ async function renderCard(ui: ReactElement) {
   return render(<RouterProvider router={router} />);
 }
 
+function asAdmin() {
+  vi.mocked(useCapabilities).mockReturnValue(
+    mockCapabilities({ role: "ADMIN", canManage: true }),
+  );
+}
+
+function asRole(role: string) {
+  vi.mocked(useCapabilities).mockReturnValue(
+    mockCapabilities({ role: role.toUpperCase(), canManage: false }),
+  );
+}
+
 beforeEach(() => {
+  asAdmin();
   mutate.mockReset();
   mutate.mockResolvedValue({ data: {} });
   toastSuccess.mockReset();
@@ -194,9 +212,8 @@ describe("WorkspaceTwoFactorCard — everyone else (w22/m402)", () => {
   it.each(["developer", "viewer", "billing", "contributor"])(
     "shows a %s the state without a control",
     async (role) => {
-      await renderCard(
-        <WorkspaceTwoFactorCard workspace={{ ...WORKSPACE, role }} />,
-      );
+      asRole(role);
+      await renderCard(<WorkspaceTwoFactorCard workspace={WORKSPACE} />);
 
       expect(screen.queryByRole("switch")).not.toBeInTheDocument();
       expect(screen.getByText("Not required")).toBeInTheDocument();
@@ -207,15 +224,31 @@ describe("WorkspaceTwoFactorCard — everyone else (w22/m402)", () => {
   );
 
   it("says when the workspace requires it", async () => {
+    asRole("developer");
     await renderCard(
       <WorkspaceTwoFactorCard
-        workspace={{ ...WORKSPACE, role: "developer", requireTwoFactor: true }}
+        workspace={{ ...WORKSPACE, requireTwoFactor: true }}
       />,
     );
 
     expect(screen.getByText("Required")).toBeInTheDocument();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it("offers no control and no verdict while the capability check is in flight", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: null, canManage: false, loading: true }),
+    );
+    const { container } = await renderCard(
+      <WorkspaceTwoFactorCard workspace={WORKSPACE} />,
+    );
+
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    expect(screen.queryByText("Not required")).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[data-skeleton-region="two-factor-control"]'),
+    ).toHaveClass("h-5", "w-9");
   });
 });
 
@@ -230,34 +263,29 @@ describe("WorkspaceTwoFactorCardSkeleton matches the card (w22/m402)", () => {
   }
 
   it.each([
-    ["an admin", WORKSPACE],
-    ["a non-admin", { ...WORKSPACE, role: "developer" }],
-  ])(
-    "has the same card, header and row as %s sees",
-    async (_who, workspace) => {
-      const { container } = render(<WorkspaceTwoFactorCardSkeleton />);
-      const pending =
-        container.querySelector<HTMLElement>('[data-slot="card"]')!;
-      const ready = await renderReady(workspace);
+    ["an admin", asAdmin],
+    ["a non-admin", () => asRole("developer")],
+  ])("has the same card, header and row as %s sees", async (_who, as) => {
+    as();
+    const { container } = render(<WorkspaceTwoFactorCardSkeleton />);
+    const pending = container.querySelector<HTMLElement>('[data-slot="card"]')!;
+    const ready = await renderReady(WORKSPACE);
 
-      expect(pending.className).toBe(ready.className);
-      expect(shape(pending.querySelector('[data-slot="card-header"]')!)).toBe(
-        shape(ready.querySelector('[data-slot="card-header"]')!),
-      );
-      const pendingContent = pending.querySelector(
-        '[data-slot="card-content"]',
-      )!;
-      const readyContent = ready.querySelector('[data-slot="card-content"]')!;
-      expect(pendingContent.className).toBe(readyContent.className);
-      const pendingRow = pendingContent.firstElementChild!;
-      const readyRow = readyContent.firstElementChild!;
-      expect(pendingRow.className).toBe(readyRow.className);
-      // The label is static copy, so it is the same element with the same text.
-      expect(shape(pendingRow.firstElementChild!)).toBe(
-        shape(readyRow.firstElementChild!),
-      );
-    },
-  );
+    expect(pending.className).toBe(ready.className);
+    expect(shape(pending.querySelector('[data-slot="card-header"]')!)).toBe(
+      shape(ready.querySelector('[data-slot="card-header"]')!),
+    );
+    const pendingContent = pending.querySelector('[data-slot="card-content"]')!;
+    const readyContent = ready.querySelector('[data-slot="card-content"]')!;
+    expect(pendingContent.className).toBe(readyContent.className);
+    const pendingRow = pendingContent.firstElementChild!;
+    const readyRow = readyContent.firstElementChild!;
+    expect(pendingRow.className).toBe(readyRow.className);
+    // The label is static copy, so it is the same element with the same text.
+    expect(shape(pendingRow.firstElementChild!)).toBe(
+      shape(readyRow.firstElementChild!),
+    );
+  });
 
   it("holds the switch's own box, and offers no control before its data exists", async () => {
     const { container } = render(<WorkspaceTwoFactorCardSkeleton />);
