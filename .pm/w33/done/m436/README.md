@@ -1,6 +1,6 @@
 # w33 · m436 — A Blueprint Key Value with no `plan` is created on `256mb` (Starter), as Render's spec says
 
-**Worker:** worker33 **Goal:** a Blueprint that declares a Key Value instance without a `plan` creates the same size Render does (`256mb`, bex's `starter`), prices it and gates it as paid, and leaves an existing instance's plan alone. **Status:** blocked — release gate, clears by itself: t001–t007 are done and shipped in `fd6218884`. [t008](t008.md) replays the definition of done on production once a "pin platform images to" commit contains it (§ Blocked).
+**Worker:** worker33 **Goal:** a Blueprint that declares a Key Value instance without a `plan` creates the same size Render does (`256mb`, bex's `starter`), prices it and gates it as paid, and leaves an existing instance's plan alone. **Status:** done (2026-11-17: the definition of done was replayed on production on pin `58ef086ab21d`, see § Production replay).
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout (live replay on production) — **BLOCKED** (release gate) | 40m | t006, t007 |
+| [t008](done/t008.md) | Closeout (live replay on production) — **DONE** | 40m | t006, t007 |
 
 ## Definition of done
 
@@ -64,3 +64,19 @@ Then t008 walks items 1–4 in `bex-canary`:
 - apply an explicit `plan: free` store.
 
 Then delete the fixtures (by-id `GET` 404), record the conclusions here and close the milestone. The Starter fixture is billed while it lives, so delete it in the same run.
+
+## Unblocked (2026-11-17)
+
+**Source: verified evidence (loopx w33), no user decision involved.** The release gate cleared. The newest `chore(deploy): pin platform images to <sha>` commit on `origin/main` is `7a8203c3b` (`… to 58ef086ab21d`, 2026-11-17 04:37 UTC), and `git merge-base --is-ancestor fd6218884 58ef086ab21d` succeeds. No gate remains. Next: t008 replays definition-of-done items 1–4 in `bex-canary` as the QA user, deletes the fixtures (by-id `GET` 404), records the conclusions here and closes the milestone, or re-parks it with the failure named.
+
+## Production replay (2026-11-17, t008)
+
+Pin `58ef086ab21d` (carries `fd6218884`), QA user, workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`). REST and GraphQL were called with the QA session, MCP through `https://api.bex.co/mcp` with a per-call `workspaceId`, and the dashboard in headless Chrome. The workspace held one Key Value store before the run, another hunt's `qa-20261110-81b5-kv` on Starter; it was left alone.
+
+1. **Validate (holds).** `render-examples/sidekiq`'s `render.yaml` at `73f3ab4`, unmodified (`type: redis`, no `plan`), answers `valid: true` on REST `POST /v1/blueprints/validate`, GraphQL `validateBlueprint` and MCP `validate_bex_yml`. Its plan creates `sidekiq-redis` (`key_value`), and the estimate carries `sidekiq-redis`, tier `starter` (Starter), $7.21 ($7.00 instance + 1 GB $0.21), in a $17.01 total. REST `POST /v1/blueprints/preview` of the repository itself gives the same result. The dashboard's New Blueprint review (`/blueprints/new?repo=https://github.com/render-examples/sidekiq`) shows "sidekiq-redis (Starter) $7.21 / month".
+2. **Apply (holds).** At 05:16:39Z, REST `POST /v1/blueprints/deploy` of a one-store file without `plan` created `qa-20261117-m436-kv` (`red-dbtu6e7ok1cs73a3mtig`). REST `GET /v1/key-value/{id}`, GraphQL `keyValue`, MCP `get_key_value` and the dashboard's Details card ("Instance type: Starter") all read `starter`, and the store reached `available` on it. The create passed the payment-method gate because `bex-canary` has a card on file (`workspaceBillingReadiness`: `paymentMethodRequired` and `paymentMethodReady` both true), so the paid-intent count cannot be told apart live. It reads the same parsed plan the estimate shows, and `TestAPlanLessBlueprintKeyValueIsPaidIntent` covers it.
+3. **Sync keeps an existing plan (holds).** At 05:17:38Z an apply of `plan: free` with a `repo` registered Blueprint `exs-dbtu6snok1cs73a3mtlg` (auto-sync off, because bex does not receive that repository's pushes) and created `qa-20261117-m436-free` (`red-dbtu6snok1cs73a3mtkg`) on `free`. Validating the same file without `plan` and with that `blueprintId` planned one `noop` for the store. `POST /v1/blueprints/{id}/sync` with that file succeeded at 05:17:53Z, and the store stayed `free`, with `updatedAt` still its create time, on REST, GraphQL, MCP and the dashboard ("Instance type: Free"). The estimate of that sync still showed a Starter line ($7.21), which is the drift already filed as [w33/006](../../006.md).
+4. **Explicit `plan: free` (holds).** Item 3's store is an explicit `plan: free` create on `free`. While it held the slot, a second store with `plan: free` failed validation with `FREE_INSTANCE_LIMIT` at `services[0].plan` ("this workspace already has a free Key Value store (qa-20261117-m436-free) …"). Its apply was refused with 400 `FREE_INSTANCE_LIMIT` (`params.limit: 1`), and nothing was created. A plan-less second store in the same state validated, priced as Starter, and was not checked against the free limit.
+5. **Suites (hold).** On `58ef086ab21d`, CI `test (backend)` (run 44016267997, `go test ./...` against real Postgres and OpenFGA) and `test (dashboard)` (run 44016268008, `yarn typecheck && yarn lint && yarn test`) passed. m436 changed no dashboard code.
+
+**Cleanup.** At 05:19:26Z both stores were deleted (204), and Blueprint `exs-dbtu6snok1cs73a3mtlg` was disconnected (204). By-id `GET` answers 404 for all three, and the workspace lists no Blueprint. The QA session was logged out (`qa-login.sh --logout`, then a 401 on the API).
