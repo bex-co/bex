@@ -195,6 +195,17 @@ func (r *KeyValueReconciler) reconcileKeyValueBackup(
 	return err
 }
 
+// keyValueBackupHost is the Service the snapshot dials: the store's backend
+// while the internal proxy fronts it, so a snapshot uses the server's platform
+// reserve and never one of the tenant's connections (w6/m456), else the store
+// itself.
+func (r *KeyValueReconciler) keyValueBackupHost(kv *appv1alpha1.KeyValue) string {
+	if r.InternalProxyImage != "" && !kv.Spec.InternalAuth {
+		return keyValueInternalBackendName(kv)
+	}
+	return kv.Name
+}
+
 func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, platformSecretName string) batchv1.CronJobSpec {
 	failedHistory := int32(3)
 	successfulHistory := int32(3)
@@ -225,7 +236,7 @@ func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue,
 valkey-cli -h "${VALKEY_HOST}" -p "6379" --user "${VALKEY_USER}" --rdb /backup/dump.rdb
 test -s /backup/dump.rdb`},
 			Env: []corev1.EnvVar{
-				{Name: "VALKEY_HOST", Value: kv.Name},
+				{Name: "VALKEY_HOST", Value: r.keyValueBackupHost(kv)},
 				// --rdb replicates (SYNC), an @admin command only the platform
 				// user keeps.
 				{Name: "VALKEY_USER", Value: kvPlatformUser},

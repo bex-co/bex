@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -84,21 +86,35 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		env := []corev1.EnvVar{
 			{Name: "BEX_KV_UPSTREAM_ADDR", Value: fmt.Sprintf("%s.%s.svc:%d", backend.Name, kv.Namespace, kvPort)},
 			kvSecretEnv(kvPasswordEnv, intent.authSecretName),
+			// The plan's limit, one budget across both listeners (w6/m456).
+			{Name: "BEX_KV_MAX_CONNECTIONS", Value: strconv.Itoa(int(intent.plan.ConnectionLimit))},
 		}
 		ports := []corev1.ContainerPort{{Name: keyValueContainerName, ContainerPort: kvPort}}
+		var mounts []corev1.VolumeMount
+		var volumes []corev1.Volume
 		if intent.tlsForwarded() {
 			env = append(env,
 				corev1.EnvVar{Name: "BEX_KV_TLS_ADDR", Value: ":6380"},
 				corev1.EnvVar{Name: "BEX_KV_TLS_UPSTREAM_ADDR", Value: fmt.Sprintf("%s.%s.svc:%d", backend.Name, kv.Namespace, kvTLSPort)},
+				// The store's own certificate answers a TLS client past the
+				// budget with Valkey's refusal. Optional, as on the server: the
+				// Secret exists only while the store is (or was) public.
+				corev1.EnvVar{Name: "BEX_KV_TLS_CERT_FILE", Value: kvTLSCertFile},
+				corev1.EnvVar{Name: "BEX_KV_TLS_KEY_FILE", Value: kvTLSKeyFile},
 			)
 			ports = append(ports, corev1.ContainerPort{Name: "valkey-tls", ContainerPort: kvTLSPort})
+			mounts = []corev1.VolumeMount{{Name: kvTLSVolume, MountPath: kvTLSMountPath, ReadOnly: true}}
+			volumes = []corev1.Volume{{Name: kvTLSVolume, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{
+				SecretName: intent.tlsSecretName, Optional: new(true),
+			}}}}
 		}
+		dep.Spec.Template.Spec.Volumes = volumes
 		dep.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name: "internal-proxy", Image: r.InternalProxyImage,
-			Command: []string{"/kv-internal-proxy"}, Env: env, Ports: ports,
+			Command: []string{"/kv-internal-proxy"}, Env: env, Ports: ports, VolumeMounts: mounts,
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("25m"), corev1.ResourceMemory: resource.MustParse("16Mi")},
-				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("250m"), corev1.ResourceMemory: resource.MustParse("128Mi")},
+				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("250m"), corev1.ResourceMemory: kvInternalProxyMemoryLimit(intent.plan)},
 			}, SecurityContext: execution.RestrictedContainerSecurityContext(),
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler:   corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: []string{"/kv-internal-proxy", "--check"}}},
@@ -116,6 +132,20 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		return false, err
 	}
 	return keyValueInternalDeploymentReady(dep), nil
+}
+
+// kvInternalProxyMemoryLimit lets the proxy hold its plan's connections: 32Mi
+// plus 48KiB per connection, never below the 128Mi every proxy had. Measured
+// 2026-11-17 (w6/m456) with 5,000 idle clients through the proxy to Valkey 8
+// on linux/arm64: the container's cgroup held 195.7 MB (104 MB anonymous, 85 MB
+// kernel, the sockets and splice pipes), about 39 KB per connection.
+func kvInternalProxyMemoryLimit(plan tiers.ValkeyTier) resource.Quantity {
+	limit := resource.MustParse("128Mi")
+	scaled := resource.NewQuantity((32<<20)+int64(plan.ConnectionLimit)*(48<<10), resource.BinarySI)
+	if scaled.Cmp(limit) > 0 {
+		return *scaled
+	}
+	return limit
 }
 
 func keyValueInternalDeploymentReady(dep *appsv1.Deployment) bool {

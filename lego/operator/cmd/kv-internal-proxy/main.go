@@ -26,6 +26,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/bex-co/bex/lego/operator/internal/kvinternalauth"
@@ -49,6 +50,16 @@ func run(ctx context.Context, getenv func(string) string, check bool) error {
 	if check {
 		return kvinternalauth.Check(ctx, kvinternalauth.Config{Upstream: upstream, Password: password})
 	}
+	// One budget for both listeners: the store's plan limit (w6/m456).
+	limit := 0
+	if raw := getenv("BEX_KV_MAX_CONNECTIONS"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n <= 0 {
+			return errors.New("kv-internal-proxy: BEX_KV_MAX_CONNECTIONS must be a positive integer")
+		}
+		limit = n
+	}
+	budget := kvinternalauth.NewBudget(limit)
 	addr := getenv("BEX_KV_INTERNAL_ADDR")
 	if addr == "" {
 		addr = ":6379"
@@ -74,11 +85,14 @@ func run(ctx context.Context, getenv func(string) string, check bool) error {
 		defer func() { _ = listener.Close() }()
 		count++
 		go func() {
-			results <- kvinternalauth.Serve(ctx, listener, kvinternalauth.Config{Upstream: tlsUpstream, Passthrough: true})
+			results <- kvinternalauth.Serve(ctx, listener, kvinternalauth.Config{
+				Upstream: tlsUpstream, Passthrough: true, Budget: budget,
+				TLSCertFile: getenv("BEX_KV_TLS_CERT_FILE"), TLSKeyFile: getenv("BEX_KV_TLS_KEY_FILE"),
+			})
 		}()
 	}
 	go func() {
-		results <- kvinternalauth.Serve(ctx, internal, kvinternalauth.Config{Upstream: upstream, Password: password})
+		results <- kvinternalauth.Serve(ctx, internal, kvinternalauth.Config{Upstream: upstream, Password: password, Budget: budget})
 	}()
 	var result error
 	for range count {

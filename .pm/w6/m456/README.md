@@ -1,25 +1,25 @@
 # w6 · m456 — Key Value connections stop at the plan's limit, as on Render (free 50 … 50g 50,000)
 
-**Worker:** worker6 **Goal:** every Key Value instance accepts exactly the connections its plan allows on Render, no fewer (a paid store is capped at 1,024 by its internal proxy today) and no more (a free store takes 1,024 where Render's takes 50), and the client past the limit receives Valkey's own `ERR max number of clients reached`. **Status:** todo
+**Worker:** worker6 **Goal:** every Key Value instance accepts exactly the connections its plan allows on Render, no fewer (a paid store is capped at 1,024 by its internal proxy today) and no more (a free store takes 1,024 where Render's takes 50), and the client past the limit receives Valkey's own `ERR max number of clients reached`. **Status:** todo (t001–t005, t008, t009 done; t006 ADR records written, its production checks wait for the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Render's connection limit on every Valkey plan, pinned in tiers](t001.md) | 45m | — |
-| t002 | [Production read: which stores already exceed their new limit](t002.md) | 30m | t001 |
-| t003 | [`valkey-server` starts with `--maxclients` from its plan](t003.md) | 1h | t001 |
-| t004 | [The limit reaches running servers and plan upgrades with `CONFIG SET`](t004.md) | 45m | t003 |
-| t005 | [kv-internal-proxy admits the plan's limit and lets Valkey answer the refusal](t005.md) | 1h | t003 |
+| t001 | [Render's connection limit on every Valkey plan, pinned in tiers](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Production read: which stores already exceed their new limit](done/t002.md) — **DONE** | 30m | t001 |
+| t003 | [`valkey-server` starts with `--maxclients` from its plan](done/t003.md) — **DONE** | 1h | t001 |
+| t004 | [The limit reaches running servers and plan upgrades with `CONFIG SET`](done/t004.md) — **DONE** | 45m | t003 |
+| t005 | [kv-internal-proxy admits the plan's limit and lets Valkey answer the refusal](done/t005.md) — **DONE** | 1h | t003 |
 | t006 | [Ship, verify on production, and record the limits in ADR021 and ADR018](t006.md) | 45m | t002, t004, t005 |
 | t007 | [Render parity](t007.md) | 30m | t006 |
-| t008 | [Simplify](t008.md) | 15m | t007 |
-| t009 | [Test coverage](t009.md) | 30m | t007 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
 | t010 | [Closeout](t010.md) | 10m | t008, t009 |
 
 ## Definition of done
 
-- On production, a free Key Value accepts 50 concurrent client connections and the 51st receives `ERR max number of clients reached`; a `standard` store accepts 1,000; upgrading the free store to `starter` raises its limit to 250 without restarting `valkey-server`.
+- On production, a free Key Value accepts 50 concurrent client connections and the 51st receives `ERR max number of clients reached`; a `standard` store accepts 1,000; upgrading the free store to `starter` raises its limit to 250. _(Amended 2026-11-17, t003–t005: the upgrade restarts `valkey-server` as Render's does, "Upgrading requires a restart" ([Key Value](https://render.com/docs/key-value), read 2026-11-17), because it changes the pod's CPU and memory; the restarted server starts with the new limit, and the limit adds no restart of its own. The original "without restarting" could not hold on bex or on Render.)_
 - A `pro` store's internal proxy admits its 5,000 (a test proves it no longer refuses at 1,024), and at every store's limit the refusal is Valkey's error on both the plain and the TLS listener, never a closed connection.
 - Every existing store adopted its limit without a Valkey pod restart.
 - A guard test pins every Valkey plan id and alias bex accepts to Render's figure; ADR021 and ADR018 record the limits; t002's stores over their new limit are reported.
@@ -32,3 +32,54 @@
 - **Expected outcome:** a paid store serves the connections its plan sells (5,000 on `pro`, where it stops at 1,024 today), a free store stops at Render's 50, and a client at the limit reads why.
 - **Why now:** w5/m266 (2026-11-05) put `3g` through `pro_max` on sale, and each is held to 1,024 connections, a fifth of what Render sells as `pro`. Free stores take 20 times Render's 50, a cost exposure that grows with every free signup. w6/m457 and w6/m459 read the table t001 adds.
 - **Render parity task:** included. The limit is tenant-visible on every client connection, and w6/m459 shows it in the dashboard; REST, GraphQL and MCP fields do not change, and t007 confirms they say nothing that contradicts it.
+
+## Connection paths (t001, 2026-11-17)
+
+Every way a connection reaches a store's `valkey-server`, and what bounds it after m456:
+
+| Path | Who | Bound |
+| --- | --- | --- |
+| `<id>:6379` → `<id>-internal` plain listener (AUTH injected) → `<id>-backend:6379` | tenant services, internal URL, store without `internalAuth` | the proxy's budget, the plan's limit, shared with the next row |
+| kv-sni-proxy → `<id>:6380` → `<id>-internal` TLS passthrough listener → `<id>-backend:6380` (TLS ends in Valkey) | tenant, external URL | the same budget; kv-sni-proxy's own 64 per resource first (w6/m457) |
+| `<id>:6379` → Valkey directly; external TLS → `<id>:6380` → Valkey | tenant of a store with `spec.internalAuth` (proxy retired) | `--maxclients` only, the limit plus the reserve (follow-up w6/135) |
+| `<id>-backend` or the pod IP | anything that bypasses the proxy | `--maxclients` |
+
+Platform clients, each holding a connection only while it runs, all inside the reserve of 10:
+
+| Client | Connects as | At most at once |
+| --- | --- | --- |
+| Valkey readiness probe (`valkey-cli PING`, every 5 s, 2 s timeout) | `default`, localhost | 1 |
+| redis_exporter sidecar (`kvExporterEnv`), one connection per scrape by the single `prometheus-server` | `bex`, localhost | 1 |
+| `kv-internal-proxy --check` readiness (dials `<id>-backend` directly, outside the budget) | `default` | 2 (old and new pod during a rollout, `maxSurge: 1`) |
+| Operator runtime passes (`withPlatformValkey`: TLS listener, maxmemory, maxclients, persistence handoff), sequential per store | `bex`, pod IP | 1 (2 across a leader handoff) |
+| Backup snapshot (`valkey-cli --rdb`, CronJob `Forbid`), now dialing `<id>-backend` | `bex` | 1 (2 if a manual one overlaps) |
+| Persistence-transition helper | own server on a Unix socket, not the serving one | 0 |
+
+Sum 8, reserve 10. kv-sni-proxy holds no connection of its own: it dials per tenant client.
+
+## Production read (t002, 2026-11-17)
+
+`max by (pod) (max_over_time(redis_connected_clients[30d]))` on production `prometheus-server` at 2026-11-17T09:22Z. Retention reaches back to 2026-11-13T06:00Z (about 4 days), so this is the peak since then. `redis_connected_clients` counts the exporter's own scrape connection.
+
+- Live stores: 3, all `starter` (limit 250) and behind the proxy, none with `internalAuth`. Peaks 37, 18 and 2.
+- 40 stores deleted within the window peaked at 1–3.
+- **None** is over its new limit; no peak reaches even free's 50.
+- All three live Valkey processes run `open files 10032/10032`, so `CONFIG SET` can lower them from 10,000 but not raise them past it. A `starter` store goes to 260 with no restart.
+
+## Progress — 2026-11-17 (t001–t005, t008, t009)
+
+Shipped design, with where it deviates from the task text:
+
+- **The proxy holds the tenant's limit; the server keeps a platform reserve.** t003/t005 planned the server to refuse first, with the proxy's budget above it. The platform's clients hold connections only while they run (see Connection paths), so a server-only bound of limit + reserve would admit up to the limit + 10 tenant connections and then lock out the probes, exporter and operator. Instead `kv-internal-proxy` holds exactly the plan's limit across both listeners and answers the next client with Valkey's exact `-ERR max number of clients reached\r\n`. `valkey-server` runs `--maxclients` limit + 10 and refuses only what bypasses the proxy, and the proxy forwards that refusal on the plain listener.
+- **The TLS refusal is written by the proxy.** Valkey 8 writes nothing to a TLS client past `maxclients`: it drops it before the handshake (reproduced on the pinned image, `SSLEOFError`). The proxy mounts the store's certificate (optional, as the server does) and answers a refused TLS client inside TLS. A store with no certificate yet closes the client, which is Valkey's own behavior.
+- **The backup snapshot dials `<id>-backend`**, so it uses the reserve instead of a tenant connection.
+- **The proxy's memory limit scales with the plan** (32 Mi + 48 KiB per connection, at least 128 Mi). 5,000 idle connections measured 195.7 MB in its cgroup, so the old fixed 128 Mi would OOM a `pro` store's proxy at about 3,300 connections.
+- **A server started without the flag can be lowered, not raised.** Valkey sets its open-files limit to `maxclients` + 32 at start (10,032 on every production store). The template keeps its flagless args only when the plan's value is at most 10,000; a pre-m456 `pro_plus` or larger store rolls once. Production has none.
+- **Stores with `internalAuth` bypass the proxy**, so they are bounded at limit + 10. Filed as [w6/135](../135.md); no production store has it.
+
+Verified locally:
+- `go test` for tiers, `internal/controller` (envtest and `BEX_TEST_VALKEY=1`, Valkey 7 and 8), `internal/kvinternalauth` (`-race`) and `cmd/kv-internal-proxy`.
+- Every new test failed against a reverted fix: the hold, the settled-store skip, the refusal bytes, the shared budget and the upstream-refusal forwarding.
+- Real Valkey: free starts at 60 and refuses the 61st with Valkey's error. A runtime raise to 260 admits exactly 200 more on the same `run_id`, and lowering below the connected count keeps every client.
+
+ADR021 § 9 and ADR018 (the "Datastore connection limits by plan" row and a gap-backlog row) record it. That is t006 step 3; t006's production checks and t007 wait for the deploy.

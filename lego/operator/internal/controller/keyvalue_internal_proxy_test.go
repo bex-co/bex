@@ -19,10 +19,12 @@ package controller
 import (
 	"context"
 	"reflect"
+	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -295,5 +297,61 @@ func TestKeyValueInternalProxyAdoptsThePriorityClassOnlyWhenItRolls(t *testing.T
 	}
 	if got := class(); got != appv1alpha1.DatastorePriorityClassName {
 		t.Fatalf("a rolling proxy did not adopt the class: %q", got)
+	}
+}
+
+// w6/m456 t005: each store's proxy holds its plan's limit across both
+// listeners, answers a refused TLS client with the store's own certificate,
+// and has the memory to hold that many connections.
+func TestKeyValueInternalProxyCarriesThePlansLimit(t *testing.T) {
+	ctx := context.Background()
+	scheme := keyValueBackupTestScheme(t)
+	for _, c := range []struct {
+		plan   string
+		public bool
+		memory string
+	}{
+		{"free", false, "128Mi"},
+		{"starter", true, "128Mi"},
+		{"pro", true, "272768Ki"},   // 32Mi + 5,000 × 48Ki
+		{"50g", false, "2432768Ki"}, // 32Mi + 50,000 × 48Ki
+	} {
+		kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-" + c.plan, Namespace: "tea-test", UID: "test"}, Spec: appv1alpha1.KeyValueSpec{Plan: c.plan}}
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		r := &KeyValueReconciler{Client: cl, Scheme: scheme, InternalProxyImage: "bex@sha256:fixture"}
+		plan, _ := resolveKVPlan(kv.Spec)
+		intent := keyValueIntent{plan: plan, authSecretName: "auth", tlsRuntime: c.public, tlsSecretName: keyValueTLSName(kv), labels: map[string]string{labelKeyValue: kv.Name}}
+		if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+			t.Fatal(err)
+		}
+		dep := &appsv1.Deployment{}
+		if err := cl.Get(ctx, client.ObjectKey{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}, dep); err != nil {
+			t.Fatal(err)
+		}
+		proxy := dep.Spec.Template.Spec.Containers[0]
+		env := map[string]string{}
+		for _, e := range proxy.Env {
+			env[e.Name] = e.Value
+		}
+		if got, want := env["BEX_KV_MAX_CONNECTIONS"], strconv.Itoa(int(plan.ConnectionLimit)); got != want {
+			t.Errorf("%s: BEX_KV_MAX_CONNECTIONS %q, want the plan's %s", c.plan, got, want)
+		}
+		if got := proxy.Resources.Limits.Memory(); got.Cmp(resource.MustParse(c.memory)) != 0 {
+			t.Errorf("%s: memory limit %s, want %s", c.plan, got, c.memory)
+		}
+		volumes := dep.Spec.Template.Spec.Volumes
+		if !c.public {
+			if len(volumes) != 0 || len(proxy.VolumeMounts) != 0 || env["BEX_KV_TLS_CERT_FILE"] != "" {
+				t.Errorf("%s: a private store's proxy mounted a certificate: %v", c.plan, volumes)
+			}
+			continue
+		}
+		if len(volumes) != 1 || volumes[0].Secret == nil || volumes[0].Secret.SecretName != keyValueTLSName(kv) ||
+			volumes[0].Secret.Optional == nil || !*volumes[0].Secret.Optional {
+			t.Errorf("%s: the proxy must mount the store's certificate, optional: %+v", c.plan, volumes)
+		}
+		if len(proxy.VolumeMounts) != 1 || !proxy.VolumeMounts[0].ReadOnly || env["BEX_KV_TLS_CERT_FILE"] != kvTLSCertFile || env["BEX_KV_TLS_KEY_FILE"] != kvTLSKeyFile {
+			t.Errorf("%s: mounts %+v, cert %q key %q", c.plan, proxy.VolumeMounts, env["BEX_KV_TLS_CERT_FILE"], env["BEX_KV_TLS_KEY_FILE"])
+		}
 	}
 }

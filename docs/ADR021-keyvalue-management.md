@@ -228,6 +228,29 @@ Verified with `ACL DRYRUN` on both pinned images (Valkey 7 and 8) booted with th
 
 The persistence-transition helper instance is exempt from all of this: it listens only on a private unix socket and is driven by the operator itself.
 
+### 9. Connection limits (w6/m456, 2026-11-17)
+
+Every store accepts exactly the client connections its plan allows on Render ([compute plans § Render Key Value plans](https://render.com/docs/compute-plans#render-key-value-plans), read 2026-11-17: "Specify a compute plan to determine the instance's available RAM and connection limit", [Key Value](https://render.com/docs/key-value)). The figure is `connectionLimit` on each `valkey` tier in `lego/types/tiers/tiers.yaml`, pinned per plan id and Render size alias by `TestValkeyConnectionLimitsMatchRender`:
+
+| plan (Render id) | `free` | `starter` (`256mb`) | `standard` (`1g`) | `3g` | `pro` (`5g`) | `pro_plus` (`10g`) | `pro_max` (`20g`) | `pro_ultra` (`40g`) | `50g` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| connections | 50 | 250 | 1,000 | 3,000 | 5,000 | 10,000 | 20,000 | 40,000 | 50,000 |
+
+**Enforcement.** Before m456 `valkey-server` ran Valkey's default 10,000 clients, and `kv-internal-proxy` capped each of its two listeners at 1,024 and closed the excess. A free store took 2,048 connections and a `pro` store stopped at 1,024.
+
+- `kv-internal-proxy`, in front of every tenant connection of a store without internal authentication, holds the plan's limit as **one budget across its plain and TLS listeners** (`BEX_KV_MAX_CONNECTIONS`). The next client reads `-ERR max number of clients reached`, byte for byte Valkey's own refusal, and no upstream is dialed for it.
+- `valkey-server` starts with `--maxclients` set to the limit plus a **platform reserve of 10**: the readiness probe, the exporter's scrape, the proxy's readiness check (two during its rollout), the operator's runtime passes and a backup snapshot never queue behind a tenant at its limit. A plain client that the server itself refuses (one that reached it some other way) gets the server's refusal through the proxy instead of a closed connection.
+- The backup snapshot dials the `<id>-backend` Service, not the proxy, so it uses the reserve and never one of the tenant's connections.
+- The proxy's memory limit scales with the plan: 32 Mi plus 48 KiB per connection, never below the 128 Mi every proxy had. At 5,000 idle connections the proxy's cgroup held 195.7 MB (measured on Valkey 8, linux/arm64), about 39 KB per connection, so a fixed 128 Mi would OOM at about 3,300.
+
+**The refusal on TLS.** Valkey writes nothing to a TLS client past its `maxclients`: it refuses before the handshake and drops the connection (`acceptCommonHandler`; reproduced on the pinned Valkey 8 image as an `SSLEOFError`). So a TLS client past the budget is answered by the proxy itself. It completes the handshake with the store's own certificate (the `<id>-kv-tls` Secret, mounted optional into the proxy as into the server) and writes the same refusal. The certificate is read at each refusal, so a renewal applies at once. At most 16 refusals are answered at a time per listener, and past that the client is closed. The proxy pod gains no new authority: it already holds the tenant password, and the certificate is the store's own.
+
+**Existing stores restart for nothing.** A StatefulSet template written before m456 keeps its flagless server args whenever the limit is the only difference and the running server can be lowered to the plan's figure. Each pass then sets the running process with `CONFIG SET maxclients` as the platform user and records the value on the pod (`app.bex.co/valkey-maxclients: <limit>/<its process>`), so a settled store is not dialed again until its container restarts. A server started without the flag can only be lowered at runtime. Valkey sets its own open-files limit to `maxclients` + 32 at start (all three production stores ran at 10,032), so `CONFIG SET` cannot take it past 10,000. A pre-m456 `pro_plus`, `pro_max`, `pro_ultra` or `50g` store therefore rolls once to start with its flag. Lowering below the clients already connected keeps every one of them and refuses new ones until the count drops (`TestValkeyRuntimeMaxclients`, both pinned images).
+
+**A plan change** rewrites the pod's CPU and memory, so the StatefulSet rolls as it always has, and as Render's does ("Upgrading requires a restart", [Key Value](https://render.com/docs/key-value), read 2026-11-17). The new server starts with the new plan's `--maxclients`, and the proxy's budget follows in its own rollout. The limit adds no restart of its own.
+
+**Not yet exact: stores with internal authentication.** With `spec.internalAuth` (w5/m268) the proxy is retired and tenants reach `valkey-server` directly, so their bound is the server's, the plan's limit plus the reserve of 10, and a tenant there can hold the reserve. No production store had internal authentication at rollout. Keeping a counting front for those stores is filed as follow-up work (ADR018 gap backlog).
+
 ## MVP scope
 
 Ship only what fits the current single node — single-instance plans differing by compute + storage (above). The metered TLS/SNI front door is opt-in per store via `spec.public` + `BEX_KV_DOMAIN`; `BEX_CLUSTER_ISSUER` is also required so the operator can issue the backend certificate.

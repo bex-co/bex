@@ -21,6 +21,7 @@ package kvinternalauth
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -29,14 +30,58 @@ import (
 	"time"
 )
 
+// maxClientsReply is Valkey's refusal of a client past its maxclients, byte
+// for byte, which a client at the store's limit reads from this proxy too.
+const maxClientsReply = "-ERR max number of clients reached\r\n"
+
+// maxRefusing bounds the refusals one listener answers at once. Past it a
+// refused client is closed, so a flood past the limit costs no more than this.
+const maxRefusing = 16
+
+// errUpstreamFull is the upstream's own maxclients refusal.
+var errUpstreamFull = errors.New("kv-internal-proxy: upstream refused: max number of clients reached")
+
+// Budget is the client connections the listeners in front of one store hold
+// together: the store's plan limit, shared by its plain and TLS listeners
+// (w6/m456).
+type Budget struct{ slots chan struct{} }
+
+// NewBudget holds at most n connections; n <= 0 holds 1,024.
+func NewBudget(n int) *Budget {
+	if n <= 0 {
+		n = 1024
+	}
+	return &Budget{slots: make(chan struct{}, n)}
+}
+
+func (b *Budget) acquire() bool {
+	select {
+	case b.slots <- struct{}{}:
+		return true
+	default:
+		return false
+	}
+}
+
+func (b *Budget) release() { <-b.slots }
+
 // Config identifies a single store and transport. Passthrough is exclusively
 // for the external TLS path: its bytes, including client authentication, are
 // forwarded without interpretation.
 type Config struct {
-	Upstream         string
-	Password         string
-	Passthrough      bool
-	MaxConnections   int
+	Upstream    string
+	Password    string
+	Passthrough bool
+	// Budget is shared by every listener in front of the store; nil gives
+	// this listener a budget of its own (NewBudget(0)).
+	Budget *Budget
+	// TLSCertFile and TLSKeyFile are the store's own certificate. A
+	// passthrough listener completes the handshake with it only to answer a
+	// client past the budget with Valkey's refusal, which Valkey itself cannot
+	// do before a handshake. They are read at each refusal, so a renewed
+	// certificate applies at once; without them the client is closed.
+	TLSCertFile      string
+	TLSKeyFile       string
 	HandshakeTimeout time.Duration
 }
 
@@ -47,8 +92,8 @@ func (c Config) normalized() (Config, error) {
 	if !c.Passthrough && c.Password == "" {
 		return c, errors.New("kv-internal-proxy: internal password is required")
 	}
-	if c.MaxConnections <= 0 {
-		c.MaxConnections = 1024
+	if c.Budget == nil {
+		c.Budget = NewBudget(0)
 	}
 	if c.HandshakeTimeout <= 0 {
 		c.HandshakeTimeout = 5 * time.Second
@@ -57,7 +102,8 @@ func (c Config) normalized() (Config, error) {
 }
 
 // Serve owns listener and closes it and all accepted streams on cancellation.
-// It sheds excess connections immediately, before allocating an upstream.
+// A client past the budget is refused before an upstream is dialed, with the
+// reply Valkey gives at its own maxclients.
 // Only dial and the injected AUTH have deadlines: Redis blocking commands,
 // pubsub and idle connection pools may keep a stream open indefinitely.
 func Serve(ctx context.Context, listener net.Listener, config Config) error {
@@ -71,6 +117,7 @@ func Serve(ctx context.Context, listener net.Listener, config Config) error {
 	var mu sync.Mutex
 	active := make(map[net.Conn]struct{})
 	var handlers sync.WaitGroup
+	refusing := make(chan struct{}, maxRefusing)
 	shutdownDone := make(chan struct{})
 	context.AfterFunc(ctx, func() {
 		defer close(shutdownDone)
@@ -94,14 +141,24 @@ func Serve(ctx context.Context, listener net.Listener, config Config) error {
 			_ = conn.Close()
 			return nil
 		}
-		mu.Lock()
-		if ctx.Err() != nil || len(active) >= config.MaxConnections {
-			mu.Unlock()
-			_ = conn.Close()
-			if ctx.Err() != nil {
-				return nil
+		if !config.Budget.acquire() {
+			select {
+			case refusing <- struct{}{}:
+				handlers.Go(func() {
+					defer func() { <-refusing }()
+					refuse(ctx, conn, config)
+				})
+			default:
+				_ = conn.Close()
 			}
 			continue
+		}
+		mu.Lock()
+		if ctx.Err() != nil {
+			mu.Unlock()
+			config.Budget.release()
+			_ = conn.Close()
+			return nil
 		}
 		active[conn] = struct{}{}
 		mu.Unlock()
@@ -111,6 +168,7 @@ func Serve(ctx context.Context, listener net.Listener, config Config) error {
 				mu.Lock()
 				delete(active, conn)
 				mu.Unlock()
+				config.Budget.release()
 			}()
 			proxy(ctx, conn, config)
 		})
@@ -177,9 +235,14 @@ func connect(ctx context.Context, config Config) (net.Conn, error) {
 			return nil, errors.New("kv-internal-proxy: upstream authentication failed")
 		}
 		// Read exactly +OK, without buffering any following stream bytes or
-		// exposing the injected reply. Every other answer fails closed.
+		// exposing the injected reply. Valkey's maxclients refusal, written
+		// before it reads the AUTH, is reported for the client; every other
+		// answer fails closed.
 		var reply [5]byte
 		if _, err := io.ReadFull(upstream, reply[:]); err != nil || string(reply[:]) != "+OK\r\n" {
+			if err == nil && upstreamFull(upstream, reply[:]) {
+				return nil, errUpstreamFull
+			}
 			return nil, errors.New("kv-internal-proxy: upstream authentication failed")
 		}
 		if err := upstream.SetDeadline(time.Time{}); err != nil {
@@ -193,8 +256,51 @@ func connect(ctx context.Context, config Config) (net.Conn, error) {
 	return upstream, nil
 }
 
+// upstreamFull reports whether the upstream's reply, of which head has been
+// read, is Valkey's maxclients refusal.
+func upstreamFull(upstream net.Conn, head []byte) bool {
+	if string(head) != maxClientsReply[:len(head)] {
+		return false
+	}
+	rest := make([]byte, len(maxClientsReply)-len(head))
+	_, err := io.ReadFull(upstream, rest)
+	return err == nil && string(rest) == maxClientsReply[len(head):]
+}
+
+// refuse answers a client past the budget as Valkey answers one past its
+// maxclients, then closes it. Inside TLS that needs the store's certificate.
+func refuse(ctx context.Context, conn net.Conn, config Config) {
+	defer func() { _ = conn.Close() }()
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
+	if err := conn.SetDeadline(time.Now().Add(config.HandshakeTimeout)); err != nil {
+		return
+	}
+	reply := conn
+	if config.Passthrough {
+		if config.TLSCertFile == "" {
+			return
+		}
+		cert, err := tls.LoadX509KeyPair(config.TLSCertFile, config.TLSKeyFile)
+		if err != nil {
+			return
+		}
+		server := tls.Server(conn, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12})
+		if server.Handshake() != nil {
+			return
+		}
+		defer func() { _ = server.Close() }()
+		reply = server
+	}
+	_, _ = io.WriteString(reply, maxClientsReply)
+}
+
 func proxy(ctx context.Context, client net.Conn, config Config) {
 	upstream, err := connect(ctx, config)
+	if errors.Is(err, errUpstreamFull) {
+		_ = client.SetWriteDeadline(time.Now().Add(config.HandshakeTimeout))
+		_, _ = io.WriteString(client, maxClientsReply)
+	}
 	if err != nil {
 		return
 	}

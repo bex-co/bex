@@ -54,7 +54,7 @@ const (
 	kvTLSKeyFile   = kvTLSMountPath + "/" + corev1.TLSPrivateKeyKey
 	// kvRuntimePendingRequeue paces the wait for the Certificate's Secret and
 	// for the kubelet to project it into the running pod, and the retry of a
-	// refused runtime maxmemory change.
+	// refused runtime maxmemory or client limit change.
 	kvRuntimePendingRequeue = 5 * time.Second
 )
 

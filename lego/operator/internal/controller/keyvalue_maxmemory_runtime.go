@@ -20,6 +20,7 @@ import (
 	"cmp"
 	"context"
 	"net"
+	"slices"
 	"strconv"
 	"time"
 
@@ -56,26 +57,49 @@ func valkeyArgsMaxmemoryPolicy(containers []corev1.Container) string {
 }
 
 // applyKeyValueStatefulSet writes the desired StatefulSet shape, keeping the
-// template's own maxmemory policy when that is the only change, so a policy
-// edit does not roll the pod. A new template, or one without the platform user
-// that could take the CONFIG SET, differs anyway and takes the current policy.
-// It is a pure function of (sts, kv, intent) so the workload shape is testable
-// without a client.
+// template's own maxmemory policy and client limit when they are the only
+// change, so a policy edit or the operator upgrade that adds the limit does
+// not roll the pod. The limit is kept only where CONFIG SET can lower the
+// running server to the new one (valkeyMaxclientsHoldable). A new template, or
+// one without the platform user that could take the CONFIG SET, differs
+// anyway and takes the current values. It is a pure function of (sts, kv,
+// intent) so the workload shape is testable without a client.
 func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
-	held := valkeyArgsMaxmemoryPolicy(sts.Spec.Template.Spec.Containers)
-	if held == kv.Spec.MaxmemoryPolicy || intent.replicas == 0 {
+	heldPolicy := valkeyArgsMaxmemoryPolicy(sts.Spec.Template.Spec.Containers)
+	heldClients := valkeyArgValue(sts.Spec.Template.Spec.Containers, "--maxclients")
+	holdClients := valkeyMaxclientsHoldable(heldClients, valkeyMaxclients(intent.plan))
+	if (heldPolicy == kv.Spec.MaxmemoryPolicy && !holdClients) || intent.replicas == 0 {
 		writeKeyValueStatefulSet(sts, kv, intent)
 		return
 	}
 	before := sts.DeepCopy()
 	holding := kv.DeepCopy()
-	holding.Spec.MaxmemoryPolicy = held
+	holding.Spec.MaxmemoryPolicy = heldPolicy
 	writeKeyValueStatefulSet(sts, holding, intent)
+	if holdClients {
+		setValkeyArg(sts.Spec.Template.Spec.Containers, "--maxclients", heldClients)
+	}
 	if apiequality.Semantic.DeepEqual(sts.Spec.Template, before.Spec.Template) {
 		return
 	}
 	before.DeepCopyInto(sts)
 	writeKeyValueStatefulSet(sts, kv, intent)
+}
+
+// setValkeyArg sets flag's value in the Valkey container's args, or removes
+// the flag when value is "" (a server started without it).
+func setValkeyArg(containers []corev1.Container, flag, value string) {
+	for i := range containers {
+		args := containers[i].Args
+		at := slices.Index(args, flag)
+		switch {
+		case containers[i].Name != keyValueContainerName || at < 0 || at+1 >= len(args):
+		case value == "":
+			containers[i].Args = slices.Delete(args, at, at+2)
+		default:
+			args[at+1] = value
+		}
+	}
 }
 
 // valkeyMaxmemoryConfig is the memory budget and policy a store's server runs:

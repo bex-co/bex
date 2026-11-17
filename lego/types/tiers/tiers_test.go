@@ -166,6 +166,32 @@ func TestValkeyCatalogMatchesShippedLadder(t *testing.T) {
 	}
 }
 
+// TestValkeyConnectionLimitsMatchRender pins every Key Value plan bex accepts,
+// by id and by Render's size alias, to Render's connection limit
+// (render.com/docs/compute-plans#render-key-value-plans, read 2026-11-17;
+// w6/m456). A tier added without a figure fails parse, and one whose figure
+// drifts from Render's fails here.
+func TestValkeyConnectionLimitsMatchRender(t *testing.T) {
+	render := map[string]int32{
+		"free": 50, "starter": 250, "standard": 1000, "3g": 3000, "pro": 5000,
+		"pro_plus": 10000, "pro_max": 20000, "pro_ultra": 40000, "50g": 50000,
+		// Render's plan ids for the legacy names.
+		"256mb": 250, "1g": 1000, "5g": 5000, "10g": 10000, "20g": 20000, "40g": 40000,
+	}
+	if len(Valkey.IDs())+len(valkeyInputAliases) != len(render) {
+		t.Fatalf("%d ids + %d aliases, but Render's table pins %d", len(Valkey.IDs()), len(valkeyInputAliases), len(render))
+	}
+	for plan, want := range render {
+		tier, ok := Valkey.ByID(Valkey.CanonicalID(plan))
+		if !ok {
+			t.Fatalf("plan %q does not resolve to a tier", plan)
+		}
+		if tier.ConnectionLimit != want {
+			t.Errorf("plan %q: connection limit %d, Render's is %d", plan, tier.ConnectionLimit, want)
+		}
+	}
+}
+
 func TestDefaultsAreFree(t *testing.T) {
 	if got := Compute.Default(); got.ID != "free" {
 		t.Errorf("Compute.Default() = %q, want %q (the store's prior normalizeTier(\"\") behavior)", got.ID, "free")
@@ -305,6 +331,7 @@ valkey:
       memory: 128Mi
       storageGB: 1
       instances: 1
+      connectionLimit: 50
 `
 
 // validValkey is a flow-style valkey block appended to every malformed case so
@@ -313,7 +340,7 @@ const validValkey = `
 valkey:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1, connectionLimit: 50}
 `
 
 func TestParseAcceptsMinimalValidCatalog(t *testing.T) {
@@ -357,8 +384,8 @@ postgres:
 valkey:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1}
-    - {id: huge, cpu: "4", memory: 40Gi, storageGB: 40, instances: 1, servingPool: xxl}
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1, connectionLimit: 50}
+    - {id: huge, cpu: "4", memory: 40Gi, storageGB: 40, instances: 1, connectionLimit: 50, servingPool: xxl}
 `,
 		"paused default valkey tier": `
 compute:
@@ -372,7 +399,7 @@ postgres:
 valkey:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1, paused: true}
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1, connectionLimit: 50, paused: true}
 `,
 		"empty postgres family": `
 compute:
@@ -530,7 +557,7 @@ postgres:
 valkey:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 0, instances: 1}
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 0, instances: 1, connectionLimit: 50}
 `,
 		"valkey zero instances": `
 compute:
@@ -544,7 +571,21 @@ postgres:
 valkey:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 0}
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 0, connectionLimit: 50}
+`,
+		"valkey tier without a connection limit": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+valkey:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1}
 `,
 		"empty tier id": `
 compute:
@@ -645,8 +686,8 @@ postgres:
 valkey:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1}
-    - {id: huge, cpu: "4", memory: 20Gi, storageGB: 20, instances: 1, servingPool: xl}
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1, connectionLimit: 50}
+    - {id: huge, cpu: "4", memory: 20Gi, storageGB: 20, instances: 1, connectionLimit: 50, servingPool: xl}
 `))
 	if err != nil {
 		t.Fatal(err)

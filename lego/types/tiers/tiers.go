@@ -116,6 +116,9 @@ type ValkeyTier struct {
 	StorageGB int32 `json:"storageGB"`
 	// Instances is the Valkey StatefulSet size (1 for MVP).
 	Instances int32 `json:"instances"`
+	// ConnectionLimit is Render's connection limit for the plan: the client
+	// connections a store accepts before the next is refused (w6/m456).
+	ConnectionLimit int32 `json:"connectionLimit"`
 	// ServingPool and Paused mean what they mean on ComputeTier: a store
 	// larger than a standard bex-tenant-0 node runs on the dedicated pool the
 	// compute ladder already names, and a paused tier is refused for new
@@ -518,6 +521,9 @@ func parseValkey(entries []ValkeyTier, defaultID string, pools []string) (Valkey
 		}
 		if err := validateDatastore(t.ID, t.StorageGB, t.Instances); err != nil {
 			return ValkeyCatalog{}, err
+		}
+		if t.ConnectionLimit <= 0 {
+			return ValkeyCatalog{}, fmt.Errorf("tier %q: connectionLimit must be > 0", t.ID)
 		}
 		if t.ServingPool != "" && !slices.Contains(pools, t.ServingPool) {
 			return ValkeyCatalog{}, fmt.Errorf("tier %q: servingPool %q is not a compute serving pool %v", t.ID, t.ServingPool, pools)

@@ -224,11 +224,12 @@ func kvExporterEnv(platformPassword corev1.EnvVar) []corev1.EnvVar {
 }
 
 // valkeyArgs builds the valkey-server flags from the KeyValue spec: the password,
-// the persistence mode (Render's Persistence Mode → AOF/RDB), and — when an
-// eviction policy is set — the memory budget and policy (Render's Maxmemory
-// Policy). An empty PersistenceMode/MaxmemoryPolicy preserves the prior default
-// (appendonly yes, no maxmemory), so a KeyValue created before these fields
-// reconciles byte-identically.
+// the persistence mode (Render's Persistence Mode → AOF/RDB), when an eviction
+// policy is set the memory budget and policy (Render's Maxmemory Policy), and
+// the plan's client limit. An empty PersistenceMode/MaxmemoryPolicy preserves
+// the prior default (appendonly yes, no maxmemory); a template started before
+// the client limit keeps its own (applyKeyValueStatefulSet), so a KeyValue
+// created before these fields does not roll.
 func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
 	args := append([]string{"--user"}, valkeyDefaultUserRule("$("+kvPasswordEnv+")")...)
 	args = append(args, "--user")
@@ -249,7 +250,7 @@ func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
 	if spec.MaxmemoryPolicy != "" {
 		args = append(args, "--maxmemory", valkeyMaxmemory(plan), "--maxmemory-policy", spec.MaxmemoryPolicy)
 	}
-	return args
+	return append(args, "--maxclients", valkeyMaxclients(plan))
 }
 
 // valkeyDefaultUserRule is the ACL of the one user tenants connect as: every
@@ -335,6 +336,9 @@ type KeyValueReconciler struct {
 	// setMaxmemory sets a running store's memory budget and eviction policy;
 	// nil is setValkeyMaxmemoryAtPod. Tests substitute it.
 	setMaxmemory func(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, maxmemory, policy string) error
+	// setMaxclients sets a running store's client limit; nil is
+	// setValkeyMaxclientsAtPod. Tests substitute it.
+	setMaxclients func(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, maxclients string) error
 	// Backup is the non-secret object-store contract for paid-plan RDB
 	// snapshots. All fields are required; an incomplete contract is disabled.
 	Backup BackupStore
@@ -1090,7 +1094,8 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	r.setKeyValuePublicCertificate(ctx, &kv, intent.public, kv.Status.TLSListener)
 	kv.Status.TLSRuntimeSwitch = intent.tlsRuntime
 	kv.Status.MaxmemoryPolicy, policyPending = r.reconcileKeyValueMaxmemory(ctx, &kv, sts, platform, intent)
-	runtimePending := tlsPending || policyPending
+	clientsPending := r.reconcileKeyValueMaxclients(ctx, &kv, sts, platform, intent)
+	runtimePending := tlsPending || policyPending || clientsPending
 
 	// Surface the connection coordinates (the password stays in the Secret).
 	kv.Status.Host = intent.internalHost
@@ -1111,9 +1116,9 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return keyValueRuntimeRequeue(result, runtimePending), err
 }
 
-// keyValueRuntimeRequeue polls sooner while a runtime TLS or maxmemory switch
-// is pending: no watch fires when cert-manager writes the Secret, the kubelet
-// projects it, or a refused CONFIG SET can be retried.
+// keyValueRuntimeRequeue polls sooner while a runtime TLS, maxmemory or client
+// limit switch is pending: no watch fires when cert-manager writes the Secret,
+// the kubelet projects it, or a refused CONFIG SET can be retried.
 func keyValueRuntimeRequeue(result ctrl.Result, pending bool) ctrl.Result {
 	if pending && (result.RequeueAfter == 0 || result.RequeueAfter > kvRuntimePendingRequeue) {
 		result.RequeueAfter = kvRuntimePendingRequeue

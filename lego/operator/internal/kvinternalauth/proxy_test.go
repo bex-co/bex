@@ -19,9 +19,19 @@ package kvinternalauth
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -302,7 +312,9 @@ func TestTLSPassthroughDoesNotInjectOrConsumeBytes(t *testing.T) {
 	finish()
 }
 
-func TestConnectionLimitShedsBeforeDialingUpstream(t *testing.T) {
+// A client past the budget reads Valkey's own maxclients refusal, and no
+// upstream is dialed for it (w6/m456).
+func TestClientPastBudgetReadsValkeysRefusal(t *testing.T) {
 	authenticated := make(chan struct{})
 	upstream, finish := scriptedUpstream(t, func(conn net.Conn) error {
 		if err := readExact(conn, authFrame()); err != nil {
@@ -319,16 +331,223 @@ func TestConnectionLimitShedsBeforeDialingUpstream(t *testing.T) {
 		}
 		return nil
 	})
-	addr, _ := startProxy(t, Config{Upstream: upstream, Password: testPassword, MaxConnections: 1})
+	addr, _ := startProxy(t, Config{Upstream: upstream, Password: testPassword, Budget: NewBudget(1)})
 	first := dialProxy(t, addr)
 	awaitSignal(t, authenticated)
 	second := dialProxy(t, addr)
-	var b [1]byte
-	if n, err := second.Read(b[:]); n != 0 || err == nil {
-		t.Fatalf("excess connection not shed: n=%d err=%v", n, err)
+	if got, err := io.ReadAll(second); err != nil || string(got) != maxClientsReply {
+		t.Fatalf("client past the budget read %q (%v), want Valkey's refusal", got, err)
 	}
 	_ = first.Close()
 	finish()
+}
+
+// The plain and TLS listeners in front of one store draw on one budget, and a
+// TLS client past it reads the same refusal inside TLS, under the store's own
+// certificate.
+func TestBudgetIsSharedAndRefusesInsideTLS(t *testing.T) {
+	certFile, keyFile, roots := writeTestCertificate(t)
+	authenticated := make(chan struct{})
+	upstream, finish := scriptedUpstream(t, func(conn net.Conn) error {
+		if err := readExact(conn, authFrame()); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(conn, "+OK\r\n"); err != nil {
+			return err
+		}
+		close(authenticated)
+		var b [1]byte
+		_, _ = conn.Read(b[:])
+		return nil
+	})
+	budget := NewBudget(1)
+	plain, _ := startProxy(t, Config{Upstream: upstream, Password: testPassword, Budget: budget})
+	tlsAddr, _ := startProxy(t, Config{Upstream: "127.0.0.1:1", Passthrough: true, Budget: budget, TLSCertFile: certFile, TLSKeyFile: keyFile})
+	first := dialProxy(t, plain)
+	awaitSignal(t, authenticated)
+
+	client := tls.Client(dialProxy(t, tlsAddr), &tls.Config{ServerName: "kv.example.test", RootCAs: roots, MinVersion: tls.VersionTLS12})
+	if err := client.Handshake(); err != nil {
+		t.Fatalf("the refused TLS client could not verify the store's certificate: %v", err)
+	}
+	if got, err := io.ReadAll(client); err != nil || string(got) != maxClientsReply {
+		t.Fatalf("TLS client past the budget read %q (%v), want Valkey's refusal", got, err)
+	}
+	_ = first.Close()
+	finish()
+}
+
+// Without the certificate a refused TLS client is closed, as Valkey closes one
+// past its maxclients before the handshake.
+func TestTLSRefusalWithoutCertificateCloses(t *testing.T) {
+	budget := NewBudget(1)
+	if !budget.acquire() {
+		t.Fatal("empty budget refused")
+	}
+	addr, _ := startProxy(t, Config{Upstream: "127.0.0.1:1", Passthrough: true, Budget: budget})
+	conn := dialProxy(t, addr)
+	if got, err := io.ReadAll(conn); err != nil || len(got) != 0 {
+		t.Fatalf("read %q (%v), want a bare close", got, err)
+	}
+}
+
+// Valkey writes its refusal on accept, before reading the injected AUTH; the
+// client reads that refusal rather than a dropped connection, and nothing of
+// the injected exchange.
+func TestUpstreamRefusalReachesClient(t *testing.T) {
+	upstream, finish := scriptedUpstream(t, func(conn net.Conn) error {
+		_, err := io.WriteString(conn, maxClientsReply)
+		return err
+	})
+	addr, _ := startProxy(t, Config{Upstream: upstream, Password: testPassword})
+	conn := dialProxy(t, addr)
+	if got, err := io.ReadAll(conn); err != nil || string(got) != maxClientsReply {
+		t.Fatalf("client read %q (%v), want the upstream's refusal", got, err)
+	}
+	finish()
+}
+
+// An upstream error other than the refusal still fails closed without
+// reaching the client (the injected AUTH's reply is never exposed).
+func TestOtherUpstreamErrorsStayHidden(t *testing.T) {
+	upstream, finish := scriptedUpstream(t, func(conn net.Conn) error {
+		if err := readExact(conn, authFrame()); err != nil {
+			return err
+		}
+		_, err := io.WriteString(conn, "-ERR max number of things\r\n")
+		return err
+	})
+	addr, _ := startProxy(t, Config{Upstream: upstream, Password: testPassword})
+	conn := dialProxy(t, addr)
+	if got, _ := io.ReadAll(conn); len(got) != 0 {
+		t.Fatalf("client read the upstream's AUTH reply %q", got)
+	}
+	finish()
+}
+
+// A store whose plan allows more than the old 1,024 cap gets all of them: the
+// budget, not a per-listener default, bounds the proxy.
+func TestBudgetAdmitsPastTheOld1024Cap(t *testing.T) {
+	const n = 1030
+	upstream := servingUpstream(t)
+	addr, _ := startProxy(t, Config{Upstream: upstream, Password: testPassword, Budget: NewBudget(n)})
+	conns := make([]net.Conn, 0, n)
+	for i := range n {
+		conn := dialProxy(t, addr)
+		if _, err := io.WriteString(conn, "PING\r\n"); err != nil {
+			t.Fatal(err)
+		}
+		if err := readExact(conn, "+PONG\r\n"); err != nil {
+			t.Fatalf("connection %d of %d: %v", i+1, n, err)
+		}
+		conns = append(conns, conn)
+	}
+	over := dialProxy(t, addr)
+	if got, err := io.ReadAll(over); err != nil || string(got) != maxClientsReply {
+		t.Fatalf("connection %d read %q (%v), want Valkey's refusal", n+1, got, err)
+	}
+	_ = conns[0].Close()
+	for deadline := time.Now().Add(2 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+		again := dialProxy(t, addr)
+		_, _ = io.WriteString(again, "PING\r\n")
+		if readExact(again, "+PONG\r\n") == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("a closed connection's slot never returned to the budget")
+		}
+	}
+}
+
+func TestNewBudgetHoldsExactlyItsSize(t *testing.T) {
+	b := NewBudget(5000)
+	for i := range 5000 {
+		if !b.acquire() {
+			t.Fatalf("refused connection %d of 5000", i+1)
+		}
+	}
+	if b.acquire() {
+		t.Fatal("admitted connection 5001")
+	}
+	b.release()
+	if !b.acquire() {
+		t.Fatal("a released slot was not reusable")
+	}
+	if got := cap(NewBudget(0).slots); got != 1024 {
+		t.Fatalf("default budget %d, want 1024", got)
+	}
+}
+
+// servingUpstream answers the injected AUTH and then PING on every
+// connection, as an authenticated Valkey does.
+func servingUpstream(t *testing.T) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer func() { _ = conn.Close() }()
+				if readExact(conn, authFrame()) != nil {
+					return
+				}
+				if _, err := io.WriteString(conn, "+OK\r\n"); err != nil {
+					return
+				}
+				for readExact(conn, "PING\r\n") == nil {
+					if _, err := io.WriteString(conn, "+PONG\r\n"); err != nil {
+						return
+					}
+				}
+			}()
+		}
+	}()
+	return listener.Addr().String()
+}
+
+// writeTestCertificate writes a self-signed certificate for kv.example.test
+// and returns its files and a pool that trusts it.
+func writeTestCertificate(t *testing.T) (certFile, keyFile string, roots *x509.CertPool) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "kv.example.test"}, DNSNames: []string{"kv.example.test"},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyDER, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	certFile, keyFile = filepath.Join(dir, "tls.crt"), filepath.Join(dir, "tls.key")
+	if err := os.WriteFile(certFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keyFile, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots = x509.NewCertPool()
+	roots.AddCert(cert)
+	return certFile, keyFile, roots
 }
 
 func TestCheckRequiresAuthenticatedPong(t *testing.T) {

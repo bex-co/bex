@@ -162,6 +162,11 @@ valkey:
   # spelling-divergent tier is added (pro_plus ↔ pro-plus), introduce a
   # renderPlan field here like the compute family has. The Key Value ids keep
   # Render's own underscore spellings, so none is needed.
+  #
+  # connectionLimit is Render's connection limit for the plan
+  # (render.com/docs/compute-plans#render-key-value-plans, read 2026-11-17):
+  # the client connections a store accepts before the next is refused with
+  # Valkey's "ERR max number of clients reached" (w6/m456, ADR021).
   default: free
   tiers:
     - id: free
@@ -169,16 +174,19 @@ valkey:
       memory: 128Mi
       storageGB: 1
       instances: 1
+      connectionLimit: 50
     - id: starter
       cpu: 100m
       memory: 256Mi
       storageGB: 1
       instances: 1
+      connectionLimit: 250
     - id: standard
       cpu: 500m
       memory: 1Gi
       storageGB: 5
       instances: 1
+      connectionLimit: 1000
     # w5/m266: Render's larger Key Value plans (render.com/docs/compute-plans,
     # read 2026-11-05) — memory is the plan's RAM like the rungs above, storage
     # twice it for snapshot + AOF rewrite headroom. pro_plus and pro_max need
@@ -190,28 +198,33 @@ valkey:
       memory: 3Gi
       storageGB: 6
       instances: 1
+      connectionLimit: 3000
     - id: pro
       cpu: "1"
       memory: 5Gi
       storageGB: 10
       instances: 1
+      connectionLimit: 5000
     - id: pro_plus
       cpu: "2"
       memory: 10Gi
       storageGB: 20
       instances: 1
+      connectionLimit: 10000
       servingPool: xl
     - id: pro_max
       cpu: "4"
       memory: 20Gi
       storageGB: 40
       instances: 1
+      connectionLimit: 20000
       servingPool: xl
     - id: pro_ultra
       cpu: "4"
       memory: 40Gi
       storageGB: 80
       instances: 1
+      connectionLimit: 40000
       servingPool: xxl
       paused: true
     - id: 50g
@@ -219,5 +232,6 @@ valkey:
       memory: 50Gi
       storageGB: 100
       instances: 1
+      connectionLimit: 50000
       servingPool: xxl
       paused: true
