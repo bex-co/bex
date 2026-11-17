@@ -75,6 +75,8 @@ The node meter pins its IPv4/IPv6 netfilter links and maps in bpffs. A process r
 - **Series seen before.** 60 of those had been present earlier in retention. The values of 35 show a restart from zero: fewer bytes, fewer requests, or more bytes for the same requests. The other 25 are single fixed-size responses of 0 to 21 bytes, or retries of one size, whose values cannot tell. They total 803 bytes.
 - **What the guard kept out.** It kept 145 series on `increase()` in one hour, 2026-11-14 02:00Z, when Traefik rolled out. The health gate skips that hour under both rules.
 
+**A real probe before the switch deployed (t005, 2026-11-17).** A new free service in `bex-canary` served five 2,000,000-byte bodies (10,000,000 bytes) in 8 s and was deleted. Its traffic went through both Traefik pods, and each pod's series was first scraped already at its final value: 6,000,000 and 4,000,000. Read on production Prometheus with the production builders, `increase()` bills that hour 0 bytes and the rule bills 10,000,000. The billed row after the deploy is still to be read (w6/m455 t005).
+
 ### Live Cilium traffic matrix (2026-07-15)
 
 `scripts/verify-egress-meter.sh` passed on a three-node kind cluster with Cilium 1.19.5, kube-proxy replacement, VXLAN, WireGuard, and `bpf.hostLegacyRouting=true`. The isolated manual workflow is `.github/workflows/egress-meter-live.yml`; it is not part of routine unit-test runs. Only aggregate fixture results are retained:
