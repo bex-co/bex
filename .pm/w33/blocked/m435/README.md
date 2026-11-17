@@ -1,6 +1,6 @@
 # w33 · m435 — A Blueprint's `initialDeployHook` runs once after the service's first successful deploy, beside `preDeployCommand`, as Render documents
 
-**Worker:** worker33 **Goal:** the one-time hook stops standing in for the pre-deploy command: a first release runs `preDeployCommand`, goes live, and then runs the hook once with the service's disk; a hook failure never fails the deploy. **Status:** blocked — release gate: t001–t006 and t008–t010 are done and shipped in `d098bb097` (operator, bex-api, ADRs) and `c513acc1b` (dashboard). [t011](t011.md) replays the definition of done on production once a "pin platform images to" commit contains both; that clears by itself. [t007](t007.md), the local-cluster walk, could not run on this host and needs its owner (§ Blocked).
+**Worker:** worker33 **Goal:** the one-time hook stops standing in for the pre-deploy command: a first release runs `preDeployCommand`, goes live, and then runs the hook once with the service's disk; a hook failure never fails the deploy. **Status:** blocked on one user decision about [t007](t007.md) (§ Blocked (2026-11-17)). t001–t006 and t008–t010 are done and shipped in `d098bb097` (operator, bex-api, ADRs) and `c513acc1b` (dashboard). The release gate cleared on pin `58ef086ab21d`, and on 2026-11-17 [t011](t011.md) replayed definition-of-done items 1–4 and 6 on production, and they held (§ Production replay). Item 5 has no subject in production. t011 closes the milestone once t007 is settled.
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | [t004](done/t004.md) | The hook's outcome on tenant surfaces: deploy log, status, and bex-api's awaiting-pre-deploy read — **DONE** | 45m | t002 |
 | [t005](done/t005.md) | Blueprint: `afterFirstDeployCommand` is accepted as the deprecated alias — **DONE** | 30m | — |
 | [t006](done/t006.md) | Services created under the old mechanism carry over — **DONE** | 30m | t002 |
-| [t007](t007.md) | Local-cluster walk: a migrate pre-deploy, a seed hook and a disk — **BLOCKED** (the host cannot hold the local cluster; see § Local-cluster walk) | 40m | t003, t004, t005, t006 |
+| [t007](t007.md) | Local-cluster walk: a migrate pre-deploy, a seed hook and a disk — **BLOCKED** (needs the user's decision: accept the production replay in its place, or raise the host's inotify limit; see § Blocked (2026-11-17)) | 40m | t003, t004, t005, t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 25m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
-| [t011](t011.md) | Closeout (live replay on production) — **BLOCKED** (release gate) | 45m | t009, t010 |
+| [t011](t011.md) | Closeout (live replay on production) — **BLOCKED** (the replay ran on 2026-11-17 and held; the close waits on t007) | 45m | t009, t010 |
 
 ## Definition of done
 
@@ -92,3 +92,39 @@ Two gates. Neither needs a product decision.
    - `/unblock w33` records that the production replay stands in for the local walk, and t007 is closed as superseded by t011.
 
    Until one of them, the production replay is the first time the hook runs on a kubelet. What that leaves unproven is listed under § Local-cluster walk: the second mount of the `ReadWriteOnce` volume on the instance's node, scheduling beside the instance on a packed node, and the hook's output reaching the log store.
+
+## Unblocked in part (2026-11-17)
+
+**Source: verified evidence (loopx w33), no user decision involved. Affects t011 only.** Gate 1, the release gate, cleared. The newest `chore(deploy): pin platform images to <sha>` commit on `origin/main` is `7a8203c3b` (`… to 58ef086ab21d`, 2026-11-17 04:37 UTC), and `git merge-base --is-ancestor` succeeds for both `d098bb097` and `c513acc1b` against `58ef086ab21d`. Next: t011 replays definition-of-done items 1–5 in `bex-canary` as the QA user, deletes the fixtures (by-id `GET` 404), and records the conclusions here.
+
+Gate 2 is unchanged. Nobody has raised the host's inotify limit, and no `/unblock w33` record says the production replay stands in for t007. This record decides neither. While t007 is open the milestone cannot close, so after the replay it goes back to `blocked/` with t007 as its only gate.
+
+## Production replay (2026-11-17, t011)
+
+Pin `58ef086ab21d`, QA user, workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`). REST and GraphQL were called with the QA session, MCP through `https://api.bex.co/mcp` with `workspaceId`. The dashboard's deploy pages were read in headless Chrome (playwright-core, because the Playwright MCP was down). Three owned Starter web services ran the image `docker.io/library/python:3.13-alpine`, and each had a `preDeployCommand` that echoes its own marker:
+
+- **A**, `qa-20261117-m435-hook` (`srv-dbtubbuu6dls73ehcig0`): a 1 GB disk at `/var/data`, served by `python3 -m http.server $PORT --directory /var/data`. Its hook appends one line to `/var/data/hook-runs.txt`. It was applied with a `repo`, which registered Blueprint `exs-dbtubbuu6dls73ehcihg` (auto-sync off).
+- **B**, `qa-20261117-m435-fail` (`srv-dbtubd6u6dls73ehcijg`): no disk. Its hook exits 3 unless the manifest's `QA_HOOK_OK` is `1`.
+- **C**, `qa-20261117-m435-alias` (`srv-dbtubdfok1cs73a3mttg`): A's shape, with the hook spelled `afterFirstDeployCommand`.
+
+Before the run the workspace held `hello-go` and another hunt's `qa-m333-disk`. Neither was touched.
+
+1. **First deploy (holds).** A was applied at 05:27:11Z. Its first deploy's log has the same lines in the same order on REST `GET /v1/logs` (`type=build`), on GraphQL `logs` with `deployId`, and on the dashboard deploy page: the pre-deploy marker at 05:27:16Z, `==> Your service is live 🎉` at 05:28:23.94Z, `==> Running the initial deploy hook`, the hook's own marker at 05:28:24.9Z, and `==> Initial deploy hook succeeded`. The deploy record reads `status: live`, `preDeployStatus: succeeded`, `initialDeployHookStatus: succeeded` and `initialDeployHookFinishedAt: 05:28:28Z` on REST, GraphQL and MCP `get_deploy`. The running instance served `https://qa-20261117-m435-hook.onbex.co/hook-runs.txt` from its disk, and the file held the hook's one line. So the hook pod mounted the `ReadWriteOnce` volume on the instance's node, and its output reached the log store. Those are two of the three things t007 was meant to show first.
+2. **Second deploy and re-sync (hold).** A manual deploy at 05:29:49Z ran the pre-deploy command (marker at 05:29:51Z) and went live with no hook line and no `initialDeployHookStatus`. `POST /v1/blueprints/{id}/sync` with the unchanged file planned nothing and started no deploy. A second sync added one env var at 05:31:30Z (validate planned an `update` of `envVars`). It rolled a `blueprint_sync` deploy, which ran the pre-deploy command (05:31:32Z) and no hook. At 05:36Z `hook-runs.txt` still held only the line from 05:28:24Z.
+3. **A failing hook (holds).** B's first deploy went live at 05:28:00Z and kept serving (200). Its hook printed its marker and exited 3. The log read `==> Initial deploy hook failed: the initial deploy hook exited with code 3` and `==> The deploy stays live. The hook runs again after the next deploy goes live.`, and the record read `status: live`, `initialDeployHookStatus: failed`. REST refuses an env-var `PUT` on a manifest-owned key (`ENV_VAR_MANIFEST_MANAGED`), so the file was re-applied with `QA_HOOK_OK: "1"`. That rolled the next deploy: pre-deploy, live at 05:30:14Z, then the hook succeeded at 05:30:18Z, on REST, GraphQL, MCP and the dashboard. A third, manual deploy at 05:31:18Z ran the pre-deploy command and no hook. Once the retry ran, the first deploy's record reads no hook status, and its log keeps the hook pod's own output but not the two failure lines. ADR004 records that limit.
+4. **The alias (holds).** C's file answered `valid: true` with a create plan on REST, GraphQL and MCP `validate_bex_yml`. C was created with `initialDeployHook` carrying the alias's command and behaved as A did: pre-deploy at 05:27:22Z, live at 05:28:28.1Z, then the hook, which `succeeded` at 05:28:31Z, and the instance served the hook's line from `/var/data/hook-runs.txt`. A file that declares both spellings was refused on all three surfaces with `BLUEPRINT_ALIAS_CONFLICT` at `services[0].afterFirstDeployCommand` (line 10). Validate shows no deprecation notice: t005 puts that notice on a planned sync, and no repository carrying the alias was available to plan from.
+5. **Services from before this milestone (no live subject).** No service in the three workspaces the QA user can read (`bex`, `tian-personal`, `bex-canary`; 20 services) declares an `initialDeployHook`, so none of them has a completed hook that could run again. Reading other tenants' Apps needs the production kubeconfig, and `scripts/fetch-app-kubeconfig.sh` refuses while the repository's `.env` is group-readable (mode 664). The mode was left unchanged. Item 5 therefore rests on the controller tests t006 names: `TestInitialDeployHookCompletedByEitherMarkerNeverRuns` and the three legacy-step tests.
+6. **Suites (hold).** On `58ef086ab21d`, CI `test (backend)` (run 44016267997) and `test (dashboard)` (run 44016268008) passed. `test (operator)` (`make test`) and `go lint` (`make lint`, all four modules) passed on `d098bb097` (runs 44010377466 and 44010377467) and on `e8e450fc1`, the pin's child commit (runs 44016353118 and 44016353159). On the pin itself, `go lint` was cancelled when the next push superseded it.
+
+**Found outside the DoD.** A deploy-scoped GraphQL `logs` read with `type: "build"`, over a window wider than the deploy, returned the other deploys' pre-deploy output: A's first deploy listed the pre-deploy markers of deploys 2 and 3. Hook pods were left out, as they should be. The cause predates this milestone (w21/m324) and is filed as [w33/008](../../008.md). Each dashboard deploy page reads its own deploy's window, and each showed only its own lines.
+
+**Cleanup.** At 05:36:30Z Blueprint `exs-dbtubbuu6dls73ehcihg` was disconnected (204) and the three services were deleted (204 each). By-id `GET` answers 404 for all four, the three `onbex.co` hosts answer 404, and the workspace lists no Blueprint and no disk. The QA session was logged out (`qa-login.sh --logout`, then a 401 on the API), and its local files were removed.
+
+## Blocked (2026-11-17)
+
+One gate remains, and only the user can clear it. It is not a product decision, and no Render behavior depends on it.
+
+**What t007 is for now.** t007's local walk was meant to run before the production replay, so that the replay would confirm the mechanism instead of being its first run on a kubelet. The replay has now run. It showed on a kubelet two of the three things only a cluster can show (§ Local-cluster walk): the hook mounting the `ReadWriteOnce` volume a second time while the service reads the hook's file, and the hook's output arriving in the log store. It did not test the third: a hook scheduling beside its instance on a packed node. Choose one through `/unblock w33`:
+
+- **Accept the production replay in t007's place.** t007 closes as superseded by t011, recorded as such and not as a walk. A worker then closes the milestone with no further live work.
+- **Keep the local walk.** Run `sudo sysctl -w fs.inotify.max_user_instances=1024 fs.inotify.max_user_watches=1048576` on the host, then `bash scripts/mock-cluster.sh reprovision` (w33/005). A worker then walks t007 and closes the milestone.
