@@ -47,4 +47,15 @@ const (
 	// LabelEnvironment above (unconditional membership), this label's mere
 	// PRESENCE is itself the signal, not just its value.
 	LabelNetworkIsolation = "app.bex.co/network-isolation"
+	// LabelEgressAppID attributes a pod that must not carry LabelAppID (a
+	// pre-deploy Job runs the service's own command but is never a Service
+	// backend) to its service's egress. Stamped by the operator's predeploy
+	// step, read by its egress meter; it lives here so the two cannot drift
+	// apart without importing each other (the meter pulls in eBPF).
+	LabelEgressAppID = "app.bex.co/egress-app-id"
+	// LabelKeyValue marks the workload (StatefulSet pods, Services) a KeyValue
+	// reconciler creates for a store. Stamped by the operator, read back by
+	// bex-api (pod logs, pod selection); it lives here so the stamp and the
+	// read can never drift apart.
+	LabelKeyValue = "app.bex.co/keyvalue"
 )

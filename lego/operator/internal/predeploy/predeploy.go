@@ -71,8 +71,11 @@ import (
 // backend also reads.
 const (
 	LabelService = appv1alpha1.LabelPreDeploy
-	// LabelEgressAppID mirrors egressmeter.PodLabelEgressAppID.
-	LabelEgressAppID = "app.bex.co/egress-app-id"
+	// LabelEgressAppID is what the egress meter reads a pre-deploy pod's
+	// service from. It aliases the canonical key in lego/types (v1alpha1),
+	// shared with the meter; like the other labels here it avoids a
+	// hand-written copy of the key.
+	LabelEgressAppID = appv1alpha1.LabelEgressAppID
 	// LabelComponent and labelWorkspace alias the canonical keys in
 	// lego/types (v1alpha1), which the backend also reads.
 	LabelComponent = appv1alpha1.LabelComponent

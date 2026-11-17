@@ -114,9 +114,16 @@ const (
 	// rolls the StatefulSets.
 	kvExporterImage = "oliver006/redis_exporter:alpine@sha256:d4e0a0ad55fa4f968eea4519b518b16dac887debd06c790a6be2f60940538d82"
 	// labelKeyValue marks the workload/Service a KeyValue creates, and is the
-	// StatefulSet selector + Service selector so the two stay coupled.
-	labelKeyValue    = "app.bex.co/keyvalue"
+	// StatefulSet selector + Service selector so the two stay coupled. It
+	// aliases the canonical key in lego/types (v1alpha1), which bex-api also
+	// reads.
+	labelKeyValue    = appv1alpha1.LabelKeyValue
 	kvStorageRequeue = 10 * time.Second
+	// credentialRevisionAnnotation restarts the StatefulSet and the internal
+	// proxy when the credential revision changes: both pod templates carry it,
+	// so a rotation rolls the pods. One const for both templates, so a rename
+	// cannot restart one side and leave the other stale.
+	credentialRevisionAnnotation = "app.bex.co/credential-revision"
 	// conditionStorageReady is the KeyValue status condition tracking PVC
 	// provisioning and growth, alongside appv1alpha1.ConditionReady.
 	conditionStorageReady   = "StorageReady"
@@ -635,7 +642,7 @@ func (r *KeyValueReconciler) reconcileKeyValueBackupNetworkPolicy(ctx context.Co
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{labelKeyValue: kv.Name},
 				MatchExpressions: []metav1.LabelSelectorRequirement{{
-					Key:      "app.bex.co/component",
+					Key:      appv1alpha1.LabelComponent,
 					Operator: metav1.LabelSelectorOpIn,
 					Values:   []string{keyValueBackupComponent, keyValueBackupPurgeComponent},
 				}},
@@ -888,7 +895,7 @@ func writeKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 	// the StatefulSet reschedules it elsewhere.
 	sts.Spec.Template.Annotations = map[string]string{
 		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
-		"app.bex.co/credential-revision":                 intent.credentialRevision,
+		credentialRevisionAnnotation:                     intent.credentialRevision,
 	}
 	if !intent.skipPersistenceInit {
 		sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation] = sourceMode
