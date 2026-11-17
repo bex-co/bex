@@ -1,6 +1,6 @@
 # w33 · m435 — A Blueprint's `initialDeployHook` runs once after the service's first successful deploy, beside `preDeployCommand`, as Render documents
 
-**Worker:** worker33 **Goal:** the one-time hook stops standing in for the pre-deploy command: a first release runs `preDeployCommand`, goes live, and then runs the hook once with the service's disk; a hook failure never fails the deploy. **Status:** blocked on one user decision about [t007](t007.md) (§ Blocked (2026-11-17)). t001–t006 and t008–t010 are done and shipped in `d098bb097` (operator, bex-api, ADRs) and `c513acc1b` (dashboard). The release gate cleared on pin `58ef086ab21d`, and on 2026-11-17 [t011](t011.md) replayed definition-of-done items 1–4 and 6 on production, and they held (§ Production replay). Item 5 has no subject in production. t011 closes the milestone once t007 is settled.
+**Worker:** worker33 **Goal:** the one-time hook stops standing in for the pre-deploy command: a first release runs `preDeployCommand`, goes live, and then runs the hook once with the service's disk; a hook failure never fails the deploy. **Status:** done (2026-11-17). t001–t006 and t008–t010 shipped in `d098bb097` (operator, bex-api, ADRs) and `c513acc1b` (dashboard). On pin `58ef086ab21d`, [t011](done/t011.md) replayed definition-of-done items 1–4 and 6 on production, and they held (§ Production replay). Item 5 has no subject anywhere in production (§ Closed (2026-11-17)). [t007](done/t007.md) was closed as superseded by that replay on the user's decision, not walked locally (§ Unblocked (2026-11-17): t007 superseded).
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | [t004](done/t004.md) | The hook's outcome on tenant surfaces: deploy log, status, and bex-api's awaiting-pre-deploy read — **DONE** | 45m | t002 |
 | [t005](done/t005.md) | Blueprint: `afterFirstDeployCommand` is accepted as the deprecated alias — **DONE** | 30m | — |
 | [t006](done/t006.md) | Services created under the old mechanism carry over — **DONE** | 30m | t002 |
-| [t007](t007.md) | Local-cluster walk: a migrate pre-deploy, a seed hook and a disk — **BLOCKED** (needs the user's decision: accept the production replay in its place, or raise the host's inotify limit; see § Blocked (2026-11-17)) | 40m | t003, t004, t005, t006 |
+| [t007](done/t007.md) | Local-cluster walk: a migrate pre-deploy, a seed hook and a disk — **DONE** (superseded by t011's production replay on the user's decision of 2026-11-17; not walked locally) | 40m | t003, t004, t005, t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 25m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
-| [t011](t011.md) | Closeout (live replay on production) — **BLOCKED** (the replay ran on 2026-11-17 and held; the close waits on t007) | 45m | t009, t010 |
+| [t011](done/t011.md) | Closeout (live replay on production) — **DONE** | 45m | t009, t010 |
 
 ## Definition of done
 
@@ -128,3 +128,19 @@ One gate remains, and only the user can clear it. It is not a product decision, 
 
 - **Accept the production replay in t007's place.** t007 closes as superseded by t011, recorded as such and not as a walk. A worker then closes the milestone with no further live work.
 - **Keep the local walk.** Run `sudo sysctl -w fs.inotify.max_user_instances=1024 fs.inotify.max_user_watches=1048576` on the host, then `bash scripts/mock-cluster.sh reprovision` (w33/005). A worker then walks t007 and closes the milestone.
+
+## Unblocked (2026-11-17): t007 superseded
+
+**Source: explicit user decision, 2026-11-17. Affects t007 and t011.** The `/loopx w33` orchestrator put the two options of § Blocked (2026-11-17) to the user. Option 1, accepting the production replay in place of the local-cluster walk, was marked as the recommended option. Option 2 was raising the host's inotify limit and having a worker walk t007 locally. The user replied with the single word "approve". The orchestrator read that as option 1 and reported that reading back to the user.
+
+- **Chosen:** the 2026-11-17 production replay (§ Production replay) stands in for t007's local walk. t007 closes as superseded by t011. It is recorded as such and not as a walk: none of the definition of done was observed on the local cluster.
+- **Rationale:** the replay ran on a kubelet and showed two of the three things only a cluster can show: the hook pod mounting the `ReadWriteOnce` volume beside the running instance, and the hook's output reaching the log store. No Render behavior depends on this choice. It only decides which run verifies the mechanism.
+- **Left unobserved:** a hook scheduling beside its instance on a packed node. The replay did not exercise it, and § Local-cluster walk already lists it among what no test shows. The user accepted that gap with this decision.
+- **Remaining gates:** none. The host's inotify limit stays at 128. That is w33/005's subject, which shipped as a fast failure in `scripts/mock-cluster.sh`, and it no longer gates this milestone.
+- **Next:** t011 step 3 closes the milestone with no further live work.
+
+## Closed (2026-11-17)
+
+**Item 5, checked across the whole of production.** At 06:59Z the production app cluster's kubeconfig was fetched to a scratch path outside the repository with `bash scripts/fetch-app-kubeconfig.sh <path>`, and then deleted. `.env` is now mode 600, so the script no longer refuses. `kubectl get apps.app.bex.co -A` listed 29 Apps across every tenant namespace. None of them declares `spec.initialDeployHook`, carries a `bex.co/initial-deploy-hook*` annotation, or has `status.initialDeployHookCompleted` or `status.initialDeployHook`. So no service in production completed a hook before this milestone shipped, and none can run one again. Item 5 holds there with no subject. Its behavior rests on t006's controller tests: `TestInitialDeployHookCompletedByEitherMarkerNeverRuns` and the three legacy-step tests.
+
+**Definition of done.** Items 1–4 and 6 held on production on pin `58ef086ab21d` (§ Production replay). Item 5 holds as above. The fixtures were deleted, and by-id `GET` answers 404. t007 is closed as superseded (§ Unblocked (2026-11-17): t007 superseded). t011's step 3 moved every task to `done/` and the milestone to `w33/done/m435/`.
