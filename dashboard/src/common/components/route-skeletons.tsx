@@ -1329,7 +1329,7 @@ export function KeyValueCreatePageSkeleton() {
             </Region>
             <Region name="plan-picker" className="space-y-2">
               <Skeleton className="h-4 w-28" />
-              <PlanTierSlots count={KEY_VALUE_PLAN_SLOTS} />
+              <PlanTierSlots count={KEY_VALUE_PLAN_SLOTS} connections />
             </Region>
             <Region name="version">
               <FieldRowSkeleton />
@@ -2924,7 +2924,7 @@ const DATASTORE_METRIC_SECTIONS = {
     "metrics.diskActivityTitle",
     "metrics.datastoreCpuTitle",
     "metrics.memoryTitle",
-    "metrics.kvConnectionsTitle",
+    "metrics.connectionsTitle",
   ],
   database: [
     "metrics.diskTitle",

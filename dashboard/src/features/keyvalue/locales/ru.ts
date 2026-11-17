@@ -362,6 +362,11 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     message: "Тип инстанса",
     description: "Key Value detail metadata row label",
   },
+  "keyvalue.metaConnectionLimit": {
+    message: "Лимит подключений",
+    description:
+      "Key Value detail Details card row label: the plan's client connection limit, as Render's Key Value Instance card shows it",
+  },
   "keyvalue.metaVersion": {
     message: "Версия",
     description: "Key Value detail metadata row label",

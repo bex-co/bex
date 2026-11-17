@@ -41,6 +41,10 @@ type KeyValueInstanceType struct {
 	CPU       string
 	Memory    string
 	StorageGB int32
+	// ConnectionLimit is the plan's client connection limit, Render's
+	// figure from tiers.Valkey (w6/m456), which Render's plan cards show
+	// beside the RAM (w6/m459).
+	ConnectionLimit int32
 	// MonthlyUSD is the always-on monthly price from pricing.yaml, "" for an
 	// unlisted tier (w4/156, the postgres sibling's rule).
 	MonthlyUSD string
@@ -135,6 +139,7 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]KeyValueInstanceType, er
 			CPU:               t.CPU,
 			Memory:            t.Memory,
 			StorageGB:         t.StorageGB,
+			ConnectionLimit:   t.ConnectionLimit,
 		}
 	}
 	return out, nil

@@ -85,6 +85,8 @@ query KeyValueInstanceTypes {
     storageGB
     # The price from bex-api's one price sheet (w4/156).
     monthlyUsd
+    # The plan's connection limit, shown beside its RAM as on Render (w6/m459).
+    connectionLimit
     # A paused tier is listed but not selectable (w5/m266).
     available
     unavailableReason

@@ -302,7 +302,7 @@ const enMetrics: Record<string, TranslationEntry> = {
   "metrics.connectionsTitle": {
     message: "Active Connections",
     description:
-      "Datastore metrics panel: Postgres active-connections chart section title",
+      "Datastore metrics panel: active-connections chart section title (Postgres client connections; Key Value connected clients), as Render titles both",
   },
   "metrics.memoryTitle": {
     message: "Memory",
@@ -316,12 +316,7 @@ const enMetrics: Record<string, TranslationEntry> = {
   "metrics.datastoreLimitLabel": {
     message: "Limit {value}",
     description:
-      "Datastore CPU/memory chart header annotation showing the instance's configured limit",
-  },
-  "metrics.kvConnectionsTitle": {
-    message: "Connections",
-    description:
-      "Datastore metrics panel: Key Value connected-clients chart section title",
+      "Datastore CPU/memory/connections chart header annotation showing the instance's configured limit (a Key Value's connection limit is its plan's)",
   },
   "metrics.replicationLagTitle": {
     message: "Replication Lag",

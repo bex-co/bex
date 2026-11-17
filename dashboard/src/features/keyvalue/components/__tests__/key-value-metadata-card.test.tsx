@@ -15,6 +15,23 @@ vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
         cpu: "0.5",
         memory: "512 MB",
         storageGB: 1,
+        connectionLimit: 250,
+      },
+      {
+        id: "pro_plus",
+        name: "Pro Plus",
+        cpu: "2",
+        memory: "10Gi",
+        storageGB: 10,
+        connectionLimit: 10000,
+      },
+      // A catalog that sent no limit for its plan (an older bex-api).
+      {
+        id: "standard",
+        name: "Standard",
+        cpu: "1",
+        memory: "1Gi",
+        storageGB: 1,
       },
     ],
     loading: false,
@@ -167,5 +184,44 @@ describe("KeyValueMetadataCard", () => {
       renderCard(kv({ region: "fsn1" }));
       expect(screen.getByText("fsn1")).toBeInTheDocument();
     });
+  });
+});
+
+// w6/m459: the Details card states the plan's connection limit beside it, as
+// Render's Key Value Instance card does, read from the plan catalog.
+describe("KeyValueMetadataCard connection limit", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  const row = (label: string) =>
+    screen.getByText(label, { selector: "dt" }).nextElementSibling;
+
+  it("reads the plan's limit from the catalog, after the plan row", () => {
+    renderCard(kv({ plan: "pro_plus" }));
+    expect(row("Instance type")).toHaveTextContent("Pro Plus");
+    expect(row("Connection limit")).toHaveTextContent(/^10,000$/);
+    const labels = Array.from(document.querySelectorAll("dt")).map(
+      (dt) => dt.textContent,
+    );
+    expect(labels.indexOf("Connection limit")).toBe(
+      labels.indexOf("Instance type") + 1,
+    );
+  });
+
+  // A plan the catalog sent without a limit, and one not in it at all.
+  it.each(["standard", "unknown-plan"])(
+    "shows a dash, never a guess, for %s",
+    (plan) => {
+      renderCard(kv({ plan }));
+      expect(row("Connection limit")).toHaveTextContent(/^—$/);
+    },
+  );
+
+  it("formats the limit in the dashboard's language", async () => {
+    await ensureLanguage("de");
+    await i18n.changeLanguage("de");
+    renderCard(kv({ plan: "pro_plus" }));
+    expect(row("Verbindungslimit")).toHaveTextContent(/^10\.000$/);
   });
 });

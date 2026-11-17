@@ -17,6 +17,7 @@ const catalog = vi.hoisted(() => {
       memory: "256Mi",
       storageGB: 1,
       monthlyUsd: "0.00",
+      connectionLimit: 50,
     },
     {
       id: "starter",
@@ -25,6 +26,7 @@ const catalog = vi.hoisted(() => {
       memory: "1Gi",
       storageGB: 10,
       monthlyUsd: "7.00",
+      connectionLimit: 250,
     },
   ];
   return { loading: false, instanceTypes: defaultTiers, defaultTiers };
@@ -87,7 +89,23 @@ describe("KeyValuePlanSection", () => {
     expect(screen.queryByRole("radiogroup")).toBeNull();
     const slots = container.querySelector('[aria-hidden="true"]');
     expect(slots?.children).toHaveLength(9); // Render's ladder (w5/m266)
+    // Each with the ready card's connection-limit line (w6/m459).
+    for (const slot of Array.from(slots!.children)) {
+      expect(slot.children).toHaveLength(3);
+    }
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  // w6/m459: as on Render's plan cards, each option states its connection
+  // limit, the current plan's included, read from the catalog.
+  it("states every plan's connection limit, the current one's too", () => {
+    render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
+    const free = screen.getByRole("radio", { name: /Free/ });
+    expect(free).toHaveAttribute("aria-checked", "true");
+    expect(free).toHaveTextContent("50 connections");
+    expect(screen.getByRole("radio", { name: /Starter/ })).toHaveTextContent(
+      "250 connections",
+    );
   });
 
   // w8/249: Render does not downgrade a Key Value instance, and bex-api

@@ -33,6 +33,20 @@ Render's KV detail is a single "Info" page (plus separate Logs/Metrics tabs, out
 - **Log Stream**: third-party log-stream forwarding config — unrelated to this milestone, omit.
 - **Danger zone** (bottom, unlabeled buttons resolved via DOM `data-test-id`): **"Delete Key Value Instance"** (destructive, red) and **"Suspend Key Value Instance"** (critical ghost). Delete opens a **type-to-confirm** dialog: "Type `sudo delete key value <name>` below to confirm," a single text input, and a Delete button that's disabled until the typed string matches exactly. Suspend uses the parallel `sudo suspend key value <name>` confirmation; Resume replaces it while suspended and runs immediately. The live bundle was reverified on 2026-07-17, and bex now mirrors these exact phrases and the shared bottom-row placement. Here `sudo` is confirmation copy, not a local privilege boundary.
 
+## Where Render shows the connection limit (w6/m459 t001, 2026-11-17)
+
+Read from Render's docs and their screenshots on 2026-11-17; no live Render session was available (the repository holds no Render dashboard login), so the 2026-07-09 capture above was not re-walked.
+
+| Render surface | Shows the limit? | Source |
+| --- | --- | --- |
+| `/new/redis` Instance Type cards | Yes: a line of its own under the RAM, "50 Connections", "250 Connections", "1,000 Connections", "5,000 Connections", "10,000 Connections" | render.com/docs/key-value step "select a compute plan. This determines its available RAM and connection limit", screenshot `valkey-instance-types.png` ("Selecting a Valkey compute plan"); the 2026-07-09 capture above |
+| Info page, Key Value Instance card | Yes: name, RAM, connection limit | the 2026-07-09 capture above |
+| The plan page (Update/Upgrade) | Yes: the same cards | render.com/docs/key-value § Changing compute plans: "a larger compute plan with more RAM and a higher connection limit" |
+| Metrics page, Active Connections chart | Yes: "Limit 250" beside the title | render.com/docs/key-value § Metrics, screenshot `kv-active-connections.png` ("Key Value active connections metric") |
+| REST, MCP, Blueprint | No plan catalog at all | render.com/docs/compute-plans lists the limits; the API has no catalog endpoint |
+
+bex shows it in the same four dashboard places since w6/m459, read from GraphQL `keyValueInstanceTypes.connectionLimit` (lego/types/tiers, Render's figures since w6/m456): each plan card's own line, the Details card's Connection limit row beside Instance type (bex's Info page carries the instance facts in its Details card), the plan picker's cards, and "Limit N" beside the Metrics tab's Active Connections chart. Postgres is in [postgres-connection-limit.md](postgres-connection-limit.md).
+
 ## No live "list" page — unified Services table
 
 Render's dashboard **no longer has a dedicated Postgres/Key Value list page** in the current UI; all resource types (web services, static sites, Postgres, Key Value, …) live in one "Ungrouped Services" / project-scoped table with columns **Status, Runtime, Region, Updated** (Runtime shows e.g. "Valkey 8" the same way it shows "Static" for a static site) and active/suspended/all tabs. There is no separate top-level "Key Value" or "Databases" nav item — everything is reached through the unified services table.

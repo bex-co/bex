@@ -253,6 +253,8 @@ Every store accepts exactly the client connections its plan allows on Render ([c
 
 **Not yet exact: stores with internal authentication.** With `spec.internalAuth` (w5/m268) the proxy is retired and tenants reach `valkey-server` directly, so their bound is the server's, the plan's limit plus the reserve of 10, and a tenant there can hold the reserve. No production store had internal authentication at rollout. Keeping a counting front for those stores is filed as follow-up work (ADR018 gap backlog).
 
+**Where the limit is shown (w6/m459).** As on Render's dashboard ([render-artifacts/key-value.md](render-artifacts/key-value.md#where-render-shows-the-connection-limit-w6m459-t001-2026-11-17), read 2026-11-17), every plan card on the create page and in the detail page's plan picker states its limit on a line under the RAM ("50 connections"), the Details card has a Connection limit row beside Instance type (Render's Key Value Instance card), and the Metrics tab's Active Connections chart reads "Limit N" beside its title, the title Render gives it. Each reads `connectionLimit` from GraphQL `keyValueInstanceTypes`, never a frontend table. The catalog stays a GraphQL-only bex extension: Render has no plan-catalog endpoint, so REST and MCP carry none. Render's Postgres plan cards show no connection limit, so bex's do not either ([render-artifacts/postgres-connection-limit.md](render-artifacts/postgres-connection-limit.md)).
+
 ## MVP scope
 
 Ship only what fits the current single node — single-instance plans differing by compute + storage (above). The metered TLS/SNI front door is opt-in per store via `spec.public` + `BEX_KV_DOMAIN`; `BEX_CLUSTER_ISSUER` is also required so the operator can issue the backend certificate.

@@ -283,7 +283,7 @@ const koMetrics: Record<string, TranslationEntry> = {
   "metrics.connectionsTitle": {
     message: "활성 연결",
     description:
-      "Datastore metrics panel: Postgres active-connections chart section title",
+      "Datastore metrics panel: active-connections chart section title (Postgres client connections; Key Value connected clients), as Render titles both",
   },
   "metrics.memoryTitle": {
     message: "메모리",
@@ -297,12 +297,7 @@ const koMetrics: Record<string, TranslationEntry> = {
   "metrics.datastoreLimitLabel": {
     message: "한도 {value}",
     description:
-      "Datastore CPU/memory chart header annotation showing the instance's configured limit",
-  },
-  "metrics.kvConnectionsTitle": {
-    message: "연결",
-    description:
-      "Datastore metrics panel: Key Value connected-clients chart section title",
+      "Datastore CPU/memory/connections chart header annotation showing the instance's configured limit (a Key Value's connection limit is its plan's)",
   },
   "metrics.replicationLagTitle": {
     message: "복제 지연",

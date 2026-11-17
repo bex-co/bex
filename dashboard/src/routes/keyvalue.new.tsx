@@ -32,7 +32,10 @@ import {
   MAXMEMORY_POLICIES,
   RECOMMENDED_MAXMEMORY_POLICY,
 } from "@/features/keyvalue/lib/labels";
-import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
+import {
+  KEY_VALUE_PLAN_SLOTS,
+  PlanTierSlots,
+} from "@/common/components/datastore-plan-preview";
 import { PlanCatalogUnavailable } from "@/common/components/plan-catalog-unavailable";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
@@ -168,12 +171,13 @@ export function NewKeyValuePage() {
 
               <div className="space-y-2">
                 <Label>{t("keyvalue.fieldPlan")}</Label>
-                {/* The ready grid's three inert tier cards while the catalog
-                    first loads, so the version control below doesn't jump
-                    (w4/330); a settled failed or empty catalog says so and
+                {/* The ready grid's inert tier cards, one per catalog plan
+                    with its connection-limit line, while the catalog first
+                    loads, so the version control below doesn't jump (w4/330,
+                    w6/m459); a settled failed or empty catalog says so and
                     retries in place (w4/m218). */}
                 {catalogLoading && instanceTypes.length === 0 ? (
-                  <PlanTierSlots />
+                  <PlanTierSlots count={KEY_VALUE_PLAN_SLOTS} connections />
                 ) : instanceTypes.length === 0 ? (
                   <PlanCatalogUnavailable
                     onRetry={() => void retryCatalog()}

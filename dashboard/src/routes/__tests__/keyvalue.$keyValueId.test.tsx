@@ -133,6 +133,7 @@ vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
         cpu: "0.5",
         memory: "512 MB",
         storageGB: 1,
+        connectionLimit: 250,
       },
     ],
     loading: false,
@@ -438,6 +439,8 @@ describe("KeyValueDetailPage", () => {
     }
     expect(metricsRetentionCalls.length).toBeGreaterThan(0);
     expect(new Set(metricsRetentionCalls)).toEqual(new Set(["red-sessions"]));
+    // Render's Active Connections chart reads the store's plan limit (w6/m459).
+    expect(screen.getByText("Limit 250")).toBeInTheDocument();
   });
 
   it("does not render the metrics panel on the Overview tab", async () => {

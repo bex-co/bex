@@ -1902,6 +1902,7 @@ export type KeyValueConnectionInfo = {
 export type KeyValueInstanceType = {
   __typename: 'KeyValueInstanceType';
   available: Scalars['Boolean']['output'];
+  connectionLimit: Scalars['Int']['output'];
   cpu: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   memory: Maybe<Scalars['String']['output']>;

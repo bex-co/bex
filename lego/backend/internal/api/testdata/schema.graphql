@@ -1620,6 +1620,7 @@ type KeyValueConnectionInfo {
 
 type KeyValueInstanceType {
   available: Boolean!
+  connectionLimit: Int!
   cpu: String
   id: String
   memory: String

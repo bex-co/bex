@@ -357,6 +357,11 @@ const koKeyValue: Record<string, TranslationEntry> = {
     message: "인스턴스 유형",
     description: "Key Value detail metadata row label",
   },
+  "keyvalue.metaConnectionLimit": {
+    message: "연결 한도",
+    description:
+      "Key Value detail Details card row label: the plan's client connection limit, as Render's Key Value Instance card shows it",
+  },
   "keyvalue.metaVersion": {
     message: "버전",
     description: "Key Value detail metadata row label",

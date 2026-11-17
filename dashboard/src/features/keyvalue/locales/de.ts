@@ -371,6 +371,11 @@ const deKeyValue: Record<string, TranslationEntry> = {
     message: "Instanztyp",
     description: "Key Value detail metadata row label",
   },
+  "keyvalue.metaConnectionLimit": {
+    message: "Verbindungslimit",
+    description:
+      "Key Value detail Details card row label: the plan's client connection limit, as Render's Key Value Instance card shows it",
+  },
   "keyvalue.metaVersion": {
     message: "Version",
     description: "Key Value detail metadata row label",

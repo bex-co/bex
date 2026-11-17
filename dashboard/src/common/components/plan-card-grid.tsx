@@ -19,6 +19,12 @@ export interface PlanCardTier {
   /** The rate per minute of run time, shown when the grid prices run time. */
   usdPerMinute?: string;
   /**
+   * The plan's client connection limit, a line of its own under the RAM as on
+   * Render's Key Value cards (w6/m459); omitted for a family whose cards show
+   * none (services, Postgres).
+   */
+  connectionLimit?: number;
+  /**
    * False for a temporarily paused tier (w2/m250): the card stays in place,
    * disabled, so the grid's geometry never changes; omitted means available.
    */
@@ -44,7 +50,8 @@ export interface PlanCardGridProps {
 /**
  * The create forms' plan-tier cards, matching Render's captured `/new/redis`
  * instance-type radio cards (docs/render-artifacts/key-value.md) — one card per
- * catalog plan, RAM + connection-style specs, current selection highlighted.
+ * catalog plan, RAM and CPU, the connection limit where the tier carries one,
+ * current selection highlighted.
  * A plain button grid rather than a Radix RadioGroup: the codebase has no
  * radio-group primitive yet and one card-button set doesn't warrant adding the
  * dependency; `role="radio"` + `aria-checked` keep it accessible.
@@ -57,7 +64,8 @@ export function PlanCardGrid({
   ariaLabel,
   runTimePricing = false,
 }: PlanCardGridProps) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
+  const number = new Intl.NumberFormat(i18n.language);
   const radio = useCardRadioGroup(
     instanceTypes.filter((it) => it.available !== false).map((it) => it.id),
     value,
@@ -119,6 +127,14 @@ export function PlanCardGrid({
               {formatInstanceMemory(it.memory)} RAM ·{" "}
               {formatInstanceCPU(it.cpu)}
             </div>
+            {it.connectionLimit ? (
+              <div className="text-sm text-muted-foreground">
+                {t("common.planConnections", {
+                  count: it.connectionLimit,
+                  formatted: number.format(it.connectionLimit),
+                })}
+              </div>
+            ) : null}
           </button>
         );
       })}

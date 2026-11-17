@@ -80,6 +80,9 @@ var keyValueInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"memory":     gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Memory }),
 		"storageGB":  gqlutil.IntField(func(t KeyValueInstanceType) any { return t.StorageGB }),
 		"monthlyUsd": gqlutil.StrField(func(t KeyValueInstanceType) any { return t.MonthlyUSD }),
+		// The plan's connection limit, shown beside its RAM as on Render's plan
+		// cards (w6/m459).
+		"connectionLimit": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(t KeyValueInstanceType) any { return t.ConnectionLimit }),
 		// A paused tier is listed but not selectable.
 		"available":         gqlutil.ReqBoolField(func(t KeyValueInstanceType) any { return t.Available }),
 		"unavailableReason": gqlutil.ReqStrField(func(t KeyValueInstanceType) any { return t.UnavailableReason }),

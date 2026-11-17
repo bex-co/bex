@@ -364,6 +364,11 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     message: "インスタンスタイプ",
     description: "Key Value detail metadata row label",
   },
+  "keyvalue.metaConnectionLimit": {
+    message: "接続数の上限",
+    description:
+      "Key Value detail Details card row label: the plan's client connection limit, as Render's Key Value Instance card shows it",
+  },
   "keyvalue.metaVersion": {
     message: "バージョン",
     description: "Key Value detail metadata row label",

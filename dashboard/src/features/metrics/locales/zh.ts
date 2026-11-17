@@ -282,7 +282,7 @@ const zhMetrics: Record<string, TranslationEntry> = {
   "metrics.connectionsTitle": {
     message: "活跃连接数",
     description:
-      "Datastore metrics panel: Postgres active-connections chart section title",
+      "Datastore metrics panel: active-connections chart section title (Postgres client connections; Key Value connected clients), as Render titles both",
   },
   "metrics.datastoreCpuTitle": {
     message: "CPU",
@@ -291,17 +291,12 @@ const zhMetrics: Record<string, TranslationEntry> = {
   "metrics.datastoreLimitLabel": {
     message: "限额 {value}",
     description:
-      "Datastore CPU/memory chart header annotation showing the instance's configured limit",
+      "Datastore CPU/memory/connections chart header annotation showing the instance's configured limit (a Key Value's connection limit is its plan's)",
   },
   "metrics.memoryTitle": {
     message: "内存",
     description:
       "Datastore metrics panel: Key Value used-memory chart section title",
-  },
-  "metrics.kvConnectionsTitle": {
-    message: "连接数",
-    description:
-      "Datastore metrics panel: Key Value connected-clients chart section title",
   },
   "metrics.replicationLagTitle": {
     message: "复制延迟",

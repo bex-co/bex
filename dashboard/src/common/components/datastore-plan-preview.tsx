@@ -16,14 +16,17 @@ import { useTranslations } from "@/common/hooks/use-translations";
  * region keeps its geometry while the catalog loads (w4/m208). `lastWraps`
  * gives the last slot the extra name line the top compute tier wraps onto in
  * three desktop columns (Pro Ultra's 94px card), so a service create form's
- * rows match the ready grid too (w4/329).
+ * rows match the ready grid too (w4/329). `connections` adds the 20px
+ * connection-limit line every Key Value card carries (90px, w6/m459).
  */
 export function PlanTierSlots({
   count = 3,
   lastWraps = false,
+  connections = false,
 }: {
   count?: number;
   lastWraps?: boolean;
+  connections?: boolean;
 }) {
   return (
     <div className={CREATE_PLAN_CARD_GRID_CLASS} aria-hidden="true">
@@ -35,6 +38,7 @@ export function PlanTierSlots({
             }
           />
           <Skeleton className="h-5 w-32" />
+          {connections ? <Skeleton className="h-5 w-28" /> : null}
         </div>
       ))}
     </div>
@@ -58,6 +62,7 @@ const PLAN_COPY = {
     cancel: "databases.planPickerCancel",
     save: "databases.planPickerSave",
     slots: POSTGRES_PLAN_SLOTS,
+    connections: false,
     // The Storage row below the footer (Render's Plan page Storage, w2/m307).
     storage: { title: "databases.storageTitle", edit: "databases.storageEdit" },
   },
@@ -67,6 +72,7 @@ const PLAN_COPY = {
     cancel: "keyvalue.planPickerCancel",
     save: "keyvalue.planPickerSave",
     slots: KEY_VALUE_PLAN_SLOTS,
+    connections: true,
     storage: null,
   },
 } as const;
@@ -91,7 +97,7 @@ export function DatastorePlanPreview({
         <CardDescription>{t(copy.description)}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <PlanTierSlots count={copy.slots} />
+        <PlanTierSlots count={copy.slots} connections={copy.connections} />
         <div className="flex justify-end gap-2 border-t pt-4">
           <Button variant="outline" disabled>
             {t(copy.cancel)}

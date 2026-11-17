@@ -138,10 +138,12 @@ describe("DatastoreMetricsPanel", () => {
       "db_connections",
       expect.objectContaining({ skip: true }),
     );
-    // No Postgres connections/replication-lag chart sections for a keyvalue.
-    expect(screen.queryByText("Active Connections")).not.toBeInTheDocument();
+    // No Postgres replication-lag chart section for a keyvalue, and one
+    // Active Connections chart, its own connected clients (db_connections is
+    // skipped above), titled as Render titles both (w6/m459).
+    expect(screen.getAllByText("Active Connections")).toHaveLength(1);
     expect(screen.queryByText("Replication Lag")).not.toBeInTheDocument();
-    // But Memory (its used memory, w5/011) and the keyvalue-only Connections
+    // But Memory (its used memory, w5/011) and the keyvalue-only connections
     // sections DO render, and their queries are not skipped. Its container
     // memory limit is no line for that chart (Valkey evicts below it).
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
@@ -163,7 +165,7 @@ describe("DatastoreMetricsPanel", () => {
       expect.objectContaining({ skip: false }),
     );
     expect(screen.getByText("Memory")).toBeInTheDocument();
-    expect(screen.getByText("Connections")).toBeInTheDocument();
+    expect(screen.getByText("Active Connections")).toBeInTheDocument();
   });
 
   it("skips the keyvalue connections metric for a database resource", () => {
@@ -178,7 +180,8 @@ describe("DatastoreMetricsPanel", () => {
       expect.objectContaining({ skip: true }),
     );
     // A database's Memory is its container's (w1/m180), not the Key Value
-    // used-memory series, and the Key Value Connections section stays out.
+    // used-memory series, and the Key Value connections section stays out:
+    // one Active Connections chart, its own.
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
       "database",
       "pg",
@@ -186,7 +189,7 @@ describe("DatastoreMetricsPanel", () => {
       expect.objectContaining({ skip: false }),
     );
     expect(screen.getByText("Memory")).toBeInTheDocument();
-    expect(screen.queryByText("Connections")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Active Connections")).toHaveLength(1);
   });
 
   it("charts CPU and memory against their limits for a datastore", () => {
@@ -425,7 +428,7 @@ describe("DatastoreMetricsPanel", () => {
       "Disk Activity",
       "CPU",
       "Memory",
-      "Connections",
+      "Active Connections",
     ]);
     for (const metric of [
       "network_activity",
@@ -629,4 +632,34 @@ describe("DatastoreMetricsPanel", () => {
       ).toHaveClass("h-8", "w-40");
     },
   );
+});
+
+// w6/m459: Render's Key Value Active Connections chart reads the plan's
+// connection limit beside its title ("Limit 250"), the whole number.
+describe("DatastoreMetricsPanel connection limit", () => {
+  const titleRow = (title: string) =>
+    screen.getByText(title, { selector: ".text-sm.font-medium" })
+      .parentElement as HTMLElement;
+
+  it("reads the Key Value plan's limit beside Active Connections", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+    render(
+      <DatastoreMetricsPanel
+        kind="keyvalue"
+        resource="red-x"
+        connectionLimit={1000}
+      />,
+    );
+    expect(titleRow("Active Connections")).toHaveTextContent(
+      /^Active ConnectionsLimit 1,000$/,
+    );
+  });
+
+  it("reads no limit until the plan catalog says it", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+    render(<DatastoreMetricsPanel kind="keyvalue" resource="red-x" />);
+    expect(titleRow("Active Connections")).toHaveTextContent(
+      /^Active Connections$/,
+    );
+  });
 });

@@ -106,6 +106,11 @@ const jaCommon: Record<string, TranslationEntry> = {
     description:
       "Shown in place of the price on a disabled plan card whose instance type is paused (it cannot be selected for now); the server's full reason is the card's tooltip",
   },
+  "common.planConnections_other": {
+    message: "{formatted} 接続",
+    description:
+      "A plan card's connection-limit line, under its RAM: the client connections the plan accepts (Render's Key Value cards read \"50 Connections\"); {formatted} is the locale-formatted count",
+  },
   "common.protectedConfirmationRetry": {
     message: "確認して保存",
     description:

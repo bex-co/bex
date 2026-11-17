@@ -18,6 +18,7 @@ import {
 } from "@tanstack/react-router";
 import { NewKeyValuePage } from "../keyvalue.new";
 import type { KeyValueInstanceTypeView } from "@/features/keyvalue/types";
+import { KEY_VALUE_PLAN_SLOTS } from "@/common/components/datastore-plan-preview";
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -74,6 +75,7 @@ const FREE: KeyValueInstanceTypeView = {
   memory: "128Mi",
   storageGB: 1,
   monthlyUsd: "0.00",
+  connectionLimit: 50,
 };
 const STARTER: KeyValueInstanceTypeView = {
   id: "starter",
@@ -82,6 +84,7 @@ const STARTER: KeyValueInstanceTypeView = {
   memory: "256Mi",
   storageGB: 1,
   monthlyUsd: "7.00",
+  connectionLimit: 250,
 };
 
 function renderPage() {
@@ -268,14 +271,19 @@ describe("NewKeyValuePage plan region while the catalog loads (w4/330)", () => {
     instanceTypesState.loading = false;
   });
 
-  it("previews three inert slots, then the real cards with the draft kept", async () => {
+  it("previews one inert slot per plan, then the real cards with the draft kept", async () => {
     const user = userEvent.setup();
     instanceTypesState.instanceTypes = [];
     instanceTypesState.loading = true;
     renderPage();
     const label = await screen.findByText("Instance type");
     const preview = label.parentElement!.querySelector('[aria-hidden="true"]');
-    expect(preview?.children).toHaveLength(3);
+    // The route skeleton's slots: one per catalog plan, each with the ready
+    // card's name, specs and connection-limit lines (w6/m459).
+    expect(preview?.children).toHaveLength(KEY_VALUE_PLAN_SLOTS);
+    for (const slot of Array.from(preview!.children)) {
+      expect(slot.children).toHaveLength(3);
+    }
     expect(screen.queryByRole("radiogroup")).toBeNull();
     await user.type(screen.getByLabelText("Name"), "qa-a771-previe");
     const submit = screen.getByRole("button", {
@@ -290,6 +298,14 @@ describe("NewKeyValuePage plan region while the catalog loads (w4/330)", () => {
     expect(screen.getByRole("radio", { name: /Free/ })).toHaveAttribute(
       "aria-checked",
       "true",
+    );
+    // Each card states its plan's connection limit beside its RAM, as on
+    // Render's /new/redis cards, read from the catalog (w6/m459).
+    expect(screen.getByRole("radio", { name: /Free/ })).toHaveTextContent(
+      "50 connections",
+    );
+    expect(screen.getByRole("radio", { name: /Starter/ })).toHaveTextContent(
+      "250 connections",
     );
     expect(submit).toBeEnabled();
   });

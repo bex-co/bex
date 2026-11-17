@@ -95,6 +95,12 @@ interface DatastoreMetricsPanelProps {
   /** Database-only control rendered beside the disk chart heading. */
   diskHeaderExtra?: ReactNode;
   /**
+   * Key Value only: the plan's connection limit, the "Limit" Render's Active
+   * Connections chart reads beside its title (w6/m459). Omitted until the
+   * plan catalog says it.
+   */
+  connectionLimit?: number;
+  /**
    * Card heading overrides. A service's attached disk (kind="service", ADR082)
    * renders this same panel — the series, the capacity reference line, and the
    * unavailable/error states are identical, because what is being measured is
@@ -110,7 +116,8 @@ interface DatastoreMetricsPanelProps {
  * (w3/m10): disk usage for both Postgres and Key Value, CPU and memory against
  * their limits for both (w1/m180; Key Value memory is its used memory, w5/011),
  * active-connections and replication-lag for Postgres only, and
- * connected-clients for Key Value only.
+ * connected-clients for Key Value only, under the title Render gives both,
+ * with the plan's connection limit beside it for Key Value (w6/m459).
  *
  * Render's database-activity and disk graphs (w7/m430) sit where Render puts
  * them: Disk Activity under disk usage for all three kinds, Disk Operations for
@@ -131,10 +138,11 @@ export function DatastoreMetricsPanel({
   resource,
   highAvailabilityEnabled,
   diskHeaderExtra,
+  connectionLimit,
   title,
   description,
 }: DatastoreMetricsPanelProps) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const isDatabase = kind === "database";
   const isKeyValue = kind === "keyvalue";
   // A service's disk has no datastore process, so no CPU or memory.
@@ -237,14 +245,14 @@ export function DatastoreMetricsPanel({
     [memory.series],
   );
   const memoryLimitValue = latestValue(memoryLimit.series);
-  const limitLabel = (unit: string, value: number | null) =>
+  const limitText = (value: string | null) =>
     value != null ? (
       <span className="text-xs text-muted-foreground">
-        {t("metrics.datastoreLimitLabel", {
-          value: formatMetricValue(unit, value, t),
-        })}
+        {t("metrics.datastoreLimitLabel", { value })}
       </span>
     ) : null;
+  const limitLabel = (unit: string, value: number | null) =>
+    limitText(value != null ? formatMetricValue(unit, value, t) : null);
 
   const kvConnectionSeries = useMemo(
     () => toLineSeries(kvConnections.series),
@@ -461,8 +469,15 @@ export function DatastoreMetricsPanel({
 
         {isKeyValue && (
           <MetricSection
-            title={t("metrics.kvConnectionsTitle")}
+            title={t("metrics.connectionsTitle")}
             result={kvConnections}
+            // The whole number, as Render's "Limit 1,000"; the chart's own
+            // count format would round it to "1.0K".
+            headerExtra={limitText(
+              connectionLimit
+                ? new Intl.NumberFormat(i18n.language).format(connectionLimit)
+                : null,
+            )}
           >
             <SvgLineChart
               unit={kvConnections.series[0]?.unit ?? "count"}

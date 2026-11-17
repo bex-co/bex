@@ -42,6 +42,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -997,13 +998,29 @@ func TestGraphQLKeyValue(t *testing.T) {
 		t.Error("resumeKeyValue must clear spec.suspended")
 	}
 
-	tt := run(`{ keyValueInstanceTypes { id name cpu memory storageGB } }`)["keyValueInstanceTypes"].([]any)
-	if len(tt) == 0 {
-		t.Fatal("keyValueInstanceTypes want >=1")
+	tt := run(`{ keyValueInstanceTypes { id name cpu memory storageGB connectionLimit } }`)["keyValueInstanceTypes"].([]any)
+	if len(tt) != len(tiers.Valkey.IDs()) {
+		t.Fatalf("keyValueInstanceTypes = %d tiers, want every Valkey tier (%d)", len(tt), len(tiers.Valkey.IDs()))
 	}
 	first := tt[0].(map[string]any)
 	if first["id"] != "free" || first["name"] != "Free" {
 		t.Fatalf("first tier = %+v, want free/Free", first)
+	}
+	// w6/m459: every plan carries the connection limit its server enforces
+	// (tiers.Valkey, Render's figure since w6/m456), which the plan cards show.
+	for _, raw := range tt {
+		it := raw.(map[string]any)
+		id, _ := it["id"].(string)
+		tier, ok := tiers.Valkey.ByID(id)
+		if !ok {
+			t.Fatalf("catalog tier %q is not a Valkey tier", id)
+		}
+		if got, _ := it["connectionLimit"].(int); got != int(tier.ConnectionLimit) || got <= 0 {
+			t.Errorf("%s connectionLimit = %v, want tiers' %d", id, it["connectionLimit"], tier.ConnectionLimit)
+		}
+	}
+	if got := first["connectionLimit"]; got != 50 {
+		t.Errorf("free connectionLimit = %v, want Render's 50", got)
 	}
 }
 

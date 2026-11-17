@@ -57,3 +57,36 @@ describe("useKeyValueInstanceTypes paused-plan reason", () => {
     expect(starter.unavailableReason).toBe("");
   });
 });
+
+// w6/m459: each plan's connection limit comes from the catalog, never a
+// frontend ladder; a catalog that sends none (or a non-positive figure) leaves
+// it undefined, so no card reads "0 connections".
+describe("useKeyValueInstanceTypes connection limit", () => {
+  it("passes each plan's limit through and drops a missing or zero one", () => {
+    const withLimit = (id: string, connectionLimit?: number) => ({
+      ...tier(id, id, true),
+      ...(connectionLimit === undefined ? {} : { connectionLimit }),
+    });
+    mockUseQuery.mockReturnValue({
+      data: {
+        keyValueInstanceTypes: [
+          withLimit("free", 50),
+          withLimit("standard", 1000),
+          withLimit("older-api"),
+          withLimit("zero", 0),
+        ],
+      },
+      loading: false,
+      error: undefined,
+    });
+    const { result } = renderHook(() => useKeyValueInstanceTypes());
+    expect(
+      result.current.instanceTypes.map((it) => [it.id, it.connectionLimit]),
+    ).toEqual([
+      ["free", 50],
+      ["standard", 1000],
+      ["older-api", undefined],
+      ["zero", undefined],
+    ]);
+  });
+});

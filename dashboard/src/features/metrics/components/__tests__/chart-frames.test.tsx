@@ -56,7 +56,7 @@ describe("Key Value metrics preview", () => {
       "Disk Activity",
       "CPU",
       "Memory",
-      "Connections",
+      "Active Connections",
     ]) {
       expect(
         screen.getAllByText(new RegExp(`^${heading}`)).length,

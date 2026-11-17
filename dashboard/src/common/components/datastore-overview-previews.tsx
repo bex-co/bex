@@ -51,6 +51,7 @@ const METADATA_COPY = {
       "keyvalue.metaId",
       "keyvalue.metaStatus",
       "keyvalue.metaPlan",
+      "keyvalue.metaConnectionLimit",
       "keyvalue.metaVersion",
       "keyvalue.metaPublic",
       "keyvalue.metaRegion",

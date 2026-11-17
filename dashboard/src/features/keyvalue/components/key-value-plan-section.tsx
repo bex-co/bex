@@ -100,7 +100,7 @@ export function KeyValuePlanSection({
           </p>
         ) : null}
         {loading && instanceTypes.length === 0 ? (
-          <PlanTierSlots count={KEY_VALUE_PLAN_SLOTS} />
+          <PlanTierSlots count={KEY_VALUE_PLAN_SLOTS} connections />
         ) : instanceTypes.length === 0 ? (
           // A settled failed or empty catalog, not an empty choice (w4/m218).
           <PlanCatalogUnavailable

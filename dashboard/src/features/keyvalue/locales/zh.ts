@@ -357,6 +357,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "实例类型",
     description: "Key Value detail metadata row label",
   },
+  "keyvalue.metaConnectionLimit": {
+    message: "连接数上限",
+    description:
+      "Key Value detail Details card row label: the plan's client connection limit, as Render's Key Value Instance card shows it",
+  },
   "keyvalue.metaVersion": {
     message: "版本",
     description: "Key Value detail metadata row label",

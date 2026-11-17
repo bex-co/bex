@@ -40,6 +40,10 @@ export function useKeyValueInstanceTypes(): UseKeyValueInstanceTypesResult {
         memory: it.memory ?? "",
         storageGB: it.storageGB ?? 0,
         monthlyUsd: it.monthlyUsd ?? "",
+        // Positive or absent: a catalog without the field shows no limit
+        // rather than "0 connections".
+        connectionLimit:
+          it.connectionLimit > 0 ? it.connectionLimit : undefined,
         available: it.available,
         unavailableReason: it.unavailableReason,
       }));

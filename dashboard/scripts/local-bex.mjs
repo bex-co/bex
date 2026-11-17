@@ -998,7 +998,10 @@ const DATABASES = [makeDatabase()];
 
 // The managed Key Value tier catalog (backend keyValueInstanceTypes, w5/m12) —
 // the create form's plan picker source. Kept in sync with lego/types/tiers.yaml's
-// Valkey family so the offline stub renders the same plans as the real API.
+// Valkey family (prices from pricing.yaml, Render's connection limits since
+// w6/m456) so the offline stub renders the same plans as the real API.
+const KV_PAUSED_REASON =
+  "This Key Value plan is temporarily unavailable; choose Pro Max or a smaller plan.";
 const KV_INSTANCE_TYPES = [
   {
     __typename: "KeyValueInstanceType",
@@ -1007,6 +1010,10 @@ const KV_INSTANCE_TYPES = [
     cpu: "100m",
     memory: "128Mi",
     storageGB: 1,
+    monthlyUsd: "0.00",
+    connectionLimit: 50,
+    available: true,
+    unavailableReason: "",
   },
   {
     __typename: "KeyValueInstanceType",
@@ -1015,6 +1022,10 @@ const KV_INSTANCE_TYPES = [
     cpu: "100m",
     memory: "256Mi",
     storageGB: 1,
+    monthlyUsd: "7.00",
+    connectionLimit: 250,
+    available: true,
+    unavailableReason: "",
   },
   {
     __typename: "KeyValueInstanceType",
@@ -1023,6 +1034,82 @@ const KV_INSTANCE_TYPES = [
     cpu: "500m",
     memory: "1Gi",
     storageGB: 5,
+    monthlyUsd: "14.00",
+    connectionLimit: 1000,
+    available: true,
+    unavailableReason: "",
+  },
+  {
+    __typename: "KeyValueInstanceType",
+    id: "3g",
+    name: "3 GB",
+    cpu: "1",
+    memory: "3Gi",
+    storageGB: 6,
+    monthlyUsd: "42.00",
+    connectionLimit: 3000,
+    available: true,
+    unavailableReason: "",
+  },
+  {
+    __typename: "KeyValueInstanceType",
+    id: "pro",
+    name: "Pro",
+    cpu: "1",
+    memory: "5Gi",
+    storageGB: 10,
+    monthlyUsd: "70.00",
+    connectionLimit: 5000,
+    available: true,
+    unavailableReason: "",
+  },
+  {
+    __typename: "KeyValueInstanceType",
+    id: "pro_plus",
+    name: "Pro Plus",
+    cpu: "2",
+    memory: "10Gi",
+    storageGB: 20,
+    monthlyUsd: "140.00",
+    connectionLimit: 10000,
+    available: true,
+    unavailableReason: "",
+  },
+  {
+    __typename: "KeyValueInstanceType",
+    id: "pro_max",
+    name: "Pro Max",
+    cpu: "4",
+    memory: "20Gi",
+    storageGB: 40,
+    monthlyUsd: "245.00",
+    connectionLimit: 20000,
+    available: true,
+    unavailableReason: "",
+  },
+  {
+    __typename: "KeyValueInstanceType",
+    id: "pro_ultra",
+    name: "Pro Ultra",
+    cpu: "4",
+    memory: "40Gi",
+    storageGB: 80,
+    monthlyUsd: "420.00",
+    connectionLimit: 40000,
+    available: false,
+    unavailableReason: KV_PAUSED_REASON,
+  },
+  {
+    __typename: "KeyValueInstanceType",
+    id: "50g",
+    name: "50 GB",
+    cpu: "8",
+    memory: "50Gi",
+    storageGB: 100,
+    monthlyUsd: "525.00",
+    connectionLimit: 50000,
+    available: false,
+    unavailableReason: KV_PAUSED_REASON,
   },
 ];
 

@@ -24,6 +24,8 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { KeyValueMetadataCard } from "@/features/keyvalue/components/key-value-metadata-card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
+import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
+import type { KeyValueView } from "@/features/keyvalue/types";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-status-badge";
 import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
@@ -211,7 +213,7 @@ export function KeyValueDetailPage() {
             </div>
           ) : keyValue && tab === "metrics" ? (
             <div className="mx-auto w-full max-w-5xl space-y-6">
-              <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.id} />
+              <KeyValueMetrics keyValue={keyValue} />
             </div>
           ) : keyValue ? (
             <div className={cn("mx-auto max-w-5xl", SECTIONED_GRID_CLASS)}>
@@ -301,5 +303,23 @@ export function KeyValueDetailPage() {
         </PageScroll>
       </div>
     </DashboardLayout>
+  );
+}
+
+/**
+ * The Metrics tab. Render's Active Connections chart reads the plan's
+ * connection limit beside its title (w6/m459), from the same cache-first
+ * catalog the Overview's plan cards read.
+ */
+function KeyValueMetrics({ keyValue }: { keyValue: KeyValueView }) {
+  const { instanceTypes } = useKeyValueInstanceTypes();
+  return (
+    <DatastoreMetricsPanel
+      kind="keyvalue"
+      resource={keyValue.id}
+      connectionLimit={
+        instanceTypes.find((it) => it.id === keyValue.plan)?.connectionLimit
+      }
+    />
   );
 }

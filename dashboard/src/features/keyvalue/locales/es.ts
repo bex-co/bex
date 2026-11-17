@@ -368,6 +368,11 @@ const esKeyValue: Record<string, TranslationEntry> = {
     message: "Tipo de instancia",
     description: "Key Value detail metadata row label",
   },
+  "keyvalue.metaConnectionLimit": {
+    message: "Límite de conexiones",
+    description:
+      "Key Value detail Details card row label: the plan's client connection limit, as Render's Key Value Instance card shows it",
+  },
   "keyvalue.metaVersion": {
     message: "Versión",
     description: "Key Value detail metadata row label",

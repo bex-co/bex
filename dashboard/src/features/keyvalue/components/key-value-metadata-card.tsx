@@ -22,12 +22,15 @@ export function KeyValueMetadataCard({
   keyValue: KeyValueView;
   onRenamed: () => void;
 }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const { instanceTypes } = useKeyValueInstanceTypes();
   // The catalog is cache-first and may be empty on first paint; fall back to
   // the plan id rather than showing nothing.
-  const planName =
-    instanceTypes.find((it) => it.id === keyValue.plan)?.name ?? keyValue.plan;
+  const planType = instanceTypes.find((it) => it.id === keyValue.plan);
+  const planName = planType?.name ?? keyValue.plan;
+  // Render's Key Value Instance card shows the plan's connection limit beside
+  // its name (w6/m459); "—" until the catalog says it.
+  const connectionLimit = planType?.connectionLimit;
   // Only beside "Unavailable": the list query refreshes the cached status
   // without the reason, so a recovered store could still hold a stale one.
   const reasonKey = statusReasonLabel(keyValue.statusReasonCode);
@@ -61,6 +64,13 @@ export function KeyValueMetadataCard({
           ),
         },
         { label: t("keyvalue.metaPlan"), value: planName ?? "—" },
+        {
+          label: t("keyvalue.metaConnectionLimit"),
+          value:
+            connectionLimit != null
+              ? new Intl.NumberFormat(i18n.language).format(connectionLimit)
+              : "—",
+        },
         {
           label: t("keyvalue.metaVersion"),
           value: keyValue.version ? `Valkey ${keyValue.version}` : "—",

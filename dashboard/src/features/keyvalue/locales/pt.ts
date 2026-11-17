@@ -366,6 +366,11 @@ const ptKeyValue: Record<string, TranslationEntry> = {
     message: "Tipo de instância",
     description: "Key Value detail metadata row label",
   },
+  "keyvalue.metaConnectionLimit": {
+    message: "Limite de conexões",
+    description:
+      "Key Value detail Details card row label: the plan's client connection limit, as Render's Key Value Instance card shows it",
+  },
   "keyvalue.metaVersion": {
     message: "Versão",
     description: "Key Value detail metadata row label",
