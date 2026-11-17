@@ -1,6 +1,6 @@
 # w4 · m433 — A restart keeps the running shutdown delay, port and pre-deploy command instead of shipping undeployed settings, as Render's Restart keeps the running configuration
 
-**Worker:** worker4 **Goal:** a restart reruns the configuration the instance is running, including its shutdown delay, port and pre-deploy command; a rollback runs the target's; an undeployed save waits for the next deploy and stays reported until then. **Status:** blocked — t001–t004 and t006–t008 done (code shipped); t005's live run on pin `7aaa8700befa` (2026-11-16) held for the restart, deploy and rollback, but the saved port did not read back (`configuredPort` showed the running port); that fix shipped with the evidence. t005 waits for the next production deploy (19:00, 00:00 or 05:00 UTC) to pin it, then a worker repeats the save-then-Restart read and t009 closes — no user action
+**Worker:** worker4 **Goal:** a restart reruns the configuration the instance is running, including its shutdown delay, port and pre-deploy command; a rollback runs the target's; an undeployed save waits for the next deploy and stays reported until then. **Status:** done — t001–t009 done. The 2026-11-16 live run on pin `7aaa8700befa` held for the restart, deploy and rollback; the saved-port read-back fix (bdbea508f) was confirmed live on pin `938c5cb36b49` on 2026-11-17 (t005).
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Restart and rollback run the recorded shutdown delay, port and pre-deploy command — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | `undeployedChanges` keeps reporting the saved values through a restart — **DONE** | 40m | t002 |
 | [t004](done/t004.md) | ADR004's residual and ADR018's Restart and Rollback rows — **DONE** | 15m | t002 |
-| [t005](t005.md) | Live check on production: save a new port and shutdown delay, restart, then deploy | 30m | t003, t004 |
+| [t005](done/t005.md) | Live check on production: save a new port and shutdown delay, restart, then deploy — **DONE** | 30m | t003, t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -33,3 +33,10 @@
 - **Expected outcome:** pressing Restart never puts a saved-but-undeployed port or shutdown delay live, so a port typo cannot take a service down through a restart.
 - **Why now:** the residual is recorded and unowned, and it shares `targetReleaseConfig` with m432; landing them in sequence on one workstream avoids conflicts.
 - **Render parity:** included: restart and rollback results and `undeployedChanges` read on REST, GraphQL, MCP and the dashboard change.
+
+## Unblock record (2026-11-17)
+
+- **Affected:** t005, t009. **Source:** verified evidence (release gate), no user decision involved.
+- **Finding:** production runs platform pin `938c5cb36b49` (pin commit `a24555d5c`, rolled out 23:11Z on 2026-11-16), which contains bdbea508f (`App.SavedPort`); `bex-api` runs the pinned digest. No gate remains.
+- **Next step and check:** repeat the save-then-Restart leg on a fresh `bex-canary` fixture; GraphQL `configuredPort` reads the saved port while `openPorts` reads the running one; delete the service; close with t009.
+- **Result:** held the same day (t005 evidence); the milestone closed. REST/MCP `serviceDetails.port` reading the running port is not a Render divergence (Render's API has no such field), so nothing was filed.
