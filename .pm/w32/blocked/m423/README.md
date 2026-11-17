@@ -1,6 +1,6 @@
 # w32 · m423 — Linking an environment group deploys the service even with Auto-Deploy off, as Render documents
 
-**Worker:** worker32 **Goal:** a link to a repo-backed service whose Auto-Deploy is off deploys it at once with a recorded deploy, as Render does; unlinks and group edits keep waiting for the owner's next deploy. **Status:** todo (t001–t006 done; [t007](t007.md) walks the definition of done on production once the production pin carries the change)
+**Worker:** worker32 **Goal:** a link to a repo-backed service whose Auto-Deploy is off deploys it at once with a recorded deploy, as Render does; unlinks and group edits keep waiting for the owner's next deploy. **Status:** blocked — release gate, clears by itself: t001–t006 are done and shipped in `d49c33edb`. [t007](t007.md) walks the definition of done on production once a "pin platform images to" commit contains it (§ Blocked).
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 20m | t002, t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
-| [t007](t007.md) | Closeout (live replay on production) | 45m | t005, t006 |
+| [t007](t007.md) | Closeout (live replay on production) — **BLOCKED** (release gate) | 45m | t005, t006 |
 
 ## Definition of done
 
@@ -35,3 +35,21 @@ On production, in `bex-canary`, with owned free fixtures deleted afterwards (by-
 - **Why now:** an unsigned divergence resting on a misread Render rule. Auto-Deploy is on by default for repo-backed services, so the owners affected deliberately turned it off, and on Render their link still deploys. w4/536 (blocked on the release gate) adds an `undeployedChanges` signal for held changes; after this milestone it applies to unlinks and group deletes only.
 - **Decision state:** deploying on every surface is this proposal's recommendation, resting on ADR008 Render parity first (Render's only statement is unconditional, and REST, GraphQL, MCP and the dashboard share one Core path). It is not a recorded user decision. Deploying from the dashboard only and keeping REST held would be a divergence that needs the user's sign-off in ADR018.
 - **Render parity:** included: the change is user-facing on REST, GraphQL, MCP and the dashboard.
+
+## Blocked (2026-11-17)
+
+**Release gate (clears by itself; no decision needed).** t001–t006 shipped in `d49c33edb` (bex-api: `envgroups.rollLinked` deploys an owner's link, `rollout.DropStagedGroupLink`; the dashboard's link and unlink copy in eight locales; ADR013 rule 3, ADR018 and ADR004). Production runs the bex-api and dashboard images of the newest `chore(deploy): pin platform images to <sha>` commit on `main`. That pin was `b767149494fa` when this milestone parked, and it does not contain `d49c33edb`. Check:
+
+```bash
+git fetch origin main
+pin=$(git log origin/main --grep='^chore(deploy): pin platform images to' -1 --format=%s | sed -E 's/.*images to ([0-9a-f]+).*/\1/')
+git merge-base --is-ancestor d49c33edb "$pin" && echo "pinned: walk the definition of done"
+```
+
+Then [t007](t007.md) walks the definition of done in `bex-canary` as the QA user (`bash scripts/qa-login.sh`), deleting every fixture afterwards with by-id `GET` 404 evidence:
+
+- A repo-backed web service from `examples/hello-go` with Auto-Deploy off and a group with `MESSAGE=grp-v1`: a link from the service's Environment tab opens exactly one deploy, which goes `live` and serves `grp-v1`, and no other deploy row turns `canceled`.
+- The same link from REST, GraphQL `linkEnvGroup`, MCP `link_env_group` and `POST /v1/env-groups` with `serviceIds` each opens one deploy, and the create's `pendingServiceIds` does not list the service.
+- A repo-backed static site with Auto-Deploy off: a link opens one deploy that rebuilds and serves the group's value.
+- An unlink and a group delete on an Auto-Deploy-off service open no deploy, and the next manual deploy carries them.
+- Controls unchanged: an Auto-Deploy-on and an image-backed service still deploy on a link, a suspended service's link opens no deploy, and a Blueprint sync's link waits.
