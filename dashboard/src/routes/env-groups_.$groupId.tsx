@@ -60,6 +60,13 @@ export const Route = createFileRoute("/env-groups_/$groupId")({
   // instead of the router-level blank that used to flash white.
   pendingComponent: EnvGroupDetailPage,
   pendingMs: 0,
+  // The pending frame is (or renders) the page itself: keep it in the page's
+  // chunk instead of the default reference-file placement (vite.config.ts).
+  codeSplitGroupings: [
+    ["component", "pendingComponent"],
+    ["errorComponent"],
+    ["notFoundComponent"],
+  ],
   beforeLoad: requireAuth(),
   loader: ({ context, params, cause }) =>
     loadRouteResource(

@@ -12,11 +12,11 @@ export default defineConfig({
       semicolons: true,
       routeFileIgnorePattern: "__tests__",
       codeSplittingOptions: {
-        // Keep `component` + `pendingComponent` in one split chunk — the
-        // detail routes reuse the component as their own pending state. Must
-        // match vite.config.ts's tanstackStart() grouping.
+        // `pendingComponent` stays in the route's reference file so its
+        // skeleton paints while the route's chunk loads (w3/066). Must match
+        // vite.config.ts's tanstackStart() grouping.
         defaultBehavior: [
-          ["component", "pendingComponent"],
+          ["component"],
           ["errorComponent"],
           ["notFoundComponent"],
         ],

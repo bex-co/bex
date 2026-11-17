@@ -1,9 +1,7 @@
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  DeployHistorySkeleton,
-  DeployHistoryView,
-} from "@/features/deploys/components/deploy-history-view";
+import { DeployHistorySkeleton } from "@/features/deploys/components/deploy-history-skeleton";
+import { DeployHistoryView } from "@/features/deploys/components/deploy-history-view";
 import { parseDeployListSearch } from "@/features/deploys/lib/deploy-list-search";
 
 /**

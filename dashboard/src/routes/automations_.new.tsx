@@ -12,6 +12,14 @@ export const Route = createFileRoute("/automations_/new")({
   staticData: { chrome: true },
   component: AutomationCreatePage,
   pendingComponent: AutomationCreateSkeleton,
+  // The skeleton is drawn with the page's own components, so leaving it in
+  // the route tree (the vite.config.ts default) would load the page up front
+  // for everyone: it stays in the page's chunk.
+  codeSplitGroupings: [
+    ["component", "pendingComponent"],
+    ["errorComponent"],
+    ["notFoundComponent"],
+  ],
   beforeLoad: ({ context, location }) => {
     requireAuth()({ context, location });
     return requireAgentsFeature()({ context });

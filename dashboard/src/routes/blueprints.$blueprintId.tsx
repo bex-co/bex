@@ -68,6 +68,13 @@ export const Route = createFileRoute("/blueprints/$blueprintId")({
   component: BlueprintDetailPage,
   pendingComponent: BlueprintDetailPage,
   pendingMs: 0,
+  // The pending frame is (or renders) the page itself: keep it in the page's
+  // chunk instead of the default reference-file placement (vite.config.ts).
+  codeSplitGroupings: [
+    ["component", "pendingComponent"],
+    ["errorComponent"],
+    ["notFoundComponent"],
+  ],
   beforeLoad: requireAuth(),
   loader: ({ context, params, cause }) =>
     loadRouteResource(

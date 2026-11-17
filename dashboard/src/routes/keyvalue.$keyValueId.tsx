@@ -64,6 +64,13 @@ export const Route = createFileRoute("/keyvalue/$keyValueId")({
   // instead of the router-level blank that used to flash white.
   pendingComponent: KeyValueDetailPage,
   pendingMs: 0,
+  // The pending frame is (or renders) the page itself: keep it in the page's
+  // chunk instead of the default reference-file placement (vite.config.ts).
+  codeSplitGroupings: [
+    ["component", "pendingComponent"],
+    ["errorComponent"],
+    ["notFoundComponent"],
+  ],
   beforeLoad: requireAuth(),
   validateSearch: (
     search: Record<string, unknown>,

@@ -22,6 +22,13 @@ export const Route = createFileRoute("/services/$serviceId")({
   // second live copy of the tab page (w4/m236; w3/m44's shape).
   pendingComponent: PendingRouteComponent,
   pendingMs: 0,
+  // The pending frame is (or renders) the page itself: keep it in the page's
+  // chunk instead of the default reference-file placement (vite.config.ts).
+  codeSplitGroupings: [
+    ["component", "pendingComponent"],
+    ["errorComponent"],
+    ["notFoundComponent"],
+  ],
   // No-arg requireAuth: `next` is the requested href (the old form passed the
   // literal "$serviceId" pattern), so a login bounce returns to the actual
   // service URL — id- or name-shaped.

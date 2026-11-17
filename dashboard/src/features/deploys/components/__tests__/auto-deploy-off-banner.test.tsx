@@ -7,10 +7,8 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import {
-  DeployHistorySkeleton,
-  DeployHistoryView,
-} from "../deploy-history-view";
+import { DeployHistorySkeleton } from "../deploy-history-skeleton";
+import { DeployHistoryView } from "../deploy-history-view";
 import { autoDeployOff } from "../../lib/auto-deploy-off";
 
 // w3/064: Render's Deploys page "banner flagging when auto-deploys are

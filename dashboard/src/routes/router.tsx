@@ -21,6 +21,14 @@ export const Route = createFileRoute("/router")({
   },
   component: RouterRoute,
   pendingComponent: RouterPageSkeleton,
+  // The skeleton is drawn with the page's own components, so leaving it in
+  // the route tree (the vite.config.ts default) would load the page up front
+  // for everyone: it stays in the page's chunk.
+  codeSplitGroupings: [
+    ["component", "pendingComponent"],
+    ["errorComponent"],
+    ["notFoundComponent"],
+  ],
   head: ({ match }) => translatedTitleHead("router.title", match),
 });
 

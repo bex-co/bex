@@ -380,14 +380,16 @@ export default defineConfig(({ mode }) => {
       tanstackStart({
         router: {
           codeSplittingOptions: {
-            // The detail routes reuse their `component` as `pendingComponent`
-            // (the page frame doubles as its own pending state — the sidebar
-            // white-flash fix). The two options must land in the same split
-            // chunk, or the splitter strips the shared identifier out of the
-            // reference file and `pendingComponent` dangles (ReferenceError).
+            // `pendingComponent` is in no group, so it stays in the route's
+            // reference file, which the route tree loads up front: a route's
+            // skeleton paints while its own chunk is still downloading. Split
+            // into that chunk, it would suspend with it and the router would
+            // show its generic spinner instead (w3/066). Routes whose pending
+            // frame is, or is drawn with, the page put the two back in one
+            // chunk with a per-route `codeSplitGroupings`.
             // Must match vitest.config.ts's tanstackRouter() grouping.
             defaultBehavior: [
-              ["component", "pendingComponent"],
+              ["component"],
               ["errorComponent"],
               ["notFoundComponent"],
             ],

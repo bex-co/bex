@@ -1,6 +1,3 @@
-import { useParams, useRouterState } from "@tanstack/react-router";
-
-import { DeploysListSkeleton } from "@/common/components/route-skeletons";
 import { AutoDeployOffBanner } from "@/features/deploys/components/auto-deploy-off-banner";
 import { DeploysListPage } from "@/features/deploys/components/deploys-list-page";
 import {
@@ -58,41 +55,5 @@ export function DeployHistoryView({
       />
       {list}
     </div>
-  );
-}
-
-/**
- * The deploy history's pending state: the list's skeleton, below the same
- * banner the ready page shows when the cached service has auto-deploy off
- * (the skeleton-matches-content rule, dashboard/AGENTS.md).
- */
-export function DeployHistorySkeleton() {
-  const { serviceId = "" } = useParams({ strict: false }) as {
-    serviceId?: string;
-  };
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
-  });
-  const base: ServiceBase = pathname.startsWith("/static/")
-    ? "/static"
-    : "/services";
-  const { service } = useServer(serviceId, { poll: false });
-  return (
-    <DeploysListSkeleton
-      titleKey={
-        pathname.endsWith("/builds") ? "deploys.buildsTitle" : undefined
-      }
-      commits={!service || Boolean(service.repo)}
-      banner={
-        autoDeployOff(service) ? (
-          <AutoDeployOffBanner
-            serviceId={serviceId}
-            branch={service?.branch ?? null}
-            base={base}
-            manual={deploysManualOnly(service)}
-          />
-        ) : undefined
-      }
-    />
   );
 }
