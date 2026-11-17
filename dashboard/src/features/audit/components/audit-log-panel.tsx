@@ -19,6 +19,7 @@ import {
   AuditLogTableHeader,
 } from "@/features/audit/components/audit-log-panel-skeleton";
 import { useAuditPlanKnownMissing } from "@/features/audit/hooks/use-audit-plan-known-missing";
+import { ownerAuditLogsPath } from "@/features/audit/lib/audit-csv";
 
 /**
  * Workspace Settings → Audit Logs (w4/m14; moved from account settings by
@@ -66,7 +67,10 @@ export function AuditLogPanel({
       </CardHeader>
       <CardContent className="space-y-6">
         {!planNotice && !unavailable ? (
-          <AuditLogExport ownerId={ownerId} />
+          <AuditLogExport
+            subjectId={ownerId}
+            path={ownerAuditLogsPath(ownerId)}
+          />
         ) : null}
         {planNotice ? (
           <AuditLogPlanNotice />

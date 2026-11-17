@@ -1860,6 +1860,13 @@ export type Job = {
   status: Maybe<Scalars['String']['output']>;
 };
 
+export type JoinedWorkspace = {
+  __typename: 'JoinedWorkspace';
+  joined: Scalars['Boolean']['output'];
+  role: Scalars['String']['output'];
+  workspaceId: Scalars['String']['output'];
+};
+
 export type KeyValue = {
   __typename: 'KeyValue';
   blueprintId: Maybe<Scalars['String']['output']>;
@@ -2088,6 +2095,7 @@ export type Mutation = {
   cancelDeploy: Maybe<Deploy>;
   cancelJob: Maybe<Job>;
   cancelWorkspaceCreation: Maybe<Scalars['Boolean']['output']>;
+  changeOrganizationMemberRole: Maybe<OrganizationMember>;
   changeWorkspaceMemberRole: Maybe<WorkspaceMember>;
   changeWorkspacePlan: Maybe<Workspace>;
   claimGit: Maybe<GitClaim>;
@@ -2112,6 +2120,8 @@ export type Mutation = {
   createEnvironment: Maybe<Environment>;
   createJob: Maybe<Job>;
   createKeyValue: Maybe<KeyValue>;
+  /** Create a workspace in an organization (Owner only): it takes the org's plan, with no plan fee or payment step. privacy is public or invite_only (the default). */
+  createOrganizationWorkspace: Maybe<Workspace>;
   createPlannedBlueprint: Maybe<BlueprintPlanResult>;
   createProject: Maybe<Project>;
   createRegistryCredential: Maybe<RegistryCredential>;
@@ -2175,7 +2185,10 @@ export type Mutation = {
   importSandboxImage: Maybe<SandboxImage>;
   /** Stop turn: ends only the running turn. The session settles as completed with the turn interrupted and stays steerable; queued messages keep their place. Cancel, which ends the session, is unchanged. */
   interruptAgentSession: Maybe<AgentSession>;
+  inviteOrganizationMember: Maybe<OrganizationInvite>;
   inviteWorkspaceMember: Maybe<WorkspaceInvite>;
+  joinWorkspace: Maybe<JoinedWorkspace>;
+  joinWorkspaceAsAdmin: Maybe<JoinedWorkspace>;
   leaveWorkspace: Maybe<Scalars['Boolean']['output']>;
   linkBuildSource: Maybe<Service>;
   linkEnvGroup: Maybe<Scalars['Boolean']['output']>;
@@ -2194,11 +2207,13 @@ export type Mutation = {
   regenerateDeployHook: Maybe<DeployHook>;
   registerNotificationDeviceSubscription: Maybe<NotificationDeviceSubscription>;
   registerNotificationWebPushSubscription: Maybe<NotificationWebPushSubscription>;
+  removeOrganizationMember: Maybe<Scalars['Boolean']['output']>;
   removeWorkspaceMember: Maybe<Scalars['String']['output']>;
   renameDatabase: Maybe<Database>;
   renameEnvGroup: Maybe<EnvGroup>;
   renameEnvironment: Maybe<Environment>;
   renameKeyValue: Maybe<KeyValue>;
+  renameOrganization: Maybe<Organization>;
   renameProject: Maybe<Project>;
   renameWorkspace: Maybe<Workspace>;
   resendWebhookDelivery: Maybe<WebhookDelivery>;
@@ -2214,6 +2229,7 @@ export type Mutation = {
   resumeService: Maybe<Service>;
   revokeApiKey: Maybe<Scalars['Boolean']['output']>;
   revokeNotificationDeviceSubscriptions: Maybe<Scalars['Int']['output']>;
+  revokeOrganizationInvite: Maybe<Scalars['Boolean']['output']>;
   revokeWorkspaceInvite: Maybe<Scalars['String']['output']>;
   rollbackService: Maybe<Deploy>;
   /** Fire an automation now, as a normal run. */
@@ -2284,6 +2300,8 @@ export type Mutation = {
   setWebhookEndpointEnabled: Maybe<WebhookEndpoint>;
   setWorkspaceIPAllowList: Maybe<Workspace>;
   setWorkspaceOverlappingDeployPolicy: Maybe<Workspace>;
+  /** Set an organization workspace's privacy, public or invite_only (workspace admins). */
+  setWorkspacePrivacy: Maybe<Workspace>;
   setWorkspaceRequireTwoFactor: Maybe<Workspace>;
   steerAgentSession: Maybe<AgentSession>;
   suspendDatabase: Maybe<Database>;
@@ -2399,6 +2417,13 @@ export type MutationCancelJobArgs = {
 
 export type MutationCancelWorkspaceCreationArgs = {
   attemptId: Scalars['String']['input'];
+};
+
+
+export type MutationChangeOrganizationMemberRoleArgs = {
+  organizationId: Scalars['String']['input'];
+  role: Scalars['String']['input'];
+  subject: Scalars['String']['input'];
 };
 
 
@@ -2590,6 +2615,13 @@ export type MutationCreateKeyValueArgs = {
   region?: InputMaybe<Scalars['String']['input']>;
   storageGB?: InputMaybe<Scalars['Int']['input']>;
   version?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationCreateOrganizationWorkspaceArgs = {
+  name: Scalars['String']['input'];
+  organizationId: Scalars['String']['input'];
+  privacy?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2973,9 +3005,26 @@ export type MutationInterruptAgentSessionArgs = {
 };
 
 
+export type MutationInviteOrganizationMemberArgs = {
+  email: Scalars['String']['input'];
+  organizationId: Scalars['String']['input'];
+  role: Scalars['String']['input'];
+};
+
+
 export type MutationInviteWorkspaceMemberArgs = {
   email: Scalars['String']['input'];
   role: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationJoinWorkspaceArgs = {
+  workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationJoinWorkspaceAsAdminArgs = {
   workspaceId: Scalars['String']['input'];
 };
 
@@ -3096,6 +3145,12 @@ export type MutationRegisterNotificationWebPushSubscriptionArgs = {
 };
 
 
+export type MutationRemoveOrganizationMemberArgs = {
+  organizationId: Scalars['String']['input'];
+  subject: Scalars['String']['input'];
+};
+
+
 export type MutationRemoveWorkspaceMemberArgs = {
   subject: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
@@ -3129,6 +3184,12 @@ export type MutationRenameKeyValueArgs = {
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
+};
+
+
+export type MutationRenameOrganizationArgs = {
+  name: Scalars['String']['input'];
+  organizationId: Scalars['String']['input'];
 };
 
 
@@ -3210,6 +3271,12 @@ export type MutationRevokeApiKeyArgs = {
 
 export type MutationRevokeNotificationDeviceSubscriptionsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationRevokeOrganizationInviteArgs = {
+  inviteId: Scalars['String']['input'];
+  organizationId: Scalars['String']['input'];
 };
 
 
@@ -3649,6 +3716,12 @@ export type MutationSetWorkspaceOverlappingDeployPolicyArgs = {
 };
 
 
+export type MutationSetWorkspacePrivacyArgs = {
+  privacy: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+};
+
+
 export type MutationSetWorkspaceRequireTwoFactorArgs = {
   enabled: Scalars['Boolean']['input'];
   workspaceId: Scalars['String']['input'];
@@ -3975,6 +4048,49 @@ export type OomKilled = {
   memoryLimit: Maybe<Scalars['String']['output']>;
 };
 
+/** A Render organization (ADR115): a Scale or Enterprise primary workspace and the workspaces it holds under its plan. */
+export type Organization = {
+  __typename: 'Organization';
+  createdAt: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  plan: Scalars['String']['output'];
+  primaryWorkspaceId: Scalars['String']['output'];
+  viewerRole: Scalars['String']['output'];
+  workspaces: Array<OrganizationWorkspace>;
+};
+
+export type OrganizationInvite = {
+  __typename: 'OrganizationInvite';
+  createdAt: Maybe<Scalars['String']['output']>;
+  email: Scalars['String']['output'];
+  expiresAt: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  role: Scalars['String']['output'];
+};
+
+export type OrganizationMember = {
+  __typename: 'OrganizationMember';
+  createdAt: Maybe<Scalars['String']['output']>;
+  email: Maybe<Scalars['String']['output']>;
+  isSelf: Scalars['Boolean']['output'];
+  role: Scalars['String']['output'];
+  subject: Scalars['String']['output'];
+  userId: Maybe<Scalars['String']['output']>;
+  workspaces: Array<Scalars['String']['output']>;
+};
+
+export type OrganizationWorkspace = {
+  __typename: 'OrganizationWorkspace';
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  plan: Scalars['String']['output'];
+  primary: Scalars['Boolean']['output'];
+  privacy: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  viewerIsMember: Scalars['Boolean']['output'];
+};
+
 export type OutboundIPs = {
   __typename: 'OutboundIPs';
   dedicatedIpId: Maybe<Scalars['String']['output']>;
@@ -4267,6 +4383,11 @@ export type Query = {
   notificationInbox: Array<PushNotification>;
   notificationSettings: Maybe<NotificationSettings>;
   notificationWebPushSubscriptions: Maybe<Array<Maybe<NotificationWebPushSubscription>>>;
+  organization: Maybe<Organization>;
+  organizationAuditLogs: Maybe<Array<Maybe<AuditLog>>>;
+  organizationInvites: Array<OrganizationInvite>;
+  organizationMembers: Array<OrganizationMember>;
+  organizations: Array<Organization>;
   ownerNotificationSettings: OwnerNotificationSettings;
   pipelineSettings: Maybe<PipelineSettings>;
   project: Maybe<Project>;
@@ -4935,6 +5056,31 @@ export type QueryNotificationInboxArgs = {
 
 export type QueryNotificationSettingsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryOrganizationArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryOrganizationAuditLogsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  direction?: InputMaybe<Scalars['String']['input']>;
+  endTime?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  organizationId: Scalars['String']['input'];
+  startTime?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryOrganizationInvitesArgs = {
+  organizationId: Scalars['String']['input'];
+};
+
+
+export type QueryOrganizationMembersArgs = {
+  organizationId: Scalars['String']['input'];
 };
 
 
@@ -5854,8 +6000,11 @@ export type Workspace = {
   id: Maybe<Scalars['String']['output']>;
   ipAllowList: Array<IpAllowListEntry>;
   name: Maybe<Scalars['String']['output']>;
+  organization: Maybe<WorkspaceOrganization>;
   overlappingDeployPolicy: Scalars['String']['output'];
   plan: Maybe<Scalars['String']['output']>;
+  primary: Scalars['Boolean']['output'];
+  privacy: Maybe<Scalars['String']['output']>;
   requireTwoFactor: Maybe<Scalars['Boolean']['output']>;
   role: Maybe<Scalars['String']['output']>;
   slug: Maybe<Scalars['String']['output']>;
@@ -5925,6 +6074,13 @@ export type WorkspaceMember = {
   role: Maybe<Scalars['String']['output']>;
   subject: Maybe<Scalars['String']['output']>;
   userId: Maybe<Scalars['String']['output']>;
+};
+
+export type WorkspaceOrganization = {
+  __typename: 'WorkspaceOrganization';
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  primaryWorkspaceId: Scalars['String']['output'];
 };
 
 export type WorkspaceSeatUsage = {

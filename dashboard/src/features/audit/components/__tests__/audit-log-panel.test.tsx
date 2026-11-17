@@ -12,8 +12,8 @@ vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
 }));
 
 vi.mock("@/features/audit/components/audit-log-export", () => ({
-  AuditLogExport: ({ ownerId }: { ownerId: string }) => (
-    <div>Export control {ownerId}</div>
+  AuditLogExport: ({ subjectId }: { subjectId: string }) => (
+    <div>Export control {subjectId}</div>
   ),
 }));
 

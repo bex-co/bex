@@ -38,6 +38,9 @@ const WORKSPACE: WorkspaceView = {
   role: "admin",
   createdAt: null,
   requireTwoFactor: false,
+  organization: null,
+  primary: false,
+  privacy: null
 };
 const OTHER: WorkspaceView = {
   id: "tea-2",
@@ -47,6 +50,9 @@ const OTHER: WorkspaceView = {
   role: "admin",
   createdAt: null,
   requireTwoFactor: false,
+  organization: null,
+  primary: false,
+  privacy: null
 };
 
 beforeEach(() => {

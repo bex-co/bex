@@ -69,6 +69,14 @@ vi.mock("@/features/workspaces/components/workspace-two-factor-card", () => ({
   ),
 }));
 
+// Workspace privacy (w7/m464): the card's own behavior is pinned in its test;
+// here only who sees it and where.
+vi.mock("@/features/workspaces/components/workspace-privacy-card", () => ({
+  WorkspacePrivacyCard: ({ workspace }: { workspace: WorkspaceView }) => (
+    <div>Workspace privacy card {workspace.id}</div>
+  ),
+}));
+
 vi.mock("@/features/workspaces/components/delete-workspace-card", () => ({
   DeleteWorkspaceCard: () => <div>Delete workspace card</div>,
 }));
@@ -151,7 +159,8 @@ vi.mock("@/features/team/components/leave-workspace-card", () => ({
 }));
 
 // Build Pipeline (w6/m309) holds billing settings: billing managers only.
-const capabilityState = { canManageBilling: true };
+// Workspace privacy (w7/m464) is an admin's (`can_manage`).
+const capabilityState = { canManageBilling: true, canManage: true };
 vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
   useCapabilities: () => capabilityState,
 }));
@@ -195,6 +204,9 @@ const primaryWorkspace: WorkspaceView = {
   role: "admin",
   createdAt: null,
   requireTwoFactor: false,
+  organization: null,
+  primary: false,
+  privacy: null,
 };
 
 async function renderPage(WorkspaceSettingsPage = Route.options.component) {
@@ -221,8 +233,18 @@ async function renderPage(WorkspaceSettingsPage = Route.options.component) {
   return render(<RouterProvider router={router} />);
 }
 
+/** primaryWorkspace as a secondary of an organization (w7/m464). */
+const orgWorkspace: WorkspaceView = {
+  ...primaryWorkspace,
+  plan: "scale",
+  organization: { id: "org-1", name: "Acme", primaryWorkspaceId: "tea-hq" },
+  primary: false,
+  privacy: "invite_only",
+};
+
 beforeEach(() => {
   capabilityState.canManageBilling = true;
+  capabilityState.canManage = true;
   auditState.forbidden = false;
   workspaceState.currentWorkspace = primaryWorkspace;
   workspaceState.workspaces = [primaryWorkspace];
@@ -462,16 +484,90 @@ describe("WorkspaceSettingsPage", () => {
     );
   });
 
+  // w7/m464: Render's Public / Invite-only setting, which workspace admins
+  // change from the workspace's Settings page.
+  it("shows Workspace privacy to an admin of an org workspace, after General, with its link", async () => {
+    workspaceState.currentWorkspace = orgWorkspace;
+    workspaceState.workspaces = [orgWorkspace];
+    await renderPage();
+
+    const card = screen.getByText("Workspace privacy card tea-primary");
+    expect(card.closest("section")).toHaveAttribute("id", "privacy");
+    expect(
+      screen.getByText("Workspace details card").compareDocumentPosition(card) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Workspace privacy" }),
+    ).toHaveAttribute("href", "#privacy");
+    expect(railSections(document.body).slice(0, 2)).toEqual([
+      "general",
+      "privacy",
+    ]);
+  });
+
+  it.each([
+    ["a developer of an org workspace", orgWorkspace, false],
+    ["an admin of a standalone workspace", primaryWorkspace, true],
+  ] as const)(
+    "hides Workspace privacy and its link from %s",
+    async (_, workspace, canManage) => {
+      capabilityState.canManage = canManage;
+      workspaceState.currentWorkspace = workspace;
+      workspaceState.workspaces = [workspace];
+      await renderPage();
+
+      expect(
+        screen.queryByText(/Workspace privacy card/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Workspace privacy" }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("previews Workspace privacy in the pending frame exactly when the page shows it", async () => {
+    for (const [workspace, canManage] of [
+      [orgWorkspace, true],
+      [orgWorkspace, false],
+      [primaryWorkspace, true],
+    ] as const) {
+      capabilityState.canManage = canManage;
+      workspaceState.currentWorkspace = workspace;
+      workspaceState.workspaces = [workspace];
+      const ready = await renderPage();
+      const shown = ready.container.querySelector("#privacy") !== null;
+      ready.unmount();
+
+      const pending = await renderPage(WorkspaceSettingsPageSkeleton);
+      expect(frameSections(pending.container).includes("privacy")).toBe(shown);
+      expect(railSections(pending.container).includes("privacy")).toBe(shown);
+      expect(
+        pending.container.querySelector(
+          '[data-testid="workspace-privacy-skeleton"]',
+        ) !== null,
+      ).toBe(shown);
+      pending.unmount();
+    }
+  });
+
   // w3/m305: the production side-by-side check found the pending rail
   // without Build Pipeline (the inline one also without Audit Log), and the
   // pending danger zone without the Delete card the ready page draws.
   it.each([
-    ["a billing-manager admin with another workspace", "admin", true, true],
-    ["a member with one workspace", "developer", false, false],
+    [
+      "a billing-manager admin with another workspace",
+      "admin",
+      true,
+      true,
+      false,
+    ],
+    ["a member with one workspace", "developer", false, false, false],
+    ["an org admin with another workspace", "admin", true, true, true],
   ] as const)(
     "previews the ready sections, rail and danger zone for %s",
-    async (_, role, billing, another) => {
-      const workspace = { ...primaryWorkspace, role };
+    async (_, role, billing, another, org) => {
+      const workspace = { ...(org ? orgWorkspace : primaryWorkspace), role };
       workspaceState.currentWorkspace = workspace;
       workspaceState.workspaces = another
         ? [workspace, { ...workspace, id: "tea-secondary", name: "secondary" }]

@@ -88,9 +88,9 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planScaleBilling": {
-    message: "$349.30/월",
+    message: "조직당 $349.30/월",
     description:
-      "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
+      "Workspace plan card billing label (pricing.yaml scale usdPerMonth, per: organization; w7/m464)",
   },
   "workspaces.planScaleDescription": {
     message: "추가 역할이 필요한 성장하는 팀을 위한 요금제입니다.",
@@ -113,8 +113,9 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planEnterpriseBilling": {
-    message: "맞춤 조건",
-    description: "Workspace plan card billing label",
+    message: "조직당 맞춤 조건",
+    description:
+      "Workspace plan card billing label: Enterprise is charged once per organization like Scale (w7/m464)",
   },
   "workspaces.planEnterpriseDescription": {
     message: "맞춤 한도와 지원을 제공합니다.",
@@ -656,6 +657,136 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     message: "워크스페이스 관리자만 이 정책을 변경할 수 있습니다.",
     description:
       "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
+  },
+  "workspaces.orgDowngradeWarningTitle": {
+    message: "Scale 미만으로 다운그레이드하면 조직이 삭제됩니다",
+    description:
+      "Change-plan dialog on an org's primary: title of the warning shown when a plan below Scale is selected (w7/m464)",
+  },
+  "workspaces.orgDowngradeWarning": {
+    message:
+      "이 워크스페이스는 조직의 기본 워크스페이스이며, 요금제가 조직의 모든 워크스페이스에 적용됩니다. 다운그레이드하면 조직과 조직 수준 기능이 제거되고, 이 워크스페이스는 독립 워크스페이스로 계속 사용됩니다. 먼저 조직의 다른 워크스페이스를 삭제하고, 결제 담당자, 뷰어 또는 기여자 역할의 멤버와 대기 중인 초대를 개발자 또는 관리자로 변경한 다음, 서비스, 환경 및 이 워크스페이스의 인바운드 IP 규칙을 삭제하세요.",
+    description:
+      "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.orgDowngradeBlocked": {
+    message:
+      "아직 조직을 삭제할 수 없습니다. Scale 미만으로 다운그레이드하기 전에 다음을 완료하세요.",
+    description:
+      "Change-plan dialog: lead-in above the unmet preconditions of ORGANIZATION_DOWNGRADE_BLOCKED (w7/m464)",
+  },
+  "workspaces.orgDowngradeSecondaryWorkspaces": {
+    message: "조직의 다른 워크스페이스 삭제",
+    description:
+      "Unmet downgrade precondition secondary_workspaces; the workspace names follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberRoles": {
+    message: "이 멤버들의 역할을 개발자 또는 관리자로 변경",
+    description:
+      "Unmet downgrade precondition member_roles; the members and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInviteRoles": {
+    message: "대기 중인 이 초대들의 역할을 개발자 또는 관리자로 변경",
+    description:
+      "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInboundIpRules": {
+    message: "인바운드 IP 규칙 삭제",
+    description:
+      "Unmet downgrade precondition inbound_ip_rules; the workspace, environments and services that hold them follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeItems": {
+    message: "{label}: {items}",
+    description:
+      "One unmet downgrade precondition: {label} is what to do, {items} the list of what it applies to (w7/m464)",
+  },
+  "workspaces.orgDowngradePersonRole": {
+    message: "{person} ({role})",
+    description:
+      "A member or invitee in a downgrade precondition: {person} is their id or email, {role} the role to change (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleWorkspace": {
+    message: "이 워크스페이스",
+    description:
+      "The workspace's own inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleEnvironment": {
+    message: "환경 {name}",
+    description:
+      "An environment with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleService": {
+    message: "서비스 {name}",
+    description:
+      "A service with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgPlanOnPrimaryError": {
+    message:
+      "이 워크스페이스의 요금제는 조직의 요금제입니다. 조직의 기본 워크스페이스에서 변경하세요.",
+    description:
+      "Refusal for code ORGANIZATION_PLAN_ON_PRIMARY: a secondary workspace's plan changes only on the org's primary (w7/m464)",
+  },
+  "workspaces.orgPlanSecondaryNote": {
+    message:
+      "조직 요금제에 포함되어 있습니다. 조직의 기본 워크스페이스에서 요금제와 결제를 관리합니다.",
+    description:
+      "Workspace Settings and Billing on an org's secondary workspace: its plan is the org's, managed on the primary (ADR115, w7/m464)",
+  },
+  "workspaces.orgPlanPrimarySettingsLink": {
+    message: "기본 워크스페이스로 이동",
+    description:
+      "Link from a secondary workspace's settings to the org's primary workspace settings (w7/m464)",
+  },
+  "workspaces.orgPlanPrimaryBillingLink": {
+    message: "기본 워크스페이스 결제로 이동",
+    description:
+      "Button on a secondary workspace's Billing plan card linking to the org's primary workspace's Billing (w7/m464)",
+  },
+  "workspaces.privacyTitle": {
+    message: "워크스페이스 공개 범위",
+    description:
+      "Workspace Settings → Workspace privacy card title, radio group name and section link (w7/m464)",
+  },
+  "workspaces.privacyDescription": {
+    message: "조직에서 누가 이 워크스페이스에 참여할 수 있는지 선택하세요.",
+    description: "Description under the Workspace privacy card title (w7/m464)",
+  },
+  "workspaces.privacyPublic": {
+    message: "공개",
+    description: "The Public privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyPublicDescription": {
+    message: "조직의 모든 멤버가 이 워크스페이스에 직접 참여할 수 있습니다.",
+    description:
+      "What the Public privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacyInviteOnly": {
+    message: "초대 전용",
+    description:
+      "The Invite-only privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyInviteOnlyDescription": {
+    message:
+      "워크스페이스 관리자만 이 워크스페이스에 사람을 초대할 수 있습니다.",
+    description:
+      "What the Invite-only privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacySave": {
+    message: "저장",
+    description: "Saves the selected workspace privacy (w7/m464)",
+  },
+  "workspaces.privacySaving": {
+    message: "저장하는 중…",
+    description: "The Save button while the workspace privacy saves (w7/m464)",
+  },
+  "workspaces.privacySaved": {
+    message: "워크스페이스 공개 범위를 저장했습니다",
+    description: "Toast after setWorkspacePrivacy succeeds (w7/m464)",
+  },
+  "workspaces.privacyError": {
+    message: "워크스페이스 공개 범위를 저장하지 못했습니다. 다시 시도하세요.",
+    description:
+      "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
 };
 

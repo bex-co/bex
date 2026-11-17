@@ -88,9 +88,9 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planScaleBilling": {
-    message: "$349,30/mês",
+    message: "$349,30/mês por organização",
     description:
-      "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
+      "Workspace plan card billing label (pricing.yaml scale usdPerMonth, per: organization; w7/m464)",
   },
   "workspaces.planScaleDescription": {
     message: "Para equipes em crescimento que precisam de funções extras.",
@@ -113,8 +113,9 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planEnterpriseBilling": {
-    message: "Condições personalizadas",
-    description: "Workspace plan card billing label",
+    message: "Condições personalizadas por organização",
+    description:
+      "Workspace plan card billing label: Enterprise is charged once per organization like Scale (w7/m464)",
   },
   "workspaces.planEnterpriseDescription": {
     message: "Limites e suporte personalizados.",
@@ -670,6 +671,140 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
       "Somente administradores do workspace podem alterar esta política.",
     description:
       "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
+  },
+  "workspaces.orgDowngradeWarningTitle": {
+    message: "Fazer downgrade para abaixo do Scale exclui a organização",
+    description:
+      "Change-plan dialog on an org's primary: title of the warning shown when a plan below Scale is selected (w7/m464)",
+  },
+  "workspaces.orgDowngradeWarning": {
+    message:
+      "Este é o workspace principal da sua organização, e o plano dele cobre todos os workspaces da organização. O downgrade remove a organização e o acesso aos recursos da organização, e este workspace continua como um workspace independente. Primeiro exclua os outros workspaces da organização, altere para Desenvolvedor ou Administrador os membros e convites pendentes com a função Faturamento, Visualizador ou Colaborador, e exclua as regras de IP de entrada de serviços, ambientes e deste workspace.",
+    description:
+      "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.orgDowngradeBlocked": {
+    message:
+      "A organização ainda não pode ser excluída. Antes de fazer downgrade para abaixo do Scale:",
+    description:
+      "Change-plan dialog: lead-in above the unmet preconditions of ORGANIZATION_DOWNGRADE_BLOCKED (w7/m464)",
+  },
+  "workspaces.orgDowngradeSecondaryWorkspaces": {
+    message: "Exclua os outros workspaces da organização",
+    description:
+      "Unmet downgrade precondition secondary_workspaces; the workspace names follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberRoles": {
+    message:
+      "Altere a função destes membros para Desenvolvedor ou Administrador",
+    description:
+      "Unmet downgrade precondition member_roles; the members and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInviteRoles": {
+    message:
+      "Altere a função destes convites pendentes para Desenvolvedor ou Administrador",
+    description:
+      "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInboundIpRules": {
+    message: "Exclua as regras de IP de entrada",
+    description:
+      "Unmet downgrade precondition inbound_ip_rules; the workspace, environments and services that hold them follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeItems": {
+    message: "{label}: {items}",
+    description:
+      "One unmet downgrade precondition: {label} is what to do, {items} the list of what it applies to (w7/m464)",
+  },
+  "workspaces.orgDowngradePersonRole": {
+    message: "{person} ({role})",
+    description:
+      "A member or invitee in a downgrade precondition: {person} is their id or email, {role} the role to change (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleWorkspace": {
+    message: "este workspace",
+    description:
+      "The workspace's own inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleEnvironment": {
+    message: "o ambiente {name}",
+    description:
+      "An environment with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleService": {
+    message: "o serviço {name}",
+    description:
+      "A service with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgPlanOnPrimaryError": {
+    message:
+      "O plano deste workspace é o plano da organização. Altere-o no workspace principal da organização.",
+    description:
+      "Refusal for code ORGANIZATION_PLAN_ON_PRIMARY: a secondary workspace's plan changes only on the org's primary (w7/m464)",
+  },
+  "workspaces.orgPlanSecondaryNote": {
+    message:
+      "Incluído no plano da sua organização. O workspace principal da organização gerencia o plano e o faturamento.",
+    description:
+      "Workspace Settings and Billing on an org's secondary workspace: its plan is the org's, managed on the primary (ADR115, w7/m464)",
+  },
+  "workspaces.orgPlanPrimarySettingsLink": {
+    message: "Ir para o workspace principal",
+    description:
+      "Link from a secondary workspace's settings to the org's primary workspace settings (w7/m464)",
+  },
+  "workspaces.orgPlanPrimaryBillingLink": {
+    message: "Ir para o faturamento do workspace principal",
+    description:
+      "Button on a secondary workspace's Billing plan card linking to the org's primary workspace's Billing (w7/m464)",
+  },
+  "workspaces.privacyTitle": {
+    message: "Privacidade do workspace",
+    description:
+      "Workspace Settings → Workspace privacy card title, radio group name and section link (w7/m464)",
+  },
+  "workspaces.privacyDescription": {
+    message: "Escolha quem da sua organização pode entrar neste workspace.",
+    description: "Description under the Workspace privacy card title (w7/m464)",
+  },
+  "workspaces.privacyPublic": {
+    message: "Público",
+    description: "The Public privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyPublicDescription": {
+    message:
+      "Qualquer membro da sua organização pode se adicionar a este workspace.",
+    description:
+      "What the Public privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacyInviteOnly": {
+    message: "Somente por convite",
+    description:
+      "The Invite-only privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyInviteOnlyDescription": {
+    message:
+      "Somente administradores do workspace podem convidar pessoas para este workspace.",
+    description:
+      "What the Invite-only privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacySave": {
+    message: "Salvar",
+    description: "Saves the selected workspace privacy (w7/m464)",
+  },
+  "workspaces.privacySaving": {
+    message: "Salvando…",
+    description: "The Save button while the workspace privacy saves (w7/m464)",
+  },
+  "workspaces.privacySaved": {
+    message: "Privacidade do workspace salva",
+    description: "Toast after setWorkspacePrivacy succeeds (w7/m464)",
+  },
+  "workspaces.privacyError": {
+    message:
+      "Não foi possível salvar a privacidade do workspace. Tente novamente.",
+    description:
+      "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
 };
 

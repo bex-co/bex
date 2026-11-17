@@ -88,9 +88,9 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planScaleBilling": {
-    message: "$349.30/月",
+    message: "每个组织 $349.30/月",
     description:
-      "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
+      "Workspace plan card billing label (pricing.yaml scale usdPerMonth, per: organization; w7/m464)",
   },
   "workspaces.planScaleDescription": {
     message: "适合需要更多角色的成长团队。",
@@ -113,8 +113,9 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planEnterpriseBilling": {
-    message: "定制条款",
-    description: "Workspace plan card billing label",
+    message: "每个组织定制条款",
+    description:
+      "Workspace plan card billing label: Enterprise is charged once per organization like Scale (w7/m464)",
   },
   "workspaces.planEnterpriseDescription": {
     message: "定制额度与支持。",
@@ -649,6 +650,132 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "只有工作区管理员可以更改此策略。",
     description:
       "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
+  },
+  "workspaces.orgDowngradeWarningTitle": {
+    message: "降级到 Scale 以下会删除组织",
+    description:
+      "Change-plan dialog on an org's primary: title of the warning shown when a plan below Scale is selected (w7/m464)",
+  },
+  "workspaces.orgDowngradeWarning": {
+    message:
+      "这是你的组织的主工作区，它的套餐覆盖组织中的每个工作区。降级会移除组织以及组织级功能，此工作区将作为独立工作区继续使用。请先删除组织的其他工作区，将角色为账单、查看者或贡献者的成员和待处理邀请改为开发者或管理员，并删除服务、环境和此工作区的入站 IP 规则。",
+    description:
+      "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.orgDowngradeBlocked": {
+    message: "组织暂时无法删除。降级到 Scale 以下之前，请先完成以下事项：",
+    description:
+      "Change-plan dialog: lead-in above the unmet preconditions of ORGANIZATION_DOWNGRADE_BLOCKED (w7/m464)",
+  },
+  "workspaces.orgDowngradeSecondaryWorkspaces": {
+    message: "删除组织的其他工作区",
+    description:
+      "Unmet downgrade precondition secondary_workspaces; the workspace names follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberRoles": {
+    message: "将这些成员的角色改为开发者或管理员",
+    description:
+      "Unmet downgrade precondition member_roles; the members and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInviteRoles": {
+    message: "将这些待处理邀请的角色改为开发者或管理员",
+    description:
+      "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInboundIpRules": {
+    message: "删除入站 IP 规则",
+    description:
+      "Unmet downgrade precondition inbound_ip_rules; the workspace, environments and services that hold them follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeItems": {
+    message: "{label}：{items}",
+    description:
+      "One unmet downgrade precondition: {label} is what to do, {items} the list of what it applies to (w7/m464)",
+  },
+  "workspaces.orgDowngradePersonRole": {
+    message: "{person}（{role}）",
+    description:
+      "A member or invitee in a downgrade precondition: {person} is their id or email, {role} the role to change (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleWorkspace": {
+    message: "此工作区",
+    description:
+      "The workspace's own inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleEnvironment": {
+    message: "环境 {name}",
+    description:
+      "An environment with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleService": {
+    message: "服务 {name}",
+    description:
+      "A service with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgPlanOnPrimaryError": {
+    message: "此工作区的套餐是其组织的套餐，请在组织的主工作区中更改。",
+    description:
+      "Refusal for code ORGANIZATION_PLAN_ON_PRIMARY: a secondary workspace's plan changes only on the org's primary (w7/m464)",
+  },
+  "workspaces.orgPlanSecondaryNote": {
+    message: "已包含在你的组织套餐中。组织的主工作区管理套餐和账单。",
+    description:
+      "Workspace Settings and Billing on an org's secondary workspace: its plan is the org's, managed on the primary (ADR115, w7/m464)",
+  },
+  "workspaces.orgPlanPrimarySettingsLink": {
+    message: "前往主工作区",
+    description:
+      "Link from a secondary workspace's settings to the org's primary workspace settings (w7/m464)",
+  },
+  "workspaces.orgPlanPrimaryBillingLink": {
+    message: "前往主工作区的账单",
+    description:
+      "Button on a secondary workspace's Billing plan card linking to the org's primary workspace's Billing (w7/m464)",
+  },
+  "workspaces.privacyTitle": {
+    message: "工作区隐私",
+    description:
+      "Workspace Settings → Workspace privacy card title, radio group name and section link (w7/m464)",
+  },
+  "workspaces.privacyDescription": {
+    message: "选择组织中哪些人可以加入此工作区。",
+    description: "Description under the Workspace privacy card title (w7/m464)",
+  },
+  "workspaces.privacyPublic": {
+    message: "公开",
+    description: "The Public privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyPublicDescription": {
+    message: "组织的任何成员都可以自行加入此工作区。",
+    description:
+      "What the Public privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacyInviteOnly": {
+    message: "仅限邀请",
+    description:
+      "The Invite-only privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyInviteOnlyDescription": {
+    message: "只有工作区管理员可以邀请他人加入此工作区。",
+    description:
+      "What the Invite-only privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacySave": {
+    message: "保存",
+    description: "Saves the selected workspace privacy (w7/m464)",
+  },
+  "workspaces.privacySaving": {
+    message: "正在保存…",
+    description: "The Save button while the workspace privacy saves (w7/m464)",
+  },
+  "workspaces.privacySaved": {
+    message: "工作区隐私已保存",
+    description: "Toast after setWorkspacePrivacy succeeds (w7/m464)",
+  },
+  "workspaces.privacyError": {
+    message: "无法保存工作区隐私，请重试。",
+    description:
+      "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
 };
 

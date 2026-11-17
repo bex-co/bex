@@ -17,6 +17,16 @@ query Workspaces {
     # every member, and the list is exempt from enforcement, so a blocked member
     # can still read it.
     requireTwoFactor
+    # The org the workspace belongs to (w7/m464, ADR115): null, false and
+    # null for a standalone workspace. The switcher groups by it; plan
+    # surfaces read primary.
+    organization {
+      id
+      name
+      primaryWorkspaceId
+    }
+    primary
+    privacy
   }
 }
 
@@ -29,6 +39,13 @@ mutation CreateWorkspace($name: String!, $plan: String) {
     role
     createdAt
     requireTwoFactor
+    organization {
+      id
+      name
+      primaryWorkspaceId
+    }
+    primary
+    privacy
   }
 }
 
@@ -87,6 +104,13 @@ mutation FinalizeWorkspaceCreation($attemptId: String!) {
     role
     createdAt
     requireTwoFactor
+    organization {
+      id
+      name
+      primaryWorkspaceId
+    }
+    primary
+    privacy
   }
 }
 

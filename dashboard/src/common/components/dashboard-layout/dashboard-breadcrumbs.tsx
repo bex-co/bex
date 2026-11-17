@@ -5,6 +5,7 @@ import {
   CalendarClock,
   Network,
   Boxes,
+  Building2,
   ChevronDown,
   ChevronRight,
   CreditCard,
@@ -542,6 +543,21 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
     match: (path) => path.startsWith("/billing"),
     labelKey: "common.navUsage",
     icon: CreditCard,
+  },
+  {
+    match: (path) => /^\/org\/[^/]+\/workspaces/.test(path),
+    labelKey: "organizations.workspacesTitle",
+    icon: Building2,
+  },
+  {
+    match: (path) => /^\/org\/[^/]+\/members/.test(path),
+    labelKey: "organizations.membersTitle",
+    icon: Building2,
+  },
+  {
+    match: (path) => /^\/org\/[^/]+\/settings/.test(path),
+    labelKey: "organizations.settingsTitle",
+    icon: Building2,
   },
   {
     match: (path) => path.startsWith("/workspace/settings"),

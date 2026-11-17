@@ -17,9 +17,10 @@ import {
   paymentMethodRejected,
 } from "@/common/lib/graphql-error";
 import { paymentMethodRejectionKey } from "@/features/usage/lib/payment-method-rejection";
-import type {
-  WorkspacePlanId,
-  WorkspaceView,
+import {
+  toWorkspacePrivacy,
+  type WorkspacePlanId,
+  type WorkspaceView,
 } from "@/features/workspaces/types";
 
 type WorkspaceCreationState =
@@ -194,6 +195,9 @@ export function useWorkspaceCreationBilling(
           role: workspace.role ?? "admin",
           createdAt: workspace.createdAt,
           requireTwoFactor: workspace.requireTwoFactor ?? false,
+          organization: workspace.organization ?? null,
+          primary: workspace.primary,
+          privacy: toWorkspacePrivacy(workspace.privacy),
         } satisfies WorkspaceView;
       } catch (error) {
         // ADR091 D10.5–D10.6: a refused card (prepaid, or linked to an

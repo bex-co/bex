@@ -88,9 +88,9 @@ const ruWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planScaleBilling": {
-    message: "$349.30/мес.",
+    message: "$349.30/мес. за организацию",
     description:
-      "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
+      "Workspace plan card billing label (pricing.yaml scale usdPerMonth, per: organization; w7/m464)",
   },
   "workspaces.planScaleDescription": {
     message: "Для растущих команд, которым нужны дополнительные роли.",
@@ -113,8 +113,9 @@ const ruWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planEnterpriseBilling": {
-    message: "Индивидуальные условия",
-    description: "Workspace plan card billing label",
+    message: "Индивидуальные условия для организации",
+    description:
+      "Workspace plan card billing label: Enterprise is charged once per organization like Scale (w7/m464)",
   },
   "workspaces.planEnterpriseDescription": {
     message: "Индивидуальные лимиты и поддержка.",
@@ -669,6 +670,141 @@ const ruWorkspaces: Record<string, TranslationEntry> = {
       "Изменить эту политику могут только администраторы рабочего пространства.",
     description:
       "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
+  },
+  "workspaces.orgDowngradeWarningTitle": {
+    message: "Переход на тариф ниже Scale удалит организацию",
+    description:
+      "Change-plan dialog on an org's primary: title of the warning shown when a plan below Scale is selected (w7/m464)",
+  },
+  "workspaces.orgDowngradeWarning": {
+    message:
+      "Это основное рабочее пространство вашей организации, и его тариф распространяется на все рабочие пространства организации. Понижение тарифа удалит организацию и доступ к функциям уровня организации, а это рабочее пространство продолжит работать как самостоятельное. Сначала удалите остальные рабочие пространства организации, смените роль участников и ожидающих приглашений с ролью «Оплата», «Наблюдатель» или «Участник-исполнитель» на «Разработчик» или «Администратор» и удалите правила входящих IP для сервисов, окружений и этого рабочего пространства.",
+    description:
+      "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.orgDowngradeBlocked": {
+    message:
+      "Организацию пока нельзя удалить. Перед переходом на тариф ниже Scale:",
+    description:
+      "Change-plan dialog: lead-in above the unmet preconditions of ORGANIZATION_DOWNGRADE_BLOCKED (w7/m464)",
+  },
+  "workspaces.orgDowngradeSecondaryWorkspaces": {
+    message: "Удалите остальные рабочие пространства организации",
+    description:
+      "Unmet downgrade precondition secondary_workspaces; the workspace names follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberRoles": {
+    message:
+      "Смените роль этих участников на «Разработчик» или «Администратор»",
+    description:
+      "Unmet downgrade precondition member_roles; the members and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInviteRoles": {
+    message:
+      "Смените роль этих ожидающих приглашений на «Разработчик» или «Администратор»",
+    description:
+      "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInboundIpRules": {
+    message: "Удалите правила входящих IP",
+    description:
+      "Unmet downgrade precondition inbound_ip_rules; the workspace, environments and services that hold them follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeItems": {
+    message: "{label}: {items}",
+    description:
+      "One unmet downgrade precondition: {label} is what to do, {items} the list of what it applies to (w7/m464)",
+  },
+  "workspaces.orgDowngradePersonRole": {
+    message: "{person} ({role})",
+    description:
+      "A member or invitee in a downgrade precondition: {person} is their id or email, {role} the role to change (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleWorkspace": {
+    message: "это рабочее пространство",
+    description:
+      "The workspace's own inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleEnvironment": {
+    message: "окружение {name}",
+    description:
+      "An environment with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleService": {
+    message: "сервис {name}",
+    description:
+      "A service with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgPlanOnPrimaryError": {
+    message:
+      "Тариф этого рабочего пространства — тариф его организации. Измените его в основном рабочем пространстве организации.",
+    description:
+      "Refusal for code ORGANIZATION_PLAN_ON_PRIMARY: a secondary workspace's plan changes only on the org's primary (w7/m464)",
+  },
+  "workspaces.orgPlanSecondaryNote": {
+    message:
+      "Входит в тариф вашей организации. Тарифом и оплатой управляет основное рабочее пространство организации.",
+    description:
+      "Workspace Settings and Billing on an org's secondary workspace: its plan is the org's, managed on the primary (ADR115, w7/m464)",
+  },
+  "workspaces.orgPlanPrimarySettingsLink": {
+    message: "Перейти в основное рабочее пространство",
+    description:
+      "Link from a secondary workspace's settings to the org's primary workspace settings (w7/m464)",
+  },
+  "workspaces.orgPlanPrimaryBillingLink": {
+    message: "Перейти к оплате основного рабочего пространства",
+    description:
+      "Button on a secondary workspace's Billing plan card linking to the org's primary workspace's Billing (w7/m464)",
+  },
+  "workspaces.privacyTitle": {
+    message: "Доступ к рабочему пространству",
+    description:
+      "Workspace Settings → Workspace privacy card title, radio group name and section link (w7/m464)",
+  },
+  "workspaces.privacyDescription": {
+    message:
+      "Выберите, кто из вашей организации может присоединиться к этому рабочему пространству.",
+    description: "Description under the Workspace privacy card title (w7/m464)",
+  },
+  "workspaces.privacyPublic": {
+    message: "Открытое",
+    description: "The Public privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyPublicDescription": {
+    message:
+      "Любой участник вашей организации может сам добавить себя в это рабочее пространство.",
+    description:
+      "What the Public privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacyInviteOnly": {
+    message: "Только по приглашению",
+    description:
+      "The Invite-only privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyInviteOnlyDescription": {
+    message:
+      "Приглашать людей в это рабочее пространство могут только его администраторы.",
+    description:
+      "What the Invite-only privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacySave": {
+    message: "Сохранить",
+    description: "Saves the selected workspace privacy (w7/m464)",
+  },
+  "workspaces.privacySaving": {
+    message: "Сохранение…",
+    description: "The Save button while the workspace privacy saves (w7/m464)",
+  },
+  "workspaces.privacySaved": {
+    message: "Настройка доступа к рабочему пространству сохранена",
+    description: "Toast after setWorkspacePrivacy succeeds (w7/m464)",
+  },
+  "workspaces.privacyError": {
+    message:
+      "Не удалось сохранить настройку доступа к рабочему пространству. Повторите попытку.",
+    description:
+      "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
 };
 

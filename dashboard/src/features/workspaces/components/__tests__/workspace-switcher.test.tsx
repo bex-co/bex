@@ -3,6 +3,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { WorkspaceSwitcher } from "@/features/workspaces/components/workspace-switcher";
+import { useOrganizations } from "@/features/organizations/hooks/use-organizations";
+import { organization } from "@/features/organizations/__tests__/org-fixtures";
+import type { WorkspaceView } from "@/features/workspaces/types";
 
 function renderSwitcher() {
   return render(
@@ -19,15 +22,15 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: () => routeParams,
 }));
 
+type SwitcherWorkspace = Pick<
+  WorkspaceView,
+  "id" | "name" | "plan" | "role" | "createdAt"
+> &
+  Partial<Pick<WorkspaceView, "organization" | "primary" | "privacy">>;
+
 const setCurrentWorkspaceId = vi.fn();
 const workspaceState: {
-  workspaces: {
-    id: string;
-    name: string;
-    plan: string;
-    role: string;
-    createdAt: string | null;
-  }[];
+  workspaces: SwitcherWorkspace[];
   currentWorkspace: { id: string; name: string } | null;
   loading: boolean;
 } = {
@@ -57,6 +60,9 @@ const WORKSPACES = [
 ];
 
 beforeEach(() => {
+  vi.mocked(useOrganizations).mockReturnValue({
+    organizations: [],
+  });
   mockNavigate.mockReset();
   routeParams = {};
   setCurrentWorkspaceId.mockReset();
@@ -195,6 +201,147 @@ describe("WorkspaceSwitcher", () => {
 
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  // w7/m464: Render puts the org in this dropdown ("open the workspace
+  // dropdown at the top of the left pane and select your org").
+  describe("organizations", () => {
+    const acme = { id: "org-1", name: "Acme", primaryWorkspaceId: "tea-hq" };
+    const orgWorkspace = (
+      id: string,
+      name: string,
+      primary = false,
+    ): SwitcherWorkspace => ({
+      id,
+      name,
+      plan: "scale",
+      role: "admin",
+      createdAt: null,
+      organization: acme,
+      primary,
+      privacy: primary ? "invite_only" : "public",
+    });
+    const personal: SwitcherWorkspace = {
+      id: "tea-me",
+      name: "personal",
+      plan: "hobby",
+      role: "admin",
+      createdAt: null,
+      organization: null,
+      primary: false,
+      privacy: null,
+    };
+    const listed = (role: string) =>
+      vi.mocked(useOrganizations).mockReturnValue({
+        organizations: [organization(role as "OWNER")],
+      });
+
+    /** The menu's entries in order, with the label rows between them. */
+    async function menu(trigger: RegExp) {
+      const user = userEvent.setup();
+      renderSwitcher();
+      await user.click(screen.getByRole("button", { name: trigger }));
+      await screen.findByRole("menu");
+      return [
+        ...document.querySelectorAll(
+          "[role=menuitem], [role=menuitemradio], [data-slot=dropdown-menu-label]",
+        ),
+      ].map((item) => {
+        const role = item.getAttribute("role") ?? "label";
+        const name = item.querySelector(".truncate")?.textContent;
+        return `${role}:${name ?? item.textContent}`;
+      });
+    }
+
+    it("lists an Owner's org with their workspaces in it, the primary first, then the rest", async () => {
+      listed("OWNER");
+      const hq = orgWorkspace("tea-hq", "acme-hq", true);
+      workspaceState.workspaces = [
+        personal,
+        orgWorkspace("tea-web", "acme-web"),
+        hq,
+      ];
+      workspaceState.currentWorkspace = hq;
+
+      expect(await menu(/acme-hq/)).toEqual([
+        "menuitem:Billing",
+        "menuitem:Workspace Settings",
+        "menuitem:Acme",
+        "menuitemradio:acme-hq",
+        "menuitemradio:acme-web",
+        "label:Workspaces",
+        "menuitemradio:personal",
+        "menuitem:+ New Workspace",
+      ]);
+      expect(
+        screen.getByRole("menuitemradio", { name: /acme-hq/ }),
+      ).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("opens the org's Workspaces page from its entry", async () => {
+      listed("OWNER");
+      workspaceState.workspaces = [personal];
+      workspaceState.currentWorkspace = personal;
+      const user = userEvent.setup();
+      renderSwitcher();
+
+      await user.click(screen.getByRole("button", { name: /personal/ }));
+      // An Owner is in none of the org's workspaces until they join one, and
+      // still reaches the org.
+      await user.click(
+        await screen.findByRole("menuitem", { name: /Acme.*Organization/ }),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/org/$orgId/workspaces",
+        params: { orgId: "org-1" },
+      });
+    });
+
+    it("lists only the workspaces a Member is in under the org", async () => {
+      listed("MEMBER");
+      const web = orgWorkspace("tea-web", "acme-web");
+      workspaceState.workspaces = [web, personal];
+      workspaceState.currentWorkspace = personal;
+
+      expect(await menu(/personal/)).toEqual([
+        "menuitem:Billing",
+        "menuitem:Workspace Settings",
+        "menuitem:Acme",
+        "menuitemradio:acme-web",
+        "label:Workspaces",
+        "menuitemradio:personal",
+        "menuitem:+ New Workspace",
+      ]);
+    });
+
+    it("shows a Guest their org's name and their one workspace", async () => {
+      listed("GUEST");
+      const guestWorkspace = orgWorkspace("tea-web", "acme-web");
+      workspaceState.workspaces = [guestWorkspace];
+      workspaceState.currentWorkspace = guestWorkspace;
+
+      expect(await menu(/acme-web/)).toEqual([
+        "menuitem:Billing",
+        "menuitem:Workspace Settings",
+        "menuitem:Acme",
+        "menuitemradio:acme-web",
+        "menuitem:+ New Workspace",
+      ]);
+    });
+
+    it("groups a workspace under its own org before the org list arrives", async () => {
+      const hq = orgWorkspace("tea-hq", "acme-hq", true);
+      workspaceState.workspaces = [hq];
+      workspaceState.currentWorkspace = hq;
+
+      expect(await menu(/acme-hq/)).toEqual([
+        "menuitem:Billing",
+        "menuitem:Workspace Settings",
+        "menuitem:Acme",
+        "menuitemradio:acme-hq",
+        "menuitem:+ New Workspace",
+      ]);
+    });
   });
 
   it("does nothing when the current workspace is picked again", async () => {

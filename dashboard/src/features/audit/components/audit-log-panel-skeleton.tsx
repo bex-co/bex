@@ -125,7 +125,7 @@ export function AuditLogPlanNotice() {
 /** AuditLogExport's frame (w3/m305): its static labels and hint, the date
  *  fields' boxes and the Export as CSV button's box, so the row wraps as the
  *  ready one does at every width. */
-function AuditLogExportFrame() {
+export function AuditLogExportFrame() {
   const { t } = useTranslations();
   return (
     <div className="space-y-2" data-testid="audit-log-export-frame">

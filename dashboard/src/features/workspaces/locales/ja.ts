@@ -88,9 +88,9 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planScaleBilling": {
-    message: "$349.30/月",
+    message: "組織ごとに $349.30/月",
     description:
-      "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
+      "Workspace plan card billing label (pricing.yaml scale usdPerMonth, per: organization; w7/m464)",
   },
   "workspaces.planScaleDescription": {
     message: "追加のロールが必要な成長中のチーム向けです。",
@@ -113,8 +113,9 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planEnterpriseBilling": {
-    message: "個別契約",
-    description: "Workspace plan card billing label",
+    message: "組織ごとの個別契約",
+    description:
+      "Workspace plan card billing label: Enterprise is charged once per organization like Scale (w7/m464)",
   },
   "workspaces.planEnterpriseDescription": {
     message: "カスタムの上限とサポートを提供します。",
@@ -666,6 +667,138 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     message: "このポリシーを変更できるのはワークスペースの管理者のみです。",
     description:
       "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
+  },
+  "workspaces.orgDowngradeWarningTitle": {
+    message: "Scale 未満にダウングレードすると組織が削除されます",
+    description:
+      "Change-plan dialog on an org's primary: title of the warning shown when a plan below Scale is selected (w7/m464)",
+  },
+  "workspaces.orgDowngradeWarning": {
+    message:
+      "これは組織のプライマリワークスペースで、そのプランは組織内のすべてのワークスペースに適用されます。ダウングレードすると組織と組織レベルの機能が削除され、このワークスペースは単独のワークスペースとして引き続き使用できます。先に組織のほかのワークスペースを削除し、請求担当・閲覧者・コントリビューターのロールを持つメンバーと保留中の招待を開発者または管理者に変更し、サービス、環境、このワークスペースのインバウンド IP ルールを削除してください。",
+    description:
+      "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.orgDowngradeBlocked": {
+    message:
+      "組織はまだ削除できません。Scale 未満にダウングレードする前に、次の対応が必要です。",
+    description:
+      "Change-plan dialog: lead-in above the unmet preconditions of ORGANIZATION_DOWNGRADE_BLOCKED (w7/m464)",
+  },
+  "workspaces.orgDowngradeSecondaryWorkspaces": {
+    message: "組織のほかのワークスペースを削除する",
+    description:
+      "Unmet downgrade precondition secondary_workspaces; the workspace names follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberRoles": {
+    message: "これらのメンバーのロールを開発者または管理者に変更する",
+    description:
+      "Unmet downgrade precondition member_roles; the members and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInviteRoles": {
+    message: "これらの保留中の招待のロールを開発者または管理者に変更する",
+    description:
+      "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeInboundIpRules": {
+    message: "インバウンド IP ルールを削除する",
+    description:
+      "Unmet downgrade precondition inbound_ip_rules; the workspace, environments and services that hold them follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeItems": {
+    message: "{label}：{items}",
+    description:
+      "One unmet downgrade precondition: {label} is what to do, {items} the list of what it applies to (w7/m464)",
+  },
+  "workspaces.orgDowngradePersonRole": {
+    message: "{person}（{role}）",
+    description:
+      "A member or invitee in a downgrade precondition: {person} is their id or email, {role} the role to change (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleWorkspace": {
+    message: "このワークスペース",
+    description:
+      "The workspace's own inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleEnvironment": {
+    message: "環境 {name}",
+    description:
+      "An environment with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgDowngradeIpRuleService": {
+    message: "サービス {name}",
+    description:
+      "A service with inbound IP rules, in the inbound_ip_rules precondition (w7/m464)",
+  },
+  "workspaces.orgPlanOnPrimaryError": {
+    message:
+      "このワークスペースのプランは組織のプランです。組織のプライマリワークスペースで変更してください。",
+    description:
+      "Refusal for code ORGANIZATION_PLAN_ON_PRIMARY: a secondary workspace's plan changes only on the org's primary (w7/m464)",
+  },
+  "workspaces.orgPlanSecondaryNote": {
+    message:
+      "組織のプランに含まれています。プランと請求は組織のプライマリワークスペースで管理されます。",
+    description:
+      "Workspace Settings and Billing on an org's secondary workspace: its plan is the org's, managed on the primary (ADR115, w7/m464)",
+  },
+  "workspaces.orgPlanPrimarySettingsLink": {
+    message: "プライマリワークスペースへ移動",
+    description:
+      "Link from a secondary workspace's settings to the org's primary workspace settings (w7/m464)",
+  },
+  "workspaces.orgPlanPrimaryBillingLink": {
+    message: "プライマリワークスペースの請求へ移動",
+    description:
+      "Button on a secondary workspace's Billing plan card linking to the org's primary workspace's Billing (w7/m464)",
+  },
+  "workspaces.privacyTitle": {
+    message: "ワークスペースの公開設定",
+    description:
+      "Workspace Settings → Workspace privacy card title, radio group name and section link (w7/m464)",
+  },
+  "workspaces.privacyDescription": {
+    message: "組織内の誰がこのワークスペースに参加できるかを選択します。",
+    description: "Description under the Workspace privacy card title (w7/m464)",
+  },
+  "workspaces.privacyPublic": {
+    message: "公開",
+    description: "The Public privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyPublicDescription": {
+    message:
+      "組織のメンバーなら誰でも、自分でこのワークスペースに参加できます。",
+    description:
+      "What the Public privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacyInviteOnly": {
+    message: "招待制",
+    description:
+      "The Invite-only privacy setting's label, Render's name (w7/m464)",
+  },
+  "workspaces.privacyInviteOnlyDescription": {
+    message:
+      "このワークスペースに招待できるのはワークスペースの管理者のみです。",
+    description:
+      "What the Invite-only privacy setting allows, Render's wording (render.com/docs/organizations, w7/m464)",
+  },
+  "workspaces.privacySave": {
+    message: "保存",
+    description: "Saves the selected workspace privacy (w7/m464)",
+  },
+  "workspaces.privacySaving": {
+    message: "保存中…",
+    description: "The Save button while the workspace privacy saves (w7/m464)",
+  },
+  "workspaces.privacySaved": {
+    message: "ワークスペースの公開設定を保存しました",
+    description: "Toast after setWorkspacePrivacy succeeds (w7/m464)",
+  },
+  "workspaces.privacyError": {
+    message:
+      "ワークスペースの公開設定を保存できませんでした。もう一度お試しください。",
+    description:
+      "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
 };
 

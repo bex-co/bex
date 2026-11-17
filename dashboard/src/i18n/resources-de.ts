@@ -31,6 +31,7 @@ import deAgentEnvironment from "@/features/agent-environment/locales/de";
 import deAgentAutomations from "@/features/agent-automations/locales/de";
 import deSandboxGroups from "@/features/sandbox-groups/locales/de";
 import deLegal from "@/features/legal/locales/de";
+import deOrganizations from "@/features/organizations/locales/de";
 import deOrySettings from "@/features/auth/ory-settings-copy/de";
 import { extractMessages } from "./index";
 
@@ -77,6 +78,7 @@ const de: Record<string, string> = {
   ...extractMessages(deAgentAutomations),
   ...extractMessages(deSandboxGroups),
   ...extractMessages(deLegal),
+  ...extractMessages(deOrganizations),
   ...deOrySettings,
 };
 

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, Ref } from "react";
+import type { ComponentProps } from "react";
 import {
   Card,
   CardContent,
@@ -8,7 +8,7 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { cn } from "@/common/lib/utils/utils";
+import { SettingRadioOption } from "@/features/workspaces/components/setting-radio-option";
 import {
   OVERLAPPING_DEPLOY_POLICIES,
   type OverlappingDeployPolicy,
@@ -41,61 +41,21 @@ const OPTION_KEYS: Record<
   },
 };
 
-/**
- * One policy as a card radio, Render's label and sentence. The skeleton renders
- * the same button unchecked and disabled, with its text transparent on a
- * pulsing bar, so it wraps alike at every width and language.
- */
+/** One policy as a card radio: Render's label and sentence. */
 export function OverlappingDeployPolicyOption({
   policy,
-  checked,
-  pending = false,
-  buttonRef,
   ...props
 }: {
   policy: OverlappingDeployPolicy;
-  checked: boolean;
-  pending?: boolean;
-  buttonRef?: Ref<HTMLButtonElement>;
-} & ButtonHTMLAttributes<HTMLButtonElement>) {
+} & Omit<ComponentProps<typeof SettingRadioOption>, "label" | "description">) {
   const { t } = useTranslations();
   const keys = OPTION_KEYS[policy];
-  const text = pending
-    ? "bg-accent animate-pulse rounded-md box-decoration-clone text-transparent motion-reduce:animate-none"
-    : "";
   return (
-    <button
+    <SettingRadioOption
       {...props}
-      ref={buttonRef}
-      type="button"
-      role="radio"
-      aria-checked={checked}
-      className={cn(
-        "flex items-start gap-3 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed",
-        !pending && "disabled:opacity-60",
-        checked
-          ? "border-primary ring-1 ring-primary"
-          : "border-border enabled:hover:border-muted-foreground/50",
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-          checked ? "border-primary" : "border-muted-foreground/50",
-        )}
-      >
-        {checked ? <span className="bg-primary size-2 rounded-full" /> : null}
-      </span>
-      <span>
-        <span className="block text-sm font-medium">
-          <span className={text}>{t(keys.label)}</span>
-        </span>
-        <span className="text-muted-foreground block text-xs">
-          <span className={text}>{t(keys.description)}</span>
-        </span>
-      </span>
-    </button>
+      label={t(keys.label)}
+      description={t(keys.description)}
+    />
   );
 }
 

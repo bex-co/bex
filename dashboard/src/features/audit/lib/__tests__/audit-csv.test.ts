@@ -4,7 +4,8 @@ import {
   auditLogsToCSV,
   exportRangeDays,
   exportRangeTimes,
-  fetchAuditRange,
+  fetchAuditLogRange,
+  ownerAuditLogsPath,
   type RenderAuditLog,
 } from "@/features/audit/lib/audit-csv";
 import { config } from "@/config/config";
@@ -121,14 +122,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("fetchAuditRange", () => {
+describe("fetchAuditLogRange", () => {
   it("pages REST's list by its cursor until a short page, with the range on every call", async () => {
     const fetch = vi
       .fn()
       .mockReturnValueOnce(respond(page(0, 1000)))
       .mockReturnValueOnce(respond(page(1000, 3)));
     vi.stubGlobal("fetch", fetch);
-    const logs = await fetchAuditRange("tea-1", "2026-11-01", "2026-11-10");
+    const logs = await fetchAuditLogRange(
+      ownerAuditLogsPath("tea-1"),
+      "2026-11-01",
+      "2026-11-10",
+    );
 
     expect(logs).toHaveLength(1003);
     expect(logs[0]).toEqual(page(0, 1)[0].auditLog);
@@ -159,7 +164,11 @@ describe("fetchAuditRange", () => {
       vi.fn().mockReturnValue(respond({ message: "forbidden" }, 403)),
     );
     await expect(
-      fetchAuditRange("tea-1", "2026-11-01", "2026-11-10"),
+      fetchAuditLogRange(
+        ownerAuditLogsPath("tea-1"),
+        "2026-11-01",
+        "2026-11-10",
+      ),
     ).rejects.toThrow("403");
   });
 
@@ -171,7 +180,12 @@ describe("fetchAuditRange", () => {
     });
     vi.stubGlobal("fetch", fetch);
     await expect(
-      fetchAuditRange("tea-1", "2026-11-01", "2026-11-10", controller.signal),
+      fetchAuditLogRange(
+        ownerAuditLogsPath("tea-1"),
+        "2026-11-01",
+        "2026-11-10",
+        controller.signal,
+      ),
     ).rejects.toThrow();
     expect(fetch).toHaveBeenCalledTimes(1);
   });
@@ -180,7 +194,11 @@ describe("fetchAuditRange", () => {
     const fetch = vi.fn().mockImplementation(() => respond(page(0, 1000)));
     vi.stubGlobal("fetch", fetch);
     await expect(
-      fetchAuditRange("tea-1", "2026-11-01", "2026-11-10"),
+      fetchAuditLogRange(
+        ownerAuditLogsPath("tea-1"),
+        "2026-11-01",
+        "2026-11-10",
+      ),
     ).rejects.toBeInstanceOf(AuditExportTooLargeError);
     expect(fetch).toHaveBeenCalledTimes(20);
   });

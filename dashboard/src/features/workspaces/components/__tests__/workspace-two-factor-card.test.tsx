@@ -39,6 +39,9 @@ const WORKSPACE: WorkspaceView = {
   role: "admin",
   createdAt: null,
   requireTwoFactor: false,
+  organization: null,
+  primary: false,
+  privacy: null
 };
 
 /** The card links to account security, so it renders under a real router. */
@@ -133,7 +136,7 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
     const user = userEvent.setup();
     await renderCard(
       <WorkspaceTwoFactorCard
-        workspace={{ ...WORKSPACE, requireTwoFactor: true }}
+        workspace={{ ...WORKSPACE, requireTwoFactor: true, organization: null, primary: false, privacy: null }}
         onChangePlan={changePlan}
       />,
     );
@@ -269,7 +272,7 @@ describe("WorkspaceTwoFactorCard — below Pro (w7/070)", () => {
     const user = userEvent.setup();
     await renderCard(
       <WorkspaceTwoFactorCard
-        workspace={{ ...HOBBY, requireTwoFactor: true }}
+        workspace={{ ...HOBBY, requireTwoFactor: true, organization: null, primary: false, privacy: null }}
         onChangePlan={changePlan}
       />,
     );
@@ -358,7 +361,7 @@ describe("WorkspaceTwoFactorCard — everyone else (w22/m402)", () => {
     asRole("developer");
     await renderCard(
       <WorkspaceTwoFactorCard
-        workspace={{ ...WORKSPACE, requireTwoFactor: true }}
+        workspace={{ ...WORKSPACE, requireTwoFactor: true, organization: null, primary: false, privacy: null }}
         onChangePlan={changePlan}
       />,
     );

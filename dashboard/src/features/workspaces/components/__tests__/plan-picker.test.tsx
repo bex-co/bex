@@ -19,8 +19,10 @@ describe("PlanPicker", () => {
 
     expect(screen.getByText("$0/mo")).toBeInTheDocument();
     expect(screen.getByText("$17.50/mo")).toBeInTheDocument();
-    expect(screen.getByText("$349.30/mo")).toBeInTheDocument();
-    expect(screen.getByText("Custom terms")).toBeInTheDocument();
+    expect(screen.getByText("$349.30/mo per organization")).toBeInTheDocument();
+    expect(
+      screen.getByText("Custom terms per organization"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         "Service and datastore usage is billed separately by resource tier.",
@@ -34,6 +36,24 @@ describe("PlanPicker", () => {
     expect(
       screen.getByText("Extra roles (Contributor, Viewer, Billing)"),
     ).toBeInTheDocument();
+  });
+
+  // w7/m464 (ADR115 D2): a Scale or Enterprise workspace is its
+  // organization's primary, and the one fee covers every workspace in it.
+  it("prices Scale and Enterprise per organization, Hobby and Pro per workspace", () => {
+    render(<PlanPicker selected="hobby" onSelect={vi.fn()} />);
+
+    expect(screen.getByRole("radio", { name: /Scale/ })).toHaveTextContent(
+      "$349.30/mo per organization",
+    );
+    expect(screen.getByRole("radio", { name: /Enterprise/ })).toHaveTextContent(
+      "Custom terms per organization",
+    );
+    for (const plan of [/Hobby/, /Pro/]) {
+      expect(screen.getByRole("radio", { name: plan })).not.toHaveTextContent(
+        "per organization",
+      );
+    }
   });
 
   it("calls onSelect with the clicked plan's id", async () => {

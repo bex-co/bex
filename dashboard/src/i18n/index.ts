@@ -31,6 +31,7 @@ import enAgentEnvironment from "@/features/agent-environment/locales/en";
 import enAgentAutomations from "@/features/agent-automations/locales/en";
 import enSandboxGroups from "@/features/sandbox-groups/locales/en";
 import enLegal from "@/features/legal/locales/en";
+import enOrganizations from "@/features/organizations/locales/en";
 // Ory's own words for the settings flow's loading frame, not the dashboard's
 // (features/auth/ory-settings-copy/keys.ts).
 import enOrySettings from "@/features/auth/ory-settings-copy/en";
@@ -95,6 +96,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enAgentAutomations),
   ...extractMessages(enSandboxGroups),
   ...extractMessages(enLegal),
+  ...extractMessages(enOrganizations),
   ...enOrySettings,
 };
 

@@ -52,6 +52,9 @@ function workspace(
     role: "admin",
     createdAt: null,
     requireTwoFactor: false,
+    organization: null,
+    primary: false,
+    privacy: null
   };
 }
 

@@ -35,6 +35,9 @@ describe("useCreateWorkspace", () => {
           plan: "hobby",
           role: "admin",
           createdAt: "2026-07-09T00:00:00Z",
+          organization: null,
+          primary: false,
+          privacy: null,
         },
       },
     });
@@ -54,6 +57,9 @@ describe("useCreateWorkspace", () => {
       role: "admin",
       createdAt: "2026-07-09T00:00:00Z",
       requireTwoFactor: false,
+      organization: null,
+      primary: false,
+      privacy: null,
     });
     expect(mutate).toHaveBeenCalledWith({
       variables: { name: "acme-staging", plan: "hobby" },

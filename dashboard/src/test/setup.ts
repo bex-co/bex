@@ -78,6 +78,14 @@ vi.mock(
   }),
 );
 
+// The workspace switcher lists the caller's organizations (w7/m464) through
+// Apollo's useQuery, so every test that renders the sidebar would otherwise
+// need an ApolloProvider. Default to "in no organization", the common case;
+// the switcher's and the org pages' tests override per file.
+vi.mock("@/features/organizations/hooks/use-organizations", () => ({
+  useOrganizations: vi.fn(() => ({ organizations: [] })),
+}));
+
 import i18n from "@/i18n/init";
 import zhResources from "@/i18n/resources-zh";
 

@@ -6,7 +6,12 @@ import type { WorkspaceView } from "@/features/workspaces/types";
 
 const changePlan = vi.fn();
 vi.mock("@/features/workspaces/hooks/use-change-workspace-plan", () => ({
-  useChangeWorkspacePlan: () => ({ changePlan, busy: false, error: mockError }),
+  useChangeWorkspacePlan: () => ({
+    changePlan,
+    busy: false,
+    error: mockError,
+    preconditions: [],
+  }),
 }));
 
 let mockError: string | null = null;
@@ -19,6 +24,9 @@ const WORKSPACE: WorkspaceView = {
   role: "admin",
   createdAt: null,
   requireTwoFactor: false,
+  organization: null,
+  primary: false,
+  privacy: null,
 };
 
 beforeEach(() => {

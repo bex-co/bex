@@ -28,6 +28,9 @@ describe("useWorkspaces", () => {
             plan: "hobby",
             role: "admin",
             createdAt: "2026-06-01T00:00:00Z",
+            organization: null,
+            primary: false,
+            privacy: null,
           },
           null,
           {
@@ -55,6 +58,9 @@ describe("useWorkspaces", () => {
         role: "admin",
         createdAt: "2026-06-01T00:00:00Z",
         requireTwoFactor: false,
+        organization: null,
+        primary: false,
+        privacy: null,
       },
     ]);
   });

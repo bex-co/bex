@@ -1,0 +1,149 @@
+# bex-api's organizations (w7/m464, docs/ADR115-organizations.md): a Scale or
+# Enterprise workspace is the primary of an org that holds unlimited
+# workspaces under its plan. The switcher lists the caller's orgs; the org's
+# Workspaces, Members and Settings pages read and change it. Roles are
+# OWNER, MEMBER and GUEST; privacy is public or invite_only.
+
+fragment OrganizationFields on Organization {
+  id
+  name
+  plan
+  primaryWorkspaceId
+  viewerRole
+  createdAt
+  workspaces {
+    id
+    name
+    slug
+    plan
+    privacy
+    primary
+    viewerIsMember
+  }
+}
+
+query Organizations {
+  organizations {
+    ...OrganizationFields
+  }
+}
+
+query Organization($id: String!) {
+  organization(id: $id) {
+    ...OrganizationFields
+  }
+}
+
+mutation CreateOrganizationWorkspace(
+  $organizationId: String!
+  $name: String!
+  $privacy: String
+) {
+  createOrganizationWorkspace(
+    organizationId: $organizationId
+    name: $name
+    privacy: $privacy
+  ) {
+    id
+    name
+    slug
+    plan
+    privacy
+  }
+}
+
+mutation SetWorkspacePrivacy($workspaceId: String!, $privacy: String!) {
+  setWorkspacePrivacy(workspaceId: $workspaceId, privacy: $privacy) {
+    id
+    privacy
+  }
+}
+
+mutation RenameOrganization($organizationId: String!, $name: String!) {
+  renameOrganization(organizationId: $organizationId, name: $name) {
+    ...OrganizationFields
+  }
+}
+
+mutation JoinWorkspace($workspaceId: String!) {
+  joinWorkspace(workspaceId: $workspaceId) {
+    workspaceId
+    role
+    joined
+  }
+}
+
+mutation JoinWorkspaceAsAdmin($workspaceId: String!) {
+  joinWorkspaceAsAdmin(workspaceId: $workspaceId) {
+    workspaceId
+    role
+    joined
+  }
+}
+
+query OrganizationMembers($organizationId: String!) {
+  organizationMembers(organizationId: $organizationId) {
+    subject
+    userId
+    email
+    role
+    createdAt
+    workspaces
+    isSelf
+  }
+}
+
+query OrganizationInvites($organizationId: String!) {
+  organizationInvites(organizationId: $organizationId) {
+    id
+    email
+    role
+    expiresAt
+    createdAt
+  }
+}
+
+mutation InviteOrganizationMember(
+  $organizationId: String!
+  $email: String!
+  $role: String!
+) {
+  inviteOrganizationMember(
+    organizationId: $organizationId
+    email: $email
+    role: $role
+  ) {
+    id
+    email
+    role
+    expiresAt
+    createdAt
+  }
+}
+
+mutation RevokeOrganizationInvite(
+  $organizationId: String!
+  $inviteId: String!
+) {
+  revokeOrganizationInvite(organizationId: $organizationId, inviteId: $inviteId)
+}
+
+mutation ChangeOrganizationMemberRole(
+  $organizationId: String!
+  $subject: String!
+  $role: String!
+) {
+  changeOrganizationMemberRole(
+    organizationId: $organizationId
+    subject: $subject
+    role: $role
+  ) {
+    subject
+    role
+    workspaces
+  }
+}
+
+mutation RemoveOrganizationMember($organizationId: String!, $subject: String!) {
+  removeOrganizationMember(organizationId: $organizationId, subject: $subject)
+}

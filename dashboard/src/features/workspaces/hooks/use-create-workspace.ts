@@ -7,7 +7,10 @@ import {
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
-import type { WorkspaceView } from "@/features/workspaces/types";
+import {
+  toWorkspacePrivacy,
+  type WorkspaceView,
+} from "@/features/workspaces/types";
 
 export interface UseCreateWorkspaceResult {
   /** Fires createWorkspace; resolves the new workspace or null on failure. */
@@ -65,6 +68,9 @@ export function useCreateWorkspace(): UseCreateWorkspaceResult {
           role: w.role ?? "admin",
           createdAt: w.createdAt,
           requireTwoFactor: w.requireTwoFactor ?? false,
+          organization: w.organization ?? null,
+          primary: w.primary,
+          privacy: toWorkspacePrivacy(w.privacy),
         };
       } catch (err) {
         setError(mutationErrorMessage(err, t("workspaces.createError")));

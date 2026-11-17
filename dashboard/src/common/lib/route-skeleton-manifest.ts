@@ -462,6 +462,27 @@ export const ROUTE_SKELETON_MANIFEST = {
       "section-navigation",
     ],
   },
+  // An organization's pages (w7/m464): Owner-only regions (create, invite,
+  // the audit log) depend on the caller's role, so only what every role sees
+  // is listed.
+  "/org/$orgId/workspaces": {
+    kind: "render",
+    owner: "routes/org.$orgId.workspaces.tsx",
+    shape: "organization-workspaces",
+    regions: ["page-header", "workspaces-table"],
+  },
+  "/org/$orgId/members": {
+    kind: "render",
+    owner: "routes/org.$orgId.members.tsx",
+    shape: "organization-members",
+    regions: ["page-header", "members-table"],
+  },
+  "/org/$orgId/settings": {
+    kind: "render",
+    owner: "routes/org.$orgId.settings.tsx",
+    shape: "organization-settings",
+    regions: ["page-header", "organization-name"],
+  },
   "/static/": {
     kind: "redirect",
     owner: "routes/static.index.tsx",

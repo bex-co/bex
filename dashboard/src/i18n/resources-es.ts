@@ -31,6 +31,7 @@ import esAgentEnvironment from "@/features/agent-environment/locales/es";
 import esAgentAutomations from "@/features/agent-automations/locales/es";
 import esSandboxGroups from "@/features/sandbox-groups/locales/es";
 import esLegal from "@/features/legal/locales/es";
+import esOrganizations from "@/features/organizations/locales/es";
 import esOrySettings from "@/features/auth/ory-settings-copy/es";
 import { extractMessages } from "./index";
 
@@ -77,6 +78,7 @@ const es: Record<string, string> = {
   ...extractMessages(esAgentAutomations),
   ...extractMessages(esSandboxGroups),
   ...extractMessages(esLegal),
+  ...extractMessages(esOrganizations),
   ...esOrySettings,
 };
 

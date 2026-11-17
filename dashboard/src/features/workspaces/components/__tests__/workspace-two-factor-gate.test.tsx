@@ -36,6 +36,9 @@ function workspace(id: string, name: string): WorkspaceView {
     role: "developer",
     createdAt: null,
     requireTwoFactor: true,
+    organization: null,
+    primary: false,
+    privacy: null
   };
 }
 

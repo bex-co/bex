@@ -4,6 +4,7 @@ import {
   Hammer,
   KeyRound,
   Layers,
+  Lock,
   Network,
   ScrollText,
   Settings2,
@@ -23,6 +24,7 @@ export function WorkspaceSettingsNavigation({
   showDangerZone,
   showAuditLogs = true,
   showBuildPipeline = false,
+  showPrivacy = false,
 }: {
   className?: string;
   showDangerZone: boolean;
@@ -30,6 +32,8 @@ export function WorkspaceSettingsNavigation({
   showAuditLogs?: boolean;
   /** Build Pipeline (w6/m309) is for billing managers only. */
   showBuildPipeline?: boolean;
+  /** Workspace privacy (w7/m464): an org workspace's, for its admins. */
+  showPrivacy?: boolean;
 }) {
   const { t } = useTranslations();
   const items = [
@@ -38,6 +42,15 @@ export function WorkspaceSettingsNavigation({
       label: t("workspaces.generalTitle"),
       icon: Settings2,
     },
+    ...(showPrivacy
+      ? [
+          {
+            href: "#privacy",
+            label: t("workspaces.privacyTitle"),
+            icon: Lock,
+          },
+        ]
+      : []),
     ...(showBuildPipeline
       ? [
           {

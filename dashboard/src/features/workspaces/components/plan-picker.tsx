@@ -16,7 +16,9 @@ export interface PlanPickerProps {
 /**
  * bex's workspace capability cards mirror Render's plan ids and limits, with
  * monthly fees 30% below Render's (ADR030 / pricing.yaml): Hobby $0, Pro
- * $17.50, Scale $349.30, Enterprise custom. Resource-tier usage is billed
+ * $17.50, Scale $349.30, Enterprise custom. Scale and Enterprise are charged
+ * once per organization, on its primary workspace (w7/m464, ADR115 D2), so
+ * their labels say "per organization". Resource-tier usage is billed
  * separately (ADR046) and stays in the footnote under the cards.
  */
 export function PlanPicker({
@@ -62,7 +64,7 @@ export function PlanPicker({
             >
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <span className="text-lg font-semibold">{t(plan.nameKey)}</span>
-                <span className="text-muted-foreground text-sm font-medium">
+                <span className="text-muted-foreground text-right text-sm font-medium">
                   {t(plan.billingKey)}
                 </span>
               </div>

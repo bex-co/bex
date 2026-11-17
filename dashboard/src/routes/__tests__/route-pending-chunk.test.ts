@@ -6,12 +6,20 @@ import {
   WorkspaceSettingsPageSkeleton,
 } from "@/common/components/route-skeletons";
 import { DeployHistorySkeleton } from "@/features/deploys/components/deploy-history-skeleton";
+import {
+  OrganizationMembersRouteSkeleton,
+  OrganizationSettingsRouteSkeleton,
+  OrganizationWorkspacesRouteSkeleton,
+} from "@/features/organizations/components/organization-route-skeletons";
 import { Route as AccountSettingsRoute } from "../settings";
 import { Route as WorkspaceSettingsRoute } from "../workspace.settings";
 import { Route as DeploysRoute } from "../services.$serviceId.deploys.index";
 import { Route as DatabaseRoute } from "../databases.$databaseId";
 import { Route as WebhookRoute } from "../webhook.$webhookId";
 import { Route as ServiceRoute } from "../services.$serviceId";
+import { Route as OrganizationWorkspacesRoute } from "../org.$orgId.workspaces";
+import { Route as OrganizationMembersRoute } from "../org.$orgId.members";
+import { Route as OrganizationSettingsRoute } from "../org.$orgId.settings";
 
 /**
  * Where a route's `pendingComponent` lands when the router plugin code-splits
@@ -37,6 +45,22 @@ describe("route pending components and code splitting (w3/066)", () => {
     ],
     ["/settings", AccountSettingsRoute, AccountSettingsPageSkeleton],
     ["/services/$serviceId/deploys/", DeploysRoute, DeployHistorySkeleton],
+    // w7/m464: the org pages' skeletons live in a skeleton-only module.
+    [
+      "/org/$orgId/workspaces",
+      OrganizationWorkspacesRoute,
+      OrganizationWorkspacesRouteSkeleton,
+    ],
+    [
+      "/org/$orgId/members",
+      OrganizationMembersRoute,
+      OrganizationMembersRouteSkeleton,
+    ],
+    [
+      "/org/$orgId/settings",
+      OrganizationSettingsRoute,
+      OrganizationSettingsRouteSkeleton,
+    ],
   ] as const)(
     "%s keeps its skeleton out of the page's lazy chunk",
     (_path, route, skeleton) => {

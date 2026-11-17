@@ -31,6 +31,7 @@ import jaAgentEnvironment from "@/features/agent-environment/locales/ja";
 import jaAgentAutomations from "@/features/agent-automations/locales/ja";
 import jaSandboxGroups from "@/features/sandbox-groups/locales/ja";
 import jaLegal from "@/features/legal/locales/ja";
+import jaOrganizations from "@/features/organizations/locales/ja";
 import jaOrySettings from "@/features/auth/ory-settings-copy/ja";
 import { extractMessages } from "./index";
 
@@ -77,6 +78,7 @@ const ja: Record<string, string> = {
   ...extractMessages(jaAgentAutomations),
   ...extractMessages(jaSandboxGroups),
   ...extractMessages(jaLegal),
+  ...extractMessages(jaOrganizations),
   ...jaOrySettings,
 };
 

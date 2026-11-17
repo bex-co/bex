@@ -24,7 +24,9 @@ import { LocalDate } from "@/common/components/local-time";
 import { useRenameWorkspace } from "@/features/workspaces/hooks/use-rename-workspace";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { ChangePlanDialog } from "@/features/workspaces/components/change-plan-dialog";
+import { OrganizationPlanNote } from "@/features/workspaces/components/organization-plan-note";
 import {
+  organizationPlanOwner,
   workspacePlanNameKey,
   type WorkspaceView,
 } from "@/features/workspaces/types";
@@ -48,6 +50,10 @@ export interface WorkspaceDetailsCardProps {
  * no payment step; Stripe payment-method onboarding remains deferred, .pm/w6/README.md "Not in
  * w6"), and the id/created-at metadata Render's own settings page shows
  * alongside the name.
+ *
+ * A secondary workspace of an organization (w7/m464) has no plan of its own to
+ * change: its plan is the org's, managed on the primary, so it shows that with
+ * a link there instead of the change-plan link and dialog, as on Render.
  */
 export function WorkspaceDetailsCard({
   workspace,
@@ -56,7 +62,8 @@ export function WorkspaceDetailsCard({
 }: WorkspaceDetailsCardProps) {
   const { t } = useTranslations();
   const { rename, busy, error } = useRenameWorkspace();
-  const { refetch } = useWorkspace();
+  const { refetch, workspaces } = useWorkspace();
+  const planOwner = organizationPlanOwner(workspace, workspaces);
 
   // Re-seed the draft when the card is pointed at a DIFFERENT workspace
   // (w5/059). The switcher swaps the prop without remounting this component, so
@@ -141,13 +148,15 @@ export function WorkspaceDetailsCard({
               <span className="font-medium">
                 {planNameKey ? t(planNameKey) : workspace.plan}
               </span>
-              <Button
-                variant="link"
-                className="h-auto p-0"
-                onClick={() => onChangePlanOpenChange(true)}
-              >
-                {t("workspaces.changePlanTrigger")}
-              </Button>
+              {planOwner ? null : (
+                <Button
+                  variant="link"
+                  className="h-auto p-0"
+                  onClick={() => onChangePlanOpenChange(true)}
+                >
+                  {t("workspaces.changePlanTrigger")}
+                </Button>
+              )}
             </dd>
           </div>
           <div className="space-y-1">
@@ -187,14 +196,17 @@ export function WorkspaceDetailsCard({
             </dd>
           </div>
         </dl>
+        {planOwner ? <OrganizationPlanNote owner={planOwner} /> : null}
       </CardContent>
 
-      <ChangePlanDialog
-        workspace={workspace}
-        open={changePlanOpen}
-        onOpenChange={onChangePlanOpenChange}
-        onChanged={() => void refetch()}
-      />
+      {planOwner ? null : (
+        <ChangePlanDialog
+          workspace={workspace}
+          open={changePlanOpen}
+          onOpenChange={onChangePlanOpenChange}
+          onChanged={() => void refetch()}
+        />
+      )}
     </Card>
   );
 }

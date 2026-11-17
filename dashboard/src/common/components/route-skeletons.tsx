@@ -94,6 +94,7 @@ import {
 import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
 import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/workspace-ip-rules-card-skeleton";
 import { WorkspaceTwoFactorCardSkeleton } from "@/features/workspaces/components/workspace-two-factor-card-skeleton";
+import { WorkspacePrivacyCardSkeleton } from "@/features/workspaces/components/workspace-privacy-card-skeleton";
 import { OverlappingDeployPolicyCardSkeleton } from "@/features/workspaces/components/overlapping-deploy-policy-card-skeleton";
 import { WorkspaceDetailsCardSkeleton } from "@/features/workspaces/components/workspace-details-card-skeleton";
 import { DeleteWorkspaceCardSkeleton } from "@/features/workspaces/components/delete-workspace-card-skeleton";
@@ -159,7 +160,8 @@ function PendingFrame({
   );
 }
 
-function Region({
+/** A pending frame's named region, which the skeleton manifest lists. */
+export function Region({
   name,
   className,
   children,
@@ -1408,8 +1410,13 @@ export function WorkspaceSettingsSkeletonSections({
   return (
     <>
       <Region name="general">
-        <WorkspaceDetailsCardSkeleton />
+        <WorkspaceDetailsCardSkeleton planOwner={sections.planOwner} />
       </Region>
+      {sections.privacy ? (
+        <Region name="privacy">
+          <WorkspacePrivacyCardSkeleton />
+        </Region>
+      ) : null}
       {sections.buildPipeline ? (
         <Region name="build-pipeline">
           <BuildPipelineCardSkeleton />
@@ -1475,6 +1482,7 @@ export function WorkspaceSettingsPageSkeleton() {
           showDangerZone
           showAuditLogs={sections.auditLogs}
           showBuildPipeline={sections.buildPipeline}
+          showPrivacy={sections.privacy}
         />
       }
     >

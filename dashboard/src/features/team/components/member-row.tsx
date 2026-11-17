@@ -1,20 +1,16 @@
-import { useState } from "react";
-import { Loader2, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
+import { ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import { TableCell, TableRow } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/common/components/ui/select";
-import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ROLES, type MemberView, type Role } from "@/features/team/types";
 import { memberActionReasonKeys } from "@/features/team/lib/member-action-reasons";
+import {
+  MemberIdentity,
+  RemoveMemberButton,
+  RoleSelect,
+} from "@/features/team/components/member-controls";
 
 export interface MemberRowProps {
   member: MemberView;
@@ -58,7 +54,6 @@ export function MemberRow({
   onRemove,
 }: MemberRowProps) {
   const { t } = useTranslations();
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const identity = member.email || member.userId || member.subject;
   const reasonKeys = memberActionReasonKeys(member);
   const removeReason = reasonKeys.removeReason
@@ -74,16 +69,8 @@ export function MemberRow({
           action columns leave instead of squeezing them. Badges that don't
           fit beside the name wrap to their own line. */}
       <TableCell className="w-full max-w-0">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          {/* The full identity, wrapping at its own break points (an email's
-              hyphen or dot) — a phone has no hover to reveal a truncation.
-              Only the secondary subject line below truncates. */}
-          <span className="min-w-0 max-w-full break-words">{identity}</span>
-          {member.isSelf ? (
-            <Badge variant="secondary" className="shrink-0">
-              {t("team.you")}
-            </Badge>
-          ) : null}
+        {/* Only the secondary subject line below truncates. */}
+        <MemberIdentity identity={identity} isSelf={member.isSelf}>
           {!member.identityResolved ? (
             <Badge
               variant="outline"
@@ -113,7 +100,7 @@ export function MemberRow({
               {t("team.twoFactorRequiredNotEnabled")}
             </Badge>
           ) : null}
-        </div>
+        </MemberIdentity>
         {identity !== member.subject ? (
           <div
             className="truncate font-mono text-xs text-muted-foreground"
@@ -126,28 +113,14 @@ export function MemberRow({
       <TableCell>
         {canManage ? (
           <PermissionTooltip reason={roleReason}>
-            <Select
+            <RoleSelect
               value={member.role}
+              roles={ROLES}
+              label={(role) => t(`team.role.${role}`)}
+              ariaLabel={t("team.roleFor", { identity })}
               disabled={changing || roleReason !== null}
-              onValueChange={(value) =>
-                onChangeRole(member.subject, value as Role)
-              }
-            >
-              <SelectTrigger
-                size="sm"
-                className="w-[7.5rem] @md:w-[150px]"
-                aria-label={t("team.roleFor", { identity })}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLES.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {t(`team.role.${role}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(role) => onChangeRole(member.subject, role)}
+            />
           </PermissionTooltip>
         ) : (
           <span>{t(`team.role.${member.role}`)}</span>
@@ -169,23 +142,9 @@ export function MemberRow({
             </Button>
           </PermissionTooltip>
         ) : canManage ? (
-          <ConfirmDialog
-            open={confirmOpen}
-            onOpenChange={setConfirmOpen}
-            trigger={
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={removing}
-                aria-label={t("team.removeMember", { identity })}
-              >
-                {removing ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Trash2 className="text-destructive" />
-                )}
-              </Button>
-            }
+          <RemoveMemberButton
+            ariaLabel={t("team.removeMember", { identity })}
+            busy={removing}
             title={t("team.removeTitle")}
             // Two sentences, deliberately: losing access is expected, but
             // revoking the member's API keys is a destructive side effect that
@@ -197,10 +156,7 @@ export function MemberRow({
             )}`}
             cancelLabel={t("team.removeCancel")}
             confirmLabel={t("team.remove")}
-            onConfirm={() => {
-              setConfirmOpen(false);
-              onRemove(member.subject);
-            }}
+            onConfirm={() => onRemove(member.subject)}
           />
         ) : null}
       </TableCell>

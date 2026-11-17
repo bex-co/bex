@@ -3,11 +3,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AuditLogExport } from "@/features/audit/components/audit-log-export";
 import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
 
-const fetchAuditRange = vi.fn();
+const fetchAuditLogRange = vi.fn();
 vi.mock("@/features/audit/lib/audit-csv", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/audit/lib/audit-csv")>()),
-  fetchAuditRange: (...args: unknown[]) => fetchAuditRange(...args),
+  fetchAuditLogRange: (...args: unknown[]) => fetchAuditLogRange(...args),
 }));
+
+const PATH = "/v1/owners/tea-1/audit-logs";
 
 const createObjectURL = vi.fn(() => "blob:audit");
 const click = vi
@@ -15,7 +17,7 @@ const click = vi
   .mockImplementation(() => {});
 
 beforeEach(() => {
-  fetchAuditRange.mockReset();
+  fetchAuditLogRange.mockReset();
   createObjectURL.mockClear();
   click.mockClear();
   URL.createObjectURL = createObjectURL;
@@ -28,7 +30,7 @@ const field = (label: string) =>
 // w3/m305: Render's audit export — a start and end date at most 90 days apart.
 describe("AuditLogExport", () => {
   it("refuses a range longer than 90 days or ending before it starts", () => {
-    render(<AuditLogExport ownerId="tea-1" />);
+    render(<AuditLogExport subjectId="tea-1" path={PATH} />);
     fireEvent.change(field("Start date"), { target: { value: "2026-01-01" } });
     fireEvent.change(field("End date"), { target: { value: "2026-11-10" } });
     expect(
@@ -44,7 +46,7 @@ describe("AuditLogExport", () => {
   });
 
   it("downloads the range's REST rows as Render's CSV", async () => {
-    fetchAuditRange.mockResolvedValue([
+    fetchAuditLogRange.mockResolvedValue([
       {
         timestamp: "2026-11-02T10:00:00Z",
         event: "apps.Get",
@@ -53,14 +55,14 @@ describe("AuditLogExport", () => {
         metadata: { outcome: "denied" },
       },
     ]);
-    render(<AuditLogExport ownerId="tea-1" />);
+    render(<AuditLogExport subjectId="tea-1" path={PATH} />);
     fireEvent.change(field("Start date"), { target: { value: "2026-11-01" } });
     fireEvent.change(field("End date"), { target: { value: "2026-11-10" } });
     fireEvent.click(screen.getByRole("button", { name: /export as csv/i }));
 
     await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
-    expect(fetchAuditRange).toHaveBeenCalledWith(
-      "tea-1",
+    expect(fetchAuditLogRange).toHaveBeenCalledWith(
+      PATH,
       "2026-11-01",
       "2026-11-10",
       expect.any(AbortSignal),
@@ -73,11 +75,10 @@ describe("AuditLogExport", () => {
   });
 
   it("says so when the range has too many events", async () => {
-    const { AuditExportTooLargeError } = await import(
-      "@/features/audit/lib/audit-csv"
-    );
-    fetchAuditRange.mockRejectedValue(new AuditExportTooLargeError());
-    render(<AuditLogExport ownerId="tea-1" />);
+    const { AuditExportTooLargeError } =
+      await import("@/features/audit/lib/audit-csv");
+    fetchAuditLogRange.mockRejectedValue(new AuditExportTooLargeError());
+    render(<AuditLogExport subjectId="tea-1" path={PATH} />);
     fireEvent.click(screen.getByRole("button", { name: /export as csv/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Choose a shorter range",
@@ -95,7 +96,7 @@ describe("AuditLogExport", () => {
         ?.textContent,
       hint: root.querySelector("p")?.textContent,
     });
-    const ready = render(<AuditLogExport ownerId="tea-1" />);
+    const ready = render(<AuditLogExport subjectId="tea-1" path={PATH} />);
     const readyParts = parts(ready.container);
     ready.unmount();
 

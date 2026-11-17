@@ -23,17 +23,27 @@ import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { WORKSPACE_PLAN_CATALOG } from "@/features/workspaces/types";
+import { OrganizationPlanNote } from "@/features/workspaces/components/organization-plan-note";
+import {
+  WORKSPACE_PLAN_CATALOG,
+  organizationPlanOwner,
+} from "@/features/workspaces/types";
 
 /**
  * The workspace's plan, first on the billing page — what everything below is
  * priced against. Changing it stays owned by workspace settings; this links
  * there with the dialog already open, so there is one plan editor rather than
  * two that can disagree.
+ *
+ * A secondary workspace of an organization (w7/m464) shows its plan as the
+ * org's and offers no change: Render's "Your primary workspace manages the
+ * billing for the organization", so its note links to the primary's Billing
+ * page when the caller is in it.
  */
 export function PlanCard() {
   const { t } = useTranslations();
-  const { currentWorkspace, loading } = useWorkspace();
+  const { currentWorkspace, workspaces, loading } = useWorkspace();
+  const planOwner = organizationPlanOwner(currentWorkspace, workspaces);
 
   const entry = WORKSPACE_PLAN_CATALOG.find(
     (p) => p.id === currentWorkspace?.plan,
@@ -62,15 +72,20 @@ export function PlanCard() {
                   {t(entry.descriptionKey)}
                 </p>
               )}
+              {planOwner ? (
+                <OrganizationPlanNote owner={planOwner} target="billing" />
+              ) : null}
             </div>
-            <Button asChild variant="outline" size="sm">
-              <Link
-                to="/workspace/settings"
-                search={{ plan: "change" as const }}
-              >
-                {t("usage.planChange")}
-              </Link>
-            </Button>
+            {planOwner ? null : (
+              <Button asChild variant="outline" size="sm">
+                <Link
+                  to="/workspace/settings"
+                  search={{ plan: "change" as const }}
+                >
+                  {t("usage.planChange")}
+                </Link>
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

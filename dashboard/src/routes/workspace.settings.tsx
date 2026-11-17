@@ -7,6 +7,7 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace-details-card";
 import { WorkspaceIPRulesCard } from "@/features/workspaces/components/workspace-ip-rules-card";
 import { WorkspaceTwoFactorCard } from "@/features/workspaces/components/workspace-two-factor-card";
+import { WorkspacePrivacyCard } from "@/features/workspaces/components/workspace-privacy-card";
 import { BuildPipelineCard } from "@/features/usage/components/build-pipeline-card";
 import { OverlappingDeployPolicyCard } from "@/features/workspaces/components/overlapping-deploy-policy-card";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -72,6 +73,10 @@ function WorkspaceSettingsPage() {
   // Build Pipeline (w6/m309) holds billing settings: billing managers only.
   const capabilities = useCapabilities();
   const showBuildPipeline = capabilities.canManageBilling;
+  // Workspace privacy (w7/m464) is an org workspace's, and its admins'
+  // (`can_manage`; the workspace list's role says "admin" for everyone).
+  const showPrivacy =
+    currentWorkspace?.organization != null && capabilities.canManage;
   // While the workspace loads, the rail lists the sections the skeleton draws.
   const pending = !currentWorkspace && loading;
   const skeleton = useWorkspaceSettingsSkeletonSections();
@@ -102,6 +107,7 @@ function WorkspaceSettingsPage() {
             showBuildPipeline={
               pending ? skeleton.buildPipeline : showBuildPipeline
             }
+            showPrivacy={pending ? skeleton.privacy : showPrivacy}
           />
         }
       >
@@ -120,6 +126,13 @@ function WorkspaceSettingsPage() {
                 onChangePlanOpenChange={setChangePlanOpen}
               />
             </section>
+            {/* Workspace privacy (w7/m464): Render's Public or Invite-only
+                    for a workspace in an organization, set by its admins. */}
+            {showPrivacy ? (
+              <section id="privacy" className={SECTION_NAVIGATION_TARGET_CLASS}>
+                <WorkspacePrivacyCard workspace={currentWorkspace} />
+              </section>
+            ) : null}
             {/* Workspace Settings → Build Pipeline (w6/m309), where Render
                     sets the monthly pipeline spend limit. */}
             {showBuildPipeline ? (

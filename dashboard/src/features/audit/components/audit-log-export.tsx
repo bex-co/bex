@@ -10,7 +10,7 @@ import {
   MAX_EXPORT_DAYS,
   auditLogsToCSV,
   exportRangeDays,
-  fetchAuditRange,
+  fetchAuditLogRange,
 } from "@/features/audit/lib/audit-csv";
 
 /** "YYYY-MM-DD" of a date in UTC, the days the export reads. */
@@ -19,18 +19,26 @@ function utcDay(date: Date): string {
 }
 
 /**
- * Workspace Settings → Audit Logs → Export as CSV (w3/m305): Render's export,
- * a start and end date at most 90 days apart. The enclosing panel renders it
- * only for an admin on a plan with audit logs, as Render allows.
+ * Audit Logs → Export as CSV (w3/m305): Render's export, a start and end date
+ * at most 90 days apart. The enclosing panel renders it only for an admin on a
+ * plan with audit logs, as Render allows. It pages the REST list at `path`
+ * (a workspace's or, w7/m464, an organization's), and the file is called
+ * `audit-logs-<subjectId>-<start>-<end>.csv`.
  */
-export function AuditLogExport({ ownerId }: { ownerId: string }) {
+export function AuditLogExport({
+  subjectId,
+  path,
+}: {
+  subjectId: string;
+  path: string;
+}) {
   const { t } = useTranslations();
   const startId = useId();
   const endId = useId();
   const messageId = useId();
   // A switch of workspace or leaving the page abandons an export in flight.
   const inFlight = useRef<AbortController | null>(null);
-  useEffect(() => () => inFlight.current?.abort(), [ownerId]);
+  useEffect(() => () => inFlight.current?.abort(), [subjectId]);
   const today = utcDay(new Date());
   const [start, setStart] = useState(() =>
     utcDay(new Date(Date.now() - 29 * 86_400_000)),
@@ -55,14 +63,14 @@ export function AuditLogExport({ ownerId }: { ownerId: string }) {
     setExporting(true);
     setFailure(null);
     try {
-      const logs = await fetchAuditRange(
-        ownerId,
+      const logs = await fetchAuditLogRange(
+        path,
         start,
         end,
         controller.signal,
       );
       downloadTextFile(
-        `audit-logs-${ownerId}-${start}-${end}.csv`,
+        `audit-logs-${subjectId}-${start}-${end}.csv`,
         auditLogsToCSV(logs),
         "text/csv;charset=utf-8",
       );

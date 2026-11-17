@@ -14,9 +14,7 @@ import {
   TableBody,
   TableRow,
   TableHead,
-  TableCell,
 } from "@/common/components/ui/table";
-import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import {
@@ -32,6 +30,7 @@ import { useResendInvite } from "@/features/team/hooks/use-resend-invite";
 import { MemberRow } from "@/features/team/components/member-row";
 import type { Role } from "@/features/team/types";
 import { InviteMemberDialog } from "@/features/team/components/invite-member-dialog";
+import { PendingInvitesTable } from "@/features/team/components/member-controls";
 import { TeamMembersSkeleton } from "@/features/team/components/team-panel-skeleton";
 
 /**
@@ -183,60 +182,38 @@ export function TeamPanel() {
             )}
 
             {canManage && invites.length > 0 ? (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  {t("team.pendingTitle")}
-                </h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("team.colEmail")}</TableHead>
-                      <TableHead>{t("team.colRole")}</TableHead>
-                      <TableActionsHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {invites.map((invite) => (
-                      <TableRow key={invite.id}>
-                        <TableCell className="w-full max-w-0">
-                          <span className="block break-words">
-                            {invite.email}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {t(`team.role.${invite.role}`)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={resending === invite.id}
-                            onClick={() => void handleResend(invite.id)}
-                          >
-                            {resending === invite.id ? (
-                              <Loader2 className="animate-spin" />
-                            ) : null}
-                            {t("team.resendInvite")}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={removing === invite.id}
-                            onClick={() => void handleRevoke(invite.id)}
-                          >
-                            {removing === invite.id ? (
-                              <Loader2 className="animate-spin" />
-                            ) : null}
-                            {t("team.revokeInvite")}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <PendingInvitesTable
+                title={t("team.pendingTitle")}
+                columns={[t("team.colEmail"), t("team.colRole")]}
+                invites={invites}
+                roleLabel={(invite) => t(`team.role.${invite.role}`)}
+                actions={(invite) => (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={resending === invite.id}
+                      onClick={() => void handleResend(invite.id)}
+                    >
+                      {resending === invite.id ? (
+                        <Loader2 className="animate-spin" />
+                      ) : null}
+                      {t("team.resendInvite")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={removing === invite.id}
+                      onClick={() => void handleRevoke(invite.id)}
+                    >
+                      {removing === invite.id ? (
+                        <Loader2 className="animate-spin" />
+                      ) : null}
+                      {t("team.revokeInvite")}
+                    </Button>
+                  </>
+                )}
+              />
             ) : null}
           </>
         )}

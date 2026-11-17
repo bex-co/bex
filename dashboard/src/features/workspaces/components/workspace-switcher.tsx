@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
+  Building2,
   Check,
   ChevronsUpDown,
   CreditCard,
@@ -9,6 +11,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
@@ -25,7 +28,12 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { workspacePlanNameKey } from "@/features/workspaces/types";
+import {
+  workspacePlanNameKey,
+  type WorkspaceView,
+} from "@/features/workspaces/types";
+import { useOrganizations } from "@/features/organizations/hooks/use-organizations";
+import { groupSwitcherWorkspaces } from "@/features/organizations/lib/switcher-groups";
 
 /**
  * A small rounded tile showing the workspace's first letter — the switcher's
@@ -54,11 +62,54 @@ function WorkspaceInitial({
   );
 }
 
+/** One workspace of the dropdown: its initial, name and plan, checked when current. */
+function WorkspaceRadioItem({
+  workspace,
+  current,
+  nested = false,
+  onSelect,
+}: {
+  workspace: WorkspaceView;
+  current: boolean;
+  /** Listed under its organization's entry. */
+  nested?: boolean;
+  onSelect: () => void;
+}) {
+  const { t } = useTranslations();
+  const planKey = workspacePlanNameKey(workspace.plan);
+  return (
+    <DropdownMenuRadioItem
+      value={workspace.id}
+      onSelect={onSelect}
+      // The radio dot is replaced by the visible check below (w4/471).
+      className={cn(
+        "gap-2 [&>span:first-child]:hidden",
+        nested ? "pl-5" : "pl-2",
+      )}
+    >
+      <WorkspaceInitial name={workspace.name} className="size-5 shrink-0" />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate">{workspace.name}</span>
+        <span className="text-muted-foreground truncate text-xs">
+          {planKey ? t(planKey) : workspace.plan}
+        </span>
+      </span>
+      {current && <Check className="size-4 shrink-0" />}
+    </DropdownMenuRadioItem>
+  );
+}
+
 /**
  * The dropdown at the top of the left pane (Render's own placement): Billing,
- * Workspace Settings, the caller's full list (name + plan), then + New Workspace.
+ * Workspace Settings, the caller's list (name + plan), then + New Workspace.
  * Switching writes through WorkspaceProvider, which every scoped query
  * (services/databases) reads as its ownerId filter.
+ *
+ * Organizations (w7/m464) sit in it as on Render ("open the workspace dropdown
+ * at the top of the left pane and select your org"): each org's name opens
+ * its Workspaces page, with the caller's workspaces in it listed beneath; the
+ * workspaces in no org follow under the usual label. A Guest belongs to one
+ * workspace, so their org shows only that one.
  */
 export function WorkspaceSwitcher() {
   const { t } = useTranslations();
@@ -70,12 +121,26 @@ export function WorkspaceSwitcher() {
   const onResourceRoute = Object.keys(useParams({ strict: false })).length > 0;
   const { workspaces, currentWorkspace, setCurrentWorkspaceId, loading } =
     useWorkspace();
+  const { organizations } = useOrganizations();
+  const groups = useMemo(
+    () => groupSwitcherWorkspaces(workspaces, organizations),
+    [workspaces, organizations],
+  );
 
   const switchTo = (id: string) => {
     if (id === currentWorkspace?.id) return;
     setCurrentWorkspaceId(id);
     if (onResourceRoute) void navigate({ to: "/" });
   };
+  const radioItem = (workspace: WorkspaceView, nested?: boolean) => (
+    <WorkspaceRadioItem
+      key={workspace.id}
+      workspace={workspace}
+      current={workspace.id === currentWorkspace?.id}
+      nested={nested}
+      onSelect={() => switchTo(workspace.id)}
+    />
+  );
 
   if (loading && workspaces.length === 0) {
     // The loaded trigger's exact box (SidebarMenuButton: h-8, p-2, gap-2) with
@@ -131,44 +196,51 @@ export function WorkspaceSwitcher() {
               {t("workspaces.switcherSettings")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-muted-foreground text-xs">
-              {t("workspaces.switcherLabel")}
-            </DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={currentWorkspace?.id ?? ""}>
-              {workspaces.map((w) => {
-                const planKey = workspacePlanNameKey(w.plan);
-                return (
-                  <DropdownMenuRadioItem
-                    key={w.id}
-                    value={w.id}
-                    onSelect={() => switchTo(w.id)}
-                    // The radio dot is replaced by the visible check below (w4/471).
-                    className="gap-2 pl-2 [&>span:first-child]:hidden"
+            {groups.organizations.map((organization) => (
+              <DropdownMenuGroup key={organization.id}>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    void navigate({
+                      to: "/org/$orgId/workspaces",
+                      params: { orgId: organization.id },
+                    })
+                  }
+                  className="gap-2 pl-2"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
                   >
-                    <WorkspaceInitial
-                      name={w.name}
-                      className="size-5 shrink-0"
-                    />
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate">{w.name}</span>
-                      {planKey ? (
-                        <span className="text-muted-foreground truncate text-xs">
-                          {t(planKey)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground truncate text-xs">
-                          {w.plan}
-                        </span>
-                      )}
+                    <Building2 className="size-3.5" />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-medium">
+                      {organization.name}
                     </span>
-                    {w.id === currentWorkspace?.id && (
-                      <Check className="size-4 shrink-0" />
-                    )}
-                  </DropdownMenuRadioItem>
-                );
-              })}
-            </DropdownMenuRadioGroup>
-            <DropdownMenuSeparator />
+                    <span className="text-muted-foreground truncate text-xs">
+                      {t("organizations.switcherOrganization")}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+                {organization.workspaces.length > 0 ? (
+                  <DropdownMenuRadioGroup value={currentWorkspace?.id ?? ""}>
+                    {organization.workspaces.map((w) => radioItem(w, true))}
+                  </DropdownMenuRadioGroup>
+                ) : null}
+                <DropdownMenuSeparator />
+              </DropdownMenuGroup>
+            ))}
+            {groups.standalone.length > 0 ? (
+              <>
+                <DropdownMenuLabel className="text-muted-foreground text-xs">
+                  {t("workspaces.switcherLabel")}
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={currentWorkspace?.id ?? ""}>
+                  {groups.standalone.map((w) => radioItem(w))}
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
             <DropdownMenuItem
               onSelect={() =>
                 void navigate({

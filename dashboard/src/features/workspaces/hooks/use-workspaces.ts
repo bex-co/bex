@@ -9,7 +9,10 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useHasVerifiedSession } from "@/common/hooks/use-has-verified-session";
-import type { WorkspaceView } from "@/features/workspaces/types";
+import {
+  toWorkspacePrivacy,
+  type WorkspaceView,
+} from "@/features/workspaces/types";
 
 type RawWorkspace = NonNullable<WorkspacesQuery["workspaces"]>[number];
 
@@ -26,6 +29,9 @@ function toWorkspaceViews(
       role: w.role ?? "",
       createdAt: w.createdAt,
       requireTwoFactor: w.requireTwoFactor ?? false,
+      organization: w.organization ?? null,
+      primary: w.primary,
+      privacy: toWorkspacePrivacy(w.privacy),
     }));
 }
 

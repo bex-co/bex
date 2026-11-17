@@ -52,12 +52,20 @@ export interface RenderAuditLog {
   actorDeleted?: boolean;
 }
 
+/** A workspace's audit-log list, Render's `list-owner-audit-logs`. */
+export function ownerAuditLogsPath(ownerId: string): string {
+  return `/v1/owners/${encodeURIComponent(ownerId)}/audit-logs`;
+}
+
 /**
- * Every row of ownerId inside the range, newest first, from Render's REST list
- * paged by its cursor. The session cookie authorizes it, as it does GraphQL.
+ * Every row inside the range of the audit-log list at `path` (a workspace's,
+ * `ownerAuditLogsPath`, or an organization's, w7/m464), newest first, from
+ * Render's REST list paged by its cursor: both answer `auditLogWithCursor`
+ * rows to the same parameters. The session cookie authorizes it, as it does
+ * GraphQL.
  */
-export async function fetchAuditRange(
-  ownerId: string,
+export async function fetchAuditLogRange(
+  path: string,
   start: string,
   end: string,
   signal?: AbortSignal,
@@ -72,16 +80,13 @@ export async function fetchAuditRange(
       limit: String(EXPORT_PAGE_SIZE),
     });
     if (cursor) query.set("cursor", cursor);
-    const response = await fetch(
-      `${config.apiBaseUrl}/v1/owners/${encodeURIComponent(ownerId)}/audit-logs?${query}`,
-      {
-        credentials: "include",
-        headers: { Accept: "application/json" },
-        // An export is read once; it must not fill the HTTP cache either.
-        cache: "no-store",
-        signal,
-      },
-    );
+    const response = await fetch(`${config.apiBaseUrl}${path}?${query}`, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      // An export is read once; it must not fill the HTTP cache either.
+      cache: "no-store",
+      signal,
+    });
     if (!response.ok) {
       throw new Error(`audit export read failed (${response.status})`);
     }

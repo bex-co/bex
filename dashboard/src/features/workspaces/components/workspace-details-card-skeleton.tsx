@@ -8,6 +8,8 @@ import { Label } from "@/common/components/ui/label";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { ReservedButton } from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { OrganizationPlanNote } from "@/features/workspaces/components/organization-plan-note";
+import type { OrganizationPlanOwner } from "@/features/workspaces/types";
 
 /**
  * WorkspaceDetailsCard's pending shape (w3/m305): the title, the Name field
@@ -15,8 +17,16 @@ import { useTranslations } from "@/common/hooks/use-translations";
  * its ready line height (the id beside its 32 px copy button). The grid keeps
  * the ready container-query columns, so it stacks at phone width as the card
  * does.
+ *
+ * A secondary workspace of an organization (w7/m464) has the org-plan note
+ * under the grid: `planOwner` draws it, reserved, when the frame already
+ * knows the workspace from the switcher's list.
  */
-export function WorkspaceDetailsCardSkeleton() {
+export function WorkspaceDetailsCardSkeleton({
+  planOwner = null,
+}: {
+  planOwner?: OrganizationPlanOwner | null;
+}) {
   const { t } = useTranslations();
   return (
     <Card aria-hidden data-testid="workspace-details-skeleton">
@@ -66,6 +76,7 @@ export function WorkspaceDetailsCardSkeleton() {
             </dd>
           </div>
         </dl>
+        {planOwner ? <OrganizationPlanNote owner={planOwner} pending /> : null}
       </CardContent>
     </Card>
   );
