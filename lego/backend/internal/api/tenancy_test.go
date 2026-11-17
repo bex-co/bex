@@ -43,9 +43,11 @@ type fakeTenantStore struct {
 	deleting bool
 	// tombstoneErr fails every tombstone read; ownerFail, when set, is asked
 	// before each TenantForOwner and fails that read when it returns an error.
+	// createFail, when set, fails CreateTenantWithMember the same way.
 	// How the w32/m446 tests model a store fault.
 	tombstoneErr error
 	ownerFail    func() error
+	createFail   func() error
 }
 
 func (f *fakeTenantStore) AccountDeletionTombstoned(context.Context, string) (bool, error) {
@@ -99,6 +101,13 @@ func (f *fakeTenantStore) CreateTenantWithMember(_ context.Context, identityID, 
 	if tid, ok := f.ownerOf[identityID]; ok {
 		f.members[identityID] = tid
 		return f.tenants[tid], nil
+	}
+	// Only a genuine mint can fail: the store's unique owner_identity_id gate
+	// answers a retry from the binding above, never from the insert below.
+	if f.createFail != nil {
+		if err := f.createFail(); err != nil {
+			return store.Tenant{}, err
+		}
 	}
 	f.n++
 	id := fmt.Sprintf("tea-%d", f.n)

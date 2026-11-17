@@ -8,6 +8,7 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-17 deploys.GetDeployHook dispatch/verb conjunction — GET deploy-hook is OpClassMint at dispatch (needs bex.write) but AuthorizeApp(RelCanViewSensitive) at the verb (needs bex.sensitive), so a human token needs both plus the mint class; the verb comment justifies the sensitive half (same relation as database connection strings) and the conjunction only ever narrows, never widens; deliberate, not a logic fix
 - 2026-11-17 ApplyBlueprintServiceSpec service type change — the plan reports an update naming `type` while `updateStackService` refuses it, but `TestBlueprintStillDetectsARealTypeChange` pins the plan's detection and the apply's refusal message tells the user to delete and recreate; deliberate split, not a logic fix
 - 2026-11-17 ApplyBlueprintServiceSpec explicit-null service fields — a manifest `repo:`/`branch:` null cannot reach the appliers; the compiler schema rejects null scalars with BLUEPRINT_SCHEMA_INVALID
 - 2026-11-17 x-bex.builder non-auto values — unreachable via valid manifests; the schema requires `runtime` and `specFromCreate` refuses a runtime+builder pair, so only `auto` (a build-strategy noop) passes
