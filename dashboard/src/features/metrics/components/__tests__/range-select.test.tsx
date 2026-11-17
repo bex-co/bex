@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { RangeSelect } from "../range-select";
 import {
   DEFAULT_RANGE_PRESET,
+  parseRangePreset,
   type CustomRange,
   type RangeSelection,
 } from "../../lib/range";
@@ -374,16 +375,47 @@ describe("RangeSelect names the custom window it covers", () => {
       <RangeSelect range={DEFAULT_RANGE_PRESET} onRangeChange={() => {}} />,
     );
     expect(screen.getByRole("combobox")).not.toHaveTextContent("3:39");
+    // w4/698: a preset names itself; an empty trigger used to pass here.
+    expect(screen.getByRole("combobox")).toHaveTextContent("Last 12 hours");
+    rerender(
+      <RangeSelect
+        range={parseRangePreset("4h")!}
+        onRangeChange={() => {}}
+      />,
+    );
+    expect(screen.getByRole("combobox")).toHaveTextContent("Last 4 hours");
+  });
+
+  it("names the picked preset in the trigger (w4/698)", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [range, setRange] = useState<RangeSelection>(
+        parseRangePreset("1h")!,
+      );
+      return <RangeSelect range={range} onRangeChange={setRange} />;
+    }
+    render(<Harness />);
+    const trigger = screen.getByRole("combobox");
+    expect(trigger).toHaveTextContent("Last hour");
+    await user.click(trigger);
+    await user.click(screen.getByRole("option", { name: "Last 4 hours" }));
+    expect(screen.getByRole("combobox")).toHaveTextContent("Last 4 hours");
   });
 
   it("reads in zh", async () => {
     const i18n = (await import("@/i18n/init")).default;
     await i18n.changeLanguage("zh");
     try {
-      render(<RangeSelect range={window} onRangeChange={() => {}} />);
+      const { rerender } = render(
+        <RangeSelect range={window} onRangeChange={() => {}} />,
+      );
       expect(screen.getByRole("combobox")).toHaveTextContent(
         "11/12 下午3:39:00 – 下午3:39:20",
       );
+      rerender(
+        <RangeSelect range={DEFAULT_RANGE_PRESET} onRangeChange={() => {}} />,
+      );
+      expect(screen.getByRole("combobox")).toHaveTextContent("过去 12 小时");
     } finally {
       await i18n.changeLanguage("en");
     }

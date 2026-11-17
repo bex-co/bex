@@ -132,11 +132,16 @@ export function RangeSelect({
           aria-label={ariaLabel ?? t("metrics.rangeLabel")}
           title={customWindow ?? undefined}
         >
-          <SelectValue>
-            {customWindow && (
+          {/* Radix portals the selected item's label into the trigger only
+              when SelectValue has no children at all — even `false` counts
+              (w4/698) — so a preset renders a childless SelectValue. */}
+          {customWindow ? (
+            <SelectValue>
               <span className="truncate tabular-nums">{customWindow}</span>
-            )}
-          </SelectValue>
+            </SelectValue>
+          ) : (
+            <SelectValue />
+          )}
         </SelectTrigger>
         <SelectContent>
           {RANGE_PRESETS.map((preset) => (
