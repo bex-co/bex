@@ -48,6 +48,8 @@ export interface RenderAuditLog {
   status: string;
   actor: { type: string; id?: string; email?: string };
   metadata: Record<string, string>;
+  /** bex-api's extra beside Render's actor: the person has deleted their account. */
+  actorDeleted?: boolean;
 }
 
 /**
@@ -107,11 +109,15 @@ function csvCell(value: string): string {
 }
 
 /**
- * Render's actor column: a person's email, else the id REST answers (a deleted
- * user's usr- id, an API key's client id); a system row has neither.
+ * Render's actor column: a person's email; a deleted user as Render names one,
+ * `Deleted User ID#<id>` (w9/099); else the id REST answers (a person whose
+ * email could not be read, an API key's client id); a system row has neither.
  */
 function csvActor(log: RenderAuditLog): string {
-  return log.actor.email || log.actor.id || "";
+  if (log.actor.email) return log.actor.email;
+  if (log.actorDeleted && log.actor.id)
+    return `Deleted User ID#${log.actor.id}`;
+  return log.actor.id || "";
 }
 
 /** Render's export columns: timestamp, actor, event, status, metadata. */

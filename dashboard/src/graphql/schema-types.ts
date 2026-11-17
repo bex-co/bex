@@ -810,6 +810,7 @@ export type AuditLog = {
   __typename: 'AuditLog';
   action: Maybe<Scalars['String']['output']>;
   actor: Maybe<Scalars['String']['output']>;
+  actorDeleted: Scalars['Boolean']['output'];
   actorEmail: Maybe<Scalars['String']['output']>;
   actorId: Maybe<Scalars['String']['output']>;
   actorMethod: Maybe<Scalars['String']['output']>;

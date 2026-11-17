@@ -114,7 +114,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **m451** — **BLOCKED (clears by itself: the production pin must carry the w9/m451 commit; t005 then opens and closes one `bex ssh srv-…` and one dashboard Shell session as the QA user and checks the start and end rows on REST, GraphQL and the CSV export; no user action)** — [Shell sessions appear in the workspace audit log as StartShellEvent and EndShellEvent](blocked/m451/README.md) (9 tasks; t001–t004, t006–t008 done) ← from `/pm-brainstorm one aspect of render parity to w9` 2026-11-16
 - [ ] **m452** — **BLOCKED (clears by itself: the production pin must carry the w9/m452 commit; t005 then signs the QA user in and out of the dashboard and checks one LoginEvent and one LogoutEvent per workspace on REST, GraphQL and the CSV export; no user action)** — [Members' sign-ins and sign-outs are audited as LoginEvent and LogoutEvent](blocked/m452/README.md) (9 tasks; t001–t004, t006–t008 done) ← from `/pm-brainstorm one aspect of render parity to w9` 2026-11-16
 - [x] **098** — [Audit history starts at the upgrade to Pro, as Render's retention does](done/098.md) ← from `/pm-brainstorm one aspect of render parity to w9` 2026-11-16 — **DONE** 2026-11-17
-- [ ] **099** — [A deleted user's audit export row reads `Deleted User ID#<id>`, as Render's does](099.md) ← from w9/m450 t005 (Render parity) 2026-11-16
+- [x] **099** — [A deleted user's audit export row reads `Deleted User ID#<id>`, as Render's does](done/099.md) ← from w9/m450 t005 (Render parity) 2026-11-16
 - [ ] **100** — [Three audit-log actions Render may name that bex still records under its own verbs](100.md) ← from w9/m449 t007 (Render parity) 2026-11-16
 
 ## Approved queue (priority order, 2026-09-08)

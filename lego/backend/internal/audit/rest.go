@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // rest.go mounts Render's owner-scoped audit-logs path
@@ -49,6 +50,11 @@ type renderAuditLog struct {
 	Actor     renderAuditActor  `json:"actor"`
 	Metadata  map[string]string `json:"metadata"`           // always present, string values (Render's additionalProperties: string)
 	Resource  string            `json:"resource,omitempty"` // bex extra
+	// ActorDeleted is a bex extra beside Render's actor (w9/099): true when
+	// the person who acted has since deleted their account, so the dashboard's
+	// export writes Render's `Deleted User ID#<id>`. Render's actor schema
+	// has no such flag, so actor itself stays Render's {type, id}.
+	ActorDeleted bool `json:"actorDeleted,omitempty"`
 }
 
 // renderAuditActor is Render's actor object. type is the closed
@@ -207,13 +213,14 @@ func renderMetadata(e Event) map[string]string {
 
 func toRenderAuditLog(e Event) renderAuditLog {
 	return renderAuditLog{
-		ID:        e.ID,
-		Timestamp: e.At.UTC().Format(time.RFC3339),
-		Event:     renderEvent(e.Verb),
-		Status:    renderStatus(e),
-		Actor:     renderAuditActor{Type: actorType(e.CallerMethod), ID: e.actorID(), Email: e.ActorEmail},
-		Metadata:  renderMetadata(e),
-		Resource:  e.Resource,
+		ID:           e.ID,
+		Timestamp:    e.At.UTC().Format(time.RFC3339),
+		Event:        renderEvent(e.Verb),
+		Status:       renderStatus(e),
+		Actor:        renderAuditActor{Type: actorType(e.CallerMethod), ID: e.actorID(), Email: e.ActorEmail},
+		Metadata:     renderMetadata(e),
+		Resource:     e.Resource,
+		ActorDeleted: e.actorDeleted(),
 	}
 }
 
@@ -229,6 +236,10 @@ type auditLogWithCursor struct {
 // person reports whether e's actor is a person (Render's "user" actor), the
 // only actor resolveActors gives a usr- id and an email.
 func (e Event) person() bool { return e.Caller != "" && actorType(e.CallerMethod) == "user" }
+
+// actorDeleted reports whether e's person has deleted their account since:
+// account deletion rewrote the row's subject to its marker.
+func (e Event) actorDeleted() bool { return e.person() && store.DeletedSubject(e.Caller) }
 
 // actorID is Render's actor.id: the usr- id resolveActors found for a person,
 // else the stored subject.

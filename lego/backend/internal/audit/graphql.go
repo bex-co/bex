@@ -63,6 +63,8 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// its usr- id, which Render's export names in place of an email.
 		"actorId":    gqlutil.OptionalStrField(func(e Event) any { return e.actorID() }),
 		"actorEmail": gqlutil.OptionalStrField(func(e Event) any { return e.ActorEmail }),
+		// REST's actorDeleted (w9/099): the person has deleted their account.
+		"actorDeleted": gqlutil.Typed(graphql.NewNonNull(graphql.Boolean), func(e Event) any { return e.actorDeleted() }),
 		// Where the actor acted from, REST's metadata.source_ip and
 		// metadata.user_agent; null on a row no request of the actor caused.
 		"sourceIp":  gqlutil.OptionalStrField(func(e Event) any { return e.SourceIP }),

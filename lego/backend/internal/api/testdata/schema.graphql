@@ -633,6 +633,7 @@ type ApiKey {
 type AuditLog {
   action: String
   actor: String
+  actorDeleted: Boolean!
   actorEmail: String
   actorId: String
   actorMethod: String

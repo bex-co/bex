@@ -119,8 +119,9 @@ func TestAuditSurfaceParity(t *testing.T) {
 				ID    string `json:"id"`
 				Email string `json:"email"`
 			} `json:"actor"`
-			Metadata map[string]string `json:"metadata"`
-			Resource string            `json:"resource"`
+			Metadata     map[string]string `json:"metadata"`
+			Resource     string            `json:"resource"`
+			ActorDeleted bool              `json:"actorDeleted"`
 		} `json:"auditLog"`
 		Cursor string `json:"cursor"`
 	}
@@ -131,7 +132,7 @@ func TestAuditSurfaceParity(t *testing.T) {
 		t.Fatalf("REST list = %d events, want 2", len(restList))
 	}
 
-	gqlData := gql(t, h, `{ auditLogs(ownerId: "tea-a") { id timestamp actor actorMethod actorId actorEmail sourceIp userAgent action status resource metadata { to } } }`)
+	gqlData := gql(t, h, `{ auditLogs(ownerId: "tea-a") { id timestamp actor actorMethod actorId actorEmail actorDeleted sourceIp userAgent action status resource metadata { to } } }`)
 	gqlList, ok := gqlData["auditLogs"].([]any)
 	if !ok || len(gqlList) != 2 {
 		t.Fatalf("GraphQL auditLogs = %v, want 2 events", gqlData["auditLogs"])
@@ -148,6 +149,9 @@ func TestAuditSurfaceParity(t *testing.T) {
 		}
 		if rest.AuditLog.Actor.ID != g["actorId"] || rest.AuditLog.Actor.Type != wantActorType[g["actorMethod"].(string)] {
 			t.Errorf("event %d actor mapping: REST=%+v GraphQL actorId=%v method=%v", i, rest.AuditLog.Actor, g["actorId"], g["actorMethod"])
+		}
+		if rest.AuditLog.ActorDeleted != g["actorDeleted"] {
+			t.Errorf("event %d actorDeleted: REST=%v GraphQL=%v", i, rest.AuditLog.ActorDeleted, g["actorDeleted"])
 		}
 		// Who and from where agree (w9/m450): GraphQL's null is REST's absent key.
 		for _, pair := range []struct {

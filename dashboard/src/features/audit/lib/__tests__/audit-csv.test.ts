@@ -46,17 +46,25 @@ describe("auditLogsToCSV", () => {
     );
   });
 
-  // w9/m450: Render's actor column is the person's email, or a deleted
-  // user's id; a system row names nobody.
-  it("writes the actor's email, else the id, else nothing", () => {
+  // w9/m450 + w9/099: Render's actor column is the person's email, or
+  // `Deleted User ID#<id>` for a deleted user; a person whose email could not
+  // be read keeps the bare id; a system row names nobody.
+  it("writes the actor's email, a deleted user's marker, else the id, else nothing", () => {
     const csv = auditLogsToCSV([
       log(),
-      log({ actor: { type: "user", id: "usr-00000000000000000009" } }),
+      log({
+        actor: { type: "user", id: "usr-00000000000000000009" },
+        actorDeleted: true,
+      }),
+      log({ actor: { type: "user", id: "usr-00000000000000000008" } }),
       log({ actor: { type: "system" } }),
     ]);
-    const [, person, deleted, system] = csv.trimEnd().split("\r\n");
+    const [, person, deleted, unread, system] = csv.trimEnd().split("\r\n");
     expect(person).toMatch(/^2026-11-10T09:00:00Z,admin@example\.com,/);
-    expect(deleted).toMatch(/^2026-11-10T09:00:00Z,usr-00000000000000000009,/);
+    expect(deleted).toMatch(
+      /^2026-11-10T09:00:00Z,Deleted User ID#usr-00000000000000000009,/,
+    );
+    expect(unread).toMatch(/^2026-11-10T09:00:00Z,usr-00000000000000000008,/);
     expect(system).toMatch(/^2026-11-10T09:00:00Z,,SuspendServiceEvent,/);
   });
 

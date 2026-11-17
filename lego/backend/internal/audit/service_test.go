@@ -609,6 +609,13 @@ func TestRenderAuditLogUserActorsCarryTheirUsrIDAndEmail(t *testing.T) {
 	if got := list[3].AuditLog.Actor; got != (renderAuditActor{Type: "user", ID: "usr-00000000000000000009"}) {
 		t.Errorf("deleted user actor = %+v, want the usr- id alone", got)
 	}
+	// w9/099: only the deleted person's row says so, beside Render's actor,
+	// so the export writes Render's `Deleted User ID#<id>` for it alone.
+	for i, item := range list {
+		if want := i == 3; item.AuditLog.ActorDeleted != want {
+			t.Errorf("row %d actorDeleted = %v, want %v", i, item.AuditLog.ActorDeleted, want)
+		}
+	}
 	if got := list[4].AuditLog.Actor; got != (renderAuditActor{Type: "rest_api", ID: "kratos-a"}) {
 		t.Errorf("human OAuth actor = %+v, want rest_api with no email", got)
 	}
@@ -637,6 +644,10 @@ func TestResolveActorsKeepsTheLogWhenEmailsFail(t *testing.T) {
 	}
 	if events[0].ActorEmail != "a@example.com" || events[1].ActorEmail != "" || events[1].ActorID != "usr-00000000000000000008" {
 		t.Errorf("partial resolution = %+v", events)
+	}
+	// A person whose email could not be read is not a deleted one (w9/099).
+	if toRenderAuditLog(events[1]).ActorDeleted {
+		t.Error("an email lookup failure read as a deleted user")
 	}
 }
 

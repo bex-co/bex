@@ -45,6 +45,16 @@ type AccountWorkspaceDisposition struct {
 	Action string `json:"action"`
 }
 
+// deletedSubjectPrefix leads the marker account deletion writes over a deleted
+// person's subject wherever their provenance is kept (deleted_marker,
+// CleanupAccountSubject): "deleted:<own- id>".
+const deletedSubjectPrefix = "deleted:"
+
+// DeletedSubject reports whether subject is a deleted person's marker.
+func DeletedSubject(subject string) bool {
+	return strings.HasPrefix(subject, deletedSubjectPrefix)
+}
+
 type AccountDeletion struct {
 	Subject       string
 	DeletedMarker string
@@ -147,7 +157,7 @@ func (s *PGStore) BeginAccountDeletion(ctx context.Context, subject, email strin
 	if err != nil {
 		return AccountDeletion{}, err
 	}
-	marker := "deleted:" + ownID
+	marker := deletedSubjectPrefix + ownID
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if err := lockSubjectMembership(ctx, tx, subject); err != nil {
 			return err
