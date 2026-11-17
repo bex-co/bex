@@ -1,6 +1,6 @@
 # w6 · m456 — Key Value connections stop at the plan's limit, as on Render (free 50 … 50g 50,000)
 
-**Worker:** worker6 **Goal:** every Key Value instance accepts exactly the connections its plan allows on Render, no fewer (a paid store is capped at 1,024 by its internal proxy today) and no more (a free store takes 1,024 where Render's takes 50), and the client past the limit receives Valkey's own `ERR max number of clients reached`. **Status:** todo (t001–t005, t008, t009 done; t006 ADR records written, its production checks wait for the deploy)
+**Worker:** worker6 **Goal:** every Key Value instance accepts exactly the connections its plan allows on Render, no fewer (a paid store is capped at 1,024 by its internal proxy today) and no more (a free store takes 1,024 where Render's takes 50), and the client past the limit receives Valkey's own `ERR max number of clients reached`. **Status:** blocked: t001–t005, t008 and t009 done, t006's ADR records written. The production checks wait for the batched production deploy carrying `0eed45bcb` (see BLOCKED — 2026-11-17).
 
 ## Tasks (in order)
 
@@ -26,7 +26,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm one aspect of render parity for w6` 2026-11-17, item 1, filed by the user's `/pm them to w6`. Render: [compute plans § Render Key Value plans](https://render.com/docs/compute-plans#render-key-value-plans), read 2026-11-17 (free 50, `256mb` 250, `1g` 1,000, `3g` 3,000, `5g` 5,000, `10g` 10,000, `20g` 20,000, `40g` 40,000, `50g` 50,000), and [Key Value](https://render.com/docs/key-value): "Specify a compute plan to determine the instance's available RAM and connection limit." Render's dashboard shows the limit on each plan card ([key-value.md](../../../docs/render-artifacts/key-value.md)).
+- **Source:** `/pm-brainstorm one aspect of render parity for w6` 2026-11-17, item 1, filed by the user's `/pm them to w6`. Render: [compute plans § Render Key Value plans](https://render.com/docs/compute-plans#render-key-value-plans), read 2026-11-17 (free 50, `256mb` 250, `1g` 1,000, `3g` 3,000, `5g` 5,000, `10g` 10,000, `20g` 20,000, `40g` 40,000, `50g` 50,000), and [Key Value](https://render.com/docs/key-value): "Specify a compute plan to determine the instance's available RAM and connection limit." Render's dashboard shows the limit on each plan card ([key-value.md](../../../../docs/render-artifacts/key-value.md)).
 - **bex today:** `valkeyArgs` (`lego/operator/internal/controller/keyvalue_controller.go`) sets no `--maxclients`, so Valkey's default 10,000 applies, and every tenant connection passes `kv-internal-proxy`, whose `MaxConnections` defaults to 1,024 per listener (`lego/operator/internal/kvinternalauth/proxy.go:50`) and sheds the excess by closing the connection. ADR018 has no row for connection limits.
 - **Goal linkage:** ADR008 § Render parity first: every customer-facing behavior matches render.com in every workspace, and this divergence has no sign-off in ADR018.
 - **Expected outcome:** a paid store serves the connections its plan sells (5,000 on `pro`, where it stops at 1,024 today), a free store stops at Render's 50, and a client at the limit reads why.
@@ -75,7 +75,7 @@ Shipped design, with where it deviates from the task text:
 - **The backup snapshot dials `<id>-backend`**, so it uses the reserve instead of a tenant connection.
 - **The proxy's memory limit scales with the plan** (32 Mi + 48 KiB per connection, at least 128 Mi). 5,000 idle connections measured 195.7 MB in its cgroup, so the old fixed 128 Mi would OOM a `pro` store's proxy at about 3,300 connections.
 - **A server started without the flag can be lowered, not raised.** Valkey sets its open-files limit to `maxclients` + 32 at start (10,032 on every production store). The template keeps its flagless args only when the plan's value is at most 10,000; a pre-m456 `pro_plus` or larger store rolls once. Production has none.
-- **Stores with `internalAuth` bypass the proxy**, so they are bounded at limit + 10. Filed as [w6/135](../135.md); no production store has it.
+- **Stores with `internalAuth` bypass the proxy**, so they are bounded at limit + 10. Filed as [w6/135](../../135.md); no production store has it.
 
 Verified locally:
 - `go test` for tiers, `internal/controller` (envtest and `BEX_TEST_VALKEY=1`, Valkey 7 and 8), `internal/kvinternalauth` (`-race`) and `cmd/kv-internal-proxy`.
@@ -83,3 +83,20 @@ Verified locally:
 - Real Valkey: free starts at 60 and refuses the 61st with Valkey's error. A runtime raise to 260 admits exactly 200 more on the same `run_id`, and lowering below the connected count keeps every client.
 
 ADR021 § 9 and ADR018 (the "Datastore connection limits by plan" row and a gap-backlog row) record it. That is t006 step 3; t006's production checks and t007 wait for the deploy.
+
+## BLOCKED — 2026-11-17: the production deploy carrying `0eed45bcb`
+
+- **Done.** t001–t005, t008 and t009 (see Progress) and t006 step 3 (ADR021 § 9, ADR018). Shipped in `0eed45bcb`.
+- **Gate (time, clears by itself).** A push or scheduled `deploy.yml` run deploys `main` once the production pin is 6 h old, and a dispatched run deploys at once. Pins landed at 06:48Z, 07:47Z, 09:41Z, 10:08Z and 10:34Z on 2026-11-17, so the deploy carrying `0eed45bcb` should land within hours.
+- **How to check it cleared.**
+  - `git log origin/main --grep "pin platform images"` shows a pin whose producer contains `0eed45bcb`.
+  - On production, every `<id>-internal` Deployment carries `BEX_KV_MAX_CONNECTIONS`: `kubectl get deploy -A -l app.bex.co/keyvalue-internal-proxy -o jsonpath='{..env[?(@.name=="BEX_KV_MAX_CONNECTIONS")].value}'`.
+- **Then.**
+  - t006 steps 1, 2 and 4, with probes in `bex-canary`:
+    - free: 50 connections and the 51st reads the error, on the internal URL and on the external TLS URL from an allowlisted client;
+    - `standard`: 1,000 connections;
+    - upgrade free to `starter`: the restarted server runs `maxclients` 260 and accepts 250;
+    - the three existing `starter` stores run `maxclients` 260 with their Valkey pods' restart counts unchanged and `app.bex.co/valkey-maxclients` recorded;
+    - delete the probes.
+  - t007 reads REST, GraphQL, MCP and the dashboard on production.
+  - t010 closes.
