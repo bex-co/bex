@@ -115,7 +115,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **m452** — **BLOCKED (clears by itself: the production pin must carry the w9/m452 commit; t005 then signs the QA user in and out of the dashboard and checks one LoginEvent and one LogoutEvent per workspace on REST, GraphQL and the CSV export; no user action)** — [Members' sign-ins and sign-outs are audited as LoginEvent and LogoutEvent](blocked/m452/README.md) (9 tasks; t001–t004, t006–t008 done) ← from `/pm-brainstorm one aspect of render parity to w9` 2026-11-16
 - [x] **098** — [Audit history starts at the upgrade to Pro, as Render's retention does](done/098.md) ← from `/pm-brainstorm one aspect of render parity to w9` 2026-11-16 — **DONE** 2026-11-17
 - [x] **099** — [A deleted user's audit export row reads `Deleted User ID#<id>`, as Render's does](done/099.md) ← from w9/m450 t005 (Render parity) 2026-11-16
-- [ ] **100** — [Three audit-log actions Render may name that bex still records under its own verbs](100.md) ← from w9/m449 t007 (Render parity) 2026-11-16
+- [ ] **100** — **BLOCKED (needs a real render.com `RENDER_API_KEY` on a Pro reference workspace in `.env`, w10/002's gate, to capture Render's rows)** — [Three audit-log actions Render may name that bex still records under its own verbs](blocked/100.md) ← from w9/m449 t007 (Render parity) 2026-11-16
 
 ## Approved queue (priority order, 2026-09-08)
 

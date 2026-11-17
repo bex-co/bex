@@ -39,4 +39,4 @@
 
 ## Progress
 
-- 2026-11-16: t001–t009 shipped (code, migration 0285, docs, dashboard). Every row the DoD names now carries Render's event in unit and real-Postgres tests; t010 checks it live once the production pin carries the commit. Unconfirmed matches (a branch change, a build source unlink, env group variable writes) are filed as [w9/100](../../100.md).
+- 2026-11-16: t001–t009 shipped (code, migration 0285, docs, dashboard). Every row the DoD names now carries Render's event in unit and real-Postgres tests; t010 checks it live once the production pin carries the commit. Unconfirmed matches (a branch change, a build source unlink, env group variable writes) are filed as [w9/100](../../blocked/100.md).
