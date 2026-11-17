@@ -23,6 +23,7 @@
 
 ## Inbox
 
+- [ ] [042](042.md) — A second image pull failure of the same live release records no `image_pull_failed`: the fact's key holds the Rollout condition's transition time, which the operator never moves after an App's first failed rollout (~1h) ← w32/036's blast-radius check, 2026-11-17 (code reading; related to w8/m156 t010)
 - [ ] [041](041.md) — The TypeScript SDK can upload a sandbox file as `application/gzip`, and bex's gateway refuses it with 415; settle what Render does and match it or record the divergence (~30m) ← w32/035's worker, 2026-11-17: released Render TS SDK v1.8.0 `SandboxUploadContentType` includes `application/gzip`; `sshgateway/sandboxfiles` admits only `application/octet-stream` and `application/x-tar`
 - [ ] [040](040.md) — Move the existing Docker (2) and image (6) services still on the strict policy onto `render-v1` with a bulk operator run (~1h) ← from w32/m462 t003 step 4, 2026-11-17
 - [ ] [039](039.md) — Measure whether Render runs native runtime services as root (`id`, `CapEff` in a Render shell); gated on a Render account (~30m) ← from w32/m462 t004, 2026-11-17
