@@ -858,8 +858,32 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Restore dialog target-time zone note",
   },
   "databases.recoveryRestoreTimeOutOfWindow": {
-    message: "Pick a time between the earliest restore point and now.",
-    description: "Restore dialog target-time out-of-window error",
+    message:
+      "Pick a time between the earliest restore point and ten minutes ago.",
+    description:
+      "Restore dialog target-time out-of-window error (the window ends ten minutes before now, w7/m453)",
+  },
+  "databases.recoveryRetentionWindow_one": {
+    message:
+      "{plan} workspaces can restore to any point in the past {count} day.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionWindow_other": {
+    message:
+      "{plan} workspaces can restore to any point in the past {count} days.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionUpgrade_one": {
+    message: "{plan} keeps {count} day.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
+  },
+  "databases.recoveryRetentionUpgrade_other": {
+    message: "{plan} keeps {count} days.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
   },
   "databases.recoveryRestoreConfirm": {
     message: "Restore",

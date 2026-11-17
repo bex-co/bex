@@ -65,11 +65,25 @@ function mapExports(nodes: ExportNodes | undefined): ExportItem[] {
   }));
 }
 
+/**
+ * How far back the workspace plan may restore (w7/m453, bex-api's
+ * `retention`): the plan and its days, and the cheapest plan that restores
+ * further back with its days (null on the longest window).
+ */
+export interface RecoveryRetention {
+  plan: string;
+  days: number;
+  upgradePlan: string | null;
+  upgradeDays: number | null;
+}
+
 export interface RecoveryInfo {
   enabled: boolean;
   earliestRecoveryTime: string | null;
   latestRecoveryTime: string | null;
   backups: BackupItem[];
+  /** Null where no plan applies (local dev, no store). */
+  retention: RecoveryRetention | null;
 }
 
 export interface RecoverInput {
@@ -126,6 +140,14 @@ export function useRecovery(id: string) {
     earliestRecoveryTime: raw?.earliestRecoveryTime ?? null,
     latestRecoveryTime: raw?.latestRecoveryTime ?? null,
     backups: mapBackups(raw?.backups),
+    retention: raw?.retention
+      ? {
+          plan: raw.retention.plan,
+          days: raw.retention.days,
+          upgradePlan: raw.retention.upgradePlan ?? null,
+          upgradeDays: raw.retention.upgradeDays ?? null,
+        }
+      : null,
   };
 
   const exports = mapExports(exportsData?.databaseExports);

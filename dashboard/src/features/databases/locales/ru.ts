@@ -854,8 +854,53 @@ const ruDatabases: Record<string, TranslationEntry> = {
   },
   "databases.recoveryRestoreTimeOutOfWindow": {
     message:
-      "Выберите время между самой ранней точкой восстановления и текущим моментом.",
-    description: "Restore dialog target-time out-of-window error",
+      "Выберите время между самой ранней точкой восстановления и моментом десять минут назад.",
+    description:
+      "Restore dialog target-time out-of-window error (the window ends ten minutes before now, w7/m453)",
+  },
+  "databases.recoveryRetentionWindow_one": {
+    message:
+      "На тарифе {plan} базу можно восстановить на любой момент за последний {count} день.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionWindow_few": {
+    message:
+      "На тарифе {plan} базу можно восстановить на любой момент за последние {count} дня.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionWindow_many": {
+    message:
+      "На тарифе {plan} базу можно восстановить на любой момент за последние {count} дней.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionWindow_other": {
+    message:
+      "На тарифе {plan} базу можно восстановить на любой момент за последние {count} дня.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionUpgrade_one": {
+    message: "На {plan} — {count} день.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
+  },
+  "databases.recoveryRetentionUpgrade_few": {
+    message: "На {plan} — {count} дня.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
+  },
+  "databases.recoveryRetentionUpgrade_many": {
+    message: "На {plan} — {count} дней.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
+  },
+  "databases.recoveryRetentionUpgrade_other": {
+    message: "На {plan} — {count} дня.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
   },
   "databases.recoveryRestoreConfirm": {
     message: "Восстановить",

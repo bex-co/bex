@@ -291,7 +291,7 @@ type exportsResult struct {
 func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres_recovery_info",
-		Description: "Get the point-in-time recovery window (earliest/latest restorable time) and backup list for a managed Postgres database. Returns enabled=false for plans without backups.",
+		Description: "Get the point-in-time recovery window (earliest/latest restorable time) and backup list for a managed Postgres database. The window starts no earlier than the workspace plan allows (retention: 3 days on Hobby, 7 on Pro and higher), and a recovery target must be at least ten minutes ago. Returns enabled=false for plans without backups.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, RecoveryInfoView, error) {
 		v, err := s.RecoveryInfo(ctx, in.PostgresID)
 		return nil, v, err

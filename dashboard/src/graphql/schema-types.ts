@@ -1436,6 +1436,15 @@ export type DatabaseRecoveryInfo = {
   earliestRecoveryTime: Maybe<Scalars['String']['output']>;
   enabled: Maybe<Scalars['Boolean']['output']>;
   latestRecoveryTime: Maybe<Scalars['String']['output']>;
+  retention: Maybe<DatabaseRecoveryRetention>;
+};
+
+export type DatabaseRecoveryRetention = {
+  __typename: 'DatabaseRecoveryRetention';
+  days: Scalars['Int']['output'];
+  plan: Scalars['String']['output'];
+  upgradeDays: Maybe<Scalars['Int']['output']>;
+  upgradePlan: Maybe<Scalars['String']['output']>;
 };
 
 export type DatabaseSizeInfo = {

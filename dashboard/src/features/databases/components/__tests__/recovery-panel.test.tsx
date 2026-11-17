@@ -25,6 +25,7 @@ function windowInfo(): RecoveryInfo {
     earliestRecoveryTime: "2026-07-13T12:00:00Z",
     latestRecoveryTime: "2026-07-14T12:00:00Z",
     backups: [] as BackupItem[],
+    retention: null,
   };
 }
 
@@ -34,12 +35,14 @@ const state: {
   info: RecoveryInfo;
   error: Error | undefined;
   downloadingExportId: string | null;
+  loading: boolean;
 } = {
   exports: [],
   exportInProgress: false,
   info: windowInfo(),
   error: undefined,
   downloadingExportId: null,
+  loading: false,
 };
 
 vi.mock("@/features/databases/hooks/use-recovery", () => ({
@@ -47,7 +50,7 @@ vi.mock("@/features/databases/hooks/use-recovery", () => ({
     info: state.info,
     exports: state.exports,
     exportInProgress: state.exportInProgress,
-    loading: false,
+    loading: state.loading,
     error: state.error,
     exporting: false,
     recovering: false,
@@ -64,6 +67,7 @@ beforeEach(() => {
   state.info = windowInfo();
   state.error = undefined;
   state.downloadingExportId = null;
+  state.loading = false;
   createExport.mockReset();
   downloadExport.mockReset();
   recover.mockReset();
@@ -95,6 +99,7 @@ describe("RecoveryPanel restore window", () => {
       earliestRecoveryTime: null,
       latestRecoveryTime: null,
       backups: [],
+      retention: null,
     };
     render(<RecoveryPanel id="db" />);
 
@@ -122,6 +127,7 @@ describe("RecoveryPanel restore window", () => {
       earliestRecoveryTime: null,
       latestRecoveryTime: null,
       backups: [],
+      retention: null,
     };
     state.error = new Error("forbidden");
 
@@ -132,6 +138,103 @@ describe("RecoveryPanel restore window", () => {
     );
     expect(
       screen.queryByText(/Backups aren't enabled for this plan/),
+    ).not.toBeInTheDocument();
+  });
+});
+
+// w7/m453: the picker offers exactly the window bex-api allows: from the
+// plan-floored earliest point to ten minutes before the dialog opened, and the
+// panel says how far back the workspace plan restores.
+describe("RecoveryPanel plan window", () => {
+  const hobby = {
+    plan: "hobby",
+    days: 3,
+    upgradePlan: "pro",
+    upgradeDays: 7,
+  };
+
+  it("bounds the picker at the floored start and ten minutes before it opened", async () => {
+    const openedAt = Date.parse("2026-11-16T12:00:00Z");
+    const now = vi.spyOn(Date, "now").mockReturnValue(openedAt);
+    try {
+      state.info = {
+        ...windowInfo(),
+        earliestRecoveryTime: "2026-11-13T12:00:00Z",
+        latestRecoveryTime: "2026-11-16T03:00:00Z",
+        retention: hobby,
+      };
+      render(<RecoveryPanel id="dpg-source" />);
+      await userEvent
+        .setup()
+        .click(screen.getByRole("button", { name: "Restore to new instance" }));
+      const time = screen.getByLabelText(/Point in time/);
+      expect(time).toHaveAttribute(
+        "min",
+        toLocalInput(Date.parse("2026-11-13T12:00:00Z")),
+      );
+      expect(time).toHaveAttribute(
+        "max",
+        toLocalInput(openedAt - 10 * 60 * 1000),
+      );
+      // Five minutes ago is inside Render's ten-minute refusal.
+      fireEvent.change(time, {
+        target: { value: toLocalInput(openedAt - 5 * 60 * 1000) },
+      });
+      expect(screen.getByRole("alert")).toHaveTextContent("ten minutes ago");
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it("names Hobby's three days and Pro's seven", () => {
+    state.info = { ...windowInfo(), retention: hobby };
+    render(<RecoveryPanel id="dpg-source" />);
+    expect(
+      screen.getByText(
+        "Hobby workspaces can restore to any point in the past 3 days. Pro keeps 7 days.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("names Pro's seven days with no upgrade on the longest window", () => {
+    state.info = {
+      ...windowInfo(),
+      retention: { plan: "pro", days: 7, upgradePlan: null, upgradeDays: null },
+    };
+    render(<RecoveryPanel id="dpg-source" />);
+    expect(
+      screen.getByText(
+        "Pro workspaces can restore to any point in the past 7 days.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/keeps/)).not.toBeInTheDocument();
+  });
+
+  it("says nothing about a plan where none applies", () => {
+    render(<RecoveryPanel id="dpg-source" />);
+    expect(
+      screen.queryByText(/can restore to any point/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("holds the ready state's regions, the retention line included, while it loads", () => {
+    state.loading = true;
+    state.info = {
+      enabled: false,
+      earliestRecoveryTime: null,
+      latestRecoveryTime: null,
+      backups: [],
+      retention: null,
+    };
+    const { rerender } = render(<RecoveryPanel id="dpg-source" />);
+    expect(screen.getByTestId("recovery-skeleton")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("recovery-skeleton-retention"),
+    ).toBeInTheDocument();
+    // A database without backups resolves to one line, and so loads as one.
+    rerender(<RecoveryPanel id="dpg-source" backupsEnabled={false} />);
+    expect(
+      screen.queryByTestId("recovery-skeleton-retention"),
     ).not.toBeInTheDocument();
   });
 });

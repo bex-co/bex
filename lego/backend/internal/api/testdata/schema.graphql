@@ -1201,6 +1201,14 @@ type DatabaseRecoveryInfo {
   earliestRecoveryTime: String
   enabled: Boolean
   latestRecoveryTime: String
+  retention: DatabaseRecoveryRetention
+}
+
+type DatabaseRecoveryRetention {
+  days: Int!
+  plan: String!
+  upgradeDays: Int
+  upgradePlan: String
 }
 
 type DatabaseSizeInfo {

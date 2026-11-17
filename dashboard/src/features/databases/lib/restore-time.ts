@@ -20,25 +20,39 @@ export function fromLocalInput(value: string): number | null {
   return Number.isNaN(ms) ? null : ms;
 }
 
+/**
+ * How far before now a restore target must lie. Render: "You can't restore to
+ * a time that's within ten minutes of the current time", and bex-api refuses
+ * one with RECOVERY_TARGET_TOO_RECENT (w7/m453).
+ */
+export const RECOVERY_MIN_AGE_MS = 10 * 60 * 1000;
+
 export interface RestoreBounds {
   /** `min`/`max` attribute values, at the minute the panel displays. */
   min: string | undefined;
   max: string;
   earliestMs: number | null;
-  nowMs: number;
+  /** The latest restorable instant: ten minutes before `nowMs`. */
+  latestMs: number;
 }
 
+/**
+ * The picker's bounds at `nowMs`: from the earliest restore point bex-api
+ * reports (already floored at the workspace plan's window, w7/m453) to ten
+ * minutes before now.
+ */
 export function restoreBounds(
   earliest: string | null | undefined,
   nowMs: number,
 ): RestoreBounds {
   const earliestMs = earliest ? Date.parse(earliest) : NaN;
   const hasEarliest = !Number.isNaN(earliestMs);
+  const latestMs = nowMs - RECOVERY_MIN_AGE_MS;
   return {
     min: hasEarliest ? toLocalInput(earliestMs) : undefined,
-    max: toLocalInput(nowMs),
+    max: toLocalInput(latestMs),
     earliestMs: hasEarliest ? earliestMs : null,
-    nowMs,
+    latestMs,
   };
 }
 
@@ -56,7 +70,7 @@ export function restoreTarget(
   if (!value) return { ok: true, iso: undefined };
   const ms = fromLocalInput(value);
   if (ms === null) return { ok: false, reason: "outOfWindow" };
-  if (ms > bounds.nowMs) return { ok: false, reason: "outOfWindow" };
+  if (ms > bounds.latestMs) return { ok: false, reason: "outOfWindow" };
   let target = ms;
   if (bounds.earliestMs !== null && ms < bounds.earliestMs) {
     if (value !== bounds.min) return { ok: false, reason: "outOfWindow" };

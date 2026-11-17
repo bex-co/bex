@@ -341,6 +341,149 @@ func TestLogFloorAcrossPlanChanges(t *testing.T) {
 	}
 }
 
+// w7/m453: each plan's point-in-time recovery window is Render's
+// (render.com/docs/postgresql-backups: 3 days on Hobby, 7 on Pro or higher),
+// an unknown plan gets the shortest, the floor is the window back from now or
+// a kept floor while that is later, and the hint names Pro from Hobby only.
+func TestPITRRetentionFollowsThePlan(t *testing.T) {
+	const day = 24 * time.Hour
+	if LongestPITRRetention() != 7*day {
+		t.Fatalf("LongestPITRRetention = %s, want Pro's 7 days", LongestPITRRetention())
+	}
+	for _, tc := range []struct {
+		plan, next     string
+		window, nextIn time.Duration
+	}{
+		{"hobby", "pro", 3 * day, 7 * day},
+		{"pro", "", 7 * day, 0},
+		{"scale", "", 7 * day, 0},
+		{"enterprise", "", 7 * day, 0},
+		{"platinum", "pro", 3 * day, 7 * day},
+		{"", "pro", 3 * day, 7 * day},
+	} {
+		if got := PITRRetention(tc.plan); got != tc.window {
+			t.Errorf("PITRRetention(%q) = %s, want %s", tc.plan, got, tc.window)
+		}
+		next, window, ok := PITRRetentionUpgrade(tc.plan)
+		if next != tc.next || window != tc.nextIn || ok != (tc.next != "") {
+			t.Errorf("PITRRetentionUpgrade(%q) = %q, %s, %v; want %q, %s", tc.plan, next, window, ok, tc.next, tc.nextIn)
+		}
+	}
+
+	now := time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)
+	if got := PITRFloor("hobby", time.Time{}, now); !got.Equal(now.Add(-3 * day)) {
+		t.Errorf("hobby floor = %s, want now-3d", got)
+	}
+	if got := PITRFloor("pro", time.Time{}, now); !got.Equal(now.Add(-7 * day)) {
+		t.Errorf("pro floor = %s, want now-7d", got)
+	}
+	kept := now.Add(-5 * day)
+	if got := PITRFloor("pro", kept, now); !got.Equal(kept) {
+		t.Errorf("pro floor with a later kept floor = %s, want the kept %s", got, kept)
+	}
+	if got := PITRFloor("pro", now.Add(-9*day), now); !got.Equal(now.Add(-7 * day)) {
+		t.Errorf("pro floor with a lapsed kept floor = %s, want now-7d", got)
+	}
+}
+
+// w7/m453: upgrading from Hobby does not backfill the recovery window. A
+// Hobby -> Pro change at T keeps T-3d, which lapses once Pro's own floor
+// passes it four days later; a downgrade keeps nothing.
+func TestPITRFloorAcrossPlanChanges(t *testing.T) {
+	const day = 24 * time.Hour
+	upgradeAt := time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)
+
+	kept := PITRVisibleFromAfterPlanChange("hobby", "pro", time.Time{}, upgradeAt)
+	if !kept.Equal(upgradeAt.Add(-3 * day)) {
+		t.Fatalf("hobby->pro keeps %s, want T-3d", kept)
+	}
+	for _, tc := range []struct {
+		after time.Duration
+		want  time.Time
+	}{
+		{0, upgradeAt.Add(-3 * day)},
+		{2 * day, upgradeAt.Add(-3 * day)},
+		{4 * day, upgradeAt.Add(-3 * day)},
+		{4*day + time.Hour, upgradeAt.Add(4*day + time.Hour - 7*day)},
+		{10 * day, upgradeAt.Add(10*day - 7*day)},
+	} {
+		if got := PITRFloor("pro", kept, upgradeAt.Add(tc.after)); !got.Equal(tc.want) {
+			t.Errorf("pro floor at T+%s = %s, want %s", tc.after, got, tc.want)
+		}
+	}
+
+	at := upgradeAt.Add(2 * day)
+	// Pro -> Scale while the Hobby floor still bites keeps it: Scale's window
+	// is Pro's, so it never reaches further back.
+	if got := PITRVisibleFromAfterPlanChange("pro", "scale", kept, at); !got.Equal(kept) {
+		t.Errorf("pro->scale keeps %s, want the hobby floor %s", got, kept)
+	}
+	// Pro -> Hobby narrows at once to Hobby's three days.
+	if got := PITRVisibleFromAfterPlanChange("pro", "hobby", time.Time{}, at); !got.IsZero() {
+		t.Errorf("pro->hobby keeps %s, want nothing", got)
+	}
+	if got := PITRVisibleFromAfterPlanChange("pro", "hobby", kept, at); !got.IsZero() {
+		t.Errorf("pro->hobby over a kept floor keeps %s, want nothing: Hobby's own floor is later", got)
+	}
+	// Equal windows keep no floor of their own.
+	if got := PITRVisibleFromAfterPlanChange("pro", "enterprise", time.Time{}, at); !got.IsZero() {
+		t.Errorf("pro->enterprise keeps %s, want nothing", got)
+	}
+	// The PITR floor is its own: a Hobby -> Pro change keeps T-3d for
+	// recovery and T-7d for logs.
+	if logs := LogsVisibleFromAfterPlanChange("hobby", "pro", time.Time{}, upgradeAt); logs.Equal(kept) {
+		t.Errorf("the log floor %s equals the PITR floor; they must follow their own tables", logs)
+	}
+}
+
+// pitrPlanIs is the tenants store's PITR shape, counting its reads.
+type pitrPlanIs struct {
+	plan        string
+	visibleFrom time.Time
+	reads       *int
+}
+
+func (p pitrPlanIs) WorkspacePlan(context.Context, string) (string, error) {
+	*p.reads++
+	return p.plan, nil
+}
+
+func (p pitrPlanIs) WorkspacePITRPlan(context.Context, string) (string, time.Time, error) {
+	*p.reads++
+	return p.plan, p.visibleFrom, nil
+}
+
+// WorkspacePITRPlanOf reads the plan and the kept recovery floor in one read
+// where the reader offers both, the plan alone from a plain reader, nothing
+// where no plan applies, and a read failure is an error.
+func TestWorkspacePITRPlanOf(t *testing.T) {
+	ctx := context.Background()
+	if plan, from, ok, err := (&Base{}).WorkspacePITRPlanOf(ctx, "tea-a"); err != nil || ok || plan != "" || !from.IsZero() {
+		t.Fatalf("no plan reader = %q, %s, %v, %v; want no plan", plan, from, ok, err)
+	}
+	if plan, from, ok, err := (&Base{Plans: planIs("hobby")}).WorkspacePITRPlanOf(ctx, "tea-a"); err != nil || !ok || plan != "hobby" || !from.IsZero() {
+		t.Fatalf("plain reader = %q, %s, %v, %v; want hobby with no kept floor", plan, from, ok, err)
+	}
+	kept := time.Date(2026, 11, 13, 12, 0, 0, 0, time.UTC)
+	reads := 0
+	b := &Base{Plans: pitrPlanIs{"pro", kept, &reads}}
+	if plan, from, ok, err := b.WorkspacePITRPlanOf(ctx, "tea-a"); err != nil || !ok || plan != "pro" || !from.Equal(kept) || reads != 1 {
+		t.Fatalf("store reader = %q, %s, %v, %v after %d reads; want pro and the kept floor in one read", plan, from, ok, err, reads)
+	}
+	// A reader keeping only the PITR floor answers the log read with the plan
+	// alone: the two floors never stand in for each other.
+	if plan, from, ok, err := b.WorkspaceLogPlanOf(ctx, "tea-a"); err != nil || !ok || plan != "pro" || !from.IsZero() {
+		t.Fatalf("log read through a PITR reader = %q, %s, %v, %v; want pro with no log floor", plan, from, ok, err)
+	}
+	if _, _, ok, err := b.WorkspacePITRPlanOf(ctx, DefaultTenant); err != nil || ok {
+		t.Fatalf("default tenant = %v, %v; want no plan", ok, err)
+	}
+	b.Plans = WorkspacePlanFunc(func(context.Context, string) (string, error) { return "", errors.New("store down") })
+	if _, _, _, err := b.WorkspacePITRPlanOf(ctx, "tea-a"); err == nil {
+		t.Fatal("a failed plan read must fail the read")
+	}
+}
+
 // logPlanIs is the tenants store's shape: the plan and the kept floor in one
 // read, counting its reads.
 type logPlanIs struct {

@@ -32,3 +32,23 @@ describe("restoreTarget (w21/020)", () => {
     expect(restoreTarget("", bounds)).toEqual({ ok: true, iso: undefined });
   });
 });
+
+describe("restoreBounds' latest point (w7/m453)", () => {
+  const bounds = restoreBounds(EARLIEST, NOW);
+
+  it("ends ten minutes before now, as Render and bex-api do", () => {
+    expect(bounds.latestMs).toBe(NOW - 10 * 60 * 1000);
+    expect(bounds.max).toBe(toLocalInput(NOW - 10 * 60 * 1000));
+  });
+
+  it("refuses a time within ten minutes of now and accepts one just outside", () => {
+    expect(restoreTarget(toLocalInput(NOW - 5 * 60 * 1000), bounds)).toEqual({
+      ok: false,
+      reason: "outOfWindow",
+    });
+    expect(restoreTarget(toLocalInput(NOW - 10 * 60 * 1000), bounds)).toEqual({
+      ok: true,
+      iso: "2026-11-10T03:50:00Z",
+    });
+  });
+});

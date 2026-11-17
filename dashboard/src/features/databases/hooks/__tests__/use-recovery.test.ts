@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { Kind, type DocumentNode, type SelectionSetNode } from "graphql";
 import { useRecovery } from "@/features/databases/hooks/use-recovery";
 import {
@@ -123,6 +124,89 @@ describe("useRecovery post-create identity", () => {
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't restore. Please try again.",
     );
+  });
+});
+
+// w7/m453: the plan's recovery window rides on recovery info, and a target
+// outside it is refused with a coded reason the restore toast shows as is.
+describe("useRecovery plan window", () => {
+  it("maps the plan's window, and none where no plan applies", () => {
+    useQuery.mockReturnValueOnce({
+      data: {
+        databaseRecoveryInfo: {
+          enabled: true,
+          earliestRecoveryTime: "2026-11-13T12:00:00Z",
+          latestRecoveryTime: "2026-11-16T03:00:00Z",
+          backups: [],
+          retention: {
+            plan: "hobby",
+            days: 3,
+            upgradePlan: "pro",
+            upgradeDays: 7,
+          },
+        },
+      },
+      loading: false,
+    });
+    const { result } = renderHook(() => useRecovery("dpg-source"));
+    expect(result.current.info.retention).toEqual({
+      plan: "hobby",
+      days: 3,
+      upgradePlan: "pro",
+      upgradeDays: 7,
+    });
+
+    useQuery.mockReturnValue({
+      data: {
+        databaseRecoveryInfo: {
+          enabled: true,
+          earliestRecoveryTime: null,
+          latestRecoveryTime: null,
+          backups: [],
+          retention: null,
+        },
+      },
+      loading: false,
+      refetch: vi.fn(async () => undefined),
+      startPolling: vi.fn(),
+      stopPolling,
+    });
+    useMutation
+      .mockReturnValueOnce([createExportMutation, { loading: false }])
+      .mockReturnValueOnce([recoverMutation, { loading: false }]);
+    expect(
+      renderHook(() => useRecovery("dpg-source")).result.current.info.retention,
+    ).toBeNull();
+  });
+
+  it.each([
+    [
+      "RECOVERY_TARGET_BEFORE_WINDOW",
+      "targetTime is before the earliest restore point (2026-11-13T12:00:00Z)",
+      "TargetTime is before the earliest restore point (2026-11-13T12:00:00Z)",
+    ],
+    [
+      "RECOVERY_TARGET_TOO_RECENT",
+      "targetTime is within ten minutes of now; choose a time no later than 2026-11-16T11:50:00Z",
+      "TargetTime is within ten minutes of now; choose a time no later than 2026-11-16T11:50:00Z",
+    ],
+  ])("shows a %s refusal's own message", async (code, message, shown) => {
+    recoverMutation.mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [{ message, extensions: { code } }],
+      }),
+    );
+    const { result } = renderHook(() => useRecovery("dpg-source"));
+    let recoveredId: string | null | undefined;
+    await act(async () => {
+      recoveredId = await result.current.recover({
+        name: "recovered",
+        targetTime: "2026-11-12T12:00:00Z",
+      });
+    });
+    expect(recoveredId).toBeNull();
+    expect(toastError).toHaveBeenCalledWith(shown);
   });
 });
 

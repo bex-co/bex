@@ -1,0 +1,11 @@
+-- w7/m453, ADR009 § Backups + point-in-time recovery: the Postgres recovery
+-- floor a workspace's last plan change kept. Every recovery-info answer starts
+-- no earlier than the workspace plan's window (core.PITRRetention: 3 days on
+-- Hobby, 7 on Pro and higher), and Render does not "backfill" the window on an
+-- upgrade from Hobby: "your existing 3-day window extends to 7 days going
+-- forward". So an upgrade stores the old plan's floor at that moment here, and
+-- recovery takes the later of it and the new window's floor until the new
+-- window overtakes it. NULL (every existing workspace) means the plan's window
+-- alone applies. Written only by store.UpdateTenantPlan
+-- (core.PITRVisibleFromAfterPlanChange).
+ALTER TABLE tenants ADD COLUMN pitr_visible_from timestamptz;

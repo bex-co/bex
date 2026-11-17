@@ -182,9 +182,9 @@ func IncludedCustomDomains(plan string) (n int, unlimited bool) {
 	return n, !ok
 }
 
-// planRetention is how far back each plan's reads of one kind reach. Logs and
-// metrics each have their own table: Render documents the two separately, and
-// they agree today.
+// planRetention is how far back each plan's reads of one kind reach. Logs,
+// metrics and Postgres point-in-time recovery each have their own table:
+// Render documents them separately.
 type planRetention map[string]time.Duration
 
 // window is how far back plan's reads reach. An unknown plan gets the shortest
@@ -203,6 +203,49 @@ func (r planRetention) window(plan string) time.Duration {
 // than now minus it.
 func (r planRetention) shortest() time.Duration {
 	return slices.Min(slices.Collect(maps.Values(r)))
+}
+
+// longest is the longest plan window: the store behind the reads must keep at
+// least this much.
+func (r planRetention) longest() time.Duration {
+	return slices.Max(slices.Collect(maps.Values(r)))
+}
+
+// floor is the earliest instant a workspace on plan reaches back to at now:
+// its plan's window back from now, or visibleFrom while that is later.
+// visibleFrom is the floor a plan change kept (visibleFromAfterPlanChange);
+// zero means none.
+func (r planRetention) floor(plan string, visibleFrom, now time.Time) time.Time {
+	floor := now.Add(-r.window(plan))
+	if visibleFrom.After(floor) {
+		return visibleFrom
+	}
+	return floor
+}
+
+// visibleFromAfterPlanChange is the floor a workspace keeps when its plan
+// changes from oldPlan to newPlan at `at`. An upgrade keeps the old plan's
+// floor at `at`: the longer window reaches back over it only as time passes,
+// and the kept floor lapses on its own once the new window's floor overtakes
+// it. A downgrade narrows at once, its window being shorter, and keeps an
+// earlier upgrade's floor only while that still bites. Zero means the new
+// plan's window alone applies.
+func (r planRetention) visibleFromAfterPlanChange(oldPlan, newPlan string, visibleFrom, at time.Time) time.Time {
+	floor := r.floor(oldPlan, visibleFrom, at)
+	if !floor.After(at.Add(-r.window(newPlan))) {
+		return time.Time{}
+	}
+	return floor
+}
+
+// firstUpgrade is the cheapest plan whose window is longer than plan's, and
+// that window. ok is false on the longest window.
+func (r planRetention) firstUpgrade(plan string) (next string, window time.Duration, ok bool) {
+	longer := r.upgrades(plan)
+	if len(longer) == 0 {
+		return "", 0, false
+	}
+	return longer[0].Plan, longer[0].Window, true
 }
 
 // RetentionUpgrade is a plan that keeps more than another does, and its window.
@@ -250,6 +293,21 @@ var metricsRetention = planRetention{
 	planEnterprise: 30 * 24 * time.Hour,
 }
 
+// pitrRetention is how far back each plan may restore a Postgres to a point in
+// time (w7/m453; render.com/docs/postgresql-backups, read 2026-11-16: "Past 3
+// days" on Hobby, "Past 7 days" on Pro or higher; render.com/pricing's
+// "Point-in-time recovery window: 3 days | 7 days | 7 days | 7 days"). Every
+// recovery-info answer starts no earlier than it and every recovery before it
+// is refused, on every surface. The tenant backup store must keep at least
+// the longest window: a backend test reads its chart value against
+// LongestPITRRetention, so change the two together.
+var pitrRetention = planRetention{
+	planHobby:      3 * 24 * time.Hour,
+	planPro:        7 * 24 * time.Hour,
+	planScale:      7 * 24 * time.Hour,
+	planEnterprise: 7 * 24 * time.Hour,
+}
+
 // LogRetention is how far back plan's logs reach; an unknown plan gets the
 // shortest window (ShortestLogRetention).
 func LogRetention(plan string) time.Duration { return logRetention.window(plan) }
@@ -262,11 +320,41 @@ func ShortestLogRetention() time.Duration { return logRetention.shortest() }
 // LogRetentionUpgrade is the cheapest plan that keeps logs longer than plan,
 // and its window. ok is false on the longest window.
 func LogRetentionUpgrade(plan string) (next string, window time.Duration, ok bool) {
-	longer := logRetention.upgrades(plan)
-	if len(longer) == 0 {
-		return "", 0, false
-	}
-	return longer[0].Plan, longer[0].Window, true
+	return logRetention.firstUpgrade(plan)
+}
+
+// PITRRetention is how far back plan may restore a Postgres to a point in
+// time; an unknown plan gets the shortest window.
+func PITRRetention(plan string) time.Duration { return pitrRetention.window(plan) }
+
+// LongestPITRRetention is the longest plan window: the tenant backup store's
+// retentionPolicy must keep at least this much.
+func LongestPITRRetention() time.Duration { return pitrRetention.longest() }
+
+// PITRRetentionUpgrade is the cheapest plan that may restore further back than
+// plan, and its window. ok is false on the longest window.
+func PITRRetentionUpgrade(plan string) (next string, window time.Duration, ok bool) {
+	return pitrRetention.firstUpgrade(plan)
+}
+
+// PITRFloor is the earliest instant a workspace on plan may restore a Postgres
+// to at now: its plan's window back from now, or visibleFrom while that is
+// later. visibleFrom is the floor a plan change kept
+// (PITRVisibleFromAfterPlanChange); zero means none.
+func PITRFloor(plan string, visibleFrom, now time.Time) time.Time {
+	return pitrRetention.floor(plan, visibleFrom, now)
+}
+
+// PITRVisibleFromAfterPlanChange is the recovery floor a workspace keeps when
+// its plan changes from oldPlan to newPlan at `at` (w7/m453). Render:
+// "Upgrading from Hobby does not retroactively "backfill" your recovery
+// window. Instead, your existing 3-day window extends to 7 days going
+// forward." So a Hobby -> Pro change at T keeps T-3d until Pro's own floor
+// passes it four days later. A downgrade narrows at once (Render does not say;
+// bex does what its log floor does). Zero means the new plan's window alone
+// applies.
+func PITRVisibleFromAfterPlanChange(oldPlan, newPlan string, visibleFrom, at time.Time) time.Time {
+	return pitrRetention.visibleFromAfterPlanChange(oldPlan, newPlan, visibleFrom, at)
 }
 
 // MetricsRetention is how far back plan's metrics reach; an unknown plan gets
@@ -289,11 +377,7 @@ func MetricsRetentionUpgrades(plan string) []RetentionUpgrade {
 // visibleFrom is the floor a plan change kept (LogsVisibleFromAfterPlanChange);
 // zero means none.
 func LogFloor(plan string, visibleFrom, now time.Time) time.Time {
-	floor := now.Add(-LogRetention(plan))
-	if visibleFrom.After(floor) {
-		return visibleFrom
-	}
-	return floor
+	return logRetention.floor(plan, visibleFrom, now)
 }
 
 // LogsVisibleFromAfterPlanChange is the floor a workspace keeps when its plan
@@ -306,11 +390,7 @@ func LogFloor(plan string, visibleFrom, now time.Time) time.Time {
 // earlier upgrade's floor only while that still bites. Zero means the new
 // plan's window alone applies.
 func LogsVisibleFromAfterPlanChange(oldPlan, newPlan string, visibleFrom, at time.Time) time.Time {
-	floor := LogFloor(oldPlan, visibleFrom, at)
-	if !floor.After(at.Add(-LogRetention(newPlan))) {
-		return time.Time{}
-	}
-	return floor
+	return logRetention.visibleFromAfterPlanChange(oldPlan, newPlan, visibleFrom, at)
 }
 
 // WorkspaceLogPlanReader is a WorkspacePlanReader that also reads, in the
@@ -322,17 +402,48 @@ type WorkspaceLogPlanReader interface {
 	WorkspaceLogPlan(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, err error)
 }
 
+// WorkspacePITRPlanReader is WorkspaceLogPlanReader for the Postgres recovery
+// floor the workspace's last plan change kept (PITRVisibleFromAfterPlanChange;
+// zero when none, w7/m453).
+type WorkspacePITRPlanReader interface {
+	WorkspacePITRPlan(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, err error)
+}
+
 // WorkspaceLogPlanOf is WorkspacePlanOf plus the log floor the workspace's
 // last plan change kept, in one read where the reader offers both
 // (WorkspaceLogPlanReader). ok is false where no plan applies, as for
 // WorkspacePlanOf.
 func (b *Base) WorkspaceLogPlanOf(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, ok bool, err error) {
-	both, isBoth := b.planReader().(WorkspaceLogPlanReader)
-	if !isBoth || workspaceID == "" || workspaceID == DefaultTenant {
+	var read planFloorRead
+	if r, isBoth := b.planReader().(WorkspaceLogPlanReader); isBoth {
+		read = r.WorkspaceLogPlan
+	}
+	return b.workspacePlanFloorOf(ctx, workspaceID, read)
+}
+
+// WorkspacePITRPlanOf is WorkspaceLogPlanOf for the Postgres recovery floor
+// (WorkspacePITRPlanReader).
+func (b *Base) WorkspacePITRPlanOf(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, ok bool, err error) {
+	var read planFloorRead
+	if r, isBoth := b.planReader().(WorkspacePITRPlanReader); isBoth {
+		read = r.WorkspacePITRPlan
+	}
+	return b.workspacePlanFloorOf(ctx, workspaceID, read)
+}
+
+// planFloorRead reads a workspace's plan and one floor its last plan change
+// kept.
+type planFloorRead func(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, err error)
+
+// workspacePlanFloorOf reads workspaceID's plan and floor with read in one
+// read, or the plan alone where the reader keeps no floor (read nil). ok is
+// false where no plan applies, as for WorkspacePlanOf.
+func (b *Base) workspacePlanFloorOf(ctx context.Context, workspaceID string, read planFloorRead) (plan string, visibleFrom time.Time, ok bool, err error) {
+	if read == nil || workspaceID == "" || workspaceID == DefaultTenant {
 		plan, ok, err = b.WorkspacePlanOf(ctx, workspaceID)
 		return plan, time.Time{}, ok, err
 	}
-	plan, visibleFrom, err = both.WorkspaceLogPlan(ctx, workspaceID)
+	plan, visibleFrom, err = read(ctx, workspaceID)
 	if err != nil {
 		return "", time.Time{}, false, fmt.Errorf("reading workspace plan: %w", err)
 	}

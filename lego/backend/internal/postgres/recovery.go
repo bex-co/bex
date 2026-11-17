@@ -63,6 +63,11 @@ const (
 	// ExportURLTTL is the maximum life of a freshly minted download URL. It is
 	// deliberately much shorter than the seven-day artifact-retention window.
 	ExportURLTTL = 15 * time.Minute
+	// recoveryMinimumAge is how far before now a recovery target must lie
+	// (w7/m453). Render: "You can't restore to a time that's within ten minutes
+	// of the current time" (render.com/docs/postgresql-backups, read
+	// 2026-11-16).
+	recoveryMinimumAge = 10 * time.Minute
 )
 
 // RecoveryInfoView mirrors Render's postgres recovery info: whether recovery is
@@ -73,11 +78,27 @@ type RecoveryInfoView struct {
 	Enabled bool `json:"enabled"`
 	// EarliestRecoveryTime / LatestRecoveryTime bound the restorable window
 	// (RFC3339), as reported by the Barman Cloud ObjectStore for this database's
-	// exact backup server name.
+	// exact backup server name. The earliest bound starts no earlier than the
+	// workspace plan's recovery floor (w7/m453, core.PITRFloor).
 	EarliestRecoveryTime string `json:"earliestRecoveryTime,omitempty"`
 	LatestRecoveryTime   string `json:"latestRecoveryTime,omitempty"`
 	// Backups is the visible backup history (base backups in object storage).
 	Backups []BackupView `json:"backups"`
+	// Retention is the workspace plan's recovery window, a Bex extension the
+	// dashboard's recovery picker names (w7/m453). Absent where no plan applies
+	// and for a database without backups. Render's REST route does not carry it.
+	Retention *RecoveryRetention `json:"retention,omitempty"`
+}
+
+// RecoveryRetention is how far back a workspace's plan may restore a Postgres
+// (core.PITRRetention), in the shape the log viewer's retention reads: the
+// plan, its days, and the cheapest plan that restores further back with its
+// days (empty and 0 on the longest window).
+type RecoveryRetention struct {
+	Plan        string `json:"plan"`
+	Days        int    `json:"days"`
+	UpgradePlan string `json:"upgradePlan,omitempty"`
+	UpgradeDays int    `json:"upgradeDays,omitempty"`
 }
 
 // BackupView is one physical base backup in object storage.
@@ -119,10 +140,61 @@ type RecoverRequest struct {
 type recoveryWindowBounds struct {
 	earliest string
 	latest   string
+	// stale marks a window the plan's floor emptied: the last base backup is
+	// older than the floor (flooredAt).
+	stale bool
 }
 
 func (w recoveryWindowBounds) established() bool {
 	return w.earliest != "" && w.latest != ""
+}
+
+// flooredAt starts w no earlier than floor, the workspace plan's recovery
+// floor (w7/m453); a zero floor leaves w as it is. A database younger than
+// the plan's window keeps its own first recoverability point. A window whose
+// last base backup is older than floor (nightly backups stalled for longer
+// than the plan's window) holds no restore point bex-api can vouch for inside
+// the plan's window, so it is not established: recovery info reports no
+// window and recover refuses, until the next base backup completes.
+func (w recoveryWindowBounds) flooredAt(floor time.Time) recoveryWindowBounds {
+	if floor.IsZero() || !w.established() {
+		return w
+	}
+	if latest, err := time.Parse(time.RFC3339, w.latest); err == nil && latest.Before(floor) {
+		return recoveryWindowBounds{stale: true}
+	}
+	if earliest, err := time.Parse(time.RFC3339, w.earliest); err == nil && !earliest.Before(floor) {
+		return w
+	}
+	return recoveryWindowBounds{earliest: floor.UTC().Format(time.RFC3339), latest: w.latest}
+}
+
+// pitrWindow is the workspace plan's recovery window for one database
+// (w7/m453): its floor at now, rounded up to the second the API reports, and
+// the hint the dashboard names. Both are zero where no plan applies (no
+// store, the default tenant), and the ObjectStore's window alone stands.
+type pitrWindow struct {
+	floor     time.Time
+	retention *RecoveryRetention
+}
+
+// pitrWindowOf reads d's workspace plan and the recovery floor its last plan
+// change kept, in one tenant read (core.WorkspacePITRPlanOf).
+func (s *Service) pitrWindowOf(ctx context.Context, d *appv1alpha1.Database) (pitrWindow, error) {
+	plan, visibleFrom, ok, err := s.WorkspacePITRPlanOf(ctx, d.Labels[core.LabelTenant])
+	if err != nil || !ok {
+		return pitrWindow{}, err
+	}
+	floor := core.PITRFloor(plan, visibleFrom, s.Now())
+	if second := floor.Truncate(time.Second); second.Before(floor) {
+		floor = second.Add(time.Second)
+	}
+	const day = 24 * time.Hour
+	retention := &RecoveryRetention{Plan: plan, Days: int(core.PITRRetention(plan) / day)}
+	if next, longer, ok := core.PITRRetentionUpgrade(plan); ok {
+		retention.UpgradePlan, retention.UpgradeDays = next, int(longer/day)
+	}
+	return pitrWindow{floor: floor, retention: retention}, nil
 }
 
 func effectiveBackupServerName(d *appv1alpha1.Database) string {
@@ -145,6 +217,7 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	}
 	var window recoveryWindowBounds
 	var backups []BackupView
+	var pitr pitrWindow
 	group, readCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
 		var windowErr error
@@ -159,12 +232,19 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 		}
 		return nil
 	})
+	group.Go(func() error {
+		var planErr error
+		pitr, planErr = s.pitrWindowOf(readCtx, d)
+		return planErr
+	})
 	if err := group.Wait(); err != nil {
 		return RecoveryInfoView{}, err
 	}
+	window = window.flooredAt(pitr.floor)
 	info.EarliestRecoveryTime = window.earliest
 	info.LatestRecoveryTime = window.latest
 	info.Backups = backups
+	info.Retention = pitr.retention
 	return info, nil
 }
 
@@ -266,13 +346,25 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if err != nil {
 		return PostgresView{}, err
 	}
+	// The workspace plan's floor bounds the window as recovery info reports it
+	// (w7/m453), so a target the picker never offered is refused here too.
+	pitr, err := s.pitrWindowOf(ctx, src)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	window = window.flooredAt(pitr.floor)
+	if window.stale {
+		return PostgresView{}, fmt.Errorf("%w: %q has no backup completed since %s, the earliest point its workspace plan can restore to; recovery becomes available once its next backup completes",
+			core.ErrBadRequest, name, pitr.floor.UTC().Format(time.RFC3339))
+	}
 	if !window.established() {
 		return PostgresView{}, fmt.Errorf("%w: %q has no restore point yet; recovery becomes available once its first backup completes", core.ErrBadRequest, name)
 	}
-	// A point-in-time target outside [earliest restore point, now] can never
-	// bootstrap, and the restore database it provisions is paid capacity (ADR009;
-	// w21/029). The upper bound is now, not the last base backup: PITR replays
-	// archived WAL past it.
+	// A point-in-time target outside [earliest restore point, now - ten
+	// minutes] is refused: before it, it can never bootstrap or lies outside
+	// the plan's window; after it, Render refuses it too. The restore database
+	// it provisions is paid capacity (ADR009; w21/029). The upper bound is now,
+	// not the last base backup: PITR replays archived WAL past it.
 	if !target.IsZero() {
 		earliest, parseErr := time.Parse(time.RFC3339, window.earliest)
 		if parseErr == nil && target.Before(earliest) {
@@ -280,9 +372,16 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 				"targetTime is before the earliest restore point ("+window.earliest+")",
 				map[string]any{"earliestRecoveryTime": window.earliest})
 		}
-		if target.After(s.Now()) {
+		now := s.Now()
+		if target.After(now) {
 			return PostgresView{}, core.NewBadRequestError("RECOVERY_TARGET_IN_FUTURE",
 				"targetTime is in the future", nil)
+		}
+		if latest := now.Add(-recoveryMinimumAge); target.After(latest) {
+			latestText := latest.UTC().Truncate(time.Second).Format(time.RFC3339)
+			return PostgresView{}, core.NewBadRequestError("RECOVERY_TARGET_TOO_RECENT",
+				"targetTime is within ten minutes of now; choose a time no later than "+latestText,
+				map[string]any{"latestTargetTime": latestText})
 		}
 	}
 	plan := req.Plan

@@ -863,8 +863,31 @@ const deDatabases: Record<string, TranslationEntry> = {
   },
   "databases.recoveryRestoreTimeOutOfWindow": {
     message:
-      "Wähle einen Zeitpunkt zwischen dem frühesten Wiederherstellungspunkt und jetzt.",
-    description: "Restore dialog target-time out-of-window error",
+      "Wähle einen Zeitpunkt zwischen dem frühesten Wiederherstellungspunkt und vor zehn Minuten.",
+    description:
+      "Restore dialog target-time out-of-window error (the window ends ten minutes before now, w7/m453)",
+  },
+  "databases.recoveryRetentionWindow_one": {
+    message:
+      "Im {plan}-Tarif lässt sich jeder Zeitpunkt bis zu {count} Tag zurück wiederherstellen.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionWindow_other": {
+    message:
+      "Im {plan}-Tarif lässt sich jeder Zeitpunkt bis zu {count} Tage zurück wiederherstellen.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionUpgrade_one": {
+    message: "{plan} reicht {count} Tag zurück.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
+  },
+  "databases.recoveryRetentionUpgrade_other": {
+    message: "{plan} reicht {count} Tage zurück.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
   },
   "databases.recoveryRestoreConfirm": {
     message: "Wiederherstellen",

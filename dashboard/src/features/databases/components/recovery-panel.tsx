@@ -27,7 +27,10 @@ import {
   useRecovery,
   type BackupItem,
   type ExportItem,
+  type RecoveryRetention,
 } from "@/features/databases/hooks/use-recovery";
+import { workspacePlanNameKey } from "@/features/workspaces/types";
+import { RecoveryContentSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
 import {
   restoreBounds,
   restoreTarget,
@@ -42,6 +45,7 @@ import {
 export function RecoveryPanel({
   id,
   databaseName,
+  backupsEnabled,
 }: {
   id: string;
   /**
@@ -50,6 +54,11 @@ export function RecoveryPanel({
    * the instance (w8/m155, w8/258).
    */
   databaseName?: string | null;
+  /**
+   * Whether the database has backups (its detail read), so the first load's
+   * skeleton takes the shape the panel resolves to.
+   */
+  backupsEnabled?: boolean | null;
 }) {
   const { t } = useTranslations();
   const navigate = useNavigate();
@@ -69,7 +78,8 @@ export function RecoveryPanel({
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [targetTime, setTargetTime] = useState("");
-  // Sampled when the dialog opens: the picker's upper bound is that moment.
+  // Sampled when the dialog opens: the picker's upper bound is ten minutes
+  // before that moment (w7/m453).
   const [openedAtMs, setOpenedAtMs] = useState(0);
   const bounds = restoreBounds(info.earliestRecoveryTime, openedAtMs);
   const target = restoreTarget(targetTime, bounds);
@@ -78,6 +88,7 @@ export function RecoveryPanel({
     info.earliestRecoveryTime && info.latestRecoveryTime,
   );
   const canRestore = recoveryWindowEstablished && !error;
+  const retention = retentionHint(info.retention, t);
 
   async function handleRestore() {
     if (!canRestore) return;
@@ -107,9 +118,10 @@ export function RecoveryPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {loading && !info.enabled && !error ? (
-          <p className="text-sm text-muted-foreground">
-            {t("databases.loading")}
-          </p>
+          <RecoveryContentSkeleton
+            backupsEnabled={backupsEnabled !== false}
+            exportScope={Boolean(databaseName)}
+          />
         ) : error ? (
           <p className="text-sm text-destructive" role="alert">
             {t("databases.recoveryUnavailable")}
@@ -142,6 +154,9 @@ export function RecoveryPanel({
                 }
               />
             </dl>
+            {retention ? (
+              <p className="text-sm text-muted-foreground">{retention}</p>
+            ) : null}
 
             <div className="flex flex-wrap gap-2">
               <Button
@@ -361,6 +376,33 @@ function ExportList({
 }
 
 type Translate = ReturnType<typeof useTranslations>["t"];
+
+/**
+ * How far back the workspace plan may restore, from bex-api's `retention`
+ * (w7/m453): "Hobby workspaces can restore to any point in the past 3 days.
+ * Pro keeps 7 days." The upgrade half is dropped on the longest window, and
+ * the whole line where no plan applies.
+ */
+function retentionHint(
+  retention: RecoveryRetention | null,
+  t: Translate,
+): string | null {
+  if (!retention) return null;
+  const planName = (plan: string) => {
+    const key = workspacePlanNameKey(plan);
+    return key ? t(key) : plan;
+  };
+  const kept = t("databases.recoveryRetentionWindow", {
+    count: retention.days,
+    plan: planName(retention.plan),
+  });
+  return retention.upgradePlan && retention.upgradeDays
+    ? `${kept} ${t("databases.recoveryRetentionUpgrade", {
+        count: retention.upgradeDays,
+        plan: planName(retention.upgradePlan),
+      })}`
+    : kept;
+}
 
 function exportStatusLabel(status: string, t: Translate): string {
   switch (status) {

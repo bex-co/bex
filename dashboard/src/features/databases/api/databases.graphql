@@ -123,6 +123,13 @@ query DatabaseRecoveryInfo($id: String!) {
       status
       createdAt
     }
+    # The workspace plan's recovery window (w7/m453): the picker's hint.
+    retention {
+      plan
+      days
+      upgradePlan
+      upgradeDays
+    }
   }
 }
 

@@ -846,8 +846,20 @@ const koDatabases: Record<string, TranslationEntry> = {
     description: "Restore dialog target-time zone note",
   },
   "databases.recoveryRestoreTimeOutOfWindow": {
-    message: "가장 이른 복원 시점과 현재 사이의 시간을 선택하세요.",
-    description: "Restore dialog target-time out-of-window error",
+    message: "가장 이른 복원 시점과 10분 전 사이의 시간을 선택하세요.",
+    description:
+      "Restore dialog target-time out-of-window error (the window ends ten minutes before now, w7/m453)",
+  },
+  "databases.recoveryRetentionWindow_other": {
+    message:
+      "{plan} 요금제에서는 지난 {count}일 동안의 모든 시점으로 복원할 수 있습니다.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionUpgrade_other": {
+    message: "{plan} 요금제는 {count}일입니다.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
   },
   "databases.recoveryRestoreConfirm": {
     message: "복원",

@@ -856,8 +856,42 @@ const esDatabases: Record<string, TranslationEntry> = {
   },
   "databases.recoveryRestoreTimeOutOfWindow": {
     message:
-      "Elige una hora entre el punto de restauración más antiguo y ahora.",
-    description: "Restore dialog target-time out-of-window error",
+      "Elige una hora entre el punto de restauración más antiguo y hace diez minutos.",
+    description:
+      "Restore dialog target-time out-of-window error (the window ends ten minutes before now, w7/m453)",
+  },
+  "databases.recoveryRetentionWindow_one": {
+    message:
+      "En el plan {plan} puedes restaurar cualquier momento del último {count} día.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionWindow_many": {
+    message:
+      "En el plan {plan} puedes restaurar cualquier momento de los últimos {count} de días.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionWindow_other": {
+    message:
+      "En el plan {plan} puedes restaurar cualquier momento de los últimos {count} días.",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionUpgrade_one": {
+    message: "{plan} conserva {count} día.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
+  },
+  "databases.recoveryRetentionUpgrade_many": {
+    message: "{plan} conserva {count} de días.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
+  },
+  "databases.recoveryRetentionUpgrade_other": {
+    message: "{plan} conserva {count} días.",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
   },
   "databases.recoveryRestoreConfirm": {
     message: "Restaurar",

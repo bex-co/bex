@@ -156,6 +156,28 @@ var databaseExportGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// databaseRecoveryRetentionGQLType is the workspace plan's point-in-time
+// recovery window (w7/m453, a Bex extension the dashboard's recovery picker
+// names), in logRetention's shape: core.PITRRetention, at which every REST,
+// GraphQL and MCP recovery is floored.
+var databaseRecoveryRetentionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseRecoveryRetention",
+	Fields: graphql.Fields{
+		// plan is the database's workspace plan; days how far back it restores.
+		"plan": gqlutil.ReqStrField(func(r *RecoveryRetention) any { return r.Plan }),
+		"days": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(r *RecoveryRetention) any { return r.Days }),
+		// upgradePlan/upgradeDays name the cheapest plan that restores further
+		// back; null on the longest window.
+		"upgradePlan": gqlutil.OptionalStrField(func(r *RecoveryRetention) any { return r.UpgradePlan }),
+		"upgradeDays": gqlutil.IntField(func(r *RecoveryRetention) any {
+			if r.UpgradeDays == 0 {
+				return nil
+			}
+			return r.UpgradeDays
+		}),
+	},
+})
+
 // databaseRecoveryInfoGQLType mirrors Render's postgres recovery info.
 var databaseRecoveryInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseRecoveryInfo",
@@ -164,6 +186,8 @@ var databaseRecoveryInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"earliestRecoveryTime": gqlutil.StrField(func(v RecoveryInfoView) any { return v.EarliestRecoveryTime }),
 		"latestRecoveryTime":   gqlutil.StrField(func(v RecoveryInfoView) any { return v.LatestRecoveryTime }),
 		"backups":              gqlutil.Typed(graphql.NewList(databaseBackupGQLType), func(v RecoveryInfoView) any { return v.Backups }),
+		// retention is null where no plan applies and without backups.
+		"retention": gqlutil.Typed(databaseRecoveryRetentionGQLType, func(v RecoveryInfoView) any { return v.Retention }),
 	},
 })
 

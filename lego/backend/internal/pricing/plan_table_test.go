@@ -217,10 +217,13 @@ func metricsRetentionDays(plan string) int64 {
 	return int64(core.MetricsRetention(plan) / (24 * time.Hour))
 }
 
+func pitrRetentionDays(plan string) int64 {
+	return int64(core.PITRRetention(plan) / (24 * time.Hour))
+}
+
 // The board items a followUp names. Each is an inbox note filed by w7/m429
 // t005 for a row bex does not apply yet.
 const (
-	followUpPITRWindow    = "w7/068 (Postgres point-in-time recovery window by plan)"
 	followUpSandboxes     = "w7/069 (default concurrent sandboxes by plan)"
 	followUpWorkspaces2FA = "w7/070 (workspaces per plan and enforced 2FA on Pro and higher)"
 	followUpHIPAALinks    = "w7/071 (HIPAA-enabled workspaces and AWS private links have no recorded disposition)"
@@ -239,7 +242,7 @@ var planDispositions = map[string]planDisposition{
 	"pricing: Persistent disks":              same("ADR082, pricing.yaml disk"),
 	"pricing: Postgres databases":            same("ADR009"),
 	"pricing: Expandable storage":            same("ADR030 §2, pricing.yaml storage"),
-	"pricing: Point-in-time recovery window": followUp(followUpPITRWindow),
+	"pricing: Point-in-time recovery window": numbered("retention", "core.pitrRetention (w7/m453)", leadingNumber, pitrRetentionDays),
 	"pricing: Read-only replicas":            same("ADR009"),
 	"pricing: High availability":             same("ADR009"),
 	"pricing: Key-value (Redis-compatible)":  same("ADR021"),

@@ -835,8 +835,19 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Restore dialog target-time zone note",
   },
   "databases.recoveryRestoreTimeOutOfWindow": {
-    message: "请选择最早恢复点与现在之间的时间。",
-    description: "Restore dialog target-time out-of-window error",
+    message: "请选择最早恢复点与十分钟前之间的时间。",
+    description:
+      "Restore dialog target-time out-of-window error (the window ends ten minutes before now, w7/m453)",
+  },
+  "databases.recoveryRetentionWindow_other": {
+    message: "{plan} 套餐可恢复到过去 {count} 天内的任意时间点。",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionUpgrade_other": {
+    message: "{plan} 套餐可恢复 {count} 天。",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
   },
   "databases.recoveryRestoreConfirm": {
     message: "恢复",

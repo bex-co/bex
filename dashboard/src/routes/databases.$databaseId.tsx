@@ -23,6 +23,7 @@ import { DetailTabNav } from "@/common/components/detail-tab-nav";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
+import { RecoveryPanelSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
@@ -354,10 +355,18 @@ function DatabaseDetailPage() {
                   className={SECTION_NAVIGATION_TARGET_CLASS}
                 >
                   <DeferredMount hashId="recovery" minHeight={240}>
-                    <Suspense fallback={<CardSkeleton rows={3} />}>
+                    <Suspense
+                      fallback={
+                        <RecoveryPanelSkeleton
+                          backupsEnabled={database.backupsEnabled !== false}
+                          exportScope={Boolean(database.databaseName)}
+                        />
+                      }
+                    >
                       <RecoveryPanel
                         id={database.id}
                         databaseName={database.databaseName}
+                        backupsEnabled={database.backupsEnabled}
                       />
                     </Suspense>
                   </DeferredMount>

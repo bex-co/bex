@@ -851,8 +851,20 @@ const jaDatabases: Record<string, TranslationEntry> = {
     description: "Restore dialog target-time zone note",
   },
   "databases.recoveryRestoreTimeOutOfWindow": {
-    message: "最も古い復元ポイントから現在までの間の時刻を選択してください。",
-    description: "Restore dialog target-time out-of-window error",
+    message:
+      "最も古い復元ポイントから 10 分前までの間の時刻を選択してください。",
+    description:
+      "Restore dialog target-time out-of-window error (the window ends ten minutes before now, w7/m453)",
+  },
+  "databases.recoveryRetentionWindow_other": {
+    message: "{plan} プランでは過去 {count} 日間の任意の時点に復元できます。",
+    description:
+      "Recovery panel hint: how far back the workspace plan may restore a Postgres (w7/m453, from bex-api databaseRecoveryInfo.retention)",
+  },
+  "databases.recoveryRetentionUpgrade_other": {
+    message: "{plan} プランでは {count} 日間です。",
+    description:
+      "Recovery panel hint: the cheapest plan that restores further back, and its days (w7/m453)",
   },
   "databases.recoveryRestoreConfirm": {
     message: "復元",
