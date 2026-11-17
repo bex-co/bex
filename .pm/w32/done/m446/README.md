@@ -1,19 +1,19 @@
 # w32 · m446 — A signed-in request never fails with `503 tenant onboarding unavailable` because a workspace is busy
 
-**Worker:** worker32 **Goal:** a returning person's authenticated request on any surface is answered by its own handler. A transient fault in the per-request onboarding check (`EnsureTenant`) no longer turns into `503 tenant onboarding unavailable`, and the fault that does reach a caller is logged with its cause. **Status:** todo (t002, t003 done)
+**Worker:** worker32 **Goal:** a returning person's authenticated request on any surface is answered by its own handler. A transient fault in the per-request onboarding check (`EnsureTenant`) no longer turns into `503 tenant onboarding unavailable`, and the fault that does reach a caller is logged with its cause. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                 | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Log the cause of every onboarding 503 and name the failing call on production                         | 30m | —          |
+| t001 | Log the cause of every onboarding 503 and name the failing call on production — **DONE**                         | 30m | —          |
 | t002 | An OpenFGA check that errors still serves an existing admin, now that grant writes are idempotent — **DONE** | 20m | t001 |
 | t003 | A returning person whose workspace is already known is served through a transient onboarding fault — **DONE** | 45m | t001, t002 |
-| t004 | Production: the CLI's create, deploy and `--wait` journey sees no onboarding 503                      | 30m | t003       |
-| t005 | Render parity                                                                                         | 15m | t004       |
-| t006 | Simplify                                                                                              | 15m | t005       |
-| t007 | Test coverage                                                                                         | 30m | t005       |
-| t008 | Closeout                                                                                              | 10m | t006, t007 |
+| t004 | Production: the CLI's create, deploy and `--wait` journey sees no onboarding 503 — **DONE**                      | 30m | t003       |
+| t005 | Render parity — **DONE**                                                                                         | 15m | t004       |
+| t006 | Simplify — **DONE**                                                                                              | 15m | t005       |
+| t007 | Test coverage — **DONE**                                                                                         | 30m | t005       |
+| t008 | Closeout — **DONE**                                                                                              | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -48,7 +48,18 @@
   - w8/m38, m40 and m41 walkthroughs retried around the same message on local dev stacks with broken Postgres.
   - w3/m305 t005 saw it on dev-3 after a Docker restart.
   - `.pm/FUTURE-MAYBE.md` (046 F17) is about invite-accept projection, not this path.
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first). Render's API does not fail a signed-in read because the workspace is busy, and the unmodified Render CLI and SDKs, which bex serves, do not retry.
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first). Render's API does not fail a signed-in read because the workspace is busy, and the unmodified Render CLI and SDKs, which bex serves, do not retry.
 - **Expected outcome:** CLI commands, `--wait` loops, SDK scripts and dashboard reads stop failing at random while the person is creating or deploying. A real onboarding fault leaves a log line that names its cause.
 - **Why now:** creating or deploying is exactly when people poll, so the fault hits the busiest moments. A `--wait` that polls every 5 s across a 45 s deploy makes about 9 calls, so at roughly 2% per call it fails about one deploy in six.
 - **Render parity:** included. The fix changes the error behavior of every authenticated REST, GraphQL and MCP request.
+
+## Outcome (2026-11-17, `/loopx w32`)
+
+Shipped in `db48cde2b`, deployed in pin `db48cde2bae9`.
+
+1. **DoD 1 holds.** Three runs of the journey on production saw no 503 on any of 858 CLI and REST calls, and every `--wait` exited 0 (t004). One poll on each side got no answer at all, from a 20 s break in this host's connection to Cloudflare. Neither reached the origin.
+2. **DoD 2 holds.** The gate logs the cause of both 503s it answers, with the edge's `Rndr-Id`, the route and the credential kind. An onboarding 503's body names the step and dependency, for example `tenant onboarding unavailable: personal workspace lookup failed (workspace store)` (t001; ADR012 §8f).
+3. **DoD 3 holds, as t002's 2026-11-16 update scoped it.** A Check that fails on a dropped connection is resent by the transport, and once the Check answers, no write is sent (`TestOnboardingSendsNoWriteWhenAResetCheckIsResent`: 3 checks, 0 writes). An "already exists" answer counts as granted (`TestOnboardingServesAnAdminWhoseCheckErrorsE2E`, real OpenFGA). Only a Check that still errors is followed by the grant, which is a no-op for an existing tuple. That is the path t002 asked to keep, and production shows no such Check error.
+4. **DoD 4 holds.** A returning person's personal workspace is remembered for 10 minutes and serves a failed owner lookup or admin grant. The tombstone still wins, and an unreadable tombstone fails closed (t003; ADR086 §1).
+
+**What production showed (t001).** Sweep 134's four failures were two classes. Two were onboarding 503s: a reset OpenFGA Check, then a refused duplicate admin write. That class is gone since w4/695 and w21/099 (pin `ef7e65cd3f46`). The other two were `503 auth upstream unavailable`: a Hydra introspection on a dropped keep-alive connection, 17 of them in the 11.7 h before this fix. Introspection is now resent once on a fresh connection. Sweep 215's failure was the second class.
