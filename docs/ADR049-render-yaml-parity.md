@@ -453,7 +453,7 @@ The w8/m53 fence that kept booleans as "located schema refusals" was a reading o
 
 - a deliberate divergence: previews (with `previewValue` in a file that enables them; w32/032 accepts it in one that does not), workflows (the 10 GB disk minimum was removed by w8/215, which accepts Render's 1 GB disks as [ADR082](ADR082-persistent-disks.md) records; the reserved `PORT` and `RENDER_*` references were removed by w5/m149 and w5/m148; `region` was removed by w8/152, which normalizes it to `BEX_REGION`);
 - a refusal Render makes too: the misspelled `dockerFilePath`, a free `private_service`, retired Postgres plans such as `pro-8gb` (bex sells `pro-4gb` since w2/m171);
-- a gap already filed: free-form resource names and dotted env keys, both w5/169.
+- a gap already filed, listed in `knownBlueprintGaps` with its board item. The list is empty: free-form resource names and dotted env keys (w5/169) shipped in w5/m150, and redwoodjs's placeholder rewrite destination in w33/007.
 
 **`sync: false` in an env group is ignored, not refused (w8/293, 2026-11-12).** Render's spec says "You can't apply `sync: false` to environment variables defined in an environment group. If you do this, Render ignores the environment variable." bex used to refuse the whole file, which blocked three Render templates (`ravendr`, `forem`, `git-scm.com`). The entry is now skipped: validate answers `valid: true`, a plan (create, plan, sync, preview) carries one `warning` notice located at the entry, the key is not prompted for, and a sync leaves whatever the group holds for that key. The corpus guard no longer excuses it.
 
