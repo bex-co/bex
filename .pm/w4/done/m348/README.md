@@ -1,6 +1,6 @@
 # w4 · m348 — A dashboard deploy can cache the HTML shell under a JavaScript chunk's URL for a year, in Cloudflare and in the browser, so service pages fail with "Something went wrong" and neither Try again nor a reload recovers them
 
-**Worker:** worker4 **Goal:** a dashboard rollout never leaves a browser or the edge holding HTML for a script URL. A request for an asset that doesn't exist answers 404 and is never cached, a real asset stays immutable, and a page that hit a version mismatch recovers on Try again. **Status:** blocked — rollout replay (t001–t005 done, code shipped 2026-11-14; the release gate cleared on pin `284b83e1f540` 2026-11-16, and DoD 1–3 and 5 hold there. t006 still has to replay DoD 4 through a dashboard rollout, polling from before the new pod is Ready)
+**Worker:** worker4 **Goal:** a dashboard rollout never leaves a browser or the edge holding HTML for a script URL. A request for an asset that doesn't exist answers 404 and is never cached, a real asset stays immutable, and a page that hit a version mismatch recovers on Try again. **Status:** done (t001–t005 shipped 2026-11-14; DoD 1–5 replayed live on pin `5bcfe8939f5b` 2026-11-17, with the rollout polled from before the new dashboard pod existed)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Move every asset URL once, so browsers that already cached HTML under a chunk URL stop using it — **DONE** | 20m | t001 |
 | [t004](done/t004.md) | Simplify — **DONE** | 15m | t002, t003 |
 | [t005](done/t005.md) | Test coverage — **DONE** | 30m | t002, t003 |
-| [t006](t006.md) | Closeout (live replay on production) | 30m | t004, t005 |
+| [t006](done/t006.md) | Closeout (live replay on production) — **DONE** | 30m | t004, t005 |
 
 ## Definition of done
 
@@ -179,3 +179,38 @@ Requests were sent with `curl -s -A "Mozilla/5.0 … Chrome/130…"` from outsid
 3. **Pages unchanged — holds.** `/auth/login` → `200 text/html`, `private, no-cache`. `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` → `200 application/json`, `public, max-age=300`.
 4. **Through a rollout — not replayed** (gate above).
 5. **Fixtures — holds.** None were created.
+
+## Unblock record (2026-11-17, `/loopx w4` worker; verified evidence)
+
+- **Affected:** w4/m348 t006 (t001–t005 stay done).
+- **Release gate — still clear.** Production is pinned at `55c120858af0` (`9c79201b4`, 2026-11-17 07:47:43Z). `git merge-base --is-ancestor <sha> 55c120858af0` holds for `284b83e1f540`, `9484c8339`, `6e35c5b22` and `1c2beeadb`. `git log 284b83e1f540..55c120858af0 -- dashboard/server dashboard/vite.config.ts dashboard/deploy` is empty, so the serving policy is the one DoD 1–3 passed on.
+- **The rollouts since went unwatched.** Pins `101544e11278` (05:50:45Z), `b767149494fa` (06:16:16Z), `21762a1df1fb` (06:48:15Z) and `55c120858af0` (07:47:43Z) each rolled the dashboard, read from `kubectl -n dashboard get rs`: an Argo image roll, then the deploy job's `rollout restart` 2–3 min later (`dashboard-dfd8ddf6d` 07:50:19Z, `dashboard-5bdbb4b88b` 07:53:04Z for the last pin). No worker polled any of them, so DoD 4's overlap window is still unobserved.
+- **Correction to the 2026-11-16 record.** A worker can start a rollout: `workflow_dispatch` deploys main unconditionally (`.github/workflows/deploy.yml:191-200`), which is how today's three pins were released (runs `44027592896`, `44031784852`, `44039100056`), and main holds a dashboard change since the pin (`bc82d775a`), so the next deploy rolls a new build. The remaining gate is therefore in this worker's hands: dispatch `gh workflow run deploy.yml --ref main` and watch it.
+- **Next steps (this worker, now):** start the 5 s signed-in poll of `/services/<id>/settings` and `kubectl -n dashboard get rs,pods -w` before dispatching; poll until the old pod of the image roll and of the follow-up restart are both gone; on every "Something went wrong", press Try again and record it; then `fetch` every script with the default cache. DoD 1–3 and 5 get a short recheck on the new pin.
+
+## Live replay — pin `5bcfe8939f5b` (2026-11-17 09:10–09:48Z, rollout watched from before the new pod existed)
+
+This worker dispatched `gh workflow run deploy.yml --ref main` at 09:10:45Z (run `44053164732`, success). Its pin commit `5e0fb5ad8` landed at 09:41:15Z. The dashboard build changed: the entry went from `/_assets/index-H3d5qfeI.js` to `/_assets/index-CSZ1zu9R.js`. A timestamped `kubectl -n dashboard get pods,rs -w` recorded both of the deploy's rolls:
+
+| roll | new pod created | new pod Ready | old pod Terminating | old pod gone |
+| --- | --- | --- | --- | --- |
+| Argo image roll (`dashboard-5bdbb4b88b-h59mw` → `dashboard-5f9675744c-fstzw`) | 09:44:49 | 09:44:59 | 09:45:04 | 09:45:16 |
+| deploy job's `rollout restart` (→ `dashboard-865b845f48-2c9tf`) | 09:46:34 | 09:46:43 | 09:46:48 | 09:47:00 |
+
+1. **A missing asset — holds.** Rechecked at 09:48Z with `curl -s -A "Mozilla/5.0 … Chrome/130…" -D -`. Each of these answered `404`, `text/plain; charset=utf-8`, `cache-control: no-store`, `cf-cache-status: BYPASS`, body `Not found`:
+   - `/assets/qa-missing-1794908920.js`, twice;
+   - `/assets/qa-missing-1794908920.css` and `/assets/nope/qa-1794908920.js`;
+   - `/_assets/qa-missing-1794908920.js`, twice;
+   - `/_assets/qa-missing-1794908920.css` and `/_assets/nope/qa-1794908920.js`.
+
+   No answer was a `HIT`.
+2. **A real asset — holds.** `/auth/login` names 11 `/_assets/` scripts and no `/assets/` URL. Its entry `/_assets/index-CSZ1zu9R.js` and that entry's first import, `/_assets/vendor-react-v-sG7it2.js`, each answered `200`, `text/javascript; charset=utf-8`, `public, max-age=31536000, immutable`.
+3. **Pages unchanged — holds.** `/auth/login` → `200 text/html`, `private, no-cache`. `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` → `200 application/json`, `public, max-age=300`.
+4. **Through a rollout — holds.** The QA user (`scripts/qa-login.sh`) was signed in to an isolated headless Chromium with a persistent profile, which kept its cache. It ran `page.goto('/services/srv-dbkq3hdhhjfs73eiahe0/settings')` every 5 s from 09:10:40Z, 34 minutes before the new pod existed, to 09:48:20Z, 80 s after the restart's old pod was gone. That was 453 loads.
+   - Every load reached the Settings page (General, Source, Runtime, Build, Deploy, Custom Domains). None ended on "Something went wrong", so Try again was never needed (0 presses).
+   - Not one `/_assets/` response was a non-200 or a non-JavaScript/CSS type. No console message reported a MIME-type or module-load error. No load needed w4/651's one-time reload: each load navigated once.
+   - Loads 410–416 (09:44:45–09:45:15) spanned the image roll's overlap. Load 413 (09:45:00), one second after the new pod was Ready, still got the old entry; load 414 (09:45:07) got the new entry; both loaded the page. The restart roll (loads 432–437) served one build, so it had no mismatch to meet.
+   - **Afterwards:** on the new build, `fetch(url)` with the default cache answered `200 text/javascript; charset=utf-8` for all 16 same-origin scripts and modulepreloads the page loads.
+5. **Fixtures — holds.** None were created. The QA session was revoked (`qa-login.sh --logout`), and its state file and jar were deleted.
+
+**Verdict:** DoD 1–5 hold on production. Milestone closed 2026-11-17.
