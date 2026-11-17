@@ -5,6 +5,7 @@ import {
   useAgentSessionQueue,
 } from "@/features/agent-sessions/hooks/use-agent-session-queue";
 import type { AgentSessionPhase } from "@/features/agent-sessions/types";
+import { AgentSessionDocument } from "@/graphql/definitions";
 import { agentSessionView } from "@/test/mocks/agent-session";
 
 // The queue's own read (ADR047 D12): polled at the session's active cadence while
@@ -16,11 +17,14 @@ const stopPolling = vi.fn();
 const queryOptions = vi.fn();
 let data: unknown;
 
+const refetchQueries = vi.fn(async (_options: unknown) => undefined);
+
 vi.mock("@apollo/client/react", () => ({
   useQuery: (_doc: unknown, options: unknown) => {
     queryOptions(options);
     return { data, refetch, startPolling, stopPolling };
   },
+  useApolloClient: () => ({ refetchQueries }),
 }));
 
 const queued = (id: string, position: number) => ({
@@ -48,6 +52,7 @@ const session = (phase: AgentSessionPhase, over = {}) =>
 
 beforeEach(() => {
   refetch.mockClear();
+  refetchQueries.mockClear();
   startPolling.mockClear();
   stopPolling.mockClear();
   queryOptions.mockClear();
@@ -121,6 +126,48 @@ describe("useAgentSessionQueue", () => {
     // The dispatcher started the next message: the turn count moves.
     rerender({ phase: "running", turns: 2 });
     expect(refetch).toHaveBeenCalledTimes(2);
+  });
+
+  // A settled session is read every 25 s; without this the page said
+  // "Completed" for up to that long after the dispatcher started the next turn.
+  it("reads the session again when a message leaves a settled session's queue", () => {
+    data = queueData("aqm-1", "aqm-2");
+    const { rerender } = renderHook(() =>
+      useAgentSessionQueue(session("completed")),
+    );
+    expect(refetchQueries).not.toHaveBeenCalled();
+
+    data = queueData("aqm-2");
+    rerender();
+    expect(refetchQueries).toHaveBeenCalledTimes(1);
+    expect(refetchQueries).toHaveBeenLastCalledWith({
+      include: [AgentSessionDocument],
+    });
+
+    // Nothing left the queue: no further read.
+    rerender();
+    expect(refetchQueries).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not read the session again when the queue loads or grows", () => {
+    const { rerender } = renderHook(() =>
+      useAgentSessionQueue(session("completed")),
+    );
+    data = queueData("aqm-1");
+    rerender();
+    data = queueData("aqm-1", "aqm-2");
+    rerender();
+    expect(refetchQueries).not.toHaveBeenCalled();
+  });
+
+  it("leaves a running session to its own fast read when a message leaves", () => {
+    data = queueData("aqm-1");
+    const { rerender } = renderHook(() =>
+      useAgentSessionQueue(session("running")),
+    );
+    data = queueData();
+    rerender();
+    expect(refetchQueries).not.toHaveBeenCalled();
   });
 
   it.each(["canceling", "canceled"] as const)(

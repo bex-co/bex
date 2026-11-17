@@ -51,6 +51,7 @@ vi.mock("@/features/agent-sessions/lib/attachments", async (orig) => ({
 }));
 
 const toastSuccess = vi.fn();
+const toastOptions = vi.fn();
 vi.mock("@/features/agent-environment/hooks/use-agent-skills", () => ({
   useAgentSkills: () => ({
     skills: [
@@ -76,7 +77,12 @@ vi.mock("@/features/agent-environment/hooks/use-agent-skills", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: (m: string) => toastSuccess(m) },
+  toast: {
+    success: (m: string, options?: unknown) => {
+      toastSuccess(m);
+      toastOptions(options);
+    },
+  },
 }));
 
 // What a steer answers when the session was busy and queued the message.
@@ -97,6 +103,7 @@ beforeEach(() => {
   steer.mockReset();
   steer.mockResolvedValue({ session: { id: "as-1" } });
   toastSuccess.mockReset();
+  toastOptions.mockReset();
 });
 
 /** A view whose phase drives `isTerminal`/`isSteerable` like the mapper does. */
@@ -131,6 +138,8 @@ describe("SteeringComposer state routing", () => {
     );
     expect(chat.sendMessage).not.toHaveBeenCalled();
     expect(toastSuccess).toHaveBeenCalled();
+    // Not at the bottom right, where it would cover the Send button.
+    expect(toastOptions).toHaveBeenLastCalledWith({ position: "top-center" });
     expect(onSteered).toHaveBeenCalled();
   });
 
@@ -213,6 +222,8 @@ describe("SteeringComposer state routing", () => {
     expect(toastSuccess).toHaveBeenCalledWith(
       "Queued. It runs when the current turn ends.",
     );
+    // Not on the Send button: the next message is one more click away.
+    expect(toastOptions).toHaveBeenLastCalledWith({ position: "top-center" });
     expect(onSteered).toHaveBeenCalled();
     expect(box).toHaveValue("");
   });

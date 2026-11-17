@@ -78,6 +78,15 @@ export interface SteeringComposerProps {
  * never mounts it). `steerable` is not the condition, since it is true only
  * for an idle session.
  */
+/**
+ * Where the "sent" and "queued" confirmations show. The app's toasts sit at
+ * the bottom right, which is where this composer's Send button is: the
+ * confirmation landed on the button, and a toast stays while the pointer is
+ * on it, so a second message could not be clicked through (w22/m403 live
+ * check, at 1280, 1440 and phone widths).
+ */
+const SENT_TOAST = { position: "top-center" } as const;
+
 export function SteeringComposer({
   session,
   conversationState,
@@ -184,9 +193,9 @@ export function SteeringComposer({
       if (result.queuedMessage) {
         // The server queued it (the session was busy after all): no turn began.
         if (echoed) onOptimisticSteer?.(null);
-        toast.success(t("agentSessions.steerQueued"));
+        toast.success(t("agentSessions.steerQueued"), SENT_TOAST);
       } else {
-        toast.success(t("agentSessions.steerSuccess"));
+        toast.success(t("agentSessions.steerSuccess"), SENT_TOAST);
       }
       onSteered?.();
       setValue("");

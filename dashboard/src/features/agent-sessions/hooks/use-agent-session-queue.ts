@@ -1,6 +1,9 @@
-import { useEffect, useMemo } from "react";
-import { useQuery } from "@apollo/client/react";
-import { AgentSessionQueueDocument } from "@/graphql/definitions";
+import { useEffect, useMemo, useRef } from "react";
+import { useApolloClient, useQuery } from "@apollo/client/react";
+import {
+  AgentSessionDocument,
+  AgentSessionQueueDocument,
+} from "@/graphql/definitions";
 import { useRefetchOnChange } from "@/common/hooks/use-refetch-on-change";
 import { skipPollWhenHidden } from "@/common/lib/polling";
 import { toQueuedMessageViews } from "@/features/agent-sessions/lib/mapper";
@@ -31,7 +34,8 @@ export function canHoldQueue(
  * settles and the dispatcher starts the next message, the list drops it. The
  * queue mutations edit this query's cache directly, so a send, move, edit or
  * removal shows before the next read. An idle session with nothing queued is
- * read once, not polled.
+ * read once, not polled. When a message leaves a settled session's queue, the
+ * session itself is read again at once.
  */
 export function useAgentSessionQueue(
   session: AgentSessionView,
@@ -58,6 +62,23 @@ export function useAgentSessionQueue(
   }, [queueable, busy, startPolling, stopPolling]);
 
   useRefetchOnChange(`${session.phase}:${session.turns}`, refetch, queueable);
+
+  // A settled session is read at the slow baseline, but this queue is read
+  // every few seconds while a message waits. A message leaving the queue then
+  // means the dispatcher started its turn: read the session now, or the page
+  // says "Completed" with no Stop turn for up to 25 s into that turn (seen on
+  // the w22/m403 live check).
+  const client = useApolloClient();
+  const waiting = messages.length;
+  const lastWaiting = useRef(waiting);
+  useEffect(() => {
+    const left = waiting < lastWaiting.current;
+    lastWaiting.current = waiting;
+    if (!left || !queueable || !session.isTerminal) return;
+    void client
+      .refetchQueries({ include: [AgentSessionDocument] })
+      .catch(() => undefined);
+  }, [waiting, queueable, session.isTerminal, client]);
 
   return queueable ? messages : NO_MESSAGES;
 }
