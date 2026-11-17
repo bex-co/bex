@@ -459,6 +459,10 @@ The w8/m53 fence that kept booleans as "located schema refusals" was a reading o
 
 Any other refusal fails the test as a new class to triage. On 2026-10-20 all 170 files passed this rule.
 
+On 2026-11-16 the corpus held 181 files. 166 were valid. 6 were refused for previews, 6 for workflows, and one each for `dockerFilePath` and a free `private_service`. The remaining file, `redwoodjs`, was refused for a class nobody had triaged. Its rewrite ships the placeholder `destination: replace_with_api_url/*`, to be replaced "after first deploy to Render", and bex refuses a destination that is neither a path nor a URL. That class is a gap, filed as w33/007 and listed in `knownBlueprintGaps` until it ships, so all 181 files pass the rule again.
+
+Nothing had been running the opt-in test, which is why the refusal went unseen. Since w33/001, the `render-examples` job in `.github/workflows/render-schema-drift.yml` fetches the corpus and runs the test every Monday, beside the schema drift check. During the fetch, only a 404 means a repository has no Blueprint. Any other fetch failure fails the job, so a partial corpus never passes.
+
 Through dev-5's REST `POST /v1/blueprints/validate`, the unmodified `retool` and `redash` templates validate. `langfuse4-template`, `hasura-graphql` and `zulip` now fail only on the reserved `PORT`, and `saleor` only on a `RENDER_*` `fromService` reference.
 
 ### Preview opt-outs (w8/203, 2026-10-28)

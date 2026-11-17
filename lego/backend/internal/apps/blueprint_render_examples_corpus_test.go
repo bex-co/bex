@@ -41,12 +41,15 @@ var deliberateBlueprintDivergences = []string{
 
 // knownBlueprintGaps are Render-accepted inputs bex still refuses, each owned
 // by a board item; remove an entry when its item ships.
-var knownBlueprintGaps = []string{}
+var knownBlueprintGaps = []string{
+	"destination must be a path starting with /", // w33/007: redwoodjs's placeholder rewrite, replace_with_api_url/*
+}
 
 // TestRenderExamplesCorpus runs every render.yaml from github.com/render-examples
 // through ValidateBlueprint (fetch them with scripts/render-examples-corpus.sh;
 // they are third-party files, so they are not vendored). Opt-in:
-// BEX_RENDER_EXAMPLES_DIR=<dir of *.yaml>.
+// BEX_RENDER_EXAMPLES_DIR=<dir of *.yaml>. The render-examples job of
+// .github/workflows/render-schema-drift.yml fetches and runs it weekly (w33/001).
 func TestRenderExamplesCorpus(t *testing.T) {
 	dir := os.Getenv("BEX_RENDER_EXAMPLES_DIR")
 	if dir == "" {

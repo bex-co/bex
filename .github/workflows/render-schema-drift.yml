@@ -47,3 +47,39 @@ jobs:
       # comparison is against what upstream actually registers (w1/m70).
       - name: Compare Render's MCP tool surface with the reviewed pin
         run: scripts/render-mcp-drift.sh
+
+  # Render's own example Blueprints (w33/001). Each must validate, or fail only
+  # for a refusal TestRenderExamplesCorpus lists as deliberate or as a filed
+  # gap; anything else is a new class to triage. Nothing ran this opt-in test
+  # before, and it went red unseen.
+  render-examples:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    env:
+      # As backend-test.yml: the module on its own go.mod, as the image builds it.
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/backend/go.mod
+          cache-dependency-path: |
+            lego/backend/go.sum
+      # The files are third-party: fetched for each run, never vendored. The
+      # token reads public repositories at the authenticated rate limit.
+      - name: Fetch every render-examples render.yaml
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/render-examples-corpus.sh "$RUNNER_TEMP/render-examples"
+      - name: Validate each as a Blueprint
+        working-directory: lego/backend
+        env:
+          BEX_RENDER_EXAMPLES_DIR: ${{ runner.temp }}/render-examples
+        run: go test -count=1 -run '^TestRenderExamplesCorpus$' -v ./internal/apps/
