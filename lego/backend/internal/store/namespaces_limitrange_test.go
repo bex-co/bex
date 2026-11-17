@@ -49,3 +49,30 @@ func TestSandboxRegimeLimitRangeAdmitsTheSandboxWritableLayer(t *testing.T) {
 			quota.String(), holds, SandboxEphemeralMax, DefaultSandboxMaxActivePerWorkspace)
 	}
 }
+
+// A container in a sandbox namespace that names no CPU limit (the substrate's
+// execd-installer init container) gets the smallest plan's CPU, so it never
+// raises a sandbox pod's CPU quota above its plan; hosting keeps 2 (w22/020).
+func TestSandboxRegimeLimitRangeDefaultsCPUToTheSmallestPlan(t *testing.T) {
+	item := func(regime string) corev1.LimitRangeItem { return limitRangeFor("ns", regime).Spec.Limits[0] }
+	sandbox, hosting := item(RegimeSandbox), item(RegimeHosting)
+	if got, want := sandbox.Default[corev1.ResourceCPU], resource.MustParse("500m"); got.Cmp(want) != 0 {
+		t.Errorf("sandbox LimitRange default CPU limit = %s, want %s", got.String(), want.String())
+	}
+	if got, want := hosting.Default[corev1.ResourceCPU], resource.MustParse("2"); got.Cmp(want) != 0 {
+		t.Errorf("hosting LimitRange default CPU limit = %s, want the unchanged %s", got.String(), want.String())
+	}
+	// The API server refuses a LimitRange whose default request exceeds its
+	// default limit, and nothing else about the sandbox defaults moved.
+	request := sandbox.DefaultRequest[corev1.ResourceCPU]
+	limit := sandbox.Default[corev1.ResourceCPU]
+	if request.Cmp(limit) > 0 {
+		t.Errorf("sandbox LimitRange default CPU request %s exceeds its default limit %s", request.String(), limit.String())
+	}
+	for _, name := range []corev1.ResourceName{corev1.ResourceMemory, corev1.ResourceEphemeralStorage} {
+		got, want := sandbox.Default[name], hosting.Default[name]
+		if got.Cmp(want) != 0 {
+			t.Errorf("sandbox LimitRange default %s = %s, want hosting's %s", name, got.String(), want.String())
+		}
+	}
+}

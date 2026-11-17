@@ -71,6 +71,20 @@ snapshot_create_timeout_seconds = 900
 # scheduling are pinned in both the template and secure_runtime block.
 batchsandbox_template_file = "/etc/opensandbox/batchsandbox-template.yaml"
 
+# The execd-installer init container copies two binaries and exits. Without a
+# CPU limit of its own it takes the namespace LimitRange's default, and a pod's
+# CPU quota is the larger of its containers' sum and its largest init
+# container: under gVisor the sentry and the workload share the pod's cgroup,
+# so that quota, not the container's limit, is what a sandbox can use and what
+# the used-CPU meter bills. 500m is the smallest plan's CPU (starter), so a
+# sandbox pod's quota is its plan's on every plan (w22/020). The request stays
+# the LimitRange's default request: an unset one would default to the limit and
+# raise the pod's scheduling request. Memory is left to the LimitRange.
+# Guarded by scripts/gitops-validate.sh.
+[kubernetes.execd_init_resources]
+limits = { cpu = "500m" }
+requests = { cpu = "100m" }
+
 [ingress]
 mode = "direct"
 

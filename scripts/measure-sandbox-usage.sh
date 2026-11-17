@@ -18,6 +18,13 @@
 #   idle  runs nothing for BEX_MEASURE_USAGE_IDLE_SECONDS (default 3600) and is
 #         paused: it must read at most 2% of one core and its memory in full.
 #
+# A third sandbox, on the smallest plan (`starter`, half a CPU), proves the cap
+# the bill depends on (w22/020): each pod's CPU quota is its plan's CPU (the
+# execd-installer init container no longer raises it to the namespace default),
+# and four syscall-heavy loops for 60 s move the pod's counter by about half a
+# core, not two. Its start is timed from the pod's own timestamps, the install
+# step included, so the half-CPU init container's cost is on record.
+#
 # The run also reads GET /v1/usage as a customer does. Before the switch instant
 # (estimatedCost.sandboxUsageBilledFrom) the CPU and memory lines are unbilled
 # and the weighted compute line is the charge; from it on they are the charge,
@@ -50,6 +57,24 @@ pod_quota_cores() {
   quota="$(grep -F "pod=\"$1\"" "$fixture_dir/cadvisor.txt" | grep '^container_spec_cpu_quota' | grep 'name=""' | awk '{print $2}' | head -1)"
   period="$(grep -F "pod=\"$1\"" "$fixture_dir/cadvisor.txt" | grep '^container_spec_cpu_period' | grep 'name=""' | awk '{print $2}' | head -1)"
   [ -n "$quota" ] && [ -n "$period" ] && awk -v q="$quota" -v p="$period" 'BEGIN { print q / p }'
+}
+# pod_limit_cores <pod>: the sum of the pod's containers' CPU limits in cores,
+# which is its plan's CPU (init containers are not counted: they must not
+# exceed it).
+pod_limit_cores() {
+  kubectl -n "$namespace_a" get pod "$1" -o json \
+    | jq -r '[.spec.containers[].resources.limits.cpu // empty | if endswith("m") then (.[:-1] | tonumber / 1000) else tonumber end] | add // 0'
+}
+# pod_start <pod>: when the pod was created, when its install step ran and when
+# its first container started, as JSON with the two durations in seconds.
+pod_start() {
+  kubectl -n "$namespace_a" get pod "$1" -o json | jq -c '
+    (.status.initContainerStatuses // [] | map(select(.name == "execd-installer")) | .[0].state.terminated // {}) as $init |
+    (.status.containerStatuses // [] | map(.state.running.startedAt // empty) | min) as $started |
+    {created: .metadata.creationTimestamp, installStarted: ($init.startedAt // null), installFinished: ($init.finishedAt // null), containerStarted: ($started // null),
+     installCpuLimit: ([.spec.initContainers[]? | select(.name == "execd-installer") | .resources.limits.cpu] | .[0] // null)}
+    | .installSeconds = (if .installStarted and .installFinished then (.installFinished | fromdateiso8601) - (.installStarted | fromdateiso8601) else null end)
+    | .createdToStartedSeconds = (if .containerStarted then (.containerStarted | fromdateiso8601) - (.created | fromdateiso8601) else null end)'
 }
 # usage_of <id>: the sandbox's usage_hourly totals by kind, as JSON.
 usage_of() {
@@ -91,7 +116,11 @@ measure sandboxes "$(jq -cn --arg b "$busy" --arg bp "$busy_pod" --arg bc "$busy
 
 echo "==> busy: $bursts bursts of one busy core for 60 s each"
 c0="$(pod_cpu "$busy_pod" "$busy_node")"
-measure pod-cpu-quota "$(jq -cn --arg q "$(pod_quota_cores "$busy_pod" || true)" '{podQuotaCores: $q}')"
+busy_quota="$(pod_quota_cores "$busy_pod" || true)"
+busy_limit="$(pod_limit_cores "$busy_pod")"
+measure pod-cpu-quota "$(jq -cn --arg q "$busy_quota" --arg l "$busy_limit" --argjson s "$(pod_start "$busy_pod")" '{podQuotaCores: $q, planCpuCores: $l, start: $s}')"
+check "cap: the default plan's pod CPU quota is its plan's CPU" \
+  "$([ -n "$busy_quota" ] && within "$busy_quota" "$busy_limit" "$busy_limit" || echo false)" "pod quota '$busy_quota' cores, plan $busy_limit"
 inside_cpu=0
 for i in $(seq 1 "$bursts"); do
   sandbox_exec "$busy" 'end=$((SECONDS + 60)); while [ "$SECONDS" -lt "$end" ]; do :; done; times' "$fixture_dir/burst-$i.txt" \
@@ -135,6 +164,41 @@ want_memory="$(awk -v m="$memory_mib" -v s="$busy_seconds" 'BEGIN { print m / 10
 check "busy: memory is the allocated GiB for the seconds it ran" \
   "$(within "$(jq -r '.sandbox_memory_gb_seconds // 0' <<<"$busy_usage")" "$(awk -v w="$want_memory" 'BEGIN { print w * 0.98 - 2 }')" "$(awk -v w="$want_memory" 'BEGIN { print w * 1.02 + 2 }')")" \
   "want about $want_memory GiB-seconds over $busy_seconds s, usage $busy_usage"
+
+echo "==> cap: a starter sandbox under four syscall-heavy loops uses its half CPU, not the namespace default"
+small_from=$SECONDS
+small="$(create_sandbox "$fixture_dir/small.json" '{"type":"deny-all"}' '"plan":"starter"')"
+wait_status "$small" running 300
+small_running=$((SECONDS - small_from))
+read -r small_pod small_node _ < <(find_pod "$small")
+small_limit="$(pod_limit_cores "$small_pod")"
+s0=""
+for _ in $(seq 1 12); do # a new pod's cAdvisor row appears within a refresh or two
+  s0="$(pod_cpu "$small_pod" "$small_node" || true)"
+  [ -n "$s0" ] && break
+  sleep 10
+done
+small_quota="$(pod_quota_cores "$small_pod" || true)"
+# Each loop forks a process per turn: nearly all of its CPU is gVisor's, which
+# is the load that read 2.00 cores on a 1-CPU plan before the cap (m314 t001).
+sandbox_exec "$small" 'for n in 1 2 3 4; do (end=$((SECONDS + 60)); while [ "$SECONDS" -lt "$end" ]; do cat /proc/uptime >/dev/null; done) & done; wait' "$fixture_dir/small-load.txt" \
+  || fail "the starter sandbox's load did not complete: $(head -c 300 "$fixture_dir/small-load.txt.sse" 2>/dev/null)"
+sleep 20
+s1="$(pod_cpu "$small_pod" "$small_node")"
+[ -n "$s0" ] && [ -n "$s1" ] || fail "the node's cAdvisor has no pod-level CPU row for $small_pod"
+small_used="$(awk -v a="$s0" -v b="$s1" 'BEGIN { print b - a }')"
+measure cap "$(jq -cn --arg id "$small" --arg pod "$small_pod" --arg q "$small_quota" --arg l "$small_limit" --argjson used "$small_used" --argjson api "$small_running" --argjson s "$(pod_start "$small_pod")" \
+  '{id: $id, pod: $pod, plan: "starter", podQuotaCores: $q, planCpuCores: $l, loadSeconds: 60, loops: 4, podCpuSeconds: $used,
+    coresOverLoad: ($used / 60), createToRunningSecondsByApi: $api, start: $s}')"
+check "cap: the starter pod's CPU quota is its plan's CPU" \
+  "$([ -n "$small_quota" ] && within "$small_quota" "$small_limit" "$small_limit" || echo false)" "pod quota '$small_quota' cores, plan $small_limit"
+# The quota binds each 100 ms period, so 60 s of load cannot use more than the
+# plan's CPU for 60 s; 15% and 2 s cover the exec's own start and end. The
+# floor shows the load did reach the cap, so the ceiling is not passed idle.
+check "cap: a syscall-heavy load uses about the plan's CPU and no more" \
+  "$(within "$small_used" "$(awk -v l="$small_limit" 'BEGIN { print l * 60 * 0.8 }')" "$(awk -v l="$small_limit" 'BEGIN { print l * 60 * 1.15 + 2 }')")" \
+  "the pod used $small_used CPU-seconds in 60 s of load on a $small_limit-CPU plan"
+expect_status 204 POST "/v1/sandboxes/$small/terminate?ownerId=$ws" "$fixture_dir/terminate-small.json"
 
 echo "==> idle: nothing runs for $idle_seconds s"
 remaining=$((idle_seconds - (SECONDS - idle_from)))

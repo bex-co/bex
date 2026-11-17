@@ -2219,7 +2219,13 @@ for required in \
   'type = "gvisor"' \
   'k8s_runtime_class = "gvisor"' \
   'execd_image = "opensandbox/execd:v1.0.16@sha256:af7b55c861926c1304371c4578007fbaa424538219154a6a49a5d636217d2a3a"' \
+  '[kubernetes.execd_init_resources]' \
+  'limits = { cpu = "500m" }' \
+  'requests = { cpu = "100m" }' \
   'auth_token = "Bearer __BEX_CP_TOKEN__"'; do
+  # The execd-installer init container's CPU limit is the smallest plan's, so
+  # a sandbox pod's CPU quota, which the used-CPU meter bills up to, is its
+  # plan's (w22/020).
   grep -qF "$required" deploy/opensandbox/sandbox-cluster.toml \
     || { echo "FAIL: sandbox-cluster.toml lost: $required" >&2; fail=1; }
 done

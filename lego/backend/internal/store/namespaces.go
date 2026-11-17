@@ -767,17 +767,30 @@ const hostingEphemeralMax = "32Gi"
 // does, and the pod is then refused at admission.
 const DefaultSandboxMaxActivePerWorkspace = 100
 
+// SandboxDefaultCPULimit is the CPU limit a container in a sandbox namespace
+// gets when it names none: the smallest sandbox plan's CPU (starter, half a
+// core). The one such container is the OpenSandbox server's `execd-installer`
+// init container. A pod's CPU quota is the larger of its containers' sum and
+// its largest init container, and under gVisor the sentry and the workload
+// share the pod's cgroup, so with the hosting default of 2 a `starter` or
+// `1c-2g` sandbox could use, and from the used-CPU meter be billed for, two
+// cores (w22/020). No plan may be smaller than this; the sandbox package's
+// plan table is tested against it.
+const SandboxDefaultCPULimit = "500m"
+
 // limitRangeFor is the namespace's LimitRange: the base one, with the sandbox
 // regime's ephemeral-storage ceiling raised to SandboxEphemeralMax so a sandbox
-// can carry the writable filesystem Render sells. The kubelet enforces it by
-// eviction; measured on production under gVisor, its accounting follows what a
-// sandbox writes (w22/008).
+// can carry the writable filesystem Render sells, and its default CPU limit
+// lowered to SandboxDefaultCPULimit so a sandbox pod's CPU quota is its plan's.
+// The kubelet enforces the storage ceiling by eviction; measured on production
+// under gVisor, its accounting follows what a sandbox writes (w22/008).
 func limitRangeFor(namespace, regime string) *corev1.LimitRange {
-	ceiling := hostingEphemeralMax
-	if regime == RegimeSandbox {
-		ceiling = SandboxEphemeralMax
+	if regime != RegimeSandbox {
+		return baseLimitRange(namespace, hostingEphemeralMax)
 	}
-	return baseLimitRange(namespace, ceiling)
+	limits := baseLimitRange(namespace, SandboxEphemeralMax)
+	limits.Spec.Limits[0].Default[corev1.ResourceCPU] = resource.MustParse(SandboxDefaultCPULimit)
+	return limits
 }
 
 // baseLimitRange supplies request/limit defaults for pods that omit them
