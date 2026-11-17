@@ -1,6 +1,6 @@
 # w6 · m333 — Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed
 
-**Worker:** worker6 **Goal:** A deleted service's bandwidth is metered through its deletion hour, and neither a deleted service nor a deleted disk leaves the month's coverage degraded or behind. **Status:** blocked — everything is done and verified on production except the disk clause's production read, which needs a disk deleted from a live service and read 50 h later. None exists yet: the fix (w4/575) shipped 2026-11-11, and creating one needs a paid service with a disk, which is the user's call.
+**Worker:** worker6 **Goal:** A deleted service's bandwidth is metered through its deletion hour, and neither a deleted service nor a deleted disk leaves the month's coverage degraded or behind. **Status:** todo — t001–t007 done and verified on production; t008 reads the disk clause on production after the 2026-11-16 user authorization of a short-lived paid fixture in `bex-canary` (see 解除阻塞 — 2026-11-16).
 
 ## Tasks (in order)
 
@@ -37,3 +37,13 @@
 - **Clause 2 is covered by tests only so far:** `TestDiskMeterClosesTheStreamOfADeletedDisk` and `TestCloseIdleUsageSourceStreamsKeepsCoverageHealthy`. `disk` is not a degraded source in `bex-canary`'s coverage now.
 - **What is missing:** a disk deleted from a live service, read 50 h later. No production disk stream has ended that long ago (2026-11-12 query), because the fix shipped on 2026-11-11. Disks need a paid instance type, so creating a fixture is a paid resource.
 - **Release:** the user agrees to a short-lived paid service with a disk in `bex-canary`, or an organic disk deletion happens. Then read the workspace's `degradedSources` 50 h after it, and t008 closes the milestone.
+
+## 解除阻塞 — 2026-11-16（用户决定，`/unblock`）
+
+- **涉及 ID：** w6/m333（t008）。
+- **来源：** 用户明确决定。`/unblock` 2026-11-16 的 D3，用户选「授权建短时付费服务」。
+- **结论：** 授权 worker 在 `bex-canary` 建**一个**短时付费服务：最便宜的付费实例类型，挂 1 GB 磁盘。确认磁盘的计量流已经开始后删除磁盘（或连同服务一起删），费用在美分级。授权只覆盖这一个测试资源；用完按 ID 删除，并确认 `GET` 返回 404。
+- **worker 先查：** 生产上是否已有删除超过 50 小时的磁盘计量流（客户自然删除）。有就直接读它，不建测试资源。
+- **对标依据：** Render 删除磁盘后停止计费，账单上也不出现额外的说明；本项只差这条在生产上的验收。
+- **worker 下一步：** 建好并删除测试磁盘后，磁盘删除满 50 小时之前按 loopx 规则把 m333 停回 `blocked/`，门槛写成「删除时间 + 50 h 到点后，worker 自己就能读」。到点后读 `bex-canary` 的 `degradedSources`：`disk` 不在其中，DoD 第 2 条即成立，t008 关闭 milestone。
+- **剩余门槛：** 无用户门槛。

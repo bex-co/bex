@@ -45,3 +45,14 @@ Read from [render.com/docs/build-pipeline](https://render.com/docs/build-pipelin
 
 - **Gate (Hetzner / account owner): dedicated vCPUs.** A Performance build needs a 16 CPU / 64 GB node, which on Hetzner is a ccx43 (dedicated vCPU). The project's dedicated-vCPU limit is below 16, the same gate as `w2/blocked/m250` (Pro Ultra) and `w6/blocked/114`. Offering the setting before a node can start would accept Performance builds that never get a machine.
 - **Release:** the account owner raises the dedicated-vCPU limit (Hetzner Console → Limits, or a support ticket) to at least 16 for one Performance build node, or at least 48 to also run m250's Pro Ultra pool at full size. Then t002 adds the pool (min 0) and its validator guards, t003 the workspace setting and operator shape, t004 metering and pricing. The rest of the build-pipeline parity (`m306`–`m309`) does not wait on it.
+
+## 复核与用户决定 — 2026-11-16（`/unblock`）
+
+- **涉及 ID：** w6/m310、w6/114（与 `w2/blocked/m250` 是同一个门槛）。
+- **复核（Hetzner API `GET /server_types`，2026-11-16）：**
+  - CX 机型（cx33、cx43、cx53）在 fsn1、nbg1、hel1 全部缺货；ARM 的 cax 也缺货。
+  - 就算有货也装不下：共享 vCPU 机型最大只有 32 GB 内存（cx53、cpx62、cpx51、cax41）。m310 的 16 CPU / 64 GB 构建，以及 114 的四个独占规格（`4c-32g`、`8c-64g`、`12c-48g`、`12c-96g`），都只能跑在独占 vCPU 的 CCX 机型上。
+  - CCX（ccx23–ccx63）在三个 EU 机房都有货，卡在项目的独占 vCPU 配额上。
+- **用户决定：** 原话「你看一下 CX 的机器有吗？没有的话就没有了」。CX 没货，也装不下这些规格，所以暂不申请提高独占 vCPU 配额，接受等待。
+- **接受的代价：** Pro 及以上 workspace 没有 Performance 构建可选；客户在 Blueprint 或 API 里写这些大规格时会被拒绝。
+- **剩余门槛（用户）：** 用户以后决定申请提额（≥ 16 释放 m310；≥ 48 同时释放 m250 的 Pro Ultra 和 114 的独占规格），或 Hetzner 推出内存够大的共享机型。在此之前 worker 无事可做，不要重复问。
