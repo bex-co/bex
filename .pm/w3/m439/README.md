@@ -1,16 +1,16 @@
 # w3 · m439 — The CLI usage board counts customers, product areas and agent outcomes (ADR113 D7 read side + D9)
 
-**Worker:** worker3 **Goal:** the CLI usage view and board learn audience, command family, exit codes and long waits, and ADR018 records the telemetry surface. **Status:** todo
+**Worker:** worker3 **Goal:** the CLI usage view and board learn audience, command family, exit codes and long waits, and ADR018 records the telemetry surface. **Status:** in progress (t001–t005 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Append exit_code, cli_fault, command_family, started_at and audience to cli_analytics.events | 60m | — |
-| [t002](t002.md) | SQL tests for the new columns | 45m | t001 |
-| [t003](t003.md) | Audience and family filters and the business panels | 75m | t001 |
-| [t004](t004.md) | Operations SQL panels: delivery lag, retained window, clients by release | 30m | t003 |
-| [t005](t005.md) | Docs: runbook definitions, ADR018 row, ADR088 board row, ADR113 status | 30m | t003, t004 |
+| [t001](done/t001.md) | Append exit_code, cli_fault, command_family, started_at and audience to cli_analytics.events — **DONE** | 60m | — |
+| [t002](done/t002.md) | SQL tests for the new columns — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Audience and family filters and the business panels — **DONE** | 75m | t001 |
+| [t004](done/t004.md) | Operations SQL panels: delivery lag, retained window, clients by release — **DONE** | 30m | t003 |
+| [t005](done/t005.md) | Docs: runbook definitions, ADR018 row, ADR088 board row, ADR113 status — **DONE** | 30m | t003, t004 |
 | [t006](t006.md) | Apply on production and classify bex's own workspaces | 45m | t005 |
 | [t007](t007.md) | Simplify | 15m | t006 |
 | [t008](t008.md) | Test coverage | 30m | t007 |

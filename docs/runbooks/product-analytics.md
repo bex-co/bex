@@ -60,7 +60,23 @@ The older hosting/TLS sampler remains for Adoption detail: the reconciler sample
 
 Customer/unclassified are included by default; known internal, QA and canary workspaces are excluded. Unknown does **not** mean customer. The unclassified-workspace tile makes the remaining classification work visible. Billing exclusion, workspace name, email domain and plan are not reliable substitutes.
 
-An administrator can upsert exact, reviewed workspace IDs into `product_analytics_audiences` with audience `customer`, `internal`, `qa` or `canary`. The Grafana reader cannot edit those labels. No existing workspace is classified automatically.
+An administrator can upsert exact, reviewed workspace IDs into `product_analytics_audiences` with audience `customer`, `internal`, `qa` or `canary`. The Grafana reader cannot edit those labels. No existing workspace is classified automatically. The same labels scope the CLI usage board (`cli_analytics.events.audience`, ADR113 D9).
+
+```sql
+INSERT INTO product_analytics_audiences (workspace_id, audience) VALUES ('<tea-…>', 'qa')
+ON CONFLICT (workspace_id) DO UPDATE SET audience = EXCLUDED.audience;
+```
+
+bex's own production workspaces, as reviewed on 2026-11-16 (w3/m439). The QA user and the CLI telemetry identity are the same account, an admin of the first three:
+
+| Workspace | ID | Audience | Used by |
+| --- | --- | --- | --- |
+| `bex` | `tea-d98210cbbpdc73dcrkvg` | `qa` | QA skills, repository CI and the CLI; every CLI event retained on 2026-11-16 came from it |
+| `bex-canary` | `tea-daif693dqjvc73e7as3g` | `canary` | `BEX_CANARY_WORKSPACE_ID` ([ADR088](../ADR088-platform-observability-ui.md)) |
+| `tian-personal` | `tea-da2isimlm39c739m4ofg` | `internal` | the QA user's personal workspace |
+| `iso-verify-{a,b}-…`, `m35-{a,b}-…`, `m42-verify-…` | the eleven workspaces with those names on 2026-11-16 | `qa` | left behind by `scripts/verify-tenant-isolation.sh`, `scripts/verify-sandbox-isolation-live.sh` and an earlier verifier when their cleanup failed |
+
+A verifier run that leaves a workspace behind creates it as `customer` (migration 0125), so label or delete it after a failed cleanup.
 
 ## Deployment order and credentials
 
