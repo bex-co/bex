@@ -108,12 +108,37 @@ func dockerBuildInputsEnv(o Options, literals []corev1.EnvVar) []corev1.EnvVar {
 // dockerBuildSecretArgs names each copied secret file to buildctl under its
 // Render id. Names are validated to the Secret-key charset, so the CSV field
 // needs no quoting.
+//
+// A file over BuildKit's 500 KiB secret limit is left out (w4/699): buildctl
+// refuses to start with one, so passing it would fail every build, including
+// those whose Dockerfile never mounts it. The tenant names the secret id in
+// their own Dockerfile, so it cannot be split transparently as a native build
+// does. Such a file is still in the build context root
+// (dockerContextFilesStep), and dockerOversizedSecretNotice says so in the
+// build log.
 func dockerBuildSecretArgs(o Options) []string {
 	args := make([]string, 0, 2*len(o.NativeFiles))
 	for _, name := range o.NativeFiles {
+		if o.NativeFileSizes[name] > buildkitMaxSecretSize {
+			continue
+		}
 		args = append(args, "--secret", "id="+renderSecretFileID(name)+",src="+dockerBuildInputsMount+"/files/"+name)
 	}
 	return args
+}
+
+// dockerOversizedSecretNotice is the build-log line for each secret file
+// dockerBuildSecretArgs leaves out. Names are in the Secret-key charset, so
+// they sit inside single quotes unescaped.
+func dockerOversizedSecretNotice(o Options) string {
+	var notice strings.Builder
+	for _, name := range o.NativeFiles {
+		if o.NativeFileSizes[name] > buildkitMaxSecretSize {
+			fmt.Fprintf(&notice, "echo 'Secret file %s is over the 500 KiB a Docker build secret can hold: it is in the build context root, not available to RUN --mount=type=secret,id=%s.' >&2\n",
+				name, renderSecretFileID(name))
+		}
+	}
+	return notice.String()
 }
 
 // dockerBuildInputsScript runs in the BuildKit container before buildctl. It
@@ -127,7 +152,7 @@ func dockerBuildInputsScript(o Options, literals []corev1.EnvVar) string {
 	if o.RuntimeEnvSecret == "" && len(literals) == 0 && len(o.NativeFiles) == 0 {
 		return ""
 	}
-	return `umask 077
+	return dockerOversizedSecretNotice(o) + `umask 077
 if [ -d ` + dockerBuildEnvMount + ` ]; then
   for path in ` + dockerBuildEnvMount + `/* ` + dockerBuildEnvMount + `/.[!.]*; do
     [ -f "$path" ] || continue

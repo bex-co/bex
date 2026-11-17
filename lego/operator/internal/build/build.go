@@ -526,6 +526,12 @@ type Options struct {
 	// under Render's id (renderSecretFileID, w1/m178). Both empty = none.
 	NativeFilesSecrets []string
 	NativeFiles        []string
+	// NativeFileSizes is each NativeFiles entry's size in bytes when the Job
+	// is made. A native build carries a file over BuildKit's 500 KiB secret
+	// limit in parts (nativeFileParts), and a Dockerfile build cannot pass it
+	// as a build secret at all (dockerBuildSecretArgs, w4/699). An absent name
+	// counts as small.
+	NativeFileSizes map[string]int
 	// NativeResolverImage is bex's own image, whose /native-resolve picks the
 	// toolchain line a native build asked for (w8/m51). Empty skips the phase:
 	// the build runs on its runtime's default line, as before the resolver.
@@ -1247,7 +1253,14 @@ func buildctlRecipeArgs(o Options, dockerfileDir string) []string {
 		"--secret", "id=render-env,src=/native/render-env",
 	}
 	for i, name := range o.NativeFiles {
-		args = append(args, "--secret", "id="+nativeFileSecretID(i)+",src=/native/files/"+name)
+		ids := nativeFileSecretIDs(o, i, name)
+		if len(ids) == 1 {
+			args = append(args, "--secret", "id="+ids[0]+",src=/native/files/"+name)
+			continue
+		}
+		for p, id := range ids {
+			args = append(args, "--secret", fmt.Sprintf("id=%s,src=%s/%s/%d", id, nativeFilePartsDir, name, p))
+		}
 	}
 	if nativeServingInit(o) {
 		args = append(args,

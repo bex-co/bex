@@ -63,6 +63,86 @@ func validNativeFileName(name string) bool {
 // An index rather than the name keeps the id opaque and trivially CSV-safe.
 func nativeFileSecretID(i int) string { return fmt.Sprintf("bex-file-%d", i) }
 
+// buildkitMaxSecretSize is the most bytes buildctl hands BuildKit as one
+// secret: its session store refuses a larger --secret source as "too big"
+// (moby/buildkit session/secrets/secretsprovider MaxSecretSize, 500 KiB), and
+// that check runs when buildctl starts, so one such file fails every build. A
+// secret file may be 1 MiB (w4/m363), so a native build carries a larger file
+// in parts of at most this size (w4/699).
+const buildkitMaxSecretSize = 500 * 1024
+
+// nativeFileParts is how many BuildKit secrets carry the named file: one up to
+// buildkitMaxSecretSize, else as many parts of that size as its bytes need.
+func nativeFileParts(o Options, name string) int {
+	return max(1, (o.NativeFileSizes[name]+buildkitMaxSecretSize-1)/buildkitMaxSecretSize)
+}
+
+// nativeFileSecretIDs is the BuildKit secret ids carrying the i-th file, one
+// per part in order: nativeFileSecretID for a file that fits one secret,
+// bex-file-<i>-<part> for a split one.
+func nativeFileSecretIDs(o Options, i int, name string) []string {
+	parts := nativeFileParts(o, name)
+	if parts == 1 {
+		return []string{nativeFileSecretID(i)}
+	}
+	ids := make([]string, parts)
+	for p := range ids {
+		ids[p] = fmt.Sprintf("bex-file-%d-%d", i, p)
+	}
+	return ids
+}
+
+// nativeFilesSplit reports whether any secret file of the build is carried in
+// parts. Only then does the build assemble /etc/secrets itself
+// (nativeFileMounts); otherwise each file mounts there directly, as before.
+func nativeFilesSplit(o Options) bool {
+	for _, name := range o.NativeFiles {
+		if nativeFileParts(o, name) > 1 {
+			return true
+		}
+	}
+	return false
+}
+
+// nativeFilePartsDir is where the preparer cuts a split file into parts
+// (/native/file-parts/<name>/<p>), and nativeFilePartsMount where the build RUN
+// mounts the parts of the i-th file (<mount>/<i>/<p>).
+const (
+	nativeFilePartsDir   = "/native/file-parts"
+	nativeFilePartsMount = "/run/bex-files"
+)
+
+// nativeFileMounts is the build RUN's secret-file mount flags and, for a build
+// that carries a file in parts, the loader lines that put each file back
+// together. Without a split file, each file rides its own secret mount at
+// /etc/secrets/<name>. With one, /etc/secrets is a tmpfs mount for this RUN
+// only, every file's secrets mount under nativeFilePartsMount, and the loader
+// concatenates each file's parts, in order, into /etc/secrets/<name> before the
+// tenant's command runs: the bytes still never reach a layer, the image config
+// or the build context (w4/699).
+func nativeFileMounts(o Options) (mounts, assemble string) {
+	var flags, lines strings.Builder
+	split := nativeFilesSplit(o)
+	if split {
+		flags.WriteString(" --mount=type=tmpfs,target=" + nativeSecretFilesDir)
+	}
+	for i, name := range o.NativeFiles {
+		if !split {
+			fmt.Fprintf(&flags, " --mount=type=secret,id=%s,target=%s/%s,required=true",
+				nativeFileSecretID(i), nativeSecretFilesDir, name)
+			continue
+		}
+		lines.WriteString("cat")
+		for p, id := range nativeFileSecretIDs(o, i, name) {
+			target := fmt.Sprintf("%s/%d/%d", nativeFilePartsMount, i, p)
+			fmt.Fprintf(&flags, " --mount=type=secret,id=%s,target=%s,required=true", id, target)
+			lines.WriteString(" " + target)
+		}
+		fmt.Fprintf(&lines, " > %s/%s || exit 1\n", nativeSecretFilesDir, name)
+	}
+	return flags.String(), lines.String()
+}
+
 // nativePreparerImage is digest-pinned (codex round-7 F10 / the ADR055 F7
 // digest-pinning deferral's highest-value pin): this initContainer mounts and
 // reads the ENTIRE runtime-env secret bundle, so a retagged upstream busybox
@@ -297,7 +377,9 @@ func nativeEnvRevision(o Options) string {
 // carry file NAMES only; the revision above also covers file bytes, since a
 // changed file would otherwise reuse the cached RUN just like a changed env
 // value. required=true makes a missing transport fail the build instead of
-// silently running without the file.
+// silently running without the file. A file over BuildKit's 500 KiB secret
+// limit rides in parts and is reassembled on a RUN-only tmpfs instead
+// (nativeFileMounts, w4/699).
 // The env-decoding loop lives in its own file, written by a COPY heredoc just
 // before the RUN, so BuildKit's step line and its "process … did not complete"
 // error name only the tenant's command behind one short source line (w8/052)
@@ -318,15 +400,11 @@ const (
 const nativeLiteralEnvPrefix = "BEX_NATIVE_LITERAL_"
 
 func nativeDockerfile(o Options) string {
-	var fileMounts strings.Builder
-	for i, name := range o.NativeFiles {
-		fmt.Fprintf(&fileMounts, " --mount=type=secret,id=%s,target=%s/%s,required=true",
-			nativeFileSecretID(i), nativeSecretFilesDir, name)
-	}
+	fileMounts, assembleFiles := nativeFileMounts(o)
 	// The decoder is resolved once, under the image's PATH, into a function a
 	// decoded variable cannot overwrite: a decoded PATH is exported mid-loop
 	// and must reach the command exactly, not stop the next decode (w8/m61).
-	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + `decoder="$(command -v base64)" || exit 1
+	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + assembleFiles + `decoder="$(command -v base64)" || exit 1
 eval "bex_decode() { '$decoder' -d; }"
 while IFS= read -r record; do
   [ -n "$record" ] || continue
@@ -348,7 +426,7 @@ COPY <<'%s' %s
 %sARG RENDER_GIT_COMMIT
 %s%s %s
 `, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o), nativeWorkdir, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
-		installLines, nativeEnvRunMount, fileMounts.String(), run)
+		installLines, nativeEnvRunMount, fileMounts, run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
 		// Job's extract initContainer (ADR029) and never runs as a workload.
@@ -520,6 +598,19 @@ func shellJSON(command string) string {
 	return strings.TrimSpace(out.String())
 }
 
+// nativeFilePartsList is "<name> <parts>" for each file the build carries in
+// more than one part, space-separated for the preparer's word split (names are
+// in the Secret-key charset). Empty when every file fits one secret.
+func nativeFilePartsList(o Options) string {
+	var fields []string
+	for _, name := range o.NativeFiles {
+		if parts := nativeFileParts(o, name); parts > 1 {
+			fields = append(fields, name, strconv.Itoa(parts))
+		}
+	}
+	return strings.Join(fields, " ")
+}
+
 // nativeBuildPreparer materializes the generated Dockerfile and a base64 env
 // bundle into an EmptyDir shared with buildkit. The env bundle enters BuildKit
 // through a secret mount, so neither literal nor OpenBao-backed values appear in
@@ -535,6 +626,9 @@ func nativeBuildPreparer(o Options) corev1.Container {
 		corev1.EnvVar{Name: "BEX_NATIVE_LITERAL_KEYS", Value: keys},
 		corev1.EnvVar{Name: "BEX_NATIVE_FILES", Value: execution.KubernetesLiteral(strings.Join(o.NativeFiles, "\n"))},
 	)
+	if parts := nativeFilePartsList(o); parts != "" {
+		env = append(env, corev1.EnvVar{Name: "BEX_NATIVE_FILE_PARTS", Value: execution.KubernetesLiteral(parts)})
+	}
 
 	mounts := []corev1.VolumeMount{{Name: "native-build", MountPath: "/native"}}
 	if o.RuntimeEnvSecret != "" {
@@ -571,6 +665,24 @@ mkdir /native/files
 # Names are validated to the Secret-key charset, so word splitting is exact.
 for name in $BEX_NATIVE_FILES; do
   cp "/native-files/$name" "/native/files/$name"
+done
+# A file over BuildKit's secret limit is cut into the parts the build mounts
+# (w4/699). Its part count was fixed when the Job was made, so a file that has
+# since grown past it fails here, by name, rather than inside BuildKit.
+set -- ${BEX_NATIVE_FILE_PARTS:-}
+while [ $# -gt 0 ]; do
+  name=$1 parts=$2
+  shift 2
+  if [ "$(wc -c < "/native/files/$name")" -gt $((parts * ` + fmt.Sprint(buildkitMaxSecretSize) + `)) ]; then
+    echo "secret file $name changed after this build started; deploy again" >&2
+    exit 1
+  fi
+  mkdir -p "` + nativeFilePartsDir + `/$name"
+  p=0
+  while [ $p -lt $parts ]; do
+    dd if="/native/files/$name" of="` + nativeFilePartsDir + `/$name/$p" bs=` + fmt.Sprint(buildkitMaxSecretSize) + ` skip=$p count=1 2>/dev/null
+    p=$((p + 1))
+  done
 done`},
 		Env:          env,
 		VolumeMounts: mounts,

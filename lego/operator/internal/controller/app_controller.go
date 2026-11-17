@@ -1301,6 +1301,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		NativeEnvRevision:  inputs.revision,
 		NativeFilesSecrets: inputs.filesSecrets,
 		NativeFiles:        inputs.files,
+		NativeFileSizes:    inputs.fileSizes,
 		// bex's own image runs the version resolver (w8/m51); unresolved, the
 		// build keeps its runtime's default line.
 		NativeResolverImage:  r.BackupHelperImage,
@@ -1866,10 +1867,11 @@ func (r *AppReconciler) relocateBuildSecret(ctx context.Context, app *appv1alpha
 // buildInputs is what a native or Dockerfile build receives beside its source:
 // the merged env Secret, the opaque native cache revision covering env and file
 // bytes, and the secret-files Secrets (packSecretFiles) with their sorted file
-// names.
+// names and sizes.
 type buildInputs struct {
 	envSecret, revision string
 	filesSecrets, files []string
+	fileSizes           map[string]int
 }
 
 // projectBuildInputs projects the in-flight release's secret files and
@@ -1884,8 +1886,12 @@ func (r *AppReconciler) projectBuildInputs(ctx context.Context, app *appv1alpha1
 	if err != nil {
 		return buildInputs{}, err
 	}
+	sizes := make(map[string]int, len(files))
+	for name, content := range files {
+		sizes[name] = len(content)
+	}
 	return buildInputs{envSecret: envSecret, revision: revision,
-		filesSecrets: filesSecrets, files: slices.Sorted(maps.Keys(files))}, nil
+		filesSecrets: filesSecrets, files: slices.Sorted(maps.Keys(files)), fileSizes: sizes}, nil
 }
 
 // nativeEnvSecretName is the App-owned merged native-build env Secret. Linked

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"strings"
 	"testing"
 
@@ -461,5 +462,25 @@ func TestBuildDatastoreReachRevocationAndEligibility(t *testing.T) {
 	var np networkingv1.NetworkPolicy
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: reachBuildNs, Name: buildEgressPolicyName(app.Name)}, &np); !apierrors.IsNotFound(err) {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// w4/699: the build learns each secret file's size from the bytes it projects,
+// so a native build can carry a file over BuildKit's 500 KiB secret limit in
+// parts and a Dockerfile build can leave it out of its build secrets.
+func TestBuildInputsCarrySecretFileSizes(t *testing.T) {
+	app := reachApp("mysite", wsA)
+	app.Spec.FilesFromSecrets = []string{"mysite-files"}
+	big := strings.Repeat("x", 614400)
+	r, _ := reachReconciler(t,
+		envSecret(wsA, "dpg-one-app", map[string]string{"uri": dbURI}),
+		envSecret(wsA, "mysite-files", map[string]string{"qa-build.txt": big, ".npmrc": "registry=x"}))
+	inputs, err := r.projectBuildInputs(context.Background(), app, reachBuildNs, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int{"qa-build.txt": 614400, ".npmrc": len("registry=x")}
+	if !maps.Equal(inputs.fileSizes, want) {
+		t.Fatalf("fileSizes = %v, want %v", inputs.fileSizes, want)
 	}
 }
