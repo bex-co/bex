@@ -152,8 +152,8 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `--status-code <codes>` — durable-logs supplement: exact `404`/`200` exclude each other's probe lines, and the `4xx` class shorthand matches. Dev-9 (no Loki) answers `503`
   - [x] `--method <methods>` — durable-logs supplement: the GET probes match; a never-sent method is an honest empty. Dev-9 (no Loki) answers `503`
   - [x] `--path <paths>` — durable-logs supplement: matches only the probe path; an absent path is an honest empty. Dev-9 (no Loki) answers `503`
-  - [x] `--task-id <ids>` — accepted as a filter
-  - [x] `--task-run-id <ids>` — accepted as a filter
+  - [-] `--task-id <ids>` — deliberate non-goal (Render Workflows, `.pm/DO_NOT_DO.md`): the server refuses `task` by name with a 400 since w8/132, so the read is never silently widened
+  - [-] `--task-run-id <ids>` — deliberate non-goal, refused by name the same way (`taskRun`)
 - [x] **`postgres`** (alias `pg`) — manage Render Postgres databases
   - [x] `postgres create` — id/name/ipAllowList wire shape correct (description persists). With no allowlist flag, the pinned builder omits `ipAllowList`; REST defaults to public with explicit `0.0.0.0/0` and `::/0` rules, so readback no longer reports a blocked empty list (w2/038). Explicit REST `[]` creates private intent unless Bex `public:true` overrides it; the public API rejects `ipAllowList:null` and `public:null` with HTTP 400. Native GraphQL/MCP create defaults stay private. [Create matrix and CLI limits](ADR009-postgresql-management.md#postgres-create-access-intent-w2038)
     - [x] payment-required failures use the same CLI-decodable 402 envelope as Service and Key Value creates
