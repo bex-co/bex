@@ -6,8 +6,9 @@ Captured 2026-11-17 for w32/m425. It records what a bex service actually reads, 
 - **When and where:** 09:23–09:42 UTC, workspace `bex-canary`, as the QA user over REST. Builds cloned `bex-co/bex@1c92455c2` (root directory `examples/default-env-probe`) and `render-examples/phoenix_hello@d95c60fd4aa2`.
 - **Method:** `probe.sh` runs first in each build command and each start command. It prints the 43 documented names plus `PORT`, by name only, as `DEFAULT_ENV <phase> NAME=value` or `… NAME unset`. The Docker fixture declares each name as an `ARG`, so its build shows which defaults arrive as build args. The image fixture prints the same names with `env | grep`. The lines were read back with `GET /v1/logs?type=build|app&text=DEFAULT_ENV`. No fixture set variables of its own, except the Elixir one's throwaway `SECRET_KEY_BASE`, which was never printed.
 - **Cleanup:** every fixture was deleted at 09:42 UTC, and its by-id `GET` answered `404`.
+- **The three cells w32/m424 changed** (Python's `GUNICORN_CMD_ARGS`, Ruby's `PASSENGER_PORT` and `GEM_PATH`) were read on the next pin, `6984548a30f8` (`336b647b1`), which carries w32/m424's `f1cdd052b`. From 10:38:43 UTC `bex-controller-manager` and `bex-api` ran `ghcr.io/bex-co/bex-operator@sha256:4b03796361d1…`, and the fixtures' build Jobs resolved their native runtime on the same digest. Two fresh probe fixtures, `py` (`srv-dbu2uug4f0dc73876r30`) and `rb` (`srv-dbu2uuo4f0dc73876r50`), built `bex-co/bex` `main` with the same root directory (unchanged since `c0cb02045`), were read 10:45–10:47 UTC during w32/m424's production walk, and were deleted at 11:00 UTC with by-id `GET` `404`.
 
-**Legend:** ✅ matches Render's page. ✖ mismatch, with its follow-up. — not comparable, with the reason. ⏳ pending w32/m424's pin. A pair such as ✅ ✅ is build, then runtime.
+**Legend:** ✅ matches Render's page. ✖ mismatch, with its follow-up. — not comparable, with the reason. A pair such as ✅ ✅ is build, then runtime.
 
 ## Fixtures
 
@@ -84,18 +85,18 @@ Each runtime's web fixture. Every one of these names was unset on every other ru
 | Node | `NODE_MODULES_CACHE` | `true` | ✖ w8/m161 | ✖ w8/m161 | unset: bex has no dependency cache for it to switch |
 | Python | `CI` | `true`, build only | ✅ | ✅ | `true` at build; unset at runtime |
 | Python | `FORWARDED_ALLOW_IPS` | `*` | ✅ | ✅ | `*` |
-| Python | `GUNICORN_CMD_ARGS` | `--preload --access-logfile - --bind=0.0.0.0:10000` | ⏳ | ⏳ | `--preload --access-logfile -` on this pin; w32/m424 (`f1cdd052b`) adds the `--bind` |
+| Python | `GUNICORN_CMD_ARGS` | `--preload --access-logfile - --bind=0.0.0.0:10000` | ✅ | ✅ | same, on pin `6984548a30f8`; `55c120858af0` read `--preload --access-logfile -`, without the `--bind` w32/m424 added |
 | Python | `PIPENV_YES` | `true` | ✅ | ✅ | `true` |
 | Python | `VENV_ROOT` | `/opt/render/project/src/.venv` | ✅ | ✅ | same; the virtualenv itself is w8/274's production check |
 | Ruby | `BUNDLE_APP_CONFIG` | `/opt/render/project/.gems` | ✅ | ✅ | same |
 | Ruby | `BUNDLE_BIN` | `/opt/render/project/.gems/bin` | ✅ | ✅ | same |
 | Ruby | `BUNDLE_DEPLOYMENT` | `true` | ✅ | ✅ | `true` |
 | Ruby | `BUNDLE_PATH` | `/opt/render/project/.gems` | ✅ | ✅ | same |
-| Ruby | `GEM_PATH` | `/opt/render/project/.gems` | ⏳ | ⏳ | unset on this pin; w32/m424 sets it |
+| Ruby | `GEM_PATH` | `/opt/render/project/.gems` | ✅ | ✅ | same, on pin `6984548a30f8`; unset on `55c120858af0` |
 | Ruby | `MALLOC_ARENA_MAX` | `2` | ✅ | ✅ | `2` |
 | Ruby | `PASSENGER_ENGINE` | `builtin` | ✅ | ✅ | `builtin` |
 | Ruby | `PASSENGER_ENVIRONMENT` | `production` | ✅ | ✅ | `production` |
-| Ruby | `PASSENGER_PORT` | `10000` | ⏳ | ⏳ | unset on this pin; w32/m424 sets it |
+| Ruby | `PASSENGER_PORT` | `10000` | ✅ | ✅ | `10000`, on pin `6984548a30f8`; unset on `55c120858af0` |
 | Ruby | `PIDFILE` | `/tmp/puma-server.pid` | ✅ | ✅ | same |
 | Ruby | `RAILS_ENV` | `production` | ✅ | ✅ | `production` |
 | Ruby | `RAILS_SERVE_STATIC_FILES` | `true` | ✅ | ✅ | `true` |
@@ -105,7 +106,7 @@ Each runtime's web fixture. Every one of these names was unset on every other ru
 | Rust | `ROCKET_PORT` | `10000`, runtime only | ✅ | ✅ | unset at build; `10000` at runtime; a service's own value wins (w8/273, sweep `81af`) |
 | Rust | `RUSTUP_HOME` | `/opt/render/project/.rustup` | ✅ | ✅ | same |
 
-The ⏳ cells are filled from w32/m424's production walk, which checks those three variables once a pin carries `f1cdd052b`.
+`GUNICORN_CMD_ARGS`, `GEM_PATH` and `PASSENGER_PORT` were read on pin `6984548a30f8`, as the header says. There too, `py` read `PASSENGER_PORT` and `GEM_PATH` unset, and `rb` read `GUNICORN_CMD_ARGS` unset. No other fixture was re-read on that pin: `f1cdd052b` puts the three in the native Python and Ruby images only, and the operator sets its serving-port value of `GUNICORN_CMD_ARGS` only on native Python and of `PASSENGER_PORT` only on native Ruby (`NativeServingPortEnv`, `lego/operator/internal/build/native.go`), so none of them reaches the other fixtures.
 
 ## Acceptance checks owed elsewhere
 

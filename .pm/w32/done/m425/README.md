@@ -1,6 +1,6 @@
 # w32 · m425 — A production capture of Render's default environment variables, by service type, runtime and phase
 
-**Worker:** worker32 **Goal:** ADR018's ✅ for default environment variables rests on a committed production capture of every variable Render documents, and the acceptance checks still owed for w8/272 and w8/202 are closed. **Status:** blocked — release gate, clears by itself: t001–t006 done. [t007](t007.md) fills the three cells w32/m424 changes once a pin contains `f1cdd052b`, then closes the milestone (§ Blocked).
+**Worker:** worker32 **Goal:** ADR018's ✅ for default environment variables rests on a committed production capture of every variable Render documents, and the acceptance checks still owed for w8/272 and w8/202 are closed. **Status:** done — t001–t007 done. The capture is [default-env-live.md](../../../../docs/render-artifacts/default-env-live.md): every cell matches Render except `NODE_MODULES_CACHE` (w8/m161), the three cells w32/m424 changed read on pin `6984548a30f8` ([t007](done/t007.md), § Closeout).
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Fix the small mismatches, file the rest — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
-| [t007](t007.md) | Closeout — **BLOCKED** (release gate) | 20m | t005, t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 20m | t005, t006 |
 
 ## Definition of done
 
@@ -81,4 +81,17 @@ pin=$(git log origin/main --grep='^chore(deploy): pin platform images to' -1 --f
 git merge-base --is-ancestor f1cdd052b "$pin" && echo "pinned: fill the three cells"
 ```
 
-Then [t007](t007.md) reads the three variables on production: reuse w32/m424 t007's walk if it already recorded them, or recreate the `py` and `rb` fixtures from [`examples/default-env-probe`](../../../../examples/default-env-probe/README.md) as the QA user and read `GUNICORN_CMD_ARGS`, `PASSENGER_PORT` and `GEM_PATH` at build and runtime (expected: Render's values, with `--bind=0.0.0.0:10000`). It replaces the ⏳ cells in `default-env-live.md` and the sentence about them in ADR018's default-variables row, deletes the fixtures (by-id `GET` 404) and closes the milestone.
+Then [t007](done/t007.md) reads the three variables on production: reuse w32/m424 t007's walk if it already recorded them, or recreate the `py` and `rb` fixtures from [`examples/default-env-probe`](../../../../examples/default-env-probe/README.md) as the QA user and read `GUNICORN_CMD_ARGS`, `PASSENGER_PORT` and `GEM_PATH` at build and runtime (expected: Render's values, with `--bind=0.0.0.0:10000`). It replaces the ⏳ cells in `default-env-live.md` and the sentence about them in ADR018's default-variables row, deletes the fixtures (by-id `GET` 404) and closes the milestone.
+
+## Unblocked (2026-11-17)
+
+**Source:** verified evidence (`/pm unblock`, `/loopx w32` worker). **Affected:** t007. **Finding:** the release gate cleared. The newest pin commit on `main` is `336b647b1 chore(deploy): pin platform images to 6984548a30f8` (10:34 UTC), and `git merge-base --is-ancestor f1cdd052b 6984548a30f8` succeeds. w32/m424's worker recorded that from 10:38:43 UTC production's `bex-controller-manager` (the build Job's native resolver) and `bex-api` ran that pin's `ghcr.io/bex-co/bex-operator@sha256:4b03796361d1…`, and its walk read the three variables this milestone left ⏳ on its own `py` and `rb` probe fixtures, at build and at runtime (w32/m424 README § Walk). That is what t007 asks for: the same probe, both phases, Render's values, fixtures deleted with by-id `GET` 404. w32/m424 itself stays parked on w32/038 (Passenger Standalone cannot start on native Ruby), which does not touch these environment values. **Remaining gates:** none. **Next:** t007 fills the three cells from that walk, updates ADR018's sentence about them, and closes the milestone.
+
+## Closeout (t007, 2026-11-17)
+
+Production pin `6984548a30f8` (`336b647b1`), which contains `f1cdd052b`. From 10:38:43 UTC `bex-controller-manager` and `bex-api` ran `ghcr.io/bex-co/bex-operator@sha256:4b03796361d1…`, and the build Jobs resolved their native runtime on that digest (w32/m424 § Unblocked).
+
+- **DoD 1 holds.** The three ⏳ cells come from w32/m424's production walk on that pin (w32/m424 README § Walk), read 10:45–10:47 UTC in `bex-canary` as the QA user from two fresh fixtures of this milestone's probe: `py` (`srv-dbu2uug4f0dc73876r30`, native Python) and `rb` (`srv-dbu2uuo4f0dc73876r50`, native Ruby 3.4.12), both free web services building `bex-co/bex` `main`, root directory `examples/default-env-probe` (unchanged since `c0cb02045`), start command `sh probe.sh runtime && exec perl serve.pl`. Python's `GUNICORN_CMD_ARGS` read `--preload --access-logfile - --bind=0.0.0.0:10000`, and Ruby's `PASSENGER_PORT` and `GEM_PATH` read `10000` and `/opt/render/project/.gems`, each at build and at runtime, as Render's page says. `py` read `PASSENGER_PORT` and `GEM_PATH` unset, and `rb` read `GUNICORN_CMD_ARGS` unset. The cells in [default-env-live.md](../../../../docs/render-artifacts/default-env-live.md) now read ✅ ✅, with that pin and the fixture ids in its header, and its legend has no ⏳ left. Every other cell stands from the capture on `55c120858af0`: only `f1cdd052b` touched the default variables between the two pins (§ Triage), and it scopes the three to native Python and Ruby (`NativeServingPortEnv`, `lego/operator/internal/build/native.go`).
+- **DoD 2–4** hold as recorded in § Capture. ADR018's default-variables row now says the three were read on `6984548a30f8`, with their values, instead of "filled in from w32/m424's production walk".
+- **DoD 5 holds.** This milestone's twelve fixtures were deleted at 09:42 UTC, and w32/m424's `py` and `rb` at 11:00 UTC, each with by-id `GET` `404`.
+- No fixture was recreated for t007: w32/m424's walk already read exactly these three variables with this probe, in both phases, on the pin that carries the change.
