@@ -9,8 +9,11 @@
 # team-members.graphql) plus render.com/docs/team-members — bex is
 # Render-consistent by design:
 #
-#   org        Render's Organization (Scale/Enterprise): groups workspaces;
-#              org admins administer every member workspace.
+#   org        Render's Organization (Scale/Enterprise, docs/ADR115-
+#              organizations.md): groups workspaces. Owner, Member and Guest.
+#              An Owner manages the org but is NOT a workspace admin until
+#              they join a workspace ("Org Owners are not automatically added
+#              to any workspaces", render.com/docs/organizations).
 #   workspace  Render's workspace — the same entity Render's GraphQL calls
 #              `owner.team` (id prefix "tea-") and its resource parent `owner`
 #              (owner = user | team). The billing/ownership unit.
@@ -51,14 +54,28 @@ type user
 
 type org
   relations
-    define admin: [user]
-    define member: [user] or admin
+    define owner: [user]
+    define member: [user] or owner
+    define guest: [user]
+
+    # An Owner manages the org (name, members, invites, the org audit log)
+    # and creates its workspaces; a Member or Guest reads it (a Guest only
+    # their own workspace, which the service filters).
+    define can_manage: owner
+    define can_create: owner
+    define can_view: member or guest
 
 type workspace
   relations
+    # org links every workspace of an org; public_org links it only while
+    # the workspace is Public. An Org Member may add themselves to a Public
+    # workspace, an Owner to any org workspace as admin (ADR115 D5).
     define org: [org]
+    define public_org: [org]
+    define can_join: member from public_org
+    define can_join_as_admin: owner from org
 
-    define admin: [user] or admin from org
+    define admin: [user]
     define developer: [user]
     define contributor: [user]
     define viewer: [user]

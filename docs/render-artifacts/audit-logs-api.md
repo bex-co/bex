@@ -7,7 +7,7 @@ A live capture against a real Render account was not performed in this session (
 ## Endpoints
 
 - `GET /v1/owners/{ownerId}/audit-logs` — operation `list-owner-audit-logs` (bex's surface; workspace-scoped)
-- `GET /v1/organizations/{orgId}/audit-logs` — operation `list-organization-audit-logs` (org layer; out of bex scope — bex has no org above workspace)
+- `GET /v1/organizations/{orgId}/audit-logs` — operation `list-organization-audit-logs`: the org's log, its Owners' (w7/m464, [ADR115](../ADR115-organizations.md) D7), with the same parameters and rows
 
 Query params: `startTime`/`endTime` (RFC3339), `direction` (shared `$ref` with `/logs`: enum `forward|backward`, default `backward` = most recent first), `cursor`, and an **audit-specific** `limit` (`auditLogLimitParam`: default 20, **maximum 1000** — not the general pagination cap of 100).
 
@@ -34,7 +34,7 @@ Both members required. `auditLog` (all six fields **required**):
 
 ## Workspace event inventory (w9/m449)
 
-Every **workspace** event [render.com/docs/audit-logs](https://render.com/docs/audit-logs) lists (read 2026-11-16) and what bex records for it. `renderWorkspaceEvents` in `lego/backend/internal/audit/render_inventory_test.go` holds the same list, and `TestRenderWorkspaceEventsAreRecorded` fails when a listed event has neither a mapped verb nor a non-goal or owner, or when a verb mapped onto one of them is missing from it. Organization events are out of scope (bex has no organization above a workspace). Events marked _docs only_ are not yet in the pinned OpenAPI enum; bex emits them as the same documented extension as its own verbs (`docsOnlyEvents`).
+Every **workspace** event [render.com/docs/audit-logs](https://render.com/docs/audit-logs) lists (read 2026-11-16) and what bex records for it. `renderWorkspaceEvents` in `lego/backend/internal/audit/render_inventory_test.go` holds the same list, and `TestRenderWorkspaceEventsAreRecorded` fails when a listed event has neither a mapped verb nor a non-goal or owner, or when a verb mapped onto one of them is missing from it. Organization events have their own inventory below. Events marked _docs only_ are not yet in the pinned OpenAPI enum; bex emits them as the same documented extension as its own verbs (`docsOnlyEvents`).
 
 | Render event | bex verb(s) | Status |
 | --- | --- | --- |
@@ -78,3 +78,23 @@ Every **workspace** event [render.com/docs/audit-logs](https://render.com/docs/a
 | `DocumentDownloadEvent`, `SignNDAEvent` | — | non-goal: bex has no compliance-document portal |
 
 Five enum events Render's page does not list are recorded too: `LinkBuildSourceEnvGroupEvent` and `UnlinkBuildSourceEnvGroupEvent` (`envgroups.LinkBuildSource`, `envgroups.UnlinkBuildSource`, an env group linked to or unlinked from a build source), `UpdateServiceBuildSourceEvent` (`apps.LinkBuildSource`), and `GrantOAuthAccessEvent` and `RevokeOAuthAccessEvent` (`oauth.GrantAccess`, `oauth.RevokeAccess`, a member approving or revoking an OAuth client, w4/m454 above). Where the service activity feed or webhooks read the action's own row (an env var save, an auto-deploy trigger change, a build source link), that row is kept but stored `feed_only`, which the audit log skips ([ADR006](../ADR006-bex-api.md) § Audit log).
+
+## Organization event inventory (w7/m464)
+
+Every **organization** event [render.com/docs/audit-logs](https://render.com/docs/audit-logs) lists (read 2026-11-17) and what bex records for it in the org's own log ([ADR115](../ADR115-organizations.md) D7). `renderOrganizationEvents` in `lego/backend/internal/audit/render_inventory_test.go` holds the same list, and `TestRenderOrganizationEventsAreRecorded` fails when it drifts. An org row's resource is the org object, so it is keyed by the org id and never appears in a workspace log.
+
+| Render event | bex verb(s) | Status |
+| --- | --- | --- |
+| `InviteToOrgEvent` | `members.InviteToOrganization` | recorded |
+| `AcceptOrgInviteEvent` | `members.AcceptOrganizationInvite` | recorded when the invite is redeemed at the invitee's sign-in |
+| `AddOrgMemberEvent` | `members.AddToOrganization` | recorded: a workspace invite that made someone a Member, or a support transfer |
+| `RemoveOrgMemberEvent` | `members.RemoveFromOrganization` | recorded |
+| `JoinTeamEvent` | `members.JoinWorkspace`, `members.JoinWorkspaceAsAdmin` | recorded |
+| `ChangeOrgRoleEvent` | `members.ChangeOrganizationRole` | recorded |
+| `ChangeOrgAllowedLoginMethodsEvent`, `ChangeOrg2FAEnforcementEvent` | — | not yet: org-level login settings are a follow-up (w7/m464 t014) |
+| `CreateWorkspaceEvent` | `workspaces.CreateOrganizationWorkspace` | recorded |
+| `DeleteWorkspaceEvent` | `workspaces.Delete` | recorded (an org workspace's delete, in the org's log) |
+| `ChangeWorkspacePrivacyEvent` | `workspaces.SetWorkspacePrivacy` | recorded |
+| `CreateOrgDomainEvent`, `VerifyOrgDomainEvent`, `DeleteOrgDomainEvent`, `CreateSSOConnectionEvent`, `UpdateSSOConnectionEvent`, `DeleteSSOConnectionEvent`, `ProvisionOrganizationSCIMToken`, `RevokeOrganizationSCIMToken` | — | non-goal: SSO/SAML and SCIM (`.pm/DO_NOT_DO.md`) |
+
+The pinned enum's `ChangeOrgNameEvent` (no docs entry) is recorded too, by `workspaces.RenameOrganization`. `UpdateOrgPaymentMethodEvent` has no bex action: an org has no payment method of its own, each workspace keeps its own.

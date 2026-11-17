@@ -69,6 +69,7 @@ type okResult struct {
 
 // RegisterMCP adds the membership tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
+	s.registerOrganizationMCP(srv)
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "preview_workspace_invite",
 		Description: "Review an invitation's workspace, role, inviter and your membership without accepting it.",

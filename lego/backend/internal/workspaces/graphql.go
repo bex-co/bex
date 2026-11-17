@@ -17,6 +17,8 @@ limitations under the License.
 package workspaces
 
 import (
+	"maps"
+
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -75,6 +77,27 @@ func (s *Service) workspaceType() *graphql.Object {
 						return views[0].IPAllowList, nil
 					},
 				},
+				// organization, primary and privacy place the workspace in its
+				// org (w7/m464, ADR115): null, false and null for a standalone
+				// workspace.
+				"organization": &graphql.Field{
+					Type: organizationRefGQLType,
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						o, err := s.workspaceOrganization(p.Context, p.Source.(WorkspaceView))
+						if o == nil || err != nil {
+							return nil, err
+						}
+						return *o, nil
+					},
+				},
+				"primary": &graphql.Field{
+					Type: graphql.NewNonNull(graphql.Boolean),
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						o, err := s.workspaceOrganization(p.Context, p.Source.(WorkspaceView))
+						return o != nil && o.PrimaryWorkspaceID == p.Source.(WorkspaceView).ID, err
+					},
+				},
+				"privacy": gqlutil.OptionalStrField(func(w WorkspaceView) any { return w.Privacy }),
 				// overlappingDeployPolicy is the workspace's Overlapping Deploy
 				// Policy (w4/653), "wait" or "override": Render's Workspace
 				// Settings section of that name. Read only when selected; the
@@ -154,6 +177,12 @@ var resourceLimitsGQLType = graphql.NewObject(graphql.ObjectConfig{
 // GraphQLQuery contributes the caller's workspace list and limits query to the
 // root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
+	fields := s.organizationGraphQLQuery()
+	maps.Copy(fields, s.workspaceGraphQLQuery())
+	return fields
+}
+
+func (s *Service) workspaceGraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"workspaces": &graphql.Field{
 			Type:    graphql.NewList(s.workspaceType()),
@@ -209,6 +238,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 
 // GraphQLMutation contributes the lifecycle mutations to the root Mutation.
 func (s *Service) GraphQLMutation() graphql.Fields {
+	fields := s.organizationGraphQLMutation()
+	maps.Copy(fields, s.workspaceGraphQLMutation())
+	return fields
+}
+
+func (s *Service) workspaceGraphQLMutation() graphql.Fields {
 	return graphql.Fields{
 		"prepareWorkspaceCreation": &graphql.Field{
 			Type: workspaceCreationAttemptGQLType,

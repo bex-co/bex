@@ -114,6 +114,9 @@ type tenantService struct {
 	// unverified address can't claim another user's invite. The emailed
 	// ?invite=<token> bearer link redeems regardless of this flag.
 	RequireVerifiedInviteEmail bool
+	// OrgTuples writes the org role tuple of someone a login-time invite
+	// redemption made an org Member (w7/m464). Nil when authz is off.
+	OrgTuples core.OrganizationTupleWriter
 }
 
 // NewTenantService wires the store-backed resolver + onboarding mint. granter
@@ -370,6 +373,7 @@ func (t *tenantService) acceptInvites(ctx context.Context, identityID, email str
 		log.Printf("tenancy: skipping invite redemption for %s: email %s not verified", identityID, email)
 		return
 	}
+	t.acceptOrganizationInvites(ctx, email, identityID)
 	accepted, err := t.store.AcceptInvitesForEmail(ctx, email, identityID)
 	if err != nil {
 		if errors.Is(err, store.ErrAccountDeletionPending) {
@@ -383,6 +387,11 @@ func (t *tenantService) acceptInvites(ctx context.Context, identityID, email str
 		// method "session" by construction (only session callers reach EnsureTenant).
 		core.RecordInviteAccepted(ctx, t.Audit, time.Now(),
 			inv.TenantID, inv.ID, inv.Email, inv.Role, identityID, methodSession)
+		// An org workspace's invite made a new person a Member of its org
+		// (w7/m464, ADR115 D4): their org tuple and AddOrgMemberEvent.
+		if inv.JoinedOrganizationID != "" {
+			core.JoinedOrganization(ctx, t.OrgTuples, t.Audit, time.Now(), inv.JoinedOrganizationID, identityID, methodSession)
+		}
 	}
 	if t.granter == nil {
 		for _, inv := range accepted {
@@ -705,4 +714,34 @@ func signupWorkspaceName(name, email string) string {
 		return ""
 	}
 	return who + "'s Workspace"
+}
+
+// organizationInviteStore is the org invites' login-time redemption; the
+// production store has it, a TenantStore fake need not.
+type organizationInviteStore interface {
+	AcceptOrganizationInvitesForEmail(ctx context.Context, email, subject string) ([]store.OrganizationInvite, error)
+}
+
+// acceptOrganizationInvites redeems the org invites addressed to the caller's
+// verified email on sign-in (w7/m464, ADR115 D4), as workspace invites are:
+// the new member's org tuple and Render's AcceptOrgInviteEvent.
+func (t *tenantService) acceptOrganizationInvites(ctx context.Context, email, identityID string) {
+	invites, ok := t.store.(organizationInviteStore)
+	if !ok {
+		return
+	}
+	joined, err := invites.AcceptOrganizationInvitesForEmail(ctx, email, identityID)
+	if err != nil {
+		if !errors.Is(err, store.ErrAccountDeletionPending) {
+			log.Printf("tenancy: redeeming organization invites for %s: %v", identityID, err)
+		}
+		return
+	}
+	for _, inv := range joined {
+		if err := core.WriteOrgTuples(ctx, t.OrgTuples, []core.Tuple{core.OrgRoleTuple(inv.OrganizationID, identityID, inv.Role)}, nil); err != nil {
+			log.Printf("tenancy: writing %s's membership of organization %s: %v", identityID, inv.OrganizationID, err)
+		}
+		core.RecordOrganizationEventAs(ctx, t.Audit, time.Now(), core.AuditVerbOrgInviteAccepted, inv.OrganizationID, identityID, methodSession,
+			core.OrganizationAudit{Target: core.InviteTarget(inv.ID), TargetName: inv.Email, RoleTo: inv.Role})
+	}
 }

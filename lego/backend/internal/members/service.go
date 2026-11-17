@@ -149,6 +149,9 @@ type Service struct {
 	// credentials until the turn timeout. Nil means agent sessions are not
 	// wired.
 	Sessions MemberSessionCanceler
+	// OrgTuples keeps OpenFGA's org role tuples in step with org membership
+	// (w7/m464, ADR115 D5). Nil when authz is disabled.
+	OrgTuples core.OrganizationTupleWriter
 }
 
 // MemberSessionCanceler is the members service's seam to agent-session
@@ -599,15 +602,20 @@ func (s *Service) memberWithEmail(ctx context.Context, workspaceID, email string
 	for _, m := range ms {
 		subjects = append(subjects, m.Subject)
 	}
-	// A member whose email could not be read does not match, as one with no
-	// email does.
+	return s.subjectWithEmail(ctx, subjects, email) != "", nil
+}
+
+// subjectWithEmail returns which of subjects has email today, "" for none. A
+// subject whose email could not be read does not match, as one with no email
+// does.
+func (s *Service) subjectWithEmail(ctx context.Context, subjects []string, email string) string {
 	emails, _ := s.Identities.LookupEmails(ctx, subjects)
-	for _, found := range emails {
+	for subject, found := range emails {
 		if strings.EqualFold(strings.TrimSpace(found), email) {
-			return true, nil
+			return subject
 		}
 	}
-	return false, nil
+	return ""
 }
 
 // ListInvites returns a workspace's outstanding invites. Admin-only (managing
@@ -695,6 +703,16 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 		return InviteView{}, mapStoreErr(err)
 	}
 	if err := guardPlanRole(tenant.Plan, role); err != nil {
+		return InviteView{}, err
+	}
+	// An org's two Billing members and a Guest's one workspace (w7/m464,
+	// ADR115 D4).
+	if role == "billing" {
+		if err := s.guardOrganizationBilling(ctx, tenant, "", email); err != nil {
+			return InviteView{}, err
+		}
+	}
+	if err := s.guardGuestInvite(ctx, tenant, email); err != nil {
 		return InviteView{}, err
 	}
 	// Seat cap: accepted members + outstanding invites both consume a seat, so a
@@ -867,6 +885,7 @@ func (s *Service) AcceptInvite(ctx context.Context, token string) (AcceptedInvit
 		log.Printf("members: reconciling %s on workspace %s to %s: %v", inv.Role, inv.TenantID, id.Subject, err)
 	}
 	s.recordAccepted(ctx, inv, id)
+	s.joinedOrganization(ctx, inv, id)
 	view := AcceptedInviteView{WorkspaceID: inv.TenantID, Role: wireRole(inv.Role), AuthorizationPending: pending}
 	if tenant, err := s.Store.GetTenant(ctx, inv.TenantID); err == nil {
 		view.WorkspaceName = tenant.Label()
@@ -884,6 +903,9 @@ func mapAcceptInviteErr(err error) error {
 		return core.NewBadRequestError(InviteErrorExpired, "invite has expired", nil)
 	case errors.Is(err, store.ErrInvitePlanLimit):
 		return core.NewBadRequestError(InviteErrorPlanLimit, "the workspace plan cannot seat this invite", nil)
+	case errors.Is(err, store.ErrGuestSingleWorkspace):
+		return core.NewConflictError(core.CodeOrganizationGuestSingleWorkspace,
+			"you are a Guest of this workspace's organization and already belong to one of its workspaces; ask an Owner to make you a Member", nil)
 	default:
 		return mapStoreErr(err)
 	}
@@ -982,6 +1004,11 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	}
 	if err := guardPlanRole(tenant.Plan, role); err != nil {
 		return MemberView{}, err
+	}
+	if role == "billing" {
+		if err := s.guardOrganizationBilling(ctx, tenant, subject, ""); err != nil {
+			return MemberView{}, err
+		}
 	}
 	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, role); err != nil {
 		return MemberView{}, err

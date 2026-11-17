@@ -1,23 +1,23 @@
 # w7 · m464 — Scale and Enterprise workspaces belong to an organization, as on Render: unlimited workspaces under one plan, Owner, Member and Guest roles, and an org audit log
 
-**Worker:** worker7 **Goal:** a Scale or Enterprise workspace is the primary workspace of an organization. Its Owners add workspaces at no additional plan fee, invite Members and Guests, and read an org audit log, on GraphQL, MCP, the dashboard and Render's `GET /v1/organizations/{orgId}/audit-logs`. Downgrading the primary below Scale dissolves the org, as on Render. **Status:** in progress (t001 done)
+**Worker:** worker7 **Goal:** a Scale or Enterprise workspace is the primary workspace of an organization. Its Owners add workspaces at no additional plan fee, invite Members and Guests, and read an org audit log, on GraphQL, MCP, the dashboard and Render's `GET /v1/organizations/{orgId}/audit-logs`. Downgrading the primary below Scale dissolves the org, as on Render. **Status:** in progress (t001–t008 and t012 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | [Capture Render's organization model and record the design: a new ADR, ADR018, ADR030 §1/§9, ADR012 and the plan-table rows](done/t001.md) — **DONE** | 1h30m | — |
-| t002 | [store: organizations, their members and workspaces, with production's Scale and Enterprise workspaces backfilled as primaries](t002.md) | 1h30m | t001 |
-| t003 | [authz: the OpenFGA `org` type takes Render's Owner, Member and Guest, and an Owner is not an implicit workspace admin](t003.md) | 1h | t002 |
-| t004 | [GraphQL and MCP read the organization: its workspaces, primary, plan and members](t004.md) | 1h | t002, t003 |
-| t005 | [Plan changes create and dissolve the org: an upgrade makes a primary, a secondary follows its org's plan, a downgrade meets Render's preconditions](t005.md) | 1h30m | t004 |
-| t006 | [Org workspaces: an Owner creates them Public or Invite-only, Members join public ones, Owners join any as admin; support moves an existing workspace in](t006.md) | 1h30m | t004 |
-| t007 | [Org members: invite as Member or Guest, change the org role, remove, and at most two Billing members per org](t007.md) | 1h30m | t004 |
-| t008 | [The org audit log: Render's `list-organization-audit-logs`, GraphQL and the org events](t008.md) | 1h30m | t005, t006, t007 |
+| t002 | [store: organizations, their members and workspaces, with production's Scale and Enterprise workspaces backfilled as primaries](done/t002.md) — **DONE** | 1h30m | t001 |
+| t003 | [authz: the OpenFGA `org` type takes Render's Owner, Member and Guest, and an Owner is not an implicit workspace admin](done/t003.md) — **DONE** | 1h | t002 |
+| t004 | [GraphQL and MCP read the organization: its workspaces, primary, plan and members](done/t004.md) — **DONE** | 1h | t002, t003 |
+| t005 | [Plan changes create and dissolve the org: an upgrade makes a primary, a secondary follows its org's plan, a downgrade meets Render's preconditions](done/t005.md) — **DONE** | 1h30m | t004 |
+| t006 | [Org workspaces: an Owner creates them Public or Invite-only, Members join public ones, Owners join any as admin; support moves an existing workspace in](done/t006.md) — **DONE** | 1h30m | t004 |
+| t007 | [Org members: invite as Member or Guest, change the org role, remove, and at most two Billing members per org](done/t007.md) — **DONE** | 1h30m | t004 |
+| t008 | [The org audit log: Render's `list-organization-audit-logs`, GraphQL and the org events](done/t008.md) — **DONE** | 1h30m | t005, t006, t007 |
 | t009 | [Dashboard: the workspace switcher shows the org, and the org's Workspaces page](t009.md) | 1h30m | t006 |
 | t010 | [Dashboard: the org's Members page and its Settings with the Audit Logs CSV export](t010.md) | 1h30m | t007, t008 |
 | t011 | [Dashboard: the plan picker, the change-plan dialog and a workspace's privacy follow the org](t011.md) | 1h | t005, t006 |
-| t012 | [ADRs and the plan-table guard state the shipped rule](t012.md) | 30m | t008 |
+| t012 | [ADRs and the plan-table guard state the shipped rule](done/t012.md) — **DONE** | 30m | t008 |
 | t013 | [Production: an org's lifecycle on a fixture workspace](t013.md) | 1h | t009, t010, t011, t012 |
 | t014 | [Render parity](t014.md) | 45m | t009, t010, t011, t012 |
 | t015 | [Simplify](t015.md) | 30m | t014 |

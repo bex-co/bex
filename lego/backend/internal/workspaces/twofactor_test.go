@@ -497,7 +497,9 @@ func TestExemptReadsLeakNothingAboutAWorkspaceToABlockedMember(t *testing.T) {
 		}
 		return names
 	}
-	if got, want := fieldNames(WorkspaceView{}), []string{"ID", "Name", "Slug", "Plan", "Role", "CreatedAt", "IPAllowList", "RequireTwoFactor", "OverlappingDeployPolicy"}; !slices.Equal(got, want) {
+	// OrganizationID and Privacy say which org the workspace is in and whether
+	// its org Members may join it (w7/m464): org placement, not contents.
+	if got, want := fieldNames(WorkspaceView{}), []string{"ID", "Name", "Slug", "Plan", "Role", "CreatedAt", "IPAllowList", "RequireTwoFactor", "OverlappingDeployPolicy", "OrganizationID", "Privacy", "Organization"}; !slices.Equal(got, want) {
 		t.Errorf("WorkspaceView fields = %v, want %v: List is exempt from the 2FA requirement", got, want)
 	}
 	if got, want := fieldNames(UserView{}), []string{"ID", "Email", "Name"}; !slices.Equal(got, want) {

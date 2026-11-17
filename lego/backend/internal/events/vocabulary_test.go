@@ -129,11 +129,13 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// WORKSPACE audit trail — kinds the per-SERVICE events feed can never
 		// join (there is no members feed); the workspace audit log is their
 		// surface.
-		"members.ChangeRole":   "member: target on the workspace audit trail; members have no per-service events feed",
-		"members.Remove":       "member: target on the workspace audit trail; members have no per-service events feed",
-		"members.RevokeInvite": "invite: target on the workspace audit trail; members have no per-service events feed",
-		"members.ResendInvite": "invite: target on the workspace audit trail; members have no per-service events feed",
-		"webhooks.Resend":      "webhook_attempt: target on the workspace audit trail; delivery recovery is not a service lifecycle event",
+		"members.ChangeRole":             "member: target on the workspace audit trail; members have no per-service events feed",
+		"members.Remove":                 "member: target on the workspace audit trail; members have no per-service events feed",
+		"members.ChangeOrganizationRole": "member: target on the org audit trail (w7/m464); an org has no per-service events feed",
+		"members.RemoveFromOrganization": "member: target on the org audit trail (w7/m464); an org has no per-service events feed",
+		"members.RevokeInvite":           "invite: target on the workspace audit trail; members have no per-service events feed",
+		"members.ResendInvite":           "invite: target on the workspace audit trail; members have no per-service events feed",
+		"webhooks.Resend":                "webhook_attempt: target on the workspace audit trail; delivery recovery is not a service lifecycle event",
 	}
 	// w6/m17 moved every resource-scoped write verb off a separate Authorize
 	// call onto the single AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue seam

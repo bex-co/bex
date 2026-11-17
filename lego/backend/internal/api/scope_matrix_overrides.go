@@ -130,6 +130,12 @@ var scopeClassOverrides = map[string]string{
 	"MCP invite_workspace_member":                                      core.OpClassMint,
 	"MCP resend_workspace_invite":                                      core.OpClassMint,
 	"MCP change_workspace_member_role":                                 core.OpClassMint,
+	// An org invite and an org role change are membership issuance too
+	// (w7/m464, ADR115 D4): an Owner role outlives the caller's credential.
+	"GQL Mutation.inviteOrganizationMember":     core.OpClassMint,
+	"GQL Mutation.changeOrganizationMemberRole": core.OpClassMint,
+	"MCP invite_organization_member":            core.OpClassMint,
+	"MCP change_organization_member_role":       core.OpClassMint,
 
 	// Contract B's object get hands over the same customer bytes as the Render
 	// route above (ADR112 D6), so it is sensitive too; bucket info's size query

@@ -18,6 +18,7 @@ package audit
 
 import (
 	"cmp"
+	"context"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -137,35 +138,44 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 // GraphQLQuery contributes `auditLogs(ownerId, startTime, endTime, direction,
 // cursor, limit)` to the root Query. direction is validated by the verb
 // (Service.List), so an unknown value errors identically over REST and here.
+//
+// organizationAuditLogs(organizationId, …) is the org log in the same dialect
+// (w7/m464, ADR115 D7), through ListOrganization, which REST's org route
+// also calls.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
-		"auditLogs": &graphql.Field{
-			Type: graphql.NewList(auditLogGQLType),
-			Args: graphql.FieldConfigArgument{
-				"ownerId":   gqlutil.ReqArg(graphql.String),
-				"startTime": gqlutil.Arg(graphql.String),
-				"endTime":   gqlutil.Arg(graphql.String),
-				"direction": gqlutil.Arg(graphql.String),
-				"cursor":    gqlutil.Arg(graphql.String),
-				"limit":     gqlutil.Arg(graphql.Int),
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				f, err := FilterOf(
-					gqlutil.Str(p.Args, "startTime"), gqlutil.Str(p.Args, "endTime"),
-					gqlutil.Str(p.Args, "direction"), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"),
-				)
-				if err != nil {
-					return nil, err
-				}
-				events, err := s.List(p.Context, p.Args["ownerId"].(string), f)
-				if err != nil {
-					return nil, err
-				}
-				if err := s.resolveActors(p.Context, events); err != nil {
-					return nil, err
-				}
-				return events, nil
-			},
+		"auditLogs":             s.auditLogsField("ownerId", s.List),
+		"organizationAuditLogs": s.auditLogsField("organizationId", s.ListOrganization),
+	}
+}
+
+func (s *Service) auditLogsField(key string, list func(context.Context, string, Filter) ([]Event, error)) *graphql.Field {
+	return &graphql.Field{
+		Type: graphql.NewList(auditLogGQLType),
+		Args: graphql.FieldConfigArgument{
+			key:         gqlutil.ReqArg(graphql.String),
+			"startTime": gqlutil.Arg(graphql.String),
+			"endTime":   gqlutil.Arg(graphql.String),
+			"direction": gqlutil.Arg(graphql.String),
+			"cursor":    gqlutil.Arg(graphql.String),
+			"limit":     gqlutil.Arg(graphql.Int),
+		},
+		Resolve: func(p graphql.ResolveParams) (any, error) {
+			f, err := FilterOf(
+				gqlutil.Str(p.Args, "startTime"), gqlutil.Str(p.Args, "endTime"),
+				gqlutil.Str(p.Args, "direction"), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"),
+			)
+			if err != nil {
+				return nil, err
+			}
+			events, err := list(p.Context, p.Args[key].(string), f)
+			if err != nil {
+				return nil, err
+			}
+			if err := s.resolveActors(p.Context, events); err != nil {
+				return nil, err
+			}
+			return events, nil
 		},
 	}
 }

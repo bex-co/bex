@@ -241,25 +241,33 @@ func (s *PGStore) SetTenantDisplayNameIfUnset(ctx context.Context, id, displayNa
 func (s *PGStore) UpdateTenantPlan(ctx context.Context, id, plan string) (Tenant, error) {
 	var t Tenant
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
-		var old string
-		var logsFrom, pitrFrom, auditFrom *time.Time
-		if err := tx.QueryRow(ctx, `SELECT plan, logs_visible_from, pitr_visible_from, audit_visible_from FROM tenants WHERE id = $1 FOR UPDATE`, id).Scan(&old, &logsFrom, &pitrFrom, &auditFrom); err != nil {
-			return err
-		}
-		now := time.Now()
-		keptLogs := nullTime(core.LogsVisibleFromAfterPlanChange(old, plan, timeOrZero(logsFrom), now))
-		keptPITR := nullTime(core.PITRVisibleFromAfterPlanChange(old, plan, timeOrZero(pitrFrom), now))
-		keptAudit := nullTime(core.AuditVisibleFromAfterPlanChange(old, plan, timeOrZero(auditFrom), now))
 		var err error
-		t, err = scanTenant(tx.QueryRow(ctx,
-			`UPDATE tenants SET plan = $2, logs_visible_from = $3, pitr_visible_from = $4, audit_visible_from = $5, updated_at = now() WHERE id = $1
-			 RETURNING `+tenantColumns, id, plan, keptLogs, keptPITR, keptAudit))
+		t, err = updateTenantPlanTx(ctx, tx, id, plan)
 		return err
 	})
 	if err != nil {
 		return Tenant{}, classify("workspace", err)
 	}
 	return t, nil
+}
+
+// updateTenantPlanTx is UpdateTenantPlan's write inside the caller's
+// transaction: the organization plan changes (organizations.go) move several
+// workspaces' plans with the org rows in one transaction, and each keeps its
+// floors exactly as a lone plan change does.
+func updateTenantPlanTx(ctx context.Context, tx pgx.Tx, id, plan string) (Tenant, error) {
+	var old string
+	var logsFrom, pitrFrom, auditFrom *time.Time
+	if err := tx.QueryRow(ctx, `SELECT plan, logs_visible_from, pitr_visible_from, audit_visible_from FROM tenants WHERE id = $1 FOR UPDATE`, id).Scan(&old, &logsFrom, &pitrFrom, &auditFrom); err != nil {
+		return Tenant{}, err
+	}
+	now := time.Now()
+	keptLogs := nullTime(core.LogsVisibleFromAfterPlanChange(old, plan, timeOrZero(logsFrom), now))
+	keptPITR := nullTime(core.PITRVisibleFromAfterPlanChange(old, plan, timeOrZero(pitrFrom), now))
+	keptAudit := nullTime(core.AuditVisibleFromAfterPlanChange(old, plan, timeOrZero(auditFrom), now))
+	return scanTenant(tx.QueryRow(ctx,
+		`UPDATE tenants SET plan = $2, logs_visible_from = $3, pitr_visible_from = $4, audit_visible_from = $5, updated_at = now() WHERE id = $1
+		 RETURNING `+tenantColumns, id, plan, keptLogs, keptPITR, keptAudit))
 }
 
 // WorkspacePlan is a workspace's plan (core.WorkspacePlanReader). ErrNotFound
@@ -351,7 +359,7 @@ func (s *PGStore) DeleteTenant(ctx context.Context, id string) error {
 // first — the caller's workspace list (the dashboard switcher / owners list).
 func (s *PGStore) ListTenantsForSubject(ctx context.Context, subject string) ([]Tenant, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT t.id, t.name, t.plan, t.created_at, t.display_name, t.require_two_factor
+		`SELECT t.id, t.name, t.plan, t.created_at, t.display_name, t.require_two_factor, COALESCE(t.organization_id, ''), t.privacy
 		 FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id
 		 WHERE m.subject = $1 ORDER BY t.created_at`, subject)
 	if err != nil {

@@ -143,6 +143,7 @@ var neverEmptyArrayRoutes = map[string]string{
 // session). Each entry cites the construction that makes its empty answer
 // non-nil, so the claim is checkable by reading rather than by running.
 var unreachableArrayRoutes = map[string]string{
+	"GET /v1/organizations/{orgId}/audit-logs":           "needs an organization row (BEX_CP_DB_URI, w7/m464); the same toAuditLogList make as the owner route (audit/rest.go), asserted empty by the org audit log's real-DB test",
 	"GET /v1/objects/{ownerId}/{region}":                 "Wasabi's listing of the workspace's render-<region> bucket; items is make([]objectWithCursorWire, 0, …) (objects_render.go), asserted empty by TestRenderObjectsListAnEmptyBucketIsAnEmptyArray",
 	"GET /v1/agent-automations":                          "the agent_automations table (Service.Automations); make([]AgentAutomation, 0, …) (agentsessions/automations.go AgentAutomations)",
 	"GET /v1/agent-automations/{id}/runs":                "the agent_automation_runs table (Service.Automations); the runs page is made non-nil (agentsessions/automation_run.go AgentAutomationRuns)",

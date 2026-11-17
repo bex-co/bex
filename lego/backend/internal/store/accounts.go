@@ -401,6 +401,10 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			// delete, don't anonymize — the stable installation_id would
 			// keep anonymized rows linkable, so a marker swap is incomplete.
 			`DELETE FROM cli_telemetry_events WHERE subject = $1`,
+			// A deleted account leaves every organization it was in
+			// (w7/m464); its workspace memberships go with the account
+			// workspace disposition.
+			`DELETE FROM organization_members WHERE subject = $1`,
 		}
 		for _, statement := range deletes {
 			if _, err := tx.Exec(ctx, statement, subject); err != nil {
@@ -414,6 +418,7 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			`UPDATE sandbox_snapshots SET requested_by = $2 WHERE requested_by = $1`,
 			`UPDATE oauth_revocations SET subject = $2 WHERE subject = $1`,
 			`UPDATE tenant_invites SET invited_by = $2 WHERE invited_by = $1`,
+			`UPDATE organization_invites SET invited_by = $2 WHERE invited_by = $1`,
 			`UPDATE registry_credentials SET created_by = $2 WHERE created_by = $1`,
 			`UPDATE webhook_endpoints SET created_by = $2 WHERE created_by = $1`,
 			`UPDATE agent_session_attachments SET created_by = $2 WHERE created_by = $1`,
@@ -453,13 +458,18 @@ func cleanupAccountEmail(ctx context.Context, tx pgx.Tx, email, marker string) e
 	if email == "" {
 		return nil
 	}
-	if _, err := tx.Exec(ctx,
-		`DELETE FROM tenant_invites WHERE lower(email) = lower($1) AND accepted_at IS NULL`, email); err != nil {
-		return err
+	for _, statement := range []string{
+		`DELETE FROM tenant_invites WHERE lower(email) = lower($1) AND accepted_at IS NULL`,
+		`DELETE FROM organization_invites WHERE lower(email) = lower($1) AND accepted_at IS NULL`,
+	} {
+		if _, err := tx.Exec(ctx, statement, email); err != nil {
+			return err
+		}
 	}
 	anonymousEmail := anonymousAccountEmail(marker)
 	for _, statement := range []string{
 		`UPDATE tenant_invites SET email = $2 WHERE lower(email) = lower($1)`,
+		`UPDATE organization_invites SET email = $2 WHERE lower(email) = lower($1)`,
 		`UPDATE workspace_creation_attempts SET billing_email = $2 WHERE lower(billing_email) = lower($1)`,
 		`UPDATE tenants SET billing_email = $2 WHERE lower(billing_email) = lower($1)`,
 	} {

@@ -83,6 +83,8 @@ var relationCapability = map[string]string{
 	RelCanManageSSHKeys: ScopeWrite,
 	RelCanManage:        ScopeWrite,
 	RelCanManageBilling: ScopeWrite,
+	RelCanJoin:          ScopeWrite,
+	RelCanJoinAsAdmin:   ScopeWrite,
 }
 
 // RelCanRelations is every RelCan… constant. Tests range over it so a new
@@ -99,6 +101,8 @@ func RelCanRelations() []string {
 		RelCanManageSSHKeys,
 		RelCanManage,
 		RelCanManageBilling,
+		RelCanJoin,
+		RelCanJoinAsAdmin,
 	}
 }
 

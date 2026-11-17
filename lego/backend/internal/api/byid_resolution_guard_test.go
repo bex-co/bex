@@ -77,6 +77,7 @@ var byIDResolutions = map[string]byIDResolution{
 	"notification-settings":   {"apps", "AuthorizeApp", "per-service overrides are service-scoped", nil},
 
 	"workspaces":                         {"", "", "the path id is the workspace", nil},
+	"organizations":                      {"", "", "the path id is the organization, authorized on its own org object (ADR115 D7); it is no workspace's resource", nil},
 	"owners":                             {"", "", "the path id is the workspace", nil},
 	"ssh-keys":                           {"", "", "user-scoped: a caller's own public keys", nil},
 	"objects":                            {"", "", "reads nothing: every operation answers not offered (ADR018, w6/097)", nil},
@@ -276,6 +277,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.Build.Prefix():                    {"", "a build is addressed under its build source"},
 
 	ids.AgentRepoEnvironmentBuild.Prefix(): {"agent-repo-environment-builds", ""},
+	ids.Organization.Prefix():              {"organizations", "the org itself, authorized on its own org object, never a workspace's (ADR115)"},
 	ids.AgentRetainedImage.Prefix():        {"", "a stopped turn's retained disk, internal to its session; no API addresses it by id"},
 	ids.ObjectBucket.Prefix():              {"", "a bucket is addressed by workspace and name on every route; its id is only the second segment of its objects' Wasabi keys and the pub- host, which objectgw resolves through its own lookup (ADR112)"},
 }

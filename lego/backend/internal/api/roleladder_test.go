@@ -21,6 +21,7 @@ import (
 	"errors"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -48,6 +49,12 @@ var modelRelations = []string{
 	core.RelCanViewSensitive, core.RelCanManageKeys, core.RelCanManageSSHKeys,
 	core.RelCanManage, core.RelCanManageBilling,
 }
+
+// orgDerivedRelations are the workspace relations model.fga derives from the
+// workspace's org, not from any workspace role (w7/m464, ADR115 D5): an Org
+// Member joining a Public workspace and an Owner joining any as admin. No
+// workspace role grants them, so every rung of the ladder is denied them.
+var orgDerivedRelations = []string{core.RelCanJoin, core.RelCanJoinAsAdmin}
 
 // roleGrants is the pinned role→relation grant table, the executable form of
 // model.fga:67-75. TestRoleGrantsPinnedToModel proves it matches the deployed
@@ -247,7 +254,7 @@ func TestRoleLadderDenyMatrix(t *testing.T) {
 
 	// Every captured relation must be a modelled one — a verb checking a relation
 	// model.fga does not define is a bug the ladder cannot reason about.
-	known := set(modelRelations...)
+	known := set(append(slices.Clone(modelRelations), orgDerivedRelations...)...)
 	for verb, rels := range verbRelations {
 		for _, r := range rels {
 			if !known[r] {

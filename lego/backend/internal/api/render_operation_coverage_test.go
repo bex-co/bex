@@ -59,7 +59,6 @@ var renderOperationOmissions = map[string]string{
 	"getWorkflowVersion":                     "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"list-dedicated-ips":                     "ADR018 \u00a7 Render operation omissions \u2014 Dedicated outbound IPs",
 	"list-maintenance":                       "ADR018 \u00a7 Render operation omissions \u2014 Maintenance scheduling",
-	"list-organization-audit-logs":           "ADR018 \u00a7 Render operation omissions \u2014 Render audit-log paths",
 	"list-resource-log-streams":              "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
 	"listFlowRunSteps":                       "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"listFlowRuns":                           "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",

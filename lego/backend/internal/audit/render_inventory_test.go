@@ -34,8 +34,7 @@ type renderWorkspaceEvent struct {
 
 // renderWorkspaceEvents is every workspace event render.com/docs/audit-logs
 // lists (read 2026-11-16), the inventory docs/render-artifacts/audit-logs-api.md
-// tabulates (w9/m449). Organization events are out of scope: bex has no
-// organization above a workspace.
+// tabulates (w9/m449). Organization events are renderOrganizationEvents'.
 var renderWorkspaceEvents = map[string]renderWorkspaceEvent{
 	// Member management.
 	"InviteToTeamEvent":                  {verbs: []string{core.AuditVerbMemberInvited}},
@@ -142,5 +141,60 @@ func TestRenderWorkspaceEventsAreRecorded(t *testing.T) {
 		if listed && !slices.Contains(want.verbs, verb) {
 			t.Errorf("renderEvents maps %s onto %s, which renderWorkspaceEvents does not list for it", verb, event)
 		}
+	}
+}
+
+// renderOrganizationEvents is every organization event render.com/docs/
+// audit-logs lists (read 2026-11-17), the org log's inventory
+// (docs/render-artifacts/audit-logs-api.md, w7/m464, ADR115 D7).
+var renderOrganizationEvents = map[string]renderWorkspaceEvent{
+	// Member management.
+	"InviteToOrgEvent":                  {verbs: []string{core.AuditVerbOrgInvited}},
+	"AcceptOrgInviteEvent":              {verbs: []string{core.AuditVerbOrgInviteAccepted}},
+	"AddOrgMemberEvent":                 {verbs: []string{core.AuditVerbOrgMemberAdded}},
+	"RemoveOrgMemberEvent":              {verbs: []string{core.AuditVerbOrgMemberRemoved}},
+	"JoinTeamEvent":                     {verbs: []string{core.AuditVerbJoinWorkspace, core.AuditVerbJoinWorkspaceAsAdmin}},
+	"ChangeOrgRoleEvent":                {verbs: []string{core.AuditVerbOrgRoleChanged}},
+	"ChangeOrgAllowedLoginMethodsEvent": {notYet: "org-level login settings, filed by w7/m464 t014"},
+	"ChangeOrg2FAEnforcementEvent":      {notYet: "org-level 2FA enforcement, filed by w7/m464 t014"},
+	// Workspace management. workspaces.Create also reports CreateWorkspaceEvent
+	// in a standalone workspace's own log (w4/679), as workspaces.Delete does
+	// DeleteWorkspaceEvent.
+	"CreateWorkspaceEvent":        {verbs: []string{core.AuditVerbOrgWorkspaceCreated, "workspaces.Create"}},
+	"DeleteWorkspaceEvent":        {verbs: []string{core.AuditVerbOrgWorkspaceDeleted}},
+	"ChangeWorkspacePrivacyEvent": {verbs: []string{core.AuditVerbWorkspacePrivacyChanged}},
+	// IdP management.
+	"CreateOrgDomainEvent":           {nonGoal: "SSO/SAML (.pm/DO_NOT_DO.md, Enterprise surfaces)"},
+	"VerifyOrgDomainEvent":           {nonGoal: "SSO/SAML (.pm/DO_NOT_DO.md, Enterprise surfaces)"},
+	"DeleteOrgDomainEvent":           {nonGoal: "SSO/SAML (.pm/DO_NOT_DO.md, Enterprise surfaces)"},
+	"CreateSSOConnectionEvent":       {nonGoal: "SSO/SAML (.pm/DO_NOT_DO.md, Enterprise surfaces)"},
+	"UpdateSSOConnectionEvent":       {nonGoal: "SSO/SAML (.pm/DO_NOT_DO.md, Enterprise surfaces)"},
+	"DeleteSSOConnectionEvent":       {nonGoal: "SSO/SAML (.pm/DO_NOT_DO.md, Enterprise surfaces)"},
+	"ProvisionOrganizationSCIMToken": {nonGoal: "SCIM (.pm/DO_NOT_DO.md, Enterprise surfaces)"},
+	"RevokeOrganizationSCIMToken":    {nonGoal: "SCIM (.pm/DO_NOT_DO.md, Enterprise surfaces)"},
+}
+
+// TestRenderOrganizationEventsAreRecorded holds the org log to Render's list
+// (w7/m464): each event is recorded under every verb the inventory names, or
+// carries why it is not; a verb mapped onto an org event is listed for it.
+// TestRenderEventNamesAreInThePinnedEnum keeps every name in the pinned enum.
+func TestRenderOrganizationEventsAreRecorded(t *testing.T) {
+	for event, want := range renderOrganizationEvents {
+		if (len(want.verbs) == 0) == (want.notYet == "" && want.nonGoal == "") {
+			t.Errorf("%s: list its verbs or why none records it, not both or neither", event)
+		}
+		for _, verb := range want.verbs {
+			if got := renderEvent(verb); got != event {
+				t.Errorf("%s: verb %s reports %q", event, verb, got)
+			}
+		}
+	}
+	for verb, event := range renderEvents {
+		if want, listed := renderOrganizationEvents[event]; listed && !slices.Contains(want.verbs, verb) {
+			t.Errorf("renderEvents maps %s onto the org event %s, which renderOrganizationEvents does not list for it", verb, event)
+		}
+	}
+	if got := renderEvent(core.AuditVerbOrgRenamed); got != "ChangeOrgNameEvent" {
+		t.Errorf("an org rename reports %q", got)
 	}
 }

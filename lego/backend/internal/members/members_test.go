@@ -1398,7 +1398,7 @@ func TestEveryMembershipEndingVerbDisposesKeys(t *testing.T) {
 	// The verbs that end a membership today, and therefore owe key disposal.
 	// RevokeInvite is absent on purpose: an unredeemed invite never became a
 	// membership, so there is no delegated credential to revoke.
-	wantEnding := map[string]bool{"Remove": true, "LeaveWorkspace": true}
+	wantEnding := map[string]bool{"Remove": true, "LeaveWorkspace": true, "RemoveFromOrganization": true}
 
 	svcType := reflect.TypeOf(&Service{})
 	found := map[string]bool{}

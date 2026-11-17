@@ -51,6 +51,12 @@ const (
 	// FeatureTwoFactorEnforcement is a workspace requiring two-factor
 	// authentication of its members (ADR012 §9a).
 	FeatureTwoFactorEnforcement PlanFeature = "2FA enforcement"
+	// FeatureOrganizations is a Render organization (w7/m464, ADR115): "With
+	// a Render Scale or Enterprise plan, you can manage all of your team's
+	// users, workspaces, and services in a single organization"
+	// (render.com/docs/organizations), and "Org-level audit logs are
+	// available on the Scale plan or higher" (render.com/docs/audit-logs).
+	FeatureOrganizations PlanFeature = "organizations"
 )
 
 // planFeatures is the one table of each gated feature's lowest plan and its
@@ -74,6 +80,7 @@ var planFeatures = map[PlanFeature]struct {
 	// 2026-11-16): "— | ✓ | ✓ | ✓". render.com/docs/login-settings names no
 	// plan for it; the table is the only source that states one (w7/070).
 	FeatureTwoFactorEnforcement: {minimum: planPro, key: "twoFactorEnforcement", singular: true},
+	FeatureOrganizations:        {minimum: planScale, key: "organizations"},
 }
 
 // Machine codes for the workspace-plan refusals (w8/m138 t013), on REST's

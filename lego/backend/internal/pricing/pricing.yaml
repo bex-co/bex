@@ -35,13 +35,21 @@ version: "4"
 # display/catalog source of truth (dashboard PlanPicker, ADR030). They are
 # not Stripe usage meters; attaching them as licensed subscription items
 # is a billing follow-up, not part of BillableMeterNames.
+#
+# per is what one fee covers. Scale (and Enterprise) workspaces belong to an
+# organization, whose one fee covers all its workspaces and is charged on the
+# primary workspace (w7/m464, ADR115 D2): "An org can contain unlimited
+# workspaces at no additional cost" (render.com/docs/organizations).
 workspace:
   - plan: hobby
     usdPerMonth: 0.0 # Render $0 × 0.70
+    per: workspace
   - plan: pro
     usdPerMonth: 17.50 # Render $25 × 0.70
+    per: workspace
   - plan: scale
     usdPerMonth: 349.30 # Render $499 × 0.70
+    per: organization
 
 # instance_seconds rates for App (web-service / worker / cron) services
 compute:

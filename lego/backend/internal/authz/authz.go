@@ -177,23 +177,50 @@ type tupleBatch struct {
 // state the write asks for.
 const ignoreConflict = "ignore"
 
+// maxTuplesPerWrite is OpenFGA's default cap on the tuples of one /write
+// (OPENFGA_MAX_TUPLES_PER_WRITE, 100).
+const maxTuplesPerWrite = 100
+
 // writeTuple sends one add (delete=false) or remove (delete=true) to OpenFGA's
 // /write — the shared path for every grant/revoke membership write, idempotent
 // on both sides (see tupleBatch). Production runs OpenFGA v1.18.1 and the
 // backend suite v1.18.3; both honor the options.
 func (o *openfgaChecker) writeTuple(ctx context.Context, del bool, tk tupleKey) error {
+	return o.writeTuples(ctx, del, []tupleKey{tk})
+}
+
+// writeTuples is writeTuple for many tuples, in requests of at most
+// maxTuplesPerWrite.
+func (o *openfgaChecker) writeTuples(ctx context.Context, del bool, keys []tupleKey) error {
 	storeID, err := o.store(ctx)
 	if err != nil {
 		return err
 	}
-	var req writeRequest
-	if del {
-		req.Deletes = &tupleBatch{TupleKeys: []tupleKey{tk}, OnMissing: ignoreConflict}
-	} else {
-		req.Writes = &tupleBatch{TupleKeys: []tupleKey{tk}, OnDuplicate: ignoreConflict}
+	for start := 0; start < len(keys); start += maxTuplesPerWrite {
+		batch := keys[start:min(start+maxTuplesPerWrite, len(keys))]
+		var req writeRequest
+		if del {
+			req.Deletes = &tupleBatch{TupleKeys: batch, OnMissing: ignoreConflict}
+		} else {
+			req.Writes = &tupleBatch{TupleKeys: batch, OnDuplicate: ignoreConflict}
+		}
+		body, _ := json.Marshal(req)
+		if err := core.DoJSON(ctx, o.client, http.MethodPost, o.baseURL+"/stores/"+storeID+"/write", o.token, body, http.StatusOK, nil); err != nil {
+			return err
+		}
 	}
-	body, _ := json.Marshal(req)
-	return core.DoJSON(ctx, o.client, http.MethodPost, o.baseURL+"/stores/"+storeID+"/write", o.token, body, http.StatusOK, nil)
+	return nil
+}
+
+// evict drops every cached positive whose key matches, and bumps the epoch
+// under the same lock that guards cachePositive, so a Check that read
+// upstream before the change re-checks the epoch and skips its now-stale
+// positive.
+func (o *openfgaChecker) evict(match func(key string) bool) {
+	o.mu.Lock()
+	o.revokeEpoch++
+	o.cache.DeleteKeyIf(match)
+	o.mu.Unlock()
 }
 
 // GrantWorkspaceAdmin writes the membership tuple `<subject> admin
@@ -256,16 +283,42 @@ func (o *openfgaChecker) RevokeWorkspaceMember(ctx context.Context, tenantID, su
 	// replicas' caches still drain within PositiveTTL, which is why the
 	// destructive/issuance verbs additionally use CheckFresh.
 	//
-	// Bumping the epoch under the same lock that guards cachePositive closes
-	// the in-flight window: a Check that read upstream before this revoke
-	// re-checks the epoch before writing and skips its now-stale positive.
-	o.mu.Lock()
-	o.revokeEpoch++
-	o.cache.DeleteKeyIf(func(key string) bool {
-		return strings.HasPrefix(key, subject+"\x00")
-	})
-	o.mu.Unlock()
+	o.evict(func(key string) bool { return strings.HasPrefix(key, subject+"\x00") })
 	return nil
+}
+
+// WriteOrganizationTuples applies an org change's tuples (w7/m464, ADR115
+// D5), satisfying core.OrganizationTupleWriter: the deletes first, so a write
+// that fails never leaves a removed grant standing, then the writes. Both
+// sides are idempotent (tupleBatch). A delete evicts every cached positive it
+// can have fed: the deleted subject's (a role tuple), and every decision on
+// the deleted tuple's object (a workspace's org or public link feeds every
+// member's can_join on it).
+func (o *openfgaChecker) WriteOrganizationTuples(ctx context.Context, writes, deletes []core.Tuple) error {
+	keys := func(tuples []core.Tuple) []tupleKey {
+		out := make([]tupleKey, len(tuples))
+		for i, t := range tuples {
+			out[i] = tupleKey(t)
+		}
+		return out
+	}
+	if len(deletes) > 0 {
+		if err := o.writeTuples(ctx, true, keys(deletes)); err != nil {
+			return err
+		}
+		o.evict(func(key string) bool {
+			for _, t := range deletes {
+				if strings.HasPrefix(key, t.User+"\x00") || strings.HasSuffix(key, "\x00"+t.Object) {
+					return true
+				}
+			}
+			return false
+		})
+	}
+	if len(writes) == 0 {
+		return nil
+	}
+	return o.writeTuples(ctx, false, keys(writes))
 }
 
 // store resolves the `bex` store id by name once, deduplicating the lookup

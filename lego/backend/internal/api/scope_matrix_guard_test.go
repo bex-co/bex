@@ -187,7 +187,9 @@ func heuristicRequiredClass(op string) (want string, ok bool) {
 		op == "REST POST /v1/workspaces/{workspaceId}/members" ||
 		op == "REST POST /v1/workspaces/{workspaceId}/invites/{inviteId}/resend" ||
 		op == "REST PATCH /v1/owners/{ownerId}/members/{userId}" ||
-		op == "REST PATCH /v1/workspaces/{workspaceId}/members/{subject}":
+		op == "REST PATCH /v1/workspaces/{workspaceId}/members/{subject}",
+		strings.Contains(op, "inviteOrganizationMember") || strings.Contains(op, "invite_organization_member") ||
+			strings.Contains(op, "changeOrganizationMemberRole") || strings.Contains(op, "change_organization_member_role"):
 		return core.OpClassMint, true
 	case strings.Contains(op, "connection-info") || strings.Contains(op, "connection_info") ||
 		strings.Contains(op, "ConnectionInfo"):

@@ -127,6 +127,10 @@ type Service struct {
 	// Members runs Render's member mutations through the members service
 	// (authorization, self and last-admin safeguards, audit); nil → ErrWorkspacesUnavailable.
 	Members MemberMutator
+	// OrgTuples keeps OpenFGA's org tuples in step with the organization rows
+	// (w7/m464, ADR115 D5). Nil when authz is disabled; the rows are still the
+	// source of truth.
+	OrgTuples core.OrganizationTupleWriter
 	// IPLayerTargets project the workspace inbound-IP layer onto the
 	// workspace's datastores (w9/m388): the Postgres and Key Value services.
 	// Its web services and static sites are patched here. Empty leaves
@@ -361,6 +365,15 @@ type WorkspaceView struct {
 	// (w4/653), "wait" or "override": GraphQL reads it when the field is
 	// selected. Render's REST owner has no such field, so it is never encoded.
 	OverlappingDeployPolicy string `json:"-"`
+	// OrganizationID and Privacy are the workspace's org and its access
+	// setting there (w7/m464, ADR115). Render's owner object has neither, so
+	// they are never encoded on REST; GraphQL reads them.
+	OrganizationID string `json:"-"`
+	Privacy        string `json:"-"`
+	// Organization is the org List read for the workspace in one query, so
+	// the GraphQL organization and primary fields cost none per row; nil when
+	// it was not read.
+	Organization *store.Organization `json:"-"`
 }
 
 func view(t store.Tenant, role string) WorkspaceView {
@@ -368,7 +381,12 @@ func view(t store.Tenant, role string) WorkspaceView {
 	if !t.CreatedAt.IsZero() {
 		created = t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
 	}
-	return WorkspaceView{ID: t.ID, Name: t.Label(), Slug: t.Name, Plan: t.Plan, Role: role, CreatedAt: created, RequireTwoFactor: t.RequireTwoFactor}
+	v := WorkspaceView{ID: t.ID, Name: t.Label(), Slug: t.Name, Plan: t.Plan, Role: role, CreatedAt: created, RequireTwoFactor: t.RequireTwoFactor,
+		OrganizationID: t.OrganizationID}
+	if t.OrganizationID != "" {
+		v.Privacy = t.Privacy // a standalone workspace has no privacy setting
+	}
+	return v
 }
 
 func (s *Service) WorkspaceCreationPolicy(ctx context.Context, plan string) (WorkspaceCreationPolicy, error) {
@@ -676,7 +694,7 @@ func (s *Service) List(ctx context.Context) ([]WorkspaceView, error) {
 		// admin (create is the only writer).
 		out = append(out, view(t, "admin"))
 	}
-	return out, nil
+	return s.withOrganizations(ctx, id.Subject, out)
 }
 
 // ownIDPrefix is Render's user-id prefix (docs/render-artifacts/owners-api.md:
@@ -1283,6 +1301,12 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 	if err := s.requirePlanEntitlement(ctx, identity.Subject, id, plan); err != nil {
 		return WorkspaceView{}, err
 	}
+	// A workspace in an organization follows its org's plan (w7/m464,
+	// ADR115 D2, D6).
+	orgs, hasOrgs := s.organizations()
+	if hasOrgs && t.OrganizationID != "" {
+		return s.changeOrganizationPlan(ctx, orgs, t, plan)
+	}
 	// A paid upward transition is a billable intent and must be checked before
 	// any authoritative plan write. Downgrades remain available during dunning
 	// so an administrator can recover the workspace; the normal resource and
@@ -1292,23 +1316,43 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 			return WorkspaceView{}, err
 		}
 	}
+	if err := s.guardPlanCapacity(ctx, id, plan); err != nil {
+		return WorkspaceView{}, err
+	}
+	// Upgrading a standalone workspace to Scale or Enterprise creates its
+	// organization, with this workspace as the primary (ADR115 D2).
+	if hasOrgs && core.OrganizationPlan(plan) {
+		return s.upgradeToOrganization(ctx, orgs, id, plan)
+	}
+	nt, err := s.Store.UpdateTenantPlan(ctx, id, plan)
+	if err != nil {
+		return WorkspaceView{}, mapStoreErr(err)
+	}
+	return view(nt, "admin"), nil
+}
+
+// guardPlanCapacity refuses a plan the workspace would not fit: its members and
+// pending invites against MaxMembers, its services against MaxServices, the
+// caller's own workspaces of that plan against MaxWorkspacesPerUser, and any
+// member or pending invite holding a role the plan does not offer.
+func (s *Service) guardPlanCapacity(ctx context.Context, id, plan string) error {
 	members, err := s.Store.ListTenantMembers(ctx, id)
 	if err != nil {
-		return WorkspaceView{}, err
+		return err
 	}
 	invites, err := s.Store.ListInvites(ctx, id)
 	if err != nil {
-		return WorkspaceView{}, err
+		return err
 	}
 	limits := store.LimitsFor(plan)
 	if limits.MaxMembers > 0 && len(members)+len(invites) > limits.MaxMembers {
 		if len(invites) == 0 {
-			return WorkspaceView{}, fmt.Errorf("%w: workspace has %d member(s), exceeds %s plan's limit of %d",
+			return fmt.Errorf("%w: workspace has %d member(s), exceeds %s plan's limit of %d",
 				core.ErrBadRequest, len(members), plan, limits.MaxMembers)
 		}
 		// An invite is a seat already promised, so it counts — and naming the
 		// invitees is the difference between "you're over the cap" and "revoke these".
-		return WorkspaceView{}, fmt.Errorf(
+		return fmt.Errorf(
 			"%w: workspace has %d member(s) + %d pending invite(s) (%s), exceeds %s plan's limit of %d; revoke the invite(s) first",
 			core.ErrBadRequest, len(members), len(invites), strings.Join(inviteEmails(invites), ", "),
 			plan, limits.MaxMembers)
@@ -1316,31 +1360,27 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 	if limits.MaxServices > 0 {
 		n, err := s.Store.CountAppsForTenant(ctx, id)
 		if err != nil {
-			return WorkspaceView{}, err
+			return err
 		}
 		if n > limits.MaxServices {
-			return WorkspaceView{}, fmt.Errorf("%w: workspace has %d services, exceeds %s plan's limit of %d",
+			return fmt.Errorf("%w: workspace has %d services, exceeds %s plan's limit of %d",
 				core.ErrBadRequest, n, plan, limits.MaxServices)
 		}
 	}
 	if caller, ok := core.IdentityFrom(ctx); ok {
 		if err := s.guardPerUserWorkspaceCap(ctx, caller.Subject, plan); err != nil {
-			return WorkspaceView{}, err
+			return err
 		}
 	}
 	if blocked := rolesOutsidePlan(members, plan); len(blocked) > 0 {
-		return WorkspaceView{}, fmt.Errorf("%w: workspace has members with roles not allowed on %s (%s); downgrade first",
+		return fmt.Errorf("%w: workspace has members with roles not allowed on %s (%s); downgrade first",
 			core.ErrBadRequest, plan, strings.Join(blocked, ", "))
 	}
 	if blocked := invitedRolesOutsidePlan(invites, plan); len(blocked) > 0 {
-		return WorkspaceView{}, fmt.Errorf("%w: workspace has pending invites with roles not allowed on %s (%s); revoke them first",
+		return fmt.Errorf("%w: workspace has pending invites with roles not allowed on %s (%s); revoke them first",
 			core.ErrBadRequest, plan, strings.Join(blocked, ", "))
 	}
-	nt, err := s.Store.UpdateTenantPlan(ctx, id, plan)
-	if err != nil {
-		return WorkspaceView{}, mapStoreErr(err)
-	}
-	return view(nt, "admin"), nil
+	return nil
 }
 
 // workspacePaidPlan uses the workspace catalog's free tier. Other resource
@@ -1467,7 +1507,15 @@ func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 	if want := DeleteConfirmation(t.Label()); confirmName != want {
 		return fmt.Errorf("%w: confirmation must be %q", core.ErrBadRequest, want)
 	}
-	return s.deleteWorkspace(ctx, id)
+	org, err := s.guardOrganizationDelete(ctx, t)
+	if err != nil {
+		return err
+	}
+	if err := s.deleteWorkspace(ctx, id); err != nil {
+		return err
+	}
+	s.recordOrganizationDelete(ctx, org, t)
+	return nil
 }
 
 // AccountTeardown is the trusted account-lifecycle adapter over the same

@@ -3,15 +3,18 @@
   "workspace": [
     {
       "plan": "hobby",
-      "usdPerMonth": 0
+      "usdPerMonth": 0,
+      "per": "workspace"
     },
     {
       "plan": "pro",
-      "usdPerMonth": 17.5
+      "usdPerMonth": 17.5,
+      "per": "workspace"
     },
     {
       "plan": "scale",
-      "usdPerMonth": 349.3
+      "usdPerMonth": 349.3,
+      "per": "organization"
     }
   ],
   "compute": [

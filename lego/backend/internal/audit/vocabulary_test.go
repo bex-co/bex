@@ -73,6 +73,11 @@ func TestRenderEventVerbsExist(t *testing.T) {
 		// w9/m452: a member's sign-in and sign-out, by internal/signins.
 		core.AuditVerbLogin:  true,
 		core.AuditVerbLogout: true,
+		// w7/m464: a person an invite redemption or a transfer added to an
+		// organization, and an org invite redeemed at sign-in; no verb of
+		// their own does either.
+		core.AuditVerbOrgMemberAdded:    true,
+		core.AuditVerbOrgInviteAccepted: true,
 	}
 	methodsByPkg := map[string]map[string]bool{}
 	for verb := range renderEvents {

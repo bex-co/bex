@@ -149,6 +149,11 @@ const (
 	RelCanManageSSHKeys = "can_manage_ssh_keys" // any workspace member: their own SSH public keys
 	RelCanManage        = "can_manage"          // admin only: manage the workspace itself (rename/delete)
 	RelCanManageBilling = "can_manage_billing"  // billing or admin: customer-billing setup/portal (Render's BILLING role)
+	// The org workspace joins (w7/m464, ADR115 D5): a Member adding themselves
+	// to a Public workspace, and an Owner adding themselves to any org
+	// workspace as admin. Both derive through the workspace's org tuples.
+	RelCanJoin        = "can_join"
+	RelCanJoinAsAdmin = "can_join_as_admin"
 
 	DefaultWorkspace = "workspace:default"
 	// DefaultTenant is the tenant/workspace id used when no control-plane tenant

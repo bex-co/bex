@@ -1581,6 +1581,12 @@ type Job {
   status: String
 }
 
+type JoinedWorkspace {
+  joined: Boolean!
+  role: String!
+  workspaceId: String!
+}
+
 type KeyValue {
   blueprintId: String
   createdAt: String
@@ -1787,6 +1793,7 @@ type Mutation {
   cancelDeploy(deployId: String!, serviceId: String!): Deploy
   cancelJob(jobId: String!, serviceId: String!): Job
   cancelWorkspaceCreation(attemptId: String!): Boolean
+  changeOrganizationMemberRole(organizationId: String!, role: String!, subject: String!): OrganizationMember
   changeWorkspaceMemberRole(role: String!, subject: String!, workspaceId: String!): WorkspaceMember
   changeWorkspacePlan(id: String!, plan: String!): Workspace
   claimGit(installationId: Float, ownerId: String): GitClaim
@@ -1808,6 +1815,7 @@ type Mutation {
   createEnvironment(ipAllowList: [IPAllowListEntryInput!], name: String!, networkIsolationEnabled: Boolean, projectId: String!, protectedStatus: String): Environment
   createJob(planId: String, serviceId: String!, startCommand: String!): Job
   createKeyValue(dryRun: Boolean, environmentId: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maxmemoryPolicy: String, name: String!, ownerId: String, persistenceMode: String, plan: String, public: Boolean, region: String, storageGB: Int, version: String): KeyValue
+  createOrganizationWorkspace(name: String!, organizationId: String!, privacy: String): Workspace
   createPlannedBlueprint(autoSync: Boolean, branch: String, existingResources: String, name: String!, ownerId: String, path: String, repo: String!): BlueprintPlanResult
   createProject(environments: [ProjectEnvironmentInput!], name: String!, ownerId: String!): Project
   createRegistryCredential(authToken: String!, expiresAt: String, host: String!, name: String, ownerId: String, username: String!): RegistryCredential
@@ -1861,7 +1869,10 @@ type Mutation {
   finalizeWorkspaceCreation(attemptId: String!): Workspace
   importSandboxImage(name: String!, ownerId: String, registryPassword: String, registryUsername: String, sandboxGroupId: String!, sourceImage: String!): SandboxImage
   interruptAgentSession(id: String!): AgentSession
+  inviteOrganizationMember(email: String!, organizationId: String!, role: String!): OrganizationInvite
   inviteWorkspaceMember(email: String!, role: String!, workspaceId: String!): WorkspaceInvite
+  joinWorkspace(workspaceId: String!): JoinedWorkspace
+  joinWorkspaceAsAdmin(workspaceId: String!): JoinedWorkspace
   leaveWorkspace(workspaceId: String!): Boolean
   linkBuildSource(buildSourceId: String!, dryRun: Boolean, serviceId: String!, startCommand: String): Service
   linkEnvGroup(id: String!, serviceId: String!): Boolean
@@ -1878,11 +1889,13 @@ type Mutation {
   regenerateDeployHook(serviceId: String!): DeployHook
   registerNotificationDeviceSubscription(deviceId: String!, ownerId: String, platform: String!, provider: String!, sessionId: String!, token: String!): NotificationDeviceSubscription
   registerNotificationWebPushSubscription(auth: String!, browserId: String!, endpoint: String!, p256dh: String!): NotificationWebPushSubscription
+  removeOrganizationMember(organizationId: String!, subject: String!): Boolean
   removeWorkspaceMember(subject: String!, workspaceId: String!): String
   renameDatabase(confirm: String, dryRun: Boolean, id: String!, name: String!): Database
   renameEnvGroup(confirm: String, id: String!, name: String!): EnvGroup
   renameEnvironment(confirm: String, id: String!, name: String!): Environment
   renameKeyValue(confirm: String, dryRun: Boolean, id: String!, name: String!): KeyValue
+  renameOrganization(name: String!, organizationId: String!): Organization
   renameProject(confirm: String, id: String!, name: String!): Project
   renameWorkspace(confirm: String, id: String!, name: String!): Workspace
   resendWebhookDelivery(attemptId: String!, endpointId: String!, idempotencyKey: String!, ownerId: String): WebhookDelivery
@@ -1897,6 +1910,7 @@ type Mutation {
   resumeService(id: String!): Service
   revokeApiKey(id: String!, ownerId: String): Boolean
   revokeNotificationDeviceSubscriptions(ownerId: String): Int
+  revokeOrganizationInvite(inviteId: String!, organizationId: String!): Boolean
   revokeWorkspaceInvite(inviteId: String!, workspaceId: String!): String
   rollbackService(confirm: String, deployId: String!, disableAutoDeploy: Boolean = false, serviceId: String!): Deploy
   runAgentAutomation(id: String!, ownerId: String): AgentAutomationRun!
@@ -1961,6 +1975,7 @@ type Mutation {
   setWebhookEndpointEnabled(enabled: Boolean!, id: String!, ownerId: String): WebhookEndpoint
   setWorkspaceIPAllowList(id: String!, ipAllowList: [IPAllowListEntryInput!]!): Workspace
   setWorkspaceOverlappingDeployPolicy(id: String!, policy: String!): Workspace
+  setWorkspacePrivacy(privacy: String!, workspaceId: String!): Workspace
   setWorkspaceRequireTwoFactor(enabled: Boolean!, workspaceId: String!): Workspace
   steerAgentSession(attachmentIds: [String!], egressAllowlist: [String!], id: String!, idempotencyKey: String, outputRequired: Boolean, outputSchema: String, prompt: String!, secretNames: [String!], secrets: [AgentSessionSecretInput!], skills: [AgentSessionSkillInput!]): AgentSession
   suspendDatabase(confirm: String, id: String!): Database
@@ -2031,6 +2046,44 @@ type NotificationWebPushSubscription {
 
 type OomKilled {
   memoryLimit: String
+}
+
+type Organization {
+  createdAt: String!
+  id: String!
+  name: String!
+  plan: String!
+  primaryWorkspaceId: String!
+  viewerRole: String!
+  workspaces: [OrganizationWorkspace!]!
+}
+
+type OrganizationInvite {
+  createdAt: String
+  email: String!
+  expiresAt: String
+  id: String!
+  role: String!
+}
+
+type OrganizationMember {
+  createdAt: String
+  email: String
+  isSelf: Boolean!
+  role: String!
+  subject: String!
+  userId: String
+  workspaces: [String!]!
+}
+
+type OrganizationWorkspace {
+  id: String!
+  name: String!
+  plan: String!
+  primary: Boolean!
+  privacy: String!
+  slug: String!
+  viewerIsMember: Boolean!
 }
 
 type OutboundIPs {
@@ -2295,6 +2348,11 @@ type Query {
   notificationInbox(limit: Int = 50, ownerId: String): [PushNotification!]!
   notificationSettings(ownerId: String): NotificationSettings
   notificationWebPushSubscriptions: [NotificationWebPushSubscription]
+  organization(id: String!): Organization
+  organizationAuditLogs(cursor: String, direction: String, endTime: String, limit: Int, organizationId: String!, startTime: String): [AuditLog]
+  organizationInvites(organizationId: String!): [OrganizationInvite!]!
+  organizationMembers(organizationId: String!): [OrganizationMember!]!
+  organizations: [Organization!]!
   ownerNotificationSettings(ownerId: String): OwnerNotificationSettings!
   pipelineSettings(workspaceId: String!): PipelineSettings
   project(id: String!): Project
@@ -2907,8 +2965,11 @@ type Workspace {
   id: String
   ipAllowList: [IPAllowListEntry!]!
   name: String
+  organization: WorkspaceOrganization
   overlappingDeployPolicy: String!
   plan: String
+  primary: Boolean!
+  privacy: String
   requireTwoFactor: Boolean
   role: String
   slug: String
@@ -2972,6 +3033,12 @@ type WorkspaceMember {
   role: String
   subject: String
   userId: String
+}
+
+type WorkspaceOrganization {
+  id: String!
+  name: String!
+  primaryWorkspaceId: String!
 }
 
 type WorkspaceSeatUsage {

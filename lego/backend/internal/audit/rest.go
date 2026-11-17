@@ -316,14 +316,23 @@ func filterFromQuery(q url.Values) (Filter, error) {
 // RegisterREST mounts GET /v1/owners/{ownerId}/audit-logs. Store unconfigured
 // => the Service returns core.ErrAuditUnavailable => 503; non-admin caller =>
 // 403 (core.ErrForbidden) — both via the shared core.WriteErr mapper.
+//
+// It also mounts Render's GET /v1/organizations/{orgId}/audit-logs (w7/m464,
+// ADR115 D7): the same parameters and rows, for an org's Owners.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	mux.HandleFunc("GET /v1/owners/{ownerId}/audit-logs", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /v1/owners/{ownerId}/audit-logs", s.serveAuditLogs("ownerId", s.List))
+	mux.HandleFunc("GET /v1/organizations/{orgId}/audit-logs", s.serveAuditLogs("orgId", s.ListOrganization))
+}
+
+// serveAuditLogs answers one of Render's audit-log lists through list.
+func (s *Service) serveAuditLogs(param string, list func(context.Context, string, Filter) ([]Event, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		filter, err := filterFromQuery(r.URL.Query())
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		events, err := s.List(r.Context(), r.PathValue("ownerId"), filter)
+		events, err := list(r.Context(), r.PathValue(param), filter)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -333,5 +342,5 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, toAuditLogList(events))
-	})
+	}
 }

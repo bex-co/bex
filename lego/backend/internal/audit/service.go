@@ -202,6 +202,18 @@ var renderEvents = map[string]string{
 	"projects.Delete":             "DeleteProjectEvent",
 	"workspaces.Create":           "CreateWorkspaceEvent",
 	"workspaces.Delete":           "DeleteWorkspaceEvent",
+	// Render's org events (w7/m464, ADR115 D7), recorded in the org's own
+	// log (renderOrganizationEvents is the inventory).
+	core.AuditVerbOrgInvited:              "InviteToOrgEvent",
+	core.AuditVerbOrgInviteAccepted:       "AcceptOrgInviteEvent",
+	core.AuditVerbOrgMemberAdded:          "AddOrgMemberEvent",
+	core.AuditVerbOrgMemberRemoved:        "RemoveOrgMemberEvent",
+	core.AuditVerbOrgRoleChanged:          "ChangeOrgRoleEvent",
+	core.AuditVerbJoinWorkspace:           "JoinTeamEvent",
+	core.AuditVerbJoinWorkspaceAsAdmin:    "JoinTeamEvent",
+	core.AuditVerbOrgRenamed:              "ChangeOrgNameEvent",
+	core.AuditVerbOrgWorkspaceCreated:     "CreateWorkspaceEvent",
+	core.AuditVerbWorkspacePrivacyChanged: "ChangeWorkspacePrivacyEvent",
 	// Render's workspace "require two-factor authentication" enforcement
 	// (w22/m402); the entry carries the value it was set to.
 	core.AuditVerbSetRequireTwoFactor: "ChangeTeam2FAEnforcementEvent",
@@ -394,6 +406,12 @@ func (s *Service) List(ctx context.Context, ownerID string, filter Filter) ([]Ev
 	if gated && !core.PlanAllows(plan, core.FeatureAuditLogs) {
 		return nil, core.NewPlanFeatureError("", plan, core.FeatureAuditLogs)
 	}
+	return s.list(ctx, ownerID, visibleFrom, filter)
+}
+
+// list reads one log, a workspace's or an org's (its rows are keyed by the
+// org id), from visibleFrom on.
+func (s *Service) list(ctx context.Context, key string, visibleFrom time.Time, filter Filter) ([]Event, error) {
 	if visibleFrom.After(filter.Since) {
 		filter.Since = visibleFrom
 	}
@@ -404,7 +422,7 @@ func (s *Service) List(ctx context.Context, ownerID string, filter Filter) ([]Ev
 	if s.Store == nil {
 		return nil, core.ErrAuditUnavailable
 	}
-	rows, err := s.Store.ListAuditEvents(ctx, ownerID, store.AuditFilter{
+	rows, err := s.Store.ListAuditEvents(ctx, key, store.AuditFilter{
 		Since: filter.Since, Until: filter.Until, Cursor: filter.Cursor, Limit: filter.Limit,
 		OldestFirst: oldestFirst,
 	})

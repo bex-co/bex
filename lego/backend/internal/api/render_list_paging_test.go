@@ -44,6 +44,7 @@ var unpagedListPages = map[string]string{
 	"list-disks":                         "apps disks REST, core.PageParams",
 	"list-owners":                        "workspaces RegisterREST, core.PageParams",
 	"list-owner-audit-logs":              "audit RegisterREST, store.DefaultAuditPageSize (auditLogLimitParam, max 1000)",
+	"list-organization-audit-logs":       "audit RegisterREST, the owner route's store.DefaultAuditPageSize (auditLogLimitParam, max 1000; w7/m464)",
 	"list-notification-overrides":        "apps notification overrides, core.PageParams",
 	"list-registry-credentials":          "registrycreds RegisterREST, core.PageParams",
 	"get-env-vars-for-service":           "secrets listPaged",

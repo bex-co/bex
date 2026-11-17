@@ -42,6 +42,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/yaml"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -326,6 +327,16 @@ func (s *Sheet) BillableMeterNames() []string {
 	names = append(names, store.UsageKindAgentModelCostMicroUSD)
 	sort.Strings(names)
 	return names
+}
+
+// planFeePer is what a plan's fee covers: one fee per organization on the
+// plans an org exists on (Render: "An org can contain unlimited workspaces at
+// no additional cost"), else one per workspace.
+func planFeePer(plan string) string {
+	if core.OrganizationPlan(plan) {
+		return "organization"
+	}
+	return "workspace"
 }
 
 // WorkspaceUSDPerMonth returns the catalog monthly fee for a workspace plan.
@@ -825,6 +836,10 @@ type tierRate struct {
 type planPrice struct {
 	Plan        string  `json:"plan"`
 	USDPerMonth float64 `json:"usdPerMonth"`
+	// Per is what the fee covers: "workspace", or "organization" for Scale
+	// and Enterprise, whose one fee covers all of an org's workspaces and is
+	// charged on its primary (w7/m464, ADR115 D2, ADR030 §2).
+	Per string `json:"per"`
 }
 
 type bandwidthFile struct {
@@ -1057,6 +1072,9 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		}
 		if e.USDPerMonth < 0 {
 			return nil, fmt.Errorf("workspace plan %s has negative usdPerMonth", e.Plan)
+		}
+		if want := planFeePer(e.Plan); e.Per != want {
+			return nil, fmt.Errorf("workspace plan %s is charged per %q, not %q (ADR115 D2)", e.Plan, want, e.Per)
 		}
 		s.workspace[e.Plan] = e.USDPerMonth
 	}

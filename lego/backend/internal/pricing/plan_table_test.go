@@ -225,13 +225,9 @@ func pitrRetentionDays(plan string) int64 {
 	return int64(core.PITRRetention(plan) / (24 * time.Hour))
 }
 
-// The board items a followUp names for rows bex does not apply yet: an inbox
-// note filed by w7/m429 t005 (w7/071), and the milestone w7/070 found as
-// w7/077 (w7/m464, ADR115).
-const (
-	followUpHIPAALinks    = "w7/071 (HIPAA-enabled workspaces and AWS private links have no recorded disposition)"
-	followUpOrganizations = "w7/m464 (Scale and Enterprise organizations: unlimited workspaces under one plan fee, Owner, Member and Guest, an org audit log; ADR115)"
-)
+// The board item a followUp names for rows bex does not apply yet, filed by
+// w7/m429 t005.
+const followUpHIPAALinks = "w7/071 (HIPAA-enabled workspaces and AWS private links have no recorded disposition)"
 
 // planDispositions is bex's answer to every captured row.
 var planDispositions = map[string]planDisposition{
@@ -315,11 +311,11 @@ var planDispositions = map[string]planDisposition{
 	"pricing: OpenTelemetry metrics stream": nonGoal("DO_NOT_DO: external log/metric drains; ADR018 Metric streams"),
 	// Platform Access & Security
 	"pricing: Team seats":                 numbered("limit", "store.LimitsFor MaxMembers", leadingNumber, func(p string) int64 { return unlimitedAtZero(store.LimitsFor(p).MaxMembers) }),
-	"pricing: Workspaces":                 {kind: "followUp", ref: followUpOrganizations + "; per user, store.LimitsFor MaxWorkspacesPerUser", check: checkWorkspaces},
+	"pricing: Workspaces":                 {kind: "limit", ref: "core.OrganizationPlan (ADR115, w7/m464); per user, store.LimitsFor MaxWorkspacesPerUser", check: checkWorkspaces},
 	"pricing: 2FA & Google login":         same("ADR012"),
 	"pricing: Enforce 2FA & Google login": gate(core.FeatureTwoFactorEnforcement),
 	"pricing: Workspace user roles":       {kind: "limit", ref: "store.LimitsFor AllowedRoles", check: checkWorkspaceRoles},
-	"pricing: Organization user roles":    followUp(followUpOrganizations),
+	"pricing: Organization user roles":    {kind: "limit", ref: "core.OrganizationRoles, store.OrgRoles (ADR115 D4)", check: checkOrganizationRoles},
 	"pricing: SAML SSO":                   nonGoal("DO_NOT_DO: SSO/SAML · SCIM; ADR018 SSO / SAML · SCIM"),
 	"pricing: SCIM":                       nonGoal("DO_NOT_DO: SSO/SAML · SCIM; ADR018 SSO / SAML · SCIM"),
 	"pricing: OIDC authentication":        gap("ADR018 Managed OIDC for AI providers"),
@@ -366,7 +362,7 @@ var planDispositions = map[string]planDisposition{
 	"features: Audit logs":               minimumGate(core.FeatureAuditLogs),
 	"features: OIDC":                     gap("ADR018 Managed OIDC for AI providers"),
 	"features: SAML SSO and SCIM":        nonGoal("DO_NOT_DO: SSO/SAML · SCIM"),
-	"features: Org-level audit logs":     followUp(followUpOrganizations),
+	"features: Org-level audit logs":     minimumGate(core.FeatureOrganizations),
 	"features: Additional member roles": {kind: "limit", ref: "store.LimitsFor AllowedRoles", check: func(t reporter, row planRow) {
 		t.Helper()
 		for _, plan := range renderPlans {
@@ -438,12 +434,13 @@ var organizationPlans = []string{store.PlanScale, store.PlanEnterprise}
 // checkWorkspaces reads the pricing table's "Workspaces: 1 | 1 | Unlimited |
 // Unlimited" row as what it counts on Render (w7/070): the workspaces one
 // plan's account holds, a standalone workspace on Hobby and Pro and an
-// organization's unlimited workspaces on Scale and Enterprise. bex has no
-// organizations until w7/m464 (ADR115), so the row binds nothing in bex yet;
-// a change to it fails here, to be read again. How many workspaces one user may create is
-// render.com/docs/team-members' rule (read 2026-11-17: "You can have up to
-// five Hobby workspaces", "You can create an unlimited number of paid
-// workspaces"), which store.LimitsFor applies.
+// organization's unlimited workspaces on Scale and Enterprise. bex binds it
+// through organizations (w7/m464, ADR115): a Scale or Enterprise workspace
+// is an org's primary, whose Owners create any number of workspaces on its
+// one plan, and Hobby and Pro have no org (core.OrganizationPlan). How many
+// workspaces one user may create is render.com/docs/team-members' rule (read
+// 2026-11-17: "You can have up to five Hobby workspaces", "You can create an
+// unlimited number of paid workspaces"), which store.LimitsFor applies.
 func checkWorkspaces(t reporter, row planRow) {
 	t.Helper()
 	for i, plan := range renderPlans {
@@ -453,6 +450,9 @@ func checkWorkspaces(t reporter, row planRow) {
 		}
 		if row.values[i] != want {
 			t.Errorf("%s on %s: Render now shows %q, where bex read %q as an organization's workspace count: read the row again", row.key, plan, row.values[i], want)
+		}
+		if got := core.OrganizationPlan(plan); got != (want == "Unlimited") {
+			t.Errorf("%s on %s: Render shows %q, but bex's OrganizationPlan = %v", row.key, plan, want, got)
 		}
 		perUser := 0 // unlimited
 		if plan == store.PlanHobby {
@@ -487,6 +487,29 @@ func checkWorkspaceRoles(t reporter, row planRow) {
 		}
 		if got := store.LimitsFor(renderPlans[i]).AllowedRoles; !slices.Equal(got, want) {
 			t.Errorf("%s on %s: Render %q, bex %v", row.key, renderPlans[i], cell, got)
+		}
+	}
+}
+
+// checkOrganizationRoles holds "Organization user roles: — | — | Owner,
+// Member, Guest | Owner, Member, Guest" to the org roles bex assigns
+// (ADR115 D4): none where there is no org, and the store's whole role set
+// where there is one.
+func checkOrganizationRoles(t reporter, row planRow) {
+	t.Helper()
+	for i, cell := range row.values {
+		var want []string
+		if cell != "-" {
+			for _, role := range strings.Split(cell, ",") {
+				want = append(want, strings.ToLower(strings.TrimSpace(role)))
+			}
+		}
+		got := core.OrganizationRoles(renderPlans[i])
+		if !slices.Equal(got, want) {
+			t.Errorf("%s on %s: Render %q, bex %v", row.key, renderPlans[i], cell, got)
+		}
+		if want != nil && !slices.Equal(store.OrgRoles, want) {
+			t.Errorf("%s on %s: Render %q, the store's org roles %v", row.key, renderPlans[i], cell, store.OrgRoles)
 		}
 	}
 }

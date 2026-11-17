@@ -121,6 +121,12 @@ type Tenant struct {
 	// RequireTwoFactor is the workspace admin's "require two-factor
 	// authentication" setting (migration 0261).
 	RequireTwoFactor bool `json:"requireTwoFactor"`
+	// OrganizationID is the organization the workspace belongs to (w7/m464,
+	// ADR115); "" for a standalone workspace.
+	OrganizationID string `json:"organizationId,omitempty"`
+	// Privacy is the workspace's org access setting, PrivacyInviteOnly (the
+	// default) or PrivacyPublic. It matters only inside an organization.
+	Privacy string `json:"privacy,omitempty"`
 }
 
 // Label is the name a person sees: the display name, else the slug.
@@ -895,12 +901,15 @@ func (s *PGStore) ListTenants(ctx context.Context) ([]Tenant, error) {
 
 // tenantColumns are the public tenant columns scanTenant reads, in order
 // (owner_identity_id is internal and never surfaced in the Tenant shape).
-const tenantColumns = "id, name, plan, created_at, display_name, require_two_factor"
+const tenantColumns = "id, name, plan, created_at, display_name, require_two_factor, COALESCE(organization_id, ''), privacy"
+
+// tenantColumnsT is tenantColumns for a query that names tenants as t.
+const tenantColumnsT = "t.id, t.name, t.plan, t.created_at, t.display_name, t.require_two_factor, COALESCE(t.organization_id, ''), t.privacy"
 
 // scanTenant reads tenantColumns off a row.
 func scanTenant(row pgx.Row) (Tenant, error) {
 	var t Tenant
-	err := row.Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt, &t.DisplayName, &t.RequireTwoFactor)
+	err := row.Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt, &t.DisplayName, &t.RequireTwoFactor, &t.OrganizationID, &t.Privacy)
 	return t, err
 }
 
@@ -914,7 +923,7 @@ func scanTenant(row pgx.Row) (Tenant, error) {
 // together), so the answer is stable even then.
 func (s *PGStore) TenantForIdentity(ctx context.Context, subject string) (Tenant, error) {
 	t, err := scanTenant(s.Pool.QueryRow(ctx, `
-		SELECT t.id, t.name, t.plan, t.created_at, t.display_name, t.require_two_factor FROM tenants t
+		SELECT t.id, t.name, t.plan, t.created_at, t.display_name, t.require_two_factor, COALESCE(t.organization_id, ''), t.privacy FROM tenants t
 		JOIN tenant_members m ON m.tenant_id = t.id
 		WHERE m.subject = $1
 		ORDER BY m.created_at, t.id

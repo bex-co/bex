@@ -17,6 +17,8 @@ limitations under the License.
 package members
 
 import (
+	"maps"
+
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
@@ -136,6 +138,12 @@ func workspaceIDArg() graphql.FieldConfigArgument {
 
 // GraphQLQuery contributes the members + pending-invites reads to the root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
+	fields := s.organizationGraphQLQuery()
+	maps.Copy(fields, s.workspaceGraphQLQuery())
+	return fields
+}
+
+func (s *Service) workspaceGraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"workspaceInvitePreview": &graphql.Field{
 			Type: invitePreviewGQLType,
@@ -187,6 +195,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 
 // GraphQLMutation contributes the invite / role-change / remove mutations.
 func (s *Service) GraphQLMutation() graphql.Fields {
+	fields := s.organizationGraphQLMutation()
+	maps.Copy(fields, s.workspaceGraphQLMutation())
+	return fields
+}
+
+func (s *Service) workspaceGraphQLMutation() graphql.Fields {
 	return graphql.Fields{
 		"inviteWorkspaceMember": &graphql.Field{
 			Type: inviteGQLType,

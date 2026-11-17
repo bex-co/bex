@@ -80,6 +80,10 @@ type Invite struct {
 	CreatedAt  time.Time  `json:"createdAt"`
 	ExpiresAt  time.Time  `json:"expiresAt"`
 	AcceptedAt *time.Time `json:"acceptedAt,omitempty"`
+	// JoinedOrganizationID is set on a redeemed invite whose redemption made
+	// the subject a new Member of the workspace's organization (w7/m464,
+	// ADR115 D4), so the caller writes the org tuple and AddOrgMemberEvent.
+	JoinedOrganizationID string `json:"-"`
 }
 
 // hashInviteToken is the at-rest form of an invite token (w1/041): the store
@@ -475,7 +479,16 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 			if !ok {
 				continue
 			}
-			effective, err := redeemInvite(ctx, tx, inv, subject)
+			// A Guest's second org workspace stays pending, as an invite a
+			// plan cannot seat does (ADR115 D4).
+			blocked, err := guestElsewhere(ctx, tx, inv.TenantID, subject)
+			if err != nil {
+				return err
+			}
+			if blocked {
+				continue
+			}
+			effective, joinedOrg, err := redeemInvite(ctx, tx, inv, subject)
 			if err != nil {
 				return err
 			}
@@ -483,6 +496,7 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 			// re-roles an established member, so the caller's OpenFGA tuple and
 			// audit row describe the real membership, not the invite's wish.
 			inv.Role = effective
+			inv.JoinedOrganizationID = joinedOrg
 			accepted = append(accepted, inv)
 		}
 		return nil
@@ -511,22 +525,27 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 // path. The effective role — not the invited one — is what the reconciliation
 // outbox and the caller's OpenFGA tuple are written from, so the row and the
 // tuple can never disagree about what the member may do.
-func redeemInvite(ctx context.Context, tx pgx.Tx, inv Invite, subject string) (string, error) {
-	var effective string
+//
+// In an organization's workspace a new person also becomes a Member of the org
+// (joinOrganizationOnRedeem); the org id is returned when they did.
+func redeemInvite(ctx context.Context, tx pgx.Tx, inv Invite, subject string) (effective, joinedOrg string, err error) {
 	if err := tx.QueryRow(ctx,
 		`INSERT INTO tenant_members (tenant_id, subject, role) VALUES ($1, $2, $3)
 		 ON CONFLICT (tenant_id, subject) DO UPDATE SET role = tenant_members.role
 		 RETURNING role`,
 		inv.TenantID, subject, inv.Role).Scan(&effective); err != nil {
-		return "", err
+		return "", "", err
 	}
 	if err := enqueueRoleReconciliation(ctx, tx, inv.TenantID, subject, effective); err != nil {
-		return "", err
+		return "", "", err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE tenant_invites SET accepted_at = now() WHERE id = $1`, inv.ID); err != nil {
-		return "", err
+		return "", "", err
 	}
-	return effective, nil
+	if joinedOrg, err = joinOrganizationOnRedeem(ctx, tx, inv.TenantID, subject); err != nil {
+		return "", "", err
+	}
+	return effective, joinedOrg, nil
 }
 
 func enqueueRoleReconciliation(ctx context.Context, tx pgx.Tx, tenantID, subject, role string) error {
@@ -578,13 +597,21 @@ func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string
 		if !ok {
 			return ErrInvitePlanLimit
 		}
-		effective, err := redeemInvite(ctx, tx, inv, subject)
+		blocked, err := guestElsewhere(ctx, tx, inv.TenantID, subject)
+		if err != nil {
+			return err
+		}
+		if blocked {
+			return ErrGuestSingleWorkspace
+		}
+		effective, joinedOrg, err := redeemInvite(ctx, tx, inv, subject)
 		if err != nil {
 			return err
 		}
 		// See AcceptInvitesForEmail: the accepted invite reports the effective
 		// membership role, which is what the caller reconciles into OpenFGA.
 		inv.Role = effective
+		inv.JoinedOrganizationID = joinedOrg
 		accepted = inv
 		return nil
 	})

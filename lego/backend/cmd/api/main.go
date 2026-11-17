@@ -199,6 +199,9 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == revokeOAuthGrantCommand {
 		os.Exit(runRevokeOAuthGrant(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
 	}
+	if len(os.Args) > 1 && os.Args[1] == moveWorkspaceToOrganizationCommand {
+		os.Exit(runMoveWorkspaceToOrganization(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
+	}
 	// loadConfig already refused this route on a production control plane.
 	if err := agentsession.EnableDevModelRoute(cfg.AgentDevModelRoute, cfg.AgentDevModel, cfg.CPIdentity); err != nil {
 		log.Fatalf("bex-api: %v", err)
@@ -578,6 +581,13 @@ func main() {
 	// Postgres outbox. Drain it independently of request retries so an invite or
 	// downgrade survives transient OpenFGA failures and process restarts.
 	go srv.Members.RunRoleReconciler(ctx)
+	// Every org's OpenFGA tuples, written at start and every ten minutes
+	// (w7/m464, ADR115 D5): the migration's backfilled orgs get theirs, and a
+	// write lost to a crash comes back. Removals never wait for it.
+	if st != nil {
+		go core.Poll(ctx, "organizations: reconciling OpenFGA tuples", 10*time.Minute,
+			workspaces.OrganizationTupleReconciler{Store: st, Tuples: deps.OrgTuples}.ReconcileOnce)
+	}
 	go srv.Accounts.Run(ctx)
 	// The agent-session Completer finalizes fire-and-forget sessions from the
 	// driver's status file and the PR the agent already opened (ADR090). It is a
@@ -1017,6 +1027,9 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	if rv, ok := authzChecker.(workspaces.WorkspaceRevoker); ok {
 		deps.WorkspaceRevoker = rv
 	}
+	if w, ok := authzChecker.(core.OrganizationTupleWriter); ok {
+		deps.OrgTuples = w
+	}
 	// Out-of-cascade teardown (w6/m4/t005, w1/m61): a deleted workspace's
 	// OpenBao secrets, env groups, managed Databases/KeyValue stores, sandboxes
 	// (appended in the OpenSandbox block below), and Stripe subscription
@@ -1078,6 +1091,9 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 		granter = g
 	}
 	tenantSvc := api.NewTenantService(st, granter)
+	// A login-time redemption that makes someone an org Member writes their
+	// org tuple (w7/m464, ADR115 D4).
+	tenantSvc.OrgTuples = deps.OrgTuples
 	// Login-time invite redemptions record members.AcceptInvite audit rows
 	// through the same store the feature verbs' sink writes (w1/m33).
 	tenantSvc.Audit = st

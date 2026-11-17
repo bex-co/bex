@@ -174,12 +174,16 @@ var (
 	// AgentRetainedImage is the disk of a stopped agent turn, kept as an image
 	// for the session's next turn to continue from (ADR047 D12, w22/m413).
 	AgentRetainedImage = Kind{prefix: "ari", desc: "agent session retained image"}
+	// Organization is a Render organization (w7/m464, ADR115): the group a
+	// Scale or Enterprise workspace's org holds its workspaces and members in.
+	// Render documents no org id prefix, so org- is bex's own.
+	Organization = Kind{prefix: "org", desc: "organization (Scale/Enterprise workspaces)"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, ObjectBucket, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, SandboxSnapshot, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, ObjectBucket, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, SandboxSnapshot, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage, Organization}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

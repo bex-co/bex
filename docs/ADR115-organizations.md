@@ -1,8 +1,8 @@
 # ADR115 — Organizations: Scale and Enterprise workspaces belong to an org, as on Render
 
-**Status:** accepted (2026-11-17, w7/m464). Implementation in progress under w7/m464; t012 rewrites this line to the shipped state.
+**Status:** accepted and implemented (2026-11-17, w7/m464): the store, the OpenFGA model, the GraphQL and MCP verbs, the org audit log at `GET /v1/organizations/{orgId}/audit-logs`, the support transfer command and the plan-table dispositions. The production walk waits for the image pin (w7/m464 t013).
 
-**Basis:** a recommendation under [ADR008 § Render parity first](ADR008-vision.md#render-parity-first) (user decision 2026-10-17, restated 2026-10-20), not a user decision. ADR018 recorded "bex has no organization scope" without a sign-off, so parity applies. The user can still sign off "no organizations" as a divergence through `/unblock w7`, which would retire this ADR. Render's behavior is captured, with quotes and the read date, in [render-artifacts/organizations.md](render-artifacts/organizations.md).
+**Basis:** a recommendation under [ADR008 § Render parity first](ADR008-vision.md#render-parity-first) (user decision 2026-10-17, restated 2026-10-20), not a user decision. ADR018 used to record that bex had no organization scope, with no sign-off, so parity applies. The user can still sign off "no organizations" as a divergence through `/unblock w7`, which would retire this ADR. Render's behavior is captured, with quotes and the read date, in [render-artifacts/organizations.md](render-artifacts/organizations.md).
 
 ## Context
 

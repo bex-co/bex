@@ -1634,6 +1634,8 @@ var writeRelations = map[string]bool{
 	RelCanManageSSHKeys: true,
 	RelCanManage:        true,
 	RelCanManageBilling: true,
+	RelCanJoin:          true,
+	RelCanJoinAsAdmin:   true,
 }
 
 // readVerbs are the verbs a write relation gates that change nothing: admin
@@ -1648,6 +1650,8 @@ var writeRelations = map[string]bool{
 var readVerbs = map[string]bool{
 	"billing.Status":                     true,
 	"audit.List":                         true,
+	"audit.ListOrganization":             true,
+	"members.ListOrganizationInvites":    true,
 	"members.ListInvites":                true,
 	"apikeys.ListAPIKeys":                true,
 	"sshkeys.List":                       true,

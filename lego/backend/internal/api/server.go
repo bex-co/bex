@@ -639,6 +639,9 @@ type Deps struct {
 	WorkspaceCreationBilling workspaces.WorkspaceCreationBilling
 	WorkspaceGranter         workspaces.WorkspaceGranter
 	WorkspaceRevoker         workspaces.WorkspaceRevoker
+	// OrgTuples keeps OpenFGA's org tuples in step with the organization rows
+	// (w7/m464, ADR115 D5): the OpenFGA checker when authz is wired.
+	OrgTuples core.OrganizationTupleWriter
 	// EnterpriseEntitlement is the operator-approved allow-list for the custom
 	// Enterprise workspace tier. Nil keeps that tier unavailable by default.
 	EnterpriseEntitlement workspaces.EnterpriseEntitlement
@@ -877,6 +880,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		CreationBilling:       d.WorkspaceCreationBilling,
 		Granter:               d.WorkspaceGranter,
 		Revoker:               d.WorkspaceRevoker,
+		OrgTuples:             d.OrgTuples,
 		EnterpriseEntitlement: d.EnterpriseEntitlement,
 		OpsWorkspaceID:        d.OpsWorkspaceID,
 		Kick:                  d.WorkspaceKick,
@@ -1160,7 +1164,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	membersSvc := &members.Service{
 		Base: base, Store: d.MembersStore, Granter: d.MembersGranter,
 		Revoker: d.MembersRevoker, Mailer: d.Mailer, InviteBaseURL: d.InviteBaseURL,
-		Identities: identityEmailLookup{d.Identities},
+		Identities: identityEmailLookup{d.Identities}, OrgTuples: d.OrgTuples,
 	}
 	if keyTeardown != nil {
 		membersSvc.Keys = keyTeardown

@@ -61,4 +61,6 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, limits, nil
 	})
+
+	s.registerOrganizationMCP(srv)
 }
