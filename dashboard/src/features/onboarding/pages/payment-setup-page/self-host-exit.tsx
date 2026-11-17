@@ -38,7 +38,7 @@ import {
   endBrowserSession,
 } from "@/common/lib/ory/logout";
 import { DeleteAccountDocument } from "@/graphql/definitions";
-import { accountDeletionConfirmation } from "@/features/auth/pages/settings-page/account-deletion-card";
+import { accountDeletionConfirmation } from "@/features/auth/lib/account-deletion";
 import { SELF_HOST_URL } from "../../lib/payment-setup";
 
 /**

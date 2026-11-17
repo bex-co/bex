@@ -31,6 +31,7 @@ import ruAgentEnvironment from "@/features/agent-environment/locales/ru";
 import ruAgentAutomations from "@/features/agent-automations/locales/ru";
 import ruSandboxGroups from "@/features/sandbox-groups/locales/ru";
 import ruLegal from "@/features/legal/locales/ru";
+import ruOrySettings from "@/features/auth/ory-settings-copy/ru";
 import { extractMessages } from "./index";
 
 /**
@@ -76,6 +77,7 @@ const ru: Record<string, string> = {
   ...extractMessages(ruAgentAutomations),
   ...extractMessages(ruSandboxGroups),
   ...extractMessages(ruLegal),
+  ...ruOrySettings,
 };
 
 export default ru;

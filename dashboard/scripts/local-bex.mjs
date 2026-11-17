@@ -3258,10 +3258,12 @@ const server = createServer((req, res) => {
   // Without it, useOryFlow's AJAX createBrowserSettingsFlow 404s and the hook
   // falls back to `bootstrapViaKratos`, a full-page navigation to this very URL
   // — which used to land the browser on the stub's 404 JSON, taking the whole
-  // Settings page (Team, API Keys, Security & Compliance) down with it. A
-  // minimal browser-type SettingsFlow keeps the user on the page; the form
-  // itself is inert offline (no submit handler is stubbed), which is fine —
-  // the cards below it are what the offline loop is for.
+  // Settings page (Team, API Keys, Security & Compliance) down with it. The
+  // form itself is inert offline (no submit handler is stubbed). Its nodes are
+  // production's for an account with GitHub linked and no second factor yet
+  // (auth.bex.co, 2026-11-17: profile, password, oidc, lookup_secret, webauthn,
+  // totp), so the six cards the page draws here are the ones it draws there,
+  // and the route skeleton's Account section can be measured offline (w3/067).
   if (
     url.pathname === "/self-service/settings/browser" ||
     url.pathname === "/self-service/settings/flows"
@@ -3323,9 +3325,197 @@ const server = createServer((req, res) => {
             type: "input",
             group: "profile",
             attributes: {
+              name: "traits.name",
+              type: "text",
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: {
+              label: {
+                id: 1070002,
+                text: "Name",
+                type: "info",
+                context: { name: "traits.name", title: "Name" },
+              },
+            },
+          },
+          {
+            type: "input",
+            group: "profile",
+            attributes: {
               name: "method",
               type: "submit",
               value: "profile",
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: { label: { id: 1070003, text: "Save", type: "info" } },
+          },
+          {
+            type: "input",
+            group: "password",
+            attributes: {
+              name: "password",
+              type: "password",
+              required: true,
+              autocomplete: "new-password",
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: { label: { id: 1070001, text: "Password", type: "info" } },
+          },
+          {
+            type: "input",
+            group: "password",
+            attributes: {
+              name: "method",
+              type: "submit",
+              value: "password",
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: { label: { id: 1070003, text: "Save", type: "info" } },
+          },
+          {
+            type: "input",
+            group: "oidc",
+            attributes: {
+              name: "unlink",
+              type: "submit",
+              value: "github",
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: {
+              label: {
+                id: 1050003,
+                text: "Unlink github",
+                type: "info",
+                context: { provider: "github" },
+              },
+            },
+          },
+          {
+            type: "input",
+            group: "lookup_secret",
+            attributes: {
+              name: "lookup_secret_regenerate",
+              type: "submit",
+              value: "true",
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: {
+              label: {
+                id: 1050008,
+                text: "Generate new backup recovery codes",
+                type: "info",
+              },
+            },
+          },
+          {
+            type: "input",
+            group: "webauthn",
+            attributes: {
+              name: "webauthn_register_displayname",
+              type: "text",
+              value: "",
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: {
+              label: {
+                id: 1050013,
+                text: "Name of the security key",
+                type: "info",
+              },
+            },
+          },
+          {
+            type: "input",
+            group: "webauthn",
+            attributes: {
+              name: "webauthn_register_trigger",
+              type: "button",
+              value: "{}",
+              disabled: false,
+              onclickTrigger: "oryWebAuthnRegistration",
+              node_type: "input",
+            },
+            messages: [],
+            meta: {
+              label: { id: 1050012, text: "Add security key", type: "info" },
+            },
+          },
+          {
+            type: "img",
+            group: "totp",
+            attributes: {
+              // A blank 1×1 PNG: the card sizes the QR code, not the image.
+              src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+              id: "totp_qr",
+              width: 256,
+              height: 256,
+              node_type: "img",
+            },
+            messages: [],
+            meta: {
+              label: {
+                id: 1050005,
+                text: "Authenticator app QR code",
+                type: "info",
+              },
+            },
+          },
+          {
+            type: "text",
+            group: "totp",
+            attributes: {
+              text: {
+                id: 1050006,
+                text: "LOCALDEVTOTPSECRETLOCALDEVTOTPSE",
+                type: "info",
+                context: { secret: "LOCALDEVTOTPSECRETLOCALDEVTOTPSE" },
+              },
+              id: "totp_secret_key",
+              node_type: "text",
+            },
+            messages: [],
+            meta: {
+              label: {
+                id: 1050017,
+                text: "This is your authenticator app secret. Use it if you can not scan the QR code.",
+                type: "info",
+              },
+            },
+          },
+          {
+            type: "input",
+            group: "totp",
+            attributes: {
+              name: "totp_code",
+              type: "text",
+              required: true,
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: { label: { id: 1070006, text: "Verify code", type: "info" } },
+          },
+          {
+            type: "input",
+            group: "totp",
+            attributes: {
+              name: "method",
+              type: "submit",
+              value: "totp",
               disabled: false,
               node_type: "input",
             },

@@ -19,6 +19,7 @@ import { useApiKeys } from "@/features/api-keys/hooks/use-api-keys";
 import { useRevokeApiKey } from "@/features/api-keys/hooks/use-revoke-api-key";
 import { ApiKeyRow } from "@/features/api-keys/components/api-key-row";
 import { CreateApiKeyDialog } from "@/features/api-keys/components/create-api-key-dialog";
+import { apiKeysColumns } from "@/features/api-keys/lib/api-keys-columns";
 
 /**
  * Settings → API Keys (w4/m8): lists the workspace's bex-minted machine
@@ -32,13 +33,7 @@ export function ApiKeysPanel() {
   const { keys, loading, error, refetch } = useApiKeys();
   const { revoke, revoking } = useRevokeApiKey();
 
-  const columns = [
-    t("apiKeys.colName"),
-    t("apiKeys.colClientId"),
-    t("apiKeys.colCreated"),
-    t("apiKeys.colCreatedBy"),
-    t("apiKeys.colLastUsed"),
-  ];
+  const columns = apiKeysColumns(t);
   const forbidden = isForbiddenError(error);
   const initialLoading = loading && keys.length === 0;
 

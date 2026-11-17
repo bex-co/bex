@@ -11,12 +11,11 @@ import {
 import { OryToast } from "@/common/lib/ory/ory-toast";
 import { orySettingsFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
-import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
 import { AccountDeletionCard } from "@/features/auth/pages/settings-page/account-deletion-card";
+import { AccountSettingsFlowSkeleton } from "@/features/auth/pages/settings-page/account-settings-flow-skeleton";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings-navigation";
 import { SettingsSection } from "@/features/auth/pages/settings-page/settings-section";
@@ -73,7 +72,7 @@ export default function SettingsPage() {
                 />
               </SessionProvider>
             ) : (
-              <AccountSettingsSkeleton />
+              <AccountSettingsFlowSkeleton />
             )}
           </SettingsSection>
 
@@ -109,24 +108,5 @@ export default function SettingsPage() {
         </div>
       </PageFrame>
     </DashboardLayout>
-  );
-}
-
-function AccountSettingsSkeleton() {
-  return (
-    <div aria-hidden="true" className="space-y-4">
-      {["profile", "password"].map((section) => (
-        <Card key={section} className="gap-4">
-          <CardHeader className="gap-2">
-            <Skeleton className="h-5 w-36" />
-            <Skeleton className="h-4 w-56 max-w-full" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-28" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
   );
 }

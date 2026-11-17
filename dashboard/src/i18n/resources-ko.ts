@@ -31,6 +31,7 @@ import koAgentEnvironment from "@/features/agent-environment/locales/ko";
 import koAgentAutomations from "@/features/agent-automations/locales/ko";
 import koSandboxGroups from "@/features/sandbox-groups/locales/ko";
 import koLegal from "@/features/legal/locales/ko";
+import koOrySettings from "@/features/auth/ory-settings-copy/ko";
 import { extractMessages } from "./index";
 
 /**
@@ -76,6 +77,7 @@ const ko: Record<string, string> = {
   ...extractMessages(koAgentAutomations),
   ...extractMessages(koSandboxGroups),
   ...extractMessages(koLegal),
+  ...koOrySettings,
 };
 
 export default ko;

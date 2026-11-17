@@ -30,15 +30,34 @@ export function SettingsSection({
       aria-labelledby={headingId}
       className={cn(SECTION_NAVIGATION_TARGET_CLASS, "space-y-4")}
     >
-      <div className="space-y-1">
-        <h2 id={headingId} className="text-lg font-semibold text-foreground">
-          {title}
-        </h2>
-        {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        ) : null}
-      </div>
+      <SettingsSectionHeading
+        headingId={headingId}
+        title={title}
+        description={description}
+      />
       {children}
     </section>
+  );
+}
+
+/** A section's heading and description; the route skeleton draws it too. */
+export function SettingsSectionHeading({
+  headingId,
+  title,
+  description,
+}: {
+  headingId?: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <h2 id={headingId} className="text-lg font-semibold text-foreground">
+        {title}
+      </h2>
+      {description ? (
+        <p className="text-sm text-muted-foreground">{description}</p>
+      ) : null}
+    </div>
   );
 }

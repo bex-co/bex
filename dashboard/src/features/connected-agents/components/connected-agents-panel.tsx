@@ -15,6 +15,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectedAgents } from "@/features/connected-agents/hooks/use-connected-agents";
 import { ConnectedAgentRow } from "@/features/connected-agents/components/connected-agent-row";
+import { connectedAgentsColumns } from "@/features/connected-agents/lib/connected-agents-columns";
 
 /**
  * Settings → Security & Compliance "Connected agents" card (w4/m18): every
@@ -26,11 +27,7 @@ import { ConnectedAgentRow } from "@/features/connected-agents/components/connec
 export function ConnectedAgentsPanel() {
   const { t } = useTranslations();
   const { agents, loading, error, revoke, revoking } = useConnectedAgents();
-  const columns = [
-    t("connectedAgents.colClient"),
-    t("connectedAgents.colScopes"),
-    t("connectedAgents.colGranted"),
-  ];
+  const columns = connectedAgentsColumns(t);
 
   return (
     <Card>

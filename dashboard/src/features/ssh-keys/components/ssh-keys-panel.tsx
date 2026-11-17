@@ -40,6 +40,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
 import { useSSHKeys } from "@/features/ssh-keys/hooks/use-ssh-keys";
 import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
+import { sshKeysColumns } from "@/features/ssh-keys/lib/ssh-keys-columns";
 
 // The panel renders only on /settings, whose validator types this search.
 const settingsRoute = getRouteApi("/settings");
@@ -62,11 +63,7 @@ export function SSHKeysPanel() {
   const [publicKey, setPublicKey] = useState("");
   const keyValid = publicKeyPattern.test(publicKey.trim());
   const valid = name.trim().length > 0 && keyValid;
-  const columns = [
-    t("sshKeys.name"),
-    t("sshKeys.fingerprint"),
-    t("sshKeys.created"),
-  ];
+  const columns = sshKeysColumns(t);
   const actionsLabel = t("sshKeys.actions");
 
   async function create() {

@@ -68,6 +68,14 @@ import {
 import { UsageNavigation } from "@/features/usage/components/usage-navigation";
 import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/workspace-settings-navigation";
 import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings-navigation";
+import { SettingsSectionHeading } from "@/features/auth/pages/settings-page/settings-section";
+import { AccountSettingsFlowSkeleton } from "@/features/auth/pages/settings-page/account-settings-flow-skeleton";
+import { AccountDeletionCardSkeleton } from "@/features/auth/pages/settings-page/account-deletion-card-skeleton";
+import { ConnectGithubCardSkeleton } from "@/features/git/components/connect-github-card-skeleton";
+import { ApiKeysPanelSkeleton } from "@/features/api-keys/components/api-keys-panel-skeleton";
+import { SSHKeysPanelSkeleton } from "@/features/ssh-keys/components/ssh-keys-panel-skeleton";
+import { ConnectedAgentsPanelSkeleton } from "@/features/connected-agents/components/connected-agents-panel-skeleton";
+import { ActiveSessionsPanelSkeleton } from "@/features/sessions/components/active-sessions-panel-skeleton";
 import { NotificationsNavigation } from "@/features/notifications/components/notifications-navigation";
 import {
   DEFAULT_SERVICE_TYPE,
@@ -1475,6 +1483,34 @@ export function WorkspaceSettingsPageSkeleton() {
   );
 }
 
+/** An Account Settings section: its real heading over its cards' frames. */
+function SettingsSectionRegion({
+  name,
+  title,
+  description,
+  children,
+}: {
+  name: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Region name={name} className="space-y-4">
+      <SettingsSectionHeading title={title} description={description} />
+      {children}
+    </Region>
+  );
+}
+
+/**
+ * Account Settings while the page's chunk loads (w3/067): each section's real
+ * heading over the frames its cards draw while they load, so a section stands
+ * as tall as it will once ready. The Kratos flow's six cards are the page's own
+ * flow frame. Residuals are the account's data: rows past each table's first,
+ * an empty agents list, a connected GitHub account's list, and the account's
+ * second factors.
+ */
 export function AccountSettingsPageSkeleton() {
   const { t } = useTranslations();
   return (
@@ -1489,23 +1525,43 @@ export function AccountSettingsPageSkeleton() {
       navigation={<SettingsNavigation />}
     >
       <div className="space-y-10">
-        {[
-          { name: "account", count: 2 },
-          { name: "integrations", count: 1 },
-          { name: "access", count: 2 },
-          { name: "security", count: 2 },
-          { name: "danger-zone", count: 1 },
-        ].map(({ name, count }) => (
-          <Region key={name} name={name} className="space-y-4">
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-48" />
-              <Skeleton className="h-4 w-72 max-w-full" />
-            </div>
-            {Array.from({ length: count }, (_, index) => (
-              <CardSkeleton key={index} rows={3} />
-            ))}
-          </Region>
-        ))}
+        <SettingsSectionRegion
+          name="account"
+          title={t("auth.accountSection")}
+          description={t("auth.accountSectionSubtitle")}
+        >
+          <AccountSettingsFlowSkeleton />
+        </SettingsSectionRegion>
+        <SettingsSectionRegion
+          name="integrations"
+          title={t("auth.integrationsSection")}
+          description={t("auth.integrationsSectionSubtitle")}
+        >
+          <ConnectGithubCardSkeleton />
+        </SettingsSectionRegion>
+        <SettingsSectionRegion
+          name="access"
+          title={t("auth.accessSection")}
+          description={t("auth.accessSectionSubtitle")}
+        >
+          <ApiKeysPanelSkeleton />
+          <SSHKeysPanelSkeleton />
+        </SettingsSectionRegion>
+        <SettingsSectionRegion
+          name="security"
+          title={t("auth.securityComplianceSection")}
+          description={t("auth.securityComplianceSectionSubtitle")}
+        >
+          <ConnectedAgentsPanelSkeleton />
+          <ActiveSessionsPanelSkeleton />
+        </SettingsSectionRegion>
+        <SettingsSectionRegion
+          name="danger-zone"
+          title={t("auth.dangerZoneSection")}
+          description={t("auth.dangerZoneSectionSubtitle")}
+        >
+          <AccountDeletionCardSkeleton />
+        </SettingsSectionRegion>
       </div>
     </PageFrame>
   );

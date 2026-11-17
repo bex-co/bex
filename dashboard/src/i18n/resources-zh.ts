@@ -31,6 +31,7 @@ import zhAgentEnvironment from "@/features/agent-environment/locales/zh";
 import zhAgentAutomations from "@/features/agent-automations/locales/zh";
 import zhSandboxGroups from "@/features/sandbox-groups/locales/zh";
 import zhLegal from "@/features/legal/locales/zh";
+import zhOrySettings from "@/features/auth/ory-settings-copy/zh";
 import { extractMessages } from "./index";
 
 /**
@@ -76,6 +77,7 @@ const zh: Record<string, string> = {
   ...extractMessages(zhAgentAutomations),
   ...extractMessages(zhSandboxGroups),
   ...extractMessages(zhLegal),
+  ...zhOrySettings,
 };
 
 export default zh;

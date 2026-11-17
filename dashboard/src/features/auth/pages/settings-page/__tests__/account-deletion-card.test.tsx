@@ -30,10 +30,8 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { endBrowserSession } from "@/common/lib/ory/logout";
 import { codedGraphQLError } from "@/test/mocks/apollo";
 import { hydrateAcrossBoundary } from "@/test/hydration";
-import {
-  AccountDeletionCard,
-  accountDeletionConfirmation,
-} from "../account-deletion-card";
+import { AccountDeletionCard } from "../account-deletion-card";
+import { accountDeletionConfirmation } from "@/features/auth/lib/account-deletion";
 
 const mutate = vi.fn();
 const refetch = vi.fn();

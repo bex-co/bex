@@ -79,7 +79,7 @@ The QA user ran the three checks in `bex-canary` (Scale, admin, two workspaces).
 
 ## Decision record (2026-11-17, loopx w3)
 
-- **`/settings`' route skeleton is not m305's.** m305 removed the Registry Credentials and Audit Log cards from it; its regions and rail now match the ready page's five sections and card counts. Its heights come from the generic `CardSkeleton` frames of w5/m79 t011, which w4/686 left unaudited. Filed as [w3/067](../../067.md). t005's account-page criterion is narrowed to the sections m305 moved. Basis: the mismatch predates this milestone, and another item now owns it.
+- **`/settings`' route skeleton is not m305's.** m305 removed the Registry Credentials and Audit Log cards from it; its regions and rail now match the ready page's five sections and card counts. Its heights come from the generic `CardSkeleton` frames of w5/m79 t011, which w4/686 left unaudited. Filed as [w3/067](../../done/067.md). t005's account-page criterion is narrowed to the sections m305 moved. Basis: the mismatch predates this milestone, and another item now owns it.
 - **Loader-less routes never paint their route skeleton on a cold navigation** (the chunk finding above). Filed as [w3/066](../../done/066.md); it does not change what m305 checks, because the inline skeleton and the forced-loader probe both paint this page's frame.
 
 ## Blocked (2026-11-17, loopx w3)

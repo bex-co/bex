@@ -373,6 +373,72 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     expect(native.rows).toBe(7);
   });
 
+  // w3/067: each Account Settings section is its real heading over the frames
+  // its cards draw while they load, not generic cards that grow on arrival.
+  it("draws every Account Settings section from its cards' own loading frames", () => {
+    const { container, unmount } = render(<AccountSettingsPageSkeleton />);
+    const section = (name: string) =>
+      container.querySelector<HTMLElement>(`[data-skeleton-region="${name}"]`)!;
+    const frames = (name: string) =>
+      [
+        ...section(name).querySelectorAll<HTMLElement>(
+          ":scope > [data-testid]",
+        ),
+      ].map((element) => element.dataset.testid);
+
+    expect(
+      ["account", "integrations", "access", "security", "danger-zone"].map(
+        (name) => section(name).querySelector("h2")?.textContent,
+      ),
+    ).toEqual([
+      "Account",
+      "Integrations",
+      "Access credentials",
+      "Security",
+      "Danger zone",
+    ]);
+    // The Kratos flow's six cards, in the order Ory draws them, each with Ory's
+    // own title reserved.
+    expect(frames("account")).toEqual(["account-settings-flow-skeleton"]);
+    const cards = [
+      ...section("account").querySelectorAll<HTMLElement>("[data-ory-group]"),
+    ];
+    expect(cards.map((card) => card.dataset.oryGroup)).toEqual([
+      "profile",
+      "password",
+      "oidc",
+      "lookup_secret",
+      "webauthn",
+      "totp",
+    ]);
+    expect(cards[0]).toHaveTextContent("Profile Settings");
+    expect(cards[5]).toHaveTextContent("Authenticator App");
+    expect(frames("integrations")).toEqual(["connect-github-card-skeleton"]);
+    expect(
+      section("integrations").querySelector(
+        '[data-testid="git-connections-skeleton"]',
+      ),
+    ).not.toBeNull();
+    expect(frames("access")).toEqual([
+      "api-keys-panel-skeleton",
+      "ssh-keys-panel-skeleton",
+    ]);
+    expect(frames("security")).toEqual([
+      "connected-agents-panel-skeleton",
+      "active-sessions-panel-skeleton",
+    ]);
+    expect(
+      section("security").querySelectorAll('[data-testid="panel-table-frame"]'),
+    ).toHaveLength(2);
+    expect(
+      section("security").querySelector(
+        '[data-testid="current-session-placeholder"]',
+      ),
+    ).not.toBeNull();
+    expect(frames("danger-zone")).toEqual(["account-deletion-skeleton"]);
+    unmount();
+  });
+
   it.each([
     // The test setup grants every capability, so the pending rail adds Build
     // Pipeline (billing managers', w6/m309) and Audit Logs (reserved until the
