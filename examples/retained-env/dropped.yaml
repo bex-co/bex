@@ -1,6 +1,7 @@
 # The second manifest of the pair (see render.yaml): the same service with
-# MESSAGE dropped. KEEPME and WHOAMI_PORT_NUMBER are still declared, so they stay
-# read-only in the Environment tab; MESSAGE is retained and editable.
+# MESSAGE, EXTRA and CLICKME dropped. KEEPME and WHOAMI_PORT_NUMBER are still
+# declared, so they stay read-only in the Environment tab; the three dropped
+# ones are retained and editable.
 services:
   - name: retained-env
     type: web
