@@ -1,6 +1,6 @@
 # w4 · m364 — Autoscaling never changes a service's instance count on production: the operator cannot read pod metrics, so an idle service with autoscaling on stays at 3 instances for 10+ minutes and a manual scale while autoscaling is on takes effect
 
-**Worker:** worker4 **Goal:** a service with autoscaling on runs the instance count its CPU and memory targets call for. It scales down to `min` once the 5-minute stabilization window passes on an idle service, scales up under load, and records `autoscaling_started`/`autoscaling_ended`. A manual scale while autoscaling is on is stored, as Render does, but does not change the running count. **Status:** blocked — release gate (t001–t006 done, code shipped 2026-11-14 by `/loopx w4`; t007 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** a service with autoscaling on runs the instance count its CPU and memory targets call for. It scales down to `min` once the 5-minute stabilization window passes on an idle service, scales up under load, and records `autoscaling_started`/`autoscaling_ended`. A manual scale while autoscaling is on is stored, as Render does, but does not change the running count. **Status:** done (t001–t006 shipped 2026-11-14; t007 replayed DoD 1–5 on 2026-11-17, pin `ef7e65cd3f46` and the local CAPD cluster)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 20m | t002, t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
-| [t007](t007.md) | Closeout (live replay on production) | 30m | t005, t006 |
+| [t007](done/t007.md) | Closeout (live replay on production) — **DONE** | 30m | t005, t006 |
 
 ## Definition of done
 
@@ -95,3 +95,8 @@ All on production, workspace `bex-canary`, on a Starter web service from `POST /
   - Render's `POST …/scale` 202 has no body; bex returns the service (pre-existing drift, recorded in ADR018's Manual scale row).
   - An unwired `MetricsReader` (the manager could not build the metrics client) still skips autoscaling silently; production always wires it.
   - Blueprint applies and deploy-time scale paths (`deploy.go`, `blueprint_setting_events.go`) still record `instance_count_changed` for a count change under autoscaling, which runs nothing either.
+
+## Unblock (2026-11-17, `/loopx w4`)
+
+- **Source:** verified evidence. The release gate is clear: `71f81e13f` (t001–t006) is an ancestor of production pin `ef7e65cd3f46` (bex-system digest `79d9db9f…`, still live at 00:50Z) and of the earlier replay pin `c99e7815ebec`. Production's `bex-manager-role` carries the `metrics.k8s.io` `pods` `get`/`list` rule, and `kubectl auth can-i list pods.metrics.k8s.io --as=system:serviceaccount:bex-system:bex-controller-manager` answers `yes`.
+- **Remaining:** t007 only. DoD 1–3 and 5 held on `c99e7815ebec` (QA rounds 361 and 369); DoD 4 needs a test cluster. Replayed in [t007](done/t007.md) on the current pin and the local CAPD cluster; [w4/696](../../696.md) filed alongside.
