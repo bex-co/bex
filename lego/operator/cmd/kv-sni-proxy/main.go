@@ -45,6 +45,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	"github.com/bex-co/bex/lego/types/env"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -54,21 +55,18 @@ const (
 	dialTimeout        = 10 * time.Second
 	handshakeTimeout   = 10 * time.Second
 
-	// Admission + copy-loop bounds (finding 6). Non-zero, generous defaults; a
-	// value of 0 disables that dimension.
-	defaultMaxConns          = 1024 // BEX_KV_PROXY_MAX_CONNS
-	defaultMaxConnsPerSource = 128  // BEX_KV_PROXY_MAX_CONNS_PER_SOURCE
+	// Admission + copy-loop bounds (finding 6); 0 disables a dimension. The
+	// pg-sni-proxy mirror: each store's route admits twice its plan's limit,
+	// and these protect the process only (w6/m457, docs/ADR021 § 9).
+	defaultMaxConns          = 4096 // BEX_KV_PROXY_MAX_CONNS
+	defaultMaxConnsPerSource = 0    // BEX_KV_PROXY_MAX_CONNS_PER_SOURCE
 	// Connections still in their handshake (PROXY header to SNI) are bounded
 	// per network, apart from established ones, so a botnet inside a few
 	// networks cannot hold the global cap for the whole handshake deadline. One
-	// network is an IPv4 /24 or an IPv6 /64.
-	defaultMaxHandshakesPerNetwork = 32        // BEX_KV_PROXY_MAX_HANDSHAKES_PER_NETWORK
-	defaultMaxConnsWorkspace       = 256       // BEX_KV_PROXY_MAX_CONNS_PER_WORKSPACE
-	defaultMaxConnsResource        = 64        // BEX_KV_PROXY_MAX_CONNS_PER_RESOURCE
+	// network is an IPv4 /24 or an IPv6 /64, and 32 of them fill the process.
+	defaultMaxHandshakesPerNetwork = 128       // BEX_KV_PROXY_MAX_HANDSHAKES_PER_NETWORK
 	defaultIdleTimeout             = time.Hour // BEX_KV_PROXY_IDLE_TIMEOUT
 	defaultMaxLifetime             = 24 * time.Hour
-	// labelWorkspace aliases the canonical key in lego/types (v1alpha1).
-	labelWorkspace = appv1alpha1.LabelWorkspace
 )
 
 var scheme = runtime.NewScheme()
@@ -77,9 +75,12 @@ func init() { utilruntime.Must(appv1alpha1.AddToScheme(scheme)) }
 
 type kvRoute struct {
 	ResourceID string
-	Workspace  string
 	Backend    string
 	Allow      sniproxy.AllowLayers
+	// Route and Capacity are the store's admission bucket and its size,
+	// twice its plan's connection limit (sniproxy.RouteCapacity).
+	Route    string
+	Capacity int
 }
 
 type kvRouter struct {
@@ -99,17 +100,14 @@ func (r *kvRouter) set(kv *appv1alpha1.KeyValue) error {
 		r.delete(kv.Name)
 		return nil
 	}
-	workspace := kv.Labels[labelWorkspace]
-	if workspace == "" {
-		workspace = kv.Namespace
-	}
 	// Backend is the KeyValue's ClusterIP Service: its A record is the stable
 	// VIP, so CoreDNS caching cannot hand a dial a restarted pod's old IP or a
 	// cached NXDOMAIN (w1/m166 — it did while the Service was headless).
 	route := kvRoute{
 		ResourceID: kv.Name,
-		Workspace:  workspace,
 		Backend:    fmt.Sprintf("%s.%s.svc.cluster.local:6380", kv.Name, kv.Namespace),
+		Route:      kv.Namespace + "/" + kv.Name,
+		Capacity:   sniproxy.RouteCapacity(tiers.Valkey.Resolve(kv.Spec.Plan).ConnectionLimit),
 	}
 	allow, err := sniproxy.ParseAllowList(
 		kv.Spec.IPAllowList, kv.Spec.EnvironmentIPAllowList, kv.Spec.WorkspaceIPAllowList)
@@ -205,10 +203,6 @@ func main() {
 	)
 	limiter.SetHandshakeLimit(
 		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_HANDSHAKES_PER_NETWORK", defaultMaxHandshakesPerNetwork),
-	)
-	limiter.SetRouteLimits(
-		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS_PER_WORKSPACE", defaultMaxConnsWorkspace),
-		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS_PER_RESOURCE", defaultMaxConnsResource),
 	)
 	idleTimeout := sniproxy.EnvDuration(logger, "BEX_KV_PROXY_IDLE_TIMEOUT", defaultIdleTimeout)
 	maxLifetime := sniproxy.EnvDuration(logger, "BEX_KV_PROXY_MAX_LIFETIME", defaultMaxLifetime)
@@ -341,10 +335,12 @@ func handleConn(
 		logger.Info("no allowed route", "sni", sni)
 		return
 	}
-	releaseRoute, rejectedScope, ok := limiter.AcquireRoute(route.Workspace, route.Workspace+"/"+route.ResourceID)
+	// The store's route admits twice its plan's limit, so the client past the
+	// limit reaches kv-internal-proxy and reads Valkey's refusal (w6/m457).
+	releaseRoute, ok := limiter.AcquireRoute(route.Route, route.Capacity)
 	if !ok {
-		meter.Reject(rejectedScope)
-		logger.Info("connection rejected: routed limit reached", "scope", rejectedScope, "resource", route.ResourceID)
+		meter.Reject(sniproxy.ScopeResource)
+		logger.Info("connection rejected: route at capacity", "resource", route.ResourceID, "capacity", route.Capacity)
 		return
 	}
 	defer releaseRoute()

@@ -6187,7 +6187,7 @@ dashboards:
              "id": 91,
              "type": "timeseries",
              "title": "Public datastore proxy shedding",
-             "description": "Connections the public Postgres and Key Value proxies refuse, by reason: global (the process is full), handshake (one network holds its share of unfinished handshakes), source, workspace and resource (per-client and per-tenant caps). DatastoreProxyShedding warns when any rate stays above zero for ten minutes.",
+             "description": "Connections the public Postgres and Key Value proxies refuse, by reason: global (the process is full), handshake (one network holds its share of unfinished handshakes), source (the per-client cap, off unless set) and resource (one datastore hostname holds twice its server's connection limit). DatastoreProxyShedding warns when any rate stays above zero for ten minutes.",
              "gridPos": { "h": 9, "w": 16, "x": 8, "y": 140 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {

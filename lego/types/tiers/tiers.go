@@ -101,6 +101,10 @@ type PostgresTier struct {
 	// is what makes point-in-time recovery available. Free plans keep it off
 	// (Render's Free is ephemeral); paid plans opt in.
 	Backup bool `json:"backup"`
+	// MaxConnections is Render's connection limit for the plan, PostgreSQL's
+	// max_connections: the client connections a database accepts before the
+	// server refuses the next (w6/m457).
+	MaxConnections int32 `json:"maxConnections"`
 }
 
 // ValkeyTier is one rung of the managed key-value ladder (the KeyValue CRD's
@@ -269,6 +273,16 @@ func (c PostgresCatalog) ByID(id string) (PostgresTier, bool) {
 	return t, ok
 }
 
+// Resolve is the plan a Database runs on for its spec.plan: that tier, or the
+// default for an empty or unknown id. The operator sizes the server and the
+// external front door admits its routes from the same resolution.
+func (c PostgresCatalog) Resolve(id string) PostgresTier {
+	if t, ok := c.byID[id]; ok {
+		return t
+	}
+	return c.Default()
+}
+
 // IDs returns every valid spec.plan id, in catalog order.
 func (c PostgresCatalog) IDs() []string {
 	ids := make([]string, len(c.tiers))
@@ -286,10 +300,7 @@ func (c PostgresCatalog) DiskAutoscalingCapGB() int32 { return c.diskAutoscaling
 // MaxStorageGB is the admitted logical storage ceiling for the plan. Free
 // storage is fixed; paid plans share the catalog's storage/autoscaling cap.
 func (c PostgresCatalog) MaxStorageGB(planID string) int32 {
-	tier, ok := c.ByID(c.CanonicalID(planID))
-	if !ok {
-		tier = c.Default()
-	}
+	tier := c.Resolve(c.CanonicalID(planID))
 	if !tier.paid() {
 		return tier.StorageGB
 	}
@@ -303,6 +314,12 @@ func (t PostgresTier) SupportsDiskAutoscaling() bool { return t.paid() }
 
 // SupportsConnectionPooling follows Render's paid-compute requirement.
 func (t PostgresTier) SupportsConnectionPooling() bool { return t.paid() }
+
+// PostgresPoolerMaxClientConn is the client connections a database's managed
+// PgBouncer accepts on its pooled URL, Render's max_client_conn
+// (render.com/docs/postgresql-connection-pooling, read 2026-11-17). It is the
+// pooled route's connection limit at the external front door (w6/m457).
+const PostgresPoolerMaxClientConn = 30000
 
 const (
 	PostgresReadReplicaMinCPU             = "0.5"
@@ -332,11 +349,7 @@ func (t PostgresTier) MaxReadReplicas() int {
 // (postgres.DatabaseStorageHighWater) and the user-facing disk_capacity metric,
 // so the two can never drift.
 func (c PostgresCatalog) EffectiveStorageGB(planID string, requestedGB, allocatedGB int32) int32 {
-	plan, ok := c.ByID(planID)
-	if !ok {
-		plan = c.Default()
-	}
-	return max(plan.StorageGB, requestedGB, allocatedGB)
+	return max(c.Resolve(planID).StorageGB, requestedGB, allocatedGB)
 }
 
 // highAvailabilityMinCPU is the smallest per-instance CPU a Postgres plan needs
@@ -365,6 +378,15 @@ func (c ValkeyCatalog) Default() ValkeyTier { return c.byID[c.defaultID] }
 func (c ValkeyCatalog) ByID(id string) (ValkeyTier, bool) {
 	t, ok := c.byID[id]
 	return t, ok
+}
+
+// Resolve is the plan a KeyValue runs on for its spec.plan: that tier, or the
+// default for an empty or unknown id (the Postgres sibling's rule).
+func (c ValkeyCatalog) Resolve(id string) ValkeyTier {
+	if t, ok := c.byID[id]; ok {
+		return t
+	}
+	return c.Default()
 }
 
 // Paused reports whether Key Value tier id is temporarily refused for new
@@ -400,11 +422,7 @@ func (c ValkeyCatalog) SelectableIDs() []string {
 // status.allocatedStorageGB). NOT the physical data-<name> PVC size, which shares
 // the same fixed Hetzner floor.
 func (c ValkeyCatalog) EffectiveStorageGB(planID string, requestedGB, allocatedGB int32) int32 {
-	plan, ok := c.ByID(planID)
-	if !ok {
-		plan = c.Default()
-	}
-	return max(plan.StorageGB, requestedGB, allocatedGB)
+	return max(c.Resolve(planID).StorageGB, requestedGB, allocatedGB)
 }
 
 // --- loading ---
@@ -499,6 +517,9 @@ func parsePostgres(entries []PostgresTier, defaultID string) (PostgresCatalog, e
 		}
 		if err := validateDatastore(t.ID, t.StorageGB, t.Instances); err != nil {
 			return PostgresCatalog{}, err
+		}
+		if t.MaxConnections <= 0 {
+			return PostgresCatalog{}, fmt.Errorf("tier %q: maxConnections must be > 0", t.ID)
 		}
 		byID[t.ID] = t
 	}

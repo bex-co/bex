@@ -52,6 +52,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	"github.com/bex-co/bex/lego/types/env"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -68,21 +69,23 @@ const (
 	// sibling kv-sni-proxy sets the same control). Cleared once SNI is resolved.
 	handshakeTimeout = 10 * time.Second
 
-	// Admission + copy-loop bounds (finding 6). Defaults are non-zero and
-	// generous so real connection pools are unaffected; 0 disables a dimension.
-	defaultMaxConns          = 1024 // BEX_PROXY_MAX_CONNS
-	defaultMaxConnsPerSource = 128  // BEX_PROXY_MAX_CONNS_PER_SOURCE
+	// Admission + copy-loop bounds (finding 6); 0 disables a dimension. Each
+	// route admits twice its server's own limit (sniproxy.RouteCapacity), so
+	// these protect the process only, sized so no tenant within its plan
+	// reaches them (w6/m457, docs/ADR009-postgresql-management.md § External
+	// connection admission). The global cap covers this replica's share of the
+	// edge load balancer, which admits 10,000 connections across three
+	// replicas. No per-source cap by default: one client host may hold its
+	// datastores' whole limits, as on Render.
+	defaultMaxConns          = 4096 // BEX_PROXY_MAX_CONNS
+	defaultMaxConnsPerSource = 0    // BEX_PROXY_MAX_CONNS_PER_SOURCE
 	// Connections still in their handshake (PROXY header to SNI) are bounded
 	// per network, apart from established ones, so a botnet inside a few
 	// networks cannot hold the global cap for the whole handshake deadline. One
-	// network is an IPv4 /24 or an IPv6 /64.
-	defaultMaxHandshakesPerNetwork = 32        // BEX_PROXY_MAX_HANDSHAKES_PER_NETWORK
-	defaultMaxConnsWorkspace       = 256       // BEX_PROXY_MAX_CONNS_PER_WORKSPACE
-	defaultMaxConnsResource        = 64        // BEX_PROXY_MAX_CONNS_PER_RESOURCE
+	// network is an IPv4 /24 or an IPv6 /64, and 32 of them fill the process.
+	defaultMaxHandshakesPerNetwork = 128       // BEX_PROXY_MAX_HANDSHAKES_PER_NETWORK
 	defaultIdleTimeout             = time.Hour // BEX_PROXY_IDLE_TIMEOUT
 	defaultMaxLifetime             = 24 * time.Hour
-	// labelWorkspace aliases the canonical key in lego/types (v1alpha1).
-	labelWorkspace = appv1alpha1.LabelWorkspace
 )
 
 // backendSSLReplyTimeout bounds the wait for the backend's one-byte answer to
@@ -116,23 +119,30 @@ type dbRouter struct {
 }
 
 type dbRoutingEntry struct {
-	workspace string
 	namespace string
 	pooler    bool
 	replicas  map[string]bool
 	allow     sniproxy.AllowLayers
+	// maxConnections is the plan's PostgreSQL max_connections, which the
+	// primary and every replica run.
+	maxConnections int32
 }
 
 // hostRoute is one precomputed resolution of a public hostname label.
 type hostRoute struct {
-	db      string // owning database name (route + allowlist identity)
-	backend string // resolved backend address
+	db       string // owning database name (allowlist identity)
+	backend  string // resolved backend address
+	key      string // admission bucket: namespace, database and label
+	capacity int    // connections the route admits at once
 }
 
 type dbRoute struct {
-	Database  string
-	Workspace string
-	Backend   string
+	Database string
+	Backend  string
+	// Route and Capacity are the admission bucket and its size: twice the
+	// limit of the server behind this hostname (sniproxy.RouteCapacity).
+	Route    string
+	Capacity int
 }
 
 func newRouter(domain string) *dbRouter {
@@ -149,12 +159,9 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 		r.delete(db.Name)
 		return nil
 	}
-	workspace := db.Labels[labelWorkspace]
-	if workspace == "" {
-		workspace = db.Namespace
-	}
 	entry := dbRoutingEntry{
-		workspace: workspace, namespace: db.Namespace, pooler: db.Spec.Pooler, replicas: map[string]bool{},
+		namespace: db.Namespace, pooler: db.Spec.Pooler, replicas: map[string]bool{},
+		maxConnections: tiers.Postgres.Resolve(db.Spec.Plan).MaxConnections,
 	}
 	for _, replica := range db.Spec.ReadReplicas {
 		entry.replicas[replica.Name] = true
@@ -179,18 +186,26 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 
 // indexLocked (re)builds the hostname-variant index for one database. The
 // caller holds the write lock. Every replica label resolves to the one shared
-// -ro service, so all -ro-<replica> labels carry the same backend.
+// -ro service, so all -ro-<replica> labels carry the same backend. Each label
+// is its own admission bucket, sized from the server behind it: the plan's
+// max_connections for the primary and each replica (Render limits each
+// replica like its primary), PgBouncer's client limit for the pooler.
 func (r *dbRouter) indexLocked(name string, entry dbRoutingEntry) {
 	r.dropIndexLocked(name)
-	add := func(label, backend string) {
-		r.hosts[label] = append(r.hosts[label], hostRoute{db: name, backend: backend})
+	add := func(label, service string, limit int32) {
+		r.hosts[label] = append(r.hosts[label], hostRoute{
+			db:       name,
+			backend:  fmt.Sprintf("%s-%s.%s.svc.cluster.local:5432", name, service, entry.namespace),
+			key:      entry.namespace + "/" + name + "/" + label,
+			capacity: sniproxy.RouteCapacity(limit),
+		})
 	}
-	add(name, fmt.Sprintf("%s-rw.%s.svc.cluster.local:5432", name, entry.namespace))
+	add(name, "rw", entry.maxConnections)
 	if entry.pooler {
-		add(name+"-pool", fmt.Sprintf("%s-pooler.%s.svc.cluster.local:5432", name, entry.namespace))
+		add(name+"-pool", "pooler", tiers.PostgresPoolerMaxClientConn)
 	}
 	for replica := range entry.replicas {
-		add(name+"-ro-"+replica, fmt.Sprintf("%s-ro.%s.svc.cluster.local:5432", name, entry.namespace))
+		add(name+"-ro-"+replica, "ro", entry.maxConnections)
 	}
 }
 
@@ -260,7 +275,7 @@ func (r *dbRouter) resolve(sni string, source netip.Addr) (dbRoute, bool) {
 		if !entry.allow.Admits(source) {
 			continue
 		}
-		return dbRoute{Database: rt.db, Workspace: entry.workspace, Backend: rt.backend}, true
+		return dbRoute{Database: rt.db, Backend: rt.backend, Route: rt.key, Capacity: rt.capacity}, true
 	}
 	return dbRoute{}, false
 }
@@ -312,10 +327,6 @@ func main() {
 	)
 	limiter.SetHandshakeLimit(
 		sniproxy.EnvInt(log, "BEX_PROXY_MAX_HANDSHAKES_PER_NETWORK", defaultMaxHandshakesPerNetwork),
-	)
-	limiter.SetRouteLimits(
-		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS_PER_WORKSPACE", defaultMaxConnsWorkspace),
-		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS_PER_RESOURCE", defaultMaxConnsResource),
 	)
 	idleTimeout := sniproxy.EnvDuration(log, "BEX_PROXY_IDLE_TIMEOUT", defaultIdleTimeout)
 	maxLifetime := sniproxy.EnvDuration(log, "BEX_PROXY_MAX_LIFETIME", defaultMaxLifetime)
@@ -505,10 +516,12 @@ func handleConn(
 		log.Info("no route for SNI", "sni", sni)
 		return
 	}
-	releaseRoute, rejectedScope, ok := limiter.AcquireRoute(route.Workspace, route.Workspace+"/"+route.Database)
+	// The route admits twice its server's limit, so the client past the
+	// limit reaches PostgreSQL and reads its refusal (w6/m457).
+	releaseRoute, ok := limiter.AcquireRoute(route.Route, route.Capacity)
 	if !ok {
-		meter.Reject(rejectedScope)
-		log.Info("connection rejected: routed limit reached", "scope", rejectedScope, "database", route.Database)
+		meter.Reject(sniproxy.ScopeResource)
+		log.Info("connection rejected: route at capacity", "route", route.Route, "capacity", route.Capacity)
 		return
 	}
 	defer releaseRoute()

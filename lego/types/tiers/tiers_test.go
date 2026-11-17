@@ -192,6 +192,69 @@ func TestValkeyConnectionLimitsMatchRender(t *testing.T) {
 	}
 }
 
+// TestPostgresMaxConnectionsMatchRender pins every Postgres plan bex accepts,
+// by id and by Render's alias, to Render's connection limit
+// (render.com/docs/compute-plans, read 2026-11-17: "Max 100 connections" free,
+// 0.1c-256mb, 0.5c-1g, 1c-2g, 1c-4g and 2c-4g; 200 2c-8g; 400 2c-16g and
+// 4c-16g; 500 4c-32g and up). Each tier is checked under Render's spec id, so
+// a tier added later (2c-8g, w6/m332) must carry Render's figure; a tier
+// added without one fails parse (w6/m457).
+func TestPostgresMaxConnectionsMatchRender(t *testing.T) {
+	render := map[string]int32{
+		"free": 100, "0.1c-256mb": 100, "0.5c-1g": 100, "1c-2g": 100, "1c-4g": 100, "2c-4g": 100,
+		"2c-8g": 200, "2c-16g": 400, "4c-16g": 400,
+	}
+	renderFigure := func(spec string, memory string) (int32, bool) {
+		if want, ok := render[spec]; ok {
+			return want, true
+		}
+		// Render's last heading: 500 for every plan from 32 GB.
+		if q := resource.MustParse(memory); q.Cmp(resource.MustParse("32Gi")) >= 0 {
+			return 500, true
+		}
+		return 0, false
+	}
+	for _, id := range Postgres.IDs() {
+		tier, _ := Postgres.ByID(id)
+		want, ok := renderFigure(PostgresSpecID(id), tier.Memory)
+		if !ok {
+			t.Errorf("tier %q (Render %q) is not in Render's connection table", id, PostgresSpecID(id))
+			continue
+		}
+		if tier.MaxConnections != want {
+			t.Errorf("tier %q: max connections %d, Render's is %d", id, tier.MaxConnections, want)
+		}
+	}
+	for alias, id := range postgresInputAliases {
+		if got, want := Postgres.Resolve(Postgres.CanonicalID(alias)), Postgres.Resolve(id); got.MaxConnections != want.MaxConnections || got.ID != id {
+			t.Errorf("alias %q resolves to %q (%d connections), want %q", alias, got.ID, got.MaxConnections, id)
+		}
+	}
+	if PostgresPoolerMaxClientConn != 30000 {
+		t.Errorf("pooled clients %d, Render's PgBouncer max_client_conn is 30000", PostgresPoolerMaxClientConn)
+	}
+}
+
+// TestResolveFallsBackToTheDefaultPlan pins the one resolution the operator
+// (server sizing) and the SNI proxies (route admission) share: a known id is
+// its tier, an empty or unknown one the free default.
+func TestResolveFallsBackToTheDefaultPlan(t *testing.T) {
+	if got := Postgres.Resolve("basic-1gb"); got.ID != "basic-1gb" {
+		t.Errorf("Postgres.Resolve(basic-1gb) = %q", got.ID)
+	}
+	if got := Valkey.Resolve("standard"); got.ID != "standard" || got.ConnectionLimit != 1000 {
+		t.Errorf("Valkey.Resolve(standard) = %q (%d)", got.ID, got.ConnectionLimit)
+	}
+	for _, id := range []string{"", "gold"} {
+		if got := Postgres.Resolve(id); got.ID != "free" {
+			t.Errorf("Postgres.Resolve(%q) = %q, want free", id, got.ID)
+		}
+		if got := Valkey.Resolve(id); got.ID != "free" {
+			t.Errorf("Valkey.Resolve(%q) = %q, want free", id, got.ID)
+		}
+	}
+}
+
 func TestDefaultsAreFree(t *testing.T) {
 	if got := Compute.Default(); got.ID != "free" {
 		t.Errorf("Compute.Default() = %q, want %q (the store's prior normalizeTier(\"\") behavior)", got.ID, "free")
@@ -323,6 +386,7 @@ postgres:
       memory: 256Mi
       storageGB: 1
       instances: 1
+      maxConnections: 100
 valkey:
   default: free
   tiers:
@@ -359,7 +423,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"paused default tier": `
 compute:
@@ -369,7 +433,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"valkey tier on an unknown pool": `
 compute:
@@ -380,7 +444,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 valkey:
   default: free
   tiers:
@@ -395,7 +459,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 valkey:
   default: free
   tiers:
@@ -418,7 +482,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 valkey:
   default: free
   tiers: []
@@ -431,7 +495,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"duplicate compute id": `
 compute:
@@ -442,7 +506,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"duplicate renderPlan": `
 compute:
@@ -453,7 +517,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"empty renderPlan": `
 compute:
@@ -463,7 +527,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"unparseable quantity": `
 compute:
@@ -473,7 +537,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"compute tier missing ephemeralStorage (round-14 #2)": `
 compute:
@@ -483,7 +547,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"compute tier bad ephemeralStorage (round-14 #2)": `
 compute:
@@ -493,7 +557,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"compute default names undefined tier": `
 compute:
@@ -503,7 +567,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"missing postgres default": `
 compute:
@@ -512,7 +576,7 @@ compute:
     - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"duplicate postgres id": `
 compute:
@@ -522,8 +586,8 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"postgres zero storage": `
 compute:
@@ -533,7 +597,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 0, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 0, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"postgres zero instances": `
 compute:
@@ -543,7 +607,17 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 0}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 0, maxConnections: 100}
+` + validValkey,
+		"postgres without maxConnections": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
 ` + validValkey,
 		"valkey zero storage": `
 compute:
@@ -553,7 +627,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 valkey:
   default: free
   tiers:
@@ -567,7 +641,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 valkey:
   default: free
   tiers:
@@ -581,7 +655,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 valkey:
   default: free
   tiers:
@@ -595,7 +669,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 		"servingPool not a node label value": `
 compute:
@@ -605,7 +679,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 ` + validValkey,
 	}
 	for name, raw := range cases {
@@ -682,7 +756,7 @@ compute:
 postgres:
   default: free
   tiers:
-    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1, maxConnections: 100}
 valkey:
   default: free
   tiers:

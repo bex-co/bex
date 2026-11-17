@@ -38,6 +38,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -130,7 +131,7 @@ func TestRouterResolveWorkspaceLayer(t *testing.T) {
 	r := newRouter("db.bex.co")
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "mydb", Namespace: "tenant-ns", Labels: map[string]string{labelWorkspace: "tea-one"},
+			Name: "mydb", Namespace: "tenant-ns",
 		},
 		Spec: appv1alpha1.DatabaseSpec{
 			Public: true, Pooler: true,
@@ -181,7 +182,7 @@ func TestRouterResolve(t *testing.T) {
 	r := newRouter("db.bex.co")
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "mydb", Namespace: "tenant-ns", Labels: map[string]string{labelWorkspace: "tea-one"},
+			Name: "mydb", Namespace: "tenant-ns",
 		},
 		Spec: appv1alpha1.DatabaseSpec{
 			Public: true, Pooler: true,
@@ -542,7 +543,7 @@ func TestTrustedProxySourceRoutesDatabaseAllowlist(t *testing.T) {
 	router := newRouter("db.bex.co")
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "mydb", Namespace: "tenant-ns", Labels: map[string]string{labelWorkspace: "tea-one"},
+			Name: "mydb", Namespace: "tenant-ns",
 		},
 		Spec: appv1alpha1.DatabaseSpec{
 			Public:                 true,
@@ -566,8 +567,50 @@ func TestTrustedProxySourceRoutesDatabaseAllowlist(t *testing.T) {
 	if !ok {
 		t.Fatalf("trusted original source %s did not pass both allowlist layers", source)
 	}
-	if route.Workspace != "tea-one" {
-		t.Fatalf("workspace = %q, want tenant label", route.Workspace)
+	if route.Route != "tenant-ns/mydb/mydb" || route.Capacity != 200 {
+		t.Fatalf("admission = %q (%d), want tenant-ns/mydb/mydb at twice free's 100", route.Route, route.Capacity)
+	}
+}
+
+// TestRouterCarriesEachRoutesCapacityFromThePlan pins w6/m457: every public
+// hostname of a database is its own admission bucket, sized at twice the limit
+// of the server behind it. The primary and each replica take the plan's
+// max_connections (every plan, so a tier added later is admitted by its own
+// figure); the pooler takes PgBouncer's client limit. A plan change reaches the
+// route on the next watch event.
+func TestRouterCarriesEachRoutesCapacityFromThePlan(t *testing.T) {
+	source := netip.MustParseAddr("203.0.113.9")
+	for _, plan := range append(tiers.Postgres.IDs(), "", "unknown-plan") {
+		router := newRouter("db.bex.co")
+		db := &appv1alpha1.Database{
+			ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tenant-ns"},
+			Spec: appv1alpha1.DatabaseSpec{
+				Public: true, Plan: plan, Pooler: true,
+				ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "r1"}, {Name: "r2"}},
+			},
+		}
+		if err := router.set(db); err != nil {
+			t.Fatal(err)
+		}
+		server := sniproxy.RouteCapacity(tiers.Postgres.Resolve(plan).MaxConnections)
+		want := map[string]dbRoute{
+			"mydb":       {Route: "tenant-ns/mydb/mydb", Capacity: server},
+			"mydb-pool":  {Route: "tenant-ns/mydb/mydb-pool", Capacity: 60000},
+			"mydb-ro-r1": {Route: "tenant-ns/mydb/mydb-ro-r1", Capacity: server},
+			"mydb-ro-r2": {Route: "tenant-ns/mydb/mydb-ro-r2", Capacity: server},
+		}
+		for label, w := range want {
+			route, ok := router.resolve(label+".db.bex.co", source)
+			if !ok {
+				t.Fatalf("plan %q: %s did not resolve", plan, label)
+			}
+			if route.Route != w.Route || route.Capacity != w.Capacity {
+				t.Errorf("plan %q: %s admits %q (%d), want %q (%d)", plan, label, route.Route, route.Capacity, w.Route, w.Capacity)
+			}
+		}
+		if plan == "basic-256mb" && server != 200 {
+			t.Errorf("basic-256mb's primary admits %d, want twice Render's 100", server)
+		}
 	}
 }
 
@@ -679,7 +722,6 @@ func TestStalledBackendSSLReplyReleasesTheSlots(t *testing.T) {
 	t.Cleanup(func() { backendSSLReplyTimeout = previous })
 
 	limiter := sniproxy.NewLimiter(2, 2)
-	limiter.SetRouteLimits(2, 2)
 	meter := sniproxy.NewByteMeter(prometheus.NewRegistry(), "pg_proxy", "postgres")
 	proxy, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -731,5 +773,8 @@ func TestStalledBackendSSLReplyReleasesTheSlots(t *testing.T) {
 		if _, ok := limiter.AcquireGlobal(); !ok {
 			t.Fatal("a global slot is still held")
 		}
+	}
+	if _, ok := limiter.AcquireRoute("default/mydb/mydb", 1); !ok {
+		t.Fatal("the route's slot is still held")
 	}
 }

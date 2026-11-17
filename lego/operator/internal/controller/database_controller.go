@@ -142,10 +142,7 @@ func (b BackupStore) configured() bool {
 // only grows). The ladder is lego/types/tiers' postgres family, the Database
 // sibling of the compute ladder resourcesForTier reads.
 func resolvePlan(spec appv1alpha1.DatabaseSpec) (tiers.PostgresTier, int32) {
-	plan, ok := tiers.Postgres.ByID(spec.Plan)
-	if !ok {
-		plan = tiers.Postgres.Default()
-	}
+	plan := tiers.Postgres.Resolve(spec.Plan)
 	return plan, growOnlyStorage(spec.StorageGB, plan.StorageGB)
 }
 

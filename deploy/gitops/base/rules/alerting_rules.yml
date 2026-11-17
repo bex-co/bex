@@ -1143,7 +1143,7 @@ groups:
           severity: warning
         annotations:
           summary: "A public datastore proxy is shedding connections ({{ $labels.job }}, {{ $labels.reason }})"
-          description: "bex-pg-proxy or bex-kv-proxy has refused connections for over ten minutes. reason=global means the process is full, handshake means one network holds its share of unfinished handshakes, source, workspace and resource are the per-client and per-tenant caps. A flood or a misbehaving client; the caps are BEX_PROXY_* and BEX_KV_PROXY_* (lego/operator/AGENTS.md). Debug: kubectl -n bex-system logs -l app.bex.co/component=pg-sni-proxy | grep rejected (and kv-sni-proxy)."
+          description: "bex-pg-proxy or bex-kv-proxy has refused connections for over ten minutes. reason=global means the process is full, handshake means one network holds its share of unfinished handshakes, source is the per-client cap (off unless set), and resource means one datastore hostname holds twice its server's connection limit, so its own clients are already being refused by the server. A flood or a misbehaving client; the caps are BEX_PROXY_* and BEX_KV_PROXY_* (lego/operator/AGENTS.md). Debug: kubectl -n bex-system logs -l app.bex.co/component=pg-sni-proxy | grep rejected (and kv-sni-proxy)."
 
       - alert: BackupCronJobStale
         expr: |

@@ -130,10 +130,7 @@ var certManagerCertificateGVK = schema.GroupVersionKind{Group: "cert-manager.io"
 // ladder is lego/types/tiers' valkey family, the KeyValue sibling of
 // resolvePlan's postgres family.
 func resolveKVPlan(spec appv1alpha1.KeyValueSpec) (tiers.ValkeyTier, int32) {
-	plan, ok := tiers.Valkey.ByID(spec.Plan)
-	if !ok {
-		plan = tiers.Valkey.Default()
-	}
+	plan := tiers.Valkey.Resolve(spec.Plan)
 	return plan, growOnlyStorage(spec.StorageGB, plan.StorageGB)
 }
 

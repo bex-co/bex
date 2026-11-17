@@ -120,34 +120,63 @@ func TestLimiterDisabledDimensionsAlwaysAdmit(t *testing.T) {
 	}
 }
 
-func TestLimiterRouteCapsPreserveOtherTenantCapacity(t *testing.T) {
+// TestLimiterRouteCapacityIsPerRoute pins w6/m457: each route admits exactly
+// the capacity it is acquired with, and nothing else shares its count — not the
+// same database's pooled or replica hostname, not another workspace's
+// identically named resource, and no per-workspace total. The capacity comes
+// with each admission, so a plan change applies to the next client.
+func TestLimiterRouteCapacityIsPerRoute(t *testing.T) {
 	l := NewLimiter(0, 0)
-	l.SetRouteLimits(2, 1)
+	held := make([]func(), 0, 3)
+	for i := range 3 {
+		release, ok := l.AcquireRoute("tea-a/dpg-a", 3)
+		if !ok {
+			t.Fatalf("route refused connection %d of its 3", i+1)
+		}
+		held = append(held, release)
+	}
+	if _, ok := l.AcquireRoute("tea-a/dpg-a", 3); ok {
+		t.Fatal("route admitted a fourth connection past its capacity of 3")
+	}
+	for _, other := range []string{"tea-a/dpg-a-pool", "tea-a/dpg-b", "tea-b/dpg-a"} {
+		for i := range 3 {
+			if _, ok := l.AcquireRoute(other, 3); !ok {
+				t.Fatalf("%s refused connection %d: it shares a full route's count", other, i+1)
+			}
+		}
+	}
 
-	releaseA, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-a")
-	if !ok || scope != "" {
-		t.Fatalf("first route rejected: scope=%q", scope)
+	// An upgraded plan admits the next client at once; a downgrade below what
+	// is held admits none until enough have left.
+	upgraded, ok := l.AcquireRoute("tea-a/dpg-a", 4)
+	if !ok {
+		t.Fatal("a larger capacity did not admit the next client")
 	}
-	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-a"); ok || scope != "resource" {
-		t.Fatalf("same resource admission = (%q, %v), want resource rejection", scope, ok)
+	if _, ok := l.AcquireRoute("tea-a/dpg-a", 3); ok {
+		t.Fatal("the smaller capacity admitted a client while the route holds 4")
 	}
-	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-b"); !ok || scope != "" {
-		t.Fatalf("second resource in workspace rejected: scope=%q", scope)
+	upgraded()
+	held[0]()
+	held[0]() // a double release must not create capacity
+	if _, ok := l.AcquireRoute("tea-a/dpg-a", 3); !ok {
+		t.Fatal("route refused a client after one of its 3 left")
 	}
-	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-c"); ok || scope != scopeWorkspace {
-		t.Fatalf("workspace admission = (%q, %v), want workspace rejection", scope, ok)
+	if _, ok := l.AcquireRoute("tea-a/dpg-a", 3); ok {
+		t.Fatal("a double release leaked a route slot")
 	}
-	if _, scope, ok := l.AcquireRoute("tea-b", "tea-b/dpg-a"); !ok || scope != "" {
-		t.Fatalf("another tenant was starved: scope=%q", scope)
-	}
+}
 
-	releaseA()
-	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-a"); !ok || scope != "" {
-		t.Fatalf("route rejected after release: scope=%q", scope)
+// TestRouteCapacityIsTwiceTheDatastoreLimit pins the margin the proxies admit
+// above a datastore's limit so the server, not the proxy, refuses the client
+// past it (w6/m457).
+func TestRouteCapacityIsTwiceTheDatastoreLimit(t *testing.T) {
+	for limit, want := range map[int32]int{50: 100, 100: 200, 250: 500, 30000: 60000} {
+		if got := RouteCapacity(limit); got != want {
+			t.Errorf("RouteCapacity(%d) = %d, want %d", limit, got, want)
+		}
 	}
-	releaseA() // double release must not create capacity.
-	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-d"); ok || scope != scopeWorkspace {
-		t.Fatalf("double release leaked workspace capacity: scope=%q ok=%v", scope, ok)
+	if _, ok := NewLimiter(0, 0).AcquireRoute("tea-a/dpg-a", 0); !ok {
+		t.Error("a route without a capacity refused a client")
 	}
 }
 

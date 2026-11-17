@@ -53,6 +53,10 @@ spec:
             # Only it may assert the original public client via PROXY protocol.
             - name: BEX_PROXY_PROTOCOL_TRUSTED_CIDRS
               value: "10.10.0.7/32"
+            # The GC ramps before the 512Mi limit below; what the heap cannot
+            # free is the connections themselves (w6/m457).
+            - name: GOMEMLIMIT
+              value: 400MiB
           readinessProbe:
             httpGet:
               path: /metrics
@@ -69,4 +73,8 @@ spec:
             readOnlyRootFilesystem: true
           resources:
             requests: { cpu: 10m, memory: 32Mi }
-            limits: { cpu: 100m, memory: 96Mi }
+            # The process admits 4,096 connections (BEX_*PROXY_MAX_CONNS, its
+            # share of the edge LB's 10,000). 4,096 idle routed connections
+            # measured 412 MB in the container's cgroup (374 MB anonymous,
+            # 36 MB kernel), about 95 KB each (w6/m457, linux/arm64).
+            limits: { cpu: 100m, memory: 512Mi }

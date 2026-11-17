@@ -43,7 +43,6 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	kv := &appv1alpha1.KeyValue{}
 	kv.Name = "kv-one"
 	kv.Namespace = "default"
-	kv.Labels = map[string]string{labelWorkspace: "tea-one"}
 	kv.Spec.Public = true
 	kv.Status.ExternalHost = "kv-one.kv.bex.co"
 	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}, {CIDR: "2001:db8::/32"}}
@@ -58,8 +57,17 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	if route.ResourceID != "kv-one" || route.Backend != "kv-one.default.svc.cluster.local:6380" {
 		t.Fatalf("route = %#v", route)
 	}
-	if route.Workspace != "tea-one" {
-		t.Fatalf("workspace = %q, want tenant label", route.Workspace)
+	// A plan-less store is free (Render's 50), so its route admits 100; a plan
+	// change reaches the route on the next watch event (w6/m457).
+	if route.Route != "default/kv-one" || route.Capacity != 100 {
+		t.Fatalf("admission = %q (%d), want default/kv-one at twice free's 50", route.Route, route.Capacity)
+	}
+	kv.Spec.Plan = "starter"
+	if err := router.set(kv); err != nil {
+		t.Fatal(err)
+	}
+	if route, _ := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("203.0.113.9")); route.Capacity != 500 {
+		t.Fatalf("after the upgrade to starter the route admits %d, want twice its 250", route.Capacity)
 	}
 	if _, ok := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("198.51.100.9")); ok {
 		t.Fatal("non-allowlisted client resolved")
@@ -131,7 +139,6 @@ func TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow(t *testing.T)
 	kv := &appv1alpha1.KeyValue{}
 	kv.Name = "kv-ws"
 	kv.Namespace = "tea-one"
-	kv.Labels = map[string]string{labelWorkspace: "tea-one"}
 	kv.Spec.Public = true
 	kv.Status.ExternalHost = "kv-ws.kv.bex.co"
 	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}

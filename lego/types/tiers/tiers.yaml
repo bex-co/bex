@@ -31,6 +31,11 @@
 #             instance-type redesign: basic-256mb, basic-1gb, ...). storageGB
 #             is the plan's volume floor — spec.storageGB can grow past it,
 #             never below; instances is the CNPG cluster size.
+#             maxConnections is Render's connection limit for the plan
+#             (render.com/docs/compute-plans, read 2026-11-17: 100 up to
+#             4 GB, 200 at 8 GB, 400 at 16 GB, 500 from 32 GB), PostgreSQL's
+#             max_connections; the external front door admits each route up
+#             to it (w6/m457, ADR009).
 #
 #   valkey:   managed key-value (Valkey) instance types (the KeyValue CRD's
 #             spec.plan), the Redis-compatible sibling of the postgres family —
@@ -113,18 +118,21 @@ postgres:
       memory: 256Mi
       storageGB: 1
       instances: 1
+      maxConnections: 100
       backup: false # Render's Free Postgres is ephemeral — no backups, expires
     - id: basic-256mb
       cpu: 100m
       memory: 256Mi
       storageGB: 1
       instances: 1
+      maxConnections: 100
       backup: true # daily base backup + WAL archiving => PITR
     - id: basic-1gb
       cpu: 500m
       memory: 1Gi
       storageGB: 5
       instances: 1
+      maxConnections: 100
       backup: true
     # The ≥1-CPU rungs (w2/m171): the first plans that can run high
     # availability (Render: "at least 1 CPU"). ids follow the catalog's
@@ -139,18 +147,21 @@ postgres:
       memory: 2Gi
       storageGB: 10
       instances: 1
+      maxConnections: 100
       backup: true
     - id: pro-4gb
       cpu: "1"
       memory: 4Gi
       storageGB: 10
       instances: 1
+      maxConnections: 100
       backup: true
     - id: basic-4gb
       cpu: "2"
       memory: 4Gi
       storageGB: 10
       instances: 1
+      maxConnections: 100
       backup: true
 
 valkey:
