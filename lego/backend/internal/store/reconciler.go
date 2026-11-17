@@ -1050,7 +1050,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		// missed its final observation. Its own stored phase is enough to close
 		// the build lifecycle, but the current release's pre-deploy/image evidence
 		// must not be copied onto it.
-		for _, fact := range buildLifecycleFacts(open, status, recordedBuildWindow(cur, open)) {
+		for _, fact := range buildLifecycleFacts(open, status, recordedBuildWindow(cur, open), nil) {
 			// w4/089: mark the build_ended fact so the events feed can tell a
 			// supersede cancel apart from a user cancel (which uses
 			// CanceledBuildLifecycleFacts and leaves reason_code empty).
@@ -1290,7 +1290,7 @@ func (r *Reconciler) recordLifecycleFacts(ctx context.Context, d DesiredApp, ope
 	}
 	var facts []ServiceEventFact
 	if d.Repo != "" {
-		build := buildLifecycleFacts(open, newStatus, recordedBuildWindow(cur, open))
+		build := buildLifecycleFacts(open, newStatus, recordedBuildWindow(cur, open), releaseDispatchStart(cur, open))
 		facts = append(facts, withholdBuildEndedWhilePublishing(build, d.Type == appv1alpha1.TypeStaticSite, open, newStatus)...)
 	}
 	facts = append(facts, preDeployLifecycleFacts(open, cur)...)
@@ -1309,7 +1309,11 @@ func (r *Reconciler) recordLifecycleFacts(ctx context.Context, d DesiredApp, ope
 // from where the deploy has reached — a build phase means still building (no
 // ended fact yet), any later phase means the build succeeded, build_failed means
 // it failed, and a cancel while still building means it was canceled.
-func buildLifecycleFacts(open Deploy, newStatus string, observed *buildWindow) []ServiceEventFact {
+//
+// releaseStart is the operator's dispatch of the row's own release
+// (releaseDispatchStart): the start TransitionDeploy stamps on a row that left
+// created or queued straight past its build with no recorded build window.
+func buildLifecycleFacts(open Deploy, newStatus string, observed *buildWindow, releaseStart *time.Time) []ServiceEventFact {
 	// A row born with a resolved image runs no BuildKit Job, so it emits neither
 	// fact (w6/061): the call sites' d.Repo guard discriminates per SERVICE, but
 	// a rollback on a repo-backed service is an image-backed DEPLOY —
@@ -1320,7 +1324,7 @@ func buildLifecycleFacts(open Deploy, newStatus string, observed *buildWindow) [
 	if open.Image != "" {
 		return nil
 	}
-	at, dispatched := buildStartedAt(open, newStatus, observed.startOrNil())
+	at, dispatched := buildStartedAt(open, newStatus, observed.startOrNil(), releaseStart)
 	if !dispatched {
 		return nil
 	}
@@ -1387,7 +1391,7 @@ func withholdBuildEndedWhilePublishing(facts []ServiceEventFact, staticSite bool
 // and canceled after the build finished emits build_ended(succeeded). open
 // must be the deploy row exactly as it stood before the cancel closed it.
 func CanceledBuildLifecycleFacts(open Deploy) []ServiceEventFact {
-	return buildLifecycleFacts(open, DeployCanceled, nil)
+	return buildLifecycleFacts(open, DeployCanceled, nil, nil)
 }
 
 // buildStartedAt is when the deploy's BuildKit Job actually got dispatched, and
@@ -1410,7 +1414,7 @@ func CanceledBuildLifecycleFacts(open Deploy) []ServiceEventFact {
 // live (w4/m156), reports the operator's recorded build window when there is
 // one — observedStart — and otherwise reports no build start at all, matching
 // the row's own null started_at.
-func buildStartedAt(open Deploy, newStatus string, observedStart *time.Time) (time.Time, bool) {
+func buildStartedAt(open Deploy, newStatus string, observedStart, releaseStart *time.Time) (time.Time, bool) {
 	if open.StartedAt != nil {
 		return *open.StartedAt, true
 	}
@@ -1432,10 +1436,18 @@ func buildStartedAt(open Deploy, newStatus string, observedStart *time.Time) (ti
 		// started_at from clock_timestamp(), so now is that same instant —
 		// CreatedAt is the stale queued-at time. A row first seen past its
 		// build takes the operator's recorded start, as TransitionDeploy then
-		// does (w8/287).
+		// does (w8/287): the build window, else the release's own dispatch (a
+		// release reusing its artifact runs no build; live, a settings save's
+		// build_started read 2 s after the started_at the dispatch stamped,
+		// w4/535), held at the row's creation as TransitionDeploy holds it.
 		if DeployStatusStampsDispatch(eff) {
-			if eff != DeployBuildInProgress && observedStart != nil {
-				return observedStart.UTC(), true
+			if eff != DeployBuildInProgress {
+				if observedStart != nil {
+					return observedStart.UTC(), true
+				}
+				if releaseStart != nil {
+					return laterOf(*releaseStart, open.CreatedAt).UTC(), true
+				}
 			}
 			return time.Now().UTC(), true
 		}

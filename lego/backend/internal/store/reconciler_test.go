@@ -109,13 +109,13 @@ func TestBuildLifecycleFacts(t *testing.T) {
 	created := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
 	open := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployBuildInProgress, CreatedAt: created}
 
-	building := buildLifecycleFacts(open, "", nil)
+	building := buildLifecycleFacts(open, "", nil, nil)
 	if len(building) != 1 || building[0].Type != EventFactBuildStarted ||
 		building[0].SourceKey != "deploy:dep-1:build_started" || !building[0].At.Equal(created) {
 		t.Fatalf("still-building facts = %+v, want a single build_started at created_at", building)
 	}
 
-	failed := buildLifecycleFacts(open, DeployBuildFailed, nil)
+	failed := buildLifecycleFacts(open, DeployBuildFailed, nil, nil)
 	if len(failed) != 2 || failed[1].Type != EventFactBuildEnded ||
 		failed[1].SourceKey != "deploy:dep-1:build_ended" || failed[1].Status != EventStatusFailed {
 		t.Fatalf("failed-build facts = %+v, want build_started + build_ended(failed)", failed)
@@ -139,7 +139,7 @@ func TestBuildLifecycleFactsImageBornRowEmitsNothing(t *testing.T) {
 		CreatedAt: created, StartedAt: &created,
 	}
 	for _, newStatus := range []string{"", DeployUpdateInProgress, DeployLive, DeployUpdateFailed, DeployCanceled} {
-		if facts := buildLifecycleFacts(rollback, newStatus, nil); facts != nil {
+		if facts := buildLifecycleFacts(rollback, newStatus, nil, nil); facts != nil {
 			t.Errorf("image-born deploy observed at %q emitted %+v, want no build facts", newStatus, facts)
 		}
 	}
@@ -160,22 +160,22 @@ func TestBuildStartedRidesRealDispatchNotRowCreation(t *testing.T) {
 	// Queued behind another build: nothing has been dispatched, so neither
 	// fact is emitted — not a build_started dated to the queue-entry time.
 	queued := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployQueued, CreatedAt: created}
-	if facts := buildLifecycleFacts(queued, "", nil); facts != nil {
+	if facts := buildLifecycleFacts(queued, "", nil, nil); facts != nil {
 		t.Fatalf("queued deploy emitted %+v, want no facts", facts)
 	}
-	if facts := buildLifecycleFacts(queued, DeployQueued, nil); facts != nil {
+	if facts := buildLifecycleFacts(queued, DeployQueued, nil, nil); facts != nil {
 		t.Fatalf("deploy observed queued emitted %+v, want no facts", facts)
 	}
 
 	// Canceled while it was still waiting: it never built, so it gets no
 	// build_started and no build_ended either.
-	if facts := buildLifecycleFacts(queued, DeployCanceled, nil); facts != nil {
+	if facts := buildLifecycleFacts(queued, DeployCanceled, nil, nil); facts != nil {
 		t.Fatalf("canceled-while-queued deploy emitted %+v, want no facts", facts)
 	}
 
 	// Leaving the queue: started_at has not been stamped yet (the transition
 	// runs after this), so the fact carries now — never the stale CreatedAt.
-	leaving := buildLifecycleFacts(queued, DeployBuildInProgress, nil)
+	leaving := buildLifecycleFacts(queued, DeployBuildInProgress, nil, nil)
 	if len(leaving) != 1 || leaving[0].Type != EventFactBuildStarted {
 		t.Fatalf("dequeued facts = %+v, want a single build_started", leaving)
 	}
@@ -188,7 +188,7 @@ func TestBuildStartedRidesRealDispatchNotRowCreation(t *testing.T) {
 		ID: "dep-1", AppID: "srv-1", Status: DeployBuildInProgress,
 		CreatedAt: created, StartedAt: &dispatched,
 	}
-	facts := buildLifecycleFacts(started, "", nil)
+	facts := buildLifecycleFacts(started, "", nil, nil)
 	if len(facts) != 1 || !facts[0].At.Equal(dispatched) {
 		t.Fatalf("facts = %+v, want one build_started at %s", facts, dispatched)
 	}
@@ -2806,12 +2806,12 @@ func TestBuildFactsForTerminalSkip(t *testing.T) {
 	created := time.Date(2026, 8, 27, 19, 56, 7, 0, time.UTC)
 	queued := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployQueued, CreatedAt: created}
 
-	if facts := buildLifecycleFacts(queued, DeployBuildFailed, nil); facts != nil {
+	if facts := buildLifecycleFacts(queued, DeployBuildFailed, nil, nil); facts != nil {
 		t.Fatalf("skip without evidence emitted %+v, want none", facts)
 	}
 
 	start := time.Date(2026, 8, 27, 19, 57, 15, 0, time.UTC)
-	facts := buildLifecycleFacts(queued, DeployBuildFailed, &buildWindow{start: start, finish: start.Add(time.Minute)})
+	facts := buildLifecycleFacts(queued, DeployBuildFailed, &buildWindow{start: start, finish: start.Add(time.Minute)}, nil)
 	if len(facts) != 2 || facts[0].Type != EventFactBuildStarted || !facts[0].At.Equal(start) {
 		t.Fatalf("facts = %+v, want build_started at the recorded window's start", facts)
 	}
@@ -2831,10 +2831,10 @@ func TestBuildFactsForSuccessfulSkip(t *testing.T) {
 	window := time.Date(2026, 10, 3, 3, 33, 54, 0, time.UTC)
 	for _, status := range []string{DeployCreated, DeployQueued} {
 		open := Deploy{ID: "dep-1", AppID: "srv-1", Status: status, CreatedAt: created}
-		if facts := buildLifecycleFacts(open, DeployLive, nil); facts != nil {
+		if facts := buildLifecycleFacts(open, DeployLive, nil, nil); facts != nil {
 			t.Errorf("%s→live without evidence emitted %+v, want none", status, facts)
 		}
-		facts := buildLifecycleFacts(open, DeployLive, &buildWindow{start: window, finish: window.Add(time.Minute)})
+		facts := buildLifecycleFacts(open, DeployLive, &buildWindow{start: window, finish: window.Add(time.Minute)}, nil)
 		if len(facts) != 2 || facts[0].Type != EventFactBuildStarted || !facts[0].At.Equal(window) ||
 			facts[1].Type != EventFactBuildEnded || facts[1].Status != EventStatusSucceeded {
 			t.Errorf("%s→live with evidence = %+v, want build_started at %v + build_ended(succeeded)", status, facts, window)
@@ -2844,7 +2844,7 @@ func TestBuildFactsForSuccessfulSkip(t *testing.T) {
 	// An in-progress observation already dated the build: live keeps it.
 	observed := time.Date(2026, 10, 3, 3, 33, 50, 0, time.UTC)
 	started := Deploy{ID: "dep-2", AppID: "srv-1", Status: DeployBuildInProgress, CreatedAt: created, StartedAt: &observed}
-	if facts := buildLifecycleFacts(started, DeployLive, &buildWindow{start: window, finish: window.Add(time.Minute)}); len(facts) != 2 || !facts[0].At.Equal(observed) {
+	if facts := buildLifecycleFacts(started, DeployLive, &buildWindow{start: window, finish: window.Add(time.Minute)}, nil); len(facts) != 2 || !facts[0].At.Equal(observed) {
 		t.Errorf("observed build → live = %+v, want build_started at the observed %v", facts, observed)
 	}
 
@@ -2852,10 +2852,10 @@ func TestBuildFactsForSuccessfulSkip(t *testing.T) {
 	// queue before dispatch), so one observed straight at a build failure is
 	// dated by the operator's recorded build window, never by created_at.
 	open := Deploy{ID: "dep-3", AppID: "srv-1", Status: DeployCreated, CreatedAt: created}
-	if facts := buildLifecycleFacts(open, DeployBuildFailed, &buildWindow{start: window, finish: window.Add(time.Minute)}); len(facts) != 2 || !facts[0].At.Equal(window) {
+	if facts := buildLifecycleFacts(open, DeployBuildFailed, &buildWindow{start: window, finish: window.Add(time.Minute)}, nil); len(facts) != 2 || !facts[0].At.Equal(window) {
 		t.Errorf("created→build_failed = %+v, want build_started at the recorded window %v", facts, window)
 	}
-	if facts := buildLifecycleFacts(open, DeployBuildFailed, nil); facts != nil {
+	if facts := buildLifecycleFacts(open, DeployBuildFailed, nil, nil); facts != nil {
 		t.Errorf("created→build_failed without evidence = %+v, want none", facts)
 	}
 }
@@ -2867,12 +2867,12 @@ func TestBuildStartedWaitsForACreatedRowsDispatch(t *testing.T) {
 	created := time.Now().UTC().Add(-2 * time.Minute)
 	open := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployCreated, CreatedAt: created}
 	for _, idle := range []string{"", DeployCreated, DeployQueued} {
-		if facts := buildLifecycleFacts(open, idle, nil); facts != nil {
+		if facts := buildLifecycleFacts(open, idle, nil, nil); facts != nil {
 			t.Errorf("created with newStatus %q emitted %+v, want none", idle, facts)
 		}
 	}
 	before := time.Now().UTC()
-	facts := buildLifecycleFacts(open, DeployBuildInProgress, nil)
+	facts := buildLifecycleFacts(open, DeployBuildInProgress, nil, nil)
 	if len(facts) != 1 || facts[0].Type != EventFactBuildStarted || facts[0].At.Before(before) {
 		t.Fatalf("created→build_in_progress = %+v, want build_started at now (not %v)", facts, created)
 	}
@@ -3073,6 +3073,70 @@ func TestReconcileImageDeployFirstSeenRollingUsesReleaseDispatch(t *testing.T) {
 				if got.StartedAt.Before(observed) {
 					t.Fatalf("started_at = %v, want this pass's clock (≥ %v): another generation's dispatch is not evidence", got.StartedAt, observed)
 				}
+			}
+		})
+	}
+}
+
+// TestReconcileRepoReleaseWithoutBuildDatesBuildStartedAtItsDispatch is w4/535's
+// live residual: a settings save on a repo service reused its artifact, so the
+// operator recorded no build window, and the first pass saw the row leave
+// created straight into update_in_progress. started_at took the release's own
+// dispatch (status.releaseStart) while build_started took the pass's clock, 2 s
+// later. Both now read the dispatch, held at the row's creation.
+func TestReconcileRepoReleaseWithoutBuildDatesBuildStartedAtItsDispatch(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		offset time.Duration // dispatch relative to the row's creation, before truncation to the second
+	}{
+		{name: "own release dispatch", offset: 3 * time.Second},
+		{name: "dispatch in the creation second", offset: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			rec, st, cl := newTestReconciler(t)
+			ten, _ := st.CreateTenant(ctx, "acme", "free")
+			row, _ := st.CreateApp(ctx, App{
+				TenantID: ten.ID, Name: "web", Repo: "https://example.com/acme/web.git",
+				Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+			})
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("create projection: %v", err)
+			}
+			open := onlyDeploy(t, st, row.ID)
+			if open.Status != DeployCreated && open.Status != DeployQueued {
+				t.Fatalf("open status = %q, want a row not yet dispatched", open.Status)
+			}
+			dispatched := open.CreatedAt.Add(tc.offset).UTC().Truncate(time.Second)
+			app := getApp(t, cl)
+			app.Status.Phase = appv1alpha1.PhaseDeploying
+			app.Status.ReleaseGeneration = open.Generation
+			app.Status.Conditions = []metav1.Condition{{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: "Deploying", ObservedGeneration: app.Generation,
+			}}
+			app.Status.ReleaseStart = &appv1alpha1.ReleaseStart{Generation: open.Generation, StartedAt: dispatched.Format(time.RFC3339)}
+			if err := cl.Status().Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("observe rollout: %v", err)
+			}
+			got := onlyDeploy(t, st, row.ID)
+			if got.Status != DeployUpdateInProgress || got.StartedAt == nil {
+				t.Fatalf("deploy = %+v, want update_in_progress with a start", got)
+			}
+			want := dispatched
+			if want.Before(open.CreatedAt) {
+				want = open.CreatedAt
+			}
+			if !got.StartedAt.Equal(want) {
+				t.Fatalf("started_at = %v, want %v", got.StartedAt, want)
+			}
+			st.mu.Lock()
+			defer st.mu.Unlock()
+			started, ok := st.eventFacts["deploy:"+got.ID+":build_started"]
+			if !ok || !started.At.Equal(*got.StartedAt) {
+				t.Errorf("build_started = %+v (present %v), want it at the row's started_at %v", started, ok, *got.StartedAt)
 			}
 		})
 	}
@@ -3313,7 +3377,7 @@ func TestStaticSiteBuildEndedWaitsForThePublish(t *testing.T) {
 	facts := func(static bool, current, next string) []string {
 		o := open
 		o.Status = current
-		return endedOf(withholdBuildEndedWhilePublishing(buildLifecycleFacts(o, next, nil), static, o, next))
+		return endedOf(withholdBuildEndedWhilePublishing(buildLifecycleFacts(o, next, nil, nil), static, o, next))
 	}
 	// Entering and staying in the publish window: nothing yet for a static site.
 	if got := facts(true, DeployBuildInProgress, DeployUpdateInProgress); len(got) != 0 {
@@ -3427,13 +3491,13 @@ func TestBuildFactsForARowFirstSeenPastItsBuild(t *testing.T) {
 	window := buildWindow{start: time.Date(2026, 11, 12, 8, 54, 16, 0, time.UTC), finish: time.Date(2026, 11, 12, 8, 55, 10, 0, time.UTC)}
 	queued := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployQueued, CreatedAt: created}
 	for _, past := range []string{DeployUpdateInProgress, DeployPreDeployInProgress} {
-		facts := buildLifecycleFacts(queued, past, &window)
+		facts := buildLifecycleFacts(queued, past, &window, nil)
 		if len(facts) != 2 || !facts[0].At.Equal(window.start) || facts[1].Type != EventFactBuildEnded || !facts[1].At.Equal(window.finish) {
 			t.Errorf("queued→%s = %+v, want build_started %v and build_ended %v", past, facts, window.start, window.finish)
 		}
 	}
 	before := time.Now()
-	facts := buildLifecycleFacts(queued, DeployBuildInProgress, nil)
+	facts := buildLifecycleFacts(queued, DeployBuildInProgress, nil, nil)
 	if len(facts) != 1 || facts[0].At.Before(before) {
 		t.Errorf("queued→build_in_progress = %+v, want build_started at the observation", facts)
 	}
