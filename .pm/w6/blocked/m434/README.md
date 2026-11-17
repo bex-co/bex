@@ -28,7 +28,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w6/130](../../done/130.md) on 2026-11-16. That note was split from [w6/129](../129.md), which turned Muse's Workflow tool off as a stopgap (`5f29b4e81`, [ADR108 D8](../../../../docs/ADR108-muse-code-agent.md)). The production evidence is in w6/m354 t007 and ADR105's routine table: three of 19 Muse sessions called `workflow` and ended their turn 2 to 3 s later with their work undone.
+- **Source:** promoted from [w6/130](../../done/130.md) on 2026-11-16. That note was split from [w6/129](../../done/129.md), which turned Muse's Workflow tool off as a stopgap (`5f29b4e81`, [ADR108 D8](../../../../docs/ADR108-muse-code-agent.md)). The production evidence is in w6/m354 t007 and ADR105's routine table: three of 19 Muse sessions called `workflow` and ended their turn 2 to 3 s later with their work undone.
 - **Goal linkage:** cloud coding agents with Devin as the reference ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md)), for the Muse profile ([ADR108](../../../../docs/ADR108-muse-code-agent.md)). A Devin session keeps working until its work is done.
 - **Expected outcome:** Muse can fan work out in parallel inside a bex turn. A long build or test that Muse 1.4.14's `bash` sends to the background (past `yield_time_ms`, at most 300000) also no longer ends a turn early. That second failure has not been seen on production, but the 0.11.0 adapter does not guard against it.
 - **Why now:** w6/129 left Muse on bex without parallel fan-out. The adapter's 0.11.0 behavior is the only thing in the way, and every piece of it is in code that bex-co maintains.
