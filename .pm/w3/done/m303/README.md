@@ -1,6 +1,6 @@
 # w3 · m303 — Render CLI v2.36.0: adopt it, match its sandbox contract, and notice the next release
 
-**Worker:** worker3 **Goal:** bex answers the current official Render CLI the way Render does, and the next upstream CLI release is reported within a week **Status:** blocked — t001–t004, t006–t009 done; t005 (live walk) waits on the production deploy, then t010
+**Worker:** worker3 **Goal:** bex answers the current official Render CLI the way Render does, and the next upstream CLI release is reported within a week **Status:** done (2026-11-17)
 
 ## Tasks (in order)
 
@@ -10,17 +10,17 @@
 | t002 | One sandbox timeout contract for every workspace — **DONE** | 1h | — |
 | t003 | Name the v2.36 sandbox-group routes bex does not offer — **DONE** | 45m | t001 |
 | t004 | Ended sandboxes report what the v2.36 CLI explains — **DONE** | 45m | t001 |
-| t005 | Walk the CLI checklist with the unmodified v2.36.0 binary on production | 1h | t002, t003, t004 |
+| t005 | Walk the CLI checklist with the unmodified v2.36.0 binary on production — **DONE** | 1h | t002, t003, t004 |
 | t006 | The drift job notices a newer Render CLI and in-operation schema changes — **DONE** | 1.5h | — |
 | t007 | Render parity — **DONE** | 30m | t005, t006 |
 | t008 | Simplify — **DONE** | 20m | t007 |
 | t009 | Test coverage — **DONE** | 40m | t007 |
-| t010 | Closeout | 10m | t008, t009 |
+| t010 | Closeout — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
 - `lego/cli` pins Render CLI v2.36.0 on main and its suite is green (the `bex-cli` release itself is the user's `/release cli`)
-- On production with the unmodified v2.36.0 binary: a Hobby `--timeout=0` sandbox reads back `timeoutSeconds: 0`; `--timeout=30` answers `SANDBOX_TIMEOUT_INVALID`; `sandbox-groups delete`, `default set` and `credentials` print the named refusal; an ended sandbox shows the ended-and-when explanation; results recorded in `docs/cli-compatibility-checklist.md`
+- On production with the unmodified v2.36.0 binary: a `--timeout=0` sandbox reads back `timeoutSeconds: 0` (filed as Hobby; the contract takes no plan input); `--timeout=30` answers `invalid_timeout_seconds` (`SANDBOX_TIMEOUT_INVALID` until w8/312); `credentials` prints the named refusal, while `sandbox-groups delete` and `default set` are served (w2/m359, after this was filed); an ended sandbox shows the ended-and-when explanation; results recorded in `docs/cli-compatibility-checklist.md`
 - ADR014 § Lifetime bound and ADR018's sandbox rows describe the uniform contract
 - The drift job's tests show it reporting a newer render-oss/cli release and a changed in-operation schema
 
@@ -50,3 +50,23 @@ The release condition holds: pin `2d9bbae6bb8d` carries `bd78e7e38` and `53df9d2
 - `sandbox-groups delete <owned> --confirm`: **served, not refused.** It prints the group, the group leaves the list, and its sandbox reads `terminated` at 03:49:26Z (w2/m359). The checklist's v2.36.0 delta bullet still says bex refuses `delete` and `default set` by name (`SANDBOX_GROUP_OPERATION_UNSUPPORTED`); the `sandbox-groups delete` row says served. t005 should keep the row and correct the bullet.
 - An exec on the ended sandbox prints the v2.36 explanation: `sandbox sbx-dbsinb735ies73daagt0 was terminated at 2026-11-15T03:49:26Z` (w3/062 → m318 delivered).
 - Not walked: `sandbox-groups default set`, which would change the workspace's default group, a workspace setting the QA rules forbid changing.
+
+## Unblocked (2026-11-17, loopx w3)
+
+- **Affected:** t005, then t010.
+- **Source:** verified evidence, no user decision. The release condition above holds: the latest production pin on `origin/main`, `336b647b1` (`chore(deploy): pin platform images to 6984548a30f8`), carries `bd78e7e38` and `53df9d216` (`git merge-base --is-ancestor`). The production `bex-system/bex-api` Deployment runs `bex-operator@sha256:4b03796361d1…`, the digest that pin writes.
+- **Scope correction (existing decision, w2/m359):** `sandbox-groups delete` and `default set` are served since w2/m359 (verified on production 2026-11-13), as on Render. The definition of done's "print the named refusal" for those two is superseded; only `credentials` keeps a named refusal. Render's timeout code is `invalid_timeout_seconds` since w8/312, not `SANDBOX_TIMEOUT_INVALID`.
+- **Next:** walk the bare render-oss/cli v2.36.0 release binary against `https://api.bex.co` as the QA user in `bex-canary`, record the rows in `docs/cli-compatibility-checklist.md` (and correct the v2.36.0 delta bullet), delete fixtures with 404 proofs, then run t010.
+
+## Closeout evidence (2026-11-17, loopx w3)
+
+- **CLI pin:** `lego/cli/go.mod` pins `github.com/render-oss/cli v1.1.3-0.20261106232710-4fd34231b637` (v2.36.0); `cli-test.yml` is green on main (`be3be7bee`).
+- **Live walk (t005):** the checksum-verified render-oss/cli v2.36.0 darwin/arm64 release binary, unmodified, with `RENDER_HOST=https://api.bex.co/v1/`, device-logged in as the QA user, in `bex-canary`, against production pin `336b647b1`. Recorded in `docs/cli-compatibility-checklist.md` (the v2.36.0 delta bullet's live-walk sub-bullet, and the `--timeout=0`, `--wait` and `credentials` rows). Measured against the definition of done, with the corrections the unblock record names:
+  - `--timeout=0 --wait` read back `running` and `timeoutSeconds: 0`. `--timeout=86400` read back 86400. `--timeout` 30, 59 and 2592001 each answered `400 (invalid_timeout_seconds)` (Render's code since w8/312, which replaced `SANDBOX_TIMEOUT_INVALID`), and none created a sandbox.
+  - `bex-canary` is on the Scale plan, not Hobby. The contract takes no plan input since this milestone: `resolveTimeout(requested *int)` in `lego/backend/internal/sandbox/lifetime.go` is its only gate, and `TestResolveTimeout` pins 86401 s ("past the old Hobby cap"). No sandbox was created in the user's Hobby workspace.
+  - `sandbox-groups credentials list`, `get`, `versions` and `create` each printed `404 (SANDBOX_CREDENTIALS_UNSUPPORTED)`.
+  - `sandbox-groups delete` is served (w2/m359), not refused: with `--confirm` it deleted the owned group and terminated its running sandbox; a second delete printed `404 (SANDBOX_GROUP_NOT_FOUND)`. `default set` is served too (w2/m359, verified on production 2026-11-13) and was not walked, because it changes the shared workspace's default group.
+  - `exec` on a stopped sandbox printed `sandbox sbx-dbu39ag4f0dc73876sl0 was terminated at 2026-11-17T11:04:58Z`.
+  - Fixtures cleaned up: group `sbg-dbu39604f0dc73876sig` reads 404; sandboxes `sbx-dbu39984f0dc73876sk0` and `sbx-dbu39ag4f0dc73876sl0` read `terminated`. The CLI token was logged out and the Kratos session revoked.
+- **Docs:** ADR014 § Lifetime bound and ADR018's `timeoutSeconds` row describe the one contract on every plan.
+- **Drift job:** `bash scripts/render-schema-drift.test.sh` passes, including "a newer CLI release fails" and "a served operation's schema drift fails". The scheduled run on 2026-11-16 reported in-operation schema drift as designed.
