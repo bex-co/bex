@@ -44,16 +44,22 @@ func servedPullFailureApp(servingGeneration, failedGeneration int64, reason stri
 }
 
 func TestServedReleasePullFailureIsRecordedOncePerIncident(t *testing.T) {
+	// The Rollout condition went False at the App's first failed rollout, long
+	// before this one: the operator never writes it True (w32/036).
 	at := time.Date(2026, 11, 11, 15, 52, 0, 0, time.UTC)
 	app := servedPullFailureApp(8, 8, "ImagePullBackOff", at)
 
+	before := time.Now()
 	fact, ok := servedReleasePullFailure("srv-1", app)
 	if !ok {
 		t.Fatal("the served release's pull failure produced no fact")
 	}
 	if fact.Type != EventFactImagePullFailed || fact.ReasonCode != EventReasonImagePullBackoff || fact.AppID != "srv-1" ||
-		!fact.At.Equal(at) || fact.Image != app.Status.Image || fact.DeployID != "" {
+		fact.Image != app.Status.Image || fact.DeployID != "" {
 		t.Errorf("fact = %+v", fact)
+	}
+	if fact.At.Before(before) || fact.At.After(time.Now()) {
+		t.Errorf("fact at %s, want the pass that saw it, not the condition's transition at %s", fact.At, at)
 	}
 	// Every later pass sees the same condition and writes the same key, which
 	// the store's unique source key turns into a no-op.

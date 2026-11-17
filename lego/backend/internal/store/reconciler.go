@@ -1579,6 +1579,14 @@ func preDeployTimes(app *appv1alpha1.App) (started, finished time.Time) {
 // health-gate timeout policy; making the event wait for that timeout would hide
 // a known pull failure for minutes. The source key is shared with the terminal
 // transition path, so a later close remains idempotent.
+//
+// The fact is dated by the pass that first sees the failure, as Render dates
+// the event when the pull fails (w32/036). Ready's LastTransitionTime is when
+// Ready went False, and the operator keeps it False through a deploy's waits
+// before the verdict: a registry wait of up to 15 minutes, a rollout's own
+// progress. The pass is woken by the operator's status write (KickFromWatch),
+// so its clock is the failure's to within seconds. Keyed by the deploy, the
+// first pass's date is the one that stays.
 func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFact, bool) {
 	if generation := appReleaseGeneration(app); generation != 0 && open.Generation != 0 && generation != open.Generation {
 		return ServiceEventFact{}, false
@@ -1588,10 +1596,6 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 		if condition.Type != appv1alpha1.ConditionReady || condition.ObservedGeneration != app.Generation || !imagePullFailure(condition.Reason) {
 			continue
 		}
-		at := condition.LastTransitionTime.Time
-		if at.IsZero() {
-			at = time.Now().UTC()
-		}
 		image := open.Image
 		if image == "" {
 			image = app.Spec.Image
@@ -1600,7 +1604,7 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 			SourceKey:  "deploy:" + open.ID + ":image_pull_failed",
 			AppID:      open.AppID,
 			Type:       EventFactImagePullFailed,
-			At:         at,
+			At:         time.Now().UTC(),
 			DeployID:   open.ID,
 			Image:      image,
 			ReasonCode: EventReasonImagePullBackoff,
@@ -1670,6 +1674,12 @@ func instanceExitFacts(appID string, app *appv1alpha1.App) []ServiceEventFact {
 // carries a later generation, and its deploy row has already recorded its own
 // fact. The key holds the condition's transition time: one event per time the
 // release stops being able to pull, however many passes see it.
+//
+// The fact is dated by the pass that first sees it, as observedImagePullFailure
+// is (w32/036): the operator only ever writes Rollout False, so its transition
+// time is the App's first failed rollout, which can be weeks before this one.
+// For the same reason the key does not yet tell a second incident of the same
+// release from the first (w32/042).
 func servedReleasePullFailure(appID string, app *appv1alpha1.App) (ServiceEventFact, bool) {
 	serving := app.Status.ImageDigest
 	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
@@ -1685,7 +1695,7 @@ func servedReleasePullFailure(appID string, app *appv1alpha1.App) (ServiceEventF
 		SourceKey:  fmt.Sprintf("release:%s:%d:image_pull_failed:%d", appID, serving.Generation, at.Unix()),
 		AppID:      appID,
 		Type:       EventFactImagePullFailed,
-		At:         at,
+		At:         time.Now().UTC(),
 		Image:      app.Status.Image,
 		ReasonCode: EventReasonImagePullBackoff,
 	}, true

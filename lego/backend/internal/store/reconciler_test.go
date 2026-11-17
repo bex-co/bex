@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -67,14 +68,97 @@ func TestObservedImagePullFailureIsImmediateAndGenerationScoped(t *testing.T) {
 		},
 	}
 	open := Deploy{ID: "dep-image", AppID: "srv-image", Image: app.Spec.Image, Generation: 7}
+	before := time.Now()
 	fact, ok := observedImagePullFailure(open, app)
 	if !ok || fact.SourceKey != "deploy:dep-image:image_pull_failed" || fact.Type != EventFactImagePullFailed ||
-		fact.DeployID != open.ID || fact.Image != open.Image || fact.ReasonCode != EventReasonImagePullBackoff || !fact.At.Equal(at.Time) {
+		fact.DeployID != open.ID || fact.Image != open.Image || fact.ReasonCode != EventReasonImagePullBackoff {
 		t.Fatalf("image-pull fact = %+v, %v", fact, ok)
+	}
+	// Dated when it is seen, not when Ready went False (w32/036).
+	if fact.At.Before(before) || fact.At.After(time.Now()) {
+		t.Fatalf("image-pull fact at %s, want this observation's time, not Ready's transition at %s", fact.At, at.Time)
 	}
 	open.Generation = 6
 	if _, ok := observedImagePullFailure(open, app); ok {
 		t.Fatal("stale release generation emitted an image-pull fact")
+	}
+}
+
+// w32/036: a first image deploy whose registry never answered waits up to 15
+// minutes with Ready False (ImageRegistryUnavailable), then fails with Ready
+// False (ImagePullFailed). Ready's status does not change, so its
+// LastTransitionTime stays at the wait's start; the image_pull_failed event
+// was dated there, 15 minutes before the pull failed and the deploy ended.
+func TestImagePullFailureAfterARegistryWaitIsDatedWhenItFails(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	const image = "qa.invalid/qa/none:v1"
+	row, _ := st.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: image, Port: 80, Replicas: 1, Tier: "free"})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("create projection: %v", err)
+	}
+	history, _ := st.ListDeploys(ctx, row.ID, DeployFilter{})
+	if len(history) != 1 {
+		t.Fatalf("history = %+v, want the create deploy", history)
+	}
+	deployID := history[0].ID
+	pullFailed := func() (ServiceEventFact, bool) {
+		st.mu.Lock()
+		defer st.mu.Unlock()
+		fact, ok := st.eventFacts["deploy:"+deployID+":image_pull_failed"]
+		return fact, ok
+	}
+
+	// The registry wait starts: Ready goes False.
+	waitStarted := time.Now().Add(-15 * time.Minute).Truncate(time.Second)
+	app := getApp(t, cl)
+	app.Status.Phase, app.Status.ReleaseGeneration = appv1alpha1.PhaseDeploying, history[0].Generation
+	app.Status.Conditions = []metav1.Condition{{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "ImageRegistryUnavailable",
+		Message: "waiting for the image registry", ObservedGeneration: app.Generation, LastTransitionTime: metav1.NewTime(waitStarted),
+	}}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if d, _ := st.GetDeploy(ctx, row.ID, deployID); IsTerminalDeployStatus(d.Status) {
+		t.Fatalf("deploy during the registry wait = %q, want open", d.Status)
+	}
+	if fact, ok := pullFailed(); ok {
+		t.Fatalf("image_pull_failed recorded during the wait: %+v", fact)
+	}
+
+	// The wait expires: the operator's fail writes Ready False again, now
+	// ImagePullFailed, through the same SetStatusCondition.
+	app = getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseFailed
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonImagePullFailed,
+		Message:            "the registry qa.invalid did not answer the read of the image " + image + " for 15 minutes",
+		ObservedGeneration: app.Generation,
+	})
+	if ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady); !ready.LastTransitionTime.Time.Equal(waitStarted) {
+		t.Fatalf("setup: Ready's transition moved to %s; the operator's write keeps %s", ready.LastTransitionTime, waitStarted)
+	}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	failedAt := time.Now()
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if d, _ := st.GetDeploy(ctx, row.ID, deployID); d.Status != DeployUpdateFailed {
+		t.Fatalf("deploy after the wait = %q, want %q", d.Status, DeployUpdateFailed)
+	}
+	fact, ok := pullFailed()
+	if !ok {
+		t.Fatal("no image_pull_failed for the failed pull")
+	}
+	if fact.At.Before(failedAt) || fact.At.After(time.Now()) {
+		t.Fatalf("image_pull_failed at %s, want the pass that saw the failure (from %s), not the wait's start %s", fact.At, failedAt, waitStarted)
 	}
 }
 
