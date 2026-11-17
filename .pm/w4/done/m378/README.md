@@ -1,6 +1,6 @@
 # w4 · m378 — Sixteen of Render's shared MCP tools answer in bex's own shapes, not what Render's server returns: list envelopes, `list_logs`/`get_metrics` series, service creates without `deployId`, datastores without `owner`/`options`, and `query_render_postgres` rows without column names
 
-**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** blocked — release gate: t001–t006, t008–t014 done; the 2026-11-17 t007 replay on pin `58ef086ab21d` held every DoD bullet except DoD 2's byte-for-byte check (key order only), fixed in code by t014. Once the live pin carries t014's commit (`git merge-base --is-ancestor $(git log -1 --format=%h --grep='w4/m378 t014' origin/main) <live pin>`), re-run DoD 2 on production and close. No user action. Previously: unblocked 2026-11-17 (§ Unblock record)
+**Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** done — the 2026-11-17 05:43 UTC replay on pin `58ef086ab21d` held DoD 1 and 3–9, and the 10:15 UTC re-run on pin `19103ba12f70` (carrying t014's `1c92455c2`) held DoD 2 byte for byte (t007, § Unblock record 2026-11-17 10:15 UTC)
 
 ## Tasks (in order)
 
@@ -19,7 +19,7 @@
 | [t012](done/t012.md) — **DONE** | A 6 MB `query_render_postgres` answers Cloudflare's `error code: 502` on production, not the truncated rows and notice (found by the round 408 replay; cause unverified, possibly w4/671's) | 1h | — |
 | [t013](done/t013.md) — **DONE** | `create_postgres` with no version answers without Render's required `version` (found by the round 408 replay) | 20m | — |
 | [t014](done/t014.md) — **DONE** | MCP `list_logs` text and REST `GET /v1/logs` carry the same values in a different key order, so DoD 2's byte-for-byte check fails (found by the t007 replay) | 20m | — |
-| [t007](t007.md) | Closeout (live replay on production) | 20m | t005, t006, t012, t013, t014 |
+| [t007](done/t007.md) — **DONE** | Closeout (live replay on production) | 20m | t005, t006, t012, t013, t014 |
 
 ## Definition of done
 
@@ -235,3 +235,9 @@ Remaining known differences, all deliberate: an empty `list_services`/`list_depl
 - **Affected:** t007. **Source:** verified evidence, no user decision.
 - **Gate check:** production runs platform pin `58ef086ab21d` (pin commit `7a8203c3b`, 2026-11-17 04:37 UTC); every bex-system Deployment (bex-api, controller-manager, activator, …) runs `ghcr.io/bex-co/bex-operator@sha256:b1502d34…`, the digest that commit pins, with pods started 04:41 UTC. `git merge-base --is-ancestor` holds for both `983e88883` (t013) and `93586111d`.
 - **Next:** replay DoD 1–9 on production (t007) and close.
+
+## Unblock record (2026-11-17 10:15 UTC, `/loopx w4`, verified evidence)
+
+- **Affected:** t007. **Source:** verified evidence, no user decision.
+- **Gate check:** origin/main pins the platform to `19103ba12f70` (pin commit `63fdff100`, 2026-11-17 10:08 UTC), and `git merge-base --is-ancestor 1c92455c2 19103ba12f70` holds (`1c92455c2` is t014's fix). On the production app cluster every bex-system Deployment (bex-api, controller-manager, activator, objectgw, ssh-gateway, static-server, drain-guard) runs `ghcr.io/bex-co/bex-operator@sha256:dd7d2543…`, the digest that pin commit writes; bex-api was 2/2 updated and ready, its pods about 90 s old at 10:14 UTC.
+- **Next:** re-run DoD 2 on production (t007) and close. Done the same run: DoD 2 holds ([t007](done/t007.md) § DoD 2 re-run).
