@@ -274,6 +274,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 ## Inbox
 
 - [ ] **134** — [Postgres `max_connections` follows Render's plan table, set explicitly](134.md) (~45m) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-17, item 2, filed by `/pm them to w6`
+- [ ] **133** — [Public datastore and WebSocket egress lose what a new series counted before its first scrape](133.md) (~1h) ← w6/m455 t006, 2026-11-17: the HTTP-only scope of m455's new-series rule
 - [x] **132** — [A disk meter pass cut off mid-window leaves that window's remaining disks unmetered for good](done/132.md) (~1h) ← w6/m333 t008 production read, 2026-11-17 — **done 2026-11-17**: a window's disk rows commit whole; the four 2026-11-17 02:00Z holes (108,591 GB-seconds) were backfilled on production, and 2026-11-08 13:00Z stays an accepted undercount
 - [x] **131** — [The composer warns a credited workspace bex cannot charge on month-to-date, while the mint holds its tier ceiling against the unbilled spend](done/131.md) (~45m) ← w6/m400 t004, 2026-11-16 — **done 2026-11-16**
 - [x] **130** — [The Muse adapter answers the prompt while background work still runs, so Muse workflows stay off](done/130.md) ← split from w6/129, 2026-11-16: the adapter change that would let ADR108 D8 turn Muse workflows back on — promoted to [m434](blocked/m434/README.md)
