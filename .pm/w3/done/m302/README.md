@@ -1,6 +1,6 @@
 # w3 · m302 — Service events carry Render's per-type details: keys, types and ids, as on Render
 
-**Worker:** worker3 **Goal:** every Render-defined event type's `details` matches its member in Render's pinned schema on REST and MCP **Status:** blocked — t001–t008 done; t009 Closeout waits on the production deploy and the live check
+**Worker:** worker3 **Goal:** every Render-defined event type's `details` matches its member in Render's pinned schema on REST and MCP **Status:** done
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity — **DONE** | 30m | t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
 | t008 | Test coverage — **DONE** | 40m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -54,3 +54,24 @@ The pin `f609163ada8e` (`6ee0197c7`) contains `f38f75686` (`git merge-base --is-
   - MCP `get_service_event`, which this browser session can't call;
   - the `instance_count_changed` half, which needs a paid starter service scaled 1 → 2.
   - The milestone stays blocked on those two.
+
+## Unblocked (2026-11-17, loopx w3)
+
+- **Source:** verified evidence; no user decision was needed or taken.
+- **Gate cleared:** the latest pin on main, `336b647b1` (`chore(deploy): pin platform images to 6984548a30f8`), carries `f38f75686` (`git merge-base --is-ancestor f38f75686 6984548a30f8` is true).
+- **Running:** both production `bex-api` pods started at 10:39–10:40 UTC on that pin's image, `bex-operator@sha256:4b037963…`.
+- **Next:** run t009's live check, then close.
+
+## Closed (2026-11-17, loopx w3)
+
+t009's live check held on production at 10:51–10:54 UTC, pin `336b647b1`. The QA user read both events in `bex-canary` (`tea-daif693dqjvc73e7as3g`); details are in [t009](done/t009.md). Each DoD bullet:
+
+- **Conformance suites.** They check each event's details against the member its type names, and the `list-events` / `retrieve-event` union entries are gone. t001 and t005 shipped this in `f38f75686`. `TestRenderEventDetailsMatchTheirMember` and `TestAllowlistOnlyShrinks` pin it.
+- **Keys and empty details.** `build_ended` / `pre_deploy_ended` and the renamed keys shipped in t002–t004. The disk, maintenance-mode and auto-deploy facts the scope change deferred shipped in `w3/m317`.
+- **Live REST and MCP.** `GET /v1/events/{id}` and MCP `get_service_event` return Render's keys for both types:
+  - `build_ended`: `buildStatus`, no string `status`;
+  - `instance_count_changed`: `fromInstances`/`toInstances`.
+- **GraphQL and the dashboard Events tab are unchanged.**
+  - GraphQL `serviceEvent(id:)` still reads `instanceCountFrom`/`instanceCountTo`.
+  - The Events tab shows "Instance count changed · Instances 1 → 2" and "Build ended · Succeeded".
+  - `f38f75686` touched neither `events/graphql.go` nor `dashboard/`.
