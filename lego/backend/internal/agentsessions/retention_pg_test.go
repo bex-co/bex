@@ -1137,7 +1137,10 @@ func TestAHungRegistryDoesNotBlockACancelOrTheSweep(t *testing.T) {
 	if _, err := e.pg.GetAgentSession(context.Background(), e.id); err != nil || e.handles(t) != 1 {
 		t.Fatalf("the session or its handle went with a failed delete: %v", err)
 	}
-	// The registry comes back: the sweep finishes the job.
+	// The registry comes back: the sweep finishes the job. It runs under the
+	// real bound: 100ms also covers the sweep's Postgres claim, which a loaded
+	// test database can exceed, and then the sweep deletes nothing.
+	retentionPurgeTimeout = prev
 	e.rs.setBlockDelete(false)
 	e.clock.Advance(time.Hour)
 	e.sweep()
