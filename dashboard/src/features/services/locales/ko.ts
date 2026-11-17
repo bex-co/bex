@@ -3289,6 +3289,11 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a redirect/rewrite destination that is a network-path reference (w4/145)",
   },
+  "services.staticRuleDestinationPathOrUrl": {
+    message: "경로 또는 http(s) URL이어야 합니다",
+    description:
+      "Inline error under a redirect/rewrite destination whose first segment reads as a scheme other than http(s), such as javascript: (w33/007)",
+  },
   "services.staticRuleFixRows": {
     message: "저장하려면 표시된 행을 수정하세요.",
     description:

@@ -44,6 +44,39 @@ describe("static-site rule validation", () => {
     ).toEqual({ destination: "services.staticRuleLocalPath" });
   });
 
+  // w33/007: Render's own redwoodjs template ships this placeholder, so a
+  // destination need not start with /. Another scheme stays refused.
+  it("accepts a destination with no leading / and refuses another scheme", () => {
+    for (const destination of [
+      "replace_with_api_url/*",
+      "index.html",
+      " docs/:splat ",
+      "v1/items:",
+      "people?q=a:b",
+    ]) {
+      expect(
+        routeErrors({ type: "rewrite", source: "/docs/*", destination }),
+      ).toEqual({});
+    }
+    for (const destination of [
+      "javascript:alert(1)",
+      "mailto:ops@example.com",
+      "ftp://host.example/x",
+      "http:/host.example/x",
+      "replace_with_api_url:8080/*",
+      ":splat",
+    ]) {
+      expect(
+        routeErrors({ type: "redirect", source: "/old/*", destination }),
+      ).toEqual({ destination: "services.staticRuleDestinationPathOrUrl" });
+    }
+    for (const destination of ["%2F%2Fevil.test/x", "api\\x", "api%zz"]) {
+      expect(
+        routeErrors({ type: "redirect", source: "/old", destination }),
+      ).toEqual({ destination: "services.staticRuleLocalPath" });
+    }
+  });
+
   it("accepts paths the server would accept after trimming", () => {
     expect(
       routeErrors({

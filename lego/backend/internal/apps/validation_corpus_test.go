@@ -22,6 +22,16 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/validationcorpus"
 )
 
+// TestRouteDestinationCorpus pins a static-site redirect's destination, as the
+// dashboard's rule row checks it: validateRoutes on a rule whose source is
+// /docs/*, which every route writer passes (w33/007).
+func TestRouteDestinationCorpus(t *testing.T) {
+	t.Parallel()
+	validationcorpus.Check(t, "route-destination", func(c validationcorpus.Case) error {
+		return validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/docs/*", Destination: c.Text()}})
+	})
+}
+
 // TestCustomDomainCorpus pins a name claimed as a custom domain (see
 // core/validation_corpus_test.go): claimableHostname, which every claim passes.
 func TestCustomDomainCorpus(t *testing.T) {

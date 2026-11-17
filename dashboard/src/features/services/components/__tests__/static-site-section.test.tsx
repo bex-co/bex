@@ -241,8 +241,9 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
 // naming it by its zero-based wire index after the round trip.
 describe("edge-rule row validation (w4/145)", () => {
   // A full http(s) URL is a valid redirect or rewrite destination since
-  // w8/162 and w8/184, so the invalid case is a destination with no leading /.
-  it("marks the second rule's slashless destination in its row and holds Save", async () => {
+  // w8/162 and w8/184, and so is a path with no leading / since w33/007, so
+  // the invalid case is a destination with another scheme.
+  it("marks the second rule's mailto: destination in its row and holds Save", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn(async () => ({ ok: true }));
     render(
@@ -263,11 +264,11 @@ describe("edge-rule row validation (w4/145)", () => {
       name: /^Rule \d+ destination$/,
     });
     await user.type(sources[1], "/old");
-    await user.type(destinations[1], "landing");
+    await user.type(destinations[1], "mailto:ops@example.com");
 
     expect(destinations[1]).toHaveAttribute("aria-invalid", "true");
     expect(destinations[1]).toHaveAccessibleDescription(
-      "Must be a path starting with /",
+      "Must be a path or an http(s) URL",
     );
     expect(destinations[0]).not.toHaveAttribute("aria-invalid");
     expect(screen.getByRole("button", { name: "Save routes" })).toBeDisabled();

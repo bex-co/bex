@@ -58,7 +58,8 @@ func TestBlueprintStaticRuleErrorsLocateTheRule(t *testing.T) {
 		okRoute, okHeader := route(in, "/old", "/new"), header(in, "/*", "X-Frame-Options")
 		cases = append(cases,
 			tc{"second route source", w(site(in, okRoute+route(in, "no-slash", "/new"), okHeader)), placement.prefix + "services[0].routes[1].source", "source: no-slash"},
-			tc{"second route destination", w(site(in, okRoute+route(in, "/a", "no-slash"), okHeader)), placement.prefix + "services[0].routes[1].destination", "destination: no-slash"},
+			// A destination with no leading / is valid since w33/007; another scheme is not.
+			tc{"second route destination", w(site(in, okRoute+route(in, "/a", "javascript:x"), okHeader)), placement.prefix + "services[0].routes[1].destination", "destination: javascript:x"},
 			tc{"second header path", w(site(in, okRoute, okHeader+header(in, "no-slash", "X-Ok"))), placement.prefix + "services[0].headers[1].path", "path: no-slash"},
 			tc{"second header name", w(site(in, okRoute, okHeader+header(in, "/*", `"bad name"`))), placement.prefix + "services[0].headers[1].name", `name: "bad name"`},
 			tc{"first route source", w(site(in, route(in, "no-slash", "/new")+okRoute, okHeader)), placement.prefix + "services[0].routes[0].source", "source: no-slash"},

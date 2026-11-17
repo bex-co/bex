@@ -10,6 +10,7 @@ import {
   rootDirError,
 } from "@/features/services/lib/build-settings-validation";
 import { domainNameError } from "@/features/services/lib/custom-domain-name";
+import { routeErrors } from "@/features/services/lib/static-rule-validation";
 import { registryHostError } from "@/features/registry-credentials/lib/credential-fields";
 import {
   CORPUS_DIR,
@@ -38,6 +39,9 @@ const CLIENTS: Record<string, Client> = {
   "repo-url": isValidGitUrl,
   "docker-image": isValidDockerImageRef,
   "custom-domain": (text) => domainNameError(text) === null,
+  "route-destination": (text) =>
+    routeErrors({ type: "redirect", source: "/docs/*", destination: text })
+      .destination === undefined,
 };
 
 const FAMILIES = Object.keys(CLIENTS).sort();

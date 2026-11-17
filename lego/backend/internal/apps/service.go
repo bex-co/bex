@@ -6199,8 +6199,9 @@ func validateRoutePlaceholders(i int, source, dest string) error {
 }
 
 // validateRoutes rejects a malformed redirect/rewrite list: each rule needs a
-// known type and a rooted source + destination path (Render's contract), and
-// the whole list stays inside the edge-rule budgets above.
+// known type, a rooted source, and a destination that is a path or an http(s)
+// URL (Render's contract), and the whole list stays inside the edge-rule
+// budgets above.
 func validateRoutes(routes []StaticRouteView) error {
 	if len(routes) > maxStaticRoutes {
 		return fmt.Errorf("%w: routes must not exceed %d items", core.ErrBadRequest, maxStaticRoutes)
@@ -6216,6 +6217,18 @@ func validateRoutes(routes []StaticRouteView) error {
 			return fmt.Errorf("%w: routes[%d].source must not exceed %d bytes", core.ErrBadRequest, i, maxStaticPathLen)
 		}
 		dest := strings.TrimSpace(r.Destination)
+		if dest == "" {
+			return fmt.Errorf("%w: routes[%d].destination is required", core.ErrBadRequest, i)
+		}
+		// A destination that is neither rooted nor http(s) is kept as written:
+		// Render's own redwoodjs template deploys the placeholder
+		// "replace_with_api_url/*" (w33/007). It must still be an RFC 3986
+		// relative reference, so another scheme (javascript:, ftp:) stays
+		// refused. The static server serves only a rooted destination: a
+		// request such a rule matches answers 400 (ADR029).
+		if !isHTTPURLPrefix(dest) && firstSegmentHasColon(dest) {
+			return fmt.Errorf("%w: routes[%d].destination must be a path or an http(s) URL", core.ErrBadRequest, i)
+		}
 		if err := validateRoutePlaceholders(i, strings.TrimSpace(r.Source), dest); err != nil {
 			return err
 		}
@@ -6235,9 +6248,6 @@ func validateRoutes(routes []StaticRouteView) error {
 				}
 			}
 			continue
-		}
-		if !strings.HasPrefix(dest, "/") {
-			return fmt.Errorf("%w: routes[%d].destination must be a path starting with /", core.ErrBadRequest, i)
 		}
 		if len(dest) > maxStaticPathLen {
 			return fmt.Errorf("%w: routes[%d].destination must not exceed %d bytes", core.ErrBadRequest, i, maxStaticPathLen)
@@ -6259,6 +6269,18 @@ func validateRoutes(routes []StaticRouteView) error {
 		}
 	}
 	return nil
+}
+
+// firstSegmentHasColon reports whether a destination's first path segment,
+// before any query or fragment, holds a colon. RFC 3986 reads that as a
+// scheme, so such a destination is not a relative reference. A rooted
+// destination's first segment is empty.
+func firstSegmentHasColon(dest string) bool {
+	if i := strings.IndexAny(dest, "?#"); i >= 0 {
+		dest = dest[:i]
+	}
+	first, _, _ := strings.Cut(dest, "/")
+	return strings.Contains(first, ":")
 }
 
 // isNetworkPathReference reports whether a "/"-rooted redirect destination would

@@ -40,10 +40,9 @@ var deliberateBlueprintDivergences = []string{
 }
 
 // knownBlueprintGaps are Render-accepted inputs bex still refuses, each owned
-// by a board item; remove an entry when its item ships.
-var knownBlueprintGaps = []string{
-	"destination must be a path starting with /", // w33/007: redwoodjs's placeholder rewrite, replace_with_api_url/*
-}
+// by a board item; remove an entry when its item ships. Empty since w33/007
+// accepted redwoodjs's placeholder rewrite, replace_with_api_url/*.
+var knownBlueprintGaps = []string{}
 
 // TestRenderExamplesCorpus runs every render.yaml from github.com/render-examples
 // through ValidateBlueprint (fetch them with scripts/render-examples-corpus.sh;

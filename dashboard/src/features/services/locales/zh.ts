@@ -3207,6 +3207,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a redirect/rewrite destination that is a network-path reference (w4/145)",
   },
+  "services.staticRuleDestinationPathOrUrl": {
+    message: "必须是路径或 http(s) URL",
+    description:
+      "Inline error under a redirect/rewrite destination whose first segment reads as a scheme other than http(s), such as javascript: (w33/007)",
+  },
   "services.staticRuleFixRows": {
     message: "请修正标记的行后再保存。",
     description:

@@ -39,6 +39,8 @@ func TestStaticRouteDestinationPersistenceAcrossAdapters(t *testing.T) {
 		{Type: "rewrite", Source: "/query", Destination: "/render.yaml?from=rule#frag"},
 		{Type: "rewrite", Source: "/encoded", Destination: "/%72ender.yaml"},
 		{Type: "rewrite", Source: "/copy/*", Destination: "/:splat"},
+		// w33/007: Render's redwoodjs template ships this placeholder.
+		{Type: "rewrite", Source: "/.redwood/functions/*", Destination: "replace_with_api_url/*"},
 	}
 
 	assertRoutes := func(t *testing.T, value any) {

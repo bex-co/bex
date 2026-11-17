@@ -22,6 +22,19 @@ function pathError(raw: string): keyof typeof en | undefined {
   return undefined;
 }
 
+// A destination is a path or an http(s) URL, and the path need not start with
+// "/": Render's own redwoodjs template deploys `replace_with_api_url/*`
+// (w33/007). A colon in its first segment would read as another scheme
+// (`javascript:`), which bex-api refuses.
+function destinationPathError(raw: string): keyof typeof en | undefined {
+  const value = raw.trim();
+  if (value === "") return "services.staticRuleRequired";
+  const firstSegment = value.split(/[?#]/, 1)[0].split("/", 1)[0];
+  if (firstSegment.includes(":"))
+    return "services.staticRuleDestinationPathOrUrl";
+  return undefined;
+}
+
 // Check the configured path before browser URL normalization can erase dot
 // segments or backslashes. Decode percent bytes once, matching Go's URL.Path;
 // query/fragment escapes are validated but remain data, not path selectors.
@@ -146,7 +159,7 @@ export function routeErrors(
     }
     return errors;
   }
-  const destination = pathError(route.destination);
+  const destination = destinationPathError(route.destination);
   if (destination) {
     errors.destination = destination;
   } else if (overPathBudget(trimmedDestination)) {

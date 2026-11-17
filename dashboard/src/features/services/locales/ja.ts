@@ -3315,6 +3315,11 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a redirect/rewrite destination that is a network-path reference (w4/145)",
   },
+  "services.staticRuleDestinationPathOrUrl": {
+    message: "パスまたは http(s) URL にしてください",
+    description:
+      "Inline error under a redirect/rewrite destination whose first segment reads as a scheme other than http(s), such as javascript: (w33/007)",
+  },
   "services.staticRuleFixRows": {
     message: "保存するには、マークされた行を修正してください。",
     description:

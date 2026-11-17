@@ -3302,6 +3302,11 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a redirect/rewrite destination that is a network-path reference (w4/145)",
   },
+  "services.staticRuleDestinationPathOrUrl": {
+    message: "Должен быть путь или URL http(s)",
+    description:
+      "Inline error under a redirect/rewrite destination whose first segment reads as a scheme other than http(s), such as javascript: (w33/007)",
+  },
   "services.staticRuleFixRows": {
     message: "Исправьте отмеченные строки, чтобы сохранить.",
     description:
