@@ -18,8 +18,12 @@ package controller
 
 import (
 	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -167,5 +171,44 @@ func TestReadReplicasArePooledWithTheirDatabase(t *testing.T) {
 	}
 	if db.Status.PoolerHost != "" {
 		t.Errorf("an unpooled database reports pooler host %q", db.Status.PoolerHost)
+	}
+}
+
+// w6/m458: PgBouncer starts with its open-file soft limit at the container's
+// hard limit. containerd 2 starts containers at a soft limit of 1,024, and
+// PgBouncer, which needs a descriptor per client and per server connection,
+// never raises it: on production 1,000 clients left it unable to accept or
+// to open more than 10 of its 90 server connections.
+func TestPgBouncerStartsWithTheHardFileLimit(t *testing.T) {
+	want := []any{"/bin/sh", "-c", pgbouncerRunCommand}
+	for _, poolerType := range []string{poolerTypePrimary, poolerTypeReplicas} {
+		containers, _, _ := unstructured.NestedSlice(poolerSpec("db", poolerType, tiers.PostgresTier{MaxConnections: 100}), "template", "spec", "containers")
+		if len(containers) != 1 {
+			t.Fatalf("%s pooler template containers = %v, want only pgbouncer", poolerType, containers)
+		}
+		c, _ := containers[0].(map[string]any)
+		if c["name"] != "pgbouncer" || !reflect.DeepEqual(c["command"], want) {
+			t.Errorf("%s pooler pgbouncer container = %v, want command %v", poolerType, c, want)
+		}
+	}
+
+	// Run the command as the container would, with a stand-in for CNPG's
+	// manager that reports the limit it inherits and the arguments it gets,
+	// under a soft limit of 256 and a hard limit of 4,096.
+	const manager = "/controller/manager pgbouncer run"
+	if !strings.HasSuffix(pgbouncerRunCommand, "exec "+manager) {
+		t.Fatalf("the command %q does not end by exec'ing CNPG's %q", pgbouncerRunCommand, manager)
+	}
+	stub := filepath.Join(t.TempDir(), "manager")
+	if err := os.WriteFile(stub, []byte("#!/bin/sh\necho \"$(ulimit -n) $*\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	command := strings.Replace(pgbouncerRunCommand, "/controller/manager", stub, 1)
+	out, err := exec.Command("/bin/sh", "-c", `ulimit -S -n 256 && ulimit -H -n 4096 && exec /bin/sh -c "$0"`, command).CombinedOutput()
+	if err != nil {
+		t.Fatalf("the command failed: %v: %s", err, out)
+	}
+	if got := strings.TrimSpace(string(out)); got != "4096 pgbouncer run" {
+		t.Errorf("CNPG's manager started with %q, want the hard limit 4096 and its pgbouncer run arguments", got)
 	}
 }

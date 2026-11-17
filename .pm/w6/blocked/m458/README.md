@@ -1,6 +1,6 @@
 # w6 · m458 — Managed PgBouncer runs with Render's settings, and read replicas are pooled too
 
-**Worker:** worker6 **Goal:** a database with connection pooling accepts up to 30,000 clients on its pooled URL, keeps at most `max_connections` − 10 server connections, closes a client idle for a day and retries a failed server login after 2 s, as Render's managed PgBouncer does, and its read replicas are pooled as Render pools each replica. **Status:** blocked: t001–t004, t007 and t008 done. The production checks (t005), Render parity on production (t006) and closeout wait for the batched production deploy carrying this milestone's commit (see BLOCKED — 2026-11-17).
+**Worker:** worker6 **Goal:** a database with connection pooling accepts up to 30,000 clients on its pooled URL, keeps at most `max_connections` − 10 server connections, closes a client idle for a day and retries a failed server login after 2 s, as Render's managed PgBouncer does, and its read replicas are pooled as Render pools each replica. **Status:** blocked: t001–t004, t006–t008 and t010 done. t005's 1,000-client check failed on production on PgBouncer's open-file limit; t010 fixes it, and t005's re-run and closeout wait for the production deploy carrying that fix (see BLOCKED — 2026-11-17, second).
 
 ## Tasks (in order)
 
@@ -11,10 +11,11 @@
 | t003 | [The pooler pod can hold 30,000 clients](done/t003.md) — **DONE** | 45m | t002 |
 | t004 | [Read replicas are pooled, as Render pools each replica](done/t004.md) — **DONE** | 1h30m | t002 |
 | t005 | [Verify 1,000 pooled clients on production; ADR009 and ADR018](t005.md) | 45m | t003, t004 |
-| t006 | [Render parity](t006.md) | 30m | t005 |
+| t006 | [Render parity](done/t006.md) — **DONE** | 30m | t005 |
+| t010 | [PgBouncer starts with the container's hard open-file limit](done/t010.md) — **DONE** | 30m | t003 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+| t009 | [Closeout](t009.md) | 10m | t007, t008, t010 |
 
 ## Definition of done
 
@@ -70,5 +71,29 @@ All five are reloadable (`SHOW CONFIG` `changeable` yes). The allowlist is `Allo
 - **Then.**
   - t005 with probes in `bex-canary`: a `basic-1gb` database with pooling; from a probe service, 1,000 concurrent clients on the internal pooled URL; `SHOW POOLS` holds at most 90 server connections and `SHOW CONFIG` reads Render's five settings; add a replica and read replica data through its pooled URL; delete the probes. ADR018's rows get the evidence.
   - t006 reads connection info for the primary and its replica on REST, GraphQL, MCP and the dashboard on production.
+  - t009 closes.
+
+## UNBLOCKED — 2026-11-17: the production deploy carrying `ba5357084` landed
+
+- **Affected:** w6/m458 t005, t006, t009. **Source:** verified evidence, read by the `/loopx w6` worker at 21:50Z.
+- **The pin.** `e36296ae8` ("pin platform images to e0a5ba20aac8", 18:33Z) is on `origin/main`, and `git merge-base --is-ancestor ba5357084 e0a5ba20aac8` holds. Production's `bex-controller-manager`, `bex-api` and `bex-pg-sni-proxy` run `bex-operator@sha256:f7b06e9c…`, the digest that pin wrote to `deploy/gitops/base/bex.yaml`, and the dashboard runs the pinned `bex-dashboard@sha256:76d3a40b…`.
+- **The CRD.** On production, `kubectl get crd databases.app.bex.co -o yaml | grep -c poolerExternalHost` reads 2.
+- **Remaining gates:** none. **Next:** t005's production check in `bex-canary`, t006 on every surface on production, t009, as listed under BLOCKED — Then.
+
+## Production check — 2026-11-17 (t005 in part, t006, t010)
+
+- **Settings and replicas hold on production.** A `basic_1gb` probe (`dpg-dbucp4g8vt4s73a1ougg`, pooled, replica `r1`) in `bex-canary`: both PgBouncers' `SHOW CONFIG` read Render's five settings; a client read the replica's data through `<id>-pooler-ro:6432` and was refused an `INSERT`; both external pooled names connected. Details: [t005](t005.md).
+- **1,000 clients did not.** All 1,000 connected, but PgBouncer ran at the container's open-file soft limit of 1,024 (`kernel file descriptor limit: 1024 (hard: 524288)`), logged `accept() failed: Too many open files` and held 10 server connections of its 90 at 63 transactions per second. t003 had read the hard limit, and kind's soft limit (1,073,741,816) hid it on dev-6.
+- **Fixed** ([t010](done/t010.md)). `poolerTemplate` starts PgBouncer through `pgbouncerRunCommand`, which raises the soft limit to the hard one and `exec`s CNPG's manager. In production Poolers with that command PgBouncer ran at 524,288, and the same 1,000 clients held 87 server connections (the database's other 10 tenant slots were two poolers' `auth_query` sessions) with 913 waiting, at 412 transactions per second, 0 failed. ADR009 § Managed PgBouncer settings and ADR018 carry the correction and the evidence.
+- **Connection info on every surface** ([t006](done/t006.md)). REST, GraphQL, MCP and the dashboard show the same pooled strings and pool hosts for the primary and `r1`; no new drift.
+- **Cleanup.** The probe was deleted by ID (`DELETE` 204 at 22:14Z, then `GET` 404); the load pod `m458-pgbench` and the test Poolers `m458-nofile-test` and `m458-nofile-test2` were deleted and read `NotFound`. Production runs no Pooler.
+
+## BLOCKED — 2026-11-17 (second): the production deploy carrying t010's fix
+
+- **Done.** t001–t004, t006–t008 and t010; t005's settings, replica and record steps.
+- **Gate (time, clears by itself).** A push or scheduled `deploy.yml` run deploys `main` once the production pin is 6 h old (pin `e36296ae8` from 18:33Z), and a dispatched run deploys at once.
+- **How to check it cleared.** `git log origin/main --grep "pin platform images"` shows a pin whose producer contains the commit that adds `pgbouncerRunCommand` (`git log origin/main -S pgbouncerRunCommand`). On production, the controller's image is that pin's digest.
+- **Then.**
+  - t005's re-run in `bex-canary`: a new `basic-1gb` pooled probe; its PgBouncer logs `kernel file descriptor limit: 524288`; 1,000 concurrent clients on the internal pooled URL, with `SHOW POOLS` at most 90 server connections and no failed transaction; delete the probe by ID and confirm `GET` answers 404. ADR009's production-check bullet and ADR018's row drop "pending".
   - t009 closes.
 

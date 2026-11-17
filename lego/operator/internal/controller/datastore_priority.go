@@ -134,21 +134,37 @@ func sameQuantity(x, y any) bool {
 	return qx.Cmp(qy) == 0
 }
 
+// pgbouncerRunCommand starts CNPG's PgBouncer manager (CNPG's own command for
+// the container, `/controller/manager pgbouncer run`) with the open-file soft
+// limit raised to the container's hard limit, so PgBouncer can hold Render's
+// 30,000 clients (w6/m458). PgBouncer holds a descriptor per client and per
+// server connection and never raises its own limit. containerd 2 starts
+// containers at a soft limit of 1,024 (hard 524,288 on the tenant nodes), and
+// the Go manager restores that soft limit for PgBouncer, so without this a
+// pooled database stalled at about 1,000 clients: on production
+// (2026-11-17), 1,000 pgbench clients left PgBouncer `accept() failed: Too
+// many open files` with 10 of its 90 server connections. Raising a soft limit
+// up to the hard one needs no privilege; if it ever fails, PgBouncer still
+// starts, at the old limit, and says so in its log.
+const pgbouncerRunCommand = `ulimit -n "$(ulimit -Hn)" || echo "bex: could not raise the open-file limit; PgBouncer keeps $(ulimit -n)" >&2; exec /controller/manager pgbouncer run`
+
 // poolerTemplate is the CNPG Pooler pod-template override: the datastore
-// class and the PgBouncer container's resources. CNPG merges the container
-// into its own by name, so nothing else about the Pod changes.
+// class, and the PgBouncer container's command and resources. CNPG merges the
+// container into its own by name and keeps a command the template sets, so
+// nothing else about the Pod changes.
 //
 // The resources are sized for Render's 30,000 clients (w6/m458), measured on
 // PgBouncer 1.25.2 with TLS clients: 23 MiB of cgroup memory idle, 143 MiB
 // with 3,000 clients connected (about 42 KB each), so about 1.2 GiB at 30,000.
 // The limit leaves room above that; the request holds about 5,000 clients and
 // is what a quiet pooler reserves on its node. PgBouncer is single-threaded,
-// so it never uses more than one of its two cores; the container's file limit
-// (524,288 on the tenant nodes) already exceeds the clients.
+// so it never uses more than one of its two cores. The file limit is
+// pgbouncerRunCommand's.
 func poolerTemplate() map[string]any {
 	return map[string]any{"spec": map[string]any{
 		"containers": []any{map[string]any{
-			"name": "pgbouncer",
+			"name":    "pgbouncer",
+			"command": []any{"/bin/sh", "-c", pgbouncerRunCommand},
 			"resources": map[string]any{
 				"requests": map[string]any{string(corev1.ResourceCPU): "100m", string(corev1.ResourceMemory): "256Mi"},
 				"limits":   map[string]any{string(corev1.ResourceCPU): "2", string(corev1.ResourceMemory): "2Gi"},
