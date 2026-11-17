@@ -67,6 +67,9 @@ func TestRenderEventVerbsExist(t *testing.T) {
 		core.AuditVerbGrantOAuthAccess:  true,
 		core.AuditVerbRevokeOAuthAccess: true,
 		legacyVerbOperatorRevokeGrant:   true,
+		// w9/m451: the SSH gateway's shell session rows.
+		core.AuditVerbStartShell: true,
+		core.AuditVerbEndShell:   true,
 	}
 	methodsByPkg := map[string]map[string]bool{}
 	for verb := range renderEvents {

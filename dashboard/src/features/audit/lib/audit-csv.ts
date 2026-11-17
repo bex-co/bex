@@ -100,6 +100,8 @@ function metadata(event: AuditEvent): string {
     ["envGroupId", event.envGroupId],
     ["envGroupName", event.envGroupName],
     ["envVarKeys", event.envVarKeys.join(",")],
+    // The instance a shell session ran on, Render's key (w9/m451).
+    ["instance", event.instance],
     ["actorMethod", event.actorMethod],
     // Render's own keys for where the actor acted from (w9/m450).
     ["source_ip", event.sourceIp],

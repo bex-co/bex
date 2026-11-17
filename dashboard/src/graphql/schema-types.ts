@@ -820,6 +820,7 @@ export type AuditLog = {
   envGroupName: Maybe<Scalars['String']['output']>;
   envVarKeys: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   id: Maybe<Scalars['String']['output']>;
+  instance: Maybe<Scalars['String']['output']>;
   metadata: Maybe<AuditLogMetadata>;
   oauthAudience: Maybe<Scalars['String']['output']>;
   oauthClientId: Maybe<Scalars['String']['output']>;
@@ -2107,6 +2108,7 @@ export type Mutation = {
   createSSHKey: Maybe<SshKey>;
   createSandbox: Maybe<Sandbox>;
   createSandboxGroup: Maybe<SandboxGroup>;
+  createSandboxSnapshot: Maybe<SandboxSnapshot>;
   createService: Maybe<Service>;
   createShellSession: Maybe<ShellSession>;
   createWebhookEndpoint: Maybe<WebhookEndpoint>;
@@ -2145,6 +2147,7 @@ export type Mutation = {
   deleteSSHKey: Scalars['Boolean']['output'];
   deleteSandboxGroup: Scalars['Boolean']['output'];
   deleteSandboxImage: Scalars['Boolean']['output'];
+  deleteSandboxSnapshot: Scalars['Boolean']['output'];
   deleteSecretFile: Maybe<Scalars['Boolean']['output']>;
   deleteService: Maybe<Scalars['Boolean']['output']>;
   deleteWebhookEndpoint: Maybe<Scalars['Boolean']['output']>;
@@ -2630,6 +2633,8 @@ export type MutationCreateSandboxArgs = {
   plan?: InputMaybe<Scalars['String']['input']>;
   region?: InputMaybe<Scalars['String']['input']>;
   sandboxGroupId?: InputMaybe<Scalars['String']['input']>;
+  snapshotId?: InputMaybe<Scalars['String']['input']>;
+  snapshotName?: InputMaybe<Scalars['String']['input']>;
   template?: InputMaybe<Scalars['String']['input']>;
   timeoutSeconds?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -2640,6 +2645,16 @@ export type MutationCreateSandboxGroupArgs = {
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
   region?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationCreateSandboxSnapshotArgs = {
+  expiresAt?: InputMaybe<Scalars['String']['input']>;
+  kind?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxId: Scalars['String']['input'];
+  ttlSeconds?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2847,6 +2862,13 @@ export type MutationDeleteSandboxGroupArgs = {
 
 
 export type MutationDeleteSandboxImageArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteSandboxSnapshotArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
   sandboxGroupId: Scalars['String']['input'];
@@ -4255,6 +4277,8 @@ export type Query = {
   sandboxGroups: Maybe<Array<Maybe<SandboxGroup>>>;
   sandboxImage: Maybe<SandboxImage>;
   sandboxImages: Maybe<Array<Maybe<SandboxImage>>>;
+  sandboxSnapshot: Maybe<SandboxSnapshot>;
+  sandboxSnapshots: Maybe<Array<Maybe<SandboxSnapshot>>>;
   sandboxes: Maybe<Array<Maybe<Sandbox>>>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
@@ -5021,6 +5045,23 @@ export type QuerySandboxImagesArgs = {
 };
 
 
+export type QuerySandboxSnapshotArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
+export type QuerySandboxSnapshotsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+  status?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
 export type QuerySandboxesArgs = {
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -5401,6 +5442,23 @@ export type SandboxNetworkPolicyRule = {
 export type SandboxNetworkPolicyRuleInput = {
   domain: Scalars['String']['input'];
   protocol?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type SandboxSnapshot = {
+  __typename: 'SandboxSnapshot';
+  capturedAt: Maybe<Scalars['String']['output']>;
+  error: Maybe<Scalars['String']['output']>;
+  expiresAt: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+  name: Maybe<Scalars['String']['output']>;
+  plan: Scalars['String']['output'];
+  requestedAt: Maybe<Scalars['String']['output']>;
+  sandboxGroupId: Scalars['String']['output'];
+  sizeBytes: Maybe<Scalars['Float']['output']>;
+  sourceSandboxId: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+  ttlSeconds: Maybe<Scalars['Float']['output']>;
 };
 
 export type SecretFile = {

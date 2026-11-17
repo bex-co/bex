@@ -129,6 +129,11 @@ type Server struct {
 	// middleware, so authentication and every reauthorization ask. Any
 	// non-nil error refuses. nil skips the check (BEX_REQUIRE_VERIFIED_EMAIL=0).
 	EmailVerified func(ctx context.Context, subject string) error
+
+	// Audit receives each service shell session's StartShellEvent and
+	// EndShellEvent rows (w9/m451, sshgateway.RecordShellEvent). nil records
+	// none.
+	Audit core.AuditSink
 }
 
 var errUnverifiedOwner = errors.New("public key rejected: verify your bex account email first")
@@ -243,7 +248,9 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 			s.Metrics.Authentication("rejected_unverified")
 			return nil, errUnverifiedOwner
 		}
-		authCtx := core.WithIdentity(ctx, core.Identity{Subject: subject, Method: core.MethodSSH})
+		// The origin rides the authorization, so a refusal's denied row (the
+		// audit log's StartShellEvent error) says where the caller connected from.
+		authCtx := core.WithIdentity(core.WithRequestOrigin(ctx, core.RequestOrigin{SourceIP: sourceIP(conn.RemoteAddr())}), core.Identity{Subject: subject, Method: core.MethodSSH})
 		authCtx, cancel := context.WithTimeout(authCtx, s.HandshakeTimeout)
 		defer cancel()
 		target, err := s.Apps.ResolveSSHSession(authCtx, conn.User())
@@ -378,6 +385,10 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 
 	subject := conn.Permissions.Extensions[permissionSubject]
 	fingerprint := conn.Permissions.Extensions[permissionFingerprint]
+	clientIP := sourceIP(conn.RemoteAddr())
+	// Every re-authorization below (each channel, each revalidation tick)
+	// records a refusal with the client's address too.
+	ctx = core.WithRequestOrigin(ctx, core.RequestOrigin{SourceIP: clientIP})
 	connUser := conn.User()
 	target, err := decodeTarget(conn.Permissions.Extensions[permissionTarget])
 	if err != nil {
@@ -419,6 +430,11 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 			log.Printf("ssh gateway session audit end failed: %v", err)
 		}
 	}()
+	// The workspace audit log's shell rows (w9/m451). Native SSH carries no
+	// user agent; the end row repeats the start row's metadata.
+	shell := sshgateway.ShellSession{ID: sessionID, Subject: subject, Method: core.MethodSSH, Target: auditTarget, SourceIP: clientIP}
+	sshgateway.RecordShellEvent(s.Audit, core.AuditVerbStartShell, shell, started)
+	defer func() { sshgateway.RecordShellEvent(s.Audit, core.AuditVerbEndShell, shell, time.Now().UTC()) }()
 
 	go ssh.DiscardRequests(requests)
 	sessionCtx, cancel := context.WithTimeout(ctx, s.SessionTimeout)
@@ -680,4 +696,14 @@ func decodeTarget(raw string) (apps.SSHInstanceTarget, error) {
 		return apps.SSHInstanceTarget{}, errors.New("invalid authorized target")
 	}
 	return target, nil
+}
+
+// sourceIP is addr's IP, the client's (PROXY-protocol-resolved for a trusted
+// peer), as the audit log records it; "" when addr has none.
+func sourceIP(addr net.Addr) string {
+	ip, err := proxyproto.RemoteIP(addr)
+	if err != nil {
+		return ""
+	}
+	return ip.String()
 }

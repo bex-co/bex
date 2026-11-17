@@ -102,6 +102,10 @@ type Server struct {
 	// original browser address through X-Forwarded-For/X-Real-IP. Empty trusts
 	// nobody and preserves the direct WebSocket peer address.
 	TrustedProxies core.TrustedProxies
+
+	// Audit receives each shell session's StartShellEvent and EndShellEvent
+	// rows (w9/m451, sshgateway.RecordShellEvent). nil records none.
+	Audit core.AuditSink
 }
 
 func (s *Server) defaults() {
@@ -252,13 +256,17 @@ func (s *Server) serveWebSocket(w http.ResponseWriter, r *http.Request) {
 	if clientIP := s.TrustedProxies.ClientIP(r); clientIP != core.PeerIP(r.RemoteAddr) {
 		remoteAddress = clientIP
 	}
-	s.runWebSocketSession(r.Context(), &wsConn{conn: conn}, claims, remoteAddress)
+	// Where the browser connected from, for the workspace audit log's shell
+	// rows and any refusal the resolver records (w9/m451).
+	origin := core.RequestOrigin{SourceIP: s.TrustedProxies.SourceIP(r), UserAgent: r.UserAgent()}
+	s.runWebSocketSession(r.Context(), &wsConn{conn: conn}, claims, remoteAddress, origin)
 }
 
 // runWebSocketSession resolves the target, enforces caps, and bridges the
 // browser to one pods/exec stream. Post-upgrade failures are delivered as an
 // {type:"error"} control frame so the terminal can display them.
-func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims shellticket.Claims, remoteAddress string) {
+func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims shellticket.Claims, remoteAddress string, origin core.RequestOrigin) {
+	ctx = core.WithRequestOrigin(ctx, origin)
 	resolveCtx := core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: core.MethodShell})
 	resolveCtx, cancelResolve := context.WithTimeout(resolveCtx, s.HandshakeTimeout)
 	target, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username())
@@ -307,6 +315,14 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 			log.Printf("web shell session audit end failed: %v", err)
 		}
 	}()
+	// The workspace audit log's shell rows (w9/m451), with the browser's user
+	// agent; the end row repeats the start row's metadata.
+	shell := sshgateway.ShellSession{
+		ID: sessionID, Subject: claims.Subject, Method: core.MethodShell, Target: target,
+		SourceIP: origin.SourceIP, UserAgent: origin.UserAgent,
+	}
+	sshgateway.RecordShellEvent(s.Audit, core.AuditVerbStartShell, shell, started)
+	defer func() { sshgateway.RecordShellEvent(s.Audit, core.AuditVerbEndShell, shell, time.Now().UTC()) }()
 
 	// codex round-9 #6: keep re-running the ticket-time resolution + fresh
 	// authorization while the shell is LIVE — a revocation cancels the exec

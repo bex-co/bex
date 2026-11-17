@@ -187,6 +187,31 @@ func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 	if err := st.Record(ctx, auditEv); permDenied(err) {
 		t.Errorf("audit Record denied under scoped role: %v", err)
 	}
+	// A shell session's StartShellEvent row (w9/m451), every column it writes,
+	// under its derived id, twice: the retry records nothing and still needs no
+	// read privilege (ON CONFLICT names no target).
+	shellEv := core.AuditEvent{
+		ID: "aud-m451" + runID, Caller: "user:test", CallerMethod: core.MethodSSH, Verb: core.AuditVerbStartShell,
+		Resource: core.WorkspaceObject("tea-test"), Target: core.ServiceTarget("srv-test"), Outcome: core.AuditAllowed,
+		At: time.Now().UTC(), SourceIP: "10.0.0.1", UserAgent: "Mozilla/5.0", InstanceID: "inst-test",
+	}
+	t.Cleanup(func() { _, _ = admin.Exec(context.Background(), `DELETE FROM audit_events WHERE id = $1`, shellEv.ID) })
+	for range 2 {
+		if err := st.Record(ctx, shellEv); err != nil {
+			t.Errorf("shell audit Record under scoped role: %v", err)
+		}
+	}
+	// Append-only (ADR035 § Database blast radius): a stolen gateway credential
+	// can add a row but cannot read, alter or delete any.
+	for _, stmt := range []string{
+		`SELECT 1 FROM audit_events LIMIT 1`,
+		`UPDATE audit_events SET verb = verb WHERE id = '` + shellEv.ID + `'`,
+		`DELETE FROM audit_events WHERE id = '` + shellEv.ID + `'`,
+	} {
+		if _, err := scoped.Exec(ctx, stmt); !permDenied(err) {
+			t.Errorf("%q was NOT denied for the gateway role (err=%v)", stmt, err)
+		}
+	}
 
 	// The agent-session transcript surface (ADR047 D9, w3/m43): the attach
 	// listener SELECTs (replay + max-seq + cumulative bytes) and INSERTs (tee)

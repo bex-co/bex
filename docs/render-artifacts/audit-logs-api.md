@@ -50,7 +50,7 @@ Every **workspace** event [render.com/docs/audit-logs](https://render.com/docs/a
 | `MaintenanceModeEnabledEvent`, `MaintenanceModeURIUpdatedEvent` | `apps.SetMaintenanceMode`, `apps.SetMaintenanceModeURI` | recorded |
 | `UpdateServiceNameEvent` | `apps.SetDisplayName` | recorded |
 | `DeleteServerEvent` | `apps.Delete` | recorded |
-| `StartShellEvent`, `EndShellEvent` | — | owner w9/m451 |
+| `StartShellEvent`, `EndShellEvent` | `shell.StartShell`, `shell.EndShell`; a refused shell's `apps.ResolveSSHSession` or `apps.CreateShellSession` denial | recorded (w9/m451): native SSH and the dashboard Shell, `metadata.service`, `instance`, `source_ip` and the web shell's `user_agent`; a refusal is `StartShellEvent` with `status: error`; agent-session SSH records neither |
 | `ApplyBlueprintEvent` | `apps.ApproveBlueprint`, `apps.SyncBlueprint` | recorded (covers the services a Blueprint creates) |
 | `CreateCronJobEvent`, `DeleteCronJobEvent` | `apps.CreateCronJob`, `apps.DeleteCronJob` | recorded |
 | `UpdateAutoDeployEvent` | `apps.SetAutoDeploy` | recorded, docs only |

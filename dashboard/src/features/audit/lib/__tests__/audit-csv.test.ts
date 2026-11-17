@@ -17,6 +17,7 @@ const event = (overrides: Partial<AuditEvent> = {}): AuditEvent => ({
   actorEmail: "",
   sourceIp: "",
   userAgent: "",
+  instance: "",
   action: "apps.Suspend",
   status: "success",
   resource: "srv-1",
@@ -112,6 +113,22 @@ describe("auditEventsToCSV", () => {
       '""resource"":""oauth-client:dcr-claude"",""targetName"":""Claude Code""',
     );
     expect(grant).toContain('""oauthGrantScopes"":[""openid"",""bex.read""]');
+  });
+
+  // w9/m451: a shell session row names its instance in Render's key.
+  it("names the instance a shell session ran on in the metadata", () => {
+    const csv = auditEventsToCSV([
+      event({
+        action: "EndShellEvent",
+        resource: "service:srv-1",
+        instance: "srv-1-pod01",
+        sourceIp: "198.51.100.23",
+      }),
+    ]);
+    const row = csv.trimEnd().split("\r\n")[1];
+    expect(row).toContain(",EndShellEvent,success,");
+    expect(row).toContain('""instance"":""srv-1-pod01""');
+    expect(row).toContain('""source_ip"":""198.51.100.23""');
   });
 
   it("quotes commas, quotes and newlines", () => {

@@ -23,7 +23,8 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
   const actor = useWorkspaceSubjectLabel(event.actor ?? "", event.actorEmail);
   const client = shortUserAgent(event.userAgent);
   // What a rename, a custom-domain verb, an env-group link (w5/183), an env
-  // var row (w9/m449) or an OAuth access grant (w4/m454) changed.
+  // var row (w9/m449) or an OAuth access grant (w4/m454) changed, or the
+  // instance a shell session ran on (w9/m451).
   const change = event.displayNameTo
     ? t("audit.changeRename", {
         from: event.displayNameFrom,
@@ -39,6 +40,8 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
             ? t("audit.changeGrantScopes", {
                 scopes: event.oauthGrantScopes.join(" "),
               })
+            : event.instance
+              ? t("audit.changeInstance", { instance: event.instance })
             : null;
   // How the actor authenticated, and for a third-party OAuth grant which
   // client and scopes, share one truncated second line (w4/684): every row

@@ -21,6 +21,7 @@ export function toAuditEvents(
       actorEmail: e.actorEmail ?? "",
       sourceIp: e.sourceIp ?? "",
       userAgent: e.userAgent ?? "",
+      instance: e.instance ?? "",
       action: e.action ?? "",
       status: e.status === "denied" ? "denied" : "success",
       resource: e.resource ?? "",

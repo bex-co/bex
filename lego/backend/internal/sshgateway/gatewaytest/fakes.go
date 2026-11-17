@@ -294,3 +294,24 @@ func (c *FakeClock) Advance(d time.Duration) {
 	defer c.mu.Unlock()
 	c.t = c.t.Add(d)
 }
+
+// FakeAudit is a core.AuditSink that keeps every row it is given — the
+// workspace audit log's shell rows (w9/m451).
+type FakeAudit struct {
+	mu   sync.Mutex
+	rows []core.AuditEvent
+}
+
+func (f *FakeAudit) Record(_ context.Context, ev core.AuditEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.rows = append(f.rows, ev)
+	return nil
+}
+
+// Rows returns a copy of the recorded rows.
+func (f *FakeAudit) Rows() []core.AuditEvent {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]core.AuditEvent(nil), f.rows...)
+}

@@ -60,6 +60,11 @@ const esAudit: Record<string, TranslationEntry> = {
     description:
       "Audit log Resource cell: the scopes a member granted an OAuth client (GrantOAuthAccessEvent, w4/m454)",
   },
+  "audit.changeInstance": {
+    message: "Instancia {instance}",
+    description:
+      "Audit log Resource cell: the service instance a shell session (StartShellEvent / EndShellEvent) ran on (w9/m451)",
+  },
   "audit.statusAllowed": {
     message: "Permitida",
     description: "Audit Log status badge for a successful action",

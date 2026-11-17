@@ -437,3 +437,50 @@ func TestPGAuditRecordsWhereTheActorActedFrom(t *testing.T) {
 		t.Errorf("system rows stored with NULL origin = %d, want 1", nulls)
 	}
 }
+
+// TestPGAuditShellRowsKeepTheirInstanceAndRecordOnce pins w9/m451: a shell
+// session row keeps the instance it ran on (Render's metadata.instance), every
+// other row stores NULL, and a retried write under the session's derived id
+// records once.
+func TestPGAuditShellRowsKeepTheirInstanceAndRecordOnce(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	t.Cleanup(pool.Close)
+	workspace := ids.New(ids.Workspace)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, workspace)
+	})
+	at := time.Now().UTC().Truncate(time.Second)
+	session := ids.New(ids.SSHSession)
+	start := core.AuditEvent{
+		ID: ids.Derive(ids.Audit, session, core.AuditVerbStartShell), Caller: "kratos-a", CallerMethod: core.MethodSSH,
+		Verb: core.AuditVerbStartShell, Resource: core.WorkspaceObject(workspace), Target: core.ServiceTarget("srv-1"),
+		Outcome: core.AuditAllowed, At: at, SourceIP: "198.51.100.7", InstanceID: "srv-1-pod01",
+	}
+	for range 2 {
+		if err := st.Record(ctx, start); err != nil {
+			t.Fatal(err)
+		}
+	}
+	other := core.AuditEvent{
+		Caller: "kratos-a", CallerMethod: core.MethodSession, Verb: core.AuditVerbViewEnvVarValues,
+		Resource: core.WorkspaceObject(workspace), Outcome: core.AuditAllowed, At: at.Add(time.Minute),
+	}
+	if err := st.Record(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := st.ListAuditEvents(ctx, workspace, AuditFilter{OldestFirst: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 || rows[0].ID != start.ID || rows[0].InstanceID != "srv-1-pod01" || rows[1].InstanceID != "" {
+		t.Fatalf("rows = %+v, want the shell row once with its instance, then a row without one", rows)
+	}
+	var nulls int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE workspace_id = $1 AND instance_id IS NULL`, workspace).Scan(&nulls); err != nil {
+		t.Fatal(err)
+	}
+	if nulls != 1 {
+		t.Errorf("rows with a NULL instance = %d, want 1", nulls)
+	}
+}

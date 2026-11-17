@@ -227,6 +227,9 @@ func main() {
 		// default) leaves every connection's RemoteAddr as the immediate peer,
 		// unchanged.
 		TrustedProxies: trustedProxies,
+		// Each service shell session's StartShellEvent/EndShellEvent rows
+		// (w9/m451), through the role's INSERT-only audit_events grant.
+		Audit: st,
 	}
 	shell := &webshell.Server{
 		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
@@ -243,6 +246,7 @@ func main() {
 		// The WebSocket listener is HTTP behind the same Traefik pod network as
 		// native SSH. Trust forwarding headers only from those configured peers.
 		TrustedProxies: core.TrustedProxies(trustedProxies),
+		Audit:          st,
 	}
 	sandbox := &sandboxsse.Server{
 		Secret:   []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),

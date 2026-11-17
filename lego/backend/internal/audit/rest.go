@@ -64,15 +64,17 @@ type renderAuditActor struct {
 }
 
 // actorType maps bex's stored caller method onto Render's closed actor.type
-// enum: a Kratos browser session is a human "user"; an oauth2 bearer (API
-// key or OAuth client) is "rest_api"; bex's own system rows — and an
-// unattributed caller (e.g. a denied unauthenticated request), which has no
-// better bucket in Render's vocabulary — are "system".
+// enum: a Kratos browser session is a human "user", and so is an SSH gateway
+// identity, whose subject is the person the key or ticket belongs to (a shell
+// row, w9/m451); an oauth2 bearer (API key or OAuth client) is "rest_api";
+// bex's own system rows — and an unattributed caller (e.g. a denied
+// unauthenticated request), which has no better bucket in Render's
+// vocabulary — are "system".
 func actorType(method string) string {
 	switch method {
-	case "session":
+	case core.MethodSession, core.MethodSSH, core.MethodShell, core.MethodAgentAttach, core.MethodSandboxExec:
 		return "user"
-	case "oauth2":
+	case core.MethodOAuth2:
 		return "rest_api"
 	default:
 		return "system"
@@ -195,6 +197,10 @@ func renderMetadata(e Event) map[string]string {
 	}
 	if e.UserAgent != "" {
 		md["user_agent"] = e.UserAgent
+	}
+	// The instance a shell session ran on (w9/m451), Render's key.
+	if e.InstanceID != "" {
+		md["instance"] = e.InstanceID
 	}
 	return md
 }

@@ -129,6 +129,7 @@ describe("AuditLogPanel", () => {
       actorEmail: "",
       sourceIp: "",
       userAgent: "",
+      instance: "",
       action: "apps.UpdateService",
       status: "success" as const,
       resource: "service:srv-1",
@@ -231,6 +232,7 @@ describe("AuditLogPanel", () => {
         actorEmail: "",
         sourceIp: "",
         userAgent: "",
+        instance: "",
         action: "update",
         status: "success",
         resource: "workspace:tea-1",
@@ -256,6 +258,7 @@ describe("AuditLogPanel", () => {
         actorEmail: "",
         sourceIp: "",
         userAgent: "",
+        instance: "",
         action: "delete",
         status: "denied",
         resource: "service:srv-1",
@@ -314,6 +317,7 @@ describe("AuditLogPanel", () => {
         actorEmail: "",
         sourceIp: "",
         userAgent: "",
+        instance: "",
         action: "update",
         status: "success",
         resource: "service:srv-1",
@@ -363,6 +367,7 @@ describe("AuditLogPanel", () => {
         actorEmail: "ada@example.com",
         sourceIp: "198.51.100.23",
         userAgent: chrome,
+        instance: "",
         action: "ViewEnvVarValuesEvent",
         status: "success",
         resource: "service:srv-1",
@@ -388,6 +393,7 @@ describe("AuditLogPanel", () => {
         actorEmail: "",
         sourceIp: "",
         userAgent: "",
+        instance: "",
         action: "UpdateWorkspacePaymentMethodEvent",
         status: "success",
         resource: "workspace:tea-primary",
@@ -431,6 +437,7 @@ describe("AuditLogPanel", () => {
         actorEmail: "",
         sourceIp: "",
         userAgent: "",
+        instance: "",
         action: "UpdateEnvVarsEvent",
         status: "success",
         resource: "service:srv-1",
@@ -468,6 +475,7 @@ describe("AuditLogPanel", () => {
         actorEmail: "",
         sourceIp: "",
         userAgent: "",
+        instance: "",
         action: "GrantOAuthAccessEvent",
         status: "success",
         resource: "oauth-client:dcr-claude",
@@ -501,6 +509,44 @@ describe("AuditLogPanel", () => {
     expect(resource.querySelectorAll(".block").length).toBeLessThanOrEqual(1);
   });
 
+  it("names the instance a shell session ran on (w9/m451)", () => {
+    auditState.events = [
+      {
+        id: "ev-1",
+        timestamp: "2026-11-16T00:00:00Z",
+        actor: "0b7f0e5c-4ad7-4b1f-9d5e-0d1f2a3b4c5d",
+        actorMethod: "ssh",
+        actorId: "usr-00000000000000000007",
+        actorEmail: "ada@example.com",
+        sourceIp: "198.51.100.23",
+        userAgent: "",
+        instance: "srv-d5t5d4v8g3c73f5m9peg-web-rs-pod01",
+        action: "StartShellEvent",
+        status: "success",
+        resource: "service:srv-d5t5d4v8g3c73f5m9peg",
+        targetName: "",
+        displayNameFrom: "",
+        displayNameTo: "",
+        domain: "",
+        envGroupId: "",
+        envGroupName: "",
+        envVarKeys: [],
+        relation: "",
+        oauthClientId: "",
+        oauthAudience: "",
+        oauthScopes: [],
+        oauthGrantScopes: [],
+      },
+    ];
+    renderPanel();
+
+    const cells = within(screen.getAllByRole("row")[1]!).getAllByRole("cell");
+    expect(cells[3]).toHaveTextContent("StartShellEvent");
+    expect(cells[5]).toHaveTextContent(
+      "Instance srv-d5t5d4v8g3c73f5m9peg-web-rs-pod01",
+    );
+  });
+
   it("hides 'Load more' once the last page is exhausted", () => {
     auditState.events = [
       {
@@ -512,6 +558,7 @@ describe("AuditLogPanel", () => {
         actorEmail: "",
         sourceIp: "",
         userAgent: "",
+        instance: "",
         action: "update",
         status: "success",
         resource: "workspace:tea-1",

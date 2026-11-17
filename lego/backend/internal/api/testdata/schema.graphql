@@ -643,6 +643,7 @@ type AuditLog {
   envGroupName: String
   envVarKeys: [String]
   id: String
+  instance: String
   metadata: AuditLogMetadata
   oauthAudience: String
   oauthClientId: String

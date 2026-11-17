@@ -117,6 +117,9 @@ type Event struct {
 	// migration 0283); empty when no request of the actor caused the row.
 	SourceIP  string
 	UserAgent string
+	// InstanceID is the service instance a shell session ran on (w9/m451,
+	// migration 0289); empty on every other row.
+	InstanceID string
 	// EnvVarKeys are the variable names an env var row created, changed or
 	// deleted (w9/m449); nil on every other row.
 	EnvVarKeys []string
@@ -156,6 +159,7 @@ func view(r store.AuditRow) Event {
 		TwoFactorRequiredTo: r.TwoFactorRequiredTo,
 		SourceIP:            r.SourceIP,
 		UserAgent:           r.UserAgent,
+		InstanceID:          r.InstanceID,
 		EnvVarKeys:          r.EnvVarKeys,
 	}
 }
@@ -272,6 +276,16 @@ var renderEvents = map[string]string{
 	core.AuditVerbGrantOAuthAccess:  "GrantOAuthAccessEvent",
 	core.AuditVerbRevokeOAuthAccess: "RevokeOAuthAccessEvent",
 	legacyVerbOperatorRevokeGrant:   "RevokeOAuthAccessEvent",
+	// A shell session into a service instance (w9/m451): the gateway's start
+	// and end rows, and the denied row of either verb that refuses an
+	// identified caller's shell (only a denial of these read-relation verbs is
+	// ever recorded, so their rows are always StartShellEvent with status
+	// error). An agent-session sandbox's SSH authorizes through agentsessions
+	// and records neither.
+	core.AuditVerbStartShell:  "StartShellEvent",
+	core.AuditVerbEndShell:    "EndShellEvent",
+	"apps.ResolveSSHSession":  "StartShellEvent",
+	"apps.CreateShellSession": "StartShellEvent",
 }
 
 // docsOnlyEvents are Render events render.com/docs/audit-logs (read

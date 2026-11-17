@@ -18,6 +18,9 @@ export interface AuditEvent {
    *  "" on a row no request of the actor caused. */
   sourceIp: string;
   userAgent: string;
+  /** The service instance a shell session ran on (Render's metadata.instance,
+   *  w9/m451); "" on every other row. */
+  instance: string;
   action: string;
   status: "success" | "denied";
   resource: string;

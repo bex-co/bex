@@ -67,7 +67,10 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// metadata.user_agent; null on a row no request of the actor caused.
 		"sourceIp":  gqlutil.OptionalStrField(func(e Event) any { return e.SourceIP }),
 		"userAgent": gqlutil.OptionalStrField(func(e Event) any { return e.UserAgent }),
-		"action":    gqlutil.StrField(func(e Event) any { return renderEvent(e.Verb) }),
+		// The instance a shell session ran on, REST's metadata.instance
+		// (w9/m451); null on every other row.
+		"instance": gqlutil.OptionalStrField(func(e Event) any { return e.InstanceID }),
+		"action":   gqlutil.StrField(func(e Event) any { return renderEvent(e.Verb) }),
 		// status keeps bex's richer denied value here: GraphQL is bex's own
 		// dialect (Render has no public GraphQL), and the dashboard's badge
 		// distinguishes a denial from an error. REST maps it onto Render's

@@ -194,6 +194,9 @@ type AuditEvent struct {
 	// sweeps, webhooks, operator commands, workers.
 	SourceIP  string
 	UserAgent string
+	// InstanceID is the service instance a shell session ran on (Render's
+	// shell metadata.instance, w9/m451); empty for every other verb.
+	InstanceID string
 	// EnvVarKeys are the variable names an env var row created, changed or
 	// deleted (Render's CreateEnvVarsEvent, UpdateEnvVarsEvent and
 	// DeleteEnvVarsEvent, w9/m449), sorted. Names only: a value never enters
@@ -392,6 +395,16 @@ const (
 	// writes this row once per request that returned at least one URL, through
 	// RecordSecretsViewed, and none for a list that returned none.
 	AuditVerbDownloadDatabaseBackup = "postgres.DownloadDatabaseBackup"
+
+	// AuditVerbStartShell / AuditVerbEndShell are a shell session into a
+	// service instance opening and closing (w9/m451), Render's StartShellEvent
+	// and EndShellEvent: the SSH gateway writes them for native SSH and the
+	// dashboard Shell alike (sshgateway.RecordShellEvent). A refused shell from
+	// an identified caller is the denied authorization row of the verb that
+	// refused it (apps.ResolveSSHSession at the gateway, apps.CreateShellSession
+	// at ticket mint), which the audit log also reports as StartShellEvent.
+	AuditVerbStartShell = "shell.StartShell"
+	AuditVerbEndShell   = "shell.EndShell"
 
 	AuditVerbLinkService      = "envgroups.LinkService"
 	AuditVerbUnlinkService    = "envgroups.UnlinkService"
