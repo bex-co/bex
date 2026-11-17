@@ -1,6 +1,6 @@
 # w4 · m353 — An instance that fails its health check is restarted after about 2 minutes, not Render's 60 seconds: the 60-second rollout drain also runs before every liveness restart, while the instance is already out of rotation
 
-**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** blocked — release gate (t001–t004, t006, t007 done; t006 and t007 shipped 2026-11-16 by `/loopx w4` in the commit whose subject ends `(w4/m353 t006, t007)`; t005 replays DoD 1–4 on the first production pin that carries it). Previously: the round 394 and 398 replays opened t006 and t007 on pin `2d9bbae6bb8d`/`89ac87445bec`, after t001–t004 shipped on 2026-11-14 (`5565407fa`).
+**Worker:** worker4 **Goal:** an instance whose health check keeps failing is restarted 60 seconds after its checks started failing, as on Render. The 60-second drain still protects a healthy instance that is being retired (a deploy, a restart, a scale-in). **Status:** done — DoD 1–4 replayed live on pin `ef7e65cd3f46` on 2026-11-17 (t005; restart 59.2 s, TCP 62–66 s / 94–96 s, drain 60 s with the 70 s request answered 200). t001–t004 shipped 2026-11-14 (`5565407fa`), t006 and t007 shipped 2026-11-16 (`9c6f466ca`).
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
 | [t006](done/t006.md) | A health-check restart also records the liveness SIGTERM as the app's own crash: an extra `server_failed {nonZeroExit}` (found by the round 394 replay) — **DONE** | 45m | — |
 | [t007](done/t007.md) | A health-check restart of an instance that ignores SIGTERM waits the pod's whole grace (drain + `maxShutdownDelaySeconds`, 90 s) before SIGKILL, not Render's 30 s; set the liveness probe's own grace (found by the round 398 replay of DoD 2) — **DONE** | 45m | — |
-| [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004, t006, t007 |
+| [t005](done/t005.md) | Closeout (live replay on production) — **DONE** | 30m | t003, t004, t006, t007 |
 
 ## Definition of done
 
@@ -80,3 +80,9 @@ Fixture `qa-20261112-r229-hc` (`srv-dbr24ia585js73afgis0`), created at 20:32:10 
   - t007: a pod with the health-checked drain carries `livenessProbe.terminationGracePeriodSeconds` = `maxShutdownDelaySeconds` (default 30) + 5 s (`livenessTerminationGracePeriodSeconds`, `deployment_projection.go`). The pod keeps drain + delay. Stored templates adopt it on their next roll, not on the operator upgrade. ADR004 § Rollout headroom records the trade-off.
 - **Remaining gate:** release. The first production deploy whose pin contains the commit that ships t006 and t007: `git log --grep 'w4/m353 t006, t007' origin/main`, then `git merge-base --is-ancestor <sha> <deployed sha>`. No owner action; production deploys run at 19:00, 00:00 and 05:00 UTC.
 - **Next steps (t005):** on that pin, replay DoD 1 (Events exactly `unhealthy` then `server_available`), DoD 2 with both fixtures (exits on SIGTERM ≤ 75 s; ignores SIGTERM ≤ 105 s), DoD 3 (a healthy two-instance Manual Deploy still drains for 60 s) and DoD 4. A template adopts the liveness grace only on its next roll, so create the fixtures fresh.
+
+## Decision record — 2026-11-17 (`/pm unblock`, verified evidence)
+
+- **Affected:** w4/m353 t005.
+- **Source:** verified evidence, no user decision. The parked gate was the release of `9c6f466ca` (t006, t007). Every `bex-system` platform Deployment runs `ghcr.io/bex-co/bex-operator@sha256:79d9db9f82e9…`, which `ce71ee9b0` pins as `ef7e65cd3f46`. `git merge-base --is-ancestor 9c6f466ca ef7e65cd3f46` succeeds, so the gate has cleared.
+- **Next step:** t005 replays DoD 1–4 with fresh fixtures. Done on the same day: every bullet held (see [t005](done/t005.md)), so the milestone closes.
