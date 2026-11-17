@@ -86,6 +86,7 @@ assert "agent mode reads the operator-minted registry Secret" \
   "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET=\"bex-registry/bex-sandbox-registry\"'"
 assert "the retention time can be shortened for a run" \
   "printf '%s' \"\$agent_env_block\" | grep -q 'BEX_AGENT_INTERRUPT_RETENTION=\"\$DEV_AGENT_INTERRUPT_RETENTION\"'"
+# shellcheck disable=SC2034 # referenced by the assertion commands evaluated below.
 agent_up_block="$(sed -n '/^cmd_agent_up()/,/^}/p' scripts/dev-env.sh)"
 for flag in registry=zot.bex-registry.svc:5000/snapshots snapshotPushSecret=bex-snapshot-push \
   resumePullSecret=bex-snapshot-pull jobNamespace=opensandbox-snapshot; do
