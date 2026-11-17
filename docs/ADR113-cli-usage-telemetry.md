@@ -1,6 +1,6 @@
 # ADR113 — CLI usage telemetry: Render parity, the bex extensions, and the boards that read it
 
-**Status:** D1–D4 accepted and shipped (w5/m92, m93, m94, m97; 2026-09-10 onward) · D5–D9 proposed (2026-11-16) and scheduled as [w3/m437–m441](../.pm/w3/README.md) · **Date:** 2026-11-16 · **Extends:** [ADR018](ADR018-render-parity.md) (parity ledger), [ADR088](ADR088-platform-observability-ui.md) (Grafana at `obs.bex.co`), [bex-cli.md § CLI usage telemetry](bex-cli.md#cli-usage-telemetry), [runbooks/cli-analytics.md](runbooks/cli-analytics.md) · **CLI pin:** Render CLI v2.36.0, `render-oss/cli@4fd34231b637` (`lego/cli/go.mod`)
+**Status:** D1–D4 accepted and shipped (w5/m92, m93, m94, m97; 2026-09-10 onward) · D5 shipped (w3/m437, `ddf27afb8`, 2026-11-16; it reaches users with the next `bex-cli/v*` release) · D6–D9 proposed (2026-11-16) and scheduled as [w3/m438–m441](../.pm/w3/README.md) · **Date:** 2026-11-16 · **Extends:** [ADR018](ADR018-render-parity.md) (parity ledger), [ADR088](ADR088-platform-observability-ui.md) (Grafana at `obs.bex.co`), [bex-cli.md § CLI usage telemetry](bex-cli.md#cli-usage-telemetry), [runbooks/cli-analytics.md](runbooks/cli-analytics.md) · **CLI pin:** Render CLI v2.36.0, `render-oss/cli@4fd34231b637` (`lego/cli/go.mod`)
 
 ![ADR113 architecture: on the developer's machine a command produces an execution result, passes the eligibility, disclosure, consent and backoff gates, becomes Render's 18-field event in a state file and is posted once by a subprocess; Bex-native commands that replace the process report themselves and a transport wrapper adds the bex release header. bex-api authenticates, rate-limits, attributes the event to the caller and stores it in the control-plane Postgres, counting it in Prometheus. A read-only view and reader role feed the CLI usage board on obs.bex.co. Amber marks what this ADR adds: a Bex-owned disclosure, the extended-CLI coverage contract, new view columns, a coverage panel and ingest alerts.](assets/ADR113-cli-usage-telemetry.svg)
 
@@ -98,7 +98,7 @@ Opt-out stays the default, as on Render. `DO_NOT_TRACK=1` and `BEX_CLI_DISABLE_A
 
 Raw rows live 90 days (the audit retention window) and leave with the account. Grafana reads through one view with one restricted role. The board is internal and sits behind the ops-workspace gate. Customers never see it.
 
-### D5 — Bex owns the disclosure
+### D5 — Bex owns the disclosure (shipped)
 
 The launcher shows a Bex notice and makes its own marker the gate. Upstream's notice is never printed.
 
