@@ -5302,14 +5302,13 @@
                 "type": "string"
               },
               "part": {
-                "items": {
-                  "maximum": 255,
-                  "minimum": 0,
-                  "type": "integer"
-                },
                 "type": [
                   "null",
-                  "array"
+                  "boolean",
+                  "object",
+                  "array",
+                  "number",
+                  "string"
                 ]
               },
               "partIndex": {

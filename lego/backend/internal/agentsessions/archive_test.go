@@ -346,6 +346,35 @@ func TestTranscriptPagesVerbatimParts(t *testing.T) {
 	}
 }
 
+// The MCP read returns a transcript's parts as the JSON they are. The SDK
+// validates a tool's result against its output schema, which once inferred a
+// part (json.RawMessage) as a byte array, so every page with a part failed
+// with "validating tool output" (production, w6/m398).
+func TestMCPTranscriptReturnsItsParts(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	if err := st.AppendAgentSessionTranscript(context.Background(), id, []store.AgentSessionTranscriptPart{
+		{PartIndex: 0, Turn: 1, Item: true, Part: []byte(`{"type":"start","messageId":"m"}`)},
+		{PartIndex: 1, Turn: 1, Item: true, Part: []byte(`{"type":"text","id":"t","text":"Step 23 finished at 17:42:18.","state":"done"}`)},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	res := callTool(t, newMCPClient(t, caller("alice"), svc), "alice", "get_agent_session_transcript", map[string]any{"id": id})
+	if res.IsError {
+		t.Fatalf("get_agent_session_transcript failed: %s", toolText(res, 0))
+	}
+	var page struct {
+		Parts []struct {
+			Part map[string]any `json:"part"`
+		} `json:"parts"`
+	}
+	if err := json.Unmarshal([]byte(toolText(res, 0)), &page); err != nil {
+		t.Fatalf("decode %s: %v", toolText(res, 0), err)
+	}
+	if len(page.Parts) != 2 || page.Parts[0].Part["type"] != "start" || page.Parts[1].Part["text"] != "Step 23 finished at 17:42:18." {
+		t.Fatalf("parts = %+v, want both parts verbatim", page.Parts)
+	}
+}
+
 // --- ADR065 D1: archive zeroes the Completer idle grace ----------------------
 
 // An archived finished session skips the idle grace: the reaper reclaims it at

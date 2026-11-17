@@ -26,10 +26,13 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"reflect"
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -47,6 +50,9 @@ import (
 // calls instead of the SDK directly.
 func AddTool[In, Out any](s *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
 	annotate(t)
+	if rt := reflect.TypeFor[Out](); t.OutputSchema == nil && rt.Kind() != reflect.Pointer && rt != reflect.TypeFor[any]() {
+		t.OutputSchema = outputSchema(t.Name, rt)
+	}
 	mcp.AddTool(s, t, func( //nolint:forbidigo // the seam itself: it wraps the handler, then delegates
 		ctx context.Context, req *mcp.CallToolRequest, in In) (res *mcp.CallToolResult, out Out, err error) {
 		// Transport-boundary panic isolation. REST (net/http's conn.serve) and
@@ -69,6 +75,32 @@ func AddTool[In, Out any](s *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, O
 		res, out, err = h(ctx, req, in)
 		return res, out, core.MCPError(err)
 	})
+}
+
+// outputSchemas memoizes outputSchema per type, so every server built in one
+// process shares one schema per output type, as the SDK's own inference does.
+var outputSchemas sync.Map // reflect.Type → *jsonschema.Schema
+
+// outputSchema is the output schema the SDK would infer for rt, except that a
+// json.RawMessage is any JSON value. Inferred as the []byte it is, it was an
+// array of 0-255 integers, so the SDK's output validation refused every result
+// that carried JSON there: get_agent_session_transcript failed for any
+// transcript with a part (w6/m398). A pointer type is left to the SDK, which
+// substitutes the element's zero value for a nil result only when it infers.
+func outputSchema(tool string, rt reflect.Type) *jsonschema.Schema {
+	if cached, ok := outputSchemas.Load(rt); ok {
+		return cached.(*jsonschema.Schema)
+	}
+	schema, err := jsonschema.ForType(rt, &jsonschema.ForOptions{TypeSchemas: map[reflect.Type]*jsonschema.Schema{
+		// Every JSON type, spelled out: an empty schema would marshal as `true`,
+		// and a *json.RawMessage would narrow it to null alone.
+		reflect.TypeFor[json.RawMessage](): {Types: []string{"null", "boolean", "object", "array", "number", "string"}},
+	}})
+	if err != nil {
+		panic(fmt.Errorf("AddTool %q: output schema: %w", tool, err)) // as mcp.AddTool fails a schema it cannot infer
+	}
+	cached, _ := outputSchemas.LoadOrStore(rt, schema)
+	return cached.(*jsonschema.Schema)
 }
 
 // RenderText is the result of a tool whose answer must be the text Render's
