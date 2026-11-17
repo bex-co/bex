@@ -18,15 +18,19 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -110,11 +114,46 @@ func NewMetricsServerReader(cs kubernetes.Interface) MetricsReader {
 			Param("labelSelector", labelApp+"="+app).
 			DoRaw(ctx)
 		if err != nil {
-			return nil, err
+			return nil, describeMetricsReadError(err, raw)
 		}
 		return podmetrics.Parse(raw)
 	}
 }
+
+// describeMetricsReadError names the HTTP status and the server's own reason
+// for a failed metrics.k8s.io read. The discovery REST client does not decode
+// an error response's Status body, so its error reads only "unknown", and a
+// lost RBAC grant (403) looked the same in the log as a metrics-server outage
+// (503) (w4/696). The original error stays wrapped for errors.Is/As, but its
+// "unknown" text is not repeated.
+func describeMetricsReadError(err error, body []byte) error {
+	var apiStatus apierrors.APIStatus
+	if !errors.As(err, &apiStatus) {
+		return fmt.Errorf("metrics.k8s.io pods list: %w", err)
+	}
+	code := int(apiStatus.Status().Code)
+	detail := apiStatus.Status().Message
+	var st metav1.Status
+	if json.Unmarshal(body, &st) == nil && st.Message != "" {
+		detail = st.Message
+	} else if text := strings.TrimSpace(string(body)); text != "" && len(text) <= 512 {
+		detail = text
+	}
+	return metricsReadError{
+		msg: fmt.Sprintf("metrics.k8s.io pods list: %d %s: %s", code, http.StatusText(code), detail),
+		err: err,
+	}
+}
+
+// metricsReadError is a described metrics read failure that still unwraps
+// to client-go's API status error.
+type metricsReadError struct {
+	msg string
+	err error
+}
+
+func (e metricsReadError) Error() string { return e.msg }
+func (e metricsReadError) Unwrap() error { return e.err }
 
 // promInstantSample is one labeled scalar from a Prometheus instant query.
 type promInstantSample struct {

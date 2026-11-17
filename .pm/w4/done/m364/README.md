@@ -99,4 +99,4 @@ All on production, workspace `bex-canary`, on a Starter web service from `POST /
 ## Unblock (2026-11-17, `/loopx w4`)
 
 - **Source:** verified evidence. The release gate is clear: `71f81e13f` (t001–t006) is an ancestor of production pin `ef7e65cd3f46` (bex-system digest `79d9db9f…`, still live at 00:50Z) and of the earlier replay pin `c99e7815ebec`. Production's `bex-manager-role` carries the `metrics.k8s.io` `pods` `get`/`list` rule, and `kubectl auth can-i list pods.metrics.k8s.io --as=system:serviceaccount:bex-system:bex-controller-manager` answers `yes`.
-- **Remaining:** t007 only. DoD 1–3 and 5 held on `c99e7815ebec` (QA rounds 361 and 369); DoD 4 needs a test cluster. Replayed in [t007](done/t007.md) on the current pin and the local CAPD cluster; [w4/696](../../696.md) filed alongside.
+- **Remaining:** t007 only. DoD 1–3 and 5 held on `c99e7815ebec` (QA rounds 361 and 369); DoD 4 needs a test cluster. Replayed in [t007](done/t007.md) on the current pin and the local CAPD cluster; [w4/696](../696.md) filed alongside.
