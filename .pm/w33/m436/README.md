@@ -1,18 +1,18 @@
 # w33 · m436 — A Blueprint Key Value with no `plan` is created on `256mb` (Starter), as Render's spec says
 
-**Worker:** worker33 **Goal:** a Blueprint that declares a Key Value instance without a `plan` creates the same size Render does (`256mb`, bex's `starter`), prices it and gates it as paid, and leaves an existing instance's plan alone. **Status:** todo
+**Worker:** worker33 **Goal:** a Blueprint that declares a Key Value instance without a `plan` creates the same size Render does (`256mb`, bex's `starter`), prices it and gates it as paid, and leaves an existing instance's plan alone. **Status:** todo (t001–t007 done; [t008](t008.md) replays the definition of done once the production pin carries this milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Blueprint parse: an omitted Key Value plan is `starter` on create, and unchanged on sync | 30m | — |
-| t002 | The estimate, the payment gate, the plan output and the free-instance check follow the new default | 35m | t001 |
-| t003 | An omitted plan on the other Key Value creates, checked against Render's pinned contracts | 35m | t001 |
-| t004 | ADR030, ADR049 D5 and the ADR018 plan-ID row say what the default is; corpus fixtures | 20m | t002, t003 |
-| t005 | Render parity | 20m | t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 30m | t005 |
+| [t001](done/t001.md) | Blueprint parse: an omitted Key Value plan is `starter` on create, and unchanged on sync — **DONE** | 30m | — |
+| [t002](done/t002.md) | The estimate, the payment gate, the plan output and the free-instance check follow the new default — **DONE** | 35m | t001 |
+| [t003](done/t003.md) | An omitted plan on the other Key Value creates, checked against Render's pinned contracts — **DONE** | 35m | t001 |
+| [t004](done/t004.md) | ADR030, ADR049 D5 and the ADR018 plan-ID row say what the default is; corpus fixtures — **DONE** | 20m | t002, t003 |
+| [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
 | t008 | Closeout (live replay on production) | 40m | t006, t007 |
 
 ## Definition of done
@@ -35,3 +35,13 @@ On production, in `bex-canary`, with owned fixtures deleted afterwards (by-id `G
 - **Why now:** Key Value is the one resource kind the w1/122 default change left out, and the difference decides what a customer is billed and how much memory they get.
 - **Decision state:** following Render's default is this proposal's recommendation, resting on ADR008 Render parity first and on the reasoning the user accepted for services in w1/122. It moves a default from $0 to a paid plan and is not a recorded user decision for Key Value; ADR030 gets the sentence, marked as such, until the user signs it off. Keeping `free` would be a divergence that needs the user's sign-off in ADR018.
 - **Render parity:** included: Blueprint validate, plan, preview and apply are tenant-facing on REST, GraphQL, MCP and the dashboard.
+
+## Work record (t001–t007, 2026-11-16)
+
+- **Parse (t001).** `parseKeyValue` (`lego/backend/internal/apps/deploy.go`) writes `blueprintKeyValueDefaultPlan` (`starter`) into an entry without `plan`, beside the database's `blueprintDatabaseDefaultPlan`. Both `type: keyvalue` and `type: redis` reach it, and so does a `create_new` copy, because the suffix is applied to the YAML before the parse. The presence bit is untouched: `ApplyBlueprintKeyValueSpec` still writes `plan` only when the file declares it, so a sync of an existing free store plans `noop` and writes nothing.
+- **Review and gates (t002).** `blueprintEstimatedPricing` reads the parsed plan, and its own empty-means-free fallback is gone. `stackHasPaidPlan` and the preview's free-slot check already read `spec.Plan`, so a plan-less store is priced as Starter ($7.00 plus its 1 GB at $0.21), counts as paid intent, and never consults the free-instance limit. An explicit `plan: free` still does. Before this change a plan-less store skipped the free check and was then made free by the CRD default. That was a second free store in the workspace, and it is closed now. The plan's create action carries no plan field for any kind, so on REST, GraphQL and MCP the plan reaches the review through the estimate's line (`tier: starter`, `tierLabel: Starter`).
+- **Other creates (t003).** None changed. REST `POST /v1/key-value` (Render requires `plan`), MCP `create_key_value` (Render's server defaults to `free`), GraphQL (bex-only) and the dashboard form (always sends a plan) keep the CRD default. The table is in [ADR021 §4](../../../docs/ADR021-keyvalue-management.md#4-plans--renders-key-value-vocabulary).
+- **Records (t004).** [ADR030 §8](../../../docs/ADR030-pricing.md), [ADR049 D5](../../../docs/ADR049-render-yaml-parity.md#d5--sync-is-presence-aware-and-field-specific) and the ADR018 "Blueprint compute plan IDs" row state `starter`. ADR030 and ADR018 mark it as following ADR008 and awaiting the user's sign-off. The four render-examples shapes (`git-scm.com`, `ioredis`, `saleor`, `sidekiq`; all `type: redis`) are inline cases in `TestRenderExamplesPlanLessKeyValuesArePricedAsStarter`.
+- **Render parity (t005), read from the code; the live walk is t008.** Validate, preview, create and sync on REST, GraphQL and MCP, and the dashboard's review and Blueprint pages through GraphQL, all go through `ValidateBlueprint` / `DeployStack` over the same parse. So they agree on the plan and the estimate, and the created store reads `starter` wherever `spec.plan` is shown. Generate Blueprint used to leave `plan` out for a free store, so re-applying an exported file would have moved that store to Starter. It now always writes the plan (`generateKeyValueEntry`). One drift remains, shared with services and databases: the estimate and the paid-intent check price an existing resource whose file omits `plan` at the create default, not at the plan the sync keeps. It is filed as w33/006.
+- **Simplify (t006).** The two datastore defaults are now named constants; nothing else needed changing.
+- **Tests (t007)** in `lego/backend/internal/apps/keyvalue_plan_default_test.go`, plus the updated pricing and agreement tests. With the change reverted, every new test fails except the sync test. The sync test checks behavior this milestone keeps, so instead it was confirmed to fail when `ApplyBlueprintKeyValueSpec` ignores the presence bit. `go test ./...` against the CI-pinned Postgres, OpenFGA and OpenBao, plus backend lint, pass. The dashboard is unchanged.

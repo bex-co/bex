@@ -29,12 +29,13 @@ import (
 // monthly cost (the Render blueprint "Estimated pricing" panel, on bex's
 // price sheet). It prices what bex would actually provision: plans resolve
 // through the same defaults the create path applies (omitted service plan ⇒
-// the paid default, omitted database plan ⇒ basic-256mb, omitted database
-// storage ⇒ the plan's volume floor). Static sites run no instance, so they
-// carry no line; a persistent service disk rides its service's line as a
-// provisioned-storage figure (ADR082 D8). Free tiers and runtime-dependent
-// costs (cron, autoscaling, multi-instance) are handled by the estimator
-// itself.
+// the paid default, omitted database plan ⇒ basic-256mb, omitted Key Value
+// plan ⇒ starter, omitted database storage ⇒ the plan's volume floor); the
+// parse has already written both datastore plan defaults into each spec.
+// Static sites run no instance, so they carry no line; a persistent service
+// disk rides its service's line as a provisioned-storage figure (ADR082 D8).
+// Free tiers and runtime-dependent costs (cron, autoscaling, multi-instance)
+// are handled by the estimator itself.
 func blueprintEstimatedPricing(st parsedStack) *pricing.MonthlyEstimate {
 	resources := make([]pricing.MonthlyResource, 0, len(st.services)+len(st.databases)+len(st.keyValues))
 	for _, svc := range st.services {
@@ -76,9 +77,6 @@ func blueprintEstimatedPricing(st parsedStack) *pricing.MonthlyEstimate {
 	}
 	for _, kv := range st.keyValues {
 		plan := kv.spec.Plan
-		if plan == "" {
-			plan = tiers.Valkey.Default().ID
-		}
 		storage := kv.spec.StorageGB
 		if t, ok := tiers.Valkey.ByID(plan); ok {
 			storage = max(storage, t.StorageGB)

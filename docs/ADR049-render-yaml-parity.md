@@ -140,6 +140,7 @@ Each capability entry defines three behaviors:
 Render's rules are the default. Examples that must be locked by conformance fixtures include:
 
 - omitted service `plan` defaults to Render's new-service default but preserves an existing service plan;
+- omitted datastore `plan` follows the same rule: a new database is `basic-256mb` and a new Key Value is Render's `256mb`, bex's `starter` (w33/m436), while an existing one keeps its plan;
 - omitted `numInstances`, IP allow lists, auto-deploy setting, subdomain policy, database disk size/autoscaling, and connection-pool setting preserve existing values where the Render reference says so;
 - omitted `buildFilter` clears existing build filters, because Render documents this field as replacement semantics;
 - environment variables not declared by the Blueprint are retained, while explicitly Blueprint-owned values continue to reconcile;

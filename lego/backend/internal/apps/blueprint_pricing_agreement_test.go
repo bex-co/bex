@@ -108,8 +108,10 @@ func TestStackPaidPlanAgreesWithEstimate(t *testing.T) {
 			paidGate: false,
 		},
 		{
-			name:     "plan-less key value defaults to free",
-			stack:    parsedStack{keyValues: []parsedKeyValue{{name: "cache"}}},
+			// The parse turns a plan-less entry into the starter row below
+			// (w33/m436), so a parsed stack's free store is an explicit one.
+			name:     "free key value",
+			stack:    parsedStack{keyValues: []parsedKeyValue{{name: "cache", spec: appv1alpha1.KeyValueSpec{Plan: "free"}}}},
 			paidGate: false,
 		},
 		{

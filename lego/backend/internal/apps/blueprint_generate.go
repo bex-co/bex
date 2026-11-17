@@ -913,9 +913,14 @@ func generateKeyValueEntry(kv *appv1alpha1.KeyValue) map[string]any {
 		"type":        "keyvalue",
 		"ipAllowList": datastoreAllowListEntries(kv.Spec.Public, kv.Spec.IPAllowList),
 	}
-	if kv.Spec.Plan != "" && kv.Spec.Plan != tiers.Valkey.Default().ID {
-		entry["plan"] = kv.Spec.Plan
+	// Always written: an omitted Key Value plan means Render's 256mb (starter)
+	// default (w33/m436), so a generated file must say free when the store is
+	// free. An empty spec plan is the CRD's own default, free.
+	plan := kv.Spec.Plan
+	if plan == "" {
+		plan = tiers.Valkey.Default().ID
 	}
+	entry["plan"] = plan
 	if kv.Spec.MaxmemoryPolicy != "" {
 		entry["maxmemoryPolicy"] = kv.Spec.MaxmemoryPolicy
 	}

@@ -3455,6 +3455,14 @@ func extensionBuilder(extension *bexExtension) string {
 	return extension.Builder
 }
 
+// The plans a Blueprint datastore entry without `plan` creates on, Render's
+// Blueprint defaults on bex's catalog: Postgres basic-256mb, Key Value 256mb
+// (starter). A plan-less service's default is resolveTierForType's.
+const (
+	blueprintDatabaseDefaultPlan = "basic-256mb"
+	blueprintKeyValueDefaultPlan = "starter"
+)
+
 // parseDatabase maps one databases[] entry onto a DatabaseSpec. Names are
 // validated when applied (specFromCreate's sibling for DBs); plan/ipAllowList
 // are validated here against the bex catalog.
@@ -3494,7 +3502,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	// is intentionally a create default; a presence-aware sync leaves an
 	// existing database plan unchanged when plan is omitted.
 	if plan == "" {
-		plan = "basic-256mb"
+		plan = blueprintDatabaseDefaultPlan
 	}
 	plan = tiers.Postgres.CanonicalID(plan)
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
@@ -3561,11 +3569,17 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 	// Render's Key Value size IDs (256mb, 1g) name bex's starter/standard
 	// rungs exactly; the direct API already accepts them (w8/011), and the
 	// re-pinned Blueprint schema now spells new-instance plans this way.
+	// "Render uses 256mb for a new Key Value instance" when plan is omitted
+	// (blueprint-spec § plan, read 2026-11-16; w33/m436), so a plan-less entry
+	// creates on starter rather than the CRD's free default. Like
+	// parseDatabase's, this is a create default: the presence-aware sync
+	// (ApplyBlueprintKeyValueSpec) leaves an existing store's plan unchanged.
+	if k.Plan == "" {
+		k.Plan = blueprintKeyValueDefaultPlan
+	}
 	k.Plan = tiers.Valkey.CanonicalID(k.Plan)
-	if k.Plan != "" {
-		if _, ok := tiers.Valkey.ByID(k.Plan); !ok {
-			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q plan %q is not a bex Key Value plan (one of %s)", core.ErrBadRequest, k.Name, k.Plan, strings.Join(tiers.Valkey.SelectableIDs(), "|"))
-		}
+	if _, ok := tiers.Valkey.ByID(k.Plan); !ok {
+		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q plan %q is not a bex Key Value plan (one of %s)", core.ErrBadRequest, k.Name, k.Plan, strings.Join(tiers.Valkey.SelectableIDs(), "|"))
 	}
 	allow, err := parseBlueprintIPAllowList("key-value", k.Name, k.IPAllowList)
 	if err != nil {

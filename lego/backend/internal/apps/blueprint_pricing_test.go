@@ -260,7 +260,8 @@ func TestValidateBlueprintEstimatedPricingKeyValueTierLabels(t *testing.T) {
 // The estimate prices what the create would provision, so an omitted plan
 // takes the create path's default rather than a free tier: a plan-less web
 // service is starter ($4.90), a plan-less database is basic-256mb ($4.20 plus
-// its 1 GB floor at $0.21), and a plan-less Key Value store stays free.
+// its 1 GB floor at $0.21), and a plan-less Key Value store is Render's 256mb,
+// bex's starter ($7.00 plus its 1 GB at $0.21; w33/m436).
 func TestValidateBlueprintEstimatedPricingOmittedPlansTakeCreateDefaults(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	manifest := `services:
@@ -281,10 +282,10 @@ databases:
 	want := map[string]struct{ tier, monthly string }{
 		"web":   {tier: "starter", monthly: "4.90"},
 		"db":    {tier: "basic-256mb", monthly: "4.41"},
-		"cache": {tier: "free", monthly: "0.00"},
+		"cache": {tier: "starter", monthly: "7.21"},
 	}
-	if len(v.EstimatedPricing.Lines) != 2 {
-		t.Fatalf("lines = %+v, want the paid web and database lines only", v.EstimatedPricing.Lines)
+	if len(v.EstimatedPricing.Lines) != len(want) {
+		t.Fatalf("lines = %+v, want a paid line for each of %d resources", v.EstimatedPricing.Lines, len(want))
 	}
 	for _, l := range v.EstimatedPricing.Lines {
 		w, ok := want[l.Name]
@@ -292,8 +293,8 @@ databases:
 			t.Errorf("line %q = tier %q %s/mo, want tier %q %s/mo", l.Name, l.Tier, l.MonthlyUSD, w.tier, w.monthly)
 		}
 	}
-	if v.EstimatedPricing.TotalUSD != "9.31" {
-		t.Errorf("TotalUSD = %s, want 9.31", v.EstimatedPricing.TotalUSD)
+	if v.EstimatedPricing.TotalUSD != "16.52" {
+		t.Errorf("TotalUSD = %s, want 16.52", v.EstimatedPricing.TotalUSD)
 	}
 }
 
