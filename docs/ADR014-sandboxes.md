@@ -156,7 +156,7 @@ The orphan-cost risk w5/m99 guarded against (an orphan that ran 403 h and cost $
 | state | survives | mechanism | today |
 | --- | --- | --- | --- |
 | fs (inside sandbox, except `/tmp`) | **pause/resume** (idle suspension, D4) | opensandbox rootfs snapshot | rootfs only on the k8s/gVisor substrate (ADR042 D5): memory and processes do not survive |
-| sandbox rootfs | **not `kill`** | — | `kill` is destructive by design |
+| sandbox rootfs | **not `kill`** | — | `kill` is destructive by design; to keep it, capture a filesystem snapshot first and start new sandboxes from it ([ADR104 D4](ADR104-sandbox-render-parity.md#d4--snapshots), w32/m285) |
 | data meant to outlive a sandbox | across `kill` / new sandbox | persistent **volume** (opensandbox `[storage]`) | deferred (t004 "persistent sandbox volumes") |
 | owner → sandbox (reconnect) | across sessions | sandbox id + reserved owner/workspace metadata | implemented; owner or explicit workspace admin only |
 | the snapshot store itself | **host loss** | single-host sqlite + disk | no HA |

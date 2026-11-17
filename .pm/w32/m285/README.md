@@ -1,18 +1,18 @@
 # w32 · m285 — Sandbox filesystem snapshots, as on Render (the runtime kind follows w2/m322)
 
-**Worker:** worker32 **Goal:** users capture a filesystem snapshot of a running sandbox and start new sandboxes from it by id or name, with Render's lifecycle (status, 30-day expiry, delete), while `--kind runtime` answers a named 400 until w2/m322's memory checkpoint exists, recorded as a temporary difference (user decision D1=A, 2026-11-11) **Status:** todo — unblocked 2026-11-16 (w2/m278 closed, D1=A); t001 next
+**Worker:** worker32 **Goal:** users capture a filesystem snapshot of a running sandbox and start new sandboxes from it by id or name, with Render's lifecycle (status, 30-day expiry, delete), while `--kind runtime` answers a named 400 until w2/m322's memory checkpoint exists, recorded as a temporary difference (user decision D1=A, 2026-11-11) **Status:** in progress — t001–t007 done 2026-11-16 (the filesystem kind is served on REST, GraphQL and MCP); t008, the production walk, next
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design: filesystem snapshots on the rootfs commit; the runtime kind is refused by name until w2/m322 | 1h | w2/m278 |
-| t002 | Capture a filesystem snapshot from a running sandbox | 2.5h | t001 |
-| t003 | Create a sandbox from a snapshot by id or name | 2h | t002 |
-| t004 | List, get and delete snapshots; expire and purge them | 1.5h | t002 |
-| t005 | Render parity | 15m | t003, t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 30m | t005 |
+| t001 | Design: filesystem snapshots on the rootfs commit; the runtime kind is refused by name until w2/m322 — **DONE** | 1h | w2/m278 |
+| t002 | Capture a filesystem snapshot from a running sandbox — **DONE** | 2.5h | t001 |
+| t003 | Create a sandbox from a snapshot by id or name — **DONE** | 2h | t002 |
+| t004 | List, get and delete snapshots; expire and purge them — **DONE** | 1.5h | t002 |
+| t005 | Render parity — **DONE** | 15m | t003, t004 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 30m | t005 |
 | t008 | Closeout | 10m | t006, t007 |
 
 ## Definition of done

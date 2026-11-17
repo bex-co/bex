@@ -529,6 +529,9 @@ func main() {
 			go srv.Sandbox.RunImageSweeper(ctx)
 			// Group deletes a request could not finish (w2/m359).
 			go srv.Sandbox.RunGroupDeleteSweeper(ctx)
+			// Snapshot captures are settled, and deleted and expired
+			// snapshots' images reaped (w32/m285).
+			go srv.Sandbox.RunSnapshotSweeper(ctx)
 		}
 	}
 	// codex round-8 #9: the signed git webhook durably claims each processed
@@ -1597,6 +1600,18 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 					deps.SandboxImages = sandbox.NewImages(st, importer)
 					deps.SandboxImages.Reaper = &sandbox.RegistryReaper{RegistryConfig: reaper}
 					deps.SandboxImages.PlatformBudgetBytes = int64(cfg.SandboxImportPlatformBudgetGB) * store.BytesPerDecimalGB
+					// Sandbox snapshots (w32/m285) live in the same registry: the
+					// importer copies a capture's committed image into the
+					// snapshot's own repository, and the reaper deletes it.
+					deps.SandboxSnapshots = &sandbox.Snapshots{
+						Store:  st,
+						Reaper: &sandbox.RegistryReaper{RegistryConfig: reaper},
+						Limits: store.SandboxSnapshotLimits{
+							PerRequesterPerMinute: sandbox.DefaultSnapshotCapturesPerMinute,
+							InFlight:              cfg.SandboxSnapshotCapturesInFlight,
+							PerGroup:              cfg.SandboxMaxSnapshotsPerGroup,
+						},
+					}
 				}
 			}
 			go deps.SandboxMeter.Run(ctx)
@@ -1624,7 +1639,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// purge deletes the images of the workspace's suspended sandboxes with the
 			// meter's reaper (w22/017), listed from rows the cascade is about to drop.
 			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
-				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages, AgentBuilds: st, AgentRetained: st, Reaper: deps.SandboxMeter.Reaper, Storage: st})
+				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages, AgentBuilds: st, AgentRetained: st, Reaper: deps.SandboxMeter.Reaper, Storage: st, Snapshots: deps.SandboxSnapshots})
 		}
 	}
 }

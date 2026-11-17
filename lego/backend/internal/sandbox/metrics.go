@@ -105,7 +105,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		}, []string{"reason"}),
 		refusals: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "bex_sandbox_concurrency_refusals_total",
-			Help: "Sandbox creates, resumes and suspends refused with 429 because a group (limit=group) or a workspace (limit=workspace) was at its concurrency limit, or a workspace was at its storage cap (limit=storage), or every workspace's imported images together were at the platform budget (limit=platform), by bounded op (create, resume, suspend, import). A refusal is decided before any runtime call, so it is not a create failure.",
+			Help: "Sandbox creates, resumes and suspends refused with 429 because a group (limit=group) or a workspace (limit=workspace) was at its concurrency limit, or a workspace was at its storage cap (limit=storage), or every workspace's imported images together were at the platform budget (limit=platform), by bounded op (create, resume, suspend, import, snapshot). op=snapshot is a snapshot capture refused at the storage cap or by its own limits: a requester's captures per minute (limit=rate), a capture already in flight on the sandbox (limit=sandbox), the workspace's captures in flight (limit=workspace) or the group's snapshot count (limit=group). A refusal is decided before any runtime call, so it is not a create failure.",
 		}, []string{"limit", "op"}),
 	}
 	reg.MustRegister(m.creates, m.createTime, m.terminates, m.live, m.oldestAge, m.teardownFailures, m.refusals)

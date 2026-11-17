@@ -50,6 +50,7 @@ type fakeBox struct {
 	created     time.Time
 	expires     *time.Time // BatchSandbox spec.expireTime; nil = no timeout
 	image       string     // the create's image URI
+	env         map[string]string
 }
 
 // fakeOpenSandbox is a stateful OpenSandbox lifecycle server for the idle
@@ -78,6 +79,20 @@ type fakeOpenSandbox struct {
 	// terminateStatus, when set, is what a terminate answers instead of
 	// removing the box (an OpenSandbox outage, w2/m359).
 	terminateStatus int
+
+	// Snapshots (w32/m285): POST /sandboxes/{id}/snapshots records a capture
+	// in Creating, which a test settles (settleCapture); GET and DELETE
+	// /snapshots/{id} read and delete it, and a delete is refused while it is
+	// Creating, as the real server's are. captureStatus, when set, is what a
+	// capture answers instead of accepting it.
+	captures      map[string]*fakeCapture
+	nextCapture   int
+	captureStatus int
+}
+
+// fakeCapture is one OpenSandbox snapshot: a commit of a running sandbox.
+type fakeCapture struct {
+	sandbox, name, state string
 }
 
 func newFakeOpenSandbox(t *testing.T) (*fakeOpenSandbox, *Client) {
@@ -169,7 +184,7 @@ func (f *fakeOpenSandbox) create(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	f.nextID++
 	id := fmt.Sprintf("os-new-%d", f.nextID)
-	f.boxes[id] = &fakeBox{state: "Running", metadata: maps.Clone(body.Metadata), created: time.Now(), image: body.Image.URI}
+	f.boxes[id] = &fakeBox{state: "Running", metadata: maps.Clone(body.Metadata), created: time.Now(), image: body.Image.URI, env: maps.Clone(body.Env)}
 	f.calls = append(f.calls, "create "+id)
 	f.mu.Unlock()
 	w.WriteHeader(http.StatusCreated)
@@ -204,6 +219,10 @@ func (f *fakeOpenSandbox) idOf(public string) string {
 func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && r.URL.Path == "/sandboxes" {
 		f.create(w, r)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/snapshots/") {
+		f.serveCapture(w, r, strings.TrimPrefix(r.URL.Path, "/snapshots/"))
 		return
 	}
 	f.mu.Lock()
@@ -245,6 +264,28 @@ func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		b.state, b.next = "Pausing", "Paused"
 		w.WriteHeader(http.StatusAccepted)
+	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "snapshots":
+		f.calls = append(f.calls, "snapshot "+parts[0])
+		if f.captureStatus != 0 {
+			w.WriteHeader(f.captureStatus)
+			return
+		}
+		if b.state != "Running" {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		var body struct {
+			Name string `json:"name"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		f.nextCapture++
+		id := fmt.Sprintf("%08x-0000-4000-8000-%012x", f.nextCapture, f.nextCapture)
+		if f.captures == nil {
+			f.captures = map[string]*fakeCapture{}
+		}
+		f.captures[id] = &fakeCapture{sandbox: parts[0], name: body.Name, state: osSnapshotCreating}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = fmt.Fprintf(w, `{"id":%q,"sandboxId":%q,"name":%q,"status":{"state":"Creating"}}`, id, parts[0], body.Name)
 	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "resume":
 		f.calls = append(f.calls, "resume "+parts[0])
 		if f.resumeStatus != 0 {
@@ -302,6 +343,45 @@ func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// serveCapture serves GET and DELETE /snapshots/{id}.
+func (f *fakeOpenSandbox) serveCapture(w http.ResponseWriter, r *http.Request, id string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.captures[id]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		_, _ = fmt.Fprintf(w, `{"id":%q,"sandboxId":%q,"name":%q,"status":{"state":%q,"reason":"r","message":"m"}}`, id, c.sandbox, c.name, c.state)
+	case http.MethodDelete:
+		f.calls = append(f.calls, "delete snapshot "+id)
+		if c.state == osSnapshotCreating {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		delete(f.captures, id)
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// settleCapture moves a capture to state (osSnapshotReady or osSnapshotFailed).
+func (f *fakeOpenSandbox) settleCapture(id, state string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.captures[id].state = state
+}
+
+// captureIDs is the captures the server still holds.
+func (f *fakeOpenSandbox) captureIDs() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Sorted(maps.Keys(f.captures))
 }
 
 // fakeActivity mirrors store.PGStore's sandbox_activity semantics in memory.

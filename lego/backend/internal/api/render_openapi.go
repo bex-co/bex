@@ -148,6 +148,8 @@ var renderPathParameterPatternCompatibility = map[string]map[string]string{
 	"terminate-sandbox":     {"sandboxId": renderSandboxIDPattern},
 	"connect-sandbox-run":   {"sandboxId": renderSandboxIDPattern},
 	"connect-sandbox-files": {"sandboxId": renderSandboxIDPattern},
+	// Render's sandbox snapshots (w32/m285) are captured by sandbox id too.
+	"create-sandbox-snapshot": {"sandboxId": renderSandboxIDPattern},
 	// The members list answers each userId as Render's usr- (w5/m277); the
 	// own- ids it handed out before (w6/m7) must keep resolving.
 	"update-workspace-member": {"userId": renderUserIDPattern},
@@ -930,6 +932,9 @@ func unsupportedQueryMessage(unknown []string, operationID string) string {
 var renderValidationErrorCodes = map[string]string{
 	"sandboxGroupId":   sandbox.CodeInvalidSandboxGroupID,
 	"concurrencyLimit": sandbox.CodeSandboxGroupLimitInvalid,
+	// A snapshot id that is not a well-formed `snp-` id, in a snapshot route's
+	// path or a create's body, is Render's `invalid_snapshot_id` (w32/m285).
+	"snapshotId": sandbox.CodeInvalidSnapshotID,
 }
 
 // renderOperationRefusal overrides the gate's answer for one operation's field,
@@ -942,9 +947,13 @@ type renderOperationRefusal struct {
 // renderOperationRefusals are per-operation overrides for field names whose
 // meaning differs by operation: the Service's own refusal, so REST answers
 // what GraphQL and MCP do (w8/312). The gate refuses create-sandbox's
-// over-long name and list-sandbox-builds' unknown status before the Service.
+// over-long name, the list routes' unknown status and a snapshot capture's
+// malformed fields before the Service.
 var renderOperationRefusals = map[string]map[string]renderOperationRefusal{
-	"create-sandbox":      {"name": {constraint: "maxLength", refuse: func(string) error { return sandbox.InvalidSandboxNameError() }}},
+	"create-sandbox": {
+		"name":         {constraint: "maxLength", refuse: func(string) error { return sandbox.InvalidSandboxNameError() }},
+		"snapshotName": {refuse: func(string) error { return sandbox.InvalidSnapshotNameError("snapshotName") }},
+	},
 	"list-sandbox-groups": {"limit": {refuse: refuseInvalidLimit}},
 	"list-sandbox-builds": {
 		"limit": {refuse: refuseInvalidLimit},
@@ -952,6 +961,26 @@ var renderOperationRefusals = map[string]map[string]renderOperationRefusal{
 			return core.NewBadRequestError(sandbox.CodeInvalidBuildStatus, message, map[string]any{"field": "status", "supported": sandbox.BuildStatuses()})
 		}},
 	},
+	"list-sandbox-snapshots": {
+		"limit": {refuse: refuseInvalidLimit},
+		"status": {refuse: func(message string) error {
+			return core.NewBadRequestError(sandbox.CodeInvalidSnapshotStatus, message, map[string]any{"field": "status", "supported": sandbox.SnapshotStatuses()})
+		}},
+	},
+	"create-sandbox-snapshot": {
+		"name":       {refuse: func(string) error { return sandbox.InvalidSnapshotNameError("name") }},
+		"kind":       {refuse: refuseInvalidSnapshotField("kind")},
+		"ttlSeconds": {refuse: refuseInvalidSnapshotField("ttlSeconds")},
+		"expiresAt":  {refuse: refuseInvalidSnapshotField("expiresAt")},
+	},
+}
+
+// refuseInvalidSnapshotField is the Service's SANDBOX_SNAPSHOT_INVALID for a
+// capture field the schema gate refuses first (w32/m285).
+func refuseInvalidSnapshotField(field string) func(string) error {
+	return func(message string) error {
+		return core.NewBadRequestError(sandbox.CodeSandboxSnapshotInvalid, message, map[string]any{"field": field})
+	}
 }
 
 // refuseInvalidLimit is Render's `invalid_limit` for a page size outside the
@@ -963,8 +992,9 @@ func refuseInvalidLimit(message string) error {
 // sandboxListQueryChecks are the list requests' own checks the schema gate
 // cannot make (a repeated workspace, a malformed cursor), run before it.
 var sandboxListQueryChecks = map[string]func(url.Values) error{
-	"list-sandbox-groups": sandbox.ValidateGroupListQuery,
-	"list-sandbox-builds": sandbox.ValidateBuildListQuery,
+	"list-sandbox-groups":    sandbox.ValidateGroupListQuery,
+	"list-sandbox-builds":    sandbox.ValidateBuildListQuery,
+	"list-sandbox-snapshots": sandbox.ValidateSnapshotListQuery,
 }
 
 // renderValidationField is the parameter or top-level body field a request

@@ -310,6 +310,7 @@ var accountDeletionDispositions = map[string]string{
 	"registry_credentials.created_by":           "anonymize: CleanupAccountSubject replaces creator on surviving workspace resources",
 	"ssh_keys.subject":                          "delete: account credential cleanup removes SSH access before identity deletion",
 	"sandbox_executions.subject":                "anonymize: CleanupAccountSubject replaces the caller in sandbox execution history (w32/m298)",
+	"sandbox_snapshots.requested_by":            "anonymize: CleanupAccountSubject replaces who asked for a snapshot capture, which only its per-user rate limit reads (w32/m285)",
 	"ssh_sessions.subject":                      "anonymize: CleanupAccountSubject replaces subject in operational history",
 	"tenant_invites.email":                      "anonymize: cleanupAccountEmail deletes pending invitations and anonymizes accepted history",
 	"tenant_invites.invited_by":                 "anonymize: CleanupAccountSubject replaces inviter provenance",

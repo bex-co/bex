@@ -45,12 +45,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			NetworkPolicy  *NetworkPolicy `json:"networkPolicy"`
 			// Render's create-time env (`--env-var`/`--env-file`).
 			Env map[string]string `json:"env"`
-			// SnapshotID is DECLARED so it can be REFUSED BY NAME: the pinned
-			// client sends it for `--snapshot-id`, and strict decoding would
-			// otherwise answer `unknown field`, an internal wire key (w9/067).
-			SnapshotID string `json:"snapshotId"`
-			// Render CLI v2.29's `--from <name>` sends snapshotName (an ID
-			// still goes as snapshotId); refused the same way.
+			// `--snapshot-id`, and `--from` with an id, send snapshotId; `--from
+			// <name>` sends snapshotName: a snapshot of the sandbox's group to
+			// start from (w32/m285).
+			SnapshotID   string `json:"snapshotId"`
 			SnapshotName string `json:"snapshotName"`
 			// Render CLI v2.31+ `--idle-timeout`. A pointer so an omitted value
 			// (900 s) differs from an explicit 0 (disabled); see
@@ -72,10 +70,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if err := refuseSnapshotCreate(body.SnapshotID != "" || body.SnapshotName != ""); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
 		// The Render CLI sends ownerId in the BODY; the query param is the REST
 		// convention. Prefer the query, fall back to the body (empty ⇒ default ws).
 		owner := r.URL.Query().Get("ownerId")
@@ -95,6 +89,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			SandboxGroupID:     body.SandboxGroupID,
 			BuildID:            body.BuildID,
 			BuildName:          body.BuildName,
+			SnapshotID:         body.SnapshotID,
+			SnapshotName:       body.SnapshotName,
 		})
 		if err != nil {
 			core.WriteErr(w, err)
@@ -236,6 +232,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	s.registerGroupREST(mux)
 	s.registerImageREST(mux)
+	s.registerSnapshotREST(mux)
 }
 
 func (s *Service) lifecycleREST(w http.ResponseWriter, r *http.Request, op func(ctx context.Context, id string) error) {

@@ -230,8 +230,11 @@ func (s *OrphanSweeper) readCatalog(ctx context.Context) ([]string, error) {
 }
 
 // ownsOrphanTag is the tags the sweep deletes: the controller's snapshot tags
-// and the importer's image tag, the two things bex writes under a namespace.
-func ownsOrphanTag(tag string) bool { return snapshotTag.MatchString(tag) || tag == imageTag }
+// (a suspend's and a snapshot capture's), the importer's image tag and a
+// sandbox snapshot's, everything bex writes under a namespace.
+func ownsOrphanTag(tag string) bool {
+	return snapshotTag.MatchString(tag) || publicCommitTag.MatchString(tag) || tag == imageTag || tag == snapshotImageTag
+}
 
 // sandboxRepositories picks, in catalog order and without repeats, the
 // repositories of the form `<prefix>/<ws>-sandbox/<name>` whose `<ws>` is a

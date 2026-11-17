@@ -52,6 +52,10 @@ type spawnSandboxArgs struct {
 	// (import_sandbox_image, w2/m358).
 	BuildID   string `json:"buildId,omitempty"`
 	BuildName string `json:"buildName,omitempty"`
+	// SnapshotID or SnapshotName starts from a snapshot of that group
+	// (create_sandbox_snapshot, w32/m285).
+	SnapshotID   string `json:"snapshotId,omitempty"`
+	SnapshotName string `json:"snapshotName,omitempty"`
 }
 
 // listSandboxesArgs is the MCP input for list_sandboxes: Render's list
@@ -105,7 +109,7 @@ type execSandboxArgs struct {
 // Render `ea sandbox create` intent; sandbox_exec runs a command via the same
 // authorized gateway path the CLI uses, returning buffered output (no SSE dance).
 func (s *Service) RegisterMCP(server *mcp.Server) {
-	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: fmt.Sprintf("Create a hosted agent sandbox from a registered template and return its id and status. networkPolicy is Render's: omitted means allow-all (any public destination); {type:\"deny-all\"} blocks all outbound traffic; {type:\"allow-list\", rules:[{domain}]} allows only HTTPS to the listed hostnames (a leading *. covers one subdomain level). env sets environment variables inside the sandbox (at most %d, %d KB across names and values); values are never returned. sandboxGroupId puts it in one of the workspace's sandbox groups (list_sandbox_groups); omitted, it goes in the default group, which a workspace gets when it first needs one. A group at its concurrencyLimit refuses the create with SANDBOX_GROUP_CONCURRENCY_LIMIT. buildId (an sbb- id) or buildName starts it from an image imported into its group (import_sandbox_image); a name uses that group's newest succeeded import of it.", maxSandboxEnvVars, maxSandboxEnvBytes/1024)},
+	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: fmt.Sprintf("Create a hosted agent sandbox from a registered template and return its id and status. networkPolicy is Render's: omitted means allow-all (any public destination); {type:\"deny-all\"} blocks all outbound traffic; {type:\"allow-list\", rules:[{domain}]} allows only HTTPS to the listed hostnames (a leading *. covers one subdomain level). env sets environment variables inside the sandbox (at most %d, %d KB across names and values); values are never returned. sandboxGroupId puts it in one of the workspace's sandbox groups (list_sandbox_groups); omitted, it goes in the default group, which a workspace gets when it first needs one. A group at its concurrencyLimit refuses the create with SANDBOX_GROUP_CONCURRENCY_LIMIT. buildId (an sbb- id) or buildName starts it from an image imported into its group (import_sandbox_image); a name uses that group's newest succeeded import of it. snapshotId (an snp- id) or snapshotName starts it from a snapshot of its group (create_sandbox_snapshot) instead: it has the snapshot's files, and its plan, networkPolicy, timeoutSeconds and idleTimeoutSeconds default to the snapshot's source sandbox's; a name uses the group's newest available snapshot of it.", maxSandboxEnvVars, maxSandboxEnvBytes/1024)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in spawnSandboxArgs) (*mcp.CallToolResult, Sandbox, error) {
 			sb, err := s.Create(ctx, CreateRequest{
 				OwnerID:            in.OwnerID,
@@ -120,6 +124,8 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 				SandboxGroupID:     in.SandboxGroupID,
 				BuildID:            in.BuildID,
 				BuildName:          in.BuildName,
+				SnapshotID:         in.SnapshotID,
+				SnapshotName:       in.SnapshotName,
 			})
 			return nil, sb, err
 		})
@@ -140,6 +146,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 		})
 	s.registerGroupMCP(server)
 	s.registerImageMCP(server)
+	s.registerSnapshotMCP(server)
 	mcputil.AddTool(server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in execSandboxArgs) (*mcp.CallToolResult, ExecResult, error) {
 			res, err := s.ExecBuffered(ctx, ExecRequest{OwnerID: in.OwnerID, SandboxID: in.ID, Command: in.Command})

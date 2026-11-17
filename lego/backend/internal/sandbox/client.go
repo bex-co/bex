@@ -524,6 +524,90 @@ func (c *Client) Terminate(ctx context.Context, tenantKey, id string) error {
 	return nil
 }
 
+// The states of an OpenSandbox snapshot (status.state).
+const (
+	osSnapshotCreating = "Creating"
+	osSnapshotReady    = "Ready"
+	osSnapshotFailed   = "Failed"
+)
+
+// osSnapshot is the OpenSandbox server's snapshot (a subset): a standalone
+// commit of a running sandbox's root filesystem, which leaves the sandbox
+// running (the server's `POST /sandboxes/{id}/snapshots`, w32/m285). Its id is
+// a UUID, and the image the commit pushes is tagged from it (commitTag).
+type osSnapshot struct {
+	ID     string `json:"id"`
+	Status struct {
+		State   string `json:"state"`
+		Reason  string `json:"reason"`
+		Message string `json:"message"`
+	} `json:"status"`
+}
+
+// CreateSnapshot asks the server to commit a running sandbox's root
+// filesystem. It answers 202 with the snapshot in Creating; a sandbox that is
+// not Running is a 409 (errOpenSandboxConflict). name only labels the
+// server's own record.
+func (c *Client) CreateSnapshot(ctx context.Context, tenantKey, sandboxID, name string) (osSnapshot, error) {
+	data, code, err := c.do(ctx, http.MethodPost, "/sandboxes/"+url.PathEscape(sandboxID)+"/snapshots", tenantKey,
+		map[string]string{"name": name})
+	if err != nil {
+		return osSnapshot{}, err
+	}
+	switch code {
+	case http.StatusAccepted, http.StatusOK, http.StatusCreated:
+	case http.StatusConflict:
+		return osSnapshot{}, errOpenSandboxConflict
+	case http.StatusNotFound:
+		return osSnapshot{}, errOpenSandboxNotFound
+	default:
+		return osSnapshot{}, fmt.Errorf("opensandbox create snapshot: status %d: %s", code, truncate(data))
+	}
+	return decodeSnapshot(data, "create snapshot")
+}
+
+// Snapshot reads one snapshot's state; a snapshot the server no longer has is
+// errOpenSandboxNotFound.
+func (c *Client) Snapshot(ctx context.Context, tenantKey, id string) (osSnapshot, error) {
+	data, code, err := c.do(ctx, http.MethodGet, "/snapshots/"+url.PathEscape(id), tenantKey, nil)
+	if err != nil {
+		return osSnapshot{}, err
+	}
+	if code == http.StatusNotFound {
+		return osSnapshot{}, errOpenSandboxNotFound
+	}
+	if code != http.StatusOK {
+		return osSnapshot{}, fmt.Errorf("opensandbox get snapshot: status %d", code)
+	}
+	return decodeSnapshot(data, "get snapshot")
+}
+
+func decodeSnapshot(data []byte, op string) (osSnapshot, error) {
+	var snap osSnapshot
+	if err := json.Unmarshal(data, &snap); err != nil || snap.ID == "" {
+		return osSnapshot{}, fmt.Errorf("opensandbox %s: bad response", op)
+	}
+	return snap, nil
+}
+
+// DeleteSnapshot deletes the server's record of a settled snapshot and its
+// SandboxSnapshot object, with the commit Jobs that object owns. The pushed
+// image stays in the registry. A snapshot already gone is deleted; one still
+// Creating is refused with a 409 (errOpenSandboxConflict).
+func (c *Client) DeleteSnapshot(ctx context.Context, tenantKey, id string) error {
+	_, code, err := c.do(ctx, http.MethodDelete, "/snapshots/"+url.PathEscape(id), tenantKey, nil)
+	if err != nil {
+		return err
+	}
+	switch code {
+	case http.StatusOK, http.StatusNoContent, http.StatusNotFound:
+		return nil
+	case http.StatusConflict:
+		return errOpenSandboxConflict
+	}
+	return fmt.Errorf("opensandbox delete snapshot: status %d", code)
+}
+
 func (c *Client) expectOK(_ []byte, code int, err error) error {
 	if err != nil {
 		return err

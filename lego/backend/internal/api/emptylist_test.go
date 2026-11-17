@@ -123,8 +123,6 @@ var emptyListCases = []emptyListCase{
 // neverEmptyArrayRoutes are array routes whose contents are a build-time
 // constant, so there is no empty case to assert — they cannot regress to null.
 var neverEmptyArrayRoutes = map[string]string{
-	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots":                           "answers 404 SANDBOX_SNAPSHOTS_UNSUPPORTED, never a list (ADR018, w2/m263)",
-	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}":              "answers 404 SANDBOX_SNAPSHOTS_UNSUPPORTED (ADR018, w2/m263)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials":                         "answers 404 SANDBOX_GROUPS_UNSUPPORTED, never a list (CLI v2.36, w3/m303)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":          "answers 404 SANDBOX_GROUPS_UNSUPPORTED (CLI v2.36, w3/m303)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/versions": "answers 404 SANDBOX_GROUPS_UNSUPPORTED, never a list (CLI v2.36, w3/m303)",

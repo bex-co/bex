@@ -65,6 +65,7 @@ var unpagedListPages = map[string]string{
 	"list-webhook-events":                "webhooks RegisterREST, core.PageParams",
 	"list-sandbox-executions":            "sandbox RegisterREST, core.PageParams",
 	"list-sandbox-builds":                "sandbox images REST, core.PageParams",
+	"list-sandbox-snapshots":             "sandbox snapshots REST, core.PageParams",
 	"list-sandbox-groups":                "sandbox groups REST, core.PageParams",
 }
 

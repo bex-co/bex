@@ -135,6 +135,10 @@ var (
 	// OCI image into a sandbox group, which a sandbox create names as buildId.
 	// Render's pattern is ^sbb-[0-9a-v]{20}$, xid's shape.
 	SandboxBuild = Kind{prefix: "sbb", desc: "sandbox build (imported sandbox image)"}
+	// SandboxSnapshot is Render's `snp-` sandbox snapshot (w32/m285): a running
+	// sandbox's filesystem saved in its group, which a sandbox create names as
+	// snapshotId. Render's pattern is ^snp-[0-9a-v]{20}$, xid's shape.
+	SandboxSnapshot = Kind{prefix: "snp", desc: "sandbox snapshot"}
 	// StaticRoute / StaticHeader are static-site rules stored as plain lists on
 	// the App spec, so their ids are derived (Derive, never New) — w8/062.
 	StaticRoute  = Kind{prefix: "rte", desc: "static site redirect/rewrite rule (derived)"}
@@ -175,7 +179,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, ObjectBucket, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, ObjectBucket, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, SandboxSnapshot, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

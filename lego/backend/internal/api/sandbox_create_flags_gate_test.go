@@ -102,7 +102,25 @@ func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing
 		{"sandbox-groups images import", http.MethodPost, "/v1/sandbox-groups/" + group + "/builds", `{"name":"python","sourceImage":"python:3.13"}`, 503, "SANDBOX_IMAGES_UNAVAILABLE"},
 		{"sandbox-groups images get", http.MethodGet, "/v1/sandbox-groups/" + group + "/builds/sbb-" + strings.Repeat("c", 20), "", 503, "SANDBOX_IMAGES_UNAVAILABLE"},
 		{"sandbox-groups images list", http.MethodGet, "/v1/sandbox-groups/" + group + "/builds", "", 503, "SANDBOX_IMAGES_UNAVAILABLE"},
-		{"sandboxes snapshots create", http.MethodPost, "/v1/sandboxes/" + sbx + "/snapshots?ownerId=tea-a", `{"name":"gold"}`, 404, "SANDBOX_SNAPSHOTS_UNSUPPORTED"},
+		// Snapshots are served since w32/m285; this server has no store or
+		// sandbox registry to keep them in, so each verb is a named 503, and
+		// the gate refuses a malformed field first with the Service's code.
+		{"sandboxes snapshots create", http.MethodPost, "/v1/sandboxes/" + sbx + "/snapshots?ownerId=tea-a", `{"kind":"filesystem","name":"gold"}`, 503, "SANDBOX_SNAPSHOTS_UNAVAILABLE"},
+		{"sandboxes snapshots list", http.MethodGet, "/v1/sandbox-groups/" + group + "/snapshots?ownerId=tea-a", "", 503, "SANDBOX_SNAPSHOTS_UNAVAILABLE"},
+		{"sandboxes snapshots list without ownerId", http.MethodGet, "/v1/sandbox-groups/" + group + "/snapshots", "", 400, "invalid_owner_id"},
+		{"sandboxes snapshots get", http.MethodGet, "/v1/sandbox-groups/" + group + "/snapshots/snp-" + strings.Repeat("d", 20), "", 503, "SANDBOX_SNAPSHOTS_UNAVAILABLE"},
+		{"sandboxes snapshots delete", http.MethodDelete, "/v1/sandbox-groups/" + group + "/snapshots/snp-" + strings.Repeat("d", 20), "", 503, "SANDBOX_SNAPSHOTS_UNAVAILABLE"},
+		{"--snapshot-id", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","snapshotId":"snp-` + strings.Repeat("d", 20) + `"}`, 503, "SANDBOX_SNAPSHOTS_UNAVAILABLE"},
+		{"--from", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","snapshotName":"gold"}`, 503, "SANDBOX_SNAPSHOTS_UNAVAILABLE"},
+		{"snapshots create name over 64", http.MethodPost, "/v1/sandboxes/" + sbx + "/snapshots", `{"kind":"filesystem","name":"` + strings.Repeat("q", 65) + `"}`, 400, "invalid_snapshot_name"},
+		{"snapshots create unknown kind", http.MethodPost, "/v1/sandboxes/" + sbx + "/snapshots", `{"kind":"memory"}`, 400, "SANDBOX_SNAPSHOT_INVALID"},
+		{"snapshots create negative ttl", http.MethodPost, "/v1/sandboxes/" + sbx + "/snapshots", `{"kind":"filesystem","ttlSeconds":-1}`, 400, "SANDBOX_SNAPSHOT_INVALID"},
+		{"snapshots list bad status", http.MethodGet, "/v1/sandbox-groups/" + group + "/snapshots?ownerId=tea-a&status=ready", "", 400, "invalid_status"},
+		{"snapshots list limit 0", http.MethodGet, "/v1/sandbox-groups/" + group + "/snapshots?ownerId=tea-a&limit=0", "", 400, "invalid_limit"},
+		{"snapshots list bad cursor", http.MethodGet, "/v1/sandbox-groups/" + group + "/snapshots?ownerId=tea-a&cursor=nope", "", 400, "invalid_cursor"},
+		{"snapshots get malformed id", http.MethodGet, "/v1/sandbox-groups/" + group + "/snapshots/snp-1", "", 400, "invalid_snapshot_id"},
+		{"--snapshot-id malformed", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","snapshotId":"snp-1"}`, 400, "invalid_snapshot_id"},
+		{"--from over 64", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","snapshotName":"` + strings.Repeat("q", 65) + `"}`, 400, "invalid_snapshot_name"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
@@ -121,7 +139,11 @@ func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing
 			if rec.Code != tc.status || got.Code != tc.code {
 				t.Fatalf("= %d %s, want %d %s", rec.Code, rec.Body.String(), tc.status, tc.code)
 			}
-			if supported, _ := got.Params["supported"].([]any); tc.code == sandbox.CodeInvalidBuildStatus && len(supported) != len(sandbox.BuildStatuses()) {
+			statuses := sandbox.BuildStatuses()
+			if strings.Contains(tc.path, "/snapshots") {
+				statuses = sandbox.SnapshotStatuses()
+			}
+			if supported, _ := got.Params["supported"].([]any); tc.code == sandbox.CodeInvalidBuildStatus && len(supported) != len(statuses) {
 				t.Fatalf("params = %v, want the supported statuses the Service names", got.Params)
 			}
 			if strings.Contains(got.Message, "unknown field") {

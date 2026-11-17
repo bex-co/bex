@@ -306,6 +306,11 @@ type Config struct {
 	// below the shared Zot volume (deploy/gitops/base/zot.yaml, 100Gi), which
 	// suspended sandboxes' snapshots share, uncounted here (w5/m383).
 	SandboxImportPlatformBudgetGB int
+	// SandboxMaxSnapshotsPerGroup caps the snapshots one sandbox group holds,
+	// and SandboxSnapshotCapturesInFlight the captures one workspace may have
+	// creating at once (bex's own bounds, ADR104 D4 and D11; 0 disables each).
+	SandboxMaxSnapshotsPerGroup     int
+	SandboxSnapshotCapturesInFlight int
 	// SandboxSnapshotRegistrySecret ("<namespace>/<name>") names the Secret the
 	// operator mints with the meter's two Zot users; bex-api reads it instead of
 	// the user and password variables, which stay as an override for a registry
@@ -678,6 +683,8 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	}
 	cfg.SandboxMaxStorageGBPerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE", 500)
 	cfg.SandboxImportPlatformBudgetGB = p.zeroableInt("BEX_SANDBOX_IMPORT_PLATFORM_BUDGET_GB", 80)
+	cfg.SandboxMaxSnapshotsPerGroup = p.zeroableInt("BEX_SANDBOX_MAX_SNAPSHOTS_PER_GROUP", sandbox.DefaultSnapshotsPerGroup)
+	cfg.SandboxSnapshotCapturesInFlight = p.zeroableInt("BEX_SANDBOX_SNAPSHOT_CAPTURES_IN_FLIGHT", sandbox.DefaultSnapshotCapturesInFlight)
 	cfg.SandboxSnapshotRegistrySecret = strings.TrimSpace(getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET"))
 	if ref := cfg.SandboxSnapshotRegistrySecret; ref != "" {
 		if _, err := parseSecretRef(ref); err != nil {

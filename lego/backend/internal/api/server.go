@@ -414,6 +414,9 @@ type Deps struct {
 	// SandboxImages imports Render's sandbox images into the sandbox registry
 	// (w2/m358); nil answers the image routes 503.
 	SandboxImages *sandbox.Images
+	// SandboxSnapshots keeps Render's sandbox snapshots (w32/m285); nil answers
+	// the snapshot routes 503. It needs SandboxImages.
+	SandboxSnapshots *sandbox.Snapshots
 	// SandboxMaxGroups caps a workspace's groups (BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE,
 	// Render's 10; 0 = uncapped), SandboxMaxGroupConcurrency is the ceiling and
 	// default of a group's concurrencyLimit (BEX_SANDBOX_MAX_GROUP_CONCURRENCY,
@@ -1396,6 +1399,7 @@ func sandboxService(base *core.Base, d Deps, resolver core.EnvironmentResolver) 
 		Groups:              d.SandboxGroups,
 		Environments:        resolver,
 		Images:              d.SandboxImages,
+		Snapshots:           d.SandboxSnapshots,
 		MaxGroups:           d.SandboxMaxGroups,
 		MaxGroupConcurrency: d.SandboxMaxGroupConcurrency,
 		MaxActive:           d.SandboxMaxActive,

@@ -333,20 +333,16 @@ func firstSandboxID(t *testing.T, raw []byte) string {
 	return ""
 }
 
-// w9/067: `--snapshot-id`/`--from` are documented flags on `ea sandboxes
-// create` that bex does not serve. Strict decoding used to refuse them with
-// `unknown field` — an internal wire key, not the flag the user typed. They
-// refuse by name, as do the invalid inputs of options bex does serve (the
-// "flag" column is then the part of the input the message must name).
+// w9/067: strict decoding used to refuse create options with `unknown field`,
+// an internal wire key, not the flag the user typed. Invalid inputs refuse by
+// name (the "flag" column is the part of the input the message must name).
+// `--snapshot-id`/`--from` are served since w32/m285 (snapshots_test.go).
 func TestCreateRefusesUnsupportedOptionsByName(t *testing.T) {
 	for _, tc := range []struct {
 		name, body, wantCode, wantFlag string
 	}{
 		{"reserved env name", `{"plan":"starter","template":"node","env":{"BEX_TOKEN":"1"}}`, "SANDBOX_ENV_INVALID", "BEX_TOKEN"},
 		{"invalid env name", `{"plan":"starter","template":"node","env":{"A=B":"1"}}`, "ENVIRONMENT_VARIABLE_INVALID", "A=B"},
-		{"snapshot", `{"plan":"starter","snapshotId":"snp-1"}`, "SANDBOX_SNAPSHOTS_UNSUPPORTED", "--snapshot-id"},
-		// Render CLI v2.29 `--from gold` sends a snapshot name (w8/m67).
-		{"snapshot name", `{"plan":"starter","snapshotName":"gold"}`, "SANDBOX_SNAPSHOTS_UNSUPPORTED", "--from"},
 		{"rules without allow-list", `{"plan":"starter","networkPolicy":{"type":"deny-all","rules":[{"domain":"example.com"}]}}`, "SANDBOX_NETWORK_POLICY_INVALID", "allow-list"},
 		{"type disagrees with its alias", `{"plan":"starter","networkPolicy":{"type":"deny-all","default":"allow-all"}}`, "SANDBOX_NETWORK_POLICY_INVALID", "networkPolicy.default"},
 	} {

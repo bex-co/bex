@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // PurgeKeyLookup resolves a workspace's existing OpenSandbox tenant key WITHOUT
@@ -63,6 +64,11 @@ type WorkspacePurger struct {
 	// once the workspace is gone. *store.PGStore is the Storage.
 	Reaper  ImageReaper
 	Storage RetainedSandboxImages
+	// Snapshots, when it has a reaper, deletes the images of the workspace's
+	// sandbox snapshots (w32/m285) while their rows still name them.
+	Snapshots *Snapshots
+	// Now is the clock; nil is time.Now.
+	Now func() time.Time
 }
 
 // RetainedSandboxImages lists the registry refs of the rootfs images a
@@ -103,7 +109,24 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 	if err := p.terminateSandboxes(ctx, tenantID); err != nil {
 		return err
 	}
-	return p.purgeSandboxImages(ctx, tenantID)
+	if err := p.purgeSandboxImages(ctx, tenantID); err != nil {
+		return err
+	}
+	return p.purgeSnapshots(ctx, tenantID)
+}
+
+// purgeSnapshots deletes the images of the workspace's sandbox snapshots.
+// Like the suspended sandboxes' images it runs after the sandboxes are ended,
+// so no capture can settle a new image behind the delete.
+func (p *WorkspacePurger) purgeSnapshots(ctx context.Context, tenantID string) error {
+	if p.Snapshots == nil || p.Snapshots.Reaper == nil {
+		return nil
+	}
+	now := time.Now
+	if p.Now != nil {
+		now = p.Now
+	}
+	return p.Snapshots.purgeWorkspace(ctx, tenantID, now())
 }
 
 func (p *WorkspacePurger) terminateSandboxes(ctx context.Context, tenantID string) error {

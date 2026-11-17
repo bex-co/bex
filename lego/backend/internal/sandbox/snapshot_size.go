@@ -359,6 +359,29 @@ func (r *RegistryReaper) DeleteImportedImage(ctx context.Context, workspaceID, b
 	return r.deleteTag(ctx, escapeRepository(r.importedRepository(workspaceID, buildID)), imageTag)
 }
 
+// DeleteSnapshotImage deletes a sandbox snapshot's image (w32/m285): the one
+// tag its repository holds. An image already gone is not an error.
+func (r *RegistryReaper) DeleteSnapshotImage(ctx context.Context, workspaceID, snapshotID string) error {
+	if err := validateSnapshotID(snapshotID); err != nil {
+		return err
+	}
+	return r.deleteTag(ctx, escapeRepository(r.snapshotRepository(workspaceID, snapshotID)), snapshotImageTag)
+}
+
+// DeleteCommitTag deletes the tag a snapshot capture's commit pushed into its
+// source sandbox's repository, once the snapshot's own copy exists or the
+// capture failed. It deletes nothing but a capture's tag.
+func (r *RegistryReaper) DeleteCommitTag(ctx context.Context, workspaceID, ref, tag string) error {
+	if !publicCommitTag.MatchString(tag) {
+		return fmt.Errorf("sandbox storage: %q is not a snapshot capture's tag", tag)
+	}
+	repo, err := r.repository(workspaceID, ref)
+	if err != nil {
+		return err
+	}
+	return r.deleteTag(ctx, escapeRepository(repo), tag)
+}
+
 // importedRepository is an imported image's repository path in the registry.
 func (r *RegistryConfig) importedRepository(workspaceID, buildID string) string {
 	return r.namespacePath(workspaceID) + imagesSegment + buildID

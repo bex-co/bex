@@ -230,6 +230,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	}
 	maps.Copy(fields, s.groupQueryFields())
 	maps.Copy(fields, s.imageQueryFields())
+	maps.Copy(fields, s.snapshotQueryFields())
 	return fields
 }
 
@@ -254,6 +255,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// imported into the sandbox's group.
 				"buildId":   gqlutil.Arg(graphql.String),
 				"buildName": gqlutil.Arg(graphql.String),
+				// Render's snapshotId / snapshotName (w32/m285): start from a
+				// snapshot of the sandbox's group.
+				"snapshotId":   gqlutil.Arg(graphql.String),
+				"snapshotName": gqlutil.Arg(graphql.String),
 				// Render's create-time env; write-only, so no read field.
 				"env": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.EnvVarInputType))),
 			},
@@ -279,6 +284,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					SandboxGroupID:     gqlutil.Str(p.Args, "sandboxGroupId"),
 					BuildID:            gqlutil.Str(p.Args, "buildId"),
 					BuildName:          gqlutil.Str(p.Args, "buildName"),
+					SnapshotID:         gqlutil.Str(p.Args, "snapshotId"),
+					SnapshotName:       gqlutil.Str(p.Args, "snapshotName"),
 				})
 			},
 		},
@@ -298,5 +305,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	}
 	maps.Copy(fields, s.groupMutationFields())
 	maps.Copy(fields, s.imageMutationFields())
+	maps.Copy(fields, s.snapshotMutationFields())
 	return fields
 }

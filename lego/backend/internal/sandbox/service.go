@@ -187,6 +187,10 @@ type Service struct {
 	// Images imports Render's sandbox images and resolves a create's buildId or
 	// buildName (w2/m358); nil answers the image routes 503.
 	Images *Images
+	// Snapshots keeps Render's sandbox snapshots and resolves a create's
+	// snapshotId or snapshotName (w32/m285); nil answers the snapshot routes
+	// 503. It needs Images, whose registry holds the snapshots too.
+	Snapshots *Snapshots
 	// MaxGroupConcurrency is the ceiling and default of a group's concurrencyLimit
 	// (Render: 1,000; 0 = no ceiling). A higher requested value is capped to it.
 	MaxGroupConcurrency int
@@ -237,6 +241,12 @@ type CreateRequest struct {
 	// group (Render's `--image`, w2/m358); both empty means the template image.
 	BuildID   string
 	BuildName string
+	// SnapshotID or SnapshotName starts the sandbox from a snapshot of its
+	// group (Render's `--snapshot-id` and `--from`, w32/m285). The sandbox
+	// then inherits the snapshot's source's plan, network policy and timeouts
+	// wherever the request leaves them out.
+	SnapshotID   string
+	SnapshotName string
 }
 
 func (s *Service) enabled() bool { return s.Client != nil }
@@ -337,22 +347,6 @@ func ruleDomains(rules []NetworkPolicyRule) []string {
 	return domains
 }
 
-// refuseSnapshotCreate names Render's snapshot create options, which bex does
-// not serve yet, by the feature and the CLI flag rather than the wire key:
-// `--snapshot-id` sends `snapshotId` and `--from` sends `snapshotName`
-// (w9/067 found strict decoding answering `unknown field`, which tells a user
-// nothing).
-func refuseSnapshotCreate(hasSnapshot bool) error {
-	if !hasSnapshot {
-		return nil
-	}
-	return core.NewBadRequestError(
-		codeSandboxSnapshotsUnsupported,
-		"sandbox snapshots are not supported (--from/--snapshot-id); create a sandbox from a template instead",
-		map[string]any{"field": "snapshotId", "flags": []string{"--from", "--snapshot-id"}},
-	)
-}
-
 // CodeSandboxEnvInvalid refuses a create-time `env` bex cannot inject.
 const CodeSandboxEnvInvalid = "SANDBOX_ENV_INVALID"
 
@@ -412,10 +406,6 @@ func validateSandboxEnv(env map[string]string) error {
 	}
 	return nil
 }
-
-// codeSandboxSnapshotsUnsupported names Render's sandbox snapshots: the
-// `snapshotId`/`snapshotName` create fields and every snapshot route.
-const codeSandboxSnapshotsUnsupported = "SANDBOX_SNAPSHOTS_UNSUPPORTED"
 
 // Render's create-sandbox refusal codes (its pinned errorCode vocabulary).
 const (
@@ -805,6 +795,18 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if !s.enabled() {
 		return Sandbox{}, core.ErrSandboxesUnavailable
 	}
+	ws := s.WorkspaceOrDefault(ctx)
+	// A snapshot's source sets what the request leaves out, so it is resolved
+	// before anything is defaulted.
+	restored, restoredImage, err := s.restoreSource(ctx, ws, req)
+	if err != nil {
+		return Sandbox{}, err
+	}
+	if restored != nil {
+		if req, err = inheritFromSnapshot(req, *restored); err != nil {
+			return Sandbox{}, err
+		}
+	}
 	plan := req.Plan
 	if plan == "" {
 		plan = s.DefaultPlan
@@ -815,7 +817,6 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if err := validateRegion(req.Region); err != nil {
 		return Sandbox{}, err
 	}
-	ws := s.WorkspaceOrDefault(ctx)
 	timeout, err := resolveTimeout(req.TimeoutSeconds)
 	if err != nil {
 		return Sandbox{}, err
@@ -859,6 +860,11 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if image != "" {
 		tmpl.Image = image
 	}
+	// A snapshot's image replaces it the same way: the snapshot holds the
+	// source's whole root filesystem.
+	if restoredImage != "" {
+		tmpl.Image = restoredImage
+	}
 	// Mint the tenant-facing id here: OpenSandbox accepts no client-supplied id,
 	// so bex stamps its own and carries it as durable metadata (metadataPublicID).
 	publicID := ids.New(ids.Sandbox)
@@ -877,6 +883,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	s.settleSlot(ctx, ws, publicID)
 	box.SandboxGroupID = group.ID
 	s.recordLive(ctx, ws, box)
+	s.snapshotUsed(ctx, restored)
 	return box, nil
 }
 

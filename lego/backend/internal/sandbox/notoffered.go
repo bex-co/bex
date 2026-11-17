@@ -18,19 +18,15 @@ package sandbox
 
 import "github.com/bex-co/bex/lego/backend/internal/core"
 
-const (
-	snapshotsNotOffered   = "bex does not support Render's sandbox snapshots (sandboxes snapshots create|list|get|delete, sandboxes create --from)"
-	credentialsNotOffered = "bex does not support Render's brokered sandbox credentials (sandbox-groups credentials), an early-access feature"
-)
+const credentialsNotOffered = "bex does not support Render's brokered sandbox credentials (sandbox-groups credentials), an early-access feature"
 
 // CodeSandboxCredentialsUnsupported names Render's early-access brokered
 // sandbox credentials (CLI v2.36 `sandbox-groups credentials`, w3/m303).
 const CodeSandboxCredentialsUnsupported = "SANDBOX_CREDENTIALS_UNSUPPORTED"
 
-// NotOfferedRoutes are the Render sandbox snapshot and credential operations
-// the pinned Render CLI calls (`sandboxes snapshots …`; v2.36's
-// `sandbox-groups credentials`)
-// and bex does not serve. Each answers a 404 naming the
+// NotOfferedRoutes are the Render sandbox credential operations the pinned
+// Render CLI calls (v2.36's `sandbox-groups credentials`) and bex does not
+// serve. Each answers a 404 naming the
 // unsupported feature instead of the router's bare one, which the CLI prints
 // verbatim (ADR018 § Render operation omissions, w2/m263). The group routes
 // themselves (`sandbox-groups create|list`, retrieve, update) are served by the
@@ -48,10 +44,4 @@ var NotOfferedRoutes = map[string]core.NotOffered{
 	"DELETE /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":       {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/versions": {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
 	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/restore": {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
-	"POST /v1/sandboxes/{id}/snapshots":                                           {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots":                           {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}":              {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
-	"DELETE /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}": {
-		Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered,
-	},
 }

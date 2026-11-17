@@ -1795,8 +1795,9 @@ type Mutation {
   createRegistryCredential(authToken: String!, expiresAt: String, host: String!, name: String, ownerId: String, username: String!): RegistryCredential
   createRouterKey(name: String!, ownerId: String!): Boolean
   createSSHKey(name: String!, publicKey: String!): SSHKey
-  createSandbox(buildId: String, buildName: String, env: [EnvVarInput!], idleTimeoutSeconds: Int, name: String, networkPolicy: SandboxNetworkPolicyInput, ownerId: String, plan: String, region: String, sandboxGroupId: String, template: String, timeoutSeconds: Int): Sandbox
+  createSandbox(buildId: String, buildName: String, env: [EnvVarInput!], idleTimeoutSeconds: Int, name: String, networkPolicy: SandboxNetworkPolicyInput, ownerId: String, plan: String, region: String, sandboxGroupId: String, snapshotId: String, snapshotName: String, template: String, timeoutSeconds: Int): Sandbox
   createSandboxGroup(environmentId: String, name: String!, ownerId: String, region: String): SandboxGroup
+  createSandboxSnapshot(expiresAt: String, kind: String, name: String, ownerId: String, sandboxId: String!, ttlSeconds: Int): SandboxSnapshot
   createService(autoDeploy: Boolean, autoDeployTrigger: String, branch: String, buildCommand: String, buildFilter: BuildFilterInput, builder: String, command: String, dockerContext: String, dockerfilePath: String, dryRun: Boolean, envVars: [EnvVarInput], environmentId: String, headers: [StaticHeaderInput], healthCheckPath: String, image: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maintenanceMode: MaintenanceModeInput, maxShutdownDelaySeconds: Int, name: String!, notifyOnFail: String, ownerId: String, plan: String, port: Int, preDeployCommand: String, publishPath: String, region: String, registryCredentialId: String, replicas: Int, repo: String, rootDir: String, routes: [StaticRouteInput], runtime: String, schedule: String, secretFiles: [SecretFileInput], startCommand: String, type: String): Service
   createShellSession(id: String!, instanceId: String): ShellSession
   createWebhookEndpoint(enabled: Boolean, eventTypes: [String]!, name: String, ownerId: String, url: String!): WebhookEndpoint
@@ -1827,6 +1828,7 @@ type Mutation {
   deleteSSHKey(id: String!): Boolean!
   deleteSandboxGroup(id: String!, ownerId: String): Boolean!
   deleteSandboxImage(id: String!, ownerId: String, sandboxGroupId: String!): Boolean!
+  deleteSandboxSnapshot(id: String!, ownerId: String, sandboxGroupId: String!): Boolean!
   deleteSecretFile(name: String!, serviceId: String!): Boolean
   deleteService(confirm: String, id: String!): Boolean
   deleteWebhookEndpoint(id: String!, ownerId: String): Boolean
@@ -2296,6 +2298,8 @@ type Query {
   sandboxGroups(cursor: String, limit: Int, ownerId: String): [SandboxGroup]
   sandboxImage(id: String!, ownerId: String, sandboxGroupId: String!): SandboxImage
   sandboxImages(cursor: String, limit: Int, name: String, ownerId: String, sandboxGroupId: String!, status: [String!]): [SandboxImage]
+  sandboxSnapshot(id: String!, ownerId: String, sandboxGroupId: String!): SandboxSnapshot
+  sandboxSnapshots(cursor: String, limit: Int, name: String, ownerId: String, sandboxGroupId: String!, status: [String!]): [SandboxSnapshot]
   sandboxes(name: String, ownerId: String, sandboxGroupId: String, status: [String!]): [Sandbox]
   secretFiles(cursor: String, limit: Int, serviceId: String!): [SecretFileWithCursor]
   server(id: String!): Service
@@ -2517,6 +2521,22 @@ type SandboxNetworkPolicyRule {
 input SandboxNetworkPolicyRuleInput {
   domain: String!
   protocol: String
+}
+
+type SandboxSnapshot {
+  capturedAt: String
+  error: String
+  expiresAt: String
+  id: String!
+  kind: String!
+  name: String
+  plan: String!
+  requestedAt: String
+  sandboxGroupId: String!
+  sizeBytes: Float
+  sourceSandboxId: String!
+  status: String!
+  ttlSeconds: Float
 }
 
 type SecretFile {

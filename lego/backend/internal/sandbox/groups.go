@@ -486,6 +486,11 @@ func (s *Service) finishGroupDelete(ctx context.Context, g store.SandboxGroup) e
 			errs = append(errs, err)
 		}
 	}
+	// After the sandboxes: a capture in flight ends with its source, and its
+	// snapshot, like every other of the group, goes with its image.
+	if err := s.endGroupSnapshots(ctx, g); err != nil {
+		errs = append(errs, err)
+	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}

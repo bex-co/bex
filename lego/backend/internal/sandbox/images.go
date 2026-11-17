@@ -908,10 +908,13 @@ func (s *Service) noSucceededBuild(ctx context.Context, workspace, groupID, name
 // internal address.
 var importedImage = regexp.MustCompile(regexp.QuoteMeta(imagesSegment) + `(sbb-[0-9a-v]{20})@sha256:[0-9a-f]{64}$`)
 
-// displayImage is the image a sandbox reports: an import's build id, or the
-// template image as it was started.
+// displayImage is the image a sandbox reports: an import's build id, the id of
+// the snapshot it was restored from, or the template image as it was started.
 func displayImage(uri string) string {
 	if m := importedImage.FindStringSubmatch(uri); m != nil {
+		return m[1]
+	}
+	if m := restoredImage.FindStringSubmatch(uri); m != nil {
 		return m[1]
 	}
 	return uri
