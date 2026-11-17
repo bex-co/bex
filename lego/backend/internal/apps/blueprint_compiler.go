@@ -68,6 +68,10 @@ type BlueprintSource struct {
 	keyLocations map[string]BlueprintSourceLocation
 	// authoredPaths maps normalized alias paths back to the customer's YAML.
 	authoredPaths map[string]string
+	// inertPreviewFields are the JSON Pointers of preview-only fields a
+	// Blueprint that enables no preview environment declares: accepted with
+	// no effect, each earning a warning notice (w32/032).
+	inertPreviewFields []string
 }
 
 var renderBlueprintSchemaOnce = sync.OnceValues(compileRenderBlueprintSchema)
@@ -104,7 +108,7 @@ func CompileBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourc
 	if err := schema.Validate(source.Value); err != nil {
 		problems = append(problems, blueprintSchemaProblems(err, source, source.Value)...)
 	}
-	problems = append(problems, blueprintCapabilityProblems(source.Value, nil, source.Locations, registry)...)
+	problems = append(problems, blueprintCapabilityProblems(source, registry)...)
 	for i := range problems {
 		if authored := source.authoredPath(problems[i].Path); authored != problems[i].Path {
 			problems[i].Path = authored
@@ -131,8 +135,36 @@ func blueprintSourceProblemsError(problems []BlueprintSourceProblem) error {
 // schema intentionally permits but bex cannot represent truthfully. Keeping
 // this immediately after schema validation means every caller fails before a
 // state lookup or write, with the source path that needs changing.
-func blueprintCapabilityProblems(value any, path []string, locations map[string]BlueprintSourceLocation, registry *BlueprintCapabilityRegistry) []BlueprintSourceProblem {
-	return blueprintCapabilityProblemsAt(value, path, locations, registry, blueprintCapabilityContext{kind: blueprintCapabilityRoot})
+//
+// A preview-only field (previewValue) is judged by the whole file: Render
+// applies it only in preview environments, so in a file that enables none it
+// changes nothing and is recorded for a warning; in a file that enables them
+// it is refused with the toggle, so preview intent is never silently dropped.
+func blueprintCapabilityProblems(source *BlueprintSource, registry *BlueprintCapabilityRegistry) []BlueprintSourceProblem {
+	var previews blueprintPreviewScan
+	problems := blueprintCapabilityProblemsAt(source.Value, nil, source.Locations, registry, blueprintCapabilityContext{kind: blueprintCapabilityRoot}, &previews)
+	if previews.enabled {
+		return append(problems, previews.previewOnly...)
+	}
+	inert := previews.previewOnly // in source order, as the notices read
+	sort.SliceStable(inert, func(i, j int) bool {
+		if inert[i].Line != inert[j].Line {
+			return inert[i].Line < inert[j].Line
+		}
+		return inert[i].Column < inert[j].Column
+	})
+	for _, problem := range inert {
+		source.inertPreviewFields = append(source.inertPreviewFields, problem.Path)
+	}
+	return problems
+}
+
+// blueprintPreviewScan is what one capability walk learns about previews:
+// whether a preview toggle enables them, and the refusal each preview-only
+// field would earn if one does.
+type blueprintPreviewScan struct {
+	enabled     bool
+	previewOnly []BlueprintSourceProblem
 }
 
 // blueprintCapabilityContext identifies the reviewed schema object currently
@@ -183,7 +215,7 @@ const (
 	blueprintCapabilityBuildSourceGit     blueprintCapabilityKind = "buildSourceGit"
 )
 
-func blueprintCapabilityProblemsAt(value any, path []string, locations map[string]BlueprintSourceLocation, registry *BlueprintCapabilityRegistry, context blueprintCapabilityContext) []BlueprintSourceProblem {
+func blueprintCapabilityProblemsAt(value any, path []string, locations map[string]BlueprintSourceLocation, registry *BlueprintCapabilityRegistry, context blueprintCapabilityContext, previews *blueprintPreviewScan) []BlueprintSourceProblem {
 	if list, ok := value.([]any); ok {
 		var problems []BlueprintSourceProblem
 		for index, item := range list {
@@ -193,7 +225,7 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 			} else if context.kind == blueprintCapabilityEnvKeyValue || context.kind == blueprintCapabilityEnvDatabase || context.kind == blueprintCapabilityEnvService || context.kind == blueprintCapabilityEnvGroupReference {
 				itemContext = blueprintEnvVarCapabilityContext(item)
 			}
-			problems = append(problems, blueprintCapabilityProblemsAt(item, append(path, strconv.Itoa(index)), locations, registry, itemContext)...)
+			problems = append(problems, blueprintCapabilityProblemsAt(item, append(path, strconv.Itoa(index)), locations, registry, itemContext, previews)...)
 		}
 		return problems
 	}
@@ -212,8 +244,11 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 		fieldPath := append(append([]string(nil), path...), field)
 		pointer := renderSchemaPointer(fieldPath)
 		location := lookupBlueprintLocation(pointer, locations)
+		located := func(code, message string) BlueprintSourceProblem {
+			return BlueprintSourceProblem{Code: code, Path: pointer, Message: message, Line: location.Line, Column: location.Column}
+		}
 		problem := func(code, message string) {
-			problems = append(problems, BlueprintSourceProblem{Code: code, Path: pointer, Message: message, Line: location.Line, Column: location.Column})
+			problems = append(problems, located(code, message))
 		}
 		if field == "builder" {
 			problem("BLUEPRINT_EXTENSION_REQUIRED", "bex build strategy must be written as x-bex.builder; builder is not a Render Blueprint field")
@@ -223,8 +258,16 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 			continue // local extension vocabulary is validated by its own schema.
 		}
 		capabilityPointer := blueprintFieldCapabilityPointer(context, field)
-		if capability := registry.Fields[capabilityPointer]; capability.AcceptPreviewOptOut && (child == false || previewsDisabled(child)) {
-			continue // explicitly disabled: no preview state to materialize
+		capability := registry.Fields[capabilityPointer]
+		if capability.AcceptPreviewOptOut {
+			if child == false || previewsDisabled(child) {
+				continue // explicitly disabled: no preview state to materialize
+			}
+			previews.enabled = true // refused below
+		}
+		if capability.AcceptWithoutPreviews {
+			previews.previewOnly = append(previews.previewOnly, located("BLUEPRINT_CAPABILITY_UNSUPPORTED", blueprintUnsupportedCapabilityMessage(registry, field, capabilityPointer)))
+			continue
 		}
 		if blueprintCapabilityUnsupported(registry, capabilityPointer) {
 			problem("BLUEPRINT_CAPABILITY_UNSUPPORTED", blueprintUnsupportedCapabilityMessage(registry, field, capabilityPointer))
@@ -235,7 +278,7 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 			continue
 		}
 		childContext := blueprintChildCapabilityContext(context, field, child)
-		problems = append(problems, blueprintCapabilityProblemsAt(child, fieldPath, locations, registry, childContext)...)
+		problems = append(problems, blueprintCapabilityProblemsAt(child, fieldPath, locations, registry, childContext, previews)...)
 	}
 	return problems
 }
@@ -744,7 +787,7 @@ func blueprintUnsupportedCapabilityMessage(registry *BlueprintCapabilityRegistry
 	case "#/allOf/1/properties/previews", "#/allOf/1/properties/previewsEnabled", "#/allOf/1/properties/previewsExpireAfterDays", "#/definitions/serverService/properties/previews", "#/definitions/serverService/properties/previewPlan", "#/definitions/serverService/properties/pullRequestPreviewsEnabled", "#/definitions/staticService/properties/previews", "#/definitions/staticService/properties/pullRequestPreviewsEnabled", "#/definitions/database/properties/previewPlan", "#/definitions/database/properties/previewDiskSizeGB", "#/definitions/redisServer/properties/previewPlan":
 		return "preview environments are not available on bex"
 	case "#/definitions/envVarFromKeyValue/properties/previewValue":
-		return "previewValue is not available on bex because preview environments are not available"
+		return "previewValue is not available on bex because preview environments are not available; a Blueprint that enables none accepts it with no effect"
 	default:
 		if reason := tenantFacingReason(registry.Fields[pointer].Reason); reason != "" {
 			return fmt.Sprintf("%s is not available on bex: %s", field, reason)

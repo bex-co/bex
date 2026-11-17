@@ -866,8 +866,9 @@ func (s *Service) blueprintValidationWithSuffix(ctx context.Context, repo, branc
 		if err != nil {
 			return BlueprintValidation{}, err
 		}
+		warnings := append(blueprintAliasWarnings(source), blueprintIgnoredGroupVars(source, ir, st)...)
 		return BlueprintValidation{Valid: true, Plan: &plan, EstimatedPricing: blueprintEstimatedPricing(kept),
-			warnings: append(blueprintAliasWarnings(source), blueprintIgnoredGroupVars(source, ir, st)...)}, nil
+			warnings: append(warnings, blueprintInertPreviewWarnings(source)...)}, nil
 	}
 	// Per-resource refusals (a host another site serves is a 409, w8/055) are
 	// located entries whatever their sentinel.
@@ -901,6 +902,21 @@ func blueprintIgnoredGroupVars(source *BlueprintSource, ir BlueprintIR, st parse
 		return nil
 	}
 	return blueprintResourceValidationErrors(source, ir, ignored)
+}
+
+// blueprintInertPreviewWarnings locates each preview-only field of a Blueprint
+// that enables no preview environment, which Render applies nowhere, so the
+// entry's own value is the one that applies (w32/032).
+func blueprintInertPreviewWarnings(source *BlueprintSource) []BlueprintValidationError {
+	if source == nil {
+		return nil
+	}
+	warnings := make([]BlueprintValidationError, 0, len(source.inertPreviewFields))
+	for _, path := range source.inertPreviewFields {
+		msg := pointerLeaf(path) + " has no effect: this Blueprint creates no preview environments"
+		warnings = append(warnings, blueprintLocatedError(source, msg, source.authoredPath(path)))
+	}
+	return warnings
 }
 
 // blueprintResourceValidationErrors turns per-resource refusals into entries

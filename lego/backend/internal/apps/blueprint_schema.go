@@ -85,11 +85,21 @@ var blueprintCapabilityHandlers = map[BlueprintCapabilityHandler]struct{}{
 // unsupported entries with the handler and fixture that prove equivalence.
 type BlueprintCapability struct {
 	// AcceptPreviewOptOut permits only an explicit disabled preview value.
-	AcceptPreviewOptOut bool                       `json:"acceptPreviewOptOut,omitempty"`
-	State               BlueprintCapabilityState   `json:"state"`
-	Handler             BlueprintCapabilityHandler `json:"handler,omitempty"`
-	Fixture             string                     `json:"fixture,omitempty"`
-	Reason              string                     `json:"reason"`
+	AcceptPreviewOptOut bool `json:"acceptPreviewOptOut,omitempty"`
+	// AcceptWithoutPreviews permits a preview-only field in a Blueprint that
+	// enables no preview environment, where Render applies it nowhere; the
+	// compiler records it for a warning notice (w32/032).
+	AcceptWithoutPreviews bool                       `json:"acceptWithoutPreviews,omitempty"`
+	State                 BlueprintCapabilityState   `json:"state"`
+	Handler               BlueprintCapabilityHandler `json:"handler,omitempty"`
+	Fixture               string                     `json:"fixture,omitempty"`
+	Reason                string                     `json:"reason"`
+}
+
+// admitsSource reports whether the capability lets some source construct
+// through, which then needs handler and fixture evidence.
+func (c BlueprintCapability) admitsSource() bool {
+	return c.State != BlueprintCapabilityUnsupported || c.AcceptPreviewOptOut || c.AcceptWithoutPreviews
 }
 
 type blueprintCapabilitySchema struct {
@@ -249,7 +259,7 @@ func validateBlueprintCapability(pointer string, capability BlueprintCapability)
 	if capability.Reason == "" {
 		return fmt.Errorf("Render Blueprint capability registry has no reason for %s", pointer)
 	}
-	if (capability.State != BlueprintCapabilityUnsupported || capability.AcceptPreviewOptOut) && (capability.Handler == "" || capability.Fixture == "") {
+	if capability.admitsSource() && (capability.Handler == "" || capability.Fixture == "") {
 		return fmt.Errorf("Render Blueprint capability registry has no handler/fixture evidence for %s", pointer)
 	}
 	if capability.Handler != "" {

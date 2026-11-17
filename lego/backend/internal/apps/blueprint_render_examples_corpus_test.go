@@ -32,7 +32,7 @@ import (
 // corpus file may fail only for these or for a gap already filed
 // (knownBlueprintGaps); any other refusal is a new class to triage (w5/m143).
 var deliberateBlueprintDivergences = []string{
-	"preview environments are not available", // incl. previewValue
+	"preview environments are not available", // incl. previewValue, refused only in a file that enables them (w32/032)
 	"Render Workflows",                       // type: workflow and fromService workflow refs
 	"a private_service requires a paid plan", // Render has no free private service
 	"'dockerFilePath' not allowed",           // Render's key is dockerfilePath

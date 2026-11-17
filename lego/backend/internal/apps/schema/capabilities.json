@@ -392,7 +392,10 @@
     },
     "#/definitions/envVarFromKeyValue/properties/previewValue": {
       "state": "unsupported",
-      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
+      "reason": "Accepted with a warning notice in a Blueprint that enables no preview environment, where Render applies it nowhere, so the entry's own value applies (w32/032); a Blueprint that enables previews stays refused, because PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12) and preview intent is never silently dropped",
+      "acceptWithoutPreviews": true,
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewValueWithoutPreviews"
     },
     "#/definitions/envVarFromKeyValue/properties/sync": {
       "state": "translated",

@@ -265,8 +265,11 @@ services:
 	}
 }
 
-func TestBlueprintCompilerRejectsPreviewOnlyEnvValue(t *testing.T) {
-	_, problems := CompileBlueprintSource(`
+// A previewValue in a Blueprint that enables no preview environment is
+// accepted with no effect; previews_test.go covers the files that enable them
+// (w32/032).
+func TestBlueprintCompilerAcceptsPreviewOnlyEnvValueWithoutPreviews(t *testing.T) {
+	source, problems := CompileBlueprintSource(`
 services:
   - type: web
     name: api
@@ -277,9 +280,8 @@ services:
         value: https://api.example.com
         previewValue: https://preview-api.example.com
 `)
-	problem := findBlueprintProblem(problems, "BLUEPRINT_CAPABILITY_UNSUPPORTED")
-	if problem == nil || problem.Path != "#/services/0/envVars/0/previewValue" {
-		t.Fatalf("previewValue problems = %+v", problems)
+	if len(problems) != 0 || len(source.inertPreviewFields) != 1 || source.inertPreviewFields[0] != "#/services/0/envVars/0/previewValue" {
+		t.Fatalf("previewValue problems = %+v, inert = %v; want accepted and recorded", problems, source.inertPreviewFields)
 	}
 }
 
