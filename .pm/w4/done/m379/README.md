@@ -1,6 +1,6 @@
 # w4 · m379 — A datastore event retrieved by ID answers `details: {}`: Postgres created/restarted name no user, `key_value_config_restart` drops Render's required `reason`/`message`, and the pool, disk, HA, replica and upgrade events drop the values Render requires
 
-**Worker:** worker4 **Goal:** `GET /v1/events/{eventId}` for every Postgres and Key Value event bex emits returns the `details` object Render's schema names for that type, filled from what bex records. A webhook consumer that fetches the event learns who acted and what changed, as on Render. **Status:** blocked — release gate (t001–t005 done, code shipped 2026-11-14 by `/loopx w4`; t006 replays the live DoD after the next production deploy)
+**Worker:** worker4 **Goal:** `GET /v1/events/{eventId}` for every Postgres and Key Value event bex emits returns the `details` object Render's schema names for that type, filled from what bex records. A webhook consumer that fetches the event learns who acted and what changed, as on Render. **Status:** done — t001–t005 shipped 2026-11-14 (`936e34c1e`); t006 replayed the live DoD on pin `ef7e65cd3f46` on 2026-11-17 (DoD 1–4 and 6 hold, 5 by unit tests)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Render parity — **DONE** | 20m | t002 |
 | [t004](done/t004.md) | Simplify — **DONE** | 15m | t003 |
 | [t005](done/t005.md) | Test coverage — **DONE** | 30m | t003 |
-| [t006](t006.md) | Closeout (live replay on production) | 20m | t004, t005 |
+| [t006](done/t006.md) | Closeout (live replay on production) — **DONE** | 20m | t004, t005 |
 
 Total: **6 tasks, about 2h55m**.
 
@@ -132,3 +132,8 @@ Pinned spec, `GET /events/{eventId}` → `details`. The table lists every varian
 
 - `cd lego/backend && GOWORK=off go test ./...` passes, rebased on `fa496cb64`. Before that rebase, `internal/sandbox`'s `TestFileGatewayRefusalBeforeTheFirstByteReachesTheClient` failed on this macOS host, on the unchanged base as well. `fa496cb64` skips it on macOS.
 - Real Postgres + OpenFGA (`scripts/backend-test-deps.sh`): `GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -count=1 -p 1` over `internal/store`, `internal/events`, `internal/postgres`, `internal/keyvalue`, `internal/core`, `internal/webhooks` and `internal/api` passes. That includes the new `TestPGDatastoreEventFromValuesHydrate` and migration 0263.
+
+## Unblock and closeout (2026-11-17)
+
+- **Source:** verified evidence, no user decision. The release gate (restored in `a02806f83`) waited for a production deploy carrying `936e34c1e` and its migration renumbers `3bfc62132`, `9b11f48d7`, `717e8dd0e` and `e130a0899`. All five are ancestors of the live pin `ef7e65cd3f46` (pinned by `ce71ee9b0`, live since 2026-11-17 00:04Z), so the gate is clear.
+- **Replay:** [t006](done/t006.md) re-ran DoD 1–4 and 6 on that pin, 2026-11-17 02:05–02:17 UTC. Every bullet holds. `postgres_cluster_leader_changed` cannot occur on any production user database, since none runs a second instance; its unchanged arm is covered by unit tests, as DoD 5 covers the paid types.
