@@ -1,6 +1,10 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { Configuration, OAuth2Api } from "@ory/client-fetch";
-import type { OAuth2ConsentRequest, Session } from "@ory/client-fetch";
+import type {
+  OAuth2Api,
+  OAuth2ConsentRequest,
+  Session,
+} from "@ory/client-fetch";
+import { hydraAdmin } from "@/common/server-fn/hydra-admin";
 import { fetchSession } from "@/common/server-fn/session";
 import type { SessionState } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
@@ -186,12 +190,6 @@ function consentRedirectOrigin(
   } catch {
     return undefined;
   }
-}
-
-function hydraAdmin(): OAuth2Api | null {
-  const admin = process.env.HYDRA_ADMIN_URL?.replace(/\/$/, "");
-  if (!admin) return null;
-  return new OAuth2Api(new Configuration({ basePath: admin }));
 }
 
 /** What Kratos says about this request's cookies: the session, or why not. */

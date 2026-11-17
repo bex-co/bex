@@ -44,7 +44,8 @@ hydra:
         issuer: https://oauth.bex.co # must match the public host (t005/ingress)
       # OAuth2 login + consent (w4/m9): login is the dashboard's EXISTING Kratos
       # login page (Kratos's native oauth2_provider integration accepts the
-      # challenge itself — kratos.values.yaml); consent is the dashboard's
+      # challenge itself — kratos.values.yaml — and the page's server accepts
+      # it for a browser already signed in, w7/079); consent is the dashboard's
       # headless acceptor route (auto-accepts trusted/skip clients, no UI).
       login: https://dashboard.bex.co/auth/login
       consent: https://dashboard.bex.co/auth/consent

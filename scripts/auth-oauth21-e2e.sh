@@ -2,8 +2,9 @@
 # End-to-end OAuth 2.1 provider check (docs/ADR012-auth.md, w4/m9 + m16 + m17 + m18):
 # drives the full agent story against REAL components — real Hydra, real Kratos
 # with the native `oauth2_provider` bridge (Kratos accepts the login challenge
-# itself; no custom login provider), the dashboard's real consent + Connected
-# Agents routes, and the real bex-api resource server:
+# itself; the login page's server accepts it only for a browser already signed
+# in, w7/079), the dashboard's real login, consent, device and Connected Agents
+# routes, and the real bex-api resource server:
 #
 #   discovery (RFC 9728 on bex-api) -> DCR (RFC 7591) -> authorize (PKCE S256)
 #   -> Kratos login (browser flow + login_challenge, as the dashboard login page
@@ -28,6 +29,13 @@
 # remembered consent with no way to undo it (docs/ADR018-render-parity.md
 # § bex ahead). Reuses JAR_USER (its live Kratos session cookie is exactly what
 # `/api/connected-agents` reads) and leg 13's still-live access token.
+#
+# Since w7/079: a browser signed in on the dashboard's own login page, which
+# Hydra has never seen, connects an agent and approves an RFC 8628 device login
+# (the official Render CLI's `bex login`) with no password form: the login
+# page's server answers the challenge against the live session. A client that
+# asks for a fresh login (`prompt=login`) or a recent one (`max_age`) still gets
+# Kratos's form.
 #
 # Since w7/m426: a leg after the test user exists proves an API key is a bearer
 # token against a real Hydra (docs/ADR012-auth.md §8e). A signed-in person mints
@@ -137,6 +145,8 @@ docker run -d --name "$HYDRA" --network "$NET" --network-alias hydra \
   -e URLS_SELF_ISSUER=$ISSUER \
   -e URLS_LOGIN=$DASH/auth/login \
   -e URLS_CONSENT=$DASH/auth/consent \
+  -e URLS_DEVICE_VERIFICATION=$DASH/auth/device \
+  -e URLS_DEVICE_SUCCESS=$DASH/auth/device/success \
   -e OIDC_DYNAMIC_CLIENT_REGISTRATION_ENABLED=true \
   -e SECRETS_SYSTEM=e2e-only-system-secret-32-chars-x \
   oryd/hydra:v26.2.0 serve all --dev >/dev/null
@@ -246,7 +256,7 @@ else
   # answers it with error=access_denied on the agent's callback (w7/065).
   launch "$TMP/dash.log" dashboard env VITE_KRATOS_PUBLIC_URL="$KRATOS_PUB" \
     VITE_API_URL="http://localhost:$API_PORT/graphql" HYDRA_ADMIN_URL="$HYDRA_ADM" \
-    BEX_REQUIRE_VERIFIED_EMAIL=0 yarn dev --port "$DASH_PORT"
+    HYDRA_PUBLIC_URL="$ISSUER" BEX_REQUIRE_VERIFIED_EMAIL=0 yarn dev --port "$DASH_PORT"
   DASH_PGID="$LAUNCHED"
   wait_http "$DASH/auth/consent" 90 || true
 fi
@@ -334,11 +344,13 @@ print(parse_qs(urlparse('$1').query).get('$2', [''])[0])
 # Walk redirects like a browser would, with a cookie jar, stopping at the agent's
 # callback (a refused loopback — never actually fetched) or at any page that
 # renders (login page, consent page). The final URL lands on stdout; the last
-# fetched body in $TMP/page.html.
+# fetched body in $TMP/page.html. Every URL fetched is appended to
+# $TMP/follow.chain, so a leg can assert a hop the browser passed through.
 follow() { # url jar -> final url on stdout
   local url="$1" jar="$2" loc
   for _ in $(seq 1 8); do
     case "$url" in "$CALLBACK"*) break ;; esac
+    echo "$url" >>"$TMP/follow.chain"
     curl -s -o "$TMP/page.html" -D "$TMP/page.head" -c "$jar" -b "$jar" "$url"
     loc="$(grep -i '^location:' "$TMP/page.head" | tr -d '\r' | cut -d' ' -f2 | tail -1)"
     [ -z "$loc" ] && break
@@ -364,13 +376,16 @@ follow() { # url jar -> final url on stdout
 # forever, so an already-signed-in user could not connect an agent at all.
 #
 # Hydra remembers a browser from its first login challenge on: Kratos accepts
-# every challenge with `remember` for the session's lifespan. A session Hydra
-# does not remember yet gets a re-authentication form (`refresh`) instead.
+# every challenge with `remember` for the session's lifespan. A browser with a
+# live session Hydra does not remember never gets here: the login page's server
+# accepts its challenge first (w7/079). Kratos's re-authentication form
+# (`refresh`) is left for a client that asked for a fresh login (`prompt=login`)
+# or a recent one (`max_age`).
 #
 # Records which shape Kratos answered with in $TMP/login_mode, so a leg can assert
 # the path it took rather than just its outcome.
 kratos_login() { # login_challenge jar -> continue url on stdout
-  local challenge="$1" jar="$2" flow mode action csrf submit cont url
+  local challenge="$1" jar="$2" flow mode submit cont url
   url="$KRATOS_PUB/self-service/login/browser?login_challenge=$challenge&return_to=$DASH/"
   flow="$(curl -s -c "$jar" -b "$jar" -H 'Accept: application/json' "$url")"
   mode="$(echo "$flow" | python3 -c '
@@ -390,26 +405,46 @@ else:
     echo "$cont"; return 0
   fi
 
-  action="$(echo "$flow" | python3 -c "import sys,json;print(json.load(sys.stdin)['ui']['action'])")"
-  csrf="$(echo "$flow" | python3 -c "
-import sys, json
-f = json.load(sys.stdin)
-print(next(n['attributes']['value'] for n in f['ui']['nodes'] if n['attributes'].get('name') == 'csrf_token'))
-")"
-  submit="$(curl -s -c "$jar" -b "$jar" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-    -d "{\"method\":\"password\",\"identifier\":\"$USER_EMAIL\",\"password\":\"$USER_PASSWORD\",\"csrf_token\":\"$csrf\"}" \
-    "$action")"
+  submit="$(password_submit "$flow" "$jar")"
   cont="$(echo "$submit" | python3 -c "import sys,json;print(json.load(sys.stdin).get('redirect_browser_to',''))")"
   [ -n "$cont" ] || { echo "error: login did not yield a continue URL: $submit" >&2; return 1; }
   echo "$cont"
 }
 
+# Submit a Kratos login flow's password form with the test user's credentials,
+# as Ory Elements does. The response body lands on stdout.
+password_submit() { # flow_json jar
+  local action csrf
+  action="$(echo "$1" | python3 -c "import sys,json;print(json.load(sys.stdin)['ui']['action'])")"
+  csrf="$(echo "$1" | python3 -c "
+import sys, json
+f = json.load(sys.stdin)
+print(next(n['attributes']['value'] for n in f['ui']['nodes'] if n['attributes'].get('name') == 'csrf_token'))
+")"
+  curl -s -c "$2" -b "$2" -H 'Accept: application/json' -H 'Content-Type: application/json' \
+    -d "{\"method\":\"password\",\"identifier\":\"$USER_EMAIL\",\"password\":\"$USER_PASSWORD\",\"csrf_token\":\"$csrf\"}" \
+    "$action"
+}
+
+# Sign a fresh browser in the way a person signs in at the dashboard: the login
+# page's own flow, with no login challenge, so Hydra never sees it (w7/079).
+dashboard_sign_in() { # jar
+  local flow submit
+  flow="$(curl -s -c "$1" -b "$1" -H 'Accept: application/json' "$KRATOS_PUB/self-service/login/browser?return_to=$DASH/")"
+  submit="$(password_submit "$flow" "$1")"
+  echo "$submit" | python3 -c "import sys,json; assert json.load(sys.stdin)['session']['active']" ||
+    { echo "error: the dashboard sign-in did not yield a session: $(echo "$submit" | head -c 300)" >&2; return 1; }
+  grep -q ory_hydra_session "$1" && { echo "error: a dashboard sign-in left a Hydra login cookie" >&2; return 1; }
+  return 0
+}
+
 # One authorization, driven as a browser: authorize -> (login if Hydra asks) ->
 # wherever the consent route sends us. Final URL on stdout: either the agent's
 # callback (consent was headless) or the consent page (a human must decide).
-authorize() { # client_id state jar [scope] -> final url on stdout
-  local client="$1" state="$2" jar="$3" scope="${4:-openid+offline_access+bex.read}" final challenge cont
-  final="$(follow "$ISSUER/oauth2/auth?client_id=$client&response_type=code&scope=$scope&redirect_uri=$CALLBACK&state=$state&code_challenge=$CHALLENGE&code_challenge_method=S256&audience=$RESOURCE" "$jar")"
+# `extra` is appended to the authorize query as given (`&prompt=login`).
+authorize() { # client_id state jar [scope] [extra] -> final url on stdout
+  local client="$1" state="$2" jar="$3" scope="${4:-openid+offline_access+bex.read}" extra="${5:-}" final challenge cont
+  final="$(follow "$ISSUER/oauth2/auth?client_id=$client&response_type=code&scope=$scope&redirect_uri=$CALLBACK&state=$state&code_challenge=$CHALLENGE&code_challenge_method=S256&audience=$RESOURCE$extra" "$jar")"
   case "$final" in
     "$DASH/auth/login"*)
       challenge="$(qparam "$final" login_challenge)"
@@ -669,9 +704,9 @@ echo "-> 13/14 SIGNED-IN browser (reused jar): authorize again with no re-login.
 # w4/m17. Leg 9's sign-in went through a login challenge, which Kratos accepted
 # with `remember`, so Hydra remembers this browser and Kratos accepts the new
 # challenge against the session. Assert the *path*, not just the outcome: no
-# password form may be submitted. (A browser signed in at the dashboard only, with
-# no agent connected yet, is asked to confirm its password once instead: Hydra
-# does not remember it yet, w7/079.)
+# password form may be submitted. (A browser signed in at the dashboard only,
+# which Hydra does not remember yet, is answered by the login page's server
+# instead: leg extra/w7-079 below.)
 : >"$TMP/login_mode" # a stale marker from an earlier leg must not pass this
 final="$(authorize "$CONSENT_CLIENT" "state-signedin" "$JAR_USER")"
 mode="$(cat "$TMP/login_mode")"
@@ -745,6 +780,77 @@ grep -q 'bex.read' "$TMP/page.html" || { echo "error: refusal did not name bex.r
 [ -z "$(qparam "$final" code)" ] || { echo "error: refused bex.api flow still delivered a code: $final" >&2; exit 1; }
 echo "  ✓ third-party bex.api is refused at consent as scope_required (no code)"
 
+echo "-> extra/w7-079 signed in at the dashboard only: the first agent asks for no password..."
+# The commonest first step of all: a person signed in on the dashboard's own
+# login page, which never goes through Hydra, connects their first agent. Hydra
+# does not remember this browser, so its login request is not skippable, and
+# Kratos alone would answer it with a re-authentication form. The login page's
+# server accepts the challenge against the live session instead
+# (hydra-login.ts); the consent page still decides the grant.
+JAR_DASH="$TMP/dashboard.jar"
+dashboard_sign_in "$JAR_DASH"
+FIRST_CLIENT="$(dcr 'first agent from a signed-in browser (e2e)')"
+: >"$TMP/login_mode"
+: >"$TMP/follow.chain"
+final="$(authorize "$FIRST_CLIENT" "state-first" "$JAR_DASH")"
+[ ! -s "$TMP/login_mode" ] || { echo "error: the signed-in browser was handed to Kratos's login ($(cat "$TMP/login_mode"))" >&2; exit 1; }
+grep -q "^$DASH/auth/login?login_challenge=" "$TMP/follow.chain" ||
+  { echo "error: Hydra never asked this browser to log in, so the leg proves nothing: $(cat "$TMP/follow.chain")" >&2; exit 1; }
+expect_at "$DASH/auth/consent" "$final" "the first agent from a signed-in browser did not reach the consent page"
+grep -q 'first agent from a signed-in browser (e2e)' "$TMP/page.html" || { echo "error: consent page does not name the client" >&2; exit 1; }
+final="$(consent_decide approve "$JAR_DASH")"
+expect_at "$CALLBACK" "$final" "approve did not reach the agent callback"
+assert_bearer_works "$(exchange "$final" "$FIRST_CLIENT")"
+grep -q ory_hydra_session "$JAR_DASH" || { echo "error: Hydra was not asked to remember the login" >&2; exit 1; }
+echo "  ✓ the login page answered Hydra with the dashboard session: no password, then the consent page -> token"
+
+# A client that asks for a fresh login, or for one newer than max_age, still
+# gets Kratos's form even though the browser is signed in.
+: >"$TMP/login_mode"
+final="$(authorize "$FIRST_CLIENT" "state-prompt" "$JAR_DASH" "" "&prompt=login")"
+[ "$(cat "$TMP/login_mode")" = "reauth-form" ] || { echo "error: prompt=login took the '$(cat "$TMP/login_mode")' path, want Kratos's re-authentication form" >&2; exit 1; }
+expect_at "$CALLBACK" "$final" "the prompt=login authorization did not finish after the password"
+sleep 2
+: >"$TMP/login_mode"
+final="$(authorize "$FIRST_CLIENT" "state-maxage" "$JAR_DASH" "" "&max_age=1")"
+[ "$(cat "$TMP/login_mode")" = "reauth-form" ] || { echo "error: max_age=1 took the '$(cat "$TMP/login_mode")' path, want Kratos's re-authentication form" >&2; exit 1; }
+expect_at "$CALLBACK" "$final" "the max_age authorization did not finish after the password"
+echo "  ✓ prompt=login and an exceeded max_age still ask for the password"
+
+echo "-> extra/w7-079 signed in at the dashboard only: bex login (RFC 8628) asks for no password..."
+# The official Render CLI's `bex login`: the device page's Authorize click is
+# the decision, and the login behind it must not ask again.
+DEVICE_GRANT=urn:ietf:params:oauth:grant-type:device_code
+CLI_CLIENT=429024F5E608930E2A65EF92591A25CC # hydra-device.ts RENDER_CLI_CLIENT_ID
+curl -sf -X POST -H 'Content-Type: application/json' -d '{
+  "client_id": "'"$CLI_CLIENT"'", "client_name": "bex CLI (e2e)",
+  "grant_types": ["'"$DEVICE_GRANT"'", "refresh_token"],
+  "scope": "openid offline_access bex.read", "token_endpoint_auth_method": "none",
+  "skip_consent": true
+}' "$HYDRA_ADM/admin/clients" >/dev/null
+JAR_CLI="$TMP/cli.jar"
+dashboard_sign_in "$JAR_CLI"
+curl -sf -X POST -d "client_id=$CLI_CLIENT&scope=openid+offline_access+bex.read" "$ISSUER/oauth2/device/auth" >"$TMP/device.json"
+read -r DEVICE_CODE VERIFY_URL < <(python3 -c "import json; d = json.load(open('$TMP/device.json')); print(d['device_code'], d['verification_uri_complete'])")
+final="$(follow "$VERIFY_URL" "$JAR_CLI")"
+expect_at "$DASH/auth/device?" "$final" "the verification link did not reach the device page"
+[ -n "$(qparam "$final" device_challenge)" ] || { echo "error: the device page carries no device_challenge: $final" >&2; exit 1; }
+curl -s -o /dev/null -D "$TMP/device.head" -c "$JAR_CLI" -b "$JAR_CLI" -X POST -H "Origin: $DASH" \
+  --data-urlencode "user_code=$(qparam "$final" user_code)" \
+  --data-urlencode "device_challenge=$(qparam "$final" device_challenge)" "$DASH/auth/device"
+loc="$(grep -i '^location:' "$TMP/device.head" | tr -d '\r' | cut -d' ' -f2 | tail -1)"
+[ -n "$loc" ] || { echo "error: Authorize on the device page did not redirect: $(head -1 "$TMP/device.head")" >&2; exit 1; }
+: >"$TMP/follow.chain"
+final="$(follow "$loc" "$JAR_CLI")"
+grep -q "^$DASH/auth/login?login_challenge=" "$TMP/follow.chain" ||
+  { echo "error: Hydra never asked the device browser to log in: $(cat "$TMP/follow.chain")" >&2; exit 1; }
+expect_at "$DASH/auth/device/success" "$final" "the device login stopped short of the success page (a password form?)"
+CLI_TOKEN="$(curl -s -X POST -d "grant_type=$DEVICE_GRANT&device_code=$DEVICE_CODE&client_id=$CLI_CLIENT" "$ISSUER/oauth2/token" |
+  python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))')"
+[ -n "$CLI_TOKEN" ] || { echo "error: the approved device code did not exchange for a token" >&2; exit 1; }
+assert_bearer_works "$CLI_TOKEN"
+echo "  ✓ device page -> Authorize -> no password -> success page -> the CLI's token works"
+
 if [ -n "${HOLD:-}" ]; then
   echo
   echo "HOLD=1: stack left up — dashboard :$DASH_PORT, hydra $ISSUER, kratos $KRATOS_PUB"
@@ -759,3 +865,5 @@ echo "  -> consent (headless for blessed clients, a real user decision for every
 echo "  else: approve / deny / remembered) -> token -> Bearer-authorized bex-api"
 echo "  -> Connected Agents list -> revoke -> the same token 401s at /mcp"
 echo "✓ w7/m426: an API key is a bearer on REST, GraphQL and MCP, and revocable"
+echo "✓ w7/079: signed in at the dashboard only, the first agent and bex login ask"
+echo "  for no password; prompt=login and max_age still do"

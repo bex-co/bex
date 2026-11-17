@@ -5,6 +5,28 @@ import LoginPage from "@/features/auth/pages/login-page";
 import { LoginRouteSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/auth/login")({
+  // Hydra's `urls.login`. A browser already signed in answers the login
+  // challenge here, before the page renders, instead of Kratos asking for its
+  // password again (w7/079, docs/ADR012-auth.md §7). Any other visit renders the
+  // page as before. The Hydra-admin logic sits behind a dynamic import so it
+  // never reaches the client bundle.
+  server: {
+    handlers: ({ createHandlers }) =>
+      createHandlers({
+        GET: async ({ request, next }) => {
+          if (!new URL(request.url).searchParams.has("login_challenge")) {
+            return next();
+          }
+          const { withReportedRouteError } =
+            await import("@/common/lib/report-route-error");
+          return withReportedRouteError(async () => {
+            const { handleLoginChallenge } =
+              await import("@/common/server-fn/hydra-login");
+            return (await handleLoginChallenge(request)) ?? next();
+          });
+        },
+      }),
+  },
   component: LoginPage,
   pendingComponent: LoginRouteSkeleton,
   validateSearch: (search: Record<string, unknown>) => ({

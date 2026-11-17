@@ -80,7 +80,7 @@ async function fetchSessionUncached(cookie?: string): Promise<SessionState> {
     return {
       session,
       aal2Required: false,
-      expiresAt: parseExpiry(session.expires_at),
+      expiresAt: sessionTimeMs(session.expires_at),
     };
   } catch (err) {
     const { id } = await oryErrorInfo(err);
@@ -88,12 +88,14 @@ async function fetchSessionUncached(cookie?: string): Promise<SessionState> {
   }
 }
 
-/** Kratos's `expires_at` as epoch ms, or undefined when absent/unparseable. The
- *  Ory SDK types it as a `Date`, but tolerate an ISO string too for safety. */
-function parseExpiry(expiresAt: Date | string | undefined): number | undefined {
-  if (!expiresAt) return undefined;
-  const ms =
-    expiresAt instanceof Date ? expiresAt.getTime() : Date.parse(expiresAt);
+/** A Kratos session timestamp (`expires_at`, `authenticated_at`) as epoch ms,
+ *  or undefined when absent/unparseable. The Ory SDK types it as a `Date`, but
+ *  tolerate an ISO string too for safety. */
+export function sessionTimeMs(
+  value: Date | string | undefined,
+): number | undefined {
+  if (!value) return undefined;
+  const ms = value instanceof Date ? value.getTime() : Date.parse(value);
   return Number.isNaN(ms) ? undefined : ms;
 }
 
