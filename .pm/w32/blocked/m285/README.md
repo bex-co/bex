@@ -1,19 +1,19 @@
 # w32 · m285 — Sandbox filesystem snapshots, as on Render (the runtime kind follows w2/m322)
 
-**Worker:** worker32 **Goal:** users capture a filesystem snapshot of a running sandbox and start new sandboxes from it by id or name, with Render's lifecycle (status, 30-day expiry, delete), while `--kind runtime` answers a named 400 until w2/m322's memory checkpoint exists, recorded as a temporary difference (user decision D1=A, 2026-11-11) **Status:** in progress — t001–t007 done 2026-11-16 (the filesystem kind is served on REST, GraphQL and MCP); t008, the production walk, next
+**Worker:** worker32 **Goal:** users capture a filesystem snapshot of a running sandbox and start new sandboxes from it by id or name, with Render's lifecycle (status, 30-day expiry, delete), while `--kind runtime` answers a named 400 until w2/m322's memory checkpoint exists, recorded as a temporary difference (user decision D1=A, 2026-11-11) **Status:** blocked — release gate, clears by itself: t001–t007 are done and shipped in `8968f97e3`. [t008](t008.md) replays the definition of done on production once a "pin platform images to" commit contains it (§ Blocked).
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design: filesystem snapshots on the rootfs commit; the runtime kind is refused by name until w2/m322 — **DONE** | 1h | w2/m278 |
-| t002 | Capture a filesystem snapshot from a running sandbox — **DONE** | 2.5h | t001 |
-| t003 | Create a sandbox from a snapshot by id or name — **DONE** | 2h | t002 |
-| t004 | List, get and delete snapshots; expire and purge them — **DONE** | 1.5h | t002 |
-| t005 | Render parity — **DONE** | 15m | t003, t004 |
-| t006 | Simplify — **DONE** | 15m | t005 |
-| t007 | Test coverage — **DONE** | 30m | t005 |
-| t008 | Closeout | 10m | t006, t007 |
+| [t001](done/t001.md) | Design: filesystem snapshots on the rootfs commit; the runtime kind is refused by name until w2/m322 — **DONE** | 1h | w2/m278 |
+| [t002](done/t002.md) | Capture a filesystem snapshot from a running sandbox — **DONE** | 2.5h | t001 |
+| [t003](done/t003.md) | Create a sandbox from a snapshot by id or name — **DONE** | 2h | t002 |
+| [t004](done/t004.md) | List, get and delete snapshots; expire and purge them — **DONE** | 1.5h | t002 |
+| [t005](done/t005.md) | Render parity — **DONE** | 15m | t003, t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
+| [t008](t008.md) | Closeout (live walk on production) — **BLOCKED** (release gate) | 40m | t006, t007 |
 
 ## Definition of done
 
@@ -25,7 +25,7 @@
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm` for w32, 2026-11-07, item 5. Render docs render.com/docs/sandboxes-snapshots; bex refuses snapshots by name (`SANDBOX_SNAPSHOTS_UNSUPPORTED`), and the checklist `[-]` rests only on 'non-goal at this pin', not a user decision.
-- **Goal linkage:** Pillar 5 and [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first): snapshot restore is how Render users fork a prepared sandbox.
+- **Goal linkage:** Pillar 5 and [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first): snapshot restore is how Render users fork a prepared sandbox.
 - **Expected outcome:** Render users' snapshot-and-restore workflows run on bex for the filesystem kind, and the runtime-kind gap is explicit and tied to w2/m322 instead of a blanket refusal.
 - **Why now:** w2/m278 builds the same rootfs-commit path for suspend, so snapshots reuse fresh, verified mechanism. **Depends on w2/m278 closing** (start t001 only after it is in `w2/done/`).
 - **Render parity:** Included: new REST/GraphQL/MCP operations on Render's paths. Dashboard N/A.
@@ -54,3 +54,22 @@
 - **Remaining gates:** none for t001–t007. t008's live check needs a production deploy that carries the work; that gate clears by itself.
 - **Next (worker):** t001, then t002–t004 on one service path for REST, GraphQL and MCP, the closing tasks, and the production walk in the definition of done. The runtime kind is filed separately, behind w2/m322.
 
+## Blocked (2026-11-17)
+
+**Release gate (clears by itself; no decision needed).** t001–t007 shipped in `8968f97e3` (bex-api: REST, GraphQL and MCP snapshot verbs, migration 0282; ADR104 D4, ADR018, the checklist). Production runs the bex-api image of the newest `chore(deploy): pin platform images to <sha>` commit on `main`. That pin was `58ef086ab21d` when this milestone parked, and it does not contain `8968f97e3`; deploy.yml batches, so the next pin lands at an hourly run once the current one is six hours old (from about 10:40 UTC on 2026-11-17). Production still answered `404 SANDBOX_SNAPSHOTS_UNSUPPORTED` to `bex sandboxes snapshots list` at 05:20 UTC. Check:
+
+```bash
+git fetch origin main
+pin=$(git log origin/main --grep='^chore(deploy): pin platform images to' -1 --format=%s | sed -E 's/.*images to ([0-9a-f]+).*/\1/')
+git merge-base --is-ancestor 8968f97e3 "$pin" && echo "pinned: walk the definition of done"
+```
+
+Then t008 walks the definition of done in `bex-canary` as the QA user with the released `bex` (v0.7.0, Render CLI v2.36), deleting every fixture afterwards:
+
+- `sandboxes create --wait`, write `~/marker.txt` with `exec`; `snapshots create <id> --kind runtime` and with no `--kind` answer `400 SANDBOX_SNAPSHOT_RUNTIME_UNSUPPORTED`;
+- `snapshots create <id> --kind filesystem --name base-<nonce> --wait` reaches `available` and `sandboxes get <id>` still reads `running`;
+- `sandboxes create --from base-<nonce> --wait` and `--snapshot-id <snp>` both start sandboxes whose `cat ~/marker.txt` prints the marker, and the snapshot remains;
+- `snapshots list|get|delete` on REST (the CLI), GraphQL (`sandboxSnapshots`, `sandboxSnapshot`, `deleteSandboxSnapshot`) and MCP (`list_`, `get_`, `delete_sandbox_snapshot`); a delete during a capture is `409 snapshot_creating`, a deleted snapshot reads 404 and deletes again with 204, and a restore from it is `404 snapshot_not_found`;
+- a capture with `ttlSeconds: 60` (REST) reads 404 after it expires and its `snapshots/<ws>-sandbox/snapshots/<snp-id>` repository loses its tag at the next sweep.
+
+Then regrade the checklist rows (`sandboxes snapshots …`, `snapshots.*`) and ADR018's two 🚧 rows with the walk's evidence, tick t002's and t003's live criteria, and close.
